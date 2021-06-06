@@ -25,12 +25,4 @@ object Main extends App {
     case GET -> Root / "hello" / name => Ok(s"Hello, $name.")
   }
 
-  val httpApp = Router("/" -> helloWorldService).orNotFound
-
-  val serverBuilder = BlazeServerBuilder[IO](global).bindHttp(config.port, config.hostname)
-    .withHttpApp(httpApp)
-    .serve
-    .compile
-    .drain
-    .unsafeRunSync()(cats.effect.unsafe.implicits.global)
 }
