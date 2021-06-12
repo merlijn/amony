@@ -1,0 +1,13 @@
+.full-width {
+  width: 100% ! important;
+  margin:0 ! important;
+}
+
+$container-max-widths: (
+    sm: 540px,
+    md: 720px,
+    lg: 960px,
+    xl: 1280px
+) !default;
+
+@import '~bootstrap/scss/bootstrap.scss';
