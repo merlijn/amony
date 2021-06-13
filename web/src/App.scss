@@ -3,6 +3,23 @@
   margin:0 ! important;
 }
 
+.gallery-row {
+
+ margin-bottom: 15px;
+}
+
+.gallery-column {
+  padding-top: 0px ! important;
+  padding-left: 15px ! important;
+  padding-right: 0px ! important;
+  padding-bottom: 0px ! important;
+}
+
+.gallery-column-first {
+
+  padding: 0px ! important;
+}
+
 $container-max-widths: (
     sm: 540px,
     md: 720px,

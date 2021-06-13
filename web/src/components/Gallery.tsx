@@ -5,7 +5,6 @@ import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Image from 'react-bootstrap/Image';
 
-
 function getRandomInt(min: number, max: number) {
     min = Math.ceil(min);
     max = Math.floor(max);
@@ -14,26 +13,20 @@ function getRandomInt(min: number, max: number) {
 
 function Gallery() {
 
-  let nrows = 3;
-  let ncols = 3;
+  let nrows: number = 3;
+  let ncols: number = 3;
+  let width: number = 459;
+  let height: number = Math.ceil(width / 16 * 9);
 
-  var rows=[];
+  let rows = [...new Array(nrows)].map((e, idx) => {
+      let cols = [...new Array(ncols)].map((e, idx) => {
+              let imgSrc = `https://picsum.photos/${width}/${height}?image=${getRandomInt(1, 100)}`;
+              let clazz = idx === 0 ? "gallery-column-first" : "gallery-column"
 
-    for (var i =0; i < nrows; i++) {
-        var cols=[];
-
-        for (var j=0; j < ncols; j++) {
-          let imgSrc = `https://picsum.photos/400/300?image=${getRandomInt(1, 200)}`;
-
-           cols.push(
-             <Col md="auto"><Image src={imgSrc} /></Col>
-           );
-        }
-
-        rows.push(
-            <Row> { cols } </Row>
-        );
-    }
+              return <Col md="auto" className={clazz}><Image src={imgSrc} /></Col>;
+      });
+      return <Row className="gallery-row"> { cols } </Row>;
+  });
 
   return (
     <Container fluid>

@@ -10,7 +10,7 @@ import Gallery from './components/Gallery';
 
 function App() {
   return (
-    <div className="full-width">
+    <Container fluid>
 
         <Navbar bg="light" expand="sm">
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
@@ -35,7 +35,7 @@ function App() {
 
         <Gallery />
 
-    </div>
+    </Container>
   );
 }
 
