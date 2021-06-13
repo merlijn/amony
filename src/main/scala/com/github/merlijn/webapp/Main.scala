@@ -38,11 +38,11 @@ trait WebServer {
   }
 
   val helloWorldService = HttpRoutes.of[IO] {
-    case GET -> Root / "movie" / name => Ok(s"Hello, $name.")
+    case GET -> Root / "movie" / name => Ok(s"""{ "text" : "hello world! "}""")
   }.orNotFound
 
   BlazeServerBuilder[IO](global)
-    .bindHttp(8080, "localhost")
+    .bindHttp(config.port, config.hostname)
     .withHttpApp(helloWorldService)
     .serve
     .compile
