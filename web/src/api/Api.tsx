@@ -1,4 +1,3 @@
-import { Movie } from './Model';
 import { deserialize } from 'typescript-json-serializer';
 
 export async function doGET(path: string) {
