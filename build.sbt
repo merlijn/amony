@@ -13,6 +13,7 @@ lazy val root = (project in file(".")).
       "io.circe" %% "circe-core" % "0.14.1",
       "io.circe" %% "circe-generic" % "0.14.1",
       "io.circe" %% "circe-parser" % "0.14.1",
+      ("com.github.pathikrit" %% "better-files" % "3.9.1").cross(CrossVersion.for3Use2_13),
       "org.scalatest"     %% "scalatest"                % "3.2.9"         % Test
     )
   )

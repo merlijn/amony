@@ -5,6 +5,7 @@ import Col from 'react-bootstrap/Col';
 import { doGET } from '../api/Api';
 import { Video } from '../api/Model';
 import Thumbnail from './Thumbnail';
+import Pagination from 'react-bootstrap/Pagination';
 
 function getRandomInt(min: number, max: number) {
     min = Math.ceil(min);
@@ -83,6 +84,23 @@ class Gallery extends React.Component<{}, State> {
       return (
         <Container fluid>
            { rows }
+           <Pagination>
+             <Pagination.First />
+             <Pagination.Prev />
+             <Pagination.Item>{1}</Pagination.Item>
+             <Pagination.Ellipsis />
+
+             <Pagination.Item>{10}</Pagination.Item>
+             <Pagination.Item>{11}</Pagination.Item>
+             <Pagination.Item active>{12}</Pagination.Item>
+             <Pagination.Item>{13}</Pagination.Item>
+             <Pagination.Item disabled>{14}</Pagination.Item>
+
+             <Pagination.Ellipsis />
+             <Pagination.Item>{20}</Pagination.Item>
+             <Pagination.Next />
+             <Pagination.Last />
+           </Pagination>
         </Container>
       );
   }
