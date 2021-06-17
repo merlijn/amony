@@ -2,55 +2,62 @@ package com.github.merlijn.webapp
 
 import better.files.*
 import File.*
+
 import java.io.{File as JFile}
-import Model.*
+import java.time.Duration
 
 object Lib {
 
   case class Info(
-    duration: String,
-    fps: Double
+    fileName: String,
+    duration: Long
   )
 
-  def index(): Unit = {
-    val dir = "/Users/merlijn" / "Downloads"
-    val matches: Iterator[File] = dir.listRecursively.filter(_.name.endsWith(".mp4")) //.filter(f => f.extension == Some(".java") || f.extension == Some(".scala")) //dir.glob("**/*.{mp4,wmv}")
+  def index(path: String): Seq[Info] = {
+    val dir = File(path)
+    val matches: Iterator[File] = dir.listRecursively.filter(_.name.endsWith(".mp4"))
 
-    matches.foreach { f =>
+    matches.map { f =>
 
       val fileName = s"$dir/${f.name}"
-      println(ffprobe(fileName).toString)
-      writeThumbnail(fileName, "00:05:12")
-    }
+      val info = ffprobe(fileName)
+
+      info
+    }.toSeq
   }
 
   def ffprobe(fileName: String): Info = {
 
-    val command = s"ffprobe $fileName"
+    val output = run("ffprobe", fileName)
+    val pattern = raw"Duration:\s(\d{2}):(\d{2}):(\d{2})".r.unanchored
 
-    val output = run(command)
-    val pattern = raw"Duration:\s(\d{2}):(\d{2}):(\d{2})".r
-//    val pattern = "Duration:\\s(\\d\\d:\\d\\d:\\d\\d)".r
-    val duration = pattern.findFirstIn(output).get
+    val duration: Long = output match {
+      case pattern(hours, minutes, seconds) =>
+        hours.toInt *  60 * 60 * 1000 +
+        minutes.toInt * 60 * 1000 +
+        seconds.toInt * 1000
+    }
 
-    Info(duration, 29d)
+    Info(fileName, duration)
   }
 
-  def writeThumbnail(fileName: String, time: String): Unit = {
+  def writeThumbnail(fileName: String, time: Long): Unit = {
+
+    val timestamp = Duration.ofMillis(time)
+    val ss = s"${timestamp.toHoursPart}:${timestamp.toMinutesPart}:${timestamp.toSecondsPart}"
 
     val baseFilename = fileName.substring(0, fileName.lastIndexOf('.'))
 
-    run(s"""ffmpeg -ss $time -i $fileName -vframes 1 $baseFilename.jpeg""")
+    run(s"ffmpeg", "-ss", ss, "-i", fileName, "-vframes", "1", s"$baseFilename.jpeg")
   }
 
-  def run(command: String): String = {
+  def run(cmds: String*): String = {
 
     import java.io.BufferedReader
     import java.io.InputStreamReader
 
-    // A Runtime object has methods for dealing with the OS
     val r = Runtime.getRuntime
-    val p = r.exec(command)
+    val p = r.exec(cmds.toArray)
     val is = p.getErrorStream
     val output = scala.io.Source.fromInputStream(is).mkString
     val exitCode = p.waitFor()
