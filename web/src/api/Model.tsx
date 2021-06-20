@@ -5,8 +5,11 @@ import { Serializable, JsonProperty } from 'typescript-json-serializer';
 @Serializable()
 export class Video {
   constructor(
+      @JsonProperty()
       public title: string,
+      @JsonProperty()
       public thumbnail: string,
+      @JsonProperty()
       public id: string
   ) {}
 }

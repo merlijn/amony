@@ -6,28 +6,36 @@ import File.*
 import java.io.{File as JFile}
 import java.time.Duration
 
-object Lib {
+object Lib extends Logging {
 
   case class Info(
+    id: String,
     fileName: String,
     duration: Long
   )
 
+  val extensions = Seq("mp4", "webm")
+
   def index(path: String): Seq[Info] = {
+    val max = 10
     val dir = File(path)
-    val matches: Iterator[File] = dir.listRecursively.filter(_.name.endsWith(".mp4"))
+    val matches: Iterator[File] = dir.listRecursively.filter { f =>
+      extensions.exists(ext => f.name.endsWith(s".$ext")) && !f.name.startsWith(".")
+    }
 
-    matches.map { f =>
+    matches.take(max).map { f =>
 
-      val fileName = s"$dir/${f.name}"
-      val info = ffprobe(fileName)
+      logger.info(s"Processing: ${f.path.toAbsolutePath}")
+
+      val info = ffprobe(f)
 
       info
     }.toSeq
   }
 
-  def ffprobe(fileName: String): Info = {
+  def ffprobe(file: File): Info = {
 
+    val fileName = file.path.toAbsolutePath.toString
     val output = run("ffprobe", fileName)
     val pattern = raw"Duration:\s(\d{2}):(\d{2}):(\d{2})".r.unanchored
 
@@ -38,17 +46,23 @@ object Lib {
         seconds.toInt * 1000
     }
 
-    Info(fileName, duration)
+    Info(fileName.hashCode.toHexString, fileName, duration)
   }
 
-  def writeThumbnail(fileName: String, time: Long): Unit = {
-
-    val timestamp = Duration.ofMillis(time)
-    val ss = s"${timestamp.toHoursPart}:${timestamp.toMinutesPart}:${timestamp.toSecondsPart}"
+  def writeThumbnail(fileName: String, time: Long, destination: Option[String]): Unit = {
 
     val baseFilename = fileName.substring(0, fileName.lastIndexOf('.'))
+    val thumbnailFile = File(destination.getOrElse(s"$baseFilename.jpeg"))
 
-    run(s"ffmpeg", "-ss", ss, "-i", fileName, "-vframes", "1", s"$baseFilename.jpeg")
+    if (!thumbnailFile.exists) {
+
+      logger.info(s"Creating thumbnail for $fileName")
+
+      val timestamp = Duration.ofMillis(time)
+      val ss = s"${timestamp.toHoursPart}:${timestamp.toMinutesPart}:${timestamp.toSecondsPart}"
+
+      run(s"ffmpeg", "-ss", ss, "-i", fileName, "-vframes", "1", thumbnailFile.path.toAbsolutePath.toString)
+    }
   }
 
   def run(cmds: String*): String = {
@@ -63,7 +77,7 @@ object Lib {
     val exitCode = p.waitFor()
 
     if (exitCode != 0)
-      println("non zero exit code: \n" + output)
+      logger.warn("non zero exit code: \n" + output)
 
     output
   }

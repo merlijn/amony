@@ -6,6 +6,7 @@ import { doGET } from '../api/Api';
 import { Video } from '../api/Model';
 import Thumbnail from './Thumbnail';
 import Pagination from 'react-bootstrap/Pagination';
+import { deserialize } from 'typescript-json-serializer';
 
 function getRandomInt(min: number, max: number) {
     min = Math.ceil(min);
@@ -48,11 +49,14 @@ class Gallery extends React.Component<{}, State> {
 
   componentDidMount () {
 
-    doGET('/movie/foo')
+    doGET('/api/movies')
       .then(json => {
 
-//          let movie = deserialize<Movie>(json, Movie);
-//          this.setState({ text: json.title });
+         const movies = json.map((element: {}) => {
+            return deserialize<Video>(element, Video);
+         });
+
+         this.setState({ movies: movies });
       });
   }
 
