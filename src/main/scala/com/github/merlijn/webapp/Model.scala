@@ -10,6 +10,7 @@ object Model {
   case class Video(id: String,
                    title: String, 
                    thumbnail: String,
+                   resolution: String,
                    tags: Seq[String])
 
   implicit val videoEncoder: Encoder[Video] = deriveEncoder[Video]

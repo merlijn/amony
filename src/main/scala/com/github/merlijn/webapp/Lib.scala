@@ -9,7 +9,8 @@ object Lib extends Logging {
   case class Info(
     id: String,
     fileName: String,
-    duration: Long
+    duration: Long,
+    resolution: (Int, Int)
   )
 
   val extensions = Seq("mp4", "webm")
@@ -34,7 +35,17 @@ object Lib extends Logging {
 
     val fileName = file.path.toAbsolutePath.toString
     val output = run("ffprobe", fileName)
+
     val pattern = raw"Duration:\s(\d{2}):(\d{2}):(\d{2})".r.unanchored
+    val res = raw"Stream #0.*,\s(\d{2,})x(\d{2,})".r.unanchored
+
+    val (w, h) = output match {
+      case res(w, h) =>
+        (w.toInt, h.toInt)
+      case _         =>
+        logger.info("no match")
+        (0, 0)
+    }
 
     val duration: Long = output match {
       case pattern(hours, minutes, seconds) =>
@@ -43,7 +54,7 @@ object Lib extends Logging {
         seconds.toInt * 1000
     }
 
-    Info(fileName.hashCode.toHexString, fileName, duration)
+    Info(fileName.hashCode.toHexString, fileName, duration, (w, h))
   }
 
   def writeThumbnail(fileName: String, time: Long, destination: Option[String]): Unit = {
@@ -71,7 +82,7 @@ object Lib extends Logging {
     val exitCode = p.waitFor()
 
     if (exitCode != 0)
-      logger.warn("non zero exit code: \n" + output)
+      logger.warn(s"""Non zero exit code for command: ${cmds.mkString(",")} \n""" + output)
 
     output
   }

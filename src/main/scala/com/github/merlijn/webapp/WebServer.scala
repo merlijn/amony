@@ -22,10 +22,11 @@ trait WebServer extends Logging {
   val videoIndex: List[Video] =
     index.map { info => 
       Video(
-        id        = info.id,
-        title     = info.fileName,
-        thumbnail = s"/files/thumbnails/${info.id}.jpeg",
-        tags      = Seq.empty
+        id         = info.id,
+        title      = info.fileName,
+        thumbnail  = s"/files/thumbnails/${info.id}.jpeg",
+        tags       = Seq.empty,
+        resolution = s"${info.resolution._1}x${info.resolution._2}"
       ) 
     }.toList
 
