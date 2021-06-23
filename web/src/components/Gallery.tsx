@@ -58,7 +58,7 @@ class Gallery extends React.Component<{}, State> {
               if (idx <= this.state.movies.length - 1) {
                   let movie: Video = this.state.movies[idx];
                   let m: string = movie.thumbnail;
-                  let link: string = "/files/videos/" + movie.id + ".mp4";
+                  let link: string = "/files/videos/" + movie.id;
                   return(
                       <Col md="auto" className={clazz}>
                         <Thumbnail src={m} link={link} />

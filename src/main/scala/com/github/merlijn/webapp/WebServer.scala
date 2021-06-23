@@ -19,7 +19,7 @@ trait WebServer extends Logging {
     Lib.writeThumbnail(i.fileName, i.duration / 3, Some(s"${Config.indexPath}/${i.id}.jpeg"))
   }
 
-  val videos: List[Video] =
+  val videoIndex: List[Video] =
     index.map { info => 
       Video(
         id        = info.id,
@@ -29,26 +29,24 @@ trait WebServer extends Logging {
       ) 
     }.toList
 
-  val videosJson: String = videos.asJson.toString
-
   implicit val system = ActorSystem(Behaviors.empty, "my-system")
 
   // needed for the future flatMap/onComplete in the end
   implicit val executionContext = system.executionContext
 
-  val route =
+  val api =
     path("api" / "movies") {
       get {
-        complete(HttpEntity(ContentTypes.`application/json`, videosJson))
+        complete(HttpEntity(ContentTypes.`application/json`, videoIndex.asJson.toString))
       }
-    } ~ {
-      path("files" / "thumbnails" / Segment) { name =>
-        getFromFile(s"${Config.indexPath}/$name") // uses implicit ContentTypeResolver
-      }
-    } ~ path("files" / "videos" / Segment) { name =>
+    }
 
-      logger.info("---")
-      val id = name.substring(0, name.lastIndexOf('.'))
+  val thumbnails =
+    path("files" / "thumbnails" / Segment) { name =>
+      getFromFile(s"${Config.indexPath}/$name")
+    }
+
+  val videos = path("files" / "videos" / Segment) { id =>
 
       index.find(_.id == id) match {
         case None       => complete(StatusCodes.NotFound, "")
@@ -59,7 +57,7 @@ trait WebServer extends Logging {
     }
 
   val bindingFuture =
-    Http().newServerAt(Config.hostname, Config.port).bind(route)
+    Http().newServerAt(Config.hostname, Config.port).bind(api ~ thumbnails ~ videos)
 
   bindingFuture.onComplete {
     case Success(binding) =>
