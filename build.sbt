@@ -1,21 +1,26 @@
+val AkkaVersion = "2.6.14"
+val AkkaHttpVersion = "10.2.4"
+
 lazy val root = (project in file(".")).
   settings(
     inThisBuild(List(
       organization    := "com.github.merlijn",
-      scalaVersion    := "3.0.0"
+      scalaVersion    := "2.13.6"
     )),
+//    fork := false,
     name := "webapp-test",
     libraryDependencies ++= Seq(
 
-      "org.http4s"        %% "http4s-dsl"               % "1.0.0-M23",
-      "org.http4s"        %% "http4s-blaze-server"      % "1.0.0-M23",
-      "org.slf4j" % "slf4j-api" % "1.7.30",
-      "org.slf4j" % "slf4j-simple" % "1.7.30",
-      "com.typesafe"      %  "config"                   % "1.4.1",
-      "io.circe" %% "circe-core" % "0.14.1",
-      "io.circe" %% "circe-generic" % "0.14.1",
-      "io.circe" %% "circe-parser" % "0.14.1",
-      ("com.github.pathikrit" %% "better-files" % "3.9.1").cross(CrossVersion.for3Use2_13),
-      "org.scalatest"     %% "scalatest"                % "3.2.9"         % Test
+      "org.slf4j"          % "slf4j-api"                % "1.7.30",
+      "org.slf4j"          % "slf4j-simple" % "1.7.30",
+      "com.typesafe"        %  "config"                   % "1.4.1",
+      "com.typesafe.akka" %% "akka-actor-typed" % AkkaVersion,
+      "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
+      "com.typesafe.akka" %% "akka-http" % AkkaHttpVersion,
+      "io.circe"            %% "circe-core" % "0.14.1",
+      "io.circe"            %% "circe-generic" % "0.14.1",
+      "io.circe"            %% "circe-parser" % "0.14.1",
+      "com.github.pathikrit" %% "better-files" % "3.9.1",
+      "org.scalatest"        %% "scalatest"                % "3.2.9"         % Test
     )
   )

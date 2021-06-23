@@ -15,7 +15,7 @@ class Thumbnail extends React.Component<Props, {}> {
 
   render() {
 
-    return <Image src={this.props.src} />;
+    return <a href={this.props.link}><Image src={this.props.src} fluid /></a>;
   }
 }
 

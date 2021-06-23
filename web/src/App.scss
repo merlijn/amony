@@ -5,20 +5,29 @@
 
 .gallery-row {
 
- margin-bottom: 15px;
+   margin-bottom: 15px;
 }
 
 .gallery-column {
+  width: 459px ! important;
   padding-top: 0px ! important;
   padding-left: 15px ! important;
   padding-right: 0px ! important;
   padding-bottom: 0px ! important;
 }
 
-.gallery-column-first {
+.gallery-column img {
+  width: 459px ! important;
+}
 
+.gallery-column-first {
   padding: 0px ! important;
 }
+
+.gallery-column-first img {
+  width: 459px ! important;
+}
+
 
 $container-max-widths: (
     sm: 540px,

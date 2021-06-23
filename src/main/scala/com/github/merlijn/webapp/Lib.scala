@@ -1,9 +1,7 @@
 package com.github.merlijn.webapp
 
-import better.files.*
-import File.*
+import better.files._
 
-import java.io.{File as JFile}
 import java.time.Duration
 
 object Lib extends Logging {
@@ -16,8 +14,7 @@ object Lib extends Logging {
 
   val extensions = Seq("mp4", "webm")
 
-  def index(path: String): Seq[Info] = {
-    val max = 10
+  def index(path: String, max: Int): Seq[Info] = {
     val dir = File(path)
     val matches: Iterator[File] = dir.listRecursively.filter { f =>
       extensions.exists(ext => f.name.endsWith(s".$ext")) && !f.name.startsWith(".")
@@ -66,9 +63,6 @@ object Lib extends Logging {
   }
 
   def run(cmds: String*): String = {
-
-    import java.io.BufferedReader
-    import java.io.InputStreamReader
 
     val r = Runtime.getRuntime
     val p = r.exec(cmds.toArray)

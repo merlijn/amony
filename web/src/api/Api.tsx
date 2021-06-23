@@ -1,4 +1,3 @@
-import { deserialize } from 'typescript-json-serializer';
 
 export async function doGET(path: string) {
   const headers = { 'Content-type': 'application/json; charset=UTF-8' };

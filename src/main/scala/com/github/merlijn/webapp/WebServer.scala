@@ -1,23 +1,18 @@
 package com.github.merlijn.webapp
 
-import scala.concurrent.ExecutionContext.global
+import akka.actor.typed.ActorSystem
+import akka.actor.typed.scaladsl.Behaviors
+import com.github.merlijn.webapp.Model.Video
+import io.circe.syntax._
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.model._
+import akka.http.scaladsl.server.Directives._
 
-import cats.effect.*
-import cats.syntax.all.*
-import org.http4s
-import org.http4s.HttpRoutes
-import org.http4s.dsl.io.*
-import org.http4s.implicits.*
-import org.http4s.server.staticcontent.*
-import org.http4s.blaze.server.BlazeServerBuilder
-import org.http4s.server.Router
-import java.util.concurrent.*
-import Model.*
-import io.circe.syntax.*
+import scala.util.{Failure, Success}
 
 trait WebServer extends Logging {
 
-  val index = Lib.index(Config.path)
+  val index = Lib.index(Config.path, 9)
 
   index.foreach { i =>
 
@@ -29,29 +24,49 @@ trait WebServer extends Logging {
       Video(
         id        = info.id,
         title     = info.fileName,
-        thumbnail = s"${Config.hostname}:${Config.port}/files/${info.id}",
+        thumbnail = s"/files/thumbnails/${info.id}.jpeg",
         tags      = Seq.empty
       ) 
     }.toList
 
-  val json = videos.asJson.toString
+  val videosJson: String = videos.asJson.toString
 
-  logger.info(json)
+  implicit val system = ActorSystem(Behaviors.empty, "my-system")
 
-  val apiRoute = HttpRoutes.of[IO] {
-    case GET -> Root / "movies" => Ok(json)
+  // needed for the future flatMap/onComplete in the end
+  implicit val executionContext = system.executionContext
+
+  val route =
+    path("api" / "movies") {
+      get {
+        complete(HttpEntity(ContentTypes.`application/json`, videosJson))
+      }
+    } ~ {
+      path("files" / "thumbnails" / Segment) { name =>
+        getFromFile(s"${Config.indexPath}/$name") // uses implicit ContentTypeResolver
+      }
+    } ~ path("files" / "videos" / Segment) { name =>
+
+      logger.info("---")
+      val id = name.substring(0, name.lastIndexOf('.'))
+
+      index.find(_.id == id) match {
+        case None       => complete(StatusCodes.NotFound, "")
+        case Some(info) =>
+          logger.info("video request")
+          getFromFile(info.fileName)
+      }
+    }
+
+  val bindingFuture =
+    Http().newServerAt(Config.hostname, Config.port).bind(route)
+
+  bindingFuture.onComplete {
+    case Success(binding) =>
+      val address = binding.localAddress
+      system.log.info("Server online at http://{}:{}/", address.getHostString, address.getPort)
+    case Failure(ex) =>
+      system.log.error("Failed to bind HTTP endpoint, terminating system", ex)
+      system.terminate()
   }
-
-  val router = Router(
-    "api" -> apiRoute,
-    "files" -> fileService(FileService.Config(Config.indexPath))
-  ).orNotFound
-
-  BlazeServerBuilder[IO](global)
-    .bindHttp(Config.port, Config.hostname)
-    .withHttpApp(router)
-    .serve
-    .compile
-    .drain
-    .unsafeRunSync()(cats.effect.unsafe.implicits.global)
 }

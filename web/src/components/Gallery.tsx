@@ -22,41 +22,22 @@ class State {
 
 class Gallery extends React.Component<{}, State> {
 
-  constructor (props: any) {
-    super(props);
+  constructor (props: {}) {
 
-  let width: number = 459;
-  let height: number = Math.ceil(width / 16 * 9);
+  super(props);
 
-    this.state = { movies: [
-      {
-         title: "foo",
-         thumbnail: `https://picsum.photos/${width}/${height}?image=1`,
-         id: "1"
-      },
-      {
-           title: "foo",
-           thumbnail: `https://picsum.photos/${width}/${height}?image=2`,
-           id: "1"
-        },
-       {
-         title: "foo",
-         thumbnail: `https://picsum.photos/${width}/${height}?image=3`,
-         id: "1"
-      }
-    ] };
+      let width: number = 459;
+      let height: number = Math.ceil(width / 16 * 9);
+
+    this.state = { movies : [] };
   }
 
   componentDidMount () {
 
     doGET('/api/movies')
-      .then(json => {
+      .then(videos => {
 
-         const movies = json.map((element: {}) => {
-            return deserialize<Video>(element, Video);
-         });
-
-         this.setState({ movies: movies });
+         this.setState({ movies: videos });
       });
   }
 
@@ -68,14 +49,20 @@ class Gallery extends React.Component<{}, State> {
       let rows = [...new Array(nrows)].map((e, y) => {
           let cols = [...new Array(ncols)].map((e, x) => {
 
-              let idx: number = y * x + x;
+              let clazz = x === 0 ? "gallery-column-first" : "gallery-column";
 
-              let clazz = x === 0 ? "gallery-column-first" : "gallery-column"
+              let idx = (y * ncols) + x;
 
-              if (idx <= this.state.movies.length) {
-                  let movie: Video = this.state.movies[y * x + x];
+              console.log(idx);
+
+              if (idx <= this.state.movies.length - 1) {
+                  let movie: Video = this.state.movies[idx];
                   let m: string = movie.thumbnail;
-                  return <Col md="auto" className={clazz}><Thumbnail src={m} link="" /></Col>;
+                  let link: string = "/files/videos/" + movie.id + ".mp4";
+                  return(
+                      <Col md="auto" className={clazz}>
+                        <Thumbnail src={m} link={link} />
+                      </Col>);
               }
               else {
                    return <Col md="auto" className={clazz}></Col>;
@@ -91,17 +78,10 @@ class Gallery extends React.Component<{}, State> {
            <Pagination>
              <Pagination.First />
              <Pagination.Prev />
-             <Pagination.Item>{1}</Pagination.Item>
+             <Pagination.Item active>{1}</Pagination.Item>
+             <Pagination.Item>{2}</Pagination.Item>
              <Pagination.Ellipsis />
-
              <Pagination.Item>{10}</Pagination.Item>
-             <Pagination.Item>{11}</Pagination.Item>
-             <Pagination.Item active>{12}</Pagination.Item>
-             <Pagination.Item>{13}</Pagination.Item>
-             <Pagination.Item disabled>{14}</Pagination.Item>
-
-             <Pagination.Ellipsis />
-             <Pagination.Item>{20}</Pagination.Item>
              <Pagination.Next />
              <Pagination.Last />
            </Pagination>
