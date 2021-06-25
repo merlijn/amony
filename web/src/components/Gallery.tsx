@@ -36,7 +36,6 @@ class Gallery extends React.Component<{}, State> {
 
     doGET('/api/movies')
       .then(videos => {
-
          this.setState({ movies: videos });
       });
   }

@@ -16,18 +16,16 @@
   padding-bottom: 0px ! important;
 }
 
-.gallery-column img {
-  width: 459px ! important;
+.thumbnail {
+    width: 459px ! important;
+    height: 285px ! important;
+    object-fit: cover;
+    object-position: center;
 }
 
 .gallery-column-first {
   padding: 0px ! important;
 }
-
-.gallery-column-first img {
-  width: 459px ! important;
-}
-
 
 $container-max-widths: (
     sm: 540px,
