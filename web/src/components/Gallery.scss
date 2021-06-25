@@ -1,0 +1,22 @@
+table .gallery {
+  width: 100vw;
+  border: 0px;
+  padding-top: 10px;
+}
+
+.gallery td {
+  width: calc(100vw / 3) ! important;
+  padding: 5px ! important;
+}
+
+.gallery td:first-child {
+  width: calc(100vw / 3) ! important;
+  padding-left: 10px ! important;
+  padding-right: 0px;
+}
+
+.gallery td:last-child {
+  width: calc(100vw / 3) ! important;
+  padding-right: 10px ! important;
+  padding-left: 0px;
+}

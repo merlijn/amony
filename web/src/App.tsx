@@ -1,4 +1,4 @@
-import React, {Component} from 'react';
+import React, {Component, useRef} from 'react';
 import Container from 'react-bootstrap/Container';
 import Navbar from 'react-bootstrap/Navbar';
 import NavDropdown from 'react-bootstrap/NavDropdown';
@@ -8,19 +8,43 @@ import FormControl from 'react-bootstrap/FormControl';
 import Button from 'react-bootstrap/Button';
 import Gallery from './components/Gallery';
 
+class State {
+  constructor(
+    public queryForm?: string,
+    public searchQuery?: string
+  ) { }
+}
 
-class App extends Component {
+class App extends Component<{ }, State> {
 
-  constructor(props: any) {
+  constructor(props: { }) {
     super(props);
+
+    this.state = { };
   }
 
-  helloWorld = () => {
+  searchChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("App.searchChanged()");
 
-    console.log("Hello world!");
+    this.state = {queryForm: e.target.value};
+  };
+
+  doSearch = (e: any) => {
+
+    e.preventDefault();
+
+    console.log("App.doSearch()");
+
+    this.setState({
+      searchQuery: this.state.queryForm
+    })
+
+    console.log(`${this.state.searchQuery}`);
   };
 
   render = () => {
+
+    console.log("App.render()");
 
     return (
       <Container className="root" fluid>
@@ -37,14 +61,14 @@ class App extends Component {
                 <NavDropdown.Item href="#action/3.4">4</NavDropdown.Item>
               </NavDropdown>
             </Nav>
-            <Form inline>
-              <FormControl type="text" placeholder="Search" className="mr-sm-2"/>
-              <Button variant="outline-success" onClick={this.helloWorld}>Search</Button>
+            <Form onSubmit={this.doSearch} inline>
+              <FormControl type="text" placeholder="Search" onChange={this.searchChanged} className="mr-sm-2"/>
+              <Button variant="outline-success" onClick={this.doSearch}>Search</Button>
             </Form>
           </Navbar.Collapse>
         </Navbar>
 
-        <Gallery/>
+        <Gallery query={this.state.searchQuery} />
 
       </Container>
     );

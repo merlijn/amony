@@ -1,23 +1,25 @@
 import React from 'react';
-import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
 import {doGET} from '../api/Api';
 import {Video} from '../api/Model';
 import Thumbnail from './Thumbnail';
 import Pagination from 'react-bootstrap/Pagination';
-import {deserialize} from 'typescript-json-serializer';
+import './Gallery.scss';
 
 class State {
   constructor(
     public movies: Video[]
-  ) {
-  }
+  ) { }
 }
 
-class Gallery extends React.Component<{}, State> {
+class Props {
+  constructor(
+    public query?: string
+  ) { }
+}
 
-  constructor(props: {}) {
+class Gallery extends React.Component<Props, State> {
+
+  constructor(props: Props) {
 
     super(props);
 
@@ -27,15 +29,27 @@ class Gallery extends React.Component<{}, State> {
     this.state = {movies: []};
   }
 
-  componentDidMount() {
+  componentDidMount = () => {
+    this.doQuery();
+  };
 
-    doGET('/api/videos')
+  componentDidUpdate = (prevProps: Props) => {
+
+    if (prevProps.query != this.props.query)
+      this.doQuery();
+  };
+
+  doQuery = () => {
+
+    const path = (this.props.query) ? '/api/videos?q=' + this.props.query : '/api/videos';
+
+    doGET(path)
       .then(videos => {
         this.setState({movies: videos});
       });
   }
 
-  render() {
+  render = () => {
 
     const ncols: number = 3;
     const nrows: number = Math.ceil(this.state.movies.length / ncols);
@@ -78,7 +92,7 @@ class Gallery extends React.Component<{}, State> {
         </Pagination>
       </div>
     );
-  }
+  };
 }
 
 export default Gallery;

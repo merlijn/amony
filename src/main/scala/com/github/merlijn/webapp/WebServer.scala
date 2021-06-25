@@ -23,7 +23,7 @@ trait WebServer extends Logging {
       get {
 
         val response = q match {
-          case Some(query) => mediaLib.videoIndex.filter(_.fileName.contains(query))
+          case Some(query) => mediaLib.videoIndex.filter(_.fileName.toLowerCase.contains(query.toLowerCase))
           case None        => mediaLib.videoIndex
         }
 

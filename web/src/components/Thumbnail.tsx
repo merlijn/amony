@@ -1,5 +1,6 @@
 import React from 'react';
 import Image from 'react-bootstrap/Image';
+import './Thumbnail.scss';
 
 class Props {
   constructor(
