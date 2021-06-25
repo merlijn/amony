@@ -59,21 +59,23 @@ class Gallery extends React.Component<{}, State> {
                   let m: string = movie.thumbnail;
                   let link: string = "/files/videos/" + movie.id;
                   return(
-                      <Col md="auto" className={clazz}>
-                        <Thumbnail src={m} link={link} />
-                      </Col>);
+                      <td className="gallery-column">
+                        <Thumbnail src={m} link={link} title={movie.title} />
+                      </td>);
               }
               else {
-                   return <Col md="auto" className={clazz}></Col>;
+                   return <td className={clazz}></td>;
               }
 
           });
-          return <Row className="gallery-row"> { cols } </Row>;
+          return <tr className="gallery-row full-width"> { cols } </tr>;
       });
 
       return (
-        <Container fluid>
-           { rows }
+        <div className="full-width">
+           <table className="gallery">
+             { rows }
+           </table>
            <Pagination>
              <Pagination.First />
              <Pagination.Prev />
@@ -84,7 +86,7 @@ class Gallery extends React.Component<{}, State> {
              <Pagination.Next />
              <Pagination.Last />
            </Pagination>
-        </Container>
+        </div>
       );
   }
 }

@@ -1,30 +1,55 @@
 .full-width {
   width: 100% ! important;
-  margin:0 ! important;
+  margin: 0 ! important;
 }
 
-.gallery-row {
-
-   margin-bottom: 15px;
+.root {
+  padding: 0px ! important;
 }
 
-.gallery-column {
-  width: 459px ! important;
-  padding-top: 0px ! important;
-  padding-left: 15px ! important;
-  padding-right: 0px ! important;
-  padding-bottom: 0px ! important;
+table .gallery {
+    width: 100vw;
+    border: 0px;
+    padding-top: 10px;
 }
 
-.thumbnail {
-    width: 459px ! important;
-    height: 285px ! important;
+.gallery td {
+  width: calc(100vw / 3) ! important;
+  padding: 5px ! important;
+}
+
+.gallery td:first-child {
+  width: calc(100vw / 3) ! important;
+  padding-left: 10px ! important;
+  padding-right: 0px;
+}
+
+.gallery td:last-child {
+  width: calc(100vw / 3) ! important;
+  padding-right: 10px ! important;
+  padding-left: 0px;
+}
+
+.thumbnail img {
+    width: calc(100vw / 3) ! important;
+    height: calc(100vw / (3 * 16/10)) ! important;
     object-fit: cover;
     object-position: center;
 }
 
-.gallery-column-first {
-  padding: 0px ! important;
+.thumbnail a {
+  color: #fff;
+  font-size: medium;
+}
+
+.thumbnail {
+    position: relative;
+}
+
+.bottom-right {
+  position: absolute;
+  bottom: 8px;
+  right: 16px;
 }
 
 $container-max-widths: (

@@ -12,7 +12,7 @@ import Gallery from './components/Gallery';
 function App() {
 
   return (
-    <Container fluid>
+    <Container className="root" fluid>
 
         <Navbar bg="light" expand="sm">
         <Navbar.Toggle aria-controls="basic-navbar-nav" />

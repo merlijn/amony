@@ -2,9 +2,11 @@ import React from 'react';
 import Image from 'react-bootstrap/Image';
 
 class Props {
-
-  src?: string;
-  link?: string;
+  constructor(
+      public src: string,
+      public link: string,
+      public title: string
+  ){}
 }
 
 class Thumbnail extends React.Component<Props, {}> {
@@ -15,7 +17,16 @@ class Thumbnail extends React.Component<Props, {}> {
 
   render() {
 
-    return <a href={this.props.link}><Image className="thumbnail" src={this.props.src} fluid /></a>;
+    const title = this.props.title.substring(this.props.title.length - 30, this.props.title.length - 1)
+
+    return (
+       <div className="thumbnail">
+         <a href={this.props.link}>
+           <Image src={this.props.src} fluid />
+           <div className="bottom-right thumbnail-overlay">{title}</div>
+         </a>
+       </div>
+    );
   }
 }
 
