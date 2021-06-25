@@ -39,6 +39,13 @@ table .gallery {
 
 .thumbnail a {
   color: #fff;
+  text-shadow: 0px 0px 8px #000;
+  font-size: medium;
+}
+
+.thumbnail a:hover {
+  color: #eee;
+  text-shadow: 0px 0px 8px #222;
   font-size: medium;
 }
 

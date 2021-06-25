@@ -15,9 +15,9 @@ class Thumbnail extends React.Component<Props, {}> {
     super(props);
   }
 
-  render() {
+  render = () => {
 
-    const title = this.props.title.substring(this.props.title.length - 30, this.props.title.length - 1)
+    const title = this.props.title.substring(this.props.title.length - 30, this.props.title.length - 4)
 
     return (
        <div className="thumbnail">
@@ -27,7 +27,7 @@ class Thumbnail extends React.Component<Props, {}> {
          </a>
        </div>
     );
-  }
+  };
 }
 
 export default Thumbnail;

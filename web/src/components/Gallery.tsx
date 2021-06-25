@@ -29,7 +29,7 @@ class Gallery extends React.Component<{}, State> {
 
   componentDidMount() {
 
-    doGET('/api/movies')
+    doGET('/api/videos')
       .then(videos => {
         this.setState({movies: videos});
       });
@@ -43,11 +43,7 @@ class Gallery extends React.Component<{}, State> {
     let rows = [...new Array(nrows)].map((e, y) => {
       let cols = [...new Array(ncols)].map((e, x) => {
 
-        let clazz = x === 0 ? "gallery-column-first" : "gallery-column";
-
-        let idx = (y * ncols) + x;
-
-        console.log(idx);
+        const idx = (y * ncols) + x;
 
         if (idx <= this.state.movies.length - 1) {
           const movie: Video = this.state.movies[idx];
@@ -58,7 +54,7 @@ class Gallery extends React.Component<{}, State> {
               <Thumbnail src={m} link={link} title={movie.title}/>
             </td>);
         } else {
-          return <td className={clazz}></td>;
+          return <td className="gallery-column"></td>;
         }
 
       });

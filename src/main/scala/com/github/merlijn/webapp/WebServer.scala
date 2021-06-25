@@ -19,9 +19,15 @@ trait WebServer extends Logging {
   implicit val executionContext = system.executionContext
 
   val api =
-    path("api" / "movies") {
+    (path("api" / "videos") & parameters("q".optional)) { q =>
       get {
-        complete(HttpEntity(ContentTypes.`application/json`, mediaLib.videoIndex.asJson.toString))
+
+        val response = q match {
+          case Some(query) => mediaLib.videoIndex.filter(_.fileName.contains(query))
+          case None        => mediaLib.videoIndex
+        }
+
+        complete(HttpEntity(ContentTypes.`application/json`, response.asJson.toString))
       }
     }
 
