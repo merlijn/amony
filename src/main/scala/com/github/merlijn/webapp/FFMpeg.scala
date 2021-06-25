@@ -4,34 +4,16 @@ import better.files._
 
 import java.time.Duration
 
-object Lib extends Logging {
+object FFMpeg extends Logging {
 
-  case class Info(
+  case class Probe(
     id: String,
     fileName: String,
     duration: Long,
     resolution: (Int, Int)
   )
 
-  val extensions = Seq("mp4", "webm")
-
-  def index(path: String, max: Int): Seq[Info] = {
-    val dir = File(path)
-    val matches: Iterator[File] = dir.listRecursively.filter { f =>
-      extensions.exists(ext => f.name.endsWith(s".$ext")) && !f.name.startsWith(".")
-    }
-
-    matches.take(max).map { f =>
-
-      logger.info(s"Processing: ${f.path.toAbsolutePath}")
-
-      val info = ffprobe(f)
-
-      info
-    }.toSeq
-  }
-
-  def ffprobe(file: File): Info = {
+  def ffprobe(file: File): Probe = {
 
     val fileName = file.path.toAbsolutePath.toString
     val output = run("ffprobe", fileName)
@@ -54,22 +36,22 @@ object Lib extends Logging {
         seconds.toInt * 1000
     }
 
-    Info(fileName.hashCode.toHexString, fileName, duration, (w, h))
+    Probe(fileName.hashCode.toHexString, fileName, duration, (w, h))
   }
 
-  def writeThumbnail(fileName: String, time: Long, destination: Option[String]): Unit = {
+  def writeThumbnail(inputFile: String, time: Long, outputFile: Option[String]): Unit = {
 
-    val baseFilename = fileName.substring(0, fileName.lastIndexOf('.'))
-    val thumbnailFile = File(destination.getOrElse(s"$baseFilename.jpeg"))
+    val baseFilename = inputFile.substring(0, inputFile.lastIndexOf('.'))
+    val thumbnailFile = File(outputFile.getOrElse(s"$baseFilename.jpeg"))
 
     if (!thumbnailFile.exists) {
 
-      logger.info(s"Creating thumbnail for $fileName")
+      logger.debug(s"Creating thumbnail for $inputFile")
 
       val timestamp = Duration.ofMillis(time)
       val ss = s"${timestamp.toHoursPart}:${timestamp.toMinutesPart}:${timestamp.toSecondsPart}"
 
-      run(s"ffmpeg", "-ss", ss, "-i", fileName, "-vframes", "1", thumbnailFile.path.toAbsolutePath.toString)
+      run(s"ffmpeg", "-ss", ss, "-i", inputFile, "-vframes", "1", thumbnailFile.path.toAbsolutePath.toString)
     }
   }
 

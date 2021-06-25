@@ -8,10 +8,12 @@ import io.circe.syntax._
 object Model {
 
   case class Video(id: String,
-                   title: String, 
+                   fileName: String,
+                   title: String,
+                   duration: Long,
                    thumbnail: String,
                    resolution: String,
                    tags: Seq[String])
 
-  implicit val videoEncoder: Encoder[Video] = deriveEncoder[Video]
+  implicit val videoEncoder: Codec[Video] = deriveCodec[Video]
 }

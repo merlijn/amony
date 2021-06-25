@@ -2,7 +2,6 @@ package com.github.merlijn.webapp
 
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
-import com.github.merlijn.webapp.Model.Video
 import io.circe.syntax._
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
@@ -12,25 +11,9 @@ import scala.util.{Failure, Success}
 
 trait WebServer extends Logging {
 
-  val index = Lib.index(Config.path, 9)
+  val mediaLib = new MediaLib(Config.path)
 
-  index.foreach { i =>
-
-    Lib.writeThumbnail(i.fileName, i.duration / 3, Some(s"${Config.indexPath}/${i.id}.jpeg"))
-  }
-
-  val videoIndex: List[Video] =
-    index.map { info => 
-      Video(
-        id         = info.id,
-        title      = info.fileName,
-        thumbnail  = s"/files/thumbnails/${info.id}.jpeg",
-        tags       = Seq.empty,
-        resolution = s"${info.resolution._1}x${info.resolution._2}"
-      ) 
-    }.toList
-
-  implicit val system = ActorSystem(Behaviors.empty, "my-system")
+  implicit val system = ActorSystem(Behaviors.empty, "metube")
 
   // needed for the future flatMap/onComplete in the end
   implicit val executionContext = system.executionContext
@@ -38,7 +21,7 @@ trait WebServer extends Logging {
   val api =
     path("api" / "movies") {
       get {
-        complete(HttpEntity(ContentTypes.`application/json`, videoIndex.asJson.toString))
+        complete(HttpEntity(ContentTypes.`application/json`, mediaLib.videoIndex.asJson.toString))
       }
     }
 
@@ -49,11 +32,9 @@ trait WebServer extends Logging {
 
   val videos = path("files" / "videos" / Segment) { id =>
 
-      index.find(_.id == id) match {
+    mediaLib.videoIndex.find(_.id == id) match {
         case None       => complete(StatusCodes.NotFound, "")
-        case Some(info) =>
-          logger.info("video request")
-          getFromFile(info.fileName)
+        case Some(info) => getFromFile(info.fileName)
       }
     }
 
