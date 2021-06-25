@@ -8,9 +8,9 @@
 }
 
 table .gallery {
-    width: 100vw;
-    border: 0px;
-    padding-top: 10px;
+  width: 100vw;
+  border: 0px;
+  padding-top: 10px;
 }
 
 .gallery td {
@@ -31,10 +31,10 @@ table .gallery {
 }
 
 .thumbnail img {
-    width: calc(100vw / 3) ! important;
-    height: calc(100vw / (3 * 16/10)) ! important;
-    object-fit: cover;
-    object-position: center;
+  width: calc(100vw / 3) ! important;
+  height: calc(100vw / (3 * 16 / 10)) ! important;
+  object-fit: cover;
+  object-position: center;
 }
 
 .thumbnail a {
@@ -43,7 +43,7 @@ table .gallery {
 }
 
 .thumbnail {
-    position: relative;
+  position: relative;
 }
 
 .bottom-right {
@@ -53,10 +53,10 @@ table .gallery {
 }
 
 $container-max-widths: (
-    sm: 540px,
-    md: 720px,
-    lg: 960px,
-    xl: 1280px
+        sm: 540px,
+        md: 720px,
+        lg: 960px,
+        xl: 1280px
 ) !default;
 
 @import '~bootstrap/scss/bootstrap.scss';
