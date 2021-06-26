@@ -7,7 +7,7 @@ import './Gallery.scss';
 
 class State {
   constructor(
-    public movies: Video[]
+    public videos: Video[]
   ) { }
 }
 
@@ -26,7 +26,7 @@ class Gallery extends React.Component<Props, State> {
     let width: number = 459;
     let height: number = Math.ceil(width / 16 * 9);
 
-    this.state = {movies: []};
+    this.state = {videos: []};
   }
 
   componentDidMount = () => {
@@ -45,24 +45,24 @@ class Gallery extends React.Component<Props, State> {
 
     doGET(path)
       .then(videos => {
-        this.setState({movies: videos});
+        this.setState({videos: videos});
       });
   }
 
   render = () => {
 
     const ncols: number = 3;
-    const nrows: number = Math.ceil(this.state.movies.length / ncols);
+    const nrows: number = Math.ceil(this.state.videos.length / ncols);
 
     let rows = [...new Array(nrows)].map((e, y) => {
       let cols = [...new Array(ncols)].map((e, x) => {
 
         const idx = (y * ncols) + x;
 
-        if (idx <= this.state.movies.length - 1) {
-          const movie: Video = this.state.movies[idx];
+        if (idx <= this.state.videos.length - 1) {
+          const movie: Video = this.state.videos[idx];
           const m: string = movie.thumbnail;
-          const link: string = "/files/videos/" + movie.id;
+          const link: string = "/video/" + movie.id;
           return (
             <td className="gallery-column">
               <Thumbnail src={m} link={link} title={movie.title}/>

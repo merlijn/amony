@@ -7,6 +7,8 @@ import Form from 'react-bootstrap/Form';
 import FormControl from 'react-bootstrap/FormControl';
 import Button from 'react-bootstrap/Button';
 import Gallery from './components/Gallery';
+import Player from './components/Player';
+import { Route,  BrowserRouter, useParams } from 'react-router-dom';
 
 class State {
   constructor(
@@ -42,6 +44,8 @@ class App extends Component<{ }, State> {
     console.log(`${this.state.searchQuery}`);
   };
 
+
+
   render = () => {
 
     console.log("App.render()");
@@ -53,7 +57,7 @@ class App extends Component<{ }, State> {
           <Navbar.Toggle aria-controls="basic-navbar-nav"/>
           <Navbar.Collapse id="basic-navbar-nav">
             <Nav className="mr-auto">
-              <Nav.Link href="#home">Home</Nav.Link>
+              <Nav.Link href="/">Home</Nav.Link>
               <NavDropdown title="Lists" id="basic-nav-dropdown">
                 <NavDropdown.Item href="#action/3.1">1</NavDropdown.Item>
                 <NavDropdown.Item href="#action/3.2">2</NavDropdown.Item>
@@ -68,11 +72,26 @@ class App extends Component<{ }, State> {
           </Navbar.Collapse>
         </Navbar>
 
-        <Gallery query={this.state.searchQuery} />
+        <div>
+          <BrowserRouter>
+            <Route exact path="/" render={ () => <Gallery query={this.state.searchQuery} /> } />
+            <Route path="/video/:id" children={ <VideoRender /> } />
+          </BrowserRouter>
+        </div>
 
       </Container>
     );
   };
+}
+
+function VideoRender() {
+  // We can use the `useParams` hook here to access
+  // the dynamic pieces of the URL.
+  let { id } = useParams<{ id: string }>();
+
+  return (
+    <Player videoId={id} />
+  );
 }
 
 export default App;
