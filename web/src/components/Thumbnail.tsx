@@ -21,7 +21,7 @@ class Thumbnail extends React.Component<Props, {}> {
     const title = this.props.title.substring(this.props.title.length - 40, this.props.title.length - 4)
 
     return (
-       <div className="thumbnail">
+       <div className="thumbnail thumbnail-container">
          <a href={this.props.link}>
            <Image className="thumb" src={this.props.src} fluid />
            <div className="bottom-right thumbnail-overlay">{title}</div>

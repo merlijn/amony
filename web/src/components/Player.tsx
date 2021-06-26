@@ -1,6 +1,5 @@
 import Plyr from 'plyr';
 import React from 'react';
-import { useEffect } from 'react';
 import './Player.scss';
 
 class Props {
@@ -21,9 +20,7 @@ class Player extends React.Component<Props, {}> {
     const element = document.getElementById(id);
 
     if (element) {
-      console.log("created player")
       const player = new Plyr(element)
-      console.log("playing video")
       // autoplay is not allowed https://developers.google.com/web/updates/2017/09/autoplay-policy-changes
       // player.play();
     }
