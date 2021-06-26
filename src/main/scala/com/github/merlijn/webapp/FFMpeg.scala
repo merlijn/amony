@@ -3,6 +3,7 @@ package com.github.merlijn.webapp
 import better.files._
 
 import java.time.Duration
+import scala.util.Random
 
 object FFMpeg extends Logging {
 
@@ -12,6 +13,52 @@ object FFMpeg extends Logging {
     duration: Long,
     resolution: (Int, Int)
   )
+
+  // samples a file randomly and creates a hash from that
+  def fakeHash(file: File): String = {
+
+    def md5hash(data: Array[Byte]): String = {
+      import java.math.BigInteger
+      import java.security.MessageDigest
+
+      val sha256Digest: MessageDigest = MessageDigest.getInstance("MD5")
+
+      val digest = sha256Digest.digest(data)
+      val bigInt = new BigInteger(1, digest)
+
+      // hex char = 4 bits, this makes 128 / 4 = 32 characters
+      val hex = bigInt.toString(16)
+
+      // add zero padding
+      (List.fill(32 - hex.length)("0")).mkString + hex
+    }
+
+    def readRandomBytes(nBytes: Int): Array[Byte] = {
+
+      val size = file.size
+      val bytes = new Array[Byte](nBytes)
+      val random = new Random(size)
+
+      file.randomAccess().foreach { rndAccess =>
+        (0 until nBytes).map { i =>
+          val pos = (random.nextDouble() * (size -1)).toLong
+          try {
+            rndAccess.seek(pos)
+            bytes(i) = rndAccess.readByte()
+          } catch {
+            case _: Exception =>
+              logger.warn(s"Failed reading byte at: ${file.name} ($size): $i, $pos")
+          }
+        }
+      }
+
+      bytes
+    }
+
+    val bytes = readRandomBytes(1024)
+
+    md5hash(bytes)
+  }
 
   def ffprobe(file: File): Probe = {
 
@@ -25,7 +72,7 @@ object FFMpeg extends Logging {
       case res(w, h) =>
         (w.toInt, h.toInt)
       case _         =>
-        logger.info("no match")
+        logger.warn("Could not extract resolution")
         (0, 0)
     }
 
@@ -36,7 +83,9 @@ object FFMpeg extends Logging {
         seconds.toInt * 1000
     }
 
-    Probe(fileName.hashCode.toHexString, fileName, duration, (w, h))
+    val hash = fakeHash(file)
+
+    Probe(hash, fileName, duration, (w, h))
   }
 
   def writeThumbnail(inputFile: String, time: Long, outputFile: Option[String]): Unit = {
