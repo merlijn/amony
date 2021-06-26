@@ -1,0 +1,15 @@
+.videoPlayer {
+  --plyr-video-controls-background: black;
+  --plyr-color-main: #1ac266;
+}
+
+.videoContainer {
+  height: calc(100vh * 0.8) ! important;
+  width: calc(100vw * 0.8) ! important;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+@import '~plyr/src/sass/plyr.scss';

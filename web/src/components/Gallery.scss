@@ -6,6 +6,7 @@ table .gallery {
 
 .gallery td {
   width: calc(100vw / 3) ! important;
+  height: calc(100vw / (3 * 16 / 10)) ! important;
   padding: 5px ! important;
 }
 

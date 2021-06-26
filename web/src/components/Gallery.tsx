@@ -23,9 +23,6 @@ class Gallery extends React.Component<Props, State> {
 
     super(props);
 
-    let width: number = 459;
-    let height: number = Math.ceil(width / 16 * 9);
-
     this.state = {videos: []};
   }
 
@@ -61,11 +58,10 @@ class Gallery extends React.Component<Props, State> {
 
         if (idx <= this.state.videos.length - 1) {
           const movie: Video = this.state.videos[idx];
-          const m: string = movie.thumbnail;
           const link: string = "/video/" + movie.id;
           return (
             <td className="gallery-column">
-              <Thumbnail src={m} link={link} title={movie.title}/>
+              <Thumbnail src={movie.thumbnail} link={link} title={movie.title}/>
             </td>);
         } else {
           return <td className="gallery-column"></td>;

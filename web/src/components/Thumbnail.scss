@@ -1,4 +1,4 @@
-.thumbnail img {
+.thumbnail img.thumb {
   width: calc(100vw / 3) ! important;
   height: calc(100vw / (3 * 16 / 10)) ! important;
   object-fit: cover;
