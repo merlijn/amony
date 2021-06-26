@@ -1,4 +1,4 @@
-import React, {Component, useRef, useState} from 'react';
+import React, {useState} from 'react';
 import Container from 'react-bootstrap/Container';
 import Navbar from 'react-bootstrap/Navbar';
 import NavDropdown from 'react-bootstrap/NavDropdown';
@@ -22,9 +22,9 @@ function App() {
 
         <div>
           <Switch>
-            <Route exact path="/" component={ Gallery }  />
-            <Route path="/search"  component= { Gallery } />
-            <Route path="/video/:id" children={ <VideoRender /> } />
+            <Route exact path="/" component = { Gallery }  />
+            <Route path="/search"  component = { Gallery } />
+            <Route path="/video/:id" children = { <VideoRender /> } />
           </Switch>
         </div>
 

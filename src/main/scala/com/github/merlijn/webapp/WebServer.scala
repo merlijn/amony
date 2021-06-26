@@ -19,13 +19,13 @@ trait WebServer extends Logging {
   implicit val executionContext = system.executionContext
 
   val api =
-    (path("api" / "videos") & parameters("q".optional)) { q =>
+    (path("api" / "videos") & parameters("q".optional, "p".optional, "s".optional)) { (q, p, s) =>
       get {
 
-        val response = q match {
-          case Some(query) => mediaLib.videoIndex.filter(_.fileName.toLowerCase.contains(query.toLowerCase))
-          case None        => mediaLib.videoIndex
-        }
+        val size = s.map(_.toInt).getOrElse(24)
+        val page = p.map(_.toInt).getOrElse(1)
+
+        val response = mediaLib.search(q, page, size)
 
         complete(HttpEntity(ContentTypes.`application/json`, response.asJson.toString))
       }

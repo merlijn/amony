@@ -1,10 +1,10 @@
 import React, { ChangeEvent, useEffect, useState } from 'react';
 import {doGET} from '../api/Api';
-import {Video} from '../api/Model';
+import {SearchResult, Video} from '../api/Model';
 import Thumbnail from './Thumbnail';
 import Pagination from 'react-bootstrap/Pagination';
 import './Gallery.scss';
-import { useLocation } from 'react-router-dom'
+import {useHistory, useLocation} from 'react-router-dom'
 
 class State {
   constructor(
@@ -12,35 +12,32 @@ class State {
   ) { }
 }
 
-function Gallery() {
+const Gallery = () => {
 
   const location = useLocation();
-  const [videos, setVideos] = useState([])
-  // const [q, setQ] = useState<string | null>(searchParams.get("q"))
+  const [result, setResult] = useState(new SearchResult(0, 0, 0,[]))
 
   useEffect(() => {
 
-      const newQ = new URLSearchParams(location.search).get("q")
+      const urlParams = new URLSearchParams(location.search)
+      const newQ = urlParams.get("q")
+      const newP = urlParams.get("p")
       const path = (newQ) ? '/api/videos?q=' + newQ : '/api/videos'
-      console.log("Gallery.update: " + path)
 
-      doGET(path).then(videosFromServer => {
-        console.log("Gallery.fetch: " + path)
-        setVideos(videosFromServer);
-      });
+      doGET(path).then(videosFromServer => { setResult(videosFromServer); });
     }, [location]
   )
 
   const ncols: number = 3;
-  const nrows: number = Math.ceil(videos.length / ncols);
+  const nrows: number = Math.ceil(result.videos.length / ncols);
 
   let rows = [...new Array(nrows)].map((e, y) => {
     let cols = [...new Array(ncols)].map((e, x) => {
 
       const idx = (y * ncols) + x;
 
-      if (idx <= videos.length - 1) {
-        const movie: Video = videos[idx];
+      if (idx <= result.videos.length - 1) {
+        const movie: Video = result.videos[idx];
         const link: string = "/video/" + movie.id;
         return (
           <td className="gallery-column">
@@ -65,16 +62,35 @@ function Gallery() {
 }
 
 function Footer(props: { current: number, last: number }) {
+
+  const history = useHistory();
+
+  const navFirst = (e: any) => {
+    e.preventDefault();
+  };
+
+  const navPrev = (e: any) => {
+    e.preventDefault();
+  };
+
+  const navNext = (e: any) => {
+    e.preventDefault();
+  };
+
+  const navLast = (e: any) => {
+    e.preventDefault();
+  };
+
   return (
     <Pagination>
-      <Pagination.First/>
-      <Pagination.Prev/>
+      <Pagination.First onClick={navNext}/>
+      <Pagination.Prev onClick={navPrev} />
       <Pagination.Item active>{1}</Pagination.Item>
       <Pagination.Item>{2}</Pagination.Item>
       <Pagination.Ellipsis/>
       <Pagination.Item>{10}</Pagination.Item>
-      <Pagination.Next/>
-      <Pagination.Last/>
+      <Pagination.Next onClick={navNext}/>
+      <Pagination.Last onClick={navLast}/>
     </Pagination>
   );
 }

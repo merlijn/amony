@@ -54,6 +54,24 @@ class MediaLib(val path: String) extends Logging {
       outputFile = Some(s"${Config.indexPath}/${i.id}.jpeg"))
   }
 
+  def search(q: Option[String], page: Int, size: Int): SearchResult = {
+    val result = q match {
+      case Some(query) => videoIndex.filter(_.fileName.toLowerCase.contains(query.toLowerCase))
+      case None        => videoIndex
+    }
+
+    val start = (page - 1) * size
+    val end = Math.min(result.size, page * size)
+
+    val videos = if (start > result.size) {
+      List.empty
+    } else {
+      result.slice(start, end)
+    }
+
+    SearchResult(page, size, result.size, videos)
+  }
+
   def asVideo(info: Probe): Video =
     Video(
       id         = info.id,

@@ -1,8 +1,3 @@
-import {Serializable, JsonProperty} from 'typescript-json-serializer';
-
-// https://github.com/GillianPerard/typescript-json-serializer#readme
-
-@Serializable()
 export class Video {
   constructor(
     public title: string,
@@ -10,4 +5,15 @@ export class Video {
     public id: string,
     public resolution: string,
   ) { }
+}
+
+export class SearchResult {
+
+  constructor(
+    public currentPage: number,
+    public pageSize: number,
+    public total: number,
+    public videos: Video[]
+  ) {
+  }
 }

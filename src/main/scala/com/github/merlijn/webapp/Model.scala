@@ -15,5 +15,13 @@ object Model {
                    resolution: String,
                    tags: Seq[String])
 
-  implicit val videoEncoder: Codec[Video] = deriveCodec[Video]
+  case class SearchResult(
+      currentPage: Int,
+      pageSize: Int,
+      total: Int,
+      videos: List[Video]
+  )
+
+  implicit val videoCodec: Codec[Video] = deriveCodec[Video]
+  implicit val resultCodec: Codec[SearchResult] = deriveCodec[SearchResult]
 }
