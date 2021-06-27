@@ -9,6 +9,7 @@ import Button from 'react-bootstrap/Button';
 import Gallery from './components/Gallery';
 import Player from './components/Player';
 import { Route,  BrowserRouter, useParams, Switch, useHistory } from 'react-router-dom';
+import {buildUrl} from "./api/Util";
 
 
 function App() {
@@ -42,8 +43,7 @@ function TopBar() {
 
   const doSearch = (e: any) => {
     e.preventDefault();
-    const target = "/search?q=" + query
-    console.log("redirecting to: " + target)
+    const target = buildUrl("/search", { q: query })
     history.push(target);
   };
 

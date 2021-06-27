@@ -5,6 +5,7 @@ import Thumbnail from './Thumbnail';
 import Pagination from 'react-bootstrap/Pagination';
 import './Gallery.scss';
 import {useHistory, useLocation} from 'react-router-dom'
+import {buildUrl} from "../api/Util";
 
 class State {
   constructor(
@@ -23,10 +24,18 @@ const Gallery = () => {
       const newQ = urlParams.get("q")
       const newP = urlParams.get("p") ? urlParams.get("p") : 1;
 
-      let path = (newQ) ? '/api/videos?q=' + newQ : '/api/videos'
-      // path = path + '&p=' + newP;
+      let newParams: any = { }
+      if (newQ)
+        newParams['q'] = newQ
 
-      doGET(path).then(videosFromServer => { setResult(videosFromServer); });
+      if (newP)
+        newParams['p'] = newP
+
+      const target = buildUrl("/api/videos", newParams)
+
+      console.log("render:" + target)
+
+      doGET(target).then(response => { setResult(response); });
     }, [location]
   )
 
@@ -67,6 +76,7 @@ const Gallery = () => {
 
 function Footer(props: { current: number, last: number }) {
 
+  const location = useLocation();
   const history = useHistory();
 
   const navFirst = (e: any) => {
@@ -78,7 +88,9 @@ function Footer(props: { current: number, last: number }) {
   };
 
   const navNext = (e: any) => {
-    e.preventDefault();
+    const urlParams = new URLSearchParams(location.search)
+    const target = buildUrl("/search", { p: "2"})
+    history.push(target);
   };
 
   const navLast = (e: any) => {
@@ -87,7 +99,7 @@ function Footer(props: { current: number, last: number }) {
 
   return (
     <Pagination>
-      <Pagination.First onClick={navNext}/>
+      <Pagination.First onClick={navFirst}/>
       <Pagination.Prev onClick={navPrev} />
       <Pagination.Item active>{1}</Pagination.Item>
       <Pagination.Item>{2}</Pagination.Item>

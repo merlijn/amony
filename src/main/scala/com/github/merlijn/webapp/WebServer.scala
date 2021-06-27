@@ -38,7 +38,7 @@ trait WebServer extends Logging {
 
   val videos = path("files" / "videos" / Segment) { id =>
 
-    mediaLib.videoIndex.find(_.id == id) match {
+    mediaLib.getById(id) match {
         case None       => complete(StatusCodes.NotFound, "")
         case Some(info) => getFromFile((mediaLib.libraryPath / info.fileName).path.toAbsolutePath.toString)
       }

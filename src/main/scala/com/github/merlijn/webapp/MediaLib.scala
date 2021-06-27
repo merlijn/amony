@@ -27,8 +27,8 @@ class MediaLib(val path: String) extends Logging {
     }.toSeq
   }
 
-  val indexDir = File(Config.library.indexPath)
-  val indexFile = File(Config.library.indexPath) / "index.json"
+  private val indexDir = File(Config.library.indexPath)
+  private val indexFile = File(Config.library.indexPath) / "index.json"
 
   if (!indexDir.exists)
     indexDir.createDirectory()
@@ -87,7 +87,11 @@ class MediaLib(val path: String) extends Logging {
     SearchResult(page, size, result.size, videos)
   }
 
-  def asVideo(info: Probe): Video = {
+  def getById(id: String): Option[Video] = {
+    videoIndex.find(_.id == id)
+  }
+
+  protected def asVideo(info: Probe): Video = {
 
     val relativePath = libraryPath.relativize(File(info.fileName)).toString
 
@@ -100,9 +104,5 @@ class MediaLib(val path: String) extends Logging {
       tags       = Seq.empty,
       resolution = s"${info.resolution._1}x${info.resolution._2}"
     )
-  }
-
-  def search(query: String): List[Video] = {
-    videoIndex.filter(_.title.contains(query))
   }
 }
