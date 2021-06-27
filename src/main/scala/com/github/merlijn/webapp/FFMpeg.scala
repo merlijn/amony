@@ -3,6 +3,7 @@ package com.github.merlijn.webapp
 import better.files._
 
 import java.time.Duration
+import java.util.Base64
 import scala.util.Random
 
 object FFMpeg extends Logging {
@@ -22,15 +23,10 @@ object FFMpeg extends Logging {
       import java.security.MessageDigest
 
       val sha256Digest: MessageDigest = MessageDigest.getInstance("MD5")
-
       val digest = sha256Digest.digest(data)
-      val bigInt = new BigInteger(1, digest)
+      val base64 = Base64.getUrlEncoder.withoutPadding().encodeToString(digest)
 
-      // hex char = 4 bits, this makes 128 / 4 = 32 characters
-      val hex = bigInt.toString(16)
-
-      // add zero padding
-      (List.fill(32 - hex.length)("0")).mkString + hex
+      base64
     }
 
     def readRandomBytes(nBytes: Int): Array[Byte] = {

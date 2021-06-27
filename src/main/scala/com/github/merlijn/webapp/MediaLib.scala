@@ -18,7 +18,7 @@ class MediaLib(val path: String) extends Logging {
 
     matches.take(max).map { f =>
 
-      logger.debug(s"Processing: ${f.path.toAbsolutePath}")
+      logger.info(s"Processing: ${f.path.toAbsolutePath}")
 
       val info = FFMpeg.ffprobe(f)
 
@@ -26,24 +26,38 @@ class MediaLib(val path: String) extends Logging {
     }.toSeq
   }
 
-  val indexFile = File(Config.indexPath) / "index.json"
+  val indexDir = File(Config.library.indexPath)
+  val indexFile = File(Config.library.indexPath) / "index.json"
 
-  val videoIndex: List[Video] =
-    if (!indexFile.exists) {
-      val scanResult = scan(Config.path, 36)
-      indexFile.createFile()
-      val index = scanResult.map(asVideo).toList
-      val json = index.asJson.toString()
-      indexFile.overwrite(json)
-      index
-    } else {
-      val json = indexFile.contentAsString
+  if (!indexDir.exists)
+    indexDir.createDirectory()
 
-      decode[List[Video]](json) match {
-        case Right(index) => index
-        case Left(error)  => throw error
-      }
+  protected def readIndex(): List[Video] = {
+    val json = indexFile.contentAsString
+
+    decode[List[Video]](json) match {
+      case Right(index) => index
+      case Left(error)  => throw error
     }
+  }
+
+  protected def writeIndex(): List[Video] = {
+    val scanResult = scan(Config.library.path, Config.library.max)
+    indexFile.createFile()
+    val index = scanResult.map(asVideo).toList
+    val json = index.asJson.toString()
+    indexFile.overwrite(json)
+    index
+  }
+
+  val videoIndex: List[Video] = {
+
+    if (!indexFile.exists) {
+      writeIndex()
+    } else {
+      readIndex()
+    }
+  }
 
   videoIndex.foreach { i =>
 
@@ -51,7 +65,7 @@ class MediaLib(val path: String) extends Logging {
     FFMpeg.writeThumbnail(
       inputFile  = i.fileName,
       time       = i.duration / 3,
-      outputFile = Some(s"${Config.indexPath}/${i.id}.jpeg"))
+      outputFile = Some(s"${Config.library.indexPath}/${i.id}.jpeg"))
   }
 
   def search(q: Option[String], page: Int, size: Int): SearchResult = {

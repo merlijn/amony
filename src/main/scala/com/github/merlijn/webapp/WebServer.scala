@@ -11,7 +11,7 @@ import scala.util.{Failure, Success}
 
 trait WebServer extends Logging {
 
-  val mediaLib = new MediaLib(Config.path)
+  val mediaLib = new MediaLib(Config.library.path)
 
   implicit val system = ActorSystem(Behaviors.empty, "metube")
 
@@ -33,7 +33,7 @@ trait WebServer extends Logging {
 
   val thumbnails =
     path("files" / "thumbnails" / Segment) { name =>
-      getFromFile(s"${Config.indexPath}/$name")
+      getFromFile(s"${Config.library.indexPath}/$name")
     }
 
   val videos = path("files" / "videos" / Segment) { id =>

@@ -21,8 +21,10 @@ const Gallery = () => {
 
       const urlParams = new URLSearchParams(location.search)
       const newQ = urlParams.get("q")
-      const newP = urlParams.get("p")
-      const path = (newQ) ? '/api/videos?q=' + newQ : '/api/videos'
+      const newP = urlParams.get("p") ? urlParams.get("p") : 1;
+
+      let path = (newQ) ? '/api/videos?q=' + newQ : '/api/videos'
+      // path = path + '&p=' + newP;
 
       doGET(path).then(videosFromServer => { setResult(videosFromServer); });
     }, [location]
