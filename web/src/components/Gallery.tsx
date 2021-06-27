@@ -41,9 +41,11 @@ const Gallery = () => {
       if (idx <= result.videos.length - 1) {
         const movie: Video = result.videos[idx];
         const link: string = "/video/" + movie.id;
+        const duration: number = movie.duration
+
         return (
           <td className="gallery-column">
-            <Thumbnail src={movie.thumbnail} link={link} title={movie.title}/>
+            <Thumbnail src={movie.thumbnail} link={link} title={movie.title} duration={duration}/>
           </td>);
       } else {
         return <td className="gallery-column"></td>;

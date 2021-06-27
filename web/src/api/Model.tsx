@@ -4,6 +4,7 @@ export class Video {
     public thumbnail: string,
     public id: string,
     public resolution: string,
+    public duration: number // in millis
   ) { }
 }
 
