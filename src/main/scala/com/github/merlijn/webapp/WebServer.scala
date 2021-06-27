@@ -40,7 +40,7 @@ trait WebServer extends Logging {
 
     mediaLib.videoIndex.find(_.id == id) match {
         case None       => complete(StatusCodes.NotFound, "")
-        case Some(info) => getFromFile(info.fileName)
+        case Some(info) => getFromFile((mediaLib.libraryPath / info.fileName).path.toAbsolutePath.toString)
       }
     }
 

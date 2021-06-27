@@ -10,9 +10,10 @@ class MediaLib(val path: String) extends Logging {
 
   val extensions = Seq("mp4", "webm")
 
+  val libraryPath = File(path)
+
   def scan(path: String, max: Int): Seq[Probe] = {
-    val dir = File(path)
-    val matches: Iterator[File] = dir.listRecursively.filter { f =>
+    val matches: Iterator[File] = libraryPath.listRecursively.filter { f =>
       extensions.exists(ext => f.name.endsWith(s".$ext")) && !f.name.startsWith(".")
     }
 
@@ -63,7 +64,7 @@ class MediaLib(val path: String) extends Logging {
 
     logger.debug(s"Generating thumbnail for ${i.fileName}")
     FFMpeg.writeThumbnail(
-      inputFile  = i.fileName,
+      inputFile  = (libraryPath / i.fileName).path.toAbsolutePath.toString,
       time       = i.duration / 3,
       outputFile = Some(s"${Config.library.indexPath}/${i.id}.jpeg"))
   }
@@ -86,16 +87,20 @@ class MediaLib(val path: String) extends Logging {
     SearchResult(page, size, result.size, videos)
   }
 
-  def asVideo(info: Probe): Video =
+  def asVideo(info: Probe): Video = {
+
+    val relativePath = libraryPath.relativize(File(info.fileName)).toString
+
     Video(
       id         = info.id,
-      fileName   = info.fileName,
-      title      = info.fileName,
+      fileName   = relativePath,
+      title      = relativePath,
       duration   = info.duration,
       thumbnail  = s"/files/thumbnails/${info.id}.jpeg",
       tags       = Seq.empty,
       resolution = s"${info.resolution._1}x${info.resolution._2}"
     )
+  }
 
   def search(query: String): List[Video] = {
     videoIndex.filter(_.title.contains(query))
