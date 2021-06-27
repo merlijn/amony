@@ -7,29 +7,24 @@ import './Gallery.scss';
 import {useHistory, useLocation} from 'react-router-dom'
 import {buildUrl} from "../api/Util";
 
-class State {
-  constructor(
-    public videos: Video[]
-  ) { }
-}
-
 const Gallery = () => {
 
   const location = useLocation();
   const [result, setResult] = useState(new SearchResult(0, 0, 0,[]))
+  const urlParams = new URLSearchParams(location.search)
 
   useEffect(() => {
 
-      const urlParams = new URLSearchParams(location.search)
-      const newQ = urlParams.get("q")
-      const newP = urlParams.get("p") ? urlParams.get("p") : 1;
+      const q = urlParams.get("q")
+      const p = urlParams.has("p") ? urlParams.get("p") : "1";
 
-      let newParams: any = { }
-      if (newQ)
-        newParams['q'] = newQ
+      const newParams = new Map<string, string>()
 
-      if (newP)
-        newParams['p'] = newP
+      if (q)
+        newParams.set('q', q)
+
+      if (p)
+        newParams.set('p', p.toString())
 
       const target = buildUrl("/api/videos", newParams)
 
@@ -61,7 +56,7 @@ const Gallery = () => {
       }
 
     });
-    return <tr className="gallery-row full-width"> {cols} </tr>;
+    return <tbody><tr className="gallery-row full-width"> {cols} </tr></tbody>;
   });
 
   return (
@@ -89,7 +84,7 @@ function Footer(props: { current: number, last: number }) {
 
   const navNext = (e: any) => {
     const urlParams = new URLSearchParams(location.search)
-    const target = buildUrl("/search", { p: "2"})
+    const target = buildUrl("/search", new Map([["p", "2"]]))
     history.push(target);
   };
 
@@ -98,7 +93,7 @@ function Footer(props: { current: number, last: number }) {
   };
 
   return (
-    <Pagination>
+    <Pagination className="searchPagination">
       <Pagination.First onClick={navFirst}/>
       <Pagination.Prev onClick={navPrev} />
       <Pagination.Item active>{1}</Pagination.Item>

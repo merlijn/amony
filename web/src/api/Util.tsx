@@ -1,14 +1,18 @@
 
-export function buildUrl(path: string, params: any) {
+export function buildUrl(path: string, params: Map<string, string>) {
 
   let url = path;
   let paramPath = ""
 
-  for (const key in params) {
-    paramPath += `&${key}=${params[key]}`
-  }
+  params.forEach((val, key) => {
+    paramPath += `&${key}=${val}`
+  })
 
-  return paramPath ? `${path}?${paramPath.substring(1)}` : path
+  const result = paramPath ? `${path}?${paramPath.substring(1)}` : path
+
+  console.log(`url: ${result}`)
+
+  return result
 }
 
 export function durationInMillisToString (duration: number) {

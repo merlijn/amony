@@ -3,8 +3,6 @@ import Image from 'react-bootstrap/Image';
 import './Thumbnail.scss';
 import {durationInMillisToString} from "../api/Util";
 
-
-
 const Thumbnail = (props: {src: string, link: string, title: string, duration: number}) => {
 
   const durationStr = durationInMillisToString(props.duration)
