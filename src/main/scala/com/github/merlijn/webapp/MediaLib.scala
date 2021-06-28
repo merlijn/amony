@@ -98,7 +98,7 @@ class MediaLib(val path: String) extends Logging {
     Video(
       id         = info.id,
       fileName   = relativePath,
-      title      = relativePath,
+      title      = relativePath.substring(Math.min(0, relativePath.lastIndexOf('/')), relativePath.lastIndexOf('.')),
       duration   = info.duration,
       thumbnail  = s"/files/thumbnails/${info.id}.jpeg",
       tags       = Seq.empty,

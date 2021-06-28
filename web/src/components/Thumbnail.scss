@@ -1,8 +1,21 @@
-.thumbnail img.thumb {
-  width: calc(100vw / 3) ! important;
-  height: calc(100vw / (3 * 16 / 10)) ! important;
+.gallery .thumbnail {
   object-fit: cover;
   object-position: center;
+}
+
+.grid-2 .thumbnail img {
+  width: calc(100vw / 2) ! important;
+  height: calc(100vw / (2 * 16 / 10)) ! important;
+}
+
+.grid-3 .thumbnail img {
+  width: calc(100vw / 3) ! important;
+  height: calc(100vw / (3 * 16 / 10)) ! important;
+}
+
+.grid-4 .thumbnail img {
+  width: calc(100vw / 4) ! important;
+  height: calc(100vw / (4 * 16 / 10)) ! important;
 }
 
 .thumbnail a {

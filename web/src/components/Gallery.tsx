@@ -5,37 +5,38 @@ import Thumbnail from './Thumbnail';
 import Pagination from 'react-bootstrap/Pagination';
 import './Gallery.scss';
 import {useHistory, useLocation} from 'react-router-dom'
-import {buildUrl} from "../api/Util";
+import {buildUrl, copyParams, useWindowSize, withFallback} from "../api/Util";
 
 const Gallery = () => {
 
   const location = useLocation();
   const [result, setResult] = useState(new SearchResult(0, 0, 0,[]))
   const urlParams = new URLSearchParams(location.search)
+  const size = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > 20));
+
+  const pageSize = 6
+  const current = parseInt(withFallback(urlParams.get("p"), "1"));
 
   useEffect(() => {
 
-      const q = urlParams.get("q")
-      const p = urlParams.has("p") ? urlParams.get("p") : "1";
-
-      const newParams = new Map<string, string>()
-
-      if (q)
-        newParams.set('q', q)
-
-      if (p)
-        newParams.set('p', p.toString())
-
-      const target = buildUrl("/api/videos", newParams)
-
+      const target = buildUrl("/api/videos", copyParams(urlParams).set("s", pageSize.toString()))
       console.log("render:" + target)
 
       doGET(target).then(response => { setResult(response); });
     }, [location]
   )
 
-  const ncols: number = 3;
+  useEffect(() => {
+
+      console.log("w: " + size.width + ", h: " + size.height)
+
+    }, [size]
+  )
+
+  const cols_calc =  Math.round(size.width / 350);
+  const ncols = Math.min(Math.max(2, cols_calc), 4);
   const nrows: number = Math.ceil(result.videos.length / ncols);
+  const tdclazz = `grid-${ncols}`
 
   let rows = [...new Array(nrows)].map((e, y) => {
     let cols = [...new Array(ncols)].map((e, x) => {
@@ -47,61 +48,66 @@ const Gallery = () => {
         const link: string = "/video/" + movie.id;
         const duration: number = movie.duration
 
-        return (
-          <td className="gallery-column">
-            <Thumbnail src={movie.thumbnail} link={link} title={movie.title} duration={duration}/>
-          </td>);
+        return <td className={tdclazz}><Thumbnail src={movie.thumbnail} link={link} title={movie.title} duration={duration}/></td>;
       } else {
-        return <td className="gallery-column"></td>;
+        return <td className={tdclazz}></td>;
       }
 
     });
-    return <tbody><tr className="gallery-row full-width"> {cols} </tr></tbody>;
+    return <tbody><tr className="full-width"> {cols} </tr></tbody>;
   });
+
+
 
   return (
     <div className="full-width">
       <table className="gallery">
         {rows}
       </table>
-      <Footer current={1} last={10} />
+      <GalleryPagination current={current} last={Math.trunc(result.total / pageSize)} />
     </div>
   );
 }
 
-function Footer(props: { current: number, last: number }) {
+function GalleryPagination(props: { current: number, last: number }) {
+
+  console.log("last: " + props.last)
 
   const location = useLocation();
   const history = useHistory();
 
-  const navFirst = (e: any) => {
-    e.preventDefault();
-  };
+  const urlParams = new URLSearchParams(location.search)
 
-  const navPrev = (e: any) => {
-    e.preventDefault();
-  };
-
-  const navNext = (e: any) => {
-    const urlParams = new URLSearchParams(location.search)
-    const target = buildUrl("/search", new Map([["p", "2"]]))
+  const navigate = (n: number) => {
+    const targetParams = copyParams(urlParams).set("p", n.toString())
+    const target = buildUrl("/search", targetParams)
     history.push(target);
   };
 
-  const navLast = (e: any) => {
-    e.preventDefault();
-  };
+  let items = [<Pagination.Item active>{props.current}</Pagination.Item>]
+
+  const itemPagination = (n: number) => {
+    return <Pagination.Item onClick={() => navigate(n)}>{n}</Pagination.Item>
+  }
+
+  if (props.current > 1)
+    items.unshift(itemPagination(props.current - 1 ))
+  if (props.current > 2)
+    items.unshift(<Pagination.Ellipsis />)
+  if (props.current < props.last - 1)
+    items.push(itemPagination(props.current + 1 ))
+  if (props.current < props.last - 2)
+    items.push(<Pagination.Ellipsis />)
 
   return (
     <Pagination className="searchPagination">
-      <Pagination.First onClick={navFirst}/>
-      <Pagination.Prev onClick={navPrev} />
-      <Pagination.Item active>{1}</Pagination.Item>
-      <Pagination.Item>{2}</Pagination.Item>
-      <Pagination.Ellipsis/>
-      <Pagination.Item>{10}</Pagination.Item>
-      <Pagination.Next onClick={navNext}/>
-      <Pagination.Last onClick={navLast}/>
+      <Pagination.First onClick={ () => navigate(1) } />
+      <Pagination.Prev onClick={ () => navigate(Math.max(props.current -1, 1)) } />
+      {
+        items
+      }
+      <Pagination.Next onClick={ () => navigate(Math.min(props.current + 1, props.last)) }/>
+      <Pagination.Last onClick= { () => navigate(props.last) } />
     </Pagination>
   );
 }
