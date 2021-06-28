@@ -1,21 +1,28 @@
+@import '../App.scss';
+
 .gallery .thumbnail {
   object-fit: cover;
   object-position: center;
 }
 
 .grid-2 .thumbnail img {
-  width: calc(100vw / 2) ! important;
-  height: calc(100vw / (2 * 16 / 10)) ! important;
+  width: $grid-2-w ! important;
+  height: $grid-2-h ! important;
 }
 
 .grid-3 .thumbnail img {
-  width: calc(100vw / 3) ! important;
-  height: calc(100vw / (3 * 16 / 10)) ! important;
+  width: $grid-3-w ! important;
+  height: $grid-3-h ! important;
 }
 
 .grid-4 .thumbnail img {
-  width: calc(100vw / 4) ! important;
-  height: calc(100vw / (4 * 16 / 10)) ! important;
+  width: $grid-4-w ! important;
+  height: $grid-4-h ! important;
+}
+
+.grid-5 .thumbnail img {
+  width: $grid-5-w ! important;
+  height: $grid-5-h ! important;
 }
 
 .thumbnail a {

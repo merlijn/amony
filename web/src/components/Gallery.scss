@@ -1,61 +1,45 @@
+@import '../App.scss';
+
 table .gallery {
   width: 100vw;
   border: 0px;
   padding-top: 10px;
 }
 
-// -- 2
+// shared padding properties
+
+.gallery td {
+  padding: 4px;
+}
+
+.gallery td:first-child {
+  padding-left: 8px ! important;
+}
+
+.gallery td:last-child {
+  padding-right: 8px ! important;
+}
+
+// per grid nr sizing
 
 .gallery td.grid-2 {
-  width: calc(100vw / 2) ! important;
-  height: calc(100vw / (2 * 16 / 10)) ! important;
-  padding: 5px ! important;
+  width: $grid-2-w ! important;
+  height: $grid-2-h ! important;
 }
-
-.gallery td.grid-2:first-child {
-  padding-left: 10px ! important;
-  padding-right: 0px;
-}
-
-.gallery td.grid-2:last-child {
-  padding-right: 10px ! important;
-  padding-left: 0px;
-}
-
-// --- 3
 
 .gallery td.grid-3 {
-  width: calc(100vw / 3) ! important;
-  height: calc(100vw / (3 * 16 / 10)) ! important;
-  padding: 5px ! important;
+  width: $grid-3-w ! important;
+  height: $grid-3-h ! important;
 }
-
-.gallery td.grid-3:first-child {
-  padding-left: 10px ! important;
-  padding-right: 0px;
-}
-
-.gallery td.grid-3:last-child {
-  padding-right: 10px ! important;
-  padding-left: 0px;
-}
-
-// --- 4
 
 .gallery td.grid-4 {
-  width: calc(100vw / 4) ! important;
-  height: calc(100vw / (4 * 16 / 10)) ! important;
-  padding: 5px ! important;
+  width: $grid-4-w ! important;
+  height: $grid-4-h ! important;
 }
 
-.gallery td.grid-4:first-child {
-  padding-left: 10px ! important;
-  padding-right: 0px;
-}
-
-.gallery td.grid-4:last-child {
-  padding-right: 10px ! important;
-  padding-left: 0px;
+.gallery td.grid-5 {
+  width: $grid-5-w ! important;
+  height: $grid-5-h ! important;
 }
 
 .searchPagination {

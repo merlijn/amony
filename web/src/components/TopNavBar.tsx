@@ -31,19 +31,21 @@ function TopNavBar() {
     setQuery(e.target.value);
   };
 
+  // fixed="top"
+
   return(
     <Navbar className="TopNavBar" expand="sm">
       <Navbar.Toggle aria-controls="basic-navbar-nav"/>
       <Navbar.Collapse id="basic-navbar-nav">
         <Nav className="mr-auto">
-          <Nav.Link href="/">Home</Nav.Link>
           <NavDropdown title="Lists" id="basic-nav-dropdown">
             {
               collections.map((c) => {
-                return <NavDropdown.Item href="#action/3.1">{c}</NavDropdown.Item>
+                return <NavDropdown.Item href="/collection/">{c}</NavDropdown.Item>
               })
             }
           </NavDropdown>
+          <Nav.Link href="/">Home</Nav.Link>
         </Nav>
         <Form onSubmit={doSearch} inline>
           <FormControl type="text" placeholder="Search" onChange={searchChanged} className="mr-sm-2"/>
