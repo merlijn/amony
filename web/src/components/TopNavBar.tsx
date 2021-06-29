@@ -37,7 +37,7 @@ function TopNavBar() {
     <Navbar className="TopNavBar" expand="sm">
       <Navbar.Toggle aria-controls="basic-navbar-nav"/>
       <Navbar.Collapse id="basic-navbar-nav">
-        <Nav className="mr-auto">
+        <Nav>
           <NavDropdown title="Lists" id="basic-nav-dropdown">
             {
               collections.map((c) => {
@@ -46,11 +46,11 @@ function TopNavBar() {
             }
           </NavDropdown>
           <Nav.Link href="/">Home</Nav.Link>
+          <Form className="justify-content-center search-form" onSubmit={doSearch} inline>
+            <FormControl id="search-input" className="mr-sm-2" size="sm" type="text" placeholder="Search" onChange={searchChanged} />
+            <Button size="sm" variant="outline-success" onClick={doSearch}>Search</Button>
+          </Form>
         </Nav>
-        <Form onSubmit={doSearch} inline>
-          <FormControl type="text" placeholder="Search" onChange={searchChanged} className="mr-sm-2"/>
-          <Button variant="outline-success" onClick={doSearch}>Search</Button>
-        </Form>
       </Navbar.Collapse>
     </Navbar>
   );

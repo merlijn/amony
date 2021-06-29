@@ -1,7 +1,15 @@
 .TopNavBar {
 
+  height: 45px;
   margin-left: 10px;
   margin-right: 10px;
   margin-bottom: 5px;
   background-color: #ececec;
+}
+
+.search-form {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }

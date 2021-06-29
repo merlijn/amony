@@ -7,14 +7,17 @@ import {useLocation} from 'react-router-dom'
 import {buildUrl, copyParams, useWindowSize, withFallback} from "../api/Util";
 import GalleryPagination from "./GalleryPagination";
 
+const pageSize = 12
+const gridSize = 350
+const gridReRenderThreshold = 24
+
 const Gallery = () => {
 
   const location = useLocation();
   const [result, setResult] = useState(new SearchResult(0, 0, 0,[]))
   const urlParams = new URLSearchParams(location.search)
-  const size = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > 20));
+  const size = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > gridReRenderThreshold));
 
-  const pageSize = 12
   const current = parseInt(withFallback(urlParams.get("p"), "1"));
 
   useEffect(() => {
@@ -26,10 +29,9 @@ const Gallery = () => {
     }, [location]
   )
 
-  const cols_calc =  Math.round(size.width / 350);
-  const ncols = Math.min(Math.max(2, cols_calc), 5);
+  const ncols = Math.min(Math.max(2, Math.round(size.width / gridSize)), 5);
   const nrows: number = Math.ceil(result.videos.length / ncols);
-  const tdclazz = `grid-${ncols}`
+  const grid_class = `grid-${ncols}`
 
   let rows = [...new Array(nrows)].map((e, y) => {
     let cols = [...new Array(ncols)].map((e, x) => {
@@ -41,9 +43,9 @@ const Gallery = () => {
         const link: string = "/video/" + movie.id;
         const duration: number = movie.duration
 
-        return <td className={tdclazz}><Thumbnail src={movie.thumbnail} link={link} title={movie.title} duration={duration}/></td>;
+        return <td className={grid_class}><Thumbnail src={movie.thumbnail} link={link} title={movie.title} duration={duration}/></td>;
       } else {
-        return <td className={tdclazz}></td>;
+        return <td className={grid_class}></td>;
       }
 
     });
