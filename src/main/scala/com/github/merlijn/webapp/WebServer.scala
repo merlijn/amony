@@ -64,6 +64,8 @@ trait WebServer extends Logging {
             (File(Config.http.clientPath) / "index.html")
         }
 
+        logger.info(s"target: ${targetFile.path.toAbsolutePath.toString}")
+
         getFromFile(targetFile.path.toAbsolutePath.toString)
       }
   }

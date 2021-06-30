@@ -3,7 +3,15 @@ package com.github.merlijn.webapp
 import com.typesafe.config.ConfigFactory
 
 object Config {
-  val conf = ConfigFactory.load
+
+  val env = {
+    if (System.getenv().containsKey("ENV"))
+      System.getenv().get("ENV")
+    else
+      "dev"
+  }
+
+  val conf = ConfigFactory.load(s"$env/application.conf")
 
   object http {
 

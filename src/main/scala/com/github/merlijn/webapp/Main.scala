@@ -1,9 +1,9 @@
 package com.github.merlijn.webapp
 
-import better.files._
-
 
 object Main extends App with WebServer {
+
+  println("ENV: " + System.getenv().get("ENV"))
 
 //  val dir = File("/Users/merlijn/Documents")
 //  dir.listRecursively.filterNot { f =>
