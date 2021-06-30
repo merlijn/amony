@@ -12,7 +12,7 @@ target/
 /coverage
 
 # production
-/build
+/web/build
 
 # misc
 .env.local
