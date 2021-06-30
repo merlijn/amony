@@ -6,6 +6,7 @@ import io.circe.syntax._
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
+import better.files.File
 
 import scala.util.{Failure, Success}
 
@@ -44,8 +45,39 @@ trait WebServer extends Logging {
       }
     }
 
+  def clientFiles = rawPathPrefix(Slash) {
+
+    extractUnmatchedPath { path =>
+
+      // TODO sanitize
+       val filePath = path.toString() match {
+         case "" | "/" => "index.html"
+         case other    => other
+       }
+
+        val targetFile = {
+
+          val maybe = (File(Config.http.clientPath) / filePath)
+          if (maybe.exists)
+            maybe
+          else
+            (File(Config.http.clientPath) / "index.html")
+        }
+
+        getFromFile(targetFile.path.toAbsolutePath.toString)
+      }
+  }
+
+  val apiRoutes = api ~ thumbnails ~ videos
+
+  val routes =
+    if (Config.http.hostClient)
+      apiRoutes ~ clientFiles
+    else
+      apiRoutes
+
   val bindingFuture =
-    Http().newServerAt(Config.hostname, Config.port).bind(api ~ thumbnails ~ videos)
+    Http().newServerAt(Config.http.hostname, Config.http.port).bind(routes)
 
   bindingFuture.onComplete {
     case Success(binding) =>

@@ -5,8 +5,13 @@ import com.typesafe.config.ConfigFactory
 object Config {
   val conf = ConfigFactory.load
 
-  val port = conf.getInt("webapp.http.port")
-  val hostname = conf.getString("webapp.http.hostName")
+  object http {
+
+    val port = conf.getInt("http.port")
+    val hostname = conf.getString("http.hostName")
+    val hostClient = conf.getBoolean("http.client-host")
+    val clientPath = conf.getString("http.client-files")
+  }
 
   object library {
     val path = conf.getString("videos.path")
