@@ -1,10 +1,11 @@
 .TopNavBar {
 
   height: 45px;
-  margin-left: 10px;
-  margin-right: 10px;
+  margin-left: 8px;
+  margin-right: 8px;
   margin-bottom: 5px;
-  background-color: #ececec;
+  background-color: white;
+  border-bottom: 1px solid #ced4da;
 }
 
 .search-form {
@@ -14,7 +15,24 @@
   transform: translate(-50%, -50%);
 }
 
-#search-input {
+.absolute-left {
+  position: absolute;
+  top: 0;
+  left: 0;
+  //margin-top: 6px ! important;
+  //margin-botton: 6px ! important;
+  //transform: translate(0, -50%);
+}
 
+.absolute-right {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin-top: 6px ! important;
+  margin-botton: 6px ! important;
+  //transform: translate(0, -50%);
+}
+
+#search-input {
   width: 20vw;
 }

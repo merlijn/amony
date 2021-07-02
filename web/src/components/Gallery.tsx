@@ -6,6 +6,7 @@ import './Gallery.scss';
 import {useLocation} from 'react-router-dom'
 import {buildUrl, copyParams, useWindowSize, withFallback} from "../api/Util";
 import GalleryPagination from "./GalleryPagination";
+import TopNavBar from "./TopNavBar";
 
 const pageSize = 12
 const gridSize = 350
@@ -54,10 +55,11 @@ const Gallery = () => {
 
   return (
     <div className="full-width">
+      <TopNavBar current={current} last={Math.trunc(result.total / pageSize)}  />
       <table className="gallery">
         {rows}
       </table>
-      <GalleryPagination current={current} last={Math.trunc(result.total / pageSize)} />
+      {/*<GalleryPagination current={current} last={Math.trunc(result.total / pageSize)} />*/}
     </div>
   );
 }

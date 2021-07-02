@@ -8,8 +8,9 @@ import Form from "react-bootstrap/Form";
 import FormControl from "react-bootstrap/FormControl";
 import Button from "react-bootstrap/Button";
 import './TopNavBar.scss';
+import GalleryPagination from "./GalleryPagination";
 
-function TopNavBar() {
+function TopNavBar(props: { current: number, last: number }) {
 
   const [query, setQuery] = useState("")
   const [collections, setCollections] = useState(["1", "2", "3"])
@@ -34,24 +35,27 @@ function TopNavBar() {
   // fixed="top"
 
   return(
-    <Navbar className="TopNavBar" expand="sm">
-      <Navbar.Toggle aria-controls="basic-navbar-nav"/>
-      <Navbar.Collapse id="basic-navbar-nav">
+    <Navbar className="TopNavBar">
+      {/*<Navbar.Toggle aria-controls="basic-navbar-nav"/>*/}
+      {/*<Navbar.Collapse id="basic-navbar-nav">*/}
         <Nav>
-          <NavDropdown title="Lists" id="basic-nav-dropdown">
-            {
-              collections.map((c) => {
-                return <NavDropdown.Item href="/collection/">{c}</NavDropdown.Item>
-              })
-            }
-          </NavDropdown>
-          <Nav.Link href="/">Home</Nav.Link>
+          <div className="absolute-left">
+            <NavDropdown title="Lists" id="basic-nav-dropdown">
+              {
+                collections.map((c) => {
+                  return <NavDropdown.Item href="/collection/">{c}</NavDropdown.Item>
+                })
+              }
+            </NavDropdown>
+            <Nav.Link href="/">Home</Nav.Link>
+          </div>
           <Form className="justify-content-center search-form" onSubmit={doSearch} inline>
             <FormControl id="search-input" className="mr-sm-2" size="sm" type="text" placeholder="Search" onChange={searchChanged} />
             <Button size="sm" variant="outline-success" onClick={doSearch}>Search</Button>
           </Form>
         </Nav>
-      </Navbar.Collapse>
+        <GalleryPagination className="absolute-right" current={props.current} last={props.last} />
+      {/*</Navbar.Collapse>*/}
     </Navbar>
   );
 }

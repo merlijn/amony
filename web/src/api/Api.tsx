@@ -1,4 +1,6 @@
 
+const headers = { 'Content-type': 'application/json; charset=UTF-8' };
+
 export async function doGET(path: string) {
   const headers = { 'Content-type': 'application/json; charset=UTF-8' };
 
@@ -14,4 +16,21 @@ export async function doGET(path: string) {
   }
 
   return data;
+}
+
+export async function getVideos() {
+  return doGET("/api/videos")
+}
+
+export async function doPOST(path: string, data: any) {
+
+  const response = await fetch(path, {
+    method: 'POST',
+    headers
+  });
+}
+
+export async function setThumbnail(id: String, timeStamp: number) {
+
+
 }
