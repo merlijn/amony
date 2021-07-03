@@ -77,10 +77,18 @@ object MediaLib extends Logging {
 
     val relativePath = parent.relativize(File(info.fileName)).toString
 
+    val slashIdx = relativePath.lastIndexOf('/')
+    val dotIdx = relativePath.lastIndexOf('.')
+
+    val startIdx = if (slashIdx >= 0) slashIdx + 1 else 0
+    val endIdx = if (dotIdx >= 0) dotIdx else relativePath.length
+
+    val title = relativePath.substring(startIdx, endIdx)
+
     Video(
       id = info.id,
       fileName = relativePath,
-      title = relativePath.substring(Math.max(0, relativePath.lastIndexOf('/')), relativePath.lastIndexOf('.')),
+      title = title,
       duration = info.duration,
       thumbnail = s"/files/thumbnails/${info.id}.jpeg",
       tags = Seq.empty,
@@ -114,22 +122,33 @@ class MediaLib(val path: String) extends Logging {
     }
   }
 
-  val collections = List(
-    Collection(1, "A"),
-    Collection(2, "B"),
-    Collection(3, "C"),
-  )
+  val collections: List[Collection] = {
 
-  val collectionMap = Map(
-    1 -> List("abc", "cdef"),
-    2 -> List("foo", "bar"),
-    3 -> List("meh", "huh")
-  )
+    val dirs = videoIndex.foldLeft(Set.empty[String]) {
+      case (set, e) =>
+        val parent = (libraryDir / e.fileName).parent
+        val relative = s"/${libraryDir.relativize(parent)}"
+        set + relative
+    }
 
-  def search(q: Option[String], page: Int, size: Int): SearchResult = {
+    dirs.toList.sorted.zipWithIndex.map {
+      case (e, idx) => Collection(idx, e)
+    }
+  }
+
+  def search(q: Option[String], page: Int, size: Int, c: Option[Int]): SearchResult = {
+
+    val col = c match {
+      case None     => videoIndex
+      case Some(id) =>
+        collections.find(_.id == id).map { cid =>
+          videoIndex.filter(_.fileName.startsWith(cid.name.substring(1)))
+        }.getOrElse(videoIndex)
+    }
+
     val result = q match {
-      case Some(query) => videoIndex.filter(_.fileName.toLowerCase.contains(query.toLowerCase))
-      case None => videoIndex
+      case Some(query) => col.filter(_.fileName.toLowerCase.contains(query.toLowerCase))
+      case None        => col
     }
 
     val start = (page - 1) * size

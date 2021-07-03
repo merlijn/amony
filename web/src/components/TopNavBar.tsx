@@ -1,6 +1,6 @@
 import React, {useEffect, useRef, useState} from "react";
-import {useHistory} from "react-router-dom";
-import {buildUrl} from "../api/Util";
+import {useHistory, useLocation} from "react-router-dom";
+import {buildUrl, copyParams} from "../api/Util";
 import Navbar from "react-bootstrap/Navbar";
 import Nav from "react-bootstrap/Nav";
 import NavDropdown from "react-bootstrap/NavDropdown";
@@ -18,6 +18,9 @@ function TopNavBar(props: { current: number, last: number }) {
   const collections = useRef<Array<Collection>>([]);
 
   const history = useHistory();
+  const loc = useLocation();
+
+  const params = copyParams(new URLSearchParams(loc.search))
 
   const doSearch = (e: any) => {
     e.preventDefault();
@@ -38,7 +41,6 @@ function TopNavBar(props: { current: number, last: number }) {
   };
 
   // fixed="top"
-
   return(
     <Navbar className="TopNavBar">
         <Nav>
@@ -46,7 +48,10 @@ function TopNavBar(props: { current: number, last: number }) {
             <NavDropdown title="Lists" id="basic-nav-dropdown">
               {
                 collections.current.map((c) => {
-                  return <NavDropdown.Item href="/collection/">{c.name}</NavDropdown.Item>
+
+                  const link = buildUrl("/search", params.set("c", c.id.toString()))
+
+                  return <NavDropdown.Item href={link}>{c.name}</NavDropdown.Item>
                 })
               }
             </NavDropdown>

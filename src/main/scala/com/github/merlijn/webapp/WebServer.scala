@@ -30,7 +30,7 @@ trait WebServer extends Logging {
             val size = s.map(_.toInt).getOrElse(24)
             val page = p.map(_.toInt).getOrElse(1)
 
-            val response = mediaLib.search(q, page, size)
+            val response = mediaLib.search(q, page, size, c.map(_.toInt))
 
             complete(HttpEntity(ContentTypes.`application/json`, response.asJson.toString))
           }
