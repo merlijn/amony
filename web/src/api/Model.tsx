@@ -18,3 +18,8 @@ export class SearchResult {
   ) {
   }
 }
+
+export type Collection = {
+  id: number,
+  name: string
+}

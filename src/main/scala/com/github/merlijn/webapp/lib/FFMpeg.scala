@@ -1,6 +1,7 @@
-package com.github.merlijn.webapp
+package com.github.merlijn.webapp.lib
 
-import better.files._
+import better.files.File
+import com.github.merlijn.webapp.Logging
 
 import java.time.Duration
 import java.util.Base64
@@ -8,18 +9,15 @@ import scala.util.Random
 
 object FFMpeg extends Logging {
 
-  case class Probe(
-    id: String,
-    fileName: String,
-    duration: Long,
-    resolution: (Int, Int)
-  )
+  case class Probe(id: String,
+                   fileName: String,
+                   duration: Long,
+                   resolution: (Int, Int))
 
   // samples a file randomly and creates a hash from that
   def fakeHash(file: File): String = {
 
     def md5hash(data: Array[Byte]): String = {
-      import java.math.BigInteger
       import java.security.MessageDigest
 
       val sha256Digest: MessageDigest = MessageDigest.getInstance("MD5")
@@ -37,7 +35,7 @@ object FFMpeg extends Logging {
 
       file.randomAccess().foreach { rndAccess =>
         (0 until nBytes).map { i =>
-          val pos = (random.nextDouble() * (size -1)).toLong
+          val pos = (random.nextDouble() * (size - 1)).toLong
           try {
             rndAccess.seek(pos)
             bytes(i) = rndAccess.readByte()
@@ -67,16 +65,16 @@ object FFMpeg extends Logging {
     val (w, h) = output match {
       case res(w, h) =>
         (w.toInt, h.toInt)
-      case _         =>
+      case _ =>
         logger.warn("Could not extract resolution")
         (0, 0)
     }
 
     val duration: Long = output match {
       case pattern(hours, minutes, seconds) =>
-        hours.toInt *  60 * 60 * 1000 +
-        minutes.toInt * 60 * 1000 +
-        seconds.toInt * 1000
+        hours.toInt * 60 * 60 * 1000 +
+          minutes.toInt * 60 * 1000 +
+          seconds.toInt * 1000
     }
 
     val hash = fakeHash(file)

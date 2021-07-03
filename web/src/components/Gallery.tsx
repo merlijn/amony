@@ -8,9 +8,16 @@ import {buildUrl, copyParams, useWindowSize, withFallback} from "../api/Util";
 import GalleryPagination from "./GalleryPagination";
 import TopNavBar from "./TopNavBar";
 
-const pageSize = 12
 const gridSize = 350
 const gridReRenderThreshold = 24
+
+const pageSizes = new Map([
+  [1, 8],
+  [2, 12],
+  [3, 18],
+  [4, 24],
+  [5, 35]]
+)
 
 const Gallery = () => {
 
@@ -19,7 +26,14 @@ const Gallery = () => {
   const urlParams = new URLSearchParams(location.search)
   const size = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > gridReRenderThreshold));
 
-  const current = parseInt(withFallback(urlParams.get("p"), "1"));
+  // grid size
+  const ncols = Math.min(Math.max(2, Math.round(size.width / gridSize)), 5);
+  const nrows: number = Math.ceil(result.videos.length / ncols);
+  const grid_class = `grid-${ncols}`
+
+  const pageSize = pageSizes.get(ncols) || 24
+
+  const currentPage = parseInt(withFallback(urlParams.get("p"), "1"));
 
   useEffect(() => {
 
@@ -30,9 +44,7 @@ const Gallery = () => {
     }, [location]
   )
 
-  const ncols = Math.min(Math.max(2, Math.round(size.width / gridSize)), 5);
-  const nrows: number = Math.ceil(result.videos.length / ncols);
-  const grid_class = `grid-${ncols}`
+
 
   let rows = [...new Array(nrows)].map((e, y) => {
     let cols = [...new Array(ncols)].map((e, x) => {
@@ -55,7 +67,7 @@ const Gallery = () => {
 
   return (
     <div className="full-width">
-      <TopNavBar current={current} last={Math.trunc(result.total / pageSize)}  />
+      <TopNavBar current={currentPage} last={Math.trunc(result.total / pageSize)}  />
       <table className="gallery">
         {rows}
       </table>

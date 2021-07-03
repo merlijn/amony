@@ -19,9 +19,15 @@ object Model {
       currentPage: Int,
       pageSize: Int,
       total: Int,
-      videos: List[Video]
+      videos: Seq[Video]
   )
 
+  case class Collection(
+    id: Int,
+    name: String
+  )
+
+  implicit val collectionCodec: Codec[Collection] = deriveCodec[Collection]
   implicit val videoCodec: Codec[Video] = deriveCodec[Video]
   implicit val resultCodec: Codec[SearchResult] = deriveCodec[SearchResult]
 }

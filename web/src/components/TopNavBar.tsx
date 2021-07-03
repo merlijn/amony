@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {useHistory} from "react-router-dom";
 import {buildUrl} from "../api/Util";
 import Navbar from "react-bootstrap/Navbar";
@@ -9,11 +9,13 @@ import FormControl from "react-bootstrap/FormControl";
 import Button from "react-bootstrap/Button";
 import './TopNavBar.scss';
 import GalleryPagination from "./GalleryPagination";
+import {doGET} from "../api/Api";
+import {Collection} from "../api/Model";
 
 function TopNavBar(props: { current: number, last: number }) {
 
   const [query, setQuery] = useState("")
-  const [collections, setCollections] = useState(["1", "2", "3"])
+  const collections = useRef<Array<Collection>>([]);
 
   const history = useHistory();
 
@@ -24,7 +26,10 @@ function TopNavBar(props: { current: number, last: number }) {
   };
 
   useEffect(() => {
-    const target = buildUrl("/api/videos/collections", new Map())
+    const target = buildUrl("/api/collections", new Map())
+    console.log("render:" + target)
+
+    doGET(target).then(response => { collections.current = response; });
   });
 
   const searchChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,14 +41,12 @@ function TopNavBar(props: { current: number, last: number }) {
 
   return(
     <Navbar className="TopNavBar">
-      {/*<Navbar.Toggle aria-controls="basic-navbar-nav"/>*/}
-      {/*<Navbar.Collapse id="basic-navbar-nav">*/}
         <Nav>
           <div className="absolute-left">
             <NavDropdown title="Lists" id="basic-nav-dropdown">
               {
-                collections.map((c) => {
-                  return <NavDropdown.Item href="/collection/">{c}</NavDropdown.Item>
+                collections.current.map((c) => {
+                  return <NavDropdown.Item href="/collection/">{c.name}</NavDropdown.Item>
                 })
               }
             </NavDropdown>
@@ -55,7 +58,6 @@ function TopNavBar(props: { current: number, last: number }) {
           </Form>
         </Nav>
         <GalleryPagination className="absolute-right" current={props.current} last={props.last} />
-      {/*</Navbar.Collapse>*/}
     </Navbar>
   );
 }

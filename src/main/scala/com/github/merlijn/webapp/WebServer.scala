@@ -7,6 +7,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import better.files.File
+import com.github.merlijn.webapp.Model.Collection
 
 import scala.util.{Failure, Success}
 
@@ -20,15 +21,25 @@ trait WebServer extends Logging {
   implicit val executionContext = system.executionContext
 
   val api =
-    (path("api" / "videos") & parameters("q".optional, "p".optional, "s".optional)) { (q, p, s) =>
-      get {
 
-        val size = s.map(_.toInt).getOrElse(24)
-        val page = p.map(_.toInt).getOrElse(1)
+    {
+      pathPrefix("api") {
+        (path("videos") & parameters("q".optional, "p".optional, "s".optional, "c".optional)) { (q, p, s, c) =>
+          get {
 
-        val response = mediaLib.search(q, page, size)
+            val size = s.map(_.toInt).getOrElse(24)
+            val page = p.map(_.toInt).getOrElse(1)
 
-        complete(HttpEntity(ContentTypes.`application/json`, response.asJson.toString))
+            val response = mediaLib.search(q, page, size)
+
+            complete(HttpEntity(ContentTypes.`application/json`, response.asJson.toString))
+          }
+        } ~ path("collections") {
+
+          get {
+            complete(HttpEntity(ContentTypes.`application/json`, mediaLib.collections.asJson.toString))
+          }
+        }
       }
     }
 
@@ -41,7 +52,7 @@ trait WebServer extends Logging {
 
     mediaLib.getById(id) match {
         case None       => complete(StatusCodes.NotFound, "")
-        case Some(info) => getFromFile((mediaLib.libraryPath / info.fileName).path.toAbsolutePath.toString)
+        case Some(info) => getFromFile((mediaLib.libraryDir / info.fileName).path.toAbsolutePath.toString)
       }
     }
 
