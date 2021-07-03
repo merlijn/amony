@@ -11,17 +11,18 @@ lazy val root = (project in file(".")).
     name := "webapp-test",
     libraryDependencies ++= Seq(
 
-      "org.slf4j"          % "slf4j-api"                % "1.7.30",
-      "org.slf4j"          % "slf4j-simple" % "1.7.30",
-      "com.typesafe"        %  "config"                   % "1.4.1",
-      "com.typesafe.akka" %% "akka-actor-typed" % AkkaVersion,
-      "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
-      "com.typesafe.akka" %% "akka-http" % AkkaHttpVersion,
+      "org.slf4j"             %  "slf4j-api"                % "1.7.30",
+      "org.slf4j"             %  "slf4j-simple" % "1.7.30",
+      "com.typesafe"          %  "config"                   % "1.4.1",
+      "com.typesafe.akka"     %% "akka-actor-typed" % AkkaVersion,
+      "com.typesafe.akka"     %% "akka-stream" % AkkaVersion,
+      "com.typesafe.akka"     %% "akka-http" % AkkaHttpVersion,
       "com.github.pureconfig" %% "pureconfig" % "0.16.0",
-      "io.circe"            %% "circe-core" % "0.14.1",
-      "io.circe"            %% "circe-generic" % "0.14.1",
-      "io.circe"            %% "circe-parser" % "0.14.1",
-      "com.github.pathikrit" %% "better-files" % "3.9.1",
-      "org.scalatest"        %% "scalatest"                % "3.2.9"         % Test
+      "io.monix"              %% "monix-reactive" % "3.4.0",
+      "io.circe"              %% "circe-core" % "0.14.1",
+      "io.circe"              %% "circe-generic" % "0.14.1",
+      "io.circe"              %% "circe-parser" % "0.14.1",
+      "com.github.pathikrit"  %% "better-files" % "3.9.1",
+      "org.scalatest"         %% "scalatest"                % "3.2.9"         % Test
     )
   )

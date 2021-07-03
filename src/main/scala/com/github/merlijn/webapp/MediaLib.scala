@@ -6,6 +6,9 @@ import com.github.merlijn.webapp.Model._
 import com.github.merlijn.webapp.lib.FFMpeg
 import io.circe.syntax._
 import io.circe.parser.decode
+import monix.eval.Task
+import monix.execution.Scheduler
+import monix.reactive.{Consumer, Observable}
 
 import java.nio.file.Path
 
@@ -20,19 +23,27 @@ object MediaLib extends Logging {
     r.getFiles()
   }
 
-  def scan(dir: File, max: Int, extensions: List[String] = List("mp4", "webm")): Seq[Video] = {
+  def scanFile(dir: File, p: Path): Video = {
+    val f = File(p)
+    logger.info(s"Processing: ${f.path.toAbsolutePath}")
+    val info = FFMpeg.ffprobe(f)
+    val video = asVideo(dir, info)
+    generateThumbnail(dir, video)
+    video
+  }
 
-    walkDir(dir.path).filter { p =>
-      val fileName = p.getFileName.toString
-      extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
-    }.take(max).map { p =>
-      val f = File(p)
-      logger.info(s"Processing: ${f.path.toAbsolutePath}")
-      val info = FFMpeg.ffprobe(f)
-      val video = asVideo(dir, info)
-      generateThumbnail(dir, video)
-      video
-    }.toSeq
+  def scanParallel(dir: File, parallelFactor: Int, max: Int, extensions: List[String] = List("mp4", "webm"))(implicit s: Scheduler): Seq[Video] = {
+
+    val obs = Observable.from(walkDir(dir.path).take(max))
+      .filter { p =>
+        val fileName = p.getFileName.toString
+        extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
+      }
+      .mapParallelUnordered(parallelFactor) { p => Task { scanFile(dir, p) } }
+
+    val c = Consumer.toList[Video]
+
+    obs.consumeWith(c).runSyncUnsafe()
   }
 
   protected def readIndex(file: File): Seq[Video] = {
@@ -94,7 +105,8 @@ class MediaLib(val path: String) extends Logging {
     val indexFile = File(Config.library.indexPath) / "index.json"
 
     if (!indexFile.exists) {
-      val scanResult = scan(libraryDir, Config.library.max)
+      implicit val s = Scheduler.global
+      val scanResult = scanParallel(libraryDir, 4, Config.library.max)
       writeIndex(indexFile, scanResult)
       scanResult
     } else {
