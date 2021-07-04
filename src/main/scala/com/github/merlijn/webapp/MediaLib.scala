@@ -1,8 +1,12 @@
 package com.github.merlijn.webapp
 
+import akka.actor.typed.ActorSystem
+import akka.util.Timeout
 import better.files.File
 import com.github.merlijn.webapp.lib.FFMpeg.{Probe, writeThumbnail}
 import com.github.merlijn.webapp.Model._
+import com.github.merlijn.webapp.actor.MediaLibActor
+import com.github.merlijn.webapp.actor.MediaLibActor.{GetById, Query, Search, SetThumbnail}
 import com.github.merlijn.webapp.lib.{FFMpeg, FileUtil}
 import io.circe.syntax._
 import io.circe.parser.decode
@@ -11,6 +15,8 @@ import monix.execution.Scheduler
 import monix.reactive.{Consumer, Observable}
 
 import java.nio.file.Path
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
 
 object MediaLib extends Logging {
 
@@ -27,7 +33,7 @@ object MediaLib extends Logging {
     video
   }
 
-  def scanParallel(scanPath: Path, indexPath: Path, parallelFactor: Int, max: Int, extensions: List[String] = List("mp4", "webm"))(implicit s: Scheduler): Seq[Video] = {
+  def scanParallel(scanPath: Path, indexPath: Path, parallelFactor: Int, max: Int, extensions: List[String] = List("mp4", "webm"))(implicit s: Scheduler): List[Video] = {
 
     val obs = Observable.from(FileUtil.walkDir(scanPath).take(max))
       .filter { vid =>
@@ -41,7 +47,7 @@ object MediaLib extends Logging {
     obs.consumeWith(c).runSyncUnsafe()
   }
 
-  protected def readIndex(file: File): Seq[Video] = {
+  protected def readIndex(file: File): List[Video] = {
     val json = file.contentAsString
 
     decode[List[Video]](json) match {
@@ -88,7 +94,7 @@ object MediaLib extends Logging {
       fileName = relativePath,
       title = title,
       duration = info.duration,
-      thumbnail = s"/files/thumbnails/$thumbnail.jpeg",
+      thumbnail = s"/files/thumbnails/$thumbnail",
       tags = Seq.empty,
       resolution = s"${info.resolution._1}x${info.resolution._2}"
     )
@@ -112,7 +118,7 @@ class MediaLib(config: MediaLibConfig) extends Logging {
   if (!indexDir.exists)
     indexDir.createDirectory()
 
-  val videoIndex: Seq[Video] = {
+  val videoIndex: List[Video] = {
 
     val indexFile = File(config.indexPath) / "index.json"
 
@@ -140,44 +146,31 @@ class MediaLib(config: MediaLibConfig) extends Logging {
     }
   }
 
+  val system: ActorSystem[MediaLibActor.Command] =
+    ActorSystem(MediaLibActor(config, videoIndex, collections), "videos")
+
+  implicit val scheduler = system.scheduler
+  import akka.actor.typed.scaladsl.AskPattern._
+  implicit val timeout: Timeout = 3.seconds
+
   def search(q: Option[String], page: Int, size: Int, c: Option[Int]): SearchResult = {
 
-    val col = c match {
-      case None     => videoIndex
-      case Some(id) =>
-        collections.find(_.id == id).map { cid =>
-          videoIndex.filter(_.fileName.startsWith(cid.name.substring(1)))
-        }.getOrElse(videoIndex)
-    }
+    val result = system.ask[SearchResult](ref => Search(Query(q, page, size, c), ref))
 
-    val result = q match {
-      case Some(query) => col.filter(_.fileName.toLowerCase.contains(query.toLowerCase))
-      case None        => col
-    }
-
-    val start = (page - 1) * size
-    val end = Math.min(result.size, page * size)
-
-    val videos = if (start > result.size) {
-      List.empty
-    } else {
-      result.slice(start, end)
-    }
-
-    SearchResult(page, size, result.size, videos)
-  }
-
-  def setThumbnailAt(id: String, timestamp: Long): Option[Unit] = {
-
-    videoIndex.find(_.id == id).map { v =>
-
-      val sanitizedTimeStamp = Math.max(0, Math.min(v.duration, timestamp))
-
-      generateThumbnail(libraryDir.path, config.indexPath, v.id, sanitizedTimeStamp, true)
-    }
+    Await.result(result, timeout.duration)
   }
 
   def getById(id: String): Option[Video] = {
-    videoIndex.find(_.id == id)
+
+    val result = system.ask[Option[Video]](ref => GetById(id, ref))
+
+    Await.result(result, timeout.duration)
+  }
+
+  def setThumbnailAt(id: String, timestamp: Long): Option[Video] = {
+
+    val result = system.ask[Option[Video]](ref => SetThumbnail(id, timestamp, ref))
+
+    Await.result(result, timeout.duration)
   }
 }

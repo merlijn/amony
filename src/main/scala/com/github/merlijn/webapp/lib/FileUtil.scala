@@ -20,11 +20,11 @@ object FileUtil {
   // samples a file randomly and creates a hash from that
   def fakeHash(file: File): String = {
 
-    def md5hash(data: Array[Byte]): String = {
+    def md5hashInBase64(data: Array[Byte]): String = {
       import java.security.MessageDigest
 
-      val sha256Digest: MessageDigest = MessageDigest.getInstance("MD5")
-      val digest = sha256Digest.digest(data)
+      val md5Digest: MessageDigest = MessageDigest.getInstance("MD5")
+      val digest = md5Digest.digest(data)
       val base64 = Base64.getUrlEncoder.withoutPadding().encodeToString(digest)
 
       base64
@@ -54,6 +54,6 @@ object FileUtil {
 
     val bytes = readRandomBytes(512)
 
-    md5hash(bytes)
+    md5hashInBase64(bytes).substring(0, 8)
   }
 }

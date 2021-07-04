@@ -5,8 +5,6 @@ import com.github.merlijn.webapp.Logging
 
 import java.nio.file.Path
 import java.time.Duration
-import java.util.Base64
-import scala.util.Random
 
 object FFMpeg extends Logging {
 
