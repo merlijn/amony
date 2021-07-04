@@ -5,6 +5,8 @@ import io.circe.generic.semiauto._
 import io.circe.parser._
 import io.circe.syntax._
 
+import java.nio.file.Path
+
 object Model {
 
   case class Video(id: String,
@@ -13,7 +15,10 @@ object Model {
                    duration: Long,
                    thumbnail: String,
                    resolution: String,
-                   tags: Seq[String])
+                   tags: Seq[String]) {
+
+    def path(baseDir: Path): Path = baseDir.resolve(fileName)
+  }
 
   case class SearchResult(
       currentPage: Int,

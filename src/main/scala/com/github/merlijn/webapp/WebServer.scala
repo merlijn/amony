@@ -2,20 +2,23 @@ package com.github.merlijn.webapp
 
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
-import io.circe.syntax._
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
+import akka.stream.Materializer
 import better.files.File
-import com.github.merlijn.webapp.Model.Collection
+import io.circe.syntax._
 
 import scala.util.{Failure, Success}
 
 trait WebServer extends Logging {
 
-  val mediaLib = new MediaLib(Config.library.path)
+  val mediaLibConfig = MediaLibConfig(Config.library.path, Config.library.indexPath, 4)
+  val mediaLib = new MediaLib(mediaLibConfig)
 
-  implicit val system = ActorSystem(Behaviors.empty, "metube")
+  implicit val system = ActorSystem(Behaviors.empty, "webapp")
+
+  implicit val mater = Materializer.createMaterializer(system)
 
   // needed for the future flatMap/onComplete in the end
   implicit val executionContext = system.executionContext
@@ -38,6 +41,15 @@ trait WebServer extends Logging {
 
           get {
             complete(HttpEntity(ContentTypes.`application/json`, mediaLib.collections.asJson.toString))
+          }
+        } ~ path("thumbnail" / Segment) { id =>
+          (post & entity(as[String])) { entity =>
+              val timeStamp = entity.toLong
+              logger.info(s"setting thumbnail for $id at $timeStamp")
+              mediaLib.setThumbnailAt(id, timeStamp) match {
+                case Some(_) => complete("")
+                case None    => complete(StatusCodes.NotFound)
+              }
           }
         }
       }

@@ -1,9 +1,9 @@
 package com.github.merlijn.webapp
 
 import better.files.File
-import com.github.merlijn.webapp.lib.FFMpeg.Probe
+import com.github.merlijn.webapp.lib.FFMpeg.{Probe, writeThumbnail}
 import com.github.merlijn.webapp.Model._
-import com.github.merlijn.webapp.lib.FFMpeg
+import com.github.merlijn.webapp.lib.{FFMpeg, FileUtil}
 import io.circe.syntax._
 import io.circe.parser.decode
 import monix.eval.Task
@@ -14,32 +14,27 @@ import java.nio.file.Path
 
 object MediaLib extends Logging {
 
-  def walkDir(dir: Path): Iterable[Path] = {
-    import com.github.merlijn.webapp.lib.FileRecurse
-    import java.nio.file.Files
+  def scanVideo(baseDir: Path, videoPath: Path, indexDir: Path): Video = {
+    logger.info(s"Processing: ${videoPath.toAbsolutePath}")
 
-    val r = new FileRecurse
-    Files.walkFileTree(dir, r)
-    r.getFiles()
-  }
+    val info = FFMpeg.ffprobe(videoPath)
+    val timeStamp = info.duration / 3
 
-  def scanFile(dir: File, p: Path): Video = {
-    val f = File(p)
-    logger.info(s"Processing: ${f.path.toAbsolutePath}")
-    val info = FFMpeg.ffprobe(f)
-    val video = asVideo(dir, info)
-    generateThumbnail(dir, video)
+    val thumbNail = generateThumbnail(videoPath, indexDir, info.id, timeStamp, false)
+
+    val video = asVideo(baseDir, info, thumbNail)
+
     video
   }
 
-  def scanParallel(dir: File, parallelFactor: Int, max: Int, extensions: List[String] = List("mp4", "webm"))(implicit s: Scheduler): Seq[Video] = {
+  def scanParallel(scanPath: Path, indexPath: Path, parallelFactor: Int, max: Int, extensions: List[String] = List("mp4", "webm"))(implicit s: Scheduler): Seq[Video] = {
 
-    val obs = Observable.from(walkDir(dir.path).take(max))
-      .filter { p =>
-        val fileName = p.getFileName.toString
+    val obs = Observable.from(FileUtil.walkDir(scanPath).take(max))
+      .filter { vid =>
+        val fileName = vid.getFileName.toString
         extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
       }
-      .mapParallelUnordered(parallelFactor) { p => Task { scanFile(dir, p) } }
+      .mapParallelUnordered(parallelFactor) { p => Task { scanVideo(scanPath, p, indexPath) } }
 
     val c = Consumer.toList[Video]
 
@@ -62,20 +57,23 @@ object MediaLib extends Logging {
     index.overwrite(json)
   }
 
-  def generateThumbnail(parent: File, v: Video): Unit = {
+  def generateThumbnail(videoPath: Path, outputDir: Path, id: String, timeStamp: Long, overWrite: Boolean): String = {
+
+    val thumbNail = s"${id}-$timeStamp.jpeg"
+    val fullFile = s"${outputDir}/$thumbNail"
+
     FFMpeg.writeThumbnail(
-      inputFile = (parent / v.fileName).path.toAbsolutePath.toString,
-      time = v.duration / 3,
-      outputFile = Some(s"${Config.library.indexPath}/${v.id}.jpeg"))
+      inputFile = videoPath.toAbsolutePath.toString,
+      time = timeStamp,
+      outputFile = Some(fullFile),
+      overWrite)
+
+    thumbNail
   }
 
-  def generateThumbnails(parent: File, videos: Seq[Video]): Unit = {
-    videos.foreach { i => generateThumbnail(parent, i) }
-  }
+  protected def asVideo(baseDir: Path, info: Probe, thumbnail: String): Video = {
 
-  protected def asVideo(parent: File, info: Probe): Video = {
-
-    val relativePath = parent.relativize(File(info.fileName)).toString
+    val relativePath = baseDir.relativize(Path.of(info.fileName)).toString
 
     val slashIdx = relativePath.lastIndexOf('/')
     val dotIdx = relativePath.lastIndexOf('.')
@@ -90,18 +88,24 @@ object MediaLib extends Logging {
       fileName = relativePath,
       title = title,
       duration = info.duration,
-      thumbnail = s"/files/thumbnails/${info.id}.jpeg",
+      thumbnail = s"/files/thumbnails/$thumbnail.jpeg",
       tags = Seq.empty,
       resolution = s"${info.resolution._1}x${info.resolution._2}"
     )
   }
 }
 
-class MediaLib(val path: String) extends Logging {
+case class MediaLibConfig(
+  libraryPath: Path,
+  indexPath: Path,
+  scanParallelFactor: Int
+)
+
+class MediaLib(config: MediaLibConfig) extends Logging {
 
   import MediaLib._
 
-  val libraryDir = File(path)
+  val libraryDir = File(config.libraryPath)
 
   // create the index directory if it does not exist
   private val indexDir = File(Config.library.indexPath)
@@ -110,11 +114,11 @@ class MediaLib(val path: String) extends Logging {
 
   val videoIndex: Seq[Video] = {
 
-    val indexFile = File(Config.library.indexPath) / "index.json"
+    val indexFile = File(config.indexPath) / "index.json"
 
     if (!indexFile.exists) {
       implicit val s = Scheduler.global
-      val scanResult = scanParallel(libraryDir, 4, Config.library.max)
+      val scanResult = scanParallel(libraryDir.path, config.indexPath, config.scanParallelFactor, Config.library.max)
       writeIndex(indexFile, scanResult)
       scanResult
     } else {
@@ -161,6 +165,16 @@ class MediaLib(val path: String) extends Logging {
     }
 
     SearchResult(page, size, result.size, videos)
+  }
+
+  def setThumbnailAt(id: String, timestamp: Long): Option[Unit] = {
+
+    videoIndex.find(_.id == id).map { v =>
+
+      val sanitizedTimeStamp = Math.max(0, Math.min(v.duration, timestamp))
+
+      generateThumbnail(libraryDir.path, config.indexPath, v.id, sanitizedTimeStamp, true)
+    }
   }
 
   def getById(id: String): Option[Video] = {

@@ -3,6 +3,7 @@ package com.github.merlijn.webapp.lib
 import better.files.File
 import com.github.merlijn.webapp.Logging
 
+import java.nio.file.Path
 import java.time.Duration
 import java.util.Base64
 import scala.util.Random
@@ -14,49 +15,9 @@ object FFMpeg extends Logging {
                    duration: Long,
                    resolution: (Int, Int))
 
-  // samples a file randomly and creates a hash from that
-  def fakeHash(file: File): String = {
+  def ffprobe(file: Path): Probe = {
 
-    def md5hash(data: Array[Byte]): String = {
-      import java.security.MessageDigest
-
-      val sha256Digest: MessageDigest = MessageDigest.getInstance("MD5")
-      val digest = sha256Digest.digest(data)
-      val base64 = Base64.getUrlEncoder.withoutPadding().encodeToString(digest)
-
-      base64
-    }
-
-    def readRandomBytes(nBytes: Int): Array[Byte] = {
-
-      val size = file.size
-      val bytes = new Array[Byte](nBytes)
-      val random = new Random(size)
-
-      file.randomAccess().foreach { rndAccess =>
-        (0 until nBytes).map { i =>
-          val pos = (random.nextDouble() * (size - 1)).toLong
-          try {
-            rndAccess.seek(pos)
-            bytes(i) = rndAccess.readByte()
-          } catch {
-            case _: Exception =>
-              logger.warn(s"Failed reading byte at: ${file.name} ($size): $i, $pos")
-          }
-        }
-      }
-
-      bytes
-    }
-
-    val bytes = readRandomBytes(1024)
-
-    md5hash(bytes)
-  }
-
-  def ffprobe(file: File): Probe = {
-
-    val fileName = file.path.toAbsolutePath.toString
+    val fileName = file.toAbsolutePath.toString
     val output = run("ffprobe", fileName)
 
     val pattern = raw"Duration:\s(\d{2}):(\d{2}):(\d{2})".r.unanchored
@@ -77,22 +38,25 @@ object FFMpeg extends Logging {
           seconds.toInt * 1000
     }
 
-    val hash = fakeHash(file)
+    val hash = FileUtil.fakeHash(file)
 
     Probe(hash, fileName, duration, (w, h))
   }
 
-  def writeThumbnail(inputFile: String, time: Long, outputFile: Option[String]): Unit = {
+  def writeThumbnail(inputFile: String, time: Long, outputFile: Option[String], overwrite: Boolean = false): Unit = {
 
     val baseFilename = inputFile.substring(0, inputFile.lastIndexOf('.'))
     val thumbnailFile = File(outputFile.getOrElse(s"$baseFilename.jpeg"))
 
-    if (!thumbnailFile.exists) {
+    if (overwrite && thumbnailFile.exists)
+      thumbnailFile.delete()
 
-      logger.debug(s"Creating thumbnail for $inputFile")
+    if (!thumbnailFile.exists) {
 
       val timestamp = Duration.ofMillis(time)
       val ss = s"${timestamp.toHoursPart}:${timestamp.toMinutesPart}:${timestamp.toSecondsPart}"
+
+      logger.info(s"Creating thumbnail at $ss for $inputFile")
 
       run(s"ffmpeg", "-ss", ss, "-i", inputFile, "-vframes", "1", thumbnailFile.path.toAbsolutePath.toString)
     }

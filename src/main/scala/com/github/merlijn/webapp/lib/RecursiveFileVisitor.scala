@@ -7,7 +7,7 @@ import java.nio.file.{FileVisitResult, FileVisitor, Path}
 import java.nio.file.attribute.BasicFileAttributes
 import scala.collection.mutable
 
-class FileRecurse() extends FileVisitor[Path] with Logging {
+class RecursiveFileVisitor extends FileVisitor[Path] with Logging {
 
   private val files = mutable.ListBuffer.empty[Path]
 

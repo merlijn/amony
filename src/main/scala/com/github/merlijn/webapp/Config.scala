@@ -2,6 +2,8 @@ package com.github.merlijn.webapp
 
 import com.typesafe.config.ConfigFactory
 
+import java.nio.file.Path
+
 object Config {
 
   val env = {
@@ -22,8 +24,8 @@ object Config {
   }
 
   object library {
-    val path = conf.getString("videos.path")
-    val indexPath = conf.getString("videos.index")
+    val path = Path.of(conf.getString("videos.path"))
+    val indexPath = Path.of(conf.getString("videos.index"))
     val max = conf.getInt("videos.max")
   }
 }
