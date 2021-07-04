@@ -18,6 +18,9 @@ object Model {
                    tags: Seq[String]) {
 
     def path(baseDir: Path): Path = baseDir.resolve(fileName)
+    def thumbnailPath(baseDir: Path) = {
+      baseDir.resolve(thumbnail.substring(thumbnail.lastIndexOf('/')+1) )
+    }
   }
 
   case class SearchResult(

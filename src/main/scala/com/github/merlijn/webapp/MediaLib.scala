@@ -3,13 +3,13 @@ package com.github.merlijn.webapp
 import akka.actor.typed.ActorSystem
 import akka.util.Timeout
 import better.files.File
-import com.github.merlijn.webapp.lib.FFMpeg.{Probe, writeThumbnail}
 import com.github.merlijn.webapp.Model._
 import com.github.merlijn.webapp.actor.MediaLibActor
 import com.github.merlijn.webapp.actor.MediaLibActor.{GetById, Query, Search, SetThumbnail}
+import com.github.merlijn.webapp.lib.FFMpeg.Probe
 import com.github.merlijn.webapp.lib.{FFMpeg, FileUtil}
-import io.circe.syntax._
 import io.circe.parser.decode
+import io.circe.syntax._
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.{Consumer, Observable}
@@ -26,7 +26,7 @@ object MediaLib extends Logging {
     val info = FFMpeg.ffprobe(videoPath)
     val timeStamp = info.duration / 3
 
-    val thumbNail = generateThumbnail(videoPath, indexDir, info.id, timeStamp, false)
+    val thumbNail = generateThumbnail(videoPath, indexDir, info.id, timeStamp)
 
     val video = asVideo(baseDir, info, thumbNail)
 
@@ -56,14 +56,16 @@ object MediaLib extends Logging {
     }
   }
 
-  protected def writeIndex(index: File, videos: Seq[Video]): Unit = {
+  def writeIndex(index: File, videos: Seq[Video]): Unit = {
 
-    index.createFile()
+    if (!index.exists)
+      index.createFile()
+
     val json = videos.asJson.toString()
     index.overwrite(json)
   }
 
-  def generateThumbnail(videoPath: Path, outputDir: Path, id: String, timeStamp: Long, overWrite: Boolean): String = {
+  def generateThumbnail(videoPath: Path, outputDir: Path, id: String, timeStamp: Long): String = {
 
     val thumbNail = s"${id}-$timeStamp.jpeg"
     val fullFile = s"${outputDir}/$thumbNail"
@@ -71,8 +73,7 @@ object MediaLib extends Logging {
     FFMpeg.writeThumbnail(
       inputFile = videoPath.toAbsolutePath.toString,
       time = timeStamp,
-      outputFile = Some(fullFile),
-      overWrite)
+      outputFile = Some(fullFile))
 
     thumbNail
   }
@@ -118,7 +119,7 @@ class MediaLib(config: MediaLibConfig) extends Logging {
   if (!indexDir.exists)
     indexDir.createDirectory()
 
-  val videoIndex: List[Video] = {
+  private val videoIndex: List[Video] = {
 
     val indexFile = File(config.indexPath) / "index.json"
 
@@ -147,7 +148,7 @@ class MediaLib(config: MediaLibConfig) extends Logging {
   }
 
   val system: ActorSystem[MediaLibActor.Command] =
-    ActorSystem(MediaLibActor(config, videoIndex, collections), "videos")
+    ActorSystem(MediaLibActor(config, videoIndex.sortBy(_.fileName), collections), "videos")
 
   implicit val scheduler = system.scheduler
   import akka.actor.typed.scaladsl.AskPattern._

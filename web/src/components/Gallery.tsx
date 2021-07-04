@@ -44,19 +44,17 @@ const Gallery = () => {
     }, [location]
   )
 
-
-
   let rows = [...new Array(nrows)].map((e, y) => {
     let cols = [...new Array(ncols)].map((e, x) => {
 
       const idx = (y * ncols) + x;
 
       if (idx <= result.videos.length - 1) {
-        const movie: Video = result.videos[idx];
-        const link: string = "/video/" + movie.id;
-        const duration: number = movie.duration
+        const vid: Video = result.videos[idx];
+        const link: string = "/video/" + vid.id;
+        const duration: number = vid.duration
 
-        return <td className={grid_class}><Thumbnail src={movie.thumbnail} link={link} title={movie.title} duration={duration}/></td>;
+        return <td className={grid_class}><Thumbnail vid={vid} /></td>;
       } else {
         return <td className={grid_class}></td>;
       }

@@ -18,17 +18,28 @@ export async function doGET(path: string) {
   return data;
 }
 
+export async function doPOST(path: string, postData: any) {
+
+  const response = await fetch(path, {
+    method: 'POST',
+    body: JSON.stringify(postData),
+    headers
+  });
+
+  const data = await response.json();
+
+  if (data.error) {
+    throw new Error(data.error);
+  }
+
+  return data;
+}
+
 export async function getVideos() {
   return doGET("/api/videos")
 }
 
-export async function doPOST(path: string, data: any) {
 
-  const response = await fetch(path, {
-    method: 'POST',
-    headers
-  });
-}
 
 export async function setThumbnail(id: String, timeStamp: number) {
 

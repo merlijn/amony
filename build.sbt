@@ -17,6 +17,7 @@ lazy val root = (project in file(".")).
       "com.typesafe.akka"     %% "akka-actor-typed" % AkkaVersion,
       "com.typesafe.akka"     %% "akka-stream" % AkkaVersion,
       "com.typesafe.akka"     %% "akka-http" % AkkaHttpVersion,
+      "de.heikoseeberger"     %% "akka-http-circe" % "1.36.0",
       "com.github.pureconfig" %% "pureconfig" % "0.16.0",
       "io.monix"              %% "monix-reactive" % "3.4.0",
       "io.circe"              %% "circe-core" % "0.14.1",

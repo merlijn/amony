@@ -8,6 +8,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.stream.Materializer
 import better.files.File
 import io.circe.syntax._
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
 import scala.util.{Failure, Success}
 
@@ -17,15 +18,10 @@ trait WebServer extends Logging {
   val mediaLib = new MediaLib(mediaLibConfig)
 
   implicit val system = ActorSystem(Behaviors.empty, "webapp")
-
-  implicit val mater = Materializer.createMaterializer(system)
-
-  // needed for the future flatMap/onComplete in the end
+  implicit val materializer = Materializer.createMaterializer(system)
   implicit val executionContext = system.executionContext
 
   val api =
-
-    {
       pathPrefix("api") {
         (path("videos") & parameters("q".optional, "p".optional, "s".optional, "c".optional)) { (q, p, s, c) =>
           get {
@@ -43,17 +39,15 @@ trait WebServer extends Logging {
             complete(HttpEntity(ContentTypes.`application/json`, mediaLib.collections.asJson.toString))
           }
         } ~ path("thumbnail" / Segment) { id =>
-          (post & entity(as[String])) { entity =>
-              val timeStamp = entity.toLong
+          (post & entity(as[Long])) { timeStamp =>
               logger.info(s"setting thumbnail for $id at $timeStamp")
               mediaLib.setThumbnailAt(id, timeStamp) match {
-                case Some(_) => complete("")
-                case None    => complete(StatusCodes.NotFound)
+                case Some(vid) => complete(vid.asJson)
+                case None      => complete(StatusCodes.NotFound)
               }
           }
         }
       }
-    }
 
   val thumbnails =
     path("files" / "thumbnails" / Segment) { name =>

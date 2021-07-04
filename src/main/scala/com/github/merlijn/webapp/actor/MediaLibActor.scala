@@ -2,11 +2,12 @@ package com.github.merlijn.webapp.actor
 
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
+import better.files.File
 import com.github.merlijn.webapp.MediaLib.generateThumbnail
-import com.github.merlijn.webapp.MediaLibConfig
+import com.github.merlijn.webapp.{Logging, MediaLibConfig}
 import com.github.merlijn.webapp.Model.{Collection, SearchResult, Video}
 
-object MediaLibActor {
+object MediaLibActor extends Logging {
 
   sealed trait Command
 
@@ -59,21 +60,29 @@ object MediaLibActor {
             case None =>
               sender.tell(None)
               Behaviors.same
+
             case Some(vid) =>
               val sanitizedTimeStamp = Math.max(0, Math.min(vid.duration, timeStamp))
-              val newThumbnail = generateThumbnail(config.libraryPath, config.indexPath, id, sanitizedTimeStamp, true)
+              val videoPath = vid.path(config.libraryPath)
+
+              logger.info(s"Old thumb at: ${vid.thumbnailPath(config.indexPath).toAbsolutePath}")
+
+              File(vid.thumbnailPath(config.indexPath)).delete()
+
+              val newThumbnail = generateThumbnail(videoPath, config.indexPath, id, sanitizedTimeStamp)
 
               val newVid = vid.copy(
-                thumbnail = s"/files/thumbnail/$newThumbnail"
+                thumbnail = s"/files/thumbnails/$newThumbnail"
               )
 
               sender.tell(Some(newVid))
 
-              MediaLibActor(config, newVid :: media.filter(_.id != id), collections)
+              // replace vid
+              val idx = media.indexWhere(_.id == id)
+              val newMedia = media.slice(0, idx) ::: (newVid :: media.slice(idx + 1, media.size))
 
+              MediaLibActor(config, newMedia, collections)
           }
-
-
       }
   }
 }
