@@ -44,13 +44,9 @@ object MediaLibActor extends Logging {
           val start = (query.page - 1) * query.size
           val end = Math.min(result.size, query.page * query.size)
 
-          val videos = if (start > result.size) {
-            List.empty
-          } else {
-            result.slice(start, end)
-          }
+          val videos = if (start > result.size) Nil else result.slice(start, end)
 
-          sender.tell(SearchResult(query.page, query.size, result.size, videos.toSeq))
+          sender.tell(SearchResult(query.page, query.size, result.size, videos))
 
           Behaviors.same
 
@@ -64,8 +60,6 @@ object MediaLibActor extends Logging {
             case Some(vid) =>
               val sanitizedTimeStamp = Math.max(0, Math.min(vid.duration, timeStamp))
               val videoPath = vid.path(config.libraryPath)
-
-              logger.info(s"Old thumb at: ${vid.thumbnailPath(config.indexPath).toAbsolutePath}")
 
               File(vid.thumbnailPath(config.indexPath)).delete()
 

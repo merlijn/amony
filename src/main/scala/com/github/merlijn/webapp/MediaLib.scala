@@ -27,7 +27,6 @@ object MediaLib extends Logging {
     val timeStamp = info.duration / 3
 
     val thumbNail = generateThumbnail(videoPath, indexDir, info.id, timeStamp)
-
     val video = asVideo(baseDir, info, thumbNail)
 
     video
@@ -150,8 +149,8 @@ class MediaLib(config: MediaLibConfig) extends Logging {
   val system: ActorSystem[MediaLibActor.Command] =
     ActorSystem(MediaLibActor(config, videoIndex.sortBy(_.fileName), collections), "videos")
 
-  implicit val scheduler = system.scheduler
   import akka.actor.typed.scaladsl.AskPattern._
+  implicit val scheduler = system.scheduler
   implicit val timeout: Timeout = 3.seconds
 
   def search(q: Option[String], page: Int, size: Int, c: Option[Int]): SearchResult = {

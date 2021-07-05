@@ -1,0 +1,111 @@
+// generated from https://www.cssportal.com/style-input-range/
+
+$trackRadius: 50px;
+$thumbSize: 14px;
+$thumbColor: #4F95FF;
+$trackColor: #E3E3E3;
+$trackHeight: 4px;
+
+input[type=range] {
+
+    height: 25px;
+    -webkit-appearance: none;
+    background: transparent;
+    margin: 0px;
+    width: 100%;
+
+    &:focus {
+      outline: none;
+
+        &::-webkit-slider-runnable-track {
+            background: $trackColor;
+        }
+
+        &::-ms-fill-lower {
+            background: $trackColor;
+        }
+
+        &::-ms-fill-upper {
+            background: $trackColor;
+        }
+    }
+
+    &::-webkit-slider-runnable-track {
+        width: 100%;
+        height: $trackHeight;
+        cursor: pointer;
+        animate: 0.2s;
+        box-shadow: 0px 0px 0px #000000;
+        background: $trackColor;
+        border-radius: $trackRadius;
+        border: 0px solid #000000;
+    }
+
+    &::-webkit-slider-thumb {
+        box-shadow: 0px 0px 0px #000000;
+        border: 1px solid #2497E3;
+        height: $thumbSize;
+        width: $thumbSize;
+        border-radius: 25px;
+        background: $thumbColor;
+        cursor: pointer;
+        -webkit-appearance: none;
+        margin-top: -$thumbSize / 2 + ($trackHeight - 1) / 2
+    }
+
+    &::-moz-range-track {
+        width: 100%;
+        height: $trackHeight;
+        cursor: pointer;
+        animate: 0.2s;
+        box-shadow: 0px 0px 0px #000000;
+        background: $trackColor;
+        border-radius: $trackRadius;
+        border: 0px solid #000000;
+    }
+
+    &::-moz-range-thumb {
+        box-shadow: 0px 0px 0px #000000;
+        border: 1px solid #2497E3;
+        height: $thumbSize;
+        width: $thumbSize;
+        border-radius: 25px;
+        background: $thumbColor;
+        cursor: pointer;
+    }
+
+    &::-ms-track {
+        width: 100%;
+        height: $trackHeight;
+        cursor: pointer;
+        animate: 0.2s;
+        background: transparent;
+        border-color: transparent;
+        color: transparent;
+    }
+
+    &::-ms-fill-lower {
+        background: $trackColor;
+        border: 0px solid #000000;
+        border-radius: 100px;
+        box-shadow: 0px 0px 0px #000000;
+    }
+
+    &::-ms-fill-upper {
+        background: $trackColor;
+        border: 0px solid #000000;
+        border-radius: 100px;
+        box-shadow: 0px 0px 0px #000000;
+    }
+
+    &::-ms-thumb {
+        margin-top: 1px;
+        box-shadow: 0px 0px 0px #000000;
+        border: 1px solid #2497E3;
+        height: $thumbSize;
+        width: $thumbSize;
+        border-radius: 25px;
+        background: $thumbColor;
+        cursor: pointer;
+    }
+}

@@ -73,12 +73,11 @@ trait WebServer extends Logging {
        }
 
         val targetFile = {
-
           val maybe = (File(Config.http.clientPath) / filePath)
           if (maybe.exists)
             maybe
           else
-            (File(Config.http.clientPath) / "index.html")
+            File(Config.http.clientPath) / "index.html"
         }
 
         logger.info(s"target: ${targetFile.path.toAbsolutePath.toString}")

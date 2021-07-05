@@ -3,11 +3,11 @@ package com.github.merlijn.webapp.lib
 import com.github.merlijn.webapp.Logging
 
 import java.io.IOException
-import java.nio.file.{FileVisitResult, FileVisitor, Path}
 import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.{FileVisitResult, Path, SimpleFileVisitor}
 import scala.collection.mutable
 
-class RecursiveFileVisitor extends FileVisitor[Path] with Logging {
+class RecursiveFileVisitor extends SimpleFileVisitor[Path] with Logging {
 
   private val files = mutable.ListBuffer.empty[Path]
 
@@ -23,17 +23,13 @@ class RecursiveFileVisitor extends FileVisitor[Path] with Logging {
   }
 
   @throws[IOException]
-  override def postVisitDirectory(dir: Path, exc: IOException) = FileVisitResult.CONTINUE
-
-  @throws[IOException]
   override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
     files.addOne(file)
     FileVisitResult.CONTINUE
   }
 
   @throws[IOException]
-  override def visitFileFailed(file: Path, exc: IOException): FileVisitResult = { // This is important to note. Test this behaviour
-
+  override def visitFileFailed(file: Path, exc: IOException): FileVisitResult = {
     logger.warn(s"Failed to visit file: $file")
     FileVisitResult.CONTINUE
   }

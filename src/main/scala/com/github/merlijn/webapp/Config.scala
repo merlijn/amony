@@ -4,7 +4,7 @@ import com.typesafe.config.ConfigFactory
 
 import java.nio.file.Path
 
-object Config {
+object Config extends Logging {
 
   val env = {
     if (System.getenv().containsKey("ENV"))

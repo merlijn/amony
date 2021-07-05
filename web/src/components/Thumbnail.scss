@@ -1,4 +1,5 @@
 @import '../App.scss';
+@import '../css/slider.scss';
 
 .gallery .thumbnail-container img.thumbnail {
   object-fit: cover;
@@ -44,7 +45,17 @@
 .bottom-right {
   position: absolute;
   bottom: 8px;
-  right: 16px;
+  right: 8px;
+}
+
+.thumbnail-picker {
+  width: 100%;
+  position: absolute;
+  bottom: 0px;
+}
+
+.thumbnail-picker > * {
+  margin: 0px 10px ! important;
 }
 
 .top-right {
@@ -56,11 +67,23 @@
 .bottom-left {
   position: absolute;
   bottom: 8px;
-  left: 16px;
+  left: 8px;
+}
+
+.duration-overlay {
+  padding: 0px 5px;
+  color: white;
+  background-color: black;
+  font-size: small;
+}
+
+.title-overlay {
+  color: #fff;
+  text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
+  font-size: small;
 }
 
 .menu-icon {
-  background-color: white;
   width: 20px;
   height: 20px;
 }
