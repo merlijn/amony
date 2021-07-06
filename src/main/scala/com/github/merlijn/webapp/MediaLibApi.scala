@@ -5,7 +5,7 @@ import akka.util.Timeout
 import better.files.File
 import com.github.merlijn.webapp.Model._
 import com.github.merlijn.webapp.actor.MediaLibActor
-import com.github.merlijn.webapp.actor.MediaLibActor.{GetById, Query, Search, SetThumbnail}
+import com.github.merlijn.webapp.actor.MediaLibActor.{AddCollections, AddMedia, GetById, Query, Search, SetThumbnail}
 import com.github.merlijn.webapp.lib.FFMpeg.Probe
 import com.github.merlijn.webapp.lib.{FFMpeg, FileUtil}
 import io.circe.parser.decode
@@ -15,10 +15,10 @@ import monix.execution.Scheduler
 import monix.reactive.{Consumer, Observable}
 
 import java.nio.file.Path
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.DurationInt
 
-object MediaLib extends Logging {
+object MediaLibApi extends Logging {
 
   def scanVideo(baseDir: Path, videoPath: Path, indexDir: Path): Video = {
     logger.info(s"Processing: ${videoPath.toAbsolutePath}")
@@ -32,7 +32,7 @@ object MediaLib extends Logging {
     video
   }
 
-  def scanParallel(scanPath: Path, indexPath: Path, parallelFactor: Int, max: Int, extensions: List[String] = List("mp4", "webm"))(implicit s: Scheduler): List[Video] = {
+  def scanPath(scanPath: Path, indexPath: Path, parallelFactor: Int, max: Int, extensions: List[String] = List("mp4", "webm"))(implicit s: Scheduler): List[Video] = {
 
     val obs = Observable.from(FileUtil.walkDir(scanPath).take(max))
       .filter { vid =>
@@ -46,7 +46,7 @@ object MediaLib extends Logging {
     obs.consumeWith(c).runSyncUnsafe()
   }
 
-  protected def readIndex(file: File): List[Video] = {
+  protected def readIndexFromFile(file: File): List[Video] = {
     val json = file.contentAsString
 
     decode[List[Video]](json) match {
@@ -55,7 +55,7 @@ object MediaLib extends Logging {
     }
   }
 
-  def writeIndex(index: File, videos: Seq[Video]): Unit = {
+  def exportIndexToFile(index: File, videos: Seq[Video]): Unit = {
 
     if (!index.exists)
       index.createFile()
@@ -107,9 +107,9 @@ case class MediaLibConfig(
   scanParallelFactor: Int
 )
 
-class MediaLib(config: MediaLibConfig) extends Logging {
+class MediaLibApi(config: MediaLibConfig) extends Logging {
 
-  import MediaLib._
+  import MediaLibApi._
 
   val libraryDir = File(config.libraryPath)
 
@@ -120,16 +120,9 @@ class MediaLib(config: MediaLibConfig) extends Logging {
 
   private val videoIndex: List[Video] = {
 
-    val indexFile = File(config.indexPath) / "index.json"
-
-    if (!indexFile.exists) {
-      implicit val s = Scheduler.global
-      val scanResult = scanParallel(libraryDir.path, config.indexPath, config.scanParallelFactor, Config.library.max)
-      writeIndex(indexFile, scanResult)
-      scanResult
-    } else {
-      readIndex(indexFile)
-    }
+    implicit val s = Scheduler.global
+    val scanResult = scanPath(libraryDir.path, config.indexPath, config.scanParallelFactor, Config.library.max)
+    scanResult
   }
 
   val collections: List[Collection] = {
@@ -147,30 +140,28 @@ class MediaLib(config: MediaLibConfig) extends Logging {
   }
 
   val system: ActorSystem[MediaLibActor.Command] =
-    ActorSystem(MediaLibActor(config, videoIndex.sortBy(_.fileName), collections), "videos")
+    ActorSystem(MediaLibActor(config), "mediaLibrary", Config.conf)
+
+  system.tell(AddMedia(videoIndex.sortBy(_.fileName)))
+  system.tell(AddCollections(collections))
 
   import akka.actor.typed.scaladsl.AskPattern._
   implicit val scheduler = system.scheduler
   implicit val timeout: Timeout = 3.seconds
 
-  def search(q: Option[String], page: Int, size: Int, c: Option[Int]): SearchResult = {
+  def search(q: Option[String], page: Int, size: Int, c: Option[Int]): Future[SearchResult] = {
 
-    val result = system.ask[SearchResult](ref => Search(Query(q, page, size, c), ref))
-
-    Await.result(result, timeout.duration)
+    system.ask[SearchResult](ref => Search(Query(q, page, size, c), ref))
   }
 
   def getById(id: String): Option[Video] = {
 
     val result = system.ask[Option[Video]](ref => GetById(id, ref))
-
     Await.result(result, timeout.duration)
   }
 
-  def setThumbnailAt(id: String, timestamp: Long): Option[Video] = {
+  def setThumbnailAt(id: String, timestamp: Long): Future[Option[Video]] = {
 
-    val result = system.ask[Option[Video]](ref => SetThumbnail(id, timestamp, ref))
-
-    Await.result(result, timeout.duration)
+    system.ask[Option[Video]](ref => SetThumbnail(id, timestamp, ref))
   }
 }

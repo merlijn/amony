@@ -5,6 +5,7 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.{RejectionHandler, ValidationRejection}
 import akka.stream.Materializer
 import better.files.File
 import io.circe.syntax._
@@ -15,11 +16,16 @@ import scala.util.{Failure, Success}
 trait WebServer extends Logging {
 
   val mediaLibConfig = MediaLibConfig(Config.library.path, Config.library.indexPath, 4)
-  val mediaLib = new MediaLib(mediaLibConfig)
+  val mediaLib = new MediaLibApi(mediaLibConfig)
 
   implicit val system = ActorSystem(Behaviors.empty, "webapp")
   implicit val materializer = Materializer.createMaterializer(system)
   implicit val executionContext = system.executionContext
+
+  val rejectionHandler = RejectionHandler.newBuilder()
+    .handleNotFound { complete(StatusCodes.NotFound, """{"statusCode" : 404 }""") }
+    .handle { case ValidationRejection(msg, _) => complete(StatusCodes.InternalServerError, msg) }
+    .result()
 
   val api =
       pathPrefix("api") {
@@ -29,19 +35,19 @@ trait WebServer extends Logging {
             val size = s.map(_.toInt).getOrElse(24)
             val page = p.map(_.toInt).getOrElse(1)
 
-            val response = mediaLib.search(q, page, size, c.map(_.toInt))
+            val response = mediaLib.search(q, page, size, c.map(_.toInt)).map(_.asJson)
 
-            complete(HttpEntity(ContentTypes.`application/json`, response.asJson.toString))
+            complete(response)
           }
         } ~ path("collections") {
-
           get {
-            complete(HttpEntity(ContentTypes.`application/json`, mediaLib.collections.asJson.toString))
+            complete(mediaLib.collections.asJson)
           }
         } ~ path("thumbnail" / Segment) { id =>
           (post & entity(as[Long])) { timeStamp =>
               logger.info(s"setting thumbnail for $id at $timeStamp")
-              mediaLib.setThumbnailAt(id, timeStamp) match {
+
+              onSuccess(mediaLib.setThumbnailAt(id, timeStamp)) {
                 case Some(vid) => complete(vid.asJson)
                 case None      => complete(StatusCodes.NotFound)
               }
