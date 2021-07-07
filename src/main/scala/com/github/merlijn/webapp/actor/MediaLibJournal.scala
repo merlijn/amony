@@ -1,15 +1,19 @@
 package com.github.merlijn.webapp.actor
 
 import com.github.merlijn.webapp.Model.{Collection, Video}
+import com.github.merlijn.webapp.actor.Events._
 import com.github.merlijn.webapp.actor.MediaLibActor.State
 
-object MediaLibJournal {
+object Events {
 
   sealed trait Event extends JsonSerializable
 
   case class MediaAdded(media: List[Video]) extends Event
   case class CollectionsAdded(collections: List[Collection]) extends Event
   case class ReplaceVid(id: String, v: Video) extends Event
+}
+
+object MediaLibJournal extends ((State, Event) => State) {
 
   def apply(state: State, event: Event): State = event match {
 

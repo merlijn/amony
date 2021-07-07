@@ -5,8 +5,8 @@ import better.files.File
 import com.github.merlijn.webapp.MediaLibApi.generateThumbnail
 import com.github.merlijn.webapp.MediaLibConfig
 import com.github.merlijn.webapp.Model.SearchResult
+import com.github.merlijn.webapp.actor.Events._
 import com.github.merlijn.webapp.actor.MediaLibActor._
-import com.github.merlijn.webapp.actor.MediaLibJournal._
 
 object MediaLibHandler {
 

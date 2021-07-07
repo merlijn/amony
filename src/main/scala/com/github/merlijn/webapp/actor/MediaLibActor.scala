@@ -5,10 +5,9 @@ import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
 import com.github.merlijn.webapp.MediaLibConfig
 import com.github.merlijn.webapp.Model.{Collection, SearchResult, Video}
-import com.github.merlijn.webapp.actor.MediaLibJournal.Event
-import scribe.Logging
+import com.github.merlijn.webapp.actor.Events.Event
 
-object MediaLibActor extends Logging {
+object MediaLibActor {
 
   sealed trait Command
 
@@ -27,6 +26,6 @@ object MediaLibActor extends Logging {
     EventSourcedBehavior[Command, Event, State](
       persistenceId = PersistenceId.ofUniqueId("mediaLib"),
       emptyState = State(Nil, Nil),
-      commandHandler = MediaLibHandler.apply(config),
-      eventHandler = MediaLibJournal.apply)
+      commandHandler = MediaLibHandler(config),
+      eventHandler = MediaLibJournal)
 }
