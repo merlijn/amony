@@ -1,4 +1,4 @@
-package com.github.merlijn.webapp
+package com.github.merlijn.kagera
 
 import io.circe._
 import io.circe.generic.semiauto._

@@ -1,4 +1,4 @@
-package com.github.merlijn.webapp
+package com.github.merlijn.kagera
 
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors

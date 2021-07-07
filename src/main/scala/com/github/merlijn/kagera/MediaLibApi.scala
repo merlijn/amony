@@ -1,15 +1,15 @@
-package com.github.merlijn.webapp
+package com.github.merlijn.kagera
 
 import akka.actor.typed.ActorSystem
 import akka.persistence.query.PersistenceQuery
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.util.Timeout
 import better.files.File
-import com.github.merlijn.webapp.Model._
-import com.github.merlijn.webapp.actor.MediaLibActor
-import com.github.merlijn.webapp.actor.MediaLibActor.{AddCollections, AddMedia, GetById, Query, Search, SetThumbnail}
-import com.github.merlijn.webapp.lib.FFMpeg.Probe
-import com.github.merlijn.webapp.lib.{FFMpeg, FileUtil}
+import com.github.merlijn.kagera.Model._
+import com.github.merlijn.kagera.actor.MediaLibActor
+import com.github.merlijn.kagera.actor.MediaLibActor.{AddCollections, AddMedia, GetById, Query, Search, SetThumbnail}
+import com.github.merlijn.kagera.lib.FFMpeg.Probe
+import com.github.merlijn.kagera.lib.{FFMpeg, FileUtil}
 import io.circe.parser.decode
 import io.circe.syntax._
 import monix.eval.Task

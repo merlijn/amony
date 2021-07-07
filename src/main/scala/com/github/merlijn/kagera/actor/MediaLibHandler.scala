@@ -1,12 +1,12 @@
-package com.github.merlijn.webapp.actor
+package com.github.merlijn.kagera.actor
 
 import akka.persistence.typed.scaladsl.Effect
 import better.files.File
-import com.github.merlijn.webapp.MediaLibApi.generateThumbnail
-import com.github.merlijn.webapp.MediaLibConfig
-import com.github.merlijn.webapp.Model.SearchResult
-import com.github.merlijn.webapp.actor.Events._
-import com.github.merlijn.webapp.actor.MediaLibActor._
+import com.github.merlijn.kagera.MediaLibApi.generateThumbnail
+import com.github.merlijn.kagera.MediaLibConfig
+import com.github.merlijn.kagera.Model.SearchResult
+import com.github.merlijn.kagera.actor.Events._
+import com.github.merlijn.kagera.actor.MediaLibActor._
 
 object MediaLibHandler {
 

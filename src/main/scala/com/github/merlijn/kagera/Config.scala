@@ -1,4 +1,4 @@
-package com.github.merlijn.webapp
+package com.github.merlijn.kagera
 
 import com.typesafe.config.ConfigFactory
 import scribe.Logging

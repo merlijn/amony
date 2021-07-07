@@ -1,4 +1,4 @@
-package com.github.merlijn.webapp.lib
+package com.github.merlijn.kagera.lib
 
 import scribe.Logging
 

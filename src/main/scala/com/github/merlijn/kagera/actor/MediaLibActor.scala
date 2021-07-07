@@ -1,11 +1,11 @@
-package com.github.merlijn.webapp.actor
+package com.github.merlijn.kagera.actor
 
 import akka.actor.typed.ActorRef
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
-import com.github.merlijn.webapp.MediaLibConfig
-import com.github.merlijn.webapp.Model.{Collection, SearchResult, Video}
-import com.github.merlijn.webapp.actor.Events.Event
+import com.github.merlijn.kagera.MediaLibConfig
+import com.github.merlijn.kagera.Model.{Collection, SearchResult, Video}
+import com.github.merlijn.kagera.actor.Events.Event
 
 object MediaLibActor {
 

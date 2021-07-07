@@ -1,8 +1,8 @@
-package com.github.merlijn.webapp.actor
+package com.github.merlijn.kagera.actor
 
-import com.github.merlijn.webapp.Model.{Collection, Video}
-import com.github.merlijn.webapp.actor.Events._
-import com.github.merlijn.webapp.actor.MediaLibActor.State
+import com.github.merlijn.kagera.Model.{Collection, Video}
+import com.github.merlijn.kagera.actor.Events._
+import com.github.merlijn.kagera.actor.MediaLibActor.State
 
 object Events {
 

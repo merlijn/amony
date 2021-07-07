@@ -1,4 +1,4 @@
-package com.github.merlijn.webapp
+package com.github.merlijn.kagera
 
 
 object Main extends App with WebServer {
