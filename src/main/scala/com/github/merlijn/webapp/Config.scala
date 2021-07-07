@@ -1,6 +1,7 @@
 package com.github.merlijn.webapp
 
 import com.typesafe.config.ConfigFactory
+import scribe.Logging
 
 import java.nio.file.Path
 

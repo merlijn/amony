@@ -1,6 +1,8 @@
 package com.github.merlijn.webapp
 
 import akka.actor.typed.ActorSystem
+import akka.persistence.query.PersistenceQuery
+import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.util.Timeout
 import better.files.File
 import com.github.merlijn.webapp.Model._
@@ -13,6 +15,7 @@ import io.circe.syntax._
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.{Consumer, Observable}
+import scribe.Logging
 
 import java.nio.file.Path
 import scala.concurrent.{Await, Future}
@@ -148,6 +151,8 @@ class MediaLibApi(config: MediaLibConfig) extends Logging {
   import akka.actor.typed.scaladsl.AskPattern._
   implicit val scheduler = system.scheduler
   implicit val timeout: Timeout = 3.seconds
+
+  val queries = PersistenceQuery(system).readJournalFor[LeveldbReadJournal](LeveldbReadJournal.Identifier)
 
   def search(q: Option[String], page: Int, size: Int, c: Option[Int]): Future[SearchResult] = {
 

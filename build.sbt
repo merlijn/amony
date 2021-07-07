@@ -12,12 +12,14 @@ lazy val root = (project in file(".")).
     libraryDependencies ++= Seq(
 
       "org.slf4j"             %  "slf4j-api"                % "1.7.30",
-      "org.slf4j"             %  "slf4j-simple" % "1.7.30",
       "com.typesafe"          %  "config"                   % "1.4.1",
       "com.typesafe.akka"     %% "akka-actor-typed" % AkkaVersion,
       "com.typesafe.akka"     %% "akka-stream" % AkkaVersion,
       "com.typesafe.akka"     %% "akka-http" % AkkaHttpVersion,
       "com.typesafe.akka"     %% "akka-persistence-typed" % AkkaVersion,
+      "com.typesafe.akka"     %% "akka-persistence-query" % AkkaVersion,
+      "com.typesafe.akka"     %% "akka-serialization-jackson" % AkkaVersion,
+      "com.outr"              %% "scribe-slf4j"             % "3.5.5",
       "org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8",
       "org.iq80.leveldb"       % "leveldb" % "0.12",
       "de.heikoseeberger"     %% "akka-http-circe" % "1.36.0",

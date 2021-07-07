@@ -1,6 +1,6 @@
 package com.github.merlijn.webapp.lib
 
-import com.github.merlijn.webapp.Logging
+import scribe.Logging
 
 import java.io.IOException
 import java.nio.file.attribute.BasicFileAttributes

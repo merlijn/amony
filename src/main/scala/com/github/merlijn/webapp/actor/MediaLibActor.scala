@@ -3,8 +3,10 @@ package com.github.merlijn.webapp.actor
 import akka.actor.typed.ActorRef
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
+import com.github.merlijn.webapp.MediaLibConfig
 import com.github.merlijn.webapp.Model.{Collection, SearchResult, Video}
-import com.github.merlijn.webapp.{Logging, MediaLibConfig}
+import com.github.merlijn.webapp.actor.MediaLibJournal.Event
+import scribe.Logging
 
 object MediaLibActor extends Logging {
 

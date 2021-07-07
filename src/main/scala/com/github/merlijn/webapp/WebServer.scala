@@ -2,14 +2,17 @@ package com.github.merlijn.webapp
 
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
+import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.directives.DebuggingDirectives
 import akka.http.scaladsl.server.{RejectionHandler, ValidationRejection}
 import akka.stream.Materializer
 import better.files.File
 import io.circe.syntax._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import scribe.Logging
 
 import scala.util.{Failure, Success}
 
@@ -99,6 +102,9 @@ trait WebServer extends Logging {
       apiRoutes ~ clientFiles
     else
       apiRoutes
+
+//  val loggedRoutes =
+//    DebuggingDirectives.logRequest("Webapp", Logging.InfoLevel)(routes)
 
   val bindingFuture =
     Http().newServerAt(Config.http.hostname, Config.http.port).bind(routes)

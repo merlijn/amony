@@ -1,13 +1,13 @@
 package com.github.merlijn.webapp.lib
 
 import better.files.File
-import com.github.merlijn.webapp.lib.FFMpeg.logger
+import scribe.Logging
 
 import java.nio.file.Path
 import java.util.Base64
 import scala.util.Random
 
-object FileUtil {
+object FileUtil extends Logging {
 
   def walkDir(dir: Path): Iterable[Path] = {
     import java.nio.file.Files

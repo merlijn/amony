@@ -1,7 +1,7 @@
 package com.github.merlijn.webapp.lib
 
 import better.files.File
-import com.github.merlijn.webapp.Logging
+import scribe.Logging
 
 import java.nio.file.Path
 import java.time.Duration
