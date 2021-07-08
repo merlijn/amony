@@ -3,9 +3,9 @@ package com.github.merlijn.kagera.actor
 import akka.actor.typed.ActorRef
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
-import com.github.merlijn.kagera.MediaLibConfig
-import com.github.merlijn.kagera.Model.{Collection, SearchResult, Video}
-import com.github.merlijn.kagera.actor.Events.Event
+import com.github.merlijn.kagera.http.Model.{Collection, SearchResult, Video}
+import com.github.merlijn.kagera.actor.MediaLibEventSourcing.Event
+import com.github.merlijn.kagera.lib.MediaLibConfig
 
 object MediaLibActor {
 
@@ -14,6 +14,7 @@ object MediaLibActor {
   case class AddMedia(media: List[Video]) extends Command
   case class AddCollections(collections: List[Collection]) extends Command
   case class GetById(id: String, sender: ActorRef[Option[Video]]) extends Command
+  case class GetCollections(sender: ActorRef[List[Collection]]) extends Command
 
   case class Query(q: Option[String], page: Int, size: Int, c: Option[Int])
   case class Search(query: Query, sender: ActorRef[SearchResult]) extends Command
@@ -26,6 +27,6 @@ object MediaLibActor {
     EventSourcedBehavior[Command, Event, State](
       persistenceId = PersistenceId.ofUniqueId("mediaLib"),
       emptyState = State(Nil, Nil),
-      commandHandler = MediaLibHandler(config),
-      eventHandler = MediaLibJournal)
+      commandHandler = MediaLibCommandHandler.apply(config),
+      eventHandler = MediaLibEventSourcing.apply)
 }

@@ -1,19 +1,15 @@
 package com.github.merlijn.kagera.actor
 
-import com.github.merlijn.kagera.Model.{Collection, Video}
-import com.github.merlijn.kagera.actor.Events._
+import com.github.merlijn.kagera.http.Model.{Collection, Video}
 import com.github.merlijn.kagera.actor.MediaLibActor.State
 
-object Events {
+object MediaLibEventSourcing {
 
   sealed trait Event extends JsonSerializable
 
   case class MediaAdded(media: List[Video]) extends Event
   case class CollectionsAdded(collections: List[Collection]) extends Event
   case class ReplaceVid(id: String, v: Video) extends Event
-}
-
-object MediaLibJournal extends ((State, Event) => State) {
 
   def apply(state: State, event: Event): State = event match {
 

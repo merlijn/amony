@@ -1,29 +1,27 @@
-package com.github.merlijn.kagera
+package com.github.merlijn.kagera.http
 
 import akka.actor.typed.ActorSystem
-import akka.actor.typed.scaladsl.Behaviors
-import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.directives.DebuggingDirectives
 import akka.http.scaladsl.server.{RejectionHandler, ValidationRejection}
 import akka.stream.Materializer
 import better.files.File
-import io.circe.syntax._
+import com.github.merlijn.kagera.actor.MediaLibApi
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import io.circe.syntax._
 import scribe.Logging
 
+import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
-trait WebServer extends Logging {
+case class WebServerConfig(port: Int, hostName: String, hostClient: Boolean, clientPath: String)
 
-  val mediaLibConfig = MediaLibConfig(Config.library.path, Config.library.indexPath, 4)
-  val mediaLib = new MediaLibApi(mediaLibConfig)
+class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(implicit val system: ActorSystem[Nothing] )
+  extends Logging with JsonCodecs {
 
-  implicit val system = ActorSystem(Behaviors.empty, "webapp")
-  implicit val materializer = Materializer.createMaterializer(system)
-  implicit val executionContext = system.executionContext
+  implicit def materializer: Materializer = Materializer.createMaterializer(system)
+  implicit def executionContext: ExecutionContext = system.executionContext
 
   val rejectionHandler = RejectionHandler.newBuilder()
     .handleNotFound { complete(StatusCodes.NotFound, """{"statusCode" : 404 }""") }
@@ -38,19 +36,19 @@ trait WebServer extends Logging {
             val size = s.map(_.toInt).getOrElse(24)
             val page = p.map(_.toInt).getOrElse(1)
 
-            val response = mediaLib.search(q, page, size, c.map(_.toInt)).map(_.asJson)
+            val response = mediaLibApi.search(q, page, size, c.map(_.toInt)).map(_.asJson)
 
             complete(response)
           }
         } ~ path("collections") {
           get {
-            complete(mediaLib.collections.asJson)
+            complete(mediaLibApi.getCollections().map(_.asJson))
           }
         } ~ path("thumbnail" / Segment) { id =>
           (post & entity(as[Long])) { timeStamp =>
               logger.info(s"setting thumbnail for $id at $timeStamp")
 
-              onSuccess(mediaLib.setThumbnailAt(id, timeStamp)) {
+              onSuccess(mediaLibApi.setThumbnailAt(id, timeStamp)) {
                 case Some(vid) => complete(vid.asJson)
                 case None      => complete(StatusCodes.NotFound)
               }
@@ -59,15 +57,15 @@ trait WebServer extends Logging {
       }
 
   val thumbnails =
-    path("files" / "thumbnails" / Segment) { name =>
-      getFromFile(s"${Config.library.indexPath}/$name")
+    path("files" / "thumbnails" / Segment) { id =>
+      getFromFile(mediaLibApi.getThumbnailPathForMedia(id))
     }
 
   val videos = path("files" / "videos" / Segment) { id =>
 
-    mediaLib.getById(id) match {
+    mediaLibApi.getById(id) match {
         case None       => complete(StatusCodes.NotFound, "")
-        case Some(info) => getFromFile((mediaLib.libraryDir / info.fileName).path.toAbsolutePath.toString)
+        case Some(info) => getFromFile(mediaLibApi.getFilePathForMedia(info))
       }
     }
 
@@ -82,11 +80,11 @@ trait WebServer extends Logging {
        }
 
         val targetFile = {
-          val maybe = (File(Config.http.clientPath) / filePath)
+          val maybe = (File(config.clientPath) / filePath)
           if (maybe.exists)
             maybe
           else
-            File(Config.http.clientPath) / "index.html"
+            File(config.clientPath) / "index.html"
         }
 
         getFromFile(targetFile.path.toAbsolutePath.toString)
@@ -96,7 +94,7 @@ trait WebServer extends Logging {
   val apiRoutes = api ~ thumbnails ~ videos
 
   val routes =
-    if (Config.http.hostClient)
+    if (config.hostClient)
       apiRoutes ~ clientFiles
     else
       apiRoutes
@@ -104,15 +102,18 @@ trait WebServer extends Logging {
 //  val loggedRoutes =
 //    DebuggingDirectives.logRequest("Webapp", Logging.InfoLevel)(routes)
 
-  val bindingFuture =
-    Http().newServerAt(Config.http.hostname, Config.http.port).bind(routes)
+  def run(): Unit = {
 
-  bindingFuture.onComplete {
-    case Success(binding) =>
-      val address = binding.localAddress
-      system.log.info("Server online at http://{}:{}/", address.getHostString, address.getPort)
-    case Failure(ex) =>
-      system.log.error("Failed to bind HTTP endpoint, terminating system", ex)
-      system.terminate()
+    val bindingFuture =
+      Http().newServerAt(config.hostName, config.port).bind(routes)
+
+    bindingFuture.onComplete {
+      case Success(binding) =>
+        val address = binding.localAddress
+        system.log.info("Server online at http://{}:{}/", address.getHostString, address.getPort)
+      case Failure(ex) =>
+        system.log.error("Failed to bind HTTP endpoint, terminating system", ex)
+        system.terminate()
+    }
   }
 }

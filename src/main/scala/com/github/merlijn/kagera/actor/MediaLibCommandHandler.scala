@@ -2,13 +2,13 @@ package com.github.merlijn.kagera.actor
 
 import akka.persistence.typed.scaladsl.Effect
 import better.files.File
-import com.github.merlijn.kagera.MediaLibApi.generateThumbnail
-import com.github.merlijn.kagera.MediaLibConfig
-import com.github.merlijn.kagera.Model.SearchResult
-import com.github.merlijn.kagera.actor.Events._
+import com.github.merlijn.kagera.lib.MediaLibScanner.generateThumbnail
+import com.github.merlijn.kagera.http.Model.SearchResult
+import com.github.merlijn.kagera.actor.MediaLibEventSourcing._
 import com.github.merlijn.kagera.actor.MediaLibActor._
+import com.github.merlijn.kagera.lib.MediaLibConfig
 
-object MediaLibHandler {
+object MediaLibCommandHandler {
 
   def apply(config: MediaLibConfig)(state: State, cmd: Command): Effect[Event, State] =
 
@@ -22,6 +22,9 @@ object MediaLibHandler {
 
       case GetById(id, sender) =>
         Effect.reply(sender)(state.media.find(_.id == id))
+
+      case GetCollections(sender) =>
+        Effect.reply(sender)(state.collections)
 
       case Search(query, sender) =>
         val col = query.c match {
