@@ -25,6 +25,9 @@ object MediaLibCommandHandler {
       case GetCollections(sender) =>
         Effect.reply(sender)(state.collections)
 
+      case GetAll(sender) =>
+        Effect.reply(sender)(state.media)
+
       case Search(query, sender) =>
         val col = query.c match {
           case None => state.media

@@ -23,7 +23,7 @@ case class MediaLibConfig(
 object MediaLibScanner extends Logging with JsonCodecs {
 
   def scanVideo(baseDir: Path, videoPath: Path, indexDir: Path): Video = {
-    logger.info(s"Processing: ${videoPath.toAbsolutePath}")
+    logger.info(s"Scanning file: ${videoPath.toAbsolutePath}")
 
     val info      = FFMpeg.ffprobe(videoPath)
     val timeStamp = info.duration / 3
@@ -39,6 +39,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       indexPath: Path,
       parallelFactor: Int,
       max: Option[Int],
+      last: List[Video],
       extensions: List[String] = List("mp4", "webm")
   )(implicit s: Scheduler): List[Video] = {
 
@@ -54,6 +55,16 @@ object MediaLibScanner extends Logging with JsonCodecs {
       .filter { vid =>
         val fileName = vid.getFileName.toString
         extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
+      }
+      .filter { vid =>
+
+        val relativePath = scanPath.relativize(vid).toString
+        val alreadyIndexed = last.exists(_.fileName == relativePath)
+
+        if (alreadyIndexed)
+          logger.info(s"Skipping already indexed: ${relativePath}")
+
+        !alreadyIndexed
       }
       .mapParallelUnordered(parallelFactor) { p => Task { scanVideo(scanPath, p, indexPath) } }
 
@@ -117,7 +128,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     )
   }
 
-  def scan(config: MediaLibConfig): (List[Video], List[Collection]) = {
+  def scan(config: MediaLibConfig, last: List[Video]): (List[Video], List[Collection]) = {
 
     val libraryDir = File(config.libraryPath)
 
@@ -130,7 +141,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
       implicit val s = Scheduler.global
       val scanResult =
-        scanPath(libraryDir.path, config.indexPath, config.scanParallelFactor, config.max)
+        scanPath(libraryDir.path, config.indexPath, config.scanParallelFactor, config.max, last)
       scanResult
     }
 

@@ -6,6 +6,7 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{RejectionHandler, ValidationRejection}
 import akka.stream.Materializer
+import akka.util.Timeout
 import better.files.File
 import com.github.merlijn.kagera.actor.MediaLibApi
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
@@ -13,17 +14,24 @@ import io.circe.syntax._
 import scribe.Logging
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
 
-case class WebServerConfig(port: Int, hostName: String, hostClient: Boolean, clientPath: String)
+case class WebServerConfig(
+    port: Int,
+    hostName: String,
+    hostClient: Boolean,
+    clientPath: String,
+    requestTimeout: FiniteDuration
+)
 
-class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(implicit
-    val system: ActorSystem[Nothing]
-) extends Logging
+class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(implicit val system: ActorSystem[Nothing])
+    extends Logging
     with JsonCodecs {
 
   implicit def materializer: Materializer         = Materializer.createMaterializer(system)
   implicit def executionContext: ExecutionContext = system.executionContext
+  implicit val timeout: Timeout                   = Timeout.durationToTimeout(config.requestTimeout)
 
   val rejectionHandler = RejectionHandler
     .newBuilder()
@@ -33,17 +41,16 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
 
   val api =
     pathPrefix("api") {
-      (path("videos") & parameters("q".optional, "p".optional, "s".optional, "c".optional)) {
-        (q, p, s, c) =>
-          get {
+      (path("videos") & parameters("q".optional, "p".optional, "s".optional, "c".optional)) { (q, p, s, c) =>
+        get {
 
-            val size = s.map(_.toInt).getOrElse(24)
-            val page = p.map(_.toInt).getOrElse(1)
+          val size = s.map(_.toInt).getOrElse(24)
+          val page = p.map(_.toInt).getOrElse(1)
 
-            val response = mediaLibApi.search(q, page, size, c.map(_.toInt)).map(_.asJson)
+          val response = mediaLibApi.search(q, page, size, c.map(_.toInt)).map(_.asJson)
 
-            complete(response)
-          }
+          complete(response)
+        }
       } ~ path("collections") {
         get {
           complete(mediaLibApi.getCollections().map(_.asJson))

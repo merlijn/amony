@@ -32,5 +32,4 @@ object Model {
       id: Int,
       name: String
   )
-
 }

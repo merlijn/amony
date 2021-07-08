@@ -7,7 +7,7 @@ import pureconfig._
 import pureconfig.generic.auto._
 import scribe.Logging
 
-trait MainConfig extends Logging {
+trait AppConfig extends Logging {
 
   val env = {
     if (System.getenv().containsKey("ENV"))

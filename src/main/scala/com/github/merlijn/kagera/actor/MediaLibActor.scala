@@ -13,16 +13,26 @@ object MediaLibActor {
 
   case class AddMedia(media: List[Video])                         extends Command
   case class AddCollections(collections: List[Collection])        extends Command
+  case class GetAll(sender: ActorRef[List[Video]])                extends Command
   case class GetById(id: String, sender: ActorRef[Option[Video]]) extends Command
   case class GetCollections(sender: ActorRef[List[Collection]])   extends Command
 
   case class Query(q: Option[String], page: Int, size: Int, c: Option[Int])
   case class Search(query: Query, sender: ActorRef[SearchResult]) extends Command
 
-  case class SetThumbnail(id: String, timeStamp: Long, sender: ActorRef[Option[Video]])
-      extends Command
+  case class SetThumbnail(id: String, timeStamp: Long, sender: ActorRef[Option[Video]]) extends Command
 
   case class State(media: List[Video], collections: List[Collection])
+
+  case class Media(
+      id: String,
+      uri: String,
+      title: String,
+      duration: Long,
+      thumbnail: String,
+      resolution: String,
+      tags: Seq[String]
+  )
 
   def apply(config: MediaLibConfig): EventSourcedBehavior[Command, Event, State] =
     EventSourcedBehavior[Command, Event, State](
