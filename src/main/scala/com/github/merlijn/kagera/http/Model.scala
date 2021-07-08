@@ -4,13 +4,15 @@ import java.nio.file.Path
 
 object Model {
 
-  case class Video(id: String,
-                   fileName: String,
-                   title: String,
-                   duration: Long,
-                   thumbnail: String,
-                   resolution: String,
-                   tags: Seq[String]) {
+  case class Video(
+      id: String,
+      fileName: String,
+      title: String,
+      duration: Long,
+      thumbnail: String,
+      resolution: String,
+      tags: Seq[String]
+  ) {
 
     def path(baseDir: Path): Path = baseDir.resolve(fileName)
 
@@ -20,15 +22,15 @@ object Model {
   }
 
   case class SearchResult(
-                           currentPage: Int,
-                           pageSize: Int,
-                           total: Int,
-                           videos: Seq[Video]
-                         )
+      currentPage: Int,
+      pageSize: Int,
+      total: Int,
+      videos: Seq[Video]
+  )
 
   case class Collection(
-                         id: Int,
-                         name: String
-                       )
+      id: Int,
+      name: String
+  )
 
 }

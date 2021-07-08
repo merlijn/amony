@@ -11,7 +11,6 @@ import com.github.merlijn.kagera.lib.MediaLibConfig
 object MediaLibCommandHandler {
 
   def apply(config: MediaLibConfig)(state: State, cmd: Command): Effect[Event, State] =
-
     cmd match {
 
       case AddMedia(media) =>
@@ -28,11 +27,14 @@ object MediaLibCommandHandler {
 
       case Search(query, sender) =>
         val col = query.c match {
-          case None     => state.media
+          case None => state.media
           case Some(id) =>
-            state.collections.find(_.id == id).map { cid =>
-              state.media.filter(_.fileName.startsWith(cid.name.substring(1)))
-            }.getOrElse(state.media)
+            state.collections
+              .find(_.id == id)
+              .map { cid =>
+                state.media.filter(_.fileName.startsWith(cid.name.substring(1)))
+              }
+              .getOrElse(state.media)
         }
 
         val result = query.q match {
@@ -41,25 +43,25 @@ object MediaLibCommandHandler {
         }
 
         val start = (query.page - 1) * query.size
-        val end = Math.min(result.size, query.page * query.size)
+        val end   = Math.min(result.size, query.page * query.size)
 
         val videos = if (start > result.size) Nil else result.slice(start, end)
 
         Effect.reply(sender)(SearchResult(query.page, query.size, result.size, videos))
 
       case SetThumbnail(id, timeStamp, sender) =>
-
         state.media.find(_.id == id) match {
           case None =>
             Effect.reply(sender)(None)
 
           case Some(vid) =>
             val sanitizedTimeStamp = Math.max(0, Math.min(vid.duration, timeStamp))
-            val videoPath = vid.path(config.libraryPath)
+            val videoPath          = vid.path(config.libraryPath)
 
             File(vid.thumbnailPath(config.indexPath)).delete()
 
-            val newThumbnail = generateThumbnail(videoPath, config.indexPath, id, sanitizedTimeStamp)
+            val newThumbnail =
+              generateThumbnail(videoPath, config.indexPath, id, sanitizedTimeStamp)
 
             val newVid = vid.copy(
               thumbnail = s"/files/thumbnails/$newThumbnail"

@@ -24,16 +24,16 @@ object FileUtil extends Logging {
       import java.security.MessageDigest
 
       val md5Digest: MessageDigest = MessageDigest.getInstance("MD5")
-      val digest = md5Digest.digest(data)
-      val base64 = Base64.getUrlEncoder.withoutPadding().encodeToString(digest)
+      val digest                   = md5Digest.digest(data)
+      val base64                   = Base64.getUrlEncoder.withoutPadding().encodeToString(digest)
 
       base64
     }
 
     def readRandomBytes(nBytes: Int): Array[Byte] = {
 
-      val size = file.size
-      val bytes = new Array[Byte](nBytes)
+      val size   = file.size
+      val bytes  = new Array[Byte](nBytes)
       val random = new Random(size)
 
       file.randomAccess().foreach { rndAccess =>

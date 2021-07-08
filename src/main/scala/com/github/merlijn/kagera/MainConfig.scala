@@ -16,9 +16,9 @@ trait MainConfig extends Logging {
       "dev"
   }
 
-  val config = ConfigFactory.load(s"$env/application.conf")
+  val config       = ConfigFactory.load(s"$env/application.conf")
   val configSource = ConfigSource.fromConfig(config)
 
-  val mediaLibConfig = configSource.at("media").loadOrThrow[MediaLibConfig]
+  val mediaLibConfig  = configSource.at("media").loadOrThrow[MediaLibConfig]
   val webServerConfig = configSource.at("http").loadOrThrow[WebServerConfig]
 }

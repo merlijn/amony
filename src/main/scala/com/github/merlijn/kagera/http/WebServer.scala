@@ -17,20 +17,24 @@ import scala.util.{Failure, Success}
 
 case class WebServerConfig(port: Int, hostName: String, hostClient: Boolean, clientPath: String)
 
-class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(implicit val system: ActorSystem[Nothing] )
-  extends Logging with JsonCodecs {
+class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(implicit
+    val system: ActorSystem[Nothing]
+) extends Logging
+    with JsonCodecs {
 
-  implicit def materializer: Materializer = Materializer.createMaterializer(system)
+  implicit def materializer: Materializer         = Materializer.createMaterializer(system)
   implicit def executionContext: ExecutionContext = system.executionContext
 
-  val rejectionHandler = RejectionHandler.newBuilder()
+  val rejectionHandler = RejectionHandler
+    .newBuilder()
     .handleNotFound { complete(StatusCodes.NotFound, """{"statusCode" : 404 }""") }
     .handle { case ValidationRejection(msg, _) => complete(StatusCodes.InternalServerError, msg) }
     .result()
 
   val api =
-      pathPrefix("api") {
-        (path("videos") & parameters("q".optional, "p".optional, "s".optional, "c".optional)) { (q, p, s, c) =>
+    pathPrefix("api") {
+      (path("videos") & parameters("q".optional, "p".optional, "s".optional, "c".optional)) {
+        (q, p, s, c) =>
           get {
 
             val size = s.map(_.toInt).getOrElse(24)
@@ -40,21 +44,21 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
 
             complete(response)
           }
-        } ~ path("collections") {
-          get {
-            complete(mediaLibApi.getCollections().map(_.asJson))
-          }
-        } ~ path("thumbnail" / Segment) { id =>
-          (post & entity(as[Long])) { timeStamp =>
-              logger.info(s"setting thumbnail for $id at $timeStamp")
+      } ~ path("collections") {
+        get {
+          complete(mediaLibApi.getCollections().map(_.asJson))
+        }
+      } ~ path("thumbnail" / Segment) { id =>
+        (post & entity(as[Long])) { timeStamp =>
+          logger.info(s"setting thumbnail for $id at $timeStamp")
 
-              onSuccess(mediaLibApi.setThumbnailAt(id, timeStamp)) {
-                case Some(vid) => complete(vid.asJson)
-                case None      => complete(StatusCodes.NotFound)
-              }
+          onSuccess(mediaLibApi.setThumbnailAt(id, timeStamp)) {
+            case Some(vid) => complete(vid.asJson)
+            case None      => complete(StatusCodes.NotFound)
           }
         }
       }
+    }
 
   val thumbnails =
     path("files" / "thumbnails" / Segment) { id =>
@@ -62,22 +66,21 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
     }
 
   val videos = path("files" / "videos" / Segment) { id =>
-
     mediaLibApi.getById(id) match {
-        case None       => complete(StatusCodes.NotFound, "")
-        case Some(info) => getFromFile(mediaLibApi.getFilePathForMedia(info))
-      }
+      case None       => complete(StatusCodes.NotFound, "")
+      case Some(info) => getFromFile(mediaLibApi.getFilePathForMedia(info))
     }
+  }
 
-  def clientFiles = rawPathPrefix(Slash) {
+  def clientFiles =
+    rawPathPrefix(Slash) {
 
-    extractUnmatchedPath { path =>
-
-      // TODO sanitize
-       val filePath = path.toString() match {
-         case "" | "/" => "index.html"
-         case other    => other
-       }
+      extractUnmatchedPath { path =>
+        // TODO sanitize
+        val filePath = path.toString() match {
+          case "" | "/" => "index.html"
+          case other    => other
+        }
 
         val targetFile = {
           val maybe = (File(config.clientPath) / filePath)
@@ -89,7 +92,7 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
 
         getFromFile(targetFile.path.toAbsolutePath.toString)
       }
-  }
+    }
 
   val apiRoutes = api ~ thumbnails ~ videos
 
