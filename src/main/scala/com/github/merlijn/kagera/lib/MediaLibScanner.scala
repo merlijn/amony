@@ -45,6 +45,8 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     val files = FileUtil.walkDir(scanPath)
 
+    logger.info(s"max: $max")
+
     val truncatedMaybe = max match {
       case None    => files
       case Some(n) => files.take(n)
@@ -146,8 +148,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     val videoIndex: List[Video] = {
 
       implicit val s = Scheduler.global
-      val scanResult =
-        scanPath(libraryDir.path, config.indexPath, config.scanParallelFactor, config.max, last)
+      val scanResult = scanPath(libraryDir.path, config.indexPath, config.scanParallelFactor, config.max, last)
       scanResult
     }
 

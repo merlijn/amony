@@ -12,8 +12,6 @@ function App() {
 
       <BrowserRouter>
 
-
-
         <div>
           <Switch>
             <Route exact path="/" component = { Gallery }  />

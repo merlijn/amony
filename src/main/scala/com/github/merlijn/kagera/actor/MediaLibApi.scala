@@ -26,8 +26,8 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) {
   def getAll()(implicit timeout: Timeout): Future[List[Video]] =
     system.ask[List[Video]](ref => GetAll(ref))
 
-  def search(q: Option[String], page: Int, size: Int, c: Option[Int])(implicit timeout: Timeout): Future[SearchResult] =
-    system.ask[SearchResult](ref => Search(Query(q, page, size, c), ref))
+  def search(q: Option[String], offset: Option[Int], size: Int, c: Option[Int])(implicit timeout: Timeout): Future[SearchResult] =
+    system.ask[SearchResult](ref => Search(Query(q, offset, size, c), ref))
 
   def getCollections()(implicit timeout: Timeout): Future[List[Collection]] =
     system.ask[List[Collection]](ref => GetCollections(ref))

@@ -45,12 +45,12 @@ object MediaLibCommandHandler {
           case None        => col
         }
 
-        val start = (query.page - 1) * query.size
-        val end   = Math.min(result.size, query.page * query.size)
+        val offset = query.offset.getOrElse(0)
+        val end   = Math.min(offset + query.n, result.size)
 
-        val videos = if (start > result.size) Nil else result.slice(start, end)
+        val videos = if (offset > result.size) Nil else result.slice(offset, end)
 
-        Effect.reply(sender)(SearchResult(query.page, query.size, result.size, videos))
+        Effect.reply(sender)(SearchResult(offset, query.n, result.size, videos))
 
       case SetThumbnail(id, timeStamp, sender) =>
         state.media.find(_.id == id) match {
@@ -61,7 +61,7 @@ object MediaLibCommandHandler {
             val sanitizedTimeStamp = Math.max(0, Math.min(vid.duration, timeStamp))
             val videoPath          = vid.path(config.libraryPath)
 
-            File(vid.thumbnailPath(config.indexPath)).delete()
+            File(vid.thumbnailPath(config.indexPath.resolve("thumbnails"))).delete()
 
             val newThumbnail =
               generateThumbnail(videoPath, config.indexPath, id, sanitizedTimeStamp)

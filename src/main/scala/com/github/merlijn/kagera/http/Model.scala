@@ -28,7 +28,7 @@ object Model {
 
   case class SearchResult(
       currentPage: Int,
-      pageSize: Int,
+      offset: Int,
       total: Int,
       videos: Seq[Video]
   )

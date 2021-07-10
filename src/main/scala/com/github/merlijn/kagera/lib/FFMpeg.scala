@@ -54,7 +54,13 @@ object FFMpeg extends Logging {
     if (!thumbnailFile.exists) {
 
       val timestamp = Duration.ofMillis(time)
-      val ss        = s"${timestamp.toHoursPart}:${timestamp.toMinutesPart}:${timestamp.toSecondsPart}"
+
+      val hours   = "%02d".format(timestamp.toHoursPart)
+      val minutes = "%02d".format(timestamp.toMinutesPart)
+      val seconds = "%02d".format(timestamp.toSecondsPart)
+      val millis  = "%03d".format(timestamp.toMillisPart)
+
+      val ss        = s"$hours:$minutes:$seconds.$millis"
 
       logger.info(s"Creating thumbnail at $ss for $inputFile")
 

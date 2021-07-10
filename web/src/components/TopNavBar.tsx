@@ -12,7 +12,7 @@ import GalleryPagination from "./GalleryPagination";
 import {doGET} from "../api/Api";
 import {Collection} from "../api/Model";
 
-function TopNavBar(props: { current: number, last: number }) {
+function TopNavBar(props: { currentPage: number, lastPage: number }) {
 
   const [query, setQuery] = useState("")
   const collections = useRef<Array<Collection>>([]);
@@ -61,7 +61,7 @@ function TopNavBar(props: { current: number, last: number }) {
             <Button size="sm" variant="outline-success" onClick={doSearch}>Search</Button>
           </Form>
         </Nav>
-        <GalleryPagination className="absolute-right" current={props.current} last={props.last} />
+        <GalleryPagination className="absolute-right" current={props.currentPage} last={props.lastPage} />
     </Navbar>
   );
 }

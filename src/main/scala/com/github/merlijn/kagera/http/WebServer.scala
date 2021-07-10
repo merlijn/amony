@@ -41,13 +41,12 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
 
   val api =
     pathPrefix("api") {
-      (path("videos") & parameters("q".optional, "p".optional, "s".optional, "c".optional)) { (q, p, s, c) =>
+      (path("videos") & parameters("q".optional, "offset".optional, "n".optional, "c".optional)) { (q, offset, s, c) =>
         get {
 
           val size = s.map(_.toInt).getOrElse(24)
-          val page = p.map(_.toInt).getOrElse(1)
 
-          val response = mediaLibApi.search(q, page, size, c.map(_.toInt)).map(_.asJson)
+          val response = mediaLibApi.search(q, offset.map(_.toInt), size, c.map(_.toInt)).map(_.asJson)
 
           complete(response)
         }

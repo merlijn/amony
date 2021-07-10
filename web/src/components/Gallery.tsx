@@ -6,17 +6,10 @@ import './Gallery.scss';
 import {useLocation} from 'react-router-dom'
 import {buildUrl, copyParams, useWindowSize, withFallback} from "../api/Util";
 import TopNavBar from "./TopNavBar";
+import {pageSizes} from "../api/Constants";
 
 const gridSize = 350
 const gridReRenderThreshold = 24
-
-const pageSizes = new Map([
-  [1, 8],
-  [2, 12],
-  [3, 18],
-  [4, 24],
-  [5, 35]]
-)
 
 const Gallery = () => {
 
@@ -36,7 +29,11 @@ const Gallery = () => {
 
   useEffect(() => {
 
-      const target = buildUrl("/api/videos", copyParams(urlParams).set("s", pageSize.toString()))
+      const page = parseInt(urlParams.get("p") || "1")
+      const offset = (page-1) * pageSize
+      const apiParams = copyParams(urlParams).set("n", pageSize.toString()).set("offset", offset.toString())
+
+      const target = buildUrl("/api/videos", apiParams)
       console.log("render:" + target)
 
       doGET(target).then(response => { setResult(response); });
@@ -64,7 +61,7 @@ const Gallery = () => {
 
   return (
     <div className="full-width">
-      <TopNavBar current={currentPage} last={Math.trunc(result.total / pageSize)}  />
+      <TopNavBar currentPage={currentPage} lastPage={Math.trunc(result.total / pageSize)} />
       <table className="gallery">
         {rows}
       </table>
