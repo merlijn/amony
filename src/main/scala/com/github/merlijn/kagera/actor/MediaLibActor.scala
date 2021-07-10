@@ -13,6 +13,7 @@ object MediaLibActor {
 
   case class AddMedia(media: List[Video])                         extends Command
   case class AddCollections(collections: List[Collection])        extends Command
+
   case class GetAll(sender: ActorRef[List[Video]])                extends Command
   case class GetById(id: String, sender: ActorRef[Option[Video]]) extends Command
   case class GetCollections(sender: ActorRef[List[Collection]])   extends Command

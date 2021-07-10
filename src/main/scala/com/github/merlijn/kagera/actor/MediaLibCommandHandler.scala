@@ -3,7 +3,7 @@ package com.github.merlijn.kagera.actor
 import akka.persistence.typed.scaladsl.Effect
 import better.files.File
 import com.github.merlijn.kagera.lib.MediaLibScanner.generateThumbnail
-import com.github.merlijn.kagera.http.Model.SearchResult
+import com.github.merlijn.kagera.http.Model.{SearchResult, ThumbNail}
 import com.github.merlijn.kagera.actor.MediaLibEventSourcing._
 import com.github.merlijn.kagera.actor.MediaLibActor._
 import com.github.merlijn.kagera.lib.MediaLibConfig
@@ -67,7 +67,7 @@ object MediaLibCommandHandler {
               generateThumbnail(videoPath, config.indexPath, id, sanitizedTimeStamp)
 
             val newVid = vid.copy(
-              thumbnail = s"/files/thumbnails/$newThumbnail"
+              thumbnail = ThumbNail(timeStamp, s"/files/thumbnails/$newThumbnail")
             )
 
             Effect

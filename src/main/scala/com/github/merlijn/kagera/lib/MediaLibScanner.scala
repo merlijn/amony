@@ -29,7 +29,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     val timeStamp = info.duration / 3
 
     val thumbNail = generateThumbnail(videoPath, indexDir, info.id, timeStamp)
-    val video     = asVideo(baseDir, info, thumbNail)
+    val video     = asVideo(baseDir, info, timeStamp, thumbNail)
 
     video
   }
@@ -105,7 +105,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     thumbNail
   }
 
-  protected def asVideo(baseDir: Path, info: Probe, thumbnail: String): Video = {
+  protected def asVideo(baseDir: Path, info: Probe, thumbnailTimestamp: Long, thumbnailUri: String): Video = {
 
     val relativePath = baseDir.relativize(Path.of(info.fileName)).toString
 
@@ -122,7 +122,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       fileName = relativePath,
       title = title,
       duration = info.duration,
-      thumbnail = s"/files/thumbnails/$thumbnail",
+      thumbnail = ThumbNail(thumbnailTimestamp, s"/files/thumbnails/$thumbnailUri"),
       tags = Seq.empty,
       resolution = s"${info.resolution._1}x${info.resolution._2}"
     )

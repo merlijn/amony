@@ -31,7 +31,7 @@ const Thumbnail = (props: {vid: Video}) => {
   const sliderChanged = (v: any) => {
     const value = v.target.value as number
 
-    genThumbnailAt(Math.trunc(vid.duration * value / 100))
+    genThumbnailAt(Math.trunc(value))
   }
 
   const info =
@@ -43,7 +43,7 @@ const Thumbnail = (props: {vid: Video}) => {
   const thumbnailPicker =
     <Form className="thumbnail-picker">
       <Form.Group controlId="formBasicRange">
-        <Form.Control type="range" onChange={sliderChanged} />
+        <Form.Control type="range" min="0" max={vid.duration} value={vid.thumbnail.timestamp} onChange={sliderChanged} />
       </Form.Group>
     </Form>
 
@@ -51,7 +51,7 @@ const Thumbnail = (props: {vid: Video}) => {
 
   return (
     <div className="thumbnail-container">
-      <a href={link}><Image className="thumbnail" src={vid.thumbnail} fluid /></a>
+      <a href={link}><Image className="thumbnail" src={vid.thumbnail.uri} fluid /></a>
       <div className="top-right"><img className="menu-icon" src="/more_vert_black_24dp.svg" onClick={switchThumb} /></div>
       { bottom }
     </div>

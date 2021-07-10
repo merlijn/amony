@@ -4,11 +4,11 @@ val AkkaHttpVersion = "10.2.4"
 lazy val root = (project in file(".")).
   settings(
     inThisBuild(List(
-      organization    := "com.github.merlijn",
+      organization    := "kagera",
       scalaVersion    := "2.13.6"
     )),
 //    fork := false,
-    name := "webapp-test",
+    name := "kagera",
     libraryDependencies ++= Seq(
 
       "org.slf4j"             %  "slf4j-api"                % "1.7.30",

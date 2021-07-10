@@ -5,7 +5,6 @@ import Thumbnail from './Thumbnail';
 import './Gallery.scss';
 import {useLocation} from 'react-router-dom'
 import {buildUrl, copyParams, useWindowSize, withFallback} from "../api/Util";
-import GalleryPagination from "./GalleryPagination";
 import TopNavBar from "./TopNavBar";
 
 const gridSize = 350

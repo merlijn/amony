@@ -4,12 +4,17 @@ import java.nio.file.Path
 
 object Model {
 
+  case class ThumbNail(
+      timestamp: Long,
+      uri: String
+  )
+
   case class Video(
       id: String,
       fileName: String,
       title: String,
       duration: Long,
-      thumbnail: String,
+      thumbnail: ThumbNail,
       resolution: String,
       tags: Seq[String]
   ) {
@@ -17,7 +22,7 @@ object Model {
     def path(baseDir: Path): Path = baseDir.resolve(fileName)
 
     def thumbnailPath(baseDir: Path) = {
-      baseDir.resolve(thumbnail.substring(thumbnail.lastIndexOf('/') + 1))
+      baseDir.resolve(thumbnail.uri.substring(thumbnail.uri.lastIndexOf('/') + 1))
     }
   }
 
