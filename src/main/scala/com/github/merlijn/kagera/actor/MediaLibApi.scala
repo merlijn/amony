@@ -36,7 +36,7 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) {
     system.ask[Option[Video]](ref => SetThumbnail(id, timestamp, ref))
 
   def getThumbnailPathForMedia(id: String): String =
-    s"${config.indexPath}/$id"
+    s"${config.indexPath}/thumbnails/$id"
 
   def getFilePathForMedia(vid: Video): String =
     (File(config.libraryPath) / vid.fileName).path.toAbsolutePath.toString

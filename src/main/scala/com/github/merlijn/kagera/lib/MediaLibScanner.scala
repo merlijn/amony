@@ -93,8 +93,14 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
   def generateThumbnail(videoPath: Path, outputDir: Path, id: String, timeStamp: Long): String = {
 
+    val thumbnailPath = s"${outputDir}/thumbnails"
+    val thumbnailDir = File(thumbnailPath)
+
+    if (!thumbnailDir.exists)
+      thumbnailDir.createDirectory()
+
     val thumbNail = s"${id}-$timeStamp.jpeg"
-    val fullFile  = s"${outputDir}/$thumbNail"
+    val fullFile  = s"${thumbnailPath}/$thumbNail"
 
     FFMpeg.writeThumbnail(
       inputFile = videoPath.toAbsolutePath.toString,
