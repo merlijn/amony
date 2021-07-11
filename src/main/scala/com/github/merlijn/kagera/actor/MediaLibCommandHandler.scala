@@ -3,7 +3,6 @@ package com.github.merlijn.kagera.actor
 import akka.persistence.typed.scaladsl.Effect
 import better.files.File
 import com.github.merlijn.kagera.lib.MediaLibScanner.generateThumbnail
-import com.github.merlijn.kagera.http.Model.{SearchResult, ThumbNail}
 import com.github.merlijn.kagera.actor.MediaLibEventSourcing._
 import com.github.merlijn.kagera.actor.MediaLibActor._
 import com.github.merlijn.kagera.lib.MediaLibConfig
@@ -35,22 +34,22 @@ object MediaLibCommandHandler {
             state.collections
               .find(_.id == id)
               .map { cid =>
-                state.media.filter(_.fileName.startsWith(cid.name.substring(1)))
+                state.media.filter(_.uri.startsWith(cid.title.substring(1)))
               }
               .getOrElse(state.media)
         }
 
         val result = query.q match {
-          case Some(query) => col.filter(_.fileName.toLowerCase.contains(query.toLowerCase))
+          case Some(query) => col.filter(_.uri.toLowerCase.contains(query.toLowerCase))
           case None        => col
         }
 
         val offset = query.offset.getOrElse(0)
-        val end   = Math.min(offset + query.n, result.size)
+        val end    = Math.min(offset + query.n, result.size)
 
         val videos = if (offset > result.size) Nil else result.slice(offset, end)
 
-        Effect.reply(sender)(SearchResult(offset, query.n, result.size, videos))
+        Effect.reply(sender)(SearchResult(offset, result.size, videos))
 
       case SetThumbnail(id, timeStamp, sender) =>
         state.media.find(_.id == id) match {
@@ -67,7 +66,7 @@ object MediaLibCommandHandler {
               generateThumbnail(videoPath, config.indexPath, id, sanitizedTimeStamp)
 
             val newVid = vid.copy(
-              thumbnail = ThumbNail(timeStamp, s"/files/thumbnails/$newThumbnail")
+              thumbnail = Thumbnail(timeStamp, s"/files/thumbnails/$newThumbnail")
             )
 
             Effect

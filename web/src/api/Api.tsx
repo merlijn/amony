@@ -39,6 +39,10 @@ export async function getVideos() {
   return doGET("/api/videos")
 }
 
+export async function getMediaById(id: string) {
+  return doGET(`/api/videos/${id}`)
+}
+
 
 
 export async function setThumbnail(id: String, timeStamp: number) {

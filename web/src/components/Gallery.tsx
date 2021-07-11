@@ -65,7 +65,6 @@ const Gallery = () => {
       <table className="gallery">
         {rows}
       </table>
-      {/*<GalleryPagination current={current} last={Math.trunc(result.total / pageSize)} />*/}
     </div>
   );
 }

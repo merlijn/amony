@@ -37,7 +37,7 @@ const Thumbnail = (props: {vid: Video}) => {
   const info =
     <div>
       <div className="bottom-left duration-overlay">{durationStr}</div>
-      <div className="bottom-right title-overlay">{vid.title}</div>
+      {/*<div className="bottom-right title-overlay">{vid.title}</div>*/}
     </div>
 
   const thumbnailPicker =

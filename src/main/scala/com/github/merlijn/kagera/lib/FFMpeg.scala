@@ -60,7 +60,7 @@ object FFMpeg extends Logging {
       val seconds = "%02d".format(timestamp.toSecondsPart)
       val millis  = "%03d".format(timestamp.toMillisPart)
 
-      val ss        = s"$hours:$minutes:$seconds.$millis"
+      val ss = s"$hours:$minutes:$seconds.$millis"
 
       logger.info(s"Creating thumbnail at $ss for $inputFile")
 

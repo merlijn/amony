@@ -1,44 +1,40 @@
 import Plyr from 'plyr';
-import React from 'react';
+import React, {useEffect} from 'react';
 import './Player.scss';
+import {Video} from "../api/Model";
+import {getMediaById} from "../api/Api";
 
-class Props {
-  constructor(
-    public videoId: string
-  ){}
-}
 
-class Player extends React.Component<Props, {}> {
+const Player = (props: {videoId: string}) => {
 
-  constructor (props: Props) {
-    super(props);
-  }
+  const id = '#video-' + props.videoId
+  const videoSrc = '/files/videos/' + props.videoId
 
-  componentDidMount = () => {
-    const id = '#video-' + this.props.videoId
+  useEffect(() => {
 
+    const id = '#video-' + props.videoId
     const element = document.getElementById(id);
 
-    if (element) {
-      const player = new Plyr(element)
-      // autoplay is not allowed https://developers.google.com/web/updates/2017/09/autoplay-policy-changes
-      // player.play();
-    }
-  };
+    getMediaById(props.videoId).then(response => {
 
-  render = () => {
+        const vid = (response as Video)
 
-    const id = '#video-' + this.props.videoId
-    const videoSrc = '/files/videos/' + this.props.videoId
-
-    return (
-      <div className="videoContainer">
-        <video className="videoPlayer" id={id} playsInline controls>
-          <source src={videoSrc} type="video/mp4"/>
-        </video>
-      </div>
+        if (element) {
+          const player = new Plyr(element)
+          // autoplay is not allowed https://developers.google.com/web/updates/2017/09/autoplay-policy-changes
+          // player.play();
+        }
+      }
     );
-  };
+  });
+
+  return (
+    <div className="videoContainer">
+      <video className="videoPlayer" id={id} playsInline controls>
+        <source src={videoSrc} type="video/mp4"/>
+      </video>
+    </div>
+  );
 }
 
 export default Player;

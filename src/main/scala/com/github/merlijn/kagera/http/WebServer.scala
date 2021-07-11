@@ -9,6 +9,7 @@ import akka.stream.Materializer
 import akka.util.Timeout
 import better.files.File
 import com.github.merlijn.kagera.actor.MediaLibApi
+import com.github.merlijn.kagera.http.WebConversions._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
 import scribe.Logging
@@ -44,22 +45,29 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
       (path("videos") & parameters("q".optional, "offset".optional, "n".optional, "c".optional)) { (q, offset, s, c) =>
         get {
 
-          val size = s.map(_.toInt).getOrElse(24)
-
-          val response = mediaLibApi.search(q, offset.map(_.toInt), size, c.map(_.toInt)).map(_.asJson)
+          val size         = s.map(_.toInt).getOrElse(24)
+          val searchResult = mediaLibApi.search(q, offset.map(_.toInt), size, c.map(_.toInt))
+          val response = searchResult.map(_.toWebModel().asJson)
 
           complete(response)
         }
+      } ~ path("videos" / Segment) { id =>
+        get {
+          mediaLibApi.getById(id) match {
+            case Some(vid) => complete(vid.toWebModel.asJson)
+            case None      => complete(StatusCodes.NotFound)
+          }
+        }
       } ~ path("collections") {
         get {
-          complete(mediaLibApi.getCollections().map(_.asJson))
+          complete(mediaLibApi.getCollections().map(_.map(_.toWebModel.asJson)))
         }
       } ~ path("thumbnail" / Segment) { id =>
         (post & entity(as[Long])) { timeStamp =>
           logger.info(s"setting thumbnail for $id at $timeStamp")
 
           onSuccess(mediaLibApi.setThumbnailAt(id, timeStamp)) {
-            case Some(vid) => complete(vid.asJson)
+            case Some(vid) => complete(vid.toWebModel().asJson)
             case None      => complete(StatusCodes.NotFound)
           }
         }

@@ -1,11 +1,9 @@
 package com.github.merlijn.kagera.lib
 
 import better.files.File
+import com.github.merlijn.kagera.actor.MediaLibActor.{Collection, Media, Thumbnail}
 import com.github.merlijn.kagera.http.JsonCodecs
-import com.github.merlijn.kagera.http.Model._
 import com.github.merlijn.kagera.lib.FFMpeg.Probe
-import io.circe.parser.decode
-import io.circe.syntax._
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.{Consumer, Observable}
@@ -22,7 +20,7 @@ case class MediaLibConfig(
 
 object MediaLibScanner extends Logging with JsonCodecs {
 
-  def scanVideo(baseDir: Path, videoPath: Path, indexDir: Path): Video = {
+  def scanVideo(baseDir: Path, videoPath: Path, indexDir: Path): Media = {
     logger.info(s"Scanning file: ${videoPath.toAbsolutePath}")
 
     val info      = FFMpeg.ffprobe(videoPath)
@@ -39,9 +37,9 @@ object MediaLibScanner extends Logging with JsonCodecs {
       indexPath: Path,
       parallelFactor: Int,
       max: Option[Int],
-      last: List[Video],
+      last: List[Media],
       extensions: List[String] = List("mp4", "webm")
-  )(implicit s: Scheduler): List[Video] = {
+  )(implicit s: Scheduler): List[Media] = {
 
     val files = FileUtil.walkDir(scanPath)
 
@@ -59,9 +57,8 @@ object MediaLibScanner extends Logging with JsonCodecs {
         extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
       }
       .filter { vid =>
-
-        val relativePath = scanPath.relativize(vid).toString
-        val alreadyIndexed = last.exists(_.fileName == relativePath)
+        val relativePath   = scanPath.relativize(vid).toString
+        val alreadyIndexed = last.exists(_.uri == relativePath)
 
         if (alreadyIndexed)
           logger.info(s"Skipping already indexed: ${relativePath}")
@@ -70,33 +67,33 @@ object MediaLibScanner extends Logging with JsonCodecs {
       }
       .mapParallelUnordered(parallelFactor) { p => Task { scanVideo(scanPath, p, indexPath) } }
 
-    val c = Consumer.toList[Video]
+    val c = Consumer.toList[Media]
 
     obs.consumeWith(c).runSyncUnsafe()
   }
 
-  protected def readIndexFromFile(file: File): List[Video] = {
-    val json = file.contentAsString
-
-    decode[List[Video]](json) match {
-      case Right(index) => index
-      case Left(error)  => throw error
-    }
-  }
-
-  def exportIndexToFile(index: File, videos: Seq[Video]): Unit = {
-
-    if (!index.exists)
-      index.createFile()
-
-    val json = videos.asJson.toString()
-    index.overwrite(json)
-  }
+//  protected def readIndexFromFile(file: File): List[Media] = {
+//    val json = file.contentAsString
+//
+//    decode[List[Media]](json) match {
+//      case Right(index) => index
+//      case Left(error)  => throw error
+//    }
+//  }
+//
+//  def exportIndexToFile(index: File, videos: Seq[Media]): Unit = {
+//
+//    if (!index.exists)
+//      index.createFile()
+//
+//    val json = videos.asJson.toString()
+//    index.overwrite(json)
+//  }
 
   def generateThumbnail(videoPath: Path, outputDir: Path, id: String, timeStamp: Long): String = {
 
     val thumbnailPath = s"${outputDir}/thumbnails"
-    val thumbnailDir = File(thumbnailPath)
+    val thumbnailDir  = File(thumbnailPath)
 
     if (!thumbnailDir.exists)
       thumbnailDir.createDirectory()
@@ -113,7 +110,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     thumbNail
   }
 
-  protected def asVideo(baseDir: Path, info: Probe, thumbnailTimestamp: Long, thumbnailUri: String): Video = {
+  protected def asVideo(baseDir: Path, info: Probe, thumbnailTimestamp: Long, thumbnailUri: String): Media = {
 
     val relativePath = baseDir.relativize(Path.of(info.fileName)).toString
 
@@ -125,18 +122,18 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     val title = relativePath.substring(startIdx, endIdx)
 
-    Video(
+    Media(
       id = info.id,
-      fileName = relativePath,
+      uri = relativePath,
       title = title,
       duration = info.duration,
-      thumbnail = ThumbNail(thumbnailTimestamp, s"/files/thumbnails/$thumbnailUri"),
+      thumbnail = Thumbnail(thumbnailTimestamp, s"/files/thumbnails/$thumbnailUri"),
       tags = Seq.empty,
-      resolution = s"${info.resolution._1}x${info.resolution._2}"
+      resolution = info.resolution
     )
   }
 
-  def scan(config: MediaLibConfig, last: List[Video]): (List[Video], List[Collection]) = {
+  def scan(config: MediaLibConfig, last: List[Media]): (List[Media], List[Collection]) = {
 
     val libraryDir = File(config.libraryPath)
 
@@ -145,7 +142,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     if (!indexDir.exists)
       indexDir.createDirectory()
 
-    val videoIndex: List[Video] = {
+    val videoIndex: List[Media] = {
 
       implicit val s = Scheduler.global
       val scanResult = scanPath(libraryDir.path, config.indexPath, config.scanParallelFactor, config.max, last)
@@ -156,13 +153,13 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
       val dirs = videoIndex.foldLeft(Set.empty[String]) {
         case (set, e) =>
-          val parent   = (libraryDir / e.fileName).parent
+          val parent   = (libraryDir / e.uri).parent
           val relative = s"/${libraryDir.relativize(parent)}"
           set + relative
       }
 
       dirs.toList.sorted.zipWithIndex.map {
-        case (e, idx) => Collection(idx, e)
+        case (e, idx) => Collection(idx.toString, e)
       }
     }
 
