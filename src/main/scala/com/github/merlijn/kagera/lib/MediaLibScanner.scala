@@ -127,7 +127,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       uri = relativePath,
       title = title,
       duration = info.duration,
-      thumbnail = Thumbnail(thumbnailTimestamp, s"/files/thumbnails/$thumbnailUri"),
+      thumbnail = Thumbnail(thumbnailTimestamp, thumbnailUri),
       tags = Seq.empty,
       resolution = info.resolution
     )

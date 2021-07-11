@@ -39,10 +39,7 @@ object MediaLibActor {
       tags: Seq[String]
   ) {
     def path(baseDir: Path): Path = baseDir.resolve(uri)
-
-    def thumbnailPath(baseDir: Path) = {
-      baseDir.resolve(thumbnail.uri.substring(thumbnail.uri.lastIndexOf('/') + 1))
-    }
+    def thumbnailPath(baseDir: Path) = baseDir.resolve(thumbnail.uri)
   }
 
   def apply(config: MediaLibConfig): EventSourcedBehavior[Command, Event, State] =

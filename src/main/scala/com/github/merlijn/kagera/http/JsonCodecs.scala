@@ -22,7 +22,7 @@ object WebConversions {
       media.uri,
       media.title,
       media.duration,
-      Thumbnail(media.thumbnail.timestamp, media.thumbnail.uri),
+      Thumbnail(media.thumbnail.timestamp, s"/files/thumbnails/${media.thumbnail.uri}"),
       s"${media.resolution._1}x${media.resolution._2}",
       media.tags
     )

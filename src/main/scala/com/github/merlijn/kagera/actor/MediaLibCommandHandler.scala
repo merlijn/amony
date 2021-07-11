@@ -65,9 +65,7 @@ object MediaLibCommandHandler {
             val newThumbnail =
               generateThumbnail(videoPath, config.indexPath, id, sanitizedTimeStamp)
 
-            val newVid = vid.copy(
-              thumbnail = Thumbnail(timeStamp, s"/files/thumbnails/$newThumbnail")
-            )
+            val newVid = vid.copy(thumbnail = Thumbnail(timeStamp, newThumbnail))
 
             Effect
               .persist(ReplaceVid(id, newVid))
