@@ -50,7 +50,7 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
                 collections.current.map((c) => {
 
                   const link = buildUrl("/search", params.set("c", c.id.toString()))
-                  return <NavDropdown.Item href={link}>{c.name}</NavDropdown.Item>
+                  return <NavDropdown.Item href={link}>{c.title}</NavDropdown.Item>
                 })
               }
             </NavDropdown>

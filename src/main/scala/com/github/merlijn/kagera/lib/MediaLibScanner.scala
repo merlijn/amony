@@ -72,25 +72,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     obs.consumeWith(c).runSyncUnsafe()
   }
 
-//  protected def readIndexFromFile(file: File): List[Media] = {
-//    val json = file.contentAsString
-//
-//    decode[List[Media]](json) match {
-//      case Right(index) => index
-//      case Left(error)  => throw error
-//    }
-//  }
-//
-//  def exportIndexToFile(index: File, videos: Seq[Media]): Unit = {
-//
-//    if (!index.exists)
-//      index.createFile()
-//
-//    val json = videos.asJson.toString()
-//    index.overwrite(json)
-//  }
-
-  def generateThumbnail(videoPath: Path, outputDir: Path, id: String, timeStamp: Long): String = {
+  def generateThumbnail(videoPath: Path, outputDir: Path, id: String, timestamp: Long): String = {
 
     val thumbnailPath = s"${outputDir}/thumbnails"
     val thumbnailDir  = File(thumbnailPath)
@@ -98,13 +80,20 @@ object MediaLibScanner extends Logging with JsonCodecs {
     if (!thumbnailDir.exists)
       thumbnailDir.createDirectory()
 
-    val thumbNail = s"${id}-$timeStamp.jpeg"
+    val inputFile = videoPath.toAbsolutePath.toString
+    val thumbNail = s"${id}-$timestamp.jpeg"
     val fullFile  = s"${thumbnailPath}/$thumbNail"
 
     FFMpeg.writeThumbnail(
       inputFile = videoPath.toAbsolutePath.toString,
-      time = timeStamp,
+      timestamp = timestamp,
       outputFile = Some(fullFile)
+    )
+
+    FFMpeg.createWebP(
+      videoPath.toAbsolutePath.toString,
+      timestamp,
+      s"${thumbnailPath}/${id}-$timestamp.webp"
     )
 
     thumbNail

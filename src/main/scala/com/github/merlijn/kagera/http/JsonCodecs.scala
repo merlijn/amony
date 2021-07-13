@@ -17,15 +17,16 @@ object WebConversions {
 
   implicit class MediaOp(media: MediaLibActor.Media) {
 
-    def toWebModel(): Video = Video(
-      media.id,
-      media.uri,
-      media.title,
-      media.duration,
-      Thumbnail(media.thumbnail.timestamp, s"/files/thumbnails/${media.thumbnail.uri}"),
-      s"${media.resolution._1}x${media.resolution._2}",
-      media.tags
-    )
+    def toWebModel(): Video =
+      Video(
+        media.id,
+        s"/files/videos/${media.uri}",
+        media.title,
+        media.duration,
+        Thumbnail(media.thumbnail.timestamp, s"/files/thumbnails/${media.thumbnail.uri}"),
+        s"${media.resolution._1}x${media.resolution._2}",
+        media.tags
+      )
   }
 
   implicit class CollectionOp(c: MediaLibActor.Collection) {

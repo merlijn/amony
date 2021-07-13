@@ -19,24 +19,24 @@ object MediaLibCommandHandler {
         Effect.persist(CollectionsAdded(collections))
 
       case GetById(id, sender) =>
-        Effect.reply(sender)(state.media.find(_.id == id))
+        Effect.reply(sender)(state.media.get(id))
 
       case GetCollections(sender) =>
-        Effect.reply(sender)(state.collections)
+        Effect.reply(sender)(state.collections.values.toList.sortBy(_.title))
 
       case GetAll(sender) =>
-        Effect.reply(sender)(state.media)
+        Effect.reply(sender)(state.media.values.toList)
 
       case Search(query, sender) =>
         val col = query.c match {
-          case None => state.media
+          case None => state.media.values
           case Some(id) =>
             state.collections
-              .find(_.id == id)
+              .get(id)
               .map { cid =>
-                state.media.filter(_.uri.startsWith(cid.title.substring(1)))
+                state.media.values.filter(_.uri.startsWith(cid.title.substring(1)))
               }
-              .getOrElse(state.media)
+              .getOrElse(state.media.values)
         }
 
         val result = query.q match {
@@ -49,10 +49,10 @@ object MediaLibCommandHandler {
 
         val videos = if (offset > result.size) Nil else result.slice(offset, end)
 
-        Effect.reply(sender)(SearchResult(offset, result.size, videos))
+        Effect.reply(sender)(SearchResult(offset, result.size, videos.toList))
 
       case SetThumbnail(id, timeStamp, sender) =>
-        state.media.find(_.id == id) match {
+        state.media.get(id) match {
           case None =>
             Effect.reply(sender)(None)
 
@@ -68,7 +68,7 @@ object MediaLibCommandHandler {
             val newVid = vid.copy(thumbnail = Thumbnail(timeStamp, newThumbnail))
 
             Effect
-              .persist(ReplaceVid(id, newVid))
+              .persist(MediaUpdated(id, newVid))
               .thenReply(sender)(_ => Some(newVid))
         }
     }

@@ -46,8 +46,8 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
         get {
 
           val size         = s.map(_.toInt).getOrElse(24)
-          val searchResult = mediaLibApi.search(q, offset.map(_.toInt), size, c.map(_.toInt))
-          val response = searchResult.map(_.toWebModel().asJson)
+          val searchResult = mediaLibApi.search(q, offset.map(_.toInt), size, c)
+          val response     = searchResult.map(_.toWebModel().asJson)
 
           complete(response)
         }

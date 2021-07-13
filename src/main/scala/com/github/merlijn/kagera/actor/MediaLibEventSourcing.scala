@@ -8,22 +8,20 @@ object MediaLibEventSourcing {
 
   case class MediaAdded(media: List[Media])                  extends Event
   case class CollectionsAdded(collections: List[Collection]) extends Event
-  case class ReplaceVid(id: String, v: Media)                extends Event
+  case class MediaUpdated(id: String, m: Media)              extends Event
 
   def apply(state: State, event: Event): State =
     event match {
 
       case MediaAdded(media) =>
-        state.copy(media = state.media ::: media)
+        val byId = media.map(m => m.id -> m).toMap
+        state.copy(media = state.media ++ byId)
 
       case CollectionsAdded(collections) =>
-        state.copy(collections = state.collections ::: collections)
+        val byId = collections.map(m => m.id -> m).toMap
+        state.copy(collections = state.collections ++ byId)
 
-      case ReplaceVid(id, newVid) =>
-        // replace vid
-        val idx = state.media.indexWhere(_.id == id)
-        val newMedia =
-          state.media.slice(0, idx) ::: (newVid :: state.media.slice(idx + 1, state.media.size))
-        state.copy(media = newMedia)
+      case MediaUpdated(id, newVid) =>
+        state.copy(media = state.media + (id -> newVid))
     }
 }

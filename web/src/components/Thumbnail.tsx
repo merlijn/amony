@@ -34,6 +34,9 @@ const Thumbnail = (props: {vid: Video}) => {
     genThumbnailAt(Math.trunc(value))
   }
 
+
+  const preview = props.vid.thumbnail.uri.split(".")[0] + ".webp"
+
   const info =
     <div>
       <div className="bottom-left duration-overlay">{durationStr}</div>
@@ -51,8 +54,11 @@ const Thumbnail = (props: {vid: Video}) => {
 
   return (
     <div className="thumbnail-container">
-      <a href={link}><Image className="thumbnail" src={vid.thumbnail.uri} fluid /></a>
-      <div className="top-right"><img className="menu-icon" src="/more_vert_black_24dp.svg" onClick={switchThumb} /></div>
+      <a href={link}>
+        <Image className="thumbnail" src={vid.thumbnail.uri} fluid />
+        <Image className="preview" src={preview} fluid />
+      </a>
+      {/*<div className="top-right"><img className="menu-icon" src="/more_vert_black_24dp.svg" onClick={switchThumb} /></div>*/}
       { bottom }
     </div>
   );

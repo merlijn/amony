@@ -1,27 +1,49 @@
 @import '../App.scss';
 @import '../css/slider.scss';
 
-.gallery .thumbnail-container img.thumbnail {
-  object-fit: cover;
-  object-position: center;
+.thumbnail-container {
+  position: relative;
 }
 
-.grid-2 .thumbnail-container img.thumbnail {
+.thumbnail-container img.thumbnail,img.preview {
+  //padding-bottom: 8px;
+  position: absolute;
+  object-fit: cover;
+  object-position: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.thumbnail-container img.thumbnail {
+  z-index: 1;
+}
+
+//  top: 50%;
+//  left: 50%;
+//  transform: translate(-50%, -50%);
+
+.grid-2 .thumbnail-container img {
   width: $grid-2-w ! important;
   height: $grid-2-h ! important;
 }
 
-.grid-3 .thumbnail-container img.thumbnail {
+.grid-3 .thumbnail-container img {
   width: $grid-3-w ! important;
   height: $grid-3-h ! important;
 }
 
-.grid-4 .thumbnail-container img.thumbnail {
+.grid-4 .thumbnail-container {
   width: $grid-4-w ! important;
   height: $grid-4-h ! important;
 }
 
-.grid-5 .thumbnail-container img.thumbnail {
+.grid-4 .thumbnail-container img {
+  width: $grid-4-w ! important;
+  height: $grid-4-h ! important;
+}
+
+.grid-5 .thumbnail-container img {
   width: $grid-5-w ! important;
   height: $grid-5-h ! important;
 }
@@ -38,8 +60,13 @@
   font-size: medium;
 }
 
-.thumbnail-container {
-  position: relative;
+.thumbnail-container a img.preview {
+  z-index: 2;
+  visibility: hidden;
+}
+
+.thumbnail-container a:hover img.preview {
+  visibility: visible;
 }
 
 .bottom-right {
@@ -65,15 +92,17 @@
 }
 
 .bottom-left {
+  z-index: 3;
   position: absolute;
   bottom: 8px;
   left: 8px;
 }
 
 .duration-overlay {
+  z-index: 3;
   padding: 0px 5px;
   color: white;
-  background-color: black;
+  background-color: rgba(0, 0, 0, 0.8);
   font-size: small;
 }
 
@@ -84,6 +113,7 @@
 }
 
 .menu-icon {
+  z-index: 3;
   width: 20px;
   height: 20px;
 }

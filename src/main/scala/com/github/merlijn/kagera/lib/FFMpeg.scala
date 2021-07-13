@@ -38,9 +38,58 @@ object FFMpeg extends Logging {
     Probe(hash, fileName, duration, (w, h))
   }
 
+  private def seek(timestamp: Long): String = {
+
+    val duration = Duration.ofMillis(timestamp)
+
+    val hours   = "%02d".format(duration.toHoursPart)
+    val minutes = "%02d".format(duration.toMinutesPart)
+    val seconds = "%02d".format(duration.toSecondsPart)
+    val millis  = "%03d".format(duration.toMillisPart)
+
+    s"$hours:$minutes:$seconds.$millis"
+  }
+
+  def createGif(inputFile: String, timestamp: Long, outputFile: String): Unit = {
+
+    // format: off
+    run(
+      "ffmpeg",
+      "-ss", seek(timestamp),
+      "-t", "2",
+      "-i", inputFile,
+      "-vf", "fps=8,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
+      "-loop", "0",
+      outputFile
+    )
+    // format: on
+  }
+
+  def createWebP(inputFile: String, timestamp: Long, outputFile: String): Unit = {
+
+    // format: off
+    run(
+      "ffmpeg",
+      "-ss", seek(timestamp),
+      "-t", "2",
+      "-i", inputFile,
+      "-vf", "fps=8,scale=320:-1:flags=lanczos",
+      "-vcodec", "libwebp",
+      "-lossless", "0",
+      "-compression_level", "6",
+      "-loop", "0",
+      "-q:v", "50",
+      "-preset", "picture",
+      "-an",
+       "-vsync", "0",
+      outputFile
+    )
+    // format: on
+  }
+
   def writeThumbnail(
       inputFile: String,
-      time: Long,
+      timestamp: Long,
       outputFile: Option[String],
       overwrite: Boolean = false
   ): Unit = {
@@ -53,31 +102,21 @@ object FFMpeg extends Logging {
 
     if (!thumbnailFile.exists) {
 
-      val timestamp = Duration.ofMillis(time)
-
-      val hours   = "%02d".format(timestamp.toHoursPart)
-      val minutes = "%02d".format(timestamp.toMinutesPart)
-      val seconds = "%02d".format(timestamp.toSecondsPart)
-      val millis  = "%03d".format(timestamp.toMillisPart)
-
-      val ss = s"$hours:$minutes:$seconds.$millis"
-
-      logger.info(s"Creating thumbnail at $ss for $inputFile")
-
+      // format: off
       run(
         s"ffmpeg",
-        "-ss",
-        ss,
-        "-i",
-        inputFile,
-        "-vframes",
-        "1",
+        "-ss", seek(timestamp),
+        "-i", inputFile,
+        "-vframes", "1",
         thumbnailFile.path.toAbsolutePath.toString
       )
+      // format: on
     }
   }
 
   def run(cmds: String*): String = {
+
+    logger.debug(s"Running command: ${cmds.mkString(",")}")
 
     val r        = Runtime.getRuntime
     val p        = r.exec(cmds.toArray)
