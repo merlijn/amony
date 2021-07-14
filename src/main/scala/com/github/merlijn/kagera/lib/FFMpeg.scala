@@ -1,6 +1,7 @@
 package com.github.merlijn.kagera.lib
 
 import better.files.File
+import com.github.merlijn.kagera.lib.FileUtil.stripExtension
 import scribe.Logging
 
 import java.nio.file.Path
@@ -65,24 +66,24 @@ object FFMpeg extends Logging {
     // format: on
   }
 
-  def createWebP(inputFile: String, timestamp: Long, outputFile: String): Unit = {
+  def createWebP(inputFile: String, timestamp: Long, outputFile: Option[String]): Unit = {
 
     // format: off
     run(
       "ffmpeg",
       "-ss", seek(timestamp),
-      "-t", "2",
+      "-t", "3",
       "-i", inputFile,
       "-vf", "fps=8,scale=320:-1:flags=lanczos",
       "-vcodec", "libwebp",
       "-lossless", "0",
-      "-compression_level", "6",
+      "-compression_level", "3",
       "-loop", "0",
-      "-q:v", "50",
+      "-q:v", "70",
       "-preset", "picture",
       "-an",
        "-vsync", "0",
-      outputFile
+      outputFile.getOrElse(s"${stripExtension(inputFile)}.webp")
     )
     // format: on
   }
@@ -94,8 +95,7 @@ object FFMpeg extends Logging {
       overwrite: Boolean = false
   ): Unit = {
 
-    val baseFilename  = inputFile.substring(0, inputFile.lastIndexOf('.'))
-    val thumbnailFile = File(outputFile.getOrElse(s"$baseFilename.jpeg"))
+    val thumbnailFile = File(outputFile.getOrElse(s"${stripExtension(inputFile)}.webp"))
 
     if (overwrite && thumbnailFile.exists)
       thumbnailFile.delete()

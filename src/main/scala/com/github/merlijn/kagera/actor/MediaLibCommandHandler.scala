@@ -1,7 +1,6 @@
 package com.github.merlijn.kagera.actor
 
 import akka.persistence.typed.scaladsl.Effect
-import better.files.File
 import com.github.merlijn.kagera.lib.MediaLibScanner.generateThumbnail
 import com.github.merlijn.kagera.actor.MediaLibEventSourcing._
 import com.github.merlijn.kagera.actor.MediaLibActor._
@@ -59,16 +58,11 @@ object MediaLibCommandHandler {
           case Some(vid) =>
             val sanitizedTimeStamp = Math.max(0, Math.min(vid.duration, timeStamp))
             val videoPath          = vid.path(config.libraryPath)
-
-            File(vid.thumbnailPath(config.indexPath.resolve("thumbnails"))).delete()
-
-            val newThumbnail =
-              generateThumbnail(videoPath, config.indexPath, id, sanitizedTimeStamp)
-
-            val newVid = vid.copy(thumbnail = Thumbnail(timeStamp, newThumbnail))
+            val newVid = vid.copy(thumbnail = Thumbnail(timeStamp))
 
             Effect
               .persist(MediaUpdated(id, newVid))
+              .thenRun((s: State) => generateThumbnail(videoPath, config.indexPath, id, sanitizedTimeStamp))
               .thenReply(sender)(_ => Some(newVid))
         }
     }

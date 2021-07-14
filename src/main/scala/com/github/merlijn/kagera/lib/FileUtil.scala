@@ -9,6 +9,34 @@ import scala.util.Random
 
 object FileUtil extends Logging {
 
+  implicit class PathOps(path: Path) {
+
+    // strip extension
+    def stripExtension()  = {
+      val dotIdx = path.toString.lastIndexOf('.')
+      val last = if (dotIdx >= 0) dotIdx else path.toString.length
+      path.toString.substring(0, last)
+    }
+
+    def delete(): Unit = {
+
+    }
+  }
+
+  // strip extension
+  def stripExtension(fileName: String)  = {
+    val dotIdx = fileName.lastIndexOf('.')
+    val last = if (dotIdx >= 0) dotIdx else fileName.length
+    fileName.substring(0, last)
+  }
+
+  def extension(fileName: String): String = {
+    val dotIdx = fileName.lastIndexOf('.')
+    val maxIdx = fileName.length - 1
+    val first = if (dotIdx >= 0) Math.min(dotIdx, maxIdx) else maxIdx
+    fileName.substring(first, fileName.length)
+  }
+
   def walkDir(dir: Path): Iterable[Path] = {
     import java.nio.file.Files
 

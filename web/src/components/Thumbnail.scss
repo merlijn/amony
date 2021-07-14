@@ -2,57 +2,46 @@
 @import '../css/slider.scss';
 
 .thumbnail-container {
-  position: relative;
-}
 
-.thumbnail-container img.thumbnail,img.preview {
-  position: absolute;
-  object-fit: cover;
-  object-position: center;
+  position: relative;
+  width: 100%;
+  height: 100%;
+
+  img.thumbnail {
+    z-index: 1;
+  }
+
+  img.thumbnail, img.preview {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    object-fit: cover;
+    object-position: center;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-}
+  }
 
-.thumbnail-container img.thumbnail {
-  z-index: 1;
-}
+  a {
+    color: #fff;
+    text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
+    font-size: medium;
 
-.thumbnail-container img {
-  width: 100%;
-  height: 100%;
-}
+    img.preview {
+      z-index: 2;
+      visibility: hidden;
+    }
 
-.thumbnail-container {
-  width: 100%;
-  height: 100%;
-}
+    &:hover {
+      color: #fff;
+      text-shadow: 0px 0px 12px #fff, -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
+      font-size: medium;
 
-.thumbnail-container a {
-  color: #fff;
-  text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
-  font-size: medium;
-}
-
-.thumbnail-container a:hover {
-  color: #fff;
-  text-shadow: 0px 0px 12px #fff, -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
-  font-size: medium;
-}
-
-.thumbnail-container a img.preview {
-  z-index: 2;
-  visibility: hidden;
-}
-
-.thumbnail-container a:hover img.preview {
-  visibility: visible;
-}
-
-.bottom-right {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
+      img.preview {
+        visibility: visible;
+      }
+    }
+  }
 }
 
 .thumbnail-picker {
@@ -65,17 +54,8 @@
   margin: 0px 10px ! important;
 }
 
-.top-right {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-}
-
-.bottom-left {
+.thumbnail-overlay {
   z-index: 3;
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
 }
 
 .duration-overlay {
@@ -87,6 +67,7 @@
 }
 
 .title-overlay {
+  z-index: 3;
   color: #fff;
   text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
   font-size: small;
@@ -97,3 +78,28 @@
   width: 20px;
   height: 20px;
 }
+
+.bottom-right {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+}
+
+.top-right {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+.bottom-left {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+}
+
+.top-left {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+}
+

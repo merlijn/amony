@@ -40,11 +40,11 @@ const Thumbnail = (props: {vid: Video}) => {
   const info =
     <div>
       <div className="bottom-left duration-overlay">{durationStr}</div>
-      {/*<div className="bottom-right title-overlay">{vid.title}</div>*/}
+      <div className="bottom-right title-overlay">{vid.title}</div>
     </div>
 
   const thumbnailPicker =
-    <Form className="thumbnail-picker">
+    <Form className="thumbnail-picker thumbnail-overlay">
       <Form.Group controlId="formBasicRange">
         <Form.Control type="range" min="0" max={vid.duration} value={vid.thumbnail.timestamp} onChange={sliderChanged} />
       </Form.Group>
@@ -58,7 +58,8 @@ const Thumbnail = (props: {vid: Video}) => {
         <Image className="thumbnail" src={vid.thumbnail.uri} fluid />
         <Image className="preview" src={preview} fluid />
       </a>
-      {/*<div className="top-right"><img className="menu-icon" src="/more_vert_black_24dp.svg" onClick={switchThumb} /></div>*/}
+      <div className="top-right menu-icon"><img src="/more_vert_black_24dp.svg" onClick={switchThumb} /></div>
+      <div className="top-left menu-icon"><img src="/info_black_24dp.svg" /></div>
       { bottom }
     </div>
   );

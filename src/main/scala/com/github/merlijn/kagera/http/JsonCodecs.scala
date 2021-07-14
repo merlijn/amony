@@ -1,7 +1,7 @@
 package com.github.merlijn.kagera.http
 
 import com.github.merlijn.kagera.actor.MediaLibActor
-import com.github.merlijn.kagera.http.Model.{Collection, SearchResult, Thumbnail, Video}
+import com.github.merlijn.kagera.http.Model.{Collection, SearchResult, Preview, Video}
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
@@ -10,7 +10,7 @@ trait JsonCodecs {
   implicit val collectionCodec: Codec[Collection] = deriveCodec[Collection]
   implicit val videoCodec: Codec[Video]           = deriveCodec[Video]
   implicit val resultCodec: Codec[SearchResult]   = deriveCodec[SearchResult]
-  implicit val thumbnailCode: Codec[Thumbnail]    = deriveCodec[Thumbnail]
+  implicit val thumbnailCode: Codec[Preview]    = deriveCodec[Preview]
 }
 
 object WebConversions {
@@ -23,7 +23,10 @@ object WebConversions {
         s"/files/videos/${media.uri}",
         media.title,
         media.duration,
-        Thumbnail(media.thumbnail.timestamp, s"/files/thumbnails/${media.thumbnail.uri}"),
+        Preview(
+          media.thumbnail.timestamp,
+          s"/files/thumbnails/${media.id}-${media.thumbnail.timestamp}.jpeg",
+          s"/files/thumbnails/${media.id}-${media.thumbnail.timestamp}.webp"),
         s"${media.resolution._1}x${media.resolution._2}",
         media.tags
       )

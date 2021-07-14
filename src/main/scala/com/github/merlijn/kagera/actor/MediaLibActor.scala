@@ -26,7 +26,7 @@ object MediaLibActor {
   case class SetThumbnail(mediaId: String, timeStamp: Long, sender: ActorRef[Option[Media]]) extends Command
 
   case class State(media: Map[String, Media], collections: Map[String, Collection])
-  case class Thumbnail(timestamp: Long, uri: String)
+  case class Thumbnail(timestamp: Long)
   case class Collection(id: String, title: String)
 
   case class Media(
@@ -39,7 +39,6 @@ object MediaLibActor {
       tags: Seq[String]
   ) {
     def path(baseDir: Path): Path    = baseDir.resolve(uri)
-    def thumbnailPath(baseDir: Path) = baseDir.resolve(thumbnail.uri)
   }
 
   def apply(config: MediaLibConfig): EventSourcedBehavior[Command, Event, State] =

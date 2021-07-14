@@ -2,9 +2,10 @@ package com.github.merlijn.kagera.http
 
 object Model {
 
-  case class Thumbnail(
+  case class Preview(
       timestamp: Long,
-      uri: String
+      uri: String,
+      webp_uri: String
   )
 
   case class Video(
@@ -12,7 +13,7 @@ object Model {
       uri: String,
       title: String,
       duration: Long,
-      thumbnail: Thumbnail,
+      thumbnail: Preview,
       resolution: String,
       tags: Seq[String]
   )

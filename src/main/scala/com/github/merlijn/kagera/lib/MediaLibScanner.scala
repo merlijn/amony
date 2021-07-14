@@ -26,8 +26,9 @@ object MediaLibScanner extends Logging with JsonCodecs {
     val info      = FFMpeg.ffprobe(videoPath)
     val timeStamp = info.duration / 3
 
-    val thumbNail = generateThumbnail(videoPath, indexDir, info.id, timeStamp)
-    val video     = asVideo(baseDir, info, timeStamp, thumbNail)
+    generateThumbnail(videoPath, indexDir, info.id, timeStamp)
+
+    val video     = asVideo(baseDir, info, timeStamp)
 
     video
   }
@@ -72,7 +73,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     obs.consumeWith(c).runSyncUnsafe()
   }
 
-  def generateThumbnail(videoPath: Path, outputDir: Path, id: String, timestamp: Long): String = {
+  def generateThumbnail(videoPath: Path, outputDir: Path, id: String, timestamp: Long): Unit = {
 
     val thumbnailPath = s"${outputDir}/thumbnails"
     val thumbnailDir  = File(thumbnailPath)
@@ -81,25 +82,21 @@ object MediaLibScanner extends Logging with JsonCodecs {
       thumbnailDir.createDirectory()
 
     val inputFile = videoPath.toAbsolutePath.toString
-    val thumbNail = s"${id}-$timestamp.jpeg"
-    val fullFile  = s"${thumbnailPath}/$thumbNail"
 
     FFMpeg.writeThumbnail(
-      inputFile = videoPath.toAbsolutePath.toString,
+      inputFile = inputFile,
       timestamp = timestamp,
-      outputFile = Some(fullFile)
+      outputFile = Some(s"${thumbnailPath}/${id}-$timestamp.jpeg")
     )
 
     FFMpeg.createWebP(
-      videoPath.toAbsolutePath.toString,
-      timestamp,
-      s"${thumbnailPath}/${id}-$timestamp.webp"
+      inputFile = inputFile,
+      timestamp = timestamp,
+      outputFile = Some(s"${thumbnailPath}/${id}-$timestamp.webp")
     )
-
-    thumbNail
   }
 
-  protected def asVideo(baseDir: Path, info: Probe, thumbnailTimestamp: Long, thumbnailUri: String): Media = {
+  protected def asVideo(baseDir: Path, info: Probe, thumbnailTimestamp: Long): Media = {
 
     val relativePath = baseDir.relativize(Path.of(info.fileName)).toString
 
@@ -116,7 +113,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       uri = relativePath,
       title = title,
       duration = info.duration,
-      thumbnail = Thumbnail(thumbnailTimestamp, thumbnailUri),
+      thumbnail = Thumbnail(thumbnailTimestamp),
       tags = Seq.empty,
       resolution = info.resolution
     )
