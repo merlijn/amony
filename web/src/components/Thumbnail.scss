@@ -6,7 +6,6 @@
 }
 
 .thumbnail-container img.thumbnail,img.preview {
-  //padding-bottom: 8px;
   position: absolute;
   object-fit: cover;
   object-position: center;
@@ -19,33 +18,14 @@
   z-index: 1;
 }
 
-//  top: 50%;
-//  left: 50%;
-//  transform: translate(-50%, -50%);
-
-.grid-2 .thumbnail-container img {
-  width: $grid-2-w ! important;
-  height: $grid-2-h ! important;
+.thumbnail-container img {
+  width: 100%;
+  height: 100%;
 }
 
-.grid-3 .thumbnail-container img {
-  width: $grid-3-w ! important;
-  height: $grid-3-h ! important;
-}
-
-.grid-4 .thumbnail-container {
-  width: $grid-4-w ! important;
-  height: $grid-4-h ! important;
-}
-
-.grid-4 .thumbnail-container img {
-  width: $grid-4-w ! important;
-  height: $grid-4-h ! important;
-}
-
-.grid-5 .thumbnail-container img {
-  width: $grid-5-w ! important;
-  height: $grid-5-h ! important;
+.thumbnail-container {
+  width: 100%;
+  height: 100%;
 }
 
 .thumbnail-container a {
