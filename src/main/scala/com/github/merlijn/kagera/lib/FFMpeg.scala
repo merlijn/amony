@@ -9,7 +9,7 @@ import java.time.Duration
 
 object FFMpeg extends Logging {
 
-  case class Probe(id: String, fileName: String, duration: Long, resolution: (Int, Int))
+  case class Probe(fileName: String, duration: Long, resolution: (Int, Int))
 
   def ffprobe(file: Path): Probe = {
 
@@ -34,9 +34,7 @@ object FFMpeg extends Logging {
           seconds.toInt * 1000
     }
 
-    val hash = FileUtil.fakeHash(file)
-
-    Probe(hash, fileName, duration, (w, h))
+    Probe(fileName, duration, (w, h))
   }
 
   private def seek(timestamp: Long): String = {

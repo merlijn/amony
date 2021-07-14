@@ -1,7 +1,9 @@
 package com.github.merlijn.kagera.lib
 
+import akka.actor.typed.ActorRef
 import better.files.File
-import com.github.merlijn.kagera.actor.MediaLibActor.{Collection, Media, Thumbnail}
+import com.github.merlijn.kagera.actor.MediaLibActor
+import com.github.merlijn.kagera.actor.MediaLibActor.{AddCollections, AddMedia, Collection, Media, Thumbnail}
 import com.github.merlijn.kagera.http.JsonCodecs
 import com.github.merlijn.kagera.lib.FFMpeg.Probe
 import monix.eval.Task
@@ -25,22 +27,23 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     val info      = FFMpeg.ffprobe(videoPath)
     val timeStamp = info.duration / 3
+    val hash      = FileUtil.fakeHash(videoPath)
 
-    generateThumbnail(videoPath, indexDir, info.id, timeStamp)
+    generateThumbnail(videoPath, indexDir, hash, timeStamp)
 
-    val video     = asVideo(baseDir, info, timeStamp)
+    val video = asVideo(baseDir, hash, info, timeStamp)
 
     video
   }
 
-  def scanPath(
+  def scanVideosInPath(
       scanPath: Path,
       indexPath: Path,
       parallelFactor: Int,
       max: Option[Int],
       last: List[Media],
       extensions: List[String] = List("mp4", "webm")
-  )(implicit s: Scheduler): List[Media] = {
+  )(implicit s: Scheduler): Observable[Media] = {
 
     val files = FileUtil.walkDir(scanPath)
 
@@ -51,7 +54,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       case Some(n) => files.take(n)
     }
 
-    val obs = Observable
+    Observable
       .from(truncatedMaybe)
       .filter { vid =>
         val fileName = vid.getFileName.toString
@@ -67,15 +70,15 @@ object MediaLibScanner extends Logging with JsonCodecs {
         !alreadyIndexed
       }
       .mapParallelUnordered(parallelFactor) { p => Task { scanVideo(scanPath, p, indexPath) } }
-
-    val c = Consumer.toList[Media]
-
-    obs.consumeWith(c).runSyncUnsafe()
   }
 
-  def generateThumbnail(videoPath: Path, outputDir: Path, id: String, timestamp: Long): Unit = {
+  def deleteThumbnail(indexPath: Path, id: String, timestamp: Long) = {
 
-    val thumbnailPath = s"${outputDir}/thumbnails"
+  }
+
+  def generateThumbnail(videoPath: Path, indexPath: Path, id: String, timestamp: Long): Unit = {
+
+    val thumbnailPath = s"${indexPath}/thumbnails"
     val thumbnailDir  = File(thumbnailPath)
 
     if (!thumbnailDir.exists)
@@ -96,7 +99,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     )
   }
 
-  protected def asVideo(baseDir: Path, info: Probe, thumbnailTimestamp: Long): Media = {
+  protected def asVideo(baseDir: Path, hash: String, info: Probe, thumbnailTimestamp: Long): Media = {
 
     val relativePath = baseDir.relativize(Path.of(info.fileName)).toString
 
@@ -109,8 +112,9 @@ object MediaLibScanner extends Logging with JsonCodecs {
     val title = relativePath.substring(startIdx, endIdx)
 
     Media(
-      id = info.id,
+      id = hash,
       uri = relativePath,
+      hash = hash,
       title = title,
       duration = info.duration,
       thumbnail = Thumbnail(thumbnailTimestamp),
@@ -119,8 +123,9 @@ object MediaLibScanner extends Logging with JsonCodecs {
     )
   }
 
-  def scan(config: MediaLibConfig, last: List[Media]): (List[Media], List[Collection]) = {
+  def scan(config: MediaLibConfig, last: List[Media], actorRef: ActorRef[MediaLibActor.Command]): Unit = {
 
+    implicit val s = Scheduler.global
     val libraryDir = File(config.libraryPath)
 
     // create the index directory if it does not exist
@@ -128,27 +133,12 @@ object MediaLibScanner extends Logging with JsonCodecs {
     if (!indexDir.exists)
       indexDir.createDirectory()
 
-    val videoIndex: List[Media] = {
+    val obs = scanVideosInPath(libraryDir.path, config.indexPath, config.scanParallelFactor, config.max, last)
 
-      implicit val s = Scheduler.global
-      val scanResult = scanPath(libraryDir.path, config.indexPath, config.scanParallelFactor, config.max, last)
-      scanResult
-    }
+    val c = Consumer.foreachTask[Media](m =>
+      Task { actorRef.tell(AddMedia(List(m))) }
+    )
 
-    val collections: List[Collection] = {
-
-      val dirs = videoIndex.foldLeft(Set.empty[String]) {
-        case (set, e) =>
-          val parent   = (libraryDir / e.uri).parent
-          val relative = s"/${libraryDir.relativize(parent)}"
-          set + relative
-      }
-
-      dirs.toList.sorted.zipWithIndex.map {
-        case (e, idx) => Collection(idx.toString, e)
-      }
-    }
-
-    (videoIndex, collections)
+    obs.consumeWith(c).runSyncUnsafe()
   }
 }

@@ -10,7 +10,7 @@ trait JsonCodecs {
   implicit val collectionCodec: Codec[Collection] = deriveCodec[Collection]
   implicit val videoCodec: Codec[Video]           = deriveCodec[Video]
   implicit val resultCodec: Codec[SearchResult]   = deriveCodec[SearchResult]
-  implicit val thumbnailCode: Codec[Preview]    = deriveCodec[Preview]
+  implicit val thumbnailCode: Codec[Preview]      = deriveCodec[Preview]
 }
 
 object WebConversions {
@@ -26,7 +26,8 @@ object WebConversions {
         Preview(
           media.thumbnail.timestamp,
           s"/files/thumbnails/${media.id}-${media.thumbnail.timestamp}.jpeg",
-          s"/files/thumbnails/${media.id}-${media.thumbnail.timestamp}.webp"),
+          s"/files/thumbnails/${media.id}-${media.thumbnail.timestamp}.webp"
+        ),
         s"${media.resolution._1}x${media.resolution._2}",
         media.tags
       )

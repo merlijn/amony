@@ -31,6 +31,7 @@ object MediaLibActor {
 
   case class Media(
       id: String,
+      hash: String,
       uri: String,
       title: String,
       duration: Long,
@@ -38,7 +39,7 @@ object MediaLibActor {
       resolution: (Int, Int),
       tags: Seq[String]
   ) {
-    def path(baseDir: Path): Path    = baseDir.resolve(uri)
+    def path(baseDir: Path): Path = baseDir.resolve(uri)
   }
 
   def apply(config: MediaLibConfig): EventSourcedBehavior[Command, Event, State] =

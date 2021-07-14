@@ -1,6 +1,8 @@
 package com.github.merlijn.kagera.actor
 
 import akka.persistence.typed.scaladsl.Effect
+import better.files.File
+import better.files.File.apply
 import com.github.merlijn.kagera.lib.MediaLibScanner.generateThumbnail
 import com.github.merlijn.kagera.actor.MediaLibEventSourcing._
 import com.github.merlijn.kagera.actor.MediaLibActor._
@@ -8,7 +10,22 @@ import com.github.merlijn.kagera.lib.MediaLibConfig
 
 object MediaLibCommandHandler {
 
-  def apply(config: MediaLibConfig)(state: State, cmd: Command): Effect[Event, State] =
+  def apply(config: MediaLibConfig)(state: State, cmd: Command): Effect[Event, State] = {
+
+    lazy val collections: List[Collection] = {
+
+      val dirs = state.media.values.foldLeft(Set.empty[String]) {
+        case (set, e) =>
+          val parent   = (File(config.libraryPath) / e.uri).parent
+          val relative = s"/${config.libraryPath.relativize(parent)}"
+          set + relative
+      }
+
+      dirs.toList.sorted.zipWithIndex.map {
+        case (e, idx) => Collection(idx.toString, e)
+      }
+    }
+
     cmd match {
 
       case AddMedia(media) =>
@@ -21,7 +38,7 @@ object MediaLibCommandHandler {
         Effect.reply(sender)(state.media.get(id))
 
       case GetCollections(sender) =>
-        Effect.reply(sender)(state.collections.values.toList.sortBy(_.title))
+        Effect.reply(sender)(collections.sortBy(_.title))
 
       case GetAll(sender) =>
         Effect.reply(sender)(state.media.values.toList)
@@ -30,8 +47,8 @@ object MediaLibCommandHandler {
         val col = query.c match {
           case None => state.media.values
           case Some(id) =>
-            state.collections
-              .get(id)
+            collections
+              .find(_.id == id)
               .map { cid =>
                 state.media.values.filter(_.uri.startsWith(cid.title.substring(1)))
               }
@@ -58,7 +75,7 @@ object MediaLibCommandHandler {
           case Some(vid) =>
             val sanitizedTimeStamp = Math.max(0, Math.min(vid.duration, timeStamp))
             val videoPath          = vid.path(config.libraryPath)
-            val newVid = vid.copy(thumbnail = Thumbnail(timeStamp))
+            val newVid             = vid.copy(thumbnail = Thumbnail(timeStamp))
 
             Effect
               .persist(MediaUpdated(id, newVid))
@@ -66,4 +83,5 @@ object MediaLibCommandHandler {
               .thenReply(sender)(_ => Some(newVid))
         }
     }
+  }
 }

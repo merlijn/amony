@@ -23,10 +23,8 @@ object App extends AppConfig with Logging {
     api
       .getAll()(Timeout(10.seconds))
       .foreach { loadedFromStore =>
-        val (index, coll) = MediaLibScanner.scan(mediaLibConfig, loadedFromStore)
 
-        system.tell(AddMedia(index.sortBy(_.uri)))
-        system.tell(AddCollections(coll))
+        MediaLibScanner.scan(mediaLibConfig, loadedFromStore, system)
 
       }(system.executionContext)
 
