@@ -3,7 +3,7 @@ package com.github.merlijn.kagera.lib
 import akka.actor.typed.ActorRef
 import better.files.File
 import com.github.merlijn.kagera.actor.MediaLibActor
-import com.github.merlijn.kagera.actor.MediaLibActor.{AddCollections, AddMedia, Collection, Media, Thumbnail}
+import com.github.merlijn.kagera.actor.MediaLibActor.{AddMedia, Media, Thumbnail}
 import com.github.merlijn.kagera.http.JsonCodecs
 import com.github.merlijn.kagera.lib.FFMpeg.Probe
 import monix.eval.Task
@@ -72,9 +72,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       .mapParallelUnordered(parallelFactor) { p => Task { scanVideo(scanPath, p, indexPath) } }
   }
 
-  def deleteThumbnail(indexPath: Path, id: String, timestamp: Long) = {
-
-  }
+  def deleteThumbnail(indexPath: Path, id: String, timestamp: Long) = {}
 
   def generateThumbnail(videoPath: Path, indexPath: Path, id: String, timestamp: Long): Unit = {
 
@@ -87,14 +85,14 @@ object MediaLibScanner extends Logging with JsonCodecs {
     val inputFile = videoPath.toAbsolutePath.toString
 
     FFMpeg.writeThumbnail(
-      inputFile = inputFile,
-      timestamp = timestamp,
+      inputFile  = inputFile,
+      timestamp  = timestamp,
       outputFile = Some(s"${thumbnailPath}/${id}-$timestamp.jpeg")
     )
 
     FFMpeg.createWebP(
-      inputFile = inputFile,
-      timestamp = timestamp,
+      inputFile  = inputFile,
+      timestamp  = timestamp,
       outputFile = Some(s"${thumbnailPath}/${id}-$timestamp.webp")
     )
   }
@@ -112,13 +110,13 @@ object MediaLibScanner extends Logging with JsonCodecs {
     val title = relativePath.substring(startIdx, endIdx)
 
     Media(
-      id = hash,
-      uri = relativePath,
-      hash = hash,
-      title = title,
-      duration = info.duration,
-      thumbnail = Thumbnail(thumbnailTimestamp),
-      tags = Seq.empty,
+      id         = hash,
+      uri        = relativePath,
+      hash       = hash,
+      title      = title,
+      duration   = info.duration,
+      thumbnail  = Thumbnail(thumbnailTimestamp),
+      tags       = Seq.empty,
       resolution = info.resolution
     )
   }
@@ -135,9 +133,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     val obs = scanVideosInPath(libraryDir.path, config.indexPath, config.scanParallelFactor, config.max, last)
 
-    val c = Consumer.foreachTask[Media](m =>
-      Task { actorRef.tell(AddMedia(List(m))) }
-    )
+    val c = Consumer.foreachTask[Media](m => Task { actorRef.tell(AddMedia(List(m))) })
 
     obs.consumeWith(c).runSyncUnsafe()
   }

@@ -44,9 +44,9 @@ object MediaLibActor {
 
   def apply(config: MediaLibConfig): EventSourcedBehavior[Command, Event, State] =
     EventSourcedBehavior[Command, Event, State](
-      persistenceId = PersistenceId.ofUniqueId("mediaLib"),
-      emptyState = State(Map.empty, Map.empty),
+      persistenceId  = PersistenceId.ofUniqueId("mediaLib"),
+      emptyState     = State(Map.empty, Map.empty),
       commandHandler = MediaLibCommandHandler.apply(config),
-      eventHandler = MediaLibEventSourcing.apply
+      eventHandler   = MediaLibEventSourcing.apply
     )
 }

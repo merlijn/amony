@@ -14,15 +14,14 @@ object MediaLibCommandHandler {
 
     lazy val collections: List[Collection] = {
 
-      val dirs = state.media.values.foldLeft(Set.empty[String]) {
-        case (set, e) =>
-          val parent   = (File(config.libraryPath) / e.uri).parent
-          val relative = s"/${config.libraryPath.relativize(parent)}"
-          set + relative
+      val dirs = state.media.values.foldLeft(Set.empty[String]) { case (set, e) =>
+        val parent   = (File(config.libraryPath) / e.uri).parent
+        val relative = s"/${config.libraryPath.relativize(parent)}"
+        set + relative
       }
 
-      dirs.toList.sorted.zipWithIndex.map {
-        case (e, idx) => Collection(idx.toString, e)
+      dirs.toList.sorted.zipWithIndex.map { case (e, idx) =>
+        Collection(idx.toString, e)
       }
     }
 

@@ -30,9 +30,9 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
     extends Logging
     with JsonCodecs {
 
-  implicit def materializer: Materializer         = Materializer.createMaterializer(system)
+  implicit def materializer: Materializer = Materializer.createMaterializer(system)
   implicit def executionContext: ExecutionContext = system.executionContext
-  implicit val timeout: Timeout                   = Timeout.durationToTimeout(config.requestTimeout)
+  implicit val timeout: Timeout = Timeout.durationToTimeout(config.requestTimeout)
 
   val rejectionHandler = RejectionHandler
     .newBuilder()

@@ -23,7 +23,6 @@ object App extends AppConfig with Logging {
     api
       .getAll()(Timeout(10.seconds))
       .foreach { loadedFromStore =>
-
         MediaLibScanner.scan(mediaLibConfig, loadedFromStore, system)
 
       }(system.executionContext)
