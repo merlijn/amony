@@ -3,10 +3,10 @@ package io.amony.actor
 import akka.persistence.typed.scaladsl.Effect
 import better.files.File
 import better.files.File.apply
-import com.github.merlijn.amony.lib.MediaLibScanner.{deleteThumbnailAtTimestamp, generateThumbnail}
-import com.github.merlijn.amony.actor.MediaLibEventSourcing._
-import com.github.merlijn.amony.actor.MediaLibActor._
-import com.github.merlijn.amony.lib.MediaLibConfig
+import io.amony.lib.MediaLibScanner.{deleteThumbnailAtTimestamp, generateThumbnail}
+import io.amony.actor.MediaLibEventSourcing._
+import io.amony.actor.MediaLibActor._
+import io.amony.lib.MediaLibConfig
 
 object MediaLibCommandHandler {
 

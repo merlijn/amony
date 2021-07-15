@@ -1,7 +1,7 @@
 package io.amony.http
 
-import com.github.merlijn.amony.actor.MediaLibActor
-import com.github.merlijn.amony.http.Model.{Collection, SearchResult, Preview, Video}
+import io.amony.actor.MediaLibActor
+import io.amony.http.Model.{Collection, SearchResult, Preview, Video}
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 

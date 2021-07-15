@@ -1,7 +1,7 @@
 package io.amony
 
-import com.github.merlijn.amony.http.WebServerConfig
-import com.github.merlijn.amony.lib.MediaLibConfig
+import io.amony.http.WebServerConfig
+import io.amony.lib.MediaLibConfig
 import com.typesafe.config.ConfigFactory
 import pureconfig._
 import pureconfig.generic.auto._

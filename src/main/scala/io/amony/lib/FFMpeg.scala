@@ -1,7 +1,7 @@
 package io.amony.lib
 
 import better.files.File
-import com.github.merlijn.amony.lib.FileUtil.stripExtension
+import io.amony.lib.FileUtil.stripExtension
 import scribe.Logging
 
 import java.nio.file.Path

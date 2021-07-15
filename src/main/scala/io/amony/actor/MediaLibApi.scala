@@ -5,9 +5,9 @@ import akka.persistence.query.PersistenceQuery
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.util.Timeout
 import better.files.File
-import com.github.merlijn.amony.actor.MediaLibActor._
-import com.github.merlijn.amony.lib.FileUtil.stripExtension
-import com.github.merlijn.amony.lib.{FileUtil, MediaLibConfig}
+import io.amony.actor.MediaLibActor._
+import io.amony.lib.FileUtil.stripExtension
+import io.amony.lib.{FileUtil, MediaLibConfig}
 
 import scala.concurrent.{Await, Future}
 

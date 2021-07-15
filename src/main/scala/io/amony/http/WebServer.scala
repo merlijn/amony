@@ -8,8 +8,8 @@ import akka.http.scaladsl.server.{RejectionHandler, ValidationRejection}
 import akka.stream.Materializer
 import akka.util.Timeout
 import better.files.File
-import com.github.merlijn.amony.actor.MediaLibApi
-import com.github.merlijn.amony.http.WebConversions._
+import io.amony.actor.MediaLibApi
+import io.amony.http.WebConversions._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
 import scribe.Logging

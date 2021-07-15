@@ -2,11 +2,11 @@ package io.amony.lib
 
 import akka.actor.typed.ActorRef
 import better.files.File
-import com.github.merlijn.amony.actor.MediaLibActor
-import com.github.merlijn.amony.actor.MediaLibActor.{AddMedia, Media, Thumbnail}
-import com.github.merlijn.amony.http.JsonCodecs
-import com.github.merlijn.amony.lib.FFMpeg.Probe
-import com.github.merlijn.amony.lib.FileUtil.PathOps
+import io.amony.actor.MediaLibActor
+import io.amony.actor.MediaLibActor.{AddMedia, Media, Thumbnail}
+import io.amony.http.JsonCodecs
+import io.amony.lib.FFMpeg.Probe
+import io.amony.lib.FileUtil.PathOps
 import io.amony.actor.MediaLibActor.{Command, Media}
 import io.amony.http.JsonCodecs
 import io.amony.lib.FFMpeg.Probe
