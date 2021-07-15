@@ -6,6 +6,7 @@ import com.github.merlijn.kagera.actor.MediaLibActor
 import com.github.merlijn.kagera.actor.MediaLibActor.{AddMedia, Media, Thumbnail}
 import com.github.merlijn.kagera.http.JsonCodecs
 import com.github.merlijn.kagera.lib.FFMpeg.Probe
+import com.github.merlijn.kagera.lib.FileUtil.PathOps
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.{Consumer, Observable}
@@ -72,7 +73,11 @@ object MediaLibScanner extends Logging with JsonCodecs {
       .mapParallelUnordered(parallelFactor) { p => Task { scanVideo(scanPath, p, indexPath) } }
   }
 
-  def deleteThumbnail(indexPath: Path, id: String, timestamp: Long) = {}
+  def deleteThumbnailAtTimestamp(indexPath: Path, id: String, timestamp: Long): Unit = {
+
+    (indexPath / "thumbnails" / s"${id}-$timestamp.jpeg").deleteIfExists()
+    (indexPath / "thumbnails" / s"${id}-$timestamp.webp").deleteIfExists()
+  }
 
   def generateThumbnail(videoPath: Path, indexPath: Path, id: String, timestamp: Long): Unit = {
 
@@ -82,16 +87,14 @@ object MediaLibScanner extends Logging with JsonCodecs {
     if (!thumbnailDir.exists)
       thumbnailDir.createDirectory()
 
-    val inputFile = videoPath.toAbsolutePath.toString
-
     FFMpeg.writeThumbnail(
-      inputFile  = inputFile,
+      inputFile  = videoPath.absoluteFileName(),
       timestamp  = timestamp,
       outputFile = Some(s"${thumbnailPath}/${id}-$timestamp.jpeg")
     )
 
     FFMpeg.createWebP(
-      inputFile  = inputFile,
+      inputFile  = videoPath.absoluteFileName(),
       timestamp  = timestamp,
       outputFile = Some(s"${thumbnailPath}/${id}-$timestamp.webp")
     )

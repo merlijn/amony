@@ -3,7 +3,7 @@ package com.github.merlijn.kagera.actor
 import akka.persistence.typed.scaladsl.Effect
 import better.files.File
 import better.files.File.apply
-import com.github.merlijn.kagera.lib.MediaLibScanner.generateThumbnail
+import com.github.merlijn.kagera.lib.MediaLibScanner.{deleteThumbnailAtTimestamp, generateThumbnail}
 import com.github.merlijn.kagera.actor.MediaLibEventSourcing._
 import com.github.merlijn.kagera.actor.MediaLibActor._
 import com.github.merlijn.kagera.lib.MediaLibConfig
@@ -75,6 +75,8 @@ object MediaLibCommandHandler {
             val sanitizedTimeStamp = Math.max(0, Math.min(vid.duration, timeStamp))
             val videoPath          = vid.path(config.libraryPath)
             val newVid             = vid.copy(thumbnail = Thumbnail(timeStamp))
+
+            deleteThumbnailAtTimestamp(config.indexPath, vid.id, vid.thumbnail.timestamp)
 
             Effect
               .persist(MediaUpdated(id, newVid))

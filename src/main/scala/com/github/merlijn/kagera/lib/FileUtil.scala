@@ -18,11 +18,19 @@ object FileUtil extends Logging {
       path.toString.substring(0, last)
     }
 
-    def delete(): Unit = {}
+    def absoluteFileName(): String = path.toAbsolutePath.toString
+
+    def deleteIfExists(): Unit = {
+      val f = File(path)
+      if (f.exists)
+        f.delete()
+    }
+
+    def /(child: String): Path = path.resolve(child)
   }
 
   // strip extension
-  def stripExtension(fileName: String) = {
+  def stripExtension(fileName: String): String = {
     val dotIdx = fileName.lastIndexOf('.')
     val last   = if (dotIdx >= 0) dotIdx else fileName.length
     fileName.substring(0, last)
