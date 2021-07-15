@@ -15,6 +15,7 @@ import {Collection} from "../api/Model";
 function TopNavBar(props: { currentPage: number, lastPage: number }) {
 
   const [query, setQuery] = useState("")
+
   const collections = useRef<Array<Collection>>([]);
 
   const history = useHistory();
@@ -24,6 +25,7 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
 
   const doSearch = (e: any) => {
     e.preventDefault();
+    setQuery("")
     const target = buildUrl("/search", new Map( [["q", query]] ))
     history.push(target);
   };
@@ -33,10 +35,9 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
     console.log("render:" + target)
 
     doGET(target).then(response => { collections.current = response; });
-  });
+  }, [props]);
 
-  const searchChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("App.searchChanged()");
+  const queryChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
   };
 
@@ -57,7 +58,7 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
             <Nav.Link href="/">Home</Nav.Link>
           </div>
           <Form className="justify-content-center search-form" onSubmit={doSearch} inline>
-            <FormControl id="search-input" className="mr-sm-2" size="sm" type="text" placeholder="Search" onChange={searchChanged} />
+            <FormControl id="search-input" className="mr-sm-2" size="sm" type="text" placeholder="Search" value={query} onChange={queryChanged} />
             <Button size="sm" variant="outline-success" onClick={doSearch}>Search</Button>
           </Form>
         </Nav>

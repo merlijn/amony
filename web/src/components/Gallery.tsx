@@ -56,6 +56,7 @@ const Gallery = () => {
       }
 
     });
+
     return <tbody><tr className="full-width"> {cols} </tr></tbody>;
   });
 

@@ -12,8 +12,7 @@ object MediaLibActor {
 
   sealed trait Command
 
-  case class AddMedia(media: List[Media])                  extends Command
-  case class AddCollections(collections: List[Collection]) extends Command
+  case class AddMedia(media: Media)                  extends Command
 
   case class GetAll(sender: ActorRef[List[Media]])                extends Command
   case class GetById(id: String, sender: ActorRef[Option[Media]]) extends Command
@@ -37,7 +36,7 @@ object MediaLibActor {
       duration: Long,
       thumbnail: Thumbnail,
       resolution: (Int, Int),
-      tags: Seq[String]
+      tags: List[String]
   ) {
     def path(baseDir: Path): Path = baseDir.resolve(uri)
   }

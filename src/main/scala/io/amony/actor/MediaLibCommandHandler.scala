@@ -30,9 +30,6 @@ object MediaLibCommandHandler {
       case AddMedia(media) =>
         Effect.persist(MediaAdded(media))
 
-      case AddCollections(collections) =>
-        Effect.persist(CollectionsAdded(collections))
-
       case GetById(id, sender) =>
         Effect.reply(sender)(state.media.get(id))
 

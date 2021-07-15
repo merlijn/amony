@@ -1,14 +1,21 @@
 import Plyr from 'plyr';
-import React, {useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import './Player.scss';
 import {Video} from "../api/Model";
 import {getMediaById} from "../api/Api";
+import {useWindowSize} from "../api/Util";
 
 
 const Player = (props: {videoId: string}) => {
 
   const id = '#video-' + props.videoId
   const videoSrc = '/files/videos/' + props.videoId
+
+  const initialStyle = { };
+
+  const [sizeStyle, setSizeStyle] = useState(initialStyle)
+  const [vid, setVid] = useState<Video | null>(null)
+  const windowSize = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > 5));
 
   useEffect(() => {
 
@@ -24,12 +31,43 @@ const Player = (props: {videoId: string}) => {
           // autoplay is not allowed https://developers.google.com/web/updates/2017/09/autoplay-policy-changes
           // player.play();
         }
+
+        setVid(vid)
       }
     );
-  });
+  }, [props]);
+
+  useEffect(() => {
+
+    if (vid) {
+      const vidRatio = vid.resolution_x / vid.resolution_y;
+      const scrRatio = windowSize.width / windowSize.height;
+
+      const calculateSize = () => {
+        if (vidRatio > scrRatio) {
+          const width = 0.9 * windowSize.width;
+          return [Math.trunc(width), Math.trunc(1/vidRatio * width)]
+        } else {
+          const height = 0.9 * windowSize.height;
+          return [Math.trunc(vidRatio * height), Math.trunc(height)]
+        }
+      };
+
+      const [w, h] = calculateSize();
+
+      const newStyle = {
+        width: `${w}px`,
+        height: `${h}px`
+      }
+
+      setSizeStyle(newStyle)
+    }
+  },[windowSize, vid]);
+
+
 
   return (
-    <div className="videoContainer">
+    <div style={sizeStyle} className="videoContainer">
       <video className="videoPlayer" id={id} playsInline controls>
         <source src={videoSrc} type="video/mp4"/>
       </video>

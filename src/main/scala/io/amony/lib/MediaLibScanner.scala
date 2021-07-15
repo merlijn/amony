@@ -122,7 +122,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       title      = title,
       duration   = info.duration,
       thumbnail  = Thumbnail(thumbnailTimestamp),
-      tags       = Seq.empty,
+      tags       = List.empty,
       resolution = info.resolution
     )
   }
@@ -139,7 +139,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     val obs = scanVideosInPath(libraryDir.path, config.indexPath, config.scanParallelFactor, config.max, last)
 
-    val c = Consumer.foreachTask[Media](m => Task { actorRef.tell(AddMedia(List(m))) })
+    val c = Consumer.foreachTask[Media](m => Task { actorRef.tell(AddMedia(m)) })
 
     obs.consumeWith(c).runSyncUnsafe()
   }

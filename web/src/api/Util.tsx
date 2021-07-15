@@ -1,11 +1,11 @@
 import {useEffect, useState} from "react";
 
-export function buildUrl(path: string, params: Map<string, string>) {
+export function buildUrl(path: string, urlParams: Map<string, string>) {
 
   let url = path;
   let paramPath = ""
 
-  params.forEach((val, key) => {
+  urlParams.forEach((val, key) => {
     paramPath += `&${key}=${val}`
   })
 

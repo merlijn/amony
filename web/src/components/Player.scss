@@ -1,11 +1,13 @@
 .videoPlayer {
   --plyr-video-controls-background: black;
   --plyr-color-main: #1ac266;
+  width: 100%;
+  height: 100%;
 }
 
 .videoContainer {
-  height: 80vh ! important;
-  width: 80vw ! important;
+  //height: 80vh ! important;
+  //width: 80vw ! important;
   position: absolute;
   top: 50%;
   left: 50%;

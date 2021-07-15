@@ -1,8 +1,7 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import Image from 'react-bootstrap/Image';
 import './Thumbnail.scss';
 import {buildUrl, durationInMillisToString} from "../api/Util";
-import Button from "react-bootstrap/Button";
 import {Video} from "../api/Model";
 import {doPOST} from "../api/Api";
 import {Form} from "react-bootstrap";
@@ -12,6 +11,7 @@ const Thumbnail = (props: {vid: Video}) => {
   const link: string = "/video/" + props.vid.id;
   const [vid, setVid] = useState(props.vid)
   const [pickThumb, setPickThumb] = useState(false)
+  const [previewUri, setPreviewUri] = useState("")
 
   const durationStr = durationInMillisToString(vid.duration)
 
@@ -20,7 +20,7 @@ const Thumbnail = (props: {vid: Video}) => {
   }
 
   const genThumbnailAt = (timestamp: number) => {
-    const url = buildUrl("/api/thumbnail/" + props.vid.id, new Map())
+    const url = buildUrl(`/api/thumbnail/${props.vid.id}`, new Map())
     doPOST(url, timestamp).then( response => {
       setVid(response)
     })
@@ -33,7 +33,6 @@ const Thumbnail = (props: {vid: Video}) => {
 
     genThumbnailAt(Math.trunc(value))
   }
-
 
   const preview = props.vid.thumbnail.uri.split(".")[0] + ".webp"
 
@@ -54,9 +53,9 @@ const Thumbnail = (props: {vid: Video}) => {
 
   return (
     <div className="thumbnail-container">
-      <a href={link}>
+      <a href={link} onMouseEnter={() => setPreviewUri(vid.thumbnail.webp_uri)} onMouseLeave={() => setPreviewUri("")}>
         <Image className="thumbnail" src={vid.thumbnail.uri} fluid />
-        <Image className="preview" src={preview} fluid />
+        <Image className="preview" src={previewUri} fluid />
       </a>
       <div className="top-right menu-icon"><img src="/more_vert_black_24dp.svg" onClick={switchThumb} /></div>
       <div className="top-left menu-icon"><img src="/info_black_24dp.svg" /></div>

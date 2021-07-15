@@ -29,6 +29,8 @@ object WebConversions {
           s"/files/thumbnails/${media.id}-${media.thumbnail.timestamp}.webp"
         ),
         s"${media.resolution._1}x${media.resolution._2}",
+        media.resolution._1,
+        media.resolution._2,
         media.tags
       )
   }

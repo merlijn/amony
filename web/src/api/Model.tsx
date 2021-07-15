@@ -4,6 +4,8 @@ export class Video {
     public thumbnail: Thumbnail,
     public id: string,
     public resolution: string,
+    public resolution_x: number,
+    public resolution_y: number,
     public duration: number // in millis
   ) { }
 }
@@ -26,5 +28,6 @@ export type Collection = {
 
 export type Thumbnail = {
   timestamp: number,
-  uri: string
+  uri: string,
+  webp_uri: string
 }
