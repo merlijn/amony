@@ -1,4 +1,4 @@
-package com.github.merlijn.kagera.lib
+package io.amony.lib
 
 import better.files.File
 import scribe.Logging

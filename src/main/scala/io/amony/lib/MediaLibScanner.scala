@@ -1,12 +1,15 @@
-package com.github.merlijn.kagera.lib
+package io.amony.lib
 
 import akka.actor.typed.ActorRef
 import better.files.File
-import com.github.merlijn.kagera.actor.MediaLibActor
-import com.github.merlijn.kagera.actor.MediaLibActor.{AddMedia, Media, Thumbnail}
-import com.github.merlijn.kagera.http.JsonCodecs
-import com.github.merlijn.kagera.lib.FFMpeg.Probe
-import com.github.merlijn.kagera.lib.FileUtil.PathOps
+import com.github.merlijn.amony.actor.MediaLibActor
+import com.github.merlijn.amony.actor.MediaLibActor.{AddMedia, Media, Thumbnail}
+import com.github.merlijn.amony.http.JsonCodecs
+import com.github.merlijn.amony.lib.FFMpeg.Probe
+import com.github.merlijn.amony.lib.FileUtil.PathOps
+import io.amony.actor.MediaLibActor.{Command, Media}
+import io.amony.http.JsonCodecs
+import io.amony.lib.FFMpeg.Probe
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.{Consumer, Observable}
@@ -124,7 +127,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     )
   }
 
-  def scan(config: MediaLibConfig, last: List[Media], actorRef: ActorRef[MediaLibActor.Command]): Unit = {
+  def scan(config: MediaLibConfig, last: List[Media], actorRef: ActorRef[Command]): Unit = {
 
     implicit val s = Scheduler.global
     val libraryDir = File(config.libraryPath)

@@ -1,10 +1,10 @@
-package com.github.merlijn.kagera.actor
+package io.amony.actor
 
 import akka.actor.typed.ActorRef
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
-import com.github.merlijn.kagera.actor.MediaLibEventSourcing.Event
-import com.github.merlijn.kagera.lib.MediaLibConfig
+import com.github.merlijn.amony.actor.MediaLibEventSourcing.Event
+import com.github.merlijn.amony.lib.MediaLibConfig
 
 import java.nio.file.Path
 

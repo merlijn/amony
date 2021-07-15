@@ -1,4 +1,4 @@
-package com.github.merlijn.kagera.http
+package io.amony.http
 
 object Model {
 

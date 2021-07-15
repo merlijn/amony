@@ -1,4 +1,4 @@
-package com.github.merlijn.kagera.http
+package io.amony.http
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http
@@ -8,8 +8,8 @@ import akka.http.scaladsl.server.{RejectionHandler, ValidationRejection}
 import akka.stream.Materializer
 import akka.util.Timeout
 import better.files.File
-import com.github.merlijn.kagera.actor.MediaLibApi
-import com.github.merlijn.kagera.http.WebConversions._
+import com.github.merlijn.amony.actor.MediaLibApi
+import com.github.merlijn.amony.http.WebConversions._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
 import scribe.Logging

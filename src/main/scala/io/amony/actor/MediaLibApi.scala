@@ -1,13 +1,13 @@
-package com.github.merlijn.kagera.actor
+package io.amony.actor
 
 import akka.actor.typed.ActorSystem
 import akka.persistence.query.PersistenceQuery
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.util.Timeout
 import better.files.File
-import com.github.merlijn.kagera.actor.MediaLibActor._
-import com.github.merlijn.kagera.lib.FileUtil.stripExtension
-import com.github.merlijn.kagera.lib.{FileUtil, MediaLibConfig}
+import com.github.merlijn.amony.actor.MediaLibActor._
+import com.github.merlijn.amony.lib.FileUtil.stripExtension
+import com.github.merlijn.amony.lib.{FileUtil, MediaLibConfig}
 
 import scala.concurrent.{Await, Future}
 

@@ -1,6 +1,6 @@
-package com.github.merlijn.kagera.actor
+package io.amony.actor
 
-import com.github.merlijn.kagera.actor.MediaLibActor.{Collection, Media, State}
+import com.github.merlijn.amony.actor.MediaLibActor.{Collection, Media, State}
 
 object MediaLibEventSourcing {
 

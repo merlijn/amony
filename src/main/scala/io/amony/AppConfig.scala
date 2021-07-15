@@ -1,7 +1,7 @@
-package com.github.merlijn.kagera
+package io.amony
 
-import com.github.merlijn.kagera.http.WebServerConfig
-import com.github.merlijn.kagera.lib.MediaLibConfig
+import com.github.merlijn.amony.http.WebServerConfig
+import com.github.merlijn.amony.lib.MediaLibConfig
 import com.typesafe.config.ConfigFactory
 import pureconfig._
 import pureconfig.generic.auto._

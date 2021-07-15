@@ -1,7 +1,7 @@
-package com.github.merlijn.kagera.http
+package io.amony.http
 
-import com.github.merlijn.kagera.actor.MediaLibActor
-import com.github.merlijn.kagera.http.Model.{Collection, SearchResult, Preview, Video}
+import com.github.merlijn.amony.actor.MediaLibActor
+import com.github.merlijn.amony.http.Model.{Collection, SearchResult, Preview, Video}
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 

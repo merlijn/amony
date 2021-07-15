@@ -1,7 +1,7 @@
-package com.github.merlijn.kagera.lib
+package io.amony.lib
 
 import better.files.File
-import com.github.merlijn.kagera.lib.FileUtil.stripExtension
+import com.github.merlijn.amony.lib.FileUtil.stripExtension
 import scribe.Logging
 
 import java.nio.file.Path
