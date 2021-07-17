@@ -7,34 +7,45 @@ import NavDropdown from "react-bootstrap/NavDropdown";
 import Form from "react-bootstrap/Form";
 import FormControl from "react-bootstrap/FormControl";
 import Button from "react-bootstrap/Button";
+import Image from 'react-bootstrap/Image';
 import './TopNavBar.scss';
 import GalleryPagination from "./GalleryPagination";
 import {doGET} from "../api/Api";
-import {Collection} from "../api/Model";
+import {Tag} from "../api/Model";
+import {DropdownButton} from "react-bootstrap";
 
 function TopNavBar(props: { currentPage: number, lastPage: number }) {
 
-  const [query, setQuery] = useState("")
+  const location = useLocation();
 
-  const collections = useRef<Array<Collection>>([]);
+  const [query, setQuery] = useState("")
+  const [tags, setTags] = useState<Array<Tag>>([]);
+  const [c, setC] = useState<Tag>({id: 0, title: ""})
 
   const history = useHistory();
-  const loc = useLocation();
-
-  const params = copyParams(new URLSearchParams(loc.search))
 
   const doSearch = (e: any) => {
     e.preventDefault();
-    setQuery("")
     const target = buildUrl("/search", new Map( [["q", query]] ))
     history.push(target);
   };
 
   useEffect(() => {
-    const target = buildUrl("/api/collections", new Map())
-    console.log("render:" + target)
+    const params = copyParams(new URLSearchParams(location.search))
+    const cid = params.get("c")
 
-    doGET(target).then(response => { collections.current = response; });
+    if (cid) {
+      const found = tags.find((e) => e.id.toString() == cid)
+      if (found)
+        setC(found)
+    }
+
+    setQuery(params.get("q") || "")
+  }, [location, tags]);
+
+  // fetch tags
+  useEffect(() => {
+    doGET("/api/collections").then(response => { setTags(response) });
   }, [props]);
 
   const queryChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,26 +54,27 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
 
   // fixed="top"
   return(
-    <Navbar className="TopNavBar">
-        <Nav>
-          <div className="absolute-left">
-            <NavDropdown title="Lists" id="basic-nav-dropdown">
+    <Navbar className="TopNavBar" fixed="top">
+        <div className="bar-left">
+          <Nav.Link id="home-logo" href="/"><Image width="25px" height="25px" src="/templogo.png" />Amony</Nav.Link>
+        </div>
+        <div className="bar-center">
+          <Form className="justify-content-center" onSubmit={doSearch} inline>
+            <FormControl id="search-input" className="mr-sm-1" size="sm" type="text" placeholder="Search" value={query} onChange={queryChanged} />
+            <Button id="search-button" className="mr-sm-1" size="sm" variant="outline-success" onClick={doSearch}><Image width="25px" height="25px" src="/search_black_24dp.svg" /></Button>
+            <DropdownButton className="" title="#" size="sm">
               {
-                collections.current.map((c) => {
-
-                  const link = buildUrl("/search", params.set("c", c.id.toString()))
-                  return <NavDropdown.Item href={link}>{c.title}</NavDropdown.Item>
+                tags.map((c) => {
+                  return <NavDropdown.Item href={`/search?c=${c.id}`}>{c.title}</NavDropdown.Item>
                 })
               }
-            </NavDropdown>
-            <Nav.Link href="/">Home</Nav.Link>
-          </div>
-          <Form className="justify-content-center search-form" onSubmit={doSearch} inline>
-            <FormControl id="search-input" className="mr-sm-2" size="sm" type="text" placeholder="Search" value={query} onChange={queryChanged} />
-            <Button size="sm" variant="outline-success" onClick={doSearch}>Search</Button>
+            </DropdownButton>
           </Form>
-        </Nav>
-        <GalleryPagination className="absolute-right" current={props.currentPage} last={props.lastPage} />
+        </div>
+        <div className="bar-right">
+          <Navbar.Text id="current-tag">{c.title}</Navbar.Text>
+          <GalleryPagination className="absolute-right" current={props.currentPage} last={props.lastPage} />
+        </div>
     </Navbar>
   );
 }

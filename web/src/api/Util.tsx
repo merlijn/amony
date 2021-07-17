@@ -1,13 +1,14 @@
 import {useEffect, useState} from "react";
 
-export function buildUrl(path: string, urlParams: Map<string, string>) {
+export function buildUrl(path: string, urlParams: Map<string, string> | undefined) {
 
   let url = path;
   let paramPath = ""
 
-  urlParams.forEach((val, key) => {
-    paramPath += `&${key}=${val}`
-  })
+  if (urlParams)
+    urlParams.forEach((val, key) => {
+      paramPath += `&${key}=${val}`
+    })
 
   const result = paramPath ? `${path}?${paramPath.substring(1)}` : path
 

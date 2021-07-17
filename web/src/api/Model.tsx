@@ -21,7 +21,7 @@ export class SearchResult {
   }
 }
 
-export type Collection = {
+export type Tag = {
   id: number,
   title: string
 }

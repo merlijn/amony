@@ -1,6 +1,8 @@
 @import '../App.scss';
 
-table .gallery {
+table.gallery {
+  margin-top: 48px;
+  margin-bottom: 4px;
   width: 100vw;
   border: 0px;
   padding-top: 8px;
@@ -42,9 +44,3 @@ table .gallery {
   height: $grid-5-h ! important;
 }
 
-.searchPagination {
-
-  position: absolute;
-  margin-top: 4px;
-  right: 8px;
-}

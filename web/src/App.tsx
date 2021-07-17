@@ -3,7 +3,6 @@ import Container from 'react-bootstrap/Container';
 import Gallery from './components/Gallery';
 import Player from './components/Player';
 import { Route,  BrowserRouter, useParams, Switch } from 'react-router-dom';
-import TopNavBar from "./components/TopNavBar";
 
 function App() {
 

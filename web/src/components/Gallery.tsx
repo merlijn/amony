@@ -62,7 +62,7 @@ const Gallery = () => {
 
   return (
     <div className="full-width">
-      <TopNavBar currentPage={currentPage} lastPage={Math.trunc(result.total / pageSize)} />
+      <TopNavBar currentPage={currentPage} lastPage={Math.ceil(result.total / pageSize)} />
       <table className="gallery">
         {rows}
       </table>

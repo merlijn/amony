@@ -12,6 +12,7 @@ const Player = (props: {videoId: string}) => {
   const videoSrc = '/files/videos/' + props.videoId
 
   const initialStyle = { };
+  const fillFactor = 80;
 
   const [sizeStyle, setSizeStyle] = useState(initialStyle)
   const [vid, setVid] = useState<Video | null>(null)
@@ -43,22 +44,27 @@ const Player = (props: {videoId: string}) => {
       const vidRatio = vid.resolution_x / vid.resolution_y;
       const scrRatio = windowSize.width / windowSize.height;
 
-      const calculateSize = () => {
+      const calcStyle = () => {
         if (vidRatio > scrRatio) {
-          const width = 0.9 * windowSize.width;
-          return [Math.trunc(width), Math.trunc(1/vidRatio * width)]
+          return {
+            width: `${fillFactor}vw`,
+            height: `${Math.trunc(1/vidRatio*fillFactor)}vw`
+          }
         } else {
-          const height = 0.9 * windowSize.height;
-          return [Math.trunc(vidRatio * height), Math.trunc(height)]
+          return {
+            width: `${Math.trunc(vidRatio*fillFactor)}vh`,
+            height: `${fillFactor}vh`
+          }
         }
       };
 
-      const [w, h] = calculateSize();
+      // const [w, h] = calculateSize();
 
-      const newStyle = {
-        width: `${w}px`,
-        height: `${h}px`
-      }
+      const newStyle = calcStyle()
+      // {
+      //   width: `${w}px`,
+      //   height: `${h}px`
+      // }
 
       setSizeStyle(newStyle)
     }
@@ -67,10 +73,12 @@ const Player = (props: {videoId: string}) => {
 
 
   return (
-    <div style={sizeStyle} className="videoContainer">
-      <video className="videoPlayer" id={id} playsInline controls>
-        <source src={videoSrc} type="video/mp4"/>
-      </video>
+    <div className="videoBackground">
+      <div style={sizeStyle} className="videoContainer">
+        <video className="videoPlayer" id={id} playsInline controls>
+          <source src={videoSrc} type="video/mp4"/>
+        </video>
+      </div>
     </div>
   );
 }

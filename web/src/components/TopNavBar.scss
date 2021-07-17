@@ -1,3 +1,5 @@
+@import url(https://fonts.googleapis.com/css2?family=Otomanopee+One&display=swap);
+
 .TopNavBar {
 
   height: 45px;
@@ -6,33 +8,52 @@
   margin-bottom: 5px;
   background-color: white;
   border-bottom: 1px solid #ced4da;
+  padding: 8px 0px !important;
 }
 
-.search-form {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+.searchPagination {
+
+  float: right;
+  margin: 8px 0px ! important;
 }
 
-.absolute-left {
-  position: absolute;
-  top: 0;
-  left: 0;
-  //margin-top: 6px ! important;
-  //margin-botton: 6px ! important;
-  //transform: translate(0, -50%);
+.bar-left {
+  width: 25%;
 }
 
-.absolute-right {
-  position: absolute;
-  top: 0;
-  right: 0;
-  margin-top: 6px ! important;
-  margin-botton: 6px ! important;
-  //transform: translate(0, -50%);
+.bar-center {
+  vertical-align: middle;
+  width: 50%;
+  z-index: 5;
+}
+
+.bar-right {
+  width: 25%;
+  padding: 8px 0px;
+}
+
+#home-logo {
+  float: left;
+  font-family: 'Otomanopee One', sans-serif;
+  font-size: large;
+  padding: 8px 0px !important;
+}
+
+#home-logo img {
+
+  margin-right: 4px;
+  margin-top: -4px;
+}
+
+#current-tag {
+  padding-left: 8px;
+  padding-top: 10px !important;
+}
+
+#search-button {
+  padding: 2px 5px !important;
 }
 
 #search-input {
-  width: 20vw;
+  flex-grow:1;
 }
