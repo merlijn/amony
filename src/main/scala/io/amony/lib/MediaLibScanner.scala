@@ -2,14 +2,10 @@ package io.amony.lib
 
 import akka.actor.typed.ActorRef
 import better.files.File
-import io.amony.actor.MediaLibActor
-import io.amony.actor.MediaLibActor.{AddMedia, Media, Thumbnail}
+import io.amony.actor.MediaLibActor.{AddMedia, Command, Media, Thumbnail}
 import io.amony.http.JsonCodecs
 import io.amony.lib.FFMpeg.Probe
 import io.amony.lib.FileUtil.PathOps
-import io.amony.actor.MediaLibActor.{Command, Media}
-import io.amony.http.JsonCodecs
-import io.amony.lib.FFMpeg.Probe
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.{Consumer, Observable}
@@ -45,13 +41,11 @@ object MediaLibScanner extends Logging with JsonCodecs {
       indexPath: Path,
       parallelFactor: Int,
       max: Option[Int],
-      last: List[Media],
+      alreadyIndexed: List[Media],
       extensions: List[String] = List("mp4", "webm")
   )(implicit s: Scheduler): Observable[Media] = {
 
     val files = FileUtil.walkDir(scanPath)
-
-    logger.info(s"max: $max")
 
     val truncatedMaybe = max match {
       case None    => files
@@ -66,14 +60,13 @@ object MediaLibScanner extends Logging with JsonCodecs {
       }
       .filter { vid =>
         val relativePath   = scanPath.relativize(vid).toString
-        val alreadyIndexed = last.exists(_.uri == relativePath)
-
-        if (alreadyIndexed)
-          logger.info(s"Skipping already indexed: ${relativePath}")
-
-        !alreadyIndexed
+        !alreadyIndexed.exists(_.uri == relativePath)
       }
-      .mapParallelUnordered(parallelFactor) { p => Task { scanVideo(scanPath, p, indexPath) } }
+      .mapParallelUnordered(parallelFactor) { p =>
+        Task {
+          scanVideo(scanPath, p, indexPath)
+        }
+      }
   }
 
   def deleteThumbnailAtTimestamp(indexPath: Path, id: String, timestamp: Long): Unit = {
@@ -139,7 +132,11 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     val obs = scanVideosInPath(libraryDir.path, config.indexPath, config.scanParallelFactor, config.max, last)
 
-    val c = Consumer.foreachTask[Media](m => Task { actorRef.tell(AddMedia(m)) })
+    val c = Consumer.foreachTask[Media](m =>
+      Task {
+        actorRef.tell(AddMedia(m))
+      }
+    )
 
     obs.consumeWith(c).runSyncUnsafe()
   }

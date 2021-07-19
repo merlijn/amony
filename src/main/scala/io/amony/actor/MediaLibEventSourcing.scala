@@ -6,8 +6,8 @@ object MediaLibEventSourcing {
 
   sealed trait Event extends JsonSerializable
 
-  case class MediaAdded(media: Media)                  extends Event
-  case class MediaUpdated(id: String, m: Media)              extends Event
+  case class MediaAdded(media: Media)           extends Event
+  case class MediaUpdated(id: String, m: Media) extends Event
 
   def apply(state: State, event: Event): State =
     event match {

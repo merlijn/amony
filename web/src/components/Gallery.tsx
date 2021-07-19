@@ -32,9 +32,7 @@ const Gallery = () => {
       const page = parseInt(urlParams.get("p") || "1")
       const offset = (page-1) * pageSize
       const apiParams = copyParams(urlParams).set("n", pageSize.toString()).set("offset", offset.toString())
-
       const target = buildUrl("/api/videos", apiParams)
-      console.log("render:" + target)
 
       doGET(target).then(response => { setResult(response); });
     }, [location]

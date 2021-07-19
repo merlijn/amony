@@ -11,7 +11,8 @@ const Thumbnail = (props: {vid: Video}) => {
   const link: string = "/video/" + props.vid.id;
   const [vid, setVid] = useState(props.vid)
   const [pickThumb, setPickThumb] = useState(false)
-  const [previewUri, setPreviewUri] = useState("")
+
+  const [previewUri, setPreviewUri] = useState(props.vid.thumbnail.webp_uri)
 
   const durationStr = durationInMillisToString(vid.duration)
 
@@ -26,15 +27,16 @@ const Thumbnail = (props: {vid: Video}) => {
     })
   }
 
-  useEffect(() => { setVid(props.vid) }, [props])
+  useEffect(() => {
+    setVid(props.vid)
+    setPreviewUri(props.vid.thumbnail.webp_uri)
+  }, [props])
 
   const sliderChanged = (v: any) => {
     const value = v.target.value as number
 
     genThumbnailAt(Math.trunc(value))
   }
-
-  const preview = props.vid.thumbnail.uri.split(".")[0] + ".webp"
 
   const info =
     <div>
@@ -52,7 +54,7 @@ const Thumbnail = (props: {vid: Video}) => {
   const bottom = pickThumb ? thumbnailPicker : info;
 
   return (
-    <div className="thumbnail-container">
+    <div id={`thumbnail-${props.vid.id}`} className="thumbnail-container">
       <a href={link} onMouseEnter={() => setPreviewUri(vid.thumbnail.webp_uri)} onMouseLeave={() => setPreviewUri("")}>
         <Image className="thumbnail" src={vid.thumbnail.uri} fluid />
         <Image className="preview" src={previewUri} fluid />

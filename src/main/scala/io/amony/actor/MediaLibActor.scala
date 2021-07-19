@@ -12,7 +12,7 @@ object MediaLibActor {
 
   sealed trait Command
 
-  case class AddMedia(media: Media)                  extends Command
+  case class AddMedia(media: Media) extends Command
 
   case class GetAll(sender: ActorRef[List[Media]])                extends Command
   case class GetById(id: String, sender: ActorRef[Option[Media]]) extends Command
