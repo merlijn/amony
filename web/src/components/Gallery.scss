@@ -10,8 +10,25 @@ table.gallery {
 
 // shared padding properties
 
+
+
+td.preview-footer {
+
+  padding-top: 0px ! important;
+
+  div {
+    //background-color: #003c75;
+    border-top: 1px solid black;
+    background-image: linear-gradient(to right, #508cc5, #003c75);
+    color: white;
+    font-size: small;
+    text-align: right;
+    padding-right: 6px;
+  }
+}
+
 .gallery td {
-  padding: 4px;
+  padding: 8px 4px 0px 4px;
 }
 
 .gallery td:first-child {

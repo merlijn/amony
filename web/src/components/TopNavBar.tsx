@@ -13,6 +13,7 @@ import GalleryPagination from "./GalleryPagination";
 import {doGET} from "../api/Api";
 import {Tag} from "../api/Model";
 import {DropdownButton} from "react-bootstrap";
+import ConfigMenu from "./ConfigMenu";
 
 function TopNavBar(props: { currentPage: number, lastPage: number }) {
 
@@ -60,9 +61,10 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
         </div>
         <div className="bar-center">
           <Form className="justify-content-center" onSubmit={doSearch} inline>
+            <ConfigMenu />
             <FormControl id="search-input" className="mr-sm-1" size="sm" type="text" placeholder="Search" value={query} onChange={queryChanged} />
-            <Button id="search-button" className="mr-sm-1" size="sm" variant="outline-success" onClick={doSearch}><Image width="25px" height="25px" src="/search_black_24dp.svg" /></Button>
-            <DropdownButton className="" title="#" size="sm">
+            <Button variant="outline-success" id="search-button" className="mr-sm-1" size="sm" onClick={doSearch}><Image width="25px" height="25px" src="/search_black_24dp.svg" /></Button>
+            <DropdownButton title="#" size="sm">
               {
                 tags.map((c) => {
                   return <NavDropdown.Item href={`/search?c=${c.id}`}>{c.title}</NavDropdown.Item>

@@ -12,6 +12,7 @@ import monix.reactive.{Consumer, Observable}
 import scribe.Logging
 
 import java.nio.file.Path
+import scala.util.{Failure, Success, Try}
 
 case class MediaLibConfig(
     libraryPath: Path,
@@ -35,6 +36,22 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     video
   }
+
+  //    val thumbnails = File(indexDir / "thumbnails").list
+  //    val hash      = FileUtil.fakeHash(videoPath)
+  //
+  //    thumbnails.find(_.nameWithoutExtension.startsWith(hash)) match {
+  //      case Some(file) =>
+  //        val dashidx = file.name.lastIndexOf('-')
+  //        val dotidx = file.name.lastIndexOf('.')
+  //        val timestamp = file.name.substring(dashidx + 1, dotidx).toLong
+  ////        generateThumbnail(videoPath, indexDir, hash, timestamp)
+  //        val video = asVideo(baseDir, hash, info, timestamp)
+  //        Success(video)
+  //      case None =>
+  //        logger.warn(s"Failed to recover: $videoPath")
+  //        Failure(new IllegalStateException(""))
+  //    }
 
   def scanVideosInPath(
       scanPath: Path,

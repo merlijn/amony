@@ -2,9 +2,9 @@ import Plyr from 'plyr';
 import React, {useEffect, useState} from 'react';
 import './Player.scss';
 import {Video} from "../api/Model";
-import {getMediaById} from "../api/Api";
+import {createThumbnailAt, getMediaById} from "../api/Api";
 import {useWindowSize} from "../api/Util";
-
+import {Button} from "react-bootstrap";
 
 const Player = (props: {videoId: string}) => {
 
@@ -14,9 +14,10 @@ const Player = (props: {videoId: string}) => {
   const initialStyle = { };
   const fillFactor = 80;
 
-  const [sizeStyle, setSizeStyle] = useState(initialStyle)
-  const [vid, setVid] = useState<Video | null>(null)
   const windowSize = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > 5));
+  const [sizeStyle, setSizeStyle] = useState(initialStyle)
+  const [plyr, setPlyr] = useState<Plyr | null>(null)
+  const [vid, setVid] = useState<Video | null>(null)
 
   useEffect(() => {
 
@@ -31,6 +32,8 @@ const Player = (props: {videoId: string}) => {
           const player = new Plyr(element)
           // autoplay is not allowed https://developers.google.com/web/updates/2017/09/autoplay-policy-changes
           // player.play();
+          console.log("Setting player")
+          setPlyr(player)
         }
 
         setVid(vid)
@@ -58,19 +61,27 @@ const Player = (props: {videoId: string}) => {
         }
       };
 
-      // const [w, h] = calculateSize();
-
       const newStyle = calcStyle()
-      // {
-      //   width: `${w}px`,
-      //   height: `${h}px`
-      // }
 
       setSizeStyle(newStyle)
     }
   },[windowSize, vid]);
 
+  const setThumbnail = (e: any) => {
+    // e.preventDefault()
 
+    if (plyr && vid) {
+
+      const timestamp = Math.trunc(plyr.currentTime * 1000);
+      console.log(timestamp)
+
+      createThumbnailAt(vid.id, timestamp).then (response => {
+        console.log("thumbnail set")
+      });
+    }
+
+    // console.log(plyr.currentTime)
+  }
 
   return (
     <div className="videoBackground">
@@ -78,6 +89,7 @@ const Player = (props: {videoId: string}) => {
         <video className="videoPlayer" id={id} playsInline controls>
           <source src={videoSrc} type="video/mp4"/>
         </video>
+        <Button onClick={setThumbnail}>Thumb</Button>
       </div>
     </div>
   );

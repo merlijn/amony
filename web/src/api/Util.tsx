@@ -31,6 +31,17 @@ export function copyParams(params: URLSearchParams) {
   return copy
 }
 
+export function zipArrays<T>(a: Array<T>, b: Array<T>) {
+  const c = new Array<T>();
+
+  for(let i = 0; i < a.length; i++) {
+    c.push(a[i]);
+    c.push(b[i]);
+  }
+
+  return c;
+}
+
 export function durationInMillisToString (duration: number) {
 
   const secondsInMillis = 1000;

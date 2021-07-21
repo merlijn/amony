@@ -1,3 +1,4 @@
+import {buildUrl} from "./Util";
 
 const headers = { 'Content-type': 'application/json; charset=UTF-8' };
 
@@ -42,6 +43,12 @@ export async function getVideos() {
 export async function getMediaById(id: string) {
   return doGET(`/api/videos/${id}`)
 }
+
+export async function createThumbnailAt(id: string, timestamp: number) {
+  return doPOST(`/api/thumbnail/${id}`, timestamp)
+}
+
+
 
 
 

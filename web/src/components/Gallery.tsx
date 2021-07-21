@@ -4,7 +4,7 @@ import {SearchResult, Video} from '../api/Model';
 import Thumbnail from './Thumbnail';
 import './Gallery.scss';
 import {useLocation} from 'react-router-dom'
-import {buildUrl, copyParams, useWindowSize, withFallback} from "../api/Util";
+import {buildUrl, copyParams, useWindowSize, withFallback, zipArrays} from "../api/Util";
 import TopNavBar from "./TopNavBar";
 import {pageSizes} from "../api/Constants";
 
@@ -58,11 +58,29 @@ const Gallery = () => {
     return <tbody><tr className="full-width"> {cols} </tr></tbody>;
   });
 
+  const titleRows = [...new Array(nrows)].map((e, y) => {
+    let cols = [...new Array(ncols)].map((e, x) => {
+
+      const idx = (y * ncols) + x;
+
+      if (idx <= result.videos.length - 1) {
+        const vid: Video = result.videos[idx];
+        return <td className="preview-footer"><div>{vid.title.substring(0, 30)}</div></td>;
+      } else {
+        return <td className="preview-footer"><div></div></td>;
+      }
+    });
+
+    return <tbody><tr className="full-width"> {cols} </tr></tbody>;
+  });
+
+  const bothRows = zipArrays(rows, titleRows)
+
   return (
     <div className="full-width">
       <TopNavBar currentPage={currentPage} lastPage={Math.ceil(result.total / pageSize)} />
       <table className="gallery">
-        {rows}
+        {bothRows}
       </table>
     </div>
   );
