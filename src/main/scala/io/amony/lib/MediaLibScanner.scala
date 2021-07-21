@@ -11,7 +11,7 @@ import monix.execution.Scheduler
 import monix.reactive.{Consumer, Observable}
 import scribe.Logging
 
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 import scala.util.{Failure, Success, Try}
 
 case class MediaLibConfig(
@@ -95,10 +95,8 @@ object MediaLibScanner extends Logging with JsonCodecs {
   def generateThumbnail(videoPath: Path, indexPath: Path, id: String, timestamp: Long): Unit = {
 
     val thumbnailPath = s"${indexPath}/thumbnails"
-    val thumbnailDir  = File(thumbnailPath)
 
-    if (!thumbnailDir.exists)
-      thumbnailDir.createDirectory()
+    Files.createDirectory(indexPath.resolve("thumbnails"))
 
     FFMpeg.writeThumbnail(
       inputFile  = videoPath.absoluteFileName(),
