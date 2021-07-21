@@ -11,7 +11,7 @@ const Thumbnail = (props: {vid: Video}) => {
   const link: string = "/video/" + props.vid.id;
   const [vid, setVid] = useState(props.vid)
   const [pickThumb, setPickThumb] = useState(false)
-  const [previewUri, setPreviewUri] = useState(props.vid.thumbnail.webp_uri)
+  const [previewUri, setPreviewUri] = useState("")
 
   const durationStr = durationInMillisToString(vid.duration)
 
@@ -27,7 +27,9 @@ const Thumbnail = (props: {vid: Video}) => {
 
   useEffect(() => {
     setVid(props.vid)
-    setPreviewUri(props.vid.thumbnail.webp_uri)
+    if (previewUri) {
+      setPreviewUri(props.vid.thumbnail.webp_uri)
+    }
   }, [props])
 
   const sliderChanged = (v: any) => {
