@@ -8,7 +8,7 @@ import {buildUrl, copyParams, useWindowSize, withFallback, zipArrays} from "../a
 import TopNavBar from "./TopNavBar";
 import {pageSizes} from "../api/Constants";
 
-const gridSize = 350
+const gridSize = 320
 const gridReRenderThreshold = 24
 
 const Gallery = () => {

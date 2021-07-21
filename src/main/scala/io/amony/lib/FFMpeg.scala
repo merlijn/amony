@@ -93,7 +93,7 @@ object FFMpeg extends Logging {
       overwrite: Boolean = false
   ): Unit = {
 
-    val thumbnailFile = File(outputFile.getOrElse(s"${stripExtension(inputFile)}.webp"))
+    val thumbnailFile = File(outputFile.getOrElse(s"${stripExtension(inputFile)}.jpeg"))
 
     if (overwrite && thumbnailFile.exists)
       thumbnailFile.delete()
@@ -105,6 +105,8 @@ object FFMpeg extends Logging {
         s"ffmpeg",
         "-ss", seek(timestamp),
         "-i", inputFile,
+        "-qscale:v", "4",
+        "-vf", "scale=384:-1",
         "-vframes", "1",
         thumbnailFile.path.toAbsolutePath.toString
       )
