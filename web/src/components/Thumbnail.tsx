@@ -54,13 +54,22 @@ const Thumbnail = (props: {vid: Video}) => {
   const bottom = pickThumb ? thumbnailPicker : info;
 
   return (
-    <div id={`thumbnail-${props.vid.id}`} className="thumbnail-container">
-      <a href={link} onMouseEnter={() => setPreviewUri(vid.thumbnail.webp_uri)} onMouseLeave={() => setPreviewUri("")}>
-        <Image className="thumbnail" src={vid.thumbnail.uri} fluid />
-        <Image className="preview" src={previewUri} fluid />
-      </a>
+    <div id={`thumbnail-${props.vid.id}`} className="thumbnail-container media-preview" onMouseEnter={() => setPreviewUri(vid.thumbnail.webp_uri)} onMouseLeave={() => setPreviewUri("")}>
+
+        {/*<a href={link} >*/}
+      <Image className="thumbnail" src={vid.thumbnail.uri} fluid />
+      <Image className="preview" src={previewUri} fluid />
+        {/*</a>*/}
+
+
       <div className="top-right menu-icon"><img src="/more_vert_black_24dp.svg" onClick={switchThumb} /></div>
       <div className="top-left menu-icon"><img src="/info_black_24dp.svg" /></div>
+      <div className="bottom-right menu-icon">
+        <a href={link} >
+          <img src="/play_circle_black_24dp.svg" />
+        </a>
+      </div>
+
       { bottom }
     </div>
   );

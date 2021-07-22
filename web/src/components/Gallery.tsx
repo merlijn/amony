@@ -8,7 +8,7 @@ import {buildUrl, copyParams, useWindowSize, withFallback, zipArrays} from "../a
 import TopNavBar from "./TopNavBar";
 import {pageSizes} from "../api/Constants";
 
-const gridSize = 320
+const gridSize = 350
 const gridReRenderThreshold = 24
 
 const Gallery = () => {
@@ -32,7 +32,7 @@ const Gallery = () => {
       const page = parseInt(urlParams.get("p") || "1")
       const offset = (page-1) * pageSize
       const apiParams = copyParams(urlParams).set("n", pageSize.toString()).set("offset", offset.toString())
-      const target = buildUrl("/api/videos", apiParams)
+      const target = buildUrl("/api/media", apiParams)
 
       doGET(target).then(response => { setResult(response); });
     }, [location]
@@ -65,9 +65,9 @@ const Gallery = () => {
 
       if (idx <= result.videos.length - 1) {
         const vid: Video = result.videos[idx];
-        return <td className="preview-footer"><div>{vid.title.substring(0, 30)}</div></td>;
+        return <td className="preview-footer"><div>{vid.title.substring(0, 38)}</div></td>;
       } else {
-        return <td className="preview-footer"><div></div></td>;
+        return <td className="preview-footer"></td>;
       }
     });
 

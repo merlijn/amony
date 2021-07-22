@@ -37,20 +37,20 @@ export async function doPOST(path: string, postData: any) {
 }
 
 export async function getVideos() {
-  return doGET("/api/videos")
+  return doGET("/api/media")
 }
 
 export async function getMediaById(id: string) {
-  return doGET(`/api/videos/${id}`)
+  return doGET(`/api/media/${id}`)
 }
 
 export async function createThumbnailAt(id: string, timestamp: number) {
   return doPOST(`/api/thumbnail/${id}`, timestamp)
 }
 
-
-
-
+export async function getTags() {
+  return doGET('/api/tags')
+}
 
 export async function setThumbnail(id: String, timeStamp: number) {
 

@@ -34,6 +34,8 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
   implicit def executionContext: ExecutionContext = system.executionContext
   implicit val timeout: Timeout = Timeout.durationToTimeout(config.requestTimeout)
 
+  val defaultResultNumber = 24
+
   val rejectionHandler = RejectionHandler
     .newBuilder()
     .handleNotFound { complete(StatusCodes.NotFound, """{"statusCode" : 404 }""") }
@@ -42,23 +44,23 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
 
   val api =
     pathPrefix("api") {
-      (path("videos") & parameters("q".optional, "offset".optional, "n".optional, "c".optional)) { (q, offset, s, c) =>
+      (path("media") & parameters("q".optional, "offset".optional, "n".optional, "c".optional)) { (q, offset, s, c) =>
         get {
 
-          val size         = s.map(_.toInt).getOrElse(24)
+          val size         = s.map(_.toInt).getOrElse(defaultResultNumber)
           val searchResult = mediaLibApi.search(q, offset.map(_.toInt), size, c)
           val response     = searchResult.map(_.toWebModel().asJson)
 
           complete(response)
         }
-      } ~ path("videos" / Segment) { id =>
+      } ~ path("media" / Segment) { id =>
         get {
           mediaLibApi.getById(id) match {
             case Some(vid) => complete(vid.toWebModel.asJson)
             case None      => complete(StatusCodes.NotFound)
           }
         }
-      } ~ path("collections") {
+      } ~ path("tags") {
         get {
           complete(mediaLibApi.getCollections().map(_.map(_.toWebModel.asJson)))
         }
@@ -70,6 +72,14 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
             case Some(vid) => complete(vid.toWebModel().asJson)
             case None      => complete(StatusCodes.NotFound)
           }
+        }
+      } ~ pathPrefix("admin") {
+        (path("regen-thumbnails") & post) {
+          mediaLibApi.regenerateThumbnails()
+          complete("OK")
+        } ~ (path("export-to-file") & post) {
+          mediaLibApi.exportLibrary()
+          complete("OK")
         }
       }
     }

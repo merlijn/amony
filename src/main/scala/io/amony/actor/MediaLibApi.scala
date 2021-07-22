@@ -3,18 +3,22 @@ package io.amony.actor
 import akka.actor.typed.ActorSystem
 import akka.persistence.query.PersistenceQuery
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
+import akka.serialization.jackson.JacksonObjectMapperProvider
 import akka.util.Timeout
 import better.files.File
+import com.fasterxml.jackson.core.JsonEncoding
 import io.amony.actor.MediaLibActor._
 import io.amony.lib.FileUtil.stripExtension
-import io.amony.lib.{FileUtil, MediaLibConfig}
+import io.amony.lib.{FileUtil, MediaLibConfig, MediaLibScanner}
+import scribe.Logging
 
 import scala.concurrent.{Await, Future}
 
-class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) {
+class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends Logging {
 
   import akka.actor.typed.scaladsl.AskPattern._
   implicit val scheduler = system.scheduler
+  implicit val ec = system.executionContext
 
   val queries = PersistenceQuery(system).readJournalFor[LeveldbReadJournal](LeveldbReadJournal.Identifier)
 
@@ -42,4 +46,26 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) {
 
   def getFilePathForMedia(vid: Media): String =
     (File(config.libraryPath) / vid.uri).path.toAbsolutePath.toString
+
+  def regenerateThumbnails()(implicit timeout: Timeout) = {
+
+    getAll().foreach { medias =>
+      medias.foreach { m =>
+        logger.info(s"re-generating thumbnail for '${m.title}")
+        val videoPath = config.libraryPath.resolve(m.uri)
+
+        MediaLibScanner.generateThumbnail(videoPath, config.indexPath, m.id, m.thumbnail.timestamp)
+      }
+    }
+  }
+
+  def exportLibrary()(implicit timeout: Timeout): Unit = {
+
+    val objectMapper = JacksonObjectMapperProvider.get(system).getOrCreate("media-export", None)
+    val file = (File(config.indexPath) / "export.json").path.toFile
+
+    getAll().foreach { medias =>
+      objectMapper.createGenerator(file, JsonEncoding.UTF8).writeObject(medias)
+    }
+  }
 }

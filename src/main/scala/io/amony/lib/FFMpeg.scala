@@ -1,6 +1,5 @@
 package io.amony.lib
 
-import better.files.File
 import io.amony.lib.FileUtil.stripExtension
 import scribe.Logging
 
@@ -59,7 +58,7 @@ object FFMpeg extends Logging {
       "-i", inputFile,
       "-vf", "fps=8,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
       "-loop", "0",
-      outputFile
+      "-y", outputFile
     )
     // format: on
   }
@@ -81,7 +80,7 @@ object FFMpeg extends Logging {
       "-preset", "picture",
       "-an",
        "-vsync", "0",
-      outputFile.getOrElse(s"${stripExtension(inputFile)}.webp")
+      "-y", outputFile.getOrElse(s"${stripExtension(inputFile)}.webp")
     )
     // format: on
   }
@@ -89,29 +88,20 @@ object FFMpeg extends Logging {
   def writeThumbnail(
       inputFile: String,
       timestamp: Long,
-      outputFile: Option[String],
-      overwrite: Boolean = false
+      outputFile: Option[String]
   ): Unit = {
 
-    val thumbnailFile = File(outputFile.getOrElse(s"${stripExtension(inputFile)}.jpeg"))
-
-    if (overwrite && thumbnailFile.exists)
-      thumbnailFile.delete()
-
-    if (!thumbnailFile.exists) {
-
-      // format: off
-      run(
-        s"ffmpeg",
-        "-ss", seek(timestamp),
-        "-i", inputFile,
-        "-qscale:v", "4",
-        "-vf", "scale=384:-1",
-        "-vframes", "1",
-        thumbnailFile.path.toAbsolutePath.toString
-      )
-      // format: on
-    }
+    // format: off
+    run(
+      s"ffmpeg",
+      "-ss", seek(timestamp),
+      "-i", inputFile,
+      "-qscale:v", "4",
+      "-vf", "scale=384:-1",
+      "-vframes", "1",
+      "-y", outputFile.getOrElse(s"${stripExtension(inputFile)}.jpeg")
+    )
+    // format: on
   }
 
   def run(cmds: String*): String = {

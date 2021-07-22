@@ -12,7 +12,6 @@ import monix.reactive.{Consumer, Observable}
 import scribe.Logging
 
 import java.nio.file.{Files, Path}
-import scala.util.{Failure, Success, Try}
 
 case class MediaLibConfig(
     libraryPath: Path,
@@ -23,18 +22,23 @@ case class MediaLibConfig(
 
 object MediaLibScanner extends Logging with JsonCodecs {
 
-  def scanVideo(baseDir: Path, videoPath: Path, indexDir: Path): Media = {
+  def scanVideo(persistedMedia: List[Media], baseDir: Path, videoPath: Path, indexDir: Path): Media = {
     logger.info(s"Scanning file: ${videoPath.toAbsolutePath}")
 
     val info      = FFMpeg.ffprobe(videoPath)
-    val timeStamp = info.duration / 3
     val hash      = FileUtil.fakeHash(videoPath)
 
-    generateThumbnail(videoPath, indexDir, hash, timeStamp)
-
-    val video = asVideo(baseDir, hash, info, timeStamp)
-
-    video
+    persistedMedia.find(_.hash == hash) match {
+      case Some(old) =>
+        val newUri = baseDir.relativize(Path.of(info.fileName)).toString
+        logger.info(s"Detected renamed file: '${old.uri}' -> ${newUri}")
+        old.copy(uri = newUri)
+      case None      =>
+        val timeStamp = info.duration / 3
+        generateThumbnail(videoPath, indexDir, hash, timeStamp)
+        val video = asVideo(baseDir, hash, info, timeStamp)
+        video
+    }
   }
 
   //    val thumbnails = File(indexDir / "thumbnails").list
@@ -58,7 +62,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       indexPath: Path,
       parallelFactor: Int,
       max: Option[Int],
-      alreadyIndexed: List[Media],
+      persistedMedia: List[Media],
       extensions: List[String] = List("mp4", "webm")
   )(implicit s: Scheduler): Observable[Media] = {
 
@@ -77,11 +81,11 @@ object MediaLibScanner extends Logging with JsonCodecs {
       }
       .filter { vid =>
         val relativePath   = scanPath.relativize(vid).toString
-        !alreadyIndexed.exists(_.uri == relativePath)
+        !persistedMedia.exists(_.uri == relativePath)
       }
       .mapParallelUnordered(parallelFactor) { p =>
         Task {
-          scanVideo(scanPath, p, indexPath)
+          scanVideo(persistedMedia, scanPath, p, indexPath)
         }
       }
   }
