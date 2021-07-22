@@ -16,6 +16,8 @@ import scala.concurrent.{Await, Future}
 
 class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends Logging {
 
+
+
   import akka.actor.typed.scaladsl.AskPattern._
   implicit val scheduler = system.scheduler
   implicit val ec = system.executionContext
@@ -67,5 +69,13 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
     getAll().foreach { medias =>
       objectMapper.createGenerator(file, JsonEncoding.UTF8).writeObject(medias)
     }
+  }
+
+  def resetTitles()(implicit timeout: Timeout): Unit = {
+
+    getAll().foreach { _.foreach { m =>
+      logger.info(s"Blanking title for: ${m.uri}")
+      system.tell(UpsertMedia(m.copy(title = None)))
+    }}
   }
 }

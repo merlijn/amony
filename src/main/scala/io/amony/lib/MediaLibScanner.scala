@@ -2,7 +2,7 @@ package io.amony.lib
 
 import akka.actor.typed.ActorRef
 import better.files.File
-import io.amony.actor.MediaLibActor.{AddMedia, Command, Media, Thumbnail}
+import io.amony.actor.MediaLibActor.{UpsertMedia, Command, Media, Thumbnail}
 import io.amony.http.JsonCodecs
 import io.amony.lib.FFMpeg.Probe
 import io.amony.lib.FileUtil.PathOps
@@ -23,7 +23,6 @@ case class MediaLibConfig(
 object MediaLibScanner extends Logging with JsonCodecs {
 
   def scanVideo(persistedMedia: List[Media], baseDir: Path, videoPath: Path, indexDir: Path): Media = {
-    logger.info(s"Scanning file: ${videoPath.toAbsolutePath}")
 
     val info      = FFMpeg.ffprobe(videoPath)
     val hash      = FileUtil.fakeHash(videoPath)
@@ -34,6 +33,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
         logger.info(s"Detected renamed file: '${old.uri}' -> ${newUri}")
         old.copy(uri = newUri)
       case None      =>
+        logger.info(s"Scanning new file: ${videoPath.toAbsolutePath}")
         val timeStamp = info.duration / 3
         generateThumbnail(videoPath, indexDir, hash, timeStamp)
         val video = asVideo(baseDir, hash, info, timeStamp)
@@ -77,6 +77,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       .from(truncatedMaybe)
       .filter { vid =>
         val fileName = vid.getFileName.toString
+
         extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
       }
       .filter { vid =>
@@ -119,19 +120,11 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     val relativePath = baseDir.relativize(Path.of(info.fileName)).toString
 
-    val slashIdx = relativePath.lastIndexOf('/')
-    val dotIdx   = relativePath.lastIndexOf('.')
-
-    val startIdx = if (slashIdx >= 0) slashIdx + 1 else 0
-    val endIdx   = if (dotIdx >= 0) dotIdx else relativePath.length
-
-    val title = relativePath.substring(startIdx, endIdx)
-
     Media(
       id         = hash,
       uri        = relativePath,
       hash       = hash,
-      title      = title,
+      title      = None,
       duration   = info.duration,
       thumbnail  = Thumbnail(thumbnailTimestamp),
       tags       = List.empty,
@@ -153,7 +146,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     val c = Consumer.foreachTask[Media](m =>
       Task {
-        actorRef.tell(AddMedia(m))
+        actorRef.tell(UpsertMedia(m))
       }
     )
 

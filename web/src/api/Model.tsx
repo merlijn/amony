@@ -3,9 +3,9 @@ export class Video {
     public title: string,
     public thumbnail: Thumbnail,
     public id: string,
-    public resolution: string,
     public resolution_x: number,
     public resolution_y: number,
+    public tags: Array<string>,
     public duration: number // in millis
   ) { }
 }

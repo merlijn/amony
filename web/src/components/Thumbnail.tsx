@@ -10,14 +10,11 @@ const Thumbnail = (props: {vid: Video}) => {
 
   const link: string = "/video/" + props.vid.id;
   const [vid, setVid] = useState(props.vid)
-  const [pickThumb, setPickThumb] = useState(false)
   const [previewUri, setPreviewUri] = useState("")
 
-  const durationStr = durationInMillisToString(vid.duration)
+  const [showInfoPanel, setShowInfoPanel] = useState(false)
 
-  const switchThumb =  (e: any) => {
-    setPickThumb(!pickThumb)
-  }
+  const durationStr = durationInMillisToString(vid.duration)
 
   const genThumbnailAt = (timestamp: number) => {
     createThumbnailAt(props.vid.id, timestamp).then (response => {
@@ -38,39 +35,39 @@ const Thumbnail = (props: {vid: Video}) => {
     genThumbnailAt(Math.trunc(value))
   }
 
-  const info =
-    <div>
-      <div className="bottom-left duration-overlay">{durationStr}</div>
-      {/*<div className="bottom-right title-overlay">{vid.title}</div>*/}
+  const infoPanel =
+    <div className="info-panel">
+      <div className="top-left menu-icon info-button" onClick={(e) => { setShowInfoPanel(false)} }>
+        <img src="/info_black_24dp.svg" />
+      </div>
+      <div className="info-panel-content">
+        <ul>
+          <li>Title: {vid.title}</li>
+          <li>Duration: {vid.duration}</li>
+          <li>Resolution {vid.resolution_x}x{vid.resolution_y}</li>
+        </ul>
+      </div>
     </div>
-
-  const thumbnailPicker =
-    <Form className="thumbnail-picker thumbnail-overlay">
-      <Form.Group controlId="formBasicRange">
-        <Form.Control type="range" min="0" max={vid.duration} value={vid.thumbnail.timestamp} onChange={sliderChanged} />
-      </Form.Group>
-    </Form>
-
-  const bottom = pickThumb ? thumbnailPicker : info;
 
   return (
     <div id={`thumbnail-${props.vid.id}`} className="thumbnail-container media-preview" onMouseEnter={() => setPreviewUri(vid.thumbnail.webp_uri)} onMouseLeave={() => setPreviewUri("")}>
 
-        {/*<a href={link} >*/}
       <Image className="thumbnail" src={vid.thumbnail.uri} fluid />
       <Image className="preview" src={previewUri} fluid />
-        {/*</a>*/}
 
+      <div className="top-right menu-icon"><img src="/more_vert_black_24dp.svg" /></div>
+      <div className="top-left menu-icon info-button" onClick={(e) => { setShowInfoPanel(true)} }>
+        <img src="/info_black_24dp.svg" />
+      </div>
 
-      <div className="top-right menu-icon"><img src="/more_vert_black_24dp.svg" onClick={switchThumb} /></div>
-      <div className="top-left menu-icon"><img src="/info_black_24dp.svg" /></div>
-      <div className="bottom-right menu-icon">
+      <div className="bottom-left duration-overlay">{durationStr}</div>
+
+      <div className="bottom-right menu-icon play-button">
         <a href={link} >
           <img src="/play_circle_black_24dp.svg" />
         </a>
       </div>
-
-      { bottom }
+      {showInfoPanel && infoPanel }
     </div>
   );
 }

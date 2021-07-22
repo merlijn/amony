@@ -14,7 +14,6 @@ object Model {
       title: String,
       duration: Long,
       thumbnail: Preview,
-      resolution: String,
       resolution_x: Int,
       resolution_y: Int,
       tags: Seq[String]

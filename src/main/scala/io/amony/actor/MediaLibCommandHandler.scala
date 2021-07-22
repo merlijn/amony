@@ -25,11 +25,11 @@ object MediaLibCommandHandler {
       }
     }
 
-    lazy val orderedMedia = state.media.values.toList.sortBy(_.title)
+    lazy val orderedMedia = state.media.values.toList.sortBy(m => m.title.getOrElse(m.fileName()))
 
     cmd match {
 
-      case AddMedia(media) =>
+      case UpsertMedia(media) =>
         Effect.persist(MediaAdded(media))
 
       case GetById(id, sender) =>

@@ -12,7 +12,7 @@ object MediaLibActor {
 
   sealed trait Command
 
-  case class AddMedia(media: Media) extends Command
+  case class UpsertMedia(media: Media) extends Command
 
   case class GetAll(sender: ActorRef[List[Media]])                extends Command
   case class GetById(id: String, sender: ActorRef[Option[Media]]) extends Command
@@ -32,13 +32,22 @@ object MediaLibActor {
       id: String,
       hash: String,
       uri: String,
-      title: String,
+      title: Option[String],
       duration: Long,
       thumbnail: Thumbnail,
       resolution: (Int, Int),
       tags: List[String]
   ) {
     def path(baseDir: Path): Path = baseDir.resolve(uri)
+    def fileName(): String = {
+      val slashIdx = uri.lastIndexOf('/')
+      val dotIdx   = uri.lastIndexOf('.')
+
+      val startIdx = if (slashIdx >= 0) slashIdx + 1 else 0
+      val endIdx   = if (dotIdx >= 0) dotIdx else uri.length
+
+      uri.substring(startIdx, endIdx)
+    }
   }
 
   def apply(config: MediaLibConfig): EventSourcedBehavior[Command, Event, State] =

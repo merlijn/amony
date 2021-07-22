@@ -21,14 +21,13 @@ object WebConversions {
       Video(
         media.id,
         s"/files/videos/${media.uri}",
-        media.title,
+        media.title.getOrElse(media.fileName()),
         media.duration,
         Preview(
           media.thumbnail.timestamp,
           s"/files/thumbnails/${media.id}-${media.thumbnail.timestamp}.jpeg",
           s"/files/thumbnails/${media.id}-${media.thumbnail.timestamp}.webp"
         ),
-        s"${media.resolution._1}x${media.resolution._2}",
         media.resolution._1,
         media.resolution._2,
         media.tags

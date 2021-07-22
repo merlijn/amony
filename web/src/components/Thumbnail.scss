@@ -1,7 +1,28 @@
 @import '../App.scss';
 @import '../css/slider.scss';
 
-div.media-preview {
+.info-panel {
+
+  z-index: 5;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: scroll;
+  background-color: white;
+
+  p {
+    color: white;
+    font-size: large;
+  }
+
+  .info-panel-content {
+    padding: 30px;
+  }
+}
+
+.thumbnail-container {
+
+  position: relative;
   width: 100%;
   height: 100%;
   z-index: 4;
@@ -11,13 +32,6 @@ div.media-preview {
       visibility: visible;
     }
   }
-}
-
-.thumbnail-container {
-
-  position: relative;
-  width: 100%;
-  height: 100%;
 
   img.thumbnail {
     z-index: 1;
@@ -38,14 +52,6 @@ div.media-preview {
     z-index: 2;
     visibility: hidden;
   }
-
-  //a {
-  //  &:hover {
-  //    img.preview {
-  //      visibility: visible;
-  //    }
-  //  }
-  //}
 }
 
 .thumbnail-picker {
@@ -83,6 +89,14 @@ div.media-preview {
   height: 20px;
 }
 
+.info-button {
+
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+
 .bottom-right {
   position: absolute;
   bottom: 8px;
@@ -103,7 +117,7 @@ div.media-preview {
 
 .top-left {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 5px;
+  left: 5px;
 }
 
