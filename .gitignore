@@ -1,6 +1,7 @@
 *.class
 *.log
 .idea
+test-files/
 target/
 .bsp/
 /**/.DS_Store
