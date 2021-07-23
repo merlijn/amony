@@ -13,6 +13,7 @@ const Thumbnail = (props: {vid: Video}) => {
   const [previewUri, setPreviewUri] = useState("")
 
   const [showInfoPanel, setShowInfoPanel] = useState(false)
+  const [showVideoPreview, setShowVideoPreview] = useState(false)
 
   const durationStr = durationInMillisToString(vid.duration)
 
@@ -49,11 +50,16 @@ const Thumbnail = (props: {vid: Video}) => {
       </div>
     </div>
 
-  return (
-    <div id={`thumbnail-${props.vid.id}`} className="thumbnail-container media-preview" onMouseEnter={() => setPreviewUri(vid.thumbnail.webp_uri)} onMouseLeave={() => setPreviewUri("")}>
+  const videoPanel =
+     <video className="media-preview vid-preview" autoPlay={true} loop>
+         <source src={`/files/thumbnails/${vid.id}-${vid.thumbnail.timestamp}-preview.mp4`} type="video/mp4"/>
+     </video>
 
-      <Image className="thumbnail" src={vid.thumbnail.uri} fluid />
-      <Image className="preview" src={previewUri} fluid />
+  return (
+    <div id={`thumbnail-${props.vid.id}`} className="thumbnail-container media-preview" onMouseEnter={() => setShowVideoPreview(true)} onMouseLeave={() => setShowVideoPreview(false)}>
+
+      {showVideoPreview && videoPanel }
+      <Image className="thumbnail media-preview" src={vid.thumbnail.uri} fluid />
 
       <div className="top-right menu-icon"><img src="/more_vert_black_24dp.svg" /></div>
       <div className="top-left menu-icon info-button" onClick={(e) => { setShowInfoPanel(true)} }>
@@ -67,6 +73,7 @@ const Thumbnail = (props: {vid: Video}) => {
           <img src="/play_circle_black_24dp.svg" />
         </a>
       </div>
+
       {showInfoPanel && infoPanel }
     </div>
   );

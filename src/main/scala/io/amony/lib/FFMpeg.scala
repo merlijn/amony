@@ -71,17 +71,32 @@ object FFMpeg extends Logging {
       "-ss", seek(timestamp),
       "-t", "3",
       "-i", inputFile,
-      "-vf", "fps=8,scale=320:-1:flags=lanczos",
+      "-vf", "fps=8,scale=512:-1:flags=lanczos",
       "-vcodec", "libwebp",
       "-lossless", "0",
       "-compression_level", "3",
       "-loop", "0",
-      "-q:v", "70",
+      "-q:v", "80",
       "-preset", "picture",
       "-an",
        "-vsync", "0",
       "-y", outputFile.getOrElse(s"${stripExtension(inputFile)}.webp")
     )
+    // format: on
+  }
+
+  def createMp4(inputFile: String, timestamp: Long, durationInSeconds: Int = 3, outputFile: Option[String] = None): Unit = {
+    // format: off
+      run(
+      "ffmpeg",
+      "-ss", seek(timestamp),
+      "-t", durationInSeconds.toString,
+      "-i", inputFile,
+      "-vf", "scale=512:-1",
+      "-q:v", "80",
+      "-an",
+      "-y", outputFile.getOrElse(s"${stripExtension(inputFile)}.mp4")
+      )
     // format: on
   }
 
@@ -96,10 +111,10 @@ object FFMpeg extends Logging {
       s"ffmpeg",
       "-ss", seek(timestamp),
       "-i", inputFile,
-      "-qscale:v", "4",
-      "-vf", "scale=384:-1",
+      "-vf", "scale=512:-1",
+      "-qscale:v", "80", // 1 - 30 (best-worst) for jpeg, 1-100 (worst-best) for webp
       "-vframes", "1",
-      "-y", outputFile.getOrElse(s"${stripExtension(inputFile)}.jpeg")
+      "-y", outputFile.getOrElse(s"${stripExtension(inputFile)}.webp")
     )
     // format: on
   }

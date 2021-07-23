@@ -106,14 +106,20 @@ object MediaLibScanner extends Logging with JsonCodecs {
     FFMpeg.writeThumbnail(
       inputFile  = videoPath.absoluteFileName(),
       timestamp  = timestamp,
-      outputFile = Some(s"${thumbnailPath}/${id}-$timestamp.jpeg")
+      outputFile = Some(s"${thumbnailPath}/${id}-$timestamp-thumbnail.webp")
     )
 
-    FFMpeg.createWebP(
+    FFMpeg.createMp4(
       inputFile  = videoPath.absoluteFileName(),
       timestamp  = timestamp,
-      outputFile = Some(s"${thumbnailPath}/${id}-$timestamp.webp")
+      outputFile = Some(s"${thumbnailPath}/${id}-$timestamp-preview.mp4")
     )
+//
+//    FFMpeg.createWebP(
+//      inputFile  = videoPath.absoluteFileName(),
+//      timestamp  = timestamp,
+//      outputFile = Some(s"${thumbnailPath}/${id}-$timestamp-preview.webp")
+//    )
   }
 
   protected def asVideo(baseDir: Path, hash: String, info: Probe, thumbnailTimestamp: Long): Media = {

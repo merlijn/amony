@@ -25,8 +25,8 @@ object WebConversions {
         media.duration,
         Preview(
           media.thumbnail.timestamp,
-          s"/files/thumbnails/${media.id}-${media.thumbnail.timestamp}.jpeg",
-          s"/files/thumbnails/${media.id}-${media.thumbnail.timestamp}.webp"
+          s"/files/thumbnails/${media.id}-${media.thumbnail.timestamp}-thumbnail.webp",
+          s"/files/thumbnails/${media.id}-${media.thumbnail.timestamp}-preview.webp"
         ),
         media.resolution._1,
         media.resolution._2,
