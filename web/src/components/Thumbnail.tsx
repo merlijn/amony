@@ -5,9 +5,8 @@ import {buildUrl, durationInMillisToString} from "../api/Util";
 import {Video} from "../api/Model";
 import {createThumbnailAt, doPOST} from "../api/Api";
 
-const Thumbnail = (props: {vid: Video, className?: string}) => {
+const Thumbnail = (props: {vid: Video}) => {
 
-  const link: string = "/video/" + props.vid.id;
   const [vid, setVid] = useState(props.vid)
 
   const [showInfoPanel, setShowInfoPanel] = useState(false)
@@ -16,7 +15,7 @@ const Thumbnail = (props: {vid: Video, className?: string}) => {
   const durationStr = durationInMillisToString(vid.duration)
 
   const infoPanel =
-    <div className={`${props.className} info-panel`}>
+    <div className={`info-panel`}>
       <div className="top-left menu-icon info-button" onClick={(e) => { setShowInfoPanel(false)} }>
         <img src="/info_black_24dp.svg" />
       </div>
@@ -39,7 +38,7 @@ const Thumbnail = (props: {vid: Video, className?: string}) => {
     <div className="media-title">{vid.title.substring(0, 38)}</div>
 
   return (
-    <div id={`thumbnail-${props.vid.id}`} className={`${props.className} preview-container`} onMouseEnter={() => setShowVideoPreview(true)} onMouseLeave={() => setShowVideoPreview(false)}>
+    <div className={`preview-container`} onMouseEnter={() => setShowVideoPreview(true)} onMouseLeave={() => setShowVideoPreview(false)}>
 
       {showVideoPreview && videoPanel }
       <Image className="preview-thumbnail preview-media" src={vid.thumbnail_uri} fluid />
@@ -52,7 +51,7 @@ const Thumbnail = (props: {vid: Video, className?: string}) => {
       <div className="bottom-left duration-overlay">{durationStr}</div>
 
       <div className="bottom-right menu-icon play-button">
-        <a href={link} >
+        <a href={`/video/${props.vid.id}`} >
           <img src="/play_circle_black_24dp.svg" />
         </a>
       </div>

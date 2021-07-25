@@ -14,7 +14,7 @@ const gridReRenderThreshold = 24
 const Gallery = () => {
 
   const location = useLocation();
-  const [result, setResult] = useState(new SearchResult(0, 0, 0,[]))
+  const [searchResult, setSearchResult] = useState(new SearchResult(0, 0, 0,[]))
   const urlParams = new URLSearchParams(location.search)
   const size = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > gridReRenderThreshold));
 
@@ -24,31 +24,37 @@ const Gallery = () => {
 
   const pageSize = pageSizes.get(ncols) || 24
 
+  console.log("ncols: " + ncols)
+  console.log("pageSize: " + pageSize)
+
   const currentPage = parseInt(withFallback(urlParams.get("p"), "1"));
 
   useEffect(() => {
 
       const page = parseInt(urlParams.get("p") || "1")
       const offset = (page-1) * pageSize
-      const apiParams = copyParams(urlParams).set("n", pageSize.toString()).set("offset", offset.toString())
+      const apiParams = copyParams(urlParams)
+        .set("n", pageSize.toString())
+        .set("offset", offset.toString())
+
       const target = buildUrl("/api/media", apiParams)
 
-      doGET(target).then(response => { setResult(response); });
+      doGET(target).then(response => { setSearchResult(response); });
     }, [location]
   )
 
-  let previews = [...new Array(result.videos.length)].map((e, idx) => {
+  console.log("render: ")
 
-      const vid: Video = result.videos[idx];
-      const link: string = "/video/" + vid.id;
-      const duration: number = vid.duration
+  const previews = searchResult.videos.map((vid) => {
 
-      return <Thumbnail vid={vid} />;
-  });
+    console.log(vid.id)
+
+    return <Thumbnail key={`preview-${vid.id}`} vid={vid} />
+  })
 
   return (
     <div className="full-width">
-      <TopNavBar currentPage={currentPage} lastPage={Math.ceil(result.total / pageSize)} />
+      <TopNavBar currentPage={currentPage} lastPage={Math.ceil(searchResult.total / pageSize)} />
       <div className="gallery">
         {previews}
       </div>

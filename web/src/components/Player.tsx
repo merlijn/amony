@@ -99,6 +99,7 @@ const Player = (props: {videoId: string}) => {
         <Button size="sm" onClick={(e) => forwards(-1)}>&lt;</Button>
         <Button size="sm" onClick={setThumbnail}>O</Button>
         <Button size="sm" onClick={(e) => forwards(1)}>&gt;</Button>
+        <Button size="sm" onClick={(e) => forwards(0.1)}>&gt;</Button>
       </div>
     </div>
   );

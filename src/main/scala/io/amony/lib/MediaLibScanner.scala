@@ -2,7 +2,7 @@ package io.amony.lib
 
 import akka.actor.typed.ActorRef
 import better.files.File
-import io.amony.actor.MediaLibActor.{UpsertMedia, Command, Media, Thumbnail}
+import io.amony.actor.MediaLibActor.{UpsertMedia, Command, Media, Preview}
 import io.amony.http.JsonCodecs
 import io.amony.lib.FFMpeg.Probe
 import io.amony.lib.FileUtil.PathOps
@@ -77,8 +77,8 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
   def deleteThumbnailAtTimestamp(indexPath: Path, id: String, timestamp: Long): Unit = {
 
-    (indexPath / "thumbnails" / s"${id}-$timestamp.jpeg").deleteIfExists()
     (indexPath / "thumbnails" / s"${id}-$timestamp.webp").deleteIfExists()
+    (indexPath / "thumbnails" / s"${id}-$timestamp.mp4").deleteIfExists()
   }
 
   def generateThumbnail(videoPath: Path, indexPath: Path, id: String, timestamp: Long): Unit = {
@@ -111,7 +111,8 @@ object MediaLibScanner extends Logging with JsonCodecs {
       title      = None,
       duration   = info.duration,
       fps        = info.fps,
-      thumbnail  = Thumbnail(thumbnailTimestamp),
+      thumbnailTimestamp = thumbnailTimestamp,
+      previews   = List(Preview(thumbnailTimestamp, thumbnailTimestamp + 3000)),
       tags       = List.empty,
       resolution = info.resolution
     )

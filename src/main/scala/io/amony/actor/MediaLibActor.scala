@@ -26,7 +26,7 @@ object MediaLibActor {
   case class SetThumbnail(mediaId: String, timeStamp: Long, sender: ActorRef[Option[Media]]) extends Command
 
   case class State(media: Map[String, Media], collections: Map[String, Collection])
-  case class Thumbnail(timestamp: Long)
+  case class Preview(timestampStart: Long, timestampEnd: Long)
   case class Collection(id: String, title: String)
 
   case class Media(
@@ -36,7 +36,8 @@ object MediaLibActor {
       title: Option[String],
       duration: Long,
       fps: Double,
-      thumbnail: Thumbnail,
+      thumbnailTimestamp: Long,
+      previews: List[Preview],
       resolution: (Int, Int),
       tags: List[String]
   ) {

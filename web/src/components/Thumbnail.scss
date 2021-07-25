@@ -38,7 +38,7 @@
 
   .preview-media {
     max-width: 100%;
-    width: var(--foo-bar);
+    width: $grid-4-w;
     height: $grid-4-h;
     position: absolute;
     object-fit: cover;

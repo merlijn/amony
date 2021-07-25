@@ -55,7 +55,7 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
         logger.info(s"re-generating thumbnail for '${m.fileName()}''")
         val videoPath = config.libraryPath.resolve(m.uri)
 
-        MediaLibScanner.generateThumbnail(videoPath, config.indexPath, m.id, m.thumbnail.timestamp)
+        MediaLibScanner.generateThumbnail(videoPath, config.indexPath, m.id, m.thumbnailTimestamp)
       }
     }
   }
@@ -68,19 +68,6 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
 
     getAll().foreach { medias =>
       objectMapper.createGenerator(file, JsonEncoding.UTF8).writeObject(medias)
-    }
-  }
-
-  def importFromFile(): Unit = {
-
-    val file = (File(config.indexPath) / "export.json").path.toFile
-
-    val typeRef: TypeReference[List[Media]] = new TypeReference[List[Media]]() {}
-
-    val medias = objectMapper.createParser(file).readValueAs(typeRef).asInstanceOf[List[Media]]
-
-    medias.take(10).foreach { m =>
-      logger.info(s"read '${m.fileName()}'")
     }
   }
 

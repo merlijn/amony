@@ -76,9 +76,17 @@ object MediaLibCommandHandler {
           case Some(vid) =>
             val sanitizedTimeStamp = Math.max(0, Math.min(vid.duration, timeStamp))
             val videoPath          = vid.path(config.libraryPath)
-            val newVid             = vid.copy(thumbnail = Thumbnail(timeStamp))
 
-            deleteThumbnailAtTimestamp(config.indexPath, vid.id, vid.thumbnail.timestamp)
+            val previews           = List(
+              Preview(
+                timestampStart = sanitizedTimeStamp,
+                timestampEnd = sanitizedTimeStamp + 3000
+              )
+            )
+
+            val newVid             = vid.copy(thumbnailTimestamp = sanitizedTimeStamp, previews = previews)
+
+            deleteThumbnailAtTimestamp(config.indexPath, vid.id, vid.thumbnailTimestamp)
 
             Effect
               .persist(MediaUpdated(id, newVid))
