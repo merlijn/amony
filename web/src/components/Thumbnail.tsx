@@ -4,9 +4,8 @@ import './Thumbnail.scss';
 import {buildUrl, durationInMillisToString} from "../api/Util";
 import {Video} from "../api/Model";
 import {createThumbnailAt, doPOST} from "../api/Api";
-import {Form} from "react-bootstrap";
 
-const Thumbnail = (props: {vid: Video}) => {
+const Thumbnail = (props: {vid: Video, className?: string}) => {
 
   const link: string = "/video/" + props.vid.id;
   const [vid, setVid] = useState(props.vid)
@@ -37,7 +36,7 @@ const Thumbnail = (props: {vid: Video}) => {
   }
 
   const infoPanel =
-    <div className="info-panel">
+    <div className={`${props.className} info-panel`}>
       <div className="top-left menu-icon info-button" onClick={(e) => { setShowInfoPanel(false)} }>
         <img src="/info_black_24dp.svg" />
       </div>
@@ -51,15 +50,18 @@ const Thumbnail = (props: {vid: Video}) => {
     </div>
 
   const videoPanel =
-     <video className="media-preview vid-preview" autoPlay={true} loop>
+     <video className="preview-video preview-media" autoPlay={true} loop>
          <source src={`/files/thumbnails/${vid.id}-${vid.thumbnail.timestamp}-preview.mp4`} type="video/mp4"/>
      </video>
 
+  const titlePanel =
+    <div className="media-title">{vid.title.substring(0, 38)}</div>
+
   return (
-    <div id={`thumbnail-${props.vid.id}`} className="thumbnail-container media-preview" onMouseEnter={() => setShowVideoPreview(true)} onMouseLeave={() => setShowVideoPreview(false)}>
+    <div id={`thumbnail-${props.vid.id}`} className="preview-container" onMouseEnter={() => setShowVideoPreview(true)} onMouseLeave={() => setShowVideoPreview(false)}>
 
       {showVideoPreview && videoPanel }
-      <Image className="thumbnail media-preview" src={vid.thumbnail.uri} fluid />
+      <Image className="preview-thumbnail preview-media" src={vid.thumbnail.uri} fluid />
 
       <div className="top-right menu-icon"><img src="/more_vert_black_24dp.svg" /></div>
       <div className="top-left menu-icon info-button" onClick={(e) => { setShowInfoPanel(true)} }>

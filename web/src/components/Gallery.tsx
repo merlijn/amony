@@ -48,7 +48,7 @@ const Gallery = () => {
         const link: string = "/video/" + vid.id;
         const duration: number = vid.duration
 
-        return <td className={grid_class}><Thumbnail vid={vid} /></td>;
+        return <td className={grid_class}><Thumbnail className={grid_class} vid={vid} /></td>;
       } else {
         return <td className={grid_class}></td>;
       }
@@ -58,29 +58,11 @@ const Gallery = () => {
     return <tbody><tr className="full-width"> {cols} </tr></tbody>;
   });
 
-  const titleRows = [...new Array(nrows)].map((e, y) => {
-    let cols = [...new Array(ncols)].map((e, x) => {
-
-      const idx = (y * ncols) + x;
-
-      if (idx <= result.videos.length - 1) {
-        const vid: Video = result.videos[idx];
-        return <td className="preview-footer"><div>{vid.title.substring(0, 38)}</div></td>;
-      } else {
-        return <td className="preview-footer"></td>;
-      }
-    });
-
-    return <tbody><tr className="full-width"> {cols} </tr></tbody>;
-  });
-
-  const bothRows = zipArrays(rows, titleRows)
-
   return (
     <div className="full-width">
       <TopNavBar currentPage={currentPage} lastPage={Math.ceil(result.total / pageSize)} />
       <table className="gallery">
-        {bothRows}
+        {rows}
       </table>
     </div>
   );
