@@ -3,9 +3,9 @@ package io.amony.http
 object Model {
 
   case class Preview(
-      timestamp: Long,
-      uri: String,
-      webp_uri: String
+      timestamp_start: Long,
+      timestamp_end: Long,
+      uri: String
   )
 
   case class Video(
@@ -13,7 +13,9 @@ object Model {
       uri: String,
       title: String,
       duration: Long,
-      thumbnail: Preview,
+      fps: Double,
+      thumbnail_uri: String,
+      previews: List[Preview],
       resolution_x: Int,
       resolution_y: Int,
       tags: Seq[String]

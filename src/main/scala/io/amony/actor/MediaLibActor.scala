@@ -13,6 +13,7 @@ object MediaLibActor {
   sealed trait Command
 
   case class UpsertMedia(media: Media) extends Command
+  case class RemoveMedia(id: String) extends Command
 
   case class GetAll(sender: ActorRef[List[Media]])                extends Command
   case class GetById(id: String, sender: ActorRef[Option[Media]]) extends Command
@@ -34,11 +35,13 @@ object MediaLibActor {
       uri: String,
       title: Option[String],
       duration: Long,
+      fps: Double,
       thumbnail: Thumbnail,
       resolution: (Int, Int),
       tags: List[String]
   ) {
     def path(baseDir: Path): Path = baseDir.resolve(uri)
+
     def fileName(): String = {
       val slashIdx = uri.lastIndexOf('/')
       val dotIdx   = uri.lastIndexOf('.')

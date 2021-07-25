@@ -8,6 +8,7 @@ object MediaLibEventSourcing {
 
   case class MediaAdded(media: Media)           extends Event
   case class MediaUpdated(id: String, m: Media) extends Event
+  case class MediaRemoved(id: String)           extends Event
 
   def apply(state: State, event: Event): State =
     event match {
@@ -17,5 +18,8 @@ object MediaLibEventSourcing {
 
       case MediaUpdated(id, newVid) =>
         state.copy(media = state.media + (id -> newVid))
+
+      case MediaRemoved(id) =>
+        state.copy(media = state.media - id)
     }
 }

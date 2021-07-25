@@ -9,31 +9,11 @@ const Thumbnail = (props: {vid: Video, className?: string}) => {
 
   const link: string = "/video/" + props.vid.id;
   const [vid, setVid] = useState(props.vid)
-  const [previewUri, setPreviewUri] = useState("")
 
   const [showInfoPanel, setShowInfoPanel] = useState(false)
   const [showVideoPreview, setShowVideoPreview] = useState(false)
 
   const durationStr = durationInMillisToString(vid.duration)
-
-  const genThumbnailAt = (timestamp: number) => {
-    createThumbnailAt(props.vid.id, timestamp).then (response => {
-      setVid(response)
-    });
-  }
-
-  useEffect(() => {
-    setVid(props.vid)
-    if (previewUri) {
-      setPreviewUri(props.vid.thumbnail.webp_uri)
-    }
-  }, [props])
-
-  const sliderChanged = (v: any) => {
-    const value = v.target.value as number
-
-    genThumbnailAt(Math.trunc(value))
-  }
 
   const infoPanel =
     <div className={`${props.className} info-panel`}>
@@ -44,24 +24,25 @@ const Thumbnail = (props: {vid: Video, className?: string}) => {
         <ul>
           <li>Title: {vid.title}</li>
           <li>Duration: {vid.duration}</li>
-          <li>Resolution {vid.resolution_x}x{vid.resolution_y}</li>
+          <li>Fps: {vid.fps}</li>
+          <li>Resolution: {vid.resolution_x}x{vid.resolution_y}</li>
         </ul>
       </div>
     </div>
 
   const videoPanel =
      <video className="preview-video preview-media" autoPlay={true} loop>
-         <source src={`/files/thumbnails/${vid.id}-${vid.thumbnail.timestamp}-preview.mp4`} type="video/mp4"/>
+         <source src={vid.previews[0].uri} type="video/mp4"/>
      </video>
 
   const titlePanel =
     <div className="media-title">{vid.title.substring(0, 38)}</div>
 
   return (
-    <div id={`thumbnail-${props.vid.id}`} className="preview-container" onMouseEnter={() => setShowVideoPreview(true)} onMouseLeave={() => setShowVideoPreview(false)}>
+    <div id={`thumbnail-${props.vid.id}`} className={`${props.className} preview-container`} onMouseEnter={() => setShowVideoPreview(true)} onMouseLeave={() => setShowVideoPreview(false)}>
 
       {showVideoPreview && videoPanel }
-      <Image className="preview-thumbnail preview-media" src={vid.thumbnail.uri} fluid />
+      <Image className="preview-thumbnail preview-media" src={vid.thumbnail_uri} fluid />
 
       <div className="top-right menu-icon"><img src="/more_vert_black_24dp.svg" /></div>
       <div className="top-left menu-icon info-button" onClick={(e) => { setShowInfoPanel(true)} }>

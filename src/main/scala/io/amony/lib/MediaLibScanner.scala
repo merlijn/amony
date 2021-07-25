@@ -41,22 +41,6 @@ object MediaLibScanner extends Logging with JsonCodecs {
     }
   }
 
-  //    val thumbnails = File(indexDir / "thumbnails").list
-  //    val hash      = FileUtil.fakeHash(videoPath)
-  //
-  //    thumbnails.find(_.nameWithoutExtension.startsWith(hash)) match {
-  //      case Some(file) =>
-  //        val dashidx = file.name.lastIndexOf('-')
-  //        val dotidx = file.name.lastIndexOf('.')
-  //        val timestamp = file.name.substring(dashidx + 1, dotidx).toLong
-  ////        generateThumbnail(videoPath, indexDir, hash, timestamp)
-  //        val video = asVideo(baseDir, hash, info, timestamp)
-  //        Success(video)
-  //      case None =>
-  //        logger.warn(s"Failed to recover: $videoPath")
-  //        Failure(new IllegalStateException(""))
-  //    }
-
   def scanVideosInPath(
       scanPath: Path,
       indexPath: Path,
@@ -114,12 +98,6 @@ object MediaLibScanner extends Logging with JsonCodecs {
       timestamp  = timestamp,
       outputFile = Some(s"${thumbnailPath}/${id}-$timestamp-preview.mp4")
     )
-//
-//    FFMpeg.createWebP(
-//      inputFile  = videoPath.absoluteFileName(),
-//      timestamp  = timestamp,
-//      outputFile = Some(s"${thumbnailPath}/${id}-$timestamp-preview.webp")
-//    )
   }
 
   protected def asVideo(baseDir: Path, hash: String, info: Probe, thumbnailTimestamp: Long): Media = {
@@ -132,6 +110,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       hash       = hash,
       title      = None,
       duration   = info.duration,
+      fps        = info.fps,
       thumbnail  = Thumbnail(thumbnailTimestamp),
       tags       = List.empty,
       resolution = info.resolution

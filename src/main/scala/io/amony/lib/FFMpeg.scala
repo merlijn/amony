@@ -8,21 +8,31 @@ import java.time.Duration
 
 object FFMpeg extends Logging {
 
-  case class Probe(fileName: String, duration: Long, resolution: (Int, Int))
+  case class Probe(fileName: String, duration: Long, resolution: (Int, Int), fps: Double)
+
+  val pattern    = raw"Duration:\s(\d{2}):(\d{2}):(\d{2})".r.unanchored
+  val res        = raw"Stream #0.*,\s(\d{2,})x(\d{2,})".r.unanchored
+  val fpsPattern = raw"Stream #0.*,\s([\w\.]+)\sfps".r.unanchored
+
+  def extractFps(ffprobeOutput: String, hint: String): Option[Double] = {
+    ffprobeOutput match {
+      case fpsPattern(fps) => Some(fps.toDouble)
+      case _               =>
+        logger.warn(s"Failed to extract fps info from '$hint''")
+        None
+    }
+  }
 
   def ffprobe(file: Path): Probe = {
 
     val fileName = file.toAbsolutePath.toString
     val output   = run("ffprobe", fileName)
 
-    val pattern = raw"Duration:\s(\d{2}):(\d{2}):(\d{2})".r.unanchored
-    val res     = raw"Stream #0.*,\s(\d{2,})x(\d{2,})".r.unanchored
-
     val (w, h) = output match {
       case res(w, h) =>
         (w.toInt, h.toInt)
       case _ =>
-        logger.warn("Could not extract resolution")
+        logger.warn(s"Failed to extract fps info from '$file'")
         (0, 0)
     }
 
@@ -33,7 +43,14 @@ object FFMpeg extends Logging {
           seconds.toInt * 1000
     }
 
-    Probe(fileName, duration, (w, h))
+    val fps = output match {
+      case fpsPattern(fps) => fps.toDouble
+      case _               =>
+        logger.warn(s"Failed to extract fps info from '$file''")
+        0D
+    }
+
+    Probe(fileName, duration, (w, h), fps)
   }
 
   private def seek(timestamp: Long): String = {
@@ -92,7 +109,7 @@ object FFMpeg extends Logging {
       "-ss", seek(timestamp),
       "-t", durationInSeconds.toString,
       "-i", inputFile,
-      "-vf", "scale=512:-1",
+      "-vf", "scale=512:trunc(ow/a/2)*2", // scale="720:trunc(ow/a/2)*2"
       "-q:v", "80",
       "-an",
       "-y", outputFile.getOrElse(s"${stripExtension(inputFile)}.mp4")

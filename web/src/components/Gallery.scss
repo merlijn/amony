@@ -1,11 +1,10 @@
 @import '../App.scss';
 
-table.gallery {
-  margin-top: 48px;
+.gallery {
+  margin-top: 50px;
   margin-bottom: 4px;
   width: 100vw;
   border: 0px;
-  padding-top: 8px;
 }
 
 // shared padding properties
@@ -23,39 +22,5 @@ td.preview-footer {
     text-align: left;
     padding-left: 4px;
   }
-}
-
-.gallery td {
-  padding: 4px 2px 0px 2px;
-}
-
-.gallery td:first-child {
-  padding-left: 4px ! important;
-}
-
-.gallery td:last-child {
-  padding-right: 4px ! important;
-}
-
-// per grid nr sizing
-
-.gallery td.grid-2 {
-  width: $grid-2-w ! important;
-  height: $grid-2-h ! important;
-}
-
-.gallery td.grid-3 {
-  width: $grid-3-w ! important;
-  height: $grid-3-h ! important;
-}
-
-.gallery td.grid-4 {
-  width: $grid-4-w ! important;
-  height: $grid-4-h ! important;
-}
-
-.gallery td.grid-5 {
-  width: $grid-5-w ! important;
-  height: $grid-5-h ! important;
 }
 

@@ -23,8 +23,9 @@
 .preview-container {
 
   position: relative;
-  width: 100%;
-  height: 100%;
+  float: left;
+  width: $grid-4-w;
+  height: $grid-4-h;
   z-index: 4;
 
   .preview-thumbnail {
@@ -36,8 +37,9 @@
   }
 
   .preview-media {
-    width: 100%;
-    height: 100%;
+    max-width: 100%;
+    width: var(--foo-bar);
+    height: $grid-4-h;
     position: absolute;
     object-fit: cover;
     object-position: center;

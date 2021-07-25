@@ -30,4 +30,5 @@ object App extends AppConfig with Logging {
 
     webServer.run()
   }
+
 }

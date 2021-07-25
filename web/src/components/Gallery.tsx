@@ -20,7 +20,6 @@ const Gallery = () => {
 
   // grid size
   const ncols = Math.min(Math.max(2, Math.round(size.width / gridSize)), 5);
-  const nrows: number = Math.ceil(result.videos.length / ncols);
   const grid_class = `grid-${ncols}`
 
   const pageSize = pageSizes.get(ncols) || 24
@@ -38,32 +37,21 @@ const Gallery = () => {
     }, [location]
   )
 
-  let rows = [...new Array(nrows)].map((e, y) => {
-    let cols = [...new Array(ncols)].map((e, x) => {
+  let previews = [...new Array(result.videos.length)].map((e, idx) => {
 
-      const idx = (y * ncols) + x;
+      const vid: Video = result.videos[idx];
+      const link: string = "/video/" + vid.id;
+      const duration: number = vid.duration
 
-      if (idx <= result.videos.length - 1) {
-        const vid: Video = result.videos[idx];
-        const link: string = "/video/" + vid.id;
-        const duration: number = vid.duration
-
-        return <td className={grid_class}><Thumbnail className={grid_class} vid={vid} /></td>;
-      } else {
-        return <td className={grid_class}></td>;
-      }
-
-    });
-
-    return <tbody><tr className="full-width"> {cols} </tr></tbody>;
+      return <Thumbnail vid={vid} />;
   });
 
   return (
     <div className="full-width">
       <TopNavBar currentPage={currentPage} lastPage={Math.ceil(result.total / pageSize)} />
-      <table className="gallery">
-        {rows}
-      </table>
+      <div className="gallery">
+        {previews}
+      </div>
     </div>
   );
 }

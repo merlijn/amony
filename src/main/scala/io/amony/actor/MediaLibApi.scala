@@ -7,6 +7,7 @@ import akka.serialization.jackson.JacksonObjectMapperProvider
 import akka.util.Timeout
 import better.files.File
 import com.fasterxml.jackson.core.JsonEncoding
+import com.fasterxml.jackson.core.`type`.TypeReference
 import io.amony.actor.MediaLibActor._
 import io.amony.lib.FileUtil.stripExtension
 import io.amony.lib.{FileUtil, MediaLibConfig, MediaLibScanner}
@@ -15,8 +16,6 @@ import scribe.Logging
 import scala.concurrent.{Await, Future}
 
 class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends Logging {
-
-
 
   import akka.actor.typed.scaladsl.AskPattern._
   implicit val scheduler = system.scheduler
@@ -53,7 +52,7 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
 
     getAll().foreach { medias =>
       medias.foreach { m =>
-        logger.info(s"re-generating thumbnail for '${m.title}")
+        logger.info(s"re-generating thumbnail for '${m.fileName()}''")
         val videoPath = config.libraryPath.resolve(m.uri)
 
         MediaLibScanner.generateThumbnail(videoPath, config.indexPath, m.id, m.thumbnail.timestamp)
@@ -61,13 +60,27 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
     }
   }
 
+  val objectMapper = JacksonObjectMapperProvider.get(system).getOrCreate("media-export", None)
+
   def exportLibrary()(implicit timeout: Timeout): Unit = {
 
-    val objectMapper = JacksonObjectMapperProvider.get(system).getOrCreate("media-export", None)
     val file = (File(config.indexPath) / "export.json").path.toFile
 
     getAll().foreach { medias =>
       objectMapper.createGenerator(file, JsonEncoding.UTF8).writeObject(medias)
+    }
+  }
+
+  def importFromFile(): Unit = {
+
+    val file = (File(config.indexPath) / "export.json").path.toFile
+
+    val typeRef: TypeReference[List[Media]] = new TypeReference[List[Media]]() {}
+
+    val medias = objectMapper.createParser(file).readValueAs(typeRef).asInstanceOf[List[Media]]
+
+    medias.take(10).foreach { m =>
+      logger.info(s"read '${m.fileName()}'")
     }
   }
 

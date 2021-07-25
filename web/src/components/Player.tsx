@@ -79,8 +79,13 @@ const Player = (props: {videoId: string}) => {
         console.log("thumbnail set")
       });
     }
-
     // console.log(plyr.currentTime)
+  }
+
+  const forwards = (amount: number) => {
+    if (plyr && vid) {
+      plyr.currentTime = plyr.currentTime + amount
+    }
   }
 
   return (
@@ -89,7 +94,11 @@ const Player = (props: {videoId: string}) => {
         <video className="videoPlayer" id={id} playsInline controls>
           <source src={videoSrc} type="video/mp4"/>
         </video>
-        <Button onClick={setThumbnail}>Thumb</Button>
+
+        <Button size="sm" onClick={(e) => forwards(-0.1)}>&lt;</Button>
+        <Button size="sm" onClick={(e) => forwards(-1)}>&lt;</Button>
+        <Button size="sm" onClick={setThumbnail}>O</Button>
+        <Button size="sm" onClick={(e) => forwards(1)}>&gt;</Button>
       </div>
     </div>
   );

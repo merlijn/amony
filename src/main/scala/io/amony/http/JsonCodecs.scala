@@ -19,18 +19,21 @@ object WebConversions {
 
     def toWebModel(): Video =
       Video(
-        media.id,
-        s"/files/videos/${media.uri}",
-        media.title.getOrElse(media.fileName()),
-        media.duration,
-        Preview(
-          media.thumbnail.timestamp,
-          s"/files/thumbnails/${media.id}-${media.thumbnail.timestamp}-thumbnail.webp",
-          s"/files/thumbnails/${media.id}-${media.thumbnail.timestamp}-preview.webp"
-        ),
-        media.resolution._1,
-        media.resolution._2,
-        media.tags
+        id = media.id,
+        uri = s"/files/videos/${media.uri}",
+        title = media.title.getOrElse(media.fileName()),
+        duration = media.duration,
+        fps = media.fps,
+        thumbnail_uri = s"/files/thumbnails/${media.id}-${media.thumbnail.timestamp}-thumbnail.webp",
+        previews = List(
+          Preview(
+            timestamp_start = media.thumbnail.timestamp,
+            timestamp_end = media.thumbnail.timestamp + 3000,
+            uri =  s"/files/thumbnails/${media.id}-${media.thumbnail.timestamp}-preview.mp4",
+          )),
+        resolution_x = media.resolution._1,
+        resolution_y = media.resolution._2,
+        tags = media.tags
       )
   }
 

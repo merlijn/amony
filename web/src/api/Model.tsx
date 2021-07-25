@@ -1,8 +1,10 @@
 export class Video {
   constructor(
     public title: string,
-    public thumbnail: Thumbnail,
+    public thumbnail_uri: string,
+    public previews: Array<Thumbnail>,
     public id: string,
+    public fps: number,
     public resolution_x: number,
     public resolution_y: number,
     public tags: Array<string>,
@@ -27,7 +29,7 @@ export type Tag = {
 }
 
 export type Thumbnail = {
-  timestamp: number,
-  uri: string,
-  webp_uri: string
+  timestamp_start: number,
+  timestamp_end: number,
+  uri: string
 }

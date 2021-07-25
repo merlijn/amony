@@ -32,6 +32,9 @@ object MediaLibCommandHandler {
       case UpsertMedia(media) =>
         Effect.persist(MediaAdded(media))
 
+      case RemoveMedia(id) =>
+        Effect.persist(MediaRemoved(id))
+
       case GetById(id, sender) =>
         Effect.reply(sender)(state.media.get(id))
 
