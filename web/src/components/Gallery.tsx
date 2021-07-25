@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import {doGET} from '../api/Api';
-import {SearchResult, Video} from '../api/Model';
+import React, {useEffect, useState} from 'react';
+import {Api} from '../api/Api';
+import {SearchResult} from '../api/Model';
 import Thumbnail from './Thumbnail';
 import './Gallery.scss';
 import {useLocation} from 'react-router-dom'
-import {buildUrl, copyParams, useWindowSize, withFallback, zipArrays} from "../api/Util";
+import {useWindowSize} from "../api/Util";
 import TopNavBar from "./TopNavBar";
 import {pageSizes} from "../api/Constants";
 
@@ -24,37 +24,29 @@ const Gallery = () => {
 
   const pageSize = pageSizes.get(ncols) || 24
 
-  console.log("ncols: " + ncols)
-  console.log("pageSize: " + pageSize)
-
-  const currentPage = parseInt(withFallback(urlParams.get("p"), "1"));
+  const currentPage = () => parseInt(urlParams.get("p") || "1");
 
   useEffect(() => {
 
-      const page = parseInt(urlParams.get("p") || "1")
-      const offset = (page-1) * pageSize
-      const apiParams = copyParams(urlParams)
-        .set("n", pageSize.toString())
-        .set("offset", offset.toString())
+      const offset = (currentPage()-1) * pageSize
 
-      const target = buildUrl("/api/media", apiParams)
+      Api.getVideos(
+        urlParams.get("q") || "",
+        urlParams.get("c"),
+        pageSize,
+        offset).then(response => { setSearchResult(response); });
 
-      doGET(target).then(response => { setSearchResult(response); });
     }, [location]
   )
 
-  console.log("render: ")
-
   const previews = searchResult.videos.map((vid) => {
-
-    console.log(vid.id)
 
     return <Thumbnail key={`preview-${vid.id}`} vid={vid} />
   })
 
   return (
     <div className="full-width">
-      <TopNavBar currentPage={currentPage} lastPage={Math.ceil(searchResult.total / pageSize)} />
+      <TopNavBar currentPage={currentPage()} lastPage={Math.ceil(searchResult.total / pageSize)} />
       <div className="gallery">
         {previews}
       </div>

@@ -8,6 +8,8 @@ import java.time.Duration
 
 object FFMpeg extends Logging {
 
+  val previewSize = 512
+
   case class Probe(fileName: String, duration: Long, resolution: (Int, Int), fps: Double)
 
   val pattern    = raw"Duration:\s(\d{2}):(\d{2}):(\d{2})".r.unanchored
@@ -43,12 +45,7 @@ object FFMpeg extends Logging {
           seconds.toInt * 1000
     }
 
-    val fps = output match {
-      case fpsPattern(fps) => fps.toDouble
-      case _ =>
-        logger.warn(s"Failed to extract fps info from '$file''")
-        0d
-    }
+    val fps = extractFps(output, file.toString).getOrElse(0D)
 
     Probe(fileName, duration, (w, h), fps)
   }
@@ -88,7 +85,7 @@ object FFMpeg extends Logging {
       "-ss", seek(timestamp),
       "-t", "3",
       "-i", inputFile,
-      "-vf", "fps=8,scale=512:-1:flags=lanczos",
+      "-vf", s"fps=8,scale=$previewSize:-1:flags=lanczos",
       "-vcodec", "libwebp",
       "-lossless", "0",
       "-compression_level", "3",
@@ -114,7 +111,7 @@ object FFMpeg extends Logging {
       "-ss", seek(timestamp),
       "-t", durationInSeconds.toString,
       "-i", inputFile,
-      "-vf", "scale=512:trunc(ow/a/2)*2", // scale="720:trunc(ow/a/2)*2"
+      "-vf", s"scale=$previewSize:trunc(ow/a/2)*2", // scale="720:trunc(ow/a/2)*2"
       "-q:v", "80",
       "-an",
       "-y", outputFile.getOrElse(s"${stripExtension(inputFile)}.mp4")
@@ -133,8 +130,8 @@ object FFMpeg extends Logging {
       s"ffmpeg",
       "-ss", seek(timestamp),
       "-i", inputFile,
-      "-vf", "scale=512:-1",
-      "-qscale:v", "80", // 1 - 30 (best-worst) for jpeg, 1-100 (worst-best) for webp
+      "-vf", s"scale=$previewSize:-1",
+      "-q:v", "80", // 1 - 30 (best-worst) for jpeg, 1-100 (worst-best) for webp
       "-vframes", "1",
       "-y", outputFile.getOrElse(s"${stripExtension(inputFile)}.webp")
     )

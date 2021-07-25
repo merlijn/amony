@@ -16,7 +16,7 @@
   }
 
   .info-panel-content {
-    padding: 30px;
+    padding: 30px 10px;
   }
 }
 
@@ -38,8 +38,8 @@
 
   .preview-media {
     max-width: 100%;
-    width: $grid-4-w;
-    height: $grid-4-h;
+    width: 100%;
+    height: 100%;
     position: absolute;
     object-fit: cover;
     object-position: center;

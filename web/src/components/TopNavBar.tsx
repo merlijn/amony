@@ -10,7 +10,7 @@ import Button from "react-bootstrap/Button";
 import Image from 'react-bootstrap/Image';
 import './TopNavBar.scss';
 import GalleryPagination from "./GalleryPagination";
-import {doGET, getTags} from "../api/Api";
+import {Api} from "../api/Api";
 import {Tag} from "../api/Model";
 import {DropdownButton} from "react-bootstrap";
 import ConfigMenu from "./ConfigMenu";
@@ -46,7 +46,7 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
 
   // fetch tags
   useEffect(() => {
-    getTags().then(response => { setTags(response) });
+    Api.getTags().then(response => { setTags(response) });
   }, [props]);
 
   const queryChanged = (e: React.ChangeEvent<HTMLInputElement>) => {

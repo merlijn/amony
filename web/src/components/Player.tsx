@@ -2,7 +2,7 @@ import Plyr from 'plyr';
 import React, {useEffect, useState} from 'react';
 import './Player.scss';
 import {Video} from "../api/Model";
-import {createThumbnailAt, getMediaById} from "../api/Api";
+import {Api} from "../api/Api";
 import {useWindowSize} from "../api/Util";
 import {Button} from "react-bootstrap";
 
@@ -24,7 +24,7 @@ const Player = (props: {videoId: string}) => {
     const id = '#video-' + props.videoId
     const element = document.getElementById(id);
 
-    getMediaById(props.videoId).then(response => {
+    Api.getMediaById(props.videoId).then(response => {
 
         const vid = (response as Video)
 
@@ -75,7 +75,7 @@ const Player = (props: {videoId: string}) => {
       const timestamp = Math.trunc(plyr.currentTime * 1000);
       console.log(timestamp)
 
-      createThumbnailAt(vid.id, timestamp).then (response => {
+      Api.createThumbnailAt(vid.id, timestamp).then (response => {
         console.log("thumbnail set")
       });
     }

@@ -17,10 +17,6 @@ export function buildUrl(path: string, urlParams: Map<string, string> | undefine
   return result
 }
 
-export function withFallback<T>(e: T | null, fallback: T) {
-  return e ? e : fallback;
-}
-
 export function copyParams(params: URLSearchParams) {
 
   const copy = new Map<string, string>()
@@ -29,17 +25,6 @@ export function copyParams(params: URLSearchParams) {
   })
 
   return copy
-}
-
-export function zipArrays<T>(a: Array<T>, b: Array<T>) {
-  const c = new Array<T>();
-
-  for(let i = 0; i < a.length; i++) {
-    c.push(a[i]);
-    c.push(b[i]);
-  }
-
-  return c;
 }
 
 export function durationInMillisToString (duration: number) {
@@ -56,6 +41,8 @@ export function durationInMillisToString (duration: number) {
 
   if (hours > 0) {
     durationStr += `${hours}:`
+    if (minutes < 10)
+      durationStr += '0'
   }
 
   durationStr += `${minutes}:`

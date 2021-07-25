@@ -90,13 +90,13 @@ object MediaLibScanner extends Logging with JsonCodecs {
     FFMpeg.writeThumbnail(
       inputFile  = videoPath.absoluteFileName(),
       timestamp  = timestamp,
-      outputFile = Some(s"${thumbnailPath}/${id}-$timestamp-thumbnail.webp")
+      outputFile = Some(s"${thumbnailPath}/${id}-$timestamp.webp")
     )
 
     FFMpeg.createMp4(
       inputFile  = videoPath.absoluteFileName(),
       timestamp  = timestamp,
-      outputFile = Some(s"${thumbnailPath}/${id}-$timestamp-preview.mp4")
+      outputFile = Some(s"${thumbnailPath}/${id}-$timestamp.mp4")
     )
   }
 

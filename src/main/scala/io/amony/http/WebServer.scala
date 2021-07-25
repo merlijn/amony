@@ -79,7 +79,6 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
           complete("OK")
         } ~ (path("export-to-file") & post) {
           mediaLibApi.exportLibrary()
-          mediaLibApi.importFromFile()
           complete("OK")
         } ~ (path("reset-titles") & post) {
           mediaLibApi.resetTitles()

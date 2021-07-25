@@ -1,6 +1,37 @@
-import {buildUrl} from "./Util";
+import {buildUrl, copyParams} from "./Util";
 
 const headers = { 'Content-type': 'application/json; charset=UTF-8' };
+
+export const Api = {
+
+  getVideos: async function getVideos(q: string, tag: string | null, n: number, offset: number) {
+
+    const apiParams = new Map([
+      ["q", q],
+      ["n", n.toString()],
+      ["offset", offset.toString()]
+    ]);
+
+    if (tag)
+      apiParams.set("c", tag)
+
+    const target = buildUrl("/api/media", apiParams)
+
+    return doGET(target)
+  },
+
+  getMediaById: async function (id: string) {
+    return doGET(`/api/media/${id}`)
+  },
+
+  createThumbnailAt: async function createThumbnailAt(id: string, timestamp: number) {
+    return doPOST(`/api/thumbnail/${id}`, timestamp)
+  },
+
+  getTags: async function getTags() {
+    return doGET('/api/tags')
+  }
+}
 
 export async function doGET(path: string) {
   const headers = { 'Content-type': 'application/json; charset=UTF-8' };
@@ -34,25 +65,4 @@ export async function doPOST(path: string, postData: any) {
   }
 
   return data;
-}
-
-export async function getVideos() {
-  return doGET("/api/media")
-}
-
-export async function getMediaById(id: string) {
-  return doGET(`/api/media/${id}`)
-}
-
-export async function createThumbnailAt(id: string, timestamp: number) {
-  return doPOST(`/api/thumbnail/${id}`, timestamp)
-}
-
-export async function getTags() {
-  return doGET('/api/tags')
-}
-
-export async function setThumbnail(id: String, timeStamp: number) {
-
-
 }
