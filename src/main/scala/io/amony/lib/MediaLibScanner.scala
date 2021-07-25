@@ -24,15 +24,15 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
   def scanVideo(persistedMedia: List[Media], baseDir: Path, videoPath: Path, indexDir: Path): Media = {
 
-    val info      = FFMpeg.ffprobe(videoPath)
-    val hash      = FileUtil.fakeHash(videoPath)
+    val info = FFMpeg.ffprobe(videoPath)
+    val hash = FileUtil.fakeHash(videoPath)
 
     persistedMedia.find(_.hash == hash) match {
       case Some(old) =>
         val newUri = baseDir.relativize(Path.of(info.fileName)).toString
         logger.info(s"Detected renamed file: '${old.uri}' -> ${newUri}")
         old.copy(uri = newUri)
-      case None      =>
+      case None =>
         logger.info(s"Scanning new file: ${videoPath.toAbsolutePath}")
         val timeStamp = info.duration / 3
         generateThumbnail(videoPath, indexDir, hash, timeStamp)
@@ -65,7 +65,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
         extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
       }
       .filter { vid =>
-        val relativePath   = scanPath.relativize(vid).toString
+        val relativePath = scanPath.relativize(vid).toString
         !persistedMedia.exists(_.uri == relativePath)
       }
       .mapParallelUnordered(parallelFactor) { p =>

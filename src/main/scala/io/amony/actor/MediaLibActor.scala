@@ -13,7 +13,7 @@ object MediaLibActor {
   sealed trait Command
 
   case class UpsertMedia(media: Media) extends Command
-  case class RemoveMedia(id: String) extends Command
+  case class RemoveMedia(id: String)   extends Command
 
   case class GetAll(sender: ActorRef[List[Media]])                extends Command
   case class GetById(id: String, sender: ActorRef[Option[Media]]) extends Command

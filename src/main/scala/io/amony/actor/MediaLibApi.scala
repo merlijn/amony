@@ -19,7 +19,7 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
 
   import akka.actor.typed.scaladsl.AskPattern._
   implicit val scheduler = system.scheduler
-  implicit val ec = system.executionContext
+  implicit val ec        = system.executionContext
 
   val queries = PersistenceQuery(system).readJournalFor[LeveldbReadJournal](LeveldbReadJournal.Identifier)
 
@@ -86,9 +86,11 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
 
   def resetTitles()(implicit timeout: Timeout): Unit = {
 
-    getAll().foreach { _.foreach { m =>
-      logger.info(s"Blanking title for: ${m.uri}")
-      system.tell(UpsertMedia(m.copy(title = None)))
-    }}
+    getAll().foreach {
+      _.foreach { m =>
+        logger.info(s"Blanking title for: ${m.uri}")
+        system.tell(UpsertMedia(m.copy(title = None)))
+      }
+    }
   }
 }

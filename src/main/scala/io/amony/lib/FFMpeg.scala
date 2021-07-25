@@ -17,7 +17,7 @@ object FFMpeg extends Logging {
   def extractFps(ffprobeOutput: String, hint: String): Option[Double] = {
     ffprobeOutput match {
       case fpsPattern(fps) => Some(fps.toDouble)
-      case _               =>
+      case _ =>
         logger.warn(s"Failed to extract fps info from '$hint''")
         None
     }
@@ -45,9 +45,9 @@ object FFMpeg extends Logging {
 
     val fps = output match {
       case fpsPattern(fps) => fps.toDouble
-      case _               =>
+      case _ =>
         logger.warn(s"Failed to extract fps info from '$file''")
-        0D
+        0d
     }
 
     Probe(fileName, duration, (w, h), fps)
@@ -102,7 +102,12 @@ object FFMpeg extends Logging {
     // format: on
   }
 
-  def createMp4(inputFile: String, timestamp: Long, durationInSeconds: Int = 3, outputFile: Option[String] = None): Unit = {
+  def createMp4(
+      inputFile: String,
+      timestamp: Long,
+      durationInSeconds: Int = 3,
+      outputFile: Option[String] = None
+  ): Unit = {
     // format: off
       run(
       "ffmpeg",
