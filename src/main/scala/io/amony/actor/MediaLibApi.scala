@@ -52,7 +52,7 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
 
     getAll().foreach { medias =>
       medias.foreach { m =>
-        logger.info(s"re-generating thumbnail for '${m.fileName()}''")
+        logger.info(s"re-generating thumbnail for '${m.fileName()}'")
         val videoPath = config.libraryPath.resolve(m.uri)
 
         MediaLibScanner.generateThumbnail(videoPath, config.indexPath, m.id, m.thumbnailTimestamp)

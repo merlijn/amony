@@ -8,13 +8,16 @@ import java.time.Duration
 
 object FFMpeg extends Logging {
 
-  val previewSize = 512
+  val previewSize = 640
 
-  case class Probe(fileName: String, duration: Long, resolution: (Int, Int), fps: Double)
+  case class Probe(duration: Long, resolution: (Int, Int), fps: Double)
 
   val pattern    = raw"Duration:\s(\d{2}):(\d{2}):(\d{2})".r.unanchored
   val res        = raw"Stream #0.*,\s(\d{2,})x(\d{2,})".r.unanchored
+
   val fpsPattern = raw"Stream #0.*,\s([\w\.]+)\sfps".r.unanchored
+
+  val streamPattern = """\s*Stream #.*(Video.*)""".r.unanchored
 
   def extractFps(ffprobeOutput: String, hint: String): Option[Double] = {
     ffprobeOutput match {
@@ -47,7 +50,7 @@ object FFMpeg extends Logging {
 
     val fps = extractFps(output, file.toString).getOrElse(0D)
 
-    Probe(fileName, duration, (w, h), fps)
+    Probe(duration, (w, h), fps)
   }
 
   private def seek(timestamp: Long): String = {
@@ -67,33 +70,32 @@ object FFMpeg extends Logging {
     // format: off
     run(
       "ffmpeg",
-      "-ss", seek(timestamp),
-      "-t", "2",
-      "-i", inputFile,
-      "-vf", "fps=8,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
+      "-ss",   seek(timestamp),
+      "-t",    "3",
+      "-i",    inputFile,
+      "-vf",   "fps=8,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
       "-loop", "0",
-      "-y", outputFile
+      "-y",    outputFile
     )
     // format: on
   }
 
-  def createWebP(inputFile: String, timestamp: Long, outputFile: Option[String]): Unit = {
+  def createWebP(inputFile: String, timestamp: Long, durationInSeconds: Int = 3, outputFile: Option[String] = None): Unit = {
 
     // format: off
     run(
       "ffmpeg",
-      "-ss", seek(timestamp),
-      "-t", "3",
-      "-i", inputFile,
-      "-vf", s"fps=8,scale=$previewSize:-1:flags=lanczos",
-      "-vcodec", "libwebp",
+      "-ss",       seek(timestamp),
+      "-t",        durationInSeconds.toString,
+      "-i",        inputFile,
+      "-vf",       s"fps=8,scale=$previewSize:-1:flags=lanczos",
+      "-vcodec",   "libwebp",
       "-lossless", "0",
-      "-compression_level", "3",
-      "-loop", "0",
-      "-q:v", "80",
-      "-preset", "picture",
+      "-loop",     "0",
+      "-q:v",      "80",
+      "-preset",   "picture",
+      "-vsync",    "0",
       "-an",
-       "-vsync", "0",
       "-y", outputFile.getOrElse(s"${stripExtension(inputFile)}.webp")
     )
     // format: on
@@ -108,13 +110,13 @@ object FFMpeg extends Logging {
     // format: off
       run(
       "ffmpeg",
-      "-ss", seek(timestamp),
-      "-t", durationInSeconds.toString,
-      "-i", inputFile,
-      "-vf", s"scale=$previewSize:trunc(ow/a/2)*2", // scale="720:trunc(ow/a/2)*2"
+      "-ss",  seek(timestamp),
+      "-t",   durationInSeconds.toString,
+      "-i",   inputFile,
+      "-vf",  s"scale=$previewSize:trunc(ow/a/2)*2", // scale="720:trunc(ow/a/2)*2"
       "-q:v", "80",
       "-an",
-      "-y", outputFile.getOrElse(s"${stripExtension(inputFile)}.mp4")
+      "-y",   outputFile.getOrElse(s"${stripExtension(inputFile)}.mp4")
       )
     // format: on
   }
@@ -128,12 +130,12 @@ object FFMpeg extends Logging {
     // format: off
     run(
       s"ffmpeg",
-      "-ss", seek(timestamp),
-      "-i", inputFile,
-      "-vf", s"scale=$previewSize:-1",
-      "-q:v", "80", // 1 - 30 (best-worst) for jpeg, 1-100 (worst-best) for webp
+      "-ss",      seek(timestamp),
+      "-i",       inputFile,
+      "-vf",      s"scale=$previewSize:-1",
+      "-q:v",     "80", // 1 - 30 (best-worst) for jpeg, 1-100 (worst-best) for webp
       "-vframes", "1",
-      "-y", outputFile.getOrElse(s"${stripExtension(inputFile)}.webp")
+      "-y",       outputFile.getOrElse(s"${stripExtension(inputFile)}.webp")
     )
     // format: on
   }
@@ -142,11 +144,11 @@ object FFMpeg extends Logging {
 
     logger.debug(s"Running command: ${cmds.mkString(",")}")
 
-    val r        = Runtime.getRuntime
-    val p        = r.exec(cmds.toArray)
-    val is       = p.getErrorStream
+    val runtime  = Runtime.getRuntime
+    val process  = runtime.exec(cmds.toArray)
+    val is       = process.getErrorStream
     val output   = scala.io.Source.fromInputStream(is).mkString
-    val exitCode = p.waitFor()
+    val exitCode = process.waitFor()
 
     if (exitCode != 0)
       logger.warn(s"""Non zero exit code for command: ${cmds.mkString(",")} \n""" + output)
