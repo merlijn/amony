@@ -19,15 +19,18 @@ object App extends AppConfig with Logging {
 
     val api = new MediaLibApi(mediaLibConfig, system)
 
-    api
-      .getAll()(Timeout(10.seconds))
-      .foreach { loadedFromStore =>
-        MediaLibScanner.scan(mediaLibConfig, loadedFromStore, system)
-
-      }(system.executionContext)
+    scanLibrary(api, system)
 
     val webServer = new WebServer(webServerConfig, api)(system)
 
     webServer.run()
+  }
+
+  def scanLibrary(api: MediaLibApi, system: ActorSystem[MediaLibActor.Command]) = {
+    api
+      .getAll()(Timeout(10.seconds))
+      .foreach { loadedFromStore =>
+        MediaLibScanner.scan(mediaLibConfig, loadedFromStore, system)
+      }(system.executionContext)
   }
 }

@@ -17,6 +17,7 @@ case class MediaLibConfig(
     libraryPath: Path,
     indexPath: Path,
     scanParallelFactor: Int,
+    verifyHashes: Boolean,
     max: Option[Int]
 )
 
@@ -32,7 +33,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     if (!indexDir.exists)
       indexDir.createDirectory()
 
-    val obs = scanVideosInPath(actorRef, libraryDir.path, config.indexPath, config.scanParallelFactor, config.max, last)
+    val obs = scanVideosInPath(actorRef, libraryDir.path, config.indexPath, config.verifyHashes, config.scanParallelFactor, config.max, last)
 
     val c = Consumer.foreachTask[Media](m =>
       Task {
@@ -56,6 +57,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       actorRef: ActorRef[Command],
       scanPath: Path,
       indexPath: Path,
+      verifyHashes: Boolean,
       parallelFactor: Int,
       max: Option[Int],
       persistedMedia: List[Media],
@@ -70,7 +72,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     }
 
     // first calculate the hashes
-    logger.info("Scanning directory, calculating hashes ...")
+    logger.info("Scanning directory for files & calculating hashes...")
 
     val filesWithHashes: List[(Path, String)] = Observable
       .from(filesTruncated)
@@ -79,12 +81,25 @@ object MediaLibScanner extends Logging with JsonCodecs {
         val fileName = vid.getFileName.toString
         extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
       }.mapParallelUnordered(parallelFactor) { path =>
-        Task { (path, FileUtil.fakeHash(path)) }
+          Task {
+            val hash = if (verifyHashes) {
+              FileUtil.fakeHash(path)
+            } else {
+              persistedMedia.find(_.uri == scanPath.relativize(path).toString) match {
+                case None => FileUtil.fakeHash(path)
+                case Some(m) => m.hash
+              }
+            }
+
+            (path, hash)
+          }
       }.consumeWith(Consumer.toList).runSyncUnsafe()
 
    val (remaining, removed) = persistedMedia.partition(
-     m => filesWithHashes.exists(_._2 == m.hash)
+     m => filesWithHashes.exists { case (_, hash) => hash == m.hash }
    )
+
+   logger.info(s"Scanning done, found ${filesWithHashes.size} files")
 
    // removed
    removed.foreach { m =>

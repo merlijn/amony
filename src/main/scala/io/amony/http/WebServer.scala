@@ -83,6 +83,9 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
         } ~ (path("reset-titles") & post) {
           mediaLibApi.resetTitles()
           complete("OK")
+        } ~ (path("regen-hashes") & post) {
+          mediaLibApi.regenerateHashes()
+          complete("OK")
         }
       }
     }
