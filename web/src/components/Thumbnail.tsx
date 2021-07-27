@@ -6,7 +6,7 @@ import {Video} from "../api/Model";
 
 const Thumbnail = (props: {vid: Video}) => {
 
-  const ncols = 3
+  const ncols = 4
 
   const [vid, setVid] = useState(props.vid)
 

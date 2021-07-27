@@ -11,6 +11,7 @@ import better.files.File
 import io.amony.actor.MediaLibApi
 import io.amony.http.WebConversions._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import io.amony.http.WebModel.CreateFragment
 import io.circe.syntax._
 import scribe.Logging
 
@@ -65,10 +66,10 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
           complete(mediaLibApi.getCollections().map(_.map(_.toWebModel.asJson)))
         }
       } ~ path("thumbnail" / Segment) { id =>
-        (post & entity(as[Long])) { timeStamp =>
-          logger.info(s"setting thumbnail for $id at $timeStamp")
+        (post & entity(as[CreateFragment])) { createFragment =>
+          logger.info(s"Creating fragment for $id at ${createFragment.from}")
 
-          onSuccess(mediaLibApi.setThumbnailAt(id, timeStamp)) {
+          onSuccess(mediaLibApi.setThumbnailAt(id, createFragment.from, createFragment.to)) {
             case Some(vid) => complete(vid.toWebModel().asJson)
             case None      => complete(StatusCodes.NotFound)
           }

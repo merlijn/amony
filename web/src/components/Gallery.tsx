@@ -11,7 +11,7 @@ import {pageSizes} from "../api/Constants";
 const gridSize = 350
 const gridReRenderThreshold = 24
 
-const Gallery = () => {
+const Gallery = (props: { cols?: number}) => {
 
   const location = useLocation();
   const [searchResult, setSearchResult] = useState(new SearchResult(0, 0, 0,[]))

@@ -5,6 +5,11 @@ import io.amony.http.WebModel.{Collection, Preview, SearchResult, Video}
 
 object WebModel {
 
+  case class CreateFragment(
+    from: Long,
+    to: Long
+  )
+
   case class Preview(
       timestamp_start: Long,
       timestamp_end: Long,

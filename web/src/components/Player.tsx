@@ -3,7 +3,7 @@ import React, {useEffect, useState} from 'react';
 import './Player.scss';
 import {Video} from "../api/Model";
 import {Api} from "../api/Api";
-import {useWindowSize} from "../api/Util";
+import {durationInMillisToString, useWindowSize} from "../api/Util";
 import {Button} from "react-bootstrap";
 
 const Player = (props: {videoId: string}) => {
@@ -28,6 +28,13 @@ const Player = (props: {videoId: string}) => {
 
         const vid = (response as Video)
 
+        const vidRatio = vid.resolution_x / vid.resolution_y;
+        const test = {
+          width: `min(80vw, 80vh * ${vidRatio}`,
+          height: `min(80vh, 80vw * 1 / ${vidRatio}`
+        }
+        setSizeStyle(test)
+
         if (element) {
           const player = new Plyr(element)
           // autoplay is not allowed https://developers.google.com/web/updates/2017/09/autoplay-policy-changes
@@ -41,45 +48,32 @@ const Player = (props: {videoId: string}) => {
     );
   }, [props]);
 
-  useEffect(() => {
 
-    if (vid) {
-      const vidRatio = vid.resolution_x / vid.resolution_y;
-      const scrRatio = windowSize.width / windowSize.height;
-
-      const calcStyle = () => {
-        if (vidRatio > scrRatio) {
-          return {
-            width: `${fillFactor}vw`,
-            height: `${Math.trunc(1/vidRatio*fillFactor)}vw`
-          }
-        } else {
-          return {
-            width: `${Math.trunc(vidRatio*fillFactor)}vh`,
-            height: `${fillFactor}vh`
-          }
-        }
-      };
-
-      const newStyle = calcStyle()
-
-      setSizeStyle(newStyle)
-    }
-  },[windowSize, vid]);
+  let startTime: number | undefined = 0
+  let endTime: number | undefined = 0
 
   const setThumbnail = (e: any) => {
     // e.preventDefault()
 
-    if (plyr && vid) {
+    if (plyr && vid && startTime && endTime) {
 
-      const timestamp = Math.trunc(plyr.currentTime * 1000);
-      console.log(timestamp)
+      const from = Math.trunc(startTime * 1000)
+      const to = Math.trunc(endTime * 1000)
 
-      Api.createThumbnailAt(vid.id, timestamp).then (response => {
-        console.log("thumbnail set")
+      console.log(from)
+      console.log(to)
+
+      Api.addFragment(vid.id, from, to).then (response => {
+        console.log(`creating preview`)
       });
     }
     // console.log(plyr.currentTime)
+  }
+
+  const seek = (to?: number) => {
+    if (plyr && to) {
+      plyr.currentTime = to
+    }
   }
 
   const forwards = (amount: number) => {
@@ -95,11 +89,21 @@ const Player = (props: {videoId: string}) => {
           <source src={videoSrc} type="video/mp4"/>
         </video>
 
-        <Button size="sm" onClick={(e) => forwards(-0.1)}>&lt;</Button>
-        <Button size="sm" onClick={(e) => forwards(-1)}>&lt;</Button>
-        <Button size="sm" onClick={setThumbnail}>O</Button>
-        <Button size="sm" onClick={(e) => forwards(1)}>&gt;</Button>
-        <Button size="sm" onClick={(e) => forwards(0.1)}>&gt;</Button>
+        <Button size="sm" onClick={(e) => forwards(-1)}>-1s</Button>
+        <Button size="sm" onClick={(e) => forwards(-0.1)}>-.1ms</Button>
+        <Button size="sm" onClick={(e) => seek(startTime) }>|&lt;</Button>
+        <Button variant="success" size="sm" onClick={(e) => startTime = plyr?.currentTime }>o&lt;</Button>
+        <Button variant="success" size="sm" onClick={setThumbnail}>o</Button>
+        <Button variant="success" size="sm" onClick={(e) => endTime = plyr?.currentTime}>&gt;o</Button>
+        <Button size="sm" onClick={(e) => seek(endTime) }>&gt;|</Button>
+        <Button size="sm" onClick={(e) => forwards(0.1)}>+.1s</Button>
+        <Button size="sm" onClick={(e) => forwards(1)}>+1s</Button>
+      </div>
+
+
+      <div className="fragment-list">
+
+
       </div>
     </div>
   );

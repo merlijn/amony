@@ -48,7 +48,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     val info = FFMpeg.ffprobe(videoPath)
     val timeStamp = info.duration / 3
-    generateThumbnail(videoPath, indexDir, hash, timeStamp)
+    generateThumbnail(videoPath, indexDir, hash, timeStamp, timeStamp + 3000)
     val video = asVideo(baseDir, videoPath, hash, info, timeStamp)
     video
   }
@@ -134,7 +134,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     (indexPath / "thumbnails" / s"${id}-$timestamp.mp4").deleteIfExists()
   }
 
-  def generateThumbnail(videoPath: Path, indexPath: Path, id: String, timestamp: Long): Unit = {
+  def generateThumbnail(videoPath: Path, indexPath: Path, id: String, from: Long, to: Long): Unit = {
 
     val thumbnailPath = s"${indexPath}/thumbnails"
 
@@ -142,14 +142,15 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     FFMpeg.writeThumbnail(
       inputFile  = videoPath.absoluteFileName(),
-      timestamp  = timestamp,
-      outputFile = Some(s"${thumbnailPath}/${id}-$timestamp.webp")
+      timestamp  = from,
+      outputFile = Some(s"${thumbnailPath}/${id}-$from.webp")
     )
 
     FFMpeg.createMp4(
       inputFile  = videoPath.absoluteFileName(),
-      timestamp  = timestamp,
-      outputFile = Some(s"${thumbnailPath}/${id}-$timestamp.mp4")
+      from  = from,
+      to = to,
+      outputFile = Some(s"${thumbnailPath}/${id}-$from.mp4")
     )
   }
 

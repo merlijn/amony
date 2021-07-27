@@ -53,7 +53,7 @@ object FFMpeg extends Logging {
     Probe(duration, (w, h), fps)
   }
 
-  private def seek(timestamp: Long): String = {
+  private def formatTime(timestamp: Long): String = {
 
     val duration = Duration.ofMillis(timestamp)
 
@@ -70,7 +70,7 @@ object FFMpeg extends Logging {
     // format: off
     run(
       "ffmpeg",
-      "-ss",   seek(timestamp),
+      "-ss",   formatTime(timestamp),
       "-t",    "3",
       "-i",    inputFile,
       "-vf",   "fps=8,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
@@ -85,10 +85,10 @@ object FFMpeg extends Logging {
     // format: off
     run(
       "ffmpeg",
-      "-ss",       seek(timestamp),
+      "-ss",       formatTime(timestamp),
       "-t",        durationInSeconds.toString,
       "-i",        inputFile,
-      "-vf",       s"fps=8,scale=$previewSize:-1:flags=lanczos",
+      "-vf",       s"fps=8,scale=$previewSize:trunc(ow/a/2)*2:flags=lanczos",
       "-vcodec",   "libwebp",
       "-lossless", "0",
       "-loop",     "0",
@@ -103,15 +103,15 @@ object FFMpeg extends Logging {
 
   def createMp4(
       inputFile: String,
-      timestamp: Long,
-      durationInSeconds: Int = 3,
+      from: Long,
+      to: Long,
       outputFile: Option[String] = None
   ): Unit = {
     // format: off
       run(
       "ffmpeg",
-      "-ss",  seek(timestamp),
-      "-t",   durationInSeconds.toString,
+      "-ss",  formatTime(from),
+      "-to",  formatTime(to),
       "-i",   inputFile,
       "-vf",  s"scale=$previewSize:trunc(ow/a/2)*2", // scale="720:trunc(ow/a/2)*2"
       "-q:v", "80",
@@ -130,7 +130,7 @@ object FFMpeg extends Logging {
     // format: off
     run(
       s"ffmpeg",
-      "-ss",      seek(timestamp),
+      "-ss",      formatTime(timestamp),
       "-i",       inputFile,
       "-vf",      s"scale=$previewSize:-1",
       "-q:v",     "80", // 1 - 30 (best-worst) for jpeg, 1-100 (worst-best) for webp

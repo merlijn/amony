@@ -24,8 +24,8 @@ export const Api = {
     return doGET(`/api/media/${id}`)
   },
 
-  createThumbnailAt: async function createThumbnailAt(id: string, timestamp: number) {
-    return doPOST(`/api/thumbnail/${id}`, timestamp)
+  addFragment: async function (id: string, from: number, to: number) {
+    return doPOST(`/api/thumbnail/${id}`, { from: from, to: to})
   },
 
   getTags: async function getTags() {

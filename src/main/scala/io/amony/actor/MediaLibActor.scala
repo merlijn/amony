@@ -23,7 +23,7 @@ object MediaLibActor {
   case class Query(q: Option[String], offset: Option[Int], n: Int, c: Option[String])
   case class SearchResult(offset: Int, total: Int, items: Seq[Media])
 
-  case class SetThumbnail(mediaId: String, timeStamp: Long, sender: ActorRef[Option[Media]]) extends Command
+  case class AddFragment(mediaId: String, from: Long, to: Long, sender: ActorRef[Option[Media]]) extends Command
 
   case class State(media: Map[String, Media], collections: Map[String, Collection])
   case class Preview(timestampStart: Long, timestampEnd: Long)

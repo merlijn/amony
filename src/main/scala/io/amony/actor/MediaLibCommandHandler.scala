@@ -7,8 +7,9 @@ import io.amony.lib.MediaLibScanner.{deleteThumbnailAtTimestamp, generateThumbna
 import io.amony.actor.MediaLibEventSourcing._
 import io.amony.actor.MediaLibActor._
 import io.amony.lib.MediaLibConfig
+import scribe.Logging
 
-object MediaLibCommandHandler {
+object MediaLibCommandHandler extends Logging {
 
   def apply(config: MediaLibConfig)(state: State, cmd: Command): Effect[Event, State] = {
 
@@ -68,30 +69,41 @@ object MediaLibCommandHandler {
 
         Effect.reply(sender)(SearchResult(offset, result.size, videos))
 
-      case SetThumbnail(id, timeStamp, sender) =>
+      case AddFragment(id, from, to, sender) =>
         state.media.get(id) match {
           case None =>
             Effect.reply(sender)(None)
 
           case Some(vid) =>
-            val sanitizedTimeStamp = Math.max(0, Math.min(vid.duration, timeStamp))
-            val videoPath          = vid.path(config.libraryPath)
 
-            val previews           = List(
-              Preview(
-                timestampStart = sanitizedTimeStamp,
-                timestampEnd = sanitizedTimeStamp + 3000
+            logger.info(s"Adding fragment for $id from $from to $to")
+
+            if (from > to) {
+              logger.warn(s"from: $from > to: $to")
+              Effect.none.thenReply(sender)(_ => None)
+            } else if (to > vid.duration) {
+              logger.warn(s"to: $to > duration: ${vid.duration}")
+              Effect.none.thenReply(sender)(_ => None)
+            } else {
+              val sanitizedTimeStamp = Math.max(0, Math.min(vid.duration, from))
+              val videoPath          = vid.path(config.libraryPath)
+
+              val previews           = List(
+                Preview(
+                  timestampStart = sanitizedTimeStamp,
+                  timestampEnd = to
+                )
               )
-            )
 
-            val newVid             = vid.copy(thumbnailTimestamp = sanitizedTimeStamp, previews = previews)
+              val newVid             = vid.copy(thumbnailTimestamp = sanitizedTimeStamp, previews = previews)
 
-            deleteThumbnailAtTimestamp(config.indexPath, vid.id, vid.thumbnailTimestamp)
+              deleteThumbnailAtTimestamp(config.indexPath, vid.id, vid.thumbnailTimestamp)
 
-            Effect
-              .persist(MediaUpdated(id, newVid))
-              .thenRun((s: State) => generateThumbnail(videoPath, config.indexPath, id, sanitizedTimeStamp))
-              .thenReply(sender)(_ => Some(newVid))
+              Effect
+                .persist(MediaUpdated(id, newVid))
+                .thenRun((s: State) => generateThumbnail(videoPath, config.indexPath, id, sanitizedTimeStamp, to))
+                .thenReply(sender)(_ => Some(newVid))
+            }
         }
     }
   }
