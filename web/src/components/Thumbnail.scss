@@ -20,12 +20,25 @@
   }
 }
 
+.grid-5-preview {
+  width: $grid-5-w;
+  height: $grid-5-h;
+}
+
+.grid-4-preview {
+  width: $grid-4-w;
+  height: $grid-4-h;
+}
+
+.grid-3-preview {
+  width: $grid-3-w;
+  height: $grid-3-h;
+}
+
 .preview-container {
 
   position: relative;
   float: left;
-  width: $grid-4-w;
-  height: $grid-4-h;
   z-index: 4;
 
   .preview-thumbnail {

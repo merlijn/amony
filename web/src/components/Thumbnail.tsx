@@ -6,6 +6,8 @@ import {Video} from "../api/Model";
 
 const Thumbnail = (props: {vid: Video}) => {
 
+  const ncols = 3
+
   const [vid, setVid] = useState(props.vid)
 
   const [showInfoPanel, setShowInfoPanel] = useState(false)
@@ -64,7 +66,7 @@ const Thumbnail = (props: {vid: Video}) => {
     <div className="media-title">{vid.title.substring(0, 38)}</div>
 
   return (
-    <div className={`preview-container`} onMouseEnter={() => setShowVideoPreview(true)} onMouseLeave={() => setShowVideoPreview(false)}>
+    <div className={`grid-${ncols}-preview preview-container`} onMouseEnter={() => setShowVideoPreview(true)} onMouseLeave={() => setShowVideoPreview(false)}>
 
       {showVideoPreview && videoPanel }
       <Image className="preview-thumbnail preview-media" src={vid.thumbnail_uri} fluid />
