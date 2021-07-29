@@ -17,21 +17,4 @@ $container-max-widths: (
   padding: 0px ! important;
 }
 
-$ratio: 16 / 10;
-
-$grid-1-w: 100vw;
-$grid-1-h: 100vw / $ratio;
-
-$grid-2-w: 100vw / 2;
-$grid-2-h: 100vw / (2 * $ratio);
-
-$grid-3-w: 100vw / 3;
-$grid-3-h: 100vw / (3 * $ratio);
-
-$grid-4-w: 100vw / 4;
-$grid-4-h: 100vw / (4 * $ratio);
-
-$grid-5-w: 100vw / 5;
-$grid-5-h: 100vw / (5 * $ratio);
-
 @import '~bootstrap/scss/bootstrap.scss';

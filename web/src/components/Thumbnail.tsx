@@ -54,7 +54,7 @@ const Thumbnail = (props: {vid: Video}) => {
     }
   }
 
-  const videoPanel =
+  const videoPreview =
      <video className="preview-video preview-media" muted
             onMouseOver={(e) => e.currentTarget.play()}
             onEnded={nextPreview} >
@@ -65,12 +65,8 @@ const Thumbnail = (props: {vid: Video}) => {
   const titlePanel =
     <div className="media-title">{vid.title.substring(0, 38)}</div>
 
-  return (
-    <div className={`grid-${ncols}-preview preview-container`} onMouseEnter={() => setShowVideoPreview(true)} onMouseLeave={() => setShowVideoPreview(false)}>
-
-      {showVideoPreview && videoPanel }
-      <Image className="preview-thumbnail preview-media" src={vid.thumbnail_uri} fluid />
-
+  const overlayIcons =
+    <div>
       <div className="top-right menu-icon"><img src="/more_vert_black_24dp.svg" /></div>
       <div className="top-left menu-icon info-button" onClick={(e) => { setShowInfoPanel(true)} }>
         <img src="/info_black_24dp.svg" />
@@ -83,8 +79,20 @@ const Thumbnail = (props: {vid: Video}) => {
           <img src="/play_circle_black_24dp.svg" />
         </a>
       </div>
+    </div>
 
-      {showInfoPanel && infoPanel }
+  const primaryThumbnail = <Image className="preview-thumbnail preview-media" src={vid.thumbnail_uri} fluid />
+
+  return (
+
+    <div className="grid-preview-cell">
+      <div className = "preview-container" onMouseEnter={() => setShowVideoPreview(true)} onMouseLeave={() => setShowVideoPreview(false)}>
+        { showVideoPreview && videoPreview }
+        { primaryThumbnail }
+        { overlayIcons }
+        { showInfoPanel && infoPanel }
+      </div>
+      { titlePanel }
     </div>
   );
 }
