@@ -1,3 +1,13 @@
+
+// overriding bootstrap defaults
+$container-max-widths: (
+        sm: 540px,
+        md: 720px,
+        lg: 960px,
+        xl: 1280px
+) !default;
+
+
 .full-width {
   width: 100% ! important;
   margin: 0 ! important;
@@ -6,13 +16,6 @@
 .root {
   padding: 0px ! important;
 }
-
-$container-max-widths: (
-        sm: 540px,
-        md: 720px,
-        lg: 960px,
-        xl: 1280px
-) !default;
 
 $ratio: 16 / 10;
 

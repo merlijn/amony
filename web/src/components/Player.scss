@@ -12,8 +12,6 @@
 }
 
 .videoContainer {
-  //height: 80vh ! important;
-  //width: 80vw ! important;
   position: absolute;
   top: 50%;
   left: 5%;
@@ -22,11 +20,39 @@
 }
 
 .fragment-list {
-
-  position:absolute;
+  //border: 1px solid white;
+  background-color: white;
+  //display: flex;
+  position: absolute;
   right: 5%;
   top: 50%;
   transform: translate(5%, -50%);
+
+  video {
+    float: left;
+    border: 2px solid white;
+  }
+
+  .fragment-selected {
+    padding: 0 ! important;
+    border: 2px solid yellow;
+  }
+
+  .new-fragment {
+    float: left;
+
+    text-align: center;
+
+    font-size: x-large;
+    color: white;
+
+    border-width: 0px 2px 2px 2px;
+    border-style: solid;
+    border-color: white;
+    background-color: blue;
+    margin: 0;
+    padding: 0;
+  }
 }
 
 @import '~plyr/src/sass/plyr.scss';

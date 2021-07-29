@@ -40,6 +40,7 @@
   position: relative;
   float: left;
   z-index: 4;
+  border: 2px solid white;
 
   .preview-thumbnail {
     z-index: 1;
@@ -92,8 +93,8 @@
 
 .top-right {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 5px;
+  right: 5px;
 }
 
 .bottom-left {

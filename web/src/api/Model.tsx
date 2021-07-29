@@ -2,7 +2,7 @@ export class Video {
   constructor(
     public title: string,
     public thumbnail_uri: string,
-    public previews: Array<Thumbnail>,
+    public previews: Array<Fragment>,
     public id: string,
     public fps: number,
     public resolution_x: number,
@@ -28,7 +28,7 @@ export type Tag = {
   title: string
 }
 
-export type Thumbnail = {
+export type Fragment = {
   timestamp_start: number,
   timestamp_end: number,
   uri: string
