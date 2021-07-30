@@ -11,22 +11,27 @@
   background-color: black;
 }
 
-.videoContainer {
+.editor-container {
   position: absolute;
   top: 50%;
-  left: 5%;
-  background-color: black;
-  transform: translate(-5%, -50%);
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.videoContainer {
+  position: relative;
+  float: left;
+
+  // hack to hide the center play button
+  > div > button {
+      display: none ! important;
+  }
 }
 
 .fragment-list {
-  //border: 1px solid white;
   background-color: white;
-  //display: flex;
-  position: absolute;
-  right: 5%;
-  top: 50%;
-  transform: translate(5%, -50%);
+  position: relative;
+  float: left;
 
   video {
     float: left;

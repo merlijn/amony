@@ -3,54 +3,54 @@ import React, {useEffect, useState} from 'react';
 import './Player.scss';
 import {Fragment, Video} from "../api/Model";
 import {Api} from "../api/Api";
-import {useWindowSize} from "../api/Util";
 import {Button} from "react-bootstrap";
 
 const Player = (props: {videoId: string}) => {
 
-  const id = '#video-' + props.videoId
-  const videoSrc = '/files/videos/' + props.videoId
-
-  const windowSize = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > 5));
-  const [videoStyle, setVideoStyle] = useState({ width: "640", height: "288" })
-  const [plyr, setPlyr] = useState<Plyr | null>(null)
   const [vid, setVid] = useState<Video | null>(null)
 
   useEffect(() => {
-
-    const id = '#video-' + props.videoId
-    const element = document.getElementById(id);
-
     Api.getMediaById(props.videoId).then(response => {
-
-        const vid = (response as Video)
-        const vidRatio = vid.resolution_x / vid.resolution_y;
-
-        setVideoStyle({
-          width: `min(80vw, 80vh * ${vidRatio})`,
-          height: `min(80vh, 80vw * 1 / ${vidRatio})`
-        })
-
-        if (element) {
-          setPlyr(new Plyr(element))
-        }
-
-        setVid(vid)
+        setVid((response as Video))
       }
     );
   }, [props]);
 
+  return (
+    <div className="videoBackground">
+      { vid && <PlayerView vid={vid} /> }
+    </div>
+  );
+}
+
+const PlayerView = (props: {vid: Video}) => {
+
+  const vidRatio = props.vid.resolution_x / props.vid.resolution_y;
+  const id = '#video-' + props.vid.id
+  const videoSrc = '/files/videos/' + props.vid.id
+
+  const [plyr, setPlyr] = useState<Plyr | null>(null)
+  const [showFragmentControls, setShowFragmentControls] = useState(false)
+
+  useEffect(() => {
+    const element = document.getElementById(id);
+    if (element) {
+      const plyr = new Plyr(element, { fullscreen : { enabled: false }})
+
+      setPlyr(plyr)
+    }
+  }, [props]);
 
   let startTime: number | undefined = 0
   let endTime: number | undefined = 0
 
   const setThumbnail = (e: any) => {
-    if (plyr && vid && startTime && endTime) {
+    if (plyr && startTime && endTime) {
 
       const from = Math.trunc(startTime * 1000)
       const to = Math.trunc(endTime * 1000)
 
-      Api.addFragment(vid.id, from, to).then (response => {
+      Api.addFragment(props.vid.id, from, to).then (response => {
         // done
       });
     }
@@ -63,42 +63,59 @@ const Player = (props: {videoId: string}) => {
   }
 
   const forwards = (amount: number) => {
-    if (plyr && vid) {
+    if (plyr) {
       plyr.currentTime = plyr.currentTime + amount
     }
   }
 
   const selectFragment = (f: Fragment) => {
-    seek(f.timestamp_start / 1000)
+    startTime = f.timestamp_start / 1000
+    endTime = f.timestamp_end / 1000
+    setShowFragmentControls(true)
+    seek(startTime)
   }
 
-  return (
-    <div className="videoBackground">
-      <div style={videoStyle} className="videoContainer">
-        <video className="videoPlayer" id={id} playsInline controls>
-          <source src={videoSrc} type="video/mp4"/>
-        </video>
+  const fragmentPickingControls =
+    <div className="fragment-picker">
+      <Button size="sm" onClick={(e) => forwards(-1)}>-1s</Button>
+      <Button size="sm" onClick={(e) => forwards(-0.1)}>-.1ms</Button>
+      <Button size="sm" onClick={(e) => seek(startTime) }>|&lt;</Button>
+      <Button variant={startTime ? "success" : "warning"} size="sm" onClick={(e) => startTime = plyr?.currentTime }>o&lt;</Button>
+      <Button variant="success" size="sm" onClick={setThumbnail}>o</Button>
+      <Button variant={endTime ? "success" : "warning"} size="sm" onClick={(e) => endTime = plyr?.currentTime}>&gt;o</Button>
+      <Button size="sm" onClick={(e) => seek(endTime) }>&gt;|</Button>
+      <Button size="sm" onClick={(e) => forwards(0.1)}>+.1s</Button>
+      <Button size="sm" onClick={(e) => forwards(1)}>+1s</Button>
+    </div>
 
-        <div className="fragment-picker">
-          <Button size="sm" onClick={(e) => forwards(-1)}>-1s</Button>
-          <Button size="sm" onClick={(e) => forwards(-0.1)}>-.1ms</Button>
-          <Button size="sm" onClick={(e) => seek(startTime) }>|&lt;</Button>
-          <Button variant={startTime ? "success" : "warning"} size="sm" onClick={(e) => startTime = plyr?.currentTime }>o&lt;</Button>
-          <Button variant="success" size="sm" onClick={setThumbnail}>o</Button>
-          <Button variant={endTime ? "success" : "warning"} size="sm" onClick={(e) => endTime = plyr?.currentTime}>&gt;o</Button>
-          <Button size="sm" onClick={(e) => seek(endTime) }>&gt;|</Button>
-          <Button size="sm" onClick={(e) => forwards(0.1)}>+.1s</Button>
-          <Button size="sm" onClick={(e) => forwards(1)}>+1s</Button>
+  const videoStyle = {
+    width: `min(80vw, 80vh * ${vidRatio})`,
+    height: `min(80vh, 80vw * 1 / ${vidRatio})`
+  }
+
+  const fragmentWidth = "15vw"
+  const totalWidth = `calc(min(80vw, 80vh * ${vidRatio}) + 15vw)`
+  const videoWidth = `min(80vw, 80vh * ${vidRatio})`
+  const sharedHeight = `min(80vh, 80vw * 1 / ${vidRatio})`
+
+  return (
+      <div style = { { width: totalWidth, height: sharedHeight } } className="editor-container">
+        <div style={videoStyle} className="videoContainer">
+          <video className="videoPlayer" id={id} playsInline controls>
+            <source src={videoSrc} type="video/mp4"/>
+          </video>
+          { showFragmentControls && fragmentPickingControls }
+        </div>
+
+        <div style={ { width: fragmentWidth, height: sharedHeight }} className="fragment-list">
+          <FragmentList vid={props.vid} selectFn={selectFragment} />
         </div>
       </div>
-      {
-        vid && <Fragments vid={vid} selectFn={selectFragment} />
-      }
-    </div>
   );
 }
 
-const Fragments = (props: {vid: Video, selectFn: (f: Fragment) => any}) => {
+
+const FragmentList = (props: {vid: Video, selectFn: (f: Fragment) => any}) => {
 
   const [selected, setSelected] = useState(-1)
   const ratio = (props.vid.resolution_x / props.vid.resolution_y).toFixed(2);
@@ -108,12 +125,13 @@ const Fragments = (props: {vid: Video, selectFn: (f: Fragment) => any}) => {
 
   const sizing = { width: "100%", height: fheight, "line-height": fheight }
 
+
   const fragmentList =
     props.vid.previews.map((f, idx) => {
       return(
         <div>
           <video style={ { width: "100%"} }
-                 key={`fragment-${f.timestamp_start}`}
+                 key={`fragment-${props.vid.id}-${f.timestamp_start}`}
                  className={ selected == idx ? "fragment-selected" : "fragment" } muted
                  onMouseEnter={(e) => e.currentTarget.play() }
                  onMouseLeave={(e) => e.currentTarget.pause() }
@@ -126,7 +144,7 @@ const Fragments = (props: {vid: Video, selectFn: (f: Fragment) => any}) => {
     })
 
   return (
-    <div style={ { width: "15vw", height: height }} className="fragment-list">
+    <div>
       { fragmentList }
       <div key="new-fragment" style={sizing} className="new-fragment">+</div>
     </div>

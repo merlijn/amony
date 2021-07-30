@@ -4,7 +4,7 @@ import './Thumbnail.scss';
 import {durationInMillisToString} from "../api/Util";
 import {Video} from "../api/Model";
 
-const Thumbnail = (props: {vid: Video}) => {
+const Thumbnail = (props: {vid: Video, showTitle?: boolean}) => {
 
   const ncols = 4
 
