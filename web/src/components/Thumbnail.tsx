@@ -3,6 +3,7 @@ import Image from 'react-bootstrap/Image';
 import './Thumbnail.scss';
 import {durationInMillisToString} from "../api/Util";
 import {Video} from "../api/Model";
+import {Col, Form, Row} from "react-bootstrap";
 
 const Thumbnail = (props: {vid: Video, showTitle?: boolean}) => {
 
@@ -16,21 +17,7 @@ const Thumbnail = (props: {vid: Video, showTitle?: boolean}) => {
 
   const durationStr = durationInMillisToString(vid.duration)
 
-  const infoPanel =
-    <div className={`info-panel`}>
-      <div className="top-left menu-icon info-button" onClick={(e) => { setShowInfoPanel(false)} }>
-        <img src="/info_black_24dp.svg" />
-      </div>
-      <div className="info-panel-content">
-        <ul>
-          <li>Title: {vid.title}</li>
-          <li>Duration: {durationStr}</li>
-          <li>Fps: {vid.fps}</li>
-          <li>Resolution: {vid.resolution_x}x{vid.resolution_y}</li>
-          <li>Tags: {vid.tags.toString()}</li>
-        </ul>
-      </div>
-    </div>
+  const infoPanel = <InfoPanel vid={props.vid} onClickInfo={() => setShowInfoPanel(false) } />
 
   const nextPreview = (e: SyntheticEvent<HTMLVideoElement>) => {
 
@@ -95,6 +82,36 @@ const Thumbnail = (props: {vid: Video, showTitle?: boolean}) => {
       { titlePanel }
     </div>
   );
+}
+
+const InfoPanel = (props: {vid: Video, onClickInfo: () => any }) => {
+
+    const durationStr = durationInMillisToString(props.vid.duration)
+
+    return(
+        <div className={`info-panel`}>
+            <div className="top-left menu-icon info-button" onClick={(e) => { props.onClickInfo() } }>
+                <img src="/info_black_24dp.svg" />
+            </div>
+            <div className="info-title"><b>{props.vid.title}</b></div>
+            <div className="info-panel-content">
+                <table>
+                    <tbody>
+                    <tr><td>Duration</td><td>{durationStr}</td></tr>
+                    <tr><td>Fps</td><td>{props.vid.fps}</td></tr>
+                    <tr><td>Resolution</td><td>{props.vid.resolution_x}x{props.vid.resolution_y}</td></tr>
+                    <tr><td>Tags<img className="tag-add-button" src="/add_box_black_24dp.svg" /></td><td>
+                        <div className="tag-entry">
+                            <Form.Control className="tag-input" size="sm" type="text" defaultValue="" />
+                            <img className="tag-delete-button" src="/cancel_black_24dp.svg" />
+                        </div>
+                    </td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div className="bottom-right"><img src="/done_outline_black_24dp.svg" /></div>
+        </div>
+    );
 }
 
 export default Thumbnail;
