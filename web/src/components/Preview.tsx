@@ -1,13 +1,11 @@
-import React, {SyntheticEvent, useState} from 'react';
+import React, {CSSProperties, SyntheticEvent, useState} from 'react';
 import Image from 'react-bootstrap/Image';
-import './Thumbnail.scss';
+import './Preview.scss';
 import {durationInMillisToString} from "../api/Util";
 import {Video} from "../api/Model";
 import {Col, Form, Row} from "react-bootstrap";
 
-const Thumbnail = (props: {vid: Video, showTitle?: boolean}) => {
-
-  const ncols = 4
+const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, showTitle?: boolean}) => {
 
   const [vid, setVid] = useState(props.vid)
 
@@ -72,7 +70,7 @@ const Thumbnail = (props: {vid: Video, showTitle?: boolean}) => {
 
   return (
 
-    <div className="grid-preview-cell">
+    <div style={props.style} className={ `${props.className}` }>
       <div className = "preview-container" onMouseEnter={() => setShowVideoPreview(true)} onMouseLeave={() => setShowVideoPreview(false)}>
         { showVideoPreview && videoPreview }
         { primaryThumbnail }
@@ -114,4 +112,4 @@ const InfoPanel = (props: {vid: Video, onClickInfo: () => any }) => {
     );
 }
 
-export default Thumbnail;
+export default Preview;

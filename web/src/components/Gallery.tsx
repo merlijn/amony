@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import {Api} from '../api/Api';
 import {SearchResult} from '../api/Model';
-import Thumbnail from './Thumbnail';
+import Preview from './Preview';
 import './Gallery.scss';
 import {useLocation} from 'react-router-dom'
 import {useWindowSize} from "../api/Util";
@@ -19,8 +19,7 @@ const Gallery = (props: { cols?: number}) => {
   const size = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > gridReRenderThreshold));
 
   // grid size
-  const ncols = Math.min(Math.max(2, Math.round(size.width / gridSize)), 5);
-  const grid_class = `grid-${ncols}`
+  const ncols = 4 // Math.min(Math.max(2, Math.round(size.width / gridSize)), 5);
 
   const pageSize = pageSizes.get(ncols) || 24
 
@@ -39,9 +38,16 @@ const Gallery = (props: { cols?: number}) => {
     }, [location]
   )
 
-  const previews = searchResult.videos.map((vid) => {
+  const previews = searchResult.videos.map((vid, idx) => {
 
-    return <Thumbnail key={`preview-${vid.id}`} vid={vid} />
+    let style = { }
+
+    if (idx % ncols == 0)
+        style = { "padding-left": "2px" }
+    else if ((idx + 1) % ncols == 0)
+        style = { "padding-right" : "2px" }
+
+    return <Preview style = {style} className="grid-preview-cell" key={`preview-${vid.id}`} vid={vid} />
   })
 
   return (
