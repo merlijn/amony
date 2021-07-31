@@ -53,11 +53,11 @@ object WebConversions {
         duration      = media.duration,
         fps           = media.fps,
         thumbnail_uri = s"/files/thumbnails/${media.id}-${media.thumbnailTimestamp}.webp",
-        previews = media.previews.map { p =>
+        previews = media.fragments.map { p =>
           Preview(
-            timestamp_start = p.timestampStart,
-            timestamp_end   = p.timestampEnd,
-            uri             = s"/files/thumbnails/${media.id}-${p.timestampStart}.mp4"
+            timestamp_start = p.fromTimestamp,
+            timestamp_end   = p.toTimestamp,
+            uri             = s"/files/thumbnails/${media.id}-${p.fromTimestamp}-${p.toTimestamp}.mp4"
           )
 
         },

@@ -39,8 +39,11 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
   def getCollections()(implicit timeout: Timeout): Future[List[Collection]] =
     system.ask[List[Collection]](ref => GetCollections(ref))
 
-  def setThumbnailAt(id: String, from: Long, to: Long)(implicit timeout: Timeout): Future[Option[Media]] =
+  def addFragment(id: String, from: Long, to: Long)(implicit timeout: Timeout): Future[Option[Media]] =
     system.ask[Option[Media]](ref => AddFragment(id, from, to, ref))
+
+  def updateFragment(id: String, idx: Int, from: Long, to: Long)(implicit timeout: Timeout): Future[Option[Media]] =
+    system.ask[Option[Media]](ref => UpdateFragment(id, idx, from, to, ref))
 
   def getThumbnailPathForMedia(id: String): String =
     s"${config.indexPath}/thumbnails/$id"
@@ -55,8 +58,8 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
         logger.info(s"re-generating thumbnail for '${m.fileName()}'")
         val videoPath = config.libraryPath.resolve(m.uri)
 
-        m.previews.foreach { p =>
-          MediaLibScanner.generateThumbnail(videoPath, config.indexPath, m.id, p.timestampStart, p.timestampEnd)
+        m.fragments.foreach { f =>
+          MediaLibScanner.generateVideoFragment(videoPath, config.indexPath, m.id, f.fromTimestamp, f.toTimestamp)
         }
       }
     }

@@ -2,7 +2,7 @@ package io.amony.lib
 
 import akka.actor.typed.ActorRef
 import better.files.File
-import io.amony.actor.MediaLibActor.{Command, Media, Preview, RemoveMedia, UpsertMedia}
+import io.amony.actor.MediaLibActor.{Command, Media, Fragment, RemoveMedia, UpsertMedia}
 import io.amony.http.JsonCodecs
 import io.amony.lib.FFMpeg.Probe
 import io.amony.lib.FileUtil.PathOps
@@ -48,7 +48,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     val info = FFMpeg.ffprobe(videoPath)
     val timeStamp = info.duration / 3
-    generateThumbnail(videoPath, indexDir, hash, timeStamp, timeStamp + 3000)
+    generateVideoFragment(videoPath, indexDir, hash, timeStamp, timeStamp + 3000)
     val video = asVideo(baseDir, videoPath, hash, info, timeStamp)
     video
   }
@@ -128,13 +128,13 @@ object MediaLibScanner extends Logging with JsonCodecs {
     }
   }
 
-  def deleteThumbnailAtTimestamp(indexPath: Path, id: String, timestamp: Long): Unit = {
+  def deleteVideoFragment(indexPath: Path, id: String, from: Long, to: Long): Unit = {
 
-    (indexPath / "thumbnails" / s"${id}-$timestamp.webp").deleteIfExists()
-    (indexPath / "thumbnails" / s"${id}-$timestamp.mp4").deleteIfExists()
+    (indexPath / "thumbnails" / s"${id}-$from.webp").deleteIfExists()
+    (indexPath / "thumbnails" / s"${id}-$from-$to.mp4").deleteIfExists()
   }
 
-  def generateThumbnail(videoPath: Path, indexPath: Path, id: String, from: Long, to: Long): Unit = {
+  def generateVideoFragment(videoPath: Path, indexPath: Path, id: String, from: Long, to: Long): Unit = {
 
     val thumbnailPath = s"${indexPath}/thumbnails"
 
@@ -150,7 +150,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       inputFile  = videoPath.absoluteFileName(),
       from  = from,
       to = to,
-      outputFile = Some(s"${thumbnailPath}/${id}-$from.mp4")
+      outputFile = Some(s"${thumbnailPath}/${id}-$from-$to.mp4")
     )
   }
 
@@ -164,7 +164,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       duration   = info.duration,
       fps        = info.fps,
       thumbnailTimestamp = thumbnailTimestamp,
-      previews   = List(Preview(thumbnailTimestamp, thumbnailTimestamp + 3000)),
+      fragments  = List(Fragment(thumbnailTimestamp, thumbnailTimestamp + 3000, None, List.empty)),
       tags       = List.empty,
       resolution = info.resolution
     )

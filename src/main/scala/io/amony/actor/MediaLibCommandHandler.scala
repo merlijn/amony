@@ -3,10 +3,10 @@ package io.amony.actor
 import akka.persistence.typed.scaladsl.Effect
 import better.files.File
 import better.files.File.apply
-import io.amony.lib.MediaLibScanner.{deleteThumbnailAtTimestamp, generateThumbnail}
+import io.amony.lib.MediaLibScanner.{deleteVideoFragment, generateVideoFragment}
 import io.amony.actor.MediaLibEventSourcing._
 import io.amony.actor.MediaLibActor._
-import io.amony.lib.MediaLibConfig
+import io.amony.lib.{ListOps, MediaLibConfig}
 import scribe.Logging
 
 object MediaLibCommandHandler extends Logging {
@@ -69,6 +69,51 @@ object MediaLibCommandHandler extends Logging {
 
         Effect.reply(sender)(SearchResult(offset, result.size, videos))
 
+      case DeleteFragment(id, idx, sender) =>
+        state.media.get(id) match {
+
+          case None =>
+            Effect.reply(sender)(None)
+
+          case Some(vid) =>
+
+            val newVid = vid.copy(fragments = vid.fragments.deleteAtPos(idx))
+
+            Effect
+              .persist(MediaUpdated(id, newVid))
+              .thenRun{ (s: State) =>
+                deleteVideoFragment(config.indexPath, vid.id, vid.fragments(idx).fromTimestamp, vid.fragments(idx).toTimestamp)
+              }
+              .thenReply(sender)(_ => Some(newVid))
+        }
+
+      case UpdateFragment(id, idx, from, to, sender) =>
+        state.media.get(id) match {
+
+          case None =>
+            Effect.reply(sender)(None)
+
+          case Some(vid) =>
+            logger.info(s"Updating fragment $id:$idx to $from:$to")
+
+            // check if specific range already exists
+            val fragment = vid.fragments(idx)
+            val newFragment = fragment.copy(fromTimestamp = from, toTimestamp = to)
+            val primaryThumbnail = if (idx == 0) from else vid.thumbnailTimestamp
+            val newVid = vid.copy(
+              thumbnailTimestamp = primaryThumbnail,
+              fragments = vid.fragments.replaceAtPos(idx, newFragment))
+
+            Effect
+              .persist(MediaUpdated(id, newVid))
+              .thenRun { (s: State) =>
+
+                deleteVideoFragment(config.indexPath, vid.id, fragment.fromTimestamp, fragment.toTimestamp)
+                generateVideoFragment(vid.path(config.libraryPath), config.indexPath, id, from, to)
+              }
+              .thenReply(sender)(_ => Some(newVid))
+          }
+
       case AddFragment(id, from, to, sender) =>
         state.media.get(id) match {
           case None =>
@@ -88,20 +133,20 @@ object MediaLibCommandHandler extends Logging {
               val sanitizedTimeStamp = Math.max(0, Math.min(vid.duration, from))
               val videoPath          = vid.path(config.libraryPath)
 
-              val previews           = List(
-                Preview(
-                  timestampStart = sanitizedTimeStamp,
-                  timestampEnd = to
+              val fragments = List(
+                Fragment(
+                  fromTimestamp = sanitizedTimeStamp,
+                  toTimestamp = to,
+                  comment = None,
+                  tags = Nil
                 )
               )
 
-              val newVid             = vid.copy(thumbnailTimestamp = sanitizedTimeStamp, previews = previews)
-
-              deleteThumbnailAtTimestamp(config.indexPath, vid.id, vid.thumbnailTimestamp)
+              val newVid             = vid.copy(thumbnailTimestamp = sanitizedTimeStamp, fragments = fragments)
 
               Effect
                 .persist(MediaUpdated(id, newVid))
-                .thenRun((s: State) => generateThumbnail(videoPath, config.indexPath, id, sanitizedTimeStamp, to))
+                .thenRun((s: State) => generateVideoFragment(videoPath, config.indexPath, id, sanitizedTimeStamp, to))
                 .thenReply(sender)(_ => Some(newVid))
             }
         }

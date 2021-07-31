@@ -4,7 +4,7 @@ import akka.actor.typed.ActorSystem
 import better.files.File
 import io.amony.App.{logger, mediaLibConfig}
 import io.amony.actor.MediaLibActor
-import io.amony.actor.MediaLibActor.{Media, Preview, UpsertMedia}
+import io.amony.actor.MediaLibActor.{Media, Fragment, UpsertMedia}
 import io.circe.generic.semiauto.deriveCodec
 import scribe.Logging
 
@@ -16,12 +16,13 @@ object Migration extends Logging {
                        uri: String,
                        title: Option[String],
                        duration: Long,
-                       thumbnail: ThumbnailOld,
+                       fps: Double,
+                       thumbnailTimestamp: Long,
+                       previews: List[ThumbnailOld],
                        resolution: (Int, Int),
-                       tags: List[String]
-                     )
+                       tags: List[String])
 
-  case class ThumbnailOld(timestamp: Long)
+  case class ThumbnailOld(timestampStart: Long, timestampEnd: Long)
 
   def importFromFile(system: ActorSystem[MediaLibActor.Command]) = {
 
@@ -36,15 +37,14 @@ object Migration extends Logging {
 
       oldMedia.map { m =>
 
-        val path = (File(mediaLibConfig.libraryPath) / m.uri).path
-
-        val probe = FFMpeg.ffprobe(path)
-        val previews = List(
-          Preview(m.thumbnail.timestamp, m.thumbnail.timestamp + 3000)
-        )
+        val fragments = {
+          m.previews.map { p =>
+            Fragment(p.timestampStart, p.timestampEnd, None, List.empty)
+          }
+        }
 
         val media = Media(
-          m.id, m.hash, m.uri, m.title, m.duration, probe.fps, m.thumbnail.timestamp, previews, m.resolution, m.tags
+          m.id, m.hash, m.uri, m.title, m.duration, m.fps, m.thumbnailTimestamp, fragments, m.resolution, m.tags
         )
 
         logger.info(s"Imported: ${m.uri}")

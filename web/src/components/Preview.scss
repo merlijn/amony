@@ -19,7 +19,10 @@
   }
 
   .info-panel-content {
-    padding: 40px 7px;
+
+    margin: 40px 7px;
+    padding: 8px 0px;
+    border-top: 1px solid #ced4da;
 
     table {
       width: 100%;
@@ -59,7 +62,7 @@
   width: var(--grid-width);
   position: relative;
   float: left;
-  border: 2px solid white;
+  padding: 2px;
 }
 
 .media-title {
@@ -106,15 +109,12 @@
   }
 }
 
-.duration-overlay {
-  z-index: 3;
-  padding: 0px 5px;
-  color: white;
-  background-color: rgba(0, 0, 0, 0.6);
-  font-size: small;
-}
-
 .menu-icon {
+
+  &:hover {
+    cursor: pointer;
+  }
+
   z-index: 3;
   width: 20px;
   height: 20px;
@@ -127,27 +127,4 @@
   }
 }
 
-.bottom-right {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-}
-
-.top-right {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-}
-
-.bottom-left {
-  position: absolute;
-  bottom: 5px;
-  left: 5px;
-}
-
-.top-left {
-  position: absolute;
-  top: 5px;
-  left: 5px;
-}
 

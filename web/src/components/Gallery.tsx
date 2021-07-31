@@ -43,15 +43,15 @@ const Gallery = (props: { cols?: number}) => {
     let style = { }
 
     if (idx % ncols == 0)
-        style = { "padding-left": "2px" }
+        style = { "padding-left": "4px" }
     else if ((idx + 1) % ncols == 0)
-        style = { "padding-right" : "2px" }
+        style = { "padding-right" : "4px" }
 
     return <Preview style = {style} className="grid-preview-cell" key={`preview-${vid.id}`} vid={vid} />
   })
 
   return (
-    <div className="full-width">
+    <div className="gallery-container full-width">
       <TopNavBar currentPage={currentPage()} lastPage={Math.ceil(searchResult.total / pageSize)} />
       <div className="gallery">
         {previews}

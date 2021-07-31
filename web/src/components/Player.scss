@@ -1,3 +1,5 @@
+@import '../App.scss';
+
 .videoPlayer {
   --plyr-video-controls-background: black;
   --plyr-color-main: #1ac266;
@@ -23,8 +25,22 @@
   float: left;
 
   // hack to hide the center play button
-  > div > button {
+  > div > button[aria-Label="Play"] {
       display: none ! important;
+  }
+}
+
+.fragment-picker {
+
+  display: flex;
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  z-index: 5;
+
+  button {
+    position: relative;
+    float: left;
   }
 }
 
@@ -34,6 +50,7 @@
   float: left;
 
   video {
+    z-index: 1;
     float: left;
     border: 2px solid white;
   }
@@ -43,11 +60,16 @@
     border: 2px solid yellow;
   }
 
-  .new-fragment {
+  .fragment-container {
+
+    position: relative;
     float: left;
+  }
 
+  .new-fragment {
+
+    float: left;
     text-align: center;
-
     font-size: x-large;
     color: white;
 

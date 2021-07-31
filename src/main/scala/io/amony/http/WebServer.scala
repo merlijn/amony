@@ -3,7 +3,7 @@ package io.amony.http
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.{path, _}
 import akka.http.scaladsl.server.{RejectionHandler, ValidationRejection}
 import akka.stream.Materializer
 import akka.util.Timeout
@@ -48,9 +48,9 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
       (path("media") & parameters("q".optional, "offset".optional, "n".optional, "c".optional)) { (q, offset, s, c) =>
         get {
 
-          val size         = s.map(_.toInt).getOrElse(defaultResultNumber)
+          val size = s.map(_.toInt).getOrElse(defaultResultNumber)
           val searchResult = mediaLibApi.search(q, offset.map(_.toInt), size, c)
-          val response     = searchResult.map(_.toWebModel().asJson)
+          val response = searchResult.map(_.toWebModel().asJson)
 
           complete(response)
         }
@@ -58,38 +58,51 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
         get {
           mediaLibApi.getById(id) match {
             case Some(vid) => complete(vid.toWebModel.asJson)
-            case None      => complete(StatusCodes.NotFound)
+            case None => complete(StatusCodes.NotFound)
           }
         }
       } ~ path("tags") {
         get {
           complete(mediaLibApi.getCollections().map(_.map(_.toWebModel.asJson)))
         }
-      } ~ path("thumbnail" / Segment) { id =>
+      } ~ path("fragment" / "add" / Segment) { (id) =>
         (post & entity(as[CreateFragment])) { createFragment =>
-          logger.info(s"Creating fragment for $id at ${createFragment.from}")
 
-          onSuccess(mediaLibApi.setThumbnailAt(id, createFragment.from, createFragment.to)) {
+          logger.info(s"Adding fragment for $id at ${createFragment.from}:${createFragment.to}")
+
+          onSuccess(mediaLibApi.addFragment(id, createFragment.from, createFragment.to)) {
             case Some(vid) => complete(vid.toWebModel().asJson)
-            case None      => complete(StatusCodes.NotFound)
+            case None => complete(StatusCodes.NotFound)
           }
         }
-      } ~ pathPrefix("admin") {
-        (path("regen-thumbnails") & post) {
-          mediaLibApi.regenerateThumbnails()
-          complete("OK")
-        } ~ (path("export-to-file") & post) {
-          mediaLibApi.exportLibrary()
-          complete("OK")
-        } ~ (path("reset-titles") & post) {
-          mediaLibApi.resetTitles()
-          complete("OK")
-        } ~ (path("regen-hashes") & post) {
-          mediaLibApi.regenerateHashes()
-          complete("OK")
+      } ~ path("fragment" / "update" / Segment / Segment) { (id, idx) =>
+        (post & entity(as[CreateFragment])) { createFragment =>
+
+          logger.info(s"Creating fragment for $id at ${createFragment.from}:${createFragment.to}")
+
+          onSuccess(mediaLibApi.updateFragment(id, idx.toInt, createFragment.from, createFragment.to)) {
+            case Some(vid) => complete(vid.toWebModel().asJson)
+            case None => complete(StatusCodes.NotFound)
+          }
         }
       }
     }
+
+  val adminRoutes = pathPrefix("api" / "admin") {
+    (path("regen-thumbnails") & post) {
+      mediaLibApi.regenerateThumbnails()
+      complete("OK")
+    } ~ (path("export-to-file") & post) {
+      mediaLibApi.exportLibrary()
+      complete("OK")
+    } ~ (path("reset-titles") & post) {
+      mediaLibApi.resetTitles()
+      complete("OK")
+    } ~ (path("regen-hashes") & post) {
+      mediaLibApi.regenerateHashes()
+      complete("OK")
+    }
+  }
 
   val thumbnails =
     path("files" / "thumbnails" / Segment) { id =>
@@ -125,7 +138,7 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
       }
     }
 
-  val apiRoutes = api ~ thumbnails ~ videos
+  val apiRoutes = api ~ adminRoutes ~ thumbnails ~ videos
 
   val routes =
     if (config.hostClient)

@@ -23,10 +23,12 @@ object MediaLibActor {
   case class Query(q: Option[String], offset: Option[Int], n: Int, c: Option[String])
   case class SearchResult(offset: Int, total: Int, items: Seq[Media])
 
+  case class DeleteFragment(mediaId: String, fragmentIdx: Int, sender: ActorRef[Option[Media]]) extends Command
+  case class UpdateFragment(mediaId: String, fragmentIdx: Int, from: Long, to: Long, sender: ActorRef[Option[Media]]) extends Command
   case class AddFragment(mediaId: String, from: Long, to: Long, sender: ActorRef[Option[Media]]) extends Command
 
   case class State(media: Map[String, Media], collections: Map[String, Collection])
-  case class Preview(timestampStart: Long, timestampEnd: Long)
+  case class Fragment(fromTimestamp: Long, toTimestamp: Long, comment: Option[String], tags: List[String])
   case class Collection(id: String, title: String)
 
   case class Media(
@@ -37,7 +39,7 @@ object MediaLibActor {
       duration: Long,
       fps: Double,
       thumbnailTimestamp: Long,
-      previews: List[Preview],
+      fragments: List[Fragment],
       resolution: (Int, Int),
       tags: List[String]
   ) {

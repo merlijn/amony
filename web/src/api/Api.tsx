@@ -25,7 +25,11 @@ export const Api = {
   },
 
   addFragment: async function (id: string, from: number, to: number) {
-    return doPOST(`/api/thumbnail/${id}`, { from: from, to: to})
+    return doPOST(`/api/fragment/add/${id}`, { from: from, to: to})
+  },
+
+  updateFragment: async function (id: string, idx: number, from: number, to: number) {
+    return doPOST(`/api/fragment/update/${id}/${Math.trunc(idx)}`, { from: from, to: to})
   },
 
   getTags: async function getTags() {
