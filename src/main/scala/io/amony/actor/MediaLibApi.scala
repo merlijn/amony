@@ -45,6 +45,9 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
   def updateFragment(id: String, idx: Int, from: Long, to: Long)(implicit timeout: Timeout): Future[Option[Media]] =
     system.ask[Option[Media]](ref => UpdateFragment(id, idx, from, to, ref))
 
+  def deleteFragment(id: String, idx: Int)(implicit timeout: Timeout): Future[Option[Media]] =
+    system.ask[Option[Media]](ref => DeleteFragment(id, idx, ref))
+
   def getThumbnailPathForMedia(id: String): String =
     s"${config.indexPath}/thumbnails/$id"
 

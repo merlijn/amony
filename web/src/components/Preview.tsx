@@ -42,6 +42,7 @@ const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, 
   const videoPreview =
      <video className="preview-video preview-media" muted
             onMouseOver={(e) => e.currentTarget.play()}
+            onMouseLeave={ (e) => setCurrentPreviewIdx(0) }
             onEnded={nextPreview} >
 
          <source src={props.vid.previews[currentPreviewIdx].uri} type="video/mp4"/>

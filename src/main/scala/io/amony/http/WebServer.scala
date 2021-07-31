@@ -75,6 +75,16 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
             case None => complete(StatusCodes.NotFound)
           }
         }
+      } ~ path("fragment" / "delete" / Segment / Segment) { (id, idx) =>
+        post {
+
+          logger.info(s"Deleting segment $id:$idx")
+
+          onSuccess(mediaLibApi.deleteFragment(id, idx.toInt)) {
+            case Some(vid) => complete(vid.toWebModel().asJson)
+            case None => complete(StatusCodes.NotFound)
+          }
+        }
       } ~ path("fragment" / "update" / Segment / Segment) { (id, idx) =>
         (post & entity(as[CreateFragment])) { createFragment =>
 

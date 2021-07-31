@@ -77,7 +77,10 @@ object MediaLibCommandHandler extends Logging {
 
           case Some(vid) =>
 
-            val newVid = vid.copy(fragments = vid.fragments.deleteAtPos(idx))
+            val newFragments = vid.fragments.deleteAtPos(idx)
+            val newVid = vid.copy(
+              fragments = vid.fragments.deleteAtPos(idx),
+              thumbnailTimestamp = newFragments(0).fromTimestamp)
 
             Effect
               .persist(MediaUpdated(id, newVid))
@@ -133,7 +136,7 @@ object MediaLibCommandHandler extends Logging {
               val sanitizedTimeStamp = Math.max(0, Math.min(vid.duration, from))
               val videoPath          = vid.path(config.libraryPath)
 
-              val fragments = List(
+              val newFragments = vid.fragments ::: List(
                 Fragment(
                   fromTimestamp = sanitizedTimeStamp,
                   toTimestamp = to,
@@ -142,7 +145,7 @@ object MediaLibCommandHandler extends Logging {
                 )
               )
 
-              val newVid             = vid.copy(thumbnailTimestamp = sanitizedTimeStamp, fragments = fragments)
+              val newVid             = vid.copy(fragments = newFragments)
 
               Effect
                 .persist(MediaUpdated(id, newVid))

@@ -28,6 +28,10 @@ export const Api = {
     return doPOST(`/api/fragment/add/${id}`, { from: from, to: to})
   },
 
+  deleteFragment: async function (id: string, idx: number) {
+    return doPOST(`/api/fragment/delete/${id}/${idx}`)
+  },
+
   updateFragment: async function (id: string, idx: number, from: number, to: number) {
     return doPOST(`/api/fragment/update/${id}/${Math.trunc(idx)}`, { from: from, to: to})
   },
@@ -54,13 +58,17 @@ export async function doGET(path: string) {
   return data;
 }
 
-export async function doPOST(path: string, postData: any) {
+export async function doPOST(path: string, postData?: any) {
 
-  const response = await fetch(path, {
+  let init: {} = {
     method: 'POST',
-    body: JSON.stringify(postData),
     headers
-  });
+  }
+
+  if (postData)
+    init = { ...init, body: JSON.stringify(postData) }
+
+  const response = await fetch(path, init);
 
   const data = await response.json();
 

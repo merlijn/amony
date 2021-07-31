@@ -24,6 +24,12 @@ const Player = (props: {videoId: string}) => {
   );
 }
 
+type EditFragment = {
+  idx: number
+  start?: number,
+  end?: number,
+}
+
 const PlayerView = (props: {vid: Video}) => {
 
   const vidRatio = props.vid.resolution_x / props.vid.resolution_y;
@@ -33,9 +39,7 @@ const PlayerView = (props: {vid: Video}) => {
   const [plyr, setPlyr] = useState<Plyr | null>(null)
   const [showFragmentControls, setShowFragmentControls] = useState(false)
 
-  const [fragmentStart, setFragmentStart] = useState<number | undefined>(undefined)
-  const [fragmentEnd, setFragmentEnd] = useState<number | undefined>(undefined)
-  const [fragmentIdx, setFragmentIdx] = useState<number | undefined>(undefined)
+  const [fragment, setFragment] = useState<EditFragment>({ idx: -1} )
 
   useEffect(() => {
     const element = document.getElementById(id);
@@ -50,21 +54,24 @@ const PlayerView = (props: {vid: Video}) => {
 
     if (plyr) {
 
-     if (fragmentIdx != undefined &&
-         fragmentStart != undefined &&
-         fragmentEnd != undefined) {
-       console.log("update fragment")
+     if (fragment.start != undefined &&
+         fragment.end != undefined) {
 
-       const from = Math.trunc(fragmentStart * 1000)
-       const to = Math.trunc(fragmentEnd * 1000)
+       const from = Math.trunc(fragment.start * 1000)
+       const to = Math.trunc(fragment.end * 1000)
 
-       console.log("setting fragment")
-       console.log(from)
-       console.log(to)
-
-       Api.updateFragment(props.vid.id, fragmentIdx, from, to).then (response => {
-         // done
-       });
+       if (fragment.idx >= 0 && fragment.idx < props.vid.previews.length) {
+         console.log("updating fragment")
+         Api.updateFragment(props.vid.id, fragment.idx, from, to).then (response => {
+           // done
+         });
+       }
+       if (fragment.idx == props.vid.previews.length) {
+         console.log("adding fragment")
+         Api.addFragment(props.vid.id, from, to).then (response => {
+           // done
+         });
+       }
      }
     }
   }
@@ -81,24 +88,24 @@ const PlayerView = (props: {vid: Video}) => {
     }
   }
 
-  const selectFragment = (f: Fragment, idx: number) => {
+  const selectFragment = (f: EditFragment) => {
 
-    setFragmentIdx(idx)
-    setFragmentStart(f.timestamp_start / 1000)
-    setFragmentEnd(f.timestamp_end / 1000)
+    setFragment(f)
     setShowFragmentControls(true)
-    seek(f.timestamp_start / 1000)
+
+    if (f.start)
+      seek(f.start)
   }
 
   const fragmentPickingControls =
     <div className="fragment-picker">
       <Button size="sm" onClick={(e) => forwards(-1)}>-1s</Button>
       <Button size="sm" onClick={(e) => forwards(-0.1)}>-.1ms</Button>
-      <Button size="sm" onClick={(e) => seek(fragmentStart) }>|&lt;</Button>
-      <Button variant={fragmentStart ? "success" : "warning"} size="sm" onClick={(e) => setFragmentStart(plyr?.currentTime) }>o&lt;</Button>
+      <Button size="sm" onClick={(e) => seek(fragment.start) }>|&lt;</Button>
+      <Button variant={fragment.start ? "success" : "warning"} size="sm" onClick={(e) => setFragment({ ...fragment, start: plyr?.currentTime }) }>o&lt;</Button>
       <Button variant="success" size="sm" onClick={setThumbnail}>o</Button>
-      <Button variant={fragmentEnd ? "success" : "warning"} size="sm" onClick={(e) => setFragmentEnd(plyr?.currentTime)}>&gt;o</Button>
-      <Button size="sm" onClick={(e) => seek(fragmentEnd) }>&gt;|</Button>
+      <Button variant={fragment.end ? "success" : "warning"} size="sm" onClick={(e) => setFragment({ ...fragment, end: plyr?.currentTime }) }>&gt;o</Button>
+      <Button size="sm" onClick={(e) => seek(fragment.end) }>&gt;|</Button>
       <Button size="sm" onClick={(e) => forwards(0.1)}>+.1s</Button>
       <Button size="sm" onClick={(e) => forwards(1)}>+1s</Button>
     </div>
@@ -123,23 +130,24 @@ const PlayerView = (props: {vid: Video}) => {
         </div>
 
         <div key={`video-${props.vid.id}-fragments`} style={ { width: fragmentWidth, height: sharedHeight }} className="fragment-list">
-          <FragmentList vid={props.vid} selectFn={selectFragment} />
+          <FragmentList vid={props.vid} selected={fragment.idx} selectFn={selectFragment} />
         </div>
       </div>
   );
 }
 
 
-const FragmentList = (props: {vid: Video, selectFn: (f: Fragment, idx: number) => any}) => {
+const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFragment) => any}) => {
 
-  const [selected, setSelected] = useState(-1)
   const ratio = (props.vid.resolution_x / props.vid.resolution_y).toFixed(2);
-  const height = `min(80vh, 80vw * 1 / ${ratio})`
 
-  const fheight = `calc(15vw * 1 / ${ratio})`
+  const deleteFragment = (idx: number) => {
 
-  const sizing = { width: "100%", height: fheight, "line-height": fheight }
-
+    if (props.vid.previews.length > 1) {
+      console.log(`Deleting fragment ${props.vid.id}:${idx}`)
+      Api.deleteFragment(props.vid.id, idx)
+    }
+  }
 
   const fragmentList =
     props.vid.previews.map((f, idx) => {
@@ -147,22 +155,42 @@ const FragmentList = (props: {vid: Video, selectFn: (f: Fragment, idx: number) =
       return(
         <div key={`fragment-${props.vid.id}-${f.timestamp_start}`} className="fragment-container">
           <video style={ { width: "100%"} }
-                 className={ selected == idx ? "fragment-selected" : "fragment" } muted
+                 className={ props.selected == idx ? "fragment-selected" : "fragment" } muted
                  onMouseEnter={(e) => e.currentTarget.play() }
                  onMouseLeave={(e) => e.currentTarget.pause() }
-                 onClick={(e) => { setSelected(idx); props.selectFn(f, idx) } }>
+                 onClick={(e) => {
+                   props.selectFn({ idx: idx, start: f.timestamp_start / 1000, end: f.timestamp_end / 1000 })
+                  }
+                 }>
             <source src={f.uri} type="video/mp4"/>
           </video>
           <div className="bottom-left duration-overlay">{durationInMillisToString(f.timestamp_start)}</div>
-          <div className="top-right menu-icon"><img src="/cancel_black_24dp.svg" /></div>
+          {
+            props.vid.previews.length > 1 &&
+            (<div className="top-right menu-icon">
+              <img onClick={ (e) => deleteFragment(idx)} src="/cancel_black_24dp.svg" />
+            </div>)
+          }
+
         </div>
       );
     })
 
+  const height = `calc(15vw * 1 / ${ratio})`
+  const sizing = { width: "100%", height: height, "line-height": height }
+
   return (
     <div>
       { fragmentList }
-      <div key="new-fragment" style={sizing} className="new-fragment">+</div>
+      <div key="new-fragment"
+           style={sizing}
+           className="new-fragment"
+           onClick={(e) => {
+             props.selectFn({ idx: props.vid.previews.length })
+            }
+           }>
+        +
+      </div>
     </div>
   );
 }
