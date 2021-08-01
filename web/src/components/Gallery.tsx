@@ -43,11 +43,11 @@ const Gallery = (props: { cols?: number}) => {
     let style = { }
 
     if (idx % ncols == 0)
-        style = { "padding-left": "4px" }
+        style = { paddingLeft : "4px" }
     else if ((idx + 1) % ncols == 0)
-        style = { "padding-right" : "4px" }
+        style = { paddingRight : "4px" }
 
-    return <Preview style = {style} className="grid-preview-cell" key={`preview-${vid.id}`} vid={vid} />
+    return <Preview style = {style} className="grid-cell" key={`preview-${vid.id}`} vid={vid} />
   })
 
   return (

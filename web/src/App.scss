@@ -8,6 +8,11 @@ $container-max-widths: (
 ) !default;
 
 
+.full-screen {
+  width: 100vw;
+  height: 100vh;
+}
+
 .full-width {
   width: 100% ! important;
   margin: 0 ! important;
@@ -15,6 +20,13 @@ $container-max-widths: (
 
 .root {
   padding: 0px ! important;
+}
+
+.abs-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .duration-overlay {
@@ -47,6 +59,24 @@ $container-max-widths: (
   position: absolute;
   top: 5px;
   left: 5px;
+}
+
+.menu-icon {
+
+  &:hover {
+    cursor: pointer;
+  }
+
+  z-index: 3;
+  width: 20px;
+  height: 20px;
+}
+
+.info-button {
+
+  &:hover {
+    cursor: pointer;
+  }
 }
 
 @import '~bootstrap/scss/bootstrap.scss';

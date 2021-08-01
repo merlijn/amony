@@ -3,7 +3,8 @@ import Image from 'react-bootstrap/Image';
 import './Preview.scss';
 import {durationInMillisToString} from "../api/Util";
 import {Video} from "../api/Model";
-import {Col, Form, Row} from "react-bootstrap";
+import {Form} from "react-bootstrap";
+import {imgAlt} from "../api/Constants";
 
 const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, showTitle?: boolean}) => {
 
@@ -20,21 +21,21 @@ const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, 
   const nextPreview = (e: SyntheticEvent<HTMLVideoElement>) => {
 
     // back the the 1st (0)
-    if (currentPreviewIdx < props.vid.previews.length - 1) {
+    if (currentPreviewIdx < props.vid.fragments.length - 1) {
       setCurrentPreviewIdx(currentPreviewIdx + 1)
       e.currentTarget.load()
       e.currentTarget.play()
     }
 
     // on to the next
-    if (currentPreviewIdx > 0 && currentPreviewIdx + 1 >= props.vid.previews.length) {
+    if (currentPreviewIdx > 0 && currentPreviewIdx + 1 >= props.vid.fragments.length) {
       setCurrentPreviewIdx(0)
       e.currentTarget.load()
       e.currentTarget.play()
     }
 
     // no need to load a new preview if there is only 1
-    if (props.vid.previews.length === 1) {
+    if (props.vid.fragments.length === 1) {
       e.currentTarget.play()
     }
   }
@@ -45,7 +46,7 @@ const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, 
             onMouseLeave={ (e) => setCurrentPreviewIdx(0) }
             onEnded={nextPreview} >
 
-         <source src={props.vid.previews[currentPreviewIdx].uri} type="video/mp4"/>
+         <source src={props.vid.fragments[currentPreviewIdx].uri} type="video/mp4"/>
      </video>
 
   const titlePanel =
@@ -55,14 +56,14 @@ const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, 
     <div>
       <div className="top-right menu-icon"><img src="/more_vert_black_24dp.svg" /></div>
       <div className="top-left menu-icon info-button" onClick={(e) => { setShowInfoPanel(true)} }>
-        <img src="/info_black_24dp.svg" />
+        <img alt={imgAlt} src="/info_black_24dp.svg" />
       </div>
 
       <div className="bottom-left duration-overlay">{durationStr}</div>
 
       <div className="bottom-right menu-icon play-button">
         <a href={`/video/${props.vid.id}`} >
-          <img src="/play_circle_black_24dp.svg" />
+          <img alt={imgAlt} src="/play_circle_black_24dp.svg" />
         </a>
       </div>
     </div>
@@ -102,13 +103,13 @@ const InfoPanel = (props: {vid: Video, onClickInfo: () => any }) => {
                     <tr><td>Tags<img className="tag-add-button" src="/add_box_black_24dp.svg" /></td><td>
                         <div className="tag-entry">
                             <Form.Control className="tag-input" size="sm" type="text" defaultValue="" />
-                            <img className="tag-delete-button" src="/cancel_black_24dp.svg" />
+                            <img alt={imgAlt} className="tag-delete-button" src="/cancel_black_24dp.svg" />
                         </div>
                     </td></tr>
                     </tbody>
                 </table>
             </div>
-            <div className="bottom-right"><img src="/done_outline_black_24dp.svg" /></div>
+            <div className="bottom-right"><img alt={imgAlt} src="/done_outline_black_24dp.svg" /></div>
         </div>
     );
 }

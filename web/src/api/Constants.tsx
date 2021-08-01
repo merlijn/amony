@@ -5,3 +5,5 @@ export const pageSizes = new Map([
   [4, 64],
   [5, 64]]
 )
+
+export const imgAlt: string = "<image />"

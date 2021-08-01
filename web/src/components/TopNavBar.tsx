@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {useHistory, useLocation} from "react-router-dom";
 import {buildUrl, copyParams} from "../api/Util";
 import Navbar from "react-bootstrap/Navbar";
@@ -14,6 +14,7 @@ import {Api} from "../api/Api";
 import {Tag} from "../api/Model";
 import {DropdownButton} from "react-bootstrap";
 import ConfigMenu from "./ConfigMenu";
+import {imgAlt} from "../api/Constants";
 
 function TopNavBar(props: { currentPage: number, lastPage: number }) {
 
@@ -36,7 +37,7 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
     const cid = params.get("c")
 
     if (cid) {
-      const found = tags.find((e) => e.id.toString() == cid)
+      const found = tags.find((e) => e.id.toString() === cid)
       if (found)
         setC(found)
     }
@@ -57,7 +58,7 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
   return(
     <Navbar className="TopNavBar" fixed="top">
         <div className="bar-left">
-          <Nav.Link id="home-logo" href="/"><Image width="25px" height="25px" src="/templogo.png" />Amony</Nav.Link>
+          <Nav.Link id="home-logo" href="/"><Image alt={imgAlt} width="25px" height="25px" src="/templogo.png" />Amony</Nav.Link>
         </div>
         <div className="bar-center">
           <Form className="justify-content-center" onSubmit={doSearch} inline>

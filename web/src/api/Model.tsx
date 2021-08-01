@@ -2,7 +2,7 @@ export class Video {
   constructor(
     public title: string,
     public thumbnail_uri: string,
-    public previews: Array<Fragment>,
+    public fragments: Array<Fragment>,
     public id: string,
     public fps: number,
     public resolution_x: number,

@@ -1,10 +1,10 @@
 import Dropdown from "react-bootstrap/Dropdown";
-import React, {CSSProperties, MouseEventHandler, useState} from "react";
+import React, {MouseEventHandler, useState} from "react";
 import Button from "react-bootstrap/Button";
 import Image from 'react-bootstrap/Image';
 import './ConfigMenu.scss';
 import Form from "react-bootstrap/Form";
-import {Col, Row} from "react-bootstrap";
+import {Row} from "react-bootstrap";
 
 type ToggleProps = { children: React.ReactNode; onClick: MouseEventHandler<HTMLElement> };
 type Props = { children: React.ReactNode; className: string };

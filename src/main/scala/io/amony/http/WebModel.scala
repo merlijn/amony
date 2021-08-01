@@ -1,7 +1,7 @@
 package io.amony.http
 
 import io.amony.actor.MediaLibActor
-import io.amony.http.WebModel.{Collection, Preview, SearchResult, Video}
+import io.amony.http.WebModel.{Collection, Fragment, SearchResult, Video}
 
 object WebModel {
 
@@ -10,10 +10,12 @@ object WebModel {
     to: Long
   )
 
-  case class Preview(
+  case class Fragment(
       timestamp_start: Long,
       timestamp_end: Long,
-      uri: String
+      uri: String,
+      comment: Option[String],
+      tags: List[String]
   )
 
   case class Video(
@@ -23,7 +25,7 @@ object WebModel {
       duration: Long,
       fps: Double,
       thumbnail_uri: String,
-      previews: List[Preview],
+      fragments: List[Fragment],
       resolution_x: Int,
       resolution_y: Int,
       tags: Seq[String]
@@ -53,11 +55,13 @@ object WebConversions {
         duration      = media.duration,
         fps           = media.fps,
         thumbnail_uri = s"/files/thumbnails/${media.id}-${media.thumbnailTimestamp}.webp",
-        previews = media.fragments.map { p =>
-          Preview(
+        fragments     = media.fragments.map { p =>
+          Fragment(
             timestamp_start = p.fromTimestamp,
             timestamp_end   = p.toTimestamp,
-            uri             = s"/files/thumbnails/${media.id}-${p.fromTimestamp}-${p.toTimestamp}.mp4"
+            uri             = s"/files/thumbnails/${media.id}-${p.fromTimestamp}-${p.toTimestamp}.mp4",
+            comment         = p.comment,
+            tags            = p.tags
           )
 
         },

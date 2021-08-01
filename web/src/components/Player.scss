@@ -1,28 +1,21 @@
 @import '../App.scss';
 
-.videoPlayer {
-  --plyr-video-controls-background: black;
-  --plyr-color-main: #1ac266;
-  width: 100%;
-  height: 100%;
-}
+.video-background {
 
-.videoBackground {
-  width: 100vw;
-  height: 100vh;
+  @extend .full-screen;
   background-color: black;
 }
 
-.editor-container {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.videoContainer {
+.video-container {
   position: relative;
   float: left;
+
+  .video-player {
+    --plyr-video-controls-background: black;
+    --plyr-color-main: #1ac266;
+    width: 100%;
+    height: 100%;
+  }
 
   // hack to hide the center play button
   > div > button[aria-Label="Play"] {
@@ -45,40 +38,64 @@
 }
 
 .fragment-list {
+
   background-color: white;
   position: relative;
   float: left;
-
-  video {
-    z-index: 1;
-    float: left;
-    border: 2px solid white;
-  }
-
-  .fragment-selected {
-    padding: 0 ! important;
-    border: 2px solid yellow;
-  }
+  overflow: scroll;
 
   .fragment-container {
 
+    padding: 0;
     position: relative;
     float: left;
+
+    video {
+      z-index: 1;
+      width: 100%;
+      height: auto;
+      float: left;
+      margin: 0;
+      padding: 0;
+    }
+
+    .new-fragment {
+      padding: 8px;
+      text-align: center;
+      font-size: x-large;
+      color: white;
+      background-color: blue;
+    }
+
+    &:last-child {
+      width: calc(100% - 8px);
+
+    }
+
+    .delete-fragment-icon {
+
+      @extend .menu-icon;
+      @extend .top-right;
+
+      top: 1px ! important;
+    }
   }
 
-  .new-fragment {
+  .fragment-not-selected {
+    margin: 4px 4px 0px 4px;
 
-    float: left;
-    text-align: center;
-    font-size: x-large;
-    color: white;
+    &:last-child {
+      margin-bottom: 4px;
+    }
+  }
 
-    border-width: 0px 2px 2px 2px;
-    border-style: solid;
-    border-color: white;
-    background-color: blue;
-    margin: 0;
-    padding: 0;
+  .fragment-selected {
+    margin: 0 ! important;
+    border: 4px solid yellow ! important;
+
+    &:last-child {
+      width: 100% ! important;
+    }
   }
 }
 

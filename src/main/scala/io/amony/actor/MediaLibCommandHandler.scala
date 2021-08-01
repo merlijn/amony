@@ -77,6 +77,8 @@ object MediaLibCommandHandler extends Logging {
 
           case Some(vid) =>
 
+            logger.info(s"Deleting fragment $id:$idx")
+
             val newFragments = vid.fragments.deleteAtPos(idx)
             val newVid = vid.copy(
               fragments = vid.fragments.deleteAtPos(idx),
