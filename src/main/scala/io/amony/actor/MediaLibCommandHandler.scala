@@ -2,11 +2,11 @@ package io.amony.actor
 
 import akka.persistence.typed.scaladsl.Effect
 import better.files.File
-import better.files.File.apply
-import io.amony.lib.MediaLibScanner.{deleteVideoFragment, generateVideoFragment}
-import io.amony.actor.MediaLibEventSourcing._
+import io.amony.MediaLibConfig
 import io.amony.actor.MediaLibActor._
-import io.amony.lib.{ListOps, MediaLibConfig}
+import io.amony.actor.MediaLibEventSourcing._
+import io.amony.lib.ListOps
+import io.amony.lib.MediaLibScanner.{createVideoFragment, deleteVideoFragment}
 import scribe.Logging
 
 object MediaLibCommandHandler extends Logging {
@@ -121,7 +121,7 @@ object MediaLibCommandHandler extends Logging {
               .persist(MediaUpdated(id, newVid))
               .thenRun { (s: State) =>
                 deleteVideoFragment(config.indexPath, vid.id, fragment.fromTimestamp, fragment.toTimestamp)
-                generateVideoFragment(vid.path(config.libraryPath), config.indexPath, id, from, to)
+                createVideoFragment(vid.path(config.libraryPath), config.indexPath, id, from, to)
               }
               .thenReply(sender)(_ => Some(newVid))
         }
@@ -157,7 +157,7 @@ object MediaLibCommandHandler extends Logging {
 
               Effect
                 .persist(MediaUpdated(id, newVid))
-                .thenRun((s: State) => generateVideoFragment(videoPath, config.indexPath, id, sanitizedTimeStamp, to))
+                .thenRun((s: State) => createVideoFragment(videoPath, config.indexPath, id, sanitizedTimeStamp, to))
                 .thenReply(sender)(_ => Some(newVid))
             }
         }

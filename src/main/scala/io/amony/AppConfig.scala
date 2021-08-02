@@ -1,11 +1,20 @@
 package io.amony
 
-import io.amony.http.WebServerConfig
-import io.amony.lib.MediaLibConfig
 import com.typesafe.config.ConfigFactory
+import io.amony.http.WebServerConfig
 import pureconfig._
 import pureconfig.generic.auto._
 import scribe.Logging
+
+import java.nio.file.Path
+
+case class MediaLibConfig(
+    libraryPath: Path,
+    indexPath: Path,
+    scanParallelFactor: Int,
+    verifyHashes: Boolean,
+    max: Option[Int]
+)
 
 trait AppConfig extends Logging {
 

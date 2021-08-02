@@ -7,10 +7,9 @@ import akka.serialization.jackson.JacksonObjectMapperProvider
 import akka.util.Timeout
 import better.files.File
 import com.fasterxml.jackson.core.JsonEncoding
-import com.fasterxml.jackson.core.`type`.TypeReference
+import io.amony.MediaLibConfig
 import io.amony.actor.MediaLibActor._
-import io.amony.lib.FileUtil.stripExtension
-import io.amony.lib.{FileUtil, MediaLibConfig, MediaLibScanner}
+import io.amony.lib.{FileUtil, MediaLibScanner}
 import scribe.Logging
 
 import scala.concurrent.{Await, Future}
@@ -65,7 +64,7 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
   def regeneratePreviewFor(m: Media): Unit = {
     val videoPath = config.libraryPath.resolve(m.uri)
     m.fragments.foreach { f =>
-      MediaLibScanner.generateVideoFragment(videoPath, config.indexPath, m.id, f.fromTimestamp, f.toTimestamp)
+      MediaLibScanner.createVideoFragment(videoPath, config.indexPath, m.id, f.fromTimestamp, f.toTimestamp)
     }
   }
 

@@ -2,6 +2,7 @@ package io.amony.lib
 
 import akka.util.Timeout
 import better.files.File
+import io.amony.MediaLibConfig
 import io.amony.actor.MediaLibActor.{Fragment, Media}
 import io.amony.actor.MediaLibApi
 import io.amony.http.JsonCodecs
@@ -15,14 +16,6 @@ import scribe.Logging
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.DurationInt
 
-case class MediaLibConfig(
-    libraryPath: Path,
-    indexPath: Path,
-    scanParallelFactor: Int,
-    verifyHashes: Boolean,
-    max: Option[Int]
-)
-
 object MediaLibScanner extends Logging with JsonCodecs {
 
   def filterFileName(fileName: String): Boolean = {
@@ -34,35 +27,33 @@ object MediaLibScanner extends Logging with JsonCodecs {
     val files = FileUtil.walkDir(config.libraryPath)
 
     implicit val timeout: Timeout = Timeout(3.seconds)
-    implicit val ec = scala.concurrent.ExecutionContext.global
+    implicit val ec               = scala.concurrent.ExecutionContext.global
 
-    files.filter { vid =>
-      // filter for extension
-      filterFileName(vid.getFileName().toString) && !FFMpeg.isStreamable(vid)
-     }.foreach { f =>
+    files
+      .filter { vid =>
+        // filter for extension
+        filterFileName(vid.getFileName().toString) && !FFMpeg.isStreamable(vid)
+      }
+      .foreach { videoWithoutFastStart =>
+        logger.info(s"Creating faststart/streamable mp4 for: ${videoWithoutFastStart}")
 
-      logger.info(s"Creating faststart/streamable mp4 for: ${f}")
-
-      val out = FFMpeg.addFastStart(f)
-        val oldHash = FileUtil.fakeHash(File(f))
+        val out     = FFMpeg.addFastStart(videoWithoutFastStart)
+        val oldHash = FileUtil.fakeHash(File(videoWithoutFastStart))
         val newHash = FileUtil.fakeHash(File(out))
 
         logger.info(s"$oldHash -> $newHash: ${config.libraryPath.relativize(out).toString}")
 
         api.getById(oldHash).foreach { v =>
-
-          val m = v.copy(
-            id = newHash,
-            hash = newHash,
-            uri = config.libraryPath.relativize(out).toString)
+          val m = v.copy(id = newHash, hash = newHash, uri = config.libraryPath.relativize(out).toString)
 
           api.upsertMedia(m).foreach { _ =>
             api.regeneratePreviewFor(m)
+            api.deleteMedia(oldHash)
+            videoWithoutFastStart.deleteIfExists()
           }
         }
       }
   }
-
 
   def scanDirectory(config: MediaLibConfig, last: List[Media], api: MediaLibApi)(implicit timeout: Timeout): Unit = {
 
@@ -97,7 +88,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     val info      = FFMpeg.ffprobe(videoPath)
     val timeStamp = info.duration / 3
-    generateVideoFragment(videoPath, indexDir, hash, timeStamp, timeStamp + 3000)
+    createVideoFragment(videoPath, indexDir, hash, timeStamp, timeStamp + 3000)
     val video = asVideo(baseDir, videoPath, hash, info, timeStamp)
     video
   }
@@ -185,10 +176,9 @@ object MediaLibScanner extends Logging with JsonCodecs {
     (indexPath / "thumbnails" / s"${id}-$from-$to.mp4").deleteIfExists()
   }
 
-  /**
-   * Generates a thumbnail and mp4 for a video fragment
-   */
-  def generateVideoFragment(videoPath: Path, indexPath: Path, id: String, from: Long, to: Long): Unit = {
+  /** Generates a thumbnail and mp4 for a video fragment
+    */
+  def createVideoFragment(videoPath: Path, indexPath: Path, id: String, from: Long, to: Long): Unit = {
 
     val thumbnailPath = s"${indexPath}/thumbnails"
 

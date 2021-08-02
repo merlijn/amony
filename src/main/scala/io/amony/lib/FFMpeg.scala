@@ -10,9 +10,7 @@ object FFMpeg extends Logging {
 
   val previewSize = 640
 
-  case class Probe(duration: Long,
-                   resolution: (Int, Int),
-                   fps: Double)
+  case class Probe(duration: Long, resolution: (Int, Int), fps: Double)
 
   val pattern = raw"Duration:\s(\d{2}):(\d{2}):(\d{2})".r.unanchored
   val res     = raw"Stream #0.*,\s(\d{2,})x(\d{2,})".r.unanchored
@@ -36,7 +34,7 @@ object FFMpeg extends Logging {
 
     val out = FFMpeg.run(
       useErrorStream = false,
-      cmds = List("mediainfo", "-f", file.absoluteFileName())
+      cmds           = List("mediainfo", "-f", file.absoluteFileName())
     )
 
     isStreamablePattern.findFirstIn(out).isDefined

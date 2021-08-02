@@ -3,8 +3,8 @@ package io.amony.actor
 import akka.actor.typed.ActorRef
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
+import io.amony.MediaLibConfig
 import io.amony.actor.MediaLibEventSourcing.Event
-import io.amony.lib.MediaLibConfig
 
 import java.nio.file.Path
 
