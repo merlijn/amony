@@ -36,8 +36,16 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
   ): Future[SearchResult] =
     system.ask[SearchResult](ref => Search(Query(q, offset, size, c), ref))
 
-  def getCollections()(implicit timeout: Timeout): Future[List[Collection]] =
+  def getTags()(implicit timeout: Timeout): Future[List[Collection]] =
     system.ask[List[Collection]](ref => GetCollections(ref))
+
+  def upsertMedia(media: Media)(implicit timeout: Timeout): Future[Media] = {
+    system.ask[Boolean](ref => UpsertMedia(media, ref)).map(_ => media)
+  }
+
+  def deleteMedia(id: String)(implicit timeout: Timeout): Future[Unit] = {
+    system.ask[Boolean](ref => RemoveMedia(id, ref)).map(_ => ())
+  }
 
   def addFragment(id: String, from: Long, to: Long)(implicit timeout: Timeout): Future[Option[Media]] =
     system.ask[Option[Media]](ref => AddFragment(id, from, to, ref))
@@ -54,24 +62,31 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
   def getFilePathForMedia(vid: Media): String =
     (File(config.libraryPath) / vid.uri).path.toAbsolutePath.toString
 
-  def regenerateThumbnails()(implicit timeout: Timeout) = {
+  def regeneratePreviewFor(m: Media): Unit = {
+    val videoPath = config.libraryPath.resolve(m.uri)
+    m.fragments.foreach { f =>
+      MediaLibScanner.generateVideoFragment(videoPath, config.indexPath, m.id, f.fromTimestamp, f.toTimestamp)
+    }
+  }
+
+  def regeneratePreviewsFor(id: String)(implicit timeout: Timeout) = {
+    getById(id).foreach { m => regeneratePreviewFor(m) }
+  }
+
+  def regeneratePreviews()(implicit timeout: Timeout) = {
 
     getAll().foreach { medias =>
       medias.foreach { m =>
         logger.info(s"re-generating thumbnail for '${m.fileName()}'")
-        val videoPath = config.libraryPath.resolve(m.uri)
-
-        m.fragments.foreach { f =>
-          MediaLibScanner.generateVideoFragment(videoPath, config.indexPath, m.id, f.fromTimestamp, f.toTimestamp)
-        }
+        regeneratePreviewFor(m)
       }
     }
   }
 
-  def regenerateHashes()(implicit timeout: Timeout) = {
+  def verifyHashes()(implicit timeout: Timeout) = {
 
     getAll().foreach { medias =>
-      logger.info("Checking all the hashes ...")
+      logger.info("Verifying all file hashes ...")
 
       medias.foreach { m =>
         val hash = FileUtil.fakeHash(File(config.libraryPath) / m.uri)
@@ -92,16 +107,6 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
 
     getAll().foreach { medias =>
       objectMapper.createGenerator(file, JsonEncoding.UTF8).writeObject(medias)
-    }
-  }
-
-  def resetTitles()(implicit timeout: Timeout): Unit = {
-
-    getAll().foreach {
-      _.foreach { m =>
-        logger.info(s"Blanking title for: ${m.uri}")
-        system.tell(UpsertMedia(m.copy(title = None)))
-      }
     }
   }
 }

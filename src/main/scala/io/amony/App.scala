@@ -21,6 +21,8 @@ object App extends AppConfig with Logging {
 
     scanLibrary(api, system)
 
+//    MediaLibScanner.convertNonStreamableVideos(mediaLibConfig, api)
+
 //    Migration.importFromFile(system)
 
     val webServer = new WebServer(webServerConfig, api)(system)
@@ -28,11 +30,14 @@ object App extends AppConfig with Logging {
     webServer.run()
   }
 
-  def scanLibrary(api: MediaLibApi, system: ActorSystem[MediaLibActor.Command]) = {
+  def scanLibrary(api: MediaLibApi, system: ActorSystem[MediaLibActor.Command]): Unit = {
+
+    implicit val timeout: Timeout = Timeout(10.seconds)
+
     api
-      .getAll()(Timeout(10.seconds))
+      .getAll()
       .foreach { loadedFromStore =>
-        MediaLibScanner.scan(mediaLibConfig, loadedFromStore, system)
+        MediaLibScanner.scanDirectory(mediaLibConfig, loadedFromStore, api)
       }(system.executionContext)
   }
 }

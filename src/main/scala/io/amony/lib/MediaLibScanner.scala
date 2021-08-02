@@ -1,8 +1,9 @@
 package io.amony.lib
 
-import akka.actor.typed.ActorRef
+import akka.util.Timeout
 import better.files.File
-import io.amony.actor.MediaLibActor.{Command, Media, Fragment, RemoveMedia, UpsertMedia}
+import io.amony.actor.MediaLibActor.{Fragment, Media}
+import io.amony.actor.MediaLibApi
 import io.amony.http.JsonCodecs
 import io.amony.lib.FFMpeg.Probe
 import io.amony.lib.FileUtil.PathOps
@@ -12,6 +13,7 @@ import monix.reactive.{Consumer, Observable}
 import scribe.Logging
 
 import java.nio.file.{Files, Path}
+import scala.concurrent.duration.DurationInt
 
 case class MediaLibConfig(
     libraryPath: Path,
@@ -23,7 +25,46 @@ case class MediaLibConfig(
 
 object MediaLibScanner extends Logging with JsonCodecs {
 
-  def scan(config: MediaLibConfig, last: List[Media], actorRef: ActorRef[Command]): Unit = {
+  def filterFileName(fileName: String): Boolean = {
+    fileName.endsWith(".mp4") && !fileName.startsWith(".")
+  }
+
+  def convertNonStreamableVideos(config: MediaLibConfig, api: MediaLibApi): Unit = {
+
+    val files = FileUtil.walkDir(config.libraryPath)
+
+    implicit val timeout: Timeout = Timeout(3.seconds)
+    implicit val ec = scala.concurrent.ExecutionContext.global
+
+    files.filter { vid =>
+      // filter for extension
+      filterFileName(vid.getFileName().toString) && !FFMpeg.isStreamable(vid)
+     }.foreach { f =>
+
+      logger.info(s"Creating faststart/streamable mp4 for: ${f}")
+
+      val out = FFMpeg.addFastStart(f)
+        val oldHash = FileUtil.fakeHash(File(f))
+        val newHash = FileUtil.fakeHash(File(out))
+
+        logger.info(s"$oldHash -> $newHash: ${config.libraryPath.relativize(out).toString}")
+
+        api.getById(oldHash).foreach { v =>
+
+          val m = v.copy(
+            id = newHash,
+            hash = newHash,
+            uri = config.libraryPath.relativize(out).toString)
+
+          api.upsertMedia(m).foreach { _ =>
+            api.regeneratePreviewFor(m)
+          }
+        }
+      }
+  }
+
+
+  def scanDirectory(config: MediaLibConfig, last: List[Media], api: MediaLibApi)(implicit timeout: Timeout): Unit = {
 
     implicit val s = Scheduler.global
     val libraryDir = File(config.libraryPath)
@@ -33,8 +74,8 @@ object MediaLibScanner extends Logging with JsonCodecs {
     if (!indexDir.exists)
       indexDir.createDirectory()
 
-    val obs = scanVideosInPath(
-      actorRef,
+    val obs = scanVideosInDirectory(
+      api,
       libraryDir.path,
       config.indexPath,
       config.verifyHashes,
@@ -45,7 +86,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     val c = Consumer.foreachTask[Media](m =>
       Task {
-        actorRef.tell(UpsertMedia(m))
+        api.upsertMedia(m)
       }
     )
 
@@ -61,16 +102,15 @@ object MediaLibScanner extends Logging with JsonCodecs {
     video
   }
 
-  def scanVideosInPath(
-      actorRef: ActorRef[Command],
+  def scanVideosInDirectory(
+      api: MediaLibApi,
       scanPath: Path,
       indexPath: Path,
       verifyHashes: Boolean,
       parallelFactor: Int,
       max: Option[Int],
-      persistedMedia: List[Media],
-      extensions: List[String] = List("mp4", "webm")
-  )(implicit s: Scheduler): Observable[Media] = {
+      persistedMedia: List[Media]
+  )(implicit s: Scheduler, timeout: Timeout): Observable[Media] = {
 
     val files = FileUtil.walkDir(scanPath)
 
@@ -86,8 +126,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       .from(filesTruncated)
       .filter { vid =>
         // filter for extension
-        val fileName = vid.getFileName.toString
-        extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
+        filterFileName(vid.getFileName.toString)
       }
       .mapParallelUnordered(parallelFactor) { path =>
         Task {
@@ -114,7 +153,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     // removed
     removed.foreach { m =>
       logger.info(s"Detected deleted file: ${m.uri}")
-      actorRef.tell(RemoveMedia(m.id))
+      api.deleteMedia(m.id)
     }
 
     // moved and new
@@ -146,6 +185,9 @@ object MediaLibScanner extends Logging with JsonCodecs {
     (indexPath / "thumbnails" / s"${id}-$from-$to.mp4").deleteIfExists()
   }
 
+  /**
+   * Generates a thumbnail and mp4 for a video fragment
+   */
   def generateVideoFragment(videoPath: Path, indexPath: Path, id: String, from: Long, to: Long): Unit = {
 
     val thumbnailPath = s"${indexPath}/thumbnails"

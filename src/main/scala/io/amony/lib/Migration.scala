@@ -1,10 +1,10 @@
 package io.amony.lib
 
-import akka.actor.typed.ActorSystem
+import akka.util.Timeout
 import better.files.File
-import io.amony.App.{logger, mediaLibConfig}
-import io.amony.actor.MediaLibActor
-import io.amony.actor.MediaLibActor.{Media, Fragment, UpsertMedia}
+import io.amony.App.mediaLibConfig
+import io.amony.actor.MediaLibActor.{Fragment, Media}
+import io.amony.actor.MediaLibApi
 import io.circe.generic.semiauto.deriveCodec
 import scribe.Logging
 
@@ -25,7 +25,7 @@ object Migration extends Logging {
 
   case class ThumbnailOld(timestampStart: Long, timestampEnd: Long)
 
-  def importFromFile(system: ActorSystem[MediaLibActor.Command]) = {
+  def importFromFile(api: MediaLibApi)(implicit timeout: Timeout) = {
 
     implicit val thumbnailCodec = deriveCodec[ThumbnailOld]
     implicit val mediaOldCodec  = deriveCodec[MediaOld]
@@ -57,7 +57,8 @@ object Migration extends Logging {
 
         logger.info(s"Imported: ${m.uri}")
 
-        system.tell(UpsertMedia(media))
+
+        api.upsertMedia(media)
       }
     }
   }

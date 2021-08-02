@@ -1,6 +1,5 @@
 package io.amony.lib
 
-import io.amony.actor.MediaLibCommandHandler
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 
@@ -26,6 +25,21 @@ class FFMpegSpec extends AnyFlatSpecLike {
     val FFMpeg.streamPattern(line) = ffProbeOutput
 
     line shouldBe testStreams(0)
+  }
+
+  it should "do something" in {
+
+    val output =
+      """
+        |some line ...
+        |...
+        |IsStreamable                             : Yes
+        |..
+        |Another line
+        |""".stripMargin
+
+    MediaLibScanner.isStreamable(output) shouldBe true
+
   }
 
   it should("insert in to list") in {

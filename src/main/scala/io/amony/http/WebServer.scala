@@ -63,7 +63,7 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
         }
       } ~ path("tags") {
         get {
-          complete(mediaLibApi.getCollections().map(_.map(_.toWebModel.asJson)))
+          complete(mediaLibApi.getTags().map(_.map(_.toWebModel.asJson)))
         }
       } ~ path("fragment" / "add" / Segment) { (id) =>
         (post & entity(as[CreateFragment])) { createFragment =>
@@ -98,16 +98,13 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
 
   val adminRoutes = pathPrefix("api" / "admin") {
     (path("regen-thumbnails") & post) {
-      mediaLibApi.regenerateThumbnails()
+      mediaLibApi.regeneratePreviews()
       complete("OK")
     } ~ (path("export-to-file") & post) {
       mediaLibApi.exportLibrary()
       complete("OK")
-    } ~ (path("reset-titles") & post) {
-      mediaLibApi.resetTitles()
-      complete("OK")
-    } ~ (path("regen-hashes") & post) {
-      mediaLibApi.regenerateHashes()
+    } ~ (path("verify-hashes") & post) {
+      mediaLibApi.verifyHashes()
       complete("OK")
     }
   }

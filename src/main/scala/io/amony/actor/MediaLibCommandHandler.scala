@@ -30,11 +30,17 @@ object MediaLibCommandHandler extends Logging {
 
     cmd match {
 
-      case UpsertMedia(media) =>
-        Effect.persist(MediaAdded(media))
+      case UpsertMedia(media, sender) =>
+        logger.debug(s"Adding new media: ${media.uri}")
+        Effect
+          .persist(MediaAdded(media))
+          .thenReply(sender)(_ => true)
 
-      case RemoveMedia(id) =>
-        Effect.persist(MediaRemoved(id))
+      case RemoveMedia(id, sender) =>
+        logger.debug(s"Removing media: $id")
+        Effect
+          .persist(MediaRemoved(id))
+          .thenReply(sender)(_ => true)
 
       case GetById(id, sender) =>
         Effect.reply(sender)(state.media.get(id))
