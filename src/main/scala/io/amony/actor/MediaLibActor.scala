@@ -24,7 +24,8 @@ object MediaLibActor {
   case class SearchResult(offset: Int, total: Int, items: Seq[Media])
 
   case class DeleteFragment(mediaId: String, fragmentIdx: Int, sender: ActorRef[Option[Media]]) extends Command
-  case class UpdateFragment(mediaId: String, fragmentIdx: Int, from: Long, to: Long, sender: ActorRef[Option[Media]]) extends Command
+  case class UpdateFragment(mediaId: String, fragmentIdx: Int, from: Long, to: Long, sender: ActorRef[Option[Media]])
+      extends Command
   case class AddFragment(mediaId: String, from: Long, to: Long, sender: ActorRef[Option[Media]]) extends Command
 
   case class State(media: Map[String, Media], collections: Map[String, Collection])

@@ -6,8 +6,8 @@ import io.amony.http.WebModel.{Collection, Fragment, SearchResult, Video}
 object WebModel {
 
   case class CreateFragment(
-    from: Long,
-    to: Long
+      from: Long,
+      to: Long
   )
 
   case class Fragment(
@@ -55,7 +55,7 @@ object WebConversions {
         duration      = media.duration,
         fps           = media.fps,
         thumbnail_uri = s"/files/thumbnails/${media.id}-${media.thumbnailTimestamp}.webp",
-        fragments     = media.fragments.map { p =>
+        fragments = media.fragments.map { p =>
           Fragment(
             timestamp_start = p.fromTimestamp,
             timestamp_end   = p.toTimestamp,

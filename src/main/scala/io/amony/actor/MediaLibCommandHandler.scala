@@ -76,18 +76,21 @@ object MediaLibCommandHandler extends Logging {
             Effect.reply(sender)(None)
 
           case Some(vid) =>
-
             logger.info(s"Deleting fragment $id:$idx")
 
             val newFragments = vid.fragments.deleteAtPos(idx)
-            val newVid = vid.copy(
-              fragments = vid.fragments.deleteAtPos(idx),
-              thumbnailTimestamp = newFragments(0).fromTimestamp)
+            val newVid =
+              vid.copy(fragments = vid.fragments.deleteAtPos(idx), thumbnailTimestamp = newFragments(0).fromTimestamp)
 
             Effect
               .persist(MediaUpdated(id, newVid))
-              .thenRun{ (s: State) =>
-                deleteVideoFragment(config.indexPath, vid.id, vid.fragments(idx).fromTimestamp, vid.fragments(idx).toTimestamp)
+              .thenRun { (s: State) =>
+                deleteVideoFragment(
+                  config.indexPath,
+                  vid.id,
+                  vid.fragments(idx).fromTimestamp,
+                  vid.fragments(idx).toTimestamp
+                )
               }
               .thenReply(sender)(_ => Some(newVid))
         }
@@ -102,22 +105,20 @@ object MediaLibCommandHandler extends Logging {
             logger.info(s"Updating fragment $id:$idx to $from:$to")
 
             // check if specific range already exists
-            val fragment = vid.fragments(idx)
-            val newFragment = fragment.copy(fromTimestamp = from, toTimestamp = to)
+            val fragment         = vid.fragments(idx)
+            val newFragment      = fragment.copy(fromTimestamp = from, toTimestamp = to)
             val primaryThumbnail = if (idx == 0) from else vid.thumbnailTimestamp
-            val newVid = vid.copy(
-              thumbnailTimestamp = primaryThumbnail,
-              fragments = vid.fragments.replaceAtPos(idx, newFragment))
+            val newVid =
+              vid.copy(thumbnailTimestamp = primaryThumbnail, fragments = vid.fragments.replaceAtPos(idx, newFragment))
 
             Effect
               .persist(MediaUpdated(id, newVid))
               .thenRun { (s: State) =>
-
                 deleteVideoFragment(config.indexPath, vid.id, fragment.fromTimestamp, fragment.toTimestamp)
                 generateVideoFragment(vid.path(config.libraryPath), config.indexPath, id, from, to)
               }
               .thenReply(sender)(_ => Some(newVid))
-          }
+        }
 
       case AddFragment(id, from, to, sender) =>
         state.media.get(id) match {
@@ -125,7 +126,6 @@ object MediaLibCommandHandler extends Logging {
             Effect.reply(sender)(None)
 
           case Some(vid) =>
-
             logger.info(s"Adding fragment for $id from $from to $to")
 
             if (from > to) {
@@ -141,13 +141,13 @@ object MediaLibCommandHandler extends Logging {
               val newFragments = vid.fragments ::: List(
                 Fragment(
                   fromTimestamp = sanitizedTimeStamp,
-                  toTimestamp = to,
-                  comment = None,
-                  tags = Nil
+                  toTimestamp   = to,
+                  comment       = None,
+                  tags          = Nil
                 )
               )
 
-              val newVid             = vid.copy(fragments = newFragments)
+              val newVid = vid.copy(fragments = newFragments)
 
               Effect
                 .persist(MediaUpdated(id, newVid))

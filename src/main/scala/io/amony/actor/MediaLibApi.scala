@@ -71,11 +71,9 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
   def regenerateHashes()(implicit timeout: Timeout) = {
 
     getAll().foreach { medias =>
-
       logger.info("Checking all the hashes ...")
 
       medias.foreach { m =>
-
         val hash = FileUtil.fakeHash(File(config.libraryPath) / m.uri)
 
         if (hash != m.hash)

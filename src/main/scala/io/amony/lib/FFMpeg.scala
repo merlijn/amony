@@ -12,8 +12,8 @@ object FFMpeg extends Logging {
 
   case class Probe(duration: Long, resolution: (Int, Int), fps: Double)
 
-  val pattern    = raw"Duration:\s(\d{2}):(\d{2}):(\d{2})".r.unanchored
-  val res        = raw"Stream #0.*,\s(\d{2,})x(\d{2,})".r.unanchored
+  val pattern = raw"Duration:\s(\d{2}):(\d{2}):(\d{2})".r.unanchored
+  val res     = raw"Stream #0.*,\s(\d{2,})x(\d{2,})".r.unanchored
 
   val fpsPattern = raw"Stream #0.*,\s([\w\.]+)\sfps".r.unanchored
 
@@ -48,7 +48,7 @@ object FFMpeg extends Logging {
           seconds.toInt * 1000
     }
 
-    val fps = extractFps(output, file.toString).getOrElse(0D)
+    val fps = extractFps(output, file.toString).getOrElse(0d)
 
     Probe(duration, (w, h), fps)
   }
@@ -80,7 +80,12 @@ object FFMpeg extends Logging {
     // format: on
   }
 
-  def createWebP(inputFile: String, timestamp: Long, durationInSeconds: Int = 3, outputFile: Option[String] = None): Unit = {
+  def createWebP(
+      inputFile: String,
+      timestamp: Long,
+      durationInSeconds: Int = 3,
+      outputFile: Option[String] = None
+  ): Unit = {
 
     // format: off
     run(

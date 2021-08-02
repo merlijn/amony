@@ -10,7 +10,7 @@ import scribe.Logging
 import scala.concurrent.duration.DurationInt
 
 object App extends AppConfig with Logging {
-  
+
   def main(args: Array[String]): Unit = {
     logger.info("ENV: " + System.getenv().get("ENV"))
 

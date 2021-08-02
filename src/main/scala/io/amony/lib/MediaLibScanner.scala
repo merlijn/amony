@@ -33,7 +33,15 @@ object MediaLibScanner extends Logging with JsonCodecs {
     if (!indexDir.exists)
       indexDir.createDirectory()
 
-    val obs = scanVideosInPath(actorRef, libraryDir.path, config.indexPath, config.verifyHashes, config.scanParallelFactor, config.max, last)
+    val obs = scanVideosInPath(
+      actorRef,
+      libraryDir.path,
+      config.indexPath,
+      config.verifyHashes,
+      config.scanParallelFactor,
+      config.max,
+      last
+    )
 
     val c = Consumer.foreachTask[Media](m =>
       Task {
@@ -46,7 +54,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
   def scanVideo(hash: String, baseDir: Path, videoPath: Path, indexDir: Path): Media = {
 
-    val info = FFMpeg.ffprobe(videoPath)
+    val info      = FFMpeg.ffprobe(videoPath)
     val timeStamp = info.duration / 3
     generateVideoFragment(videoPath, indexDir, hash, timeStamp, timeStamp + 3000)
     val video = asVideo(baseDir, videoPath, hash, info, timeStamp)
@@ -80,52 +88,56 @@ object MediaLibScanner extends Logging with JsonCodecs {
         // filter for extension
         val fileName = vid.getFileName.toString
         extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
-      }.mapParallelUnordered(parallelFactor) { path =>
-          Task {
-            val hash = if (verifyHashes) {
-              FileUtil.fakeHash(path)
-            } else {
-              persistedMedia.find(_.uri == scanPath.relativize(path).toString) match {
-                case None => FileUtil.fakeHash(path)
-                case Some(m) => m.hash
-              }
+      }
+      .mapParallelUnordered(parallelFactor) { path =>
+        Task {
+          val hash = if (verifyHashes) {
+            FileUtil.fakeHash(path)
+          } else {
+            persistedMedia.find(_.uri == scanPath.relativize(path).toString) match {
+              case None    => FileUtil.fakeHash(path)
+              case Some(m) => m.hash
             }
-
-            (path, hash)
           }
-      }.consumeWith(Consumer.toList).runSyncUnsafe()
 
-   val (remaining, removed) = persistedMedia.partition(
-     m => filesWithHashes.exists { case (_, hash) => hash == m.hash }
-   )
+          (path, hash)
+        }
+      }
+      .consumeWith(Consumer.toList)
+      .runSyncUnsafe()
 
-   logger.info(s"Scanning done, found ${filesWithHashes.size} files")
+    val (remaining, removed) =
+      persistedMedia.partition(m => filesWithHashes.exists { case (_, hash) => hash == m.hash })
 
-   // removed
-   removed.foreach { m =>
-       logger.info(s"Detected deleted file: ${m.uri}")
-       actorRef.tell(RemoveMedia(m.id))
-   }
+    logger.info(s"Scanning done, found ${filesWithHashes.size} files")
 
-   // moved and new
-   Observable.from(filesWithHashes)
-     .filterNot { case (path, hash) => remaining.exists(m => m.hash == hash && m.uri == scanPath.relativize(path).toString)}
-     .mapParallelUnordered[Media](parallelFactor) {
-     case (path, hash) =>
-       Task {
-         val relativePath = scanPath.relativize(path).toString
-
-         remaining.find(_.hash == hash) match {
-           case Some(old) =>
-             logger.info(s"Detected renamed file: '${old.uri}' -> '${relativePath}'")
-             old.copy(uri = relativePath)
-
-           case None =>
-             logger.info(s"Scanning new file: '${relativePath}'")
-             scanVideo(hash, scanPath, path, indexPath)
-         }
-       }
+    // removed
+    removed.foreach { m =>
+      logger.info(s"Detected deleted file: ${m.uri}")
+      actorRef.tell(RemoveMedia(m.id))
     }
+
+    // moved and new
+    Observable
+      .from(filesWithHashes)
+      .filterNot { case (path, hash) =>
+        remaining.exists(m => m.hash == hash && m.uri == scanPath.relativize(path).toString)
+      }
+      .mapParallelUnordered[Media](parallelFactor) { case (path, hash) =>
+        Task {
+          val relativePath = scanPath.relativize(path).toString
+
+          remaining.find(_.hash == hash) match {
+            case Some(old) =>
+              logger.info(s"Detected renamed file: '${old.uri}' -> '${relativePath}'")
+              old.copy(uri = relativePath)
+
+            case None =>
+              logger.info(s"Scanning new file: '${relativePath}'")
+              scanVideo(hash, scanPath, path, indexPath)
+          }
+        }
+      }
   }
 
   def deleteVideoFragment(indexPath: Path, id: String, from: Long, to: Long): Unit = {
@@ -148,8 +160,8 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     FFMpeg.createMp4(
       inputFile  = videoPath.absoluteFileName(),
-      from  = from,
-      to = to,
+      from       = from,
+      to         = to,
       outputFile = Some(s"${thumbnailPath}/${id}-$from-$to.mp4")
     )
   }
@@ -157,18 +169,16 @@ object MediaLibScanner extends Logging with JsonCodecs {
   protected def asVideo(baseDir: Path, videoPath: Path, hash: String, info: Probe, thumbnailTimestamp: Long): Media = {
 
     Media(
-      id         = hash,
-      uri        = baseDir.relativize(videoPath).toString,
-      hash       = hash,
-      title      = None,
-      duration   = info.duration,
-      fps        = info.fps,
+      id                 = hash,
+      uri                = baseDir.relativize(videoPath).toString,
+      hash               = hash,
+      title              = None,
+      duration           = info.duration,
+      fps                = info.fps,
       thumbnailTimestamp = thumbnailTimestamp,
-      fragments  = List(Fragment(thumbnailTimestamp, thumbnailTimestamp + 3000, None, List.empty)),
-      tags       = List.empty,
-      resolution = info.resolution
+      fragments          = List(Fragment(thumbnailTimestamp, thumbnailTimestamp + 3000, None, List.empty)),
+      tags               = List.empty,
+      resolution         = info.resolution
     )
   }
-
-
 }

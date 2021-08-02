@@ -48,9 +48,9 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
       (path("media") & parameters("q".optional, "offset".optional, "n".optional, "c".optional)) { (q, offset, s, c) =>
         get {
 
-          val size = s.map(_.toInt).getOrElse(defaultResultNumber)
+          val size         = s.map(_.toInt).getOrElse(defaultResultNumber)
           val searchResult = mediaLibApi.search(q, offset.map(_.toInt), size, c)
-          val response = searchResult.map(_.toWebModel().asJson)
+          val response     = searchResult.map(_.toWebModel().asJson)
 
           complete(response)
         }
@@ -58,7 +58,7 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
         get {
           mediaLibApi.getById(id) match {
             case Some(vid) => complete(vid.toWebModel.asJson)
-            case None => complete(StatusCodes.NotFound)
+            case None      => complete(StatusCodes.NotFound)
           }
         }
       } ~ path("tags") {
@@ -67,12 +67,11 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
         }
       } ~ path("fragment" / "add" / Segment) { (id) =>
         (post & entity(as[CreateFragment])) { createFragment =>
-
           logger.info(s"Adding fragment for $id at ${createFragment.from}:${createFragment.to}")
 
           onSuccess(mediaLibApi.addFragment(id, createFragment.from, createFragment.to)) {
             case Some(vid) => complete(vid.toWebModel().asJson)
-            case None => complete(StatusCodes.NotFound)
+            case None      => complete(StatusCodes.NotFound)
           }
         }
       } ~ path("fragment" / "delete" / Segment / Segment) { (id, idx) =>
@@ -82,17 +81,16 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
 
           onSuccess(mediaLibApi.deleteFragment(id, idx.toInt)) {
             case Some(vid) => complete(vid.toWebModel().asJson)
-            case None => complete(StatusCodes.NotFound)
+            case None      => complete(StatusCodes.NotFound)
           }
         }
       } ~ path("fragment" / "update" / Segment / Segment) { (id, idx) =>
         (post & entity(as[CreateFragment])) { createFragment =>
-
           logger.info(s"Creating fragment for $id at ${createFragment.from}:${createFragment.to}")
 
           onSuccess(mediaLibApi.updateFragment(id, idx.toInt, createFragment.from, createFragment.to)) {
             case Some(vid) => complete(vid.toWebModel().asJson)
-            case None => complete(StatusCodes.NotFound)
+            case None      => complete(StatusCodes.NotFound)
           }
         }
       }

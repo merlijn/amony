@@ -6,9 +6,9 @@ import io.circe.generic.semiauto.deriveCodec
 
 trait JsonCodecs {
 
-  implicit val collectionCodec: Codec[Collection] = deriveCodec[Collection]
-  implicit val videoCodec: Codec[Video]           = deriveCodec[Video]
-  implicit val resultCodec: Codec[SearchResult]   = deriveCodec[SearchResult]
-  implicit val thumbnailCodec: Codec[Fragment]      = deriveCodec[Fragment]
-  implicit val createFragmentCodec: Codec[CreateFragment]      = deriveCodec[CreateFragment]
+  implicit val collectionCodec: Codec[Collection]         = deriveCodec[Collection]
+  implicit val videoCodec: Codec[Video]                   = deriveCodec[Video]
+  implicit val resultCodec: Codec[SearchResult]           = deriveCodec[SearchResult]
+  implicit val thumbnailCodec: Codec[Fragment]            = deriveCodec[Fragment]
+  implicit val createFragmentCodec: Codec[CreateFragment] = deriveCodec[CreateFragment]
 }
