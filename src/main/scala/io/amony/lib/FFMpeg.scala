@@ -10,7 +10,7 @@ object FFMpeg extends Logging {
 
   val previewSize = 640
 
-  case class Probe(duration: Long, resolution: (Int, Int), fps: Double)
+  case class Probe(duration: Long, resolution: (Int, Int), fps: Double, fastStart: Boolean)
 
   val pattern = raw"Duration:\s(\d{2}):(\d{2}):(\d{2})".r.unanchored
   val res     = raw"Stream #0.*,\s(\d{2,})x(\d{2,})".r.unanchored
@@ -18,6 +18,8 @@ object FFMpeg extends Logging {
   val fpsPattern = raw"Stream #0.*,\s([\w\.]+)\sfps".r.unanchored
 
   val streamPattern = """\s*Stream #.*(Video.*)""".r.unanchored
+
+  val fastStartPattern = raw""".*Statistics:\s(\d+)\sbytes\sread,\s0\sseeks""".r.unanchored
 
   def extractFps(ffprobeOutput: String, hint: String): Option[Double] = {
     ffprobeOutput match {
@@ -28,28 +30,12 @@ object FFMpeg extends Logging {
     }
   }
 
-  val isStreamablePattern = """IsStreamable.*: Yes""".r.unanchored
-
-  def isStreamable(file: Path): Boolean = {
-
-    val out = FFMpeg.run(
-      useErrorStream = false,
-      cmds           = List("mediainfo", "-f", file.absoluteFileName())
-    )
-
-    isStreamablePattern.findFirstIn(out).isDefined
-  }
-
-  def ffprobe(file: Path): Probe = {
-
-    val fileName = file.toAbsolutePath.toString
-    val output   = run(useErrorStream = true, cmds = List("ffprobe", fileName))
-
+  def ffprobeParse(output: String, hint: String): Probe = {
     val (w, h) = output match {
       case res(w, h) =>
         (w.toInt, h.toInt)
       case _ =>
-        logger.warn(s"Failed to extract fps info from '$file'")
+        logger.warn(s"Failed to extract fps info from '$hint'")
         (0, 0)
     }
 
@@ -60,9 +46,19 @@ object FFMpeg extends Logging {
           seconds.toInt * 1000
     }
 
-    val fps = extractFps(output, file.toString).getOrElse(0d)
+    val fastStart = fastStartPattern.matches(output)
 
-    Probe(duration, (w, h), fps)
+    val fps = extractFps(output, hint).getOrElse(0d)
+
+    Probe(duration, (w, h), fps, fastStart)
+  }
+
+  def ffprobe(file: Path): Probe = {
+
+    val fileName = file.toAbsolutePath.toString
+    val output   = run(useErrorStream = true, cmds = List("ffprobe", "-v", "debug", fileName))
+
+    ffprobeParse(output, file.toString)
   }
 
   private def formatTime(timestamp: Long): String = {
@@ -162,7 +158,8 @@ object FFMpeg extends Logging {
           "-to",  formatTime(to),
           "-i",   inputFile,
           "-vf",  s"scale=$previewSize:trunc(ow/a/2)*2", // scale="720:trunc(ow/a/2)*2"
-          "-q:v", "80",
+          "-movflags", "+faststart",
+          "-crf", "24",
           "-an",
           "-y",   outputFile.getOrElse(s"${stripExtension(inputFile)}.mp4")
           )

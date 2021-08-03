@@ -32,7 +32,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     files
       .filter { vid =>
         // filter for extension
-        filterFileName(vid.getFileName().toString) && !FFMpeg.isStreamable(vid)
+        filterFileName(vid.getFileName().toString) && !FFMpeg.ffprobe(vid).fastStart
       }
       .foreach { videoWithoutFastStart =>
         logger.info(s"Creating faststart/streamable mp4 for: ${videoWithoutFastStart}")
@@ -43,12 +43,12 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
         logger.info(s"$oldHash -> $newHash: ${config.libraryPath.relativize(out).toString}")
 
-        api.getById(oldHash).foreach { v =>
+        api.read.getById(oldHash).foreach { v =>
           val m = v.copy(id = newHash, hash = newHash, uri = config.libraryPath.relativize(out).toString)
 
-          api.upsertMedia(m).foreach { _ =>
-            api.regeneratePreviewFor(m)
-            api.deleteMedia(oldHash)
+          api.modify.upsertMedia(m).foreach { _ =>
+            api.admin.regeneratePreviewFor(m)
+            api.modify.deleteMedia(oldHash)
             videoWithoutFastStart.deleteIfExists()
           }
         }
@@ -77,7 +77,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     val c = Consumer.foreachTask[Media](m =>
       Task {
-        api.upsertMedia(m)
+        api.modify.upsertMedia(m)
       }
     )
 
@@ -87,6 +87,10 @@ object MediaLibScanner extends Logging with JsonCodecs {
   def scanVideo(hash: String, baseDir: Path, videoPath: Path, indexDir: Path): Media = {
 
     val info      = FFMpeg.ffprobe(videoPath)
+
+    if (!info.fastStart)
+      logger.warn(s"Video is not optimized for streaming: ${videoPath}")
+
     val timeStamp = info.duration / 3
     createVideoFragment(videoPath, indexDir, hash, timeStamp, timeStamp + 3000)
     val video = asVideo(baseDir, videoPath, hash, info, timeStamp)
@@ -144,7 +148,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     // removed
     removed.foreach { m =>
       logger.info(s"Detected deleted file: ${m.uri}")
-      api.deleteMedia(m.id)
+      api.modify.deleteMedia(m.id)
     }
 
     // moved and new
@@ -153,9 +157,9 @@ object MediaLibScanner extends Logging with JsonCodecs {
       .filterNot { case (path, hash) =>
         remaining.exists(m => m.hash == hash && m.uri == scanPath.relativize(path).toString)
       }
-      .mapParallelUnordered[Media](parallelFactor) { case (path, hash) =>
+      .mapParallelUnordered[Media](parallelFactor) { case (videoFile, hash) =>
         Task {
-          val relativePath = scanPath.relativize(path).toString
+          val relativePath = scanPath.relativize(videoFile).toString
 
           remaining.find(_.hash == hash) match {
             case Some(old) =>
@@ -164,7 +168,8 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
             case None =>
               logger.info(s"Scanning new file: '${relativePath}'")
-              scanVideo(hash, scanPath, path, indexPath)
+
+              scanVideo(hash, scanPath, videoFile, indexPath)
           }
         }
       }

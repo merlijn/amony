@@ -3,6 +3,8 @@ package io.amony.lib
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 
+import scala.io.Source
+
 class FFMpegSpec extends AnyFlatSpecLike {
 
   val testStreams = List(
@@ -11,6 +13,9 @@ class FFMpegSpec extends AnyFlatSpecLike {
   )
 
   val stream0 = "Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709), 3840x2160, 24187 kb/s, 24 fps, 24 tbr, 24 tbn, 48 tbc (default)"
+
+  val yesSeeks = """[AVIOContext @ 0x131e20110] Statistics: 79926 bytes read, 2 seeks"""
+  val noSeeks = """[AVIOContext @ 0x131e20110] Statistics: 79926 bytes read, 0 seeks"""
 
   val ffProbeOutput =
    s"""
@@ -27,19 +32,15 @@ class FFMpegSpec extends AnyFlatSpecLike {
     line shouldBe testStreams(0)
   }
 
-  it should "do something" in {
+  it should "detect if a video is not optimized for streaming" in {
 
-    val output =
-      """
-        |some line ...
-        |...
-        |IsStreamable                             : Yes
-        |..
-        |Another line
-        |""".stripMargin
+    val ffProbeNoFastStart = Source.fromResource("./ffprobe-no-faststart.txt").getLines.mkString("\n")
 
-    MediaLibScanner.isStreamable(output) shouldBe true
+    FFMpeg.ffprobeParse(ffProbeNoFastStart, "no faststart test").fastStart shouldBe false
 
+    val ffProbeFastStart = Source.fromResource("./ffprobe-faststart.txt").getLines.mkString("\n")
+
+    FFMpeg.ffprobeParse(ffProbeFastStart, "faststart test").fastStart shouldBe true
   }
 
   it should("insert in to list") in {
@@ -54,8 +55,6 @@ class FFMpegSpec extends AnyFlatSpecLike {
 
     List(0).replaceAtPos(0, 42) shouldBe List(42)
     List.empty.replaceAtPos(0, 42) shouldBe List(42)
-
-
 
     List(0, 1, 2).deleteAtPos(0) shouldBe List(1, 2)
     List(0, 1, 2).deleteAtPos(1) shouldBe List(0, 2)

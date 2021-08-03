@@ -35,7 +35,7 @@ object App extends AppConfig with Logging {
     implicit val timeout: Timeout = Timeout(10.seconds)
 
     api
-      .getAll()
+      .read.getAll()
       .foreach { loadedFromStore =>
         MediaLibScanner.scanDirectory(mediaLibConfig, loadedFromStore, api)
       }(system.executionContext)

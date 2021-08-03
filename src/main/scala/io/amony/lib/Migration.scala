@@ -57,7 +57,7 @@ object Migration extends Logging {
 
         logger.info(s"Imported: ${m.uri}")
 
-        api.upsertMedia(media)
+        api.modify.upsertMedia(media)
       }
     }
   }

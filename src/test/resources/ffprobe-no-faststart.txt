@@ -1,0 +1,58 @@
+ffprobe version 4.4 Copyright (c) 2007-2021 the FFmpeg developers
+  built with Apple clang version 12.0.5 (clang-1205.0.22.9)
+  configuration: --prefix=/opt/homebrew/Cellar/ffmpeg/4.4_1 --enable-shared --enable-pthreads --enable-version3 --enable-avresample --cc=clang --host-cflags= --host-ldflags= --enable-ffplay --enable-gnutls --enable-gpl --enable-libaom --enable-libbluray --enable-libdav1d --enable-libmp3lame --enable-libopus --enable-librav1e --enable-librubberband --enable-libsnappy --enable-libsrt --enable-libtesseract --enable-libtheora --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxml2 --enable-libxvid --enable-lzma --enable-libfontconfig --enable-libfreetype --enable-frei0r --enable-libass --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-libspeex --enable-libsoxr --enable-libzmq --enable-libzimg --disable-libjack --disable-indev=jack --enable-videotoolbox
+  libavutil      56. 70.100 / 56. 70.100
+  libavcodec     58.134.100 / 58.134.100
+  libavformat    58. 76.100 / 58. 76.100
+  libavdevice    58. 13.100 / 58. 13.100
+  libavfilter     7.110.100 /  7.110.100
+  libavresample   4.  0.  0 /  4.  0.  0
+  libswscale      5.  9.100 /  5.  9.100
+  libswresample   3.  9.100 /  3.  9.100
+  libpostproc    55.  9.100 / 55.  9.100
+[NULL @ 0x145808200] Opening 'test.mp4' for reading
+[file @ 0x14561f8b0] Setting default whitelist 'file,crypto,data'
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x145808200] Format mov,mp4,m4a,3gp,3g2,mj2 probed with size=2048 and score=100
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x145808200] ISO: File Type Major Brand: isom
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x145808200] Unknown dref type 0x206c7275 size 12
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x145808200] Processing st: 0, edit list 0 - media time: 1024, duration: 217600
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x145808200] stts: 0 ctts: 1024, ctts_index: 0, ctts_count: 425
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x145808200] stts: 512 ctts: 1536, ctts_index: 1, ctts_count: 425
+...
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x145808200] stts: 216576 ctts: 1536, ctts_index: 423, ctts_count: 425
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x145808200] stts: 217088 ctts: 512, ctts_index: 424, ctts_count: 425
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x145808200] Offset DTS by 1024 to make first pts zero.
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x145808200] Setting codecpar->delay to 2 for stream st: 0
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x145808200] Unknown dref type 0x206c7275 size 12
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x145808200] Processing st: 1, edit list 0 - media time: 1024, duration: 816096
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x145808200] drop a frame at curr_cts: 0 @ 0
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x145808200] Before avformat_find_stream_info() pos: 1978965 bytes read:47158 seeks:1 nb_streams:2
+[h264 @ 0x145819200] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 0x145819200] nal_unit_type: 8(PPS), nal_ref_idc: 3
+[h264 @ 0x145819200] nal_unit_type: 6(SEI), nal_ref_idc: 0
+[h264 @ 0x145819200] nal_unit_type: 5(IDR), nal_ref_idc: 3
+[h264 @ 0x145819200] Format yuv420p chosen by get_format().
+[h264 @ 0x145819200] Reinit context to 720x416, pix_fmt: yuv420p
+[h264 @ 0x145819200] no picture 
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x145808200] demuxer injecting skip 1024 / discard 0
+[aac @ 0x145819e00] skip 1024 / discard 0 samples due to side data
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x145808200] All info found
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x145808200] After avformat_find_stream_info() pos: 17885 bytes read:79926 seeks:2 frames:3
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'test.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf58.76.100
+  Duration: 00:00:17.00, start: 0.000000, bitrate: 931 kb/s
+  Stream #0:0(und), 2, 1/12800: Video: h264 (High), 1 reference frame (avc1 / 0x31637661), yuv420p(tv, bt709, left), 720x404 (720x416) [SAR 404:405 DAR 16:9], 0/1, 794 kb/s, 25 fps, 25 tbr, 12800 tbn, 50 tbc (default)
+    Metadata:
+      handler_name    : L-SMASH Video Handler
+      vendor_id       : [0][0][0][0]
+  Stream #0:1(und), 1, 1/48000: Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 130 kb/s (default)
+    Metadata:
+      handler_name    : L-SMASH Audio Handler
+      vendor_id       : [0][0][0][0]
+[h264 @ 0x145836800] nal_unit_type: 7(SPS), nal_ref_idc: 3
+[h264 @ 0x145836800] nal_unit_type: 8(PPS), nal_ref_idc: 3
+[AVIOContext @ 0x14561f9e0] Statistics: 79926 bytes read, 2 seeks

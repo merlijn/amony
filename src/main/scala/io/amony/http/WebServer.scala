@@ -27,7 +27,7 @@ case class WebServerConfig(
     requestTimeout: FiniteDuration
 )
 
-class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(implicit val system: ActorSystem[Nothing])
+class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val system: ActorSystem[Nothing])
     extends Logging
     with JsonCodecs {
 
@@ -43,33 +43,33 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
     .handle { case ValidationRejection(msg, _) => complete(StatusCodes.InternalServerError, msg) }
     .result()
 
-  val api =
+  val apiRoutes =
     pathPrefix("api") {
       (path("media") & parameters("q".optional, "offset".optional, "n".optional, "c".optional)) { (q, offset, s, c) =>
         get {
 
           val size         = s.map(_.toInt).getOrElse(defaultResultNumber)
-          val searchResult = mediaLibApi.search(q, offset.map(_.toInt), size, c)
+          val searchResult = api.read.search(q, offset.map(_.toInt), size, c)
           val response     = searchResult.map(_.toWebModel().asJson)
 
           complete(response)
         }
       } ~ path("media" / Segment) { id =>
         get {
-          mediaLibApi.getById(id) match {
+          api.read.getById(id) match {
             case Some(vid) => complete(vid.toWebModel.asJson)
             case None      => complete(StatusCodes.NotFound)
           }
         }
       } ~ path("tags") {
         get {
-          complete(mediaLibApi.getTags().map(_.map(_.toWebModel.asJson)))
+          complete(api.read.getTags().map(_.map(_.toWebModel.asJson)))
         }
       } ~ path("fragment" / "add" / Segment) { (id) =>
         (post & entity(as[CreateFragment])) { createFragment =>
           logger.info(s"Adding fragment for $id at ${createFragment.from}:${createFragment.to}")
 
-          onSuccess(mediaLibApi.addFragment(id, createFragment.from, createFragment.to)) {
+          onSuccess(api.modify.addFragment(id, createFragment.from, createFragment.to)) {
             case Some(vid) => complete(vid.toWebModel().asJson)
             case None      => complete(StatusCodes.NotFound)
           }
@@ -79,7 +79,7 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
 
           logger.info(s"Deleting segment $id:$idx")
 
-          onSuccess(mediaLibApi.deleteFragment(id, idx.toInt)) {
+          onSuccess(api.modify.deleteFragment(id, idx.toInt)) {
             case Some(vid) => complete(vid.toWebModel().asJson)
             case None      => complete(StatusCodes.NotFound)
           }
@@ -88,7 +88,7 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
         (post & entity(as[CreateFragment])) { createFragment =>
           logger.info(s"Creating fragment for $id at ${createFragment.from}:${createFragment.to}")
 
-          onSuccess(mediaLibApi.updateFragment(id, idx.toInt, createFragment.from, createFragment.to)) {
+          onSuccess(api.modify.updateFragment(id, idx.toInt, createFragment.from, createFragment.to)) {
             case Some(vid) => complete(vid.toWebModel().asJson)
             case None      => complete(StatusCodes.NotFound)
           }
@@ -98,26 +98,26 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
 
   val adminRoutes = pathPrefix("api" / "admin") {
     (path("regen-thumbnails") & post) {
-      mediaLibApi.regeneratePreviews()
+      api.admin.regeneratePreviews()
       complete("OK")
     } ~ (path("export-to-file") & post) {
-      mediaLibApi.exportLibrary()
+      api.admin.exportLibrary()
       complete("OK")
     } ~ (path("verify-hashes") & post) {
-      mediaLibApi.verifyHashes()
+      api.admin.verifyHashes()
       complete("OK")
     }
   }
 
   val thumbnails =
     path("files" / "thumbnails" / Segment) { id =>
-      getFromFile(mediaLibApi.getThumbnailPathForMedia(id))
+      getFromFile(api.read.getThumbnailPathForMedia(id))
     }
 
   val videos = path("files" / "videos" / Segment) { id =>
-    mediaLibApi.getById(id) match {
+    api.read.getById(id) match {
       case None       => complete(StatusCodes.NotFound, "")
-      case Some(info) => getFromFile(mediaLibApi.getFilePathForMedia(info))
+      case Some(info) => getFromFile(api.read.getFilePathForMedia(info))
     }
   }
 
@@ -143,13 +143,7 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
       }
     }
 
-  val apiRoutes = api ~ adminRoutes ~ thumbnails ~ videos
-
-  val routes =
-    if (config.hostClient)
-      apiRoutes ~ clientFiles
-    else
-      apiRoutes
+  val allRoutes = apiRoutes ~ adminRoutes ~ thumbnails ~ videos ~ clientFiles
 
 //  val loggedRoutes =
 //    DebuggingDirectives.logRequest("Webapp", Logging.InfoLevel)(routes)
@@ -157,7 +151,7 @@ class WebServer(val config: WebServerConfig, val mediaLibApi: MediaLibApi)(impli
   def run(): Unit = {
 
     val bindingFuture =
-      Http().newServerAt(config.hostName, config.port).bind(routes)
+      Http().newServerAt(config.hostName, config.port).bind(allRoutes)
 
     bindingFuture.onComplete {
       case Success(binding) =>
