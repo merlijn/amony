@@ -3,6 +3,8 @@ import {imgAlt} from "../../api/Constants";
 import React, {CSSProperties, useState} from "react";
 import {Fragment, Video} from "../../api/Model";
 import {Api} from "../../api/Api";
+import {Form} from "react-bootstrap";
+import './FragmentPreview.scss';
 
 interface Props {
   style: CSSProperties,
@@ -19,6 +21,7 @@ const FragmentPreview = (props: Props) => {
 
   const durationInSeconds = Math.round((props.fragment.timestamp_end - props.fragment.timestamp_start) / 1000)
   const [showInfoPanel, setShowInfoPanel] = useState(false)
+  const [newTags, setNewTags] = useState<Array<string>>([""])
 
   const deleteFragmentFn = () => {
 
@@ -28,15 +31,42 @@ const FragmentPreview = (props: Props) => {
     })
   }
 
+  const addTag = (tag: string) => {
+
+  }
+
   const infoPanel =
     <div className={`fragment-info-panel`}>
       <div className="abs-top-left action-icon-small" onClick={(e) => { setShowInfoPanel(false) } }>
         <img src="/info_black_24dp.svg" />
       </div>
+      <Form.Control className="fragment-comment" as="textarea" rows={2} />
+      <div className="tag-list">
+        {
+          props.fragment.tags.map((tag) => {
+            return (
+              <div className="tag-entry">
+                <Form.Control className="tag-input" size="sm" type="text" defaultValue="" />
+                <img alt={imgAlt} className="action-icon-medium tag-delete-button" src="/cancel_black_24dp.svg" />
+              </div>);
+          })
+        }
+        {
+          newTags.map((tag) => {
+
+            return (
+              <div className="tag-entry">
+                <Form.Control className="tag-input" size="sm" type="text" defaultValue={tag} />
+                <img alt={imgAlt} className="action-icon-medium tag-delete-button" src="/cancel_black_24dp.svg" />
+              </div>);
+          })
+        }
+      </div>
+
     </div>
 
   return(
-    <div style={ props.style } className={ props.className } key={`fragment-${props.vid}-${props.fragment.timestamp_start}`} >
+    <div style={ props.style } className={ `${props.className} fragment-info-panel` } key={`fragment-${props.vid}-${props.fragment.timestamp_start}`} >
       { showInfoPanel && infoPanel }
       <video muted
              onMouseEnter={(e) => e.currentTarget.play() }

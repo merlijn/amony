@@ -1,0 +1,31 @@
+.fragment-info-panel {
+
+  padding: 8px;
+
+  .fragment-comment {
+
+    width: calc(100% - 30px);
+    margin-left: 30px;
+  }
+
+  .tag-entry {
+
+    margin-top: 8px;
+    width: 100%;
+
+    .tag-input {
+      float: left;
+      width: calc(100% - 30px) ! important;
+    }
+
+    .tag-delete-button {
+      float: left;
+      margin-top: 3px;
+      margin-left: 5px;
+    }
+  }
+
+  .tag-add-button {
+    float: right;
+  }
+}
