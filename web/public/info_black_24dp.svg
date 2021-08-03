@@ -1,9 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#fff">
 <!--    <path d="M0 0h24v24H0V0z" fill="none" />-->
 <!--    <path d="M0 0h25v25H0V0z" fill="none" />-->
+    <circle fill="white" fill-opacity="0.5" cx="12" cy="12" r="11"/>
+
+<!--    <path fill="black" d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>-->
     <circle fill="blue" fill-opacity="0.2" cx="12" cy="12" r="8"/>
-    <path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
-    <rect stroke="blue" x="11" y="7" width="2" height="2"/>
-    <rect stroke="blue" x="11" y="11" width="2" height="6"/>
-    <circle stroke="blue" fill-opacity="0.3" cx="12" cy="12" r="10"/>
+    <circle stroke="blue" stroke-width="2" stroke-opacity="0.7" fill-opacity="0.3" cx="12" cy="12" r="9"/>
+    <rect fill="white" stroke="blue" x="11" y="7" width="2" height="2"/>
+    <rect fill="white" stroke="blue" x="11" y="11" width="2" height="6"/>
 </svg>

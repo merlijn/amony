@@ -10,24 +10,34 @@ import java.nio.file.Path
 
 object MediaLibActor {
 
+  sealed trait ErrorResponse
+
+  case class MediaNotFound(id: String) extends ErrorResponse
+  case class InvalidCommand(reason: String) extends ErrorResponse
+
   sealed trait Command
 
   case class UpsertMedia(media: Media, sender: ActorRef[Boolean]) extends Command
   case class RemoveMedia(id: String, sender: ActorRef[Boolean])   extends Command
 
+  // -- Querying
   case class GetAll(sender: ActorRef[List[Media]])                extends Command
   case class GetById(id: String, sender: ActorRef[Option[Media]]) extends Command
-  case class GetCollections(sender: ActorRef[List[Collection]])   extends Command
+  case class GetTags(sender: ActorRef[List[Collection]])   extends Command
 
   case class Search(query: Query, sender: ActorRef[SearchResult]) extends Command
   case class Query(q: Option[String], offset: Option[Int], n: Int, c: Option[String])
   case class SearchResult(offset: Int, total: Int, items: Seq[Media])
 
-  case class DeleteFragment(mediaId: String, fragmentIdx: Int, sender: ActorRef[Option[Media]]) extends Command
-  case class UpdateFragment(mediaId: String, fragmentIdx: Int, from: Long, to: Long, sender: ActorRef[Option[Media]])
+  // --- Fragments
+  case class DeleteFragment(mediaId: String, fragmentIdx: Int, sender: ActorRef[Either[ErrorResponse, Media]]) extends Command
+  case class UpdateFragmentRange(mediaId: String, fragmentIdx: Int, from: Long, to: Long, sender: ActorRef[Either[ErrorResponse, Media]])
       extends Command
-  case class AddFragment(mediaId: String, from: Long, to: Long, sender: ActorRef[Option[Media]]) extends Command
+  case class AddFragment(mediaId: String, from: Long, to: Long, sender: ActorRef[Either[ErrorResponse, Media]]) extends Command
+  case class AddFragmentTag(mediaId: String, fragmentIndex: Int, tag: String) extends Command
+  case class RemoveFragmentTag(mediaId: String, fragmentIndex: Int, tag: String) extends Command
 
+  // -- State
   case class State(media: Map[String, Media], collections: Map[String, Collection])
   case class Fragment(fromTimestamp: Long, toTimestamp: Long, comment: Option[String], tags: List[String])
   case class Collection(id: String, title: String)

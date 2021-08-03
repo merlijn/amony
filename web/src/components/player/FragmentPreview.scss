@@ -1,9 +1,18 @@
 .fragment-info-panel {
 
-  padding: 8px;
+  padding: 5px;
+
+  .tag-list-header {
+    margin-left: 30px;
+  }
+
+  .tag-list {
+    margin-top: 8px;
+  }
 
   .fragment-comment {
 
+    padding: 2px 4px;
     width: calc(100% - 30px);
     margin-left: 30px;
   }

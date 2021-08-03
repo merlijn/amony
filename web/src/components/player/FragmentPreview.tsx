@@ -11,8 +11,8 @@ interface Props {
   className: string,
   vid: string,
   fragment: Fragment,
-  showDuration?: boolean,
   showDeleteButton: boolean,
+  showDuration?: boolean,
   onDelete?: (vid: Video) => any,
   onClick?: () => any,
 }
@@ -40,7 +40,11 @@ const FragmentPreview = (props: Props) => {
       <div className="abs-top-left action-icon-small" onClick={(e) => { setShowInfoPanel(false) } }>
         <img src="/info_black_24dp.svg" />
       </div>
-      <Form.Control className="fragment-comment" as="textarea" rows={2} />
+      <div className="tag-list-header">
+        Tags:
+      </div>
+
+      {/*<Form.Control className="fragment-comment" as="textarea" rows={2} />*/}
       <div className="tag-list">
         {
           props.fragment.tags.map((tag) => {

@@ -7,7 +7,8 @@ object WebModel {
 
   case class CreateFragment(
       from: Long,
-      to: Long
+      to: Long,
+      tags: Option[List[String]]
   )
 
   case class Fragment(

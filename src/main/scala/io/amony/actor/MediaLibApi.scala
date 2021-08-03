@@ -38,7 +38,7 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
       system.ask[SearchResult](ref => Search(Query(q, offset, size, c), ref))
 
     def getTags()(implicit timeout: Timeout): Future[List[Collection]] =
-      system.ask[List[Collection]](ref => GetCollections(ref))
+      system.ask[List[Collection]](ref => GetTags(ref))
 
     def getThumbnailPathForMedia(id: String): String =
       s"${config.indexPath}/thumbnails/$id"
@@ -57,14 +57,14 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
       system.ask[Boolean](ref => RemoveMedia(id, ref)).map(_ => ())
     }
 
-    def addFragment(id: String, from: Long, to: Long)(implicit timeout: Timeout): Future[Option[Media]] =
-      system.ask[Option[Media]](ref => AddFragment(id, from, to, ref))
+    def addFragment(id: String, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+      system.ask[Either[ErrorResponse, Media]](ref => AddFragment(id, from, to, ref))
 
-    def updateFragment(id: String, idx: Int, from: Long, to: Long)(implicit timeout: Timeout): Future[Option[Media]] =
-      system.ask[Option[Media]](ref => UpdateFragment(id, idx, from, to, ref))
+    def updateFragmentRange(id: String, idx: Int, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+      system.ask[Either[ErrorResponse, Media]](ref => UpdateFragmentRange(id, idx, from, to, ref))
 
-    def deleteFragment(id: String, idx: Int)(implicit timeout: Timeout): Future[Option[Media]] =
-      system.ask[Option[Media]](ref => DeleteFragment(id, idx, ref))
+    def deleteFragment(id: String, idx: Int)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+      system.ask[Either[ErrorResponse, Media]](ref => DeleteFragment(id, idx, ref))
   }
 
 

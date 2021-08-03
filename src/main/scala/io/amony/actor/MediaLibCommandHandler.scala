@@ -13,7 +13,7 @@ object MediaLibCommandHandler extends Logging {
 
   def apply(config: MediaLibConfig)(state: State, cmd: Command): Effect[Event, State] = {
 
-    lazy val collections: List[Collection] = {
+    lazy val tags: List[Collection] = {
 
       val dirs = state.media.values.foldLeft(Set.empty[String]) { case (set, e) =>
         val parent   = (File(config.libraryPath) / e.uri).parent
@@ -45,8 +45,8 @@ object MediaLibCommandHandler extends Logging {
       case GetById(id, sender) =>
         Effect.reply(sender)(state.media.get(id))
 
-      case GetCollections(sender) =>
-        Effect.reply(sender)(collections.sortBy(_.title))
+      case GetTags(sender) =>
+        Effect.reply(sender)(tags.sortBy(_.title))
 
       case GetAll(sender) =>
         Effect.reply(sender)(state.media.values.toList)
@@ -55,7 +55,7 @@ object MediaLibCommandHandler extends Logging {
         val col = query.c match {
           case None => orderedMedia
           case Some(id) =>
-            collections
+            tags
               .find(_.id == id)
               .map { cid =>
                 orderedMedia.filter(_.uri.startsWith(cid.title.substring(1)))
@@ -79,7 +79,7 @@ object MediaLibCommandHandler extends Logging {
         state.media.get(id) match {
 
           case None =>
-            Effect.reply(sender)(None)
+            Effect.reply(sender)(Left(InvalidCommand(s"No video found with id '$id'")))
 
           case Some(vid) =>
             logger.info(s"Deleting fragment $id:$idx")
@@ -98,69 +98,73 @@ object MediaLibCommandHandler extends Logging {
                   vid.fragments(idx).toTimestamp
                 )
               }
-              .thenReply(sender)(_ => Some(newVid))
+              .thenReply(sender)(_ => Right(newVid))
         }
 
-      case UpdateFragment(id, idx, from, to, sender) =>
+      case UpdateFragmentRange(id, idx, from, to, sender) =>
         state.media.get(id) match {
 
           case None =>
-            Effect.reply(sender)(None)
+            Effect.reply(sender)(Left(InvalidCommand(s"No video found with id '$id'")))
 
           case Some(vid) =>
+
             logger.info(s"Updating fragment $id:$idx to $from:$to")
 
-            // check if specific range already exists
-            val fragment         = vid.fragments(idx)
-            val newFragment      = fragment.copy(fromTimestamp = from, toTimestamp = to)
-            val primaryThumbnail = if (idx == 0) from else vid.thumbnailTimestamp
-            val newVid =
-              vid.copy(thumbnailTimestamp = primaryThumbnail, fragments = vid.fragments.replaceAtPos(idx, newFragment))
+            if (idx <= 0 || idx >= vid.fragments.size) {
+              Effect.reply(sender)(Left(InvalidCommand("Index out of bounds")))
+            } else {
+              // check if specific range already exists
+              val oldFragment         = vid.fragments(idx)
+              val newFragment      = oldFragment.copy(fromTimestamp = from, toTimestamp = to)
+              val primaryThumbnail = if (idx == 0) from else vid.thumbnailTimestamp
+              val newVid =
+                vid.copy(
+                  thumbnailTimestamp = primaryThumbnail,
+                  fragments = vid.fragments.replaceAtPos(idx, newFragment))
 
-            Effect
-              .persist(MediaUpdated(id, newVid))
-              .thenRun { (s: State) =>
-                deleteVideoFragment(config.indexPath, vid.id, fragment.fromTimestamp, fragment.toTimestamp)
-                createVideoFragment(vid.path(config.libraryPath), config.indexPath, id, from, to)
-              }
-              .thenReply(sender)(_ => Some(newVid))
+              Effect
+                .persist(MediaUpdated(id, newVid))
+                .thenRun { (s: State) =>
+                  deleteVideoFragment(config.indexPath, vid.id, oldFragment.fromTimestamp, oldFragment.toTimestamp)
+                  createVideoFragment(vid.path(config.libraryPath), config.indexPath, id, from, to)
+                }
+                .thenReply(sender)(_ => Right(newVid))
+            }
         }
 
       case AddFragment(id, from, to, sender) =>
         state.media.get(id) match {
           case None =>
-            Effect.reply(sender)(None)
+            Effect.reply(sender)(Left(InvalidCommand(s"No video found with id '$id'")))
 
           case Some(vid) =>
             logger.info(s"Adding fragment for $id from $from to $to")
 
             if (from > to) {
-              logger.warn(s"from: $from > to: $to")
-              Effect.none.thenReply(sender)(_ => None)
+              val msg = s"from: $from > to: $to"
+              logger.warn(msg)
+              Effect.none.thenReply(sender)(_ => Left(InvalidCommand(msg)))
             } else if (to > vid.duration) {
-              logger.warn(s"to: $to > duration: ${vid.duration}")
-              Effect.none.thenReply(sender)(_ => None)
+              val msg = s"to: $to > duration: ${vid.duration}"
+              logger.warn(msg)
+              Effect.none.thenReply(sender)(_ => Left(InvalidCommand(msg)))
             } else {
-              val sanitizedTimeStamp = Math.max(0, Math.min(vid.duration, from))
-              val videoPath          = vid.path(config.libraryPath)
-
-              val newFragments = vid.fragments ::: List(
-                Fragment(
-                  fromTimestamp = sanitizedTimeStamp,
-                  toTimestamp   = to,
-                  comment       = None,
-                  tags          = Nil
-                )
-              )
-
-              val newVid = vid.copy(fragments = newFragments)
 
               Effect
-                .persist(MediaUpdated(id, newVid))
-                .thenRun((s: State) => createVideoFragment(videoPath, config.indexPath, id, sanitizedTimeStamp, to))
-                .thenReply(sender)(_ => Some(newVid))
+                .persist(FragmentAdded(id, from, to))
+                .thenRun((_: State) => createVideoFragment(vid.path(config.libraryPath), config.indexPath, id, from, to))
+                .thenReply(sender)(s => Right(s.media(id)))
             }
         }
+
+      case AddFragmentTag(id, fragmentIndex, tag) =>
+        logger.info("Received AddFragmentTag command")
+        Effect.none
+
+      case RemoveFragmentTag(id, fragmentIndex, tag) =>
+        logger.info("Received RemoveFragmentTag command")
+        Effect.none
     }
   }
 }

@@ -4,18 +4,19 @@ import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives.{path, _}
-import akka.http.scaladsl.server.{RejectionHandler, ValidationRejection}
+import akka.http.scaladsl.server.{RejectionHandler, Route, ValidationRejection}
 import akka.stream.Materializer
 import akka.util.Timeout
 import better.files.File
 import io.amony.actor.MediaLibApi
 import io.amony.http.WebConversions._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import io.amony.actor.MediaLibActor.{ErrorResponse, InvalidCommand, Media, MediaNotFound}
 import io.amony.http.WebModel.CreateFragment
 import io.circe.syntax._
 import scribe.Logging
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
 
@@ -67,32 +68,25 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
         }
       } ~ path("fragments" / Segment / "add") { (id) =>
         (post & entity(as[CreateFragment])) { createFragment =>
-          logger.info(s"Adding fragment for $id at ${createFragment.from}:${createFragment.to}")
-
-          onSuccess(api.modify.addFragment(id, createFragment.from, createFragment.to)) {
-            case Some(vid) => complete(vid.toWebModel().asJson)
-            case None      => complete(StatusCodes.NotFound)
-          }
+          mediaResponse(api.modify.addFragment(id, createFragment.from, createFragment.to))
         }
       } ~ path("fragments" / Segment / Segment) { (id, idx) =>
         delete {
-
-          logger.info(s"Deleting segment $id:$idx")
-
-          onSuccess(api.modify.deleteFragment(id, idx.toInt)) {
-            case Some(vid) => complete(vid.toWebModel().asJson)
-            case None      => complete(StatusCodes.NotFound)
-          }
+          mediaResponse(api.modify.deleteFragment(id, idx.toInt))
         } ~ (post & entity(as[CreateFragment])) { createFragment =>
-          logger.info(s"Creating fragment for $id at ${createFragment.from}:${createFragment.to}")
-
-          onSuccess(api.modify.updateFragment(id, idx.toInt, createFragment.from, createFragment.to)) {
-            case Some(vid) => complete(vid.toWebModel().asJson)
-            case None      => complete(StatusCodes.NotFound)
-          }
+          mediaResponse(api.modify.updateFragmentRange(id, idx.toInt, createFragment.from, createFragment.to))
         }
       }
     }
+
+
+  def mediaResponse(future: Future[Either[ErrorResponse, Media]]): Route = {
+    onSuccess(future) {
+      case Left(MediaNotFound(id))      => complete(StatusCodes.NotFound)
+      case Left(InvalidCommand(reason)) => complete(StatusCodes.BadRequest, reason)
+      case Right(media)                 => complete(media.toWebModel().asJson)
+    }
+  }
 
   val adminRoutes = pathPrefix("api" / "admin") {
     (path("regen-thumbnails") & post) {
