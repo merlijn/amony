@@ -56,20 +56,6 @@
   }
 }
 
-.grid-cell {
-  --ncols: 4;
-  --grid-width: calc(100vw / var(--ncols));
-  width: var(--grid-width);
-  position: relative;
-  float: left;
-  padding: 2px;
-
-  //&:hover {
-  //  padding: 0px;
-  //  border: 2px solid red;
-  //}
-}
-
 .media-title {
   font-size: small;
   float: left;
@@ -77,10 +63,10 @@
   width: 100%;
   padding-left: 4px;
   border-top: 1px solid black;
-  background-image: linear-gradient(to right, #2243b8, #71b1ff);;
+  background-image: linear-gradient(to right, #2243b8, #71b1ff);
+  //background-image: linear-gradient(to right, #ec3a78, #ffc9fd);
   color: white;
 }
-
 
 .preview-container {
 

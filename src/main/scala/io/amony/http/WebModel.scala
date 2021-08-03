@@ -11,11 +11,12 @@ object WebModel {
   )
 
   case class Fragment(
-      timestamp_start: Long,
-      timestamp_end: Long,
-      uri: String,
-      comment: Option[String],
-      tags: List[String]
+    index: Int,
+    timestamp_start: Long,
+    timestamp_end: Long,
+    uri: String,
+    comment: Option[String],
+    tags: List[String]
   )
 
   case class Video(
@@ -55,8 +56,9 @@ object WebConversions {
         duration      = media.duration,
         fps           = media.fps,
         thumbnail_uri = s"/files/thumbnails/${media.id}-${media.thumbnailTimestamp}.webp",
-        fragments = media.fragments.map { p =>
+        fragments = media.fragments.zipWithIndex.map { case (p, index) =>
           Fragment(
+            index           = index,
             timestamp_start = p.fromTimestamp,
             timestamp_end   = p.toTimestamp,
             uri             = s"/files/thumbnails/${media.id}-${p.fromTimestamp}-${p.toTimestamp}.mp4",

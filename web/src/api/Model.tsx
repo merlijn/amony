@@ -31,5 +31,6 @@ export type Tag = {
 export type Fragment = {
   timestamp_start: number,
   timestamp_end: number,
+  index: number,
   uri: string
 }

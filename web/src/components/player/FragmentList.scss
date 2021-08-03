@@ -1,0 +1,80 @@
+@import 'src/App';
+
+.fragments-container {
+
+  //border-left: 4px  solid white;
+  background-color: lightgrey;
+  position: relative;
+  float: left;
+  overflow: scroll;
+
+  .fragments-header {
+
+    border-bottom: 1px solid black;
+    padding: 2px 6px;
+    background-image: linear-gradient(to right, #2243b8, #71b1ff);
+    color: white;
+  }
+
+  .fragment {
+
+    padding: 0;
+    position: relative;
+    float: left;
+
+    .fragment-info-panel {
+      z-index: 5;
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      overflow: scroll;
+      background-color: white;
+    }
+
+    video {
+      z-index: 1;
+      width: 100%;
+      height: auto;
+      float: left;
+      margin: 0;
+      padding: 0;
+    }
+
+    .new-fragment {
+      padding: 8px;
+      text-align: center;
+      font-size: large;
+      color: white;
+      background-color: blue;
+    }
+
+    &:last-child {
+      width: calc(100% - 8px);
+    }
+
+    .delete-fragment-icon {
+
+      @extend .action-icon-small;
+      @extend .abs-top-right;
+
+      top: 1px ! important;
+    }
+  }
+
+  .fragment-not-selected {
+    margin: 4px 4px 0px 4px;
+
+    &:last-child {
+      margin-bottom: 4px;
+    }
+  }
+
+  .fragment-selected {
+    margin: 0 ! important;
+    border: 4px solid yellow ! important;
+
+    &:last-child {
+      width: 100% ! important;
+    }
+  }
+}

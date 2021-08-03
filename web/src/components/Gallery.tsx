@@ -40,14 +40,14 @@ const Gallery = (props: { cols?: number}) => {
 
   const previews = searchResult.videos.map((vid, idx) => {
 
-    let style = { }
+    let style: { } = { "--ncols" : "4" }
 
     if (idx % ncols == 0)
-        style = { paddingLeft : "4px" }
+        style = { ...style, paddingLeft : "4px" }
     else if ((idx + 1) % ncols == 0)
-        style = { paddingRight : "4px" }
+        style = { ...style, paddingRight : "4px" }
 
-    return <Preview style = {style} className="grid-cell" key={`preview-${vid.id}`} vid={vid} />
+    return <Preview style = {style} className="grid-cell" key={`preview-${vid.id}`} vid={vid} admin={true}/>
   })
 
   return (

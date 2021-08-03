@@ -22,13 +22,6 @@ $container-max-widths: (
   padding: 0px ! important;
 }
 
-.abs-center {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
 .duration-overlay {
   z-index: 3;
   padding: 0px 5px;
@@ -37,31 +30,38 @@ $container-max-widths: (
   font-size: small;
 }
 
-.bottom-right {
+.abs-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.abs-bottom-right {
   position: absolute;
   bottom: 8px;
   right: 8px;
 }
 
-.top-right {
+.abs-top-right {
   position: absolute;
   top: 5px;
   right: 5px;
 }
 
-.bottom-left {
+.abs-bottom-left {
   position: absolute;
   bottom: 5px;
   left: 5px;
 }
 
-.top-left {
+.abs-top-left {
   position: absolute;
   top: 5px;
   left: 5px;
 }
 
-.menu-icon {
+.action-icon-small {
 
   &:hover {
     cursor: pointer;
@@ -72,11 +72,23 @@ $container-max-widths: (
   height: 20px;
 }
 
-.info-button {
+.action-icon-medium {
 
   &:hover {
     cursor: pointer;
   }
+
+  width: 24px;
+  height: 24px;
+}
+
+.info-button {
+
+  @extend .action-icon-small;
+
+  //&:hover {
+  //  cursor: pointer;
+  //}
 }
 
 @import '~bootstrap/scss/bootstrap.scss';

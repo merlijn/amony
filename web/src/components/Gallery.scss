@@ -12,20 +12,15 @@
   background-color: white;
 }
 
-// shared padding properties
+.grid-cell {
+  --grid-width: calc(100vw / var(--ncols));
+  width: var(--grid-width);
+  position: relative;
+  float: left;
+  padding: 2px;
 
-td.preview-footer {
-
-  padding-top: 0px ! important;
-
-  div {
-    //background-color: #508cc5;
-    border-top: 1px solid black;
-    background-image: linear-gradient(to right, #003c75, #508cc5);
-    color: white;
-    font-size: small;
-    text-align: left;
-    padding-left: 4px;
-  }
+  //&:hover {
+  //  padding: 0px;
+  //  border: 2px solid red;
+  //}
 }
-

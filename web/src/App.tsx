@@ -1,7 +1,7 @@
 import React from 'react';
 import Container from 'react-bootstrap/Container';
 import Gallery from './components/Gallery';
-import Player from './components/Player';
+import Player from './components/player/Player';
 import { Route,  BrowserRouter, useParams, Switch } from 'react-router-dom';
 
 function App() {

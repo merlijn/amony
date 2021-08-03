@@ -24,16 +24,20 @@ export const Api = {
     return doGET(`/api/media/${id}`)
   },
 
+  getFragments: async function (id: string) {
+
+  },
+
   addFragment: async function (id: string, from: number, to: number) {
-    return doPOST(`/api/fragment/add/${id}`, { from: from, to: to})
+    return doPOST(`/api/fragments/${id}/add`, { from: from, to: to})
   },
 
   deleteFragment: async function (id: string, idx: number) {
-    return doPOST(`/api/fragment/delete/${id}/${idx}`)
+    return doDelete(`/api/fragments/${id}/${Math.trunc(idx)}`)
   },
 
   updateFragment: async function (id: string, idx: number, from: number, to: number) {
-    return doPOST(`/api/fragment/update/${id}/${Math.trunc(idx)}`, { from: from, to: to})
+    return doPOST(`/api/fragments/${id}/${Math.trunc(idx)}`, { from: from, to: to})
   },
 
   getTags: async function getTags() {
@@ -56,6 +60,18 @@ export async function doGET(path: string) {
   }
 
   return data;
+}
+
+export async function doDelete(path: string) {
+
+  const response = await fetch(path, { method: 'DELETE', headers});
+  const jsonBody = await response.json();
+
+  if (jsonBody.error) {
+    throw new Error(jsonBody.error);
+  }
+
+  return jsonBody;
 }
 
 export async function doPOST(path: string, postData?: any) {

@@ -19,6 +19,10 @@ const GalleryPagination: React.FC<Props> = (props) => {
     const targetParams = copyParams(urlParams).set("p", n.toString())
     const target = buildUrl("/search", targetParams)
     history.push(target);
+    window.scrollTo({
+      top: 0,
+      behavior: 'auto'
+    });
   };
 
   let items = [<Pagination.Item active>{props.current}</Pagination.Item>]

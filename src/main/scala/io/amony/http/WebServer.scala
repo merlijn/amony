@@ -65,7 +65,7 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
         get {
           complete(api.read.getTags().map(_.map(_.toWebModel.asJson)))
         }
-      } ~ path("fragment" / "add" / Segment) { (id) =>
+      } ~ path("fragments" / Segment / "add") { (id) =>
         (post & entity(as[CreateFragment])) { createFragment =>
           logger.info(s"Adding fragment for $id at ${createFragment.from}:${createFragment.to}")
 
@@ -74,8 +74,8 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
             case None      => complete(StatusCodes.NotFound)
           }
         }
-      } ~ path("fragment" / "delete" / Segment / Segment) { (id, idx) =>
-        post {
+      } ~ path("fragments" / Segment / Segment) { (id, idx) =>
+        delete {
 
           logger.info(s"Deleting segment $id:$idx")
 
@@ -83,9 +83,7 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
             case Some(vid) => complete(vid.toWebModel().asJson)
             case None      => complete(StatusCodes.NotFound)
           }
-        }
-      } ~ path("fragment" / "update" / Segment / Segment) { (id, idx) =>
-        (post & entity(as[CreateFragment])) { createFragment =>
+        } ~ (post & entity(as[CreateFragment])) { createFragment =>
           logger.info(s"Creating fragment for $id at ${createFragment.from}:${createFragment.to}")
 
           onSuccess(api.modify.updateFragment(id, idx.toInt, createFragment.from, createFragment.to)) {

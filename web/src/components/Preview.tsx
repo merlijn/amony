@@ -6,11 +6,11 @@ import {Video} from "../api/Model";
 import {Form} from "react-bootstrap";
 import {imgAlt} from "../api/Constants";
 
-const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, showTitle?: boolean}) => {
+const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, admin?: boolean}) => {
 
   const [vid, setVid] = useState(props.vid)
 
-  const [showInfoPanel, setShowInfoPanel] = useState(false)
+  const [showInfoOverlay, setShowInfoPanel] = useState(false)
   const [showVideoPreview, setShowVideoPreview] = useState(false)
   const [currentPreviewIdx, setCurrentPreviewIdx] = useState(0)
 
@@ -54,34 +54,46 @@ const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, 
 
   const overlayIcons =
     <div>
-      <div className="top-right menu-icon"><img src="/more_vert_black_24dp.svg" /></div>
-      <div className="top-left menu-icon info-button" onClick={(e) => { setShowInfoPanel(true)} }>
-        <img alt={imgAlt} src="/info_black_24dp.svg" />
-      </div>
+      { props.admin && <div className="abs-top-right action-icon-small"><img src="/more_vert_black_24dp.svg" /></div> }
+      { props.admin &&
+         <div className="abs-top-left info-button" onClick={(e) => { setShowInfoPanel(true)} }>
+            <img alt={imgAlt} src="/info_black_24dp.svg" />
+          </div>
+      }
 
-      <div className="bottom-left duration-overlay">{durationStr}</div>
+      <div className="abs-bottom-left duration-overlay">{durationStr}</div>
 
-      <div className="bottom-right menu-icon play-button">
-        <a href={`/video/${props.vid.id}`} >
-          <img alt={imgAlt} src="/play_circle_black_24dp.svg" />
-        </a>
-      </div>
+      { props.admin &&
+        <div className="abs-bottom-right action-icon-small play-button">
+          <a href={`/video/${props.vid.id}`}>
+            <img alt={imgAlt} src="/play_circle_black_24dp.svg"/>
+          </a>
+        </div>
+      }
     </div>
 
   const primaryThumbnail = <Image className="preview-thumbnail preview-media" src={vid.thumbnail_uri} fluid />
 
-  return (
+  let preview =
+    <div className = "preview-container"
+         onMouseEnter={() => setShowVideoPreview(true)}
+         onMouseLeave={() => setShowVideoPreview(false)}>
+      { showVideoPreview && videoPreview }
+      { primaryThumbnail }
+      { overlayIcons }
+      { showInfoOverlay && infoPanel }
+    </div>
 
+  if (!props.admin) {
+    preview = <a href={`/video/${props.vid.id}`}>{preview}</a>
+  }
+
+  return (
     <div style={props.style} className={ `${props.className}` }>
-      <div className = "preview-container" onMouseEnter={() => setShowVideoPreview(true)} onMouseLeave={() => setShowVideoPreview(false)}>
-        { showVideoPreview && videoPreview }
-        { primaryThumbnail }
-        { overlayIcons }
-        { showInfoPanel && infoPanel }
-      </div>
+      { preview }
       { titlePanel }
     </div>
-  );
+  )
 }
 
 const InfoPanel = (props: {vid: Video, onClickInfo: () => any }) => {
@@ -90,7 +102,7 @@ const InfoPanel = (props: {vid: Video, onClickInfo: () => any }) => {
 
     return(
         <div className={`info-panel`}>
-            <div className="top-left menu-icon info-button" onClick={(e) => { props.onClickInfo() } }>
+            <div className="abs-top-left action-icon-small info-button" onClick={(e) => { props.onClickInfo() } }>
                 <img src="/info_black_24dp.svg" />
             </div>
             <div className="info-title"><b>{props.vid.title}</b></div>
@@ -109,7 +121,7 @@ const InfoPanel = (props: {vid: Video, onClickInfo: () => any }) => {
                     </tbody>
                 </table>
             </div>
-            <div className="bottom-right"><img alt={imgAlt} src="/done_outline_black_24dp.svg" /></div>
+            <div className="abs-bottom-right"><img alt={imgAlt} src="/done_outline_black_24dp.svg" /></div>
         </div>
     );
 }
