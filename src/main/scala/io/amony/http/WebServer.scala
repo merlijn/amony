@@ -12,7 +12,7 @@ import io.amony.actor.MediaLibApi
 import io.amony.http.WebConversions._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.amony.actor.MediaLibActor.{ErrorResponse, InvalidCommand, Media, MediaNotFound}
-import io.amony.http.WebModel.CreateFragment
+import io.amony.http.WebModel.FragmentRange
 import io.circe.syntax._
 import scribe.Logging
 
@@ -67,20 +67,23 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
           complete(api.read.getTags().map(_.map(_.toWebModel.asJson)))
         }
       } ~ path("fragments" / Segment / "add") { (id) =>
-        (post & entity(as[CreateFragment])) { createFragment =>
-          mediaResponse(api.modify.addFragment(id, createFragment.from, createFragment.to))
+        (post & entity(as[FragmentRange])) { createFragment =>
+          translateResponse(api.modify.addFragment(id, createFragment.from, createFragment.to))
         }
       } ~ path("fragments" / Segment / Segment) { (id, idx) =>
         delete {
-          mediaResponse(api.modify.deleteFragment(id, idx.toInt))
-        } ~ (post & entity(as[CreateFragment])) { createFragment =>
-          mediaResponse(api.modify.updateFragmentRange(id, idx.toInt, createFragment.from, createFragment.to))
+          translateResponse(api.modify.deleteFragment(id, idx.toInt))
+        } ~ (post & entity(as[FragmentRange])) { createFragment =>
+          translateResponse(api.modify.updateFragmentRange(id, idx.toInt, createFragment.from, createFragment.to))
+        }
+      } ~ path("fragments" / Segment / Segment / "tags") { (id, idx) =>
+        (post & entity(as[List[String]])) { tags =>
+          translateResponse(api.modify.updateFragmentTags(id, idx.toInt, tags))
         }
       }
     }
 
-
-  def mediaResponse(future: Future[Either[ErrorResponse, Media]]): Route = {
+  def translateResponse(future: Future[Either[ErrorResponse, Media]]): Route = {
     onSuccess(future) {
       case Left(MediaNotFound(id))      => complete(StatusCodes.NotFound)
       case Left(InvalidCommand(reason)) => complete(StatusCodes.BadRequest, reason)

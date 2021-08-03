@@ -5,10 +5,9 @@ import io.amony.http.WebModel.{Collection, Fragment, SearchResult, Video}
 
 object WebModel {
 
-  case class CreateFragment(
-      from: Long,
-      to: Long,
-      tags: Option[List[String]]
+  case class FragmentRange(
+    from: Long,
+    to: Long
   )
 
   case class Fragment(
@@ -21,27 +20,27 @@ object WebModel {
   )
 
   case class Video(
-      id: String,
-      uri: String,
-      title: String,
-      duration: Long,
-      fps: Double,
-      thumbnail_uri: String,
-      fragments: List[Fragment],
-      resolution_x: Int,
-      resolution_y: Int,
-      tags: Seq[String]
+    id: String,
+    uri: String,
+    title: String,
+    duration: Long,
+    fps: Double,
+    thumbnail_uri: String,
+    fragments: List[Fragment],
+    resolution_x: Int,
+    resolution_y: Int,
+    tags: Seq[String]
   )
 
   case class SearchResult(
-      offset: Int,
-      total: Int,
-      videos: Seq[Video]
+    offset: Int,
+    total: Int,
+    videos: Seq[Video]
   )
 
   case class Collection(
-      id: String,
-      title: String
+    id: String,
+    title: String
   )
 }
 

@@ -24,8 +24,8 @@ export const Api = {
     return doGET(`/api/media/${id}`)
   },
 
-  getFragments: async function (id: string) {
-
+  updateFragmentTags: async function (id: string, idx: number, tags: Array<string>) {
+    return doPOST(`/api/fragments/${id}/${idx}/tags`, tags)
   },
 
   addFragment: async function (id: string, from: number, to: number) {

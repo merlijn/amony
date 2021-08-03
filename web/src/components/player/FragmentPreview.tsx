@@ -21,7 +21,8 @@ const FragmentPreview = (props: Props) => {
 
   const durationInSeconds = Math.round((props.fragment.timestamp_end - props.fragment.timestamp_start) / 1000)
   const [showInfoPanel, setShowInfoPanel] = useState(false)
-  const [newTags, setNewTags] = useState<Array<string>>([""])
+
+  const [tags, setTags] = useState<Array<string>>([...props.fragment.tags, ""])
 
   const deleteFragmentFn = () => {
 
@@ -31,37 +32,50 @@ const FragmentPreview = (props: Props) => {
     })
   }
 
-  const addTag = (tag: string) => {
+  const updateTags = () => {
+    Api.updateFragmentTags(props.vid, props.fragment.index, tags).then((result) => {
+      console.log("Tags added")
+    })
+  }
 
+  const removeTag = (index: number) => {
+    const copyTags = [...tags]
+    copyTags.splice(index, 1)
+    setTags(copyTags)
+  }
+
+  const updateTag = (index: number, value: string) => {
+    const copyTags = [...tags]
+    copyTags[index] = value
+    if (value !== "" && index == tags.length-1)
+      copyTags.push("")
+
+    setTags(copyTags)
   }
 
   const infoPanel =
     <div className={`fragment-info-panel`}>
-      <div className="abs-top-left action-icon-small" onClick={(e) => { setShowInfoPanel(false) } }>
+      <div className="abs-top-left action-icon-small"
+           onClick={(e) => { setShowInfoPanel(false); updateTags() } }>
         <img src="/info_black_24dp.svg" />
       </div>
-      <div className="tag-list-header">
+      <div key="tag-list-header" className="tag-list-header">
         Tags:
       </div>
 
-      {/*<Form.Control className="fragment-comment" as="textarea" rows={2} />*/}
-      <div className="tag-list">
+      <div key="tag-list" className="tag-list">
         {
-          props.fragment.tags.map((tag) => {
+          tags.map((tag, index) => {
             return (
-              <div className="tag-entry">
-                <Form.Control className="tag-input" size="sm" type="text" defaultValue="" />
-                <img alt={imgAlt} className="action-icon-medium tag-delete-button" src="/cancel_black_24dp.svg" />
-              </div>);
-          })
-        }
-        {
-          newTags.map((tag) => {
-
-            return (
-              <div className="tag-entry">
-                <Form.Control className="tag-input" size="sm" type="text" defaultValue={tag} />
-                <img alt={imgAlt} className="action-icon-medium tag-delete-button" src="/cancel_black_24dp.svg" />
+              <div key={`tag-${index}-${tag}`} className="tag-entry">
+                <Form.Control
+                  className="tag-input" size="sm" type="text" defaultValue={tag}
+                  onChange = { (e) => updateTag(index, e.target.value) }
+                />
+                <img alt={imgAlt}
+                     className="action-icon-medium tag-delete-button"
+                     onClick = { (e) => removeTag(index) }
+                     src="/cancel_black_24dp.svg" />
               </div>);
           })
         }

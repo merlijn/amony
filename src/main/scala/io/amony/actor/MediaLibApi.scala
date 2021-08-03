@@ -63,6 +63,10 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
     def updateFragmentRange(id: String, idx: Int, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
       system.ask[Either[ErrorResponse, Media]](ref => UpdateFragmentRange(id, idx, from, to, ref))
 
+    def updateFragmentTags(id: String, idx: Int, tags: List[String])(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] = {
+      system.ask[Either[ErrorResponse, Media]](ref => UpdateFragmentTags(id, idx, tags, ref))
+    }
+
     def deleteFragment(id: String, idx: Int)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
       system.ask[Either[ErrorResponse, Media]](ref => DeleteFragment(id, idx, ref))
   }

@@ -158,13 +158,10 @@ object MediaLibCommandHandler extends Logging {
             }
         }
 
-      case AddFragmentTag(id, fragmentIndex, tag) =>
-        logger.info("Received AddFragmentTag command")
-        Effect.none
+      case UpdateFragmentTags(id, fragmentIndex, tags, sender) =>
+        logger.info(s"Received AddFragmentTag command: ${tags.mkString(",")}")
+        Effect.reply(sender)(Right(state.media(id)))
 
-      case RemoveFragmentTag(id, fragmentIndex, tag) =>
-        logger.info("Received RemoveFragmentTag command")
-        Effect.none
     }
   }
 }
