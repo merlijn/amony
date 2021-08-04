@@ -19,7 +19,7 @@ const Gallery = (props: { cols?: number}) => {
   const size = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > gridReRenderThreshold));
 
   // grid size
-  const ncols = 4 // Math.min(Math.max(2, Math.round(size.width / gridSize)), 5);
+  const ncols = 5 // Math.min(Math.max(2, Math.round(size.width / gridSize)), 5);
 
   const pageSize = pageSizes.get(ncols) || 24
 
@@ -40,7 +40,7 @@ const Gallery = (props: { cols?: number}) => {
 
   const previews = searchResult.videos.map((vid, idx) => {
 
-    let style: { } = { "--ncols" : "4" }
+    let style: { } = { "--ncols" : `${ncols}` }
 
     if (idx % ncols == 0)
         style = { ...style, paddingLeft : "4px" }

@@ -71,7 +71,6 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
       system.ask[Either[ErrorResponse, Media]](ref => DeleteFragment(id, idx, ref))
   }
 
-
   object admin {
 
     def regeneratePreviewFor(m: Media): Unit = {

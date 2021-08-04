@@ -25,16 +25,16 @@ const GalleryPagination: React.FC<Props> = (props) => {
     });
   };
 
-  let items = [<Pagination.Item active>{props.current}</Pagination.Item>]
+  let items = [<Pagination.Item style={ { width: 30, textAlign: "center" } }active>{props.current}</Pagination.Item>]
 
-  const itemPagination = (n: number) => {
-    return <Pagination.Item onClick={() => navigate(n)}>{n}</Pagination.Item>
-  }
+  // const itemPagination = (n: number) => {
+  //   return <Pagination.Item onClick={() => navigate(n)}>{n}</Pagination.Item>
+  // }
 
-  if (props.current > 1)
-    items.unshift(itemPagination(props.current - 1 ))
-  if (props.current < props.last - 1)
-    items.push(itemPagination(props.current + 1 ))
+  // if (props.current > 1)
+  //   items.unshift(itemPagination(props.current - 1 ))
+  // if (props.current < props.last - 1)
+  //   items.push(itemPagination(props.current + 1 ))
 
   let clazz = `searchPagination ${props.className}`
 

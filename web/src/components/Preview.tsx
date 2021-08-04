@@ -5,6 +5,7 @@ import {durationInMillisToString} from "../api/Util";
 import {Video} from "../api/Model";
 import {Form} from "react-bootstrap";
 import {imgAlt} from "../api/Constants";
+import FragmentsPlayer from "./shared/FragmentsPlayer";
 
 const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, admin?: boolean}) => {
 
@@ -12,42 +13,13 @@ const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, 
 
   const [showInfoOverlay, setShowInfoPanel] = useState(false)
   const [showVideoPreview, setShowVideoPreview] = useState(false)
-  const [currentPreviewIdx, setCurrentPreviewIdx] = useState(0)
 
   const durationStr = durationInMillisToString(vid.duration)
 
   const infoPanel = <InfoPanel vid={props.vid} onClickInfo={() => setShowInfoPanel(false) } />
 
-  const nextPreview = (e: SyntheticEvent<HTMLVideoElement>) => {
-
-    // back the the 1st (0)
-    if (currentPreviewIdx < props.vid.fragments.length - 1) {
-      setCurrentPreviewIdx(currentPreviewIdx + 1)
-      e.currentTarget.load()
-      e.currentTarget.play()
-    }
-
-    // on to the next
-    if (currentPreviewIdx > 0 && currentPreviewIdx + 1 >= props.vid.fragments.length) {
-      setCurrentPreviewIdx(0)
-      e.currentTarget.load()
-      e.currentTarget.play()
-    }
-
-    // no need to load a new preview if there is only 1
-    if (props.vid.fragments.length === 1) {
-      e.currentTarget.play()
-    }
-  }
-
   const videoPreview =
-     <video className="preview-video preview-media" muted
-            onMouseOver={(e) => e.currentTarget.play()}
-            onMouseLeave={ (e) => setCurrentPreviewIdx(0) }
-            onEnded={nextPreview} >
-
-         <source src={props.vid.fragments[currentPreviewIdx].uri} type="video/mp4"/>
-     </video>
+    <FragmentsPlayer className="preview-video preview-media" fragments={ props.vid.fragments } />
 
   const titlePanel =
     <div className="media-title">{vid.title.substring(0, 38)}</div>

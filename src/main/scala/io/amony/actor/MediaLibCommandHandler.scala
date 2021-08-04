@@ -111,7 +111,7 @@ object MediaLibCommandHandler extends Logging {
 
             logger.info(s"Updating fragment $id:$idx to $from:$to")
 
-            if (idx <= 0 || idx >= vid.fragments.size) {
+            if (idx < 0 || idx >= vid.fragments.size) {
               Effect.reply(sender)(Left(InvalidCommand("Index out of bounds")))
             } else {
               // check if specific range already exists
