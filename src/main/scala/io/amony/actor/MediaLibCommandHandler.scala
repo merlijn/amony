@@ -115,7 +115,7 @@ object MediaLibCommandHandler extends Logging {
               Effect.reply(sender)(Left(InvalidCommand("Index out of bounds")))
             } else {
               // check if specific range already exists
-              val oldFragment         = vid.fragments(idx)
+              val oldFragment      = vid.fragments(idx)
               val newFragment      = oldFragment.copy(fromTimestamp = from, toTimestamp = to)
               val primaryThumbnail = if (idx == 0) from else vid.thumbnailTimestamp
               val newVid =
@@ -159,9 +159,10 @@ object MediaLibCommandHandler extends Logging {
         }
 
       case UpdateFragmentTags(id, fragmentIndex, tags, sender) =>
-        logger.info(s"Received AddFragmentTag command: ${tags.mkString(",")}")
-        Effect.reply(sender)(Right(state.media(id)))
+        logger.info(s"Received AddFragmentTag command: $id:$fragmentIndex -> ${tags.mkString(",")}")
 
+        Effect.persist(FragmentTagsUpdated(id, fragmentIndex, tags))
+          .thenReply(sender)(_ => Right(state.media(id)))
     }
   }
 }

@@ -17,12 +17,22 @@ interface Props {
   onClick?: () => any,
 }
 
+type Tag = {
+  value: string,
+  id: string
+}
+
 const FragmentPreview = (props: Props) => {
 
   const durationInSeconds = Math.round((props.fragment.timestamp_end - props.fragment.timestamp_start) / 1000)
   const [showInfoPanel, setShowInfoPanel] = useState(false)
 
-  const [tags, setTags] = useState<Array<string>>([...props.fragment.tags, ""])
+  const newTag = (v: string) => { return { value: v, id: Math.random().toString(16) } }
+  const initialTags = () => {
+    return [...props.fragment.tags, ""].map ((v) => { return newTag(v) } )
+  }
+
+  const [tags, setTags] = useState<Array<Tag>>(initialTags())
 
   const deleteFragmentFn = () => {
 
@@ -33,23 +43,30 @@ const FragmentPreview = (props: Props) => {
   }
 
   const updateTags = () => {
-    Api.updateFragmentTags(props.vid, props.fragment.index, tags).then((result) => {
-      console.log("Tags added")
-    })
+
+    const tagValues = tags
+      .map((v) => { return v.value })
+      .filter((v) => { return v !== "" })
+
+    if (tagValues.length > 0)
+      Api.updateFragmentTags(props.vid, props.fragment.index, tagValues).then((result) => {
+        console.log("Tags added")
+      })
   }
 
   const removeTag = (index: number) => {
-    const copyTags = [...tags]
-    copyTags.splice(index, 1)
-    setTags(copyTags)
+    if (tags.length > 1) {
+      const copyTags = [...tags]
+      copyTags.splice(index, 1)
+      setTags(copyTags)
+    }
   }
 
   const updateTag = (index: number, value: string) => {
     const copyTags = [...tags]
-    copyTags[index] = value
+    copyTags[index] = { value: value, id: tags[index].id }
     if (value !== "" && index == tags.length-1)
-      copyTags.push("")
-
+      copyTags.push(newTag(""))
     setTags(copyTags)
   }
 
@@ -57,19 +74,20 @@ const FragmentPreview = (props: Props) => {
     <div className={`fragment-info-panel`}>
       <div className="abs-top-left action-icon-small"
            onClick={(e) => { setShowInfoPanel(false); updateTags() } }>
-        <img src="/info_black_24dp.svg" />
+        <img src="/tag_black_24dp.svg" />
       </div>
-      <div key="tag-list-header" className="tag-list-header">
-        Tags:
+      <div className="abs-top-right action-icon-small"
+           onClick={(e) => { setTags(initialTags()); setShowInfoPanel(false); } }>
+        <img src="/close_black_24dp.svg" />
       </div>
-
+      <div key="tag-list-header" className="tag-list-header">Tags</div>
       <div key="tag-list" className="tag-list">
         {
           tags.map((tag, index) => {
             return (
-              <div key={`tag-${index}-${tag}`} className="tag-entry">
+              <div key={`tag-${tag.id}`} className="tag-entry">
                 <Form.Control
-                  className="tag-input" size="sm" type="text" defaultValue={tag}
+                  className="tag-input" size="sm" type="text" defaultValue={tag.value}
                   onChange = { (e) => updateTag(index, e.target.value) }
                 />
                 <img alt={imgAlt}
@@ -100,7 +118,7 @@ const FragmentPreview = (props: Props) => {
         </div>)
       }
       <div className="abs-top-left action-icon-small" >
-        <img onClick={ (e) => setShowInfoPanel(true)} alt={imgAlt} src="/info_black_24dp.svg" />
+        <img onClick={ (e) => setShowInfoPanel(true)} alt={imgAlt} src="/tag_black_24dp.svg" />
       </div>
     </div>
   );

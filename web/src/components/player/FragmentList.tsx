@@ -23,11 +23,12 @@ const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFr
     props.vid.fragments.map((f, idx) => {
       return (
         <FragmentPreview
+          key={ f.uri }
           vid={ props.vid.id }
           fragment = { props.vid.fragments[idx] }
           style={ extraStyle(idx) }
           className = { (props.selected == idx ? "fragment-selected" : "fragment-not-selected") + " fragment" }
-          showDeleteButton= { props.vid.fragments.length > 1 }
+          showDeleteButton = { props.vid.fragments.length > 1 }
           onDelete = { (v) => props.setVid(v) }
           onClick = { () => props.selectFn({ idx: idx, start: f.timestamp_start / 1000, end: f.timestamp_end / 1000 }) }
         />);
