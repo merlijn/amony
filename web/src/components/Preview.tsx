@@ -6,6 +6,7 @@ import {Video} from "../api/Model";
 import {Form} from "react-bootstrap";
 import {imgAlt} from "../api/Constants";
 import FragmentsPlayer from "./shared/FragmentsPlayer";
+import TripleDotMenu from "./shared/TripleDotMenu";
 
 const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, admin?: boolean}) => {
 
@@ -26,7 +27,7 @@ const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, 
 
   const overlayIcons =
     <div>
-      { props.admin && <div className="abs-top-right action-icon-small"><img src="/more_vert_black_24dp.svg" /></div> }
+      { props.admin && <div style={ { zIndex: 5 }} className="abs-top-right"><TripleDotMenu /></div> }
       { props.admin &&
          <div className="abs-top-left info-button" onClick={(e) => { setShowInfoPanel(true)} }>
             <img alt={imgAlt} src="/info_black_24dp.svg" />

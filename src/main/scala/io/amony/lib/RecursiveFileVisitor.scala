@@ -30,7 +30,7 @@ class RecursiveFileVisitor extends SimpleFileVisitor[Path] with Logging {
 
   @throws[IOException]
   override def visitFileFailed(file: Path, exc: IOException): FileVisitResult = {
-    logger.warn(s"Failed to visit file: $file")
+    logger.warn(s"Failed to visit path: $file")
     FileVisitResult.CONTINUE
   }
 }

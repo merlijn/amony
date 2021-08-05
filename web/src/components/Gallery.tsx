@@ -16,10 +16,10 @@ const Gallery = (props: { cols?: number}) => {
   const location = useLocation();
   const [searchResult, setSearchResult] = useState(new SearchResult(0, 0, 0,[]))
   const urlParams = new URLSearchParams(location.search)
-  const size = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > gridReRenderThreshold));
+  const windowSize = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > gridReRenderThreshold));
 
   // grid size
-  const ncols = 5 // Math.min(Math.max(2, Math.round(size.width / gridSize)), 5);
+  const [ncols, setNcols] = useState(3)
 
   const pageSize = pageSizes.get(ncols) || 24
 
@@ -38,6 +38,14 @@ const Gallery = (props: { cols?: number}) => {
     }, [location]
   )
 
+  useEffect(() => {
+
+    const c = Math.min(Math.max(2, Math.round(windowSize.width / gridSize)), 5);
+    if (c !== ncols)
+      setNcols(c)
+
+  },[windowSize]);
+
   const previews = searchResult.videos.map((vid, idx) => {
 
     let style: { } = { "--ncols" : `${ncols}` }
@@ -47,7 +55,7 @@ const Gallery = (props: { cols?: number}) => {
     else if ((idx + 1) % ncols == 0)
         style = { ...style, paddingRight : "4px" }
 
-    return <Preview style = {style} className="grid-cell" key={`preview-${vid.id}`} vid={vid} admin={true}/>
+    return <Preview style={style} className="grid-cell" key={`preview-${vid.id}`} vid={vid} admin={true}/>
   })
 
   return (

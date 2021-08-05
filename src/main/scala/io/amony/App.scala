@@ -4,7 +4,7 @@ import akka.actor.typed.ActorSystem
 import akka.util.Timeout
 import io.amony.actor.{MediaLibActor, MediaLibApi}
 import io.amony.http.WebServer
-import io.amony.lib.{MediaLibScanner, Migration}
+import io.amony.lib.MediaLibScanner
 import scribe.Logging
 
 import scala.concurrent.duration.DurationInt

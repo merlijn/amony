@@ -120,5 +120,9 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
         objectMapper.createGenerator(file, JsonEncoding.UTF8).writeObject(medias)
       }
     }
+
+    def convertNonStreamableVideos(): Unit = {
+      MediaLibScanner.convertNonStreamableVideos(config, MediaLibApi.this)
+    }
   }
 }

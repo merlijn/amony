@@ -101,7 +101,10 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
     } ~ (path("verify-hashes") & post) {
       api.admin.verifyHashes()
       complete("OK")
-    }
+    } ~ (path("convert-non-streamable-videos") {
+      api.admin.convertNonStreamableVideos()
+      complete("OK")
+    })
   }
 
   val thumbnails =
