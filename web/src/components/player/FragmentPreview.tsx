@@ -1,10 +1,10 @@
 import {durationInMillisToString} from "../../api/Util";
-import {imgAlt} from "../../api/Constants";
 import React, {CSSProperties, useState} from "react";
 import {Fragment, Video} from "../../api/Model";
 import {Api} from "../../api/Api";
 import {Form} from "react-bootstrap";
 import './FragmentPreview.scss';
+import ImgWithAlt from "../shared/ImgWithAlt";
 
 interface Props {
   style: CSSProperties,
@@ -65,7 +65,7 @@ const FragmentPreview = (props: Props) => {
   const updateTag = (index: number, value: string) => {
     const copyTags = [...tags]
     copyTags[index] = { value: value, id: tags[index].id }
-    if (value !== "" && index == tags.length-1)
+    if (value !== "" && index === tags.length-1)
       copyTags.push(newTag(""))
     setTags(copyTags)
   }
@@ -74,11 +74,11 @@ const FragmentPreview = (props: Props) => {
     <div className={`fragment-info-panel`}>
       <div className="abs-top-left action-icon-small"
            onClick={(e) => { setShowInfoPanel(false); updateTags() } }>
-        <img src="/tag_black_24dp.svg" />
+        <ImgWithAlt src="/tag_black_24dp.svg" />
       </div>
       <div className="abs-top-right action-icon-small"
            onClick={(e) => { setTags(initialTags()); setShowInfoPanel(false); } }>
-        <img src="/close_black_24dp.svg" />
+        <ImgWithAlt src="/close_black_24dp.svg" />
       </div>
       <div key="tag-list-header" className="tag-list-header">Tags</div>
       <div key="tag-list" className="tag-list">
@@ -90,7 +90,7 @@ const FragmentPreview = (props: Props) => {
                   className="tag-input" size="sm" type="text" defaultValue={tag.value}
                   onChange = { (e) => updateTag(index, e.target.value) }
                 />
-                <img alt={imgAlt}
+                <ImgWithAlt
                      className="action-icon-medium tag-delete-button"
                      onClick = { (e) => removeTag(index) }
                      src="/cancel_black_24dp.svg" />
@@ -114,11 +114,11 @@ const FragmentPreview = (props: Props) => {
       {
         props.showDeleteButton &&
         (<div className="delete-fragment-icon">
-          <img onClick={ (e) => deleteFragmentFn()} src="/cancel_black_24dp.svg" />
+          <ImgWithAlt onClick={ (e) => deleteFragmentFn()} src="/cancel_black_24dp.svg" />
         </div>)
       }
       <div className="abs-top-left action-icon-small" >
-        <img onClick={ (e) => setShowInfoPanel(true)} alt={imgAlt} src="/tag_black_24dp.svg" />
+        <ImgWithAlt onClick={ (e) => setShowInfoPanel(true)} src="/tag_black_24dp.svg" />
       </div>
     </div>
   );

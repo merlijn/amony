@@ -14,7 +14,7 @@ import {Api} from "../api/Api";
 import {Tag} from "../api/Model";
 import {DropdownButton} from "react-bootstrap";
 import ConfigMenu from "./ConfigMenu";
-import {imgAlt} from "../api/Constants";
+import ImgWithAlt from "./shared/ImgWithAlt";
 
 function TopNavBar(props: { currentPage: number, lastPage: number }) {
 
@@ -57,15 +57,15 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
   // fixed="top"
   return(
     <Navbar className="TopNavBar" fixed="top">
-        <div className="bar-left">
-          <Nav.Link id="home-logo" href="/"><Image alt={imgAlt} width="25px" height="25px" src="/templogo.png" />Amony</Nav.Link>
+        <div key="nav-bar-left" className="bar-left">
+          <Nav.Link id="home-logo" href="/"><ImgWithAlt width="25px" height="25px" src="/templogo.png" />Amony</Nav.Link>
         </div>
-        <div className="bar-center">
+        <div key="nav-bar-center" className="bar-center">
           <Form className="justify-content-center" onSubmit={doSearch} inline>
-            <ConfigMenu />
-            <FormControl id="search-input" className="mr-sm-1" size="sm" type="text" placeholder="Search" value={query} onChange={queryChanged} />
-            <Button variant="outline-success" id="search-button" className="mr-sm-1" size="sm" onClick={doSearch}><Image width="25px" height="25px" src="/search_black_24dp.svg" /></Button>
-            <DropdownButton title="#" size="sm">
+            <ConfigMenu key="nav-config-menu"/>
+            <FormControl key="nav-search-input" id="search-input" className="mr-sm-1" size="sm" type="text" placeholder="Search" value={query} onChange={queryChanged} />
+            <Button key="nav-search-button" variant="outline-success" id="search-button" className="mr-sm-1" size="sm" onClick={doSearch}><Image width="25px" height="25px" src="/search_black_24dp.svg" /></Button>
+            <DropdownButton key="nav-tag-menu" title="#" size="sm">
               {
                 tags.map((c) => {
                   return <NavDropdown.Item href={`/search?c=${c.id}`}>{c.title}</NavDropdown.Item>
@@ -74,9 +74,9 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
             </DropdownButton>
           </Form>
         </div>
-        <div className="bar-right">
-          <Navbar.Text id="current-tag">{c.title}</Navbar.Text>
-          <GalleryPagination className="absolute-right" current={props.currentPage} last={props.lastPage} />
+        <div key="nav-bar-right" className="bar-right">
+          <Navbar.Text key="nav-current-tag" id="current-tag">{c.title}</Navbar.Text>
+          <GalleryPagination key="nav-pagination" className="absolute-right" current={props.currentPage} last={props.lastPage} />
         </div>
     </Navbar>
   );

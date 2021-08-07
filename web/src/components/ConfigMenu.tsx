@@ -1,10 +1,11 @@
 import Dropdown from "react-bootstrap/Dropdown";
-import React, {MouseEventHandler, useState} from "react";
+import React, {MouseEventHandler, useEffect, useState} from "react";
 import Button from "react-bootstrap/Button";
 import Image from 'react-bootstrap/Image';
 import './ConfigMenu.scss';
 import Form from "react-bootstrap/Form";
-import {Row} from "react-bootstrap";
+import {useCookiePrefs} from "../api/Util";
+import {defaultPrefs, Prefs} from "../api/Model";
 
 type ToggleProps = { children: React.ReactNode; onClick: MouseEventHandler<HTMLElement> };
 type Props = { children: React.ReactNode; className: string };
@@ -24,8 +25,6 @@ const CustomToggle = React.forwardRef<Button, ToggleProps>((props, ref) => (
 ));
 
 const CustomMenu = React.forwardRef<HTMLDivElement, Props>((props, ref) => {
-    const [value, setValue] = useState('');
-
     return (
       <div ref={ref} className={`config-menu ${props.className}`}>
         {props.children}
@@ -34,21 +33,28 @@ const CustomMenu = React.forwardRef<HTMLDivElement, Props>((props, ref) => {
   },
 );
 
+
+
 const ConfigMenu = () => {
+
+  const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", defaultPrefs)
 
   return(
     <Dropdown>
       <Dropdown.Toggle as={CustomToggle} id="dropdown-custom-components"></Dropdown.Toggle>
 
       <Dropdown.Menu as={CustomMenu}>
-        <Form className="justify-content-center" inline>
-          <Form.Group as={Row} className="mb-3" controlId="formPlaintextEmail">
+        <div className="justify-content-center">
             <Form.Check
               type="checkbox"
               label="Show video titles"
+              checked={ prefs.showTitles }
+              onChange={(e) => {
+                  setPrefs( { showTitles: !prefs.showTitles })
+                }
+              }
             />
-          </Form.Group>
-        </Form>
+        </div>
       </Dropdown.Menu>
     </Dropdown>
   );

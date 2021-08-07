@@ -6,4 +6,7 @@ export const pageSizes = new Map([
   [5, 32]]
 )
 
-export const imgAlt: string = "<image />"
+export const Constants = {
+
+  imgAlt: "<image here>"
+}

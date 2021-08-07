@@ -4,5 +4,8 @@ import App from './App';
 
 import './App.scss';
 import 'bootstrap/scss/bootstrap.scss';
+import {CookiesProvider} from "react-cookie";
 
-ReactDOM.render(<App />, document.getElementById('root'));
+ReactDOM.render(
+  <CookiesProvider><App /></CookiesProvider>,
+  document.getElementById('root'));

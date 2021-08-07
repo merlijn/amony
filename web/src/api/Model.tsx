@@ -35,3 +35,11 @@ export type Fragment = {
   uri: string,
   tags: string[]
 }
+
+export type Prefs = {
+  showTitles: boolean
+}
+
+export const defaultPrefs: Prefs = {
+  showTitles: true
+}

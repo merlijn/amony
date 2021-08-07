@@ -134,9 +134,4 @@ const PlayerView = (props: {vid: Video}) => {
   );
 }
 
-
-
-
 export default Player;
-
-

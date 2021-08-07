@@ -1,8 +1,8 @@
 import {useEffect, useState} from "react";
+import {useCookies} from "react-cookie";
 
 export function buildUrl(path: string, urlParams: Map<string, string> | undefined) {
 
-  let url = path;
   let paramPath = ""
 
   if (urlParams)
@@ -11,8 +11,6 @@ export function buildUrl(path: string, urlParams: Map<string, string> | undefine
     })
 
   const result = paramPath ? `${path}?${paramPath.substring(1)}` : path
-
-  console.log(`url: ${result}`)
 
   return result
 }
@@ -90,7 +88,23 @@ export function useWindowSize(predicate: (oldSize: Size, newSize: Size) => boole
     handleResize();
     // Remove event listener on cleanup
     return () => window.removeEventListener("resize", handleResize);
-  }, []); // Empty array ensures that effect is only run on mount
+  }, [predicate]); // Empty array ensures that effect is only run on mount
 
   return windowSize;
+}
+
+export function useCookiePrefs<T>(key: string, path: string, defaultPreferences: T): [T, ((e: T) => void)] {
+
+  const [cookiePreferences, setCookiePrefs] = useCookies([key])
+
+  if (cookiePreferences[key] === undefined) {
+    console.log("Setting default preferences")
+    setCookiePrefs(key, defaultPreferences, {path: path})
+  }
+
+  const setPrefsAndCookie = (s: T) => {
+    setCookiePrefs(key, s)
+  }
+
+  return [cookiePreferences[key], setPrefsAndCookie]
 }

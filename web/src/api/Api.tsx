@@ -1,4 +1,4 @@
-import {buildUrl, copyParams} from "./Util";
+import {buildUrl} from "./Util";
 
 const headers = { 'Content-type': 'application/json; charset=UTF-8' };
 

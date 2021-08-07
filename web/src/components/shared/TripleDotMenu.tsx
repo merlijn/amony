@@ -1,7 +1,9 @@
 import Dropdown from "react-bootstrap/Dropdown";
-import React, {MouseEventHandler, useState} from "react";
+import React, {MouseEventHandler, ReactNode} from "react";
 import Button from "react-bootstrap/Button";
 import './TripleDotMenu.scss';
+import {SelectCallback} from "react-bootstrap/helpers";
+import ImgWithAlt from "./ImgWithAlt";
 
 type ToggleProps = { children: React.ReactNode; onClick: MouseEventHandler<HTMLElement>, className?: string };
 type Props = { children: React.ReactNode; className: string };
@@ -15,14 +17,12 @@ const TripleDotToggle =
         e.preventDefault()
         props.onClick(e);
       }}>
-      <img className="action-icon-small" src="/more_vert_black_24dp.svg" />
+      <ImgWithAlt className="action-icon-small" src="/more_vert_black_24dp.svg" />
       {props.children}
     </div>
 ));
 
 const TripleDotDropdown = React.forwardRef<HTMLDivElement, Props>((props, ref) => {
-    const [value, setValue] = useState('');
-
     return (
       <div ref={ref} className={`triple-dot-menu ${props.className}`}>
         {props.children}
@@ -31,15 +31,19 @@ const TripleDotDropdown = React.forwardRef<HTMLDivElement, Props>((props, ref) =
   },
 );
 
-const TripleDotMenu = (props: { className?: string }) => {
+interface TripleDotMenuProps {
+  className?: string
+  children?: ReactNode
+  onSelect?: SelectCallback
+}
+
+const TripleDotMenu = (props: TripleDotMenuProps) => {
 
   return(
-    <Dropdown id="dropdown-menu-align-right">
+    <Dropdown onSelect = { props.onSelect } id="dropdown-menu-align-right">
       <Dropdown.Toggle className={props.className} as={TripleDotToggle}></Dropdown.Toggle>
-
       <Dropdown.Menu align="right" as={TripleDotDropdown}>
-        <Dropdown.Item className="menu-item" eventKey="1"><img className="menu-icon" src="/info_black_24dp.svg" />Info</Dropdown.Item>
-        <Dropdown.Item className="menu-item" eventKey="2"><img className="menu-icon" src="/delete_black_24dp.svg" />Delete</Dropdown.Item>
+        { props.children }
       </Dropdown.Menu>
     </Dropdown>
   );

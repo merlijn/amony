@@ -3,6 +3,7 @@ import React, {CSSProperties, useState} from "react";
 import {EditFragment} from "./Player";
 import FragmentPreview from "./FragmentPreview";
 import './FragmentList.scss';
+import ImgWithAlt from "../shared/ImgWithAlt";
 
 const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFragment) => any, setVid: (vid: Video) => any}) => {
 
@@ -27,7 +28,7 @@ const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFr
           vid={ props.vid.id }
           fragment = { props.vid.fragments[idx] }
           style={ extraStyle(idx) }
-          className = { (props.selected == idx ? "fragment-selected" : "fragment-not-selected") + " fragment" }
+          className = { (props.selected === idx ? "fragment-selected" : "fragment-not-selected") + " fragment" }
           showDeleteButton = { props.vid.fragments.length > 1 }
           onDelete = { (v) => props.setVid(v) }
           onClick = { () => props.selectFn({ idx: idx, start: f.timestamp_start / 1000, end: f.timestamp_end / 1000 }) }
@@ -44,10 +45,10 @@ const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFr
   const addFragment =
     <div key={`fragment-${props.vid.id}-new`}
          style={ extraStyle(nrOfFragments) }
-         className={ (props.selected == nrOfFragments ? "fragment-selected" : "fragment-not-selected") + " fragment" }
+         className={ (props.selected === nrOfFragments ? "fragment-selected" : "fragment-not-selected") + " fragment" }
          onClick={(e) => { props.selectFn({ idx: nrOfFragments }) } }>
       <div className="delete-fragment-icon">
-        <img onClick={ (e) => setShowAddFragment(false)} src="/cancel_black_24dp.svg" />
+        <ImgWithAlt onClick={ (e) => setShowAddFragment(false)} src="/cancel_black_24dp.svg" />
       </div>
       <div style= { sizing } className="new-fragment">&lt;new&gt;</div>
     </div>
@@ -55,11 +56,11 @@ const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFr
   const fragmentsHeader =
     <div key="fragments-header" className="fragments-header">
       Fragments
-      <img style={ { float: "right" } } className="action-icon-medium" src="/close_black_24dp.svg" />
-      <img style={ { float: "right" } }
-           className="action-icon-medium"
-           src="/add_box_black_24dp.svg"
-           onClick = {(e) => { setShowAddFragment(true); props.selectFn({ idx: nrOfFragments }) } } />
+      <ImgWithAlt style={ { float: "right" } } className="action-icon-medium" src="/close_black_24dp.svg" />
+      <ImgWithAlt style={ { float: "right" } }
+                  className="action-icon-medium"
+                  src="/add_box_black_24dp.svg"
+                  onClick = {(e) => { setShowAddFragment(true); props.selectFn({ idx: nrOfFragments }) } } />
     </div>
 
   return (
