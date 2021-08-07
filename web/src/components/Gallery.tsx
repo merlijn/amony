@@ -7,7 +7,6 @@ import {useLocation} from 'react-router-dom'
 import {useCookiePrefs, useWindowSize} from "../api/Util";
 import TopNavBar from "./TopNavBar";
 import {pageSizes} from "../api/Constants";
-import {useCookies, withCookies} from "react-cookie";
 
 const gridSize = 350
 const gridReRenderThreshold = 24
@@ -27,7 +26,7 @@ const Gallery = (props: { cols?: number}) => {
   const windowSize = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > gridReRenderThreshold));
 
   // grid size
-  const [ncols, setNcols] = useState(3)
+  const [ncols, setNcols] = useState(prefs.gallery_columns)
   const pageSize = pageSizes.get(ncols) || 24
 
   const currentPage = () => parseInt(urlParams.get("p") || "1");
@@ -47,11 +46,14 @@ const Gallery = (props: { cols?: number}) => {
 
   useEffect(() => {
 
-    const c = Math.min(Math.max(2, Math.round(windowSize.width / gridSize)), 5);
-    if (c !== ncols)
-      setNcols(c)
-
-  },[windowSize]);
+    if (prefs.gallery_columns === 0) {
+      const c = Math.min(Math.max(2, Math.round(windowSize.width / gridSize)), 5);
+      if (c !== ncols)
+        setNcols(c)
+    } else if (prefs.gallery_columns != ncols) {
+      setNcols(prefs.gallery_columns)
+    }
+  },[windowSize, prefs]);
 
   const previews = searchResult.videos.map((vid, idx) => {
 

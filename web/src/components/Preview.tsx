@@ -21,7 +21,7 @@ const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, 
   const infoPanel = <InfoPanel vid={props.vid} onClickInfo={() => setShowInfoPanel(false) } />
 
   const videoPreview =
-    <FragmentsPlayer className="preview-video preview-media" fragments={ props.vid.fragments } />
+    <FragmentsPlayer id={`video-preview-${props.vid.id}`} className="preview-video preview-media" fragments={ props.vid.fragments } />
 
   const titlePanel =
     <div className="media-title">{vid.title.substring(0, 38)}</div>
@@ -61,9 +61,9 @@ const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, 
 
   return (
     <div style={props.style} className={ `${props.className}` }>
-      { showInfoOverlay && infoPanel }
       { preview }
       { props.showTitles && titlePanel }
+      { showInfoOverlay && infoPanel }
     </div>
   )
 }

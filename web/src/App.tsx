@@ -48,7 +48,7 @@ const PlayFragments = () => {
   )
 
   if (fragments.length > 0) {
-    return <FragmentsPlayer
+    return <FragmentsPlayer id="all-fragments"
       style={ { width: 800, height: 500 } }
       className="abs-center"
       fragments={fragments} />

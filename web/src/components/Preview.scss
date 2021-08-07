@@ -4,7 +4,7 @@
 .info-panel {
 
   z-index: 5;
-  opacity: 100%;
+  //opacity: 50%;
   position: absolute;
   width: 100%;
   height: 100%;
@@ -60,10 +60,11 @@
   font-size: small;
   font-weight: bold;
   float: left;
-  height: 20px;
+  height: 24px;
   width: 100%;
+  padding-top: 2px;
   padding-left: 5px;
-  border-top: 1px solid black;
+  //border-top: 1px solid white;
   background-image: linear-gradient(to right, #2243b8, #71b1ff);
   //background-image: linear-gradient(to right, #ec3a78, #ffc9fd);
   color: white;

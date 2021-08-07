@@ -1,5 +1,5 @@
 import Dropdown from "react-bootstrap/Dropdown";
-import React, {MouseEventHandler, useEffect, useState} from "react";
+import React, {MouseEventHandler} from "react";
 import Button from "react-bootstrap/Button";
 import Image from 'react-bootstrap/Image';
 import './ConfigMenu.scss';
@@ -39,21 +39,58 @@ const ConfigMenu = () => {
 
   const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", defaultPrefs)
 
+  const columns = [1, 2, 3, 4, 5, 6, 7]
+
   return(
     <Dropdown>
       <Dropdown.Toggle as={CustomToggle} id="dropdown-custom-components"></Dropdown.Toggle>
 
       <Dropdown.Menu as={CustomMenu}>
-        <div className="justify-content-center">
-            <Form.Check
-              type="checkbox"
-              label="Show video titles"
-              checked={ prefs.showTitles }
-              onChange={(e) => {
-                  setPrefs( { showTitles: !prefs.showTitles })
+        <div className="ml-sm-2">
+
+            <Form.Group>
+              <Form.Label className="mr-sm-2">Show video titles:</Form.Label>
+              <Form.Check
+                type="checkbox"
+                style={{float: "left"}}
+                label="Show video titles"
+                checked={ prefs.showTitles }
+                onChange={(e) => {
+                    setPrefs( { ...prefs, showTitles: !prefs.showTitles })
+                  }
                 }
+              />
+            </Form.Group>
+
+            <Form.Group>
+              <Form.Label className="mr-sm-2">Number of columns:</Form.Label>
+              <Form.Check
+                className="mr-sm-1"
+                name="ncols"
+                type="radio"
+                value={0}
+                label="auto"
+                checked={prefs.gallery_columns === 0}
+                onChange={(e) => {
+                    setPrefs( { ...prefs, gallery_columns: 0 })
+                  }
+                } />
+              {
+                columns.map((v) => {
+                  return <Form.Check
+                    className="mr-sm-1"
+                    name="ncols"
+                    type="radio"
+                    value={v}
+                    label={v}
+                    checked={prefs.gallery_columns === v}
+                    onChange={(e) => {
+                        setPrefs( { ...prefs, gallery_columns: v })
+                      }
+                    } />;
+                })
               }
-            />
+            </Form.Group>
         </div>
       </Dropdown.Menu>
     </Dropdown>
