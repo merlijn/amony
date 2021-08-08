@@ -14,7 +14,7 @@
   .info-title {
     font-size: large;
     position: absolute;
-    left: 40px;
+    left: 7px;
     top: 5px;
   }
 
@@ -70,10 +70,6 @@
   color: white;
 }
 
-.triple-dot-toggle:after {
-  content: none ! important;
-}
-
 .preview-container {
 
   position: relative;
@@ -111,6 +107,24 @@
     width: 100%;
   }
 }
+
+.preview-menu {
+
+  position: absolute;
+  top: 5px;
+  right: 2px;
+
+  .menu-icon {
+    float: left;
+    margin-right: 10px;
+  }
+
+  .menu-item {
+    padding-left: 10px !important;
+  }
+
+}
+
 
 
 

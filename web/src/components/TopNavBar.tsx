@@ -22,7 +22,7 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
 
   const [query, setQuery] = useState("")
   const [tags, setTags] = useState<Array<Tag>>([]);
-  const [c, setC] = useState<Tag>({id: 0, title: ""})
+  const [selectedTag, setSelectedTag] = useState<Tag>({id: 0, title: ""})
 
   const history = useHistory();
 
@@ -39,7 +39,7 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
     if (cid) {
       const found = tags.find((e) => e.id.toString() === cid)
       if (found)
-        setC(found)
+        setSelectedTag(found)
     }
 
     setQuery(params.get("q") || "")
@@ -54,6 +54,12 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
     setQuery(e.target.value);
   };
 
+  const clearQuery = () => {
+    console.log("setting focus")
+    document.getElementById("nav-search-input")?.focus()
+    setQuery("")
+  }
+
   // fixed="top"
   return(
     <Navbar className="TopNavBar" fixed="top">
@@ -63,19 +69,25 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
         <div key="nav-bar-center" className="bar-center">
           <Form className="justify-content-center" onSubmit={doSearch} inline>
             <ConfigMenu key="nav-config-menu"/>
-            <FormControl key="nav-search-input" id="search-input" className="mr-sm-1" size="sm" type="text" placeholder="Search" value={query} onChange={queryChanged} />
+
+            <div key="nav-search-input" className="nav-search-input mr-sm-1">
+              <FormControl id="nav-search-input" size="sm" type="text" placeholder="Search" value={query} onChange={queryChanged} />
+              <ImgWithAlt className="nav-clear-input action-icon-small" src="/clear_input.svg"
+                          onClick={(e) => clearQuery() } />
+            </div>
+
             <Button key="nav-search-button" variant="outline-success" id="search-button" className="mr-sm-1" size="sm" onClick={doSearch}><Image width="25px" height="25px" src="/search_black_24dp.svg" /></Button>
             <DropdownButton key="nav-tag-menu" title="#" size="sm">
               {
-                tags.map((c) => {
-                  return <NavDropdown.Item key={`nav-tag-${c.id}`} href={`/search?c=${c.id}`}>{c.title}</NavDropdown.Item>
+                tags.map((t) => {
+                  return <NavDropdown.Item key={`nav-tag-${t.id}`} href={`/search?c=${t.id}`}>{t.title}</NavDropdown.Item>
                 })
               }
             </DropdownButton>
           </Form>
         </div>
         <div key="nav-bar-right" className="bar-right">
-          <Navbar.Text key="nav-current-tag" id="current-tag">{c.title}</Navbar.Text>
+          <Navbar.Text key="nav-current-tag" id="current-tag">{selectedTag.title}</Navbar.Text>
           <GalleryPagination key="nav-pagination" className="absolute-right" current={props.currentPage} last={props.lastPage} />
         </div>
     </Navbar>

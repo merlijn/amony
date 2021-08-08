@@ -7,6 +7,7 @@
   margin-right: 4px;
   margin-bottom: 5px;
   background-color: white;
+  //opacity: 50%;
   //border-bottom: 1px solid #ced4da;
   padding: 8px 0px !important;
 }
@@ -55,6 +56,15 @@
   padding: 2px 5px !important;
 }
 
-#search-input {
+.nav-search-input {
+  position:relative;
   flex-grow:1;
+  input {
+    width: 100% ! important;
+  }
+  .nav-clear-input {
+    position: absolute;
+    right: 5px;
+    top: 6px
+  }
 }

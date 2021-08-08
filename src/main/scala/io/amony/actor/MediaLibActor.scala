@@ -53,7 +53,7 @@ object MediaLibActor {
       resolution: (Int, Int),
       tags: List[String]
   ) {
-    def path(baseDir: Path): Path = baseDir.resolve(uri)
+    def resolvePath(baseDir: Path): Path = baseDir.resolve(uri)
 
     def fileName(): String = {
       val slashIdx = uri.lastIndexOf('/')

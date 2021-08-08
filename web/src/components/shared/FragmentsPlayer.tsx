@@ -8,25 +8,23 @@ const FragmentsPlayer = (props: {id: string, className?: string, style?: CSSProp
   let playPromise: Promise<void> = Promise.resolve()
 
   useEffect(() => {
-    const element = document.getElementById(props.id) as HTMLVideoElement;
+    const videoElement = document.getElementById(props.id) as HTMLVideoElement;
 
     playPromise.then(() => {
-      element.load()
-      playPromise = element.play()
+      videoElement.load()
+      playPromise = videoElement.play()
     });
   }, [currentPreviewIdx])
 
-  const nextPreview = (v: HTMLVideoElement) => {
-
-    // back the 1st (0)
-    if (currentPreviewIdx < props.fragments.length - 1) {
-      setCurrentPreviewIdx(currentPreviewIdx + 1)
-    }
+  const nextFragment = (v: HTMLVideoElement) => {
 
     // on to the next
-    if (currentPreviewIdx > 0 && currentPreviewIdx + 1 >= props.fragments.length) {
+    if (currentPreviewIdx < props.fragments.length - 1)
+      setCurrentPreviewIdx(currentPreviewIdx + 1)
+
+    // back the 1st (0)
+    if (currentPreviewIdx > 0 && currentPreviewIdx + 1 >= props.fragments.length)
       setCurrentPreviewIdx(0)
-    }
 
     play(v)
   }
@@ -35,10 +33,10 @@ const FragmentsPlayer = (props: {id: string, className?: string, style?: CSSProp
     playPromise.then(() => { playPromise = v.play() });
   }
 
-
   const reset = (v: HTMLVideoElement) => {
 
     playPromise.then(() => {
+      v.pause()
       setCurrentPreviewIdx(0)
     });
   };
@@ -49,7 +47,7 @@ const FragmentsPlayer = (props: {id: string, className?: string, style?: CSSProp
            className={props.className} muted
            onMouseOver={(e) => play(e.currentTarget) }
            onMouseLeave={ (e) =>  reset(e.currentTarget) }
-           onEnded={(e) => nextPreview(e.currentTarget )} >
+           onEnded={(e) => nextFragment(e.currentTarget )} >
 
       <source src={props.fragments[currentPreviewIdx].uri} type="video/mp4"/>
     </video>

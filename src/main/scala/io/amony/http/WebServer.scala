@@ -48,7 +48,6 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
     pathPrefix("api") {
       (path("media") & parameters("q".optional, "offset".optional, "n".optional, "c".optional)) { (q, offset, s, c) =>
         get {
-
           val size         = s.map(_.toInt).getOrElse(defaultResultNumber)
           val searchResult = api.read.search(q, offset.map(_.toInt), size, c)
           val response     = searchResult.map(_.toWebModel().asJson)
@@ -60,6 +59,10 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
           api.read.getById(id) match {
             case Some(vid) => complete(vid.toWebModel.asJson)
             case None      => complete(StatusCodes.NotFound)
+          }
+        } ~ delete {
+          onSuccess(api.modify.deleteMedia(id)) {
+            case response => complete(StatusCodes.OK, "{}")
           }
         }
       } ~ path("tags") {

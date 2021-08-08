@@ -53,8 +53,12 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
       system.ask[Boolean](ref => UpsertMedia(media, ref)).map(_ => media)
     }
 
-    def deleteMedia(id: String)(implicit timeout: Timeout): Future[Unit] = {
-      system.ask[Boolean](ref => RemoveMedia(id, ref)).map(_ => ())
+    def deleteMedia(id: String)(implicit timeout: Timeout): Future[Boolean] = {
+      logger.info("sending delete command")
+      system.ask[Boolean](ref => RemoveMedia(id, ref)).map { response =>
+        logger.info(s"got response: $response")
+        response
+      }
     }
 
     def addFragment(id: String, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =

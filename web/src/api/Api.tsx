@@ -24,6 +24,10 @@ export const Api = {
     return doGET(`/api/media/${id}`)
   },
 
+  deleteMediaById: async function (id: string) {
+    return doDelete(`/api/media/${id}`)
+  },
+
   updateFragmentTags: async function (id: string, idx: number, tags: Array<string>) {
     return doPOST(`/api/fragments/${id}/${idx}/tags`, tags)
   },

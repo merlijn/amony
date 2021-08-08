@@ -9,6 +9,8 @@ import io.amony.lib.ListOps
 import io.amony.lib.MediaLibScanner.{createVideoFragment, deleteVideoFragment}
 import scribe.Logging
 
+import java.awt.Desktop
+
 object MediaLibCommandHandler extends Logging {
 
   def apply(config: MediaLibConfig)(state: State, cmd: Command): Effect[Event, State] = {
@@ -36,10 +38,18 @@ object MediaLibCommandHandler extends Logging {
           .persist(MediaAdded(media))
           .thenReply(sender)(_ => true)
 
-      case RemoveMedia(id, sender) =>
-        logger.debug(s"Removing media: $id")
+      case RemoveMedia(mediaId, sender) =>
+
+        val media = state.media(mediaId)
+        val path = media.resolvePath(config.libraryPath)
+
+        logger.info(s"Deleting media '$mediaId:/${media.uri}'")
+
         Effect
-          .persist(MediaRemoved(id))
+          .persist(MediaRemoved(mediaId))
+          .thenRun( (s: State) => {
+            Desktop.getDesktop().moveToTrash(path.toFile());
+          })
           .thenReply(sender)(_ => true)
 
       case GetById(id, sender) =>
@@ -86,7 +96,9 @@ object MediaLibCommandHandler extends Logging {
 
             val newFragments = vid.fragments.deleteAtPos(idx)
             val newVid =
-              vid.copy(fragments = vid.fragments.deleteAtPos(idx), thumbnailTimestamp = newFragments(0).fromTimestamp)
+              vid.copy(
+                fragments = vid.fragments.deleteAtPos(idx),
+                thumbnailTimestamp = newFragments(0).fromTimestamp)
 
             Effect
               .persist(MediaUpdated(id, newVid))
@@ -127,7 +139,7 @@ object MediaLibCommandHandler extends Logging {
                 .persist(MediaUpdated(id, newVid))
                 .thenRun { (s: State) =>
                   deleteVideoFragment(config.indexPath, vid.id, oldFragment.fromTimestamp, oldFragment.toTimestamp)
-                  createVideoFragment(vid.path(config.libraryPath), config.indexPath, id, from, to)
+                  createVideoFragment(vid.resolvePath(config.libraryPath), config.indexPath, id, from, to)
                 }
                 .thenReply(sender)(_ => Right(newVid))
             }
@@ -153,7 +165,7 @@ object MediaLibCommandHandler extends Logging {
 
               Effect
                 .persist(FragmentAdded(id, from, to))
-                .thenRun((_: State) => createVideoFragment(vid.path(config.libraryPath), config.indexPath, id, from, to))
+                .thenRun((_: State) => createVideoFragment(vid.resolvePath(config.libraryPath), config.indexPath, id, from, to))
                 .thenReply(sender)(s => Right(s.media(id)))
             }
         }
