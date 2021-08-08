@@ -68,7 +68,7 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
             <DropdownButton key="nav-tag-menu" title="#" size="sm">
               {
                 tags.map((c) => {
-                  return <NavDropdown.Item href={`/search?c=${c.id}`}>{c.title}</NavDropdown.Item>
+                  return <NavDropdown.Item key={`nav-tag-${c.id}`} href={`/search?c=${c.id}`}>{c.title}</NavDropdown.Item>
                 })
               }
             </DropdownButton>

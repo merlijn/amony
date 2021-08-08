@@ -25,19 +25,17 @@ const GalleryPagination: React.FC<Props> = (props) => {
     });
   };
 
-  let items = [<Pagination.Item style={ { width: 30, textAlign: "center" } }active>{props.current}</Pagination.Item>]
+  let items = []
 
   let clazz = `searchPagination ${props.className}`
 
   return (
       <Pagination size="sm" className={clazz}>
-        <Pagination.First onClick={ () => navigate(1) } />
-        <Pagination.Prev onClick={ () => navigate(Math.max(props.current -1, 1)) } />
-        {
-          items
-        }
-        <Pagination.Next onClick={ () => navigate(Math.min(props.current + 1, props.last)) }/>
-        <Pagination.Last onClick= { () => navigate(props.last) } />
+        <Pagination.First key="nav-first" onClick={ () => navigate(1) } />
+        <Pagination.Prev key="nav-prev" onClick={ () => navigate(Math.max(props.current -1, 1)) } />
+        <Pagination.Item key="nav-current" style={ { width: 30, textAlign: "center" } }active>{props.current}</Pagination.Item>
+        <Pagination.Next key="nav-next" onClick={ () => navigate(Math.min(props.current + 1, props.last)) }/>
+        <Pagination.Last key="nav-last" onClick= { () => navigate(props.last) } />
       </Pagination>
   );
 }

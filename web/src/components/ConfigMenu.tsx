@@ -39,7 +39,10 @@ const ConfigMenu = () => {
 
   const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", defaultPrefs)
 
-  const columns = [1, 2, 3, 4, 5, 6, 7]
+  const columns = [1, 2, 3, 4, 5, 6, 7].map((v) => {
+    return { value: v, label: v.toString() }
+  })
+  columns.push({ value: 0, label: "auto"})
 
   return(
     <Dropdown>
@@ -64,28 +67,18 @@ const ConfigMenu = () => {
 
             <Form.Group>
               <Form.Label className="mr-sm-2">Number of columns:</Form.Label>
-              <Form.Check
-                className="mr-sm-1"
-                name="ncols"
-                type="radio"
-                value={0}
-                label="auto"
-                checked={prefs.gallery_columns === 0}
-                onChange={(e) => {
-                    setPrefs( { ...prefs, gallery_columns: 0 })
-                  }
-                } />
               {
                 columns.map((v) => {
                   return <Form.Check
+                    key={v.value}
                     className="mr-sm-1"
                     name="ncols"
                     type="radio"
-                    value={v}
-                    label={v}
-                    checked={prefs.gallery_columns === v}
+                    value={v.value}
+                    label={v.label}
+                    checked={prefs.gallery_columns === v.value}
                     onChange={(e) => {
-                        setPrefs( { ...prefs, gallery_columns: v })
+                        setPrefs( { ...prefs, gallery_columns: v.value })
                       }
                     } />;
                 })

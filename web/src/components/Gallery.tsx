@@ -27,7 +27,7 @@ const Gallery = (props: { cols?: number}) => {
 
   // grid size
   const [ncols, setNcols] = useState(prefs.gallery_columns)
-  const pageSize = pageSizes.get(ncols) || 24
+  const pageSize = pageSizes.get(ncols) || 60
 
   const currentPage = () => parseInt(urlParams.get("p") || "1");
 
