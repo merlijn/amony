@@ -33,8 +33,6 @@ const CustomMenu = React.forwardRef<HTMLDivElement, Props>((props, ref) => {
   },
 );
 
-
-
 const ConfigMenu = () => {
 
   const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", defaultPrefs)

@@ -18,7 +18,7 @@ function App() {
           <Switch>
             <Route exact path="/" component = { Gallery }  />
             <Route path="/search"  component = { Gallery } />
-            <Route path="/video/:id" children = { <VideoRender /> } />
+            <Route path="/editor/:id" children = { <VideoRender /> } />
             <Route exact path="/playfrags" children ={ <PlayFragments /> } />
           </Switch>
         </div>
@@ -57,10 +57,7 @@ const PlayFragments = () => {
 }
 
 function VideoRender() {
-  // We can use the `useParams` hook here to access
-  // the dynamic pieces of the URL.
   let { id } = useParams<{ id: string }>();
-
   return (
     <Player videoId={id} />
   );

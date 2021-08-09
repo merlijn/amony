@@ -11,7 +11,15 @@ import ImgWithAlt from "./shared/ImgWithAlt";
 import Button from "react-bootstrap/Button";
 import {Api} from "../api/Api";
 
-const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, showTitles: boolean}) => {
+type PreviewProps = {
+  vid: Video,
+  style?: CSSProperties,
+  className?: string,
+  showTitles: boolean,
+  onClick: (v: Video) => any
+}
+
+const Preview = (props: PreviewProps) => {
 
   const [vid, setVid] = useState(props.vid)
 
@@ -23,7 +31,10 @@ const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, 
   const infoPanel = <InfoPanel vid={props.vid} onClickInfo={() => setShowInfoPanel(false) } />
 
   const videoPreview =
-    <FragmentsPlayer id={`video-preview-${props.vid.id}`} className="preview-video preview-media" fragments={ props.vid.fragments } />
+    <FragmentsPlayer id={`video-preview-${props.vid.id}`}
+                     onClick={ () => props.onClick(props.vid) }
+                     className="preview-video preview-media"
+                     fragments={ props.vid.fragments } />
 
   const titlePanel =
     <div className="media-title">{vid.title.substring(0, 38)}</div>
@@ -40,15 +51,16 @@ const Preview = (props: {vid: Video, style?: CSSProperties, className?: string, 
   const primaryThumbnail = <Image className="preview-thumbnail preview-media" src={vid.thumbnail_uri} fluid />
 
   let preview =
-    <a href={`/video/${props.vid.id}`}>
+    // <a href={`/video/${props.vid.id}`}>
       <div className = "preview-container"
            onMouseEnter={() => setShowVideoPreview(true)}
-           onMouseLeave={() => setShowVideoPreview(false)}>
+           onMouseLeave={() => setShowVideoPreview(false)}
+           >
         { showVideoPreview && videoPreview }
         { primaryThumbnail }
         { overlayIcons }
       </div>
-    </a>
+    // </a>
 
   return (
     <div style={props.style} className={ `${props.className}` }>
@@ -76,6 +88,8 @@ const PreviewMenu = (props: {vid: Video, showInfo: () => void}) => {
       setShowConfirmDelete(true)
     } else if (eventKey === "info") {
       props.showInfo()
+    } else if (eventKey === "editor") {
+
     }
   }
 
@@ -95,9 +109,14 @@ const PreviewMenu = (props: {vid: Video, showInfo: () => void}) => {
       <div style={ { zIndex: 5 }} className="preview-menu">
         <TripleDotMenu onSelect={selectFn}>
           <Dropdown.Item className="menu-item" eventKey="info">
-            <ImgWithAlt className="menu-icon" src="/info_black_24dp.svg" />Info</Dropdown.Item>
+            <ImgWithAlt className="menu-icon" src="/info_black_24dp.svg" />Info
+          </Dropdown.Item>
+          <Dropdown.Item className="menu-item" eventKey="editor" href={`/editor/${props.vid.id}`}>
+            <ImgWithAlt className="menu-icon" src="/edit_black_24dp.svg" />Edit
+          </Dropdown.Item>
           <Dropdown.Item className="menu-item" eventKey="delete">
-            <ImgWithAlt className="menu-icon" src="/delete_black_24dp.svg" />Delete</Dropdown.Item>
+            <ImgWithAlt className="menu-icon" src="/delete_black_24dp.svg" />Delete
+          </Dropdown.Item>
         </TripleDotMenu>
       </div>
     </>

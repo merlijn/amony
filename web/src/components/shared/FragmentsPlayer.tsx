@@ -1,7 +1,15 @@
 import React, {CSSProperties, useEffect, useState} from "react";
 import {Fragment} from "../../api/Model";
 
-const FragmentsPlayer = (props: {id: string, className?: string, style?: CSSProperties, fragments: Array<Fragment> }) => {
+type FragmentsPlayerProps = {
+  id: string,
+  className?: string,
+  style?: CSSProperties,
+  fragments: Array<Fragment>
+  onClick?: () => void
+}
+
+const FragmentsPlayer = (props: FragmentsPlayerProps) => {
 
   const [currentPreviewIdx, setCurrentPreviewIdx] = useState(0)
 
@@ -45,6 +53,7 @@ const FragmentsPlayer = (props: {id: string, className?: string, style?: CSSProp
     <video id={props.id}
            style={props.style ? props.style : {}}
            className={props.className} muted
+           onClick={(e) => props.onClick && props.onClick() }
            onMouseOver={(e) => play(e.currentTarget) }
            onMouseLeave={ (e) =>  reset(e.currentTarget) }
            onEnded={(e) => nextFragment(e.currentTarget )} >

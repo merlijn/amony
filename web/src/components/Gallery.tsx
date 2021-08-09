@@ -1,12 +1,15 @@
-import React, {useEffect, useState} from 'react';
+import React, {CSSProperties, useEffect, useState} from 'react';
 import {Api} from '../api/Api';
-import {defaultPrefs, Prefs, SearchResult} from '../api/Model';
+import {defaultPrefs, Prefs, SearchResult, Video} from '../api/Model';
 import Preview from './Preview';
 import './Gallery.scss';
 import {useLocation} from 'react-router-dom'
-import {useCookiePrefs, useWindowSize} from "../api/Util";
+import {BoundedRatioBox, useCookiePrefs, useWindowSize} from "../api/Util";
 import TopNavBar from "./TopNavBar";
 import {pageSizes} from "../api/Constants";
+import {Modal} from "react-bootstrap";
+import Button from "react-bootstrap/Button";
+import Plyr from "plyr";
 
 const gridSize = 350
 const gridReRenderThreshold = 24
@@ -21,6 +24,7 @@ const Gallery = (props: { cols?: number}) => {
   const location = useLocation();
   const [searchResult, setSearchResult] = useState(new SearchResult(0, 0, 0,[]))
 
+  const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
   const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", defaultPrefs)
   const urlParams = new URLSearchParams(location.search)
   const windowSize = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > gridReRenderThreshold));
@@ -64,13 +68,59 @@ const Gallery = (props: { cols?: number}) => {
     else if ((idx + 1) % ncols === 0)
         style = { ...style, paddingRight : "4px" }
 
-    return <Preview style={style} className="grid-cell" key={`preview-${vid.id}`} vid={vid} showTitles={prefs.showTitles}/>
+    return <Preview
+      style={style}
+      className="grid-cell"
+      key={`preview-${vid.id}`}
+      vid={vid}
+      onClick={ (v) => setPlayVideo(v) }
+      showTitles={prefs.showTitles}/>
   })
+
+  useEffect(() => {
+
+    const element = document.getElementById("gallery-video-player") as HTMLVideoElement;
+
+    if (playVideo !== undefined) {
+      if (element) {
+        element.load()
+        const plyr = new Plyr(element, { fullscreen : { enabled: true }, invertTime: false})
+        plyr.play()
+      }
+    }
+    else {
+      element.pause()
+    }
+
+  },[playVideo]);
+
+  const modalSize = (v:Video | undefined): CSSProperties => {
+     return v ? BoundedRatioBox("70vw", "70vh", v.resolution_x / v.resolution_y) : { }
+  }
 
   return (
     <div className="gallery-container full-width">
-      <TopNavBar currentPage ={currentPage()} lastPage={Math.ceil(searchResult.total / pageSize)} />
-      <div className="gallery">
+      <TopNavBar key="top-nav-bar" currentPage ={currentPage()} lastPage={Math.ceil(searchResult.total / pageSize)} />
+      <div key="gallery" className="gallery">
+        <div
+          key="gallery-video-player"
+          className="custom-modal-container"
+          style={ playVideo === undefined ? { display: "none"}: {display: "block" }}>
+
+          <div key="custom-model-background"
+               className="custom-modal-background"
+               onClick = { (e) => setPlayVideo(undefined) }></div>
+
+          <div key="custom-model-content" className="custom-modal-content">
+            {
+               <div className="video-player" style={modalSize(playVideo)}>
+                  <video id="gallery-video-player"  playsInline controls>
+                    { playVideo && <source src={'/files/videos/' + playVideo.id} type="video/mp4"/> }
+                  </video>
+               </div>
+            }
+          </div>
+        </div>
         {previews}
       </div>
     </div>

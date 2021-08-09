@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {CSSProperties, useEffect, useState} from "react";
 import {useCookies} from "react-cookie";
 
 export function buildUrl(path: string, urlParams: Map<string, string> | undefined) {
@@ -92,6 +92,14 @@ export function useWindowSize(predicate: (oldSize: Size, newSize: Size) => boole
 
   return windowSize;
 }
+
+export function BoundedRatioBox(maxWidth: string, maxHeight: string, ratio: number): CSSProperties {
+  return {
+    width: `min(${maxWidth}, ${maxHeight} * ${ratio})`,
+    height: `min(${maxHeight}, ${maxWidth} * 1 / ${ratio})`
+  }
+}
+
 
 export function useCookiePrefs<T>(key: string, path: string, defaultPreferences: T): [T, ((e: T) => void)] {
 

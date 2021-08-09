@@ -24,3 +24,45 @@
   //  border: 2px solid red;
   //}
 }
+
+
+/* The Modal (background) */
+.custom-modal-container {
+
+  @extend .full-screen;
+
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 10; /* Sit on top */
+  left: 0;
+  top: 0;
+  overflow: hidden;
+
+  .custom-modal-background {
+
+    @extend .full-screen;
+
+    position: fixed; /* Stay in place */
+    z-index: 11; /* Sit on top */
+    left: 0;
+    top: 0;
+    overflow: hidden;
+    background-color: rgb(0,0,0); /* Fallback color */
+    background-color: rgba(0,0,0,0.5); /* Black w/ opacity */
+  }
+
+  .custom-modal-content {
+
+    @extend .abs-center;
+
+    z-index: 12;
+    margin: 0; /* 15% from the top and centered */
+    padding: 0;
+    //border: 1px solid black;
+    box-shadow: -20px -20px 40px rgba(0, 0, 0, 0.3),
+                -20px 20px 40px rgba(0, 0, 0, 0.3),
+                 20px -20px 40px rgba(0, 0, 0, 0.3),
+                 20px 20px 40px rgba(0, 0, 0, 0.3);
+  }
+}
+
