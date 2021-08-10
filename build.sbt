@@ -7,7 +7,7 @@ lazy val root = (project in file(".")).
       organization    := "io.amony",
       scalaVersion    := "2.13.6"
     )),
-    reStart / javaOptions += Seq("-Dfile.encoding=UTF-8"),
+    reStart / javaOptions += "-Dfile.encoding=UTF-8",
     name := "amony",
     libraryDependencies ++= Seq(
 
