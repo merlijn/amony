@@ -34,10 +34,10 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
 
   useEffect(() => {
     const params = copyParams(new URLSearchParams(location.search))
-    const cid = params.get("c")
+    const tagId = params.get("c")
 
-    if (cid) {
-      const found = tags.find((e) => e.id.toString() === cid)
+    if (tagId) {
+      const found = tags.find((e) => e.id.toString() === tagId)
       if (found)
         setSelectedTag(found)
     }

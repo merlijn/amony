@@ -1,7 +1,7 @@
 import {useHistory, useLocation} from "react-router-dom";
 import {buildUrl, copyParams} from "../api/Util";
 import Pagination from "react-bootstrap/Pagination";
-import React from "react";
+import React, {useEffect, useState} from "react";
 
 type Props = {
   className?: string,
@@ -24,6 +24,27 @@ const GalleryPagination: React.FC<Props> = (props) => {
       behavior: 'auto'
     });
   };
+
+  const propsRef = React.useRef({...props });
+
+  useEffect(() => {
+      propsRef.current = { ...props }
+    }, [props]
+  )
+
+  useEffect( () => {
+
+    document.addEventListener('keydown', (event: KeyboardEvent) => {
+
+      const p = propsRef.current
+
+      if (event.code === 'ArrowRight' && p.current < p.last) {
+        navigate(p.current + 1)
+      } else if (event.code === 'ArrowLeft' && p.current > 1) {
+        navigate(p.current - 1)
+      }
+    })
+  }, [])
 
   let items = []
 

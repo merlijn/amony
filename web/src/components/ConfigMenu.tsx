@@ -40,7 +40,7 @@ const ConfigMenu = () => {
   const columns = [1, 2, 3, 4, 5, 6, 7].map((v) => {
     return { value: v, label: v.toString() }
   })
-  columns.push({ value: 0, label: "auto"})
+  columns.unshift({ value: 0, label: "auto"})
 
   return(
     <Dropdown>
@@ -54,7 +54,6 @@ const ConfigMenu = () => {
               <Form.Check
                 type="checkbox"
                 style={{float: "left"}}
-                label="Show video titles"
                 checked={ prefs.showTitles }
                 onChange={(e) => {
                     setPrefs( { ...prefs, showTitles: !prefs.showTitles })
@@ -81,6 +80,30 @@ const ConfigMenu = () => {
                     } />;
                 })
               }
+            </Form.Group>
+            <Form.Group>
+              <Form.Label className="mr-sm-2">Show duration:</Form.Label>
+              <Form.Check
+                type="checkbox"
+                style={{float: "left"}}
+                checked={ prefs.showDuration }
+                onChange={(e) => {
+                  setPrefs( { ...prefs, showDuration: !prefs.showDuration })
+                }
+                }
+              />
+            </Form.Group>
+            <Form.Group>
+              <Form.Label className="mr-sm-2">Show triple dot menu:</Form.Label>
+              <Form.Check
+                type="checkbox"
+                style={{float: "left"}}
+                checked={ prefs.showMenu }
+                onChange={(e) => {
+                  setPrefs( { ...prefs, showMenu: !prefs.showMenu })
+                }
+                }
+              />
             </Form.Group>
         </div>
       </Dropdown.Menu>

@@ -1,4 +1,4 @@
-import React, {CSSProperties, useEffect, useState} from 'react';
+import React, {CSSProperties, useEffect, useRef, useState} from 'react';
 import {Api} from '../api/Api';
 import {defaultPrefs, Prefs, SearchResult, Video} from '../api/Model';
 import Preview from './Preview';
@@ -14,18 +14,35 @@ import Plyr from "plyr";
 const gridSize = 350
 const gridReRenderThreshold = 24
 
-type Preferences = {
-  gallery_columns?: number
-  infinite_scroll: boolean
-}
-
 const Gallery = (props: { cols?: number}) => {
 
   const location = useLocation();
   const [searchResult, setSearchResult] = useState(new SearchResult(0, 0, 0,[]))
 
   const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
+  const videoElement = useRef<HTMLVideoElement>(null)
+
   const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", defaultPrefs)
+
+  // https://medium.com/geographit/accessing-react-state-in-event-listeners-with-usestate-and-useref-hooks-8cceee73c559
+  // https://stackoverflow.com/questions/55265255/react-usestate-hook-event-handler-using-initial-state
+  const [showNavBar, _setShowNavBar] = useState(true)
+  const showNavBarRef = React.useRef(showNavBar);
+  const setShowNavBar = (v: boolean) => {
+    showNavBarRef.current = v;
+    _setShowNavBar(v);
+  };
+
+  useEffect( () => {
+    document.addEventListener('keydown', (event: KeyboardEvent) => {
+      // ArrowLeft, ArrowRight
+      console.log(`gallery: ${event.code}`)
+      if (event.code === 'Slash') {
+        setShowNavBar(!showNavBarRef.current)
+      }
+    })
+  }, [])
+
   const urlParams = new URLSearchParams(location.search)
   const windowSize = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > gridReRenderThreshold));
 
@@ -69,29 +86,27 @@ const Gallery = (props: { cols?: number}) => {
         style = { ...style, paddingRight : "4px" }
 
     return <Preview
-      style={style}
-      className="grid-cell"
-      key={`preview-${vid.id}`}
-      vid={vid}
-      onClick={ (v) => setPlayVideo(v) }
-      showTitles={prefs.showTitles}/>
+              style={style} className="grid-cell"
+              key={`preview-${vid.id}`}
+              vid={vid}
+              onClick={ (v) => setPlayVideo(v) }
+              showTitles={prefs.showTitles} showDuration={prefs.showDuration} showMenu={prefs.showMenu}/>
   })
 
   useEffect(() => {
 
-    const element = document.getElementById("gallery-video-player") as HTMLVideoElement;
+    const element = videoElement.current
 
-    if (playVideo !== undefined) {
-      if (element) {
+    if (element) {
+      if (playVideo !== undefined) {
         element.load()
         const plyr = new Plyr(element, { fullscreen : { enabled: true }, invertTime: false})
         plyr.play()
       }
+      else {
+        element.pause()
+      }
     }
-    else {
-      element.pause()
-    }
-
   },[playVideo]);
 
   const modalSize = (v:Video | undefined): CSSProperties => {
@@ -100,8 +115,10 @@ const Gallery = (props: { cols?: number}) => {
 
   return (
     <div className="gallery-container full-width">
-      <TopNavBar key="top-nav-bar" currentPage ={currentPage()} lastPage={Math.ceil(searchResult.total / pageSize)} />
-      <div key="gallery" className="gallery">
+
+      {showNavBar && <TopNavBar key="top-nav-bar" currentPage = {currentPage() } lastPage={Math.ceil(searchResult.total / pageSize)} /> }
+
+      <div style={{ marginTop: showNavBar ? 42 : 2 }} key="gallery" className="gallery">
         <div
           key="gallery-video-player"
           className="custom-modal-container"
@@ -114,7 +131,7 @@ const Gallery = (props: { cols?: number}) => {
           <div key="custom-model-content" className="custom-modal-content">
             {
                <div className="video-player" style={modalSize(playVideo)}>
-                  <video id="gallery-video-player"  playsInline controls>
+                  <video ref={videoElement} id="gallery-video-player"  playsInline controls>
                     { playVideo && <source src={'/files/videos/' + playVideo.id} type="video/mp4"/> }
                   </video>
                </div>

@@ -48,7 +48,8 @@ object MediaLibCommandHandler extends Logging {
         Effect
           .persist(MediaRemoved(mediaId))
           .thenRun( (s: State) => {
-            Desktop.getDesktop().moveToTrash(path.toFile());
+            if (File(path).exists)
+              Desktop.getDesktop().moveToTrash(path.toFile());
           })
           .thenReply(sender)(_ => true)
 

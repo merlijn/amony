@@ -16,6 +16,8 @@ type PreviewProps = {
   style?: CSSProperties,
   className?: string,
   showTitles: boolean,
+  showDuration: boolean,
+  showMenu: boolean,
   onClick: (v: Video) => any
 }
 
@@ -41,11 +43,14 @@ const Preview = (props: PreviewProps) => {
 
   const overlayIcons =
     <div>
-      <div style={ { zIndex: 5 }} className="abs-top-right">
-        <PreviewMenu vid={vid} showInfo={ () => setShowInfoPanel(true)} />
-      </div>
+      {
+        props.showMenu &&
+          <div style={ { zIndex: 5 }} className="abs-top-right">
+            <PreviewMenu vid={vid} showInfo={ () => setShowInfoPanel(true)} />
+          </div>
+      }
 
-      <div className="abs-bottom-left duration-overlay">{durationStr}</div>
+      { props.showDuration && <div className="abs-bottom-left duration-overlay">{durationStr}</div> }
     </div>
 
   const primaryThumbnail = <Image className="preview-thumbnail preview-media" src={vid.thumbnail_uri} fluid />

@@ -38,10 +38,14 @@ export type Fragment = {
 
 export type Prefs = {
   showTitles: boolean
+  showDuration: boolean
+  showMenu: boolean
   gallery_columns: number;
 }
 
 export const defaultPrefs: Prefs = {
-  showTitles: true,
+  showTitles: false,
+  showDuration: true,
+  showMenu: true,
   gallery_columns: 0
 }
