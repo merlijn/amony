@@ -15,8 +15,6 @@ export class Video {
 export class SearchResult {
 
   constructor(
-    public currentPage: number,
-    public pageSize: number,
     public total: number,
     public videos: Video[]
   ) {

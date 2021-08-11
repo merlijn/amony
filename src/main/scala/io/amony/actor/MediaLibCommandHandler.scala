@@ -63,20 +63,20 @@ object MediaLibCommandHandler extends Logging {
         Effect.reply(sender)(state.media.values.toList)
 
       case Search(query, sender) =>
-        val col = query.c match {
+        val tagsFiltered = query.tag match {
           case None => orderedMedia
           case Some(id) =>
             tags
               .find(_.id == id)
-              .map { cid =>
-                orderedMedia.filter(_.uri.startsWith(cid.title.substring(1)))
+              .map { tagId =>
+                orderedMedia.filter(_.uri.startsWith(tagId.title.substring(1)))
               }
               .getOrElse(orderedMedia)
         }
 
         val result = query.q match {
-          case Some(query) => col.filter(_.uri.toLowerCase.contains(query.toLowerCase))
-          case None        => col
+          case Some(query) => tagsFiltered.filter(_.uri.toLowerCase.contains(query.toLowerCase))
+          case None        => tagsFiltered
         }
 
         val offset = query.offset.getOrElse(0)

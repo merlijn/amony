@@ -17,12 +17,19 @@ const gridReRenderThreshold = 24
 const Gallery = (props: { cols?: number}) => {
 
   const location = useLocation();
-  const [searchResult, setSearchResult] = useState(new SearchResult(0, 0, 0,[]))
+  const initialSearchResult = new SearchResult(0,[]);
+
+  const [searchResult, setSearchResult] = useState(initialSearchResult)
+
+  const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", defaultPrefs)
+
+  const windowSize = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > gridReRenderThreshold));
 
   const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
   const videoElement = useRef<HTMLVideoElement>(null)
 
-  const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", defaultPrefs)
+  // grid size
+  const [ncols, setNcols] = useState(prefs.gallery_columns)
 
   // https://medium.com/geographit/accessing-react-state-in-event-listeners-with-usestate-and-useref-hooks-8cceee73c559
   // https://stackoverflow.com/questions/55265255/react-usestate-hook-event-handler-using-initial-state
@@ -33,37 +40,71 @@ const Gallery = (props: { cols?: number}) => {
     _setShowNavBar(v);
   };
 
+  const urlParams = new URLSearchParams(location.search)
+
+  const pageSize = pageSizes.get(ncols) || 60
+  const currentPage = () => parseInt(urlParams.get("p") || "1");
+
+  const fetchData = () => {
+
+    console.log("before fetch")
+    console.log(ncols)
+    console.log(searchResult.videos.length)
+
+    const offset = searchResult.videos.length
+    const n      = ncols * 5
+
+    if (n > 0)
+      Api.getVideos(
+        urlParams.get("q") || "",
+        urlParams.get("c"),
+        n,
+        offset).then(response => {
+
+        const newvideos = (response as SearchResult).videos
+        const videos = [...searchResult.videos, ...newvideos]
+
+        console.log("after fetch")
+        console.log(`ncols: ${ncols}`)
+        console.log(`prev : ${searchResult.videos.length}`)
+        console.log(`extra: ${newvideos.length}`)
+        console.log(`total: ${videos.length}`)
+
+        setSearchResult({...response, videos: videos});
+      });
+  }
+
+  const handleScroll = () => {
+
+    if (Math.ceil(window.innerHeight + document.documentElement.scrollTop) === document.documentElement.offsetHeight) {
+      fetchData()
+    }
+  }
+
   useEffect( () => {
-    document.addEventListener('keydown', (event: KeyboardEvent) => {
-      // ArrowLeft, ArrowRight
-      console.log(`gallery: ${event.code}`)
+    window.addEventListener('keydown', (event: KeyboardEvent) => {
       if (event.code === 'Slash') {
         setShowNavBar(!showNavBarRef.current)
       }
     })
   }, [])
 
-  const urlParams = new URLSearchParams(location.search)
-  const windowSize = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > gridReRenderThreshold));
+  // infinite scroll
+  useEffect(() => {
+    const handler = () => handleScroll()
+    window.addEventListener('scroll', handler);
+    return () => window.removeEventListener('scroll', handler)
+  }, [searchResult, ncols]);
 
-  // grid size
-  const [ncols, setNcols] = useState(prefs.gallery_columns)
-  const pageSize = pageSizes.get(ncols) || 60
-
-  const currentPage = () => parseInt(urlParams.get("p") || "1");
+  // useEffect(() => { fetchData() }, [location, ncols] )
 
   useEffect(() => {
-
-      const offset = (currentPage()-1) * pageSize
-
-      Api.getVideos(
-        urlParams.get("q") || "",
-        urlParams.get("c"),
-        pageSize,
-        offset).then(response => { setSearchResult(response); });
-
-    }, [location]
-  )
+    if (searchResult.videos.length > 0) {
+      console.log('clearing results')
+      setSearchResult(initialSearchResult)
+    }
+    fetchData()
+  }, [location, ncols])
 
   useEffect(() => {
 

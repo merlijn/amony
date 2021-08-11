@@ -1,7 +1,7 @@
 import {useHistory, useLocation} from "react-router-dom";
 import {buildUrl, copyParams} from "../api/Util";
 import Pagination from "react-bootstrap/Pagination";
-import React, {useEffect, useState} from "react";
+import React, {useEffect} from "react";
 
 type Props = {
   className?: string,
@@ -25,10 +25,10 @@ const GalleryPagination: React.FC<Props> = (props) => {
     });
   };
 
-  const propsRef = React.useRef({...props });
+  const propsRef = React.useRef(props);
 
   useEffect(() => {
-      propsRef.current = { ...props }
+      propsRef.current = props
     }, [props]
   )
 

@@ -32,10 +32,10 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
     def getAll()(implicit timeout: Timeout): Future[List[Media]] =
       system.ask[List[Media]](ref => GetAll(ref))
 
-    def search(q: Option[String], offset: Option[Int], size: Int, c: Option[String])(implicit
+    def search(q: Option[String], offset: Option[Int], size: Int, c: Option[String], minRes: Option[Int])(implicit
                                                                                      timeout: Timeout
     ): Future[SearchResult] =
-      system.ask[SearchResult](ref => Search(Query(q, offset, size, c), ref))
+      system.ask[SearchResult](ref => Search(Query(q, offset, size, c, minRes), ref))
 
     def getTags()(implicit timeout: Timeout): Future[List[Collection]] =
       system.ask[List[Collection]](ref => GetTags(ref))
@@ -54,11 +54,7 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
     }
 
     def deleteMedia(id: String)(implicit timeout: Timeout): Future[Boolean] = {
-      logger.info("sending delete command")
-      system.ask[Boolean](ref => RemoveMedia(id, ref)).map { response =>
-        logger.info(s"got response: $response")
-        response
-      }
+      system.ask[Boolean](ref => RemoveMedia(id, ref))
     }
 
     def addFragment(id: String, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =

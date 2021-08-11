@@ -88,7 +88,7 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
         </div>
         <div key="nav-bar-right" className="bar-right">
           <Navbar.Text key="nav-current-tag" id="current-tag">{selectedTag.title}</Navbar.Text>
-          <GalleryPagination key="nav-pagination" className="absolute-right" current={props.currentPage} last={props.lastPage} />
+          {/*<GalleryPagination key="nav-pagination" className="absolute-right" current={props.currentPage} last={props.lastPage} />*/}
         </div>
     </Navbar>
   );

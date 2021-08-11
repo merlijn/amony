@@ -26,7 +26,7 @@ object MediaLibActor {
   case class GetTags(sender: ActorRef[List[Collection]])   extends Command
 
   case class Search(query: Query, sender: ActorRef[SearchResult]) extends Command
-  case class Query(q: Option[String], offset: Option[Int], n: Int, c: Option[String])
+  case class Query(q: Option[String], offset: Option[Int], n: Int, tag: Option[String], minRes: Option[Int])
   case class SearchResult(offset: Int, total: Int, items: Seq[Media])
 
   // --- Fragments

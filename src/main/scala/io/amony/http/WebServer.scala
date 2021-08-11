@@ -46,14 +46,15 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
 
   val apiRoutes =
     pathPrefix("api") {
-      (path("media") & parameters("q".optional, "offset".optional, "n".optional, "c".optional)) { (q, offset, s, c) =>
-        get {
-          val size         = s.map(_.toInt).getOrElse(defaultResultNumber)
-          val searchResult = api.read.search(q, offset.map(_.toInt), size, c)
-          val response     = searchResult.map(_.toWebModel().asJson)
+      (path("media") & parameters("q".optional, "offset".optional, "n".optional, "c".optional)) {
+        (q, offset, s, c) =>
+          get {
+            val size         = s.map(_.toInt).getOrElse(defaultResultNumber)
+            val searchResult = api.read.search(q, offset.map(_.toInt), size, c, None)
+            val response     = searchResult.map(_.toWebModel().asJson)
 
-          complete(response)
-        }
+            complete(response)
+          }
       } ~ path("media" / Segment) { id =>
         get {
           api.read.getById(id) match {
