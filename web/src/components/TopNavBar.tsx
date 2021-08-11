@@ -6,17 +6,14 @@ import Nav from "react-bootstrap/Nav";
 import NavDropdown from "react-bootstrap/NavDropdown";
 import Form from "react-bootstrap/Form";
 import FormControl from "react-bootstrap/FormControl";
-import Button from "react-bootstrap/Button";
-import Image from 'react-bootstrap/Image';
 import './TopNavBar.scss';
-import GalleryPagination from "./GalleryPagination";
 import {Api} from "../api/Api";
 import {Tag} from "../api/Model";
 import {DropdownButton} from "react-bootstrap";
 import ConfigMenu from "./ConfigMenu";
 import ImgWithAlt from "./shared/ImgWithAlt";
 
-function TopNavBar(props: { currentPage: number, lastPage: number }) {
+function TopNavBar() {
 
   const location = useLocation();
 
@@ -48,7 +45,7 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
   // fetch tags
   useEffect(() => {
     Api.getTags().then(response => { setTags(response) });
-  }, [props]);
+  }, []);
 
   const queryChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
@@ -64,7 +61,9 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
   return(
     <Navbar className="TopNavBar" fixed="top">
         <div key="nav-bar-left" className="bar-left">
-          <Nav.Link id="home-logo" href="/"><ImgWithAlt width="25px" height="25px" src="/templogo.png" />Amony</Nav.Link>
+          <Nav.Link id="home-logo" href="/">
+            <ImgWithAlt width="25px" height="25px" src="/templogo.png" />
+          </Nav.Link>
         </div>
         <div key="nav-bar-center" className="bar-center">
           <Form className="justify-content-center" onSubmit={doSearch} inline>
@@ -76,7 +75,6 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
                           onClick={(e) => clearQuery() } />
             </div>
 
-            <Button key="nav-search-button" variant="outline-success" id="search-button" className="mr-sm-1" size="sm" onClick={doSearch}><Image width="25px" height="25px" src="/search_black_24dp.svg" /></Button>
             <DropdownButton key="nav-tag-menu" title="#" size="sm">
               {
                 tags.map((t) => {
@@ -88,7 +86,6 @@ function TopNavBar(props: { currentPage: number, lastPage: number }) {
         </div>
         <div key="nav-bar-right" className="bar-right">
           <Navbar.Text key="nav-current-tag" id="current-tag">{selectedTag.title}</Navbar.Text>
-          {/*<GalleryPagination key="nav-pagination" className="absolute-right" current={props.currentPage} last={props.lastPage} />*/}
         </div>
     </Navbar>
   );

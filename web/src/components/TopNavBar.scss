@@ -19,17 +19,17 @@
 }
 
 .bar-left {
-  width: 25%;
+  flex-grow: 1;
 }
 
 .bar-center {
   vertical-align: middle;
-  width: 50%;
-  z-index: 10;
+  z-index: 9;
+  flex-grow: 2;
 }
 
 .bar-right {
-  width: 25%;
+  flex-grow: 1;
   padding: 8px 0px;
 }
 

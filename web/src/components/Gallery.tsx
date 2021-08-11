@@ -6,9 +6,6 @@ import './Gallery.scss';
 import {useLocation} from 'react-router-dom'
 import {BoundedRatioBox, useCookiePrefs, useWindowSize} from "../api/Util";
 import TopNavBar from "./TopNavBar";
-import {pageSizes} from "../api/Constants";
-import {Modal} from "react-bootstrap";
-import Button from "react-bootstrap/Button";
 import Plyr from "plyr";
 
 const gridSize = 350
@@ -42,16 +39,9 @@ const Gallery = (props: { cols?: number}) => {
 
   const urlParams = new URLSearchParams(location.search)
 
-  const pageSize = pageSizes.get(ncols) || 60
-  const currentPage = () => parseInt(urlParams.get("p") || "1");
+  const fetchData = (previous: Array<Video>) => {
 
-  const fetchData = () => {
-
-    console.log("before fetch")
-    console.log(ncols)
-    console.log(searchResult.videos.length)
-
-    const offset = searchResult.videos.length
+    const offset = previous.length
     const n      = ncols * 5
 
     if (n > 0)
@@ -62,7 +52,7 @@ const Gallery = (props: { cols?: number}) => {
         offset).then(response => {
 
         const newvideos = (response as SearchResult).videos
-        const videos = [...searchResult.videos, ...newvideos]
+        const videos = [...previous, ...newvideos]
 
         console.log("after fetch")
         console.log(`ncols: ${ncols}`)
@@ -77,7 +67,7 @@ const Gallery = (props: { cols?: number}) => {
   const handleScroll = () => {
 
     if (Math.ceil(window.innerHeight + document.documentElement.scrollTop) === document.documentElement.offsetHeight) {
-      fetchData()
+      fetchData(searchResult.videos)
     }
   }
 
@@ -99,11 +89,12 @@ const Gallery = (props: { cols?: number}) => {
   // useEffect(() => { fetchData() }, [location, ncols] )
 
   useEffect(() => {
-    if (searchResult.videos.length > 0) {
+    // clear the page
+    // if (searchResult.videos.length > 0) {
       console.log('clearing results')
-      setSearchResult(initialSearchResult)
-    }
-    fetchData()
+      fetchData([])
+    // }
+    // fetchData()
   }, [location, ncols])
 
   useEffect(() => {
@@ -134,6 +125,7 @@ const Gallery = (props: { cols?: number}) => {
               showTitles={prefs.showTitles} showDuration={prefs.showDuration} showMenu={prefs.showMenu}/>
   })
 
+  // show modal video player
   useEffect(() => {
 
     const element = videoElement.current
@@ -157,7 +149,7 @@ const Gallery = (props: { cols?: number}) => {
   return (
     <div className="gallery-container full-width">
 
-      {showNavBar && <TopNavBar key="top-nav-bar" currentPage = {currentPage() } lastPage={Math.ceil(searchResult.total / pageSize)} /> }
+      {showNavBar && <TopNavBar key="top-nav-bar" /> }
 
       <div style={{ marginTop: showNavBar ? 42 : 2 }} key="gallery" className="gallery">
         <div
