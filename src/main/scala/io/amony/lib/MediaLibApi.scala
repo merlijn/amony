@@ -1,4 +1,4 @@
-package io.amony.actor
+package io.amony.lib
 
 import akka.actor.typed.ActorSystem
 import akka.persistence.query.PersistenceQuery
@@ -9,7 +9,6 @@ import better.files.File
 import com.fasterxml.jackson.core.JsonEncoding
 import io.amony.MediaLibConfig
 import io.amony.actor.MediaLibActor._
-import io.amony.lib.{FileUtil, MediaLibScanner}
 import scribe.Logging
 
 import scala.concurrent.{Await, Future}

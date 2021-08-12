@@ -2,9 +2,9 @@ package io.amony
 
 import akka.actor.typed.ActorSystem
 import akka.util.Timeout
-import io.amony.actor.{MediaLibActor, MediaLibApi}
+import io.amony.actor.MediaLibActor
 import io.amony.http.WebServer
-import io.amony.lib.MediaLibScanner
+import io.amony.lib.{MediaLibApi, MediaLibScanner}
 import scribe.Logging
 
 import scala.concurrent.duration.DurationInt

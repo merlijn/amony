@@ -4,7 +4,6 @@ import akka.util.Timeout
 import better.files.File
 import io.amony.App.mediaLibConfig
 import io.amony.actor.MediaLibActor.{Fragment, Media}
-import io.amony.actor.MediaLibApi
 import io.circe.generic.semiauto.deriveCodec
 import scribe.Logging
 

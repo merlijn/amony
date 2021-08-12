@@ -8,11 +8,11 @@ import akka.http.scaladsl.server.{RejectionHandler, Route, ValidationRejection}
 import akka.stream.Materializer
 import akka.util.Timeout
 import better.files.File
-import io.amony.actor.MediaLibApi
 import io.amony.http.WebConversions._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.amony.actor.MediaLibActor.{ErrorResponse, InvalidCommand, Media, MediaNotFound}
 import io.amony.http.WebModel.FragmentRange
+import io.amony.lib.MediaLibApi
 import io.circe.syntax._
 import scribe.Logging
 
@@ -63,7 +63,7 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
           }
         } ~ delete {
           onSuccess(api.modify.deleteMedia(id)) {
-            case response => complete(StatusCodes.OK, "{}")
+            case _ => complete(StatusCodes.OK, "{}")
           }
         }
       } ~ path("tags") {
@@ -111,12 +111,12 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
     })
   }
 
-  val thumbnails =
+  val thumbnailRoutes =
     path("files" / "thumbnails" / Segment) { id =>
       getFromFile(api.read.getThumbnailPathForMedia(id))
     }
 
-  val videos = path("files" / "videos" / Segment) { id =>
+  val videoRoutes = path("files" / "videos" / Segment) { id =>
     api.read.getById(id) match {
       case None       => complete(StatusCodes.NotFound, "")
       case Some(info) => getFromFile(api.read.getFilePathForMedia(info))
@@ -145,7 +145,7 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
       }
     }
 
-  val allRoutes = apiRoutes ~ adminRoutes ~ thumbnails ~ videos ~ clientFiles
+  val allRoutes = apiRoutes ~ adminRoutes ~ thumbnailRoutes ~ videoRoutes ~ clientFiles
 
 //  val loggedRoutes =
 //    DebuggingDirectives.logRequest("Webapp", Logging.InfoLevel)(routes)
