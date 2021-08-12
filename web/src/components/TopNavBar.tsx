@@ -52,7 +52,6 @@ function TopNavBar() {
   };
 
   const clearQuery = () => {
-    console.log("setting focus")
     document.getElementById("nav-search-input")?.focus()
     setQuery("")
   }

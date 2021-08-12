@@ -84,11 +84,11 @@ object FFMpeg extends Logging {
       useErrorStream = true,
       cmds = List(
         "ffmpeg",
-        "-i",    video.absoluteFileName(),
-        "-c",   "copy",
-        "-map", "0",
+        "-i",        video.absoluteFileName(),
+        "-c",        "copy",
+        "-map",      "0",
         "-movflags", "+faststart",
-        "-y",    out
+        "-y",        out
       )
     )
     // format: on
@@ -181,7 +181,7 @@ object FFMpeg extends Logging {
         "-ss",      formatTime(timestamp),
         "-i",       inputFile,
         "-vf",      s"scale=$previewSize:-1",
-        "-q:v",     "80", // 1 - 30 (best-worst) for jpeg, 1-100 (worst-best) for webp
+        "-quality", "80", // 1 - 30 (best-worst) for jpeg, 1-100 (worst-best) for webp
         "-vframes", "1",
         "-y",       outputFile.getOrElse(s"${stripExtension(inputFile)}.webp")
       )

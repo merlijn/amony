@@ -8,7 +8,12 @@ import akka.util.Timeout
 import better.files.File
 import com.fasterxml.jackson.core.JsonEncoding
 import io.amony.MediaLibConfig
+import io.amony.actor.MediaLibActor
 import io.amony.actor.MediaLibActor._
+import io.amony.lib.MediaLibScanner.{logger, scanVideosInDirectory}
+import monix.eval.Task
+import monix.execution.Scheduler
+import monix.reactive.Consumer
 import scribe.Logging
 
 import scala.concurrent.{Await, Future}
@@ -23,10 +28,8 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
 
   object read {
 
-    def getById(id: String)(implicit timeout: Timeout): Option[Media] = {
-      val result = system.ask[Option[Media]](ref => GetById(id, ref))
-      Await.result(result, timeout.duration)
-    }
+    def getById(id: String)(implicit timeout: Timeout): Future[Option[Media]] =
+      system.ask[Option[Media]](ref => GetById(id, ref))
 
     def getAll()(implicit timeout: Timeout): Future[List[Media]] =
       system.ask[List[Media]](ref => GetAll(ref))
@@ -48,13 +51,11 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
 
   object modify {
 
-    def upsertMedia(media: Media)(implicit timeout: Timeout): Future[Media] = {
+    def upsertMedia(media: Media)(implicit timeout: Timeout): Future[Media] =
       system.ask[Boolean](ref => UpsertMedia(media, ref)).map(_ => media)
-    }
 
-    def deleteMedia(id: String)(implicit timeout: Timeout): Future[Boolean] = {
+    def deleteMedia(id: String)(implicit timeout: Timeout): Future[Boolean] =
       system.ask[Boolean](ref => RemoveMedia(id, ref))
-    }
 
     def addFragment(id: String, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
       system.ask[Either[ErrorResponse, Media]](ref => AddFragment(id, from, to, ref))
@@ -62,15 +63,33 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
     def updateFragmentRange(id: String, idx: Int, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
       system.ask[Either[ErrorResponse, Media]](ref => UpdateFragmentRange(id, idx, from, to, ref))
 
-    def updateFragmentTags(id: String, idx: Int, tags: List[String])(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] = {
+    def updateFragmentTags(id: String, idx: Int, tags: List[String])(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
       system.ask[Either[ErrorResponse, Media]](ref => UpdateFragmentTags(id, idx, tags, ref))
-    }
 
     def deleteFragment(id: String, idx: Int)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
       system.ask[Either[ErrorResponse, Media]](ref => DeleteFragment(id, idx, ref))
   }
 
   object admin {
+
+    def scanLibrary()(implicit timeout: Timeout): Unit = {
+
+      implicit val s = Scheduler.global
+
+      read.getAll().foreach { loadedFromStore =>
+
+        val (deleted, newAndMoved) = MediaLibScanner.scanVideosInDirectory(config, loadedFromStore)
+        val upsert = Consumer.foreachTask[Media](m => Task { modify.upsertMedia(m) } )
+        val delete = Consumer.foreachTask[Media](m => Task {
+          logger.info(s"Detected deleted file: ${m.uri}")
+          modify.deleteMedia(m.id)
+        })
+
+        deleted.consumeWith(delete).runSyncUnsafe()
+        newAndMoved.consumeWith(upsert).runSyncUnsafe()
+
+      }(system.executionContext)
+    }
 
     def regeneratePreviewFor(m: Media): Unit = {
       val videoPath = config.libraryPath.resolve(m.uri)
@@ -79,11 +98,7 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
       }
     }
 
-    def regeneratePreviewsFor(id: String)(implicit timeout: Timeout) = {
-      read.getById(id).foreach { m => regeneratePreviewFor(m) }
-    }
-
-    def regeneratePreviews()(implicit timeout: Timeout) = {
+    def regeneratePreviews()(implicit timeout: Timeout): Unit = {
 
       read.getAll().foreach { medias =>
         medias.foreach { m =>
@@ -93,7 +108,7 @@ class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends 
       }
     }
 
-    def verifyHashes()(implicit timeout: Timeout) = {
+    def verifyHashes()(implicit timeout: Timeout): Unit = {
 
       read.getAll().foreach { medias =>
         logger.info("Verifying all file hashes ...")

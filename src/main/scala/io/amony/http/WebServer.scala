@@ -46,7 +46,7 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
 
   val apiRoutes =
     pathPrefix("api") {
-      (path("media") & parameters("q".optional, "offset".optional, "n".optional, "c".optional)) {
+      (path("search") & parameters("q".optional, "offset".optional, "n".optional, "c".optional)) {
         (q, offset, s, c) =>
           get {
             val size         = s.map(_.toInt).getOrElse(defaultResultNumber)
@@ -57,7 +57,7 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
           }
       } ~ path("media" / Segment) { id =>
         get {
-          api.read.getById(id) match {
+          onSuccess(api.read.getById(id)) {
             case Some(vid) => complete(vid.toWebModel.asJson)
             case None      => complete(StatusCodes.NotFound)
           }
@@ -96,7 +96,7 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
   }
 
   val adminRoutes = pathPrefix("api" / "admin") {
-    (path("regen-thumbnails") & post) {
+    (path("regen-previews") & post) {
       api.admin.regeneratePreviews()
       complete("OK")
     } ~ (path("export-to-file") & post) {
@@ -105,10 +105,13 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
     } ~ (path("verify-hashes") & post) {
       api.admin.verifyHashes()
       complete("OK")
-    } ~ (path("convert-non-streamable-videos") {
+    } ~ path("convert-non-streamable-videos") {
       api.admin.convertNonStreamableVideos()
       complete("OK")
-    })
+    } ~ path("scan-library") {
+      api.admin.scanLibrary()
+      complete("OK")
+    }
   }
 
   val thumbnailRoutes =
@@ -117,7 +120,7 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
     }
 
   val videoRoutes = path("files" / "videos" / Segment) { id =>
-    api.read.getById(id) match {
+    onSuccess(api.read.getById(id)) {
       case None       => complete(StatusCodes.NotFound, "")
       case Some(info) => getFromFile(api.read.getFilePathForMedia(info))
     }

@@ -15,7 +15,7 @@ export const Api = {
     if (tag)
       apiParams.set("c", tag)
 
-    const target = buildUrl("/api/media", apiParams)
+    const target = buildUrl("/api/search", apiParams)
 
     return doGET(target)
   },

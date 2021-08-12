@@ -19,7 +19,7 @@ object App extends AppConfig with Logging {
 
     val api = new MediaLibApi(mediaLibConfig, system)
 
-    scanLibrary(api, system)
+    api.admin.scanLibrary()(10.seconds)
 
     logEncodings()
 
@@ -45,16 +45,5 @@ object App extends AppConfig with Logging {
       val writer = new OutputStreamWriter(new ByteArrayOutputStream)
       writer.getEncoding
     }
-  }
-
-  def scanLibrary(api: MediaLibApi, system: ActorSystem[MediaLibActor.Command]): Unit = {
-
-    implicit val timeout: Timeout = Timeout(10.seconds)
-
-    api
-      .read.getAll()
-      .foreach { loadedFromStore =>
-        MediaLibScanner.scanDirectory(mediaLibConfig, loadedFromStore, api)
-      }(system.executionContext)
   }
 }
