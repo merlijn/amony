@@ -12,6 +12,7 @@ import {Tag} from "../api/Model";
 import {DropdownButton} from "react-bootstrap";
 import ConfigMenu from "./ConfigMenu";
 import ImgWithAlt from "./shared/ImgWithAlt";
+import DropDownIcon from "./shared/DropDownIcon";
 
 function TopNavBar() {
 
@@ -73,6 +74,10 @@ function TopNavBar() {
               <ImgWithAlt className="nav-clear-input action-icon-small" src="/clear_input.svg"
                           onClick={(e) => clearQuery() } />
             </div>
+
+            <DropDownIcon iconSrc="/tune_black_24dp.svg" buttonClassName="filter-menu-button mr-sm-1">
+              <NavDropdown.Item key="test">Test</NavDropdown.Item>
+            </DropDownIcon>
 
             <DropdownButton key="nav-tag-menu" title="#" size="sm">
               {

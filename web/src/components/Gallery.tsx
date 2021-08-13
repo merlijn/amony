@@ -11,7 +11,7 @@ import Plyr from "plyr";
 const gridSize = 350
 const gridReRenderThreshold = 24
 
-const Gallery = (props: { cols?: number}) => {
+const Gallery = () => {
 
   const location = useLocation();
   const initialSearchResult = new SearchResult(0,[]);
@@ -54,12 +54,6 @@ const Gallery = (props: { cols?: number}) => {
         const newvideos = (response as SearchResult).videos
         const videos = [...previous, ...newvideos]
 
-        console.log("after fetch")
-        console.log(`ncols: ${ncols}`)
-        console.log(`prev : ${searchResult.videos.length}`)
-        console.log(`extra: ${newvideos.length}`)
-        console.log(`total: ${videos.length}`)
-
         setSearchResult({...response, videos: videos});
       });
   }
@@ -86,15 +80,8 @@ const Gallery = (props: { cols?: number}) => {
     return () => window.removeEventListener('scroll', handler)
   }, [searchResult, ncols]);
 
-  // useEffect(() => { fetchData() }, [location, ncols] )
-
   useEffect(() => {
-    // clear the page
-    // if (searchResult.videos.length > 0) {
-      console.log('clearing results')
-      fetchData([])
-    // }
-    // fetchData()
+    fetchData([])
   }, [location, ncols])
 
   useEffect(() => {

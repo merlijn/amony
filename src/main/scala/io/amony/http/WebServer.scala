@@ -46,11 +46,11 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
 
   val apiRoutes =
     pathPrefix("api") {
-      (path("search") & parameters("q".optional, "offset".optional, "n".optional, "c".optional)) {
-        (q, offset, s, c) =>
+      (path("search") & parameters("q".optional, "offset".optional, "n".optional, "tags".optional, "sort".optional, "min_res".optional)) {
+        (q, offset, n, tags, sort, minResY) =>
           get {
-            val size         = s.map(_.toInt).getOrElse(defaultResultNumber)
-            val searchResult = api.read.search(q, offset.map(_.toInt), size, c, None)
+            val size         = n.map(_.toInt).getOrElse(defaultResultNumber)
+            val searchResult = api.read.search(q, offset.map(_.toInt), size, tags, minResY.map(_.toInt))
             val response     = searchResult.map(_.toWebModel().asJson)
 
             complete(response)
@@ -105,10 +105,10 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
     } ~ (path("verify-hashes") & post) {
       api.admin.verifyHashes()
       complete("OK")
-    } ~ path("convert-non-streamable-videos") {
+    } ~ (path("convert-non-streamable-videos") & post) {
       api.admin.convertNonStreamableVideos()
       complete("OK")
-    } ~ path("scan-library") {
+    } ~ (path("scan-library") & post) {
       api.admin.scanLibrary()
       complete("OK")
     }
