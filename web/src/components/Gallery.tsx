@@ -4,25 +4,28 @@ import {defaultPrefs, Prefs, SearchResult, Video} from '../api/Model';
 import Preview from './Preview';
 import './Gallery.scss';
 import {useLocation} from 'react-router-dom'
-import {BoundedRatioBox, useCookiePrefs, useWindowSize} from "../api/Util";
+import {BoundedRatioBox, useCookiePrefs, usePrevious, useWindowSize} from "../api/Util";
 import TopNavBar from "./TopNavBar";
 import Plyr from "plyr";
 
 const gridSize = 350
 const gridReRenderThreshold = 24
 
+
 const Gallery = () => {
 
   const location = useLocation();
   const initialSearchResult = new SearchResult(0,[]);
 
-  const [searchResult, setSearchResult] = useState(initialSearchResult)
-
   const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", defaultPrefs)
 
-  const windowSize = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > gridReRenderThreshold));
+  const previousPrefs = usePrevious(prefs)
 
+  const [minRes, setMinRes] = useState(prefs.minRes)
+  const [searchResult, setSearchResult] = useState(initialSearchResult)
   const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
+
+  const windowSize = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > gridReRenderThreshold));
   const videoElement = useRef<HTMLVideoElement>(null)
 
   // grid size
@@ -49,7 +52,8 @@ const Gallery = () => {
         urlParams.get("q") || "",
         urlParams.get("c"),
         n,
-        offset).then(response => {
+        offset,
+        prefs.minRes).then(response => {
 
         const newvideos = (response as SearchResult).videos
         const videos = [...previous, ...newvideos]
@@ -65,6 +69,7 @@ const Gallery = () => {
     }
   }
 
+  // add keyboard listener
   useEffect( () => {
     window.addEventListener('keydown', (event: KeyboardEvent) => {
       if (event.code === 'Slash') {
@@ -73,18 +78,20 @@ const Gallery = () => {
     })
   }, [])
 
-  // infinite scroll
+  // add scroll listener
   useEffect(() => {
     const handler = () => handleScroll()
     window.addEventListener('scroll', handler);
     return () => window.removeEventListener('scroll', handler)
   }, [searchResult, ncols]);
 
-  useEffect(() => {
-    fetchData([])
-  }, [location, ncols])
+
+  useEffect(() => { fetchData([]) }, [location])
+  useEffect(() => { fetchData(searchResult.videos) }, [ncols])
 
   useEffect(() => {
+
+    console.log(`previous: ${previousPrefs?.gallery_columns}`)
 
     if (prefs.gallery_columns === 0) {
       const c = Math.min(Math.max(2, Math.round(windowSize.width / gridSize)), 5);
@@ -93,24 +100,11 @@ const Gallery = () => {
     } else if (prefs.gallery_columns != ncols) {
       setNcols(prefs.gallery_columns)
     }
+
+    if (previousPrefs?.minRes !== prefs.minRes)
+      fetchData([])
+
   },[windowSize, prefs]);
-
-  const previews = searchResult.videos.map((vid, idx) => {
-
-    let style: { } = { "--ncols" : `${ncols}` }
-
-    if (idx % ncols === 0)
-        style = { ...style, paddingLeft : "4px" }
-    else if ((idx + 1) % ncols === 0)
-        style = { ...style, paddingRight : "4px" }
-
-    return <Preview
-              style={style} className="grid-cell"
-              key={`preview-${vid.id}`}
-              vid={vid}
-              onClick={ (v) => setPlayVideo(v) }
-              showTitles={prefs.showTitles} showDuration={prefs.showDuration} showMenu={prefs.showMenu}/>
-  })
 
   // show modal video player
   useEffect(() => {
@@ -129,8 +123,25 @@ const Gallery = () => {
     }
   },[playVideo]);
 
+  const previews = searchResult.videos.map((vid, idx) => {
+
+    let style: { } = { "--ncols" : `${ncols}` }
+
+    if (idx % ncols === 0)
+        style = { ...style, paddingLeft : "4px" }
+    else if ((idx + 1) % ncols === 0)
+        style = { ...style, paddingRight : "4px" }
+
+    return <Preview
+              style={style} className="grid-cell"
+              key={`preview-${vid.id}`}
+              vid={vid}
+              onClick={ (v) => setPlayVideo(v) }
+              showTitles={prefs.showTitles} showDuration={prefs.showDuration} showMenu={prefs.showMenu}/>
+  })
+
   const modalSize = (v:Video | undefined): CSSProperties => {
-     return v ? BoundedRatioBox("70vw", "70vh", v.resolution_x / v.resolution_y) : { }
+     return v ? BoundedRatioBox("75vw", "75vh", v.resolution_x / v.resolution_y) : { }
   }
 
   return (

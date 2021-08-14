@@ -21,6 +21,11 @@ export class SearchResult {
   }
 }
 
+export type Resolution = {
+  value: number,
+  label: string
+}
+
 export type Tag = {
   id: number,
   title: string
@@ -39,11 +44,13 @@ export type Prefs = {
   showDuration: boolean
   showMenu: boolean
   gallery_columns: number;
+  minRes: number
 }
 
 export const defaultPrefs: Prefs = {
   showTitles: false,
   showDuration: true,
   showMenu: true,
-  gallery_columns: 0
+  gallery_columns: 0,
+  minRes: 0
 }

@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {useHistory, useLocation} from "react-router-dom";
-import {buildUrl, copyParams} from "../api/Util";
+import {buildUrl, copyParams, useCookiePrefs} from "../api/Util";
 import Navbar from "react-bootstrap/Navbar";
 import Nav from "react-bootstrap/Nav";
 import NavDropdown from "react-bootstrap/NavDropdown";
@@ -8,16 +8,17 @@ import Form from "react-bootstrap/Form";
 import FormControl from "react-bootstrap/FormControl";
 import './TopNavBar.scss';
 import {Api} from "../api/Api";
-import {Tag} from "../api/Model";
+import {defaultPrefs, Prefs, Resolution, Tag} from "../api/Model";
 import {DropdownButton} from "react-bootstrap";
 import ConfigMenu from "./ConfigMenu";
 import ImgWithAlt from "./shared/ImgWithAlt";
 import DropDownIcon from "./shared/DropDownIcon";
+import {Constants} from "../api/Constants";
 
 function TopNavBar() {
 
   const location = useLocation();
-
+  const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", defaultPrefs)
   const [query, setQuery] = useState("")
   const [tags, setTags] = useState<Array<Tag>>([]);
   const [selectedTag, setSelectedTag] = useState<Tag>({id: 0, title: ""})
@@ -44,9 +45,7 @@ function TopNavBar() {
   }, [location, tags]);
 
   // fetch tags
-  useEffect(() => {
-    Api.getTags().then(response => { setTags(response) });
-  }, []);
+  useEffect(() => { Api.getTags().then(response => { setTags(response) }); }, []);
 
   const queryChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
@@ -75,8 +74,26 @@ function TopNavBar() {
                           onClick={(e) => clearQuery() } />
             </div>
 
-            <DropDownIcon iconSrc="/tune_black_24dp.svg" buttonClassName="filter-menu-button mr-sm-1">
-              <NavDropdown.Item key="test">Test</NavDropdown.Item>
+            <DropDownIcon iconSrc="/tune_black_24dp.svg" contentClassName="filter-menu" buttonClassName="filter-menu-button mr-sm-1">
+              <Form.Group>
+                <Form.Label className="mr-sm-2">Minimum resolution:</Form.Label>
+                {
+                  Constants.resolutions.map((v) => {
+                    return <Form.Check
+                      key={`res-${v.value}`}
+                      className="mr-sm-1"
+                      name="ncols"
+                      type="radio"
+                      value={v.value}
+                      label={v.label}
+                      checked={prefs.minRes === v.value}
+                      onChange={(e) => {
+                        setPrefs( { ...prefs, minRes: v.value })
+                      }
+                      } />;
+                  })
+                }
+              </Form.Group>
             </DropDownIcon>
 
             <DropdownButton key="nav-tag-menu" title="#" size="sm">

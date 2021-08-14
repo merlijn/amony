@@ -39,8 +39,10 @@ const DropDownIconMenu = React.forwardRef<HTMLDivElement, Props>((props, ref) =>
 const DropDownIcon = (props: { children?: ReactNode, iconSrc: string, iconClassName?: string, buttonClassName?: string, contentClassName?: string }) => {
 
     return(
-        <Dropdown>
-            <Dropdown.Toggle as={DropDownIconToggle} iconSrc={props.iconSrc} className={props.buttonClassName}></Dropdown.Toggle>
+        <Dropdown alignRight={true}>
+            <Dropdown.Toggle as={DropDownIconToggle}
+                             iconSrc={props.iconSrc}
+                             className={props.buttonClassName}></Dropdown.Toggle>
 
             <Dropdown.Menu as={DropDownIconMenu} className={props.contentClassName}>
                 { props.children }

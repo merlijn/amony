@@ -4,7 +4,7 @@ const headers = { 'Content-type': 'application/json; charset=UTF-8' };
 
 export const Api = {
 
-  getVideos: async function getVideos(q: string, tag: string | null, n: number, offset: number) {
+  getVideos: async function getVideos(q: string, tag: string | null, n: number, offset: number, minRes?: number) {
 
     const apiParams = new Map([
       ["q", q],
@@ -14,6 +14,8 @@ export const Api = {
 
     if (tag)
       apiParams.set("c", tag)
+    if (minRes)
+      apiParams.set("min_res", minRes.toString())
 
     const target = buildUrl("/api/search", apiParams)
 

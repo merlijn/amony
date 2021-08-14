@@ -87,10 +87,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     val filesWithHashes: List[(Path, String)] = Observable
       .from(filesTruncated)
-      .filter { vid =>
-        // filter for extension
-        filterFileName(vid.getFileName.toString)
-      }
+      .filter { vid => filterFileName(vid.getFileName.toString) }
       .mapParallelUnordered(config.scanParallelFactor) { path =>
         Task {
           val hash = if (config.verifyHashes) {

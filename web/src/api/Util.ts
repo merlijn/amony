@@ -1,4 +1,4 @@
-import {CSSProperties, useEffect, useState} from "react";
+import {CSSProperties, useEffect, useRef, useState} from "react";
 import {useCookies} from "react-cookie";
 
 export function buildUrl(path: string, urlParams: Map<string, string> | undefined) {
@@ -100,6 +100,13 @@ export function BoundedRatioBox(maxWidth: string, maxHeight: string, ratio: numb
   }
 }
 
+export const usePrevious = <T>(value: T): T | undefined => {
+  const ref = useRef<T>();
+  useEffect(() => {
+    ref.current = value;
+  });
+  return ref.current;
+};
 
 export function useCookiePrefs<T>(key: string, path: string, defaultPreferences: T): [T, ((e: T) => void)] {
 
