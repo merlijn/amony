@@ -15,7 +15,6 @@ type Props = { children: React.ReactNode; className: string };
 
 const DropDownIconToggle = React.forwardRef<Button, ToggleProps>((props, ref) => (
     <Button
-        id="config-button"
         className={props.className}
         onClick={(e) => {
             e.preventDefault();

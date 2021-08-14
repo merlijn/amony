@@ -13,7 +13,7 @@ export const Api = {
     ]);
 
     if (tag)
-      apiParams.set("c", tag)
+      apiParams.set("tags", tag)
     if (minRes)
       apiParams.set("min_res", minRes.toString())
 

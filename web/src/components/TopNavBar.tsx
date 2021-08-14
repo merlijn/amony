@@ -33,7 +33,7 @@ function TopNavBar() {
 
   useEffect(() => {
     const params = copyParams(new URLSearchParams(location.search))
-    const tagId = params.get("c")
+    const tagId = params.get("tag")
 
     if (tagId) {
       const found = tags.find((e) => e.id.toString() === tagId)
@@ -99,7 +99,7 @@ function TopNavBar() {
             <DropdownButton key="nav-tag-menu" title="#" size="sm">
               {
                 tags.map((t) => {
-                  return <NavDropdown.Item key={`nav-tag-${t.id}`} href={`/search?c=${t.id}`}>{t.title}</NavDropdown.Item>
+                  return <NavDropdown.Item key={`nav-tag-${t.id}`} href={`/search?tag=${t.id}`}>{t.title}</NavDropdown.Item>
                 })
               }
             </DropdownButton>

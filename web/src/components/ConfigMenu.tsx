@@ -19,7 +19,7 @@ const CustomToggle = React.forwardRef<Button, ToggleProps>((props, ref) => (
       props.onClick(e);
     }}
     size="sm">
-    <Image width="25px" height="25px" src="/settings_black_24dp.svg" />
+    <Image width="24px" height="24px" src="/settings_black_24dp.svg" />
     {props.children}
   </Button>
 ));
