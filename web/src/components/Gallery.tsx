@@ -11,7 +11,6 @@ import Plyr from "plyr";
 const gridSize = 350
 const gridReRenderThreshold = 24
 
-
 const Gallery = () => {
 
   const location = useLocation();
@@ -45,7 +44,7 @@ const Gallery = () => {
   const fetchData = (previous: Array<Video>) => {
 
     const offset = previous.length
-    const n      = ncols * 5
+    const n      = ncols * 7
 
     if (n > 0)
       Api.getVideos(
@@ -90,8 +89,6 @@ const Gallery = () => {
   useEffect(() => { fetchData(searchResult.videos) }, [ncols])
 
   useEffect(() => {
-
-    console.log(`previous: ${previousPrefs?.gallery_columns}`)
 
     if (prefs.gallery_columns === 0) {
       const c = Math.min(Math.max(2, Math.round(windowSize.width / gridSize)), 5);

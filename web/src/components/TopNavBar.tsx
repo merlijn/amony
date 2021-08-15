@@ -9,11 +9,13 @@ import FormControl from "react-bootstrap/FormControl";
 import './TopNavBar.scss';
 import {Api} from "../api/Api";
 import {defaultPrefs, Prefs, Resolution, Tag} from "../api/Model";
-import {DropdownButton} from "react-bootstrap";
+import {ButtonGroup, DropdownButton} from "react-bootstrap";
 import ConfigMenu from "./ConfigMenu";
 import ImgWithAlt from "./shared/ImgWithAlt";
 import DropDownIcon from "./shared/DropDownIcon";
 import {Constants} from "../api/Constants";
+import Button from "react-bootstrap/Button";
+import Dropdown from "react-bootstrap/Dropdown";
 
 function TopNavBar() {
 
@@ -60,53 +62,60 @@ function TopNavBar() {
   return(
     <Navbar className="TopNavBar" fixed="top">
         <div key="nav-bar-left" className="bar-left">
-          <Nav.Link id="home-logo" href="/">
-            <ImgWithAlt width="25px" height="25px" src="/templogo.png" />
-          </Nav.Link>
+
         </div>
         <div key="nav-bar-center" className="bar-center">
-          <Form className="justify-content-center" onSubmit={doSearch} inline>
-            <ConfigMenu key="nav-config-menu"/>
 
-            <div key="nav-search-input" className="nav-search-input mr-sm-1">
-              <FormControl id="nav-search-input" size="sm" type="text" placeholder="Search" value={query} onChange={queryChanged} />
-              <ImgWithAlt className="nav-clear-input action-icon-small" src="/clear_input.svg"
-                          onClick={(e) => clearQuery() } />
-            </div>
+          <Dropdown className="tag-list-dropdown mr-sm-1" key="nav-tag-list" as={ButtonGroup} size="sm">
+            <Button size="sm" className="home-logo"><a href="/">
+              <ImgWithAlt src="/home_black_24dp.svg" />
+            </a></Button>
 
-            <DropDownIcon iconSrc="/tune_black_24dp.svg" contentClassName="filter-menu" buttonClassName="filter-menu-button mr-sm-1">
-              <Form.Group>
-                <Form.Label className="mr-sm-2">Minimum resolution:</Form.Label>
-                {
-                  Constants.resolutions.map((v) => {
-                    return <Form.Check
-                      key={`res-${v.value}`}
-                      className="mr-sm-1"
-                      name="ncols"
-                      type="radio"
-                      value={v.value}
-                      label={v.label}
-                      checked={prefs.minRes === v.value}
-                      onChange={(e) => {
-                        setPrefs( { ...prefs, minRes: v.value })
-                      }
-                      } />;
-                  })
-                }
-              </Form.Group>
-            </DropDownIcon>
+            <Dropdown.Toggle className="tag-list-toggle" split id="dropdown-split-basic" />
 
-            <DropdownButton key="nav-tag-menu" title="#" size="sm">
+            <Dropdown.Menu>
               {
                 tags.map((t) => {
                   return <NavDropdown.Item key={`nav-tag-${t.id}`} href={`/search?tag=${t.id}`}>{t.title}</NavDropdown.Item>
                 })
               }
-            </DropdownButton>
+            </Dropdown.Menu>
+          </Dropdown>
+
+          <Form className="nav-search-form" onSubmit={doSearch} inline>
+            <div key="nav-search-input" className="nav-search-input mr-sm-1">
+              <FormControl id="nav-search-input" size="sm" type="text" placeholder="Search" value={query} onChange={queryChanged} />
+              <ImgWithAlt className="nav-clear-input action-icon-small" src="/clear_input.svg"
+                          onClick={(e) => clearQuery() } />
+            </div>
           </Form>
+
+          <DropDownIcon iconSrc="/tune_black_24dp.svg" alignRight={true} contentClassName="filter-menu" buttonClassName="filter-menu-button mr-sm-1">
+            <Form.Group>
+              <Form.Label style={{float:"left"}} className="mr-sm-2">Video quality</Form.Label>
+              {
+                Constants.resolutions.map((v) => {
+                  return <Form.Check
+                    style={ { float:"left" } }
+                    className="mr-sm-1"
+                    name="ncols"
+                    type="radio"
+                    value={v.value}
+                    label={v.label}
+                    checked={prefs.minRes === v.value}
+                    onChange={(e) => {
+                      setPrefs( { ...prefs, minRes: v.value })
+                    }
+                    } />;
+                })
+              }
+            </Form.Group>
+          </DropDownIcon>
+
+          <ConfigMenu key="nav-config-menu"/>
         </div>
         <div key="nav-bar-right" className="bar-right">
-          <Navbar.Text key="nav-current-tag" id="current-tag">{selectedTag.title}</Navbar.Text>
+          {/*<Navbar.Text key="nav-current-tag" className="current-tag">{selectedTag.title}</Navbar.Text>*/}
         </div>
     </Navbar>
   );

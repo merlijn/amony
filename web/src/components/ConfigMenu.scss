@@ -1,4 +1,7 @@
 .config-menu-button {
+
+  flex-grow: 0;
+  float: left;
   background-color: #d8d4d4 ! important;
   border-color: darkgray ! important;
   padding: 2px 5px !important;
@@ -6,5 +9,27 @@
 
 .config-menu {
   margin-top: 5px !important;
-  width: 50vw;
+  width: 500px;
 }
+
+.config-form {
+
+  padding: 8px;
+  display: table;
+
+  .form-section {
+
+    display: table-row;
+
+    .form-label {
+      display: table-cell;
+      padding-right: 8px;
+    }
+
+    .form-content {
+      vertical-align: center;
+      display: table-cell;
+    }
+  }
+}
+

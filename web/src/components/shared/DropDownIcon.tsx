@@ -2,6 +2,7 @@ import Dropdown from "react-bootstrap/Dropdown";
 import React, {MouseEventHandler, ReactNode} from "react";
 import Button from "react-bootstrap/Button";
 import ImgWithAlt from "./ImgWithAlt";
+import './DropDownIcon.scss';
 
 type ToggleProps = {
     children: React.ReactNode;
@@ -35,10 +36,10 @@ const DropDownIconMenu = React.forwardRef<HTMLDivElement, Props>((props, ref) =>
     },
 );
 
-const DropDownIcon = (props: { children?: ReactNode, iconSrc: string, iconClassName?: string, buttonClassName?: string, contentClassName?: string }) => {
+const DropDownIcon = (props: { children?: ReactNode, alignRight?: boolean, iconSrc: string, iconClassName?: string, buttonClassName?: string, contentClassName?: string }) => {
 
     return(
-        <Dropdown alignRight={true}>
+        <Dropdown className="icon-dropdown" alignRight={props.alignRight}>
             <Dropdown.Toggle as={DropDownIconToggle}
                              iconSrc={props.iconSrc}
                              className={props.buttonClassName}></Dropdown.Toggle>

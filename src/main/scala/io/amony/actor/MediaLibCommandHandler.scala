@@ -19,8 +19,8 @@ object MediaLibCommandHandler extends Logging {
 
       val dirs = state.media.values.foldLeft(Set.empty[String]) { case (set, e) =>
         val parent   = (File(config.libraryPath) / e.uri).parent
-        val relative = s"/${config.libraryPath.relativize(parent)}"
-        set + relative
+        val tag = s"#${config.libraryPath.relativize(parent)}"
+        set + tag
       }
 
       dirs.toList.sorted.zipWithIndex.map { case (e, idx) =>
