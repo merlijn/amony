@@ -2,14 +2,13 @@ import React, {useEffect, useState} from "react";
 import {useHistory, useLocation} from "react-router-dom";
 import {buildUrl, copyParams, useCookiePrefs} from "../api/Util";
 import Navbar from "react-bootstrap/Navbar";
-import Nav from "react-bootstrap/Nav";
 import NavDropdown from "react-bootstrap/NavDropdown";
 import Form from "react-bootstrap/Form";
 import FormControl from "react-bootstrap/FormControl";
 import './TopNavBar.scss';
 import {Api} from "../api/Api";
-import {defaultPrefs, Prefs, Resolution, Tag} from "../api/Model";
-import {ButtonGroup, DropdownButton} from "react-bootstrap";
+import {defaultPrefs, Prefs, Tag} from "../api/Model";
+import {ButtonGroup} from "react-bootstrap";
 import ConfigMenu from "./ConfigMenu";
 import ImgWithAlt from "./shared/ImgWithAlt";
 import DropDownIcon from "./shared/DropDownIcon";
@@ -91,32 +90,32 @@ function TopNavBar() {
           </Form>
 
           <DropDownIcon iconSrc="/tune_black_24dp.svg" alignRight={true} contentClassName="filter-menu" buttonClassName="filter-menu-button mr-sm-1">
-            <Form.Group>
-              <Form.Label style={{float:"left"}} className="mr-sm-2">Video quality</Form.Label>
-              {
-                Constants.resolutions.map((v) => {
-                  return <Form.Check
-                    style={ { float:"left" } }
-                    className="mr-sm-1"
-                    name="ncols"
-                    type="radio"
-                    value={v.value}
-                    label={v.label}
-                    checked={prefs.minRes === v.value}
-                    onChange={(e) => {
-                      setPrefs( { ...prefs, minRes: v.value })
-                    }
-                    } />;
-                })
-              }
-            </Form.Group>
+            <>
+              <div className="filter-menu-title">Filters</div>
+
+              <div className="filter-menu-form">
+                <div style={{float:"left"}} className="mr-sm-2">Video quality</div>
+                {
+                  Constants.resolutions.map((v) => {
+                    return <Form.Check
+                      style={ { float:"left" } }
+                      className="mr-sm-1"
+                      name="ncols"
+                      type="radio"
+                      value={v.value}
+                      label={v.label}
+                      checked={prefs.minRes === v.value}
+                      onChange={(e) => { setPrefs( { ...prefs, minRes: v.value }) }
+                      } />;
+                  })
+                }
+              </div>
+            </>
           </DropDownIcon>
 
           <ConfigMenu key="nav-config-menu"/>
         </div>
-        <div key="nav-bar-right" className="bar-right">
-          {/*<Navbar.Text key="nav-current-tag" className="current-tag">{selectedTag.title}</Navbar.Text>*/}
-        </div>
+        <div key="nav-bar-right" className="bar-right"></div>
     </Navbar>
   );
 }

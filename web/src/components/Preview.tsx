@@ -135,21 +135,11 @@ const InfoPanel = (props: {vid: Video, onClickInfo: () => any }) => {
 
     return(
         <div className={`info-panel`}>
-            <div className="info-title"><b>{props.vid.title}</b></div>
+          <div className="info-title"><p>Title:</p><div><Form.Control size="sm" type="text" defaultValue={props.vid.title}/></div></div>
             <div className="info-panel-content">
-                <table>
-                    <tbody>
-                    <tr><td>Duration</td><td>{durationStr}</td></tr>
-                    <tr><td>Fps</td><td>{props.vid.fps}</td></tr>
-                    <tr><td>Resolution</td><td>{props.vid.resolution_x}x{props.vid.resolution_y}</td></tr>
-                    <tr><td>Tags<ImgWithAlt className="tag-add-button" src="/add_box_black_24dp.svg" /></td><td>
-                        <div className="tag-entry">
-                            <Form.Control className="tag-input" size="sm" type="text" defaultValue="" />
-                            <ImgWithAlt className="tag-delete-button" src="/cancel_black_24dp.svg" />
-                        </div>
-                    </td></tr>
-                    </tbody>
-                </table>
+                <p>Info: {durationStr}, {props.vid.fps}fps, {props.vid.resolution_x}x{props.vid.resolution_y}</p>
+              <p>Tags:</p>
+
             </div>
             <div className="abs-bottom-right">
               <ImgWithAlt className="action-icon-small" src="/done_outline_black_24dp.svg" onClick={(e) => { props.onClickInfo() } } />

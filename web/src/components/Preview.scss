@@ -16,25 +16,27 @@
   overflow: scroll;
   background-color: white;
   border: 1px solid lightgray;
-  font-size: small;
+  font-size: medium;
 
   .info-title {
-    font-size: medium;
-    position: absolute;
-    left: 8px;
-    top: 5px;
+
+    margin: 8px;
+    //width: 100%;
+    overflow: hidden;
+    display:flex;
+
+    p {
+      flex-grow: 0;
+    }
+    div {
+      flex-grow: 1;
+    }
   }
 
   .info-panel-content {
 
-    margin: 32px 7px;
+    margin: 8px 8px;
     padding: 8px 0px;
-    border-top: 1px solid #ced4da;
-
-    table {
-      width: 100%;
-      height: 100%;
-    }
   }
 
   .tag-entry {
@@ -66,10 +68,6 @@
   width: 100%;
   padding-top: 3px;
   padding-left: 5px;
-  border-width: 0px 1px 1px 1px;
-  border-style: solid;
-  border-color: rgb(206, 212, 218);
-  //border-top: 1px solid white;
   background-image: linear-gradient(to right, #dcdcdc, #ffffff);
   //background-image: linear-gradient(to right, #ec3a78, #ffc9fd);
   color: #233453;
@@ -142,6 +140,7 @@ $preview-hover-shadow-color: rgba(255, 255, 0, 1);
     padding-left: 10px !important;
   }
 }
+
 
 
 

@@ -21,10 +21,28 @@ const ConfigMenu = () => {
                   buttonClassName="mr-sm-1 config-menu-button"
                   contentClassName="config-menu">
 
-      <div className="ml-sm-2 config-form">
+      <>
 
-        <Form.Group className="form-section">
-          <Form.Label className="form-label">Number of columns</Form.Label>
+      <div className="config-title">Preferences</div>
+
+      <div className="config-form">
+
+        <div className="form-section">
+          <p className="form-label">Show video titles</p>
+          <div className="form-content">
+            <Form.Check
+              type="checkbox"
+              checked={ prefs.showTitles }
+              onChange={(e) => {
+                setPrefs( { ...prefs, showTitles: !prefs.showTitles })
+              }
+              }
+            />
+          </div>
+        </div>
+
+        <div className="form-section">
+          <p className="form-label">Number of columns</p>
           <div className="form-content">
             {
               columns.map((v) => {
@@ -43,25 +61,10 @@ const ConfigMenu = () => {
               })
             }
           </div>
-        </Form.Group>
+        </div>
 
-        <Form.Group className="form-section">
-          <Form.Label className="form-label">Show video titles</Form.Label>
-          <div className="form-content">
-            <Form.Check
-              type="checkbox"
-              checked={ prefs.showTitles }
-              onChange={(e) => {
-                setPrefs( { ...prefs, showTitles: !prefs.showTitles })
-              }
-              }
-            />
-          </div>
-        </Form.Group>
-
-
-        <Form.Group className="form-section">
-          <Form.Label className="form-label">Show duration</Form.Label>
+        <div className="form-section">
+          <p className="form-label">Show video duration</p>
           <div className="form-content">
             <Form.Check
               type="checkbox"
@@ -72,9 +75,9 @@ const ConfigMenu = () => {
               }
             />
           </div>
-        </Form.Group>
-        <Form.Group className="form-section">
-          <Form.Label className="form-label">Show triple dot menu</Form.Label>
+        </div>
+        <div className="form-section">
+          <p className="form-label">Show video menu</p>
           <div className="form-content">
             <Form.Check
               type="checkbox"
@@ -85,8 +88,10 @@ const ConfigMenu = () => {
               }
             />
           </div>
-        </Form.Group>
+        </div>
       </div>
+
+      </>
     </DropDownIcon>
   )
 }

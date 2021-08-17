@@ -1,3 +1,5 @@
+@import '~bootstrap/scss/bootstrap.scss';
+
 .config-menu-button {
 
   flex-grow: 0;
@@ -9,25 +11,38 @@
 
 .config-menu {
   margin-top: 5px !important;
+  padding: 0px ! important;
   width: 500px;
+
+  .config-title {
+
+    @extend .ml-sm-3, .mr-sm-3, .mt-sm-2, .pb-2;
+
+    border-bottom: #d8d4d4 1px solid;
+    font-size: large;
+    font-weight: bold;
+  }
 }
 
 .config-form {
 
-  padding: 8px;
+  @extend .mt-sm-2, .m-sm-3;
+
   display: table;
+  table-layout: fixed;
 
   .form-section {
 
     display: table-row;
 
     .form-label {
+      @extend .pr-3;
       display: table-cell;
-      padding-right: 8px;
+      vertical-align: middle;
     }
 
     .form-content {
-      vertical-align: center;
+      vertical-align: middle;
       display: table-cell;
     }
   }

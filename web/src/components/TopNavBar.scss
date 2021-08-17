@@ -1,4 +1,5 @@
 @import url(https://fonts.googleapis.com/css2?family=Otomanopee+One&display=swap);
+@import '~bootstrap/scss/bootstrap.scss';
 
 .TopNavBar {
 
@@ -32,9 +33,23 @@
   }
 
   .filter-menu {
+
     margin-top: 5px !important;
-    padding: 16px;
+    padding: 0px ! important;
     width: 400px;
+
+    .filter-menu-title {
+
+      @extend .ml-sm-3, .mr-sm-3, .mt-sm-2, .pb-2;
+      border-bottom: #d8d4d4 1px solid;
+      font-size: large;
+      font-weight: bold;
+    }
+
+    .filter-menu-form {
+      @extend .mt-sm-2, .m-sm-3;
+      display: flex;
+    }
   }
 }
 

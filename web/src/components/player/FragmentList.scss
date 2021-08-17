@@ -10,10 +10,12 @@
 
   .fragments-header {
 
-    border-bottom: 1px solid black;
+    //border-bottom: 1px solid black;
     padding: 2px 6px;
-    background-image: linear-gradient(to right, #2243b8, #71b1ff);
-    color: white;
+    // background-image: linear-gradient(to right, #2243b8, #71b1ff);
+    background-image: linear-gradient(to right, #dcdcdc, #ffffff);
+    font-weight: 500;
+    color: black;
   }
 
   .fragment {
