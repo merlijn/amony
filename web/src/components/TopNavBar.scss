@@ -1,6 +1,12 @@
 @import url(https://fonts.googleapis.com/css2?family=Otomanopee+One&display=swap);
 @import '~bootstrap/scss/bootstrap.scss';
 
+
+.nav-button {
+  background-color: #d8d4d4 ! important;
+  border-color: darkgray ! important;
+}
+
 .TopNavBar {
 
   height: 45px;
@@ -16,10 +22,10 @@
 
   .filter-menu-button {
 
+    @extend .nav-button;
+
     position: relative;
     float: left;
-    background-color: #d8d4d4 ! important;
-    border-color: darkgray;
     padding: 2px 5px !important;
 
     img {
@@ -69,7 +75,10 @@
   padding: 8px 0px;
 }
 
-.home-logo {
+.home-button {
+
+  @extend .nav-button;
+
   float: left;
   flex-grow: 0;
   padding: 0px 5px !important;
@@ -87,9 +96,8 @@
   position: relative;
   float: left;
 
-  button {
-    background-color: #d8d4d4 ! important;
-    border-color: darkgray ! important;
+  .tag-list-toggle {
+    @extend .nav-button;
   }
 
   &:not(.show) {
@@ -119,9 +127,4 @@
       top: 6px
     }
   }
-}
-
-.current-tag {
-  padding-left: 8px;
-  padding-top: 10px !important;
 }

@@ -66,7 +66,7 @@ function TopNavBar() {
         <div key="nav-bar-center" className="bar-center">
 
           <Dropdown className="tag-list-dropdown mr-sm-1" key="nav-tag-list" as={ButtonGroup} size="sm">
-            <Button size="sm" className="home-logo"><a href="/">
+            <Button size="sm" className="home-button"><a href="/">
               <ImgWithAlt src="/home_black_24dp.svg" />
             </a></Button>
 
