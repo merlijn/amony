@@ -1,3 +1,5 @@
+import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
+
 val AkkaVersion = "2.6.14"
 val AkkaHttpVersion = "10.2.4"
 
@@ -30,5 +32,13 @@ lazy val root = (project in file(".")).
       "io.circe"              %% "circe-parser" % "0.14.1",
       "com.github.pathikrit"  %% "better-files" % "3.9.1",
       "org.scalatest"         %% "scalatest"                % "3.2.9"         % Test
-    )
+    ),
+    assembly / assemblyJarName := "amony.jar",
+    assembly / assemblyMergeStrategy := {
+      case "module-info.class" => MergeStrategy.discard
+      case s if s.startsWith("org/iq80/leveldb") => MergeStrategy.first
+      case x =>
+        val oldStrategy = (assembly / assemblyMergeStrategy).value
+        oldStrategy(x)
+      }
   )

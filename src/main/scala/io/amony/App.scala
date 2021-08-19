@@ -12,7 +12,6 @@ import scala.concurrent.duration.DurationInt
 object App extends AppConfig with Logging {
 
   def main(args: Array[String]): Unit = {
-    logger.info("ENV: " + System.getenv().get("ENV"))
 
     val system: ActorSystem[MediaLibActor.Command] =
       ActorSystem(MediaLibActor(mediaLibConfig), "mediaLibrary", config)
@@ -34,7 +33,6 @@ object App extends AppConfig with Logging {
 
   def logEncodings() = {
     import java.nio.charset.Charset
-    logger.info("Default Charset=" + Charset.defaultCharset)
     logger.info("file.encoding=" + System.getProperty("file.encoding"))
     logger.info("Default Charset=" + Charset.defaultCharset)
     logger.info("Default Charset in Use=" + getDefaultCharSet)

@@ -7,7 +7,7 @@ import io.amony.lib.FileUtil
 import pureconfig._
 import pureconfig.generic.auto._
 import pureconfig.generic.semiauto.deriveEnumerationReader
-import scribe.Logging
+import scribe.{Logger, Logging}
 
 import java.nio.file.Path
 
@@ -30,16 +30,9 @@ case object FakeHash extends HashingAlgorithm {
 
 trait AppConfig extends Logging {
 
-  val env = {
-    if (System.getenv().containsKey("ENV"))
-      System.getenv().get("ENV")
-    else
-      "dev"
-  }
-
   implicit val hashingAlgorithmReader: ConfigReader[HashingAlgorithm] = deriveEnumerationReader[HashingAlgorithm]
 
-  val config       = ConfigFactory.load(s"$env/application.conf")
+  val config       = ConfigFactory.load()
   val configSource = ConfigSource.fromConfig(config)
 
   val mediaLibConfig  = configSource.at("media").loadOrThrow[MediaLibConfig]
