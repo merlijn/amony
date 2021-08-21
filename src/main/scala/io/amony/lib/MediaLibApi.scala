@@ -18,7 +18,7 @@ import scribe.Logging
 
 import scala.concurrent.{Await, Future}
 
-class MediaLibApi(config: MediaLibConfig, system: ActorSystem[Command]) extends Logging {
+class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) extends Logging {
 
   import akka.actor.typed.scaladsl.AskPattern._
   implicit val scheduler = system.scheduler

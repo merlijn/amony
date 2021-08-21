@@ -3,7 +3,8 @@ package io.amony.lib
 import better.files.File
 import scribe.Logging
 
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
+import java.nio.file.attribute.BasicFileAttributes
 import java.util.Base64
 import scala.util.Random
 
@@ -12,10 +13,15 @@ object FileUtil extends Logging {
   implicit class PathOps(path: Path) {
 
     // strip extension
-    def stripExtension() = {
+    def stripExtension(): String = {
       val dotIdx = path.toString.lastIndexOf('.')
       val last   = if (dotIdx >= 0) dotIdx else path.toString.length
       path.toString.substring(0, last)
+    }
+
+    def creationTimeMillis(): Long = {
+      val attributes = Files.readAttributes(path, classOf[BasicFileAttributes])
+      attributes.creationTime().toMillis
     }
 
     def absoluteFileName(): String = path.toAbsolutePath.toString

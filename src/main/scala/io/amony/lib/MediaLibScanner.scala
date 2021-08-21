@@ -11,6 +11,7 @@ import monix.execution.Scheduler
 import monix.reactive.{Consumer, Observable}
 import scribe.Logging
 
+import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.DurationInt
 import scala.util.Success
@@ -23,11 +24,13 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
   def convertNonStreamableVideos(config: MediaLibConfig, api: MediaLibApi): Unit = {
 
+    logger.info("walking dir")
     val files = FileUtil.walkDir(config.libraryPath)
 
     implicit val timeout: Timeout = Timeout(3.seconds)
     implicit val ec               = scala.concurrent.ExecutionContext.global
 
+    logger.info("for eaching files")
     files
       .filter { vid =>
         // filter for extension
@@ -64,6 +67,8 @@ object MediaLibScanner extends Logging with JsonCodecs {
     if (!info.fastStart)
       logger.warn(s"Video is not optimized for streaming: ${videoPath}")
 
+    val attributes = Files.readAttributes(videoPath, classOf[BasicFileAttributes])
+
     val timeStamp = info.duration / 3
     createVideoFragment(videoPath, indexDir, hash, timeStamp, timeStamp + 3000)
     val video = asVideo(baseDir, videoPath, hash, info, timeStamp)
@@ -87,7 +92,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     val filesWithHashes: List[(Path, String)] = Observable
       .from(filesTruncated)
-      .filter { vid => filterFileName(vid.getFileName.toString) }
+      .filter { file => filterFileName(file.getFileName.toString) }
       .mapParallelUnordered(config.scanParallelFactor) { path =>
         Task {
           val hash = if (config.verifyHashes) {
@@ -166,6 +171,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     Media(
       id                 = hash,
       uri                = baseDir.relativize(videoPath).toString,
+      addedOnTimestamp   = videoPath.creationTimeMillis(),
       hash               = hash,
       title              = None,
       duration           = info.duration,

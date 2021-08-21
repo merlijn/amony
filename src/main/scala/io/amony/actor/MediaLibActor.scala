@@ -45,6 +45,7 @@ object MediaLibActor {
       id: String,
       hash: String,
       uri: String,
+      addedOnTimestamp: Long,
       title: Option[String],
       duration: Long,
       fps: Double,
