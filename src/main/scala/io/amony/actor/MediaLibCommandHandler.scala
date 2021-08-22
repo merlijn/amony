@@ -18,8 +18,8 @@ object MediaLibCommandHandler extends Logging {
     lazy val tags: List[Collection] = {
 
       val dirs = state.media.values.foldLeft(Set.empty[String]) { case (set, e) =>
-        val parent   = (File(config.libraryPath) / e.uri).parent
-        val tag = s"#${config.libraryPath.relativize(parent)}"
+        val parent = (File(config.libraryPath) / e.uri).parent
+        val tag    = s"#${config.libraryPath.relativize(parent)}"
         set + tag
       }
 
@@ -39,15 +39,14 @@ object MediaLibCommandHandler extends Logging {
           .thenReply(sender)(_ => true)
 
       case RemoveMedia(mediaId, sender) =>
-
         val media = state.media(mediaId)
-        val path = media.resolvePath(config.libraryPath)
+        val path  = media.resolvePath(config.libraryPath)
 
         logger.info(s"Deleting media '$mediaId:/${media.uri}'")
 
         Effect
           .persist(MediaRemoved(mediaId))
-          .thenRun( (s: State) => {
+          .thenRun((s: State) => {
             if (File(path).exists)
               Desktop.getDesktop().moveToTrash(path.toFile());
           })
@@ -63,7 +62,6 @@ object MediaLibCommandHandler extends Logging {
         Effect.reply(sender)(state.media.values.toList)
 
       case Search(query, sender) =>
-
         val tag = query.tag.flatMap(t => tags.find(_.id == t))
 
         def filterTag(m: Media): Boolean = tag.map(t => m.uri.startsWith(t.title.substring(1))).getOrElse(true)
@@ -92,9 +90,7 @@ object MediaLibCommandHandler extends Logging {
 
             val newFragments = vid.fragments.deleteAtPos(idx)
             val newVid =
-              vid.copy(
-                fragments = vid.fragments.deleteAtPos(idx),
-                thumbnailTimestamp = newFragments(0).fromTimestamp)
+              vid.copy(fragments = vid.fragments.deleteAtPos(idx), thumbnailTimestamp = newFragments(0).fromTimestamp)
 
             Effect
               .persist(MediaUpdated(id, newVid))
@@ -116,7 +112,6 @@ object MediaLibCommandHandler extends Logging {
             Effect.reply(sender)(Left(InvalidCommand(s"No video found with id '$id'")))
 
           case Some(vid) =>
-
             logger.info(s"Updating fragment $id:$idx to $from:$to")
 
             if (idx < 0 || idx >= vid.fragments.size) {
@@ -129,7 +124,8 @@ object MediaLibCommandHandler extends Logging {
               val newVid =
                 vid.copy(
                   thumbnailTimestamp = primaryThumbnail,
-                  fragments = vid.fragments.replaceAtPos(idx, newFragment))
+                  fragments          = vid.fragments.replaceAtPos(idx, newFragment)
+                )
 
               Effect
                 .persist(MediaUpdated(id, newVid))
@@ -161,7 +157,9 @@ object MediaLibCommandHandler extends Logging {
 
               Effect
                 .persist(FragmentAdded(id, from, to))
-                .thenRun((_: State) => createVideoFragment(vid.resolvePath(config.libraryPath), config.indexPath, id, from, to))
+                .thenRun((_: State) =>
+                  createVideoFragment(vid.resolvePath(config.libraryPath), config.indexPath, id, from, to)
+                )
                 .thenReply(sender)(s => Right(s.media(id)))
             }
         }
@@ -169,7 +167,8 @@ object MediaLibCommandHandler extends Logging {
       case UpdateFragmentTags(id, fragmentIndex, tags, sender) =>
         logger.info(s"Received AddFragmentTag command: $id:$fragmentIndex -> ${tags.mkString(",")}")
 
-        Effect.persist(FragmentTagsUpdated(id, fragmentIndex, tags))
+        Effect
+          .persist(FragmentTagsUpdated(id, fragmentIndex, tags))
           .thenReply(sender)(_ => Right(state.media(id)))
     }
   }

@@ -4,7 +4,7 @@ import akka.actor.typed.ActorSystem
 import akka.util.Timeout
 import io.amony.actor.MediaLibActor
 import io.amony.http.WebServer
-import io.amony.lib.{MediaLibApi, MediaLibScanner}
+import io.amony.lib.{MediaLibApi, MediaLibScanner, Migration}
 import scribe.Logging
 
 import scala.concurrent.duration.DurationInt
@@ -18,13 +18,13 @@ object App extends AppConfig with Logging {
 
     val api = new MediaLibApi(mediaLibConfig, system)
 
-    api.admin.scanLibrary()(10.seconds)
-
     logEncodings()
+
+    api.admin.scanLibrary()(10.seconds)
 
 //    MediaLibScanner.convertNonStreamableVideos(mediaLibConfig, api)
 
-//    Migration.importFromFile(system)
+//    Migration.importFromExport(api)(10.seconds)
 
     val webServer = new WebServer(webServerConfig, api)(system)
 

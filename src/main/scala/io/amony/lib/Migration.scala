@@ -13,16 +13,16 @@ import java.nio.file.attribute.BasicFileAttributes
 object Migration extends Logging {
 
   case class MediaOld(
-    id: String,
-    hash: String,
-    uri: String,
-    title: Option[String],
-    duration: Long,
-    fps: Double,
-    thumbnailTimestamp: Long,
-    fragments: List[FragmentOld],
-    resolution: (Int, Int),
-    tags: List[String]
+      id: String,
+      hash: String,
+      uri: String,
+      title: Option[String],
+      duration: Long,
+      fps: Double,
+      thumbnailTimestamp: Long,
+      fragments: List[FragmentOld],
+      resolution: (Int, Int),
+      tags: List[String]
   )
 
   case class FragmentOld(fromTimestamp: Long, toTimestamp: Long)
@@ -30,7 +30,7 @@ object Migration extends Logging {
   def importFromExport(api: MediaLibApi)(implicit timeout: Timeout) = {
 
     implicit val thumbnailCodec = deriveCodec[FragmentOld]
-    implicit val mediaOldCodec = deriveCodec[MediaOld]
+    implicit val mediaOldCodec  = deriveCodec[MediaOld]
 
     val json = (File(api.config.indexPath) / "export.json").contentAsString
 
@@ -44,7 +44,6 @@ object Migration extends Logging {
         logger.error("Failed to decode json", error)
 
       case Right(media) =>
-
         media.foreach { m =>
           val fragments = {
             m.fragments.map { p =>
@@ -52,9 +51,9 @@ object Migration extends Logging {
             }
           }
 
-          val path = api.config.libraryPath.resolve(m.uri)
+          val path       = api.config.libraryPath.resolve(m.uri)
           val attributes = Files.readAttributes(path, classOf[BasicFileAttributes])
-          val addedOn = attributes.creationTime().toMillis
+          val addedOn    = attributes.creationTime().toMillis
 
           logger.info(s"added on: ${path.toString} -> $addedOn")
 

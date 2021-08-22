@@ -34,9 +34,9 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
     def getAll()(implicit timeout: Timeout): Future[List[Media]] =
       system.ask[List[Media]](ref => GetAll(ref))
 
-    def search(q: Option[String], offset: Option[Int], size: Int, c: Option[String],
-               minRes: Option[Int])(implicit timeout: Timeout): Future[SearchResult] =
-
+    def search(q: Option[String], offset: Option[Int], size: Int, c: Option[String], minRes: Option[Int])(implicit
+        timeout: Timeout
+    ): Future[SearchResult] =
       system.ask[SearchResult](ref => Search(Query(q, offset, size, c, minRes), ref))
 
     def getTags()(implicit timeout: Timeout): Future[List[Collection]] =
@@ -60,10 +60,14 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
     def addFragment(id: String, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
       system.ask[Either[ErrorResponse, Media]](ref => AddFragment(id, from, to, ref))
 
-    def updateFragmentRange(id: String, idx: Int, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+    def updateFragmentRange(id: String, idx: Int, from: Long, to: Long)(implicit
+        timeout: Timeout
+    ): Future[Either[ErrorResponse, Media]] =
       system.ask[Either[ErrorResponse, Media]](ref => UpdateFragmentRange(id, idx, from, to, ref))
 
-    def updateFragmentTags(id: String, idx: Int, tags: List[String])(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+    def updateFragmentTags(id: String, idx: Int, tags: List[String])(implicit
+        timeout: Timeout
+    ): Future[Either[ErrorResponse, Media]] =
       system.ask[Either[ErrorResponse, Media]](ref => UpdateFragmentTags(id, idx, tags, ref))
 
     def deleteFragment(id: String, idx: Int)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
@@ -76,19 +80,22 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
 
       implicit val s = Scheduler.global
 
-      read.getAll().foreach { loadedFromStore =>
+      read
+        .getAll()
+        .foreach { loadedFromStore =>
+          val (deleted, newAndMoved) = MediaLibScanner.scanVideosInDirectory(config, loadedFromStore)
+          val upsert                 = Consumer.foreachTask[Media](m => Task { modify.upsertMedia(m) })
+          val delete = Consumer.foreachTask[Media](m =>
+            Task {
+              logger.info(s"Detected deleted file: ${m.uri}")
+              modify.deleteMedia(m.id)
+            }
+          )
 
-        val (deleted, newAndMoved) = MediaLibScanner.scanVideosInDirectory(config, loadedFromStore)
-        val upsert = Consumer.foreachTask[Media](m => Task { modify.upsertMedia(m) } )
-        val delete = Consumer.foreachTask[Media](m => Task {
-          logger.info(s"Detected deleted file: ${m.uri}")
-          modify.deleteMedia(m.id)
-        })
+          deleted.consumeWith(delete).runSyncUnsafe()
+          newAndMoved.consumeWith(upsert).runSyncUnsafe()
 
-        deleted.consumeWith(delete).runSyncUnsafe()
-        newAndMoved.consumeWith(upsert).runSyncUnsafe()
-
-      }(system.executionContext)
+        }(system.executionContext)
     }
 
     def regeneratePreviewFor(m: Media): Unit = {

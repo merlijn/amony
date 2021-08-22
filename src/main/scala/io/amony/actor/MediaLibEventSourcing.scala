@@ -8,10 +8,10 @@ object MediaLibEventSourcing extends Logging {
 
   sealed trait Event extends JsonSerializable
 
-  case class MediaAdded(media: Media)           extends Event
-  case class MediaUpdated(id: String, m: Media) extends Event
-  case class MediaRemoved(id: String)           extends Event
-  case class FragmentAdded(id: String, fromTimeStamp: Long, toTimestamp: Long) extends Event
+  case class MediaAdded(media: Media)                                                  extends Event
+  case class MediaUpdated(id: String, m: Media)                                        extends Event
+  case class MediaRemoved(id: String)                                                  extends Event
+  case class FragmentAdded(id: String, fromTimeStamp: Long, toTimestamp: Long)         extends Event
   case class FragmentTagsUpdated(mediaId: String, fragmentId: Int, tags: List[String]) extends Event
 
   def apply(state: State, event: Event): State =
@@ -27,15 +27,14 @@ object MediaLibEventSourcing extends Logging {
         state.copy(media = state.media - id)
 
       case FragmentAdded(id, from, to) =>
-        val media = state.media(id)
+        val media        = state.media(id)
         val newFragments = Fragment(from, to, None, Nil) :: media.fragments
 
         state.copy(media = state.media + (media.id -> media.copy(fragments = newFragments)))
 
       case FragmentTagsUpdated(mediaId, fragmentId, tags) =>
-
-        val media = state.media(mediaId)
-        val fragment = media.fragments(fragmentId)
+        val media        = state.media(mediaId)
+        val fragment     = media.fragments(fragmentId)
         val newFragments = media.fragments.replaceAtPos(fragmentId, fragment.copy(tags = tags))
 
         state.copy(media = state.media + (media.id -> media.copy(fragments = newFragments)))

@@ -46,15 +46,21 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
 
   val apiRoutes =
     pathPrefix("api") {
-      (path("search") & parameters("q".optional, "offset".optional, "n".optional, "tags".optional, "sort".optional, "min_res".optional)) {
-        (q, offset, n, tags, sort, minResY) =>
-          get {
-            val size         = n.map(_.toInt).getOrElse(defaultResultNumber)
-            val searchResult = api.read.search(q, offset.map(_.toInt), size, tags, minResY.map(_.toInt))
-            val response     = searchResult.map(_.toWebModel().asJson)
+      (path("search") & parameters(
+        "q".optional,
+        "offset".optional,
+        "n".optional,
+        "tags".optional,
+        "sort".optional,
+        "min_res".optional
+      )) { (q, offset, n, tags, sort, minResY) =>
+        get {
+          val size         = n.map(_.toInt).getOrElse(defaultResultNumber)
+          val searchResult = api.read.search(q, offset.map(_.toInt), size, tags, minResY.map(_.toInt))
+          val response     = searchResult.map(_.toWebModel().asJson)
 
-            complete(response)
-          }
+          complete(response)
+        }
       } ~ path("media" / Segment) { id =>
         get {
           onSuccess(api.read.getById(id)) {
@@ -62,8 +68,8 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
             case None      => complete(StatusCodes.NotFound)
           }
         } ~ delete {
-          onSuccess(api.modify.deleteMedia(id)) {
-            case _ => complete(StatusCodes.OK, "{}")
+          onSuccess(api.modify.deleteMedia(id)) { case _ =>
+            complete(StatusCodes.OK, "{}")
           }
         }
       } ~ path("tags") {
