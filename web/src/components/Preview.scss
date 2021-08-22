@@ -68,6 +68,9 @@
   width: 100%;
   padding-top: 3px;
   padding-left: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   background-image: linear-gradient(to right, #dcdcdc, #ffffff);
   //background-image: linear-gradient(to right, #ec3a78, #ffc9fd);
   color: #233453;

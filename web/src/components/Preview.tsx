@@ -40,7 +40,7 @@ const Preview = (props: PreviewProps) => {
                      fragments={ props.vid.fragments } />
 
   const titlePanel =
-    <div className="media-title">{vid.title.substring(0, 38)}</div>
+    <div className="media-title">{vid.title}</div>
 
   const overlayIcons =
     <div>
