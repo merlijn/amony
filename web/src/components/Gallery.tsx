@@ -10,6 +10,7 @@ import Plyr from "plyr";
 
 const gridSize = 350
 const gridReRenderThreshold = 24
+const fetchDataScreenMargin = 500;
 
 const Gallery = () => {
 
@@ -22,6 +23,8 @@ const Gallery = () => {
 
   const [minRes, setMinRes] = useState(prefs.minRes)
   const [searchResult, setSearchResult] = useState(initialSearchResult)
+  const [isFetching, setIsFetching] = useState(false)
+
   const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
 
   const windowSize = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > gridReRenderThreshold));
@@ -44,7 +47,7 @@ const Gallery = () => {
   const fetchData = (previous: Array<Video>) => {
 
     const offset = previous.length
-    const n      = ncols * 7
+    const n      = ncols * 12
 
     if (n > 0)
       Api.getVideos(
@@ -62,6 +65,12 @@ const Gallery = () => {
   }
 
   const handleScroll = () => {
+
+    console.log(`offsetheight: ${document.documentElement.offsetHeight}`)
+    console.log(`scrolltop   : ${document.documentElement.scrollTop}`)
+    console.log(`innerheight : ${window.innerHeight}`)
+
+    // const diff = Math.ceil(window.innerHeight + document.documentElement.scrollTop) === document.documentElement.offsetHeight
 
     if (Math.ceil(window.innerHeight + document.documentElement.scrollTop) === document.documentElement.offsetHeight) {
       fetchData(searchResult.videos)
@@ -134,6 +143,7 @@ const Gallery = () => {
               key={`preview-${vid.id}`}
               vid={vid}
               onClick={ (v) => setPlayVideo(v) }
+              showPreviewOnHover={false}
               showTitles={prefs.showTitles} showDuration={prefs.showDuration} showMenu={prefs.showMenu}/>
   })
 

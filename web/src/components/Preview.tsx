@@ -1,5 +1,4 @@
-import React, {CSSProperties, SyntheticEvent, useState} from 'react';
-import Image from 'react-bootstrap/Image';
+import React, {CSSProperties, useState} from 'react';
 import './Preview.scss';
 import {durationInMillisToString} from "../api/Util";
 import {Video} from "../api/Model";
@@ -9,12 +8,14 @@ import TripleDotMenu from "./shared/TripleDotMenu";
 import Dropdown from "react-bootstrap/Dropdown";
 import ImgWithAlt from "./shared/ImgWithAlt";
 import Button from "react-bootstrap/Button";
+import ProgressiveImage from "react-progressive-graceful-image";
 import {Api} from "../api/Api";
 
 type PreviewProps = {
   vid: Video,
   style?: CSSProperties,
   className?: string,
+  showPreviewOnHover: boolean,
   showTitles: boolean,
   showDuration: boolean,
   showMenu: boolean,
@@ -53,14 +54,16 @@ const Preview = (props: PreviewProps) => {
       { props.showDuration && <div className="abs-bottom-left duration-overlay">{durationStr}</div> }
     </div>
 
-  const primaryThumbnail = <Image className="preview-thumbnail preview-media" src={vid.thumbnail_uri} fluid />
+  const primaryThumbnail =
+    <ProgressiveImage className="preview-thumbnail preview-media" src={vid.thumbnail_uri} placeholder="/image_placeholder.svg">
+      { (src: string) => <img className="preview-thumbnail preview-media" src={src} alt="an image" /> }
+    </ProgressiveImage>
 
   let preview =
     // <a href={`/video/${props.vid.id}`}>
       <div className = "preview-container"
-           onMouseEnter={() => setShowVideoPreview(true)}
-           onMouseLeave={() => setShowVideoPreview(false)}
-           >
+           onMouseEnter={() => props.showPreviewOnHover && setShowVideoPreview(true)}
+           onMouseLeave={() => setShowVideoPreview(false)}>
         { showVideoPreview && videoPreview }
         { primaryThumbnail }
         { overlayIcons }
