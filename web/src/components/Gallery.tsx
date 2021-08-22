@@ -10,7 +10,7 @@ import Plyr from "plyr";
 
 const gridSize = 350
 const gridReRenderThreshold = 24
-const fetchDataScreenMargin = 500;
+const fetchDataScreenMargin = 1024;
 
 const Gallery = () => {
 
@@ -60,6 +60,7 @@ const Gallery = () => {
         const newvideos = (response as SearchResult).videos
         const videos = [...previous, ...newvideos]
 
+        setIsFetching(false);
         setSearchResult({...response, videos: videos});
       });
   }
@@ -70,11 +71,19 @@ const Gallery = () => {
     console.log(`scrolltop   : ${document.documentElement.scrollTop}`)
     console.log(`innerheight : ${window.innerHeight}`)
 
+    const withinFetchMargin = document.documentElement.offsetHeight - Math.ceil(window.innerHeight + document.documentElement.scrollTop) <=  fetchDataScreenMargin
+
+    if (withinFetchMargin && !isFetching) {
+      console.log("setting isFetching=true")
+      setIsFetching(true)
+    }
+
+
     // const diff = Math.ceil(window.innerHeight + document.documentElement.scrollTop) === document.documentElement.offsetHeight
 
-    if (Math.ceil(window.innerHeight + document.documentElement.scrollTop) === document.documentElement.offsetHeight) {
-      fetchData(searchResult.videos)
-    }
+    // if (Math.ceil(window.innerHeight + document.documentElement.scrollTop) === document.documentElement.offsetHeight) {
+    //   fetchData(searchResult.videos)
+    // }
   }
 
   // add keyboard listener
@@ -96,6 +105,12 @@ const Gallery = () => {
 
   useEffect(() => { fetchData([]) }, [location])
   useEffect(() => { fetchData(searchResult.videos) }, [ncols])
+
+  useEffect(() => {
+    if (isFetching) {
+      fetchData(searchResult.videos);
+    }
+  }, [isFetching]);
 
   useEffect(() => {
 
@@ -143,7 +158,7 @@ const Gallery = () => {
               key={`preview-${vid.id}`}
               vid={vid}
               onClick={ (v) => setPlayVideo(v) }
-              showPreviewOnHover={false}
+              showPreviewOnHover={true}
               showTitles={prefs.showTitles} showDuration={prefs.showDuration} showMenu={prefs.showMenu}/>
   })
 
