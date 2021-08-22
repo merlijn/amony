@@ -9,7 +9,7 @@ lazy val root = (project in file(".")).
       organization    := "io.amony",
       scalaVersion    := "2.13.6"
     )),
-    reStart / javaOptions += "-Dfile.encoding=UTF-8",
+    reStart / javaOptions ++= Seq("-Dconfig.resource=dev/application.conf", "-Dfile.encoding=UTF-8"),
     name := "amony",
     libraryDependencies ++= Seq(
 
@@ -33,6 +33,7 @@ lazy val root = (project in file(".")).
       "com.github.pathikrit"  %% "better-files" % "3.9.1",
       "org.scalatest"         %% "scalatest"                % "3.2.9"         % Test
     ),
+//    assembly / logLevel := Level.Debug,
     assembly / assemblyJarName := "amony.jar",
     assembly / assemblyMergeStrategy := {
       case "module-info.class" => MergeStrategy.discard

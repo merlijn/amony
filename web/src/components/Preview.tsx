@@ -15,7 +15,9 @@ type PreviewProps = {
   vid: Video,
   style?: CSSProperties,
   className?: string,
+  lazyLoad?: boolean,
   showPreviewOnHover: boolean,
+  showPreviewOnHoverDelay?: number,
   showTitles: boolean,
   showDuration: boolean,
   showMenu: boolean,
@@ -55,7 +57,7 @@ const Preview = (props: PreviewProps) => {
     </div>
 
   const primaryThumbnail =
-    <ProgressiveImage className="preview-thumbnail preview-media" src={vid.thumbnail_uri} placeholder="/image_placeholder.svg">
+    <ProgressiveImage src={vid.thumbnail_uri} placeholder="/image_placeholder.svg">
       { (src: string) => <img className="preview-thumbnail preview-media" src={src} alt="an image" /> }
     </ProgressiveImage>
 
