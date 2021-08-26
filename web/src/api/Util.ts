@@ -112,14 +112,15 @@ export function useCookiePrefs<T>(key: string, path: string, defaultPreferences:
 
   const [cookiePreferences, setCookiePrefs] = useCookies([key])
 
-  if (cookiePreferences[key] === undefined) {
-    console.log("Setting default preferences")
-    setCookiePrefs(key, defaultPreferences, {path: path})
-  }
-
   const setPrefsAndCookie = (s: T) => {
     setCookiePrefs(key, s)
   }
 
-  return [cookiePreferences[key], setPrefsAndCookie]
+  if (cookiePreferences[key] === undefined) {
+    setCookiePrefs(key, defaultPreferences, {path: path})
+    return [defaultPreferences, setPrefsAndCookie];
+  }
+  else {
+    return [cookiePreferences[key], setPrefsAndCookie]
+  }
 }
