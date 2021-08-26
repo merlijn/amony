@@ -1,7 +1,7 @@
 package io.amony.http
 
 import akka.actor.typed.ActorSystem
-import akka.http.scaladsl.Http
+import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives.{path, _}
 import akka.http.scaladsl.server.{RejectionHandler, Route, ValidationRejection}
@@ -16,16 +16,27 @@ import io.amony.lib.MediaLibApi
 import io.circe.syntax._
 import scribe.Logging
 
+import java.security.SecureRandom
+import javax.net.ssl.{KeyManagerFactory, SSLContext}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
+
 
 case class WebServerConfig(
     port: Int,
     hostName: String,
     hostClient: Boolean,
     clientPath: String,
-    requestTimeout: FiniteDuration
+    requestTimeout: FiniteDuration,
+    https: Option[HttpsConfig]
+)
+
+case class HttpsConfig(
+  enabled: Boolean,
+  port: Int,
+  privateKeyPem: String,
+  certificateChainPem: String
 )
 
 class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val system: ActorSystem[Nothing])
@@ -156,10 +167,44 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
 
   val allRoutes = apiRoutes ~ adminRoutes ~ thumbnailRoutes ~ videoRoutes ~ clientFiles
 
-//  val loggedRoutes =
-//    DebuggingDirectives.logRequest("Webapp", Logging.InfoLevel)(routes)
 
   def run(): Unit = {
+
+
+
+    config.https.foreach { httpsConfig =>
+
+      if (httpsConfig.enabled) {
+
+        logger.info("Loading SSL files")
+
+        val keyStore = PemReader.loadKeyStore(
+          certificateChainFile = File(httpsConfig.certificateChainPem).toJava,
+          privateKeyFile = File(httpsConfig.privateKeyPem).toJava,
+          keyPassword = None
+        )
+
+        val keyManagerFactory = KeyManagerFactory.getInstance("SunX509")
+        keyManagerFactory.init(keyStore, "".toCharArray)
+        val managers = keyManagerFactory.getKeyManagers
+
+        val sslContext: SSLContext = SSLContext.getInstance("TLS")
+        sslContext.init(managers, null, new SecureRandom())
+
+        val httpsConnectionContext = ConnectionContext.httpsServer(sslContext)
+
+        val binding = Http().newServerAt(config.hostName, httpsConfig.port).enableHttps(httpsConnectionContext).bind(allRoutes)
+
+        binding.onComplete {
+          case Success(binding) =>
+            val address = binding.localAddress
+            system.log.info("Server online at https://{}:{}/", address.getHostString, address.getPort)
+          case Failure(ex) =>
+            system.log.error("Failed to bind HTTP endpoint, terminating system", ex)
+            system.terminate()
+        }
+      }
+    }
 
     val bindingFuture =
       Http().newServerAt(config.hostName, config.port).bind(allRoutes)
