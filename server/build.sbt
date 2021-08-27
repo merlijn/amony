@@ -3,13 +3,17 @@ import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
 val AkkaVersion = "2.6.14"
 val AkkaHttpVersion = "10.2.4"
 
+val javaOpts = Seq("-Dconfig.resource=dev/application.conf", "-Dfile.encoding=UTF-8")
+
 lazy val root = (project in file(".")).
   settings(
     inThisBuild(List(
-      organization    := "io.amony",
+      organization    := "nl.amony",
       scalaVersion    := "2.13.6"
     )),
-    reStart / javaOptions ++= Seq("-Dconfig.resource=dev/application.conf", "-Dfile.encoding=UTF-8"),
+    reStart / javaOptions ++= javaOpts ,
+    run / fork        := true,
+    run / javaOptions ++= javaOpts,
     name := "amony",
     libraryDependencies ++= Seq(
 

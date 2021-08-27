@@ -24,13 +24,11 @@ import scala.util.{Failure, Success}
 
 
 case class WebServerConfig(
-    port: Int,
-    hostName: String,
-    hostClient: Boolean,
-    clientPath: String,
-    requestTimeout: FiniteDuration,
-    http: Option[HttpConfig],
-    https: Option[HttpsConfig]
+  hostName: String,
+  webClientFiles: String,
+  requestTimeout: FiniteDuration,
+  http: Option[HttpConfig],
+  https: Option[HttpsConfig]
 )
 
 case class HttpsConfig(
@@ -147,7 +145,7 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
     }
   }
 
-  def clientFiles =
+  def clientFiles: Route =
     rawPathPrefix(Slash) {
 
       extractUnmatchedPath { path =>
@@ -158,11 +156,11 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
         }
 
         val targetFile = {
-          val maybe = (File(config.clientPath) / filePath)
+          val maybe = (File(config.webClientFiles) / filePath)
           if (maybe.exists)
             maybe
           else
-            File(config.clientPath) / "index.html"
+            File(config.webClientFiles) / "index.html"
         }
 
         getFromFile(targetFile.path.toAbsolutePath.toString)
@@ -189,8 +187,8 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
       logger.info("Loading SSL files")
 
       val keyStore = PemReader.loadKeyStore(
-        certificateChainFile = File(httpsConfig.certificateChainPem).toJava,
-        privateKeyFile = File(httpsConfig.privateKeyPem).toJava,
+        certificateChainFile = File(httpsConfig.certificateChainPem),
+        privateKeyFile = File(httpsConfig.privateKeyPem),
         keyPassword = None
       )
 

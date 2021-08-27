@@ -74,9 +74,9 @@ sbt assembly
 docker build -t my-amony-app:latest .
 ```
 
-The first time this can take a bit longer since it downloads/installs all dependencies for `ffmpeg`.
+The first time this can take a bit longer since it downloads & installs all dependencies for `ffmpeg`.
 
-4. Run the docker images
+4. Run the docker image
 
 ```bash
 docker run -v /path/to/my/videos:/usr/local/amony/videos -p 8080:8080

@@ -87,7 +87,7 @@ object PemReader {
   @throws[IOException]
   @throws[GeneralSecurityException]
   private def readCertificateChain(certificateChainFile: File): List[X509Certificate] = {
-    val contents = readFile(certificateChainFile)
+    val contents = certificateChainFile.contentAsString(US_ASCII)
     val matcher = CERT_PATTERN.matcher(contents)
     val certificateFactory = CertificateFactory.getInstance("X.509")
     val certificates = new util.ArrayList[X509Certificate]
@@ -105,7 +105,7 @@ object PemReader {
   @throws[IOException]
   @throws[GeneralSecurityException]
   private def readPrivateKey(keyFile: File, keyPassword: Option[String]): PKCS8EncodedKeySpec = {
-    val content = readFile(keyFile)
+    val content = keyFile.contentAsString(US_ASCII)
     val matcher = KEY_PATTERN.matcher(content)
     if (!matcher.find)
       throw new KeyStoreException("No private key found: " + keyFile)
@@ -126,6 +126,4 @@ object PemReader {
 
   private def base64Decode(base64: String): Array[Byte] = Base64.getMimeDecoder.decode(base64.getBytes(US_ASCII))
 
-  @throws[IOException]
-  private def readFile(file: File): String = file.contentAsString(US_ASCII)
 }
