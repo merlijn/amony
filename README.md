@@ -1,14 +1,14 @@
 # Amony
 
-A simple web app that scans a local directory for `.mp4` files and allows you to browse & play them in a web browser.
+A simple web app that scans a local directory for `.mp4` files and lets you browse & play them in a web browser.
 
-See the screenshot below: 
+Example screenshot:
 
 ![](docs/screenshot-2021-08-27.png)
 
 A live demo is available at [https://amony.nl](https://amony.nl). It is running on single [GCE](https://cloud.google.com/compute/) `e2-micro` instance.
 
-All example videos were sourced from the [Pexels](https://www.pexels.com).
+(All example videos were sourced from the [Pexels](https://www.pexels.com))
 
 # How to use
 
@@ -28,10 +28,12 @@ In dev mode the `.mp4` files are expected to in a directory named `videos` insid
 ### 2. Start the server
 ```
 cd server
-sbt run
+sbt
 ```
 
-The server is now running on port `8080`. It will start scanning the `videos` directory and log its progress.
+Inside the sbt console run the command `~reStart`
+
+After compiling the server will be running on port `8080`. It will start scanning the `videos` directory and log its progress.
 
 ### 3. Start the web client
 ```bash
@@ -40,22 +42,20 @@ npm install --save
 npm start
 ```
 
-The web-client is now running on port `3000`. It will proxy all api requests to port `8080`.
+After compiling the web-client will be running on port `3000`. It will proxy all api requests to the server on port `8080`.
 
 ### 4. Open your web browser
 
 Set location to `localhost:3000`
 
 
-## 'Production' mode
+## Production mode
 
-## Prerequisites
+### Prerequisites
 
 - [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
 - [scala 2.13](https://scala-lang.org/) & [sbt](https://www.scala-sbt.org/)
 - [docker](https://www.docker.com/get-started)
-
-## Start the app in 'production mode'
 
 ### 1. Build the web client
 
