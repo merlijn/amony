@@ -2,7 +2,7 @@
 .idea
 
 # project specific
-test-files/
+videos/
 
 # backend, java, scala
 *.class
@@ -19,7 +19,7 @@ yarn-debug.log*
 yarn-error.log*
 /.pnp
 .pnp.js
-/web/build
+/web-client/build
 
 # testing
 /coverage
