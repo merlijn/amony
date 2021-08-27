@@ -21,14 +21,9 @@ For now there are no pre-packaged binaries, so you will have to build it yoursel
 - [scala 2.13](https://scala-lang.org/) & [sbt](https://www.scala-sbt.org/)
 - [fmpeg](https://ffmpeg.org/)
 
-### 1. Start the web client
-```bash
-cd web-client
-npm install --save
-npm start
-```
+### 1. Prepare your .mp4 files
 
-The web-client is now running on port `3000`
+In dev mode the `.mp4` files are expected to in a directory named `videos` inside the git repository. Move them there or create a symbolic link.
 
 ### 2. Start the server
 ```
@@ -36,11 +31,20 @@ cd server
 sbt run
 ```
 
-The server is now running on port `8080`
+The server is now running on port `8080`. It will start scanning the `videos` directory and log its progress.
 
-### 3. Open browser
+### 3. Start the web client
+```bash
+cd web-client
+npm install --save
+npm start
+```
 
-Set location to `localhost:3000`. The web client will proxy all api requests to port `8080`.
+The web-client is now running on port `3000`. It will proxy all api requests to port `8080`.
+
+### 4. Open your web browser
+
+Set location to `localhost:3000`
 
 
 ## 'Production' mode
