@@ -1,10 +1,20 @@
-FROM openjdk:11
+FROM openjdk:11-jdk-slim
+
+RUN set -eux; \
+	apt-get update; \
+	apt-get install -y --no-install-recommends ffmpeg;
+
+# create directories
 RUN mkdir /usr/amony
+RUN mkdir /usr/amony/certs
 RUN mkdir /usr/amony/videos
+
+# copy files
 COPY ./web/build /usr/amony/client
 COPY ./target/scala-2.13/amony.jar /usr/amony
 COPY ./src/main/resources/prod/application.conf /usr/amony
+
 WORKDIR /usr/amony
-EXPOSE 8080
+EXPOSE 80
 ENV JAVA_TOOL_OPTIONS "-Dconfig.file=/usr/amony/application.conf"
 ENTRYPOINT ["java", "-jar", "amony.jar"]
