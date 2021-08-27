@@ -4,7 +4,7 @@ A simple web app that scans a local directory for `.mp4` files and allows you to
 
 See the screenshot below: 
 
-![](docs/Screenshot 2021-08-27 at 11.21.12.png)
+![](docs/screenshot-2021-08-27.png)
 
 A live demo is available at [https://amony.nl](https://amony.nl). It is running on single [GCE](https://cloud.google.com/compute/) `e2-micro` instance.
 
