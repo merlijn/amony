@@ -1,18 +1,19 @@
 package io.amony.http
 
-import java.io._
-import java.nio.CharBuffer
+import better.files.File
+
+import java.io.{ByteArrayInputStream, IOException}
 import java.nio.charset.StandardCharsets.US_ASCII
-import java.security.{GeneralSecurityException, KeyFactory, KeyStore, KeyStoreException}
 import java.security.cert.{CertificateException, CertificateFactory, X509Certificate}
 import java.security.spec.PKCS8EncodedKeySpec
+import java.security.{GeneralSecurityException, KeyFactory, KeyStore, KeyStoreException}
 import java.util
-import java.util.{Base64, Optional}
+import java.util.Base64
 import java.util.regex.Pattern
 import java.util.regex.Pattern.CASE_INSENSITIVE
 import javax.crypto.Cipher.DECRYPT_MODE
-import javax.crypto.{Cipher, EncryptedPrivateKeyInfo, SecretKeyFactory}
 import javax.crypto.spec.PBEKeySpec
+import javax.crypto.{Cipher, EncryptedPrivateKeyInfo, SecretKeyFactory}
 import scala.jdk.CollectionConverters.ListHasAsScala
 import scala.util.Try
 
@@ -73,7 +74,7 @@ object PemReader {
     val certificateChain = readCertificateChain(certificateChainFile)
 
     if (certificateChain.isEmpty)
-      throw new CertificateException("Certificate file does not contain any certificates: " + certificateChainFile)
+      throw new CertificateException("Certificate chain file does not contain any certificates: " + certificateChainFile)
 
     val keyStore = KeyStore.getInstance("JKS")
 
@@ -107,7 +108,7 @@ object PemReader {
     val content = readFile(keyFile)
     val matcher = KEY_PATTERN.matcher(content)
     if (!matcher.find)
-      throw new KeyStoreException("found no private key: " + keyFile)
+      throw new KeyStoreException("No private key found: " + keyFile)
 
     val encodedKey = base64Decode(matcher.group(1))
 
@@ -126,19 +127,5 @@ object PemReader {
   private def base64Decode(base64: String): Array[Byte] = Base64.getMimeDecoder.decode(base64.getBytes(US_ASCII))
 
   @throws[IOException]
-  private def readFile(file: File): String = try {
-    val reader = new InputStreamReader(new FileInputStream(file), US_ASCII)
-    try {
-      val stringBuilder = new StringBuilder
-      val buffer = CharBuffer.allocate(2048)
-      while ( {
-        reader.read(buffer) != -1
-      }) {
-        buffer.flip
-        stringBuilder.append(buffer)
-        buffer.clear
-      }
-      stringBuilder.toString
-    } finally if (reader != null) reader.close()
-  }
+  private def readFile(file: File): String = file.contentAsString(US_ASCII)
 }

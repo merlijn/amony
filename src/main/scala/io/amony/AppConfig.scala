@@ -36,5 +36,5 @@ trait AppConfig extends Logging {
   val configSource = ConfigSource.fromConfig(config)
 
   val mediaLibConfig  = configSource.at("media").loadOrThrow[MediaLibConfig]
-  val webServerConfig = configSource.at("http").loadOrThrow[WebServerConfig]
+  val webServerConfig = configSource.at("web").loadOrThrow[WebServerConfig]
 }

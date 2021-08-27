@@ -29,14 +29,18 @@ case class WebServerConfig(
     hostClient: Boolean,
     clientPath: String,
     requestTimeout: FiniteDuration,
+    http: Option[HttpConfig],
     https: Option[HttpsConfig]
 )
 
 case class HttpsConfig(
-  enabled: Boolean,
   port: Int,
   privateKeyPem: String,
   certificateChainPem: String
+)
+
+case class HttpConfig(
+  port: Int
 )
 
 class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val system: ActorSystem[Nothing])
@@ -170,52 +174,43 @@ class WebServer(val config: WebServerConfig, val api: MediaLibApi)(implicit val 
 
   def run(): Unit = {
 
-
+    def addBindingHooks(protocol: String, f: Future[Http.ServerBinding]) =
+      f.onComplete {
+        case Success(binding) =>
+          val address = binding.localAddress
+          system.log.info("Server online at {}://{}:{}/", protocol, address.getHostString, address.getPort)
+        case Failure(ex) =>
+          system.log.error("Failed to bind to endpoint, terminating system", ex)
+          system.terminate()
+      }
 
     config.https.foreach { httpsConfig =>
 
-      if (httpsConfig.enabled) {
+      logger.info("Loading SSL files")
 
-        logger.info("Loading SSL files")
+      val keyStore = PemReader.loadKeyStore(
+        certificateChainFile = File(httpsConfig.certificateChainPem).toJava,
+        privateKeyFile = File(httpsConfig.privateKeyPem).toJava,
+        keyPassword = None
+      )
 
-        val keyStore = PemReader.loadKeyStore(
-          certificateChainFile = File(httpsConfig.certificateChainPem).toJava,
-          privateKeyFile = File(httpsConfig.privateKeyPem).toJava,
-          keyPassword = None
-        )
+      val keyManagerFactory = KeyManagerFactory.getInstance("SunX509")
+      keyManagerFactory.init(keyStore, "".toCharArray)
+      val managers = keyManagerFactory.getKeyManagers
 
-        val keyManagerFactory = KeyManagerFactory.getInstance("SunX509")
-        keyManagerFactory.init(keyStore, "".toCharArray)
-        val managers = keyManagerFactory.getKeyManagers
+      val sslContext: SSLContext = SSLContext.getInstance("TLS")
+      sslContext.init(managers, null, new SecureRandom())
 
-        val sslContext: SSLContext = SSLContext.getInstance("TLS")
-        sslContext.init(managers, null, new SecureRandom())
+      val httpsConnectionContext = ConnectionContext.httpsServer(sslContext)
 
-        val httpsConnectionContext = ConnectionContext.httpsServer(sslContext)
+      val binding = Http().newServerAt(config.hostName, httpsConfig.port).enableHttps(httpsConnectionContext).bind(allRoutes)
 
-        val binding = Http().newServerAt(config.hostName, httpsConfig.port).enableHttps(httpsConnectionContext).bind(allRoutes)
-
-        binding.onComplete {
-          case Success(binding) =>
-            val address = binding.localAddress
-            system.log.info("Server online at https://{}:{}/", address.getHostString, address.getPort)
-          case Failure(ex) =>
-            system.log.error("Failed to bind HTTP endpoint, terminating system", ex)
-            system.terminate()
-        }
-      }
+      addBindingHooks("https", binding)
     }
 
-    val bindingFuture =
-      Http().newServerAt(config.hostName, config.port).bind(allRoutes)
-
-    bindingFuture.onComplete {
-      case Success(binding) =>
-        val address = binding.localAddress
-        system.log.info("Server online at http://{}:{}/", address.getHostString, address.getPort)
-      case Failure(ex) =>
-        system.log.error("Failed to bind HTTP endpoint, terminating system", ex)
-        system.terminate()
+    config.http.foreach { httpConfig =>
+      val bindingFuture = Http().newServerAt(config.hostName, httpConfig.port).bind(allRoutes)
+      addBindingHooks("http", bindingFuture)
     }
   }
 }
