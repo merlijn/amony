@@ -1,20 +1,28 @@
-*.class
 *.log
 .idea
+
+# project specific
 test-files/
+
+# backend, java, scala
+*.class
 target/
 .bsp/
-/**/.DS_Store
-/**/node_modules
 
+# mac
+/**/.DS_Store
+
+# web development
+/**/node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 /.pnp
 .pnp.js
+/web/build
 
 # testing
 /coverage
-
-# production
-/web/build
 
 # misc
 .env.local
@@ -22,6 +30,3 @@ target/
 .env.test.local
 .env.production.local
 
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
