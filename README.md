@@ -8,7 +8,7 @@ Example screenshot:
 
 A live demo is available at [https://amony.nl](https://amony.nl). It is running on single [GCE](https://cloud.google.com/compute/) `e2-micro` instance.
 
-(All example videos were sourced from the [Pexels](https://www.pexels.com))
+(All example videos were sourced from [Pexels](https://www.pexels.com))
 
 # How to use
 
