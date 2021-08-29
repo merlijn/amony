@@ -38,14 +38,17 @@ object PemReader {
 
   private val CERT_PATTERN = Pattern.compile(
     "-+BEGIN\\s+.*CERTIFICATE[^-]*-+(?:\\s|\\r|\\n)+" + // Header
-    "([a-z0-9+/=\\r\\n]+)" + // Base64 text
-    "-+END\\s+.*CERTIFICATE[^-]*-+", // Footer
-    CASE_INSENSITIVE)
+      "([a-z0-9+/=\\r\\n]+)" +                          // Base64 text
+      "-+END\\s+.*CERTIFICATE[^-]*-+",                  // Footer
+    CASE_INSENSITIVE
+  )
 
   private val KEY_PATTERN = Pattern.compile(
     "-+BEGIN\\s+.*PRIVATE\\s+KEY[^-]*-+(?:\\s|\\r|\\n)+" +
       "([a-z0-9+/=\\r\\n]+)" +
-      "-+END\\s+.*PRIVATE\\s+KEY[^-]*-+", CASE_INSENSITIVE)
+      "-+END\\s+.*PRIVATE\\s+KEY[^-]*-+",
+    CASE_INSENSITIVE
+  )
 
   @throws[IOException]
   @throws[GeneralSecurityException]
@@ -74,7 +77,9 @@ object PemReader {
     val certificateChain = readCertificateChain(certificateChainFile)
 
     if (certificateChain.isEmpty)
-      throw new CertificateException("Certificate chain file does not contain any certificates: " + certificateChainFile)
+      throw new CertificateException(
+        "Certificate chain file does not contain any certificates: " + certificateChainFile
+      )
 
     val keyStore = KeyStore.getInstance("JKS")
 
@@ -87,16 +92,18 @@ object PemReader {
   @throws[IOException]
   @throws[GeneralSecurityException]
   private def readCertificateChain(certificateChainFile: File): List[X509Certificate] = {
-    val contents = certificateChainFile.contentAsString(US_ASCII)
-    val matcher = CERT_PATTERN.matcher(contents)
+    val contents           = certificateChainFile.contentAsString(US_ASCII)
+    val matcher            = CERT_PATTERN.matcher(contents)
     val certificateFactory = CertificateFactory.getInstance("X.509")
-    val certificates = new util.ArrayList[X509Certificate]
+    val certificates       = new util.ArrayList[X509Certificate]
     var start = 0
-    while ( {
+    while ({
       matcher.find(start)
     }) {
       val buffer = base64Decode(matcher.group(1))
-      certificates.add(certificateFactory.generateCertificate(new ByteArrayInputStream(buffer)).asInstanceOf[X509Certificate])
+      certificates.add(
+        certificateFactory.generateCertificate(new ByteArrayInputStream(buffer)).asInstanceOf[X509Certificate]
+      )
       start = matcher.end
     }
     certificates.asScala.toList
@@ -116,9 +123,9 @@ object PemReader {
       return new PKCS8EncodedKeySpec(encodedKey)
 
     val encryptedPrivateKeyInfo = new EncryptedPrivateKeyInfo(encodedKey)
-    val keyFactory = SecretKeyFactory.getInstance(encryptedPrivateKeyInfo.getAlgName)
-    val secretKey = keyFactory.generateSecret(new PBEKeySpec(keyPassword.get.toCharArray))
-    val cipher = Cipher.getInstance(encryptedPrivateKeyInfo.getAlgName)
+    val keyFactory              = SecretKeyFactory.getInstance(encryptedPrivateKeyInfo.getAlgName)
+    val secretKey               = keyFactory.generateSecret(new PBEKeySpec(keyPassword.get.toCharArray))
+    val cipher                  = Cipher.getInstance(encryptedPrivateKeyInfo.getAlgName)
 
     cipher.init(DECRYPT_MODE, secretKey, encryptedPrivateKeyInfo.getAlgParameters)
     encryptedPrivateKeyInfo.getKeySpec(cipher)

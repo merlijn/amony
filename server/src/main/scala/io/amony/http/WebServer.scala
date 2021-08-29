@@ -1,48 +1,20 @@
 package io.amony.http
 
 import akka.actor.typed.ActorSystem
-import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.Directives.{path, _}
-import akka.http.scaladsl.server.{RejectionHandler, Route, ValidationRejection}
-import akka.stream.Materializer
-import akka.util.Timeout
+import akka.http.scaladsl.{ConnectionContext, Http}
 import better.files.File
-import io.amony.http.WebConversions._
-import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-import io.amony.actor.MediaLibActor.{ErrorResponse, InvalidCommand, Media, MediaNotFound}
-import io.amony.http.WebModel.FragmentRange
 import io.amony.lib.MediaLibApi
-import io.circe.syntax._
 import scribe.Logging
 
 import java.security.SecureRandom
 import javax.net.ssl.{KeyManagerFactory, SSLContext}
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
 
-
-case class WebServerConfig(
-  hostName: String,
-  webClientFiles: String,
-  requestTimeout: FiniteDuration,
-  http: Option[HttpConfig],
-  https: Option[HttpsConfig]
-)
-
-case class HttpsConfig(
-  port: Int,
-  privateKeyPem: String,
-  certificateChainPem: String
-)
-
-case class HttpConfig(
-  port: Int
-)
-
-class WebServer(override val config: WebServerConfig, override val api: MediaLibApi)(override implicit val system: ActorSystem[Nothing])
-    extends Logging
+class WebServer(override val config: WebServerConfig, override val api: MediaLibApi)(
+    override implicit val system: ActorSystem[Nothing]
+) extends Logging
     with Routes {
 
   def run(): Unit = {
@@ -59,12 +31,10 @@ class WebServer(override val config: WebServerConfig, override val api: MediaLib
 
     config.https.foreach { httpsConfig =>
 
-      logger.info("Loading SSL files")
-
       val keyStore = PemReader.loadKeyStore(
         certificateChainFile = File(httpsConfig.certificateChainPem),
-        privateKeyFile = File(httpsConfig.privateKeyPem),
-        keyPassword = None
+        privateKeyFile       = File(httpsConfig.privateKeyPem),
+        keyPassword          = None
       )
 
       val keyManagerFactory = KeyManagerFactory.getInstance("SunX509")
@@ -76,7 +46,8 @@ class WebServer(override val config: WebServerConfig, override val api: MediaLib
 
       val httpsConnectionContext = ConnectionContext.httpsServer(sslContext)
 
-      val binding = Http().newServerAt(config.hostName, httpsConfig.port).enableHttps(httpsConnectionContext).bind(allRoutes)
+      val binding =
+        Http().newServerAt(config.hostName, httpsConfig.port).enableHttps(httpsConnectionContext).bind(allRoutes)
 
       addBindingHooks("https", binding)
     }
