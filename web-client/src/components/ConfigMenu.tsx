@@ -1,10 +1,11 @@
-import React from "react";
+import React, {useEffect} from "react";
 import './ConfigMenu.scss';
 import Form from "react-bootstrap/Form";
-import {useCookiePrefs} from "../api/Util";
+import {calculateColumns, useCookiePrefs} from "../api/Util";
 import {defaultPrefs, Prefs} from "../api/Model";
 import DropDownIcon from "./shared/DropDownIcon";
 import * as config from "../AppConfig.json";
+import {Constants} from "../api/Constants";
 
 const ConfigMenu = () => {
 
@@ -13,20 +14,45 @@ const ConfigMenu = () => {
   const columns = [1, 2, 3, 4, 5, 6, 7].map((v) => {
     return { value: v, label: v.toString() }
   })
-  columns.unshift({ value: 0, label: "auto"})
+
+  const updatePrefs = (values: {}) => { setPrefs({...prefs, ...values} ) }
 
   return(
 
-    <DropDownIcon iconSrc="/settings_black_24dp.svg"
+    <DropDownIcon iconSrc="/tune_black_24dp.svg"
                   alignRight={true}
                   buttonClassName="mr-sm-1 config-menu-button"
                   contentClassName="config-menu">
 
       <>
 
-      <div className="config-title">Preferences</div>
+      <div key="filter-title" className="config-title">Filters</div>
+      <div key="filter-form" className="config-form">
+        <div className="form-section">
+          <div className="form-label">Video quality</div>
+          <div className="form-content">
+            {
+              Constants.resolutions.map((v) => {
+                return <Form.Check
+                  style={ { float:"left" } }
+                  className="mr-1"
+                  name="resolution"
+                  type="radio"
+                  key={`resolution-${v.value}`}
+                  value={v.value}
+                  label={v.label}
+                  checked={prefs.minRes === v.value}
+                  onChange={(e) => { updatePrefs( { minRes: v.value }) } }
+                />;
+              })
+            }
+          </div>
+        </div>
+      </div>
 
-      <div className="config-form">
+      <div key="config-title" className="config-title">Preferences</div>
+
+      <div key="config-form" className="config-form">
 
         <div className="form-section">
           <p className="form-label">Show video titles</p>
@@ -34,10 +60,7 @@ const ConfigMenu = () => {
             <Form.Check
               type="checkbox"
               checked={ prefs.showTitles }
-              onChange={(e) => {
-                setPrefs( { ...prefs, showTitles: !prefs.showTitles })
-              }
-              }
+              onChange={(e) => { updatePrefs( { showTitles: !prefs.showTitles }) } }
             />
           </div>
         </div>
@@ -45,22 +68,44 @@ const ConfigMenu = () => {
         <div className="form-section">
           <p className="form-label">Number of columns</p>
           <div className="form-content">
-            {
-              columns.map((v) => {
-                return <Form.Check
-                  style={ { float: "left" } }
-                  className="mr-sm-1"
-                  name="ncols"
-                  type="radio"
-                  value={v.value}
-                  label={v.label}
-                  checked={prefs.gallery_columns === v.value}
-                  onChange={(e) => {
-                    setPrefs( { ...prefs, gallery_columns: v.value })
-                  }
-                  } />;
-              })
-            }
+            <Form.Check
+              style={ { float: "left" } }
+              className="mr-1"
+              name="ncols-option"
+              type="radio"
+              value={0}
+              label={"auto"}
+              checked={prefs.gallery_columns === 0}
+              onChange={(e) => {
+                if (prefs.gallery_columns > 0) {
+                  updatePrefs({gallery_columns: 0 })
+                }
+              }}
+            />
+            <Form.Check
+              style={ { float: "left" } }
+              className="mr-1"
+              name="ncols-option"
+              type="radio"
+              value={0}
+              label={"other"}
+              checked={prefs.gallery_columns > 0}
+              onChange={(e) => {
+               if (prefs.gallery_columns === 0)
+                 updatePrefs({ gallery_columns: calculateColumns()} )
+              }}
+            />
+            <select name="ncols" onChange={(e) => { updatePrefs( { gallery_columns: e.target.value }) } }>
+              {
+                columns.map((v) => {
+                  return <option
+                    selected={ (prefs.gallery_columns === 0 && v.value === calculateColumns()) || prefs.gallery_columns === v.value }
+                    value={v.value}
+                    label={v.label}
+                  />;
+                })
+              }
+            </select>
           </div>
         </div>
 
@@ -71,7 +116,7 @@ const ConfigMenu = () => {
               type="checkbox"
               checked={ prefs.showDuration }
               onChange={(e) => {
-                setPrefs( { ...prefs, showDuration: !prefs.showDuration })
+                updatePrefs( { showDuration: !prefs.showDuration })
               }
               }
             />
@@ -86,7 +131,7 @@ const ConfigMenu = () => {
                   type="checkbox"
                   checked={ prefs.showMenu }
                   onChange={(e) => {
-                    setPrefs( { ...prefs, showMenu: !prefs.showMenu })
+                    updatePrefs( { showMenu: !prefs.showMenu })
                   }
                   }
                 />

@@ -12,11 +12,18 @@
 .config-menu {
   margin-top: 5px !important;
   padding: 0px ! important;
-  width: 500px;
+
+  @media (max-width: 768px) {
+    width: calc(100vw - 8px);
+  }
+
+  @media (min-width: 769px) {
+    width: 500px;
+  }
 
   .config-title {
 
-    @extend .ml-sm-3, .mr-sm-3, .mt-sm-2, .pb-2;
+    @extend .ml-sm-3, .ml-2, .mr-sm-3, .mr-2, .mt-2, .pb-2;
 
     border-bottom: #d8d4d4 1px solid;
     font-size: large;
@@ -26,7 +33,7 @@
 
 .config-form {
 
-  @extend .mt-sm-2, .m-sm-3;
+  @extend .mt-2, .m-sm-3, .m-2;
 
   display: table;
   table-layout: fixed;
@@ -36,6 +43,7 @@
     display: table-row;
 
     .form-label {
+      width: 170px;
       @extend .pr-3;
       display: table-cell;
       vertical-align: middle;

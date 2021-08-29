@@ -1,5 +1,6 @@
 import {CSSProperties, useEffect, useRef, useState} from "react";
 import {useCookies} from "react-cookie";
+import {Constants} from "./Constants";
 
 export function buildUrl(path: string, urlParams: Map<string, string> | undefined) {
 
@@ -100,6 +101,15 @@ export function BoundedRatioBox(maxWidth: string, maxHeight: string, ratio: numb
   }
 }
 
+export const calculateColumns = () => {
+  const c = Math.max(1, Math.round(window.innerWidth / Constants.gridSize));
+
+  // console.log(`calculated columns: ${c}`)
+
+  return c;
+}
+
+
 export const usePrevious = <T>(value: T): T | undefined => {
   const ref = useRef<T>();
   useEffect(() => {
@@ -117,6 +127,7 @@ export function useCookiePrefs<T>(key: string, path: string, defaultPreferences:
   }
 
   if (cookiePreferences[key] === undefined) {
+    console.log("setting defaults")
     setCookiePrefs(key, defaultPreferences, {path: path})
     return [defaultPreferences, setPrefsAndCookie];
   }

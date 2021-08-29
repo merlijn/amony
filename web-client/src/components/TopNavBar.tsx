@@ -15,6 +15,7 @@ import DropDownIcon from "./shared/DropDownIcon";
 import {Constants} from "../api/Constants";
 import Button from "react-bootstrap/Button";
 import Dropdown from "react-bootstrap/Dropdown";
+import { isMobile } from "react-device-detect";
 
 function TopNavBar() {
 
@@ -60,9 +61,7 @@ function TopNavBar() {
   // fixed="top"
   return(
     <Navbar className="TopNavBar" fixed="top">
-        <div key="nav-bar-left" className="bar-left">
-
-        </div>
+        { !isMobile && <div key="nav-bar-left" className="bar-left"> </div> }
         <div key="nav-bar-center" className="bar-center">
 
           <Dropdown className="tag-list-dropdown mr-sm-1" key="nav-tag-list" as={ButtonGroup} size="sm">
@@ -89,33 +88,9 @@ function TopNavBar() {
             </div>
           </Form>
 
-          <DropDownIcon iconSrc="/tune_black_24dp.svg" alignRight={true} contentClassName="filter-menu" buttonClassName="filter-menu-button mr-sm-1">
-            <>
-              <div className="filter-menu-title">Filters</div>
-
-              <div className="filter-menu-form">
-                <div style={{float:"left"}} className="mr-sm-2">Video quality</div>
-                {
-                  Constants.resolutions.map((v) => {
-                    return <Form.Check
-                      style={ { float:"left" } }
-                      className="mr-sm-1"
-                      name="ncols"
-                      type="radio"
-                      value={v.value}
-                      label={v.label}
-                      checked={prefs.minRes === v.value}
-                      onChange={(e) => { setPrefs( { ...prefs, minRes: v.value }) }
-                      } />;
-                  })
-                }
-              </div>
-            </>
-          </DropDownIcon>
-
           <ConfigMenu key="nav-config-menu"/>
         </div>
-        <div key="nav-bar-right" className="bar-right"></div>
+        { !isMobile && <div key="nav-bar-right" className="bar-right"></div> }
     </Navbar>
   );
 }

@@ -4,13 +4,14 @@ import {defaultPrefs, Prefs, SearchResult, Video} from '../api/Model';
 import Preview from './Preview';
 import './Gallery.scss';
 import {useLocation} from 'react-router-dom'
-import {BoundedRatioBox, useCookiePrefs, usePrevious, useWindowSize} from "../api/Util";
+import {BoundedRatioBox, calculateColumns, useCookiePrefs, usePrevious, useWindowSize} from "../api/Util";
 import TopNavBar from "./TopNavBar";
 import Plyr from "plyr";
+import { isMobile } from "react-device-detect";
 
-const gridSize = 350
 const gridReRenderThreshold = 24
 const fetchDataScreenMargin = 1024;
+const navBarHeight = 45
 
 const Gallery = () => {
 
@@ -67,23 +68,11 @@ const Gallery = () => {
 
   const handleScroll = () => {
 
-    console.log(`offsetheight: ${document.documentElement.offsetHeight}`)
-    console.log(`scrolltop   : ${document.documentElement.scrollTop}`)
-    console.log(`innerheight : ${window.innerHeight}`)
-
     const withinFetchMargin = document.documentElement.offsetHeight - Math.ceil(window.innerHeight + document.documentElement.scrollTop) <=  fetchDataScreenMargin
 
     if (withinFetchMargin && !isFetching) {
-      console.log("setting isFetching=true")
       setIsFetching(true)
     }
-
-
-    // const diff = Math.ceil(window.innerHeight + document.documentElement.scrollTop) === document.documentElement.offsetHeight
-
-    // if (Math.ceil(window.innerHeight + document.documentElement.scrollTop) === document.documentElement.offsetHeight) {
-    //   fetchData(searchResult.videos)
-    // }
   }
 
   // add keyboard listener
@@ -115,7 +104,7 @@ const Gallery = () => {
   useEffect(() => {
 
     if (prefs.gallery_columns === 0) {
-      const c = Math.min(Math.max(2, Math.round(windowSize.width / gridSize)), 5);
+      const c = calculateColumns();
       if (c !== ncols)
         setNcols(c)
     } else if (prefs.gallery_columns != ncols) {
@@ -150,7 +139,7 @@ const Gallery = () => {
 
     if (idx % ncols === 0)
         style = { ...style, paddingLeft : "4px" }
-    else if ((idx + 1) % ncols === 0)
+    if ((idx + 1) % ncols === 0)
         style = { ...style, paddingRight : "4px" }
 
     return <Preview
@@ -158,12 +147,15 @@ const Gallery = () => {
               key={`preview-${vid.id}`}
               vid={vid}
               onClick={ (v) => setPlayVideo(v) }
-              showPreviewOnHover={true}
+              showPreviewOnHover={!isMobile}
               showTitles={prefs.showTitles} showDuration={prefs.showDuration} showMenu={prefs.showMenu}/>
   })
 
-  const modalSize = (v:Video | undefined): CSSProperties => {
-     return v ? BoundedRatioBox("75vw", "75vh", v.resolution_x / v.resolution_y) : { }
+  const modalSize = (v: Video | undefined): CSSProperties => {
+
+     const w = isMobile ? "100vw" : "75vw"
+
+     return v ? BoundedRatioBox(w, "75vh", v.resolution_x / v.resolution_y) : { }
   }
 
   return (
@@ -171,7 +163,7 @@ const Gallery = () => {
 
       {showNavBar && <TopNavBar key="top-nav-bar" /> }
 
-      <div style={{ marginTop: showNavBar ? 42 : 2 }} key="gallery" className="gallery">
+      <div style={ !showNavBar ?  { marginTop: 2 } : {} } key="gallery" className="gallery">
         <div
           key="gallery-video-player"
           className="custom-modal-container"
@@ -183,7 +175,7 @@ const Gallery = () => {
 
           <div key="custom-model-content" className="custom-modal-content">
             {
-               <div className="video-player" style={modalSize(playVideo)}>
+               <div style={modalSize(playVideo)}>
                   <video ref={videoElement} id="gallery-video-player"  playsInline controls>
                     { playVideo && <source src={'/files/videos/' + playVideo.id} type="video/mp4"/> }
                   </video>
