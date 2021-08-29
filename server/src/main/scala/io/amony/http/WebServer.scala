@@ -30,7 +30,6 @@ class WebServer(override val config: WebServerConfig, override val api: MediaLib
       }
 
     config.https.foreach { httpsConfig =>
-
       val keyStore = PemReader.loadKeyStore(
         certificateChainFile = File(httpsConfig.certificateChainPem),
         privateKeyFile       = File(httpsConfig.privateKeyPem),

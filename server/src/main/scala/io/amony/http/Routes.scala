@@ -128,7 +128,7 @@ trait Routes extends JsonCodecs with Logging {
     }
   }
 
-  def clientFiles: Route =
+  def webClientFiles: Route =
     rawPathPrefix(Slash) {
 
       extractUnmatchedPath { path =>
@@ -139,16 +139,22 @@ trait Routes extends JsonCodecs with Logging {
         }
 
         val targetFile = {
-          val maybe = (File(config.webClientFiles) / filePath)
+          val maybe = (File(config.webClientPath) / filePath)
           if (maybe.exists)
             maybe
           else
-            File(config.webClientFiles) / "index.html"
+            File(config.webClientPath) / "index.html"
         }
 
         getFromFile(targetFile.path.toAbsolutePath.toString)
       }
     }
 
-  val allRoutes = apiRoutes ~ adminRoutes ~ thumbnailRoutes ~ videoRoutes ~ clientFiles
+  val allApiRoutes =
+    if (config.enableAdmin)
+      apiRoutes ~ adminRoutes
+    else
+      apiRoutes
+
+  val allRoutes = allApiRoutes ~ thumbnailRoutes ~ videoRoutes ~ webClientFiles
 }

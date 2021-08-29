@@ -143,7 +143,7 @@ object FFMpeg extends Logging {
     // format: on
   }
 
-  def createMp4(
+  def writeMp4(
       inputFile: String,
       from: Long,
       to: Long,

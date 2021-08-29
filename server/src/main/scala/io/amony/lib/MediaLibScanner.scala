@@ -4,7 +4,6 @@ import akka.util.Timeout
 import io.amony.MediaLibConfig
 import io.amony.actor.MediaLibActor.{Fragment, Media}
 import io.amony.http.JsonCodecs
-import io.amony.lib.FFMpeg.Probe
 import io.amony.lib.FileUtil.PathOps
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -24,13 +23,11 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
   def convertNonStreamableVideos(config: MediaLibConfig, api: MediaLibApi): Unit = {
 
-    logger.info("walking dir")
     val files = FileUtil.walkDir(config.libraryPath)
 
     implicit val timeout: Timeout = Timeout(3.seconds)
     implicit val ec               = scala.concurrent.ExecutionContext.global
 
-    logger.info("for eaching files")
     files
       .filter { vid =>
         // filter for extension
@@ -62,7 +59,8 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
   def scanVideo(hash: String, baseDir: Path, videoPath: Path, indexDir: Path): Media = {
 
-    val info = FFMpeg.ffprobe(videoPath)
+    val info           = FFMpeg.ffprobe(videoPath)
+    val fragmentLength = 3000
 
     if (!info.fastStart)
       logger.warn(s"Video is not optimized for streaming: ${videoPath}")
@@ -70,9 +68,21 @@ object MediaLibScanner extends Logging with JsonCodecs {
     val attributes = Files.readAttributes(videoPath, classOf[BasicFileAttributes])
 
     val timeStamp = info.duration / 3
-    createVideoFragment(videoPath, indexDir, hash, timeStamp, timeStamp + 3000)
-    val video = asVideo(baseDir, videoPath, hash, info, timeStamp)
-    video
+    createVideoFragment(videoPath, indexDir, hash, timeStamp, timeStamp + fragmentLength)
+
+    Media(
+      id                 = hash,
+      uri                = baseDir.relativize(videoPath).toString,
+      addedOnTimestamp   = videoPath.creationTimeMillis(),
+      hash               = hash,
+      title              = None,
+      duration           = info.duration,
+      fps                = info.fps,
+      thumbnailTimestamp = timeStamp,
+      fragments          = List(Fragment(timeStamp, timeStamp + fragmentLength, None, List.empty)),
+      tags               = List.empty,
+      resolution         = info.resolution
+    )
   }
 
   def scanVideosInDirectory(
@@ -158,28 +168,11 @@ object MediaLibScanner extends Logging with JsonCodecs {
       outputFile = Some(s"${thumbnailPath}/${id}-$from.webp")
     )
 
-    FFMpeg.createMp4(
+    FFMpeg.writeMp4(
       inputFile  = videoPath.absoluteFileName(),
       from       = from,
       to         = to,
       outputFile = Some(s"${thumbnailPath}/${id}-$from-$to.mp4")
-    )
-  }
-
-  protected def asVideo(baseDir: Path, videoPath: Path, hash: String, info: Probe, thumbnailTimestamp: Long): Media = {
-
-    Media(
-      id                 = hash,
-      uri                = baseDir.relativize(videoPath).toString,
-      addedOnTimestamp   = videoPath.creationTimeMillis(),
-      hash               = hash,
-      title              = None,
-      duration           = info.duration,
-      fps                = info.fps,
-      thumbnailTimestamp = thumbnailTimestamp,
-      fragments          = List(Fragment(thumbnailTimestamp, thumbnailTimestamp + 3000, None, List.empty)),
-      tags               = List.empty,
-      resolution         = info.resolution
     )
   }
 }

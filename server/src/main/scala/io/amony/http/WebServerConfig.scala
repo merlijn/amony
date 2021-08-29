@@ -4,8 +4,9 @@ import scala.concurrent.duration.FiniteDuration
 
 case class WebServerConfig(
     hostName: String,
-    webClientFiles: String,
+    webClientPath: String,
     requestTimeout: FiniteDuration,
+    enableAdmin: Boolean,
     http: Option[HttpConfig],
     https: Option[HttpsConfig]
 )
