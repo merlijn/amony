@@ -10,6 +10,7 @@ import ImgWithAlt from "./shared/ImgWithAlt";
 import Button from "react-bootstrap/Button";
 import ProgressiveImage from "react-progressive-graceful-image";
 import {Api} from "../api/Api";
+import * as config from "../AppConfig.json";
 
 type PreviewProps = {
   vid: Video,
@@ -47,7 +48,7 @@ const Preview = (props: PreviewProps) => {
   const overlayIcons =
     <div>
       {
-        props.showMenu &&
+        (props.showMenu && config["enable-video-menu"]) &&
           <div style={ { zIndex: 5 }} className="abs-top-right">
             <PreviewMenu vid={vid} showInfo={ () => setShowInfoPanel(true)} />
           </div>
@@ -98,8 +99,6 @@ const PreviewMenu = (props: {vid: Video, showInfo: () => void}) => {
       setShowConfirmDelete(true)
     } else if (eventKey === "info") {
       props.showInfo()
-    } else if (eventKey === "editor") {
-
     }
   }
 
@@ -121,9 +120,9 @@ const PreviewMenu = (props: {vid: Video, showInfo: () => void}) => {
           <Dropdown.Item className="menu-item" eventKey="info">
             <ImgWithAlt className="menu-icon" src="/info_black_24dp.svg" />Info
           </Dropdown.Item>
-          <Dropdown.Item className="menu-item" eventKey="editor" href={`/editor/${props.vid.id}`}>
+          { config["enable-video-editor"] && <Dropdown.Item className="menu-item" eventKey="editor" href={`/editor/${props.vid.id}`}>
             <ImgWithAlt className="menu-icon" src="/edit_black_24dp.svg" />Edit
-          </Dropdown.Item>
+          </Dropdown.Item> }
           <Dropdown.Item className="menu-item" eventKey="delete">
             <ImgWithAlt className="menu-icon" src="/delete_black_24dp.svg" />Delete
           </Dropdown.Item>

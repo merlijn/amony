@@ -4,6 +4,7 @@ import Form from "react-bootstrap/Form";
 import {useCookiePrefs} from "../api/Util";
 import {defaultPrefs, Prefs} from "../api/Model";
 import DropDownIcon from "./shared/DropDownIcon";
+import * as config from "../AppConfig.json";
 
 const ConfigMenu = () => {
 
@@ -76,19 +77,22 @@ const ConfigMenu = () => {
             />
           </div>
         </div>
-        <div className="form-section">
-          <p className="form-label">Show video menu</p>
-          <div className="form-content">
-            <Form.Check
-              type="checkbox"
-              checked={ prefs.showMenu }
-              onChange={(e) => {
-                setPrefs( { ...prefs, showMenu: !prefs.showMenu })
-              }
-              }
-            />
-          </div>
-        </div>
+        {
+          config["enable-video-menu"] &&
+            <div className="form-section">
+              <p className="form-label">Show video menu</p>
+              <div className="form-content">
+                <Form.Check
+                  type="checkbox"
+                  checked={ prefs.showMenu }
+                  onChange={(e) => {
+                    setPrefs( { ...prefs, showMenu: !prefs.showMenu })
+                  }
+                  }
+                />
+              </div>
+            </div>
+        }
       </div>
 
       </>
