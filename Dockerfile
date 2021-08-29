@@ -10,9 +10,9 @@ RUN mkdir /usr/amony/certs
 RUN mkdir /usr/amony/videos
 
 # copy files
-COPY ./web/build /usr/amony/client
-COPY ./target/scala-2.13/amony.jar /usr/amony
-COPY ./src/main/resources/prod/application.conf /usr/amony
+COPY ./web-client/build /usr/amony/web-client
+COPY ./server/target/scala-2.13/amony.jar /usr/amony
+COPY ./server/src/main/resources/prod/application.conf /usr/amony
 
 WORKDIR /usr/amony
 EXPOSE 80
