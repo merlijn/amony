@@ -1,9 +1,9 @@
-package io.amony
+package nl.amony
 
 import better.files.File
 import com.typesafe.config.ConfigFactory
-import io.amony.http.WebServerConfig
-import io.amony.lib.FileUtil
+import nl.amony.http.WebServerConfig
+import nl.amony.lib.FileUtil
 import pureconfig._
 import pureconfig.generic.auto._
 import pureconfig.generic.semiauto.deriveEnumerationReader

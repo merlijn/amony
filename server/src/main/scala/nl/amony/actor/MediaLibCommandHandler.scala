@@ -1,12 +1,12 @@
-package io.amony.actor
+package nl.amony.actor
 
 import akka.persistence.typed.scaladsl.Effect
 import better.files.File
-import io.amony.MediaLibConfig
-import io.amony.actor.MediaLibActor._
-import io.amony.actor.MediaLibEventSourcing._
-import io.amony.lib.ListOps
-import io.amony.lib.MediaLibScanner.{createVideoFragment, deleteVideoFragment}
+import nl.amony.MediaLibConfig
+import nl.amony.actor.MediaLibActor._
+import nl.amony.actor.MediaLibEventSourcing._
+import nl.amony.lib.ListOps
+import nl.amony.lib.MediaLibScanner.{createVideoFragment, deleteVideoFragment}
 import scribe.Logging
 
 import java.awt.Desktop

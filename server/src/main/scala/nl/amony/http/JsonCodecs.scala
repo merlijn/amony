@@ -1,7 +1,7 @@
-package io.amony.http
+package nl.amony.http
 
-import io.amony.actor.MediaLibActor
-import io.amony.http.WebModel.{Tag, Fragment, FragmentRange, SearchResult, Video}
+import nl.amony.actor.MediaLibActor
+import nl.amony.http.WebModel.{Tag, Fragment, FragmentRange, SearchResult, Video}
 import io.circe.{Codec, Encoder}
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 

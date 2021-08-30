@@ -1,10 +1,10 @@
-package io.amony.lib
+package nl.amony.lib
 
 import akka.util.Timeout
-import io.amony.MediaLibConfig
-import io.amony.actor.MediaLibActor.{Fragment, Media}
-import io.amony.http.JsonCodecs
-import io.amony.lib.FileUtil.PathOps
+import nl.amony.MediaLibConfig
+import nl.amony.actor.MediaLibActor.{Fragment, Media}
+import nl.amony.http.JsonCodecs
+import nl.amony.lib.FileUtil.PathOps
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.{Consumer, Observable}

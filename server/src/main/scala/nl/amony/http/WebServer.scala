@@ -1,9 +1,9 @@
-package io.amony.http
+package nl.amony.http
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.{ConnectionContext, Http}
 import better.files.File
-import io.amony.lib.MediaLibApi
+import nl.amony.lib.MediaLibApi
 import scribe.Logging
 
 import java.security.SecureRandom

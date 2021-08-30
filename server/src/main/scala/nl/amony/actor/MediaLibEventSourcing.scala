@@ -1,7 +1,7 @@
-package io.amony.actor
+package nl.amony.actor
 
-import io.amony.actor.MediaLibActor.{Collection, Fragment, Media, State}
-import io.amony.lib.ListOps
+import nl.amony.actor.MediaLibActor.{Collection, Fragment, Media, State}
+import nl.amony.lib.ListOps
 import scribe.Logging
 
 object MediaLibEventSourcing extends Logging {

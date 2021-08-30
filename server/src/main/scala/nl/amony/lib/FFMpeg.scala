@@ -1,6 +1,6 @@
-package io.amony.lib
+package nl.amony.lib
 
-import io.amony.lib.FileUtil.{PathOps, stripExtension}
+import nl.amony.lib.FileUtil.{PathOps, stripExtension}
 import scribe.Logging
 
 import java.nio.file.Path

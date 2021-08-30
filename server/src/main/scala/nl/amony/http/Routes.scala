@@ -1,4 +1,4 @@
-package io.amony.http
+package nl.amony.http
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model._
@@ -8,9 +8,9 @@ import akka.stream.Materializer
 import akka.util.Timeout
 import better.files.File
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-import io.amony.actor.MediaLibActor.{ErrorResponse, InvalidCommand, Media, MediaNotFound}
-import io.amony.http.WebModel.FragmentRange
-import io.amony.lib.MediaLibApi
+import nl.amony.actor.MediaLibActor.{ErrorResponse, InvalidCommand, Media, MediaNotFound}
+import nl.amony.http.WebModel.FragmentRange
+import nl.amony.lib.MediaLibApi
 import io.circe.syntax._
 import scribe.Logging
 

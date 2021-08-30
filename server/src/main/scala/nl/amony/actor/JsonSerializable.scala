@@ -1,3 +1,3 @@
-package io.amony.actor
+package nl.amony.actor
 
 trait JsonSerializable

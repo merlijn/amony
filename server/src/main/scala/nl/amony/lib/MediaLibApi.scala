@@ -1,4 +1,4 @@
-package io.amony.lib
+package nl.amony.lib
 
 import akka.actor.typed.ActorSystem
 import akka.persistence.query.PersistenceQuery
@@ -7,10 +7,10 @@ import akka.serialization.jackson.JacksonObjectMapperProvider
 import akka.util.Timeout
 import better.files.File
 import com.fasterxml.jackson.core.JsonEncoding
-import io.amony.MediaLibConfig
-import io.amony.actor.MediaLibActor
-import io.amony.actor.MediaLibActor._
-import io.amony.lib.MediaLibScanner.{logger, scanVideosInDirectory}
+import nl.amony.MediaLibConfig
+import nl.amony.actor.MediaLibActor
+import nl.amony.actor.MediaLibActor._
+import nl.amony.lib.MediaLibScanner.{logger, scanVideosInDirectory}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Consumer

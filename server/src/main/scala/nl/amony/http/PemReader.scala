@@ -1,4 +1,4 @@
-package io.amony.http
+package nl.amony.http
 
 import better.files.File
 

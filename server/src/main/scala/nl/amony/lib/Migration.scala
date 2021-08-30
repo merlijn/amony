@@ -1,8 +1,8 @@
-package io.amony.lib
+package nl.amony.lib
 
 import akka.util.Timeout
 import better.files.File
-import io.amony.actor.MediaLibActor.{Fragment, Media}
+import nl.amony.actor.MediaLibActor.{Fragment, Media}
 import io.circe.Error
 import io.circe.generic.semiauto.deriveCodec
 import scribe.Logging

@@ -1,10 +1,10 @@
-package io.amony.actor
+package nl.amony.actor
 
 import akka.actor.typed.ActorRef
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
-import io.amony.MediaLibConfig
-import io.amony.actor.MediaLibEventSourcing.Event
+import nl.amony.MediaLibConfig
+import nl.amony.actor.MediaLibEventSourcing.Event
 
 import java.nio.file.Path
 

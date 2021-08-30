@@ -1,4 +1,4 @@
-package io.amony
+package nl.amony
 
 package object lib {
 

@@ -1,4 +1,4 @@
-package io.amony.lib
+package nl.amony.lib
 
 import scribe.Logging
 
