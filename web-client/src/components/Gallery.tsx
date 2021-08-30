@@ -166,14 +166,14 @@ const Gallery = () => {
       <div style={ !showNavBar ?  { marginTop: 2 } : {} } key="gallery" className="gallery">
         <div
           key="gallery-video-player"
-          className="custom-modal-container"
+          className="video-modal-container"
           style={ playVideo === undefined ? { display: "none"}: {display: "block" }}>
 
-          <div key="custom-model-background"
-               className="custom-modal-background"
+          <div key="video-model-background"
+               className="video-modal-background"
                onClick = { (e) => setPlayVideo(undefined) }></div>
 
-          <div key="custom-model-content" className="custom-modal-content">
+          <div key="video-model-content" className="video-modal-content">
             {
                <div style={modalSize(playVideo)}>
                   <video ref={videoElement} id="gallery-video-player"  playsInline controls>
@@ -187,6 +187,11 @@ const Gallery = () => {
       </div>
     </div>
   );
+}
+
+const VideoModal = (v: Video) => {
+
+
 }
 
 export default Gallery;

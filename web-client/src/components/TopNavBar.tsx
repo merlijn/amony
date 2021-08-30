@@ -1,7 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {useHistory, useLocation} from "react-router-dom";
 import {buildUrl, copyParams, useCookiePrefs} from "../api/Util";
-import Navbar from "react-bootstrap/Navbar";
 import NavDropdown from "react-bootstrap/NavDropdown";
 import Form from "react-bootstrap/Form";
 import FormControl from "react-bootstrap/FormControl";
@@ -11,11 +10,8 @@ import {defaultPrefs, Prefs, Tag} from "../api/Model";
 import {ButtonGroup} from "react-bootstrap";
 import ConfigMenu from "./ConfigMenu";
 import ImgWithAlt from "./shared/ImgWithAlt";
-import DropDownIcon from "./shared/DropDownIcon";
-import {Constants} from "../api/Constants";
 import Button from "react-bootstrap/Button";
 import Dropdown from "react-bootstrap/Dropdown";
-import { isMobile } from "react-device-detect";
 
 function TopNavBar() {
 
@@ -60,11 +56,11 @@ function TopNavBar() {
 
   // fixed="top"
   return(
-    <Navbar className="TopNavBar" fixed="top">
-        { !isMobile && <div key="nav-bar-left" className="bar-left"> </div> }
-        <div key="nav-bar-center" className="bar-center">
+    <div className="top-nav-bar">
+        <div key="nav-bar-left" className="nav-bar-spacer"> </div>
+        <div key="nav-bar-center" className="nav-bar-center">
 
-          <Dropdown className="tag-list-dropdown mr-sm-1" key="nav-tag-list" as={ButtonGroup} size="sm">
+          <Dropdown className="tag-list-dropdown" key="nav-tag-list" as={ButtonGroup} size="sm">
             <Button size="sm" className="home-button"><a href="/">
               <ImgWithAlt src="/home_black_24dp.svg" />
             </a></Button>
@@ -81,7 +77,7 @@ function TopNavBar() {
           </Dropdown>
 
           <Form className="nav-search-form" onSubmit={doSearch} inline>
-            <div key="nav-search-input" className="nav-search-input mr-sm-1">
+            <div key="nav-search-input" className="nav-search-input">
               <FormControl id="nav-search-input" size="sm" type="text" placeholder="Search" value={query} onChange={queryChanged} />
               <ImgWithAlt className="nav-clear-input action-icon-small" src="/clear_input.svg"
                           onClick={(e) => clearQuery() } />
@@ -90,8 +86,8 @@ function TopNavBar() {
 
           <ConfigMenu key="nav-config-menu"/>
         </div>
-        { !isMobile && <div key="nav-bar-right" className="bar-right"></div> }
-    </Navbar>
+        <div key="nav-bar-right" className="nav-bar-spacer"></div>
+    </div>
   );
 }
 

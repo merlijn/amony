@@ -1,7 +1,13 @@
 @import '../App.scss';
 
 .gallery {
-  margin-top: 38px;
+  position: relative;
+  margin-top: 37px;
+
+  @media only screen and (min-width: map-get($container-max-widths, md)) {
+    margin-top: 45px;
+  }
+
   margin-bottom: 2px;
   width: 100vw;
   border: 0px;
@@ -22,7 +28,7 @@
 
 
 /* The Modal (background) */
-.custom-modal-container {
+.video-modal-container {
 
   @extend .full-screen;
 
@@ -33,7 +39,7 @@
   top: 0;
   overflow: hidden;
 
-  .custom-modal-background {
+  .video-modal-background {
 
     @extend .full-screen;
 
@@ -46,7 +52,7 @@
     background-color: rgba(0,0,0,0.5); /* Black w/ opacity */
   }
 
-  .custom-modal-content {
+  .video-modal-content {
 
     @media (max-width: 768px) {
       position: absolute;
@@ -62,7 +68,7 @@
       transform: translate(-50%, -50%);
     }
 
-    z-index: 12;
+    z-index: 20;
     margin: 0; /* 15% from the top and centered */
     padding: 0;
     //border: 1px solid black;

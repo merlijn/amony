@@ -7,17 +7,16 @@
   background-color: #d8d4d4 ! important;
   border-color: darkgray ! important;
   padding: 2px 5px !important;
+  height: 31px ! important;
 }
 
 .config-menu {
   margin-top: 5px !important;
   padding: 0px ! important;
 
-  @media (max-width: 768px) {
-    width: calc(100vw - 8px);
-  }
+  width: calc(100vw - 8px);
 
-  @media (min-width: 769px) {
+  @media only screen and (min-width: map-get($container-max-widths, md)) {
     width: 500px;
   }
 
