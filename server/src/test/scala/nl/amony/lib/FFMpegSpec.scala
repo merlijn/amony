@@ -1,4 +1,4 @@
-package io.amony.lib
+package nl.amony.lib
 
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
