@@ -26,7 +26,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
 
   val queries = PersistenceQuery(system).readJournalFor[LeveldbReadJournal](LeveldbReadJournal.Identifier)
 
-  object read {
+  object query {
 
     def getById(id: String)(implicit timeout: Timeout): Future[Option[Media]] =
       system.ask[Option[Media]](ref => GetById(id, ref))
@@ -80,7 +80,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
 
       implicit val s = Scheduler.global
 
-      read
+      query
         .getAll()
         .foreach { loadedFromStore =>
           val (deleted, newAndMoved) = MediaLibScanner.scanVideosInDirectory(config, loadedFromStore)
@@ -107,7 +107,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
 
     def regeneratePreviews()(implicit timeout: Timeout): Unit = {
 
-      read.getAll().foreach { medias =>
+      query.getAll().foreach { medias =>
         medias.foreach { m =>
           logger.info(s"re-generating thumbnail for '${m.fileName()}'")
           regeneratePreviewFor(m)
@@ -117,7 +117,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
 
     def verifyHashes()(implicit timeout: Timeout): Unit = {
 
-      read.getAll().foreach { medias =>
+      query.getAll().foreach { medias =>
         logger.info("Verifying all file hashes ...")
 
         medias.foreach { m =>
@@ -137,7 +137,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
 
       val file = (File(config.indexPath) / "export.json").path.toFile
 
-      read.getAll().foreach { medias =>
+      query.getAll().foreach { medias =>
         objectMapper.createGenerator(file, JsonEncoding.UTF8).writeObject(medias)
       }
     }

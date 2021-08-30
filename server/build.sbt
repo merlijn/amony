@@ -14,7 +14,7 @@ lazy val root = (project in file(".")).
     reStart / javaOptions ++= javaOpts ,
     run / fork        := true,
     run / javaOptions ++= javaOpts,
-    name := "amony",
+    name := "amony-server",
     libraryDependencies ++= Seq(
 
       "org.slf4j"             %  "slf4j-api"                % "1.7.30",

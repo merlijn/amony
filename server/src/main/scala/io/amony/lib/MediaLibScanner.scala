@@ -42,7 +42,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
         logger.info(s"$oldHash -> $newHash: ${config.libraryPath.relativize(out).toString}")
 
-        api.read.getById(oldHash).onComplete {
+        api.query.getById(oldHash).onComplete {
           case Success(Some(v)) =>
             val m = v.copy(id = newHash, hash = newHash, uri = config.libraryPath.relativize(out).toString)
 

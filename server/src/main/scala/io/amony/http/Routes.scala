@@ -1,14 +1,12 @@
 package io.amony.http
 
 import akka.actor.typed.ActorSystem
-import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives.{path, _}
 import akka.http.scaladsl.server.{RejectionHandler, Route, ValidationRejection}
 import akka.stream.Materializer
 import akka.util.Timeout
 import better.files.File
-import io.amony.http.WebConversions._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.amony.actor.MediaLibActor.{ErrorResponse, InvalidCommand, Media, MediaNotFound}
 import io.amony.http.WebModel.FragmentRange
@@ -16,11 +14,7 @@ import io.amony.lib.MediaLibApi
 import io.circe.syntax._
 import scribe.Logging
 
-import java.security.SecureRandom
-import javax.net.ssl.{KeyManagerFactory, SSLContext}
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration.FiniteDuration
-import scala.util.{Failure, Success}
 
 trait Routes extends JsonCodecs with Logging {
 
@@ -52,15 +46,15 @@ trait Routes extends JsonCodecs with Logging {
       )) { (q, offset, n, tags, sort, minResY) =>
         get {
           val size         = n.map(_.toInt).getOrElse(defaultResultNumber)
-          val searchResult = api.read.search(q, offset.map(_.toInt), size, tags, minResY.map(_.toInt))
-          val response     = searchResult.map(_.toWebModel().asJson)
+          val searchResult = api.query.search(q, offset.map(_.toInt), size, tags, minResY.map(_.toInt))
+          val response     = searchResult.map(_.asJson)
 
           complete(response)
         }
       } ~ path("media" / Segment) { id =>
         get {
-          onSuccess(api.read.getById(id)) {
-            case Some(vid) => complete(vid.toWebModel.asJson)
+          onSuccess(api.query.getById(id)) {
+            case Some(vid) => complete(vid.asJson)
             case None      => complete(StatusCodes.NotFound)
           }
         } ~ delete {
@@ -70,7 +64,7 @@ trait Routes extends JsonCodecs with Logging {
         }
       } ~ path("tags") {
         get {
-          complete(api.read.getTags().map(_.map(_.toWebModel.asJson)))
+          complete(api.query.getTags().map(_.map(_.asJson)))
         }
       } ~ path("fragments" / Segment / "add") { (id) =>
         (post & entity(as[FragmentRange])) { createFragment =>
@@ -93,7 +87,7 @@ trait Routes extends JsonCodecs with Logging {
     onSuccess(future) {
       case Left(MediaNotFound(id))      => complete(StatusCodes.NotFound)
       case Left(InvalidCommand(reason)) => complete(StatusCodes.BadRequest, reason)
-      case Right(media)                 => complete(media.toWebModel().asJson)
+      case Right(media)                 => complete(media.asJson)
     }
   }
 
@@ -118,13 +112,13 @@ trait Routes extends JsonCodecs with Logging {
 
   val thumbnailRoutes =
     path("files" / "thumbnails" / Segment) { id =>
-      getFromFile(api.read.getThumbnailPathForMedia(id))
+      getFromFile(api.query.getThumbnailPathForMedia(id))
     }
 
   val videoRoutes = path("files" / "videos" / Segment) { id =>
-    onSuccess(api.read.getById(id)) {
+    onSuccess(api.query.getById(id)) {
       case None       => complete(StatusCodes.NotFound, "")
-      case Some(info) => getFromFile(api.read.getFilePathForMedia(info))
+      case Some(info) => getFromFile(api.query.getFilePathForMedia(info))
     }
   }
 

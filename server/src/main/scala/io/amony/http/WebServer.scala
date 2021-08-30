@@ -9,7 +9,6 @@ import scribe.Logging
 import java.security.SecureRandom
 import javax.net.ssl.{KeyManagerFactory, SSLContext}
 import scala.concurrent.Future
-import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
 
 class WebServer(override val config: WebServerConfig, override val api: MediaLibApi)(
