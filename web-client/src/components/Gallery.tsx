@@ -189,9 +189,4 @@ const Gallery = () => {
   );
 }
 
-const VideoModal = (v: Video) => {
-
-
-}
-
 export default Gallery;
