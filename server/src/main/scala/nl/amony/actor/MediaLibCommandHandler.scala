@@ -3,7 +3,7 @@ package nl.amony.actor
 import akka.persistence.typed.scaladsl.Effect
 import better.files.File
 import nl.amony.MediaLibConfig
-import nl.amony.actor.MediaLibActor._
+import nl.amony.actor.MediaLibProtocol._
 import nl.amony.actor.MediaLibEventSourcing._
 import nl.amony.lib.ListOps
 import nl.amony.lib.MediaLibScanner.{createVideoFragment, deleteVideoFragment}
@@ -15,16 +15,16 @@ object MediaLibCommandHandler extends Logging {
 
   def apply(config: MediaLibConfig)(state: State, cmd: Command): Effect[Event, State] = {
 
-    lazy val tags: List[Collection] = {
+    lazy val tags: List[Tag] = {
 
       val dirs = state.media.values.foldLeft(Set.empty[String]) { case (set, e) =>
-        val parent = (File(config.libraryPath) / e.uri).parent
+        val parent = (File(config.libraryPath) / e.fileInfo.relativePath).parent
         val tag    = s"#${config.libraryPath.relativize(parent)}"
         set + tag
       }
 
       dirs.toList.sorted.zipWithIndex.map { case (e, idx) =>
-        Collection(idx.toString, e)
+        Tag(idx.toString, e)
       }
     }
 
@@ -33,7 +33,7 @@ object MediaLibCommandHandler extends Logging {
     cmd match {
 
       case UpsertMedia(media, sender) =>
-        logger.debug(s"Adding new media: ${media.uri}")
+        logger.debug(s"Adding new media: ${media.fileInfo.relativePath}")
         Effect
           .persist(MediaAdded(media))
           .thenReply(sender)(_ => true)
@@ -42,7 +42,7 @@ object MediaLibCommandHandler extends Logging {
         val media = state.media(mediaId)
         val path  = media.resolvePath(config.libraryPath)
 
-        logger.info(s"Deleting media '$mediaId:/${media.uri}'")
+        logger.info(s"Deleting media '$mediaId:/${media.fileInfo.relativePath}'")
 
         Effect
           .persist(MediaRemoved(mediaId))
@@ -64,9 +64,9 @@ object MediaLibCommandHandler extends Logging {
       case Search(query, sender) =>
         val tag = query.tag.flatMap(t => tags.find(_.id == t))
 
-        def filterTag(m: Media): Boolean = tag.map(t => m.uri.startsWith(t.title.substring(1))).getOrElse(true)
-        def filterRes(m: Media): Boolean = query.minRes.map(res => m.resolution._2 >= res).getOrElse(true)
-        def filterQuery(m: Media): Boolean = query.q.map(q => m.uri.toLowerCase.contains(q.toLowerCase)).getOrElse(true)
+        def filterTag(m: Media): Boolean = tag.map(t => m.fileInfo.relativePath.startsWith(t.title.substring(1))).getOrElse(true)
+        def filterRes(m: Media): Boolean = query.minRes.map(res => m.videoInfo.resolution._2 >= res).getOrElse(true)
+        def filterQuery(m: Media): Boolean = query.q.map(q => m.fileInfo.relativePath.toLowerCase.contains(q.toLowerCase)).getOrElse(true)
 
         val result = orderedMedia.filter { m =>
           filterTag(m) && filterRes(m) && filterQuery(m)
@@ -142,15 +142,15 @@ object MediaLibCommandHandler extends Logging {
           case None =>
             Effect.reply(sender)(Left(InvalidCommand(s"No video found with id '$id'")))
 
-          case Some(vid) =>
+          case Some(media) =>
             logger.info(s"Adding fragment for $id from $from to $to")
 
             if (from > to) {
               val msg = s"from: $from > to: $to"
               logger.warn(msg)
               Effect.none.thenReply(sender)(_ => Left(InvalidCommand(msg)))
-            } else if (to > vid.duration) {
-              val msg = s"to: $to > duration: ${vid.duration}"
+            } else if (to > media.videoInfo.duration) {
+              val msg = s"to: $to > duration: ${media.videoInfo.duration}"
               logger.warn(msg)
               Effect.none.thenReply(sender)(_ => Left(InvalidCommand(msg)))
             } else {
@@ -158,7 +158,7 @@ object MediaLibCommandHandler extends Logging {
               Effect
                 .persist(FragmentAdded(id, from, to))
                 .thenRun((_: State) =>
-                  createVideoFragment(vid.resolvePath(config.libraryPath), config.indexPath, id, from, to)
+                  createVideoFragment(media.resolvePath(config.libraryPath), config.indexPath, id, from, to)
                 )
                 .thenReply(sender)(s => Right(s.media(id)))
             }

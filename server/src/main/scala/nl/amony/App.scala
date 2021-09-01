@@ -2,7 +2,7 @@ package nl.amony
 
 import akka.actor.typed.ActorSystem
 import akka.util.Timeout
-import nl.amony.actor.MediaLibActor
+import nl.amony.actor.MediaLibProtocol
 import nl.amony.http.WebServer
 import nl.amony.lib.{MediaLibApi, MediaLibScanner, Migration}
 import scribe.Logging
@@ -13,8 +13,8 @@ object App extends AppConfig with Logging {
 
   def main(args: Array[String]): Unit = {
 
-    val system: ActorSystem[MediaLibActor.Command] =
-      ActorSystem(MediaLibActor(mediaLibConfig), "mediaLibrary", config)
+    val system: ActorSystem[MediaLibProtocol.Command] =
+      ActorSystem(MediaLibProtocol(mediaLibConfig), "mediaLibrary", config)
 
     val api = new MediaLibApi(mediaLibConfig, system)
 

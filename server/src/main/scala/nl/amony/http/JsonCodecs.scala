@@ -1,6 +1,6 @@
 package nl.amony.http
 
-import nl.amony.actor.MediaLibActor
+import nl.amony.actor.MediaLibProtocol
 import nl.amony.http.WebModel.{Tag, Fragment, FragmentRange, SearchResult, Video}
 import io.circe.{Codec, Encoder}
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
@@ -15,24 +15,24 @@ trait JsonCodecs {
   implicit val tagCodec: Codec[Tag]                      = deriveCodec[Tag]
 
   // contra map encoders for internal classes
-  implicit val mediaEncoder: Encoder[MediaLibActor.Media] =
-    deriveEncoder[Video].contramapObject[MediaLibActor.Media](toWebModel)
+  implicit val mediaEncoder: Encoder[MediaLibProtocol.Media] =
+    deriveEncoder[Video].contramapObject[MediaLibProtocol.Media](toWebModel)
 
-  implicit val tagEncoder: Encoder[MediaLibActor.Collection] =
-    deriveEncoder[Tag].contramapObject[MediaLibActor.Collection](c => Tag(c.id, c.title))
+  implicit val tagEncoder: Encoder[MediaLibProtocol.Tag] =
+    deriveEncoder[Tag].contramapObject[MediaLibProtocol.Tag](c => Tag(c.id, c.title))
 
-  implicit val searchResultEncoder: Encoder[MediaLibActor.SearchResult] =
-    deriveEncoder[SearchResult].contramapObject[MediaLibActor.SearchResult](
+  implicit val searchResultEncoder: Encoder[MediaLibProtocol.SearchResult] =
+    deriveEncoder[SearchResult].contramapObject[MediaLibProtocol.SearchResult](
       result => SearchResult(result.offset, result.total, result.items.map(m => toWebModel(m)))
     )
 
-  def toWebModel(media: MediaLibActor.Media): Video =
+  def toWebModel(media: MediaLibProtocol.Media): Video =
     Video(
       id            = media.id,
-      uri           = s"/files/videos/${media.uri}",
+      uri           = s"/files/videos/${media.fileInfo.relativePath}",
       title         = media.title.getOrElse(media.fileName()),
-      duration      = media.duration,
-      fps           = media.fps,
+      duration      = media.videoInfo.duration,
+      fps           = media.videoInfo.fps,
       thumbnail_uri = s"/files/thumbnails/${media.id}-${media.thumbnailTimestamp}.webp",
       fragments = media.fragments.zipWithIndex.map { case (p, index) =>
         Fragment(
@@ -45,8 +45,8 @@ trait JsonCodecs {
         )
 
       },
-      resolution_x = media.resolution._1,
-      resolution_y = media.resolution._2,
+      resolution_x = media.videoInfo.resolution._1,
+      resolution_y = media.videoInfo.resolution._2,
       tags         = media.tags
     )
 }

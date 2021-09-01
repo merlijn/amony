@@ -2,7 +2,7 @@ package nl.amony.lib
 
 import akka.util.Timeout
 import nl.amony.MediaLibConfig
-import nl.amony.actor.MediaLibActor.{Fragment, Media}
+import nl.amony.actor.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
 import nl.amony.http.JsonCodecs
 import nl.amony.lib.FileUtil.PathOps
 import monix.eval.Task
@@ -16,6 +16,8 @@ import scala.concurrent.duration.DurationInt
 import scala.util.Success
 
 object MediaLibScanner extends Logging with JsonCodecs {
+
+  val fragmentLength = 3000
 
   def filterFileName(fileName: String): Boolean = {
     fileName.endsWith(".mp4") && !fileName.startsWith(".")
@@ -44,7 +46,10 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
         api.query.getById(oldHash).onComplete {
           case Success(Some(v)) =>
-            val m = v.copy(id = newHash, hash = newHash, uri = config.libraryPath.relativize(out).toString)
+
+            val m = v.copy(
+              id = newHash,
+              fileInfo = v.fileInfo.copy(hash = newHash, relativePath = config.libraryPath.relativize(out).toString))
 
             api.modify.upsertMedia(m).foreach { _ =>
               api.admin.regeneratePreviewFor(m)
@@ -60,7 +65,6 @@ object MediaLibScanner extends Logging with JsonCodecs {
   def scanVideo(hash: String, baseDir: Path, videoPath: Path, indexDir: Path): Media = {
 
     val info           = FFMpeg.ffprobe(videoPath)
-    val fragmentLength = 3000
 
     if (!info.fastStart)
       logger.warn(s"Video is not optimized for streaming: ${videoPath}")
@@ -70,18 +74,30 @@ object MediaLibScanner extends Logging with JsonCodecs {
     val timeStamp = info.duration / 3
     createVideoFragment(videoPath, indexDir, hash, timeStamp, timeStamp + fragmentLength)
 
+    val fileInfo = FileInfo(
+      baseDir.relativize(videoPath).toString,
+      hash,
+      attributes.size(),
+      attributes.creationTime().toMillis,
+      attributes.lastModifiedTime().toMillis,
+    )
+
+    val videoInfo = VideoInfo(
+      info.fps,
+      info.duration,
+      info.resolution
+    )
+
+
     Media(
-      id                 = hash,
-      uri                = baseDir.relativize(videoPath).toString,
-      addedOnTimestamp   = videoPath.creationTimeMillis(),
-      hash               = hash,
-      title              = None,
-      duration           = info.duration,
-      fps                = info.fps,
+      id = hash,
+      title = None,
+      comment = None,
+      fileInfo = fileInfo,
+      videoInfo = videoInfo,
       thumbnailTimestamp = timeStamp,
       fragments          = List(Fragment(timeStamp, timeStamp + fragmentLength, None, List.empty)),
       tags               = List.empty,
-      resolution         = info.resolution
     )
   }
 
@@ -108,9 +124,9 @@ object MediaLibScanner extends Logging with JsonCodecs {
           val hash = if (config.verifyHashes) {
             config.hashingAlgorithm.generateHash(path)
           } else {
-            persistedMedia.find(_.uri == config.libraryPath.relativize(path).toString) match {
+            persistedMedia.find(_.fileInfo.relativePath == config.libraryPath.relativize(path).toString) match {
               case None    => config.hashingAlgorithm.generateHash(path)
-              case Some(m) => m.hash
+              case Some(m) => m.fileInfo.hash
             }
           }
 
@@ -121,7 +137,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       .runSyncUnsafe()
 
     val (remaining, removed) =
-      persistedMedia.partition(m => filesWithHashes.exists { case (_, hash) => hash == m.hash })
+      persistedMedia.partition(m => filesWithHashes.exists { case (_, hash) => hash == m.fileInfo.hash })
 
     logger.info(s"Scanning done, found ${filesWithHashes.size} files")
 
@@ -129,16 +145,16 @@ object MediaLibScanner extends Logging with JsonCodecs {
     val newAndMoved = Observable
       .from(filesWithHashes)
       .filterNot { case (path, hash) =>
-        remaining.exists(m => m.hash == hash && m.uri == config.libraryPath.relativize(path).toString)
+        remaining.exists(m => m.fileInfo.hash == hash && m.fileInfo.relativePath == config.libraryPath.relativize(path).toString)
       }
       .mapParallelUnordered[Media](config.scanParallelFactor) { case (videoFile, hash) =>
         Task {
           val relativePath = config.libraryPath.relativize(videoFile).toString
 
-          remaining.find(_.hash == hash) match {
+          remaining.find(_.fileInfo.hash == hash) match {
             case Some(old) =>
-              logger.info(s"Detected renamed file: '${old.uri}' -> '${relativePath}'")
-              old.copy(uri = relativePath)
+              logger.info(s"Detected renamed file: '${old.fileInfo.relativePath}' -> '${relativePath}'")
+              old.copy(fileInfo = old.fileInfo.copy(relativePath = relativePath))
 
             case None =>
               logger.info(s"Scanning new file: '${relativePath}'")

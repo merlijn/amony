@@ -8,8 +8,8 @@ import akka.util.Timeout
 import better.files.File
 import com.fasterxml.jackson.core.JsonEncoding
 import nl.amony.MediaLibConfig
-import nl.amony.actor.MediaLibActor
-import nl.amony.actor.MediaLibActor._
+import nl.amony.actor.MediaLibProtocol
+import nl.amony.actor.MediaLibProtocol._
 import nl.amony.lib.MediaLibScanner.{logger, scanVideosInDirectory}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -39,14 +39,14 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
     ): Future[SearchResult] =
       system.ask[SearchResult](ref => Search(Query(q, offset, size, c, minRes), ref))
 
-    def getTags()(implicit timeout: Timeout): Future[List[Collection]] =
-      system.ask[List[Collection]](ref => GetTags(ref))
+    def getTags()(implicit timeout: Timeout): Future[List[Tag]] =
+      system.ask[List[Tag]](ref => GetTags(ref))
 
     def getThumbnailPathForMedia(id: String): String =
       s"${config.indexPath}/thumbnails/$id"
 
     def getFilePathForMedia(vid: Media): String =
-      (File(config.libraryPath) / vid.uri).path.toAbsolutePath.toString
+      (File(config.libraryPath) / vid.fileInfo.relativePath).path.toAbsolutePath.toString
   }
 
   object modify {
@@ -87,7 +87,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
           val upsert                 = Consumer.foreachTask[Media](m => Task { modify.upsertMedia(m) })
           val delete = Consumer.foreachTask[Media](m =>
             Task {
-              logger.info(s"Detected deleted file: ${m.uri}")
+              logger.info(s"Detected deleted file: ${m.fileInfo.relativePath}")
               modify.deleteMedia(m.id)
             }
           )
@@ -99,7 +99,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
     }
 
     def regeneratePreviewFor(m: Media): Unit = {
-      val videoPath = config.libraryPath.resolve(m.uri)
+      val videoPath = config.libraryPath.resolve(m.fileInfo.relativePath)
       m.fragments.foreach { f =>
         MediaLibScanner.createVideoFragment(videoPath, config.indexPath, m.id, f.fromTimestamp, f.toTimestamp)
       }
@@ -121,10 +121,10 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
         logger.info("Verifying all file hashes ...")
 
         medias.foreach { m =>
-          val hash = FileUtil.fakeHash(File(config.libraryPath) / m.uri)
+          val hash = FileUtil.fakeHash(File(config.libraryPath) / m.fileInfo.relativePath)
 
-          if (hash != m.hash)
-            logger.info(s"Found different hash for: ${m.uri}")
+          if (hash != m.fileInfo.hash)
+            logger.info(s"Found different hash for: ${m.fileInfo.relativePath}")
         }
 
         logger.info("Done ...")

@@ -2,7 +2,7 @@ package nl.amony.lib
 
 import akka.util.Timeout
 import better.files.File
-import nl.amony.actor.MediaLibActor.{Fragment, Media}
+import nl.amony.actor.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
 import io.circe.Error
 import io.circe.generic.semiauto.deriveCodec
 import scribe.Logging
@@ -17,6 +17,7 @@ object Migration extends Logging {
       hash: String,
       uri: String,
       title: Option[String],
+      addedOnTimestamp: Long,
       duration: Long,
       fps: Double,
       thumbnailTimestamp: Long,
@@ -53,22 +54,30 @@ object Migration extends Logging {
 
           val path       = api.config.libraryPath.resolve(m.uri)
           val attributes = Files.readAttributes(path, classOf[BasicFileAttributes])
-          val addedOn    = attributes.creationTime().toMillis
 
-          logger.info(s"added on: ${path.toString} -> $addedOn")
+          val fileInfo = FileInfo(
+            m.uri,
+            m.hash,
+            attributes.size(),
+            attributes.creationTime().toMillis,
+            attributes.lastModifiedTime().toMillis,
+          )
+
+          val videoInfo = VideoInfo(
+            m.fps,
+            m.duration,
+            m.resolution
+          )
 
           val media = Media(
-            m.id,
-            m.hash,
-            m.uri,
-            addedOn,
-            m.title,
-            m.duration,
-            m.fps,
-            m.thumbnailTimestamp,
-            fragments,
-            m.resolution,
-            m.tags
+            id    = m.id,
+            title = m.title,
+            comment = None,
+            fileInfo = fileInfo,
+            videoInfo = videoInfo,
+            thumbnailTimestamp = m.thumbnailTimestamp,
+            fragments = fragments,
+            tags = m.tags
           )
 
           logger.info(s"Imported: ${m.uri}")
