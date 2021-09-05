@@ -26,7 +26,14 @@ object MediaLibProtocol {
   case class GetTags(sender: ActorRef[List[Tag]])          extends Command
 
   case class Search(query: Query, sender: ActorRef[SearchResult]) extends Command
-  case class Query(q: Option[String], offset: Option[Int], n: Int, tag: Option[String], minRes: Option[Int])
+
+  sealed trait SortField
+  case object FileName extends SortField
+  case object DateAdded extends SortField
+  case object Duration extends SortField
+
+  case class Sort(field: SortField, reverse: Boolean)
+  case class Query(q: Option[String], offset: Option[Int], n: Int, tag: Option[String], minRes: Option[Int], sort: Option[Sort])
   case class SearchResult(offset: Int, total: Int, items: Seq[Media])
 
   // --- Fragments

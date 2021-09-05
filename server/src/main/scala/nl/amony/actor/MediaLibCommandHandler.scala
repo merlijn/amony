@@ -28,7 +28,9 @@ object MediaLibCommandHandler extends Logging {
       }
     }
 
-    lazy val orderedMedia = state.media.values.toList.sortBy(m => m.title.getOrElse(m.fileName()))
+    lazy val sortedByFilename = state.media.values.toList.sortBy(m => m.title.getOrElse(m.fileName()))
+    lazy val sortedByDateAdded = state.media.values.toList.sortBy(m => m.fileInfo.creationTime)
+    lazy val sortedByDuration = state.media.values.toList.sortBy(m => m.videoInfo.duration)
 
     cmd match {
 
@@ -68,16 +70,26 @@ object MediaLibCommandHandler extends Logging {
         def filterRes(m: Media): Boolean = query.minRes.map(res => m.videoInfo.resolution._2 >= res).getOrElse(true)
         def filterQuery(m: Media): Boolean = query.q.map(q => m.fileInfo.relativePath.toLowerCase.contains(q.toLowerCase)).getOrElse(true)
 
-        val result = orderedMedia.filter { m =>
-          filterTag(m) && filterRes(m) && filterQuery(m)
+        def filterMedia(m: Media): Boolean = filterTag(m) && filterRes(m) && filterQuery(m)
+
+        val unfiltered = query.sort match {
+          case None                         => state.media.values
+          case Some(Sort(FileName, false))  => sortedByFilename
+          case Some(Sort(FileName, true))   => sortedByFilename.reverse
+          case Some(Sort(DateAdded, false)) => sortedByDateAdded
+          case Some(Sort(DateAdded, true))  => sortedByDateAdded.reverse
+          case Some(Sort(Duration, false))  => sortedByDuration
+          case Some(Sort(Duration, true))   => sortedByDuration.reverse
         }
+
+        val result = unfiltered.filter(filterMedia)
 
         val offset = query.offset.getOrElse(0)
         val end    = Math.min(offset + query.n, result.size)
 
         val videos = if (offset > result.size) Nil else result.slice(offset, end)
 
-        Effect.reply(sender)(SearchResult(offset, result.size, videos))
+        Effect.reply(sender)(SearchResult(offset, result.size, videos.toList))
 
       case DeleteFragment(id, idx, sender) =>
         state.media.get(id) match {

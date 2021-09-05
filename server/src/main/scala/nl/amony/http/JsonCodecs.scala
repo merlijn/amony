@@ -43,7 +43,6 @@ trait JsonCodecs {
           comment         = p.comment,
           tags            = p.tags
         )
-
       },
       resolution_x = media.videoInfo.resolution._1,
       resolution_y = media.videoInfo.resolution._2,

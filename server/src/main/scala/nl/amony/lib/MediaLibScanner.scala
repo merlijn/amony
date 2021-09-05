@@ -62,6 +62,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       }
   }
 
+
   def scanVideo(hash: String, baseDir: Path, videoPath: Path, indexDir: Path): Media = {
 
     val info           = FFMpeg.ffprobe(videoPath)
@@ -87,7 +88,6 @@ object MediaLibScanner extends Logging with JsonCodecs {
       info.duration,
       info.resolution
     )
-
 
     Media(
       id = hash,

@@ -8,7 +8,7 @@ import akka.stream.Materializer
 import akka.util.Timeout
 import better.files.File
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-import nl.amony.actor.MediaLibProtocol.{ErrorResponse, InvalidCommand, Media, MediaNotFound}
+import nl.amony.actor.MediaLibProtocol.{ErrorResponse, FileName, InvalidCommand, Media, MediaNotFound, Sort}
 import nl.amony.http.WebModel.FragmentRange
 import nl.amony.lib.MediaLibApi
 import io.circe.syntax._
@@ -46,7 +46,8 @@ trait Routes extends JsonCodecs with Logging {
       )) { (q, offset, n, tags, sort, minResY) =>
         get {
           val size         = n.map(_.toInt).getOrElse(defaultResultNumber)
-          val searchResult = api.query.search(q, offset.map(_.toInt), size, tags, minResY.map(_.toInt))
+          val sortQ        = Some(Sort(FileName, false))
+          val searchResult = api.query.search(q, offset.map(_.toInt), size, tags, minResY.map(_.toInt), sortQ)
           val response     = searchResult.map(_.asJson)
 
           complete(response)

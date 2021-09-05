@@ -10,7 +10,10 @@ object FFMpeg extends Logging {
 
   val previewSize = 640
 
-  case class Probe(duration: Long, resolution: (Int, Int), fps: Double, fastStart: Boolean)
+  case class Probe(duration: Long,
+                   resolution: (Int, Int),
+                   fps: Double,
+                   fastStart: Boolean)
 
   val pattern = raw"Duration:\s(\d{2}):(\d{2}):(\d{2})".r.unanchored
   val res     = raw"Stream #0.*,\s(\d{2,})x(\d{2,})".r.unanchored
@@ -19,7 +22,9 @@ object FFMpeg extends Logging {
 
   val streamPattern = """\s*Stream #.*(Video.*)""".r.unanchored
 
-  val fastStartPattern = raw""".*Statistics:\s(\d+)\sbytes\sread,\s0\sseeks""".r.unanchored
+  // https://stackoverflow.com/questions/56963790/how-to-tell-if-faststart-for-video-is-set-using-ffmpeg-or-ffprobe/56963953#56963953
+  // Before avformat_find_stream_info() pos: 3193581 bytes read:3217069 seeks:0 nb_streams:2
+  val fastStartPattern = raw"""Before\savformat_find_stream_info\(\)\spos:\s\d+\sbytes\sread:\d+\sseeks:0""".r.unanchored
 
   def extractFps(ffprobeOutput: String, hint: String): Option[Double] = {
     ffprobeOutput match {
@@ -94,24 +99,6 @@ object FFMpeg extends Logging {
     // format: on
 
     Path.of(out)
-  }
-
-  def createGif(inputFile: String, timestamp: Long, outputFile: String): Unit = {
-
-    // format: off
-    run(
-      useErrorStream = true,
-      cmds = List(
-        "ffmpeg",
-        "-ss",   formatTime(timestamp),
-        "-t",    "3",
-        "-i",    inputFile,
-        "-vf",   "fps=8,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
-        "-loop", "0",
-        "-y",    outputFile
-      )
-    )
-    // format: on
   }
 
   def createWebP(
