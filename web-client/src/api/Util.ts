@@ -103,9 +103,6 @@ export function BoundedRatioBox(maxWidth: string, maxHeight: string, ratio: numb
 
 export const calculateColumns = () => {
   const c = Math.max(1, Math.round(window.innerWidth / Constants.gridSize));
-
-  // console.log(`calculated columns: ${c}`)
-
   return c;
 }
 

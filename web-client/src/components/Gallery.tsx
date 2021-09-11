@@ -1,6 +1,6 @@
 import React, {CSSProperties, useEffect, useRef, useState} from 'react';
 import {Api} from '../api/Api';
-import {defaultPrefs, Prefs, SearchResult, Video} from '../api/Model';
+import {Prefs, SearchResult, Video} from '../api/Model';
 import Preview from './Preview';
 import './Gallery.scss';
 import {useLocation} from 'react-router-dom'
@@ -8,6 +8,7 @@ import {BoundedRatioBox, calculateColumns, useCookiePrefs, usePrevious, useWindo
 import TopNavBar from "./TopNavBar";
 import Plyr from "plyr";
 import { isMobile } from "react-device-detect";
+import {Constants} from "../api/Constants";
 
 const gridReRenderThreshold = 24
 const fetchDataScreenMargin = 1024;
@@ -18,7 +19,7 @@ const Gallery = () => {
   const location = useLocation();
   const initialSearchResult = new SearchResult(0,[]);
 
-  const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", defaultPrefs)
+  const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
 
   const previousPrefs = usePrevious(prefs)
 

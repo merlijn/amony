@@ -2,14 +2,14 @@ import React, {useEffect} from "react";
 import './ConfigMenu.scss';
 import Form from "react-bootstrap/Form";
 import {calculateColumns, useCookiePrefs} from "../api/Util";
-import {defaultPrefs, Prefs} from "../api/Model";
 import DropDownIcon from "./shared/DropDownIcon";
 import * as config from "../AppConfig.json";
 import {Constants} from "../api/Constants";
+import {Prefs} from "../api/Model";
 
 const ConfigMenu = () => {
 
-  const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", defaultPrefs)
+  const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
 
   const columns = [1, 2, 3, 4, 5, 6, 7].map((v) => {
     return { value: v, label: v.toString() }

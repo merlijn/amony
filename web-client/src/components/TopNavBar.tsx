@@ -6,17 +6,18 @@ import Form from "react-bootstrap/Form";
 import FormControl from "react-bootstrap/FormControl";
 import './TopNavBar.scss';
 import {Api} from "../api/Api";
-import {defaultPrefs, Prefs, Tag} from "../api/Model";
+import {Prefs, Tag} from "../api/Model";
 import {ButtonGroup} from "react-bootstrap";
 import ConfigMenu from "./ConfigMenu";
 import ImgWithAlt from "./shared/ImgWithAlt";
 import Button from "react-bootstrap/Button";
 import Dropdown from "react-bootstrap/Dropdown";
+import {Constants} from "../api/Constants";
 
 function TopNavBar() {
 
   const location = useLocation();
-  const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", defaultPrefs)
+  const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
   const [query, setQuery] = useState("")
   const [tags, setTags] = useState<Array<Tag>>([]);
   const [selectedTag, setSelectedTag] = useState<Tag>({id: 0, title: ""})

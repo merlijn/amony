@@ -50,13 +50,3 @@ export type Prefs = {
   sortDirection: SortDirection,
   minRes: number
 }
-
-export const defaultPrefs: Prefs = {
-  showTitles: false,
-  showDuration: true,
-  showMenu: true,
-  sortField: "title",
-  sortDirection: "asc",
-  gallery_columns: 0,
-  minRes: 0
-}
