@@ -39,11 +39,15 @@ export type Fragment = {
   tags: string[]
 }
 
+export type SortDirection = "asc" | "desc"
+
 export type Prefs = {
   showTitles: boolean
   showDuration: boolean
   showMenu: boolean
-  gallery_columns: number;
+  gallery_columns: number
+  sortField: string,
+  sortDirection: SortDirection,
   minRes: number
 }
 
@@ -51,6 +55,8 @@ export const defaultPrefs: Prefs = {
   showTitles: false,
   showDuration: true,
   showMenu: true,
+  sortField: "title",
+  sortDirection: "asc",
   gallery_columns: 0,
   minRes: 0
 }

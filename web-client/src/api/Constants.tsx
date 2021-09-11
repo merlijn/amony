@@ -1,10 +1,15 @@
 import {Resolution} from "./Model";
 
 const resolutions: Array<Resolution> =
-   [{ value: 0, label: "All"},
-    { value: 720, label: "HD" },
+   [{ value: 0,    label: "All"},
+    { value: 720,  label: "HD" },
     { value: 1080, label: "FHD"},
-    { value : 2160, label: "4K"}]
+    { value: 2160, label: "4K"}]
+
+const sortingOps = [
+  { value: "title",      label: "Title" },
+  { value: "date_added", label: "Date added" },
+  { value: "duration",   label: "Duration" }];
 
 export const Constants = {
 
@@ -12,6 +17,8 @@ export const Constants = {
 
   resolutions: resolutions,
 
-  gridSize: 350
+  sortOptions: sortingOps,
+
+  gridSize: 350,
 }
 

@@ -30,7 +30,7 @@ object MediaLibProtocol {
   sealed trait SortField
   case object FileName extends SortField
   case object DateAdded extends SortField
-  case object Duration extends SortField
+  case object VideoDuration extends SortField
 
   case class Sort(field: SortField, reverse: Boolean)
   case class Query(q: Option[String], offset: Option[Int], n: Int, tag: Option[String], minRes: Option[Int], sort: Option[Sort])

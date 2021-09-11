@@ -8,7 +8,7 @@ import akka.stream.Materializer
 import akka.util.Timeout
 import better.files.File
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-import nl.amony.actor.MediaLibProtocol.{ErrorResponse, FileName, InvalidCommand, Media, MediaNotFound, Sort}
+import nl.amony.actor.MediaLibProtocol.{DateAdded, ErrorResponse, FileName, InvalidCommand, Media, MediaNotFound, Sort, VideoDuration}
 import nl.amony.http.WebModel.FragmentRange
 import nl.amony.lib.MediaLibApi
 import io.circe.syntax._
@@ -41,13 +41,21 @@ trait Routes extends JsonCodecs with Logging {
         "offset".optional,
         "n".optional,
         "tags".optional,
-        "sort".optional,
+        "sort_field".optional,
+        "sort_dir".optional,
         "min_res".optional
-      )) { (q, offset, n, tags, sort, minResY) =>
+      )) { (q, offset, n, tags, sort, sortDir, minResY) =>
         get {
           val size         = n.map(_.toInt).getOrElse(defaultResultNumber)
-          val sortQ        = Some(Sort(FileName, false))
-          val searchResult = api.query.search(q, offset.map(_.toInt), size, tags, minResY.map(_.toInt), sortQ)
+          val sortReverse  = sortDir.map(_ == "desc").getOrElse(false)
+          val sortField    = sort.map {
+            case "title"      => FileName
+            case "duration"   => VideoDuration
+            case "date_added" => DateAdded
+            case _          => throw new IllegalArgumentException("unkown sort field")
+          }.getOrElse(FileName)
+
+          val searchResult = api.query.search(q, offset.map(_.toInt), size, tags, minResY.map(_.toInt), Sort(sortField, sortReverse))
           val response     = searchResult.map(_.asJson)
 
           complete(response)

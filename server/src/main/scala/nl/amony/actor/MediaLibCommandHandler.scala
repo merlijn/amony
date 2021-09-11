@@ -78,8 +78,8 @@ object MediaLibCommandHandler extends Logging {
           case Some(Sort(FileName, true))   => sortedByFilename.reverse
           case Some(Sort(DateAdded, false)) => sortedByDateAdded
           case Some(Sort(DateAdded, true))  => sortedByDateAdded.reverse
-          case Some(Sort(Duration, false))  => sortedByDuration
-          case Some(Sort(Duration, true))   => sortedByDuration.reverse
+          case Some(Sort(VideoDuration, false))  => sortedByDuration
+          case Some(Sort(VideoDuration, true))   => sortedByDuration.reverse
         }
 
         val result = unfiltered.filter(filterMedia)

@@ -50,6 +50,39 @@ const ConfigMenu = () => {
         </div>
       </div>
 
+
+      <div key="sort-title" className="config-title">Sorting</div>
+      <div key="sort-form" className="config-form">
+        <div className="form-section">
+          <div className="form-label">Sort by</div>
+          <div className="form-content">
+            <select style={ { float: "left" } } className="mr-1" name="sort-field" onChange={(e) => { updatePrefs( { sortField: e.target.value }) } }>
+              {
+                Constants.sortOptions.map((v) => {
+                  return <option
+                    selected={ prefs.sortField === v.value }
+                    key={`sorting-${v.value}`}
+                    value={v.value}
+                    label={v.label}
+                  />;
+                })
+              }
+            </select>
+            <Form.Check
+              label="reverse"
+              style={ { float: "left" } }
+              type="checkbox"
+              checked={ prefs.sortDirection === "desc" }
+              onChange={(e) => {
+                updatePrefs( { sortDirection: (prefs.sortDirection === "asc") ? "desc" : "asc" })
+              }
+              }
+            />
+          </div>
+        </div>
+      </div>
+
+
       <div key="config-title" className="config-title">Preferences</div>
 
       <div key="config-form" className="config-form">
@@ -130,10 +163,7 @@ const ConfigMenu = () => {
                 <Form.Check
                   type="checkbox"
                   checked={ prefs.showMenu }
-                  onChange={(e) => {
-                    updatePrefs( { showMenu: !prefs.showMenu })
-                  }
-                  }
+                  onChange={(e) => { updatePrefs( { showMenu: !prefs.showMenu }) } }
                 />
               </div>
             </div>

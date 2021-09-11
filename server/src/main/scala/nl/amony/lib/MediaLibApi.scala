@@ -39,8 +39,8 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
                size: Int,
                tag: Option[String],
                minRes: Option[Int],
-               sort: Option[Sort])(implicit timeout: Timeout): Future[SearchResult] =
-      system.ask[SearchResult](ref => Search(Query(q, offset, size, tag, minRes, sort), ref))
+               sort: Sort)(implicit timeout: Timeout): Future[SearchResult] =
+      system.ask[SearchResult](ref => Search(Query(q, offset, size, tag, minRes, Some(sort)), ref))
 
     def getTags()(implicit timeout: Timeout): Future[List[Tag]] =
       system.ask[List[Tag]](ref => GetTags(ref))

@@ -4,9 +4,10 @@ import akka.actor.typed.ActorSystem
 import akka.util.Timeout
 import nl.amony.actor.MediaLibProtocol
 import nl.amony.http.WebServer
-import nl.amony.lib.{MediaLibApi, MediaLibScanner, Migration}
+import nl.amony.lib.{FFMpeg, MediaLibApi, MediaLibScanner, Migration}
 import scribe.Logging
 
+import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.DurationInt
 
 object App extends AppConfig with Logging {
@@ -20,6 +21,8 @@ object App extends AppConfig with Logging {
 
     api.admin.scanLibrary()(10.seconds)
 
+//    probeAll(api)(system.executionContext)
+
 //    MediaLibScanner.convertNonStreamableVideos(mediaLibConfig, api)
 
 //    Migration.importFromExport(api)(10.seconds)
@@ -27,5 +30,24 @@ object App extends AppConfig with Logging {
     val webServer = new WebServer(webServerConfig, api)(system)
 
     webServer.run()
+  }
+
+  def probeAll(api: MediaLibApi)(implicit ec: ExecutionContext): Unit = {
+
+    val media = Await.result(api.query.getAll()(10.seconds), 10.seconds)
+
+    logger.warn("Probing all videos")
+
+    val (fastStart, nonFastStart) = media.partition { m =>
+     val path = m.resolvePath(api.config.libraryPath)
+     val probe = FFMpeg.ffprobe(path)
+      probe.fastStart
+    }
+
+    logger.warn(s"videos optimized for faststart: ${fastStart.size}")
+
+    nonFastStart.foreach { m =>
+      logger.warn(s"not optimized for streaming: ${m.fileInfo.relativePath}")
+    }
   }
 }

@@ -1,10 +1,12 @@
 import {buildUrl} from "./Util";
+import {SortDirection} from "./Model";
 
 const headers = { 'Content-type': 'application/json; charset=UTF-8' };
 
 export const Api = {
 
-  getVideos: async function getVideos(q: string, tag: string | null, n: number, offset: number, minRes?: number) {
+  getVideos: async function getVideos(q: string, tag: string | null, n: number,
+                                      offset: number, minRes?: number, sortField?: string, sortDirection?: SortDirection) {
 
     const apiParams = new Map([
       ["q", q],
@@ -16,6 +18,10 @@ export const Api = {
       apiParams.set("tags", tag)
     if (minRes)
       apiParams.set("min_res", minRes.toString())
+    if (sortField)
+      apiParams.set("sort_field", sortField)
+    if (sortDirection !== undefined)
+      apiParams.set("sort_dir", sortDirection)
 
     const target = buildUrl("/api/search", apiParams)
 

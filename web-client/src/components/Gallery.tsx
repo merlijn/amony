@@ -56,7 +56,9 @@ const Gallery = () => {
         urlParams.get("tag"),
         n,
         offset,
-        prefs.minRes).then(response => {
+        prefs.minRes,
+        prefs.sortField,
+        prefs.sortDirection).then(response => {
 
         const newvideos = (response as SearchResult).videos
         const videos = [...previous, ...newvideos]
@@ -111,7 +113,9 @@ const Gallery = () => {
       setNcols(prefs.gallery_columns)
     }
 
-    if (previousPrefs?.minRes !== prefs.minRes)
+    if (previousPrefs?.minRes !== prefs.minRes ||
+        previousPrefs?.sortField !== prefs.sortField ||
+        previousPrefs?.sortDirection !== prefs.sortDirection)
       fetchData([])
 
   },[windowSize, prefs]);
