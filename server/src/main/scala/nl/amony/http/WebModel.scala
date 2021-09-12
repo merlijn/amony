@@ -21,6 +21,7 @@ object WebModel {
       uri: String,
       title: String,
       duration: Long,
+      addedOn: Long,
       fps: Double,
       thumbnail_uri: String,
       fragments: List[Fragment],

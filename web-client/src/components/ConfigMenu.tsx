@@ -26,7 +26,7 @@ const ConfigMenu = () => {
 
       <>
 
-      <div key="filter-title" className="config-title">Filters</div>
+      <div key="filter-title" className="config-title">Search</div>
       <div key="filter-form" className="config-form">
         <div className="form-section">
           <div className="form-label">Video quality</div>
@@ -48,15 +48,10 @@ const ConfigMenu = () => {
             }
           </div>
         </div>
-      </div>
-
-
-      <div key="sort-title" className="config-title">Sorting</div>
-      <div key="sort-form" className="config-form">
         <div className="form-section">
           <div className="form-label">Sort by</div>
           <div className="form-content">
-            <select style={ { float: "left" } } className="mr-1" name="sort-field" onChange={(e) => { updatePrefs( { sortField: e.target.value }) } }>
+            <select style={ { float: "left" } } className="mr-2" name="sort-field" onChange={(e) => { updatePrefs( { sortField: e.target.value }) } }>
               {
                 Constants.sortOptions.map((v) => {
                   return <option
@@ -82,21 +77,9 @@ const ConfigMenu = () => {
         </div>
       </div>
 
-
       <div key="config-title" className="config-title">Preferences</div>
 
       <div key="config-form" className="config-form">
-
-        <div className="form-section">
-          <p className="form-label">Show video titles</p>
-          <div className="form-content">
-            <Form.Check
-              type="checkbox"
-              checked={ prefs.showTitles }
-              onChange={(e) => { updatePrefs( { showTitles: !prefs.showTitles }) } }
-            />
-          </div>
-        </div>
 
         <div className="form-section">
           <p className="form-label">Number of columns</p>
@@ -124,8 +107,8 @@ const ConfigMenu = () => {
               label={"other"}
               checked={prefs.gallery_columns > 0}
               onChange={(e) => {
-               if (prefs.gallery_columns === 0)
-                 updatePrefs({ gallery_columns: calculateColumns()} )
+                if (prefs.gallery_columns === 0)
+                  updatePrefs({ gallery_columns: calculateColumns()} )
               }}
             />
             <select name="ncols" onChange={(e) => { updatePrefs( { gallery_columns: e.target.value }) } }>
@@ -139,6 +122,17 @@ const ConfigMenu = () => {
                 })
               }
             </select>
+          </div>
+        </div>
+
+        <div className="form-section">
+          <p className="form-label">Show info bar</p>
+          <div className="form-content">
+            <Form.Check
+              type="checkbox"
+              checked={ prefs.showTitles }
+              onChange={(e) => { updatePrefs( { showTitles: !prefs.showTitles }) } }
+            />
           </div>
         </div>
 

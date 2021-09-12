@@ -8,7 +8,8 @@ export class Video {
     public resolution_x: number,
     public resolution_y: number,
     public tags: Array<string>,
-    public duration: number // in millis
+    public duration: number, // in millis
+    public addedOn: number
   ) { }
 }
 

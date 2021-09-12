@@ -4,7 +4,7 @@
 
   flex-grow: 0;
   float: left;
-  background-color: #d8d4d4 ! important;
+  background-color: $gray-400 ! important;
   border-color: darkgray ! important;
   padding: 2px 5px !important;
   height: 31px ! important;
@@ -13,6 +13,7 @@
 .config-menu {
   margin-top: 4px !important;
   padding: 0px ! important;
+  border-color: $gray-200 ! important;
 
   width: calc(100vw - 8px);
 
@@ -24,7 +25,7 @@
 
     @extend .ml-sm-3, .ml-2, .mr-sm-3, .mr-2, .mt-2, .pb-2;
 
-    border-bottom: #d8d4d4 1px solid;
+    border-bottom: $gray-400 1px solid;
     font-size: large;
     font-weight: bold;
   }
@@ -42,17 +43,16 @@
     display: table-row;
 
     .form-label {
+      @extend .pr-3, .pb-1;
       width: 170px;
-      @extend .pr-3;
       display: table-cell;
       vertical-align: middle;
     }
 
     .form-content {
+      @extend .pb-1;
       vertical-align: middle;
       display: table-cell;
-
-
     }
   }
 }

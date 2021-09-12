@@ -42,7 +42,7 @@ const PlayerView = (props: {vid: Video}) => {
   useEffect(() => {
     const element = document.getElementById(id);
     if (element) {
-      const plyr = new Plyr(element, { fullscreen : { enabled: true }, invertTime: false})
+      const plyr = new Plyr(element, { fullscreen : { enabled: false }, invertTime: false})
       setPlyr(plyr)
     }
   }, [props]);

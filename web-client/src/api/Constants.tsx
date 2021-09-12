@@ -31,6 +31,6 @@ export const Constants = {
 
   defaultPreferences: defaultPrefs,
 
-  gridSize: 350,
+  gridSize: 400,
 }
 

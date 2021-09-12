@@ -140,12 +140,7 @@ const Gallery = () => {
 
   const previews = searchResult.videos.map((vid, idx) => {
 
-    let style: { } = { "--ncols" : `${ncols}` }
-
-    if (idx % ncols === 0)
-        style = { ...style, paddingLeft : "4px" }
-    if ((idx + 1) % ncols === 0)
-        style = { ...style, paddingRight : "4px" }
+    const style: { } = { "--ncols" : `${ncols}` }
 
     return <Preview
               style={style} className="grid-cell"
@@ -188,7 +183,9 @@ const Gallery = () => {
             }
           </div>
         </div>
-        {previews}
+        <div className="gallery-grid-container">
+           {previews}
+        </div>
       </div>
     </div>
   );

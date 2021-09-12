@@ -18,8 +18,15 @@
   background-color: white;
 }
 
+.gallery-grid-container {
+
+  @extend .full-width;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
 .grid-cell {
-  --grid-width: calc(100vw / var(--ncols));
+  --grid-width: calc((100vw - 4px) / var(--ncols));
   width: var(--grid-width);
   position: relative;
   float: left;

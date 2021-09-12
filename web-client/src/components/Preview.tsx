@@ -1,6 +1,6 @@
 import React, {CSSProperties, useState} from 'react';
 import './Preview.scss';
-import {durationInMillisToString} from "../api/Util";
+import {durationInMillisToString, zeroPad} from "../api/Util";
 import {Video} from "../api/Model";
 import {Form, Modal} from "react-bootstrap";
 import FragmentsPlayer from "./shared/FragmentsPlayer";
@@ -42,8 +42,12 @@ const Preview = (props: PreviewProps) => {
                      className="preview-video preview-media"
                      fragments={ props.vid.fragments } />
 
+  const addOnDate = new Date(vid.addedOn)
   const titlePanel =
-    <div className="media-title">{vid.title}</div>
+    <div className="info-bar">
+      <span className="media-title">{vid.title}</span>
+      <span className="media-date">{zeroPad(addOnDate.getUTCDate(), 2)}-{zeroPad(addOnDate.getMonth(), 2)}-{addOnDate.getFullYear()}</span>
+    </div>
 
   const overlayIcons =
     <div>
@@ -65,7 +69,6 @@ const Preview = (props: PreviewProps) => {
     </ProgressiveImage>
 
   let preview =
-    // <a href={`/video/${props.vid.id}`}>
       <div className = "preview-container"
            onMouseEnter={() => props.showPreviewOnHover && setShowVideoPreview(true)}
            onMouseLeave={() => setShowVideoPreview(false)}>

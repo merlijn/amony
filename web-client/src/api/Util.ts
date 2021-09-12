@@ -54,6 +54,17 @@ export function durationInMillisToString (duration: number) {
   return durationStr
 }
 
+export function zeroPad(n: number, d: number) {
+
+  let zeros = "";
+  let limit = Math.max(0, d - 1 - Math.floor(Math.log10(n)))
+
+  for(let i = 0; i < limit; i++)
+    zeros += "0"
+
+  return zeros + n.toString()
+}
+
 // Define general type for useWindowSize hook, which includes width and height
 interface Size {
   width: number;
