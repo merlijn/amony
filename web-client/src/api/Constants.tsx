@@ -12,11 +12,11 @@ const sortingOps = [
   { value: "duration",   label: "Duration" }];
 
 const defaultPrefs: Prefs = {
-  showTitles:      false,
+  showTitles:      true,
   showDuration:    true,
-  showMenu:        true,
-  sortField:       "title",
-  sortDirection:   "asc",
+  showMenu:        false,
+  sortField:       "date_added",
+  sortDirection:   "desc",
   gallery_columns: 0,
   minRes:          0
 }

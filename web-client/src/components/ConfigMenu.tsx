@@ -28,26 +28,7 @@ const ConfigMenu = () => {
 
       <div key="filter-title" className="config-title">Search</div>
       <div key="filter-form" className="config-form">
-        <div className="form-section">
-          <div className="form-label">Video quality</div>
-          <div className="form-content">
-            {
-              Constants.resolutions.map((v) => {
-                return <Form.Check
-                  style={ { float:"left" } }
-                  className="mr-1"
-                  name="resolution"
-                  type="radio"
-                  key={`resolution-${v.value}`}
-                  value={v.value}
-                  label={v.label}
-                  checked={prefs.minRes === v.value}
-                  onChange={(e) => { updatePrefs( { minRes: v.value }) } }
-                />;
-              })
-            }
-          </div>
-        </div>
+
         <div className="form-section">
           <div className="form-label">Sort by</div>
           <div className="form-content">
@@ -75,6 +56,28 @@ const ConfigMenu = () => {
             />
           </div>
         </div>
+
+        <div className="form-section">
+          <div className="form-label">Video quality</div>
+          <div className="form-content">
+            {
+              Constants.resolutions.map((v) => {
+                return <Form.Check
+                  style={ { float:"left" } }
+                  className="mr-1"
+                  name="resolution"
+                  type="radio"
+                  key={`resolution-${v.value}`}
+                  value={v.value}
+                  label={v.label}
+                  checked={prefs.minRes === v.value}
+                  onChange={(e) => { updatePrefs( { minRes: v.value }) } }
+                />;
+              })
+            }
+          </div>
+        </div>
+
       </div>
 
       <div key="config-title" className="config-title">Preferences</div>
