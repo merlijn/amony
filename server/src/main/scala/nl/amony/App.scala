@@ -39,8 +39,8 @@ object App extends AppConfig with Logging {
     logger.warn("Probing all videos")
 
     val (fastStart, nonFastStart) = media.partition { m =>
-     val path = m.resolvePath(api.config.libraryPath)
-     val probe = FFMpeg.ffprobe(path)
+      val path  = m.resolvePath(api.config.libraryPath)
+      val probe = FFMpeg.ffprobe(path)
       probe.fastStart
     }
 

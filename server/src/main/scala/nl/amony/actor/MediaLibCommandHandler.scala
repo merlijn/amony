@@ -28,9 +28,9 @@ object MediaLibCommandHandler extends Logging {
       }
     }
 
-    lazy val sortedByFilename = state.media.values.toList.sortBy(m => m.title.getOrElse(m.fileName()))
+    lazy val sortedByFilename  = state.media.values.toList.sortBy(m => m.title.getOrElse(m.fileName()))
     lazy val sortedByDateAdded = state.media.values.toList.sortBy(m => m.fileInfo.creationTime)
-    lazy val sortedByDuration = state.media.values.toList.sortBy(m => m.videoInfo.duration)
+    lazy val sortedByDuration  = state.media.values.toList.sortBy(m => m.videoInfo.duration)
 
     cmd match {
 
@@ -66,20 +66,22 @@ object MediaLibCommandHandler extends Logging {
       case Search(query, sender) =>
         val tag = query.tag.flatMap(t => tags.find(_.id == t))
 
-        def filterTag(m: Media): Boolean = tag.map(t => m.fileInfo.relativePath.startsWith(t.title.substring(1))).getOrElse(true)
+        def filterTag(m: Media): Boolean =
+          tag.map(t => m.fileInfo.relativePath.startsWith(t.title.substring(1))).getOrElse(true)
         def filterRes(m: Media): Boolean = query.minRes.map(res => m.videoInfo.resolution._2 >= res).getOrElse(true)
-        def filterQuery(m: Media): Boolean = query.q.map(q => m.fileInfo.relativePath.toLowerCase.contains(q.toLowerCase)).getOrElse(true)
+        def filterQuery(m: Media): Boolean =
+          query.q.map(q => m.fileInfo.relativePath.toLowerCase.contains(q.toLowerCase)).getOrElse(true)
 
         def filterMedia(m: Media): Boolean = filterTag(m) && filterRes(m) && filterQuery(m)
 
         val unfiltered = query.sort match {
-          case None                         => state.media.values
-          case Some(Sort(FileName, false))  => sortedByFilename
-          case Some(Sort(FileName, true))   => sortedByFilename.reverse
-          case Some(Sort(DateAdded, false)) => sortedByDateAdded
-          case Some(Sort(DateAdded, true))  => sortedByDateAdded.reverse
-          case Some(Sort(VideoDuration, false))  => sortedByDuration
-          case Some(Sort(VideoDuration, true))   => sortedByDuration.reverse
+          case None                             => state.media.values
+          case Some(Sort(FileName, false))      => sortedByFilename
+          case Some(Sort(FileName, true))       => sortedByFilename.reverse
+          case Some(Sort(DateAdded, false))     => sortedByDateAdded
+          case Some(Sort(DateAdded, true))      => sortedByDateAdded.reverse
+          case Some(Sort(VideoDuration, false)) => sortedByDuration
+          case Some(Sort(VideoDuration, true))  => sortedByDuration.reverse
         }
 
         val result = unfiltered.filter(filterMedia)

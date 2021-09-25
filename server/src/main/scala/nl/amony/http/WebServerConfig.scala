@@ -12,11 +12,13 @@ case class WebServerConfig(
 )
 
 case class HttpsConfig(
+    enabled: Boolean,
     port: Int,
     privateKeyPem: String,
     certificateChainPem: String
 )
 
 case class HttpConfig(
+    enabled: Boolean,
     port: Int
 )

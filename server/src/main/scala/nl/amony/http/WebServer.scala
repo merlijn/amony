@@ -28,7 +28,7 @@ class WebServer(override val config: WebServerConfig, override val api: MediaLib
           system.terminate()
       }
 
-    config.https.foreach { httpsConfig =>
+    config.https.filter(_.enabled).foreach { httpsConfig =>
       val keyStore = PemReader.loadKeyStore(
         certificateChainFile = File(httpsConfig.certificateChainPem),
         privateKeyFile       = File(httpsConfig.privateKeyPem),
@@ -50,7 +50,7 @@ class WebServer(override val config: WebServerConfig, override val api: MediaLib
       addBindingHooks("https", binding)
     }
 
-    config.http.foreach { httpConfig =>
+    config.http.filter(_.enabled).foreach { httpConfig =>
       val bindingFuture = Http().newServerAt(config.hostName, httpConfig.port).bind(allRoutes)
       addBindingHooks("http", bindingFuture)
     }

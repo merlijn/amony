@@ -10,10 +10,7 @@ object FFMpeg extends Logging {
 
   val previewSize = 640
 
-  case class Probe(duration: Long,
-                   resolution: (Int, Int),
-                   fps: Double,
-                   fastStart: Boolean)
+  case class Probe(duration: Long, resolution: (Int, Int), fps: Double, fastStart: Boolean)
 
   val pattern = raw"Duration:\s(\d{2}):(\d{2}):(\d{2})".r.unanchored
   val res     = raw"Stream #0.*,\s(\d{2,})x(\d{2,})".r.unanchored
@@ -24,7 +21,8 @@ object FFMpeg extends Logging {
 
   // https://stackoverflow.com/questions/56963790/how-to-tell-if-faststart-for-video-is-set-using-ffmpeg-or-ffprobe/56963953#56963953
   // Before avformat_find_stream_info() pos: 3193581 bytes read:3217069 seeks:0 nb_streams:2
-  val fastStartPattern = raw"""Before\savformat_find_stream_info\(\)\spos:\s\d+\sbytes\sread:\d+\sseeks:0""".r.unanchored
+  val fastStartPattern =
+    raw"""Before\savformat_find_stream_info\(\)\spos:\s\d+\sbytes\sread:\d+\sseeks:0""".r.unanchored
 
   def extractFps(ffprobeOutput: String, hint: String): Option[Double] = {
     ffprobeOutput match {

@@ -15,7 +15,7 @@ case class MediaLibConfig(
     libraryPath: Path,
     indexPath: Path,
     scanParallelFactor: Int,
-    verifyHashes: Boolean,
+    verifyExistingHashes: Boolean,
     hashingAlgorithm: HashingAlgorithm,
     max: Option[Int]
 )

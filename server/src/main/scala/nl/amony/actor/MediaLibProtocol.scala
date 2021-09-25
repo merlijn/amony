@@ -23,17 +23,24 @@ object MediaLibProtocol {
   // -- Querying
   case class GetAll(sender: ActorRef[List[Media]])                extends Command
   case class GetById(id: String, sender: ActorRef[Option[Media]]) extends Command
-  case class GetTags(sender: ActorRef[List[Tag]])          extends Command
+  case class GetTags(sender: ActorRef[List[Tag]])                 extends Command
 
   case class Search(query: Query, sender: ActorRef[SearchResult]) extends Command
 
   sealed trait SortField
-  case object FileName extends SortField
-  case object DateAdded extends SortField
+  case object FileName      extends SortField
+  case object DateAdded     extends SortField
   case object VideoDuration extends SortField
 
   case class Sort(field: SortField, reverse: Boolean)
-  case class Query(q: Option[String], offset: Option[Int], n: Int, tag: Option[String], minRes: Option[Int], sort: Option[Sort])
+  case class Query(
+      q: Option[String],
+      offset: Option[Int],
+      n: Int,
+      tag: Option[String],
+      minRes: Option[Int],
+      sort: Option[Sort]
+  )
   case class SearchResult(offset: Int, total: Int, items: Seq[Media])
 
   // --- Fragments
@@ -61,17 +68,17 @@ object MediaLibProtocol {
   case class Tag(id: String, title: String)
 
   case class FileInfo(
-    relativePath: String,
-    hash: String,
-    size: Long,
-    creationTime: Long,
-    lastModifiedTime: Long,
+      relativePath: String,
+      hash: String,
+      size: Long,
+      creationTime: Long,
+      lastModifiedTime: Long
   )
 
   case class VideoInfo(
-    fps: Double,
-    duration: Long,
-    resolution: (Int, Int)
+      fps: Double,
+      duration: Long,
+      resolution: (Int, Int)
   )
 
   case class Media(

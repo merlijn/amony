@@ -22,8 +22,8 @@ trait JsonCodecs {
     deriveEncoder[Tag].contramapObject[MediaLibProtocol.Tag](c => Tag(c.id, c.title))
 
   implicit val searchResultEncoder: Encoder[MediaLibProtocol.SearchResult] =
-    deriveEncoder[SearchResult].contramapObject[MediaLibProtocol.SearchResult](
-      result => SearchResult(result.offset, result.total, result.items.map(m => toWebModel(m)))
+    deriveEncoder[SearchResult].contramapObject[MediaLibProtocol.SearchResult](result =>
+      SearchResult(result.offset, result.total, result.items.map(m => toWebModel(m)))
     )
 
   def toWebModel(media: MediaLibProtocol.Media): Video =

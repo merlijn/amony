@@ -34,12 +34,9 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
     def getAll()(implicit timeout: Timeout): Future[List[Media]] =
       system.ask[List[Media]](ref => GetAll(ref))
 
-    def search(q: Option[String],
-               offset: Option[Int],
-               size: Int,
-               tag: Option[String],
-               minRes: Option[Int],
-               sort: Sort)(implicit timeout: Timeout): Future[SearchResult] =
+    def search(q: Option[String], offset: Option[Int], size: Int, tag: Option[String], minRes: Option[Int], sort: Sort)(
+        implicit timeout: Timeout
+    ): Future[SearchResult] =
       system.ask[SearchResult](ref => Search(Query(q, offset, size, tag, minRes, Some(sort)), ref))
 
     def getTags()(implicit timeout: Timeout): Future[List[Tag]] =

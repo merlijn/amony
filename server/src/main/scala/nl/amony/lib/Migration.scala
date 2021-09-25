@@ -60,7 +60,7 @@ object Migration extends Logging {
             m.hash,
             attributes.size(),
             attributes.creationTime().toMillis,
-            attributes.lastModifiedTime().toMillis,
+            attributes.lastModifiedTime().toMillis
           )
 
           val videoInfo = VideoInfo(
@@ -70,14 +70,14 @@ object Migration extends Logging {
           )
 
           val media = Media(
-            id    = m.id,
-            title = m.title,
-            comment = None,
-            fileInfo = fileInfo,
-            videoInfo = videoInfo,
+            id                 = m.id,
+            title              = m.title,
+            comment            = None,
+            fileInfo           = fileInfo,
+            videoInfo          = videoInfo,
             thumbnailTimestamp = m.thumbnailTimestamp,
-            fragments = fragments,
-            tags = m.tags
+            fragments          = fragments,
+            tags               = m.tags
           )
 
           logger.info(s"Imported: ${m.uri}")
