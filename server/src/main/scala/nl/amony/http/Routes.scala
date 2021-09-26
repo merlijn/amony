@@ -49,11 +49,11 @@ trait Routes extends JsonCodecs with Logging {
         "q".optional,
         "offset".optional,
         "n".optional,
-        "tags".optional,
+        "dir".optional,
         "sort_field".optional,
         "sort_dir".optional,
         "min_res".optional
-      )) { (q, offset, n, tags, sort, sortDir, minResY) =>
+      )) { (q, offset, n, dir, sort, sortDir, minResY) =>
         get {
           val size        = n.map(_.toInt).getOrElse(defaultResultNumber)
           val sortReverse = sortDir.map(_ == "desc").getOrElse(false)
@@ -67,7 +67,7 @@ trait Routes extends JsonCodecs with Logging {
             .getOrElse(FileName)
 
           val searchResult =
-            api.query.search(q, offset.map(_.toInt), size, tags, minResY.map(_.toInt), Sort(sortField, sortReverse))
+            api.query.search(q, offset.map(_.toInt), size, dir, minResY.map(_.toInt), Sort(sortField, sortReverse))
           val response = searchResult.map(_.asJson)
 
           complete(response)
@@ -83,9 +83,9 @@ trait Routes extends JsonCodecs with Logging {
             complete(StatusCodes.OK, "{}")
           }
         }
-      } ~ path("tags") {
+      } ~ path("directories") {
         get {
-          complete(api.query.getTags().map(_.map(_.asJson)))
+          complete(api.query.getDirectories().map(_.map(_.asJson)))
         }
       } ~ path("fragments" / Segment / "add") { (id) =>
         (post & entity(as[FragmentRange])) { createFragment =>
@@ -128,6 +128,8 @@ trait Routes extends JsonCodecs with Logging {
     } ~ (path("scan-library") & post) {
       api.admin.scanLibrary()
       complete("OK")
+    } ~ (path("logs")) {
+      complete("")
     }
   }
 

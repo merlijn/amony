@@ -27,7 +27,7 @@ export type Resolution = {
   label: string
 }
 
-export type Tag = {
+export type Directory = {
   id: number,
   title: string
 }

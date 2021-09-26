@@ -23,7 +23,7 @@ object MediaLibProtocol {
   // -- Querying
   case class GetAll(sender: ActorRef[List[Media]])                extends Command
   case class GetById(id: String, sender: ActorRef[Option[Media]]) extends Command
-  case class GetTags(sender: ActorRef[List[Tag]])                 extends Command
+  case class GetDirectories(sender: ActorRef[List[Directory]])    extends Command
 
   case class Search(query: Query, sender: ActorRef[SearchResult]) extends Command
 
@@ -34,12 +34,12 @@ object MediaLibProtocol {
 
   case class Sort(field: SortField, reverse: Boolean)
   case class Query(
-      q: Option[String],
-      offset: Option[Int],
-      n: Int,
-      tag: Option[String],
-      minRes: Option[Int],
-      sort: Option[Sort]
+    q: Option[String],
+    offset: Option[Int],
+    n: Int,
+    directory: Option[String],
+    minRes: Option[Int],
+    sort: Option[Sort]
   )
   case class SearchResult(offset: Int, total: Int, items: Seq[Media])
 
@@ -63,9 +63,9 @@ object MediaLibProtocol {
   ) extends Command
 
   // -- State
-  case class State(media: Map[String, Media], collections: Map[String, Tag])
+  case class State(media: Map[String, Media])
   case class Fragment(fromTimestamp: Long, toTimestamp: Long, comment: Option[String], tags: List[String])
-  case class Tag(id: String, title: String)
+  case class Directory(id: String, path: String)
 
   case class FileInfo(
       relativePath: String,
@@ -107,7 +107,7 @@ object MediaLibProtocol {
   def apply(config: MediaLibConfig): EventSourcedBehavior[Command, Event, State] =
     EventSourcedBehavior[Command, Event, State](
       persistenceId  = PersistenceId.ofUniqueId("mediaLib"),
-      emptyState     = State(Map.empty, Map.empty),
+      emptyState     = State(Map.empty),
       commandHandler = MediaLibCommandHandler.apply(config),
       eventHandler   = MediaLibEventSourcing.apply
     )

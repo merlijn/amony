@@ -15,16 +15,16 @@ object MediaLibCommandHandler extends Logging {
 
   def apply(config: MediaLibConfig)(state: State, cmd: Command): Effect[Event, State] = {
 
-    lazy val tags: List[Tag] = {
+    lazy val directories: List[Directory] = {
 
       val dirs = state.media.values.foldLeft(Set.empty[String]) { case (set, e) =>
         val parent = (File(config.libraryPath) / e.fileInfo.relativePath).parent
-        val tag    = s"#${config.libraryPath.relativize(parent)}"
-        set + tag
+        val dir    = s"/${config.libraryPath.relativize(parent)}"
+        set + dir
       }
 
-      dirs.toList.sorted.zipWithIndex.map { case (e, idx) =>
-        Tag(idx.toString, e)
+      dirs.toList.sorted.zipWithIndex.map { case (path, idx) =>
+        Directory(idx.toString, path)
       }
     }
 
@@ -57,22 +57,22 @@ object MediaLibCommandHandler extends Logging {
       case GetById(id, sender) =>
         Effect.reply(sender)(state.media.get(id))
 
-      case GetTags(sender) =>
-        Effect.reply(sender)(tags.sortBy(_.title))
+      case GetDirectories(sender) =>
+        Effect.reply(sender)(directories.sortBy(_.path))
 
       case GetAll(sender) =>
         Effect.reply(sender)(state.media.values.toList)
 
       case Search(query, sender) =>
-        val tag = query.tag.flatMap(t => tags.find(_.id == t))
+        val dir = query.directory.flatMap(t => directories.find(_.id == t))
 
-        def filterTag(m: Media): Boolean =
-          tag.map(t => m.fileInfo.relativePath.startsWith(t.title.substring(1))).getOrElse(true)
+        def filterDir(m: Media): Boolean =
+          dir.map(t => m.fileInfo.relativePath.startsWith(t.path.substring(1))).getOrElse(true)
         def filterRes(m: Media): Boolean = query.minRes.map(res => m.videoInfo.resolution._2 >= res).getOrElse(true)
         def filterQuery(m: Media): Boolean =
           query.q.map(q => m.fileInfo.relativePath.toLowerCase.contains(q.toLowerCase)).getOrElse(true)
 
-        def filterMedia(m: Media): Boolean = filterTag(m) && filterRes(m) && filterQuery(m)
+        def filterMedia(m: Media): Boolean = filterDir(m) && filterRes(m) && filterQuery(m)
 
         val unfiltered = query.sort match {
           case None                             => state.media.values

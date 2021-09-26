@@ -39,8 +39,8 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
     ): Future[SearchResult] =
       system.ask[SearchResult](ref => Search(Query(q, offset, size, tag, minRes, Some(sort)), ref))
 
-    def getTags()(implicit timeout: Timeout): Future[List[Tag]] =
-      system.ask[List[Tag]](ref => GetTags(ref))
+    def getDirectories()(implicit timeout: Timeout): Future[List[Directory]] =
+      system.ask[List[Directory]](ref => GetDirectories(ref))
 
     def getThumbnailPathForMedia(id: String): String =
       s"${config.indexPath}/thumbnails/$id"
@@ -121,7 +121,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
         logger.info("Verifying all file hashes ...")
 
         medias.foreach { m =>
-          val hash = FileUtil.fakeHash(File(config.libraryPath) / m.fileInfo.relativePath)
+          val hash = FileUtil.partialMD5Hash(File(config.libraryPath) / m.fileInfo.relativePath)
 
           if (hash != m.fileInfo.hash)
             logger.info(s"Found different hash for: ${m.fileInfo.relativePath}")

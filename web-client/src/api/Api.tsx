@@ -5,7 +5,7 @@ const headers = { 'Content-type': 'application/json; charset=UTF-8' };
 
 export const Api = {
 
-  getVideos: async function getVideos(q: string, tag: string | null, n: number,
+  getVideos: async function getVideos(q: string, dir: string | null, n: number,
                                       offset: number, minRes?: number, sortField?: string, sortDirection?: SortDirection) {
 
     const apiParams = new Map([
@@ -14,8 +14,8 @@ export const Api = {
       ["offset", offset.toString()]
     ]);
 
-    if (tag)
-      apiParams.set("tags", tag)
+    if (dir)
+      apiParams.set("dir", dir)
     if (minRes)
       apiParams.set("min_res", minRes.toString())
     if (sortField)
@@ -52,8 +52,8 @@ export const Api = {
     return doPOST(`/api/fragments/${id}/${Math.trunc(idx)}`, { from: from, to: to})
   },
 
-  getTags: async function getTags() {
-    return doGET('/api/tags')
+  getDirectories: async function getTags() {
+    return doGET('/api/directories')
   }
 }
 

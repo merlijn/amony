@@ -54,7 +54,7 @@ const Gallery = () => {
     if (n > 0)
       Api.getVideos(
         urlParams.get("q") || "",
-        urlParams.get("tag"),
+        urlParams.get("dir"),
         n,
         offset,
         prefs.minRes,

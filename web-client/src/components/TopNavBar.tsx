@@ -6,7 +6,7 @@ import Form from "react-bootstrap/Form";
 import FormControl from "react-bootstrap/FormControl";
 import './TopNavBar.scss';
 import {Api} from "../api/Api";
-import {Prefs, Tag} from "../api/Model";
+import {Prefs, Directory} from "../api/Model";
 import {ButtonGroup} from "react-bootstrap";
 import ConfigMenu from "./ConfigMenu";
 import ImgWithAlt from "./shared/ImgWithAlt";
@@ -19,8 +19,8 @@ function TopNavBar() {
   const location = useLocation();
   const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
   const [query, setQuery] = useState("")
-  const [tags, setTags] = useState<Array<Tag>>([]);
-  const [selectedTag, setSelectedTag] = useState<Tag>({id: 0, title: ""})
+  const [dirs, setDirs] = useState<Array<Directory>>([]);
+  const [selectedTag, setSelectedDir] = useState<Directory>({id: 0, title: ""})
 
   const history = useHistory();
 
@@ -32,19 +32,19 @@ function TopNavBar() {
 
   useEffect(() => {
     const params = copyParams(new URLSearchParams(location.search))
-    const tagId = params.get("tag")
+    const dir = params.get("dir")
 
-    if (tagId) {
-      const found = tags.find((e) => e.id.toString() === tagId)
+    if (dir) {
+      const found = dirs.find((e) => e.id.toString() === dir)
       if (found)
-        setSelectedTag(found)
+        setSelectedDir(found)
     }
 
     setQuery(params.get("q") || "")
-  }, [location, tags]);
+  }, [location, dirs]);
 
-  // fetch tags
-  useEffect(() => { Api.getTags().then(response => { setTags(response) }); }, []);
+  // fetch directories
+  useEffect(() => { Api.getDirectories().then(response => { setDirs(response) }); }, []);
 
   const queryChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
@@ -70,8 +70,8 @@ function TopNavBar() {
 
             <Dropdown.Menu>
               {
-                tags.map((t) => {
-                  return <NavDropdown.Item key={`nav-tag-${t.id}`} href={`/search?tag=${t.id}`}>{t.title}</NavDropdown.Item>
+                dirs.map((t) => {
+                  return <NavDropdown.Item key={`nav-tag-${t.id}`} href={`/search?dir=${t.id}`}>{t.title}</NavDropdown.Item>
                 })
               }
             </Dropdown.Menu>
