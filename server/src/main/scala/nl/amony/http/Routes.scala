@@ -8,17 +8,8 @@ import akka.stream.Materializer
 import akka.util.Timeout
 import better.files.File
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-import nl.amony.actor.MediaLibProtocol.{
-  DateAdded,
-  ErrorResponse,
-  FileName,
-  InvalidCommand,
-  Media,
-  MediaNotFound,
-  Sort,
-  VideoDuration
-}
-import nl.amony.http.WebModel.FragmentRange
+import nl.amony.actor.MediaLibProtocol.{DateAdded, ErrorResponse, FileName, InvalidCommand, Media, MediaNotFound, Sort, VideoDuration}
+import nl.amony.http.WebModel.{FragmentRange, VideoMeta}
 import nl.amony.lib.MediaLibApi
 import io.circe.syntax._
 import scribe.Logging
@@ -78,6 +69,8 @@ trait Routes extends JsonCodecs with Logging {
             case Some(vid) => complete(vid.asJson)
             case None      => complete(StatusCodes.NotFound)
           }
+        } ~ (post & entity(as[VideoMeta])) { meta =>
+          translateResponse(api.modify.updateMetaData(id, meta.title, meta.comment, meta.tags))
         } ~ delete {
           onSuccess(api.modify.deleteMedia(id)) { case _ =>
             complete(StatusCodes.OK, "{}")

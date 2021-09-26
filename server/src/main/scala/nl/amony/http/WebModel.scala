@@ -2,6 +2,12 @@ package nl.amony.http
 
 object WebModel {
 
+  case class VideoMeta(
+    title: String,
+    comment: String,
+    tags: List[String]
+  )
+
   case class FragmentRange(
       from: Long,
       to: Long

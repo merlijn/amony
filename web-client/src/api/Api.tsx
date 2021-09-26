@@ -32,6 +32,10 @@ export const Api = {
     return doGET(`/api/media/${id}`)
   },
 
+  updateVideoMetaData: async function(id: string, title?: string, comment?:string, tags?: Array<string>) {
+    return doPOST(`/api/media/${id}`)
+  },
+
   deleteMediaById: async function (id: string) {
     return doDelete(`/api/media/${id}`)
   },

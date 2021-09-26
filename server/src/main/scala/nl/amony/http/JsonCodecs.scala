@@ -1,7 +1,7 @@
 package nl.amony.http
 
 import nl.amony.actor.MediaLibProtocol
-import nl.amony.http.WebModel.{Tag, Fragment, FragmentRange, SearchResult, Video}
+import nl.amony.http.WebModel.{Fragment, FragmentRange, SearchResult, Tag, Video, VideoMeta}
 import io.circe.{Codec, Encoder}
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 
@@ -12,6 +12,7 @@ trait JsonCodecs {
   implicit val createFragmentCodec: Codec[FragmentRange] = deriveCodec[FragmentRange]
   implicit val searchResultCodec: Codec[SearchResult]    = deriveCodec[SearchResult]
   implicit val videoCodec: Codec[Video]                  = deriveCodec[Video]
+  implicit val videoMetaCodec: Codec[VideoMeta]          = deriveCodec[VideoMeta]
   implicit val tagCodec: Codec[Tag]                      = deriveCodec[Tag]
 
   // contra map encoders for internal classes
@@ -47,6 +48,6 @@ trait JsonCodecs {
       },
       resolution_x = media.videoInfo.resolution._1,
       resolution_y = media.videoInfo.resolution._2,
-      tags         = media.tags
+      tags         = media.tags.toList
     )
 }

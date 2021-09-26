@@ -96,7 +96,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       videoInfo          = videoInfo,
       thumbnailTimestamp = timeStamp,
       fragments          = List(Fragment(timeStamp, timeStamp + fragmentLength, None, List.empty)),
-      tags               = List.empty
+      tags               = Set.empty
     )
   }
 

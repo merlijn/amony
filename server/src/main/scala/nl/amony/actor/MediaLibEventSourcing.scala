@@ -8,6 +8,7 @@ object MediaLibEventSourcing extends Logging {
 
   sealed trait Event extends JsonSerializable
 
+  case class MediaMetaDataUpdated(id: String, title: Option[String], comment: Option[String], tagsAdded: Set[String], tagsRemoved: Set[String])  extends Event
   case class MediaAdded(media: Media)                                                  extends Event
   case class MediaUpdated(id: String, m: Media)                                        extends Event
   case class MediaRemoved(id: String)                                                  extends Event
@@ -39,5 +40,16 @@ object MediaLibEventSourcing extends Logging {
 
         state.copy(media = state.media + (media.id -> media.copy(fragments = newFragments)))
 
+      case MediaMetaDataUpdated(mediaId, title, comment, tagsAdded, tagsRemoved) =>
+
+        val media = state.media(mediaId)
+
+        val newMedia = media.copy(
+          title = title.orElse(media.title),
+          comment = comment.orElse(media.comment),
+          tags = media.tags ++ tagsAdded -- tagsRemoved
+        )
+
+        state.copy(media = state.media + (media.id -> newMedia))
     }
 }

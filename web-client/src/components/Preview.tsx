@@ -11,6 +11,7 @@ import Button from "react-bootstrap/Button";
 import ProgressiveImage from "react-progressive-graceful-image";
 import {Api} from "../api/Api";
 import * as config from "../AppConfig.json";
+import TagEditor from "./shared/TagEditor";
 
 type PreviewProps = {
   vid: Video,
@@ -126,7 +127,7 @@ const PreviewMenu = (props: {vid: Video, showInfo: () => void}) => {
             <ImgWithAlt className="menu-icon" src="/info_black_24dp.svg" />Info
           </Dropdown.Item>
           { config["enable-video-editor"] && <Dropdown.Item className="menu-item" eventKey="editor" href={`/editor/${props.vid.id}`}>
-            <ImgWithAlt className="menu-icon" src="/edit_black_24dp.svg" />Edit
+            <ImgWithAlt className="menu-icon" src="/edit_black_24dp.svg" />Fragments
           </Dropdown.Item> }
           <Dropdown.Item className="menu-item" eventKey="delete">
             <ImgWithAlt className="menu-icon" src="/delete_black_24dp.svg" />Delete
@@ -143,16 +144,16 @@ const InfoPanel = (props: {vid: Video, onClickInfo: () => any }) => {
     const durationStr = durationInMillisToString(props.vid.duration)
 
     return(
-        <div className={`info-panel`}>
-          <div className="info-title"><p>Title:</p><div><Form.Control size="sm" type="text" defaultValue={props.vid.title}/></div></div>
-            <div className="info-panel-content">
-                <p>Info: {durationStr}, {props.vid.fps}fps, {props.vid.resolution_x}x{props.vid.resolution_y}</p>
-              <p>Tags:</p>
-
-            </div>
-            <div className="abs-bottom-right">
-              <ImgWithAlt className="action-icon-small" src="/done_outline_black_24dp.svg" onClick={(e) => { props.onClickInfo() } } />
-            </div>
+        <div className="info-panel">
+          <div className="info-panel-title">Title</div>
+          <Form.Control size="sm" type="text" defaultValue={props.vid.title}/>
+          <div className="info-panel-title">Comment</div>
+          <Form.Control as="textarea" size="sm" type="" placeholder="comment" />
+          <div className="abs-bottom-right">
+            <ImgWithAlt className="action-icon-small" src="/save_black_24dp.svg" onClick={(e) => { props.onClickInfo() } } />
+          </div>
+          <div className="info-panel-title">Tags</div>
+          <TagEditor tags={["nature"]} callBack={ (tags) => { } } />
         </div>
     );
 }

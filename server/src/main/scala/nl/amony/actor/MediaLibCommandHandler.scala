@@ -23,9 +23,7 @@ object MediaLibCommandHandler extends Logging {
         set + dir
       }
 
-      dirs.toList.sorted.zipWithIndex.map { case (path, idx) =>
-        Directory(idx.toString, path)
-      }
+      dirs.toList.sorted.zipWithIndex.map { case (path, idx) => Directory(idx.toString, path) }
     }
 
     lazy val sortedByFilename  = state.media.values.toList.sortBy(m => m.title.getOrElse(m.fileName()))
@@ -39,6 +37,24 @@ object MediaLibCommandHandler extends Logging {
         Effect
           .persist(MediaAdded(media))
           .thenReply(sender)(_ => true)
+
+      case UpdateMetaData(mediaId, title, comment, tags, sender) =>
+        state.media.get(mediaId) match {
+
+          case None =>
+            Effect.reply(sender)(Left(MediaNotFound(mediaId)))
+
+          case Some(media) =>
+
+            val titleUpdate = if (title == media.title) None else Some(title)
+            val commentUpdate = if (comment == media.comment) None else Some(comment)
+            val tagsAdded = tags -- media.tags
+            val tagsRemoved = media.tags -- tags
+
+            Effect
+              .persist(MediaMetaDataUpdated(mediaId, titleUpdate, commentUpdate, tagsAdded, tagsRemoved))
+              .thenReply(sender)(s => Right(s.media(mediaId)))
+        }
 
       case RemoveMedia(mediaId, sender) =>
         val media = state.media(mediaId)
@@ -97,7 +113,7 @@ object MediaLibCommandHandler extends Logging {
         state.media.get(id) match {
 
           case None =>
-            Effect.reply(sender)(Left(InvalidCommand(s"No video found with id '$id'")))
+            Effect.reply(sender)(Left(MediaNotFound(id)))
 
           case Some(vid) =>
             logger.info(s"Deleting fragment $id:$idx")
@@ -123,7 +139,7 @@ object MediaLibCommandHandler extends Logging {
         state.media.get(id) match {
 
           case None =>
-            Effect.reply(sender)(Left(InvalidCommand(s"No video found with id '$id'")))
+            Effect.reply(sender)(Left(MediaNotFound(id)))
 
           case Some(vid) =>
             logger.info(s"Updating fragment $id:$idx to $from:$to")

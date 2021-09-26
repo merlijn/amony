@@ -55,6 +55,10 @@ object MediaLibProtocol {
   ) extends Command
   case class AddFragment(mediaId: String, from: Long, to: Long, sender: ActorRef[Either[ErrorResponse, Media]])
       extends Command
+
+  case class UpdateMetaData(mediaId: String, title: String, comment: String, tags: Set[String],
+                            sender: ActorRef[Either[ErrorResponse, Media]]) extends Command
+
   case class UpdateFragmentTags(
       mediaId: String,
       fragmentIndex: Int,
@@ -89,7 +93,7 @@ object MediaLibProtocol {
       videoInfo: VideoInfo,
       thumbnailTimestamp: Long,
       fragments: List[Fragment],
-      tags: List[String]
+      tags: Set[String]
   ) {
     def resolvePath(baseDir: Path): Path = baseDir.resolve(fileInfo.relativePath)
 

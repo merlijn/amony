@@ -77,7 +77,7 @@ object Migration extends Logging {
             videoInfo          = videoInfo,
             thumbnailTimestamp = m.thumbnailTimestamp,
             fragments          = fragments,
-            tags               = m.tags
+            tags               = m.tags.toSet
           )
 
           logger.info(s"Imported: ${m.uri}")
