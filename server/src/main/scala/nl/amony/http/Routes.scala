@@ -8,7 +8,16 @@ import akka.stream.Materializer
 import akka.util.Timeout
 import better.files.File
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-import nl.amony.actor.MediaLibProtocol.{DateAdded, ErrorResponse, FileName, InvalidCommand, Media, MediaNotFound, Sort, VideoDuration}
+import nl.amony.actor.MediaLibProtocol.{
+  DateAdded,
+  ErrorResponse,
+  FileName,
+  InvalidCommand,
+  Media,
+  MediaNotFound,
+  Sort,
+  VideoDuration
+}
 import nl.amony.http.WebModel.{FragmentRange, VideoMeta}
 import nl.amony.lib.MediaLibApi
 import io.circe.syntax._

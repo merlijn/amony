@@ -57,7 +57,9 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
     def deleteMedia(id: String)(implicit timeout: Timeout): Future[Boolean] =
       system.ask[Boolean](ref => RemoveMedia(id, ref))
 
-    def updateMetaData(id: String, title: String, comment: String, tags: List[String])(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+    def updateMetaData(id: String, title: String, comment: Option[String], tags: List[String])(implicit
+        timeout: Timeout
+    ): Future[Either[ErrorResponse, Media]] =
       system.ask[Either[ErrorResponse, Media]](ref => UpdateMetaData(id, title, comment, tags.toSet, ref))
 
     def addFragment(id: String, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =

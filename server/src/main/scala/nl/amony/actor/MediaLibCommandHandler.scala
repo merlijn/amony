@@ -45,11 +45,10 @@ object MediaLibCommandHandler extends Logging {
             Effect.reply(sender)(Left(MediaNotFound(mediaId)))
 
           case Some(media) =>
-
-            val titleUpdate = if (title == media.title) None else Some(title)
-            val commentUpdate = if (comment == media.comment) None else Some(comment)
-            val tagsAdded = tags -- media.tags
-            val tagsRemoved = media.tags -- tags
+            val titleUpdate   = if (title == media.title) None else Some(title)
+            val commentUpdate = if (comment == media.comment) None else comment
+            val tagsAdded     = tags -- media.tags
+            val tagsRemoved   = media.tags -- tags
 
             Effect
               .persist(MediaMetaDataUpdated(mediaId, titleUpdate, commentUpdate, tagsAdded, tagsRemoved))
@@ -119,7 +118,9 @@ object MediaLibCommandHandler extends Logging {
             logger.info(s"Deleting fragment $id:$idx")
 
             if (idx < 0 || idx >= vid.fragments.size)
-              Effect.reply(sender)(Left(InvalidCommand(s"index out of bounds ($idx): valid range is from 0 to ${vid.fragments.size - 1}")))
+              Effect.reply(sender)(
+                Left(InvalidCommand(s"index out of bounds ($idx): valid range is from 0 to ${vid.fragments.size - 1}"))
+              )
             else
               Effect
                 .persist(FragmentDeleted(id, idx))
@@ -144,9 +145,15 @@ object MediaLibCommandHandler extends Logging {
             logger.info(s"Updating fragment $id:$idx to $from:$to")
 
             if (idx < 0 || idx >= vid.fragments.size) {
-              Effect.reply(sender)(Left(InvalidCommand(s"index out of bounds ($idx): valid range is from 0 to ${vid.fragments.size - 1}")))
+              Effect.reply(sender)(
+                Left(InvalidCommand(s"index out of bounds ($idx): valid range is from 0 to ${vid.fragments.size - 1}"))
+              )
             } else if (from < 0 || from >= to || to > vid.videoInfo.duration)
-              Effect.reply(sender)(Left(InvalidCommand(s"invalid range ($from -> $to): valid range is from 0 to ${vid.videoInfo.duration}")))
+              Effect.reply(sender)(
+                Left(
+                  InvalidCommand(s"invalid range ($from -> $to): valid range is from 0 to ${vid.videoInfo.duration}")
+                )
+              )
             else {
 
               val oldFragment = vid.fragments(idx)

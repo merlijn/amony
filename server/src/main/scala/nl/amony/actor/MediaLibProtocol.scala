@@ -34,12 +34,12 @@ object MediaLibProtocol {
 
   case class Sort(field: SortField, reverse: Boolean)
   case class Query(
-    q: Option[String],
-    offset: Option[Int],
-    n: Int,
-    directory: Option[String],
-    minRes: Option[Int],
-    sort: Option[Sort]
+      q: Option[String],
+      offset: Option[Int],
+      n: Int,
+      directory: Option[String],
+      minRes: Option[Int],
+      sort: Option[Sort]
   )
   case class SearchResult(offset: Int, total: Int, items: Seq[Media])
 
@@ -56,8 +56,13 @@ object MediaLibProtocol {
   case class AddFragment(mediaId: String, from: Long, to: Long, sender: ActorRef[Either[ErrorResponse, Media]])
       extends Command
 
-  case class UpdateMetaData(mediaId: String, title: String, comment: String, tags: Set[String],
-                            sender: ActorRef[Either[ErrorResponse, Media]]) extends Command
+  case class UpdateMetaData(
+      mediaId: String,
+      title: String,
+      comment: Option[String],
+      tags: Set[String],
+      sender: ActorRef[Either[ErrorResponse, Media]]
+  ) extends Command
 
   case class UpdateFragmentTags(
       mediaId: String,

@@ -3,9 +3,9 @@ package nl.amony.http
 object WebModel {
 
   case class VideoMeta(
-    title: String,
-    comment: String,
-    tags: List[String]
+      title: String,
+      comment: Option[String],
+      tags: List[String]
   )
 
   case class FragmentRange(
@@ -25,15 +25,14 @@ object WebModel {
   case class Video(
       id: String,
       uri: String,
-      title: String,
+      meta: VideoMeta,
       duration: Long,
       addedOn: Long,
       fps: Double,
       thumbnail_uri: String,
       fragments: List[Fragment],
       resolution_x: Int,
-      resolution_y: Int,
-      tags: Seq[String]
+      resolution_y: Int
   )
 
   case class SearchResult(

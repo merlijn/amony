@@ -75,10 +75,10 @@ object MediaLibScanner extends Logging with JsonCodecs {
     createVideoFragment(videoPath, indexDir, hash, timeStamp, timeStamp + fragmentLength)
 
     val fileInfo = FileInfo(
-      relativePath = baseDir.relativize(videoPath).toString,
-      hash = hash,
-      size = fileAttributes.size(),
-      creationTime = fileAttributes.creationTime().toMillis,
+      relativePath     = baseDir.relativize(videoPath).toString,
+      hash             = hash,
+      size             = fileAttributes.size(),
+      creationTime     = fileAttributes.creationTime().toMillis,
       lastModifiedTime = fileAttributes.lastModifiedTime().toMillis
     )
 

@@ -46,7 +46,7 @@ const Preview = (props: PreviewProps) => {
   const addOnDate = new Date(vid.addedOn)
   const titlePanel =
     <div className="info-bar">
-      <span className="media-title">{vid.title}</span>
+      <span className="media-title">{vid.meta.title}</span>
       <span className="media-date">{zeroPad(addOnDate.getUTCDate(), 2)}-{zeroPad(addOnDate.getMonth(), 2)}-{addOnDate.getFullYear()}</span>
     </div>
 
@@ -114,7 +114,7 @@ const PreviewMenu = (props: {vid: Video, showInfo: () => void}) => {
         <Modal.Header closeButton>
           <Modal.Title>Are you sure?</Modal.Title>
         </Modal.Header>
-        <Modal.Body>Do you want to delete: <br /> '{props.vid.title}'</Modal.Body>
+        <Modal.Body>Do you want to delete: <br /> '{props.vid.meta.title}'</Modal.Body>
         <Modal.Footer>
           <Button variant="danger" onClick={confirmDelete}>Yes</Button>
           <Button variant="secondary" onClick={cancelDelete}>No / Cancel</Button>
@@ -141,16 +141,14 @@ const PreviewMenu = (props: {vid: Video, showInfo: () => void}) => {
 
 const InfoPanel = (props: {vid: Video, onClickInfo: () => any }) => {
 
-    const durationStr = durationInMillisToString(props.vid.duration)
-
     return(
         <div className="info-panel">
           <div className="info-panel-title">Title</div>
-          <Form.Control size="sm" type="text" defaultValue={props.vid.title}/>
+          <Form.Control size="sm" type="text" defaultValue={props.vid.meta.title}/>
           <div className="info-panel-title">Comment</div>
           <Form.Control as="textarea" size="sm" type="" placeholder="comment" />
           <div className="abs-bottom-right">
-            <ImgWithAlt className="action-icon-small" src="/save_black_24dp.svg" onClick={(e) => { props.onClickInfo() } } />
+            <ImgWithAlt className="action-icon-small" title="save" src="/save_black_24dp.svg" onClick={(e) => { props.onClickInfo() } } />
           </div>
           <div className="info-panel-title">Tags</div>
           <TagEditor tags={["nature"]} callBack={ (tags) => { } } />

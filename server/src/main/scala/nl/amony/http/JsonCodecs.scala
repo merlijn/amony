@@ -29,25 +29,25 @@ trait JsonCodecs {
 
   def toWebModel(media: MediaLibProtocol.Media): Video =
     Video(
-      id            = media.id,
-      uri           = s"/files/videos/${media.fileInfo.relativePath}",
-      title         = media.title.getOrElse(media.fileName()),
+      id  = media.id,
+      uri = s"/files/videos/${media.fileInfo.relativePath}",
+      meta =
+        VideoMeta(title = media.title.getOrElse(media.fileName()), comment = media.comment, tags = media.tags.toList),
       duration      = media.videoInfo.duration,
       addedOn       = media.fileInfo.creationTime,
       fps           = media.videoInfo.fps,
       thumbnail_uri = s"/files/thumbnails/${media.id}-${media.thumbnailTimestamp}.webp",
-      fragments = media.fragments.zipWithIndex.map { case (p, index) =>
+      fragments = media.fragments.zipWithIndex.map { case (f, index) =>
         Fragment(
           index           = index,
-          timestamp_start = p.fromTimestamp,
-          timestamp_end   = p.toTimestamp,
-          uri             = s"/files/thumbnails/${media.id}-${p.fromTimestamp}-${p.toTimestamp}.mp4",
-          comment         = p.comment,
-          tags            = p.tags
+          timestamp_start = f.fromTimestamp,
+          timestamp_end   = f.toTimestamp,
+          uri             = s"/files/thumbnails/${media.id}-${f.fromTimestamp}-${f.toTimestamp}.mp4",
+          comment         = f.comment,
+          tags            = f.tags
         )
       },
       resolution_x = media.videoInfo.resolution._1,
-      resolution_y = media.videoInfo.resolution._2,
-      tags         = media.tags.toList
+      resolution_y = media.videoInfo.resolution._2
     )
 }

@@ -1,16 +1,21 @@
 export class Video {
   constructor(
-    public title: string,
+    public id: string,
+    public meta: VideoMeta,
     public thumbnail_uri: string,
     public fragments: Array<Fragment>,
-    public id: string,
     public fps: number,
     public resolution_x: number,
     public resolution_y: number,
-    public tags: Array<string>,
     public duration: number, // in millis
     public addedOn: number
   ) { }
+}
+
+export type VideoMeta = {
+  tags: string[]
+  title: string
+  comment?: string
 }
 
 export class SearchResult {
