@@ -58,7 +58,7 @@ object FileUtil extends Logging {
   }
 
   // samples a file randomly and creates a hash from that
-  def fakeHash(file: File): String = {
+  def partialMD5Hash(file: File): String = {
 
     def md5hashInBase64(data: Array[Byte]): String = {
       import java.security.MessageDigest

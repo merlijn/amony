@@ -118,21 +118,20 @@ object MediaLibCommandHandler extends Logging {
           case Some(vid) =>
             logger.info(s"Deleting fragment $id:$idx")
 
-            val newFragments = vid.fragments.deleteAtPos(idx)
-            val newVid =
-              vid.copy(fragments = vid.fragments.deleteAtPos(idx), thumbnailTimestamp = newFragments(0).fromTimestamp)
-
-            Effect
-              .persist(MediaUpdated(id, newVid))
-              .thenRun { (s: State) =>
-                deleteVideoFragment(
-                  config.indexPath,
-                  vid.id,
-                  vid.fragments(idx).fromTimestamp,
-                  vid.fragments(idx).toTimestamp
-                )
-              }
-              .thenReply(sender)(_ => Right(newVid))
+            if (idx < 0 || idx >= vid.fragments.size)
+              Effect.reply(sender)(Left(InvalidCommand(s"index out of bounds ($idx): valid range is from 0 to ${vid.fragments.size - 1}")))
+            else
+              Effect
+                .persist(FragmentDeleted(id, idx))
+                .thenRun { (_: State) =>
+                  deleteVideoFragment(
+                    config.indexPath,
+                    vid.id,
+                    vid.fragments(idx).fromTimestamp,
+                    vid.fragments(idx).toTimestamp
+                  )
+                }
+                .thenReply(sender)(s => Right(s.media(id)))
         }
 
       case UpdateFragmentRange(id, idx, from, to, sender) =>
@@ -145,25 +144,20 @@ object MediaLibCommandHandler extends Logging {
             logger.info(s"Updating fragment $id:$idx to $from:$to")
 
             if (idx < 0 || idx >= vid.fragments.size) {
-              Effect.reply(sender)(Left(InvalidCommand("Index out of bounds")))
-            } else {
-              // check if specific range already exists
-              val oldFragment      = vid.fragments(idx)
-              val newFragment      = oldFragment.copy(fromTimestamp = from, toTimestamp = to)
-              val primaryThumbnail = if (idx == 0) from else vid.thumbnailTimestamp
-              val newVid =
-                vid.copy(
-                  thumbnailTimestamp = primaryThumbnail,
-                  fragments          = vid.fragments.replaceAtPos(idx, newFragment)
-                )
+              Effect.reply(sender)(Left(InvalidCommand(s"index out of bounds ($idx): valid range is from 0 to ${vid.fragments.size - 1}")))
+            } else if (from < 0 || from >= to || to > vid.videoInfo.duration)
+              Effect.reply(sender)(Left(InvalidCommand(s"invalid range ($from -> $to): valid range is from 0 to ${vid.videoInfo.duration}")))
+            else {
+
+              val oldFragment = vid.fragments(idx)
 
               Effect
-                .persist(MediaUpdated(id, newVid))
+                .persist(FragmentRangeUpdated(id, idx, from, to))
                 .thenRun { (s: State) =>
                   deleteVideoFragment(config.indexPath, vid.id, oldFragment.fromTimestamp, oldFragment.toTimestamp)
                   createVideoFragment(vid.resolvePath(config.libraryPath), config.indexPath, id, from, to)
                 }
-                .thenReply(sender)(_ => Right(newVid))
+                .thenReply(sender)(s => Right(s.media(id)))
             }
         }
 

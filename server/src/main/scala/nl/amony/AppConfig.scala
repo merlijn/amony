@@ -17,7 +17,8 @@ case class MediaLibConfig(
     scanParallelFactor: Int,
     verifyExistingHashes: Boolean,
     hashingAlgorithm: HashingAlgorithm,
-    max: Option[Int]
+    minimumFragmentDuration: Option[Int],
+    maximumFragmentDuration: Option[Int]
 )
 
 sealed trait HashingAlgorithm {
@@ -25,7 +26,7 @@ sealed trait HashingAlgorithm {
 }
 
 case object FakeHash extends HashingAlgorithm {
-  override def generateHash(path: Path): String = FileUtil.fakeHash(File(path))
+  override def generateHash(path: Path): String = FileUtil.partialMD5Hash(File(path))
 }
 
 trait AppConfig extends Logging {
