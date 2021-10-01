@@ -124,13 +124,13 @@ const PreviewMenu = (props: {vid: Video, showInfo: () => void}) => {
       <div style={ { zIndex: 5 }} className="preview-menu">
         <TripleDotMenu onSelect={selectFn}>
           <Dropdown.Item className="menu-item" eventKey="info">
-            <ImgWithAlt className="menu-icon" src="/info_black_24dp.svg" />Info
+            <ImgWithAlt className="menu-icon" src="/icons/info.svg" />Info
           </Dropdown.Item>
           { config["enable-video-editor"] && <Dropdown.Item className="menu-item" eventKey="editor" href={`/editor/${props.vid.id}`}>
-            <ImgWithAlt className="menu-icon" src="/edit_black_24dp.svg" />Fragments
+            <ImgWithAlt className="menu-icon" src="/icons/edit.svg" />Fragments
           </Dropdown.Item> }
           <Dropdown.Item className="menu-item" eventKey="delete">
-            <ImgWithAlt className="menu-icon" src="/delete_black_24dp.svg" />Delete
+            <ImgWithAlt className="menu-icon" src="/icons/delete.svg" />Delete
           </Dropdown.Item>
         </TripleDotMenu>
       </div>
@@ -147,7 +147,7 @@ const InfoPanel = (props: {vid: Video, onClickInfo: () => any }) => {
           <div className="info-panel-title">Comment</div>
           <Form.Control as="textarea" size="sm" type="" placeholder="comment" />
           <div className="abs-bottom-right">
-            <ImgWithAlt className="action-icon-small" title="save" src="/save_black_24dp.svg" onClick={(e) => { props.onClickInfo() } } />
+            <ImgWithAlt className="action-icon-small" title="save" src="/icons/task.svg" onClick={(e) => { props.onClickInfo() } } />
           </div>
           <div className="info-panel-title">Tags</div>
           <TagEditor tags={["nature"]} callBack={ (tags) => { } } />

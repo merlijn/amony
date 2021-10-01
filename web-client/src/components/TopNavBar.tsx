@@ -63,7 +63,7 @@ function TopNavBar() {
 
           <Dropdown className="tag-list-dropdown" key="nav-tag-list" as={ButtonGroup} size="sm">
             <Button size="sm" className="home-button"><a href="/">
-              <ImgWithAlt src="/home_black_24dp.svg" />
+              <ImgWithAlt src="/icons/home.svg" />
             </a></Button>
 
             <Dropdown.Toggle className="tag-list-toggle" split id="dropdown-split-basic" />

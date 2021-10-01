@@ -31,13 +31,12 @@ const TagEditor = (props: {tags: Array<string>, callBack: (tags: Array<string>) 
         <div key={`tag-${tag}`} className="tag">{tag}
           <ImgWithAlt
             className="delete-tag"
-            src="/close_black_24dp.svg"
+            src="/icons/close.svg"
             onClick={() => { setTags([...tags.slice(0, idx), ...tags.slice(idx + 1, tags.length) ]) } }
           />
         </div>
       )
     }
-
 
     <div className="new-tag">
         <span

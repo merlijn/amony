@@ -49,7 +49,7 @@ const FragmentPreview = (props: Props) => {
     <div className={`fragment-info-panel`}>
       <div className="abs-top-right action-icon-small"
            onClick={(e) => { setTags(props.fragment.tags); setShowInfoPanel(false); } }>
-        <ImgWithAlt src="/close_black_24dp.svg" />
+        <ImgWithAlt src="/icons/close.svg" />
       </div>
       <div key="tag-list-header" className="meta-panel-title">Tags</div>
       <TagEditor tags={tags} callBack={(updatedTags) => { setTags(updatedTags) } } />
@@ -69,11 +69,11 @@ const FragmentPreview = (props: Props) => {
       {
         props.showDeleteButton &&
         (<div className="delete-fragment-icon">
-          <ImgWithAlt onClick={ (e) => deleteFragmentFn()} src="/cancel_black_24dp.svg" />
+          <ImgWithAlt onClick={ (e) => deleteFragmentFn()} src="/icons/cancel.svg" />
         </div>)
       }
       <div className="abs-top-left action-icon-small" >
-        <ImgWithAlt onClick={ (e) => setShowInfoPanel(true)} src="/tag_black_24dp.svg" />
+        <ImgWithAlt onClick={ (e) => setShowInfoPanel(true)} src="/icons/tag.svg" />
       </div>
     </div>
   );

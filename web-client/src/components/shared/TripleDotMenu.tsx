@@ -17,7 +17,7 @@ const TripleDotToggle =
         e.preventDefault()
         props.onClick(e);
       }}>
-      <ImgWithAlt className="action-icon-small" src="/more_vert_black_24dp.svg" />
+      <ImgWithAlt className="action-icon-small" src="/icons/more.svg" />
       {props.children}
     </div>
 ));

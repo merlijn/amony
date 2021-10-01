@@ -19,7 +19,7 @@ const ConfigMenu = () => {
 
   return(
 
-    <DropDownIcon iconSrc="/tune_black_24dp.svg"
+    <DropDownIcon iconSrc="/icons/tune.svg"
                   alignRight={true}
                   buttonClassName="mr-sm-1 config-menu-button"
                   contentClassName="config-menu">

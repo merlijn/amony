@@ -48,7 +48,7 @@ const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFr
          className={ (props.selected === nrOfFragments ? "fragment-selected" : "fragment-not-selected") + " fragment" }
          onClick={(e) => { props.selectFn({ idx: nrOfFragments }) } }>
       <div className="delete-fragment-icon">
-        <ImgWithAlt onClick={ (e) => setShowAddFragment(false)} src="/cancel_black_24dp.svg" />
+        <ImgWithAlt onClick={ (e) => setShowAddFragment(false)} src="/icons/cancel.svg" />
       </div>
       <div style= { sizing } className="new-fragment">&lt;new&gt;</div>
     </div>
@@ -56,10 +56,10 @@ const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFr
   const fragmentsHeader =
     <div key="fragments-header" className="fragments-header">
       Fragments
-      <ImgWithAlt style={ { float: "right" } } className="action-icon-medium" src="/close_black_24dp.svg" />
+      <ImgWithAlt style={ { float: "right" } } className="action-icon-medium" src="/icons/close.svg" />
       <ImgWithAlt style={ { float: "right" } }
                   className="action-icon-medium"
-                  src="/add_box_black_24dp.svg"
+                  src="/icons/add.svg"
                   onClick = {(e) => { setShowAddFragment(true); props.selectFn({ idx: nrOfFragments }) } } />
     </div>
 
