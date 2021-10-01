@@ -1,7 +1,7 @@
 import React, {CSSProperties, useState} from 'react';
 import './Preview.scss';
 import {durationInMillisToString, zeroPad} from "../api/Util";
-import {Video} from "../api/Model";
+import {Video, VideoMeta} from "../api/Model";
 import {Form, Modal} from "react-bootstrap";
 import FragmentsPlayer from "./shared/FragmentsPlayer";
 import TripleDotMenu from "./shared/TripleDotMenu";
@@ -30,12 +30,18 @@ const Preview = (props: PreviewProps) => {
 
   const [vid, setVid] = useState(props.vid)
 
-  const [showInfoOverlay, setShowInfoPanel] = useState(false)
+  const [showMetaPanel, setShowMetaPanel] = useState(false)
   const [showVideoPreview, setShowVideoPreview] = useState(false)
 
   const durationStr = durationInMillisToString(vid.duration)
 
-  const infoPanel = <InfoPanel vid={props.vid} onClickInfo={() => setShowInfoPanel(false) } />
+  const metaPanel = <MetaPanel meta={vid.meta}
+                               onClose={(meta) => {
+                                 Api.updateVideoMetaData(vid.id, meta).then(() => {
+                                   setVid({...vid, meta: meta });
+                                   setShowMetaPanel(false)
+                                 })
+                               }} />
 
   const videoPreview =
     <FragmentsPlayer id={`video-preview-${props.vid.id}`}
@@ -55,7 +61,7 @@ const Preview = (props: PreviewProps) => {
       {
         (props.showMenu && config["enable-video-menu"]) &&
           <div style={ { zIndex: 5 }} className="abs-top-right">
-            <PreviewMenu vid={vid} showInfo={ () => setShowInfoPanel(true)} />
+            <PreviewMenu vid={vid} showInfo={ () => setShowMetaPanel(true)} />
           </div>
       }
 
@@ -83,7 +89,7 @@ const Preview = (props: PreviewProps) => {
     <div style={props.style} className={ `${props.className}` }>
       { preview }
       { props.showTitles && titlePanel }
-      { showInfoOverlay && infoPanel }
+      { showMetaPanel && metaPanel }
     </div>
   )
 }
@@ -138,19 +144,24 @@ const PreviewMenu = (props: {vid: Video, showInfo: () => void}) => {
   );
 }
 
-const InfoPanel = (props: {vid: Video, onClickInfo: () => any }) => {
+const MetaPanel = (props: {meta: VideoMeta, onClose: (meta: VideoMeta) => any }) => {
+
+    const [meta, setMeta] = useState(props.meta)
 
     return(
         <div className="info-panel">
           <div className="info-panel-title">Title</div>
-          <Form.Control size="sm" type="text" defaultValue={props.vid.meta.title}/>
+          <Form.Control size="sm" type="text" defaultValue={meta.title}/>
           <div className="info-panel-title">Comment</div>
           <Form.Control as="textarea" size="sm" type="" placeholder="comment" />
           <div className="abs-bottom-right">
-            <ImgWithAlt className="action-icon-small" title="save" src="/icons/task.svg" onClick={(e) => { props.onClickInfo() } } />
+            <ImgWithAlt className="action-icon-small" title="save" src="/icons/task.svg" onClick={(e) => { props.onClose(meta) } } />
           </div>
           <div className="info-panel-title">Tags</div>
-          <TagEditor tags={["nature"]} callBack={ (tags) => { } } />
+          <TagEditor tags={meta.tags} callBack={ (updatedTags) => {
+              setMeta({...meta, tags: updatedTags })
+            }
+          } />
         </div>
     );
 }

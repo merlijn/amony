@@ -1,5 +1,5 @@
 import {buildUrl} from "./Util";
-import {SortDirection} from "./Model";
+import {SortDirection, VideoMeta} from "./Model";
 
 const headers = { 'Content-type': 'application/json; charset=UTF-8' };
 
@@ -32,8 +32,8 @@ export const Api = {
     return doGET(`/api/media/${id}`)
   },
 
-  updateVideoMetaData: async function(id: string, title?: string, comment?:string, tags?: Array<string>) {
-    return doPOST(`/api/media/${id}`)
+  updateVideoMetaData: async function(id: string, meta: VideoMeta) {
+    return doPOST(`/api/media/${id}`, meta)
   },
 
   deleteMediaById: async function (id: string) {

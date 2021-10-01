@@ -80,7 +80,7 @@ function TopNavBar() {
           <Form className="nav-search-form" onSubmit={doSearch} inline>
             <div key="nav-search-input" className="nav-search-input">
               <FormControl id="nav-search-input" size="sm" type="text" placeholder="Search" value={query} onChange={queryChanged} />
-              <ImgWithAlt className="nav-clear-input action-icon-small" src="/clear_input.svg"
+              <ImgWithAlt className="nav-clear-input action-icon-small" src="/icons/clear_input.svg"
                           onClick={(e) => clearQuery() } />
             </div>
           </Form>

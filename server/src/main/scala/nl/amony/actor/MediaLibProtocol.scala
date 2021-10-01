@@ -58,7 +58,7 @@ object MediaLibProtocol {
 
   case class UpdateMetaData(
       mediaId: String,
-      title: String,
+      title: Option[String],
       comment: Option[String],
       tags: Set[String],
       sender: ActorRef[Either[ErrorResponse, Media]]

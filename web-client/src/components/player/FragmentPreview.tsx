@@ -5,7 +5,6 @@ import {Api} from "../../api/Api";
 import './FragmentPreview.scss';
 import ImgWithAlt from "../shared/ImgWithAlt";
 import TagEditor from "../shared/TagEditor";
-import {Form} from "react-bootstrap";
 
 interface Props {
   style: CSSProperties,
@@ -18,15 +17,10 @@ interface Props {
   onClick?: () => any,
 }
 
-type Tag = {
-  value: string,
-  id: string
-}
-
 const FragmentPreview = (props: Props) => {
 
   const durationInSeconds = Math.round((props.fragment.timestamp_end - props.fragment.timestamp_start) / 1000)
-  const [showInfoPanel, setShowInfoPanel] = useState(false)
+  const [showMetaPanel, setShowMetaPanel] = useState(false)
   const [tags, setTags] = useState<Array<string>>(props.fragment.tags)
 
   const deleteFragmentFn = () => {
@@ -37,28 +31,26 @@ const FragmentPreview = (props: Props) => {
     })
   }
 
-  const updateTags = () => {
+  const saveTags = () => {
 
-    if (tags.length > 0)
-      Api.updateFragmentTags(props.vid, props.fragment.index, tags).then((result) => {
-        console.log("Tags added")
-      })
+    Api.updateFragmentTags(props.vid, props.fragment.index, tags).then((result) => {
+      setTags(tags)
+      console.log("Tags saved")
+    })
   }
 
-  const infoPanel =
+  const metaPanel =
     <div className={`fragment-info-panel`}>
-      <div className="abs-top-right action-icon-small"
-           onClick={(e) => { setTags(props.fragment.tags); setShowInfoPanel(false); } }>
-        <ImgWithAlt src="/icons/close.svg" />
+      <div className="abs-bottom-right">
+        <ImgWithAlt className="action-icon-small" title="save" src="/icons/task.svg" onClick={(e) => { saveTags(); setShowMetaPanel(false); } } />
       </div>
       <div key="tag-list-header" className="meta-panel-title">Tags</div>
-      <TagEditor tags={tags} callBack={(updatedTags) => { setTags(updatedTags) } } />
-
+      <TagEditor tags={tags} callBack={ (updatedTags) => { setTags(updatedTags) } } />
     </div>
 
   return(
     <div style={ props.style } className={ `${props.className} fragment-info-panel` } key={`fragment-${props.vid}-${props.fragment.timestamp_start}`} >
-      { showInfoPanel && infoPanel }
+      { showMetaPanel && metaPanel }
       <video muted
              onMouseEnter={(e) => e.currentTarget.play() }
              onMouseLeave={(e) => e.currentTarget.pause() }
@@ -73,7 +65,7 @@ const FragmentPreview = (props: Props) => {
         </div>)
       }
       <div className="abs-top-left action-icon-small" >
-        <ImgWithAlt onClick={ (e) => setShowInfoPanel(true)} src="/icons/tag.svg" />
+        <ImgWithAlt onClick={ (e) => setShowMetaPanel(true)} src="/icons/tag.svg" />
       </div>
     </div>
   );

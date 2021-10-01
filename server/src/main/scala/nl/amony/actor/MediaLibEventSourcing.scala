@@ -22,9 +22,13 @@ object MediaLibEventSourcing extends Logging {
   case class FragmentDeleted(id: String, index: Int)                                              extends Event
   case class FragmentAdded(id: String, fromTimeStamp: Long, toTimestamp: Long)                    extends Event
   case class FragmentRangeUpdated(id: String, index: Int, fromTimestamp: Long, toTimestamp: Long) extends Event
+  case class FragmentMetaDataUpdated(id: String, index: Int, comment: Option[String], tagsAdded: Set[String], tagsRemoved: Set[String]) extends Event
   case class FragmentTagsUpdated(mediaId: String, fragmentId: Int, tags: List[String])            extends Event
 
-  def apply(state: State, event: Event): State =
+  def apply(state: State, event: Event): State = {
+
+    logger.info(s"Applying event: $event")
+
     event match {
 
       case MediaAdded(media) =>
@@ -33,7 +37,7 @@ object MediaLibEventSourcing extends Logging {
       case MediaUpdated(id, newVid) =>
         state.copy(media = state.media + (id -> newVid))
 
-      case MediaMetaDataUpdated(mediaId, title, comment, tagsAdded, tagsRemoved) =>
+      case e @ MediaMetaDataUpdated(mediaId, title, comment, tagsAdded, tagsRemoved) =>
         val media = state.media(mediaId)
 
         val newMedia = media.copy(
@@ -80,5 +84,10 @@ object MediaLibEventSourcing extends Logging {
         val newFragments = media.fragments.replaceAtPos(fragmentId, fragment.copy(tags = tags))
 
         state.copy(media = state.media + (media.id -> media.copy(fragments = newFragments)))
+
+      case FragmentMetaDataUpdated(id, index, comment, tagsAdded, tagsRemoved) =>
+
+        state
     }
+  }
 }

@@ -32,7 +32,7 @@ trait JsonCodecs {
       id  = media.id,
       uri = s"/files/videos/${media.fileInfo.relativePath}",
       meta =
-        VideoMeta(title = media.title.getOrElse(media.fileName()), comment = media.comment, tags = media.tags.toList),
+        VideoMeta(title = media.title.orElse(Some(media.fileName())), comment = media.comment, tags = media.tags.toList),
       duration      = media.videoInfo.duration,
       addedOn       = media.fileInfo.creationTime,
       fps           = media.videoInfo.fps,

@@ -30,6 +30,8 @@ object MediaLibCommandHandler extends Logging {
     lazy val sortedByDateAdded = state.media.values.toList.sortBy(m => m.fileInfo.creationTime)
     lazy val sortedByDuration  = state.media.values.toList.sortBy(m => m.videoInfo.duration)
 
+    logger.info(s"Received command: $cmd")
+
     cmd match {
 
       case UpsertMedia(media, sender) =>
@@ -39,20 +41,24 @@ object MediaLibCommandHandler extends Logging {
           .thenReply(sender)(_ => true)
 
       case UpdateMetaData(mediaId, title, comment, tags, sender) =>
+
         state.media.get(mediaId) match {
 
           case None =>
             Effect.reply(sender)(Left(MediaNotFound(mediaId)))
 
           case Some(media) =>
-            val titleUpdate   = if (title == media.title) None else Some(title)
+            val titleUpdate   = if (title == media.title) None else title
             val commentUpdate = if (comment == media.comment) None else comment
             val tagsAdded     = tags -- media.tags
             val tagsRemoved   = media.tags -- tags
 
-            Effect
-              .persist(MediaMetaDataUpdated(mediaId, titleUpdate, commentUpdate, tagsAdded, tagsRemoved))
-              .thenReply(sender)(s => Right(s.media(mediaId)))
+            if (tagsAdded.isEmpty && tagsRemoved.isEmpty && titleUpdate.isEmpty && commentUpdate.isEmpty)
+              Effect.reply(sender)(Right(media))
+            else
+              Effect
+                .persist(MediaMetaDataUpdated(mediaId, titleUpdate, commentUpdate, tagsAdded, tagsRemoved))
+                .thenReply(sender)(s => Right(s.media(mediaId)))
         }
 
       case RemoveMedia(mediaId, sender) =>

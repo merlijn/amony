@@ -8,7 +8,6 @@
     float: left;
 
     span {
-      //min-width: 200px;
       color: black;
       background-color: #62db89;
       border: 1px solid #007b15;
@@ -17,7 +16,8 @@
       margin: 0;
       font-size: small;
       text-align: center;
-      width: auto;
+      //width: auto;
+      min-width: 100px;
 
       &:hover {
         cursor: pointer;

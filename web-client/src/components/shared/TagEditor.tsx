@@ -5,22 +5,24 @@ import './TagEditor.scss';
 const TagEditor = (props: {tags: Array<string>, callBack: (tags: Array<string>) => void }) => {
 
   const [tags, setTags] = useState(props.tags)
-  const [newTag, setNewTag] = useState<boolean>(false)
   const newTagRef = useRef<HTMLSpanElement>(null)
 
   let newTagActive = false
 
-  const addTag = () => {
+  const addTag = (blur: boolean) => {
     if (newTagRef.current && newTagActive) {
       const tagValue = newTagRef?.current?.innerText.trim()
 
-      console.log(`adding tag ${tagValue}`)
-
       if (tagValue && tagValue !== "") {
+
+        const newTags = [...tags, tagValue]
+        setTags(newTags)
         newTagActive = false
-        setTags([...tags, tagValue])
-        newTagRef.current.innerText = "+"
-        newTagRef.current.blur()
+
+        if (blur)
+          newTagRef.current.blur()
+
+        props.callBack(newTags)
       }
     }
   }
@@ -32,7 +34,11 @@ const TagEditor = (props: {tags: Array<string>, callBack: (tags: Array<string>) 
           <ImgWithAlt
             className="delete-tag"
             src="/icons/close.svg"
-            onClick={() => { setTags([...tags.slice(0, idx), ...tags.slice(idx + 1, tags.length) ]) } }
+            onClick={() => {
+              const newTags = [...tags.slice(0, idx), ...tags.slice(idx + 1, tags.length) ]
+              setTags(newTags)
+              props.callBack(newTags)
+            }}
           />
         </div>
       )
@@ -45,20 +51,30 @@ const TagEditor = (props: {tags: Array<string>, callBack: (tags: Array<string>) 
           className="input"
           role="textbox"
           onFocus={ () => {
-            if (newTagRef.current)
-              newTagRef.current.innerText = "";
-            newTagActive = true;
-          } }
-          onBlur={ () => { addTag() } }
+              if (newTagRef.current)
+                newTagRef.current.innerText = "";
+              newTagActive = true;
+            }
+          }
+          onBlur={ () =>
+            {
+              addTag(false);
+              if (newTagRef.current)
+                newTagRef.current.innerText = "+";
+
+              newTagActive = false
+            }
+          }
           onKeyPress={ (k) => {
               if (k.key === "Enter") {
                 k.preventDefault()
-                addTag()
+                addTag(true)
               }
             }
           }
           contentEditable
-          >{ (newTagActive) ? "" : "+"}
+          suppressContentEditableWarning={true}
+          >+
         </span>
     </div>
   </div>)
