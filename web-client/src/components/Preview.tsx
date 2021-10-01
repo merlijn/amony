@@ -138,7 +138,6 @@ const PreviewMenu = (props: {vid: Video, showInfo: () => void}) => {
   );
 }
 
-
 const InfoPanel = (props: {vid: Video, onClickInfo: () => any }) => {
 
     return(
