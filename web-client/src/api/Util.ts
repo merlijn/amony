@@ -1,4 +1,4 @@
-import {CSSProperties, useEffect, useRef, useState} from "react";
+import React, {CSSProperties, DependencyList, MutableRefObject, useEffect, useRef, useState} from "react";
 import {useCookies} from "react-cookie";
 import {Constants} from "./Constants";
 
@@ -125,6 +125,24 @@ export const usePrevious = <T>(value: T): T | undefined => {
   });
   return ref.current;
 };
+
+export const useStateRef = <T>(value: T): [T, MutableRefObject<T>, ((e: T) => void)] => {
+  const [getState, _setState] = useState<T>(value)
+  const stateRef = React.useRef(getState);
+  const setState = (v: T) => {
+    stateRef.current = v;
+    _setState(v);
+  };
+
+  return [getState, stateRef, setState]
+}
+
+export const useListener = <K extends keyof WindowEventMap>(type: K, listener: (this: Window, ev: WindowEventMap[K]) => any, deps?: DependencyList) => {
+  useEffect( () =>  {
+    window.addEventListener(type, listener)
+    return () => window.removeEventListener(type, listener)
+  })
+}
 
 export function useCookiePrefs<T>(key: string, path: string, defaultPreferences: T): [T, ((e: T) => void)] {
 

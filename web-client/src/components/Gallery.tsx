@@ -4,7 +4,7 @@ import {Prefs, SearchResult, Video} from '../api/Model';
 import Preview from './Preview';
 import './Gallery.scss';
 import {useLocation} from 'react-router-dom'
-import {BoundedRatioBox, calculateColumns, useCookiePrefs, usePrevious, useWindowSize} from "../api/Util";
+import {BoundedRatioBox, calculateColumns, useCookiePrefs, usePrevious, useStateRef, useWindowSize} from "../api/Util";
 import TopNavBar from "./TopNavBar";
 import Plyr from "plyr";
 import { isMobile } from "react-device-detect";
@@ -37,12 +37,7 @@ const Gallery = () => {
 
   // https://medium.com/geographit/accessing-react-state-in-event-listeners-with-usestate-and-useref-hooks-8cceee73c559
   // https://stackoverflow.com/questions/55265255/react-usestate-hook-event-handler-using-initial-state
-  const [showNavBar, _setShowNavBar] = useState(true)
-  const showNavBarRef = React.useRef(showNavBar);
-  const setShowNavBar = (v: boolean) => {
-    showNavBarRef.current = v;
-    _setShowNavBar(v);
-  };
+  const [showNavBar, showNavBarRef, setShowNavBar] = useStateRef(true)
 
   const urlParams = new URLSearchParams(location.search)
 
@@ -80,12 +75,20 @@ const Gallery = () => {
 
   // add keyboard listener
   useEffect( () => {
-    window.addEventListener('keydown', (event: KeyboardEvent) => {
+
+    const handler = (event: KeyboardEvent) => {
+      console.log(`keycode: ${event.code}`)
       if (event.code === 'Slash') {
         setShowNavBar(!showNavBarRef.current)
+      } else if (event.code === 'KeyI') {
+        console.log(`updating prefs`)
+        setPrefs({...prefs, showTitles: !(prefs.showTitles) })
       }
-    })
-  }, [])
+    }
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler)
+  }, [prefs])
 
   // add scroll listener
   useEffect(() => {
