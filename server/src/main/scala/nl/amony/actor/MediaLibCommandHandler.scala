@@ -1,5 +1,6 @@
 package nl.amony.actor
 
+import akka.actor.typed.ActorRef
 import akka.persistence.typed.scaladsl.Effect
 import better.files.File
 import nl.amony.MediaLibConfig
@@ -30,7 +31,15 @@ object MediaLibCommandHandler extends Logging {
     lazy val sortedByDateAdded = state.media.values.toList.sortBy(m => m.fileInfo.creationTime)
     lazy val sortedByDuration  = state.media.values.toList.sortBy(m => m.videoInfo.duration)
 
-    logger.info(s"Received command: $cmd")
+    logger.debug(s"Received command: $cmd")
+
+    def requireMedia[T](mediaId: String, sender: ActorRef[Either[ErrorResponse, T]])
+                       (effect: Media => Effect[Event, State]): Effect[Event, State] = {
+      state.media.get(mediaId) match {
+        case None        => Effect.reply(sender)(Left(MediaNotFound(mediaId)))
+        case Some(media) => effect(media)
+      }
+    }
 
     cmd match {
 
@@ -125,7 +134,7 @@ object MediaLibCommandHandler extends Logging {
 
             if (idx < 0 || idx >= vid.fragments.size)
               Effect.reply(sender)(
-                Left(InvalidCommand(s"index out of bounds ($idx): valid range is from 0 to ${vid.fragments.size - 1}"))
+                Left(InvalidCommand(s"Index out of bounds ($idx): valid range is from 0 to ${vid.fragments.size - 1}"))
               )
             else
               Effect
@@ -152,12 +161,12 @@ object MediaLibCommandHandler extends Logging {
 
             if (idx < 0 || idx >= vid.fragments.size) {
               Effect.reply(sender)(
-                Left(InvalidCommand(s"index out of bounds ($idx): valid range is from 0 to ${vid.fragments.size - 1}"))
+                Left(InvalidCommand(s"Index out of bounds ($idx): valid range is from 0 to ${vid.fragments.size - 1}"))
               )
             } else if (from < 0 || from >= to || to > vid.videoInfo.duration)
               Effect.reply(sender)(
                 Left(
-                  InvalidCommand(s"invalid range ($from -> $to): valid range is from 0 to ${vid.videoInfo.duration}")
+                  InvalidCommand(s"Invalid range ($from -> $to): valid range is from 0 to ${vid.videoInfo.duration}")
                 )
               )
             else {
@@ -185,11 +194,11 @@ object MediaLibCommandHandler extends Logging {
             if (from > to) {
               val msg = s"from: $from > to: $to"
               logger.warn(msg)
-              Effect.none.thenReply(sender)(_ => Left(InvalidCommand(msg)))
+              Effect.reply(sender)(Left(InvalidCommand(msg)))
             } else if (to > media.videoInfo.duration) {
               val msg = s"to: $to > duration: ${media.videoInfo.duration}"
               logger.warn(msg)
-              Effect.none.thenReply(sender)(_ => Left(InvalidCommand(msg)))
+              Effect.reply(sender)(Left(InvalidCommand(msg)))
             } else {
 
               Effect
@@ -201,12 +210,21 @@ object MediaLibCommandHandler extends Logging {
             }
         }
 
-      case UpdateFragmentTags(id, fragmentIndex, tags, sender) =>
-        logger.info(s"Received AddFragmentTag command: $id:$fragmentIndex -> ${tags.mkString(",")}")
+      case UpdateFragmentTags(id, index, tags, sender) =>
 
-        Effect
-          .persist(FragmentTagsUpdated(id, fragmentIndex, tags))
-          .thenReply(sender)(_ => Right(state.media(id)))
+        requireMedia(id, sender) { media =>
+
+          val frag = media.fragments(index)
+          val tagsAdded = tags.toSet -- frag.tags
+          val tagsRemoved = frag.tags.toSet -- tags
+
+          if (tagsAdded.isEmpty && tagsRemoved.isEmpty)
+            Effect.reply(sender)(Right(media))
+          else
+            Effect
+              .persist(FragmentMetaDataUpdated(id, index, None, tagsAdded, tagsRemoved))
+              .thenReply(sender)(_ => Right(state.media(id)))
+        }
     }
   }
 }

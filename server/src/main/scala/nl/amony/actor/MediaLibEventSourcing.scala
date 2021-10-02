@@ -27,7 +27,7 @@ object MediaLibEventSourcing extends Logging {
 
   def apply(state: State, event: Event): State = {
 
-    logger.info(s"Applying event: $event")
+    logger.debug(s"Applying event: $event")
 
     event match {
 
@@ -37,13 +37,13 @@ object MediaLibEventSourcing extends Logging {
       case MediaUpdated(id, newVid) =>
         state.copy(media = state.media + (id -> newVid))
 
-      case e @ MediaMetaDataUpdated(mediaId, title, comment, tagsAdded, tagsRemoved) =>
+      case MediaMetaDataUpdated(mediaId, title, comment, tagsAdded, tagsRemoved) =>
         val media = state.media(mediaId)
 
         val newMedia = media.copy(
           title   = title.orElse(media.title),
           comment = comment.orElse(media.comment),
-          tags    = media.tags ++ tagsAdded -- tagsRemoved
+          tags    = media.tags -- tagsRemoved ++ tagsAdded
         )
 
         state.copy(media = state.media + (media.id -> newMedia))
@@ -78,6 +78,7 @@ object MediaLibEventSourcing extends Logging {
 
         state.copy(media = state.media + (media.id -> media.copy(fragments = newFragments)))
 
+      // TODO remove this event
       case FragmentTagsUpdated(mediaId, fragmentId, tags) =>
         val media        = state.media(mediaId)
         val fragment     = media.fragments(fragmentId)
@@ -85,9 +86,15 @@ object MediaLibEventSourcing extends Logging {
 
         state.copy(media = state.media + (media.id -> media.copy(fragments = newFragments)))
 
-      case FragmentMetaDataUpdated(id, index, comment, tagsAdded, tagsRemoved) =>
+      case FragmentMetaDataUpdated(mediaId, index, comment, tagsAdded, tagsRemoved) =>
 
-        state
+        val media           = state.media(mediaId)
+        val fragment        = media.fragments(index)
+        val tags            = (fragment.tags.toSet -- tagsRemoved ++ tagsAdded).toList
+        val fragmentUpdated = fragment.copy(tags = tags, comment = comment.orElse(fragment.comment))
+        val newFragments    = media.fragments.replaceAtPos(index, fragmentUpdated)
+
+        state.copy(media = state.media + (mediaId -> media.copy(fragments = newFragments)))
     }
   }
 }
