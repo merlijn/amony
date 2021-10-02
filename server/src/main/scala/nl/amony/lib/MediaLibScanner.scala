@@ -141,13 +141,17 @@ object MediaLibScanner extends Logging with JsonCodecs {
       .runSyncUnsafe()
 
     // warn about hash collisions
-    filesWithHashes
+    val collisionsGroupedByHash = filesWithHashes
       .groupBy { case (_, hash) => hash }
       .filter { case (_, files) => files.size > 1 }
-      .foreach { case (hash, files) =>
+
+    collisionsGroupedByHash.foreach {
+      case (hash, files) =>
         val collidingFiles = files.map(_._1.absoluteFileName()).mkString("\n")
-        logger.warn(s"The following files share the same hash ($hash):\n$collidingFiles")
-      }
+        logger.warn(s"The following files share the same hash and will be ignored ($hash):\n$collidingFiles")
+    }
+
+    val collidingHashes = collisionsGroupedByHash.map { case (hash, _) => hash }.toSet
 
     val (remaining, removed) =
       persistedMedia.partition(m => filesWithHashes.exists { case (_, hash) => hash == m.fileInfo.hash })
@@ -158,10 +162,12 @@ object MediaLibScanner extends Logging with JsonCodecs {
     val newAndMoved = Observable
       .from(filesWithHashes)
       .filterNot { case (path, hash) =>
+        // filters existing, unchanged files
         remaining.exists(m =>
           m.fileInfo.hash == hash && m.fileInfo.relativePath == config.libraryPath.relativize(path).toString
         )
       }
+      .filterNot { case (_, hash) => collidingHashes.contains(hash) }
       .mapParallelUnordered[Media](config.scanParallelFactor) { case (videoFile, hash) =>
         Task {
           val relativePath = config.libraryPath.relativize(videoFile).toString
