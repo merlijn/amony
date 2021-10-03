@@ -6,6 +6,7 @@ import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.serialization.jackson.JacksonObjectMapperProvider
 import akka.util.Timeout
 import better.files.File
+import better.files.File.apply
 import com.fasterxml.jackson.core.JsonEncoding
 import nl.amony.MediaLibConfig
 import nl.amony.actor.MediaLibProtocol
@@ -106,7 +107,8 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
     def regeneratePreviewFor(m: Media): Unit = {
       val videoPath = config.libraryPath.resolve(m.fileInfo.relativePath)
       m.fragments.foreach { f =>
-        MediaLibScanner.createVideoFragment(videoPath, config.indexPath, m.id, f.fromTimestamp, f.toTimestamp)
+        logger.info(s"Generating preview(s) for: ${m.fileInfo.relativePath}")
+        MediaLibScanner.createVideoFragment(videoPath, config.indexPath, m.id, f.fromTimestamp, f.toTimestamp, config.previews)
       }
     }
 
@@ -126,7 +128,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
         logger.info("Verifying all file hashes ...")
 
         medias.foreach { m =>
-          val hash = FileUtil.partialMD5Hash(File(config.libraryPath) / m.fileInfo.relativePath)
+          val hash = config.hashingAlgorithm.generateHash((config.libraryPath / m.fileInfo.relativePath).path)
 
           if (hash != m.fileInfo.hash)
             logger.info(s"Found different hash for: ${m.fileInfo.relativePath}")

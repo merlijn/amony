@@ -3,12 +3,11 @@ package nl.amony.lib
 import nl.amony.lib.FileUtil.{PathOps, stripExtension}
 import scribe.Logging
 
+import java.io.InputStream
 import java.nio.file.Path
 import java.time.Duration
 
 object FFMpeg extends Logging {
-
-  val previewSize = 640
 
   case class Probe(duration: Long, resolution: (Int, Int), fps: Double, fastStart: Boolean)
 
@@ -59,7 +58,7 @@ object FFMpeg extends Logging {
   def ffprobe(file: Path): Probe = {
 
     val fileName = file.toAbsolutePath.toString
-    val output   = run(useErrorStream = true, cmds = List("ffprobe", "-v", "debug", fileName))
+    val output   = runSync(useErrorStream = true, cmds = List("ffprobe", "-v", "debug", fileName))
 
     ffprobeParse(output, file.toString)
   }
@@ -83,7 +82,7 @@ object FFMpeg extends Logging {
     logger.info(s"Adding faststart at: $out")
 
     // format: off
-    run(
+    runSync(
       useErrorStream = true,
       cmds = List(
         "ffmpeg",
@@ -103,19 +102,18 @@ object FFMpeg extends Logging {
       inputFile: String,
       timestamp: Long,
       durationInSeconds: Int = 3,
-      outputFile: Option[String] = None
+      outputFile: Option[String] = None,
+      scaleHeight: Option[Int]
   ): Unit = {
 
     // format: off
-    run(
-      useErrorStream = true,
-      cmds = List(
-        "ffmpeg",
-        "-ss",       formatTime(timestamp),
-        "-t",        durationInSeconds.toString,
-        "-i",        inputFile,
-        "-vf",       s"fps=8,scale=$previewSize:trunc(ow/a/2)*2:flags=lanczos",
-        "-vcodec",   "libwebp",
+
+    val args = List(
+      "-ss",       formatTime(timestamp),
+      "-t",        durationInSeconds.toString,
+      "-i",        inputFile,
+    ) ++ scaleHeight.toList.flatMap(sh => List("-vf", s"fps=8,scale=-2:$sh:flags=lanczos")) ++
+      List("-vcodec",   "libwebp",
         "-lossless", "0",
         "-loop",     "0",
         "-q:v",      "80",
@@ -124,57 +122,62 @@ object FFMpeg extends Logging {
         "-an",
         "-y", outputFile.getOrElse(s"${stripExtension(inputFile)}.webp")
       )
-    )
     // format: on
+
+    runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
   }
 
   def writeMp4(
       inputFile: String,
       from: Long,
       to: Long,
-      outputFile: Option[String] = None
+      outputFile: Option[String] = None,
+      quality: Int = 24,
+      scaleHeight: Option[Int]
   ): Unit = {
+
     // format: off
-      run(
-        useErrorStream = true,
-        cmds = List(
-          "ffmpeg",
-          "-ss",  formatTime(from),
-          "-to",  formatTime(to),
-          "-i",   inputFile,
-          "-vf",  s"scale=$previewSize:trunc(ow/a/2)*2", // scale="720:trunc(ow/a/2)*2"
-          "-movflags", "+faststart",
-          "-crf", "24",
-          "-an",
-          "-y",   outputFile.getOrElse(s"${stripExtension(inputFile)}.mp4")
-          )
-        )
+    val args: List[String] =
+      List(
+        "-ss",  formatTime(from),
+        "-to",  formatTime(to),
+        "-i",   inputFile,
+      ) ++
+        scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
+      List(
+        "-movflags", "+faststart",
+        "-crf", s"$quality",
+        "-an", // no audio
+        "-y",   outputFile.getOrElse(s"${stripExtension(inputFile)}.mp4")
+      )
     // format: on
+
+    runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
   }
 
   def writeThumbnail(
-      inputFile: String,
-      timestamp: Long,
-      outputFile: Option[String]
+    inputFile: String,
+    timestamp: Long,
+    outputFile: Option[String],
+    scaleHeight: Option[Int]
   ): Unit = {
 
     // format: off
-    run(
-      useErrorStream = true,
-      cmds = List(
-        s"ffmpeg",
-        "-ss",      formatTime(timestamp),
-        "-i",       inputFile,
-        "-vf",      s"scale=$previewSize:-1",
+    val args = List(
+      "-ss",      formatTime(timestamp),
+      "-i",       inputFile
+    ) ++ scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
+      List(
         "-quality", "80", // 1 - 30 (best-worst) for jpeg, 1-100 (worst-best) for webp
         "-vframes", "1",
         "-y",       outputFile.getOrElse(s"${stripExtension(inputFile)}.webp")
       )
-    )
     // format: on
+
+    runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
   }
 
-  def run(useErrorStream: Boolean, cmds: Seq[String]): String = {
+  def runSync(useErrorStream: Boolean, cmds: Seq[String]): String = {
 
     logger.debug(s"Running command: ${cmds.mkString(",")}")
 
@@ -188,5 +191,11 @@ object FFMpeg extends Logging {
       logger.warn(s"""Non zero exit code for command: ${cmds.mkString(",")} \n""" + output)
 
     output
+  }
+
+  def runAsync(useErrorStream: Boolean, cmds: Seq[String]): InputStream = {
+    val runtime  = Runtime.getRuntime
+    val process  = runtime.exec(cmds.toArray)
+    if (useErrorStream) process.getErrorStream else process.getInputStream
   }
 }

@@ -58,7 +58,7 @@ object FileUtil extends Logging {
   }
 
   // samples a file randomly and creates a hash from that
-  def partialMD5Hash(file: File): String = {
+  def partialMD5Hash(file: File, nBytes: Int = 512): String = {
 
     def md5hashInBase64(data: Array[Byte]): String = {
       import java.security.MessageDigest
@@ -70,7 +70,7 @@ object FileUtil extends Logging {
       base64
     }
 
-    def readRandomBytes(nBytes: Int): Array[Byte] = {
+    def readRandomBytes(): Array[Byte] = {
 
       val size   = file.size
       val bytes  = new Array[Byte](nBytes)
@@ -92,7 +92,7 @@ object FileUtil extends Logging {
       bytes
     }
 
-    val bytes = readRandomBytes(512)
+    val bytes = readRandomBytes()
 
     md5hashInBase64(bytes).substring(0, 8)
   }

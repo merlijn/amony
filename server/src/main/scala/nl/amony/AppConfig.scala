@@ -10,22 +10,30 @@ import pureconfig.generic.semiauto.deriveEnumerationReader
 import scribe.{Logger, Logging}
 
 import java.nio.file.Path
+import scala.concurrent.duration.FiniteDuration
 
 case class MediaLibConfig(
-    libraryPath: Path,
-    indexPath: Path,
-    scanParallelFactor: Int,
-    verifyExistingHashes: Boolean,
-    hashingAlgorithm: HashingAlgorithm,
-    minimumFragmentDuration: Option[Int],
-    maximumFragmentDuration: Option[Int]
+  libraryPath: Path,
+  indexPath: Path,
+  scanParallelFactor: Int,
+  verifyExistingHashes: Boolean,
+  hashingAlgorithm: HashingAlgorithm,
+  previews: PreviewConfig
+)
+
+case class PreviewConfig(
+  videoCodec: String,
+  videoCrf: Int,
+  scaleHeight: Int,
+  minimumFragmentDuration: Option[FiniteDuration],
+  maximumFragmentDuration: Option[FiniteDuration],
 )
 
 sealed trait HashingAlgorithm {
   def generateHash(path: Path): String
 }
 
-case object FakeHash extends HashingAlgorithm {
+case object PartialHash extends HashingAlgorithm {
   override def generateHash(path: Path): String = FileUtil.partialMD5Hash(File(path))
 }
 

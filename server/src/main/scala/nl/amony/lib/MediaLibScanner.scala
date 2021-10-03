@@ -1,7 +1,7 @@
 package nl.amony.lib
 
 import akka.util.Timeout
-import nl.amony.MediaLibConfig
+import nl.amony.{MediaLibConfig, PreviewConfig}
 import nl.amony.actor.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
 import nl.amony.http.JsonCodecs
 import nl.amony.lib.FileUtil.PathOps
@@ -62,17 +62,17 @@ object MediaLibScanner extends Logging with JsonCodecs {
       }
   }
 
-  def scanVideo(hash: String, baseDir: Path, videoPath: Path, indexDir: Path): Media = {
+  def scanVideo(hash: String, baseDir: Path, videoPath: Path, config: MediaLibConfig): Media = {
 
-    val info = FFMpeg.ffprobe(videoPath)
+    val ffprobeInfo = FFMpeg.ffprobe(videoPath)
 
-    if (!info.fastStart)
+    if (!ffprobeInfo.fastStart)
       logger.warn(s"Video is not optimized for streaming: ${videoPath}")
 
     val fileAttributes = Files.readAttributes(videoPath, classOf[BasicFileAttributes])
 
-    val timeStamp = info.duration / 3
-    createVideoFragment(videoPath, indexDir, hash, timeStamp, timeStamp + fragmentLength)
+    val timeStamp = ffprobeInfo.duration / 3
+    createVideoFragment(videoPath, config.indexPath, hash, timeStamp, timeStamp + fragmentLength, config.previews)
 
     val fileInfo = FileInfo(
       relativePath     = baseDir.relativize(videoPath).toString,
@@ -83,9 +83,9 @@ object MediaLibScanner extends Logging with JsonCodecs {
     )
 
     val videoInfo = VideoInfo(
-      info.fps,
-      info.duration,
-      info.resolution
+      ffprobeInfo.fps,
+      ffprobeInfo.duration,
+      ffprobeInfo.resolution
     )
 
     Media(
@@ -107,9 +107,9 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     val files = FileUtil.walkDir(config.libraryPath)
 
-    // first calculate the hashes
     logger.info("Scanning directory for files & calculating hashes...")
 
+    // first calculate the hashes
     val filesWithHashes: List[(Path, String)] = Observable
       .from(files)
       .filter { file => filterFileName(file.getFileName.toString) }
@@ -179,7 +179,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
             case None =>
               logger.info(s"Scanning new file: '${relativePath}'")
-              scanVideo(hash, config.libraryPath, videoFile, config.indexPath)
+              scanVideo(hash, config.libraryPath, videoFile, config)
           }
         }
       }
@@ -193,23 +193,26 @@ object MediaLibScanner extends Logging with JsonCodecs {
     (indexPath / "thumbnails" / s"${id}-$from-$to.mp4").deleteIfExists()
   }
 
-  def createVideoFragment(videoPath: Path, indexPath: Path, id: String, from: Long, to: Long): Unit = {
+  def createVideoFragment(videoPath: Path, indexPath: Path, id: String, from: Long, to: Long, config: PreviewConfig): Unit = {
 
     val thumbnailPath = s"${indexPath}/thumbnails"
 
     Files.createDirectories(indexPath.resolve("thumbnails"))
 
     FFMpeg.writeThumbnail(
-      inputFile  = videoPath.absoluteFileName(),
-      timestamp  = from,
-      outputFile = Some(s"${thumbnailPath}/${id}-$from.webp")
+      inputFile   = videoPath.absoluteFileName(),
+      timestamp   = from,
+      outputFile  = Some(s"${thumbnailPath}/${id}-$from.webp"),
+      scaleHeight = Some(config.scaleHeight)
     )
 
     FFMpeg.writeMp4(
-      inputFile  = videoPath.absoluteFileName(),
-      from       = from,
-      to         = to,
-      outputFile = Some(s"${thumbnailPath}/${id}-$from-$to.mp4")
+      inputFile   = videoPath.absoluteFileName(),
+      from        = from,
+      to          = to,
+      outputFile  = Some(s"${thumbnailPath}/${id}-$from-$to.mp4"),
+      quality     = config.videoCrf,
+      scaleHeight = Some(config.scaleHeight)
     )
   }
 }

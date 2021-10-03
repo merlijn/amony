@@ -6,7 +6,6 @@ import better.files.File
 import nl.amony.MediaLibConfig
 import nl.amony.actor.MediaLibProtocol._
 import nl.amony.actor.MediaLibEventSourcing._
-import nl.amony.lib.ListOps
 import nl.amony.lib.MediaLibScanner.{createVideoFragment, deleteVideoFragment}
 import scribe.Logging
 
@@ -51,30 +50,27 @@ object MediaLibCommandHandler extends Logging {
 
       case UpdateMetaData(mediaId, title, comment, tags, sender) =>
 
-        state.media.get(mediaId) match {
+        requireMedia(mediaId, sender){ media =>
 
-          case None =>
-            Effect.reply(sender)(Left(MediaNotFound(mediaId)))
+          val titleUpdate   = if (title == media.title) None else title
+          val commentUpdate = if (comment == media.comment) None else comment
+          val tagsAdded     = tags -- media.tags
+          val tagsRemoved   = media.tags -- tags
 
-          case Some(media) =>
-            val titleUpdate   = if (title == media.title) None else title
-            val commentUpdate = if (comment == media.comment) None else comment
-            val tagsAdded     = tags -- media.tags
-            val tagsRemoved   = media.tags -- tags
-
-            if (tagsAdded.isEmpty && tagsRemoved.isEmpty && titleUpdate.isEmpty && commentUpdate.isEmpty)
-              Effect.reply(sender)(Right(media))
-            else
-              Effect
-                .persist(MediaMetaDataUpdated(mediaId, titleUpdate, commentUpdate, tagsAdded, tagsRemoved))
-                .thenReply(sender)(s => Right(s.media(mediaId)))
+          if (tagsAdded.isEmpty && tagsRemoved.isEmpty && titleUpdate.isEmpty && commentUpdate.isEmpty)
+            Effect.reply(sender)(Right(media))
+          else
+            Effect
+              .persist(MediaMetaDataUpdated(mediaId, titleUpdate, commentUpdate, tagsAdded, tagsRemoved))
+              .thenReply(sender)(s => Right(s.media(mediaId)))
         }
 
       case RemoveMedia(mediaId, sender) =>
+
         val media = state.media(mediaId)
         val path  = media.resolvePath(config.libraryPath)
 
-        logger.info(s"Deleting media '$mediaId:/${media.fileInfo.relativePath}'")
+        logger.info(s"Deleting media '$mediaId:${media.fileInfo.relativePath}'")
 
         Effect
           .persist(MediaRemoved(mediaId))
@@ -124,90 +120,79 @@ object MediaLibCommandHandler extends Logging {
         Effect.reply(sender)(SearchResult(offset, result.size, videos.toList))
 
       case DeleteFragment(id, idx, sender) =>
-        state.media.get(id) match {
 
-          case None =>
-            Effect.reply(sender)(Left(MediaNotFound(id)))
+        requireMedia(id, sender) { media =>
+          logger.info(s"Deleting fragment $id:$idx")
 
-          case Some(vid) =>
-            logger.info(s"Deleting fragment $id:$idx")
-
-            if (idx < 0 || idx >= vid.fragments.size)
-              Effect.reply(sender)(
-                Left(InvalidCommand(s"Index out of bounds ($idx): valid range is from 0 to ${vid.fragments.size - 1}"))
-              )
-            else
-              Effect
-                .persist(FragmentDeleted(id, idx))
-                .thenRun { (_: State) =>
-                  deleteVideoFragment(
-                    config.indexPath,
-                    vid.id,
-                    vid.fragments(idx).fromTimestamp,
-                    vid.fragments(idx).toTimestamp
-                  )
-                }
-                .thenReply(sender)(s => Right(s.media(id)))
+          if (idx < 0 || idx >= media.fragments.size)
+            Effect.reply(sender)(
+              Left(InvalidCommand(s"Index out of bounds ($idx): valid range is from 0 to ${media.fragments.size - 1}"))
+            )
+          else
+            Effect
+              .persist(FragmentDeleted(id, idx))
+              .thenRun { (_: State) =>
+                deleteVideoFragment(
+                  config.indexPath,
+                  media.id,
+                  media.fragments(idx).fromTimestamp,
+                  media.fragments(idx).toTimestamp
+                )
+              }
+              .thenReply(sender)(s => Right(s.media(id)))
         }
 
       case UpdateFragmentRange(id, idx, from, to, sender) =>
-        state.media.get(id) match {
 
-          case None =>
-            Effect.reply(sender)(Left(MediaNotFound(id)))
+        requireMedia(id, sender) { media =>
+          logger.info(s"Updating fragment $id:$idx to $from:$to")
 
-          case Some(vid) =>
-            logger.info(s"Updating fragment $id:$idx to $from:$to")
-
-            if (idx < 0 || idx >= vid.fragments.size) {
-              Effect.reply(sender)(
-                Left(InvalidCommand(s"Index out of bounds ($idx): valid range is from 0 to ${vid.fragments.size - 1}"))
+          if (idx < 0 || idx >= media.fragments.size) {
+            Effect.reply(sender)(
+              Left(InvalidCommand(s"Index out of bounds ($idx): valid range is from 0 to ${media.fragments.size - 1}"))
+            )
+          } else if (from < 0 || from >= to || to > media.videoInfo.duration)
+            Effect.reply(sender)(
+              Left(
+                InvalidCommand(s"Invalid range ($from -> $to): valid range is from 0 to ${media.videoInfo.duration}")
               )
-            } else if (from < 0 || from >= to || to > vid.videoInfo.duration)
-              Effect.reply(sender)(
-                Left(
-                  InvalidCommand(s"Invalid range ($from -> $to): valid range is from 0 to ${vid.videoInfo.duration}")
-                )
-              )
-            else {
+            )
+          else {
 
-              val oldFragment = vid.fragments(idx)
+            val oldFragment = media.fragments(idx)
 
-              Effect
-                .persist(FragmentRangeUpdated(id, idx, from, to))
-                .thenRun { (s: State) =>
-                  deleteVideoFragment(config.indexPath, vid.id, oldFragment.fromTimestamp, oldFragment.toTimestamp)
-                  createVideoFragment(vid.resolvePath(config.libraryPath), config.indexPath, id, from, to)
-                }
-                .thenReply(sender)(s => Right(s.media(id)))
-            }
+            Effect
+              .persist(FragmentRangeUpdated(id, idx, from, to))
+              .thenRun { (s: State) =>
+                deleteVideoFragment(config.indexPath, media.id, oldFragment.fromTimestamp, oldFragment.toTimestamp)
+                createVideoFragment(media.resolvePath(config.libraryPath), config.indexPath, id, from, to, config.previews)
+              }
+              .thenReply(sender)(s => Right(s.media(id)))
+          }
         }
 
       case AddFragment(id, from, to, sender) =>
-        state.media.get(id) match {
-          case None =>
-            Effect.reply(sender)(Left(InvalidCommand(s"No video found with id '$id'")))
 
-          case Some(media) =>
-            logger.info(s"Adding fragment for $id from $from to $to")
+        requireMedia(id, sender){ media =>
+          logger.info(s"Adding fragment for $id from $from to $to")
 
-            if (from > to) {
-              val msg = s"from: $from > to: $to"
-              logger.warn(msg)
-              Effect.reply(sender)(Left(InvalidCommand(msg)))
-            } else if (to > media.videoInfo.duration) {
-              val msg = s"to: $to > duration: ${media.videoInfo.duration}"
-              logger.warn(msg)
-              Effect.reply(sender)(Left(InvalidCommand(msg)))
-            } else {
+          if (from > to) {
+            val msg = s"from: $from > to: $to"
+            logger.warn(msg)
+            Effect.reply(sender)(Left(InvalidCommand(msg)))
+          } else if (to > media.videoInfo.duration) {
+            val msg = s"to: $to > duration: ${media.videoInfo.duration}"
+            logger.warn(msg)
+            Effect.reply(sender)(Left(InvalidCommand(msg)))
+          } else {
 
-              Effect
-                .persist(FragmentAdded(id, from, to))
-                .thenRun((_: State) =>
-                  createVideoFragment(media.resolvePath(config.libraryPath), config.indexPath, id, from, to)
-                )
-                .thenReply(sender)(s => Right(s.media(id)))
-            }
+            Effect
+              .persist(FragmentAdded(id, from, to))
+              .thenRun((_: State) =>
+                createVideoFragment(media.resolvePath(config.libraryPath), config.indexPath, id, from, to, config.previews)
+              )
+              .thenReply(sender)(s => Right(s.media(id)))
+          }
         }
 
       case UpdateFragmentTags(id, index, tags, sender) =>
