@@ -155,6 +155,26 @@ object FFMpeg extends Logging {
     runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
   }
 
+  def streamThumbnail(
+     inputFile: String,
+     timestamp: Long,
+     scaleHeight: Int
+  ) = {
+
+    // var args = ['-ss', '00:00:20', '-i', fsPath, '-vf', 'select=eq(pict_type\\,PICT_TYPE_I),scale=640:-1,tile=2x2', '-f', 'image2pipe', '-vframes', '1', '-'];
+    val args = List(
+      "-ss", formatTime(timestamp),
+      "-i" , inputFile,
+      "-vcodec", "webp",
+      "-vf", s"scale=-2:$scaleHeight",
+      "-vframes", "1",
+      "-f", "image2pipe",
+      "-"
+    )
+
+    runAsync(false, "ffmpeg" :: args)
+  }
+
   def writeThumbnail(
     inputFile: String,
     timestamp: Long,

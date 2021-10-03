@@ -36,7 +36,7 @@ trait JsonCodecs {
       duration      = media.videoInfo.duration,
       addedOn       = media.fileInfo.creationTime,
       fps           = media.videoInfo.fps,
-      thumbnail_uri = s"/files/thumbnails/${media.id}-${media.thumbnailTimestamp}.webp",
+      thumbnail_uri = s"/files/thumbnails/${media.id}.webp",
       fragments = media.fragments.zipWithIndex.map { case (f, index) =>
         Fragment(
           index           = index,

@@ -8,18 +8,9 @@ import akka.stream.Materializer
 import akka.util.Timeout
 import better.files.File
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-import nl.amony.actor.MediaLibProtocol.{
-  DateAdded,
-  ErrorResponse,
-  FileName,
-  InvalidCommand,
-  Media,
-  MediaNotFound,
-  Sort,
-  VideoDuration
-}
+import nl.amony.actor.MediaLibProtocol.{DateAdded, ErrorResponse, FileName, InvalidCommand, Media, MediaNotFound, Sort, VideoDuration}
 import nl.amony.http.WebModel.{FragmentRange, VideoMeta}
-import nl.amony.lib.MediaLibApi
+import nl.amony.lib.{FFMpeg, MediaLibApi}
 import io.circe.syntax._
 import scribe.Logging
 
@@ -36,12 +27,6 @@ trait Routes extends JsonCodecs with Logging {
   implicit val timeout: Timeout = Timeout.durationToTimeout(config.requestTimeout)
 
   val defaultResultNumber = 24
-
-  val rejectionHandler = RejectionHandler
-    .newBuilder()
-    .handleNotFound { complete(StatusCodes.NotFound, """{"statusCode" : 404 }""") }
-    .handle { case ValidationRejection(msg, _) => complete(StatusCodes.InternalServerError, msg) }
-    .result()
 
   val apiRoutes =
     pathPrefix("api") {
@@ -72,17 +57,20 @@ trait Routes extends JsonCodecs with Logging {
 
           complete(response)
         }
-      } ~ path("media" / Segment) { id =>
-        get {
-          onSuccess(api.query.getById(id)) {
-            case Some(vid) => complete(vid.asJson)
-            case None      => complete(StatusCodes.NotFound)
-          }
-        } ~ (post & entity(as[VideoMeta])) { meta =>
-          translateResponse(api.modify.updateMetaData(id, meta.title, meta.comment, meta.tags))
-        } ~ delete {
-          onSuccess(api.modify.deleteMedia(id)) { case _ =>
-            complete(StatusCodes.OK, "{}")
+      } ~ pathPrefix("media" / Segment) { id =>
+
+        pathEnd {
+          get {
+            onSuccess(api.query.getById(id)) {
+              case Some(vid) => complete(vid.asJson)
+              case None      => complete(StatusCodes.NotFound)
+            }
+          } ~ (post & entity(as[VideoMeta])) { meta =>
+            translateResponse(api.modify.updateMetaData(id, meta.title, meta.comment, meta.tags))
+          } ~ delete {
+            onSuccess(api.modify.deleteMedia(id)) { case _ =>
+              complete(StatusCodes.OK, "{}")
+            }
           }
         }
       } ~ path("directories") {
@@ -136,8 +124,21 @@ trait Routes extends JsonCodecs with Logging {
   }
 
   val thumbnailRoutes =
-    path("files" / "thumbnails" / Segment) { id =>
-      getFromFile(api.query.getThumbnailPathForMedia(id))
+    (get & path("files" / "thumbnails" / Segment) & parameters("t".optional)) { (file, timestamp) =>
+
+      val split = file.split('.')
+      val id = split(0)
+      val ext = split(1)
+
+      ext match {
+        case "webp" =>
+          onSuccess(api.query.getThumbnail(id, timestamp.map(_.toLong))) {
+            case None        => complete(StatusCodes.NotFound, "")
+            case Some(bytes) => complete(HttpEntity(ContentType(MediaTypes.`image/webp`), bytes))
+          }
+        case "mp4" =>
+          getFromFile(api.query.getThumbnailPathForMedia(file))
+      }
     }
 
   val videoRoutes = path("files" / "videos" / Segment) { id =>
