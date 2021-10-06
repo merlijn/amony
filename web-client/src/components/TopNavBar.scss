@@ -59,6 +59,7 @@
   vertical-align: middle;
   z-index: 9;
   flex-grow: 2;
+  max-width: 700px;
 }
 
 .home-button {
@@ -69,6 +70,7 @@
   flex-grow: 0;
   padding: 0px 5px !important;
   width: 32px ! important;
+  border-color: $gray-500 ! important;
 
   img {
     width: 23px;
@@ -79,14 +81,15 @@
 
 .tag-list-dropdown {
 
-  @extend .mr-1;
-
   flex-grow: 0;
   position: relative;
   float: left;
 
   .tag-list-toggle {
     @extend .nav-button;
+    border-bottom-right-radius: 0 ! important;
+    border-top-right-radius: 0 ! important;
+    border-color: $gray-500 ! important;;
   }
 
   &:not(.show) {
@@ -104,12 +107,15 @@
 
   .nav-search-input {
 
-    @extend .mr-1;
-
     position: relative;
     flex-grow: 1;
 
     input {
+      //border: none ! important;
+      border-left: none;
+      border-right: none;
+      border-radius: 0 ! important;
+      border-color: $gray-300 ! important;
       width: 100% ! important;
     }
 

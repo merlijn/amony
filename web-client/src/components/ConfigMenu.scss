@@ -5,9 +5,11 @@
   flex-grow: 0;
   float: left;
   background-color: $gray-400 ! important;
-  border-color: darkgray ! important;
+  border-color: $gray-500 ! important;
   padding: 2px 5px !important;
   height: 31px ! important;
+  border-bottom-left-radius: 0 ! important;
+  border-top-left-radius: 0 ! important;
 }
 
 .config-menu {
