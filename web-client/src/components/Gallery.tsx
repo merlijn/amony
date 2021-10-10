@@ -4,8 +4,16 @@ import {Prefs, SearchResult, Video} from '../api/Model';
 import Preview from './Preview';
 import './Gallery.scss';
 import {useLocation} from 'react-router-dom'
-import {BoundedRatioBox, calculateColumns, useCookiePrefs, usePrevious, useStateRef, useWindowSize} from "../api/Util";
-import TopNavBar from "./TopNavBar";
+import {
+  BoundedRatioBox,
+  calculateColumns,
+  useCookiePrefs,
+  useListener,
+  usePrevious,
+  useStateRef,
+  useWindowSize
+} from "../api/Util";
+import TopNavBar from "./navbar/TopNavBar";
 import Plyr from "plyr";
 import { isMobile } from "react-device-detect";
 import {Constants} from "../api/Constants";
@@ -21,9 +29,12 @@ const Gallery = () => {
 
   const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
 
+  // https://medium.com/geographit/accessing-react-state-in-event-listeners-with-usestate-and-useref-hooks-8cceee73c559
+  // https://stackoverflow.com/questions/55265255/react-usestate-hook-event-handler-using-initial-state
+  const [showNavBar, setShowNavBar] = useState(true)
+
   const previousPrefs = usePrevious(prefs)
 
-  const [minRes, setMinRes] = useState(prefs.minRes)
   const [searchResult, setSearchResult] = useState(initialSearchResult)
   const [isFetching, setIsFetching] = useState(false)
 
@@ -34,11 +45,6 @@ const Gallery = () => {
 
   // grid size
   const [ncols, setNcols] = useState(prefs.gallery_columns)
-
-  // https://medium.com/geographit/accessing-react-state-in-event-listeners-with-usestate-and-useref-hooks-8cceee73c559
-  // https://stackoverflow.com/questions/55265255/react-usestate-hook-event-handler-using-initial-state
-  const [showNavBar, showNavBarRef, setShowNavBar] = useStateRef(true)
-
   const urlParams = new URLSearchParams(location.search)
 
   const fetchData = (previous: Array<Video>) => {
@@ -64,7 +70,7 @@ const Gallery = () => {
       });
   }
 
-  const handleScroll = () => {
+  const handleScroll = (e: Event) => {
 
     const withinFetchMargin = document.documentElement.offsetHeight - Math.ceil(window.innerHeight + document.documentElement.scrollTop) <=  fetchDataScreenMargin
 
@@ -73,30 +79,20 @@ const Gallery = () => {
     }
   }
 
-  // add keyboard listener
-  useEffect( () => {
+  const keyDownHandler = (event: KeyboardEvent) => {
+    console.log(`keycode: ${event.code}`)
+    if (event.code === 'Slash')
+      setShowNavBar(!showNavBar)
+    else if (event.code === 'KeyI')
+      setPrefs({...prefs, showTitles: !prefs.showTitles })
+    else if (event.code === 'KeyM')
+      setPrefs( {...prefs, showMenu: !prefs.showMenu})
+    else if (event.code === 'KeyD')
+      setPrefs({...prefs, showDuration: !prefs.showDuration})
+  }
 
-    const handler = (event: KeyboardEvent) => {
-      console.log(`keycode: ${event.code}`)
-      if (event.code === 'Slash') {
-        setShowNavBar(!showNavBarRef.current)
-      } else if (event.code === 'KeyI') {
-        console.log(`updating prefs`)
-        setPrefs({...prefs, showTitles: !(prefs.showTitles) })
-      }
-    }
-
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler)
-  }, [prefs])
-
-  // add scroll listener
-  useEffect(() => {
-    const handler = () => handleScroll()
-    window.addEventListener('scroll', handler);
-    return () => window.removeEventListener('scroll', handler)
-  }, [searchResult, ncols]);
-
+  useListener('keydown', keyDownHandler, [prefs])
+  useListener('scroll', handleScroll, [searchResult, ncols])
 
   useEffect(() => { fetchData([]) }, [location])
   useEffect(() => { fetchData(searchResult.videos) }, [ncols])
@@ -146,12 +142,12 @@ const Gallery = () => {
     const style: { } = { "--ncols" : `${ncols}` }
 
     return <Preview
-              style={style} className="grid-cell"
-              key={`preview-${vid.id}`}
-              vid={vid}
-              onClick={ (v) => setPlayVideo(v) }
-              showPreviewOnHover={!isMobile}
-              showTitles={prefs.showTitles} showDuration={prefs.showDuration} showMenu={prefs.showMenu}/>
+      style={style} className="grid-cell"
+      key={`preview-${vid.id}`}
+      vid={vid}
+      onClick={ (v) => setPlayVideo(v) }
+      showPreviewOnHover={!isMobile}
+      showInfoBar={prefs.showTitles} showDates = {true} showDuration={prefs.showDuration} showMenu={prefs.showMenu}/>
   })
 
   const modalSize = (v: Video | undefined): CSSProperties => {

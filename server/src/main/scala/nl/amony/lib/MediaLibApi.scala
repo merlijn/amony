@@ -53,8 +53,10 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
         val file = (config.libraryPath / media.fileInfo.relativePath).path.toAbsolutePath.toString
 
         timestamp match {
-          case None         => (config.indexPath / "thumbnails" / s"${media.id}-${media.thumbnailTimestamp}.webp").byteArray
-          case Some(millis) => FFMpeg.streamThumbnail(file, millis, 320).readAllBytes()
+          case None         =>
+            (config.indexPath / "thumbnails" / s"${media.id}-${media.fragments.head.fromTimestamp}.webp").byteArray
+          case Some(millis) =>
+            FFMpeg.streamThumbnail(file, millis, 320).readAllBytes()
         }
       })
     }

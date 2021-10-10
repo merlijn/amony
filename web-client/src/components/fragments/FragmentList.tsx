@@ -55,10 +55,9 @@ const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFr
 
   const fragmentsHeader =
     <div key="fragments-header" className="fragments-header">
-      Fragments
-      <ImgWithAlt style={ { float: "right" } } className="action-icon-medium" src="/icons/close.svg" />
-      <ImgWithAlt style={ { float: "right" } }
-                  className="action-icon-medium"
+      <span style={ { float: "left" } } >Fragments</span>
+      <ImgWithAlt style={ { float: "left" } }
+                  className="ml-1 action-icon-medium"
                   src="/icons/add.svg"
                   onClick = {(e) => { setShowAddFragment(true); props.selectFn({ idx: nrOfFragments }) } } />
     </div>

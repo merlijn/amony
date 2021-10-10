@@ -1,18 +1,18 @@
 import React, {useEffect, useState} from "react";
 import {useHistory, useLocation} from "react-router-dom";
-import {buildUrl, copyParams, useCookiePrefs} from "../api/Util";
+import {buildUrl, copyParams, useCookiePrefs} from "../../api/Util";
 import NavDropdown from "react-bootstrap/NavDropdown";
 import Form from "react-bootstrap/Form";
 import FormControl from "react-bootstrap/FormControl";
 import './TopNavBar.scss';
-import {Api} from "../api/Api";
-import {Prefs, Directory} from "../api/Model";
+import {Api} from "../../api/Api";
+import {Prefs, Directory} from "../../api/Model";
 import {ButtonGroup} from "react-bootstrap";
 import ConfigMenu from "./ConfigMenu";
-import ImgWithAlt from "./shared/ImgWithAlt";
+import ImgWithAlt from "../shared/ImgWithAlt";
 import Button from "react-bootstrap/Button";
 import Dropdown from "react-bootstrap/Dropdown";
-import {Constants} from "../api/Constants";
+import {Constants} from "../../api/Constants";
 
 function TopNavBar() {
 

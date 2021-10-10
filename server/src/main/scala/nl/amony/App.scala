@@ -1,14 +1,14 @@
 package nl.amony
 
 import akka.actor.typed.ActorSystem
-import akka.util.Timeout
-import nl.amony.actor.MediaLibProtocol
+import akka.stream.Materializer
+import nl.amony.actor.{MediaLibProtocol, MediaLibQuery}
 import nl.amony.http.WebServer
-import nl.amony.lib.{FFMpeg, MediaLibApi, MediaLibScanner, Migration}
+import nl.amony.lib.{FFMpeg, MediaLibApi}
 import scribe.Logging
 
-import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.DurationInt
+import scala.concurrent.{Await, ExecutionContext}
 
 object App extends AppConfig with Logging {
 
@@ -16,6 +16,9 @@ object App extends AppConfig with Logging {
 
     val system: ActorSystem[MediaLibProtocol.Command] =
       ActorSystem(MediaLibProtocol(mediaLibConfig), "mediaLibrary", config)
+
+    implicit def materializer: Materializer = Materializer.createMaterializer(system)
+    MediaLibQuery.run(system.classicSystem)
 
     val api = new MediaLibApi(mediaLibConfig, system)
 

@@ -39,6 +39,8 @@
   width: 100%;
   padding-top: 2px;
 
+  border-bottom-right-radius: 0.2rem;
+  border-bottom-left-radius: 0.2rem;
   background-image: linear-gradient(to right, #dcdcdc, #ffffff);
   color: #233453;
 
@@ -103,6 +105,8 @@ $preview-hover-shadow-color: rgba(255, 255, 0, 1);
     object-fit: cover;
     object-position: center;
     overflow: hidden;
+    border-top-right-radius: 0.2rem;
+    border-top-left-radius: 0.2rem;
 
     &:hover {
       cursor: pointer;

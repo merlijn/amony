@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import Container from 'react-bootstrap/Container';
 import Gallery from './components/Gallery';
-import Player from './components/player/Player';
+import Player from './components/fragments/Player';
 import { Route,  BrowserRouter, useParams, Switch } from 'react-router-dom';
 import {Api} from "./api/Api";
 import FragmentsPlayer from "./components/shared/FragmentsPlayer";

@@ -1,11 +1,13 @@
-@import '~bootstrap/scss/bootstrap.scss';
+@import 'node_modules/bootstrap/scss/bootstrap';
+@import './TopNavBar.scss';
 
 .config-menu-button {
 
+  @extend .nav-button;
+
   flex-grow: 0;
   float: left;
-  background-color: $gray-400 ! important;
-  border-color: $gray-500 ! important;
+
   padding: 2px 5px !important;
   height: 31px ! important;
   border-bottom-left-radius: 0 ! important;

@@ -91,4 +91,8 @@ $container-max-widths: (
   //}
 }
 
+.rounded-corners {
+  border-radius: 0.2rem;
+}
+
 @import '~bootstrap/scss/bootstrap.scss';

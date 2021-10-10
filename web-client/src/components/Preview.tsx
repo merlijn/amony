@@ -20,7 +20,8 @@ type PreviewProps = {
   lazyLoad?: boolean,
   showPreviewOnHover: boolean,
   showPreviewOnHoverDelay?: number,
-  showTitles: boolean,
+  showInfoBar: boolean,
+  showDates: boolean,
   showDuration: boolean,
   showMenu: boolean,
   onClick: (v: Video) => any
@@ -43,10 +44,11 @@ const Preview = (props: PreviewProps) => {
                                  })
                                }} />
 
+  const previewClass = props.showInfoBar ? "preview-media" : "preview-media rounded-corners"
   const videoPreview =
     <FragmentsPlayer id={`video-preview-${props.vid.id}`}
                      onClick={ () => props.onClick(props.vid) }
-                     className="preview-video preview-media"
+                     className= { `preview-video ${previewClass}` }
                      fragments={ props.vid.fragments } />
 
   const addOnDate = new Date(vid.addedOn)
@@ -71,7 +73,7 @@ const Preview = (props: PreviewProps) => {
   const primaryThumbnail =
     <ProgressiveImage src={vid.thumbnail_uri} placeholder="/image_placeholder.svg">
       { (src: string) =>
-        <img onClick={ () => props.onClick(props.vid) } className="preview-thumbnail preview-media" src={src} alt="an image" />
+        <img onClick={ () => props.onClick(props.vid) } className={ `preview-thumbnail ${previewClass}` } src={src} alt="an image" />
       }
     </ProgressiveImage>
 
@@ -88,7 +90,7 @@ const Preview = (props: PreviewProps) => {
   return (
     <div style={props.style} className={ `${props.className}` }>
       { preview }
-      { props.showTitles && titlePanel }
+      { props.showInfoBar && titlePanel }
       { showMetaPanel && metaPanel }
     </div>
   )
