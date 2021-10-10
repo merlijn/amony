@@ -132,19 +132,23 @@ trait Routes extends JsonCodecs with Logging {
 
       ext match {
         case "webp" =>
-          onSuccess(api.query.getThumbnail(id, timestamp.map(_.toLong))) {
+          onSuccess(api.resources.getThumbnail(id, timestamp.map(_.toLong))) {
             case None        => complete(StatusCodes.NotFound, "")
             case Some(bytes) => complete(HttpEntity(ContentType(MediaTypes.`image/webp`), bytes))
           }
         case "mp4" =>
-          getFromFile(api.query.getThumbnailPathForMedia(file))
+          val videoFileName = api.resources.getVideoFragment(file)
+          RouteUtil.streamMovie(videoFileName)
+          getFromFile(api.resources.getVideoFragment(file))
       }
     }
 
   val videoRoutes = path("files" / "videos" / Segment) { id =>
     onSuccess(api.query.getById(id)) {
       case None       => complete(StatusCodes.NotFound, "")
-      case Some(info) => getFromFile(api.query.getFilePathForMedia(info))
+      case Some(info) =>
+        RouteUtil.streamMovie(api.resources.getFilePathForMedia(info))
+//        getFromFile(api.resources.getFilePathForMedia(info))
     }
   }
 

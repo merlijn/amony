@@ -1,8 +1,12 @@
 package nl.amony.lib
 
+import better.files.File
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 
+import java.io.ByteArrayInputStream
+import java.time.temporal.ChronoUnit
+import java.util.concurrent.TimeUnit
 import scala.io.Source
 
 class FFMpegSpec extends AnyFlatSpecLike {
@@ -30,6 +34,13 @@ class FFMpegSpec extends AnyFlatSpecLike {
     val FFMpeg.streamPattern(line) = ffProbeOutput
 
     line shouldBe testStreams(0)
+  }
+
+  it should "stream an image" in {
+
+    val is = FFMpeg.streamThumbnail("/Users/merlijn/dev/amony/videos/nature/sunrise.mp4", 2000, 320)
+
+    File("temp.webp").writeByteArray(is.readAllBytes())
   }
 
   it should "detect if a video is not optimized for streaming" in {

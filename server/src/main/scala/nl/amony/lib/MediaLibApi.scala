@@ -42,18 +42,22 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
 
     def getDirectories()(implicit timeout: Timeout): Future[List[Directory]] =
       system.ask[List[Directory]](ref => GetDirectories(ref))
+  }
 
-    def getThumbnailPathForMedia(id: String): String =
+  object resources {
+
+    def getVideoFragment(id: String): String =
       s"${config.indexPath}/thumbnails/$id"
 
     def getThumbnail(id: String, timestamp: Option[Long])(implicit timeout: Timeout): Future[Option[Array[Byte]]] = {
 
-      getById(id).map(_.map { media =>
+      query.getById(id).map(_.map { media =>
 
         val file = (config.libraryPath / media.fileInfo.relativePath).path.toAbsolutePath.toString
 
         timestamp match {
           case None         =>
+            //            FFMpeg.streamThumbnail(file, media.fragments.head.fromTimestamp, 320).readAllBytes()
             (config.indexPath / "thumbnails" / s"${media.id}-${media.fragments.head.fromTimestamp}.webp").byteArray
           case Some(millis) =>
             FFMpeg.streamThumbnail(file, millis, 320).readAllBytes()
