@@ -22,7 +22,7 @@ object CustomDirectives extends Logging {
     def length = end - start
     def distance(other: IndexRange) = mergedEnd(other) - mergedStart(other) - (length + other.length)
     def mergeWith(other: IndexRange) = new IndexRange(mergedStart(other), mergedEnd(other))
-    def contentRange(entityLength: Long) = ContentRange(start, end - 1, entityLength)
+    def toContentRange(entityLength: Long): ContentRange.Default = ContentRange(start, end - 1, entityLength)
     private def mergedStart(other: IndexRange) = math.min(start, other.start)
     private def mergedEnd(other: IndexRange) = math.max(end, other.end)
   }
@@ -79,12 +79,12 @@ object CustomDirectives extends Logging {
             val range = coalescedRanges.head
             val byteSource = byteStringProvider(range.start, range.length)
             val part = Multipart.ByteRanges.BodyPart(
-              range.contentRange(contentLength), HttpEntity(contentType, range.length, byteSource))
+              range.toContentRange(contentLength), HttpEntity(contentType, range.length, byteSource))
             Source.single(part)
           case _ =>
             Source.fromIterator(() => coalescedRanges.iterator).map { range =>
               val byteSource = byteStringProvider(range.start, range.length)
-              Multipart.ByteRanges.BodyPart(range.contentRange(contentLength), HttpEntity(contentType, range.length, byteSource))
+              Multipart.ByteRanges.BodyPart(range.toContentRange(contentLength), HttpEntity(contentType, range.length, byteSource))
             }
         }
 
@@ -100,8 +100,8 @@ object CustomDirectives extends Logging {
 
       def singleRangeResponse(range: IndexRange) = {
         val byteSource = byteStringProvider(range.start, range.length)
-        val entity = HttpEntity(contentType, contentLength, byteSource)
-        complete(HttpResponse(PartialContent, Seq(`Content-Range`(range.contentRange(contentLength))), entity))
+        val entity = HttpEntity(contentType, byteSource)
+        complete(HttpResponse(PartialContent, Seq(`Content-Range`(range.toContentRange(contentLength))), entity))
       }
 
       ctx.request.header[Range] match {
