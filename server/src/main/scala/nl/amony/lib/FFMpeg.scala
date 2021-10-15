@@ -155,11 +155,40 @@ object FFMpeg extends Logging {
     runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
   }
 
+  def streamFragment(
+        inputFile: String,
+        from: Long,
+        to: Long,
+        quality: Int = 23,
+        scaleHeight: Option[Int] = None
+  ): InputStream = {
+
+    // format: off
+    val args: List[String] =
+    List(
+      "-ss",  formatTime(from),
+      "-to",  formatTime(to),
+      "-i",   inputFile,
+    ) ++
+      scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
+      List(
+        "-c:v", "libx264",
+        "-movflags", "+faststart+frag_keyframe+empty_moov",
+        "-crf", s"$quality",
+        "-f", "mp4",
+        "-an", // no audio
+        "pipe:1"
+      )
+    // format: on
+
+    runAsync(false, "ffmpeg" :: args)
+  }
+
   def streamThumbnail(
      inputFile: String,
      timestamp: Long,
      scaleHeight: Int
-  ) = {
+  ): InputStream = {
 
     // var args = ['-ss', '00:00:20', '-i', fsPath, '-vf', 'select=eq(pict_type\\,PICT_TYPE_I),scale=640:-1,tile=2x2', '-f', 'image2pipe', '-vframes', '1', '-'];
     val args = List(
