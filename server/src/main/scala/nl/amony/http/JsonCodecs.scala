@@ -39,6 +39,7 @@ trait JsonCodecs {
       thumbnail_uri = s"/files/thumbnails/${media.id}.webp",
       fragments = media.fragments.zipWithIndex.map { case (f, index) =>
         Fragment(
+          mediaId         = media.id,
           index           = index,
           timestamp_start = f.fromTimestamp,
           timestamp_end   = f.toTimestamp,

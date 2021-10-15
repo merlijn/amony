@@ -3,17 +3,19 @@ package nl.amony.http
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives.{path, _}
-import akka.http.scaladsl.server.{RejectionHandler, Route, ValidationRejection}
+import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
+import akka.stream.scaladsl.StreamConverters
 import akka.util.Timeout
 import better.files.File
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-import nl.amony.actor.MediaLibProtocol.{DateAdded, ErrorResponse, FileName, InvalidCommand, Media, MediaNotFound, Sort, VideoDuration}
-import nl.amony.http.WebModel.{FragmentRange, VideoMeta}
-import nl.amony.lib.{FFMpeg, MediaLibApi}
 import io.circe.syntax._
+import nl.amony.actor.MediaLibProtocol._
+import nl.amony.http.WebModel.{FragmentRange, VideoMeta}
+import nl.amony.lib.MediaLibApi
 import scribe.Logging
 
+import java.nio.file.Path
 import scala.concurrent.{ExecutionContext, Future}
 
 trait Routes extends JsonCodecs with Logging {
@@ -134,12 +136,13 @@ trait Routes extends JsonCodecs with Logging {
         case "webp" =>
           onSuccess(api.resources.getThumbnail(id, timestamp.map(_.toLong))) {
             case None        => complete(StatusCodes.NotFound, "")
-            case Some(bytes) => complete(HttpEntity(ContentType(MediaTypes.`image/webp`), bytes))
+            case Some(is) =>
+              val source = StreamConverters.fromInputStream(() => is, 8192)
+              complete(HttpEntity(ContentType(MediaTypes.`image/webp`), source))
           }
         case "mp4" =>
-          val videoFileName = api.resources.getVideoFragment(file)
-          RouteUtil.streamMovie(videoFileName)
-          getFromFile(api.resources.getVideoFragment(file))
+          val videoPath = Path.of(api.resources.getVideoFragment(file))
+          CustomDirectives.randomAccessFile(ContentType(MediaTypes.`video/mp4`), videoPath)
       }
     }
 
@@ -147,8 +150,8 @@ trait Routes extends JsonCodecs with Logging {
     onSuccess(api.query.getById(id)) {
       case None       => complete(StatusCodes.NotFound, "")
       case Some(info) =>
-        RouteUtil.streamMovie(api.resources.getFilePathForMedia(info))
-//        getFromFile(api.resources.getFilePathForMedia(info))
+        val filePath = Path.of(api.resources.getFilePathForMedia(info))
+        CustomDirectives.randomAccessFile(ContentType(MediaTypes.`video/mp4`), filePath)
     }
   }
 
@@ -156,6 +159,7 @@ trait Routes extends JsonCodecs with Logging {
     rawPathPrefix(Slash) {
 
       extractUnmatchedPath { path =>
+
         // TODO sanitize
         val filePath = path.toString() match {
           case "" | "/" => "index.html"

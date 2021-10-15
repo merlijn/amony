@@ -17,6 +17,7 @@ import monix.execution.Scheduler
 import monix.reactive.Consumer
 import scribe.Logging
 
+import java.io.InputStream
 import scala.concurrent.{Await, Future}
 
 class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) extends Logging {
@@ -46,10 +47,9 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
 
   object resources {
 
-    def getVideoFragment(id: String): String =
-      s"${config.indexPath}/thumbnails/$id"
+    def getVideoFragment(id: String): String = s"${config.indexPath}/thumbnails/$id"
 
-    def getThumbnail(id: String, timestamp: Option[Long])(implicit timeout: Timeout): Future[Option[Array[Byte]]] = {
+    def getThumbnail(id: String, timestamp: Option[Long])(implicit timeout: Timeout): Future[Option[InputStream]] = {
 
       query.getById(id).map(_.map { media =>
 
@@ -57,10 +57,9 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
 
         timestamp match {
           case None         =>
-            //            FFMpeg.streamThumbnail(file, media.fragments.head.fromTimestamp, 320).readAllBytes()
-            (config.indexPath / "thumbnails" / s"${media.id}-${media.fragments.head.fromTimestamp}.webp").byteArray
+            (config.indexPath / "thumbnails" / s"${media.id}-${media.fragments.head.fromTimestamp}.webp").newFileInputStream
           case Some(millis) =>
-            FFMpeg.streamThumbnail(file, millis, 320).readAllBytes()
+            FFMpeg.streamThumbnail(file, millis, 320)
         }
       })
     }
