@@ -83,12 +83,12 @@ const Gallery = () => {
     console.log(`keycode: ${event.code}`)
     if (event.code === 'Slash')
       setShowNavBar(!showNavBar)
-    else if (event.code === 'KeyI')
-      setPrefs({...prefs, showTitles: !prefs.showTitles })
-    else if (event.code === 'KeyM')
-      setPrefs( {...prefs, showMenu: !prefs.showMenu})
-    else if (event.code === 'KeyD')
-      setPrefs({...prefs, showDuration: !prefs.showDuration})
+    // else if (event.code === 'KeyI')
+    //   setPrefs({...prefs, showTitles: !prefs.showTitles })
+    // else if (event.code === 'KeyM')
+    //   setPrefs( {...prefs, showMenu: !prefs.showMenu})
+    // else if (event.code === 'KeyD')
+    //   setPrefs({...prefs, showDuration: !prefs.showDuration})
   }
 
   useListener('keydown', keyDownHandler, [prefs])
