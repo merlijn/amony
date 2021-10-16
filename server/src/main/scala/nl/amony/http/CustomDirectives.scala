@@ -6,7 +6,8 @@ import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.server.Directives.{optionalHeaderValueByName, respondWithHeaders}
-import akka.http.scaladsl.server.UnsatisfiableRangeRejection
+import akka.http.scaladsl.server.{Route, UnsatisfiableRangeRejection}
+import akka.http.scaladsl.server.directives.ContentTypeResolver
 import akka.stream.scaladsl._
 import akka.util.ByteString
 import scribe.Logging
@@ -18,16 +19,20 @@ object CustomDirectives extends Logging {
   import akka.http.scaladsl.server.directives.BasicDirectives._
   import akka.http.scaladsl.server.directives.RouteDirectives._
 
-  case class IndexRange(val start: Long, val end: Long) {
-    def length = end - start
-    def distance(other: IndexRange) = mergedEnd(other) - mergedStart(other) - (length + other.length)
-    def mergeWith(other: IndexRange) = new IndexRange(mergedStart(other), mergedEnd(other))
+  case class IndexRange(start: Long, end: Long) {
+    def length: Long = end - start
+    def distance(other: IndexRange): Long = mergedEnd(other) - mergedStart(other) - (length + other.length)
+    def mergeWith(other: IndexRange): IndexRange = IndexRange(mergedStart(other), mergedEnd(other))
     def toContentRange(entityLength: Long): ContentRange.Default = ContentRange(start, end - 1, entityLength)
-    private def mergedStart(other: IndexRange) = math.min(start, other.start)
-    private def mergedEnd(other: IndexRange) = math.max(end, other.end)
+    private def mergedStart(other: IndexRange): Long = math.min(start, other.start)
+    private def mergedEnd(other: IndexRange): Long = math.max(end, other.end)
   }
 
-  def randomAccessFile(contentType: ContentType, path: Path) = {
+  def fileWithRangeSupport(path: Path)(implicit resolver: ContentTypeResolver): Route = {
+    fileWithRangeSupport(path, resolver.apply(path.getFileName.toString))
+  }
+
+  def fileWithRangeSupport(path: Path, contentType: ContentType): Route = {
     randomAccessRangeSupport(contentType, path.toFile.length(), (start, _) => {
         FileIO.fromPath(path, 8192, start)
       }

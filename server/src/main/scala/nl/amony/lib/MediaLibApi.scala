@@ -47,6 +47,8 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
 
   object resources {
 
+    def resourcePath() = s"${config.indexPath}/thumbnails"
+
     def getVideoFragment(id: String): String = s"${config.indexPath}/thumbnails/$id"
 
     def getThumbnail(id: String, timestamp: Option[Long])(implicit timeout: Timeout): Future[Option[InputStream]] = {

@@ -14,6 +14,7 @@ object WebModel {
   )
 
   case class Fragment(
+    mediaId: String,
     index: Int,
     timestamp_start: Long,
     timestamp_end: Long,
@@ -30,6 +31,7 @@ object WebModel {
     addedOn: Long,
     fps: Double,
     thumbnail_uri: String,
+    preview_thumbnails_uri: Option[String],
     fragments: List[Fragment],
     resolution_x: Int,
     resolution_y: Int

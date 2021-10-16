@@ -1,32 +1,20 @@
-package nl.amony.http
+package nl.amony.http.routes
 
-import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives.{path, _}
 import akka.http.scaladsl.server.Route
-import akka.stream.Materializer
-import akka.stream.scaladsl.StreamConverters
-import akka.util.Timeout
-import better.files.File
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
 import nl.amony.actor.MediaLibProtocol._
+import nl.amony.http.{JsonCodecs, RouteDeps}
 import nl.amony.http.WebModel.{FragmentRange, VideoMeta}
-import nl.amony.lib.MediaLibApi
 import scribe.Logging
 
-import java.nio.file.Path
 import scala.concurrent.{ExecutionContext, Future}
 
-trait Routes extends JsonCodecs with Logging {
+trait ApiRoutes extends JsonCodecs with Logging {
 
-  val config: WebServerConfig
-  val api: MediaLibApi
-  implicit val system: ActorSystem[Nothing]
-
-  implicit def materializer: Materializer = Materializer.createMaterializer(system)
-  implicit def executionContext: ExecutionContext = system.executionContext
-  implicit val timeout: Timeout = Timeout.durationToTimeout(config.requestTimeout)
+  self: RouteDeps =>
 
   val defaultResultNumber = 24
 
@@ -103,86 +91,4 @@ trait Routes extends JsonCodecs with Logging {
       case Right(media)                 => complete(media.asJson)
     }
   }
-
-  val adminRoutes = pathPrefix("api" / "admin") {
-    (path("regen-previews") & post) {
-      api.admin.regeneratePreviews()
-      complete("OK")
-    } ~ (path("export-to-file") & post) {
-      api.admin.exportLibrary()
-      complete("OK")
-    } ~ (path("verify-hashes") & post) {
-      api.admin.verifyHashes()
-      complete("OK")
-    } ~ (path("convert-non-streamable-videos") & post) {
-      api.admin.convertNonStreamableVideos()
-      complete("OK")
-    } ~ (path("scan-library") & post) {
-      api.admin.scanLibrary()
-      complete("OK")
-    } ~ (path("logs")) {
-      complete("")
-    }
-  }
-
-  val thumbnailRoutes =
-    (get & path("files" / "thumbnails" / Segment) & parameters("t".optional)) { (file, timestamp) =>
-
-      val split = file.split('.')
-      val id = split(0)
-      val ext = split(1)
-
-      ext match {
-        case "webp" =>
-          onSuccess(api.resources.getThumbnail(id, timestamp.map(_.toLong))) {
-            case None        => complete(StatusCodes.NotFound, "")
-            case Some(is) =>
-              val source = StreamConverters.fromInputStream(() => is, 8192)
-              complete(HttpEntity(ContentType(MediaTypes.`image/webp`), source))
-          }
-        case "mp4" =>
-          val videoPath = Path.of(api.resources.getVideoFragment(file))
-          CustomDirectives.randomAccessFile(ContentType(MediaTypes.`video/mp4`), videoPath)
-      }
-    }
-
-  val videoRoutes = path("files" / "videos" / Segment) { id =>
-    onSuccess(api.query.getById(id)) {
-      case None       => complete(StatusCodes.NotFound, "")
-      case Some(info) =>
-        val filePath = Path.of(api.resources.getFilePathForMedia(info))
-        CustomDirectives.randomAccessFile(ContentType(MediaTypes.`video/mp4`), filePath)
-    }
-  }
-
-  def webClientFiles: Route =
-    rawPathPrefix(Slash) {
-
-      extractUnmatchedPath { path =>
-
-        // TODO sanitize
-        val filePath = path.toString() match {
-          case "" | "/" => "index.html"
-          case other    => other
-        }
-
-        val targetFile = {
-          val maybe = (File(config.webClientPath) / filePath)
-          if (maybe.exists)
-            maybe
-          else
-            File(config.webClientPath) / "index.html"
-        }
-
-        getFromFile(targetFile.path.toAbsolutePath.toString)
-      }
-    }
-
-  val allApiRoutes =
-    if (config.enableAdmin)
-      apiRoutes ~ adminRoutes
-    else
-      apiRoutes
-
-  val allRoutes = allApiRoutes ~ thumbnailRoutes ~ videoRoutes ~ webClientFiles
 }

@@ -3,18 +3,29 @@ package nl.amony.http
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.{ConnectionContext, Http}
 import better.files.File
+import nl.amony.http.routes.{AdminRoutes, ApiRoutes, ResourceRoutes}
 import nl.amony.lib.MediaLibApi
 import scribe.Logging
+import akka.http.scaladsl.server.Directives._
 
 import java.security.SecureRandom
 import javax.net.ssl.{KeyManagerFactory, SSLContext}
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-class WebServer(override val config: WebServerConfig, override val api: MediaLibApi)(
-    override implicit val system: ActorSystem[Nothing]
+class WebServer(override val config: WebServerConfig,
+                override val api: MediaLibApi)(
+                override implicit val system: ActorSystem[Nothing]
 ) extends Logging
-    with Routes {
+    with ApiRoutes with ResourceRoutes with AdminRoutes with RouteDeps {
+
+  val allApiRoutes =
+    if (config.enableAdmin)
+      apiRoutes ~ adminRoutes
+    else
+      apiRoutes
+
+  val allRoutes = allApiRoutes ~ thumbnailRoutes ~ videoRoutes ~ webClientFiles
 
   def run(): Unit = {
 
