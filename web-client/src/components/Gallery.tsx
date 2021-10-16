@@ -17,6 +17,7 @@ import TopNavBar from "./navbar/TopNavBar";
 import Plyr from "plyr";
 import { isMobile } from "react-device-detect";
 import {Constants} from "../api/Constants";
+import VideoModal from "./shared/VideoModal";
 
 const gridReRenderThreshold = 24
 const fetchDataScreenMargin = 1024;
@@ -124,16 +125,28 @@ const Gallery = () => {
   useEffect(() => {
 
     const element = videoElement.current
+    let plyr: Plyr | null = null
 
     if (element) {
       if (playVideo !== undefined) {
+
+        const plyrOptions = {
+          fullscreen : { enabled: true },
+          invertTime: false,
+          previewThumbnails: { enabled: true, src: playVideo.preview_thumbnails_uri} }
+
+        const plyr = new Plyr(element, plyrOptions)
         element.load()
-        const plyr = new Plyr(element, { fullscreen : { enabled: true }, invertTime: false})
         plyr.play()
       }
       else {
         element.pause()
       }
+    }
+
+    return () => {
+      if (plyr)
+        plyr.destroy()
     }
   },[playVideo]);
 
@@ -150,40 +163,15 @@ const Gallery = () => {
       showInfoBar={prefs.showTitles} showDates = {true} showDuration={prefs.showDuration} showMenu={prefs.showMenu}/>
   })
 
-  const modalSize = (v: Video | undefined): CSSProperties => {
-
-     const w = isMobile ? "100vw" : "75vw"
-
-     return v ? BoundedRatioBox(w, "75vh", v.resolution_x / v.resolution_y) : { }
-  }
-
   return (
     <div className="gallery-container full-width">
 
       {showNavBar && <TopNavBar key="top-nav-bar" /> }
 
       <div style={ !showNavBar ?  { marginTop: 2 } : {} } key="gallery" className="gallery">
-        <div
-          key="gallery-video-player"
-          className="video-modal-container"
-          style={ playVideo === undefined ? { display: "none"}: {display: "block" }}>
-
-          <div key="video-model-background"
-               className="video-modal-background"
-               onClick = { (e) => setPlayVideo(undefined) }></div>
-
-          <div key="video-model-content" className="video-modal-content">
-            {
-               <div style={modalSize(playVideo)}>
-                  <video ref={videoElement} id="gallery-video-player"  playsInline controls>
-                    { playVideo && <source src={'/files/videos/' + playVideo.id} type="video/mp4"/> }
-                  </video>
-               </div>
-            }
-          </div>
-        </div>
+        { playVideo && <VideoModal video={playVideo} onHide={() => setPlayVideo(undefined) } />}
         <div className="gallery-grid-container">
-           {previews}
+          {previews}
         </div>
       </div>
     </div>

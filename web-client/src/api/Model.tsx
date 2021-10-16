@@ -3,6 +3,7 @@ export class Video {
     public id: string,
     public meta: VideoMeta,
     public thumbnail_uri: string,
+    public preview_thumbnails_uri: string,
     public fragments: Array<Fragment>,
     public fps: number,
     public resolution_x: number,
