@@ -5,7 +5,6 @@ import Preview from './Preview';
 import './Gallery.scss';
 import {useLocation} from 'react-router-dom'
 import {
-  BoundedRatioBox,
   calculateColumns,
   useCookiePrefs,
   useListener,
@@ -14,7 +13,6 @@ import {
   useWindowSize
 } from "../api/Util";
 import TopNavBar from "./navbar/TopNavBar";
-import Plyr from "plyr";
 import { isMobile } from "react-device-detect";
 import {Constants} from "../api/Constants";
 import VideoModal from "./shared/VideoModal";
@@ -120,35 +118,6 @@ const Gallery = () => {
       fetchData([])
 
   },[windowSize, prefs]);
-
-  // show modal video player
-  useEffect(() => {
-
-    const element = videoElement.current
-    let plyr: Plyr | null = null
-
-    if (element) {
-      if (playVideo !== undefined) {
-
-        const plyrOptions = {
-          fullscreen : { enabled: true },
-          invertTime: false,
-          previewThumbnails: { enabled: true, src: playVideo.preview_thumbnails_uri} }
-
-        const plyr = new Plyr(element, plyrOptions)
-        element.load()
-        plyr.play()
-      }
-      else {
-        element.pause()
-      }
-    }
-
-    return () => {
-      if (plyr)
-        plyr.destroy()
-    }
-  },[playVideo]);
 
   const previews = searchResult.videos.map((vid, idx) => {
 
