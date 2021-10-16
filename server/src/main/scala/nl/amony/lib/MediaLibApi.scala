@@ -18,6 +18,7 @@ import monix.reactive.Consumer
 import scribe.Logging
 
 import java.io.InputStream
+import java.nio.file.Path
 import scala.concurrent.{Await, Future}
 
 class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) extends Logging {
@@ -47,7 +48,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
 
   object resources {
 
-    def resourcePath() = s"${config.indexPath}/thumbnails"
+    def resourcePath() = Path.of(s"${config.indexPath}/thumbnails")
 
     def getVideoFragment(id: String): String = s"${config.indexPath}/thumbnails/$id"
 
@@ -129,6 +130,19 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
       m.fragments.foreach { f =>
         logger.info(s"Generating preview(s) for: ${m.fileInfo.relativePath}")
         MediaLibScanner.createVideoFragment(videoPath, config.indexPath, m.id, f.fromTimestamp, f.toTimestamp, config.previews)
+      }
+    }
+
+    def generateThumbnailPreviews()(implicit timeout: Timeout): Unit = {
+      query.getAll().foreach { medias =>
+        medias.foreach { m =>
+          logger.info(s"generating thumbnail previews for '${m.fileName()}'")
+          FFMpeg.generatePreviewSprite(
+            m.resolvePath(config.libraryPath).toAbsolutePath,
+            outputDir = config.indexPath.resolve("thumbnails"),
+            outputBaseName = Some(s"${m.id}-timeline")
+          )
+        }
       }
     }
 

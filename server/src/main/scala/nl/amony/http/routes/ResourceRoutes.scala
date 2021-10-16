@@ -18,7 +18,6 @@ trait ResourceRoutes extends Logging {
   val thumbnailRoutes =
     (get & path("files" / "thumbnails" / Segment) & parameters("t".optional)) { (file, timestamp) =>
 
-      logger.info(file)
       val split = file.split('.')
       val id = split(0)
       val ext = split(1)
@@ -34,27 +33,6 @@ trait ResourceRoutes extends Logging {
         case "mp4" =>
           val videoPath = Path.of(api.resources.getVideoFragment(file))
           CustomDirectives.fileWithRangeSupport(videoPath)
-        case "vtt" =>
-          onSuccess(api.query.getById(id)) {
-            case Some(vid)  =>
-              val path = Path.of(api.resources.getVideoFragment(file))
-              if (path.toFile.exists())
-                FileAndResourceDirectives.getFromFile(path.toFile)
-              else {
-                val dummyVTT =
-                  s"""
-                    |WEBVTT
-                    |
-                    |1 00:00:00.000 --> 10:00:00.000
-                    |${vid.id}.webp
-                    |""".stripMargin
-
-                complete(StatusCodes.OK, dummyVTT)
-              }
-
-            case None       => complete(StatusCodes.NotFound)
-          }
-
         case _ =>
           val path = Path.of(s"${api.resources.resourcePath()}/${file}")
 

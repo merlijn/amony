@@ -1,5 +1,6 @@
 package nl.amony.lib
 
+import better.files.File
 import nl.amony.lib.FileUtil.{PathOps, stripExtension}
 import scribe.Logging
 
@@ -9,7 +10,12 @@ import java.time.Duration
 
 object FFMpeg extends Logging {
 
-  case class Probe(duration: Long, resolution: (Int, Int), fps: Double, fastStart: Boolean)
+  case class Probe(
+    duration: Long,
+    resolution: (Int, Int),
+    fps: Double,
+    fastStart: Boolean
+  )
 
   val pattern = raw"Duration:\s(\d{2}):(\d{2}):(\d{2})".r.unanchored
   val res     = raw"Stream #0.*,\s(\d{2,})x(\d{2,})".r.unanchored
@@ -98,35 +104,6 @@ object FFMpeg extends Logging {
     Path.of(out)
   }
 
-  def createWebP(
-      inputFile: String,
-      timestamp: Long,
-      durationInSeconds: Int = 3,
-      outputFile: Option[String] = None,
-      scaleHeight: Option[Int]
-  ): Unit = {
-
-    // format: off
-
-    val args = List(
-      "-ss",       formatTime(timestamp),
-      "-t",        durationInSeconds.toString,
-      "-i",        inputFile,
-    ) ++ scaleHeight.toList.flatMap(sh => List("-vf", s"fps=8,scale=-2:$sh:flags=lanczos")) ++
-      List("-vcodec",   "libwebp",
-        "-lossless", "0",
-        "-loop",     "0",
-        "-q:v",      "80",
-        "-preset",   "picture",
-        "-vsync",    "0",
-        "-an",
-        "-y", outputFile.getOrElse(s"${stripExtension(inputFile)}.webp")
-      )
-    // format: on
-
-    runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
-  }
-
   def writeMp4(
       inputFile: String,
       from: Long,
@@ -190,14 +167,13 @@ object FFMpeg extends Logging {
      scaleHeight: Int
   ): InputStream = {
 
-    // var args = ['-ss', '00:00:20', '-i', fsPath, '-vf', 'select=eq(pict_type\\,PICT_TYPE_I),scale=640:-1,tile=2x2', '-f', 'image2pipe', '-vframes', '1', '-'];
     val args = List(
-      "-ss", formatTime(timestamp),
-      "-i" , inputFile,
-      "-vcodec", "webp",
-      "-vf", s"scale=-2:$scaleHeight",
+      "-ss",      formatTime(timestamp),
+      "-i" ,      inputFile,
+      "-vcodec",  "webp",
+      "-vf",      s"scale=-2:$scaleHeight",
       "-vframes", "1",
-      "-f", "image2pipe",
+      "-f",       "image2pipe",
       "-"
     )
 
@@ -217,13 +193,87 @@ object FFMpeg extends Logging {
       "-i",       inputFile
     ) ++ scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
       List(
-        "-quality", "80", // 1 - 30 (best-worst) for jpeg, 1-100 (worst-best) for webp
+        "-quality", "80", // 1 - 31 (best-worst) for jpeg, 1-100 (worst-best) for webp
         "-vframes", "1",
         "-y",       outputFile.getOrElse(s"${stripExtension(inputFile)}.webp")
       )
     // format: on
 
     runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
+  }
+
+  private[lib] def calculateNrOfFrames(length: Long): (Int, Int) = {
+
+    // 2, 3,  4,  5,  6,  7,  8,  9,  10,  11,  12
+    // 4, 9, 16, 25, 36, 49, 64, 81, 100, 121, 144
+    val minFrames = 4
+    val maxFrames = 64
+
+    val frames = Math.min(maxFrames, Math.max(minFrames, length / (10 * 1000)))
+    val tileSize = Math.ceil(Math.sqrt(frames.toDouble)).toInt
+
+    frames.toInt -> tileSize
+  }
+
+  def generatePreviewSprite(
+     inputFile: Path,
+     outputDir: Path,
+     height: Int = 100,
+     outputBaseName: Option[String] = None,
+     frameInterval: Option[Int] = None
+  ) = {
+
+    val fileBaseName = outputBaseName.getOrElse(inputFile.getFileName.stripExtension())
+
+    val probe = ffprobe(inputFile)
+    val (frames, tileSize) = calculateNrOfFrames(probe.duration)
+    val mod = ((probe.fps * (probe.duration / 1000)) / frames).toInt
+
+    val width: Int = ((probe.resolution._1.toDouble / probe.resolution._2) * height).toInt
+
+//    logger.info(s"fps: ${probe.fps}")
+//    logger.info(s"length: ${probe.duration}")
+//    logger.info(s"frames: $frames")
+//    logger.info(s"tileSize: $tileSize")
+//    logger.info(s"mod: $mod")
+
+    val args = List(
+      "-i" ,      inputFile.toAbsolutePath.toString,
+      "-filter_complex", s"select='not(mod(n,$mod))',scale=$width:$height,tile=${tileSize}x${tileSize}",
+      "-vframes",  "1",
+      "-qscale:v", "3",
+      "-y",
+      "-an", s"$outputDir/$fileBaseName.jpeg"
+    )
+
+    def genVtt(): String = {
+      val thumbLength: Int = (probe.duration / frames).toInt
+
+      val builder = new StringBuilder()
+
+      builder.append("WEBVTT\n")
+
+      (0 until frames).foreach { n =>
+        val start = formatTime(thumbLength * n)
+        val end = formatTime(thumbLength * (n + 1))
+        val x: Int = n % tileSize
+        val y: Int = Math.floor(n / tileSize).toInt
+
+        builder.append(
+          s"""
+             |${n + 1}
+             |${start} --> $end
+             |$fileBaseName.jpeg#xywh=${x * width},${y * height},${width},${height}
+             |""".stripMargin
+        )
+      }
+
+      builder.toString()
+    }
+
+    runSync(true, "ffmpeg" :: args)
+
+    (File(outputDir) / s"$fileBaseName.vtt").write(genVtt())
   }
 
   def runSync(useErrorStream: Boolean, cmds: Seq[String]): String = {

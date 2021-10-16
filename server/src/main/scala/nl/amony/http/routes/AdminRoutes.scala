@@ -8,8 +8,11 @@ trait AdminRoutes {
   self: RouteDeps =>
 
   val adminRoutes = pathPrefix("api" / "admin") {
-    (path("regen-previews") & post) {
+    (path("regen-thumbnails") & post) {
       api.admin.regeneratePreviews()
+      complete("OK")
+    } ~ (path("regen-preview-thumbnails") & post) {
+      api.admin.generateThumbnailPreviews()
       complete("OK")
     } ~ (path("export-to-file") & post) {
       api.admin.exportLibrary()
