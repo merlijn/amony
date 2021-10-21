@@ -7,6 +7,7 @@ import nl.amony.http.routes.{AdminRoutes, ApiRoutes, ResourceRoutes}
 import nl.amony.lib.MediaLibApi
 import scribe.Logging
 import akka.http.scaladsl.server.Directives._
+import nl.amony.http.util.PemReader
 
 import java.security.SecureRandom
 import javax.net.ssl.{KeyManagerFactory, SSLContext}

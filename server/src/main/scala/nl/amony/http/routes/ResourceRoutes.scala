@@ -6,7 +6,8 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.FileAndResourceDirectives
 import akka.stream.scaladsl.StreamConverters
 import better.files.File
-import nl.amony.http.{CustomDirectives, RouteDeps, WebServerConfig}
+import nl.amony.http.util.CustomDirectives
+import nl.amony.http.{RouteDeps, WebServerConfig}
 import scribe.Logging
 
 import java.nio.file.Path
@@ -25,7 +26,7 @@ trait ResourceRoutes extends Logging {
       ext match {
         case "webp" =>
           onSuccess(api.resources.getThumbnail(id, timestamp.map(_.toLong))) {
-            case None        => complete(StatusCodes.NotFound, "")
+            case None     => complete(StatusCodes.NotFound, "")
             case Some(is) =>
               val source = StreamConverters.fromInputStream(() => is, 8192)
               complete(HttpEntity(ContentType(MediaTypes.`image/webp`), source))

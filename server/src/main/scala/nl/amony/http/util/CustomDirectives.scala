@@ -1,14 +1,14 @@
-package nl.amony.http
+package nl.amony.http.util
 
 import akka.NotUsed
 import akka.http.scaladsl.model.Multipart.ByteRanges
-import akka.http.scaladsl.model.StatusCodes._
+import akka.http.scaladsl.model.StatusCodes.{PartialContent, RangeNotSatisfiable, TooManyRequests}
+import akka.http.scaladsl.model.headers.{ByteRange, Range, RangeUnits, RawHeader, `Content-Range`, `Content-Type`}
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.server.Directives.{optionalHeaderValueByName, respondWithHeaders}
-import akka.http.scaladsl.server.{Route, UnsatisfiableRangeRejection}
 import akka.http.scaladsl.server.directives.ContentTypeResolver
-import akka.stream.scaladsl._
+import akka.http.scaladsl.server.{Route, UnsatisfiableRangeRejection}
+import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
 import scribe.Logging
 
@@ -172,4 +172,3 @@ object CustomDirectives extends Logging {
     }
   }
 }
-
