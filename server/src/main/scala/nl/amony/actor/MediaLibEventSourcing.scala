@@ -1,6 +1,6 @@
 package nl.amony.actor
 
-import nl.amony.actor.MediaLibProtocol.{Directory, Fragment, Media, State}
+import nl.amony.actor.MediaLibProtocol.{Fragment, Media, State}
 import nl.amony.lib.ListOps
 import scribe.Logging
 

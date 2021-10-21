@@ -14,6 +14,7 @@ import java.util.regex.Pattern.CASE_INSENSITIVE
 import javax.crypto.Cipher.DECRYPT_MODE
 import javax.crypto.spec.PBEKeySpec
 import javax.crypto.{Cipher, EncryptedPrivateKeyInfo, SecretKeyFactory}
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /*

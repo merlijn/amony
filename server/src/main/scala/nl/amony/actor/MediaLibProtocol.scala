@@ -23,25 +23,6 @@ object MediaLibProtocol {
   // -- Querying
   case class GetAll(sender: ActorRef[List[Media]])                extends Command
   case class GetById(id: String, sender: ActorRef[Option[Media]]) extends Command
-  case class GetDirectories(sender: ActorRef[List[Directory]])    extends Command
-
-  case class Search(query: Query, sender: ActorRef[SearchResult]) extends Command
-
-  sealed trait SortField
-  case object FileName      extends SortField
-  case object DateAdded     extends SortField
-  case object VideoDuration extends SortField
-
-  case class Sort(field: SortField, reverse: Boolean)
-  case class Query(
-      q: Option[String],
-      offset: Option[Int],
-      n: Int,
-      directory: Option[String],
-      minRes: Option[Int],
-      sort: Option[Sort]
-  )
-  case class SearchResult(offset: Int, total: Int, items: Seq[Media])
 
   // --- Fragments
   case class DeleteFragment(mediaId: String, fragmentIdx: Int, sender: ActorRef[Either[ErrorResponse, Media]])
@@ -74,7 +55,7 @@ object MediaLibProtocol {
   // -- State
   case class State(media: Map[String, Media])
   case class Fragment(fromTimestamp: Long, toTimestamp: Long, comment: Option[String], tags: List[String])
-  case class Directory(id: String, path: String)
+
 
   case class FileInfo(
       relativePath: String,

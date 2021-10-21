@@ -3,13 +3,12 @@ package nl.amony.lib
 import better.files.File
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
+import scribe.Logging
 
-import java.io.ByteArrayInputStream
-import java.time.temporal.ChronoUnit
-import java.util.concurrent.TimeUnit
+import java.nio.file.Path
 import scala.io.Source
 
-class FFMpegSpec extends AnyFlatSpecLike {
+class FFMpegSpec extends AnyFlatSpecLike with Logging {
 
   val testStreams = List(
     "Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709), 1920x1080, 5594 kb/s, 29.97 fps, 29.97 tbr, 30k tbn, 60k tbc (default)",
@@ -36,11 +35,21 @@ class FFMpegSpec extends AnyFlatSpecLike {
     line shouldBe testStreams(0)
   }
 
-  it should "stream an image" in {
+  ignore should "stream an image" in {
 
     val is = FFMpeg.streamThumbnail("/Users/merlijn/dev/amony/videos/nature/sunrise.mp4", 2000, 320)
 
     File("temp.webp").writeByteArray(is.readAllBytes())
+  }
+
+  ignore should "calculate the number frames for a mosaic" in {
+
+    logger.info(FFMpeg.calculateNrOfFrames(60 * 60 * 1000).toString())
+
+    FFMpeg.generatePreviewSprite(
+      Path.of("../videos/nature/coastline.mp4"),
+      Path.of("/Users/merlijn/dev/amony"),
+      outputBaseName = Some("ksdfjuwek"))
   }
 
   it should "detect if a video is not optimized for streaming" in {

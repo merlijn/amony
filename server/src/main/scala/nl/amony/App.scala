@@ -1,8 +1,8 @@
 package nl.amony
 
-import akka.actor.typed.ActorSystem
-import akka.stream.Materializer
-import nl.amony.actor.{MediaLibProtocol, MediaLibQuery}
+import akka.actor.typed.{ActorSystem, Behavior}
+import nl.amony.actor.{MainRouter, MediaLibProtocol}
+import nl.amony.actor.MediaLibProtocol.Command
 import nl.amony.http.WebServer
 import nl.amony.lib.{FFMpeg, MediaLibApi}
 import scribe.Logging
@@ -14,11 +14,9 @@ object App extends AppConfig with Logging {
 
   def main(args: Array[String]): Unit = {
 
-    val system: ActorSystem[MediaLibProtocol.Command] =
-      ActorSystem(MediaLibProtocol(mediaLibConfig), "mediaLibrary", config)
-
-    implicit def materializer: Materializer = Materializer.createMaterializer(system)
-    MediaLibQuery.run(system.classicSystem)
+//    val router: Behavior[Command] = MediaLibProtocol(mediaLibConfig)
+    val router: Behavior[Any] = MainRouter.apply(mediaLibConfig)
+    val system: ActorSystem[Any] = ActorSystem(router, "mediaLibrary", config)
 
     val api = new MediaLibApi(mediaLibConfig, system)
 

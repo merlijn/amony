@@ -1,6 +1,6 @@
 package nl.amony.http
 
-import nl.amony.actor.MediaLibProtocol
+import nl.amony.actor.{MediaIndex, MediaLibProtocol}
 import nl.amony.http.WebModel.{Fragment, FragmentRange, SearchResult, Tag, Video, VideoMeta}
 import io.circe.{Codec, Encoder}
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
@@ -19,11 +19,11 @@ trait JsonCodecs {
   implicit val mediaEncoder: Encoder[MediaLibProtocol.Media] =
     deriveEncoder[Video].contramapObject[MediaLibProtocol.Media](toWebModel)
 
-  implicit val tagEncoder: Encoder[MediaLibProtocol.Directory] =
-    deriveEncoder[Tag].contramapObject[MediaLibProtocol.Directory](c => Tag(c.id, c.path))
+  implicit val tagEncoder: Encoder[MediaIndex.Directory] =
+    deriveEncoder[Tag].contramapObject[MediaIndex.Directory](c => Tag(c.id, c.path))
 
-  implicit val searchResultEncoder: Encoder[MediaLibProtocol.SearchResult] =
-    deriveEncoder[SearchResult].contramapObject[MediaLibProtocol.SearchResult](result =>
+  implicit val searchResultEncoder: Encoder[MediaIndex.SearchResult] =
+    deriveEncoder[SearchResult].contramapObject[MediaIndex.SearchResult](result =>
       SearchResult(result.offset, result.total, result.items.map(m => toWebModel(m)))
     )
 

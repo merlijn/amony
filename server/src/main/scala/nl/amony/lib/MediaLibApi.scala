@@ -1,27 +1,30 @@
 package nl.amony.lib
 
+import akka.actor.ActorRef
 import akka.actor.typed.ActorSystem
+import akka.actor.typed.scaladsl.adapter.ClassicActorRefOps
 import akka.persistence.query.PersistenceQuery
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.serialization.jackson.JacksonObjectMapperProvider
+import akka.stream.Materializer
 import akka.util.Timeout
 import better.files.File
 import better.files.File.apply
 import com.fasterxml.jackson.core.JsonEncoding
-import nl.amony.MediaLibConfig
-import nl.amony.actor.MediaLibProtocol
-import nl.amony.actor.MediaLibProtocol._
-import nl.amony.lib.MediaLibScanner.{logger, scanVideosInDirectory}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Consumer
+import nl.amony.MediaLibConfig
+import nl.amony.actor.MediaIndex._
+import nl.amony.actor.MediaLibProtocol._
 import scribe.Logging
+import FileUtil._
 
 import java.io.InputStream
 import java.nio.file.Path
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 
-class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) extends Logging {
+class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Any]) extends Logging {
 
   import akka.actor.typed.scaladsl.AskPattern._
   implicit val scheduler = system.scheduler
@@ -39,8 +42,10 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
 
     def search(q: Option[String], offset: Option[Int], size: Int, tag: Option[String], minRes: Option[Int], sort: Sort)(
         implicit timeout: Timeout
-    ): Future[SearchResult] =
+    ): Future[SearchResult] = {
+
       system.ask[SearchResult](ref => Search(Query(q, offset, size, tag, minRes, Some(sort)), ref))
+    }
 
     def getDirectories()(implicit timeout: Timeout): Future[List[Directory]] =
       system.ask[List[Directory]](ref => GetDirectories(ref))
@@ -56,11 +61,11 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
 
       query.getById(id).map(_.map { media =>
 
-        val file = (config.libraryPath / media.fileInfo.relativePath).path.toAbsolutePath.toString
+        val file = (config.libraryPath / media.fileInfo.relativePath).toAbsolutePath.toString
 
         timestamp match {
           case None         =>
-            (config.indexPath / "thumbnails" / s"${media.id}-${media.fragments.head.fromTimestamp}.webp").newFileInputStream
+            File(config.indexPath / "thumbnails" / s"${media.id}-${media.fragments.head.fromTimestamp}.webp").newFileInputStream
           case Some(millis) =>
             FFMpeg.streamThumbnail(file, millis, 320)
         }
@@ -162,7 +167,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
         logger.info("Verifying all file hashes ...")
 
         medias.foreach { m =>
-          val hash = config.hashingAlgorithm.generateHash((config.libraryPath / m.fileInfo.relativePath).path)
+          val hash = config.hashingAlgorithm.generateHash(config.libraryPath / m.fileInfo.relativePath)
 
           if (hash != m.fileInfo.hash)
             logger.info(s"Found different hash for: ${m.fileInfo.relativePath}")
@@ -176,7 +181,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Command]) exte
 
     def exportLibrary()(implicit timeout: Timeout): Unit = {
 
-      val file = (File(config.indexPath) / "export.json").path.toFile
+      val file = (config.indexPath / "export.json").toFile
 
       query.getAll().foreach { medias =>
         objectMapper.createGenerator(file, JsonEncoding.UTF8).writeObject(medias)

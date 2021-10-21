@@ -6,6 +6,7 @@ import akka.http.scaladsl.server.Route
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
 import nl.amony.actor.MediaLibProtocol._
+import nl.amony.actor.MediaIndex._
 import nl.amony.http.{JsonCodecs, RouteDeps}
 import nl.amony.http.WebModel.{FragmentRange, VideoMeta}
 import scribe.Logging
