@@ -4,7 +4,7 @@ import akka.actor.typed.{ActorSystem, Behavior}
 import nl.amony.actor.{MainRouter, MediaLibProtocol, Message}
 import nl.amony.actor.MediaLibProtocol.Command
 import nl.amony.http.WebServer
-import nl.amony.lib.{FFMpeg, MediaLibApi}
+import nl.amony.lib.{FFMpeg, AmonyApi}
 import scribe.Logging
 
 import scala.concurrent.duration.DurationInt
@@ -18,7 +18,7 @@ object App extends AppConfig with Logging {
     val router: Behavior[Message] = MainRouter.apply(mediaLibConfig)
     val system: ActorSystem[Message] = ActorSystem(router, "mediaLibrary", config)
 
-    val api = new MediaLibApi(mediaLibConfig, system)
+    val api = new AmonyApi(mediaLibConfig, system)
 
     api.admin.scanLibrary()(10.seconds)
 
@@ -33,16 +33,16 @@ object App extends AppConfig with Logging {
     webServer.run()
   }
 
-  def probeAll(api: MediaLibApi)(implicit ec: ExecutionContext): Unit = {
+  def probeAll(api: AmonyApi)(implicit ec: ExecutionContext): Unit = {
 
     val media = Await.result(api.query.getAll()(10.seconds), 10.seconds)
 
     logger.warn("Probing all videos")
 
     val (fastStart, nonFastStart) = media.partition { m =>
-      val path  = m.resolvePath(api.config.path)
-      val probe = FFMpeg.ffprobe(path)
-      probe.fastStart
+      val path  = m.resolvePath(api.config.mediaPath)
+      val (_, debug) = FFMpeg.ffprobe(path)
+      debug.isFastStart
     }
 
     logger.warn(s"videos optimized for faststart: ${fastStart.size}")

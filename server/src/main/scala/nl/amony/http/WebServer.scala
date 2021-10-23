@@ -4,7 +4,7 @@ import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.{ConnectionContext, Http}
 import better.files.File
 import nl.amony.http.routes.{AdminRoutes, ApiRoutes, ResourceRoutes}
-import nl.amony.lib.MediaLibApi
+import nl.amony.lib.AmonyApi
 import scribe.Logging
 import akka.http.scaladsl.server.Directives._
 import nl.amony.http.util.PemReader
@@ -15,7 +15,7 @@ import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 class WebServer(override val config: WebServerConfig,
-                override val api: MediaLibApi)(
+                override val api: AmonyApi)(
                 override implicit val system: ActorSystem[Nothing]
 ) extends Logging
     with ApiRoutes with ResourceRoutes with AdminRoutes with RouteDeps {

@@ -28,23 +28,34 @@ class FFMpegSpec extends AnyFlatSpecLike with Logging {
       |...
       |""".stripMargin
 
-  it should "extract stream info" in {
+  it should "probe a file" in {
 
-    val FFMpeg.streamPattern(line) = ffProbeOutput
+    val path = Path.of("/Users/merlijn/dev/amony/videos/other/roundabout.mp4")
 
-    line shouldBe testStreams(0)
+    println(FFMpeg.ffprobe(path))
+  }
+
+  it should "lajdf" in {
+
+    val path = Path.of("/Users/merlijn/dev/amony/server/../videos/other/up the escalator.mp4")
+
+    println(File(path).path)
+
+    println(Path.of("").toAbsolutePath)
+
+    println(Path.of("../videos").toAbsolutePath.toString)
+    println(path.toString)
+    println(path.toAbsolutePath.toString)
   }
 
   ignore should "stream an image" in {
 
-    val is = FFMpeg.streamThumbnail("/Users/merlijn/dev/amony/videos/nature/sunrise.mp4", 2000, 320)
+    val is = FFMpeg.streamThumbnail(Path.of("/Users/merlijn/dev/amony/videos/nature/sunrise.mp4"), 2000, 320)
 
     File("temp.webp").writeByteArray(is.readAllBytes())
   }
 
   ignore should "calculate the number frames for a mosaic" in {
-
-    logger.info(FFMpeg.calculateNrOfFrames(60 * 60 * 1000).toString())
 
     FFMpeg.generatePreviewSprite(
       Path.of("../videos/nature/coastline.mp4"),
@@ -56,11 +67,11 @@ class FFMpegSpec extends AnyFlatSpecLike with Logging {
 
     val ffProbeNoFastStart = Source.fromResource("./ffprobe-no-faststart.txt").getLines.mkString("\n")
 
-    FFMpeg.ffprobeParse(ffProbeNoFastStart, "no faststart test").fastStart shouldBe false
+//    FFMpeg.ffprobeParse(ffProbeNoFastStart, "no faststart test").fastStart shouldBe false
 
     val ffProbeFastStart = Source.fromResource("./ffprobe-faststart.txt").getLines.mkString("\n")
 
-    FFMpeg.ffprobeParse(ffProbeFastStart, "faststart test").fastStart shouldBe true
+//    FFMpeg.ffprobeParse(ffProbeFastStart, "faststart test").fastStart shouldBe true
   }
 
   it should("insert in to list") in {

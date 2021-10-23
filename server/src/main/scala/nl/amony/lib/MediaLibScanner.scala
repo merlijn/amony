@@ -23,7 +23,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     fileName.endsWith(".mp4") && !fileName.startsWith(".")
   }
 
-  def convertNonStreamableVideos(config: MediaLibConfig, api: MediaLibApi): Unit = {
+  def convertNonStreamableVideos(config: MediaLibConfig, api: AmonyApi): Unit = {
 
     val files = FileUtil.walkDir(config.path)
 
@@ -33,7 +33,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
     files
       .filter { vid =>
         // filter for extension
-        filterFileName(vid.getFileName().toString) && !FFMpeg.ffprobe(vid).fastStart
+        filterFileName(vid.getFileName().toString) && !FFMpeg.ffprobe(vid)._2.isFastStart
       }
       .foreach { videoWithoutFastStart =>
         logger.info(s"Creating faststart/streamable mp4 for: ${videoWithoutFastStart}")
@@ -42,13 +42,13 @@ object MediaLibScanner extends Logging with JsonCodecs {
         val oldHash = config.hashingAlgorithm.generateHash(videoWithoutFastStart)
         val newHash = config.hashingAlgorithm.generateHash(out)
 
-        logger.info(s"$oldHash -> $newHash: ${config.path.relativize(out).toString}")
+        logger.info(s"$oldHash -> $newHash: ${config.mediaPath.relativize(out).toString}")
 
         api.query.getById(oldHash).onComplete {
           case Success(Some(v)) =>
             val m = v.copy(
               id       = newHash,
-              fileInfo = v.fileInfo.copy(hash = newHash, relativePath = config.path.relativize(out).toString)
+              fileInfo = v.fileInfo.copy(hash = newHash, relativePath = config.mediaPath.relativize(out).toString)
             )
 
             api.modify.upsertMedia(m).foreach { _ =>
@@ -64,14 +64,18 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
   def scanVideo(hash: String, baseDir: Path, videoPath: Path, config: MediaLibConfig): Media = {
 
-    val ffprobeInfo = FFMpeg.ffprobe(videoPath)
+    val (probe, debug) = FFMpeg.ffprobe(videoPath)
 
-    if (!ffprobeInfo.fastStart)
+    val mainStream = probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${videoPath}"))
+
+    logger.info(mainStream.toString)
+
+    if (!debug.isFastStart)
       logger.warn(s"Video is not optimized for streaming: ${videoPath}")
 
     val fileAttributes = Files.readAttributes(videoPath, classOf[BasicFileAttributes])
 
-    val timeStamp = ffprobeInfo.duration / 3
+    val timeStamp = mainStream.durationMillis / 3
     createVideoFragment(videoPath, config.indexPath, hash, timeStamp, timeStamp + fragmentLength, config.previews)
 
     val fileInfo = FileInfo(
@@ -83,9 +87,9 @@ object MediaLibScanner extends Logging with JsonCodecs {
     )
 
     val videoInfo = VideoInfo(
-      ffprobeInfo.fps,
-      ffprobeInfo.duration,
-      ffprobeInfo.resolution
+      mainStream.fps,
+      mainStream.durationMillis,
+      (mainStream.width, mainStream.height)
     )
 
     Media(
@@ -105,7 +109,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       persistedMedia: List[Media]
   )(implicit s: Scheduler, timeout: Timeout): (Observable[Media], Observable[Media]) = {
 
-    val files = FileUtil.walkDir(config.path)
+    val files = FileUtil.walkDir(config.mediaPath)
 
     logger.info("Scanning directory for files & calculating hashes...")
 
@@ -118,7 +122,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
           val hash = if (config.verifyExistingHashes) {
             config.hashingAlgorithm.generateHash(path)
           } else {
-            val relativePath = config.path.relativize(path).toString
+            val relativePath = config.mediaPath.relativize(path).toString
 
             persistedMedia.find(_.fileInfo.relativePath == relativePath) match {
               case None => config.hashingAlgorithm.generateHash(path)
@@ -164,13 +168,13 @@ object MediaLibScanner extends Logging with JsonCodecs {
       .filterNot { case (path, hash) =>
         // filters existing, unchanged files
         remaining.exists(m =>
-          m.fileInfo.hash == hash && m.fileInfo.relativePath == config.path.relativize(path).toString
+          m.fileInfo.hash == hash && m.fileInfo.relativePath == config.mediaPath.relativize(path).toString
         )
       }
       .filterNot { case (_, hash) => collidingHashes.contains(hash) }
       .mapParallelUnordered[Media](config.scanParallelFactor) { case (videoFile, hash) =>
         Task {
-          val relativePath = config.path.relativize(videoFile).toString
+          val relativePath = config.mediaPath.relativize(videoFile).toString
 
           remaining.find(_.fileInfo.hash == hash) match {
             case Some(old) =>
@@ -179,7 +183,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
             case None =>
               logger.info(s"Scanning new file: '${relativePath}'")
-              scanVideo(hash, config.path, videoFile, config)
+              scanVideo(hash, config.mediaPath, videoFile, config)
           }
         }
       }
@@ -189,28 +193,28 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
   def deleteVideoFragment(indexPath: Path, id: String, from: Long, to: Long): Unit = {
 
-    (indexPath / "thumbnails" / s"${id}-$from.webp").deleteIfExists()
-    (indexPath / "thumbnails" / s"${id}-$from-$to.mp4").deleteIfExists()
+    (indexPath / "resources" / s"${id}-$from.webp").deleteIfExists()
+    (indexPath / "resources" / s"${id}-$from-$to.mp4").deleteIfExists()
   }
 
   def createVideoFragment(videoPath: Path, indexPath: Path, id: String, from: Long, to: Long, config: PreviewConfig): Unit = {
 
-    val thumbnailPath = s"${indexPath}/thumbnails"
+    val resourcePath = indexPath.resolve("resources")
 
-    Files.createDirectories(indexPath.resolve("thumbnails"))
+    Files.createDirectories(resourcePath)
 
     FFMpeg.writeThumbnail(
-      inputFile   = videoPath.absoluteFileName(),
+      inputFile   = videoPath,
       timestamp   = from,
-      outputFile  = Some(s"${thumbnailPath}/${id}-$from.webp"),
+      outputFile  = Some(resourcePath.resolve(s"${id}-$from.webp")),
       scaleHeight = Some(config.scaleHeight)
     )
 
     FFMpeg.writeMp4(
-      inputFile   = videoPath.absoluteFileName(),
+      inputFile   = videoPath,
       from        = from,
       to          = to,
-      outputFile  = Some(s"${thumbnailPath}/${id}-$from-$to.mp4"),
+      outputFile  = Some(resourcePath.resolve(s"${id}-$from-$to.mp4")),
       quality     = config.videoCrf,
       scaleHeight = Some(config.scaleHeight)
     )

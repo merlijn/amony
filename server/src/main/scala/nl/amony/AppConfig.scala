@@ -19,7 +19,10 @@ case class MediaLibConfig(
   verifyExistingHashes: Boolean,
   hashingAlgorithm: HashingAlgorithm,
   previews: PreviewConfig
-)
+) {
+
+  lazy val mediaPath = path.toAbsolutePath.normalize()
+}
 
 case class PreviewConfig(
   videoCodec: String,

@@ -1,72 +1,133 @@
 package nl.amony.lib
 
 import better.files.File
+import monix.eval.Task
+import nl.amony.lib.FFMpeg.model.ProbeDebugOutput
 import nl.amony.lib.FileUtil.{PathOps, stripExtension}
 import scribe.Logging
 
 import java.io.InputStream
 import java.nio.file.Path
 import java.time.Duration
+import java.util.concurrent.TimeUnit
+import scala.util.Try
 
 object FFMpeg extends Logging {
 
-  case class Probe(
-    duration: Long,
-    resolution: (Int, Int),
-    fps: Double,
-    fastStart: Boolean
-  )
+  object model {
+    import io.circe._, io.circe.generic.semiauto._
 
-  val pattern = raw"Duration:\s(\d{2}):(\d{2}):(\d{2})".r.unanchored
-  val res     = raw"Stream #0.*,\s(\d{2,})x(\d{2,})".r.unanchored
+    case class ProbeDebugOutput(
+      isFastStart: Boolean
+    )
 
-  val fpsPattern = raw"Stream #0.*,\s([\w\.]+)\sfps".r.unanchored
+    case class ProbeOutput(
+      streams: List[Stream]
+    ) {
+      def firstVideoStream: Option[VideoStream] = streams.collectFirst {
+        case v: VideoStream => v
+      }
+    }
 
-  val streamPattern = """\s*Stream #.*(Video.*)""".r.unanchored
+    val durationPattern = raw"(\d{2}):(\d{2}):(\d{2})".r.unanchored
+
+    sealed trait Stream
+
+    case object UnkownStream extends Stream
+
+    case class AudioStream(
+      codec_name: String
+    ) extends Stream
+
+    case class VideoStream(
+      codec_name: String,
+      width: Int,
+      height: Int,
+      duration: String,
+      bit_rate: String,
+      avg_frame_rate: String,
+      tags: Map[String, String]
+    ) extends Stream {
+      def durationMillis: Long = (duration.toDouble * 1000L).toLong
+      def fps: Double = {
+        val splitted = avg_frame_rate.split('/')
+        val divident = splitted(0).toDouble
+        val divisor = splitted(1).toDouble
+
+        divident / divisor
+      }
+    }
+
+    implicit val videoStreamDecoder: Decoder[VideoStream] = deriveDecoder[VideoStream]
+    implicit val audioStreamDecoder: Decoder[AudioStream] = deriveDecoder[AudioStream]
+    implicit val probeDecoder: Decoder[ProbeOutput] = deriveDecoder[ProbeOutput]
+
+    implicit val streamDecoder: Decoder[Stream] = new Decoder[Stream] {
+      final def apply(c: HCursor): Decoder.Result[Stream] = {
+
+        c.downField("codec_type").as[String].flatMap {
+          case "video" => c.as[VideoStream]
+          case "audio" => c.as[AudioStream]
+          case _       => Right(UnkownStream)
+        }
+      }
+    }
+  }
 
   // https://stackoverflow.com/questions/56963790/how-to-tell-if-faststart-for-video-is-set-using-ffmpeg-or-ffprobe/56963953#56963953
   // Before avformat_find_stream_info() pos: 3193581 bytes read:3217069 seeks:0 nb_streams:2
   val fastStartPattern =
     raw"""Before\savformat_find_stream_info\(\)\spos:\s\d+\sbytes\sread:\d+\sseeks:0""".r.unanchored
 
-  def extractFps(ffprobeOutput: String, hint: String): Option[Double] = {
-    ffprobeOutput match {
-      case fpsPattern(fps) => Some(fps.toDouble)
-      case _ =>
-        logger.warn(s"Failed to extract fps info from '$hint''")
-        None
+  def ffprobeOld(file: Path): (model.ProbeOutput, model.ProbeDebugOutput) = {
+
+    val fileName = file.toAbsolutePath.normalize().toString
+    val debugOutput = runSync(useErrorStream = true, cmds = List("ffprobe", "-v", "debug", fileName))
+    (null, ProbeDebugOutput(fastStartPattern.matches(debugOutput)))
+  }
+
+  def ffprobe(file: Path): (model.ProbeOutput, model.ProbeDebugOutput) = {
+
+    import model._
+
+    val fileName = file.toAbsolutePath.normalize().toString
+
+    logger.info(s"probing: $fileName")
+
+    // setting -v to debug will hang the standard output stream on some files.
+    val process   = run(cmds = List("ffprobe", "-print_format", "json", "-show_streams", "-v", "quiet", fileName))
+
+//    Task {
+//      val result = process.waitFor(3000, TimeUnit.MILLISECONDS)
+//      if (!result) {
+//        logger.info(s"Timed out after 3 seconds")
+//        process.destroy()
+//      }
+//    }.runToFuture(monix.execution.Scheduler.Implicits.global)
+
+    val jsonOutput = scala.io.Source.fromInputStream(process.getInputStream).mkString
+//    val debugOutput = readStream(process.getErrorStream)
+//    val debugProbe = ProbeDebugOutput(fastStartPattern.matches(debugOutput))
+    val debugProbe = ProbeDebugOutput(true)
+
+    io.circe.parser.decode[ProbeOutput](jsonOutput) match {
+      case Left(error) => throw error
+      case Right(out)  => (out, debugProbe)
     }
   }
 
-  def ffprobeParse(output: String, hint: String): Probe = {
-    val (w, h) = output match {
-      case res(w, h) =>
-        (w.toInt, h.toInt)
-      case _ =>
-        logger.warn(s"Failed to extract fps info from '$hint'")
-        (0, 0)
+  private def readStream(is: InputStream) = {
+    val builder = new StringBuilder
+
+    try {
+      scala.io.Source.fromInputStream(is).iter.foreach { c =>
+        print(c)
+        builder.append(c)
+      }
+    } catch {
+      case e: Exception => logger.warn(e)
     }
-
-    val duration: Long = output match {
-      case pattern(hours, minutes, seconds) =>
-        hours.toInt * 60 * 60 * 1000 +
-          minutes.toInt * 60 * 1000 +
-          seconds.toInt * 1000
-    }
-
-    val fastStart = fastStartPattern.matches(output)
-
-    val fps = extractFps(output, hint).getOrElse(0d)
-
-    Probe(duration, (w, h), fps, fastStart)
-  }
-
-  def ffprobe(file: Path): Probe = {
-
-    val fileName = file.toAbsolutePath.toString
-    val output   = runSync(useErrorStream = true, cmds = List("ffprobe", "-v", "debug", fileName))
-
-    ffprobeParse(output, file.toString)
+    builder.toString()
   }
 
   private def formatTime(timestamp: Long): String = {
@@ -105,27 +166,30 @@ object FFMpeg extends Logging {
   }
 
   def writeMp4(
-      inputFile: String,
+      inputFile: Path,
       from: Long,
       to: Long,
-      outputFile: Option[String] = None,
+      outputFile: Option[Path] = None,
       quality: Int = 24,
       scaleHeight: Option[Int]
   ): Unit = {
+
+    val input = inputFile.toAbsolutePath.normalize().toString
+    val output = outputFile.map(_.toAbsolutePath.normalize().toString).getOrElse(s"${stripExtension(input)}.mp4")
 
     // format: off
     val args: List[String] =
       List(
         "-ss",  formatTime(from),
         "-to",  formatTime(to),
-        "-i",   inputFile,
+        "-i",   input,
       ) ++
         scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
       List(
         "-movflags", "+faststart",
         "-crf", s"$quality",
         "-an", // no audio
-        "-y",   outputFile.getOrElse(s"${stripExtension(inputFile)}.mp4")
+        "-y",   output
       )
     // format: on
 
@@ -158,7 +222,7 @@ object FFMpeg extends Logging {
       )
     // format: on
 
-    runAsync(false, "ffmpeg" :: args)
+    run("ffmpeg" :: args).getInputStream
   }
 
   def streamThumbnail(
@@ -177,32 +241,33 @@ object FFMpeg extends Logging {
       "-"
     )
 
-    runAsync(false, "ffmpeg" :: args)
+    run("ffmpeg" :: args).getInputStream
   }
 
   def writeThumbnail(
-    inputFile: String,
+    inputFile: Path,
     timestamp: Long,
-    outputFile: Option[String],
+    outputFile: Option[Path],
     scaleHeight: Option[Int]
   ): Unit = {
+
+    val input = inputFile.toAbsolutePath.normalize().toString
+    val output = outputFile.map(_.toAbsolutePath.normalize().toString).getOrElse(s"${stripExtension(input)}.webp")
 
     // format: off
     val args = List(
       "-ss",      formatTime(timestamp),
-      "-i",       inputFile
+      "-i",       input
     ) ++ scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
       List(
         "-quality", "80", // 1 - 31 (best-worst) for jpeg, 1-100 (worst-best) for webp
         "-vframes", "1",
-        "-y",       outputFile.getOrElse(s"${stripExtension(inputFile)}.webp")
+        "-y",       output
       )
     // format: on
 
     runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
   }
-
-
 
   def generatePreviewSprite(
      inputFile: Path,
@@ -229,11 +294,12 @@ object FFMpeg extends Logging {
 
     val fileBaseName = outputBaseName.getOrElse(inputFile.getFileName.stripExtension())
 
-    val probe = ffprobe(inputFile)
-    val (frames, tileSize) = calculateNrOfFrames(probe.duration)
-    val mod = ((probe.fps * (probe.duration / 1000)) / frames).toInt
+    val (probe, _) = ffprobe(inputFile)
+    val stream = probe.firstVideoStream.getOrElse(throw new IllegalStateException("no video stream found"))
+    val (frames, tileSize) = calculateNrOfFrames(stream.durationMillis)
+    val mod = ((stream.fps * (stream.durationMillis / 1000)) / frames).toInt
 
-    val width: Int = ((probe.resolution._1.toDouble / probe.resolution._2) * height).toInt
+    val width: Int = ((stream.width / stream.height) * height).toInt
 
 //    logger.info(s"fps: ${probe.fps}, length: ${probe.duration}, frames: $frames, tileSize: $tileSize, mod: $mod")
 
@@ -247,7 +313,7 @@ object FFMpeg extends Logging {
     )
 
     def genVtt(): String = {
-      val thumbLength: Int = (probe.duration / frames).toInt
+      val thumbLength: Int = (stream.durationMillis / frames).toInt
 
       val builder = new StringBuilder()
 
@@ -280,8 +346,7 @@ object FFMpeg extends Logging {
 
     logger.debug(s"Running command: ${cmds.mkString(",")}")
 
-    val runtime  = Runtime.getRuntime
-    val process  = runtime.exec(cmds.toArray)
+    val process  = Runtime.getRuntime.exec(cmds.toArray)
     val is       = if (useErrorStream) process.getErrorStream else process.getInputStream
     val output   = scala.io.Source.fromInputStream(is).mkString
     val exitCode = process.waitFor()
@@ -292,9 +357,7 @@ object FFMpeg extends Logging {
     output
   }
 
-  def runAsync(useErrorStream: Boolean, cmds: Seq[String]): InputStream = {
-    val runtime  = Runtime.getRuntime
-    val process  = runtime.exec(cmds.toArray)
-    if (useErrorStream) process.getErrorStream else process.getInputStream
+  def run(cmds: Seq[String]): Process = {
+    Runtime.getRuntime.exec(cmds.toArray)
   }
 }

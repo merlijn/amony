@@ -1,7 +1,6 @@
 package nl.amony.lib
 
 import akka.actor.typed.ActorSystem
-import akka.actor.typed.scaladsl.adapter.ClassicActorRefOps
 import akka.persistence.query.PersistenceQuery
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.serialization.jackson.JacksonObjectMapperProvider
@@ -16,14 +15,13 @@ import nl.amony.MediaLibConfig
 import nl.amony.actor.MediaIndex._
 import nl.amony.actor.MediaLibProtocol._
 import scribe.Logging
-import FileUtil._
 import nl.amony.actor.Message
 
 import java.io.InputStream
 import java.nio.file.Path
 import scala.concurrent.Future
 
-class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends Logging {
+class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends Logging {
 
   import akka.actor.typed.scaladsl.AskPattern._
   implicit val scheduler = system.scheduler
@@ -41,10 +39,8 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Message]) exte
 
     def search(q: Option[String], offset: Option[Int], size: Int, tag: Option[String], minRes: Option[Int], sort: Sort)(
         implicit timeout: Timeout
-    ): Future[SearchResult] = {
-
+    ): Future[SearchResult] =
       system.ask[SearchResult](ref => Search(Query(q, offset, size, tag, minRes, Some(sort)), ref))
-    }
 
     def getDirectories()(implicit timeout: Timeout): Future[List[Directory]] =
       system.ask[List[Directory]](ref => GetDirectories(ref))
@@ -64,13 +60,13 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Message]) exte
           case None         =>
             File(resourcePath().resolve(s"${media.id}-${media.fragments.head.fromTimestamp}.webp")).newFileInputStream
           case Some(millis) =>
-            FFMpeg.streamThumbnail(config.path.resolve(media.fileInfo.relativePath).toAbsolutePath, millis, 320)
+            FFMpeg.streamThumbnail(config.mediaPath.resolve(media.fileInfo.relativePath).toAbsolutePath, millis, 320)
         }
       })
     }
 
     def getFilePathForMedia(vid: Media): String =
-      (File(config.path) / vid.fileInfo.relativePath).path.toAbsolutePath.toString
+      (File(config.mediaPath) / vid.fileInfo.relativePath).path.toAbsolutePath.toString
   }
 
   object modify {
@@ -128,7 +124,8 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Message]) exte
     }
 
     def regeneratePreviewFor(m: Media): Unit = {
-      val videoPath = config.path.resolve(m.fileInfo.relativePath)
+      val videoPath = config.mediaPath.resolve(m.fileInfo.relativePath)
+
       m.fragments.foreach { f =>
         logger.info(s"Generating preview(s) for: ${m.fileInfo.relativePath}")
         MediaLibScanner.createVideoFragment(videoPath, config.indexPath, m.id, f.fromTimestamp, f.toTimestamp, config.previews)
@@ -140,8 +137,8 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Message]) exte
         medias.foreach { m =>
           logger.info(s"generating thumbnail previews for '${m.fileName()}'")
           FFMpeg.generatePreviewSprite(
-            m.resolvePath(config.path).toAbsolutePath,
-            outputDir = config.indexPath.resolve("thumbnails"),
+            m.resolvePath(config.mediaPath).toAbsolutePath,
+            outputDir = config.indexPath.resolve("resources"),
             outputBaseName = Some(s"${m.id}-timeline")
           )
         }
@@ -164,7 +161,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Message]) exte
         logger.info("Verifying all file hashes ...")
 
         medias.foreach { m =>
-          val hash = config.hashingAlgorithm.generateHash(config.path / m.fileInfo.relativePath)
+          val hash = config.hashingAlgorithm.generateHash(config.mediaPath.resolve(m.fileInfo.relativePath))
 
           if (hash != m.fileInfo.hash)
             logger.info(s"Found different hash for: ${m.fileInfo.relativePath}")
@@ -178,7 +175,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Message]) exte
 
     def exportLibrary()(implicit timeout: Timeout): Unit = {
 
-      val file = (config.indexPath / "export.json").toFile
+      val file = config.indexPath.resolve("export.json").toFile
 
       query.getAll().foreach { medias =>
         objectMapper.createGenerator(file, JsonEncoding.UTF8).writeObject(medias)
@@ -186,7 +183,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Message]) exte
     }
 
     def convertNonStreamableVideos(): Unit = {
-      MediaLibScanner.convertNonStreamableVideos(config, MediaLibApi.this)
+      MediaLibScanner.convertNonStreamableVideos(config, AmonyApi.this)
     }
   }
 }

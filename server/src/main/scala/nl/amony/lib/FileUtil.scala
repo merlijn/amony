@@ -24,7 +24,7 @@ object FileUtil extends Logging {
       attributes.creationTime().toMillis
     }
 
-    def absoluteFileName(): String = path.toAbsolutePath.toString
+    def absoluteFileName(): String = path.toAbsolutePath.normalize().toString
 
     def deleteIfExists(): Unit = {
       val f = File(path)

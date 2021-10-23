@@ -71,8 +71,8 @@ object MediaIndex {
         logger.debug("Updating index")
         directories = {
           val dirs = media.values.foldLeft(Set.empty[String]) { case (set, e) =>
-            val parent = (File(config.path) / e.fileInfo.relativePath).parent
-            val dir    = s"/${config.path.relativize(parent)}"
+            val parent = (File(config.mediaPath) / e.fileInfo.relativePath).parent
+            val dir    = s"/${config.mediaPath.relativize(parent)}"
             set + dir
           }
           dirs.toList.sorted.zipWithIndex.map { case (path, idx) => Directory(idx.toString, path) }

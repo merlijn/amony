@@ -54,7 +54,7 @@ object MediaLibCommandHandler extends Logging {
       case RemoveMedia(mediaId, sender) =>
 
         val media = state.media(mediaId)
-        val path  = media.resolvePath(config.path)
+        val path  = media.resolvePath(config.mediaPath)
 
         logger.info(s"Deleting media '$mediaId:${media.fileInfo.relativePath}'")
 
@@ -118,7 +118,7 @@ object MediaLibCommandHandler extends Logging {
               .persist(FragmentRangeUpdated(id, idx, from, to))
               .thenRun { (s: State) =>
                 deleteVideoFragment(config.indexPath, media.id, oldFragment.fromTimestamp, oldFragment.toTimestamp)
-                createVideoFragment(media.resolvePath(config.path), config.indexPath, id, from, to, config.previews)
+                createVideoFragment(media.resolvePath(config.mediaPath), config.indexPath, id, from, to, config.previews)
               }
               .thenReply(sender)(s => Right(s.media(id)))
           }
@@ -142,7 +142,7 @@ object MediaLibCommandHandler extends Logging {
             Effect
               .persist(FragmentAdded(id, from, to))
               .thenRun((_: State) =>
-                createVideoFragment(media.resolvePath(config.path), config.indexPath, id, from, to, config.previews)
+                createVideoFragment(media.resolvePath(config.mediaPath), config.indexPath, id, from, to, config.previews)
               )
               .thenReply(sender)(s => Right(s.media(id)))
           }

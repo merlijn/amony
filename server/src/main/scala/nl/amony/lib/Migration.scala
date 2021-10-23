@@ -28,7 +28,7 @@ object Migration extends Logging {
 
   case class FragmentOld(fromTimestamp: Long, toTimestamp: Long)
 
-  def importFromExport(api: MediaLibApi)(implicit timeout: Timeout) = {
+  def importFromExport(api: AmonyApi)(implicit timeout: Timeout) = {
 
     implicit val thumbnailCodec = deriveCodec[FragmentOld]
     implicit val mediaOldCodec  = deriveCodec[MediaOld]
@@ -52,7 +52,7 @@ object Migration extends Logging {
             }
           }
 
-          val path       = api.config.path.resolve(m.uri)
+          val path       = api.config.mediaPath.resolve(m.uri)
           val attributes = Files.readAttributes(path, classOf[BasicFileAttributes])
 
           val fileInfo = FileInfo(
