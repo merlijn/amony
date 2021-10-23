@@ -25,7 +25,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
   def convertNonStreamableVideos(config: MediaLibConfig, api: MediaLibApi): Unit = {
 
-    val files = FileUtil.walkDir(config.libraryPath)
+    val files = FileUtil.walkDir(config.path)
 
     implicit val timeout: Timeout = Timeout(3.seconds)
     implicit val ec               = scala.concurrent.ExecutionContext.global
@@ -42,13 +42,13 @@ object MediaLibScanner extends Logging with JsonCodecs {
         val oldHash = config.hashingAlgorithm.generateHash(videoWithoutFastStart)
         val newHash = config.hashingAlgorithm.generateHash(out)
 
-        logger.info(s"$oldHash -> $newHash: ${config.libraryPath.relativize(out).toString}")
+        logger.info(s"$oldHash -> $newHash: ${config.path.relativize(out).toString}")
 
         api.query.getById(oldHash).onComplete {
           case Success(Some(v)) =>
             val m = v.copy(
               id       = newHash,
-              fileInfo = v.fileInfo.copy(hash = newHash, relativePath = config.libraryPath.relativize(out).toString)
+              fileInfo = v.fileInfo.copy(hash = newHash, relativePath = config.path.relativize(out).toString)
             )
 
             api.modify.upsertMedia(m).foreach { _ =>
@@ -105,7 +105,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       persistedMedia: List[Media]
   )(implicit s: Scheduler, timeout: Timeout): (Observable[Media], Observable[Media]) = {
 
-    val files = FileUtil.walkDir(config.libraryPath)
+    val files = FileUtil.walkDir(config.path)
 
     logger.info("Scanning directory for files & calculating hashes...")
 
@@ -118,7 +118,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
           val hash = if (config.verifyExistingHashes) {
             config.hashingAlgorithm.generateHash(path)
           } else {
-            val relativePath = config.libraryPath.relativize(path).toString
+            val relativePath = config.path.relativize(path).toString
 
             persistedMedia.find(_.fileInfo.relativePath == relativePath) match {
               case None => config.hashingAlgorithm.generateHash(path)
@@ -164,13 +164,13 @@ object MediaLibScanner extends Logging with JsonCodecs {
       .filterNot { case (path, hash) =>
         // filters existing, unchanged files
         remaining.exists(m =>
-          m.fileInfo.hash == hash && m.fileInfo.relativePath == config.libraryPath.relativize(path).toString
+          m.fileInfo.hash == hash && m.fileInfo.relativePath == config.path.relativize(path).toString
         )
       }
       .filterNot { case (_, hash) => collidingHashes.contains(hash) }
       .mapParallelUnordered[Media](config.scanParallelFactor) { case (videoFile, hash) =>
         Task {
-          val relativePath = config.libraryPath.relativize(videoFile).toString
+          val relativePath = config.path.relativize(videoFile).toString
 
           remaining.find(_.fileInfo.hash == hash) match {
             case Some(old) =>
@@ -179,7 +179,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
             case None =>
               logger.info(s"Scanning new file: '${relativePath}'")
-              scanVideo(hash, config.libraryPath, videoFile, config)
+              scanVideo(hash, config.path, videoFile, config)
           }
         }
       }

@@ -8,18 +8,20 @@ import nl.amony.actor.MediaLibProtocol.Command
 import akka.actor.typed.scaladsl.adapter._
 import nl.amony.actor.MediaIndex.IndexQuery
 
+trait Message
+
 object MainRouter {
 
-  def apply(config: MediaLibConfig): Behavior[Any] =
+  def apply(config: MediaLibConfig): Behavior[Message] =
 
     Behaviors.setup { context =>
 
-      implicit val mat       = Materializer(context)
+      implicit val mat = Materializer(context)
 
       val localIndex = MediaIndex.apply(config, context).toTyped[IndexQuery]
       val handler = context.spawn(MediaLibProtocol.apply(config), "medialib")
 
-      Behaviors.receiveMessage {
+      Behaviors.receiveMessage[Message] {
 
         case q: IndexQuery =>
           localIndex.tell(q)

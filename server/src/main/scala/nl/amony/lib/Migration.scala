@@ -52,7 +52,7 @@ object Migration extends Logging {
             }
           }
 
-          val path       = api.config.libraryPath.resolve(m.uri)
+          val path       = api.config.path.resolve(m.uri)
           val attributes = Files.readAttributes(path, classOf[BasicFileAttributes])
 
           val fileInfo = FileInfo(

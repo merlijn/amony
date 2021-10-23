@@ -1,7 +1,7 @@
 package nl.amony
 
 import akka.actor.typed.{ActorSystem, Behavior}
-import nl.amony.actor.{MainRouter, MediaLibProtocol}
+import nl.amony.actor.{MainRouter, MediaLibProtocol, Message}
 import nl.amony.actor.MediaLibProtocol.Command
 import nl.amony.http.WebServer
 import nl.amony.lib.{FFMpeg, MediaLibApi}
@@ -15,8 +15,8 @@ object App extends AppConfig with Logging {
   def main(args: Array[String]): Unit = {
 
 //    val router: Behavior[Command] = MediaLibProtocol(mediaLibConfig)
-    val router: Behavior[Any] = MainRouter.apply(mediaLibConfig)
-    val system: ActorSystem[Any] = ActorSystem(router, "mediaLibrary", config)
+    val router: Behavior[Message] = MainRouter.apply(mediaLibConfig)
+    val system: ActorSystem[Message] = ActorSystem(router, "mediaLibrary", config)
 
     val api = new MediaLibApi(mediaLibConfig, system)
 
@@ -40,7 +40,7 @@ object App extends AppConfig with Logging {
     logger.warn("Probing all videos")
 
     val (fastStart, nonFastStart) = media.partition { m =>
-      val path  = m.resolvePath(api.config.libraryPath)
+      val path  = m.resolvePath(api.config.path)
       val probe = FFMpeg.ffprobe(path)
       probe.fastStart
     }

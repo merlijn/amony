@@ -162,14 +162,14 @@ object FFMpeg extends Logging {
   }
 
   def streamThumbnail(
-     inputFile: String,
+     inputFile: Path,
      timestamp: Long,
      scaleHeight: Int
   ): InputStream = {
 
     val args = List(
       "-ss",      formatTime(timestamp),
-      "-i" ,      inputFile,
+      "-i" ,      inputFile.toString,
       "-vcodec",  "webp",
       "-vf",      s"scale=-2:$scaleHeight",
       "-vframes", "1",
@@ -202,18 +202,7 @@ object FFMpeg extends Logging {
     runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
   }
 
-  private[lib] def calculateNrOfFrames(length: Long): (Int, Int) = {
 
-    // 2, 3,  4,  5,  6,  7,  8,  9,  10,  11,  12
-    // 4, 9, 16, 25, 36, 49, 64, 81, 100, 121, 144
-    val minFrames = 4
-    val maxFrames = 64
-
-    val frames = Math.min(maxFrames, Math.max(minFrames, length / (10 * 1000)))
-    val tileSize = Math.ceil(Math.sqrt(frames.toDouble)).toInt
-
-    frames.toInt -> tileSize
-  }
 
   def generatePreviewSprite(
      inputFile: Path,
@@ -223,6 +212,21 @@ object FFMpeg extends Logging {
      frameInterval: Option[Int] = None
   ) = {
 
+    def calculateNrOfFrames(length: Long): (Int, Int) = {
+
+      // 2, 3,  4,  5,  6,  7,  8,  9,  10,  11,  12
+      // 4, 9, 16, 25, 36, 49, 64, 81, 100, 121, 144
+      val minFrames = 4
+      val maxFrames = 64
+
+      val frames = Math.min(maxFrames, Math.max(minFrames, length / (10 * 1000)))
+      val tileSize = Math.ceil(Math.sqrt(frames.toDouble)).toInt
+
+      frames.toInt -> tileSize
+    }
+
+    val maximumFrames = 256
+
     val fileBaseName = outputBaseName.getOrElse(inputFile.getFileName.stripExtension())
 
     val probe = ffprobe(inputFile)
@@ -231,11 +235,7 @@ object FFMpeg extends Logging {
 
     val width: Int = ((probe.resolution._1.toDouble / probe.resolution._2) * height).toInt
 
-//    logger.info(s"fps: ${probe.fps}")
-//    logger.info(s"length: ${probe.duration}")
-//    logger.info(s"frames: $frames")
-//    logger.info(s"tileSize: $tileSize")
-//    logger.info(s"mod: $mod")
+//    logger.info(s"fps: ${probe.fps}, length: ${probe.duration}, frames: $frames, tileSize: $tileSize, mod: $mod")
 
     val args = List(
       "-i" ,      inputFile.toAbsolutePath.toString,

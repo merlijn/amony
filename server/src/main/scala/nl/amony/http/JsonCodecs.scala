@@ -36,15 +36,15 @@ trait JsonCodecs {
       duration      = media.videoInfo.duration,
       addedOn       = media.fileInfo.creationTime,
       fps           = media.videoInfo.fps,
-      thumbnail_uri = s"/files/thumbnails/${media.id}.webp",
-      preview_thumbnails_uri = Some(s"/files/thumbnails/${media.id}-timeline.vtt"),
+      thumbnail_uri = s"/files/resources/${media.id}.webp",
+      preview_thumbnails_uri = Some(s"/files/resources/${media.id}-timeline.vtt"),
       fragments = media.fragments.zipWithIndex.map { case (f, index) =>
         Fragment(
           mediaId         = media.id,
           index           = index,
           timestamp_start = f.fromTimestamp,
           timestamp_end   = f.toTimestamp,
-          uri             = s"/files/thumbnails/${media.id}-${f.fromTimestamp}-${f.toTimestamp}.mp4",
+          uri             = s"/files/resources/${media.id}-${f.fromTimestamp}-${f.toTimestamp}.mp4",
           comment         = f.comment,
           tags            = f.tags
         )

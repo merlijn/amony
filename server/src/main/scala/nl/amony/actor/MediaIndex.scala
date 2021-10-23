@@ -14,7 +14,7 @@ import scribe.Logging
 
 object MediaIndex {
 
-  sealed trait IndexQuery
+  sealed trait IndexQuery extends Message
 
   case class Directory(id: String, path: String)
   case class GetDirectories(sender: typed.ActorRef[List[Directory]])    extends IndexQuery
@@ -71,8 +71,8 @@ object MediaIndex {
         logger.debug("Updating index")
         directories = {
           val dirs = media.values.foldLeft(Set.empty[String]) { case (set, e) =>
-            val parent = (File(config.libraryPath) / e.fileInfo.relativePath).parent
-            val dir    = s"/${config.libraryPath.relativize(parent)}"
+            val parent = (File(config.path) / e.fileInfo.relativePath).parent
+            val dir    = s"/${config.path.relativize(parent)}"
             set + dir
           }
           dirs.toList.sorted.zipWithIndex.map { case (path, idx) => Directory(idx.toString, path) }

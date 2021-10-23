@@ -1,12 +1,10 @@
 package nl.amony.lib
 
-import akka.actor.ActorRef
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.adapter.ClassicActorRefOps
 import akka.persistence.query.PersistenceQuery
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.serialization.jackson.JacksonObjectMapperProvider
-import akka.stream.Materializer
 import akka.util.Timeout
 import better.files.File
 import better.files.File.apply
@@ -19,12 +17,13 @@ import nl.amony.actor.MediaIndex._
 import nl.amony.actor.MediaLibProtocol._
 import scribe.Logging
 import FileUtil._
+import nl.amony.actor.Message
 
 import java.io.InputStream
 import java.nio.file.Path
 import scala.concurrent.Future
 
-class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Any]) extends Logging {
+class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends Logging {
 
   import akka.actor.typed.scaladsl.AskPattern._
   implicit val scheduler = system.scheduler
@@ -53,27 +52,25 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Any]) extends 
 
   object resources {
 
-    def resourcePath() = Path.of(s"${config.indexPath}/thumbnails")
+    def resourcePath(): Path = config.indexPath.resolve("resources")
 
-    def getVideoFragment(id: String): String = s"${config.indexPath}/thumbnails/$id"
+    def getVideoFragment(id: String): Path = resourcePath().resolve(id)
 
     def getThumbnail(id: String, timestamp: Option[Long])(implicit timeout: Timeout): Future[Option[InputStream]] = {
 
       query.getById(id).map(_.map { media =>
 
-        val file = (config.libraryPath / media.fileInfo.relativePath).toAbsolutePath.toString
-
         timestamp match {
           case None         =>
-            File(config.indexPath / "thumbnails" / s"${media.id}-${media.fragments.head.fromTimestamp}.webp").newFileInputStream
+            File(resourcePath().resolve(s"${media.id}-${media.fragments.head.fromTimestamp}.webp")).newFileInputStream
           case Some(millis) =>
-            FFMpeg.streamThumbnail(file, millis, 320)
+            FFMpeg.streamThumbnail(config.path.resolve(media.fileInfo.relativePath).toAbsolutePath, millis, 320)
         }
       })
     }
 
     def getFilePathForMedia(vid: Media): String =
-      (File(config.libraryPath) / vid.fileInfo.relativePath).path.toAbsolutePath.toString
+      (File(config.path) / vid.fileInfo.relativePath).path.toAbsolutePath.toString
   }
 
   object modify {
@@ -131,7 +128,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Any]) extends 
     }
 
     def regeneratePreviewFor(m: Media): Unit = {
-      val videoPath = config.libraryPath.resolve(m.fileInfo.relativePath)
+      val videoPath = config.path.resolve(m.fileInfo.relativePath)
       m.fragments.foreach { f =>
         logger.info(s"Generating preview(s) for: ${m.fileInfo.relativePath}")
         MediaLibScanner.createVideoFragment(videoPath, config.indexPath, m.id, f.fromTimestamp, f.toTimestamp, config.previews)
@@ -143,7 +140,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Any]) extends 
         medias.foreach { m =>
           logger.info(s"generating thumbnail previews for '${m.fileName()}'")
           FFMpeg.generatePreviewSprite(
-            m.resolvePath(config.libraryPath).toAbsolutePath,
+            m.resolvePath(config.path).toAbsolutePath,
             outputDir = config.indexPath.resolve("thumbnails"),
             outputBaseName = Some(s"${m.id}-timeline")
           )
@@ -167,7 +164,7 @@ class MediaLibApi(val config: MediaLibConfig, system: ActorSystem[Any]) extends 
         logger.info("Verifying all file hashes ...")
 
         medias.foreach { m =>
-          val hash = config.hashingAlgorithm.generateHash(config.libraryPath / m.fileInfo.relativePath)
+          val hash = config.hashingAlgorithm.generateHash(config.path / m.fileInfo.relativePath)
 
           if (hash != m.fileInfo.hash)
             logger.info(s"Found different hash for: ${m.fileInfo.relativePath}")

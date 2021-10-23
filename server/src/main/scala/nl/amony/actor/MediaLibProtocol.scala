@@ -15,7 +15,7 @@ object MediaLibProtocol {
   case class MediaNotFound(id: String)      extends ErrorResponse
   case class InvalidCommand(reason: String) extends ErrorResponse
 
-  sealed trait Command
+  sealed trait Command extends Message
 
   case class UpsertMedia(media: Media, sender: ActorRef[Boolean]) extends Command
   case class RemoveMedia(id: String, sender: ActorRef[Boolean])   extends Command
@@ -55,7 +55,6 @@ object MediaLibProtocol {
   // -- State
   case class State(media: Map[String, Media])
   case class Fragment(fromTimestamp: Long, toTimestamp: Long, comment: Option[String], tags: List[String])
-
 
   case class FileInfo(
       relativePath: String,

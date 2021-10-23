@@ -13,7 +13,7 @@ import java.nio.file.Path
 import scala.concurrent.duration.FiniteDuration
 
 case class MediaLibConfig(
-  libraryPath: Path,
+  path: Path,
   indexPath: Path,
   scanParallelFactor: Int,
   verifyExistingHashes: Boolean,
