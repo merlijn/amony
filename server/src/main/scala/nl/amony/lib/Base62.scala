@@ -30,7 +30,15 @@ object Base62 {
 
 class Base62 private(val alphabet: Array[Byte]) {
 
-  private val lookup: Array[Byte] = (0 until alphabet.length).map(i => (i & 0xFF).toByte).toArray
+  private val lookup: Array[Byte] =  {
+    val tmp = new Array[Byte](256)
+    var i = 0
+    while ( { i < alphabet.length }) {
+      tmp(alphabet(i)) = (i & 0xFF).toByte
+      i += 1
+    }
+    tmp
+  }
 
   def encodeToString(msg: Array[Byte]): String = new String(encode(msg))
 

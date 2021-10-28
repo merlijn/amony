@@ -36,7 +36,8 @@ lazy val root = (project in file(".")).
       "io.circe"              %% "circe-parser" % "0.14.1",
       "com.github.pathikrit"  %% "better-files" % "3.9.1",
       "io.seruco.encoding"     % "base62" % "0.1.3",
-      "org.scalatest"         %% "scalatest"                % "3.2.9"         % Test
+      "org.scalatest"         %% "scalatest"                % "3.2.9"         % Test,
+      "org.scalatestplus"     %% "scalacheck-1-15" % "3.2.9.0" % Test
     ),
 //    assembly / logLevel := Level.Debug,
     assembly / assemblyJarName := "amony.jar",
