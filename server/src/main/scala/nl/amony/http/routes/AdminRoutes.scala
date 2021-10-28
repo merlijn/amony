@@ -20,7 +20,10 @@ trait AdminRoutes {
     } ~ (path("verify-hashes") & post) {
       api.admin.verifyHashes()
       complete("OK")
-    } ~ (path("convert-non-streamable-videos") & post) {
+    } ~ (path("update-hashes") & post) {
+      api.admin.updateHashes()
+      complete("OK")
+    }~ (path("convert-non-streamable-videos") & post) {
       api.admin.convertNonStreamableVideos()
       complete("OK")
     } ~ (path("scan-library") & post) {

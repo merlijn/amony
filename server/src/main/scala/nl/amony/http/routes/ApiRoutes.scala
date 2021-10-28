@@ -59,7 +59,7 @@ trait ApiRoutes extends JsonCodecs with Logging {
           } ~ (post & entity(as[VideoMeta])) { meta =>
             translateResponse(api.modify.updateMetaData(id, meta.title, meta.comment, meta.tags))
           } ~ delete {
-            onSuccess(api.modify.deleteMedia(id)) { case _ =>
+            onSuccess(api.modify.deleteMedia(id, deleteFile = true)) { case _ =>
               complete(StatusCodes.OK, "{}")
             }
           }

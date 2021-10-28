@@ -53,7 +53,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
             api.modify.upsertMedia(m).foreach { _ =>
               api.admin.regeneratePreviewFor(m)
-              api.modify.deleteMedia(oldHash)
+              api.modify.deleteMedia(oldHash, deleteFile = false)
               videoWithoutFastStart.deleteIfExists()
             }
           case other =>

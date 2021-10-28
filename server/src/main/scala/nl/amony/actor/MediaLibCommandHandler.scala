@@ -51,7 +51,7 @@ object MediaLibCommandHandler extends Logging {
               .thenReply(sender)(s => Right(s.media(mediaId)))
         }
 
-      case RemoveMedia(mediaId, sender) =>
+      case RemoveMedia(mediaId, deleteFile, sender) =>
 
         val media = state.media(mediaId)
         val path  = media.resolvePath(config.mediaPath)
@@ -61,7 +61,7 @@ object MediaLibCommandHandler extends Logging {
         Effect
           .persist(MediaRemoved(mediaId))
           .thenRun((s: State) => {
-            if (File(path).exists)
+            if (deleteFile && File(path).exists)
               Desktop.getDesktop().moveToTrash(path.toFile());
           })
           .thenReply(sender)(_ => true)

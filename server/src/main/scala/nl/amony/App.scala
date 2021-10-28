@@ -4,7 +4,7 @@ import akka.actor.typed.{ActorSystem, Behavior}
 import nl.amony.actor.{MainRouter, MediaLibProtocol, Message}
 import nl.amony.actor.MediaLibProtocol.Command
 import nl.amony.http.WebServer
-import nl.amony.lib.{FFMpeg, AmonyApi}
+import nl.amony.lib.{AmonyApi, FFMpeg, Migration}
 import scribe.Logging
 
 import scala.concurrent.duration.DurationInt
@@ -14,7 +14,6 @@ object App extends AppConfig with Logging {
 
   def main(args: Array[String]): Unit = {
 
-//    val router: Behavior[Command] = MediaLibProtocol(mediaLibConfig)
     val router: Behavior[Message] = MainRouter.apply(mediaLibConfig)
     val system: ActorSystem[Message] = ActorSystem(router, "mediaLibrary", config)
 

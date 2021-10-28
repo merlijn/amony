@@ -82,8 +82,8 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
     def upsertMedia(media: Media)(implicit timeout: Timeout): Future[Media] =
       system.ask[Boolean](ref => UpsertMedia(media, ref)).map(_ => media)
 
-    def deleteMedia(id: String)(implicit timeout: Timeout): Future[Boolean] =
-      system.ask[Boolean](ref => RemoveMedia(id, ref))
+    def deleteMedia(id: String, deleteFile: Boolean)(implicit timeout: Timeout): Future[Boolean] =
+      system.ask[Boolean](ref => RemoveMedia(id, deleteFile, ref))
 
     def updateMetaData(id: String, title: Option[String], comment: Option[String], tags: List[String])(implicit
         timeout: Timeout
@@ -121,7 +121,7 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
           val delete = Consumer.foreachTask[Media](m =>
             Task {
               logger.info(s"Detected deleted file: ${m.fileInfo.relativePath}")
-              modify.deleteMedia(m.id)
+              modify.deleteMedia(m.id, deleteFile = false)
             }
           )
 
@@ -135,7 +135,6 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
       val videoPath = config.mediaPath.resolve(m.fileInfo.relativePath)
 
       m.fragments.foreach { f =>
-        logger.info(s"Generating preview(s) for: ${m.fileInfo.relativePath}")
         MediaLibScanner.createVideoFragment(videoPath, config.indexPath, m.id, f.fromTimestamp, f.toTimestamp, config.previews)
       }
     }
@@ -157,7 +156,7 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
 
       query.getAll().foreach { medias =>
         medias.foreach { m =>
-          logger.info(s"re-generating thumbnail for '${m.fileName()}'")
+          logger.info(s"re-generating previews for '${m.fileInfo.relativePath}'")
           regeneratePreviewFor(m)
         }
       }
@@ -173,7 +172,26 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
 
           if (hash != m.fileInfo.hash)
             logger.info(s"hash not equal: ${hash} != ${m.fileInfo.hash}")
-//          modify.upsertMedia(m.copy(id = hash, fileInfo = m.fileInfo.copy(hash = hash)))
+        }
+
+        logger.info("Done ...")
+      }
+    }
+
+    def updateHashes()(implicit timeout: Timeout): Unit = {
+
+      query.getAll().foreach { medias =>
+        logger.info("Updating hashes ...")
+
+        medias.foreach { m =>
+          val hash = config.hashingAlgorithm.generateHash(config.mediaPath.resolve(m.fileInfo.relativePath))
+
+          if (hash != m.fileInfo.hash) {
+
+            logger.info(s"Updating hash from '${m.fileInfo.hash}' to '$hash' for '${m.fileName()}''")
+            modify.upsertMedia(m.copy(id = hash, fileInfo = m.fileInfo.copy(hash = hash)))
+            modify.deleteMedia(id = m.id, deleteFile = false)
+          }
         }
 
         logger.info("Done ...")
