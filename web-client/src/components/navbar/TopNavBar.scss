@@ -7,6 +7,17 @@
   border-color: $gray-500 ! important;
 }
 
+.nav-menu-button {
+  width: 28px;
+  height: 28px;
+  margin-top: 3px;
+  margin-left: 5px;
+  &:hover {
+    cursor: pointer;
+  }
+  //margin: 0;
+}
+
 .top-nav-bar {
 
   z-index: 10;
@@ -52,7 +63,7 @@
     flex-grow: 1;
   }
 
-  padding: 8px 0px;
+  padding: 0px 0px;
 }
 
 .nav-bar-center {
@@ -71,6 +82,7 @@
   flex-grow: 0;
   padding: 0px 5px !important;
   width: 32px ! important;
+  border-radius: 0 ! important;
 
   img {
     width: 23px;
@@ -87,8 +99,11 @@
 
   .tag-list-toggle {
     @extend .nav-button;
-    border-bottom-right-radius: 0 ! important;
-    border-top-right-radius: 0 ! important;
+    border-radius: 0 ! important;
+  }
+
+  .tag-list-menu {
+    border-radius: 0 ! important;
   }
 
   &:not(.show) {

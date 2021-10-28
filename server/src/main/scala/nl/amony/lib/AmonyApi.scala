@@ -50,7 +50,16 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
 
     def resourcePath(): Path = config.indexPath.resolve("resources")
 
-    def getVideoFragment(id: String): Path = resourcePath().resolve(id)
+    def getVideo(id: String)(implicit timeout: Timeout): Future[Option[Path]] = {
+      query.getById(id).map(_.map { m =>
+        config.mediaPath.resolve(m.fileInfo.relativePath)
+      })
+    }
+
+    def getVideoFragment(id: String, start: Long, end: Long): Path = {
+
+      resourcePath().resolve(s"$id-$start-$end.mp4")
+    }
 
     def getThumbnail(id: String, timestamp: Option[Long])(implicit timeout: Timeout): Future[Option[InputStream]] = {
 
@@ -65,8 +74,7 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
       })
     }
 
-    def getFilePathForMedia(vid: Media): String =
-      (File(config.mediaPath) / vid.fileInfo.relativePath).path.toAbsolutePath.toString
+    def getFilePathForMedia(vid: Media): Path = config.mediaPath.resolve(vid.fileInfo.relativePath)
   }
 
   object modify {
@@ -164,7 +172,8 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
           val hash = config.hashingAlgorithm.generateHash(config.mediaPath.resolve(m.fileInfo.relativePath))
 
           if (hash != m.fileInfo.hash)
-            logger.info(s"Found different hash for: ${m.fileInfo.relativePath}")
+            logger.info(s"hash not equal: ${hash} != ${m.fileInfo.hash}")
+//          modify.upsertMedia(m.copy(id = hash, fileInfo = m.fileInfo.copy(hash = hash)))
         }
 
         logger.info("Done ...")

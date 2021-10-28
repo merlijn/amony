@@ -30,21 +30,21 @@ trait JsonCodecs {
   def toWebModel(media: MediaLibProtocol.Media): Video =
     Video(
       id  = media.id,
-      uri = s"/files/videos/${media.fileInfo.relativePath}",
+      video_url = s"/files/resources/${media.id}.mp4",
       meta =
         VideoMeta(title = media.title.orElse(Some(media.fileName())), comment = media.comment, tags = media.tags.toList),
       duration      = media.videoInfo.duration,
       addedOn       = media.fileInfo.creationTime,
       fps           = media.videoInfo.fps,
-      thumbnail_uri = s"/files/resources/${media.id}.webp",
-      preview_thumbnails_uri = Some(s"/files/resources/${media.id}-timeline.vtt"),
+      thumbnail_url = s"/files/resources/${media.id}.webp",
+      preview_thumbnails_url = Some(s"/files/resources/${media.id}-timeline.vtt"),
       fragments = media.fragments.zipWithIndex.map { case (f, index) =>
         Fragment(
-          mediaId         = media.id,
+          media_id        = media.id,
           index           = index,
           timestamp_start = f.fromTimestamp,
           timestamp_end   = f.toTimestamp,
-          uri             = s"/files/resources/${media.id}-${f.fromTimestamp}-${f.toTimestamp}.mp4",
+          uri             = s"/files/resources/${media.id}~${f.fromTimestamp}-${f.toTimestamp}.mp4",
           comment         = f.comment,
           tags            = f.tags
         )

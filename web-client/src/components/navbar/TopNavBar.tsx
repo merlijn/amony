@@ -13,6 +13,7 @@ import ImgWithAlt from "../shared/ImgWithAlt";
 import Button from "react-bootstrap/Button";
 import Dropdown from "react-bootstrap/Dropdown";
 import {Constants} from "../../api/Constants";
+import SideBar from "../sidebar/SideBar";
 
 function TopNavBar() {
 
@@ -21,6 +22,7 @@ function TopNavBar() {
   const [query, setQuery] = useState("")
   const [dirs, setDirs] = useState<Array<Directory>>([]);
   const [selectedTag, setSelectedDir] = useState<Directory>({id: 0, title: ""})
+  const [showSideBar, setShowSideBar] = useState(false)
 
   const history = useHistory();
 
@@ -58,7 +60,10 @@ function TopNavBar() {
   // fixed="top"
   return(
     <div className="top-nav-bar">
-        <div key="nav-bar-left" className="nav-bar-spacer"> </div>
+        <div key="nav-bar-left" className="nav-bar-spacer">
+          {/*<ImgWithAlt className="nav-menu-button" src="/icons/menu.svg" onClick={ () => setShowSideBar(true) }/>*/}
+          {/*{ showSideBar && <SideBar onHide={() => setShowSideBar(false) }  /> }*/}
+        </div>
         <div key="nav-bar-center" className="nav-bar-center">
 
           <Dropdown className="tag-list-dropdown" key="nav-tag-list" as={ButtonGroup} size="sm">
@@ -68,7 +73,7 @@ function TopNavBar() {
 
             <Dropdown.Toggle className="tag-list-toggle" split id="dropdown-split-basic" />
 
-            <Dropdown.Menu>
+            <Dropdown.Menu className="tag-list-menu">
               {
                 dirs.map((t) => {
                   return <NavDropdown.Item key={`nav-tag-${t.id}`} href={`/search?dir=${t.id}`}>{t.title}</NavDropdown.Item>

@@ -1,10 +1,12 @@
 package nl.amony.lib
 
 import better.files.File
+import io.seruco.encoding.base62.Base62
 import scribe.Logging
 
 import java.nio.file.{Files, Path}
 import java.nio.file.attribute.BasicFileAttributes
+import java.security.MessageDigest
 import java.util.Base64
 import scala.util.Random
 
@@ -58,18 +60,7 @@ object FileUtil extends Logging {
   }
 
   // samples a file randomly and creates a hash from that
-  def partialMD5Hash(file: File, nBytes: Int = 512): String = {
-
-    def md5hashInBase64(data: Array[Byte]): String = {
-      import java.security.MessageDigest
-
-      val md5Digest: MessageDigest = MessageDigest.getInstance("MD5")
-      val digest                   = md5Digest.digest(data)
-      val base64                   = Base64.getUrlEncoder.withoutPadding().encodeToString(digest)
-
-      base64
-    }
-
+  def partialHash(file: File, nBytes: Int = 512, hasher: Array[Byte] => String): String = {
     def readRandomBytes(): Array[Byte] = {
 
       val size   = file.size
@@ -94,6 +85,29 @@ object FileUtil extends Logging {
 
     val bytes = readRandomBytes()
 
-    md5hashInBase64(bytes).substring(0, 8)
+    hasher(bytes)
+  }
+
+  def partialSha1Base62Hash(file: File, nBytes: Int = 512): String = partialHash(file, nBytes, data => {
+
+    val base62 = Base62.createInstance
+
+    val sha1Digest: MessageDigest = MessageDigest.getInstance("SHA-1")
+    val digest: Array[Byte]       = sha1Digest.digest(data)
+
+    new String(base62.encode(digest)).substring(0, 11)
+  })
+
+  def partialMD5Hash(file: File, nBytes: Int = 512): String = {
+
+    partialHash(file, nBytes, data => {
+      import java.security.MessageDigest
+
+      val md5Digest: MessageDigest = MessageDigest.getInstance("MD5")
+      val digest                   = md5Digest.digest(data)
+      val base64                   = Base64.getUrlEncoder.withoutPadding().encodeToString(digest)
+
+      base64.substring(0, 8)
+    })
   }
 }

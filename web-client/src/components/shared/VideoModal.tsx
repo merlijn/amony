@@ -19,7 +19,7 @@ const VideoModal = (props: { video: Video, onHide: () => void }) => {
       const plyrOptions = {
         fullscreen : { enabled: true },
         invertTime: false,
-        previewThumbnails: { enabled: true, src: props.video.preview_thumbnails_uri} }
+        previewThumbnails: { enabled: false, src: props.video.preview_thumbnails_url} }
 
       const plyr = new Plyr(element, plyrOptions)
       element.load()
@@ -30,7 +30,7 @@ const VideoModal = (props: { video: Video, onHide: () => void }) => {
       if (plyr)
         plyr.destroy()
     }
-  },[props]);
+  },[]);
 
   const modalSize = (v: Video | undefined): CSSProperties => {
 
@@ -53,7 +53,7 @@ const VideoModal = (props: { video: Video, onHide: () => void }) => {
         {
           <div style={modalSize(props.video)}>
             <video id={`video-modal-${props.video.id}`} ref={videoElement} playsInline controls>
-              { props.video && <source src={'/files/videos/' + props.video.id} type="video/mp4"/> }
+              { props.video && <source src={props.video.video_url} type="video/mp4"/> }
             </video>
           </div>
         }

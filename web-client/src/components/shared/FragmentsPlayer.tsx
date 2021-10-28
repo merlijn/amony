@@ -26,14 +26,17 @@ const FragmentsPlayer = (props: FragmentsPlayerProps) => {
 
   const nextFragment = (v: HTMLVideoElement) => {
 
+    let idx = currentPreviewIdx
+
     // on to the next
-    if (currentPreviewIdx < props.fragments.length - 1)
-      setCurrentPreviewIdx(currentPreviewIdx + 1)
+    if (idx < props.fragments.length - 1)
+      idx = idx + 1
 
     // back the 1st (0)
-    if (currentPreviewIdx > 0 && currentPreviewIdx + 1 >= props.fragments.length)
-      setCurrentPreviewIdx(0)
+    if (idx > 0 && idx + 1 >= props.fragments.length)
+      idx = 0
 
+    setCurrentPreviewIdx(idx)
     play(v)
   }
 

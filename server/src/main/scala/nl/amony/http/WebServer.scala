@@ -26,7 +26,7 @@ class WebServer(override val config: WebServerConfig,
     else
       apiRoutes
 
-  val allRoutes = allApiRoutes ~ thumbnailRoutes ~ videoRoutes ~ webClientFiles
+  val allRoutes = allApiRoutes ~ resourceRoutes ~ webClientFiles
 
   def run(): Unit = {
 

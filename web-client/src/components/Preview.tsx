@@ -44,11 +44,10 @@ const Preview = (props: PreviewProps) => {
                                  })
                                }} />
 
-  const previewClass = props.showInfoBar ? "preview-media" : "preview-media rounded-corners"
   const videoPreview =
     <FragmentsPlayer id={`video-preview-${props.vid.id}`}
                      onClick={ () => props.onClick(props.vid) }
-                     className= { `preview-video ${previewClass}` }
+                     className= { `preview-video preview-media` }
                      fragments={ props.vid.fragments } />
 
   const addOnDate = new Date(vid.addedOn)
@@ -71,9 +70,9 @@ const Preview = (props: PreviewProps) => {
     </div>
 
   const primaryThumbnail =
-    <ProgressiveImage src={vid.thumbnail_uri} placeholder="/image_placeholder.svg">
+    <ProgressiveImage src={vid.thumbnail_url} placeholder="/image_placeholder.svg">
       { (src: string) =>
-        <img onClick={ () => props.onClick(props.vid) } className={ `preview-thumbnail ${previewClass}` } src={src} alt="an image" />
+        <img onClick={ () => props.onClick(props.vid) } className={ `preview-thumbnail preview-media` } src={src} alt="an image" />
       }
     </ProgressiveImage>
 

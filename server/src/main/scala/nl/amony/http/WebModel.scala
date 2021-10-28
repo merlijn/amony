@@ -14,7 +14,7 @@ object WebModel {
   )
 
   case class Fragment(
-    mediaId: String,
+    media_id: String,
     index: Int,
     timestamp_start: Long,
     timestamp_end: Long,
@@ -25,13 +25,13 @@ object WebModel {
 
   case class Video(
     id: String,
-    uri: String,
+    video_url: String,
     meta: VideoMeta,
     duration: Long,
     addedOn: Long,
     fps: Double,
-    thumbnail_uri: String,
-    preview_thumbnails_uri: Option[String],
+    thumbnail_url: String,
+    preview_thumbnails_url: Option[String],
     fragments: List[Fragment],
     resolution_x: Int,
     resolution_y: Int

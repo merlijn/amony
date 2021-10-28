@@ -16,26 +16,34 @@ trait ResourceRoutes extends Logging {
 
   self: RouteDeps =>
 
-  val thumbnailRoutes =
-    (get & path("files" / "thumbnails" / Segment) & parameters("t".optional)) { (file, timestamp) =>
+  val videoPattern = raw"(.+)\.mp4".r
+  val videoSegment = raw"(.+)~(\d+)-(\d+)\.mp4".r
+  val thumbnailPattern = raw"(.+)\.webp".r
 
-      val split = file.split('.')
-      val id = split(0)
-      val ext = split(1)
+  val resourceRoutes =
+    (get & path("files" / "resources" / Segment) & parameters("t".optional)) { (file, timestamp) =>
 
-      ext match {
-        case "webp" =>
+      file match {
+
+        case thumbnailPattern(id) =>
           onSuccess(api.resources.getThumbnail(id, timestamp.map(_.toLong))) {
             case None     => complete(StatusCodes.NotFound, "")
             case Some(is) =>
               val source = StreamConverters.fromInputStream(() => is, 8192)
               complete(HttpEntity(ContentType(MediaTypes.`image/webp`), source))
           }
-        case "mp4" =>
-          val videoPath = Path.of(api.resources.getVideoFragment(file))
-          CustomDirectives.fileWithRangeSupport(videoPath)
+
+        case videoSegment(id, start, end) =>
+          val segmentPath = api.resources.getVideoFragment(id, start.toLong, end.toLong)
+          CustomDirectives.fileWithRangeSupport(segmentPath)
+
+        case videoPattern(id) =>
+          onSuccess(api.resources.getVideo(id)) {
+            case None       => complete(StatusCodes.NotFound)
+            case Some(path) => CustomDirectives.fileWithRangeSupport(path)
+          }
         case _ =>
-          val path = Path.of(s"${api.resources.resourcePath()}/${file}")
+          val path = Path.of(s"${api.resources.resourcePath()}/$file")
 
           if (!path.toFile.exists())
             complete(StatusCodes.NotFound)
@@ -43,15 +51,6 @@ trait ResourceRoutes extends Logging {
             FileAndResourceDirectives.getFromFile(path.toFile)
       }
     }
-
-  val videoRoutes = path("files" / "videos" / Segment) { id =>
-    onSuccess(api.query.getById(id)) {
-      case None       => complete(StatusCodes.NotFound)
-      case Some(info) =>
-        val filePath = Path.of(api.resources.getFilePathForMedia(info))
-        CustomDirectives.fileWithRangeSupport(filePath)
-    }
-  }
 
   def webClientFiles: Route =
     rawPathPrefix(Slash) {

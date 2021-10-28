@@ -86,7 +86,7 @@ object FFMpeg extends Logging {
     (null, ProbeDebugOutput(fastStartPattern.matches(debugOutput)))
   }
 
-  def ffprobe(file: Path): (model.ProbeOutput, model.ProbeDebugOutput) = {
+  def ffprobe(file: Path, debug: Boolean = false): (model.ProbeOutput, model.ProbeDebugOutput) = {
 
     import model._
 
@@ -174,8 +174,8 @@ object FFMpeg extends Logging {
       scaleHeight: Option[Int]
   ): Unit = {
 
-    val input = inputFile.toAbsolutePath.normalize().toString
-    val output = outputFile.map(_.toAbsolutePath.normalize().toString).getOrElse(s"${stripExtension(input)}.mp4")
+    val input = inputFile.absoluteFileName()
+    val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.mp4")
 
     // format: off
     val args: List[String] =
@@ -251,8 +251,8 @@ object FFMpeg extends Logging {
     scaleHeight: Option[Int]
   ): Unit = {
 
-    val input = inputFile.toAbsolutePath.normalize().toString
-    val output = outputFile.map(_.toAbsolutePath.normalize().toString).getOrElse(s"${stripExtension(input)}.webp")
+    val input = inputFile.absoluteFileName()
+    val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.webp")
 
     // format: off
     val args = List(
@@ -304,7 +304,7 @@ object FFMpeg extends Logging {
 //    logger.info(s"fps: ${probe.fps}, length: ${probe.duration}, frames: $frames, tileSize: $tileSize, mod: $mod")
 
     val args = List(
-      "-i" ,      inputFile.toAbsolutePath.toString,
+      "-i" ,      inputFile.absoluteFileName(),
       "-filter_complex", s"select='not(mod(n,$mod))',scale=$width:$height,tile=${tileSize}x${tileSize}",
       "-vframes",  "1",
       "-qscale:v", "3",

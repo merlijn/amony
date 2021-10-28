@@ -1,9 +1,10 @@
 export class Video {
   constructor(
     public id: string,
+    public video_url: string,
     public meta: VideoMeta,
-    public thumbnail_uri: string,
-    public preview_thumbnails_uri: string,
+    public thumbnail_url: string,
+    public preview_thumbnails_url: string,
     public fragments: Array<Fragment>,
     public fps: number,
     public resolution_x: number,
@@ -39,6 +40,7 @@ export type Directory = {
 }
 
 export type Fragment = {
+  media_id: string,
   timestamp_start: number,
   timestamp_end: number,
   index: number,
