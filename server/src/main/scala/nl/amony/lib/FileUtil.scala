@@ -1,7 +1,6 @@
 package nl.amony.lib
 
 import better.files.File
-import io.seruco.encoding.base62.Base62
 import scribe.Logging
 
 import java.nio.file.{Files, Path}
@@ -90,11 +89,16 @@ object FileUtil extends Logging {
 
   def partialSha1Base62Hash(file: File, nBytes: Int = 512): String = partialHash(file, nBytes, data => {
 
-    val base62 = Base62.createInstance
+    val base62 = Base62.createInstance()
 
     val sha1Digest: MessageDigest = MessageDigest.getInstance("SHA-1")
     val digest: Array[Byte]       = sha1Digest.digest(data)
 
+    // 11 base62 chars is at least 64 bits
+    //
+    // 62^11 ~= 5.2 * 10^19
+    //  2^64 ~= 1.8 * 10^19
+    // https://en.wikipedia.org/wiki/Birthday_attack
     new String(base62.encode(digest)).substring(0, 11)
   })
 

@@ -86,10 +86,12 @@ object MediaLibCommandHandler extends Logging {
               .persist(FragmentDeleted(id, idx))
               .thenRun { (_: State) =>
                 deleteVideoFragment(
+                  media,
                   config.indexPath,
                   media.id,
                   media.fragments(idx).fromTimestamp,
-                  media.fragments(idx).toTimestamp
+                  media.fragments(idx).toTimestamp,
+                  config.previews
                 )
               }
               .thenReply(sender)(s => Right(s.media(id)))
@@ -117,7 +119,7 @@ object MediaLibCommandHandler extends Logging {
             Effect
               .persist(FragmentRangeUpdated(id, idx, from, to))
               .thenRun { (s: State) =>
-                deleteVideoFragment(config.indexPath, media.id, oldFragment.fromTimestamp, oldFragment.toTimestamp)
+                deleteVideoFragment(media, config.indexPath, media.id, oldFragment.fromTimestamp, oldFragment.toTimestamp, config.previews)
                 createVideoFragment(media, media.resolvePath(config.mediaPath), config.indexPath, id, from, to, config.previews)
               }
               .thenReply(sender)(s => Right(s.media(id)))

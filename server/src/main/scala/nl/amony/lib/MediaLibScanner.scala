@@ -193,10 +193,14 @@ object MediaLibScanner extends Logging{
     (Observable.from(removed), newAndMoved)
   }
 
-  def deleteVideoFragment(indexPath: Path, id: String, from: Long, to: Long): Unit = {
+  def deleteVideoFragment(media: Media, indexPath: Path, id: String, from: Long, to: Long, config: PreviewConfig): Unit = {
 
-    (indexPath / "resources" / s"${id}-$from.webp").deleteIfExists()
-    (indexPath / "resources" / s"${id}-$from-$to.mp4").deleteIfExists()
+    (indexPath / "resources" / s"${id}-$from-${to}_${media.height}p.mp4").deleteIfExists()
+
+    config.transcode.foreach { transcode =>
+      (indexPath / "resources" / s"${id}-${from}_${transcode.scaleHeight}p.webp").deleteIfExists()
+      (indexPath / "resources" / s"${id}-$from-${to}_${transcode.scaleHeight}p.mp4").deleteIfExists()
+    }
   }
 
   def createVideoFragment(media: Media, videoPath: Path, indexPath: Path, id: String, from: Long, to: Long, config: PreviewConfig): Unit = {
@@ -209,7 +213,7 @@ object MediaLibScanner extends Logging{
       inputFile   = videoPath,
       start       = from,
       end         = to,
-      outputFile  = Some(resourcePath.resolve(s"${id}-$from-${to}_${media.videoInfo.resolution._2}p.mp4"))
+      outputFile  = Some(resourcePath.resolve(s"${id}-$from-${to}_${media.height}p.mp4"))
     )
 
     config.transcode.foreach { transcode =>
@@ -221,9 +225,7 @@ object MediaLibScanner extends Logging{
         scaleHeight = Some(transcode.scaleHeight)
       )
 
-      val originalHeight = media.videoInfo.resolution._2
-
-      if (transcode.scaleHeight < originalHeight)
+      if (transcode.scaleHeight < media.height)
         FFMpeg.transcodeToMp4(
           inputFile   = videoPath,
           from        = from,
