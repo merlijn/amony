@@ -68,7 +68,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
 
     val mainStream = probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${videoPath}"))
 
-    logger.info(mainStream.toString)
+    logger.debug(mainStream.toString)
 
     if (!debug.isFastStart)
       logger.warn(s"Video is not optimized for streaming: ${videoPath}")

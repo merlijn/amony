@@ -92,8 +92,6 @@ object FFMpeg extends Logging {
 
     val fileName = file.toAbsolutePath.normalize().toString
 
-    logger.info(s"probing: $fileName")
-
     // setting -v to debug will hang the standard output stream on some files.
     val process   = run(cmds = List("ffprobe", "-print_format", "json", "-show_streams", "-v", "quiet", fileName))
 

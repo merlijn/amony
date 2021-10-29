@@ -3,53 +3,42 @@ package nl.amony.http.routes
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.server.directives.FileAndResourceDirectives
 import akka.stream.scaladsl.StreamConverters
 import better.files.File
-import nl.amony.http.util.CustomDirectives
-import nl.amony.http.{RouteDeps, WebServerConfig}
+import nl.amony.http.RouteDeps
+import nl.amony.http.util.CustomDirectives.fileWithRangeSupport
 import scribe.Logging
-
-import java.nio.file.Path
 
 trait ResourceRoutes extends Logging {
 
   self: RouteDeps =>
 
-  val videoPattern = raw"(.+)\.mp4".r
-  val videoSegment = raw"(.+)~(\d+)-(\d+)\.mp4".r
-  val thumbnailPattern = raw"(.+)\.webp".r
+  object patterns {
+    val Video = raw"(.+)\.mp4".r
+    val VideoFragment = raw"(.+)~(\d+)-(\d+)\.mp4".r
+    val Thumbnail = raw"(\w+)(-(\d+))?\.webp".r
+  }
 
   val resourceRoutes =
-    (get & path("files" / "resources" / Segment) & parameters("t".optional)) { (file, timestamp) =>
+    (get & path("files" / "resources" / Segment)) {
 
-      file match {
+      case patterns.Thumbnail(id, _, timestamp) =>
+        onSuccess(api.resources.getThumbnail(id, Option(timestamp).map(_.toLong))) {
+          case None     => complete(StatusCodes.NotFound)
+          case Some(is) =>
+            val source = StreamConverters.fromInputStream(() => is, 8192)
+            complete(HttpEntity(ContentType(MediaTypes.`image/webp`), source))
+        }
 
-        case thumbnailPattern(id) =>
-          onSuccess(api.resources.getThumbnail(id, timestamp.map(_.toLong))) {
-            case None     => complete(StatusCodes.NotFound, "")
-            case Some(is) =>
-              val source = StreamConverters.fromInputStream(() => is, 8192)
-              complete(HttpEntity(ContentType(MediaTypes.`image/webp`), source))
-          }
+      case patterns.VideoFragment(id, start, end) =>
+        val segmentPath = api.resources.getVideoFragment(id, start.toLong, end.toLong)
+        fileWithRangeSupport(segmentPath)
 
-        case videoSegment(id, start, end) =>
-          val segmentPath = api.resources.getVideoFragment(id, start.toLong, end.toLong)
-          CustomDirectives.fileWithRangeSupport(segmentPath)
-
-        case videoPattern(id) =>
-          onSuccess(api.resources.getVideo(id)) {
-            case None       => complete(StatusCodes.NotFound)
-            case Some(path) => CustomDirectives.fileWithRangeSupport(path)
-          }
-        case _ =>
-          val path = Path.of(s"${api.resources.resourcePath()}/$file")
-
-          if (!path.toFile.exists())
-            complete(StatusCodes.NotFound)
-          else
-            FileAndResourceDirectives.getFromFile(path.toFile)
-      }
+      case patterns.Video(id) =>
+        onSuccess(api.resources.getVideo(id)) {
+          case None => complete(StatusCodes.NotFound)
+          case Some(path) => fileWithRangeSupport(path)
+        }
     }
 
   def webClientFiles: Route =
