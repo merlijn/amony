@@ -61,7 +61,7 @@ const FragmentsPlayer = (props: FragmentsPlayerProps) => {
            onMouseLeave={ (e) =>  reset(e.currentTarget) }
            onEnded={(e) => nextFragment(e.currentTarget )} >
 
-      <source src={props.fragments[currentPreviewIdx].uri} type="video/mp4"/>
+      <source src={props.fragments[currentPreviewIdx].urls[0]} type="video/mp4"/>
     </video>
   );
 }

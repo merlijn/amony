@@ -163,7 +163,28 @@ object FFMpeg extends Logging {
     Path.of(out)
   }
 
-  def writeMp4(
+  def copyMp4(
+     inputFile: Path,
+     start: Long,
+     end: Long,
+     outputFile: Option[Path] = None,
+  ): Unit = {
+    val input = inputFile.absoluteFileName()
+    val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.mp4")
+
+    val args = List(
+      "-ss",  formatTime(start),
+      "-to",  formatTime(end),
+      "-i",   input,
+      "-c",   "copy",
+      "-movflags", "+faststart",
+      "-y", output
+      )
+
+    runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
+  }
+
+  def transcodeToMp4(
       inputFile: Path,
       from: Long,
       to: Long,

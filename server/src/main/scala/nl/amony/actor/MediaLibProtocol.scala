@@ -62,7 +62,9 @@ object MediaLibProtocol {
       size: Long,
       creationTime: Long,
       lastModifiedTime: Long
-  )
+  ) {
+    def extension: String = relativePath.split('.')(1)
+  }
 
   case class VideoInfo(
       fps: Double,
@@ -82,6 +84,9 @@ object MediaLibProtocol {
       tags: Set[String]
   ) {
     def resolvePath(baseDir: Path): Path = baseDir.resolve(fileInfo.relativePath)
+
+    def width: Int = videoInfo.resolution._1
+    def height: Int = videoInfo.resolution._2
 
     def fileName(): String = {
       val slashIdx = fileInfo.relativePath.lastIndexOf('/')

@@ -31,9 +31,8 @@ const Player = (props: {videoId: string}) => {
 const PlayerView = (props: {vid: Video}) => {
 
   const [vid, setVid] = useState(props.vid)
-  const vidRatio = props.vid.resolution_x / props.vid.resolution_y;
+  const vidRatio = props.vid.width / props.vid.height;
   const id = '#video-' + props.vid.id
-  const videoSrc = '/files/videos/' + props.vid.id
 
   const [plyr, setPlyr] = useState<Plyr | null>(null)
   const [showFragmentControls, setShowFragmentControls] = useState(false)
@@ -122,7 +121,7 @@ const PlayerView = (props: {vid: Video}) => {
       <div style = { { width: totalWidth, height: videoSize.height } } className="abs-center">
         <div key={`video-${vid.id}-player`} style={videoSize} className="video-container">
           <video className="video-player" id={id} playsInline controls>
-            <source src={videoSrc} type="video/mp4"/>
+            <source src={props.vid.video_url} type="video/mp4"/>
           </video>
           { showFragmentControls && fragmentPickingControls }
         </div>

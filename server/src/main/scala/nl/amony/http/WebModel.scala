@@ -2,12 +2,6 @@ package nl.amony.http
 
 object WebModel {
 
-  case class VideoMeta(
-    title: Option[String],
-    comment: Option[String],
-    tags: List[String]
-  )
-
   case class FragmentRange(
     from: Long,
     to: Long
@@ -18,7 +12,13 @@ object WebModel {
     index: Int,
     timestamp_start: Long,
     timestamp_end: Long,
-    uri: String,
+    urls: List[String],
+    comment: Option[String],
+    tags: List[String]
+  )
+
+  case class VideoMeta(
+    title: Option[String],
     comment: Option[String],
     tags: List[String]
   )
@@ -33,8 +33,8 @@ object WebModel {
     thumbnail_url: String,
     preview_thumbnails_url: Option[String],
     fragments: List[Fragment],
-    resolution_x: Int,
-    resolution_y: Int
+    width: Int,
+    height: Int
   )
 
   case class SearchResult(

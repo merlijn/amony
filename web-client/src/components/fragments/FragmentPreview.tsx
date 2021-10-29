@@ -55,7 +55,7 @@ const FragmentPreview = (props: Props) => {
              onMouseEnter={(e) => e.currentTarget.play() }
              onMouseLeave={(e) => e.currentTarget.pause() }
              onClick={(e) => {  props.onClick && props.onClick() } }>
-        <source src={props.fragment.uri} type="video/mp4"/>
+        <source src={props.fragment.urls[0]} type="video/mp4"/>
       </video>
       <div className="abs-bottom-left duration-overlay">{`${durationInSeconds}s @ ${durationInMillisToString(props.fragment.timestamp_start)}`}</div>
       {

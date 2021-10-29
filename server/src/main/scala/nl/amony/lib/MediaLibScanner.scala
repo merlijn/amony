@@ -3,7 +3,6 @@ package nl.amony.lib
 import akka.util.Timeout
 import nl.amony.{MediaLibConfig, PreviewConfig}
 import nl.amony.actor.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
-import nl.amony.http.JsonCodecs
 import nl.amony.lib.FileUtil.PathOps
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -15,7 +14,7 @@ import java.nio.file.{Files, Path}
 import scala.concurrent.duration.DurationInt
 import scala.util.Success
 
-object MediaLibScanner extends Logging with JsonCodecs {
+object MediaLibScanner extends Logging{
 
   val fragmentLength = 3000
 
@@ -76,7 +75,6 @@ object MediaLibScanner extends Logging with JsonCodecs {
     val fileAttributes = Files.readAttributes(videoPath, classOf[BasicFileAttributes])
 
     val timeStamp = mainStream.durationMillis / 3
-    createVideoFragment(videoPath, config.indexPath, hash, timeStamp, timeStamp + fragmentLength, config.previews)
 
     val fileInfo = FileInfo(
       relativePath     = baseDir.relativize(videoPath).toString,
@@ -92,7 +90,7 @@ object MediaLibScanner extends Logging with JsonCodecs {
       (mainStream.width, mainStream.height)
     )
 
-    Media(
+    val media = Media(
       id                 = hash,
       title              = None,
       comment            = None,
@@ -102,6 +100,10 @@ object MediaLibScanner extends Logging with JsonCodecs {
       fragments          = List(Fragment(timeStamp, timeStamp + fragmentLength, None, List.empty)),
       tags               = Set.empty
     )
+
+    createVideoFragment(media, videoPath, config.indexPath, hash, timeStamp, timeStamp + fragmentLength, config.previews)
+
+    media
   }
 
   def scanVideosInDirectory(
@@ -197,26 +199,39 @@ object MediaLibScanner extends Logging with JsonCodecs {
     (indexPath / "resources" / s"${id}-$from-$to.mp4").deleteIfExists()
   }
 
-  def createVideoFragment(videoPath: Path, indexPath: Path, id: String, from: Long, to: Long, config: PreviewConfig): Unit = {
+  def createVideoFragment(media: Media, videoPath: Path, indexPath: Path, id: String, from: Long, to: Long, config: PreviewConfig): Unit = {
 
     val resourcePath = indexPath.resolve("resources")
 
     Files.createDirectories(resourcePath)
 
-    FFMpeg.writeThumbnail(
+    FFMpeg.copyMp4(
       inputFile   = videoPath,
-      timestamp   = from,
-      outputFile  = Some(resourcePath.resolve(s"${id}-$from.webp")),
-      scaleHeight = Some(config.scaleHeight)
+      start       = from,
+      end         = to,
+      outputFile  = Some(resourcePath.resolve(s"${id}-$from-${to}_${media.videoInfo.resolution._2}p.mp4"))
     )
 
-    FFMpeg.writeMp4(
-      inputFile   = videoPath,
-      from        = from,
-      to          = to,
-      outputFile  = Some(resourcePath.resolve(s"${id}-$from-$to.mp4")),
-      quality     = config.videoCrf,
-      scaleHeight = Some(config.scaleHeight)
-    )
+    config.transcode.foreach { transcode =>
+
+      FFMpeg.writeThumbnail(
+        inputFile   = videoPath,
+        timestamp   = from,
+        outputFile  = Some(resourcePath.resolve(s"${id}-${from}_${transcode.scaleHeight}p.webp")),
+        scaleHeight = Some(transcode.scaleHeight)
+      )
+
+      val originalHeight = media.videoInfo.resolution._2
+
+      if (transcode.scaleHeight < originalHeight)
+        FFMpeg.transcodeToMp4(
+          inputFile   = videoPath,
+          from        = from,
+          to          = to,
+          outputFile  = Some(resourcePath.resolve(s"${id}-$from-${to}_${transcode.scaleHeight}p.mp4")),
+          quality     = transcode.crf,
+          scaleHeight = Some(transcode.scaleHeight)
+        )
+    }
   }
 }

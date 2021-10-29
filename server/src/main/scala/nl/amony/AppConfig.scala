@@ -25,11 +25,15 @@ case class MediaLibConfig(
 }
 
 case class PreviewConfig(
-  videoCodec: String,
-  videoCrf: Int,
-  scaleHeight: Int,
+  transcode: List[TranscodeSettings],
   minimumFragmentDuration: Option[FiniteDuration],
   maximumFragmentDuration: Option[FiniteDuration],
+)
+
+case class TranscodeSettings(
+  format: String,
+  scaleHeight: Int,
+  crf: Int
 )
 
 sealed trait HashingAlgorithm {

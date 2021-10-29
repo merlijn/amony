@@ -7,8 +7,8 @@ export class Video {
     public preview_thumbnails_url: string,
     public fragments: Array<Fragment>,
     public fps: number,
-    public resolution_x: number,
-    public resolution_y: number,
+    public width: number,
+    public height: number,
     public duration: number, // in millis
     public addedOn: number
   ) { }
@@ -44,7 +44,7 @@ export type Fragment = {
   timestamp_start: number,
   timestamp_end: number,
   index: number,
-  uri: string,
+  urls: string[],
   tags: string[]
 }
 

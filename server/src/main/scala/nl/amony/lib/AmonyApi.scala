@@ -57,18 +57,18 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
       })
     }
 
-    def getVideoFragment(id: String, start: Long, end: Long): Path = {
+    def getVideoFragment(id: String, quality: Int, start: Long, end: Long): Path = {
 
-      resourcePath().resolve(s"$id-$start-$end.mp4")
+      resourcePath().resolve(s"$id-$start-${end}_${quality}p.mp4")
     }
 
-    def getThumbnail(id: String, timestamp: Option[Long])(implicit timeout: Timeout): Future[Option[InputStream]] = {
+    def getThumbnail(id: String, quality: Int, timestamp: Option[Long])(implicit timeout: Timeout): Future[Option[InputStream]] = {
 
       query.getById(id).map(_.map { media =>
 
         timestamp match {
           case None         =>
-            File(resourcePath().resolve(s"${media.id}-${media.fragments.head.fromTimestamp}.webp")).newFileInputStream
+            File(resourcePath().resolve(s"${media.id}-${media.fragments.head.fromTimestamp}_${quality}p.webp")).newFileInputStream
           case Some(millis) =>
             FFMpeg.streamThumbnail(config.mediaPath.resolve(media.fileInfo.relativePath).toAbsolutePath, millis, 320)
         }
@@ -132,14 +132,6 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
         }(system.executionContext)
     }
 
-    def regeneratePreviewFor(m: Media): Unit = {
-      val videoPath = config.mediaPath.resolve(m.fileInfo.relativePath)
-
-      m.fragments.foreach { f =>
-        MediaLibScanner.createVideoFragment(videoPath, config.indexPath, m.id, f.fromTimestamp, f.toTimestamp, config.previews)
-      }
-    }
-
     def generateThumbnailPreviews()(implicit timeout: Timeout): Unit = {
       query.getAll().foreach { medias =>
         medias.foreach { m =>
@@ -150,6 +142,14 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
             outputBaseName = Some(s"${m.id}-timeline")
           )
         }
+      }
+    }
+
+    def regeneratePreviewFor(m: Media): Unit = {
+      val videoPath = config.mediaPath.resolve(m.fileInfo.relativePath)
+
+      m.fragments.foreach { f =>
+        MediaLibScanner.createVideoFragment(m, videoPath, config.indexPath, m.id, f.fromTimestamp, f.toTimestamp, config.previews)
       }
     }
 

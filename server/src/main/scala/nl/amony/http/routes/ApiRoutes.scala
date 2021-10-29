@@ -13,7 +13,7 @@ import scribe.Logging
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait ApiRoutes extends JsonCodecs with Logging {
+trait ApiRoutes extends Logging {
 
   self: RouteDeps =>
 

@@ -7,7 +7,7 @@ import ImgWithAlt from "../shared/ImgWithAlt";
 
 const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFragment) => any, setVid: (vid: Video) => any}) => {
 
-  const ratio = (props.vid.resolution_x / props.vid.resolution_y).toFixed(2);
+  const ratio = (props.vid.width / props.vid.height).toFixed(2);
   const [showAddFragment, setShowAddFragment] = useState(false)
 
   const extraStyle = (idx: number): CSSProperties => {
@@ -24,7 +24,7 @@ const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFr
     props.vid.fragments.map((f, idx) => {
       return (
         <FragmentPreview
-          key={ f.uri }
+          key={ f.urls[0] }
           vid={ props.vid.id }
           fragment = { props.vid.fragments[idx] }
           style={ extraStyle(idx) }

@@ -14,29 +14,29 @@ trait ResourceRoutes extends Logging {
   self: RouteDeps =>
 
   object patterns {
-    val Video = raw"(.+)\.mp4".r
-    val VideoFragment = raw"(.+)~(\d+)-(\d+)\.mp4".r
-    val Thumbnail = raw"(\w+)(-(\d+))?\.webp".r
+    val Video = raw"(.+)_(\d+)p\.mp4".r
+    val VideoFragment = raw"(.+)~(\d+)-(\d+)_(\d+)p\.mp4".r
+    val Thumbnail = raw"(\w+)(-(\d+))?_(\d+)p\.webp".r
   }
 
   val resourceRoutes =
     (get & path("files" / "resources" / Segment)) {
 
-      case patterns.Thumbnail(id, _, timestamp) =>
-        onSuccess(api.resources.getThumbnail(id, Option(timestamp).map(_.toLong))) {
+      case patterns.Thumbnail(id, _, timestamp, quality) =>
+        onSuccess(api.resources.getThumbnail(id, quality.toInt, Option(timestamp).map(_.toLong))) {
           case None     => complete(StatusCodes.NotFound)
           case Some(is) =>
             val source = StreamConverters.fromInputStream(() => is, 8192)
             complete(HttpEntity(ContentType(MediaTypes.`image/webp`), source))
         }
 
-      case patterns.VideoFragment(id, start, end) =>
-        val segmentPath = api.resources.getVideoFragment(id, start.toLong, end.toLong)
+      case patterns.VideoFragment(id, start, end, quality) =>
+        val segmentPath = api.resources.getVideoFragment(id, quality.toInt, start.toLong, end.toLong)
         fileWithRangeSupport(segmentPath)
 
-      case patterns.Video(id) =>
+      case patterns.Video(id, quality) =>
         onSuccess(api.resources.getVideo(id)) {
-          case None => complete(StatusCodes.NotFound)
+          case None       => complete(StatusCodes.NotFound)
           case Some(path) => fileWithRangeSupport(path)
         }
     }
