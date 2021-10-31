@@ -1,7 +1,7 @@
 package nl.amony.lib
 
 import akka.util.Timeout
-import nl.amony.{MediaLibConfig, PreviewConfig}
+import nl.amony.{MediaLibConfig, PreviewConfig, TranscodeSettings}
 import nl.amony.actor.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
 import nl.amony.lib.FileUtil.PathOps
 import monix.eval.Task
@@ -209,31 +209,29 @@ object MediaLibScanner extends Logging{
 
     Files.createDirectories(resourcePath)
 
-    FFMpeg.copyMp4(
-      inputFile   = videoPath,
-      start       = from,
-      end         = to,
-      outputFile  = Some(resourcePath.resolve(s"${id}-$from-${to}_${media.height}p.mp4"))
-    )
-
-    config.transcode.foreach { transcode =>
-
+    def genFor(height: Int, crf: Int) = {
       FFMpeg.writeThumbnail(
         inputFile   = videoPath,
         timestamp   = from,
-        outputFile  = Some(resourcePath.resolve(s"${id}-${from}_${transcode.scaleHeight}p.webp")),
-        scaleHeight = Some(transcode.scaleHeight)
+        outputFile  = Some(resourcePath.resolve(s"${id}-${from}_${height}p.webp")),
+        scaleHeight = Some(height)
       )
 
-      if (transcode.scaleHeight < media.height)
-        FFMpeg.transcodeToMp4(
-          inputFile   = videoPath,
-          from        = from,
-          to          = to,
-          outputFile  = Some(resourcePath.resolve(s"${id}-$from-${to}_${transcode.scaleHeight}p.mp4")),
-          quality     = transcode.crf,
-          scaleHeight = Some(transcode.scaleHeight)
-        )
+      FFMpeg.transcodeToMp4(
+        inputFile   = videoPath,
+        from        = from,
+        to          = to,
+        outputFile  = Some(resourcePath.resolve(s"${id}-$from-${to}_${height}p.mp4")),
+        quality     = crf,
+        scaleHeight = Some(height)
+      )
     }
+
+    config.transcode.filterNot(_.scaleHeight > media.height).foreach { transcode =>
+      genFor(transcode.scaleHeight, transcode.crf)
+    }
+
+    if (media.height < config.transcode.map(_.scaleHeight).min)
+      genFor(media.height, 23)
   }
 }

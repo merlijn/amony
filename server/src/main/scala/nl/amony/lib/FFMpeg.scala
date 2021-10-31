@@ -177,6 +177,7 @@ object FFMpeg extends Logging {
       "-to",  formatTime(end),
       "-i",   input,
       "-c",   "copy",
+      "-map", "0",
       "-movflags", "+faststart",
       "-y", output
       )

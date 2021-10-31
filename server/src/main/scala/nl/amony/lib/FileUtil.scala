@@ -6,7 +6,6 @@ import scribe.Logging
 import java.nio.file.{Files, Path}
 import java.nio.file.attribute.BasicFileAttributes
 import java.security.MessageDigest
-import java.util.Base64
 import scala.util.Random
 
 object FileUtil extends Logging {
@@ -87,31 +86,17 @@ object FileUtil extends Logging {
     hasher(bytes)
   }
 
+  /**
+   * Reads n (default 512) random bytes and creates a 80bit base32 encoded hash
+   */
   def partialSha1Base62Hash(file: File, nBytes: Int = 512): String = partialHash(file, nBytes, data => {
 
-    val base62 = Base62.createInstance()
-
+    // sha-1 creates a 160 bit hash (20 bytes)
     val sha1Digest: MessageDigest = MessageDigest.getInstance("SHA-1")
     val digest: Array[Byte]       = sha1Digest.digest(data)
 
-    // 11 base62 chars is at least 64 bits
-    //
-    // 62^11 ~= 5.2 * 10^19
-    //  2^64 ~= 1.8 * 10^19
+    // we take 16 base 32 characters (or 80 bits since 5*16 = 2*80)
     // https://en.wikipedia.org/wiki/Birthday_attack
-    new String(base62.encode(digest)).substring(0, 11)
+    Base32.encodeToBase32(digest).substring(0, 16)
   })
-
-  def partialMD5Hash(file: File, nBytes: Int = 512): String = {
-
-    partialHash(file, nBytes, data => {
-      import java.security.MessageDigest
-
-      val md5Digest: MessageDigest = MessageDigest.getInstance("MD5")
-      val digest                   = md5Digest.digest(data)
-      val base64                   = Base64.getUrlEncoder.withoutPadding().encodeToString(digest)
-
-      base64.substring(0, 8)
-    })
-  }
 }

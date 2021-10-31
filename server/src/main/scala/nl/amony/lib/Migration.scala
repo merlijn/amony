@@ -83,7 +83,7 @@ object Migration extends Logging {
 //            tags               = m.tags.toSet
 //          )
 //
-//          logger.info(s"Imported: ${m.uri}")
+          logger.info(s"importing: ${m.fileInfo.relativePath}")
 
           api.modify.upsertMedia(m)
         }
