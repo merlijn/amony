@@ -1,5 +1,4 @@
 *.log
-.idea
 
 # project specific
 videos/
@@ -7,7 +6,11 @@ videos/
 # backend, java, scala
 *.class
 target/
+.idea/
 .bsp/
+.bloop/
+.metals/
+.vscode/
 
 # mac
 /**/.DS_Store
