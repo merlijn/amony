@@ -10,6 +10,7 @@ target/
 .bsp/
 .bloop/
 .metals/
+/**/metals.sbt
 .vscode/
 
 # mac
