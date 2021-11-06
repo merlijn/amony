@@ -28,8 +28,6 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
   implicit val scheduler = system.scheduler
   implicit val ec        = system.executionContext
 
-  val queries = PersistenceQuery(system).readJournalFor[LeveldbReadJournal](LeveldbReadJournal.Identifier)
-
   object query {
 
     def getById(id: String)(implicit timeout: Timeout): Future[Option[Media]] =

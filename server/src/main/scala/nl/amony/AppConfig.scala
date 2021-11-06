@@ -41,7 +41,7 @@ sealed trait HashingAlgorithm {
 }
 
 case object PartialHash extends HashingAlgorithm {
-  override def generateHash(path: Path): String = FileUtil.partialSha1Base62Hash(File(path), 512)
+  override def generateHash(path: Path): String = FileUtil.partialSha1Base32Hash(File(path), 512)
 }
 
 trait AppConfig extends Logging {

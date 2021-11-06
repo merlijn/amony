@@ -87,15 +87,15 @@ object FileUtil extends Logging {
   }
 
   /**
-   * Reads n (default 512) random bytes and creates a 80bit base32 encoded hash
+   * Reads n (default 512) random bytes and creates an 80bit base32 encoded hash
    */
-  def partialSha1Base62Hash(file: File, nBytes: Int = 512): String = partialHash(file, nBytes, data => {
+  def partialSha1Base32Hash(file: File, nBytes: Int = 512): String = partialHash(file, nBytes, data => {
 
     // sha-1 creates a 160 bit hash (20 bytes)
     val sha1Digest: MessageDigest = MessageDigest.getInstance("SHA-1")
     val digest: Array[Byte]       = sha1Digest.digest(data)
 
-    // we take 16 base 32 characters (or 80 bits since 5*16 = 2*80)
+    // we take 10 bytes = 80 bits = 16 base32 characters
     // https://en.wikipedia.org/wiki/Birthday_attack
     Base32.encodeToBase32(digest).substring(0, 16)
   })
