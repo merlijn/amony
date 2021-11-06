@@ -2,18 +2,26 @@ package nl.amony.http.util
 
 import better.files.File
 
-import java.io.{ByteArrayInputStream, IOException}
+import java.io.ByteArrayInputStream
+import java.io.IOException
 import java.nio.charset.StandardCharsets.US_ASCII
-import java.security.cert.{CertificateException, CertificateFactory, X509Certificate}
+import java.security.cert.CertificateException
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
 import java.security.spec.PKCS8EncodedKeySpec
-import java.security.{GeneralSecurityException, KeyFactory, KeyStore, KeyStoreException}
+import java.security.GeneralSecurityException
+import java.security.KeyFactory
+import java.security.KeyStore
+import java.security.KeyStoreException
 import java.util
 import java.util.Base64
 import java.util.regex.Pattern
 import java.util.regex.Pattern.CASE_INSENSITIVE
 import javax.crypto.Cipher.DECRYPT_MODE
 import javax.crypto.spec.PBEKeySpec
-import javax.crypto.{Cipher, EncryptedPrivateKeyInfo, SecretKeyFactory}
+import javax.crypto.Cipher
+import javax.crypto.EncryptedPrivateKeyInfo
+import javax.crypto.SecretKeyFactory
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 

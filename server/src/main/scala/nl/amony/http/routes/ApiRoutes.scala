@@ -1,17 +1,21 @@
 package nl.amony.http.routes
 
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.Directives.{path, _}
+import akka.http.scaladsl.server.Directives.path
+import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
 import nl.amony.actor.MediaLibProtocol._
 import nl.amony.actor.MediaIndex._
-import nl.amony.http.{JsonCodecs, RouteDeps}
-import nl.amony.http.WebModel.{FragmentRange, VideoMeta}
+import nl.amony.http.JsonCodecs
+import nl.amony.http.RouteDeps
+import nl.amony.http.WebModel.FragmentRange
+import nl.amony.http.WebModel.VideoMeta
 import scribe.Logging
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 
 trait ApiRoutes extends Logging {
 
@@ -49,7 +53,6 @@ trait ApiRoutes extends Logging {
           complete(response)
         }
       } ~ pathPrefix("media" / Segment) { id =>
-
         pathEnd {
           get {
             onSuccess(api.query.getById(id)) {

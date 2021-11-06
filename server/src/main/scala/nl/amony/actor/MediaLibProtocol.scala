@@ -17,8 +17,8 @@ object MediaLibProtocol {
 
   sealed trait Command extends Message
 
-  case class UpsertMedia(media: Media, sender: ActorRef[Boolean]) extends Command
-  case class RemoveMedia(id: String, deleteFile: Boolean, sender: ActorRef[Boolean])   extends Command
+  case class UpsertMedia(media: Media, sender: ActorRef[Boolean])                    extends Command
+  case class RemoveMedia(id: String, deleteFile: Boolean, sender: ActorRef[Boolean]) extends Command
 
   // -- Querying
   case class GetAll(sender: ActorRef[List[Media]])                extends Command

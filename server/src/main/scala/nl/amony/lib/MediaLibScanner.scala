@@ -1,20 +1,27 @@
 package nl.amony.lib
 
 import akka.util.Timeout
-import nl.amony.{MediaLibConfig, PreviewConfig, TranscodeSettings}
-import nl.amony.actor.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
+import nl.amony.MediaLibConfig
+import nl.amony.PreviewConfig
+import nl.amony.TranscodeSettings
+import nl.amony.actor.MediaLibProtocol.FileInfo
+import nl.amony.actor.MediaLibProtocol.Fragment
+import nl.amony.actor.MediaLibProtocol.Media
+import nl.amony.actor.MediaLibProtocol.VideoInfo
 import nl.amony.lib.FileUtil.PathOps
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.reactive.{Consumer, Observable}
+import monix.reactive.Consumer
+import monix.reactive.Observable
 import scribe.Logging
 
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{Files, Path}
+import java.nio.file.Files
+import java.nio.file.Path
 import scala.concurrent.duration.DurationInt
 import scala.util.Success
 
-object MediaLibScanner extends Logging{
+object MediaLibScanner extends Logging {
 
   val fragmentLength = 3000
 
@@ -65,7 +72,8 @@ object MediaLibScanner extends Logging{
 
     val (probe, debug) = FFMpeg.ffprobe(videoPath)
 
-    val mainStream = probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${videoPath}"))
+    val mainStream =
+      probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${videoPath}"))
 
     logger.debug(mainStream.toString)
 
@@ -101,7 +109,15 @@ object MediaLibScanner extends Logging{
       tags               = Set.empty
     )
 
-    createVideoFragment(media, videoPath, config.indexPath, hash, timeStamp, timeStamp + fragmentLength, config.previews)
+    createVideoFragment(
+      media,
+      videoPath,
+      config.indexPath,
+      hash,
+      timeStamp,
+      timeStamp + fragmentLength,
+      config.previews
+    )
 
     media
   }
@@ -151,10 +167,9 @@ object MediaLibScanner extends Logging{
       .groupBy { case (_, hash) => hash }
       .filter { case (_, files) => files.size > 1 }
 
-    collisionsGroupedByHash.foreach {
-      case (hash, files) =>
-        val collidingFiles = files.map(_._1.absoluteFileName()).mkString("\n")
-        logger.warn(s"The following files share the same hash and will be ignored ($hash):\n$collidingFiles")
+    collisionsGroupedByHash.foreach { case (hash, files) =>
+      val collidingFiles = files.map(_._1.absoluteFileName()).mkString("\n")
+      logger.warn(s"The following files share the same hash and will be ignored ($hash):\n$collidingFiles")
     }
 
     val collidingHashes = collisionsGroupedByHash.map { case (hash, _) => hash }.toSet
@@ -193,7 +208,14 @@ object MediaLibScanner extends Logging{
     (Observable.from(removed), newAndMoved)
   }
 
-  def deleteVideoFragment(media: Media, indexPath: Path, id: String, from: Long, to: Long, config: PreviewConfig): Unit = {
+  def deleteVideoFragment(
+      media: Media,
+      indexPath: Path,
+      id: String,
+      from: Long,
+      to: Long,
+      config: PreviewConfig
+  ): Unit = {
 
     (indexPath / "resources" / s"${id}-$from-${to}_${media.height}p.mp4").deleteIfExists()
 
@@ -203,7 +225,15 @@ object MediaLibScanner extends Logging{
     }
   }
 
-  def createVideoFragment(media: Media, videoPath: Path, indexPath: Path, id: String, from: Long, to: Long, config: PreviewConfig): Unit = {
+  def createVideoFragment(
+      media: Media,
+      videoPath: Path,
+      indexPath: Path,
+      id: String,
+      from: Long,
+      to: Long,
+      config: PreviewConfig
+  ): Unit = {
 
     val resourcePath = indexPath.resolve("resources")
 

@@ -4,7 +4,9 @@ import scribe.Logging
 
 import java.io.IOException
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{FileVisitResult, Path, SimpleFileVisitor}
+import java.nio.file.FileVisitResult
+import java.nio.file.Path
+import java.nio.file.SimpleFileVisitor
 import scala.collection.mutable
 
 class RecursiveFileVisitor extends SimpleFileVisitor[Path] with Logging {

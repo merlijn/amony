@@ -6,7 +6,8 @@ import better.files.File
 import nl.amony.MediaLibConfig
 import nl.amony.actor.MediaLibProtocol._
 import nl.amony.actor.MediaLibEventSourcing._
-import nl.amony.lib.MediaLibScanner.{createVideoFragment, deleteVideoFragment}
+import nl.amony.lib.MediaLibScanner.createVideoFragment
+import nl.amony.lib.MediaLibScanner.deleteVideoFragment
 import scribe.Logging
 
 import java.awt.Desktop
@@ -17,8 +18,9 @@ object MediaLibCommandHandler extends Logging {
 
     logger.debug(s"Received command: $cmd")
 
-    def requireMedia[T](mediaId: String, sender: ActorRef[Either[ErrorResponse, T]])
-                       (effect: Media => Effect[Event, State]): Effect[Event, State] = {
+    def requireMedia[T](mediaId: String, sender: ActorRef[Either[ErrorResponse, T]])(
+        effect: Media => Effect[Event, State]
+    ): Effect[Event, State] = {
       state.media.get(mediaId) match {
         case None        => Effect.reply(sender)(Left(MediaNotFound(mediaId)))
         case Some(media) => effect(media)
@@ -35,9 +37,7 @@ object MediaLibCommandHandler extends Logging {
           .thenReply(sender)(_ => true)
 
       case UpdateMetaData(mediaId, title, comment, tags, sender) =>
-
-        requireMedia(mediaId, sender){ media =>
-
+        requireMedia(mediaId, sender) { media =>
           val titleUpdate   = if (title == media.title) None else title
           val commentUpdate = if (comment == media.comment) None else comment
           val tagsAdded     = tags -- media.tags
@@ -52,7 +52,6 @@ object MediaLibCommandHandler extends Logging {
         }
 
       case RemoveMedia(mediaId, deleteFile, sender) =>
-
         val media = state.media(mediaId)
         val path  = media.resolvePath(config.mediaPath)
 
@@ -73,7 +72,6 @@ object MediaLibCommandHandler extends Logging {
         Effect.reply(sender)(state.media.values.toList)
 
       case DeleteFragment(id, idx, sender) =>
-
         requireMedia(id, sender) { media =>
           logger.info(s"Deleting fragment $id:$idx")
 
@@ -98,7 +96,6 @@ object MediaLibCommandHandler extends Logging {
         }
 
       case UpdateFragmentRange(id, idx, from, to, sender) =>
-
         requireMedia(id, sender) { media =>
           logger.info(s"Updating fragment $id:$idx to $from:$to")
 
@@ -119,16 +116,30 @@ object MediaLibCommandHandler extends Logging {
             Effect
               .persist(FragmentRangeUpdated(id, idx, from, to))
               .thenRun { (s: State) =>
-                deleteVideoFragment(media, config.indexPath, media.id, oldFragment.fromTimestamp, oldFragment.toTimestamp, config.previews)
-                createVideoFragment(media, media.resolvePath(config.mediaPath), config.indexPath, id, from, to, config.previews)
+                deleteVideoFragment(
+                  media,
+                  config.indexPath,
+                  media.id,
+                  oldFragment.fromTimestamp,
+                  oldFragment.toTimestamp,
+                  config.previews
+                )
+                createVideoFragment(
+                  media,
+                  media.resolvePath(config.mediaPath),
+                  config.indexPath,
+                  id,
+                  from,
+                  to,
+                  config.previews
+                )
               }
               .thenReply(sender)(s => Right(s.media(id)))
           }
         }
 
       case AddFragment(id, from, to, sender) =>
-
-        requireMedia(id, sender){ media =>
+        requireMedia(id, sender) { media =>
           logger.info(s"Adding fragment for $id from $from to $to")
 
           if (from > to) {
@@ -144,18 +155,24 @@ object MediaLibCommandHandler extends Logging {
             Effect
               .persist(FragmentAdded(id, from, to))
               .thenRun((_: State) =>
-                createVideoFragment(media, media.resolvePath(config.mediaPath), config.indexPath, id, from, to, config.previews)
+                createVideoFragment(
+                  media,
+                  media.resolvePath(config.mediaPath),
+                  config.indexPath,
+                  id,
+                  from,
+                  to,
+                  config.previews
+                )
               )
               .thenReply(sender)(s => Right(s.media(id)))
           }
         }
 
       case UpdateFragmentTags(id, index, tags, sender) =>
-
         requireMedia(id, sender) { media =>
-
-          val frag = media.fragments(index)
-          val tagsAdded = tags.toSet -- frag.tags
+          val frag        = media.fragments(index)
+          val tagsAdded   = tags.toSet -- frag.tags
           val tagsRemoved = frag.tags.toSet -- tags
 
           if (tagsAdded.isEmpty && tagsRemoved.isEmpty)

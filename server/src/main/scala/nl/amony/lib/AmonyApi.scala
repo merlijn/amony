@@ -50,9 +50,11 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
     def resourcePath(): Path = config.indexPath.resolve("resources")
 
     def getVideo(id: String)(implicit timeout: Timeout): Future[Option[Path]] = {
-      query.getById(id).map(_.map { m =>
-        config.mediaPath.resolve(m.fileInfo.relativePath)
-      })
+      query
+        .getById(id)
+        .map(_.map { m =>
+          config.mediaPath.resolve(m.fileInfo.relativePath)
+        })
     }
 
     def getVideoFragment(id: String, quality: Int, start: Long, end: Long): Path = {
@@ -60,17 +62,22 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
       resourcePath().resolve(s"$id-$start-${end}_${quality}p.mp4")
     }
 
-    def getThumbnail(id: String, quality: Int, timestamp: Option[Long])(implicit timeout: Timeout): Future[Option[InputStream]] = {
+    def getThumbnail(id: String, quality: Int, timestamp: Option[Long])(implicit
+        timeout: Timeout
+    ): Future[Option[InputStream]] = {
 
-      query.getById(id).map(_.map { media =>
-
-        timestamp match {
-          case None         =>
-            File(resourcePath().resolve(s"${media.id}-${media.fragments.head.fromTimestamp}_${quality}p.webp")).newFileInputStream
-          case Some(millis) =>
-            FFMpeg.streamThumbnail(config.mediaPath.resolve(media.fileInfo.relativePath).toAbsolutePath, millis, 320)
-        }
-      })
+      query
+        .getById(id)
+        .map(_.map { media =>
+          timestamp match {
+            case None =>
+              File(
+                resourcePath().resolve(s"${media.id}-${media.fragments.head.fromTimestamp}_${quality}p.webp")
+              ).newFileInputStream
+            case Some(millis) =>
+              FFMpeg.streamThumbnail(config.mediaPath.resolve(media.fileInfo.relativePath).toAbsolutePath, millis, 320)
+          }
+        })
     }
 
     def getFilePathForMedia(vid: Media): Path = config.mediaPath.resolve(vid.fileInfo.relativePath)
@@ -136,7 +143,7 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
           logger.info(s"generating thumbnail previews for '${m.fileName()}'")
           FFMpeg.generatePreviewSprite(
             m.resolvePath(config.mediaPath).toAbsolutePath,
-            outputDir = config.indexPath.resolve("resources"),
+            outputDir      = config.indexPath.resolve("resources"),
             outputBaseName = Some(s"${m.id}-timeline")
           )
         }
@@ -147,7 +154,15 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
       val videoPath = config.mediaPath.resolve(m.fileInfo.relativePath)
 
       m.fragments.foreach { f =>
-        MediaLibScanner.createVideoFragment(m, videoPath, config.indexPath, m.id, f.fromTimestamp, f.toTimestamp, config.previews)
+        MediaLibScanner.createVideoFragment(
+          m,
+          videoPath,
+          config.indexPath,
+          m.id,
+          f.fromTimestamp,
+          f.toTimestamp,
+          config.previews
+        )
       }
     }
 

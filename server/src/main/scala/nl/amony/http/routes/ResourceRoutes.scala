@@ -14,9 +14,9 @@ trait ResourceRoutes extends Logging {
   self: RouteDeps =>
 
   object patterns {
-    val Video = raw"(.+)_(\d+)p\.mp4".r
+    val Video         = raw"(.+)_(\d+)p\.mp4".r
     val VideoFragment = raw"(.+)~(\d+)-(\d+)_(\d+)p\.mp4".r
-    val Thumbnail = raw"(\w+)(-(\d+))?_(\d+)p\.webp".r
+    val Thumbnail     = raw"(\w+)(-(\d+))?_(\d+)p\.webp".r
   }
 
   val resourceRoutes =
@@ -24,7 +24,7 @@ trait ResourceRoutes extends Logging {
 
       case patterns.Thumbnail(id, _, timestamp, quality) =>
         onSuccess(api.resources.getThumbnail(id, quality.toInt, Option(timestamp).map(_.toLong))) {
-          case None     => complete(StatusCodes.NotFound)
+          case None => complete(StatusCodes.NotFound)
           case Some(is) =>
             val source = StreamConverters.fromInputStream(() => is, 8192)
             complete(HttpEntity(ContentType(MediaTypes.`image/webp`), source))
@@ -45,7 +45,6 @@ trait ResourceRoutes extends Logging {
     rawPathPrefix(Slash) {
 
       extractUnmatchedPath { path =>
-
         // TODO sanitize
         val filePath = path.toString() match {
           case "" | "/" => "index.html"

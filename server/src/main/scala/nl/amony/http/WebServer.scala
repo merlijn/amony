@@ -1,24 +1,31 @@
 package nl.amony.http
 
 import akka.actor.typed.ActorSystem
-import akka.http.scaladsl.{ConnectionContext, Http}
+import akka.http.scaladsl.ConnectionContext
+import akka.http.scaladsl.Http
 import better.files.File
-import nl.amony.http.routes.{AdminRoutes, ApiRoutes, ResourceRoutes}
+import nl.amony.http.routes.AdminRoutes
+import nl.amony.http.routes.ApiRoutes
+import nl.amony.http.routes.ResourceRoutes
+import nl.amony.http.util.PemReader
 import nl.amony.lib.AmonyApi
 import scribe.Logging
 import akka.http.scaladsl.server.Directives._
-import nl.amony.http.util.PemReader
 
 import java.security.SecureRandom
-import javax.net.ssl.{KeyManagerFactory, SSLContext}
+import javax.net.ssl.KeyManagerFactory
+import javax.net.ssl.SSLContext
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
+import scala.util.Failure
+import scala.util.Success
 
-class WebServer(override val config: WebServerConfig,
-                override val api: AmonyApi)(
-                override implicit val system: ActorSystem[Nothing]
+class WebServer(override val config: WebServerConfig, override val api: AmonyApi)(
+    override implicit val system: ActorSystem[Nothing]
 ) extends Logging
-    with ApiRoutes with ResourceRoutes with AdminRoutes with RouteDeps {
+    with ApiRoutes
+    with ResourceRoutes
+    with AdminRoutes
+    with RouteDeps {
 
   val allApiRoutes =
     if (config.enableAdmin)

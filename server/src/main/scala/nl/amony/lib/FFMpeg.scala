@@ -3,7 +3,8 @@ package nl.amony.lib
 import better.files.File
 import monix.eval.Task
 import nl.amony.lib.FFMpeg.model.ProbeDebugOutput
-import nl.amony.lib.FileUtil.{PathOps, stripExtension}
+import nl.amony.lib.FileUtil.PathOps
+import nl.amony.lib.FileUtil.stripExtension
 import scribe.Logging
 
 import java.io.InputStream
@@ -15,17 +16,18 @@ import scala.util.Try
 object FFMpeg extends Logging {
 
   object model {
-    import io.circe._, io.circe.generic.semiauto._
+    import io.circe._
+    import io.circe.generic.semiauto._
 
     case class ProbeDebugOutput(
-      isFastStart: Boolean
+        isFastStart: Boolean
     )
 
     case class ProbeOutput(
-      streams: List[Stream]
+        streams: List[Stream]
     ) {
-      def firstVideoStream: Option[VideoStream] = streams.collectFirst {
-        case v: VideoStream => v
+      def firstVideoStream: Option[VideoStream] = streams.collectFirst { case v: VideoStream =>
+        v
       }
     }
 
@@ -36,23 +38,23 @@ object FFMpeg extends Logging {
     case object UnkownStream extends Stream
 
     case class AudioStream(
-      codec_name: String
+        codec_name: String
     ) extends Stream
 
     case class VideoStream(
-      codec_name: String,
-      width: Int,
-      height: Int,
-      duration: String,
-      bit_rate: String,
-      avg_frame_rate: String,
-      tags: Map[String, String]
+        codec_name: String,
+        width: Int,
+        height: Int,
+        duration: String,
+        bit_rate: String,
+        avg_frame_rate: String,
+        tags: Map[String, String]
     ) extends Stream {
       def durationMillis: Long = (duration.toDouble * 1000L).toLong
       def fps: Double = {
         val splitted = avg_frame_rate.split('/')
         val divident = splitted(0).toDouble
-        val divisor = splitted(1).toDouble
+        val divisor  = splitted(1).toDouble
 
         divident / divisor
       }
@@ -60,7 +62,7 @@ object FFMpeg extends Logging {
 
     implicit val videoStreamDecoder: Decoder[VideoStream] = deriveDecoder[VideoStream]
     implicit val audioStreamDecoder: Decoder[AudioStream] = deriveDecoder[AudioStream]
-    implicit val probeDecoder: Decoder[ProbeOutput] = deriveDecoder[ProbeOutput]
+    implicit val probeDecoder: Decoder[ProbeOutput]       = deriveDecoder[ProbeOutput]
 
     implicit val streamDecoder: Decoder[Stream] = new Decoder[Stream] {
       final def apply(c: HCursor): Decoder.Result[Stream] = {
@@ -81,7 +83,7 @@ object FFMpeg extends Logging {
 
   def ffprobeOld(file: Path): (model.ProbeOutput, model.ProbeDebugOutput) = {
 
-    val fileName = file.toAbsolutePath.normalize().toString
+    val fileName    = file.toAbsolutePath.normalize().toString
     val debugOutput = runSync(useErrorStream = true, cmds = List("ffprobe", "-v", "debug", fileName))
     (null, ProbeDebugOutput(fastStartPattern.matches(debugOutput)))
   }
@@ -93,7 +95,7 @@ object FFMpeg extends Logging {
     val fileName = file.toAbsolutePath.normalize().toString
 
     // setting -v to debug will hang the standard output stream on some files.
-    val process   = run(cmds = List("ffprobe", "-print_format", "json", "-show_streams", "-v", "quiet", fileName))
+    val process = run(cmds = List("ffprobe", "-print_format", "json", "-show_streams", "-v", "quiet", fileName))
 
 //    Task {
 //      val result = process.waitFor(3000, TimeUnit.MILLISECONDS)
@@ -164,23 +166,25 @@ object FFMpeg extends Logging {
   }
 
   def copyMp4(
-     inputFile: Path,
-     start: Long,
-     end: Long,
-     outputFile: Option[Path] = None,
+      inputFile: Path,
+      start: Long,
+      end: Long,
+      outputFile: Option[Path] = None
   ): Unit = {
-    val input = inputFile.absoluteFileName()
+    val input  = inputFile.absoluteFileName()
     val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.mp4")
 
+    // format: off
     val args = List(
-      "-ss",  formatTime(start),
-      "-to",  formatTime(end),
-      "-i",   input,
-      "-c",   "copy",
-      "-map", "0",
-      "-movflags", "+faststart",
-      "-y", output
+        "-ss",       formatTime(start),
+        "-to",       formatTime(end),
+        "-i",        input,
+        "-c",        "copy",
+        "-map",      "0",
+        "-movflags", "+faststart",
+        "-y",        output
       )
+    // format: on
 
     runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
   }
@@ -194,7 +198,7 @@ object FFMpeg extends Logging {
       scaleHeight: Option[Int]
   ): Unit = {
 
-    val input = inputFile.absoluteFileName()
+    val input  = inputFile.absoluteFileName()
     val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.mp4")
 
     // format: off
@@ -217,11 +221,11 @@ object FFMpeg extends Logging {
   }
 
   def streamFragment(
-        inputFile: String,
-        from: Long,
-        to: Long,
-        quality: Int = 23,
-        scaleHeight: Option[Int] = None
+      inputFile: String,
+      from: Long,
+      to: Long,
+      quality: Int = 23,
+      scaleHeight: Option[Int] = None
   ): InputStream = {
 
     // format: off
@@ -246,11 +250,12 @@ object FFMpeg extends Logging {
   }
 
   def streamThumbnail(
-     inputFile: Path,
-     timestamp: Long,
-     scaleHeight: Int
+      inputFile: Path,
+      timestamp: Long,
+      scaleHeight: Int
   ): InputStream = {
 
+    // format: off
     val args = List(
       "-ss",      formatTime(timestamp),
       "-i" ,      inputFile.toString,
@@ -260,18 +265,19 @@ object FFMpeg extends Logging {
       "-f",       "image2pipe",
       "-"
     )
+    // format: on
 
     run("ffmpeg" :: args).getInputStream
   }
 
   def writeThumbnail(
-    inputFile: Path,
-    timestamp: Long,
-    outputFile: Option[Path],
-    scaleHeight: Option[Int]
+      inputFile: Path,
+      timestamp: Long,
+      outputFile: Option[Path],
+      scaleHeight: Option[Int]
   ): Unit = {
 
-    val input = inputFile.absoluteFileName()
+    val input  = inputFile.absoluteFileName()
     val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.webp")
 
     // format: off
@@ -290,11 +296,11 @@ object FFMpeg extends Logging {
   }
 
   def generatePreviewSprite(
-     inputFile: Path,
-     outputDir: Path,
-     height: Int = 100,
-     outputBaseName: Option[String] = None,
-     frameInterval: Option[Int] = None
+      inputFile: Path,
+      outputDir: Path,
+      height: Int = 100,
+      outputBaseName: Option[String] = None,
+      frameInterval: Option[Int] = None
   ) = {
 
     def calculateNrOfFrames(length: Long): (Int, Int) = {
@@ -304,7 +310,7 @@ object FFMpeg extends Logging {
       val minFrames = 4
       val maxFrames = 64
 
-      val frames = Math.min(maxFrames, Math.max(minFrames, length / (10 * 1000)))
+      val frames   = Math.min(maxFrames, Math.max(minFrames, length / (10 * 1000)))
       val tileSize = Math.ceil(Math.sqrt(frames.toDouble)).toInt
 
       frames.toInt -> tileSize
@@ -314,22 +320,27 @@ object FFMpeg extends Logging {
 
     val fileBaseName = outputBaseName.getOrElse(inputFile.getFileName.stripExtension())
 
-    val (probe, _) = ffprobe(inputFile)
-    val stream = probe.firstVideoStream.getOrElse(throw new IllegalStateException("no video stream found"))
+    val (probe, _)         = ffprobe(inputFile)
+    val stream             = probe.firstVideoStream.getOrElse(throw new IllegalStateException("no video stream found"))
     val (frames, tileSize) = calculateNrOfFrames(stream.durationMillis)
-    val mod = ((stream.fps * (stream.durationMillis / 1000)) / frames).toInt
+    val mod                = ((stream.fps * (stream.durationMillis / 1000)) / frames).toInt
 
     val width: Int = ((stream.width / stream.height) * height).toInt
 
 //    logger.info(s"fps: ${probe.fps}, length: ${probe.duration}, frames: $frames, tileSize: $tileSize, mod: $mod")
 
     val args = List(
-      "-i" ,      inputFile.absoluteFileName(),
-      "-filter_complex", s"select='not(mod(n,$mod))',scale=$width:$height,tile=${tileSize}x${tileSize}",
-      "-vframes",  "1",
-      "-qscale:v", "3",
+      "-i",
+      inputFile.absoluteFileName(),
+      "-filter_complex",
+      s"select='not(mod(n,$mod))',scale=$width:$height,tile=${tileSize}x${tileSize}",
+      "-vframes",
+      "1",
+      "-qscale:v",
+      "3",
       "-y",
-      "-an", s"$outputDir/$fileBaseName.jpeg"
+      "-an",
+      s"$outputDir/$fileBaseName.jpeg"
     )
 
     def genVtt(): String = {
@@ -340,8 +351,8 @@ object FFMpeg extends Logging {
       builder.append("WEBVTT\n")
 
       (0 until frames).foreach { n =>
-        val start = formatTime(thumbLength * n)
-        val end = formatTime(thumbLength * (n + 1))
+        val start  = formatTime(thumbLength * n)
+        val end    = formatTime(thumbLength * (n + 1))
         val x: Int = n % tileSize
         val y: Int = Math.floor(n / tileSize).toInt
 

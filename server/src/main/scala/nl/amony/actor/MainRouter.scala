@@ -13,13 +13,11 @@ trait Message
 object MainRouter {
 
   def apply(config: MediaLibConfig): Behavior[Message] =
-
     Behaviors.setup { context =>
-
       implicit val mat = Materializer(context)
 
       val localIndex = MediaIndex.apply(config, context).toTyped[IndexQuery]
-      val handler = context.spawn(MediaLibProtocol.apply(config), "medialib")
+      val handler    = context.spawn(MediaLibProtocol.apply(config), "medialib")
 
       Behaviors.receiveMessage[Message] {
 

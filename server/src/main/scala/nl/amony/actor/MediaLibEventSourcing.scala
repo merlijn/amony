@@ -1,6 +1,8 @@
 package nl.amony.actor
 
-import nl.amony.actor.MediaLibProtocol.{Fragment, Media, State}
+import nl.amony.actor.MediaLibProtocol.Fragment
+import nl.amony.actor.MediaLibProtocol.Media
+import nl.amony.actor.MediaLibProtocol.State
 import nl.amony.lib.ListOps
 import scribe.Logging
 
@@ -22,8 +24,14 @@ object MediaLibEventSourcing extends Logging {
   case class FragmentDeleted(id: String, index: Int)                                              extends Event
   case class FragmentAdded(id: String, fromTimeStamp: Long, toTimestamp: Long)                    extends Event
   case class FragmentRangeUpdated(id: String, index: Int, fromTimestamp: Long, toTimestamp: Long) extends Event
-  case class FragmentMetaDataUpdated(id: String, index: Int, comment: Option[String], tagsAdded: Set[String], tagsRemoved: Set[String]) extends Event
-  case class FragmentTagsUpdated(mediaId: String, fragmentId: Int, tags: List[String])            extends Event
+  case class FragmentMetaDataUpdated(
+      id: String,
+      index: Int,
+      comment: Option[String],
+      tagsAdded: Set[String],
+      tagsRemoved: Set[String]
+  )                                                                                    extends Event
+  case class FragmentTagsUpdated(mediaId: String, fragmentId: Int, tags: List[String]) extends Event
 
   def apply(state: State, event: Event): State = {
 
@@ -87,7 +95,6 @@ object MediaLibEventSourcing extends Logging {
         state.copy(media = state.media + (media.id -> media.copy(fragments = newFragments)))
 
       case FragmentMetaDataUpdated(mediaId, index, comment, tagsAdded, tagsRemoved) =>
-
         val media           = state.media(mediaId)
         val fragment        = media.fragments(index)
         val tags            = (fragment.tags.toSet -- tagsRemoved ++ tagsAdded).toList

@@ -1,20 +1,26 @@
 package nl.amony
 
-import akka.actor.typed.{ActorSystem, Behavior}
-import nl.amony.actor.{MainRouter, MediaLibProtocol, Message}
+import akka.actor.typed.ActorSystem
+import akka.actor.typed.Behavior
+import nl.amony.actor.MainRouter
+import nl.amony.actor.MediaLibProtocol
+import nl.amony.actor.Message
 import nl.amony.actor.MediaLibProtocol.Command
 import nl.amony.http.WebServer
-import nl.amony.lib.{AmonyApi, FFMpeg, Migration}
+import nl.amony.lib.AmonyApi
+import nl.amony.lib.FFMpeg
+import nl.amony.lib.Migration
 import scribe.Logging
 
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext
 
 object App extends AppConfig with Logging {
 
   def main(args: Array[String]): Unit = {
 
-    val router: Behavior[Message] = MainRouter.apply(mediaLibConfig)
+    val router: Behavior[Message]    = MainRouter.apply(mediaLibConfig)
     val system: ActorSystem[Message] = ActorSystem(router, "mediaLibrary", config)
 
     val api = new AmonyApi(mediaLibConfig, system)
@@ -39,7 +45,7 @@ object App extends AppConfig with Logging {
     logger.warn("Probing all videos")
 
     val (fastStart, nonFastStart) = media.partition { m =>
-      val path  = m.resolvePath(api.config.mediaPath)
+      val path       = m.resolvePath(api.config.mediaPath)
       val (_, debug) = FFMpeg.ffprobe(path)
       debug.isFastStart
     }

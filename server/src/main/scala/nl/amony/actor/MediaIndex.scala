@@ -2,13 +2,17 @@ package nl.amony.actor
 
 import akka.actor.typed
 import akka.actor.typed.scaladsl.ActorContext
-import akka.actor.{Actor, ActorRef, Props}
+import akka.actor.Actor
+import akka.actor.ActorRef
+import akka.actor.Props
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
-import akka.persistence.query.{EventEnvelope, PersistenceQuery}
+import akka.persistence.query.EventEnvelope
+import akka.persistence.query.PersistenceQuery
 import akka.stream.Materializer
 import better.files.File
 import nl.amony.MediaLibConfig
-import nl.amony.actor.MediaLibProtocol.{Media, State}
+import nl.amony.actor.MediaLibProtocol.Media
+import nl.amony.actor.MediaLibProtocol.State
 import akka.actor.typed.scaladsl.adapter._
 import scribe.Logging
 
@@ -27,13 +31,13 @@ object MediaIndex {
 
   case class Sort(field: SortField, reverse: Boolean)
   case class Query(
-                    q: Option[String],
-                    offset: Option[Int],
-                    n: Int,
-                    directory: Option[String],
-                    minRes: Option[Int],
-                    sort: Option[Sort]
-                  )
+      q: Option[String],
+      offset: Option[Int],
+      n: Int,
+      directory: Option[String],
+      minRes: Option[Int],
+      sort: Option[Sort]
+  )
   case class SearchResult(offset: Int, total: Int, items: Seq[Media])
 
   def apply[T](config: MediaLibConfig, context: ActorContext[T])(implicit mat: Materializer): ActorRef = {
@@ -59,9 +63,9 @@ object MediaIndex {
     var indexedAt: Long = 0L
     var state: State = State(Map.empty)
     var directories: List[Directory] = List.empty
-    var sortedByFilename: List[Media]  = List.empty
+    var sortedByFilename: List[Media] = List.empty
     var sortedByDateAdded: List[Media] = List.empty
-    var sortedByDuration: List[Media]  = List.empty
+    var sortedByDuration: List[Media] = List.empty
 
     def media: Map[String, Media] = state.media
 
@@ -77,10 +81,10 @@ object MediaIndex {
           }
           dirs.toList.sorted.zipWithIndex.map { case (path, idx) => Directory(idx.toString, path) }
         }
-        sortedByFilename = media.values.toList.sortBy(m => m.title.getOrElse(m.fileName()))
+        sortedByFilename  = media.values.toList.sortBy(m => m.title.getOrElse(m.fileName()))
         sortedByDateAdded = media.values.toList.sortBy(m => m.fileInfo.creationTime)
-        sortedByDuration = media.values.toList.sortBy(m => m.videoInfo.duration)
-        indexedAt = counter
+        sortedByDuration  = media.values.toList.sortBy(m => m.videoInfo.duration)
+        indexedAt         = counter
       }
     }
 

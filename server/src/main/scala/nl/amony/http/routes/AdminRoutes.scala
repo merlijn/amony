@@ -23,7 +23,7 @@ trait AdminRoutes {
     } ~ (path("update-hashes") & post) {
       api.admin.updateHashes()
       complete("OK")
-    }~ (path("convert-non-streamable-videos") & post) {
+    } ~ (path("convert-non-streamable-videos") & post) {
       api.admin.convertNonStreamableVideos()
       complete("OK")
     } ~ (path("scan-library") & post) {

@@ -7,33 +7,34 @@ import nl.amony.lib.FileUtil
 import pureconfig._
 import pureconfig.generic.auto._
 import pureconfig.generic.semiauto.deriveEnumerationReader
-import scribe.{Logger, Logging}
+import scribe.Logger
+import scribe.Logging
 
 import java.nio.file.Path
 import scala.concurrent.duration.FiniteDuration
 
 case class MediaLibConfig(
-  path: Path,
-  indexPath: Path,
-  scanParallelFactor: Int,
-  verifyExistingHashes: Boolean,
-  hashingAlgorithm: HashingAlgorithm,
-  previews: PreviewConfig
+    path: Path,
+    indexPath: Path,
+    scanParallelFactor: Int,
+    verifyExistingHashes: Boolean,
+    hashingAlgorithm: HashingAlgorithm,
+    previews: PreviewConfig
 ) {
 
   lazy val mediaPath = path.toAbsolutePath.normalize()
 }
 
 case class PreviewConfig(
-  transcode: List[TranscodeSettings],
-  minimumFragmentDuration: Option[FiniteDuration],
-  maximumFragmentDuration: Option[FiniteDuration],
+    transcode: List[TranscodeSettings],
+    minimumFragmentDuration: Option[FiniteDuration],
+    maximumFragmentDuration: Option[FiniteDuration]
 )
 
 case class TranscodeSettings(
-  format: String,
-  scaleHeight: Int,
-  crf: Int
+    format: String,
+    scaleHeight: Int,
+    crf: Int
 )
 
 sealed trait HashingAlgorithm {
