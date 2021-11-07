@@ -15,6 +15,9 @@ const FragmentsPlayer = (props: FragmentsPlayerProps) => {
 
   let playPromise: Promise<void> = Promise.resolve()
 
+  // sort the fragments by start time
+  props.fragments.sort((a, b) => a.timestamp_start > b.timestamp_start ? 1 : -1)
+
   useEffect(() => {
     const videoElement = document.getElementById(props.id) as HTMLVideoElement;
 
@@ -26,16 +29,13 @@ const FragmentsPlayer = (props: FragmentsPlayerProps) => {
 
   const nextFragment = (v: HTMLVideoElement) => {
 
-    let idx = currentPreviewIdx
-
-    // on to the next
-    if (idx < props.fragments.length - 1)
-      idx = idx + 1
+    let idx = currentPreviewIdx + 1
 
     // back the 1st (0)
-    if (idx > 0 && idx + 1 >= props.fragments.length)
+    if (idx >= props.fragments.length)
       idx = 0
 
+    console.log(`size: ${props.fragments.length}, index: ${idx}`)
     setCurrentPreviewIdx(idx)
     play(v)
   }
