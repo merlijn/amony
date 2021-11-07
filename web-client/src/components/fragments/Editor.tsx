@@ -1,6 +1,6 @@
 import Plyr from 'plyr';
 import React, {useEffect, useState} from 'react';
-import './Player.scss';
+import './Editor.scss';
 import {Video} from "../../api/Model";
 import {Api} from "../../api/Api";
 import {Button} from "react-bootstrap";
@@ -12,7 +12,7 @@ export type EditFragment = {
   end?: number,
 }
 
-const Player = (props: {videoId: string}) => {
+const Editor = (props: {videoId: string}) => {
 
   const [vid, setVid] = useState<Video | null>(null)
 
@@ -133,4 +133,4 @@ const PlayerView = (props: {vid: Video}) => {
   );
 }
 
-export default Player;
+export default Editor;

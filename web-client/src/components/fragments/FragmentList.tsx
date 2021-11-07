@@ -1,6 +1,6 @@
 import {Video} from "../../api/Model";
 import React, {CSSProperties, useState} from "react";
-import {EditFragment} from "./Player";
+import {EditFragment} from "./Editor";
 import FragmentPreview from "./FragmentPreview";
 import './FragmentList.scss';
 import ImgWithAlt from "../shared/ImgWithAlt";
