@@ -22,10 +22,10 @@ lazy val amony = (project in file(".")).
       "com.typesafe"              % "config"                     % "1.4.1",
       "com.typesafe.akka"        %% "akka-actor-typed"           % AkkaVersion,
       "com.typesafe.akka"        %% "akka-stream"                % AkkaVersion,
-      "com.typesafe.akka"        %% "akka-http"                  % AkkaHttpVersion,
       "com.typesafe.akka"        %% "akka-persistence-typed"     % AkkaVersion,
       "com.typesafe.akka"        %% "akka-persistence-query"     % AkkaVersion,
       "com.typesafe.akka"        %% "akka-serialization-jackson" % AkkaVersion,
+      "com.typesafe.akka"        %% "akka-http"                  % AkkaHttpVersion,
       "com.outr"                 %% "scribe-slf4j"               % "3.5.5",
       "org.fusesource.leveldbjni" % "leveldbjni-all"             % "1.8",
       "org.iq80.leveldb"          % "leveldb"                    % "0.12",
@@ -36,8 +36,8 @@ lazy val amony = (project in file(".")).
       "io.circe"                 %% "circe-generic"              % "0.14.1",
       "io.circe"                 %% "circe-parser"               % "0.14.1",
       "com.github.pathikrit"     %% "better-files"               % "3.9.1",
-      "org.scalatest"            %% "scalatest"                  % "3.2.9"   % Test,
-      "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.9.0" % Test
+      "org.scalatest"            %% "scalatest"                  % "3.2.9"           % Test,
+      "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.9.0"         % Test
     ),
 //    assembly / logLevel := Level.Debug,
     assembly / assemblyJarName := "amony.jar",

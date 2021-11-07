@@ -327,21 +327,17 @@ object FFMpeg extends Logging {
 
     val width: Int = ((stream.width / stream.height) * height).toInt
 
-//    logger.info(s"fps: ${probe.fps}, length: ${probe.duration}, frames: $frames, tileSize: $tileSize, mod: $mod")
-
+    // format: off
     val args = List(
-      "-i",
-      inputFile.absoluteFileName(),
-      "-filter_complex",
-      s"select='not(mod(n,$mod))',scale=$width:$height,tile=${tileSize}x${tileSize}",
-      "-vframes",
-      "1",
-      "-qscale:v",
-      "3",
+      "-i",              inputFile.absoluteFileName(),
+      "-filter_complex", s"select='not(mod(n,$mod))',scale=$width:$height,tile=${tileSize}x${tileSize}",
+      "-vframes",        "1",
+      "-qscale:v",       "3",
       "-y",
       "-an",
       s"$outputDir/$fileBaseName.jpeg"
     )
+    // format: on
 
     def genVtt(): String = {
       val thumbLength: Int = (stream.durationMillis / frames).toInt

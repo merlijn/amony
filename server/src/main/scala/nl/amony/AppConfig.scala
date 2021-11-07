@@ -22,6 +22,7 @@ case class MediaLibConfig(
     previews: PreviewConfig
 ) {
 
+  lazy val resourcePath = indexPath.resolve("resources")
   lazy val mediaPath = path.toAbsolutePath.normalize()
 }
 

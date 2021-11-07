@@ -1,13 +1,13 @@
 package nl.amony.http.routes
 
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.Directives.path
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.path
 import akka.http.scaladsl.server.Route
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
-import nl.amony.actor.MediaLibProtocol._
 import nl.amony.actor.MediaIndex._
+import nl.amony.actor.MediaLibProtocol._
 import nl.amony.http.JsonCodecs
 import nl.amony.http.RouteDeps
 import nl.amony.http.WebModel.FragmentRange
@@ -40,7 +40,7 @@ trait ApiRoutes extends Logging {
           val sortField = sort
             .map {
               case "title"      => FileName
-              case "duration"   => VideoDuration
+              case "duration"   => Duration
               case "date_added" => DateAdded
               case _            => throw new IllegalArgumentException("unkown sort field")
             }

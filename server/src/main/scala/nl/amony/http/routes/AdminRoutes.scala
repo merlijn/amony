@@ -9,7 +9,7 @@ trait AdminRoutes {
 
   val adminRoutes = pathPrefix("api" / "admin") {
     (path("regen-thumbnails") & post) {
-      api.admin.regeneratePreviews()
+      api.admin.regenerateAllPreviews()
       complete("OK")
     } ~ (path("regen-preview-thumbnails") & post) {
       api.admin.generateThumbnailPreviews()

@@ -15,8 +15,8 @@ import monix.reactive.Consumer
 import nl.amony.MediaLibConfig
 import nl.amony.actor.MediaIndex._
 import nl.amony.actor.MediaLibProtocol._
-import scribe.Logging
 import nl.amony.actor.Message
+import scribe.Logging
 
 import java.io.InputStream
 import java.nio.file.Path
@@ -27,7 +27,8 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
   import akka.actor.typed.scaladsl.AskPattern._
   implicit val scheduler = system.scheduler
   implicit val ec        = system.executionContext
-
+  
+  // format: off
   object query {
 
     def getById(id: String)(implicit timeout: Timeout): Future[Option[Media]] =
@@ -36,18 +37,41 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
     def getAll()(implicit timeout: Timeout): Future[List[Media]] =
       system.ask[List[Media]](ref => GetAll(ref))
 
-    def search(q: Option[String], offset: Option[Int], size: Int, tag: Option[String], minRes: Option[Int], sort: Sort)(
-        implicit timeout: Timeout
-    ): Future[SearchResult] =
+    def search(q: Option[String], offset: Option[Int], size: Int, tag: Option[String], minRes: Option[Int], sort: Sort)(implicit timeout: Timeout): Future[SearchResult] =
       system.ask[SearchResult](ref => Search(Query(q, offset, size, tag, minRes, Some(sort)), ref))
 
     def getDirectories()(implicit timeout: Timeout): Future[List[Directory]] =
       system.ask[List[Directory]](ref => GetDirectories(ref))
   }
 
+  object modify {
+
+    def upsertMedia(media: Media)(implicit timeout: Timeout): Future[Media] =
+      system.ask[Boolean](ref => UpsertMedia(media, ref)).map(_ => media)
+
+    def deleteMedia(id: String, deleteFile: Boolean)(implicit timeout: Timeout): Future[Boolean] =
+      system.ask[Boolean](ref => RemoveMedia(id, deleteFile, ref))
+
+    def updateMetaData(id: String, title: Option[String], comment: Option[String], tags: List[String])(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+      system.ask[Either[ErrorResponse, Media]](ref => UpdateMetaData(id, title, comment, tags.toSet, ref))
+
+    def addFragment(id: String, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+      system.ask[Either[ErrorResponse, Media]](ref => AddFragment(id, from, to, ref))
+
+    def updateFragmentRange(id: String, idx: Int, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+      system.ask[Either[ErrorResponse, Media]](ref => UpdateFragmentRange(id, idx, from, to, ref))
+
+    def updateFragmentTags(id: String, idx: Int, tags: List[String])(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+      system.ask[Either[ErrorResponse, Media]](ref => UpdateFragmentTags(id, idx, tags, ref))
+
+    def deleteFragment(id: String, idx: Int)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+      system.ask[Either[ErrorResponse, Media]](ref => DeleteFragment(id, idx, ref))
+  }
+  // format: on
+
   object resources {
 
-    def resourcePath(): Path = config.indexPath.resolve("resources")
+    def resourcePath(): Path = config.resourcePath
 
     def getVideo(id: String)(implicit timeout: Timeout): Future[Option[Path]] = {
       query
@@ -57,10 +81,9 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
         })
     }
 
-    def getVideoFragment(id: String, quality: Int, start: Long, end: Long): Path = {
-
+    def getVideoFragment(id: String, quality: Int, start: Long, end: Long): Path =
       resourcePath().resolve(s"$id-$start-${end}_${quality}p.mp4")
-    }
+    
 
     def getThumbnail(id: String, quality: Int, timestamp: Option[Long])(implicit
         timeout: Timeout
@@ -81,36 +104,6 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
     }
 
     def getFilePathForMedia(vid: Media): Path = config.mediaPath.resolve(vid.fileInfo.relativePath)
-  }
-
-  object modify {
-
-    def upsertMedia(media: Media)(implicit timeout: Timeout): Future[Media] =
-      system.ask[Boolean](ref => UpsertMedia(media, ref)).map(_ => media)
-
-    def deleteMedia(id: String, deleteFile: Boolean)(implicit timeout: Timeout): Future[Boolean] =
-      system.ask[Boolean](ref => RemoveMedia(id, deleteFile, ref))
-
-    def updateMetaData(id: String, title: Option[String], comment: Option[String], tags: List[String])(implicit
-        timeout: Timeout
-    ): Future[Either[ErrorResponse, Media]] =
-      system.ask[Either[ErrorResponse, Media]](ref => UpdateMetaData(id, title, comment, tags.toSet, ref))
-
-    def addFragment(id: String, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
-      system.ask[Either[ErrorResponse, Media]](ref => AddFragment(id, from, to, ref))
-
-    def updateFragmentRange(id: String, idx: Int, from: Long, to: Long)(implicit
-        timeout: Timeout
-    ): Future[Either[ErrorResponse, Media]] =
-      system.ask[Either[ErrorResponse, Media]](ref => UpdateFragmentRange(id, idx, from, to, ref))
-
-    def updateFragmentTags(id: String, idx: Int, tags: List[String])(implicit
-        timeout: Timeout
-    ): Future[Either[ErrorResponse, Media]] =
-      system.ask[Either[ErrorResponse, Media]](ref => UpdateFragmentTags(id, idx, tags, ref))
-
-    def deleteFragment(id: String, idx: Int)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
-      system.ask[Either[ErrorResponse, Media]](ref => DeleteFragment(id, idx, ref))
   }
 
   object admin {
@@ -150,31 +143,23 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
       }
     }
 
-    def regeneratePreviewFor(m: Media): Unit = {
-      val videoPath = config.mediaPath.resolve(m.fileInfo.relativePath)
-
-      m.fragments.foreach { f =>
+    def regeneratePreviewForMedia(media: Media): Unit = {
+      logger.info(s"re-generating previews for '${media.fileInfo.relativePath}'")
+      media.fragments.foreach { f =>
         MediaLibScanner.createVideoFragment(
-          m,
-          videoPath,
-          config.indexPath,
-          m.id,
-          f.fromTimestamp,
-          f.toTimestamp,
-          config.previews
+          media     = media,
+          videoPath = config.mediaPath.resolve(media.fileInfo.relativePath),
+          indexPath = config.indexPath,
+          id        = media.id,
+          from      = f.fromTimestamp,
+          to        = f.toTimestamp,
+          config    = config.previews
         )
       }
     }
 
-    def regeneratePreviews()(implicit timeout: Timeout): Unit = {
-
-      query.getAll().foreach { medias =>
-        medias.foreach { m =>
-          logger.info(s"re-generating previews for '${m.fileInfo.relativePath}'")
-          regeneratePreviewFor(m)
-        }
-      }
-    }
+    def regenerateAllPreviews()(implicit timeout: Timeout): Unit = 
+      query.getAll().foreach { medias => medias.foreach(regeneratePreviewForMedia) }
 
     def verifyHashes()(implicit timeout: Timeout): Unit = {
 
@@ -185,7 +170,7 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
           val hash = config.hashingAlgorithm.generateHash(config.mediaPath.resolve(m.fileInfo.relativePath))
 
           if (hash != m.fileInfo.hash)
-            logger.info(s"hash not equal: ${hash} != ${m.fileInfo.hash}")
+            logger.warn(s"hash not equal: ${hash} != ${m.fileInfo.hash}")
         }
 
         logger.info("Done ...")

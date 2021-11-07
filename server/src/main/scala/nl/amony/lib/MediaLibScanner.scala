@@ -58,7 +58,7 @@ object MediaLibScanner extends Logging {
             )
 
             api.modify.upsertMedia(m).foreach { _ =>
-              api.admin.regeneratePreviewFor(m)
+              api.admin.regeneratePreviewForMedia(m)
               api.modify.deleteMedia(oldHash, deleteFile = false)
               videoWithoutFastStart.deleteIfExists()
             }

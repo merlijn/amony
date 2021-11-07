@@ -27,7 +27,7 @@ object MediaIndex {
   sealed trait SortField
   case object FileName      extends SortField
   case object DateAdded     extends SortField
-  case object VideoDuration extends SortField
+  case object Duration extends SortField
 
   case class Sort(field: SortField, reverse: Boolean)
   case class Query(
@@ -118,8 +118,8 @@ object MediaIndex {
           case Some(Sort(FileName, true))       => sortedByFilename.reverse
           case Some(Sort(DateAdded, false))     => sortedByDateAdded
           case Some(Sort(DateAdded, true))      => sortedByDateAdded.reverse
-          case Some(Sort(VideoDuration, false)) => sortedByDuration
-          case Some(Sort(VideoDuration, true))  => sortedByDuration.reverse
+          case Some(Sort(Duration, false))      => sortedByDuration
+          case Some(Sort(Duration, true))       => sortedByDuration.reverse
         }
 
         val result = unfiltered.filter(filterMedia)
