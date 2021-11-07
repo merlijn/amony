@@ -1,32 +1,33 @@
-import React, {CSSProperties, useEffect, useRef, useState} from 'react';
-import {Api} from '../api/Api';
-import {Prefs, SearchResult, Video} from '../api/Model';
-import Preview from './Preview';
-import './Gallery.scss';
-import {useLocation} from 'react-router-dom'
+import React, { useEffect, useState } from 'react';
+import { isMobile } from "react-device-detect";
+import { useLocation } from 'react-router-dom';
+import { Api } from '../api/Api';
+import { Constants } from "../api/Constants";
+import { Prefs, SearchResult, Video } from '../api/Model';
 import {
   calculateColumns,
   useCookiePrefs,
   useListener,
-  usePrevious,
-  useStateRef,
-  useWindowSize
+  usePrevious, useWindowSize
 } from "../api/Util";
+import './Gallery.scss';
 import TopNavBar from "./navbar/TopNavBar";
-import { isMobile } from "react-device-detect";
-import {Constants} from "../api/Constants";
+import Preview from './Preview';
 import VideoModal from "./shared/VideoModal";
 
 const gridReRenderThreshold = 24
 const fetchDataScreenMargin = 1024;
-const navBarHeight = 45
 
-const Gallery = () => {
+export type GalleryProps = {
+  query?: string
+  directory?: string
+}
 
-  const location = useLocation();
+const Gallery = (props: GalleryProps) => {
+
   const initialSearchResult = new SearchResult(0,[]);
 
-  const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
+  const [prefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
 
   // https://medium.com/geographit/accessing-react-state-in-event-listeners-with-usestate-and-useref-hooks-8cceee73c559
   // https://stackoverflow.com/questions/55265255/react-usestate-hook-event-handler-using-initial-state
@@ -40,11 +41,9 @@ const Gallery = () => {
   const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
 
   const windowSize = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > gridReRenderThreshold));
-  const videoElement = useRef<HTMLVideoElement>(null)
 
   // grid size
   const [ncols, setNcols] = useState(prefs.gallery_columns)
-  const urlParams = new URLSearchParams(location.search)
 
   const fetchData = (previous: Array<Video>) => {
 
@@ -53,10 +52,10 @@ const Gallery = () => {
 
     if (n > 0)
       Api.getVideos(
-        urlParams.get("q") || "",
-        urlParams.get("dir"),
+        props.query || "",
         n,
         offset,
+        props.directory,
         prefs.minRes,
         prefs.sortField,
         prefs.sortDirection).then(response => {
@@ -82,18 +81,12 @@ const Gallery = () => {
     console.log(`keycode: ${event.code}`)
     if (event.code === 'Slash')
       setShowNavBar(!showNavBar)
-    // else if (event.code === 'KeyI')
-    //   setPrefs({...prefs, showTitles: !prefs.showTitles })
-    // else if (event.code === 'KeyM')
-    //   setPrefs( {...prefs, showMenu: !prefs.showMenu})
-    // else if (event.code === 'KeyD')
-    //   setPrefs({...prefs, showDuration: !prefs.showDuration})
   }
 
   useListener('keydown', keyDownHandler, [prefs])
   useListener('scroll', handleScroll, [searchResult, ncols])
 
-  useEffect(() => { fetchData([]) }, [location])
+  useEffect(() => { fetchData([]) }, [props])
   useEffect(() => { fetchData(searchResult.videos) }, [ncols])
 
   useEffect(() => {
@@ -134,11 +127,11 @@ const Gallery = () => {
 
   return (
     <div className="gallery-container full-width">
-
-      {showNavBar && <TopNavBar key="top-nav-bar" /> }
+      { showNavBar && <TopNavBar key="top-nav-bar" /> }
+      { playVideo && <VideoModal video={playVideo} onHide={() => setPlayVideo(undefined) } />}
 
       <div style={ !showNavBar ?  { marginTop: 2 } : {} } key="gallery" className="gallery">
-        { playVideo && <VideoModal video={playVideo} onHide={() => setPlayVideo(undefined) } />}
+
         <div className="gallery-grid-container">
           {previews}
         </div>

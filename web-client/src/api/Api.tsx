@@ -5,8 +5,8 @@ const headers = { 'Content-type': 'application/json; charset=UTF-8' };
 
 export const Api = {
 
-  getVideos: async function getVideos(q: string, dir: string | null, n: number,
-                                      offset: number, minRes?: number, sortField?: string, sortDirection?: SortDirection) {
+  getVideos: async function getVideos(q: string, n: number,
+                                      offset: number, dir?: string, minRes?: number, sortField?: string, sortDirection?: SortDirection) {
 
     const apiParams = new Map([
       ["q", q],
