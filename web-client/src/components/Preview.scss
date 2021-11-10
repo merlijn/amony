@@ -71,19 +71,16 @@ $preview-hover-shadow-color: rgba(255, 255, 0, 1);
 
   position: relative;
   float: left;
-  --ratio: calc(16 / 10);
-
   width: 100%;
-  height: calc(var(--grid-width) * (1 / var(--ratio)));
-  display: grid;
+  // 10 / 16
+  padding-top: 62.5%; 
 
-  &:hover {
-
+  // &:hover {
     //box-shadow: -1px -1px 5px $preview-hover-shadow-color,
     //            -1px  1px 5px $preview-hover-shadow-color,
     //             1px -1px 5px $preview-hover-shadow-color,
     //             1px  1px 5px $preview-hover-shadow-color;
-  }
+  // }
 
   z-index: 4;
 

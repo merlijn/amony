@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { isMobile } from "react-device-detect";
+import ResizeObserver from 'react-resize-observer';
 import { Api } from '../api/Api';
 import { Constants } from "../api/Constants";
 import { Prefs, SearchResult, Video } from '../api/Model';
@@ -10,9 +11,7 @@ import {
   usePrevious, useWindowSize
 } from "../api/Util";
 import './Gallery.scss';
-import TopNavBar from "./navbar/TopNavBar";
 import Preview from './Preview';
-import VideoModal from "./shared/VideoModal";
 
 const gridReRenderThreshold = 24
 const fetchDataScreenMargin = 1024;
@@ -31,6 +30,7 @@ const Gallery = (props: GalleryProps) => {
   const previousPrefs = usePrevious(prefs)
   const [searchResult, setSearchResult] = useState(initialSearchResult)
   const [isFetching, setIsFetching] = useState(false)
+  const [width, setWidth] = useState(0)
 
   // grid size
   const [ncols, setNcols] = useState(prefs.gallery_columns)
@@ -62,7 +62,8 @@ const Gallery = (props: GalleryProps) => {
 
   const handleScroll = (e: Event) => {
 
-    const withinFetchMargin = document.documentElement.offsetHeight - Math.ceil(window.innerHeight + document.documentElement.scrollTop) <=  fetchDataScreenMargin
+    const withinFetchMargin = 
+        document.documentElement.offsetHeight - Math.ceil(window.innerHeight + document.documentElement.scrollTop) <=  fetchDataScreenMargin
 
     if (withinFetchMargin && !isFetching) {
       setIsFetching(true)
@@ -115,7 +116,11 @@ const Gallery = (props: GalleryProps) => {
   })
 
   return (
-    <div className="gallery-grid-container">
+    <div className="gallery-container">
+      <ResizeObserver
+          onResize={(rect) => { console.log('Resized. New bounds:', rect.width, 'x', rect.height); }} 
+          onPosition={(rect) => { console.log('Moved. New position:', rect.left, 'x', rect.top); }}
+        />
       { previews }
     </div>
   );

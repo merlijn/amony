@@ -11,7 +11,7 @@ const Main = () => {
 
     const location = useLocation();
     
-    const [galleryProps, setGalleryProps] = useState<{}>({})
+    const [galleryProps, setGalleryProps] = useState({})
     const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
     const [showNavBar, setShowNavBar] = useState(true)
   
@@ -38,9 +38,9 @@ const Main = () => {
     return (
         <>
           { playVideo && <VideoModal video={playVideo} onHide={() => setPlayVideo(undefined) } />}
-          <div className="gallery-container full-width">
+          <div className="main-page">
             { showNavBar && <TopNavBar key="top-nav-bar" /> }
-            <div style={ !showNavBar ?  { marginTop: 2 } : {} } key="gallery" className="gallery">
+            <div style={ !showNavBar ?  { marginTop: 2 } : {} } key="main-gallery" className="main-gallery-container ">
               <Gallery {...galleryProps} onClick = { (v: Video) => setPlayVideo(v) } />
             </div>
           </div>

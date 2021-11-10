@@ -1,28 +1,15 @@
 @import '../App.scss';
 
-.gallery {
-  position: relative;
-  margin-top: 37px;
+.gallery-container {
 
-  @media only screen and (min-width: map-get($container-max-widths, md)) {
-    margin-top: 45px;
-  }
-
-  margin-bottom: 2px;
-  width: 100vw;
-  border: 0px;
-}
-
-.gallery-grid-container {
-
-  @extend .full-width;
+  width: 100%;
   padding-left: 2px;
   padding-right: 2px;
 }
 
 .grid-cell {
-  --grid-width: calc((100vw - 4px) / var(--ncols));
-  width: var(--grid-width);
+
+  width: calc(100% / var(--ncols));
   position: relative;
   float: left;
   padding: 2px;
