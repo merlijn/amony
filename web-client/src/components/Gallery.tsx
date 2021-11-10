@@ -29,10 +29,6 @@ const Gallery = (props: GalleryProps) => {
 
   const [prefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
   const previousPrefs = usePrevious(prefs)
-
-  // https://medium.com/geographit/accessing-react-state-in-event-listeners-with-usestate-and-useref-hooks-8cceee73c559
-  // https://stackoverflow.com/questions/55265255/react-usestate-hook-event-handler-using-initial-state
-  const [showNavBar, setShowNavBar] = useState(true)
   const [searchResult, setSearchResult] = useState(initialSearchResult)
   const [isFetching, setIsFetching] = useState(false)
 
@@ -56,12 +52,12 @@ const Gallery = (props: GalleryProps) => {
         prefs.sortField,
         prefs.sortDirection).then(response => {
 
-        const newvideos = (response as SearchResult).videos
-        const videos = [...previous, ...newvideos]
+          const newvideos = (response as SearchResult).videos
+          const videos = [...previous, ...newvideos]
 
-        setIsFetching(false);
-        setSearchResult({...response, videos: videos});
-      });
+          setIsFetching(false);
+          setSearchResult({...response, videos: videos});
+        });
   }
 
   const handleScroll = (e: Event) => {
@@ -73,12 +69,6 @@ const Gallery = (props: GalleryProps) => {
     }
   }
 
-  const keyDownHandler = (event: KeyboardEvent) => {
-    if (event.code === 'Slash')
-      setShowNavBar(!showNavBar)
-  }
-
-  useListener('keydown', keyDownHandler)
   useListener('scroll', handleScroll)
 
   useEffect(() => { fetchData([]) }, [props])
@@ -107,27 +97,26 @@ const Gallery = (props: GalleryProps) => {
 
   },[windowSize, prefs]);
 
-  const previews = searchResult.videos.map((vid, idx) => {
+  const previews = searchResult.videos.map((vid) => {
 
     const style: { } = { "--ncols" : `${ncols}` }
 
     return <Preview
-      style={style} className="grid-cell"
-      key={`preview-${vid.id}`}
-      vid={vid}
-      onClick={ props.onClick }
-      showPreviewOnHover={!isMobile}
-      showInfoBar={prefs.showTitles} showDates = {true} showDuration={prefs.showDuration} showMenu={prefs.showMenu}/>
+              style={style} className="grid-cell"
+              key={`preview-${vid.id}`}
+              vid={vid}
+              onClick={ props.onClick }
+              showPreviewOnHover={!isMobile}
+              showInfoBar={prefs.showTitles} 
+              showDates = {true} 
+              showDuration={prefs.showDuration} 
+              showMenu={prefs.showMenu} 
+            />
   })
 
   return (
-    <div className="gallery-container full-width">
-      { showNavBar && <TopNavBar key="top-nav-bar" /> }
-      <div style={ !showNavBar ?  { marginTop: 2 } : {} } key="gallery" className="gallery">
-        <div className="gallery-grid-container">
-          {previews}
-        </div>
-      </div>
+    <div className="gallery-grid-container">
+      { previews }
     </div>
   );
 }

@@ -1,8 +1,8 @@
 import Container from 'react-bootstrap/Container';
 import { BrowserRouter, Route, Switch, useParams } from 'react-router-dom';
-import Editor from './components/fragments/Editor';
+import Editor from './pages/Editor';
 import Compilation from './pages/Compilation';
-import MainGallery from './pages/MainGallery';
+import Main from './pages/Main';
 
 function App() {
 
@@ -13,8 +13,8 @@ function App() {
 
         <div>
           <Switch>
-            <Route exact path="/" component = { MainGallery }  />
-            <Route path="/search"  component = { MainGallery } />
+            <Route exact path="/" component = { Main }  />
+            <Route path="/search"  component = { Main } />
             <Route path="/editor/:id" children = { <EditorRouter /> } />
             <Route exact path="/playfrags" children ={ <Compilation /> } />
           </Switch>

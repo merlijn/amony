@@ -1,10 +1,10 @@
 import Plyr from 'plyr';
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
+import { Button } from 'react-bootstrap';
+import { Api } from '../api/Api';
+import { Video } from '../api/Model';
+import FragmentList from '../components/fragments/FragmentList';
 import './Editor.scss';
-import {Video} from "../../api/Model";
-import {Api} from "../../api/Api";
-import {Button} from "react-bootstrap";
-import FragmentList from "./FragmentList";
 
 export type EditFragment = {
   idx: number
