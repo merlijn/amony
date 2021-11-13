@@ -15,9 +15,9 @@ const defaultPrefs: Prefs = {
   showTitles:      true,
   showDuration:    true,
   showMenu:        false,
-  sortField:       "date_added",
-  sortDirection:   "desc",
-  gallery_columns: 0,
+  sortField:       'date_added',
+  sortDirection:   'desc',
+  gallery_columns: 'auto',
   minRes:          0
 }
 

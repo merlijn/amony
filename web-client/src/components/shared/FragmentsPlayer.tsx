@@ -35,7 +35,6 @@ const FragmentsPlayer = (props: FragmentsPlayerProps) => {
     if (idx >= props.fragments.length)
       idx = 0
 
-    console.log(`size: ${props.fragments.length}, index: ${idx}`)
     setCurrentPreviewIdx(idx)
     play(v)
   }

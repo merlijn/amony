@@ -1,106 +1,118 @@
 import React, { useEffect, useState } from 'react';
 import { isMobile } from "react-device-detect";
-import ResizeObserver from 'react-resize-observer';
+import useResizeObserver from 'use-resize-observer';
 import { Api } from '../api/Api';
 import { Constants } from "../api/Constants";
-import { Prefs, SearchResult, Video } from '../api/Model';
+import { Columns, Prefs, SearchResult, SortDirection, Video } from '../api/Model';
 import {
-  calculateColumns,
   useCookiePrefs,
-  useListener,
-  usePrevious, useWindowSize
+  useListener
 } from "../api/Util";
 import './Gallery.scss';
 import Preview from './Preview';
 
-const gridReRenderThreshold = 24
-const fetchDataScreenMargin = 1024;
+const fetchDataScreenMargin = 512;
 
-export type GalleryProps = {
+export type Scroll = 'page' | 'element'
+
+export type MediaSelection = {
   query?: string
   directory?: string
+  minimumQuality: number
+  sortField: string,
+  sortDirection: SortDirection,
+}
+
+export type GalleryProps = {
+  selection: MediaSelection
+  scroll: Scroll
+  columns: Columns
   onClick: (v: Video) => void
 }
 
+const initialSearchResult: SearchResult = { total: 0, videos: [] }
+
 const Gallery = (props: GalleryProps) => {
 
-  const initialSearchResult = new SearchResult(0,[]);
-
   const [prefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
-  const previousPrefs = usePrevious(prefs)
   const [searchResult, setSearchResult] = useState(initialSearchResult)
   const [isFetching, setIsFetching] = useState(false)
-  const [width, setWidth] = useState(0)
-
-  // grid size
-  const [ncols, setNcols] = useState(prefs.gallery_columns)
-
-  const windowSize = useWindowSize(((oldSize, newSize) => Math.abs(newSize.width - oldSize.width) > gridReRenderThreshold));
+  const [fetchMore, setFetchMore] = useState(true)
+  const [columns, setColumns] = useState<number>(props.columns === 'auto' ? 0 : props.columns)
+  const {ref, width } = useResizeObserver<HTMLDivElement>();
 
   const fetchData = (previous: Array<Video>) => {
 
     const offset = previous.length
-    const n      = ncols * 12
+    const n      = columns * 5
 
-    if (n > 0)
+    if (n > 0 && fetchMore) {
+      console.log(`fetch: ${offset}, q: ${props.selection.query}`)
       Api.getVideos(
-        props.query || "",
+        props.selection.query || "",
         n,
         offset,
-        props.directory,
+        props.selection.directory,
         prefs.minRes,
         prefs.sortField,
         prefs.sortDirection).then(response => {
 
-          const newvideos = (response as SearchResult).videos
-          const videos = [...previous, ...newvideos]
+          const result = response as SearchResult
+          const videos = [...previous, ...result.videos]
+
+          if (videos.length >= result.total)
+            setFetchMore(false)
 
           setIsFetching(false);
           setSearchResult({...response, videos: videos});
         });
+      }
   }
 
-  const handleScroll = (e: Event) => {
+  const onPageScroll = (e: Event) => {
 
     const withinFetchMargin = 
         document.documentElement.offsetHeight - Math.ceil(window.innerHeight + document.documentElement.scrollTop) <=  fetchDataScreenMargin
 
-    if (withinFetchMargin && !isFetching) {
+    if (props.scroll === 'page' && withinFetchMargin && !isFetching && fetchMore)
       setIsFetching(true)
-    }
   }
 
-  useListener('scroll', handleScroll)
+  const onElementScroll = (e: React.UIEvent<HTMLDivElement, UIEvent>) => { 
 
-  useEffect(() => { fetchData([]) }, [props])
-  useEffect(() => { fetchData(searchResult.videos) }, [ncols])
+    const withinFetchMargin = 
+      (e.currentTarget.scrollTop + e.currentTarget.clientHeight) >= e.currentTarget.scrollHeight;
+
+    if (props.scroll === 'element' && withinFetchMargin && !isFetching && fetchMore)
+      setIsFetching(true)
+  }
+
+  useListener('scroll', onPageScroll)
 
   useEffect(() => {
-    if (isFetching) {
-      fetchData(searchResult.videos);
+    if (props.columns === 'auto' && width !== undefined) {
+      const c = Math.max(1, Math.round(width / Constants.gridSize));
+      if (c !== columns) {
+        if (c > columns)
+          setIsFetching(true)
+        setColumns(c)
+      }
     }
-  }, [isFetching]);
+  }, [width, props.columns])
 
   useEffect(() => {
+    setSearchResult(initialSearchResult)
+    setIsFetching(true)
+    setFetchMore(true)
+  }, [props.selection])
 
-    if (prefs.gallery_columns === 0) {
-      const c = calculateColumns();
-      if (c !== ncols)
-        setNcols(c)
-    } else if (prefs.gallery_columns != ncols) {
-      setNcols(prefs.gallery_columns)
-    }
+  useEffect(() => { fetchData(searchResult.videos) }, [columns])
 
-    if (previousPrefs?.minRes !== prefs.minRes ||
-        previousPrefs?.sortField !== prefs.sortField ||
-        previousPrefs?.sortDirection !== prefs.sortDirection)
-      fetchData([])
-
-  },[windowSize, prefs]);
+  useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.videos); }, [isFetching]);
 
   const previews = searchResult.videos.map((vid) => {
 
-    const style: { } = { "--ncols" : `${ncols}` }
+    const style: { } = { "--ncols" : `${columns}` }
 
     return <Preview
               style={style} className="grid-cell"
@@ -116,11 +128,7 @@ const Gallery = (props: GalleryProps) => {
   })
 
   return (
-    <div className="gallery-container">
-      <ResizeObserver
-          onResize={(rect) => { console.log('Resized. New bounds:', rect.width, 'x', rect.height); }} 
-          onPosition={(rect) => { console.log('Moved. New position:', rect.left, 'x', rect.top); }}
-        />
+    <div className="gallery-container" ref={ref} onScroll = { onElementScroll }>
       { previews }
     </div>
   );

@@ -94,10 +94,10 @@ const ConfigMenu = () => {
               type="radio"
               value={0}
               label={"auto"}
-              checked={prefs.gallery_columns === 0}
+              checked={prefs.gallery_columns === 'auto'}
               onChange={(e) => {
                 if (prefs.gallery_columns > 0) {
-                  updatePrefs({gallery_columns: 0 })
+                  updatePrefs({gallery_columns: 'auto' })
                 }
               }}
             />
@@ -110,7 +110,7 @@ const ConfigMenu = () => {
               label={"other"}
               checked={prefs.gallery_columns > 0}
               onChange={(e) => {
-                if (prefs.gallery_columns === 0)
+                if (prefs.gallery_columns === 'auto')
                   updatePrefs({ gallery_columns: calculateColumns()} )
               }}
             />
@@ -118,7 +118,7 @@ const ConfigMenu = () => {
               {
                 columns.map((v) => {
                   return <option
-                    selected={ (prefs.gallery_columns === 0 && v.value === calculateColumns()) || prefs.gallery_columns === v.value }
+                    selected={ (prefs.gallery_columns === 'auto' && v.value === calculateColumns()) || prefs.gallery_columns === v.value }
                     value={v.value}
                     label={v.label}
                   />;

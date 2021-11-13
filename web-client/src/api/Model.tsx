@@ -20,13 +20,9 @@ export type VideoMeta = {
   comment?: string
 }
 
-export class SearchResult {
-
-  constructor(
-    public total: number,
-    public videos: Video[]
-  ) {
-  }
+export type SearchResult = {
+  total: number
+  videos: Video[]
 }
 
 export type Resolution = {
@@ -48,13 +44,14 @@ export type Fragment = {
   tags: string[]
 }
 
-export type SortDirection = "asc" | "desc"
+export type SortDirection = 'asc' | 'desc'
+export type Columns = 'auto' | number
 
 export type Prefs = {
   showTitles: boolean
   showDuration: boolean
   showMenu: boolean
-  gallery_columns: number
+  gallery_columns: Columns
   sortField: string,
   sortDirection: SortDirection,
   minRes: number

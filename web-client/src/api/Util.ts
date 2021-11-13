@@ -117,7 +117,6 @@ export const calculateColumns = () => {
   return c;
 }
 
-
 export const usePrevious = <T>(value: T): T | undefined => {
   const ref = useRef<T>();
   useEffect(() => {

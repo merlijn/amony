@@ -1,0 +1,23 @@
+@import '../App.scss';
+
+.grid-video-container {
+
+  width: 50vw !important;
+  height: 50vh !important;
+  position: relative;
+  float: left;
+   
+  video {
+
+    @extend .abs-center;
+  
+    max-width: 100%;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    overflow: hidden;
+  }
+}
+
+

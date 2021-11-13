@@ -3,6 +3,7 @@
 .gallery-container {
 
   width: 100%;
+  overflow: auto;
   padding-left: 2px;
   padding-right: 2px;
 }
@@ -14,6 +15,3 @@
   float: left;
   padding: 2px;
 }
-
-
-

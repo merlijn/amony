@@ -8,7 +8,7 @@ import Grid from './pages/Grid';
 function App() {
 
   return (
-    <Container className="amony-root" fluid>
+    <div className="amony-root">
 
       <BrowserRouter>
 
@@ -24,7 +24,7 @@ function App() {
 
       </BrowserRouter>
 
-    </Container>
+    </div>
   );
 }
 

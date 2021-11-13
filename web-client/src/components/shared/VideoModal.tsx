@@ -32,10 +32,10 @@ const VideoModal = (props: { video: Video, onHide: () => void }) => {
     }
   },[]);
 
-  const modalSize = (v: Video | undefined): CSSProperties => {
+  const modalSize = (v: Video): CSSProperties => {
 
     const w = isMobile ? "100vw" : "75vw"
-    return v ? BoundedRatioBox(w, "75vh", v.width / v.height) : { }
+    return BoundedRatioBox(w, "75vh", v.width / v.height)
   }
 
   return (

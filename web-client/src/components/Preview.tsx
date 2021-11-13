@@ -71,8 +71,12 @@ const Preview = (props: PreviewProps) => {
 
   const primaryThumbnail =
     <ProgressiveImage src={vid.thumbnail_url} placeholder="/image_placeholder.svg">
-      { (src: string) =>
-        <img onClick={ () => props.onClick(props.vid) } className={ `preview-thumbnail preview-media` } src={src} alt="an image" />
+      { (src: string) => 
+          <img 
+            src={src} alt="an image"
+            onClick={ () => props.onClick(props.vid) } 
+            className={ `preview-thumbnail preview-media` } 
+          />
       }
     </ProgressiveImage>
 

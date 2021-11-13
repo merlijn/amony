@@ -1,20 +1,21 @@
 @import '../App.scss';
 
 .main-page {
-    @extend .full-width;
-    display: flex;
-    background-color: white;
+  @extend .full-width;
+  display: flex;
+  background-color: white;
 }
 
 .main-gallery-container {
-    position: relative;
-    margin-top: 37px;
-  
-    @media only screen and (min-width: map-get($container-max-widths, md)) {
-      margin-top: 45px;
-    }
-  
-    margin-bottom: 2px;
-    width: 100vw;
-    border: 0px;
+
+  @extend .full-width;
+  position: relative;
+  margin-top: 37px;
+
+  @media only screen and (min-width: map-get($container-max-widths, md)) {
+    margin-top: 45px;
   }
+
+  margin-bottom: 2px;
+  border: 0px;
+}

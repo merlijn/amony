@@ -14,12 +14,12 @@ $container-max-widths: (
 }
 
 .full-width {
-  width: 100% ! important;
-  margin: 0 ! important;
+  width: 100%;
 }
 
 .amony-root {
-  padding: 0px ! important;
+  width: 100vw;
+  padding: 0px;
 }
 
 .duration-overlay {
