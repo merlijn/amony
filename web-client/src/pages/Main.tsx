@@ -1,8 +1,9 @@
+import _ from "lodash";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import { Constants } from "../api/Constants";
-import { Columns, Prefs, Video } from "../api/Model";
-import { useCookiePrefs, useListener, usePrevious } from "../api/Util";
+import { Prefs, Video } from "../api/Model";
+import { useCookiePrefs, useListener, usePrevious, useStateNeq } from "../api/ReactUtils";
 import Gallery, { MediaSelection } from "../components/Gallery";
 import TopNavBar from "../components/navbar/TopNavBar";
 import VideoModal from "../components/shared/VideoModal";
@@ -30,41 +31,25 @@ const Main = () => {
       }
     }
 
-    const [selection, setSelection] = useState<MediaSelection>(getSelection)
-    const previousSelection = usePrevious(selection)
+    const [selection, setSelection] = useStateNeq<MediaSelection>(getSelection)
 
-    useEffect(() => { 
-      
-        setSelection(getSelection())
-
-      // if (previousPrefs?.minRes !== prefs.minRes ||
-      //   previousPrefs?.sortField !== prefs.sortField ||
-      //   previousPrefs?.sortDirection !== prefs.sortDirection)
-        
-  
-    }, [location, prefs])
+    useEffect(() => { setSelection(getSelection()) }, [location, prefs])
 
     const keyDownHandler = (event: KeyboardEvent) => {
       if (event.code === 'Slash')
         setShowNavBar(!showNavBar)
     }
-
-    const urlParams = new URLSearchParams(location.search)  
-    const q = urlParams.get("q")
-    const d = urlParams.get("dir")
-
-
   
     useListener('keydown', keyDownHandler)
   
     return (
         <>
-          <div className="main-page">
           { playVideo && <VideoModal video={playVideo} onHide={() => setPlayVideo(undefined) } />}
+          <div className="main-page">
             { showNavBar && <TopNavBar key="top-nav-bar" /> }
             <div style={ !showNavBar ?  { marginTop: 2 } : {} } key="main-gallery" className="main-gallery-container">
               <Gallery 
-                selection = {selection} 
+                selection = {selection}
                 scroll = 'page' 
                 onClick = { (v: Video) => setPlayVideo(v) } 
                 columns = { prefs.gallery_columns }/>
@@ -72,8 +57,6 @@ const Main = () => {
           </div>
         </>
       );
-    
-      
   }
 
   export default Main

@@ -1,11 +1,11 @@
-import React, {useEffect} from "react";
-import './ConfigMenu.scss';
 import Form from "react-bootstrap/Form";
-import {calculateColumns, useCookiePrefs} from "../../api/Util";
-import DropDownIcon from "../shared/DropDownIcon";
+import { Constants } from "../../api/Constants";
+import { Prefs } from "../../api/Model";
+import { useCookiePrefs } from "../../api/ReactUtils";
+import { calculateColumns } from "../../api/Util";
 import * as config from "../../AppConfig.json";
-import {Constants} from "../../api/Constants";
-import {Prefs} from "../../api/Model";
+import DropDownIcon from "../shared/DropDownIcon";
+import './ConfigMenu.scss';
 
 const ConfigMenu = () => {
 

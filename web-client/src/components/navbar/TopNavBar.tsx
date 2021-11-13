@@ -1,28 +1,24 @@
-import React, {useEffect, useState} from "react";
-import {useHistory, useLocation} from "react-router-dom";
-import {buildUrl, copyParams, useCookiePrefs} from "../../api/Util";
-import NavDropdown from "react-bootstrap/NavDropdown";
-import Form from "react-bootstrap/Form";
-import FormControl from "react-bootstrap/FormControl";
-import './TopNavBar.scss';
-import {Api} from "../../api/Api";
-import {Prefs, Directory} from "../../api/Model";
-import {ButtonGroup} from "react-bootstrap";
-import ConfigMenu from "./ConfigMenu";
-import ImgWithAlt from "../shared/ImgWithAlt";
+import React, { useEffect, useState } from "react";
+import { ButtonGroup } from "react-bootstrap";
 import Button from "react-bootstrap/Button";
 import Dropdown from "react-bootstrap/Dropdown";
-import {Constants} from "../../api/Constants";
-import SideBar from "../sidebar/SideBar";
+import Form from "react-bootstrap/Form";
+import FormControl from "react-bootstrap/FormControl";
+import NavDropdown from "react-bootstrap/NavDropdown";
+import { useHistory, useLocation } from "react-router-dom";
+import { Api } from "../../api/Api";
+import { Directory } from "../../api/Model";
+import { buildUrl, copyParams } from "../../api/Util";
+import ImgWithAlt from "../shared/ImgWithAlt";
+import ConfigMenu from "./ConfigMenu";
+import './TopNavBar.scss';
 
 function TopNavBar() {
 
   const location = useLocation();
-  const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
   const [query, setQuery] = useState("")
   const [dirs, setDirs] = useState<Array<Directory>>([]);
-  const [selectedTag, setSelectedDir] = useState<Directory>({id: 0, title: ""})
-  const [showSideBar, setShowSideBar] = useState(false)
+  const [, setSelectedDir] = useState<Directory>({id: 0, title: ""})
 
   const history = useHistory();
 

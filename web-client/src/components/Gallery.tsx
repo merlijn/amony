@@ -4,16 +4,12 @@ import useResizeObserver from 'use-resize-observer';
 import { Api } from '../api/Api';
 import { Constants } from "../api/Constants";
 import { Columns, Prefs, SearchResult, SortDirection, Video } from '../api/Model';
-import {
-  useCookiePrefs,
-  useListener
-} from "../api/Util";
+import { useCookiePrefs, useListener } from '../api/ReactUtils';
+
 import './Gallery.scss';
 import Preview from './Preview';
 
 const fetchDataScreenMargin = 512;
-
-export type Scroll = 'page' | 'element'
 
 export type MediaSelection = {
   query?: string
@@ -25,7 +21,7 @@ export type MediaSelection = {
 
 export type GalleryProps = {
   selection: MediaSelection
-  scroll: Scroll
+  scroll: 'page' | 'element'
   columns: Columns
   onClick: (v: Video) => void
 }
@@ -39,7 +35,7 @@ const Gallery = (props: GalleryProps) => {
   const [isFetching, setIsFetching] = useState(false)
   const [fetchMore, setFetchMore] = useState(true)
   const [columns, setColumns] = useState<number>(props.columns === 'auto' ? 0 : props.columns)
-  const {ref, width } = useResizeObserver<HTMLDivElement>();
+  const {ref, width} = useResizeObserver<HTMLDivElement>();
 
   const fetchData = (previous: Array<Video>) => {
 
@@ -47,15 +43,14 @@ const Gallery = (props: GalleryProps) => {
     const n      = columns * 5
 
     if (n > 0 && fetchMore) {
-      console.log(`fetch: ${offset}, q: ${props.selection.query}`)
       Api.getVideos(
         props.selection.query || "",
         n,
         offset,
         props.selection.directory,
-        prefs.minRes,
-        prefs.sortField,
-        prefs.sortDirection).then(response => {
+        props.selection.minimumQuality,
+        props.selection.sortField,
+        props.selection.sortDirection).then(response => {
 
           const result = response as SearchResult
           const videos = [...previous, ...result.videos]
@@ -115,20 +110,20 @@ const Gallery = (props: GalleryProps) => {
     const style: { } = { "--ncols" : `${columns}` }
 
     return <Preview
-              style={style} className="grid-cell"
-              key={`preview-${vid.id}`}
-              vid={vid}
-              onClick={ props.onClick }
-              showPreviewOnHover={!isMobile}
-              showInfoBar={prefs.showTitles} 
+              style = {style} className="grid-cell"
+              key = {`preview-${vid.id}`}
+              vid = {vid}
+              onClick = { props.onClick }
+              showPreviewOnHover = {!isMobile}
+              showInfoBar = {prefs.showTitles} 
               showDates = {true} 
-              showDuration={prefs.showDuration} 
-              showMenu={prefs.showMenu} 
+              showDuration = {prefs.showDuration} 
+              showMenu = {prefs.showMenu} 
             />
   })
 
   return (
-    <div className="gallery-container" ref={ref} onScroll = { onElementScroll }>
+    <div className="gallery-container" ref = {ref} onScroll = { onElementScroll }>
       { previews }
     </div>
   );
