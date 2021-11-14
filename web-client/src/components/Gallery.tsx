@@ -85,14 +85,21 @@ const Gallery = (props: GalleryProps) => {
   useListener('scroll', onPageScroll)
 
   useEffect(() => {
-    if (props.columns === 'auto' && width !== undefined) {
-      const c = Math.max(1, Math.round(width / Constants.gridSize));
-      if (c !== columns) {
-        if (c > columns)
-          setIsFetching(true)
-        setColumns(c)
+    if (props.columns === 'auto') {
+      if (width !== undefined) {
+        const c = Math.max(1, Math.round(width / Constants.gridSize));
+        if (c !== columns) {
+          if (c > columns)
+            setIsFetching(true)
+          setColumns(c)
+        }
       }
+    } else {
+      setColumns(props.columns)
+      if (props.columns > columns)
+        setIsFetching(true)
     }
+
   }, [width, props.columns])
 
   useEffect(() => {

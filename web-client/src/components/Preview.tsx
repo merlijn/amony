@@ -44,12 +44,6 @@ const Preview = (props: PreviewProps) => {
                                  })
                                }} />
 
-  const videoPreview =
-    <FragmentsPlayer id={`video-preview-${props.vid.id}`}
-                     onClick={ () => props.onClick(props.vid) }
-                     className= { `preview-video preview-media` }
-                     fragments={ props.vid.fragments } />
-
   const addOnDate = new Date(vid.addedOn)
   const titlePanel =
     <div className="info-bar">
@@ -79,6 +73,12 @@ const Preview = (props: PreviewProps) => {
           />
       }
     </ProgressiveImage>
+
+  const videoPreview =
+    <FragmentsPlayer id={`video-preview-${props.vid.id}`}
+                    onClick={ () => props.onClick(props.vid) }
+                    className= { `preview-video preview-media` }
+                    fragments={ props.vid.fragments } />
 
   let preview =
       <div className = "preview-container"
