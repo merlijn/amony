@@ -63,7 +63,7 @@ object MediaLibProtocol {
       creationTime: Long,
       lastModifiedTime: Long
   ) {
-    def extension: String = relativePath.split('.')(1)
+    def extension: String = relativePath.split('.').last
   }
 
   case class VideoInfo(
