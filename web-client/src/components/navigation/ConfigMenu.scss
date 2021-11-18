@@ -5,11 +5,11 @@
 
   @extend .nav-button;
 
-  flex-grow: 0;
-  float: left;
-
-  padding: 2px 5px !important;
-  height: 31px ! important;
+  background-color: white !important;
+  margin: 2px;
+  padding: 2px 4px !important;
+  height: 30px ! important;
+  border: none ! important;
   border-radius: 0 ! important;
 }
 

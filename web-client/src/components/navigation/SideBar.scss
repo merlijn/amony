@@ -1,0 +1,71 @@
+@import '../../App.scss';
+
+.sidebar {
+
+  position: fixed !important;
+  height: 100vh;
+}
+
+.sidebar-header {
+  height: 47px;
+  padding-bottom: 4px;
+  border-bottom: none !important;
+}
+
+.sidebar-menu-icon {
+  width: 40px;
+  height: 40px;
+  margin-left: 5px;
+  margin-top: 5px;
+  vertical-align: middle;
+  text-align: center;
+
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+.sidebar-footer {
+
+  padding: 8px;
+
+  a {
+    margin-left: 3px;
+    color: black;
+    svg {
+      width: 28px;
+      height: 28px;
+    }
+  }
+}
+
+// .sidebar-menu-item {
+
+//   padding-left: 8px ! important;
+// }
+
+.pro-inner-item {
+  padding-left: 8px ! important;
+}
+
+.pro-menu {
+
+  padding-top: 0px !important;
+}
+
+.pro-icon {
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+$sidebar-bg-color: $gray-300 !default;
+$sidebar-color: black !default;
+$icon-bg-color: $gray-500 !default;
+$highlight-color: black !default;
+$submenu-bg-color: $gray-500 !default;
+$submenu-bg-color-collapsed: $gray-500 !default;
+$icon-size: 35px !default;
+
+@import '~react-pro-sidebar/dist/scss/styles.scss';

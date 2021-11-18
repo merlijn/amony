@@ -27,6 +27,7 @@ const ConfigMenu = () => {
       <>
 
       <div key="filter-title" className="config-title">Search</div>
+      
       <div key="filter-form" className="config-form">
 
         <div className="form-section">
@@ -77,7 +78,6 @@ const ConfigMenu = () => {
             }
           </div>
         </div>
-
       </div>
 
       <div key="config-title" className="config-title">Preferences</div>

@@ -1,0 +1,101 @@
+@import url(https://fonts.googleapis.com/css2?family=Otomanopee+One&display=swap);
+@import 'node_modules/bootstrap/scss/bootstrap';
+@import 'src/App';
+
+.nav-button {
+  background-color: $gray-400 ! important;
+  border-color: $gray-500 ! important;
+}
+
+.nav-menu-button {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 0px;
+  margin-top: 5px;
+  margin-left: 5px;
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+.filter-button {
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  svg {
+    width: 24px;
+    height: 24px;
+  }
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+.top-nav-bar {
+
+  z-index: 10;
+  position: fixed;
+  display: flex;
+  top: 0;
+  left: 0;
+  width: 100vw;
+
+  background-color: white;
+  // border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+
+  // padding: 4px 4px !important;
+
+  @media only screen and (min-width: map-get($container-max-widths, md)) {
+
+    // background-color: $gray-300;
+    // background: linear-gradient(to left, $gray-100, $gray-300 50%, $gray-100 100%);
+    background-color: $gray-300;
+    // padding: 6px 4px !important;
+  }
+}
+
+.nav-bar-spacer {
+  flex-grow: 0;
+
+  @media only screen and (min-width: map-get($container-max-widths, md)) {
+    flex-grow: 1;
+  }
+
+  padding: 0px 0px;
+}
+
+.nav-bar-center {
+  display: flex;
+  vertical-align: middle;
+  z-index: 9;
+  flex-grow: 2;
+  max-width: 700px;
+  padding: 6px 4px !important;
+}
+
+.nav-search-form {
+
+  position: relative;
+  float: left;
+  flex-grow: 1;
+  padding: 0px 2px 0px 5px;
+
+  .nav-search-input-container {
+
+    position: relative;
+    flex-grow: 1;
+
+    .nav-search-input {
+      height: 35px !important;
+      border-radius: 0 ! important;
+      border-color: $gray-400 ! important;
+      width: 100% ! important;
+    }
+
+    .nav-clear-input {
+      position: absolute;
+      right: 0px;
+      top: 0px
+    }
+  }
+}
