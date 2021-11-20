@@ -1,11 +1,8 @@
 # Scala CircleCI 2.0 configuration file
 # See: https://circleci.com/docs/2.0/sample-config/
-version: 2
-
-# Define a job to be invoked later in a workflow.
-# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
+version: 2.1
 jobs:
-  build-server:
+  build_server:
     # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
@@ -32,7 +29,7 @@ jobs:
             # fallback to using the latest cache if no exact match is found
             - v1-dependencies-
 
-      - run: cat /dev/null | cd server && sbt test:test
+      - run: sbt test:test
 
       - save_cache:
           paths:
@@ -42,9 +39,9 @@ jobs:
 
       - run: 
           name: Build server
-          command: cd server && sbt assembly    
+          command: sbt assembly    
 
-  build-web-client:
+  build_web_client:
 
     working_directory: ~/repo/web-client
 
@@ -61,3 +58,9 @@ jobs:
       - run: 
           name: Build
           command: npm run build
+
+workflows:
+  build_and_test: # name of your workflow
+    jobs:
+      - build_server
+      - build_web_client
