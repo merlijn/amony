@@ -62,7 +62,6 @@ jobs:
       - save_cache:
           paths:
             - node_modules
-            - ~/usr/local/lib/node_modules
           key: v3-npm-deps-{{ checksum "package-lock.json" }}
       - run: 
           name: Node build
