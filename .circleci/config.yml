@@ -48,19 +48,21 @@ jobs:
       - checkout:
           path: ~/repo
 
-      - run: pwd; ls -la
-
       - restore_cache:
           keys:
             - v2-npm-deps-{{ checksum "package-lock.json" }}
             - v2-npm-deps-
+      
+      - run: pwd; ls -la
+
       - run: 
           name: Node install
           command: npm install --save
 
       - save_cache:
           paths:
-            - ~/node_modules
+            - node_modules
+            - ~/usr/local/lib/node_modules
           key: v2-npm-deps-{{ checksum "package-lock.json" }}
       - run: 
           name: Node build
