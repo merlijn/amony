@@ -95,9 +95,7 @@ jobs:
       - attach_workspace:
           at: .
 
-      - run: mkdir server
       - run: mv target server 
-      - run: mkdir web-client
       - run: mv build web-client
       - run: pwd; ls -la *
 
