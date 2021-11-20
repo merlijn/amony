@@ -2,7 +2,7 @@ package nl.amony.lib
 
 import better.files.File
 import org.scalatest.flatspec.AnyFlatSpecLike
-import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
+import org.scalatest.matchers.should.Matchers._
 import scribe.Logging
 
 import java.nio.file.Path
@@ -28,68 +28,5 @@ class FFMpegSpec extends AnyFlatSpecLike with Logging {
       |...
       |""".stripMargin
 
-  it should "probe a file" in {
 
-    val path = Path.of("/Users/merlijn/dev/amony/videos/other/roundabout.mp4")
-
-    println(FFMpeg.ffprobe(path))
-  }
-
-  it should "lajdf" in {
-
-    val path = Path.of("/Users/merlijn/dev/amony/server/../videos/other/up the escalator.mp4")
-
-    println(File(path).path)
-
-    println(Path.of("").toAbsolutePath)
-
-    println(Path.of("../videos").toAbsolutePath.toString)
-    println(path.toString)
-    println(path.toAbsolutePath.toString)
-  }
-
-  ignore should "stream an image" in {
-
-    val is = FFMpeg.streamThumbnail(Path.of("/Users/merlijn/dev/amony/videos/nature/sunrise.mp4"), 2000, 320)
-
-    File("temp.webp").writeByteArray(is.readAllBytes())
-  }
-
-  ignore should "calculate the number frames for a mosaic" in {
-
-    FFMpeg.generatePreviewSprite(
-      Path.of("../videos/nature/coastline.mp4"),
-      Path.of("/Users/merlijn/dev/amony"),
-      outputBaseName = Some("ksdfjuwek"))
-  }
-
-  it should "detect if a video is not optimized for streaming" in {
-
-    val ffProbeNoFastStart = Source.fromResource("./ffprobe-no-faststart.txt").getLines.mkString("\n")
-
-//    FFMpeg.ffprobeParse(ffProbeNoFastStart, "no faststart test").fastStart shouldBe false
-
-    val ffProbeFastStart = Source.fromResource("./ffprobe-faststart.txt").getLines.mkString("\n")
-
-//    FFMpeg.ffprobeParse(ffProbeFastStart, "faststart test").fastStart shouldBe true
-  }
-
-  it should("insert in to list") in {
-
-    List(0, 1, 2).replaceAtPos(0, 42) shouldBe List(42, 1, 2)
-    List(0, 1, 2).replaceAtPos(1, 42) shouldBe List(0, 42, 2)
-    List(0, 1, 2).replaceAtPos(2, 42) shouldBe List(0, 1, 42)
-
-    // index greater or equal to with results in append
-    List(0, 1, 2).replaceAtPos(3, 42) shouldBe List(0, 1, 2, 42)
-    List(0, 1, 2).replaceAtPos(4, 42) shouldBe List(0, 1, 2, 42)
-
-    List(0).replaceAtPos(0, 42) shouldBe List(42)
-    List.empty.replaceAtPos(0, 42) shouldBe List(42)
-
-    List(0, 1, 2).deleteAtPos(0) shouldBe List(1, 2)
-    List(0, 1, 2).deleteAtPos(1) shouldBe List(0, 2)
-    List(0, 1, 2).deleteAtPos(2) shouldBe List(0, 1)
-    List(0, 1, 2).deleteAtPos(3) shouldBe List(0, 1, 2)
-  }
 }
