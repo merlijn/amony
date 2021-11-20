@@ -1,48 +1,73 @@
-# Scala CircleCI 2.0 configuration file
-# See: https://circleci.com/docs/2.0/sample-config/
-version: 2
-
-# Define a job to be invoked later in a workflow.
-# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
+version: 2.1
 jobs:
-  build:
-    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
-    docker:
-      # specify the version you desire here
-      - image: circleci/openjdk:11-jdk
+  build_server:
 
     working_directory: ~/repo/server
+    docker:
+      - image: circleci/openjdk:11-jdk
 
     environment:
-      # Customize the JVM maximum heap limit
       JVM_OPTS: -Xmx3200m
       TERM: dumb
 
-    # Add steps to the job
-    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
       - checkout:
           path: ~/repo
       
-      - run: pwd
-      - run: ls -la
+      - run: pwd; ls -la
 
-      # Download and cache dependencies
       - restore_cache:
           keys:
-            - v1-dependencies-{{ checksum "build.sbt" }}
+            - v2-sbt-deps-{{ checksum "build.sbt" }}
             # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
+            - v2-sbt-deps-
 
-      - run: cat /dev/null | sbt test:compile
+      - run: sbt test:test
 
       - save_cache:
           paths:
             - ~/.m2
             - ~/.ivy2
-          key: v1-dependencies--{{ checksum "build.sbt" }}
+          key: v2-sbt-deps-{{ checksum "build.sbt" }}
 
-      # run tests!
+      - run: 
+          name: Build server
+          command: sbt assembly    
 
-      - run: cat /dev/null | sbt test:test
+  build_web_client:
+
+    working_directory: ~/repo/web-client
+
+    docker:
+      - image: cimg/node:16.13.0
+
+    environment:
+      CI: false
+
+    steps:
+      - checkout:
+          path: ~/repo
+
+      - run: pwd; ls -la
+
+      - restore_cache:
+          keys:
+            - v2-npm-deps-{{ checksum "package-lock.json" }}
+            - v2-npm-deps-
+      - run: 
+          name: Node install
+          command: npm install --save
+
+      - save_cache:
+          paths:
+            - ~/node_modules
+          key: v2-npm-deps-{{ checksum "package-lock.json" }}
+      - run: 
+          name: Node build
+          command: npm run build
+
+workflows:
+  build_and_test:
+    jobs:
+      - build_server
+      - build_web_client
