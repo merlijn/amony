@@ -100,13 +100,28 @@ jobs:
       - run: pwd; ls -la *
 
       - gcp-gcr/gcr-auth
-      - gcp-gcr/build-image:
-          image: amony/app
-          no_output_timeout: 20m
-          registry-url: $GOOGLE_COMPUTE_REGION-docker.pkg.dev/$GOOGLE_PROJECT_ID/docker-images
-      - gcp-gcr/push-image:
-          image: amony/app
-          registry-url: $GOOGLE_COMPUTE_REGION-docker.pkg.dev/$GOOGLE_PROJECT_ID/docker-images
+      - run:
+          -name: Build docker image
+          -command: |
+              #!/bin/bash -eo pipefail
+              docker_tag_args=""
+
+              IFS="," read -ra DOCKER_TAGS <<< "latest"
+              for tag in "${DOCKER_TAGS[@]}"; do
+                docker_tag_args="$docker_tag_args -t $GOOGLE_COMPUTE_REGION-docker.pkg.dev/$GOOGLE_PROJECT_ID/docker-images/amony/app:${tag}"
+              done
+
+              docker build  -f ./Dockerfile $docker_tag_args .
+      - run:
+          -name: Publish docker image
+          -command: |
+              #!/bin/bash -eo pipefail
+              docker push $GOOGLE_COMPUTE_REGION-docker.pkg.dev/$GOOGLE_PROJECT_ID/docker-images/$GOOGLE_PROJECT_ID/amony/app:latest
+
+              if [ -n "" ]; then
+                mkdir -p "$(dirname )"
+                docker image inspect --format="{{index .RepoDigests 0}}" $GOOGLE_COMPUTE_REGION-docker.pkg.dev/docker-images/$GOOGLE_PROJECT_ID/amony/app:latest > ""
+              fi
 
 workflows:
   build_and_test:
