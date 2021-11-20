@@ -80,8 +80,23 @@ jobs:
           paths:
             - build
 
+  build_web_client:
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+
+      - run: pwd; ls -la *
+
 workflows:
   build_and_test:
     jobs:
       - build_server
       - build_web_client
+      - build_docker_image:
+          requires:
+            - build_server
+            - build_web_client
