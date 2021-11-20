@@ -18,9 +18,9 @@ jobs:
 
       - restore_cache:
           keys:
-            - v1-dependencies-{{ checksum "build.sbt" }}
+            - v2-sbt-deps-{{ checksum "build.sbt" }}
             # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
+            - v2-sbt-deps-
 
       - run: sbt test:test
 
@@ -28,7 +28,7 @@ jobs:
           paths:
             - ~/.m2
             - ~/.ivy2
-          key: v1-dependencies--{{ checksum "build.sbt" }}
+          key: v2-sbt-deps-{{ checksum "build.sbt" }}
 
       - run: 
           name: Build server
@@ -52,8 +52,8 @@ jobs:
 
       - restore_cache:
           keys:
-            - v1-npm-deps-{{ checksum "package-lock.json" }}
-            - v1-npm-deps-
+            - v2-npm-deps-{{ checksum "package-lock.json" }}
+            - v2-npm-deps-
       - run: 
           name: Node install
           command: npm install --save
@@ -61,7 +61,7 @@ jobs:
       - save_cache:
           paths:
             - ~/node_modules
-          key: v1-dependencies--{{ checksum "package-lock.json" }}
+          key: v2-npm-deps-{{ checksum "package-lock.json" }}
       - run: 
           name: Node build
           command: npm run build
