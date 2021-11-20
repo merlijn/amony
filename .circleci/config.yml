@@ -25,7 +25,7 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v1-dependencies-{{ checksum "server/build.sbt" }}
+            - v1-dependencies-{{ checksum "build.sbt" }}
             # fallback to using the latest cache if no exact match is found
             - v1-dependencies-
 
@@ -35,7 +35,7 @@ jobs:
           paths:
             - ~/.m2
             - ~/.ivy2
-          key: v1-dependencies--{{ checksum "server/build.sbt" }}
+          key: v1-dependencies--{{ checksum "build.sbt" }}
 
       - run: 
           name: Build server
@@ -47,7 +47,7 @@ jobs:
 
     docker:
       # specify the version you desire here
-      - image: cimg/node:16.13.0
+      - image: cimg/node:16.13.0  
 
     steps:
       - checkout:
@@ -55,8 +55,24 @@ jobs:
 
       - run: pwd; ls -la
 
+      - restore_cache:
+          keys:
+            # Find a cache corresponding to this specific package-lock.json checksum
+            # when this file is changed, this key will fail
+            - v1-npm-deps-{{ checksum "package-lock.json" }}
+            # Find the most recently generated cache used from any branch
+            - v1-npm-deps-
       - run: 
-          name: Build
+          name: Node install
+          command: npm install --save
+
+      - save_cache:
+          paths:
+            - ~/.m2
+            - ~/.ivy2
+          key: v1-dependencies--{{ checksum "package-lock.json" }}
+      - run: 
+          name: Node build
           command: npm run build
 
 workflows:
