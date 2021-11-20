@@ -50,8 +50,8 @@ jobs:
 
       - restore_cache:
           keys:
-            - v2-npm-deps-{{ checksum "package-lock.json" }}
-            - v2-npm-deps-
+            - v3-npm-deps-{{ checksum "package-lock.json" }}
+            - v3-npm-deps-
       
       - run: pwd; ls -la
 
@@ -63,7 +63,7 @@ jobs:
           paths:
             - node_modules
             - ~/usr/local/lib/node_modules
-          key: v2-npm-deps-{{ checksum "package-lock.json" }}
+          key: v3-npm-deps-{{ checksum "package-lock.json" }}
       - run: 
           name: Node build
           command: npm run build
