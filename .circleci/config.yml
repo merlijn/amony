@@ -41,7 +41,7 @@ jobs:
           name: Build server
           command: sbt assembly 
       - persist_to_workspace:
-          root: server
+          root: .
           paths:
             - target/scala-2.13/amony.jar
 
@@ -80,7 +80,7 @@ jobs:
           command: npm run build
 
       - persist_to_workspace:
-          root: web-client
+          root: .
           paths:
             - build
 
@@ -95,6 +95,10 @@ jobs:
       - attach_workspace:
           at: .
 
+      - run: mkdir server
+      - run: mv target server 
+      - run: mkdir web-client
+      - run: mv build web-client
       - run: pwd; ls -la *
 
       - gcp-gcr/gcr-auth
