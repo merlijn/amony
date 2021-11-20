@@ -41,7 +41,7 @@ jobs:
           name: Build server
           command: sbt assembly 
       - persist_to_workspace:
-          root: .
+          root: server
           paths:
             - target/scala-2.13/amony.jar
 
@@ -80,7 +80,7 @@ jobs:
           command: npm run build
 
       - persist_to_workspace:
-          root: .
+          root: web-client
           paths:
             - build
 
