@@ -1,4 +1,8 @@
 version: 2.1
+
+orbs:
+  gcp-gcr: circleci/gcp-gcr@0.13.0
+
 jobs:
   build_server:
 
@@ -90,6 +94,21 @@ jobs:
           at: .
 
       - run: pwd; ls -la *
+
+      - gcp-gcr/gcr-auth:
+          gcloud-service-key: $GCP_SERVICE_KEY
+          registry-url: $GCP_ZONE-docker.pkg.dev
+      - gcp-gcr/build-image:
+          gcloud-service-key: $GCP_SERVICE_KEY
+          image: amony:latest
+          no_output_timeout: 20m
+          registry-name: docker-images
+          registry-url: $GCP_ZONE-docker.pkg.dev
+      - gcp-gcr/push-image:
+          gcloud-service-key: $GCP_SERVICE_KEY
+          image: amony:latest
+          registry-name: docker-images
+          registry-url: $GCP_ZONE-docker.pkg.dev
 
 workflows:
   build_and_test:
