@@ -86,8 +86,7 @@ jobs:
 
   build_docker_image:
 
-    docker: 
-      - image: cimg/base:2021.04
+    machine: true
 
     working_directory: ~/repo
 
