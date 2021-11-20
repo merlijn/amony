@@ -23,6 +23,9 @@ jobs:
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
       - checkout
+      
+      - run: pwd
+      - run: ls -la
 
       # Download and cache dependencies
       - restore_cache:
@@ -40,4 +43,5 @@ jobs:
           key: v1-dependencies--{{ checksum "build.sbt" }}
 
       # run tests!
+
       - run: cat /dev/null | sbt test:test
