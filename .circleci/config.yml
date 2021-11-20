@@ -99,18 +99,13 @@ jobs:
       - run: pwd; ls -la *
 
       - gcp-gcr/gcr-auth:
-          gcloud-service-key: $GCP_SERVICE_KEY
-          registry-url: $GCP_ZONE-docker.pkg.dev
+          gcloud-service-key: GCP_SERVICE_KEY
       - gcp-gcr/build-image:
-          gcloud-service-key: $GCP_SERVICE_KEY
-          image: amony:latest
+          image: amony
           no_output_timeout: 20m
-          registry-name: docker-images
           registry-url: $GCP_ZONE-docker.pkg.dev
       - gcp-gcr/push-image:
-          gcloud-service-key: $GCP_SERVICE_KEY
-          image: amony:latest
-          registry-name: docker-images
+          image: amony
           registry-url: $GCP_ZONE-docker.pkg.dev
 
 workflows:
