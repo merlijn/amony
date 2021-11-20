@@ -102,10 +102,10 @@ jobs:
       - gcp-gcr/build-image:
           image: amony/app
           no_output_timeout: 20m
-          registry-url: $GOOGLE_COMPUTE_REGION-docker.pkg.dev
+          registry-url: $GOOGLE_COMPUTE_REGION-docker.pkg.dev/$GOOGLE_PROJECT_ID/docker-images
       - gcp-gcr/push-image:
           image: amony/app
-          registry-url: $GOOGLE_COMPUTE_REGION-docker.pkg.dev
+          registry-url: $GOOGLE_COMPUTE_REGION-docker.pkg.dev/$GOOGLE_PROJECT_ID/docker-images
 
 workflows:
   build_and_test:
