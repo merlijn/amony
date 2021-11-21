@@ -1,10 +1,17 @@
 version: 2.1
 
+executors:
+  custom-docker-executor:
+    machine:
+      image: ubuntu-2004:202010-01    # recommended linux image - includes Ubuntu 16.04, docker 18.09.3, docker-compose 1.23.1
+      docker_layer_caching: true
+
 orbs:
   my-gcp:
     orbs: 
       docker: circleci/docker@1.5
       gcp-cli: circleci/gcp-cli@2.1
+
     commands:
       build-and-publish:
         parameters:
@@ -146,9 +153,8 @@ jobs:
             - build
 
   build_docker_image:
-
-    machine: true
-
+    executor: custom-docker-executor
+    
     working_directory: ~/repo
 
     steps:
