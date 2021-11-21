@@ -57,7 +57,7 @@ orbs:
 
                 # configure Docker to use gcloud as a credential helper
                 mkdir -p "$HOME/.docker"
-                gcloud auth configure-docker --quiet --project $<<parameters.google-project-id>> $<<parameters.google-compute-region>>
+                gcloud auth configure-docker --quiet --project $<<parameters.google-project-id>> "$<<parameters.google-compute-region>>-docker.pkg.dev"
 
                 # if applicable, provide user access to the docker config file
                 if [[ -d "$HOME/.docker" ]]; then
