@@ -1,8 +1,81 @@
 version: 2.1
+
+executors:
+  custom-docker-executor:
+    machine:
+      image: ubuntu-2004:202010-01    # recommended linux image - includes Ubuntu 16.04, docker 18.09.3, docker-compose 1.23.1
+      docker_layer_caching: true
+
+orbs:
+  my-gcp:
+    orbs: 
+      docker: circleci/docker@1.5
+      gcp-cli: circleci/gcp-cli@2.1
+
+    commands:
+      build-and-publish:
+        parameters:
+          image:
+            description: A name for your docker image
+            type: string
+          tag:
+            description: Comma-separated list of docker image tags
+            type: string
+            default: "latest"
+          artifact-registry-name:
+            type: string
+            description: The name of the artifact registry
+          google-project-id:
+            type: env_var_name
+            default: GOOGLE_PROJECT_ID
+            description: Environment variable name for the Google project ID to connect with
+          google-compute-region:
+            type: env_var_name
+            default: GOOGLE_COMPUTE_REGION
+            description: The Google compute region to connect with via the gcloud CLI
+          gcloud-service-key:
+            type: env_var_name
+            default: GCLOUD_SERVICE_KEY
+        steps:
+          - attach_workspace:
+              at: .
+          - docker/build:
+              step-name: Build Docker image for GCR
+              registry: "$<<parameters.google-compute-region>>-docker.pkg.dev/$<<parameters.google-project-id>>/<<parameters.artifact-registry-name>>"
+              image: <<parameters.image>>
+              tag: <<parameters.tag>>
+          - gcp-cli/install
+          - gcp-cli/initialize:
+              google-project-id: <<parameters.google-project-id>>
+              google-compute-region: <<parameters.google-compute-region>>
+              gcloud-service-key: <<parameters.gcloud-service-key>> 
+          - run:
+              name: Publish image
+              command: |
+                # Set sudo to work whether logged in as root user or non-root user
+                if [[ $EUID == 0 ]]; then export SUDO=""; else export SUDO="sudo"; fi
+
+                # configure Docker to use gcloud as a credential helper
+                mkdir -p "$HOME/.docker"
+                gcloud auth configure-docker --quiet --project $<<parameters.google-project-id>> "$<<parameters.google-compute-region>>-docker.pkg.dev"
+
+                # if applicable, provide user access to the docker config file
+                if [[ -d "$HOME/.docker" ]]; then
+                  $SUDO chown "$USER:$USER" "$HOME/.docker" -R
+                fi
+                if [[ -d "$HOME/.config" ]]; then
+                  $SUDO chown "$USER:$USER" "$HOME/.config" -R
+                fi
+                IFS="," read -ra DOCKER_TAGS \<<< "<< parameters.tag >>"
+                for tag in "${DOCKER_TAGS[@]}"; do
+                  docker push $<<parameters.google-compute-region>>-docker.pkg.dev/$<<parameters.google-project-id>>/<<parameters.artifact-registry-name>>/<<parameters.image>>:${tag}
+                done
+
 jobs:
   build_server:
 
     working_directory: ~/repo/server
+    
     docker:
       - image: circleci/openjdk:11-jdk
 
@@ -11,6 +84,7 @@ jobs:
       TERM: dumb
 
     steps:
+
       - checkout:
           path: ~/repo
       
@@ -19,10 +93,11 @@ jobs:
       - restore_cache:
           keys:
             - v2-sbt-deps-{{ checksum "build.sbt" }}
-            # fallback to using the latest cache if no exact match is found
             - v2-sbt-deps-
 
-      - run: sbt test:test
+      - run: 
+          name: Test
+          command: sbt test:test
 
       - save_cache:
           paths:
@@ -32,7 +107,11 @@ jobs:
 
       - run: 
           name: Build server
-          command: sbt assembly    
+          command: sbt assembly 
+      - persist_to_workspace:
+          root: .
+          paths:
+            - target/scala-2.13/amony.jar
 
   build_web_client:
 
@@ -45,29 +124,56 @@ jobs:
       CI: false
 
     steps:
+      
       - checkout:
           path: ~/repo
 
-      - run: pwd; ls -la
-
       - restore_cache:
           keys:
-            - v2-npm-deps-{{ checksum "package-lock.json" }}
-            - v2-npm-deps-
+            - v3-npm-deps-{{ checksum "package-lock.json" }}
+            - v3-npm-deps-
+      
+      - run: pwd; ls -la
+
       - run: 
           name: Node install
           command: npm install --save
 
       - save_cache:
           paths:
-            - ~/node_modules
-          key: v2-npm-deps-{{ checksum "package-lock.json" }}
+            - node_modules
+          key: v3-npm-deps-{{ checksum "package-lock.json" }}
       - run: 
           name: Node build
           command: npm run build
+
+      - persist_to_workspace:
+          root: .
+          paths:
+            - build
+
+  build_docker_image:
+    executor: custom-docker-executor
+    
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+
+      - run: mv target server 
+      - run: mv build web-client
+      - my-gcp/build-and-publish:
+          image: "amony/app"
+          artifact-registry-name: "docker-images"
 
 workflows:
   build_and_test:
     jobs:
       - build_server
       - build_web_client
+      - build_docker_image:
+          requires:
+            - build_server
+            - build_web_client

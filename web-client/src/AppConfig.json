@@ -1,4 +1,4 @@
 {
-  "enable-video-editor" : false,
-  "enable-video-menu" : false
+  "enable-video-editor" : true,
+  "enable-video-menu" : true
 }
