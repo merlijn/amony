@@ -48,7 +48,7 @@ orbs:
           - gcp-cli/initialize:
               google-project-id: <<parameters.google-project-id>>
               google-compute-region: <<parameters.google-compute-region>>
-              gcloud-service-key: <<parameters.gcloud-service-key>>
+              gcloud-service-key: <<parameters.gcloud-service-key>> 
           - run:
               name: Publish image
               command: |
