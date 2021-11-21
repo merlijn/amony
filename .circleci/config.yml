@@ -34,7 +34,7 @@ orbs:
               at: .
           - docker/build:
               step-name: Build Docker image for GCR
-              registry: "$<<parameters.google-compute-region>>-docker.pkg.dev/<<parameters.artifact-registry-name>>"
+              registry: "$<<parameters.google-compute-region>>-docker.pkg.dev/$<<parameters.google-project-id>>/<<parameters.artifact-registry-name>>"
               image: <<parameters.image>>
               tag: <<parameters.tag>>
           - gcp-cli/install
@@ -61,7 +61,7 @@ orbs:
                 fi
                 IFS="," read -ra DOCKER_TAGS \<<< "<< parameters.tag >>"
                 for tag in "${DOCKER_TAGS[@]}"; do
-                  docker push $<<parameters.google-compute-region>>-docker.pkg.dev/<<parameters.artifact-registry-name>>/<<parameters.image>>:${tag}
+                  docker push $<<parameters.google-compute-region>>-docker.pkg.dev/$<<parameters.google-project-id>>/<<parameters.artifact-registry-name>>/<<parameters.image>>:${tag}
                 done
 
 jobs:
