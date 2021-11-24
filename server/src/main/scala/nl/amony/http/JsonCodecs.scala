@@ -38,7 +38,10 @@ trait JsonCodecs {
       SearchResult(result.offset, result.total, result.items.map(m => toWebModel(m)))
     )
 
-  def toWebModel(media: MediaLibProtocol.Media): Video =
+  def toWebModel(media: MediaLibProtocol.Media): Video = {
+    
+    val resolutions = (media.height :: transcodingSettings.map(_.scaleHeight)).sorted
+
     Video(
       id        = media.id,
       video_url = s"/files/resources/${media.id}_${media.videoInfo.resolution._2}p.${media.fileInfo.extension}",
@@ -50,14 +53,11 @@ trait JsonCodecs {
       duration               = media.videoInfo.duration,
       addedOn                = media.fileInfo.creationTime,
       fps                    = media.videoInfo.fps,
-      thumbnail_url          = s"/files/resources/${media.id}_320p.webp",
+      thumbnail_url          = s"/files/resources/${media.id}_${resolutions.min}p.webp",
       preview_thumbnails_url = Some(s"/files/resources/${media.id}-timeline.vtt"),
       fragments = {
-
-        val resolutions = (media.height :: transcodingSettings.map(_.scaleHeight)).sorted
-
         media.fragments.zipWithIndex.map { case (f, index) =>
-          val urls = resolutions.map(h => s"/files/resources/${media.id}~${f.fromTimestamp}-${f.toTimestamp}_${h}p.mp4")
+          val urls = resolutions.map(height => s"/files/resources/${media.id}~${f.fromTimestamp}-${f.toTimestamp}_${height}p.mp4")
 
           Fragment(
             media_id        = media.id,
@@ -73,4 +73,5 @@ trait JsonCodecs {
       width  = media.videoInfo.resolution._1,
       height = media.videoInfo.resolution._2
     )
+  }
 }
