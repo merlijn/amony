@@ -1,8 +1,4 @@
-FROM openjdk:11-jdk-slim
-
-RUN set -eux; \
-	apt-get update; \
-	apt-get install -y --no-install-recommends ffmpeg;
+FROM europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/base:latest
 
 # create directories
 RUN mkdir /usr/amony

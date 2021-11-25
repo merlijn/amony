@@ -170,6 +170,7 @@ jobs:
 
 workflows:
   build_and_test:
+    name: Build
     jobs:
       - build_server
       - build_web_client
