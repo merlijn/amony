@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { FaGithub, FaHome } from "react-icons/fa";
-import { FiFolder, FiGrid, FiSettings } from "react-icons/fi";
+import { FiFolder, FiGrid, FiSettings, FiUser } from "react-icons/fi";
+import { CgProfile } from "react-icons/cg";
 import { GoGrabber } from "react-icons/go";
 import { Menu, MenuItem, ProSidebar, SidebarContent, SidebarFooter, SidebarHeader, SubMenu } from "react-pro-sidebar";
 import { Api } from "../../api/Api";
@@ -20,13 +21,14 @@ const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
       </SidebarHeader>
       <SidebarContent>
         <Menu iconShape="circle">
+          <MenuItem icon= { <FiUser /> }><a href="/">Profile</a></MenuItem>
           <MenuItem icon={ <FaHome />}><a href="/">Home</a></MenuItem>
-          <MenuItem icon={ <FiGrid />}><a href="/grid">Grid</a></MenuItem>
           <SubMenu icon={ <FiFolder />} title="Directories" defaultOpen={true}>
           {
             dirs.map((d) =>  { return <MenuItem><a href={`/search?dir=${d.id}`}>{d.title}</a></MenuItem> }) 
           }
           </SubMenu>
+          <MenuItem icon={ <FiGrid />}><a href="/grid">Grid</a></MenuItem>
           <MenuItem icon={<FiSettings />}><a href="/">Settings</a></MenuItem>
         </Menu>
       </SidebarContent>

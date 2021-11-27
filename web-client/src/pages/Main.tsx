@@ -66,7 +66,17 @@ const Main = () => {
                 selection = {selection}
                 scroll = 'page' 
                 onClick = { (v: Video) => setPlayVideo(v) } 
-                columns = { prefs.gallery_columns }/>
+                columns = { prefs.gallery_columns }
+                previewOptionsFn = { (v: Video) => {
+                    return {
+                      showPreviewOnHover: !isMobile,
+                      showInfoBar: prefs.showTitles,
+                      showDates: false,
+                      showDuration: prefs.showDuration,
+                      showMenu: prefs.showMenu
+                    } 
+                  }
+                }/>
             </div>
           </div>
         </>
