@@ -13,9 +13,26 @@
   margin-bottom: 0px;
   margin-top: 5px;
   margin-left: 5px;
+  user-select: none;
   &:hover {
     cursor: pointer;
   }
+}
+
+.tags-button {
+
+  @extend .hover-cursor;
+  position: absolute;
+  user-select: none;
+
+  svg {
+    width: 24px;
+    height: 24px;
+    color: gray;
+  }
+
+  top: 4px;
+  right: 40px;
 }
 
 .filter-button {
@@ -31,13 +48,64 @@
   }
 }
 
-.top-nav-bar {
+.tag-bar {
+  user-select: none;
+  position:relative;
+  float:left;
+  width: 100vw;
+  background-color: white;
+  align-items: center;
+
+  height: 44px;
+  display: flex;
+  border-top: 1px solid $gray-200;
+  padding: 4px 0px;
+
+  z-index: 7;
+
+  .tags {
+    display: flex;
+    vertical-align: middle;
+    justify-content: center;
+    align-items: center;
+    
+    z-index: 9;
+    flex-grow: 1;
+  }
+
+  .tag {
+    display: flex;
+    text-align: center;
+    float: left;
+    margin: 0px 4px;
+    color: black;
+    font-size: small;
+    padding: 4px 12px;
+    border: 1px solid $gray-500;
+    border-radius: 25px;
+    background-color: lightgray;
+    &:hover {
+      cursor: pointer;
+    }
+  }
+}
+
+.nav-bar-container {
 
   z-index: 10;
   position: fixed;
-  display: flex;
   top: 0;
   left: 0;
+  width: 100vw;
+}
+
+.top-nav-bar {
+
+  user-select: none;
+  z-index: 10;
+  position: relative;
+  float: left;
+  display: flex;
   width: 100vw;
 
   background-color: white;

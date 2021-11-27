@@ -11,15 +11,15 @@ import SideBar from "../components/navigation/SideBar";
 import { isMobile } from "react-device-detect";
 import './Main.scss';
 
-type SideBarState = 'hidden' | 'collapsed' | 'full'
-
 const Main = () => {
 
     const location = useLocation();
     const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
     const [showNavBar, setShowNavBar] = useState(true)
+    const [showTagBar, setShowTagBar] = useState(true)
+    const [showSideBar, setShowSideBar] = useState<Boolean>(false)
+
     const [prefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
-    const [sidebarState, setSideBarState] = useState<SideBarState>('collapsed')
 
     const getSelection = (): MediaSelection => {
       const urlParams = new URLSearchParams(location.search)  
@@ -46,11 +46,23 @@ const Main = () => {
   
     useListener('keydown', keyDownHandler)
 
-    const sideBar = <SideBar collapsed={sidebarState === 'collapsed'} onHide={() => {setSideBarState('hidden')}} />
+    const calcTopMargin = () => {
+      
+      let m = 2;
+
+      if (showNavBar)
+        m += 49;
+      if (showTagBar)
+        m += 44
+      if (isMobile)  
+        m -= 4
+
+      return m;
+    }
   
     const galleryStyle = { 
-      marginTop: showNavBar ? (isMobile ? 45 : 49) : 2,
-      marginLeft: (sidebarState === 'hidden') ? 0 : 50
+      marginTop: calcTopMargin(),
+      marginLeft: showSideBar ? 50 : 0
     }
 
     return (
@@ -58,8 +70,8 @@ const Main = () => {
           { playVideo && <VideoModal video={playVideo} onHide={() => setPlayVideo(undefined) } />}
           <div className="main-page">
 
-            { (sidebarState !== 'hidden') && sideBar }
-            { showNavBar && <TopNavBar key="top-nav-bar" onClickMenu = { () => setSideBarState('collapsed') } /> }
+            { showSideBar && <SideBar collapsed={true} onHide={() => {setShowSideBar(false)}} /> }
+            { showNavBar && <TopNavBar key="top-nav-bar" showTagsBar = {showTagBar} onShowTagsBar = { (show) => setShowTagBar(show) } onClickMenu = { () => setShowSideBar(true) } /> }
 
             <div style={ galleryStyle } key="main-gallery" className="main-gallery-container">
               <Gallery 

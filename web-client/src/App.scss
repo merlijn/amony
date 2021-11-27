@@ -61,6 +61,12 @@ $container-max-widths: (
   left: 5px;
 }
 
+.hover-cursor {
+  &:hover {
+    cursor: pointer;
+  }
+}
+
 .action-icon-small {
 
   &:hover {

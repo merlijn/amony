@@ -4,6 +4,7 @@
 
   position: fixed !important;
   height: 100vh;
+  border-right: 1px solid rgb(183, 191, 199);
 }
 
 .sidebar-header {
@@ -60,9 +61,9 @@
   }
 }
 
-$sidebar-bg-color: $gray-300 !default;
+$sidebar-bg-color: $gray-400 !default;
 $sidebar-color: black !default;
-$icon-bg-color: $gray-500 !default;
+$icon-bg-color: rgb(159, 160, 165) !default;
 $highlight-color: black !default;
 $submenu-bg-color: $gray-500 !default;
 $submenu-bg-color-collapsed: $gray-500 !default;

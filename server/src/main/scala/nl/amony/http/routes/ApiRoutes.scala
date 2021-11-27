@@ -52,6 +52,10 @@ trait ApiRoutes extends Logging {
 
           complete(response)
         }
+      } ~ path("tags") {
+        get {
+          complete(api.query.getTags().map(_.asJson))
+        }
       } ~ pathPrefix("media" / Segment) { id =>
         pathEnd {
           get {

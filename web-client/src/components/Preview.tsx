@@ -1,4 +1,4 @@
-import React, {CSSProperties, useState} from 'react';
+import React, {CSSProperties, useRef, useState} from 'react';
 import './Preview.scss';
 import {durationInMillisToString, zeroPad} from "../api/Util";
 import {Video, VideoMeta} from "../api/Model";
@@ -12,6 +12,7 @@ import ProgressiveImage from "react-progressive-graceful-image";
 import {Api} from "../api/Api";
 import * as config from "../AppConfig.json";
 import TagEditor from "./shared/TagEditor";
+import { FcInfo } from "react-icons/fc";
 
 export type PreviewProps = {
   vid: Video,
@@ -36,7 +37,7 @@ const Preview = (props: PreviewProps) => {
   const [vid, setVid] = useState(props.vid)
 
   const [showMetaPanel, setShowMetaPanel] = useState(false)
-  const [showVideoPreview, setShowVideoPreview] = useState(false)
+  const [isHovering, setIsHovering] = useState(false)
 
   const durationStr = durationInMillisToString(vid.duration)
 
@@ -55,15 +56,23 @@ const Preview = (props: PreviewProps) => {
       {props.options.showDates && <span className="media-date">{zeroPad(addOnDate.getUTCDate(), 2)}-{zeroPad(addOnDate.getMonth(), 2)}-{addOnDate.getFullYear()}</span>}
     </div>
 
-  const overlayIcons =
-    <div>
+
+  const previewRef = useRef<HTMLDivElement>(null)
+
+  const calculateDistance = (elem: HTMLElement, mouseX: number, mouseY: number) => {
+    const dist = Math.floor(Math.sqrt(Math.pow(Math.abs(mouseX - elem.offsetLeft), 2) + Math.pow(Math.abs(mouseY - elem.offsetTop), 2)));
+    console.log(`dist: ${dist}, l: ${elem.offsetLeft}, t: ${elem.offsetTop}`)
+    return dist;
+  }
+
+  const overlay =
+    <div className="preview-overlay">
       {
         (props.options.showMenu && config["enable-video-menu"]) &&
           <div style={ { zIndex: 5 }} className="abs-top-right">
             <PreviewMenu vid={vid} showInfo={ () => setShowMetaPanel(true)} />
           </div>
       }
-      {/* <div className="abs-top-left video-quality-icon"><ImgWithAlt src="/icons/video_hd.svg" /></div> */}
       { props.options.showDuration && <div className="abs-bottom-left duration-overlay">{durationStr}</div> }
     </div>
 
@@ -86,16 +95,17 @@ const Preview = (props: PreviewProps) => {
 
   let preview =
       <div className = "preview-container"
-           onMouseEnter={() => props.options.showPreviewOnHover && setShowVideoPreview(true)}
-           onMouseLeave={() => setShowVideoPreview(false)}>
-        { showVideoPreview && videoPreview }
+           onMouseEnter={() => props.options.showPreviewOnHover && setIsHovering(true)}
+           onMouseLeave={() => setIsHovering(false)} 
+           onMouseMove={(e) => previewRef.current && calculateDistance(previewRef.current, e.movementX, e.pageY)}>
+        { isHovering && videoPreview }
         { primaryThumbnail }
-        { overlayIcons }
+        { overlay }
       </div>
     // </a>
 
   return (
-    <div style={props.style} className={ `${props.className}` }>
+    <div ref={previewRef} style={props.style} className={ `${props.className}` }>
       { preview }
       { props.options.showInfoBar && titlePanel }
       { showMetaPanel && metaPanel }

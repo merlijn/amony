@@ -32,6 +32,10 @@ export const Api = {
     return doGET(`/api/media/${id}`)
   },
 
+  getTags: async function () {
+    return doGET(`/api/tags/`)
+  },
+
   updateVideoMetaData: async function(id: string, meta: VideoMeta) {
     return doPOST(`/api/media/${id}`, meta)
   },

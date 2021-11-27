@@ -42,6 +42,9 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
 
     def getDirectories()(implicit timeout: Timeout): Future[List[Directory]] =
       system.ask[List[Directory]](ref => GetDirectories(ref))
+
+    def getTags()(implicit timeout: Timeout): Future[List[String]] = 
+      Future.successful(List("nature", "other", "people"))
   }
 
   object modify {

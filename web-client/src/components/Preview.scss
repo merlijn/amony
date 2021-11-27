@@ -84,6 +84,12 @@ $preview-hover-shadow-color: rgba(255, 255, 0, 1);
 
   z-index: 4;
 
+  .preview-overlay {
+    div {
+      z-index: 5;
+    }
+  }
+
   .preview-thumbnail {
     z-index: 1;
   }
