@@ -12,6 +12,7 @@ import { Prefs } from "../../api/Model";
 import { useCookiePrefs } from "../../api/ReactUtils";
 import { buildUrl } from "../../api/Util";
 import './TopNavBar.scss';
+import { Api } from "../../api/Api";
 
 function TopNavBar(props: { onClickMenu: () => void, showTagsBar: boolean, onShowTagsBar: (show: boolean) => void }) {
 
@@ -64,9 +65,13 @@ function TopNavBar(props: { onClickMenu: () => void, showTagsBar: boolean, onSho
 
 const TagBar = () => {
 
-  const tags = ["nature", "people", "other", "ocean", "coastline", "car", "autumn"]
+  const [tags, setTags] = useState<Array<string>>([])
 
   const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
+
+  useEffect(() => {
+    Api.getTags().then((updatedTags) => { setTags(updatedTags as Array<string>) })
+  }, [])
 
   console.log(`quality: ${prefs.videoQuality}`)
 

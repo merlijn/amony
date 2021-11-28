@@ -23,6 +23,7 @@ object MediaIndex {
   case class Directory(id: String, path: String)
   case class GetDirectories(sender: typed.ActorRef[List[Directory]])    extends IndexQuery
   case class Search(query: Query, sender: typed.ActorRef[SearchResult]) extends IndexQuery
+  case class GetTags(sender: typed.ActorRef[Set[String]]) extends IndexQuery
 
   sealed trait SortField
   case object FileName      extends SortField
@@ -66,6 +67,7 @@ object MediaIndex {
     var sortedByFilename: List[Media] = List.empty
     var sortedByDateAdded: List[Media] = List.empty
     var sortedByDuration: List[Media] = List.empty
+    var tags: Set[String] = Set.empty
 
     def media: Map[String, Media] = state.media
 
@@ -84,6 +86,7 @@ object MediaIndex {
         sortedByFilename  = media.values.toList.sortBy(m => m.title.getOrElse(m.fileName()))
         sortedByDateAdded = media.values.toList.sortBy(m => m.fileInfo.creationTime)
         sortedByDuration  = media.values.toList.sortBy(m => m.videoInfo.duration)
+        tags              = media.values.flatMap(_.tags).toSet
         indexedAt         = counter
       }
     }
@@ -91,13 +94,16 @@ object MediaIndex {
     override def receive: Receive = {
 
       case e: MediaLibEventSourcing.Event =>
-//        logger.debug("Received event, updating state")
         state = MediaLibEventSourcing.apply(state, e)
         counter += 1
 
       case GetDirectories(sender) =>
         updateIndex()
         sender.tell(directories.sortBy(_.path))
+
+      case GetTags(sender) =>
+        updateIndex()
+        sender.tell(tags)
 
       case Search(query, sender) =>
         updateIndex()

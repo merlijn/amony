@@ -46,8 +46,7 @@ const Gallery = (props: GalleryProps) => {
         offset,
         props.selection.directory,
         props.selection.minimumQuality,
-        props.selection.sort.field,
-        props.selection.sort.direction).then(response => {
+        props.selection.sort).then(response => {
 
           const result = response as SearchResult
           const videos = [...previous, ...result.videos]

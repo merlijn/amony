@@ -1,12 +1,15 @@
 import {buildUrl} from "./Util";
-import {SortDirection, VideoMeta} from "./Model";
+import {Sort, SortDirection, VideoMeta} from "./Model";
 
 const headers = { 'Content-type': 'application/json; charset=UTF-8' };
 
 export const Api = {
 
   getVideos: async function getVideos(q: string, n: number,
-                                      offset: number, dir?: string, minRes?: number, sortField?: string, sortDirection?: SortDirection) {
+                                      offset: number, 
+                                      dir?: string, 
+                                      minRes?: number, 
+                                      sort?: Sort) {
 
     const apiParams = new Map([
       ["q", q],
@@ -18,10 +21,10 @@ export const Api = {
       apiParams.set("dir", dir)
     if (minRes)
       apiParams.set("min_res", minRes.toString())
-    if (sortField)
-      apiParams.set("sort_field", sortField)
-    if (sortDirection !== undefined)
-      apiParams.set("sort_dir", sortDirection)
+    if (sort) {
+      apiParams.set("sort_field", sort.field)
+      apiParams.set("sort_dir", sort.direction)
+    }
 
     const target = buildUrl("/api/search", apiParams)
 
@@ -33,7 +36,7 @@ export const Api = {
   },
 
   getTags: async function () {
-    return doGET(`/api/tags/`)
+    return doGET(`/api/tags`)
   },
 
   updateVideoMetaData: async function(id: string, meta: VideoMeta) {
