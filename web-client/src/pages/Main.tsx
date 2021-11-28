@@ -29,9 +29,8 @@ const Main = () => {
       return {
         query: q ? q : undefined,
         directory: d ? d : undefined,
-        sortField: prefs.sortField,
-        sortDirection: prefs.sortDirection,
-        minimumQuality: prefs.minRes
+        sort: prefs.sort,
+        minimumQuality: prefs.videoQuality
       }
     }
 
@@ -40,7 +39,7 @@ const Main = () => {
     useEffect(() => { setSelection(getSelection()) }, [location, prefs])
 
     const keyDownHandler = (event: KeyboardEvent) => {
-      if (event.code === 'Slash')
+      if (event.code === 'Slash') 
         setShowNavBar(!showNavBar)
     }
   
@@ -52,7 +51,7 @@ const Main = () => {
 
       if (showNavBar)
         m += 49;
-      if (showTagBar)
+      if (showNavBar && showTagBar)
         m += 44
       if (isMobile)  
         m -= 4

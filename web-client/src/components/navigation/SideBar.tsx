@@ -7,14 +7,19 @@ import { Menu, MenuItem, ProSidebar, SidebarContent, SidebarFooter, SidebarHeade
 import { Api } from "../../api/Api";
 import { Directory } from "../../api/Model";
 import './SideBar.scss';
+import Modal from "../shared/Modal";
+import ConfigMenu from "./ConfigMenu";
 
 const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
 
   const [dirs, setDirs] = useState<Array<Directory>>([]);
+  const [showSettings, setShowSettings] = useState(false)
 
   useEffect(() => { Api.getDirectories().then(response => { setDirs(response) }); }, [] );
 
   return (
+    <>
+    { showSettings && <Modal onHide={() => setShowSettings(false)}><ConfigMenu /></Modal>  }
     <ProSidebar className="sidebar" width={200} collapsedWidth={50} collapsed={props.collapsed}>
       <SidebarHeader className="sidebar-header">
         <GoGrabber className="sidebar-menu-icon" onClick={props.onHide} />
@@ -29,13 +34,14 @@ const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
           }
           </SubMenu>
           <MenuItem icon={ <FiGrid />}><a href="/grid">Grid</a></MenuItem>
-          <MenuItem icon={<FiSettings />}><a href="/">Settings</a></MenuItem>
+          <MenuItem icon={<FiSettings />} onClick={() => setShowSettings(!showSettings)}>Settings</MenuItem>
         </Menu>
       </SidebarContent>
       <SidebarFooter className="sidebar-footer">
         <a href="https://github.com/merlijn/amony"><FaGithub className="github-icon" /></a>
       </SidebarFooter>
     </ProSidebar>
+    </>
   );
 }
 

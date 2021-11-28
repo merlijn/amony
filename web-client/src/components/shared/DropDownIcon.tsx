@@ -40,9 +40,11 @@ const DropDownIcon = (props: { children?: ReactNode, alignRight?: boolean, iconS
 
     return(
         <Dropdown className="icon-dropdown" alignRight={props.alignRight}>
-            <Dropdown.Toggle as={DropDownIconToggle}
-                             iconSrc={props.iconSrc}
-                             className={props.buttonClassName}></Dropdown.Toggle>
+            <Dropdown.Toggle 
+                as={DropDownIconToggle}
+                iconSrc={props.iconSrc}
+                className={props.buttonClassName}>
+            </Dropdown.Toggle>
 
             <Dropdown.Menu as={DropDownIconMenu} className={props.contentClassName}>
                 { props.children }

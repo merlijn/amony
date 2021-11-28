@@ -1,18 +1,22 @@
-import React, { useEffect, useState } from "react";
+import _ from "lodash";
+import React, { ReactNode, useEffect, useState } from "react";
+import { Dropdown, DropdownButton } from "react-bootstrap";
 import Form from "react-bootstrap/Form";
 import FormControl from "react-bootstrap/FormControl";
+import { FiHash } from "react-icons/fi";
+import { MdTune } from "react-icons/md";
 import { GoGrabber } from "react-icons/go";
 import { useHistory, useLocation } from "react-router-dom";
+import { Constants } from "../../api/Constants";
+import { Prefs } from "../../api/Model";
+import { useCookiePrefs } from "../../api/ReactUtils";
 import { buildUrl } from "../../api/Util";
-import ConfigMenu from "./ConfigMenu";
 import './TopNavBar.scss';
-import { FiHash } from "react-icons/fi";
 
 function TopNavBar(props: { onClickMenu: () => void, showTagsBar: boolean, onShowTagsBar: (show: boolean) => void }) {
 
   const location = useLocation();
   const [query, setQuery] = useState("")
-  const [showTagsBar, setShowTagsBar] = useState<Boolean>(props.showTagsBar)
 
   const history = useHistory();
 
@@ -44,20 +48,16 @@ function TopNavBar(props: { onClickMenu: () => void, showTagsBar: boolean, onSho
               <div key="nav-search-input" className="nav-search-input-container">
                 <FormControl className="nav-search-input" id="nav-search-input" size="sm" type="text" placeholder="Search" value={query} onChange={queryChanged} />
                 
-                <div className="tags-button" 
-                  onClick={() => { setShowTagsBar(!showTagsBar); props.onShowTagsBar(!showTagsBar) }}>
-                    <FiHash />
-                </div>
-                <div className="filter-button">
-                  <ConfigMenu />
+                <div className={ props.showTagsBar ? "tags-button selected" : "tags-button" }
+                  onClick={() => { props.onShowTagsBar(!props.showTagsBar) }}>
+                  <MdTune />
                 </div>
               </div>
             </Form>
           </div>
           <div key="nav-bar-right" className="nav-bar-spacer"></div>
       </div>
-      { showTagsBar && <TagBar /> }
-      {/* {showFilterBar && <Filters />} */}
+      { props.showTagsBar && <TagBar /> }
     </div>
   );
 }
@@ -66,18 +66,48 @@ const TagBar = () => {
 
   const tags = ["nature", "people", "other", "ocean", "coastline", "car", "autumn"]
 
+  const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
+
+  console.log(`quality: ${prefs.videoQuality}`)
+
   return (
     <div className="tag-bar">
       <div className="tags">
+      <DropDownSelect 
+          title="Sort" 
+          options={ Constants.sortOptions }
+          selected={ prefs.sort }
+          onSelect = { (v) => updatePrefs({...prefs, sort: v}) } />
+        
+        <DropDownSelect 
+          title="Quality" 
+          options={ Constants.resolutions }
+          selected={ prefs.videoQuality }
+          onSelect = { (v) => updatePrefs({...prefs, videoQuality: v}) } />
         {
           tags.map(tag => <div className="tag">{tag}</div>)
         }
       </div>
+      
     </div>);
 }
 
-const FilterBar = () => {
-
+type SelectOption<T> = { 
+  value: T
+  label: string
+  icon?: ReactNode
 }
+
+const DropDownSelect = (props:{ title: string, options: Array<SelectOption<any>>, selected: any, onSelect: (v: any) => void }) => {
+  return (
+    <DropdownButton size="sm" className="custom-dropdown" title={props.title}>
+      {
+        props.options.map((option) => {
+          return <Dropdown.Item className={_.isEqual(option.value,props.selected) ? "selected" : ""} href="#" onClick={() => props.onSelect(option.value)}>{option.icon}{option.label}</Dropdown.Item>
+        })
+      }
+  </DropdownButton>)
+}
+
 
 export default TopNavBar

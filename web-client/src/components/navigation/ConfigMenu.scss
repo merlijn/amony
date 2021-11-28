@@ -1,18 +1,6 @@
 @import 'node_modules/bootstrap/scss/bootstrap';
 @import './TopNavBar.scss';
 
-.config-menu-button {
-
-  @extend .nav-button;
-
-  background-color: white !important;
-  margin: 2px;
-  padding: 2px 4px !important;
-  height: 30px ! important;
-  border: none ! important;
-  border-radius: 0 ! important;
-}
-
 .config-menu {
   margin-top: 4px !important;
   border-radius: 0px ! important;

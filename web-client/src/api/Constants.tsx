@@ -6,19 +6,18 @@ const resolutions: Array<Resolution> =
     { value: 1080, label: "FHD"},
     { value: 2160, label: "4K"}]
 
-const sortingOps = [
-  { value: "title",      label: "Title" },
-  { value: "date_added", label: "Date added" },
-  { value: "duration",   label: "Duration" }];
+const sortingOptions = [
+  { value: { field: "title", direction: 'asc' }, label: "Alphabetically" },
+  { value: { field: "date_added", direction: 'desc' }, label: "By date added" },
+  { value: { field: "duration", direction: 'asc' }, label: "By duration" }];
 
 const defaultPrefs: Prefs = {
   showTitles:      true,
   showDuration:    true,
   showMenu:        false,
-  sortField:       'date_added',
-  sortDirection:   'desc',
+  sort:            { field: 'date_added', direction: 'desc' },
   gallery_columns: 'auto',
-  minRes:          0
+  videoQuality:    0
 }
 
 export const Constants = {
@@ -27,7 +26,7 @@ export const Constants = {
 
   resolutions: resolutions,
 
-  sortOptions: sortingOps,
+  sortOptions: sortingOptions,
 
   defaultPreferences: defaultPrefs,
 

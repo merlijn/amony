@@ -59,12 +59,6 @@ const Preview = (props: PreviewProps) => {
 
   const previewRef = useRef<HTMLDivElement>(null)
 
-  const calculateDistance = (elem: HTMLElement, mouseX: number, mouseY: number) => {
-    const dist = Math.floor(Math.sqrt(Math.pow(Math.abs(mouseX - elem.offsetLeft), 2) + Math.pow(Math.abs(mouseY - elem.offsetTop), 2)));
-    console.log(`dist: ${dist}, l: ${elem.offsetLeft}, t: ${elem.offsetTop}`)
-    return dist;
-  }
-
   const overlay =
     <div className="preview-overlay">
       {
@@ -96,8 +90,7 @@ const Preview = (props: PreviewProps) => {
   let preview =
       <div className = "preview-container"
            onMouseEnter={() => props.options.showPreviewOnHover && setIsHovering(true)}
-           onMouseLeave={() => setIsHovering(false)} 
-           onMouseMove={(e) => previewRef.current && calculateDistance(previewRef.current, e.movementX, e.pageY)}>
+           onMouseLeave={() => setIsHovering(false)}>
         { isHovering && videoPreview }
         { primaryThumbnail }
         { overlay }
