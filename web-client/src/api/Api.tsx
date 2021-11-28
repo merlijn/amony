@@ -7,6 +7,7 @@ export const Api = {
 
   getVideos: async function getVideos(q: string, n: number,
                                       offset: number, 
+                                      tag?: string,
                                       dir?: string, 
                                       minRes?: number, 
                                       sort?: Sort) {
@@ -17,6 +18,8 @@ export const Api = {
       ["offset", offset.toString()]
     ]);
 
+    if (tag)
+      apiParams.set("tags", tag)
     if (dir)
       apiParams.set("dir", dir)
     if (minRes)

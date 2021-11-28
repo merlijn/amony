@@ -27,8 +27,9 @@ const Main = () => {
       const d = urlParams.get("dir")
 
       return {
-        query: q ? q : undefined,
-        directory: d ? d : undefined,
+        query: urlParams.get("q") || undefined,
+        directory: urlParams.get("dir") || undefined,
+        tag: urlParams.get("tag") || undefined,
         sort: prefs.sort,
         minimumQuality: prefs.videoQuality
       }

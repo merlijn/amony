@@ -35,6 +35,7 @@ object MediaIndex {
       q: Option[String],
       offset: Option[Int],
       n: Int,
+      tags: Set[String],
       directory: Option[String],
       minRes: Option[Int],
       sort: Option[Sort]
@@ -116,7 +117,10 @@ object MediaIndex {
         def filterQuery(m: Media): Boolean =
           query.q.map(q => m.fileInfo.relativePath.toLowerCase.contains(q.toLowerCase)).getOrElse(true)
 
-        def filterMedia(m: Media): Boolean = filterDir(m) && filterRes(m) && filterQuery(m)
+        def filterTag(m: Media): Boolean = 
+          query.tags.forall(tag => m.tags.contains(tag))
+
+        def filterMedia(m: Media): Boolean = filterDir(m) && filterRes(m) && filterQuery(m) && filterTag(m)
 
         val unfiltered = query.sort match {
           case None                             => state.media.values

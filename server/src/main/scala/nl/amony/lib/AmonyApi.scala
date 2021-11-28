@@ -37,8 +37,8 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
     def getAll()(implicit timeout: Timeout): Future[List[Media]] =
       system.ask[List[Media]](ref => GetAll(ref))
 
-    def search(q: Option[String], offset: Option[Int], size: Int, tag: Option[String], minRes: Option[Int], sort: Sort)(implicit timeout: Timeout): Future[SearchResult] =
-      system.ask[SearchResult](ref => Search(Query(q, offset, size, tag, minRes, Some(sort)), ref))
+    def search(q: Option[String], offset: Option[Int], size: Int, tags: Set[String], directory: Option[String], minRes: Option[Int], sort: Sort)(implicit timeout: Timeout): Future[SearchResult] =
+      system.ask[SearchResult](ref => Search(Query(q, offset, size, tags, directory, minRes, Some(sort)), ref))
 
     def getDirectories()(implicit timeout: Timeout): Future[List[Directory]] =
       system.ask[List[Directory]](ref => GetDirectories(ref))

@@ -12,6 +12,7 @@ const fetchDataScreenMargin = 1024;
 export type MediaSelection = {
   query?: string
   directory?: string
+  tag?: string
   minimumQuality: number
   sort: Sort
 }
@@ -28,6 +29,7 @@ const initialSearchResult: SearchResult = { total: 0, videos: [] }
 
 const Gallery = (props: GalleryProps) => {
 
+  const gridSpacing = 3
   const [searchResult, setSearchResult] = useState(initialSearchResult)
   const [isFetching, setIsFetching] = useState(false)
   const [fetchMore, setFetchMore] = useState(true)
@@ -44,6 +46,7 @@ const Gallery = (props: GalleryProps) => {
         props.selection.query || "",
         n,
         offset,
+        props.selection.tag,
         props.selection.directory,
         props.selection.minimumQuality,
         props.selection.sort).then(response => {
@@ -121,8 +124,10 @@ const Gallery = (props: GalleryProps) => {
             />
   })
 
+  const containerStyle: { } = { "--grid-spacing" : `${gridSpacing}px` }
+
   return (
-    <div className="gallery-container" ref = {ref} onScroll = { onElementScroll }>
+    <div style={ containerStyle } className="gallery-container" ref = {ref} onScroll = { onElementScroll }>
       { previews }
     </div>
   );

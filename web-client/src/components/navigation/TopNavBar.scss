@@ -107,6 +107,11 @@ $accent: rgb(83, 155, 36);
     border-radius: 25px;
     background-color: $gray-300;
   }
+
+  .selected-tag {
+    
+    border: 2px solid rgb(95, 157, 223);
+  }
 }
 
 .nav-bar-container {

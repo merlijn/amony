@@ -10,16 +10,16 @@ import { useHistory, useLocation } from "react-router-dom";
 import { Constants } from "../../api/Constants";
 import { Prefs } from "../../api/Model";
 import { useCookiePrefs } from "../../api/ReactUtils";
-import { buildUrl } from "../../api/Util";
+import { buildUrl, copyParams } from "../../api/Util";
 import './TopNavBar.scss';
 import { Api } from "../../api/Api";
 
 function TopNavBar(props: { onClickMenu: () => void, showTagsBar: boolean, onShowTagsBar: (show: boolean) => void }) {
 
   const location = useLocation();
-  const [query, setQuery] = useState("")
-
   const history = useHistory();
+
+  const [query, setQuery] = useState("")
 
   const doSearch = (e: any) => {
     e.preventDefault();
@@ -65,6 +65,10 @@ function TopNavBar(props: { onClickMenu: () => void, showTagsBar: boolean, onSho
 
 const TagBar = () => {
 
+  const location = useLocation();
+  const history = useHistory();
+
+  const [selectedTag, setSelectedTag] = useState<string | undefined>(undefined)
   const [tags, setTags] = useState<Array<string>>([])
 
   const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
@@ -73,6 +77,23 @@ const TagBar = () => {
     Api.getTags().then((updatedTags) => { setTags(updatedTags as Array<string>) })
   }, [])
 
+  useEffect(() => { 
+    setSelectedTag(new URLSearchParams(location.search).get("tag") || undefined) 
+  }, [location]);
+
+
+  const selectTag = (tag: string) => {
+    const params = new URLSearchParams(location.search)
+    const newParams = copyParams(params)
+
+    if (tag === selectedTag)
+      newParams.delete("tag")
+    else
+      newParams.set("tag", tag)
+
+    history.push(buildUrl("/search", newParams ));
+  };
+
   console.log(`quality: ${prefs.videoQuality}`)
 
   return (
@@ -80,8 +101,8 @@ const TagBar = () => {
       <div className="tags">
       <DropDownSelect 
           title="Sort" 
-          options={ Constants.sortOptions }
-          selected={ prefs.sort }
+          options = { Constants.sortOptions }
+          selected = { prefs.sort }
           onSelect = { (v) => updatePrefs({...prefs, sort: v}) } />
         
         <DropDownSelect 
@@ -90,7 +111,7 @@ const TagBar = () => {
           selected={ prefs.videoQuality }
           onSelect = { (v) => updatePrefs({...prefs, videoQuality: v}) } />
         {
-          tags.map(tag => <div className="tag">{tag}</div>)
+          tags.map(tag => <div className={ tag === selectedTag ? "tag selected-tag" : "tag"} onClick = {() => selectTag(tag) }>{tag}</div>)
         }
       </div>
       

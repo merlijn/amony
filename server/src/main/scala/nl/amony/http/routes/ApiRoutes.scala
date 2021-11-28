@@ -30,10 +30,11 @@ trait ApiRoutes extends Logging {
         "offset".optional,
         "n".optional,
         "dir".optional,
+        "tags".optional,
         "sort_field".optional,
         "sort_dir".optional,
         "min_res".optional
-      )) { (q, offset, n, dir, sort, sortDir, minResY) =>
+      )) { (q, offset, n, dir, tags, sort, sortDir, minResY) =>
         get {
           val size        = n.map(_.toInt).getOrElse(defaultResultNumber)
           val sortReverse = sortDir.map(_ == "desc").getOrElse(false)
@@ -47,7 +48,8 @@ trait ApiRoutes extends Logging {
             .getOrElse(FileName)
 
           val searchResult =
-            api.query.search(q, offset.map(_.toInt), size, dir, minResY.map(_.toInt), Sort(sortField, sortReverse))
+            api.query.search(q, offset.map(_.toInt), size, tags.toSet, dir, minResY.map(_.toInt), Sort(sortField, sortReverse))
+
           val response = searchResult.map(_.asJson)
 
           complete(response)
