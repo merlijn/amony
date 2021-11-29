@@ -15,6 +15,7 @@ const defaultPrefs: Prefs = {
   showTitles:      true,
   showDuration:    true,
   showMenu:        false,
+  showDates:       false,
   sort:            { field: 'date_added', direction: 'desc' },
   gallery_columns: 'auto',
   videoQuality:    0

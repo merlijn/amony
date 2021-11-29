@@ -83,7 +83,7 @@ const Main = () => {
                     return {
                       showPreviewOnHover: !isMobile,
                       showInfoBar: prefs.showTitles,
-                      showDates: false,
+                      showDates: prefs.showDates,
                       showDuration: prefs.showDuration,
                       showMenu: prefs.showMenu
                     } 

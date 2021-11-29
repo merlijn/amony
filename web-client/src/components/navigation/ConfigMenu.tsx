@@ -91,6 +91,16 @@ const ConfigMenu = () => {
               />
             </div>
           </div>
+          <div className="form-section">
+            <p className="form-label">Show dates</p>
+            <div className="form-content">
+              <Form.Check
+                type="checkbox"
+                checked={ prefs.showDates }
+                onChange={ (e) => { updatePrefs( { showDates: !prefs.showDates }) } }
+              />
+            </div>
+          </div>
           {
             config["enable-video-menu"] &&
               <div className="form-section">
