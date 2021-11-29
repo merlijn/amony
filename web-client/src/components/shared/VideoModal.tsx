@@ -4,6 +4,7 @@ import Plyr from 'plyr';
 import {isMobile} from "react-device-detect";
 import {BoundedRatioBox} from "../../api/Util";
 import './VideoModal.scss';
+import { useListener } from "../../api/ReactUtils";
 
 const VideoModal = (props: { video: Video, onHide: () => void }) => {
 
@@ -19,6 +20,7 @@ const VideoModal = (props: { video: Video, onHide: () => void }) => {
       const plyrOptions = {
         fullscreen : { enabled: true },
         invertTime: false,
+        keyboard: { focused: true, global: true },
         previewThumbnails: { enabled: false, src: props.video.preview_thumbnails_url} }
 
       const plyr = new Plyr(element, plyrOptions)
@@ -52,7 +54,7 @@ const VideoModal = (props: { video: Video, onHide: () => void }) => {
       <div key="video-model-content" className="video-modal-content">
         {
           <div style={modalSize(props.video)}>
-            <video id={`video-modal-${props.video.id}`} ref={videoElement} playsInline controls>
+            <video tab-index='-1' id={`video-modal-${props.video.id}`} ref={videoElement} playsInline controls>
               { props.video && <source src={props.video.video_url} type="video/mp4"/> }
             </video>
           </div>

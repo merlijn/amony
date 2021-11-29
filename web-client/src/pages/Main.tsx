@@ -11,15 +11,15 @@ import SideBar from "../components/navigation/SideBar";
 import { isMobile } from "react-device-detect";
 import './Main.scss';
 
-type SideBarState = 'hidden' | 'collapsed' | 'full'
-
 const Main = () => {
 
     const location = useLocation();
     const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
-    const [showNavBar, setShowNavBar] = useState(true)
+    const [showNavigation, setShowNavigation] = useState(true)
+    const [showTagBar, setShowTagBar] = useState(true)
+    const [showSideBar, setShowSideBar] = useState<Boolean>(false)
+
     const [prefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
-    const [sidebarState, setSideBarState] = useState<SideBarState>('collapsed')
 
     const getSelection = (): MediaSelection => {
       const urlParams = new URLSearchParams(location.search)  
@@ -27,11 +27,11 @@ const Main = () => {
       const d = urlParams.get("dir")
 
       return {
-        query: q ? q : undefined,
-        directory: d ? d : undefined,
-        sortField: prefs.sortField,
-        sortDirection: prefs.sortDirection,
-        minimumQuality: prefs.minRes
+        query: urlParams.get("q") || undefined,
+        directory: urlParams.get("dir") || undefined,
+        tag: urlParams.get("tag") || undefined,
+        sort: prefs.sort,
+        minimumQuality: prefs.videoQuality
       }
     }
 
@@ -40,17 +40,29 @@ const Main = () => {
     useEffect(() => { setSelection(getSelection()) }, [location, prefs])
 
     const keyDownHandler = (event: KeyboardEvent) => {
-      if (event.code === 'Slash')
-        setShowNavBar(!showNavBar)
+      if (event.code === 'Slash') 
+        setShowNavigation(!showNavigation)
     }
   
     useListener('keydown', keyDownHandler)
 
-    const sideBar = <SideBar collapsed={sidebarState === 'collapsed'} onHide={() => {setSideBarState('hidden')}} />
+    const calcTopMargin = () => {
+      
+      let m = 2;
+
+      if (showNavigation)
+        m += 49;
+      if (showNavigation && showTagBar)
+        m += 44
+      if (isMobile)  
+        m -= 4
+
+      return m;
+    }
   
     const galleryStyle = { 
-      marginTop: showNavBar ? (isMobile ? 45 : 49) : 2,
-      marginLeft: (sidebarState === 'hidden') ? 0 : 50
+      marginTop: calcTopMargin(),
+      marginLeft: showNavigation && showSideBar ? 50 : 0
     }
 
     return (
@@ -58,15 +70,25 @@ const Main = () => {
           { playVideo && <VideoModal video={playVideo} onHide={() => setPlayVideo(undefined) } />}
           <div className="main-page">
 
-            { (sidebarState !== 'hidden') && sideBar }
-            { showNavBar && <TopNavBar key="top-nav-bar" onClickMenu = { () => setSideBarState('collapsed') } /> }
+            { showNavigation && showSideBar && <SideBar collapsed={true} onHide={() => {setShowSideBar(false)}} /> }
+            { showNavigation && <TopNavBar key="top-nav-bar" showTagsBar = {showTagBar} onShowTagsBar = { (show) => setShowTagBar(show) } onClickMenu = { () => setShowSideBar(true) } /> }
 
             <div style={ galleryStyle } key="main-gallery" className="main-gallery-container">
               <Gallery 
                 selection = {selection}
                 scroll = 'page' 
                 onClick = { (v: Video) => setPlayVideo(v) } 
-                columns = { prefs.gallery_columns }/>
+                columns = { prefs.gallery_columns }
+                previewOptionsFn = { (v: Video) => {
+                    return {
+                      showPreviewOnHover: !isMobile,
+                      showInfoBar: prefs.showTitles,
+                      showDates: false,
+                      showDuration: prefs.showDuration,
+                      showMenu: prefs.showMenu
+                    } 
+                  }
+                }/>
             </div>
           </div>
         </>

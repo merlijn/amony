@@ -1,28 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { isMobile } from "react-device-detect";
 import useResizeObserver from 'use-resize-observer';
 import { Api } from '../api/Api';
 import { Constants } from "../api/Constants";
-import { Columns, Prefs, SearchResult, SortDirection, Video } from '../api/Model';
-import { useCookiePrefs, useListener } from '../api/ReactUtils';
-
+import { Columns, SearchResult, Sort, SortDirection, Video } from '../api/Model';
+import { useListener } from '../api/ReactUtils';
 import './Gallery.scss';
-import Preview from './Preview';
+import Preview, { PreviewOptions } from './Preview';
 
-const fetchDataScreenMargin = 512;
+const fetchDataScreenMargin = 1024;
 
 export type MediaSelection = {
   query?: string
   directory?: string
+  tag?: string
   minimumQuality: number
-  sortField: string,
-  sortDirection: SortDirection,
+  sort: Sort
 }
 
 export type GalleryProps = {
   selection: MediaSelection
   scroll: 'page' | 'element'
-  columns: Columns
+  columns: Columns,
+  previewOptionsFn: (v: Video) => PreviewOptions,
   onClick: (v: Video) => void
 }
 
@@ -30,7 +29,7 @@ const initialSearchResult: SearchResult = { total: 0, videos: [] }
 
 const Gallery = (props: GalleryProps) => {
 
-  const [prefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
+  const gridSpacing = 3
   const [searchResult, setSearchResult] = useState(initialSearchResult)
   const [isFetching, setIsFetching] = useState(false)
   const [fetchMore, setFetchMore] = useState(true)
@@ -47,10 +46,10 @@ const Gallery = (props: GalleryProps) => {
         props.selection.query || "",
         n,
         offset,
+        props.selection.tag,
         props.selection.directory,
         props.selection.minimumQuality,
-        props.selection.sortField,
-        props.selection.sortDirection).then(response => {
+        props.selection.sort).then(response => {
 
           const result = response as SearchResult
           const videos = [...previous, ...result.videos]
@@ -121,16 +120,14 @@ const Gallery = (props: GalleryProps) => {
               key = {`preview-${vid.id}`}
               vid = {vid}
               onClick = { props.onClick }
-              showPreviewOnHover = {!isMobile}
-              showInfoBar = {prefs.showTitles} 
-              showDates = {true} 
-              showDuration = {prefs.showDuration} 
-              showMenu = {prefs.showMenu} 
+              options = { props.previewOptionsFn(vid) }
             />
   })
 
+  const containerStyle: { } = { "--grid-spacing" : `${gridSpacing}px` }
+
   return (
-    <div className="gallery-container" ref = {ref} onScroll = { onElementScroll }>
+    <div style={ containerStyle } className="gallery-container" ref = {ref} onScroll = { onElementScroll }>
       { previews }
     </div>
   );

@@ -1,4 +1,4 @@
-import React, {CSSProperties, useState} from 'react';
+import React, {CSSProperties, useRef, useState} from 'react';
 import './Preview.scss';
 import {durationInMillisToString, zeroPad} from "../api/Util";
 import {Video, VideoMeta} from "../api/Model";
@@ -12,27 +12,32 @@ import ProgressiveImage from "react-progressive-graceful-image";
 import {Api} from "../api/Api";
 import * as config from "../AppConfig.json";
 import TagEditor from "./shared/TagEditor";
+import { FcInfo } from "react-icons/fc";
 
-type PreviewProps = {
+export type PreviewProps = {
   vid: Video,
   style?: CSSProperties,
   className?: string,
   lazyLoad?: boolean,
+  options: PreviewOptions,
+  onClick: (v: Video) => any
+}
+
+export type PreviewOptions = {
   showPreviewOnHover: boolean,
   showPreviewOnHoverDelay?: number,
   showInfoBar: boolean,
   showDates: boolean,
   showDuration: boolean,
   showMenu: boolean,
-  onClick: (v: Video) => any
 }
-
+      
 const Preview = (props: PreviewProps) => {
 
   const [vid, setVid] = useState(props.vid)
 
   const [showMetaPanel, setShowMetaPanel] = useState(false)
-  const [showVideoPreview, setShowVideoPreview] = useState(false)
+  const [isHovering, setIsHovering] = useState(false)
 
   const durationStr = durationInMillisToString(vid.duration)
 
@@ -47,20 +52,22 @@ const Preview = (props: PreviewProps) => {
   const addOnDate = new Date(vid.addedOn)
   const titlePanel =
     <div className="info-bar">
-      <span className="media-title">{vid.meta.title}</span>
-      <span className="media-date">{zeroPad(addOnDate.getUTCDate(), 2)}-{zeroPad(addOnDate.getMonth(), 2)}-{addOnDate.getFullYear()}</span>
+      <span className="media-title" title={vid.meta.title}>{vid.meta.title}</span>
+      {props.options.showDates && <span className="media-date">{zeroPad(addOnDate.getUTCDate(), 2)}-{zeroPad(addOnDate.getMonth(), 2)}-{addOnDate.getFullYear()}</span>}
     </div>
 
-  const overlayIcons =
-    <div>
+
+  const previewRef = useRef<HTMLDivElement>(null)
+
+  const overlay =
+    <div className="preview-overlay">
       {
-        (props.showMenu && config["enable-video-menu"]) &&
+        (props.options.showMenu && config["enable-video-menu"]) &&
           <div style={ { zIndex: 5 }} className="abs-top-right">
             <PreviewMenu vid={vid} showInfo={ () => setShowMetaPanel(true)} />
           </div>
       }
-
-      { props.showDuration && <div className="abs-bottom-left duration-overlay">{durationStr}</div> }
+      { props.options.showDuration && <div className="abs-bottom-left duration-overlay">{durationStr}</div> }
     </div>
 
   const primaryThumbnail =
@@ -82,18 +89,18 @@ const Preview = (props: PreviewProps) => {
 
   let preview =
       <div className = "preview-container"
-           onMouseEnter={() => props.showPreviewOnHover && setShowVideoPreview(true)}
-           onMouseLeave={() => setShowVideoPreview(false)}>
-        { showVideoPreview && videoPreview }
+           onMouseEnter={() => props.options.showPreviewOnHover && setIsHovering(true)}
+           onMouseLeave={() => setIsHovering(false)}>
+        { isHovering && videoPreview }
         { primaryThumbnail }
-        { overlayIcons }
+        { overlay }
       </div>
     // </a>
 
   return (
-    <div style={props.style} className={ `${props.className}` }>
+    <div ref={previewRef} style={props.style} className={ `${props.className}` }>
       { preview }
-      { props.showInfoBar && titlePanel }
+      { props.options.showInfoBar && titlePanel }
       { showMetaPanel && metaPanel }
     </div>
   )

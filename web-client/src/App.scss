@@ -7,7 +7,6 @@ $container-max-widths: (
     xl: 1280px
 ) !default;
 
-
 .full-screen {
   width: 100vw;
   height: 100vh;
@@ -61,11 +60,15 @@ $container-max-widths: (
   left: 5px;
 }
 
-.action-icon-small {
-
+.hover-cursor {
   &:hover {
     cursor: pointer;
   }
+}
+
+.action-icon-small {
+
+  @extend .hover-cursor;
 
   z-index: 3;
   width: 20px;
@@ -74,9 +77,7 @@ $container-max-widths: (
 
 .action-icon-medium {
 
-  &:hover {
-    cursor: pointer;
-  }
+  @extend .hover-cursor;
 
   width: 24px;
   height: 24px;

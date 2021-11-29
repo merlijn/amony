@@ -44,6 +44,11 @@ export type Fragment = {
   tags: string[]
 }
 
+export type Sort = {
+  field: string
+  direction: SortDirection
+}
+
 export type SortDirection = 'asc' | 'desc'
 export type Columns = 'auto' | number
 
@@ -52,7 +57,6 @@ export type Prefs = {
   showDuration: boolean
   showMenu: boolean
   gallery_columns: Columns
-  sortField: string,
-  sortDirection: SortDirection,
-  minRes: number
+  sort: Sort
+  videoQuality: number
 }

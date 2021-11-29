@@ -4,8 +4,9 @@
 
   width: 100%;
   overflow: auto;
-  padding-left: 2px;
-  padding-right: 2px;
+  padding-left: var(--grid-spacing);
+  padding-right: var(--grid-spacing);
+  margin-top: 0px;
 }
 
 .grid-cell {
@@ -13,5 +14,5 @@
   width: calc(100% / var(--ncols));
   position: relative;
   float: left;
-  padding: 2px;
+  padding: var(--grid-spacing);
 }
