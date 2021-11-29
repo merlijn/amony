@@ -15,7 +15,7 @@ const Main = () => {
 
     const location = useLocation();
     const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
-    const [showNavBar, setShowNavBar] = useState(true)
+    const [showNavigation, setShowNavigation] = useState(true)
     const [showTagBar, setShowTagBar] = useState(true)
     const [showSideBar, setShowSideBar] = useState<Boolean>(false)
 
@@ -41,7 +41,7 @@ const Main = () => {
 
     const keyDownHandler = (event: KeyboardEvent) => {
       if (event.code === 'Slash') 
-        setShowNavBar(!showNavBar)
+        setShowNavigation(!showNavigation)
     }
   
     useListener('keydown', keyDownHandler)
@@ -50,9 +50,9 @@ const Main = () => {
       
       let m = 2;
 
-      if (showNavBar)
+      if (showNavigation)
         m += 49;
-      if (showNavBar && showTagBar)
+      if (showNavigation && showTagBar)
         m += 44
       if (isMobile)  
         m -= 4
@@ -62,7 +62,7 @@ const Main = () => {
   
     const galleryStyle = { 
       marginTop: calcTopMargin(),
-      marginLeft: showSideBar ? 50 : 0
+      marginLeft: showNavigation && showSideBar ? 50 : 0
     }
 
     return (
@@ -70,8 +70,8 @@ const Main = () => {
           { playVideo && <VideoModal video={playVideo} onHide={() => setPlayVideo(undefined) } />}
           <div className="main-page">
 
-            { showSideBar && <SideBar collapsed={true} onHide={() => {setShowSideBar(false)}} /> }
-            { showNavBar && <TopNavBar key="top-nav-bar" showTagsBar = {showTagBar} onShowTagsBar = { (show) => setShowTagBar(show) } onClickMenu = { () => setShowSideBar(true) } /> }
+            { showNavigation && showSideBar && <SideBar collapsed={true} onHide={() => {setShowSideBar(false)}} /> }
+            { showNavigation && <TopNavBar key="top-nav-bar" showTagsBar = {showTagBar} onShowTagsBar = { (show) => setShowTagBar(show) } onClickMenu = { () => setShowSideBar(true) } /> }
 
             <div style={ galleryStyle } key="main-gallery" className="main-gallery-container">
               <Gallery 
