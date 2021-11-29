@@ -91,23 +91,22 @@ jobs:
       - run: pwd; ls -la
 
       - restore_cache:
+          name: Restore cache
           keys:
             - v2-sbt-deps-{{ checksum "build.sbt" }}
             - v2-sbt-deps-
 
       - run: 
-          name: Test
-          command: sbt test:test
+          name: Test and create jar
+          command: sbt ";test;assembly"
 
       - save_cache:
+          name: Save cache
           paths:
             - ~/.m2
             - ~/.ivy2
           key: v2-sbt-deps-{{ checksum "build.sbt" }}
 
-      - run: 
-          name: Build server
-          command: sbt assembly 
       - persist_to_workspace:
           root: .
           paths:
