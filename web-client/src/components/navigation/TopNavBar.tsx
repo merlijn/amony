@@ -23,8 +23,10 @@ function TopNavBar(props: { onClickMenu: () => void, showTagsBar: boolean, onSho
 
   const doSearch = (e: any) => {
     e.preventDefault();
-    const target = buildUrl("/search", new Map( [["q", query]] ))
-    history.push(target);
+    const params = new URLSearchParams(location.search)
+    const newParams = copyParams(params)
+    newParams.set("q", query)
+    history.push(buildUrl("/search", newParams));
   };
 
   useEffect(() => { setQuery(new URLSearchParams(location.search).get("q") || "") }, [location]);
