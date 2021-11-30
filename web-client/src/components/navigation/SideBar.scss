@@ -1,10 +1,11 @@
-@import '../../App.scss';
+@import 'src/App.scss';
 
 .sidebar {
 
   position: fixed !important;
   height: 100vh;
   border-right: 1px solid rgb(200, 206, 211);
+  z-index: 200 ! important;
 }
 
 .sidebar-header {
@@ -39,11 +40,6 @@
     }
   }
 }
-
-// .sidebar-menu-item {
-
-//   padding-left: 8px ! important;
-// }
 
 .pro-inner-item {
   padding-left: 8px ! important;

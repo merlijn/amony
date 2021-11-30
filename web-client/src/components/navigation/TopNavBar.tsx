@@ -3,7 +3,6 @@ import React, { ReactNode, useEffect, useState } from "react";
 import { Dropdown, DropdownButton } from "react-bootstrap";
 import Form from "react-bootstrap/Form";
 import FormControl from "react-bootstrap/FormControl";
-import { FiHash } from "react-icons/fi";
 import { MdTune } from "react-icons/md";
 import { GoGrabber } from "react-icons/go";
 import { useHistory, useLocation } from "react-router-dom";

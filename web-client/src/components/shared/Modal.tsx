@@ -6,15 +6,15 @@ const Modal = (props: { children?: ReactNode, onHide: () => void }) => {
   return (
     <div
       key="modal"
-      className="modal-container"
+      className="my-modal-container"
       style={ { display: "block" }}>
 
-      <div key="model-background"
-           className="modal-background"
+      <div key="my-model-background"
+           className="my-modal-background"
            onClick = { (e) => props.onHide() }
       />
 
-      <div key="model-content" className="modal-content">
+      <div key="my-model-content" className="my-modal-content">
         { props.children }
       </div>
     </div>

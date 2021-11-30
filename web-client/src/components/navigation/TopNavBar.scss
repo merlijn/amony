@@ -61,7 +61,7 @@ $accent: rgb(83, 155, 36);
   button {
     border-radius: 25px !important;
     box-shadow: none !important;
-    background-color: rgb(95, 157, 223) !important;
+    background-color: $highlight-a !important;
   }
   margin: 0px 4px;
 
@@ -76,11 +76,12 @@ $accent: rgb(83, 155, 36);
   float:left;
   width: 100vw;
   background-color: white;
+  border-bottom: 1px solid $gray-200;
   align-items: center;
 
   height: 44px;
   display: flex;
-  border-top: 1px solid $gray-200;
+  
   padding: 4px 5px;
   z-index: 10;
 
@@ -133,6 +134,7 @@ $accent: rgb(83, 155, 36);
   width: 100vw;
 
   background-color: white;
+  border-bottom: 1px solid $gray-200;
   // border-bottom: 1px solid rgba(0, 0, 0, 0.2);
 
   // padding: 4px 4px !important;

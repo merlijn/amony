@@ -1,22 +1,22 @@
 @import '../../App.scss';
 
-.modal-container {
+.my-modal-container {
 
   @extend .full-screen;
 
   display: none; /* Hidden by default */
   position: fixed; /* Stay in place */
-  z-index: 20; /* Sit on top */
+  z-index: 500; /* Sit on top */
   left: 0;
   top: 0;
   overflow: hidden;
 
-  .modal-background {
+  .my-modal-background {
 
     @extend .full-screen;
 
     position: fixed; /* Stay in place */
-    z-index: 21; /* Sit on top */
+    z-index: 501; /* Sit on top */
     left: 0;
     top: 0;
     overflow: hidden;
@@ -24,24 +24,24 @@
     background-color: rgba(0,0,0,0.5); /* Black w/ opacity */
   }
 
-  .modal-content {
+  .my-modal-content {
 
     @media (max-width: 768px) {
       position: absolute;
       left: 0px;
       top: 0px ! important;
-      width: 100vw;
+      // width: 100vw;
     }
 
     @media (min-width: 769px) {
-      width: 75%;
+      // width: 75%;
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
     }
 
-    z-index: 22;
+    z-index: 502;
     margin: 0; /* 15% from the top and centered */
     padding: 0;
     //border: 1px solid black;

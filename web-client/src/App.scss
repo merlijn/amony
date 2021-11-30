@@ -7,6 +7,8 @@ $container-max-widths: (
     xl: 1280px
 ) !default;
 
+$highlight-a: rgb(95, 157, 223);
+
 .full-screen {
   width: 100vw;
   height: 100vh;

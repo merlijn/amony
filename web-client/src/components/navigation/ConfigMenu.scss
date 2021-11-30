@@ -2,10 +2,12 @@
 @import './TopNavBar.scss';
 
 .config-menu {
-  margin-top: 4px !important;
+
+  @extend .pt-2, .pb-2;
+
   border-radius: 0px ! important;
-  padding: 0px ! important;
   border-color: $gray-200 ! important;
+  background-color: white;
 
   width: calc(100vw - 8px);
 
