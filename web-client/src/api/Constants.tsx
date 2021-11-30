@@ -12,6 +12,7 @@ const sortingOptions = [
   { value: { field: "duration", direction: 'asc' }, label: "By duration" }];
 
 const defaultPrefs: Prefs = {
+  showSidebar:     false,
   showTitles:      true,
   showDuration:    true,
   showMenu:        false,

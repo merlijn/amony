@@ -53,6 +53,7 @@ export type SortDirection = 'asc' | 'desc'
 export type Columns = 'auto' | number
 
 export type Prefs = {
+  showSidebar: boolean
   showTitles: boolean
   showDuration: boolean
   showMenu: boolean

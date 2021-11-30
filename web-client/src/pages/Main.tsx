@@ -17,9 +17,8 @@ const Main = () => {
     const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
     const [showNavigation, setShowNavigation] = useState(true)
     const [showTagBar, setShowTagBar] = useState(true)
-    const [showSideBar, setShowSideBar] = useState<Boolean>(false)
 
-    const [prefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
+    const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
 
     const getSelection = (): MediaSelection => {
       const urlParams = new URLSearchParams(location.search)  
@@ -62,7 +61,11 @@ const Main = () => {
   
     const galleryStyle = { 
       marginTop: calcTopMargin(),
-      marginLeft: showNavigation && showSideBar ? 50 : 0
+      marginLeft: showNavigation && prefs.showSidebar ? 50 : 0
+    }
+
+    const setShowSidebar = (value: boolean) => {
+      updatePrefs({...prefs, showSidebar: !prefs.showSidebar})
     }
 
     return (
@@ -70,8 +73,21 @@ const Main = () => {
           { playVideo && <VideoModal video={playVideo} onHide={() => setPlayVideo(undefined) } />}
           <div className="main-page">
 
-            { showNavigation && showSideBar && <SideBar collapsed={true} onHide={() => {setShowSideBar(false)}} /> }
-            { showNavigation && <TopNavBar key="top-nav-bar" showTagsBar = {showTagBar} onShowTagsBar = { (show) => setShowTagBar(show) } onClickMenu = { () => setShowSideBar(true) } /> }
+            { showNavigation && prefs.showSidebar && 
+                <SideBar 
+                  collapsed={true} 
+                  onHide={() => setShowSidebar(!prefs.showSidebar)} 
+                /> 
+            }
+            
+            { showNavigation && 
+                <TopNavBar 
+                    key="top-nav-bar" 
+                    showTagsBar = {showTagBar} 
+                    onShowTagsBar = { (show) => setShowTagBar(show) } 
+                    onClickMenu = { () => setShowSidebar(true) } 
+                /> 
+            }
 
             <div style={ galleryStyle } key="main-gallery" className="main-gallery-container">
               <Gallery 
