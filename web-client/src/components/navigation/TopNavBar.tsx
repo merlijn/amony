@@ -12,6 +12,7 @@ import { useCookiePrefs } from "../../api/ReactUtils";
 import { buildUrl, copyParams } from "../../api/Util";
 import './TopNavBar.scss';
 import { Api } from "../../api/Api";
+import DropDown from "../shared/DropDown";
 
 function TopNavBar(props: { onClickMenu: () => void, showTagsBar: boolean, onShowTagsBar: (show: boolean) => void }) {
 
@@ -49,7 +50,7 @@ function TopNavBar(props: { onClickMenu: () => void, showTagsBar: boolean, onSho
             <Form className="nav-search-form" onSubmit={doSearch} inline>
               <div key="nav-search-input" className="nav-search-input-container">
                 <FormControl className="nav-search-input" id="nav-search-input" size="sm" type="text" placeholder="Search" value={query} onChange={queryChanged} />
-                
+
                 <div className={ props.showTagsBar ? "tags-button selected" : "tags-button" }
                   onClick={() => { props.onShowTagsBar(!props.showTagsBar) }}>
                   <MdTune />
@@ -78,8 +79,8 @@ const TagBar = () => {
     Api.getTags().then((updatedTags) => { setTags(updatedTags as Array<string>) })
   }, [])
 
-  useEffect(() => { 
-    setSelectedTag(new URLSearchParams(location.search).get("tag") || undefined) 
+  useEffect(() => {
+    setSelectedTag(new URLSearchParams(location.search).get("tag") || undefined)
   }, [location]);
 
 
@@ -95,19 +96,25 @@ const TagBar = () => {
     history.push(buildUrl("/search", newParams ));
   };
 
-  console.log(`quality: ${prefs.videoQuality}`)
-
   return (
     <div className="tag-bar">
       <div className="tags">
-      <DropDownSelect 
-          title="Sort" 
+
+      <DropDown label="test" showArrow={true}>
+        <div style={{backgroundColor: "white" }}>
+          <Dropdown.Item>A</Dropdown.Item>
+          <Dropdown.Item>B</Dropdown.Item>
+        </div>
+      </DropDown>
+
+      <DropDownSelect
+          title="Sort"
           options = { Constants.sortOptions }
           selected = { prefs.sort }
           onSelect = { (v) => updatePrefs({...prefs, sort: v}) } />
-        
-        <DropDownSelect 
-          title="Quality" 
+
+        <DropDownSelect
+          title="Quality"
           options={ Constants.resolutions }
           selected={ prefs.videoQuality }
           onSelect = { (v) => updatePrefs({...prefs, videoQuality: v}) } />
@@ -115,11 +122,11 @@ const TagBar = () => {
           tags.map(tag => <div className={ tag === selectedTag ? "tag selected-tag" : "tag"} onClick = {() => selectTag(tag) }>{tag}</div>)
         }
       </div>
-      
+
     </div>);
 }
 
-type SelectOption<T> = { 
+type SelectOption<T> = {
   value: T
   label: string
   icon?: ReactNode

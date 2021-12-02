@@ -1,0 +1,30 @@
+@import 'src/App.scss';
+
+//index.module.css
+.my-dropdown-container {
+  display: inline-flex;
+  position: relative;
+  flex-direction: column;
+}
+
+.my-dropdown-toggle {
+  position: relative;
+  cursor: pointer;
+}
+
+.my-dropdown-toggle > .arrow {
+  margin-left: 10px;
+}
+
+.my-dropdown-content {
+  position: relative;
+}
+
+.my-dropdown-content > .my-dropdown-children {
+  position: absolute;
+  left: 1px;
+  top: 8px;
+  transition: height 1s ease;
+  min-width: 100px;
+  min-height: 100px;
+}
