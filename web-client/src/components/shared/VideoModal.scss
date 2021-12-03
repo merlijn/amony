@@ -6,7 +6,7 @@
 
   display: none; /* Hidden by default */
   position: fixed; /* Stay in place */
-  z-index: 20; /* Sit on top */
+  z-index: 500; /* Sit on top */
   left: 0;
   top: 0;
   overflow: hidden;
@@ -16,7 +16,7 @@
     @extend .full-screen;
 
     position: fixed; /* Stay in place */
-    z-index: 21; /* Sit on top */
+    z-index: 501; /* Sit on top */
     left: 0;
     top: 0;
     overflow: hidden;
@@ -54,7 +54,7 @@
       }
     }
 
-    z-index: 22;
+    z-index: 502;
     margin: 0; /* 15% from the top and centered */
     padding: 0;
     //border: 1px solid black;

@@ -1,7 +1,5 @@
 import _ from "lodash";
 import React, { ReactNode, useEffect, useState } from "react";
-import Form from "react-bootstrap/Form";
-import FormControl from "react-bootstrap/FormControl";
 import { GoGrabber } from "react-icons/go";
 import { MdTune } from "react-icons/md";
 import { useHistory, useLocation } from "react-router-dom";
@@ -48,7 +46,7 @@ function TopNavBar(props: { onClickMenu: () => void, showTagsBar: boolean, onSho
           <div key="nav-bar-center" className="nav-bar-center">
             <form className="nav-search-form" onSubmit={doSearch} >
               <div key="nav-search-input" className="nav-search-input-container">
-                <FormControl className="nav-search-input" id="nav-search-input" size="sm" type="text" placeholder="Search" value={query} onChange={queryChanged} />
+                <input className="nav-search-input" type="text" value={query} onChange={queryChanged} />
                 <div 
                   className={ props.showTagsBar ? "tags-button selected" : "tags-button" }
                   onClick={() => { props.onShowTagsBar(!props.showTagsBar) }}>
@@ -81,7 +79,6 @@ const TagBar = () => {
   useEffect(() => {
     setSelectedTag(new URLSearchParams(location.search).get("tag") || undefined)
   }, [location]);
-
 
   const selectTag = (tag: string) => {
     const params = new URLSearchParams(location.search)

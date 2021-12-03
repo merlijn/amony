@@ -38,7 +38,7 @@
 }
 
 .menu-item-selected {
-  background-color: $highlight-b !important;
+  background-color: $secondary-a !important;
 }
 
 .my-dropdown-menu-item {
@@ -49,6 +49,6 @@
   color: black;
 
   &:hover {
-    background-color: $highlight-b;
+    background-color: $secondary-a;
   }
 }

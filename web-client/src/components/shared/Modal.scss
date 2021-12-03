@@ -42,12 +42,12 @@
     }
 
     z-index: 502;
-    margin: 0; /* 15% from the top and centered */
+    margin: 0;
     padding: 0;
     //border: 1px solid black;
     box-shadow: -20px -20px 40px rgba(0, 0, 0, 0.3),
-    -20px 20px 40px rgba(0, 0, 0, 0.3),
-    20px -20px 40px rgba(0, 0, 0, 0.3),
-    20px 20px 40px rgba(0, 0, 0, 0.3);
+                -20px 20px 40px rgba(0, 0, 0, 0.3),
+                20px -20px 40px rgba(0, 0, 0, 0.3),
+                20px 20px 40px rgba(0, 0, 0, 0.3);
   }
 }

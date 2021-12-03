@@ -1,5 +1,4 @@
 @import url(https://fonts.googleapis.com/css2?family=Otomanopee+One&display=swap);
-@import 'node_modules/bootstrap/scss/bootstrap';
 @import 'src/App.scss';
 
 .nav-button {
@@ -9,6 +8,7 @@
 
 .nav-menu-button {
   @extend .hover-cursor;
+
   width: 40px;
   height: 40px;
   margin-bottom: 0px;
@@ -36,6 +36,8 @@ $accent: rgb(83, 155, 36);
 }
 
 .filter-button {
+
+  @extend .hover-cursor;
   position: absolute;
   top: 0px;
   right: 0px;
@@ -44,9 +46,6 @@ $accent: rgb(83, 155, 36);
     width: 24px;
     height: 24px;
     color: $gray-600;
-  }
-  &:hover {
-    cursor: pointer;
   }
 }
 
@@ -106,7 +105,6 @@ $accent: rgb(83, 155, 36);
   }
 
   .selected-tag {
-    
     border: 2px solid $highlight-b;
   }
 }
@@ -169,10 +167,15 @@ $accent: rgb(83, 155, 36);
     flex-grow: 1;
 
     .nav-search-input {
+      outline: none;
       height: 35px !important;
-      border-radius: 0 ! important;
-      border-color: $gray-400 ! important;
+      border-radius: 3px ! important;
+      border: 1px solid $gray-400;
       width: 100% ! important;
+      padding-left: 8px;
+      &:focus {
+        outline: solid rgb(220,220,255);
+      }
     }
 
     .nav-clear-input {
