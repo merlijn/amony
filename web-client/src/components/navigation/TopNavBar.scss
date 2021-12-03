@@ -56,18 +56,14 @@ $accent: rgb(83, 155, 36);
   }
 }
 
-.custom-dropdown {
-
-  button {
-    border-radius: 25px !important;
-    box-shadow: none !important;
-    background-color: $highlight-a !important;
-  }
-  margin: 0px 4px;
-
-  .selected {
-    background-color: rgb(179, 202, 231) !important;
-  }
+.custom-dropdown-toggle {
+  @extend .mr-2;
+  border-radius: 25px !important;
+  background-color: $highlight-b !important;
+  border-color: $highlight-b !important;
+  font-size: small !important;
+  color: white !important;
+  padding: 5px 12px !important;
 }
 
 .tag-bar {
@@ -110,8 +106,8 @@ $accent: rgb(83, 155, 36);
   }
 
   .selected-tag {
-
-    border: 2px solid rgb(95, 157, 223);
+    
+    border: 2px solid $highlight-b;
   }
 }
 
@@ -135,16 +131,9 @@ $accent: rgb(83, 155, 36);
 
   background-color: white;
   border-bottom: 1px solid $gray-200;
-  // border-bottom: 1px solid rgba(0, 0, 0, 0.2);
-
-  // padding: 4px 4px !important;
 
   @media only screen and (min-width: map-get($container-max-widths, md)) {
-
-    // background-color: $gray-300;
-    // background: linear-gradient(to left, $gray-100, $gray-300 50%, $gray-100 100%);
     background-color: $gray-100;
-    // padding: 6px 4px !important;
   }
 }
 

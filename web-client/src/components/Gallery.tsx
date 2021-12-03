@@ -39,7 +39,7 @@ const Gallery = (props: GalleryProps) => {
   const fetchData = (previous: Array<Video>) => {
 
     const offset = previous.length
-    const n      = columns * 5
+    const n      = columns * 8
 
     if (n > 0 && fetchMore) {
       Api.getVideos(

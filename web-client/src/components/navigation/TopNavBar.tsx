@@ -1,18 +1,17 @@
 import _ from "lodash";
 import React, { ReactNode, useEffect, useState } from "react";
-import { Dropdown, DropdownButton } from "react-bootstrap";
 import Form from "react-bootstrap/Form";
 import FormControl from "react-bootstrap/FormControl";
-import { MdTune } from "react-icons/md";
 import { GoGrabber } from "react-icons/go";
+import { MdTune } from "react-icons/md";
 import { useHistory, useLocation } from "react-router-dom";
+import { Api } from "../../api/Api";
 import { Constants } from "../../api/Constants";
 import { Prefs } from "../../api/Model";
 import { useCookiePrefs } from "../../api/ReactUtils";
 import { buildUrl, copyParams } from "../../api/Util";
+import { DropDown, MenuItem } from "../shared/DropDown";
 import './TopNavBar.scss';
-import { Api } from "../../api/Api";
-import DropDown from "../shared/DropDown";
 
 function TopNavBar(props: { onClickMenu: () => void, showTagsBar: boolean, onShowTagsBar: (show: boolean) => void }) {
 
@@ -47,16 +46,16 @@ function TopNavBar(props: { onClickMenu: () => void, showTagsBar: boolean, onSho
             <GoGrabber className="nav-menu-button" onClick={props.onClickMenu} />
           </div>
           <div key="nav-bar-center" className="nav-bar-center">
-            <Form className="nav-search-form" onSubmit={doSearch} inline>
+            <form className="nav-search-form" onSubmit={doSearch} >
               <div key="nav-search-input" className="nav-search-input-container">
                 <FormControl className="nav-search-input" id="nav-search-input" size="sm" type="text" placeholder="Search" value={query} onChange={queryChanged} />
-
-                <div className={ props.showTagsBar ? "tags-button selected" : "tags-button" }
+                <div 
+                  className={ props.showTagsBar ? "tags-button selected" : "tags-button" }
                   onClick={() => { props.onShowTagsBar(!props.showTagsBar) }}>
-                  <MdTune />
+                    <MdTune />
                 </div>
               </div>
-            </Form>
+            </form>
           </div>
           <div key="nav-bar-right" className="nav-bar-spacer"></div>
       </div>
@@ -100,13 +99,6 @@ const TagBar = () => {
     <div className="tag-bar">
       <div className="tags">
 
-      <DropDown label="test" showArrow={true}>
-        <div style={{backgroundColor: "white" }}>
-          <Dropdown.Item>A</Dropdown.Item>
-          <Dropdown.Item>B</Dropdown.Item>
-        </div>
-      </DropDown>
-
       <DropDownSelect
           title="Sort"
           options = { Constants.sortOptions }
@@ -115,8 +107,8 @@ const TagBar = () => {
 
         <DropDownSelect
           title="Quality"
-          options={ Constants.resolutions }
-          selected={ prefs.videoQuality }
+          options = { Constants.resolutions }
+          selected = { prefs.videoQuality }
           onSelect = { (v) => updatePrefs({...prefs, videoQuality: v}) } />
         {
           tags.map(tag => <div className={ tag === selectedTag ? "tag selected-tag" : "tag"} onClick = {() => selectTag(tag) }>{tag}</div>)
@@ -134,13 +126,13 @@ type SelectOption<T> = {
 
 const DropDownSelect = (props:{ title: string, options: Array<SelectOption<any>>, selected: any, onSelect: (v: any) => void }) => {
   return (
-    <DropdownButton size="sm" className="custom-dropdown" title={props.title}>
+    <DropDown hideOnClick = {true} toggleClassName = "custom-dropdown-toggle" contentClassName="my-dropdown-menu" label={props.title} showArrow= { true }>
       {
         props.options.map((option) => {
-          return <Dropdown.Item className={_.isEqual(option.value,props.selected) ? "selected" : ""} href="#" onClick={() => props.onSelect(option.value)}>{option.icon}{option.label}</Dropdown.Item>
+          return <MenuItem className={_.isEqual(option.value,props.selected) ? "menu-item-selected" : ""} onClick={() => props.onSelect(option.value)}>{option.icon}{option.label}</MenuItem>
         })
       }
-  </DropdownButton>)
+  </DropDown>)
 }
 
 

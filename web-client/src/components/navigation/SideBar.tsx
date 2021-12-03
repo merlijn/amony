@@ -20,7 +20,7 @@ const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
   return (
     <>
     { showSettings && <Modal onHide={() => setShowSettings(false)}><ConfigMenu /></Modal>  }
-    <ProSidebar className="sidebar" width={200} collapsedWidth={50} collapsed={props.collapsed}>
+    <ProSidebar className="my-sidebar" width={200} collapsedWidth={50} collapsed={props.collapsed}>
       <SidebarHeader className="sidebar-header">
         <GoGrabber className="sidebar-menu-icon" onClick={props.onHide} />
       </SidebarHeader>

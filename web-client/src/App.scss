@@ -7,7 +7,24 @@ $container-max-widths: (
     xl: 1280px
 ) !default;
 
-$highlight-a: rgb(95, 157, 223);
+//#6a6a78de;
+$highlight-a: #dd4242de;
+$highlight-b: #3F88C5;
+$highlight-c: #FFBA08;
+$highlight-d: #032B43;
+$highlight-e: #66A182;
+
+$theme-b-1: #95B8D1;
+$theme-b-2: #176087;
+$theme-b-3: #F4B860;
+$theme-b-4: #C83E4D;
+$theme-b-5: #535865;
+
+$gray-100: #f8f9fa;
+$gray-200: #e9ecef;
+$gray-300: #dee2e6;
+$gray-400: #ced4da;
+// $foo: $gray-200;
 
 .full-screen {
   width: 100vw;
