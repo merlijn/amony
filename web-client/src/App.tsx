@@ -1,4 +1,3 @@
-import Container from 'react-bootstrap/Container';
 import { BrowserRouter, Route, Switch, useParams } from 'react-router-dom';
 import Editor from './pages/Editor';
 import Compilation from './pages/Compilation';

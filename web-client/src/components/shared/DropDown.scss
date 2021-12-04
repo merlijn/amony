@@ -18,15 +18,14 @@
 
 .my-dropdown-content-container {
   position: relative;
-}
 
-.my-dropdown-content-container > .my-dropdown-children {
-  position: absolute;
-  left: 1px;
-  top: 8px;
-  transition: height 1s ease;
-  min-width: 100px;
-  min-height: 100px;
+  .my-dropdown-content {
+    position: absolute;
+    top: 5px;
+    transition: height 1s ease;
+    min-width: 100px;
+    min-height: 100px;
+  }
 }
 
 .my-dropdown-menu {
@@ -34,7 +33,14 @@
   background-color: white;
   border-radius: 5px;
   padding: 5px 0px;
-  border: 1px solid $highlight-b;
+  transition: height 1s ease;
+  border: 1px solid $gray-400;
+  a {
+    text-decoration: none !important; 
+    // &:hover {
+    //   text-decoration: none;
+    // }
+  }
 }
 
 .menu-item-selected {
@@ -45,7 +51,7 @@
 
   @extend .hover-cursor;
   font-size: normal;
-  padding: 4px 12px;
+  padding: 8px 12px;
   color: black;
 
   &:hover {

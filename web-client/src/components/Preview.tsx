@@ -1,18 +1,15 @@
-import React, {CSSProperties, useRef, useState} from 'react';
-import './Preview.scss';
-import {durationInMillisToString, zeroPad} from "../api/Util";
-import {Video, VideoMeta} from "../api/Model";
-import {Form, Modal} from "react-bootstrap";
-import FragmentsPlayer from "./shared/FragmentsPlayer";
-import TripleDotMenu from "./shared/TripleDotMenu";
-import Dropdown from "react-bootstrap/Dropdown";
-import ImgWithAlt from "./shared/ImgWithAlt";
-import Button from "react-bootstrap/Button";
+import React, { CSSProperties, useRef, useState } from 'react';
 import ProgressiveImage from "react-progressive-graceful-image";
-import {Api} from "../api/Api";
+import { Api } from "../api/Api";
+import { Video, VideoMeta } from "../api/Model";
+import { durationInMillisToString, zeroPad } from "../api/Util";
 import * as config from "../AppConfig.json";
+import './Preview.scss';
+import { DropDown, Menu, MenuItem } from './shared/DropDown';
+import FragmentsPlayer from "./shared/FragmentsPlayer";
+import ImgWithAlt from "./shared/ImgWithAlt";
+import Modal from './shared/Modal';
 import TagEditor from "./shared/TagEditor";
-import { FcInfo } from "react-icons/fc";
 
 export type PreviewProps = {
   vid: Video,
@@ -118,39 +115,30 @@ const PreviewMenu = (props: {vid: Video, showInfo: () => void}) => {
     })
   };
 
-  const selectFn = (eventKey: string | null) => {
-    if (eventKey === "delete") {
-      setShowConfirmDelete(true)
-    } else if (eventKey === "info") {
-      props.showInfo()
-    }
-  }
-
   return (
     <>
-      <Modal show={showConfirmDelete} onHide={cancelDelete}>
-        <Modal.Header closeButton>
-          <Modal.Title>Are you sure?</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>Do you want to delete: <br /> '{props.vid.meta.title}'</Modal.Body>
-        <Modal.Footer>
-          <Button variant="danger" onClick={confirmDelete}>Yes</Button>
-          <Button variant="secondary" onClick={cancelDelete}>No / Cancel</Button>
-        </Modal.Footer>
-      </Modal>
+
+      {
+        showConfirmDelete && 
+          <Modal onHide={cancelDelete}>
+            <h2>Are you sure?</h2>
+            <p>Do you want to delete: <br /> '{props.vid.meta.title}'</p>
+            <p>
+              <button onClick={confirmDelete}>Yes</button>
+              <button onClick={cancelDelete}>No / Cancel</button>
+            </p>
+          </Modal>
+      }
 
       <div style={ { zIndex: 5 }} className="preview-menu">
-        <TripleDotMenu onSelect={selectFn}>
-          <Dropdown.Item className="menu-item" eventKey="info">
-            <ImgWithAlt className="menu-icon" src="/icons/info.svg" />Info
-          </Dropdown.Item>
-          { config["enable-video-editor"] && <Dropdown.Item className="menu-item" eventKey="editor" href={`/editor/${props.vid.id}`}>
-            <ImgWithAlt className="menu-icon" src="/icons/edit.svg" />Fragments
-          </Dropdown.Item> }
-          <Dropdown.Item className="menu-item" eventKey="delete">
-            <ImgWithAlt className="menu-icon" src="/icons/delete.svg" />Delete
-          </Dropdown.Item>
-        </TripleDotMenu>
+
+        <DropDown align = 'right' toggleIcon = { <ImgWithAlt className="action-icon-small" src="/icons/more.svg" /> } hideOnClick = {true} >
+          <Menu style={ { width: 170 } }>
+            <MenuItem onClick = { () => props.showInfo() }><ImgWithAlt className="menu-icon" src="/icons/info.svg" />Info</MenuItem>
+            <MenuItem href={`/editor/${props.vid.id}`}><ImgWithAlt className="menu-icon" src="/icons/edit.svg" />Fragments</MenuItem>
+            <MenuItem onClick = { () => setShowConfirmDelete(true) }><ImgWithAlt className="menu-icon" src="/icons/delete.svg" />Delete</MenuItem>
+          </Menu>
+        </DropDown>
       </div>
     </>
   );
@@ -163,9 +151,9 @@ const MetaPanel = (props: {meta: VideoMeta, onClose: (meta: VideoMeta) => any })
     return(
         <div className="info-panel">
           <div className="info-panel-title">Title</div>
-          <Form.Control size="sm" type="text" defaultValue={meta.title}/>
+          <input type="text" defaultValue={meta.title}/>
           <div className="info-panel-title">Comment</div>
-          <Form.Control as="textarea" size="sm" type="" placeholder="comment" />
+          <textarea placeholder="comment">{meta.comment}</textarea>
           <div className="abs-bottom-right">
             <ImgWithAlt className="action-icon-small" title="save" src="/icons/task.svg" onClick={(e) => { props.onClose(meta) } } />
           </div>

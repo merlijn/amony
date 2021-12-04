@@ -1,12 +1,8 @@
 @import url(https://fonts.googleapis.com/css2?family=Otomanopee+One&display=swap);
 @import 'src/App.scss';
 
-.nav-button {
-  background-color: $gray-400 ! important;
-  border-color: $gray-500 ! important;
-}
-
 .nav-menu-button {
+  
   @extend .hover-cursor;
 
   width: 40px;
@@ -19,7 +15,7 @@
 
 $accent: rgb(83, 155, 36);
 
-.tags-button {
+.toggle-tag-bar {
 
   @extend .hover-cursor;
   position: absolute;
@@ -31,22 +27,8 @@ $accent: rgb(83, 155, 36);
     color: $gray-600;
   }
 
-  top: 4px;
+  top: 6px;
   right: 6px;
-}
-
-.filter-button {
-
-  @extend .hover-cursor;
-  position: absolute;
-  top: 0px;
-  right: 0px;
-
-  svg {
-    width: 24px;
-    height: 24px;
-    color: $gray-600;
-  }
 }
 
 .selected {
@@ -56,13 +38,13 @@ $accent: rgb(83, 155, 36);
 }
 
 .custom-dropdown-toggle {
-  @extend .mr-2;
   border-radius: 25px !important;
   background-color: $highlight-b !important;
   border-color: $highlight-b !important;
   font-size: small !important;
   color: white !important;
-  padding: 5px 12px !important;
+  padding: 6px 12px !important;
+  margin: 0px 4px;
 }
 
 .tag-bar {
@@ -98,7 +80,7 @@ $accent: rgb(83, 155, 36);
     margin: 0px 4px;
     color: black;
     font-size: small;
-    padding: 4px 12px;
+    padding: 5px 12px;
     border: 1px solid $gray-500;
     border-radius: 25px;
     background-color: $gray-300;
@@ -174,7 +156,7 @@ $accent: rgb(83, 155, 36);
       width: 100% ! important;
       padding-left: 8px;
       &:focus {
-        outline: solid rgb(220,220,255);
+        outline: solid rgb(128, 189, 255);
       }
     }
 

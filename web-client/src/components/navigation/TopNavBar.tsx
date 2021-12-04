@@ -46,9 +46,9 @@ function TopNavBar(props: { onClickMenu: () => void, showTagsBar: boolean, onSho
           <div key="nav-bar-center" className="nav-bar-center">
             <form className="nav-search-form" onSubmit={doSearch} >
               <div key="nav-search-input" className="nav-search-input-container">
-                <input className="nav-search-input" type="text" value={query} onChange={queryChanged} />
+                <input placeholder="Search" className="nav-search-input" type="text" value={query} onChange={queryChanged} />
                 <div 
-                  className={ props.showTagsBar ? "tags-button selected" : "tags-button" }
+                  className={ props.showTagsBar ? "toggle-tag-bar selected" : "toggle-tag-bar" }
                   onClick={() => { props.onShowTagsBar(!props.showTagsBar) }}>
                     <MdTune />
                 </div>
@@ -123,7 +123,11 @@ type SelectOption<T> = {
 
 const DropDownSelect = (props:{ title: string, options: Array<SelectOption<any>>, selected: any, onSelect: (v: any) => void }) => {
   return (
-    <DropDown hideOnClick = {true} toggleClassName = "custom-dropdown-toggle" contentClassName="my-dropdown-menu" label={props.title} showArrow= { true }>
+    <DropDown hideOnClick = {true} 
+      toggleClassName = "custom-dropdown-toggle" 
+      toggleLabel = { props.title }
+      contentClassName="my-dropdown-menu" 
+      showArrow= { true }>
       {
         props.options.map((option) => {
           return <MenuItem className={_.isEqual(option.value,props.selected) ? "menu-item-selected" : ""} onClick={() => props.onSelect(option.value)}>{option.icon}{option.label}</MenuItem>

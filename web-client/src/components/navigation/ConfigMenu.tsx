@@ -1,4 +1,3 @@
-import Form from "react-bootstrap/Form";
 import { Constants } from "../../api/Constants";
 import { Prefs } from "../../api/Model";
 import { useCookiePrefs } from "../../api/ReactUtils";
@@ -26,33 +25,31 @@ const ConfigMenu = () => {
           <div className="form-section">
             <p className="form-label">Number of columns</p>
             <div className="form-content">
-              <Form.Check
+              <input
                 style={ { float: "left" } }
                 className="mr-1"
                 name="ncols-option"
                 type="radio"
                 value={0}
-                label={"auto"}
                 checked={prefs.gallery_columns === 'auto'}
                 onChange={(e) => {
                   if (prefs.gallery_columns > 0) {
                     updatePrefs({gallery_columns: 'auto' })
                   }
                 }}
-              />
-              <Form.Check
+              /><span style={ { float: "left" } } >auto</span>
+              <input
                 style={ { float: "left" } }
                 className="mr-1"
                 name="ncols-option"
                 type="radio"
                 value={0}
-                label={"other"}
                 checked={prefs.gallery_columns > 0}
                 onChange={(e) => {
                   if (prefs.gallery_columns === 'auto')
                     updatePrefs({ gallery_columns: calculateColumns()} )
                 }}
-              />
+              /><span style={ { float: "left" } } >other</span>
               <select name="ncols" onChange={(e) => { updatePrefs( { gallery_columns: e.target.value }) } }>
                 {
                   columns.map((v) => {
@@ -70,7 +67,7 @@ const ConfigMenu = () => {
           <div className="form-section">
             <p className="form-label">Show info bar</p>
             <div className="form-content">
-              <Form.Check
+              <input
                 type="checkbox"
                 checked={ prefs.showTitles }
                 onChange={(e) => { updatePrefs( { showTitles: !prefs.showTitles }) } }
@@ -81,7 +78,7 @@ const ConfigMenu = () => {
           <div className="form-section">
             <p className="form-label">Show video duration</p>
             <div className="form-content">
-              <Form.Check
+              <input
                 type="checkbox"
                 checked={ prefs.showDuration }
                 onChange={(e) => {
@@ -94,7 +91,7 @@ const ConfigMenu = () => {
           <div className="form-section">
             <p className="form-label">Show dates</p>
             <div className="form-content">
-              <Form.Check
+              <input
                 type="checkbox"
                 checked={ prefs.showDates }
                 onChange={ (e) => { updatePrefs( { showDates: !prefs.showDates }) } }
@@ -106,7 +103,7 @@ const ConfigMenu = () => {
               <div className="form-section">
                 <p className="form-label">Show video menu</p>
                 <div className="form-content">
-                  <Form.Check
+                  <input
                     type="checkbox"
                     checked={ prefs.showMenu }
                     onChange={(e) => { updatePrefs( { showMenu: !prefs.showMenu }) } }

@@ -1,7 +1,10 @@
 @import 'src/App.scss';
+@import '~normalize.css/normalize.css';
 
 .my-sidebar {
 
+  top: 0px;
+  left: 0px;
   position: fixed !important;
   height: 100vh;
   border-right: 1px solid $gray-300;

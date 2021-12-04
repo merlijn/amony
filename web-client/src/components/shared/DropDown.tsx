@@ -1,4 +1,4 @@
-import {Children, ReactNode, useRef, useState} from "react";
+import {Children, CSSProperties, ReactNode, useRef, useState} from "react";
 import "./DropDown.scss";
 import {useListener} from "../../api/ReactUtils";
 import React from "react";
@@ -7,17 +7,26 @@ export type DropDownProps = {
   toggleClassName?: string
   contentClassName?: string
   children?: ReactNode,
-  label: string, 
-  showArrow: boolean, 
+  toggleIcon?: ReactNode,
+  toggleLabel?: string,
+  showArrow?: boolean, 
   hideOnClick: boolean,
+  align?: 'left' | 'right'
   onToggle?: (visible: boolean) => void
 }
 
 export const DropDown = (props: DropDownProps ) => {
 
-  const [isOpen,setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const toggleRef = useRef<HTMLDivElement>(null)
+
+  const toggle = 
+    <>
+      { props.toggleLabel && <span className="my-dropdown-label">{props.toggleLabel}</span> }
+      { props.toggleIcon }
+      { props.showArrow && <span className="my-dropdown-arrow">{isOpen ? "\u25B2" : "\u25BC"}</span> }
+    </>
 
   //DropDown toggler
   const setShowDropDown = (value: boolean) => {
@@ -37,18 +46,19 @@ export const DropDown = (props: DropDownProps ) => {
 
   useListener('mousedown', handleClickOutside)
 
+  const alignStyle = props.align === 'right' ? { right: 0 } : { left: 0 }
+
   return <div className="my-dropdown-container">
     <div
       className = { "my-dropdown-toggle " + (props.toggleClassName ? props.toggleClassName : "") }
       onClick = { () => setShowDropDown(!isOpen) }
       ref = { toggleRef }>
-      <span className="my-dropdown-label">{props.label}</span>
-      { props.showArrow && <span className="my-dropdown-arrow">{isOpen ? "\u25B2" : "\u25BC"}</span> }
+      { toggle }
     </div>
     <div className="my-dropdown-content-container">
       {
         isOpen && (
-        <div className = { "my-dropdown-children " + (props.contentClassName ? props.contentClassName : "") } ref = { contentRef }>
+        <div style = { alignStyle } className = { "my-dropdown-content " + (props.contentClassName ? props.contentClassName : "") } ref = { contentRef }>
           {
             // children
             React.Children.map(props.children, child => {
@@ -69,18 +79,23 @@ export const DropDown = (props: DropDownProps ) => {
   </div>
 }
 
-export const Menu = (props: {children?: ReactNode, onParentClick?: () => any})=> {
-  return <div className="my-dropdown-menu"> { props.children } </div>
+export const Menu = (props: {children?: ReactNode, style?: CSSProperties, onParentClick?: () => any})=> {
+  return <div style = { props.style } className="my-dropdown-menu"> { props.children } </div>
 }
 
-export const MenuItem = (props: { className?: string, children?: ReactNode, onClick?: () => any, internalOnParentClick?: () => any }) => {
+export const MenuItem = (props: { className?: string, children?: ReactNode, href?: string, onClick?: () => any, internalOnParentClick?: () => any }) => {
 
-  return <div 
-            className= { "my-dropdown-menu-item "  + (props.className ? props.className : "") } 
-            onClick = { (e) => { 
-              props.onClick && props.onClick(); 
-              props.internalOnParentClick && props.internalOnParentClick() 
-            }}>
-            { props.children }
-          </div>
+  const item = 
+      <div 
+        className= { "my-dropdown-menu-item "  + (props.className ? props.className : "") } 
+        onClick = { (e) => { 
+          props.onClick && props.onClick(); 
+          props.internalOnParentClick && props.internalOnParentClick() 
+        }}>
+        {
+          props.children
+        }
+      </div>
+
+  return props.href ? <a href={props.href}>{item}</a> : item
 }
