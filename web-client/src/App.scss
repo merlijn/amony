@@ -88,6 +88,27 @@ $units-3: 6px;;
 .pr-3 { padding-right: $units-3; }
 
 
+// -- Common elements
+
+.text-input {
+  outline: none;
+  border-radius: $units-1;
+  border: 1px solid $gray-400;
+  &:focus {
+    border-color: rgb(128, 189, 255);
+    outline: solid rgba(128, 189, 255, 0.4);
+  }
+}
+
+input {
+  @extend .text-input;
+}
+
+textarea {
+  @extend .text-input;
+}
+
+
 .full-screen {
   width: 100vw;
   height: 100vh;

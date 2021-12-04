@@ -4,6 +4,9 @@
 .nav-menu-button {
 
   @extend .hover-cursor;
+  position: absolute;
+  top: 0px;
+  left: 0px;
 
   width: 40px;
   height: 40px;

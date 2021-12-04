@@ -17,6 +17,17 @@
   border: 1px solid lightgray;
   font-size: medium;
 
+  .title-input {
+    width: 100%;
+    padding: 5px;
+  }
+
+  .comment-input {
+    width: 100%;
+    height: 30px;
+    padding: 5px;
+  }
+
   .info-panel-title {
     font-size: small;
     font-weight: 600;

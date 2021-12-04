@@ -40,8 +40,9 @@ function TopNavBar(props: { onClickMenu: () => void, showTagsBar: boolean, onSho
   return(
     <div className="nav-bar-container">
       <div className="top-nav-bar">
+          <GoGrabber className="nav-menu-button" onClick={props.onClickMenu} />
           <div key="nav-bar-left" className="nav-bar-spacer">
-            <GoGrabber className="nav-menu-button" onClick={props.onClickMenu} />
+            
           </div>
           <div key="nav-bar-center" className="nav-bar-center">
             <form className="nav-search-form" onSubmit={doSearch} >

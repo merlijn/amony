@@ -151,9 +151,9 @@ const MetaPanel = (props: {meta: VideoMeta, onClose: (meta: VideoMeta) => any })
     return(
         <div className="info-panel">
           <div className="info-panel-title">Title</div>
-          <input type="text" defaultValue={meta.title}/>
+          <input className="title-input" type="text" defaultValue={meta.title}/>
           <div className="info-panel-title">Comment</div>
-          <textarea placeholder="comment">{meta.comment}</textarea>
+          <textarea className="comment-input" placeholder="comment">{meta.comment}</textarea>
           <div className="abs-bottom-right">
             <ImgWithAlt className="action-icon-small" title="save" src="/icons/task.svg" onClick={(e) => { props.onClose(meta) } } />
           </div>
