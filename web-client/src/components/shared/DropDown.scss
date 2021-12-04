@@ -1,45 +1,45 @@
 @import 'src/App.scss';
 
 //index.module.css
-.my-dropdown-container {
+.dropdown-container {
   display: inline-flex;
   position: relative;
   flex-direction: column;
 }
 
-.my-dropdown-toggle {
+.dropdown-toggle {
   position: relative;
   cursor: pointer;
 }
 
-.my-dropdown-toggle > .my-dropdown-arrow {
+.dropdown-toggle > .dropdown-arrow {
   margin-left: 5px;
 }
 
-.my-dropdown-content-container {
+.dropdown-content-container {
   position: relative;
 
-  .my-dropdown-content {
+  .dropdown-content {
     position: absolute;
     top: 5px;
     transition: height 1s ease;
-    min-width: 100px;
-    min-height: 100px;
   }
 }
 
-.my-dropdown-menu {
+.dropdown-menu {
   @extend .hover-cursor;
   background-color: white;
   border-radius: 5px;
   padding: 5px 0px;
   transition: height 1s ease;
   border: 1px solid $gray-400;
+
+  min-width: 100px;
+  max-width: 500px;
+  min-height: 100px;
+
   a {
     text-decoration: none !important; 
-    // &:hover {
-    //   text-decoration: none;
-    // }
   }
 }
 
@@ -47,14 +47,20 @@
   background-color: $secondary-a !important;
 }
 
-.my-dropdown-menu-item {
+.dropdown-menu-item {
 
   @extend .hover-cursor;
   display: flex;
+  // max-width: 500px;
   align-items: center;
   font-size: normal;
   padding: 6px 12px;
   color: black;
+  
+  .menu-label-no-wrap {
+    display: inline-block;
+    white-space: nowrap;
+  }
 
   &:hover {
     background-color: $secondary-a;

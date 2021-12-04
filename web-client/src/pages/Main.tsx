@@ -53,8 +53,6 @@ const Main = () => {
         m += 49;
       if (showNavigation && showTagBar)
         m += 44
-      if (isMobile)  
-        m -= 4
 
       return m;
     }

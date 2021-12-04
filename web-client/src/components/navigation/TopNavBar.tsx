@@ -126,11 +126,15 @@ const DropDownSelect = (props:{ title: string, options: Array<SelectOption<any>>
     <DropDown hideOnClick = {true} 
       toggleClassName = "custom-dropdown-toggle" 
       toggleLabel = { props.title }
-      contentClassName="my-dropdown-menu" 
+      contentClassName="dropdown-menu" 
       showArrow= { true }>
       {
         props.options.map((option) => {
-          return <MenuItem className={_.isEqual(option.value,props.selected) ? "menu-item-selected" : ""} onClick={() => props.onSelect(option.value)}>{option.icon}{option.label}</MenuItem>
+          return <MenuItem 
+                    className={_.isEqual(option.value,props.selected) ? "menu-item-selected" : ""}  
+                    onClick={() => props.onSelect(option.value)}>
+                    { option.icon } <div className="menu-label-no-wrap">{ option.label }</div>
+                  </MenuItem>
         })
       }
   </DropDown>)
