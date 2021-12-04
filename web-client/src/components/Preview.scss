@@ -35,9 +35,10 @@
   font-size: small;
   font-weight: 600;
   display: flex;
+  align-items: center;
   height: 22px;
   width: 100%;
-  padding-top: 2px;
+  padding-top: 1px;
 
   //border-bottom-right-radius: 0.2rem;
   //border-bottom-left-radius: 0.2rem;
@@ -48,6 +49,7 @@
     flex-grow: 1;
     padding-left: 5px;
     float: left;
+    
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

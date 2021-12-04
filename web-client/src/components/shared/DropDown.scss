@@ -50,8 +50,10 @@
 .my-dropdown-menu-item {
 
   @extend .hover-cursor;
+  display: flex;
+  align-items: center;
   font-size: normal;
-  padding: 8px 12px;
+  padding: 6px 12px;
   color: black;
 
   &:hover {
