@@ -1,9 +1,11 @@
 .tag-container {
+
   margin-top: 4px;
+  display: flex;
 
   .new-tag {
 
-    margin: 0px 2px 2px 2px;
+    margin: 3px 2px 2px 2px;
     //margin-top: 4px;
     float: left;
 
@@ -13,7 +15,6 @@
       border: 1px solid #007b15;
       border-radius: 25px;
       padding: 3px 8px;
-      margin: 0;
       font-size: small;
       text-align: center;
       //width: auto;
@@ -22,10 +23,6 @@
       &:hover {
         cursor: pointer;
         //font-weight: bold;
-      }
-
-      &:active {
-
       }
     }
   }
@@ -37,7 +34,7 @@
     float: left;
     color: black;
     font-size: small;
-    padding: 1px 5px 1px 8px;
+    padding: 3px 5px 3px 8px;
     border: 1px solid blue;
     border-radius: 25px;
     background-color: #b9daff;

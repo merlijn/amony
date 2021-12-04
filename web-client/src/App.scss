@@ -7,7 +7,107 @@ $container-max-widths: (
     xl: 1280px
 ) !default;
 
-$highlight-a: rgb(95, 157, 223);
+*,
+*::before,
+*::after {
+  box-sizing: border-box; // 1
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+//#6a6a78de;
+$highlight-a: #dd4242de;
+$highlight-b: #3F88C5;
+$highlight-c: #FFBA08;
+$highlight-d: #032B43;
+$highlight-e: #66A182;
+
+$secondary-a: #95B8D1;
+$secondary-b: #176087;
+$secondary-c: #F4B860;
+$secondary-d: #C83E4D;
+$secondary-e: #535865;
+
+$gray-100: #f8f9fa !default;
+$gray-200: #e9ecef !default;
+$gray-300: #dee2e6 !default;
+$gray-400: #ced4da !default;
+$gray-500: #adb5bd !default;
+$gray-600: #6c757d !default;
+$gray-700: #495057 !default;
+$gray-800: #343a40 !default;
+$gray-900: #212529 !default;
+
+$one-unit: 2px;
+
+$units-1: $one-unit;
+$units-2: 4px;
+$units-3: 6px;;
+
+// --- Margin
+
+.m-1 { margin: $units-1; }
+.mt-1 { margin-top: $units-1; }
+.mr-1 { margin-right: $units-1; }
+.mb-1 { margin-bottom: $units-1; }
+.ml-1 { margin-left: $units-1; }
+
+.m-2 { margin: $units-2; }
+.mt-2 { margin-top: $units-2; }
+.mr-2 { margin-right: $units-2; }
+.mb-2 { margin-bottom: $units-2; }
+.ml-2 { margin-left: $units-2; }
+
+.m-3 { margin: $units-3; }
+.mt-3 { margin-top: $units-3; }
+.mr-3 { margin-right: $units-3; }
+.mb-3 { margin-bottom: $units-3; }
+.ml-3 { margin-left: $units-3; }
+
+// --- Padding
+
+.p-1 { padding: $units-1; }
+.pt-1 { padding-top: $units-1; }
+.pl-1 { padding-left: $units-1; }
+.pb-1 { padding-bottom: $units-1; }
+.pr-1 { padding-right: $units-1; }
+
+.p-2 { padding: $units-2; }
+.pt-2 { padding-top: $units-2; }
+.pl-2 { padding-left: $units-2; }
+.pb-2 { padding-bottom: $units-2; }
+.pr-2 { padding-right: $units-2; }
+
+.p-3 { padding: $units-3; }
+.pt-3 { padding-top: $units-3; }
+.pl-3 { padding-left: $units-3; }
+.pb-3 { padding-bottom: $units-3; }
+.pr-3 { padding-right: $units-3; }
+
+
+// -- Common elements
+
+.text-input {
+  outline: none;
+  border-radius: $units-1;
+  border: 1px solid $gray-400;
+  &:focus {
+    border-color: rgb(128, 189, 255);
+    outline: solid rgba(128, 189, 255, 0.4);
+  }
+}
+
+input {
+  @extend .text-input;
+}
+
+textarea {
+  @extend .text-input;
+}
+
 
 .full-screen {
   width: 100vw;
@@ -21,14 +121,6 @@ $highlight-a: rgb(95, 157, 223);
 .amony-root {
   width: 100vw;
   padding: 0px;
-}
-
-.duration-overlay {
-  z-index: 3;
-  padding: 0px 5px;
-  color: white;
-  background-color: rgba(0, 0, 0, 0.6);
-  font-size: small;
 }
 
 .abs-center {
@@ -68,6 +160,18 @@ $highlight-a: rgb(95, 157, 223);
   }
 }
 
+.rounded-corners {
+  border-radius: 0.2rem;
+}
+
+.duration-overlay {
+  z-index: 3;
+  padding: 0px 5px;
+  color: white;
+  background-color: rgba(0, 0, 0, 0.6);
+  font-size: small;
+}
+
 .action-icon-small {
 
   @extend .hover-cursor;
@@ -88,14 +192,4 @@ $highlight-a: rgb(95, 157, 223);
 .info-button {
 
   @extend .action-icon-small;
-
-  //&:hover {
-  //  cursor: pointer;
-  //}
 }
-
-.rounded-corners {
-  border-radius: 0.2rem;
-}
-
-@import '~bootstrap/scss/bootstrap.scss';

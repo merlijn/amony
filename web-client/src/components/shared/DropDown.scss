@@ -1,0 +1,68 @@
+@import 'src/App.scss';
+
+//index.module.css
+.dropdown-container {
+  display: inline-flex;
+  position: relative;
+  flex-direction: column;
+}
+
+.dropdown-toggle {
+  position: relative;
+  cursor: pointer;
+}
+
+.dropdown-toggle > .dropdown-arrow {
+  margin-left: 5px;
+}
+
+.dropdown-content-container {
+  position: relative;
+
+  .dropdown-content {
+    position: absolute;
+    top: 5px;
+    transition: height 1s ease;
+  }
+}
+
+.dropdown-menu {
+  @extend .hover-cursor;
+  background-color: white;
+  border-radius: 5px;
+  padding: 5px 0px;
+  transition: height 1s ease;
+  border: 1px solid $gray-400;
+
+  min-width: 100px;
+  max-width: 500px;
+  min-height: 100px;
+
+  a {
+    text-decoration: none !important; 
+  }
+}
+
+.menu-item-selected {
+  background-color: $secondary-a !important;
+}
+
+.dropdown-menu-item {
+
+  @extend .hover-cursor;
+  display: flex;
+  // max-width: 500px;
+  align-items: center;
+  font-size: normal;
+  padding: 6px 12px;
+  color: black;
+  
+  .menu-label-no-wrap {
+    display: inline-block;
+    white-space: nowrap;
+  }
+
+  &:hover {
+    background-color: $secondary-a;
+  }
+}

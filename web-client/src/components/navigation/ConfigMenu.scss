@@ -1,4 +1,3 @@
-@import 'node_modules/bootstrap/scss/bootstrap';
 @import './TopNavBar.scss';
 
 .config-menu {
@@ -17,7 +16,7 @@
 
   .config-title {
 
-    @extend .ml-sm-3, .ml-2, .mr-sm-3, .mr-2, .mt-2, .pb-2;
+    @extend .ml-2, .mr-2, .mt-2, .pb-2;
 
     border-bottom: $gray-400 1px solid;
     font-size: large;
@@ -27,7 +26,7 @@
 
 .config-form {
 
-  @extend .mt-2, .m-sm-3, .m-2;
+  @extend .mt-2, .m-2;
 
   display: table;
   table-layout: fixed;

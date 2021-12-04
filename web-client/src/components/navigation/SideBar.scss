@@ -1,10 +1,13 @@
 @import 'src/App.scss';
+@import '~normalize.css/normalize.css';
 
-.sidebar {
+.my-sidebar {
 
+  top: 0px;
+  left: 0px;
   position: fixed !important;
   height: 100vh;
-  border-right: 1px solid rgb(200, 206, 211);
+  border-right: 1px solid $gray-300;
   z-index: 200 ! important;
 }
 
@@ -21,6 +24,7 @@
   margin-top: 5px;
   vertical-align: middle;
   text-align: center;
+  color: black !important;
 
   &:hover {
     cursor: pointer;
@@ -56,13 +60,13 @@
     height: 20px;
   }
 }
-
-$sidebar-bg-color: $gray-300 !default;
-$sidebar-color: black !default;
-$icon-bg-color: $gray-500 !default;
-$highlight-color: black !default;
-$submenu-bg-color: $gray-300 !default;
-$submenu-bg-color-collapsed: $gray-300 !default;
+// #cf6262, #81818b
+$sidebar-bg-color: $gray-200 !default;
+$sidebar-color: white !default;
+$icon-bg-color: $highlight-a  !default;
+$highlight-color: white !default;
+$submenu-bg-color: $gray-500 !default;
+$submenu-bg-color-collapsed: $gray-500 !default;
 $icon-size: 35px !default;
 
 @import '~react-pro-sidebar/dist/scss/styles.scss';

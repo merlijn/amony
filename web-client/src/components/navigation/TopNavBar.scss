@@ -1,14 +1,13 @@
 @import url(https://fonts.googleapis.com/css2?family=Otomanopee+One&display=swap);
-@import 'node_modules/bootstrap/scss/bootstrap';
-@import 'src/App';
-
-.nav-button {
-  background-color: $gray-400 ! important;
-  border-color: $gray-500 ! important;
-}
+@import 'src/App.scss';
 
 .nav-menu-button {
+
   @extend .hover-cursor;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+
   width: 40px;
   height: 40px;
   margin-bottom: 0px;
@@ -19,7 +18,7 @@
 
 $accent: rgb(83, 155, 36);
 
-.tags-button {
+.toggle-tag-bar {
 
   @extend .hover-cursor;
   position: absolute;
@@ -31,23 +30,8 @@ $accent: rgb(83, 155, 36);
     color: $gray-600;
   }
 
-  top: 4px;
+  top: 6px;
   right: 6px;
-}
-
-.filter-button {
-  position: absolute;
-  top: 0px;
-  right: 0px;
-
-  svg {
-    width: 24px;
-    height: 24px;
-    color: $gray-600;
-  }
-  &:hover {
-    cursor: pointer;
-  }
 }
 
 .selected {
@@ -56,18 +40,14 @@ $accent: rgb(83, 155, 36);
   }
 }
 
-.custom-dropdown {
-
-  button {
-    border-radius: 25px !important;
-    box-shadow: none !important;
-    background-color: $highlight-a !important;
-  }
+.custom-dropdown-toggle {
+  border-radius: 25px !important;
+  background-color: $highlight-b !important;
+  border-color: $highlight-b !important;
+  font-size: small !important;
+  color: white !important;
+  padding: 6px 12px !important;
   margin: 0px 4px;
-
-  .selected {
-    background-color: rgb(179, 202, 231) !important;
-  }
 }
 
 .tag-bar {
@@ -81,7 +61,7 @@ $accent: rgb(83, 155, 36);
 
   height: 44px;
   display: flex;
-  
+
   padding: 4px 5px;
   z-index: 10;
 
@@ -103,15 +83,14 @@ $accent: rgb(83, 155, 36);
     margin: 0px 4px;
     color: black;
     font-size: small;
-    padding: 4px 12px;
+    padding: 5px 12px;
     border: 1px solid $gray-500;
     border-radius: 25px;
     background-color: $gray-300;
   }
 
   .selected-tag {
-    
-    border: 2px solid rgb(95, 157, 223);
+    border: 2px solid $highlight-b;
   }
 }
 
@@ -135,16 +114,9 @@ $accent: rgb(83, 155, 36);
 
   background-color: white;
   border-bottom: 1px solid $gray-200;
-  // border-bottom: 1px solid rgba(0, 0, 0, 0.2);
-
-  // padding: 4px 4px !important;
 
   @media only screen and (min-width: map-get($container-max-widths, md)) {
-
-    // background-color: $gray-300;
-    // background: linear-gradient(to left, $gray-100, $gray-300 50%, $gray-100 100%);
     background-color: $gray-100;
-    // padding: 6px 4px !important;
   }
 }
 
@@ -180,10 +152,16 @@ $accent: rgb(83, 155, 36);
     flex-grow: 1;
 
     .nav-search-input {
+      outline: none;
       height: 35px !important;
-      border-radius: 0 ! important;
-      border-color: $gray-400 ! important;
+      border-radius: 3px ! important;
+      border: 1px solid $gray-400;
       width: 100% ! important;
+      padding-left: 8px;
+      &:focus {
+        border-color: rgb(128, 189, 255);
+        outline: solid rgba(128, 189, 255, 0.4);
+      }
     }
 
     .nav-clear-input {

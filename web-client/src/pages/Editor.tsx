@@ -1,6 +1,5 @@
 import Plyr from 'plyr';
 import React, { useEffect, useState } from 'react';
-import { Button } from 'react-bootstrap';
 import { Api } from '../api/Api';
 import { Video } from '../api/Model';
 import FragmentList from '../components/fragments/FragmentList';
@@ -95,15 +94,15 @@ const PlayerView = (props: {vid: Video}) => {
 
   const fragmentPickingControls =
     <div className="fragment-picker">
-      <Button size="sm" onClick={(e) => forwards(-1)}>-1s</Button>
-      <Button size="sm" onClick={(e) => forwards(-0.1)}>-.1ms</Button>
-      <Button size="sm" onClick={(e) => seek(fragment.start) }>|&lt;</Button>
-      <Button variant={fragment.start ? "success" : "warning"} size="sm" onClick={(e) => setFragment({ ...fragment, start: plyr?.currentTime }) }>o&lt;</Button>
-      <Button variant="success" size="sm" onClick={updateFragment}>o</Button>
-      <Button variant={fragment.end ? "success" : "warning"} size="sm" onClick={(e) => setFragment({ ...fragment, end: plyr?.currentTime }) }>&gt;o</Button>
-      <Button size="sm" onClick={(e) => seek(fragment.end) }>&gt;|</Button>
-      <Button size="sm" onClick={(e) => forwards(0.1)}>+.1s</Button>
-      <Button size="sm" onClick={(e) => forwards(1)}>+1s</Button>
+      <button className="overlay-button" onClick={(e) => forwards(-1)}>-1s</button>
+      <button className="overlay-button" onClick={(e) => forwards(-0.1)}>-.1ms</button>
+      <button className="overlay-button" onClick={(e) => seek(fragment.start) }>|&lt;</button>
+      <button className={fragment.start ? "success" : "warning"} onClick={(e) => setFragment({ ...fragment, start: plyr?.currentTime }) }>o&lt;</button>
+      <button className="success" onClick={updateFragment}>o</button>
+      <button className={fragment.end ? "success" : "warning"} onClick={(e) => setFragment({ ...fragment, end: plyr?.currentTime }) }>&gt;o</button>
+      <button className="overlay-button" onClick={(e) => seek(fragment.end) }>&gt;|</button>
+      <button className="overlay-button" onClick={(e) => forwards(0.1)}>+.1s</button>
+      <button className="overlay-button" onClick={(e) => forwards(1)}>+1s</button>
     </div>
 
   const maxWidth = "80vw"
