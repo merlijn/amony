@@ -1,17 +1,15 @@
-export class Video {
-  constructor(
-    public id: string,
-    public video_url: string,
-    public meta: VideoMeta,
-    public thumbnail_url: string,
-    public preview_thumbnails_url: string,
-    public fragments: Array<Fragment>,
-    public fps: number,
-    public width: number,
-    public height: number,
-    public duration: number, // in millis
-    public addedOn: number
-  ) { }
+export type Video = {
+  id: string,
+  video_url: string,
+  meta: VideoMeta,
+  thumbnail_url: string,
+  preview_thumbnails_url: string,
+  fragments: Array<Fragment>,
+  fps: number,
+  width: number,
+  height: number,
+  duration: number, // in millis
+  addedOn: number
 }
 
 export type VideoMeta = {
