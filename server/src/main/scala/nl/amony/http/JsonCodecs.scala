@@ -5,7 +5,7 @@ import nl.amony.actor.MediaLibProtocol
 import nl.amony.http.WebModel.Fragment
 import nl.amony.http.WebModel.FragmentRange
 import nl.amony.http.WebModel.SearchResult
-import nl.amony.http.WebModel.Tag
+import nl.amony.http.WebModel.Playlist
 import nl.amony.http.WebModel.Video
 import nl.amony.http.WebModel.VideoMeta
 import io.circe.Codec
@@ -19,24 +19,35 @@ trait JsonCodecs {
   def transcodingSettings: List[TranscodeSettings]
 
   // web model codecs
-  implicit val thumbnailCodec: Codec[Fragment]           = deriveCodec[Fragment]
+  implicit val fragmentCodec: Codec[Fragment]            = deriveCodec[Fragment]
   implicit val createFragmentCodec: Codec[FragmentRange] = deriveCodec[FragmentRange]
   implicit val searchResultCodec: Codec[SearchResult]    = deriveCodec[SearchResult]
   implicit val videoCodec: Codec[Video]                  = deriveCodec[Video]
   implicit val videoMetaCodec: Codec[VideoMeta]          = deriveCodec[VideoMeta]
-  implicit val tagCodec: Codec[Tag]                      = deriveCodec[Tag]
+  implicit val tagCodec: Codec[Playlist]                 = deriveCodec[Playlist]
 
   // contra map encoders for internal classes
   implicit val mediaEncoder: Encoder[MediaLibProtocol.Media] =
     deriveEncoder[Video].contramapObject[MediaLibProtocol.Media](toWebModel)
 
-  implicit val tagEncoder: Encoder[MediaIndex.Directory] =
-    deriveEncoder[Tag].contramapObject[MediaIndex.Directory](c => Tag(c.id, c.path))
+  implicit val tagEncoder: Encoder[MediaIndex.Playlist] =
+    deriveEncoder[Playlist].contramapObject[MediaIndex.Playlist](c => Playlist(c.id, c.title))
 
   implicit val searchResultEncoder: Encoder[MediaIndex.SearchResult] =
     deriveEncoder[SearchResult].contramapObject[MediaIndex.SearchResult](result =>
       SearchResult(result.offset, result.total, result.items.map(m => toWebModel(m)))
     )
+
+  def toWebModel(f: MediaLibProtocol.Fragment): Fragment = {
+    Fragment(
+      "",
+      0,
+      FragmentRange(f.fromTimestamp, f.toTimestamp),
+      List.empty,
+      f.comment,
+      f.tags
+    )
+  }
 
   def toWebModel(media: MediaLibProtocol.Media): Video = {
     
@@ -62,8 +73,7 @@ trait JsonCodecs {
           Fragment(
             media_id        = media.id,
             index           = index,
-            timestamp_start = f.fromTimestamp,
-            timestamp_end   = f.toTimestamp,
+            range           = FragmentRange(f.fromTimestamp, f.toTimestamp),
             urls            = urls,
             comment         = f.comment,
             tags            = f.tags

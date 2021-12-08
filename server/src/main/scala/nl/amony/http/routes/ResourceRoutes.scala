@@ -6,7 +6,7 @@ import akka.http.scaladsl.server.Route
 import akka.stream.scaladsl.StreamConverters
 import better.files.File
 import nl.amony.http.RouteDeps
-import nl.amony.http.util.CustomDirectives.fileWithRangeSupport
+import nl.amony.http.util.RangeDirectives.fileWithRangeSupport
 import scribe.Logging
 
 trait ResourceRoutes extends Logging {

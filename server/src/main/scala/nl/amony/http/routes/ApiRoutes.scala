@@ -17,7 +17,7 @@ import scribe.Logging
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 
-trait ApiRoutes extends Logging {
+trait ApiRoutes extends Logging with IdentityRoutes {
 
   self: RouteDeps =>
 
@@ -29,12 +29,12 @@ trait ApiRoutes extends Logging {
         "q".optional,
         "offset".optional,
         "n".optional,
-        "dir".optional,
+        "playlist".optional,
         "tags".optional,
         "sort_field".optional,
         "sort_dir".optional,
         "min_res".optional
-      )) { (q, offset, n, dir, tags, sort, sortDir, minResY) =>
+      )) { (q, offset, n, playlist, tags, sort, sortDir, minResY) =>
         get {
           val size        = n.map(_.toInt).getOrElse(defaultResultNumber)
           val sortReverse = sortDir.map(_ == "desc").getOrElse(false)
@@ -48,7 +48,7 @@ trait ApiRoutes extends Logging {
             .getOrElse(FileName)
 
           val searchResult =
-            api.query.search(q, offset.map(_.toInt), size, tags.toSet, dir, minResY.map(_.toInt), Sort(sortField, sortReverse))
+            api.query.search(q, offset.map(_.toInt), size, tags.toSet, playlist, minResY.map(_.toInt), Sort(sortField, sortReverse))
 
           val response = searchResult.map(_.asJson)
 
@@ -57,6 +57,10 @@ trait ApiRoutes extends Logging {
       } ~ path("tags") {
         get {
           complete(api.query.getTags().map(_.asJson))
+        }
+      } ~ path("playlists") {
+        get {
+          complete(api.query.getPlaylists().map(_.map(_.asJson)))
         }
       } ~ pathPrefix("media" / Segment) { id =>
         pathEnd {
@@ -73,9 +77,9 @@ trait ApiRoutes extends Logging {
             }
           }
         }
-      } ~ path("directories") {
+      } ~ (path("fragments" / "search") & parameters("n".optional, "offset".optional)) { (n, offset) =>
         get {
-          complete(api.query.getDirectories().map(_.map(_.asJson)))
+          complete(api.query.searchFragments(n.map(_.toInt).getOrElse(5), 0, "nature").map(_.map(toWebModel)))
         }
       } ~ path("fragments" / Segment / "add") { (id) =>
         (post & entity(as[FragmentRange])) { createFragment =>
@@ -91,6 +95,8 @@ trait ApiRoutes extends Logging {
         (post & entity(as[List[String]])) { tags =>
           translateResponse(api.modify.updateFragmentTags(id, idx.toInt, tags))
         }
+      } ~ pathPrefix("identity") {
+        loginRoutes
       }
     }
 

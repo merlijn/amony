@@ -16,7 +16,7 @@ const FragmentsPlayer = (props: FragmentsPlayerProps) => {
   const [playPromise, setPlayPromise] = useState<Promise<void>>(Promise.resolve())
 
   // sort the fragments by start time
-  props.fragments.sort((a, b) => a.timestamp_start > b.timestamp_start ? 1 : -1)
+  props.fragments.sort((a, b) => a.range.from > b.range.from ? 1 : -1)
 
   useEffect(() => {
 

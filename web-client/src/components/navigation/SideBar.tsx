@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { FaGithub, FaHome } from "react-icons/fa";
 import { FiFolder, FiGrid, FiSettings, FiUser } from "react-icons/fi";
-import { CgProfile } from "react-icons/cg";
 import { GoGrabber } from "react-icons/go";
 import { Menu, MenuItem, ProSidebar, SidebarContent, SidebarFooter, SidebarHeader, SubMenu } from "react-pro-sidebar";
 import { Api } from "../../api/Api";
@@ -12,10 +11,10 @@ import ConfigMenu from "./ConfigMenu";
 
 const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
 
-  const [dirs, setDirs] = useState<Array<Directory>>([]);
+  const [playlists, setPlaylists] = useState<Array<Directory>>([]);
   const [showSettings, setShowSettings] = useState(false)
 
-  useEffect(() => { Api.getDirectories().then(response => { setDirs(response) }); }, [] );
+  useEffect(() => { Api.getPlaylists().then(response => { setPlaylists(response) }); }, [] );
 
   return (
     <>
@@ -30,7 +29,7 @@ const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
           <MenuItem icon={ <FaHome />}><a href="/">Home</a></MenuItem>
           <SubMenu icon={ <FiFolder />} title="Directories" defaultOpen={true}>
           {
-            dirs.map((d) =>  { return <MenuItem><a href={`/search?dir=${d.id}`}>{d.title}</a></MenuItem> }) 
+            playlists.map((d) =>  { return <MenuItem><a href={`/search?dir=${d.id}`}>{d.title}</a></MenuItem> }) 
           }
           </SubMenu>
           <MenuItem icon={ <FiGrid />}><a href="/grid">Grid</a></MenuItem>

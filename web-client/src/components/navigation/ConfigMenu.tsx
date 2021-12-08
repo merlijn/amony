@@ -7,7 +7,7 @@ import './ConfigMenu.scss';
 
 const ConfigMenu = () => {
 
-  const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
+  const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs/v1", "/", Constants.defaultPreferences)
 
   const columns = [1, 2, 3, 4, 5, 6, 7].map((v) => {
     return { value: v, label: v.toString() }

@@ -35,10 +35,14 @@ export type Directory = {
   title: string
 }
 
+export type Range = {
+  from: number,
+  to: number
+}
+
 export type Fragment = {
   media_id: string,
-  timestamp_start: number,
-  timestamp_end: number,
+  range: Range,
   index: number,
   urls: string[],
   tags: string[]

@@ -1,10 +1,9 @@
-import offset from "@popperjs/core/lib/modifiers/offset";
-import { CSSProperties, useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 import { Api } from "../api/Api";
 import { SearchResult, Video } from "../api/Model";
-import './Grid.scss'
+import './VideoWall.scss';
 
-const Grid = () => {
+const VideoWall = () => {
 
   const [vids, setVids] = useState<Array<Video>>([])
 
@@ -32,4 +31,4 @@ const Grid = () => {
   );
 }
 
-export default Grid
+export default VideoWall

@@ -26,7 +26,7 @@ import java.io.File
 import java.io.RandomAccessFile
 import java.nio.file.Path
 
-object CustomDirectives extends Logging {
+object RangeDirectives extends Logging {
   import akka.http.scaladsl.server.directives.BasicDirectives._
   import akka.http.scaladsl.server.directives.RouteDirectives._
 
@@ -47,9 +47,7 @@ object CustomDirectives extends Logging {
     randomAccessRangeSupport(
       contentType,
       path.toFile.length(),
-      (start, _) => {
-        FileIO.fromPath(path, 8192, start)
-      }
+      (start, _) => FileIO.fromPath(path, 8192, start)
     )
   }
 
@@ -135,7 +133,7 @@ object CustomDirectives extends Logging {
           if (ranges.size <= rangeCountLimit)
             ranges.filter(isRangeSatisfiable) match {
               case Nil =>
-                logger.warn("reject: no satisfiable ranges")
+                logger.debug("reject: no satisfiable ranges")
                 reject(UnsatisfiableRangeRejection(ranges, contentLength))
               case Seq(singleRange) =>
                 singleRangeResponse(toIndexRange(singleRange))
@@ -152,45 +150,6 @@ object CustomDirectives extends Logging {
         case None =>
           singleRangeResponse(IndexRange(0, contentLength))
       }
-    }
-  }
-
-  // TODO remove this once randomAccessFile route has proven to be stable
-  def fixedRangeSize(fileName: String) = {
-    optionalHeaderValueByName("Range") {
-      case None =>
-        // there must always be range
-        complete(StatusCodes.RangeNotSatisfiable)
-      case Some(range) =>
-        val file     = new File(fileName)
-        val fileSize = file.length()
-        val rng      = range.split("=")(1).split("-")
-        val start    = rng(0).toLong
-        val end = if (rng.length > 1) {
-          //there is end range
-          rng(1).toLong
-        } else {
-          fileSize - 1
-        }
-
-        respondWithHeaders(
-          List(
-            RawHeader("Content-Range", s"bytes ${start}-${end}/${fileSize}"),
-            RawHeader("Accept-Ranges", s"bytes")
-          )
-        ) {
-          complete {
-
-            val chunkSize = 1024 * 1000 * 4 // read 4MB of data = 4,096,000 Bytes
-            val raf       = new RandomAccessFile(file, "r")
-            val dataArray = Array.ofDim[Byte](chunkSize)
-            raf.seek(start) // start readinng from `start` position
-            val bytesRead = raf.read(dataArray, 0, chunkSize)
-            val readChunk = dataArray.take(bytesRead)
-
-            HttpResponse(StatusCodes.PartialContent, entity = HttpEntity(MediaTypes.`video/mp4`, readChunk))
-          }
-        }
     }
   }
 }

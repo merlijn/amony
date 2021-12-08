@@ -67,9 +67,9 @@ object MediaLibProtocol {
   }
 
   case class VideoInfo(
-      fps: Double,
-      duration: Long,
-      resolution: (Int, Int)
+    fps: Double,
+    duration: Long,
+    resolution: (Int, Int)
   )
 
   case class Media(

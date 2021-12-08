@@ -26,6 +26,7 @@ lazy val amony = (project in file(".")).
       "com.typesafe.akka"        %% "akka-persistence-query"     % AkkaVersion,
       "com.typesafe.akka"        %% "akka-serialization-jackson" % AkkaVersion,
       "com.typesafe.akka"        %% "akka-http"                  % AkkaHttpVersion,
+      "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.2",
       "com.outr"                 %% "scribe-slf4j"               % "3.5.5",
       "org.fusesource.leveldbjni" % "leveldbjni-all"             % "1.8",
       "org.iq80.leveldb"          % "leveldb"                    % "0.12",

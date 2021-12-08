@@ -10,8 +10,7 @@ object WebModel {
   case class Fragment(
       media_id: String,
       index: Int,
-      timestamp_start: Long,
-      timestamp_end: Long,
+      range: FragmentRange,
       urls: List[String],
       comment: Option[String],
       tags: List[String]
@@ -38,13 +37,13 @@ object WebModel {
   )
 
   case class SearchResult(
-      offset: Int,
-      total: Int,
-      videos: Seq[Video]
+    offset: Int,
+    total: Int,
+    videos: Seq[Video]
   )
 
-  case class Tag(
-      id: String,
-      title: String
+  case class Playlist(
+    id: String,
+    title: String
   )
 }

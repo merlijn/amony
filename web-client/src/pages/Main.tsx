@@ -18,12 +18,10 @@ const Main = () => {
     const [showNavigation, setShowNavigation] = useState(true)
     const [showTagBar, setShowTagBar] = useState(true)
 
-    const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
+    const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs/v1", "/", Constants.defaultPreferences)
 
     const getSelection = (): MediaSelection => {
       const urlParams = new URLSearchParams(location.search)  
-      const q = urlParams.get("q")
-      const d = urlParams.get("dir")
 
       return {
         query: urlParams.get("q") || undefined,

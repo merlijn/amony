@@ -71,7 +71,7 @@ const TagBar = () => {
   const [selectedTag, setSelectedTag] = useState<string | undefined>(undefined)
   const [tags, setTags] = useState<Array<string>>([])
 
-  const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
+  const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs/v1", "/", Constants.defaultPreferences)
 
   useEffect(() => {
     Api.getTags().then((updatedTags) => { setTags(updatedTags as Array<string>) })
@@ -97,7 +97,7 @@ const TagBar = () => {
     <div className="tag-bar">
       <div className="tags">
 
-      <DropDownSelect
+        <DropDownSelect
           title="Sort"
           options = { Constants.sortOptions }
           selected = { prefs.sort }

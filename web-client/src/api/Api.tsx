@@ -1,16 +1,32 @@
-import {buildUrl} from "./Util";
-import {Sort, SortDirection, VideoMeta} from "./Model";
+import { Sort, VideoMeta } from "./Model";
+import { buildUrl } from "./Util";
 
-const headers = { 'Content-type': 'application/json; charset=UTF-8' };
+const headers = { 'Content-type': 'application/json; charset=UTF-8', 'Bearer' : '' };
 
 export const Api = {
 
-  getVideos: async function getVideos(q: string, n: number,
-                                      offset: number, 
-                                      tag?: string,
-                                      dir?: string, 
-                                      minRes?: number, 
-                                      sort?: Sort) {
+  getFragments: async function getFragments(n: number, offset: number, tag?: string) {
+
+    const params = new Map([
+      ["n", n.toString()],
+      ["offset", offset.toString()]
+    ]);
+
+    if (tag)
+      params.set("tags", tag)
+
+    const url = buildUrl("/api/fragments/search", params)
+
+    return doGET(url)
+  },
+
+  getVideos: async function getVideos(
+      q: string, n: number,
+      offset: number, 
+      tag?: string,
+      playlist?: string, 
+      minRes?: number, 
+      sort?: Sort) {
 
     const apiParams = new Map([
       ["q", q],
@@ -20,8 +36,8 @@ export const Api = {
 
     if (tag)
       apiParams.set("tags", tag)
-    if (dir)
-      apiParams.set("dir", dir)
+    if (playlist)
+      apiParams.set("playlist", playlist)
     if (minRes)
       apiParams.set("min_res", minRes.toString())
     if (sort) {
@@ -66,8 +82,8 @@ export const Api = {
     return doPOST(`/api/fragments/${id}/${Math.trunc(idx)}`, { from: from, to: to})
   },
 
-  getDirectories: async function getTags() {
-    return doGET('/api/directories')
+  getPlaylists: async function getPlaylists() {
+    return doGET('/api/playlists')
   }
 }
 
