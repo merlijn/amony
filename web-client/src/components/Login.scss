@@ -1,18 +1,57 @@
 @import 'src/App.scss';
 
 .login-container {
-  padding: 20px;
+  padding: 28px;
   background-color: white;
   width: 400px;
-  display: table; 
+  
   border-radius: 5px;
   border: 1px solid black;
-  
-  div { 
-    display: table-row; 
-    div { 
-      display: table-cell;
-      padding: 5px;
+
+  form {
+    display: grid; 
+    align-items: center;
+    grid-auto-columns: auto;
+    grid-auto-rows: minmax(40px, auto);
+  }
+
+  .username-header {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  .username-input {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .password-header {
+    grid-row: 2;
+    grid-column: 1;
+  }
+
+  .password-input {
+    grid-row: 2;
+    grid-column: 2;
+  }
+
+  .feedback-message {
+    grid-row: 3;
+    grid-column: 1/3;
+  }
+
+  .login-button {
+    grid-row: 3;
+    grid-column: 3;
+    text-align: right;
+
+    button {
+      @extend .hover-cursor;
+      padding: 5px 8px;
+      border-radius: 5px;
+      color: white;
+      background-color: $secondary-a;
+      border: 1px solid $highlight-b;
     }
   }
 }
@@ -20,11 +59,6 @@
 .login-header {
   @extend .mt-0, .pb-3;
 
-  border-bottom: 1px solid $gray-200;
+  border-bottom: 1px solid $gray-300;
 }
 
-.login-button {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-}

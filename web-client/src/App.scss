@@ -18,18 +18,22 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
+input {
+  padding: 4px;
+}
+
 //#6a6a78de;
-$highlight-a: #dd4242de;
+$highlight-a: #DD4242;
 $highlight-b: #3F88C5;
 $highlight-c: #FFBA08;
-$highlight-d: #032B43;
+$highlight-d: #053E61;
 $highlight-e: #66A182;
 
-$secondary-a: #95B8D1;
-$secondary-b: #176087;
-$secondary-c: #F4B860;
-$secondary-d: #C83E4D;
-$secondary-e: #535865;
+$secondary-a: #81B2D9;
+$secondary-b: #096FAE;
+$secondary-c: #FFD15C;
+$secondary-d: #EA8686;
+$secondary-e: #9AC1AC;
 
 $gray-100: #f8f9fa !default;
 $gray-200: #e9ecef !default;
@@ -74,6 +78,12 @@ $units-3: 10px;
 .ml-3 { margin-left: $units-3; }
 
 // --- Padding
+
+.p-0 { padding: 0px; }
+.pt-0 { padding-top: 0px; }
+.pl-0 { padding-left: 0px; }
+.pb-0 { padding-bottom: 0px; }
+.pr-0 { padding-right: 0px; }
 
 .p-1 { padding: $units-1; }
 .pt-1 { padding-top: $units-1; }

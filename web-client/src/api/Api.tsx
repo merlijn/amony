@@ -1,3 +1,4 @@
+import Cookies from "js-cookie";
 import { Sort, VideoMeta } from "./Model";
 import { buildUrl } from "./Util";
 
@@ -5,6 +6,13 @@ const headers = { 'Content-type': 'application/json; charset=UTF-8', 'Bearer' : 
 
 export const Api = {
 
+  profile: async function Profile() {
+
+    console.log(Cookies.get("session"))
+
+    return doGET("/api/identity/profile");
+  },
+  
   login: async function Login(username: string, password: string) {
 
     return doPOST("/api/identity/login", { username: username, password: password})

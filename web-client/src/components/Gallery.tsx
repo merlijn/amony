@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import useResizeObserver from 'use-resize-observer';
 import { Api } from '../api/Api';
 import { Constants } from "../api/Constants";
-import { Columns, SearchResult, Sort, SortDirection, Video } from '../api/Model';
+import { Columns, SearchResult, Sort, Video } from '../api/Model';
 import { useListener } from '../api/ReactUtils';
 import './Gallery.scss';
 import Preview, { PreviewOptions } from './Preview';

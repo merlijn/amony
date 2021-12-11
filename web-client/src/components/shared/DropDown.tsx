@@ -17,20 +17,20 @@ export type DropDownProps = {
 
 export const DropDown = (props: DropDownProps ) => {
 
-  const [isOpen, setIsOpen] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const toggleRef = useRef<HTMLDivElement>(null)
 
   const toggle = 
     <>
-      { props.toggleLabel && <span className="dropdown-label">{props.toggleLabel}</span> }
+      { props.toggleLabel && <span className = "dropdown-label">{ props.toggleLabel }</span> }
       { props.toggleIcon }
-      { props.showArrow && <span className="dropdown-arrow">{isOpen ? "\u25B2" : "\u25BC"}</span> }
+      { props.showArrow && <span className = "dropdown-arrow">{ showDropdown ? "\u25B2" : "\u25BC"}</span> }
     </>
 
   //DropDown toggler
-  const setShowDropDown = (value: boolean) => {
-    setIsOpen(value)
+  const setShowDropDownFn = (value: boolean) => {
+    setShowDropdown(value)
     props.onToggle && props.onToggle(value);
   };
 
@@ -40,7 +40,7 @@ export const DropDown = (props: DropDownProps ) => {
     if (path) {
       if (contentRef?.current && !path.includes(contentRef.current) &&
           toggleRef?.current && !path.includes(toggleRef.current)) 
-        setShowDropDown(false)
+        setShowDropDownFn(false)
     }
   };
 
@@ -51,13 +51,13 @@ export const DropDown = (props: DropDownProps ) => {
   return <div className="dropdown-container">
     <div
       className = { "dropdown-toggle " + (props.toggleClassName ? props.toggleClassName : "") }
-      onClick = { () => setShowDropDown(!isOpen) }
+      onClick = { () => setShowDropDownFn(!showDropdown) }
       ref = { toggleRef }>
       { toggle }
     </div>
     <div className="dropdown-content-container">
       {
-        isOpen && (
+        showDropdown && (
         <div style = { alignStyle } 
              className = { "dropdown-content " + (props.contentClassName ? props.contentClassName : "")  } 
              ref = { contentRef }>
@@ -70,7 +70,7 @@ export const DropDown = (props: DropDownProps ) => {
 
               return React.cloneElement(child, { internalOnParentClick: () => {
                   if (props.hideOnClick) {
-                    setShowDropDown(false)
+                    setShowDropDownFn(false)
                   }
               } });
             })
@@ -91,8 +91,8 @@ export const MenuItem = (props: { className?: string, children?: ReactNode, href
       <div 
         className= { "dropdown-menu-item "  + (props.className ? props.className : "") } 
         onClick = { (e) => { 
+          props.internalOnParentClick && props.internalOnParentClick();
           props.onClick && props.onClick(); 
-          props.internalOnParentClick && props.internalOnParentClick() 
         }}>
 
         {
