@@ -1,0 +1,30 @@
+@import 'src/App.scss';
+
+.login-container {
+  padding: 20px;
+  background-color: white;
+  width: 400px;
+  display: table; 
+  border-radius: 5px;
+  border: 1px solid black;
+  
+  div { 
+    display: table-row; 
+    div { 
+      display: table-cell;
+      padding: 5px;
+    }
+  }
+}
+
+.login-header {
+  @extend .mt-0, .pb-3;
+
+  border-bottom: 1px solid $gray-200;
+}
+
+.login-button {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+}

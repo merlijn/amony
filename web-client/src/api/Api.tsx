@@ -5,6 +5,11 @@ const headers = { 'Content-type': 'application/json; charset=UTF-8', 'Bearer' : 
 
 export const Api = {
 
+  login: async function Login(username: string, password: string) {
+
+    return doPOST("/api/identity/login", { username: username, password: password})
+  },
+
   getFragments: async function getFragments(n: number, offset: number, tag?: string) {
 
     const params = new Map([

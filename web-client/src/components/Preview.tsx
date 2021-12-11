@@ -10,6 +10,7 @@ import FragmentsPlayer from "./shared/FragmentsPlayer";
 import ImgWithAlt from "./shared/ImgWithAlt";
 import Modal from './shared/Modal';
 import TagEditor from "./shared/TagEditor";
+import {FiDownload} from "react-icons/fi";
 
 export type PreviewProps = {
   vid: Video,
@@ -65,6 +66,7 @@ const Preview = (props: PreviewProps) => {
           </div>
       }
       { props.options.showDuration && <div className="abs-bottom-left duration-overlay">{durationStr}</div> }
+      {/* { <div className="abs-bottom-right"><FiDownload /></div> } */}
     </div>
 
   const primaryThumbnail =

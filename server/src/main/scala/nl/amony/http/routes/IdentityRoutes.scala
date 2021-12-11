@@ -13,12 +13,12 @@ trait IdentityRoutes {
 
   self: RouteDeps =>
 
-  case class Credendials(username: String, password: String)
+  case class Credentials(username: String, password: String)
 
-  implicit val credDecoder = deriveCodec[Credendials]
+  implicit val credDecoder = deriveCodec[Credentials]
 
   val loginRoutes = 
-    (path("login") & post & entity(as[Credendials])) { credentials => 
+    (path("login") & post & entity(as[Credentials])) { credentials =>
       
       if (credentials.username == "admin" && credentials.password == "admin") {
         setCookie(HttpCookie("session", Auth.createToken()))  {

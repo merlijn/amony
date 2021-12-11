@@ -8,6 +8,7 @@ import { Directory } from "../../api/Model";
 import './SideBar.scss';
 import Modal from "../shared/Modal";
 import ConfigMenu from "./ConfigMenu";
+import Login from "../Login";
 
 const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
 
@@ -16,16 +17,19 @@ const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
 
   useEffect(() => { Api.getPlaylists().then(response => { setPlaylists(response) }); }, [] );
 
+  const [showLogin, setShowLogin] = useState(false)
+
   return (
     <>
     { showSettings && <Modal onHide={() => setShowSettings(false)}><ConfigMenu /></Modal>  }
+    { showLogin && <Modal onHide={() => setShowLogin(false)}><Login onLogin={() => setShowLogin(false) }/></Modal>  }
     <ProSidebar className="my-sidebar" width={200} collapsedWidth={50} collapsed={props.collapsed}>
       <SidebarHeader className="sidebar-header">
         <GoGrabber className="sidebar-menu-icon" onClick={props.onHide} />
       </SidebarHeader>
       <SidebarContent>
         <Menu iconShape="circle">
-          <MenuItem icon= { <FiUser /> }><a href="/">Profile</a></MenuItem>
+          <MenuItem icon= { <FiUser /> } onClick = {() => setShowLogin(true)} >Profile</MenuItem>
           <MenuItem icon={ <FaHome />}><a href="/">Home</a></MenuItem>
           <SubMenu icon={ <FiFolder />} title="Directories" defaultOpen={true}>
           {

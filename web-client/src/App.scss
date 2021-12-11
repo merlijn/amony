@@ -44,10 +44,16 @@ $gray-900: #212529 !default;
 $one-unit: 2px;
 
 $units-1: $one-unit;
-$units-2: 4px;
-$units-3: 6px;;
+$units-2: 5px;
+$units-3: 10px;
 
 // --- Margin
+
+.m-0 { margin: 0px; }
+.mt-0 { margin-top: 0px; }
+.mr-0 { margin-right: 0px; }
+.mb-0 { margin-bottom: 0px; }
+.ml-0 { margin-left: 0px; }
 
 .m-1 { margin: $units-1; }
 .mt-1 { margin-top: $units-1; }
@@ -107,7 +113,6 @@ input {
 textarea {
   @extend .text-input;
 }
-
 
 .full-screen {
   width: 100vw;

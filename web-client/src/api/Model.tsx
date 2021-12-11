@@ -12,6 +12,14 @@ export type Video = {
   addedOn: number
 }
 
+export type Fragment = {
+  media_id: string,
+  range: Range,
+  index: number,
+  urls: string[],
+  tags: string[]
+}
+
 export type VideoMeta = {
   tags: string[]
   title: string
@@ -36,14 +44,6 @@ export type Directory = {
 export type Range = {
   from: number,
   to: number
-}
-
-export type Fragment = {
-  media_id: string,
-  range: Range,
-  index: number,
-  urls: string[],
-  tags: string[]
 }
 
 export type Sort = {

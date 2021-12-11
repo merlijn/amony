@@ -9,6 +9,7 @@ import { Prefs } from "../../api/Model";
 import { useCookiePrefs } from "../../api/ReactUtils";
 import { buildUrl, copyParams } from "../../api/Util";
 import { DropDown, MenuItem } from "../shared/DropDown";
+import { MdSort, MdCropSquare } from "react-icons/md";
 import './TopNavBar.scss';
 
 function TopNavBar(props: { onClickMenu: () => void, showTagsBar: boolean, onShowTagsBar: (show: boolean) => void }) {
@@ -98,13 +99,13 @@ const TagBar = () => {
       <div className="tags">
 
         <DropDownSelect
-          title="Sort"
+          toggle = { <MdSort /> }
           options = { Constants.sortOptions }
           selected = { prefs.sort }
           onSelect = { (v) => updatePrefs({...prefs, sort: v}) } />
 
         <DropDownSelect
-          title="Quality"
+          toggle = { <MdCropSquare /> }
           options = { Constants.resolutions }
           selected = { prefs.videoQuality }
           onSelect = { (v) => updatePrefs({...prefs, videoQuality: v}) } />
@@ -122,11 +123,11 @@ type SelectOption<T> = {
   icon?: ReactNode
 }
 
-const DropDownSelect = (props:{ title: string, options: Array<SelectOption<any>>, selected: any, onSelect: (v: any) => void }) => {
+const DropDownSelect = (props:{ toggle: ReactNode, options: Array<SelectOption<any>>, selected: any, onSelect: (v: any) => void }) => {
   return (
     <DropDown hideOnClick = {true} 
+      toggleIcon = { props.toggle }
       toggleClassName = "custom-dropdown-toggle" 
-      toggleLabel = { props.title }
       contentClassName="dropdown-menu" 
       showArrow= { true }>
       {

@@ -9,7 +9,7 @@ import scala.util.Try
 object Auth {
 
   val key = "secretKey"
-  val expirationInSeconds = 157784760
+  val expirationInSeconds = 24 * 60 * 60
   val algo = JwtAlgorithm.HS256
 
   def createToken() = {
@@ -17,7 +17,7 @@ object Auth {
     val claim = JwtClaim(
       expiration = Some(Instant.now.plusSeconds(expirationInSeconds).getEpochSecond), 
       issuedAt = Some(Instant.now.getEpochSecond)
-    )
+    ) + ("admin", true)
 
     val token = JwtCirce.encode(claim, key, algo)
 
