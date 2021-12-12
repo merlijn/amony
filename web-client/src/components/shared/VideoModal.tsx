@@ -4,9 +4,9 @@ import Plyr from 'plyr';
 import {isMobile} from "react-device-detect";
 import {BoundedRatioBox} from "../../api/Util";
 import './VideoModal.scss';
-import { useListener } from "../../api/ReactUtils";
+import Modal from "./Modal";
 
-const VideoModal = (props: { video: Video, onHide: () => void }) => {
+const VideoModal = (props: { video?: Video, onHide: () => void }) => {
 
   const videoElement = useRef<HTMLVideoElement>(null)
 
@@ -16,7 +16,7 @@ const VideoModal = (props: { video: Video, onHide: () => void }) => {
     const element = videoElement.current
     let plyr: Plyr | null = null
 
-    if (element) {
+    if (element && props.video) {
       const plyrOptions = {
         fullscreen: { enabled: true },
         invertTime: false,
@@ -28,11 +28,8 @@ const VideoModal = (props: { video: Video, onHide: () => void }) => {
       plyr.play()
     }
 
-    return () => {
-      if (plyr)
-        plyr.destroy()
-    }
-  },[]);
+    return () => { plyr && plyr.destroy() }
+  },[props]);
 
   const modalSize = (v: Video): CSSProperties => {
 
@@ -41,27 +38,17 @@ const VideoModal = (props: { video: Video, onHide: () => void }) => {
   }
 
   return (
-    <div
-      key       = "gallery-video-player"
-      className = "video-modal-container"
-      style     = { { display: "block" } }>
-
-      <div 
-        key       = "video-model-background"
-        className = "video-modal-background"
-        onClick   = { (e) => props.onHide() }
-      />
-
+    <Modal visible = { props.video !== undefined } onHide = { props.onHide }>
       <div key="video-model-content" className="video-modal-content">
         {
-          <div style={modalSize(props.video)}>
-            <video tab-index='-1' id={`video-modal-${props.video.id}`} ref={videoElement} playsInline controls>
+          <div style = { props.video && modalSize(props.video) }>
+            <video tab-index='-1' id={`video-modal-${props.video?.id}`} ref={videoElement} playsInline controls>
               { props.video && <source src={props.video.video_url} type="video/mp4"/> }
             </video>
           </div>
         }
       </div>
-    </div>
+    </Modal>
   );
 }
 

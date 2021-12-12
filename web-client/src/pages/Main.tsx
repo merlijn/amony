@@ -66,7 +66,7 @@ const Main = () => {
 
     return (
         <>
-          { playVideo && <VideoModal video={playVideo} onHide={() => setPlayVideo(undefined) } />}
+          { <VideoModal video = { playVideo } onHide={() => setPlayVideo(undefined) } />}
           <div className="main-page">
 
             { showNavigation && prefs.showSidebar && 

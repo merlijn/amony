@@ -9,7 +9,6 @@ import './Preview.scss';
 import { DropDown, Menu, MenuItem } from './shared/DropDown';
 import FragmentsPlayer from "./shared/FragmentsPlayer";
 import ImgWithAlt from "./shared/ImgWithAlt";
-import ReactModal from 'react-modal';
 import Modal from './shared/Modal';
 
 export type PreviewProps = {
@@ -118,8 +117,6 @@ const PreviewMenu = (props: {vid: Video, showInfo: () => void}) => {
       setShowConfirmDelete(false)
     })
   };
-
-  ReactModal.setAppElement('#root');
 
   return (
     <>
