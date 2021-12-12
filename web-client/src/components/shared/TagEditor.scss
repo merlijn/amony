@@ -1,23 +1,24 @@
+@import 'src/App.scss';
+
 .tag-container {
 
-  margin-top: 4px;
   display: flex;
 
   .new-tag {
-
-    margin: 8px 2px 2px 2px;
+    
+    display: flex;
+    margin: 2px;
     float: left;
+    align-items: center;
 
     span {
-      color: black;
-      background-color: #62db89;
-      border: 1px solid #007b15;
-      padding: 5px 12px;
+      color: white;
+      background-color: $highlight-e;
+      border: 1px solid $secondary-e;
+      padding: 6px 12px;
       border-radius: 25px;
-      font-size: normal;
+      font-size: small;
       text-align: center;
-      //width: auto;
-      min-width: 100px;
 
       &:hover {
         cursor: pointer;
@@ -26,19 +27,20 @@
   }
 
   .tag {
+    // height: 28px;
     margin: 2px;
     display: flex;
     align-items: center;
     float: left;
     color: black;
-    font-size: normal;
-    padding: 5px 8px 5px 12px;
+    background-color: $gray-300;
+    border: 1px solid $gray-500;
+    font-size: small;
+    padding: 4px 8px 4px 12px;
     // padding: 3px 5px 3px 8px;
-    border: 1px solid blue;
     border-radius: 25px;
-    background-color: #b9daff;
 
-    img.delete-tag {
+    .delete-tag {
       vertical-align: middle;
       margin: 0px;
       margin-left: 5px;

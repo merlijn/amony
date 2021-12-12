@@ -1,0 +1,42 @@
+@import 'src/App.scss';
+
+.list-container {
+  width: 100%;
+  height: auto;
+  display: table;
+
+  .list-row {
+    display: table-row;
+    height: 24px;
+
+    .list-thumbnail {
+      width: 28px;
+    }
+
+    .list-resolution {
+      width: 70px;
+    }
+
+    .list-date {
+      width: 120px;
+    }
+
+    .list-cell {
+
+      border-bottom: 1px solid $gray-200;
+      padding: 0px 8px;
+      height: 30px;
+      display: table-cell;
+      align-items: center;
+      vertical-align: middle;
+
+      .list-thumbnail {
+        align-items: center;
+        vertical-align: middle;
+        width: 48px;
+        height: 27px; 
+      }
+      
+    }
+  }
+}

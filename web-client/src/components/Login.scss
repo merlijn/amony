@@ -57,7 +57,7 @@
 }
 
 .login-header {
-  @extend .mt-0, .pb-3;
+  @extend .mt-0, .pb-3, .mb-3;
 
   border-bottom: 1px solid $gray-300;
 }

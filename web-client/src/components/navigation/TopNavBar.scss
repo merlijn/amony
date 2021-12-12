@@ -72,11 +72,11 @@ $accent: rgb(83, 155, 36);
     float: left;
     margin: 0px 4px;
     color: black;
+    background-color: $gray-300;
+    border: 1px solid $gray-500;
     font-size: small;
     padding: 5px 12px;
-    border: 1px solid $gray-500;
     border-radius: 25px;
-    background-color: $gray-300;
   }
 
   .selected-tag {
@@ -167,7 +167,7 @@ $accent: rgb(83, 155, 36);
       outline: none;
       height: 35px !important;
       border-radius: 3px ! important;
-      border: 1px solid $gray-400;
+      border: 1px solid $gray-300;
       width: 100% ! important;
       padding-left: 8px;
       &:focus {

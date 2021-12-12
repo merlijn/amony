@@ -1,3 +1,4 @@
+@import 'src/App.scss';
 @import './shared/Modal.scss';
 
 .info-panel {
@@ -30,5 +31,11 @@
   .info-panel-content {
     margin: 8px 8px;
     padding: 8px 0px;
+  }
+
+  .info-save-button {
+    @extend .hover-cursor;
+    width: 24px;
+    height: 24px;
   }
 }

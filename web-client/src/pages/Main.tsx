@@ -10,6 +10,9 @@ import VideoModal from "../components/shared/VideoModal";
 import SideBar from "../components/navigation/SideBar";
 import { isMobile } from "react-device-detect";
 import './Main.scss';
+import ListView from "../components/ListView";
+
+type View = 'grid' | 'list'
 
 const Main = () => {
 
@@ -17,6 +20,7 @@ const Main = () => {
     const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
     const [showNavigation, setShowNavigation] = useState(true)
     const [showTagBar, setShowTagBar] = useState(true)
+    const [view, setView] = useState<View>('grid')
 
     const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs/v1", "/", Constants.defaultPreferences)
 
@@ -71,8 +75,8 @@ const Main = () => {
 
             { showNavigation && prefs.showSidebar && 
                 <SideBar 
-                  collapsed={true} 
-                  onHide={() => setShowSidebar(!prefs.showSidebar)} 
+                  collapsed = {true} 
+                  onHide    = {() => setShowSidebar(!prefs.showSidebar)} 
                 /> 
             }
             
@@ -85,23 +89,35 @@ const Main = () => {
                 /> 
             }
 
-            <div style={ galleryStyle } key="main-gallery" className="main-gallery-container">
-              <Gallery 
-                selection = {selection}
-                scroll = 'page' 
-                onClick = { (v: Video) => setPlayVideo(v) } 
-                columns = { prefs.gallery_columns }
-                previewOptionsFn = { (v: Video) => {
-                    return {
-                      showPreviewOnHover: !isMobile,
-                      showInfoBar: prefs.showTitles,
-                      showDates: prefs.showDates,
-                      showDuration: prefs.showDuration,
-                      showMenu: prefs.showMenu
-                    } 
-                  }
-                }/>
-            </div>
+            {
+              (view === 'grid') &&
+                <div style = { galleryStyle } key="main-content" className="main-content-container">
+                  <Gallery 
+                    selection = {selection}
+                    scroll    = 'page' 
+                    onClick   = { (v: Video) => setPlayVideo(v) } 
+                    columns   = { prefs.gallery_columns }
+                    previewOptionsFn = { (v: Video) => {
+                        return {
+                          showPreviewOnHover: !isMobile,
+                          showInfoBar: prefs.showTitles,
+                          showDates: prefs.showDates,
+                          showDuration: prefs.showDuration,
+                          showMenu: prefs.showMenu
+                        } 
+                      }
+                    }/>
+                </div>
+            }
+
+            {
+              (view === 'list') &&
+                <div style = { galleryStyle } key="main-content" className="main-content-container">
+                  <ListView 
+                    selection = {selection}
+                   />
+                </div>
+            }
           </div>
         </>
       );

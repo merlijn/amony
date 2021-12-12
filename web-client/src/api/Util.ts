@@ -25,7 +25,7 @@ export function copyParams(params: URLSearchParams) {
   return copy
 }
 
-export function durationInMillisToString (duration: number) {
+export function durationInMillisToString(duration: number) {
 
   const secondsInMillis = 1000;
   const minutesInMilis = 1000 * 60;
@@ -51,6 +51,16 @@ export function durationInMillisToString (duration: number) {
   durationStr += `${seconds}`
 
   return durationStr
+}
+
+export function dateMillisToString(millis: number) {
+
+  const date = new Date(millis)
+  const days = zeroPad(date.getUTCDate(), 2)
+  const month = zeroPad(date.getMonth(), 2)
+  const year = date.getFullYear()
+
+  return `${days}-${month}-${year}`;
 }
 
 export function zeroPad(n: number, d: number) {

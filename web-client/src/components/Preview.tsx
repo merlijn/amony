@@ -2,7 +2,7 @@ import React, { CSSProperties, useRef, useState } from 'react';
 import ProgressiveImage from "react-progressive-graceful-image";
 import { Api } from "../api/Api";
 import { Video } from "../api/Model";
-import { durationInMillisToString, zeroPad } from "../api/Util";
+import { dateMillisToString, durationInMillisToString, zeroPad } from "../api/Util";
 import * as config from "../AppConfig.json";
 import MediaInfo from './MediaInfo';
 import './Preview.scss';
@@ -36,13 +36,11 @@ const Preview = (props: PreviewProps) => {
 
   const durationStr = durationInMillisToString(vid.duration)
 
-  const addOnDate = new Date(vid.addedOn)
   const titlePanel =
     <div className="info-bar">
       <span className="media-title" title={vid.meta.title}>{vid.meta.title}</span>
-      {props.options.showDates && <span className="media-date">{zeroPad(addOnDate.getUTCDate(), 2)}-{zeroPad(addOnDate.getMonth(), 2)}-{addOnDate.getFullYear()}</span>}
+      {props.options.showDates && <span className="media-date">{dateMillisToString(vid.addedOn)}</span>}
     </div>
-
 
   const previewRef = useRef<HTMLDivElement>(null)
 
