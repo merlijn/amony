@@ -32,21 +32,9 @@ export type PreviewOptions = {
 const Preview = (props: PreviewProps) => {
 
   const [vid, setVid] = useState(props.vid)
-
-  const [showInfoModal, setShowInfoModal] = useState(false)
   const [isHovering, setIsHovering] = useState(false)
 
   const durationStr = durationInMillisToString(vid.duration)
-
-  const infoModal = 
-    <MediaInfo 
-      meta = { vid.meta }
-      onClose = { (meta) => {
-        Api.updateVideoMetaData(vid.id, meta).then(() => {
-          setVid({...vid, meta: meta });
-          setShowInfoModal(false)
-        })
-      } } />
 
   const addOnDate = new Date(vid.addedOn)
   const titlePanel =
@@ -63,7 +51,7 @@ const Preview = (props: PreviewProps) => {
       {
         (props.options.showMenu && config["enable-video-menu"]) &&
           <div style={ { zIndex: 5 }} className="abs-top-right">
-            <PreviewMenu vid={vid} showInfo={ () => setShowInfoModal(true)} />
+            <PreviewMenu video={vid} setVideo = { setVid }/>
           </div>
       }
       { props.options.showDuration && <div className="abs-bottom-left duration-overlay">{durationStr}</div> }
@@ -82,10 +70,11 @@ const Preview = (props: PreviewProps) => {
     </ProgressiveImage>
 
   const videoPreview =
-    <FragmentsPlayer id={`video-preview-${props.vid.id}`}
-                    onClick={ () => props.onClick(props.vid) }
-                    className= { `preview-video preview-media` }
-                    fragments={ props.vid.fragments } />
+    <FragmentsPlayer 
+      id={`video-preview-${props.vid.id}`}
+      onClick={ () => props.onClick(props.vid) }
+      className= { `preview-video preview-media` }
+      fragments={ props.vid.fragments } />
 
   let preview =
       <div className = "preview-container"
@@ -101,18 +90,18 @@ const Preview = (props: PreviewProps) => {
     <div ref={previewRef} style={props.style} className={ `${props.className}` }>
       { preview }
       { props.options.showInfoBar && titlePanel }
-      { showInfoModal && infoModal }
     </div>
   )
 }
 
-const PreviewMenu = (props: {vid: Video, showInfo: () => void}) => {
+const PreviewMenu = (props: {video: Video, setVideo: (v: Video) => void}) => {
 
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false)
 
   const cancelDelete = () => setShowConfirmDelete(false);
   const confirmDelete = () => {
-    Api.deleteMediaById(props.vid.id).then(() => {
+    Api.deleteMediaById(props.video.id).then(() => {
       console.log("video was deleted")
       setShowConfirmDelete(false)
     })
@@ -120,33 +109,41 @@ const PreviewMenu = (props: {vid: Video, showInfo: () => void}) => {
 
   return (
     <>
-      {
-        <Modal visible = { showConfirmDelete } onHide = { cancelDelete }>
-          <div className = "default-modal-dialog">
-            <h2>Are you sure?</h2>
-            <p>Do you want to delete: <br /> '{props.vid.meta.title}'</p>
-            <p>
-              <button onClick = { confirmDelete }>Yes</button>
-              <button onClick = { cancelDelete }>No / Cancel</button>
-            </p>
-          </div>
-        </Modal>
-      }
+      <Modal visible = { showInfoModal } onHide = {() => setShowInfoModal(false)} >
+        <MediaInfo 
+          meta = { props.video.meta }
+          onClose = { (meta) => {
+            Api.updateVideoMetaData(props.video.id, meta).then(() => {
+              props.setVideo({...props.video, meta: meta });
+              setShowInfoModal(false)
+            })
+          } } 
+        />
+      </Modal>
+      
+      <Modal visible = { showConfirmDelete } onHide = { cancelDelete }>
+        <div className = "default-modal-dialog">
+          <h2>Are you sure?</h2>
+          <p>Do you want to delete: <br /> '{props.video.meta.title}'</p>
+          <p>
+            <button onClick = { confirmDelete }>Yes</button>
+            <button onClick = { cancelDelete }>No / Cancel</button>
+          </p>
+        </div>
+      </Modal>
 
       <div style={ { zIndex: 5 } } className = "preview-menu">
 
-        <DropDown align = 'right' toggleIcon = { <ImgWithAlt className="action-icon-small" src="/icons/more.svg" /> } hideOnClick = {true} >
-          <Menu style={ { width: 170 } }>
-            <MenuItem onClick = { () => props.showInfo() }>
-              <ImgWithAlt className="menu-icon" src="/icons/info.svg" />Info
-            </MenuItem>
-            <MenuItem href={`/editor/${props.vid.id}`}>
-              <ImgWithAlt className="menu-icon" src="/icons/edit.svg" />Fragments
-            </MenuItem>
-            <MenuItem onClick = { () => setShowConfirmDelete(true) }>
-              <ImgWithAlt className="menu-icon" src="/icons/delete.svg" />Delete
-            </MenuItem>
-          </Menu>
+        <DropDown align = 'right' contentClassName="dropdown-menu" toggleIcon = { <ImgWithAlt className="action-icon-small" src="/icons/more.svg" /> } hideOnClick = {true} >
+          <MenuItem onClick = { () => setShowInfoModal(true) }>
+            <ImgWithAlt className="menu-icon" src="/icons/info.svg" />Info
+          </MenuItem>
+          <MenuItem href={`/editor/${props.video.id}`}>
+            <ImgWithAlt className="menu-icon" src="/icons/edit.svg" />Fragments
+          </MenuItem>
+          <MenuItem onClick = { () => setShowConfirmDelete(true) }>
+            <ImgWithAlt className="menu-icon" src="/icons/delete.svg" />Delete
+          </MenuItem>
         </DropDown>
       </div>
     </>

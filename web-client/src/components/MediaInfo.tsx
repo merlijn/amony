@@ -2,6 +2,7 @@ import { useState } from "react";
 import { VideoMeta } from "../api/Model";
 import ImgWithAlt from "./shared/ImgWithAlt";
 import TagEditor from "./shared/TagEditor";
+import './MediaInfo.scss';
 
 const MediaInfo = (props: {meta: VideoMeta, onClose: (meta: VideoMeta) => any }) => {
 

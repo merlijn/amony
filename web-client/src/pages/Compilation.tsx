@@ -19,10 +19,10 @@ const Compilation = () => {
   
     if (fragments.length > 0) {
       return <FragmentsPlayer 
-                id="all-fragments"
-                style={ { width: 800, height: 500 } }
-                className="abs-center"
-                fragments={fragments} 
+                id = "all-fragments"
+                style = { { width: 800, height: 500 } }
+                className = "abs-center"
+                fragments = { fragments } 
               />
     } else
       return <div />

@@ -70,6 +70,7 @@ export const DropDown = (props: DropDownProps ) => {
 
               return React.cloneElement(child, { internalOnParentClick: () => {
                   if (props.hideOnClick) {
+                    console.log("hide dropdown")
                     setShowDropDownFn(false)
                   }
               } });

@@ -128,7 +128,7 @@ const DropDownSelect = (props:{ toggle: ReactNode, options: Array<SelectOption<a
     <DropDown hideOnClick = {true} 
       toggleIcon = { props.toggle }
       toggleClassName = "custom-dropdown-toggle" 
-      contentClassName="dropdown-menu" 
+      contentClassName = "dropdown-menu" 
       showArrow= { true }>
       {
         props.options.map((option) => {

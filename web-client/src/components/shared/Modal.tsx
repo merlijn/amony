@@ -36,11 +36,7 @@ const Modal = (props: { children?: ReactNode, visible: boolean, onHide: () => vo
     }
   }, [props])
 
-  return( 
-    ReactDOM.createPortal(
-      modal,
-      container
-    ));
+  return(ReactDOM.createPortal(modal, container));
 }
 
 export default Modal
