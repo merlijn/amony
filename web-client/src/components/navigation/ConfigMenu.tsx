@@ -17,7 +17,7 @@ const ConfigMenu = () => {
 
   return(
 
-      <div className="config-menu">
+      <div className="config-menu default-modal-dialog">
         <div key="config-title" className="config-title">Preferences</div>
 
         <div key="config-form" className="config-form">
@@ -81,10 +81,7 @@ const ConfigMenu = () => {
               <input
                 type="checkbox"
                 checked={ prefs.showDuration }
-                onChange={(e) => {
-                  updatePrefs( { showDuration: !prefs.showDuration })
-                }
-                }
+                onChange={(e) => { updatePrefs( { showDuration: !prefs.showDuration }) } }
               />
             </div>
           </div>

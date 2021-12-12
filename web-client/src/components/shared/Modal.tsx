@@ -4,7 +4,7 @@ import './Modal.scss';
 
 const Modal = (props: { children?: ReactNode, visible: boolean, onHide: () => void }) => {
 
-  // add an element to the root of the document
+  const modalRoot = document.getElementById('modal-root');
   const container = document.createElement("div")
   
   const hide = () => {
@@ -13,13 +13,14 @@ const Modal = (props: { children?: ReactNode, visible: boolean, onHide: () => vo
 
   const modal = (
     <div
-      key="modal"
-      className="my-modal-container"
-      style={ { display: "block" }}>
+      key       = "my-modal"
+      className = "my-modal-container"
+      style     = { { display: "block" } }>
 
-      <div key="my-model-background"
-           className="my-modal-background"
-           onClick = { (e) => hide() }
+      <div 
+        key       = "my-model-background"
+        className = "my-modal-background"
+        onClick   = { (e) => hide() }
       />
 
       <div key="my-model-content" className="my-modal-content">
@@ -27,16 +28,19 @@ const Modal = (props: { children?: ReactNode, visible: boolean, onHide: () => vo
       </div>
     </div>
   );
-  
+
   useEffect(() => {
-    if (props.visible) {
-      document.body.appendChild(container)
-      ReactDOM.render(modal, container)
-      return () => { document.body.removeChild(container); }
+    if (props.visible && modalRoot) {
+      modalRoot.appendChild(container)
+      return () => { modalRoot.removeChild(container); }
     }
   }, [props])
 
-  return <div />
+  return( 
+    ReactDOM.createPortal(
+      modal,
+      container
+    ));
 }
 
 export default Modal

@@ -9,6 +9,7 @@ import './Preview.scss';
 import { DropDown, Menu, MenuItem } from './shared/DropDown';
 import FragmentsPlayer from "./shared/FragmentsPlayer";
 import ImgWithAlt from "./shared/ImgWithAlt";
+import ReactModal from 'react-modal';
 import Modal from './shared/Modal';
 
 export type PreviewProps = {
@@ -118,10 +119,12 @@ const PreviewMenu = (props: {vid: Video, showInfo: () => void}) => {
     })
   };
 
+  ReactModal.setAppElement('#root');
+
   return (
     <>
       {
-        <Modal visible = { showConfirmDelete } onHide = {cancelDelete}>
+        <Modal visible = { showConfirmDelete } onHide = { cancelDelete }>
           <div className = "default-modal-dialog">
             <h2>Are you sure?</h2>
             <p>Do you want to delete: <br /> '{props.vid.meta.title}'</p>

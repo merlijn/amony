@@ -6,7 +6,7 @@
 
   display: none; /* Hidden by default */
   position: fixed; /* Stay in place */
-  z-index: 500; /* Sit on top */
+  z-index: 500!important; /* Sit on top */
   left: 0;
   top: 0;
   overflow: hidden;
@@ -16,7 +16,7 @@
     @extend .full-screen;
 
     position: fixed; /* Stay in place */
-    z-index: 501; /* Sit on top */
+    z-index: 501!important; /* Sit on top */
     left: 0;
     top: 0;
     overflow: hidden;
@@ -40,7 +40,7 @@
       transform: translate(-50%, -50%);
     }
 
-    z-index: 502;
+    z-index: 502!important;
     margin: 0;
     padding: 0;
     //border: 1px solid black;

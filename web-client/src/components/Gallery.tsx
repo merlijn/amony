@@ -11,7 +11,7 @@ const fetchDataScreenMargin = 1024;
 
 export type MediaSelection = {
   query?: string
-  directory?: string
+  playlist?: string
   tag?: string
   minimumQuality: number
   sort: Sort
@@ -47,7 +47,7 @@ const Gallery = (props: GalleryProps) => {
         n,
         offset,
         props.selection.tag,
-        props.selection.directory,
+        props.selection.playlist,
         props.selection.minimumQuality,
         props.selection.sort).then(response => {
 

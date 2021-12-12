@@ -48,14 +48,14 @@ export const DropDown = (props: DropDownProps ) => {
 
   const alignStyle = props.align === 'right' ? { right: 0 } : { left: 0 }
 
-  return <div className="dropdown-container">
+  return <div className = "dropdown-container">
     <div
       className = { "dropdown-toggle " + (props.toggleClassName ? props.toggleClassName : "") }
       onClick = { () => setShowDropDownFn(!showDropdown) }
       ref = { toggleRef }>
       { toggle }
     </div>
-    <div className="dropdown-content-container">
+    <div className = "dropdown-content-container">
       {
         showDropdown && (
         <div style = { alignStyle } 
@@ -82,7 +82,7 @@ export const DropDown = (props: DropDownProps ) => {
 }
 
 export const Menu = (props: {children?: ReactNode, style?: CSSProperties, onParentClick?: () => any})=> {
-  return <div style = { props.style } className="dropdown-menu"> { props.children } </div>
+  return <div style = { props.style } className = "dropdown-menu"> { props.children } </div>
 }
 
 export const MenuItem = (props: { className?: string, children?: ReactNode, href?: string, onClick?: () => any, internalOnParentClick?: () => any }) => {
@@ -95,9 +95,7 @@ export const MenuItem = (props: { className?: string, children?: ReactNode, href
           props.onClick && props.onClick(); 
         }}>
 
-        {
-          props.children
-        }
+        { props.children }
 
       </div>
 

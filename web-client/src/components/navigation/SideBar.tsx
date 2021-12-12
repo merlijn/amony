@@ -21,8 +21,8 @@ const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
 
   return (
     <>
-    { <Modal visible = {showSettings} onHide={() => setShowSettings(false)}><ConfigMenu /></Modal>  }
-    { <Modal visible = {showLogin} onHide={() => setShowLogin(false)}><Login onLogin={() => setShowLogin(false) }/></Modal>  }
+    { <Modal visible = { showSettings } onHide={() => setShowSettings(false)}><ConfigMenu /></Modal>  }
+    { <Modal visible = { showLogin } onHide={() => setShowLogin(false)}><Login onLogin={() => setShowLogin(false) }/></Modal>  }
     <ProSidebar className="my-sidebar" width={200} collapsedWidth={50} collapsed={props.collapsed}>
       <SidebarHeader className="sidebar-header">
         <GoGrabber className="sidebar-menu-icon" onClick={props.onHide} />
@@ -30,14 +30,14 @@ const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
       <SidebarContent>
         <Menu iconShape="circle">
           <MenuItem icon= { <FiUser /> } onClick = {() => setShowLogin(true)} >Profile</MenuItem>
-          <MenuItem icon={ <FaHome />}><a href="/">Home</a></MenuItem>
-          <SubMenu icon={ <FiFolder />} title="Directories" defaultOpen={true}>
+          <MenuItem icon = { <FaHome /> }><a href="/">Home</a></MenuItem>
+          <SubMenu icon = { <FiFolder /> } title="Directories" defaultOpen={true}>
           {
-            playlists.map((d) =>  { return <MenuItem><a href={`/search?dir=${d.id}`}>{d.title}</a></MenuItem> }) 
+            playlists.map((d) =>  { return <MenuItem><a href={`/search?playlist=${d.id}`}>{d.title}</a></MenuItem> }) 
           }
           </SubMenu>
-          <MenuItem icon={ <FiGrid />}><a href="/grid">Grid</a></MenuItem>
-          <MenuItem icon={<FiSettings />} onClick={() => setShowSettings(!showSettings)}>Settings</MenuItem>
+          <MenuItem icon = { <FiGrid /> }><a href="/grid">Grid</a></MenuItem>
+          <MenuItem icon = { <FiSettings />} onClick={() => setShowSettings(!showSettings)}>Settings</MenuItem>
         </Menu>
       </SidebarContent>
       <SidebarFooter className="sidebar-footer">

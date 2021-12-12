@@ -32,8 +32,8 @@ const TagEditor = (props: {tags: Array<string>, callBack: (tags: Array<string>) 
       tags.map ( (tag, idx) =>
         <div key={`tag-${tag}`} className="tag">{tag}
           <ImgWithAlt
-            className="delete-tag"
-            src="/icons/close.svg"
+            className = "delete-tag"
+            src = "/icons/close.svg"
             onClick={() => {
               const newTags = [...tags.slice(0, idx), ...tags.slice(idx + 1, tags.length) ]
               setTags(newTags)
@@ -46,10 +46,10 @@ const TagEditor = (props: {tags: Array<string>, callBack: (tags: Array<string>) 
 
     <div className="new-tag">
         <span
-          ref={newTagRef}
-          key={"new-tag"}
-          className="input"
-          role="textbox"
+          ref = {newTagRef}
+          key = {"new-tag"}
+          className = "input"
+          role = "textbox"
           onFocus={ () => {
               if (newTagRef.current)
                 newTagRef.current.innerText = "";

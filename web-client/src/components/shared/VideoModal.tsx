@@ -18,7 +18,7 @@ const VideoModal = (props: { video: Video, onHide: () => void }) => {
 
     if (element) {
       const plyrOptions = {
-        fullscreen : { enabled: true },
+        fullscreen: { enabled: true },
         invertTime: false,
         keyboard: { focused: true, global: true },
         previewThumbnails: { enabled: false, src: props.video.preview_thumbnails_url} }
@@ -42,13 +42,14 @@ const VideoModal = (props: { video: Video, onHide: () => void }) => {
 
   return (
     <div
-      key="gallery-video-player"
-      className="video-modal-container"
-      style={ { display: "block" }}>
+      key       = "gallery-video-player"
+      className = "video-modal-container"
+      style     = { { display: "block" } }>
 
-      <div key="video-model-background"
-           className="video-modal-background"
-           onClick = { (e) => props.onHide() }
+      <div 
+        key       = "video-model-background"
+        className = "video-modal-background"
+        onClick   = { (e) => props.onHide() }
       />
 
       <div key="video-model-content" className="video-modal-content">

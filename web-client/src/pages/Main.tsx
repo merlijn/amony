@@ -21,11 +21,11 @@ const Main = () => {
     const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs/v1", "/", Constants.defaultPreferences)
 
     const getSelection = (): MediaSelection => {
-      const urlParams = new URLSearchParams(location.search)  
+      const urlParams = new URLSearchParams(location.search)
 
       return {
         query: urlParams.get("q") || undefined,
-        directory: urlParams.get("dir") || undefined,
+        playlist: urlParams.get("playlist") || undefined,
         tag: urlParams.get("tag") || undefined,
         sort: prefs.sort,
         minimumQuality: prefs.videoQuality
