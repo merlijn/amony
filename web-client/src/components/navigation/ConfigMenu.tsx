@@ -2,7 +2,7 @@ import { Constants } from "../../api/Constants";
 import { Prefs } from "../../api/Model";
 import { useCookiePrefs } from "../../api/ReactUtils";
 import { calculateColumns } from "../../api/Util";
-import * as config from "../../AppConfig.json";
+import config from "../../AppConfig.json";
 import './ConfigMenu.scss';
 
 const ConfigMenu = () => {

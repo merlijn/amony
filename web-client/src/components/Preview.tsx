@@ -3,7 +3,7 @@ import ProgressiveImage from "react-progressive-graceful-image";
 import { Api } from "../api/Api";
 import { Video } from "../api/Model";
 import { dateMillisToString, durationInMillisToString, zeroPad } from "../api/Util";
-import * as config from "../AppConfig.json";
+import config from "../AppConfig.json";
 import MediaInfo from './MediaInfo';
 import './Preview.scss';
 import { DropDown, Menu, MenuItem } from './shared/DropDown';
