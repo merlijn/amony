@@ -2,20 +2,12 @@ import React, { useEffect, useState } from 'react';
 import useResizeObserver from 'use-resize-observer';
 import { Api } from '../api/Api';
 import { Constants } from "../api/Constants";
-import { Columns, SearchResult, Sort, Video } from '../api/Model';
+import { Columns, MediaSelection, SearchResult, Video } from '../api/Model';
 import { useListener } from '../api/ReactUtils';
 import './Gallery.scss';
 import Preview, { PreviewOptions } from './Preview';
 
 const fetchDataScreenMargin = 1024;
-
-export type MediaSelection = {
-  query?: string
-  playlist?: string
-  tag?: string
-  minimumQuality: number
-  sort: Sort
-}
 
 export type GalleryProps = {
   selection: MediaSelection
@@ -42,14 +34,7 @@ const Gallery = (props: GalleryProps) => {
     const n      = columns * 8
 
     if (n > 0 && fetchMore) {
-      Api.getVideos(
-        props.selection.query || "",
-        n,
-        offset,
-        props.selection.tag,
-        props.selection.playlist,
-        props.selection.minimumQuality,
-        props.selection.sort).then(response => {
+      Api.getVideoSelection(n, offset, props.selection).then(response => {
 
           const result = response as SearchResult
           const videos = [...previous, ...result.videos]
@@ -116,11 +101,12 @@ const Gallery = (props: GalleryProps) => {
     const style: { } = { "--ncols" : `${columns}` }
 
     return <Preview
-              style = {style} className="grid-cell"
-              key = {`preview-${vid.id}`}
-              vid = {vid}
-              onClick = { props.onClick }
-              options = { props.previewOptionsFn(vid) }
+              style     = { style } 
+              className = "grid-cell"
+              key       = { `preview-${vid.id}` }
+              vid       = { vid }
+              onClick   = { props.onClick }
+              options   = { props.previewOptionsFn(vid) }
             />
   })
 

@@ -1,5 +1,5 @@
 import Cookies from "js-cookie";
-import { Sort, VideoMeta } from "./Model";
+import { MediaSelection, Sort, VideoMeta } from "./Model";
 import { buildUrl } from "./Util";
 
 const headers = { 'Content-type': 'application/json; charset=UTF-8', 'Bearer' : '' };
@@ -31,6 +31,17 @@ export const Api = {
     const url = buildUrl("/api/fragments/search", params)
 
     return doGET(url)
+  },
+
+  getVideoSelection: async function getVideoSelection(n: number, offset: number, selection: MediaSelection) {
+    return Api.getVideos(
+              selection.query || "",
+              n,
+              offset,
+              selection.tag,
+              selection.playlist,
+              selection.minimumQuality,
+              selection.sort)
   },
 
   getVideos: async function getVideos(

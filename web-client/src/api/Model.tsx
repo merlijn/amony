@@ -26,6 +26,14 @@ export type VideoMeta = {
   comment?: string
 }
 
+export type MediaSelection = {
+  query?: string
+  playlist?: string
+  tag?: string
+  minimumQuality: number
+  sort: Sort
+}
+
 export type SearchResult = {
   total: number
   videos: Video[]

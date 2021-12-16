@@ -6,9 +6,7 @@ export function buildUrl(path: string, urlParams: Map<string, string> | undefine
   let paramPath = ""
 
   if (urlParams)
-    urlParams.forEach((val, key) => {
-      paramPath += `&${key}=${val}`
-    })
+    urlParams.forEach((val, key) => { paramPath += `&${key}=${val}` })
 
   const result = paramPath ? `${path}?${paramPath.substring(1)}` : path
 

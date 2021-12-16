@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import 'react-pro-sidebar/dist/css/styles.css';
 import { useLocation } from "react-router";
 import { Constants } from "../api/Constants";
-import { Prefs, Video } from "../api/Model";
+import { MediaSelection, Prefs, Video } from "../api/Model";
 import { useCookiePrefs, useListener, useStateNeq } from "../api/ReactUtils";
-import Gallery, { MediaSelection } from "../components/Gallery";
+import Gallery from "../components/Gallery";
 import TopNavBar from "../components/navigation/TopNavBar";
 import VideoModal from "../components/shared/VideoModal";
 import SideBar from "../components/navigation/SideBar";
@@ -53,7 +53,7 @@ const Main = () => {
 
       if (showNavigation)
         m += 49;
-      if (showNavigation && showTagBar)
+      if (showNavigation && showTagBar && view !== "list")
         m += 44
 
       return m;
@@ -82,10 +82,10 @@ const Main = () => {
             
             { showNavigation && 
                 <TopNavBar 
-                    key="top-nav-bar" 
-                    showTagsBar = {showTagBar} 
+                    key           = "top-nav-bar" 
+                    showTagsBar   = { showTagBar && view !== "list" } 
                     onShowTagsBar = { (show) => setShowTagBar(show) } 
-                    onClickMenu = { () => setShowSidebar(true) } 
+                    onClickMenu   = { () => setShowSidebar(true) } 
                 /> 
             }
 
@@ -93,6 +93,7 @@ const Main = () => {
               (view === 'grid') &&
                 <div style = { galleryStyle } key="main-content" className="main-content-container">
                   <Gallery 
+                    key       = "gallery"
                     selection = {selection}
                     scroll    = 'page' 
                     onClick   = { (v: Video) => setPlayVideo(v) } 
@@ -114,6 +115,7 @@ const Main = () => {
               (view === 'list') &&
                 <div style = { galleryStyle } key="main-content" className="main-content-container">
                   <ListView 
+                    key       = "list"
                     selection = {selection}
                    />
                 </div>

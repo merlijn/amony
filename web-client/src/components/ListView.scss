@@ -5,20 +5,53 @@
   height: auto;
   display: table;
 
+  .list-header {
+    position: relative;
+
+    font-weight: bold;
+
+    .column-sort-icon {
+
+      position: absolute;
+      top: 6px;
+      right: 5px;
+    }
+  }
+
   .list-row {
     display: table-row;
     height: 24px;
 
+    .list-select {
+      width: 1%;
+      padding-left: 16px !important;
+    }
+
     .list-thumbnail {
-      width: 28px;
+      width: 1%;
+      .list-thumbnail-img {
+        align-items: center;
+        vertical-align: middle;
+        width: 48px;
+        height: 27px; 
+      }
     }
 
     .list-resolution {
-      width: 70px;
+      width: 1%;
     }
 
     .list-date {
-      width: 120px;
+      width: 1%;
+      white-space: nowrap;
+    }
+
+    .list-title {
+      width: 50%;
+    }
+
+    .list-tags {
+      width: 50%;
     }
 
     .list-cell {
@@ -29,14 +62,6 @@
       display: table-cell;
       align-items: center;
       vertical-align: middle;
-
-      .list-thumbnail {
-        align-items: center;
-        vertical-align: middle;
-        width: 48px;
-        height: 27px; 
-      }
-      
     }
   }
 }
