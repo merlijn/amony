@@ -71,6 +71,7 @@ const Main = () => {
     return (
         <>
           { <VideoModal video = { playVideo } onHide={() => setPlayVideo(undefined) } />}
+          
           <div className="main-page">
 
             { showNavigation && prefs.showSidebar && 
@@ -94,7 +95,7 @@ const Main = () => {
                 <div style = { galleryStyle } key="main-content" className="main-content-container">
                   <Gallery 
                     key       = "gallery"
-                    selection = {selection}
+                    selection = { selection }
                     scroll    = 'page' 
                     onClick   = { (v: Video) => setPlayVideo(v) } 
                     columns   = { prefs.gallery_columns }
