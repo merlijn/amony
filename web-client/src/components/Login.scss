@@ -46,17 +46,7 @@
     text-align: right;
 
     button {
-      @extend .hover-cursor;
-      
-      padding: 8px 12px;
-      border-radius: 5px;
-      color: white;
-      background-color: $highlight-b;
-      border: 1px solid $highlight-b;
-
-      &:hover {
-        border-color: $highlight-d; 
-      }
+      @extend .button-primary;
     }
   }
 }

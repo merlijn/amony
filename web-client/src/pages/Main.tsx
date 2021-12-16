@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import 'react-pro-sidebar/dist/css/styles.css';
 import { useLocation } from "react-router";
 import { Constants } from "../api/Constants";
-import { MediaSelection, Prefs, Video } from "../api/Model";
+import { MediaSelection, MediaView, Prefs, Video } from "../api/Model";
 import { useCookiePrefs, useListener, useStateNeq } from "../api/ReactUtils";
 import Gallery from "../components/Gallery";
 import TopNavBar from "../components/navigation/TopNavBar";
@@ -12,15 +12,15 @@ import { isMobile } from "react-device-detect";
 import './Main.scss';
 import ListView from "../components/ListView";
 
-type View = 'grid' | 'list'
+
 
 const Main = () => {
 
     const location = useLocation();
     const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
     const [showNavigation, setShowNavigation] = useState(true)
-    const [showTagBar, setShowTagBar] = useState(true)
-    const [view, setView] = useState<View>('grid')
+    const [showTagBar] = useState(true)
+    const [view, setView] = useState<MediaView>('grid')
 
     const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs/v1", "/", Constants.defaultPreferences)
 
@@ -53,7 +53,7 @@ const Main = () => {
 
       if (showNavigation)
         m += 49;
-      if (showNavigation && showTagBar && view !== "list")
+      if (showNavigation && view !== "list")
         m += 44
 
       return m;
@@ -85,8 +85,9 @@ const Main = () => {
                 <TopNavBar 
                     key           = "top-nav-bar" 
                     showTagsBar   = { showTagBar && view !== "list" } 
-                    onShowTagsBar = { (show) => setShowTagBar(show) } 
                     onClickMenu   = { () => setShowSidebar(true) } 
+                    activeView    = { view }
+                    onViewChange  = { (v: MediaView) => setView(v) }
                 /> 
             }
 

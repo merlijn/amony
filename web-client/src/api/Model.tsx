@@ -34,6 +34,8 @@ export type MediaSelection = {
   sort: Sort
 }
 
+export type MediaView = 'grid' | 'list'
+
 export type SearchResult = {
   total: number
   videos: Video[]

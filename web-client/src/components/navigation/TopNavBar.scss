@@ -47,73 +47,131 @@ $accent: rgb(83, 155, 36);
   top: 0;
   left: 0;
   width: 100vw;
-}
 
-.top-nav-bar {
+  .top-nav-bar {
 
-  user-select: none;
-  z-index: 10;
-  position: relative;
-  float: left;
-  display: flex;
-  width: 100vw;
-
-  background-color: white;
-  border-bottom: 1px solid $gray-200;
-
-  @media only screen and (min-width: map-get($container-max-widths, md)) {
-    background-color: $gray-100;
-  }
-}
-
-.nav-bar-spacer {
-  flex-grow: 0;
-
-  @media only screen and (min-width: map-get($container-max-widths, md)) {
-    flex-grow: 1;
-  }
-
-  padding: 0px 0px;
-}
-
-.nav-bar-center {
-  display: flex;
-  vertical-align: middle;
-  z-index: 9;
-  flex-grow: 2;
-  max-width: 700px;
-  padding: 6px 4px !important;
-}
-
-.nav-search-form {
-
-  position: relative;
-  float: left;
-  flex-grow: 1;
-  padding: 0px 2px 0px 5px;
-
-  .nav-search-input-container {
-
+    user-select: none;
+    z-index: 10;
     position: relative;
-    flex-grow: 1;
+    float: left;
+    display: flex;
+    width: 100vw;
+  
+    background-color: white;
+    border-bottom: 1px solid $gray-200;
+  
+    @media only screen and (min-width: map-get($container-max-widths, md)) {
+      background-color: $gray-100;
+    }
+  }
 
-    .nav-search-input {
-      outline: none;
-      height: 35px !important;
-      border-radius: 3px ! important;
-      border: 1px solid $gray-300;
-      width: 100% ! important;
-      padding-left: 8px;
-      &:focus {
-        border-color: rgb(128, 189, 255);
-        outline: solid rgba(128, 189, 255, 0.4);
+  .nav-bar-spacer {
+    flex-grow: 0;
+  
+    @media only screen and (min-width: map-get($container-max-widths, md)) {
+      flex-grow: 1;
+    }
+  
+    padding: 0px 0px;
+  }
+
+  .view-button-group {
+    @extend .hover-cursor;
+    background-color: $gray-300;    
+    border: none;
+    height: 35px;
+
+    &:hover {
+      background-color: $gray-400;
+    }
+  }
+  
+  .nav-bar-center {
+
+    display: flex;
+    vertical-align: middle;
+    z-index: 9;
+    flex-grow: 2;
+    max-width: 700px;
+    padding: 6px 4px !important;
+
+    .view-select-container {
+      
+      display: flex;
+      float: left;
+      vertical-align: middle;
+      margin-left: 5px;
+
+      .view-selected {
+        background-color: $gray-500 !important;
+        color: rgb(240, 240, 240);
+      }
+
+      .button-list-view {
+
+        @extend .hover-cursor, .view-button-group;
+        
+        border-radius: 3px 0px 0px 3px;
+        padding-top: 5px;
+
+        svg {
+          height: 28px;
+          width: 28px;
+        }
+      }
+
+      .button-grid-view {
+        
+        @extend .hover-cursor, .view-button-group;
+        
+        padding: 4px 8px 0px 8px;
+        border-radius: 0px 3px 3px 0px;
+
+        svg {
+          height: 23px;
+          width: 23px;
+        }
       }
     }
 
-    .nav-clear-input {
-      position: absolute;
-      right: 0px;
-      top: 0px
+    .nav-search-form {
+
+      position: relative;
+      float: left;
+      flex-grow: 1;
+      padding: 0px 2px 0px 5px;
+    
+      .nav-search-input-container {
+    
+        position: relative;
+        flex-grow: 1;
+    
+        .nav-search-input {
+          outline: none;
+          height: 35px !important;
+          border-radius: 3px ! important;
+          border: 1px solid $gray-300;
+          width: 100% ! important;
+          padding-left: 8px;
+          &:focus {
+            border-color: rgb(128, 189, 255);
+            outline: solid rgba(128, 189, 255, 0.4);
+          }
+        }
+    
+        .nav-clear-input {
+          flex-grow: 1;
+          position: absolute;
+          right: 0px;
+          top: 0px
+        }
+      }
     }
   }
 }
+
+
+
+
+
+

@@ -60,8 +60,8 @@ const ListView = (props: ListProps) => {
         <div className="list-cell"></div>
         <div className="list-cell list-header"><FaSort className="column-sort-icon" /></div>
         <div className="list-cell list-header"><FaSort className="column-sort-icon" /></div>
-        <div className="list-cell list-header"><FaSort className="column-sort-icon" /></div>
-        <div className="list-cell">Tags</div>
+        <div className="list-cell list-header">Title<FaSort className="column-sort-icon" /></div>
+        <div className="list-cell list-header">Tags</div>
       </div>
       {
         searchResult.videos.map((v) => {

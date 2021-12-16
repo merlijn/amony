@@ -188,6 +188,21 @@ textarea {
   height: 24px;
 }
 
+.button-primary {
+
+  @extend .hover-cursor;
+
+  padding: 8px 12px;
+  border-radius: 5px;
+  color: white;
+  background-color: $highlight-b;
+  border: 1px solid $highlight-b;
+
+  &:hover {
+    border-color: $highlight-d; 
+  }
+}
+
 .info-button {
 
   @extend .action-icon-small;
