@@ -12,8 +12,6 @@ A live demo is available at [https://amony.nl](https://amony.nl). It is running 
 
 # How to use
 
-For now there are no pre-packaged binaries, so you will have to build it yourself. Start by cloning this repo. 
-
 ## Pre-packaged docker image
 
 ### Prerequisites
