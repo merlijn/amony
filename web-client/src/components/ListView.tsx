@@ -9,6 +9,7 @@ import TagEditor from "./shared/TagEditor"
 
 type ListProps = {
   selection: MediaSelection
+  onClick: (v: Video) => any
 }
 
 const initialSearchResult: SearchResult = { total: 0, videos: [] }
@@ -63,6 +64,7 @@ const ListView = (props: ListProps) => {
         <div className="list-cell list-header">Title<FaSort className="column-sort-icon" /></div>
         <div className="list-cell list-header">Tags</div>
       </div>
+      <div key="row-spacer" className="list-row row-spacer"></div>
       {
         searchResult.videos.map((v) => {
           return(
@@ -73,17 +75,18 @@ const ListView = (props: ListProps) => {
 
               <div className="list-cell list-thumbnail">
               <ProgressiveImage src={v.thumbnail_url} placeholder="/image_placeholder.svg">
-                  { (src: string) => <img className="list-thumbnail-img" src={src} alt="an image" /> }
+                  { (src: string) => 
+                    <img className="list-thumbnail-img" src={src} onClick={() => props.onClick(v) } alt="an image" /> }
               </ProgressiveImage>
               </div>
               <div className="list-cell list-date">
                 { dateMillisToString(v.addedOn) }
               </div>
               <div className="list-cell list-resolution">
-                {`${v.height}p`}
+                { `${v.height}p` }
               </div>
               <div className="list-cell list-title">
-                {v.meta.title}
+                { v.meta.title }
               </div>
               
               <div className="list-cell list-tags">

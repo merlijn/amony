@@ -195,11 +195,11 @@ textarea {
   padding: 8px 12px;
   border-radius: 5px;
   color: white;
-  background-color: $highlight-b;
-  border: 1px solid $highlight-b;
+  background-color: $highlight-a;
+  border: 1px solid $highlight-a;
 
   &:hover {
-    border-color: $highlight-d; 
+    background-color: $secondary-a;
   }
 }
 

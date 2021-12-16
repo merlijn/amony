@@ -33,7 +33,7 @@
     margin: 0px 4px;
     color: black;
     background-color: $gray-300;
-    border: 1px solid $gray-500;
+    border: 1px solid $gray-400;
     font-size: small;
     padding: 5px 12px;
     border-radius: 25px;
@@ -41,13 +41,13 @@
 
   .selected-tag {
     padding: 4px 11px !important;
-    border: 2px solid $highlight-b;
+    border: 2px solid $highlight-a;
   }
 
   .custom-dropdown-toggle {
     border-radius: 25px !important;
-    background-color: $highlight-b !important;
-    border-color: $highlight-b !important;
+    background-color: $highlight-a !important;
+    border-color: $highlight-a !important;
     font-size: small !important;
     color: white;
     padding: 3px 10px;

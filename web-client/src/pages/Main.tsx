@@ -12,8 +12,6 @@ import { isMobile } from "react-device-detect";
 import './Main.scss';
 import ListView from "../components/ListView";
 
-
-
 const Main = () => {
 
     const location = useLocation();
@@ -118,6 +116,7 @@ const Main = () => {
                 <div style = { galleryStyle } key="main-content" className="main-content-container">
                   <ListView 
                     key       = "list"
+                    onClick   = { (v: Video) => setPlayVideo(v) } 
                     selection = {selection}
                    />
                 </div>
