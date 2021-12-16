@@ -14,6 +14,25 @@ A live demo is available at [https://amony.nl](https://amony.nl). It is running 
 
 For now there are no pre-packaged binaries, so you will have to build it yourself. Start by cloning this repo. 
 
+## Pre-packaged docker image
+
+### Prerequisites
+- [docker](https://www.docker.com/get-started)
+
+### 1. Pull the image
+
+The image is hosted on a public GC repository.
+
+```bash
+docker pull europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/app:latest
+```
+
+### 2. Run the docker image
+
+```bash
+docker run -v /path/to/my/videos:/usr/local/amony/videos -p 8080:8080 my-amony-app:latest
+```
+
 ## Development mode
 
 ### Prerequisites
@@ -49,7 +68,7 @@ After compiling the web-client will be running on port `3000`. It will proxy all
 Set location to `localhost:3000`
 
 
-## Production mode
+## Build a docker image
 
 ### Prerequisites
 
