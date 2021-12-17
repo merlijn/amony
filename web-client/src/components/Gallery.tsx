@@ -6,7 +6,7 @@ import { Columns, MediaSelection, SearchResult, Video } from '../api/Model';
 import './Gallery.scss';
 import TagBar from './navigation/TagBar';
 import Preview, { PreviewOptions } from './Preview';
-import InfiniteScroll from './shared/InfiniteScroll';
+import Scrollable from './shared/Scrollable';
 
 export type GalleryProps = {
   selection: MediaSelection
@@ -94,14 +94,14 @@ const Gallery = (props: GalleryProps) => {
   return(
     <>
       <TagBar />
-      <InfiniteScroll
+      <Scrollable
         style        = { containerStyle }
         className    = "gallery-container"
         onEndReached = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.videos) } }
-        scroll       = { props.scroll }
+        scrollType       = { props.scroll }
         ref          = { ref }>
         { previews }
-      </InfiniteScroll>
+      </Scrollable>
     </>
   );
 }

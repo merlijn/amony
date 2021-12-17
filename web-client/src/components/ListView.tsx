@@ -5,6 +5,7 @@ import { Api } from "../api/Api"
 import { MediaSelection, SearchResult, Video, VideoMeta } from "../api/Model"
 import { dateMillisToString } from "../api/Util"
 import './ListView.scss'
+import Scrollable from "./shared/Scrollable"
 import TagEditor from "./shared/TagEditor"
 
 type ListProps = {
@@ -55,7 +56,11 @@ const ListView = (props: ListProps) => {
   }
 
   return (
-    <div className="list-container">
+      <Scrollable
+        className = "list-container"
+        onEndReached = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.videos) } }
+        scrollType = 'page'
+      >
       <div className="list-row">
         <div className="list-cell"></div>
         <div className="list-cell"></div>
@@ -66,7 +71,7 @@ const ListView = (props: ListProps) => {
       </div>
       <div key="row-spacer" className="list-row row-spacer"></div>
       {
-        searchResult.videos.map((v) => {
+        searchResult.videos.map((v, index) => {
           return(
             <div key={`row-${v.id}`} className="list-row">
               <div key="select" className="list-cell list-select">
@@ -96,7 +101,7 @@ const ListView = (props: ListProps) => {
           );
         })
       }
-    </div>
+      </Scrollable>
   );
 }
 

@@ -1,24 +1,27 @@
 import React, { CSSProperties, ReactNode } from "react"
 import { useListener } from "../../api/ReactUtils"
 
-const fetchDataScreenMargin = 1024;
+const defaultFetchMargin = 1024;
 
 export type InfiniteScrollProps = {
-  style?: CSSProperties,
-  className?: string,
-  onEndReached?: () => any,
-  scroll: 'page' | 'element'
+  style?: CSSProperties
+  className?: string
+  onEndReached?: () => any
+  scrollType: 'page' | 'element'
+  fetchMargin?: number
   children: ReactNode
 }
 
-const InfiniteScroll = React.forwardRef<HTMLDivElement,InfiniteScrollProps>((props, ref) => {
+const Scrollable = React.forwardRef<HTMLDivElement,InfiniteScrollProps>((props, ref) => {
+
+  const fetchMargin = props.fetchMargin !== undefined ? props.fetchMargin : defaultFetchMargin;
 
   const onPageScroll = (e: Event) => {
 
     const withinFetchMargin = 
-        document.documentElement.offsetHeight - Math.ceil(window.innerHeight + document.documentElement.scrollTop) <=  fetchDataScreenMargin
+        document.documentElement.offsetHeight - Math.ceil(window.innerHeight + document.documentElement.scrollTop) <=  fetchMargin
 
-    if (props.scroll === 'page' && withinFetchMargin && props.onEndReached)
+    if (props.scrollType === 'page' && withinFetchMargin && props.onEndReached)
       props.onEndReached()
   }
   
@@ -29,7 +32,7 @@ const InfiniteScroll = React.forwardRef<HTMLDivElement,InfiniteScrollProps>((pro
     const withinFetchMargin = 
       (e.currentTarget.scrollTop + e.currentTarget.clientHeight) >= e.currentTarget.scrollHeight;
 
-    if (props.scroll === 'element' && withinFetchMargin && props.onEndReached)
+    if (props.scrollType === 'element' && withinFetchMargin && props.onEndReached)
       props.onEndReached()
   }
 
@@ -40,4 +43,4 @@ const InfiniteScroll = React.forwardRef<HTMLDivElement,InfiniteScrollProps>((pro
   );
 })
 
-export default InfiniteScroll
+export default Scrollable
