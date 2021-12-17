@@ -50,9 +50,9 @@ const Main = () => {
       let m = 2;
 
       if (showNavigation)
-        m += 49;
-      if (showNavigation && view !== "list")
-        m += 44
+        m += 45;
+      // if (showNavigation && view !== "list")
+      //   m += 44
 
       return m;
     }

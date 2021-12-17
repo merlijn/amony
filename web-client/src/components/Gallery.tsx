@@ -3,11 +3,10 @@ import useResizeObserver from 'use-resize-observer';
 import { Api } from '../api/Api';
 import { Constants } from "../api/Constants";
 import { Columns, MediaSelection, SearchResult, Video } from '../api/Model';
-import { useListener } from '../api/ReactUtils';
 import './Gallery.scss';
+import TagBar from './navigation/TagBar';
 import Preview, { PreviewOptions } from './Preview';
-
-const fetchDataScreenMargin = 1024;
+import InfiniteScroll from './shared/InfiniteScroll';
 
 export type GalleryProps = {
   selection: MediaSelection
@@ -21,12 +20,12 @@ const initialSearchResult: SearchResult = { total: 0, videos: [] }
 
 const Gallery = (props: GalleryProps) => {
 
-  const gridSpacing = 3
   const [searchResult, setSearchResult] = useState(initialSearchResult)
   const [isFetching, setIsFetching] = useState(false)
   const [fetchMore, setFetchMore] = useState(true)
   const [columns, setColumns] = useState<number>(props.columns === 'auto' ? 0 : props.columns)
   const {ref, width} = useResizeObserver<HTMLDivElement>();
+  const gridSpacing = 3
 
   const fetchData = (previous: Array<Video>) => {
 
@@ -43,30 +42,10 @@ const Gallery = (props: GalleryProps) => {
             setFetchMore(false)
 
           setIsFetching(false);
-          setSearchResult({...response, videos: videos});
+          setSearchResult( {...response, videos: videos } );
         });
       }
   }
-
-  const onPageScroll = (e: Event) => {
-
-    const withinFetchMargin = 
-        document.documentElement.offsetHeight - Math.ceil(window.innerHeight + document.documentElement.scrollTop) <=  fetchDataScreenMargin
-
-    if (props.scroll === 'page' && withinFetchMargin && !isFetching && fetchMore)
-      setIsFetching(true)
-  }
-
-  const onElementScroll = (e: React.UIEvent<HTMLDivElement, UIEvent>) => { 
-
-    const withinFetchMargin = 
-      (e.currentTarget.scrollTop + e.currentTarget.clientHeight) >= e.currentTarget.scrollHeight;
-
-    if (props.scroll === 'element' && withinFetchMargin && !isFetching && fetchMore)
-      setIsFetching(true)
-  }
-
-  useListener('scroll', onPageScroll)
 
   useEffect(() => {
     if (props.columns === 'auto') {
@@ -112,10 +91,18 @@ const Gallery = (props: GalleryProps) => {
 
   const containerStyle: { } = { "--grid-spacing" : `${gridSpacing}px` }
 
-  return (
-    <div style={ containerStyle } className="gallery-container" ref = {ref} onScroll = { onElementScroll }>
-      { previews }
-    </div>
+  return(
+    <>
+      <TagBar />
+      <InfiniteScroll
+        style        = { containerStyle }
+        className    = "gallery-container"
+        onEndReached = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.videos) } }
+        scroll       = { props.scroll }
+        ref          = { ref }>
+        { previews }
+      </InfiniteScroll>
+    </>
   );
 }
 

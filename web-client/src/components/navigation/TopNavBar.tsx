@@ -71,7 +71,7 @@ function TopNavBar(props: NavBarProps) {
           </div>
           <div key="nav-bar-right" className="nav-bar-spacer"></div>
       </div>
-      { props.showTagsBar && <TagBar /> }
+      {/* { props.showTagsBar && <TagBar /> } */}
     </div>
   );
 }

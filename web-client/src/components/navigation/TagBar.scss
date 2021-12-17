@@ -2,7 +2,7 @@
 
 .tag-bar {
   user-select: none;
-  position: relative;
+  position: fixed;
   float: left;
   width: 100vw;
   background-color: white;
@@ -33,15 +33,17 @@
     margin: 0px 4px;
     color: black;
     background-color: $gray-300;
-    border: 1px solid $gray-400;
+    // border: 1px solid $gray-400;
     font-size: small;
-    padding: 5px 12px;
+    padding: 6px 12px;
     border-radius: 25px;
   }
 
   .selected-tag {
-    padding: 4px 11px !important;
-    border: 2px solid $highlight-a;
+    color: white;
+    background-color: $gray-500 !important;
+    // padding: 4px 11px !important;
+    // border: 2px solid $highlight-a;
   }
 
   .custom-dropdown-toggle {

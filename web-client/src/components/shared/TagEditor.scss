@@ -3,6 +3,7 @@
 .tag-container {
 
   display: flex;
+  user-select: none;
 
   .new-tag {
     
@@ -15,7 +16,7 @@
       color: white;
       background-color: $highlight-e;
       border: 1px solid $secondary-e;
-      padding: 6px 12px;
+      padding: 6px 10px;
       border-radius: 25px;
       font-size: small;
       text-align: center;
@@ -34,18 +35,19 @@
     float: left;
     color: black;
     background-color: $gray-300;
-    border: 1px solid $gray-500;
+    border: 1px solid $gray-400;
     font-size: small;
-    padding: 4px 8px 4px 12px;
-    // padding: 3px 5px 3px 8px;
+    padding: 3px 8px 4px 12px;
     border-radius: 25px;
 
     .delete-tag {
       vertical-align: middle;
       margin: 0px;
-      margin-left: 5px;
+      padding-top: 1px;
+      margin-left: 4px;
       height: 18px;
       width: 18px;
+      color: rgb(63, 63, 63);
 
       &:hover {
         cursor: pointer;
