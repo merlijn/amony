@@ -5,6 +5,12 @@
   height: auto;
   display: table;
 
+  .list-menu-icon {
+    float: right;
+    width: 20px;
+    height: 20px;
+  }
+
   .list-header-row {
     display: table-header-group;
   }
@@ -16,13 +22,11 @@
     top: 0px;
 
     font-weight: bold;
-    padding: 8px 8px !important;
+    padding: 12px 8px !important;
 
     .column-sort-icon {
 
-      position: absolute;
-      top: 8px;
-      right: 5px;
+      float: right;
     }
   }
 
@@ -32,7 +36,18 @@
 
   .list-row {
     display: table-row;
-    height: 24px;
+
+    .action {
+      visibility: hidden;
+    }
+
+    &:hover {
+      background-color: $gray-100;
+
+      .action {
+        visibility: visible;
+      }
+    }
 
     .list-select {
       width: 1%;
@@ -45,8 +60,8 @@
         @extend .hover-cursor;
         align-items: center;
         vertical-align: middle;
-        width: 48px;
-        height: 27px; 
+        width: 64px;
+        height: 36px; 
       }
     }
 
@@ -59,19 +74,50 @@
       white-space: nowrap;
     }
 
+    .list-size {
+      text-align: right;
+
+    }
+
+    .edit-title {
+      @extend .hover-cursor;
+      float: right;
+      margin-right: 5px;
+      width: 20px;
+      height: 20px;
+    }
+
     .list-title {
-      width: 50%;
+      width: 30%;
     }
 
     .list-tags {
       width: 50%;
     }
 
-    .list-cell {
+    .list-actions {
 
+      width: 1%;
+
+      .actions-container {
+        width: 50px;
+
+        .delete-action {
+          @extend .hover-cursor;
+          float: right;
+          margin-left: 5px;
+          width: 20px;
+          height: 20px;
+        }
+      }
+    
+    }
+
+    .list-cell {
+      white-space: nowrap;
       border-bottom: 1px solid $gray-200;
       padding: 0px 8px;
-      height: 30px;
+      height: 36px;
       display: table-cell;
       align-items: center;
       vertical-align: middle;

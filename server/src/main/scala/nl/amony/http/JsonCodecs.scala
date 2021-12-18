@@ -64,6 +64,7 @@ trait JsonCodecs {
       duration               = media.videoInfo.duration,
       addedOn                = media.fileInfo.creationTime,
       fps                    = media.videoInfo.fps,
+      size                   = media.fileInfo.size,
       thumbnail_url          = s"/files/resources/${media.id}_${resolutions.min}p.webp",
       preview_thumbnails_url = Some(s"/files/resources/${media.id}-timeline.vtt"),
       fragments = {

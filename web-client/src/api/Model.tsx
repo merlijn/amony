@@ -6,6 +6,7 @@ export type Video = {
   preview_thumbnails_url: string,
   fragments: Array<Fragment>,
   fps: number,
+  size: number,
   width: number,
   height: number,
   duration: number, // in millis

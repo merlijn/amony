@@ -29,6 +29,7 @@ object WebModel {
     duration: Long,
     addedOn: Long,
     fps: Double,
+    size: Long,
     thumbnail_url: String,
     preview_thumbnails_url: Option[String],
     fragments: List[Fragment],

@@ -23,6 +23,19 @@ export function copyParams(params: URLSearchParams) {
   return copy
 }
 
+// https://stackoverflow.com/questions/15900485/
+export function formatByteSize(bytes: number, decimals: number = 2) {
+  if (bytes === 0) return '0 Bytes';
+
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
 export function durationInMillisToString(duration: number) {
 
   const secondsInMillis = 1000;
@@ -58,7 +71,7 @@ export function dateMillisToString(millis: number) {
   const month = zeroPad(date.getMonth(), 2)
   const year = date.getFullYear()
 
-  return `${days}-${month}-${year}`;
+  return `${year}-${month}-${days}`;
 }
 
 export function zeroPad(n: number, d: number) {

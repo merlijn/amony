@@ -3,7 +3,7 @@ import React, {useRef, useState} from "react";
 import './TagEditor.scss';
 import { MdClose } from "react-icons/md";
 
-const TagEditor = (props: {tags: Array<string>, callBack: (tags: Array<string>) => void }) => {
+const TagEditor = (props: {tags: Array<string>, callBack: (tags: Array<string>) => void, showAddButton?: boolean }) => {
 
   const [tags, setTags] = useState(props.tags)
   const newTagRef = useRef<HTMLSpanElement>(null)
@@ -43,40 +43,42 @@ const TagEditor = (props: {tags: Array<string>, callBack: (tags: Array<string>) 
         </div>
       )
     }
-
-    <div className="new-tag">
-        <span
-          ref = {newTagRef}
-          key = {"new-tag"}
-          className = "input"
-          role = "textbox"
-          onFocus={ () => {
-              if (newTagRef.current)
-                newTagRef.current.innerText = "";
-              newTagActive = true;
-            }
-          }
-          onBlur={ () =>
-            {
-              addTag(false);
-              if (newTagRef.current)
-                newTagRef.current.innerText = "+";
-
-              newTagActive = false
-            }
-          }
-          onKeyPress={ (k) => {
-              if (k.key === "Enter") {
-                k.preventDefault()
-                addTag(true)
+    { props.showAddButton &&
+      <div className="new-tag">
+          <span
+            ref = {newTagRef}
+            key = {"new-tag"}
+            className = "input"
+            role = "textbox"
+            onFocus={ () => {
+                if (newTagRef.current)
+                  newTagRef.current.innerText = "";
+                newTagActive = true;
               }
             }
-          }
-          contentEditable
-          suppressContentEditableWarning={true}
-          >+
-        </span>
-    </div>
+            onBlur={ () =>
+              {
+                addTag(false);
+                if (newTagRef.current)
+                  newTagRef.current.innerText = "+";
+
+                newTagActive = false
+              }
+            }
+            onKeyPress={ (k) => {
+                if (k.key === "Enter") {
+                  k.preventDefault()
+                  addTag(true)
+                }
+              }
+            }
+            contentEditable
+            suppressContentEditableWarning={true}
+            >+
+          </span>
+      
+      </div>
+    }
   </div>)
 }
 

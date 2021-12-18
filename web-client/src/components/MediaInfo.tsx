@@ -20,8 +20,9 @@ const MediaInfo = (props: {meta: VideoMeta, onClose: (meta: VideoMeta) => any })
         </div>
         <div className="info-panel-title">Tags</div>
         <TagEditor 
-          tags     = { meta.tags } 
-          callBack = { (updatedTags) => { setMeta({...meta, tags: updatedTags }) } } 
+          showAddButton = { true }
+          tags          = { meta.tags } 
+          callBack      = { (updatedTags) => { setMeta({...meta, tags: updatedTags }) } } 
         />
       </div>
   );

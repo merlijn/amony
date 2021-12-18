@@ -60,19 +60,19 @@ const Preview = (props: PreviewProps) => {
     <ProgressiveImage src={vid.thumbnail_url} placeholder="/image_placeholder.svg">
       { (src: string) => 
           <img 
-            src={src} alt="an image"
-            onClick={ () => props.onClick(props.vid) } 
-            className={ `preview-thumbnail preview-media` } 
+            src       = { src } alt="an image"
+            onClick   = { () => props.onClick(props.vid) } 
+            className = { `preview-thumbnail preview-media` } 
           />
       }
     </ProgressiveImage>
 
   const videoPreview =
     <FragmentsPlayer 
-      id={`video-preview-${props.vid.id}`}
-      onClick={ () => props.onClick(props.vid) }
-      className= { `preview-video preview-media` }
-      fragments={ props.vid.fragments } />
+      id        = { `video-preview-${props.vid.id}` }
+      onClick   = { () => props.onClick(props.vid) }
+      className = { `preview-video preview-media` }
+      fragments = { props.vid.fragments } />
 
   let preview =
       <div className = "preview-container"
