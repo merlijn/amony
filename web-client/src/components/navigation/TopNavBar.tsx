@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { GoGrabber } from "react-icons/go";
-import { MdTune } from "react-icons/md";
+import { MdClose, MdTune } from "react-icons/md";
 
 import { BsListUl } from "react-icons/bs";
 import { IoGridOutline } from "react-icons/io5";
@@ -22,6 +22,7 @@ function TopNavBar(props: NavBarProps) {
 
   const location = useLocation();
   const history = useHistory();
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const [query, setQuery] = useState("")
 
@@ -40,7 +41,8 @@ function TopNavBar(props: NavBarProps) {
   };
 
   const clearQuery = () => {
-    document.getElementById("nav-search-input")?.focus()
+    // document.getElementById("nav-search-input")?.focus()
+    inputRef?.current?.focus()
     setQuery("")
   }
 
@@ -53,8 +55,9 @@ function TopNavBar(props: NavBarProps) {
           </div>
           <div key="nav-bar-center" className="nav-bar-center">
             <form className="nav-search-form" onSubmit = { doSearch } >
-              <div key="nav-search-input" className="nav-search-input-container">
-                <input placeholder="Search" className="nav-search-input" type="text" value={query} onChange={queryChanged} />
+              <div className="nav-search-input-container">
+                <input ref = { inputRef } key="nav-search-input" placeholder="Search" className="nav-search-input" type="text" value={query} onChange={queryChanged} />
+                { query !== "" && <MdClose onClick = { clearQuery } className = "nav-clear-input" /> }
               </div>
             </form>
             <div key="view-select" className="view-select-container">
@@ -71,7 +74,6 @@ function TopNavBar(props: NavBarProps) {
           </div>
           <div key="nav-bar-right" className="nav-bar-spacer"></div>
       </div>
-      {/* { props.showTagsBar && <TagBar /> } */}
     </div>
   );
 }

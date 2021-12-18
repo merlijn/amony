@@ -61,7 +61,7 @@ const ListView = (props: ListProps) => {
         onEndReached = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.videos) } }
         scrollType = 'page'
       >
-      <div className="list-row">
+      <div className="list-row list-header-row">
         <div className="list-cell"></div>
         <div className="list-cell"></div>
         <div className="list-cell list-header"><FaSort className="column-sort-icon" /></div>

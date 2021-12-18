@@ -160,10 +160,17 @@ $accent: rgb(83, 155, 36);
         }
     
         .nav-clear-input {
-          flex-grow: 1;
+          @extend .hover-cursor;
           position: absolute;
-          right: 0px;
-          top: 0px
+          width: 24px;
+          height: 24px;
+          right: 6px;
+          top: 6px;
+          color: rgba(0, 0, 0, 0.6);
+
+          &:hover {
+            color: rgba(0, 0, 0, 0.9);
+          }
         }
       }
     }

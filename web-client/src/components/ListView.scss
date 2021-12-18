@@ -5,9 +5,15 @@
   height: auto;
   display: table;
 
+  .list-header-row {
+    display: table-header-group;
+  }
+
   .list-header {
     
-    position: relative;
+    position: sticky;
+    position: -webkit-sticky;
+    top: 0px;
 
     font-weight: bold;
     padding: 8px 8px !important;

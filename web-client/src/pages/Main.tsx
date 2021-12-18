@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import 'react-pro-sidebar/dist/css/styles.css';
-import { useLocation } from "react-router";
+import { useHistory, useLocation } from "react-router";
 import { Constants } from "../api/Constants";
 import { MediaSelection, MediaView, Prefs, Video } from "../api/Model";
 import { useCookiePrefs, useListener, useStateNeq } from "../api/ReactUtils";
@@ -11,9 +11,11 @@ import SideBar from "../components/navigation/SideBar";
 import { isMobile } from "react-device-detect";
 import './Main.scss';
 import ListView from "../components/ListView";
+import { buildUrl, copyParams } from "../api/Util";
 
 const Main = () => {
-
+  
+    const history = useHistory();
     const location = useLocation();
     const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
     const [showNavigation, setShowNavigation] = useState(true)
@@ -36,7 +38,29 @@ const Main = () => {
 
     const [selection, setSelection] = useStateNeq<MediaSelection>(getSelection)
 
-    useEffect(() => { setSelection(getSelection()) }, [location, prefs])
+    useEffect(() => { 
+
+      const urlParams = new URLSearchParams(location.search)
+
+      let viewParam: MediaView = view
+
+      if (urlParams.get("view") === "list")
+        viewParam = "list"
+      else if (urlParams.get("view") === "grid")
+        viewParam = "grid"
+        
+      if (viewParam !== view)
+        setView(viewParam)
+
+      setSelection(getSelection()) 
+    }, [location, prefs])
+
+    const updateView = (e: MediaView) => {
+      const params = new URLSearchParams(location.search)
+      const newParams = copyParams(params)
+      newParams.set("view", e)
+      history.push(buildUrl("/search", newParams));
+    };
 
     const keyDownHandler = (event: KeyboardEvent) => {
       if (event.code === 'Slash') 
@@ -51,8 +75,6 @@ const Main = () => {
 
       if (showNavigation)
         m += 45;
-      // if (showNavigation && view !== "list")
-      //   m += 44
 
       return m;
     }
@@ -74,8 +96,8 @@ const Main = () => {
 
             { showNavigation && prefs.showSidebar && 
                 <SideBar 
-                  collapsed = {true} 
-                  onHide    = {() => setShowSidebar(!prefs.showSidebar)} 
+                  collapsed = { true } 
+                  onHide    = { () => setShowSidebar(!prefs.showSidebar) } 
                 /> 
             }
             
@@ -85,7 +107,7 @@ const Main = () => {
                     showTagsBar   = { showTagBar && view !== "list" } 
                     onClickMenu   = { () => setShowSidebar(true) } 
                     activeView    = { view }
-                    onViewChange  = { (v: MediaView) => setView(v) }
+                    onViewChange  = { updateView }
                 /> 
             }
 
