@@ -98,7 +98,7 @@ const Gallery = (props: GalleryProps) => {
         style        = { containerStyle }
         className    = "gallery-container"
         fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.videos) } }
-        scrollType       = { props.scroll }
+        scrollType   = { props.scroll }
         ref          = { ref }>
         { previews }
       </Scrollable>

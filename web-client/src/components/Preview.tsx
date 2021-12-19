@@ -69,15 +69,15 @@ const Preview = (props: PreviewProps) => {
 
   const videoPreview =
     <FragmentsPlayer 
-      id        = { `video-preview-${props.vid.id}` }
-      onClick   = { () => props.onClick(props.vid) }
+      key       = { `video-preview-${props.vid.id}` }
       className = { `preview-video preview-media` }
+      onClick   = { () => props.onClick(props.vid) }
       fragments = { props.vid.fragments } />
 
   let preview =
-      <div className = "preview-container"
-           onMouseEnter={() => props.options.showPreviewOnHover && setIsHovering(true)}
-           onMouseLeave={() => setIsHovering(false)}>
+      <div className    = "preview-container"
+           onMouseEnter = { () => props.options.showPreviewOnHover && setIsHovering(true)}
+           onMouseLeave = { () => setIsHovering(false)}>
         { isHovering && videoPreview }
         { primaryThumbnail }
         { overlay }

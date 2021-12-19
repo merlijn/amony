@@ -6,6 +6,10 @@ const headers = { 'Content-type': 'application/json; charset=UTF-8', 'Bearer' : 
 
 export const Api = {
 
+  hasRole: function (role: string) {
+    return true;
+  },
+
   profile: async function Profile() {
 
     console.log(Cookies.get("session"))
