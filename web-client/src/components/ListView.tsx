@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { FaSort } from "react-icons/fa"
 import { FiEdit, FiDownload } from "react-icons/fi"
-import { RiDeleteBin6Line } from "react-icons/ri"
-import { BsPlayCircle } from "react-icons/bs"
+import { RiContactsBookLine, RiDeleteBin6Line } from "react-icons/ri"
 import { GrAddCircle } from "react-icons/gr"
 import { BsThreeDotsVertical } from "react-icons/bs"
 import ProgressiveImage from "react-progressive-graceful-image"
@@ -12,7 +11,6 @@ import { dateMillisToString, formatByteSize } from "../api/Util"
 import './ListView.scss'
 import Scrollable from "./shared/Scrollable"
 import TagEditor from "./shared/TagEditor"
-import ImgWithAlt from "./shared/ImgWithAlt"
 
 type ListProps = {
   selection: MediaSelection
@@ -55,11 +53,6 @@ const ListView = (props: ListProps) => {
 
   useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.videos); }, [isFetching]);
 
-  const updateTags = (v: Video, tags: Array<string>) => {
-
-    const meta: VideoMeta = { ...v.meta, tags: tags }
-    Api.updateVideoMetaData(v.id, meta)
-  }
 
   return (
       <Scrollable
@@ -67,9 +60,9 @@ const ListView = (props: ListProps) => {
         fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.videos) } }
         scrollType = 'page'
       >
-      <div key="row-header" className="list-row list-header-row">
-        <div className="list-cell"></div>
-        <div className="list-cell"></div>
+      <div key="row-header" className="list-row">
+        <div className="list-cell list-header list-select"><input type="checkbox" /></div>
+        <div className="list-cell list-header"></div>
         <div className="list-cell list-header">Title<FaSort className="column-sort-icon" /></div>
         <div className="list-cell list-header">Tags</div>
         <div className="list-cell list-header"><FaSort className="column-sort-icon" /></div>
@@ -94,13 +87,11 @@ const ListView = (props: ListProps) => {
               </div>
 
               <div key="title" className="list-cell list-title">
-                { v.meta.title }
-                <FiEdit className="edit-title action" />
+                <TitleCell video = { v } />
               </div>
               
               <div key="tags" className="list-cell list-tags">
-                <TagEditor showAddButton={true} tags={v.meta.tags} callBack = { (tags) => { updateTags(v, tags) } } />
-                {/* <GrAddCircle className="edit-title action" /> */}
+                <TagsCell video = { v } />
               </div>
 
               <div key="date" className="list-cell list-date">
@@ -127,6 +118,74 @@ const ListView = (props: ListProps) => {
       }
       </Scrollable>
   );
+}
+
+const TitleCell = (props: { video: Video} ) => {
+
+  const [editTitle, setEditTitle] = useState(false)
+
+  return(
+    <div className="cell-wrapper">
+      { props.video.meta.title }
+      { !editTitle && <FiEdit onClick = { () => setEditTitle(true) } className="edit-title action-icon hover-action" /> }
+      { editTitle && <div>test</div> }
+    </div>
+  );
+}
+
+
+const TagsCell = (props: { video: Video }) => {
+
+  const [tags, setTags] = useState(props.video.meta.tags)
+  const [showNewTag, setShowNewTag] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const updateTags = (newTags: Array<string>) => {
+
+    const meta: VideoMeta = { ...props.video.meta, tags: newTags }
+    Api.updateVideoMetaData(props.video.id, meta).then(() =>  {
+
+      setTags(newTags)
+      setShowNewTag(false)
+    })
+  }
+
+  useEffect(() => {
+    if (showNewTag)
+      inputRef?.current?.focus()
+  }, [showNewTag]);
+
+  console.log(`render(): ${tags}`)
+
+
+  return(
+    <div className = "cell-wrapper">
+      <TagEditor key="tag-editor" showAddButton = { false } tags = { tags } callBack = { (newTags) => { updateTags(newTags) } } />
+      { !showNewTag && <GrAddCircle onClick = { (e) => setShowNewTag(true) } className="add-tag-action action-icon hover-action" /> }
+      <span 
+        contentEditable
+        key        = "new-tag"
+        className  = "new-tag"
+        ref        = { inputRef } 
+        style      = { { visibility: showNewTag ? "visible" : "hidden", position: "absolute", right: "5px", minWidth: "40px" } }
+        onBlur     = { (e) => { 
+          e.currentTarget.innerText = ""
+          setShowNewTag(false) } 
+        } 
+        onKeyPress = { (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault()
+            const newTag = e.currentTarget.innerText
+            e.currentTarget.innerText = ""
+            updateTags([...tags, newTag.trim()])
+          }
+          if (e.key === "Escape") {
+            e.currentTarget.blur();
+          }
+        }
+      } ></span>
+        
+    </div>);
 }
 
 export default ListView

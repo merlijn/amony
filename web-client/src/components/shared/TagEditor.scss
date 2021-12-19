@@ -2,12 +2,11 @@
 
 .tag-container {
 
-  display: flex;
+  display: inline-block;
   user-select: none;
 
   .new-tag {
     
-    display: flex;
     margin: 2px;
     float: left;
     align-items: center;

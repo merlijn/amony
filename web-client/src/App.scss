@@ -153,7 +153,12 @@ textarea {
   left: 5px;
 }
 
-.hover-cursor {
+.v-align-center {
+  align-items: center;
+  vertical-align: middle;
+}
+
+.hover-pointer {
   &:hover {
     cursor: pointer;
   }
@@ -173,7 +178,7 @@ textarea {
 
 .action-icon-small {
 
-  @extend .hover-cursor;
+  @extend .hover-pointer;
 
   z-index: 3;
   width: 20px;
@@ -182,7 +187,7 @@ textarea {
 
 .action-icon-medium {
 
-  @extend .hover-cursor;
+  @extend .hover-pointer;
 
   width: 24px;
   height: 24px;
@@ -190,7 +195,7 @@ textarea {
 
 .button-primary {
 
-  @extend .hover-cursor;
+  @extend .hover-pointer;
 
   padding: 8px 12px;
   border-radius: 5px;

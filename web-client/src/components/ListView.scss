@@ -1,32 +1,45 @@
 @import 'src/App.scss';
 
+$row-height: 36px;
+
 .list-container {
   width: 100%;
   height: auto;
   display: table;
 
-  .list-menu-icon {
-    float: right;
+  .action-icon {
+      
+    @extend .hover-pointer;
     width: 20px;
     height: 20px;
   }
 
-  .list-header-row {
-    display: table-header-group;
+  .list-menu-icon {
+
+    @extend .action-icon;
+    float: right;
   }
 
   .list-header {
     
+    @extend .hover-pointer;
+
     position: sticky;
     position: -webkit-sticky;
     top: 0px;
 
-    font-weight: bold;
+    font-weight: 600;
     padding: 12px 8px !important;
 
     .column-sort-icon {
-
+      visibility: hidden;
       float: right;
+    }
+
+    &:hover {
+      .column-sort-icon {
+        visibility: visible;
+      }
     }
   }
 
@@ -36,16 +49,36 @@
 
   .list-row {
     display: table-row;
+    height: $row-height;
 
-    .action {
+    .hover-action {
       visibility: hidden;
+      position: absolute;
+      right: 2px;
     }
 
     &:hover {
       background-color: $gray-100;
 
-      .action {
+      .hover-action {
         visibility: visible;
+      }
+    }
+
+    .cell-wrapper {
+
+      @extend .v-align-center;
+
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+
+      .add-tag-action {
+        @extend .hover-action;
+        position: absolute;
+        bottom: 8px;
+        right: 5px;
       }
     }
 
@@ -57,7 +90,7 @@
     .list-thumbnail {
       width: 1%;
       .list-thumbnail-img {
-        @extend .hover-cursor;
+        @extend .hover-pointer;
         align-items: center;
         vertical-align: middle;
         width: 64px;
@@ -80,7 +113,7 @@
     }
 
     .edit-title {
-      @extend .hover-cursor;
+      @extend .hover-pointer;
       float: right;
       margin-right: 5px;
       width: 20px;
@@ -93,6 +126,12 @@
 
     .list-tags {
       width: 50%;
+
+      .new-tag {
+        padding: 6px 10px;
+        border-radius: 25px;
+        border: 1px solid $secondary-e;
+      }
     }
 
     .list-actions {
@@ -103,24 +142,24 @@
         width: 50px;
 
         .delete-action {
-          @extend .hover-cursor;
+          @extend .hover-pointer, .action-icon;
           float: right;
           margin-left: 5px;
-          width: 20px;
-          height: 20px;
         }
       }
-    
     }
 
     .list-cell {
+      @extend .v-align-center;
+
+      position: relative;
+      display: table-cell;
+
       white-space: nowrap;
+
       border-bottom: 1px solid $gray-200;
       padding: 0px 8px;
-      height: 36px;
-      display: table-cell;
-      align-items: center;
-      vertical-align: middle;
+      height: $row-height;
     }
   }
 }

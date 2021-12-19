@@ -3,7 +3,7 @@
 
 .nav-menu-button {
 
-  @extend .hover-cursor;
+  @extend .hover-pointer;
   position: absolute;
   top: 0px;
   left: 0px;
@@ -20,7 +20,7 @@ $accent: rgb(83, 155, 36);
 
 .toggle-tag-bar {
 
-  @extend .hover-cursor;
+  @extend .hover-pointer;
   position: absolute;
   user-select: none;
 
@@ -76,7 +76,7 @@ $accent: rgb(83, 155, 36);
   }
 
   .view-button-group {
-    @extend .hover-cursor;
+    @extend .hover-pointer;
     background-color: $gray-300;    
     border: none;
     height: 35px;
@@ -109,7 +109,7 @@ $accent: rgb(83, 155, 36);
 
       .button-list-view {
 
-        @extend .hover-cursor, .view-button-group;
+        @extend .hover-pointer, .view-button-group;
         
         border-radius: 3px 0px 0px 3px;
         padding-top: 5px;
@@ -122,7 +122,7 @@ $accent: rgb(83, 155, 36);
 
       .button-grid-view {
         
-        @extend .hover-cursor, .view-button-group;
+        @extend .hover-pointer, .view-button-group;
         
         padding: 4px 8px 0px 8px;
         border-radius: 0px 3px 3px 0px;
@@ -160,7 +160,7 @@ $accent: rgb(83, 155, 36);
         }
     
         .nav-clear-input {
-          @extend .hover-cursor;
+          @extend .hover-pointer;
           position: absolute;
           width: 24px;
           height: 24px;

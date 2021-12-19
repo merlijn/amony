@@ -1,5 +1,5 @@
 import ImgWithAlt from "./ImgWithAlt";
-import React, {useRef, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import './TagEditor.scss';
 import { MdClose } from "react-icons/md";
 
@@ -7,6 +7,10 @@ const TagEditor = (props: {tags: Array<string>, callBack: (tags: Array<string>) 
 
   const [tags, setTags] = useState(props.tags)
   const newTagRef = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    setTags(props.tags)
+  }, [props])
 
   let newTagActive = false
 
