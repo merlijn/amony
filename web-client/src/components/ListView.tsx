@@ -122,13 +122,43 @@ const ListView = (props: ListProps) => {
 
 const TitleCell = (props: { video: Video} ) => {
 
+  const [title, setTitle] = useState(props.video.meta.title)
   const [editTitle, setEditTitle] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (editTitle)
+      inputRef?.current?.focus()
+  }, [editTitle])
+
+  const updateTitle = (newTitle: string) => {
+    const meta: VideoMeta = { ...props.video.meta, title: newTitle }
+    Api.updateVideoMetaData(props.video.id, meta).then(() =>  {
+      setTitle(newTitle)
+      setEditTitle(false)
+    })
+  }
 
   return(
     <div className="cell-wrapper">
-      { props.video.meta.title }
-      { !editTitle && <FiEdit onClick = { () => setEditTitle(true) } className="edit-title action-icon hover-action" /> }
-      { editTitle && <div>test</div> }
+      { !editTitle && title }
+      { !editTitle && <FiEdit onClick = { () => { setEditTitle(true); } } className="edit-title action-icon hover-action" /> }
+      { editTitle && 
+        <input 
+          ref        = { inputRef } 
+          type       = "text" 
+          value      = { title } 
+          onBlur     = { () => { setEditTitle(false) } } 
+          onChange   = { (e) => { setTitle(e.target.value ) } }
+          onKeyPress = { (e) => {
+            if (e.key === "Enter") {
+              e.preventDefault()
+              updateTitle(title);
+            }
+          }}
+        />
+
+      }
     </div>
   );
 }
@@ -141,10 +171,8 @@ const TagsCell = (props: { video: Video }) => {
   const inputRef = useRef<HTMLInputElement>(null)
 
   const updateTags = (newTags: Array<string>) => {
-
     const meta: VideoMeta = { ...props.video.meta, tags: newTags }
     Api.updateVideoMetaData(props.video.id, meta).then(() =>  {
-
       setTags(newTags)
       setShowNewTag(false)
     })
@@ -154,9 +182,6 @@ const TagsCell = (props: { video: Video }) => {
     if (showNewTag)
       inputRef?.current?.focus()
   }, [showNewTag]);
-
-  console.log(`render(): ${tags}`)
-
 
   return(
     <div className = "cell-wrapper">

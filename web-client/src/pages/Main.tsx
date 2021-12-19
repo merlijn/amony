@@ -44,7 +44,7 @@ const Main = () => {
 
       let viewParam: MediaView = view
 
-      if (urlParams.get("view") === "list")
+      if (urlParams.get("view") === "list" && !isMobile)
         viewParam = "list"
       else if (urlParams.get("view") === "grid")
         viewParam = "grid"
@@ -107,6 +107,7 @@ const Main = () => {
                     showTagsBar   = { showTagBar && view !== "list" } 
                     onClickMenu   = { () => setShowSidebar(true) } 
                     activeView    = { view }
+                    // playList      = "nature"
                     onViewChange  = { updateView }
                 /> 
             }

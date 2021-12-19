@@ -145,6 +145,21 @@ $accent: rgb(83, 155, 36);
     
         position: relative;
         flex-grow: 1;
+
+        .playlist {
+          @extend .v-align-center;
+          
+          position: absolute;
+          display: flex;
+          color: $gray-700;
+
+          top: 5px;
+          right: 5px;
+          height: 25px;
+          padding: 0px 5px;
+          border: 1px dotted $gray-200;
+          border-radius: 3px;
+        }
     
         .nav-search-input {
           outline: none;
