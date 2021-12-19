@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react"
+import { CSSProperties, useEffect, useRef, useState } from "react"
 import { FaSort } from "react-icons/fa"
-import { FiEdit, FiDownload } from "react-icons/fi"
+import { FiEdit, FiPlusCircle } from "react-icons/fi"
 import { RiContactsBookLine, RiDeleteBin6Line } from "react-icons/ri"
 import { GrAddCircle } from "react-icons/gr"
 import { BsThreeDotsVertical } from "react-icons/bs"
@@ -67,7 +67,7 @@ const ListView = (props: ListProps) => {
         <div className="list-cell list-header">Tags</div>
         <div className="list-cell list-header"><FaSort className="column-sort-icon" /></div>
         <div className="list-cell list-header"><FaSort className="column-sort-icon" /></div>
-        <div className="list-cell list-header"><FaSort className="column-sort-icon" /></div>
+        {/* <div className="list-cell list-header"><FaSort className="column-sort-icon" /></div> */}
         <div className="list-cell list-header"><BsThreeDotsVertical className="list-menu-icon" /></div>
       </div>
       <div key="row-spacer" className="list-row row-spacer"></div>
@@ -86,13 +86,9 @@ const ListView = (props: ListProps) => {
               </ProgressiveImage>
               </div>
 
-              <div key="title" className="list-cell list-title">
-                <TitleCell video = { v } />
-              </div>
+              <TitleCell video = { v } />
               
-              <div key="tags" className="list-cell list-tags">
-                <TagsCell video = { v } />
-              </div>
+              <TagsCell video = { v } />
 
               <div key="date" className="list-cell list-date">
                 { dateMillisToString(v.addedOn) }
@@ -106,12 +102,12 @@ const ListView = (props: ListProps) => {
                 { `${v.height}p` }
               </div>
 
-              <div key="actions" className="list-cell list-actions">
+              {/* <div key="actions" className="list-cell list-actions">
                 <div className="actions-container">
                   <RiDeleteBin6Line className="delete-action" />
                   <FiDownload className="delete-action" />
                   </div>
-              </div>
+              </div> */}
             </div>  
           );
         })
@@ -139,26 +135,30 @@ const TitleCell = (props: { video: Video} ) => {
     })
   }
 
-  return(
-    <div className="cell-wrapper">
-      { !editTitle && title }
-      { !editTitle && <FiEdit onClick = { () => { setEditTitle(true); } } className="edit-title action-icon hover-action" /> }
-      { editTitle && 
-        <input 
-          ref        = { inputRef } 
-          type       = "text" 
-          value      = { title } 
-          onBlur     = { () => { setEditTitle(false) } } 
-          onChange   = { (e) => { setTitle(e.target.value ) } }
-          onKeyPress = { (e) => {
-            if (e.key === "Enter") {
-              e.preventDefault()
-              updateTitle(title);
-            }
-          }}
-        />
+  const style: CSSProperties = editTitle ? { paddingLeft: "3px"} : {}
 
-      }
+  return(
+    <div style = { style } key="title" className="list-cell list-title">
+      <div className="cell-wrapper">
+        { !editTitle && title }
+        { !editTitle && <FiEdit onClick = { () => { setEditTitle(true); } } className="edit-title action-icon hover-action" /> }
+        { editTitle && 
+          <input 
+            ref        = { inputRef } 
+            className  = "edit-title-input"
+            type       = "text" 
+            value      = { title } 
+            onBlur     = { () => { setEditTitle(false) } } 
+            onChange   = { (e) => { setTitle(e.target.value ) } }
+            onKeyPress = { (e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+                updateTitle(title);
+              }
+            }}
+          />
+        }
+      </div>
     </div>
   );
 }
@@ -184,32 +184,33 @@ const TagsCell = (props: { video: Video }) => {
   }, [showNewTag]);
 
   return(
-    <div className = "cell-wrapper">
-      <TagEditor key="tag-editor" showAddButton = { false } tags = { tags } callBack = { (newTags) => { updateTags(newTags) } } />
-      { !showNewTag && <GrAddCircle onClick = { (e) => setShowNewTag(true) } className="add-tag-action action-icon hover-action" /> }
-      <span 
-        contentEditable
-        key        = "new-tag"
-        className  = "new-tag"
-        ref        = { inputRef } 
-        style      = { { visibility: showNewTag ? "visible" : "hidden", position: "absolute", right: "5px", minWidth: "40px" } }
-        onBlur     = { (e) => { 
-          e.currentTarget.innerText = ""
-          setShowNewTag(false) } 
-        } 
-        onKeyPress = { (e) => {
-          if (e.key === "Enter") {
-            e.preventDefault()
-            const newTag = e.currentTarget.innerText
+    <div key="tags" className="list-cell list-tags">
+      <div className = "cell-wrapper">
+        <TagEditor key="tag-editor" showAddButton = { false } tags = { tags } callBack = { (newTags) => { updateTags(newTags) } } />
+        { !showNewTag && <FiPlusCircle onClick = { (e) => setShowNewTag(true) } className="add-tag-action" /> }
+        <span 
+          contentEditable
+          key        = "new-tag"
+          className  = "new-tag"
+          ref        = { inputRef } 
+          style      = { { visibility: showNewTag ? "visible" : "hidden" } }
+          onBlur     = { (e) => { 
             e.currentTarget.innerText = ""
-            updateTags([...tags, newTag.trim()])
+            setShowNewTag(false) } 
+          } 
+          onKeyPress = { (e) => {
+            if (e.key === "Enter") {
+              e.preventDefault()
+              const newTag = e.currentTarget.innerText
+              e.currentTarget.innerText = ""
+              updateTags([...tags, newTag.trim()])
+            }
+            if (e.key === "Escape") {
+              e.currentTarget.blur();
+            }
           }
-          if (e.key === "Escape") {
-            e.currentTarget.blur();
-          }
-        }
-      } ></span>
-        
+        } ></span>
+      </div>
     </div>);
 }
 

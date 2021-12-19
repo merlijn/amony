@@ -7,7 +7,7 @@
 
   .new-tag {
     
-    margin: 2px;
+    // margin: 2px;
     float: left;
     align-items: center;
 
@@ -28,25 +28,40 @@
 
   .tag {
     // height: 28px;
-    margin: 2px;
+    @extend .v-align-center;
     display: flex;
-    align-items: center;
+    position: relative;
+    text-align: center;
+    margin-right: 4px;
     float: left;
     color: black;
     background-color: $gray-300;
-    border: 1px solid $gray-400;
+    // border: 1px solid $gray-400;
     font-size: small;
-    padding: 3px 8px 4px 12px;
+    padding: 6px 12px;
     border-radius: 25px;
 
+    &:hover {
+      .delete-tag {
+        visibility: visible;
+      }
+    }
+
     .delete-tag {
+
+      border-radius: 16px;
+      background-color: white;
+      position: absolute;
+      right: 1px;
+      visibility: hidden;
       vertical-align: middle;
+      border: 2px solid $highlight-b;
       margin: 0px;
+      margin-top: 1px;
       padding-top: 1px;
-      margin-left: 4px;
-      height: 18px;
-      width: 18px;
-      color: rgb(63, 63, 63);
+      height: 22px;
+      width: 22px;
+      color: $highlight-b;
 
       &:hover {
         cursor: pointer;

@@ -73,13 +73,6 @@ $row-height: 36px;
       width: 100%;
       height: 100%;
       display: flex;
-
-      .add-tag-action {
-        @extend .hover-action;
-        position: absolute;
-        bottom: 8px;
-        right: 5px;
-      }
     }
 
     .list-select {
@@ -122,15 +115,30 @@ $row-height: 36px;
 
     .list-title {
       width: 30%;
+
+      .edit-title-input {
+        width: 100%;
+      }
     }
 
     .list-tags {
       width: 50%;
 
+      .add-tag-action {
+        @extend .hover-action, .action-icon;
+        color: $highlight-e;
+        width: 24px;
+        height: 24px;
+      }
+
       .new-tag {
+        position: absolute;
+        right: 5px;
+        min-width: 25px;
+
         padding: 6px 10px;
         border-radius: 25px;
-        border: 1px solid $secondary-e;
+        border: 1px solid $highlight-e;
       }
     }
 
