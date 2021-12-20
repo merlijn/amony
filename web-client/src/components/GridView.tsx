@@ -3,7 +3,7 @@ import useResizeObserver from 'use-resize-observer';
 import { Api } from '../api/Api';
 import { Constants } from "../api/Constants";
 import { Columns, MediaSelection, SearchResult, Video } from '../api/Model';
-import './Gallery.scss';
+import './GridView.scss';
 import TagBar from './navigation/TagBar';
 import Preview, { PreviewOptions } from './Preview';
 import Scrollable from './shared/Scrollable';
@@ -18,14 +18,14 @@ export type GalleryProps = {
 
 const initialSearchResult: SearchResult = { total: 0, videos: [] }
 
-const Gallery = (props: GalleryProps) => {
+const GridView = (props: GalleryProps) => {
 
   const [searchResult, setSearchResult] = useState(initialSearchResult)
   const [isFetching, setIsFetching] = useState(false)
   const [fetchMore, setFetchMore] = useState(true)
   const [columns, setColumns] = useState<number>(props.columns === 'auto' ? 0 : props.columns)
   const {ref, width} = useResizeObserver<HTMLDivElement>();
-  const gridSpacing = 3
+  const gridSpacing = 1
 
   const fetchData = (previous: Array<Video>) => {
 
@@ -106,4 +106,4 @@ const Gallery = (props: GalleryProps) => {
   );
 }
 
-export default Gallery;
+export default GridView;

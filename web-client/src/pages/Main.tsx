@@ -4,7 +4,7 @@ import { useHistory, useLocation } from "react-router";
 import { Constants } from "../api/Constants";
 import { MediaSelection, MediaView, Prefs, Video } from "../api/Model";
 import { useCookiePrefs, useListener, useStateNeq } from "../api/ReactUtils";
-import Gallery from "../components/Gallery";
+import GridView from "../components/GridView";
 import TopNavBar from "../components/navigation/TopNavBar";
 import VideoModal from "../components/shared/VideoModal";
 import SideBar from "../components/navigation/SideBar";
@@ -71,7 +71,7 @@ const Main = () => {
 
     const calcTopMargin = () => {
       
-      let m = 2;
+      let m = 0;
 
       if (showNavigation)
         m += 45;
@@ -115,7 +115,7 @@ const Main = () => {
             {
               (view === 'grid') &&
                 <div style = { galleryStyle } key="main-content" className="main-content-container">
-                  <Gallery 
+                  <GridView 
                     key       = "gallery"
                     selection = { selection }
                     scroll    = 'page' 

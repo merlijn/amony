@@ -126,7 +126,6 @@ $row-height: 36px;
 
       .add-tag-action {
         @extend .hover-action, .action-icon;
-        color: $highlight-e;
         width: 24px;
         height: 24px;
       }
