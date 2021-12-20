@@ -6,6 +6,10 @@ const headers = { 'Content-type': 'application/json; charset=UTF-8', 'Bearer' : 
 
 export const Api = {
 
+  isAdmin: function() {
+    return true;
+  },
+
   hasRole: function (role: string) {
     return true;
   },

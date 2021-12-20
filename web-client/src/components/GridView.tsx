@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { CSSProperties, useEffect, useState } from 'react';
 import useResizeObserver from 'use-resize-observer';
 import { Api } from '../api/Api';
 import { Constants } from "../api/Constants";
@@ -75,27 +75,24 @@ const GridView = (props: GalleryProps) => {
 
   useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.videos); }, [isFetching]);
 
-  const previews = searchResult.videos.map((vid) => {
+  const previews = searchResult.videos.map((vid, index) => {
 
-    const style: { } = { "--ncols" : `${columns}` }
+    const style = { "--ncols" : `${columns}` } as CSSProperties
 
-    return <Preview
-              style     = { style } 
-              className = "grid-cell"
-              key       = { `preview-${vid.id}` }
-              vid       = { vid }
-              onClick   = { props.onClick }
-              options   = { props.previewOptionsFn(vid) }
-            />
+    return <div key = { `preview-${vid.id}` } className="grid-cell" style = { style } >
+              <Preview
+                vid       = { vid }
+                onClick   = { props.onClick }
+                options   = { props.previewOptionsFn(vid) }
+              />
+            </div>
   })
-
-  const containerStyle: { } = { "--grid-spacing" : `${gridSpacing}px` }
 
   return(
     <>
       <TagBar />
       <Scrollable
-        style        = { containerStyle }
+        style        = { { "--grid-spacing" : `${gridSpacing}px` } as CSSProperties }
         className    = "gallery-container"
         fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.videos) } }
         scrollType   = { props.scroll }

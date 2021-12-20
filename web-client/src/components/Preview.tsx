@@ -37,22 +37,20 @@ const Preview = (props: PreviewProps) => {
   const durationStr = durationInMillisToString(vid.duration)
 
   const titlePanel =
-    <div className="info-bar">
+    <div className = "preview-info-bar">
       <span className="media-title" title={vid.meta.title}>{vid.meta.title}</span>
       {props.options.showDates && <span className="media-date">{dateMillisToString(vid.addedOn)}</span>}
     </div>
-
-  const previewRef = useRef<HTMLDivElement>(null)
 
   const overlay =
     <div className="preview-overlay">
       {
         (props.options.showMenu && config["enable-video-menu"]) &&
-          <div style={ { zIndex: 5 }} className="abs-top-right">
+          <div className = "preview-menu-icon">
             <PreviewMenu video={vid} setVideo = { setVid }/>
           </div>
       }
-      { props.options.showDuration && <div className="abs-bottom-left duration-overlay">{durationStr}</div> }
+      { props.options.showDuration && <div className="duration-overlay">{durationStr}</div> }
       {/* { <div className="abs-bottom-right"><FiDownload /></div> } */}
     </div>
 
@@ -75,7 +73,7 @@ const Preview = (props: PreviewProps) => {
       fragments = { props.vid.fragments } />
 
   let preview =
-      <div className    = "preview-container"
+      <div className    = "preview-media-container"
            onMouseEnter = { () => props.options.showPreviewOnHover && setIsHovering(true)}
            onMouseLeave = { () => setIsHovering(false)}>
         { isHovering && videoPreview }
@@ -85,7 +83,7 @@ const Preview = (props: PreviewProps) => {
     // </a>
 
   return (
-    <div ref={previewRef} style={props.style} className={ `${props.className}` }>
+    <div className = "preview-media">
       { preview }
       { props.options.showInfoBar && titlePanel }
     </div>
@@ -130,7 +128,7 @@ const PreviewMenu = (props: {video: Video, setVideo: (v: Video) => void}) => {
         </div>
       </Modal>
 
-      <div style={ { zIndex: 5 } } className = "preview-menu">
+      <div className = "preview-menu">
 
         <DropDown align = 'right' contentClassName="dropdown-menu" toggleIcon = { <ImgWithAlt className="action-icon-small" src="/icons/more.svg" /> } hideOnClick = {true} >
           <MenuItem onClick = { () => setShowInfoModal(true) }>

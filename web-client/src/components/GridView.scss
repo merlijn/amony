@@ -3,16 +3,16 @@
 .gallery-container {
 
   width: 100%;
-  overflow: auto;
   padding-left: var(--grid-spacing);
   padding-right: var(--grid-spacing);
   margin-top: 46px;
+  display: flex;
+  flex-wrap: wrap;
 }
 
 .grid-cell {
 
   width: calc((100% / var(--ncols)));
-  position: relative;
-  float: left;
   padding: var(--grid-spacing);
+  overflow: hidden;
 }

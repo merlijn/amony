@@ -1,108 +1,112 @@
 @import '../App.scss';
 
-.info-bar {
-  float: left;
-  font-size: small;
-  font-weight: 600;
+.preview-media {
+
+  width: 100%;
   display: flex;
-  align-items: center;
-  height: 22px;
-  width: 100%;
-  padding-top: 1px;
+  flex-direction: column;
+  overflow: hidden;
 
-  //border-bottom-right-radius: 0.2rem;
-  //border-bottom-left-radius: 0.2rem;
-  background-image: linear-gradient(to right, #dcdcdc, #ffffff);
-  color: #233453;
+  .preview-media-container {
 
-  .media-title {
-    flex-grow: 1;
-    padding-left: 5px;
-    float: left;
-    
-    white-space: nowrap;
+    position: relative;
+    width: 100%;
     overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .media-date {
-    @extend .pr-1;
-    min-width: 85px;
-    flex-grow: 0;
-    text-align: right;
-    float: right;
-    font-size: small;
-    font-weight: 400;
-    color: #555;
-  }
-}
-
-$preview-hover-shadow-color: rgba(255, 255, 0, 1);
-
-.preview-container {
-
-  position: relative;
-  float: left;
-  width: 100%;
-  // 9 / 16
-  padding-top: 56.25%; 
-
-  // &:hover {
-    //box-shadow: -1px -1px 5px $preview-hover-shadow-color,
-    //            -1px  1px 5px $preview-hover-shadow-color,
-    //             1px -1px 5px $preview-hover-shadow-color,
-    //             1px  1px 5px $preview-hover-shadow-color;
-  // }
-
-  z-index: 4;
-
-  .preview-overlay {
-    div {
+    // 9 / 16 ratio
+    padding-top: 56.25%; 
+    z-index: 4;
+  
+    .preview-overlay {
+        z-index: 7;
+  
+      .preview-menu-icon {
+  
+        @extend .abs-top-right;
+        margin: 5px;
+        z-index: inherit;
+      }
+    }
+  
+    .preview-thumbnail {
       z-index: 5;
     }
+  
+    .preview-video {
+      z-index: 6;
+      margin: 0px;
+    }
+  
+    .preview-media {
+  
+      @extend .abs-center;
+  
+      max-width: 100%;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      overflow: hidden;
+  
+      &:hover {
+        cursor: pointer;
+      }
+    }
+  }
+  
+  .preview-menu {
+  
+    @extend .abs-top-right;
+  
+    margin-top: 3px;
+  
+    .menu-icon {
+      float: left;
+      margin-right: 10px;
+    }
+  
+    .menu-item {
+      padding-left: 10px !important;
+    }
   }
 
-  .preview-thumbnail {
-    z-index: 1;
-  }
+  .preview-info-bar {
 
-  .preview-video {
-    z-index: 2;
-    margin: 0px;
-  }
-
-  .preview-media {
-
-    @extend .abs-center;
-
-    max-width: 100%;
+    @extend .v-align-center;
+  
+    font-size: small;
+    font-weight: 600;
+    display: flex;
+    height: 22px;
     width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
-    overflow: hidden;
-
-    &:hover {
-      cursor: pointer;
+    padding-top: 1px;
+  
+    background-image: linear-gradient(to right, #dcdcdc, #ffffff);
+    color: #233453;
+  
+    .media-title {
+      flex-grow: 1;
+      padding-left: $spacing-2;
+      float: left;
+      
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  
+    .media-date {
+      @extend .pr-1;
+      min-width: 85px;
+      flex-grow: 0;
+      text-align: right;
+      float: right;
+      font-size: small;
+      font-weight: 400;
+      color: #555;
     }
   }
 }
 
-.preview-menu {
 
-  position: absolute;
-  top: 3px;
-  right: 0px;
-
-  .menu-icon {
-    float: left;
-    margin-right: 10px;
-  }
-
-  .menu-item {
-    padding-left: 10px !important;
-  }
-}
 
 
 

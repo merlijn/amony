@@ -53,7 +53,6 @@ const ListView = (props: ListProps) => {
 
   useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.videos); }, [isFetching]);
 
-
   return (
       <Scrollable
         className = "list-container"
@@ -80,10 +79,10 @@ const ListView = (props: ListProps) => {
               </div>
 
               <div key="thumbnail" className="list-cell list-thumbnail">
-              <ProgressiveImage src={v.thumbnail_url} placeholder="/image_placeholder.svg">
-                  { (src: string) => 
-                    <img className="list-thumbnail-img" src={src} onClick={() => props.onClick(v) } alt="an image" /> }
-              </ProgressiveImage>
+                <ProgressiveImage src={v.thumbnail_url} placeholder="/image_placeholder.svg">
+                    { (src: string) => 
+                      <img className="list-thumbnail-img" src={src} onClick={() => props.onClick(v) } alt="an image" /> }
+                </ProgressiveImage>
               </div>
 
               <TitleCell video = { v } />
