@@ -10,7 +10,9 @@ import Scrollable from './common/Scrollable';
 
 export type GalleryProps = {
   selection: MediaSelection
-  scroll: 'page' | 'element'
+  className?: string,
+  style?: CSSProperties,
+  componentType: 'page' | 'element'
   columns: Columns,
   previewOptionsFn: (v: Video) => PreviewOptions,
   onClick: (v: Video) => void
@@ -23,8 +25,9 @@ const GridView = (props: GalleryProps) => {
   const [searchResult, setSearchResult] = useState(initialSearchResult)
   const [isFetching, setIsFetching] = useState(false)
   const [fetchMore, setFetchMore] = useState(true)
+  const { ref, width } = useResizeObserver<HTMLDivElement>();
   const [columns, setColumns] = useState<number>(props.columns === 'auto' ? 0 : props.columns)
-  const {ref, width} = useResizeObserver<HTMLDivElement>();
+
   const gridSpacing = 1
 
   const fetchData = (previous: Array<Video>) => {
@@ -49,8 +52,11 @@ const GridView = (props: GalleryProps) => {
 
   useEffect(() => {
     if (props.columns === 'auto') {
-      if (width !== undefined) {
-        const c = Math.max(1, Math.round(width / Constants.gridSize));
+
+      const componentWidth = props.componentType === 'page' ? window.innerWidth : width
+
+      if (componentWidth !== undefined) {
+        const c = Math.max(1, Math.round(componentWidth / Constants.gridSize));
         if (c !== columns) {
           if (c > columns)
             setIsFetching(true)
@@ -79,27 +85,28 @@ const GridView = (props: GalleryProps) => {
 
     const style = { "--ncols" : `${columns}` } as CSSProperties
 
-    return <div key = { `preview-${vid.id}` } className="grid-cell" style = { style } >
+    return <div key = { `preview-${vid.id}` } className = "grid-cell" style = { style } >
               <Preview
-                vid       = { vid }
-                onClick   = { props.onClick }
-                options   = { props.previewOptionsFn(vid) }
+                vid      = { vid }
+                onClick  = { props.onClick }
+                options  = { props.previewOptionsFn(vid) }
               />
             </div>
   })
 
   return(
-    <>
+    <div className = { props.className } style = { props.style }>
       <TagBar />
       <Scrollable
         style        = { { "--grid-spacing" : `${gridSpacing}px` } as CSSProperties }
         className    = "gallery-container"
         fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.videos) } }
-        scrollType   = { props.scroll }
-        ref          = { ref }>
+        scrollType   = { props.componentType }
+        ref          = { ref }
+        >
         { previews }
       </Scrollable>
-    </>
+    </div>
   );
 }
 

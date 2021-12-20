@@ -115,11 +115,12 @@ const Main = () => {
 
             {
               (view === 'grid') &&
-                <div style = { galleryStyle } key="main-content" className="main-content-container">
                   <GridView 
+                    style     = { galleryStyle } 
+                    className = "main-content-container"
                     key       = "gallery"
                     selection = { selection }
-                    scroll    = 'page' 
+                    componentType = 'page' 
                     onClick   = { (v: Video) => setPlayVideo(v) } 
                     columns   = { prefs.gallery_columns }
                     previewOptionsFn = { (v: Video) => {
@@ -132,7 +133,6 @@ const Main = () => {
                         } 
                       }
                     }/>
-                </div>
             }
 
             {

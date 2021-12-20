@@ -5,7 +5,7 @@
   position: fixed;
   float: left;
   width: 100%;
-  background-color: white;
+  background-color: var(--text-bg-color);
   border-bottom: 1px solid $gray-200;
   align-items: center;
 
@@ -14,7 +14,6 @@
 
   padding: 4px 5px;
   z-index: 10;
-  // overflow-x: scroll;
 
   .tags {
     @extend .v-align-center;
