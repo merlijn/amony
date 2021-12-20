@@ -113,6 +113,11 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
     def getFilePathForMedia(vid: Media): Path = config.mediaPath.resolve(vid.fileInfo.relativePath)
   }
 
+  object session {
+
+    def login(userName: String, password: String): Boolean = userName == "admin" && password == "admin"
+  }
+
   object admin {
 
     def scanLibrary()(implicit timeout: Timeout): Unit = {

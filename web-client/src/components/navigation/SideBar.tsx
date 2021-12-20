@@ -26,7 +26,7 @@ const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
     <>
     { <Modal visible = { showSettings } onHide={() => setShowSettings(false)}><ConfigMenu /></Modal>  }
     { <Modal visible = { showLogin } onHide={() => setShowLogin(false)}><Login onLoginSuccess={() => setShowLogin(false) }/></Modal>  }
-    { <Modal visible = { showProfile } onHide={() => setShowProfile(false)}><Profile onLogout={ () => {} }/></Modal>  }
+    { <Modal visible = { showProfile } onHide={() => setShowProfile(false)}><Profile onLogout={ () => setShowProfile(false) } /></Modal>  }
 
     <ProSidebar className="my-sidebar" width={200} collapsedWidth={50} collapsed={props.collapsed}>
       <SidebarHeader className="sidebar-header">

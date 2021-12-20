@@ -2,7 +2,7 @@ package nl.amony.http.routes
 
 import nl.amony.http.RouteDeps
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.{path, _}
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
 import io.circe.generic.semiauto.deriveCodec
@@ -20,7 +20,8 @@ trait IdentityRoutes {
   val identityRoutes =
     pathPrefix("api" / "identity") {
       (path("login") & post & entity(as[Credentials])) { credentials =>
-        if (credentials.username == "admin" && credentials.password == "admin") {
+
+        if (api.session.login(credentials.username, credentials.password)) {
 
           val cookie = HttpCookie("session", Auth.createToken(), path = Some("/"))
 
@@ -30,6 +31,11 @@ trait IdentityRoutes {
         }
         else
           complete(StatusCodes.BadRequest)
+      } ~ (path("logout") & post) {
+
+          setCookie(HttpCookie("session", "", path = Some("/"))) {
+            complete("OK")
+          }
       } ~ {
         complete(StatusCodes.NotFound)
       }

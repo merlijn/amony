@@ -51,7 +51,11 @@ export const Api = {
   },
 
   logout: async function Logout() {
-    return doPOST("/api/identity/logout");
+    return doPOST("/api/identity/logout").then(() => {
+
+      console.log("Logout completed, resetting jwt token")
+      jwtToken = ""
+    });
   },
 
   getFragments: async function getFragments(n: number, offset: number, tag?: string) {

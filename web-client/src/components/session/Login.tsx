@@ -1,5 +1,4 @@
-import Cookies from 'js-cookie';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Api } from '../../api/Api';
 import './Login.scss';
 
