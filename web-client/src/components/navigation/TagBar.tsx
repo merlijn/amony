@@ -7,7 +7,7 @@ import { Constants } from "../../api/Constants";
 import { Prefs } from "../../api/Model";
 import { useCookiePrefs } from "../../api/ReactUtils";
 import { copyParams, buildUrl } from "../../api/Util";
-import { DropDown, MenuItem } from "../shared/DropDown";
+import { DropDown, MenuItem } from "../common/DropDown";
 import './TagBar.scss';
 
 const TagBar = () => {

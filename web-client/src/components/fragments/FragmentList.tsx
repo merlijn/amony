@@ -2,7 +2,7 @@ import {Video} from "../../api/Model";
 import React, {CSSProperties, useState} from "react";
 import FragmentPreview from "./FragmentPreview";
 import './FragmentList.scss';
-import ImgWithAlt from "../shared/ImgWithAlt";
+import ImgWithAlt from "../common/ImgWithAlt";
 import { EditFragment } from "../../pages/Editor";
 
 const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFragment) => any, setVid: (vid: Video) => any}) => {

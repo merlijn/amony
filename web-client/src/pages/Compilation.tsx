@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Api } from "../api/Api";
 import { Fragment, SearchResult } from "../api/Model";
-import FragmentsPlayer from "../components/shared/FragmentsPlayer";
+import FragmentsPlayer from "../components/common/FragmentsPlayer";
 
 const Compilation = () => {
 

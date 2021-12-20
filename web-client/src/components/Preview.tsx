@@ -6,10 +6,10 @@ import { dateMillisToString, durationInMillisToString, zeroPad } from "../api/Ut
 import config from "../AppConfig.json";
 import MediaInfo from './MediaInfo';
 import './Preview.scss';
-import { DropDown, Menu, MenuItem } from './shared/DropDown';
-import FragmentsPlayer from "./shared/FragmentsPlayer";
-import ImgWithAlt from "./shared/ImgWithAlt";
-import Modal from './shared/Modal';
+import { DropDown, Menu, MenuItem } from './common/DropDown';
+import FragmentsPlayer from "./common/FragmentsPlayer";
+import ImgWithAlt from "./common/ImgWithAlt";
+import Modal from './common/Modal';
 
 export type PreviewProps = {
   vid: Video,

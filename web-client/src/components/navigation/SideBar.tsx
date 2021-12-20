@@ -7,7 +7,7 @@ import { Menu, MenuItem, ProSidebar, SidebarContent, SidebarFooter, SidebarHeade
 import { Api } from "../../api/Api";
 import { Directory } from "../../api/Model";
 import './SideBar.scss';
-import Modal from "../shared/Modal";
+import Modal from "../common/Modal";
 import ConfigMenu from "./ConfigMenu";
 import Login from "../session/Login";
 import Profile from "../session/Profile";

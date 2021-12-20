@@ -6,7 +6,7 @@ import { MediaSelection, MediaView, Prefs, Video } from "../api/Model";
 import { useCookiePrefs, useListener, useStateNeq } from "../api/ReactUtils";
 import GridView from "../components/GridView";
 import TopNavBar from "../components/navigation/TopNavBar";
-import VideoModal from "../components/shared/VideoModal";
+import VideoModal from "../components/common/VideoModal";
 import SideBar from "../components/navigation/SideBar";
 import { isMobile } from "react-device-detect";
 import './Main.scss';

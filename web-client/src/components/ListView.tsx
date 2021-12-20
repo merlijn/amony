@@ -9,8 +9,8 @@ import { Api } from "../api/Api"
 import { MediaSelection, SearchResult, Video, VideoMeta } from "../api/Model"
 import { dateMillisToString, formatByteSize } from "../api/Util"
 import './ListView.scss'
-import Scrollable from "./shared/Scrollable"
-import TagEditor from "./shared/TagEditor"
+import Scrollable from "./common/Scrollable"
+import TagEditor from "./common/TagEditor"
 
 type ListProps = {
   selection: MediaSelection

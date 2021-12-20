@@ -6,7 +6,7 @@ import { Columns, MediaSelection, SearchResult, Video } from '../api/Model';
 import './GridView.scss';
 import TagBar from './navigation/TagBar';
 import Preview, { PreviewOptions } from './Preview';
-import Scrollable from './shared/Scrollable';
+import Scrollable from './common/Scrollable';
 
 export type GalleryProps = {
   selection: MediaSelection

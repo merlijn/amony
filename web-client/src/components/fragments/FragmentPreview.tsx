@@ -3,8 +3,8 @@ import React, {CSSProperties, useState} from "react";
 import {Fragment, Video} from "../../api/Model";
 import {Api} from "../../api/Api";
 import './FragmentPreview.scss';
-import ImgWithAlt from "../shared/ImgWithAlt";
-import TagEditor from "../shared/TagEditor";
+import ImgWithAlt from "../common/ImgWithAlt";
+import TagEditor from "../common/TagEditor";
 
 interface Props {
   style: CSSProperties,
