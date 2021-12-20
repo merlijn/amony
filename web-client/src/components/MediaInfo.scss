@@ -1,0 +1,38 @@
+@import 'src/App.scss';
+@import './common/Modal.scss';
+
+.info-panel {
+
+  @extend .modal-dialog;
+
+  border: 1px solid lightgray;
+  font-size: normal;
+
+  .title-input {
+    width: 100%;
+    padding: 8px;
+  }
+
+  .comment-input {
+    width: 100%;
+    padding: 8px;
+    height: 80px;
+  }
+
+  .info-panel-title {
+    font-size: normal;
+    font-weight: 600;
+    margin: 8px 2px;
+  }
+
+  .info-panel-content {
+    margin: 8px 8px;
+    padding: 8px 0px;
+  }
+
+  .info-save-button {
+    @extend .hover-pointer;
+    width: 24px;
+    height: 24px;
+  }
+}

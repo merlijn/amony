@@ -1,0 +1,72 @@
+@import 'src/App.scss';
+
+.tag-container {
+
+  display: flex;
+  user-select: none;
+
+  .new-tag {
+    
+    // margin: 2px;
+    float: left;
+    align-items: center;
+
+    span {
+      color: white;
+      background-color: $highlight-e;
+      border: 1px solid $secondary-e;
+      padding: 6px 10px;
+      border-radius: 25px;
+      font-size: small;
+      text-align: center;
+
+      &:hover {
+        cursor: pointer;
+      }
+    }
+  }
+
+  .tag {
+    // height: 28px;
+    @extend .v-align-center;
+    display: flex;
+    position: relative;
+    text-align: center;
+    margin-right: 4px;
+    float: left;
+    color: black;
+    background-color: $gray-300;
+    // border: 1px solid $gray-400;
+    font-size: small;
+    padding: 6px 12px;
+    border-radius: 25px;
+
+    &:hover {
+      .delete-tag {
+        visibility: visible;
+      }
+    }
+
+    .delete-tag {
+
+      border-radius: 16px;
+      background-color: white;
+      position: absolute;
+      right: 1px;
+      visibility: hidden;
+      vertical-align: middle;
+      border: 2px solid $highlight-b;
+      margin: 0px;
+      // margin-top: 1px;
+      padding-top: 1px;
+      height: 22px;
+      width: 22px;
+      color: $highlight-b;
+
+      &:hover {
+        cursor: pointer;
+      }
+    }
+  }
+}
+

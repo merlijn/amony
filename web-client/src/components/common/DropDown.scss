@@ -27,7 +27,8 @@
 }
 
 .dropdown-menu {
-  @extend .hover-cursor;
+  @extend .hover-pointer;
+  
   background-color: white;
   border-radius: 5px;
   padding: 5px 0px;
@@ -49,7 +50,7 @@
 
 .dropdown-menu-item {
 
-  @extend .hover-cursor;
+  @extend .hover-pointer;
   display: flex;
   // max-width: 500px;
   align-items: center;

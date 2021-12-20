@@ -11,8 +11,7 @@ import akka.persistence.query.PersistenceQuery
 import akka.stream.Materializer
 import better.files.File
 import nl.amony.MediaLibConfig
-import nl.amony.actor.MediaLibProtocol.Media
-import nl.amony.actor.MediaLibProtocol.State
+import nl.amony.actor.MediaLibProtocol.{Fragment, Media, State}
 import akka.actor.typed.scaladsl.adapter._
 import scribe.Logging
 
@@ -20,15 +19,17 @@ object MediaIndex {
 
   sealed trait IndexQuery extends Message
 
-  case class Directory(id: String, path: String)
-  case class GetDirectories(sender: typed.ActorRef[List[Directory]])    extends IndexQuery
+  case class Playlist(id: String, title: String)
+  case class GetPlaylists(sender: typed.ActorRef[List[Playlist]])    extends IndexQuery
   case class Search(query: Query, sender: typed.ActorRef[SearchResult]) extends IndexQuery
+  case class SearchFragments(size: Int, offset: Int, tag: String, sender: typed.ActorRef[Seq[Fragment]]) extends IndexQuery
   case class GetTags(sender: typed.ActorRef[Set[String]]) extends IndexQuery
 
   sealed trait SortField
   case object FileName      extends SortField
   case object DateAdded     extends SortField
-  case object Duration extends SortField
+  case object Duration      extends SortField
+//  case object Shuffle       extends SortField
 
   case class Sort(field: SortField, reverse: Boolean)
   case class Query(
@@ -36,11 +37,11 @@ object MediaIndex {
       offset: Option[Int],
       n: Int,
       tags: Set[String],
-      directory: Option[String],
+      playlist: Option[String],
       minRes: Option[Int],
       sort: Option[Sort]
   )
-  case class SearchResult(offset: Int, total: Int, items: Seq[Media])
+  case class SearchResult(offset: Int, total: Int, items: Seq[Media], tags: Map[String, Int])
 
   def apply[T](config: MediaLibConfig, context: ActorContext[T])(implicit mat: Materializer): ActorRef = {
 
@@ -64,7 +65,7 @@ object MediaIndex {
     var counter: Long = 0L
     var indexedAt: Long = 0L
     var state: State = State(Map.empty)
-    var directories: List[Directory] = List.empty
+    var playlists: List[Playlist] = List.empty
     var sortedByFilename: List[Media] = List.empty
     var sortedByDateAdded: List[Media] = List.empty
     var sortedByDuration: List[Media] = List.empty
@@ -76,13 +77,13 @@ object MediaIndex {
 
       if (indexedAt < counter) {
         logger.debug("Updating index")
-        directories = {
+        playlists = {
           val dirs = media.values.foldLeft(Set.empty[String]) { case (set, e) =>
             val parent = (File(config.mediaPath) / e.fileInfo.relativePath).parent
             val dir    = s"/${config.mediaPath.relativize(parent)}"
             set + dir
           }
-          dirs.toList.sorted.zipWithIndex.map { case (path, idx) => Directory(idx.toString, path) }
+          dirs.toList.sorted.zipWithIndex.map { case (path, idx) => Playlist(idx.toString, path) }
         }
         sortedByFilename  = media.values.toList.sortBy(m => m.title.getOrElse(m.fileName()))
         sortedByDateAdded = media.values.toList.sortBy(m => m.fileInfo.creationTime)
@@ -98,21 +99,29 @@ object MediaIndex {
         state = MediaLibEventSourcing.apply(state, e)
         counter += 1
 
-      case GetDirectories(sender) =>
+      case GetPlaylists(sender) =>
         updateIndex()
-        sender.tell(directories.sortBy(_.path))
+        sender.tell(playlists.sortBy(_.title))
 
       case GetTags(sender) =>
         updateIndex()
         sender.tell(tags)
 
+      case SearchFragments(size, offset, tag, sender) =>
+        updateIndex()
+        val result = state.media.values.flatMap(_.fragments).filter {
+          f => f.tags.contains(tag)
+        }.drop(offset).take(size)
+
+        sender.tell(result.toSeq)
+
       case Search(query, sender) =>
         updateIndex()
 
-        val dir = query.directory.flatMap(t => directories.find(_.id == t))
+        val dir = query.playlist.flatMap(t => playlists.find(_.id == t))
 
         def filterDir(m: Media): Boolean =
-          dir.map(t => m.fileInfo.relativePath.startsWith(t.path.substring(1))).getOrElse(true)
+          dir.map(t => m.fileInfo.relativePath.startsWith(t.title.substring(1))).getOrElse(true)
         def filterRes(m: Media): Boolean = query.minRes.map(res => m.videoInfo.resolution._2 >= res).getOrElse(true)
         def filterQuery(m: Media): Boolean =
           query.q.map(q => m.fileInfo.relativePath.toLowerCase.contains(q.toLowerCase)).getOrElse(true)
@@ -139,7 +148,7 @@ object MediaIndex {
 
         val videos = if (offset > result.size) Nil else result.slice(offset, end)
 
-        sender.tell(SearchResult(offset, result.size, videos.toList))
+        sender.tell(SearchResult(offset, result.size, videos.toList, Map.empty))
     }
   }
 }

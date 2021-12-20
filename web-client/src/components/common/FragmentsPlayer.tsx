@@ -1,8 +1,7 @@
-import React, { CSSProperties, useEffect, useState } from "react";
+import React, { CSSProperties, useEffect, useRef, useState } from "react";
 import { Fragment } from "../../api/Model";
 
 type FragmentsPlayerProps = {
-  id: string,
   className?: string,
   style?: CSSProperties,
   fragments: Array<Fragment>
@@ -14,13 +13,15 @@ const FragmentsPlayer = (props: FragmentsPlayerProps) => {
 
   const [currentPreviewIdx, setCurrentPreviewIdx] = useState(0)
   const [playPromise, setPlayPromise] = useState<Promise<void>>(Promise.resolve())
+  const videoRef = useRef<HTMLVideoElement>(null)
 
   // sort the fragments by start time
-  props.fragments.sort((a, b) => a.timestamp_start > b.timestamp_start ? 1 : -1)
+  props.fragments.sort((a, b) => a.range.from > b.range.from ? 1 : -1)
 
   useEffect(() => {
 
-    play(document.getElementById(props.id) as HTMLVideoElement, true)
+    if (videoRef.current)
+      play(videoRef.current, true)
 
   }, [currentPreviewIdx])
 
@@ -61,7 +62,7 @@ const FragmentsPlayer = (props: FragmentsPlayerProps) => {
   };
 
   return(
-    <video id = {props.id}
+    <video ref = { videoRef }
            style = {props.style ? props.style : {} }
            className = {props.className} muted
            onClick = { (e) => props.onClick && props.onClick() }

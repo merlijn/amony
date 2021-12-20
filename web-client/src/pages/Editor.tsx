@@ -126,7 +126,11 @@ const PlayerView = (props: {vid: Video}) => {
         </div>
 
         <div key={`video-${vid.id}-fragments`} style={ { width: fragmentWidth, height: videoSize.height }} className="fragments-container">
-          <FragmentList vid={vid} selected={fragment.idx} selectFn={selectFragment} setVid={(v) => { setVid(v); setFragment({ idx: -1}) }} />
+          <FragmentList 
+            vid      = {vid} 
+            selected = {fragment.idx} 
+            selectFn = {selectFragment} 
+            setVid   = {(v) => { setVid(v); setFragment({ idx: -1}) }} />
         </div>
       </div>
   );

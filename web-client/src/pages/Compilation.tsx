@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Api } from "../api/Api";
 import { Fragment, SearchResult } from "../api/Model";
-import FragmentsPlayer from "../components/shared/FragmentsPlayer";
+import FragmentsPlayer from "../components/common/FragmentsPlayer";
 
 const Compilation = () => {
 
@@ -19,10 +19,9 @@ const Compilation = () => {
   
     if (fragments.length > 0) {
       return <FragmentsPlayer 
-                id="all-fragments"
-                style={ { width: 800, height: 500 } }
-                className="abs-center"
-                fragments={fragments} 
+                style = { { width: 800, height: 500 } }
+                className = "abs-center"
+                fragments = { fragments } 
               />
     } else
       return <div />

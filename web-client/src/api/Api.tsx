@@ -1,16 +1,97 @@
-import {buildUrl} from "./Util";
-import {Sort, SortDirection, VideoMeta} from "./Model";
+import Cookies from "js-cookie";
+import { MediaSelection, Sort, VideoMeta } from "./Model";
+import { buildUrl } from "./Util";
+import jwtDecode, { JwtPayload } from "jwt-decode";
 
-const headers = { 'Content-type': 'application/json; charset=UTF-8' };
+const headers = { 'Content-type': 'application/json; charset=UTF-8', 'Bearer' : '' };
+
+export type Session = {
+  isLoggedIn: () => boolean
+  isAdmin: () => boolean
+  hasRole: (role: string) => boolean
+}
+
+let jwtToken: any = undefined
+
+const anonymousSession: Session = {
+  isLoggedIn: () => false,
+  isAdmin: () => false,
+  hasRole: (s: string) => false
+}
+
+const sessionFromToken = (token: any): Session => {
+  return {
+    isLoggedIn: () => true,
+    isAdmin: () => jwtToken["admin"] as boolean,
+    hasRole: (role: string) => true
+  }
+}
 
 export const Api = {
+  
+  session: function Session(): Session {
 
-  getVideos: async function getVideos(q: string, n: number,
-                                      offset: number, 
-                                      tag?: string,
-                                      dir?: string, 
-                                      minRes?: number, 
-                                      sort?: Sort) {
+    if (jwtToken) {
+      return sessionFromToken(jwtToken);
+    }
+
+    const sessionCookie = Cookies.get("session");
+    if (!jwtToken && sessionCookie) {
+      const decoded = jwtDecode<JwtPayload>(sessionCookie);
+      jwtToken = decoded;
+      return sessionFromToken(jwtToken);
+    }
+
+    return anonymousSession;
+  },
+
+  login: async function Login(username: string, password: string) {
+
+    return doPOST("/api/identity/login", { username: username, password: password})
+  },
+
+  logout: async function Logout() {
+    return doPOST("/api/identity/logout").then(() => {
+
+      console.log("Logout completed, resetting jwt token")
+      jwtToken = ""
+    });
+  },
+
+  getFragments: async function getFragments(n: number, offset: number, tag?: string) {
+
+    const params = new Map([
+      ["n", n.toString()],
+      ["offset", offset.toString()]
+    ]);
+
+    if (tag)
+      params.set("tags", tag)
+
+    const url = buildUrl("/api/fragments/search", params)
+
+    return doGET(url)
+  },
+
+  getVideoSelection: async function getVideoSelection(n: number, offset: number, selection: MediaSelection) {
+    return Api.getVideos(
+              selection.query || "",
+              n,
+              offset,
+              selection.tag,
+              selection.playlist,
+              selection.minimumQuality,
+              selection.sort)
+  },
+
+  getVideos: async function getVideos(
+      q: string, 
+      n: number,
+      offset: number, 
+      tag?: string,
+      playlist?: string, 
+      minRes?: number, 
+      sort?: Sort) {
 
     const apiParams = new Map([
       ["q", q],
@@ -20,8 +101,8 @@ export const Api = {
 
     if (tag)
       apiParams.set("tags", tag)
-    if (dir)
-      apiParams.set("dir", dir)
+    if (playlist)
+      apiParams.set("playlist", playlist)
     if (minRes)
       apiParams.set("min_res", minRes.toString())
     if (sort) {
@@ -66,8 +147,8 @@ export const Api = {
     return doPOST(`/api/fragments/${id}/${Math.trunc(idx)}`, { from: from, to: to})
   },
 
-  getDirectories: async function getTags() {
-    return doGET('/api/directories')
+  getPlaylists: async function getPlaylists() {
+    return doGET('/api/playlists')
   }
 }
 
@@ -112,11 +193,7 @@ export async function doPOST(path: string, postData?: any) {
 
   const response = await fetch(path, init);
 
-  const data = await response.json();
+  const data = await response.text();
 
-  if (data.error) {
-    throw new Error(data.error);
-  }
-
-  return data;
+  return data ? JSON.parse(data) : undefined;
 }

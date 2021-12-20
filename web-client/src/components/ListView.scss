@@ -1,0 +1,172 @@
+@import 'src/App.scss';
+
+$row-height: 36px;
+
+.list-container {
+  width: 100%;
+  height: auto;
+  display: table;
+
+  .action-icon {
+      
+    @extend .hover-pointer;
+    width: 20px;
+    height: 20px;
+  }
+
+  .list-menu-icon {
+
+    @extend .action-icon;
+    float: right;
+  }
+
+  .list-header {
+    
+    @extend .hover-pointer;
+
+    position: sticky;
+    position: -webkit-sticky;
+    top: 0px;
+
+    font-weight: 600;
+    padding: 12px 8px !important;
+
+    .column-sort-icon {
+      visibility: hidden;
+      float: right;
+    }
+
+    &:hover {
+      .column-sort-icon {
+        visibility: visible;
+      }
+    }
+  }
+
+  .row-spacer {
+    height: 5px !important;
+  }
+
+  .list-row {
+    display: table-row;
+    height: $row-height;
+
+    .hover-action {
+      visibility: hidden;
+      position: absolute;
+      right: 2px;
+    }
+
+    &:hover {
+      background-color: $gray-100;
+
+      .hover-action {
+        visibility: visible;
+      }
+    }
+
+    .cell-wrapper {
+
+      @extend .v-align-center;
+
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+    }
+
+    .list-select {
+      width: 1%;
+      padding-left: 16px !important;
+    }
+
+    .list-thumbnail {
+      width: 1%;
+      .list-thumbnail-img {
+        @extend .hover-pointer;
+        align-items: center;
+        vertical-align: middle;
+        width: 64px;
+        height: 36px; 
+      }
+    }
+
+    .list-resolution {
+      width: 1%;
+    }
+
+    .list-date {
+      width: 1%;
+      white-space: nowrap;
+    }
+
+    .list-size {
+      text-align: right;
+
+    }
+
+    .edit-title {
+      @extend .hover-pointer;
+      float: right;
+      margin-right: 5px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .list-title {
+      width: 30%;
+
+      .edit-title-input {
+        width: 100%;
+      }
+    }
+
+    .list-tags {
+      width: 50%;
+
+      .add-tag-action {
+        @extend .hover-action, .action-icon;
+        width: 24px;
+        height: 24px;
+      }
+
+      .new-tag {
+        position: absolute;
+        right: 5px;
+        min-width: 25px;
+
+        padding: 6px 10px;
+        border-radius: 25px;
+        border: 1px solid $highlight-e;
+      }
+    }
+
+    .list-actions {
+
+      width: 1%;
+
+      .actions-container {
+        width: 50px;
+
+        .delete-action {
+          @extend .hover-pointer, .action-icon;
+          float: right;
+          margin-left: 5px;
+        }
+      }
+    }
+
+    .list-cell {
+      @extend .v-align-center;
+
+      position: relative;
+      display: table-cell;
+
+      white-space: nowrap;
+
+      border-bottom: 1px solid $gray-200;
+      padding: 0px 8px;
+      height: $row-height;
+    }
+  }
+}

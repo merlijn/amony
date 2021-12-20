@@ -23,32 +23,33 @@ object FFMpeg extends Logging {
         isFastStart: Boolean
     )
 
-    case class ProbeOutput(
-        streams: List[Stream]
-    ) {
-      def firstVideoStream: Option[VideoStream] = streams.collectFirst { case v: VideoStream =>
-        v
-      }
+    case class ProbeOutput(streams: List[Stream]) {
+      def firstVideoStream: Option[VideoStream] = 
+        streams.sortBy(_.index).collectFirst { case v: VideoStream => v }
     }
 
     val durationPattern = raw"(\d{2}):(\d{2}):(\d{2})".r.unanchored
 
-    sealed trait Stream
+    sealed trait Stream {
+      val index: Int
+    }
 
-    case object UnkownStream extends Stream
+    case class UnkownStream(override val index: Int) extends Stream
 
     case class AudioStream(
+        override val index: Int,
         codec_name: String
     ) extends Stream
 
     case class VideoStream(
+        override val index: Int,
         codec_name: String,
         width: Int,
         height: Int,
         duration: String,
-        bit_rate: String,
+        bit_rate: Option[String],
         avg_frame_rate: String,
-        tags: Map[String, String]
+        tags: Option[Map[String, String]]
     ) extends Stream {
       def durationMillis: Long = (duration.toDouble * 1000L).toLong
       def fps: Double = {
@@ -60,18 +61,21 @@ object FFMpeg extends Logging {
       }
     }
 
+    implicit val UnkownStreamDecoder: Decoder[UnkownStream] = deriveDecoder[UnkownStream]
     implicit val videoStreamDecoder: Decoder[VideoStream] = deriveDecoder[VideoStream]
     implicit val audioStreamDecoder: Decoder[AudioStream] = deriveDecoder[AudioStream]
     implicit val probeDecoder: Decoder[ProbeOutput]       = deriveDecoder[ProbeOutput]
 
     implicit val streamDecoder: Decoder[Stream] = new Decoder[Stream] {
       final def apply(c: HCursor): Decoder.Result[Stream] = {
-
         c.downField("codec_type").as[String].flatMap {
           case "video" => c.as[VideoStream]
           case "audio" => c.as[AudioStream]
-          case _       => Right(UnkownStream)
-        }
+          case _       => c.as[UnkownStream]
+        }.left.map(error => {
+          logger.warn(s"Failed to decode stream, json: ${c.value}")
+          error
+        })
       }
     }
   }
@@ -213,6 +217,7 @@ object FFMpeg extends Logging {
         "-movflags", "+faststart",
         "-crf", s"$quality",
         "-an", // no audio
+        "-v",   "quiet",
         "-y",   output
       )
     // format: on
@@ -277,22 +282,28 @@ object FFMpeg extends Logging {
       scaleHeight: Option[Int]
   ): Unit = {
 
-    val input  = inputFile.absoluteFileName()
-    val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.webp")
+    try {
+      val input  = inputFile.absoluteFileName()
+      val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.webp")
 
-    // format: off
-    val args = List(
-      "-ss",      formatTime(timestamp),
-      "-i",       input
-    ) ++ scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
-      List(
-        "-quality", "80", // 1 - 31 (best-worst) for jpeg, 1-100 (worst-best) for webp
-        "-vframes", "1",
-        "-y",       output
-      )
-    // format: on
+      // format: off
+      val args = List(
+        "-ss",      formatTime(timestamp),
+        "-i",       input
+      ) ++ scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
+        List(
+          "-quality", "80", // 1 - 31 (best-worst) for jpeg, 1-100 (worst-best) for webp
+          "-vframes", "1",
+          "-v",       "quiet",
+          "-y",       output
+        )
+      // format: on
 
-    runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
+      runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
+    } catch {
+      case e: Exception =>
+        logger.warn(s"Failed to create thumbnail for inputFile: ${inputFile}, timestamp: ${formatTime(timestamp)}, outputFile: ${outputFile}, scaleHeight: ${scaleHeight}")
+    }
   }
 
   def generatePreviewSprite(

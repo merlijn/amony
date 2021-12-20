@@ -3,8 +3,8 @@ import React, {CSSProperties, useState} from "react";
 import {Fragment, Video} from "../../api/Model";
 import {Api} from "../../api/Api";
 import './FragmentPreview.scss';
-import ImgWithAlt from "../shared/ImgWithAlt";
-import TagEditor from "../shared/TagEditor";
+import ImgWithAlt from "../common/ImgWithAlt";
+import TagEditor from "../common/TagEditor";
 
 interface Props {
   style: CSSProperties,
@@ -19,7 +19,7 @@ interface Props {
 
 const FragmentPreview = (props: Props) => {
 
-  const durationInSeconds = Math.round((props.fragment.timestamp_end - props.fragment.timestamp_start) / 1000)
+  const durationInSeconds = Math.round((props.fragment.range.to - props.fragment.range.from) / 1000)
   const [showMetaPanel, setShowMetaPanel] = useState(false)
   const [tags, setTags] = useState<Array<string>>(props.fragment.tags)
 
@@ -49,7 +49,7 @@ const FragmentPreview = (props: Props) => {
     </div>
 
   return(
-    <div style={ props.style } className={ `${props.className} fragment-info-panel` } key={`fragment-${props.vid}-${props.fragment.timestamp_start}`} >
+    <div style={ props.style } className={ `${props.className} fragment-info-panel` } key={`fragment-${props.vid}-${props.fragment.range.from}`} >
       { showMetaPanel && metaPanel }
       <video muted
              onMouseEnter={(e) => e.currentTarget.play() }
@@ -57,7 +57,7 @@ const FragmentPreview = (props: Props) => {
              onClick={(e) => {  props.onClick && props.onClick() } }>
         <source src={props.fragment.urls[0]} type="video/mp4"/>
       </video>
-      <div className="abs-bottom-left duration-overlay">{`${durationInSeconds}s @ ${durationInMillisToString(props.fragment.timestamp_start)}`}</div>
+      <div className="abs-bottom-left duration-overlay">{`${durationInSeconds}s @ ${durationInMillisToString(props.fragment.range.to)}`}</div>
       {
         props.showDeleteButton &&
         (<div className="delete-fragment-icon">

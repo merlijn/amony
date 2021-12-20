@@ -1,20 +1,30 @@
-import _ from "lodash";
-import React, { ReactNode, useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { GoGrabber } from "react-icons/go";
-import { MdTune } from "react-icons/md";
-import { useHistory, useLocation } from "react-router-dom";
-import { Api } from "../../api/Api";
-import { Constants } from "../../api/Constants";
-import { Prefs } from "../../api/Model";
-import { useCookiePrefs } from "../../api/ReactUtils";
-import { buildUrl, copyParams } from "../../api/Util";
-import { DropDown, MenuItem } from "../shared/DropDown";
-import './TopNavBar.scss';
+import { MdClose, MdTune } from "react-icons/md";
 
-function TopNavBar(props: { onClickMenu: () => void, showTagsBar: boolean, onShowTagsBar: (show: boolean) => void }) {
+import { BsListUl } from "react-icons/bs";
+import { IoGridOutline } from "react-icons/io5";
+
+import { useHistory, useLocation } from "react-router-dom";
+import { buildUrl, copyParams } from "../../api/Util";
+import TagBar from "./TagBar";
+import './TopNavBar.scss';
+import { MediaView } from "../../api/Model";
+import { isMobile } from "react-device-detect";
+
+export type NavBarProps = {
+  onClickMenu: () => void, 
+  showTagsBar: boolean,
+  activeView: MediaView,
+  playList?: string,
+  onViewChange: (view: MediaView) => any
+}
+
+function TopNavBar(props: NavBarProps) {
 
   const location = useLocation();
   const history = useHistory();
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const [query, setQuery] = useState("")
 
@@ -26,120 +36,51 @@ function TopNavBar(props: { onClickMenu: () => void, showTagsBar: boolean, onSho
     history.push(buildUrl("/search", newParams));
   };
 
-  useEffect(() => { setQuery(new URLSearchParams(location.search).get("q") || "") }, [location]);
+  useEffect(() => { 
+    setQuery(new URLSearchParams(location.search).get("q") || "") }, 
+    [location]);
 
   const queryChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
   };
 
   const clearQuery = () => {
-    document.getElementById("nav-search-input")?.focus()
+    // document.getElementById("nav-search-input")?.focus()
+    inputRef?.current?.focus()
     setQuery("")
   }
 
   return(
-    <div className="nav-bar-container">
-      <div className="top-nav-bar">
-          <GoGrabber className="nav-menu-button" onClick={props.onClickMenu} />
-          <div key="nav-bar-left" className="nav-bar-spacer">
-            
-          </div>
+    <div className = "nav-bar-container">
+      <div className = "top-nav-bar">
+          <GoGrabber className = "nav-menu-button" onClick = { props.onClickMenu } />
+          <div key = "nav-bar-left" className = "nav-bar-spacer" />
           <div key="nav-bar-center" className="nav-bar-center">
-            <form className="nav-search-form" onSubmit={doSearch} >
-              <div key="nav-search-input" className="nav-search-input-container">
-                <input placeholder="Search" className="nav-search-input" type="text" value={query} onChange={queryChanged} />
-                <div 
-                  className={ props.showTagsBar ? "toggle-tag-bar selected" : "toggle-tag-bar" }
-                  onClick={() => { props.onShowTagsBar(!props.showTagsBar) }}>
-                    <MdTune />
-                </div>
+            <form className="nav-search-form" onSubmit = { doSearch } >
+              <div className="nav-search-input-container">
+                <input ref = { inputRef } key="nav-search-input" placeholder="Search" className="nav-search-input" type="text" value={query} onChange={queryChanged} />
+                { query !== "" && <MdClose onClick = { clearQuery } className = "nav-clear-input" /> }
+                { props.playList && <div className = "playlist">{ props.playList }</div>}
               </div>
             </form>
-          </div>
-          <div key="nav-bar-right" className="nav-bar-spacer"></div>
+            {
+              !isMobile &&
+                <div key="view-select" className="view-select-container">
+                  <button 
+                    className = { `button-list-view ${(props.activeView === 'list') && "view-selected"}`} 
+                    onClick   = { () => props.onViewChange('list')}><BsListUl />
+                  </button>
+                  <button 
+                    className = { `button-grid-view ${(props.activeView === 'grid') && "view-selected"}`} 
+                    onClick={() => props.onViewChange('grid')}><IoGridOutline />
+                  </button>
+                </div>
+            }
+            </div> 
+          <div key="nav-bar-right" className="nav-bar-spacer" />
       </div>
-      { props.showTagsBar && <TagBar /> }
     </div>
   );
 }
-
-const TagBar = () => {
-
-  const location = useLocation();
-  const history = useHistory();
-
-  const [selectedTag, setSelectedTag] = useState<string | undefined>(undefined)
-  const [tags, setTags] = useState<Array<string>>([])
-
-  const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs", "/", Constants.defaultPreferences)
-
-  useEffect(() => {
-    Api.getTags().then((updatedTags) => { setTags(updatedTags as Array<string>) })
-  }, [])
-
-  useEffect(() => {
-    setSelectedTag(new URLSearchParams(location.search).get("tag") || undefined)
-  }, [location]);
-
-  const selectTag = (tag: string) => {
-    const params = new URLSearchParams(location.search)
-    const newParams = copyParams(params)
-
-    if (tag === selectedTag)
-      newParams.delete("tag")
-    else
-      newParams.set("tag", tag)
-
-    history.push(buildUrl("/search", newParams ));
-  };
-
-  return (
-    <div className="tag-bar">
-      <div className="tags">
-
-      <DropDownSelect
-          title="Sort"
-          options = { Constants.sortOptions }
-          selected = { prefs.sort }
-          onSelect = { (v) => updatePrefs({...prefs, sort: v}) } />
-
-        <DropDownSelect
-          title="Quality"
-          options = { Constants.resolutions }
-          selected = { prefs.videoQuality }
-          onSelect = { (v) => updatePrefs({...prefs, videoQuality: v}) } />
-        {
-          tags.map(tag => <div className={ tag === selectedTag ? "tag selected-tag" : "tag"} onClick = {() => selectTag(tag) }>{tag}</div>)
-        }
-      </div>
-
-    </div>);
-}
-
-type SelectOption<T> = {
-  value: T
-  label: string
-  icon?: ReactNode
-}
-
-const DropDownSelect = (props:{ title: string, options: Array<SelectOption<any>>, selected: any, onSelect: (v: any) => void }) => {
-  return (
-    <DropDown hideOnClick = {true} 
-      toggleClassName = "custom-dropdown-toggle" 
-      toggleLabel = { props.title }
-      contentClassName="dropdown-menu" 
-      showArrow= { true }>
-      {
-        props.options.map((option) => {
-          return <MenuItem 
-                    className={_.isEqual(option.value,props.selected) ? "menu-item-selected" : ""}  
-                    onClick={() => props.onSelect(option.value)}>
-                    { option.icon } <div className="menu-label-no-wrap">{ option.label }</div>
-                  </MenuItem>
-        })
-      }
-  </DropDown>)
-}
-
 
 export default TopNavBar

@@ -2,21 +2,13 @@
 
 .config-menu {
 
-  @extend .pt-2, .pb-2;
-
-  border-radius: 0px ! important;
-  border-color: $gray-200 ! important;
-  background-color: white;
-
-  width: calc(100vw - 8px);
-
   @media only screen and (min-width: map-get($container-max-widths, md)) {
     width: 500px;
   }
 
   .config-title {
 
-    @extend .ml-2, .mr-2, .mt-2, .pb-2;
+    @extend .ml-2, .mr-2, .mt-2, .pb-2, .mb-4;
 
     border-bottom: $gray-400 1px solid;
     font-size: large;
@@ -36,16 +28,28 @@
     display: table-row;
 
     .form-label {
-      @extend .pr-3, .pb-1;
-      width: 170px;
+      
+      @extend .v-align-center, .pr-3, .pb-3;
+
       display: table-cell;
-      vertical-align: middle;
+      width: 170px;
     }
 
     .form-content {
-      @extend .pb-1;
-      vertical-align: middle;
+      
+      @extend .v-align-center, .pb-3;
+      
       display: table-cell;
+
+      .column-select {
+
+        @extend .v-align-center;
+        display: flex;
+
+        * {
+          @extend .mr-2;
+        }
+      }
     }
   }
 }
