@@ -1,29 +1,57 @@
 import Cookies from "js-cookie";
 import { MediaSelection, Sort, VideoMeta } from "./Model";
 import { buildUrl } from "./Util";
+import jwtDecode, { JwtPayload } from "jwt-decode";
 
 const headers = { 'Content-type': 'application/json; charset=UTF-8', 'Bearer' : '' };
 
+export type Session = {
+  isLoggedIn: () => boolean
+  isAdmin: () => boolean
+  hasRole: (role: string) => boolean
+}
+
+let jwtToken: any = undefined
+
+const anonymousSession: Session = {
+  isLoggedIn: () => false,
+  isAdmin: () => false,
+  hasRole: (s: string) => false
+}
+
+const sessionFromToken = (token: any): Session => {
+  return {
+    isLoggedIn: () => true,
+    isAdmin: () => jwtToken["admin"] as boolean,
+    hasRole: (role: string) => true
+  }
+}
+
 export const Api = {
-
-  isAdmin: function() {
-    return true;
-  },
-
-  hasRole: function (role: string) {
-    return true;
-  },
-
-  profile: async function Profile() {
-
-    console.log(Cookies.get("session"))
-
-    return doGET("/api/identity/profile");
-  },
   
+  session: function Session(): Session {
+
+    if (jwtToken) {
+      return sessionFromToken(jwtToken);
+    }
+
+    const sessionCookie = Cookies.get("session");
+    if (!jwtToken && sessionCookie) {
+      const decoded = jwtDecode<JwtPayload>(sessionCookie);
+      jwtToken = decoded;
+      return sessionFromToken(jwtToken);
+    }
+
+    return anonymousSession;
+  },
+
   login: async function Login(username: string, password: string) {
 
     return doPOST("/api/identity/login", { username: username, password: password})
+  },
+
+  logout: async function Logout() {
+    return doPOST("/api/identity/logout");
   },
 
   getFragments: async function getFragments(n: number, offset: number, tag?: string) {
@@ -161,11 +189,7 @@ export async function doPOST(path: string, postData?: any) {
 
   const response = await fetch(path, init);
 
-  const data = await response.json();
+  const data = await response.text();
 
-  if (data.error) {
-    throw new Error(data.error);
-  }
-
-  return data;
+  return data ? JSON.parse(data) : undefined;
 }

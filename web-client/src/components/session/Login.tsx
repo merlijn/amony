@@ -1,14 +1,14 @@
 import Cookies from 'js-cookie';
-import { Api } from '../api/Api';
+import { Api } from '../../api/Api';
 import './Login.scss';
 
-const Login = (props: {onLogin: () => void }) => {
+const Login = (props: {onLoginSuccess: () => void }) => {
 
   console.log(Cookies.get("session"))
 
   const doLogin = (e: React.FormEvent<HTMLFormElement>) => { 
     e.preventDefault();
-    Api.login("admin", "admin").then(props.onLogin); 
+    Api.login("admin", "admin").then(props.onLoginSuccess); 
   }
 
   return (

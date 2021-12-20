@@ -12,6 +12,7 @@ import { isMobile } from "react-device-detect";
 import './Main.scss';
 import ListView from "../components/ListView";
 import { buildUrl, copyParams } from "../api/Util";
+import { Api } from "../api/Api";
 
 const Main = () => {
   
@@ -127,7 +128,7 @@ const Main = () => {
                           showInfoBar: prefs.showTitles,
                           showDates: prefs.showDates,
                           showDuration: prefs.showDuration,
-                          showMenu: prefs.showMenu
+                          showMenu: Api.session().isAdmin() && prefs.showMenu
                         } 
                       }
                     }/>

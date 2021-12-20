@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { FaGithub, FaHome } from "react-icons/fa";
 import { FiFolder, FiGrid, FiSettings, FiUser } from "react-icons/fi";
+import { GiAbstract020 } from "react-icons/gi";
 import { GoGrabber } from "react-icons/go";
 import { Menu, MenuItem, ProSidebar, SidebarContent, SidebarFooter, SidebarHeader, SubMenu } from "react-pro-sidebar";
 import { Api } from "../../api/Api";
@@ -8,7 +9,7 @@ import { Directory } from "../../api/Model";
 import './SideBar.scss';
 import Modal from "../shared/Modal";
 import ConfigMenu from "./ConfigMenu";
-import Login from "../Login";
+import Login from "../session/Login";
 
 const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
 
@@ -22,14 +23,14 @@ const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
   return (
     <>
     { <Modal visible = { showSettings } onHide={() => setShowSettings(false)}><ConfigMenu /></Modal>  }
-    { <Modal visible = { showLogin } onHide={() => setShowLogin(false)}><Login onLogin={() => setShowLogin(false) }/></Modal>  }
+    { <Modal visible = { showLogin } onHide={() => setShowLogin(false)}><Login onLoginSuccess={() => setShowLogin(false) }/></Modal>  }
     <ProSidebar className="my-sidebar" width={200} collapsedWidth={50} collapsed={props.collapsed}>
       <SidebarHeader className="sidebar-header">
         <GoGrabber className="sidebar-menu-icon" onClick={props.onHide} />
       </SidebarHeader>
       <SidebarContent>
         <Menu iconShape="circle">
-          <MenuItem icon= { <FiUser /> } onClick = {() => setShowLogin(true)} >Profile</MenuItem>
+          <MenuItem icon = { Api.session().isLoggedIn() ? <GiAbstract020 /> : <FiUser /> } onClick = {() => setShowLogin(true)} >Profile</MenuItem>
           <MenuItem icon = { <FaHome /> }><a href="/">Home</a></MenuItem>
           <SubMenu icon = { <FiFolder /> } title="Directories" defaultOpen={true}>
           {
