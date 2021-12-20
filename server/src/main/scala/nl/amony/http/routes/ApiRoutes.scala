@@ -95,8 +95,6 @@ trait ApiRoutes extends Logging with IdentityRoutes {
         (post & entity(as[List[String]])) { tags =>
           translateResponse(api.modify.updateFragmentTags(id, idx.toInt, tags))
         }
-      } ~ pathPrefix("identity") {
-        loginRoutes
       }
     }
 

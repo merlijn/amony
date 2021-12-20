@@ -17,14 +17,21 @@ trait IdentityRoutes {
 
   implicit val credDecoder = deriveCodec[Credentials]
 
-  val loginRoutes = 
-    (path("login") & post & entity(as[Credentials])) { credentials =>
-      if (credentials.username == "admin" && credentials.password == "admin") {
-        setCookie(HttpCookie("session", Auth.createToken(), path=Some("/")))  {
-          complete("OK")
+  val identityRoutes =
+    pathPrefix("api" / "identity") {
+      (path("login") & post & entity(as[Credentials])) { credentials =>
+        if (credentials.username == "admin" && credentials.password == "admin") {
+
+          val cookie = HttpCookie("session", Auth.createToken(), path = Some("/"))
+
+          setCookie(cookie) {
+            complete("OK")
+          }
         }
+        else
+          complete(StatusCodes.BadRequest)
+      } ~ {
+        complete(StatusCodes.NotFound)
       }
-      else 
-        complete(StatusCodes.BadRequest)
     }
 }

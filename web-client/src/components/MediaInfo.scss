@@ -3,11 +3,8 @@
 
 .info-panel {
 
-  @extend .default-modal-dialog;
+  @extend .modal-dialog;
 
-  width: 500px;
-
-  background-color: white;
   border: 1px solid lightgray;
   font-size: normal;
 

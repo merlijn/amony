@@ -72,7 +72,7 @@ const Preview = (props: PreviewProps) => {
       onClick   = { () => props.onClick(props.vid) }
       fragments = { props.vid.fragments } />
 
-  let preview =
+  const preview =
       <div className    = "preview-media-container"
            onMouseEnter = { () => props.options.showPreviewOnHover && setIsHovering(true)}
            onMouseLeave = { () => setIsHovering(false)}>
@@ -80,7 +80,6 @@ const Preview = (props: PreviewProps) => {
         { primaryThumbnail }
         { overlay }
       </div>
-    // </a>
 
   return (
     <div className = "preview-media">
@@ -118,7 +117,7 @@ const PreviewMenu = (props: {video: Video, setVideo: (v: Video) => void}) => {
       </Modal>
       
       <Modal visible = { showConfirmDelete } onHide = { cancelDelete }>
-        <div className = "default-modal-dialog">
+        <div className = "modal-dialog">
           <h2>Are you sure?</h2>
           <p>Do you want to delete: <br /> '{props.video.meta.title}'</p>
           <p>

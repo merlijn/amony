@@ -1,11 +1,10 @@
 @import 'src/App.scss';
 
 .login-container {
-  padding: 28px;
-  background-color: white;
-  width: 400px;
   
-  border-radius: 5px;
+  @extend .modal-dialog;
+  
+  width: 400px;
   border: 1px solid black;
 
   form {

@@ -24,7 +24,6 @@ input {
   padding: 4px;
 }
 
-
 // -- Common elements
 
 .text-input {
@@ -58,6 +57,13 @@ textarea {
   &:hover {
     cursor: pointer;
   }
+}
+
+.modal-dialog {
+  min-width: 500px;
+  padding: 28px;
+  background-color: white;
+  border-radius: 5px;
 }
 
 .duration-overlay {

@@ -41,7 +41,7 @@ object MediaIndex {
       minRes: Option[Int],
       sort: Option[Sort]
   )
-  case class SearchResult(offset: Int, total: Int, items: Seq[Media])
+  case class SearchResult(offset: Int, total: Int, items: Seq[Media], tags: Map[String, Int])
 
   def apply[T](config: MediaLibConfig, context: ActorContext[T])(implicit mat: Materializer): ActorRef = {
 
@@ -148,7 +148,7 @@ object MediaIndex {
 
         val videos = if (offset > result.size) Nil else result.slice(offset, end)
 
-        sender.tell(SearchResult(offset, result.size, videos.toList))
+        sender.tell(SearchResult(offset, result.size, videos.toList, Map.empty))
     }
   }
 }

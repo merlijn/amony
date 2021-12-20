@@ -4,9 +4,7 @@ import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.ConnectionContext
 import akka.http.scaladsl.Http
 import better.files.File
-import nl.amony.http.routes.AdminRoutes
-import nl.amony.http.routes.ApiRoutes
-import nl.amony.http.routes.ResourceRoutes
+import nl.amony.http.routes.{AdminRoutes, ApiRoutes, IdentityRoutes, ResourceRoutes}
 import nl.amony.http.util.PemReader
 import nl.amony.lib.AmonyApi
 import scribe.Logging
@@ -25,6 +23,7 @@ class WebServer(override val config: WebServerConfig, override val api: AmonyApi
     with ApiRoutes
     with ResourceRoutes
     with AdminRoutes
+    with IdentityRoutes
     with RouteDeps {
 
   val allApiRoutes =
@@ -33,7 +32,7 @@ class WebServer(override val config: WebServerConfig, override val api: AmonyApi
     else
       apiRoutes
 
-  val allRoutes = allApiRoutes ~ resourceRoutes ~ webClientFiles
+  val allRoutes = allApiRoutes ~ identityRoutes ~ resourceRoutes ~ webClientFiles
 
   def run(): Unit = {
 
