@@ -187,7 +187,12 @@ const TagsCell = (props: { video: Video }) => {
   return(
     <div key="tags" className="list-cell list-tags">
       <div className = "cell-wrapper">
-        <TagEditor key="tag-editor" showAddButton = { false } tags = { tags } callBack = { (newTags) => { updateTags(newTags) } } />
+        <TagEditor 
+          key              = "tag-editor" 
+          showAddButton    = { false }
+          showDeleteButton = { Api.session().isAdmin() }
+          tags             = { tags } 
+          callBack         = { (newTags) => { updateTags(newTags) } } />
         { (!showNewTag && Api.session().isAdmin()) && <FiPlusCircle onClick = { (e) => setShowNewTag(true) } className="add-tag-action" /> }
         <span 
           contentEditable
