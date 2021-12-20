@@ -7,7 +7,7 @@ import VideoWall from './pages/VideoWall';
 function App() {
 
   return (
-    <div className="amony-root">
+    <div className="app-root">
 
       <BrowserRouter>
 

@@ -1,14 +1,13 @@
 @import '../App.scss';
 
 .main-page {
-  @extend .full-width;
+  width: 100%;
   display: flex;
   background-color: white;
 }
 
 .main-content-container {
-
-  @extend .full-width;
+  width: 100%;
   position: relative;
   margin-top: 37px;
 

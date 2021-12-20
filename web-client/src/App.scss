@@ -1,54 +1,13 @@
 @import 'src/css/Constants.scss';
 @import 'src/css/Layout.scss';
+@import 'src/css/Defaults.scss';
 
-// overriding bootstrap defaults
-$container-max-widths: (
-    sm: 540px,
-    md: 720px,
-    lg: 960px,
-    xl: 1280px
-) !default;
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box; // 1
+.root {
+  --text-bg-color: white;
+  --text-fg-color: black;
 }
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-}
-
-input {
-  padding: 4px;
-}
-
-// -- Common elements
-
-.text-input {
-  outline: none;
-  border-radius: $spacing-1;
-  border: 1px solid $gray-400;
-  &:focus {
-    border-color: rgb(128, 189, 255);
-    outline: solid rgba(128, 189, 255, 0.4);
-  }
-}
-
-input {
-  @extend .text-input;
-}
-
-textarea {
-  @extend .text-input;
-}
-
-.full-width {
-  width: 100%;
-}
-
-.amony-root {
+.app-root {
   width: 100vw;
   padding: 0px;
 }
@@ -62,15 +21,21 @@ textarea {
 .modal-dialog {
   min-width: 500px;
   padding: 28px;
-  background-color: white;
+  background-color: var(--text-bg-color);
+  color: var(--text-fg-color);
   border-radius: 5px;
+
+  box-shadow: -20px -20px 40px rgba(0, 0, 0, 0.3),
+              -20px 20px 40px rgba(0, 0, 0, 0.3),
+               20px -20px 40px rgba(0, 0, 0, 0.3),
+               20px 20px 40px rgba(0, 0, 0, 0.3);
 }
 
 .duration-overlay {
 
   @extend .abs-bottom-left;
-  margin: 5px;
   z-index: 8;
+  margin: 5px;
   padding: 2px 5px;
   color: white;
   background-color: rgba(0, 0, 0, 0.6);
@@ -107,9 +72,4 @@ textarea {
   &:hover {
     background-color: $secondary-a;
   }
-}
-
-.info-button {
-
-  @extend .action-icon-small;
 }

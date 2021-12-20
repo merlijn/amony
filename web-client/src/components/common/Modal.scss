@@ -30,10 +30,10 @@
       position: absolute;
       left: 0px;
       top: 0px ! important;
-      // width: 100vw;
     }
 
     @media (min-width: 769px) {
+      
       position: absolute;
       top: 50%;
       left: 50%;
@@ -43,10 +43,5 @@
     z-index: 502!important;
     margin: 0;
     padding: 0;
-    //border: 1px solid black;
-    box-shadow: -20px -20px 40px rgba(0, 0, 0, 0.3),
-                -20px 20px 40px rgba(0, 0, 0, 0.3),
-                20px -20px 40px rgba(0, 0, 0, 0.3),
-                20px 20px 40px rgba(0, 0, 0, 0.3);
   }
 }

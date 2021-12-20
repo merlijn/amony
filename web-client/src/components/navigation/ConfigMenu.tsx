@@ -17,50 +17,53 @@ const ConfigMenu = () => {
 
   return(
 
-      <div className="config-menu default-modal-dialog">
+      <div className="config-menu modal-dialog">
         <div key="config-title" className="config-title">Preferences</div>
 
         <div key="config-form" className="config-form">
 
-          <div className="form-section">
-            <p className="form-label">Number of columns</p>
-            <div className="form-content">
-              <input
-                style={ { float: "left" } }
-                className="mr-1"
-                name="ncols-option"
-                type="radio"
-                value={0}
-                checked={prefs.gallery_columns === 'auto'}
-                onChange={(e) => {
-                  if (prefs.gallery_columns > 0) {
-                    updatePrefs({gallery_columns: 'auto' })
+          <div className = "form-section">
+            <p className = "form-label">Number of columns</p>
+            <div className = "form-content">
+              <div className = "column-select">
+                <input
+                  style={ { float: "left" } }
+                  className="mr-1"
+                  name="ncols-option"
+                  type="radio"
+                  value={0}
+                  checked={prefs.gallery_columns === 'auto'}
+                  onChange={(e) => {
+                    if (prefs.gallery_columns > 0) {
+                      updatePrefs({gallery_columns: 'auto' })
+                    }
+                  }}
+                /><span style={ { float: "left" } } >auto</span>
+                <input
+                  style={ { float: "left" } }
+                  className="mr-1"
+                  name="ncols-option"
+                  type="radio"
+                  value={0}
+                  checked={prefs.gallery_columns > 0}
+                  onChange={(e) => {
+                    if (prefs.gallery_columns === 'auto')
+                      updatePrefs({ gallery_columns: calculateColumns()} )
+                  }}
+                /><span style={ { float: "left" } } >other</span>
+                <select name="ncols" onChange={(e) => { updatePrefs( { gallery_columns: e.target.value }) } }>
+                  {
+                    columns.map((v) => {
+                      return <option
+                        selected={ (prefs.gallery_columns === 'auto' && v.value === calculateColumns()) || prefs.gallery_columns === v.value }
+                        value={v.value}
+                        label={v.label}
+                      />;
+                    })
                   }
-                }}
-              /><span style={ { float: "left" } } >auto</span>
-              <input
-                style={ { float: "left" } }
-                className="mr-1"
-                name="ncols-option"
-                type="radio"
-                value={0}
-                checked={prefs.gallery_columns > 0}
-                onChange={(e) => {
-                  if (prefs.gallery_columns === 'auto')
-                    updatePrefs({ gallery_columns: calculateColumns()} )
-                }}
-              /><span style={ { float: "left" } } >other</span>
-              <select name="ncols" onChange={(e) => { updatePrefs( { gallery_columns: e.target.value }) } }>
-                {
-                  columns.map((v) => {
-                    return <option
-                      selected={ (prefs.gallery_columns === 'auto' && v.value === calculateColumns()) || prefs.gallery_columns === v.value }
-                      value={v.value}
-                      label={v.label}
-                    />;
-                  })
-                }
-              </select>
+                </select>
+
+              </div>
             </div>
           </div>
 

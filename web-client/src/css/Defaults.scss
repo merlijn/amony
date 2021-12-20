@@ -1,0 +1,34 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box; // 1
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+input {
+  padding: 4px;
+}
+
+// -- Common elements
+
+.text-input {
+  outline: none;
+  border-radius: $spacing-1;
+  border: 1px solid $gray-400;
+  &:focus {
+    border-color: rgb(128, 189, 255);
+    outline: solid rgba(128, 189, 255, 0.4);
+  }
+}
+
+input {
+  @extend .text-input;
+}
+
+textarea {
+  @extend .text-input;
+}
