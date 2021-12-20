@@ -3,7 +3,14 @@ import React, {useEffect, useRef, useState} from "react";
 import './TagEditor.scss';
 import { MdClose } from "react-icons/md";
 
-const TagEditor = (props: {tags: Array<string>, callBack: (tags: Array<string>) => void, showAddButton?: boolean }) => {
+export type TagEditorProps = {
+  tags: Array<string>, 
+  callBack: (tags: Array<string>) => void, 
+  showAddButton?: boolean
+  showDeleteButton?: boolean
+}
+
+const TagEditor = (props: TagEditorProps) => {
 
   const [tags, setTags] = useState(props.tags)
   const newTagRef = useRef<HTMLSpanElement>(null)
@@ -36,14 +43,14 @@ const TagEditor = (props: {tags: Array<string>, callBack: (tags: Array<string>) 
     {
       tags.map ( (tag, idx) =>
         <div key={`tag-${tag}`} className="tag">{tag}
-          <MdClose
+          { props.showDeleteButton && <MdClose
             className = "delete-tag"
             onClick={() => {
               const newTags = [...tags.slice(0, idx), ...tags.slice(idx + 1, tags.length) ]
               setTags(newTags)
               props.callBack(newTags)
             }}
-          />
+          /> }
         </div>
       )
     }

@@ -60,23 +60,25 @@ const ListView = (props: ListProps) => {
         scrollType = 'page'
       >
       <div key="row-header" className="list-row">
-        <div className="list-cell list-header list-select"><input type="checkbox" /></div>
+        {/* <div className="list-cell list-header list-select"><input type="checkbox" /></div> */}
         <div className="list-cell list-header"></div>
         <div className="list-cell list-header">Title<FaSort className="column-sort-icon" /></div>
         <div className="list-cell list-header">Tags</div>
         <div className="list-cell list-header"><FaSort className="column-sort-icon" /></div>
         <div className="list-cell list-header"><FaSort className="column-sort-icon" /></div>
         {/* <div className="list-cell list-header"><FaSort className="column-sort-icon" /></div> */}
-        <div className="list-cell list-header"><BsThreeDotsVertical className="list-menu-icon" /></div>
+        <div className="list-cell list-header">
+          {/* <BsThreeDotsVertical className="list-menu-icon" /> */}
+        </div>
       </div>
       <div key="row-spacer" className="list-row row-spacer"></div>
       {
         searchResult.videos.map((v, index) => {
           return(
             <div key={`row-${v.id}`} className="list-row">
-              <div key="select" className="list-cell list-select">
+              {/* <div key="select" className="list-cell list-select">
                 <input type="checkbox" />
-              </div>
+              </div> */}
 
               <div key="thumbnail" className="list-cell list-thumbnail">
                 <ProgressiveImage src={v.thumbnail_url} placeholder="/image_placeholder.svg">
@@ -140,7 +142,7 @@ const TitleCell = (props: { video: Video} ) => {
     <div style = { style } key="title" className="list-cell list-title">
       <div className="cell-wrapper">
         { !editTitle && title }
-        { !editTitle && <FiEdit onClick = { () => { setEditTitle(true); } } className="edit-title action-icon hover-action" /> }
+        { (!editTitle && Api.session().isAdmin()) && <FiEdit onClick = { () => { setEditTitle(true); } } className="edit-title action-icon hover-action" /> }
         { editTitle && 
           <input 
             ref        = { inputRef } 
@@ -186,7 +188,7 @@ const TagsCell = (props: { video: Video }) => {
     <div key="tags" className="list-cell list-tags">
       <div className = "cell-wrapper">
         <TagEditor key="tag-editor" showAddButton = { false } tags = { tags } callBack = { (newTags) => { updateTags(newTags) } } />
-        { !showNewTag && <FiPlusCircle onClick = { (e) => setShowNewTag(true) } className="add-tag-action" /> }
+        { (!showNewTag && Api.session().isAdmin()) && <FiPlusCircle onClick = { (e) => setShowNewTag(true) } className="add-tag-action" /> }
         <span 
           contentEditable
           key        = "new-tag"

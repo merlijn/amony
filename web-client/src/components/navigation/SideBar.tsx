@@ -39,12 +39,12 @@ const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
             onClick = { () => { Api.session().isLoggedIn() ? setShowProfile(true) : setShowLogin(true) } } >Profile
           </MenuItem>
           <MenuItem icon = { <FaHome /> }><a href="/">Home</a></MenuItem>
-          <SubMenu icon = { <FiFolder /> } title="Directories" defaultOpen={true}>
-          {
-            playlists.map((d) =>  { return <MenuItem><a href={`/search?playlist=${d.id}`}>{d.title}</a></MenuItem> }) 
+          { (process.env.NODE_ENV === "development") && 
+              <SubMenu icon = { <FiFolder /> } title="Directories" defaultOpen={true}> 
+                { playlists.map((d) =>  { return <MenuItem><a href={`/search?playlist=${d.id}`}>{d.title}</a></MenuItem> })  }
+              </SubMenu>
           }
-          </SubMenu>
-          <MenuItem icon = { <FiGrid /> }><a href="/grid">Grid</a></MenuItem>
+          {  (process.env.NODE_ENV === "development") && <MenuItem icon = { <FiGrid /> }><a href="/grid">Grid</a></MenuItem> }
           <MenuItem icon = { <FiSettings />} onClick={() => setShowSettings(!showSettings)}>Settings</MenuItem>
         </Menu>
       </SidebarContent>
