@@ -12,7 +12,7 @@ import com.fasterxml.jackson.core.JsonEncoding
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Consumer
-import nl.amony.MediaLibConfig
+import nl.amony.{AmonyConfig, MediaLibConfig}
 import nl.amony.actor.MediaIndex._
 import nl.amony.actor.MediaLibProtocol._
 import nl.amony.actor.Message
@@ -22,7 +22,7 @@ import java.io.InputStream
 import java.nio.file.Path
 import scala.concurrent.Future
 
-class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends Logging {
+class AmonyApi(val config: AmonyConfig, system: ActorSystem[Message]) extends Logging {
 
   import akka.actor.typed.scaladsl.AskPattern._
   implicit val scheduler = system.scheduler
@@ -78,13 +78,13 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
 
   object resources {
 
-    def resourcePath(): Path = config.resourcePath
+    def resourcePath(): Path = config.media.resourcePath
 
     def getVideo(id: String)(implicit timeout: Timeout): Future[Option[Path]] = {
       query
         .getById(id)
         .map(_.map { m =>
-          config.mediaPath.resolve(m.fileInfo.relativePath)
+          config.media.mediaPath.resolve(m.fileInfo.relativePath)
         })
     }
 
@@ -105,17 +105,17 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
                 resourcePath().resolve(s"${media.id}-${media.fragments.head.fromTimestamp}_${quality}p.webp")
               ).newFileInputStream
             case Some(millis) =>
-              FFMpeg.streamThumbnail(config.mediaPath.resolve(media.fileInfo.relativePath).toAbsolutePath, millis, 320)
+              FFMpeg.streamThumbnail(config.media.mediaPath.resolve(media.fileInfo.relativePath).toAbsolutePath, millis, 320)
           }
         })
     }
 
-    def getFilePathForMedia(vid: Media): Path = config.mediaPath.resolve(vid.fileInfo.relativePath)
+    def getFilePathForMedia(vid: Media): Path = config.media.mediaPath.resolve(vid.fileInfo.relativePath)
   }
 
   object session {
 
-    def login(userName: String, password: String): Boolean = userName == "admin" && password == "admin"
+    def login(userName: String, password: String): Boolean = userName == config.adminUsername && password == config.adminPassword
   }
 
   object admin {
@@ -127,7 +127,7 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
       query
         .getAll()
         .foreach { loadedFromStore =>
-          val (deleted, newAndMoved) = MediaLibScanner.scanVideosInDirectory(config, loadedFromStore)
+          val (deleted, newAndMoved) = MediaLibScanner.scanVideosInDirectory(config.media, loadedFromStore)
           val upsert                 = Consumer.foreachTask[Media](m => Task { modify.upsertMedia(m) })
           val delete = Consumer.foreachTask[Media](m =>
             Task {
@@ -147,8 +147,8 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
         medias.foreach { m =>
           logger.info(s"generating thumbnail previews for '${m.fileName()}'")
           FFMpeg.generatePreviewSprite(
-            m.resolvePath(config.mediaPath).toAbsolutePath,
-            outputDir      = config.indexPath.resolve("resources"),
+            m.resolvePath(config.media.mediaPath).toAbsolutePath,
+            outputDir      = config.media.indexPath.resolve("resources"),
             outputBaseName = Some(s"${m.id}-timeline")
           )
         }
@@ -160,12 +160,12 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
       media.fragments.foreach { f =>
         MediaLibScanner.createVideoFragment(
           media     = media,
-          videoPath = config.mediaPath.resolve(media.fileInfo.relativePath),
-          indexPath = config.indexPath,
+          videoPath = config.media.mediaPath.resolve(media.fileInfo.relativePath),
+          indexPath = config.media.indexPath,
           id        = media.id,
           from      = f.fromTimestamp,
           to        = f.toTimestamp,
-          config    = config.previews
+          config    = config.media.previews
         )
       }
     }
@@ -179,7 +179,7 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
         logger.info("Verifying all file hashes ...")
 
         medias.foreach { m =>
-          val hash = config.hashingAlgorithm.generateHash(config.mediaPath.resolve(m.fileInfo.relativePath))
+          val hash = config.media.hashingAlgorithm.generateHash(config.media.mediaPath.resolve(m.fileInfo.relativePath))
 
           if (hash != m.fileInfo.hash)
             logger.warn(s"hash not equal: ${hash} != ${m.fileInfo.hash}")
@@ -195,7 +195,7 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
         logger.info("Updating hashes ...")
 
         medias.foreach { m =>
-          val hash = config.hashingAlgorithm.generateHash(config.mediaPath.resolve(m.fileInfo.relativePath))
+          val hash = config.media.hashingAlgorithm.generateHash(config.media.mediaPath.resolve(m.fileInfo.relativePath))
 
           if (hash != m.fileInfo.hash) {
 
@@ -213,7 +213,7 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
 
     def exportLibrary()(implicit timeout: Timeout): Unit = {
 
-      val file = config.indexPath.resolve("export.json").toFile
+      val file = config.media.indexPath.resolve("export.json").toFile
 
       query.getAll().foreach { medias =>
         objectMapper.createGenerator(file, JsonEncoding.UTF8).writeObject(medias)
@@ -221,7 +221,7 @@ class AmonyApi(val config: MediaLibConfig, system: ActorSystem[Message]) extends
     }
 
     def convertNonStreamableVideos(): Unit = {
-      MediaLibScanner.convertNonStreamableVideos(config, AmonyApi.this)
+      MediaLibScanner.convertNonStreamableVideos(config.media, AmonyApi.this)
     }
   }
 }

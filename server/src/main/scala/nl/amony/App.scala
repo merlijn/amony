@@ -20,10 +20,10 @@ object App extends AppConfig with Logging {
 
   def main(args: Array[String]): Unit = {
 
-    val router: Behavior[Message]    = MainRouter.apply(mediaLibConfig)
+    val router: Behavior[Message]    = MainRouter.apply(appConfig.media)
     val system: ActorSystem[Message] = ActorSystem(router, "mediaLibrary", config)
 
-    val api = new AmonyApi(mediaLibConfig, system)
+    val api = new AmonyApi(appConfig, system)
 
     api.admin.scanLibrary()(10.seconds)
 
@@ -33,7 +33,7 @@ object App extends AppConfig with Logging {
 
 //    Migration.importFromExport(api)(10.seconds)
 
-    val webServer = new WebServer(webServerConfig, api)(system)
+    val webServer = new WebServer(appConfig.api, api)(system)
 
     webServer.run()
   }
@@ -45,7 +45,7 @@ object App extends AppConfig with Logging {
     logger.warn("Probing all videos")
 
     val (fastStart, nonFastStart) = media.partition { m =>
-      val path       = m.resolvePath(api.config.mediaPath)
+      val path       = m.resolvePath(api.config.media.mediaPath)
       val (_, debug) = FFMpeg.ffprobe(path)
       debug.isFastStart
     }

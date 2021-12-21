@@ -26,16 +26,23 @@ case class MediaLibConfig(
   lazy val mediaPath = path.toAbsolutePath.normalize()
 }
 
+case class AmonyConfig(
+  media: MediaLibConfig,
+  api: WebServerConfig,
+  adminUsername: String,
+  adminPassword: String
+)
+
 case class PreviewConfig(
-    transcode: List[TranscodeSettings],
-    minimumFragmentDuration: Option[FiniteDuration],
-    maximumFragmentDuration: Option[FiniteDuration]
+  transcode: List[TranscodeSettings],
+  minimumFragmentDuration: Option[FiniteDuration],
+  maximumFragmentDuration: Option[FiniteDuration]
 )
 
 case class TranscodeSettings(
-    format: String,
-    scaleHeight: Int,
-    crf: Int
+  format: String,
+  scaleHeight: Int,
+  crf: Int
 )
 
 sealed trait HashingAlgorithm {
@@ -53,6 +60,8 @@ trait AppConfig extends Logging {
   val config       = ConfigFactory.load()
   val configSource = ConfigSource.fromConfig(config)
 
-  val mediaLibConfig  = configSource.at("amony.media").loadOrThrow[MediaLibConfig]
-  val webServerConfig = configSource.at("amony.api").loadOrThrow[WebServerConfig]
+  val appConfig = configSource.at("amony").loadOrThrow[AmonyConfig]
+//
+//  val mediaLibConfig  = configSource.at("amony.media").loadOrThrow[MediaLibConfig]
+//  val webServerConfig = configSource.at("amony.api").loadOrThrow[WebServerConfig]
 }

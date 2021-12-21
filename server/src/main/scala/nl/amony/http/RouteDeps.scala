@@ -13,7 +13,7 @@ trait RouteDeps extends JsonCodecs {
   val api: AmonyApi
   implicit val system: ActorSystem[Nothing]
 
-  override def transcodingSettings: List[TranscodeSettings] = api.config.previews.transcode
+  override def transcodingSettings: List[TranscodeSettings] = api.config.media.previews.transcode
 
   implicit def materializer: Materializer = Materializer.createMaterializer(system)
   implicit def executionContext: ExecutionContext = system.executionContext

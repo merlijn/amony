@@ -39,7 +39,7 @@ object Migration extends Logging {
     implicit val fragmentCodec    = deriveDecoder[Fragment]
     implicit val mediaOldCodec    = deriveDecoder[Media]
 
-    val json = (File(api.config.indexPath) / "export.json").contentAsString
+    val json = (File(api.config.media.indexPath) / "export.json").contentAsString
 
     import io.circe.parser.decode
 
