@@ -18,6 +18,7 @@ type ListProps = {
 }
 
 const initialSearchResult: SearchResult = { total: 0, videos: [] }
+const rowHeight = 36
 
 const ListView = (props: ListProps) => {
 
@@ -28,7 +29,7 @@ const ListView = (props: ListProps) => {
   const fetchData = (previous: Array<Video>) => {
 
     const offset = previous.length
-    const n      = 32
+    const n      = offset === 0 ? Math.ceil(window.outerHeight / rowHeight) : 32;
 
     if (n > 0 && fetchMore) {
       Api.getVideoSelection(n, offset, props.selection).then(response => {

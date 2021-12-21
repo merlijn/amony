@@ -2,6 +2,7 @@ import Cookies from "js-cookie";
 import { MediaSelection, Sort, VideoMeta } from "./Model";
 import { buildUrl } from "./Util";
 import jwtDecode, { JwtPayload } from "jwt-decode";
+import axios from 'axios';
 
 const headers = { 'Content-type': 'application/json; charset=UTF-8', 'Bearer' : '' };
 
@@ -56,6 +57,19 @@ export const Api = {
       console.log("Logout completed, resetting jwt token")
       jwtToken = ""
     });
+  },
+
+  uploadFile: async function uploadFile(file: File) {
+
+    const formData = new FormData();
+
+    formData.append(
+      "myFile",
+      file,
+      file.name
+    );
+
+    axios.post("api/uploadfile", formData);
   },
 
   getFragments: async function getFragments(n: number, offset: number, tag?: string) {

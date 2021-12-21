@@ -45,14 +45,14 @@ const TagBar = () => {
       <div className="tags">
 
         <DropDownSelect
-          toggle = { <MdSort /> }
-          options = { Constants.sortOptions }
+          toggle   = { <MdSort /> }
+          options  = { Constants.sortOptions }
           selected = { prefs.sort }
           onSelect = { (v) => updatePrefs({...prefs, sort: v}) } />
 
         <DropDownSelect
-          toggle = { <MdCropSquare /> }
-          options = { Constants.resolutions }
+          toggle   = { <MdCropSquare /> }
+          options  = { Constants.resolutions }
           selected = { prefs.videoQuality }
           onSelect = { (v) => updatePrefs({...prefs, videoQuality: v}) } />
         {

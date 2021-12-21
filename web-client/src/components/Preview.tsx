@@ -45,8 +45,8 @@ const Preview = (props: PreviewProps) => {
   const overlay =
     <div className="preview-overlay">
       {
-        (props.options.showMenu && config["enable-video-menu"]) &&
-          <div className = "preview-menu-icon">
+        (props.options.showMenu && config["enable-video-menu"] && isHovering) &&
+          <div className = "preview-menu-container">
             <PreviewMenu video={vid} setVideo = { setVid }/>
           </div>
       }
@@ -129,7 +129,7 @@ const PreviewMenu = (props: {video: Video, setVideo: (v: Video) => void}) => {
 
       <div className = "preview-menu">
 
-        <DropDown align = 'right' contentClassName="dropdown-menu" toggleIcon = { <ImgWithAlt className="action-icon-small" src="/icons/more.svg" /> } hideOnClick = {true} >
+        <DropDown align = 'right' contentClassName = "dropdown-menu" toggleIcon = { <ImgWithAlt className = "preview-menu-icon" src="/icons/more.svg" /> } hideOnClick = {true} >
           <MenuItem onClick = { () => setShowInfoModal(true) }>
             <ImgWithAlt className="menu-icon" src="/icons/info.svg" />Info
           </MenuItem>

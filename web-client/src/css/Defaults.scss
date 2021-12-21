@@ -25,7 +25,11 @@ input {
   }
 }
 
-input {
+input[type="text"] {
+  @extend .text-input;
+}
+
+input[type="password"] {
   @extend .text-input;
 }
 
