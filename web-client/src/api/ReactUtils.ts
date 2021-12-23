@@ -15,22 +15,26 @@ export const useStateRef = <T>(value: T): [T, MutableRefObject<T>, ((e: T) => vo
   return [getState, stateRef, setState]
 }
 
-export const useUrlParam = (name: string, defaultValue: string | undefined = undefined): [string | undefined, (v: string ) => any] => {
+export const useUrlParam = (name: string, defaultValue: string): [string, (v: string ) => any] => {
   const location = useLocation();
   const history = useHistory();
-  const [param, setParam] = useStateNeq<string | undefined>(undefined);
+  const [param, setParam] = useStateNeq<string>(defaultValue);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
-    setParam(params.get(name) || undefined)
+    setParam(params.get(name) || defaultValue)
   }, [location])
 
   const updateParam = (value: string) => {
     const params = new URLSearchParams(location.search)
     const newParams = copyParams(params)
-    newParams.set(name, value)
+    
+    if (value === defaultValue)
+      newParams.delete(name)
+    else  
+      newParams.set(name, value)
+
     const url = buildUrl(history.location.pathname, newParams)
-    // setParam(value)
     history.push(url)
   }
 

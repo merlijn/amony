@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import 'react-pro-sidebar/dist/css/styles.css';
 import { useHistory, useLocation } from "react-router";
-import { Constants } from "../api/Constants";
+import { Constants, parseSortParam } from "../api/Constants";
 import { MediaSelection, MediaView, Prefs, Video } from "../api/Model";
 import { useCookiePrefs, useListener, useStateNeq } from "../api/ReactUtils";
 import GridView from "../components/GridView";
@@ -28,14 +28,11 @@ const Main = () => {
     const getSelection = (): MediaSelection => {
       const urlParams = new URLSearchParams(location.search)
 
-      const sortField = urlParams.get("sort") || "date_added"
-      const sortDir = urlParams.get("dir") || "desc"
-
       return {
         query: urlParams.get("q") || undefined,
         playlist: urlParams.get("playlist") || undefined,
         tag: urlParams.get("tag") || undefined,
-        sort: prefs.sort,
+        sort: parseSortParam(urlParams.get("s") || "date_added"),
         minimumQuality: parseInt(urlParams.get("vq") || "0")
       }
     }

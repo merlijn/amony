@@ -1,20 +1,19 @@
+import _ from "lodash";
 import React, { useEffect, useRef, useState } from "react";
-import { GoGrabber } from "react-icons/go";
-import { FiSearch } from "react-icons/fi";
-import { MdClose, MdTune } from "react-icons/md";
-
-import { BsListUl } from "react-icons/bs";
-import { IoGridOutline } from "react-icons/io5";
-
-import { useHistory, useLocation } from "react-router-dom";
-import { buildUrl, copyParams } from "../../api/Util";
-import TagBar from "./TagBar";
-import './TopNavBar.scss';
-import { MediaView, Prefs } from "../../api/Model";
 import { isMobile } from "react-device-detect";
+import { BsListUl } from "react-icons/bs";
+import { GoGrabber } from "react-icons/go";
+import { IoGridOutline } from "react-icons/io5";
+import { MdTune } from "react-icons/md";
+import { useHistory, useLocation } from "react-router-dom";
+import { Constants, parseSortParam } from "../../api/Constants";
+import { MediaView, Sort } from "../../api/Model";
+import { useUrlParam } from "../../api/ReactUtils";
+import { buildUrl, copyParams } from "../../api/Util";
 import { DropDown } from "../common/DropDown";
-import { useCookiePrefs, useStateNeq, useUrlParam } from "../../api/ReactUtils";
-import { Constants } from "../../api/Constants";
+import './TopNavBar.scss';
+
+
 
 export type NavBarProps = {
   onClickMenu: () => void, 
@@ -90,10 +89,23 @@ function TopNavBar(props: NavBarProps) {
   );
 }
 
+const parseSort = (s: string): Sort => {
+  switch (s) {
+    case "duration":
+      return { field: "duration", direction: "asc" };
+    case "title":
+      return { field: "title", direction: "asc" };
+    default: 
+      return { field: "date_added", direction: "desc" };
+  }
+}
+
 const FilterDropDown = () => {
 
-  const [vqParam, setVqParam] = useUrlParam("vq")
-  const vq = parseInt(vqParam || "0")
+  const [vqParam, setVqParam] = useUrlParam("vq", "0")
+  const [sortParam, setSortParam] = useUrlParam("s", "date_added")
+  const vq = parseInt(vqParam)
+  const sort = parseSortParam(sortParam)
 
   return( 
     <div className = "filter-dropdown-container">
@@ -103,8 +115,13 @@ const FilterDropDown = () => {
             <div className="section-header">Sort</div>
             { Constants.sortOptions.map((option, index) => {
                 return <div key={`sort-${index}`} className="filter-option">
-                        <input type="radio" name="sort" value = { option.label } />
-                        <label htmlFor = { option.label }>{option.label}</label>
+                         <input 
+                           type     = "radio" 
+                           name     = "sort" 
+                           value    = { option.label } 
+                           checked  = { _.isEqual(option.value, sort) }
+                           onChange = { () => setSortParam(option.value.field) }/>
+                         <label htmlFor = { option.label }>{ option.label }</label>
                       </div>
               }) 
             }
@@ -118,7 +135,7 @@ const FilterDropDown = () => {
                             name    = "resolution" 
                             value   = { option.label } 
                             checked = { vq === option.value }
-                            onChange = { (e) => setVqParam(option.value.toString()) }/>
+                            onChange = { () => setVqParam(option.value.toString()) }/>
                           <label htmlFor = { option.label }>{option.label}</label>
                       </div>
               }) 

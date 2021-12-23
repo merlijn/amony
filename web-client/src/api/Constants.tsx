@@ -1,4 +1,4 @@
-import {Prefs, Resolution} from "./Model";
+import {Prefs, Resolution, Sort} from "./Model";
 
 const resolutions: Array<Resolution> =
    [{ value: 0,    label: "All"},
@@ -7,9 +7,20 @@ const resolutions: Array<Resolution> =
     { value: 2160, label: "4K"}]
 
 const sortingOptions = [
-  { value: { field: "title", direction: 'asc' }, label: "Alphabetically" },
-  { value: { field: "date_added", direction: 'desc' }, label: "By date added" },
-  { value: { field: "duration", direction: 'asc' }, label: "By duration" }];
+  { value: { field: "date_added", direction: "desc" }, label: "By date added" },
+  { value: { field: "title", direction: "asc" },       label: "Alphabetically" },
+  { value: { field: "duration", direction: "asc" },    label: "By duration" }];
+
+export const parseSortParam = (s: string): Sort => {
+  switch (s) {
+    case "duration":
+      return { field: "duration", direction: "asc" };
+    case "title":
+      return { field: "title", direction: "asc" };
+    default: 
+      return { field: "date_added", direction: "desc" };
+  }
+}
 
 const durationOptions = [
   { value: [0, 60], label: "< 1 minute" },
@@ -24,8 +35,8 @@ const defaultPrefs: Prefs = {
   showDuration:    true,
   showMenu:        false,
   showDates:       false,
-  sort:            { field: 'date_added', direction: 'desc' },
-  gallery_columns: 'auto',
+  sort:            { field: "date_added", direction: "desc" },
+  gallery_columns: "auto",
   videoQuality:    0
 }
 
