@@ -28,12 +28,15 @@ const Main = () => {
     const getSelection = (): MediaSelection => {
       const urlParams = new URLSearchParams(location.search)
 
+      const sortField = urlParams.get("sort") || "date_added"
+      const sortDir = urlParams.get("dir") || "desc"
+
       return {
         query: urlParams.get("q") || undefined,
         playlist: urlParams.get("playlist") || undefined,
         tag: urlParams.get("tag") || undefined,
         sort: prefs.sort,
-        minimumQuality: prefs.videoQuality
+        minimumQuality: parseInt(urlParams.get("vq") || "0")
       }
     }
 
@@ -75,7 +78,7 @@ const Main = () => {
       let m = 0;
 
       if (showNavigation)
-        m += 45;
+        m += 47;
 
       return m;
     }

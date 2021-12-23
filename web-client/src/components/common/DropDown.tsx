@@ -1,7 +1,6 @@
-import {Children, CSSProperties, ReactNode, useRef, useState} from "react";
+import React, { CSSProperties, ReactNode, useRef, useState } from "react";
+import { useListener } from "../../api/ReactUtils";
 import "./DropDown.scss";
-import {useListener} from "../../api/ReactUtils";
-import React from "react";
 
 export type DropDownProps = {
   toggleClassName?: string
@@ -68,9 +67,8 @@ export const DropDown = (props: DropDownProps ) => {
                 return child;
               }
 
-              return React.cloneElement(child, { internalOnParentClick: () => {
+              return React.cloneElement(child, { internalonparentclick: () => {
                   if (props.hideOnClick) {
-                    console.log("hide dropdown")
                     setShowDropDownFn(false)
                   }
               } });
@@ -86,13 +84,13 @@ export const Menu = (props: {children?: ReactNode, style?: CSSProperties, onPare
   return <div style = { props.style } className = "dropdown-menu"> { props.children } </div>
 }
 
-export const MenuItem = (props: { className?: string, children?: ReactNode, href?: string, onClick?: () => any, internalOnParentClick?: () => any }) => {
+export const MenuItem = (props: { className?: string, children?: ReactNode, href?: string, onClick?: () => any, internalonparentclick?: () => any }) => {
 
   const item = 
       <div 
         className= { "dropdown-menu-item "  + (props.className ? props.className : "") } 
         onClick = { (e) => { 
-          props.internalOnParentClick && props.internalOnParentClick();
+          props.internalonparentclick && props.internalonparentclick();
           props.onClick && props.onClick(); 
         }}>
 

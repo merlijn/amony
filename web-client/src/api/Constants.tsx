@@ -11,6 +11,13 @@ const sortingOptions = [
   { value: { field: "date_added", direction: 'desc' }, label: "By date added" },
   { value: { field: "duration", direction: 'asc' }, label: "By duration" }];
 
+const durationOptions = [
+  { value: [0, 60], label: "< 1 minute" },
+  { value: [60, 300], label: "1-10 minutes" },
+  { value: [300, -1], label: "10-30 minutes" },
+  { value: [300, -1], label: "30-60 minutes" },
+  { value: [300, -1], label: "> 60 minutes" }];
+
 const defaultPrefs: Prefs = {
   showSidebar:     false,
   showTitles:      true,
@@ -25,6 +32,8 @@ const defaultPrefs: Prefs = {
 export const Constants = {
 
   imgAlt: "<image here>",
+
+  durationOptions: durationOptions,
 
   resolutions: resolutions,
 

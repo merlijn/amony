@@ -19,45 +19,49 @@ const ConfigMenu = () => {
 
       <div className="config-menu modal-dialog">
         <div key="config-title" className="config-title">Preferences</div>
-
         <div key="config-form" className="config-form">
 
-          <div className = "form-section">
-            <p className = "form-label">Number of columns</p>
-            <div className = "form-content">
+          <div key="columns" className = "form-section">
+            <p key = "header" className = "form-label">Number of columns</p>
+            <div key = "content" className = "form-content">
               <div className = "column-select">
                 <input
-                  style={ { float: "left" } }
-                  className="mr-1"
-                  name="ncols-option"
-                  type="radio"
-                  value={0}
-                  checked={prefs.gallery_columns === 'auto'}
-                  onChange={(e) => {
+                  key       = "auto-radio"
+                  style     = { { float: "left" } }
+                  className = "mr-1"
+                  name      = "ncols-option"
+                  type      = "radio"
+                  value     = { 0 }
+                  checked   = { prefs.gallery_columns === 'auto'}
+                  onChange = { (e) => {
                     if (prefs.gallery_columns > 0) {
                       updatePrefs({gallery_columns: 'auto' })
                     }
                   }}
-                /><span style={ { float: "left" } } >auto</span>
+                />
+                <span key="auto-label" style={ { float: "left" } } >auto</span>
                 <input
-                  style={ { float: "left" } }
-                  className="mr-1"
-                  name="ncols-option"
-                  type="radio"
-                  value={0}
-                  checked={prefs.gallery_columns > 0}
-                  onChange={(e) => {
+                  key       = "custom-radio"
+                  style     = { { float: "left" } }
+                  className = "mr-1"
+                  name      = "ncols-option"
+                  type      = "radio"
+                  value     = { 0 }
+                  checked   = { prefs.gallery_columns > 0}
+                  onChange  = { (e) => {
                     if (prefs.gallery_columns === 'auto')
                       updatePrefs({ gallery_columns: calculateColumns()} )
                   }}
-                /><span style={ { float: "left" } } >other</span>
-                <select name="ncols" onChange={(e) => { updatePrefs( { gallery_columns: e.target.value }) } }>
+                />
+                <span key="custom-label" style={ { float: "left" } } >other</span>
+                <select key="custom-value" name="ncols" onChange={(e) => { updatePrefs( { gallery_columns: e.target.value }) } }>
                   {
-                    columns.map((v) => {
+                    columns.map((v, index) => {
                       return <option
-                        selected={ (prefs.gallery_columns === 'auto' && v.value === calculateColumns()) || prefs.gallery_columns === v.value }
-                        value={v.value}
-                        label={v.label}
+                        key      = { `value-${index}` }
+                        selected = { (prefs.gallery_columns === 'auto' && v.value === calculateColumns()) || prefs.gallery_columns === v.value }
+                        value    = {v.value}
+                        label    = {v.label}
                       />;
                     })
                   }
@@ -67,9 +71,9 @@ const ConfigMenu = () => {
             </div>
           </div>
 
-          <div className="form-section">
-            <p className="form-label">Show info bar</p>
-            <div className="form-content">
+          <div key="info-bar" className="form-section">
+            <p key="header" className="form-label">Show info bar</p>
+            <div key="content" className="form-content">
               <input
                 type="checkbox"
                 checked={ prefs.showTitles }
@@ -78,9 +82,9 @@ const ConfigMenu = () => {
             </div>
           </div>
 
-          <div className="form-section">
-            <p className="form-label">Show video duration</p>
-            <div className="form-content">
+          <div key="duration" className="form-section">
+            <p key="header" className="form-label">Show video duration</p>
+            <div key="content" className="form-content">
               <input
                 type="checkbox"
                 checked={ prefs.showDuration }
@@ -88,9 +92,9 @@ const ConfigMenu = () => {
               />
             </div>
           </div>
-          <div className="form-section">
-            <p className="form-label">Show dates</p>
-            <div className="form-content">
+          <div key="dates" className="form-section">
+            <p key="header" className="form-label">Show dates</p>
+            <div key="content" className="form-content">
               <input
                 type="checkbox"
                 checked={ prefs.showDates }
@@ -100,9 +104,9 @@ const ConfigMenu = () => {
           </div>
           {
             config["enable-video-menu"] &&
-              <div className="form-section">
-                <p className="form-label">Show video menu</p>
-                <div className="form-content">
+              <div key="video-menu" className="form-section">
+                <p key="header" className="form-label">Show video menu</p>
+                <div key="content" className="form-content">
                   <input
                     type="checkbox"
                     checked={ prefs.showMenu }

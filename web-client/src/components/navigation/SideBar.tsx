@@ -15,11 +15,7 @@ import FileUpload from "../FileUpload";
 
 const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
 
-  const [playlists, setPlaylists] = useState<Array<Directory>>([]);
   const [showSettings, setShowSettings] = useState(false)
-
-  useEffect(() => { Api.getPlaylists().then(response => { setPlaylists(response) }); }, [] );
-
   const [showLogin, setShowLogin] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [showFileUpload, setShowFileUpload] = useState(false)

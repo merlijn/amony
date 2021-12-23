@@ -1,23 +1,23 @@
 @import 'src/App.scss';
 
 .tag-bar {
+  @extend .v-align-center;
+
   user-select: none;
   position: fixed;
-  float: left;
+  // float: left;
   width: 100%;
   background-color: var(--text-bg-color);
   border-bottom: 1px solid $gray-200;
-  align-items: center;
 
   height: 44px;
   display: flex;
 
-  padding: 4px 5px;
+  // padding: 4px 5px;
   z-index: 10;
 
   .tags {
     @extend .v-align-center;
-
     display: flex;
     justify-content: center;
 
@@ -29,12 +29,11 @@
     @extend .hover-pointer;
     display: flex;
     text-align: center;
-    float: left;
     margin: 0px 4px;
     color: black;
     background-color: $gray-300;
     font-size: small;
-    padding: 6px 12px;
+    padding: 7px 12px;
     border-radius: 25px;
   }
 
@@ -45,8 +44,8 @@
 
   .custom-dropdown-toggle {
     border-radius: 25px !important;
-    background-color: $gray-600 !important;
-    border-color: $gray-600 !important;
+    background-color: $gray-500 !important;
+    border-color: $gray-500 !important;
     font-size: small !important;
     color: white;
     padding: 3px 10px;
@@ -56,7 +55,7 @@
     justify-content: center;
   
     span {
-      line-height: 21px;
+      line-height: 23px;
     }
     svg {
       width: 21px;

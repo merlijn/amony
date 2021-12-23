@@ -2,13 +2,12 @@
 
 //index.module.css
 .dropdown-container {
-  display: inline-flex;
   position: relative;
-  flex-direction: column;
+  z-index: inherit;
 }
 
 .dropdown-toggle {
-  position: relative;
+  // position: relative;
   cursor: pointer;
 }
 
@@ -18,6 +17,7 @@
 
 .dropdown-content-container {
   position: relative;
+  z-index: inherit;
 
   .dropdown-content {
     position: absolute;
