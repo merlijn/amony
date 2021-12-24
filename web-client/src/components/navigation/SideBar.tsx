@@ -1,17 +1,16 @@
-import React, { useEffect, useState } from "react";
-import { FaGithub, FaHome } from "react-icons/fa";
-import { FiFolder, FiGrid, FiSettings, FiUser, FiUpload } from "react-icons/fi";
+import React, { useState } from "react";
+import { FaGithub } from "react-icons/fa";
+import { FiFolder, FiGrid, FiSettings, FiUpload, FiUser } from "react-icons/fi";
 import { GiAbstract020 } from "react-icons/gi";
 import { GoGrabber } from "react-icons/go";
-import { Menu, MenuItem, ProSidebar, SidebarContent, SidebarFooter, SidebarHeader, SubMenu } from "react-pro-sidebar";
+import { Menu, MenuItem, ProSidebar, SidebarContent, SidebarFooter, SidebarHeader } from "react-pro-sidebar";
 import { Api } from "../../api/Api";
-import { Directory } from "../../api/Model";
-import './SideBar.scss';
 import Modal from "../common/Modal";
-import ConfigMenu from "./ConfigMenu";
+import ConfigMenu from "../dialogs/ConfigMenu";
+import FileUpload from "../dialogs/FileUpload";
 import Login from "../session/Login";
 import Profile from "../session/Profile";
-import FileUpload from "../FileUpload";
+import './SideBar.scss';
 
 const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
 
@@ -22,10 +21,18 @@ const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
 
   return (
     <>
-    { <Modal visible = { showSettings } onHide={() => setShowSettings(false)}><ConfigMenu /></Modal>  }
-    { <Modal visible = { showLogin } onHide={() => setShowLogin(false)}><Login onLoginSuccess={() => setShowLogin(false) }/></Modal>  }
-    { <Modal visible = { showProfile } onHide={() => setShowProfile(false)}><Profile onLogout={ () => setShowProfile(false) } /></Modal>  }
-    { <Modal visible = { showFileUpload } onHide={() => setShowFileUpload(false)}><FileUpload /></Modal>  }
+    <Modal visible = { showSettings }   onHide = { () => setShowSettings(false) }>
+      <ConfigMenu />
+    </Modal>
+    <Modal visible = { showLogin }      onHide = { () => setShowLogin(false) }>
+      <Login onLoginSuccess={() => setShowLogin(false) }/>
+    </Modal>
+    <Modal visible = { showProfile }    onHide = { () => setShowProfile(false) }>
+      <Profile onLogout={ () => setShowProfile(false) } />
+    </Modal>
+    <Modal visible = { showFileUpload } onHide = { () => setShowFileUpload(false) }>
+      <FileUpload />
+    </Modal>
 
     <ProSidebar className="my-sidebar" width={200} collapsedWidth={50} collapsed={props.collapsed}>
       <SidebarHeader className="sidebar-header">

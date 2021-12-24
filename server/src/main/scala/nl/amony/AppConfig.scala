@@ -16,14 +16,16 @@ import scala.concurrent.duration.FiniteDuration
 case class MediaLibConfig(
     path: Path,
     indexPath: Path,
+    relativeUploadPath: Path,
     scanParallelFactor: Int,
     verifyExistingHashes: Boolean,
     hashingAlgorithm: HashingAlgorithm,
     previews: PreviewConfig
 ) {
 
-  lazy val resourcePath = indexPath.resolve("resources")
-  lazy val mediaPath = path.toAbsolutePath.normalize()
+  lazy val resourcePath: Path = indexPath.resolve("resources")
+  lazy val mediaPath: Path = path.toAbsolutePath.normalize()
+  lazy val uploadPath: Path = path.resolve(relativeUploadPath)
 }
 
 case class AmonyConfig(

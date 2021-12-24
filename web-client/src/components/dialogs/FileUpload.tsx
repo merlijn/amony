@@ -1,10 +1,11 @@
 import React, { ChangeEvent, useState } from 'react';
-import { Api } from '../api/Api';
-import { dateMillisToString } from '../api/Util';
+import { Api } from '../../api/Api';
+import { dateMillisToString } from '../../api/Util';
  
 const FileUpload = () => {
   
     const [file, setFile] = useState<File | undefined>(undefined)
+    const [feedback, setFeedback] = useState<string | undefined>(undefined)
 
     // On file select (from the pop up)
     const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -18,7 +19,10 @@ const FileUpload = () => {
     const onFileUpload = () => {
     
       if (file) {
-        Api.uploadFile(file);
+        Api.uploadFile(file).then(() => {
+          setFeedback("Done!")
+          setFile(undefined)
+        });
       }
     };
     
@@ -29,6 +33,7 @@ const FileUpload = () => {
               <input type="file" accept=".mp4" onChange = { onFileChange} />
               <button className="button-primary" onClick = { onFileUpload} >Upload</button>
           </div>
+          { feedback && <div><p>{ feedback }</p></div>}
           {
             file && 
               <div>

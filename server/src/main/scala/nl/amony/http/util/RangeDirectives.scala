@@ -1,6 +1,7 @@
 package nl.amony.http.util
 
 import akka.NotUsed
+import akka.http.impl.util.StreamUtils
 import akka.http.scaladsl.model.Multipart.ByteRanges
 import akka.http.scaladsl.model.StatusCodes.PartialContent
 import akka.http.scaladsl.model.StatusCodes.RangeNotSatisfiable
@@ -12,19 +13,22 @@ import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.headers.`Content-Range`
 import akka.http.scaladsl.model.headers.`Content-Type`
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.Directives.optionalHeaderValueByName
-import akka.http.scaladsl.server.Directives.respondWithHeaders
-import akka.http.scaladsl.server.directives.ContentTypeResolver
-import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.server.UnsatisfiableRangeRejection
-import akka.stream.scaladsl.FileIO
-import akka.stream.scaladsl.Source
+import akka.http.scaladsl.server.Directives.{optionalHeaderValueByName, respondWithHeaders, withSizeLimit}
+import akka.http.scaladsl.server.directives.FutureDirectives.onSuccess
+import akka.http.scaladsl.server.directives.MarshallingDirectives.{as, entity}
+import akka.http.scaladsl.server.directives.{ContentTypeResolver, FileInfo}
+import akka.http.scaladsl.server.{Directive1, Route, UnsatisfiableRangeRejection}
+import akka.http.scaladsl.util.FastFuture
+import akka.stream.IOResult
+import akka.stream.scaladsl.{FileIO, Sink, Source}
 import akka.util.ByteString
 import scribe.Logging
 
 import java.io.File
 import java.io.RandomAccessFile
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
+import scala.collection.immutable
+import scala.concurrent.Future
 
 object RangeDirectives extends Logging {
   import akka.http.scaladsl.server.directives.BasicDirectives._
@@ -152,4 +156,45 @@ object RangeDirectives extends Logging {
       }
     }
   }
+
+  private def handleIOResult(ioResult: IOResult): Future[IOResult] =
+    if (ioResult.wasSuccessful) FastFuture.successful(ioResult)
+    else FastFuture.failed(ioResult.getError)
+
+  val uploadLimitBytes = 1024 * 1024 * 100
+
+  def uploadFiles(fieldName: String, uploadPath: Path): Directive1[immutable.Seq[(FileInfo, Path)]] =
+
+    (withSizeLimit(uploadLimitBytes) & entity(as[Multipart.FormData])).flatMap { formData =>
+
+      extractRequestContext.flatMap { ctx =>
+        implicit val mat = ctx.materializer
+        implicit val ec = ctx.executionContext
+
+        val uploaded: Source[(FileInfo, Path), Any] = formData.parts
+          .mapConcat { part =>
+            if (part.filename.isDefined && part.name == fieldName) part :: Nil
+            else {
+              part.entity.discardBytes()
+              Nil
+            }
+          }
+          .mapAsync(1) { part =>
+            val fileInfo = FileInfo(part.name, part.filename.get, part.entity.contentType)
+
+            Files.createDirectories(uploadPath)
+            val path = uploadPath.resolve(part.filename.get)
+            val file = path.toFile
+            file.createNewFile()
+
+            part.entity.dataBytes.runWith(FileIO.toPath(path))
+              .flatMap(handleIOResult)
+              .map(_ => (fileInfo, path))
+          }
+
+        val uploadedF = uploaded.runWith(Sink.seq[(FileInfo, Path)])
+
+        onSuccess(uploadedF)
+      }
+    }
 }

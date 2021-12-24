@@ -4,12 +4,12 @@ import { Api } from "../api/Api";
 import { Video } from "../api/Model";
 import { dateMillisToString, durationInMillisToString, zeroPad } from "../api/Util";
 import config from "../AppConfig.json";
-import MediaInfo from './MediaInfo';
 import './Preview.scss';
 import { DropDown, Menu, MenuItem } from './common/DropDown';
 import FragmentsPlayer from "./common/FragmentsPlayer";
 import ImgWithAlt from "./common/ImgWithAlt";
 import Modal from './common/Modal';
+import MediaInfo from './dialogs/MediaInfo';
 
 export type PreviewProps = {
   vid: Video,

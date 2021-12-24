@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { VideoMeta } from "../api/Model";
-import ImgWithAlt from "./common/ImgWithAlt";
-import TagEditor from "./common/TagEditor";
+import { VideoMeta } from "../../api/Model";
+import TagEditor from "../common/TagEditor";
 import './MediaInfo.scss';
 import { AiOutlineSave } from "react-icons/ai";
 

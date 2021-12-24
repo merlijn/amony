@@ -4,7 +4,7 @@ import { buildUrl } from "./Util";
 import jwtDecode, { JwtPayload } from "jwt-decode";
 import axios from 'axios';
 
-const headers = { 'Content-type': 'application/json; charset=UTF-8', 'Bearer' : '' };
+const headers = { 'Content-type': 'application/json; charset=UTF-8' };
 
 export type Session = {
   isLoggedIn: () => boolean
@@ -64,12 +64,12 @@ export const Api = {
     const formData = new FormData();
 
     formData.append(
-      "myFile",
+      "video",
       file,
       file.name
     );
 
-    axios.post("api/uploadfile", formData);
+    axios.post("/files/upload", formData);
   },
 
   getFragments: async function getFragments(n: number, offset: number, tag?: string) {

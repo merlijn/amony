@@ -90,7 +90,6 @@ class AmonyApi(val config: AmonyConfig, system: ActorSystem[Message]) extends Lo
 
     def getVideoFragment(id: String, quality: Int, start: Long, end: Long): Path =
       resourcePath().resolve(s"$id-$start-${end}_${quality}p.mp4")
-    
 
     def getThumbnail(id: String, quality: Int, timestamp: Option[Long])(implicit
         timeout: Timeout
@@ -158,11 +157,10 @@ class AmonyApi(val config: AmonyConfig, system: ActorSystem[Message]) extends Lo
     def regeneratePreviewForMedia(media: Media): Unit = {
       logger.info(s"re-generating previews for '${media.fileInfo.relativePath}'")
       media.fragments.foreach { f =>
-        MediaLibScanner.createVideoFragment(
+        MediaLibScanner.createPreviews(
           media     = media,
           videoPath = config.media.mediaPath.resolve(media.fileInfo.relativePath),
           indexPath = config.media.indexPath,
-          id        = media.id,
           from      = f.fromTimestamp,
           to        = f.toTimestamp,
           config    = config.media.previews

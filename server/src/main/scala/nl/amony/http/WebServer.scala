@@ -32,7 +32,7 @@ class WebServer(override val config: WebServerConfig, override val api: AmonyApi
     else
       apiRoutes
 
-  val allRoutes = allApiRoutes ~ identityRoutes ~ resourceRoutes ~ webClientFiles
+  val allRoutes = allApiRoutes ~ identityRoutes ~ resourceRoutes ~ webAppFiles
 
   def run(): Unit = {
 

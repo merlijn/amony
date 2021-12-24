@@ -13,8 +13,6 @@ import { buildUrl, copyParams } from "../../api/Util";
 import { DropDown } from "../common/DropDown";
 import './TopNavBar.scss';
 
-
-
 export type NavBarProps = {
   onClickMenu: () => void, 
   showTagsBar: boolean,
@@ -59,10 +57,8 @@ function TopNavBar(props: NavBarProps) {
           <GoGrabber className = "nav-menu-button" onClick = { props.onClickMenu } />
           <div key = "nav-bar-left"   className = "nav-bar-spacer" />
           <div key = "nav-bar-center" className = "nav-bar-center">
-
-            
-            <form className="nav-search-form" onSubmit = { doSearch } >
-              <div className="nav-search-input-container">
+            <form className = "nav-search-form" onSubmit = { doSearch } >
+              <div className = "nav-search-input-container">
                 <input ref = { inputRef } key="nav-search-input" placeholder="Search" className="nav-search-input" type="text" value={query} onChange={queryChanged} />
                 <FilterDropDown />
                 {/* { query !== "" && <MdClose onClick = { clearQuery } className = "nav-clear-input" /> } */}
@@ -89,23 +85,10 @@ function TopNavBar(props: NavBarProps) {
   );
 }
 
-const parseSort = (s: string): Sort => {
-  switch (s) {
-    case "duration":
-      return { field: "duration", direction: "asc" };
-    case "title":
-      return { field: "title", direction: "asc" };
-    default: 
-      return { field: "date_added", direction: "desc" };
-  }
-}
-
 const FilterDropDown = () => {
 
   const [vqParam, setVqParam] = useUrlParam("vq", "0")
   const [sortParam, setSortParam] = useUrlParam("s", "date_added")
-  const vq = parseInt(vqParam)
-  const sort = parseSortParam(sortParam)
 
   return( 
     <div className = "filter-dropdown-container">
@@ -119,7 +102,7 @@ const FilterDropDown = () => {
                            type     = "radio" 
                            name     = "sort" 
                            value    = { option.label } 
-                           checked  = { _.isEqual(option.value, sort) }
+                           checked  = { _.isEqual(option.value, parseSortParam(sortParam)) }
                            onChange = { () => setSortParam(option.value.field) }/>
                          <label htmlFor = { option.label }>{ option.label }</label>
                       </div>
@@ -134,7 +117,7 @@ const FilterDropDown = () => {
                             type    = "radio" 
                             name    = "resolution" 
                             value   = { option.label } 
-                            checked = { vq === option.value }
+                            checked = { parseInt(vqParam) === option.value }
                             onChange = { () => setVqParam(option.value.toString()) }/>
                           <label htmlFor = { option.label }>{option.label}</label>
                       </div>

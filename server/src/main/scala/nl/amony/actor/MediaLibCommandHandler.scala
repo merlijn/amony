@@ -6,7 +6,7 @@ import better.files.File
 import nl.amony.MediaLibConfig
 import nl.amony.actor.MediaLibProtocol._
 import nl.amony.actor.MediaLibEventSourcing._
-import nl.amony.lib.MediaLibScanner.createVideoFragment
+import nl.amony.lib.MediaLibScanner.createPreviews
 import nl.amony.lib.MediaLibScanner.deleteVideoFragment
 import scribe.Logging
 
@@ -124,11 +124,10 @@ object MediaLibCommandHandler extends Logging {
                   oldFragment.toTimestamp,
                   config.previews
                 )
-                createVideoFragment(
+                createPreviews(
                   media,
                   media.resolvePath(config.mediaPath),
                   config.indexPath,
-                  id,
                   from,
                   to,
                   config.previews
@@ -155,11 +154,10 @@ object MediaLibCommandHandler extends Logging {
             Effect
               .persist(FragmentAdded(id, from, to))
               .thenRun((_: State) =>
-                createVideoFragment(
+                createPreviews(
                   media,
                   media.resolvePath(config.mediaPath),
                   config.indexPath,
-                  id,
                   from,
                   to,
                   config.previews

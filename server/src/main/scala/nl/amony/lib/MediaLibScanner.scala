@@ -68,9 +68,11 @@ object MediaLibScanner extends Logging {
       }
   }
 
-  def scanVideo(hash: String, baseDir: Path, videoPath: Path, config: MediaLibConfig): Media = {
+  def scanVideo(videoPath: Path, hash: Option[String], config: MediaLibConfig): Media = {
 
     val (probe, debug) = FFMpeg.ffprobe(videoPath)
+
+    val fileHash = hash.getOrElse(config.hashingAlgorithm.generateHash(videoPath))
 
     val mainStream =
       probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${videoPath}"))
@@ -85,8 +87,8 @@ object MediaLibScanner extends Logging {
     val timeStamp = mainStream.durationMillis / 3
 
     val fileInfo = FileInfo(
-      relativePath     = baseDir.relativize(videoPath).toString,
-      hash             = hash,
+      relativePath     = config.mediaPath.relativize(videoPath).toString,
+      hash             = fileHash,
       size             = fileAttributes.size(),
       creationTime     = fileAttributes.creationTime().toMillis,
       lastModifiedTime = fileAttributes.lastModifiedTime().toMillis
@@ -99,7 +101,7 @@ object MediaLibScanner extends Logging {
     )
 
     val media = Media(
-      id                 = hash,
+      id                 = fileHash,
       title              = None,
       comment            = None,
       fileInfo           = fileInfo,
@@ -109,11 +111,10 @@ object MediaLibScanner extends Logging {
       tags               = Set.empty
     )
 
-    createVideoFragment(
+    createPreviews(
       media,
       videoPath,
       config.indexPath,
-      hash,
       timeStamp,
       timeStamp + fragmentLength,
       config.previews
@@ -148,7 +149,7 @@ object MediaLibScanner extends Logging {
                 val fileAttributes = Files.readAttributes(path, classOf[BasicFileAttributes])
 
                 if (m.fileInfo.lastModifiedTime != fileAttributes.lastModifiedTime().toMillis) {
-                  logger.warn(s"$path was modified since last seen, recomputing hash")
+                  logger.warn(s"$path last modified time is different from what last seen, recomputing hash")
                   config.hashingAlgorithm.generateHash(path)
                 } else {
                   m.fileInfo.hash
@@ -200,7 +201,7 @@ object MediaLibScanner extends Logging {
 
             case None =>
               logger.info(s"Scanning new file: '${relativePath}'")
-              scanVideo(hash, config.mediaPath, videoFile, config)
+              scanVideo(videoFile, Some(hash), config)
           }
         }
       }
@@ -209,27 +210,26 @@ object MediaLibScanner extends Logging {
   }
 
   def deleteVideoFragment(
-      media: Media,
-      indexPath: Path,
-      id: String,
-      from: Long,
-      to: Long,
-      config: PreviewConfig
+    media: Media,
+    indexPath: Path,
+    id: String,
+    from: Long,
+    to: Long,
+    previewConfig: PreviewConfig
   ): Unit = {
 
     (indexPath / "resources" / s"${id}-$from-${to}_${media.height}p.mp4").deleteIfExists()
 
-    config.transcode.foreach { transcode =>
+    previewConfig.transcode.foreach { transcode =>
       (indexPath / "resources" / s"${id}-${from}_${transcode.scaleHeight}p.webp").deleteIfExists()
       (indexPath / "resources" / s"${id}-$from-${to}_${transcode.scaleHeight}p.mp4").deleteIfExists()
     }
   }
 
-  def createVideoFragment(
+  def createPreviews(
       media: Media,
       videoPath: Path,
       indexPath: Path,
-      id: String,
       from: Long,
       to: Long,
       config: PreviewConfig
@@ -243,7 +243,7 @@ object MediaLibScanner extends Logging {
       FFMpeg.writeThumbnail(
         inputFile   = videoPath,
         timestamp   = from,
-        outputFile  = Some(resourcePath.resolve(s"${id}-${from}_${height}p.webp")),
+        outputFile  = Some(resourcePath.resolve(s"${media.id}-${from}_${height}p.webp")),
         scaleHeight = Some(height)
       )
 
@@ -251,7 +251,7 @@ object MediaLibScanner extends Logging {
         inputFile   = videoPath,
         from        = from,
         to          = to,
-        outputFile  = Some(resourcePath.resolve(s"${id}-$from-${to}_${height}p.mp4")),
+        outputFile  = Some(resourcePath.resolve(s"${media.id}-$from-${to}_${height}p.mp4")),
         quality     = crf,
         scaleHeight = Some(height)
       )

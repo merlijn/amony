@@ -72,6 +72,4 @@ export type Prefs = {
   showMenu: boolean
   showDates: boolean
   gallery_columns: Columns
-  sort: Sort
-  videoQuality: number
 }

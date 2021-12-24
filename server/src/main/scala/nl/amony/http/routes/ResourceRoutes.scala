@@ -6,7 +6,8 @@ import akka.http.scaladsl.server.Route
 import akka.stream.scaladsl.StreamConverters
 import better.files.File
 import nl.amony.http.RouteDeps
-import nl.amony.http.util.RangeDirectives.fileWithRangeSupport
+import nl.amony.http.util.RangeDirectives.{fileWithRangeSupport, uploadFiles}
+import nl.amony.lib.MediaLibScanner
 import scribe.Logging
 
 trait ResourceRoutes extends Logging {
@@ -21,34 +22,46 @@ trait ResourceRoutes extends Logging {
 
   val resourceRoutes = {
 
-    pathPrefix("files" / "resources") {
+    pathPrefix("files") {
 
-      (get & path(Segment)) {
-        case patterns.Thumbnail(id, _, timestamp, quality) =>
-          onSuccess(api.resources.getThumbnail(id, quality.toInt, Option(timestamp).map(_.toLong))) {
-            case None => complete(StatusCodes.NotFound)
-            case Some(is) =>
-              val source = StreamConverters.fromInputStream(() => is, 8192)
-              complete(HttpEntity(ContentType(MediaTypes.`image/webp`), source))
+      path("upload") {
+        uploadFiles("video", api.config.media.uploadPath) { f =>
+          f.foreach { case (info, path) =>
+            logger.info(s"${path} was uploaded, scanning file")
+            val media = MediaLibScanner.scanVideo(path.toAbsolutePath, None, api.config.media)
+            api.modify.upsertMedia(media)
           }
+          complete("OK")
+        }
+      } ~ pathPrefix("resources") {
 
-        case patterns.VideoFragment(id, start, end, quality) =>
-          val segmentPath = api.resources.getVideoFragment(id, quality.toInt, start.toLong, end.toLong)
-          fileWithRangeSupport(segmentPath)
+        (get & path(Segment)) {
+          case patterns.Thumbnail(id, _, timestamp, quality) =>
+            onSuccess(api.resources.getThumbnail(id, quality.toInt, Option(timestamp).map(_.toLong))) {
+              case None => complete(StatusCodes.NotFound)
+              case Some(is) =>
+                val source = StreamConverters.fromInputStream(() => is, 8192)
+                complete(HttpEntity(ContentType(MediaTypes.`image/webp`), source))
+            }
 
-        case patterns.Video(id, quality) =>
-          onSuccess(api.resources.getVideo(id)) {
-            case None => complete(StatusCodes.NotFound)
-            case Some(path) => fileWithRangeSupport(path)
-          }
+          case patterns.VideoFragment(id, start, end, quality) =>
+            val segmentPath = api.resources.getVideoFragment(id, quality.toInt, start.toLong, end.toLong)
+            fileWithRangeSupport(segmentPath)
 
-        case _ =>
-          complete(StatusCodes.NotFound)
+          case patterns.Video(id, quality) =>
+            onSuccess(api.resources.getVideo(id)) {
+              case None => complete(StatusCodes.NotFound)
+              case Some(path) => fileWithRangeSupport(path)
+            }
+
+          case _ =>
+            complete(StatusCodes.NotFound)
+        }
       }
     }
   }
 
-  def webClientFiles: Route =
+  def webAppFiles: Route =
     rawPathPrefix(Slash) {
 
       extractUnmatchedPath { path =>
