@@ -30,7 +30,7 @@ import java.nio.file.{Files, Path}
 import scala.collection.immutable
 import scala.concurrent.Future
 
-object RangeDirectives extends Logging {
+object HttpDirectives extends Logging {
   import akka.http.scaladsl.server.directives.BasicDirectives._
   import akka.http.scaladsl.server.directives.RouteDirectives._
 

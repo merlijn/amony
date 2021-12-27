@@ -63,7 +63,4 @@ trait AppConfig extends Logging {
   val configSource = ConfigSource.fromConfig(config)
 
   val appConfig = configSource.at("amony").loadOrThrow[AmonyConfig]
-//
-//  val mediaLibConfig  = configSource.at("amony.media").loadOrThrow[MediaLibConfig]
-//  val webServerConfig = configSource.at("amony.api").loadOrThrow[WebServerConfig]
 }

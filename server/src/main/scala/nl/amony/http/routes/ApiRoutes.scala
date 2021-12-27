@@ -100,7 +100,7 @@ trait ApiRoutes extends Logging with IdentityRoutes {
 
   def translateResponse(future: Future[Either[ErrorResponse, Media]]): Route = {
     onSuccess(future) {
-      case Left(MediaNotFound(id))      => complete(StatusCodes.NotFound)
+      case Left(MediaNotFound(_))       => complete(StatusCodes.NotFound)
       case Left(InvalidCommand(reason)) => complete(StatusCodes.BadRequest, reason)
       case Right(media)                 => complete(media.asJson)
     }

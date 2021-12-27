@@ -6,9 +6,11 @@ import akka.http.scaladsl.server.Route
 import akka.stream.scaladsl.StreamConverters
 import better.files.File
 import nl.amony.http.RouteDeps
-import nl.amony.http.util.RangeDirectives.{fileWithRangeSupport, uploadFiles}
+import nl.amony.http.util.HttpDirectives.{fileWithRangeSupport, uploadFiles}
 import nl.amony.lib.MediaLibScanner
 import scribe.Logging
+
+import scala.concurrent.Future
 
 trait ResourceRoutes extends Logging {
 
@@ -29,7 +31,11 @@ trait ResourceRoutes extends Logging {
           f.foreach { case (info, path) =>
             logger.info(s"${path} was uploaded, scanning file")
             val media = MediaLibScanner.scanVideo(path.toAbsolutePath, None, api.config.media)
-            api.modify.upsertMedia(media)
+
+            api.query.getById(media.id).flatMap {
+              case None    => api.modify.upsertMedia(media)
+              case Some(_) => Future.failed(new IllegalStateException("Media with hash already exists"))
+            }
           }
           complete("OK")
         }
