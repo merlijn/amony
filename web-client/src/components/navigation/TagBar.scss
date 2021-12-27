@@ -14,14 +14,12 @@
   display: flex;
 
   // padding: 4px 5px;
-  z-index: 10;
+  z-index: 9;
 
   .tags {
     @extend .v-align-center;
     display: flex;
     justify-content: center;
-
-    z-index: 9;
     flex-grow: 1;
   }
 

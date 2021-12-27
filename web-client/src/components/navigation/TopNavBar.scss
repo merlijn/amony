@@ -39,7 +39,7 @@ $accent: rgb(83, 155, 36);
 
 .nav-bar-container {
 
-  z-index: 20;
+  z-index: 10;
   position: fixed;
   top: 0;
   left: 0;
@@ -48,7 +48,7 @@ $accent: rgb(83, 155, 36);
   .top-nav-bar {
 
     user-select: none;
-    z-index: 10;
+    z-index: inherit;
     position: relative;
     float: left;
     display: flex;
@@ -87,7 +87,7 @@ $accent: rgb(83, 155, 36);
 
     display: flex;
     vertical-align: middle;
-    z-index: 20;
+    z-index: inherit;
     flex-grow: 2;
     max-width: 700px;
     padding: 6px 4px !important;
@@ -161,6 +161,16 @@ $accent: rgb(83, 155, 36);
           border: 1px dotted $gray-200;
           border-radius: 3px;
         }
+
+        .search-icon {
+          @extend .abs-top-left;
+          z-index: 11 !important;
+          width: 20px;
+          height: 20px;
+          margin-top: 8px;
+          margin-left: 7px;
+          color: $gray-700;
+        }
     
         .nav-search-input {
           @extend .abs-top-left;
@@ -171,7 +181,7 @@ $accent: rgb(83, 155, 36);
           height: 35px !important;
           border-radius: 3px;
           border: 1px solid $gray-300;
-          padding-left: 8px;
+          padding-left: 35px;
           &:focus {
             border-color: rgb(128, 189, 255);
             outline: solid rgba(128, 189, 255, 0.4);
@@ -182,10 +192,10 @@ $accent: rgb(83, 155, 36);
           @extend .abs-top-left;
           width: 100%;
           height: 100%;
-          z-index: 5;
           
           svg {
             @extend .abs-top-right;
+            z-index: 12 !important;
             margin: 6px;
             // margin-top: 40px;
             width: 24px;
@@ -196,16 +206,17 @@ $accent: rgb(83, 155, 36);
 
             display: flex;
             flex-direction: column;
+            z-index: 11 !important;
 
             border-radius: 0px 0px 3px 3px;
             border: 1px solid $gray-300;
             border-top: none;
-            margin-top: 25px;
+            // margin-top: 5px;
             width: 100%;
             background-color: var(--text-bg-color);
 
             .filter-container {
-              padding: 20px;
+              padding: 15px 20px 20px 20px;
               display: flex;
               gap: 20px;
               

@@ -2,12 +2,12 @@ import _ from "lodash";
 import React, { useEffect, useRef, useState } from "react";
 import { isMobile } from "react-device-detect";
 import { BsListUl } from "react-icons/bs";
-import { GoGrabber } from "react-icons/go";
+import { GoGrabber, GoSearch } from "react-icons/go";
 import { IoGridOutline } from "react-icons/io5";
 import { MdTune } from "react-icons/md";
 import { useHistory, useLocation } from "react-router-dom";
 import { Constants, parseSortParam } from "../../api/Constants";
-import { MediaView, Sort } from "../../api/Model";
+import { MediaView } from "../../api/Model";
 import { useUrlParam } from "../../api/ReactUtils";
 import { buildUrl, copyParams } from "../../api/Util";
 import { DropDown } from "../common/DropDown";
@@ -57,10 +57,11 @@ function TopNavBar(props: NavBarProps) {
           <GoGrabber className = "nav-menu-button" onClick = { props.onClickMenu } />
           <div key = "nav-bar-left"   className = "nav-bar-spacer" />
           <div key = "nav-bar-center" className = "nav-bar-center">
-            <form className = "nav-search-form" onSubmit = { doSearch } >
+            <form key="search-form" className = "nav-search-form" onSubmit = { doSearch } >
               <div className = "nav-search-input-container">
-                <input ref = { inputRef } key="nav-search-input" placeholder="Search" className="nav-search-input" type="text" value={query} onChange={queryChanged} />
+                <GoSearch className="search-icon" />
                 <FilterDropDown />
+                <input ref = { inputRef } key="nav-search-input" placeholder="Search" className="nav-search-input" type="text" value={query} onChange={queryChanged} />
                 {/* { query !== "" && <MdClose onClick = { clearQuery } className = "nav-clear-input" /> } */}
                 { props.playList && <div className = "playlist">{ props.playList }</div>}
               </div>
