@@ -50,16 +50,16 @@ export const DropDown = (props: DropDownProps ) => {
   return <div className = "dropdown-container">
     <div
       className = { "dropdown-toggle " + (props.toggleClassName ? props.toggleClassName : "") }
-      onClick = { () => setShowDropDownFn(!showDropdown) }
-      ref = { toggleRef }>
+      onClick   = { () => setShowDropDownFn(!showDropdown) }
+      ref       = { toggleRef }>
       { toggle }
     </div>
     <div className = "dropdown-content-container">
       {
         showDropdown && (
-        <div style = { alignStyle } 
+        <div style     = { alignStyle } 
              className = { "dropdown-content " + (props.contentClassName ? props.contentClassName : "")  } 
-             ref = { contentRef }>
+             ref       = { contentRef }>
           {
             // children
             React.Children.map(props.children, child => {

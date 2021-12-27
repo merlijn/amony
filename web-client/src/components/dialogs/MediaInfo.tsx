@@ -3,6 +3,7 @@ import { VideoMeta } from "../../api/Model";
 import TagEditor from "../common/TagEditor";
 import './MediaInfo.scss';
 import { AiOutlineSave } from "react-icons/ai";
+import { FiSave } from "react-icons/fi";
 
 const MediaInfo = (props: {meta: VideoMeta, onClose: (meta: VideoMeta) => any }) => {
 
@@ -15,7 +16,7 @@ const MediaInfo = (props: {meta: VideoMeta, onClose: (meta: VideoMeta) => any })
         <div className="info-panel-title">Comment</div>
         <textarea className="comment-input" placeholder="comment">{meta.comment}</textarea>
         <div className="abs-bottom-right">
-          <AiOutlineSave className="info-save-button" title="save" onClick={(e) => { props.onClose(meta) } } />
+          <FiSave className="info-save-button" title="save" onClick={(e) => { props.onClose(meta) } } />
         </div>
         <div className="info-panel-title">Tags</div>
         <TagEditor 

@@ -1,15 +1,15 @@
-import React, { CSSProperties, useRef, useState } from 'react';
+import React, { CSSProperties, useEffect, useState } from 'react';
 import ProgressiveImage from "react-progressive-graceful-image";
 import { Api } from "../api/Api";
 import { Video } from "../api/Model";
-import { dateMillisToString, durationInMillisToString, zeroPad } from "../api/Util";
+import { dateMillisToString, durationInMillisToString } from "../api/Util";
 import config from "../AppConfig.json";
-import './Preview.scss';
-import { DropDown, Menu, MenuItem } from './common/DropDown';
+import { DropDown, MenuItem } from './common/DropDown';
 import FragmentsPlayer from "./common/FragmentsPlayer";
 import ImgWithAlt from "./common/ImgWithAlt";
 import Modal from './common/Modal';
 import MediaInfo from './dialogs/MediaInfo';
+import './Preview.scss';
 
 export type PreviewProps = {
   vid: Video,
@@ -33,8 +33,13 @@ const Preview = (props: PreviewProps) => {
 
   const [vid, setVid] = useState(props.vid)
   const [isHovering, setIsHovering] = useState(false)
+  const [showVideoPreview, setShowVideoPreview] = useState(false)
 
   const durationStr = durationInMillisToString(vid.duration)
+
+  useEffect(() => {
+    setShowVideoPreview(isHovering)
+  }, [isHovering])
 
   const titlePanel =
     <div className = "preview-info-bar">
@@ -47,7 +52,10 @@ const Preview = (props: PreviewProps) => {
       {
         (props.options.showMenu && config["enable-video-menu"] && isHovering) &&
           <div className = "preview-menu-container">
-            <PreviewMenu video={vid} setVideo = { setVid }/>
+            <PreviewMenu 
+              video        = { vid } 
+              setVideo     = { setVid }
+              onDialogOpen = { () => { setShowVideoPreview(false) } }/>
           </div>
       }
       { props.options.showDuration && <div className="duration-overlay">{durationStr}</div> }
@@ -74,9 +82,9 @@ const Preview = (props: PreviewProps) => {
 
   const preview =
       <div className    = "preview-media-container"
-           onMouseEnter = { () => props.options.showPreviewOnHover && setIsHovering(true)}
-           onMouseLeave = { () => setIsHovering(false)}>
-        { isHovering && videoPreview }
+           onMouseEnter = { () => props.options.showPreviewOnHover && setIsHovering(true) }
+           onMouseLeave = { () => setIsHovering(false) }>
+        { showVideoPreview && videoPreview }
         { primaryThumbnail }
         { overlay }
       </div>
@@ -89,7 +97,7 @@ const Preview = (props: PreviewProps) => {
   )
 }
 
-const PreviewMenu = (props: {video: Video, setVideo: (v: Video) => void}) => {
+const PreviewMenu = (props: {video: Video, setVideo: (v: Video) => void, onDialogOpen: () => any}) => {
 
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false)
@@ -129,14 +137,18 @@ const PreviewMenu = (props: {video: Video, setVideo: (v: Video) => void}) => {
 
       <div className = "preview-menu">
 
-        <DropDown align = 'right' contentClassName = "dropdown-menu" toggleIcon = { <ImgWithAlt className = "preview-menu-icon" src="/icons/more.svg" /> } hideOnClick = {true} >
-          <MenuItem onClick = { () => setShowInfoModal(true) }>
+        <DropDown 
+          align = 'right' 
+          contentClassName = "dropdown-menu" 
+          toggleIcon = { <ImgWithAlt className = "preview-menu-icon" src="/icons/more.svg" /> } 
+          hideOnClick = {true} >
+          <MenuItem onClick = { () => { setShowInfoModal(true); props.onDialogOpen() } }>
             <ImgWithAlt className="menu-icon" src="/icons/info.svg" />Info
           </MenuItem>
           <MenuItem href={`/editor/${props.video.id}`}>
             <ImgWithAlt className="menu-icon" src="/icons/edit.svg" />Fragments
           </MenuItem>
-          <MenuItem onClick = { () => setShowConfirmDelete(true) }>
+          <MenuItem onClick = { () => { setShowConfirmDelete(true); props.onDialogOpen() } }>
             <ImgWithAlt className="menu-icon" src="/icons/delete.svg" />Delete
           </MenuItem>
         </DropDown>
