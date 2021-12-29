@@ -9,6 +9,7 @@ import nl.amony.http.util.PemReader
 import nl.amony.lib.AmonyApi
 import scribe.Logging
 import akka.http.scaladsl.server.Directives._
+import nl.amony.WebServerConfig
 
 import java.security.SecureRandom
 import javax.net.ssl.KeyManagerFactory
@@ -32,7 +33,7 @@ class WebServer(override val config: WebServerConfig, override val api: AmonyApi
     else
       apiRoutes
 
-  val allRoutes = allApiRoutes ~ identityRoutes ~ resourceRoutes ~ webAppFiles
+  val allRoutes = allApiRoutes ~ identityRoutes ~ resourceRoutes ~ webAppResources
 
   def run(): Unit = {
 

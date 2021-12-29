@@ -3,7 +3,7 @@ package nl.amony.http
 import akka.actor.typed.ActorSystem
 import akka.stream.Materializer
 import akka.util.Timeout
-import nl.amony.TranscodeSettings
+import nl.amony.{TranscodeSettings, WebServerConfig}
 import nl.amony.lib.AmonyApi
 
 import scala.concurrent.ExecutionContext

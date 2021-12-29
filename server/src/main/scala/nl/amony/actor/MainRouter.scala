@@ -7,17 +7,18 @@ import nl.amony.MediaLibConfig
 import nl.amony.actor.MediaLibProtocol.Command
 import akka.actor.typed.scaladsl.adapter._
 import nl.amony.actor.MediaIndex.IndexQuery
+import nl.amony.lib.MediaScanner
 
 trait Message
 
 object MainRouter {
 
-  def apply(config: MediaLibConfig): Behavior[Message] =
+  def apply(config: MediaLibConfig, scanner: MediaScanner): Behavior[Message] =
     Behaviors.setup { context =>
       implicit val mat = Materializer(context)
 
       val localIndex = MediaIndex.apply(config, context).toTyped[IndexQuery]
-      val handler    = context.spawn(MediaLibProtocol.apply(config), "medialib")
+      val handler    = context.spawn(MediaLibProtocol.apply(config, scanner), "medialib")
 
       Behaviors.receiveMessage[Message] {
 

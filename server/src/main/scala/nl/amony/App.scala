@@ -7,9 +7,7 @@ import nl.amony.actor.MediaLibProtocol
 import nl.amony.actor.Message
 import nl.amony.actor.MediaLibProtocol.Command
 import nl.amony.http.WebServer
-import nl.amony.lib.AmonyApi
-import nl.amony.lib.FFMpeg
-import nl.amony.lib.Migration
+import nl.amony.lib.{AmonyApi, FFMpeg, MediaScanner, Migration}
 import scribe.Logging
 
 import scala.concurrent.duration.DurationInt
@@ -20,10 +18,11 @@ object App extends AppConfig with Logging {
 
   def main(args: Array[String]): Unit = {
 
-    val router: Behavior[Message]    = MainRouter.apply(appConfig.media)
+    val scanner                      = new MediaScanner(appConfig)
+    val router: Behavior[Message]    = MainRouter.apply(appConfig.media, scanner)
     val system: ActorSystem[Message] = ActorSystem(router, "mediaLibrary", config)
 
-    val api = new AmonyApi(appConfig, system)
+    val api = new AmonyApi(appConfig, scanner, system)
 
     api.admin.scanLibrary()(10.seconds)
 

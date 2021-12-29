@@ -1,9 +1,7 @@
 package nl.amony.lib
 
 import akka.util.Timeout
-import nl.amony.MediaLibConfig
-import nl.amony.PreviewConfig
-import nl.amony.TranscodeSettings
+import nl.amony.{AmonyConfig, MediaLibConfig, PreviewConfig, TranscodeSettings}
 import nl.amony.actor.MediaLibProtocol.FileInfo
 import nl.amony.actor.MediaLibProtocol.Fragment
 import nl.amony.actor.MediaLibProtocol.Media
@@ -21,17 +19,17 @@ import java.nio.file.Path
 import scala.concurrent.duration.DurationInt
 import scala.util.Success
 
-object MediaLibScanner extends Logging {
+class MediaScanner(appConfig: AmonyConfig) extends Logging {
 
-  val fragmentLength = 3000
+  val defaultFragmentLength = 3000
 
   def filterFileName(fileName: String): Boolean = {
     fileName.endsWith(".mp4") && !fileName.startsWith(".")
   }
 
-  def convertNonStreamableVideos(config: MediaLibConfig, api: AmonyApi): Unit = {
+  def convertNonStreamableVideos(api: AmonyApi): Unit = {
 
-    val files = FileUtil.walkDir(config.path)
+    val files = FileUtil.walkDir(appConfig.media.path)
 
     implicit val timeout: Timeout = Timeout(3.seconds)
     implicit val ec               = scala.concurrent.ExecutionContext.global
@@ -45,16 +43,16 @@ object MediaLibScanner extends Logging {
         logger.info(s"Creating faststart/streamable mp4 for: ${videoWithoutFastStart}")
 
         val out     = FFMpeg.addFastStart(videoWithoutFastStart)
-        val oldHash = config.hashingAlgorithm.generateHash(videoWithoutFastStart)
-        val newHash = config.hashingAlgorithm.generateHash(out)
+        val oldHash = appConfig.media.hashingAlgorithm.generateHash(videoWithoutFastStart)
+        val newHash = appConfig.media.hashingAlgorithm.generateHash(out)
 
-        logger.info(s"$oldHash -> $newHash: ${config.mediaPath.relativize(out).toString}")
+        logger.info(s"$oldHash -> $newHash: ${appConfig.media.mediaPath.relativize(out).toString}")
 
         api.query.getById(oldHash).onComplete {
           case Success(Some(v)) =>
             val m = v.copy(
               id       = newHash,
-              fileInfo = v.fileInfo.copy(hash = newHash, relativePath = config.mediaPath.relativize(out).toString)
+              fileInfo = v.fileInfo.copy(hash = newHash, relativePath = appConfig.media.mediaPath.relativize(out).toString)
             )
 
             api.modify.upsertMedia(m).foreach { _ =>
@@ -107,16 +105,15 @@ object MediaLibScanner extends Logging {
       fileInfo           = fileInfo,
       videoInfo          = videoInfo,
       thumbnailTimestamp = timeStamp,
-      fragments          = List(Fragment(timeStamp, timeStamp + fragmentLength, None, List.empty)),
+      fragments          = List(Fragment(timeStamp, timeStamp + defaultFragmentLength, None, List.empty)),
       tags               = Set.empty
     )
 
     createPreviews(
       media,
       videoPath,
-      config.indexPath,
       timeStamp,
-      timeStamp + fragmentLength,
+      timeStamp + defaultFragmentLength,
       config.previews
     )
 
@@ -211,39 +208,35 @@ object MediaLibScanner extends Logging {
 
   def deleteVideoFragment(
     media: Media,
-    indexPath: Path,
     id: String,
     from: Long,
     to: Long,
     previewConfig: PreviewConfig
   ): Unit = {
 
-    (indexPath / "resources" / s"${id}-$from-${to}_${media.height}p.mp4").deleteIfExists()
+    (appConfig.media.resourcePath / s"${id}-$from-${to}_${media.height}p.mp4").deleteIfExists()
 
     previewConfig.transcode.foreach { transcode =>
-      (indexPath / "resources" / s"${id}-${from}_${transcode.scaleHeight}p.webp").deleteIfExists()
-      (indexPath / "resources" / s"${id}-$from-${to}_${transcode.scaleHeight}p.mp4").deleteIfExists()
+      (appConfig.media.resourcePath / s"${id}-${from}_${transcode.scaleHeight}p.webp").deleteIfExists()
+      (appConfig.media.resourcePath / s"${id}-$from-${to}_${transcode.scaleHeight}p.mp4").deleteIfExists()
     }
   }
 
   def createPreviews(
       media: Media,
       videoPath: Path,
-      indexPath: Path,
       from: Long,
       to: Long,
       config: PreviewConfig
   ): Unit = {
 
-    val resourcePath = indexPath.resolve("resources")
-
-    Files.createDirectories(resourcePath)
+    Files.createDirectories(appConfig.media.resourcePath)
 
     def genFor(height: Int, crf: Int) = {
       FFMpeg.writeThumbnail(
         inputFile   = videoPath,
         timestamp   = from,
-        outputFile  = Some(resourcePath.resolve(s"${media.id}-${from}_${height}p.webp")),
+        outputFile  = Some(appConfig.media.resourcePath.resolve(s"${media.id}-${from}_${height}p.webp")),
         scaleHeight = Some(height)
       )
 
@@ -251,7 +244,7 @@ object MediaLibScanner extends Logging {
         inputFile   = videoPath,
         from        = from,
         to          = to,
-        outputFile  = Some(resourcePath.resolve(s"${media.id}-$from-${to}_${height}p.mp4")),
+        outputFile  = Some(appConfig.media.resourcePath.resolve(s"${media.id}-$from-${to}_${height}p.mp4")),
         quality     = crf,
         scaleHeight = Some(height)
       )

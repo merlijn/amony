@@ -22,7 +22,7 @@ import java.io.InputStream
 import java.nio.file.Path
 import scala.concurrent.Future
 
-class AmonyApi(val config: AmonyConfig, system: ActorSystem[Message]) extends Logging {
+class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSystem[Message]) extends Logging {
 
   import akka.actor.typed.scaladsl.AskPattern._
   implicit val scheduler = system.scheduler
@@ -52,6 +52,15 @@ class AmonyApi(val config: AmonyConfig, system: ActorSystem[Message]) extends Lo
   }
 
   object modify {
+
+    def addMediaFromLocalFile(path: Path)(implicit timeout: Timeout): Future[Media] = {
+      val media = scanner.scanVideo(path.toAbsolutePath, None, config.media)
+
+      query.getById(media.id).flatMap {
+        case None    => modify.upsertMedia(media)
+        case Some(_) => Future.failed(new IllegalStateException("Media with hash already exists"))
+      }
+    }
 
     def upsertMedia(media: Media)(implicit timeout: Timeout): Future[Media] =
       system.ask[Boolean](ref => UpsertMedia(media, ref)).map(_ => media)
@@ -126,7 +135,7 @@ class AmonyApi(val config: AmonyConfig, system: ActorSystem[Message]) extends Lo
       query
         .getAll()
         .foreach { loadedFromStore =>
-          val (deleted, newAndMoved) = MediaLibScanner.scanVideosInDirectory(config.media, loadedFromStore)
+          val (deleted, newAndMoved) = scanner.scanVideosInDirectory(config.media, loadedFromStore)
           val upsert                 = Consumer.foreachTask[Media](m => Task { modify.upsertMedia(m) })
           val delete = Consumer.foreachTask[Media](m =>
             Task {
@@ -157,10 +166,9 @@ class AmonyApi(val config: AmonyConfig, system: ActorSystem[Message]) extends Lo
     def regeneratePreviewForMedia(media: Media): Unit = {
       logger.info(s"re-generating previews for '${media.fileInfo.relativePath}'")
       media.fragments.foreach { f =>
-        MediaLibScanner.createPreviews(
+        scanner.createPreviews(
           media     = media,
           videoPath = config.media.mediaPath.resolve(media.fileInfo.relativePath),
-          indexPath = config.media.indexPath,
           from      = f.fromTimestamp,
           to        = f.toTimestamp,
           config    = config.media.previews
@@ -174,7 +182,7 @@ class AmonyApi(val config: AmonyConfig, system: ActorSystem[Message]) extends Lo
     def verifyHashes()(implicit timeout: Timeout): Unit = {
 
       query.getAll().foreach { medias =>
-        logger.info("Verifying all file hashes ...")
+        logger.info("Verifying all file hashes...")
 
         medias.foreach { m =>
           val hash = config.media.hashingAlgorithm.generateHash(config.media.mediaPath.resolve(m.fileInfo.relativePath))
@@ -218,8 +226,6 @@ class AmonyApi(val config: AmonyConfig, system: ActorSystem[Message]) extends Lo
       }
     }
 
-    def convertNonStreamableVideos(): Unit = {
-      MediaLibScanner.convertNonStreamableVideos(config.media, AmonyApi.this)
-    }
+    def convertNonStreamableVideos(): Unit = scanner.convertNonStreamableVideos(AmonyApi.this)
   }
 }

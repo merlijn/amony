@@ -5,6 +5,7 @@ import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
 import nl.amony.MediaLibConfig
 import nl.amony.actor.MediaLibEventSourcing.Event
+import nl.amony.lib.MediaScanner
 
 import java.nio.file.Path
 
@@ -99,11 +100,11 @@ object MediaLibProtocol {
     }
   }
 
-  def apply(config: MediaLibConfig): EventSourcedBehavior[Command, Event, State] =
+  def apply(config: MediaLibConfig, scanner: MediaScanner): EventSourcedBehavior[Command, Event, State] =
     EventSourcedBehavior[Command, Event, State](
       persistenceId  = PersistenceId.ofUniqueId("mediaLib"),
       emptyState     = State(Map.empty),
-      commandHandler = MediaLibCommandHandler.apply(config),
+      commandHandler = MediaLibCommandHandler.apply(config, scanner),
       eventHandler   = MediaLibEventSourcing.apply
     )
 }

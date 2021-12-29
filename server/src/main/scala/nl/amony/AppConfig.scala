@@ -2,12 +2,9 @@ package nl.amony
 
 import better.files.File
 import com.typesafe.config.ConfigFactory
-import nl.amony.http.WebServerConfig
+import squants.information.Information
 import nl.amony.lib.FileUtil
-import pureconfig._
-import pureconfig.generic.auto._
-import pureconfig.generic.semiauto.deriveEnumerationReader
-import scribe.Logger
+
 import scribe.Logging
 
 import java.nio.file.Path
@@ -55,7 +52,34 @@ case object PartialHash extends HashingAlgorithm {
   override def generateHash(path: Path): String = FileUtil.partialSha1Base32Hash(File(path), 512)
 }
 
+case class WebServerConfig(
+  hostName: String,
+  webClientPath: String,
+  requestTimeout: FiniteDuration,
+  enableAdmin: Boolean,
+  uploadSizeLimit: Information,
+  http: Option[HttpConfig],
+  https: Option[HttpsConfig]
+)
+
+case class HttpsConfig(
+  enabled: Boolean,
+  port: Int,
+  privateKeyPem: String,
+  certificateChainPem: String
+)
+
+case class HttpConfig(
+ enabled: Boolean,
+ port: Int
+)
+
 trait AppConfig extends Logging {
+
+  import pureconfig._
+  import pureconfig.generic.auto._
+  import pureconfig.module.squants._
+  import pureconfig.generic.semiauto.deriveEnumerationReader
 
   implicit val hashingAlgorithmReader: ConfigReader[HashingAlgorithm] = deriveEnumerationReader[HashingAlgorithm]
 

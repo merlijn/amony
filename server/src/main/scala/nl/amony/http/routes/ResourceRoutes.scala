@@ -7,7 +7,6 @@ import akka.stream.scaladsl.StreamConverters
 import better.files.File
 import nl.amony.http.RouteDeps
 import nl.amony.http.util.HttpDirectives.{fileWithRangeSupport, uploadFiles}
-import nl.amony.lib.MediaLibScanner
 import scribe.Logging
 
 import scala.concurrent.Future
@@ -27,15 +26,10 @@ trait ResourceRoutes extends Logging {
     pathPrefix("files") {
 
       path("upload") {
-        uploadFiles("video", api.config.media.uploadPath) { f =>
+        uploadFiles("video", api.config.media.uploadPath, config.uploadSizeLimit.toBytes.toLong) { f =>
           f.foreach { case (info, path) =>
-            logger.info(s"${path} was uploaded, scanning file")
-            val media = MediaLibScanner.scanVideo(path.toAbsolutePath, None, api.config.media)
-
-            api.query.getById(media.id).flatMap {
-              case None    => api.modify.upsertMedia(media)
-              case Some(_) => Future.failed(new IllegalStateException("Media with hash already exists"))
-            }
+            logger.info(s"$path was uploaded, scanning file")
+            api.modify.addMediaFromLocalFile(path.toAbsolutePath)
           }
           complete("OK")
         }
@@ -67,20 +61,18 @@ trait ResourceRoutes extends Logging {
     }
   }
 
-  def webAppFiles: Route =
+  def webAppResources: Route =
     rawPathPrefix(Slash) {
-
-      extractUnmatchedPath { path =>
-        // TODO sanitize
-        val filePath = path.toString() match {
+      extractUnmatchedPath { urlPath =>
+        val filePath = urlPath.toString() match {
           case "" | "/" => "index.html"
           case other    => other
         }
 
         val targetFile = {
-          val maybe = (File(config.webClientPath) / filePath)
-          if (maybe.exists)
-            maybe
+          val requestedFile = File(config.webClientPath) / filePath
+          if (requestedFile.exists)
+            requestedFile
           else
             File(config.webClientPath) / "index.html"
         }

@@ -4,17 +4,16 @@ import akka.actor.typed.ActorRef
 import akka.persistence.typed.scaladsl.Effect
 import better.files.File
 import nl.amony.MediaLibConfig
-import nl.amony.actor.MediaLibProtocol._
 import nl.amony.actor.MediaLibEventSourcing._
-import nl.amony.lib.MediaLibScanner.createPreviews
-import nl.amony.lib.MediaLibScanner.deleteVideoFragment
+import nl.amony.actor.MediaLibProtocol._
+import nl.amony.lib.MediaScanner
 import scribe.Logging
 
 import java.awt.Desktop
 
 object MediaLibCommandHandler extends Logging {
 
-  def apply(config: MediaLibConfig)(state: State, cmd: Command): Effect[Event, State] = {
+  def apply(config: MediaLibConfig, scanner: MediaScanner)(state: State, cmd: Command): Effect[Event, State] = {
 
     logger.debug(s"Received command: $cmd")
 
@@ -83,9 +82,8 @@ object MediaLibCommandHandler extends Logging {
             Effect
               .persist(FragmentDeleted(id, idx))
               .thenRun { (_: State) =>
-                deleteVideoFragment(
+                scanner.deleteVideoFragment(
                   media,
-                  config.indexPath,
                   media.id,
                   media.fragments(idx).fromTimestamp,
                   media.fragments(idx).toTimestamp,
@@ -116,18 +114,16 @@ object MediaLibCommandHandler extends Logging {
             Effect
               .persist(FragmentRangeUpdated(id, idx, from, to))
               .thenRun { (s: State) =>
-                deleteVideoFragment(
+                scanner.deleteVideoFragment(
                   media,
-                  config.indexPath,
                   media.id,
                   oldFragment.fromTimestamp,
                   oldFragment.toTimestamp,
                   config.previews
                 )
-                createPreviews(
+                scanner.createPreviews(
                   media,
                   media.resolvePath(config.mediaPath),
-                  config.indexPath,
                   from,
                   to,
                   config.previews
@@ -154,10 +150,9 @@ object MediaLibCommandHandler extends Logging {
             Effect
               .persist(FragmentAdded(id, from, to))
               .thenRun((_: State) =>
-                createPreviews(
+                scanner.createPreviews(
                   media,
                   media.resolvePath(config.mediaPath),
-                  config.indexPath,
                   from,
                   to,
                   config.previews
