@@ -15,7 +15,6 @@ import './TopNavBar.scss';
 
 export type NavBarProps = {
   onClickMenu: () => void, 
-  showTagsBar: boolean,
   activeView: MediaView,
   playList?: string,
   onViewChange: (view: MediaView) => any

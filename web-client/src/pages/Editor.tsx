@@ -96,11 +96,11 @@ const PlayerView = (props: {vid: Video}) => {
     <div className="fragment-picker">
       <button className="overlay-button" onClick={(e) => forwards(-1)}>-1s</button>
       <button className="overlay-button" onClick={(e) => forwards(-0.1)}>-.1ms</button>
-      <button className="overlay-button" onClick={(e) => seek(fragment.start) }>|&lt;</button>
-      <button className={fragment.start ? "success" : "warning"} onClick={(e) => setFragment({ ...fragment, start: plyr?.currentTime }) }>o&lt;</button>
-      <button className="success" onClick={updateFragment}>o</button>
-      <button className={fragment.end ? "success" : "warning"} onClick={(e) => setFragment({ ...fragment, end: plyr?.currentTime }) }>&gt;o</button>
-      <button className="overlay-button" onClick={(e) => seek(fragment.end) }>&gt;|</button>
+      <button className="button-blue" onClick={(e) => seek(fragment.start) }>|&lt;</button>
+      <button className={fragment.start ? "button-green" : "button-orange"} onClick={(e) => setFragment({ ...fragment, start: plyr?.currentTime }) }>o&lt;</button>
+      <button className="button-green" onClick = { updateFragment }>o</button>
+      <button className={fragment.end ? "button-green" : "button-orange"} onClick={(e) => setFragment({ ...fragment, end: plyr?.currentTime }) }>&gt;o</button>
+      <button className="button-blue" onClick={(e) => seek(fragment.end) }>&gt;|</button>
       <button className="overlay-button" onClick={(e) => forwards(0.1)}>+.1s</button>
       <button className="overlay-button" onClick={(e) => forwards(1)}>+1s</button>
     </div>

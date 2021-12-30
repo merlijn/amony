@@ -1,11 +1,6 @@
 @import 'src/App.scss';
 
-.info-panel {
-
-  @extend .modal-dialog;
-
-  border: 1px solid lightgray;
-  font-size: normal;
+.media-info {
 
   .title-input {
     width: 100%;
@@ -33,6 +28,5 @@
     @extend .hover-pointer;
     width: 24px;
     height: 24px;
-    margin: $spacing-3;
   }
 }

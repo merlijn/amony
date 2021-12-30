@@ -1,0 +1,33 @@
+@import 'src/App.scss';
+
+.modal-dialog-container {
+  min-width: 500px;
+  padding: $spacing-4;
+  border-radius: $spacing-2;
+  background-color: var(--text-bg-color);
+  color: var(--text-fg-color);
+  display: flex;
+  flex-direction: column;
+
+  box-shadow: -20px -20px 40px rgba(0, 0, 0, 0.3),
+              -20px 20px 40px rgba(0, 0, 0, 0.3),
+               20px -20px 40px rgba(0, 0, 0, 0.3),
+               20px 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal-dialog-title {
+
+  @extend .mt-2, .pb-3, .mb-4;
+  position: relative;
+  border-bottom: $gray-400 1px solid;
+  width: 100%;
+  color: $highlight-d;
+  font-size: large;
+  font-weight: bold;
+}
+
+.modal-dialog-content {
+
+  position: relative;
+  min-height: 100px;
+}

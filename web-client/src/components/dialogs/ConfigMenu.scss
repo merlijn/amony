@@ -1,24 +1,6 @@
 @import 'src/App.scss';
 
-.config-menu {
-
-  @media only screen and (min-width: map-get($container-max-widths, md)) {
-    width: 500px;
-  }
-
-  .config-title {
-
-    @extend .ml-2, .mr-2, .mt-2, .pb-2, .mb-4;
-
-    border-bottom: $gray-400 1px solid;
-    font-size: large;
-    font-weight: bold;
-  }
-}
-
 .config-form {
-
-  @extend .mt-2, .m-2;
 
   display: table;
   table-layout: fixed;

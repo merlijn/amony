@@ -3,6 +3,7 @@ import { Prefs } from "../../api/Model";
 import { useCookiePrefs } from "../../api/ReactUtils";
 import { calculateColumns } from "../../api/Util";
 import config from "../../AppConfig.json";
+import Dialog from "../common/Dialog";
 import './ConfigMenu.scss';
 
 const ConfigMenu = () => {
@@ -16,11 +17,8 @@ const ConfigMenu = () => {
   const updatePrefs = (values: {}) => { setPrefs({...prefs, ...values} ) }
 
   return(
-
-      <div className="config-menu modal-dialog">
-        <div key="config-title" className="config-title">Preferences</div>
-        <div key="config-form" className="config-form">
-
+      <Dialog title = "Preferences">
+        <div key = "config-form" className="config-form">
           <div key="columns" className = "form-section">
             <p key = "header" className = "form-label">Number of columns</p>
             <div key = "content" className = "form-content">
@@ -116,8 +114,7 @@ const ConfigMenu = () => {
               </div>
           }
         </div>
-
-      </div>
+      </Dialog>
   )
 }
 

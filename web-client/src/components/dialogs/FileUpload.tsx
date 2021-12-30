@@ -1,6 +1,7 @@
 import React, { ChangeEvent, useState } from 'react';
 import { Api } from '../../api/Api';
 import { dateMillisToString } from '../../api/Util';
+import Dialog from '../common/Dialog';
  
 const FileUpload = () => {
   
@@ -27,11 +28,11 @@ const FileUpload = () => {
     };
     
     return (
-      <div className="modal-dialog">
-          <h3>File Upload</h3>
+      <Dialog title = "Upload media">
+        <>
           <div>
               <input type="file" accept=".mp4" onChange = { onFileChange} />
-              <button className="button-primary" onClick = { onFileUpload} >Upload</button>
+              <button className="abs-bottom-right button-primary" onClick = { onFileUpload} >Upload</button>
           </div>
           { feedback && <div><p>{ feedback }</p></div>}
           {
@@ -43,7 +44,8 @@ const FileUpload = () => {
                 <p>Last Modified: { dateMillisToString(file.lastModified) }</p>
               </div>
           }
-      </div>
+        </>
+      </Dialog>
     );
   }
  

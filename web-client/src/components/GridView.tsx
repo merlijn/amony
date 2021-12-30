@@ -14,6 +14,7 @@ export type GalleryProps = {
   style?: CSSProperties,
   componentType: 'page' | 'element'
   columns: Columns,
+  showTagbar: boolean,
   previewOptionsFn: (v: Video) => PreviewOptions,
   onClick: (v: Video) => void
 }
@@ -94,11 +95,16 @@ const GridView = (props: GalleryProps) => {
             </div>
   })
 
+  let style = { "--grid-spacing" : `${gridSpacing}px` } as CSSProperties
+
+  if (props.showTagbar)
+    style = {...style, marginTop: 46 }
+
   return(
     <div className = { props.className } style = { props.style }>
-      <TagBar />
+      { props.showTagbar && <TagBar /> }
       <Scrollable
-        style        = { { "--grid-spacing" : `${gridSpacing}px` } as CSSProperties }
+        style        = { style }
         className    = "gallery-container"
         fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.videos) } }
         scrollType   = { props.componentType }

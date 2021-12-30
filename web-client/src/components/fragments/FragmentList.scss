@@ -56,10 +56,10 @@
 
     .delete-fragment-icon {
 
-      @extend .action-icon-small;
-      @extend .abs-top-right;
+      @extend .action-icon-small, .abs-top-right;
 
-      top: 1px ! important;
+      margin: $spacing-2;
+      margin-top: $spacing-1;
     }
   }
 

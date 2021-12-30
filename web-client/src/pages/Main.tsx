@@ -105,7 +105,6 @@ const Main = () => {
             { showNavigation && 
                 <TopNavBar 
                     key           = "top-nav-bar" 
-                    showTagsBar   = { showTagBar && view !== "list" } 
                     onClickMenu   = { () => setShowSidebar(true) } 
                     activeView    = { view }
                     // playList      = "nature"
@@ -120,6 +119,7 @@ const Main = () => {
                     className = "main-content-container"
                     key       = "gallery"
                     selection = { selection }
+                    showTagbar = { showNavigation }
                     componentType = 'page' 
                     onClick   = { (v: Video) => setPlayVideo(v) } 
                     columns   = { prefs.gallery_columns }
