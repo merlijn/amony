@@ -31,6 +31,7 @@ export type MediaSelection = {
   query?: string
   playlist?: string
   tag?: string
+  duration?: [number?, number?]
   minimumQuality: number
   sort: Sort
 }

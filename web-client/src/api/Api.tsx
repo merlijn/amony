@@ -3,6 +3,7 @@ import { MediaSelection, Sort, VideoMeta } from "./Model";
 import { buildUrl } from "./Util";
 import jwtDecode, { JwtPayload } from "jwt-decode";
 import axios from 'axios';
+import { durationAsParam } from "./Constants";
 
 const headers = { 'Content-type': 'application/json; charset=UTF-8' };
 
@@ -95,6 +96,7 @@ export const Api = {
               selection.tag,
               selection.playlist,
               selection.minimumQuality,
+              selection.duration,
               selection.sort)
   },
 
@@ -105,6 +107,7 @@ export const Api = {
       tag?: string,
       playlist?: string, 
       minRes?: number, 
+      duration?: [number?, number?],
       sort?: Sort) {
 
     const apiParams = new Map([
@@ -122,6 +125,9 @@ export const Api = {
     if (sort) {
       apiParams.set("sort_field", sort.field)
       apiParams.set("sort_dir", sort.direction)
+    }
+    if (duration) {
+      apiParams.set("d", durationAsParam([duration[0] ? duration[0] * 1000 : duration[0], duration[1] ? duration[1] * 1000 : duration[1]]))
     }
 
     const target = buildUrl("/api/search", apiParams)

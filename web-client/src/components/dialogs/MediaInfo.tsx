@@ -11,20 +11,18 @@ const MediaInfo = (props: {meta: VideoMeta, onClose: (meta: VideoMeta) => any })
 
   return(
       <Dialog>
-        <div className = "media-info">
-          <div className="info-panel-title">Title</div>
+        <div className = "media-info-dialog">
+          <div className="header">Title</div>
           <input className="title-input" type="text" defaultValue={meta.title}/>
-          <div className="info-panel-title">Comment</div>
+          <div className="header">Comment</div>
           <textarea className="comment-input" placeholder="comment">{meta.comment}</textarea>
-          <div className="abs-bottom-right">
-            <FiSave className="info-save-button" title="save" onClick={(e) => { props.onClose(meta) } } />
-          </div>
-          <div className="info-panel-title">Tags</div>
+          <div className="header">Tags</div>
           <TagEditor 
             showAddButton = { true }
             tags          = { meta.tags } 
             callBack      = { (updatedTags) => { setMeta({...meta, tags: updatedTags }) } } 
           />
+          <FiSave className = "info-save-button" title = "save" onClick={(e) => { props.onClose(meta) } } />
         </div>
       </Dialog>
   );

@@ -39,6 +39,7 @@ object MediaIndex {
       tags: Set[String],
       playlist: Option[String],
       minRes: Option[Int],
+      duration: Option[(Long,Long)],
       sort: Option[Sort]
   )
   case class SearchResult(offset: Int, total: Int, items: Seq[Media], tags: Map[String, Int])
@@ -125,11 +126,13 @@ object MediaIndex {
         def filterRes(m: Media): Boolean = query.minRes.map(res => m.videoInfo.resolution._2 >= res).getOrElse(true)
         def filterQuery(m: Media): Boolean =
           query.q.map(q => m.fileInfo.relativePath.toLowerCase.contains(q.toLowerCase)).getOrElse(true)
-
         def filterTag(m: Media): Boolean = 
           query.tags.forall(tag => m.tags.contains(tag))
-
-        def filterMedia(m: Media): Boolean = filterDir(m) && filterRes(m) && filterQuery(m) && filterTag(m)
+        def filterDuration(m: Media): Boolean =
+          query.duration.map {
+            case (min, max) => m.videoInfo.duration >= min && m.videoInfo.duration <= max
+          }.getOrElse(true)
+        def filterMedia(m: Media): Boolean = filterDir(m) && filterRes(m) && filterQuery(m) && filterTag(m) && filterDuration(m)
 
         val unfiltered = query.sort match {
           case None                             => state.media.values

@@ -6,7 +6,7 @@ import { GoGrabber, GoSearch } from "react-icons/go";
 import { IoGridOutline } from "react-icons/io5";
 import { MdTune } from "react-icons/md";
 import { useHistory, useLocation } from "react-router-dom";
-import { Constants, parseSortParam } from "../../api/Constants";
+import { Constants, durationAsParam, parseDurationParam, parseSortParam } from "../../api/Constants";
 import { MediaView } from "../../api/Model";
 import { useUrlParam } from "../../api/ReactUtils";
 import { buildUrl, copyParams } from "../../api/Util";
@@ -89,6 +89,7 @@ const FilterDropDown = () => {
 
   const [vqParam, setVqParam] = useUrlParam("vq", "0")
   const [sortParam, setSortParam] = useUrlParam("s", "date_added")
+  const [durationParam, setDurationParam] = useUrlParam("d", "-")
 
   return( 
     <div className = "filter-dropdown-container">
@@ -128,7 +129,12 @@ const FilterDropDown = () => {
             <div className="section-header">Duration</div>
             { Constants.durationOptions.map((option, index) => {
                 return <div key={`duration-${index}`} className="filter-option">
-                        <input type="radio" name="duration" value = { option.label } />
+                        <input 
+                          type="radio" 
+                          name="duration" 
+                          checked = { _.isEqual(option.value, parseDurationParam(durationParam)) }
+                          onChange = { () => setDurationParam(durationAsParam(option.value)) }
+                          value = { option.label } />
                         <label htmlFor = { option.label }>{option.label}</label>
                       </div>
               }) 

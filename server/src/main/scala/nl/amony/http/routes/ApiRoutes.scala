@@ -23,6 +23,8 @@ trait ApiRoutes extends Logging with IdentityRoutes {
 
   val defaultResultNumber = 24
 
+  val durationPattern = raw"(\d*)-(\d*)".r
+
   val apiRoutes =
     pathPrefix("api") {
       (path("search") & parameters(
@@ -31,14 +33,15 @@ trait ApiRoutes extends Logging with IdentityRoutes {
         "n".optional,
         "playlist".optional,
         "tags".optional,
+        "min_res".optional,
+        "d".optional,
         "sort_field".optional,
-        "sort_dir".optional,
-        "min_res".optional
-      )) { (q, offset, n, playlist, tags, sort, sortDir, minResY) =>
+        "sort_dir".optional
+      )) { (q, offset, n, playlist, tags, minResY, durationParam, sortParam, sortDir) =>
         get {
           val size        = n.map(_.toInt).getOrElse(defaultResultNumber)
           val sortReverse = sortDir.map(_ == "desc").getOrElse(false)
-          val sortField = sort
+          val sortField: SortField = sortParam
             .map {
               case "title"      => FileName
               case "duration"   => Duration
@@ -47,8 +50,16 @@ trait ApiRoutes extends Logging with IdentityRoutes {
             }
             .getOrElse(FileName)
 
+          val duration: Option[(Long, Long)] = durationParam.flatMap {
+            case durationPattern("", "")   => None
+            case durationPattern(min, "")  => Some((min.toLong, Long.MaxValue))
+            case durationPattern("", max)  => Some((0, max.toLong))
+            case durationPattern(min, max) => Some((min.toLong, max.toLong))
+            case _                         => None
+          }
+
           val searchResult =
-            api.query.search(q, offset.map(_.toInt), size, tags.toSet, playlist, minResY.map(_.toInt), Sort(sortField, sortReverse))
+            api.query.search(q, offset.map(_.toInt), size, tags.toSet, playlist, minResY.map(_.toInt), duration, Sort(sortField, sortReverse))
 
           val response = searchResult.map(_.asJson)
 

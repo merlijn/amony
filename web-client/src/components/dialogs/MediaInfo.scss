@@ -1,6 +1,6 @@
 @import 'src/App.scss';
 
-.media-info {
+.media-info-dialog {
 
   .title-input {
     width: 100%;
@@ -10,22 +10,17 @@
   .comment-input {
     width: 100%;
     padding: 8px;
-    height: 80px;
+    height: 70px;
   }
 
-  .info-panel-title {
+  .header {
     font-size: normal;
     font-weight: 600;
-    margin: 8px 2px;
-  }
-
-  .info-panel-content {
-    margin: 8px 8px;
-    padding: 8px 0px;
+    margin: $spacing-3 $spacing-1;
   }
 
   .info-save-button {
-    @extend .hover-pointer;
+    @extend .hover-pointer, .abs-bottom-right;
     width: 24px;
     height: 24px;
   }

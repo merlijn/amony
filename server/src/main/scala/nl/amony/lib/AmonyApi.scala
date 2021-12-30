@@ -37,8 +37,9 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
     def getAll()(implicit timeout: Timeout): Future[List[Media]] =
       system.ask[List[Media]](ref => GetAll(ref))
 
-    def search(q: Option[String], offset: Option[Int], size: Int, tags: Set[String], playlist: Option[String], minRes: Option[Int], sort: Sort)(implicit timeout: Timeout): Future[SearchResult] =
-      system.ask[SearchResult](ref => Search(Query(q, offset, size, tags, playlist, minRes, Some(sort)), ref))
+    def search(q: Option[String], offset: Option[Int], size: Int, tags: Set[String], playlist: Option[String],
+               minRes: Option[Int], duration: Option[(Long,Long)], sort: Sort)(implicit timeout: Timeout): Future[SearchResult] =
+      system.ask[SearchResult](ref => Search(Query(q, offset, size, tags, playlist, minRes, duration, Some(sort)), ref))
 
     def getPlaylists()(implicit timeout: Timeout): Future[List[Playlist]] =
       system.ask[List[Playlist]](ref => GetPlaylists(ref))
@@ -46,9 +47,8 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
     def getTags()(implicit timeout: Timeout): Future[Set[String]] =
       system.ask[Set[String]](ref => GetTags(ref))
 
-    def searchFragments(size: Int, offset: Int, tag: String)(implicit timeout: Timeout): Future[Seq[Fragment]] = {
+    def searchFragments(size: Int, offset: Int, tag: String)(implicit timeout: Timeout): Future[Seq[Fragment]] =
       system.ask[Seq[Fragment]](ref => SearchFragments(size, offset, tag, ref))
-    }
   }
 
   object modify {

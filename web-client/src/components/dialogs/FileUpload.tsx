@@ -38,8 +38,6 @@ const FileUpload = () => {
           {
             file && 
               <div>
-                <h2>File Details:</h2>
-                <p>File Name: {file.name}</p>
                 <p>File Type: {file.type}</p>
                 <p>Last Modified: { dateMillisToString(file.lastModified) }</p>
               </div>

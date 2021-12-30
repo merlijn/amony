@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import 'react-pro-sidebar/dist/css/styles.css';
 import { useHistory, useLocation } from "react-router";
-import { Constants, parseSortParam } from "../api/Constants";
+import { Constants, parseDurationParam, parseSortParam } from "../api/Constants";
 import { MediaSelection, MediaView, Prefs, Video } from "../api/Model";
 import { useCookiePrefs, useListener, useStateNeq } from "../api/ReactUtils";
 import GridView from "../components/GridView";
@@ -20,7 +20,6 @@ const Main = () => {
     const location = useLocation();
     const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
     const [showNavigation, setShowNavigation] = useState(true)
-    const [showTagBar] = useState(true)
     const [view, setView] = useState<MediaView>('grid')
 
     const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs/v1", "/", Constants.defaultPreferences)
@@ -33,6 +32,7 @@ const Main = () => {
         playlist: urlParams.get("playlist") || undefined,
         tag: urlParams.get("tag") || undefined,
         sort: parseSortParam(urlParams.get("s") || "date_added"),
+        duration: urlParams.has("d") ? parseDurationParam(urlParams.get("d") || "-") : undefined,
         minimumQuality: parseInt(urlParams.get("vq") || "0")
       }
     }
