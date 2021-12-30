@@ -17,6 +17,9 @@ case class MediaLibConfig(
     scanParallelFactor: Int,
     verifyExistingHashes: Boolean,
     hashingAlgorithm: HashingAlgorithm,
+    defaultFragmentLength: FiniteDuration,
+    minimumFragmentLength: FiniteDuration,
+    maximumFragmentLength: FiniteDuration,
     previews: PreviewConfig
 ) {
 
@@ -33,9 +36,7 @@ case class AmonyConfig(
 )
 
 case class PreviewConfig(
-  transcode: List[TranscodeSettings],
-  minimumFragmentDuration: Option[FiniteDuration],
-  maximumFragmentDuration: Option[FiniteDuration]
+  transcode: List[TranscodeSettings]
 )
 
 case class TranscodeSettings(

@@ -26,6 +26,25 @@ object MediaLibCommandHandler extends Logging {
       }
     }
 
+    def invalidCommand[T](sender: ActorRef[Either[ErrorResponse, T]], reason: String): Effect[Event, State] = {
+      Effect.reply(sender)(Left(InvalidCommand(reason)))
+    }
+
+    // format: off
+    def verifyFragmentRange(start: Long, end: Long, mediaDuration: Long): Either[String, Unit] = {
+      if (start >= end)
+        Left(s"Invalid range ($start -> $end): start must be before end")
+      else if (start < 0 || end > mediaDuration)
+        Left(s"Invalid range ($start -> $end): valid range is from 0 to $mediaDuration")
+      else if (end - start > config.maximumFragmentLength.toMillis)
+        Left(s"Fragment length is larger then maximum allowed: ${end - start} > ${config.minimumFragmentLength.toMillis}")
+      else if (end - start < config.minimumFragmentLength.toMillis)
+        Left(s"Fragment length is smaller then minimum allowed: ${end - start} < ${config.minimumFragmentLength.toMillis}")
+      else
+        Right(())
+    }
+    // format: on
+
     cmd match {
 
       case UpsertMedia(media, sender) =>
@@ -72,60 +91,18 @@ object MediaLibCommandHandler extends Logging {
 
       case DeleteFragment(id, idx, sender) =>
         requireMedia(id, sender) { media =>
-          logger.info(s"Deleting fragment $id:$idx")
 
           if (idx < 0 || idx >= media.fragments.size)
-            Effect.reply(sender)(
-              Left(InvalidCommand(s"Index out of bounds ($idx): valid range is from 0 to ${media.fragments.size - 1}"))
-            )
-          else
+            invalidCommand(sender, s"Index out of bounds ($idx): valid range is from 0 to ${media.fragments.size - 1}")
+          else {
+            logger.info(s"Deleting fragment $id:$idx")
             Effect
               .persist(FragmentDeleted(id, idx))
               .thenRun { (_: State) =>
                 scanner.deleteVideoFragment(
                   media,
-                  media.id,
                   media.fragments(idx).fromTimestamp,
                   media.fragments(idx).toTimestamp,
-                  config.previews
-                )
-              }
-              .thenReply(sender)(s => Right(s.media(id)))
-        }
-
-      case UpdateFragmentRange(id, idx, from, to, sender) =>
-        requireMedia(id, sender) { media =>
-          logger.info(s"Updating fragment $id:$idx to $from:$to")
-
-          if (idx < 0 || idx >= media.fragments.size) {
-            Effect.reply(sender)(
-              Left(InvalidCommand(s"Index out of bounds ($idx): valid range is from 0 to ${media.fragments.size - 1}"))
-            )
-          } else if (from < 0 || from >= to || to > media.videoInfo.duration)
-            Effect.reply(sender)(
-              Left(
-                InvalidCommand(s"Invalid range ($from -> $to): valid range is from 0 to ${media.videoInfo.duration}")
-              )
-            )
-          else {
-
-            val oldFragment = media.fragments(idx)
-
-            Effect
-              .persist(FragmentRangeUpdated(id, idx, from, to))
-              .thenRun { (s: State) =>
-                scanner.deleteVideoFragment(
-                  media,
-                  media.id,
-                  oldFragment.fromTimestamp,
-                  oldFragment.toTimestamp,
-                  config.previews
-                )
-                scanner.createPreviews(
-                  media,
-                  media.resolvePath(config.mediaPath),
-                  from,
-                  to,
                   config.previews
                 )
               }
@@ -133,32 +110,59 @@ object MediaLibCommandHandler extends Logging {
           }
         }
 
-      case AddFragment(id, from, to, sender) =>
+      case UpdateFragmentRange(id, idx, start, end, sender) =>
         requireMedia(id, sender) { media =>
-          logger.info(s"Adding fragment for $id from $from to $to")
+          if (idx < 0 || idx >= media.fragments.size) {
+            invalidCommand(sender, s"Index out of bounds ($idx): valid range is from 0 to ${media.fragments.size - 1}")
+          }
+          else
+            verifyFragmentRange(start, end, media.videoInfo.duration) match {
+              case Left(error) => Effect.reply(sender)(Left(InvalidCommand(error)))
+              case Right(_)    =>
 
-          if (from > to) {
-            val msg = s"from: $from > to: $to"
-            logger.warn(msg)
-            Effect.reply(sender)(Left(InvalidCommand(msg)))
-          } else if (to > media.videoInfo.duration) {
-            val msg = s"to: $to > duration: ${media.videoInfo.duration}"
-            logger.warn(msg)
-            Effect.reply(sender)(Left(InvalidCommand(msg)))
-          } else {
+                logger.info(s"Updating fragment $id:$idx to $start:$end")
+                val oldFragment = media.fragments(idx)
 
-            Effect
-              .persist(FragmentAdded(id, from, to))
-              .thenRun((_: State) =>
-                scanner.createPreviews(
-                  media,
-                  media.resolvePath(config.mediaPath),
-                  from,
-                  to,
-                  config.previews
+                Effect
+                  .persist(FragmentRangeUpdated(id, idx, start, end))
+                  .thenRun { (s: State) =>
+                    scanner.deleteVideoFragment(
+                      media,
+                      oldFragment.fromTimestamp,
+                      oldFragment.toTimestamp,
+                      config.previews
+                    )
+                    scanner.createPreviews(
+                      media,
+                      media.resolvePath(config.mediaPath),
+                      start,
+                      end,
+                      config.previews
+                    )
+                  }
+                  .thenReply(sender)(s => Right(s.media(id)))
+            }
+        }
+
+      case AddFragment(id, start, end, sender) =>
+        requireMedia(id, sender) { media =>
+          logger.info(s"Adding fragment for $id from $start to $end")
+
+          verifyFragmentRange(start, end, media.videoInfo.duration) match {
+            case Left(error) => Effect.reply(sender)(Left(InvalidCommand(error)))
+            case Right(_)    =>
+              Effect
+                .persist(FragmentAdded(id, start, end))
+                .thenRun((_: State) =>
+                  scanner.createPreviews(
+                    media,
+                    media.resolvePath(config.mediaPath),
+                    start,
+                    end,
+                    config.previews
+                  )
                 )
-              )
-              .thenReply(sender)(s => Right(s.media(id)))
+                .thenReply(sender)(s => Right(s.media(id)))
           }
         }
 

@@ -10,6 +10,7 @@ import nl.amony.http.WebServer
 import nl.amony.lib.{AmonyApi, FFMpeg, MediaScanner, Migration}
 import scribe.Logging
 
+import java.nio.file.Files
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext
@@ -17,6 +18,8 @@ import scala.concurrent.ExecutionContext
 object App extends AppConfig with Logging {
 
   def main(args: Array[String]): Unit = {
+
+    Files.createDirectories(appConfig.media.resourcePath)
 
     val scanner                      = new MediaScanner(appConfig)
     val router: Behavior[Message]    = MainRouter.apply(appConfig.media, scanner)

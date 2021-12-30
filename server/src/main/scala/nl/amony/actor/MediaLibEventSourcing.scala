@@ -11,11 +11,11 @@ object MediaLibEventSourcing extends Logging {
   sealed trait Event extends JsonSerializable
 
   case class MediaMetaDataUpdated(
-      id: String,
-      title: Option[String],
-      comment: Option[String],
-      tagsAdded: Set[String],
-      tagsRemoved: Set[String]
+    id: String,
+    title: Option[String],
+    comment: Option[String],
+    tagsAdded: Set[String],
+    tagsRemoved: Set[String]
   )                                             extends Event
   case class MediaAdded(media: Media)           extends Event
   case class MediaUpdated(id: String, m: Media) extends Event

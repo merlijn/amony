@@ -21,8 +21,6 @@ import scala.util.Success
 
 class MediaScanner(appConfig: AmonyConfig) extends Logging {
 
-  val defaultFragmentLength = 3000
-
   def filterFileName(fileName: String): Boolean = {
     fileName.endsWith(".mp4") && !fileName.startsWith(".")
   }
@@ -98,6 +96,8 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
       (mainStream.width, mainStream.height)
     )
 
+    val fragmentLength = config.defaultFragmentLength.toMillis
+
     val media = Media(
       id                 = fileHash,
       title              = None,
@@ -105,7 +105,7 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
       fileInfo           = fileInfo,
       videoInfo          = videoInfo,
       thumbnailTimestamp = timeStamp,
-      fragments          = List(Fragment(timeStamp, timeStamp + defaultFragmentLength, None, List.empty)),
+      fragments          = List(Fragment(timeStamp, timeStamp + fragmentLength, None, List.empty)),
       tags               = Set.empty
     )
 
@@ -113,7 +113,7 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
       media,
       videoPath,
       timeStamp,
-      timeStamp + defaultFragmentLength,
+      timeStamp + fragmentLength,
       config.previews
     )
 
@@ -208,17 +208,16 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
 
   def deleteVideoFragment(
     media: Media,
-    id: String,
     from: Long,
     to: Long,
     previewConfig: PreviewConfig
   ): Unit = {
 
-    (appConfig.media.resourcePath / s"${id}-$from-${to}_${media.height}p.mp4").deleteIfExists()
+    (appConfig.media.resourcePath / s"${media.id}-$from-${to}_${media.height}p.mp4").deleteIfExists()
 
     previewConfig.transcode.foreach { transcode =>
-      (appConfig.media.resourcePath / s"${id}-${from}_${transcode.scaleHeight}p.webp").deleteIfExists()
-      (appConfig.media.resourcePath / s"${id}-$from-${to}_${transcode.scaleHeight}p.mp4").deleteIfExists()
+      (appConfig.media.resourcePath / s"${media.id}-${from}_${transcode.scaleHeight}p.webp").deleteIfExists()
+      (appConfig.media.resourcePath / s"${media.id}-$from-${to}_${transcode.scaleHeight}p.mp4").deleteIfExists()
     }
   }
 
@@ -229,8 +228,6 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
       to: Long,
       config: PreviewConfig
   ): Unit = {
-
-    Files.createDirectories(appConfig.media.resourcePath)
 
     def genFor(height: Int, crf: Int) = {
       FFMpeg.writeThumbnail(
