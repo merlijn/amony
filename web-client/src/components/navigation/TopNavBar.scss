@@ -183,7 +183,8 @@ $accent: rgb(83, 155, 36);
           padding-left: 35px;
           &:focus {
             border-color: rgb(128, 189, 255);
-            outline: solid rgba(128, 189, 255, 0.4);
+            outline: solid rgba(128, 189, 255, 0.2);
+            outline-width: 3px;
           }
         }
 
@@ -210,9 +211,9 @@ $accent: rgb(83, 155, 36);
             border-radius: 0px 0px 3px 3px;
             border: 1px solid $gray-300;
             border-top: none;
-            // margin-top: 5px;
+            margin-top: 30px;
             width: 100%;
-            background-color: var(--text-bg-color);
+            background-color: $gray-100;
 
             .filter-container {
               padding: 15px 20px 20px 20px;
@@ -233,7 +234,7 @@ $accent: rgb(83, 155, 36);
 
                 .filter-option {
                   @extend .v-align-center;
-                  gap: 10px;
+                  gap: 12px;
                   display: flex;
                 }
               }
@@ -241,12 +242,12 @@ $accent: rgb(83, 155, 36);
           }
         }
     
-        .nav-clear-input {
+        .nav-search-clear-input {
           @extend .hover-pointer;
           position: absolute;
           width: 24px;
           height: 24px;
-          right: 6px;
+          right: 32px;
           top: 6px;
           color: rgba(0, 0, 0, 0.6);
 

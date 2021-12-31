@@ -4,10 +4,12 @@ import better.files.File
 import com.typesafe.config.ConfigFactory
 import squants.information.Information
 import nl.amony.lib.FileUtil
-
+import nl.amony.lib.hash.Base32
+import nl.amony.lib.hash.PartialHash.partialHash
 import scribe.Logging
 
 import java.nio.file.Path
+import java.security.MessageDigest
 import scala.concurrent.duration.FiniteDuration
 
 case class MediaLibConfig(
@@ -50,7 +52,17 @@ sealed trait HashingAlgorithm {
 }
 
 case object PartialHash extends HashingAlgorithm {
-  override def generateHash(path: Path): String = FileUtil.partialSha1Base32Hash(File(path), 512)
+  override def generateHash(path: Path): String =
+    partialHash(path, 512, data => {
+      // sha-1 creates a 160 bit hash (20 bytes)
+      val sha1Digest: MessageDigest = MessageDigest.getInstance("SHA-1")
+      val digest: Array[Byte]       = sha1Digest.digest(data)
+
+      // we take 10 bytes = 80 bits = 16 base32 characters
+      // https://en.wikipedia.org/wiki/Birthday_attack
+      Base32.encodeToBase32(digest).substring(0, 16)
+    }
+  )
 }
 
 case class WebServerConfig(

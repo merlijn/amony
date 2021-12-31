@@ -4,7 +4,7 @@ import { isMobile } from "react-device-detect";
 import { BsListUl } from "react-icons/bs";
 import { GoGrabber, GoSearch } from "react-icons/go";
 import { IoGridOutline } from "react-icons/io5";
-import { MdTune } from "react-icons/md";
+import { MdClose, MdTune } from "react-icons/md";
 import { useHistory, useLocation } from "react-router-dom";
 import { Constants, durationAsParam, parseDurationParam, parseSortParam } from "../../api/Constants";
 import { MediaView } from "../../api/Model";
@@ -25,8 +25,8 @@ function TopNavBar(props: NavBarProps) {
   const location = useLocation();
   const history = useHistory();
   const inputRef = useRef<HTMLInputElement>(null)
-
   const [query, setQuery] = useState("")
+  const [showFilters, setShowFilters] = useState(false)
 
   const doSearch = (e: any) => {
     e.preventDefault();
@@ -59,9 +59,17 @@ function TopNavBar(props: NavBarProps) {
             <form key="search-form" className = "nav-search-form" onSubmit = { doSearch } >
               <div className = "nav-search-input-container">
                 <GoSearch className="search-icon" />
-                <FilterDropDown />
-                <input ref = { inputRef } key="nav-search-input" placeholder="Search" className="nav-search-input" type="text" value={query} onChange={queryChanged} />
-                {/* { query !== "" && <MdClose onClick = { clearQuery } className = "nav-clear-input" /> } */}
+                <FilterDropDown onToggleFilter = { (v) => setShowFilters(v) } />
+                <input 
+                  ref         = { inputRef } 
+                  style       = { showFilters ? { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 } : { } }
+                  key         = "nav-search-input" 
+                  className   = "nav-search-input" 
+                  placeholder = "Search" 
+                  type        = "text" 
+                  value       = { query } 
+                  onChange    = { queryChanged } />
+                { query !== "" && <MdClose onClick = { clearQuery } className = "nav-search-clear-input" /> }
                 { props.playList && <div className = "playlist">{ props.playList }</div>}
               </div>
             </form>
@@ -70,7 +78,7 @@ function TopNavBar(props: NavBarProps) {
                 <div key="view-select" className="view-select-container">
                   <button 
                     className = { `button-grid-view ${(props.activeView === 'grid') && "view-selected"}`} 
-                    onClick={() => props.onViewChange('grid')}><IoGridOutline />
+                    onClick   = { () => props.onViewChange('grid') }><IoGridOutline />
                   </button>
                   <button 
                     className = { `button-list-view ${(props.activeView === 'list') && "view-selected"}`} 
@@ -85,7 +93,7 @@ function TopNavBar(props: NavBarProps) {
   );
 }
 
-const FilterDropDown = () => {
+const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
 
   const [vqParam, setVqParam] = useUrlParam("vq", "0")
   const [sortParam, setSortParam] = useUrlParam("s", "date_added")
@@ -93,7 +101,11 @@ const FilterDropDown = () => {
 
   return( 
     <div className = "filter-dropdown-container">
-      <DropDown toggleIcon = { <MdTune /> } hideOnClick = { false } contentClassName="filter-dropdown-content">
+      <DropDown 
+        toggleIcon = { <MdTune /> } 
+        hideOnClick = { false } 
+        onToggle = { props.onToggleFilter }
+        contentClassName="filter-dropdown-content">
         <div className="filter-container">
           <div key="filter-sort" className="filter-section">
             <div className="section-header">Sort</div>
@@ -130,11 +142,11 @@ const FilterDropDown = () => {
             { Constants.durationOptions.map((option, index) => {
                 return <div key={`duration-${index}`} className="filter-option">
                         <input 
-                          type="radio" 
-                          name="duration" 
-                          checked = { _.isEqual(option.value, parseDurationParam(durationParam)) }
+                          type     = "radio" 
+                          name     = "duration" 
+                          checked  = { _.isEqual(option.value, parseDurationParam(durationParam)) }
                           onChange = { () => setDurationParam(durationAsParam(option.value)) }
-                          value = { option.label } />
+                          value    = { option.label } />
                         <label htmlFor = { option.label }>{option.label}</label>
                       </div>
               }) 

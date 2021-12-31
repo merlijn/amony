@@ -123,7 +123,8 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
 
   object session {
 
-    def login(userName: String, password: String): Boolean = userName == config.adminUsername && password == config.adminPassword
+    def login(userName: String, password: String): Boolean =
+      userName == config.adminUsername && password == config.adminPassword
   }
 
   object admin {

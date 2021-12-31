@@ -9,8 +9,6 @@ import nl.amony.http.RouteDeps
 import nl.amony.http.util.HttpDirectives.{fileWithRangeSupport, uploadFiles}
 import scribe.Logging
 
-import scala.concurrent.Future
-
 trait ResourceRoutes extends Logging {
 
   self: RouteDeps =>

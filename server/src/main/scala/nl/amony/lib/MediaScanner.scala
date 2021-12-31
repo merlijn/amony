@@ -127,7 +127,7 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
 
     val files = FileUtil.walkDir(config.mediaPath)
 
-    logger.info("Scanning directory for files & calculating hashes...")
+    logger.info("Scanning directory for media...")
 
     // first calculate the hashes
     val filesWithHashes: List[(Path, String)] = Observable
@@ -160,6 +160,8 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
       .consumeWith(Consumer.toList)
       .runSyncUnsafe()
 
+    logger.info(s"Scanning done, found ${filesWithHashes.size} files")
+
     // warn about hash collisions
     val collisionsGroupedByHash = filesWithHashes
       .groupBy { case (_, hash) => hash }
@@ -174,8 +176,6 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
 
     val (remaining, removed) =
       persistedMedia.partition(m => filesWithHashes.exists { case (_, hash) => hash == m.fileInfo.hash })
-
-    logger.info(s"Scanning done, found ${filesWithHashes.size} files")
 
     // moved and new
     val newAndMoved = Observable

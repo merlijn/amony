@@ -58,7 +58,7 @@ trait ApiRoutes extends Logging with IdentityRoutes {
             case _                         => None
           }
 
-          val searchResult =
+          val searchResult: Future[SearchResult] =
             api.query.search(q, offset.map(_.toInt), size, tags.toSet, playlist, minResY.map(_.toInt), duration, Sort(sortField, sortReverse))
 
           val response = searchResult.map(_.asJson)
@@ -77,8 +77,8 @@ trait ApiRoutes extends Logging with IdentityRoutes {
         pathEnd {
           get {
             onSuccess(api.query.getById(id)) {
-              case Some(vid) => complete(vid.asJson)
-              case None      => complete(StatusCodes.NotFound)
+              case Some(media) => complete(media.asJson)
+              case None        => complete(StatusCodes.NotFound)
             }
           } ~ (post & entity(as[VideoMeta])) { meta =>
             translateResponse(api.modify.updateMetaData(id, meta.title, meta.comment, meta.tags))

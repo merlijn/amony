@@ -113,20 +113,6 @@ object FFMpeg extends Logging {
     }
   }
 
-  private def readStream(is: InputStream) = {
-    val builder = new StringBuilder
-
-    try {
-      scala.io.Source.fromInputStream(is).iter.foreach { c =>
-        print(c)
-        builder.append(c)
-      }
-    } catch {
-      case e: Exception => logger.warn(e)
-    }
-    builder.toString()
-  }
-
   private def formatTime(timestamp: Long): String = {
 
     val duration = Duration.ofMillis(timestamp)

@@ -7,8 +7,8 @@ const resolutions: Array<Resolution> =
     { value: 2160, label: "4K"}]
 
 const sortingOptions = [
-  { value: { field: "date_added", direction: "desc" }, label: "By date added" },
-  { value: { field: "title", direction: "asc" },       label: "Alphabetically" },
+  { value: { field: "date_added", direction: "desc" }, label: "By date" },
+  { value: { field: "title", direction: "asc" },       label: "By title" },
   { value: { field: "duration", direction: "asc" },    label: "By duration" }];
 
 export const parseSortParam = (s: string): Sort => {

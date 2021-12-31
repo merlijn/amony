@@ -4,6 +4,7 @@ import { Api } from "../api/Api";
 import { Video } from "../api/Model";
 import { dateMillisToString, durationInMillisToString } from "../api/Util";
 import config from "../AppConfig.json";
+import Dialog from './common/Dialog';
 import { DropDown, MenuItem } from './common/DropDown';
 import FragmentsPlayer from "./common/FragmentsPlayer";
 import ImgWithAlt from "./common/ImgWithAlt";
@@ -99,14 +100,14 @@ const Preview = (props: PreviewProps) => {
 
 const PreviewMenu = (props: {video: Video, setVideo: (v: Video) => void, onDialogOpen: () => any}) => {
 
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false)
 
-  const cancelDelete = () => setShowConfirmDelete(false);
+  const cancelDelete = () => setShowDeleteDialog(false);
   const confirmDelete = () => {
     Api.deleteMediaById(props.video.id).then(() => {
       console.log("video was deleted")
-      setShowConfirmDelete(false)
+      setShowDeleteDialog(false)
     })
   };
 
@@ -124,15 +125,14 @@ const PreviewMenu = (props: {video: Video, setVideo: (v: Video) => void, onDialo
         />
       </Modal>
       
-      <Modal visible = { showConfirmDelete } onHide = { cancelDelete }>
-        <div className = "modal-dialog">
-          <h2>Are you sure?</h2>
-          <p>Do you want to delete: <br /> '{props.video.meta.title}'</p>
+      <Modal visible = { showDeleteDialog } onHide = { cancelDelete }>
+        <Dialog title = "Are you sure?">
+          <p>Do you want to delete: '{props.video.meta.title}'</p>
           <p>
-            <button onClick = { confirmDelete }>Yes</button>
+            <button className = "button-primary" onClick = { confirmDelete }>Yes</button>
             <button onClick = { cancelDelete }>No / Cancel</button>
           </p>
-        </div>
+        </Dialog>
       </Modal>
 
       <div className = "preview-menu">
@@ -148,7 +148,7 @@ const PreviewMenu = (props: {video: Video, setVideo: (v: Video) => void, onDialo
           <MenuItem href={`/editor/${props.video.id}`}>
             <ImgWithAlt className="menu-icon" src="/icons/edit.svg" />Fragments
           </MenuItem>
-          <MenuItem onClick = { () => { setShowConfirmDelete(true); props.onDialogOpen() } }>
+          <MenuItem onClick = { () => { setShowDeleteDialog(true); props.onDialogOpen() } }>
             <ImgWithAlt className="menu-icon" src="/icons/delete.svg" />Delete
           </MenuItem>
         </DropDown>
