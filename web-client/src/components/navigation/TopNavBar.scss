@@ -210,19 +210,20 @@ $accent: rgb(83, 155, 36);
 
             border-radius: 0px 0px 3px 3px;
             border: 1px solid $gray-300;
-            border-top: none;
-            margin-top: 30px;
+            border-top: 1px solid $gray-200;
+            margin-top: 29px;
             width: 100%;
             background-color: $gray-100;
 
             .filter-container {
-              padding: 15px 20px 20px 20px;
+              padding: 15px 15px 20px 15px;
               display: flex;
               gap: 20px;
               
               .filter-section {
                 display: flex;
                 flex-direction: column;
+                gap: 2px;
 
                 .section-header {
                   font-size: medium;
@@ -234,7 +235,7 @@ $accent: rgb(83, 155, 36);
 
                 .filter-option {
                   @extend .v-align-center;
-                  gap: 12px;
+                  gap: 8px;
                   display: flex;
                 }
               }
