@@ -1,3 +1,4 @@
+@use "sass:color";
 @import 'src/App.scss';
 
 .tag-bar {
@@ -33,11 +34,19 @@
     font-size: small;
     padding: 7px 12px;
     border-radius: 25px;
+
+    &:hover {
+      background-color: $gray-400;
+      color: rgba(black, 0.8);
+    }
   }
 
   .selected-tag {
     color: white;
     background-color: $gray-500 !important;
+    &:hover {
+      color: white;
+    }
   }
 
   .custom-dropdown-toggle {

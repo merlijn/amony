@@ -1,4 +1,5 @@
-import {Prefs, Resolution, Sort} from "./Model";
+import {Prefs, Resolution, Sort, SortDirection} from "./Model";
+import { useUrlParam } from "./ReactUtils";
 
 const resolutions: Array<Resolution> =
    [{ value: 0,    label: "All"},
@@ -6,20 +7,26 @@ const resolutions: Array<Resolution> =
     { value: 1080, label: "FHD"},
     { value: 2160, label: "4K"}]
 
-const sortingOptions = [
+const sortingOptions: Array<{value: Sort, label: string}> = [
   { value: { field: "date_added", direction: "desc" }, label: "By date" },
   { value: { field: "title", direction: "asc" },       label: "By title" },
   { value: { field: "duration", direction: "asc" },    label: "By duration" }];
 
-export const parseSortParam = (s: string): Sort => {
-  switch (s) {
-    case "duration":
-      return { field: "duration", direction: "asc" };
-    case "title":
-      return { field: "title", direction: "asc" };
-    default: 
-      return { field: "date_added", direction: "desc" };
-  }
+export const parseSortParam = (param: string): Sort => {
+
+  const split = param.split(";")
+  const field = split[0]
+  const dir   = split[1] as SortDirection
+  return { field : field, direction: dir }
+}
+
+export const useSortParam = (): [Sort, (v: Sort) => void] => {
+
+  const [param, setParam] = useUrlParam("s", "date_added;desc");
+  const sort: Sort = parseSortParam(param)
+  const updateParam = (s: Sort) => { setParam(`${s.field};${s.direction}`) }
+
+  return [sort, updateParam];
 }
 
 export const parseDurationParam = (s: string): [number?, number?] => {

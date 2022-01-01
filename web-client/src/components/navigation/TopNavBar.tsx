@@ -5,8 +5,9 @@ import { BsListUl } from "react-icons/bs";
 import { GoGrabber, GoSearch } from "react-icons/go";
 import { IoGridOutline } from "react-icons/io5";
 import { MdClose, MdTune } from "react-icons/md";
+import { AiOutlineClear } from "react-icons/ai";
 import { useHistory, useLocation } from "react-router-dom";
-import { Constants, durationAsParam, parseDurationParam, parseSortParam } from "../../api/Constants";
+import { Constants, durationAsParam, parseDurationParam, parseSortParam, useSortParam } from "../../api/Constants";
 import { MediaView } from "../../api/Model";
 import { useUrlParam } from "../../api/ReactUtils";
 import { buildUrl, copyParams } from "../../api/Util";
@@ -96,11 +97,12 @@ function TopNavBar(props: NavBarProps) {
 const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
 
   const [vqParam, setVqParam] = useUrlParam("vq", "0")
-  const [sortParam, setSortParam] = useUrlParam("s", "date_added")
+  const [sortParam, setSortParam] = useSortParam()
   const [durationParam, setDurationParam] = useUrlParam("d", "-")
 
   return( 
     <div className = "filter-dropdown-container">
+      
       <DropDown 
         toggleIcon = { <MdTune /> } 
         hideOnClick = { false } 
@@ -115,8 +117,8 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
                            type     = "radio" 
                            name     = "sort" 
                            value    = { option.label } 
-                           checked  = { _.isEqual(option.value, parseSortParam(sortParam)) }
-                           onChange = { () => setSortParam(option.value.field) }/>
+                           checked  = { _.isEqual(option.value, sortParam) }
+                           onChange = { () => setSortParam(option.value) }/>
                          <label htmlFor = { option.label }>{ option.label }</label>
                       </div>
               }) 

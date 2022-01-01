@@ -13,7 +13,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Consumer
 import nl.amony.{AmonyConfig, MediaLibConfig}
-import nl.amony.actor.MediaIndex._
+import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.MediaLibProtocol._
 import nl.amony.actor.Message
 import scribe.Logging

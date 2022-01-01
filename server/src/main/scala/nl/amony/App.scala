@@ -1,19 +1,15 @@
 package nl.amony
 
-import akka.actor.typed.ActorSystem
-import akka.actor.typed.Behavior
-import nl.amony.actor.MainRouter
-import nl.amony.actor.MediaLibProtocol
-import nl.amony.actor.Message
-import nl.amony.actor.MediaLibProtocol.Command
+import akka.actor.typed.{ActorSystem, Behavior}
+import nl.amony.actor.{MainRouter, Message}
 import nl.amony.http.WebServer
-import nl.amony.lib.{AmonyApi, FFMpeg, MediaScanner, Migration}
+import nl.amony.lib.{AmonyApi, FFMpeg, MediaScanner}
 import scribe.Logging
 
-import java.nio.file.Files
+import java.nio.file.{Files, Path}
+import java.util.Properties
+import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.Await
-import scala.concurrent.ExecutionContext
 
 object App extends AppConfig with Logging {
 

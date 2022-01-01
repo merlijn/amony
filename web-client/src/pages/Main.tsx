@@ -31,7 +31,7 @@ const Main = () => {
         query: urlParams.get("q") || undefined,
         playlist: urlParams.get("playlist") || undefined,
         tag: urlParams.get("tag") || undefined,
-        sort: parseSortParam(urlParams.get("s") || "date_added"),
+        sort: parseSortParam(urlParams.get("s") || "date_added;desc"),
         duration: urlParams.has("d") ? parseDurationParam(urlParams.get("d") || "-") : undefined,
         minimumQuality: parseInt(urlParams.get("vq") || "0")
       }

@@ -1,6 +1,5 @@
 package nl.amony.http
 
-import nl.amony.actor.MediaIndex
 import nl.amony.actor.MediaLibProtocol
 import nl.amony.http.WebModel.Fragment
 import nl.amony.http.WebModel.FragmentRange
@@ -13,6 +12,7 @@ import io.circe.Encoder
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.generic.semiauto.deriveEncoder
 import nl.amony.TranscodeSettings
+import nl.amony.actor.index.{LocalIndex, QueryProtocol}
 
 trait JsonCodecs {
 
@@ -30,11 +30,11 @@ trait JsonCodecs {
   implicit val mediaEncoder: Encoder[MediaLibProtocol.Media] =
     deriveEncoder[Video].contramapObject[MediaLibProtocol.Media](toWebModel)
 
-  implicit val tagEncoder: Encoder[MediaIndex.Playlist] =
-    deriveEncoder[Playlist].contramapObject[MediaIndex.Playlist](c => Playlist(c.id, c.title))
+  implicit val tagEncoder: Encoder[QueryProtocol.Playlist] =
+    deriveEncoder[Playlist].contramapObject[QueryProtocol.Playlist](c => Playlist(c.id, c.title))
 
-  implicit val searchResultEncoder: Encoder[MediaIndex.SearchResult] =
-    deriveEncoder[SearchResult].contramapObject[MediaIndex.SearchResult](result =>
+  implicit val searchResultEncoder: Encoder[QueryProtocol.SearchResult] =
+    deriveEncoder[SearchResult].contramapObject[QueryProtocol.SearchResult](result =>
       SearchResult(result.offset, result.total, result.items.map(m => toWebModel(m)))
     )
 

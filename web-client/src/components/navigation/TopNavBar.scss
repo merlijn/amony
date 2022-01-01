@@ -1,4 +1,3 @@
-@import url(https://fonts.googleapis.com/css2?family=Otomanopee+One&display=swap);
 @import 'src/App.scss';
 
 .nav-menu-button {
@@ -182,9 +181,9 @@ $accent: rgb(83, 155, 36);
           border: 1px solid $gray-300;
           padding-left: 35px;
           &:focus {
-            border-color: rgb(128, 189, 255);
-            outline: solid rgba(128, 189, 255, 0.2);
-            outline-width: 3px;
+            border-color: $gray-400;
+            outline: solid $gray-200;
+            outline-width: 2px;
           }
         }
 
@@ -196,10 +195,16 @@ $accent: rgb(83, 155, 36);
           svg {
             @extend .abs-top-right;
             z-index: 12 !important;
-            margin: 6px;
-            // margin-top: 40px;
-            width: 24px;
-            height: 24px;
+            margin: 1px;
+            padding: 4px;
+            box-sizing: content-box;
+            border-radius: 2px;
+            width: 25px;
+            height: 25px;
+
+            &:hover {
+              background-color: $gray-200;
+            }
           }
 
           .filter-dropdown-content {

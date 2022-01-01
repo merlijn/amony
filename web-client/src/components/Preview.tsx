@@ -64,7 +64,7 @@ const Preview = (props: PreviewProps) => {
     </div>
 
   const primaryThumbnail =
-    <ProgressiveImage src={vid.thumbnail_url} placeholder="/image_placeholder.svg">
+    <ProgressiveImage src = { vid.thumbnail_url } placeholder="/image_placeholder.svg">
       { (src: string) => 
           <img 
             src       = { src } alt="an image"

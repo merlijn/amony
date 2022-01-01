@@ -6,7 +6,7 @@ import akka.http.scaladsl.server.Directives.path
 import akka.http.scaladsl.server.Route
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
-import nl.amony.actor.MediaIndex._
+import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.MediaLibProtocol._
 import nl.amony.http.JsonCodecs
 import nl.amony.http.RouteDeps
@@ -44,6 +44,7 @@ trait ApiRoutes extends Logging with IdentityRoutes {
           val sortField: SortField = sortParam
             .map {
               case "title"      => FileName
+              case "size"       => FileSize
               case "duration"   => Duration
               case "date_added" => DateAdded
               case _            => throw new IllegalArgumentException("unkown sort field")
