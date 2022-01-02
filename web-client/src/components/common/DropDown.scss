@@ -50,18 +50,11 @@
 
 .dropdown-menu-item {
 
-  @extend .hover-pointer;
+  @extend .hover-pointer, .v-align-center;
   display: flex;
-  // max-width: 500px;
-  align-items: center;
   font-size: normal;
   padding: 6px 12px;
   color: black;
-  
-  .menu-label-no-wrap {
-    display: inline-block;
-    white-space: nowrap;
-  }
 
   &:hover {
     color: white;

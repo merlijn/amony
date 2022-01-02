@@ -52,7 +52,6 @@ const ListView = (props: ListProps) => {
   const [sort, setSort] = useSortParam()
 
   useEffect(() => {
-    console.log("fetch data")
     setSearchResult(initialSearchResult)
     setIsFetching(true)
     setFetchMore(true)
@@ -79,7 +78,6 @@ const ListView = (props: ListProps) => {
         <div className="list-cell list-header">
           <FaSort className="column-sort-icon" onClick = { () => setSort({field: "size", direction: sort.direction === "asc" ? "desc" : "asc" }) } />
         </div>
-        {/* <div className="list-cell list-header"><FaSort className="column-sort-icon" /></div> */}
         <div className="list-cell list-header">
           <FaSort className="column-sort-icon" onClick = { () => setSort({field: "resolution", direction: sort.direction === "asc" ? "desc" : "asc" }) } />
           {/* <BsThreeDotsVertical className="list-menu-icon" /> */}
@@ -121,13 +119,6 @@ const ListView = (props: ListProps) => {
                 </div>
                 
               </div>
-
-              {/* <div key="actions" className="list-cell list-actions">
-                <div className="actions-container">
-                  <RiDeleteBin6Line className="delete-action" />
-                  <FiDownload className="delete-action" />
-                  </div>
-              </div> */}
             </div>  
           );
         })

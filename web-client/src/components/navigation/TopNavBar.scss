@@ -1,41 +1,5 @@
 @import 'src/App.scss';
 
-.nav-menu-button {
-
-  @extend .hover-pointer, .abs-top-left;
-
-  width: 40px;
-  height: 40px;
-  margin-bottom: 0px;
-  margin-top: 5px;
-  margin-left: 5px;
-  user-select: none;
-}
-
-$accent: rgb(83, 155, 36);
-
-.toggle-tag-bar {
-
-  @extend .hover-pointer;
-  position: absolute;
-  user-select: none;
-
-  svg {
-    width: 24px;
-    height: 24px;
-    color: $gray-600;
-  }
-
-  top: 6px;
-  right: 6px;
-}
-
-.selected {
-  svg {
-    color: black !important;
-  }
-}
-
 .nav-bar-container {
 
   z-index: 10;
@@ -49,45 +13,38 @@ $accent: rgb(83, 155, 36);
     user-select: none;
     z-index: inherit;
     position: relative;
-    float: left;
     display: flex;
+    justify-content: center;
     width: 100vw;
   
     background-color: white;
     border-bottom: 1px solid $gray-200;
+    height: 47px;
   
     @media only screen and (min-width: map-get($container-max-widths, md)) {
       background-color: $gray-100;
     }
-  }
 
-  .nav-bar-spacer {
-    flex-grow: 0;
-  
-    @media only screen and (min-width: map-get($container-max-widths, md)) {
-      flex-grow: 1;
-    }
-  
-    padding: 0px 0px;
-  }
+    .nav-menu-button {
 
-  .view-button-group {
-    @extend .hover-pointer;
-    background-color: $gray-300;    
-    border: none;
-    height: 35px;
-
-    &:hover {
-      background-color: $gray-400;
+      @extend .hover-pointer, .abs-top-left;
+    
+      width: 40px;
+      height: 40px;
+      margin-bottom: 0px;
+      margin-top: 5px;
+      margin-left: 5px;
+      user-select: none;
     }
   }
-  
+
   .nav-bar-center {
 
     display: flex;
     vertical-align: middle;
+    
     z-index: inherit;
-    flex-grow: 2;
+    flex-grow: 1;
     max-width: 700px;
     padding: 6px 4px !important;
 
@@ -98,7 +55,6 @@ $accent: rgb(83, 155, 36);
     .view-select-container {
       
       display: flex;
-      float: left;
       vertical-align: middle;
       margin-left: 5px;
 
@@ -107,9 +63,20 @@ $accent: rgb(83, 155, 36);
         color: rgb(250, 250, 250);
       }
 
+      .view-button {
+        @extend .hover-pointer;
+        background-color: $gray-300;    
+        border: none;
+        height: 35px;
+    
+        &:hover {
+          background-color: $gray-400;
+        }
+      }
+
       .button-list-view {
 
-        @extend .hover-pointer, .view-button-group;
+        @extend .view-button;
         
         border-radius: 0px 3px 3px 0px;
         padding-top: 6px;
@@ -122,7 +89,7 @@ $accent: rgb(83, 155, 36);
 
       .button-grid-view {
         
-        @extend .hover-pointer, .view-button-group;
+        @extend .view-button;
         border-radius: 3px 0px 0px 3px;
         padding: 4px 8px 0px 8px;
 
@@ -145,21 +112,6 @@ $accent: rgb(83, 155, 36);
         position: relative;
         flex-grow: 1;
 
-        .playlist {
-          @extend .v-align-center;
-          
-          position: absolute;
-          display: flex;
-          color: $gray-700;
-
-          top: 5px;
-          right: 5px;
-          height: 25px;
-          padding: 0px 5px;
-          border: 1px dotted $gray-200;
-          border-radius: 3px;
-        }
-
         .search-icon {
           @extend .abs-top-left;
           z-index: 11 !important;
@@ -181,9 +133,23 @@ $accent: rgb(83, 155, 36);
           border: 1px solid $gray-300;
           padding-left: 35px;
           &:focus {
-            border-color: $gray-400;
+            border-color: $gray-500;
             outline: solid $gray-200;
             outline-width: 2px;
+          }
+        }
+
+        .nav-search-clear-input {
+          @extend .hover-pointer;
+          position: absolute;
+          width: 24px;
+          height: 24px;
+          right: 32px;
+          top: 6px;
+          color: rgba(0, 0, 0, 0.6);
+
+          &:hover {
+            color: rgba(0, 0, 0, 0.9);
           }
         }
 
@@ -223,12 +189,13 @@ $accent: rgb(83, 155, 36);
             .filter-container {
               padding: 15px 15px 20px 15px;
               display: flex;
+              flex-direction: row;
+              flex-wrap: wrap;
               gap: 20px;
               
               .filter-section {
                 display: flex;
                 flex-direction: column;
-                gap: 2px;
 
                 .section-header {
                   font-size: medium;
@@ -239,28 +206,30 @@ $accent: rgb(83, 155, 36);
                 }
 
                 .filter-option {
-                  @extend .v-align-center;
-                  gap: 8px;
-                  display: flex;
+                  @extend .hover-pointer;
+                  padding: 3px 4px;;
+                  border-radius: 3px;
+                  display: inline-block;
+                  white-space: nowrap;
+
+                  input {
+                    margin-right: 8px;
+                  }
+
+                  label {
+                    margin-left: $spacing-3;
+                  }
+
+                  &:hover {
+                    background-color: $gray-200;
+                  }
                 }
               }
             }
           }
         }
     
-        .nav-search-clear-input {
-          @extend .hover-pointer;
-          position: absolute;
-          width: 24px;
-          height: 24px;
-          right: 32px;
-          top: 6px;
-          color: rgba(0, 0, 0, 0.6);
 
-          &:hover {
-            color: rgba(0, 0, 0, 0.9);
-          }
-        }
       }
     }
   }

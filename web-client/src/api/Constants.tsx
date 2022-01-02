@@ -55,6 +55,14 @@ const durationOptions: Array<{value: [number?, number?], label: string}> = [
   { value: [1800, 3600], label: "30-60 minutes" },
   { value: [3600, undefined], label: "> 60 minutes" }];
 
+const uploadOptions: Array<{value: [number?, number?], label: string}> = [
+  { value: [undefined, undefined], label: "any" },
+  { value: [undefined, 24], label: "last 24 hours" },
+  { value: [24, 7*24], label: "last 7 days" },
+  { value: [7*24, 30*24], label: "last 30 days" },
+  { value: [30*24, 365*24], label: "last year" },
+  { value: [365*24, undefined], label: "> 1 year ago" }];
+
 const defaultPrefs: Prefs = {
   showSidebar:     false,
   showTitles:      true,
@@ -69,6 +77,8 @@ export const Constants = {
   imgAlt: "<image here>",
 
   durationOptions: durationOptions,
+
+  uploadOptions: uploadOptions,
 
   resolutions: resolutions,
 

@@ -5,7 +5,6 @@ import { BsListUl } from "react-icons/bs";
 import { GoGrabber, GoSearch } from "react-icons/go";
 import { IoGridOutline } from "react-icons/io5";
 import { MdClose, MdTune } from "react-icons/md";
-import { AiOutlineClear } from "react-icons/ai";
 import { useHistory, useLocation } from "react-router-dom";
 import { Constants, durationAsParam, parseDurationParam, parseSortParam, useSortParam } from "../../api/Constants";
 import { MediaView } from "../../api/Model";
@@ -17,7 +16,6 @@ import './TopNavBar.scss';
 export type NavBarProps = {
   onClickMenu: () => void, 
   activeView: MediaView,
-  playList?: string,
   onViewChange: (view: MediaView) => any
 }
 
@@ -55,7 +53,6 @@ function TopNavBar(props: NavBarProps) {
     <div className = "nav-bar-container">
       <div className = "top-nav-bar">
           <GoGrabber className = "nav-menu-button" onClick = { props.onClickMenu } />
-          <div key = "nav-bar-left"   className = "nav-bar-spacer" />
           <div key = "nav-bar-center" className = "nav-bar-center">
             <form key="search-form" className = "nav-search-form" onSubmit = { doSearch } >
               <div className = "nav-search-input-container">
@@ -71,7 +68,6 @@ function TopNavBar(props: NavBarProps) {
                   value       = { query } 
                   onChange    = { queryChanged } />
                 { query !== "" && <MdClose onClick = { clearQuery } className = "nav-search-clear-input" /> }
-                { props.playList && <div className = "playlist">{ props.playList }</div>}
               </div>
             </form>
             {
@@ -88,7 +84,6 @@ function TopNavBar(props: NavBarProps) {
                 </div>
             }
             </div> 
-          <div key="nav-bar-right" className="nav-bar-spacer" />
       </div>
     </div>
   );
@@ -107,49 +102,64 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
         toggleIcon = { <MdTune /> } 
         hideOnClick = { false } 
         onToggle = { props.onToggleFilter }
-        contentClassName="filter-dropdown-content">
-        <div className="filter-container">
+        contentClassName = "filter-dropdown-content">
+        <div className = "filter-container">
           <div key="filter-sort" className="filter-section">
             <div className="section-header">Sort</div>
             { Constants.sortOptions.map((option, index) => {
-                return <div key={`sort-${index}`} className="filter-option">
+                return <div key={`sort-${index}`} className="filter-option" onClick={() => setSortParam(option.value) }>
                          <input 
                            type     = "radio" 
                            name     = "sort" 
                            value    = { option.label } 
                            checked  = { _.isEqual(option.value, sortParam) }
                            onChange = { () => setSortParam(option.value) }/>
-                         <label htmlFor = { option.label }>{ option.label }</label>
+                         { option.label }
                       </div>
               }) 
             }
           </div>
-          <div key="filter-resolution" className="filter-section">
-            <div className="section-header">Resolution</div>
+          <div key = "filter-resolution" className = "filter-section">
+            <div className = "section-header">Resolution</div>
             { Constants.resolutions.map((option, index) => {
-                return <div key={`resolution-${index}`} className="filter-option">
+                return <div key={`resolution-${index}`} className = "filter-option" onClick = { () => setVqParam(option.value.toString()) }>
                           <input 
                             type    = "radio" 
                             name    = "resolution" 
                             value   = { option.label } 
                             checked = { parseInt(vqParam) === option.value }
                             onChange = { () => setVqParam(option.value.toString()) }/>
-                          <label htmlFor = { option.label }>{option.label}</label>
+                          {option.label}
                       </div>
               }) 
             }
           </div>
-          <div key="filter-duration" className="filter-section">
-            <div className="section-header">Duration</div>
+          <div key="filter-duration" className = "filter-section">
+            <div className = "section-header">Duration</div>
             { Constants.durationOptions.map((option, index) => {
-                return <div key={`duration-${index}`} className="filter-option">
-                        <input 
-                          type     = "radio" 
-                          name     = "duration" 
-                          checked  = { _.isEqual(option.value, parseDurationParam(durationParam)) }
-                          onChange = { () => setDurationParam(durationAsParam(option.value)) }
-                          value    = { option.label } />
-                        <label htmlFor = { option.label }>{option.label}</label>
+                return <div key={`duration-${index}`} className = "filter-option" onClick = { () => setDurationParam(durationAsParam(option.value))}>
+                         <input 
+                           type     = "radio" 
+                           name     = "duration" 
+                           checked  = { _.isEqual(option.value, parseDurationParam(durationParam)) }
+                           onChange = { () => setDurationParam(durationAsParam(option.value)) }
+                           value    = { option.label } />
+                        {option.label}
+                      </div>
+              }) 
+            }
+          </div>
+          <div key="filter-upload-date" className = "filter-section">
+            <div className = "section-header">Upload date</div>
+            { Constants.uploadOptions.map((option, index) => {
+                return <div key={`duration-${index}`} className = "filter-option" onClick = { () => setDurationParam(durationAsParam(option.value))}>
+                         <input 
+                           type     = "radio" 
+                           name     = "upload-date" 
+                           checked  = { _.isEqual(option.value, parseDurationParam(durationParam)) }
+                           onChange = { () => setDurationParam(durationAsParam(option.value)) }
+                           value    = { option.label } />
+                        {option.label}
                       </div>
               }) 
             }
