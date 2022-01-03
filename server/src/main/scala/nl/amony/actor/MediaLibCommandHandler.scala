@@ -86,6 +86,9 @@ object MediaLibCommandHandler extends Logging {
       case GetById(id, sender) =>
         Effect.reply(sender)(state.media.get(id))
 
+      case GetByIds(ids, sender) =>
+        Effect.reply(sender)(state.media.view.filterKeys(ids).toMap)
+
       case GetAll(sender) =>
         Effect.reply(sender)(state.media.values.toList)
 

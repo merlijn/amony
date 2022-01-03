@@ -38,8 +38,8 @@ object WebModel {
   )
 
   case class SearchResult(
-    offset: Int,
-    total: Int,
+    offset: Long,
+    total: Long,
     videos: Seq[Video]
   )
 

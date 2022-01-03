@@ -7,7 +7,7 @@ import akka.persistence.query.{EventEnvelope, PersistenceQuery}
 import akka.stream.Materializer
 import better.files.File
 import nl.amony.MediaLibConfig
-import nl.amony.actor.MediaLibProtocol.{Fragment, Media, State}
+import nl.amony.actor.MediaLibProtocol.{Command, Fragment, Media, State}
 import nl.amony.actor.{MediaLibEventSourcing, Message}
 import scribe.Logging
 import QueryProtocol._
@@ -24,13 +24,13 @@ object LocalIndex {
     }
   }
 
-  def apply[T](config: MediaLibConfig, context: ActorContext[T])(implicit mat: Materializer): ActorRef = {
+  def apply[T](config: MediaLibConfig, context: ActorContext[T], media: ActorRef)(implicit mat: Materializer): ActorRef = {
 
     import akka.actor.typed.scaladsl.adapter._
 
 //    val indexActor = context.actorOf(Props(new LocalIndexActor(config)), "index")
 
-    val indexActor = context.actorOf(Props(new SolrIndexActor(config)))
+    val indexActor = context.actorOf(Props(new SolrIndexActor(media)))
 
     readAllEvents(context, indexActor)
 

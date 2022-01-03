@@ -1,6 +1,6 @@
 package nl.amony.actor
 
-import akka.actor.typed.Behavior
+import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import akka.stream.Materializer
 import nl.amony.MediaLibConfig
@@ -18,8 +18,8 @@ object MainRouter {
     Behaviors.setup { context =>
       implicit val mat = Materializer(context)
 
-      val localIndex = LocalIndex.apply(config, context).toTyped[QueryMessage]
-      val cmdHandler    = context.spawn(MediaLibProtocol.apply(config, scanner), "medialib")
+      val cmdHandler: ActorRef[Command] = context.spawn(MediaLibProtocol.apply(config, scanner), "medialib")
+      val localIndex = LocalIndex.apply(config, context, cmdHandler.toClassic).toTyped[QueryMessage]
 
       Behaviors.receiveMessage[Message] {
 

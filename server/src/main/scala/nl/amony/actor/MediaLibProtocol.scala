@@ -24,6 +24,7 @@ object MediaLibProtocol {
   // -- Querying
   case class GetAll(sender: ActorRef[List[Media]])                extends Command
   case class GetById(id: String, sender: ActorRef[Option[Media]]) extends Command
+  case class GetByIds(ids: Set[String], sender: ActorRef[Map[String, Media]]) extends Command
 
   // --- Fragments
   case class DeleteFragment(mediaId: String, fragmentIdx: Int, sender: ActorRef[Either[ErrorResponse, Media]])

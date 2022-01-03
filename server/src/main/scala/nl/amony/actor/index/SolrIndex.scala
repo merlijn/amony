@@ -1,20 +1,23 @@
 package nl.amony.actor.index
 
 import akka.actor.Actor
-import nl.amony.App.{appConfig, logger}
-import nl.amony.MediaLibConfig
-import nl.amony.actor.MediaLibEventSourcing
+import akka.actor.typed.ActorRef
+import akka.actor.typed.scaladsl.AskPattern._
+import akka.actor.typed.scaladsl.adapter._
+import akka.util.Timeout
+import nl.amony.App.appConfig
 import nl.amony.actor.MediaLibEventSourcing.{MediaAdded, MediaMetaDataUpdated, MediaUpdated}
-import nl.amony.actor.MediaLibProtocol.Media
+import nl.amony.actor.MediaLibProtocol.{Command, GetByIds, Media}
 import nl.amony.actor.index.QueryProtocol.{GetPlaylists, GetTags, Search, SearchResult}
-import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer
 import org.apache.solr.common.SolrInputDocument
 import org.apache.solr.common.params.{CommonParams, ModifiableSolrParams}
 import scribe.Logging
 
 import java.nio.file.Path
 import java.util.Properties
-import scala.jdk.CollectionConverters.IterableHasAsScala
+import scala.concurrent.duration.DurationInt
+import scala.jdk.CollectionConverters.{IterableHasAsScala, SeqHasAsJava}
+import scala.util.{Failure, Success}
 
 object SolrIndex extends Logging {
 
@@ -36,14 +39,24 @@ object SolrIndex extends Logging {
     server
   }
 
-  class SolrIndexActor(config: MediaLibConfig) extends Actor with Logging {
+  class SolrIndexActor(media: ActorRef[Command]) extends Actor with Logging {
 
     val solr = startSolr()
 
+
     def addMediaToSolr(media: Media): Unit = {
+
       val solrInputDocument: SolrInputDocument = new SolrInputDocument()
       solrInputDocument.addField("id", media.id)
       solrInputDocument.addField("title_s", media.title.getOrElse(media.fileName()))
+      solrInputDocument.addField("lastmodified_l", media.fileInfo.lastModifiedTime)
+      solrInputDocument.addField("created_l", media.fileInfo.creationTime)
+      solrInputDocument.addField("filesize_l", media.fileInfo.size)
+      solrInputDocument.addField("tags_ss", media.tags.toList.asJava)
+      solrInputDocument.addField("duration_l", media.videoInfo.duration)
+      solrInputDocument.addField("fps_d", media.videoInfo.fps)
+      solrInputDocument.addField("width_i", media.videoInfo.resolution._1)
+      solrInputDocument.addField("height_i", media.videoInfo.resolution._2)
 
       try {
         solr.add("amony_embedded", solrInputDocument).getStatus
@@ -75,20 +88,27 @@ object SolrIndex extends Logging {
 
         logger.info(s"Query: $query")
 
+        val q = query.q.getOrElse("")
         val solrParams = new ModifiableSolrParams
-        solrParams.add(CommonParams.Q, "*:*")
+        solrParams.add(CommonParams.Q, s"title_s:*${if (q.trim.isEmpty) "" else s"$q*"}")
         solrParams.add(CommonParams.START, query.offset.getOrElse(0).toString)
         solrParams.add(CommonParams.ROWS, query.n.toString)
 
         val queryResponse = solr.query(solrParams)
 
-        logger.info(s"Result size: ${queryResponse.getResults.size()}")
+        val ids = queryResponse.getResults.asScala.map(_.getFieldValue("id").asInstanceOf[String]).toSet
+        val total = queryResponse.getResults.getNumFound
+        val offset = queryResponse.getResults.getStart
 
-        for (document <- queryResponse.getResults.asScala) {
-          println(document)
-        }
+        logger.info(s"number found: ${queryResponse.getResults.getNumFound}")
 
-        sender.tell(SearchResult(query.offset.getOrElse(0), 0, List.empty, Map.empty))
+        media.ask[Map[String, Media]](ref => GetByIds(ids, ref))(Timeout(5.seconds), context.system.toTyped.scheduler).onComplete {
+          case Success(results) =>
+            val medias = results.values.toSeq
+            sender.tell(SearchResult(offset, total, medias, Map.empty))
+          case Failure(e) =>
+            sender.tell(SearchResult(offset, total, List.empty, Map.empty))
+        }(context.dispatcher)
     }
   }
 

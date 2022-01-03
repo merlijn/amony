@@ -33,5 +33,5 @@ object QueryProtocol {
     sort: Option[Sort]
   )
 
-  case class SearchResult(offset: Int, total: Int, items: Seq[Media], tags: Map[String, Int])
+  case class SearchResult(offset: Long, total: Long, items: Seq[Media], tags: Map[String, Int])
 }
