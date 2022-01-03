@@ -8,7 +8,8 @@ import akka.util.Timeout
 import nl.amony.App.appConfig
 import nl.amony.actor.MediaLibEventSourcing.{MediaAdded, MediaMetaDataUpdated, MediaUpdated}
 import nl.amony.actor.MediaLibProtocol.{Command, GetByIds, Media}
-import nl.amony.actor.index.QueryProtocol.{GetPlaylists, GetTags, Search, SearchResult}
+import nl.amony.actor.index.QueryProtocol.{DateAdded, Duration, FileName, FileSize, GetPlaylists, GetTags, Search, SearchResult, Sort}
+import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer
 import org.apache.solr.common.SolrInputDocument
 import org.apache.solr.common.params.{CommonParams, ModifiableSolrParams}
 import scribe.Logging
@@ -21,19 +22,15 @@ import scala.util.{Failure, Success}
 
 object SolrIndex extends Logging {
 
-  def startSolr() = {
+  def startSolr(): EmbeddedSolrServer = {
     import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer
     import org.apache.solr.core.CoreContainer
 
     val solrPath = Path.of("./solr")
 
-    logger.info(s"solr path: ${solrPath.toAbsolutePath.toString}")
+    System.getProperties.setProperty("solr.data.dir", appConfig.media.indexPath.resolve("solr").toAbsolutePath.toString)
 
-    val properties = new Properties()
-    properties.setProperty("data.dir", appConfig.media.indexPath.resolve("solr").toAbsolutePath.toString)
-    properties.setProperty("solr.data.dir", appConfig.media.indexPath.resolve("solr").toAbsolutePath.toString)
-
-    val container = new CoreContainer(solrPath, properties)
+    val container = new CoreContainer(solrPath, new Properties())
     container.load()
     val server = new EmbeddedSolrServer(container, "amony_embedded")
     server
@@ -89,27 +86,40 @@ object SolrIndex extends Logging {
         logger.info(s"Query: $query")
 
         val q = query.q.getOrElse("")
+
         val solrParams = new ModifiableSolrParams
         solrParams.add(CommonParams.Q, s"title_s:*${if (q.trim.isEmpty) "" else s"$q*"}")
         solrParams.add(CommonParams.START, query.offset.getOrElse(0).toString)
         solrParams.add(CommonParams.ROWS, query.n.toString)
 
+        val sort: String = query.sort.map { option =>
+          val solrField = option.field match {
+            case FileName => "title_s"
+            case DateAdded => "created_l"
+            case FileSize => "filesize_l"
+            case Duration => "duration_l"
+          }
+
+          s"$solrField ${if (option.reverse) "desc" else "asc"}"
+        }.getOrElse("created_l desc")
+
+        solrParams.add(CommonParams.SORT, sort)
+
         val queryResponse = solr.query(solrParams)
 
-        val ids = queryResponse.getResults.asScala.map(_.getFieldValue("id").asInstanceOf[String]).toSet
+        val ids = queryResponse.getResults.asScala.map(_.getFieldValue("id").asInstanceOf[String])
         val total = queryResponse.getResults.getNumFound
         val offset = queryResponse.getResults.getStart
 
         logger.info(s"number found: ${queryResponse.getResults.getNumFound}")
 
-        media.ask[Map[String, Media]](ref => GetByIds(ids, ref))(Timeout(5.seconds), context.system.toTyped.scheduler).onComplete {
+        media.ask[Map[String, Media]](ref => GetByIds(ids.toSet, ref))(Timeout(5.seconds), context.system.toTyped.scheduler).onComplete {
           case Success(results) =>
-            val medias = results.values.toSeq
+            val medias: Seq[Media] = ids.map(id => results.get(id)).flatten.toSeq
             sender.tell(SearchResult(offset, total, medias, Map.empty))
           case Failure(e) =>
             sender.tell(SearchResult(offset, total, List.empty, Map.empty))
         }(context.dispatcher)
     }
   }
-
 }
