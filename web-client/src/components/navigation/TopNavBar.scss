@@ -187,10 +187,11 @@
             background-color: $gray-100;
 
             .filter-container {
-              padding: 15px 15px 20px 15px;
+              padding: 15px;
               display: flex;
               flex-direction: row;
               flex-wrap: wrap;
+              justify-content: space-around;
               gap: 20px;
               
               .filter-section {
