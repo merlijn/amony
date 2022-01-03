@@ -68,7 +68,7 @@ export function dateMillisToString(millis: number) {
 
   const date = new Date(millis)
   const days = zeroPad(date.getUTCDate(), 2)
-  const month = zeroPad(date.getMonth(), 2)
+  const month = zeroPad(date.getMonth() + 1, 2)
   const year = date.getFullYear()
 
   return `${year}-${month}-${days}`;
@@ -77,7 +77,7 @@ export function dateMillisToString(millis: number) {
 export function zeroPad(n: number, d: number) {
 
   let zeros = "";
-  let limit = Math.max(0, d - 1 - Math.floor(Math.log10(n)))
+  let limit = Math.max(0, d - 1 - (n ? Math.floor(Math.log10(n)) : 0))
 
   for(let i = 0; i < limit; i++)
     zeros += "0"

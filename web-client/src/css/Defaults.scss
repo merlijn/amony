@@ -9,10 +9,6 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
-input {
-  padding: 4px;
-}
-
 // -- Common elements
 
 .text-input {
@@ -25,7 +21,11 @@ input {
   }
 }
 
-input {
+input[type="text"] {
+  @extend .text-input;
+}
+
+input[type="password"] {
   @extend .text-input;
 }
 

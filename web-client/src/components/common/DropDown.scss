@@ -2,13 +2,12 @@
 
 //index.module.css
 .dropdown-container {
-  display: inline-flex;
   position: relative;
-  flex-direction: column;
+  z-index: inherit;
 }
 
 .dropdown-toggle {
-  position: relative;
+  // position: relative;
   cursor: pointer;
 }
 
@@ -18,6 +17,7 @@
 
 .dropdown-content-container {
   position: relative;
+  z-index: inherit;
 
   .dropdown-content {
     position: absolute;
@@ -50,20 +50,14 @@
 
 .dropdown-menu-item {
 
-  @extend .hover-pointer;
+  @extend .hover-pointer, .v-align-center;
   display: flex;
-  // max-width: 500px;
-  align-items: center;
   font-size: normal;
   padding: 6px 12px;
   color: black;
-  
-  .menu-label-no-wrap {
-    display: inline-block;
-    white-space: nowrap;
-  }
 
   &:hover {
+    color: white;
     background-color: $secondary-a;
   }
 }

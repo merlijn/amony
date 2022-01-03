@@ -1,0 +1,27 @@
+@import 'src/App.scss';
+
+.media-info-dialog {
+
+  .title-input {
+    width: 100%;
+    padding: 8px;
+  }
+
+  .comment-input {
+    width: 100%;
+    padding: 8px;
+    height: 70px;
+  }
+
+  .header {
+    font-size: normal;
+    font-weight: 600;
+    margin: $spacing-3 $spacing-1;
+  }
+
+  .info-save-button {
+    @extend .hover-pointer, .abs-bottom-right;
+    width: 24px;
+    height: 24px;
+  }
+}

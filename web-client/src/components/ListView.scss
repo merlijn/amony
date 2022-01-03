@@ -14,12 +14,6 @@ $row-height: 36px;
     height: 20px;
   }
 
-  .list-menu-icon {
-
-    @extend .action-icon;
-    float: right;
-  }
-
   .list-header {
     
     @extend .hover-pointer;
@@ -28,18 +22,12 @@ $row-height: 36px;
     position: -webkit-sticky;
     top: 0px;
 
-    font-weight: 600;
+    font-weight: 500;
     padding: 12px 8px !important;
 
     .column-sort-icon {
       visibility: hidden;
       float: right;
-    }
-
-    &:hover {
-      .column-sort-icon {
-        visibility: visible;
-      }
     }
   }
 
@@ -54,13 +42,44 @@ $row-height: 36px;
     .hover-action {
       visibility: hidden;
       position: absolute;
-      right: 2px;
+      right: 0px;
+    }
+
+    .media-actions {
+      @extend .hover-action, .v-align-center;
+      display: flex;
+      gap: $spacing-2;
+      padding-left: $spacing-3;
+      background-color: $gray-100;
+      height: 100%;
+
+      .fragments-action {
+        @extend .hover-pointer;
+        width: 24px;
+        height: 24px;
+      }
+
+      .delete-action {
+        @extend .hover-pointer;
+        width: 24px;
+        height: 24px;
+      }
+    }
+
+    .edit-title {
+      @extend .hover-pointer;
+      width: 20px;
+      height: 20px;
     }
 
     &:hover {
       background-color: $gray-100;
 
       .hover-action {
+        visibility: visible;
+      }
+
+      .column-sort-icon {
         visibility: visible;
       }
     }
@@ -105,19 +124,12 @@ $row-height: 36px;
 
     }
 
-    .edit-title {
-      @extend .hover-pointer;
-      float: right;
-      margin-right: 5px;
-      width: 20px;
-      height: 20px;
-    }
-
     .list-title {
-      width: 30%;
+      width: 40%;
 
       .edit-title-input {
-        width: 100%;
+        width: calc(100% - 28px);
+        padding: 4px;
       }
     }
 

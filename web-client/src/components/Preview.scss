@@ -17,13 +17,32 @@
     z-index: 4;
   
     .preview-overlay {
-        z-index: 7;
+       
+      z-index: 7;
   
-      .preview-menu-icon {
+      .preview-menu-container {
   
         @extend .abs-top-right;
         margin: 5px;
         z-index: inherit;
+
+        .preview-menu {
+  
+          .preview-menu-icon {
+            @extend .action-icon-small;
+          }
+        
+          margin-top: 3px;
+        
+          .menu-icon {
+            float: left;
+            margin-right: 10px;
+          }
+        
+          .menu-item {
+            padding-left: 10px !important;
+          }
+        }
       }
     }
   
@@ -53,22 +72,6 @@
     }
   }
   
-  .preview-menu {
-  
-    @extend .abs-top-right;
-  
-    margin-top: 3px;
-  
-    .menu-icon {
-      float: left;
-      margin-right: 10px;
-    }
-  
-    .menu-item {
-      padding-left: 10px !important;
-    }
-  }
-
   .preview-info-bar {
 
     @extend .v-align-center;
@@ -76,7 +79,7 @@
     font-size: small;
     font-weight: 600;
     display: flex;
-    height: 22px;
+    height: 24px;
     width: 100%;
     padding-top: 1px;
   

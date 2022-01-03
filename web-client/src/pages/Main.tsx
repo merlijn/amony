@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import 'react-pro-sidebar/dist/css/styles.css';
 import { useHistory, useLocation } from "react-router";
-import { Constants } from "../api/Constants";
+import { Constants, parseDurationParam, parseSortParam } from "../api/Constants";
 import { MediaSelection, MediaView, Prefs, Video } from "../api/Model";
 import { useCookiePrefs, useListener, useStateNeq } from "../api/ReactUtils";
 import GridView from "../components/GridView";
@@ -20,7 +20,6 @@ const Main = () => {
     const location = useLocation();
     const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
     const [showNavigation, setShowNavigation] = useState(true)
-    const [showTagBar] = useState(true)
     const [view, setView] = useState<MediaView>('grid')
 
     const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs/v1", "/", Constants.defaultPreferences)
@@ -32,8 +31,9 @@ const Main = () => {
         query: urlParams.get("q") || undefined,
         playlist: urlParams.get("playlist") || undefined,
         tag: urlParams.get("tag") || undefined,
-        sort: prefs.sort,
-        minimumQuality: prefs.videoQuality
+        sort: parseSortParam(urlParams.get("s") || "date_added;desc"),
+        duration: urlParams.has("d") ? parseDurationParam(urlParams.get("d") || "-") : undefined,
+        minimumQuality: parseInt(urlParams.get("vq") || "0")
       }
     }
 
@@ -75,7 +75,7 @@ const Main = () => {
       let m = 0;
 
       if (showNavigation)
-        m += 45;
+        m += 47;
 
       return m;
     }
@@ -105,7 +105,6 @@ const Main = () => {
             { showNavigation && 
                 <TopNavBar 
                     key           = "top-nav-bar" 
-                    showTagsBar   = { showTagBar && view !== "list" } 
                     onClickMenu   = { () => setShowSidebar(true) } 
                     activeView    = { view }
                     // playList      = "nature"
@@ -115,11 +114,13 @@ const Main = () => {
 
             {
               (view === 'grid') &&
-                <div style = { galleryStyle } key="main-content" className="main-content-container">
                   <GridView 
+                    style     = { galleryStyle } 
+                    className = "main-content-container"
                     key       = "gallery"
                     selection = { selection }
-                    scroll    = 'page' 
+                    showTagbar = { showNavigation }
+                    componentType = 'page' 
                     onClick   = { (v: Video) => setPlayVideo(v) } 
                     columns   = { prefs.gallery_columns }
                     previewOptionsFn = { (v: Video) => {
@@ -132,7 +133,6 @@ const Main = () => {
                         } 
                       }
                     }/>
-                </div>
             }
 
             {

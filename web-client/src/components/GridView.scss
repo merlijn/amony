@@ -3,9 +3,7 @@
 .gallery-container {
 
   width: 100%;
-  padding-left: var(--grid-spacing);
-  padding-right: var(--grid-spacing);
-  margin-top: 46px;
+  padding: var(--grid-spacing);
   display: flex;
   flex-wrap: wrap;
 }

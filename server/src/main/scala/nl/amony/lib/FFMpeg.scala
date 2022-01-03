@@ -73,7 +73,7 @@ object FFMpeg extends Logging {
           case "audio" => c.as[AudioStream]
           case _       => c.as[UnkownStream]
         }.left.map(error => {
-          logger.warn(s"Failed to decode stream, json: ${c.value}")
+          logger.warn(s"Failed to decode stream: ${c.value}")
           error
         })
       }
@@ -84,13 +84,6 @@ object FFMpeg extends Logging {
   // Before avformat_find_stream_info() pos: 3193581 bytes read:3217069 seeks:0 nb_streams:2
   val fastStartPattern =
     raw"""Before\savformat_find_stream_info\(\)\spos:\s\d+\sbytes\sread:\d+\sseeks:0""".r.unanchored
-
-  def ffprobeOld(file: Path): (model.ProbeOutput, model.ProbeDebugOutput) = {
-
-    val fileName    = file.toAbsolutePath.normalize().toString
-    val debugOutput = runSync(useErrorStream = true, cmds = List("ffprobe", "-v", "debug", fileName))
-    (null, ProbeDebugOutput(fastStartPattern.matches(debugOutput)))
-  }
 
   def ffprobe(file: Path, debug: Boolean = false): (model.ProbeOutput, model.ProbeDebugOutput) = {
 
@@ -118,20 +111,6 @@ object FFMpeg extends Logging {
       case Left(error) => throw error
       case Right(out)  => (out, debugProbe)
     }
-  }
-
-  private def readStream(is: InputStream) = {
-    val builder = new StringBuilder
-
-    try {
-      scala.io.Source.fromInputStream(is).iter.foreach { c =>
-        print(c)
-        builder.append(c)
-      }
-    } catch {
-      case e: Exception => logger.warn(e)
-    }
-    builder.toString()
   }
 
   private def formatTime(timestamp: Long): String = {

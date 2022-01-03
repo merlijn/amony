@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Api } from '../../api/Api';
+import Dialog from '../common/Dialog';
 import './Login.scss';
 
 const Login = (props: { onLoginSuccess: () => void }) => {
@@ -13,9 +14,8 @@ const Login = (props: { onLoginSuccess: () => void }) => {
   }
 
   return (
-    <div className = "login-container">
-      <h2 className = "login-header">Sign in</h2>
-      <form onSubmit = { doLogin } name="login">
+    <Dialog title = "Login">
+      <form className="login-form" onSubmit = { doLogin } name="login">
         <div key="username-header" className="username-header">Username</div>
         <div key="username-input" className="username-input">
           <input key="login-username" type="text" tabIndex={1} value={username} onChange = {(e) => setUsername(e.target.value) }/>
@@ -27,7 +27,7 @@ const Login = (props: { onLoginSuccess: () => void }) => {
         <div key="feedback" className="feedback-message"></div>
         <div key="login-button" className="login-button"><button type="submit" value="submit" className="login-button" tabIndex={3}>Login</button></div>
       </form>
-    </div>
+    </Dialog>
   );
 }
 

@@ -6,7 +6,7 @@ import akka.http.scaladsl.server.Directives.path
 import akka.http.scaladsl.server.Route
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
-import nl.amony.actor.MediaIndex._
+import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.MediaLibProtocol._
 import nl.amony.http.JsonCodecs
 import nl.amony.http.RouteDeps
@@ -23,6 +23,8 @@ trait ApiRoutes extends Logging with IdentityRoutes {
 
   val defaultResultNumber = 24
 
+  val durationPattern = raw"(\d*)-(\d*)".r
+
   val apiRoutes =
     pathPrefix("api") {
       (path("search") & parameters(
@@ -31,24 +33,34 @@ trait ApiRoutes extends Logging with IdentityRoutes {
         "n".optional,
         "playlist".optional,
         "tags".optional,
+        "min_res".optional,
+        "d".optional,
         "sort_field".optional,
-        "sort_dir".optional,
-        "min_res".optional
-      )) { (q, offset, n, playlist, tags, sort, sortDir, minResY) =>
+        "sort_dir".optional
+      )) { (q, offset, n, playlist, tags, minResY, durationParam, sortParam, sortDir) =>
         get {
           val size        = n.map(_.toInt).getOrElse(defaultResultNumber)
           val sortReverse = sortDir.map(_ == "desc").getOrElse(false)
-          val sortField = sort
+          val sortField: SortField = sortParam
             .map {
               case "title"      => FileName
+              case "size"       => FileSize
               case "duration"   => Duration
               case "date_added" => DateAdded
               case _            => throw new IllegalArgumentException("unkown sort field")
             }
             .getOrElse(FileName)
 
-          val searchResult =
-            api.query.search(q, offset.map(_.toInt), size, tags.toSet, playlist, minResY.map(_.toInt), Sort(sortField, sortReverse))
+          val duration: Option[(Long, Long)] = durationParam.flatMap {
+            case durationPattern("", "")   => None
+            case durationPattern(min, "")  => Some((min.toLong, Long.MaxValue))
+            case durationPattern("", max)  => Some((0, max.toLong))
+            case durationPattern(min, max) => Some((min.toLong, max.toLong))
+            case _                         => None
+          }
+
+          val searchResult: Future[SearchResult] =
+            api.query.search(q, offset.map(_.toInt), size, tags.toSet, playlist, minResY.map(_.toInt), duration, Sort(sortField, sortReverse))
 
           val response = searchResult.map(_.asJson)
 
@@ -66,8 +78,8 @@ trait ApiRoutes extends Logging with IdentityRoutes {
         pathEnd {
           get {
             onSuccess(api.query.getById(id)) {
-              case Some(vid) => complete(vid.asJson)
-              case None      => complete(StatusCodes.NotFound)
+              case Some(media) => complete(media.asJson)
+              case None        => complete(StatusCodes.NotFound)
             }
           } ~ (post & entity(as[VideoMeta])) { meta =>
             translateResponse(api.modify.updateMetaData(id, meta.title, meta.comment, meta.tags))
@@ -100,7 +112,7 @@ trait ApiRoutes extends Logging with IdentityRoutes {
 
   def translateResponse(future: Future[Either[ErrorResponse, Media]]): Route = {
     onSuccess(future) {
-      case Left(MediaNotFound(id))      => complete(StatusCodes.NotFound)
+      case Left(MediaNotFound(_))       => complete(StatusCodes.NotFound)
       case Left(InvalidCommand(reason)) => complete(StatusCodes.BadRequest, reason)
       case Right(media)                 => complete(media.asJson)
     }

@@ -8,25 +8,24 @@ import akka.http.scaladsl.model.StatusCodes.TooManyRequests
 import akka.http.scaladsl.model.headers.ByteRange
 import akka.http.scaladsl.model.headers.Range
 import akka.http.scaladsl.model.headers.RangeUnits
-import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.headers.`Content-Range`
 import akka.http.scaladsl.model.headers.`Content-Type`
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.Directives.optionalHeaderValueByName
-import akka.http.scaladsl.server.Directives.respondWithHeaders
-import akka.http.scaladsl.server.directives.ContentTypeResolver
-import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.server.UnsatisfiableRangeRejection
-import akka.stream.scaladsl.FileIO
-import akka.stream.scaladsl.Source
+import akka.http.scaladsl.server.Directives.withSizeLimit
+import akka.http.scaladsl.server.directives.FutureDirectives.onSuccess
+import akka.http.scaladsl.server.directives.MarshallingDirectives.{as, entity}
+import akka.http.scaladsl.server.directives.{ContentTypeResolver, FileInfo}
+import akka.http.scaladsl.server.{Directive1, Route, UnsatisfiableRangeRejection}
+import akka.http.scaladsl.util.FastFuture
+import akka.stream.scaladsl.{FileIO, Sink, Source}
 import akka.util.ByteString
 import scribe.Logging
 
-import java.io.File
-import java.io.RandomAccessFile
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
+import scala.collection.immutable
+import scala.util.{Failure, Success}
 
-object RangeDirectives extends Logging {
+object HttpDirectives extends Logging {
   import akka.http.scaladsl.server.directives.BasicDirectives._
   import akka.http.scaladsl.server.directives.RouteDirectives._
 
@@ -152,4 +151,44 @@ object RangeDirectives extends Logging {
       }
     }
   }
+
+  def uploadFiles(fieldName: String, uploadPath: Path, uploadLimitBytes: Long): Directive1[immutable.Seq[(FileInfo, Path)]] =
+
+    (withSizeLimit(uploadLimitBytes) & entity(as[Multipart.FormData])).flatMap { formData =>
+
+      extractRequestContext.flatMap { ctx =>
+        implicit val mat = ctx.materializer
+        implicit val ec = ctx.executionContext
+
+        val uploaded: Source[(FileInfo, Path), Any] = formData.parts
+          .mapConcat { part =>
+            if (part.filename.isDefined && part.name == fieldName) part :: Nil
+            else {
+              part.entity.discardBytes()
+              Nil
+            }
+          }
+          .mapAsync(1) { part =>
+            val fileInfo = FileInfo(part.name, part.filename.get, part.entity.contentType)
+
+            Files.createDirectories(uploadPath)
+            val path = uploadPath.resolve(part.filename.get)
+            val file = path.toFile
+            file.createNewFile()
+
+            part.entity.dataBytes
+              .runWith(FileIO.toPath(path))
+              .flatMap { ioResult =>
+                ioResult.status match {
+                  case Success(_) => FastFuture.successful(ioResult)
+                  case Failure(t) => FastFuture.failed(t)
+                }
+              }.map(_ => (fileInfo, path))
+          }
+
+        val uploadedF = uploaded.runWith(Sink.seq[(FileInfo, Path)])
+
+        onSuccess(uploadedF)
+      }
+    }
 }

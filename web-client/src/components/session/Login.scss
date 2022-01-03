@@ -1,18 +1,11 @@
 @import 'src/App.scss';
 
-.login-container {
+.login-form {
   
-  @extend .modal-dialog;
-  
-  width: 400px;
-  border: 1px solid black;
-
-  form {
-    display: grid; 
-    align-items: center;
-    grid-auto-columns: auto;
-    grid-auto-rows: minmax(45px, auto);
-  }
+  display: grid; 
+  align-items: center;
+  grid-auto-columns: auto;
+  grid-auto-rows: minmax(45px, auto);
 
   .username-header {
     grid-row: 1;
@@ -49,10 +42,3 @@
     }
   }
 }
-
-.login-header {
-  @extend .mt-0, .pb-3, .mb-4;
-
-  border-bottom: 1px solid $gray-300;
-}
-

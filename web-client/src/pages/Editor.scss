@@ -23,6 +23,30 @@
   }
 }
 
+.overlay-button {
+  @extend .v-align-center, .hover-pointer;
+  font-size: small;
+  padding: $spacing-2 $spacing-3;
+  border: 1px solid $gray-300;
+}
+
+.button-green {
+  @extend .overlay-button;
+  color: white;
+  background-color: $highlight-e;
+}
+
+.button-orange {
+  @extend .overlay-button;
+  background-color:$highlight-c;
+}
+
+.button-blue {
+  @extend .overlay-button;
+  color: white;
+  background-color:$highlight-a;
+}
+
 .fragment-picker {
 
   display: flex;

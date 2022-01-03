@@ -1,44 +1,4 @@
-@import url(https://fonts.googleapis.com/css2?family=Otomanopee+One&display=swap);
 @import 'src/App.scss';
-
-.nav-menu-button {
-
-  @extend .hover-pointer;
-  position: absolute;
-  top: 0px;
-  left: 0px;
-
-  width: 40px;
-  height: 40px;
-  margin-bottom: 0px;
-  margin-top: 5px;
-  margin-left: 5px;
-  user-select: none;
-}
-
-$accent: rgb(83, 155, 36);
-
-.toggle-tag-bar {
-
-  @extend .hover-pointer;
-  position: absolute;
-  user-select: none;
-
-  svg {
-    width: 24px;
-    height: 24px;
-    color: $gray-600;
-  }
-
-  top: 6px;
-  right: 6px;
-}
-
-.selected {
-  svg {
-    color: black !important;
-  }
-}
 
 .nav-bar-container {
 
@@ -51,54 +11,50 @@ $accent: rgb(83, 155, 36);
   .top-nav-bar {
 
     user-select: none;
-    z-index: 10;
+    z-index: inherit;
     position: relative;
-    float: left;
     display: flex;
+    justify-content: center;
     width: 100vw;
   
     background-color: white;
     border-bottom: 1px solid $gray-200;
+    height: 47px;
   
     @media only screen and (min-width: map-get($container-max-widths, md)) {
       background-color: $gray-100;
     }
-  }
 
-  .nav-bar-spacer {
-    flex-grow: 0;
-  
-    @media only screen and (min-width: map-get($container-max-widths, md)) {
-      flex-grow: 1;
-    }
-  
-    padding: 0px 0px;
-  }
+    .nav-menu-button {
 
-  .view-button-group {
-    @extend .hover-pointer;
-    background-color: $gray-300;    
-    border: none;
-    height: 35px;
-
-    &:hover {
-      background-color: $gray-400;
+      @extend .hover-pointer, .abs-top-left;
+    
+      width: 40px;
+      height: 40px;
+      margin-bottom: 0px;
+      margin-top: 5px;
+      margin-left: 5px;
+      user-select: none;
     }
   }
-  
+
   .nav-bar-center {
 
     display: flex;
     vertical-align: middle;
-    z-index: 9;
-    flex-grow: 2;
+    
+    z-index: inherit;
+    flex-grow: 1;
     max-width: 700px;
     padding: 6px 4px !important;
+
+    @media only screen and (max-width: map-get($container-max-widths, md)) {
+      margin-left: 45px;
+    }
 
     .view-select-container {
       
       display: flex;
-      float: left;
       vertical-align: middle;
       margin-left: 5px;
 
@@ -107,29 +63,39 @@ $accent: rgb(83, 155, 36);
         color: rgb(250, 250, 250);
       }
 
+      .view-button {
+        @extend .hover-pointer;
+        background-color: $gray-300;    
+        border: none;
+        height: 35px;
+    
+        &:hover {
+          background-color: $gray-400;
+        }
+      }
+
       .button-list-view {
 
-        @extend .hover-pointer, .view-button-group;
+        @extend .view-button;
         
-        border-radius: 3px 0px 0px 3px;
-        padding-top: 5px;
+        border-radius: 0px 3px 3px 0px;
+        padding-top: 6px;
 
         svg {
-          height: 28px;
-          width: 28px;
+          height: 26px;
+          width: 26px;
         }
       }
 
       .button-grid-view {
         
-        @extend .hover-pointer, .view-button-group;
-        
+        @extend .view-button;
+        border-radius: 3px 0px 0px 3px;
         padding: 4px 8px 0px 8px;
-        border-radius: 0px 3px 3px 0px;
 
         svg {
-          height: 23px;
-          width: 23px;
+          height: 22px;
+          width: 22px;
         }
       }
     }
@@ -146,40 +112,39 @@ $accent: rgb(83, 155, 36);
         position: relative;
         flex-grow: 1;
 
-        .playlist {
-          @extend .v-align-center;
-          
-          position: absolute;
-          display: flex;
+        .search-icon {
+          @extend .abs-top-left;
+          z-index: 11 !important;
+          width: 20px;
+          height: 20px;
+          margin-top: 8px;
+          margin-left: 7px;
           color: $gray-700;
-
-          top: 5px;
-          right: 5px;
-          height: 25px;
-          padding: 0px 5px;
-          border: 1px dotted $gray-200;
-          border-radius: 3px;
         }
     
         .nav-search-input {
+          @extend .abs-top-left;
+          width: 100%;
+          height: 100%;
+
           outline: none;
           height: 35px !important;
-          border-radius: 3px ! important;
+          border-radius: 3px;
           border: 1px solid $gray-300;
-          width: 100% ! important;
-          padding-left: 8px;
+          padding-left: 35px;
           &:focus {
-            border-color: rgb(128, 189, 255);
-            outline: solid rgba(128, 189, 255, 0.4);
+            border-color: $gray-500;
+            outline: solid $gray-200;
+            outline-width: 2px;
           }
         }
-    
-        .nav-clear-input {
+
+        .nav-search-clear-input {
           @extend .hover-pointer;
           position: absolute;
           width: 24px;
           height: 24px;
-          right: 6px;
+          right: 32px;
           top: 6px;
           color: rgba(0, 0, 0, 0.6);
 
@@ -187,6 +152,85 @@ $accent: rgb(83, 155, 36);
             color: rgba(0, 0, 0, 0.9);
           }
         }
+
+        .filter-dropdown-container {
+          @extend .abs-top-left;
+          width: 100%;
+          height: 100%;
+          
+          svg {
+            @extend .abs-top-right;
+            z-index: 12 !important;
+            margin: 1px;
+            padding: 4px;
+            box-sizing: content-box;
+            border-radius: 2px;
+            width: 25px;
+            height: 25px;
+
+            &:hover {
+              background-color: $gray-200;
+            }
+          }
+
+          .filter-dropdown-content {
+
+            display: flex;
+            flex-direction: column;
+            z-index: 11 !important;
+
+            border-radius: 0px 0px 3px 3px;
+            border: 1px solid $gray-300;
+            border-top: 1px solid $gray-200;
+            margin-top: 29px;
+            width: 100%;
+            background-color: $gray-100;
+
+            .filter-container {
+              padding: 15px;
+              display: flex;
+              flex-direction: row;
+              flex-wrap: wrap;
+              justify-content: space-around;
+              gap: 20px;
+              
+              .filter-section {
+                display: flex;
+                flex-direction: column;
+
+                .section-header {
+                  font-size: medium;
+                  font-weight: 500;
+                  padding-bottom: 8px;
+                  margin-bottom: 12px;
+                  border-bottom: 1px solid $gray-300;
+                }
+
+                .filter-option {
+                  @extend .hover-pointer;
+                  padding: 3px 4px;;
+                  border-radius: 3px;
+                  display: inline-block;
+                  white-space: nowrap;
+
+                  input {
+                    margin-right: 8px;
+                  }
+
+                  label {
+                    margin-left: $spacing-3;
+                  }
+
+                  &:hover {
+                    background-color: $gray-200;
+                  }
+                }
+              }
+            }
+          }
+        }
+    
+
       }
     }
   }

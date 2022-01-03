@@ -1,6 +1,8 @@
 import React, { MutableRefObject, useEffect, useRef, useState } from "react";
 import { useCookies } from "react-cookie";
 import _ from "lodash";
+import { useHistory, useLocation } from "react-router-dom";
+import { buildUrl, copyParams } from "./Util";
 
 export const useStateRef = <T>(value: T): [T, MutableRefObject<T>, ((e: T) => void)] => {
   const [getState, _setState] = useState<T>(value)
@@ -11,6 +13,32 @@ export const useStateRef = <T>(value: T): [T, MutableRefObject<T>, ((e: T) => vo
   };
 
   return [getState, stateRef, setState]
+}
+
+export const useUrlParam = (name: string, defaultValue: string): [string, (v: string ) => any] => {
+  const location = useLocation();
+  const history = useHistory();
+  const [param, setParam] = useStateNeq<string>(defaultValue);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    setParam(params.get(name) || defaultValue)
+  }, [location])
+
+  const updateParam = (value: string) => {
+    const params = new URLSearchParams(location.search)
+    const newParams = copyParams(params)
+    
+    if (value === defaultValue)
+      newParams.delete(name)
+    else  
+      newParams.set(name, value)
+
+    const url = buildUrl(history.location.pathname, newParams)
+    history.push(url)
+  }
+
+  return [param, updateParam];
 }
 
 export const useListener = <K extends keyof WindowEventMap>(type: K, listener: (this: Window, ev: WindowEventMap[K]) => any) => {

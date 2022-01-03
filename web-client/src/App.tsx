@@ -8,19 +8,14 @@ function App() {
 
   return (
     <div className="app-root">
-
       <BrowserRouter>
-
-        <div>
           <Switch>
             <Route exact path="/" component = { Main }  />
             <Route path="/search"  component = { Main } />
             <Route path="/editor/:id" children = { <EditorRouter /> } />
-            <Route exact path="/grid" component = { VideoWall } />
+            <Route exact path="/video-wall" component = { VideoWall } />
             <Route exact path="/compilation" children ={ <Compilation /> } />
           </Switch>
-        </div>
-
       </BrowserRouter>
 
     </div>

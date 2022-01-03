@@ -1,4 +1,4 @@
-package nl.amony.lib
+package nl.amony.lib.hash
 
 object Base32 {
   val alphabet: List[Char] = List('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q',

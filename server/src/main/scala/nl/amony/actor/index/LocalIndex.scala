@@ -1,47 +1,18 @@
-package nl.amony.actor
+package nl.amony.actor.index
 
-import akka.actor.typed
 import akka.actor.typed.scaladsl.ActorContext
-import akka.actor.Actor
-import akka.actor.ActorRef
-import akka.actor.Props
+import akka.actor.{Actor, ActorRef, Props, typed}
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
-import akka.persistence.query.EventEnvelope
-import akka.persistence.query.PersistenceQuery
+import akka.persistence.query.{EventEnvelope, PersistenceQuery}
 import akka.stream.Materializer
 import better.files.File
 import nl.amony.MediaLibConfig
 import nl.amony.actor.MediaLibProtocol.{Fragment, Media, State}
-import akka.actor.typed.scaladsl.adapter._
+import nl.amony.actor.{MediaLibEventSourcing, Message}
 import scribe.Logging
+import QueryProtocol._
 
-object MediaIndex {
-
-  sealed trait IndexQuery extends Message
-
-  case class Playlist(id: String, title: String)
-  case class GetPlaylists(sender: typed.ActorRef[List[Playlist]])    extends IndexQuery
-  case class Search(query: Query, sender: typed.ActorRef[SearchResult]) extends IndexQuery
-  case class SearchFragments(size: Int, offset: Int, tag: String, sender: typed.ActorRef[Seq[Fragment]]) extends IndexQuery
-  case class GetTags(sender: typed.ActorRef[Set[String]]) extends IndexQuery
-
-  sealed trait SortField
-  case object FileName      extends SortField
-  case object DateAdded     extends SortField
-  case object Duration      extends SortField
-//  case object Shuffle       extends SortField
-
-  case class Sort(field: SortField, reverse: Boolean)
-  case class Query(
-      q: Option[String],
-      offset: Option[Int],
-      n: Int,
-      tags: Set[String],
-      playlist: Option[String],
-      minRes: Option[Int],
-      sort: Option[Sort]
-  )
-  case class SearchResult(offset: Int, total: Int, items: Seq[Media], tags: Map[String, Int])
+object LocalIndex {
 
   def apply[T](config: MediaLibConfig, context: ActorContext[T])(implicit mat: Materializer): ActorRef = {
 
@@ -69,6 +40,7 @@ object MediaIndex {
     var sortedByFilename: List[Media] = List.empty
     var sortedByDateAdded: List[Media] = List.empty
     var sortedByDuration: List[Media] = List.empty
+    var sortedBySize: List[Media] = List.empty
     var tags: Set[String] = Set.empty
 
     def media: Map[String, Media] = state.media
@@ -86,8 +58,9 @@ object MediaIndex {
           dirs.toList.sorted.zipWithIndex.map { case (path, idx) => Playlist(idx.toString, path) }
         }
         sortedByFilename  = media.values.toList.sortBy(m => m.title.getOrElse(m.fileName()))
-        sortedByDateAdded = media.values.toList.sortBy(m => m.fileInfo.creationTime)
-        sortedByDuration  = media.values.toList.sortBy(m => m.videoInfo.duration)
+        sortedByDateAdded = media.values.toList.sortBy(_.fileInfo.creationTime)
+        sortedByDuration  = media.values.toList.sortBy(_.videoInfo.duration)
+        sortedBySize      = media.values.toList.sortBy(_.fileInfo.size)
         tags              = media.values.flatMap(_.tags).toSet
         indexedAt         = counter
       }
@@ -125,11 +98,13 @@ object MediaIndex {
         def filterRes(m: Media): Boolean = query.minRes.map(res => m.videoInfo.resolution._2 >= res).getOrElse(true)
         def filterQuery(m: Media): Boolean =
           query.q.map(q => m.fileInfo.relativePath.toLowerCase.contains(q.toLowerCase)).getOrElse(true)
-
-        def filterTag(m: Media): Boolean = 
+        def filterTag(m: Media): Boolean =
           query.tags.forall(tag => m.tags.contains(tag))
-
-        def filterMedia(m: Media): Boolean = filterDir(m) && filterRes(m) && filterQuery(m) && filterTag(m)
+        def filterDuration(m: Media): Boolean =
+          query.duration.map {
+            case (min, max) => m.videoInfo.duration >= min && m.videoInfo.duration <= max
+          }.getOrElse(true)
+        def filterMedia(m: Media): Boolean = filterDir(m) && filterRes(m) && filterQuery(m) && filterTag(m) && filterDuration(m)
 
         val unfiltered = query.sort match {
           case None                             => state.media.values
@@ -139,6 +114,8 @@ object MediaIndex {
           case Some(Sort(DateAdded, true))      => sortedByDateAdded.reverse
           case Some(Sort(Duration, false))      => sortedByDuration
           case Some(Sort(Duration, true))       => sortedByDuration.reverse
+          case Some(Sort(FileSize, false))      => sortedBySize
+          case Some(Sort(FileSize, true))       => sortedBySize.reverse
         }
 
         val result = unfiltered.filter(filterMedia)

@@ -3,7 +3,7 @@ package nl.amony.http
 import akka.actor.typed.ActorSystem
 import akka.stream.Materializer
 import akka.util.Timeout
-import nl.amony.TranscodeSettings
+import nl.amony.{TranscodeSettings, WebServerConfig}
 import nl.amony.lib.AmonyApi
 
 import scala.concurrent.ExecutionContext
@@ -13,7 +13,7 @@ trait RouteDeps extends JsonCodecs {
   val api: AmonyApi
   implicit val system: ActorSystem[Nothing]
 
-  override def transcodingSettings: List[TranscodeSettings] = api.config.previews.transcode
+  override def transcodingSettings: List[TranscodeSettings] = api.config.media.previews.transcode
 
   implicit def materializer: Materializer = Materializer.createMaterializer(system)
   implicit def executionContext: ExecutionContext = system.executionContext
