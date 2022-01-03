@@ -11,22 +11,28 @@ import nl.amony.actor.MediaLibProtocol.{Fragment, Media, State}
 import nl.amony.actor.{MediaLibEventSourcing, Message}
 import scribe.Logging
 import QueryProtocol._
+import nl.amony.actor.index.SolrIndex.SolrIndexActor
 
 object LocalIndex {
+
+  def readAllEvents[T](context: ActorContext[T], receiver: ActorRef)(implicit mat: Materializer) = {
+    val readJournal =
+      PersistenceQuery(context.system).readJournalFor[LeveldbReadJournal]("akka.persistence.query.journal.leveldb")
+
+    readJournal.eventsByPersistenceId("mediaLib").runForeach {
+      case EventEnvelope(_, _, _, e: MediaLibEventSourcing.Event) => receiver.tell(e, ActorRef.noSender)
+    }
+  }
 
   def apply[T](config: MediaLibConfig, context: ActorContext[T])(implicit mat: Materializer): ActorRef = {
 
     import akka.actor.typed.scaladsl.adapter._
 
-    val indexActor = context.actorOf(Props(new LocalIndexActor(config)), "index")
+//    val indexActor = context.actorOf(Props(new LocalIndexActor(config)), "index")
 
-    val readJournal =
-      PersistenceQuery(context.system).readJournalFor[LeveldbReadJournal]("akka.persistence.query.journal.leveldb")
+    val indexActor = context.actorOf(Props(new SolrIndexActor(config)))
 
-    readJournal.eventsByPersistenceId("mediaLib").runForeach {
-      case EventEnvelope(_, _, _, e: MediaLibEventSourcing.Event) =>
-        indexActor.tell(e, ActorRef.noSender)
-    }
+    readAllEvents(context, indexActor)
 
     indexActor
   }

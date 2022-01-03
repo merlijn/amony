@@ -1,10 +1,13 @@
 import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
 
-val AkkaVersion = "2.6.17"
+val AkkaVersion = "2.6.18"
 val AkkaHttpVersion = "10.2.7"
 val circeVersion = "0.14.1"
 
-val javaOpts = Nil //Seq("-Dconfig.resource=dev/application.conf", "-Dfile.encoding=UTF-8")
+val javaOpts = Seq("-Dnashorn.args=--no-deprecation-warning")
+
+val excludeLog4j =
+  ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl")
 
 lazy val amony = (project in file(".")).
   settings(
@@ -19,12 +22,15 @@ lazy val amony = (project in file(".")).
     libraryDependencies ++= Seq(
 
       "org.slf4j"                 % "slf4j-api"                  % "1.7.30",
+      "org.apache.solr"           % "solr-core"                  % "8.11.1" excludeAll(excludeLog4j),
+      "org.apache.solr"           % "solr-langid"                % "8.11.1" excludeAll(excludeLog4j),
       "com.typesafe"              % "config"                     % "1.4.1",
       "com.typesafe.akka"        %% "akka-actor-typed"           % AkkaVersion,
       "com.typesafe.akka"        %% "akka-stream"                % AkkaVersion,
       "com.typesafe.akka"        %% "akka-persistence-typed"     % AkkaVersion,
       "com.typesafe.akka"        %% "akka-persistence-query"     % AkkaVersion,
       "com.typesafe.akka"        %% "akka-serialization-jackson" % AkkaVersion,
+      "com.fasterxml.jackson.module" %% "jackson-module-scala"   % "2.12.6",
       "com.typesafe.akka"        %% "akka-http"                  % AkkaHttpVersion,
       "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.2",
       "com.outr"                 %% "scribe-slf4j"               % "3.5.5",
@@ -44,8 +50,10 @@ lazy val amony = (project in file(".")).
 //    assembly / logLevel := Level.Debug,
     assembly / assemblyJarName := "amony.jar",
     assembly / assemblyMergeStrategy := {
-      case "module-info.class" => MergeStrategy.discard
+      case s if s.endsWith("module-info.class") => MergeStrategy.discard
+      case s if s.endsWith("Log4j2Plugins.dat") => MergeStrategy.discard
       case s if s.startsWith("org/iq80/leveldb") => MergeStrategy.first
+      case s if s.endsWith("io.netty.versions.properties") => MergeStrategy.first
       case x =>
         val oldStrategy = (assembly / assemblyMergeStrategy).value
         oldStrategy(x)

@@ -4,18 +4,27 @@ import akka.actor.typed.{ActorSystem, Behavior}
 import nl.amony.actor.{MainRouter, Message}
 import nl.amony.http.WebServer
 import nl.amony.lib.{AmonyApi, FFMpeg, MediaScanner}
-import scribe.Logging
+import scribe.{Level, Logger, Logging}
 
 import java.nio.file.{Files, Path}
-import java.util.Properties
 import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration.DurationInt
 
 object App extends AppConfig with Logging {
 
+  def setLogLevel(loggerName: String, level: Level) = {
+    Logger(loggerName)
+      .orphan()
+      .withHandler(minimumLevel = Some(level))
+      .replace()
+  }
+
   def main(args: Array[String]): Unit = {
 
     Files.createDirectories(appConfig.media.resourcePath)
+
+    setLogLevel("org.apache.solr", Level.Warn)
+    setLogLevel("org.apache.solr.update.processor.LanguageIdentifierUpdateProcessor", Level.Error)
 
     val scanner                      = new MediaScanner(appConfig)
     val router: Behavior[Message]    = MainRouter.apply(appConfig.media, scanner)
