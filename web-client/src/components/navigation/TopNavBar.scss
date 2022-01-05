@@ -130,12 +130,12 @@
           outline: none;
           height: 35px !important;
           border-radius: 3px;
-          border: 1px solid $gray-300;
+          border: 1px solid $gray-400;
           padding-left: 35px;
           &:focus {
             border-color: $gray-500;
             outline: solid $gray-200;
-            outline-width: 2px;
+            outline-width: 3px;
           }
         }
 
