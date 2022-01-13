@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import 'react-pro-sidebar/dist/css/styles.css';
 import { useHistory, useLocation } from "react-router";
 import { Constants, parseDurationParam, parseSortParam } from "../api/Constants";
 import { MediaSelection, MediaView, Prefs, Video } from "../api/Model";
