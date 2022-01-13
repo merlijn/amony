@@ -72,14 +72,14 @@ const ListView = (props: ListProps) => {
           <FaSort className="column-sort-icon" onClick = { () => setSort({field: "title", direction: sort.direction === "asc" ? "desc" : "asc" }) } />
         </div>
         <div className="list-cell list-header">Tags</div>
-        <div className="list-cell list-header">
+        <div className="list-cell list-header">Date
           <FaSort className="column-sort-icon" onClick = { () => setSort({field: "date_added", direction: sort.direction === "asc" ? "desc" : "asc" }) } />
         </div>
-        <div className="list-cell list-header">
+        <div className="list-cell list-header">Size
           <FaSort className="column-sort-icon" onClick = { () => setSort({field: "size", direction: sort.direction === "asc" ? "desc" : "asc" }) } />
         </div>
         <div className="list-cell list-header">
-          <FaSort className="column-sort-icon" onClick = { () => setSort({field: "resolution", direction: sort.direction === "asc" ? "desc" : "asc" }) } />
+          {/* <FaSort className="column-sort-icon" onClick = { () => setSort({field: "resolution", direction: sort.direction === "asc" ? "desc" : "asc" }) } /> */}
           {/* <BsThreeDotsVertical className="list-menu-icon" /> */}
         </div>
       </div>

@@ -42,10 +42,14 @@ const FragmentPreview = (props: Props) => {
   const metaPanel =
     <div className={`fragment-info-panel`}>
       <div className="abs-bottom-right">
-        <ImgWithAlt className="action-icon-small" title="save" src="/icons/task.svg" onClick={(e) => { saveTags(); setShowMetaPanel(false); } } />
+        <ImgWithAlt 
+          className="action-icon-small" 
+          src="/icons/task.svg" 
+          title="save" 
+          onClick={(e) => { saveTags(); setShowMetaPanel(false); } } />
       </div>
       <div key="tag-list-header" className="meta-panel-title">Tags</div>
-      <TagEditor tags={tags} callBack={ (updatedTags) => { setTags(updatedTags) } } />
+      <TagEditor tags = { tags } showAddButton = { true } showDeleteButton = { true } callBack = { (updatedTags) => { setTags(updatedTags) } } />
     </div>
 
   return(
@@ -60,11 +64,11 @@ const FragmentPreview = (props: Props) => {
       <div className="abs-bottom-left duration-overlay">{`${durationInSeconds}s @ ${durationInMillisToString(props.fragment.range.to)}`}</div>
       {
         props.showDeleteButton &&
-        (<div className="delete-fragment-icon">
-          <ImgWithAlt onClick={ (e) => deleteFragmentFn()} src="/icons/cancel.svg" />
-        </div>)
+          <div className="delete-fragment-icon">
+            <ImgWithAlt onClick={ (e) => deleteFragmentFn()} src="/icons/cancel.svg" />
+          </div>
       }
-      <div className="abs-top-left action-icon-small" >
+      <div className="tags-button" >
         <ImgWithAlt onClick={ (e) => setShowMetaPanel(true)} src="/icons/tag.svg" />
       </div>
     </div>

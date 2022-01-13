@@ -8,13 +8,18 @@
   .new-tag {
     
     // margin: 2px;
-    float: left;
-    align-items: center;
+    // float: left;
+    @extend .v-align-center;
+    margin-top: 3px;
 
     span {
+      @extend .v-align-center;
       color: white;
       background-color: $highlight-e;
       border: 1px solid $secondary-e;
+      min-width: 50px;
+
+
       padding: 6px 10px;
       border-radius: 25px;
       font-size: small;
@@ -36,7 +41,7 @@
     float: left;
     color: black;
     background-color: $gray-300;
-    // border: 1px solid $gray-400;
+    border: 1px solid $gray-400;
     font-size: small;
     padding: 6px 12px;
     border-radius: 25px;
@@ -55,15 +60,17 @@
       right: 1px;
       visibility: hidden;
       vertical-align: middle;
-      border: 2px solid $highlight-b;
+      border: 1px solid black;
       margin: 0px;
       // margin-top: 1px;
       padding-top: 1px;
       height: 22px;
       width: 22px;
-      color: $highlight-b;
+      color: black;
+      opacity: 60%;
 
       &:hover {
+        opacity: 100%;
         cursor: pointer;
       }
     }

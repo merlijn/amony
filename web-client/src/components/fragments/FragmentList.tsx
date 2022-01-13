@@ -4,6 +4,7 @@ import FragmentPreview from "./FragmentPreview";
 import './FragmentList.scss';
 import ImgWithAlt from "../common/ImgWithAlt";
 import { EditFragment } from "../../pages/Editor";
+import { FiPlusCircle } from "react-icons/fi"
 
 const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFragment) => any, setVid: (vid: Video) => any}) => {
 
@@ -54,11 +55,10 @@ const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFr
     </div>
 
   const fragmentsHeader =
-    <div key="fragments-header" className="fragments-header">
-      <span style={ { float: "left" } } >Fragments</span>
-      <ImgWithAlt style={ { float: "left" } }
-                  className="ml-1 action-icon-medium"
-                  src="/icons/add.svg"
+    <div key="fragments-header" className = "fragments-header">
+      <div>Fragments</div>
+    
+      <FiPlusCircle className="ml-2 action-icon-medium"
                   onClick = {(e) => { setShowAddFragment(true); props.selectFn({ idx: nrOfFragments }) } } />
     </div>
 

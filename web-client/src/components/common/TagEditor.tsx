@@ -55,19 +55,19 @@ const TagEditor = (props: TagEditorProps) => {
       )
     }
     { props.showAddButton &&
-      <div className="new-tag">
+      <div className = "new-tag">
           <span
-            ref = {newTagRef}
-            key = {"new-tag"}
+            ref       = { newTagRef }
+            key       = { "new-tag" }
             className = "input"
-            role = "textbox"
-            onFocus={ () => {
+            role      = "textbox"
+            onFocus   = { () => {
                 if (newTagRef.current)
                   newTagRef.current.innerText = "";
                 newTagActive = true;
               }
             }
-            onBlur={ () =>
+            onBlur = { () =>
               {
                 addTag(false);
                 if (newTagRef.current)
@@ -76,7 +76,7 @@ const TagEditor = (props: TagEditorProps) => {
                 newTagActive = false
               }
             }
-            onKeyPress={ (k) => {
+            onKeyPress = { (k) => {
                 if (k.key === "Enter") {
                   k.preventDefault()
                   addTag(true)

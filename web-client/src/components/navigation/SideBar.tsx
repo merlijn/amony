@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { FaGithub } from "react-icons/fa";
 import { FiFolder, FiGrid, FiSettings, FiUpload, FiUser } from "react-icons/fi";
 import { GiAbstract020 } from "react-icons/gi";
-import { GoGrabber } from "react-icons/go";
-import { Menu, MenuItem, ProSidebar, SidebarContent, SidebarFooter, SidebarHeader } from "react-pro-sidebar";
+import { IoCloseSharp } from "react-icons/io5"
+import { useHistory } from "react-router-dom";
 import { Api } from "../../api/Api";
 import Modal from "../common/Modal";
 import ConfigMenu from "../dialogs/ConfigMenu";
@@ -18,6 +18,7 @@ const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
   const [showLogin, setShowLogin] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [showFileUpload, setShowFileUpload] = useState(false)
+  const history = useHistory();
 
   return (
     <>
@@ -34,34 +35,52 @@ const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
       <FileUpload />
     </Modal>
 
-    <ProSidebar className="my-sidebar" width={200} collapsedWidth={50} collapsed={props.collapsed}>
-      <SidebarHeader className="sidebar-header">
-        <GoGrabber className="sidebar-menu-icon" onClick={props.onHide} />
-      </SidebarHeader>
-      <SidebarContent>
-        <Menu iconShape="circle">
-          <MenuItem 
-            icon = { Api.session().isLoggedIn() ? <GiAbstract020 /> : <FiUser /> } 
-            onClick = { () => { Api.session().isLoggedIn() ? setShowProfile(true) : setShowLogin(true) } } >Profile
-          </MenuItem>
-          
-          { Api.session().isAdmin() && 
-              <MenuItem 
-                icon = {<FiUpload /> } 
-                onClick = { () => { setShowFileUpload(true) } }>Upload
-              </MenuItem>
+    { /* invisible full screen element that hides the sidebar when clicked */ }
+    <div className= "sidebar-hidden-modal" onClick = { props.onHide } />
+
+    <div className = "sidebar">
+      <div className="sidebar-header">
+        <IoCloseSharp className = "close-sidebar-icon" onClick={props.onHide} />
+      </div>
+      <div className = "sidebar-menu">
+        <MenuItem 
+          icon    = { Api.session().isLoggedIn() ? <GiAbstract020 /> : <FiUser /> } 
+          label   = { Api.session().isLoggedIn() ? "Profile" : "Log in" }
+          onClick = { () => { Api.session().isLoggedIn() ? setShowProfile(true) : setShowLogin(true) } } 
+        />
+        { Api.session().isAdmin() && 
+            <MenuItem 
+              icon    = { <FiUpload /> } 
+              label   = "Upload"
+              onClick = { () => { setShowFileUpload(true) } } 
+            />  
           }
-          { (process.env.NODE_ENV === "development") && <MenuItem icon = { <FiFolder /> } title="Playlists" /> }
-          { (process.env.NODE_ENV === "development") && <MenuItem icon = { <FiGrid /> }><a href="/video-wall">Grid</a></MenuItem> }
-          <MenuItem icon = { <FiSettings />} onClick={() => setShowSettings(!showSettings)}>Settings</MenuItem>
-        </Menu>
-      </SidebarContent>
-      <SidebarFooter className="sidebar-footer">
+        { (process.env.NODE_ENV === "development") && <MenuItem icon = { <FiFolder /> } label = "Playlists" /> }
+        { (process.env.NODE_ENV === "development") && 
+          <MenuItem icon = { <FiGrid /> } label = "Video wall" onClick = { () => history.push("/video-wall") }></MenuItem> 
+        }
+        <MenuItem 
+          icon    = { <FiSettings /> } 
+          label   = "Settings"
+          onClick = { () => setShowSettings(!showSettings) }
+        />
+      </div>
+      <div className="sidebar-footer">
         <a href="https://github.com/merlijn/amony"><FaGithub className="github-icon" /></a>
-      </SidebarFooter>
-    </ProSidebar>
+      </div>
+    </div>
     </>
   );
+}
+
+const MenuItem = (props: { icon: React.ReactNode, label: string, onClick?: () => any}) => {
+
+  return(
+    <div className="menu-item" onClick = { () => props.onClick && props.onClick() }>
+      <div className="menu-item-icon">{props.icon}</div>
+      <div className="menu-item-label">{props.label}</div>
+    </div>
+  )
 }
 
 export default SideBar

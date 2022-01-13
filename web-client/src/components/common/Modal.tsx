@@ -6,24 +6,21 @@ const Modal = (props: { children?: ReactNode, visible: boolean, onHide: () => vo
 
   const modalRoot = document.getElementById('modal-root');
   const container = document.createElement("div")
-  
-  const hide = () => {
-    props.onHide();
-  }
 
   const modal = (
     <div
-      key       = "my-modal"
-      className = "my-modal-container"
-      style     = { { display: "block" } }>
+      key       = "modal-container"
+      className = "modal-container">
 
       <div 
-        key       = "my-model-background"
-        className = "my-modal-background"
-        onClick   = { (e) => hide() }
+        key       = "model-background"
+        className = "modal-background"
+        onClick   = { () => props.onHide() }
       />
 
-      <div key="my-model-content" className="my-modal-content">
+      <div 
+        key       = "model-content" 
+        className = "modal-content">
         { props.children }
       </div>
     </div>
