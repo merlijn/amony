@@ -2,7 +2,6 @@ package nl.amony.lib
 
 import better.files.File
 import monix.eval.Task
-import nl.amony.lib.FFMpeg.model.ProbeDebugOutput
 import nl.amony.lib.FileUtil.PathOps
 import nl.amony.lib.FileUtil.stripExtension
 import scribe.Logging
@@ -10,8 +9,7 @@ import scribe.Logging
 import java.io.InputStream
 import java.nio.file.Path
 import java.time.Duration
-import java.util.concurrent.TimeUnit
-import scala.util.Try
+import scala.concurrent.duration.DurationInt
 
 object FFMpeg extends Logging {
 
@@ -23,7 +21,7 @@ object FFMpeg extends Logging {
         isFastStart: Boolean
     )
 
-    case class ProbeOutput(streams: List[Stream]) {
+    case class ProbeOutput(streams: List[Stream], debugOutput: Option[ProbeDebugOutput]) {
       def firstVideoStream: Option[VideoStream] = 
         streams.sortBy(_.index).collectFirst { case v: VideoStream => v }
     }
@@ -64,6 +62,7 @@ object FFMpeg extends Logging {
     implicit val UnkownStreamDecoder: Decoder[UnkownStream] = deriveDecoder[UnkownStream]
     implicit val videoStreamDecoder: Decoder[VideoStream] = deriveDecoder[VideoStream]
     implicit val audioStreamDecoder: Decoder[AudioStream] = deriveDecoder[AudioStream]
+    implicit val debugDecoder: Decoder[ProbeDebugOutput] = deriveDecoder[ProbeDebugOutput]
     implicit val probeDecoder: Decoder[ProbeOutput]       = deriveDecoder[ProbeOutput]
 
     implicit val streamDecoder: Decoder[Stream] = new Decoder[Stream] {
@@ -85,34 +84,6 @@ object FFMpeg extends Logging {
   val fastStartPattern =
     raw"""Before\savformat_find_stream_info\(\)\spos:\s\d+\sbytes\sread:\d+\sseeks:0""".r.unanchored
 
-  def ffprobe(file: Path, debug: Boolean = false): (model.ProbeOutput, model.ProbeDebugOutput) = {
-
-    import model._
-
-    val fileName = file.toAbsolutePath.normalize().toString
-
-    // setting -v to debug will hang the standard output stream on some files.
-    val process = run(cmds = List("ffprobe", "-print_format", "json", "-show_streams", "-v", "quiet", fileName))
-
-//    Task {
-//      val result = process.waitFor(3000, TimeUnit.MILLISECONDS)
-//      if (!result) {
-//        logger.info(s"Timed out after 3 seconds")
-//        process.destroy()
-//      }
-//    }.runToFuture(monix.execution.Scheduler.Implicits.global)
-
-    val jsonOutput = scala.io.Source.fromInputStream(process.getInputStream).mkString
-//    val debugOutput = readStream(process.getErrorStream)
-//    val debugProbe = ProbeDebugOutput(fastStartPattern.matches(debugOutput))
-    val debugProbe = ProbeDebugOutput(true)
-
-    io.circe.parser.decode[ProbeOutput](jsonOutput) match {
-      case Left(error) => throw error
-      case Right(out)  => (out, debugProbe)
-    }
-  }
-
   private def formatTime(timestamp: Long): String = {
 
     val duration = Duration.ofMillis(timestamp)
@@ -123,6 +94,35 @@ object FFMpeg extends Logging {
     val millis  = "%03d".format(duration.toMillisPart)
 
     s"$hours:$minutes:$seconds.$millis"
+  }
+
+  def ffprobe(file: Path, debug: Boolean = false): Task[model.ProbeOutput] = {
+
+    import model._
+
+    val fileName = file.toAbsolutePath.normalize().toString
+
+    Task {
+
+      // setting -v to debug will hang the standard output stream on some files.
+
+      val process = run(cmds = List("ffprobe", "-print_format", "json", "-show_streams", "-v", "quiet", fileName))
+
+      val jsonOutput = scala.io.Source.fromInputStream(process.getInputStream).mkString
+      //    val debugOutput = readStream(process.getErrorStream)
+      //    val debugProbe = ProbeDebugOutput(fastStartPattern.matches(debugOutput))
+      val debugProbe = {
+        if (debug) {
+          val debugOutput = scala.io.Source.fromInputStream(process.getErrorStream)
+          ProbeDebugOutput(true)
+        }
+      }
+
+      io.circe.parser.decode[ProbeOutput](jsonOutput) match {
+        case Left(error) => throw error
+        case Right(out)  => out
+      }
+    }
   }
 
   def addFastStart(video: Path): Path = {
@@ -310,7 +310,8 @@ object FFMpeg extends Logging {
 
     val fileBaseName = outputBaseName.getOrElse(inputFile.getFileName.stripExtension())
 
-    val (probe, _)         = ffprobe(inputFile)
+    val probe        =
+      ffprobe(inputFile).runSyncUnsafe(5.seconds)(monix.execution.Scheduler.Implicits.global, monix.execution.schedulers.CanBlock.permit)
     val stream             = probe.firstVideoStream.getOrElse(throw new IllegalStateException("no video stream found"))
     val (frames, tileSize) = calculateNrOfFrames(stream.durationMillis)
     val mod                = ((stream.fps * (stream.durationMillis / 1000)) / frames).toInt

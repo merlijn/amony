@@ -84,7 +84,7 @@ trait ApiRoutes extends Logging with IdentityRoutes {
           } ~ (post & entity(as[VideoMeta])) { meta =>
             translateResponse(api.modify.updateMetaData(id, meta.title, meta.comment, meta.tags))
           } ~ delete {
-            onSuccess(api.modify.deleteMedia(id, deleteFile = true)) { case _ =>
+            onSuccess(api.modify.deleteMedia(id, deleteResource = true)) { case _ =>
               complete(StatusCodes.OK, "{}")
             }
           }
