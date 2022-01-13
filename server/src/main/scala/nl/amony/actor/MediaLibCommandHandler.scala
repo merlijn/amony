@@ -48,7 +48,6 @@ object MediaLibCommandHandler extends Logging {
     cmd match {
 
       case UpsertMedia(media, sender) =>
-        logger.debug(s"Adding new media: ${media.fileInfo.relativePath}")
 
         Effect
           .persist(MediaAdded(media))

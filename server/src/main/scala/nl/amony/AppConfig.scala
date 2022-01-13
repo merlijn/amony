@@ -1,9 +1,7 @@
 package nl.amony
 
-import better.files.File
 import com.typesafe.config.ConfigFactory
 import squants.information.Information
-import nl.amony.lib.FileUtil
 import nl.amony.lib.hash.Base32
 import nl.amony.lib.hash.PartialHash.partialHash
 import scribe.Logging

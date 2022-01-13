@@ -11,6 +11,7 @@ import nl.amony.AmonyConfig
 import nl.amony.actor.MediaLibProtocol._
 import nl.amony.actor.Message
 import nl.amony.actor.index.QueryProtocol._
+import nl.amony.lib.ffmpeg.FFMpeg
 import scribe.Logging
 
 import java.io.InputStream
@@ -52,7 +53,7 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
     def addMediaFromLocalFile(path: Path)(implicit timeout: Timeout): Future[Media] = {
 
       scanner
-        .scanVideo(path.toAbsolutePath, None, config.media)
+        .scanMedia(path.toAbsolutePath, None, config.media)
         .runToFuture
         .flatMap { media =>
           // TODO this logic should move to the actor
@@ -105,7 +106,6 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
     def getThumbnail(id: String, quality: Int, timestamp: Option[Long])(implicit
         timeout: Timeout
     ): Future[Option[InputStream]] = {
-
       query
         .getById(id)
         .map(_.map { media =>
@@ -137,7 +137,13 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
         .getAll()
         .foreach { loadedFromStore =>
           val (deleted, newAndMoved) = scanner.scanVideosInDirectory(config.media, loadedFromStore)
-          val upsert                 = Consumer.foreachTask[Media](m => Task { modify.upsertMedia(m) })
+
+          val upsert                 = Consumer.foreachTask[Media](m => Task {
+            logger.info(s"Adding media: ${m.id}")
+            modify.upsertMedia(m)
+          })
+
+
           val delete = Consumer.foreachTask[Media](m =>
             Task {
               logger.info(s"Detected deleted file: ${m.fileInfo.relativePath}")

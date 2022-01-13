@@ -11,6 +11,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Consumer
 import monix.reactive.Observable
+import nl.amony.lib.ffmpeg.FFMpeg
 import scribe.Logging
 
 import java.nio.file.attribute.BasicFileAttributes
@@ -67,62 +68,64 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
       }
   }
 
-  def scanVideo(videoPath: Path, hash: Option[String], config: MediaLibConfig): Task[Media] = {
+  def scanMedia(videoPath: Path, hash: Option[String], config: MediaLibConfig): Task[Media] = {
 
-    FFMpeg.ffprobe(videoPath).map { case probe =>
-      val fileHash = hash.getOrElse(config.hashingAlgorithm.generateHash(videoPath))
+    FFMpeg
+      .ffprobe(videoPath, false).map { case probe =>
 
-      val mainVideoStream =
-        probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${videoPath}"))
+        val fileHash = hash.getOrElse(config.hashingAlgorithm.generateHash(videoPath))
 
-      logger.debug(mainVideoStream.toString)
+        val mainVideoStream =
+          probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${videoPath}"))
 
-      probe.debugOutput.foreach { debug =>
-        if (!debug.isFastStart)
-          logger.warn(s"Video is not optimized for streaming: ${videoPath}")
+        logger.debug(mainVideoStream.toString)
+
+        probe.debugOutput.foreach { debug =>
+          if (!debug.isFastStart)
+            logger.warn(s"Video is not optimized for streaming: ${videoPath}")
+        }
+
+        val fileAttributes = Files.readAttributes(videoPath, classOf[BasicFileAttributes])
+
+        val timeStamp = mainVideoStream.durationMillis / 3
+
+        val fileInfo = FileInfo(
+          relativePath     = config.mediaPath.relativize(videoPath).toString,
+          hash             = fileHash,
+          size             = fileAttributes.size(),
+          creationTime     = fileAttributes.creationTime().toMillis,
+          lastModifiedTime = fileAttributes.lastModifiedTime().toMillis
+        )
+
+        val videoInfo = VideoInfo(
+          mainVideoStream.fps,
+          mainVideoStream.durationMillis,
+          (mainVideoStream.width, mainVideoStream.height)
+        )
+
+        val fragmentLength = config.defaultFragmentLength.toMillis
+
+        val media = Media(
+          id                 = fileHash,
+          title              = None,
+          comment            = None,
+          fileInfo           = fileInfo,
+          videoInfo          = videoInfo,
+          thumbnailTimestamp = timeStamp,
+          fragments          = List(Fragment(timeStamp, timeStamp + fragmentLength, None, List.empty)),
+          tags               = Set.empty
+        )
+
+        createPreviews(
+          media,
+          videoPath,
+          timeStamp,
+          timeStamp + fragmentLength,
+          config.previews
+        )
+
+        media
       }
-
-      val fileAttributes = Files.readAttributes(videoPath, classOf[BasicFileAttributes])
-
-      val timeStamp = mainVideoStream.durationMillis / 3
-
-      val fileInfo = FileInfo(
-        relativePath     = config.mediaPath.relativize(videoPath).toString,
-        hash             = fileHash,
-        size             = fileAttributes.size(),
-        creationTime     = fileAttributes.creationTime().toMillis,
-        lastModifiedTime = fileAttributes.lastModifiedTime().toMillis
-      )
-
-      val videoInfo = VideoInfo(
-        mainVideoStream.fps,
-        mainVideoStream.durationMillis,
-        (mainVideoStream.width, mainVideoStream.height)
-      )
-
-      val fragmentLength = config.defaultFragmentLength.toMillis
-
-      val media = Media(
-        id                 = fileHash,
-        title              = None,
-        comment            = None,
-        fileInfo           = fileInfo,
-        videoInfo          = videoInfo,
-        thumbnailTimestamp = timeStamp,
-        fragments          = List(Fragment(timeStamp, timeStamp + fragmentLength, None, List.empty)),
-        tags               = Set.empty
-      )
-
-      createPreviews(
-        media,
-        videoPath,
-        timeStamp,
-        timeStamp + fragmentLength,
-        config.previews
-      )
-
-      media
-    }
   }
 
   def scanVideosInDirectory(
@@ -146,7 +149,7 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
             val relativePath = config.mediaPath.relativize(path).toString
 
             persistedMedia.find(_.fileInfo.relativePath == relativePath) match {
-              case None => config.hashingAlgorithm.generateHash(path)
+              case None    => config.hashingAlgorithm.generateHash(path)
               case Some(m) =>
                 val fileAttributes = Files.readAttributes(path, classOf[BasicFileAttributes])
 
@@ -183,7 +186,7 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
       persistedMedia.partition(m => filesWithHashes.exists { case (_, hash) => hash == m.fileInfo.hash })
 
     // moved and new
-    val newAndMoved = Observable
+    val newAndMoved: Observable[Media] = Observable
       .from(filesWithHashes)
       .filterNot { case (path, hash) =>
         // filters existing, unchanged files
@@ -192,18 +195,25 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
         )
       }
       .filterNot { case (_, hash) => collidingHashes.contains(hash) }
-      .mapParallelUnordered[Media](config.scanParallelFactor) { case (videoFile, hash) =>
+      .mapParallelUnordered[Option[Media]](config.scanParallelFactor) { case (videoFile, hash) =>
           val relativePath = config.mediaPath.relativize(videoFile).toString
 
           remaining.find(_.fileInfo.hash == hash) match {
             case Some(old) =>
               logger.info(s"File was moved: '${old.fileInfo.relativePath}' -> '${relativePath}'")
-              Task.now(old.copy(fileInfo = old.fileInfo.copy(relativePath = relativePath)))
+              Task.now(Some(old.copy(fileInfo = old.fileInfo.copy(relativePath = relativePath))))
 
             case None =>
               logger.info(s"Scanning new file: '${relativePath}'")
-              scanVideo(videoFile, Some(hash), config)
+              scanMedia(videoFile, Some(hash), config)
+                .map(m => Some(m))
+                .onErrorHandle { e =>
+                  logger.warn(s"Failed to scan video: $videoFile", e)
+                  None
+                }
         }
+      }.collect {
+        case Some(m) => m
       }
 
     (Observable.from(removed), newAndMoved)
