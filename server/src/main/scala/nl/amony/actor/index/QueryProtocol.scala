@@ -1,7 +1,7 @@
 package nl.amony.actor.index
 
 import akka.actor.typed
-import nl.amony.actor.MediaLibProtocol.{Fragment, Media}
+import nl.amony.actor.media.MediaLibProtocol.{Fragment, Media}
 import nl.amony.actor.Message
 
 object QueryProtocol {

@@ -27,7 +27,7 @@ object App extends AppConfig with Logging {
 
 //    MediaLibScanner.convertNonStreamableVideos(mediaLibConfig, api)
 
-//    Migration.importFromExport(api)(10.seconds)
+//    lib.Migration.importFromExport(api)(10.seconds)
 
     val webServer = new WebServer(appConfig.api, api)(system)
 

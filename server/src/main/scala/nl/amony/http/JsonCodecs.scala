@@ -1,6 +1,5 @@
 package nl.amony.http
 
-import nl.amony.actor.MediaLibProtocol
 import nl.amony.http.WebModel.Fragment
 import nl.amony.http.WebModel.FragmentRange
 import nl.amony.http.WebModel.SearchResult
@@ -13,6 +12,7 @@ import io.circe.generic.semiauto.deriveCodec
 import io.circe.generic.semiauto.deriveEncoder
 import nl.amony.TranscodeSettings
 import nl.amony.actor.index.{LocalIndex, QueryProtocol}
+import nl.amony.actor.media.MediaLibProtocol
 
 trait JsonCodecs {
 
@@ -55,7 +55,7 @@ trait JsonCodecs {
 
     Video(
       id        = media.id,
-      video_url = s"/files/resources/${media.id}_${media.videoInfo.resolution._2}p.${media.fileInfo.extension}",
+      video_url = s"/files/resources/${media.id}_${media.height}p.${media.fileInfo.extension}",
       meta = VideoMeta(
         title   = media.title.orElse(Some(media.fileName())),
         comment = media.comment,
@@ -81,8 +81,8 @@ trait JsonCodecs {
           )
         }
       },
-      width  = media.videoInfo.resolution._1,
-      height = media.videoInfo.resolution._2
+      width  = media.width,
+      height = media.height,
     )
   }
 }

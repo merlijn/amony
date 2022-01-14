@@ -2,10 +2,10 @@ package nl.amony.lib
 
 import akka.util.Timeout
 import nl.amony.{AmonyConfig, MediaLibConfig, PreviewConfig, TranscodeSettings}
-import nl.amony.actor.MediaLibProtocol.FileInfo
-import nl.amony.actor.MediaLibProtocol.Fragment
-import nl.amony.actor.MediaLibProtocol.Media
-import nl.amony.actor.MediaLibProtocol.VideoInfo
+import nl.amony.actor.media.MediaLibProtocol.FileInfo
+import nl.amony.actor.media.MediaLibProtocol.Fragment
+import nl.amony.actor.media.MediaLibProtocol.Media
+import nl.amony.actor.media.MediaLibProtocol.VideoInfo
 import nl.amony.lib.FileUtil.PathOps
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -68,29 +68,29 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
       }
   }
 
-  def scanMedia(videoPath: Path, hash: Option[String], config: MediaLibConfig): Task[Media] = {
+  def scanMedia(mediaPath: Path, hash: Option[String], config: MediaLibConfig): Task[Media] = {
 
     FFMpeg
-      .ffprobe(videoPath, false).map { case probe =>
+      .ffprobe(mediaPath, false).map { case probe =>
 
-        val fileHash = hash.getOrElse(config.hashingAlgorithm.generateHash(videoPath))
+        val fileHash = hash.getOrElse(config.hashingAlgorithm.generateHash(mediaPath))
 
         val mainVideoStream =
-          probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${videoPath}"))
+          probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${mediaPath}"))
 
         logger.debug(mainVideoStream.toString)
 
         probe.debugOutput.foreach { debug =>
           if (!debug.isFastStart)
-            logger.warn(s"Video is not optimized for streaming: ${videoPath}")
+            logger.warn(s"Video is not optimized for streaming: ${mediaPath}")
         }
 
-        val fileAttributes = Files.readAttributes(videoPath, classOf[BasicFileAttributes])
+        val fileAttributes = Files.readAttributes(mediaPath, classOf[BasicFileAttributes])
 
         val timeStamp = mainVideoStream.durationMillis / 3
 
         val fileInfo = FileInfo(
-          relativePath     = config.mediaPath.relativize(videoPath).toString,
+          relativePath     = config.mediaPath.relativize(mediaPath).toString,
           hash             = fileHash,
           size             = fileAttributes.size(),
           creationTime     = fileAttributes.creationTime().toMillis,
@@ -118,7 +118,7 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
 
         createPreviews(
           media,
-          videoPath,
+          mediaPath,
           timeStamp,
           timeStamp + fragmentLength,
           config.previews

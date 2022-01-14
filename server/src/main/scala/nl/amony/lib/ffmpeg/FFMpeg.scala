@@ -49,7 +49,6 @@ object FFMpeg extends Logging with FFMpegJsonCodecs {
           if (debug) {
             val debugOutput = scala.io.Source.fromInputStream(process.getErrorStream).mkString
             val fastStart = fastStartPattern.matches(debugOutput)
-            //          logger.info(debugOutput)
             Some(ProbeDebugOutput(fastStart))
           } else {
             None

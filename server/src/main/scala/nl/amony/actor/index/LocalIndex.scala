@@ -7,10 +7,11 @@ import akka.persistence.query.{EventEnvelope, PersistenceQuery}
 import akka.stream.Materializer
 import better.files.File
 import nl.amony.MediaLibConfig
-import nl.amony.actor.MediaLibProtocol.{Fragment, Media, State}
-import nl.amony.actor.{MediaLibEventSourcing, Message}
+import nl.amony.actor.media.MediaLibProtocol.{Fragment, Media, State}
+import nl.amony.actor.Message
 import scribe.Logging
 import QueryProtocol._
+import nl.amony.actor.media.MediaLibEventSourcing
 
 object LocalIndex {
 
@@ -95,7 +96,7 @@ object LocalIndex {
 
         def filterDir(m: Media): Boolean =
           dir.map(t => m.fileInfo.relativePath.startsWith(t.title.substring(1))).getOrElse(true)
-        def filterRes(m: Media): Boolean = query.minRes.map(res => m.videoInfo.resolution._2 >= res).getOrElse(true)
+        def filterRes(m: Media): Boolean = query.minRes.map(res => m.height >= res).getOrElse(true)
         def filterQuery(m: Media): Boolean =
           query.q.map(q => m.fileInfo.relativePath.toLowerCase.contains(q.toLowerCase)).getOrElse(true)
         def filterTag(m: Media): Boolean =

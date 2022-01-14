@@ -8,7 +8,7 @@ import com.fasterxml.jackson.core.JsonEncoding
 import monix.eval.Task
 import monix.reactive.Consumer
 import nl.amony.AmonyConfig
-import nl.amony.actor.MediaLibProtocol._
+import nl.amony.actor.media.MediaLibProtocol._
 import nl.amony.actor.Message
 import nl.amony.actor.index.QueryProtocol._
 import nl.amony.lib.ffmpeg.FFMpeg
@@ -142,7 +142,6 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
             logger.info(s"Adding media: ${m.id}")
             modify.upsertMedia(m)
           })
-
 
           val delete = Consumer.foreachTask[Media](m =>
             Task {
