@@ -32,7 +32,8 @@ case class AmonyConfig(
   media: MediaLibConfig,
   api: WebServerConfig,
   adminUsername: String,
-  adminPassword: String
+  adminPassword: String,
+  ffprobeTimeout: FiniteDuration,
 )
 
 case class PreviewConfig(

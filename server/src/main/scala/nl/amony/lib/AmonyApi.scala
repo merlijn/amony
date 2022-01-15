@@ -139,7 +139,6 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
           val (deleted, newAndMoved) = scanner.scanVideosInDirectory(config.media, loadedFromStore)
 
           val upsert                 = Consumer.foreachTask[Media](m => Task {
-            logger.info(s"Adding media: ${m.id}")
             modify.upsertMedia(m)
           })
 
@@ -161,8 +160,8 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
         medias.foreach { m =>
           logger.info(s"generating thumbnail previews for '${m.fileName()}'")
           FFMpeg.generatePreviewSprite(
-            m.resolvePath(config.media.mediaPath).toAbsolutePath,
-            outputDir      = config.media.indexPath.resolve("resources"),
+            inputFile      = m.resolvePath(config.media.mediaPath).toAbsolutePath,
+            outputDir      = config.media.resourcePath,
             outputBaseName = Some(s"${m.id}-timeline")
           )
         }

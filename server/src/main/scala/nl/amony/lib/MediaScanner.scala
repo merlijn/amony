@@ -30,13 +30,13 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
 
     val files = FileUtil.walkDir(appConfig.media.path)
 
-    implicit val timeout: Timeout = Timeout(3.seconds)
-    implicit val ec               = scala.concurrent.ExecutionContext.global
-    val parallelism               = appConfig.media.scanParallelFactor
+    implicit val timeout = Timeout(3.seconds)
+    implicit val ec      = scala.concurrent.ExecutionContext.global
+    val parallelism      = appConfig.media.scanParallelFactor
 
     Observable
       .fromIterable(files)
-      .mapParallelUnordered(parallelism)(path => FFMpeg.ffprobe(path, true).map(p => path -> p))
+      .mapParallelUnordered(parallelism)(path => FFMpeg.ffprobe(path, true, appConfig.ffprobeTimeout).map(p => path -> p))
       .filterNot { case (_, probe) => probe.debugOutput.exists(_.isFastStart) }
       .filterNot { case (path, _) => filterFileName(path.getFileName().toString) }
       .mapParallelUnordered(parallelism) { case (videoWithoutFastStart, _) => Task {
@@ -71,7 +71,7 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
   def scanMedia(mediaPath: Path, hash: Option[String], config: MediaLibConfig): Task[Media] = {
 
     FFMpeg
-      .ffprobe(mediaPath, false).map { case probe =>
+      .ffprobe(mediaPath, false, appConfig.ffprobeTimeout).map { case probe =>
 
         val fileHash = hash.getOrElse(config.hashingAlgorithm.generateHash(mediaPath))
 

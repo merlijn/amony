@@ -9,7 +9,7 @@ import scribe.Logging
 import java.io.InputStream
 import java.nio.file.Path
 import java.time.Duration
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 object FFMpeg extends Logging with FFMpegJsonCodecs {
 
@@ -30,7 +30,7 @@ object FFMpeg extends Logging with FFMpegJsonCodecs {
     s"$hours:$minutes:$seconds.$millis"
   }
 
-  def ffprobe(file: Path, debug: Boolean): Task[ProbeOutput] = {
+  def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration): Task[ProbeOutput] = {
 
     val fileName = file.toAbsolutePath.normalize().toString
 
@@ -40,11 +40,10 @@ object FFMpeg extends Logging with FFMpegJsonCodecs {
       run(cmds = "ffprobe" :: args)
     }.flatMap { process =>
       Task {
-        // setting -v to debug will hang the standard output stream on some files.
-        logger.info(s"Probing ${file}")
 
         val jsonOutput = scala.io.Source.fromInputStream(process.getInputStream).mkString
 
+        // setting -v to debug will hang the standard output stream on some files.
         val debugOutput = {
           if (debug) {
             val debugOutput = scala.io.Source.fromInputStream(process.getErrorStream).mkString
@@ -60,7 +59,7 @@ object FFMpeg extends Logging with FFMpegJsonCodecs {
           case Right(out)  => out.copy(debugOutput = debugOutput)
         }
       }.doOnCancel(Task { process.destroy() })
-    }.timeout(3.seconds)
+    }.timeout(timeout)
   }
 
   def addFastStart(video: Path): Path = {
@@ -247,9 +246,10 @@ object FFMpeg extends Logging with FFMpegJsonCodecs {
     val maximumFrames = 256
 
     val fileBaseName = outputBaseName.getOrElse(inputFile.getFileName.stripExtension())
+    val timeout = 5.seconds
 
     val probe        =
-      ffprobe(inputFile, false).runSyncUnsafe(5.seconds)(monix.execution.Scheduler.Implicits.global, monix.execution.schedulers.CanBlock.permit)
+      ffprobe(inputFile, false, timeout).runSyncUnsafe(timeout)(monix.execution.Scheduler.Implicits.global, monix.execution.schedulers.CanBlock.permit)
     val stream             = probe.firstVideoStream.getOrElse(throw new IllegalStateException("no video stream found"))
     val (frames, tileSize) = calculateNrOfFrames(stream.durationMillis)
     val mod                = ((stream.fps * (stream.durationMillis / 1000)) / frames).toInt
