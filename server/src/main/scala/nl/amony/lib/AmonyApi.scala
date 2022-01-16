@@ -44,8 +44,8 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
     def getTags()(implicit timeout: Timeout): Future[Set[String]] =
       system.ask[Set[String]](ref => GetTags(ref))
 
-    def searchFragments(size: Int, offset: Int, tag: String)(implicit timeout: Timeout): Future[Seq[Fragment]] =
-      system.ask[Seq[Fragment]](ref => SearchFragments(size, offset, tag, ref))
+    def searchFragments(size: Int, offset: Int, tag: Option[String])(implicit timeout: Timeout): Future[Seq[(String, Fragment)]] =
+      system.ask[Seq[(String, Fragment)]](ref => SearchFragments(size, offset, tag, ref))
   }
 
   object modify {

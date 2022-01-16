@@ -1,6 +1,7 @@
 package nl.amony.http.routes
 
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.server.Directive.addDirectiveApply
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Directives.path
 import akka.http.scaladsl.server.Route
@@ -89,10 +90,17 @@ trait ApiRoutes extends Logging with IdentityRoutes {
             }
           }
         }
-      } ~ (path("fragments" / "search") & parameters("n".optional, "offset".optional)) { (n, offset) =>
-        get {
-          complete(api.query.searchFragments(n.map(_.toInt).getOrElse(5), 0, "nature").map(_.map(toWebModel)))
-        }
+      } ~ (path("fragments" / "search") & parameters("n".optional, "offset".optional, "tags".optional)) {
+        (nParam, offsetParam, tag) =>
+          get {
+
+            val n = nParam.map(_.toInt).getOrElse(5)
+            val offset = offsetParam.map(_.toInt).getOrElse(0)
+
+            complete(api.query.searchFragments(n, offset, tag).map {
+              _.map { case (mediaId, f) => toWebModel(mediaId, f) }
+            })
+          }
       } ~ path("fragments" / Segment / "add") { (id) =>
         (post & entity(as[FragmentRange])) { createFragment =>
           translateResponse(api.modify.addFragment(id, createFragment.from, createFragment.to))

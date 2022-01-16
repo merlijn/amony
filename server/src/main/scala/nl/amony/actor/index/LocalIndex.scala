@@ -81,13 +81,17 @@ object LocalIndex {
         updateIndex()
         sender.tell(tags)
 
-      case SearchFragments(size, offset, tag, sender) =>
-        updateIndex()
-        val result = state.media.values.flatMap(_.fragments).filter {
-          f => f.tags.contains(tag)
-        }.drop(offset).take(size)
+      case SearchFragments(size, offset, maybeTag, sender) =>
 
-        sender.tell(result.toSeq)
+        updateIndex()
+
+        val results = state.media.values
+          .flatMap(m => m.fragments.map(f => m.id -> f))
+          .filter {
+            case (_, f) => maybeTag.map(tag => f.tags.contains(tag)).getOrElse(true)
+          }.drop(offset).take(size)
+
+        sender.tell(results.toSeq)
 
       case Search(query, sender) =>
         updateIndex()

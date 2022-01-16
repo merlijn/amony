@@ -3,7 +3,6 @@ import ProgressiveImage from "react-progressive-graceful-image";
 import { Api } from "../api/Api";
 import { Video } from "../api/Model";
 import { dateMillisToString, durationInMillisToString } from "../api/Util";
-import config from "../AppConfig.json";
 import Dialog from './common/Dialog';
 import { DropDown, MenuItem } from './common/DropDown';
 import FragmentsPlayer from "./common/FragmentsPlayer";
@@ -51,7 +50,7 @@ const Preview = (props: PreviewProps) => {
   const overlay =
     <div className="preview-overlay">
       {
-        (props.options.showMenu && config["enable-video-menu"] && isHovering) &&
+        (props.options.showMenu && isHovering) &&
           <div className = "preview-menu-container">
             <PreviewMenu 
               video        = { vid } 

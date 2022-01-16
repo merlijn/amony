@@ -38,12 +38,16 @@ trait JsonCodecs {
       SearchResult(result.offset, result.total, result.items.map(m => toWebModel(m)))
     )
 
-  def toWebModel(f: MediaLibProtocol.Fragment): Fragment = {
+  def toWebModel(mediaId: String, f: MediaLibProtocol.Fragment): Fragment = {
+
+    val resolutions = transcodingSettings.map(_.scaleHeight).sorted
+    val urls = resolutions.map(height => s"/files/resources/${mediaId}~${f.fromTimestamp}-${f.toTimestamp}_${height}p.mp4")
+
     Fragment(
-      "",
+      mediaId,
       0,
       FragmentRange(f.fromTimestamp, f.toTimestamp),
-      List.empty,
+      urls,
       f.comment,
       f.tags
     )

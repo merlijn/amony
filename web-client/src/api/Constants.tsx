@@ -67,7 +67,6 @@ const defaultPrefs: Prefs = {
   showSidebar:     false,
   showTitles:      true,
   showDuration:    true,
-  showMenu:        false,
   showDates:       false,
   gallery_columns: "auto",
 }
