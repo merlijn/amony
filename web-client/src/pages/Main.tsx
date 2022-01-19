@@ -118,7 +118,7 @@ const Main = () => {
                           showInfoBar: prefs.showTitles,
                           showDates: prefs.showDates,
                           showDuration: prefs.showDuration,
-                          showMenu: Api.session().isAdmin() && prefs.showMenu
+                          showMenu: Api.session().isAdmin()
                         } 
                       }
                     }/>

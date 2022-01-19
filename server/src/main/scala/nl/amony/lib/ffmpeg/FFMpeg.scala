@@ -1,117 +1,22 @@
-package nl.amony.lib
+package nl.amony.lib.ffmpeg
 
 import better.files.File
 import monix.eval.Task
-import nl.amony.lib.FFMpeg.model.ProbeDebugOutput
-import nl.amony.lib.FileUtil.PathOps
-import nl.amony.lib.FileUtil.stripExtension
+import nl.amony.lib.FileUtil._
+import nl.amony.lib.ffmpeg.Model._
 import scribe.Logging
 
 import java.io.InputStream
 import java.nio.file.Path
 import java.time.Duration
-import java.util.concurrent.TimeUnit
-import scala.util.Try
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
-object FFMpeg extends Logging {
-
-  object model {
-    import io.circe._
-    import io.circe.generic.semiauto._
-
-    case class ProbeDebugOutput(
-        isFastStart: Boolean
-    )
-
-    case class ProbeOutput(streams: List[Stream]) {
-      def firstVideoStream: Option[VideoStream] = 
-        streams.sortBy(_.index).collectFirst { case v: VideoStream => v }
-    }
-
-    val durationPattern = raw"(\d{2}):(\d{2}):(\d{2})".r.unanchored
-
-    sealed trait Stream {
-      val index: Int
-    }
-
-    case class UnkownStream(override val index: Int) extends Stream
-
-    case class AudioStream(
-        override val index: Int,
-        codec_name: String
-    ) extends Stream
-
-    case class VideoStream(
-        override val index: Int,
-        codec_name: String,
-        width: Int,
-        height: Int,
-        duration: String,
-        bit_rate: Option[String],
-        avg_frame_rate: String,
-        tags: Option[Map[String, String]]
-    ) extends Stream {
-      def durationMillis: Long = (duration.toDouble * 1000L).toLong
-      def fps: Double = {
-        val splitted = avg_frame_rate.split('/')
-        val divident = splitted(0).toDouble
-        val divisor  = splitted(1).toDouble
-
-        divident / divisor
-      }
-    }
-
-    implicit val UnkownStreamDecoder: Decoder[UnkownStream] = deriveDecoder[UnkownStream]
-    implicit val videoStreamDecoder: Decoder[VideoStream] = deriveDecoder[VideoStream]
-    implicit val audioStreamDecoder: Decoder[AudioStream] = deriveDecoder[AudioStream]
-    implicit val probeDecoder: Decoder[ProbeOutput]       = deriveDecoder[ProbeOutput]
-
-    implicit val streamDecoder: Decoder[Stream] = new Decoder[Stream] {
-      final def apply(c: HCursor): Decoder.Result[Stream] = {
-        c.downField("codec_type").as[String].flatMap {
-          case "video" => c.as[VideoStream]
-          case "audio" => c.as[AudioStream]
-          case _       => c.as[UnkownStream]
-        }.left.map(error => {
-          logger.warn(s"Failed to decode stream: ${c.value}")
-          error
-        })
-      }
-    }
-  }
+object FFMpeg extends Logging with FFMpegJsonCodecs {
 
   // https://stackoverflow.com/questions/56963790/how-to-tell-if-faststart-for-video-is-set-using-ffmpeg-or-ffprobe/56963953#56963953
   // Before avformat_find_stream_info() pos: 3193581 bytes read:3217069 seeks:0 nb_streams:2
   val fastStartPattern =
     raw"""Before\savformat_find_stream_info\(\)\spos:\s\d+\sbytes\sread:\d+\sseeks:0""".r.unanchored
-
-  def ffprobe(file: Path, debug: Boolean = false): (model.ProbeOutput, model.ProbeDebugOutput) = {
-
-    import model._
-
-    val fileName = file.toAbsolutePath.normalize().toString
-
-    // setting -v to debug will hang the standard output stream on some files.
-    val process = run(cmds = List("ffprobe", "-print_format", "json", "-show_streams", "-v", "quiet", fileName))
-
-//    Task {
-//      val result = process.waitFor(3000, TimeUnit.MILLISECONDS)
-//      if (!result) {
-//        logger.info(s"Timed out after 3 seconds")
-//        process.destroy()
-//      }
-//    }.runToFuture(monix.execution.Scheduler.Implicits.global)
-
-    val jsonOutput = scala.io.Source.fromInputStream(process.getInputStream).mkString
-//    val debugOutput = readStream(process.getErrorStream)
-//    val debugProbe = ProbeDebugOutput(fastStartPattern.matches(debugOutput))
-    val debugProbe = ProbeDebugOutput(true)
-
-    io.circe.parser.decode[ProbeOutput](jsonOutput) match {
-      case Left(error) => throw error
-      case Right(out)  => (out, debugProbe)
-    }
-  }
 
   private def formatTime(timestamp: Long): String = {
 
@@ -123,6 +28,38 @@ object FFMpeg extends Logging {
     val millis  = "%03d".format(duration.toMillisPart)
 
     s"$hours:$minutes:$seconds.$millis"
+  }
+
+  def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration): Task[ProbeOutput] = {
+
+    val fileName = file.toAbsolutePath.normalize().toString
+
+    Task {
+      val v = if (debug) "debug" else "quiet"
+      val args = List("-print_format", "json", "-show_streams", "-loglevel", v, fileName)
+      run(cmds = "ffprobe" :: args)
+    }.flatMap { process =>
+      Task {
+
+        val jsonOutput = scala.io.Source.fromInputStream(process.getInputStream).mkString
+
+        // setting -v to debug will hang the standard output stream on some files.
+        val debugOutput = {
+          if (debug) {
+            val debugOutput = scala.io.Source.fromInputStream(process.getErrorStream).mkString
+            val fastStart = fastStartPattern.matches(debugOutput)
+            Some(ProbeDebugOutput(fastStart))
+          } else {
+            None
+          }
+        }
+
+        io.circe.parser.decode[ProbeOutput](jsonOutput) match {
+          case Left(error) => throw error
+          case Right(out)  => out.copy(debugOutput = debugOutput)
+        }
+      }.doOnCancel(Task { process.destroy() })
+    }.timeout(timeout)
   }
 
   def addFastStart(video: Path): Path = {
@@ -309,8 +246,10 @@ object FFMpeg extends Logging {
     val maximumFrames = 256
 
     val fileBaseName = outputBaseName.getOrElse(inputFile.getFileName.stripExtension())
+    val timeout = 5.seconds
 
-    val (probe, _)         = ffprobe(inputFile)
+    val probe        =
+      ffprobe(inputFile, false, timeout).runSyncUnsafe(timeout)(monix.execution.Scheduler.Implicits.global, monix.execution.schedulers.CanBlock.permit)
     val stream             = probe.firstVideoStream.getOrElse(throw new IllegalStateException("no video stream found"))
     val (frames, tileSize) = calculateNrOfFrames(stream.durationMillis)
     val mod                = ((stream.fps * (stream.durationMillis / 1000)) / frames).toInt

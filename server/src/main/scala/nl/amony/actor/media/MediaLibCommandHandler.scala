@@ -1,11 +1,11 @@
-package nl.amony.actor
+package nl.amony.actor.media
 
 import akka.actor.typed.ActorRef
 import akka.persistence.typed.scaladsl.Effect
 import better.files.File
 import nl.amony.MediaLibConfig
-import nl.amony.actor.MediaLibEventSourcing._
-import nl.amony.actor.MediaLibProtocol._
+import nl.amony.actor.media.MediaLibEventSourcing._
+import nl.amony.actor.media.MediaLibProtocol._
 import nl.amony.lib.MediaScanner
 import scribe.Logging
 
@@ -48,7 +48,6 @@ object MediaLibCommandHandler extends Logging {
     cmd match {
 
       case UpsertMedia(media, sender) =>
-        logger.debug(s"Adding new media: ${media.fileInfo.relativePath}")
 
         Effect
           .persist(MediaAdded(media))

@@ -1,13 +1,14 @@
 package nl.amony.http.routes
 
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.server.Directive.addDirectiveApply
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Directives.path
 import akka.http.scaladsl.server.Route
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
 import nl.amony.actor.index.QueryProtocol._
-import nl.amony.actor.MediaLibProtocol._
+import nl.amony.actor.media.MediaLibProtocol._
 import nl.amony.http.JsonCodecs
 import nl.amony.http.RouteDeps
 import nl.amony.http.WebModel.FragmentRange
@@ -84,15 +85,22 @@ trait ApiRoutes extends Logging with IdentityRoutes {
           } ~ (post & entity(as[VideoMeta])) { meta =>
             translateResponse(api.modify.updateMetaData(id, meta.title, meta.comment, meta.tags))
           } ~ delete {
-            onSuccess(api.modify.deleteMedia(id, deleteFile = true)) { case _ =>
+            onSuccess(api.modify.deleteMedia(id, deleteResource = true)) { case _ =>
               complete(StatusCodes.OK, "{}")
             }
           }
         }
-      } ~ (path("fragments" / "search") & parameters("n".optional, "offset".optional)) { (n, offset) =>
-        get {
-          complete(api.query.searchFragments(n.map(_.toInt).getOrElse(5), 0, "nature").map(_.map(toWebModel)))
-        }
+      } ~ (path("fragments" / "search") & parameters("n".optional, "offset".optional, "tags".optional)) {
+        (nParam, offsetParam, tag) =>
+          get {
+
+            val n = nParam.map(_.toInt).getOrElse(5)
+            val offset = offsetParam.map(_.toInt).getOrElse(0)
+
+            complete(api.query.searchFragments(n, offset, tag).map {
+              _.map { case (mediaId, f) => toWebModel(mediaId, f) }
+            })
+          }
       } ~ path("fragments" / Segment / "add") { (id) =>
         (post & entity(as[FragmentRange])) { createFragment =>
           translateResponse(api.modify.addFragment(id, createFragment.from, createFragment.to))

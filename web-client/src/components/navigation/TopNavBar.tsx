@@ -6,7 +6,7 @@ import { GoGrabber, GoSearch } from "react-icons/go";
 import { IoGridOutline } from "react-icons/io5";
 import { MdClose, MdTune } from "react-icons/md";
 import { useHistory, useLocation } from "react-router-dom";
-import { Constants, durationAsParam, parseDurationParam, parseSortParam, useSortParam } from "../../api/Constants";
+import { Constants, durationAsParam, parseDurationParam, useSortParam } from "../../api/Constants";
 import { MediaView } from "../../api/Model";
 import { useUrlParam } from "../../api/ReactUtils";
 import { buildUrl, copyParams } from "../../api/Util";

@@ -4,10 +4,11 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import akka.stream.Materializer
 import nl.amony.MediaLibConfig
-import nl.amony.actor.MediaLibProtocol.Command
+import nl.amony.actor.media.MediaLibProtocol.Command
 import akka.actor.typed.scaladsl.adapter._
 import nl.amony.actor.index.LocalIndex
 import nl.amony.actor.index.QueryProtocol._
+import nl.amony.actor.media.MediaLibProtocol
 import nl.amony.lib.MediaScanner
 
 trait Message

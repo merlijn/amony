@@ -1,10 +1,9 @@
-package nl.amony.actor
+package nl.amony.actor.media
 
-import nl.amony.actor.MediaLibProtocol.Fragment
-import nl.amony.actor.MediaLibProtocol.Media
-import nl.amony.actor.MediaLibProtocol.State
-import nl.amony.lib.ListOps
+import nl.amony.actor.JsonSerializable
 import scribe.Logging
+import MediaLibProtocol._
+import nl.amony.lib.ListOps
 
 object MediaLibEventSourcing extends Logging {
 
@@ -31,7 +30,6 @@ object MediaLibEventSourcing extends Logging {
       tagsAdded: Set[String],
       tagsRemoved: Set[String]
   )                                                                                    extends Event
-  case class FragmentTagsUpdated(mediaId: String, fragmentId: Int, tags: List[String]) extends Event
 
   def apply(state: State, event: Event): State = {
 
@@ -83,14 +81,6 @@ object MediaLibEventSourcing extends Logging {
       case FragmentDeleted(id, index) =>
         val media        = state.media(id)
         val newFragments = media.fragments.deleteAtPos(index)
-
-        state.copy(media = state.media + (media.id -> media.copy(fragments = newFragments)))
-
-      // TODO remove this event
-      case FragmentTagsUpdated(mediaId, fragmentId, tags) =>
-        val media        = state.media(mediaId)
-        val fragment     = media.fragments(fragmentId)
-        val newFragments = media.fragments.replaceAtPos(fragmentId, fragment.copy(tags = tags))
 
         state.copy(media = state.media + (media.id -> media.copy(fragments = newFragments)))
 

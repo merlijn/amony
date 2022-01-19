@@ -1,32 +1,29 @@
 package nl.amony.lib
 
 import akka.actor.typed.ActorSystem
-import akka.persistence.query.PersistenceQuery
-import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.serialization.jackson.JacksonObjectMapperProvider
-import akka.stream.scaladsl.Source
 import akka.util.Timeout
 import better.files.File
-import better.files.File.apply
 import com.fasterxml.jackson.core.JsonEncoding
 import monix.eval.Task
-import monix.execution.Scheduler
 import monix.reactive.Consumer
-import nl.amony.{AmonyConfig, MediaLibConfig}
-import nl.amony.actor.index.QueryProtocol._
-import nl.amony.actor.MediaLibProtocol._
+import nl.amony.AmonyConfig
+import nl.amony.actor.media.MediaLibProtocol._
 import nl.amony.actor.Message
+import nl.amony.actor.index.QueryProtocol._
+import nl.amony.lib.ffmpeg.FFMpeg
 import scribe.Logging
 
 import java.io.InputStream
 import java.nio.file.Path
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSystem[Message]) extends Logging {
 
   import akka.actor.typed.scaladsl.AskPattern._
-  implicit val scheduler = system.scheduler
-  implicit val ec        = system.executionContext
+  implicit val scheduler            = system.scheduler
+  implicit val ec: ExecutionContext = system.executionContext
+  implicit val mScheduler           = monix.execution.Scheduler.Implicits.global
   
   // format: off
   object query {
@@ -47,26 +44,31 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
     def getTags()(implicit timeout: Timeout): Future[Set[String]] =
       system.ask[Set[String]](ref => GetTags(ref))
 
-    def searchFragments(size: Int, offset: Int, tag: String)(implicit timeout: Timeout): Future[Seq[Fragment]] =
-      system.ask[Seq[Fragment]](ref => SearchFragments(size, offset, tag, ref))
+    def searchFragments(size: Int, offset: Int, tag: Option[String])(implicit timeout: Timeout): Future[Seq[(String, Fragment)]] =
+      system.ask[Seq[(String, Fragment)]](ref => SearchFragments(size, offset, tag, ref))
   }
 
   object modify {
 
     def addMediaFromLocalFile(path: Path)(implicit timeout: Timeout): Future[Media] = {
-      val media = scanner.scanVideo(path.toAbsolutePath, None, config.media)
 
-      query.getById(media.id).flatMap {
-        case None    => modify.upsertMedia(media)
-        case Some(_) => Future.failed(new IllegalStateException("Media with hash already exists"))
-      }
+      scanner
+        .scanMedia(path.toAbsolutePath, None, config.media)
+        .runToFuture
+        .flatMap { media =>
+          // TODO this logic should move to the actor
+          query.getById(media.id).flatMap {
+            case None    => modify.upsertMedia(media)
+            case Some(_) => Future.failed(new IllegalStateException("Media with hash already exists"))
+          }
+        }
     }
 
     def upsertMedia(media: Media)(implicit timeout: Timeout): Future[Media] =
       system.ask[Boolean](ref => UpsertMedia(media, ref)).map(_ => media)
 
-    def deleteMedia(id: String, deleteFile: Boolean)(implicit timeout: Timeout): Future[Boolean] =
-      system.ask[Boolean](ref => RemoveMedia(id, deleteFile, ref))
+    def deleteMedia(id: String, deleteResource: Boolean)(implicit timeout: Timeout): Future[Boolean] =
+      system.ask[Boolean](ref => RemoveMedia(id, deleteResource, ref))
 
     def updateMetaData(id: String, title: Option[String], comment: Option[String], tags: List[String])(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
       system.ask[Either[ErrorResponse, Media]](ref => UpdateMetaData(id, title, comment, tags.toSet, ref))
@@ -90,6 +92,7 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
     def resourcePath(): Path = config.media.resourcePath
 
     def getVideo(id: String)(implicit timeout: Timeout): Future[Option[Path]] = {
+
       query
         .getById(id)
         .map(_.map { m =>
@@ -103,7 +106,6 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
     def getThumbnail(id: String, quality: Int, timestamp: Option[Long])(implicit
         timeout: Timeout
     ): Future[Option[InputStream]] = {
-
       query
         .getById(id)
         .map(_.map { media =>
@@ -131,17 +133,19 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
 
     def scanLibrary()(implicit timeout: Timeout): Unit = {
 
-      implicit val s = Scheduler.global
-
       query
         .getAll()
         .foreach { loadedFromStore =>
           val (deleted, newAndMoved) = scanner.scanVideosInDirectory(config.media, loadedFromStore)
-          val upsert                 = Consumer.foreachTask[Media](m => Task { modify.upsertMedia(m) })
+
+          val upsert                 = Consumer.foreachTask[Media](m => Task {
+            modify.upsertMedia(m)
+          })
+
           val delete = Consumer.foreachTask[Media](m =>
             Task {
               logger.info(s"Detected deleted file: ${m.fileInfo.relativePath}")
-              modify.deleteMedia(m.id, deleteFile = false)
+              modify.deleteMedia(m.id, deleteResource = false)
             }
           )
 
@@ -156,8 +160,8 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
         medias.foreach { m =>
           logger.info(s"generating thumbnail previews for '${m.fileName()}'")
           FFMpeg.generatePreviewSprite(
-            m.resolvePath(config.media.mediaPath).toAbsolutePath,
-            outputDir      = config.media.indexPath.resolve("resources"),
+            inputFile      = m.resolvePath(config.media.mediaPath).toAbsolutePath,
+            outputDir      = config.media.resourcePath,
             outputBaseName = Some(s"${m.id}-timeline")
           )
         }
@@ -177,7 +181,7 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
       }
     }
 
-    def regenerateAllPreviews()(implicit timeout: Timeout): Unit = 
+    def regenerateAllPreviews()(implicit timeout: Timeout): Unit =
       query.getAll().foreach { medias => medias.foreach(regeneratePreviewForMedia) }
 
     def verifyHashes()(implicit timeout: Timeout): Unit = {
@@ -208,7 +212,7 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
 
             logger.info(s"Updating hash from '${m.fileInfo.hash}' to '$hash' for '${m.fileName()}''")
             modify.upsertMedia(m.copy(id = hash, fileInfo = m.fileInfo.copy(hash = hash)))
-            modify.deleteMedia(id = m.id, deleteFile = false)
+            modify.deleteMedia(id = m.id, deleteResource = false)
           }
         }
 

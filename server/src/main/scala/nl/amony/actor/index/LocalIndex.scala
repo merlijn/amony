@@ -7,10 +7,11 @@ import akka.persistence.query.{EventEnvelope, PersistenceQuery}
 import akka.stream.Materializer
 import better.files.File
 import nl.amony.MediaLibConfig
-import nl.amony.actor.MediaLibProtocol.{Fragment, Media, State}
-import nl.amony.actor.{MediaLibEventSourcing, Message}
+import nl.amony.actor.media.MediaLibProtocol.{Fragment, Media, State}
+import nl.amony.actor.Message
 import scribe.Logging
 import QueryProtocol._
+import nl.amony.actor.media.MediaLibEventSourcing
 
 object LocalIndex {
 
@@ -80,13 +81,17 @@ object LocalIndex {
         updateIndex()
         sender.tell(tags)
 
-      case SearchFragments(size, offset, tag, sender) =>
-        updateIndex()
-        val result = state.media.values.flatMap(_.fragments).filter {
-          f => f.tags.contains(tag)
-        }.drop(offset).take(size)
+      case SearchFragments(size, offset, maybeTag, sender) =>
 
-        sender.tell(result.toSeq)
+        updateIndex()
+
+        val results = state.media.values
+          .flatMap(m => m.fragments.map(f => m.id -> f))
+          .filter {
+            case (_, f) => maybeTag.map(tag => f.tags.contains(tag)).getOrElse(true)
+          }.drop(offset).take(size)
+
+        sender.tell(results.toSeq)
 
       case Search(query, sender) =>
         updateIndex()
@@ -95,7 +100,7 @@ object LocalIndex {
 
         def filterDir(m: Media): Boolean =
           dir.map(t => m.fileInfo.relativePath.startsWith(t.title.substring(1))).getOrElse(true)
-        def filterRes(m: Media): Boolean = query.minRes.map(res => m.videoInfo.resolution._2 >= res).getOrElse(true)
+        def filterRes(m: Media): Boolean = query.minRes.map(res => m.height >= res).getOrElse(true)
         def filterQuery(m: Media): Boolean =
           query.q.map(q => m.fileInfo.relativePath.toLowerCase.contains(q.toLowerCase)).getOrElse(true)
         def filterTag(m: Media): Boolean =

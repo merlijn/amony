@@ -2,7 +2,6 @@ import { Constants } from "../../api/Constants";
 import { Prefs } from "../../api/Model";
 import { useCookiePrefs } from "../../api/ReactUtils";
 import { calculateColumns } from "../../api/Util";
-import config from "../../AppConfig.json";
 import Dialog from "../common/Dialog";
 import './ConfigMenu.scss';
 
@@ -100,19 +99,6 @@ const ConfigMenu = () => {
               />
             </div>
           </div>
-          {
-            config["enable-video-menu"] &&
-              <div key="video-menu" className="form-section">
-                <p key="header" className="form-label">Show video menu</p>
-                <div key="content" className="form-content">
-                  <input
-                    type="checkbox"
-                    checked={ prefs.showMenu }
-                    onChange={(e) => { updatePrefs( { showMenu: !prefs.showMenu }) } }
-                  />
-                </div>
-              </div>
-          }
         </div>
       </Dialog>
   )

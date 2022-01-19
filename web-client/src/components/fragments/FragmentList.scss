@@ -3,7 +3,7 @@
 .fragments-container {
 
   //border-left: 4px  solid white;
-  background-color: lightgrey;
+  background-color: $gray-200;
   position: relative;
   overflow: scroll;
 
@@ -13,7 +13,7 @@
 
     display: flex;
     padding: 2px 6px;
-    background-image: linear-gradient(to right, #dcdcdc, #ffffff);
+    background-image: linear-gradient(to right, $gray-300, white);
     font-weight: 500;
     color: black;
   }
