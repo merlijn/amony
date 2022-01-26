@@ -1,16 +1,16 @@
 import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
 
-val AkkaVersion = "2.6.17"
-val AkkaHttpVersion = "10.2.7"
+val akkaVersion = "2.6.17"
+val akkaHttpVersion = "10.2.7"
 val circeVersion = "0.14.1"
 
-val javaOpts = Nil //Seq("-Dconfig.resource=dev/application.conf", "-Dfile.encoding=UTF-8")
+val javaOpts = Nil
 
 lazy val amony = (project in file(".")).
   settings(
     inThisBuild(List(
       organization    := "nl.amony",
-      scalaVersion    := "2.13.6"
+      scalaVersion    := "2.13.8"
     )),
     reStart / javaOptions ++= javaOpts ,
     run / fork             := true,
@@ -18,26 +18,38 @@ lazy val amony = (project in file(".")).
     name := "amony-server",
     libraryDependencies ++= Seq(
 
+      // logging
       "org.slf4j"                 % "slf4j-api"                  % "1.7.30",
-      "com.typesafe"              % "config"                     % "1.4.1",
-      "com.typesafe.akka"        %% "akka-actor-typed"           % AkkaVersion,
-      "com.typesafe.akka"        %% "akka-stream"                % AkkaVersion,
-      "com.typesafe.akka"        %% "akka-persistence-typed"     % AkkaVersion,
-      "com.typesafe.akka"        %% "akka-persistence-query"     % AkkaVersion,
-      "com.typesafe.akka"        %% "akka-serialization-jackson" % AkkaVersion,
-      "com.typesafe.akka"        %% "akka-http"                  % AkkaHttpVersion,
-      "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.2",
       "com.outr"                 %% "scribe-slf4j"               % "3.5.5",
-      "org.fusesource.leveldbjni" % "leveldbjni-all"             % "1.8",
-      "org.iq80.leveldb"          % "leveldb"                    % "0.12",
-      "de.heikoseeberger"        %% "akka-http-circe"            % "1.36.0",
+
+      // config loading
+      "com.typesafe"              % "config"                     % "1.4.1",
       "com.github.pureconfig"    %% "pureconfig"                 % "0.17.1",
       "com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.1",
-      "io.monix"                 %% "monix-reactive"             % "3.4.0",
+
+      // akka
+      "com.typesafe.akka"        %% "akka-actor-typed"           % akkaVersion,
+      "com.typesafe.akka"        %% "akka-stream"                % akkaVersion,
+
+      // akka persistence
+      "com.typesafe.akka"        %% "akka-persistence-typed"     % akkaVersion,
+      "com.typesafe.akka"        %% "akka-persistence-query"     % akkaVersion,
+      "com.typesafe.akka"        %% "akka-serialization-jackson" % akkaVersion,
+      "org.fusesource.leveldbjni" % "leveldbjni-all"             % "1.8",
+      "org.iq80.leveldb"          % "leveldb"                    % "0.12",
+
+      // akka http & json serialization
+      "com.typesafe.akka"        %% "akka-http"                  % akkaHttpVersion,
+      "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.2",
+      "de.heikoseeberger"        %% "akka-http-circe"            % "1.36.0",
       "io.circe"                 %% "circe-core"                 % "0.14.1",
       "io.circe"                 %% "circe-generic"              % "0.14.1",
       "io.circe"                 %% "circe-parser"               % "0.14.1",
+
+      "io.monix"                 %% "monix-reactive"             % "3.4.0",
       "com.github.pathikrit"     %% "better-files"               % "3.9.1",
+
+      // test
       "org.scalatest"            %% "scalatest"                  % "3.2.9"           % Test,
       "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.9.0"         % Test
     ),
