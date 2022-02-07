@@ -70,6 +70,7 @@ case class WebServerConfig(
   requestTimeout: FiniteDuration,
   enableAdmin: Boolean,
   uploadSizeLimit: Information,
+  defaultNumberOfResults: Int,
   http: Option[HttpConfig],
   https: Option[HttpsConfig]
 )

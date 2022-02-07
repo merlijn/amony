@@ -21,7 +21,7 @@ trait IdentityRoutes {
     pathPrefix("api" / "identity") {
       (path("login") & post & entity(as[Credentials])) { credentials =>
 
-        if (api.session.login(credentials.username, credentials.password)) {
+        if (api.users.login(credentials.username, credentials.password)) {
 
           val cookie = HttpCookie("session", Auth.createToken(), path = Some("/"))
 

@@ -22,8 +22,6 @@ trait ApiRoutes extends Logging with IdentityRoutes {
 
   self: RouteDeps =>
 
-  val defaultResultNumber = 24
-
   val durationPattern = raw"(\d*)-(\d*)".r
 
   val apiRoutes =
@@ -40,8 +38,11 @@ trait ApiRoutes extends Logging with IdentityRoutes {
         "sort_dir".optional
       )) { (q, offset, n, playlist, tags, minResY, durationParam, sortParam, sortDir) =>
         get {
-          val size        = n.map(_.toInt).getOrElse(defaultResultNumber)
-          val sortReverse = sortDir.map(_ == "desc").getOrElse(false)
+          val size        = n.map(_.toInt).getOrElse(config.defaultNumberOfResults)
+          val sortDirection: SortDirection = sortDir match {
+            case Some("desc") => Desc
+            case _            => Asc
+          }
           val sortField: SortField = sortParam
             .map {
               case "title"      => FileName
@@ -61,7 +62,7 @@ trait ApiRoutes extends Logging with IdentityRoutes {
           }
 
           val searchResult: Future[SearchResult] =
-            api.query.search(q, offset.map(_.toInt), size, tags.toSet, playlist, minResY.map(_.toInt), duration, Sort(sortField, sortReverse))
+            api.query.search(q, offset.map(_.toInt), size, tags.toSet, playlist, minResY.map(_.toInt), duration, Sort(sortField, sortDirection))
 
           val response = searchResult.map(_.asJson)
 
@@ -94,7 +95,7 @@ trait ApiRoutes extends Logging with IdentityRoutes {
         (nParam, offsetParam, tag) =>
           get {
 
-            val n = nParam.map(_.toInt).getOrElse(5)
+            val n = nParam.map(_.toInt).getOrElse(config.defaultNumberOfResults)
             val offset = offsetParam.map(_.toInt).getOrElse(0)
 
             complete(api.query.searchFragments(n, offset, tag).map {

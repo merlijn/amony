@@ -13,7 +13,7 @@ import java.awt.Desktop
 
 object MediaLibCommandHandler extends Logging {
 
-  def apply(config: MediaLibConfig, scanner: MediaScanner)(state: State, cmd: Command): Effect[Event, State] = {
+  def apply(config: MediaLibConfig, scanner: MediaScanner)(state: State, cmd: MediaCommand): Effect[Event, State] = {
 
     logger.debug(s"Received command: $cmd")
 

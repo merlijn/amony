@@ -12,10 +12,10 @@ lazy val amony = (project in file(".")).
       organization    := "nl.amony",
       scalaVersion    := "2.13.8"
     )),
+    name := "amony-server",
     reStart / javaOptions ++= javaOpts ,
     run / fork             := true,
     run / javaOptions     ++= javaOpts,
-    name := "amony-server",
     libraryDependencies ++= Seq(
 
       // logging

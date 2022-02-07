@@ -123,7 +123,7 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
     def getFilePathForMedia(vid: Media): Path = config.media.mediaPath.resolve(vid.fileInfo.relativePath)
   }
 
-  object session {
+  object users {
 
     def login(userName: String, password: String): Boolean =
       userName == config.adminUsername && password == config.adminPassword

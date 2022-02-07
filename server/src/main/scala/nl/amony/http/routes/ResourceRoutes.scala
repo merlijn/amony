@@ -14,8 +14,13 @@ trait ResourceRoutes extends Logging {
   self: RouteDeps =>
 
   object patterns {
+    // example: j0rc1048yc1_720p.mp4
     val Video         = raw"(.+)_(\d+)p\.mp4".r
+
+    // example: j0rc1048yc1~1000-5000_720p.mp4
     val VideoFragment = raw"(.+)~(\d+)-(\d+)_(\d+)p\.mp4".r
+
+    // example: j0rc1048yc1_720p.webp or j0rc1048yc1~5000_720p.webp
     val Thumbnail     = raw"(\w+)(-(\d+))?_(\d+)p\.webp".r
   }
 

@@ -8,7 +8,6 @@ import akka.stream.Materializer
 import better.files.File
 import nl.amony.MediaLibConfig
 import nl.amony.actor.media.MediaLibProtocol.{Fragment, Media, State}
-import nl.amony.actor.Message
 import scribe.Logging
 import QueryProtocol._
 import nl.amony.actor.media.MediaLibEventSourcing
@@ -112,15 +111,15 @@ object LocalIndex {
         def filterMedia(m: Media): Boolean = filterDir(m) && filterRes(m) && filterQuery(m) && filterTag(m) && filterDuration(m)
 
         val unfiltered = query.sort match {
-          case None                             => state.media.values
-          case Some(Sort(FileName, false))      => sortedByFilename
-          case Some(Sort(FileName, true))       => sortedByFilename.reverse
-          case Some(Sort(DateAdded, false))     => sortedByDateAdded
-          case Some(Sort(DateAdded, true))      => sortedByDateAdded.reverse
-          case Some(Sort(Duration, false))      => sortedByDuration
-          case Some(Sort(Duration, true))       => sortedByDuration.reverse
-          case Some(Sort(FileSize, false))      => sortedBySize
-          case Some(Sort(FileSize, true))       => sortedBySize.reverse
+          case None                           => state.media.values
+          case Some(Sort(FileName, Asc))      => sortedByFilename
+          case Some(Sort(FileName, Desc))     => sortedByFilename.reverse
+          case Some(Sort(DateAdded, Asc))     => sortedByDateAdded
+          case Some(Sort(DateAdded, Desc))    => sortedByDateAdded.reverse
+          case Some(Sort(Duration, Asc))      => sortedByDuration
+          case Some(Sort(Duration, Desc))     => sortedByDuration.reverse
+          case Some(Sort(FileSize, Asc))      => sortedBySize
+          case Some(Sort(FileSize, Desc))     => sortedBySize.reverse
         }
 
         val result = unfiltered.filter(filterMedia)

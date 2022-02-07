@@ -21,7 +21,11 @@ object QueryProtocol {
   case object FileSize      extends SortField
   //  case object Shuffle       extends SortField
 
-  case class Sort(field: SortField, reverse: Boolean)
+  sealed trait SortDirection
+  case object Asc extends SortDirection
+  case object Desc extends SortDirection
+
+  case class Sort(field: SortField, direction: SortDirection)
   case class Query(
     q: Option[String],
     offset: Option[Int],

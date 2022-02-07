@@ -17,27 +17,27 @@ object MediaLibProtocol {
   case class MediaNotFound(id: String)      extends ErrorResponse
   case class InvalidCommand(reason: String) extends ErrorResponse
 
-  sealed trait Command extends Message
+  sealed trait MediaCommand extends Message
 
-  case class UpsertMedia(media: Media, sender: ActorRef[Boolean])                    extends Command
-  case class RemoveMedia(id: String, deleteFile: Boolean, sender: ActorRef[Boolean]) extends Command
+  case class UpsertMedia(media: Media, sender: ActorRef[Boolean])                    extends MediaCommand
+  case class RemoveMedia(id: String, deleteFile: Boolean, sender: ActorRef[Boolean]) extends MediaCommand
 
   // -- Querying
-  case class GetAll(sender: ActorRef[List[Media]])                extends Command
-  case class GetById(id: String, sender: ActorRef[Option[Media]]) extends Command
+  case class GetAll(sender: ActorRef[List[Media]])                extends MediaCommand
+  case class GetById(id: String, sender: ActorRef[Option[Media]]) extends MediaCommand
 
   // --- Fragments
   case class DeleteFragment(mediaId: String, fragmentIdx: Int, sender: ActorRef[Either[ErrorResponse, Media]])
-      extends Command
+      extends MediaCommand
   case class UpdateFragmentRange(
       mediaId: String,
       fragmentIdx: Int,
       from: Long,
       to: Long,
       sender: ActorRef[Either[ErrorResponse, Media]]
-  ) extends Command
+  ) extends MediaCommand
   case class AddFragment(mediaId: String, from: Long, to: Long, sender: ActorRef[Either[ErrorResponse, Media]])
-      extends Command
+      extends MediaCommand
 
   case class UpdateMetaData(
       mediaId: String,
@@ -45,14 +45,14 @@ object MediaLibProtocol {
       comment: Option[String],
       tags: Set[String],
       sender: ActorRef[Either[ErrorResponse, Media]]
-  ) extends Command
+  ) extends MediaCommand
 
   case class UpdateFragmentTags(
       mediaId: String,
       fragmentIndex: Int,
       tags: List[String],
       sender: ActorRef[Either[ErrorResponse, Media]]
-  ) extends Command
+  ) extends MediaCommand
 
   // -- State
   case class State(media: Map[String, Media])
@@ -100,12 +100,4 @@ object MediaLibProtocol {
       fileInfo.relativePath.substring(startIdx, endIdx)
     }
   }
-
-  def apply(config: MediaLibConfig, scanner: MediaScanner): EventSourcedBehavior[Command, Event, State] =
-    EventSourcedBehavior[Command, Event, State](
-      persistenceId  = PersistenceId.ofUniqueId("mediaLib"),
-      emptyState     = State(Map.empty),
-      commandHandler = MediaLibCommandHandler.apply(config, scanner),
-      eventHandler   = MediaLibEventSourcing.apply
-    )
 }
