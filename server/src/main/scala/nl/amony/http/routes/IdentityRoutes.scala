@@ -21,16 +21,14 @@ trait IdentityRoutes {
     pathPrefix("api" / "identity") {
       (path("login") & post & entity(as[Credentials])) { credentials =>
 
-        if (api.users.login(credentials.username, credentials.password)) {
-
-          val cookie = HttpCookie("session", Auth.createToken(), path = Some("/"))
-
-          setCookie(cookie) {
-            complete("OK")
-          }
+        onSuccess(api.users.login(credentials.username, credentials.password)) {
+          case true =>
+            val cookie = HttpCookie("session", Auth.createToken(), path = Some("/"))
+            setCookie(cookie) { complete("OK") }
+          case false =>
+            complete(StatusCodes.BadRequest)
         }
-        else
-          complete(StatusCodes.BadRequest)
+
       } ~ (path("logout") & post) {
 
           setCookie(HttpCookie("session", "", path = Some("/"))) {

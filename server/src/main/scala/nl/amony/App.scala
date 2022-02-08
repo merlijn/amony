@@ -16,7 +16,7 @@ object App extends AppConfig with Logging {
     Files.createDirectories(appConfig.media.resourcePath)
 
     val scanner                      = new MediaScanner(appConfig)
-    val router: Behavior[Message]    = MainRouter.apply(appConfig.media, scanner)
+    val router: Behavior[Message]    = MainRouter.apply(appConfig, scanner)
     val system: ActorSystem[Message] = ActorSystem(router, "mediaLibrary", config)
 
     val api = new AmonyApi(appConfig, scanner, system)

@@ -10,17 +10,25 @@ import java.nio.file.Path
 import java.security.MessageDigest
 import scala.concurrent.duration.FiniteDuration
 
+
+case class AmonyConfig(
+  media: MediaLibConfig,
+  api: WebServerConfig,
+  users: UserConfig,
+  ffprobeTimeout: FiniteDuration,
+)
+
 case class MediaLibConfig(
-    path: Path,
-    indexPath: Path,
-    relativeUploadPath: Path,
-    scanParallelFactor: Int,
-    verifyExistingHashes: Boolean,
-    hashingAlgorithm: HashingAlgorithm,
-    defaultFragmentLength: FiniteDuration,
-    minimumFragmentLength: FiniteDuration,
-    maximumFragmentLength: FiniteDuration,
-    previews: PreviewConfig
+  path: Path,
+  indexPath: Path,
+  relativeUploadPath: Path,
+  scanParallelFactor: Int,
+  verifyExistingHashes: Boolean,
+  hashingAlgorithm: HashingAlgorithm,
+  defaultFragmentLength: FiniteDuration,
+  minimumFragmentLength: FiniteDuration,
+  maximumFragmentLength: FiniteDuration,
+  previews: PreviewConfig
 ) {
 
   lazy val resourcePath: Path = indexPath.resolve("resources")
@@ -28,16 +36,13 @@ case class MediaLibConfig(
   lazy val uploadPath: Path = path.resolve(relativeUploadPath)
 }
 
-case class AmonyConfig(
-  media: MediaLibConfig,
-  api: WebServerConfig,
-  adminUsername: String,
-  adminPassword: String,
-  ffprobeTimeout: FiniteDuration,
-)
-
 case class PreviewConfig(
   transcode: List[TranscodeSettings]
+)
+
+case class UserConfig(
+  adminUsername: String,
+  adminPassword: String,
 )
 
 case class TranscodeSettings(

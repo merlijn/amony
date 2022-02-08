@@ -11,6 +11,7 @@ import nl.amony.AmonyConfig
 import nl.amony.actor.media.MediaLibProtocol._
 import nl.amony.actor.Message
 import nl.amony.actor.index.QueryProtocol._
+import nl.amony.actor.user.UserProtocol.Authenticate
 import nl.amony.lib.ffmpeg.FFMpeg
 import scribe.Logging
 
@@ -125,8 +126,9 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
 
   object users {
 
-    def login(userName: String, password: String): Boolean =
-      userName == config.adminUsername && password == config.adminPassword
+    def login(username: String, password: String)(implicit timeout: Timeout): Future[Boolean] = {
+      system.ask[Boolean](ref => Authenticate(username, password, ref))
+    }
   }
 
   object admin {

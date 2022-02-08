@@ -1,9 +1,9 @@
 package nl.amony.actor
 
-import akka.actor.typed.Behavior
+import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import akka.stream.Materializer
-import nl.amony.MediaLibConfig
+import nl.amony.{AmonyConfig, AppConfig, MediaLibConfig}
 import nl.amony.actor.media.MediaLibProtocol.{MediaCommand, State}
 import akka.actor.typed.scaladsl.adapter._
 import akka.persistence.typed.PersistenceId
@@ -15,7 +15,7 @@ import nl.amony.actor.media.{MediaLibCommandHandler, MediaLibEventSourcing, Medi
 import nl.amony.actor.user.{UserCommandHandler, UserEventSourcing}
 import nl.amony.actor.user.UserCommandHandler.UserState
 import nl.amony.actor.user.UserEventSourcing.UserEvent
-import nl.amony.actor.user.UserProtocol.UserCommand
+import nl.amony.actor.user.UserProtocol.{UpsertUser, UserCommand}
 import nl.amony.lib.MediaScanner
 
 trait Message
@@ -38,14 +38,17 @@ object MainRouter {
       eventHandler   = MediaLibEventSourcing.apply
     )
 
-  def apply(config: MediaLibConfig, scanner: MediaScanner): Behavior[Message] =
+  def apply(config: AmonyConfig, scanner: MediaScanner): Behavior[Message] =
     Behaviors.setup { context =>
 
       implicit val mat = Materializer(context)
 
-      val localIndex   = LocalIndex.apply(config, context).toTyped[QueryMessage]
-      val mediaHandler = context.spawn(mediaBehaviour(config, scanner), "medialib")
+      val localIndex   = LocalIndex.apply(config.media, context).toTyped[QueryMessage]
+      val mediaHandler = context.spawn(mediaBehaviour(config.media, scanner), "medialib")
       val userHandler  = context.spawn(userBehaviour(), "users")
+
+      // insert the admin user on startup
+      userHandler.tell(UpsertUser(config.users.adminUsername, config.users.adminPassword, context.system.ignoreRef))
 
       Behaviors.receiveMessage[Message] {
 
