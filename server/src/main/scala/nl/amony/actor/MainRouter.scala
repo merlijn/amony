@@ -22,7 +22,7 @@ trait Message
 
 object MainRouter {
 
-  def userBehaviour(): EventSourcedBehavior[UserCommand, UserEvent, UserState] =
+  private[actor] def userBehaviour(): EventSourcedBehavior[UserCommand, UserEvent, UserState] =
     EventSourcedBehavior[UserCommand, UserEvent, UserState](
       persistenceId  = PersistenceId.ofUniqueId("users"),
       emptyState     = UserState(Map.empty),
@@ -30,7 +30,7 @@ object MainRouter {
       eventHandler   = UserEventSourcing.apply
     )
 
-  def mediaBehaviour(config: MediaLibConfig, scanner: MediaScanner): EventSourcedBehavior[MediaCommand, Event, State] =
+  private[actor] def mediaBehaviour(config: MediaLibConfig, scanner: MediaScanner): EventSourcedBehavior[MediaCommand, Event, State] =
     EventSourcedBehavior[MediaCommand, Event, State](
       persistenceId  = PersistenceId.ofUniqueId("mediaLib"),
       emptyState     = State(Map.empty),

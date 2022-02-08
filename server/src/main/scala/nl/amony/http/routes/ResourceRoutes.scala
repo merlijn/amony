@@ -64,7 +64,7 @@ trait ResourceRoutes extends Logging {
     }
   }
 
-  def webAppResources: Route =
+  val webAppResources: Route =
     rawPathPrefix(Slash) {
       extractUnmatchedPath { urlPath =>
         val filePath = urlPath.toString() match {
