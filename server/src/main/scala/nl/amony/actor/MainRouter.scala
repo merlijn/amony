@@ -16,7 +16,7 @@ import nl.amony.actor.user.{UserCommandHandler, UserEventSourcing}
 import nl.amony.actor.user.UserCommandHandler.UserState
 import nl.amony.actor.user.UserEventSourcing.UserEvent
 import nl.amony.actor.user.UserProtocol.{UpsertUser, UserCommand}
-import nl.amony.lib.MediaScanner
+import nl.amony.tasks.MediaScanner
 
 trait Message
 

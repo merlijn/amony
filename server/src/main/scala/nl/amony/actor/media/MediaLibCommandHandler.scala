@@ -6,7 +6,7 @@ import better.files.File
 import nl.amony.MediaLibConfig
 import nl.amony.actor.media.MediaLibEventSourcing._
 import nl.amony.actor.media.MediaLibProtocol._
-import nl.amony.lib.MediaScanner
+import nl.amony.tasks.{ResourceTasks, MediaScanner}
 import scribe.Logging
 
 import java.awt.Desktop
@@ -51,6 +51,7 @@ object MediaLibCommandHandler extends Logging {
 
         Effect
           .persist(MediaAdded(media))
+          .thenRun((_: State) => ResourceTasks.createFragments(config, media))
           .thenReply(sender)(_ => true)
 
       case UpdateMetaData(mediaId, title, comment, tags, sender) =>
@@ -98,11 +99,11 @@ object MediaLibCommandHandler extends Logging {
             Effect
               .persist(FragmentDeleted(id, idx))
               .thenRun { (_: State) =>
-                scanner.deleteVideoFragment(
+                ResourceTasks.deleteVideoFragment(
+                  config,
                   media,
                   media.fragments(idx).fromTimestamp,
                   media.fragments(idx).toTimestamp,
-                  config.previews
                 )
               }
               .thenReply(sender)(s => Right(s.media(id)))
@@ -125,18 +126,17 @@ object MediaLibCommandHandler extends Logging {
                 Effect
                   .persist(FragmentRangeUpdated(id, idx, start, end))
                   .thenRun { (s: State) =>
-                    scanner.deleteVideoFragment(
+                    ResourceTasks.deleteVideoFragment(
+                      config,
                       media,
                       oldFragment.fromTimestamp,
                       oldFragment.toTimestamp,
-                      config.previews
                     )
-                    scanner.createPreviews(
+                    ResourceTasks.createFragment(
+                      config,
                       media,
-                      media.resolvePath(config.mediaPath),
                       start,
                       end,
-                      config.previews
                     )
                   }
                   .thenReply(sender)(s => Right(s.media(id)))
@@ -152,15 +152,7 @@ object MediaLibCommandHandler extends Logging {
             case Right(_)    =>
               Effect
                 .persist(FragmentAdded(id, start, end))
-                .thenRun((_: State) =>
-                  scanner.createPreviews(
-                    media,
-                    media.resolvePath(config.mediaPath),
-                    start,
-                    end,
-                    config.previews
-                  )
-                )
+                .thenRun((_: State) => ResourceTasks.createFragment(config, media, start, end))
                 .thenReply(sender)(s => Right(s.media(id)))
           }
         }

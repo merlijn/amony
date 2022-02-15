@@ -1,27 +1,20 @@
-package nl.amony.lib
+package nl.amony.tasks
 
 import akka.util.Timeout
 import better.files.File
-import nl.amony.actor.media.MediaLibProtocol.FileInfo
-import nl.amony.actor.media.MediaLibProtocol.Fragment
-import nl.amony.actor.media.MediaLibProtocol.Media
-import nl.amony.actor.media.MediaLibProtocol.VideoInfo
-import io.circe.Error
-import io.circe.syntax._
-import io.circe.generic.semiauto._
+import io.circe.generic.semiauto.deriveDecoder
+import nl.amony.actor.media.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
+import nl.amony.lib.AmonyApi
 import scribe.Logging
 
-import java.nio.file.Files
-import java.nio.file.attribute.BasicFileAttributes
-
-object Migration extends Logging {
+object MigrateMedia extends Logging {
 
   def importFromExport(api: AmonyApi)(implicit timeout: Timeout) = {
 
     implicit val mediaInfoDecoder = deriveDecoder[VideoInfo]
-    implicit val fileInfoDecoder  = deriveDecoder[FileInfo]
-    implicit val fragmentCodec    = deriveDecoder[Fragment]
-    implicit val mediaOldCodec    = deriveDecoder[Media]
+    implicit val fileInfoDecoder = deriveDecoder[FileInfo]
+    implicit val fragmentCodec = deriveDecoder[Fragment]
+    implicit val mediaOldCodec = deriveDecoder[Media]
 
     val json = (File(api.config.media.indexPath) / "export.json").contentAsString
 

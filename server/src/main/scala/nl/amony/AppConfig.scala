@@ -34,6 +34,7 @@ case class MediaLibConfig(
   lazy val resourcePath: Path = indexPath.resolve("resources")
   lazy val mediaPath: Path = path.toAbsolutePath.normalize()
   lazy val uploadPath: Path = path.resolve(relativeUploadPath)
+  def filterFileName(fileName: String): Boolean = fileName.endsWith(".mp4") && !fileName.startsWith(".")
 }
 
 case class PreviewConfig(

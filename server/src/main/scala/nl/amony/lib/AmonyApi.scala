@@ -13,6 +13,7 @@ import nl.amony.actor.Message
 import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.user.UserProtocol.Authenticate
 import nl.amony.lib.ffmpeg.FFMpeg
+import nl.amony.tasks.{ConvertNonStreamableVideos, MediaScanner, ResourceTasks}
 import scribe.Logging
 
 import java.io.InputStream
@@ -25,7 +26,7 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
   implicit val scheduler            = system.scheduler
   implicit val ec: ExecutionContext = system.executionContext
   implicit val mScheduler           = monix.execution.Scheduler.Implicits.global
-  
+
   // format: off
   object query {
 
@@ -138,7 +139,7 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
       query
         .getAll()
         .foreach { loadedFromStore =>
-          val (deleted, newAndMoved) = scanner.scanVideosInDirectory(config.media, loadedFromStore)
+          val (deleted, newAndMoved) = scanner.scanMediaInDirectory(config.media, loadedFromStore)
 
           val upsert                 = Consumer.foreachTask[Media](m => Task {
             modify.upsertMedia(m)
@@ -172,15 +173,11 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
 
     def regeneratePreviewForMedia(media: Media): Unit = {
       logger.info(s"re-generating previews for '${media.fileInfo.relativePath}'")
-      media.fragments.foreach { f =>
-        scanner.createPreviews(
-          media     = media,
-          videoPath = config.media.mediaPath.resolve(media.fileInfo.relativePath),
-          from      = f.fromTimestamp,
-          to        = f.toTimestamp,
-          config    = config.media.previews
-        )
-      }
+      ResourceTasks.createFragments(
+        config = config.media,
+        media  = media,
+        overwrite  = true
+      )
     }
 
     def regenerateAllPreviews()(implicit timeout: Timeout): Unit =
@@ -233,6 +230,6 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
       }
     }
 
-    def convertNonStreamableVideos(): Unit = scanner.convertNonStreamableVideos(AmonyApi.this)
+    def convertNonStreamableVideos(): Unit = ConvertNonStreamableVideos.convertNonStreamableVideos(config, AmonyApi.this)
   }
 }
