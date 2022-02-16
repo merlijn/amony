@@ -6,12 +6,14 @@ import better.files.File
 import nl.amony.MediaLibConfig
 import nl.amony.actor.media.MediaLibEventSourcing._
 import nl.amony.actor.media.MediaLibProtocol._
-import nl.amony.tasks.{ResourceTasks, MediaScanner}
+import nl.amony.tasks.{MediaScanner, ResourceTasks}
 import scribe.Logging
 
 import java.awt.Desktop
 
 object MediaLibCommandHandler extends Logging {
+
+  implicit val scheduler = monix.execution.Scheduler.Implicits.global
 
   def apply(config: MediaLibConfig, scanner: MediaScanner)(state: State, cmd: MediaCommand): Effect[Event, State] = {
 
@@ -51,7 +53,7 @@ object MediaLibCommandHandler extends Logging {
 
         Effect
           .persist(MediaAdded(media))
-          .thenRun((_: State) => ResourceTasks.createFragments(config, media))
+          .thenRun((_: State) => ResourceTasks.createFragments(config, media).executeAsync.runAsyncAndForget)
           .thenReply(sender)(_ => true)
 
       case UpdateMetaData(mediaId, title, comment, tags, sender) =>
@@ -137,7 +139,7 @@ object MediaLibCommandHandler extends Logging {
                       media,
                       start,
                       end,
-                    )
+                    ).executeAsync.runAsyncAndForget
                   }
                   .thenReply(sender)(s => Right(s.media(id)))
             }
@@ -152,7 +154,7 @@ object MediaLibCommandHandler extends Logging {
             case Right(_)    =>
               Effect
                 .persist(FragmentAdded(id, start, end))
-                .thenRun((_: State) => ResourceTasks.createFragment(config, media, start, end))
+                .thenRun((_: State) => ResourceTasks.createFragment(config, media, start, end).runAsyncAndForget)
                 .thenReply(sender)(s => Right(s.media(id)))
           }
         }

@@ -110,14 +110,16 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
     ): Future[Option[InputStream]] = {
       query
         .getById(id)
-        .map(_.map { media =>
+        .map(_.flatMap { media =>
           timestamp match {
             case None =>
-              File(
-                resourcePath().resolve(s"${media.id}-${media.fragments.head.fromTimestamp}_${quality}p.webp")
-              ).newFileInputStream
+              val file = File(resourcePath().resolve(s"${media.id}-${media.fragments.head.fromTimestamp}_${quality}p.webp"))
+              if (file.exists)
+                Some(file.newFileInputStream)
+              else
+                None
             case Some(millis) =>
-              FFMpeg.streamThumbnail(config.media.mediaPath.resolve(media.fileInfo.relativePath).toAbsolutePath, millis, 320)
+              Some(FFMpeg.streamThumbnail(config.media.mediaPath.resolve(media.fileInfo.relativePath).toAbsolutePath, millis, 320))
           }
         })
     }
@@ -177,7 +179,7 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
         config = config.media,
         media  = media,
         overwrite  = true
-      )
+      ).runAsyncAndForget
     }
 
     def regenerateAllPreviews()(implicit timeout: Timeout): Unit =

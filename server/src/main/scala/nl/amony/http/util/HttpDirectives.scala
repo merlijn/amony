@@ -2,15 +2,9 @@ package nl.amony.http.util
 
 import akka.NotUsed
 import akka.http.scaladsl.model.Multipart.ByteRanges
-import akka.http.scaladsl.model.StatusCodes.PartialContent
-import akka.http.scaladsl.model.StatusCodes.RangeNotSatisfiable
-import akka.http.scaladsl.model.StatusCodes.TooManyRequests
-import akka.http.scaladsl.model.headers.ByteRange
-import akka.http.scaladsl.model.headers.Range
-import akka.http.scaladsl.model.headers.RangeUnits
-import akka.http.scaladsl.model.headers.`Content-Range`
-import akka.http.scaladsl.model.headers.`Content-Type`
+import akka.http.scaladsl.model.StatusCodes.{PartialContent, RangeNotSatisfiable, TooManyRequests}
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.{ByteRange, Range, RangeUnits, `Content-Range`, `Content-Type`}
 import akka.http.scaladsl.server.Directives.withSizeLimit
 import akka.http.scaladsl.server.directives.FutureDirectives.onSuccess
 import akka.http.scaladsl.server.directives.MarshallingDirectives.{as, entity}
@@ -39,15 +33,18 @@ object HttpDirectives extends Logging {
   }
 
   def fileWithRangeSupport(path: Path)(implicit resolver: ContentTypeResolver): Route = {
-    fileWithRangeSupport(path, resolver.apply(path.getFileName.toString))
+      fileWithRangeSupport(path, resolver.apply(path.getFileName.toString))
   }
 
   def fileWithRangeSupport(path: Path, contentType: ContentType): Route = {
-    randomAccessRangeSupport(
-      contentType,
-      path.toFile.length(),
-      (start, _) => FileIO.fromPath(path, 8192, start)
-    )
+    if(!path.toFile.exists())
+      complete(StatusCodes.NotFound)
+    else
+      randomAccessRangeSupport(
+        contentType,
+        path.toFile.length(),
+        (start, _) => FileIO.fromPath(path, 8192, start)
+      )
   }
 
   /** Answers GET requests with an `Accept-Ranges: bytes` header and converts HttpResponses coming back from its inner
@@ -67,8 +64,7 @@ object HttpDirectives extends Logging {
 
     extractRequestContext { ctx =>
       val settings = ctx.settings
-      import settings.rangeCoalescingThreshold
-      import settings.rangeCountLimit
+      import settings.{rangeCoalescingThreshold, rangeCountLimit}
 
       def toIndexRange(range: ByteRange): IndexRange =
         range match {

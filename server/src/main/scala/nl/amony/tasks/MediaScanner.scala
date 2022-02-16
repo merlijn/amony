@@ -8,11 +8,11 @@ import nl.amony.actor.media.MediaLibProtocol.{FileInfo, Fragment, Media, VideoIn
 import nl.amony.lib.FileUtil
 import nl.amony.lib.FileUtil.PathOps
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.{AmonyConfig, MediaLibConfig, PreviewConfig}
+import nl.amony.{AmonyConfig, MediaLibConfig}
 import scribe.Logging
 
-import java.nio.file.{Files, Path}
 import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.{Files, Path}
 
 class MediaScanner(appConfig: AmonyConfig) extends Logging {
 
