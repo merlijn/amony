@@ -8,9 +8,10 @@ import com.fasterxml.jackson.core.JsonEncoding
 import monix.eval.Task
 import monix.reactive.Consumer
 import nl.amony.AmonyConfig
-import nl.amony.actor.media.MediaLibProtocol._
 import nl.amony.actor.Message
 import nl.amony.actor.index.QueryProtocol._
+import nl.amony.actor.media.MediaLibProtocol._
+import nl.amony.actor.resources.ResourcesProtocol.{GetThumbnail, GetVideo, GetVideoFragment, IOResponse}
 import nl.amony.actor.user.UserProtocol.Authenticate
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.tasks.{ConvertNonStreamableVideos, MediaScanner, ResourceTasks}
@@ -91,40 +92,32 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
 
   object resources {
 
-    def resourcePath(): Path = config.media.resourcePath
-
-    def getVideo(id: String)(implicit timeout: Timeout): Future[Option[Path]] = {
+    def getVideo(id: String, quality: Int)(implicit timeout: Timeout): Future[Option[IOResponse]] = {
 
       query
         .getById(id)
-        .map(_.map { m =>
-          config.media.mediaPath.resolve(m.fileInfo.relativePath)
-        })
+        .flatMap {
+          case None        => Future.successful(None)
+          case Some(media) => system.ask[IOResponse](ref => GetVideo(media, ref)).map(Some(_))
+        }
     }
 
-    def getVideoFragment(id: String, quality: Int, start: Long, end: Long): Path =
-      resourcePath().resolve(s"$id-$start-${end}_${quality}p.mp4")
-
-    def getThumbnail(id: String, quality: Int, timestamp: Option[Long])(implicit
-        timeout: Timeout
-    ): Future[Option[InputStream]] = {
+    def getVideoFragment(id: String, start: Long, end: Long, quality: Int)(implicit timeout: Timeout): Future[Option[IOResponse]] =
       query
         .getById(id)
-        .map(_.flatMap { media =>
-          timestamp match {
-            case None =>
-              val file = File(resourcePath().resolve(s"${media.id}-${media.fragments.head.fromTimestamp}_${quality}p.webp"))
-              if (file.exists)
-                Some(file.newFileInputStream)
-              else
-                None
-            case Some(millis) =>
-              Some(FFMpeg.streamThumbnail(config.media.mediaPath.resolve(media.fileInfo.relativePath).toAbsolutePath, millis, 320))
-          }
-        })
-    }
+        .flatMap {
+          case None        => Future.successful(None)
+          case Some(media) => system.ask[IOResponse](ref => GetVideoFragment(media, (start, end), quality, ref)).map(Some(_))
+        }
 
-    def getFilePathForMedia(vid: Media): Path = config.media.mediaPath.resolve(vid.fileInfo.relativePath)
+    def getThumbnail(id: String, quality: Int, timestamp: Option[Long])(implicit timeout: Timeout): Future[Option[IOResponse]] = {
+      query
+        .getById(id)
+        .flatMap {
+          case None        => Future.successful(None)
+          case Some(media) => system.ask[IOResponse](ref => GetThumbnail(media, timestamp.getOrElse(media.fragments.head.fromTimestamp), quality, ref)).map(Some(_))
+        }
+    }
   }
 
   object users {
@@ -143,9 +136,7 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
         .foreach { loadedFromStore =>
           val (deleted, newAndMoved) = scanner.scanMediaInDirectory(config.media, loadedFromStore)
 
-          val upsert                 = Consumer.foreachTask[Media](m => Task {
-            modify.upsertMedia(m)
-          })
+          val upsert                 = Consumer.foreachTask[Media](m => Task { modify.upsertMedia(m) })
 
           val delete = Consumer.foreachTask[Media](m =>
             Task {

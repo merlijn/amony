@@ -6,7 +6,7 @@ import akka.http.scaladsl.server.Route
 import akka.stream.scaladsl.StreamConverters
 import better.files.File
 import nl.amony.http.RouteDeps
-import nl.amony.http.util.HttpDirectives.{fileWithRangeSupport, uploadFiles}
+import nl.amony.http.util.HttpDirectives.{fileWithRangeSupport, randomAccessRangeSupport, uploadFiles}
 import scribe.Logging
 
 trait ResourceRoutes extends Logging {
@@ -41,20 +41,20 @@ trait ResourceRoutes extends Logging {
         (get & path(Segment)) {
           case patterns.Thumbnail(id, _, timestamp, quality) =>
             onSuccess(api.resources.getThumbnail(id, quality.toInt, Option(timestamp).map(_.toLong))) {
-              case None => complete(StatusCodes.NotFound)
-              case Some(is) =>
-                val source = StreamConverters.fromInputStream(() => is, 8192)
-                complete(HttpEntity(ContentType(MediaTypes.`image/webp`), source))
+              case None             => complete(StatusCodes.NotFound)
+              case Some(ioResponse) => complete(HttpEntity(ContentType(MediaTypes.`image/webp`), ioResponse.getContent()))
             }
 
           case patterns.VideoFragment(id, start, end, quality) =>
-            val segmentPath = api.resources.getVideoFragment(id, quality.toInt, start.toLong, end.toLong)
-            fileWithRangeSupport(segmentPath)
+            onSuccess(api.resources.getVideoFragment(id, start.toInt, end.toInt, quality.toInt)) {
+              case None             => complete(StatusCodes.NotFound)
+              case Some(ioResponse) => randomAccessRangeSupport(ContentType(MediaTypes.`video/mp4`), ioResponse.size(), ioResponse.getContentRange)
+            }
 
           case patterns.Video(id, quality) =>
-            onSuccess(api.resources.getVideo(id)) {
-              case None => complete(StatusCodes.NotFound)
-              case Some(path) => fileWithRangeSupport(path)
+            onSuccess(api.resources.getVideo(id, quality.toInt)) {
+              case None             => complete(StatusCodes.NotFound)
+              case Some(ioResponse) => randomAccessRangeSupport(ContentType(MediaTypes.`video/mp4`), ioResponse.size(), ioResponse.getContentRange)
             }
 
           case _ =>

@@ -12,6 +12,8 @@ import nl.amony.actor.index.LocalIndex
 import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.media.MediaLibEventSourcing.Event
 import nl.amony.actor.media.{MediaLibCommandHandler, MediaLibEventSourcing, MediaLibProtocol}
+import nl.amony.actor.resources.LocalFileResourceHandler
+import nl.amony.actor.resources.ResourcesProtocol.ResourceCommand
 import nl.amony.actor.user.{UserCommandHandler, UserEventSourcing}
 import nl.amony.actor.user.UserCommandHandler.UserState
 import nl.amony.actor.user.UserEventSourcing.UserEvent
@@ -38,6 +40,9 @@ object MainRouter {
       eventHandler   = MediaLibEventSourcing.apply
     )
 
+  private[actor] def resourceBehaviour(config: MediaLibConfig): Behavior[ResourceCommand] =
+    LocalFileResourceHandler.apply(config)
+
   def apply(config: AmonyConfig, scanner: MediaScanner): Behavior[Message] =
     Behaviors.setup { context =>
 
@@ -46,6 +51,7 @@ object MainRouter {
       val localIndex   = LocalIndex.apply(config.media, context).toTyped[QueryMessage]
       val mediaHandler = context.spawn(mediaBehaviour(config.media, scanner), "medialib")
       val userHandler  = context.spawn(userBehaviour(), "users")
+      val resourceHandler = context.spawn(resourceBehaviour(config.media), "resources")
 
       // insert the admin user on startup
       userHandler.tell(UpsertUser(config.users.adminUsername, config.users.adminPassword, context.system.ignoreRef))
@@ -60,6 +66,9 @@ object MainRouter {
           Behaviors.same
         case cmd: UserCommand =>
           userHandler.tell(cmd)
+          Behaviors.same
+        case cmd: ResourceCommand =>
+          resourceHandler.tell(cmd)
           Behaviors.same
       }
     }

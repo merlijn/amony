@@ -23,6 +23,8 @@ object HttpDirectives extends Logging {
   import akka.http.scaladsl.server.directives.BasicDirectives._
   import akka.http.scaladsl.server.directives.RouteDirectives._
 
+  val chunkSize = 8192
+
   case class IndexRange(start: Long, end: Long) {
     def length: Long = end - start
     def distance(other: IndexRange): Long = mergedEnd(other) - mergedStart(other) - (length + other.length)
@@ -43,7 +45,7 @@ object HttpDirectives extends Logging {
       randomAccessRangeSupport(
         contentType,
         path.toFile.length(),
-        (start, _) => FileIO.fromPath(path, 8192, start)
+        (start, _) => FileIO.fromPath(path, chunkSize, start)
       )
   }
 
@@ -60,7 +62,7 @@ object HttpDirectives extends Logging {
       contentType: ContentType,
       contentLength: Long,
       byteStringProvider: (Long, Long) => Source[ByteString, Any]
-  ) = {
+  ): Route = {
 
     extractRequestContext { ctx =>
       val settings = ctx.settings
@@ -101,8 +103,9 @@ object HttpDirectives extends Logging {
           case _ =>
             Source.fromIterator(() => coalescedRanges.iterator).map { range =>
               val byteSource = byteStringProvider(range.start, range.length)
-              Multipart.ByteRanges
-                .BodyPart(range.toContentRange(contentLength), HttpEntity(contentType, range.length, byteSource))
+              Multipart.ByteRanges.BodyPart(
+                range.toContentRange(contentLength),
+                HttpEntity(contentType, range.length, byteSource))
             }
         }
 
