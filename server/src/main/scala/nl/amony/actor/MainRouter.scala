@@ -32,11 +32,11 @@ object MainRouter {
       eventHandler   = UserEventSourcing.apply
     )
 
-  private[actor] def mediaBehaviour(config: MediaLibConfig, scanner: MediaScanner): EventSourcedBehavior[MediaCommand, Event, State] =
+  private[actor] def mediaBehaviour(config: MediaLibConfig, scanner: MediaScanner, resourceRef: ActorRef[ResourceCommand]): EventSourcedBehavior[MediaCommand, Event, State] =
     EventSourcedBehavior[MediaCommand, Event, State](
       persistenceId  = PersistenceId.ofUniqueId("mediaLib"),
       emptyState     = State(Map.empty),
-      commandHandler = MediaLibCommandHandler.apply(config, scanner),
+      commandHandler = MediaLibCommandHandler.apply(config, scanner, resourceRef),
       eventHandler   = MediaLibEventSourcing.apply
     )
 
@@ -48,27 +48,27 @@ object MainRouter {
 
       implicit val mat = Materializer(context)
 
-      val localIndex   = LocalIndex.apply(config.media, context).toTyped[QueryMessage]
-      val mediaHandler = context.spawn(mediaBehaviour(config.media, scanner), "medialib")
-      val userHandler  = context.spawn(userBehaviour(), "users")
-      val resourceHandler = context.spawn(resourceBehaviour(config.media), "resources")
+      val localIndexRef   = LocalIndex.apply(config.media, context).toTyped[QueryMessage]
+      val resourceRef = context.spawn(resourceBehaviour(config.media), "resources")
+      val mediaRef = context.spawn(mediaBehaviour(config.media, scanner, resourceRef), "medialib")
+      val userRef  = context.spawn(userBehaviour(), "users")
 
       // insert the admin user on startup
-      userHandler.tell(UpsertUser(config.users.adminUsername, config.users.adminPassword, context.system.ignoreRef))
+      userRef.tell(UpsertUser(config.users.adminUsername, config.users.adminPassword, context.system.ignoreRef))
 
       Behaviors.receiveMessage[Message] {
 
         case q: QueryMessage =>
-          localIndex.tell(q)
+          localIndexRef.tell(q)
           Behaviors.same
         case cmd: MediaLibProtocol.MediaCommand =>
-          mediaHandler.tell(cmd)
+          mediaRef.tell(cmd)
           Behaviors.same
         case cmd: UserCommand =>
-          userHandler.tell(cmd)
+          userRef.tell(cmd)
           Behaviors.same
         case cmd: ResourceCommand =>
-          resourceHandler.tell(cmd)
+          resourceRef.tell(cmd)
           Behaviors.same
       }
     }

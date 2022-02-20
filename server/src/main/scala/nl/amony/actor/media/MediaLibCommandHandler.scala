@@ -6,7 +6,9 @@ import better.files.File
 import nl.amony.MediaLibConfig
 import nl.amony.actor.media.MediaLibEventSourcing._
 import nl.amony.actor.media.MediaLibProtocol._
-import nl.amony.tasks.{MediaScanner, ResourceTasks}
+import nl.amony.actor.resources.ResourcesProtocol
+import nl.amony.actor.resources.ResourcesProtocol.ResourceCommand
+import nl.amony.tasks.MediaScanner
 import scribe.Logging
 
 import java.awt.Desktop
@@ -15,7 +17,7 @@ object MediaLibCommandHandler extends Logging {
 
   implicit val scheduler = monix.execution.Scheduler.Implicits.global
 
-  def apply(config: MediaLibConfig, scanner: MediaScanner)(state: State, cmd: MediaCommand): Effect[Event, State] = {
+  def apply(config: MediaLibConfig, scanner: MediaScanner, resourceRef: ActorRef[ResourceCommand])(state: State, cmd: MediaCommand): Effect[Event, State] = {
 
     logger.debug(s"Received command: $cmd")
 
@@ -53,7 +55,7 @@ object MediaLibCommandHandler extends Logging {
 
         Effect
           .persist(MediaAdded(media))
-          .thenRun((_: State) => ResourceTasks.createFragments(config, media).executeAsync.runAsyncAndForget)
+          .thenRun((_: State) => resourceRef.tell(ResourcesProtocol.CreateFragments(media, false)))
           .thenReply(sender)(_ => true)
 
       case UpdateMetaData(mediaId, title, comment, tags, sender) =>
@@ -101,14 +103,8 @@ object MediaLibCommandHandler extends Logging {
             Effect
               .persist(FragmentDeleted(id, idx))
               .thenRun { (_: State) =>
-                ResourceTasks.deleteVideoFragment(
-                  config,
-                  media,
-                  media.fragments(idx).fromTimestamp,
-                  media.fragments(idx).toTimestamp,
-                )
-              }
-              .thenReply(sender)(s => Right(s.media(id)))
+                resourceRef.tell(ResourcesProtocol.DeleteFragment(media, (media.fragments(idx).fromTimestamp, media.fragments(idx).toTimestamp)))
+              }.thenReply(sender)(s => Right(s.media(id)))
           }
         }
 
@@ -128,20 +124,9 @@ object MediaLibCommandHandler extends Logging {
                 Effect
                   .persist(FragmentRangeUpdated(id, idx, start, end))
                   .thenRun { (s: State) =>
-                    ResourceTasks.deleteVideoFragment(
-                      config,
-                      media,
-                      oldFragment.fromTimestamp,
-                      oldFragment.toTimestamp,
-                    )
-                    ResourceTasks.createFragment(
-                      config,
-                      media,
-                      start,
-                      end,
-                    ).executeAsync.runAsyncAndForget
-                  }
-                  .thenReply(sender)(s => Right(s.media(id)))
+                    resourceRef.tell(ResourcesProtocol.DeleteFragment(media, (oldFragment.fromTimestamp, oldFragment.toTimestamp)))
+                    resourceRef.tell(ResourcesProtocol.CreateFragment(media, (start, end), false))
+                  }.thenReply(sender)(s => Right(s.media(id)))
             }
         }
 
@@ -154,7 +139,7 @@ object MediaLibCommandHandler extends Logging {
             case Right(_)    =>
               Effect
                 .persist(FragmentAdded(id, start, end))
-                .thenRun((_: State) => ResourceTasks.createFragment(config, media, start, end).runAsyncAndForget)
+                .thenRun((_: State) => resourceRef.tell(ResourcesProtocol.CreateFragment(media, (start, end), false)))
                 .thenReply(sender)(s => Right(s.media(id)))
           }
         }

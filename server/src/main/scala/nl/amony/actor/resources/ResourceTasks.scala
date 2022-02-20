@@ -1,13 +1,14 @@
-package nl.amony.tasks
+package nl.amony.actor.resources
 
-import better.files.File.apply
 import monix.eval.Task
 import monix.reactive.{Consumer, Observable}
-import nl.amony.{MediaLibConfig, TranscodeSettings}
 import nl.amony.actor.media.MediaLibProtocol.Media
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.lib.FileUtil._
+import nl.amony.{MediaLibConfig, TranscodeSettings}
 import scribe.Logging
+import nl.amony.lib.FileUtil._
+
+import java.nio.file.Files
 
 object ResourceTasks extends Logging {
 
@@ -18,7 +19,7 @@ object ResourceTasks extends Logging {
       val input = config.mediaPath.resolve(media.fileInfo.relativePath)
       val thumbnailOut = config.resourcePath.resolve(s"${media.id}-${from}_${height}p.webp")
 
-      if (!thumbnailOut.exists || overwrite)
+      if (!Files.exists(thumbnailOut) || overwrite)
         FFMpeg.writeThumbnail(
           inputFile = input,
           timestamp = from,
@@ -28,7 +29,7 @@ object ResourceTasks extends Logging {
 
       val fragmentOut = config.resourcePath.resolve(s"${media.id}-$from-${to}_${height}p.mp4")
 
-      if (!fragmentOut.exists || overwrite)
+      if (!Files.exists(fragmentOut) || overwrite)
         FFMpeg.transcodeToMp4(
           inputFile = input,
           from = from,
@@ -40,13 +41,13 @@ object ResourceTasks extends Logging {
     }
   }
 
-  def createFragments(config: MediaLibConfig, media: Media, overwrite: Boolean = false): Task[Unit] = {
+  private[resources] def createFragments(config: MediaLibConfig, media: Media, overwrite: Boolean = false): Task[Unit] = {
     Observable
       .fromIterable(media.fragments)
       .consumeWith(Consumer.foreachTask(f => createFragment(config, media, f.fromTimestamp, f.toTimestamp, overwrite)))
   }
 
-  def createFragment(config: MediaLibConfig,
+  private[resources] def createFragment(config: MediaLibConfig,
                      media: Media,
                      from: Long,
                      to: Long,

@@ -11,10 +11,11 @@ import nl.amony.AmonyConfig
 import nl.amony.actor.Message
 import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.media.MediaLibProtocol._
+import nl.amony.actor.resources.{ResourceTasks, ResourcesProtocol}
 import nl.amony.actor.resources.ResourcesProtocol.{GetThumbnail, GetVideo, GetVideoFragment, IOResponse}
 import nl.amony.actor.user.UserProtocol.Authenticate
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.tasks.{ConvertNonStreamableVideos, MediaScanner, ResourceTasks}
+import nl.amony.tasks.{ConvertNonStreamableVideos, MediaScanner}
 import scribe.Logging
 
 import java.io.InputStream
@@ -166,11 +167,7 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
 
     def regeneratePreviewForMedia(media: Media): Unit = {
       logger.info(s"re-generating previews for '${media.fileInfo.relativePath}'")
-      ResourceTasks.createFragments(
-        config = config.media,
-        media  = media,
-        overwrite  = true
-      ).runAsyncAndForget
+      system.tell(ResourcesProtocol.CreateFragments(media, true))
     }
 
     def regenerateAllPreviews()(implicit timeout: Timeout): Unit =
