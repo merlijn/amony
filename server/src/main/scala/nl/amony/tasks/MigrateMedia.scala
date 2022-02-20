@@ -3,8 +3,8 @@ package nl.amony.tasks
 import akka.util.Timeout
 import better.files.File
 import io.circe.generic.semiauto.deriveDecoder
+import nl.amony.AmonyApi
 import nl.amony.actor.media.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
-import nl.amony.lib.AmonyApi
 import scribe.Logging
 
 object MigrateMedia extends Logging {

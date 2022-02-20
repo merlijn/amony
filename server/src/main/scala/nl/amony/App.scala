@@ -3,7 +3,6 @@ package nl.amony
 import akka.actor.typed.{ActorSystem, Behavior}
 import nl.amony.actor.{MainRouter, Message}
 import nl.amony.http.WebServer
-import nl.amony.lib.AmonyApi
 import nl.amony.tasks.MediaScanner
 import scribe.Logging
 

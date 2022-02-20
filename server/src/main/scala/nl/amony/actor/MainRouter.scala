@@ -12,7 +12,7 @@ import nl.amony.actor.index.LocalIndex
 import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.media.MediaLibEventSourcing.Event
 import nl.amony.actor.media.{MediaLibCommandHandler, MediaLibEventSourcing, MediaLibProtocol}
-import nl.amony.actor.resources.LocalFileResourceHandler
+import nl.amony.actor.resources.LocalResourcesHandler
 import nl.amony.actor.resources.ResourcesProtocol.ResourceCommand
 import nl.amony.actor.user.{UserCommandHandler, UserEventSourcing}
 import nl.amony.actor.user.UserCommandHandler.UserState
@@ -41,17 +41,17 @@ object MainRouter {
     )
 
   private[actor] def resourceBehaviour(config: MediaLibConfig): Behavior[ResourceCommand] =
-    LocalFileResourceHandler.apply(config)
+    LocalResourcesHandler.apply(config)
 
   def apply(config: AmonyConfig, scanner: MediaScanner): Behavior[Message] =
     Behaviors.setup { context =>
 
       implicit val mat = Materializer(context)
 
-      val localIndexRef   = LocalIndex.apply(config.media, context).toTyped[QueryMessage]
-      val resourceRef = context.spawn(resourceBehaviour(config.media), "resources")
-      val mediaRef = context.spawn(mediaBehaviour(config.media, scanner, resourceRef), "medialib")
-      val userRef  = context.spawn(userBehaviour(), "users")
+      val localIndexRef = LocalIndex.apply(config.media, context).toTyped[QueryMessage]
+      val resourceRef   = context.spawn(resourceBehaviour(config.media), "resources")
+      val mediaRef      = context.spawn(mediaBehaviour(config.media, scanner, resourceRef), "medialib")
+      val userRef       = context.spawn(userBehaviour(), "users")
 
       // insert the admin user on startup
       userRef.tell(UpsertUser(config.users.adminUsername, config.users.adminPassword, context.system.ignoreRef))

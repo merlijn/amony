@@ -1,24 +1,21 @@
-package nl.amony.lib
+package nl.amony
 
 import akka.actor.typed.ActorSystem
 import akka.serialization.jackson.JacksonObjectMapperProvider
 import akka.util.Timeout
-import better.files.File
 import com.fasterxml.jackson.core.JsonEncoding
 import monix.eval.Task
 import monix.reactive.Consumer
-import nl.amony.AmonyConfig
 import nl.amony.actor.Message
 import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.media.MediaLibProtocol._
-import nl.amony.actor.resources.{ResourceTasks, ResourcesProtocol}
+import nl.amony.actor.resources.ResourcesProtocol
 import nl.amony.actor.resources.ResourcesProtocol.{GetThumbnail, GetVideo, GetVideoFragment, IOResponse}
 import nl.amony.actor.user.UserProtocol.Authenticate
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.tasks.{ConvertNonStreamableVideos, MediaScanner}
 import scribe.Logging
 
-import java.io.InputStream
 import java.nio.file.Path
 import scala.concurrent.{ExecutionContext, Future}
 

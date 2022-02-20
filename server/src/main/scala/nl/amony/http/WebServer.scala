@@ -6,10 +6,9 @@ import akka.http.scaladsl.Http
 import better.files.File
 import nl.amony.http.routes.{AdminRoutes, ApiRoutes, IdentityRoutes, ResourceRoutes}
 import nl.amony.http.util.PemReader
-import nl.amony.lib.AmonyApi
 import scribe.Logging
 import akka.http.scaladsl.server.Directives._
-import nl.amony.WebServerConfig
+import nl.amony.{AmonyApi, WebServerConfig}
 
 import java.security.SecureRandom
 import javax.net.ssl.KeyManagerFactory

@@ -3,10 +3,10 @@ package nl.amony.tasks
 import akka.util.Timeout
 import monix.eval.Task
 import monix.reactive.Observable
-import nl.amony.AmonyConfig
+import nl.amony.{AmonyApi, AmonyConfig}
 import nl.amony.lib.FileUtil.PathOps
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.lib.{AmonyApi, FileUtil}
+import nl.amony.lib.FileUtil
 import scribe.Logging
 
 import scala.concurrent.duration.DurationInt

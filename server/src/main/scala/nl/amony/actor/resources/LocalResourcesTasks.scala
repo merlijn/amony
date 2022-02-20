@@ -10,7 +10,7 @@ import nl.amony.lib.FileUtil._
 
 import java.nio.file.Files
 
-object ResourceTasks extends Logging {
+object LocalResourcesTasks extends Logging {
 
   private def generatePreviews(config: MediaLibConfig, media: Media, from: Long, to: Long, height: Int, crf: Int, overwrite: Boolean): Task[Unit] = {
 

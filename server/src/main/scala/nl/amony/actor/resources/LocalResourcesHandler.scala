@@ -13,7 +13,7 @@ import nl.amony.lib.ffmpeg.FFMpeg
 
 import java.nio.file.{Files, Path}
 
-object LocalFileResourceHandler {
+object LocalResourcesHandler {
 
   case class LocalFileIOResponse(path: Path) extends IOResponse with JsonSerializable {
     override def size(): Long = Files.size(path)
@@ -53,16 +53,16 @@ object LocalFileResourceHandler {
       case CreateFragment(media, range, overwrite) =>
 
         val (start, end) = range
-        ResourceTasks.createFragment(config, media, start, end, overwrite).executeAsync.runAsyncAndForget
+        LocalResourcesTasks.createFragment(config, media, start, end, overwrite).executeAsync.runAsyncAndForget
         Behaviors.same
 
       case CreateFragments(media, overwrite) =>
-        ResourceTasks.createFragments(config, media, overwrite).executeAsync.runAsyncAndForget
+        LocalResourcesTasks.createFragments(config, media, overwrite).executeAsync.runAsyncAndForget
         Behaviors.same
 
       case DeleteFragment(media, range) =>
         val (start, end) = range
-        ResourceTasks.deleteVideoFragment(config, media, start, end)
+        LocalResourcesTasks.deleteVideoFragment(config, media, start, end)
         Behaviors.same
     }
   }
