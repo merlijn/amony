@@ -1,4 +1,4 @@
-package nl.amony.tasks
+package nl.amony.actor.resources
 
 import akka.util.Timeout
 import monix.eval.Task

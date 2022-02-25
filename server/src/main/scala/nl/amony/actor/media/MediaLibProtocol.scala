@@ -6,7 +6,6 @@ import akka.persistence.typed.scaladsl.EventSourcedBehavior
 import nl.amony.MediaLibConfig
 import nl.amony.actor.Message
 import nl.amony.actor.media.MediaLibEventSourcing.Event
-import nl.amony.tasks.MediaScanner
 
 import java.nio.file.Path
 

@@ -6,9 +6,8 @@ import better.files.File
 import nl.amony.MediaLibConfig
 import nl.amony.actor.media.MediaLibEventSourcing._
 import nl.amony.actor.media.MediaLibProtocol._
-import nl.amony.actor.resources.ResourcesProtocol
+import nl.amony.actor.resources.{MediaScanner, ResourcesProtocol}
 import nl.amony.actor.resources.ResourcesProtocol.ResourceCommand
-import nl.amony.tasks.MediaScanner
 import scribe.Logging
 
 import java.awt.Desktop

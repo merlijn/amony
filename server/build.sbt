@@ -48,6 +48,7 @@ lazy val amony = (project in file(".")).
 
       "io.monix"                 %% "monix-reactive"             % "3.4.0",
       "com.github.pathikrit"     %% "better-files"               % "3.9.1",
+      "io.methvin"                % "directory-watcher"          % "0.15.0",
 
       // test
       "org.scalatest"            %% "scalatest"                  % "3.2.9"           % Test,

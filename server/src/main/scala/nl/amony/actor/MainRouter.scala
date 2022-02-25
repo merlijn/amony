@@ -12,13 +12,12 @@ import nl.amony.actor.index.LocalIndex
 import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.media.MediaLibEventSourcing.Event
 import nl.amony.actor.media.{MediaLibCommandHandler, MediaLibEventSourcing, MediaLibProtocol}
-import nl.amony.actor.resources.LocalResourcesHandler
+import nl.amony.actor.resources.{LocalResourcesHandler, MediaScanner}
 import nl.amony.actor.resources.ResourcesProtocol.ResourceCommand
 import nl.amony.actor.user.{UserCommandHandler, UserEventSourcing}
 import nl.amony.actor.user.UserCommandHandler.UserState
 import nl.amony.actor.user.UserEventSourcing.UserEvent
 import nl.amony.actor.user.UserProtocol.{UpsertUser, UserCommand}
-import nl.amony.tasks.MediaScanner
 
 trait Message
 

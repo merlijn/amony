@@ -8,60 +8,58 @@ import nl.amony.{MediaLibConfig, TranscodeSettings}
 import scribe.Logging
 import nl.amony.lib.FileUtil._
 
-import java.nio.file.Files
+import java.nio.file.{Files, Path}
 
 object LocalResourcesTasks extends Logging {
 
-  private def generatePreviews(config: MediaLibConfig, media: Media, from: Long, to: Long, height: Int, crf: Int, overwrite: Boolean): Task[Unit] = {
+  private[resources] def createPreview(config: MediaLibConfig,
+                                       media: Media,
+                                       from: Long,
+                                       to: Long,
+                                       overwrite: Boolean = false): Task[Unit] = {
+    val transcodeList =
+      if (media.height < config.previews.transcode.map(_.scaleHeight).min)
+        List(TranscodeSettings("mp4", media.height, 23))
+      else
+        config.previews.transcode.filterNot(_.scaleHeight > media.height)
 
-    Task {
-
-      val input = config.mediaPath.resolve(media.fileInfo.relativePath)
-      val thumbnailOut = config.resourcePath.resolve(s"${media.id}-${from}_${height}p.webp")
-
-      if (!Files.exists(thumbnailOut) || overwrite)
-        FFMpeg.writeThumbnail(
-          inputFile = input,
-          timestamp = from,
-          outputFile = Some(thumbnailOut),
-          scaleHeight = Some(height)
-        )
-
-      val fragmentOut = config.resourcePath.resolve(s"${media.id}-$from-${to}_${height}p.mp4")
-
-      if (!Files.exists(fragmentOut) || overwrite)
+    def writeFragment(input: Path, height: Int, crf: Int): Unit = {
+      val output = config.resourcePath.resolve(s"${media.id}-$from-${to}_${height}p.mp4")
+      if (!Files.exists(output) || overwrite)
         FFMpeg.transcodeToMp4(
-          inputFile = input,
-          from = from,
-          to = to,
-          outputFile = Some(fragmentOut),
-          quality = crf,
+          inputFile   = input,
+          from        = from,
+          to          = to,
+          outputFile  = Some(output),
+          quality     = crf,
           scaleHeight = Some(height)
         )
     }
+
+    def writeThumbnail(input: Path, height: Int): Unit = {
+      val output = config.resourcePath.resolve(s"${media.id}-${from}_${height}p.webp")
+      if (!Files.exists(output) || overwrite)
+        FFMpeg.writeThumbnail(
+          inputFile   = input,
+          timestamp   = from,
+          outputFile  = Some(output),
+          scaleHeight = Some(height)
+        )
+    }
+
+    Observable
+      .fromIterable(transcodeList)
+      .consumeWith(Consumer.foreachTask(t => Task {
+        val input = config.mediaPath.resolve(media.fileInfo.relativePath)
+        writeThumbnail(input, t.scaleHeight)
+        writeFragment(input, t.scaleHeight, t.crf)
+      }))
   }
 
   private[resources] def createFragments(config: MediaLibConfig, media: Media, overwrite: Boolean = false): Task[Unit] = {
     Observable
       .fromIterable(media.fragments)
-      .consumeWith(Consumer.foreachTask(f => createFragment(config, media, f.fromTimestamp, f.toTimestamp, overwrite)))
-  }
-
-  private[resources] def createFragment(config: MediaLibConfig,
-                     media: Media,
-                     from: Long,
-                     to: Long,
-                     overwrite: Boolean = false): Task[Unit] = {
-    val extra: Option[TranscodeSettings] =
-      if (media.height < config.previews.transcode.map(_.scaleHeight).min)
-        Some(TranscodeSettings("mp4", media.height, 23))
-      else None
-
-    val transcodes = (extra.toList ::: config.previews.transcode).filterNot(_.scaleHeight > media.height)
-
-    Observable
-      .fromIterable(transcodes)
-      .consumeWith(Consumer.foreachTask(t => generatePreviews(config, media, from, to, t.scaleHeight, t.crf, overwrite)))
+      .consumeWith(Consumer.foreachTask(f => createPreview(config, media, f.fromTimestamp, f.toTimestamp, overwrite)))
   }
 
   def deleteVideoFragment(mediaLibConfig: MediaLibConfig,

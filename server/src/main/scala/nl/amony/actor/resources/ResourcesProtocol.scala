@@ -2,10 +2,11 @@ package nl.amony.actor.resources
 
 import akka.NotUsed
 import akka.actor.typed.ActorRef
+import akka.stream.SourceRef
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import nl.amony.actor.Message
-import nl.amony.actor.media.MediaLibProtocol.Media
+import nl.amony.actor.media.MediaLibProtocol.{FileInfo, Media}
 
 object ResourcesProtocol {
 
@@ -16,6 +17,8 @@ object ResourcesProtocol {
     def getContent(): Source[ByteString, NotUsed]
     def getContentRange(start: Long, end: Long): Source[ByteString, NotUsed]
   }
+
+  case class Upload(fileInfo: FileInfo, source: SourceRef[ByteString], sender: ActorRef[Boolean])
 
   case class CreateFragments(media: Media, overwrite: Boolean) extends ResourceCommand
   case class CreateFragment(media: Media, timeRange: (Long, Long), overwrite: Boolean) extends ResourceCommand

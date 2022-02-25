@@ -1,12 +1,12 @@
-package nl.amony.tasks
+package nl.amony.actor.util
 
 import akka.util.Timeout
 import monix.eval.Task
 import monix.reactive.Observable
-import nl.amony.{AmonyApi, AmonyConfig}
-import nl.amony.lib.FileUtil.PathOps
-import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.FileUtil
+import nl.amony.lib.FileUtil._
+import nl.amony.lib.ffmpeg.FFMpeg
+import nl.amony.{AmonyApi, AmonyConfig}
 import scribe.Logging
 
 import scala.concurrent.duration.DurationInt

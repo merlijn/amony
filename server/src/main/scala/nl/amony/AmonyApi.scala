@@ -1,6 +1,6 @@
 package nl.amony
 
-import akka.actor.typed.ActorSystem
+import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.serialization.jackson.JacksonObjectMapperProvider
 import akka.util.Timeout
 import com.fasterxml.jackson.core.JsonEncoding
@@ -9,11 +9,11 @@ import monix.reactive.Consumer
 import nl.amony.actor.Message
 import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.media.MediaLibProtocol._
-import nl.amony.actor.resources.ResourcesProtocol
-import nl.amony.actor.resources.ResourcesProtocol.{GetThumbnail, GetVideo, GetVideoFragment, IOResponse}
+import nl.amony.actor.resources.{MediaScanner, ResourcesProtocol}
+import nl.amony.actor.resources.ResourcesProtocol.{GetThumbnail, GetVideo, GetVideoFragment, IOResponse, ResourceCommand}
 import nl.amony.actor.user.UserProtocol.Authenticate
+import nl.amony.actor.util.ConvertNonStreamableVideos
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.tasks.{ConvertNonStreamableVideos, MediaScanner}
 import scribe.Logging
 
 import java.nio.file.Path
@@ -90,32 +90,22 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
 
   object resources {
 
-    def getVideo(id: String, quality: Int)(implicit timeout: Timeout): Future[Option[IOResponse]] = {
-
+    private def getResource(mediaId: String)(fn: (Media, ActorRef[IOResponse]) => ResourceCommand)(implicit timeout: Timeout) =
       query
-        .getById(id)
+        .getById(mediaId)
         .flatMap {
           case None        => Future.successful(None)
-          case Some(media) => system.ask[IOResponse](ref => GetVideo(media, ref)).map(Some(_))
+          case Some(media) => system.ask[IOResponse](ref => fn(media, ref)).map(Some(_))
         }
-    }
+
+    def getVideo(id: String, quality: Int)(implicit timeout: Timeout): Future[Option[IOResponse]] =
+      getResource(id)((media, ref) => GetVideo(media, ref))
 
     def getVideoFragment(id: String, start: Long, end: Long, quality: Int)(implicit timeout: Timeout): Future[Option[IOResponse]] =
-      query
-        .getById(id)
-        .flatMap {
-          case None        => Future.successful(None)
-          case Some(media) => system.ask[IOResponse](ref => GetVideoFragment(media, (start, end), quality, ref)).map(Some(_))
-        }
+      getResource(id)((media, ref) => GetVideoFragment(media, (start, end), quality, ref))
 
-    def getThumbnail(id: String, quality: Int, timestamp: Option[Long])(implicit timeout: Timeout): Future[Option[IOResponse]] = {
-      query
-        .getById(id)
-        .flatMap {
-          case None        => Future.successful(None)
-          case Some(media) => system.ask[IOResponse](ref => GetThumbnail(media, timestamp.getOrElse(media.fragments.head.fromTimestamp), quality, ref)).map(Some(_))
-        }
-    }
+    def getThumbnail(id: String, quality: Int, timestamp: Option[Long])(implicit timeout: Timeout): Future[Option[IOResponse]] =
+      getResource(id)((media, ref) => GetThumbnail(media, timestamp.getOrElse(media.fragments.head.fromTimestamp), quality, ref))
   }
 
   object users {
@@ -133,7 +123,6 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
         .getAll()
         .foreach { loadedFromStore =>
           val (deleted, newAndMoved) = scanner.scanMediaInDirectory(config.media, loadedFromStore)
-
           val upsert                 = Consumer.foreachTask[Media](m => Task { modify.upsertMedia(m) })
 
           val delete = Consumer.foreachTask[Media](m =>

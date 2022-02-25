@@ -1,12 +1,12 @@
 package nl.amony
 
 import akka.actor.typed.{ActorSystem, Behavior}
+import nl.amony.actor.resources.MediaScanner
 import nl.amony.actor.{MainRouter, Message}
 import nl.amony.http.WebServer
-import nl.amony.tasks.MediaScanner
 import scribe.Logging
 
-import java.nio.file.Files
+import java.nio.file.{Files, Path}
 import scala.concurrent.duration.DurationInt
 
 object App extends AppConfig with Logging {
@@ -31,6 +31,26 @@ object App extends AppConfig with Logging {
 
     val webServer = new WebServer(appConfig.api, api)(system)
 
+//    watchPath(appConfig.media.mediaPath)
+
     webServer.run()
+  }
+
+  def watchPath(path: Path) = {
+
+    import io.methvin.watcher._
+    import io.methvin.watcher.DirectoryChangeEvent.EventType._
+
+    val watcher = DirectoryWatcher.builder.path(path).listener {
+      (event: DirectoryChangeEvent) => {
+        event.eventType match {
+          case CREATE => logger.info(s"File created : ${event.path}")
+          case MODIFY => logger.info(s"File modified: ${event.path}")
+          case DELETE => logger.info(s"File deleted : ${event.path}")
+        }
+      }
+    }.fileHashing(false).build
+
+    watcher.watchAsync()
   }
 }

@@ -53,7 +53,7 @@ object LocalResourcesHandler {
       case CreateFragment(media, range, overwrite) =>
 
         val (start, end) = range
-        LocalResourcesTasks.createFragment(config, media, start, end, overwrite).executeAsync.runAsyncAndForget
+        LocalResourcesTasks.createPreview(config, media, start, end, overwrite).executeAsync.runAsyncAndForget
         Behaviors.same
 
       case CreateFragments(media, overwrite) =>
