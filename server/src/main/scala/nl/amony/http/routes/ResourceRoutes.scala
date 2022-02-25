@@ -3,10 +3,9 @@ package nl.amony.http.routes
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.stream.scaladsl.StreamConverters
 import better.files.File
 import nl.amony.http.RouteDeps
-import nl.amony.http.util.HttpDirectives.{fileWithRangeSupport, randomAccessRangeSupport, uploadFiles}
+import nl.amony.http.util.HttpDirectives.{randomAccessRangeSupport, uploadFiles}
 import scribe.Logging
 
 trait ResourceRoutes extends Logging {
@@ -29,13 +28,10 @@ trait ResourceRoutes extends Logging {
     pathPrefix("files") {
 
       path("upload") {
-        uploadFiles("video", api.config.media.uploadPath, config.uploadSizeLimit.toBytes.toLong) { f =>
-          f.foreach { case (info, path) =>
-            logger.info(s"$path was uploaded, scanning file")
-            api.modify.addMediaFromLocalFile(path.toAbsolutePath)
-          }
-          complete("OK")
+        uploadFiles("video", config.uploadSizeLimit.toBytes.toLong) {
+          (fileInfo, source) => api.modify.uploadMedia(fileInfo.fileName, source)
         }
+        { medias => complete("OK") }
       } ~ pathPrefix("resources") {
 
         (get & path(Segment)) {

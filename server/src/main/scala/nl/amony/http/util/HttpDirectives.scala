@@ -17,6 +17,7 @@ import scribe.Logging
 
 import java.nio.file.{Files, Path}
 import scala.collection.immutable
+import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 object HttpDirectives extends Logging {
@@ -151,7 +152,7 @@ object HttpDirectives extends Logging {
     }
   }
 
-  def uploadFiles(fieldName: String, uploadPath: Path, uploadLimitBytes: Long): Directive1[immutable.Seq[(FileInfo, Path)]] =
+  def uploadFiles[T](fieldName: String, uploadLimitBytes: Long)(uploadFn: (FileInfo, Source[ByteString, Any]) => Future[T]): Directive1[Seq[T]] =
 
     (withSizeLimit(uploadLimitBytes) & entity(as[Multipart.FormData])).flatMap { formData =>
 
@@ -159,7 +160,7 @@ object HttpDirectives extends Logging {
         implicit val mat = ctx.materializer
         implicit val ec = ctx.executionContext
 
-        val uploaded: Source[(FileInfo, Path), Any] = formData.parts
+        val uploaded: Source[T, Any] = formData.parts
           .mapConcat { part =>
             if (part.filename.isDefined && part.name == fieldName) part :: Nil
             else {
@@ -169,23 +170,10 @@ object HttpDirectives extends Logging {
           }
           .mapAsync(1) { part =>
             val fileInfo = FileInfo(part.name, part.filename.get, part.entity.contentType)
-
-            Files.createDirectories(uploadPath)
-            val path = uploadPath.resolve(part.filename.get)
-            val file = path.toFile
-            file.createNewFile()
-
-            part.entity.dataBytes
-              .runWith(FileIO.toPath(path))
-              .flatMap { ioResult =>
-                ioResult.status match {
-                  case Success(_) => FastFuture.successful(ioResult)
-                  case Failure(t) => FastFuture.failed(t)
-                }
-              }.map(_ => (fileInfo, path))
+            uploadFn(fileInfo, part.entity.dataBytes)
           }
 
-        val uploadedF = uploaded.runWith(Sink.seq[(FileInfo, Path)])
+        val uploadedF: Future[Seq[T]] = uploaded.runWith(Sink.seq[T])
 
         onSuccess(uploadedF)
       }

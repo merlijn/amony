@@ -2,7 +2,9 @@ package nl.amony
 
 import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.serialization.jackson.JacksonObjectMapperProvider
-import akka.util.Timeout
+import akka.stream.{Materializer, SystemMaterializer}
+import akka.stream.scaladsl.{Source, StreamRefs}
+import akka.util.{ByteString, Timeout}
 import com.fasterxml.jackson.core.JsonEncoding
 import monix.eval.Task
 import monix.reactive.Consumer
@@ -10,13 +12,12 @@ import nl.amony.actor.Message
 import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.media.MediaLibProtocol._
 import nl.amony.actor.resources.{MediaScanner, ResourcesProtocol}
-import nl.amony.actor.resources.ResourcesProtocol.{GetThumbnail, GetVideo, GetVideoFragment, IOResponse, ResourceCommand}
+import nl.amony.actor.resources.ResourcesProtocol.{GetThumbnail, GetVideo, GetVideoFragment, IOResponse, ResourceCommand, Upload}
 import nl.amony.actor.user.UserProtocol.Authenticate
 import nl.amony.actor.util.ConvertNonStreamableVideos
 import nl.amony.lib.ffmpeg.FFMpeg
 import scribe.Logging
 
-import java.nio.file.Path
 import scala.concurrent.{ExecutionContext, Future}
 
 class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSystem[Message]) extends Logging {
@@ -24,6 +25,7 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
   import akka.actor.typed.scaladsl.AskPattern._
   implicit val scheduler            = system.scheduler
   implicit val ec: ExecutionContext = system.executionContext
+  implicit val mat: Materializer    = SystemMaterializer.get(system).materializer
   implicit val mScheduler           = monix.execution.Scheduler.Implicits.global
 
   // format: off
@@ -51,18 +53,10 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
 
   object modify {
 
-    def addMediaFromLocalFile(path: Path)(implicit timeout: Timeout): Future[Media] = {
-
-      scanner
-        .scanMedia(path.toAbsolutePath, None, config.media)
-        .runToFuture
-        .flatMap { media =>
-          // TODO this logic should move to the actor
-          query.getById(media.id).flatMap {
-            case None    => modify.upsertMedia(media)
-            case Some(_) => Future.failed(new IllegalStateException("Media with hash already exists"))
-          }
-        }
+    def uploadMedia(fileName: String, source: Source[ByteString, Any])(implicit timeout: Timeout): Future[Media] = {
+      system
+        .ask[Media](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref))
+        .flatMap { media => upsertMedia(media) }
     }
 
     def upsertMedia(media: Media)(implicit timeout: Timeout): Future[Media] =

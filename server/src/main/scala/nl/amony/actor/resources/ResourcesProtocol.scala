@@ -18,7 +18,7 @@ object ResourcesProtocol {
     def getContentRange(start: Long, end: Long): Source[ByteString, NotUsed]
   }
 
-  case class Upload(fileInfo: FileInfo, source: SourceRef[ByteString], sender: ActorRef[Boolean])
+  case class Upload(fileName: String, source: SourceRef[ByteString], sender: ActorRef[Media]) extends ResourceCommand
 
   case class CreateFragments(media: Media, overwrite: Boolean) extends ResourceCommand
   case class CreateFragment(media: Media, timeRange: (Long, Long), overwrite: Boolean) extends ResourceCommand

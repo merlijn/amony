@@ -39,8 +39,8 @@ object MainRouter {
       eventHandler   = MediaLibEventSourcing.apply
     )
 
-  private[actor] def resourceBehaviour(config: MediaLibConfig): Behavior[ResourceCommand] =
-    LocalResourcesHandler.apply(config)
+  private[actor] def resourceBehaviour(config: MediaLibConfig, scanner: MediaScanner): Behavior[ResourceCommand] =
+    LocalResourcesHandler.apply(config, scanner)
 
   def apply(config: AmonyConfig, scanner: MediaScanner): Behavior[Message] =
     Behaviors.setup { context =>
@@ -48,7 +48,7 @@ object MainRouter {
       implicit val mat = Materializer(context)
 
       val localIndexRef = LocalIndex.apply(config.media, context).toTyped[QueryMessage]
-      val resourceRef   = context.spawn(resourceBehaviour(config.media), "resources")
+      val resourceRef   = context.spawn(resourceBehaviour(config.media, scanner), "resources")
       val mediaRef      = context.spawn(mediaBehaviour(config.media, scanner, resourceRef), "medialib")
       val userRef       = context.spawn(userBehaviour(), "users")
 
