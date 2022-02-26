@@ -16,12 +16,12 @@ import java.nio.file.{Files, Path}
 
 class MediaScanner(appConfig: AmonyConfig) extends Logging {
 
-  def scanMedia(mediaPath: Path, hash: Option[String], config: MediaLibConfig): Task[Media] = {
+  private[resources] def scanMedia(mediaPath: Path, hash: Option[String]): Task[Media] = {
 
     FFMpeg
       .ffprobe(mediaPath, false, appConfig.ffprobeTimeout).map { case probe =>
 
-        val fileHash = hash.getOrElse(config.hashingAlgorithm.generateHash(mediaPath))
+        val fileHash = hash.getOrElse(appConfig.media.hashingAlgorithm.generateHash(mediaPath))
 
         val mainVideoStream =
           probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${mediaPath}"))
@@ -38,7 +38,7 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
         val timeStamp = mainVideoStream.durationMillis / 3
 
         val fileInfo = FileInfo(
-          relativePath     = config.mediaPath.relativize(mediaPath).toString,
+          relativePath     = appConfig.media.mediaPath.relativize(mediaPath).toString,
           hash             = fileHash,
           size             = fileAttributes.size(),
           creationTime     = fileAttributes.creationTime().toMillis,
@@ -51,7 +51,7 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
           (mainVideoStream.width, mainVideoStream.height)
         )
 
-        val fragmentLength = config.defaultFragmentLength.toMillis
+        val fragmentLength = appConfig.media.defaultFragmentLength.toMillis
 
         Media(
           id                 = fileHash,
@@ -71,14 +71,18 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
       persistedMedia: List[Media]
   )(implicit s: Scheduler, timeout: Timeout): (Observable[Media], Observable[Media]) = {
 
-    val files = FileUtil.walkDir(config.mediaPath)
-
     logger.info("Scanning directory for media...")
 
     // first calculate the hashes
     val filesWithHashes: List[(Path, String)] = Observable
-      .from(files)
+      .from(FileUtil.walkDir(config.mediaPath))
       .filter { file => config.filterFileName(file.getFileName.toString) }
+      .filterNot { file =>
+        val isEmpty = Files.size(file) == 0
+        if (isEmpty)
+          logger.warn(s"Encountered empty file: ${file.getFileName.toString}")
+        isEmpty
+      }
       .mapParallelUnordered(config.scanParallelFactor) { path =>
         Task {
           val hash = if (config.verifyExistingHashes) {
@@ -143,7 +147,7 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
 
             case None =>
               logger.info(s"Scanning new file: '${relativePath}'")
-              scanMedia(videoFile, Some(hash), config)
+              scanMedia(videoFile, Some(hash))
                 .map(m => Some(m))
                 .onErrorHandle { e =>
                   logger.warn(s"Failed to scan video: $videoFile", e)

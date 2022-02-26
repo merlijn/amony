@@ -6,7 +6,7 @@ import akka.stream.SourceRef
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import nl.amony.actor.Message
-import nl.amony.actor.media.MediaLibProtocol.{FileInfo, Media}
+import nl.amony.actor.media.MediaLibProtocol.Media
 
 object ResourcesProtocol {
 

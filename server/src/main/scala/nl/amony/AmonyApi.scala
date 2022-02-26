@@ -53,11 +53,10 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
 
   object modify {
 
-    def uploadMedia(fileName: String, source: Source[ByteString, Any])(implicit timeout: Timeout): Future[Media] = {
+    def uploadMedia(fileName: String, source: Source[ByteString, Any])(implicit timeout: Timeout): Future[Media] =
       system
         .ask[Media](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref))
         .flatMap { media => upsertMedia(media) }
-    }
 
     def upsertMedia(media: Media)(implicit timeout: Timeout): Future[Media] =
       system.ask[Boolean](ref => UpsertMedia(media, ref)).map(_ => media)
@@ -104,9 +103,8 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
 
   object users {
 
-    def login(username: String, password: String)(implicit timeout: Timeout): Future[Boolean] = {
+    def login(username: String, password: String)(implicit timeout: Timeout): Future[Boolean] =
       system.ask[Boolean](ref => Authenticate(username, password, ref))
-    }
   }
 
   object admin {

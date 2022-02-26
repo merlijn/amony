@@ -30,24 +30,21 @@ object LocalResourcesHandler extends Logging {
 
   def apply(config: MediaLibConfig, scanner: MediaScanner): Behavior[ResourceCommand] = {
 
-    def thumbnailPath(mediaId: String, timestamp: Long, quality: Int): Path =
-      config.resourcePath.resolve(s"${mediaId}-${timestamp}_${quality}p.webp")
-
-    def fragmentPath(mediaId: String, range: (Long, Long), quality: Int): Path =
-      config.resourcePath.resolve(s"${mediaId}-${range._1}-${range._2}_${quality}p.mp4")
-
     Behaviors.receive { (context, msg) =>
+
+      implicit val mat = SystemMaterializer.get(context.system).materializer
+
       msg match {
 
         case GetThumbnail(media, timestamp, quality, sender) =>
 
-          val path = thumbnailPath(media.id, timestamp, quality)
+          val path = config.resourcePath.resolve(s"${media.id}-${timestamp}_${quality}p.webp")
           sender.tell(LocalFileIOResponse(path))
           Behaviors.same
 
         case GetVideoFragment(media, timeRange, quality, sender) =>
 
-          val path = fragmentPath(media.id, timeRange, quality)
+          val path = config.resourcePath.resolve(s"${media.id}-${timeRange._1}-${timeRange._2}_${quality}p.mp4")
           sender.tell(LocalFileIOResponse(path))
           Behaviors.same
 
@@ -75,9 +72,9 @@ object LocalResourcesHandler extends Logging {
 
           logger.info(s"Received upload request for: $fileName")
 
-          Files.createDirectories(config.uploadPath)
           val path = config.uploadPath.resolve(fileName).toAbsolutePath.normalize()
-          implicit val mat = SystemMaterializer.get(context.system).materializer
+
+          Files.createDirectories(config.uploadPath)
           Files.createFile(path)
 
           sourceRef
@@ -85,7 +82,7 @@ object LocalResourcesHandler extends Logging {
             .flatMap { ioResult =>
               ioResult.status match {
                 case Success(_) =>
-                  scanner.scanMedia(path, None, config).runToFuture
+                  scanner.scanMedia(path, None).runToFuture
                 case Failure(t) =>
                   logger.info(s"Upload failed")
                   Files.delete(path)

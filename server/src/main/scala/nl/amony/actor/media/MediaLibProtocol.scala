@@ -79,7 +79,6 @@ object MediaLibProtocol {
       comment: Option[String],
       fileInfo: FileInfo,
       videoInfo: VideoInfo,
-      // TODO remove
       thumbnailTimestamp: Long,
       fragments: List[Fragment],
       tags: Set[String]
