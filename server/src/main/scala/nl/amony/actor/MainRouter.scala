@@ -31,13 +31,15 @@ object MainRouter {
       eventHandler   = UserEventSourcing.apply
     )
 
-  private[actor] def mediaBehaviour(config: MediaLibConfig, scanner: MediaScanner, resourceRef: ActorRef[ResourceCommand]): EventSourcedBehavior[MediaCommand, Event, State] =
-    EventSourcedBehavior[MediaCommand, Event, State](
-      persistenceId  = PersistenceId.ofUniqueId("mediaLib"),
-      emptyState     = State(Map.empty),
-      commandHandler = MediaLibCommandHandler.apply(config, scanner, resourceRef),
-      eventHandler   = MediaLibEventSourcing.apply
-    )
+  private[actor] def mediaBehaviour(config: MediaLibConfig, resourceRef: ActorRef[ResourceCommand]): Behavior[MediaCommand] =
+    Behaviors.setup[MediaCommand] { context =>
+      EventSourcedBehavior[MediaCommand, Event, State](
+        persistenceId = PersistenceId.ofUniqueId("mediaLib"),
+        emptyState = State(Map.empty),
+        commandHandler = MediaLibCommandHandler(context, config, resourceRef),
+        eventHandler = MediaLibEventSourcing.apply
+      )
+    }
 
   private[actor] def resourceBehaviour(config: MediaLibConfig, scanner: MediaScanner): Behavior[ResourceCommand] =
     LocalResourcesHandler.apply(config, scanner)
@@ -49,7 +51,7 @@ object MainRouter {
 
       val localIndexRef = LocalIndex.apply(config.media, context).toTyped[QueryMessage]
       val resourceRef   = context.spawn(resourceBehaviour(config.media, scanner), "resources")
-      val mediaRef      = context.spawn(mediaBehaviour(config.media, scanner, resourceRef), "medialib")
+      val mediaRef      = context.spawn(mediaBehaviour(config.media, resourceRef), "medialib")
       val userRef       = context.spawn(userBehaviour(), "users")
 
       // insert the admin user on startup

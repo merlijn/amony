@@ -21,7 +21,7 @@ object ResourcesProtocol {
   case class Upload(fileName: String, source: SourceRef[ByteString], sender: ActorRef[Media]) extends ResourceCommand
 
   case class CreateFragments(media: Media, overwrite: Boolean) extends ResourceCommand
-  case class CreateFragment(media: Media, timeRange: (Long, Long), overwrite: Boolean) extends ResourceCommand
+  case class CreateFragment(media: Media, timeRange: (Long, Long), overwrite: Boolean, sender: ActorRef[Boolean]) extends ResourceCommand
   case class DeleteFragment(media: Media, timeRange: (Long, Long)) extends ResourceCommand
 
   case class GetThumbnail(media: Media, timestamp: Long, quality: Int, sender: ActorRef[IOResponse]) extends ResourceCommand

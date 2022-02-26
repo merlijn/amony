@@ -1,6 +1,7 @@
 package nl.amony.actor.media
 
 import akka.actor.typed.ActorRef
+import akka.actor.typed.scaladsl.ActorContext
 import akka.persistence.typed.scaladsl.Effect
 import better.files.File
 import nl.amony.MediaLibConfig
@@ -8,17 +9,24 @@ import nl.amony.actor.media.MediaLibEventSourcing._
 import nl.amony.actor.media.MediaLibProtocol._
 import nl.amony.actor.resources.{MediaScanner, ResourcesProtocol}
 import nl.amony.actor.resources.ResourcesProtocol.ResourceCommand
+import akka.actor.typed.scaladsl.AskPattern._
+import akka.util.Timeout
 import scribe.Logging
 
 import java.awt.Desktop
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
 
 object MediaLibCommandHandler extends Logging {
 
-  implicit val scheduler = monix.execution.Scheduler.Implicits.global
+  implicit val monixScheduler = monix.execution.Scheduler.Implicits.global
+  implicit val askTimeout: Timeout = Timeout(5.seconds)
 
-  def apply(config: MediaLibConfig, scanner: MediaScanner, resourceRef: ActorRef[ResourceCommand])(state: State, cmd: MediaCommand): Effect[Event, State] = {
+  def apply(actorContext: ActorContext[MediaCommand], config: MediaLibConfig, resourceRef: ActorRef[ResourceCommand])(state: State, cmd: MediaCommand): Effect[Event, State] = {
 
     logger.debug(s"Received command: $cmd")
+
+    implicit val actorScheduler = actorContext.system.scheduler
 
     def requireMedia[T](mediaId: String, sender: ActorRef[Either[ErrorResponse, T]])(
         effect: Media => Effect[Event, State]
@@ -124,8 +132,10 @@ object MediaLibCommandHandler extends Logging {
                   .persist(FragmentRangeUpdated(id, idx, start, end))
                   .thenRun { (s: State) =>
                     resourceRef.tell(ResourcesProtocol.DeleteFragment(media, (oldFragment.fromTimestamp, oldFragment.toTimestamp)))
-                    resourceRef.tell(ResourcesProtocol.CreateFragment(media, (start, end), false))
-                  }.thenReply(sender)(s => Right(s.media(id)))
+                    resourceRef.ask[Boolean](ref => ResourcesProtocol.CreateFragment(media, (start, end), false, ref)).foreach {
+                      _ => sender.tell(Right(s.media(id)))
+                    }
+                  }
             }
         }
 
@@ -138,8 +148,11 @@ object MediaLibCommandHandler extends Logging {
             case Right(_)    =>
               Effect
                 .persist(FragmentAdded(id, start, end))
-                .thenRun((_: State) => resourceRef.tell(ResourcesProtocol.CreateFragment(media, (start, end), false)))
-                .thenReply(sender)(s => Right(s.media(id)))
+                .thenRun((s: State) =>
+                  resourceRef.ask[Boolean](ref => ResourcesProtocol.CreateFragment(media, (start, end), false, ref)).foreach {
+                    _ => sender.tell(Right(s.media(id)))
+                  }
+                )
           }
         }
 

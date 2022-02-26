@@ -53,10 +53,12 @@ object LocalResourcesHandler extends Logging {
           sender.tell(LocalFileIOResponse(path))
           Behaviors.same
 
-        case CreateFragment(media, range, overwrite) =>
+        case CreateFragment(media, range, overwrite, sender) =>
 
           val (start, end) = range
-          LocalResourcesTasks.createPreview(config, media, start, end, overwrite).executeAsync.runAsyncAndForget
+          LocalResourcesTasks.createPreview(config, media, start, end, overwrite).executeAsync.runAsync {
+            result => sender.tell(result.isRight)
+          }
           Behaviors.same
 
         case CreateFragments(media, overwrite) =>
