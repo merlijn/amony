@@ -14,9 +14,11 @@ object LocalResourcesTasks extends Logging {
 
   private[resources] def createPreview(config: MediaLibConfig,
                                        media: Media,
-                                       from: Long,
-                                       to: Long,
+                                       range: (Long, Long),
                                        overwrite: Boolean = false): Task[Unit] = {
+
+    val (from, to) = range
+
     val transcodeList =
       if (media.height < config.previews.transcode.map(_.scaleHeight).min)
         List(TranscodeSettings("mp4", media.height, 23))
@@ -24,12 +26,11 @@ object LocalResourcesTasks extends Logging {
         config.previews.transcode.filterNot(_.scaleHeight > media.height)
 
     def writeFragment(input: Path, height: Int, crf: Int): Unit = {
-      val output = config.resourcePath.resolve(s"${media.id}-$from-${to}_${height}p.mp4")
+      val output = config.resourcePath.resolve(s"${media.id}-${from}-${to}_${height}p.mp4")
       if (!Files.exists(output) || overwrite)
         FFMpeg.transcodeToMp4(
           inputFile   = input,
-          from        = from,
-          to          = to,
+          range       = range,
           outputFile  = Some(output),
           quality     = crf,
           scaleHeight = Some(height)
@@ -59,7 +60,7 @@ object LocalResourcesTasks extends Logging {
   private[resources] def createFragments(config: MediaLibConfig, media: Media, overwrite: Boolean = false): Task[Unit] = {
     Observable
       .fromIterable(media.fragments)
-      .consumeWith(Consumer.foreachTask(f => createPreview(config, media, f.fromTimestamp, f.toTimestamp, overwrite)))
+      .consumeWith(Consumer.foreachTask(f => createPreview(config, media, (f.fromTimestamp, f.toTimestamp), overwrite)))
   }
 
   def deleteVideoFragment(mediaLibConfig: MediaLibConfig,

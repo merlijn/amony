@@ -30,9 +30,6 @@ trait JsonCodecs {
   implicit val mediaEncoder: Encoder[MediaLibProtocol.Media] =
     deriveEncoder[Video].contramapObject[MediaLibProtocol.Media](toWebModel)
 
-  implicit val tagEncoder: Encoder[QueryProtocol.Playlist] =
-    deriveEncoder[Playlist].contramapObject[QueryProtocol.Playlist](c => Playlist(c.id, c.title))
-
   implicit val searchResultEncoder: Encoder[QueryProtocol.SearchResult] =
     deriveEncoder[SearchResult].contramapObject[QueryProtocol.SearchResult](result =>
       SearchResult(result.offset, result.total, result.items.map(m => toWebModel(m)))

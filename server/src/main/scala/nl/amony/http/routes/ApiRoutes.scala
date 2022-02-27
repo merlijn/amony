@@ -72,10 +72,6 @@ trait ApiRoutes extends Logging with IdentityRoutes {
         get {
           complete(api.query.getTags().map(_.asJson))
         }
-      } ~ path("playlists") {
-        get {
-          complete(api.query.getPlaylists().map(_.map(_.asJson)))
-        }
       } ~ pathPrefix("media" / Segment) { id =>
         pathEnd {
           get {

@@ -42,9 +42,9 @@ object LocalResourcesHandler extends Logging {
           sender.tell(LocalFileIOResponse(path))
           Behaviors.same
 
-        case GetVideoFragment(media, timeRange, quality, sender) =>
+        case GetVideoFragment(media, range, quality, sender) =>
 
-          val path = config.resourcePath.resolve(s"${media.id}-${timeRange._1}-${timeRange._2}_${quality}p.mp4")
+          val path = config.resourcePath.resolve(s"${media.id}-${range._1}-${range._2}_${quality}p.mp4")
           sender.tell(LocalFileIOResponse(path))
           Behaviors.same
 
@@ -55,8 +55,7 @@ object LocalResourcesHandler extends Logging {
 
         case CreateFragment(media, range, overwrite, sender) =>
 
-          val (start, end) = range
-          LocalResourcesTasks.createPreview(config, media, start, end, overwrite).executeAsync.runAsync {
+          LocalResourcesTasks.createPreview(config, media, range, overwrite).executeAsync.runAsync {
             result => sender.tell(result.isRight)
           }
           Behaviors.same

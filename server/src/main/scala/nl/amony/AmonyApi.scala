@@ -41,9 +41,6 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
                minRes: Option[Int], duration: Option[(Long,Long)], sort: Sort)(implicit timeout: Timeout): Future[SearchResult] =
       system.ask[SearchResult](ref => Search(Query(q, offset, size, tags, playlist, minRes, duration, Some(sort)), ref))
 
-    def getPlaylists()(implicit timeout: Timeout): Future[List[Playlist]] =
-      system.ask[List[Playlist]](ref => GetPlaylists(ref))
-
     def getTags()(implicit timeout: Timeout): Future[Set[String]] =
       system.ask[Set[String]](ref => GetTags(ref))
 
