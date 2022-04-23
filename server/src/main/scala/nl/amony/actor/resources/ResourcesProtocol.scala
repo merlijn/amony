@@ -24,7 +24,7 @@ object ResourcesProtocol {
   case class CreateFragment(media: Media, timeRange: (Long, Long), overwrite: Boolean, sender: ActorRef[Boolean]) extends ResourceCommand
   case class DeleteFragment(media: Media, timeRange: (Long, Long)) extends ResourceCommand
 
-  case class GetThumbnail(media: Media, timestamp: Long, quality: Int, sender: ActorRef[IOResponse]) extends ResourceCommand
-  case class GetVideoFragment(media: Media, timeRange: (Long, Long), quality: Int, sender: ActorRef[IOResponse]) extends ResourceCommand
+  case class GetThumbnail(mediaId: String, timestamp: Long, quality: Int, sender: ActorRef[IOResponse]) extends ResourceCommand
+  case class GetVideoFragment(mediaId: String, timeRange: (Long, Long), quality: Int, sender: ActorRef[IOResponse]) extends ResourceCommand
   case class GetVideo(media: Media, sender: ActorRef[IOResponse]) extends ResourceCommand
 }

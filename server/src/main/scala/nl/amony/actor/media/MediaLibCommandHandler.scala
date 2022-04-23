@@ -4,7 +4,7 @@ import akka.actor.typed.ActorRef
 import akka.actor.typed.scaladsl.ActorContext
 import akka.persistence.typed.scaladsl.Effect
 import better.files.File
-import nl.amony.MediaLibConfig
+import nl.amony.{DeleteFile, MediaLibConfig, MoveToTrash}
 import nl.amony.actor.media.MediaLibEventSourcing._
 import nl.amony.actor.media.MediaLibProtocol._
 import nl.amony.actor.resources.{MediaScanner, ResourcesProtocol}
@@ -14,19 +14,18 @@ import akka.util.Timeout
 import scribe.Logging
 
 import java.awt.Desktop
-import scala.concurrent.Await
+import java.nio.file.Files
 import scala.concurrent.duration.DurationInt
 
 object MediaLibCommandHandler extends Logging {
-
-  implicit val monixScheduler = monix.execution.Scheduler.Implicits.global
-  implicit val askTimeout: Timeout = Timeout(5.seconds)
 
   def apply(actorContext: ActorContext[MediaCommand], config: MediaLibConfig, resourceRef: ActorRef[ResourceCommand])(state: State, cmd: MediaCommand): Effect[Event, State] = {
 
     logger.debug(s"Received command: $cmd")
 
+    implicit val askTimeout: Timeout = Timeout(5.seconds)
     implicit val actorScheduler = actorContext.system.scheduler
+    implicit val ec = actorContext.executionContext
 
     def requireMedia[T](mediaId: String, sender: ActorRef[Either[ErrorResponse, T]])(
         effect: Media => Effect[Event, State]
@@ -89,8 +88,14 @@ object MediaLibCommandHandler extends Logging {
         Effect
           .persist(MediaRemoved(mediaId))
           .thenRun((s: State) => {
-            if (deleteFile && File(path).exists)
-              Desktop.getDesktop().moveToTrash(path.toFile());
+            if (deleteFile && File(path).exists) {
+              config.deleteMedia match {
+                case DeleteFile =>
+                  Files.delete(path)
+                case MoveToTrash =>
+                  Desktop.getDesktop().moveToTrash(path.toFile())
+              }
+            };
           })
           .thenReply(sender)(_ => true)
 
@@ -122,7 +127,9 @@ object MediaLibCommandHandler extends Logging {
           }
           else
             verifyFragmentRange(start, end, media.videoInfo.duration) match {
-              case Left(error) => Effect.reply(sender)(Left(InvalidCommand(error)))
+              case Left(error) =>
+                Effect.reply(sender)(Left(InvalidCommand(error)))
+
               case Right(_)    =>
 
                 logger.info(s"Updating fragment $id:$idx to $start:$end")
@@ -144,7 +151,8 @@ object MediaLibCommandHandler extends Logging {
           logger.info(s"Adding fragment for $id from $start to $end")
 
           verifyFragmentRange(start, end, media.videoInfo.duration) match {
-            case Left(error) => Effect.reply(sender)(Left(InvalidCommand(error)))
+            case Left(error) =>
+              Effect.reply(sender)(Left(InvalidCommand(error)))
             case Right(_)    =>
               Effect
                 .persist(FragmentAdded(id, start, end))

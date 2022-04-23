@@ -111,10 +111,13 @@ const ListView = (props: ListProps) => {
 
               <div key="resolution" className="list-cell list-resolution">
                 <div className = "cell-wrapper">
-                <div className = "media-actions">
-                  <IoCutSharp className = "fragments-action" onClick = { () => history.push(`/editor/${v.id}`) } />
-                  <AiOutlineDelete className = "delete-action" />
-                </div>
+                { 
+                  Api.session().isAdmin() && 
+                    <div className = "media-actions">
+                      <IoCutSharp className = "fragments-action" onClick = { () => history.push(`/editor/${v.id}`) } />
+                      <AiOutlineDelete className = "delete-action" />
+                    </div> 
+                }
                 { `${v.height}p` }
                 </div>
                 

@@ -8,7 +8,7 @@ object UserCommandHandler {
 
   case class UserState(users: Map[String, User])
 
-  def apply(hashAlgorithm: String => String)(state: UserState, cmd: UserCommand): Effect[UserEvent, UserState] = {
+  def apply(passwordHasher: String => String)(state: UserState, cmd: UserCommand): Effect[UserEvent, UserState] = {
 
     def getByEmail(email: String): Option[User] = state.users.values.find(_.email == email)
 
@@ -17,7 +17,7 @@ object UserCommandHandler {
 
         getByEmail(email) match {
           case None =>
-            val hashedPassword = hashAlgorithm(password)
+            val hashedPassword = passwordHasher(password)
             val uuid = java.util.UUID.randomUUID().toString
 
             Effect
@@ -32,7 +32,7 @@ object UserCommandHandler {
 
         val authenticationResult =
           getByEmail(email)
-            .map(_.passwordHash == hashAlgorithm(password))
+            .map(_.passwordHash == passwordHasher(password))
             .getOrElse(false)
 
         Effect.reply(sender)(authenticationResult)

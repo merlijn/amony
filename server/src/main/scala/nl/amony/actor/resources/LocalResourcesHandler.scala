@@ -9,9 +9,7 @@ import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
 import nl.amony.MediaLibConfig
 import nl.amony.actor.JsonSerializable
-import nl.amony.actor.media.MediaLibProtocol.Media
-import nl.amony.actor.resources.ResourcesProtocol.{CreateFragment, CreateFragments, DeleteFragment, GetThumbnail, GetVideo, GetVideoFragment, IOResponse, ResourceCommand, Upload}
-import nl.amony.lib.ffmpeg.FFMpeg
+import nl.amony.actor.resources.ResourcesProtocol._
 import scribe.Logging
 
 import java.nio.file.{Files, Path}
@@ -36,15 +34,15 @@ object LocalResourcesHandler extends Logging {
 
       msg match {
 
-        case GetThumbnail(media, timestamp, quality, sender) =>
+        case GetThumbnail(mediaId, timestamp, quality, sender) =>
 
-          val path = config.resourcePath.resolve(s"${media.id}-${timestamp}_${quality}p.webp")
+          val path = config.resourcePath.resolve(s"${mediaId}-${timestamp}_${quality}p.webp")
           sender.tell(LocalFileIOResponse(path))
           Behaviors.same
 
-        case GetVideoFragment(media, range, quality, sender) =>
+        case GetVideoFragment(mediaId, range, quality, sender) =>
 
-          val path = config.resourcePath.resolve(s"${media.id}-${range._1}-${range._2}_${quality}p.mp4")
+          val path = config.resourcePath.resolve(s"${mediaId}-${range._1}-${range._2}_${quality}p.mp4")
           sender.tell(LocalFileIOResponse(path))
           Behaviors.same
 
@@ -71,7 +69,7 @@ object LocalResourcesHandler extends Logging {
 
         case Upload(fileName, sourceRef, sender) =>
 
-          logger.info(s"Received upload request for: $fileName")
+          logger.info(s"Processing upload request: $fileName")
 
           val path = config.uploadPath.resolve(fileName).toAbsolutePath.normalize()
 
@@ -85,7 +83,7 @@ object LocalResourcesHandler extends Logging {
                 case Success(_) =>
                   scanner.scanMedia(path, None).runToFuture
                 case Failure(t) =>
-                  logger.info(s"Upload failed")
+                  logger.warn(s"Upload failed", t)
                   Files.delete(path)
                   FastFuture.failed(t)
               }

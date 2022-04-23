@@ -92,10 +92,10 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
       getResource(id)((media, ref) => GetVideo(media, ref))
 
     def getVideoFragment(id: String, start: Long, end: Long, quality: Int)(implicit timeout: Timeout): Future[Option[IOResponse]] =
-      getResource(id)((media, ref) => GetVideoFragment(media, (start, end), quality, ref))
+      getResource(id)((media, ref) => GetVideoFragment(media.id, (start, end), quality, ref))
 
     def getThumbnail(id: String, quality: Int, timestamp: Option[Long])(implicit timeout: Timeout): Future[Option[IOResponse]] =
-      getResource(id)((media, ref) => GetThumbnail(media, timestamp.getOrElse(media.fragments.head.fromTimestamp), quality, ref))
+      getResource(id)((media, ref) => GetThumbnail(media.id, timestamp.getOrElse(media.fragments.head.fromTimestamp), quality, ref))
   }
 
   object users {

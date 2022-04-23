@@ -21,6 +21,7 @@ case class AmonyConfig(
 case class MediaLibConfig(
   path: Path,
   indexPath: Path,
+  deleteMedia: DeleteMediaOption,
   relativeUploadPath: Path,
   scanParallelFactor: Int,
   verifyExistingHashes: Boolean,
@@ -37,9 +38,7 @@ case class MediaLibConfig(
   def filterFileName(fileName: String): Boolean = fileName.endsWith(".mp4") && !fileName.startsWith(".")
 }
 
-case class PreviewConfig(
-  transcode: List[TranscodeSettings]
-)
+case class PreviewConfig(transcode: List[TranscodeSettings])
 
 case class UserConfig(
   adminUsername: String,
@@ -51,6 +50,10 @@ case class TranscodeSettings(
   scaleHeight: Int,
   crf: Int
 )
+
+sealed trait DeleteMediaOption
+case object DeleteFile extends DeleteMediaOption
+case object MoveToTrash extends DeleteMediaOption
 
 sealed trait HashingAlgorithm {
   def generateHash(path: Path): String
@@ -101,6 +104,7 @@ trait AppConfig extends Logging {
   import pureconfig.generic.semiauto.deriveEnumerationReader
 
   implicit val hashingAlgorithmReader: ConfigReader[HashingAlgorithm] = deriveEnumerationReader[HashingAlgorithm]
+  implicit val deleteMediaOption: ConfigReader[DeleteMediaOption] = deriveEnumerationReader[DeleteMediaOption]
 
   val config       = ConfigFactory.load()
   val configSource = ConfigSource.fromConfig(config)
