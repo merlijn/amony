@@ -9,10 +9,9 @@ import { MediaSelection, SearchResult, Video, VideoMeta } from "../api/Model"
 import { dateMillisToString, formatByteSize } from "../api/Util"
 import './ListView.scss'
 import Scrollable from "./common/Scrollable"
-import TagEditor from "./common/TagEditor"
-import { useUrlParam } from "../api/ReactUtils"
 import { useSortParam } from "../api/Constants"
 import { useHistory } from "react-router-dom"
+import TagsBar from "./common/TagsBar"
 
 type ListProps = {
   selection: MediaSelection
@@ -130,6 +129,23 @@ const ListView = (props: ListProps) => {
   );
 }
 
+const TagsCell = (props: {video: Video }) => {
+  const [tags, setTags] = useState(props.video.meta.tags)
+  const isAdmin = Api.session().isAdmin()
+
+  const updateTags = (newTags: Array<string>) => {
+    const meta: VideoMeta = { ...props.video.meta, tags: newTags }
+    Api.updateVideoMetaData(props.video.id, meta).then(() =>  {
+      setTags(newTags)
+    })
+  }
+  return <TagsBar 
+            tags = { tags }
+            onTagsUpdated = { updateTags }
+            showAddTagButton = {isAdmin} 
+            showDeleteButton = {isAdmin} />
+}
+
 const TitleCell = (props: { video: Video} ) => {
 
   const [title, setTitle] = useState(props.video.meta.title)
@@ -175,62 +191,6 @@ const TitleCell = (props: { video: Video} ) => {
       </div>
     </div>
   );
-}
-
-
-const TagsCell = (props: { video: Video }) => {
-
-  const [tags, setTags] = useState(props.video.meta.tags)
-  const [showNewTag, setShowNewTag] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const updateTags = (newTags: Array<string>) => {
-    const meta: VideoMeta = { ...props.video.meta, tags: newTags }
-    Api.updateVideoMetaData(props.video.id, meta).then(() =>  {
-      setTags(newTags)
-      setShowNewTag(false)
-    })
-  }
-
-  useEffect(() => {
-    if (showNewTag)
-      inputRef?.current?.focus()
-  }, [showNewTag]);
-
-  return(
-    <div key="tags" className="list-cell list-tags">
-      <div className = "cell-wrapper">
-        <TagEditor 
-          key              = "tag-editor" 
-          showAddButton    = { false }
-          showDeleteButton = { Api.session().isAdmin() }
-          tags             = { tags } 
-          callBack         = { (newTags) => { updateTags(newTags) } } />
-        { (!showNewTag && Api.session().isAdmin()) && <FiPlusCircle onClick = { (e) => setShowNewTag(true) } className="add-tag-action" /> }
-        <span 
-          contentEditable
-          key        = "new-tag"
-          className  = "new-tag"
-          ref        = { inputRef } 
-          style      = { { visibility: showNewTag ? "visible" : "hidden" } }
-          onBlur     = { (e) => { 
-            e.currentTarget.innerText = ""
-            setShowNewTag(false) } 
-          } 
-          onKeyPress = { (e) => {
-            if (e.key === "Enter") {
-              e.preventDefault()
-              const newTag = e.currentTarget.innerText
-              e.currentTarget.innerText = ""
-              updateTags([...tags, newTag.trim()])
-            }
-            if (e.key === "Escape") {
-              e.currentTarget.blur();
-            }
-          }
-        } ></span>
-      </div>
-    </div>);
 }
 
 export default ListView
