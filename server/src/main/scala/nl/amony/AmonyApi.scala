@@ -13,11 +13,13 @@ import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.media.MediaLibProtocol._
 import nl.amony.actor.resources.{MediaScanner, ResourcesProtocol}
 import nl.amony.actor.resources.ResourcesProtocol.{GetThumbnail, GetVideo, GetVideoFragment, IOResponse, ResourceCommand, Upload}
-import nl.amony.actor.user.UserProtocol.{Authenticate, Authentication, AuthenticationResponse, InvalidCredentials}
+import nl.amony.actor.user.UserProtocol.{Authenticate, Authentication, AuthenticationResponse, InvalidCredentials, UpsertUser}
 import nl.amony.actor.util.ConvertNonStreamableVideos
 import nl.amony.lib.ffmpeg.FFMpeg
 import scribe.Logging
 
+import java.io.ByteArrayOutputStream
+import java.nio.charset.Charset
 import scala.concurrent.{ExecutionContext, Future}
 
 class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSystem[Message]) extends Logging {
@@ -99,6 +101,10 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
   }
 
   object users {
+
+    def direct_createUser(userName: String, password: String)(implicit timeout: Timeout) = {
+      system.tell(UpsertUser(userName, password, system.ignoreRef))
+    }
 
     def login(username: String, password: String)(implicit timeout: Timeout): Future[AuthenticationResponse] =
       system.ask[AuthenticationResponse](ref => Authenticate(username, password, ref))
@@ -184,14 +190,17 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
       }
     }
 
-    val objectMapper = JacksonObjectMapperProvider.get(system).getOrCreate("media-export", None)
+    def exportLibrary()(implicit timeout: Timeout): Future[String] = {
 
-    def exportLibrary()(implicit timeout: Timeout): Unit = {
-
+      val objectMapper = JacksonObjectMapperProvider.get(system).getOrCreate("media-export", None)
       val file = config.media.indexPath.resolve("export.json").toFile
 
-      query.getAll().foreach { medias =>
+      query.getAll().map { medias =>
         objectMapper.createGenerator(file, JsonEncoding.UTF8).writeObject(medias)
+
+        val out = new ByteArrayOutputStream()
+        objectMapper.createGenerator(out, JsonEncoding.UTF8).useDefaultPrettyPrinter().writeObject(medias)
+        out.toString()
       }
     }
 

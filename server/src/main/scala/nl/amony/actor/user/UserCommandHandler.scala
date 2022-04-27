@@ -22,11 +22,11 @@ object UserCommandHandler {
 
             Effect
               .persist(UserAdded(uuid, email, hashedPassword))
-              .thenReply(sender)(_ => true)
+              .thenReply(sender)(_ => User(uuid, email, hashedPassword))
 
-          case Some(_) =>
+          case Some(user) =>
 
-            Effect.reply(sender)(false)
+            Effect.reply(sender)(user)
         }
       case Authenticate(email, password, sender) =>
 

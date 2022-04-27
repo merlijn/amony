@@ -83,7 +83,7 @@ object HttpDirectives extends Logging {
           otherCandidates :+ merged
         }
 
-      // at this point ranges is garuanteed to be of size > 1
+      // at this point ranges is guaranteed to be of size > 1
       def multipartRanges(ranges: Seq[ByteRange]): Multipart.ByteRanges = {
 
         val iRanges: Seq[IndexRange] = ranges.map(toIndexRange)

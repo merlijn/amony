@@ -1,6 +1,7 @@
 package nl.amony
 
 import akka.actor.typed.{ActorSystem, Behavior}
+import akka.util.Timeout
 import nl.amony.actor.resources.MediaScanner
 import nl.amony.actor.{MainRouter, Message}
 import nl.amony.http.WebServer
@@ -21,7 +22,10 @@ object App extends AppConfig with Logging {
 
     val api = new AmonyApi(appConfig, scanner, system)
 
-    api.admin.scanLibrary()(10.seconds)
+    implicit val timeout: Timeout = Timeout(10.seconds)
+
+    api.users.direct_createUser(appConfig.users.adminUsername, appConfig.users.adminPassword)
+    api.admin.scanLibrary()(timeout.duration)
 
 //    probeAll(api)(system.executionContext)
 

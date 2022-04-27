@@ -16,8 +16,8 @@ trait AdminRoutes {
       api.admin.generateThumbnailPreviews()
       complete(StatusCodes.OK)
     } ~ (path("export-to-file") & post) {
-      api.admin.exportLibrary()
-      complete(StatusCodes.OK)
+      val json = api.admin.exportLibrary()
+      complete(StatusCodes.OK, json)
     } ~ (path("verify-hashes") & post) {
       api.admin.verifyHashes()
       complete(StatusCodes.OK)
