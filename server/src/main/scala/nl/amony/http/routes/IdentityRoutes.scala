@@ -7,11 +7,15 @@ import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
 import io.circe.generic.semiauto.deriveCodec
 import akka.http.scaladsl.model.headers.HttpCookie
-import nl.amony.http.util.Auth
+import nl.amony.actor.user.UserProtocol.{Authentication, InvalidCredentials}
+import nl.amony.http.util.AuthenticationTokenHelper
+import nl.amony.http.util.HttpDirectives.postWithData
 
 trait IdentityRoutes { 
 
   self: RouteDeps =>
+
+  def tokenHelper(): AuthenticationTokenHelper
 
   case class Credentials(username: String, password: String)
 
@@ -19,14 +23,14 @@ trait IdentityRoutes {
 
   val identityRoutes =
     pathPrefix("api" / "identity") {
-      (path("login") & post & entity(as[Credentials])) { credentials =>
+      (path("login") & postWithData[Credentials]) { credentials =>
 
         onSuccess(api.users.login(credentials.username, credentials.password)) {
-          case true =>
-            val cookie = HttpCookie("session", Auth.createToken(), path = Some("/"))
-            setCookie(cookie) { complete("OK") }
-          case false =>
+          case InvalidCredentials     =>
             complete(StatusCodes.BadRequest)
+          case Authentication(userId) =>
+            val cookie = HttpCookie("session", tokenHelper.createToken(userId), path = Some("/"))
+            setCookie(cookie) { complete("OK") }
         }
 
       } ~ (path("logout") & post) {

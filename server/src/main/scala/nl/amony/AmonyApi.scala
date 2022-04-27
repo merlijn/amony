@@ -13,7 +13,7 @@ import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.media.MediaLibProtocol._
 import nl.amony.actor.resources.{MediaScanner, ResourcesProtocol}
 import nl.amony.actor.resources.ResourcesProtocol.{GetThumbnail, GetVideo, GetVideoFragment, IOResponse, ResourceCommand, Upload}
-import nl.amony.actor.user.UserProtocol.Authenticate
+import nl.amony.actor.user.UserProtocol.{Authenticate, Authentication, AuthenticationResponse, InvalidCredentials}
 import nl.amony.actor.util.ConvertNonStreamableVideos
 import nl.amony.lib.ffmpeg.FFMpeg
 import scribe.Logging
@@ -64,11 +64,11 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
     def updateMetaData(id: String, title: Option[String], comment: Option[String], tags: List[String])(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
       system.ask[Either[ErrorResponse, Media]](ref => UpdateMetaData(id, title, comment, tags.toSet, ref))
 
-    def addFragment(id: String, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
-      system.ask[Either[ErrorResponse, Media]](ref => AddFragment(id, from, to, ref))
+    def addFragment(mediaId: String, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+      system.ask[Either[ErrorResponse, Media]](ref => AddFragment(mediaId, from, to, ref))
 
-    def updateFragmentRange(id: String, idx: Int, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
-      system.ask[Either[ErrorResponse, Media]](ref => UpdateFragmentRange(id, idx, from, to, ref))
+    def updateFragmentRange(mediaId: String, idx: Int, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+      system.ask[Either[ErrorResponse, Media]](ref => UpdateFragmentRange(mediaId, idx, from, to, ref))
 
     def updateFragmentTags(id: String, idx: Int, tags: List[String])(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
       system.ask[Either[ErrorResponse, Media]](ref => UpdateFragmentTags(id, idx, tags, ref))
@@ -100,8 +100,8 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
 
   object users {
 
-    def login(username: String, password: String)(implicit timeout: Timeout): Future[Boolean] =
-      system.ask[Boolean](ref => Authenticate(username, password, ref))
+    def login(username: String, password: String)(implicit timeout: Timeout): Future[AuthenticationResponse] =
+      system.ask[AuthenticationResponse](ref => Authenticate(username, password, ref))
   }
 
   object admin {

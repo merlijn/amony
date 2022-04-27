@@ -5,7 +5,7 @@ import akka.http.scaladsl.ConnectionContext
 import akka.http.scaladsl.Http
 import better.files.File
 import nl.amony.http.routes.{AdminRoutes, ApiRoutes, IdentityRoutes, ResourceRoutes}
-import nl.amony.http.util.PemReader
+import nl.amony.http.util.{AuthenticationTokenHelper, PemReader}
 import scribe.Logging
 import akka.http.scaladsl.server.Directives._
 import nl.amony.{AmonyApi, WebServerConfig}
@@ -25,6 +25,8 @@ class WebServer(override val config: WebServerConfig, override val api: AmonyApi
     with AdminRoutes
     with IdentityRoutes
     with RouteDeps {
+
+  override val tokenHelper: AuthenticationTokenHelper = new AuthenticationTokenHelper(config.jwt)
 
   val allApiRoutes =
     if (config.enableAdmin)

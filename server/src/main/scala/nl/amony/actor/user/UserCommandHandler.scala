@@ -2,7 +2,7 @@ package nl.amony.actor.user
 
 import akka.persistence.typed.scaladsl.Effect
 import nl.amony.actor.user.UserEventSourcing.{UserAdded, UserEvent}
-import nl.amony.actor.user.UserProtocol.{Authenticate, UpsertUser, User, UserCommand}
+import nl.amony.actor.user.UserProtocol.{Authenticate, Authentication, InvalidCredentials, UpsertUser, User, UserCommand}
 
 object UserCommandHandler {
 
@@ -30,12 +30,17 @@ object UserCommandHandler {
         }
       case Authenticate(email, password, sender) =>
 
-        val authenticationResult =
-          getByEmail(email)
-            .map(_.passwordHash == passwordHasher(password))
-            .getOrElse(false)
+        val response =
+          getByEmail(email) match {
+            case None       => InvalidCredentials
+            case Some(user) =>
+              if (user.passwordHash == passwordHasher(password))
+                Authentication(user.id)
+              else
+                InvalidCredentials
+          }
 
-        Effect.reply(sender)(authenticationResult)
+        Effect.reply(sender)(response)
     }
   }
 }

@@ -75,6 +75,7 @@ object MediaLibProtocol {
 
   case class Media(
       id: String,
+//      uploader: String,
       title: Option[String],
       comment: Option[String],
       fileInfo: FileInfo,

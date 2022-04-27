@@ -5,26 +5,25 @@ import akka.http.scaladsl.model.Multipart.ByteRanges
 import akka.http.scaladsl.model.StatusCodes.{PartialContent, RangeNotSatisfiable, TooManyRequests}
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{ByteRange, Range, RangeUnits, `Content-Range`, `Content-Type`}
-import akka.http.scaladsl.server.Directives.withSizeLimit
+import akka.http.scaladsl.server.Directives.{as, entity, post, withSizeLimit}
 import akka.http.scaladsl.server.directives.FutureDirectives.onSuccess
-import akka.http.scaladsl.server.directives.MarshallingDirectives.{as, entity}
 import akka.http.scaladsl.server.directives.{ContentTypeResolver, FileInfo}
-import akka.http.scaladsl.server.{Directive1, Route, UnsatisfiableRangeRejection}
-import akka.http.scaladsl.util.FastFuture
+import akka.http.scaladsl.server.{Directive, Directive1, Route, UnsatisfiableRangeRejection}
+import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
 import akka.stream.scaladsl.{FileIO, Sink, Source}
 import akka.util.ByteString
 import scribe.Logging
 
 import java.nio.file.{Files, Path}
-import scala.collection.immutable
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
 
 object HttpDirectives extends Logging {
   import akka.http.scaladsl.server.directives.BasicDirectives._
   import akka.http.scaladsl.server.directives.RouteDirectives._
 
   val chunkSize = 8192
+
+  def postWithData[T](implicit um: FromRequestUnmarshaller[T]): Directive[Tuple1[T]] = post & entity(as[T])
 
   case class IndexRange(start: Long, end: Long) {
     def length: Long = end - start

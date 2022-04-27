@@ -9,5 +9,9 @@ object UserProtocol {
 
   case class User(id: String, email: String, passwordHash: String)
   case class UpsertUser(email: String, password: String, sender: ActorRef[Boolean]) extends UserCommand
-  case class Authenticate(email: String, password: String, sender: ActorRef[Boolean]) extends UserCommand
+  case class Authenticate(email: String, password: String, sender: ActorRef[AuthenticationResponse]) extends UserCommand
+
+  sealed trait AuthenticationResponse
+  case class Authentication(userId: String) extends AuthenticationResponse
+  case object InvalidCredentials extends AuthenticationResponse
 }

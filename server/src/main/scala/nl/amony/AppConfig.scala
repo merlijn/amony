@@ -1,6 +1,7 @@
 package nl.amony
 
 import com.typesafe.config.ConfigFactory
+import nl.amony.http.util.AuthConfig
 import squants.information.Information
 import nl.amony.lib.hash.Base32
 import nl.amony.lib.hash.PartialHash.partialHash
@@ -81,7 +82,8 @@ case class WebServerConfig(
   uploadSizeLimit: Information,
   defaultNumberOfResults: Int,
   http: Option[HttpConfig],
-  https: Option[HttpsConfig]
+  https: Option[HttpsConfig],
+  jwt: AuthConfig
 )
 
 case class HttpsConfig(
