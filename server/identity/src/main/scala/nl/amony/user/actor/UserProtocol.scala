@@ -1,11 +1,10 @@
-package nl.amony.actor.user
+package nl.amony.user.actor
 
 import akka.actor.typed.ActorRef
-import nl.amony.actor.Message
 
 object UserProtocol {
 
-  sealed trait UserCommand extends Message
+  sealed trait UserCommand
 
   case class User(id: String, email: String, passwordHash: String)
   case class UpsertUser(email: String, password: String, sender: ActorRef[User]) extends UserCommand

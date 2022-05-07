@@ -1,8 +1,9 @@
-package nl.amony.actor.user
+package nl.amony.user.actor
 
+import akka.actor.typed.receptionist.ServiceKey
 import akka.persistence.typed.scaladsl.Effect
-import nl.amony.actor.user.UserEventSourcing.{UserAdded, UserEvent}
-import nl.amony.actor.user.UserProtocol.{Authenticate, Authentication, InvalidCredentials, UpsertUser, User, UserCommand}
+import nl.amony.user.actor.UserEventSourcing._
+import nl.amony.user.actor.UserProtocol._
 
 object UserCommandHandler {
 

@@ -9,16 +9,14 @@ import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
 import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.media.MediaLibProtocol._
-import nl.amony.http.JsonCodecs
 import nl.amony.http.RouteDeps
 import nl.amony.http.WebModel.FragmentRange
 import nl.amony.http.WebModel.VideoMeta
 import scribe.Logging
 
-import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 
-trait ApiRoutes extends Logging with IdentityRoutes {
+trait ApiRoutes extends Logging {
 
   self: RouteDeps =>
 

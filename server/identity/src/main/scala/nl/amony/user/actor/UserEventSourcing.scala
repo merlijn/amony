@@ -1,12 +1,11 @@
-package nl.amony.actor.user
+package nl.amony.user.actor
 
-import nl.amony.actor.JsonSerializable
-import nl.amony.actor.user.UserCommandHandler.UserState
-import nl.amony.actor.user.UserProtocol.User
+import nl.amony.user.actor.UserCommandHandler.UserState
+import nl.amony.user.actor.UserProtocol.User
 
 object UserEventSourcing {
 
-  sealed trait UserEvent extends JsonSerializable
+  sealed trait UserEvent
 
   case class UserAdded(id: String, email: String, passwordHash: String) extends UserEvent
 

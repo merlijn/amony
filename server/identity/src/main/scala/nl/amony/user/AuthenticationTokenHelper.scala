@@ -1,19 +1,10 @@
-package nl.amony.http.util
+package nl.amony.user
 
-import pdi.jwt.JwtClaim
+import pdi.jwt.{JwtAlgorithm, JwtCirce, JwtClaim}
 
 import java.time.Instant
-import io.circe._
-import jawn.{parse => jawnParse}
-import pdi.jwt.{JwtAlgorithm, JwtCirce}
-
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
-
-case class AuthConfig(
-   secretKey: String,
-   algo: String,
-   tokenExpiration: FiniteDuration)
 
 class AuthenticationTokenHelper(config: AuthConfig) {
 

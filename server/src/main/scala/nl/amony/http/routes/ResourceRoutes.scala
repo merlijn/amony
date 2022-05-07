@@ -29,7 +29,7 @@ trait ResourceRoutes extends Logging {
 
       path("upload") {
         uploadFiles("video", config.uploadSizeLimit.toBytes.toLong) {
-          (fileInfo, source) => api.modify.uploadMedia(fileInfo.fileName, source)
+          (fileInfo, source) => api.resources.uploadMedia(fileInfo.fileName, source)
         }
         { medias => complete("OK") }
       } ~ pathPrefix("resources") {

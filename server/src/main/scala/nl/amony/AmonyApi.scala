@@ -2,8 +2,8 @@ package nl.amony
 
 import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.serialization.jackson.JacksonObjectMapperProvider
-import akka.stream.{Materializer, SystemMaterializer}
 import akka.stream.scaladsl.{Source, StreamRefs}
+import akka.stream.{Materializer, SystemMaterializer}
 import akka.util.{ByteString, Timeout}
 import com.fasterxml.jackson.core.JsonEncoding
 import monix.eval.Task
@@ -11,18 +11,18 @@ import monix.reactive.Consumer
 import nl.amony.actor.Message
 import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.media.MediaLibProtocol._
+
 import nl.amony.actor.resources.{MediaScanner, ResourcesProtocol}
-import nl.amony.actor.resources.ResourcesProtocol.{GetThumbnail, GetVideo, GetVideoFragment, IOResponse, ResourceCommand, Upload}
-import nl.amony.actor.user.UserProtocol.{Authenticate, Authentication, AuthenticationResponse, InvalidCredentials, UpsertUser}
 import nl.amony.actor.util.ConvertNonStreamableVideos
 import nl.amony.lib.ffmpeg.FFMpeg
+import nl.amony.user.UserApi
 import scribe.Logging
 
 import java.io.ByteArrayOutputStream
-import java.nio.charset.Charset
 import scala.concurrent.{ExecutionContext, Future}
 
-class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSystem[Message]) extends Logging {
+class AmonyApi(val config: AmonyConfig, scanner: MediaScanner,
+               override val system: ActorSystem[Message]) extends Logging with UserApi {
 
   import akka.actor.typed.scaladsl.AskPattern._
   implicit val scheduler            = system.scheduler
@@ -52,11 +52,6 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
 
   object modify {
 
-    def uploadMedia(fileName: String, source: Source[ByteString, Any])(implicit timeout: Timeout): Future[Media] =
-      system
-        .ask[Media](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref))
-        .flatMap { media => upsertMedia(media) }
-
     def upsertMedia(media: Media)(implicit timeout: Timeout): Future[Media] =
       system.ask[Boolean](ref => UpsertMedia(media, ref)).map(_ => media)
 
@@ -82,6 +77,13 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
 
   object resources {
 
+    import nl.amony.actor.resources.ResourcesProtocol._
+
+    def uploadMedia(fileName: String, source: Source[ByteString, Any])(implicit timeout: Timeout): Future[Media] =
+      system
+        .ask[Media](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref))
+        .flatMap { media => modify.upsertMedia(media) }
+
     private def getResource(mediaId: String)(fn: (Media, ActorRef[IOResponse]) => ResourceCommand)(implicit timeout: Timeout) =
       query
         .getById(mediaId)
@@ -98,16 +100,6 @@ class AmonyApi(val config: AmonyConfig, scanner: MediaScanner, system: ActorSyst
 
     def getThumbnail(id: String, quality: Int, timestamp: Option[Long])(implicit timeout: Timeout): Future[Option[IOResponse]] =
       getResource(id)((media, ref) => GetThumbnail(media.id, timestamp.getOrElse(media.fragments.head.fromTimestamp), quality, ref))
-  }
-
-  object users {
-
-    def direct_createUser(userName: String, password: String)(implicit timeout: Timeout) = {
-      system.tell(UpsertUser(userName, password, system.ignoreRef))
-    }
-
-    def login(username: String, password: String)(implicit timeout: Timeout): Future[AuthenticationResponse] =
-      system.ask[AuthenticationResponse](ref => Authenticate(username, password, ref))
   }
 
   object admin {

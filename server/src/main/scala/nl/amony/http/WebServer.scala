@@ -1,13 +1,15 @@
 package nl.amony.http
 
-import akka.actor.typed.ActorSystem
+import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.http.scaladsl.ConnectionContext
 import akka.http.scaladsl.Http
 import better.files.File
-import nl.amony.http.routes.{AdminRoutes, ApiRoutes, IdentityRoutes, ResourceRoutes}
-import nl.amony.http.util.{AuthenticationTokenHelper, PemReader}
+import nl.amony.http.routes.{AdminRoutes, ApiRoutes, ResourceRoutes}
+import nl.amony.http.util.PemReader
 import scribe.Logging
 import akka.http.scaladsl.server.Directives._
+import nl.amony.user.actor.UserProtocol
+import nl.amony.user.{AuthenticationTokenHelper, IdentityRoutes, UserApi}
 import nl.amony.{AmonyApi, WebServerConfig}
 
 import java.security.SecureRandom
@@ -23,7 +25,7 @@ class WebServer(override val config: WebServerConfig, override val api: AmonyApi
     with ApiRoutes
     with ResourceRoutes
     with AdminRoutes
-    with IdentityRoutes
+    with UserApi with IdentityRoutes
     with RouteDeps {
 
   override val tokenHelper: AuthenticationTokenHelper = new AuthenticationTokenHelper(config.jwt)

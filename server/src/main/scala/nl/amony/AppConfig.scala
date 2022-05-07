@@ -1,16 +1,15 @@
 package nl.amony
 
 import com.typesafe.config.ConfigFactory
-import nl.amony.http.util.AuthConfig
 import squants.information.Information
 import nl.amony.lib.hash.Base32
 import nl.amony.lib.hash.PartialHash.partialHash
+import nl.amony.user.AuthConfig
 import scribe.Logging
 
 import java.nio.file.Path
 import java.security.MessageDigest
 import scala.concurrent.duration.FiniteDuration
-
 
 case class AmonyConfig(
   media: MediaLibConfig,

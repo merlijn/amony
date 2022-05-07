@@ -20,11 +20,12 @@ object App extends AppConfig with Logging {
     val router: Behavior[Message]    = MainRouter.apply(appConfig, scanner)
     val system: ActorSystem[Message] = ActorSystem(router, "mediaLibrary", config)
 
+
     val api = new AmonyApi(appConfig, scanner, system)
 
     implicit val timeout: Timeout = Timeout(10.seconds)
 
-    api.users.direct_createUser(appConfig.users.adminUsername, appConfig.users.adminPassword)
+    api.users.upsertUser(appConfig.users.adminUsername, appConfig.users.adminPassword)
     api.admin.scanLibrary()(timeout.duration)
 
 //    probeAll(api)(system.executionContext)
