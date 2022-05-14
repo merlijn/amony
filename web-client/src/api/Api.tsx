@@ -165,10 +165,6 @@ export const Api = {
 
   updateFragment: async function (id: string, idx: number, from: number, to: number) {
     return doPOST(`/api/fragments/${id}/${Math.trunc(idx)}`, { from: from, to: to})
-  },
-
-  getPlaylists: async function getPlaylists() {
-    return doGET('/api/playlists')
   }
 }
 

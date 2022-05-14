@@ -18,9 +18,10 @@ const MediaInfo = (props: {meta: VideoMeta, onClose: (meta: VideoMeta) => any })
           <textarea className="comment-input" placeholder="comment">{meta.comment}</textarea>
           <div className="header">Tags</div>
           <TagEditor 
-            showAddButton = { true }
-            tags          = { meta.tags } 
-            callBack      = { (updatedTags) => { setMeta({...meta, tags: updatedTags }) } } 
+            showDeleteButton = { true }
+            showAddButton    = { true }
+            tags             = { meta.tags } 
+            callBack         = { (updatedTags) => { setMeta({...meta, tags: updatedTags }) } } 
           />
           <FiSave className = "info-save-button" title = "save" onClick={(e) => { props.onClose(meta) } } />
         </div>

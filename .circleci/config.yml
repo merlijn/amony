@@ -3,7 +3,7 @@ version: 2.1
 executors:
   custom-docker-executor:
     machine:
-      image: ubuntu-2004:202010-01    # recommended linux image - includes Ubuntu 16.04, docker 18.09.3, docker-compose 1.23.1
+      image: ubuntu-2004:202111-02    # recommended linux image - includes Ubuntu 16.04, docker 18.09.3, docker-compose 1.23.1
       docker_layer_caching: true
 
 orbs:

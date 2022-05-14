@@ -3,11 +3,18 @@
 .fragment-info-panel {
 
   padding: 5px;
+  user-select: none;
+
+  .tags-button {
+    @extend .abs-top-left, .action-icon-small;
+    margin: $spacing-2;
+  }
 
   .meta-panel-title {
     font-size: small;
     font-weight: bold;
     padding-top: 1px;
+    margin-bottom: $spacing-3;
   }
 
   .tag-list {
@@ -19,26 +26,5 @@
     padding: 2px 4px;
     width: calc(100% - 30px);
     margin-left: 30px;
-  }
-
-  .tag-entry {
-
-    width: 100%;
-
-    .tag-input {
-      margin-bottom: 4px;
-      float: left;
-      width: calc(100% - 30px) ! important;
-    }
-
-    .tag-delete-button {
-      float: left;
-      margin-top: 3px;
-      margin-left: 5px;
-    }
-  }
-
-  .tag-add-button {
-    float: right;
   }
 }

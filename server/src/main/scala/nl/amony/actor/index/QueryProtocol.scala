@@ -1,17 +1,15 @@
 package nl.amony.actor.index
 
 import akka.actor.typed
-import nl.amony.actor.MediaLibProtocol.{Fragment, Media}
+import nl.amony.actor.media.MediaLibProtocol.{Fragment, Media}
 import nl.amony.actor.Message
 
 object QueryProtocol {
 
   sealed trait QueryMessage extends Message
 
-  case class Playlist(id: String, title: String)
-  case class GetPlaylists(sender: typed.ActorRef[List[Playlist]])    extends QueryMessage
   case class Search(query: Query, sender: typed.ActorRef[SearchResult]) extends QueryMessage
-  case class SearchFragments(size: Int, offset: Int, tag: String, sender: typed.ActorRef[Seq[Fragment]]) extends QueryMessage
+  case class SearchFragments(size: Int, offset: Int, tag: Option[String], sender: typed.ActorRef[Seq[(String, Fragment)]]) extends QueryMessage
   case class GetTags(sender: typed.ActorRef[Set[String]]) extends QueryMessage
 
   sealed trait SortField
@@ -21,7 +19,11 @@ object QueryProtocol {
   case object FileSize      extends SortField
   //  case object Shuffle       extends SortField
 
-  case class Sort(field: SortField, reverse: Boolean)
+  sealed trait SortDirection
+  case object Asc extends SortDirection
+  case object Desc extends SortDirection
+
+  case class Sort(field: SortField, direction: SortDirection)
   case class Query(
     q: Option[String],
     offset: Option[Int],

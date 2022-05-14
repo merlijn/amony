@@ -8,7 +8,7 @@ Example screenshot:
 
 A live demo is available at [https://amony.nl](https://amony.nl). It is running on single [GCE](https://cloud.google.com/compute/) `e2-micro` instance.
 
-(All example videos were sourced from [Pexels](https://www.pexels.com))
+**Note:** All videos on the demo site are free and sourced from [Pexels](https://www.pexels.com/license/))
 
 # How to use
 
@@ -28,8 +28,16 @@ docker pull europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/app:lat
 ### 2. Run the docker image
 
 ```bash
-docker run -v /path/to/my/videos:/usr/local/amony/videos -p 8080:8080 my-amony-app:latest
+docker run -v /path/to/my/videos:/usr/local/amony/videos -p 8080:8080 --name amony europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/app:latest
 ```
+
+### 3. Usage
+
+The webapp now runs at http://localhost:8080 
+
+**Notes:**
+- It takes some time to index the videos. Check progress with `docker logs amony`
+- Requires write access in the chosen directory, a `.amony` directory will be created with the index data, thumbnails and 3 seconds preview videos.
 
 ## Development mode
 

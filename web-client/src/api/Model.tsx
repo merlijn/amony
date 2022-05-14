@@ -70,7 +70,6 @@ export type Prefs = {
   showSidebar: boolean
   showTitles: boolean
   showDuration: boolean
-  showMenu: boolean
   showDates: boolean
   gallery_columns: Columns
 }

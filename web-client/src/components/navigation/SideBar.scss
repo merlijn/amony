@@ -1,72 +1,128 @@
 @import 'src/App.scss';
 @import '~normalize.css/normalize.css';
 
-.my-sidebar {
+.sidebar-hidden-modal {
+  @extend .abs-top-left;
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  z-index: 100;
+}
+
+.sidebar {
 
   top: 0px;
   left: 0px;
   position: fixed !important;
+  display: flex;
+  flex-direction: column;
   height: 100vh;
+  background-color: $gray-200;
   border-right: 1px solid $gray-300;
+  box-shadow: 8px 0px 12px 0px rgba(0, 0, 0, 0.2);
   z-index: 200 ! important;
-}
+    
+  .sidebar-header {
+    height: 47px;
+    padding-bottom: 4px;
+    border-bottom: none !important;
 
-.sidebar-header {
-  height: 47px;
-  padding-bottom: 4px;
-  border-bottom: none !important;
-}
+    .sidebar-menu-icon {
 
-.sidebar-menu-icon {
-  width: 40px;
-  height: 40px;
-  margin-left: 5px;
-  margin-top: 5px;
-  vertical-align: middle;
-  text-align: center;
-  color: black !important;
+      @extend .hover-pointer;
+      
+      box-sizing: content-box;
+      width: 40px;
+      height: 40px;
+      padding: 3px 2px 1px 2px;
+      margin: 2px 2px 3px 3px;
+      border-radius: 50%;
+      // margin-left: 5px;
+      // margin-top: 5px;
+      vertical-align: middle;
+      color: black !important;
 
-  &:hover {
-    cursor: pointer;
+      &:hover {
+        background-color: $gray-100;
+      }
+    }
+
+    .close-sidebar-icon {
+
+      @extend .abs-top-right, .hover-pointer;
+
+      padding: 4px;
+      margin: 5px;
+      margin-top: 8px;
+      width: 32px;
+      height: 32px;
+
+      &:hover {
+        background-color: $gray-100;
+        border-radius: 50%;
+      }
+    }
   }
-}
 
-.sidebar-footer {
+  .sidebar-menu {
 
-  padding: 8px;
-
-  a {
-    margin-left: 3px;
     color: black;
-    svg {
-      width: 28px;
-      height: 28px;
+    display: flex;
+    flex-direction: column;
+    margin-top: $spacing-2;
+  
+    .menu-item {
+      @extend .v-align-center, .hover-pointer;
+  
+      display: flex;
+      padding-left: 8px;
+      padding-right: $spacing-5;
+      padding-bottom: 6px;
+      padding-top: 6px;
+
+      gap: $spacing-3;
+      flex-direction: row;
+  
+      .menu-item-icon {
+        display: flex;
+        @extend .v-align-center;
+      
+        background-color: $gray-600;
+        border-radius: 50%;
+        padding: 7px;
+        box-sizing: content-box;
+
+        svg {
+          color: #ffffff;
+          width: 22px;
+          height: 22px;
+        }
+      }
+
+      &:hover {
+        background-color: $gray-100;
+      }
+    }
+  }
+
+  .sidebar-footer {
+
+    @extend .abs-bottom-left;
+    padding: 8px;
+    
+    a {
+      margin-left: 3px;
+      color: black;
+      svg {
+        width: 28px;
+        height: 28px;
+      }
     }
   }
 }
 
-.pro-inner-item {
-  padding-left: 8px ! important;
-}
-
-.pro-menu {
-
-  padding-top: 0px !important;
-}
-
-.pro-icon {
-  svg {
-    width: 20px;
-    height: 20px;
-  }
-}
 // #cf6262, #81818b
-$sidebar-bg-color: $gray-200 !default;
-$sidebar-color: white !default;
 $icon-bg-color: $gray-600  !default;
-$highlight-color: white !default;
 $submenu-bg-color: $gray-500 !default;
 $submenu-bg-color-collapsed: $gray-500 !default;
 $icon-size: 35px !default;
-
-@import '~react-pro-sidebar/dist/scss/styles.scss';

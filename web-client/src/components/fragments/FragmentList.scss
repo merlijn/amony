@@ -3,17 +3,17 @@
 .fragments-container {
 
   //border-left: 4px  solid white;
-  background-color: lightgrey;
+  background-color: $gray-200;
   position: relative;
-  float: left;
   overflow: scroll;
 
   .fragments-header {
 
-    //border-bottom: 1px solid black;
+    @extend .v-align-center;
+
+    display: flex;
     padding: 2px 6px;
-    // background-image: linear-gradient(to right, #2243b8, #71b1ff);
-    background-image: linear-gradient(to right, #dcdcdc, #ffffff);
+    background-image: linear-gradient(to right, $gray-300, white);
     font-weight: 500;
     color: black;
   }

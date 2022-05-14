@@ -1,71 +1,96 @@
 import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
 
-val AkkaVersion = "2.6.18"
-val AkkaHttpVersion = "10.2.7"
+val akkaVersion = "2.6.17"
+val akkaHttpVersion = "10.2.7"
 val circeVersion = "0.14.1"
 
-val javaOpts = Seq("-Dnashorn.args=--no-deprecation-warning")
+val javaOpts = Nil
 
 val excludeLog4j =
   ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl")
 
+lazy val identity = (project in file("identity")).settings(
+  organization := "nl.amony",
+  name := "amony-identity",
+  libraryDependencies ++= Seq(
+    // akka
+    "com.typesafe.akka"        %% "akka-actor-typed"           % akkaVersion,
+    "com.typesafe.akka"        %% "akka-persistence-typed"     % akkaVersion,
+    "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.2",
+    "de.heikoseeberger"        %% "akka-http-circe"            % "1.36.0",
+    "io.circe"                 %% "circe-core"                 % "0.14.1",
+    "io.circe"                 %% "circe-generic"              % "0.14.1",
+    "com.typesafe.akka"        %% "akka-http"                  % akkaHttpVersion,
+  )
+)
+
 lazy val solrSearch =
   (project in file("solr-search"))
-  .settings(
-    name := "amony-solr-search",
-    inThisBuild(List(
-      organization    := "nl.amony",
-      scalaVersion    := "2.13.6"
-    )),
-    libraryDependencies ++= Seq(
-      "org.slf4j"                 % "slf4j-api"                  % "1.7.30",
-      "org.apache.solr"           % "solr-core"                  % "8.11.1" excludeAll(excludeLog4j),
-      "org.apache.solr"           % "solr-langid"                % "8.11.1" excludeAll(excludeLog4j),
-      "com.typesafe.akka"        %% "akka-actor-typed"           % AkkaVersion,
-      "com.outr"                 %% "scribe-slf4j"               % "3.5.5",
+    .settings(
+      name := "amony-solr-search",
+      inThisBuild(List(
+        organization    := "nl.amony",
+        scalaVersion    := "2.13.6"
+      )),
+      libraryDependencies ++= Seq(
+        "org.slf4j"                 % "slf4j-api"                  % "1.7.30",
+        "org.apache.solr"           % "solr-core"                  % "8.11.1" excludeAll(excludeLog4j),
+        "org.apache.solr"           % "solr-langid"                % "8.11.1" excludeAll(excludeLog4j),
+        "com.typesafe.akka"        %% "akka-actor-typed"           % akkaVersion,
+        "com.outr"                 %% "scribe-slf4j"               % "3.5.5",
+      )
     )
-  )
 
 lazy val amony = (project in file("."))
-  .dependsOn(solrSearch)
+  .dependsOn(identity)
   .settings(
     inThisBuild(List(
       organization    := "nl.amony",
-      scalaVersion    := "2.13.6"
+      scalaVersion    := "2.13.8"
     )),
+    name := "amony-server",
     reStart / javaOptions ++= javaOpts ,
     run / fork             := true,
     run / javaOptions     ++= javaOpts,
-    name := "amony-server",
     libraryDependencies ++= Seq(
 
+      // logging
       "org.slf4j"                 % "slf4j-api"                  % "1.7.30",
-      "org.apache.solr"           % "solr-core"                  % "8.11.1" excludeAll(excludeLog4j),
-      "org.apache.solr"           % "solr-langid"                % "8.11.1" excludeAll(excludeLog4j),
-      "com.typesafe"              % "config"                     % "1.4.1",
-      "com.typesafe.akka"        %% "akka-actor-typed"           % AkkaVersion,
-      "com.typesafe.akka"        %% "akka-stream"                % AkkaVersion,
-      "com.typesafe.akka"        %% "akka-persistence-typed"     % AkkaVersion,
-      "com.typesafe.akka"        %% "akka-persistence-query"     % AkkaVersion,
-      "com.typesafe.akka"        %% "akka-serialization-jackson" % AkkaVersion,
-      "com.fasterxml.jackson.module" %% "jackson-module-scala"   % "2.12.6",
-      "com.typesafe.akka"        %% "akka-http"                  % AkkaHttpVersion,
-      "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.2",
       "com.outr"                 %% "scribe-slf4j"               % "3.5.5",
-      "org.fusesource.leveldbjni" % "leveldbjni-all"             % "1.8",
-      "org.iq80.leveldb"          % "leveldb"                    % "0.12",
-      "de.heikoseeberger"        %% "akka-http-circe"            % "1.36.0",
+
+      // config loading
+      "com.typesafe"              % "config"                     % "1.4.1",
       "com.github.pureconfig"    %% "pureconfig"                 % "0.17.1",
       "com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.1",
-      "io.monix"                 %% "monix-reactive"             % "3.4.0",
+
+      // akka
+      "com.typesafe.akka"        %% "akka-actor-typed"           % akkaVersion,
+      "com.typesafe.akka"        %% "akka-stream"                % akkaVersion,
+
+      // akka persistence
+      "com.typesafe.akka"        %% "akka-persistence-typed"     % akkaVersion,
+      "com.typesafe.akka"        %% "akka-persistence-query"     % akkaVersion,
+      "com.typesafe.akka"        %% "akka-serialization-jackson" % akkaVersion,
+      "org.fusesource.leveldbjni" % "leveldbjni-all"             % "1.8",
+      "org.iq80.leveldb"          % "leveldb"                    % "0.12",
+
+      // akka http & json serialization
+      "com.typesafe.akka"        %% "akka-http"                  % akkaHttpVersion,
+      "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.2",
+      "de.heikoseeberger"        %% "akka-http-circe"            % "1.36.0",
       "io.circe"                 %% "circe-core"                 % "0.14.1",
       "io.circe"                 %% "circe-generic"              % "0.14.1",
       "io.circe"                 %% "circe-parser"               % "0.14.1",
+
+      "io.monix"                 %% "monix-reactive"             % "3.4.0",
       "com.github.pathikrit"     %% "better-files"               % "3.9.1",
+      "io.methvin"                % "directory-watcher"          % "0.15.0",
+
+      // test
       "org.scalatest"            %% "scalatest"                  % "3.2.9"           % Test,
       "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.9.0"         % Test
     ),
-//    assembly / logLevel := Level.Debug,
+    //    assembly / logLevel := Level.Debug,
     assembly / assemblyJarName := "amony.jar",
     assembly / assemblyMergeStrategy := {
       case s if s.endsWith("module-info.class") => MergeStrategy.discard
@@ -75,5 +100,5 @@ lazy val amony = (project in file("."))
       case x =>
         val oldStrategy = (assembly / assemblyMergeStrategy).value
         oldStrategy(x)
-      }
+    }
   )

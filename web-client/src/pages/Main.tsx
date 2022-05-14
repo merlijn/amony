@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import 'react-pro-sidebar/dist/css/styles.css';
 import { useHistory, useLocation } from "react-router";
 import { Constants, parseDurationParam, parseSortParam } from "../api/Constants";
 import { MediaSelection, MediaView, Prefs, Video } from "../api/Model";
@@ -69,20 +68,10 @@ const Main = () => {
     }
   
     useListener('keydown', keyDownHandler)
-
-    const calcTopMargin = () => {
-      
-      let m = 0;
-
-      if (showNavigation)
-        m += 47;
-
-      return m;
-    }
   
     const galleryStyle = { 
-      marginTop: calcTopMargin(),
-      marginLeft: showNavigation && prefs.showSidebar ? 50 : 0
+      marginTop: showNavigation ? 47 : 0,
+      marginLeft: 0
     }
 
     const setShowSidebar = (value: boolean) => {
@@ -129,7 +118,7 @@ const Main = () => {
                           showInfoBar: prefs.showTitles,
                           showDates: prefs.showDates,
                           showDuration: prefs.showDuration,
-                          showMenu: Api.session().isAdmin() && prefs.showMenu
+                          showMenu: Api.session().isAdmin()
                         } 
                       }
                     }/>

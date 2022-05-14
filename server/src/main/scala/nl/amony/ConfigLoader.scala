@@ -1,44 +1,48 @@
 package nl.amony
 
-import better.files.File
 import com.typesafe.config.ConfigFactory
 import squants.information.Information
-import nl.amony.lib.FileUtil
 import nl.amony.lib.hash.Base32
 import nl.amony.lib.hash.PartialHash.partialHash
+import nl.amony.user.AuthConfig
 import scribe.Logging
 
 import java.nio.file.Path
 import java.security.MessageDigest
 import scala.concurrent.duration.FiniteDuration
 
+case class AmonyConfig(
+  media: MediaLibConfig,
+  api: WebServerConfig,
+  users: UserConfig,
+  ffprobeTimeout: FiniteDuration,
+)
+
 case class MediaLibConfig(
-    path: Path,
-    indexPath: Path,
-    relativeUploadPath: Path,
-    scanParallelFactor: Int,
-    verifyExistingHashes: Boolean,
-    hashingAlgorithm: HashingAlgorithm,
-    defaultFragmentLength: FiniteDuration,
-    minimumFragmentLength: FiniteDuration,
-    maximumFragmentLength: FiniteDuration,
-    previews: PreviewConfig
+  path: Path,
+  indexPath: Path,
+  deleteMedia: DeleteMediaOption,
+  relativeUploadPath: Path,
+  scanParallelFactor: Int,
+  verifyExistingHashes: Boolean,
+  hashingAlgorithm: HashingAlgorithm,
+  defaultFragmentLength: FiniteDuration,
+  minimumFragmentLength: FiniteDuration,
+  maximumFragmentLength: FiniteDuration,
+  previews: PreviewConfig
 ) {
 
   lazy val resourcePath: Path = indexPath.resolve("resources")
   lazy val mediaPath: Path = path.toAbsolutePath.normalize()
   lazy val uploadPath: Path = path.resolve(relativeUploadPath)
+  def filterFileName(fileName: String): Boolean = fileName.endsWith(".mp4") && !fileName.startsWith(".")
 }
 
-case class AmonyConfig(
-  media: MediaLibConfig,
-  api: WebServerConfig,
-  adminUsername: String,
-  adminPassword: String
-)
+case class PreviewConfig(transcode: List[TranscodeSettings])
 
-case class PreviewConfig(
-  transcode: List[TranscodeSettings]
+case class UserConfig(
+  adminUsername: String,
+  adminPassword: String,
 )
 
 case class TranscodeSettings(
@@ -46,6 +50,10 @@ case class TranscodeSettings(
   scaleHeight: Int,
   crf: Int
 )
+
+sealed trait DeleteMediaOption
+case object DeleteFile extends DeleteMediaOption
+case object MoveToTrash extends DeleteMediaOption
 
 sealed trait HashingAlgorithm {
   def generateHash(path: Path): String
@@ -71,8 +79,10 @@ case class WebServerConfig(
   requestTimeout: FiniteDuration,
   enableAdmin: Boolean,
   uploadSizeLimit: Information,
+  defaultNumberOfResults: Int,
   http: Option[HttpConfig],
-  https: Option[HttpsConfig]
+  https: Option[HttpsConfig],
+  jwt: AuthConfig
 )
 
 case class HttpsConfig(
@@ -87,7 +97,7 @@ case class HttpConfig(
  port: Int
 )
 
-trait AppConfig extends Logging {
+trait ConfigLoader extends Logging {
 
   import pureconfig._
   import pureconfig.generic.auto._
@@ -95,6 +105,7 @@ trait AppConfig extends Logging {
   import pureconfig.generic.semiauto.deriveEnumerationReader
 
   implicit val hashingAlgorithmReader: ConfigReader[HashingAlgorithm] = deriveEnumerationReader[HashingAlgorithm]
+  implicit val deleteMediaOption: ConfigReader[DeleteMediaOption] = deriveEnumerationReader[DeleteMediaOption]
 
   val config       = ConfigFactory.load()
   val configSource = ConfigSource.fromConfig(config)

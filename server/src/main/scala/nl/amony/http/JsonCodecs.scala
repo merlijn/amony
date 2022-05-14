@@ -1,6 +1,5 @@
 package nl.amony.http
 
-import nl.amony.actor.MediaLibProtocol
 import nl.amony.http.WebModel.Fragment
 import nl.amony.http.WebModel.FragmentRange
 import nl.amony.http.WebModel.SearchResult
@@ -12,11 +11,10 @@ import io.circe.Encoder
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.generic.semiauto.deriveEncoder
 import nl.amony.TranscodeSettings
-import nl.amony.actor.index.{LocalIndex, QueryProtocol}
+import nl.amony.actor.index.{InMemoryIndex, QueryProtocol}
+import nl.amony.actor.media.MediaLibProtocol
 
-trait JsonCodecs {
-
-  def transcodingSettings: List[TranscodeSettings]
+class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
 
   // web model codecs
   implicit val fragmentCodec: Codec[Fragment]            = deriveCodec[Fragment]
@@ -30,20 +28,21 @@ trait JsonCodecs {
   implicit val mediaEncoder: Encoder[MediaLibProtocol.Media] =
     deriveEncoder[Video].contramapObject[MediaLibProtocol.Media](toWebModel)
 
-  implicit val tagEncoder: Encoder[QueryProtocol.Playlist] =
-    deriveEncoder[Playlist].contramapObject[QueryProtocol.Playlist](c => Playlist(c.id, c.title))
-
   implicit val searchResultEncoder: Encoder[QueryProtocol.SearchResult] =
     deriveEncoder[SearchResult].contramapObject[QueryProtocol.SearchResult](result =>
       SearchResult(result.offset, result.total, result.items.map(m => toWebModel(m)))
     )
 
-  def toWebModel(f: MediaLibProtocol.Fragment): Fragment = {
+  def toWebModel(mediaId: String, f: MediaLibProtocol.Fragment): Fragment = {
+
+    val resolutions = transcodingSettings.map(_.scaleHeight).sorted
+    val urls = resolutions.map(height => s"/files/resources/${mediaId}~${f.fromTimestamp}-${f.toTimestamp}_${height}p.mp4")
+
     Fragment(
-      "",
+      mediaId,
       0,
       FragmentRange(f.fromTimestamp, f.toTimestamp),
-      List.empty,
+      urls,
       f.comment,
       f.tags
     )
@@ -55,7 +54,7 @@ trait JsonCodecs {
 
     Video(
       id        = media.id,
-      video_url = s"/files/resources/${media.id}_${media.videoInfo.resolution._2}p.${media.fileInfo.extension}",
+      video_url = s"/files/resources/${media.id}_${media.height}p.${media.fileInfo.extension}",
       meta = VideoMeta(
         title   = media.title.orElse(Some(media.fileName())),
         comment = media.comment,
@@ -81,8 +80,8 @@ trait JsonCodecs {
           )
         }
       },
-      width  = media.videoInfo.resolution._1,
-      height = media.videoInfo.resolution._2
+      width  = media.width,
+      height = media.height,
     )
   }
 }
