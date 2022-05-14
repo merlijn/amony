@@ -6,7 +6,7 @@ import akka.actor.typed.{ActorRef, Behavior}
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
 import akka.stream.Materializer
-import nl.amony.actor.index.LocalIndex
+import nl.amony.actor.index.InMemoryIndex
 import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.media.MediaLibEventSourcing.Event
 import nl.amony.actor.media.MediaLibProtocol.{MediaCommand, State}
@@ -39,7 +39,7 @@ object MainRouter {
 
       implicit val mat = Materializer(context)
 
-      val localIndexRef = LocalIndex.apply(config.media, context).toTyped[QueryMessage]
+      val localIndexRef = InMemoryIndex.apply(config.media, context).toTyped[QueryMessage]
       val resourceRef   = context.spawn(resourceBehaviour(config.media, scanner), "resources")
       val mediaRef      = context.spawn(mediaBehaviour(config.media, resourceRef), "medialib")
       val userRef       = context.spawn(UserApi.userBehaviour(), "users")

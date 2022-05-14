@@ -1,6 +1,5 @@
 package nl.amony.user.actor
 
-import akka.actor.typed.receptionist.ServiceKey
 import akka.persistence.typed.scaladsl.Effect
 import nl.amony.user.actor.UserEventSourcing._
 import nl.amony.user.actor.UserProtocol._

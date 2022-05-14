@@ -35,9 +35,7 @@ object UserApi {
   val userServiceKey = ServiceKey[UserCommand]("userService")
 }
 
-trait UserApi {
-
-  def system: ActorSystem[Nothing]
+class UserApi(system: ActorSystem[Nothing]) {
 
   private implicit def ec: ExecutionContext = system.executionContext
   private implicit def scheduler: Scheduler = system.scheduler
@@ -45,14 +43,12 @@ trait UserApi {
   private def userRef()(implicit timeout: Timeout): Future[ActorRef[UserCommand]] =
     system.receptionist
       .ask[Receptionist.Listing](ref => Find(userServiceKey, ref))(timeout, system.scheduler)
-      .map ( _.serviceInstances(userServiceKey).head )
+      .map( _.serviceInstances(userServiceKey).head)
 
-  object users {
-    def upsertUser(userName: String, password: String)(implicit timeout: Timeout): Future[User] = {
-      userRef().flatMap(_.ask[User](ref => UpsertUser(userName, password, ref)))
-    }
-
-    def login(username: String, password: String)(implicit timeout: Timeout): Future[AuthenticationResponse] =
-      userRef().flatMap(_.ask[AuthenticationResponse](ref => Authenticate(username, password, ref)))
+  def upsertUser(userName: String, password: String)(implicit timeout: Timeout): Future[User] = {
+    userRef().flatMap(_.ask[User](ref => UpsertUser(userName, password, ref)))
   }
+
+  def login(username: String, password: String)(implicit timeout: Timeout): Future[AuthenticationResponse] =
+    userRef().flatMap(_.ask[AuthenticationResponse](ref => Authenticate(username, password, ref)))
 }

@@ -1,6 +1,7 @@
 package nl.amony.lib
 
 import better.files.File
+import nl.amony.Main.logger
 import nl.amony.lib.hash.Base32
 import scribe.Logging
 
@@ -57,5 +58,23 @@ object FileUtil extends Logging {
     val r = new RecursiveFileVisitor
     Files.walkFileTree(dir, r)
     r.getFiles()
+  }
+
+  def watchPath(path: Path) = {
+
+    import io.methvin.watcher.DirectoryChangeEvent.EventType._
+    import io.methvin.watcher._
+
+    val watcher = DirectoryWatcher.builder.path(path).listener {
+      (event: DirectoryChangeEvent) => {
+        event.eventType match {
+          case CREATE => logger.info(s"File created : ${event.path}")
+          case MODIFY => logger.info(s"File modified: ${event.path}")
+          case DELETE => logger.info(s"File deleted : ${event.path}")
+        }
+      }
+    }.fileHashing(false).build
+
+    watcher.watchAsync()
   }
 }

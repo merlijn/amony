@@ -2,7 +2,8 @@ package nl.amony.user
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.headers.HttpCookie
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.{path, _}
+import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import io.circe.generic.semiauto.deriveCodec
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
@@ -12,20 +13,17 @@ import scala.concurrent.duration.DurationInt
 
 case class Credentials(username: String, password: String)
 
-trait IdentityRoutes {
+object IdentityRoutes {
 
-  self: UserApi =>
+  implicit val credDecoder = deriveCodec[Credentials]
+  implicit val timeout = Timeout(5.seconds)
 
-  def tokenHelper(): AuthenticationTokenHelper
+  def createRoutes(userApi: UserApi, tokenHelper: AuthenticationTokenHelper): Route = {
 
-  private implicit val credDecoder = deriveCodec[Credentials]
-  private implicit val timeout = Timeout(5.seconds)
-
-  val identityRoutes =
     pathPrefix("api" / "identity") {
       (path("login") & post & entity(as[Credentials])) { credentials =>
 
-        onSuccess(users.login(credentials.username, credentials.password)) {
+        onSuccess(userApi.login(credentials.username, credentials.password)) {
           case InvalidCredentials     =>
             complete(StatusCodes.BadRequest)
           case Authentication(userId) =>
@@ -35,11 +33,12 @@ trait IdentityRoutes {
 
       } ~ (path("logout") & post) {
 
-          setCookie(HttpCookie("session", "", path = Some("/"))) {
-            complete("OK")
-          }
+        setCookie(HttpCookie("session", "", path = Some("/"))) {
+          complete("OK")
+        }
       } ~ {
         complete(StatusCodes.NotFound)
       }
     }
+  }
 }

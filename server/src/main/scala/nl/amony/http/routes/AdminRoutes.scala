@@ -2,38 +2,44 @@ package nl.amony.http.routes
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
-import nl.amony.http.RouteDeps
+import akka.http.scaladsl.server.Route
+import akka.util.Timeout
+import nl.amony.WebServerConfig
+import nl.amony.api.AdminApi
 
-trait AdminRoutes {
+object AdminRoutes {
 
-  self: RouteDeps =>
+  def createRoutes(adminApi: AdminApi, config: WebServerConfig): Route = {
 
-  val adminRoutes = pathPrefix("api" / "admin") {
-    (path("regen-thumbnails") & post) {
-      api.admin.regenerateAllPreviews()
-      complete(StatusCodes.OK)
-    } ~ (path("regen-preview-thumbnails") & post) {
-      api.admin.generateThumbnailPreviews()
-      complete(StatusCodes.OK)
-    } ~ (path("export-to-file") & post) {
-      val json = api.admin.exportLibrary()
-      complete(StatusCodes.OK, json)
-    } ~ (path("verify-hashes") & post) {
-      api.admin.verifyHashes()
-      complete(StatusCodes.OK)
-    } ~ (path("update-hashes") & post) {
-      api.admin.updateHashes()
-      complete(StatusCodes.OK)
-    } ~ (path("convert-non-streamable-videos") & post) {
-      api.admin.convertNonStreamableVideos()
-      complete(StatusCodes.OK)
-    } ~ (path("scan-library") & post) {
-      api.admin.scanLibrary()
-      complete(StatusCodes.OK)
-    } ~ (path("logs")) {
-      complete(StatusCodes.OK)
-    } ~ {
-      complete(StatusCodes.NotFound)
+    implicit val timeout: Timeout = Timeout(config.requestTimeout)
+
+    pathPrefix("api" / "admin") {
+      (path("regen-thumbnails") & post) {
+        adminApi.regenerateAllPreviews()
+        complete(StatusCodes.OK)
+      } ~ (path("regen-preview-thumbnails") & post) {
+        adminApi.generateThumbnailPreviews()
+        complete(StatusCodes.OK)
+      } ~ (path("export-to-file") & post) {
+        val json = adminApi.exportLibrary()
+        complete(StatusCodes.OK, json)
+      } ~ (path("verify-hashes") & post) {
+        adminApi.verifyHashes()
+        complete(StatusCodes.OK)
+      } ~ (path("update-hashes") & post) {
+        adminApi.updateHashes()
+        complete(StatusCodes.OK)
+      } ~ (path("convert-non-streamable-videos") & post) {
+        adminApi.convertNonStreamableVideos()
+        complete(StatusCodes.OK)
+      } ~ (path("scan-library") & post) {
+        adminApi.scanLibrary()
+        complete(StatusCodes.OK)
+      } ~ (path("logs")) {
+        complete(StatusCodes.OK)
+      } ~ {
+        complete(StatusCodes.NotFound)
+      }
     }
   }
 }

@@ -97,7 +97,7 @@ case class HttpConfig(
  port: Int
 )
 
-trait AppConfig extends Logging {
+trait ConfigLoader extends Logging {
 
   import pureconfig._
   import pureconfig.generic.auto._

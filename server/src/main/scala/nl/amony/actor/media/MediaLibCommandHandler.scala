@@ -14,7 +14,7 @@ import akka.util.Timeout
 import scribe.Logging
 
 import java.awt.Desktop
-import java.nio.file.Files
+import java.nio.file.{Files, Path}
 import scala.concurrent.duration.DurationInt
 
 object MediaLibCommandHandler extends Logging {
@@ -55,6 +55,17 @@ object MediaLibCommandHandler extends Logging {
     }
     // format: on
 
+    def deleteMedia(path: Path): Unit = {
+      if (File(path).exists) {
+        config.deleteMedia match {
+          case DeleteFile =>
+            Files.delete(path)
+          case MoveToTrash =>
+            Desktop.getDesktop().moveToTrash(path.toFile())
+        }
+      };
+    }
+
     cmd match {
 
       case UpsertMedia(media, sender) =>
@@ -87,16 +98,7 @@ object MediaLibCommandHandler extends Logging {
 
         Effect
           .persist(MediaRemoved(mediaId))
-          .thenRun((s: State) => {
-            if (deleteFile && File(path).exists) {
-              config.deleteMedia match {
-                case DeleteFile =>
-                  Files.delete(path)
-                case MoveToTrash =>
-                  Desktop.getDesktop().moveToTrash(path.toFile())
-              }
-            };
-          })
+          .thenRun((s: State) => if (deleteFile) deleteMedia(path))
           .thenReply(sender)(_ => true)
 
       case GetById(id, sender) =>

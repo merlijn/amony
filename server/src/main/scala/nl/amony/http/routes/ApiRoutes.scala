@@ -1,28 +1,50 @@
 package nl.amony.http.routes
 
+import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directive.addDirectiveApply
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Directives.path
 import akka.http.scaladsl.server.Route
+import akka.stream.Materializer
+import akka.util.Timeout
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
 import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.media.MediaLibProtocol._
-import nl.amony.http.RouteDeps
-import nl.amony.http.WebModel.FragmentRange
-import nl.amony.http.WebModel.VideoMeta
+import nl.amony.api.{MediaApi, SearchApi}
+import nl.amony.http.JsonCodecs
+import nl.amony.http.WebModel.{FragmentRange, VideoMeta}
+import nl.amony.{TranscodeSettings, WebServerConfig}
 import scribe.Logging
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-trait ApiRoutes extends Logging {
+object ApiRoutes extends Logging {
 
-  self: RouteDeps =>
+  def createRoutes(system: ActorSystem[Nothing],
+                   mediaApi: MediaApi,
+                   queryApi: SearchApi,
+                   transcodingSettings: List[TranscodeSettings],
+                   config: WebServerConfig): Route = {
 
-  val durationPattern = raw"(\d*)-(\d*)".r
+    implicit def materializer: Materializer = Materializer.createMaterializer(system)
+    implicit def executionContext: ExecutionContext = system.executionContext
+    implicit val timeout: Timeout = Timeout.durationToTimeout(config.requestTimeout)
 
-  val apiRoutes =
+    val jsonCodecs = new JsonCodecs(transcodingSettings)
+
+    import jsonCodecs._
+
+    def translateResponse(future: Future[Either[ErrorResponse, Media]]): Route = {
+      onSuccess(future) {
+        case Left(MediaNotFound(_))       => complete(StatusCodes.NotFound)
+        case Left(InvalidCommand(reason)) => complete(StatusCodes.BadRequest, reason)
+        case Right(media)                 => complete(media.asJson)
+      }
+    }
+
+    val durationPattern = raw"(\d*)-(\d*)".r
+
     pathPrefix("api") {
       (path("search") & parameters(
         "q".optional,
@@ -60,7 +82,7 @@ trait ApiRoutes extends Logging {
           }
 
           val searchResult: Future[SearchResult] =
-            api.query.search(q, offset.map(_.toInt), size, tags.toSet, playlist, minResY.map(_.toInt), duration, Sort(sortField, sortDirection))
+            queryApi.searchMedia(q, offset.map(_.toInt), size, tags.toSet, playlist, minResY.map(_.toInt), duration, Sort(sortField, sortDirection))
 
           val response = searchResult.map(_.asJson)
 
@@ -68,19 +90,19 @@ trait ApiRoutes extends Logging {
         }
       } ~ path("tags") {
         get {
-          complete(api.query.getTags().map(_.asJson))
+          complete(queryApi.searchTags().map(_.asJson))
         }
       } ~ pathPrefix("media" / Segment) { id =>
         pathEnd {
           get {
-            onSuccess(api.query.getById(id)) {
+            onSuccess(mediaApi.getById(id)) {
               case Some(media) => complete(media.asJson)
               case None        => complete(StatusCodes.NotFound)
             }
           } ~ (post & entity(as[VideoMeta])) { meta =>
-            translateResponse(api.modify.updateMetaData(id, meta.title, meta.comment, meta.tags))
+            translateResponse(mediaApi.updateMetaData(id, meta.title, meta.comment, meta.tags))
           } ~ delete {
-            onSuccess(api.modify.deleteMedia(id, deleteResource = true)) { case _ =>
+            onSuccess(mediaApi.deleteMedia(id, deleteResource = true)) { case _ =>
               complete(StatusCodes.OK, "{}")
             }
           }
@@ -92,32 +114,25 @@ trait ApiRoutes extends Logging {
             val n = nParam.map(_.toInt).getOrElse(config.defaultNumberOfResults)
             val offset = offsetParam.map(_.toInt).getOrElse(0)
 
-            complete(api.query.searchFragments(n, offset, tag).map {
+            complete(queryApi.searchFragments(n, offset, tag).map {
               _.map { case (mediaId, f) => toWebModel(mediaId, f) }
             })
           }
       } ~ path("fragments" / Segment / "add") { (id) =>
         (post & entity(as[FragmentRange])) { createFragment =>
-          translateResponse(api.modify.addFragment(id, createFragment.from, createFragment.to))
+          translateResponse(mediaApi.addFragment(id, createFragment.from, createFragment.to))
         }
       } ~ path("fragments" / Segment / Segment) { (id, idx) =>
         delete {
-          translateResponse(api.modify.deleteFragment(id, idx.toInt))
+          translateResponse(mediaApi.deleteFragment(id, idx.toInt))
         } ~ (post & entity(as[FragmentRange])) { createFragment =>
-          translateResponse(api.modify.updateFragmentRange(id, idx.toInt, createFragment.from, createFragment.to))
+          translateResponse(mediaApi.updateFragmentRange(id, idx.toInt, createFragment.from, createFragment.to))
         }
       } ~ path("fragments" / Segment / Segment / "tags") { (id, idx) =>
         (post & entity(as[List[String]])) { tags =>
-          translateResponse(api.modify.updateFragmentTags(id, idx.toInt, tags))
+          translateResponse(mediaApi.updateFragmentTags(id, idx.toInt, tags))
         }
       }
-    }
-
-  def translateResponse(future: Future[Either[ErrorResponse, Media]]): Route = {
-    onSuccess(future) {
-      case Left(MediaNotFound(_))       => complete(StatusCodes.NotFound)
-      case Left(InvalidCommand(reason)) => complete(StatusCodes.BadRequest, reason)
-      case Right(media)                 => complete(media.asJson)
     }
   }
 }

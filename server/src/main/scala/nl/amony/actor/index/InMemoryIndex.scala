@@ -12,7 +12,7 @@ import scribe.Logging
 import QueryProtocol._
 import nl.amony.actor.media.MediaLibEventSourcing
 
-object LocalIndex {
+object InMemoryIndex {
 
   def apply[T](config: MediaLibConfig, context: ActorContext[T])(implicit mat: Materializer): ActorRef = {
 

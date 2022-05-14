@@ -3,14 +3,14 @@ package nl.amony.http.routes
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+import akka.util.Timeout
 import better.files.File
-import nl.amony.http.RouteDeps
+import nl.amony.WebServerConfig
+import nl.amony.api.ResourceApi
 import nl.amony.http.util.HttpDirectives.{randomAccessRangeSupport, uploadFiles}
 import scribe.Logging
 
-trait ResourceRoutes extends Logging {
-
-  self: RouteDeps =>
+object ResourceRoutes extends Logging {
 
   object patterns {
     // example: j0rc1048yc1_720p.mp4
@@ -23,60 +23,68 @@ trait ResourceRoutes extends Logging {
     val Thumbnail     = raw"(\w+)(-(\d+))?_(\d+)p\.webp".r
   }
 
-  val resourceRoutes = {
+  def createRoutes(resourceApi: ResourceApi, config: WebServerConfig): Route = {
 
-    pathPrefix("files") {
+    implicit val timeout: Timeout = Timeout(config.requestTimeout)
 
-      path("upload") {
-        uploadFiles("video", config.uploadSizeLimit.toBytes.toLong) {
-          (fileInfo, source) => api.resources.uploadMedia(fileInfo.fileName, source)
-        }
-        { medias => complete("OK") }
-      } ~ pathPrefix("resources") {
+    val resourceRoutes = {
 
-        (get & path(Segment)) {
-          case patterns.Thumbnail(id, _, timestamp, quality) =>
-            onSuccess(api.resources.getThumbnail(id, quality.toInt, Option(timestamp).map(_.toLong))) {
-              case None             => complete(StatusCodes.NotFound)
-              case Some(ioResponse) => complete(HttpEntity(ContentType(MediaTypes.`image/webp`), ioResponse.getContent()))
-            }
+      pathPrefix("files") {
 
-          case patterns.VideoFragment(id, start, end, quality) =>
-            onSuccess(api.resources.getVideoFragment(id, start.toInt, end.toInt, quality.toInt)) {
-              case None             => complete(StatusCodes.NotFound)
-              case Some(ioResponse) => randomAccessRangeSupport(ContentType(MediaTypes.`video/mp4`), ioResponse.size(), ioResponse.getContentRange)
-            }
+        path("upload") {
+          uploadFiles("video", config.uploadSizeLimit.toBytes.toLong) {
+            (fileInfo, source) => resourceApi.uploadMedia(fileInfo.fileName, source)
+          }
+          { medias => complete("OK") }
+        } ~ pathPrefix("resources") {
 
-          case patterns.Video(id, quality) =>
-            onSuccess(api.resources.getVideo(id, quality.toInt)) {
-              case None             => complete(StatusCodes.NotFound)
-              case Some(ioResponse) => randomAccessRangeSupport(ContentType(MediaTypes.`video/mp4`), ioResponse.size(), ioResponse.getContentRange)
-            }
+          (get & path(Segment)) {
+            case patterns.Thumbnail(id, _, timestamp, quality) =>
+              onSuccess(resourceApi.getThumbnail(id, quality.toInt, Option(timestamp).map(_.toLong))) {
+                case None             => complete(StatusCodes.NotFound)
+                case Some(ioResponse) => complete(HttpEntity(ContentType(MediaTypes.`image/webp`), ioResponse.getContent()))
+              }
 
-          case _ =>
-            complete(StatusCodes.NotFound)
+            case patterns.VideoFragment(id, start, end, quality) =>
+              onSuccess(resourceApi.getVideoFragment(id, start.toInt, end.toInt, quality.toInt)) {
+                case None             => complete(StatusCodes.NotFound)
+                case Some(ioResponse) => randomAccessRangeSupport(ContentType(MediaTypes.`video/mp4`), ioResponse.size(), ioResponse.getContentRange)
+              }
+
+            case patterns.Video(id, quality) =>
+              onSuccess(resourceApi.getVideo(id, quality.toInt)) {
+                case None             => complete(StatusCodes.NotFound)
+                case Some(ioResponse) => randomAccessRangeSupport(ContentType(MediaTypes.`video/mp4`), ioResponse.size(), ioResponse.getContentRange)
+              }
+
+            case _ =>
+              complete(StatusCodes.NotFound)
+          }
         }
       }
     }
+
+    // routes for the web app (javascript/html) resources
+    val webAppResources: Route =
+      rawPathPrefix(Slash) {
+        extractUnmatchedPath { urlPath =>
+          val filePath = urlPath.toString() match {
+            case "" | "/" => "index.html"
+            case other    => other
+          }
+
+          val targetFile = {
+            val requestedFile = File(config.webClientPath) / filePath
+            if (requestedFile.exists)
+              requestedFile
+            else
+              File(config.webClientPath) / "index.html"
+          }
+
+          getFromFile(targetFile.path.toAbsolutePath.toString)
+        }
+      }
+
+    resourceRoutes ~ webAppResources
   }
-
-  val webAppResources: Route =
-    rawPathPrefix(Slash) {
-      extractUnmatchedPath { urlPath =>
-        val filePath = urlPath.toString() match {
-          case "" | "/" => "index.html"
-          case other    => other
-        }
-
-        val targetFile = {
-          val requestedFile = File(config.webClientPath) / filePath
-          if (requestedFile.exists)
-            requestedFile
-          else
-            File(config.webClientPath) / "index.html"
-        }
-
-        getFromFile(targetFile.path.toAbsolutePath.toString)
-      }
-    }
 }
