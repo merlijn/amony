@@ -11,7 +11,7 @@ import nl.amony.actor.MediaLibProtocol.{Command, Fragment, Media, State}
 import nl.amony.actor.{MediaLibEventSourcing, Message}
 import scribe.Logging
 import QueryProtocol._
-import nl.amony.actor.index.SolrIndex.SolrIndexActor
+import nl.amony.search.solr.SolrIndex.SolrIndexActor
 
 object LocalIndex {
 
@@ -30,7 +30,7 @@ object LocalIndex {
 
 //    val indexActor = context.actorOf(Props(new LocalIndexActor(config)), "index")
 
-    val indexActor = context.actorOf(Props(new SolrIndexActor(media)))
+    val indexActor = context.actorOf(Props(new LocalIndexActor(config)))
 
     readAllEvents(context, indexActor)
 

@@ -9,8 +9,26 @@ val javaOpts = Seq("-Dnashorn.args=--no-deprecation-warning")
 val excludeLog4j =
   ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl")
 
-lazy val amony = (project in file(".")).
-  settings(
+lazy val solrSearch =
+  (project in file("solr-search"))
+  .settings(
+    name := "amony-solr-search",
+    inThisBuild(List(
+      organization    := "nl.amony",
+      scalaVersion    := "2.13.6"
+    )),
+    libraryDependencies ++= Seq(
+      "org.slf4j"                 % "slf4j-api"                  % "1.7.30",
+      "org.apache.solr"           % "solr-core"                  % "8.11.1" excludeAll(excludeLog4j),
+      "org.apache.solr"           % "solr-langid"                % "8.11.1" excludeAll(excludeLog4j),
+      "com.typesafe.akka"        %% "akka-actor-typed"           % AkkaVersion,
+      "com.outr"                 %% "scribe-slf4j"               % "3.5.5",
+    )
+  )
+
+lazy val amony = (project in file("."))
+  .dependsOn(solrSearch)
+  .settings(
     inThisBuild(List(
       organization    := "nl.amony",
       scalaVersion    := "2.13.6"
