@@ -6,16 +6,32 @@ val circeVersion = "0.14.1"
 
 val javaOpts = Nil
 
-lazy val amony = (project in file(".")).
-  settings(
+lazy val identity = (project in file("identity")).settings(
+  organization := "nl.amony",
+  name := "amony-identity",
+  libraryDependencies ++= Seq(
+    // akka
+    "com.typesafe.akka"        %% "akka-actor-typed"           % akkaVersion,
+    "com.typesafe.akka"        %% "akka-persistence-typed"     % akkaVersion,
+    "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.2",
+    "de.heikoseeberger"        %% "akka-http-circe"            % "1.36.0",
+    "io.circe"                 %% "circe-core"                 % "0.14.1",
+    "io.circe"                 %% "circe-generic"              % "0.14.1",
+    "com.typesafe.akka"        %% "akka-http"                  % akkaHttpVersion,
+  )
+)
+
+lazy val amony = (project in file("."))
+  .dependsOn(identity)
+  .settings(
     inThisBuild(List(
       organization    := "nl.amony",
       scalaVersion    := "2.13.8"
     )),
+    name := "amony-server",
     reStart / javaOptions ++= javaOpts ,
     run / fork             := true,
     run / javaOptions     ++= javaOpts,
-    name := "amony-server",
     libraryDependencies ++= Seq(
 
       // logging
@@ -48,6 +64,7 @@ lazy val amony = (project in file(".")).
 
       "io.monix"                 %% "monix-reactive"             % "3.4.0",
       "com.github.pathikrit"     %% "better-files"               % "3.9.1",
+      "io.methvin"                % "directory-watcher"          % "0.15.0",
 
       // test
       "org.scalatest"            %% "scalatest"                  % "3.2.9"           % Test,

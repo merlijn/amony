@@ -111,20 +111,20 @@ object FFMpeg extends Logging with FFMpegJsonCodecs {
 
   def transcodeToMp4(
       inputFile: Path,
-      from: Long,
-      to: Long,
+      range: (Long, Long),
       outputFile: Option[Path] = None,
       quality: Int = 24,
       scaleHeight: Option[Int]
   ): Unit = {
 
-    val input  = inputFile.absoluteFileName()
-    val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.mp4")
+    val (ss, to) = range
+    val input    = inputFile.absoluteFileName()
+    val output   = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.mp4")
 
     // format: off
     val args: List[String] =
       List(
-        "-ss",  formatTime(from),
+        "-ss",  formatTime(ss),
         "-to",  formatTime(to),
         "-i",   input,
       ) ++

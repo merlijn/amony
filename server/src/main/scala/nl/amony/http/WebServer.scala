@@ -1,41 +1,55 @@
 package nl.amony.http
 
 import akka.actor.typed.ActorSystem
-import akka.http.scaladsl.ConnectionContext
-import akka.http.scaladsl.Http
-import better.files.File
-import nl.amony.http.routes.{AdminRoutes, ApiRoutes, IdentityRoutes, ResourceRoutes}
-import nl.amony.http.util.PemReader
-import nl.amony.lib.AmonyApi
-import scribe.Logging
 import akka.http.scaladsl.server.Directives._
-import nl.amony.WebServerConfig
+import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.{ConnectionContext, Http}
+import better.files.File
+import nl.amony.actor.Message
+import nl.amony.api.{AdminApi, MediaApi, ResourceApi, SearchApi}
+import nl.amony.http.routes.{AdminRoutes, ApiRoutes, ResourceRoutes}
+import nl.amony.http.util.PemReader
+import nl.amony.user.{AuthenticationTokenHelper, IdentityRoutes, UserApi}
+import nl.amony.{AmonyConfig, WebServerConfig}
+import scribe.Logging
 
 import java.security.SecureRandom
-import javax.net.ssl.KeyManagerFactory
-import javax.net.ssl.SSLContext
-import scala.concurrent.Future
-import scala.util.Failure
-import scala.util.Success
+import javax.net.ssl.{KeyManagerFactory, SSLContext}
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
-class WebServer(override val config: WebServerConfig, override val api: AmonyApi)(
-    override implicit val system: ActorSystem[Nothing]
-) extends Logging
-    with ApiRoutes
-    with ResourceRoutes
-    with AdminRoutes
-    with IdentityRoutes
-    with RouteDeps {
 
-  val allApiRoutes =
-    if (config.enableAdmin)
-      apiRoutes ~ adminRoutes
-    else
-      apiRoutes
+object AllRoutes {
 
-  val allRoutes = allApiRoutes ~ identityRoutes ~ resourceRoutes ~ webAppResources
+  def createRoutes(system: ActorSystem[Message],
+                   userApi: UserApi,
+                   mediaApi: MediaApi,
+                   resourceApi: ResourceApi,
+                   adminApi: AdminApi,
+                   config: AmonyConfig): Route = {
+    implicit val ec: ExecutionContext = system.executionContext
 
-  def run(): Unit = {
+    val tokenHelper: AuthenticationTokenHelper = new AuthenticationTokenHelper(config.api.jwt)
+    val identityRoutes = IdentityRoutes.createRoutes(userApi, tokenHelper)
+    val resourceRoutes = ResourceRoutes.createRoutes(resourceApi, config.api)
+    val adminRoutes = AdminRoutes.createRoutes(adminApi, config.api)
+    val apiRoutes = ApiRoutes.createRoutes(system, mediaApi, new SearchApi(system), config.media.previews.transcode, config.api)
+
+    val allApiRoutes =
+      if (config.api.enableAdmin)
+        apiRoutes ~ adminRoutes
+      else
+        apiRoutes
+
+    allApiRoutes ~ identityRoutes ~ resourceRoutes
+  }
+}
+
+class WebServer(val config: WebServerConfig)(implicit val system: ActorSystem[Message]) extends Logging {
+
+  def start(route: Route): Unit = {
+
+    implicit val ec: ExecutionContext = system.executionContext
 
     def addBindingHooks(protocol: String, f: Future[Http.ServerBinding]) =
       f.onComplete {
@@ -64,13 +78,13 @@ class WebServer(override val config: WebServerConfig, override val api: AmonyApi
       val httpsConnectionContext = ConnectionContext.httpsServer(sslContext)
 
       val binding =
-        Http().newServerAt(config.hostName, httpsConfig.port).enableHttps(httpsConnectionContext).bind(allRoutes)
+        Http().newServerAt(config.hostName, httpsConfig.port).enableHttps(httpsConnectionContext).bind(route)
 
       addBindingHooks("https", binding)
     }
 
     config.http.filter(_.enabled).foreach { httpConfig =>
-      val bindingFuture = Http().newServerAt(config.hostName, httpConfig.port).bind(allRoutes)
+      val bindingFuture = Http().newServerAt(config.hostName, httpConfig.port).bind(route)
       addBindingHooks("http", bindingFuture)
     }
   }

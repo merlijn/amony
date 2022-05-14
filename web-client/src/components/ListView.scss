@@ -45,6 +45,10 @@ $row-height: 36px;
       right: 0px;
     }
 
+    .add-tag-button {
+      visibility: hidden;
+    }
+
     .media-actions {
       @extend .hover-action, .v-align-center;
       display: flex;
@@ -76,6 +80,10 @@ $row-height: 36px;
       background-color: $gray-100;
 
       .hover-action {
+        visibility: visible;
+      }
+
+      .add-tag-button {
         visibility: visible;
       }
 

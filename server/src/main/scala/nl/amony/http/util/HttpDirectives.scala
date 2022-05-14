@@ -2,32 +2,28 @@ package nl.amony.http.util
 
 import akka.NotUsed
 import akka.http.scaladsl.model.Multipart.ByteRanges
-import akka.http.scaladsl.model.StatusCodes.PartialContent
-import akka.http.scaladsl.model.StatusCodes.RangeNotSatisfiable
-import akka.http.scaladsl.model.StatusCodes.TooManyRequests
-import akka.http.scaladsl.model.headers.ByteRange
-import akka.http.scaladsl.model.headers.Range
-import akka.http.scaladsl.model.headers.RangeUnits
-import akka.http.scaladsl.model.headers.`Content-Range`
-import akka.http.scaladsl.model.headers.`Content-Type`
+import akka.http.scaladsl.model.StatusCodes.{PartialContent, RangeNotSatisfiable, TooManyRequests}
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.Directives.withSizeLimit
+import akka.http.scaladsl.model.headers.{ByteRange, Range, RangeUnits, `Content-Range`, `Content-Type`}
+import akka.http.scaladsl.server.Directives.{as, entity, post, withSizeLimit}
 import akka.http.scaladsl.server.directives.FutureDirectives.onSuccess
-import akka.http.scaladsl.server.directives.MarshallingDirectives.{as, entity}
 import akka.http.scaladsl.server.directives.{ContentTypeResolver, FileInfo}
-import akka.http.scaladsl.server.{Directive1, Route, UnsatisfiableRangeRejection}
-import akka.http.scaladsl.util.FastFuture
+import akka.http.scaladsl.server.{Directive, Directive1, Route, UnsatisfiableRangeRejection}
+import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
 import akka.stream.scaladsl.{FileIO, Sink, Source}
 import akka.util.ByteString
 import scribe.Logging
 
 import java.nio.file.{Files, Path}
-import scala.collection.immutable
-import scala.util.{Failure, Success}
+import scala.concurrent.Future
 
 object HttpDirectives extends Logging {
   import akka.http.scaladsl.server.directives.BasicDirectives._
   import akka.http.scaladsl.server.directives.RouteDirectives._
+
+  val chunkSize = 8192
+
+  def postWithData[T](implicit um: FromRequestUnmarshaller[T]): Directive[Tuple1[T]] = post & entity(as[T])
 
   case class IndexRange(start: Long, end: Long) {
     def length: Long = end - start
@@ -39,15 +35,18 @@ object HttpDirectives extends Logging {
   }
 
   def fileWithRangeSupport(path: Path)(implicit resolver: ContentTypeResolver): Route = {
-    fileWithRangeSupport(path, resolver.apply(path.getFileName.toString))
+      fileWithRangeSupport(path, resolver.apply(path.getFileName.toString))
   }
 
   def fileWithRangeSupport(path: Path, contentType: ContentType): Route = {
-    randomAccessRangeSupport(
-      contentType,
-      path.toFile.length(),
-      (start, _) => FileIO.fromPath(path, 8192, start)
-    )
+    if(!path.toFile.exists())
+      complete(StatusCodes.NotFound)
+    else
+      randomAccessRangeSupport(
+        contentType,
+        path.toFile.length(),
+        (start, _) => FileIO.fromPath(path, chunkSize, start)
+      )
   }
 
   /** Answers GET requests with an `Accept-Ranges: bytes` header and converts HttpResponses coming back from its inner
@@ -63,12 +62,11 @@ object HttpDirectives extends Logging {
       contentType: ContentType,
       contentLength: Long,
       byteStringProvider: (Long, Long) => Source[ByteString, Any]
-  ) = {
+  ): Route = {
 
     extractRequestContext { ctx =>
       val settings = ctx.settings
-      import settings.rangeCoalescingThreshold
-      import settings.rangeCountLimit
+      import settings.{rangeCoalescingThreshold, rangeCountLimit}
 
       def toIndexRange(range: ByteRange): IndexRange =
         range match {
@@ -85,7 +83,7 @@ object HttpDirectives extends Logging {
           otherCandidates :+ merged
         }
 
-      // at this point ranges is garuanteed to be of size > 1
+      // at this point ranges is guaranteed to be of size > 1
       def multipartRanges(ranges: Seq[ByteRange]): Multipart.ByteRanges = {
 
         val iRanges: Seq[IndexRange] = ranges.map(toIndexRange)
@@ -105,8 +103,9 @@ object HttpDirectives extends Logging {
           case _ =>
             Source.fromIterator(() => coalescedRanges.iterator).map { range =>
               val byteSource = byteStringProvider(range.start, range.length)
-              Multipart.ByteRanges
-                .BodyPart(range.toContentRange(contentLength), HttpEntity(contentType, range.length, byteSource))
+              Multipart.ByteRanges.BodyPart(
+                range.toContentRange(contentLength),
+                HttpEntity(contentType, range.length, byteSource))
             }
         }
 
@@ -152,7 +151,7 @@ object HttpDirectives extends Logging {
     }
   }
 
-  def uploadFiles(fieldName: String, uploadPath: Path, uploadLimitBytes: Long): Directive1[immutable.Seq[(FileInfo, Path)]] =
+  def uploadFiles[T](fieldName: String, uploadLimitBytes: Long)(uploadFn: (FileInfo, Source[ByteString, Any]) => Future[T]): Directive1[Seq[T]] =
 
     (withSizeLimit(uploadLimitBytes) & entity(as[Multipart.FormData])).flatMap { formData =>
 
@@ -160,7 +159,7 @@ object HttpDirectives extends Logging {
         implicit val mat = ctx.materializer
         implicit val ec = ctx.executionContext
 
-        val uploaded: Source[(FileInfo, Path), Any] = formData.parts
+        val uploaded: Source[T, Any] = formData.parts
           .mapConcat { part =>
             if (part.filename.isDefined && part.name == fieldName) part :: Nil
             else {
@@ -170,23 +169,10 @@ object HttpDirectives extends Logging {
           }
           .mapAsync(1) { part =>
             val fileInfo = FileInfo(part.name, part.filename.get, part.entity.contentType)
-
-            Files.createDirectories(uploadPath)
-            val path = uploadPath.resolve(part.filename.get)
-            val file = path.toFile
-            file.createNewFile()
-
-            part.entity.dataBytes
-              .runWith(FileIO.toPath(path))
-              .flatMap { ioResult =>
-                ioResult.status match {
-                  case Success(_) => FastFuture.successful(ioResult)
-                  case Failure(t) => FastFuture.failed(t)
-                }
-              }.map(_ => (fileInfo, path))
+            uploadFn(fileInfo, part.entity.dataBytes)
           }
 
-        val uploadedF = uploaded.runWith(Sink.seq[(FileInfo, Path)])
+        val uploadedF: Future[Seq[T]] = uploaded.runWith(Sink.seq[T])
 
         onSuccess(uploadedF)
       }

@@ -1,0 +1,29 @@
+@import 'src/App.scss';
+
+.tags-bar-wrapper {
+
+  @extend .v-align-center;
+
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+.add-tag-button {
+  @extend .hover-pointer;
+  width: 24px;
+  height: 24px;
+  position: absolute;
+  right: 0px;
+}
+
+.new-tag {
+  position: absolute;
+  right: 5px;
+  min-width: 25px;
+
+  padding: 6px 10px;
+  border-radius: 25px;
+  border: 1px solid $highlight-e;
+}

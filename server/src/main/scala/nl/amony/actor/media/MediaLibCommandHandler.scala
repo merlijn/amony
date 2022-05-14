@@ -1,21 +1,31 @@
 package nl.amony.actor.media
 
 import akka.actor.typed.ActorRef
+import akka.actor.typed.scaladsl.ActorContext
 import akka.persistence.typed.scaladsl.Effect
 import better.files.File
-import nl.amony.MediaLibConfig
+import nl.amony.{DeleteFile, MediaLibConfig, MoveToTrash}
 import nl.amony.actor.media.MediaLibEventSourcing._
 import nl.amony.actor.media.MediaLibProtocol._
-import nl.amony.lib.MediaScanner
+import nl.amony.actor.resources.{MediaScanner, ResourcesProtocol}
+import nl.amony.actor.resources.ResourcesProtocol.ResourceCommand
+import akka.actor.typed.scaladsl.AskPattern._
+import akka.util.Timeout
 import scribe.Logging
 
 import java.awt.Desktop
+import java.nio.file.{Files, Path}
+import scala.concurrent.duration.DurationInt
 
 object MediaLibCommandHandler extends Logging {
 
-  def apply(config: MediaLibConfig, scanner: MediaScanner)(state: State, cmd: Command): Effect[Event, State] = {
+  def apply(actorContext: ActorContext[MediaCommand], config: MediaLibConfig, resourceRef: ActorRef[ResourceCommand])(state: State, cmd: MediaCommand): Effect[Event, State] = {
 
     logger.debug(s"Received command: $cmd")
+
+    implicit val askTimeout: Timeout = Timeout(5.seconds)
+    implicit val actorScheduler = actorContext.system.scheduler
+    implicit val ec = actorContext.executionContext
 
     def requireMedia[T](mediaId: String, sender: ActorRef[Either[ErrorResponse, T]])(
         effect: Media => Effect[Event, State]
@@ -45,12 +55,24 @@ object MediaLibCommandHandler extends Logging {
     }
     // format: on
 
+    def deleteMedia(path: Path): Unit = {
+      if (File(path).exists) {
+        config.deleteMedia match {
+          case DeleteFile =>
+            Files.delete(path)
+          case MoveToTrash =>
+            Desktop.getDesktop().moveToTrash(path.toFile())
+        }
+      };
+    }
+
     cmd match {
 
       case UpsertMedia(media, sender) =>
 
         Effect
           .persist(MediaAdded(media))
+          .thenRun((_: State) => resourceRef.tell(ResourcesProtocol.CreateFragments(media, false)))
           .thenReply(sender)(_ => true)
 
       case UpdateMetaData(mediaId, title, comment, tags, sender) =>
@@ -76,10 +98,7 @@ object MediaLibCommandHandler extends Logging {
 
         Effect
           .persist(MediaRemoved(mediaId))
-          .thenRun((s: State) => {
-            if (deleteFile && File(path).exists)
-              Desktop.getDesktop().moveToTrash(path.toFile());
-          })
+          .thenRun((s: State) => if (deleteFile) deleteMedia(path))
           .thenReply(sender)(_ => true)
 
       case GetById(id, sender) =>
@@ -98,14 +117,8 @@ object MediaLibCommandHandler extends Logging {
             Effect
               .persist(FragmentDeleted(id, idx))
               .thenRun { (_: State) =>
-                scanner.deleteVideoFragment(
-                  media,
-                  media.fragments(idx).fromTimestamp,
-                  media.fragments(idx).toTimestamp,
-                  config.previews
-                )
-              }
-              .thenReply(sender)(s => Right(s.media(id)))
+                resourceRef.tell(ResourcesProtocol.DeleteFragment(media, (media.fragments(idx).fromTimestamp, media.fragments(idx).toTimestamp)))
+              }.thenReply(sender)(s => Right(s.media(id)))
           }
         }
 
@@ -116,7 +129,9 @@ object MediaLibCommandHandler extends Logging {
           }
           else
             verifyFragmentRange(start, end, media.videoInfo.duration) match {
-              case Left(error) => Effect.reply(sender)(Left(InvalidCommand(error)))
+              case Left(error) =>
+                Effect.reply(sender)(Left(InvalidCommand(error)))
+
               case Right(_)    =>
 
                 logger.info(s"Updating fragment $id:$idx to $start:$end")
@@ -125,21 +140,11 @@ object MediaLibCommandHandler extends Logging {
                 Effect
                   .persist(FragmentRangeUpdated(id, idx, start, end))
                   .thenRun { (s: State) =>
-                    scanner.deleteVideoFragment(
-                      media,
-                      oldFragment.fromTimestamp,
-                      oldFragment.toTimestamp,
-                      config.previews
-                    )
-                    scanner.createPreviews(
-                      media,
-                      media.resolvePath(config.mediaPath),
-                      start,
-                      end,
-                      config.previews
-                    )
+                    resourceRef.tell(ResourcesProtocol.DeleteFragment(media, (oldFragment.fromTimestamp, oldFragment.toTimestamp)))
+                    resourceRef.ask[Boolean](ref => ResourcesProtocol.CreateFragment(media, (start, end), false, ref)).foreach {
+                      _ => sender.tell(Right(s.media(id)))
+                    }
                   }
-                  .thenReply(sender)(s => Right(s.media(id)))
             }
         }
 
@@ -148,20 +153,16 @@ object MediaLibCommandHandler extends Logging {
           logger.info(s"Adding fragment for $id from $start to $end")
 
           verifyFragmentRange(start, end, media.videoInfo.duration) match {
-            case Left(error) => Effect.reply(sender)(Left(InvalidCommand(error)))
+            case Left(error) =>
+              Effect.reply(sender)(Left(InvalidCommand(error)))
             case Right(_)    =>
               Effect
                 .persist(FragmentAdded(id, start, end))
-                .thenRun((_: State) =>
-                  scanner.createPreviews(
-                    media,
-                    media.resolvePath(config.mediaPath),
-                    start,
-                    end,
-                    config.previews
-                  )
+                .thenRun((s: State) =>
+                  resourceRef.ask[Boolean](ref => ResourcesProtocol.CreateFragment(media, (start, end), false, ref)).foreach {
+                    _ => sender.tell(Right(s.media(id)))
+                  }
                 )
-                .thenReply(sender)(s => Right(s.media(id)))
           }
         }
 

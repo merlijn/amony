@@ -1,79 +1,27 @@
-package nl.amony.lib
+package nl.amony.actor.resources
 
 import akka.util.Timeout
-import nl.amony.{AmonyConfig, MediaLibConfig, PreviewConfig, TranscodeSettings}
-import nl.amony.actor.media.MediaLibProtocol.FileInfo
-import nl.amony.actor.media.MediaLibProtocol.Fragment
-import nl.amony.actor.media.MediaLibProtocol.Media
-import nl.amony.actor.media.MediaLibProtocol.VideoInfo
-import nl.amony.lib.FileUtil.PathOps
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.reactive.Consumer
-import monix.reactive.Observable
+import monix.reactive.{Consumer, Observable}
+import nl.amony.actor.media.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
+import nl.amony.lib.FileUtil
+import nl.amony.lib.FileUtil.PathOps
 import nl.amony.lib.ffmpeg.FFMpeg
+import nl.amony.{AmonyConfig, MediaLibConfig}
 import scribe.Logging
 
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.Files
-import java.nio.file.Path
-import scala.concurrent.duration.DurationInt
-import scala.util.Success
+import java.nio.file.{Files, Path}
 
 class MediaScanner(appConfig: AmonyConfig) extends Logging {
 
-  def filterFileName(fileName: String): Boolean = {
-    fileName.endsWith(".mp4") && !fileName.startsWith(".")
-  }
-
-  def convertNonStreamableVideos(api: AmonyApi): Unit = {
-
-    val files = FileUtil.walkDir(appConfig.media.path)
-
-    implicit val timeout = Timeout(3.seconds)
-    implicit val ec      = scala.concurrent.ExecutionContext.global
-    val parallelism      = appConfig.media.scanParallelFactor
-
-    Observable
-      .fromIterable(files)
-      .mapParallelUnordered(parallelism)(path => FFMpeg.ffprobe(path, true, appConfig.ffprobeTimeout).map(p => path -> p))
-      .filterNot { case (_, probe) => probe.debugOutput.exists(_.isFastStart) }
-      .filterNot { case (path, _) => filterFileName(path.getFileName().toString) }
-      .mapParallelUnordered(parallelism) { case (videoWithoutFastStart, _) => Task {
-
-          logger.info(s"Creating faststart/streamable mp4 for: ${videoWithoutFastStart}")
-
-          val out = FFMpeg.addFastStart(videoWithoutFastStart)
-          val oldHash = appConfig.media.hashingAlgorithm.generateHash(videoWithoutFastStart)
-          val newHash = appConfig.media.hashingAlgorithm.generateHash(out)
-
-          logger.info(s"$oldHash -> $newHash: ${appConfig.media.mediaPath.relativize(out).toString}")
-
-          api.query.getById(oldHash).onComplete {
-            case Success(Some(v)) =>
-              val m = v.copy(
-                id = newHash,
-                fileInfo = v.fileInfo.copy(hash = newHash, relativePath = appConfig.media.mediaPath.relativize(out).toString)
-              )
-
-              api.modify.upsertMedia(m).foreach { _ =>
-                api.admin.regeneratePreviewForMedia(m)
-                api.modify.deleteMedia(oldHash, deleteResource = false)
-                videoWithoutFastStart.deleteIfExists()
-              }
-            case other =>
-              logger.warn(s"Unexpected result: $other")
-          }
-        }
-      }
-  }
-
-  def scanMedia(mediaPath: Path, hash: Option[String], config: MediaLibConfig): Task[Media] = {
+  private[resources] def scanMedia(mediaPath: Path, hash: Option[String]): Task[Media] = {
 
     FFMpeg
       .ffprobe(mediaPath, false, appConfig.ffprobeTimeout).map { case probe =>
 
-        val fileHash = hash.getOrElse(config.hashingAlgorithm.generateHash(mediaPath))
+        val fileHash = hash.getOrElse(appConfig.media.hashingAlgorithm.generateHash(mediaPath))
 
         val mainVideoStream =
           probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${mediaPath}"))
@@ -90,7 +38,7 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
         val timeStamp = mainVideoStream.durationMillis / 3
 
         val fileInfo = FileInfo(
-          relativePath     = config.mediaPath.relativize(mediaPath).toString,
+          relativePath     = appConfig.media.mediaPath.relativize(mediaPath).toString,
           hash             = fileHash,
           size             = fileAttributes.size(),
           creationTime     = fileAttributes.creationTime().toMillis,
@@ -103,9 +51,9 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
           (mainVideoStream.width, mainVideoStream.height)
         )
 
-        val fragmentLength = config.defaultFragmentLength.toMillis
+        val fragmentLength = appConfig.media.defaultFragmentLength.toMillis
 
-        val media = Media(
+        Media(
           id                 = fileHash,
           title              = None,
           comment            = None,
@@ -115,32 +63,26 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
           fragments          = List(Fragment(timeStamp, timeStamp + fragmentLength, None, List.empty)),
           tags               = Set.empty
         )
-
-        createPreviews(
-          media,
-          mediaPath,
-          timeStamp,
-          timeStamp + fragmentLength,
-          config.previews
-        )
-
-        media
       }
   }
 
-  def scanVideosInDirectory(
+  def scanMediaInDirectory(
       config: MediaLibConfig,
       persistedMedia: List[Media]
   )(implicit s: Scheduler, timeout: Timeout): (Observable[Media], Observable[Media]) = {
-
-    val files = FileUtil.walkDir(config.mediaPath)
 
     logger.info("Scanning directory for media...")
 
     // first calculate the hashes
     val filesWithHashes: List[(Path, String)] = Observable
-      .from(files)
-      .filter { file => filterFileName(file.getFileName.toString) }
+      .from(FileUtil.walkDir(config.mediaPath))
+      .filter { file => config.filterFileName(file.getFileName.toString) }
+      .filterNot { file =>
+        val isEmpty = Files.size(file) == 0
+        if (isEmpty)
+          logger.warn(s"Encountered empty file: ${file.getFileName.toString}")
+        isEmpty
+      }
       .mapParallelUnordered(config.scanParallelFactor) { path =>
         Task {
           val hash = if (config.verifyExistingHashes) {
@@ -205,7 +147,7 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
 
             case None =>
               logger.info(s"Scanning new file: '${relativePath}'")
-              scanMedia(videoFile, Some(hash), config)
+              scanMedia(videoFile, Some(hash))
                 .map(m => Some(m))
                 .onErrorHandle { e =>
                   logger.warn(s"Failed to scan video: $videoFile", e)
@@ -217,54 +159,5 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
       }
 
     (Observable.from(removed), newAndMoved)
-  }
-
-  def deleteVideoFragment(
-    media: Media,
-    from: Long,
-    to: Long,
-    previewConfig: PreviewConfig
-  ): Unit = {
-
-    (appConfig.media.resourcePath / s"${media.id}-$from-${to}_${media.height}p.mp4").deleteIfExists()
-
-    previewConfig.transcode.foreach { transcode =>
-      (appConfig.media.resourcePath / s"${media.id}-${from}_${transcode.scaleHeight}p.webp").deleteIfExists()
-      (appConfig.media.resourcePath / s"${media.id}-$from-${to}_${transcode.scaleHeight}p.mp4").deleteIfExists()
-    }
-  }
-
-  def createPreviews(
-      media: Media,
-      videoPath: Path,
-      from: Long,
-      to: Long,
-      config: PreviewConfig
-  ): Unit = {
-
-    def genFor(height: Int, crf: Int) = {
-      FFMpeg.writeThumbnail(
-        inputFile   = videoPath,
-        timestamp   = from,
-        outputFile  = Some(appConfig.media.resourcePath.resolve(s"${media.id}-${from}_${height}p.webp")),
-        scaleHeight = Some(height)
-      )
-
-      FFMpeg.transcodeToMp4(
-        inputFile   = videoPath,
-        from        = from,
-        to          = to,
-        outputFile  = Some(appConfig.media.resourcePath.resolve(s"${media.id}-$from-${to}_${height}p.mp4")),
-        quality     = crf,
-        scaleHeight = Some(height)
-      )
-    }
-
-    config.transcode.filterNot(_.scaleHeight > media.height).foreach { transcode =>
-      genFor(transcode.scaleHeight, transcode.crf)
-    }
-
-    if (media.height < config.transcode.map(_.scaleHeight).min)
-      genFor(media.height, 23)
   }
 }

@@ -11,12 +11,10 @@ import io.circe.Encoder
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.generic.semiauto.deriveEncoder
 import nl.amony.TranscodeSettings
-import nl.amony.actor.index.{LocalIndex, QueryProtocol}
+import nl.amony.actor.index.{InMemoryIndex, QueryProtocol}
 import nl.amony.actor.media.MediaLibProtocol
 
-trait JsonCodecs {
-
-  def transcodingSettings: List[TranscodeSettings]
+class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
 
   // web model codecs
   implicit val fragmentCodec: Codec[Fragment]            = deriveCodec[Fragment]
@@ -29,9 +27,6 @@ trait JsonCodecs {
   // contra map encoders for internal classes
   implicit val mediaEncoder: Encoder[MediaLibProtocol.Media] =
     deriveEncoder[Video].contramapObject[MediaLibProtocol.Media](toWebModel)
-
-  implicit val tagEncoder: Encoder[QueryProtocol.Playlist] =
-    deriveEncoder[Playlist].contramapObject[QueryProtocol.Playlist](c => Playlist(c.id, c.title))
 
   implicit val searchResultEncoder: Encoder[QueryProtocol.SearchResult] =
     deriveEncoder[SearchResult].contramapObject[QueryProtocol.SearchResult](result =>
