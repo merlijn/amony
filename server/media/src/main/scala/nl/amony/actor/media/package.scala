@@ -1,7 +1,6 @@
-package nl.amony
+package nl.amony.actor
 
-package object lib {
-
+package object media {
   implicit class ListOps[T](list: List[T]) {
     def replaceAtPos(idx: Int, e: T): List[T] = {
       list.slice(0, idx) ::: (e :: list.slice(idx + 1, list.size))

@@ -2,9 +2,10 @@ package nl.amony
 
 import akka.actor.typed.{ActorSystem, Behavior}
 import akka.util.Timeout
-import nl.amony.actor.resources.MediaScanner
+import nl.amony.actor.media.MediaApi
+import nl.amony.actor.resources.{MediaScanner, ResourceApi}
 import nl.amony.actor.{MainRouter, Message}
-import nl.amony.api.{AdminApi, MediaApi, ResourceApi}
+import nl.amony.api.AdminApi
 import nl.amony.http.{AllRoutes, WebServer}
 import nl.amony.user.UserApi
 import scribe.Logging
@@ -18,18 +19,19 @@ object Main extends ConfigLoader with Logging {
 
     Files.createDirectories(appConfig.media.resourcePath)
 
-    val scanner                      = new MediaScanner(appConfig)
+    val scanner                      = new MediaScanner(appConfig.media)
     val router: Behavior[Message]    = MainRouter.apply(appConfig, scanner)
     val system: ActorSystem[Message] = ActorSystem(router, "mediaLibrary", config)
 
     implicit val timeout: Timeout = Timeout(10.seconds)
 
-    val userApi = new UserApi(system)
+    val userApi = new UserApi(system, appConfig.auth)
     val mediaApi = new MediaApi(system)
-    val adminApi = new AdminApi(mediaApi, system, scanner, appConfig)
     val resourcesApi = new ResourceApi(system, mediaApi)
+    val adminApi = new AdminApi(mediaApi, resourcesApi, system, scanner, appConfig)
 
-    userApi.upsertUser(appConfig.users.adminUsername, appConfig.users.adminPassword)
+    userApi.upsertUser(appConfig.auth.adminUsername, appConfig.auth.adminPassword)
+
     adminApi.scanLibrary()(timeout.duration)
 //    probeAll(api)(system.executionContext)
 //    MediaLibScanner.convertNonStreamableVideos(mediaLibConfig, api)

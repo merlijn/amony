@@ -22,6 +22,10 @@ val jwtCirce             = "com.github.jwt-scala"     %% "jwt-circe"            
 val slf4jApi             = "org.slf4j"                 % "slf4j-api"                  % "1.7.30"
 val scribeSlf4j          = "com.outr"                 %% "scribe-slf4j"               % "3.5.5"
 
+val betterFiles          = "com.github.pathikrit"     %% "better-files"               % "3.9.1"
+
+val monixReactive        = "io.monix"                 %% "monix-reactive"             % "3.4.0"
+
 val scalaTest            = "org.scalatest"            %% "scalatest"                  % "3.2.9"           % Test
 val scalaTestCheck       = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.9.0"         % Test
 
@@ -72,14 +76,14 @@ lazy val media =
     .settings(
       name := "amony-media",
       libraryDependencies ++= Seq(
-        akka, akkaPersistence, akkaHttpCirce, circe, circeGeneric, akkaHttp,
+        akka, akkaPersistence, scribeSlf4j, akkaHttpCirce, circe, circeGeneric, akkaHttp, betterFiles, monixReactive
       )
     )
 
 lazy val solrSearch =
   module("solr-search")
     .settings(
-      name := "amony-solr-search",
+      name := "amony-search-solr",
       libraryDependencies ++= Seq(
         slf4jApi, scribeSlf4j,
         akka,
@@ -124,8 +128,8 @@ lazy val amony = (project in file("."))
       circeGeneric,
       circeParser,
 
-      "io.monix"                 %% "monix-reactive"             % "3.4.0",
-      "com.github.pathikrit"     %% "better-files"               % "3.9.1",
+      betterFiles,
+      monixReactive,
       "io.methvin"                % "directory-watcher"          % "0.15.0",
 
       // test

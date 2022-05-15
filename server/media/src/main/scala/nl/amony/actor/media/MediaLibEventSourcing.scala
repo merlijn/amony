@@ -1,13 +1,11 @@
 package nl.amony.actor.media
 
-import nl.amony.actor.JsonSerializable
+import nl.amony.actor.media.MediaLibProtocol.{Fragment, Media, State}
 import scribe.Logging
-import MediaLibProtocol._
-import nl.amony.lib.ListOps
 
 object MediaLibEventSourcing extends Logging {
 
-  sealed trait Event extends JsonSerializable
+  sealed trait Event
 
   case class MediaMetaDataUpdated(
     id: String,

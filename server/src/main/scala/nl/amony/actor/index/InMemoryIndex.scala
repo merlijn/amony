@@ -1,16 +1,15 @@
 package nl.amony.actor.index
 
 import akka.actor.typed.scaladsl.ActorContext
-import akka.actor.{Actor, ActorRef, Props, typed}
+import akka.actor.{Actor, ActorRef, Props}
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.persistence.query.{EventEnvelope, PersistenceQuery}
 import akka.stream.Materializer
-import better.files.File
-import nl.amony.MediaLibConfig
-import nl.amony.actor.media.MediaLibProtocol.{Fragment, Media, State}
-import scribe.Logging
-import QueryProtocol._
+import nl.amony.actor.index.QueryProtocol._
+import nl.amony.actor.media.MediaConfig.MediaLibConfig
 import nl.amony.actor.media.MediaLibEventSourcing
+import nl.amony.actor.media.MediaLibProtocol.{Media, State}
+import scribe.Logging
 
 object InMemoryIndex {
 

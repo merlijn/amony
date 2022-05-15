@@ -4,24 +4,24 @@ import akka.util.Timeout
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.{Consumer, Observable}
+import nl.amony.actor.media.MediaConfig.MediaLibConfig
 import nl.amony.actor.media.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
 import nl.amony.lib.FileUtil
 import nl.amony.lib.FileUtil.PathOps
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.{AmonyConfig, MediaLibConfig}
 import scribe.Logging
 
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
 
-class MediaScanner(appConfig: AmonyConfig) extends Logging {
+class MediaScanner(appConfig: MediaLibConfig) extends Logging {
 
   private[resources] def scanMedia(mediaPath: Path, hash: Option[String]): Task[Media] = {
 
     FFMpeg
       .ffprobe(mediaPath, false, appConfig.ffprobeTimeout).map { case probe =>
 
-        val fileHash = hash.getOrElse(appConfig.media.hashingAlgorithm.generateHash(mediaPath))
+        val fileHash = hash.getOrElse(appConfig.hashingAlgorithm.generateHash(mediaPath))
 
         val mainVideoStream =
           probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${mediaPath}"))
@@ -38,7 +38,7 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
         val timeStamp = mainVideoStream.durationMillis / 3
 
         val fileInfo = FileInfo(
-          relativePath     = appConfig.media.mediaPath.relativize(mediaPath).toString,
+          relativePath     = appConfig.mediaPath.relativize(mediaPath).toString,
           hash             = fileHash,
           size             = fileAttributes.size(),
           creationTime     = fileAttributes.creationTime().toMillis,
@@ -51,7 +51,7 @@ class MediaScanner(appConfig: AmonyConfig) extends Logging {
           (mainVideoStream.width, mainVideoStream.height)
         )
 
-        val fragmentLength = appConfig.media.defaultFragmentLength.toMillis
+        val fragmentLength = appConfig.defaultFragmentLength.toMillis
 
         Media(
           id                 = fileHash,

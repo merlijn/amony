@@ -7,8 +7,7 @@ import akka.http.scaladsl.util.FastFuture
 import akka.stream.SystemMaterializer
 import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
-import nl.amony.MediaLibConfig
-import nl.amony.actor.JsonSerializable
+import nl.amony.actor.media.MediaConfig.MediaLibConfig
 import nl.amony.actor.resources.ResourcesProtocol._
 import scribe.Logging
 
@@ -17,7 +16,7 @@ import scala.util.{Failure, Success}
 
 object LocalResourcesHandler extends Logging {
 
-  case class LocalFileIOResponse(path: Path) extends IOResponse with JsonSerializable {
+  case class LocalFileIOResponse(path: Path) extends IOResponse {
     override def size(): Long = Files.size(path)
     override def getContent(): Source[ByteString, NotUsed] = getContentRange(0, size)
     override def getContentRange(start: Long, end: Long): Source[ByteString, NotUsed] =

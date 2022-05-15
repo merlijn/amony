@@ -1,8 +1,8 @@
 package nl.amony.lib.ffmpeg
 
-import io.circe.{Decoder, HCursor}
 import io.circe.generic.semiauto.deriveDecoder
-import nl.amony.lib.ffmpeg.Model._
+import io.circe.{Decoder, HCursor}
+import nl.amony.lib.ffmpeg.Model.{AudioStream, ProbeDebugOutput, ProbeOutput, Stream, UnkownStream, VideoStream}
 import scribe.Logging
 
 private [ffmpeg] trait FFMpegJsonCodecs extends Logging {

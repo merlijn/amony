@@ -13,8 +13,11 @@ import nl.amony.user.actor.{UserCommandHandler, UserEventSourcing}
 import nl.amony.user.actor.UserCommandHandler.UserState
 import nl.amony.user.actor.UserEventSourcing.UserEvent
 import nl.amony.user.actor.UserProtocol.{Authenticate, AuthenticationResponse, UpsertUser, User, UserCommand}
+import pdi.jwt.{JwtAlgorithm, JwtCirce, JwtClaim}
 
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 object UserApi {
   def userBehaviour(): Behavior[UserCommand] = {
@@ -35,7 +38,7 @@ object UserApi {
   val userServiceKey = ServiceKey[UserCommand]("userService")
 }
 
-class UserApi(system: ActorSystem[Nothing]) {
+class UserApi(system: ActorSystem[Nothing], config: AuthConfig) {
 
   private implicit def ec: ExecutionContext = system.executionContext
   private implicit def scheduler: Scheduler = system.scheduler
@@ -51,4 +54,23 @@ class UserApi(system: ActorSystem[Nothing]) {
 
   def login(username: String, password: String)(implicit timeout: Timeout): Future[AuthenticationResponse] =
     userRef().flatMap(_.ask[AuthenticationResponse](ref => Authenticate(username, password, ref)))
+
+  val expirationInSeconds = config.jwt.tokenExpiration.toSeconds
+  val algo = JwtAlgorithm.HS256 // TODO get from config
+
+  def createToken(userId: String): String = {
+
+    val claim = JwtClaim(
+      expiration = Some(Instant.now.plusSeconds(expirationInSeconds).getEpochSecond),
+      issuedAt = Some(Instant.now.getEpochSecond)
+    ) + ("admin", true) + ("userId", userId)
+
+    val token = JwtCirce.encode(claim, config.jwt.secretKey, algo)
+
+    token
+  }
+
+  def decodeToken(token: String): Try[JwtClaim] = {
+    JwtCirce.decode(token, config.jwt.secretKey, Seq(algo))
+  }
 }

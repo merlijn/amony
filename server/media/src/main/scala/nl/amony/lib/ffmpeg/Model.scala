@@ -42,5 +42,3 @@ object Model {
     }
   }
 }
-
-

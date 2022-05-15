@@ -1,18 +1,11 @@
 package nl.amony.http
 
-import nl.amony.http.WebModel.Fragment
-import nl.amony.http.WebModel.FragmentRange
-import nl.amony.http.WebModel.SearchResult
-import nl.amony.http.WebModel.Playlist
-import nl.amony.http.WebModel.Video
-import nl.amony.http.WebModel.VideoMeta
-import io.circe.Codec
-import io.circe.Encoder
-import io.circe.generic.semiauto.deriveCodec
-import io.circe.generic.semiauto.deriveEncoder
-import nl.amony.TranscodeSettings
-import nl.amony.actor.index.{InMemoryIndex, QueryProtocol}
+import io.circe.{Codec, Encoder}
+import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
+import nl.amony.actor.index.QueryProtocol
+import nl.amony.actor.media.MediaConfig.TranscodeSettings
 import nl.amony.actor.media.MediaLibProtocol
+import nl.amony.http.WebModel._
 
 class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
 

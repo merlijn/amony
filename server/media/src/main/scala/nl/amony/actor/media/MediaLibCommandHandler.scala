@@ -2,20 +2,20 @@ package nl.amony.actor.media
 
 import akka.actor.typed.ActorRef
 import akka.actor.typed.scaladsl.ActorContext
-import akka.actor.typed.scaladsl.AskPattern._
 import akka.persistence.typed.scaladsl.Effect
 import akka.util.Timeout
 import better.files.File
+import nl.amony.actor.media.MediaConfig.{DeleteFile, MediaLibConfig, MoveToTrash}
 import nl.amony.actor.media.MediaLibEventSourcing._
 import nl.amony.actor.media.MediaLibProtocol._
 import nl.amony.actor.resources.ResourcesProtocol
 import nl.amony.actor.resources.ResourcesProtocol.ResourceCommand
-import nl.amony.{DeleteFile, MediaLibConfig, MoveToTrash}
 import scribe.Logging
 
 import java.awt.Desktop
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.DurationInt
+import akka.actor.typed.scaladsl.AskPattern._
 
 object MediaLibCommandHandler extends Logging {
 

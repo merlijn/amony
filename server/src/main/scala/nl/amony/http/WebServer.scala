@@ -1,15 +1,16 @@
 package nl.amony.http
 
 import akka.actor.typed.ActorSystem
-import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.{ConnectionContext, Http}
 import better.files.File
 import nl.amony.actor.Message
-import nl.amony.api.{AdminApi, MediaApi, ResourceApi, SearchApi}
+import nl.amony.actor.media.MediaApi
+import nl.amony.actor.resources.ResourceApi
+import nl.amony.api.{AdminApi, SearchApi}
 import nl.amony.http.routes.{AdminRoutes, ApiRoutes, ResourceRoutes}
 import nl.amony.http.util.PemReader
-import nl.amony.user.{AuthenticationTokenHelper, IdentityRoutes, UserApi}
+import nl.amony.user.{IdentityRoutes, UserApi}
 import nl.amony.{AmonyConfig, WebServerConfig}
 import scribe.Logging
 
@@ -29,11 +30,35 @@ object AllRoutes {
                    config: AmonyConfig): Route = {
     implicit val ec: ExecutionContext = system.executionContext
 
-    val tokenHelper: AuthenticationTokenHelper = new AuthenticationTokenHelper(config.api.jwt)
-    val identityRoutes = IdentityRoutes.createRoutes(userApi, tokenHelper)
+    val identityRoutes = IdentityRoutes.createRoutes(userApi)
     val resourceRoutes = ResourceRoutes.createRoutes(resourceApi, config.api)
     val adminRoutes = AdminRoutes.createRoutes(adminApi, config.api)
-    val apiRoutes = ApiRoutes.createRoutes(system, mediaApi, new SearchApi(system), config.media.previews.transcode, config.api)
+    val searchApi   = new SearchApi(system)
+
+    val apiRoutes = ApiRoutes.createRoutes(system, mediaApi, searchApi, config.media.previews.transcode, config.api)
+
+    import akka.http.scaladsl.server.Directives._
+
+    // routes for the web app (javascript/html) resources
+    val webAppResources: Route =
+      rawPathPrefix(Slash) {
+        extractUnmatchedPath { urlPath =>
+          val filePath = urlPath.toString() match {
+            case "" | "/" => "index.html"
+            case other    => other
+          }
+
+          val targetFile = {
+            val requestedFile = File(config.api.webClientPath) / filePath
+            if (requestedFile.exists)
+              requestedFile
+            else
+              File(config.api.webClientPath) / "index.html"
+          }
+
+          getFromFile(targetFile.path.toAbsolutePath.toString)
+        }
+      }
 
     val allApiRoutes =
       if (config.api.enableAdmin)
@@ -41,7 +66,7 @@ object AllRoutes {
       else
         apiRoutes
 
-    allApiRoutes ~ identityRoutes ~ resourceRoutes
+    allApiRoutes ~ identityRoutes ~ resourceRoutes ~ webAppResources
   }
 }
 

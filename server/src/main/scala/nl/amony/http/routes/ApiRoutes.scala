@@ -9,12 +9,14 @@ import akka.stream.Materializer
 import akka.util.Timeout
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
+import nl.amony.WebServerConfig
 import nl.amony.actor.index.QueryProtocol._
+import nl.amony.actor.media.MediaApi
+import nl.amony.actor.media.MediaConfig.TranscodeSettings
 import nl.amony.actor.media.MediaLibProtocol._
-import nl.amony.api.{MediaApi, SearchApi}
+import nl.amony.api.SearchApi
 import nl.amony.http.JsonCodecs
 import nl.amony.http.WebModel.{FragmentRange, VideoMeta}
-import nl.amony.{TranscodeSettings, WebServerConfig}
 import scribe.Logging
 
 import scala.concurrent.{ExecutionContext, Future}

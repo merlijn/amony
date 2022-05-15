@@ -2,8 +2,8 @@ package nl.amony.lib.ffmpeg
 
 import better.files.File
 import monix.eval.Task
-import nl.amony.lib.FileUtil._
-import nl.amony.lib.ffmpeg.Model._
+import nl.amony.lib.FileUtil.{PathOps, stripExtension}
+import nl.amony.lib.ffmpeg.Model.{ProbeDebugOutput, ProbeOutput}
 import scribe.Logging
 
 import java.io.InputStream

@@ -1,11 +1,6 @@
 package nl.amony.actor.media
 
 import akka.actor.typed.ActorRef
-import akka.persistence.typed.PersistenceId
-import akka.persistence.typed.scaladsl.EventSourcedBehavior
-import nl.amony.MediaLibConfig
-import nl.amony.actor.Message
-import nl.amony.actor.media.MediaLibEventSourcing.Event
 
 import java.nio.file.Path
 
@@ -16,7 +11,7 @@ object MediaLibProtocol {
   case class MediaNotFound(id: String)      extends ErrorResponse
   case class InvalidCommand(reason: String) extends ErrorResponse
 
-  sealed trait MediaCommand extends Message
+  sealed trait MediaCommand
 
   case class UpsertMedia(media: Media, sender: ActorRef[Boolean])                    extends MediaCommand
   case class RemoveMedia(id: String, deleteFile: Boolean, sender: ActorRef[Boolean]) extends MediaCommand

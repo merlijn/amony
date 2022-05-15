@@ -18,7 +18,7 @@ object IdentityRoutes {
   implicit val credDecoder = deriveCodec[Credentials]
   implicit val timeout = Timeout(5.seconds)
 
-  def createRoutes(userApi: UserApi, tokenHelper: AuthenticationTokenHelper): Route = {
+  def createRoutes(userApi: UserApi): Route = {
 
     pathPrefix("api" / "identity") {
       (path("login") & post & entity(as[Credentials])) { credentials =>
@@ -27,7 +27,7 @@ object IdentityRoutes {
           case InvalidCredentials     =>
             complete(StatusCodes.BadRequest)
           case Authentication(userId) =>
-            val cookie = HttpCookie("session", tokenHelper.createToken(userId), path = Some("/"))
+            val cookie = HttpCookie("session", userApi.createToken(userId), path = Some("/"))
             setCookie(cookie) { complete("OK") }
         }
 

@@ -5,12 +5,11 @@ import akka.actor.typed.ActorRef
 import akka.stream.SourceRef
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import nl.amony.actor.Message
 import nl.amony.actor.media.MediaLibProtocol.Media
 
 object ResourcesProtocol {
 
-  sealed trait ResourceCommand extends Message
+  sealed trait ResourceCommand
 
   trait IOResponse {
     def size(): Long

@@ -8,8 +8,9 @@ import monix.eval.Task
 import monix.reactive.Consumer
 import nl.amony.AmonyConfig
 import nl.amony.actor.Message
+import nl.amony.actor.media.MediaApi
 import nl.amony.actor.media.MediaLibProtocol.Media
-import nl.amony.actor.resources.{MediaScanner, ResourcesProtocol}
+import nl.amony.actor.resources.{MediaScanner, ResourceApi}
 import nl.amony.actor.util.ConvertNonStreamableVideos
 import nl.amony.lib.ffmpeg.FFMpeg
 import scribe.Logging
@@ -18,6 +19,7 @@ import java.io.ByteArrayOutputStream
 import scala.concurrent.Future
 
 class AdminApi(mediaApi: MediaApi,
+               resourceApi: ResourceApi,
                system: ActorSystem[Message],
                scanner: MediaScanner,
                config: AmonyConfig) extends Logging {
@@ -59,9 +61,9 @@ class AdminApi(mediaApi: MediaApi,
     }
   }
 
-  def regeneratePreviewForMedia(media: Media): Unit = {
+  def regeneratePreviewForMedia(media: Media)(implicit timeout: Timeout): Unit = {
     logger.info(s"re-generating previews for '${media.fileInfo.relativePath}'")
-    system.tell(ResourcesProtocol.CreateFragments(media, true))
+    resourceApi.createFragments(media)
   }
 
   def regenerateAllPreviews()(implicit timeout: Timeout): Unit =
@@ -118,5 +120,5 @@ class AdminApi(mediaApi: MediaApi,
   }
 
   def convertNonStreamableVideos(): Unit =
-    ConvertNonStreamableVideos.convertNonStreamableVideos(config, mediaApi, this)
+    ConvertNonStreamableVideos.convertNonStreamableVideos(config.media, mediaApi, this)
 }
