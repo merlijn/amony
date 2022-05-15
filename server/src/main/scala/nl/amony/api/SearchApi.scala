@@ -3,12 +3,13 @@ package nl.amony.api
 import akka.actor.typed.ActorSystem
 import akka.util.Timeout
 import nl.amony.actor.Message
-import nl.amony.actor.index.QueryProtocol.{GetTags, Query, Search, SearchFragments, SearchResult, Sort}
+import nl.amony.actor.index.QueryProtocol.{GetTags, Query, QueryMessage, Search, SearchFragments, SearchResult, Sort}
 import nl.amony.actor.media.MediaLibProtocol.{Fragment, GetAll, GetById, Media}
 import akka.actor.typed.scaladsl.AskPattern._
+
 import scala.concurrent.Future
 
-class SearchApi(val system: ActorSystem[Message]) {
+class SearchApi(val system: ActorSystem[QueryMessage]) {
 
   implicit val scheduler            = system.scheduler
 

@@ -1,53 +1,97 @@
+import sbt.Keys.scalaVersion
 import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
+
+// --- Dependencies
 
 val akkaVersion = "2.6.17"
 val akkaHttpVersion = "10.2.7"
 val circeVersion = "0.14.1"
 
+val akka                 = "com.typesafe.akka"        %% "akka-actor-typed"           % akkaVersion
+val akkaPersistence      = "com.typesafe.akka"        %% "akka-persistence-typed"     % akkaVersion
+val akkaStream           = "com.typesafe.akka"        %% "akka-stream"                % akkaVersion
+val akkaPersistenceQuery = "com.typesafe.akka"        %% "akka-persistence-query"     % akkaVersion
+val akkaHttp             = "com.typesafe.akka"        %% "akka-http"                  % akkaHttpVersion
+
+val circe                = "io.circe"                 %% "circe-core"                 % "0.14.1"
+val circeGeneric         = "io.circe"                 %% "circe-generic"              % "0.14.1"
+val circeParser          = "io.circe"                 %% "circe-parser"               % "0.14.1"
+val akkaHttpCirce        = "de.heikoseeberger"        %% "akka-http-circe"            % "1.36.0"
+
+val jwtCirce             = "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.2"
+val slf4jApi             = "org.slf4j"                 % "slf4j-api"                  % "1.7.30"
+val scribeSlf4j          = "com.outr"                 %% "scribe-slf4j"               % "3.5.5"
+
+val scalaTest            = "org.scalatest"            %% "scalatest"                  % "3.2.9"           % Test
+val scalaTestCheck       = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.9.0"         % Test
+
 val javaOpts = Nil
+
+
+// -- Shared options
 
 val excludeLog4j =
   ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl")
 
-lazy val identity = (project in file("identity")).settings(
+val commonSettings = Seq(
   organization := "nl.amony",
-  name := "amony-identity",
-  libraryDependencies ++= Seq(
-    // akka
-    "com.typesafe.akka"        %% "akka-actor-typed"           % akkaVersion,
-    "com.typesafe.akka"        %% "akka-persistence-typed"     % akkaVersion,
-    "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.2",
-    "de.heikoseeberger"        %% "akka-http-circe"            % "1.36.0",
-    "io.circe"                 %% "circe-core"                 % "0.14.1",
-    "io.circe"                 %% "circe-generic"              % "0.14.1",
-    "com.typesafe.akka"        %% "akka-http"                  % akkaHttpVersion,
-  )
+  scalaVersion := "2.13.8"
 )
 
+def module(name: String) =
+  sbt.Project.apply(name, file(name))
+    .settings(commonSettings: _*)
+
+// --- Modules
+
+lazy val common =
+  module("lib-akka")
+    .settings(
+      name := "amony-lib-akka",
+      libraryDependencies ++= Seq(
+        akka,
+        akkaPersistence,
+        akkaHttp,
+        akkaHttpCirce,
+      )
+    )
+
+lazy val identity =
+  module("identity")
+    .settings(
+      name := "amony-identity",
+      libraryDependencies ++= Seq(
+        // akka
+        akka, akkaPersistence, akkaHttp, jwtCirce, akkaHttpCirce,
+        circe, circeGeneric
+      )
+    )
+
+lazy val media =
+  module("media")
+    .settings(
+      name := "amony-media",
+      libraryDependencies ++= Seq(
+        akka, akkaPersistence, akkaHttpCirce, circe, circeGeneric, akkaHttp,
+      )
+    )
+
 lazy val solrSearch =
-  (project in file("solr-search"))
+  module("solr-search")
     .settings(
       name := "amony-solr-search",
-      inThisBuild(List(
-        organization    := "nl.amony",
-        scalaVersion    := "2.13.6"
-      )),
       libraryDependencies ++= Seq(
-        "org.slf4j"                 % "slf4j-api"                  % "1.7.30",
+        slf4jApi, scribeSlf4j,
+        akka,
         "org.apache.solr"           % "solr-core"                  % "8.11.1" excludeAll(excludeLog4j),
         "org.apache.solr"           % "solr-langid"                % "8.11.1" excludeAll(excludeLog4j),
-        "com.typesafe.akka"        %% "akka-actor-typed"           % akkaVersion,
-        "com.outr"                 %% "scribe-slf4j"               % "3.5.5",
       )
     )
 
 lazy val amony = (project in file("."))
-  .dependsOn(identity)
+  .dependsOn(identity, media)
+  .settings(commonSettings)
   .settings(
-    inThisBuild(List(
-      organization    := "nl.amony",
-      scalaVersion    := "2.13.8"
-    )),
     name := "amony-server",
     reStart / javaOptions ++= javaOpts ,
     run / fork             := true,
@@ -55,8 +99,7 @@ lazy val amony = (project in file("."))
     libraryDependencies ++= Seq(
 
       // logging
-      "org.slf4j"                 % "slf4j-api"                  % "1.7.30",
-      "com.outr"                 %% "scribe-slf4j"               % "3.5.5",
+      slf4jApi, scribeSlf4j,
 
       // config loading
       "com.typesafe"              % "config"                     % "1.4.1",
@@ -64,31 +107,29 @@ lazy val amony = (project in file("."))
       "com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.1",
 
       // akka
-      "com.typesafe.akka"        %% "akka-actor-typed"           % akkaVersion,
-      "com.typesafe.akka"        %% "akka-stream"                % akkaVersion,
+      akka, akkaStream,
 
       // akka persistence
-      "com.typesafe.akka"        %% "akka-persistence-typed"     % akkaVersion,
-      "com.typesafe.akka"        %% "akka-persistence-query"     % akkaVersion,
+      akkaPersistence,
+      akkaPersistenceQuery,
       "com.typesafe.akka"        %% "akka-serialization-jackson" % akkaVersion,
       "org.fusesource.leveldbjni" % "leveldbjni-all"             % "1.8",
       "org.iq80.leveldb"          % "leveldb"                    % "0.12",
 
       // akka http & json serialization
-      "com.typesafe.akka"        %% "akka-http"                  % akkaHttpVersion,
-      "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.2",
-      "de.heikoseeberger"        %% "akka-http-circe"            % "1.36.0",
-      "io.circe"                 %% "circe-core"                 % "0.14.1",
-      "io.circe"                 %% "circe-generic"              % "0.14.1",
-      "io.circe"                 %% "circe-parser"               % "0.14.1",
+      akkaHttp,
+      jwtCirce,
+      akkaHttpCirce,
+      circe,
+      circeGeneric,
+      circeParser,
 
       "io.monix"                 %% "monix-reactive"             % "3.4.0",
       "com.github.pathikrit"     %% "better-files"               % "3.9.1",
       "io.methvin"                % "directory-watcher"          % "0.15.0",
 
       // test
-      "org.scalatest"            %% "scalatest"                  % "3.2.9"           % Test,
-      "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.9.0"         % Test
+      scalaTest, scalaTestCheck
     ),
     //    assembly / logLevel := Level.Debug,
     assembly / assemblyJarName := "amony.jar",
