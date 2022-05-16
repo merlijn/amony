@@ -4,11 +4,10 @@ import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.{ConnectionContext, Http}
 import better.files.File
-import nl.amony.actor.Message
 import nl.amony.actor.media.MediaApi
 import nl.amony.actor.resources.ResourceApi
 import nl.amony.api.{AdminApi, SearchApi}
-import nl.amony.http.routes.{AdminRoutes, ApiRoutes, ResourceRoutes}
+import nl.amony.http.routes.{AdminRoutes, ApiRoutes, ResourceRoutes, SearchRoutes}
 import nl.amony.http.util.PemReader
 import nl.amony.user.{IdentityRoutes, UserApi}
 import nl.amony.{AmonyConfig, WebServerConfig}
@@ -22,7 +21,7 @@ import scala.util.{Failure, Success}
 
 object AllRoutes {
 
-  def createRoutes(system: ActorSystem[Message],
+  def createRoutes(system: ActorSystem[Nothing],
                    userApi: UserApi,
                    mediaApi: MediaApi,
                    resourceApi: ResourceApi,
@@ -32,8 +31,9 @@ object AllRoutes {
 
     val identityRoutes = IdentityRoutes.createRoutes(userApi)
     val resourceRoutes = ResourceRoutes.createRoutes(resourceApi, config.api)
-    val adminRoutes = AdminRoutes.createRoutes(adminApi, config.api)
     val searchApi   = new SearchApi(system)
+    val searchRoutes = SearchRoutes.createRoutes(system, searchApi, config.api, config.media.previews.transcode)
+    val adminRoutes = AdminRoutes.createRoutes(adminApi, config.api)
 
     val apiRoutes = ApiRoutes.createRoutes(system, mediaApi, searchApi, config.media.previews.transcode, config.api)
 
@@ -66,11 +66,11 @@ object AllRoutes {
       else
         apiRoutes
 
-    allApiRoutes ~ identityRoutes ~ resourceRoutes ~ webAppResources
+    allApiRoutes ~ searchRoutes ~ identityRoutes ~ resourceRoutes ~ webAppResources
   }
 }
 
-class WebServer(val config: WebServerConfig)(implicit val system: ActorSystem[Message]) extends Logging {
+class WebServer(val config: WebServerConfig)(implicit val system: ActorSystem[Nothing]) extends Logging {
 
   def start(route: Route): Unit = {
 

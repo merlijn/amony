@@ -2,11 +2,10 @@ package nl.amony.actor.index
 
 import akka.actor.typed
 import nl.amony.actor.media.MediaLibProtocol.{Fragment, Media}
-import nl.amony.actor.Message
 
 object QueryProtocol {
 
-  sealed trait QueryMessage extends Message
+  sealed trait QueryMessage
 
   case class Search(query: Query, sender: typed.ActorRef[SearchResult]) extends QueryMessage
   case class SearchFragments(size: Int, offset: Int, tag: Option[String], sender: typed.ActorRef[Seq[(String, Fragment)]]) extends QueryMessage

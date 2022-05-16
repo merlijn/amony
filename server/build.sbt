@@ -49,9 +49,9 @@ def module(name: String) =
 // --- Modules
 
 lazy val common =
-  module("lib-akka")
+  module("common")
     .settings(
-      name := "amony-lib-akka",
+      name := "amony-common",
       libraryDependencies ++= Seq(
         akka,
         akkaPersistence,
@@ -62,6 +62,7 @@ lazy val common =
 
 lazy val identity =
   module("identity")
+    .dependsOn(common)
     .settings(
       name := "amony-identity",
       libraryDependencies ++= Seq(
@@ -73,15 +74,28 @@ lazy val identity =
 
 lazy val media =
   module("media")
+    .dependsOn(common)
     .settings(
       name := "amony-media",
       libraryDependencies ++= Seq(
-        akka, akkaPersistence, scribeSlf4j, akkaHttpCirce, circe, circeGeneric, akkaHttp, betterFiles, monixReactive
+        scribeSlf4j, akka, akkaPersistence, akkaHttp, akkaHttpCirce, circe, circeGeneric, betterFiles, monixReactive
+      )
+    )
+
+lazy val searchApi =
+  module("search-api")
+    .dependsOn(common, media)
+    .settings(
+      name := "amony-search-api",
+      libraryDependencies ++= Seq(
+        // akka
+        akka, akkaPersistence, akkaHttp, akkaHttpCirce, circe, circeGeneric
       )
     )
 
 lazy val solrSearch =
   module("solr-search")
+    .dependsOn(common, searchApi)
     .settings(
       name := "amony-search-solr",
       libraryDependencies ++= Seq(
@@ -93,7 +107,7 @@ lazy val solrSearch =
     )
 
 lazy val amony = (project in file("."))
-  .dependsOn(identity, media)
+  .dependsOn(identity, media, searchApi)
   .settings(commonSettings)
   .settings(
     name := "amony-server",

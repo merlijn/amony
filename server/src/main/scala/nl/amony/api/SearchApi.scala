@@ -13,7 +13,6 @@ import scala.concurrent.Future
 
 object SearchApi {
 
-
   val searchServiceKey = ServiceKey[QueryMessage]("searchService")
 }
 

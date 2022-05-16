@@ -48,53 +48,7 @@ object ApiRoutes extends Logging {
     val durationPattern = raw"(\d*)-(\d*)".r
 
     pathPrefix("api") {
-      (path("search") & parameters(
-        "q".optional,
-        "offset".optional,
-        "n".optional,
-        "playlist".optional,
-        "tags".optional,
-        "min_res".optional,
-        "d".optional,
-        "sort_field".optional,
-        "sort_dir".optional
-      )) { (q, offset, n, playlist, tags, minResY, durationParam, sortParam, sortDir) =>
-        get {
-          val size        = n.map(_.toInt).getOrElse(config.defaultNumberOfResults)
-          val sortDirection: SortDirection = sortDir match {
-            case Some("desc") => Desc
-            case _            => Asc
-          }
-          val sortField: SortField = sortParam
-            .map {
-              case "title"      => FileName
-              case "size"       => FileSize
-              case "duration"   => Duration
-              case "date_added" => DateAdded
-              case _            => throw new IllegalArgumentException("unkown sort field")
-            }
-            .getOrElse(FileName)
-
-          val duration: Option[(Long, Long)] = durationParam.flatMap {
-            case durationPattern("", "")   => None
-            case durationPattern(min, "")  => Some((min.toLong, Long.MaxValue))
-            case durationPattern("", max)  => Some((0, max.toLong))
-            case durationPattern(min, max) => Some((min.toLong, max.toLong))
-            case _                         => None
-          }
-
-          val searchResult: Future[SearchResult] =
-            queryApi.searchMedia(q, offset.map(_.toInt), size, tags.toSet, playlist, minResY.map(_.toInt), duration, Sort(sortField, sortDirection))
-
-          val response = searchResult.map(_.asJson)
-
-          complete(response)
-        }
-      } ~ path("tags") {
-        get {
-          complete(queryApi.searchTags().map(_.asJson))
-        }
-      } ~ pathPrefix("media" / Segment) { id =>
+      pathPrefix("media" / Segment) { id =>
         pathEnd {
           get {
             onSuccess(mediaApi.getById(id)) {

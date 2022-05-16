@@ -2,15 +2,15 @@ package nl.amony
 
 import akka.actor.typed.{ActorSystem, Behavior}
 import akka.util.Timeout
+import nl.amony.actor.MainRouter
 import nl.amony.actor.media.MediaApi
 import nl.amony.actor.resources.{MediaScanner, ResourceApi}
-import nl.amony.actor.{MainRouter, Message}
 import nl.amony.api.AdminApi
 import nl.amony.http.{AllRoutes, WebServer}
 import nl.amony.user.UserApi
 import scribe.Logging
 
-import java.nio.file.{Files, Path}
+import java.nio.file.Files
 import scala.concurrent.duration.DurationInt
 
 object Main extends ConfigLoader with Logging {
@@ -20,8 +20,8 @@ object Main extends ConfigLoader with Logging {
     Files.createDirectories(appConfig.media.resourcePath)
 
     val scanner                      = new MediaScanner(appConfig.media)
-    val router: Behavior[Message]    = MainRouter.apply(appConfig, scanner)
-    val system: ActorSystem[Message] = ActorSystem(router, "mediaLibrary", config)
+    val router: Behavior[Nothing]    = MainRouter.apply(appConfig, scanner)
+    val system: ActorSystem[Nothing] = ActorSystem[Nothing](router, "mediaLibrary", config)
 
     implicit val timeout: Timeout = Timeout(10.seconds)
 
@@ -32,6 +32,7 @@ object Main extends ConfigLoader with Logging {
 
     userApi.upsertUser(appConfig.auth.adminUsername, appConfig.auth.adminPassword)
 
+    Thread.sleep(200)
     adminApi.scanLibrary()(timeout.duration)
 //    probeAll(api)(system.executionContext)
 //    MediaLibScanner.convertNonStreamableVideos(mediaLibConfig, api)

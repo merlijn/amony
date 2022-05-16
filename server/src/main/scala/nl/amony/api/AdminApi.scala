@@ -7,7 +7,6 @@ import com.fasterxml.jackson.core.JsonEncoding
 import monix.eval.Task
 import monix.reactive.Consumer
 import nl.amony.AmonyConfig
-import nl.amony.actor.Message
 import nl.amony.actor.media.MediaApi
 import nl.amony.actor.media.MediaLibProtocol.Media
 import nl.amony.actor.resources.{MediaScanner, ResourceApi}
@@ -20,7 +19,7 @@ import scala.concurrent.Future
 
 class AdminApi(mediaApi: MediaApi,
                resourceApi: ResourceApi,
-               system: ActorSystem[Message],
+               system: ActorSystem[Nothing],
                scanner: MediaScanner,
                config: AmonyConfig) extends Logging {
 
@@ -28,6 +27,8 @@ class AdminApi(mediaApi: MediaApi,
   implicit val monixScheduler       = monix.execution.Scheduler.Implicits.global
 
   def scanLibrary()(implicit timeout: Timeout): Unit = {
+
+    logger.info("Scanning library")
 
     mediaApi
       .getAll()
