@@ -20,7 +20,7 @@ object IdentityRoutes {
   implicit val credDecoder = deriveCodec[Credentials]
   implicit val timeout     = Timeout(5.seconds)
 
-  def createRoutes(userApi: UserApi): Route = {
+  def apply(userApi: UserApi): Route = {
 
     pathPrefix("api" / "identity") {
       (path("login") & post & entity(as[Credentials])) { credentials =>

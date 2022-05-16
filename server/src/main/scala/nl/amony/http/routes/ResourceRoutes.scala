@@ -23,7 +23,7 @@ object ResourceRoutes extends Logging {
     val Thumbnail = raw"(\w+)(-(\d+))?_(\d+)p\.webp".r
   }
 
-  def createRoutes(resourceApi: ResourceApi, config: WebServerConfig): Route = {
+  def apply(resourceApi: ResourceApi, config: WebServerConfig): Route = {
 
     implicit val timeout: Timeout = Timeout(config.requestTimeout)
 

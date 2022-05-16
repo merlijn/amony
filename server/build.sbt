@@ -89,7 +89,9 @@ lazy val searchApi =
       name := "amony-search-api",
       libraryDependencies ++= Seq(
         // akka
-        akka, akkaPersistence, akkaHttp, akkaHttpCirce, circe, circeGeneric
+        akka, akkaPersistence, akkaPersistenceQuery, akkaHttp, akkaHttpCirce, circe, circeGeneric,
+        "org.fusesource.leveldbjni" % "leveldbjni-all"             % "1.8",
+        "org.iq80.leveldb"          % "leveldb"                    % "0.12",
       )
     )
 
@@ -131,8 +133,7 @@ lazy val amony = (project in file("."))
       akkaPersistence,
       akkaPersistenceQuery,
       "com.typesafe.akka"        %% "akka-serialization-jackson" % akkaVersion,
-      "org.fusesource.leveldbjni" % "leveldbjni-all"             % "1.8",
-      "org.iq80.leveldb"          % "leveldb"                    % "0.12",
+
 
       // akka http & json serialization
       akkaHttp,

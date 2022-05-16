@@ -1,10 +1,9 @@
-package nl.amony.actor.index
+package nl.amony.search
 
 import akka.actor.typed
-import nl.amony.actor.media.MediaLibProtocol.Fragment
-import nl.amony.actor.media.MediaLibProtocol.Media
+import nl.amony.actor.media.MediaLibProtocol.{Fragment, Media}
 
-object QueryProtocol {
+object SearchProtocol {
 
   sealed trait QueryMessage
 

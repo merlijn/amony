@@ -4,10 +4,10 @@ import io.circe.Codec
 import io.circe.Encoder
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.generic.semiauto.deriveEncoder
-import nl.amony.actor.index.QueryProtocol
 import nl.amony.actor.media.MediaConfig.TranscodeSettings
 import nl.amony.actor.media.MediaLibProtocol
 import nl.amony.http.WebModel._
+import nl.amony.search.SearchProtocol
 
 class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
 
@@ -23,8 +23,8 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
   implicit val mediaEncoder: Encoder[MediaLibProtocol.Media] =
     deriveEncoder[Video].contramapObject[MediaLibProtocol.Media](toWebModel)
 
-  implicit val searchResultEncoder: Encoder[QueryProtocol.SearchResult] =
-    deriveEncoder[SearchResult].contramapObject[QueryProtocol.SearchResult](result =>
+  implicit val searchResultEncoder: Encoder[SearchProtocol.SearchResult] =
+    deriveEncoder[SearchResult].contramapObject[SearchProtocol.SearchResult](result =>
       SearchResult(result.offset, result.total, result.items.map(m => toWebModel(m)))
     )
 

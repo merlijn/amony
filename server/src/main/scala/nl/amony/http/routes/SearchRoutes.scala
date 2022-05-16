@@ -2,8 +2,7 @@ package nl.amony.http.routes
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.Directives._
-import nl.amony.actor.index.QueryProtocol._
-import nl.amony.api.SearchApi
+import nl.amony.search.SearchProtocol._
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directive.addDirectiveApply
 import akka.http.scaladsl.server.Directives._
@@ -14,6 +13,7 @@ import io.circe.syntax._
 import nl.amony.actor.media.MediaConfig.TranscodeSettings
 import nl.amony.http.JsonCodecs
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import nl.amony.search.SearchApi
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
@@ -22,7 +22,7 @@ object SearchRoutes {
 
   val durationPattern = raw"(\d*)-(\d*)".r
 
-  def createRoutes(
+  def apply(
       system: ActorSystem[Nothing],
       searchApi: SearchApi,
       config: WebServerConfig,

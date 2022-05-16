@@ -10,14 +10,14 @@ import akka.util.Timeout
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
 import nl.amony.WebServerConfig
-import nl.amony.actor.index.QueryProtocol._
+import nl.amony.search.SearchProtocol._
 import nl.amony.actor.media.MediaApi
 import nl.amony.actor.media.MediaConfig.TranscodeSettings
 import nl.amony.actor.media.MediaLibProtocol._
-import nl.amony.api.SearchApi
 import nl.amony.http.JsonCodecs
 import nl.amony.http.WebModel.FragmentRange
 import nl.amony.http.WebModel.VideoMeta
+import nl.amony.search.SearchApi
 import scribe.Logging
 
 import scala.concurrent.ExecutionContext
@@ -25,7 +25,7 @@ import scala.concurrent.Future
 
 object MediaRoutes extends Logging {
 
-  def createRoutes(
+  def apply(
       system: ActorSystem[Nothing],
       mediaApi: MediaApi,
       queryApi: SearchApi,

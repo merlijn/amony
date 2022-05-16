@@ -1,18 +1,14 @@
-package nl.amony.actor.index
+package nl.amony.search
 
 import akka.actor.typed.scaladsl.ActorContext
-import akka.actor.Actor
-import akka.actor.ActorRef
-import akka.actor.Props
+import akka.actor.{Actor, ActorRef, Props}
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
-import akka.persistence.query.EventEnvelope
-import akka.persistence.query.PersistenceQuery
+import akka.persistence.query.{EventEnvelope, PersistenceQuery}
 import akka.stream.Materializer
-import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.media.MediaConfig.MediaLibConfig
 import nl.amony.actor.media.MediaLibEventSourcing
-import nl.amony.actor.media.MediaLibProtocol.Media
-import nl.amony.actor.media.MediaLibProtocol.State
+import nl.amony.actor.media.MediaLibProtocol.{Media, State}
+import nl.amony.search.SearchProtocol._
 import scribe.Logging
 
 object InMemoryIndex {

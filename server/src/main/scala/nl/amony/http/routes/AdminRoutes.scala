@@ -9,7 +9,7 @@ import nl.amony.api.AdminApi
 
 object AdminRoutes {
 
-  def createRoutes(adminApi: AdminApi, config: WebServerConfig): Route = {
+  def apply(adminApi: AdminApi, config: WebServerConfig): Route = {
 
     implicit val timeout: Timeout = Timeout(config.requestTimeout)
 

@@ -1,15 +1,13 @@
-package nl.amony.api
+package nl.amony.search
 
-import akka.actor.typed.ActorRef
-import akka.actor.typed.ActorSystem
+import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.actor.typed.receptionist.Receptionist.Find
-import akka.actor.typed.receptionist.Receptionist
-import akka.actor.typed.receptionist.ServiceKey
+import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.AskPattern._
 import akka.util.Timeout
-import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.media.MediaLibProtocol.Fragment
-import nl.amony.api.SearchApi.searchServiceKey
+import nl.amony.search.SearchApi.searchServiceKey
+import nl.amony.search.SearchProtocol._
 
 import scala.concurrent.Future
 
