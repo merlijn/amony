@@ -1,8 +1,10 @@
 package nl.amony.api
 
-import akka.actor.typed.{ActorRef, ActorSystem}
+import akka.actor.typed.ActorRef
+import akka.actor.typed.ActorSystem
 import akka.actor.typed.receptionist.Receptionist.Find
-import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
+import akka.actor.typed.receptionist.Receptionist
+import akka.actor.typed.receptionist.ServiceKey
 import akka.actor.typed.scaladsl.AskPattern._
 import akka.util.Timeout
 import nl.amony.actor.index.QueryProtocol._
@@ -18,13 +20,13 @@ object SearchApi {
 
 class SearchApi(val system: ActorSystem[Nothing]) {
 
-  implicit val scheduler            = system.scheduler
-  implicit val ec                   = system.executionContext
+  implicit val scheduler = system.scheduler
+  implicit val ec        = system.executionContext
 
   private def searchRef()(implicit timeout: Timeout): Future[ActorRef[QueryMessage]] =
     system.receptionist
       .ask[Receptionist.Listing](ref => Find(searchServiceKey, ref))(timeout, system.scheduler)
-      .map( _.serviceInstances(searchServiceKey).head)
+      .map(_.serviceInstances(searchServiceKey).head)
 
   // format: off
   def searchMedia(q: Option[String], offset: Option[Int], size: Int, tags: Set[String], playlist: Option[String],

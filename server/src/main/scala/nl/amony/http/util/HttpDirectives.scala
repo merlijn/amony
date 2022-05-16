@@ -2,19 +2,35 @@ package nl.amony.http.util
 
 import akka.NotUsed
 import akka.http.scaladsl.model.Multipart.ByteRanges
-import akka.http.scaladsl.model.StatusCodes.{PartialContent, RangeNotSatisfiable, TooManyRequests}
+import akka.http.scaladsl.model.StatusCodes.PartialContent
+import akka.http.scaladsl.model.StatusCodes.RangeNotSatisfiable
+import akka.http.scaladsl.model.StatusCodes.TooManyRequests
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.{ByteRange, Range, RangeUnits, `Content-Range`, `Content-Type`}
-import akka.http.scaladsl.server.Directives.{as, entity, post, withSizeLimit}
+import akka.http.scaladsl.model.headers.ByteRange
+import akka.http.scaladsl.model.headers.Range
+import akka.http.scaladsl.model.headers.RangeUnits
+import akka.http.scaladsl.model.headers.`Content-Range`
+import akka.http.scaladsl.model.headers.`Content-Type`
+import akka.http.scaladsl.server.Directives.as
+import akka.http.scaladsl.server.Directives.entity
+import akka.http.scaladsl.server.Directives.post
+import akka.http.scaladsl.server.Directives.withSizeLimit
 import akka.http.scaladsl.server.directives.FutureDirectives.onSuccess
-import akka.http.scaladsl.server.directives.{ContentTypeResolver, FileInfo}
-import akka.http.scaladsl.server.{Directive, Directive1, Route, UnsatisfiableRangeRejection}
+import akka.http.scaladsl.server.directives.ContentTypeResolver
+import akka.http.scaladsl.server.directives.FileInfo
+import akka.http.scaladsl.server.Directive
+import akka.http.scaladsl.server.Directive1
+import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.UnsatisfiableRangeRejection
 import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
-import akka.stream.scaladsl.{FileIO, Sink, Source}
+import akka.stream.scaladsl.FileIO
+import akka.stream.scaladsl.Sink
+import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import scribe.Logging
 
-import java.nio.file.{Files, Path}
+import java.nio.file.Files
+import java.nio.file.Path
 import scala.concurrent.Future
 
 object HttpDirectives extends Logging {
@@ -35,11 +51,11 @@ object HttpDirectives extends Logging {
   }
 
   def fileWithRangeSupport(path: Path)(implicit resolver: ContentTypeResolver): Route = {
-      fileWithRangeSupport(path, resolver.apply(path.getFileName.toString))
+    fileWithRangeSupport(path, resolver.apply(path.getFileName.toString))
   }
 
   def fileWithRangeSupport(path: Path, contentType: ContentType): Route = {
-    if(!path.toFile.exists())
+    if (!path.toFile.exists())
       complete(StatusCodes.NotFound)
     else
       randomAccessRangeSupport(
@@ -66,7 +82,8 @@ object HttpDirectives extends Logging {
 
     extractRequestContext { ctx =>
       val settings = ctx.settings
-      import settings.{rangeCoalescingThreshold, rangeCountLimit}
+      import settings.rangeCoalescingThreshold
+      import settings.rangeCountLimit
 
       def toIndexRange(range: ByteRange): IndexRange =
         range match {
@@ -103,9 +120,8 @@ object HttpDirectives extends Logging {
           case _ =>
             Source.fromIterator(() => coalescedRanges.iterator).map { range =>
               val byteSource = byteStringProvider(range.start, range.length)
-              Multipart.ByteRanges.BodyPart(
-                range.toContentRange(contentLength),
-                HttpEntity(contentType, range.length, byteSource))
+              Multipart.ByteRanges
+                .BodyPart(range.toContentRange(contentLength), HttpEntity(contentType, range.length, byteSource))
             }
         }
 
@@ -151,13 +167,13 @@ object HttpDirectives extends Logging {
     }
   }
 
-  def uploadFiles[T](fieldName: String, uploadLimitBytes: Long)(uploadFn: (FileInfo, Source[ByteString, Any]) => Future[T]): Directive1[Seq[T]] =
-
+  def uploadFiles[T](fieldName: String, uploadLimitBytes: Long)(
+      uploadFn: (FileInfo, Source[ByteString, Any]) => Future[T]
+  ): Directive1[Seq[T]] =
     (withSizeLimit(uploadLimitBytes) & entity(as[Multipart.FormData])).flatMap { formData =>
-
       extractRequestContext.flatMap { ctx =>
         implicit val mat = ctx.materializer
-        implicit val ec = ctx.executionContext
+        implicit val ec  = ctx.executionContext
 
         val uploaded: Source[T, Any] = formData.parts
           .mapConcat { part =>

@@ -30,11 +30,10 @@ object ConvertNonStreamableVideos extends Logging {
       .filterNot { case (_, probe) => probe.debugOutput.exists(_.isFastStart) }
       .filterNot { case (path, _) => config.filterFileName(path.getFileName().toString) }
       .mapParallelUnordered(parallelism) { case (videoWithoutFastStart, _) =>
-
         Task {
           logger.info(s"Creating faststart/streamable mp4 for: ${videoWithoutFastStart}")
 
-          val out = FFMpeg.addFastStart(videoWithoutFastStart)
+          val out     = FFMpeg.addFastStart(videoWithoutFastStart)
           val oldHash = config.hashingAlgorithm.generateHash(videoWithoutFastStart)
           val newHash = config.hashingAlgorithm.generateHash(out)
 
@@ -43,7 +42,7 @@ object ConvertNonStreamableVideos extends Logging {
           api.getById(oldHash).onComplete {
             case Success(Some(v)) =>
               val m = v.copy(
-                id = newHash,
+                id       = newHash,
                 fileInfo = v.fileInfo.copy(hash = newHash, relativePath = config.mediaPath.relativize(out).toString)
               )
 

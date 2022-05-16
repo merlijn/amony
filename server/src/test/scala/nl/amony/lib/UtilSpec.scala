@@ -6,8 +6,8 @@ import org.scalatest.matchers.should.Matchers._
 import scribe.Logging
 
 class UtilSpec extends AnyFlatSpecLike with Logging {
-    
-    it should("insert in to list") in {
+
+  it should ("insert in to list") in {
 
     List(0, 1, 2).replaceAtPos(0, 42) shouldBe List(42, 1, 2)
     List(0, 1, 2).replaceAtPos(1, 42) shouldBe List(0, 42, 2)

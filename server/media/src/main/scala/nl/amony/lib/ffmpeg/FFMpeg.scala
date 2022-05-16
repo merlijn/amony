@@ -2,14 +2,17 @@ package nl.amony.lib.ffmpeg
 
 import better.files.File
 import monix.eval.Task
-import nl.amony.lib.FileUtil.{PathOps, stripExtension}
-import nl.amony.lib.ffmpeg.Model.{ProbeDebugOutput, ProbeOutput}
+import nl.amony.lib.FileUtil.PathOps
+import nl.amony.lib.FileUtil.stripExtension
+import nl.amony.lib.ffmpeg.Model.ProbeDebugOutput
+import nl.amony.lib.ffmpeg.Model.ProbeOutput
 import scribe.Logging
 
 import java.io.InputStream
 import java.nio.file.Path
 import java.time.Duration
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.FiniteDuration
 
 object FFMpeg extends Logging with FFMpegJsonCodecs {
 
@@ -35,7 +38,7 @@ object FFMpeg extends Logging with FFMpegJsonCodecs {
     val fileName = file.toAbsolutePath.normalize().toString
 
     Task {
-      val v = if (debug) "debug" else "quiet"
+      val v    = if (debug) "debug" else "quiet"
       val args = List("-print_format", "json", "-show_streams", "-loglevel", v, fileName)
       run(cmds = "ffprobe" :: args)
     }.flatMap { process =>
@@ -47,7 +50,7 @@ object FFMpeg extends Logging with FFMpegJsonCodecs {
         val debugOutput = {
           if (debug) {
             val debugOutput = scala.io.Source.fromInputStream(process.getErrorStream).mkString
-            val fastStart = fastStartPattern.matches(debugOutput)
+            val fastStart   = fastStartPattern.matches(debugOutput)
             Some(ProbeDebugOutput(fastStart))
           } else {
             None
@@ -218,7 +221,9 @@ object FFMpeg extends Logging with FFMpegJsonCodecs {
       runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
     } catch {
       case e: Exception =>
-        logger.warn(s"Failed to create thumbnail for inputFile: ${inputFile}, timestamp: ${formatTime(timestamp)}, outputFile: ${outputFile}, scaleHeight: ${scaleHeight}")
+        logger.warn(
+          s"Failed to create thumbnail for inputFile: ${inputFile}, timestamp: ${formatTime(timestamp)}, outputFile: ${outputFile}, scaleHeight: ${scaleHeight}"
+        )
     }
   }
 
@@ -246,10 +251,11 @@ object FFMpeg extends Logging with FFMpegJsonCodecs {
     val maximumFrames = 256
 
     val fileBaseName = outputBaseName.getOrElse(inputFile.getFileName.stripExtension())
-    val timeout = 5.seconds
+    val timeout      = 5.seconds
 
-    val probe        =
-      ffprobe(inputFile, false, timeout).runSyncUnsafe(timeout)(monix.execution.Scheduler.Implicits.global, monix.execution.schedulers.CanBlock.permit)
+    val probe =
+      ffprobe(inputFile, false, timeout)
+        .runSyncUnsafe(timeout)(monix.execution.Scheduler.Implicits.global, monix.execution.schedulers.CanBlock.permit)
     val stream             = probe.firstVideoStream.getOrElse(throw new IllegalStateException("no video stream found"))
     val (frames, tileSize) = calculateNrOfFrames(stream.durationMillis)
     val mod                = ((stream.fps * (stream.durationMillis / 1000)) / frames).toInt

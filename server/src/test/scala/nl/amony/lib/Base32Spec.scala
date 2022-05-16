@@ -1,6 +1,7 @@
 package nl.amony.lib
 
-import org.scalacheck.{Gen, Prop}
+import org.scalacheck.Gen
+import org.scalacheck.Prop
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.Checkers
@@ -10,7 +11,7 @@ import scala.util.Random
 
 class Base32Spec extends AnyFlatSpecLike with Matchers with Checkers {
 
-  val byteGen = Gen.chooseNum(0, 255).map(_.toByte)
+  val byteGen      = Gen.chooseNum(0, 255).map(_.toByte)
   val byteArrayGen = Gen.listOfN(20, byteGen).map(_.toArray)
 
 //  it should "identity property should hold for decode(encode(mesg))" in {

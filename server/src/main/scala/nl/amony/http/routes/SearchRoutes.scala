@@ -15,14 +15,19 @@ import nl.amony.actor.media.MediaConfig.TranscodeSettings
 import nl.amony.http.JsonCodecs
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 
 object SearchRoutes {
 
   val durationPattern = raw"(\d*)-(\d*)".r
 
-  def createRoutes(system: ActorSystem[Nothing], searchApi: SearchApi, config: WebServerConfig,
-    transcodingSettings: List[TranscodeSettings]): Route = {
+  def createRoutes(
+      system: ActorSystem[Nothing],
+      searchApi: SearchApi,
+      config: WebServerConfig,
+      transcodingSettings: List[TranscodeSettings]
+  ): Route = {
 
     implicit def executionContext: ExecutionContext = system.executionContext
     implicit val timeout: Timeout = Timeout.durationToTimeout(config.requestTimeout)
@@ -46,28 +51,37 @@ object SearchRoutes {
           val size = n.map(_.toInt).getOrElse(config.defaultNumberOfResults)
           val sortDirection: SortDirection = sortDir match {
             case Some("desc") => Desc
-            case _ => Asc
+            case _            => Asc
           }
           val sortField: SortField = sortParam
             .map {
-              case "title" => FileName
-              case "size" => FileSize
-              case "duration" => Duration
+              case "title"      => FileName
+              case "size"       => FileSize
+              case "duration"   => Duration
               case "date_added" => DateAdded
-              case _ => throw new IllegalArgumentException("unkown sort field")
+              case _            => throw new IllegalArgumentException("unkown sort field")
             }
             .getOrElse(FileName)
 
           val duration: Option[(Long, Long)] = durationParam.flatMap {
-            case durationPattern("", "") => None
-            case durationPattern(min, "") => Some((min.toLong, Long.MaxValue))
-            case durationPattern("", max) => Some((0, max.toLong))
+            case durationPattern("", "")   => None
+            case durationPattern(min, "")  => Some((min.toLong, Long.MaxValue))
+            case durationPattern("", max)  => Some((0, max.toLong))
             case durationPattern(min, max) => Some((min.toLong, max.toLong))
-            case _ => None
+            case _                         => None
           }
 
           val searchResult: Future[SearchResult] =
-            searchApi.searchMedia(q, offset.map(_.toInt), size, tags.toSet, playlist, minResY.map(_.toInt), duration, Sort(sortField, sortDirection))
+            searchApi.searchMedia(
+              q,
+              offset.map(_.toInt),
+              size,
+              tags.toSet,
+              playlist,
+              minResY.map(_.toInt),
+              duration,
+              Sort(sortField, sortDirection)
+            )
 
           val response = searchResult.map(_.asJson)
 

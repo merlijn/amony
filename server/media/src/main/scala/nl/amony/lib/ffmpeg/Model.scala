@@ -18,19 +18,19 @@ object Model {
   case class UnkownStream(override val index: Int) extends Stream
 
   case class AudioStream(
-    override val index: Int,
-    codec_name: String
+      override val index: Int,
+      codec_name: String
   ) extends Stream
 
   case class VideoStream(
-    override val index: Int,
-    codec_name: String,
-    width: Int,
-    height: Int,
-    duration: String,
-    bit_rate: Option[String],
-    avg_frame_rate: String,
-    tags: Option[Map[String, String]]
+      override val index: Int,
+      codec_name: String,
+      width: Int,
+      height: Int,
+      duration: String,
+      bit_rate: Option[String],
+      avg_frame_rate: String,
+      tags: Option[Map[String, String]]
   ) extends Stream {
     def durationMillis: Long = (duration.toDouble * 1000L).toLong
     def fps: Double = {

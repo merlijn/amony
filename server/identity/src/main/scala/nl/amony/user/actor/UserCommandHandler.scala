@@ -14,25 +14,22 @@ object UserCommandHandler {
 
     cmd match {
       case UpsertUser(email, password, sender) =>
-
         getByEmail(email) match {
           case None =>
             val hashedPassword = passwordHasher(password)
-            val uuid = java.util.UUID.randomUUID().toString
+            val uuid           = java.util.UUID.randomUUID().toString
 
             Effect
               .persist(UserAdded(uuid, email, hashedPassword))
               .thenReply(sender)(_ => User(uuid, email, hashedPassword))
 
           case Some(user) =>
-
             Effect.reply(sender)(user)
         }
       case Authenticate(email, password, sender) =>
-
         val response =
           getByEmail(email) match {
-            case None       => InvalidCredentials
+            case None => InvalidCredentials
             case Some(user) =>
               if (user.passwordHash == passwordHasher(password))
                 Authentication(user.id)

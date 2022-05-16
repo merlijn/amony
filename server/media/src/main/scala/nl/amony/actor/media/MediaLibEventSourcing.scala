@@ -1,6 +1,8 @@
 package nl.amony.actor.media
 
-import nl.amony.actor.media.MediaLibProtocol.{Fragment, Media, State}
+import nl.amony.actor.media.MediaLibProtocol.Fragment
+import nl.amony.actor.media.MediaLibProtocol.Media
+import nl.amony.actor.media.MediaLibProtocol.State
 import scribe.Logging
 
 object MediaLibEventSourcing extends Logging {
@@ -8,11 +10,11 @@ object MediaLibEventSourcing extends Logging {
   sealed trait Event
 
   case class MediaMetaDataUpdated(
-    id: String,
-    title: Option[String],
-    comment: Option[String],
-    tagsAdded: Set[String],
-    tagsRemoved: Set[String]
+      id: String,
+      title: Option[String],
+      comment: Option[String],
+      tagsAdded: Set[String],
+      tagsRemoved: Set[String]
   )                                             extends Event
   case class MediaAdded(media: Media)           extends Event
   case class MediaUpdated(id: String, m: Media) extends Event
@@ -22,12 +24,12 @@ object MediaLibEventSourcing extends Logging {
   case class FragmentAdded(id: String, fromTimeStamp: Long, toTimestamp: Long)                    extends Event
   case class FragmentRangeUpdated(id: String, index: Int, fromTimestamp: Long, toTimestamp: Long) extends Event
   case class FragmentMetaDataUpdated(
-    id: String,
-    index: Int,
-    comment: Option[String],
-    tagsAdded: Set[String],
-    tagsRemoved: Set[String]
-  )                                                                                    extends Event
+      id: String,
+      index: Int,
+      comment: Option[String],
+      tagsAdded: Set[String],
+      tagsRemoved: Set[String]
+  ) extends Event
 
   def apply(state: State, event: Event): State = {
 

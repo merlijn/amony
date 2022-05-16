@@ -5,7 +5,9 @@ import akka.actor.typed.scaladsl.ActorContext
 import akka.persistence.typed.scaladsl.Effect
 import akka.util.Timeout
 import better.files.File
-import nl.amony.actor.media.MediaConfig.{DeleteFile, MediaLibConfig, MoveToTrash}
+import nl.amony.actor.media.MediaConfig.DeleteFile
+import nl.amony.actor.media.MediaConfig.MediaLibConfig
+import nl.amony.actor.media.MediaConfig.MoveToTrash
 import nl.amony.actor.media.MediaLibEventSourcing._
 import nl.amony.actor.media.MediaLibProtocol._
 import nl.amony.actor.resources.ResourcesProtocol
@@ -13,19 +15,23 @@ import nl.amony.actor.resources.ResourcesProtocol.ResourceCommand
 import scribe.Logging
 
 import java.awt.Desktop
-import java.nio.file.{Files, Path}
+import java.nio.file.Files
+import java.nio.file.Path
 import scala.concurrent.duration.DurationInt
 import akka.actor.typed.scaladsl.AskPattern._
 
 object MediaLibCommandHandler extends Logging {
 
-  def apply(actorContext: ActorContext[MediaCommand], config: MediaLibConfig, resourceRef: ActorRef[ResourceCommand])(state: State, cmd: MediaCommand): Effect[Event, State] = {
+  def apply(actorContext: ActorContext[MediaCommand], config: MediaLibConfig, resourceRef: ActorRef[ResourceCommand])(
+      state: State,
+      cmd: MediaCommand
+  ): Effect[Event, State] = {
 
     logger.debug(s"Received command: $cmd")
 
     implicit val askTimeout: Timeout = Timeout(5.seconds)
-    implicit val actorScheduler = actorContext.system.scheduler
-    implicit val ec = actorContext.executionContext
+    implicit val actorScheduler      = actorContext.system.scheduler
+    implicit val ec                  = actorContext.executionContext
 
     def requireMedia[T](mediaId: String, sender: ActorRef[Either[ErrorResponse, T]])(
         effect: Media => Effect[Event, State]
@@ -69,7 +75,6 @@ object MediaLibCommandHandler extends Logging {
     cmd match {
 
       case UpsertMedia(media, sender) =>
-
         Effect
           .persist(MediaAdded(media))
           .thenRun((_: State) => resourceRef.tell(ResourcesProtocol.CreateFragments(media, false)))
@@ -109,7 +114,6 @@ object MediaLibCommandHandler extends Logging {
 
       case DeleteFragment(id, idx, sender) =>
         requireMedia(id, sender) { media =>
-
           if (idx < 0 || idx >= media.fragments.size)
             invalidCommand(sender, s"Index out of bounds ($idx): valid range is from 0 to ${media.fragments.size - 1}")
           else {
@@ -117,8 +121,12 @@ object MediaLibCommandHandler extends Logging {
             Effect
               .persist(FragmentDeleted(id, idx))
               .thenRun { (_: State) =>
-                resourceRef.tell(ResourcesProtocol.DeleteFragment(media, (media.fragments(idx).fromTimestamp, media.fragments(idx).toTimestamp)))
-              }.thenReply(sender)(s => Right(s.media(id)))
+                resourceRef.tell(
+                  ResourcesProtocol
+                    .DeleteFragment(media, (media.fragments(idx).fromTimestamp, media.fragments(idx).toTimestamp))
+                )
+              }
+              .thenReply(sender)(s => Right(s.media(id)))
           }
         }
 
@@ -126,24 +134,26 @@ object MediaLibCommandHandler extends Logging {
         requireMedia(id, sender) { media =>
           if (idx < 0 || idx >= media.fragments.size) {
             invalidCommand(sender, s"Index out of bounds ($idx): valid range is from 0 to ${media.fragments.size - 1}")
-          }
-          else
+          } else
             verifyFragmentRange(start, end, media.videoInfo.duration) match {
               case Left(error) =>
                 Effect.reply(sender)(Left(InvalidCommand(error)))
 
-              case Right(_)    =>
-
+              case Right(_) =>
                 logger.info(s"Updating fragment $id:$idx to $start:$end")
                 val oldFragment = media.fragments(idx)
 
                 Effect
                   .persist(FragmentRangeUpdated(id, idx, start, end))
                   .thenRun { (s: State) =>
-                    resourceRef.tell(ResourcesProtocol.DeleteFragment(media, (oldFragment.fromTimestamp, oldFragment.toTimestamp)))
-                    resourceRef.ask[Boolean](ref => ResourcesProtocol.CreateFragment(media, (start, end), false, ref)).foreach {
-                      _ => sender.tell(Right(s.media(id)))
-                    }
+                    resourceRef.tell(
+                      ResourcesProtocol.DeleteFragment(media, (oldFragment.fromTimestamp, oldFragment.toTimestamp))
+                    )
+                    resourceRef
+                      .ask[Boolean](ref => ResourcesProtocol.CreateFragment(media, (start, end), false, ref))
+                      .foreach { _ =>
+                        sender.tell(Right(s.media(id)))
+                      }
                   }
             }
         }
@@ -155,13 +165,15 @@ object MediaLibCommandHandler extends Logging {
           verifyFragmentRange(start, end, media.videoInfo.duration) match {
             case Left(error) =>
               Effect.reply(sender)(Left(InvalidCommand(error)))
-            case Right(_)    =>
+            case Right(_) =>
               Effect
                 .persist(FragmentAdded(id, start, end))
                 .thenRun((s: State) =>
-                  resourceRef.ask[Boolean](ref => ResourcesProtocol.CreateFragment(media, (start, end), false, ref)).foreach {
-                    _ => sender.tell(Right(s.media(id)))
-                  }
+                  resourceRef
+                    .ask[Boolean](ref => ResourcesProtocol.CreateFragment(media, (start, end), false, ref))
+                    .foreach { _ =>
+                      sender.tell(Right(s.media(id)))
+                    }
                 )
           }
         }

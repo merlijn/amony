@@ -1,7 +1,9 @@
 package nl.amony.http
 
-import io.circe.{Codec, Encoder}
-import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
+import io.circe.Codec
+import io.circe.Encoder
+import io.circe.generic.semiauto.deriveCodec
+import io.circe.generic.semiauto.deriveEncoder
 import nl.amony.actor.index.QueryProtocol
 import nl.amony.actor.media.MediaConfig.TranscodeSettings
 import nl.amony.actor.media.MediaLibProtocol
@@ -29,7 +31,8 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
   def toWebModel(mediaId: String, f: MediaLibProtocol.Fragment): Fragment = {
 
     val resolutions = transcodingSettings.map(_.scaleHeight).sorted
-    val urls = resolutions.map(height => s"/files/resources/${mediaId}~${f.fromTimestamp}-${f.toTimestamp}_${height}p.mp4")
+    val urls =
+      resolutions.map(height => s"/files/resources/${mediaId}~${f.fromTimestamp}-${f.toTimestamp}_${height}p.mp4")
 
     Fragment(
       mediaId,
@@ -42,7 +45,7 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
   }
 
   def toWebModel(media: MediaLibProtocol.Media): Video = {
-    
+
     val resolutions = (media.height :: transcodingSettings.map(_.scaleHeight)).sorted
 
     Video(
@@ -61,20 +64,22 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
       preview_thumbnails_url = Some(s"/files/resources/${media.id}-timeline.vtt"),
       fragments = {
         media.fragments.zipWithIndex.map { case (f, index) =>
-          val urls = resolutions.map(height => s"/files/resources/${media.id}~${f.fromTimestamp}-${f.toTimestamp}_${height}p.mp4")
+          val urls = resolutions.map(height =>
+            s"/files/resources/${media.id}~${f.fromTimestamp}-${f.toTimestamp}_${height}p.mp4"
+          )
 
           Fragment(
-            media_id        = media.id,
-            index           = index,
-            range           = FragmentRange(f.fromTimestamp, f.toTimestamp),
-            urls            = urls,
-            comment         = f.comment,
-            tags            = f.tags
+            media_id = media.id,
+            index    = index,
+            range    = FragmentRange(f.fromTimestamp, f.toTimestamp),
+            urls     = urls,
+            comment  = f.comment,
+            tags     = f.tags
           )
         }
       },
       width  = media.width,
-      height = media.height,
+      height = media.height
     )
   }
 }

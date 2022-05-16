@@ -1,14 +1,18 @@
 package nl.amony.actor.index
 
 import akka.actor.typed.scaladsl.ActorContext
-import akka.actor.{Actor, ActorRef, Props}
+import akka.actor.Actor
+import akka.actor.ActorRef
+import akka.actor.Props
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
-import akka.persistence.query.{EventEnvelope, PersistenceQuery}
+import akka.persistence.query.EventEnvelope
+import akka.persistence.query.PersistenceQuery
 import akka.stream.Materializer
 import nl.amony.actor.index.QueryProtocol._
 import nl.amony.actor.media.MediaConfig.MediaLibConfig
 import nl.amony.actor.media.MediaLibEventSourcing
-import nl.amony.actor.media.MediaLibProtocol.{Media, State}
+import nl.amony.actor.media.MediaLibProtocol.Media
+import nl.amony.actor.media.MediaLibProtocol.State
 import scribe.Logging
 
 object InMemoryIndex {
@@ -67,14 +71,15 @@ object InMemoryIndex {
         sender.tell(tags)
 
       case SearchFragments(size, offset, maybeTag, sender) =>
-
         updateIndex()
 
         val results = state.media.values
           .flatMap(m => m.fragments.map(f => m.id -> f))
-          .filter {
-            case (_, f) => maybeTag.map(tag => f.tags.contains(tag)).getOrElse(true)
-          }.drop(offset).take(size)
+          .filter { case (_, f) =>
+            maybeTag.map(tag => f.tags.contains(tag)).getOrElse(true)
+          }
+          .drop(offset)
+          .take(size)
 
         sender.tell(results.toSeq)
 
@@ -87,21 +92,23 @@ object InMemoryIndex {
         def filterTag(m: Media): Boolean =
           query.tags.forall(tag => m.tags.contains(tag))
         def filterDuration(m: Media): Boolean =
-          query.duration.map {
-            case (min, max) => m.videoInfo.duration >= min && m.videoInfo.duration <= max
-          }.getOrElse(true)
+          query.duration
+            .map { case (min, max) =>
+              m.videoInfo.duration >= min && m.videoInfo.duration <= max
+            }
+            .getOrElse(true)
         def filterMedia(m: Media): Boolean = filterRes(m) && filterQuery(m) && filterTag(m) && filterDuration(m)
 
         val unfiltered = query.sort match {
-          case None                           => state.media.values
-          case Some(Sort(FileName, Asc))      => sortedByFilename
-          case Some(Sort(FileName, Desc))     => sortedByFilename.reverse
-          case Some(Sort(DateAdded, Asc))     => sortedByDateAdded
-          case Some(Sort(DateAdded, Desc))    => sortedByDateAdded.reverse
-          case Some(Sort(Duration, Asc))      => sortedByDuration
-          case Some(Sort(Duration, Desc))     => sortedByDuration.reverse
-          case Some(Sort(FileSize, Asc))      => sortedBySize
-          case Some(Sort(FileSize, Desc))     => sortedBySize.reverse
+          case None                        => state.media.values
+          case Some(Sort(FileName, Asc))   => sortedByFilename
+          case Some(Sort(FileName, Desc))  => sortedByFilename.reverse
+          case Some(Sort(DateAdded, Asc))  => sortedByDateAdded
+          case Some(Sort(DateAdded, Desc)) => sortedByDateAdded.reverse
+          case Some(Sort(Duration, Asc))   => sortedByDuration
+          case Some(Sort(Duration, Desc))  => sortedByDuration.reverse
+          case Some(Sort(FileSize, Asc))   => sortedBySize
+          case Some(Sort(FileSize, Desc))  => sortedBySize.reverse
         }
 
         val result = unfiltered.filter(filterMedia)

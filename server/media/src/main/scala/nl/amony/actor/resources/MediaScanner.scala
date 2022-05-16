@@ -3,24 +3,29 @@ package nl.amony.actor.resources
 import akka.util.Timeout
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.reactive.{Consumer, Observable}
+import monix.reactive.Consumer
+import monix.reactive.Observable
 import nl.amony.actor.media.MediaConfig.MediaLibConfig
-import nl.amony.actor.media.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
+import nl.amony.actor.media.MediaLibProtocol.FileInfo
+import nl.amony.actor.media.MediaLibProtocol.Fragment
+import nl.amony.actor.media.MediaLibProtocol.Media
+import nl.amony.actor.media.MediaLibProtocol.VideoInfo
 import nl.amony.lib.FileUtil
 import nl.amony.lib.FileUtil.PathOps
 import nl.amony.lib.ffmpeg.FFMpeg
 import scribe.Logging
 
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{Files, Path}
+import java.nio.file.Files
+import java.nio.file.Path
 
 class MediaScanner(appConfig: MediaLibConfig) extends Logging {
 
   private[resources] def scanMedia(mediaPath: Path, hash: Option[String]): Task[Media] = {
 
     FFMpeg
-      .ffprobe(mediaPath, false, appConfig.ffprobeTimeout).map { case probe =>
-
+      .ffprobe(mediaPath, false, appConfig.ffprobeTimeout)
+      .map { case probe =>
         val fileHash = hash.getOrElse(appConfig.hashingAlgorithm.generateHash(mediaPath))
 
         val mainVideoStream =
@@ -91,7 +96,7 @@ class MediaScanner(appConfig: MediaLibConfig) extends Logging {
             val relativePath = config.mediaPath.relativize(path).toString
 
             persistedMedia.find(_.fileInfo.relativePath == relativePath) match {
-              case None    => config.hashingAlgorithm.generateHash(path)
+              case None => config.hashingAlgorithm.generateHash(path)
               case Some(m) =>
                 val fileAttributes = Files.readAttributes(path, classOf[BasicFileAttributes])
 
@@ -138,24 +143,25 @@ class MediaScanner(appConfig: MediaLibConfig) extends Logging {
       }
       .filterNot { case (_, hash) => collidingHashes.contains(hash) }
       .mapParallelUnordered[Option[Media]](config.scanParallelFactor) { case (videoFile, hash) =>
-          val relativePath = config.mediaPath.relativize(videoFile).toString
+        val relativePath = config.mediaPath.relativize(videoFile).toString
 
-          remaining.find(_.fileInfo.hash == hash) match {
-            case Some(old) =>
-              logger.info(s"File was moved: '${old.fileInfo.relativePath}' -> '${relativePath}'")
-              Task.now(Some(old.copy(fileInfo = old.fileInfo.copy(relativePath = relativePath))))
+        remaining.find(_.fileInfo.hash == hash) match {
+          case Some(old) =>
+            logger.info(s"File was moved: '${old.fileInfo.relativePath}' -> '${relativePath}'")
+            Task.now(Some(old.copy(fileInfo = old.fileInfo.copy(relativePath = relativePath))))
 
-            case None =>
-              logger.info(s"Scanning new file: '${relativePath}'")
-              scanMedia(videoFile, Some(hash))
-                .map(m => Some(m))
-                .onErrorHandle { e =>
-                  logger.warn(s"Failed to scan video: $videoFile", e)
-                  None
-                }
+          case None =>
+            logger.info(s"Scanning new file: '${relativePath}'")
+            scanMedia(videoFile, Some(hash))
+              .map(m => Some(m))
+              .onErrorHandle { e =>
+                logger.warn(s"Failed to scan video: $videoFile", e)
+                None
+              }
         }
-      }.collect {
-        case Some(m) => m
+      }
+      .collect { case Some(m) =>
+        m
       }
 
     (Observable.from(removed), newAndMoved)

@@ -2,40 +2,51 @@ package nl.amony.http
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.{ConnectionContext, Http}
+import akka.http.scaladsl.ConnectionContext
+import akka.http.scaladsl.Http
 import better.files.File
 import nl.amony.actor.media.MediaApi
 import nl.amony.actor.resources.ResourceApi
-import nl.amony.api.{AdminApi, SearchApi}
-import nl.amony.http.routes.{AdminRoutes, ApiRoutes, ResourceRoutes, SearchRoutes}
+import nl.amony.api.AdminApi
+import nl.amony.api.SearchApi
+import nl.amony.http.routes.AdminRoutes
+import nl.amony.http.routes.MediaRoutes
+import nl.amony.http.routes.ResourceRoutes
+import nl.amony.http.routes.SearchRoutes
 import nl.amony.http.util.PemReader
-import nl.amony.user.{IdentityRoutes, UserApi}
-import nl.amony.{AmonyConfig, WebServerConfig}
+import nl.amony.user.IdentityRoutes
+import nl.amony.user.UserApi
+import nl.amony.AmonyConfig
+import nl.amony.WebServerConfig
 import scribe.Logging
 
 import java.security.SecureRandom
-import javax.net.ssl.{KeyManagerFactory, SSLContext}
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
-
+import javax.net.ssl.KeyManagerFactory
+import javax.net.ssl.SSLContext
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
+import scala.util.Failure
+import scala.util.Success
 
 object AllRoutes {
 
-  def createRoutes(system: ActorSystem[Nothing],
-                   userApi: UserApi,
-                   mediaApi: MediaApi,
-                   resourceApi: ResourceApi,
-                   adminApi: AdminApi,
-                   config: AmonyConfig): Route = {
+  def createRoutes(
+      system: ActorSystem[Nothing],
+      userApi: UserApi,
+      mediaApi: MediaApi,
+      resourceApi: ResourceApi,
+      adminApi: AdminApi,
+      config: AmonyConfig
+  ): Route = {
     implicit val ec: ExecutionContext = system.executionContext
 
     val identityRoutes = IdentityRoutes.createRoutes(userApi)
     val resourceRoutes = ResourceRoutes.createRoutes(resourceApi, config.api)
-    val searchApi   = new SearchApi(system)
-    val searchRoutes = SearchRoutes.createRoutes(system, searchApi, config.api, config.media.previews.transcode)
-    val adminRoutes = AdminRoutes.createRoutes(adminApi, config.api)
+    val searchApi      = new SearchApi(system)
+    val searchRoutes   = SearchRoutes.createRoutes(system, searchApi, config.api, config.media.previews.transcode)
+    val adminRoutes    = AdminRoutes.createRoutes(adminApi, config.api)
 
-    val apiRoutes = ApiRoutes.createRoutes(system, mediaApi, searchApi, config.media.previews.transcode, config.api)
+    val apiRoutes = MediaRoutes.createRoutes(system, mediaApi, searchApi, config.media.previews.transcode, config.api)
 
     import akka.http.scaladsl.server.Directives._
 

@@ -5,14 +5,17 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.util.FastFuture
 import akka.stream.SystemMaterializer
-import akka.stream.scaladsl.{FileIO, Source}
+import akka.stream.scaladsl.FileIO
+import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import nl.amony.actor.media.MediaConfig.MediaLibConfig
 import nl.amony.actor.resources.ResourcesProtocol._
 import scribe.Logging
 
-import java.nio.file.{Files, Path}
-import scala.util.{Failure, Success}
+import java.nio.file.Files
+import java.nio.file.Path
+import scala.util.Failure
+import scala.util.Success
 
 object LocalResourcesHandler extends Logging {
 
@@ -28,19 +31,16 @@ object LocalResourcesHandler extends Logging {
   def apply(config: MediaLibConfig, scanner: MediaScanner): Behavior[ResourceCommand] = {
 
     Behaviors.receive { (context, msg) =>
-
       implicit val mat = SystemMaterializer.get(context.system).materializer
 
       msg match {
 
         case GetThumbnail(mediaId, timestamp, quality, sender) =>
-
           val path = config.resourcePath.resolve(s"${mediaId}-${timestamp}_${quality}p.webp")
           sender.tell(LocalFileIOResponse(path))
           Behaviors.same
 
         case GetVideoFragment(mediaId, range, quality, sender) =>
-
           val path = config.resourcePath.resolve(s"${mediaId}-${range._1}-${range._2}_${quality}p.mp4")
           sender.tell(LocalFileIOResponse(path))
           Behaviors.same
@@ -51,9 +51,8 @@ object LocalResourcesHandler extends Logging {
           Behaviors.same
 
         case CreateFragment(media, range, overwrite, sender) =>
-
-          LocalResourcesTasks.createPreview(config, media, range, overwrite).executeAsync.runAsync {
-            result => sender.tell(result.isRight)
+          LocalResourcesTasks.createPreview(config, media, range, overwrite).executeAsync.runAsync { result =>
+            sender.tell(result.isRight)
           }
           Behaviors.same
 
@@ -67,7 +66,6 @@ object LocalResourcesHandler extends Logging {
           Behaviors.same
 
         case Upload(fileName, sourceRef, sender) =>
-
           logger.info(s"Processing upload request: $fileName")
 
           val path = config.uploadPath.resolve(fileName).toAbsolutePath.normalize()
@@ -86,7 +84,8 @@ object LocalResourcesHandler extends Logging {
                   Files.delete(path)
                   FastFuture.failed(t)
               }
-            }.foreach { media => sender.tell(media) }
+            }
+            .foreach { media => sender.tell(media) }
 
           Behaviors.same
       }

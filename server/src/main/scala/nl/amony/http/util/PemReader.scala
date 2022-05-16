@@ -93,7 +93,7 @@ object PemReader {
     var start = 0
     while ({ matcher.find(start) }) {
       val buffer = base64Decode(matcher.group(1))
-      val input = new ByteArrayInputStream(buffer)
+      val input  = new ByteArrayInputStream(buffer)
       certificates.add(
         certificateFactory.generateCertificate(input).asInstanceOf[X509Certificate]
       )

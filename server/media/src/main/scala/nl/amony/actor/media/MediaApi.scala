@@ -1,8 +1,11 @@
 package nl.amony.actor.media
 
-import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
+import akka.actor.typed.receptionist.Receptionist
+import akka.actor.typed.receptionist.ServiceKey
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
+import akka.actor.typed.ActorRef
+import akka.actor.typed.ActorSystem
+import akka.actor.typed.Behavior
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
 import akka.util.Timeout
@@ -19,14 +22,13 @@ import scala.concurrent.Future
 object MediaApi {
   def mediaBehaviour(config: MediaLibConfig, resourceRef: ActorRef[ResourceCommand]): Behavior[MediaCommand] =
     Behaviors.setup[MediaCommand] { context =>
-
       context.system.receptionist ! Receptionist.Register(mediaServiceKey, context.self)
 
       EventSourcedBehavior[MediaCommand, Event, State](
-        persistenceId = PersistenceId.ofUniqueId("mediaLib"),
-        emptyState = State(Map.empty),
+        persistenceId  = PersistenceId.ofUniqueId("mediaLib"),
+        emptyState     = State(Map.empty),
         commandHandler = MediaLibCommandHandler(context, config, resourceRef),
-        eventHandler = MediaLibEventSourcing.apply
+        eventHandler   = MediaLibEventSourcing.apply
       )
     }
 
@@ -49,16 +51,24 @@ class MediaApi(override val system: ActorSystem[Nothing]) extends AkkaServiceMod
   def deleteMedia(id: String, deleteResource: Boolean)(implicit timeout: Timeout): Future[Boolean] =
     askService[Boolean](ref => RemoveMedia(id, deleteResource, ref))
 
-  def updateMetaData(id: String, title: Option[String], comment: Option[String], tags: List[String])(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+  def updateMetaData(id: String, title: Option[String], comment: Option[String], tags: List[String])(implicit
+      timeout: Timeout
+  ): Future[Either[ErrorResponse, Media]] =
     askService[Either[ErrorResponse, Media]](ref => UpdateMetaData(id, title, comment, tags.toSet, ref))
 
-  def addFragment(mediaId: String, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+  def addFragment(mediaId: String, from: Long, to: Long)(implicit
+      timeout: Timeout
+  ): Future[Either[ErrorResponse, Media]] =
     askService[Either[ErrorResponse, Media]](ref => AddFragment(mediaId, from, to, ref))
 
-  def updateFragmentRange(mediaId: String, idx: Int, from: Long, to: Long)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+  def updateFragmentRange(mediaId: String, idx: Int, from: Long, to: Long)(implicit
+      timeout: Timeout
+  ): Future[Either[ErrorResponse, Media]] =
     askService[Either[ErrorResponse, Media]](ref => UpdateFragmentRange(mediaId, idx, from, to, ref))
 
-  def updateFragmentTags(id: String, idx: Int, tags: List[String])(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+  def updateFragmentTags(id: String, idx: Int, tags: List[String])(implicit
+      timeout: Timeout
+  ): Future[Either[ErrorResponse, Media]] =
     askService[Either[ErrorResponse, Media]](ref => UpdateFragmentTags(id, idx, tags, ref))
 
   def deleteFragment(id: String, idx: Int)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =

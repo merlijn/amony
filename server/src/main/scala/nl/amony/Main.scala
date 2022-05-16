@@ -1,12 +1,15 @@
 package nl.amony
 
-import akka.actor.typed.{ActorSystem, Behavior}
+import akka.actor.typed.ActorSystem
+import akka.actor.typed.Behavior
 import akka.util.Timeout
 import nl.amony.actor.MainRouter
 import nl.amony.actor.media.MediaApi
-import nl.amony.actor.resources.{MediaScanner, ResourceApi}
+import nl.amony.actor.resources.MediaScanner
+import nl.amony.actor.resources.ResourceApi
 import nl.amony.api.AdminApi
-import nl.amony.http.{AllRoutes, WebServer}
+import nl.amony.http.AllRoutes
+import nl.amony.http.WebServer
 import nl.amony.user.UserApi
 import scribe.Logging
 
@@ -25,10 +28,10 @@ object Main extends ConfigLoader with Logging {
 
     implicit val timeout: Timeout = Timeout(10.seconds)
 
-    val userApi = new UserApi(system, appConfig.auth)
-    val mediaApi = new MediaApi(system)
+    val userApi      = new UserApi(system, appConfig.auth)
+    val mediaApi     = new MediaApi(system)
     val resourcesApi = new ResourceApi(system, mediaApi)
-    val adminApi = new AdminApi(mediaApi, resourcesApi, system, scanner, appConfig)
+    val adminApi     = new AdminApi(mediaApi, resourcesApi, system, scanner, appConfig)
 
     userApi.upsertUser(appConfig.auth.adminUsername, appConfig.auth.adminPassword)
 
@@ -40,7 +43,12 @@ object Main extends ConfigLoader with Logging {
 //    watchPath(appConfig.media.mediaPath)
 
     val routes = AllRoutes.createRoutes(
-      system, userApi, mediaApi, resourcesApi, adminApi, appConfig
+      system,
+      userApi,
+      mediaApi,
+      resourcesApi,
+      adminApi,
+      appConfig
     )
 
     val webServer = new WebServer(appConfig.api)(system)

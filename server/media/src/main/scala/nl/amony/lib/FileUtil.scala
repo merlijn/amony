@@ -4,7 +4,8 @@ import better.files.File
 import scribe.Logging
 
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{Files, Path}
+import java.nio.file.Files
+import java.nio.file.Path
 
 object FileUtil extends Logging {
 

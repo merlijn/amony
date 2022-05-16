@@ -16,18 +16,22 @@ import nl.amony.actor.media.MediaConfig.TranscodeSettings
 import nl.amony.actor.media.MediaLibProtocol._
 import nl.amony.api.SearchApi
 import nl.amony.http.JsonCodecs
-import nl.amony.http.WebModel.{FragmentRange, VideoMeta}
+import nl.amony.http.WebModel.FragmentRange
+import nl.amony.http.WebModel.VideoMeta
 import scribe.Logging
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 
-object ApiRoutes extends Logging {
+object MediaRoutes extends Logging {
 
-  def createRoutes(system: ActorSystem[Nothing],
-                   mediaApi: MediaApi,
-                   queryApi: SearchApi,
-                   transcodingSettings: List[TranscodeSettings],
-                   config: WebServerConfig): Route = {
+  def createRoutes(
+      system: ActorSystem[Nothing],
+      mediaApi: MediaApi,
+      queryApi: SearchApi,
+      transcodingSettings: List[TranscodeSettings],
+      config: WebServerConfig
+  ): Route = {
 
     implicit def materializer: Materializer = Materializer.createMaterializer(system)
     implicit def executionContext: ExecutionContext = system.executionContext
@@ -44,8 +48,6 @@ object ApiRoutes extends Logging {
         case Right(media)                 => complete(media.asJson)
       }
     }
-
-    val durationPattern = raw"(\d*)-(\d*)".r
 
     pathPrefix("api") {
       pathPrefix("media" / Segment) { id =>
@@ -67,7 +69,7 @@ object ApiRoutes extends Logging {
         (nParam, offsetParam, tag) =>
           get {
 
-            val n = nParam.map(_.toInt).getOrElse(config.defaultNumberOfResults)
+            val n      = nParam.map(_.toInt).getOrElse(config.defaultNumberOfResults)
             val offset = offsetParam.map(_.toInt).getOrElse(0)
 
             complete(queryApi.searchFragments(n, offset, tag).map {

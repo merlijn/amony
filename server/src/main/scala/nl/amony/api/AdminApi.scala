@@ -9,7 +9,8 @@ import monix.reactive.Consumer
 import nl.amony.AmonyConfig
 import nl.amony.actor.media.MediaApi
 import nl.amony.actor.media.MediaLibProtocol.Media
-import nl.amony.actor.resources.{MediaScanner, ResourceApi}
+import nl.amony.actor.resources.MediaScanner
+import nl.amony.actor.resources.ResourceApi
 import nl.amony.actor.util.ConvertNonStreamableVideos
 import nl.amony.lib.ffmpeg.FFMpeg
 import scribe.Logging
@@ -17,14 +18,16 @@ import scribe.Logging
 import java.io.ByteArrayOutputStream
 import scala.concurrent.Future
 
-class AdminApi(mediaApi: MediaApi,
-               resourceApi: ResourceApi,
-               system: ActorSystem[Nothing],
-               scanner: MediaScanner,
-               config: AmonyConfig) extends Logging {
+class AdminApi(
+    mediaApi: MediaApi,
+    resourceApi: ResourceApi,
+    system: ActorSystem[Nothing],
+    scanner: MediaScanner,
+    config: AmonyConfig
+) extends Logging {
 
-  implicit val scheduler            = system.scheduler
-  implicit val monixScheduler       = monix.execution.Scheduler.Implicits.global
+  implicit val scheduler      = system.scheduler
+  implicit val monixScheduler = monix.execution.Scheduler.Implicits.global
 
   def scanLibrary()(implicit timeout: Timeout): Unit = {
 
@@ -109,7 +112,7 @@ class AdminApi(mediaApi: MediaApi,
   def exportLibrary()(implicit timeout: Timeout): Future[String] = {
 
     val objectMapper = JacksonObjectMapperProvider.get(system).getOrCreate("media-export", None)
-    val file = config.media.indexPath.resolve("export.json").toFile
+    val file         = config.media.indexPath.resolve("export.json").toFile
 
     mediaApi.getAll().map { medias =>
       objectMapper.createGenerator(file, JsonEncoding.UTF8).writeObject(medias)
