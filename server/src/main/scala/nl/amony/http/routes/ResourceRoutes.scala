@@ -4,7 +4,7 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import nl.amony.WebServerConfig
+import nl.amony.http.WebServerConfig
 import nl.amony.actor.resources.ResourceApi
 import nl.amony.http.util.HttpDirectives.randomAccessRangeSupport
 import nl.amony.http.util.HttpDirectives.uploadFiles

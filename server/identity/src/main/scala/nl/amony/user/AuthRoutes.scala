@@ -15,12 +15,12 @@ import scala.concurrent.duration.DurationInt
 
 case class Credentials(username: String, password: String)
 
-object IdentityRoutes {
+object AuthRoutes {
 
   implicit val credDecoder = deriveCodec[Credentials]
   implicit val timeout     = Timeout(5.seconds)
 
-  def apply(userApi: UserApi): Route = {
+  def apply(userApi: AuthApi): Route = {
 
     pathPrefix("api" / "identity") {
       (path("login") & post & entity(as[Credentials])) { credentials =>

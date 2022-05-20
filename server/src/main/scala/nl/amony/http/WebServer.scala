@@ -4,16 +4,16 @@ import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.ConnectionContext
 import akka.http.scaladsl.Http
+import akka.util.Timeout
 import better.files.File
 import nl.amony.actor.media.MediaApi
 import nl.amony.actor.resources.ResourceApi
 import nl.amony.api.AdminApi
-import nl.amony.http.routes.{AdminRoutes, MediaRoutes, ResourceRoutes, SearchRoutes, WebAppRoutes}
+import nl.amony.http.routes._
 import nl.amony.http.util.PemReader
-import nl.amony.user.IdentityRoutes
-import nl.amony.user.UserApi
+import nl.amony.user.AuthRoutes
+import nl.amony.user.AuthApi
 import nl.amony.AmonyConfig
-import nl.amony.WebServerConfig
 import nl.amony.search.SearchApi
 import scribe.Logging
 
@@ -22,29 +22,30 @@ import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
+import scala.concurrent.duration.DurationInt
 import scala.util.Failure
 import scala.util.Success
 
 object AllRoutes {
 
   def createRoutes(
-      system: ActorSystem[Nothing],
-      userApi: UserApi,
-      mediaApi: MediaApi,
-      resourceApi: ResourceApi,
-      adminApi: AdminApi,
-      config: AmonyConfig
+    system: ActorSystem[Nothing],
+    userApi: AuthApi,
+    mediaApi: MediaApi,
+    resourceApi: ResourceApi,
+    adminApi: AdminApi,
+    config: AmonyConfig
   ): Route = {
     implicit val ec: ExecutionContext = system.executionContext
     import akka.http.scaladsl.server.Directives._
 
-    val searchApi      = new SearchApi(system)
+    val searchApi      = new SearchApi(system, Timeout(5.seconds))
 
-    val identityRoutes = IdentityRoutes(userApi)
+    val identityRoutes = AuthRoutes(userApi)
     val resourceRoutes = ResourceRoutes(resourceApi, config.api)
-    val searchRoutes   = SearchRoutes(system, searchApi, config.api, config.media.previews.transcode)
+    val searchRoutes   = SearchRoutes(system, searchApi, config.api, config.media.transcode)
     val adminRoutes    = AdminRoutes(adminApi, config.api)
-    val mediaRoutes    = MediaRoutes(system, mediaApi, searchApi, config.media.previews.transcode, config.api)
+    val mediaRoutes    = MediaRoutes(system, mediaApi, searchApi, config.media.transcode, config.api)
 
     // routes for the web app (javascript/html) resources
     val webAppResources = WebAppRoutes(config.api)

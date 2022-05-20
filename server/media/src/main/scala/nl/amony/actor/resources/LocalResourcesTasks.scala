@@ -25,10 +25,10 @@ object LocalResourcesTasks extends Logging {
     val (from, to) = range
 
     val transcodeList =
-      if (media.height < config.previews.transcode.map(_.scaleHeight).min)
+      if (media.height < config.transcode.map(_.scaleHeight).min)
         List(TranscodeSettings("mp4", media.height, 23))
       else
-        config.previews.transcode.filterNot(_.scaleHeight > media.height)
+        config.transcode.filterNot(_.scaleHeight > media.height)
 
     def writeFragment(input: Path, height: Int, crf: Int): Unit = {
       val output = config.resourcePath.resolve(s"${media.id}-${from}-${to}_${height}p.mp4")
@@ -76,13 +76,13 @@ object LocalResourcesTasks extends Logging {
       .consumeWith(Consumer.foreachTask(f => createPreview(config, media, (f.fromTimestamp, f.toTimestamp), overwrite)))
   }
 
-  def deleteVideoFragment(mediaLibConfig: MediaLibConfig, media: Media, from: Long, to: Long): Unit = {
+  def deleteVideoFragment(config: MediaLibConfig, media: Media, from: Long, to: Long): Unit = {
 
-    mediaLibConfig.resourcePath.resolve(s"${media.id}-$from-${to}_${media.height}p.mp4").deleteIfExists()
+    config.resourcePath.resolve(s"${media.id}-$from-${to}_${media.height}p.mp4").deleteIfExists()
 
-    mediaLibConfig.previews.transcode.foreach { transcode =>
-      mediaLibConfig.resourcePath.resolve(s"${media.id}-${from}_${transcode.scaleHeight}p.webp").deleteIfExists()
-      mediaLibConfig.resourcePath.resolve(s"${media.id}-$from-${to}_${transcode.scaleHeight}p.mp4").deleteIfExists()
+    config.transcode.foreach { transcode =>
+      config.resourcePath.resolve(s"${media.id}-${from}_${transcode.scaleHeight}p.webp").deleteIfExists()
+      config.resourcePath.resolve(s"${media.id}-$from-${to}_${transcode.scaleHeight}p.mp4").deleteIfExists()
     }
   }
 }

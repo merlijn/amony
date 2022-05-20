@@ -33,19 +33,18 @@ object ResourceApi {
   val resourceServiceKey = ServiceKey[ResourceCommand]("resourceService")
 }
 
-class ResourceApi(override val system: ActorSystem[Nothing], mediaApi: MediaApi)
+class ResourceApi(override val system: ActorSystem[Nothing], override implicit val askTimeout: Timeout, mediaApi: MediaApi)
     extends AkkaServiceModule[ResourceCommand] {
 
   override val serviceKey: ServiceKey[ResourceCommand] = resourceServiceKey
 
-  def uploadMedia(fileName: String, source: Source[ByteString, Any])(implicit timeout: Timeout): Future[Media] =
-    serviceRef()
-      .flatMap(_.ask[Media](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref)))
-      .flatMap { m => mediaApi.upsertMedia(m) }
+  def uploadMedia(fileName: String, source: Source[ByteString, Any]): Future[Media] =
+    askService[Media](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref))
+      .flatMap(mediaApi.upsertMedia)
 
   private def getResource(
       mediaId: String
-  )(fn: (Media, ActorRef[IOResponse]) => ResourceCommand)(implicit timeout: Timeout) =
+  )(fn: (Media, ActorRef[IOResponse]) => ResourceCommand): Future[Option[IOResponse]] =
     mediaApi
       .getById(mediaId)
       .flatMap {
@@ -53,21 +52,17 @@ class ResourceApi(override val system: ActorSystem[Nothing], mediaApi: MediaApi)
         case Some(media) => serviceRef().flatMap(_.ask[IOResponse](ref => fn(media, ref)).map(Some(_)))
       }
 
-  def getVideo(id: String, quality: Int)(implicit timeout: Timeout): Future[Option[IOResponse]] =
+  def getVideo(id: String, quality: Int): Future[Option[IOResponse]] =
     getResource(id)((media, ref) => GetVideo(media, ref))
 
-  def getVideoFragment(id: String, start: Long, end: Long, quality: Int)(implicit
-      timeout: Timeout
-  ): Future[Option[IOResponse]] =
+  def getVideoFragment(id: String, start: Long, end: Long, quality: Int): Future[Option[IOResponse]] =
     getResource(id)((media, ref) => GetVideoFragment(media.id, (start, end), quality, ref))
 
-  def getThumbnail(id: String, quality: Int, timestamp: Option[Long])(implicit
-      timeout: Timeout
-  ): Future[Option[IOResponse]] =
+  def getThumbnail(id: String, quality: Int, timestamp: Option[Long]): Future[Option[IOResponse]] =
     getResource(id)((media, ref) =>
       GetThumbnail(media.id, timestamp.getOrElse(media.fragments.head.fromTimestamp), quality, ref)
     )
 
-  def createFragments(media: Media)(implicit timeout: Timeout) =
+  def createFragments(media: Media) =
     serviceRef().foreach(_.tell(ResourcesProtocol.CreateFragments(media, true)))
 }

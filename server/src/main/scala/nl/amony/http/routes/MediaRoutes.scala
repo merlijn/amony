@@ -9,7 +9,7 @@ import akka.stream.Materializer
 import akka.util.Timeout
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
-import nl.amony.WebServerConfig
+import nl.amony.http.WebServerConfig
 import nl.amony.search.SearchProtocol._
 import nl.amony.actor.media.MediaApi
 import nl.amony.actor.media.MediaConfig.TranscodeSettings

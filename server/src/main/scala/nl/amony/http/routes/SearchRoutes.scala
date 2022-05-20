@@ -8,7 +8,7 @@ import akka.http.scaladsl.server.Directive.addDirectiveApply
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import nl.amony.WebServerConfig
+import nl.amony.http.WebServerConfig
 import io.circe.syntax._
 import nl.amony.actor.media.MediaConfig.TranscodeSettings
 import nl.amony.http.JsonCodecs

@@ -1,36 +1,45 @@
 package nl.amony.search
 
+import akka.Done
+import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.ActorContext
-import akka.actor.{Actor, ActorRef, Props}
-import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
-import akka.persistence.query.{EventEnvelope, PersistenceQuery}
+import akka.actor.{Actor, ActorRef, Props, typed}
+import akka.persistence.query.EventEnvelope
+import akka.persistence.query.scaladsl.EventsByPersistenceIdQuery
 import akka.stream.Materializer
-import nl.amony.actor.media.MediaConfig.MediaLibConfig
-import nl.amony.actor.media.MediaLibEventSourcing
+import nl.amony.actor.media.{MediaApi, MediaLibEventSourcing}
 import nl.amony.actor.media.MediaLibProtocol.{Media, State}
+import nl.amony.search.SearchApi.searchServiceKey
 import nl.amony.search.SearchProtocol._
 import scribe.Logging
 
+import scala.concurrent.Future
+
 object InMemoryIndex {
 
-  def apply[T](config: MediaLibConfig, context: ActorContext[T])(implicit mat: Materializer): ActorRef = {
+  def apply[T](context: ActorContext[T], readJournal: EventsByPersistenceIdQuery)(implicit mat: Materializer): typed.ActorRef[QueryMessage] = {
 
     import akka.actor.typed.scaladsl.adapter._
 
-    val indexActor = context.actorOf(Props(new LocalIndexActor(config)), "index")
+    val indexActor = context.actorOf(Props(new LocalIndexActor()), "index")
+    val typedRef = indexActor.toTyped[QueryMessage]
 
-    val readJournal =
-      PersistenceQuery(context.system).readJournalFor[LeveldbReadJournal]("akka.persistence.query.journal.leveldb")
+    context.system.receptionist ! Receptionist.Register(searchServiceKey, typedRef)
 
-    readJournal.eventsByPersistenceId("mediaLib").runForeach {
+    runIndex(indexActor, readJournal)
+
+    typedRef
+  }
+
+  def runIndex[T](indexActor: ActorRef, readJournal: EventsByPersistenceIdQuery)(implicit mat: Materializer): Future[Done] = {
+
+    readJournal.eventsByPersistenceId(MediaApi.mediaPersistenceId, 0L, Long.MaxValue).runForeach {
       case EventEnvelope(_, _, _, e: MediaLibEventSourcing.Event) =>
         indexActor.tell(e, ActorRef.noSender)
     }
-
-    indexActor
   }
 
-  class LocalIndexActor(config: MediaLibConfig) extends Actor with Logging {
+  class LocalIndexActor() extends Actor with Logging {
 
     var counter: Long = 0L
     var indexedAt: Long = 0L

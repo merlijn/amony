@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import nl.amony.WebServerConfig
+import nl.amony.http.WebServerConfig
 import nl.amony.api.AdminApi
 
 object AdminRoutes {

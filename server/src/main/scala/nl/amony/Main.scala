@@ -10,7 +10,7 @@ import nl.amony.actor.resources.ResourceApi
 import nl.amony.api.AdminApi
 import nl.amony.http.AllRoutes
 import nl.amony.http.WebServer
-import nl.amony.user.UserApi
+import nl.amony.user.AuthApi
 import scribe.Logging
 
 import java.nio.file.Files
@@ -28,9 +28,9 @@ object Main extends ConfigLoader with Logging {
 
     implicit val timeout: Timeout = Timeout(10.seconds)
 
-    val userApi      = new UserApi(system, appConfig.auth)
-    val mediaApi     = new MediaApi(system)
-    val resourcesApi = new ResourceApi(system, mediaApi)
+    val userApi      = new AuthApi(system, timeout, appConfig.auth)
+    val mediaApi     = new MediaApi(system, timeout)
+    val resourcesApi = new ResourceApi(system, timeout, mediaApi)
     val adminApi     = new AdminApi(mediaApi, resourcesApi, system, scanner, appConfig)
 
     userApi.upsertUser(appConfig.auth.adminUsername, appConfig.auth.adminPassword)

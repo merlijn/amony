@@ -19,14 +19,14 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.Files
 import java.nio.file.Path
 
-class MediaScanner(appConfig: MediaLibConfig) extends Logging {
+class MediaScanner(config: MediaLibConfig) extends Logging {
 
   private[resources] def scanMedia(mediaPath: Path, hash: Option[String]): Task[Media] = {
 
     FFMpeg
-      .ffprobe(mediaPath, false, appConfig.ffprobeTimeout)
+      .ffprobe(mediaPath, false, config.ffprobeTimeout)
       .map { case probe =>
-        val fileHash = hash.getOrElse(appConfig.hashingAlgorithm.generateHash(mediaPath))
+        val fileHash = hash.getOrElse(config.hashingAlgorithm.generateHash(mediaPath))
 
         val mainVideoStream =
           probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${mediaPath}"))
@@ -43,7 +43,7 @@ class MediaScanner(appConfig: MediaLibConfig) extends Logging {
         val timeStamp = mainVideoStream.durationMillis / 3
 
         val fileInfo = FileInfo(
-          relativePath     = appConfig.mediaPath.relativize(mediaPath).toString,
+          relativePath     = config.mediaPath.relativize(mediaPath).toString,
           hash             = fileHash,
           size             = fileAttributes.size(),
           creationTime     = fileAttributes.creationTime().toMillis,
@@ -56,7 +56,7 @@ class MediaScanner(appConfig: MediaLibConfig) extends Logging {
           (mainVideoStream.width, mainVideoStream.height)
         )
 
-        val fragmentLength = appConfig.defaultFragmentLength.toMillis
+        val fragmentLength = config.defaultFragmentLength.toMillis
 
         Media(
           id                 = fileHash,

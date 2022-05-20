@@ -4,39 +4,14 @@ import com.typesafe.config.ConfigFactory
 import nl.amony.actor.media.MediaConfig.DeleteMediaOption
 import nl.amony.actor.media.MediaConfig.HashingAlgorithm
 import nl.amony.actor.media.MediaConfig.MediaLibConfig
+import nl.amony.http.WebServerConfig
 import nl.amony.user.AuthConfig
 import scribe.Logging
-import squants.information.Information
-
-import scala.concurrent.duration.FiniteDuration
 
 case class AmonyConfig(
     media: MediaLibConfig,
     api: WebServerConfig,
     auth: AuthConfig
-)
-
-case class WebServerConfig(
-    hostName: String,
-    webClientPath: String,
-    requestTimeout: FiniteDuration,
-    enableAdmin: Boolean,
-    uploadSizeLimit: Information,
-    defaultNumberOfResults: Int,
-    http: Option[HttpConfig],
-    https: Option[HttpsConfig]
-)
-
-case class HttpsConfig(
-    enabled: Boolean,
-    port: Int,
-    privateKeyPem: String,
-    certificateChainPem: String
-)
-
-case class HttpConfig(
-    enabled: Boolean,
-    port: Int
 )
 
 trait ConfigLoader extends Logging {
