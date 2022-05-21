@@ -70,7 +70,7 @@ export const Api = {
       file.name
     );
 
-    axios.post("/files/upload", formData);
+    axios.post("/resources/upload", formData);
   },
 
   getFragments: async function getFragments(n: number, offset: number, tag?: string) {
@@ -83,7 +83,7 @@ export const Api = {
     if (tag)
       params.set("tags", tag)
 
-    const url = buildUrl("/api/fragments/search", params)
+    const url = buildUrl("/api/search/fragments", params)
 
     return doGET(url)
   },
@@ -130,7 +130,7 @@ export const Api = {
       apiParams.set("d", durationAsParam([duration[0] ? duration[0] * 1000 : duration[0], duration[1] ? duration[1] * 1000 : duration[1]]))
     }
 
-    const target = buildUrl("/api/search", apiParams)
+    const target = buildUrl("/api/search/media", apiParams)
 
     return doGET(target)
   },
@@ -140,7 +140,7 @@ export const Api = {
   },
 
   getTags: async function () {
-    return doGET(`/api/tags`)
+    return doGET(`/api/search/tags`)
   },
 
   updateVideoMetaData: async function(id: string, meta: VideoMeta) {

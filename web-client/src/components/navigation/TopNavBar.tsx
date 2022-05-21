@@ -60,7 +60,7 @@ function TopNavBar(props: NavBarProps) {
                 <FilterDropDown onToggleFilter = { (v) => setShowFilters(v) } />
                 <input 
                   ref         = { inputRef } 
-                  style       = { showFilters ? { borderBottom: "none", borderBottomLeftRadius: 0, borderBottomRightRadius: 0 } : { } }
+                  style       = { showFilters ? { borderBottom: "none", borderBottomLeftRadius: 0, borderBottomRightRadius: 0, paddingBottom: 2 } : { } }
                   key         = "nav-search-input" 
                   className   = "nav-search-input" 
                   placeholder = "Search" 
@@ -99,7 +99,7 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
     <div className = "filter-dropdown-container">
       
       <DropDown 
-        toggleIcon = { <MdTune /> } 
+        toggleIcon = { <MdTune className="filter-dropdown-icon" /> } 
         hideOnClick = { false } 
         onToggle = { props.onToggleFilter }
         contentClassName = "filter-dropdown-content">

@@ -103,14 +103,12 @@
     .nav-search-form {
 
       position: relative;
-      float: left;
       flex-grow: 1;
       padding: 0px 2px 0px 5px;
     
       .nav-search-input-container {
     
         position: relative;
-        flex-grow: 1;
 
         .search-icon {
           @extend .abs-top-left;
@@ -228,9 +226,7 @@
               }
             }
           }
-        }
-    
-
+        }    
       }
     }
   }

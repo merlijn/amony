@@ -98,7 +98,7 @@ jobs:
 
       - run: 
           name: Test and create jar
-          command: sbt ";test;assembly"
+          command: sbt "project web-server" ";test;assembly"
 
       - save_cache:
           name: Save cache
@@ -110,7 +110,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - target/scala-2.13/amony.jar
+            - web-server/target/scala-2.13/amony.jar
 
   build_web_client:
 
@@ -160,8 +160,8 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-
-      - run: mv target server 
+      - run: mkdir -p server/web-server/target/scala-2.13
+      - run: mv web-server/target/scala-2.13/amony.jar server/web-server/target/scala-2.13
       - run: mv build web-client
       - my-gcp/build-and-publish:
           image: "amony/app"

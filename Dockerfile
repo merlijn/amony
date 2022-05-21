@@ -7,8 +7,8 @@ RUN mkdir /usr/amony/videos
 
 # copy files
 COPY ./web-client/build /usr/amony/web-client
-COPY ./server/target/scala-2.13/amony.jar /usr/amony
-COPY ./server/src/main/resources/prod/application.conf /usr/amony
+COPY ./server/web-server/target/scala-2.13/amony.jar /usr/amony
+COPY ./server/web-server/src/main/resources/prod/application.conf /usr/amony
 
 WORKDIR /usr/amony
 EXPOSE 80

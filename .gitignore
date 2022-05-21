@@ -2,6 +2,7 @@
 
 # project specific
 videos/
+server/solr-search/solr/amony_embedded/data/
 
 # backend, java, scala
 *.class
