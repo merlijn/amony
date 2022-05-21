@@ -98,7 +98,7 @@ jobs:
 
       - run: 
           name: Test and create jar
-          command: sbt ";test;assembly"
+          command: sbt "project web-server" ";test;assembly"
 
       - save_cache:
           name: Save cache
@@ -110,7 +110,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - target/scala-2.13/amony.jar
+            - target/web-server/scala-2.13/amony.jar
 
   build_web_client:
 
