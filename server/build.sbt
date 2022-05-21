@@ -113,11 +113,11 @@ lazy val solrSearch =
       )
     )
 
-lazy val amony = (project in file("."))
+lazy val amonyServer = (project in file("web-server"))
   .dependsOn(identity, media, searchApi)
   .settings(commonSettings)
   .settings(
-    name := "amony-server",
+    name := "amony-web-server",
     reStart / javaOptions ++= javaOpts ,
     run / fork             := true,
     run / javaOptions     ++= javaOpts,

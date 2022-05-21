@@ -140,7 +140,7 @@ export const Api = {
   },
 
   getTags: async function () {
-    return doGET(`/api/tags`)
+    return doGET(`/api/search/tags`)
   },
 
   updateVideoMetaData: async function(id: string, meta: VideoMeta) {

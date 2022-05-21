@@ -30,6 +30,9 @@ object MigrateMedia extends Logging {
         logger.error("Failed to decode json", error)
 
       case Right(media) =>
+
+        logger.info(s"Found ${media.size} media in export")
+
         media.foreach { m =>
           logger.info(s"Importing: ${m.fileInfo.relativePath}")
 

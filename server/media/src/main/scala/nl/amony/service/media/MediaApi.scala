@@ -18,6 +18,12 @@ import scribe.Logging
 import scala.concurrent.Future
 
 object MediaApi {
+
+  // 0. Config, deps
+  // 1. Behavior
+  // 2. ActorRef
+  // 3. Api
+
   def mediaBehaviour(config: MediaLibConfig, resourceRef: ActorRef[ResourceCommand]): Behavior[MediaCommand] =
     Behaviors.setup[MediaCommand] { context =>
       context.system.receptionist ! Receptionist.Register(mediaServiceKey, context.self)

@@ -56,12 +56,12 @@ object Main extends ConfigLoader with Logging {
     userApi.upsertUser(userApi.config.adminUsername, userApi.config.adminPassword)
 
     Thread.sleep(500)
-//    adminApi.scanLibrary()(timeout.duration)
+    adminApi.scanLibrary()(timeout.duration)
 //    probeAll(api)(system.executionContext)
 //    MediaLibScanner.convertNonStreamableVideos(mediaLibConfig, api)
 
-    val path = appConfig.media.indexPath.resolve("export.json")
-    MigrateMedia.importFromExport(path, mediaApi)(10.seconds)
+//    val path = appConfig.media.indexPath.resolve("export.json")
+//    MigrateMedia.importFromExport(path, mediaApi)(10.seconds)
 //    watchPath(appConfig.media.mediaPath)
 
     val routes = AllRoutes.createRoutes(
