@@ -7,8 +7,8 @@ import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.stream.Materializer
 import akka.util.Timeout
 import nl.amony.actor.media.MediaApi
-import nl.amony.actor.resources.MediaScanner
 import nl.amony.actor.resources.ResourceApi
+import nl.amony.actor.resources.local.LocalMediaScanner
 import nl.amony.api.AdminApi
 import nl.amony.http.AllRoutes
 import nl.amony.http.WebServer
@@ -22,7 +22,7 @@ import scala.concurrent.duration.DurationInt
 
 object Main extends ConfigLoader with Logging {
 
-  def rootBehaviour(config: AmonyConfig, scanner: MediaScanner): Behavior[Nothing] =
+  def rootBehaviour(config: AmonyConfig, scanner: LocalMediaScanner): Behavior[Nothing] =
     Behaviors.setup[Nothing] { context =>
       implicit val mat = Materializer(context)
 
@@ -42,7 +42,7 @@ object Main extends ConfigLoader with Logging {
 
     Files.createDirectories(appConfig.media.resourcePath)
 
-    val scanner                      = new MediaScanner(appConfig.media)
+    val scanner                      = new LocalMediaScanner(appConfig.media)
     val router: Behavior[Nothing]    = rootBehaviour(appConfig, scanner)
     val system: ActorSystem[Nothing] = ActorSystem[Nothing](router, "mediaLibrary", config)
 

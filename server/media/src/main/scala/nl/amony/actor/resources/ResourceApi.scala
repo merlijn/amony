@@ -16,13 +16,14 @@ import nl.amony.actor.media.MediaConfig.MediaLibConfig
 import nl.amony.actor.media.MediaLibProtocol.Media
 import nl.amony.actor.resources.ResourceApi.resourceServiceKey
 import nl.amony.actor.resources.ResourcesProtocol._
+import nl.amony.actor.resources.local.{LocalMediaScanner, LocalResourcesHandler}
 import nl.amony.lib.akka.AkkaServiceModule
 
 import scala.concurrent.Future
 
 object ResourceApi {
 
-  def resourceBehaviour(config: MediaLibConfig, scanner: MediaScanner): Behavior[ResourceCommand] = {
+  def resourceBehaviour(config: MediaLibConfig, scanner: LocalMediaScanner): Behavior[ResourceCommand] = {
 
     Behaviors.setup { context =>
       context.system.receptionist ! Receptionist.Register(resourceServiceKey, context.self)

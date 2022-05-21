@@ -1,25 +1,20 @@
-package nl.amony.actor.resources
+package nl.amony.actor.resources.local
 
 import akka.util.Timeout
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.reactive.Consumer
-import monix.reactive.Observable
+import monix.reactive.{Consumer, Observable}
 import nl.amony.actor.media.MediaConfig.MediaLibConfig
-import nl.amony.actor.media.MediaLibProtocol.FileInfo
-import nl.amony.actor.media.MediaLibProtocol.Fragment
-import nl.amony.actor.media.MediaLibProtocol.Media
-import nl.amony.actor.media.MediaLibProtocol.VideoInfo
+import nl.amony.actor.media.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
 import nl.amony.lib.FileUtil
 import nl.amony.lib.FileUtil.PathOps
 import nl.amony.lib.ffmpeg.FFMpeg
 import scribe.Logging
 
+import java.nio.file.{Files, Path}
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.Files
-import java.nio.file.Path
 
-class MediaScanner(config: MediaLibConfig) extends Logging {
+class LocalMediaScanner(config: MediaLibConfig) extends Logging {
 
   private[resources] def scanMedia(mediaPath: Path, hash: Option[String]): Task[Media] = {
 

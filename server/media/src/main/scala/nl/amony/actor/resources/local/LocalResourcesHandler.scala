@@ -1,21 +1,18 @@
-package nl.amony.actor.resources
+package nl.amony.actor.resources.local
 
 import akka.NotUsed
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.util.FastFuture
 import akka.stream.SystemMaterializer
-import akka.stream.scaladsl.FileIO
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
 import nl.amony.actor.media.MediaConfig.MediaLibConfig
 import nl.amony.actor.resources.ResourcesProtocol._
 import scribe.Logging
 
-import java.nio.file.Files
-import java.nio.file.Path
-import scala.util.Failure
-import scala.util.Success
+import java.nio.file.{Files, Path}
+import scala.util.{Failure, Success}
 
 object LocalResourcesHandler extends Logging {
 
@@ -28,7 +25,7 @@ object LocalResourcesHandler extends Logging {
 
   implicit val scheduler = monix.execution.Scheduler.Implicits.global
 
-  def apply(config: MediaLibConfig, scanner: MediaScanner): Behavior[ResourceCommand] = {
+  def apply(config: MediaLibConfig, scanner: LocalMediaScanner): Behavior[ResourceCommand] = {
 
     Behaviors.receive { (context, msg) =>
       implicit val mat = SystemMaterializer.get(context.system).materializer

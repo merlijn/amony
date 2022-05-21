@@ -47,11 +47,10 @@ class AuthApi(override val system: ActorSystem[Nothing], override val askTimeout
 
   import pureconfig.generic.auto._
   val config = loadConfig[AuthConfig]("amony.auth")
+  override val serviceKey: ServiceKey[UserCommand] = authServiceKey
 
   val expirationInSeconds = config.jwt.tokenExpiration.toSeconds
   val algo                = JwtAlgorithm.HS256 // TODO get from config
-
-  override val serviceKey: ServiceKey[UserCommand] = authServiceKey
 
   def upsertUser(userName: String, password: String)(implicit timeout: Timeout): Future[User] =
     askService[User](ref => UpsertUser(userName, password, ref))

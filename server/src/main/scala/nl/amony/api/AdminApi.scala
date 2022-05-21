@@ -9,8 +9,8 @@ import monix.reactive.Consumer
 import nl.amony.AmonyConfig
 import nl.amony.actor.media.MediaApi
 import nl.amony.actor.media.MediaLibProtocol.Media
-import nl.amony.actor.resources.MediaScanner
 import nl.amony.actor.resources.ResourceApi
+import nl.amony.actor.resources.local.LocalMediaScanner
 import nl.amony.lib.ffmpeg.FFMpeg
 import scribe.Logging
 
@@ -18,11 +18,11 @@ import java.io.ByteArrayOutputStream
 import scala.concurrent.Future
 
 class AdminApi(
-    mediaApi: MediaApi,
-    resourceApi: ResourceApi,
-    system: ActorSystem[Nothing],
-    scanner: MediaScanner,
-    config: AmonyConfig
+                mediaApi: MediaApi,
+                resourceApi: ResourceApi,
+                system: ActorSystem[Nothing],
+                scanner: LocalMediaScanner,
+                config: AmonyConfig
 ) extends Logging {
 
   implicit val scheduler      = system.scheduler

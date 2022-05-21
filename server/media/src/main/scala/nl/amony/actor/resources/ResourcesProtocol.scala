@@ -17,16 +17,20 @@ object ResourcesProtocol {
     def getContentRange(start: Long, end: Long): Source[ByteString, NotUsed]
   }
 
+  case class FileInfo(fileName: String, contentType: String, size: Long, createdTimestamp: Long, hashes: List[String])
+
   case class Upload(fileName: String, source: SourceRef[ByteString], sender: ActorRef[Media]) extends ResourceCommand
+
 
   case class CreateFragments(media: Media, overwrite: Boolean) extends ResourceCommand
   case class CreateFragment(media: Media, timeRange: (Long, Long), overwrite: Boolean, sender: ActorRef[Boolean])
       extends ResourceCommand
   case class DeleteFragment(media: Media, timeRange: (Long, Long)) extends ResourceCommand
 
-  case class GetThumbnail(mediaId: String, timestamp: Long, quality: Int, sender: ActorRef[IOResponse])
+
+  case class GetThumbnail(mediaHash: String, timestamp: Long, quality: Int, sender: ActorRef[IOResponse])
       extends ResourceCommand
-  case class GetVideoFragment(mediaId: String, timeRange: (Long, Long), quality: Int, sender: ActorRef[IOResponse])
+  case class GetVideoFragment(mediaHash: String, timeRange: (Long, Long), quality: Int, sender: ActorRef[IOResponse])
       extends ResourceCommand
   case class GetVideo(media: Media, sender: ActorRef[IOResponse]) extends ResourceCommand
 }
