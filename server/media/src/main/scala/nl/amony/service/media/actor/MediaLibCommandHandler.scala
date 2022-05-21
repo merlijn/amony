@@ -7,8 +7,8 @@ import better.files.File
 import nl.amony.service.media.MediaConfig.{DeleteFile, MediaLibConfig, MoveToTrash}
 import nl.amony.service.media.actor.MediaLibEventSourcing._
 import nl.amony.service.media.actor.MediaLibProtocol._
-import nl.amony.service.resources.ResourcesProtocol
-import nl.amony.service.resources.ResourcesProtocol.ResourceCommand
+import nl.amony.service.resources.ResourceProtocol
+import nl.amony.service.resources.ResourceProtocol.ResourceCommand
 import scribe.Logging
 
 import java.awt.Desktop
@@ -72,7 +72,7 @@ object MediaLibCommandHandler extends Logging {
       case UpsertMedia(media, sender) =>
         Effect
           .persist(MediaAdded(media))
-          .thenRun((_: State) => resourceRef.tell(ResourcesProtocol.CreateFragments(media, false)))
+          .thenRun((_: State) => resourceRef.tell(ResourceProtocol.CreateFragments(media, false)))
           .thenReply(sender)(_ => true)
 
       case UpdateMetaData(mediaId, title, comment, tags, sender) =>
@@ -117,7 +117,7 @@ object MediaLibCommandHandler extends Logging {
               .persist(FragmentDeleted(id, idx))
               .thenRun { (_: State) =>
                 resourceRef.tell(
-                  ResourcesProtocol
+                  ResourceProtocol
                     .DeleteFragment(media, (media.fragments(idx).fromTimestamp, media.fragments(idx).toTimestamp))
                 )
               }
@@ -142,10 +142,10 @@ object MediaLibCommandHandler extends Logging {
                   .persist(FragmentRangeUpdated(id, idx, start, end))
                   .thenRun { (s: State) =>
                     resourceRef.tell(
-                      ResourcesProtocol.DeleteFragment(media, (oldFragment.fromTimestamp, oldFragment.toTimestamp))
+                      ResourceProtocol.DeleteFragment(media, (oldFragment.fromTimestamp, oldFragment.toTimestamp))
                     )
                     resourceRef
-                      .ask[Boolean](ref => ResourcesProtocol.CreateFragment(media, (start, end), false, ref))
+                      .ask[Boolean](ref => ResourceProtocol.CreateFragment(media, (start, end), false, ref))
                       .foreach { _ =>
                         sender.tell(Right(s.media(id)))
                       }
@@ -165,7 +165,7 @@ object MediaLibCommandHandler extends Logging {
                 .persist(FragmentAdded(id, start, end))
                 .thenRun((s: State) =>
                   resourceRef
-                    .ask[Boolean](ref => ResourcesProtocol.CreateFragment(media, (start, end), false, ref))
+                    .ask[Boolean](ref => ResourceProtocol.CreateFragment(media, (start, end), false, ref))
                     .foreach { _ =>
                       sender.tell(Right(s.media(id)))
                     }

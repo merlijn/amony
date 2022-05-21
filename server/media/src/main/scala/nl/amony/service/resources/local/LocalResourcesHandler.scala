@@ -8,7 +8,7 @@ import akka.stream.SystemMaterializer
 import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
 import nl.amony.service.media.MediaConfig.MediaLibConfig
-import nl.amony.service.resources.ResourcesProtocol._
+import nl.amony.service.resources.ResourceProtocol._
 import scribe.Logging
 
 import java.nio.file.{Files, Path}

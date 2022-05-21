@@ -11,7 +11,7 @@ import nl.amony.service.media.MediaConfig.MediaLibConfig
 import nl.amony.service.media.actor.MediaLibProtocol.Media
 import nl.amony.service.media.MediaApi
 import nl.amony.service.resources.ResourceApi.resourceServiceKey
-import nl.amony.service.resources.ResourcesProtocol._
+import nl.amony.service.resources.ResourceProtocol._
 import nl.amony.service.resources.local.{LocalMediaScanner, LocalResourcesHandler}
 
 import scala.concurrent.Future
@@ -60,5 +60,5 @@ class ResourceApi(override val system: ActorSystem[Nothing], override implicit v
     )
 
   def createFragments(media: Media) =
-    serviceRef().foreach(_.tell(ResourcesProtocol.CreateFragments(media, true)))
+    serviceRef().foreach(_.tell(ResourceProtocol.CreateFragments(media, true)))
 }

@@ -1,39 +1,23 @@
-package nl.amony.http.util
+package nl.amony.service.resources
 
 import akka.NotUsed
 import akka.http.scaladsl.model.Multipart.ByteRanges
-import akka.http.scaladsl.model.StatusCodes.PartialContent
-import akka.http.scaladsl.model.StatusCodes.RangeNotSatisfiable
-import akka.http.scaladsl.model.StatusCodes.TooManyRequests
+import akka.http.scaladsl.model.StatusCodes.{PartialContent, RangeNotSatisfiable, TooManyRequests}
+import akka.http.scaladsl.model.headers.{ByteRange, Range, RangeUnits, `Content-Range`, `Content-Type`}
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.ByteRange
-import akka.http.scaladsl.model.headers.Range
-import akka.http.scaladsl.model.headers.RangeUnits
-import akka.http.scaladsl.model.headers.`Content-Range`
-import akka.http.scaladsl.model.headers.`Content-Type`
-import akka.http.scaladsl.server.Directives.as
-import akka.http.scaladsl.server.Directives.entity
-import akka.http.scaladsl.server.Directives.post
-import akka.http.scaladsl.server.Directives.withSizeLimit
+import akka.http.scaladsl.server.Directives.{as, entity, post, withSizeLimit}
 import akka.http.scaladsl.server.directives.FutureDirectives.onSuccess
-import akka.http.scaladsl.server.directives.ContentTypeResolver
-import akka.http.scaladsl.server.directives.FileInfo
-import akka.http.scaladsl.server.Directive
-import akka.http.scaladsl.server.Directive1
-import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.server.UnsatisfiableRangeRejection
+import akka.http.scaladsl.server.directives.{ContentTypeResolver, FileInfo}
+import akka.http.scaladsl.server.{Directive, Directive1, Route, UnsatisfiableRangeRejection}
 import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
-import akka.stream.scaladsl.FileIO
-import akka.stream.scaladsl.Sink
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{FileIO, Sink, Source}
 import akka.util.ByteString
 import scribe.Logging
 
-import java.nio.file.Files
 import java.nio.file.Path
 import scala.concurrent.Future
 
-object HttpDirectives extends Logging {
+object ResourceDirectives extends Logging {
   import akka.http.scaladsl.server.directives.BasicDirectives._
   import akka.http.scaladsl.server.directives.RouteDirectives._
 
@@ -82,8 +66,7 @@ object HttpDirectives extends Logging {
 
     extractRequestContext { ctx =>
       val settings = ctx.settings
-      import settings.rangeCoalescingThreshold
-      import settings.rangeCountLimit
+      import settings.{rangeCoalescingThreshold, rangeCountLimit}
 
       def toIndexRange(range: ByteRange): IndexRange =
         range match {

@@ -12,7 +12,7 @@ import nl.amony.service.media.actor.MediaLibEventSourcing.Event
 import nl.amony.service.media.actor.MediaLibProtocol._
 import nl.amony.service.media.MediaConfig.MediaLibConfig
 import nl.amony.service.media.actor.{MediaLibCommandHandler, MediaLibEventSourcing}
-import nl.amony.service.resources.ResourcesProtocol.ResourceCommand
+import nl.amony.service.resources.ResourceProtocol.ResourceCommand
 import scribe.Logging
 
 import scala.concurrent.Future

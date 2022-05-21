@@ -1,13 +1,10 @@
-package nl.amony.http.routes
+package nl.amony.service.resources
 
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import nl.amony.http.WebServerConfig
-import nl.amony.http.util.HttpDirectives.randomAccessRangeSupport
-import nl.amony.http.util.HttpDirectives.uploadFiles
-import nl.amony.service.resources.ResourceApi
+import nl.amony.service.resources.ResourceDirectives.{randomAccessRangeSupport, uploadFiles}
 import scribe.Logging
 
 object ResourceRoutes extends Logging {
@@ -23,14 +20,12 @@ object ResourceRoutes extends Logging {
     val Thumbnail = raw"(\w+)(-(\d+))?_(\d+)p\.webp".r
   }
 
-  def apply(resourceApi: ResourceApi, config: WebServerConfig): Route = {
-
-    implicit val timeout: Timeout = Timeout(config.requestTimeout)
+  def apply(resourceApi: ResourceApi, uploadLimitBytes: Long)(implicit timeout: Timeout): Route = {
 
     pathPrefix("resources") {
 
       path("upload") {
-        uploadFiles("video", config.uploadSizeLimit.toBytes.toLong) { (fileInfo, source) =>
+        uploadFiles("video", uploadLimitBytes) { (fileInfo, source) =>
           resourceApi.uploadMedia(fileInfo.fileName, source)
         } { medias => complete("OK") }
       } ~ pathPrefix("media") {

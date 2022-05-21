@@ -13,7 +13,7 @@ import nl.amony.AmonyConfig
 import nl.amony.search.SearchApi
 import nl.amony.service.auth.{AuthApi, AuthRoutes}
 import nl.amony.service.media.MediaApi
-import nl.amony.service.resources.ResourceApi
+import nl.amony.service.resources.{ResourceApi, ResourceRoutes}
 import scribe.Logging
 
 import java.security.SecureRandom
@@ -38,10 +38,12 @@ object AllRoutes {
     implicit val ec: ExecutionContext = system.executionContext
     import akka.http.scaladsl.server.Directives._
 
+    implicit val requestTimeout = Timeout(5.seconds)
+
     val searchApi      = new SearchApi(system, Timeout(5.seconds))
 
     val identityRoutes = AuthRoutes(userApi)
-    val resourceRoutes = ResourceRoutes(resourceApi, config.api)
+    val resourceRoutes = ResourceRoutes(resourceApi, config.api.uploadSizeLimit.toBytes.toLong)
     val searchRoutes   = SearchRoutes(system, searchApi, config.api, config.media.transcode)
     val adminRoutes    = AdminRoutes(adminApi, config.api)
     val mediaRoutes    = MediaRoutes(system, mediaApi, config.media.transcode, config.api)

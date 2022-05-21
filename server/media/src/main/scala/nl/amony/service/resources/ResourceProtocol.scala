@@ -7,7 +7,7 @@ import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import nl.amony.service.media.actor.MediaLibProtocol.Media
 
-object ResourcesProtocol {
+object ResourceProtocol {
 
   sealed trait ResourceCommand
 
