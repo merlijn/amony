@@ -27,13 +27,13 @@ object ResourceRoutes extends Logging {
 
     implicit val timeout: Timeout = Timeout(config.requestTimeout)
 
-    pathPrefix("files") {
+    pathPrefix("resources") {
 
       path("upload") {
         uploadFiles("video", config.uploadSizeLimit.toBytes.toLong) { (fileInfo, source) =>
           resourceApi.uploadMedia(fileInfo.fileName, source)
         } { medias => complete("OK") }
-      } ~ pathPrefix("resources") {
+      } ~ pathPrefix("media") {
 
         (get & path(Segment)) {
           case patterns.Thumbnail(id, _, timestamp, quality) =>

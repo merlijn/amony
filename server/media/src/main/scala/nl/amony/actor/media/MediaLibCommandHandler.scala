@@ -1,6 +1,6 @@
 package nl.amony.actor.media
 
-import akka.actor.typed.ActorRef
+import akka.actor.typed.{ActorRef, Scheduler}
 import akka.actor.typed.scaladsl.ActorContext
 import akka.persistence.typed.scaladsl.Effect
 import akka.util.Timeout
@@ -20,18 +20,18 @@ import java.nio.file.Path
 import scala.concurrent.duration.DurationInt
 import akka.actor.typed.scaladsl.AskPattern._
 
+import scala.concurrent.ExecutionContext
+
 object MediaLibCommandHandler extends Logging {
 
-  def apply(actorContext: ActorContext[MediaCommand], config: MediaLibConfig, resourceRef: ActorRef[ResourceCommand])(
+  def apply(config: MediaLibConfig, resourceRef: ActorRef[ResourceCommand])(
       state: State,
       cmd: MediaCommand
-  ): Effect[Event, State] = {
+  )(implicit ec: ExecutionContext, scheduler: Scheduler): Effect[Event, State] = {
 
     logger.debug(s"Received command: $cmd")
 
     implicit val askTimeout: Timeout = Timeout(5.seconds)
-    implicit val actorScheduler      = actorContext.system.scheduler
-    implicit val ec                  = actorContext.executionContext
 
     def requireMedia[T](mediaId: String, sender: ActorRef[Either[ErrorResponse, T]])(
         effect: Media => Effect[Event, State]

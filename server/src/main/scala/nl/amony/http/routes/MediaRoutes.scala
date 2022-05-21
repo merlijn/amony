@@ -17,7 +17,6 @@ import nl.amony.actor.media.MediaLibProtocol._
 import nl.amony.http.JsonCodecs
 import nl.amony.http.WebModel.FragmentRange
 import nl.amony.http.WebModel.VideoMeta
-import nl.amony.search.SearchApi
 import scribe.Logging
 
 import scala.concurrent.ExecutionContext
@@ -28,7 +27,6 @@ object MediaRoutes extends Logging {
   def apply(
       system: ActorSystem[Nothing],
       mediaApi: MediaApi,
-      queryApi: SearchApi,
       transcodingSettings: List[TranscodeSettings],
       config: WebServerConfig
   ): Route = {
@@ -65,17 +63,6 @@ object MediaRoutes extends Logging {
             }
           }
         }
-      } ~ (path("fragments" / "search") & parameters("n".optional, "offset".optional, "tags".optional)) {
-        (nParam, offsetParam, tag) =>
-          get {
-
-            val n      = nParam.map(_.toInt).getOrElse(config.defaultNumberOfResults)
-            val offset = offsetParam.map(_.toInt).getOrElse(0)
-
-            complete(queryApi.searchFragments(n, offset, tag).map {
-              _.map { case (mediaId, f) => toWebModel(mediaId, f) }
-            })
-          }
       } ~ path("fragments" / Segment / "add") { (id) =>
         (post & entity(as[FragmentRange])) { createFragment =>
           translateResponse(mediaApi.addFragment(id, createFragment.from, createFragment.to))

@@ -32,7 +32,7 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
 
     val resolutions = transcodingSettings.map(_.scaleHeight).sorted
     val urls =
-      resolutions.map(height => s"/files/resources/${mediaId}~${f.fromTimestamp}-${f.toTimestamp}_${height}p.mp4")
+      resolutions.map(height => s"/resources/media/${mediaId}~${f.fromTimestamp}-${f.toTimestamp}_${height}p.mp4")
 
     Fragment(
       mediaId,
@@ -50,7 +50,7 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
 
     Video(
       id        = media.id,
-      video_url = s"/files/resources/${media.id}_${media.height}p.${media.fileInfo.extension}",
+      video_url = s"/resources/media/${media.id}_${media.height}p.${media.fileInfo.extension}",
       meta = VideoMeta(
         title   = media.title.orElse(Some(media.fileName())),
         comment = media.comment,
@@ -60,12 +60,12 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
       addedOn                = media.fileInfo.creationTime,
       fps                    = media.videoInfo.fps,
       size                   = media.fileInfo.size,
-      thumbnail_url          = s"/files/resources/${media.id}_${resolutions.min}p.webp",
-      preview_thumbnails_url = Some(s"/files/resources/${media.id}-timeline.vtt"),
+      thumbnail_url          = s"/resources/media/${media.id}_${resolutions.min}p.webp",
+      preview_thumbnails_url = Some(s"/resources/media/${media.id}-timeline.vtt"),
       fragments = {
         media.fragments.zipWithIndex.map { case (f, index) =>
           val urls = resolutions.map(height =>
-            s"/files/resources/${media.id}~${f.fromTimestamp}-${f.toTimestamp}_${height}p.mp4"
+            s"/resources/media/${media.id}~${f.fromTimestamp}-${f.toTimestamp}_${height}p.mp4"
           )
 
           Fragment(

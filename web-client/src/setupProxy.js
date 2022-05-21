@@ -7,5 +7,5 @@ const serverProxy = createProxyMiddleware({
 
 module.exports = function(app) {
   app.use('/api', serverProxy);
-  app.use('/files', serverProxy);
+  app.use('/resources', serverProxy);
 };

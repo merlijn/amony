@@ -1,13 +1,12 @@
-package nl.amony.actor.util
+package nl.amony.api
 
 import akka.util.Timeout
 import monix.eval.Task
 import monix.reactive.Observable
 import nl.amony.actor.media.MediaApi
 import nl.amony.actor.media.MediaConfig.MediaLibConfig
-import nl.amony.api.AdminApi
 import nl.amony.lib.FileUtil
-import nl.amony.lib.FileUtil._
+import nl.amony.lib.FileUtil.PathOps
 import nl.amony.lib.ffmpeg.FFMpeg
 import scribe.Logging
 

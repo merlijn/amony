@@ -24,10 +24,13 @@ object MediaApi {
     Behaviors.setup[MediaCommand] { context =>
       context.system.receptionist ! Receptionist.Register(mediaServiceKey, context.self)
 
+      implicit val ec = context.executionContext
+      implicit val sc = context.system.scheduler
+
       EventSourcedBehavior[MediaCommand, Event, State](
         persistenceId  = PersistenceId.ofUniqueId("mediaLib"),
         emptyState     = State(Map.empty),
-        commandHandler = MediaLibCommandHandler(context, config, resourceRef),
+        commandHandler = MediaLibCommandHandler(config, resourceRef),
         eventHandler   = MediaLibEventSourcing.apply
       )
     }

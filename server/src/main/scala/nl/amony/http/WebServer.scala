@@ -45,7 +45,7 @@ object AllRoutes {
     val resourceRoutes = ResourceRoutes(resourceApi, config.api)
     val searchRoutes   = SearchRoutes(system, searchApi, config.api, config.media.transcode)
     val adminRoutes    = AdminRoutes(adminApi, config.api)
-    val mediaRoutes    = MediaRoutes(system, mediaApi, searchApi, config.media.transcode, config.api)
+    val mediaRoutes    = MediaRoutes(system, mediaApi, config.media.transcode, config.api)
 
     // routes for the web app (javascript/html) resources
     val webAppResources = WebAppRoutes(config.api)

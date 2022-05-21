@@ -9,9 +9,9 @@ import nl.amony.user.AuthConfig
 import scribe.Logging
 
 case class AmonyConfig(
-    media: MediaLibConfig,
-    api: WebServerConfig,
-    auth: AuthConfig
+  media: MediaLibConfig,
+  api: WebServerConfig,
+  auth: AuthConfig
 )
 
 trait ConfigLoader extends Logging {

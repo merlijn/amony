@@ -35,8 +35,8 @@ object SearchRoutes {
     val jsonCodecs = new JsonCodecs(transcodingSettings)
     import jsonCodecs._
 
-    pathPrefix("api") {
-      (path("search") & parameters(
+    pathPrefix("api" / "search") {
+      (path("media") & parameters(
         "q".optional,
         "offset".optional,
         "n".optional,
@@ -91,6 +91,17 @@ object SearchRoutes {
         get {
           complete(searchApi.searchTags().map(_.asJson))
         }
+      } ~ (path("fragments") & parameters("n".optional, "offset".optional, "tags".optional)) {
+        (nParam, offsetParam, tag) =>
+          get {
+
+            val n      = nParam.map(_.toInt).getOrElse(config.defaultNumberOfResults)
+            val offset = offsetParam.map(_.toInt).getOrElse(0)
+
+            complete(searchApi.searchFragments(n, offset, tag).map {
+              _.map { case (mediaId, f) => toWebModel(mediaId, f) }
+            })
+          }
       }
     }
   }

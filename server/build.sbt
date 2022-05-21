@@ -29,6 +29,10 @@ val monixReactive        = "io.monix"                 %% "monix-reactive"       
 val scalaTest            = "org.scalatest"            %% "scalatest"                  % "3.2.9"           % Test
 val scalaTestCheck       = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.9.0"         % Test
 
+val typesafeConfig = "com.typesafe"              % "config"                     % "1.4.1"
+val pureConfig = "com.github.pureconfig"    %% "pureconfig"                 % "0.17.1"
+val pureConfigSquants = "com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.1"
+
 val javaOpts = Nil
 
 
@@ -57,6 +61,7 @@ lazy val common =
         akkaPersistence,
         akkaHttp,
         akkaHttpCirce,
+        pureConfig,
       )
     )
 
@@ -68,7 +73,7 @@ lazy val identity =
       libraryDependencies ++= Seq(
         // akka
         akka, akkaPersistence, akkaHttp, jwtCirce, akkaHttpCirce,
-        circe, circeGeneric
+        circe, circeGeneric, pureConfig
       )
     )
 
@@ -122,9 +127,7 @@ lazy val amony = (project in file("."))
       slf4jApi, scribeSlf4j,
 
       // config loading
-      "com.typesafe"              % "config"                     % "1.4.1",
-      "com.github.pureconfig"    %% "pureconfig"                 % "0.17.1",
-      "com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.1",
+      typesafeConfig, pureConfig, pureConfigSquants,
 
       // akka
       akka, akkaStream,

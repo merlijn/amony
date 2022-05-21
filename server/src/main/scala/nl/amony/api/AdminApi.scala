@@ -11,7 +11,6 @@ import nl.amony.actor.media.MediaApi
 import nl.amony.actor.media.MediaLibProtocol.Media
 import nl.amony.actor.resources.MediaScanner
 import nl.amony.actor.resources.ResourceApi
-import nl.amony.actor.util.ConvertNonStreamableVideos
 import nl.amony.lib.ffmpeg.FFMpeg
 import scribe.Logging
 

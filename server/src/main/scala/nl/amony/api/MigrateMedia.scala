@@ -1,13 +1,10 @@
-package nl.amony.actor.util
+package nl.amony.api
 
 import akka.util.Timeout
 import better.files.File
 import io.circe.generic.semiauto.deriveDecoder
 import nl.amony.actor.media.MediaApi
-import nl.amony.actor.media.MediaLibProtocol.FileInfo
-import nl.amony.actor.media.MediaLibProtocol.Fragment
-import nl.amony.actor.media.MediaLibProtocol.Media
-import nl.amony.actor.media.MediaLibProtocol.VideoInfo
+import nl.amony.actor.media.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
 import scribe.Logging
 
 import java.nio.file.Path
