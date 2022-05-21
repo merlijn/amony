@@ -1,11 +1,8 @@
-package nl.amony
+package nl.amony.webserver
 
 import com.typesafe.config.ConfigFactory
-import nl.amony.service.media.MediaConfig.DeleteMediaOption
-import nl.amony.service.media.MediaConfig.HashingAlgorithm
-import nl.amony.service.media.MediaConfig.MediaLibConfig
-import nl.amony.http.WebServerConfig
 import nl.amony.service.auth.AuthConfig
+import nl.amony.service.media.MediaConfig.{DeleteMediaOption, HashingAlgorithm, MediaLibConfig}
 import scribe.Logging
 
 case class AmonyConfig(

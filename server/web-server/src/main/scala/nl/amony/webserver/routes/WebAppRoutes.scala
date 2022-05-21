@@ -1,10 +1,10 @@
-package nl.amony.http.routes
+package nl.amony.webserver.routes
 
 import akka.http.scaladsl.server.Directives.{extractUnmatchedPath, getFromFile, rawPathPrefix}
 import akka.http.scaladsl.server.Route
 import better.files.File
 import akka.http.scaladsl.server.Directives._
-import nl.amony.http.WebServerConfig
+import nl.amony.webserver.WebServerConfig
 
 object WebAppRoutes {
   // routes for the web app (javascript/html) resources

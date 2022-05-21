@@ -1,4 +1,4 @@
-package nl.amony.http.routes
+package nl.amony.webserver.routes
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model._
@@ -9,13 +9,13 @@ import akka.stream.Materializer
 import akka.util.Timeout
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
-import nl.amony.http.WebServerConfig
+import nl.amony.webserver.WebServerConfig
 import nl.amony.search.SearchProtocol._
 import nl.amony.service.media.MediaConfig.TranscodeSettings
 import nl.amony.service.media.actor.MediaLibProtocol._
-import nl.amony.http.JsonCodecs
-import nl.amony.http.WebModel.FragmentRange
-import nl.amony.http.WebModel.VideoMeta
+import nl.amony.webserver.{JsonCodecs, WebServerConfig}
+import nl.amony.webserver.WebModel.FragmentRange
+import nl.amony.webserver.WebModel.VideoMeta
 import nl.amony.service.media.MediaApi
 import scribe.Logging
 
@@ -36,7 +36,6 @@ object MediaRoutes extends Logging {
     implicit val timeout: Timeout = Timeout.durationToTimeout(config.requestTimeout)
 
     val jsonCodecs = new JsonCodecs(transcodingSettings)
-
     import jsonCodecs._
 
     def translateResponse(future: Future[Either[ErrorResponse, Media]]): Route = {

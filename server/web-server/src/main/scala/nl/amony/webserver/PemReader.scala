@@ -1,4 +1,4 @@
-package nl.amony.http.util
+package nl.amony.webserver
 
 import better.files.File
 

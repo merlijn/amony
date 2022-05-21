@@ -1,4 +1,4 @@
-package nl.amony.http
+package nl.amony.webserver
 
 import squants.information.Information
 

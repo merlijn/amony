@@ -1,4 +1,4 @@
-package nl.amony.http.routes
+package nl.amony.webserver.routes
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.Directives._
@@ -8,15 +8,14 @@ import akka.http.scaladsl.server.Directive.addDirectiveApply
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import nl.amony.http.WebServerConfig
-import io.circe.syntax._
-import nl.amony.service.media.MediaConfig.TranscodeSettings
-import nl.amony.http.JsonCodecs
-import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import nl.amony.search.SearchApi
+import io.circe.syntax._
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import nl.amony.search.SearchProtocol._
+import nl.amony.service.media.MediaConfig.TranscodeSettings
+import nl.amony.webserver.{JsonCodecs, WebServerConfig}
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 object SearchRoutes {
 

@@ -1,13 +1,11 @@
-package nl.amony.http
+package nl.amony.webserver
 
-import io.circe.Codec
-import io.circe.Encoder
-import io.circe.generic.semiauto.deriveCodec
-import io.circe.generic.semiauto.deriveEncoder
-import nl.amony.service.media.MediaConfig.TranscodeSettings
-import nl.amony.http.WebModel._
+import io.circe.{Codec, Encoder}
+import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import nl.amony.search.SearchProtocol
+import nl.amony.service.media.MediaConfig.TranscodeSettings
 import nl.amony.service.media.actor.MediaLibProtocol
+import nl.amony.webserver.WebModel._
 
 class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
 

@@ -1,4 +1,4 @@
-package nl.amony
+package nl.amony.webserver
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
@@ -6,15 +6,13 @@ import akka.persistence.query.PersistenceQuery
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.stream.Materializer
 import akka.util.Timeout
-import nl.amony.api.{AdminApi, MigrateMedia}
-import nl.amony.http.AllRoutes
-import nl.amony.http.WebServer
 import nl.amony.search.InMemoryIndex
 import nl.amony.search.SearchProtocol.QueryMessage
 import nl.amony.service.auth.AuthApi
 import nl.amony.service.media.MediaApi
 import nl.amony.service.resources.ResourceApi
 import nl.amony.service.resources.local.LocalMediaScanner
+import nl.amony.webserver.admin.AdminApi
 import scribe.Logging
 
 import java.nio.file.Files

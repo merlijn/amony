@@ -1,29 +1,24 @@
-package nl.amony.http
+package nl.amony.webserver
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.ConnectionContext
-import akka.http.scaladsl.Http
+import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.util.Timeout
 import better.files.File
-import nl.amony.api.AdminApi
-import nl.amony.http.routes._
-import nl.amony.http.util.PemReader
-import nl.amony.AmonyConfig
+import nl.amony.webserver.routes._
 import nl.amony.search.SearchApi
 import nl.amony.service.auth.{AuthApi, AuthRoutes}
 import nl.amony.service.media.MediaApi
 import nl.amony.service.resources.{ResourceApi, ResourceRoutes}
+import nl.amony.webserver.admin.AdminApi
+import nl.amony.webserver.routes.{AdminRoutes, MediaRoutes, SearchRoutes, WebAppRoutes}
 import scribe.Logging
 
 import java.security.SecureRandom
-import javax.net.ssl.KeyManagerFactory
-import javax.net.ssl.SSLContext
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
+import javax.net.ssl.{KeyManagerFactory, SSLContext}
 import scala.concurrent.duration.DurationInt
-import scala.util.Failure
-import scala.util.Success
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 object AllRoutes {
 

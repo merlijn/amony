@@ -1,11 +1,11 @@
-package nl.amony.http.routes
+package nl.amony.webserver.routes
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import nl.amony.http.WebServerConfig
-import nl.amony.api.AdminApi
+import nl.amony.webserver.WebServerConfig
+import nl.amony.webserver.admin.AdminApi
 
 object AdminRoutes {
 
