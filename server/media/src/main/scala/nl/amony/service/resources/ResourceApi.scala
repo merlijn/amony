@@ -1,23 +1,18 @@
-package nl.amony.actor.resources
+package nl.amony.service.resources
 
-import akka.actor.typed.receptionist.Receptionist
-import akka.actor.typed.receptionist.ServiceKey
+import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.ActorRef
-import akka.actor.typed.ActorSystem
-import akka.actor.typed.Behavior
-import akka.stream.scaladsl.Source
-import akka.stream.scaladsl.StreamRefs
-import akka.util.ByteString
-import akka.util.Timeout
-import nl.amony.actor.media.MediaApi
-import nl.amony.actor.media.MediaConfig.MediaLibConfig
-import nl.amony.actor.media.MediaLibProtocol.Media
-import nl.amony.actor.resources.ResourceApi.resourceServiceKey
-import nl.amony.actor.resources.ResourcesProtocol._
-import nl.amony.actor.resources.local.{LocalMediaScanner, LocalResourcesHandler}
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
+import akka.stream.scaladsl.{Source, StreamRefs}
+import akka.util.{ByteString, Timeout}
 import nl.amony.lib.akka.AkkaServiceModule
+import nl.amony.service.media.MediaConfig.MediaLibConfig
+import nl.amony.service.media.actor.MediaLibProtocol.Media
+import nl.amony.service.media.MediaApi
+import nl.amony.service.resources.ResourceApi.resourceServiceKey
+import nl.amony.service.resources.ResourcesProtocol._
+import nl.amony.service.resources.local.{LocalMediaScanner, LocalResourcesHandler}
 
 import scala.concurrent.Future
 

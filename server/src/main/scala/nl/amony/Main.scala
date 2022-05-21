@@ -6,15 +6,15 @@ import akka.persistence.query.PersistenceQuery
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.stream.Materializer
 import akka.util.Timeout
-import nl.amony.actor.media.MediaApi
-import nl.amony.actor.resources.ResourceApi
-import nl.amony.actor.resources.local.LocalMediaScanner
-import nl.amony.api.AdminApi
+import nl.amony.api.{AdminApi, MigrateMedia}
 import nl.amony.http.AllRoutes
 import nl.amony.http.WebServer
 import nl.amony.search.InMemoryIndex
 import nl.amony.search.SearchProtocol.QueryMessage
-import nl.amony.user.AuthApi
+import nl.amony.service.auth.AuthApi
+import nl.amony.service.media.MediaApi
+import nl.amony.service.resources.ResourceApi
+import nl.amony.service.resources.local.LocalMediaScanner
 import scribe.Logging
 
 import java.nio.file.Files
@@ -55,11 +55,13 @@ object Main extends ConfigLoader with Logging {
 
     userApi.upsertUser(userApi.config.adminUsername, userApi.config.adminPassword)
 
-    Thread.sleep(200)
-    adminApi.scanLibrary()(timeout.duration)
+    Thread.sleep(500)
+//    adminApi.scanLibrary()(timeout.duration)
 //    probeAll(api)(system.executionContext)
 //    MediaLibScanner.convertNonStreamableVideos(mediaLibConfig, api)
-//    lib.Migration.importFromExport(api)(10.seconds)
+
+    val path = appConfig.media.indexPath.resolve("export.json")
+    MigrateMedia.importFromExport(path, mediaApi)(10.seconds)
 //    watchPath(appConfig.media.mediaPath)
 
     val routes = AllRoutes.createRoutes(

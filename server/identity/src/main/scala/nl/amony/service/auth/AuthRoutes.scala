@@ -1,15 +1,13 @@
-package nl.amony.user
+package nl.amony.service.auth
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.headers.HttpCookie
-import akka.http.scaladsl.server.Directives.path
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import io.circe.generic.semiauto.deriveCodec
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-import nl.amony.user.actor.UserProtocol.Authentication
-import nl.amony.user.actor.UserProtocol.InvalidCredentials
+import io.circe.generic.semiauto.deriveCodec
+import nl.amony.service.auth.actor.UserProtocol.{Authentication, InvalidCredentials}
 
 import scala.concurrent.duration.DurationInt
 

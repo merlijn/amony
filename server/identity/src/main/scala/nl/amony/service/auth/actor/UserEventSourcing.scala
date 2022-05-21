@@ -1,7 +1,7 @@
-package nl.amony.user.actor
+package nl.amony.service.auth.actor
 
-import nl.amony.user.actor.UserCommandHandler.UserState
-import nl.amony.user.actor.UserProtocol.User
+import nl.amony.service.auth.actor.UserCommandHandler._
+import nl.amony.service.auth.actor.UserProtocol.User
 
 object UserEventSourcing {
 

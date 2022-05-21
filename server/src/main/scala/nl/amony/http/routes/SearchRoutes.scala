@@ -10,7 +10,7 @@ import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import nl.amony.http.WebServerConfig
 import io.circe.syntax._
-import nl.amony.actor.media.MediaConfig.TranscodeSettings
+import nl.amony.service.media.MediaConfig.TranscodeSettings
 import nl.amony.http.JsonCodecs
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import nl.amony.search.SearchApi

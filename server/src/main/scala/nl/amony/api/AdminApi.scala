@@ -7,11 +7,11 @@ import com.fasterxml.jackson.core.JsonEncoding
 import monix.eval.Task
 import monix.reactive.Consumer
 import nl.amony.AmonyConfig
-import nl.amony.actor.media.MediaApi
-import nl.amony.actor.media.MediaLibProtocol.Media
-import nl.amony.actor.resources.ResourceApi
-import nl.amony.actor.resources.local.LocalMediaScanner
+import nl.amony.service.media.actor.MediaLibProtocol.Media
 import nl.amony.lib.ffmpeg.FFMpeg
+import nl.amony.service.media.MediaApi
+import nl.amony.service.resources.ResourceApi
+import nl.amony.service.resources.local.LocalMediaScanner
 import scribe.Logging
 
 import java.io.ByteArrayOutputStream

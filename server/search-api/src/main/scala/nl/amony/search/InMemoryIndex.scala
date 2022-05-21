@@ -7,10 +7,11 @@ import akka.actor.{Actor, ActorRef, Props, typed}
 import akka.persistence.query.EventEnvelope
 import akka.persistence.query.scaladsl.EventsByPersistenceIdQuery
 import akka.stream.Materializer
-import nl.amony.actor.media.{MediaApi, MediaLibEventSourcing}
-import nl.amony.actor.media.MediaLibProtocol.{Media, State}
+import nl.amony.service.media.actor.MediaLibProtocol.{Media, State}
 import nl.amony.search.SearchApi.searchServiceKey
 import nl.amony.search.SearchProtocol._
+import nl.amony.service.media.MediaApi
+import nl.amony.service.media.actor.MediaLibEventSourcing
 import scribe.Logging
 
 import scala.concurrent.Future

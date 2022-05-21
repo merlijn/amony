@@ -4,7 +4,7 @@ import akka.actor.typed.ActorSystem
 import akka.actor.typed.receptionist.ServiceKey
 import akka.actor.typed.scaladsl.AskPattern._
 import akka.util.Timeout
-import nl.amony.actor.media.MediaLibProtocol.Fragment
+import nl.amony.service.media.actor.MediaLibProtocol.Fragment
 import nl.amony.lib.akka.AkkaServiceModule
 import nl.amony.search.SearchProtocol._
 

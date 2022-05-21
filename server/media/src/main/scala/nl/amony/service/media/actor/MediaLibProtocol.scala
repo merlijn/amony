@@ -1,4 +1,4 @@
-package nl.amony.actor.media
+package nl.amony.service.media.actor
 
 import akka.actor.typed.ActorRef
 

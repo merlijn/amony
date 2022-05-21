@@ -4,10 +4,10 @@ import io.circe.Codec
 import io.circe.Encoder
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.generic.semiauto.deriveEncoder
-import nl.amony.actor.media.MediaConfig.TranscodeSettings
-import nl.amony.actor.media.MediaLibProtocol
+import nl.amony.service.media.MediaConfig.TranscodeSettings
 import nl.amony.http.WebModel._
 import nl.amony.search.SearchProtocol
+import nl.amony.service.media.actor.MediaLibProtocol
 
 class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
 

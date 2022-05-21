@@ -1,4 +1,4 @@
-package nl.amony.actor.resources.local
+package nl.amony.service.resources.local
 
 import akka.NotUsed
 import akka.actor.typed.Behavior
@@ -7,8 +7,8 @@ import akka.http.scaladsl.util.FastFuture
 import akka.stream.SystemMaterializer
 import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
-import nl.amony.actor.media.MediaConfig.MediaLibConfig
-import nl.amony.actor.resources.ResourcesProtocol._
+import nl.amony.service.media.MediaConfig.MediaLibConfig
+import nl.amony.service.resources.ResourcesProtocol._
 import scribe.Logging
 
 import java.nio.file.{Files, Path}

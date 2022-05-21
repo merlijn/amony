@@ -1,27 +1,21 @@
-package nl.amony.user
+package nl.amony.service.auth
 
-import akka.actor.typed.receptionist.Receptionist
-import akka.actor.typed.receptionist.ServiceKey
+import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
+import akka.actor.typed.{ActorSystem, Behavior}
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
 import akka.util.Timeout
 import nl.amony.lib.akka.AkkaServiceModule
-import nl.amony.user.AuthApi.authServiceKey
-import nl.amony.user.actor.UserCommandHandler.UserState
-import nl.amony.user.actor.UserEventSourcing.UserEvent
-import nl.amony.user.actor.UserProtocol._
-import nl.amony.user.actor.UserCommandHandler
-import nl.amony.user.actor.UserEventSourcing
-import pdi.jwt.JwtAlgorithm
-import pdi.jwt.JwtCirce
-import pdi.jwt.JwtClaim
-import pureconfig.{ConfigReader, ConfigSource}
+import nl.amony.service.auth.AuthApi.authServiceKey
+import nl.amony.service.auth.actor.{UserCommandHandler, UserEventSourcing}
+import nl.amony.service.auth.actor.UserCommandHandler.UserState
+import nl.amony.service.auth.actor.UserEventSourcing.UserEvent
+import nl.amony.service.auth.actor.UserProtocol._
+import pdi.jwt.{JwtAlgorithm, JwtCirce, JwtClaim}
 
 import java.time.Instant
 import scala.concurrent.Future
-import scala.reflect.ClassTag
 import scala.util.Try
 
 object AuthApi {
@@ -31,7 +25,7 @@ object AuthApi {
       context.system.receptionist ! Receptionist.Register(authServiceKey, context.self)
 
       EventSourcedBehavior[UserCommand, UserEvent, UserState](
-        persistenceId = PersistenceId.ofUniqueId("amony-users"),
+        persistenceId = PersistenceId.ofUniqueId("auth-users"),
         emptyState = UserState(Map.empty),
         commandHandler = UserCommandHandler.apply(str => str),
         eventHandler = UserEventSourcing.apply
@@ -39,8 +33,7 @@ object AuthApi {
     }
   }
 
-  val authServiceKey = ServiceKey[UserCommand]("authService")
-
+  val authServiceKey = ServiceKey[UserCommand]("auth-service")
 }
 
 class AuthApi(override val system: ActorSystem[Nothing], override val askTimeout: Timeout) extends AkkaServiceModule[UserCommand] {

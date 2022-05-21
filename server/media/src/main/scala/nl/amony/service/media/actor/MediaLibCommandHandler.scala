@@ -1,26 +1,21 @@
-package nl.amony.actor.media
+package nl.amony.service.media.actor
 
 import akka.actor.typed.{ActorRef, Scheduler}
-import akka.actor.typed.scaladsl.ActorContext
 import akka.persistence.typed.scaladsl.Effect
 import akka.util.Timeout
 import better.files.File
-import nl.amony.actor.media.MediaConfig.DeleteFile
-import nl.amony.actor.media.MediaConfig.MediaLibConfig
-import nl.amony.actor.media.MediaConfig.MoveToTrash
-import nl.amony.actor.media.MediaLibEventSourcing._
-import nl.amony.actor.media.MediaLibProtocol._
-import nl.amony.actor.resources.ResourcesProtocol
-import nl.amony.actor.resources.ResourcesProtocol.ResourceCommand
+import nl.amony.service.media.MediaConfig.{DeleteFile, MediaLibConfig, MoveToTrash}
+import nl.amony.service.media.actor.MediaLibEventSourcing._
+import nl.amony.service.media.actor.MediaLibProtocol._
+import nl.amony.service.resources.ResourcesProtocol
+import nl.amony.service.resources.ResourcesProtocol.ResourceCommand
 import scribe.Logging
 
 import java.awt.Desktop
-import java.nio.file.Files
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.DurationInt
 import akka.actor.typed.scaladsl.AskPattern._
-
-import scala.concurrent.ExecutionContext
 
 object MediaLibCommandHandler extends Logging {
 

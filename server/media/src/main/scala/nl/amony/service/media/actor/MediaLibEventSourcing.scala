@@ -1,8 +1,6 @@
-package nl.amony.actor.media
+package nl.amony.service.media.actor
 
-import nl.amony.actor.media.MediaLibProtocol.Fragment
-import nl.amony.actor.media.MediaLibProtocol.Media
-import nl.amony.actor.media.MediaLibProtocol.State
+import nl.amony.service.media.actor.MediaLibProtocol._
 import scribe.Logging
 
 object MediaLibEventSourcing extends Logging {

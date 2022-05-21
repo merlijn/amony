@@ -1,11 +1,11 @@
-package nl.amony.actor.resources.local
+package nl.amony.service.resources.local
 
 import monix.eval.Task
 import monix.reactive.{Consumer, Observable}
-import nl.amony.actor.media.MediaConfig.{MediaLibConfig, TranscodeSettings}
-import nl.amony.actor.media.MediaLibProtocol.Media
 import nl.amony.lib.FileUtil.PathOps
 import nl.amony.lib.ffmpeg.FFMpeg
+import nl.amony.service.media.MediaConfig.{MediaLibConfig, TranscodeSettings}
+import nl.amony.service.media.actor.MediaLibProtocol.Media
 import scribe.Logging
 
 import java.nio.file.{Files, Path}

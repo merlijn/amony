@@ -1,4 +1,4 @@
-package nl.amony.user.actor
+package nl.amony.service.auth.actor
 
 import akka.actor.typed.ActorRef
 

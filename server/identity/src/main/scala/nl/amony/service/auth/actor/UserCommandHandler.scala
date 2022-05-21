@@ -1,8 +1,8 @@
-package nl.amony.user.actor
+package nl.amony.service.auth.actor
 
 import akka.persistence.typed.scaladsl.Effect
-import nl.amony.user.actor.UserEventSourcing._
-import nl.amony.user.actor.UserProtocol._
+import nl.amony.service.auth.actor.UserEventSourcing._
+import nl.amony.service.auth.actor.UserProtocol._
 
 object UserCommandHandler {
 

@@ -1,11 +1,11 @@
-package nl.amony.actor.resources
+package nl.amony.service.resources
 
 import akka.NotUsed
 import akka.actor.typed.ActorRef
 import akka.stream.SourceRef
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import nl.amony.actor.media.MediaLibProtocol.Media
+import nl.amony.service.media.actor.MediaLibProtocol.Media
 
 object ResourcesProtocol {
 

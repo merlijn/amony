@@ -6,15 +6,14 @@ import akka.http.scaladsl.ConnectionContext
 import akka.http.scaladsl.Http
 import akka.util.Timeout
 import better.files.File
-import nl.amony.actor.media.MediaApi
-import nl.amony.actor.resources.ResourceApi
 import nl.amony.api.AdminApi
 import nl.amony.http.routes._
 import nl.amony.http.util.PemReader
-import nl.amony.user.AuthRoutes
-import nl.amony.user.AuthApi
 import nl.amony.AmonyConfig
 import nl.amony.search.SearchApi
+import nl.amony.service.auth.{AuthApi, AuthRoutes}
+import nl.amony.service.media.MediaApi
+import nl.amony.service.resources.ResourceApi
 import scribe.Logging
 
 import java.security.SecureRandom

@@ -3,8 +3,8 @@ package nl.amony.api
 import akka.util.Timeout
 import better.files.File
 import io.circe.generic.semiauto.deriveDecoder
-import nl.amony.actor.media.MediaApi
-import nl.amony.actor.media.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
+import nl.amony.service.media.actor.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
+import nl.amony.service.media.MediaApi
 import scribe.Logging
 
 import java.nio.file.Path

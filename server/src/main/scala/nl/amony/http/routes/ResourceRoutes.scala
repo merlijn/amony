@@ -5,9 +5,9 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import nl.amony.http.WebServerConfig
-import nl.amony.actor.resources.ResourceApi
 import nl.amony.http.util.HttpDirectives.randomAccessRangeSupport
 import nl.amony.http.util.HttpDirectives.uploadFiles
+import nl.amony.service.resources.ResourceApi
 import scribe.Logging
 
 object ResourceRoutes extends Logging {

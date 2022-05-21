@@ -1,4 +1,4 @@
-package nl.amony.user
+package nl.amony.service.auth
 
 import scala.concurrent.duration.FiniteDuration
 

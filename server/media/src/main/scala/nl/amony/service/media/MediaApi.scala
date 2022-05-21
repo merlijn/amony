@@ -1,20 +1,18 @@
-package nl.amony.actor.media
+package nl.amony.service.media
 
-import akka.actor.typed.receptionist.Receptionist
-import akka.actor.typed.receptionist.ServiceKey
+import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.ActorRef
-import akka.actor.typed.ActorSystem
-import akka.actor.typed.Behavior
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
 import akka.util.Timeout
-import nl.amony.actor.media.MediaApi.mediaServiceKey
-import nl.amony.actor.media.MediaConfig.MediaLibConfig
-import nl.amony.actor.media.MediaLibEventSourcing.Event
-import nl.amony.actor.media.MediaLibProtocol._
-import nl.amony.actor.resources.ResourcesProtocol.ResourceCommand
 import nl.amony.lib.akka.AkkaServiceModule
+import nl.amony.service.media.MediaApi.mediaServiceKey
+import nl.amony.service.media.actor.MediaLibEventSourcing.Event
+import nl.amony.service.media.actor.MediaLibProtocol._
+import nl.amony.service.media.MediaConfig.MediaLibConfig
+import nl.amony.service.media.actor.{MediaLibCommandHandler, MediaLibEventSourcing}
+import nl.amony.service.resources.ResourcesProtocol.ResourceCommand
 import scribe.Logging
 
 import scala.concurrent.Future

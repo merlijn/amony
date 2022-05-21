@@ -1,4 +1,4 @@
-package nl.amony.actor.media
+package nl.amony.service.media
 
 import nl.amony.lib.hash.Base32
 import nl.amony.lib.hash.PartialHash.partialHash
