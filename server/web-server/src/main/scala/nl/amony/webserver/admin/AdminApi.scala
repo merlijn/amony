@@ -16,6 +16,7 @@ import scribe.Logging
 
 import java.io.ByteArrayOutputStream
 import scala.concurrent.Future
+import scala.util.control.NonFatal
 
 class AdminApi(
                 mediaApi: MediaApi,
@@ -51,15 +52,21 @@ class AdminApi(
       }(system.executionContext)
   }
 
-  def generateThumbnailPreviews()(implicit timeout: Timeout): Unit = {
+  def reGeneratePreviewSprites()(implicit timeout: Timeout): Unit = {
     mediaApi.getAll().foreach { medias =>
       medias.foreach { m =>
         logger.info(s"generating thumbnail previews for '${m.fileName()}'")
-        FFMpeg.generatePreviewSprite(
-          inputFile      = m.resolvePath(config.media.mediaPath).toAbsolutePath,
-          outputDir      = config.media.resourcePath,
-          outputBaseName = Some(s"${m.id}-timeline")
-        )
+        try {
+          FFMpeg.generatePreviewTile(
+            inputFile      = m.resolvePath(config.media.mediaPath).toAbsolutePath,
+            outputDir      = config.media.resourcePath,
+            outputBaseName = Some(s"${m.id}-timeline"),
+            overwrite      = true
+          )
+        } catch {
+          case NonFatal(e) =>
+            logger.warn(s"Failed to generate preview sprite for ${m.fileName()}", e)
+        }
       }
     }
   }
@@ -69,7 +76,7 @@ class AdminApi(
     resourceApi.createFragments(media)
   }
 
-  def regenerateAllPreviews()(implicit timeout: Timeout): Unit =
+  def reGenerateAllPreviews()(implicit timeout: Timeout): Unit =
     mediaApi.getAll().foreach { medias => medias.foreach(regeneratePreviewForMedia) }
 
   def verifyHashes()(implicit timeout: Timeout): Unit = {

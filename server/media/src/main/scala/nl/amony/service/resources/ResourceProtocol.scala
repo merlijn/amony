@@ -17,10 +17,10 @@ object ResourceProtocol {
     def getContentRange(start: Long, end: Long): Source[ByteString, NotUsed]
   }
 
-  case class FileInfo(fileName: String, contentType: String, size: Long, createdTimestamp: Long, hashes: List[String])
+  case class GetResourceIndex(sender: ActorRef[SourceRef[ResourceInfo]]) extends ResourceCommand
+  case class ResourceInfo(name: String, contentType: String, size: Long, createdTimestamp: Long, hashes: List[String])
 
   case class Upload(fileName: String, source: SourceRef[ByteString], sender: ActorRef[Media]) extends ResourceCommand
-
 
   case class CreateFragments(media: Media, overwrite: Boolean) extends ResourceCommand
   case class CreateFragment(media: Media, timeRange: (Long, Long), overwrite: Boolean, sender: ActorRef[Boolean])
@@ -32,5 +32,10 @@ object ResourceProtocol {
       extends ResourceCommand
   case class GetVideoFragment(mediaHash: String, timeRange: (Long, Long), quality: Int, sender: ActorRef[IOResponse])
       extends ResourceCommand
+
   case class GetVideo(media: Media, sender: ActorRef[IOResponse]) extends ResourceCommand
+
+  case class GetPreviewSpriteImage(mediaId: String, sender: ActorRef[Option[IOResponse]]) extends ResourceCommand
+
+  case class GetPreviewSpriteVtt(mediaId: String, sender: ActorRef[Option[String]]) extends ResourceCommand
 }

@@ -98,6 +98,7 @@ lazy val media =
       libraryDependencies ++= Seq(
         scribeSlf4j, akka, akkaPersistence, akkaHttp, akkaHttpCirce, circe, circeGeneric, betterFiles, monixReactive,
         "io.methvin"                % "directory-watcher"          % "0.15.0",
+        scalaTest
       )
     )
 

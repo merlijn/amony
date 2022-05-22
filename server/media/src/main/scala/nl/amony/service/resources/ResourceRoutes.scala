@@ -18,6 +18,10 @@ object ResourceRoutes extends Logging {
 
     // example: j0rc1048yc1_720p.webp or j0rc1048yc1~5000_720p.webp
     val Thumbnail = raw"(\w+)(-(\d+))?_(\d+)p\.webp".r
+
+    val TimeLineVtt = raw"(\w+)-timeline\.vtt".r
+
+    val TimeLineJpeg = raw"(\w+)-timeline\.webp".r
   }
 
   def apply(resourceApi: ResourceApi, uploadLimitBytes: Long)(implicit timeout: Timeout): Route = {
@@ -58,6 +62,20 @@ object ResourceRoutes extends Logging {
                   ioResponse.size(),
                   ioResponse.getContentRange
                 )
+            }
+
+          case patterns.TimeLineVtt(id) =>
+            onSuccess(resourceApi.getPreviewSpriteVtt(id)) {
+              case None => complete(StatusCodes.NotFound)
+              case Some(content) =>
+                complete(content)
+            }
+
+          case patterns.TimeLineJpeg(id) =>
+            onSuccess(resourceApi.getPreviewSpriteImage(id)) {
+              case None => complete(StatusCodes.NotFound)
+              case Some(ioResponse) =>
+                complete(HttpEntity(ContentType(MediaTypes.`image/webp`), ioResponse.getContent()))
             }
 
           case _ =>

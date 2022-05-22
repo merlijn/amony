@@ -6,7 +6,7 @@ import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
 import akka.util.Timeout
-import nl.amony.lib.akka.AkkaServiceModule
+import nl.amony.lib.akka.{AkkaServiceModule, ServiceKeyBehavior}
 import nl.amony.service.media.MediaApi.mediaServiceKey
 import nl.amony.service.media.actor.MediaLibEventSourcing.Event
 import nl.amony.service.media.actor.MediaLibProtocol._

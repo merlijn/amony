@@ -59,6 +59,12 @@ class ResourceApi(override val system: ActorSystem[Nothing], override implicit v
       GetThumbnail(media.id, timestamp.getOrElse(media.fragments.head.fromTimestamp), quality, ref)
     )
 
+  def getPreviewSpriteVtt(mediaId: String): Future[Option[String]] =
+    askService[Option[String]](ref => GetPreviewSpriteVtt(mediaId, ref))
+
+  def getPreviewSpriteImage(mediaId: String): Future[Option[IOResponse]] =
+    askService[Option[IOResponse]](ref => GetPreviewSpriteImage(mediaId, ref))
+
   def createFragments(media: Media) =
     serviceRef().foreach(_.tell(ResourceProtocol.CreateFragments(media, true)))
 }

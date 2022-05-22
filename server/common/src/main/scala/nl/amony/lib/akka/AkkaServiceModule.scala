@@ -11,6 +11,10 @@ import pureconfig.{ConfigReader, ConfigSource}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
 
+trait AkkaServiceModuleCompanion[T] {
+
+}
+
 trait AkkaServiceModule[T] {
 
   def system: ActorSystem[Nothing]
@@ -21,7 +25,7 @@ trait AkkaServiceModule[T] {
   lazy implicit val mat: Materializer    = SystemMaterializer.get(system).materializer
   lazy implicit val scheduler            = system.scheduler
 
-  def askService[Res](replyTo: ActorRef[Res] => T) = serviceRef().flatMap(_.ask(replyTo))
+  def askService[Res](replyTo: ActorRef[Res] => T) = serviceRef.flatMap(_.ask(replyTo))
 
   def loadConfig[T : ClassTag](path: String)(implicit reader: ConfigReader[T]): T = {
 

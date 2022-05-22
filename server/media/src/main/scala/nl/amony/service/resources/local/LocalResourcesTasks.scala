@@ -3,7 +3,7 @@ package nl.amony.service.resources.local
 import monix.eval.Task
 import monix.reactive.{Consumer, Observable}
 import nl.amony.lib.FileUtil.PathOps
-import nl.amony.lib.ffmpeg.FFMpeg
+import nl.amony.lib.ffmpeg.{CreateThumbnailTile, FFMpeg}
 import nl.amony.service.media.MediaConfig.{MediaLibConfig, TranscodeSettings}
 import nl.amony.service.media.actor.MediaLibProtocol.Media
 import scribe.Logging
@@ -61,6 +61,20 @@ object LocalResourcesTasks extends Logging {
           }
         )
       )
+  }
+
+  private[resources] def createPreviewSprite(
+            config: MediaLibConfig,
+            media: Media,
+            overwrite: Boolean = false) = {
+    Task {
+      CreateThumbnailTile.createThumbnailTile(
+        inputFile      = media.resolvePath(config.mediaPath).toAbsolutePath,
+        outputDir      = config.resourcePath,
+        outputBaseName = Some(s"${media.id}-timeline"),
+        overwrite      = overwrite
+      )
+    }
   }
 
   private[resources] def createFragments(

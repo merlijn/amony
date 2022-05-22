@@ -15,10 +15,10 @@ object AdminRoutes {
 
     pathPrefix("api" / "admin") {
       (path("regen-thumbnails") & post) {
-        adminApi.regenerateAllPreviews()
+        adminApi.reGenerateAllPreviews()
         complete(StatusCodes.OK)
       } ~ (path("regen-preview-thumbnails") & post) {
-        adminApi.generateThumbnailPreviews()
+        adminApi.reGeneratePreviewSprites()
         complete(StatusCodes.OK)
       } ~ (path("export-to-file") & post) {
         val json = adminApi.exportLibrary()

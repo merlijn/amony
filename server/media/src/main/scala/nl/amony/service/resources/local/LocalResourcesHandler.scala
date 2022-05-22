@@ -7,6 +7,7 @@ import akka.http.scaladsl.util.FastFuture
 import akka.stream.SystemMaterializer
 import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
+import better.files.File
 import nl.amony.service.media.MediaConfig.MediaLibConfig
 import nl.amony.service.resources.ResourceProtocol._
 import scribe.Logging
@@ -47,6 +48,17 @@ object LocalResourcesHandler extends Logging {
           sender.tell(LocalFileIOResponse(path))
           Behaviors.same
 
+        case GetPreviewSpriteImage(mediaId, sender) =>
+          val path = config.resourcePath.resolve(s"$mediaId-timeline.webp")
+          sender.tell(Some(LocalFileIOResponse(path)))
+          Behaviors.same
+
+        case GetPreviewSpriteVtt(mediaId, sender) =>
+          val path = config.resourcePath.resolve(s"$mediaId-timeline.vtt")
+          val content = File(path).contentAsString
+          sender.tell(Some(content))
+          Behaviors.same
+
         case CreateFragment(media, range, overwrite, sender) =>
           LocalResourcesTasks.createPreview(config, media, range, overwrite).executeAsync.runAsync { result =>
             sender.tell(result.isRight)
@@ -55,6 +67,7 @@ object LocalResourcesHandler extends Logging {
 
         case CreateFragments(media, overwrite) =>
           LocalResourcesTasks.createFragments(config, media, overwrite).executeAsync.runAsyncAndForget
+          LocalResourcesTasks.createPreviewSprite(config, media, overwrite).executeAsync.runAsyncAndForget
           Behaviors.same
 
         case DeleteFragment(media, range) =>

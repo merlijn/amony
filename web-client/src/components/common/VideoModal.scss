@@ -24,6 +24,12 @@
     visibility: hidden;
   }
 
+  .plyr__preview-thumb__image-container {
+    
+    width: 240px ! important;
+    // height: 160px ! important;;
+  }
+
   &:hover {
     .plyr__controls {
       visibility: visible;

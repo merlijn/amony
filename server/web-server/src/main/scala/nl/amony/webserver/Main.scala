@@ -6,6 +6,7 @@ import akka.persistence.query.PersistenceQuery
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.stream.Materializer
 import akka.util.Timeout
+import nl.amony.lib.akka.ServiceKeyBehavior
 import nl.amony.search.InMemoryIndex
 import nl.amony.search.SearchProtocol.QueryMessage
 import nl.amony.service.auth.AuthApi
@@ -55,6 +56,8 @@ object Main extends ConfigLoader with Logging {
 
     Thread.sleep(500)
     adminApi.scanLibrary()(timeout.duration)
+//    adminApi.generatePreviewSprites()
+
 //    probeAll(api)(system.executionContext)
 //    MediaLibScanner.convertNonStreamableVideos(mediaLibConfig, api)
 

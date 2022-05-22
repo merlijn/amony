@@ -21,7 +21,7 @@ const VideoModal = (props: { video?: Video, onHide: () => void }) => {
         fullscreen: { enabled: true },
         invertTime: false,
         keyboard: { focused: true, global: true },
-        previewThumbnails: { enabled: false, src: props.video.preview_thumbnails_url} }
+        previewThumbnails: { enabled: true, src: props.video.preview_thumbnails_url} }
 
       const plyr = new Plyr(element, plyrOptions)
       element.load()

@@ -9,7 +9,7 @@ import nl.amony.lib.ffmpeg.Model.ProbeOutput
 import scribe.Logging
 
 import java.io.InputStream
-import java.nio.file.Path
+import java.nio.file.{Files, Path, Paths}
 import java.time.Duration
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.duration.FiniteDuration
@@ -21,7 +21,7 @@ object FFMpeg extends Logging with FFMpegJsonCodecs {
   val fastStartPattern =
     raw"""Before\savformat_find_stream_info\(\)\spos:\s\d+\sbytes\sread:\d+\sseeks:0""".r.unanchored
 
-  private def formatTime(timestamp: Long): String = {
+  def formatTime(timestamp: Long): String = {
 
     val duration = Duration.ofMillis(timestamp)
 
@@ -225,83 +225,6 @@ object FFMpeg extends Logging with FFMpegJsonCodecs {
           s"Failed to create thumbnail for inputFile: ${inputFile}, timestamp: ${formatTime(timestamp)}, outputFile: ${outputFile}, scaleHeight: ${scaleHeight}"
         )
     }
-  }
-
-  def generatePreviewSprite(
-      inputFile: Path,
-      outputDir: Path,
-      height: Int = 100,
-      outputBaseName: Option[String] = None,
-      frameInterval: Option[Int] = None
-  ) = {
-
-    def calculateNrOfFrames(length: Long): (Int, Int) = {
-
-      // 2, 3,  4,  5,  6,  7,  8,  9,  10,  11,  12
-      // 4, 9, 16, 25, 36, 49, 64, 81, 100, 121, 144
-      val minFrames = 4
-      val maxFrames = 64
-
-      val frames   = Math.min(maxFrames, Math.max(minFrames, length / (10 * 1000)))
-      val tileSize = Math.ceil(Math.sqrt(frames.toDouble)).toInt
-
-      frames.toInt -> tileSize
-    }
-
-    val maximumFrames = 256
-
-    val fileBaseName = outputBaseName.getOrElse(inputFile.getFileName.stripExtension())
-    val timeout      = 5.seconds
-
-    val probe =
-      ffprobe(inputFile, false, timeout)
-        .runSyncUnsafe(timeout)(monix.execution.Scheduler.Implicits.global, monix.execution.schedulers.CanBlock.permit)
-    val stream             = probe.firstVideoStream.getOrElse(throw new IllegalStateException("no video stream found"))
-    val (frames, tileSize) = calculateNrOfFrames(stream.durationMillis)
-    val mod                = ((stream.fps * (stream.durationMillis / 1000)) / frames).toInt
-
-    val width: Int = ((stream.width / stream.height) * height).toInt
-
-    // format: off
-    val args = List(
-      "-i",              inputFile.absoluteFileName(),
-      "-filter_complex", s"select='not(mod(n,$mod))',scale=$width:$height,tile=${tileSize}x${tileSize}",
-      "-vframes",        "1",
-      "-qscale:v",       "3",
-      "-y",
-      "-an",
-      s"$outputDir/$fileBaseName.jpeg"
-    )
-    // format: on
-
-    def genVtt(): String = {
-      val thumbLength: Int = (stream.durationMillis / frames).toInt
-
-      val builder = new StringBuilder()
-
-      builder.append("WEBVTT\n")
-
-      (0 until frames).foreach { n =>
-        val start  = formatTime(thumbLength * n)
-        val end    = formatTime(thumbLength * (n + 1))
-        val x: Int = n % tileSize
-        val y: Int = Math.floor(n / tileSize).toInt
-
-        builder.append(
-          s"""
-             |${n + 1}
-             |${start} --> $end
-             |$fileBaseName.jpeg#xywh=${x * width},${y * height},${width},${height}
-             |""".stripMargin
-        )
-      }
-
-      builder.toString()
-    }
-
-    runSync(true, "ffmpeg" :: args)
-
-    (File(outputDir) / s"$fileBaseName.vtt").write(genVtt())
   }
 
   def runSync(useErrorStream: Boolean, cmds: Seq[String]): String = {
