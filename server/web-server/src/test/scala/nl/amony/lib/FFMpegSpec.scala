@@ -1,12 +1,7 @@
 package nl.amony.lib
 
-import better.files.File
 import org.scalatest.flatspec.AnyFlatSpecLike
-import org.scalatest.matchers.should.Matchers._
 import scribe.Logging
-
-import java.nio.file.Path
-import scala.io.Source
 
 class FFMpegSpec extends AnyFlatSpecLike with Logging {
 

@@ -3,7 +3,6 @@ package nl.amony.service.media.actor
 import akka.actor.typed.{ActorRef, Scheduler}
 import akka.persistence.typed.scaladsl.Effect
 import akka.util.Timeout
-import better.files.File
 import nl.amony.service.media.MediaConfig.{DeleteFile, MediaLibConfig, MoveToTrash}
 import nl.amony.service.media.actor.MediaLibEventSourcing._
 import nl.amony.service.media.actor.MediaLibProtocol._
@@ -57,7 +56,7 @@ object MediaLibCommandHandler extends Logging {
     // format: on
 
     def deleteMedia(path: Path): Unit = {
-      if (File(path).exists) {
+      if (Files.exists(path)) {
         config.deleteMedia match {
           case DeleteFile =>
             Files.delete(path)

@@ -7,11 +7,11 @@ import akka.http.scaladsl.util.FastFuture
 import akka.stream.SystemMaterializer
 import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
-import better.files.File
 import nl.amony.service.media.MediaConfig.MediaLibConfig
 import nl.amony.service.resources.ResourceProtocol._
 import scribe.Logging
 
+import java.io.File
 import java.nio.file.{Files, Path}
 import scala.util.{Failure, Success, Try}
 
@@ -56,7 +56,12 @@ object LocalResourcesHandler extends Logging {
 
         case GetPreviewSpriteVtt(mediaId, sender) =>
           val path = config.resourcePath.resolve(s"$mediaId-timeline.vtt")
-          val content = Try { File(path).contentAsString }.toOption.getOrElse("WEBVTT")
+
+          val content =
+            if (Files.exists(path))
+              scala.io.Source.fromFile(path.toFile).mkString
+            else
+              "WEBVTT"
 
           sender.tell(Some(content))
           Behaviors.same

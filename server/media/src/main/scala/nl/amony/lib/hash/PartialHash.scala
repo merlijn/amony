@@ -1,29 +1,36 @@
 package nl.amony.lib.hash
 
-import better.files.File
+import nl.amony.lib.files.PathOps
 import scribe.Logging
 
-import scala.util.Random
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
+import java.nio.file.{Path, StandardOpenOption}
+import scala.util.{Random, Using}
 
 object PartialHash extends Logging {
 
   // samples a file randomly and creates a hash from that
-  def partialHash(file: File, nBytes: Int = 512, hasher: Array[Byte] => String): String = {
+  def partialHash(file: Path, nBytes: Int = 512, hasher: Array[Byte] => String): String = {
     def readRandomBytes(): Array[Byte] = {
 
-      val size   = file.size
+      val size   = file.size()
       val bytes  = new Array[Byte](nBytes)
       val random = new Random(size)
 
-      file.randomAccess().foreach { rndAccess =>
+//      val f = new RandomAccessFile(Files.)
+
+      Using(FileChannel.open(file, StandardOpenOption.READ)) { channel =>
         (0 until nBytes).map { i =>
           val pos = (random.nextDouble() * (size - 1)).toLong
           try {
-            rndAccess.seek(pos)
-            bytes(i) = rndAccess.readByte()
+            val byte = ByteBuffer.allocate(1)
+            channel.position(pos)
+            channel.read(byte)
+            bytes(i) = byte.get(0)
           } catch {
             case _: Exception =>
-              logger.warn(s"Failed reading byte at: ${file.name} ($size): $i, $pos")
+              logger.warn(s"Failed reading byte at: ${file} ($size): $i, $pos")
           }
         }
       }

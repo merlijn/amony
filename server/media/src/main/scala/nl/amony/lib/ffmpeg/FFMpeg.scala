@@ -1,7 +1,8 @@
 package nl.amony.lib.ffmpeg
 
-import nl.amony.lib.FileUtil.{PathOps, stripExtension}
+import nl.amony.lib.FileUtil.stripExtension
 import nl.amony.lib.ffmpeg.tasks.{CreateThumbnail, CreateThumbnailTile, FFProbe, ProcessRunner}
+import nl.amony.lib.files.PathOps
 import scribe.Logging
 
 import java.io.InputStream

@@ -4,8 +4,8 @@ import akka.util.Timeout
 import monix.eval.Task
 import monix.reactive.Observable
 import nl.amony.lib.FileUtil
-import nl.amony.lib.FileUtil.PathOps
 import nl.amony.lib.ffmpeg.FFMpeg
+import nl.amony.lib.files.PathOps
 import nl.amony.service.media.MediaApi
 import nl.amony.service.media.MediaConfig.MediaLibConfig
 import scribe.Logging

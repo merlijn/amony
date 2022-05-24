@@ -2,9 +2,8 @@ package nl.amony.service.resources.local
 
 import monix.eval.Task
 import monix.reactive.{Consumer, Observable}
-import nl.amony.lib.FileUtil.PathOps
-import nl.amony.lib.ffmpeg.tasks.{CreateThumbnail, CreateThumbnailTile}
 import nl.amony.lib.ffmpeg.FFMpeg
+import nl.amony.lib.files.PathOps
 import nl.amony.service.media.MediaConfig.{MediaLibConfig, TranscodeSettings}
 import nl.amony.service.media.actor.MediaLibProtocol.Media
 import scribe.Logging

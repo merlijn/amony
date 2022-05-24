@@ -28,7 +28,7 @@ val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"        
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "1.7.30"
 val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.5.5"
 
-val betterFiles              = "com.github.pathikrit"     %% "better-files"               % "3.9.1"
+//val betterFiles              = "com.github.pathikrit"     %% "better-files"               % "3.9.1"
 val directoryWatcher         = "io.methvin"                % "directory-watcher"          % "0.15.0"
 
 val monixReactive            = "io.monix"                 %% "monix-reactive"             % "3.4.0"
@@ -105,7 +105,7 @@ lazy val media =
     .settings(
       name := "amony-service-media",
       libraryDependencies ++= Seq(
-        scribeSlf4j, akka, akkaPersistence, akkaHttp, akkaHttpCirce, circe, circeGeneric, betterFiles, monixReactive,
+        scribeSlf4j, akka, akkaPersistence, akkaHttp, akkaHttpCirce, circe, circeGeneric, monixReactive,
 
         scalaTest
       )
@@ -164,7 +164,7 @@ lazy val amonyServer =
         circeGeneric,
         circeParser,
 
-        betterFiles, monixReactive,
+        monixReactive,
 
         // test
         scalaTest, scalaTestCheck

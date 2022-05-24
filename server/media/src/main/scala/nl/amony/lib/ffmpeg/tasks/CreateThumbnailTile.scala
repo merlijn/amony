@@ -1,11 +1,11 @@
 package nl.amony.lib.ffmpeg.tasks
 
-import better.files.File
 import monix.eval.Task
-import nl.amony.lib.FileUtil.PathOps
-import nl.amony.lib.ffmpeg.FFMpeg.{formatTime, runSync}
+import nl.amony.lib.ffmpeg.FFMpeg.formatTime
+import nl.amony.lib.files.PathOps
 import scribe.Logging
 
+import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.DurationInt
 
@@ -107,7 +107,7 @@ trait CreateThumbnailTile extends Logging {
 
             val content = builder.toString()
 
-            (File(outputDir) / vttFilename).write(content)
+            Files.write(outputDir.resolve(vttFilename), content.getBytes(StandardCharsets.UTF_8))
           }
 
           Task { createWebVtt() }

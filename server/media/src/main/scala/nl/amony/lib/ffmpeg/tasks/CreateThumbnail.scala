@@ -1,7 +1,8 @@
 package nl.amony.lib.ffmpeg.tasks
 
-import nl.amony.lib.FileUtil.{PathOps, stripExtension}
+import nl.amony.lib.FileUtil.stripExtension
 import nl.amony.lib.ffmpeg.FFMpeg.{formatTime, runSync}
+import nl.amony.lib.files.PathOps
 import scribe.Logging
 
 import java.nio.file.Path

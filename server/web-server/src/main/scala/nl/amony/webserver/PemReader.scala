@@ -1,27 +1,19 @@
 package nl.amony.webserver
 
-import better.files.File
-
-import java.io.ByteArrayInputStream
-import java.io.IOException
+import java.io.{ByteArrayInputStream, File, IOException}
 import java.nio.charset.StandardCharsets.US_ASCII
-import java.security.cert.CertificateException
-import java.security.cert.CertificateFactory
-import java.security.cert.X509Certificate
+import java.nio.file.Path
+import java.security.{GeneralSecurityException, KeyFactory, KeyStore, KeyStoreException}
+import java.security.cert.{CertificateException, CertificateFactory, X509Certificate}
 import java.security.spec.PKCS8EncodedKeySpec
-import java.security.GeneralSecurityException
-import java.security.KeyFactory
-import java.security.KeyStore
-import java.security.KeyStoreException
 import java.util
 import java.util.Base64
 import java.util.regex.Pattern
 import java.util.regex.Pattern.CASE_INSENSITIVE
 import javax.crypto.Cipher.DECRYPT_MODE
+import javax.crypto.{Cipher, EncryptedPrivateKeyInfo, SecretKeyFactory}
 import javax.crypto.spec.PBEKeySpec
-import javax.crypto.Cipher
-import javax.crypto.EncryptedPrivateKeyInfo
-import javax.crypto.SecretKeyFactory
+import scala.io.Codec
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -46,7 +38,7 @@ object PemReader {
 
   @throws[IOException]
   @throws[GeneralSecurityException]
-  def loadTrustStore(certificateChainFile: File): KeyStore = {
+  def loadTrustStore(certificateChainFile: Path): KeyStore = {
     val keyStore = KeyStore.getInstance("JKS")
     keyStore.load(null, null)
     val certificateChain = readCertificateChain(certificateChainFile)
@@ -59,7 +51,7 @@ object PemReader {
 
   @throws[IOException]
   @throws[GeneralSecurityException]
-  def loadKeyStore(certificateChainFile: File, privateKeyFile: File, keyPassword: Option[String]): KeyStore = {
+  def loadKeyStore(certificateChainFile: Path, privateKeyFile: Path, keyPassword: Option[String]): KeyStore = {
     val encodedKeySpec = readPrivateKey(privateKeyFile, keyPassword)
 
     val key = Try {
@@ -85,8 +77,8 @@ object PemReader {
 
   @throws[IOException]
   @throws[GeneralSecurityException]
-  private def readCertificateChain(certificateChainFile: File): List[X509Certificate] = {
-    val contents           = certificateChainFile.contentAsString(US_ASCII)
+  private def readCertificateChain(certificateChainFile: Path): List[X509Certificate] = {
+    val contents           = scala.io.Source.fromFile(certificateChainFile.toFile)(new Codec(US_ASCII)).mkString
     val matcher            = CERT_PATTERN.matcher(contents)
     val certificateFactory = CertificateFactory.getInstance("X.509")
     val certificates       = new util.ArrayList[X509Certificate]
@@ -104,8 +96,8 @@ object PemReader {
 
   @throws[IOException]
   @throws[GeneralSecurityException]
-  private def readPrivateKey(keyFile: File, keyPassword: Option[String]): PKCS8EncodedKeySpec = {
-    val content = keyFile.contentAsString(US_ASCII)
+  private def readPrivateKey(keyFile: Path, keyPassword: Option[String]): PKCS8EncodedKeySpec = {
+    val content = scala.io.Source.fromFile(keyFile.toFile)(new Codec(US_ASCII)).mkString
     val matcher = KEY_PATTERN.matcher(content)
     if (!matcher.find)
       throw new KeyStoreException("No private key found: " + keyFile)
