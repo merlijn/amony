@@ -1,20 +1,18 @@
 package nl.amony.lib.ffmpeg
 
-import better.files.File
-import monix.eval.Task
-import nl.amony.lib.FileUtil.PathOps
-import nl.amony.lib.FileUtil.stripExtension
-import nl.amony.lib.ffmpeg.Model.ProbeDebugOutput
-import nl.amony.lib.ffmpeg.Model.ProbeOutput
+import nl.amony.lib.FileUtil.{PathOps, stripExtension}
+import nl.amony.lib.ffmpeg.tasks.{CreateThumbnail, CreateThumbnailTile, FFProbe, ProcessRunner}
 import scribe.Logging
 
 import java.io.InputStream
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.Path
 import java.time.Duration
-import scala.concurrent.duration.DurationInt
-import scala.concurrent.duration.FiniteDuration
 
-object FFMpeg extends Logging with FFMpegJsonCodecs {
+object FFMpeg extends Logging
+  with ProcessRunner
+  with CreateThumbnail
+  with CreateThumbnailTile
+  with FFProbe {
 
   // https://stackoverflow.com/questions/56963790/how-to-tell-if-faststart-for-video-is-set-using-ffmpeg-or-ffprobe/56963953#56963953
   // Before avformat_find_stream_info() pos: 3193581 bytes read:3217069 seeks:0 nb_streams:2
@@ -31,38 +29,6 @@ object FFMpeg extends Logging with FFMpegJsonCodecs {
     val millis  = "%03d".format(duration.toMillisPart)
 
     s"$hours:$minutes:$seconds.$millis"
-  }
-
-  def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration): Task[ProbeOutput] = {
-
-    val fileName = file.toAbsolutePath.normalize().toString
-
-    Task {
-      val v    = if (debug) "debug" else "quiet"
-      val args = List("-print_format", "json", "-show_streams", "-loglevel", v, fileName)
-      run(cmds = "ffprobe" :: args)
-    }.flatMap { process =>
-      Task {
-
-        val jsonOutput = scala.io.Source.fromInputStream(process.getInputStream).mkString
-
-        // setting -v to debug will hang the standard output stream on some files.
-        val debugOutput = {
-          if (debug) {
-            val debugOutput = scala.io.Source.fromInputStream(process.getErrorStream).mkString
-            val fastStart   = fastStartPattern.matches(debugOutput)
-            Some(ProbeDebugOutput(fastStart))
-          } else {
-            None
-          }
-        }
-
-        io.circe.parser.decode[ProbeOutput](jsonOutput) match {
-          case Left(error) => throw error
-          case Right(out)  => out.copy(debugOutput = debugOutput)
-        }
-      }.doOnCancel(Task { process.destroy() })
-    }.timeout(timeout)
   }
 
   def addFastStart(video: Path): Path = {
@@ -170,7 +136,7 @@ object FFMpeg extends Logging with FFMpegJsonCodecs {
       )
     // format: on
 
-    run("ffmpeg" :: args).getInputStream
+    runUnsafe("ffmpeg" :: args).getInputStream
   }
 
   def streamThumbnail(
@@ -191,58 +157,7 @@ object FFMpeg extends Logging with FFMpegJsonCodecs {
     )
     // format: on
 
-    run("ffmpeg" :: args).getInputStream
+    runUnsafe("ffmpeg" :: args).getInputStream
   }
 
-  def writeThumbnail(
-      inputFile: Path,
-      timestamp: Long,
-      outputFile: Option[Path],
-      scaleHeight: Option[Int]
-  ): Unit = {
-
-    try {
-      val input  = inputFile.absoluteFileName()
-      val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.webp")
-
-      // format: off
-      val args = List(
-        "-ss",      formatTime(timestamp),
-        "-i",       input
-      ) ++ scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
-        List(
-          "-quality", "80", // 1 - 31 (best-worst) for jpeg, 1-100 (worst-best) for webp
-          "-vframes", "1",
-          "-v",       "quiet",
-          "-y",       output
-        )
-      // format: on
-
-      runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
-    } catch {
-      case e: Exception =>
-        logger.warn(
-          s"Failed to create thumbnail for inputFile: ${inputFile}, timestamp: ${formatTime(timestamp)}, outputFile: ${outputFile}, scaleHeight: ${scaleHeight}"
-        )
-    }
-  }
-
-  def runSync(useErrorStream: Boolean, cmds: Seq[String]): String = {
-
-    logger.debug(s"Running command: ${cmds.mkString(",")}")
-
-    val process  = Runtime.getRuntime.exec(cmds.toArray)
-    val is       = if (useErrorStream) process.getErrorStream else process.getInputStream
-    val output   = scala.io.Source.fromInputStream(is).mkString
-    val exitCode = process.waitFor()
-
-    if (exitCode != 0)
-      logger.warn(s"""Non zero exit code for command: ${cmds.mkString(",")} \n""" + output)
-
-    output
-  }
-
-  def run(cmds: Seq[String]): Process = {
-    Runtime.getRuntime.exec(cmds.toArray)
-  }
 }

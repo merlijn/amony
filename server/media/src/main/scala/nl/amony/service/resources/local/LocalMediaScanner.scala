@@ -7,6 +7,7 @@ import monix.reactive.{Consumer, Observable}
 import nl.amony.lib.FileUtil
 import nl.amony.lib.FileUtil.PathOps
 import nl.amony.lib.ffmpeg.FFMpeg
+import nl.amony.lib.ffmpeg.tasks.FFProbe
 import nl.amony.service.media.MediaConfig.MediaLibConfig
 import nl.amony.service.media.actor.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
 import scribe.Logging

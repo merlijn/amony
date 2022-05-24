@@ -57,12 +57,12 @@ class AdminApi(
       medias.foreach { m =>
         logger.info(s"generating thumbnail previews for '${m.fileName()}'")
         try {
-          FFMpeg.generatePreviewTile(
+          FFMpeg.createThumbnailTile(
             inputFile      = m.resolvePath(config.media.mediaPath).toAbsolutePath,
             outputDir      = config.media.resourcePath,
             outputBaseName = Some(s"${m.id}-timeline"),
-            overwrite      = true
-          )
+            overwrite      = false
+          ).runSyncUnsafe()
         } catch {
           case NonFatal(e) =>
             logger.warn(s"Failed to generate preview sprite for ${m.fileName()}", e)

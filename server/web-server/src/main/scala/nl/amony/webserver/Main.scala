@@ -56,6 +56,7 @@ object Main extends ConfigLoader with Logging {
 
     Thread.sleep(500)
     adminApi.scanLibrary()(timeout.duration)
+
 //    adminApi.generatePreviewSprites()
 
 //    probeAll(api)(system.executionContext)

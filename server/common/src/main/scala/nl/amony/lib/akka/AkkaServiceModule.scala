@@ -1,6 +1,6 @@
 package nl.amony.lib.akka
 
-import akka.actor.typed.{ActorRef, ActorSystem}
+import akka.actor.typed.{ActorRef, ActorSystem, Scheduler}
 import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.receptionist.Receptionist.Find
 import akka.actor.typed.scaladsl.AskPattern.Askable
@@ -11,10 +11,6 @@ import pureconfig.{ConfigReader, ConfigSource}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
 
-trait AkkaServiceModuleCompanion[T] {
-
-}
-
 trait AkkaServiceModule[T] {
 
   def system: ActorSystem[Nothing]
@@ -23,9 +19,9 @@ trait AkkaServiceModule[T] {
 
   lazy implicit val ec: ExecutionContext = system.executionContext
   lazy implicit val mat: Materializer    = SystemMaterializer.get(system).materializer
-  lazy implicit val scheduler            = system.scheduler
+  lazy implicit val scheduler: Scheduler = system.scheduler
 
-  def askService[Res](replyTo: ActorRef[Res] => T) = serviceRef.flatMap(_.ask(replyTo))
+  def askService[Res](replyTo: ActorRef[Res] => T) = serviceRef().flatMap(_.ask(replyTo))
 
   def loadConfig[T : ClassTag](path: String)(implicit reader: ConfigReader[T]): T = {
 

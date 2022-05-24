@@ -1,17 +1,11 @@
-package nl.amony.lib.ffmpeg
+package nl.amony.lib.ffmpeg.tasks
 
 import io.circe.generic.semiauto.deriveDecoder
-import io.circe.Decoder
-import io.circe.HCursor
-import nl.amony.lib.ffmpeg.Model.AudioStream
-import nl.amony.lib.ffmpeg.Model.ProbeDebugOutput
-import nl.amony.lib.ffmpeg.Model.ProbeOutput
-import nl.amony.lib.ffmpeg.Model.Stream
-import nl.amony.lib.ffmpeg.Model.UnkownStream
-import nl.amony.lib.ffmpeg.Model.VideoStream
+import io.circe.{Decoder, HCursor}
+import nl.amony.lib.ffmpeg.tasks.FFProbeModel._
 import scribe.Logging
 
-private[ffmpeg] trait FFMpegJsonCodecs extends Logging {
+private[ffmpeg] trait FFProbeJsonCodecs extends Logging {
   implicit val unkownStreamDecoder: Decoder[UnkownStream] = deriveDecoder[UnkownStream]
   implicit val videoStreamDecoder: Decoder[VideoStream]   = deriveDecoder[VideoStream]
   implicit val audioStreamDecoder: Decoder[AudioStream]   = deriveDecoder[AudioStream]

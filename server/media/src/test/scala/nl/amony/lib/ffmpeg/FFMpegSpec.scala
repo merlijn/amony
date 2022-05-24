@@ -42,7 +42,7 @@ class FFMpegSpec extends AnyFlatSpecLike with Logging {
 
     times.foreach { t =>
 
-      val frames = CreateThumbnailTile.calculateNrOfFrames(t)
+      val frames = FFMpeg.calculateNrOfFrames(t)
 
       println(s"${t / 1000} -> $frames")
     }

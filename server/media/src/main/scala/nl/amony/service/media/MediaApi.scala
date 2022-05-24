@@ -19,10 +19,9 @@ import scala.concurrent.Future
 
 object MediaApi {
 
-  // 0. Config, deps
-  // 1. Behavior
-  // 2. ActorRef
-  // 3. Api
+  val mediaServiceKey = ServiceKey[MediaCommand]("mediaService")
+
+  val mediaPersistenceId = "mediaLib"
 
   def mediaBehaviour(config: MediaLibConfig, resourceRef: ActorRef[ResourceCommand]): Behavior[MediaCommand] =
     Behaviors.setup[MediaCommand] { context =>
@@ -32,16 +31,12 @@ object MediaApi {
       implicit val sc = context.system.scheduler
 
       EventSourcedBehavior[MediaCommand, Event, State](
-        persistenceId  = PersistenceId.ofUniqueId("mediaLib"),
+        persistenceId  = PersistenceId.ofUniqueId(mediaPersistenceId),
         emptyState     = State(Map.empty),
         commandHandler = MediaLibCommandHandler(config, resourceRef),
         eventHandler   = MediaLibEventSourcing.apply
       )
     }
-
-  val mediaServiceKey = ServiceKey[MediaCommand]("mediaService")
-
-  val mediaPersistenceId = "mediaLib"
 }
 
 class MediaApi(override val system: ActorSystem[Nothing], override implicit val askTimeout: Timeout) extends AkkaServiceModule[MediaCommand] with Logging {

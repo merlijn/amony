@@ -13,7 +13,7 @@ import nl.amony.service.resources.ResourceProtocol._
 import scribe.Logging
 
 import java.nio.file.{Files, Path}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 object LocalResourcesHandler extends Logging {
 
@@ -45,6 +45,7 @@ object LocalResourcesHandler extends Logging {
 
         case GetVideo(media, sender) =>
           val path = config.mediaPath.resolve(media.fileInfo.relativePath)
+
           sender.tell(LocalFileIOResponse(path))
           Behaviors.same
 
@@ -55,7 +56,8 @@ object LocalResourcesHandler extends Logging {
 
         case GetPreviewSpriteVtt(mediaId, sender) =>
           val path = config.resourcePath.resolve(s"$mediaId-timeline.vtt")
-          val content = File(path).contentAsString
+          val content = Try { File(path).contentAsString }.toOption.getOrElse("WEBVTT")
+
           sender.tell(Some(content))
           Behaviors.same
 
@@ -67,7 +69,7 @@ object LocalResourcesHandler extends Logging {
 
         case CreateFragments(media, overwrite) =>
           LocalResourcesTasks.createFragments(config, media, overwrite).executeAsync.runAsyncAndForget
-          LocalResourcesTasks.createPreviewSprite(config, media, overwrite).executeAsync.runAsyncAndForget
+//          LocalResourcesTasks.createPreviewSprite(config, media, overwrite).executeAsync.runAsyncAndForget
           Behaviors.same
 
         case DeleteFragment(media, range) =>

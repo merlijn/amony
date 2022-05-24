@@ -3,7 +3,8 @@ package nl.amony.service.resources.local
 import monix.eval.Task
 import monix.reactive.{Consumer, Observable}
 import nl.amony.lib.FileUtil.PathOps
-import nl.amony.lib.ffmpeg.{CreateThumbnailTile, FFMpeg}
+import nl.amony.lib.ffmpeg.tasks.{CreateThumbnail, CreateThumbnailTile}
+import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.service.media.MediaConfig.{MediaLibConfig, TranscodeSettings}
 import nl.amony.service.media.actor.MediaLibProtocol.Media
 import scribe.Logging
@@ -42,7 +43,7 @@ object LocalResourcesTasks extends Logging {
     def writeThumbnail(input: Path, height: Int): Unit = {
       val output = config.resourcePath.resolve(s"${media.id}-${from}_${height}p.webp")
       if (!Files.exists(output) || overwrite)
-        FFMpeg.writeThumbnail(
+        FFMpeg.createThumbnail(
           inputFile   = input,
           timestamp   = from,
           outputFile  = Some(output),
@@ -67,14 +68,12 @@ object LocalResourcesTasks extends Logging {
             config: MediaLibConfig,
             media: Media,
             overwrite: Boolean = false) = {
-    Task {
-      CreateThumbnailTile.createThumbnailTile(
-        inputFile      = media.resolvePath(config.mediaPath).toAbsolutePath,
-        outputDir      = config.resourcePath,
-        outputBaseName = Some(s"${media.id}-timeline"),
-        overwrite      = overwrite
-      )
-    }
+    FFMpeg.createThumbnailTile(
+      inputFile      = media.resolvePath(config.mediaPath).toAbsolutePath,
+      outputDir      = config.resourcePath,
+      outputBaseName = Some(s"${media.id}-timeline"),
+      overwrite      = overwrite
+    )
   }
 
   private[resources] def createFragments(
