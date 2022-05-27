@@ -3,12 +3,18 @@ package nl.amony.lib.akka
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.Behaviors
+import scribe.Logging
 
-object ServiceKeyBehavior {
+import scala.reflect.ClassTag
 
-  private def innerForward[T](serviceKey: ServiceKey[T], listings: Set[ActorRef[T]], subscribe: Boolean): Behavior[Either[Receptionist.Listing, T]] = {
+object ServiceKeyBehavior extends Logging {
 
-    Behaviors.setup { context =>
+  def apply[T : ClassTag](serviceKey: ServiceKey[T]): Behavior[T] =
+    forward[T](serviceKey, Set.empty, true).transformMessages[T](Right(_))
+
+  private def forward[T : ClassTag](serviceKey: ServiceKey[T], listings: Set[ActorRef[T]], subscribe: Boolean): Behavior[Either[Receptionist.Listing, T]] = {
+
+    Behaviors.setup[Either[Receptionist.Listing, T]] { context =>
 
       if (subscribe) {
         val listingsAdaper = context.messageAdapter[Receptionist.Listing](listings => Left(listings))
@@ -17,22 +23,13 @@ object ServiceKeyBehavior {
 
       Behaviors.receiveMessage[Either[Receptionist.Listing, T]] {
         case Left(listings) =>
-          innerForward[T](serviceKey, listings.serviceInstances(serviceKey), false)
+          forward[T](serviceKey, listings.serviceInstances(serviceKey), false)
         case Right(msg) =>
-          if (!listings.isEmpty)
+          if (!listings.isEmpty) {
             listings.head.tell(msg)
+          } else
+            logger.info(s"${serviceKey.id} not yet started, dropped message of type '${msg.getClass}' ")
 
-          Behaviors.same
-      }
-    }
-  }
-
-  def apply[T](serviceKey: ServiceKey[T]): Behavior[T] = {
-    Behaviors.setup { context =>
-      val forwarder = context.spawn(innerForward(serviceKey, Set.empty[ActorRef[T]], true), "forwarder")
-      Behaviors.receiveMessage[T] {
-        case msg =>
-          forwarder.tell(Right(msg))
           Behaviors.same
       }
     }

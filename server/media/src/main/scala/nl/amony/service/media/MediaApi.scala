@@ -10,7 +10,7 @@ import nl.amony.lib.akka.{AkkaServiceModule, ServiceKeyBehavior}
 import nl.amony.service.media.MediaApi.mediaServiceKey
 import nl.amony.service.media.actor.MediaLibEventSourcing.Event
 import nl.amony.service.media.actor.MediaLibProtocol._
-import nl.amony.service.media.MediaConfig.MediaLibConfig
+import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.media.actor.{MediaLibCommandHandler, MediaLibEventSourcing}
 import nl.amony.service.resources.ResourceProtocol.ResourceCommand
 import scribe.Logging
@@ -23,7 +23,7 @@ object MediaApi {
 
   val mediaPersistenceId = "mediaLib"
 
-  def mediaBehaviour(config: MediaLibConfig, resourceRef: ActorRef[ResourceCommand]): Behavior[MediaCommand] =
+  def mediaBehaviour(config: LocalResourcesConfig, resourceRef: ActorRef[ResourceCommand]): Behavior[MediaCommand] =
     Behaviors.setup[MediaCommand] { context =>
       context.system.receptionist ! Receptionist.Register(mediaServiceKey, context.self)
 
@@ -67,6 +67,6 @@ class MediaApi(override val system: ActorSystem[Nothing], override implicit val 
   def updateFragmentTags(id: String, idx: Int, tags: List[String]): Future[Either[ErrorResponse, Media]] =
     askService[Either[ErrorResponse, Media]](ref => UpdateFragmentTags(id, idx, tags, ref))
 
-  def deleteFragment(id: String, idx: Int)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+  def deleteFragment(id: String, idx: Int): Future[Either[ErrorResponse, Media]] =
     askService[Either[ErrorResponse, Media]](ref => DeleteFragment(id, idx, ref))
 }

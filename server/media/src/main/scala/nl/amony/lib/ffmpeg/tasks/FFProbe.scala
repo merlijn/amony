@@ -16,12 +16,10 @@ trait FFProbe extends Logging with FFProbeJsonCodecs {
 
     val fileName = file.toAbsolutePath.normalize().toString
 
-    Task {
-      val v    = if (debug) "debug" else "quiet"
-      val args = List("-print_format", "json", "-show_streams", "-loglevel", v, fileName)
-      runUnsafe(cmds = "ffprobe" :: args)
-    }.flatMap { process =>
-      Task {
+    val v    = if (debug) "debug" else "quiet"
+    val args = List("-print_format", "json", "-show_streams", "-loglevel", v, fileName)
+
+    runCmd("ffprobe" :: args) { process => Task {
 
         val jsonOutput = scala.io.Source.fromInputStream(process.getInputStream).mkString
 
@@ -40,7 +38,7 @@ trait FFProbe extends Logging with FFProbeJsonCodecs {
           case Left(error) => throw error
           case Right(out)  => out.copy(debugOutput = debugOutput)
         }
-      }.doOnCancel(Task { process.destroy() })
-    }.timeout(timeout)
+      }.timeout(timeout)
+    }
   }
 }

@@ -4,32 +4,36 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import nl.amony.service.resources.ResourceDirectives.{randomAccessRangeSupport, uploadFiles}
+import nl.amony.service.resources.ResourceDirectives.{randomAccessRangeSupport, uploadDirective}
 import scribe.Logging
 
 object ResourceRoutes extends Logging {
 
+  // format: off
   object patterns {
     // example: j0rc1048yc1_720p.mp4
-    val Video = raw"(.+)_(\d+)p\.mp4".r
+    val Video         = raw"(.+)_(\d+)p\.mp4".r
 
     // example: j0rc1048yc1~1000-5000_720p.mp4
     val VideoFragment = raw"(.+)~(\d+)-(\d+)_(\d+)p\.mp4".r
 
     // example: j0rc1048yc1_720p.webp or j0rc1048yc1~5000_720p.webp
-    val Thumbnail = raw"(\w+)(-(\d+))?_(\d+)p\.webp".r
+    val Thumbnail     = raw"(\w+)(-(\d+))?_(\d+)p\.webp".r
 
-    val TimeLineVtt = raw"(\w+)-timeline\.vtt".r
+    // example: j0rc1048yc1-timeline.vtt
+    val TimeLineVtt   = raw"(\w+)-timeline\.vtt".r
 
-    val TimeLineJpeg = raw"(\w+)-timeline\.webp".r
+    // example: j0rc1048yc1-timeline.webp
+    val TimeLineJpeg  = raw"(\w+)-timeline\.webp".r
   }
+  // format: on
 
   def apply(resourceApi: ResourceApi, uploadLimitBytes: Long)(implicit timeout: Timeout): Route = {
 
     pathPrefix("resources") {
 
       path("upload") {
-        uploadFiles("video", uploadLimitBytes) { (fileInfo, source) =>
+        uploadDirective("video", uploadLimitBytes) { (fileInfo, source) =>
           resourceApi.uploadMedia(fileInfo.fileName, source)
         } { medias => complete("OK") }
       } ~ pathPrefix("media") {

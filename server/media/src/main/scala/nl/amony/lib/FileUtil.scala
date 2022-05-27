@@ -27,19 +27,4 @@ object FileUtil extends Logging {
     Files.walkFileTree(dir, r)
     r.getFiles()
   }
-
-//  def watchPath(path: Path) = {
-//
-//    val watcher = DirectoryWatcher.builder.path(path).listener {
-//      (event: DirectoryChangeEvent) => {
-//        event.eventType match {
-//          case CREATE => logger.info(s"File created : ${event.path}")
-//          case MODIFY => logger.info(s"File modified: ${event.path}")
-//          case DELETE => logger.info(s"File deleted : ${event.path}")
-//        }
-//      }
-//    }.fileHashing(false).build
-//
-//    watcher.watchAsync()
-//  }
 }

@@ -30,7 +30,7 @@ trait ProcessRunner extends Logging {
   }
 
   def runWithOutput[T](cmds: Seq[String], useErrorStream: Boolean)(fn: String => Task[T]): Task[T] = {
-    runTask(cmds) { process =>
+    runCmd(cmds) { process =>
 
       val output = processOutput(process, useErrorStream, cmds)
 
@@ -38,11 +38,10 @@ trait ProcessRunner extends Logging {
     }
   }
 
-  def runTask[T](cmds: Seq[String])(fn: Process => Task[T]): Task[T] = {
+  def runCmd[T](cmds: Seq[String])(fn: Process => Task[T]): Task[T] = {
 
-    Task { runUnsafe(cmds) }.flatMap { process => fn(process).doOnCancel( Task {
-      println("destroying ffmpeg process ...")
-      process.destroy() })
+    Task { runUnsafe(cmds) }
+      .flatMap { process => fn(process).doOnCancel( Task { process.destroy() })
     }
   }
 }

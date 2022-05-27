@@ -4,7 +4,7 @@ import monix.eval.Task
 import monix.reactive.{Consumer, Observable}
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.files.PathOps
-import nl.amony.service.media.MediaConfig.{MediaLibConfig, TranscodeSettings}
+import nl.amony.service.media.MediaConfig.{LocalResourcesConfig, TranscodeSettings}
 import nl.amony.service.media.actor.MediaLibProtocol.Media
 import scribe.Logging
 
@@ -13,7 +13,7 @@ import java.nio.file.{Files, Path}
 object LocalResourcesTasks extends Logging {
 
   private[resources] def createPreview(
-      config: MediaLibConfig,
+      config: LocalResourcesConfig,
       media: Media,
       range: (Long, Long),
       overwrite: Boolean = false
@@ -64,9 +64,9 @@ object LocalResourcesTasks extends Logging {
   }
 
   private[resources] def createPreviewSprite(
-            config: MediaLibConfig,
-            media: Media,
-            overwrite: Boolean = false) = {
+                                              config: LocalResourcesConfig,
+                                              media: Media,
+                                              overwrite: Boolean = false) = {
     FFMpeg.createThumbnailTile(
       inputFile      = media.resolvePath(config.mediaPath).toAbsolutePath,
       outputDir      = config.resourcePath,
@@ -76,16 +76,16 @@ object LocalResourcesTasks extends Logging {
   }
 
   private[resources] def createFragments(
-      config: MediaLibConfig,
-      media: Media,
-      overwrite: Boolean = false
+                                          config: LocalResourcesConfig,
+                                          media: Media,
+                                          overwrite: Boolean = false
   ): Task[Unit] = {
     Observable
       .fromIterable(media.fragments)
       .consumeWith(Consumer.foreachTask(f => createPreview(config, media, (f.fromTimestamp, f.toTimestamp), overwrite)))
   }
 
-  def deleteVideoFragment(config: MediaLibConfig, media: Media, from: Long, to: Long): Unit = {
+  def deleteVideoFragment(config: LocalResourcesConfig, media: Media, from: Long, to: Long): Unit = {
 
     config.resourcePath.resolve(s"${media.id}-$from-${to}_${media.height}p.mp4").deleteIfExists()
 

@@ -1,14 +1,16 @@
 package nl.amony.webserver
 
 import com.typesafe.config.ConfigFactory
+import nl.amony.search.SearchConfig
 import nl.amony.service.auth.AuthConfig
-import nl.amony.service.media.MediaConfig.{DeleteMediaOption, HashingAlgorithm, MediaLibConfig}
+import nl.amony.service.media.MediaConfig.{DeleteMediaOption, HashingAlgorithm, LocalResourcesConfig}
 import scribe.Logging
 
 case class AmonyConfig(
-  media: MediaLibConfig,
+  media: LocalResourcesConfig,
   api: WebServerConfig,
-  auth: AuthConfig
+  auth: AuthConfig,
+  search: SearchConfig
 )
 
 trait ConfigLoader extends Logging {

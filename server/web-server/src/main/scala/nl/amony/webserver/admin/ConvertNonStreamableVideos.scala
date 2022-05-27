@@ -7,7 +7,7 @@ import nl.amony.lib.FileUtil
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.files.PathOps
 import nl.amony.service.media.MediaApi
-import nl.amony.service.media.MediaConfig.MediaLibConfig
+import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import scribe.Logging
 
 import scala.concurrent.duration.DurationInt
@@ -15,7 +15,7 @@ import scala.util.Success
 
 object ConvertNonStreamableVideos extends Logging {
 
-  def convertNonStreamableVideos(config: MediaLibConfig, api: MediaApi, adminApi: AdminApi): Unit = {
+  def convertNonStreamableVideos(config: LocalResourcesConfig, api: MediaApi, adminApi: AdminApi): Unit = {
 
     val files = FileUtil.walkDir(config.path)
 

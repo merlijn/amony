@@ -150,7 +150,7 @@ object ResourceDirectives extends Logging {
     }
   }
 
-  def uploadFiles[T](fieldName: String, uploadLimitBytes: Long)(
+  def uploadDirective[T](fieldName: String, uploadLimitBytes: Long)(
       uploadFn: (FileInfo, Source[ByteString, Any]) => Future[T]
   ): Directive1[Seq[T]] =
     (withSizeLimit(uploadLimitBytes) & entity(as[Multipart.FormData])).flatMap { formData =>

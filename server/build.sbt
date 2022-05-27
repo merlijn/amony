@@ -7,8 +7,8 @@ import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
 val excludeLog4j =
   ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl")
 
-val akkaVersion     = "2.6.17"
-val akkaHttpVersion = "10.2.7"
+val akkaVersion     = "2.6.19"
+val akkaHttpVersion = "10.2.9"
 val circeVersion    = "0.14.1"
 
 val akka                     = "com.typesafe.akka"        %% "akka-actor-typed"           % akkaVersion
@@ -22,30 +22,29 @@ val akkaHttp                 = "com.typesafe.akka"        %% "akka-http"        
 val circe                    = "io.circe"                 %% "circe-core"                 % circeVersion
 val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
 val circeParser              = "io.circe"                 %% "circe-parser"               % circeVersion
-val akkaHttpCirce            = "de.heikoseeberger"        %% "akka-http-circe"            % "1.36.0" // no scala 3
+val akkaHttpCirce            = "de.heikoseeberger"        %% "akka-http-circe"            % "1.39.2" // no scala 3
 
 val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.5"
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "1.7.30"
 val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.5.5"
 
-//val betterFiles              = "com.github.pathikrit"     %% "better-files"               % "3.9.1"
-val directoryWatcher         = "io.methvin"                % "directory-watcher"          % "0.15.0"
 
-val monixReactive            = "io.monix"                 %% "monix-reactive"             % "3.4.0"
+val monixReactive            = "io.monix"                 %% "monix-reactive"             % "3.4.1"
 
-val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.9"           % Test
-val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.9.0"         % Test
+val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.12"           % Test
+val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
 
-val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.1"
 val pureConfig               = "com.github.pureconfig"    %% "pureconfig"                 % "0.17.1" // no scala 3
 val pureConfigSquants        = "com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.1" // no scala 3
+val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.2"
 
+//val betterFiles              = "com.github.pathikrit"     %% "better-files"               % "3.9.1"
+val directoryWatcher         = "io.methvin"                % "directory-watcher"          % "0.15.0"
 val solr                     = "org.apache.solr"           % "solr-core"                  % "8.11.1" excludeAll(excludeLog4j)
 val solrLangId               = "org.apache.solr"           % "solr-langid"                % "8.11.1" excludeAll(excludeLog4j)
 
 val levelDb                  = "org.iq80.leveldb"          % "leveldb"                    % "0.12"
 val levelDbJndiAll           = "org.fusesource.leveldbjni" % "leveldbjni-all"             % "1.8"
-
 
 val javaOpts = Nil
 
@@ -84,6 +83,7 @@ lazy val common =
         akka,
         akkaPersistence,
         pureConfig,
+        scribeSlf4j,
       )
     )
 
@@ -106,7 +106,7 @@ lazy val media =
       name := "amony-service-media",
       libraryDependencies ++= Seq(
         scribeSlf4j, akka, akkaPersistence, akkaHttp, akkaHttpCirce, circe, circeGeneric, monixReactive,
-
+        directoryWatcher,
         scalaTest
       )
     )

@@ -7,13 +7,12 @@ import akka.http.scaladsl.util.FastFuture
 import akka.stream.SystemMaterializer
 import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
-import nl.amony.service.media.MediaConfig.MediaLibConfig
+import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.resources.ResourceProtocol._
 import scribe.Logging
 
-import java.io.File
 import java.nio.file.{Files, Path}
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 object LocalResourcesHandler extends Logging {
 
@@ -26,12 +25,26 @@ object LocalResourcesHandler extends Logging {
 
   implicit val scheduler = monix.execution.Scheduler.Implicits.global
 
-  def apply(config: MediaLibConfig, scanner: LocalMediaScanner): Behavior[ResourceCommand] = {
+  def apply(config: LocalResourcesConfig, scanner: LocalMediaScanner): Behavior[ResourceCommand] = {
 
     Behaviors.receive { (context, msg) =>
       implicit val mat = SystemMaterializer.get(context.system).materializer
 
       msg match {
+
+        case GetResourceIndex(sender) =>
+          Behaviors.same
+
+        case DeleteResource(hash, sender) =>
+          Behaviors.same
+//          if (Files.exists(path)) {
+//            config.deleteMedia match {
+//              case DeleteFile =>
+//                Files.delete(path)
+//              case MoveToTrash =>
+//                Desktop.getDesktop().moveToTrash(path.toFile())
+//            }
+//          };
 
         case GetThumbnail(mediaId, timestamp, quality, sender) =>
           val path = config.resourcePath.resolve(s"${mediaId}-${timestamp}_${quality}p.webp")
@@ -67,18 +80,21 @@ object LocalResourcesHandler extends Logging {
           Behaviors.same
 
         case CreateFragment(media, range, overwrite, sender) =>
+          logger.info(s"Creating fragment: ${media.id}-$range")
           LocalResourcesTasks.createPreview(config, media, range, overwrite).executeAsync.runAsync { result =>
             sender.tell(result.isRight)
           }
           Behaviors.same
 
         case CreateFragments(media, overwrite) =>
+
           LocalResourcesTasks.createFragments(config, media, overwrite).executeAsync.runAsyncAndForget
 //          LocalResourcesTasks.createPreviewSprite(config, media, overwrite).executeAsync.runAsyncAndForget
           Behaviors.same
 
         case DeleteFragment(media, range) =>
           val (start, end) = range
+          logger.info(s"Deleting fragment: ${media.id}-$range")
           LocalResourcesTasks.deleteVideoFragment(config, media, start, end)
           Behaviors.same
 

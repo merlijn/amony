@@ -7,21 +7,27 @@ import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.stream.scaladsl.{Source, StreamRefs}
 import akka.util.{ByteString, Timeout}
 import nl.amony.lib.akka.AkkaServiceModule
-import nl.amony.service.media.MediaConfig.MediaLibConfig
+import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.media.actor.MediaLibProtocol.Media
 import nl.amony.service.media.MediaApi
 import nl.amony.service.resources.ResourceApi.resourceServiceKey
 import nl.amony.service.resources.ResourceProtocol._
-import nl.amony.service.resources.local.{LocalMediaScanner, LocalResourcesHandler}
+import nl.amony.service.resources.local.DirectoryWatcher.DirectoryState
+import nl.amony.service.resources.local.{DirectoryWatcher, LocalMediaScanner, LocalResourcesHandler}
 
 import scala.concurrent.Future
 
 object ResourceApi {
 
-  def resourceBehaviour(config: MediaLibConfig, scanner: LocalMediaScanner): Behavior[ResourceCommand] = {
+  def resourceBehaviour(config: LocalResourcesConfig, scanner: LocalMediaScanner): Behavior[ResourceCommand] = {
 
     Behaviors.setup { context =>
       context.system.receptionist ! Receptionist.Register(resourceServiceKey, context.self)
+
+//      val ref = context.spawn(DirectoryWatcher.watch(config.hashingAlgorithm, config.mediaPath), "directory-watcher")
+//
+//      DirectoryWatcher.watchPath(config.mediaPath, ref)
+
       LocalResourcesHandler.apply(config, scanner)
     }
   }

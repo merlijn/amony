@@ -36,7 +36,7 @@ class AdminApi(
     mediaApi
       .getAll()
       .foreach { loadedFromStore =>
-        val (deleted, newAndMoved) = scanner.scanMediaInDirectory(config.media, loadedFromStore)
+        val (deleted, newAndMoved) = scanner.scanMediaInDirectory(loadedFromStore)
         val upsert                 = Consumer.foreachTask[Media](m => Task { mediaApi.upsertMedia(m) })
 
         val delete = Consumer.foreachTask[Media](m =>

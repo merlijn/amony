@@ -8,7 +8,7 @@ import java.security.MessageDigest
 import scala.concurrent.duration.FiniteDuration
 
 object MediaConfig {
-  case class MediaLibConfig(
+  case class LocalResourcesConfig(
       path: Path,
       indexPath: Path,
       deleteMedia: DeleteMediaOption,
@@ -16,9 +16,7 @@ object MediaConfig {
       scanParallelFactor: Int,
       verifyExistingHashes: Boolean,
       hashingAlgorithm: HashingAlgorithm,
-      defaultFragmentLength: FiniteDuration,
-      minimumFragmentLength: FiniteDuration,
-      maximumFragmentLength: FiniteDuration,
+      fragments: FragmentSettings,
       transcode: List[TranscodeSettings],
       ffprobeTimeout: FiniteDuration
   ) {
@@ -30,10 +28,21 @@ object MediaConfig {
     def filterFileName(fileName: String): Boolean = fileName.endsWith(".mp4") && !fileName.startsWith(".")
   }
 
+  case class FFMPegConfig(
+     scanParallelFactor: Int,
+     ffprobeTimeout: FiniteDuration
+  )
+
+  case class FragmentSettings(
+    defaultFragmentLength: FiniteDuration,
+    minimumFragmentLength: FiniteDuration,
+    maximumFragmentLength: FiniteDuration,
+  )
+
   case class TranscodeSettings(
-      format: String,
-      scaleHeight: Int,
-      crf: Int
+    format: String,
+    scaleHeight: Int,
+    crf: Int
   )
 
   sealed trait DeleteMediaOption

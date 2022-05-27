@@ -3,7 +3,7 @@ package nl.amony.service.media.actor
 import akka.actor.typed.{ActorRef, Scheduler}
 import akka.persistence.typed.scaladsl.Effect
 import akka.util.Timeout
-import nl.amony.service.media.MediaConfig.{DeleteFile, MediaLibConfig, MoveToTrash}
+import nl.amony.service.media.MediaConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
 import nl.amony.service.media.actor.MediaLibEventSourcing._
 import nl.amony.service.media.actor.MediaLibProtocol._
 import nl.amony.service.resources.ResourceProtocol
@@ -18,7 +18,7 @@ import akka.actor.typed.scaladsl.AskPattern._
 
 object MediaLibCommandHandler extends Logging {
 
-  def apply(config: MediaLibConfig, resourceRef: ActorRef[ResourceCommand])(
+  def apply(config: LocalResourcesConfig, resourceRef: ActorRef[ResourceCommand])(
       state: State,
       cmd: MediaCommand
   )(implicit ec: ExecutionContext, scheduler: Scheduler): Effect[Event, State] = {
@@ -46,10 +46,10 @@ object MediaLibCommandHandler extends Logging {
         Left(s"Invalid range ($start -> $end): start must be before end")
       else if (start < 0 || end > mediaDuration)
         Left(s"Invalid range ($start -> $end): valid range is from 0 to $mediaDuration")
-      else if (end - start > config.maximumFragmentLength.toMillis)
-        Left(s"Fragment length is larger then maximum allowed: ${end - start} > ${config.minimumFragmentLength.toMillis}")
-      else if (end - start < config.minimumFragmentLength.toMillis)
-        Left(s"Fragment length is smaller then minimum allowed: ${end - start} < ${config.minimumFragmentLength.toMillis}")
+      else if (end - start > config.fragments.maximumFragmentLength.toMillis)
+        Left(s"Fragment length is larger then maximum allowed: ${end - start} > ${config.fragments.minimumFragmentLength.toMillis}")
+      else if (end - start < config.fragments.minimumFragmentLength.toMillis)
+        Left(s"Fragment length is smaller then minimum allowed: ${end - start} < ${config.fragments.minimumFragmentLength.toMillis}")
       else
         Right(())
     }

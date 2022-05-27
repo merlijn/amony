@@ -38,7 +38,7 @@ object AllRoutes {
 
     val identityRoutes = AuthRoutes(userApi)
     val resourceRoutes = ResourceRoutes(resourceApi, config.api.uploadSizeLimit.toBytes.toLong)
-    val searchRoutes   = SearchRoutes(system, searchApi, config.api, config.media.transcode)
+    val searchRoutes   = SearchRoutes(system, searchApi, config.search, config.media.transcode)
     val adminRoutes    = AdminRoutes(adminApi, config.api)
     val mediaRoutes    = MediaRoutes(system, mediaApi, config.media.transcode, config.api)
 

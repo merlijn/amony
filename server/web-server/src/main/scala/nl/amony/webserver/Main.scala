@@ -31,7 +31,9 @@ object Main extends ConfigLoader with Logging {
       val localIndexRef: ActorRef[QueryMessage] = InMemoryIndex.apply(context, readJournal)
 
       val resourceRef = context.spawn(ResourceApi.resourceBehaviour(config.media, scanner), "resources")
+
       val mediaRef    = context.spawn(MediaApi.mediaBehaviour(config.media, resourceRef), "medialib")
+
       val userRef     = context.spawn(AuthApi.userBehaviour(), "users")
 
       Behaviors.empty

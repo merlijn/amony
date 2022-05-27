@@ -18,16 +18,14 @@ object PartialHash extends Logging {
       val bytes  = new Array[Byte](nBytes)
       val random = new Random(size)
 
-//      val f = new RandomAccessFile(Files.)
-
       Using(FileChannel.open(file, StandardOpenOption.READ)) { channel =>
         (0 until nBytes).map { i =>
           val pos = (random.nextDouble() * (size - 1)).toLong
           try {
-            val byte = ByteBuffer.allocate(1)
+            val buffer = ByteBuffer.allocate(1)
             channel.position(pos)
-            channel.read(byte)
-            bytes(i) = byte.get(0)
+            channel.read(buffer)
+            bytes(i) = buffer.get(0)
           } catch {
             case _: Exception =>
               logger.warn(s"Failed reading byte at: ${file} ($size): $i, $pos")

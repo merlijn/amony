@@ -7,14 +7,14 @@ import monix.reactive.{Consumer, Observable}
 import nl.amony.lib.FileUtil
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.files.PathOps
-import nl.amony.service.media.MediaConfig.MediaLibConfig
+import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.media.actor.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
 import scribe.Logging
 
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
 
-class LocalMediaScanner(config: MediaLibConfig) extends Logging {
+class LocalMediaScanner(config: LocalResourcesConfig) extends Logging {
 
   private[resources] def scanMedia(mediaPath: Path, hash: Option[String]): Task[Media] = {
 
@@ -51,7 +51,7 @@ class LocalMediaScanner(config: MediaLibConfig) extends Logging {
           (mainVideoStream.width, mainVideoStream.height)
         )
 
-        val fragmentLength = config.defaultFragmentLength.toMillis
+        val fragmentLength = config.fragments.defaultFragmentLength.toMillis
 
         Media(
           id                 = fileHash,
@@ -66,10 +66,7 @@ class LocalMediaScanner(config: MediaLibConfig) extends Logging {
       }
   }
 
-  def scanMediaInDirectory(
-      config: MediaLibConfig,
-      persistedMedia: List[Media]
-  )(implicit s: Scheduler, timeout: Timeout): (Observable[Media], Observable[Media]) = {
+  def scanMediaInDirectory(persistedMedia: List[Media])(implicit s: Scheduler, timeout: Timeout): (Observable[Media], Observable[Media]) = {
 
     logger.info("Scanning directory for media...")
 
