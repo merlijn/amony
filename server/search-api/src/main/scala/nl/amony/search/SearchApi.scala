@@ -1,23 +1,13 @@
 package nl.amony.search
 
 import akka.actor.typed.ActorSystem
-import akka.actor.typed.receptionist.ServiceKey
-import akka.actor.typed.scaladsl.AskPattern._
-import akka.util.Timeout
-import nl.amony.service.media.actor.MediaLibProtocol.Fragment
 import nl.amony.lib.akka.AkkaServiceModule
 import nl.amony.search.SearchProtocol._
+import nl.amony.service.media.actor.MediaLibProtocol.Fragment
 
 import scala.concurrent.Future
 
-object SearchApi {
-
-  val searchServiceKey = ServiceKey[QueryMessage]("searchService")
-}
-
-class SearchApi(val system: ActorSystem[Nothing], override implicit val askTimeout: Timeout) extends AkkaServiceModule[QueryMessage] {
-
-  override val serviceKey = SearchApi.searchServiceKey
+class SearchApi(system: ActorSystem[Nothing]) extends AkkaServiceModule[QueryMessage](system) {
 
   // format: off
   def searchMedia(q: Option[String], offset: Option[Int], size: Int, tags: Set[String], playlist: Option[String],

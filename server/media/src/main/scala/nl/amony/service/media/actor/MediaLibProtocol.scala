@@ -1,6 +1,7 @@
 package nl.amony.service.media.actor
 
 import akka.actor.typed.ActorRef
+import akka.actor.typed.receptionist.ServiceKey
 
 import java.nio.file.Path
 
@@ -12,6 +13,10 @@ object MediaLibProtocol {
   case class InvalidCommand(reason: String) extends ErrorResponse
 
   sealed trait MediaCommand
+
+  object MediaCommand {
+    implicit val serviceKey: ServiceKey[MediaCommand] = ServiceKey[MediaCommand]("mediaService")
+  }
 
   case class UpsertMedia(media: Media, sender: ActorRef[Boolean])                    extends MediaCommand
   case class RemoveMedia(id: String, deleteFile: Boolean, sender: ActorRef[Boolean]) extends MediaCommand

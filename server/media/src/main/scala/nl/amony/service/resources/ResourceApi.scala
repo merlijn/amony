@@ -10,11 +10,10 @@ import nl.amony.lib.akka.AkkaServiceModule
 import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.media.actor.MediaLibProtocol.Media
 import nl.amony.service.media.MediaApi
-import nl.amony.service.resources.ResourceApi.resourceServiceKey
 import nl.amony.service.resources.ResourceProtocol._
-import nl.amony.service.resources.local.DirectoryWatcher.DirectoryState
 import nl.amony.service.resources.local.{DirectoryWatcher, LocalMediaScanner, LocalResourcesHandler}
 
+import java.nio.file.{Files, Path}
 import scala.concurrent.Future
 
 object ResourceApi {
@@ -22,23 +21,19 @@ object ResourceApi {
   def resourceBehaviour(config: LocalResourcesConfig, scanner: LocalMediaScanner): Behavior[ResourceCommand] = {
 
     Behaviors.setup { context =>
-      context.system.receptionist ! Receptionist.Register(resourceServiceKey, context.self)
+      context.system.receptionist ! Receptionist.Register(ResourceCommand.serviceKey, context.self)
 
-//      val ref = context.spawn(DirectoryWatcher.watch(config.hashingAlgorithm, config.mediaPath), "directory-watcher")
-//
-//      DirectoryWatcher.watchPath(config.mediaPath, ref)
+      val filter: Path => Boolean = path => { Files.isRegularFile(path) && config.filterFileName(path.toString) }
+      val behavior = DirectoryWatcher.watch(config.hashingAlgorithm, config.mediaPath, filter)
+      val ref = context.spawn(behavior, "directory-watcher")
 
       LocalResourcesHandler.apply(config, scanner)
     }
   }
-
-  val resourceServiceKey = ServiceKey[ResourceCommand]("resourceService")
 }
 
-class ResourceApi(override val system: ActorSystem[Nothing], override implicit val askTimeout: Timeout, mediaApi: MediaApi)
-    extends AkkaServiceModule[ResourceCommand] {
-
-  override val serviceKey: ServiceKey[ResourceCommand] = resourceServiceKey
+class ResourceApi(system: ActorSystem[Nothing], mediaApi: MediaApi)
+    extends AkkaServiceModule[ResourceCommand](system) {
 
   def uploadMedia(fileName: String, source: Source[ByteString, Any]): Future[Media] =
     askService[Media](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref))

@@ -6,7 +6,7 @@ import akka.persistence.query.PersistenceQuery
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.stream.Materializer
 import akka.util.Timeout
-import nl.amony.lib.akka.ServiceKeyBehavior
+import nl.amony.lib.akka.ServiceBehaviors
 import nl.amony.search.InMemoryIndex
 import nl.amony.search.SearchProtocol.QueryMessage
 import nl.amony.service.auth.AuthApi
@@ -49,9 +49,9 @@ object Main extends ConfigLoader with Logging {
 
     implicit val timeout: Timeout = Timeout(10.seconds)
 
-    val userApi      = new AuthApi(system, timeout)
-    val mediaApi     = new MediaApi(system, timeout)
-    val resourcesApi = new ResourceApi(system, timeout, mediaApi)
+    val userApi      = new AuthApi(system)
+    val mediaApi     = new MediaApi(system)
+    val resourcesApi = new ResourceApi(system, mediaApi)
     val adminApi     = new AdminApi(mediaApi, resourcesApi, system, scanner, appConfig)
 
     userApi.upsertUser(userApi.config.adminUsername, userApi.config.adminPassword)

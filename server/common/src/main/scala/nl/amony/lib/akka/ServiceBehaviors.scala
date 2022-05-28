@@ -7,7 +7,7 @@ import scribe.Logging
 
 import scala.reflect.ClassTag
 
-object ServiceKeyBehavior extends Logging {
+object ServiceBehaviors extends Logging {
 
   def apply[T : ClassTag](serviceKey: ServiceKey[T]): Behavior[T] =
     forward[T](serviceKey, Set.empty, true).transformMessages[T](Right(_))

@@ -8,7 +8,6 @@ import akka.persistence.query.EventEnvelope
 import akka.persistence.query.scaladsl.EventsByPersistenceIdQuery
 import akka.stream.Materializer
 import nl.amony.service.media.actor.MediaLibProtocol.{Media, State}
-import nl.amony.search.SearchApi.searchServiceKey
 import nl.amony.search.SearchProtocol._
 import nl.amony.service.media.MediaApi
 import nl.amony.service.media.actor.MediaLibEventSourcing
@@ -25,7 +24,7 @@ object InMemoryIndex {
     val indexActor = context.actorOf(Props(new LocalIndexActor()), "index")
     val typedRef = indexActor.toTyped[QueryMessage]
 
-    context.system.receptionist ! Receptionist.Register(searchServiceKey, typedRef)
+    context.system.receptionist ! Receptionist.Register(QueryMessage.serviceKey, typedRef)
 
     runIndex(indexActor, readJournal)
 

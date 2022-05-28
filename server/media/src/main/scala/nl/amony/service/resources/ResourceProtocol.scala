@@ -2,6 +2,7 @@ package nl.amony.service.resources
 
 import akka.NotUsed
 import akka.actor.typed.ActorRef
+import akka.actor.typed.receptionist.ServiceKey
 import akka.stream.SourceRef
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
@@ -10,6 +11,10 @@ import nl.amony.service.media.actor.MediaLibProtocol.Media
 object ResourceProtocol {
 
   sealed trait ResourceCommand
+
+  object ResourceCommand {
+    implicit val serviceKey: ServiceKey[ResourceCommand] = ServiceKey[ResourceCommand]("resourceService")
+  }
 
   trait IOResponse {
     def size(): Long

@@ -8,7 +8,7 @@ import nl.amony.lib.files.PathOps
 import nl.amony.service.media.MediaConfig.HashingAlgorithm
 import scribe.Logging
 
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 
 object DirectoryWatcher extends Logging {
 
@@ -48,20 +48,25 @@ object DirectoryWatcher extends Logging {
   case object Deleted extends EventType
 
   private[resources] case class DirectoryEvent(eventType: EventType, path: Path) extends LocalDirectoryCommand
-  def ofInterest(path: Path): Boolean = Files.isRegularFile(path) //&& path.fileExtension == Some(".mp4")
 
-  def apply(hashingAlgorithm: HashingAlgorithm, dir: Path): Behavior[LocalDirectoryCommand] =
+  def apply(hashingAlgorithm: HashingAlgorithm, dir: Path, pathFilter: Path => Boolean): Behavior[LocalDirectoryCommand] =
     Behaviors.setup { context =>
       watchPath(dir, context.self)
-      watch(hashingAlgorithm, dir)
+      watch(hashingAlgorithm, dir, pathFilter)
     }
 
-  def watch(hashingAlgorithm: HashingAlgorithm, dir: Path, state: DirectoryState = DirectoryState.empty): Behavior[LocalDirectoryCommand] =
+  def watch(hashingAlgorithm: HashingAlgorithm, dir: Path, pathFilter: Path => Boolean, state: DirectoryState = DirectoryState.empty): Behavior[LocalDirectoryCommand] =
 
     Behaviors.receiveMessagePartial {
 
-      case DirectoryEvent(Added, path) if ofInterest(path) =>
+      case DirectoryEvent(Added, path) if pathFilter(path) =>
 
+        /**
+         *  This attempts to detect file renames/moves without recomputing the hash
+         *  The logic is like this:
+         *  If a file with equal size, created & last modified timestamp was recently (within milliseconds) deleted
+         *  then likely this is the same file and we can re-use the hash of it.
+         */
         val hash = state.deleted.find { info =>
           info.size > 512 &&
           info.size == path.size() &&
@@ -84,9 +89,9 @@ object DirectoryWatcher extends Logging {
 
         val newState = state.copy(files = state.files + localFileInfo)
 
-        watch(hashingAlgorithm, dir, newState)
+        watch(hashingAlgorithm, dir, pathFilter, newState)
 
-      case DirectoryEvent(Modified, path) if ofInterest(path) =>
+      case DirectoryEvent(Modified, path) if pathFilter(path) =>
 
         // should be recently modified
         if (System.currentTimeMillis() - path.lastModifiedMillis < 1000)
@@ -101,7 +106,7 @@ object DirectoryWatcher extends Logging {
           case Some(info) =>
             println(s"Deleted known file: $path")
             val newState = state.copy(deleted = state.deleted + info)
-            watch(hashingAlgorithm, dir, newState)
+            watch(hashingAlgorithm, dir, pathFilter, newState)
           case None =>
             Behaviors.same
         }

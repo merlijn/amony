@@ -34,7 +34,7 @@ object AllRoutes {
 
     implicit val requestTimeout = Timeout(5.seconds)
 
-    val searchApi      = new SearchApi(system, Timeout(5.seconds))
+    val searchApi      = new SearchApi(system)
 
     val identityRoutes = AuthRoutes(userApi)
     val resourceRoutes = ResourceRoutes(resourceApi, config.api.uploadSizeLimit.toBytes.toLong)
