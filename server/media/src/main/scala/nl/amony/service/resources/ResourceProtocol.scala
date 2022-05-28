@@ -7,8 +7,6 @@ import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import nl.amony.service.media.actor.MediaLibProtocol.Media
 
-import java.nio.file.Path
-
 object ResourceProtocol {
 
   sealed trait ResourceCommand
@@ -19,13 +17,10 @@ object ResourceProtocol {
     def getContentRange(start: Long, end: Long): Source[ByteString, NotUsed]
   }
 
-  private[resources] case class ResourceAdded(path: Path) extends ResourceCommand
-  private[resources] case class ResourceDeleted(path: Path) extends ResourceCommand
-  private[resources] case class ResourceModified(path: Path) extends ResourceCommand
-
   case class DeleteResource(hash: String, sender: ActorRef[Boolean]) extends ResourceCommand
+  case class Hash(`type`: String, hash: String)
 
-  case class ResourceInfo(name: String, size: Long, createdTimestamp: Long, changedTimestamp: Long, hashes: List[String])
+  case class ResourceInfo(name: String, size: Long, createdTimestamp: Long, changedTimestamp: Long, hashes: Set[Hash])
 
   case class GetResourceIndex(sender: ActorRef[SourceRef[ResourceInfo]]) extends ResourceCommand
 

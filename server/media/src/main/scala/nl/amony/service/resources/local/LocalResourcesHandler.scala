@@ -4,14 +4,16 @@ import akka.NotUsed
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.util.FastFuture
-import akka.stream.SystemMaterializer
-import akka.stream.scaladsl.{FileIO, Source}
+import akka.stream.{ClosedShape, IOResult, SystemMaterializer}
+import akka.stream.scaladsl.{Broadcast, FileIO, Flow, GraphDSL, Merge, RunnableGraph, Sink, Source}
 import akka.util.ByteString
+import nl.amony.lib.hash.Base16
 import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.resources.ResourceProtocol._
 import scribe.Logging
 
 import java.nio.file.{Files, Path}
+import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 object LocalResourcesHandler extends Logging {
@@ -106,8 +108,18 @@ object LocalResourcesHandler extends Logging {
           Files.createDirectories(config.uploadPath)
           Files.createFile(path)
 
-          sourceRef
-            .runWith(FileIO.toPath(path))
+          val hashSink = {
+            import java.security.MessageDigest
+            Sink.fold[MessageDigest, ByteString](MessageDigest.getInstance("MD5")) {
+              case (digest, bytes) => digest.update(bytes.asByteBuffer); digest
+            }
+          }
+
+          val toPathSink = FileIO.toPath(path)
+
+          val (hashF, ioF) = bcast(sourceRef.source, hashSink, toPathSink).run()
+
+          ioF
             .flatMap { ioResult =>
               ioResult.status match {
                 case Success(_) =>
@@ -124,4 +136,15 @@ object LocalResourcesHandler extends Logging {
       }
     }
   }
+
+  def bcast[T, A, B](s: Source[T, NotUsed], a: Sink[T, A], b: Sink[T, B]): RunnableGraph[(A, B)] =
+    RunnableGraph.fromGraph(GraphDSL.createGraph(a, b)((_, _)) { implicit builder =>
+    (hash, file) =>
+      import GraphDSL.Implicits._
+      val broadcast = builder.add(Broadcast[T](2))
+      s ~> broadcast.in
+      broadcast ~> hash.in
+      broadcast ~> file.in
+      ClosedShape
+  })
 }
