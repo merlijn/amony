@@ -64,9 +64,9 @@ object LocalResourcesTasks extends Logging {
   }
 
   private[resources] def createPreviewSprite(
-                                              config: LocalResourcesConfig,
-                                              media: Media,
-                                              overwrite: Boolean = false) = {
+        config: LocalResourcesConfig,
+        media: Media,
+        overwrite: Boolean = false): Task[Unit] = {
     FFMpeg.createThumbnailTile(
       inputFile      = media.resolvePath(config.mediaPath).toAbsolutePath,
       outputDir      = config.resourcePath,
@@ -76,9 +76,9 @@ object LocalResourcesTasks extends Logging {
   }
 
   private[resources] def createFragments(
-                                          config: LocalResourcesConfig,
-                                          media: Media,
-                                          overwrite: Boolean = false
+    config: LocalResourcesConfig,
+    media: Media,
+    overwrite: Boolean = false
   ): Task[Unit] = {
     Observable
       .fromIterable(media.fragments)

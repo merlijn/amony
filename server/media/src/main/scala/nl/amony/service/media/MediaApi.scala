@@ -5,7 +5,7 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
-import nl.amony.lib.akka.AkkaServiceModule
+import nl.amony.lib.akka.{AkkaServiceModule, ServiceBehaviors}
 import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.media.actor.MediaLibEventSourcing.Event
 import nl.amony.service.media.actor.MediaLibProtocol._
@@ -20,8 +20,7 @@ object MediaApi {
   val mediaPersistenceId = "mediaLib"
 
   def mediaBehaviour(config: LocalResourcesConfig, resourceRef: ActorRef[ResourceCommand]): Behavior[MediaCommand] =
-    Behaviors.setup[MediaCommand] { context =>
-      context.system.receptionist ! Receptionist.Register(MediaCommand.serviceKey, context.self)
+    ServiceBehaviors.setupAndRegister[MediaCommand] { context =>
 
       implicit val ec = context.executionContext
       implicit val sc = context.system.scheduler

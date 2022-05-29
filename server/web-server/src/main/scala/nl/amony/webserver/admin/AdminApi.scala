@@ -118,7 +118,7 @@ class AdminApi(
   def exportLibrary()(implicit timeout: Timeout): Future[String] = {
 
     val objectMapper = JacksonObjectMapperProvider.get(system).getOrCreate("media-export", None)
-    val file         = config.media.indexPath.resolve("export.json").toFile
+    val file         = config.media.getIndexPath().resolve("export.json").toFile
 
     mediaApi.getAll().map { medias =>
       objectMapper.createGenerator(file, JsonEncoding.UTF8).writeObject(medias)

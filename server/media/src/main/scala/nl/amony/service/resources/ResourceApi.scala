@@ -1,15 +1,13 @@
 package nl.amony.service.resources
 
-import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.AskPattern._
-import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.stream.scaladsl.{Source, StreamRefs}
-import akka.util.{ByteString, Timeout}
-import nl.amony.lib.akka.AkkaServiceModule
+import akka.util.ByteString
+import nl.amony.lib.akka.{AkkaServiceModule, ServiceBehaviors}
+import nl.amony.service.media.MediaApi
 import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.media.actor.MediaLibProtocol.Media
-import nl.amony.service.media.MediaApi
 import nl.amony.service.resources.ResourceProtocol._
 import nl.amony.service.resources.local.{DirectoryWatcher, LocalMediaScanner, LocalResourcesHandler}
 
@@ -18,13 +16,16 @@ import scala.concurrent.Future
 
 object ResourceApi {
 
-  def resourceBehaviour(config: LocalResourcesConfig, scanner: LocalMediaScanner): Behavior[ResourceCommand] = {
+  def behavior(config: LocalResourcesConfig, scanner: LocalMediaScanner): Behavior[ResourceCommand] = {
 
-    Behaviors.setup { context =>
-      context.system.receptionist ! Receptionist.Register(ResourceCommand.serviceKey, context.self)
-
-      val filter: Path => Boolean = path => { Files.isRegularFile(path) && config.filterFileName(path.toString) }
-      val behavior = DirectoryWatcher.watch(config.hashingAlgorithm, config.mediaPath, filter)
+    ServiceBehaviors.setupAndRegister[ResourceCommand] { context =>
+      val filter: Path => Boolean = path => {
+        Files.isRegularFile(path) &&
+          !path.startsWith(config.resourcePath) &&
+          !path.startsWith(config.getIndexPath()) &&
+          config.filterFileName(path.toString)
+      }
+      val behavior = DirectoryWatcher(config.hashingAlgorithm, config.mediaPath, filter)
       val ref = context.spawn(behavior, "directory-watcher")
 
       LocalResourcesHandler.apply(config, scanner)

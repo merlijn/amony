@@ -4,9 +4,8 @@ import akka.util.Timeout
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.{Consumer, Observable}
-import nl.amony.lib.FileUtil
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.lib.files.PathOps
+import nl.amony.lib.files.{FileUtil, PathOps}
 import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.media.actor.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
 import scribe.Logging
@@ -72,7 +71,7 @@ class LocalMediaScanner(config: LocalResourcesConfig) extends Logging {
 
     // first calculate the hashes
     val filesWithHashes: List[(Path, String)] = Observable
-      .from(FileUtil.walkDir(config.mediaPath))
+      .from(FileUtil.listFilesInDirRecursive(config.mediaPath))
       .filter { file => config.filterFileName(file.getFileName.toString) }
       .filterNot { file =>
         val isEmpty = Files.size(file) == 0

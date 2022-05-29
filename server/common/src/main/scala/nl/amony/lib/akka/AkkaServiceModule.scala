@@ -30,8 +30,8 @@ abstract class AkkaServiceModule[T : ServiceKey](val system: ActorSystem[Nothing
     config
   }
 
-  def serviceRef()(implicit timeout: Timeout): Future[ActorRef[T]] =
+  def serviceRef(): Future[ActorRef[T]] =
     system.receptionist
-      .ask[Receptionist.Listing](ref => Find(implicitly[ServiceKey[T]], ref))(timeout, system.scheduler)
+      .ask[Receptionist.Listing](ref => Find(implicitly[ServiceKey[T]], ref))(askTimeout, system.scheduler)
       .map(_.serviceInstances(implicitly[ServiceKey[T]]).head)
 }

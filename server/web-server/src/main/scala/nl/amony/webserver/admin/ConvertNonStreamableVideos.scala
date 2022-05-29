@@ -3,9 +3,8 @@ package nl.amony.webserver.admin
 import akka.util.Timeout
 import monix.eval.Task
 import monix.reactive.Observable
-import nl.amony.lib.FileUtil
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.lib.files.PathOps
+import nl.amony.lib.files.{FileUtil, PathOps}
 import nl.amony.service.media.MediaApi
 import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import scribe.Logging
@@ -17,7 +16,7 @@ object ConvertNonStreamableVideos extends Logging {
 
   def convertNonStreamableVideos(config: LocalResourcesConfig, api: MediaApi, adminApi: AdminApi): Unit = {
 
-    val files = FileUtil.walkDir(config.path)
+    val files = FileUtil.listFilesInDirRecursive(config.mediaPath)
 
     implicit val timeout = Timeout(3.seconds)
     implicit val ec      = scala.concurrent.ExecutionContext.global

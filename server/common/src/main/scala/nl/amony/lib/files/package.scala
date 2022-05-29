@@ -16,6 +16,10 @@ package object files {
       path.toString.substring(0, last)
     }
 
+    def withExtension(ext: String) = {
+
+    }
+
     def fileExtension(): Option[String] = {
       val dotIdx = path.toString.lastIndexOf('.')
       if (dotIdx >= 0)
@@ -24,15 +28,11 @@ package object files {
         None
     }
 
-    def creationTimeMillis(): Long = {
-      val attributes = Files.readAttributes(path, classOf[BasicFileAttributes])
-      attributes.creationTime().toMillis
-    }
+    def basicFileAttributes(): BasicFileAttributes = Files.readAttributes(path, classOf[BasicFileAttributes])
 
-    def lastModifiedMillis(): Long = {
-      val attributes = Files.readAttributes(path, classOf[BasicFileAttributes])
-      attributes.lastModifiedTime().toMillis
-    }
+    def creationTimeMillis(): Long = basicFileAttributes().creationTime().toMillis
+
+    def lastModifiedMillis(): Long = basicFileAttributes().lastModifiedTime().toMillis
 
     def absoluteFileName(): String = path.toAbsolutePath.normalize().toString
 
@@ -45,9 +45,6 @@ package object files {
       if (Files.exists(path))
         Files.delete(path)
     }
-
-//    def writeContent(content: String) =
-//      Files.write(path, )
 
     def /(child: String): Path = path.resolve(child)
   }

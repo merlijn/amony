@@ -12,15 +12,16 @@ import java.nio.file.Path
 
 object DirectoryWatcher extends Logging {
 
-  def watchPath(path: Path, actorRef: ActorRef[LocalDirectoryCommand]) = {
+  def watchPath(path: Path, actorRef: ActorRef[LocalDirectoryCommand], pathFilter: Path => Boolean) = {
 
     val watcher =  io.methvin.watcher.DirectoryWatcher.builder.path(path).listener {
       (event: DirectoryChangeEvent) => {
-        event.eventType match {
-          case CREATE => actorRef.tell(DirectoryEvent(Added, event.path()))
-          case MODIFY => actorRef.tell(DirectoryEvent(Modified, event.path()))
-          case DELETE => actorRef.tell(DirectoryEvent(Deleted, event.path()))
-        }
+        if (pathFilter(event.path()))
+          event.eventType match {
+            case CREATE => actorRef.tell(DirectoryEvent(Added, event.path()))
+            case MODIFY => actorRef.tell(DirectoryEvent(Modified, event.path()))
+            case DELETE => actorRef.tell(DirectoryEvent(Deleted, event.path()))
+          }
       }
     }.fileHashing(false).build
 
@@ -51,7 +52,7 @@ object DirectoryWatcher extends Logging {
 
   def apply(hashingAlgorithm: HashingAlgorithm, dir: Path, pathFilter: Path => Boolean): Behavior[LocalDirectoryCommand] =
     Behaviors.setup { context =>
-      watchPath(dir, context.self)
+      watchPath(dir, context.self, pathFilter)
       watch(hashingAlgorithm, dir, pathFilter)
     }
 
@@ -59,7 +60,7 @@ object DirectoryWatcher extends Logging {
 
     Behaviors.receiveMessagePartial {
 
-      case DirectoryEvent(Added, path) if pathFilter(path) =>
+      case DirectoryEvent(Added, path) =>
 
         /**
          *  This attempts to detect file renames/moves without recomputing the hash
@@ -91,7 +92,7 @@ object DirectoryWatcher extends Logging {
 
         watch(hashingAlgorithm, dir, pathFilter, newState)
 
-      case DirectoryEvent(Modified, path) if pathFilter(path) =>
+      case DirectoryEvent(Modified, path) =>
 
         // should be recently modified
         if (System.currentTimeMillis() - path.lastModifiedMillis < 1000)

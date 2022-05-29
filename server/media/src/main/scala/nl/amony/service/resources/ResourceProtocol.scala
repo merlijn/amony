@@ -22,12 +22,7 @@ object ResourceProtocol {
     def getContentRange(start: Long, end: Long): Source[ByteString, NotUsed]
   }
 
-  case class DeleteResource(hash: String, sender: ActorRef[Boolean]) extends ResourceCommand
-  case class Hash(`type`: String, hash: String)
-
-  case class ResourceInfo(name: String, size: Long, createdTimestamp: Long, changedTimestamp: Long, hashes: Set[Hash])
-
-  case class GetResourceIndex(sender: ActorRef[SourceRef[ResourceInfo]]) extends ResourceCommand
+  case class DeleteResource(media: Media, sender: ActorRef[Boolean]) extends ResourceCommand
 
   case class Upload(fileName: String, source: SourceRef[ByteString], sender: ActorRef[Media]) extends ResourceCommand
 
@@ -35,7 +30,6 @@ object ResourceProtocol {
   case class CreateFragment(media: Media, timeRange: (Long, Long), overwrite: Boolean, sender: ActorRef[Boolean])
       extends ResourceCommand
   case class DeleteFragment(media: Media, timeRange: (Long, Long)) extends ResourceCommand
-
 
   case class GetThumbnail(mediaHash: String, timestamp: Long, quality: Int, sender: ActorRef[IOResponse])
       extends ResourceCommand

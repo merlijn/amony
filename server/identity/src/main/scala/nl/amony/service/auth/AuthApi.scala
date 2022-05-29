@@ -41,10 +41,10 @@ class AuthApi(system: ActorSystem[Nothing]) extends AkkaServiceModule[UserComman
   val expirationInSeconds = config.jwt.tokenExpiration.toSeconds
   val algo                = JwtAlgorithm.HS256 // TODO get from config
 
-  def upsertUser(userName: String, password: String)(implicit timeout: Timeout): Future[User] =
+  def upsertUser(userName: String, password: String): Future[User] =
     askService[User](ref => UpsertUser(userName, password, ref))
 
-  def login(username: String, password: String)(implicit timeout: Timeout): Future[AuthenticationResponse] =
+  def login(username: String, password: String): Future[AuthenticationResponse] =
     askService[AuthenticationResponse](ref => Authenticate(username, password, ref))
 
   def createToken(userId: String): String = {

@@ -1,20 +1,19 @@
 package nl.amony.service.media.actor
 
+import akka.actor.typed.scaladsl.AskPattern._
+import akka.actor.typed.scaladsl.adapter._
 import akka.actor.typed.{ActorRef, Scheduler}
 import akka.persistence.typed.scaladsl.Effect
 import akka.util.Timeout
-import nl.amony.service.media.MediaConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
+import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.media.actor.MediaLibEventSourcing._
 import nl.amony.service.media.actor.MediaLibProtocol._
 import nl.amony.service.resources.ResourceProtocol
-import nl.amony.service.resources.ResourceProtocol.ResourceCommand
+import nl.amony.service.resources.ResourceProtocol.{DeleteResource, ResourceCommand}
 import scribe.Logging
 
-import java.awt.Desktop
-import java.nio.file.{Files, Path}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.DurationInt
-import akka.actor.typed.scaladsl.AskPattern._
 
 object MediaLibCommandHandler extends Logging {
 
@@ -55,17 +54,6 @@ object MediaLibCommandHandler extends Logging {
     }
     // format: on
 
-    def deleteMedia(path: Path): Unit = {
-      if (Files.exists(path)) {
-        config.deleteMedia match {
-          case DeleteFile =>
-            Files.delete(path)
-          case MoveToTrash =>
-            Desktop.getDesktop().moveToTrash(path.toFile())
-        }
-      };
-    }
-
     cmd match {
 
       case UpsertMedia(media, sender) =>
@@ -91,13 +79,12 @@ object MediaLibCommandHandler extends Logging {
 
       case RemoveMedia(mediaId, deleteFile, sender) =>
         val media = state.media(mediaId)
-        val path  = media.resolvePath(config.mediaPath)
 
         logger.info(s"Deleting media '$mediaId:${media.fileInfo.relativePath}'")
 
         Effect
           .persist(MediaRemoved(mediaId))
-          .thenRun((s: State) => if (deleteFile) deleteMedia(path))
+          .thenRun((s: State) => if (deleteFile) resourceRef.tell(DeleteResource(media, akka.actor.ActorRef.noSender.toTyped[Boolean])))
           .thenReply(sender)(_ => true)
 
       case GetById(id, sender) =>

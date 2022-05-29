@@ -4,16 +4,16 @@ import akka.NotUsed
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.util.FastFuture
-import akka.stream.{ClosedShape, IOResult, SystemMaterializer}
-import akka.stream.scaladsl.{Broadcast, FileIO, Flow, GraphDSL, Merge, RunnableGraph, Sink, Source}
+import akka.stream.scaladsl.{Broadcast, FileIO, GraphDSL, RunnableGraph, Sink, Source}
+import akka.stream.{ClosedShape, SystemMaterializer}
 import akka.util.ByteString
 import nl.amony.lib.hash.Base16
-import nl.amony.service.media.MediaConfig.LocalResourcesConfig
+import nl.amony.service.media.MediaConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
 import nl.amony.service.resources.ResourceProtocol._
 import scribe.Logging
 
+import java.awt.Desktop
 import java.nio.file.{Files, Path}
-import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 object LocalResourcesHandler extends Logging {
@@ -34,19 +34,22 @@ object LocalResourcesHandler extends Logging {
 
       msg match {
 
-        case GetResourceIndex(sender) =>
-          Behaviors.same
+        case DeleteResource(media, sender) =>
 
-        case DeleteResource(hash, sender) =>
+          val path = media.resolvePath(config.mediaPath)
+
+          if (Files.exists(path)) {
+            config.deleteMedia match {
+              case DeleteFile =>
+                Files.delete(path)
+              case MoveToTrash =>
+                Desktop.getDesktop().moveToTrash(path.toFile())
+            }
+          };
+
+          sender.tell(true)
+
           Behaviors.same
-//          if (Files.exists(path)) {
-//            config.deleteMedia match {
-//              case DeleteFile =>
-//                Files.delete(path)
-//              case MoveToTrash =>
-//                Desktop.getDesktop().moveToTrash(path.toFile())
-//            }
-//          };
 
         case GetThumbnail(mediaId, timestamp, quality, sender) =>
           val path = config.resourcePath.resolve(s"${mediaId}-${timestamp}_${quality}p.webp")
@@ -103,14 +106,14 @@ object LocalResourcesHandler extends Logging {
         case Upload(fileName, sourceRef, sender) =>
           logger.info(s"Processing upload request: $fileName")
 
-          val path = config.uploadPath.resolve(fileName).toAbsolutePath.normalize()
+          val path = config.uploadPath.resolve(fileName)
 
           Files.createDirectories(config.uploadPath)
           Files.createFile(path)
 
           val hashSink = {
             import java.security.MessageDigest
-            Sink.fold[MessageDigest, ByteString](MessageDigest.getInstance("MD5")) {
+            Sink.fold[MessageDigest, ByteString](MessageDigest.getInstance(config.hashingAlgorithm.algorithm)) {
               case (digest, bytes) => digest.update(bytes.asByteBuffer); digest
             }
           }
@@ -119,11 +122,16 @@ object LocalResourcesHandler extends Logging {
 
           val (hashF, ioF) = bcast(sourceRef.source, hashSink, toPathSink).run()
 
-          ioF
-            .flatMap { ioResult =>
+          val futureResult = for (
+            hash     <- hashF;
+            ioResult <- ioF
+          ) yield (config.hashingAlgorithm.encodeHash(hash.digest()), ioResult)
+
+          futureResult
+            .flatMap { case (hash, ioResult) =>
               ioResult.status match {
                 case Success(_) =>
-                  scanner.scanMedia(path, None).runToFuture
+                  scanner.scanMedia(path, Some(hash)).runToFuture
                 case Failure(t) =>
                   logger.warn(s"Upload failed", t)
                   Files.delete(path)
