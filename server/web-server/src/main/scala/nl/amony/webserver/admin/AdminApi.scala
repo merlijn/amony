@@ -84,14 +84,17 @@ class AdminApi(
     mediaApi.getAll().foreach { medias =>
       logger.info("Verifying all file hashes...")
 
+      val start = System.currentTimeMillis()
+
       medias.foreach { m =>
+
         val hash = config.media.hashingAlgorithm.generateHash(config.media.mediaPath.resolve(m.fileInfo.relativePath))
 
         if (hash != m.fileInfo.hash)
           logger.warn(s"hash not equal: ${hash} != ${m.fileInfo.hash}")
       }
 
-      logger.info("Done ...")
+      logger.info(s"Done ... in ${System.currentTimeMillis() - start} millis")
     }
   }
 

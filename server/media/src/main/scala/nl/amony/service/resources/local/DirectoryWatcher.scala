@@ -12,6 +12,15 @@ import java.nio.file.Path
 
 object DirectoryWatcher extends Logging {
 
+  trait DirectoryStore {
+
+    def store(info: LocalFileInfo): Unit
+
+    def getByHash(hash: String): LocalFileInfo
+
+    def getByPath(path: Path): LocalFileInfo
+  }
+
   def watchPath(path: Path, actorRef: ActorRef[LocalDirectoryCommand], pathFilter: Path => Boolean) = {
 
     val watcher =  io.methvin.watcher.DirectoryWatcher.builder.path(path).listener {
@@ -50,8 +59,13 @@ object DirectoryWatcher extends Logging {
 
   private[resources] case class DirectoryEvent(eventType: EventType, path: Path) extends LocalDirectoryCommand
 
+  case object Init extends LocalDirectoryCommand
+
   def apply(hashingAlgorithm: HashingAlgorithm, dir: Path, pathFilter: Path => Boolean): Behavior[LocalDirectoryCommand] =
     Behaviors.setup { context =>
+
+      context.self.tell(Init)
+
       watchPath(dir, context.self, pathFilter)
       watch(hashingAlgorithm, dir, pathFilter)
     }
@@ -60,11 +74,15 @@ object DirectoryWatcher extends Logging {
 
     Behaviors.receiveMessagePartial {
 
+      case Init =>
+        logger.info("--- Received init")
+        Behaviors.same
+
       case DirectoryEvent(Added, path) =>
 
         /**
          *  This attempts to detect file renames/moves without recomputing the hash
-         *  The logic is like this:
+         *  The idea is:
          *  If a file with equal size, created & last modified timestamp was recently (within milliseconds) deleted
          *  then likely this is the same file and we can re-use the hash of it.
          */

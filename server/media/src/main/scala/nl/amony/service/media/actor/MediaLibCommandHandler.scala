@@ -80,7 +80,7 @@ object MediaLibCommandHandler extends Logging {
       case RemoveMedia(mediaId, deleteFile, sender) =>
         val media = state.media(mediaId)
 
-        logger.info(s"Deleting media '$mediaId:${media.fileInfo.relativePath}'")
+        logger.info(s"Deleting media '$mediaId - ${media.fileInfo.relativePath}'")
 
         Effect
           .persist(MediaRemoved(mediaId))
@@ -98,7 +98,7 @@ object MediaLibCommandHandler extends Logging {
           if (idx < 0 || idx >= media.fragments.size)
             invalidCommand(sender, s"Index out of bounds ($idx): valid range is from 0 to ${media.fragments.size - 1}")
           else {
-            logger.info(s"Deleting fragment $id:$idx")
+            logger.info(s"Deleting fragment '$id - $idx'")
             Effect
               .persist(FragmentDeleted(id, idx))
               .thenRun { (_: State) =>

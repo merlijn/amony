@@ -13,6 +13,7 @@ val circeVersion    = "0.14.1"
 
 val akka                     = "com.typesafe.akka"        %% "akka-actor-typed"           % akkaVersion
 val akkaPersistence          = "com.typesafe.akka"        %% "akka-persistence-typed"     % akkaVersion
+val akkaPersistenceJdbc      = "com.lightbend.akka"       %% "akka-persistence-jdbc"      % "5.0.4"
 val akkaStream               = "com.typesafe.akka"        %% "akka-stream"                % akkaVersion
 val akkaPersistenceQuery     = "com.typesafe.akka"        %% "akka-persistence-query"     % akkaVersion
 val akkaSerializationJackson = "com.typesafe.akka"        %% "akka-serialization-jackson" % akkaVersion
@@ -33,6 +34,9 @@ val monixReactive            = "io.monix"                 %% "monix-reactive"   
 
 val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.12"           % Test
 val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
+
+val hsqlDB                   = "org.hsqldb" % "hsqldb" % "2.6.1"
+val flywayDbCore                 = "org.flywaydb" % "flyway-core" % "8.5.12"
 
 val pureConfig               = "com.github.pureconfig"    %% "pureconfig"                 % "0.17.1" // no scala 3
 val pureConfigSquants        = "com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.1" // no scala 3
@@ -84,6 +88,7 @@ lazy val common =
         akkaPersistence,
         pureConfig,
         scribeSlf4j,
+        scalaTest
       )
     )
 
@@ -156,7 +161,7 @@ lazy val amonyServer =
         akkaPersistence,
         akkaPersistenceQuery,
         akkaSerializationJackson,
-        levelDb, levelDbJndiAll,
+        levelDb, levelDbJndiAll, hsqlDB, flywayDbCore, akkaPersistenceJdbc,
 
         // akka http & json serialization
         akkaHttp, akkaHttpCirce,

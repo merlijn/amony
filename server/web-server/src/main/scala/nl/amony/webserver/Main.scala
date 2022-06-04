@@ -2,8 +2,11 @@ package nl.amony.webserver
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
+import akka.persistence.jdbc.db.SlickExtension
+import akka.persistence.jdbc.query.scaladsl.JdbcReadJournal
 import akka.persistence.query.PersistenceQuery
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
+import akka.persistence.query.scaladsl.EventsByPersistenceIdQuery
 import akka.stream.Materializer
 import akka.util.Timeout
 import nl.amony.lib.akka.ServiceBehaviors
@@ -14,9 +17,11 @@ import nl.amony.service.media.MediaApi
 import nl.amony.service.resources.ResourceApi
 import nl.amony.service.resources.local.LocalMediaScanner
 import nl.amony.webserver.admin.AdminApi
+import nl.amony.webserver.database.DatabaseMigrations
+import org.flywaydb.core.Flyway
 import scribe.Logging
 
-import java.nio.file.Files
+import java.nio.file.{Files, Path}
 import scala.concurrent.duration.DurationInt
 
 object Main extends ConfigLoader with Logging {
@@ -25,8 +30,13 @@ object Main extends ConfigLoader with Logging {
     Behaviors.setup[Nothing] { context =>
       implicit val mat = Materializer(context)
 
-      val readJournal =
-        PersistenceQuery(context.system).readJournalFor[LeveldbReadJournal]("akka.persistence.query.journal.leveldb")
+      DatabaseMigrations.run(context.system)
+
+      val readJournal: EventsByPersistenceIdQuery =
+        PersistenceQuery(context.system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
+
+      //      val readJournal =
+//        PersistenceQuery(context.system).readJournalFor[LeveldbReadJournal]("akka.persistence.query.journal.leveldb")
 
       val localIndexRef: ActorRef[QueryMessage] = InMemoryIndex.apply(context, readJournal)
 
@@ -58,6 +68,8 @@ object Main extends ConfigLoader with Logging {
 
     Thread.sleep(500)
     adminApi.scanLibrary()(timeout.duration)
+
+//    startDb(appConfig.media.getIndexPath())
 
 //    adminApi.generatePreviewSprites()
 

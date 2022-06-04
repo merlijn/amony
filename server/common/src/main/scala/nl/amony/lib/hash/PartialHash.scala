@@ -11,6 +11,8 @@ import scala.util.{Random, Using}
 
 object PartialHash extends Logging {
 
+  val blockSize = 4096
+
   /**
    * Randomly samples given number of bytes from a file.
    *

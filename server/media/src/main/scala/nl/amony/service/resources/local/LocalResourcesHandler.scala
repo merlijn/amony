@@ -37,6 +37,7 @@ object LocalResourcesHandler extends Logging {
         case DeleteResource(media, sender) =>
 
           val path = media.resolvePath(config.mediaPath)
+          logger.info(s"Deleting file: ${path}")
 
           if (Files.exists(path)) {
             config.deleteMedia match {

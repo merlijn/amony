@@ -12,6 +12,8 @@ object Base32 {
   // format: on
 
   val byteN = 8
+
+  // 2^5 = 32
   val baseN = 5
 
   /** Returns n bits in the byte at pos shifted all the way to right
@@ -47,16 +49,17 @@ object Base32 {
 
       val idx = {
         // 5 bit chunk fits in current byte
+        // TODO fix bug, should be: baseN <= byteN
         if (offset + baseN < byteN) {
           bitsAt(bytes(index), offset, offset + baseN)
         // 5 bit chunk is divided over 2 bytes
         } else if (index < bytes.length - 1) {
-
           val n2 = offset - (byteN - baseN) + 1
           val c1 = bitsAt(bytes(index), offset, byteN)
           val c2 = bitsAt(bytes(index + 1), 0, n2)
 
           (c1 << (n2 - 1)) | c2
+        // last chunk
         } else {
           bitsAt(bytes(index), offset, byteN)
         }
