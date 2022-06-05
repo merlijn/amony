@@ -88,7 +88,7 @@ class AdminApi(
 
       medias.foreach { m =>
 
-        val hash = config.media.hashingAlgorithm.generateHash(config.media.mediaPath.resolve(m.fileInfo.relativePath))
+        val hash = config.media.hashingAlgorithm.createHash(config.media.mediaPath.resolve(m.fileInfo.relativePath))
 
         if (hash != m.fileInfo.hash)
           logger.warn(s"hash not equal: ${hash} != ${m.fileInfo.hash}")
@@ -104,7 +104,7 @@ class AdminApi(
       logger.info("Updating hashes ...")
 
       medias.foreach { m =>
-        val hash = config.media.hashingAlgorithm.generateHash(config.media.mediaPath.resolve(m.fileInfo.relativePath))
+        val hash = config.media.hashingAlgorithm.createHash(config.media.mediaPath.resolve(m.fileInfo.relativePath))
 
         if (hash != m.fileInfo.hash) {
 

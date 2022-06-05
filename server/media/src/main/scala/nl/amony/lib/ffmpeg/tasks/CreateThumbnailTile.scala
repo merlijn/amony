@@ -51,7 +51,7 @@ trait CreateThumbnailTile extends Logging {
        overwrite: Boolean = false
   ): Task[Unit] = {
 
-    val fileBaseName = outputBaseName.getOrElse(inputFile.getFileName.stripExtension())
+    val fileBaseName = outputBaseName.getOrElse(inputFile.getFileName.stripExtension().toString)
 
     val vttFilename  = s"$fileBaseName.vtt"
     val webpFilename = s"$fileBaseName.webp"

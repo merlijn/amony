@@ -52,13 +52,13 @@ object MediaConfig {
 
   sealed trait HashingAlgorithm {
     def algorithm: String
-    def generateHash(path: Path): String
+    def createHash(path: Path): String
     def encodeHash(bytes: Array[Byte]): String
   }
 
   case object PartialHash extends HashingAlgorithm {
     override val algorithm = "SHA-1"
-    override def generateHash(path: Path): String =
+    override def createHash(path: Path): String =
       partialHash(
         file    = path,
         nBytes  = 512,

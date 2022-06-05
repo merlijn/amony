@@ -20,7 +20,7 @@ class LocalMediaScanner(config: LocalResourcesConfig) extends Logging {
     FFMpeg
       .ffprobe(mediaPath, false, config.ffprobeTimeout)
       .map { case probe =>
-        val fileHash = hash.getOrElse(config.hashingAlgorithm.generateHash(mediaPath))
+        val fileHash = hash.getOrElse(config.hashingAlgorithm.createHash(mediaPath))
 
         val mainVideoStream =
           probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${mediaPath}"))
@@ -71,7 +71,7 @@ class LocalMediaScanner(config: LocalResourcesConfig) extends Logging {
 
     // first calculate the hashes
     val filesWithHashes: List[(Path, String)] = Observable
-      .from(FileUtil.listFilesInDirRecursive(config.mediaPath))
+      .from(FileUtil.listFilesInDirectoryRecursive(config.mediaPath))
       .filter { file => config.filterFileName(file.getFileName.toString) }
       .filterNot { file =>
         val isEmpty = Files.size(file) == 0
@@ -82,18 +82,18 @@ class LocalMediaScanner(config: LocalResourcesConfig) extends Logging {
       .mapParallelUnordered(config.scanParallelFactor) { path =>
         Task {
           val hash = if (config.verifyExistingHashes) {
-            config.hashingAlgorithm.generateHash(path)
+            config.hashingAlgorithm.createHash(path)
           } else {
             val relativePath = config.mediaPath.relativize(path).toString
 
             persistedMedia.find(_.fileInfo.relativePath == relativePath) match {
-              case None => config.hashingAlgorithm.generateHash(path)
+              case None => config.hashingAlgorithm.createHash(path)
               case Some(m) =>
                 val fileAttributes = Files.readAttributes(path, classOf[BasicFileAttributes])
 
                 if (m.fileInfo.lastModifiedTime != fileAttributes.lastModifiedTime().toMillis) {
                   logger.warn(s"$path last modified time is different from what last seen, recomputing hash")
-                  config.hashingAlgorithm.generateHash(path)
+                  config.hashingAlgorithm.createHash(path)
                 } else {
                   m.fileInfo.hash
                 }

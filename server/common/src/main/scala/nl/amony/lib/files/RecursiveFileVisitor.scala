@@ -7,7 +7,7 @@ import java.nio.file.{FileVisitResult, Path, SimpleFileVisitor}
 import java.nio.file.attribute.BasicFileAttributes
 import scala.collection.mutable
 
-class RecursiveFileVisitor extends SimpleFileVisitor[Path] with Logging {
+class RecursiveFileVisitor(skipHiddenFiles: Boolean) extends SimpleFileVisitor[Path] with Logging {
 
   private val files = mutable.ListBuffer.empty[Path]
 
@@ -16,7 +16,7 @@ class RecursiveFileVisitor extends SimpleFileVisitor[Path] with Logging {
   @throws[IOException]
   override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult = {
 
-    if (dir.getFileName.toString.startsWith("."))
+    if (dir.getFileName.toString.startsWith(".") && skipHiddenFiles)
       FileVisitResult.SKIP_SUBTREE
     else
       FileVisitResult.CONTINUE

@@ -4,14 +4,13 @@ import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.stream.scaladsl.{Source, StreamRefs}
 import akka.util.ByteString
-import nl.amony.lib.akka.{AkkaServiceModule, ServiceBehaviors}
+import nl.amony.lib.akka.{AkkaServiceModule, AtLeastOnceProcessor, ServiceBehaviors}
 import nl.amony.service.media.MediaApi
 import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.media.actor.MediaLibProtocol.Media
 import nl.amony.service.resources.ResourceProtocol._
 import nl.amony.service.resources.local.{DirectoryWatcher, LocalMediaScanner, LocalResourcesHandler}
 
-import java.nio.file.{Files, Path}
 import scala.concurrent.Future
 
 object ResourceApi {
@@ -19,14 +18,8 @@ object ResourceApi {
   def behavior(config: LocalResourcesConfig, scanner: LocalMediaScanner): Behavior[ResourceCommand] = {
 
     ServiceBehaviors.setupAndRegister[ResourceCommand] { context =>
-      val filter: Path => Boolean = path => {
-        Files.isRegularFile(path) &&
-          !path.startsWith(config.resourcePath) &&
-          !path.startsWith(config.getIndexPath()) &&
-          config.filterFileName(path.toString)
-      }
-      val behavior = DirectoryWatcher(config.hashingAlgorithm, config.mediaPath, filter)
-      val ref = context.spawn(behavior, "directory-watcher")
+
+      context.spawn(DirectoryWatcher.behavior(config), "directory-watcher")
 
       LocalResourcesHandler.apply(config, scanner)
     }

@@ -18,7 +18,7 @@ import scala.concurrent.Future
 import scala.util.Try
 
 object AuthApi {
-  def userBehaviour(): Behavior[UserCommand] = {
+  def behavior(): Behavior[UserCommand] = {
 
     Behaviors.setup { context =>
       context.system.receptionist ! Receptionist.Register(UserCommand.serviceKey, context.self)

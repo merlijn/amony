@@ -19,7 +19,7 @@ object MediaApi {
 
   val mediaPersistenceId = "mediaLib"
 
-  def mediaBehaviour(config: LocalResourcesConfig, resourceRef: ActorRef[ResourceCommand]): Behavior[MediaCommand] =
+  def behavior(config: LocalResourcesConfig, resourceRef: ActorRef[ResourceCommand]): Behavior[MediaCommand] =
     ServiceBehaviors.setupAndRegister[MediaCommand] { context =>
 
       implicit val ec = context.executionContext

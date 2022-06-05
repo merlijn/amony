@@ -9,30 +9,30 @@ import scala.reflect.ClassTag
 
 object ServiceBehaviors extends Logging {
 
-  def apply[T : ClassTag](serviceKey: ServiceKey[T]): Behavior[T] =
-    forward[T](serviceKey, Set.empty, true).transformMessages[T](Right(_))
+  def forwardToService[T : ClassTag](serviceKey: ServiceKey[T]): Behavior[T] = {
 
-  private def forward[T : ClassTag](serviceKey: ServiceKey[T], listings: Set[ActorRef[T]], subscribe: Boolean): Behavior[Either[Receptionist.Listing, T]] = {
-
-    Behaviors.setup[Either[Receptionist.Listing, T]] { context =>
-
-      if (subscribe) {
-        val listingsAdaper = context.messageAdapter[Receptionist.Listing](listings => Left(listings))
-        context.system.receptionist ! Receptionist.Subscribe(serviceKey, listingsAdaper)
-      }
+    def forwardToServiceInternal(listings: Set[ActorRef[T]]): Behavior[Either[Receptionist.Listing, T]] = {
 
       Behaviors.receiveMessage[Either[Receptionist.Listing, T]] {
         case Left(listings) =>
-          forward[T](serviceKey, listings.serviceInstances(serviceKey), false)
+          forwardToServiceInternal(listings.serviceInstances(serviceKey))
         case Right(msg) =>
-          if (!listings.isEmpty) {
+          if (!listings.isEmpty)
             listings.head.tell(msg)
-          } else
+          else
             logger.info(s"${serviceKey.id} not yet started, dropped message of type '${msg.getClass}' ")
 
           Behaviors.same
       }
     }
+
+    Behaviors.setup[Either[Receptionist.Listing, T]] { context =>
+
+      val listingsAdapter = context.messageAdapter[Receptionist.Listing](listings => Left(listings))
+      context.system.receptionist ! Receptionist.Subscribe(serviceKey, listingsAdapter)
+
+      forwardToServiceInternal(Set.empty)
+    }.transformMessages[T](Right(_))
   }
 
   def withRegistration[T: ServiceKey](factory: => Behavior[T]): Behavior[T] =

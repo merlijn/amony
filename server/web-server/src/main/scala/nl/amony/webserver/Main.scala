@@ -30,21 +30,12 @@ object Main extends ConfigLoader with Logging {
     Behaviors.setup[Nothing] { context =>
       implicit val mat = Materializer(context)
 
-      DatabaseMigrations.run(context.system)
+//      DatabaseMigrations.run(context.system)
 
-      val readJournal: EventsByPersistenceIdQuery =
-        PersistenceQuery(context.system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
-
-      //      val readJournal =
-//        PersistenceQuery(context.system).readJournalFor[LeveldbReadJournal]("akka.persistence.query.journal.leveldb")
-
-      val localIndexRef: ActorRef[QueryMessage] = InMemoryIndex.apply(context, readJournal)
-
+      val localIndexRef: ActorRef[QueryMessage] = InMemoryIndex.apply(context)
       val resourceRef = context.spawn(ResourceApi.behavior(config.media, scanner), "resources")
-
-      val mediaRef    = context.spawn(MediaApi.mediaBehaviour(config.media, resourceRef), "medialib")
-
-      val userRef     = context.spawn(AuthApi.userBehaviour(), "users")
+      val mediaRef    = context.spawn(MediaApi.behavior(config.media, resourceRef), "medialib")
+      val userRef     = context.spawn(AuthApi.behavior(), "users")
 
       Behaviors.empty
     }
@@ -68,8 +59,6 @@ object Main extends ConfigLoader with Logging {
 
     Thread.sleep(500)
     adminApi.scanLibrary()(timeout.duration)
-
-//    startDb(appConfig.media.getIndexPath())
 
 //    adminApi.generatePreviewSprites()
 

@@ -13,10 +13,10 @@ object FileUtil extends Logging {
     fileName.substring(0, last)
   }
 
-  def listFilesInDirRecursive(dir: Path): Iterable[Path] = {
+  def listFilesInDirectoryRecursive(dir: Path, skipHiddenFiles: Boolean = true): Iterable[Path] = {
     import java.nio.file.Files
 
-    val r = new RecursiveFileVisitor
+    val r = new RecursiveFileVisitor(skipHiddenFiles)
     Files.walkFileTree(dir, r)
     r.getFiles()
   }

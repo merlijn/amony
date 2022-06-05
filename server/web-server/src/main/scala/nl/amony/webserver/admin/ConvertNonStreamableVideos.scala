@@ -16,7 +16,7 @@ object ConvertNonStreamableVideos extends Logging {
 
   def convertNonStreamableVideos(config: LocalResourcesConfig, api: MediaApi, adminApi: AdminApi): Unit = {
 
-    val files = FileUtil.listFilesInDirRecursive(config.mediaPath)
+    val files = FileUtil.listFilesInDirectoryRecursive(config.mediaPath)
 
     implicit val timeout = Timeout(3.seconds)
     implicit val ec      = scala.concurrent.ExecutionContext.global
@@ -32,8 +32,8 @@ object ConvertNonStreamableVideos extends Logging {
           logger.info(s"Creating faststart/streamable mp4 for: ${videoWithoutFastStart}")
 
           val out     = FFMpeg.addFastStart(videoWithoutFastStart)
-          val oldHash = config.hashingAlgorithm.generateHash(videoWithoutFastStart)
-          val newHash = config.hashingAlgorithm.generateHash(out)
+          val oldHash = config.hashingAlgorithm.createHash(videoWithoutFastStart)
+          val newHash = config.hashingAlgorithm.createHash(out)
 
           logger.info(s"$oldHash -> $newHash: ${config.mediaPath.relativize(out).toString}")
 
