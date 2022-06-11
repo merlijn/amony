@@ -166,6 +166,7 @@ jobs:
       - my-gcp/build-and-publish:
           image: "amony/app"
           artifact-registry-name: "docker-images"
+          tag: $CIRCLE_BRANCH
 
 workflows:
   build_and_test:
