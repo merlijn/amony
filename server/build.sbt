@@ -3,44 +3,59 @@ import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
 
 // --- Dependencies
 
-val akkaVersion     = "2.6.17"
-val akkaHttpVersion = "10.2.7"
+
+val excludeLog4j =
+  ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl")
+
+val akkaVersion     = "2.6.19"
+val akkaHttpVersion = "10.2.9"
 val circeVersion    = "0.14.1"
 
 val akka                     = "com.typesafe.akka"        %% "akka-actor-typed"           % akkaVersion
 val akkaPersistence          = "com.typesafe.akka"        %% "akka-persistence-typed"     % akkaVersion
+val akkaPersistenceJdbc      = "com.lightbend.akka"       %% "akka-persistence-jdbc"      % "5.0.4"         // no scala 3
 val akkaStream               = "com.typesafe.akka"        %% "akka-stream"                % akkaVersion
 val akkaPersistenceQuery     = "com.typesafe.akka"        %% "akka-persistence-query"     % akkaVersion
-val akkaHttp                 = "com.typesafe.akka"        %% "akka-http"                  % akkaHttpVersion
 val akkaSerializationJackson = "com.typesafe.akka"        %% "akka-serialization-jackson" % akkaVersion
 
-val circe                    = "io.circe"                 %% "circe-core"                 % "0.14.1"
-val circeGeneric             = "io.circe"                 %% "circe-generic"              % "0.14.1"
-val circeParser              = "io.circe"                 %% "circe-parser"               % "0.14.1"
-val akkaHttpCirce            = "de.heikoseeberger"        %% "akka-http-circe"            % "1.36.0"
+val akkaHttp                 = "com.typesafe.akka"        %% "akka-http"                  % akkaHttpVersion // no scala 3
+val akkaHttpCirce            = "de.heikoseeberger"        %% "akka-http-circe"            % "1.39.2"        // no scala 3
 
-val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.2"
+val circe                    = "io.circe"                 %% "circe-core"                 % circeVersion
+val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
+val circeParser              = "io.circe"                 %% "circe-parser"               % circeVersion
+
+val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.3.3"
+
+val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.5"
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "1.7.30"
 val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.5.5"
 
-val betterFiles              = "com.github.pathikrit"     %% "better-files"               % "3.9.1"
+val monixReactive            = "io.monix"                 %% "monix-reactive"             % "3.4.1"
 
-val monixReactive            = "io.monix"                 %% "monix-reactive"             % "3.4.0"
+val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.12"           % Test
+val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
 
-val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.9"           % Test
-val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.9.0"         % Test
+val hsqlDB                   = "org.hsqldb"                % "hsqldb" % "2.6.1"
+val flywayDbCore             = "org.flywaydb"              % "flyway-core" % "8.5.12"
 
-val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.1"
-val pureConfig               = "com.github.pureconfig"    %% "pureconfig"                 % "0.17.1"
-val pureConfigSquants        = "com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.1"
+val pureConfig               = "com.github.pureconfig"    %% "pureconfig"                 % "0.17.1" // no scala 3
+val pureConfigSquants        = "com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.1" // no scala 3
+val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.2"
+
+//val betterFiles              = "com.github.pathikrit"     %% "better-files"               % "3.9.1"
+val directoryWatcher         = "io.methvin"                % "directory-watcher"          % "0.15.0"
+val solr                     = "org.apache.solr"           % "solr-core"                  % "8.11.1" excludeAll(excludeLog4j)
+val solrLangId               = "org.apache.solr"           % "solr-langid"                % "8.11.1" excludeAll(excludeLog4j)
+
+val levelDb                  = "org.iq80.leveldb"          % "leveldb"                    % "0.12"
+val levelDbJndiAll           = "org.fusesource.leveldbjni" % "leveldbjni-all"             % "1.8"
 
 val javaOpts = Nil
 
 
 // -- Shared options
 
-val excludeLog4j =
-  ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl")
 
 val commonSettings = Seq(
   organization := "nl.amony",
@@ -72,9 +87,10 @@ lazy val common =
       libraryDependencies ++= Seq(
         akka,
         akkaPersistence,
-        akkaHttp,
-        akkaHttpCirce,
         pureConfig,
+        scribeSlf4j,
+        scalaTest,
+        directoryWatcher
       )
     )
 
@@ -96,8 +112,10 @@ lazy val media =
     .settings(
       name := "amony-service-media",
       libraryDependencies ++= Seq(
-        scribeSlf4j, akka, akkaPersistence, akkaHttp, akkaHttpCirce, circe, circeGeneric, betterFiles, monixReactive,
-        "io.methvin"                % "directory-watcher"          % "0.15.0",
+        scribeSlf4j, akka, akkaPersistence, akkaHttp, akkaHttpCirce, circe, circeGeneric, monixReactive,
+        directoryWatcher,
+        scalaTest,
+        slick
       )
     )
 
@@ -119,9 +137,7 @@ lazy val solrSearch =
       name := "amony-service-search-solr",
       libraryDependencies ++= Seq(
         slf4jApi, scribeSlf4j,
-        akka,
-        "org.apache.solr"           % "solr-core"                  % "8.11.1" excludeAll(excludeLog4j),
-        "org.apache.solr"           % "solr-langid"                % "8.11.1" excludeAll(excludeLog4j),
+        akka, solr, solrLangId
       )
     )
 
@@ -130,7 +146,7 @@ lazy val amonyServer =
     .dependsOn(identity, media, searchApi)
     .settings(
       name := "amony-web-server",
-      reStart / javaOptions ++= javaOpts ,
+      reStart / javaOptions ++= javaOpts,
       run / fork             := true,
       run / javaOptions     ++= javaOpts,
       libraryDependencies ++= Seq(
@@ -148,18 +164,14 @@ lazy val amonyServer =
         akkaPersistence,
         akkaPersistenceQuery,
         akkaSerializationJackson,
-        "org.fusesource.leveldbjni" % "leveldbjni-all"             % "1.8",
-        "org.iq80.leveldb"          % "leveldb"                    % "0.12",
+        levelDb, levelDbJndiAll, hsqlDB, flywayDbCore, akkaPersistenceJdbc,
 
         // akka http & json serialization
-        akkaHttp,
-        jwtCirce,
-        akkaHttpCirce,
+        akkaHttp, akkaHttpCirce,
         circe,
         circeGeneric,
         circeParser,
 
-        betterFiles,
         monixReactive,
 
         // test
@@ -168,9 +180,9 @@ lazy val amonyServer =
       //    assembly / logLevel := Level.Debug,
       assembly / assemblyJarName := "amony.jar",
       assembly / assemblyMergeStrategy := {
-        case s if s.endsWith("module-info.class") => MergeStrategy.discard
-        case s if s.endsWith("Log4j2Plugins.dat") => MergeStrategy.discard
-        case s if s.startsWith("org/iq80/leveldb") => MergeStrategy.first
+        case s if s.endsWith("module-info.class")            => MergeStrategy.discard
+        case s if s.endsWith("Log4j2Plugins.dat")            => MergeStrategy.discard
+        case s if s.startsWith("org/iq80/leveldb")           => MergeStrategy.first
         case s if s.endsWith("io.netty.versions.properties") => MergeStrategy.first
         case x =>
           val oldStrategy = (assembly / assemblyMergeStrategy).value
@@ -181,5 +193,8 @@ lazy val amonyServer =
 lazy val root = project
   .in(file("."))
   .settings(noPublishSettings)
+  .settings(
+    Global / cancelable   := true,
+  )
   .disablePlugins(RevolverPlugin)
   .aggregate(common, identity, media, searchApi, solrSearch, amonyServer)

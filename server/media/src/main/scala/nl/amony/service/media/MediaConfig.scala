@@ -8,32 +8,42 @@ import java.security.MessageDigest
 import scala.concurrent.duration.FiniteDuration
 
 object MediaConfig {
-  case class MediaLibConfig(
-      path: Path,
-      indexPath: Path,
+  case class LocalResourcesConfig(
+      private val path: Path,
+      private val indexPath: Path,
+      private val relativeUploadPath: Path,
       deleteMedia: DeleteMediaOption,
-      relativeUploadPath: Path,
       scanParallelFactor: Int,
       verifyExistingHashes: Boolean,
       hashingAlgorithm: HashingAlgorithm,
-      defaultFragmentLength: FiniteDuration,
-      minimumFragmentLength: FiniteDuration,
-      maximumFragmentLength: FiniteDuration,
+      fragments: FragmentSettings,
       transcode: List[TranscodeSettings],
       ffprobeTimeout: FiniteDuration
   ) {
 
-    lazy val resourcePath: Path = indexPath.resolve("resources")
+    def getIndexPath(): Path    = indexPath.toAbsolutePath.normalize()
+    lazy val resourcePath: Path = indexPath.toAbsolutePath.normalize().resolve("resources")
     lazy val mediaPath: Path    = path.toAbsolutePath.normalize()
-    lazy val uploadPath: Path   = path.resolve(relativeUploadPath)
+    lazy val uploadPath: Path   = mediaPath.resolve(relativeUploadPath)
 
     def filterFileName(fileName: String): Boolean = fileName.endsWith(".mp4") && !fileName.startsWith(".")
   }
 
+  case class FFMPegConfig(
+     scanParallelFactor: Int,
+     ffprobeTimeout: FiniteDuration
+  )
+
+  case class FragmentSettings(
+    defaultFragmentLength: FiniteDuration,
+    minimumFragmentLength: FiniteDuration,
+    maximumFragmentLength: FiniteDuration,
+  )
+
   case class TranscodeSettings(
-      format: String,
-      scaleHeight: Int,
-      crf: Int
+    format: String,
+    scaleHeight: Int,
+    crf: Int
   )
 
   sealed trait DeleteMediaOption
@@ -41,23 +51,22 @@ object MediaConfig {
   case object MoveToTrash extends DeleteMediaOption
 
   sealed trait HashingAlgorithm {
-    def generateHash(path: Path): String
+    def algorithm: String
+    def createHash(path: Path): String
+    def encodeHash(bytes: Array[Byte]): String
   }
 
   case object PartialHash extends HashingAlgorithm {
-    override def generateHash(path: Path): String =
+    override val algorithm = "SHA-1"
+    override def createHash(path: Path): String =
       partialHash(
-        path,
-        512,
-        data => {
-          // sha-1 creates a 160 bit hash (20 bytes)
-          val sha1Digest: MessageDigest = MessageDigest.getInstance("SHA-1")
-          val digest: Array[Byte]       = sha1Digest.digest(data)
-
-          // we take 10 bytes = 80 bits = 16 base32 characters
-          // https://en.wikipedia.org/wiki/Birthday_attack
-          Base32.encodeToBase32(digest).substring(0, 16)
-        }
+        file    = path,
+        nBytes  = 512,
+        hasher  = () => { MessageDigest.getInstance(algorithm) },
+        encoder = bytes => { Base32.encode(bytes).substring(0, 16) }
       )
+
+    override def encodeHash(bytes: Array[Byte]): String =
+      Base32.encode(bytes).substring(0, 24)
   }
 }

@@ -1,14 +1,14 @@
 package nl.amony.search
 
 import akka.Done
+import akka.actor.typed.ActorSystem
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.ActorContext
 import akka.actor.{Actor, ActorRef, Props, typed}
-import akka.persistence.query.EventEnvelope
+import akka.persistence.query.{EventEnvelope, PersistenceQuery}
 import akka.persistence.query.scaladsl.EventsByPersistenceIdQuery
 import akka.stream.Materializer
 import nl.amony.service.media.actor.MediaLibProtocol.{Media, State}
-import nl.amony.search.SearchApi.searchServiceKey
 import nl.amony.search.SearchProtocol._
 import nl.amony.service.media.MediaApi
 import nl.amony.service.media.actor.MediaLibEventSourcing
@@ -18,6 +18,14 @@ import scala.concurrent.Future
 
 object InMemoryIndex {
 
+  def apply[T](context: ActorContext[T])(implicit mat: Materializer): typed.ActorRef[QueryMessage] = {
+
+    val readJournalId = context.system.settings.config.getString("amony.akka.read-journal")
+    val readJournal = PersistenceQuery(context.system).readJournalFor[EventsByPersistenceIdQuery](readJournalId)
+
+    apply(context, readJournal)
+  }
+
   def apply[T](context: ActorContext[T], readJournal: EventsByPersistenceIdQuery)(implicit mat: Materializer): typed.ActorRef[QueryMessage] = {
 
     import akka.actor.typed.scaladsl.adapter._
@@ -25,7 +33,7 @@ object InMemoryIndex {
     val indexActor = context.actorOf(Props(new LocalIndexActor()), "index")
     val typedRef = indexActor.toTyped[QueryMessage]
 
-    context.system.receptionist ! Receptionist.Register(searchServiceKey, typedRef)
+    context.system.receptionist ! Receptionist.Register(QueryMessage.serviceKey, typedRef)
 
     runIndex(indexActor, readJournal)
 

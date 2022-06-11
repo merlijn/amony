@@ -10,19 +10,18 @@ case class WebServerConfig(
   requestTimeout: FiniteDuration,
   enableAdmin: Boolean,
   uploadSizeLimit: Information,
-  defaultNumberOfResults: Int,
   http: Option[HttpConfig],
   https: Option[HttpsConfig]
 )
 
 case class HttpsConfig(
-                        enabled: Boolean,
-                        port: Int,
-                        privateKeyPem: String,
-                        certificateChainPem: String
-                      )
+  enabled: Boolean,
+  port: Int,
+  privateKeyPem: String,
+  certificateChainPem: String
+)
 
 case class HttpConfig(
-                       enabled: Boolean,
-                       port: Int
-                     )
+ enabled: Boolean,
+ port: Int
+)

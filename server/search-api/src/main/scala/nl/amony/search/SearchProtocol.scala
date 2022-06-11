@@ -1,11 +1,16 @@
 package nl.amony.search
 
 import akka.actor.typed
+import akka.actor.typed.receptionist.ServiceKey
 import nl.amony.service.media.actor.MediaLibProtocol.{Fragment, Media}
 
 object SearchProtocol {
 
   sealed trait QueryMessage
+
+  object QueryMessage {
+    implicit val serviceKey: ServiceKey[QueryMessage] = ServiceKey[QueryMessage]("searchService")
+  }
 
   case class Search(query: Query, sender: typed.ActorRef[SearchResult]) extends QueryMessage
   case class SearchFragments(

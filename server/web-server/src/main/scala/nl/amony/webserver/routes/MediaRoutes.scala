@@ -33,7 +33,6 @@ object MediaRoutes extends Logging {
 
     implicit def materializer: Materializer = Materializer.createMaterializer(system)
     implicit def executionContext: ExecutionContext = system.executionContext
-    implicit val timeout: Timeout = Timeout.durationToTimeout(config.requestTimeout)
 
     val jsonCodecs = new JsonCodecs(transcodingSettings)
     import jsonCodecs._

@@ -1,12 +1,13 @@
 package nl.amony.webserver.admin
 
 import akka.util.Timeout
-import better.files.File
 import io.circe.generic.semiauto.deriveDecoder
+import nl.amony.lib.files.PathOps
 import nl.amony.service.media.MediaApi
 import nl.amony.service.media.actor.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
 import scribe.Logging
 
+import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
 object MigrateMedia extends Logging {
@@ -18,7 +19,7 @@ object MigrateMedia extends Logging {
     implicit val fragmentCodec    = deriveDecoder[Fragment]
     implicit val mediaOldCodec    = deriveDecoder[Media]
 
-    val json = File(path).contentAsString
+    val json = path.contentAsString(StandardCharsets.UTF_8)
 
     import io.circe.parser.decode
 

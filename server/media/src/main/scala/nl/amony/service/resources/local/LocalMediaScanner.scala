@@ -4,24 +4,23 @@ import akka.util.Timeout
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.{Consumer, Observable}
-import nl.amony.lib.FileUtil
-import nl.amony.lib.FileUtil.PathOps
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.service.media.MediaConfig.MediaLibConfig
+import nl.amony.lib.files.{FileUtil, PathOps}
+import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.media.actor.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
 import scribe.Logging
 
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
 
-class LocalMediaScanner(config: MediaLibConfig) extends Logging {
+class LocalMediaScanner(config: LocalResourcesConfig) extends Logging {
 
   private[resources] def scanMedia(mediaPath: Path, hash: Option[String]): Task[Media] = {
 
     FFMpeg
       .ffprobe(mediaPath, false, config.ffprobeTimeout)
       .map { case probe =>
-        val fileHash = hash.getOrElse(config.hashingAlgorithm.generateHash(mediaPath))
+        val fileHash = hash.getOrElse(config.hashingAlgorithm.createHash(mediaPath))
 
         val mainVideoStream =
           probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${mediaPath}"))
@@ -51,7 +50,7 @@ class LocalMediaScanner(config: MediaLibConfig) extends Logging {
           (mainVideoStream.width, mainVideoStream.height)
         )
 
-        val fragmentLength = config.defaultFragmentLength.toMillis
+        val fragmentLength = config.fragments.defaultFragmentLength.toMillis
 
         Media(
           id                 = fileHash,
@@ -66,16 +65,13 @@ class LocalMediaScanner(config: MediaLibConfig) extends Logging {
       }
   }
 
-  def scanMediaInDirectory(
-      config: MediaLibConfig,
-      persistedMedia: List[Media]
-  )(implicit s: Scheduler, timeout: Timeout): (Observable[Media], Observable[Media]) = {
+  def scanMediaInDirectory(persistedMedia: List[Media])(implicit s: Scheduler, timeout: Timeout): (Observable[Media], Observable[Media]) = {
 
     logger.info("Scanning directory for media...")
 
     // first calculate the hashes
     val filesWithHashes: List[(Path, String)] = Observable
-      .from(FileUtil.walkDir(config.mediaPath))
+      .from(FileUtil.listFilesInDirectoryRecursive(config.mediaPath))
       .filter { file => config.filterFileName(file.getFileName.toString) }
       .filterNot { file =>
         val isEmpty = Files.size(file) == 0
@@ -86,18 +82,18 @@ class LocalMediaScanner(config: MediaLibConfig) extends Logging {
       .mapParallelUnordered(config.scanParallelFactor) { path =>
         Task {
           val hash = if (config.verifyExistingHashes) {
-            config.hashingAlgorithm.generateHash(path)
+            config.hashingAlgorithm.createHash(path)
           } else {
             val relativePath = config.mediaPath.relativize(path).toString
 
             persistedMedia.find(_.fileInfo.relativePath == relativePath) match {
-              case None => config.hashingAlgorithm.generateHash(path)
+              case None => config.hashingAlgorithm.createHash(path)
               case Some(m) =>
                 val fileAttributes = Files.readAttributes(path, classOf[BasicFileAttributes])
 
                 if (m.fileInfo.lastModifiedTime != fileAttributes.lastModifiedTime().toMillis) {
                   logger.warn(s"$path last modified time is different from what last seen, recomputing hash")
-                  config.hashingAlgorithm.generateHash(path)
+                  config.hashingAlgorithm.createHash(path)
                 } else {
                   m.fileInfo.hash
                 }

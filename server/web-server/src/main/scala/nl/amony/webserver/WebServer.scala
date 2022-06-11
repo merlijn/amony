@@ -4,8 +4,6 @@ import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.util.Timeout
-import better.files.File
-import nl.amony.webserver.routes._
 import nl.amony.search.SearchApi
 import nl.amony.service.auth.{AuthApi, AuthRoutes}
 import nl.amony.service.media.MediaApi
@@ -14,6 +12,7 @@ import nl.amony.webserver.admin.AdminApi
 import nl.amony.webserver.routes.{AdminRoutes, MediaRoutes, SearchRoutes, WebAppRoutes}
 import scribe.Logging
 
+import java.nio.file.Paths
 import java.security.SecureRandom
 import javax.net.ssl.{KeyManagerFactory, SSLContext}
 import scala.concurrent.duration.DurationInt
@@ -35,11 +34,11 @@ object AllRoutes {
 
     implicit val requestTimeout = Timeout(5.seconds)
 
-    val searchApi      = new SearchApi(system, Timeout(5.seconds))
+    val searchApi      = new SearchApi(system)
 
     val identityRoutes = AuthRoutes(userApi)
     val resourceRoutes = ResourceRoutes(resourceApi, config.api.uploadSizeLimit.toBytes.toLong)
-    val searchRoutes   = SearchRoutes(system, searchApi, config.api, config.media.transcode)
+    val searchRoutes   = SearchRoutes(system, searchApi, config.search, config.media.transcode)
     val adminRoutes    = AdminRoutes(adminApi, config.api)
     val mediaRoutes    = MediaRoutes(system, mediaApi, config.media.transcode, config.api)
 
@@ -74,8 +73,8 @@ class WebServer(val config: WebServerConfig)(implicit val system: ActorSystem[No
 
     config.https.filter(_.enabled).foreach { httpsConfig =>
       val keyStore = PemReader.loadKeyStore(
-        certificateChainFile = File(httpsConfig.certificateChainPem),
-        privateKeyFile       = File(httpsConfig.privateKeyPem),
+        certificateChainFile = Paths.get(httpsConfig.certificateChainPem),
+        privateKeyFile       = Paths.get(httpsConfig.privateKeyPem),
         keyPassword          = None
       )
 

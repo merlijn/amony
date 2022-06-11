@@ -8,7 +8,7 @@ import akka.http.scaladsl.server.Directive.addDirectiveApply
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import nl.amony.search.SearchApi
+import nl.amony.search.{SearchApi, SearchConfig}
 import io.circe.syntax._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import nl.amony.search.SearchProtocol._
@@ -24,12 +24,11 @@ object SearchRoutes {
   def apply(
       system: ActorSystem[Nothing],
       searchApi: SearchApi,
-      config: WebServerConfig,
+      config: SearchConfig,
       transcodingSettings: List[TranscodeSettings]
   ): Route = {
 
     implicit def executionContext: ExecutionContext = system.executionContext
-    implicit val timeout: Timeout = Timeout.durationToTimeout(config.requestTimeout)
 
     val jsonCodecs = new JsonCodecs(transcodingSettings)
     import jsonCodecs._

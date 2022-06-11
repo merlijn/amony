@@ -1,16 +1,14 @@
 package nl.amony.service.media
 
-import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
+import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
-import akka.util.Timeout
-import nl.amony.lib.akka.AkkaServiceModule
-import nl.amony.service.media.MediaApi.mediaServiceKey
+import nl.amony.lib.akka.{AkkaServiceModule, ServiceBehaviors}
+import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.media.actor.MediaLibEventSourcing.Event
 import nl.amony.service.media.actor.MediaLibProtocol._
-import nl.amony.service.media.MediaConfig.MediaLibConfig
 import nl.amony.service.media.actor.{MediaLibCommandHandler, MediaLibEventSourcing}
 import nl.amony.service.resources.ResourceProtocol.ResourceCommand
 import scribe.Logging
@@ -19,34 +17,25 @@ import scala.concurrent.Future
 
 object MediaApi {
 
-  // 0. Config, deps
-  // 1. Behavior
-  // 2. ActorRef
-  // 3. Api
+  val mediaPersistenceId = "mediaLib"
 
-  def mediaBehaviour(config: MediaLibConfig, resourceRef: ActorRef[ResourceCommand]): Behavior[MediaCommand] =
-    Behaviors.setup[MediaCommand] { context =>
-      context.system.receptionist ! Receptionist.Register(mediaServiceKey, context.self)
+  def behavior(config: LocalResourcesConfig, resourceRef: ActorRef[ResourceCommand]): Behavior[MediaCommand] =
+    ServiceBehaviors.setupAndRegister[MediaCommand] { context =>
 
       implicit val ec = context.executionContext
       implicit val sc = context.system.scheduler
 
       EventSourcedBehavior[MediaCommand, Event, State](
-        persistenceId  = PersistenceId.ofUniqueId("mediaLib"),
+        persistenceId  = PersistenceId.ofUniqueId(mediaPersistenceId),
         emptyState     = State(Map.empty),
         commandHandler = MediaLibCommandHandler(config, resourceRef),
         eventHandler   = MediaLibEventSourcing.apply
       )
     }
-
-  val mediaServiceKey = ServiceKey[MediaCommand]("mediaService")
-
-  val mediaPersistenceId = "mediaLib"
 }
 
-class MediaApi(override val system: ActorSystem[Nothing], override implicit val askTimeout: Timeout) extends AkkaServiceModule[MediaCommand] with Logging {
-
-  override val serviceKey: ServiceKey[MediaCommand] = mediaServiceKey
+class MediaApi(system: ActorSystem[Nothing])
+  extends AkkaServiceModule[MediaCommand](system) with Logging {
 
   def getById(id: String): Future[Option[Media]] =
     askService[Option[Media]](ref => GetById(id, ref))
@@ -72,6 +61,6 @@ class MediaApi(override val system: ActorSystem[Nothing], override implicit val 
   def updateFragmentTags(id: String, idx: Int, tags: List[String]): Future[Either[ErrorResponse, Media]] =
     askService[Either[ErrorResponse, Media]](ref => UpdateFragmentTags(id, idx, tags, ref))
 
-  def deleteFragment(id: String, idx: Int)(implicit timeout: Timeout): Future[Either[ErrorResponse, Media]] =
+  def deleteFragment(id: String, idx: Int): Future[Either[ErrorResponse, Media]] =
     askService[Either[ErrorResponse, Media]](ref => DeleteFragment(id, idx, ref))
 }

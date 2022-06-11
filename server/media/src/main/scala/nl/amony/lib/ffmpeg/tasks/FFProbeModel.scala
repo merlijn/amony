@@ -1,6 +1,6 @@
-package nl.amony.lib.ffmpeg
+package nl.amony.lib.ffmpeg.tasks
 
-object Model {
+object FFProbeModel {
 
   case class ProbeDebugOutput(isFastStart: Boolean)
 

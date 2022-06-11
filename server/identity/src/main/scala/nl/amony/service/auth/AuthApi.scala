@@ -7,7 +7,6 @@ import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
 import akka.util.Timeout
 import nl.amony.lib.akka.AkkaServiceModule
-import nl.amony.service.auth.AuthApi.authServiceKey
 import nl.amony.service.auth.actor.{UserCommandHandler, UserEventSourcing}
 import nl.amony.service.auth.actor.UserCommandHandler.UserState
 import nl.amony.service.auth.actor.UserEventSourcing.UserEvent
@@ -19,10 +18,10 @@ import scala.concurrent.Future
 import scala.util.Try
 
 object AuthApi {
-  def userBehaviour(): Behavior[UserCommand] = {
+  def behavior(): Behavior[UserCommand] = {
 
     Behaviors.setup { context =>
-      context.system.receptionist ! Receptionist.Register(authServiceKey, context.self)
+      context.system.receptionist ! Receptionist.Register(UserCommand.serviceKey, context.self)
 
       EventSourcedBehavior[UserCommand, UserEvent, UserState](
         persistenceId = PersistenceId.ofUniqueId("auth-users"),
@@ -32,23 +31,20 @@ object AuthApi {
       )
     }
   }
-
-  val authServiceKey = ServiceKey[UserCommand]("auth-service")
 }
 
-class AuthApi(override val system: ActorSystem[Nothing], override val askTimeout: Timeout) extends AkkaServiceModule[UserCommand] {
+class AuthApi(system: ActorSystem[Nothing]) extends AkkaServiceModule[UserCommand](system) {
 
   import pureconfig.generic.auto._
   val config = loadConfig[AuthConfig]("amony.auth")
-  override val serviceKey: ServiceKey[UserCommand] = authServiceKey
 
   val expirationInSeconds = config.jwt.tokenExpiration.toSeconds
   val algo                = JwtAlgorithm.HS256 // TODO get from config
 
-  def upsertUser(userName: String, password: String)(implicit timeout: Timeout): Future[User] =
+  def upsertUser(userName: String, password: String): Future[User] =
     askService[User](ref => UpsertUser(userName, password, ref))
 
-  def login(username: String, password: String)(implicit timeout: Timeout): Future[AuthenticationResponse] =
+  def login(username: String, password: String): Future[AuthenticationResponse] =
     askService[AuthenticationResponse](ref => Authenticate(username, password, ref))
 
   def createToken(userId: String): String = {
