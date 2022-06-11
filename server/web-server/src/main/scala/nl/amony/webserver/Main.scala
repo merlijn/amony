@@ -55,9 +55,9 @@ object Main extends ConfigLoader with Logging {
     val resourcesApi = new ResourceApi(system, mediaApi)
     val adminApi     = new AdminApi(mediaApi, resourcesApi, system, scanner, appConfig)
 
-    userApi.upsertUser(userApi.config.adminUsername, userApi.config.adminPassword)
 
     Thread.sleep(500)
+    userApi.upsertUser(userApi.config.adminUsername, userApi.config.adminPassword)
     adminApi.scanLibrary()(timeout.duration)
 
 //    adminApi.generatePreviewSprites()

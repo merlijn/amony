@@ -19,7 +19,7 @@ object ResourceApi {
 
     ServiceBehaviors.setupAndRegister[ResourceCommand] { context =>
 
-      context.spawn(DirectoryWatcher.behavior(config), "directory-watcher")
+//      context.spawn(DirectoryWatcher.behavior(config), "directory-watcher")
 
       LocalResourcesHandler.apply(config, scanner)
     }

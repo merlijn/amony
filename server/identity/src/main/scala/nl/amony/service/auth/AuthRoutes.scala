@@ -8,12 +8,13 @@ import akka.util.Timeout
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.generic.semiauto.deriveCodec
 import nl.amony.service.auth.actor.UserProtocol.{Authentication, InvalidCredentials}
+import scribe.Logging
 
 import scala.concurrent.duration.DurationInt
 
 case class Credentials(username: String, password: String)
 
-object AuthRoutes {
+object AuthRoutes extends Logging {
 
   implicit val credDecoder = deriveCodec[Credentials]
   implicit val timeout     = Timeout(5.seconds)
@@ -24,8 +25,10 @@ object AuthRoutes {
       (path("login") & post & entity(as[Credentials])) { credentials =>
         onSuccess(userApi.login(credentials.username, credentials.password)) {
           case InvalidCredentials =>
+            logger.info("Received InvalidCredentials")
             complete(StatusCodes.BadRequest)
           case Authentication(userId) =>
+            logger.info("Received Authentication")
             val cookie = HttpCookie("session", userApi.createToken(userId), path = Some("/"))
             setCookie(cookie) { complete("OK") }
         }
