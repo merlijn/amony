@@ -2,14 +2,8 @@ package nl.amony.webserver
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
-import akka.persistence.jdbc.db.SlickExtension
-import akka.persistence.jdbc.query.scaladsl.JdbcReadJournal
-import akka.persistence.query.PersistenceQuery
-import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
-import akka.persistence.query.scaladsl.EventsByPersistenceIdQuery
 import akka.stream.Materializer
 import akka.util.Timeout
-import nl.amony.lib.akka.ServiceBehaviors
 import nl.amony.search.InMemoryIndex
 import nl.amony.search.SearchProtocol.QueryMessage
 import nl.amony.service.auth.AuthApi
@@ -17,11 +11,9 @@ import nl.amony.service.media.MediaApi
 import nl.amony.service.resources.ResourceApi
 import nl.amony.service.resources.local.LocalMediaScanner
 import nl.amony.webserver.admin.AdminApi
-import nl.amony.webserver.database.DatabaseMigrations
-import org.flywaydb.core.Flyway
 import scribe.Logging
 
-import java.nio.file.{Files, Path}
+import java.nio.file.Files
 import scala.concurrent.duration.DurationInt
 
 object Main extends ConfigLoader with Logging {
@@ -69,7 +61,7 @@ object Main extends ConfigLoader with Logging {
 //    MigrateMedia.importFromExport(path, mediaApi)(10.seconds)
 //    watchPath(appConfig.media.mediaPath)
 
-    val routes = AllRoutes.createRoutes(
+    val routes = WebServerRoutes(
       system,
       userApi,
       mediaApi,

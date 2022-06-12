@@ -54,6 +54,7 @@ class LocalMediaScanner(config: LocalResourcesConfig) extends Logging {
 
         Media(
           id                 = fileHash,
+          uploader           = "0",
           title              = None,
           comment            = None,
           fileInfo           = fileInfo,

@@ -100,7 +100,8 @@ object DirectoryWatcher extends Logging {
       }
 
       val processor =
-        AtLeastOnceProcessor.process[DirectoryEvent](DirectoryWatcher.persistenceId, (e: DirectoryEvent) => println(s"Processed $e"))
+        AtLeastOnceProcessor.process[DirectoryEvent](DirectoryWatcher.persistenceId,
+          (e: DirectoryEvent) => println(s"Processed $e"))
 
       context.spawn(processor, "directory-processor")
 
@@ -166,12 +167,12 @@ object DirectoryWatcher extends Logging {
            * If a file with equal meta data (size, created & last modified timestamp) was recently deleted
            * then likely this is the same file and we can re-use the hash of it.
            */
-          state.files.find { hasEqualMetaData } match {
+          state.files.find(hasEqualMetaData) match {
             case None =>
               logger.debug(s"File added: $relativePath")
               Effect.persist(FileAdded(newFile))
             case Some(file) if file.relativePath == relativePath =>
-              logger.debug(s"File already indexed: $relativePath")
+              logger.debug(s"File already added: $relativePath")
               Effect.none
             case Some(file) if !Files.exists(directoryPath.resolve(file.relativePath)) =>
               logger.debug(s"File moved: $relativePath")
@@ -188,7 +189,7 @@ object DirectoryWatcher extends Logging {
           Effect.none
 
         case InternalDirectoryEvent(Modified, path) =>
-
+          logger.info(s"Modified: $path")
           // should be recently modified
           if (System.currentTimeMillis() - path.lastModifiedMillis < 1000)
             println(s"Modified: $path")

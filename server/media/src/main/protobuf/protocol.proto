@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package nl.amony.service.media.api;
+
+message Fragment {
+
+  Range range = 1;
+  MediaMeta meta = 2;
+}
+
+message FileInfo {
+
+  string relativePath = 1;
+  string hash = 2;
+  uint64 size = 3;
+  uint64 createdTime = 4;
+  uint64 modifiedTime = 5;
+}
+
+message MediaMeta {
+  string title = 1;
+  string comment = 2;
+  repeated string tags = 3;
+}
+
+message Range {
+  uint64 start = 1;
+  uint64 end = 2;
+}
+
+message MediaId {
+  string mediaId = 1;
+}
+
+message Media {
+
+  string mediaId = 1;
+  string uploader = 2;
+  MediaMeta meta = 3;
+  FileInfo fileInfo = 4;
+  repeated Fragment fragments = 5;
+}

@@ -4,6 +4,7 @@ import akka.actor.typed.ActorSystem
 import akka.persistence.jdbc.db.SlickExtension
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.MigrateResult
+import slick.jdbc
 import slick.jdbc.JdbcBackend
 
 import java.io.PrintWriter
@@ -24,15 +25,17 @@ class DatabaseDatasource(database: JdbcBackend#Database) extends DataSource {
   override def getParentLogger = throw new SQLFeatureNotSupportedException()
 }
 
-object DatabaseMigrations {
+object DatabaseUtils {
 
-  def run(system: ActorSystem[Nothing]): MigrateResult = {
-
+  def getDatabase(system: ActorSystem[Nothing]): jdbc.JdbcBackend.Database = {
     // Create the Flyway instance and point it to the database// Create the Flyway instance and point it to the database
     val slick = SlickExtension.apply(system).database(system.settings.config.getConfig("jdbc-journal"))
-    val sbSource = new DatabaseDatasource(slick.database)
+    slick.database
+  }
 
-    val flyway = Flyway.configure.dataSource(sbSource).load
+  def runMigrations(system: ActorSystem[Nothing]): MigrateResult = {
+    val dbSource = new DatabaseDatasource(getDatabase(system))
+    val flyway = Flyway.configure.dataSource(dbSource).load
 
     flyway.migrate()
   }

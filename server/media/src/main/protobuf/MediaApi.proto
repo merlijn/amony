@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+import "protocol.proto";
+
+package nl.amony.service.media.api;
+
+service MediaApi {
+
+  rpc getById(MediaId) returns (Media) { }
+
+  rpc getAll(GetAllMedia) returns (stream Media) { }
+
+  rpc upsertMedia(Media) returns (Media) { }
+
+  rpc deleteMedia(MediaId) returns (Media) { }
+
+  rpc updateMediaMeta(UpdateMediaMeta) returns (Media) { }
+
+  rpc updateFragmentMeta(UpdateFragmentMeta) returns (Media) { }
+
+  rpc deleteFragment(DeleteFragment) returns (Media) { }
+}
+
+message GetAllMedia { }
+
+message UpdateMediaMeta {
+  string mediaId = 1;
+  MediaMeta meta = 2;
+}
+
+message UpdateFragmentMeta {
+  MediaMeta meta = 1;
+}
+
+message DeleteFragment {
+  string mediaId = 1;
+  uint32 index = 2;
+}
+
+message AddFragment {
+  string mediaId = 1;
+  Range range = 2;
+}
+

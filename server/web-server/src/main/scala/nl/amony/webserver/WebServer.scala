@@ -3,57 +3,13 @@ package nl.amony.webserver
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.{ConnectionContext, Http}
-import akka.util.Timeout
-import nl.amony.search.SearchApi
-import nl.amony.service.auth.{AuthApi, AuthRoutes}
-import nl.amony.service.media.MediaApi
-import nl.amony.service.resources.{ResourceApi, ResourceRoutes}
-import nl.amony.webserver.admin.AdminApi
-import nl.amony.webserver.routes.{AdminRoutes, MediaRoutes, SearchRoutes, WebAppRoutes}
 import scribe.Logging
 
 import java.nio.file.Paths
 import java.security.SecureRandom
 import javax.net.ssl.{KeyManagerFactory, SSLContext}
-import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
-
-object AllRoutes {
-
-  def createRoutes(
-    system: ActorSystem[Nothing],
-    userApi: AuthApi,
-    mediaApi: MediaApi,
-    resourceApi: ResourceApi,
-    adminApi: AdminApi,
-    config: AmonyConfig
-  ): Route = {
-    implicit val ec: ExecutionContext = system.executionContext
-    import akka.http.scaladsl.server.Directives._
-
-    implicit val requestTimeout = Timeout(5.seconds)
-
-    val searchApi      = new SearchApi(system)
-
-    val identityRoutes = AuthRoutes(userApi)
-    val resourceRoutes = ResourceRoutes(resourceApi, config.api.uploadSizeLimit.toBytes.toLong)
-    val searchRoutes   = SearchRoutes(system, searchApi, config.search, config.media.transcode)
-    val adminRoutes    = AdminRoutes(adminApi, config.api)
-    val mediaRoutes    = MediaRoutes(system, mediaApi, config.media.transcode, config.api)
-
-    // routes for the web app (javascript/html) resources
-    val webAppResources = WebAppRoutes(config.api)
-
-    val allApiRoutes =
-      if (config.api.enableAdmin)
-        mediaRoutes ~ adminRoutes
-      else
-        mediaRoutes
-
-    allApiRoutes ~ searchRoutes ~ identityRoutes ~ resourceRoutes ~ webAppResources
-  }
-}
 
 class WebServer(val config: WebServerConfig)(implicit val system: ActorSystem[Nothing]) extends Logging {
 

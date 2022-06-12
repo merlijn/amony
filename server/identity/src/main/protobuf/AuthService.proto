@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package nl.amony.service.auth.api;
+
+service AuthService {
+
+  rpc login(Credentials) returns (LoginResponse) { }
+
+  rpc insertUser(UpsertUserRequest) returns (User) { }
+
+  rpc getByExternalId(GetByExternalId) returns (User) { }
+}
+
+message Credentials {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  oneof reponse {
+    Authentication authentication = 1;
+    InvalidCredentials invalidCredentials = 2;
+  }
+}
+
+message GetByExternalId {
+  string externalId = 1;
+}
+
+message InvalidCredentials { }
+
+message UpsertUserRequest {
+  string externalId = 1;
+  string password = 2;
+}
+
+message Authentication {
+  string userId = 1;
+  string token = 2;
+}
+
+message User {
+  string userId = 1;
+  string username = 2;
+  string passwordHash = 3;
+}
+

@@ -1,30 +1,22 @@
-package nl.amony.webserver
+package nl.amony.service.media
 
-import io.circe.{Codec, Encoder}
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
-import nl.amony.search.SearchProtocol
+import io.circe.{Codec, Encoder}
 import nl.amony.service.media.MediaConfig.TranscodeSettings
+import nl.amony.service.media.MediaWebModel._
 import nl.amony.service.media.actor.MediaLibProtocol
-import nl.amony.webserver.WebModel._
 
 class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
 
   // web model codecs
   implicit val fragmentCodec: Codec[Fragment]            = deriveCodec[Fragment]
-  implicit val createFragmentCodec: Codec[FragmentRange] = deriveCodec[FragmentRange]
-  implicit val searchResultCodec: Codec[SearchResult]    = deriveCodec[SearchResult]
+  implicit val createFragmentCodec: Codec[Range] = deriveCodec[Range]
   implicit val videoCodec: Codec[Video]                  = deriveCodec[Video]
   implicit val videoMetaCodec: Codec[VideoMeta]          = deriveCodec[VideoMeta]
-  implicit val tagCodec: Codec[Playlist]                 = deriveCodec[Playlist]
 
   // contra map encoders for internal classes
   implicit val mediaEncoder: Encoder[MediaLibProtocol.Media] =
     deriveEncoder[Video].contramapObject[MediaLibProtocol.Media](toWebModel)
-
-  implicit val searchResultEncoder: Encoder[SearchProtocol.SearchResult] =
-    deriveEncoder[SearchResult].contramapObject[SearchProtocol.SearchResult](result =>
-      SearchResult(result.offset, result.total, result.items.map(m => toWebModel(m)))
-    )
 
   def toWebModel(mediaId: String, f: MediaLibProtocol.Fragment): Fragment = {
 
@@ -35,7 +27,7 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
     Fragment(
       mediaId,
       0,
-      FragmentRange(f.fromTimestamp, f.toTimestamp),
+      Range(f.fromTimestamp, f.toTimestamp),
       urls,
       f.comment,
       f.tags
@@ -69,7 +61,7 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
           Fragment(
             media_id = media.id,
             index    = index,
-            range    = FragmentRange(f.fromTimestamp, f.toTimestamp),
+            range    = Range(f.fromTimestamp, f.toTimestamp),
             urls     = urls,
             comment  = f.comment,
             tags     = f.tags

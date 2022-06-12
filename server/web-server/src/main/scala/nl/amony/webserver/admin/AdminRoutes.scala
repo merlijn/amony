@@ -1,4 +1,4 @@
-package nl.amony.webserver.routes
+package nl.amony.webserver.admin
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._

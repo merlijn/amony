@@ -1,25 +1,29 @@
-package nl.amony.webserver.routes
+package nl.amony.search
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.Directives._
 import nl.amony.search.SearchProtocol._
-import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directive.addDirectiveApply
-import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.util.Timeout
-import nl.amony.search.{SearchApi, SearchConfig}
 import io.circe.syntax._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-import nl.amony.search.SearchProtocol._
+import io.circe.{Codec, Encoder}
+import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
+import nl.amony.service.media.JsonCodecs
 import nl.amony.service.media.MediaConfig.TranscodeSettings
-import nl.amony.webserver.{JsonCodecs, WebServerConfig}
+import nl.amony.service.media.MediaWebModel.Video
 
 import scala.concurrent.{ExecutionContext, Future}
 
 object SearchRoutes {
 
   val durationPattern = raw"(\d*)-(\d*)".r
+
+  case class SearchResponse(
+     offset: Long,
+     total: Long,
+     videos: Seq[Video]
+   )
 
   def apply(
       system: ActorSystem[Nothing],
@@ -32,6 +36,11 @@ object SearchRoutes {
 
     val jsonCodecs = new JsonCodecs(transcodingSettings)
     import jsonCodecs._
+
+    implicit val searchResultEncoder: Encoder[SearchProtocol.SearchResult] =
+      deriveEncoder[SearchResponse].contramapObject[SearchProtocol.SearchResult](result =>
+        SearchResponse(result.offset, result.total, result.items.map(m => jsonCodecs.toWebModel(m)))
+      )
 
     pathPrefix("api" / "search") {
       (path("media") & parameters(
