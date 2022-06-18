@@ -9,7 +9,7 @@ import akka.stream.Materializer
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
 import nl.amony.service.media.MediaConfig.TranscodeSettings
-import nl.amony.service.media.actor.MediaLibProtocol._
+import nl.amony.service.media.actor.{ MediaLibProtocol => protocol }
 import nl.amony.service.media.MediaWebModel._
 import scribe.Logging
 
@@ -29,10 +29,10 @@ object MediaRoutes extends Logging {
     val jsonCodecs = new JsonCodecs(transcodingSettings)
     import jsonCodecs._
 
-    def translateResponse(future: Future[Either[ErrorResponse, Media]]): Route = {
+    def translateResponse(future: Future[Either[protocol.ErrorResponse, protocol.Media]]): Route = {
       onSuccess(future) {
-        case Left(MediaNotFound(_))       => complete(StatusCodes.NotFound)
-        case Left(InvalidCommand(reason)) => complete(StatusCodes.BadRequest, reason)
+        case Left(protocol.MediaNotFound(_))       => complete(StatusCodes.NotFound)
+        case Left(protocol.InvalidCommand(reason)) => complete(StatusCodes.BadRequest, reason)
         case Right(media)                 => complete(media.asJson)
       }
     }
@@ -45,7 +45,7 @@ object MediaRoutes extends Logging {
               case Some(media) => complete(media.asJson)
               case None        => complete(StatusCodes.NotFound)
             }
-          } ~ (post & entity(as[VideoMeta])) { meta =>
+          } ~ (post & entity(as[MediaMeta])) { meta =>
             translateResponse(mediaApi.updateMetaData(id, meta.title, meta.comment, meta.tags))
           } ~ delete {
             onSuccess(mediaApi.deleteMedia(id, deleteResource = true)) { case _ =>

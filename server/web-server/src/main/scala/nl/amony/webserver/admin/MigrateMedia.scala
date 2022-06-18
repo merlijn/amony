@@ -1,10 +1,10 @@
 package nl.amony.webserver.admin
 
 import akka.util.Timeout
-import io.circe.generic.semiauto.deriveDecoder
+import io.circe.generic.semiauto.{deriveCodec, deriveDecoder}
 import nl.amony.lib.files.PathOps
 import nl.amony.service.media.MediaApi
-import nl.amony.service.media.actor.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
+import nl.amony.service.media.actor.MediaLibProtocol.{FileInfo, Fragment, Media, MediaMeta, MediaInfo}
 import scribe.Logging
 
 import java.nio.charset.StandardCharsets
@@ -14,9 +14,10 @@ object MigrateMedia extends Logging {
 
   def importFromExport(path: Path, mediaApi: MediaApi)(implicit timeout: Timeout) = {
 
-    implicit val mediaInfoDecoder = deriveDecoder[VideoInfo]
+    implicit val mediaInfoDecoder = deriveDecoder[MediaInfo]
     implicit val fileInfoDecoder  = deriveDecoder[FileInfo]
     implicit val fragmentCodec    = deriveDecoder[Fragment]
+    implicit val mediaMetaCodec   = deriveCodec[MediaMeta]
     implicit val mediaOldCodec    = deriveDecoder[Media]
 
     val json = path.contentAsString(StandardCharsets.UTF_8)

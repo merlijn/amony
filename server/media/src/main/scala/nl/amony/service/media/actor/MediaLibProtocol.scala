@@ -67,22 +67,27 @@ object MediaLibProtocol {
     def extension: String = relativePath.split('.').last
   }
 
-  case class VideoInfo(
-      fps: Double,
-      duration: Long,
-      resolution: (Int, Int)
+  case class MediaInfo(
+    fps: Double,
+    videoCodec: String,
+    duration: Long,
+    resolution: (Int, Int)
+  )
+
+  case class MediaMeta(
+    title: Option[String],
+    comment: Option[String],
+    tags: Set[String]
   )
 
   case class Media(
-      id: String,
-      uploader: String,
-      title: Option[String],
-      comment: Option[String],
-      fileInfo: FileInfo,
-      videoInfo: VideoInfo,
-      thumbnailTimestamp: Long,
-      fragments: List[Fragment],
-      tags: Set[String]
+    id: String,
+    uploader: String,
+    fileInfo: FileInfo,
+    videoInfo: MediaInfo,
+    meta: MediaMeta,
+    thumbnailTimestamp: Long,
+    fragments: List[Fragment],
   ) {
     def resolvePath(baseDir: Path): Path = baseDir.resolve(fileInfo.relativePath)
 

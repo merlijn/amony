@@ -90,7 +90,7 @@ const ListView = (props: ListProps) => {
             <div key={`row-${v.id}`} className="list-row">
 
               <div key="thumbnail" className="list-cell list-thumbnail">
-                <ProgressiveImage src={v.thumbnail_url} placeholder="/image_placeholder.svg">
+                <ProgressiveImage src={v.urls.thumbnailUrl} placeholder="/image_placeholder.svg">
                     { (src: string) => 
                       <img className="list-thumbnail-img" src={src} onClick={() => props.onClick(v) } alt="an image" /> }
                 </ProgressiveImage>
@@ -101,11 +101,11 @@ const ListView = (props: ListProps) => {
               <TagsCell video = { v } />
 
               <div key="date" className="list-cell list-date">
-                { dateMillisToString(v.addedOn) }
+                { dateMillisToString(v.uploadTimestamp) }
               </div>
 
               <div key="size" className="list-cell list-size">
-                  { formatByteSize(v.size, 1) }
+                  { formatByteSize(v.resourceInfo.sizeInBytes, 1) }
               </div>
 
               <div key="resolution" className="list-cell list-resolution">
@@ -117,7 +117,7 @@ const ListView = (props: ListProps) => {
                       <AiOutlineDelete className = "delete-action" />
                     </div> 
                 }
-                { `${v.height}p` }
+                { `${v.mediaInfo.height}p` }
                 </div>
                 
               </div>

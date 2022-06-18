@@ -35,7 +35,7 @@ const Preview = (props: PreviewProps) => {
   const [isHovering, setIsHovering] = useState(false)
   const [showVideoPreview, setShowVideoPreview] = useState(false)
 
-  const durationStr = durationInMillisToString(vid.duration)
+  const durationStr = durationInMillisToString(vid.mediaInfo.duration)
 
   useEffect(() => {
     setShowVideoPreview(isHovering)
@@ -44,7 +44,7 @@ const Preview = (props: PreviewProps) => {
   const titlePanel =
     <div className = "preview-info-bar">
       <span className="media-title" title={vid.meta.title}>{vid.meta.title}</span>
-      {props.options.showDates && <span className="media-date">{dateMillisToString(vid.addedOn)}</span>}
+      {props.options.showDates && <span className="media-date">{dateMillisToString(vid.uploadTimestamp)}</span>}
     </div>
 
   const overlay =
@@ -63,7 +63,7 @@ const Preview = (props: PreviewProps) => {
     </div>
 
   const primaryThumbnail =
-    <ProgressiveImage src = { vid.thumbnail_url } placeholder="/image_placeholder.svg">
+    <ProgressiveImage src = { vid.urls.thumbnailUrl } placeholder="/image_placeholder.svg">
       { (src: string) => 
           <img 
             src       = { src } alt="an image"

@@ -1,16 +1,34 @@
-export type Video = {
-  id: string,
-  video_url: string,
-  meta: VideoMeta,
-  thumbnail_url: string,
-  preview_thumbnails_url: string,
-  fragments: Array<Fragment>,
+export type mediaType = 'video' | 'image' | 'audio'
+
+export type MediaUrls = {
+  originalResourceUrl: string,
+  thumbnailUrl: string,
+  previewThumbnailsUrl?: string,
+}
+
+export type MediaInfo = {
+  codecName: string,
   fps: number,
-  size: number,
   width: number,
   height: number,
   duration: number, // in millis
-  addedOn: number
+}
+
+export type ResourceInfo = {
+  sizeInBytes: number,
+  hash: string
+}
+
+export type Video = {
+  id: string,
+  uploader: string,
+  uploadTimestamp: number,
+  // the media info of the originally uploaded file
+  meta: VideoMeta,  
+  mediaInfo: MediaInfo,
+  urls: MediaUrls,
+  resourceInfo: ResourceInfo,
+  fragments: Array<Fragment>,
 }
 
 export type Fragment = {

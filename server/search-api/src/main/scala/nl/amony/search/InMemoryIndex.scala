@@ -53,7 +53,7 @@ object InMemoryIndex {
     var counter: Long = 0L
     var indexedAt: Long = 0L
     var state: State = State(Map.empty)
-    var sortedByFilename: List[Media] = List.empty
+    var sortedByTitle: List[Media] = List.empty
     var sortedByDateAdded: List[Media] = List.empty
     var sortedByDuration: List[Media] = List.empty
     var sortedBySize: List[Media] = List.empty
@@ -65,11 +65,11 @@ object InMemoryIndex {
 
       if (indexedAt < counter) {
         logger.debug("Updating index")
-        sortedByFilename  = media.values.toList.sortBy(m => m.title.getOrElse(m.fileName()))
+        sortedByTitle  = media.values.toList.sortBy(m => m.meta.title.getOrElse(m.fileName()))
         sortedByDateAdded = media.values.toList.sortBy(_.fileInfo.creationTime)
         sortedByDuration  = media.values.toList.sortBy(_.videoInfo.duration)
         sortedBySize      = media.values.toList.sortBy(_.fileInfo.size)
-        tags              = media.values.flatMap(_.tags).toSet
+        tags              = media.values.flatMap(_.meta.tags).toSet
         indexedAt         = counter
       }
     }
@@ -104,7 +104,7 @@ object InMemoryIndex {
         def filterQuery(m: Media): Boolean =
           query.q.map(q => m.fileInfo.relativePath.toLowerCase.contains(q.toLowerCase)).getOrElse(true)
         def filterTag(m: Media): Boolean =
-          query.tags.forall(tag => m.tags.contains(tag))
+          query.tags.forall(tag => m.meta.tags.contains(tag))
         def filterDuration(m: Media): Boolean =
           query.duration
             .map { case (min, max) =>
@@ -115,14 +115,14 @@ object InMemoryIndex {
 
         val unfiltered = query.sort match {
           case None                        => state.media.values
-          case Some(Sort(FileName, Asc))   => sortedByFilename
-          case Some(Sort(FileName, Desc))  => sortedByFilename.reverse
+          case Some(Sort(Title, Asc))   => sortedByTitle
+          case Some(Sort(Title, Desc))  => sortedByTitle.reverse
           case Some(Sort(DateAdded, Asc))  => sortedByDateAdded
           case Some(Sort(DateAdded, Desc)) => sortedByDateAdded.reverse
           case Some(Sort(Duration, Asc))   => sortedByDuration
           case Some(Sort(Duration, Desc))  => sortedByDuration.reverse
-          case Some(Sort(FileSize, Asc))   => sortedBySize
-          case Some(Sort(FileSize, Desc))  => sortedBySize.reverse
+          case Some(Sort(Size, Asc))   => sortedBySize
+          case Some(Sort(Size, Desc))  => sortedBySize.reverse
         }
 
         val result = unfiltered.filter(filterMedia)

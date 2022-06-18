@@ -1,4 +1,4 @@
-package nl.amony.webserver.database
+package nl.amony.webserver.util
 
 import akka.actor.typed.ActorSystem
 import akka.persistence.jdbc.db.SlickExtension

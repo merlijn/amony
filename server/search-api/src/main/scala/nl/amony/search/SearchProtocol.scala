@@ -22,10 +22,10 @@ object SearchProtocol {
   case class GetTags(sender: typed.ActorRef[Set[String]]) extends QueryMessage
 
   sealed trait SortField
-  case object FileName  extends SortField
+  case object Title  extends SortField
   case object DateAdded extends SortField
   case object Duration  extends SortField
-  case object FileSize  extends SortField
+  case object Size  extends SortField
   //  case object Shuffle       extends SortField
 
   sealed trait SortDirection

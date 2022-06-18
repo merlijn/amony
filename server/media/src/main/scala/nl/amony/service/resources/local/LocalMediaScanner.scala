@@ -7,7 +7,7 @@ import monix.reactive.{Consumer, Observable}
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.files.{FileUtil, PathOps}
 import nl.amony.service.media.MediaConfig.LocalResourcesConfig
-import nl.amony.service.media.actor.MediaLibProtocol.{FileInfo, Fragment, Media, VideoInfo}
+import nl.amony.service.media.actor.MediaLibProtocol.{FileInfo, Fragment, Media, MediaInfo, MediaMeta}
 import scribe.Logging
 
 import java.nio.file.attribute.BasicFileAttributes
@@ -44,8 +44,9 @@ class LocalMediaScanner(config: LocalResourcesConfig) extends Logging {
           lastModifiedTime = fileAttributes.lastModifiedTime().toMillis
         )
 
-        val videoInfo = VideoInfo(
+        val videoInfo = MediaInfo(
           mainVideoStream.fps,
+          mainVideoStream.codec_name,
           mainVideoStream.durationMillis,
           (mainVideoStream.width, mainVideoStream.height)
         )
@@ -55,13 +56,15 @@ class LocalMediaScanner(config: LocalResourcesConfig) extends Logging {
         Media(
           id                 = fileHash,
           uploader           = "0",
-          title              = None,
-          comment            = None,
+          meta = MediaMeta(
+            title = None,
+            comment = None,
+            tags = Set.empty
+          ),
           fileInfo           = fileInfo,
           videoInfo          = videoInfo,
           thumbnailTimestamp = timeStamp,
           fragments          = List(Fragment(timeStamp, timeStamp + fragmentLength, None, List.empty)),
-          tags               = Set.empty
         )
       }
   }

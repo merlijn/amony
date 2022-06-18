@@ -64,10 +64,10 @@ object MediaLibCommandHandler extends Logging {
 
       case UpdateMetaData(mediaId, title, comment, tags, sender) =>
         requireMedia(mediaId, sender) { media =>
-          val titleUpdate   = if (title == media.title) None else title
-          val commentUpdate = if (comment == media.comment) None else comment
-          val tagsAdded     = tags -- media.tags
-          val tagsRemoved   = media.tags -- tags
+          val titleUpdate   = if (title == media.meta.title) None else title
+          val commentUpdate = if (comment == media.meta.comment) None else comment
+          val tagsAdded     = tags -- media.meta.tags
+          val tagsRemoved   = media.meta.tags -- tags
 
           if (tagsAdded.isEmpty && tagsRemoved.isEmpty && titleUpdate.isEmpty && commentUpdate.isEmpty)
             Effect.reply(sender)(Right(media))
