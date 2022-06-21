@@ -26,10 +26,10 @@ object SearchRoutes {
    )
 
   def apply(
-      system: ActorSystem[Nothing],
-      searchApi: SearchApi,
-      config: SearchConfig,
-      transcodingSettings: List[TranscodeSettings]
+             system: ActorSystem[Nothing],
+             searchApi: SearchService,
+             config: SearchConfig,
+             transcodingSettings: List[TranscodeSettings]
   ): Route = {
 
     implicit def executionContext: ExecutionContext = system.executionContext

@@ -17,7 +17,7 @@ import java.time.Instant
 import scala.concurrent.Future
 import scala.util.Try
 
-object AuthApi {
+object AuthService {
   def behavior(): Behavior[UserCommand] = {
 
     Behaviors.setup { context =>
@@ -33,7 +33,7 @@ object AuthApi {
   }
 }
 
-class AuthApi(system: ActorSystem[Nothing]) extends AkkaServiceModule[UserCommand](system) {
+class AuthService(system: ActorSystem[Nothing]) extends AkkaServiceModule[UserCommand](system) {
 
   import pureconfig.generic.auto._
   val config = loadConfig[AuthConfig]("amony.auth")
@@ -47,12 +47,12 @@ class AuthApi(system: ActorSystem[Nothing]) extends AkkaServiceModule[UserComman
   def login(username: String, password: String): Future[AuthenticationResponse] =
     askService[AuthenticationResponse](ref => Authenticate(username, password, ref))
 
-  def createToken(userId: String): String = {
+  private[auth] def createToken(userId: String): String = {
 
     val claim = JwtClaim(
       expiration = Some(Instant.now.plusSeconds(expirationInSeconds).getEpochSecond),
       issuedAt   = Some(Instant.now.getEpochSecond)
-    ) + ("admin", true) + ("userId", userId)
+    ) + ("userId", userId)
 
     val token = JwtCirce.encode(claim, config.jwt.secretKey, algo)
 

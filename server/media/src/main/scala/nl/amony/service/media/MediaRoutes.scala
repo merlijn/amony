@@ -18,9 +18,9 @@ import scala.concurrent.{ExecutionContext, Future}
 object MediaRoutes extends Logging {
 
   def apply(
-      system: ActorSystem[Nothing],
-      mediaApi: MediaApi,
-      transcodingSettings: List[TranscodeSettings]
+             system: ActorSystem[Nothing],
+             mediaApi: MediaService,
+             transcodingSettings: List[TranscodeSettings]
   ): Route = {
 
     implicit def materializer: Materializer = Materializer.createMaterializer(system)

@@ -7,9 +7,9 @@ import com.fasterxml.jackson.core.JsonEncoding
 import monix.eval.Task
 import monix.reactive.Consumer
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.service.media.MediaApi
+import nl.amony.service.media.MediaService
 import nl.amony.service.media.actor.MediaLibProtocol.Media
-import nl.amony.service.resources.ResourceApi
+import nl.amony.service.resources.ResourceService
 import nl.amony.service.resources.local.LocalMediaScanner
 import nl.amony.webserver.AmonyConfig
 import scribe.Logging
@@ -19,8 +19,8 @@ import scala.concurrent.Future
 import scala.util.control.NonFatal
 
 class AdminApi(
-                mediaApi: MediaApi,
-                resourceApi: ResourceApi,
+                mediaApi: MediaService,
+                resourceApi: ResourceService,
                 system: ActorSystem[Nothing],
                 scanner: LocalMediaScanner,
                 config: AmonyConfig

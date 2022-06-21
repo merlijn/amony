@@ -10,7 +10,7 @@ import akka.persistence.query.scaladsl.EventsByPersistenceIdQuery
 import akka.stream.Materializer
 import nl.amony.service.media.actor.MediaLibProtocol.{Media, State}
 import nl.amony.search.SearchProtocol._
-import nl.amony.service.media.MediaApi
+import nl.amony.service.media.MediaService
 import nl.amony.service.media.actor.MediaLibEventSourcing
 import scribe.Logging
 
@@ -42,7 +42,7 @@ object InMemoryIndex {
 
   def runIndex[T](indexActor: ActorRef, readJournal: EventsByPersistenceIdQuery)(implicit mat: Materializer): Future[Done] = {
 
-    readJournal.eventsByPersistenceId(MediaApi.mediaPersistenceId, 0L, Long.MaxValue).runForeach {
+    readJournal.eventsByPersistenceId(MediaService.mediaPersistenceId, 0L, Long.MaxValue).runForeach {
       case EventEnvelope(_, _, _, e: MediaLibEventSourcing.Event) =>
         indexActor.tell(e, ActorRef.noSender)
     }

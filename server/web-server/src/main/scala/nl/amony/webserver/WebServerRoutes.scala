@@ -5,10 +5,10 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import nl.amony.search
-import nl.amony.search.SearchApi
-import nl.amony.service.auth.{AuthApi, AuthRoutes}
-import nl.amony.service.media.{MediaApi, MediaRoutes}
-import nl.amony.service.resources.{ResourceApi, ResourceRoutes}
+import nl.amony.search.SearchService
+import nl.amony.service.auth.{AuthService, AuthRoutes}
+import nl.amony.service.media.{MediaService, MediaRoutes}
+import nl.amony.service.resources.{ResourceService, ResourceRoutes}
 import nl.amony.webserver.{AmonyConfig, WebServerConfig}
 import nl.amony.webserver.admin.{AdminApi, AdminRoutes}
 
@@ -19,19 +19,19 @@ import scala.concurrent.duration.DurationInt
 object WebServerRoutes {
 
   def apply(
-                    system: ActorSystem[Nothing],
-                    userApi: AuthApi,
-                    mediaApi: MediaApi,
-                    resourceApi: ResourceApi,
-                    adminApi: AdminApi,
-                    config: AmonyConfig
-                  ): Route = {
+             system: ActorSystem[Nothing],
+             userApi: AuthService,
+             mediaApi: MediaService,
+             resourceApi: ResourceService,
+             adminApi: AdminApi,
+             config: AmonyConfig
+    ): Route = {
     implicit val ec: ExecutionContext = system.executionContext
     import akka.http.scaladsl.server.Directives._
 
     implicit val requestTimeout = Timeout(5.seconds)
 
-    val searchApi      = new SearchApi(system)
+    val searchApi      = new SearchService(system)
 
     val identityRoutes = AuthRoutes(userApi)
     val resourceRoutes = ResourceRoutes(resourceApi, config.api.uploadSizeLimit.toBytes.toLong)

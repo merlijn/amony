@@ -7,7 +7,7 @@ import nl.amony.service.media.actor.MediaLibProtocol.Fragment
 
 import scala.concurrent.Future
 
-class SearchApi(system: ActorSystem[Nothing]) extends AkkaServiceModule[QueryMessage](system) {
+class SearchService(system: ActorSystem[Nothing]) extends AkkaServiceModule[QueryMessage](system) {
 
   // format: off
   def searchMedia(q: Option[String], offset: Option[Int], size: Int, tags: Set[String], playlist: Option[String],
