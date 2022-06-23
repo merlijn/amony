@@ -5,7 +5,7 @@ import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.stream.scaladsl.{Source, StreamRefs}
 import akka.util.ByteString
 import nl.amony.lib.akka.{AkkaServiceModule, AtLeastOnceProcessor, ServiceBehaviors}
-import nl.amony.service.media.MediaApi
+import nl.amony.service.media.MediaService
 import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.media.actor.MediaLibProtocol.Media
 import nl.amony.service.resources.ResourceProtocol._
@@ -13,7 +13,7 @@ import nl.amony.service.resources.local.{DirectoryWatcher, LocalMediaScanner, Lo
 
 import scala.concurrent.Future
 
-object ResourceApi {
+object ResourceService {
 
   def behavior(config: LocalResourcesConfig, scanner: LocalMediaScanner): Behavior[ResourceCommand] = {
 
@@ -26,7 +26,7 @@ object ResourceApi {
   }
 }
 
-class ResourceApi(system: ActorSystem[Nothing], mediaApi: MediaApi)
+class ResourceService(system: ActorSystem[Nothing], mediaApi: MediaService)
     extends AkkaServiceModule[ResourceCommand](system) {
 
   def uploadMedia(fileName: String, source: Source[ByteString, Any]): Future[Media] =

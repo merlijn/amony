@@ -1,19 +1,17 @@
-package nl.amony.webserver.routes
+package nl.amony.search
 
 import akka.actor.typed.ActorSystem
-import akka.http.scaladsl.server.Directives._
-import nl.amony.search.SearchProtocol._
-import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directive.addDirectiveApply
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.util.Timeout
-import nl.amony.search.{SearchApi, SearchConfig}
-import io.circe.syntax._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import io.circe.Encoder
+import io.circe.generic.semiauto.deriveEncoder
+import io.circe.syntax._
 import nl.amony.search.SearchProtocol._
+import nl.amony.service.media.JsonCodecs
 import nl.amony.service.media.MediaConfig.TranscodeSettings
-import nl.amony.webserver.{JsonCodecs, WebServerConfig}
+import nl.amony.service.media.MediaWebModel.Video
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -21,17 +19,28 @@ object SearchRoutes {
 
   val durationPattern = raw"(\d*)-(\d*)".r
 
+  case class SearchResponse(
+     offset: Long,
+     total: Long,
+     videos: Seq[Video]
+   )
+
   def apply(
-      system: ActorSystem[Nothing],
-      searchApi: SearchApi,
-      config: SearchConfig,
-      transcodingSettings: List[TranscodeSettings]
+             system: ActorSystem[Nothing],
+             searchApi: SearchService,
+             config: SearchConfig,
+             transcodingSettings: List[TranscodeSettings]
   ): Route = {
 
     implicit def executionContext: ExecutionContext = system.executionContext
 
     val jsonCodecs = new JsonCodecs(transcodingSettings)
     import jsonCodecs._
+
+    implicit val searchResultEncoder: Encoder[SearchProtocol.SearchResult] =
+      deriveEncoder[SearchResponse].contramapObject[SearchProtocol.SearchResult](result =>
+        SearchResponse(result.offset, result.total, result.items.map(m => jsonCodecs.toWebModel(m)))
+      )
 
     pathPrefix("api" / "search") {
       (path("media") & parameters(
@@ -53,13 +62,13 @@ object SearchRoutes {
           }
           val sortField: SortField = sortParam
             .map {
-              case "title"      => FileName
-              case "size"       => FileSize
+              case "title"      => Title
+              case "size"       => Size
               case "duration"   => Duration
               case "date_added" => DateAdded
               case _            => throw new IllegalArgumentException("unkown sort field")
             }
-            .getOrElse(FileName)
+            .getOrElse(Title)
 
           val duration: Option[(Long, Long)] = durationParam.flatMap {
             case durationPattern("", "")   => None

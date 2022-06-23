@@ -9,7 +9,6 @@ import scribe.Logging
 case class AmonyConfig(
   media: LocalResourcesConfig,
   api: WebServerConfig,
-  auth: AuthConfig,
   search: SearchConfig
 )
 

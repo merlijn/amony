@@ -14,9 +14,9 @@ import './SideBar.scss';
 
 const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
 
-  const [showSettings, setShowSettings] = useState(false)
-  const [showLogin, setShowLogin] = useState(false)
-  const [showProfile, setShowProfile] = useState(false)
+  const [showSettings,   setShowSettings]   = useState(false)
+  const [showLogin,      setShowLogin]      = useState(false)
+  const [showProfile,    setShowProfile]    = useState(false)
   const [showFileUpload, setShowFileUpload] = useState(false)
   const history = useHistory();
 

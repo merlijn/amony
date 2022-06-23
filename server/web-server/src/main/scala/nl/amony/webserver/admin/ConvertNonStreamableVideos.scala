@@ -5,7 +5,7 @@ import monix.eval.Task
 import monix.reactive.Observable
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.files.{FileUtil, PathOps}
-import nl.amony.service.media.MediaApi
+import nl.amony.service.media.MediaService
 import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import scribe.Logging
 
@@ -14,7 +14,7 @@ import scala.util.Success
 
 object ConvertNonStreamableVideos extends Logging {
 
-  def convertNonStreamableVideos(config: LocalResourcesConfig, api: MediaApi, adminApi: AdminApi): Unit = {
+  def convertNonStreamableVideos(config: LocalResourcesConfig, api: MediaService, adminApi: AdminApi): Unit = {
 
     val files = FileUtil.listFilesInDirectoryRecursive(config.mediaPath)
 

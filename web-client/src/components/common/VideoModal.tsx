@@ -21,7 +21,7 @@ const VideoModal = (props: { video?: Video, onHide: () => void }) => {
         fullscreen: { enabled: true },
         invertTime: false,
         keyboard: { focused: true, global: true },
-        previewThumbnails: { enabled: true, src: props.video.preview_thumbnails_url} }
+        previewThumbnails: { enabled: true, src: props.video.urls.previewThumbnailsUrl } }
 
       const plyr = new Plyr(element, plyrOptions)
       element.load()
@@ -34,7 +34,7 @@ const VideoModal = (props: { video?: Video, onHide: () => void }) => {
   const modalSize = (v: Video): CSSProperties => {
 
     const w = isMobile ? "100vw" : "75vw"
-    return BoundedRatioBox(w, "75vh", v.width / v.height)
+    return BoundedRatioBox(w, "75vh", v.mediaInfo.width / v.mediaInfo.height)
   }
 
   return (
@@ -43,7 +43,7 @@ const VideoModal = (props: { video?: Video, onHide: () => void }) => {
         {
           <div style = { props.video && modalSize(props.video) }>
             <video tab-index='-1' id={`video-modal-${props.video?.id}`} ref={videoElement} playsInline controls>
-              { props.video && <source src={props.video.video_url} type="video/mp4"/> }
+              { props.video && <source src={props.video.urls.originalResourceUrl} type="video/mp4"/> }
             </video>
           </div>
         }

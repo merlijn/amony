@@ -49,8 +49,7 @@ object Base32 {
 
       val idx = {
         // 5 bit chunk fits in current byte
-        // TODO fix bug, should be: baseN <= byteN
-        if (offset + baseN < byteN) {
+        if (offset + baseN <= byteN) {
           bitsAt(bytes(index), offset, offset + baseN)
         // 5 bit chunk is divided over 2 bytes
         } else if (index < bytes.length - 1) {

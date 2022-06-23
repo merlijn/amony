@@ -51,6 +51,9 @@ val solrLangId               = "org.apache.solr"           % "solr-langid"      
 val levelDb                  = "org.iq80.leveldb"          % "leveldb"                    % "0.12"
 val levelDbJndiAll           = "org.fusesource.leveldbjni" % "leveldbjni-all"             % "1.8"
 
+val scalaPbRuntimeGrcp       = "com.thesamet.scalapb"     %% "scalapb-runtime-grpc"       % scalapb.compiler.Version.scalapbVersion
+
+
 val javaOpts = Nil
 
 
@@ -66,6 +69,12 @@ lazy val noPublishSettings = Seq(
   publish         := {},
   publishLocal    := {},
   publishArtifact := false
+)
+
+lazy val protobufSettings = Seq(
+  Compile / PB.targets := Seq(
+    scalapb.gen() -> (Compile / sourceManaged).value / "scalapb"
+  )
 )
 
 def module(name: String, mainClass: Boolean = false) = {
@@ -97,25 +106,29 @@ lazy val common =
 lazy val identity =
   module("identity")
     .dependsOn(common)
+    .settings(protobufSettings)
     .settings(
       name := "amony-service-auth",
       libraryDependencies ++= Seq(
         // akka
         akka, akkaPersistence, akkaHttp, jwtCirce, akkaHttpCirce,
-        circe, circeGeneric, pureConfig
+        circe, circeGeneric, pureConfig, slick,
+        scalaPbRuntimeGrcp
       )
     )
 
 lazy val media =
   module("media")
     .dependsOn(common)
+    .settings(protobufSettings)
     .settings(
       name := "amony-service-media",
       libraryDependencies ++= Seq(
         scribeSlf4j, akka, akkaPersistence, akkaHttp, akkaHttpCirce, circe, circeGeneric, monixReactive,
         directoryWatcher,
         scalaTest,
-        slick
+        slick,
+        scalaPbRuntimeGrcp
       )
     )
 

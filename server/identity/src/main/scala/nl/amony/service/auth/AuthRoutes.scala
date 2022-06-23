@@ -19,7 +19,7 @@ object AuthRoutes extends Logging {
   implicit val credDecoder = deriveCodec[Credentials]
   implicit val timeout     = Timeout(5.seconds)
 
-  def apply(userApi: AuthApi): Route = {
+  def apply(userApi: AuthService): Route = {
 
     pathPrefix("api" / "identity") {
       (path("login") & post & entity(as[Credentials])) { credentials =>

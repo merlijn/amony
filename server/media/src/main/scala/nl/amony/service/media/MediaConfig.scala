@@ -63,7 +63,7 @@ object MediaConfig {
         file    = path,
         nBytes  = 512,
         hasher  = () => { MessageDigest.getInstance(algorithm) },
-        encoder = bytes => { Base32.encode(bytes).substring(0, 16) }
+        encoder = encodeHash
       )
 
     override def encodeHash(bytes: Array[Byte]): String =

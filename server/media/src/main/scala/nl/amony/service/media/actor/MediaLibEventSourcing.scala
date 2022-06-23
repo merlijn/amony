@@ -44,13 +44,13 @@ object MediaLibEventSourcing extends Logging {
       case MediaMetaDataUpdated(mediaId, title, comment, tagsAdded, tagsRemoved) =>
         val media = state.media(mediaId)
 
-        val newMedia = media.copy(
-          title   = title.orElse(media.title),
-          comment = comment.orElse(media.comment),
-          tags    = media.tags -- tagsRemoved ++ tagsAdded
+        val newMeta = MediaMeta(
+          title = title.orElse(media.meta.title),
+          comment = comment.orElse(media.meta.comment),
+          tags = media.meta.tags -- tagsRemoved ++ tagsAdded
         )
 
-        state.copy(media = state.media + (media.id -> newMedia))
+        state.copy(media = state.media + (media.id -> media.copy(meta = newMeta)))
 
       case MediaRemoved(id) =>
         state.copy(media = state.media - id)

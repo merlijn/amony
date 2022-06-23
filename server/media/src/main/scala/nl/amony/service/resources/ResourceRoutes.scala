@@ -28,7 +28,7 @@ object ResourceRoutes extends Logging {
   }
   // format: on
 
-  def apply(resourceApi: ResourceApi, uploadLimitBytes: Long)(implicit timeout: Timeout): Route = {
+  def apply(resourceApi: ResourceService, uploadLimitBytes: Long)(implicit timeout: Timeout): Route = {
 
     pathPrefix("resources") {
 

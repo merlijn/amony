@@ -8,7 +8,7 @@ import { FiPlusCircle } from "react-icons/fi"
 
 const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFragment) => any, setVid: (vid: Video) => any}) => {
 
-  const ratio = (props.vid.width / props.vid.height).toFixed(2);
+  const ratio = (props.vid.mediaInfo.width / props.vid.mediaInfo.height).toFixed(2);
   const [showAddFragment, setShowAddFragment] = useState(false)
 
   const extraStyle = (idx: number): CSSProperties => {

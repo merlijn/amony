@@ -1,7 +1,5 @@
 package nl.amony.service.media
 
-import akka.actor.typed.receptionist.Receptionist
-import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
@@ -15,7 +13,7 @@ import scribe.Logging
 
 import scala.concurrent.Future
 
-object MediaApi {
+object MediaService {
 
   val mediaPersistenceId = "mediaLib"
 
@@ -34,7 +32,7 @@ object MediaApi {
     }
 }
 
-class MediaApi(system: ActorSystem[Nothing])
+class MediaService(system: ActorSystem[Nothing])
   extends AkkaServiceModule[MediaCommand](system) with Logging {
 
   def getById(id: String): Future[Option[Media]] =
