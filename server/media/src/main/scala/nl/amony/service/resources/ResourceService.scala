@@ -4,12 +4,12 @@ import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.stream.scaladsl.{Source, StreamRefs}
 import akka.util.ByteString
-import nl.amony.lib.akka.{AkkaServiceModule, AtLeastOnceProcessor, ServiceBehaviors}
-import nl.amony.service.media.MediaService
+import nl.amony.lib.akka.{AkkaServiceModule, ServiceBehaviors}
 import nl.amony.service.media.MediaConfig.LocalResourcesConfig
+import nl.amony.service.media.MediaService
 import nl.amony.service.media.actor.MediaLibProtocol.Media
 import nl.amony.service.resources.ResourceProtocol._
-import nl.amony.service.resources.local.{DirectoryWatcher, LocalMediaScanner, LocalResourcesHandler}
+import nl.amony.service.resources.local.{LocalMediaScanner, LocalResourcesHandler}
 
 import scala.concurrent.Future
 
@@ -33,9 +33,7 @@ class ResourceService(system: ActorSystem[Nothing], mediaApi: MediaService)
     askService[Media](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref))
       .flatMap(mediaApi.upsertMedia)
 
-  private def getResource(
-      mediaId: String
-  )(fn: (Media, ActorRef[IOResponse]) => ResourceCommand): Future[Option[IOResponse]] =
+  private def getResource(mediaId: String)(fn: (Media, ActorRef[IOResponse]) => ResourceCommand): Future[Option[IOResponse]] =
     mediaApi
       .getById(mediaId)
       .flatMap {
@@ -60,6 +58,6 @@ class ResourceService(system: ActorSystem[Nothing], mediaApi: MediaService)
   def getPreviewSpriteImage(mediaId: String): Future[Option[IOResponse]] =
     askService[Option[IOResponse]](ref => GetPreviewSpriteImage(mediaId, ref))
 
-  def createFragments(media: Media) =
+  def createFragments(media: Media): Unit =
     serviceRef().foreach(_.tell(ResourceProtocol.CreateFragments(media, true)))
 }

@@ -17,6 +17,7 @@ object ResourceProtocol {
   }
 
   trait IOResponse {
+    def contentType(): String
     def size(): Long
     def getContent(): Source[ByteString, NotUsed]
     def getContentRange(start: Long, end: Long): Source[ByteString, NotUsed]

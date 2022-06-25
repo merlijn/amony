@@ -203,7 +203,7 @@ lazy val amonyServer =
       }
     )
 
-lazy val root = project
+lazy val amony = project
   .in(file("."))
   .settings(noPublishSettings)
   .settings(

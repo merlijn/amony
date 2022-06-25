@@ -26,7 +26,10 @@ object MediaConfig {
     lazy val mediaPath: Path    = path.toAbsolutePath.normalize()
     lazy val uploadPath: Path   = mediaPath.resolve(relativeUploadPath)
 
-    def filterFileName(fileName: String): Boolean = fileName.endsWith(".mp4") && !fileName.startsWith(".")
+    val extensions = List(".mp4", ".mkv", "webm", ".avi", ".wmv")
+
+    def filterFileName(fileName: String): Boolean =
+      extensions.exists(ext => fileName.endsWith(ext)) && !fileName.startsWith(".")
   }
 
   case class FFMPegConfig(

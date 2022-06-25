@@ -3,10 +3,12 @@ package nl.amony.service.resources.local
 import akka.NotUsed
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
+import akka.http.scaladsl.server.directives.ContentTypeResolver
 import akka.http.scaladsl.util.FastFuture
 import akka.stream.scaladsl.{Broadcast, FileIO, GraphDSL, RunnableGraph, Sink, Source}
 import akka.stream.{ClosedShape, SystemMaterializer}
 import akka.util.ByteString
+import nl.amony.lib.files.PathOps
 import nl.amony.lib.hash.Base16
 import nl.amony.service.media.MediaConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
 import nl.amony.service.resources.ResourceProtocol._
@@ -19,6 +21,7 @@ import scala.util.{Failure, Success}
 object LocalResourcesHandler extends Logging {
 
   case class LocalFileIOResponse(path: Path) extends IOResponse {
+    override def contentType(): String = ContentTypeResolver.Default.apply(path.getFileName.toString).toString()
     override def size(): Long = Files.size(path)
     override def getContent(): Source[ByteString, NotUsed] = getContentRange(0, size)
     override def getContentRange(start: Long, end: Long): Source[ByteString, NotUsed] =

@@ -23,8 +23,6 @@ object ResourceDirectives extends Logging {
 
   val chunkSize = 8192
 
-  def postWithData[T](implicit um: FromRequestUnmarshaller[T]): Directive[Tuple1[T]] = post & entity(as[T])
-
   case class IndexRange(start: Long, end: Long) {
     def length: Long = end - start
     def distance(other: IndexRange): Long = mergedEnd(other) - mergedStart(other) - (length + other.length)
@@ -150,7 +148,7 @@ object ResourceDirectives extends Logging {
     }
   }
 
-  def uploadDirective[T](fieldName: String, uploadLimitBytes: Long)(
+  def uploadFiles[T](fieldName: String, uploadLimitBytes: Long)(
       uploadFn: (FileInfo, Source[ByteString, Any]) => Future[T]
   ): Directive1[Seq[T]] =
     (withSizeLimit(uploadLimitBytes) & entity(as[Multipart.FormData])).flatMap { formData =>

@@ -4,7 +4,7 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import nl.amony.service.resources.ResourceDirectives.{randomAccessRangeSupport, uploadDirective}
+import nl.amony.service.resources.ResourceDirectives.{randomAccessRangeSupport, uploadFiles}
 import scribe.Logging
 
 object ResourceRoutes extends Logging {
@@ -33,7 +33,7 @@ object ResourceRoutes extends Logging {
     pathPrefix("resources") {
 
       path("upload") {
-        uploadDirective("video", uploadLimitBytes) { (fileInfo, source) =>
+        uploadFiles("video", uploadLimitBytes) { (fileInfo, source) =>
           resourceApi.uploadMedia(fileInfo.fileName, source)
         } { medias => complete("OK") }
       } ~ pathPrefix("media") {
@@ -51,7 +51,7 @@ object ResourceRoutes extends Logging {
               case None => complete(StatusCodes.NotFound)
               case Some(ioResponse) =>
                 randomAccessRangeSupport(
-                  ContentType(MediaTypes.`video/mp4`),
+                  ContentType.parse(ioResponse.contentType()).getOrElse(MediaTypes.`video/mp4`),
                   ioResponse.size(),
                   ioResponse.getContentRange
                 )
@@ -62,7 +62,7 @@ object ResourceRoutes extends Logging {
               case None => complete(StatusCodes.NotFound)
               case Some(ioResponse) =>
                 randomAccessRangeSupport(
-                  ContentType(MediaTypes.`video/mp4`),
+                  ContentType.parse(ioResponse.contentType()).getOrElse(MediaTypes.`video/mp4`),
                   ioResponse.size(),
                   ioResponse.getContentRange
                 )
