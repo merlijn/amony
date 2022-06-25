@@ -27,7 +27,7 @@ object LocalResourcesTasks extends Logging {
       else
         config.transcode.filterNot(_.scaleHeight > media.height)
 
-    def writeFragment(input: Path, height: Int, crf: Int): Unit = {
+    def writeFragment(input: Path, height: Int, crf: Int): Task[Unit] = {
       val output = config.resourcePath.resolve(s"${media.id}-${from}-${to}_${height}p.mp4")
       if (!Files.exists(output) || overwrite)
         FFMpeg.transcodeToMp4(
@@ -37,9 +37,11 @@ object LocalResourcesTasks extends Logging {
           quality     = crf,
           scaleHeight = Some(height)
         )
+      else
+        Task.unit
     }
 
-    def writeThumbnail(input: Path, height: Int): Unit = {
+    def writeThumbnail(input: Path, height: Int): Task[Unit] = {
       val output = config.resourcePath.resolve(s"${media.id}-${from}_${height}p.webp")
       if (!Files.exists(output) || overwrite)
         FFMpeg.createThumbnail(
@@ -48,18 +50,18 @@ object LocalResourcesTasks extends Logging {
           outputFile  = Some(output),
           scaleHeight = Some(height)
         )
+      else
+        Task.unit
     }
 
     Observable
       .fromIterable(transcodeList)
       .consumeWith(
-        Consumer.foreachTask(t =>
-          Task {
-            val input = config.mediaPath.resolve(media.fileInfo.relativePath)
-            writeThumbnail(input, t.scaleHeight)
-            writeFragment(input, t.scaleHeight, t.crf)
-          }
-        )
+        Consumer.foreachTask { t =>
+
+          val input = config.mediaPath.resolve(media.fileInfo.relativePath)
+          writeThumbnail(input, t.scaleHeight) >> writeFragment(input, t.scaleHeight, t.crf)
+        }
       )
   }
 

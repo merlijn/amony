@@ -28,6 +28,13 @@ object LocalResourcesHandler extends Logging {
       FileIO.fromPath(path, 8192, start).mapMaterializedValue(_ => NotUsed)
   }
 
+  def ioResponse(path: Path): Option[IOResponse] = {
+    if (path.exists())
+      Some(LocalFileIOResponse(path))
+    else
+      None
+  }
+
   implicit val scheduler = monix.execution.Scheduler.Implicits.global
 
   def apply(config: LocalResourcesConfig, scanner: LocalMediaScanner): Behavior[ResourceCommand] = {
@@ -57,23 +64,22 @@ object LocalResourcesHandler extends Logging {
 
         case GetThumbnail(mediaId, timestamp, quality, sender) =>
           val path = config.resourcePath.resolve(s"${mediaId}-${timestamp}_${quality}p.webp")
-          sender.tell(LocalFileIOResponse(path))
+          sender.tell(ioResponse(path))
           Behaviors.same
 
         case GetVideoFragment(mediaId, range, quality, sender) =>
           val path = config.resourcePath.resolve(s"${mediaId}-${range._1}-${range._2}_${quality}p.mp4")
-          sender.tell(LocalFileIOResponse(path))
+          sender.tell(ioResponse(path))
           Behaviors.same
 
         case GetVideo(media, sender) =>
           val path = config.mediaPath.resolve(media.fileInfo.relativePath)
-
-          sender.tell(LocalFileIOResponse(path))
+          sender.tell(ioResponse(path))
           Behaviors.same
 
         case GetPreviewSpriteImage(mediaId, sender) =>
           val path = config.resourcePath.resolve(s"$mediaId-timeline.webp")
-          sender.tell(Some(LocalFileIOResponse(path)))
+          sender.tell(ioResponse(path))
           Behaviors.same
 
         case GetPreviewSpriteVtt(mediaId, sender) =>

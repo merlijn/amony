@@ -18,6 +18,7 @@ object MediaConfig {
       hashingAlgorithm: HashingAlgorithm,
       fragments: FragmentSettings,
       transcode: List[TranscodeSettings],
+      extensions: List[String],
       ffprobeTimeout: FiniteDuration
   ) {
 
@@ -26,10 +27,8 @@ object MediaConfig {
     lazy val mediaPath: Path    = path.toAbsolutePath.normalize()
     lazy val uploadPath: Path   = mediaPath.resolve(relativeUploadPath)
 
-    val extensions = List(".mp4", ".mkv", "webm", ".avi", ".wmv")
-
     def filterFileName(fileName: String): Boolean =
-      extensions.exists(ext => fileName.endsWith(ext)) && !fileName.startsWith(".")
+      extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
   }
 
   case class FFMPegConfig(

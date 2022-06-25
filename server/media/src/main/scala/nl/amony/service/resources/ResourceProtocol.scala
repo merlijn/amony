@@ -32,12 +32,13 @@ object ResourceProtocol {
       extends ResourceCommand
   case class DeleteFragment(media: Media, timeRange: (Long, Long)) extends ResourceCommand
 
-  case class GetThumbnail(mediaHash: String, timestamp: Long, quality: Int, sender: ActorRef[IOResponse])
-      extends ResourceCommand
-  case class GetVideoFragment(mediaHash: String, timeRange: (Long, Long), quality: Int, sender: ActorRef[IOResponse])
+  case class GetThumbnail(mediaHash: String, timestamp: Long, quality: Int, sender: ActorRef[Option[IOResponse]])
       extends ResourceCommand
 
-  case class GetVideo(media: Media, sender: ActorRef[IOResponse]) extends ResourceCommand
+  case class GetVideoFragment(mediaHash: String, timeRange: (Long, Long), quality: Int, sender: ActorRef[Option[IOResponse]])
+      extends ResourceCommand
+
+  case class GetVideo(media: Media, sender: ActorRef[Option[IOResponse]]) extends ResourceCommand
 
   case class GetPreviewSpriteImage(mediaId: String, sender: ActorRef[Option[IOResponse]]) extends ResourceCommand
 

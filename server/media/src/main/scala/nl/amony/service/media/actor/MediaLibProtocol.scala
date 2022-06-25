@@ -83,6 +83,7 @@ object MediaLibProtocol {
   case class Media(
     id: String,
     uploader: String,
+    uploadTimestamp: Long,
     fileInfo: FileInfo,
     videoInfo: MediaInfo,
     meta: MediaMeta,

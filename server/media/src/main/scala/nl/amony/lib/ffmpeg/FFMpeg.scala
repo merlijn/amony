@@ -1,5 +1,6 @@
 package nl.amony.lib.ffmpeg
 
+import monix.eval.Task
 import nl.amony.lib.files.FileUtil.stripExtension
 import nl.amony.lib.ffmpeg.tasks.{CreateThumbnail, CreateThumbnailTile, FFProbe, ProcessRunner}
 import nl.amony.lib.files.PathOps
@@ -85,7 +86,7 @@ object FFMpeg extends Logging
       outputFile: Option[Path] = None,
       quality: Int = 24,
       scaleHeight: Option[Int]
-  ): Unit = {
+  ): Task[Unit] = {
 
     val (ss, to) = range
     val input    = inputFile.absoluteFileName()
@@ -108,7 +109,7 @@ object FFMpeg extends Logging
       )
     // format: on
 
-    runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
+    runWithOutput[Unit](cmds = "ffmpeg" :: args, useErrorStream = true) { _ => Task.unit }
   }
 
   def streamFragment(

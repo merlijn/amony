@@ -1,5 +1,6 @@
 package nl.amony.lib.ffmpeg.tasks
 
+import monix.eval.Task
 import nl.amony.lib.files.FileUtil.stripExtension
 import nl.amony.lib.ffmpeg.FFMpeg.{formatTime, runSync}
 import nl.amony.lib.files.PathOps
@@ -9,14 +10,14 @@ import java.nio.file.Path
 
 trait CreateThumbnail extends Logging {
 
-  def createThumbnail(
-        inputFile: Path,
-        timestamp: Long,
-        outputFile: Option[Path],
-        scaleHeight: Option[Int]
-      ): Unit = {
+  self: ProcessRunner with FFProbe =>
 
-    try {
+  def createThumbnail(
+    inputFile: Path,
+    timestamp: Long,
+    outputFile: Option[Path],
+    scaleHeight: Option[Int]): Task[Unit] = {
+
       val input  = inputFile.absoluteFileName()
       val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.webp")
 
@@ -33,12 +34,11 @@ trait CreateThumbnail extends Logging {
         )
       // format: on
 
-      runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
-    } catch {
-      case e: Exception =>
-        logger.warn(
-          s"Failed to create thumbnail for inputFile: ${inputFile}, timestamp: ${formatTime(timestamp)}, outputFile: ${outputFile}, scaleHeight: ${scaleHeight}", e
-        )
-    }
+      runIgnoreOutput(cmds = "ffmpeg" :: args, useErrorStream = true)
+
+//      case e: Exception =>
+//        logger.warn(
+//          s"Failed to create thumbnail for inputFile: ${inputFile}, timestamp: ${formatTime(timestamp)}, outputFile: ${outputFile}, scaleHeight: ${scaleHeight}", e
+//        )
   }
 }

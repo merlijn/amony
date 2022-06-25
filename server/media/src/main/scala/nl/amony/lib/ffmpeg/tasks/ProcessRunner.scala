@@ -5,15 +5,20 @@ import scribe.Logging
 
 trait ProcessRunner extends Logging {
 
+  def runUnsafe(cmds: Seq[String]): Process = {
+    logger.debug(s"Running command: ${cmds.mkString(",")}")
+    Runtime.getRuntime.exec(cmds.toArray)
+  }
+
   def runSync(useErrorStream: Boolean, cmds: Seq[String]): String = {
 
     logger.debug(s"Running command: ${cmds.mkString(",")}")
 
     val process  = Runtime.getRuntime.exec(cmds.toArray)
-    processOutput(process, useErrorStream, cmds)
+    getOutputAsString(process, useErrorStream, cmds)
   }
 
-  private def processOutput(process: Process, useErrorStream: Boolean, cmds: Seq[String]) = {
+  private def getOutputAsString(process: Process, useErrorStream: Boolean, cmds: Seq[String]): String = {
     val is       = if (useErrorStream) process.getErrorStream else process.getInputStream
     val output   = scala.io.Source.fromInputStream(is).mkString
     val exitCode = process.waitFor()
@@ -24,15 +29,12 @@ trait ProcessRunner extends Logging {
     output
   }
 
-  def runUnsafe(cmds: Seq[String]): Process = {
-    logger.debug(s"Running command: ${cmds.mkString(",")}")
-    Runtime.getRuntime.exec(cmds.toArray)
-  }
+  def runIgnoreOutput(cmds: Seq[String], useErrorStream: Boolean): Task[Unit] = runWithOutput(cmds, useErrorStream){ _ => Task.unit }
 
   def runWithOutput[T](cmds: Seq[String], useErrorStream: Boolean)(fn: String => Task[T]): Task[T] = {
     runCmd(cmds) { process =>
 
-      val output = processOutput(process, useErrorStream, cmds)
+      val output = getOutputAsString(process, useErrorStream, cmds)
 
       fn(output)
     }

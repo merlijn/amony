@@ -33,22 +33,22 @@ class ResourceService(system: ActorSystem[Nothing], mediaApi: MediaService)
     askService[Media](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref))
       .flatMap(mediaApi.upsertMedia)
 
-  private def getResource(mediaId: String)(fn: (Media, ActorRef[IOResponse]) => ResourceCommand): Future[Option[IOResponse]] =
+  private def getMediaResource(mediaId: String)(fn: (Media, ActorRef[Option[IOResponse]]) => ResourceCommand): Future[Option[IOResponse]] =
     mediaApi
       .getById(mediaId)
       .flatMap {
         case None        => Future.successful(None)
-        case Some(media) => serviceRef().flatMap(_.ask[IOResponse](ref => fn(media, ref)).map(Some(_)))
+        case Some(media) => serviceRef().flatMap(_.ask[Option[IOResponse]](ref => fn(media, ref)))
       }
 
   def getVideo(id: String, quality: Int): Future[Option[IOResponse]] =
-    getResource(id)((media, ref) => GetVideo(media, ref))
+    getMediaResource(id)((media, ref) => GetVideo(media, ref))
 
   def getVideoFragment(id: String, start: Long, end: Long, quality: Int): Future[Option[IOResponse]] =
-    getResource(id)((media, ref) => GetVideoFragment(media.id, (start, end), quality, ref))
+    getMediaResource(id)((media, ref) => GetVideoFragment(media.id, (start, end), quality, ref))
 
   def getThumbnail(id: String, quality: Int, timestamp: Option[Long]): Future[Option[IOResponse]] =
-    getResource(id)((media, ref) =>
+    getMediaResource(id)((media, ref) =>
       GetThumbnail(media.id, timestamp.getOrElse(media.fragments.head.fromTimestamp), quality, ref)
     )
 
