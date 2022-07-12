@@ -9,6 +9,7 @@ import scala.concurrent.duration.FiniteDuration
 
 object MediaConfig {
   case class LocalResourcesConfig(
+      id: String,
       private val path: Path,
       private val indexPath: Path,
       private val relativeUploadPath: Path,

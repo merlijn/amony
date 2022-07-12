@@ -17,22 +17,22 @@ object AtLeastOnceProcessor {
 
   def eventHandler(state: ProcessedState, event: Processed): ProcessedState = state.copy(highestSequenceNr = event.sequenceNr)
 
-  def process[E : ClassTag](persistenceId: String, processor: E => Unit): Behavior[(Long, E)] = {
+  def process[E : ClassTag](persistenceId: String, processorName: String, processor: E => Unit): Behavior[(Long, E)] = {
     Behaviors.setup[(Long, E)] { context =>
       val readJournalId = context.system.settings.config.getString("amony.akka.read-journal")
       val readJournal = PersistenceQuery(context.system).readJournalFor[EventsByPersistenceIdQuery](readJournalId)
-      process(persistenceId, readJournal, processor)
+      process(persistenceId, processorName, readJournal, processor)
     }
   }
 
-  def process[E : ClassTag](persistenceId: String, readJournal: EventsByPersistenceIdQuery, processor: E => Unit) = {
+  def process[E : ClassTag](persistenceId: String, processorName: String, readJournal: EventsByPersistenceIdQuery, processor: E => Unit) = {
 
     Behaviors.setup[(Long, E)] { context =>
       val classTag = implicitly[ClassTag[E]]
       implicit val mat: Materializer = SystemMaterializer.get(context.system).materializer
 
       EventSourcedBehavior.apply[(Long, E), Processed, ProcessedState](
-        persistenceId  = PersistenceId.ofUniqueId(s"$persistenceId-processor"),
+        persistenceId  = PersistenceId.ofUniqueId(s"$persistenceId-$processorName"),
         emptyState     = ProcessedState(0),
         commandHandler = commandHandler(processor),
         eventHandler   = eventHandler

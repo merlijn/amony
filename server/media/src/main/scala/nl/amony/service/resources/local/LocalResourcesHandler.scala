@@ -8,6 +8,7 @@ import akka.http.scaladsl.util.FastFuture
 import akka.stream.scaladsl.{Broadcast, FileIO, GraphDSL, RunnableGraph, Sink, Source}
 import akka.stream.{ClosedShape, SystemMaterializer}
 import akka.util.ByteString
+import nl.amony.lib.akka.GraphShapes
 import nl.amony.lib.files.PathOps
 import nl.amony.lib.hash.Base16
 import nl.amony.service.media.MediaConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
@@ -130,7 +131,7 @@ object LocalResourcesHandler extends Logging {
 
           val toPathSink = FileIO.toPath(path)
 
-          val (hashF, ioF) = bcast(sourceRef.source, hashSink, toPathSink).run()
+          val (hashF, ioF) = GraphShapes.broadcast(sourceRef.source, hashSink, toPathSink).run()
 
           val futureResult = for (
             hash     <- hashF;
@@ -154,15 +155,4 @@ object LocalResourcesHandler extends Logging {
       }
     }
   }
-
-  def bcast[T, A, B](s: Source[T, NotUsed], a: Sink[T, A], b: Sink[T, B]): RunnableGraph[(A, B)] =
-    RunnableGraph.fromGraph(GraphDSL.createGraph(a, b)((_, _)) { implicit builder =>
-    (hash, file) =>
-      import GraphDSL.Implicits._
-      val broadcast = builder.add(Broadcast[T](2))
-      s ~> broadcast.in
-      broadcast ~> hash.in
-      broadcast ~> file.in
-      ClosedShape
-  })
 }

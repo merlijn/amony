@@ -1,17 +1,21 @@
 package nl.amony.service.resources.local
 
+import akka.actor.typed.scaladsl.AskPattern.Askable
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, Behavior}
 import akka.util.Timeout
 import monix.eval.Task
-import monix.execution.Scheduler
-import monix.reactive.{Consumer, Observable}
+import nl.amony.lib.akka.AtLeastOnceProcessor
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.lib.files.{FileUtil, PathOps}
 import nl.amony.service.media.MediaConfig.LocalResourcesConfig
-import nl.amony.service.media.actor.MediaLibProtocol.{FileInfo, Fragment, Media, MediaInfo, MediaMeta}
+import nl.amony.service.media.actor.MediaLibProtocol._
+import nl.amony.service.resources.local.LocalResourcesStore.{LocalResourceEvent, ResourceAdded, ResourceDeleted, ResourceMoved}
 import scribe.Logging
 
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
 
 class LocalMediaScanner(config: LocalResourcesConfig) extends Logging {
 
@@ -70,96 +74,28 @@ class LocalMediaScanner(config: LocalResourcesConfig) extends Logging {
       }
   }
 
-  def scanMediaInDirectory(persistedMedia: List[Media])(implicit s: Scheduler, timeout: Timeout): (Observable[Media], Observable[Media]) = {
+  implicit val monixScheduler = monix.execution.Scheduler.Implicits.global
 
-    logger.info("Scanning directory for media...")
+  def behavior(mediaLib: ActorRef[MediaCommand]): Behavior[(Long, LocalResourceEvent)] =
+    Behaviors.setup { context =>
 
-    // first calculate the hashes
-    val filesWithHashes: List[(Path, String)] = Observable
-      .from(FileUtil.listFilesInDirectoryRecursive(config.mediaPath))
-      .filter { file => config.filterFileName(file.getFileName.toString) }
-      .filterNot { file =>
-        val isEmpty = Files.size(file) == 0
-        if (isEmpty)
-          logger.warn(s"Encountered empty file: ${file.getFileName.toString}")
-        isEmpty
+      implicit val scheduler = context.system.scheduler
+      implicit val timeout: Timeout = Timeout(5.seconds)
+
+      def processEvent(e: LocalResourceEvent): Unit = e match {
+        case ResourceAdded(resource) =>
+          logger.info(s"Scanning new media: ${resource.relativePath}")
+          val mediaPath = config.mediaPath.resolve(resource.relativePath)
+          val media = scanMedia(mediaPath, Some(resource.hash)).runSyncUnsafe()
+          Await.result(mediaLib.ask[Boolean](ref => UpsertMedia(media, ref)), timeout.duration)
+        case ResourceDeleted(hash, relativePath) =>
+          logger.info(s"Media was deleted: $relativePath")
+          Await.result(mediaLib.ask[Boolean](ref => RemoveMedia(hash, false, ref)), timeout.duration)
+        case ResourceMoved(hash, oldPath, newPath) =>
+        // ignore for now, send rename command?
       }
-      .mapParallelUnordered(config.scanParallelFactor) { path =>
-        Task {
-          val hash = if (config.verifyExistingHashes) {
-            config.hashingAlgorithm.createHash(path)
-          } else {
-            val relativePath = config.mediaPath.relativize(path).toString
 
-            persistedMedia.find(_.fileInfo.relativePath == relativePath) match {
-              case None => config.hashingAlgorithm.createHash(path)
-              case Some(m) =>
-                val fileAttributes = Files.readAttributes(path, classOf[BasicFileAttributes])
-
-                if (m.fileInfo.lastModifiedTime != fileAttributes.lastModifiedTime().toMillis) {
-                  logger.warn(s"$path last modified time is different from what last seen, recomputing hash")
-                  config.hashingAlgorithm.createHash(path)
-                } else {
-                  m.fileInfo.hash
-                }
-            }
-          }
-
-          (path, hash)
-        }
-      }
-      .consumeWith(Consumer.toList)
-      .runSyncUnsafe()
-
-    logger.info(s"Scanning done, found ${filesWithHashes.size} files")
-
-    // warn about hash collisions
-    val collisionsGroupedByHash = filesWithHashes
-      .groupBy { case (_, hash) => hash }
-      .filter { case (_, files) => files.size > 1 }
-
-    collisionsGroupedByHash.foreach { case (hash, files) =>
-      val collidingFiles = files.map(_._1.absoluteFileName()).mkString("\n")
-      logger.warn(s"The following files share the same hash and will be ignored ($hash):\n$collidingFiles")
+      AtLeastOnceProcessor
+        .process[LocalResourceEvent](LocalResourcesStore.persistenceId(config.id), "scanner", processEvent _)
     }
-
-    val collidingHashes = collisionsGroupedByHash.map { case (hash, _) => hash }.toSet
-
-    val (remaining, removed) =
-      persistedMedia.partition(m => filesWithHashes.exists { case (_, hash) => hash == m.fileInfo.hash })
-
-    // moved and new
-    val newAndMoved: Observable[Media] = Observable
-      .from(filesWithHashes)
-      .filterNot { case (path, hash) =>
-        // filters existing, unchanged files
-        remaining.exists(m =>
-          m.fileInfo.hash == hash && m.fileInfo.relativePath == config.mediaPath.relativize(path).toString
-        )
-      }
-      .filterNot { case (_, hash) => collidingHashes.contains(hash) }
-      .mapParallelUnordered[Option[Media]](config.scanParallelFactor) { case (videoFile, hash) =>
-        val relativePath = config.mediaPath.relativize(videoFile).toString
-
-        remaining.find(_.fileInfo.hash == hash) match {
-          case Some(old) =>
-            logger.info(s"File was moved: '${old.fileInfo.relativePath}' -> '${relativePath}'")
-            Task.now(Some(old.copy(fileInfo = old.fileInfo.copy(relativePath = relativePath))))
-
-          case None =>
-            logger.info(s"Scanning new file: '${relativePath}'")
-            scanMedia(videoFile, Some(hash))
-              .map(m => Some(m))
-              .onErrorHandle { e =>
-                logger.warn(s"Failed to scan video: $videoFile", e)
-                None
-              }
-        }
-      }
-      .collect { case Some(m) =>
-        m
-      }
-
-    (Observable.from(removed), newAndMoved)
-  }
 }

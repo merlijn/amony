@@ -9,7 +9,7 @@ import nl.amony.search.SearchProtocol.QueryMessage
 import nl.amony.service.auth.AuthService
 import nl.amony.service.media.MediaService
 import nl.amony.service.resources.ResourceService
-import nl.amony.service.resources.local.LocalMediaScanner
+import nl.amony.service.resources.local.{LocalMediaScanner, LocalResourcesStore}
 import nl.amony.webserver.admin.AdminApi
 import scribe.Logging
 
@@ -28,6 +28,10 @@ object Main extends ConfigLoader with Logging {
       val resourceRef = context.spawn(ResourceService.behavior(config.media, scanner), "resources")
       val mediaRef    = context.spawn(MediaService.behavior(config.media, resourceRef), "medialib")
       val userRef     = context.spawn(AuthService.behavior(), "users")
+      val resourceStore = context.spawn(LocalResourcesStore.behavior(config.media), "local-resources")
+
+      val _ = context.spawn(scanner.behavior(mediaRef), "scanner")
+      resourceStore.tell(LocalResourcesStore.FullScan(context.system.ignoreRef))
 
       Behaviors.empty
     }
@@ -50,7 +54,7 @@ object Main extends ConfigLoader with Logging {
 
     Thread.sleep(500)
     userService.upsertUser(userService.config.adminUsername, userService.config.adminPassword)
-    adminApi.scanLibrary()(timeout.duration)
+//    adminApi.scanLibrary()(timeout.duration)
 
 //    adminApi.generatePreviewSprites()
 

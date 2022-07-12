@@ -100,7 +100,7 @@ object DirectoryWatcher extends Logging {
       }
 
       val processor =
-        AtLeastOnceProcessor.process[DirectoryEvent](DirectoryWatcher.persistenceId,
+        AtLeastOnceProcessor.process[DirectoryEvent](DirectoryWatcher.persistenceId, "test",
           (e: DirectoryEvent) => println(s"Processed $e"))
 
       context.spawn(processor, "directory-processor")

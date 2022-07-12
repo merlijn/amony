@@ -94,7 +94,7 @@ lazy val common =
     .settings(
       name := "amony-lib-common",
       libraryDependencies ++= Seq(
-        akka,
+        akka,akkaStream,
         akkaPersistence,
         pureConfig,
         scribeSlf4j,

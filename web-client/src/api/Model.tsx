@@ -1,5 +1,3 @@
-export type mediaType = 'video' | 'image' | 'audio'
-
 export type MediaUrls = {
   originalResourceUrl: string,
   thumbnailUrl: string,
@@ -64,11 +62,6 @@ export type SearchResult = {
 export type Resolution = {
   value: number,
   label: string
-}
-
-export type Directory = {
-  id: number,
-  title: string
 }
 
 export type Range = {
