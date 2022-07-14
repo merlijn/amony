@@ -20,7 +20,7 @@ object InMemoryIndex {
 
   def apply[T](context: ActorContext[T])(implicit mat: Materializer): typed.ActorRef[QueryMessage] = {
 
-    val readJournalId = context.system.settings.config.getString("amony.akka.read-journal")
+    val readJournalId = context.system.settings.config.getString("akka.persistence.query.journal.plugin-id")
     val readJournal = PersistenceQuery(context.system).readJournalFor[EventsByPersistenceIdQuery](readJournalId)
 
     apply(context, readJournal)
@@ -53,10 +53,10 @@ object InMemoryIndex {
     var counter: Long = 0L
     var indexedAt: Long = 0L
     var state: State = State(Map.empty)
-    var sortedByTitle: List[Media] = List.empty
-    var sortedByDateAdded: List[Media] = List.empty
-    var sortedByDuration: List[Media] = List.empty
-    var sortedBySize: List[Media] = List.empty
+    var sortedByTitle: Vector[Media] = Vector.empty
+    var sortedByDateAdded: Vector[Media] = Vector.empty
+    var sortedByDuration: Vector[Media] = Vector.empty
+    var sortedBySize: Vector[Media] = Vector.empty
     var tags: Set[String] = Set.empty
 
     def media: Map[String, Media] = state.media
@@ -65,10 +65,10 @@ object InMemoryIndex {
 
       if (indexedAt < counter) {
         logger.debug("Updating index")
-        sortedByTitle     = media.values.toList.sortBy(m => m.meta.title.getOrElse(m.fileName()))
-        sortedByDateAdded = media.values.toList.sortBy(_.fileInfo.creationTime)
-        sortedByDuration  = media.values.toList.sortBy(_.videoInfo.duration)
-        sortedBySize      = media.values.toList.sortBy(_.fileInfo.size)
+        sortedByTitle     = media.values.toVector.sortBy(m => m.meta.title.getOrElse(m.fileName()))
+        sortedByDateAdded = media.values.toVector.sortBy(_.fileInfo.creationTime)
+        sortedByDuration  = media.values.toVector.sortBy(_.videoInfo.duration)
+        sortedBySize      = media.values.toVector.sortBy(_.fileInfo.size)
         tags              = media.values.flatMap(_.meta.tags).toSet
         indexedAt         = counter
       }

@@ -38,7 +38,7 @@ object LocalResourcesStore extends Logging {
 
   sealed trait Command
 
-  case class GetAll(sender: ActorRef[Set[LocalFile]])
+  case class GetAll(sender: ActorRef[Set[LocalFile]]) extends Command
   case class FullScan(sender: ActorRef[Set[LocalFile]]) extends Command
 
   def scanResources(config: LocalResourcesConfig, snapshot: Set[LocalFile]): Observable[LocalFile] = {
@@ -108,6 +108,9 @@ object LocalResourcesStore extends Logging {
     implicit val monixScheduler = monix.execution.Scheduler.Implicits.global
 
     cmd match {
+
+      case GetAll(sender) =>
+        Effect.reply(sender)(state)
 
       case FullScan(sender) =>
         val scannedResources =
