@@ -1,8 +1,8 @@
 package nl.amony.lib.ffmpeg.tasks
 
 import monix.eval.Task
+import nl.amony.lib.ffmpeg.FFMpeg.formatTime
 import nl.amony.lib.files.FileUtil.stripExtension
-import nl.amony.lib.ffmpeg.FFMpeg.{formatTime, runSync}
 import nl.amony.lib.files.PathOps
 import scribe.Logging
 

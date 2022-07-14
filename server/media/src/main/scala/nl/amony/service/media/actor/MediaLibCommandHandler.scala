@@ -57,10 +57,14 @@ object MediaLibCommandHandler extends Logging {
     cmd match {
 
       case UpsertMedia(media, sender) =>
-        Effect
-          .persist(MediaAdded(media))
-          .thenRun((_: State) => resourceRef.tell(ResourceProtocol.CreateFragments(media, false)))
-          .thenReply(sender)(_ => true)
+
+        if (state.media.get(media.id) == Some(media))
+          Effect.none
+        else
+          Effect
+            .persist(MediaAdded(media))
+            .thenRun((_: State) => resourceRef.tell(ResourceProtocol.CreateFragments(media, false)))
+            .thenReply(sender)(_ => true)
 
       case UpdateMetaData(mediaId, title, comment, tags, sender) =>
         requireMedia(mediaId, sender) { media =>

@@ -9,7 +9,7 @@ import nl.amony.lib.akka.AtLeastOnceProcessor
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.media.actor.MediaLibProtocol._
-import nl.amony.service.resources.local.LocalResourcesStore.{LocalResourceEvent, ResourceAdded, ResourceDeleted, ResourceMoved}
+import nl.amony.service.resources.local.LocalResourcesStore.{LocalResourceEvent, FileAdded, FileDeleted, FileMoved}
 import scribe.Logging
 
 import java.nio.file.attribute.BasicFileAttributes
@@ -83,15 +83,15 @@ class LocalMediaScanner(config: LocalResourcesConfig) extends Logging {
       implicit val timeout: Timeout = Timeout(5.seconds)
 
       def processEvent(e: LocalResourceEvent): Unit = e match {
-        case ResourceAdded(resource) =>
+        case FileAdded(resource) =>
           logger.info(s"Scanning new media: ${resource.relativePath}")
           val mediaPath = config.mediaPath.resolve(resource.relativePath)
           val media = scanMedia(mediaPath, Some(resource.hash)).runSyncUnsafe()
           Await.result(mediaLib.ask[Boolean](ref => UpsertMedia(media, ref)), timeout.duration)
-        case ResourceDeleted(hash, relativePath) =>
+        case FileDeleted(hash, relativePath) =>
           logger.info(s"Media was deleted: $relativePath")
           Await.result(mediaLib.ask[Boolean](ref => RemoveMedia(hash, false, ref)), timeout.duration)
-        case ResourceMoved(hash, oldPath, newPath) =>
+        case FileMoved(hash, oldPath, newPath) =>
         // ignore for now, send rename command?
       }
 

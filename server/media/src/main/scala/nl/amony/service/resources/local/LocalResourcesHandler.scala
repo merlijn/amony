@@ -97,7 +97,7 @@ object LocalResourcesHandler extends Logging {
 
         case CreateFragment(media, range, overwrite, sender) =>
           logger.info(s"Creating fragment: ${media.id}-$range")
-          LocalResourcesTasks.createPreview(config, media, range, overwrite).executeAsync.runAsync { result =>
+          LocalResourcesTasks.createFragment(config, media, range, overwrite).executeAsync.runAsync { result =>
             sender.tell(result.isRight)
           }
           Behaviors.same
@@ -111,7 +111,7 @@ object LocalResourcesHandler extends Logging {
         case DeleteFragment(media, range) =>
           val (start, end) = range
           logger.info(s"Deleting fragment: ${media.id}-$range")
-          LocalResourcesTasks.deleteVideoFragment(config, media, start, end)
+          LocalResourcesTasks.deleteFragment(config, media, start, end)
           Behaviors.same
 
         case Upload(fileName, sourceRef, sender) =>

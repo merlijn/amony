@@ -27,27 +27,27 @@ object ConvertNonStreamableVideos extends Logging {
       .mapParallelUnordered(parallelism)(path => FFMpeg.ffprobe(path, true, config.ffprobeTimeout).map(p => path -> p))
       .filterNot { case (_, probe) => probe.debugOutput.exists(_.isFastStart) }
       .filterNot { case (path, _) => config.filterFileName(path.getFileName().toString) }
-      .mapParallelUnordered(parallelism) { case (videoWithoutFastStart, _) =>
-        Task {
-          logger.info(s"Creating faststart/streamable mp4 for: ${videoWithoutFastStart}")
+      .mapParallelUnordered(parallelism) { case (video, _) =>
 
-          val out     = FFMpeg.addFastStart(videoWithoutFastStart)
-          val oldHash = config.hashingAlgorithm.createHash(videoWithoutFastStart)
-          val newHash = config.hashingAlgorithm.createHash(out)
+        FFMpeg.addFastStart(video).map { videoWithFaststart =>
+          logger.info(s"Creating faststart/streamable mp4 for: ${video}")
 
-          logger.info(s"$oldHash -> $newHash: ${config.mediaPath.relativize(out).toString}")
+          val oldHash = config.hashingAlgorithm.createHash(video)
+          val newHash = config.hashingAlgorithm.createHash(videoWithFaststart)
+
+          logger.info(s"$oldHash -> $newHash: ${config.mediaPath.relativize(videoWithFaststart).toString}")
 
           api.getById(oldHash).onComplete {
             case Success(Some(v)) =>
               val m = v.copy(
-                id       = newHash,
-                fileInfo = v.fileInfo.copy(hash = newHash, relativePath = config.mediaPath.relativize(out).toString)
+                id = newHash,
+                fileInfo = v.fileInfo.copy(hash = newHash, relativePath = config.mediaPath.relativize(videoWithFaststart).toString)
               )
 
               api.upsertMedia(m).foreach { _ =>
                 adminApi.regeneratePreviewForMedia(m)
                 api.deleteMedia(oldHash, deleteResource = false)
-                videoWithoutFastStart.deleteIfExists()
+                video.deleteIfExists()
               }
             case other =>
               logger.warn(s"Unexpected result: $other")

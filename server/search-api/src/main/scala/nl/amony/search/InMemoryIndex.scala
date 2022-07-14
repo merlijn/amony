@@ -65,7 +65,7 @@ object InMemoryIndex {
 
       if (indexedAt < counter) {
         logger.debug("Updating index")
-        sortedByTitle  = media.values.toList.sortBy(m => m.meta.title.getOrElse(m.fileName()))
+        sortedByTitle     = media.values.toList.sortBy(m => m.meta.title.getOrElse(m.fileName()))
         sortedByDateAdded = media.values.toList.sortBy(_.fileInfo.creationTime)
         sortedByDuration  = media.values.toList.sortBy(_.videoInfo.duration)
         sortedBySize      = media.values.toList.sortBy(_.fileInfo.size)

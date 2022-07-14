@@ -12,7 +12,7 @@ import java.nio.file.{Files, Path}
 
 object LocalResourcesTasks extends Logging {
 
-  private[resources] def createPreview(
+  private[resources] def createFragment(
       config: LocalResourcesConfig,
       media: Media,
       range: (Long, Long),
@@ -84,10 +84,10 @@ object LocalResourcesTasks extends Logging {
   ): Task[Unit] = {
     Observable
       .fromIterable(media.fragments)
-      .consumeWith(Consumer.foreachTask(f => createPreview(config, media, (f.fromTimestamp, f.toTimestamp), overwrite)))
+      .consumeWith(Consumer.foreachTask(f => createFragment(config, media, (f.fromTimestamp, f.toTimestamp), overwrite)))
   }
 
-  def deleteVideoFragment(config: LocalResourcesConfig, media: Media, from: Long, to: Long): Unit = {
+  private[resources] def deleteFragment(config: LocalResourcesConfig, media: Media, from: Long, to: Long): Unit = {
 
     config.resourcePath.resolve(s"${media.id}-$from-${to}_${media.height}p.mp4").deleteIfExists()
 

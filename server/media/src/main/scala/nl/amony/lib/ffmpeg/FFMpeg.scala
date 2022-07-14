@@ -1,6 +1,7 @@
 package nl.amony.lib.ffmpeg
 
 import monix.eval.Task
+import nl.amony.lib.ffmpeg.FFMpeg.formatTime
 import nl.amony.lib.files.FileUtil.stripExtension
 import nl.amony.lib.ffmpeg.tasks.{CreateThumbnail, CreateThumbnailTile, FFProbe, ProcessRunner}
 import nl.amony.lib.files.PathOps
@@ -9,6 +10,20 @@ import scribe.Logging
 import java.io.InputStream
 import java.nio.file.Path
 import java.time.Duration
+
+object dsl {
+
+  type Param = (String, Option[String])
+
+  def params(params: (String, Option[String])*): Seq[String] =
+    params.toList.flatMap { case (name, value) => name :: value.toList }
+
+  def startTime(ts: Long): Param = "-ss" -> Some(formatTime(ts))
+  def endTime(ts: Long): Param =  "-to" -> Some(formatTime(ts))
+  def input(fileName: String): Param = "-i" -> Some(fileName)
+  def crf(q: Int): Param = "-crf" -> Some(q.toString)
+  def noAudio(): Param = "-an" -> None
+}
 
 object FFMpeg extends Logging
   with ProcessRunner
@@ -33,15 +48,13 @@ object FFMpeg extends Logging
     s"$hours:$minutes:$seconds.$millis"
   }
 
-  def addFastStart(video: Path): Path = {
+  def addFastStart(video: Path): Task[Path] = {
 
     val out = s"${video.stripExtension}-faststart.mp4"
 
     logger.info(s"Adding faststart at: $out")
 
-    // format: off
-    runSync(
-      useErrorStream = true,
+    runWithOutput(
       cmds = List(
         "ffmpeg",
         "-i",        video.absoluteFileName(),
@@ -49,35 +62,9 @@ object FFMpeg extends Logging
         "-map",      "0",
         "-movflags", "+faststart",
         "-y",        out
-      )
-    )
-    // format: on
-
-    Path.of(out)
-  }
-
-  def copyMp4(
-      inputFile: Path,
-      start: Long,
-      end: Long,
-      outputFile: Option[Path] = None
-  ): Unit = {
-    val input  = inputFile.absoluteFileName()
-    val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.mp4")
-
-    // format: off
-    val args = List(
-        "-ss",       formatTime(start),
-        "-to",       formatTime(end),
-        "-i",        input,
-        "-c",        "copy",
-        "-map",      "0",
-        "-movflags", "+faststart",
-        "-y",        output
-      )
-    // format: on
-
-    runSync(useErrorStream = true, cmds = "ffmpeg" :: args)
+      ),
+      useErrorStream = true
+    )(_ => Task(Path.of(out)))
   }
 
   def transcodeToMp4(

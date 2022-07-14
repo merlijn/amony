@@ -69,7 +69,7 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
     Video(
       id        = media.id,
       uploader  = media.uploader,
-      uploadTimestamp = media.fileInfo.creationTime,
+      uploadTimestamp = media.uploadTimestamp,
       urls = urls,
       meta = meta,
       mediaInfo = mediaInfo,
