@@ -36,10 +36,11 @@ object LocalResourcesStore extends Logging {
     }
   }
 
-  sealed trait Command
+  sealed trait LocalResourceCommand
 
-  case class GetAll(sender: ActorRef[Set[LocalFile]]) extends Command
-  case class FullScan(sender: ActorRef[Set[LocalFile]]) extends Command
+  case class GetByHash(hash: String, sender: ActorRef[Option[LocalFile]]) extends LocalResourceCommand
+  case class GetAll(sender: ActorRef[Set[LocalFile]]) extends LocalResourceCommand
+  case class FullScan(sender: ActorRef[Set[LocalFile]]) extends LocalResourceCommand
 
   def scanResources(config: LocalResourcesConfig, snapshot: Set[LocalFile]): Observable[LocalFile] = {
     // first calculate the hashes
@@ -78,13 +79,13 @@ object LocalResourcesStore extends Logging {
       }
   }
 
-  def behavior(config: LocalResourcesConfig): Behavior[Command] =
+  def behavior(config: LocalResourcesConfig): Behavior[LocalResourceCommand] =
     Behaviors.setup { context =>
 
       implicit val ec = context.executionContext
       implicit val sc = context.system.scheduler
 
-      EventSourcedBehavior[Command, LocalResourceEvent, Set[LocalFile]](
+      EventSourcedBehavior[LocalResourceCommand, LocalResourceEvent, Set[LocalFile]](
         persistenceId  = PersistenceId.ofUniqueId(persistenceId(config.id)),
         emptyState     = Set.empty[LocalFile],
         commandHandler = commandHandler(config),
@@ -103,7 +104,7 @@ object LocalResourcesStore extends Logging {
       state -- old ++ old.map(_.copy(relativePath = newPath))
   }
 
-  def commandHandler(config: LocalResourcesConfig)(state: Set[LocalFile], cmd: Command): Effect[LocalResourceEvent, Set[LocalFile]] = {
+  def commandHandler(config: LocalResourcesConfig)(state: Set[LocalFile], cmd: LocalResourceCommand): Effect[LocalResourceEvent, Set[LocalFile]] = {
 
     implicit val monixScheduler = monix.execution.Scheduler.Implicits.global
 
@@ -111,6 +112,9 @@ object LocalResourcesStore extends Logging {
 
       case GetAll(sender) =>
         Effect.reply(sender)(state)
+
+      case GetByHash(hash, sender) =>
+        Effect.reply(sender)(state.find(_.hash == hash))
 
       case FullScan(sender) =>
         val scannedResources =

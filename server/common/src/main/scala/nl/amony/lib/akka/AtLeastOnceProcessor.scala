@@ -19,7 +19,7 @@ object AtLeastOnceProcessor {
 
   def process[E : ClassTag](persistenceId: String, processorName: String, processor: E => Unit): Behavior[(Long, E)] = {
     Behaviors.setup[(Long, E)] { context =>
-      val readJournalId = context.system.settings.config.getString("amony.akka.read-journal")
+      val readJournalId = context.system.settings.config.getString("akka.persistence.query.journal.plugin-id")
       val readJournal = PersistenceQuery(context.system).readJournalFor[EventsByPersistenceIdQuery](readJournalId)
       process(persistenceId, processorName, readJournal, processor)
     }

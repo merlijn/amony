@@ -24,14 +24,14 @@ object Main extends ConfigLoader with Logging {
 
 //      DatabaseMigrations.run(context.system)
 
-      val localIndexRef: ActorRef[QueryMessage] = InMemoryIndex.apply(context)
-      val resourceRef = context.spawn(ResourceService.behavior(config.media, scanner), "resources")
-      val mediaRef    = context.spawn(MediaService.behavior(config.media, resourceRef), "medialib")
-      val userRef     = context.spawn(AuthService.behavior(), "users")
-      val resourceStore = context.spawn(LocalResourcesStore.behavior(config.media), "local-resources")
+      val localIndexRef = InMemoryIndex.apply(context)
+//      val resourceStore = context.spawn(LocalResourcesStore.behavior(config.media), "local-resources")
+      val resourceRef   = context.spawn(ResourceService.behavior(config.media, scanner), "resources")
+      val mediaRef      = context.spawn(MediaService.behavior(config.media, resourceRef), "medialib")
+      val userRef       = context.spawn(AuthService.behavior(), "users")
 
       val _ = context.spawn(scanner.behavior(mediaRef), "scanner")
-      resourceStore.tell(LocalResourcesStore.FullScan(context.system.ignoreRef))
+//      resourceStore.tell(LocalResourcesStore.FullScan(context.system.ignoreRef))
 
       Behaviors.empty
     }

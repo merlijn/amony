@@ -1,22 +1,24 @@
 package nl.amony.service.resources.local
 
 import akka.NotUsed
-import akka.actor.typed.Behavior
+import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, Behavior}
 import akka.http.scaladsl.server.directives.ContentTypeResolver
 import akka.http.scaladsl.util.FastFuture
-import akka.stream.scaladsl.{Broadcast, FileIO, GraphDSL, RunnableGraph, Sink, Source}
-import akka.stream.{ClosedShape, SystemMaterializer}
-import akka.util.ByteString
+import akka.stream.SystemMaterializer
+import akka.stream.scaladsl.{FileIO, Sink, Source}
+import akka.util.{ByteString, Timeout}
 import nl.amony.lib.akka.GraphShapes
 import nl.amony.lib.files.PathOps
-import nl.amony.lib.hash.Base16
 import nl.amony.service.media.MediaConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
 import nl.amony.service.resources.ResourceProtocol._
+import nl.amony.service.resources.local.LocalResourcesStore.{GetByHash, LocalFile, LocalResourceCommand}
 import scribe.Logging
 
 import java.awt.Desktop
 import java.nio.file.{Files, Path}
+import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success}
 
 object LocalResourcesHandler extends Logging {
@@ -36,12 +38,16 @@ object LocalResourcesHandler extends Logging {
       None
   }
 
-  implicit val scheduler = monix.execution.Scheduler.Implicits.global
+  implicit val monixScheduler = monix.execution.Scheduler.Implicits.global
 
-  def apply(config: LocalResourcesConfig, scanner: LocalMediaScanner): Behavior[ResourceCommand] = {
+  def apply(config: LocalResourcesConfig, store: ActorRef[LocalResourceCommand], scanner: LocalMediaScanner): Behavior[ResourceCommand] = {
 
     Behaviors.receive { (context, msg) =>
+
       implicit val mat = SystemMaterializer.get(context.system).materializer
+      implicit val scheduler = context.system.scheduler
+      implicit val askTimeout = Timeout(5.seconds)
+//      val files = store.ask[Set[LocalFile]](ref => GetAll(ref))(Timeout(5.seconds), context.system.scheduler)
 
       msg match {
 
@@ -73,9 +79,14 @@ object LocalResourcesHandler extends Logging {
           sender.tell(ioResponse(path))
           Behaviors.same
 
-        case GetVideo(media, sender) =>
-          val path = config.mediaPath.resolve(media.fileInfo.relativePath)
-          sender.tell(ioResponse(path))
+        case GetResource(hash, sender) =>
+
+          store
+            .ask[Option[LocalFile]](ref => GetByHash(hash, ref))
+            .foreach { response =>
+              sender.tell(response.flatMap(f => ioResponse(config.mediaPath.resolve(f.relativePath))))
+            }
+
           Behaviors.same
 
         case GetPreviewSpriteImage(mediaId, sender) =>

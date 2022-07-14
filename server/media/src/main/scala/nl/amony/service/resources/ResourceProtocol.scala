@@ -38,7 +38,7 @@ object ResourceProtocol {
   case class GetVideoFragment(mediaHash: String, timeRange: (Long, Long), quality: Int, sender: ActorRef[Option[IOResponse]])
       extends ResourceCommand
 
-  case class GetVideo(media: Media, sender: ActorRef[Option[IOResponse]]) extends ResourceCommand
+  case class GetResource(hash: String, sender: ActorRef[Option[IOResponse]]) extends ResourceCommand
 
   case class GetPreviewSpriteImage(mediaId: String, sender: ActorRef[Option[IOResponse]]) extends ResourceCommand
 

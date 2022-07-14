@@ -9,7 +9,8 @@ import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.media.MediaService
 import nl.amony.service.media.actor.MediaLibProtocol.Media
 import nl.amony.service.resources.ResourceProtocol._
-import nl.amony.service.resources.local.{LocalMediaScanner, LocalResourcesHandler}
+import nl.amony.service.resources.local.LocalResourcesStore.FullScan
+import nl.amony.service.resources.local.{LocalMediaScanner, LocalResourcesHandler, LocalResourcesStore}
 
 import scala.concurrent.Future
 
@@ -19,9 +20,10 @@ object ResourceService {
 
     ServiceBehaviors.setupAndRegister[ResourceCommand] { context =>
 
-//      context.spawn(DirectoryWatcher.behavior(config), "directory-watcher")
-
-      LocalResourcesHandler.apply(config, scanner)
+      //      context.spawn(DirectoryWatcher.behavior(config), "directory-watcher")
+      val storeRef = context.spawn(LocalResourcesStore.behavior(config), "local-files-store")
+      storeRef.tell(FullScan(context.system.ignoreRef))
+      LocalResourcesHandler.apply(config, storeRef, scanner)
     }
   }
 }
@@ -41,8 +43,9 @@ class ResourceService(system: ActorSystem[Nothing], mediaApi: MediaService)
         case Some(media) => serviceRef().flatMap(_.ask[Option[IOResponse]](ref => fn(media, ref)))
       }
 
-  def getVideo(id: String, quality: Int): Future[Option[IOResponse]] =
-    getMediaResource(id)((media, ref) => GetVideo(media, ref))
+  def getVideo(id: String, quality: Int): Future[Option[IOResponse]] = {
+    askService[Option[IOResponse]](ref => GetResource(id, ref))
+  }
 
   def getVideoFragment(id: String, start: Long, end: Long, quality: Int): Future[Option[IOResponse]] =
     getMediaResource(id)((media, ref) => GetVideoFragment(media.id, (start, end), quality, ref))
