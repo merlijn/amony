@@ -14,6 +14,7 @@ import nl.amony.lib.files.PathOps
 import nl.amony.service.media.MediaConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
 import nl.amony.service.resources.ResourceProtocol._
 import nl.amony.service.resources.local.LocalResourcesStore.{GetByHash, LocalFile, LocalResourceCommand}
+import nl.amony.service.resources.local.tasks.{CreatePreviews, ScanMedia}
 import scribe.Logging
 
 import java.awt.Desktop
@@ -40,14 +41,13 @@ object LocalResourcesHandler extends Logging {
 
   implicit val monixScheduler = monix.execution.Scheduler.Implicits.global
 
-  def apply(config: LocalResourcesConfig, store: ActorRef[LocalResourceCommand], scanner: LocalMediaScanner): Behavior[ResourceCommand] = {
+  def apply(config: LocalResourcesConfig, store: ActorRef[LocalResourceCommand]): Behavior[ResourceCommand] = {
 
     Behaviors.receive { (context, msg) =>
 
       implicit val mat = SystemMaterializer.get(context.system).materializer
       implicit val scheduler = context.system.scheduler
       implicit val askTimeout = Timeout(5.seconds)
-//      val files = store.ask[Set[LocalFile]](ref => GetAll(ref))(Timeout(5.seconds), context.system.scheduler)
 
       msg match {
 
@@ -69,20 +69,20 @@ object LocalResourcesHandler extends Logging {
 
           Behaviors.same
 
-        case GetThumbnail(mediaId, timestamp, quality, sender) =>
-          val path = config.resourcePath.resolve(s"${mediaId}-${timestamp}_${quality}p.webp")
+        case GetThumbnail(resourceHash, timestamp, quality, sender) =>
+          val path = config.resourcePath.resolve(s"${resourceHash}-${timestamp}_${quality}p.webp")
           sender.tell(ioResponse(path))
           Behaviors.same
 
-        case GetVideoFragment(mediaId, range, quality, sender) =>
-          val path = config.resourcePath.resolve(s"${mediaId}-${range._1}-${range._2}_${quality}p.mp4")
+        case GetVideoFragment(resourceHash, range, quality, sender) =>
+          val path = config.resourcePath.resolve(s"${resourceHash}-${range._1}-${range._2}_${quality}p.mp4")
           sender.tell(ioResponse(path))
           Behaviors.same
 
-        case GetResource(hash, sender) =>
+        case GetResource(resourceHash, sender) =>
 
           store
-            .ask[Option[LocalFile]](ref => GetByHash(hash, ref))
+            .ask[Option[LocalFile]](ref => GetByHash(resourceHash, ref))
             .foreach { response =>
               sender.tell(response.flatMap(f => ioResponse(config.mediaPath.resolve(f.relativePath))))
             }
@@ -108,21 +108,28 @@ object LocalResourcesHandler extends Logging {
 
         case CreateFragment(media, range, overwrite, sender) =>
           logger.info(s"Creating fragment: ${media.id}-$range")
-          LocalResourcesTasks.createFragment(config, media, range, overwrite).executeAsync.runAsync { result =>
+          CreatePreviews.createVideoPreview(config, media, range, overwrite).executeAsync.runAsync { result =>
             sender.tell(result.isRight)
           }
           Behaviors.same
 
         case CreateFragments(media, overwrite) =>
 
-          LocalResourcesTasks.createFragments(config, media, overwrite).executeAsync.runAsyncAndForget
+          CreatePreviews.createVideoPreviews(config, media, overwrite).executeAsync.runAsyncAndForget
 //          LocalResourcesTasks.createPreviewSprite(config, media, overwrite).executeAsync.runAsyncAndForget
           Behaviors.same
 
         case DeleteFragment(media, range) =>
           val (start, end) = range
           logger.info(s"Deleting fragment: ${media.id}-$range")
-          LocalResourcesTasks.deleteFragment(config, media, start, end)
+
+          config.resourcePath.resolve(s"${media.id}-$start-${end}_${media.height}p.mp4").deleteIfExists()
+
+          config.transcode.foreach { transcode =>
+            config.resourcePath.resolve(s"${media.id}-${start}_${transcode.scaleHeight}p.webp").deleteIfExists()
+            config.resourcePath.resolve(s"${media.id}-$start-${end}_${transcode.scaleHeight}p.mp4").deleteIfExists()
+          }
+
           Behaviors.same
 
         case Upload(fileName, sourceRef, sender) =>
@@ -153,7 +160,7 @@ object LocalResourcesHandler extends Logging {
             .flatMap { case (hash, ioResult) =>
               ioResult.status match {
                 case Success(_) =>
-                  scanner.scanMedia(path, Some(hash)).runToFuture
+                  ScanMedia.scanMedia(config.mediaPath, config.relativeUploadPath.resolve(fileName), hash).runToFuture
                 case Failure(t) =>
                   logger.warn(s"Upload failed", t)
                   Files.delete(path)

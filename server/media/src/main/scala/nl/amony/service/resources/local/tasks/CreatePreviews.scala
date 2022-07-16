@@ -1,23 +1,43 @@
-package nl.amony.service.resources.local
+package nl.amony.service.resources.local.tasks
 
 import monix.eval.Task
 import monix.reactive.{Consumer, Observable}
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.lib.files.PathOps
 import nl.amony.service.media.MediaConfig.{LocalResourcesConfig, TranscodeSettings}
 import nl.amony.service.media.actor.MediaLibProtocol.Media
-import scribe.Logging
 
 import java.nio.file.{Files, Path}
 
-object LocalResourcesTasks extends Logging {
+object CreatePreviews {
 
-  private[resources] def createFragment(
-      config: LocalResourcesConfig,
-      media: Media,
-      range: (Long, Long),
-      overwrite: Boolean = false
-  ): Task[Unit] = {
+  private[resources] def createPreviewSprite(
+        config: LocalResourcesConfig,
+        media: Media,
+        overwrite: Boolean = false): Task[Unit] = {
+    FFMpeg.createThumbnailTile(
+      inputFile      = media.resolvePath(config.mediaPath).toAbsolutePath,
+      outputDir      = config.resourcePath,
+      outputBaseName = Some(s"${media.id}-timeline"),
+      overwrite      = overwrite
+    )
+  }
+
+  def createVideoPreviews(
+          config: LocalResourcesConfig,
+          media: Media,
+          overwrite: Boolean = false
+        ): Task[Unit] = {
+    Observable
+      .fromIterable(media.fragments)
+      .consumeWith(Consumer.foreachTask(f => createVideoPreview(config, media, (f.fromTimestamp, f.toTimestamp), overwrite)))
+  }
+
+  def createVideoPreview(
+         config: LocalResourcesConfig,
+         media: Media,
+         range: (Long, Long),
+         overwrite: Boolean = false
+       ): Task[Unit] = {
 
     val (from, to) = range
 
@@ -63,37 +83,5 @@ object LocalResourcesTasks extends Logging {
           writeThumbnail(input, t.scaleHeight) >> writeFragment(input, t.scaleHeight, t.crf)
         }
       )
-  }
-
-  private[resources] def createPreviewSprite(
-        config: LocalResourcesConfig,
-        media: Media,
-        overwrite: Boolean = false): Task[Unit] = {
-    FFMpeg.createThumbnailTile(
-      inputFile      = media.resolvePath(config.mediaPath).toAbsolutePath,
-      outputDir      = config.resourcePath,
-      outputBaseName = Some(s"${media.id}-timeline"),
-      overwrite      = overwrite
-    )
-  }
-
-  private[resources] def createFragments(
-    config: LocalResourcesConfig,
-    media: Media,
-    overwrite: Boolean = false
-  ): Task[Unit] = {
-    Observable
-      .fromIterable(media.fragments)
-      .consumeWith(Consumer.foreachTask(f => createFragment(config, media, (f.fromTimestamp, f.toTimestamp), overwrite)))
-  }
-
-  private[resources] def deleteFragment(config: LocalResourcesConfig, media: Media, from: Long, to: Long): Unit = {
-
-    config.resourcePath.resolve(s"${media.id}-$from-${to}_${media.height}p.mp4").deleteIfExists()
-
-    config.transcode.foreach { transcode =>
-      config.resourcePath.resolve(s"${media.id}-${from}_${transcode.scaleHeight}p.webp").deleteIfExists()
-      config.resourcePath.resolve(s"${media.id}-$from-${to}_${transcode.scaleHeight}p.mp4").deleteIfExists()
-    }
   }
 }

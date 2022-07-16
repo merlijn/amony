@@ -12,15 +12,14 @@ object MediaConfig {
       id: String,
       private val path: Path,
       private val indexPath: Path,
-      private val relativeUploadPath: Path,
+      relativeUploadPath: Path,
       deleteMedia: DeleteMediaOption,
       scanParallelFactor: Int,
       verifyExistingHashes: Boolean,
       hashingAlgorithm: HashingAlgorithm,
       fragments: FragmentSettings,
       transcode: List[TranscodeSettings],
-      extensions: List[String],
-      ffprobeTimeout: FiniteDuration
+      extensions: List[String]
   ) {
 
     def getIndexPath(): Path    = indexPath.toAbsolutePath.normalize()

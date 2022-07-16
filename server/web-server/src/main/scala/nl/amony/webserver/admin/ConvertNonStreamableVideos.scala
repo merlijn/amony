@@ -24,7 +24,7 @@ object ConvertNonStreamableVideos extends Logging {
 
     Observable
       .fromIterable(files)
-      .mapParallelUnordered(parallelism)(path => FFMpeg.ffprobe(path, true, config.ffprobeTimeout).map(p => path -> p))
+      .mapParallelUnordered(parallelism)(path => FFMpeg.ffprobe(path, true).map(p => path -> p))
       .filterNot { case (_, probe) => probe.debugOutput.exists(_.isFastStart) }
       .filterNot { case (path, _) => config.filterFileName(path.getFileName().toString) }
       .mapParallelUnordered(parallelism) { case (video, _) =>

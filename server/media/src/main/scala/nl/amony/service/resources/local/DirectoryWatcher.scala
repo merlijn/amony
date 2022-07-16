@@ -51,6 +51,7 @@ object DirectoryWatcher extends Logging {
             case CREATE => actorRef.tell(InternalDirectoryEvent(Added, event.path()))
             case MODIFY => actorRef.tell(InternalDirectoryEvent(Modified, event.path()))
             case DELETE => actorRef.tell(InternalDirectoryEvent(Deleted, event.path()))
+            case OVERFLOW =>
           }
       }
     }.fileHashing(false).build
@@ -85,9 +86,7 @@ object DirectoryWatcher extends Logging {
   private[resources] case class DeleteFile(info: FileInfo) extends DirectoryCommand
   private[resources] case class InternalDirectoryEvent(eventType: EventType, path: Path) extends DirectoryCommand
 
-  case object Init extends DirectoryCommand
-
-  val persistenceId = "directory-test-d"
+  def persistenceId(id: String) = s"directory-$id"
 
   def behavior(config: LocalResourcesConfig): Behavior[DirectoryCommand] = {
 
@@ -99,23 +98,23 @@ object DirectoryWatcher extends Logging {
         config.filterFileName(path.toString)
       }
 
-      val processor =
-        AtLeastOnceProcessor.process[DirectoryEvent](DirectoryWatcher.persistenceId, "test",
-          (e: DirectoryEvent) => println(s"Processed $e"))
+//      val processor =
+//        AtLeastOnceProcessor.process[DirectoryEvent](DirectoryWatcher.persistenceId(config.id), "test",
+//          (e: DirectoryEvent) => println(s"Processed $e"))
+//
+//      context.spawn(processor, "directory-processor")
 
-      context.spawn(processor, "directory-processor")
-
-      behavior(config.hashingAlgorithm, config.mediaPath, filter)
+      behavior(config.id, config.hashingAlgorithm, config.mediaPath, filter)
     }
   }
 
-  def behavior(hashingAlgorithm: HashingAlgorithm, directoryPath: Path, pathFilter: Path => Boolean): Behavior[DirectoryCommand] =
+  def behavior(id: String, hashingAlgorithm: HashingAlgorithm, directoryPath: Path, pathFilter: Path => Boolean): Behavior[DirectoryCommand] =
     Behaviors.setup { context =>
 
       watchAsync(directoryPath, context.self)
 
       EventSourcedBehavior.apply[DirectoryCommand, DirectoryEvent, DirectoryState](
-        persistenceId  = PersistenceId.ofUniqueId(persistenceId),
+        persistenceId  = PersistenceId.ofUniqueId(persistenceId(id)),
         emptyState     = DirectoryState.empty,
         commandHandler = commandHandler(context, directoryPath, pathFilter, hashingAlgorithm),
         eventHandler   = DirectoryEvents.apply

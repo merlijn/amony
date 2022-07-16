@@ -19,11 +19,10 @@ import scala.concurrent.Future
 import scala.util.control.NonFatal
 
 class AdminApi(
-                mediaApi: MediaService,
-                resourceApi: ResourceService,
-                system: ActorSystem[Nothing],
-                scanner: LocalMediaScanner,
-                config: AmonyConfig
+      mediaApi: MediaService,
+      resourceApi: ResourceService,
+      system: ActorSystem[Nothing],
+      config: AmonyConfig
 ) extends Logging {
 
   implicit val scheduler      = system.scheduler

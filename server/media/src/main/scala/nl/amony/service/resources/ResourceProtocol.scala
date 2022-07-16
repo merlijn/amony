@@ -28,17 +28,16 @@ object ResourceProtocol {
   case class Upload(fileName: String, source: SourceRef[ByteString], sender: ActorRef[Media]) extends ResourceCommand
 
   case class CreateFragments(media: Media, overwrite: Boolean) extends ResourceCommand
-  case class CreateFragment(media: Media, timeRange: (Long, Long), overwrite: Boolean, sender: ActorRef[Boolean])
-      extends ResourceCommand
-  case class DeleteFragment(media: Media, timeRange: (Long, Long)) extends ResourceCommand
+  case class CreateFragment(media: Media, range: (Long, Long), overwrite: Boolean, sender: ActorRef[Boolean]) extends ResourceCommand
+  case class DeleteFragment(media: Media, range: (Long, Long)) extends ResourceCommand
 
   case class GetThumbnail(mediaHash: String, timestamp: Long, quality: Int, sender: ActorRef[Option[IOResponse]])
       extends ResourceCommand
 
-  case class GetVideoFragment(mediaHash: String, timeRange: (Long, Long), quality: Int, sender: ActorRef[Option[IOResponse]])
+  case class GetVideoFragment(resourceHash: String, timeRange: (Long, Long), quality: Int, sender: ActorRef[Option[IOResponse]])
       extends ResourceCommand
 
-  case class GetResource(hash: String, sender: ActorRef[Option[IOResponse]]) extends ResourceCommand
+  case class GetResource(resourceHash: String, sender: ActorRef[Option[IOResponse]]) extends ResourceCommand
 
   case class GetPreviewSpriteImage(mediaId: String, sender: ActorRef[Option[IOResponse]]) extends ResourceCommand
 

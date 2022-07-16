@@ -6,13 +6,15 @@ import FFProbeModel.{ProbeDebugOutput, ProbeOutput}
 import scribe.Logging
 
 import java.nio.file.Path
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 trait FFProbe extends Logging with FFProbeJsonCodecs {
 
   self: ProcessRunner =>
 
-  def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration): Task[ProbeOutput] = {
+  val defaultProbeTimeout = 5.seconds
+
+  def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration = defaultProbeTimeout): Task[ProbeOutput] = {
 
     val fileName = file.toAbsolutePath.normalize().toString
 

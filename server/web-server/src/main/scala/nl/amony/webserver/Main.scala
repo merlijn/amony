@@ -18,20 +18,18 @@ import scala.concurrent.duration.DurationInt
 
 object Main extends ConfigLoader with Logging {
 
-  def rootBehaviour(config: AmonyConfig, scanner: LocalMediaScanner): Behavior[Nothing] =
+  def rootBehaviour(config: AmonyConfig): Behavior[Nothing] =
     Behaviors.setup[Nothing] { context =>
       implicit val mat = Materializer(context)
 
 //      DatabaseMigrations.run(context.system)
 
       val localIndexRef = InMemoryIndex.apply(context)
-//      val resourceStore = context.spawn(LocalResourcesStore.behavior(config.media), "local-resources")
-      val resourceRef   = context.spawn(ResourceService.behavior(config.media, scanner), "resources")
+      val resourceRef   = context.spawn(ResourceService.behavior(config.media), "resources")
       val mediaRef      = context.spawn(MediaService.behavior(config.media, resourceRef), "medialib")
       val userRef       = context.spawn(AuthService.behavior(), "users")
 
-      val _ = context.spawn(scanner.behavior(mediaRef), "scanner")
-//      resourceStore.tell(LocalResourcesStore.FullScan(context.system.ignoreRef))
+      val _ = context.spawn(LocalMediaScanner.behavior(config.media, mediaRef), "scanner")
 
       Behaviors.empty
     }
@@ -40,8 +38,7 @@ object Main extends ConfigLoader with Logging {
 
     Files.createDirectories(appConfig.media.resourcePath)
 
-    val scanner                      = new LocalMediaScanner(appConfig.media)
-    val router: Behavior[Nothing]    = rootBehaviour(appConfig, scanner)
+    val router: Behavior[Nothing]    = rootBehaviour(appConfig)
     val system: ActorSystem[Nothing] = ActorSystem[Nothing](router, "mediaLibrary", config)
 
     implicit val timeout: Timeout = Timeout(10.seconds)
@@ -49,7 +46,7 @@ object Main extends ConfigLoader with Logging {
     val userService  = new AuthService(system)
     val mediaApi     = new MediaService(system)
     val resourcesApi = new ResourceService(system, mediaApi)
-    val adminApi     = new AdminApi(mediaApi, resourcesApi, system, scanner, appConfig)
+    val adminApi     = new AdminApi(mediaApi, resourcesApi, system, appConfig)
 
 
     Thread.sleep(500)

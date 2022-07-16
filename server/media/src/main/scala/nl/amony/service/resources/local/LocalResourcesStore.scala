@@ -42,7 +42,7 @@ object LocalResourcesStore extends Logging {
   case class GetAll(sender: ActorRef[Set[LocalFile]]) extends LocalResourceCommand
   case class FullScan(sender: ActorRef[Set[LocalFile]]) extends LocalResourceCommand
 
-  def scanResources(config: LocalResourcesConfig, snapshot: Set[LocalFile]): Observable[LocalFile] = {
+  def scanDirectory(config: LocalResourcesConfig, snapshot: Set[LocalFile]): Observable[LocalFile] = {
     // first calculate the hashes
     Observable
       .from(FileUtil.listFilesInDirectoryRecursive(config.mediaPath))
@@ -118,7 +118,7 @@ object LocalResourcesStore extends Logging {
 
       case FullScan(sender) =>
         val scannedResources =
-          scanResources(config, state)
+          scanDirectory(config, state)
             .consumeWith(Consumer.toList)
             .runSyncUnsafe().toSet
 
@@ -147,9 +147,13 @@ object LocalResourcesStore extends Logging {
 
         val movedResources: List[FileMoved] =
           state.flatMap { old =>
-            scannedResources
-              .find { n => old.relativePath != n.relativePath && old.hasEqualMeta(n) }
-              .map { n => FileMoved(n.hash, old.relativePath, n.relativePath)}
+
+            val equalMeta = scannedResources.find { n => old.relativePath != n.relativePath && old.hasEqualMeta(n) }
+            val equalHash = scannedResources.find { n => old.relativePath != n.relativePath && old.hash == n.hash }
+
+            // prefer the file with equal timestamp meta, otherwise fall back to just equal hash
+            equalMeta.orElse(equalHash).map { n => FileMoved(n.hash, old.relativePath, n.relativePath)}
+
           }.toList
 
         newResources.foreach(e => logger.info(s"new file: ${e.file.relativePath}"))

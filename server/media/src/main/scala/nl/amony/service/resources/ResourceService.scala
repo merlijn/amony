@@ -16,14 +16,14 @@ import scala.concurrent.Future
 
 object ResourceService {
 
-  def behavior(config: LocalResourcesConfig, scanner: LocalMediaScanner): Behavior[ResourceCommand] = {
+  def behavior(config: LocalResourcesConfig): Behavior[ResourceCommand] = {
 
     ServiceBehaviors.setupAndRegister[ResourceCommand] { context =>
 
       //      context.spawn(DirectoryWatcher.behavior(config), "directory-watcher")
       val storeRef = context.spawn(LocalResourcesStore.behavior(config), "local-files-store")
       storeRef.tell(FullScan(context.system.ignoreRef))
-      LocalResourcesHandler.apply(config, storeRef, scanner)
+      LocalResourcesHandler.apply(config, storeRef)
     }
   }
 }
