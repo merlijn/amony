@@ -1,6 +1,5 @@
-package nl.amony.service.auth.actor
+package nl.amony.service.auth
 
-import nl.amony.service.auth.JwtConfig
 import pdi.jwt.{JwtCirce, JwtClaim}
 
 import java.time.Instant

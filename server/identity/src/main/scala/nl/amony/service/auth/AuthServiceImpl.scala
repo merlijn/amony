@@ -9,7 +9,7 @@ import nl.amony.lib.akka.AkkaServiceModule
 import nl.amony.service.auth.actor.UserCommandHandler.UserState
 import nl.amony.service.auth.actor.UserEventSourcing.UserEvent
 import nl.amony.service.auth.actor.UserProtocol._
-import nl.amony.service.auth.actor.{TokenManager, UserCommandHandler, UserEventSourcing}
+import nl.amony.service.auth.actor.{UserCommandHandler, UserEventSourcing}
 import nl.amony.service.auth.api.AuthService
 import nl.amony.service.auth.api.AuthService.{AuthServiceGrpc, GetByExternalId, LoginResponse, UpsertUserRequest}
 
@@ -32,22 +32,19 @@ object AuthServiceImpl {
   }
 }
 
-class AuthServiceImpl(system: ActorSystem[Nothing]) extends AkkaServiceModule[UserCommand](system) with AuthServiceGrpc.AuthService {
+class AuthServiceImpl(system: ActorSystem[Nothing]) extends AkkaServiceModule(system) with AuthServiceGrpc.AuthService {
 
   import pureconfig.generic.auto._
   val config = loadConfig[AuthConfig]("amony.auth")
 
-  def upsertUser(userName: String, password: String): Future[User] =
-    askService[User](ref => UpsertUser(userName, password, ref))
-
   override def login(request: AuthService.Credentials): Future[LoginResponse] =
-    askService[AuthenticationResponse](ref => Authenticate(request.username, request.password, ref)).map {
+    ask[UserCommand, AuthenticationResponse](ref => Authenticate(request.username, request.password, ref)).map {
       case Authentication(userId, token) => AuthService.Authentication(userId, token)
       case InvalidCredentials            => AuthService.InvalidCredentials()
     }
 
   override def insertUser(request: UpsertUserRequest): Future[AuthService.User] = {
-    askService[User](ref => UpsertUser(request.externalId, request.password, ref)).map { user =>
+    ask[UserCommand, User](ref => UpsertUser(request.externalId, request.password, ref)).map { user =>
       AuthService.User(user.id, user.email, user.passwordHash)
     }
   }

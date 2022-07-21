@@ -1,6 +1,7 @@
 package nl.amony.service.auth.actor
 
 import akka.persistence.typed.scaladsl.Effect
+import nl.amony.service.auth.TokenManager
 import nl.amony.service.auth.actor.UserEventSourcing._
 import nl.amony.service.auth.actor.UserProtocol._
 

@@ -14,10 +14,7 @@ object AdminRoutes {
     implicit val timeout: Timeout = Timeout(config.requestTimeout)
 
     pathPrefix("api" / "admin") {
-      (path("regen-thumbnails") & post) {
-        adminApi.reGenerateAllPreviews()
-        complete(StatusCodes.OK)
-      } ~ (path("regen-preview-thumbnails") & post) {
+      (path("regen-preview-thumbnails") & post) {
         adminApi.reGeneratePreviewSprites()
         complete(StatusCodes.OK)
       } ~ (path("export-to-file") & post) {
@@ -33,7 +30,7 @@ object AdminRoutes {
         adminApi.convertNonStreamableVideos()
         complete(StatusCodes.OK)
       } ~ (path("scan-library") & post) {
-        adminApi.scanLibrary()
+//        adminApi.scanLibrary()
         complete(StatusCodes.OK)
       } ~ (path("logs")) {
         complete(StatusCodes.OK)

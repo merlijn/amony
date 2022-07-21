@@ -45,7 +45,7 @@ object ConvertNonStreamableVideos extends Logging {
               )
 
               api.upsertMedia(m).foreach { _ =>
-                adminApi.regeneratePreviewForMedia(m)
+//                adminApi.regeneratePreviewForMedia(m)
                 api.deleteMedia(oldHash, deleteResource = false)
                 video.deleteIfExists()
               }

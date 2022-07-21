@@ -34,7 +34,7 @@ object ResourceRoutes extends Logging {
 
       path("upload") {
         uploadFiles("video", uploadLimitBytes) { (fileInfo, source) =>
-          resourceApi.uploadMedia(fileInfo.fileName, source)
+          resourceApi.uploadResource(fileInfo.fileName, source)
         } { medias => complete("OK") }
       } ~ pathPrefix("media") {
 

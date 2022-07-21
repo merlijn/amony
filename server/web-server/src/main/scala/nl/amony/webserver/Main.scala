@@ -7,6 +7,7 @@ import akka.util.Timeout
 import nl.amony.search.InMemoryIndex
 import nl.amony.search.SearchProtocol.QueryMessage
 import nl.amony.service.auth.AuthServiceImpl
+import nl.amony.service.auth.api.AuthService.UpsertUserRequest
 import nl.amony.service.media.MediaService
 import nl.amony.service.resources.ResourceService
 import nl.amony.service.resources.local.{LocalMediaScanner, LocalResourcesStore}
@@ -23,13 +24,13 @@ object Main extends ConfigLoader with Logging {
       implicit val mat = Materializer(context)
 
 //      DatabaseMigrations.run(context.system)
-
       val localIndexRef = InMemoryIndex.apply(context)
-      val resourceRef   = context.spawn(ResourceService.behavior(config.media), "resources")
-      val mediaRef      = context.spawn(MediaService.behavior(config.media, resourceRef), "medialib")
+      val storeRef      = context.spawn(LocalResourcesStore.behavior(config.media), "local-files-store")
+      val resourceRef   = context.spawn(ResourceService.behavior(config.media, storeRef), "resources")
+      val mediaRef      = context.spawn(MediaService.behavior(config.media.fragments, resourceRef), "medialib")
       val userRef       = context.spawn(AuthServiceImpl.behavior(), "users")
 
-      val _ = context.spawn(LocalMediaScanner.behavior(config.media, mediaRef), "scanner")
+      val _ = context.spawn(LocalMediaScanner.behavior(config.media), "scanner")
 
       Behaviors.empty
     }
@@ -45,12 +46,12 @@ object Main extends ConfigLoader with Logging {
 
     val userService  = new AuthServiceImpl(system)
     val mediaApi     = new MediaService(system)
-    val resourcesApi = new ResourceService(system, mediaApi)
+    val resourcesApi = new ResourceService(system)
     val adminApi     = new AdminApi(mediaApi, resourcesApi, system, appConfig)
 
-
     Thread.sleep(500)
-    userService.upsertUser(userService.config.adminUsername, userService.config.adminPassword)
+    userService.insertUser(UpsertUserRequest(userService.config.adminUsername, userService.config.adminPassword))
+
 //    adminApi.scanLibrary()(timeout.duration)
 
 //    adminApi.generatePreviewSprites()

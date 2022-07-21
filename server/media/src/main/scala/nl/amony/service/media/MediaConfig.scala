@@ -2,6 +2,8 @@ package nl.amony.service.media
 
 import nl.amony.lib.hash.Base32
 import nl.amony.lib.hash.PartialHash.partialHash
+import pureconfig.ConfigReader
+import pureconfig.generic.semiauto.deriveEnumerationReader
 
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -52,10 +54,18 @@ object MediaConfig {
   case object DeleteFile  extends DeleteMediaOption
   case object MoveToTrash extends DeleteMediaOption
 
+  object DeleteMediaOption {
+    implicit val deleteMediaOption: ConfigReader[DeleteMediaOption] = deriveEnumerationReader[DeleteMediaOption]
+  }
+
   sealed trait HashingAlgorithm {
     def algorithm: String
     def createHash(path: Path): String
     def encodeHash(bytes: Array[Byte]): String
+  }
+
+  object HashingAlgorithm {
+    implicit val hashingAlgorithmReader: ConfigReader[HashingAlgorithm] = deriveEnumerationReader[HashingAlgorithm]
   }
 
   case object PartialHash extends HashingAlgorithm {

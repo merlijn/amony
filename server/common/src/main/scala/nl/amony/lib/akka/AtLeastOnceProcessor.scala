@@ -39,7 +39,7 @@ object AtLeastOnceProcessor {
       ).receiveSignal {
         case (ProcessedState(fromSequenceNr), RecoveryCompleted) =>
           // start processing on startup from previous highest seq nr
-          readJournal.eventsByPersistenceId(persistenceId, fromSequenceNr, Long.MaxValue).runForeach {
+          readJournal.eventsByPersistenceId(persistenceId, fromSequenceNr + 1, Long.MaxValue).runForeach {
             case EventEnvelope(_, _, sequenceNr, classTag(e))  => context.self.tell(sequenceNr -> e)
           }
       }

@@ -1,66 +1,71 @@
 package nl.amony.service.resources
 
-import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.stream.scaladsl.{Source, StreamRefs}
 import akka.util.ByteString
 import nl.amony.lib.akka.{AkkaServiceModule, ServiceBehaviors}
 import nl.amony.service.media.MediaConfig.LocalResourcesConfig
-import nl.amony.service.media.MediaService
-import nl.amony.service.media.actor.MediaLibProtocol.Media
+import nl.amony.service.media.actor.MediaLibProtocol.{GetById, Media, MediaCommand}
 import nl.amony.service.resources.ResourceProtocol._
-import nl.amony.service.resources.local.LocalResourcesStore.FullScan
-import nl.amony.service.resources.local.{LocalMediaScanner, LocalResourcesHandler, LocalResourcesStore}
+import nl.amony.service.resources.local.LocalResourcesStore.{FullScan, GetByHash, LocalFile, LocalResourceCommand, Upload}
+import nl.amony.service.resources.local.{LocalFileIOResponse, LocalResourcesHandler}
 
+import java.nio.file.Files
 import scala.concurrent.Future
 
 object ResourceService {
 
-  def behavior(config: LocalResourcesConfig): Behavior[ResourceCommand] = {
+  def behavior(config: LocalResourcesConfig, storeRef: ActorRef[LocalResourceCommand]): Behavior[ResourceCommand] = {
 
     ServiceBehaviors.setupAndRegister[ResourceCommand] { context =>
-
-      //      context.spawn(DirectoryWatcher.behavior(config), "directory-watcher")
-      val storeRef = context.spawn(LocalResourcesStore.behavior(config), "local-files-store")
       storeRef.tell(FullScan(context.system.ignoreRef))
       LocalResourcesHandler.apply(config, storeRef)
     }
   }
 }
 
-class ResourceService(system: ActorSystem[Nothing], mediaApi: MediaService)
-    extends AkkaServiceModule[ResourceCommand](system) {
+class ResourceService(system: ActorSystem[Nothing]) extends AkkaServiceModule(system) {
 
-  def uploadMedia(fileName: String, source: Source[ByteString, Any]): Future[Media] =
-    askService[Media](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref))
-      .flatMap(mediaApi.upsertMedia)
+  import pureconfig.generic.auto._
+  val config = loadConfig[LocalResourcesConfig]("amony.media")
 
-  private def getMediaResource(mediaId: String)(fn: (Media, ActorRef[Option[IOResponse]]) => ResourceCommand): Future[Option[IOResponse]] =
-    mediaApi
-      .getById(mediaId)
-      .flatMap {
-        case None        => Future.successful(None)
-        case Some(media) => serviceRef().flatMap(_.ask[Option[IOResponse]](ref => fn(media, ref)))
-      }
+  def uploadResource(fileName: String, source: Source[ByteString, Any]): Future[Boolean] =
+    ask[LocalResourceCommand, Boolean](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref))
 
-  def getVideo(id: String, quality: Int): Future[Option[IOResponse]] = {
-    askService[Option[IOResponse]](ref => GetResource(id, ref))
+  def getVideo(id: String, quality: Int): Future[Option[IOResponse]] =
+    ask[LocalResourceCommand, Option[LocalFile]](ref => GetByHash(id, ref))
+      .map(_.flatMap(f => LocalFileIOResponse.option(config.mediaPath.resolve(f.relativePath))))
+
+  def getVideoFragment(id: String, start: Long, end: Long, quality: Int): Future[Option[IOResponse]] = {
+    val path = config.resourcePath.resolve(s"${id}-${start}-${end}_${quality}p.mp4")
+    Future.successful(LocalFileIOResponse.option(path))
   }
 
-  def getVideoFragment(id: String, start: Long, end: Long, quality: Int): Future[Option[IOResponse]] =
-    getMediaResource(id)((media, ref) => GetVideoFragment(media.id, (start, end), quality, ref))
+  def getThumbnail(id: String, quality: Int, timestamp: Option[Long]): Future[Option[IOResponse]] = {
 
-  def getThumbnail(id: String, quality: Int, timestamp: Option[Long]): Future[Option[IOResponse]] =
-    getMediaResource(id)((media, ref) =>
-      GetThumbnail(media.id, timestamp.getOrElse(media.fragments.head.fromTimestamp), quality, ref)
-    )
+    ask[MediaCommand, Option[Media]](ref => GetById(id, ref)).map { media =>
+      timestamp.orElse(media.map(_.thumbnailTimestamp)).flatMap { t =>
+        val path = config.resourcePath.resolve(s"${id}-${t}_${quality}p.webp")
+        LocalFileIOResponse.option(path)
+      }
+    }
+  }
 
-  def getPreviewSpriteVtt(mediaId: String): Future[Option[String]] =
-    askService[Option[String]](ref => GetPreviewSpriteVtt(mediaId, ref))
+  def getPreviewSpriteVtt(mediaId: String): Future[Option[String]] = {
 
-  def getPreviewSpriteImage(mediaId: String): Future[Option[IOResponse]] =
-    askService[Option[IOResponse]](ref => GetPreviewSpriteImage(mediaId, ref))
+    val path = config.resourcePath.resolve(s"$mediaId-timeline.vtt")
 
-  def createFragments(media: Media): Unit =
-    serviceRef().foreach(_.tell(ResourceProtocol.CreateFragments(media, true)))
+    val content =
+      if (Files.exists(path))
+        scala.io.Source.fromFile(path.toFile).mkString
+      else
+        "WEBVTT"
+
+    Future.successful(Some(content))
+  }
+
+  def getPreviewSpriteImage(mediaId: String): Future[Option[IOResponse]] = {
+    val path = config.resourcePath.resolve(s"$mediaId-timeline.webp")
+    Future.successful(LocalFileIOResponse.option(path))
+  }
 }

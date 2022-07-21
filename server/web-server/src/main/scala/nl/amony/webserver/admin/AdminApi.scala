@@ -25,31 +25,8 @@ class AdminApi(
       config: AmonyConfig
 ) extends Logging {
 
-  implicit val scheduler      = system.scheduler
+//  implicit val scheduler      = system.scheduler
   implicit val monixScheduler = monix.execution.Scheduler.Implicits.global
-
-  def scanLibrary()(implicit timeout: Timeout): Unit = {
-
-//    logger.info("Scanning library")
-//
-//    mediaApi
-//      .getAll()
-//      .foreach { loadedFromStore =>
-//        val (deleted, newAndMoved) = scanner.scanMediaInDirectory(loadedFromStore)
-//        val upsert                 = Consumer.foreachTask[Media](m => Task { mediaApi.upsertMedia(m) })
-//
-//        val delete = Consumer.foreachTask[Media](m =>
-//          Task {
-//            logger.info(s"Detected deleted file: ${m.fileInfo.relativePath}")
-//            mediaApi.deleteMedia(m.id, deleteResource = false)
-//          }
-//        )
-//
-//        deleted.consumeWith(delete).runSyncUnsafe()
-//        newAndMoved.consumeWith(upsert).runSyncUnsafe()
-//
-//      }(system.executionContext)
-  }
 
   def reGeneratePreviewSprites()(implicit timeout: Timeout): Unit = {
     mediaApi.getAll().foreach { medias =>
@@ -69,14 +46,6 @@ class AdminApi(
       }
     }
   }
-
-  def regeneratePreviewForMedia(media: Media)(implicit timeout: Timeout): Unit = {
-    logger.info(s"re-generating previews for '${media.fileInfo.relativePath}'")
-    resourceApi.createFragments(media)
-  }
-
-  def reGenerateAllPreviews()(implicit timeout: Timeout): Unit =
-    mediaApi.getAll().foreach { medias => medias.foreach(regeneratePreviewForMedia) }
 
   def verifyHashes()(implicit timeout: Timeout): Unit = {
 

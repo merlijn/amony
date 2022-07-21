@@ -12,7 +12,7 @@ import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
 
-abstract class AkkaServiceModule[T : ServiceKey](val system: ActorSystem[Nothing]) {
+abstract class AkkaServiceModule(val system: ActorSystem[Nothing]) {
 
   implicit def askTimeout: Timeout = Timeout(5.seconds)
 
@@ -20,7 +20,7 @@ abstract class AkkaServiceModule[T : ServiceKey](val system: ActorSystem[Nothing
   implicit val mat: Materializer    = SystemMaterializer.get(system).materializer
   implicit val scheduler: Scheduler = system.scheduler
 
-  def askService[Res](replyTo: ActorRef[Res] => T) = serviceRef().flatMap(_.ask(replyTo))
+  def ask[S : ServiceKey, Res](replyTo: ActorRef[Res] => S) = getServiceRef[S].flatMap(_.ask(replyTo))
 
   def loadConfig[T : ClassTag](path: String)(implicit reader: ConfigReader[T]): T = {
 
@@ -30,8 +30,8 @@ abstract class AkkaServiceModule[T : ServiceKey](val system: ActorSystem[Nothing
     config
   }
 
-  def serviceRef(): Future[ActorRef[T]] =
+  def getServiceRef[S : ServiceKey] =
     system.receptionist
-      .ask[Receptionist.Listing](ref => Find(implicitly[ServiceKey[T]], ref))
-      .map(_.serviceInstances(implicitly[ServiceKey[T]]).head)
+      .ask[Receptionist.Listing](ref => Find(implicitly[ServiceKey[S]], ref))
+      .map(_.serviceInstances(implicitly[ServiceKey[S]]).head)
 }
