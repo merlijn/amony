@@ -16,6 +16,6 @@ object UserProtocol {
   case class Authenticate(email: String, password: String, sender: ActorRef[AuthenticationResponse]) extends UserCommand
 
   sealed trait AuthenticationResponse
-  case class Authentication(userId: String) extends AuthenticationResponse
+  case class Authentication(userId: String, token: String) extends AuthenticationResponse
   case object InvalidCredentials            extends AuthenticationResponse
 }

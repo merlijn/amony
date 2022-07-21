@@ -4,8 +4,9 @@ package nl.amony.service.media.api;
 
 message Fragment {
 
-  Range range = 1;
-  MediaMeta meta = 2;
+  string mediaId = 1;
+  Range range = 2;
+  MediaMeta meta = 3;
 }
 
 message FileInfo {
@@ -38,5 +39,4 @@ message Media {
   string uploader = 2;
   MediaMeta meta = 3;
   FileInfo fileInfo = 4;
-  repeated Fragment fragments = 5;
 }

@@ -7,7 +7,7 @@ import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.generic.semiauto.deriveCodec
-import nl.amony.service.auth.actor.UserProtocol.{Authentication, InvalidCredentials}
+import nl.amony.service.auth.api.AuthService
 import scribe.Logging
 
 import scala.concurrent.duration.DurationInt
@@ -19,17 +19,17 @@ object AuthRoutes extends Logging {
   implicit val credDecoder = deriveCodec[Credentials]
   implicit val timeout     = Timeout(5.seconds)
 
-  def apply(userApi: AuthService): Route = {
+  def apply(userApi: AuthServiceImpl): Route = {
 
     pathPrefix("api" / "identity") {
       (path("login") & post & entity(as[Credentials])) { credentials =>
-        onSuccess(userApi.login(credentials.username, credentials.password)) {
-          case InvalidCredentials =>
+        onSuccess(userApi.login(AuthService.Credentials(credentials.username, credentials.password))) {
+          case AuthService.InvalidCredentials(_) =>
             logger.info("Received InvalidCredentials")
             complete(StatusCodes.BadRequest)
-          case Authentication(userId) =>
+          case AuthService.Authentication(userId, token, _) =>
             logger.info("Received Authentication")
-            val cookie = HttpCookie("session", userApi.createToken(userId), path = Some("/"))
+            val cookie = HttpCookie("session", token, path = Some("/"))
             setCookie(cookie) { complete("OK") }
         }
 

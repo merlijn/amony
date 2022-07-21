@@ -52,6 +52,7 @@ val levelDb                  = "org.iq80.leveldb"          % "leveldb"          
 val levelDbJndiAll           = "org.fusesource.leveldbjni" % "leveldbjni-all"             % "1.8"
 
 val scalaPbRuntimeGrcp       = "com.thesamet.scalapb"     %% "scalapb-runtime-grpc"       % scalapb.compiler.Version.scalapbVersion
+val scalaPbRuntimeProtobuf   = "com.thesamet.scalapb"     %% "scalapb-runtime"            % scalapb.compiler.Version.scalapbVersion % "protobuf"
 
 
 val javaOpts = Nil
@@ -113,7 +114,7 @@ lazy val identity =
         // akka
         akka, akkaPersistence, akkaHttp, jwtCirce, akkaHttpCirce,
         circe, circeGeneric, pureConfig, slick,
-        scalaPbRuntimeGrcp
+        scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf
       )
     )
 

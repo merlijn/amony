@@ -6,7 +6,7 @@ import akka.stream.Materializer
 import akka.util.Timeout
 import nl.amony.search.InMemoryIndex
 import nl.amony.search.SearchProtocol.QueryMessage
-import nl.amony.service.auth.AuthService
+import nl.amony.service.auth.AuthServiceImpl
 import nl.amony.service.media.MediaService
 import nl.amony.service.resources.ResourceService
 import nl.amony.service.resources.local.{LocalMediaScanner, LocalResourcesStore}
@@ -27,7 +27,7 @@ object Main extends ConfigLoader with Logging {
       val localIndexRef = InMemoryIndex.apply(context)
       val resourceRef   = context.spawn(ResourceService.behavior(config.media), "resources")
       val mediaRef      = context.spawn(MediaService.behavior(config.media, resourceRef), "medialib")
-      val userRef       = context.spawn(AuthService.behavior(), "users")
+      val userRef       = context.spawn(AuthServiceImpl.behavior(), "users")
 
       val _ = context.spawn(LocalMediaScanner.behavior(config.media, mediaRef), "scanner")
 
@@ -43,7 +43,7 @@ object Main extends ConfigLoader with Logging {
 
     implicit val timeout: Timeout = Timeout(10.seconds)
 
-    val userService  = new AuthService(system)
+    val userService  = new AuthServiceImpl(system)
     val mediaApi     = new MediaService(system)
     val resourcesApi = new ResourceService(system, mediaApi)
     val adminApi     = new AdminApi(mediaApi, resourcesApi, system, appConfig)

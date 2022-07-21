@@ -107,22 +107,20 @@ object InMemoryIndex {
           query.tags.forall(tag => m.meta.tags.contains(tag))
         def filterDuration(m: Media): Boolean =
           query.duration
-            .map { case (min, max) =>
-              m.videoInfo.duration >= min && m.videoInfo.duration <= max
-            }
+            .map { case (min, max) => m.videoInfo.duration >= min && m.videoInfo.duration <= max }
             .getOrElse(true)
         def filterMedia(m: Media): Boolean = filterRes(m) && filterQuery(m) && filterTag(m) && filterDuration(m)
 
         val unfiltered = query.sort match {
           case None                        => state.media.values
-          case Some(Sort(Title, Asc))   => sortedByTitle
-          case Some(Sort(Title, Desc))  => sortedByTitle.reverse
+          case Some(Sort(Title, Asc))      => sortedByTitle
+          case Some(Sort(Title, Desc))     => sortedByTitle.reverse
           case Some(Sort(DateAdded, Asc))  => sortedByDateAdded
           case Some(Sort(DateAdded, Desc)) => sortedByDateAdded.reverse
           case Some(Sort(Duration, Asc))   => sortedByDuration
           case Some(Sort(Duration, Desc))  => sortedByDuration.reverse
-          case Some(Sort(Size, Asc))   => sortedBySize
-          case Some(Sort(Size, Desc))  => sortedBySize.reverse
+          case Some(Sort(Size, Asc))       => sortedBySize
+          case Some(Sort(Size, Desc))      => sortedBySize.reverse
         }
 
         val result = unfiltered.filter(filterMedia)

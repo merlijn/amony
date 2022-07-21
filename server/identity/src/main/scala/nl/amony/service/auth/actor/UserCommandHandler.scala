@@ -8,7 +8,7 @@ object UserCommandHandler {
 
   case class UserState(users: Map[String, User])
 
-  def apply(passwordHasher: String => String)(state: UserState, cmd: UserCommand): Effect[UserEvent, UserState] = {
+  def apply(passwordHasher: String => String, tokenManager: TokenManager)(state: UserState, cmd: UserCommand): Effect[UserEvent, UserState] = {
 
     def getByEmail(email: String): Option[User] = state.users.values.find(_.email == email)
 
@@ -32,7 +32,7 @@ object UserCommandHandler {
             case None => InvalidCredentials
             case Some(user) =>
               if (user.passwordHash == passwordHasher(password))
-                Authentication(user.id)
+                Authentication(user.id, tokenManager.createToken(user.id))
               else
                 InvalidCredentials
           }

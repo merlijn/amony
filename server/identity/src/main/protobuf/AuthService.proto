@@ -17,7 +17,9 @@ message Credentials {
 }
 
 message LoginResponse {
-  oneof reponse {
+
+  oneof sealed_value {
+
     Authentication authentication = 1;
     InvalidCredentials invalidCredentials = 2;
   }
@@ -40,8 +42,11 @@ message Authentication {
 }
 
 message User {
+  // unique identifier for the user, for example a uuid
   string userId = 1;
-  string username = 2;
+  // external id, could be an email, phone number
+  string externalId = 2;
+  // the hashed password of the user
   string passwordHash = 3;
 }
 

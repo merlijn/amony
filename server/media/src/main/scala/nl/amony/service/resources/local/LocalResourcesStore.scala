@@ -148,11 +148,11 @@ object LocalResourcesStore extends Logging {
         val movedResources: List[FileMoved] =
           state.flatMap { old =>
 
-            val equalMeta = scannedResources.find { n => old.relativePath != n.relativePath && old.hasEqualMeta(n) }
-            val equalHash = scannedResources.find { n => old.relativePath != n.relativePath && old.hash == n.hash }
+            def equalMeta() = scannedResources.find { n => old.relativePath != n.relativePath && old.hasEqualMeta(n) }
+            def equalHash() = scannedResources.find { n => old.relativePath != n.relativePath && old.hash == n.hash }
 
             // prefer the file with equal timestamp meta, otherwise fall back to just equal hash
-            equalMeta.orElse(equalHash).map { n => FileMoved(n.hash, old.relativePath, n.relativePath)}
+            equalMeta().orElse(equalHash()).map { n => FileMoved(n.hash, old.relativePath, n.relativePath)}
 
           }.toList
 

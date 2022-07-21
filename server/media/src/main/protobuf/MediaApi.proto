@@ -4,7 +4,7 @@ import "protocol.proto";
 
 package nl.amony.service.media.api;
 
-service MediaApi {
+service MediaService {
 
   rpc getById(MediaId) returns (Media) { }
 

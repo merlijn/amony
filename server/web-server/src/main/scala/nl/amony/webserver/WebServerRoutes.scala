@@ -6,7 +6,7 @@ import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import nl.amony.search
 import nl.amony.search.SearchService
-import nl.amony.service.auth.{AuthService, AuthRoutes}
+import nl.amony.service.auth.{AuthServiceImpl, AuthRoutes}
 import nl.amony.service.media.{MediaService, MediaRoutes}
 import nl.amony.service.resources.{ResourceService, ResourceRoutes}
 import nl.amony.webserver.{AmonyConfig, WebServerConfig}
@@ -20,7 +20,7 @@ object WebServerRoutes {
 
   def apply(
              system: ActorSystem[Nothing],
-             userApi: AuthService,
+             userApi: AuthServiceImpl,
              mediaApi: MediaService,
              resourceApi: ResourceService,
              adminApi: AdminApi,
