@@ -23,7 +23,7 @@ object ResourceProtocol {
     def getContentRange(start: Long, end: Long): Source[ByteString, NotUsed]
   }
 
-  case class DeleteResource(media: Media, sender: ActorRef[Boolean]) extends ResourceCommand
+  case class DeleteResource(resourceHash: String, sender: ActorRef[Boolean]) extends ResourceCommand
 
   case class CreateFragments(media: Media, overwrite: Boolean) extends ResourceCommand
   case class CreateFragment(media: Media, range: (Long, Long), overwrite: Boolean, sender: ActorRef[Boolean]) extends ResourceCommand

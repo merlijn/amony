@@ -5,14 +5,12 @@ import akka.actor.typed.{ActorRef, Behavior}
 import akka.stream.SystemMaterializer
 import akka.util.Timeout
 import nl.amony.lib.files.PathOps
-import nl.amony.service.media.MediaConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
+import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.resources.ResourceProtocol._
-import nl.amony.service.resources.local.LocalResourcesStore.LocalResourceCommand
+import nl.amony.service.resources.local.LocalResourcesStore.{DeleteFileByHash, LocalResourceCommand}
 import nl.amony.service.resources.local.tasks.CreatePreviews
 import scribe.Logging
 
-import java.awt.Desktop
-import java.nio.file.Files
 import scala.concurrent.duration.DurationInt
 
 object LocalResourcesHandler extends Logging {
@@ -29,22 +27,9 @@ object LocalResourcesHandler extends Logging {
 
       msg match {
 
-        case DeleteResource(media, sender) =>
+        case DeleteResource(resourceHash, sender) =>
 
-          val path = media.resolvePath(config.mediaPath)
-          logger.info(s"Deleting file: ${path}")
-
-          if (Files.exists(path)) {
-            config.deleteMedia match {
-              case DeleteFile =>
-                Files.delete(path)
-              case MoveToTrash =>
-                Desktop.getDesktop().moveToTrash(path.toFile())
-            }
-          };
-
-          sender.tell(true)
-
+          store.tell(DeleteFileByHash(resourceHash, sender))
           Behaviors.same
 
         case CreateFragment(media, range, overwrite, sender) =>

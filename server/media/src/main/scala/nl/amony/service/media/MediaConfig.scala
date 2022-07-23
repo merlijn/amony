@@ -33,11 +33,6 @@ object MediaConfig {
       extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
   }
 
-  case class FFMPegConfig(
-     scanParallelFactor: Int,
-     ffprobeTimeout: FiniteDuration
-  )
-
   case class FragmentSettings(
     defaultFragmentLength: FiniteDuration,
     minimumFragmentLength: FiniteDuration,

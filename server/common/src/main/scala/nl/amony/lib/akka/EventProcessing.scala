@@ -1,5 +1,6 @@
 package nl.amony.lib.akka
 
+import akka.Done
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import akka.persistence.query.{EventEnvelope, PersistenceQuery}
@@ -8,16 +9,26 @@ import akka.persistence.typed.{PersistenceId, RecoveryCompleted}
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
 import akka.stream.{Materializer, SystemMaterializer}
 
+import scala.concurrent.Future
 import scala.reflect.ClassTag
 
-object AtLeastOnceProcessor {
+object EventProcessing {
 
   case class Processed(sequenceNr: Long)
   case class ProcessedState(highestSequenceNr: Long)
 
   def eventHandler(state: ProcessedState, event: Processed): ProcessedState = state.copy(highestSequenceNr = event.sequenceNr)
 
-  def process[E : ClassTag](persistenceId: String, processorName: String, processor: E => Unit): Behavior[(Long, E)] = {
+  def processEvents[T : ClassTag](mediaPersistenceId: String, readJournal: EventsByPersistenceIdQuery)(processor: T => Unit)(implicit mat: Materializer): Future[Done] = {
+
+    val classTag = implicitly[ClassTag[T]]
+
+    readJournal.eventsByPersistenceId(mediaPersistenceId, 0L, Long.MaxValue).runForeach {
+      case EventEnvelope(_, _, _, classTag(e)) => processor(e)
+    }
+  }
+
+  def processAtLeastOnce[E : ClassTag](persistenceId: String, processorName: String, processor: E => Unit): Behavior[(Long, E)] = {
     Behaviors.setup[(Long, E)] { context =>
       val readJournalId = context.system.settings.config.getString("akka.persistence.query.journal.plugin-id")
       val readJournal = PersistenceQuery(context.system).readJournalFor[EventsByPersistenceIdQuery](readJournalId)

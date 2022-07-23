@@ -37,6 +37,8 @@ class AuthServiceImpl(system: ActorSystem[Nothing]) extends AkkaServiceModule(sy
   import pureconfig.generic.auto._
   val config = loadConfig[AuthConfig]("amony.auth")
 
+  insertUser(UpsertUserRequest(config.adminUsername, config.adminPassword))
+
   override def login(request: AuthService.Credentials): Future[LoginResponse] =
     ask[UserCommand, AuthenticationResponse](ref => Authenticate(request.username, request.password, ref)).map {
       case Authentication(userId, token) => AuthService.Authentication(userId, token)

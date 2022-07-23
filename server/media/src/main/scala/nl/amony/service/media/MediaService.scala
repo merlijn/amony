@@ -3,6 +3,8 @@ package nl.amony.service.media
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
+import akka.serialization.jackson.JacksonObjectMapperProvider
+import com.fasterxml.jackson.core.JsonEncoding
 import nl.amony.lib.akka.{AkkaServiceModule, ServiceBehaviors}
 import nl.amony.service.media.MediaConfig.{FragmentSettings, LocalResourcesConfig}
 import nl.amony.service.media.actor.MediaLibEventSourcing.Event
@@ -11,6 +13,7 @@ import nl.amony.service.media.actor.{MediaLibCommandHandler, MediaLibEventSourci
 import nl.amony.service.resources.ResourceProtocol.ResourceCommand
 import scribe.Logging
 
+import java.io.ByteArrayOutputStream
 import scala.concurrent.Future
 
 object MediaService {
@@ -39,6 +42,17 @@ class MediaService(system: ActorSystem[Nothing]) extends AkkaServiceModule(syste
 
   def getAll(): Future[List[Media]] =
     ask[MediaCommand, List[Media]](ref => GetAll(ref))
+
+  def exportToJson(): Future[String] = {
+
+    val objectMapper = JacksonObjectMapperProvider.get(system).getOrCreate("media-export", None)
+
+    getAll().map { medias =>
+      val out = new ByteArrayOutputStream()
+      objectMapper.createGenerator(out, JsonEncoding.UTF8).useDefaultPrettyPrinter().writeObject(medias)
+      out.toString()
+    }
+  }
 
   def upsertMedia(media: Media): Future[Media] =
     ask[MediaCommand, Boolean](ref => UpsertMedia(media, ref)).map(_ => media)

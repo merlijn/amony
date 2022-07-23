@@ -1,20 +1,17 @@
 package nl.amony.search
 
-import akka.Done
-import akka.actor.typed.ActorSystem
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.ActorContext
 import akka.actor.{Actor, ActorRef, Props, typed}
-import akka.persistence.query.{EventEnvelope, PersistenceQuery}
+import akka.persistence.query.PersistenceQuery
 import akka.persistence.query.scaladsl.EventsByPersistenceIdQuery
 import akka.stream.Materializer
-import nl.amony.service.media.actor.MediaLibProtocol.{Media, State}
+import nl.amony.lib.akka.EventProcessing
 import nl.amony.search.SearchProtocol._
 import nl.amony.service.media.MediaService
 import nl.amony.service.media.actor.MediaLibEventSourcing
+import nl.amony.service.media.actor.MediaLibProtocol.{Media, State}
 import scribe.Logging
-
-import scala.concurrent.Future
 
 object InMemoryIndex {
 
@@ -35,17 +32,11 @@ object InMemoryIndex {
 
     context.system.receptionist ! Receptionist.Register(QueryMessage.serviceKey, typedRef)
 
-    runIndex(indexActor, readJournal)
+    EventProcessing.processEvents[MediaLibEventSourcing.Event](MediaService.mediaPersistenceId, readJournal) { e =>
+      indexActor.tell(e, ActorRef.noSender)
+    }
 
     typedRef
-  }
-
-  def runIndex[T](indexActor: ActorRef, readJournal: EventsByPersistenceIdQuery)(implicit mat: Materializer): Future[Done] = {
-
-    readJournal.eventsByPersistenceId(MediaService.mediaPersistenceId, 0L, Long.MaxValue).runForeach {
-      case EventEnvelope(_, _, _, e: MediaLibEventSourcing.Event) =>
-        indexActor.tell(e, ActorRef.noSender)
-    }
   }
 
   class LocalIndexActor() extends Actor with Logging {

@@ -125,7 +125,8 @@ lazy val media =
     .settings(
       name := "amony-service-media",
       libraryDependencies ++= Seq(
-        scribeSlf4j, akka, akkaPersistence, akkaHttp, akkaHttpCirce, circe, circeGeneric, monixReactive,
+        scribeSlf4j, akka, akkaPersistence, akkaSerializationJackson,
+        akkaHttp, akkaHttpCirce, circe, circeGeneric, monixReactive,
         directoryWatcher,
         scalaTest,
         slick,

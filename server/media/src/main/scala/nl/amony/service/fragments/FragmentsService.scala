@@ -2,6 +2,11 @@ package nl.amony.service.fragments
 
 import nl.amony.service.media.actor.MediaLibProtocol.Fragment
 
+class FragmentStore {
+
+}
+
+
 class FragmentsService {
 
   def getFragments(mediaId: String, userId: String): List[Fragment] = ???

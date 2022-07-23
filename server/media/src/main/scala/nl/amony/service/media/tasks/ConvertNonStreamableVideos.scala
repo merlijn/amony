@@ -1,12 +1,11 @@
-package nl.amony.webserver.admin
+package nl.amony.service.media.tasks
 
 import akka.util.Timeout
-import monix.eval.Task
 import monix.reactive.Observable
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.files.{FileUtil, PathOps}
-import nl.amony.service.media.MediaService
 import nl.amony.service.media.MediaConfig.LocalResourcesConfig
+import nl.amony.service.media.MediaService
 import scribe.Logging
 
 import scala.concurrent.duration.DurationInt
@@ -14,7 +13,7 @@ import scala.util.Success
 
 object ConvertNonStreamableVideos extends Logging {
 
-  def convertNonStreamableVideos(config: LocalResourcesConfig, api: MediaService, adminApi: AdminApi): Unit = {
+  def convertNonStreamableVideos(config: LocalResourcesConfig, mediaService: MediaService): Unit = {
 
     val files = FileUtil.listFilesInDirectoryRecursive(config.mediaPath)
 
@@ -37,16 +36,16 @@ object ConvertNonStreamableVideos extends Logging {
 
           logger.info(s"$oldHash -> $newHash: ${config.mediaPath.relativize(videoWithFaststart).toString}")
 
-          api.getById(oldHash).onComplete {
+          mediaService.getById(oldHash).onComplete {
             case Success(Some(v)) =>
               val m = v.copy(
                 id = newHash,
                 resourceInfo = v.resourceInfo.copy(hash = newHash, relativePath = config.mediaPath.relativize(videoWithFaststart).toString)
               )
 
-              api.upsertMedia(m).foreach { _ =>
+              mediaService.upsertMedia(m).foreach { _ =>
 //                adminApi.regeneratePreviewForMedia(m)
-                api.deleteMedia(oldHash, deleteResource = false)
+                mediaService.deleteMedia(oldHash, deleteResource = false)
                 video.deleteIfExists()
               }
             case other =>

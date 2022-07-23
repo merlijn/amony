@@ -29,19 +29,19 @@ class ResourceService(system: ActorSystem[Nothing]) extends AkkaServiceModule(sy
   import pureconfig.generic.auto._
   val config = loadConfig[LocalResourcesConfig]("amony.media")
 
-  def uploadResource(fileName: String, source: Source[ByteString, Any]): Future[Boolean] =
+  def uploadResource(bucketId: String, fileName: String, source: Source[ByteString, Any]): Future[Boolean] =
     ask[LocalResourceCommand, Boolean](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref))
 
-  def getResource(resourceId: String, quality: Int): Future[Option[IOResponse]] =
+  def getResource(bucketId: String, resourceId: String, quality: Int): Future[Option[IOResponse]] =
     ask[LocalResourceCommand, Option[LocalFile]](ref => GetByHash(resourceId, ref))
       .map(_.flatMap(f => LocalFileIOResponse.option(config.mediaPath.resolve(f.relativePath))))
 
-  def getVideoFragment(resourceId: String, start: Long, end: Long, quality: Int): Future[Option[IOResponse]] = {
+  def getVideoFragment(bucketId: String, resourceId: String, start: Long, end: Long, quality: Int): Future[Option[IOResponse]] = {
     val path = config.resourcePath.resolve(s"${resourceId}-${start}-${end}_${quality}p.mp4")
     Future.successful(LocalFileIOResponse.option(path))
   }
 
-  def getThumbnail(resourceId: String, quality: Int, timestamp: Option[Long]): Future[Option[IOResponse]] = {
+  def getThumbnail(bucketId: String, resourceId: String, quality: Int, timestamp: Option[Long]): Future[Option[IOResponse]] = {
 
     ask[MediaCommand, Option[Media]](ref => GetById(resourceId, ref)).map { media =>
       timestamp.orElse(media.map(_.thumbnailTimestamp)).flatMap { t =>
@@ -51,7 +51,7 @@ class ResourceService(system: ActorSystem[Nothing]) extends AkkaServiceModule(sy
     }
   }
 
-  def getPreviewSpriteVtt(resourceId: String): Future[Option[String]] = {
+  def getPreviewSpriteVtt(bucketId: String, resourceId: String): Future[Option[String]] = {
 
     val path = config.resourcePath.resolve(s"$resourceId-timeline.vtt")
 
@@ -64,7 +64,7 @@ class ResourceService(system: ActorSystem[Nothing]) extends AkkaServiceModule(sy
     Future.successful(Some(content))
   }
 
-  def getPreviewSpriteImage(mediaId: String): Future[Option[IOResponse]] = {
+  def getPreviewSpriteImage(bucketId: String, mediaId: String): Future[Option[IOResponse]] = {
     val path = config.resourcePath.resolve(s"$mediaId-timeline.webp")
     Future.successful(LocalFileIOResponse.option(path))
   }

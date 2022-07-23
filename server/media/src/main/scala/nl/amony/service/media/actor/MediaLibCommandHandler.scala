@@ -88,7 +88,7 @@ object MediaLibCommandHandler extends Logging {
 
         Effect
           .persist(MediaRemoved(mediaId))
-          .thenRun((s: State) => if (deleteFile) resourceRef.tell(DeleteResource(media, akka.actor.ActorRef.noSender.toTyped[Boolean])))
+          .thenRun((s: State) => if (deleteFile) resourceRef.tell(DeleteResource(media.resourceInfo.hash, akka.actor.ActorRef.noSender.toTyped[Boolean])))
           .thenReply(sender)(_ => true)
 
       case GetById(id, sender) =>

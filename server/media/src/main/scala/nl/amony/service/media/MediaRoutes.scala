@@ -18,9 +18,9 @@ import scala.concurrent.{ExecutionContext, Future}
 object MediaRoutes extends Logging {
 
   def apply(
-             system: ActorSystem[Nothing],
-             mediaApi: MediaService,
-             transcodingSettings: List[TranscodeSettings]
+     system: ActorSystem[Nothing],
+     mediaService: MediaService,
+     transcodingSettings: List[TranscodeSettings]
   ): Route = {
 
     implicit def materializer: Materializer = Materializer.createMaterializer(system)
@@ -33,7 +33,7 @@ object MediaRoutes extends Logging {
       onSuccess(future) {
         case Left(protocol.MediaNotFound(_))       => complete(StatusCodes.NotFound)
         case Left(protocol.InvalidCommand(reason)) => complete(StatusCodes.BadRequest, reason)
-        case Right(media)                 => complete(media.asJson)
+        case Right(media)                          => complete(media.asJson)
       }
     }
 
@@ -41,31 +41,34 @@ object MediaRoutes extends Logging {
       pathPrefix("media" / Segment) { id =>
         pathEnd {
           get {
-            onSuccess(mediaApi.getById(id)) {
+            onSuccess(mediaService.getById(id)) {
               case Some(media) => complete(media.asJson)
               case None        => complete(StatusCodes.NotFound)
             }
           } ~ (post & entity(as[MediaMeta])) { meta =>
-            translateResponse(mediaApi.updateMetaData(id, meta.title, meta.comment, meta.tags))
+            translateResponse(mediaService.updateMetaData(id, meta.title, meta.comment, meta.tags))
           } ~ delete {
-            onSuccess(mediaApi.deleteMedia(id, deleteResource = true)) { case _ =>
+            onSuccess(mediaService.deleteMedia(id, deleteResource = true)) { case _ =>
               complete(StatusCodes.OK, "{}")
             }
           }
+        } ~ (path("export-all") & get) {
+          val json = mediaService.exportToJson()
+          complete(StatusCodes.OK, json)
         }
       } ~ path("fragments" / Segment / "add") { (id) =>
         (post & entity(as[Range])) { createFragment =>
-          translateResponse(mediaApi.addFragment(id, createFragment.from, createFragment.to))
+          translateResponse(mediaService.addFragment(id, createFragment.from, createFragment.to))
         }
       } ~ path("fragments" / Segment / Segment) { (id, idx) =>
         delete {
-          translateResponse(mediaApi.deleteFragment(id, idx.toInt))
+          translateResponse(mediaService.deleteFragment(id, idx.toInt))
         } ~ (post & entity(as[Range])) { createFragment =>
-          translateResponse(mediaApi.updateFragmentRange(id, idx.toInt, createFragment.from, createFragment.to))
+          translateResponse(mediaService.updateFragmentRange(id, idx.toInt, createFragment.from, createFragment.to))
         }
       } ~ path("fragments" / Segment / Segment / "tags") { (id, idx) =>
         (post & entity(as[List[String]])) { tags =>
-          translateResponse(mediaApi.updateFragmentTags(id, idx.toInt, tags))
+          translateResponse(mediaService.updateFragmentTags(id, idx.toInt, tags))
         }
       }
     }

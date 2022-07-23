@@ -13,9 +13,10 @@ import monix.eval.Task
 import monix.reactive.{Consumer, Observable}
 import nl.amony.lib.akka.{GraphShapes, ServiceBehaviors}
 import nl.amony.lib.files.{FileUtil, PathOps}
-import nl.amony.service.media.MediaConfig.LocalResourcesConfig
+import nl.amony.service.media.MediaConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
 import scribe.Logging
 
+import java.awt.Desktop
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
 import scala.concurrent.Future
@@ -54,6 +55,8 @@ object LocalResourcesStore extends Logging {
   case class GetAll(sender: ActorRef[Set[LocalFile]]) extends LocalResourceCommand
   case class FullScan(sender: ActorRef[Set[LocalFile]]) extends LocalResourceCommand
   case class Upload(fileName: String, source: SourceRef[ByteString], sender: ActorRef[Boolean]) extends LocalResourceCommand
+  case class DeleteFileByHash(hash: String, sender: ActorRef[Boolean]) extends LocalResourceCommand
+
   private case class UploadCompleted(relativePath: String, hash: String, originalSender: ActorRef[Boolean]) extends LocalResourceCommand
 
   def scanDirectory(config: LocalResourcesConfig, snapshot: Set[LocalFile]): Observable[LocalFile] = {
@@ -178,6 +181,29 @@ object LocalResourcesStore extends Logging {
         Effect
           .persist(newResources ::: deletedResources ::: movedResources)
           .thenReply[Set[LocalFile]](sender)(state => state)
+
+      case DeleteFileByHash(hash, sender) =>
+
+        val deleted = state.find(_.hash == hash).map { file =>
+
+          val path = config.mediaPath.resolve(file.relativePath)
+
+          if (Files.exists(path)) {
+            config.deleteMedia match {
+              case DeleteFile =>
+                Files.delete(path)
+              case MoveToTrash =>
+                Desktop.getDesktop().moveToTrash(path.toFile())
+            }
+          };
+
+          FileDeleted(hash, file.relativePath)
+        }
+
+        deleted match {
+          case Some(e) => Effect.persist(e).thenReply(sender)(_ => true)
+          case None    => Effect.reply(sender)(false)
+        }
 
       case UploadCompleted(relativePath, hash, originalSender) =>
 

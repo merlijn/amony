@@ -6,7 +6,7 @@ import akka.persistence.typed.{PersistenceId, RecoveryCompleted}
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
 import io.methvin.watcher.DirectoryChangeEvent.EventType._
 import io.methvin.watcher._
-import nl.amony.lib.akka.AtLeastOnceProcessor
+import nl.amony.lib.akka.EventProcessing
 import nl.amony.lib.files.{FileUtil, PathOps}
 import nl.amony.service.media.MediaConfig.{HashingAlgorithm, LocalResourcesConfig}
 import nl.amony.service.resources.local.DirectoryEvents.{DirectoryEvent, FileAdded, FileDeleted, FileMoved}

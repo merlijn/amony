@@ -8,7 +8,6 @@ case class WebServerConfig(
   hostName: String,
   webClientPath: String,
   requestTimeout: FiniteDuration,
-  enableAdmin: Boolean,
   uploadSizeLimit: Information,
   http: Option[HttpConfig],
   https: Option[HttpsConfig]

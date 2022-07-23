@@ -28,26 +28,28 @@ object ResourceRoutes extends Logging {
   }
   // format: on
 
+  val bucketId = "test"
+
   def apply(resourceApi: ResourceService, uploadLimitBytes: Long)(implicit timeout: Timeout): Route = {
 
     pathPrefix("resources") {
 
       path("upload") {
         uploadFiles("video", uploadLimitBytes) { (fileInfo, source) =>
-          resourceApi.uploadResource(fileInfo.fileName, source)
+          resourceApi.uploadResource(bucketId, fileInfo.fileName, source)
         } { medias => complete("OK") }
       } ~ pathPrefix("media") {
 
         (get & path(Segment)) {
           case patterns.Thumbnail(id, _, timestamp, quality) =>
-            onSuccess(resourceApi.getThumbnail(id, quality.toInt, Option(timestamp).map(_.toLong))) {
+            onSuccess(resourceApi.getThumbnail(bucketId, id, quality.toInt, Option(timestamp).map(_.toLong))) {
               case None => complete(StatusCodes.NotFound)
               case Some(ioResponse) =>
                 complete(HttpEntity(ContentType(MediaTypes.`image/webp`), ioResponse.getContent()))
             }
 
           case patterns.VideoFragment(id, start, end, quality) =>
-            onSuccess(resourceApi.getVideoFragment(id, start.toInt, end.toInt, quality.toInt)) {
+            onSuccess(resourceApi.getVideoFragment(bucketId, id, start.toInt, end.toInt, quality.toInt)) {
               case None => complete(StatusCodes.NotFound)
               case Some(ioResponse) =>
                 randomAccessRangeSupport(
@@ -58,7 +60,7 @@ object ResourceRoutes extends Logging {
             }
 
           case patterns.Video(id, quality) =>
-            onSuccess(resourceApi.getResource(id, quality.toInt)) {
+            onSuccess(resourceApi.getResource(bucketId, id, quality.toInt)) {
               case None => complete(StatusCodes.NotFound)
               case Some(ioResponse) =>
                 randomAccessRangeSupport(
@@ -69,14 +71,14 @@ object ResourceRoutes extends Logging {
             }
 
           case patterns.TimeLineVtt(id) =>
-            onSuccess(resourceApi.getPreviewSpriteVtt(id)) {
+            onSuccess(resourceApi.getPreviewSpriteVtt(bucketId, id)) {
               case None => complete(StatusCodes.NotFound)
               case Some(content) =>
                 complete(content)
             }
 
           case patterns.TimeLineJpeg(id) =>
-            onSuccess(resourceApi.getPreviewSpriteImage(id)) {
+            onSuccess(resourceApi.getPreviewSpriteImage(bucketId, id)) {
               case None => complete(StatusCodes.NotFound)
               case Some(ioResponse) =>
                 complete(HttpEntity(ContentType(MediaTypes.`image/webp`), ioResponse.getContent()))

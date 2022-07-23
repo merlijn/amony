@@ -2,11 +2,11 @@ package nl.amony.service.resources.local
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import nl.amony.lib.akka.AtLeastOnceProcessor
+import nl.amony.lib.akka.EventProcessing
 import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.media.MediaService
+import nl.amony.service.media.tasks.ScanMedia
 import nl.amony.service.resources.local.LocalResourcesStore._
-import nl.amony.service.resources.local.tasks.ScanMedia
 import scribe.Logging
 
 import java.nio.file.Path
@@ -18,7 +18,7 @@ object LocalMediaScanner  {
 
       val scanner = new LocalMediaScanner(config.mediaPath, new MediaService(context.system))
 
-      AtLeastOnceProcessor.process[LocalResourceEvent](
+      EventProcessing.processAtLeastOnce[LocalResourceEvent](
           LocalResourcesStore.persistenceId(config.id),
           "scanner",
           e => scanner.processEvent(e)

@@ -1,14 +1,15 @@
-package nl.amony.service.resources.local.tasks
+package nl.amony.service.media.tasks
 
 import monix.eval.Task
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.service.media.actor.MediaLibProtocol.{ResourceInfo, Fragment, Media, MediaInfo, MediaMeta}
+import nl.amony.service.media.actor.MediaLibProtocol._
 import scribe.Logging
 
-import java.nio.file.{Files, Path}
 import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.{Files, Path}
 
 object ScanMedia extends Logging {
+
   def scanMedia(
        basePath: Path,
        relativeMediaPath: Path,

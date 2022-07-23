@@ -1,17 +1,15 @@
 package nl.amony.webserver
 
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
+import akka.actor.typed.{ActorSystem, Behavior}
 import akka.stream.Materializer
 import akka.util.Timeout
 import nl.amony.search.InMemoryIndex
-import nl.amony.search.SearchProtocol.QueryMessage
 import nl.amony.service.auth.AuthServiceImpl
-import nl.amony.service.auth.api.AuthService.UpsertUserRequest
+import nl.amony.service.auth.api.AuthService.AuthServiceGrpc.AuthService
 import nl.amony.service.media.MediaService
 import nl.amony.service.resources.ResourceService
 import nl.amony.service.resources.local.{LocalMediaScanner, LocalResourcesStore}
-import nl.amony.webserver.admin.AdminApi
 import scribe.Logging
 
 import java.nio.file.Files
@@ -44,13 +42,11 @@ object Main extends ConfigLoader with Logging {
 
     implicit val timeout: Timeout = Timeout(10.seconds)
 
-    val userService  = new AuthServiceImpl(system)
+    val userService: AuthService  = new AuthServiceImpl(system)
     val mediaApi     = new MediaService(system)
     val resourcesApi = new ResourceService(system)
-    val adminApi     = new AdminApi(mediaApi, resourcesApi, system, appConfig)
 
-    Thread.sleep(500)
-    userService.insertUser(UpsertUserRequest(userService.config.adminUsername, userService.config.adminPassword))
+//    Thread.sleep(500)
 
 //    adminApi.scanLibrary()(timeout.duration)
 
@@ -68,7 +64,6 @@ object Main extends ConfigLoader with Logging {
       userService,
       mediaApi,
       resourcesApi,
-      adminApi,
       appConfig
     )
 
