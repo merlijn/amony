@@ -84,7 +84,7 @@ object MediaLibCommandHandler extends Logging {
       case RemoveMedia(mediaId, deleteFile, sender) =>
         val media = state.media(mediaId)
 
-        logger.info(s"Deleting media '$mediaId - ${media.fileInfo.relativePath}'")
+        logger.info(s"Deleting media '$mediaId - ${media.resourceInfo.relativePath}'")
 
         Effect
           .persist(MediaRemoved(mediaId))

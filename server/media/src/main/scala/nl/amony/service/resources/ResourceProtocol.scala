@@ -28,8 +28,4 @@ object ResourceProtocol {
   case class CreateFragments(media: Media, overwrite: Boolean) extends ResourceCommand
   case class CreateFragment(media: Media, range: (Long, Long), overwrite: Boolean, sender: ActorRef[Boolean]) extends ResourceCommand
   case class DeleteFragment(media: Media, range: (Long, Long)) extends ResourceCommand
-
-  case class GetResource(resourceHash: String, sender: ActorRef[Option[IOResponse]]) extends ResourceCommand
-
-  case class GetPreviewSpriteVtt(mediaId: String, sender: ActorRef[Option[String]]) extends ResourceCommand
 }

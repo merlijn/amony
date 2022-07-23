@@ -58,7 +58,7 @@ object ResourceRoutes extends Logging {
             }
 
           case patterns.Video(id, quality) =>
-            onSuccess(resourceApi.getVideo(id, quality.toInt)) {
+            onSuccess(resourceApi.getResource(id, quality.toInt)) {
               case None => complete(StatusCodes.NotFound)
               case Some(ioResponse) =>
                 randomAccessRangeSupport(

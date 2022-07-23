@@ -56,10 +56,10 @@ class AdminApi(
 
       medias.foreach { m =>
 
-        val hash = config.media.hashingAlgorithm.createHash(config.media.mediaPath.resolve(m.fileInfo.relativePath))
+        val hash = config.media.hashingAlgorithm.createHash(config.media.mediaPath.resolve(m.resourceInfo.relativePath))
 
-        if (hash != m.fileInfo.hash)
-          logger.warn(s"hash not equal: ${hash} != ${m.fileInfo.hash}")
+        if (hash != m.resourceInfo.hash)
+          logger.warn(s"hash not equal: ${hash} != ${m.resourceInfo.hash}")
       }
 
       logger.info(s"Done ... in ${System.currentTimeMillis() - start} millis")
@@ -72,12 +72,12 @@ class AdminApi(
       logger.info("Updating hashes ...")
 
       medias.foreach { m =>
-        val hash = config.media.hashingAlgorithm.createHash(config.media.mediaPath.resolve(m.fileInfo.relativePath))
+        val hash = config.media.hashingAlgorithm.createHash(config.media.mediaPath.resolve(m.resourceInfo.relativePath))
 
-        if (hash != m.fileInfo.hash) {
+        if (hash != m.resourceInfo.hash) {
 
-          logger.info(s"Updating hash from '${m.fileInfo.hash}' to '$hash' for '${m.fileName()}''")
-          mediaApi.upsertMedia(m.copy(id = hash, fileInfo = m.fileInfo.copy(hash = hash)))
+          logger.info(s"Updating hash from '${m.resourceInfo.hash}' to '$hash' for '${m.fileName()}''")
+          mediaApi.upsertMedia(m.copy(id = hash, resourceInfo = m.resourceInfo.copy(hash = hash)))
           mediaApi.deleteMedia(id = m.id, deleteResource = false)
         }
       }

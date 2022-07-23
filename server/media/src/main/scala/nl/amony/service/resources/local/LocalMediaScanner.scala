@@ -18,8 +18,11 @@ object LocalMediaScanner  {
 
       val scanner = new LocalMediaScanner(config.mediaPath, new MediaService(context.system))
 
-      AtLeastOnceProcessor
-        .process[LocalResourceEvent](LocalResourcesStore.persistenceId(config.id), "scanner", e => scanner.processEvent(e))
+      AtLeastOnceProcessor.process[LocalResourceEvent](
+          LocalResourcesStore.persistenceId(config.id),
+          "scanner",
+          e => scanner.processEvent(e)
+        )
     }
 }
 

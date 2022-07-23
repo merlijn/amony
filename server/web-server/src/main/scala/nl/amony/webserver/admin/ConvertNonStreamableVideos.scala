@@ -41,7 +41,7 @@ object ConvertNonStreamableVideos extends Logging {
             case Success(Some(v)) =>
               val m = v.copy(
                 id = newHash,
-                fileInfo = v.fileInfo.copy(hash = newHash, relativePath = config.mediaPath.relativize(videoWithFaststart).toString)
+                resourceInfo = v.resourceInfo.copy(hash = newHash, relativePath = config.mediaPath.relativize(videoWithFaststart).toString)
               )
 
               api.upsertMedia(m).foreach { _ =>

@@ -79,7 +79,7 @@ object CreatePreviews {
       .consumeWith(
         Consumer.foreachTask { t =>
 
-          val input = config.mediaPath.resolve(media.fileInfo.relativePath)
+          val input = config.mediaPath.resolve(media.resourceInfo.relativePath)
           writeThumbnail(input, t.scaleHeight) >> writeFragment(input, t.scaleHeight, t.crf)
         }
       )

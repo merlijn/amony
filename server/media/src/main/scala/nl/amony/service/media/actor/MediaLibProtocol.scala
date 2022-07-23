@@ -57,12 +57,10 @@ object MediaLibProtocol {
   case class State(media: Map[String, Media])
   case class Fragment(fromTimestamp: Long, toTimestamp: Long, comment: Option[String], tags: List[String])
 
-  case class FileInfo(
+  case class ResourceInfo(
       relativePath: String,
       hash: String,
-      size: Long,
-      creationTime: Long,
-      lastModifiedTime: Long
+      size: Long
   ) {
     def extension: String = relativePath.split('.').last
   }
@@ -81,28 +79,28 @@ object MediaLibProtocol {
   )
 
   case class Media(
-    id: String,
-    uploader: String,
-    uploadTimestamp: Long,
-    fileInfo: FileInfo,
-    videoInfo: MediaInfo,
-    meta: MediaMeta,
-    thumbnailTimestamp: Long,
-    fragments: List[Fragment],
+      id: String,
+      uploader: String,
+      uploadTimestamp: Long,
+      resourceInfo: ResourceInfo,
+      videoInfo: MediaInfo,
+      meta: MediaMeta,
+      thumbnailTimestamp: Long,
+      fragments: List[Fragment],
   ) {
-    def resolvePath(baseDir: Path): Path = baseDir.resolve(fileInfo.relativePath)
+    def resolvePath(baseDir: Path): Path = baseDir.resolve(resourceInfo.relativePath)
 
     def width: Int = videoInfo.resolution._1
     def height: Int = videoInfo.resolution._2
 
     def fileName(): String = {
-      val slashIdx = fileInfo.relativePath.lastIndexOf('/')
-      val dotIdx   = fileInfo.relativePath.lastIndexOf('.')
+      val slashIdx = resourceInfo.relativePath.lastIndexOf('/')
+      val dotIdx   = resourceInfo.relativePath.lastIndexOf('.')
 
       val startIdx = if (slashIdx >= 0) slashIdx + 1 else 0
-      val endIdx   = if (dotIdx >= 0) dotIdx else fileInfo.relativePath.length
+      val endIdx   = if (dotIdx >= 0) dotIdx else resourceInfo.relativePath.length
 
-      fileInfo.relativePath.substring(startIdx, endIdx)
+      resourceInfo.relativePath.substring(startIdx, endIdx)
     }
   }
 }

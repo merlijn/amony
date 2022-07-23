@@ -1,24 +1,19 @@
 package nl.amony.service.resources.local
 
-import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import akka.http.scaladsl.util.FastFuture
 import akka.stream.SystemMaterializer
-import akka.stream.scaladsl.{FileIO, Sink}
-import akka.util.{ByteString, Timeout}
-import nl.amony.lib.akka.GraphShapes
+import akka.util.Timeout
 import nl.amony.lib.files.PathOps
 import nl.amony.service.media.MediaConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
 import nl.amony.service.resources.ResourceProtocol._
-import nl.amony.service.resources.local.LocalResourcesStore.{GetByHash, LocalFile, LocalResourceCommand}
-import nl.amony.service.resources.local.tasks.{CreatePreviews, ScanMedia}
+import nl.amony.service.resources.local.LocalResourcesStore.LocalResourceCommand
+import nl.amony.service.resources.local.tasks.CreatePreviews
 import scribe.Logging
 
 import java.awt.Desktop
 import java.nio.file.Files
 import scala.concurrent.duration.DurationInt
-import scala.util.{Failure, Success}
 
 object LocalResourcesHandler extends Logging {
 
@@ -49,16 +44,6 @@ object LocalResourcesHandler extends Logging {
           };
 
           sender.tell(true)
-
-          Behaviors.same
-
-        case GetResource(resourceHash, sender) =>
-
-          store
-            .ask[Option[LocalFile]](ref => GetByHash(resourceHash, ref))
-            .foreach { response =>
-              sender.tell(response.flatMap(f => LocalFileIOResponse.option(config.mediaPath.resolve(f.relativePath))))
-            }
 
           Behaviors.same
 

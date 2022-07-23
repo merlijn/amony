@@ -32,28 +32,28 @@ class ResourceService(system: ActorSystem[Nothing]) extends AkkaServiceModule(sy
   def uploadResource(fileName: String, source: Source[ByteString, Any]): Future[Boolean] =
     ask[LocalResourceCommand, Boolean](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref))
 
-  def getVideo(id: String, quality: Int): Future[Option[IOResponse]] =
-    ask[LocalResourceCommand, Option[LocalFile]](ref => GetByHash(id, ref))
+  def getResource(resourceId: String, quality: Int): Future[Option[IOResponse]] =
+    ask[LocalResourceCommand, Option[LocalFile]](ref => GetByHash(resourceId, ref))
       .map(_.flatMap(f => LocalFileIOResponse.option(config.mediaPath.resolve(f.relativePath))))
 
-  def getVideoFragment(id: String, start: Long, end: Long, quality: Int): Future[Option[IOResponse]] = {
-    val path = config.resourcePath.resolve(s"${id}-${start}-${end}_${quality}p.mp4")
+  def getVideoFragment(resourceId: String, start: Long, end: Long, quality: Int): Future[Option[IOResponse]] = {
+    val path = config.resourcePath.resolve(s"${resourceId}-${start}-${end}_${quality}p.mp4")
     Future.successful(LocalFileIOResponse.option(path))
   }
 
-  def getThumbnail(id: String, quality: Int, timestamp: Option[Long]): Future[Option[IOResponse]] = {
+  def getThumbnail(resourceId: String, quality: Int, timestamp: Option[Long]): Future[Option[IOResponse]] = {
 
-    ask[MediaCommand, Option[Media]](ref => GetById(id, ref)).map { media =>
+    ask[MediaCommand, Option[Media]](ref => GetById(resourceId, ref)).map { media =>
       timestamp.orElse(media.map(_.thumbnailTimestamp)).flatMap { t =>
-        val path = config.resourcePath.resolve(s"${id}-${t}_${quality}p.webp")
+        val path = config.resourcePath.resolve(s"${resourceId}-${t}_${quality}p.webp")
         LocalFileIOResponse.option(path)
       }
     }
   }
 
-  def getPreviewSpriteVtt(mediaId: String): Future[Option[String]] = {
+  def getPreviewSpriteVtt(resourceId: String): Future[Option[String]] = {
 
-    val path = config.resourcePath.resolve(s"$mediaId-timeline.vtt")
+    val path = config.resourcePath.resolve(s"$resourceId-timeline.vtt")
 
     val content =
       if (Files.exists(path))

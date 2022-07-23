@@ -66,9 +66,9 @@ object InMemoryIndex {
       if (indexedAt < counter) {
         logger.debug("Updating index")
         sortedByTitle     = media.values.toVector.sortBy(m => m.meta.title.getOrElse(m.fileName()))
-        sortedByDateAdded = media.values.toVector.sortBy(_.fileInfo.creationTime)
+        sortedByDateAdded = media.values.toVector.sortBy(_.uploadTimestamp)
         sortedByDuration  = media.values.toVector.sortBy(_.videoInfo.duration)
-        sortedBySize      = media.values.toVector.sortBy(_.fileInfo.size)
+        sortedBySize      = media.values.toVector.sortBy(_.resourceInfo.size)
         tags              = media.values.flatMap(_.meta.tags).toSet
         indexedAt         = counter
       }
@@ -102,7 +102,7 @@ object InMemoryIndex {
 
         def filterRes(m: Media): Boolean = query.minRes.map(res => m.height >= res).getOrElse(true)
         def filterQuery(m: Media): Boolean =
-          query.q.map(q => m.fileInfo.relativePath.toLowerCase.contains(q.toLowerCase)).getOrElse(true)
+          query.q.map(q => m.resourceInfo.relativePath.toLowerCase.contains(q.toLowerCase)).getOrElse(true)
         def filterTag(m: Media): Boolean =
           query.tags.forall(tag => m.meta.tags.contains(tag))
         def filterDuration(m: Media): Boolean =
