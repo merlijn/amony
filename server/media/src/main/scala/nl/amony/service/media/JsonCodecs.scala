@@ -3,6 +3,7 @@ package nl.amony.service.media
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import io.circe.{Codec, Encoder}
 import nl.amony.service.media.MediaConfig.TranscodeSettings
+import nl.amony.service.fragments
 import nl.amony.service.media.MediaWebModel._
 import nl.amony.service.media.actor.{ MediaLibProtocol => protocol }
 
@@ -21,16 +22,16 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
   implicit val mediaEncoder: Encoder[protocol.Media] =
     deriveEncoder[Video].contramapObject[protocol.Media](toWebModel)
 
-  def toWebModel(mediaId: String, f: protocol.Fragment): Fragment = {
+  def toWebModel(mediaId: String, f: fragments.Fragment): Fragment = {
 
     val resolutions = transcodingSettings.map(_.scaleHeight).sorted
     val urls =
-      resolutions.map(height => s"/resources/media/${mediaId}~${f.fromTimestamp}-${f.toTimestamp}_${height}p.mp4")
+      resolutions.map(height => s"/resources/test/${mediaId}~${f.start}-${f.end}_${height}p.mp4")
 
     Fragment(
       mediaId,
       0,
-      Range(f.fromTimestamp, f.toTimestamp),
+      Range(f.start, f.end),
       urls,
       f.comment,
       f.tags
@@ -42,9 +43,9 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
     val resolutions = (media.height :: transcodingSettings.map(_.scaleHeight)).sorted
 
     val urls = MediaUrls(
-      originalResourceUrl  = s"/resources/media/${media.id}_${media.height}p.${media.resourceInfo.extension}",
-      thumbnailUrl         = s"/resources/media/${media.id}_${resolutions.min}p.webp",
-      previewThumbnailsUrl = Some(s"/resources/media/${media.id}-timeline.vtt")
+      originalResourceUrl  = s"/resources/test/${media.id}_${media.height}p.${media.resourceInfo.extension}",
+      thumbnailUrl         = s"/resources/test/${media.id}_${resolutions.min}p.webp",
+      previewThumbnailsUrl = Some(s"/resources/test/${media.id}-timeline.vtt")
     )
 
     val meta = MediaMeta(
@@ -54,10 +55,10 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
     )
 
     val mediaInfo = MediaInfo(
-      width  = media.width,
-      height = media.height,
-      duration               = media.videoInfo.duration,
-      fps                    = media.videoInfo.fps,
+      width     = media.width,
+      height    = media.height,
+      duration  = media.videoInfo.duration,
+      fps       = media.videoInfo.fps,
       codecName = media.videoInfo.videoCodec,
     )
 
@@ -77,13 +78,13 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
       fragments = {
         media.fragments.zipWithIndex.map { case (f, index) =>
           val urls = resolutions.map(height =>
-            s"/resources/media/${media.id}~${f.fromTimestamp}-${f.toTimestamp}_${height}p.mp4"
+            s"/resources/media/${media.id}~${f.start}-${f.end}_${height}p.mp4"
           )
 
           Fragment(
             media_id = media.id,
             index    = index,
-            range    = Range(f.fromTimestamp, f.toTimestamp),
+            range    = Range(f.start, f.end),
             urls     = urls,
             comment  = f.comment,
             tags     = f.tags

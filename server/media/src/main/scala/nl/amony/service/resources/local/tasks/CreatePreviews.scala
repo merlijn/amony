@@ -29,7 +29,7 @@ object CreatePreviews {
         ): Task[Unit] = {
     Observable
       .fromIterable(media.fragments)
-      .consumeWith(Consumer.foreachTask(f => createVideoPreview(config, media, (f.fromTimestamp, f.toTimestamp), overwrite)))
+      .consumeWith(Consumer.foreachTask(f => createVideoPreview(config, media, (f.start, f.end), overwrite)))
   }
 
   def createVideoPreview(

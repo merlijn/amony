@@ -39,21 +39,6 @@ object MediaLibCommandHandler extends Logging {
       Effect.reply(sender)(Left(InvalidCommand(reason)))
     }
 
-    // format: off
-    def verifyFragmentRange(start: Long, end: Long, mediaDuration: Long): Either[String, Unit] = {
-      if (start >= end)
-        Left(s"Invalid range ($start -> $end): start must be before end")
-      else if (start < 0 || end > mediaDuration)
-        Left(s"Invalid range ($start -> $end): valid range is from 0 to $mediaDuration")
-      else if (end - start > fragmentSettings.maximumFragmentLength.toMillis)
-        Left(s"Fragment length is larger then maximum allowed: ${end - start} > ${fragmentSettings.minimumFragmentLength.toMillis}")
-      else if (end - start < fragmentSettings.minimumFragmentLength.toMillis)
-        Left(s"Fragment length is smaller then minimum allowed: ${end - start} < ${fragmentSettings.minimumFragmentLength.toMillis}")
-      else
-        Right(())
-    }
-    // format: on
-
     cmd match {
 
       case UpsertMedia(media, sender) =>
@@ -96,86 +81,6 @@ object MediaLibCommandHandler extends Logging {
 
       case GetAll(sender) =>
         Effect.reply(sender)(state.media.values.toList)
-
-      case DeleteFragment(id, idx, sender) =>
-        requireMedia(id, sender) { media =>
-          if (idx < 0 || idx >= media.fragments.size)
-            invalidCommand(sender, s"Index out of bounds ($idx): valid range is from 0 to ${media.fragments.size - 1}")
-          else {
-            logger.info(s"Deleting fragment '$id - $idx'")
-            Effect
-              .persist(FragmentDeleted(id, idx))
-              .thenRun { (_: State) =>
-                resourceRef.tell(
-                  ResourceProtocol
-                    .DeleteFragment(media, (media.fragments(idx).fromTimestamp, media.fragments(idx).toTimestamp))
-                )
-              }
-              .thenReply(sender)(s => Right(s.media(id)))
-          }
-        }
-
-      case UpdateFragmentRange(id, idx, start, end, sender) =>
-        requireMedia(id, sender) { media =>
-          if (idx < 0 || idx >= media.fragments.size) {
-            invalidCommand(sender, s"Index out of bounds ($idx): valid range is from 0 to ${media.fragments.size - 1}")
-          } else
-            verifyFragmentRange(start, end, media.videoInfo.duration) match {
-              case Left(error) =>
-                Effect.reply(sender)(Left(InvalidCommand(error)))
-
-              case Right(_) =>
-                logger.info(s"Updating fragment $id:$idx to $start:$end")
-                val oldFragment = media.fragments(idx)
-
-                Effect
-                  .persist(FragmentRangeUpdated(id, idx, start, end))
-                  .thenRun { (s: State) =>
-                    resourceRef.tell(
-                      ResourceProtocol.DeleteFragment(media, (oldFragment.fromTimestamp, oldFragment.toTimestamp))
-                    )
-                    resourceRef
-                      .ask[Boolean](ref => ResourceProtocol.CreateFragment(media, (start, end), false, ref))
-                      .foreach { _ =>
-                        sender.tell(Right(s.media(id)))
-                      }
-                  }
-            }
-        }
-
-      case AddFragment(id, start, end, sender) =>
-        requireMedia(id, sender) { media =>
-          logger.info(s"Adding fragment for $id from $start to $end")
-
-          verifyFragmentRange(start, end, media.videoInfo.duration) match {
-            case Left(error) =>
-              Effect.reply(sender)(Left(InvalidCommand(error)))
-            case Right(_) =>
-              Effect
-                .persist(FragmentAdded(id, start, end))
-                .thenRun((s: State) =>
-                  resourceRef
-                    .ask[Boolean](ref => ResourceProtocol.CreateFragment(media, (start, end), false, ref))
-                    .foreach { _ =>
-                      sender.tell(Right(s.media(id)))
-                    }
-                )
-          }
-        }
-
-      case UpdateFragmentTags(id, index, tags, sender) =>
-        requireMedia(id, sender) { media =>
-          val frag        = media.fragments(index)
-          val tagsAdded   = tags.toSet -- frag.tags
-          val tagsRemoved = frag.tags.toSet -- tags
-
-          if (tagsAdded.isEmpty && tagsRemoved.isEmpty)
-            Effect.reply(sender)(Right(media))
-          else
-            Effect
-              .persist(FragmentMetaDataUpdated(id, index, None, tagsAdded, tagsRemoved))
-              .thenReply(sender)(_ => Right(state.media(id)))
-        }
     }
   }
 }

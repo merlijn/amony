@@ -2,6 +2,7 @@ package nl.amony.service.media.actor
 
 import akka.actor.typed.ActorRef
 import akka.actor.typed.receptionist.ServiceKey
+import nl.amony.service.fragments.Fragment
 
 import java.nio.file.Path
 
@@ -25,19 +26,6 @@ object MediaLibProtocol {
   case class GetAll(sender: ActorRef[List[Media]])                extends MediaCommand
   case class GetById(id: String, sender: ActorRef[Option[Media]]) extends MediaCommand
 
-  // --- Fragments
-  case class DeleteFragment(mediaId: String, fragmentIdx: Int, sender: ActorRef[Either[ErrorResponse, Media]])
-      extends MediaCommand
-  case class UpdateFragmentRange(
-      mediaId: String,
-      fragmentIdx: Int,
-      from: Long,
-      to: Long,
-      sender: ActorRef[Either[ErrorResponse, Media]]
-  ) extends MediaCommand
-  case class AddFragment(mediaId: String, from: Long, to: Long, sender: ActorRef[Either[ErrorResponse, Media]])
-      extends MediaCommand
-
   case class UpdateMetaData(
       mediaId: String,
       title: Option[String],
@@ -46,16 +34,8 @@ object MediaLibProtocol {
       sender: ActorRef[Either[ErrorResponse, Media]]
   ) extends MediaCommand
 
-  case class UpdateFragmentTags(
-      mediaId: String,
-      fragmentIndex: Int,
-      tags: List[String],
-      sender: ActorRef[Either[ErrorResponse, Media]]
-  ) extends MediaCommand
-
   // -- State
   case class State(media: Map[String, Media])
-  case class Fragment(fromTimestamp: Long, toTimestamp: Long, comment: Option[String], tags: List[String])
 
   case class ResourceInfo(
       relativePath: String,

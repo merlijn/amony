@@ -2,6 +2,7 @@ package nl.amony.service.media.tasks
 
 import monix.eval.Task
 import nl.amony.lib.ffmpeg.FFMpeg
+import nl.amony.service.fragments.Fragment
 import nl.amony.service.media.actor.MediaLibProtocol._
 import scribe.Logging
 

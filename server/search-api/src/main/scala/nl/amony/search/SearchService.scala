@@ -3,7 +3,7 @@ package nl.amony.search
 import akka.actor.typed.ActorSystem
 import nl.amony.lib.akka.AkkaServiceModule
 import nl.amony.search.SearchProtocol._
-import nl.amony.service.media.actor.MediaLibProtocol.Fragment
+import nl.amony.service.fragments.Fragment
 
 import scala.concurrent.Future
 

@@ -7,6 +7,7 @@ import akka.util.Timeout
 import nl.amony.search.InMemoryIndex
 import nl.amony.service.auth.AuthServiceImpl
 import nl.amony.service.auth.api.AuthService.AuthServiceGrpc.AuthService
+import nl.amony.service.fragments.FragmentService
 import nl.amony.service.media.MediaService
 import nl.amony.service.resources.ResourceService
 import nl.amony.service.resources.local.{LocalMediaScanner, LocalResourcesStore}
@@ -43,8 +44,9 @@ object Main extends ConfigLoader with Logging {
     implicit val timeout: Timeout = Timeout(10.seconds)
 
     val userService: AuthService  = new AuthServiceImpl(system)
-    val mediaApi     = new MediaService(system)
-    val resourcesApi = new ResourceService(system)
+    val mediaService     = new MediaService(system)
+    val resourcesService = new ResourceService(system)
+    val fragmentService = new FragmentService(system)
 
 //    Thread.sleep(500)
 
@@ -62,8 +64,9 @@ object Main extends ConfigLoader with Logging {
     val routes = WebServerRoutes(
       system,
       userService,
-      mediaApi,
-      resourcesApi,
+      mediaService,
+      fragmentService,
+      resourcesService,
       appConfig
     )
 

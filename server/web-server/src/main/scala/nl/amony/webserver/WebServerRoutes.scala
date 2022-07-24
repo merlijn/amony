@@ -7,6 +7,7 @@ import akka.util.Timeout
 import nl.amony.search.{SearchRoutes, SearchService}
 import nl.amony.service.auth.AuthRoutes
 import nl.amony.service.auth.api.AuthService.AuthServiceGrpc.AuthService
+import nl.amony.service.fragments.FragmentService
 import nl.amony.service.media.{MediaRoutes, MediaService}
 import nl.amony.service.resources.{ResourceRoutes, ResourceService}
 
@@ -20,6 +21,7 @@ object WebServerRoutes {
        system: ActorSystem[Nothing],
        userService: AuthService,
        mediaService: MediaService,
+       fragmentService: FragmentService,
        resourceService: ResourceService,
        config: AmonyConfig
     ): Route = {
@@ -33,7 +35,7 @@ object WebServerRoutes {
     val identityRoutes = AuthRoutes(userService)
     val resourceRoutes = ResourceRoutes(resourceService, config.api.uploadSizeLimit.toBytes.toLong)
     val searchRoutes   = SearchRoutes(system, searchApi, config.search, config.media.transcode)
-    val mediaRoutes    = MediaRoutes(system, mediaService, config.media.transcode)
+    val mediaRoutes    = MediaRoutes(system, mediaService, fragmentService, config.media.transcode)
 
     // routes for the web app (javascript/html) resources
     val webAppResources = webAppRoutes(config.api)

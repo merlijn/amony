@@ -6,7 +6,7 @@ import akka.persistence.typed.scaladsl.EventSourcedBehavior
 import akka.serialization.jackson.JacksonObjectMapperProvider
 import com.fasterxml.jackson.core.JsonEncoding
 import nl.amony.lib.akka.{AkkaServiceModule, ServiceBehaviors}
-import nl.amony.service.media.MediaConfig.{FragmentSettings, LocalResourcesConfig}
+import nl.amony.service.media.MediaConfig.FragmentSettings
 import nl.amony.service.media.actor.MediaLibEventSourcing.Event
 import nl.amony.service.media.actor.MediaLibProtocol._
 import nl.amony.service.media.actor.{MediaLibCommandHandler, MediaLibEventSourcing}
@@ -62,16 +62,4 @@ class MediaService(system: ActorSystem[Nothing]) extends AkkaServiceModule(syste
 
   def updateMetaData(id: String, title: Option[String], comment: Option[String], tags: List[String]): Future[Either[ErrorResponse, Media]] =
     ask[MediaCommand, Either[ErrorResponse, Media]](ref => UpdateMetaData(id, title, comment, tags.toSet, ref))
-
-  def addFragment(mediaId: String, from: Long, to: Long): Future[Either[ErrorResponse, Media]] =
-    ask[MediaCommand, Either[ErrorResponse, Media]](ref => AddFragment(mediaId, from, to, ref))
-
-  def updateFragmentRange(mediaId: String, idx: Int, from: Long, to: Long): Future[Either[ErrorResponse, Media]] =
-    ask[MediaCommand, Either[ErrorResponse, Media]](ref => UpdateFragmentRange(mediaId, idx, from, to, ref))
-
-  def updateFragmentTags(id: String, idx: Int, tags: List[String]): Future[Either[ErrorResponse, Media]] =
-    ask[MediaCommand, Either[ErrorResponse, Media]](ref => UpdateFragmentTags(id, idx, tags, ref))
-
-  def deleteFragment(id: String, idx: Int): Future[Either[ErrorResponse, Media]] =
-    ask[MediaCommand, Either[ErrorResponse, Media]](ref => DeleteFragment(id, idx, ref))
 }

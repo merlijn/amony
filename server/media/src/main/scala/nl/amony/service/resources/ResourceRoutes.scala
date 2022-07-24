@@ -28,17 +28,15 @@ object ResourceRoutes extends Logging {
   }
   // format: on
 
-  val bucketId = "test"
-
   def apply(resourceApi: ResourceService, uploadLimitBytes: Long)(implicit timeout: Timeout): Route = {
 
     pathPrefix("resources") {
 
       path("upload") {
         uploadFiles("video", uploadLimitBytes) { (fileInfo, source) =>
-          resourceApi.uploadResource(bucketId, fileInfo.fileName, source)
+          resourceApi.uploadResource("test", fileInfo.fileName, source)
         } { medias => complete("OK") }
-      } ~ pathPrefix("media") {
+      } ~ pathPrefix("media" / Segment) { bucketId =>
 
         (get & path(Segment)) {
           case patterns.Thumbnail(id, _, timestamp, quality) =>
