@@ -2,8 +2,8 @@ package nl.amony.lib.ffmpeg
 
 import monix.eval.Task
 import nl.amony.lib.ffmpeg.FFMpeg.formatTime
+import nl.amony.lib.ffmpeg.tasks._
 import nl.amony.lib.files.FileUtil.stripExtension
-import nl.amony.lib.ffmpeg.tasks.{CreateThumbnail, CreateThumbnailTile, FFProbe, ProcessRunner}
 import nl.amony.lib.files.PathOps
 import scribe.Logging
 

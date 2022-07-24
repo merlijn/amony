@@ -97,10 +97,14 @@ lazy val common =
       libraryDependencies ++= Seq(
         akka,akkaStream,
         akkaPersistence,
+        monixReactive,
         pureConfig,
         scribeSlf4j,
         scalaTest,
-        directoryWatcher
+        directoryWatcher,
+        circe,
+        circeGeneric,
+        circeParser,
       )
     )
 
