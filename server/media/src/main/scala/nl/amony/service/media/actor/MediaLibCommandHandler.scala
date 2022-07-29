@@ -1,11 +1,10 @@
 package nl.amony.service.media.actor
 
-import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.scaladsl.adapter._
 import akka.actor.typed.{ActorRef, Scheduler}
 import akka.persistence.typed.scaladsl.Effect
 import akka.util.Timeout
-import nl.amony.service.media.MediaConfig.{FragmentSettings, LocalResourcesConfig}
+import nl.amony.service.media.MediaConfig.FragmentSettings
 import nl.amony.service.media.actor.MediaLibEventSourcing._
 import nl.amony.service.media.actor.MediaLibProtocol._
 import nl.amony.service.resources.ResourceProtocol
@@ -33,10 +32,6 @@ object MediaLibCommandHandler extends Logging {
         case None        => Effect.reply(sender)(Left(MediaNotFound(mediaId)))
         case Some(media) => effect(media)
       }
-    }
-
-    def invalidCommand[T](sender: ActorRef[Either[ErrorResponse, T]], reason: String): Effect[Event, State] = {
-      Effect.reply(sender)(Left(InvalidCommand(reason)))
     }
 
     cmd match {

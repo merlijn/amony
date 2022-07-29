@@ -6,6 +6,7 @@ import akka.actor.typed.receptionist.ServiceKey
 import akka.stream.SourceRef
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import nl.amony.lib.ffmpeg.tasks.FFProbeModel.ProbeOutput
 import nl.amony.service.media.actor.MediaLibProtocol.Media
 
 object ResourceProtocol {
@@ -22,6 +23,13 @@ object ResourceProtocol {
     def getContent(): Source[ByteString, NotUsed]
     def getContentRange(start: Long, end: Long): Source[ByteString, NotUsed]
   }
+
+  sealed trait ResourceInfo {
+    def size(): Long
+    def contentType(): String
+  }
+
+  case class VideoResource(override val size: Long, override val contentType: String, probe: ProbeOutput) extends ResourceInfo
 
   case class DeleteResource(resourceHash: String, sender: ActorRef[Boolean]) extends ResourceCommand
 

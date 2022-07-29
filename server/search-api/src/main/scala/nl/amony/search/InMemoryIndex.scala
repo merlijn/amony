@@ -79,8 +79,8 @@ object InMemoryIndex {
         updateIndex()
 
         val results = state.media.values
-          .flatMap(m => m.fragments.map(f => m.id -> f))
-          .filter { case (_, f) =>
+          .flatMap(m => m.fragments)
+          .filter { f =>
             maybeTag.map(tag => f.tags.contains(tag)).getOrElse(true)
           }
           .drop(offset)

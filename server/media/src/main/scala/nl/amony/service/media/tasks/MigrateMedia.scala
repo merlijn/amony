@@ -3,7 +3,7 @@ package nl.amony.service.media.tasks
 import akka.util.Timeout
 import io.circe.generic.semiauto.{deriveCodec, deriveDecoder}
 import nl.amony.lib.files.PathOps
-import nl.amony.service.fragments.Fragment
+import nl.amony.service.fragments.Protocol.Fragment
 import nl.amony.service.media.MediaService
 import nl.amony.service.media.actor.MediaLibProtocol._
 import scribe.Logging

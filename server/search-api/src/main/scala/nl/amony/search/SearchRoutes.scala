@@ -9,6 +9,7 @@ import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.syntax._
 import nl.amony.search.SearchProtocol._
+import nl.amony.service.fragments.WebModel.Fragment
 import nl.amony.service.media.JsonCodecs
 import nl.amony.service.media.MediaConfig.TranscodeSettings
 import nl.amony.service.media.MediaWebModel.Video
@@ -106,7 +107,7 @@ object SearchRoutes {
             val offset = offsetParam.map(_.toInt).getOrElse(0)
 
             complete(searchApi.searchFragments(n, offset, tag).map {
-              _.map { case (mediaId, f) => toWebModel(mediaId, f) }
+              _.map { f => Fragment.fromProtocol(transcodingSettings, f) }
             })
           }
       }

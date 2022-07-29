@@ -1,19 +1,12 @@
 package nl.amony.service.media
 
+import nl.amony.service.fragments.WebModel.Fragment
+
 object MediaWebModel {
 
   case class Range(
     from: Long,
     to: Long
-  )
-
-  case class Fragment(
-     media_id: String,
-     index: Int,
-     range: Range,
-     urls: List[String],
-     comment: Option[String],
-     tags: List[String]
   )
 
   case class MediaMeta(

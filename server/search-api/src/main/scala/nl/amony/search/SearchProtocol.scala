@@ -2,7 +2,7 @@ package nl.amony.search
 
 import akka.actor.typed
 import akka.actor.typed.receptionist.ServiceKey
-import nl.amony.service.fragments.Fragment
+import nl.amony.service.fragments.Protocol.Fragment
 import nl.amony.service.media.actor.MediaLibProtocol.Media
 
 object SearchProtocol {
@@ -18,7 +18,7 @@ object SearchProtocol {
       size: Int,
       offset: Int,
       tag: Option[String],
-      sender: typed.ActorRef[Seq[(String, Fragment)]]
+      sender: typed.ActorRef[Seq[Fragment]]
   )                                                       extends QueryMessage
   case class GetTags(sender: typed.ActorRef[Set[String]]) extends QueryMessage
 

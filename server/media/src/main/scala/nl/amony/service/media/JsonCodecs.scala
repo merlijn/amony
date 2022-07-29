@@ -3,14 +3,13 @@ package nl.amony.service.media
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import io.circe.{Codec, Encoder}
 import nl.amony.service.media.MediaConfig.TranscodeSettings
-import nl.amony.service.fragments
+import nl.amony.service.fragments.WebModel.Fragment
 import nl.amony.service.media.MediaWebModel._
-import nl.amony.service.media.actor.{ MediaLibProtocol => protocol }
+import nl.amony.service.media.actor.{MediaLibProtocol => protocol}
 
 class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
 
   // web model codecs
-  implicit val fragmentCodec: Codec[Fragment]            = deriveCodec[Fragment]
   implicit val createFragmentCodec: Codec[Range]         = deriveCodec[Range]
   implicit val mediaInfoCodec: Codec[MediaInfo]          = deriveCodec[MediaInfo]
   implicit val videoCodec: Codec[Video]                  = deriveCodec[Video]
@@ -21,22 +20,6 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
   // contra map encoders for internal protocol classes
   implicit val mediaEncoder: Encoder[protocol.Media] =
     deriveEncoder[Video].contramapObject[protocol.Media](toWebModel)
-
-  def toWebModel(mediaId: String, f: fragments.Fragment): Fragment = {
-
-    val resolutions = transcodingSettings.map(_.scaleHeight).sorted
-    val urls =
-      resolutions.map(height => s"/resources/test/${mediaId}~${f.start}-${f.end}_${height}p.mp4")
-
-    Fragment(
-      mediaId,
-      0,
-      Range(f.start, f.end),
-      urls,
-      f.comment,
-      f.tags
-    )
-  }
 
   def toWebModel(media: protocol.Media): Video = {
 
@@ -78,13 +61,13 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
       fragments = {
         media.fragments.zipWithIndex.map { case (f, index) =>
           val urls = resolutions.map(height =>
-            s"/resources/media/${media.id}~${f.start}-${f.end}_${height}p.mp4"
+            s"/resources/media/test/${media.id}~${f.start}-${f.end}_${height}p.mp4"
           )
 
           Fragment(
             media_id = media.id,
             index    = index,
-            range    = Range(f.start, f.end),
+            range    = (f.start, f.end),
             urls     = urls,
             comment  = f.comment,
             tags     = f.tags

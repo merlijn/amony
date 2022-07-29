@@ -2,7 +2,7 @@ package nl.amony.service.media.tasks
 
 import monix.eval.Task
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.service.fragments.Fragment
+import nl.amony.service.fragments.Protocol.Fragment
 import nl.amony.service.media.actor.MediaLibProtocol._
 import scribe.Logging
 
@@ -50,19 +50,21 @@ object ScanMedia extends Logging {
           (mainVideoStream.width, mainVideoStream.height)
         )
 
+        val mediaId = hash
+
         Media(
-          id                 = hash,
+          id                 = mediaId,
           uploader           = "0",
           uploadTimestamp    = System.currentTimeMillis(),
           meta = MediaMeta(
-            title = None,
+            title   = None,
             comment = None,
-            tags = Set.empty
+            tags    = Set.empty
           ),
-          resourceInfo           = fileInfo,
+          resourceInfo       = fileInfo,
           videoInfo          = videoInfo,
           thumbnailTimestamp = timeStamp,
-          fragments          = List(Fragment(timeStamp, timeStamp + fragmentLength, None, List.empty)),
+          fragments          = List(Fragment(mediaId, timeStamp, timeStamp + fragmentLength, None, List.empty)),
         )
       }
   }

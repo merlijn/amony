@@ -3,7 +3,7 @@ package nl.amony.search
 import akka.actor.typed.ActorSystem
 import nl.amony.lib.akka.AkkaServiceModule
 import nl.amony.search.SearchProtocol._
-import nl.amony.service.fragments.Fragment
+import nl.amony.service.fragments.Protocol.Fragment
 
 import scala.concurrent.Future
 
@@ -17,7 +17,7 @@ class SearchService(system: ActorSystem[Nothing]) extends AkkaServiceModule(syst
   def searchTags(): Future[Set[String]] =
     ask[QueryMessage, Set[String]](ref => GetTags(ref))
 
-  def searchFragments(size: Int, offset: Int, tag: Option[String]): Future[Seq[(String, Fragment)]] =
-    ask[QueryMessage, Seq[(String, Fragment)]](ref => SearchFragments(size, offset, tag, ref))
+  def searchFragments(size: Int, offset: Int, tag: Option[String]): Future[Seq[Fragment]] =
+    ask[QueryMessage, Seq[Fragment]](ref => SearchFragments(size, offset, tag, ref))
   // format: on
 }

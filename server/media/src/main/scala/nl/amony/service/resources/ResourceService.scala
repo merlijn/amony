@@ -41,6 +41,8 @@ class ResourceService(system: ActorSystem[Nothing]) extends AkkaServiceModule(sy
     Future.successful(LocalFileIOResponse.option(path))
   }
 
+  def getResourceInfo(bucketId: String, resourceId: String): Future[Option[ResourceInfo]] = ???
+
   def getThumbnail(bucketId: String, resourceId: String, quality: Int, timestamp: Option[Long]): Future[Option[IOResponse]] = {
 
     ask[MediaCommand, Option[Media]](ref => GetById(resourceId, ref)).map { media =>

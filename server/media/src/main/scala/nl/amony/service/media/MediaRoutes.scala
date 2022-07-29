@@ -8,7 +8,6 @@ import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
-import nl.amony.service.fragments.FragmentService
 import nl.amony.service.media.MediaConfig.TranscodeSettings
 import nl.amony.service.media.actor.{MediaLibProtocol => protocol}
 import nl.amony.service.media.MediaWebModel._
@@ -21,7 +20,6 @@ object MediaRoutes extends Logging {
   def apply(
      system: ActorSystem[Nothing],
      mediaService: MediaService,
-     fragmentService: FragmentService,
      transcodingSettings: List[TranscodeSettings]
   ): Route = {
 
@@ -57,20 +55,6 @@ object MediaRoutes extends Logging {
         } ~ (path("export-all") & get) {
           val json = mediaService.exportToJson()
           complete(StatusCodes.OK, json)
-        }
-      } ~ path("fragments" / Segment / "add") { (id) =>
-        (post & entity(as[Range])) { createFragment =>
-          translateResponse(fragmentService.addFragment(id, createFragment.from, createFragment.to))
-        }
-      } ~ path("fragments" / Segment / Segment) { (id, idx) =>
-        delete {
-          translateResponse(fragmentService.deleteFragment(id, idx.toInt))
-        } ~ (post & entity(as[Range])) { createFragment =>
-          translateResponse(fragmentService.updateFragmentRange(id, idx.toInt, createFragment.from, createFragment.to))
-        }
-      } ~ path("fragments" / Segment / Segment / "tags") { (id, idx) =>
-        (post & entity(as[List[String]])) { tags =>
-          translateResponse(fragmentService.updateFragmentTags(id, idx.toInt, tags))
         }
       }
     }

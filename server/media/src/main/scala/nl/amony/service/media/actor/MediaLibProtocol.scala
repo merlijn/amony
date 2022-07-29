@@ -2,7 +2,7 @@ package nl.amony.service.media.actor
 
 import akka.actor.typed.ActorRef
 import akka.actor.typed.receptionist.ServiceKey
-import nl.amony.service.fragments.Fragment
+import nl.amony.service.fragments.Protocol.Fragment
 
 import java.nio.file.Path
 
