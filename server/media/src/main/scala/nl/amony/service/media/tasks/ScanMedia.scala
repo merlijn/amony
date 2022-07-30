@@ -38,6 +38,7 @@ object ScanMedia extends Logging {
         val timeStamp = mainVideoStream.durationMillis / 3
 
         val fileInfo = ResourceInfo(
+          "test",
           relativePath     = relativeMediaPath.toString,
           hash             = hash,
           size             = fileAttributes.size(),

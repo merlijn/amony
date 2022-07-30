@@ -61,26 +61,13 @@ object CreatePreviews {
         Task.unit
     }
 
-    def writeThumbnail(input: Path, height: Int): Task[Unit] = {
-      val output = config.resourcePath.resolve(s"${media.id}-${from}_${height}p.webp")
-      if (!Files.exists(output) || overwrite)
-        FFMpeg.createThumbnail(
-          inputFile   = input,
-          timestamp   = from,
-          outputFile  = Some(output),
-          scaleHeight = Some(height)
-        )
-      else
-        Task.unit
-    }
-
     Observable
       .fromIterable(transcodeList)
       .consumeWith(
         Consumer.foreachTask { t =>
 
           val input = config.mediaPath.resolve(media.resourceInfo.relativePath)
-          writeThumbnail(input, t.scaleHeight) >> writeFragment(input, t.scaleHeight, t.crf)
+          writeFragment(input, t.scaleHeight, t.crf)
         }
       )
   }

@@ -44,19 +44,6 @@ object LocalResourcesHandler extends Logging {
           CreatePreviews.createVideoPreviews(config, media, overwrite).executeAsync.runAsyncAndForget
 //          LocalResourcesTasks.createPreviewSprite(config, media, overwrite).executeAsync.runAsyncAndForget
           Behaviors.same
-
-        case DeleteFragment(media, range) =>
-          val (start, end) = range
-          logger.info(s"Deleting fragment: ${media.id}-$range")
-
-          config.resourcePath.resolve(s"${media.id}-$start-${end}_${media.height}p.mp4").deleteIfExists()
-
-          config.transcode.foreach { transcode =>
-            config.resourcePath.resolve(s"${media.id}-${start}_${transcode.scaleHeight}p.webp").deleteIfExists()
-            config.resourcePath.resolve(s"${media.id}-$start-${end}_${transcode.scaleHeight}p.mp4").deleteIfExists()
-          }
-
-          Behaviors.same
       }
     }
   }

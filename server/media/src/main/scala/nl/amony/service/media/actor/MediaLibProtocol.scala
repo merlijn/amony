@@ -38,6 +38,7 @@ object MediaLibProtocol {
   case class State(media: Map[String, Media])
 
   case class ResourceInfo(
+      bucketId: String,
       relativePath: String,
       hash: String,
       size: Long
