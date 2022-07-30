@@ -47,28 +47,28 @@ object CreatePreviews {
       else
         config.transcode.filterNot(_.scaleHeight > media.height)
 
-    def writeFragment(input: Path, height: Int, crf: Int): Task[Unit] = {
-      val output = config.resourcePath.resolve(s"${media.id}-${from}-${to}_${height}p.mp4")
-      if (!Files.exists(output) || overwrite)
-        FFMpeg.transcodeToMp4(
-          inputFile   = input,
-          range       = range,
-          outputFile  = Some(output),
-          quality     = crf,
-          scaleHeight = Some(height)
-        )
-      else
-        Task.unit
-    }
-
     Observable
       .fromIterable(transcodeList)
       .consumeWith(
         Consumer.foreachTask { t =>
 
           val input = config.mediaPath.resolve(media.resourceInfo.relativePath)
-          writeFragment(input, t.scaleHeight, t.crf)
+          val output = config.resourcePath.resolve(s"${media.id}-${from}-${to}_${t.scaleHeight}p.mp4")
+          writeFragment(input, output, range, t.scaleHeight, t.crf, overwrite)
         }
       )
+  }
+
+  def writeFragment(input: Path, output: Path, range: (Long, Long), height: Int, crf: Int, overwrite: Boolean): Task[Unit] = {
+    if (!Files.exists(output) || overwrite)
+      FFMpeg.transcodeToMp4(
+        inputFile   = input,
+        range       = range,
+        outputFile  = Some(output),
+        quality     = crf,
+        scaleHeight = Some(height)
+      )
+    else
+      Task.unit
   }
 }
