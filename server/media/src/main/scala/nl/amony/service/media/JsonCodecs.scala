@@ -26,9 +26,9 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
     val resolutions = (media.height :: transcodingSettings.map(_.scaleHeight)).sorted
 
     val urls = MediaUrls(
-      originalResourceUrl  = s"/resources/test/${media.id}_${media.height}p.${media.resourceInfo.extension}",
-      thumbnailUrl         = s"/resources/test/${media.id}_${resolutions.min}p.webp",
-      previewThumbnailsUrl = Some(s"/resources/test/${media.id}-timeline.vtt")
+      originalResourceUrl  = s"/resources/media/test/${media.id}_${media.height}p.${media.resourceInfo.extension}",
+      thumbnailUrl         = s"/resources/media/test/${media.id}_${resolutions.min}p.webp",
+      previewThumbnailsUrl = Some(s"/resources/media/test/${media.id}-timeline.vtt")
     )
 
     val meta = MediaMeta(

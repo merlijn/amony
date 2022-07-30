@@ -19,7 +19,7 @@ class FragmentRoutes(fragmentService: FragmentService, transcodeSettings: List[T
       path("add") {
         (post & entity(as[Range])) { createFragment =>
           onSuccess(fragmentService.addFragment(mediaId, createFragment.from, createFragment.to)) {
-            fragment => complete(Fragment.fromProtocol(fragment))
+            fragment => complete(Fragment.fromProtocol(transcodeSettings, fragment))
           }
         }
       } ~ path(Segment) { idx =>
@@ -27,13 +27,13 @@ class FragmentRoutes(fragmentService: FragmentService, transcodeSettings: List[T
           complete(fragmentService.deleteFragment(mediaId, idx.toInt))
         } ~ (post & entity(as[Range])) { createFragment =>
           onSuccess(fragmentService.updateFragmentRange(mediaId, idx.toInt, createFragment.from, createFragment.to)) {
-            fragment => complete(Fragment.fromProtocol(fragment))
+            fragment => complete(Fragment.fromProtocol(transcodeSettings, fragment))
           }
         }
       } ~ path(Segment / "tags") { idx =>
         (post & entity(as[List[String]])) { tags =>
           onSuccess(fragmentService.updateFragmentTags(mediaId, idx.toInt, tags)) {
-            fragment => complete(Fragment.fromProtocol(fragment))
+            fragment => complete(Fragment.fromProtocol(transcodeSettings, fragment))
           }
         }
       }

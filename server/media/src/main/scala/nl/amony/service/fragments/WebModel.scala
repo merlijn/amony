@@ -20,10 +20,6 @@ object WebModel {
 
     implicit val jsonCodec: Codec[Fragment] = deriveCodec
 
-    def fromProtocol(fragment: Protocol.Fragment): Fragment = {
-      null
-    }
-
     def fromProtocol(transcodingSettings: List[TranscodeSettings], f: fragments.Protocol.Fragment): Fragment = {
 
       val resolutions = transcodingSettings.map(_.scaleHeight).sorted
