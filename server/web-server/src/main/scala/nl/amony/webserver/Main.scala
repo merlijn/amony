@@ -25,8 +25,7 @@ object Main extends ConfigLoader with Logging {
 //      DatabaseMigrations.run(context.system)
       val localIndexRef = InMemoryIndex.apply(context)
       val storeRef      = context.spawn(LocalResourcesStore.behavior(config.media), "local-files-store")
-      val resourceRef   = context.spawn(ResourceService.behavior(config.media, storeRef), "resources")
-      val mediaRef      = context.spawn(MediaService.behavior(config.media.fragments, resourceRef), "medialib")
+      val mediaRef      = context.spawn(MediaService.behavior(), "medialib")
       val userRef       = context.spawn(AuthServiceImpl.behavior(), "users")
 
       val _ = context.spawn(LocalMediaScanner.behavior(config.media), "scanner")

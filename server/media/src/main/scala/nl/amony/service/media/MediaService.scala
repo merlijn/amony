@@ -1,16 +1,14 @@
 package nl.amony.service.media
 
-import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
+import akka.actor.typed.{ActorSystem, Behavior}
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.EventSourcedBehavior
 import akka.serialization.jackson.JacksonObjectMapperProvider
 import com.fasterxml.jackson.core.JsonEncoding
 import nl.amony.lib.akka.{AkkaServiceModule, ServiceBehaviors}
-import nl.amony.service.media.MediaConfig.FragmentSettings
 import nl.amony.service.media.actor.MediaLibEventSourcing.Event
 import nl.amony.service.media.actor.MediaLibProtocol._
 import nl.amony.service.media.actor.{MediaLibCommandHandler, MediaLibEventSourcing}
-import nl.amony.service.resources.ResourceProtocol.ResourceCommand
 import scribe.Logging
 
 import java.io.ByteArrayOutputStream
@@ -20,7 +18,7 @@ object MediaService {
 
   val mediaPersistenceId = "mediaLib"
 
-  def behavior(fragmentSettings: FragmentSettings, resourceRef: ActorRef[ResourceCommand]): Behavior[MediaCommand] =
+  def behavior(): Behavior[MediaCommand] =
     ServiceBehaviors.setupAndRegister[MediaCommand] { context =>
 
       implicit val ec = context.executionContext
@@ -29,7 +27,7 @@ object MediaService {
       EventSourcedBehavior[MediaCommand, Event, State](
         persistenceId  = PersistenceId.ofUniqueId(mediaPersistenceId),
         emptyState     = State(Map.empty),
-        commandHandler = MediaLibCommandHandler(fragmentSettings, resourceRef),
+        commandHandler = MediaLibCommandHandler(),
         eventHandler   = MediaLibEventSourcing.apply
       )
     }

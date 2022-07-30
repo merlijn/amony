@@ -1,14 +1,10 @@
 package nl.amony.service.media.actor
 
-import akka.actor.typed.scaladsl.adapter._
 import akka.actor.typed.{ActorRef, Scheduler}
 import akka.persistence.typed.scaladsl.Effect
 import akka.util.Timeout
-import nl.amony.service.media.MediaConfig.FragmentSettings
 import nl.amony.service.media.actor.MediaLibEventSourcing._
 import nl.amony.service.media.actor.MediaLibProtocol._
-import nl.amony.service.resources.ResourceProtocol
-import nl.amony.service.resources.ResourceProtocol.{DeleteResource, ResourceCommand}
 import scribe.Logging
 
 import scala.concurrent.ExecutionContext
@@ -16,7 +12,7 @@ import scala.concurrent.duration.DurationInt
 
 object MediaLibCommandHandler extends Logging {
 
-  def apply(fragmentSettings: FragmentSettings, resourceRef: ActorRef[ResourceCommand])(
+  def apply()(
       state: State,
       cmd: MediaCommand
   )(implicit ec: ExecutionContext, scheduler: Scheduler): Effect[Event, State] = {
@@ -43,7 +39,6 @@ object MediaLibCommandHandler extends Logging {
         else
           Effect
             .persist(MediaAdded(media))
-            .thenRun((_: State) => resourceRef.tell(ResourceProtocol.CreateFragments(media, false)))
             .thenReply(sender)(_ => true)
 
       case UpdateMetaData(mediaId, title, comment, tags, sender) =>
@@ -68,7 +63,6 @@ object MediaLibCommandHandler extends Logging {
 
         Effect
           .persist(MediaRemoved(mediaId))
-          .thenRun((s: State) => if (deleteFile) resourceRef.tell(DeleteResource(media.resourceInfo.hash, akka.actor.ActorRef.noSender.toTyped[Boolean])))
           .thenReply(sender)(_ => true)
 
       case GetById(id, sender) =>

@@ -10,24 +10,13 @@ import nl.amony.lib.files.PathOps
 import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.media.actor.MediaLibProtocol.{GetById, Media, MediaCommand}
 import nl.amony.service.resources.ResourceProtocol._
-import nl.amony.service.resources.local.LocalResourcesStore.{FullScan, GetByHash, LocalFile, LocalResourceCommand, Upload}
-import nl.amony.service.resources.local.{LocalFileIOResponse, LocalResourcesHandler}
+import nl.amony.service.resources.local.LocalFileIOResponse
+import nl.amony.service.resources.local.LocalResourcesStore._
 
 import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
-
-object ResourceService {
-
-  def behavior(config: LocalResourcesConfig, storeRef: ActorRef[LocalResourceCommand]): Behavior[ResourceCommand] = {
-
-    ServiceBehaviors.setupAndRegister[ResourceCommand] { context =>
-      storeRef.tell(FullScan(context.system.ignoreRef))
-      LocalResourcesHandler.apply(config, storeRef)
-    }
-  }
-}
 
 sealed trait ResourceKey
 
@@ -63,7 +52,8 @@ class ResourceService(system: ActorSystem[Nothing]) extends AkkaServiceModule(sy
     Future.successful(LocalFileIOResponse.option(path))
   }
 
-  def getResourceInfo(bucketId: String, resourceId: String): Future[Option[ResourceInfo]] = ???
+  private def getFileInfo(resourceId: String): Future[Option[LocalFile]] =
+    ask[LocalResourceCommand, Option[LocalFile]](ref => GetByHash(resourceId, ref))
 
   def getOrCreateVideoFragment(key: FragmentKey): Path = {
 
@@ -72,8 +62,7 @@ class ResourceService(system: ActorSystem[Nothing]) extends AkkaServiceModule(sy
     if (fragmentPath.exists())
       fragmentPath
     else {
-      val resourceInfo =
-        Await.result(ask[LocalResourceCommand, Option[LocalFile]](ref => GetByHash(key.resourceId, ref)), timeout)
+      val resourceInfo = Await.result(getFileInfo(key.resourceId), timeout)
 
       resourceInfo.foreach { info =>
         FFMpeg.transcodeToMp4(
@@ -95,8 +84,7 @@ class ResourceService(system: ActorSystem[Nothing]) extends AkkaServiceModule(sy
     if (thumbnailPath.exists())
       thumbnailPath
     else {
-      val resourceInfo =
-        Await.result(ask[LocalResourceCommand, Option[LocalFile]](ref => GetByHash(key.resourceId, ref)), timeout)
+      val resourceInfo = Await.result(getFileInfo(key.resourceId), timeout)
 
       resourceInfo.foreach { info =>
         FFMpeg.createThumbnail(
