@@ -6,7 +6,7 @@ import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import nl.amony.search.{SearchRoutes, SearchService}
 import nl.amony.service.auth.AuthRoutes
-import nl.amony.service.auth.api.AuthService.AuthServiceGrpc.AuthService
+import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.fragments.FragmentService
 import nl.amony.service.media.{MediaRoutes, MediaService}
 import nl.amony.service.resources.{ResourceRoutes, ResourceService}

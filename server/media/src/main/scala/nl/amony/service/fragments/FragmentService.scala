@@ -3,7 +3,7 @@ package nl.amony.service.fragments
 import akka.actor.typed.ActorSystem
 import nl.amony.lib.akka.AkkaServiceModule
 import nl.amony.service.fragments.Protocol.Fragment
-import nl.amony.service.media.MediaConfig.FragmentSettings
+import nl.amony.service.resources.ResourceConfig.FragmentSettings
 import nl.amony.service.media.actor.MediaLibProtocol.{GetById, Media, MediaCommand}
 import scribe.Logging
 

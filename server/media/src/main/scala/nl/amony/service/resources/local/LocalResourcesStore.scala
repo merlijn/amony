@@ -13,7 +13,7 @@ import monix.eval.Task
 import monix.reactive.{Consumer, Observable}
 import nl.amony.lib.akka.{GraphShapes, ServiceBehaviors}
 import nl.amony.lib.files.{FileUtil, PathOps}
-import nl.amony.service.media.MediaConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
+import nl.amony.service.resources.ResourceConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
 import scribe.Logging
 
 import java.awt.Desktop

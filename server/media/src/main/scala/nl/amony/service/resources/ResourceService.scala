@@ -1,15 +1,13 @@
 package nl.amony.service.resources
 
-import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
+import akka.actor.typed.ActorSystem
 import akka.stream.scaladsl.{Source, StreamRefs}
 import akka.util.ByteString
 import monix.execution.Scheduler
-import nl.amony.lib.akka.{AkkaServiceModule, ServiceBehaviors}
+import nl.amony.lib.akka.AkkaServiceModule
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.files.PathOps
-import nl.amony.service.media.MediaConfig.LocalResourcesConfig
-import nl.amony.service.media.actor.MediaLibProtocol.{GetById, Media, MediaCommand}
-import nl.amony.service.resources.ResourceProtocol._
+import ResourceConfig.LocalResourcesConfig
 import nl.amony.service.resources.local.LocalFileIOResponse
 import nl.amony.service.resources.local.LocalResourcesStore._
 
@@ -99,17 +97,12 @@ class ResourceService(system: ActorSystem[Nothing]) extends AkkaServiceModule(sy
     }
   }
 
-  def getThumbnail(bucketId: String, resourceId: String, quality: Int, timestamp: Option[Long]): Future[Option[IOResponse]] = {
+  def getThumbnail(bucketId: String, resourceId: String, quality: Int, timestamp: Long): Future[Option[IOResponse]] = {
 
-    ask[MediaCommand, Option[Media]](ref => GetById(resourceId, ref)).map { media =>
-      timestamp.orElse(media.map(_.thumbnailTimestamp)).flatMap { t =>
+    val key = ThumbnailKey(resourceId, timestamp, quality)
+    val path = resourceStore.compute(key, (_, value) => getOrCreateThumbnail(key))
 
-        val key = ThumbnailKey(resourceId, t, quality)
-        val path = resourceStore.compute(key, (_, value) => getOrCreateThumbnail(key))
-
-        LocalFileIOResponse.option(path)
-      }
-    }
+    Future.successful(LocalFileIOResponse.option(path))
   }
 
   def getPreviewSpriteVtt(bucketId: String, resourceId: String): Future[Option[String]] = {

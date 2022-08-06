@@ -8,7 +8,7 @@ import io.methvin.watcher.DirectoryChangeEvent.EventType._
 import io.methvin.watcher._
 import nl.amony.lib.akka.EventProcessing
 import nl.amony.lib.files.{FileUtil, PathOps}
-import nl.amony.service.media.MediaConfig.{HashingAlgorithm, LocalResourcesConfig}
+import nl.amony.service.resources.ResourceConfig.{HashingAlgorithm, LocalResourcesConfig}
 import nl.amony.service.resources.local.DirectoryEvents.{DirectoryEvent, FileAdded, FileDeleted, FileMoved}
 import nl.amony.service.resources.local.DirectoryWatcher.{DirectoryState, FileInfo}
 import scribe.Logging

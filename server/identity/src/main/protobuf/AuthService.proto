@@ -1,5 +1,11 @@
 syntax = "proto3";
 
+import "scalapb/scalapb.proto";
+
+option (scalapb.options) = {
+  flat_package: true
+};
+
 package nl.amony.service.auth.api;
 
 service AuthService {

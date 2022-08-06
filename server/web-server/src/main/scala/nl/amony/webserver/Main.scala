@@ -6,11 +6,12 @@ import akka.stream.Materializer
 import akka.util.Timeout
 import nl.amony.search.InMemoryIndex
 import nl.amony.service.auth.AuthServiceImpl
-import nl.amony.service.auth.api.AuthService.AuthServiceGrpc.AuthService
+import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.fragments.FragmentService
 import nl.amony.service.media.MediaService
+import nl.amony.service.media.tasks.LocalMediaScanner
 import nl.amony.service.resources.ResourceService
-import nl.amony.service.resources.local.{LocalMediaScanner, LocalResourcesStore}
+import nl.amony.service.resources.local.LocalResourcesStore
 import scribe.Logging
 
 import java.nio.file.Files

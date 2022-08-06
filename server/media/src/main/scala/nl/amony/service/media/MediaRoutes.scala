@@ -8,7 +8,7 @@ import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
-import nl.amony.service.media.MediaConfig.TranscodeSettings
+import nl.amony.service.resources.ResourceConfig.TranscodeSettings
 import nl.amony.service.media.actor.{MediaLibProtocol => protocol}
 import nl.amony.service.media.MediaWebModel._
 import scribe.Logging

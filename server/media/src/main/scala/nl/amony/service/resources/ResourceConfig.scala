@@ -1,4 +1,4 @@
-package nl.amony.service.media
+package nl.amony.service.resources
 
 import nl.amony.lib.hash.Base32
 import nl.amony.lib.hash.PartialHash.partialHash
@@ -9,7 +9,7 @@ import java.nio.file.Path
 import java.security.MessageDigest
 import scala.concurrent.duration.FiniteDuration
 
-object MediaConfig {
+object ResourceConfig {
   case class LocalResourcesConfig(
       id: String,
       private val path: Path,

@@ -1,11 +1,11 @@
-package nl.amony.service.resources.local
+package nl.amony.service.media.tasks
 
+import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, Behavior}
 import nl.amony.lib.akka.EventProcessing
-import nl.amony.service.media.MediaConfig.LocalResourcesConfig
 import nl.amony.service.media.MediaService
-import nl.amony.service.media.tasks.ScanMedia
+import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
+import nl.amony.service.resources.local.LocalResourcesStore
 import nl.amony.service.resources.local.LocalResourcesStore._
 import scribe.Logging
 

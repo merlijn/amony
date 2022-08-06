@@ -7,7 +7,7 @@ import akka.http.scaladsl.model._
 import io.circe.syntax._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import nl.amony.service.fragments.WebModel.Fragment
-import nl.amony.service.media.MediaConfig.TranscodeSettings
+import nl.amony.service.resources.ResourceConfig.TranscodeSettings
 
 class FragmentRoutes(fragmentService: FragmentService, transcodeSettings: List[TranscodeSettings]) {
 

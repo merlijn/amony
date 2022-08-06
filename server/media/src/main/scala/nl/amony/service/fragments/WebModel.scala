@@ -3,7 +3,7 @@ package nl.amony.service.fragments
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import nl.amony.service.fragments
-import nl.amony.service.media.MediaConfig.TranscodeSettings
+import nl.amony.service.resources.ResourceConfig.TranscodeSettings
 
 object WebModel {
 

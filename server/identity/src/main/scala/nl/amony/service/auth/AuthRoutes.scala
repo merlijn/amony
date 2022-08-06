@@ -7,10 +7,7 @@ import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.generic.semiauto.deriveCodec
-import nl.amony.service.auth.api.AuthService.AuthServiceGrpc.AuthService
-import nl.amony.service.auth.api.AuthService.Credentials
-import nl.amony.service.auth.api.AuthService.Authentication
-import nl.amony.service.auth.api.AuthService.InvalidCredentials
+import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import scribe.Logging
 
 import scala.concurrent.duration.DurationInt
@@ -26,11 +23,11 @@ object AuthRoutes extends Logging {
 
     pathPrefix("api" / "identity") {
       (path("login") & post & entity(as[WebCredentials])) { credentials =>
-        onSuccess(userApi.login(Credentials(credentials.username, credentials.password))) {
-          case InvalidCredentials(_) =>
+        onSuccess(userApi.login(api.Credentials(credentials.username, credentials.password))) {
+          case api.InvalidCredentials(_) =>
             logger.info("Received InvalidCredentials")
             complete(StatusCodes.BadRequest)
-          case Authentication(userId, token, _) =>
+          case api.Authentication(userId, token, _) =>
             logger.info("Received Authentication")
             val cookie = HttpCookie("session", token, path = Some("/"))
             setCookie(cookie) { complete("OK") }

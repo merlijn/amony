@@ -10,8 +10,7 @@ import nl.amony.service.auth.actor.UserCommandHandler.UserState
 import nl.amony.service.auth.actor.UserEventSourcing.UserEvent
 import nl.amony.service.auth.actor.UserProtocol._
 import nl.amony.service.auth.actor.{UserCommandHandler, UserEventSourcing}
-import nl.amony.service.auth.api.AuthService
-import nl.amony.service.auth.api.AuthService.{AuthServiceGrpc, GetByExternalId, LoginResponse, UpsertUserRequest}
+import nl.amony.service.auth.api.{AuthServiceGrpc, Credentials, LoginResponse, UpsertUserRequest}
 
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
@@ -39,17 +38,17 @@ class AuthServiceImpl(system: ActorSystem[Nothing]) extends AkkaServiceModule(sy
 
   insertUser(UpsertUserRequest(config.adminUsername, config.adminPassword))
 
-  override def login(request: AuthService.Credentials): Future[LoginResponse] =
+  override def login(request: Credentials): Future[LoginResponse] =
     ask[UserCommand, AuthenticationResponse](ref => Authenticate(request.username, request.password, ref)).map {
-      case Authentication(userId, token) => AuthService.Authentication(userId, token)
-      case InvalidCredentials            => AuthService.InvalidCredentials()
+      case Authentication(userId, token) => api.Authentication(userId, token)
+      case InvalidCredentials            => api.InvalidCredentials()
     }
 
-  override def insertUser(request: UpsertUserRequest): Future[AuthService.User] = {
+  override def insertUser(request: UpsertUserRequest): Future[api.User] = {
     ask[UserCommand, User](ref => UpsertUser(request.externalId, request.password, ref)).map { user =>
-      AuthService.User(user.id, user.email, user.passwordHash)
+      api.User(user.id, user.email, user.passwordHash)
     }
   }
 
-  override def getByExternalId(request: GetByExternalId): Future[AuthService.User] = ???
+  override def getByExternalId(request: api.GetByExternalId): Future[api.User] = ???
 }

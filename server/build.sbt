@@ -38,6 +38,7 @@ val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"  
 
 val hsqlDB                   = "org.hsqldb"                % "hsqldb" % "2.6.1"
 val flywayDbCore             = "org.flywaydb"              % "flyway-core" % "8.5.12"
+val caffeine                 = "com.github.ben-manes.caffeine" % "caffeine"               % "3.1.1"
 
 val pureConfig               = "com.github.pureconfig"    %% "pureconfig"                 % "0.17.1" // no scala 3
 val pureConfigSquants        = "com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.1" // no scala 3
@@ -122,14 +123,30 @@ lazy val identity =
       )
     )
 
+lazy val resources =
+  module("resources")
+    .dependsOn(common)
+    .settings(protobufSettings)
+    .settings(
+      name := "amony-service-resources",
+      libraryDependencies ++= Seq(
+        scribeSlf4j, akka, akkaPersistence, akkaSerializationJackson, caffeine,
+        akkaHttp, akkaHttpCirce, circe, circeGeneric, monixReactive,
+        directoryWatcher,
+        scalaTest,
+        slick,
+        scalaPbRuntimeGrcp
+      )
+    )
+
 lazy val media =
   module("media")
-    .dependsOn(common)
+    .dependsOn(common, resources)
     .settings(protobufSettings)
     .settings(
       name := "amony-service-media",
       libraryDependencies ++= Seq(
-        scribeSlf4j, akka, akkaPersistence, akkaSerializationJackson,
+        scribeSlf4j, akka, akkaPersistence, akkaSerializationJackson, caffeine,
         akkaHttp, akkaHttpCirce, circe, circeGeneric, monixReactive,
         directoryWatcher,
         scalaTest,

@@ -2,7 +2,7 @@ package nl.amony.service.media
 
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import io.circe.{Codec, Encoder}
-import nl.amony.service.media.MediaConfig.TranscodeSettings
+import nl.amony.service.resources.ResourceConfig.TranscodeSettings
 import nl.amony.service.fragments.WebModel.Fragment
 import nl.amony.service.media.MediaWebModel._
 import nl.amony.service.media.actor.{MediaLibProtocol => protocol}
@@ -27,7 +27,7 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
 
     val urls = MediaUrls(
       originalResourceUrl  = s"/resources/media/${media.resourceInfo.bucketId}/${media.id}_${media.height}p.${media.resourceInfo.extension}",
-      thumbnailUrl         = s"/resources/media/${media.resourceInfo.bucketId}/${media.id}_${resolutions.min}p.webp",
+      thumbnailUrl         = s"/resources/media/${media.resourceInfo.bucketId}/${media.id}-${media.thumbnailTimestamp}_${resolutions.min}p.webp",
       previewThumbnailsUrl = Some(s"/resources/media/${media.resourceInfo.bucketId}/${media.id}-timeline.vtt")
     )
 

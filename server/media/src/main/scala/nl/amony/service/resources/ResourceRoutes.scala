@@ -40,7 +40,7 @@ object ResourceRoutes extends Logging {
 
         (get & path(Segment)) {
           case patterns.Thumbnail(id, _, timestamp, quality) =>
-            onSuccess(resourceApi.getThumbnail(bucketId, id, quality.toInt, Option(timestamp).map(_.toLong))) {
+            onSuccess(resourceApi.getThumbnail(bucketId, id, quality.toInt, timestamp.toLong)) {
               case None => complete(StatusCodes.NotFound)
               case Some(ioResponse) =>
                 complete(HttpEntity(ContentType(MediaTypes.`image/webp`), ioResponse.getContent()))

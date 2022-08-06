@@ -11,7 +11,7 @@ import io.circe.syntax._
 import nl.amony.search.SearchProtocol._
 import nl.amony.service.fragments.WebModel.Fragment
 import nl.amony.service.media.JsonCodecs
-import nl.amony.service.media.MediaConfig.TranscodeSettings
+import nl.amony.service.resources.ResourceConfig.TranscodeSettings
 import nl.amony.service.media.MediaWebModel.Video
 
 import scala.concurrent.{ExecutionContext, Future}

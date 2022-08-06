@@ -2,7 +2,7 @@ package nl.amony.service.media.tasks
 
 import monix.execution.Scheduler
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.service.media.MediaConfig.LocalResourcesConfig
+import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
 import nl.amony.service.media.MediaService
 import scribe.Logging
 
