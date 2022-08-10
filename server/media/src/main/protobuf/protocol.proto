@@ -9,7 +9,7 @@ message Fragment {
   MediaMeta meta = 3;
 }
 
-message FileInfo {
+message ResourceInfo {
 
   string relativePath = 1;
   string hash = 2;
@@ -38,5 +38,5 @@ message Media {
   string mediaId = 1;
   string uploader = 2;
   MediaMeta meta = 3;
-  FileInfo fileInfo = 4;
+  ResourceInfo resourceInfo = 4;
 }

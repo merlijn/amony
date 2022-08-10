@@ -20,19 +20,21 @@ object WebModel {
 
     implicit val jsonCodec: Codec[Fragment] = deriveCodec
 
-    def fromProtocol(transcodingSettings: List[TranscodeSettings], f: fragments.Protocol.Fragment): Fragment = {
+    def toWebModel(transcodingSettings: List[TranscodeSettings], f: fragments.Protocol.Fragment): Fragment = {
+
+      val (start, end) = f.range
 
       val resolutions = transcodingSettings.map(_.scaleHeight).sorted
       val urls =
-        resolutions.map(height => s"/resources/test/${f.mediaId}~${f.start}-${f.end}_${height}p.mp4")
+        resolutions.map(height => s"/resources/test/${f.mediaId}~${start}-${end}_${height}p.mp4")
 
       Fragment(
-        f.mediaId,
-        0,
-        (f.start, f.end),
-        urls,
-        f.comment,
-        f.tags
+        media_id = f.mediaId,
+        index = 0,
+        range = (start, end),
+        urls = urls,
+        comment = f.comment,
+        tags = f.tags
       )
     }
   }

@@ -2,7 +2,7 @@ import React, { CSSProperties, useEffect, useState } from 'react';
 import ProgressiveImage from "react-progressive-graceful-image";
 import { Api } from "../api/Api";
 import { Video } from "../api/Model";
-import { dateMillisToString, durationInMillisToString } from "../api/Util";
+import {dateMillisToString, durationInMillisToString, labelForResolution} from "../api/Util";
 import Dialog from './common/Dialog';
 import { DropDown, MenuItem } from './common/DropDown';
 import FragmentsPlayer from "./common/FragmentsPlayer";
@@ -44,7 +44,8 @@ const Preview = (props: PreviewProps) => {
   const titlePanel =
     <div className = "preview-info-bar">
       <span className="media-title" title={vid.meta.title}>{vid.meta.title}</span>
-      {props.options.showDates && <span className="media-date">{dateMillisToString(vid.uploadTimestamp)}</span>}
+      { props.options.showDates && <span className="media-date">{dateMillisToString(vid.uploadTimestamp)}</span> }
+      { !props.options.showDates && <span className="media-date">{`${vid.mediaInfo.height}p` }</span>}
     </div>
 
   const overlay =
@@ -78,7 +79,7 @@ const Preview = (props: PreviewProps) => {
       key       = { `video-preview-${props.vid.id}` }
       className = { `preview-video preview-media` }
       onClick   = { () => props.onClick(props.vid) }
-      fragments = { props.vid.fragments } />
+      fragments = { props.vid.highlights } />
 
   const preview =
       <div className    = "preview-media-container"

@@ -135,36 +135,36 @@ export const Api = {
     return doGET(target)
   },
 
-  getMediaById: async function (id: string) {
-    return doGET(`/api/media/${id}`)
+  getMediaById: async function (mediaId: string) {
+    return doGET(`/api/media/${mediaId}`)
   },
 
   getTags: async function () {
     return doGET(`/api/search/tags`)
   },
 
-  updateVideoMetaData: async function(id: string, meta: VideoMeta) {
-    return doPOST(`/api/media/${id}`, meta)
+  updateVideoMetaData: async function(mediaId: string, meta: VideoMeta) {
+    return doPOST(`/api/media/${mediaId}`, meta)
   },
 
-  deleteMediaById: async function (id: string) {
-    return doDelete(`/api/media/${id}`)
+  deleteMediaById: async function (mediaId: string) {
+    return doDelete(`/api/media/${mediaId}`)
   },
 
-  updateFragmentTags: async function (id: string, idx: number, tags: Array<string>) {
-    return doPOST(`/api/fragments/${id}/${idx}/tags`, tags)
+  updateFragmentTags: async function (mediaId: string, idx: number, tags: Array<string>) {
+    return doPOST(`/api/fragments/${mediaId}/${idx}/tags`, tags)
   },
 
-  addFragment: async function (id: string, from: number, to: number) {
-    return doPOST(`/api/fragments/${id}/add`, { from: from, to: to})
+  addFragment: async function (mediaId: string, from: number, to: number) {
+    return doPOST(`/api/fragments/${mediaId}/add`, { from: from, to: to})
   },
 
-  deleteFragment: async function (id: string, idx: number) {
-    return doDelete(`/api/fragments/${id}/${Math.trunc(idx)}`)
+  deleteFragment: async function (mediaId: string, idx: number) {
+    return doDelete(`/api/fragments/${mediaId}/${Math.trunc(idx)}`)
   },
 
-  updateFragment: async function (id: string, idx: number, from: number, to: number) {
-    return doPOST(`/api/fragments/${id}/${Math.trunc(idx)}`, { from: from, to: to})
+  updateFragment: async function (mediaId: string, idx: number, from: number, to: number) {
+    return doPOST(`/api/fragments/${mediaId}/${Math.trunc(idx)}`, { from: from, to: to})
   }
 }
 

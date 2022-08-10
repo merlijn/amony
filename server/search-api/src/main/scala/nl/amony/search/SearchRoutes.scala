@@ -107,7 +107,7 @@ object SearchRoutes {
             val offset = offsetParam.map(_.toInt).getOrElse(0)
 
             complete(searchApi.searchFragments(n, offset, tag).map {
-              _.map { f => Fragment.fromProtocol(transcodingSettings, f) }
+              _.map { f => Fragment.toWebModel(transcodingSettings, f) }
             })
           }
       }

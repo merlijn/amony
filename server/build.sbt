@@ -130,9 +130,8 @@ lazy val resources =
     .settings(
       name := "amony-service-resources",
       libraryDependencies ++= Seq(
-        scribeSlf4j, akka, akkaPersistence, akkaSerializationJackson, caffeine,
+        scribeSlf4j, akka, akkaPersistence, akkaSerializationJackson,
         akkaHttp, akkaHttpCirce, circe, circeGeneric, monixReactive,
-        directoryWatcher,
         scalaTest,
         slick,
         scalaPbRuntimeGrcp
@@ -146,12 +145,13 @@ lazy val media =
     .settings(
       name := "amony-service-media",
       libraryDependencies ++= Seq(
-        scribeSlf4j, akka, akkaPersistence, akkaSerializationJackson, caffeine,
-        akkaHttp, akkaHttpCirce, circe, circeGeneric, monixReactive,
-        directoryWatcher,
+        scribeSlf4j,
+        akka, akkaPersistence, akkaSerializationJackson,
+        scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
+        akkaHttp, akkaHttpCirce, circe, circeGeneric,
+        monixReactive,
         scalaTest,
         slick,
-        scalaPbRuntimeGrcp
       )
     )
 

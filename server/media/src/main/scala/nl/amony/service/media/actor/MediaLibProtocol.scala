@@ -67,7 +67,7 @@ object MediaLibProtocol {
       videoInfo: MediaInfo,
       meta: MediaMeta,
       thumbnailTimestamp: Long,
-      fragments: List[Fragment],
+      highlights: List[Fragment],
   ) {
     def resolvePath(baseDir: Path): Path = baseDir.resolve(resourceInfo.relativePath)
 

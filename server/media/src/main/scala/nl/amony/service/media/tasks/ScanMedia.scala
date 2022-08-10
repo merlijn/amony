@@ -12,6 +12,7 @@ import java.nio.file.{Files, Path}
 object ScanMedia extends Logging {
 
   def scanMedia(
+       bucketId: String,
        basePath: Path,
        relativeMediaPath: Path,
        hash: String,
@@ -38,7 +39,7 @@ object ScanMedia extends Logging {
         val timeStamp = mainVideoStream.durationMillis / 3
 
         val fileInfo = ResourceInfo(
-          "test",
+          bucketId         = bucketId,
           relativePath     = relativeMediaPath.toString,
           hash             = hash,
           size             = fileAttributes.size(),
@@ -65,7 +66,7 @@ object ScanMedia extends Logging {
           resourceInfo       = fileInfo,
           videoInfo          = videoInfo,
           thumbnailTimestamp = timeStamp,
-          fragments          = List(Fragment(mediaId, timeStamp, timeStamp + fragmentLength, None, List.empty)),
+          highlights          = List(Fragment(mediaId, (timeStamp, timeStamp + fragmentLength), None, List.empty)),
         )
       }
   }

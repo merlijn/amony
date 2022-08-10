@@ -4,13 +4,14 @@ import akka.actor.typed.receptionist.ServiceKey
 import akka.actor.typed.scaladsl.ActorContext
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.http.scaladsl.util.FastFuture
-import akka.persistence.typed.PersistenceId
+import akka.persistence.typed.{PersistenceId, RecoveryCompleted}
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
 import akka.stream.scaladsl.{FileIO, Sink}
 import akka.stream.{SourceRef, SystemMaterializer}
 import akka.util.ByteString
 import monix.eval.Task
 import monix.reactive.{Consumer, Observable}
+import nl.amony.lib.akka.EventProcessing.ProcessedState
 import nl.amony.lib.akka.{GraphShapes, ServiceBehaviors}
 import nl.amony.lib.files.{FileUtil, PathOps}
 import nl.amony.service.resources.ResourceConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
@@ -107,7 +108,11 @@ object LocalResourcesStore extends Logging {
         emptyState     = Set.empty[LocalFile],
         commandHandler = commandHandler(config, context),
         eventHandler   = eventSource
-      )
+      ).receiveSignal {
+        case (_, RecoveryCompleted) =>
+          // this forces a full directory scan on start up
+          context.self ! FullScan(context.system.ignoreRef)
+      }
     }
 
 
@@ -190,10 +195,8 @@ object LocalResourcesStore extends Logging {
 
           if (Files.exists(path)) {
             config.deleteMedia match {
-              case DeleteFile =>
-                Files.delete(path)
-              case MoveToTrash =>
-                Desktop.getDesktop().moveToTrash(path.toFile())
+              case DeleteFile  => Files.delete(path)
+              case MoveToTrash => Desktop.getDesktop().moveToTrash(path.toFile())
             }
           };
 

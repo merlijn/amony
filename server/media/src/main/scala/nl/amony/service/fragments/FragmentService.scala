@@ -10,7 +10,7 @@ import scribe.Logging
 import scala.concurrent.Future
 
 object Protocol {
-  case class Fragment(mediaId: String, start: Long, end: Long, comment: Option[String], tags: List[String])
+  case class Fragment(mediaId: String, range: (Long, Long), comment: Option[String], tags: List[String])
 }
 
 class FragmentStore {
@@ -34,7 +34,7 @@ class FragmentStore {
 class FragmentService(system: ActorSystem[Nothing]) extends AkkaServiceModule(system) with Logging {
 
   def getFragments(mediaId: String, userId: String): Future[List[Fragment]] =
-    ask[MediaCommand, Option[Media]](ref => GetById(mediaId, ref)).map(_.toList.flatMap(_.fragments))
+    ask[MediaCommand, Option[Media]](ref => GetById(mediaId, ref)).map(_.toList.flatMap(_.highlights))
 
   def addFragment(mediaId: String, userId: String, index: Int, range: (Long, Long)): Unit = ???
 

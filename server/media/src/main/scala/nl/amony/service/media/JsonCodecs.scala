@@ -26,9 +26,9 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
     val resolutions = (media.height :: transcodingSettings.map(_.scaleHeight)).sorted
 
     val urls = MediaUrls(
-      originalResourceUrl  = s"/resources/media/${media.resourceInfo.bucketId}/${media.id}_${media.height}p.${media.resourceInfo.extension}",
-      thumbnailUrl         = s"/resources/media/${media.resourceInfo.bucketId}/${media.id}-${media.thumbnailTimestamp}_${resolutions.min}p.webp",
-      previewThumbnailsUrl = Some(s"/resources/media/${media.resourceInfo.bucketId}/${media.id}-timeline.vtt")
+      originalResourceUrl  = s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}_${media.height}p.${media.resourceInfo.extension}",
+      thumbnailUrl         = s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}-${media.thumbnailTimestamp}_${resolutions.min}p.webp",
+      previewThumbnailsUrl = Some(s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}-timeline.vtt")
     )
 
     val meta = MediaMeta(
@@ -58,16 +58,19 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
       meta = meta,
       mediaInfo = mediaInfo,
       resourceInfo = resourceInfo,
-      fragments = {
-        media.fragments.zipWithIndex.map { case (f, index) =>
+      highlights = {
+        media.highlights.zipWithIndex.map { case (f, index) =>
+
+          val (start, end) = f.range
+
           val urls = resolutions.map(height =>
-            s"/resources/media/${media.resourceInfo.bucketId}/${media.id}~${f.start}-${f.end}_${height}p.mp4"
+            s"/resources/media/${media.resourceInfo.bucketId}/${media.id}~${start}-${end}_${height}p.mp4"
           )
 
           Fragment(
             media_id = media.id,
             index    = index,
-            range    = (f.start, f.end),
+            range    = (start, end),
             urls     = urls,
             comment  = f.comment,
             tags     = f.tags

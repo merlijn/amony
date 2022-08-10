@@ -5,8 +5,8 @@ import nl.amony.service.fragments.WebModel.Fragment
 object MediaWebModel {
 
   case class Range(
-    from: Long,
-    to: Long
+    start: Long,
+    end: Long
   )
 
   case class MediaMeta(
@@ -16,11 +16,11 @@ object MediaWebModel {
   )
 
   case class MediaInfo(
-     width: Int,
-     height: Int,
-     fps: Double,
-     duration: Long,
-     codecName: String
+    width: Int,
+    height: Int,
+    fps: Double,
+    duration: Long,
+    codecName: String
   )
 
   case class MediaUrls(
@@ -42,6 +42,6 @@ object MediaWebModel {
     mediaInfo: MediaInfo,
     resourceInfo: ResourceInfo,
     urls: MediaUrls,
-    fragments: List[Fragment],
+    highlights: List[Fragment],
   )
 }

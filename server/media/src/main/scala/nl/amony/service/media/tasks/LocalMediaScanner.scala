@@ -34,7 +34,7 @@ class LocalMediaScanner(mediaPath: Path, mediaService: MediaService) extends Log
     case FileAdded(resource) =>
       logger.info(s"Scanning new media: ${resource.relativePath}")
       val relativePath = Path.of(resource.relativePath)
-      val media = ScanMedia.scanMedia(mediaPath, relativePath, resource.hash).runSyncUnsafe()
+      val media = ScanMedia.scanMedia("test", mediaPath, relativePath, resource.hash).runSyncUnsafe()
       mediaService.upsertMedia(media)
     case FileDeleted(hash, relativePath) =>
       logger.info(s"Media was deleted: $relativePath")

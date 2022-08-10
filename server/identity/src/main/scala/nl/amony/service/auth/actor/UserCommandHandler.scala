@@ -4,8 +4,9 @@ import akka.persistence.typed.scaladsl.Effect
 import nl.amony.service.auth.TokenManager
 import nl.amony.service.auth.actor.UserEventSourcing._
 import nl.amony.service.auth.actor.UserProtocol._
+import scribe.Logging
 
-object UserCommandHandler {
+object UserCommandHandler extends Logging {
 
   case class UserState(users: Map[String, User])
 
@@ -15,6 +16,9 @@ object UserCommandHandler {
 
     cmd match {
       case UpsertUser(email, password, sender) =>
+
+        logger.info(s"Adding user: $email")
+
         getByEmail(email) match {
           case None =>
             val hashedPassword = passwordHasher(password)

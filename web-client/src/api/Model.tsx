@@ -22,16 +22,16 @@ export type Video = {
   uploader: string,
   uploadTimestamp: number,
   // the media info of the originally uploaded file
-  meta: VideoMeta,  
+  meta: VideoMeta,
   mediaInfo: MediaInfo,
-  urls: MediaUrls,
   resourceInfo: ResourceInfo,
-  fragments: Array<Fragment>,
+  urls: MediaUrls,
+  highlights: Array<Fragment>,
 }
 
 export type Fragment = {
   media_id: string,
-  range: Range,
+  range: [number, number],
   index: number,
   urls: string[],
   tags: string[]
@@ -65,8 +65,8 @@ export type Resolution = {
 }
 
 export type Range = {
-  from: number,
-  to: number
+  start: number,
+  end: number
 }
 
 export type Sort = {

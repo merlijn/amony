@@ -36,6 +36,12 @@ export function formatByteSize(bytes: number, decimals: number = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
+export function labelForResolution(height: number) {
+  const matches = Constants.resolutions.filter((e) => height >= e.value)
+
+  return matches[matches.length-1].label
+}
+
 export function durationInMillisToString(duration: number) {
 
   const secondsInMillis = 1000;

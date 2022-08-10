@@ -1,6 +1,11 @@
 syntax = "proto3";
 
 import "protocol.proto";
+import "scalapb/scalapb.proto";
+
+option (scalapb.options) = {
+  flat_package: true
+};
 
 package nl.amony.service.media.api;
 
