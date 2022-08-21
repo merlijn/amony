@@ -70,10 +70,10 @@ object FFMpeg extends Logging
   def transcodeToMp4(
       inputFile: Path,
       range: (Long, Long),
-      outputFile: Option[Path] = None,
-      quality: Int = 24,
-      scaleHeight: Option[Int]
-  ): Task[Unit] = {
+      crf: Int = 24,
+      scaleHeight: Option[Int],
+      outputFile: Option[Path] = None
+  ): Task[Path] = {
 
     val (ss, to) = range
     val input    = inputFile.absoluteFileName()
@@ -89,21 +89,21 @@ object FFMpeg extends Logging
         scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
       List(
         "-movflags", "+faststart",
-        "-crf", s"$quality",
+        "-crf", s"$crf",
         "-an", // no audio
         "-v",   "quiet",
         "-y",   output
       )
     // format: on
 
-    runWithOutput[Unit](cmds = "ffmpeg" :: args, useErrorStream = true) { _ => Task.unit }
+    runWithOutput[Path](cmds = "ffmpeg" :: args, useErrorStream = true) { _ => Task.now(Path.of(output)) }
   }
 
   def streamFragment(
       inputFile: String,
       from: Long,
       to: Long,
-      quality: Int = 23,
+      crf: Int = 23,
       scaleHeight: Option[Int] = None
   ): InputStream = {
 
@@ -116,11 +116,11 @@ object FFMpeg extends Logging
     ) ++
       scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
       List(
-        "-c:v", "libx264",
+        "-c:v",      "libx264",
         "-movflags", "+faststart+frag_keyframe+empty_moov",
-        "-crf", s"$quality",
-        "-f", "mp4",
-        "-an", // no audio
+        "-crf",      s"$crf",
+        "-f",        "mp4",
+        "-an",       // no audio
         "pipe:1"
       )
     // format: on

@@ -66,9 +66,9 @@ class ResourceService(system: ActorSystem[Nothing]) extends AkkaServiceModule(sy
         FFMpeg.transcodeToMp4(
           inputFile   = config.mediaPath.resolve(info.relativePath),
           range       = key.range,
+          crf         = 23,
+          scaleHeight = Some(key.quality),
           outputFile  = Some(fragmentPath),
-          quality     = 23,
-          scaleHeight = Some(key.quality)
         ).runSyncUnsafe()
       }
 

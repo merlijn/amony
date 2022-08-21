@@ -9,7 +9,7 @@ val excludeLog4j =
 
 val akkaVersion     = "2.6.19"
 val akkaHttpVersion = "10.2.9"
-val circeVersion    = "0.14.1"
+val circeVersion    = "0.14.2"
 
 val akka                     = "com.typesafe.akka"        %% "akka-actor-typed"           % akkaVersion
 val akkaPersistence          = "com.typesafe.akka"        %% "akka-persistence-typed"     % akkaVersion
@@ -26,6 +26,7 @@ val circeGeneric             = "io.circe"                 %% "circe-generic"    
 val circeParser              = "io.circe"                 %% "circe-parser"               % circeVersion
 
 val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.3.3"
+val scalaLikeJdbc            = "org.scalikejdbc"          %% "scalikejdbc"                % "4.0.0"
 
 val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.5"
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "1.7.30"
@@ -36,8 +37,8 @@ val monixReactive            = "io.monix"                 %% "monix-reactive"   
 val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.12"           % Test
 val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
 
-val hsqlDB                   = "org.hsqldb"                % "hsqldb" % "2.6.1"
-val flywayDbCore             = "org.flywaydb"              % "flyway-core" % "8.5.12"
+val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.6.1"
+val flywayDbCore             = "org.flywaydb"              % "flyway-core"                % "8.5.12"
 val caffeine                 = "com.github.ben-manes.caffeine" % "caffeine"               % "3.1.1"
 
 val pureConfig               = "com.github.pureconfig"    %% "pureconfig"                 % "0.17.1" // no scala 3
@@ -103,6 +104,7 @@ lazy val common =
         scribeSlf4j,
         scalaTest,
         directoryWatcher,
+//        scalaLikeJdbc,
         circe,
         circeGeneric,
         circeParser,
