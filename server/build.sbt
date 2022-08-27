@@ -38,6 +38,7 @@ val scalaTest                = "org.scalatest"            %% "scalatest"        
 val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
 
 val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.6.1"
+val h2DB                     = "com.h2database" % "h2" % "2.1.214"
 val flywayDbCore             = "org.flywaydb"              % "flyway-core"                % "8.5.12"
 val caffeine                 = "com.github.ben-manes.caffeine" % "caffeine"               % "3.1.1"
 
@@ -104,10 +105,24 @@ lazy val common =
         scribeSlf4j,
         scalaTest,
         directoryWatcher,
+        slick,
 //        scalaLikeJdbc,
         circe,
         circeGeneric,
         circeParser,
+      )
+    )
+
+lazy val libEventStore =
+  module("lib-eventstore")
+    .settings(
+      name         := "amony-lib-eventstore",
+      libraryDependencies ++= Seq(
+        pureConfig,
+        monixReactive,
+        slick,
+        scalaTest,
+        h2DB
       )
     )
 
@@ -235,4 +250,4 @@ lazy val amony = project
     Global / cancelable   := true,
   )
   .disablePlugins(RevolverPlugin)
-  .aggregate(common, identity, media, searchApi, solrSearch, amonyServer)
+  .aggregate(common, libEventStore, identity, media, searchApi, solrSearch, amonyServer)
