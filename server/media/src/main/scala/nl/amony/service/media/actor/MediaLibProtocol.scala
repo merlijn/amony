@@ -13,26 +13,26 @@ object MediaLibProtocol {
   case class MediaNotFound(id: String)      extends ErrorResponse
   case class InvalidCommand(reason: String) extends ErrorResponse
 
-  sealed trait MediaCommand
+//  sealed trait MediaCommand
 
-  object MediaCommand {
-    implicit val serviceKey: ServiceKey[MediaCommand] = ServiceKey[MediaCommand]("mediaService")
-  }
+//  object MediaCommand {
+//    implicit val serviceKey: ServiceKey[MediaCommand] = ServiceKey[MediaCommand]("mediaService")
+//  }
 
-  case class UpsertMedia(media: Media, sender: ActorRef[Boolean])                    extends MediaCommand
-  case class RemoveMedia(id: String, deleteFile: Boolean, sender: ActorRef[Boolean]) extends MediaCommand
+//  case class UpsertMedia(media: Media, sender: ActorRef[Boolean])                    extends MediaCommand
+//  case class RemoveMedia(id: String, deleteFile: Boolean, sender: ActorRef[Boolean]) extends MediaCommand
 
   // -- Querying
-  case class GetAll(sender: ActorRef[List[Media]])                extends MediaCommand
-  case class GetById(id: String, sender: ActorRef[Option[Media]]) extends MediaCommand
+//  case class GetAll(sender: ActorRef[List[Media]])                extends MediaCommand
+//  case class GetById(id: String, sender: ActorRef[Option[Media]]) extends MediaCommand
 
-  case class UpdateMetaData(
-      mediaId: String,
-      title: Option[String],
-      comment: Option[String],
-      tags: Set[String],
-      sender: ActorRef[Either[ErrorResponse, Media]]
-  ) extends MediaCommand
+//  case class UpdateMetaData(
+//      mediaId: String,
+//      title: Option[String],
+//      comment: Option[String],
+//      tags: Set[String],
+//      sender: ActorRef[Either[ErrorResponse, Media]]
+//  ) extends MediaCommand
 
   // -- State
   case class State(media: Map[String, Media])

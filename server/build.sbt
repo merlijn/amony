@@ -25,7 +25,7 @@ val circe                    = "io.circe"                 %% "circe-core"       
 val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
 val circeParser              = "io.circe"                 %% "circe-parser"               % circeVersion
 
-val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.3.3"
+val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.4.0"
 val scalaLikeJdbc            = "org.scalikejdbc"          %% "scalikejdbc"                % "4.0.0"
 
 val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.5"
@@ -38,7 +38,7 @@ val scalaTest                = "org.scalatest"            %% "scalatest"        
 val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
 
 val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.6.1"
-val h2DB                     = "com.h2database" % "h2" % "2.1.214"
+val h2DB                     = "com.h2database"            % "h2"                         % "2.1.214"
 val flywayDbCore             = "org.flywaydb"              % "flyway-core"                % "8.5.12"
 val caffeine                 = "com.github.ben-manes.caffeine" % "caffeine"               % "3.1.1"
 
@@ -168,7 +168,7 @@ lazy val media =
         akkaHttp, akkaHttpCirce, circe, circeGeneric,
         monixReactive,
         scalaTest,
-        slick,
+        slick, h2DB
       )
     )
 
@@ -217,7 +217,8 @@ lazy val amonyServer =
         akkaPersistence,
         akkaPersistenceQuery,
         akkaSerializationJackson,
-        levelDb, levelDbJndiAll, hsqlDB, flywayDbCore, akkaPersistenceJdbc,
+        levelDb, levelDbJndiAll, hsqlDB, flywayDbCore,
+//        akkaPersistenceJdbc,
 
         // akka http & json serialization
         akkaHttp, akkaHttpCirce,

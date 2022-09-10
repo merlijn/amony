@@ -1,13 +1,13 @@
-package nl.amony.lib.eventstore
+package nl.amony.lib.eventstore.h2
 
 import monix.eval.Task
 import monix.reactive.Observable
-
-import scala.concurrent.Future
+import nl.amony.lib.eventstore.{EventCodec, EventSourcedEntity, EventStore}
 import slick.jdbc.H2Profile
 import slick.jdbc.H2Profile.api._
 
-import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
+import java.util.concurrent.atomic.AtomicLong
+import scala.concurrent.Future
 
 // Definition of the SUPPLIERS table
 class Events(tag: Tag) extends Table[(Long, String, Long, Long, String, Array[Byte])](tag, "events") {

@@ -2,6 +2,7 @@ package nl.amony.service.media.tasks
 
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
+import monix.eval.Task
 import nl.amony.lib.akka.EventProcessing
 import nl.amony.service.media.MediaService
 import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
@@ -13,10 +14,10 @@ import java.nio.file.Path
 
 object LocalMediaScanner  {
 
-  def behavior(config: LocalResourcesConfig): Behavior[(Long, LocalResourceEvent)] =
+  def behavior(config: LocalResourcesConfig, mediaService: MediaService): Behavior[(Long, LocalResourceEvent)] =
     Behaviors.setup { context =>
 
-      val scanner = new LocalMediaScanner(config.mediaPath, new MediaService(context.system))
+      val scanner = new LocalMediaScanner(config.mediaPath, mediaService)
 
       EventProcessing.processAtLeastOnce[LocalResourceEvent](
           LocalResourcesStore.persistenceId(config.id),
@@ -34,8 +35,10 @@ class LocalMediaScanner(mediaPath: Path, mediaService: MediaService) extends Log
     case FileAdded(resource) =>
       logger.info(s"Scanning new media: ${resource.relativePath}")
       val relativePath = Path.of(resource.relativePath)
-      val media = ScanMedia.scanMedia("test", mediaPath, relativePath, resource.hash).runSyncUnsafe()
-      mediaService.upsertMedia(media)
+      ScanMedia
+        .scanMedia("test", mediaPath, relativePath, resource.hash)
+        .flatMap(media => Task.fromFuture(mediaService.upsertMedia(media))).runSyncUnsafe()
+
     case FileDeleted(hash, relativePath) =>
       logger.info(s"Media was deleted: $relativePath")
       mediaService.deleteMedia(hash, false)

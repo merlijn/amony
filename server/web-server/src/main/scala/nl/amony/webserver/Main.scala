@@ -1,5 +1,6 @@
 package nl.amony.webserver
 
+import akka.actor.ActorRef
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorSystem, Behavior}
 import akka.stream.Materializer
@@ -19,17 +20,23 @@ import scala.concurrent.duration.DurationInt
 
 object Main extends ConfigLoader with Logging {
 
-  def rootBehaviour(config: AmonyConfig): Behavior[Nothing] =
+
+
+  def rootBehaviour(config: AmonyConfig, mediaService: MediaService): Behavior[Nothing] =
     Behaviors.setup[Nothing] { context =>
       implicit val mat = Materializer(context)
 
 //      DatabaseMigrations.run(context.system)
-      val localIndexRef = InMemoryIndex.apply(context)
-      val storeRef      = context.spawn(LocalResourcesStore.behavior(config.media), "local-files-store")
-      val mediaRef      = context.spawn(MediaService.behavior(), "medialib")
-      val userRef       = context.spawn(AuthServiceImpl.behavior(), "users")
+      // TODO remove this ugly hack
+      val localIndexRef: ActorRef = InMemoryIndex.apply(context)
+      mediaService.setEventListener((e) => localIndexRef.tell(e, ActorRef.noSender))
 
-      val _ = context.spawn(LocalMediaScanner.behavior(config.media), "scanner")
+      val _      = context.spawn(LocalResourcesStore.behavior(config.media), "local-files-store")
+//      val _      = context.spawn(MediaService.behavior(), "medialib")
+      val _      = context.spawn(AuthServiceImpl.behavior(), "users")
+
+      logger.info(s"spawning scanner")
+      val _ = context.spawn(LocalMediaScanner.behavior(config.media, mediaService), "scanner")
 
       Behaviors.empty
     }
@@ -38,13 +45,16 @@ object Main extends ConfigLoader with Logging {
 
     Files.createDirectories(appConfig.media.resourcePath)
 
-    val router: Behavior[Nothing]    = rootBehaviour(appConfig)
+    val mediaService     = new MediaService()
+    mediaService.init()
+
+    val router: Behavior[Nothing]    = rootBehaviour(appConfig, mediaService)
     val system: ActorSystem[Nothing] = ActorSystem[Nothing](router, "mediaLibrary", config)
 
     implicit val timeout: Timeout = Timeout(10.seconds)
 
     val userService: AuthService  = new AuthServiceImpl(system)
-    val mediaService     = new MediaService(system)
+
     val resourcesService = new ResourceService(system)
     val fragmentService = new FragmentService(system)
 

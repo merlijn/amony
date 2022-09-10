@@ -15,28 +15,27 @@ import scribe.Logging
 
 object InMemoryIndex {
 
-  def apply[T](context: ActorContext[T])(implicit mat: Materializer): typed.ActorRef[QueryMessage] = {
+//  def apply[T](context: ActorContext[T])(implicit mat: Materializer): ActorRef = {
+//
+//    val readJournalId = context.system.settings.config.getString("akka.persistence.query.journal.plugin-id")
+//    val readJournal = PersistenceQuery(context.system).readJournalFor[EventsByPersistenceIdQuery](readJournalId)
+//
+//    apply(context)
+//  }
 
-    val readJournalId = context.system.settings.config.getString("akka.persistence.query.journal.plugin-id")
-    val readJournal = PersistenceQuery(context.system).readJournalFor[EventsByPersistenceIdQuery](readJournalId)
-
-    apply(context, readJournal)
-  }
-
-  def apply[T](context: ActorContext[T], readJournal: EventsByPersistenceIdQuery)(implicit mat: Materializer): typed.ActorRef[QueryMessage] = {
+  def apply[T](context: ActorContext[T])(implicit mat: Materializer): ActorRef = {
 
     import akka.actor.typed.scaladsl.adapter._
 
-    val indexActor = context.actorOf(Props(new LocalIndexActor()), "index")
-    val typedRef = indexActor.toTyped[QueryMessage]
+    val indexActor: ActorRef = context.actorOf(Props(new LocalIndexActor()), "index")
 
-    context.system.receptionist ! Receptionist.Register(QueryMessage.serviceKey, typedRef)
+    context.system.receptionist ! Receptionist.Register(QueryMessage.serviceKey, indexActor.toTyped[QueryMessage])
 
-    EventProcessing.processEvents[MediaLibEventSourcing.Event](MediaService.mediaPersistenceId, readJournal) { e =>
-      indexActor.tell(e, ActorRef.noSender)
-    }
+//    EventProcessing.processEvents[MediaLibEventSourcing.Event](MediaService.mediaPersistenceId, readJournal) { e =>
+//      indexActor.tell(e, ActorRef.noSender)
+//    }
 
-    typedRef
+    indexActor
   }
 
   class LocalIndexActor() extends Actor with Logging {

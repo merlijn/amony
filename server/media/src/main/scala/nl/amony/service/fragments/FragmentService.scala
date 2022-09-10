@@ -4,7 +4,6 @@ import akka.actor.typed.ActorSystem
 import nl.amony.lib.akka.AkkaServiceModule
 import nl.amony.service.fragments.Protocol.Fragment
 import nl.amony.service.resources.ResourceConfig.FragmentSettings
-import nl.amony.service.media.actor.MediaLibProtocol.{GetById, Media, MediaCommand}
 import scribe.Logging
 
 import scala.concurrent.Future
@@ -34,7 +33,7 @@ class FragmentStore {
 class FragmentService(system: ActorSystem[Nothing]) extends AkkaServiceModule(system) with Logging {
 
   def getFragments(mediaId: String, userId: String): Future[List[Fragment]] =
-    ask[MediaCommand, Option[Media]](ref => GetById(mediaId, ref)).map(_.toList.flatMap(_.highlights))
+    Future.successful(List.empty)
 
   def addFragment(mediaId: String, userId: String, index: Int, range: (Long, Long)): Unit = ???
 

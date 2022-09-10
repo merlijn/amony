@@ -61,7 +61,6 @@ object LocalResourcesStore extends Logging {
   private case class UploadCompleted(relativePath: String, hash: String, originalSender: ActorRef[Boolean]) extends LocalResourceCommand
 
   def scanDirectory(config: LocalResourcesConfig, snapshot: Set[LocalFile]): Observable[LocalFile] = {
-    // first calculate the hashes
     Observable
       .from(FileUtil.listFilesInDirectoryRecursive(config.mediaPath))
       .filter { file => config.filterFileName(file.getFileName.toString) }

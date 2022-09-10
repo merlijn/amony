@@ -1,8 +1,8 @@
-package nl.amony.lib.eventstore
+package nl.amony.lib.eventstore.h2
 
 import com.typesafe.config.ConfigFactory
 import monix.reactive.Consumer
-import nl.amony.lib.eventstore.{EventCodec, H2EventStore}
+import nl.amony.lib.eventstore.EventCodec
 import org.scalatest.flatspec.AnyFlatSpecLike
 import slick.jdbc.H2Profile
 
@@ -20,8 +20,8 @@ class H2EventStoreSpec extends AnyFlatSpecLike {
       case Removed(msg) => msg.getBytes
     }
     override def decode(manifest: String, bytes: Array[Byte]): TestEvent = manifest match {
-      case "nl.amony.lib.evenstore.H2EventStoreSpec$Added"   => Added(new String(bytes))
-      case "nl.amony.lib.evenstore.H2EventStoreSpec$Removed" => Removed(new String(bytes))
+      case "nl.amony.lib.eventstore.h2.H2EventStoreSpec$Added"   => Added(new String(bytes))
+      case "nl.amony.lib.eventstore.h2.H2EventStoreSpec$Removed" => Removed(new String(bytes))
     }
   }
 
