@@ -10,9 +10,9 @@ import io.circe.generic.semiauto.deriveEncoder
 import io.circe.syntax._
 import nl.amony.search.SearchProtocol._
 import nl.amony.service.fragments.WebModel.Fragment
-import nl.amony.service.media.JsonCodecs
 import nl.amony.service.resources.ResourceConfig.TranscodeSettings
-import nl.amony.service.media.MediaWebModel.Video
+import nl.amony.service.media.web.MediaWebModel.Video
+import nl.amony.service.media.web.JsonCodecs
 
 import scala.concurrent.{ExecutionContext, Future}
 

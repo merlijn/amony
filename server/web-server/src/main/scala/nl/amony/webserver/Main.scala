@@ -5,6 +5,7 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorSystem, Behavior}
 import akka.stream.Materializer
 import akka.util.Timeout
+import com.typesafe.config.ConfigFactory
 import nl.amony.search.InMemoryIndex
 import nl.amony.service.auth.AuthServiceImpl
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
@@ -14,13 +15,13 @@ import nl.amony.service.media.tasks.LocalMediaScanner
 import nl.amony.service.resources.ResourceService
 import nl.amony.service.resources.local.LocalResourcesStore
 import scribe.Logging
+import slick.jdbc
+import slick.jdbc.H2Profile
 
 import java.nio.file.Files
 import scala.concurrent.duration.DurationInt
 
 object Main extends ConfigLoader with Logging {
-
-
 
   def rootBehaviour(config: AmonyConfig, mediaService: MediaService): Behavior[Nothing] =
     Behaviors.setup[Nothing] { context =>
@@ -41,11 +42,29 @@ object Main extends ConfigLoader with Logging {
       Behaviors.empty
     }
 
+  def initDb(): jdbc.H2Profile.backend.Database = {
+    import slick.jdbc.H2Profile.api._
+
+    val config =
+      """
+        |h2mem1-test = {
+        |  url = "jdbc:h2:mem:test1"
+        |  driver = org.h2.Driver
+        |  connectionPool = disabled
+        |  keepAliveConnection = true
+        |}
+        |""".stripMargin
+
+    Database.forConfig("h2mem1-test", ConfigFactory.parseString(config))
+  }
+
   def main(args: Array[String]): Unit = {
 
     Files.createDirectories(appConfig.media.resourcePath)
 
-    val mediaService     = new MediaService()
+   val db: H2Profile.backend.Database = initDb()
+
+    val mediaService     = new MediaService(db)
     mediaService.init()
 
     val router: Behavior[Nothing]    = rootBehaviour(appConfig, mediaService)

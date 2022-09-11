@@ -1,6 +1,6 @@
 package nl.amony.lib
 
-import nl.amony.service.media.actor.ListOps
+import nl.amony.service.fragments.FragmentProtocol.ListOps
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers._
 import scribe.Logging

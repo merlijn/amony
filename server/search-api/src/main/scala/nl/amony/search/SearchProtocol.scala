@@ -2,8 +2,8 @@ package nl.amony.search
 
 import akka.actor.typed
 import akka.actor.typed.receptionist.ServiceKey
-import nl.amony.service.fragments.Protocol.Fragment
-import nl.amony.service.media.actor.MediaLibProtocol.Media
+import nl.amony.service.fragments.FragmentProtocol.Fragment
+import nl.amony.service.media.MediaProtocol.Media
 
 object SearchProtocol {
 

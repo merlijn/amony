@@ -1,4 +1,4 @@
-package nl.amony.service.media
+package nl.amony.service.media.web
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model._
@@ -8,9 +8,9 @@ import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
+import nl.amony.service.media.{MediaService, MediaProtocol => protocol}
 import nl.amony.service.resources.ResourceConfig.TranscodeSettings
-import nl.amony.service.media.actor.{MediaLibProtocol => protocol}
-import nl.amony.service.media.MediaWebModel._
+import nl.amony.service.media.web.MediaWebModel._
 import scribe.Logging
 
 import scala.concurrent.{ExecutionContext, Future}

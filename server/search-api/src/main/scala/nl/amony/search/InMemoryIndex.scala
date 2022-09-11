@@ -8,20 +8,11 @@ import akka.persistence.query.scaladsl.EventsByPersistenceIdQuery
 import akka.stream.Materializer
 import nl.amony.lib.akka.EventProcessing
 import nl.amony.search.SearchProtocol._
-import nl.amony.service.media.MediaService
-import nl.amony.service.media.actor.MediaLibEventSourcing
-import nl.amony.service.media.actor.MediaLibProtocol.{Media, State}
+import nl.amony.service.media.{MediaEvents, MediaService}
+import nl.amony.service.media.MediaProtocol.{Media, State}
 import scribe.Logging
 
 object InMemoryIndex {
-
-//  def apply[T](context: ActorContext[T])(implicit mat: Materializer): ActorRef = {
-//
-//    val readJournalId = context.system.settings.config.getString("akka.persistence.query.journal.plugin-id")
-//    val readJournal = PersistenceQuery(context.system).readJournalFor[EventsByPersistenceIdQuery](readJournalId)
-//
-//    apply(context)
-//  }
 
   def apply[T](context: ActorContext[T])(implicit mat: Materializer): ActorRef = {
 
@@ -30,10 +21,6 @@ object InMemoryIndex {
     val indexActor: ActorRef = context.actorOf(Props(new LocalIndexActor()), "index")
 
     context.system.receptionist ! Receptionist.Register(QueryMessage.serviceKey, indexActor.toTyped[QueryMessage])
-
-//    EventProcessing.processEvents[MediaLibEventSourcing.Event](MediaService.mediaPersistenceId, readJournal) { e =>
-//      indexActor.tell(e, ActorRef.noSender)
-//    }
 
     indexActor
   }
@@ -57,7 +44,7 @@ object InMemoryIndex {
         logger.debug("Updating index")
         sortedByTitle     = media.values.toVector.sortBy(m => m.meta.title.getOrElse(m.fileName()))
         sortedByDateAdded = media.values.toVector.sortBy(_.uploadTimestamp)
-        sortedByDuration  = media.values.toVector.sortBy(_.videoInfo.duration)
+        sortedByDuration  = media.values.toVector.sortBy(_.mediaInfo.duration)
         sortedBySize      = media.values.toVector.sortBy(_.resourceInfo.size)
         tags              = media.values.flatMap(_.meta.tags).toSet
         indexedAt         = counter
@@ -66,8 +53,8 @@ object InMemoryIndex {
 
     override def receive: Receive = {
 
-      case e: MediaLibEventSourcing.Event =>
-        state = MediaLibEventSourcing.apply(state, e)
+      case e: MediaEvents.Event =>
+        state = MediaEvents.apply(state, e)
         counter += 1
 
       case GetTags(sender) =>
@@ -77,15 +64,15 @@ object InMemoryIndex {
       case SearchFragments(size, offset, maybeTag, sender) =>
         updateIndex()
 
-        val results = state.media.values
-          .flatMap(m => m.highlights)
-          .filter { f =>
-            maybeTag.map(tag => f.tags.contains(tag)).getOrElse(true)
-          }
-          .drop(offset)
-          .take(size)
+//        val results = state.media.values
+//          .flatMap(m => m.highlights)
+//          .filter { f =>
+//            maybeTag.map(tag => f.tags.contains(tag)).getOrElse(true)
+//          }
+//          .drop(offset)
+//          .take(size)
 
-        sender.tell(results.toSeq)
+        sender.tell(List.empty)
 
       case Search(query, sender) =>
         updateIndex()
@@ -97,7 +84,7 @@ object InMemoryIndex {
           query.tags.forall(tag => m.meta.tags.contains(tag))
         def filterDuration(m: Media): Boolean =
           query.duration
-            .map { case (min, max) => m.videoInfo.duration >= min && m.videoInfo.duration <= max }
+            .map { case (min, max) => m.mediaInfo.duration >= min && m.mediaInfo.duration <= max }
             .getOrElse(true)
         def filterMedia(m: Media): Boolean = filterRes(m) && filterQuery(m) && filterTag(m) && filterDuration(m)
 

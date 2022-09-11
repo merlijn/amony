@@ -8,7 +8,8 @@ import nl.amony.search.{SearchRoutes, SearchService}
 import nl.amony.service.auth.AuthRoutes
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.fragments.FragmentService
-import nl.amony.service.media.{MediaRoutes, MediaService}
+import nl.amony.service.media.{MediaService, web}
+import nl.amony.service.media.web.MediaRoutes
 import nl.amony.service.resources.{ResourceRoutes, ResourceService}
 
 import java.nio.file.{Files, Paths}
@@ -35,7 +36,7 @@ object WebServerRoutes {
     val identityRoutes = AuthRoutes(userService)
     val resourceRoutes = ResourceRoutes(resourceService, config.api.uploadSizeLimit.toBytes.toLong)
     val searchRoutes   = SearchRoutes(system, searchApi, config.search, config.media.transcode)
-    val mediaRoutes    = MediaRoutes(system, mediaService, config.media.transcode)
+    val mediaRoutes    = web.MediaRoutes(system, mediaService, config.media.transcode)
 
     // routes for the web app (javascript/html) resources
     val webAppResources = webAppRoutes(config.api)

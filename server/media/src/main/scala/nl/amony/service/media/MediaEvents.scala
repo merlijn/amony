@@ -1,9 +1,9 @@
-package nl.amony.service.media.actor
+package nl.amony.service.media
 
-import nl.amony.service.media.actor.MediaLibProtocol._
+import nl.amony.service.media.MediaProtocol._
 import scribe.Logging
 
-object MediaLibEventSourcing extends Logging {
+object MediaEvents extends Logging {
 
   sealed trait Event
 

@@ -1,12 +1,12 @@
 package nl.amony.service.fragments
 
 import akka.http.scaladsl.server.Directives._
-import nl.amony.service.media.JsonCodecs
-import nl.amony.service.media.MediaWebModel.{MediaMeta, Range}
+import nl.amony.service.media.web.MediaWebModel.{MediaMeta, Range}
 import akka.http.scaladsl.model._
 import io.circe.syntax._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import nl.amony.service.fragments.WebModel.Fragment
+import nl.amony.service.media.web.JsonCodecs
 import nl.amony.service.resources.ResourceConfig.TranscodeSettings
 
 class FragmentRoutes(fragmentService: FragmentService, transcodeSettings: List[TranscodeSettings]) {

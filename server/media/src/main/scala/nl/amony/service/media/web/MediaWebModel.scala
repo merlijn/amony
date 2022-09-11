@@ -1,4 +1,4 @@
-package nl.amony.service.media
+package nl.amony.service.media.web
 
 import nl.amony.service.fragments.WebModel.Fragment
 

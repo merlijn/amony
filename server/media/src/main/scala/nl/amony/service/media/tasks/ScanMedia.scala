@@ -2,8 +2,7 @@ package nl.amony.service.media.tasks
 
 import monix.eval.Task
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.service.fragments.Protocol.Fragment
-import nl.amony.service.media.actor.MediaLibProtocol._
+import nl.amony.service.media.MediaProtocol._
 import scribe.Logging
 
 import java.nio.file.attribute.BasicFileAttributes
@@ -15,8 +14,7 @@ object ScanMedia extends Logging {
        bucketId: String,
        basePath: Path,
        relativeMediaPath: Path,
-       hash: String,
-       fragmentLength: Long = 3000): Task[Media] = {
+       hash: String): Task[Media] = {
 
     val mediaPath = basePath.resolve(relativeMediaPath)
 
@@ -64,9 +62,8 @@ object ScanMedia extends Logging {
             tags    = Set.empty
           ),
           resourceInfo       = fileInfo,
-          videoInfo          = videoInfo,
+          mediaInfo          = videoInfo,
           thumbnailTimestamp = timeStamp,
-          highlights          = List(Fragment(mediaId, (timeStamp, timeStamp + fragmentLength), None, List.empty)),
         )
       }
   }

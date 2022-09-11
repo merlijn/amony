@@ -1,11 +1,12 @@
-package nl.amony.service.media
+package nl.amony.service.media.web
 
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import io.circe.{Codec, Encoder}
+import nl.amony.service.fragments.FragmentProtocol
 import nl.amony.service.resources.ResourceConfig.TranscodeSettings
 import nl.amony.service.fragments.WebModel.Fragment
-import nl.amony.service.media.MediaWebModel._
-import nl.amony.service.media.actor.{MediaLibProtocol => protocol}
+import nl.amony.service.media.web.MediaWebModel._
+import nl.amony.service.media.{MediaProtocol => protocol}
 
 class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
 
@@ -40,15 +41,18 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
     val mediaInfo = MediaInfo(
       width     = media.width,
       height    = media.height,
-      duration  = media.videoInfo.duration,
-      fps       = media.videoInfo.fps,
-      codecName = media.videoInfo.videoCodec,
+      duration  = media.mediaInfo.duration,
+      fps       = media.mediaInfo.fps,
+      codecName = media.mediaInfo.videoCodec,
     )
 
     val resourceInfo = ResourceInfo(
       sizeInBytes = media.resourceInfo.size,
       hash = media.resourceInfo.hash
     )
+
+    // hard coded for now
+    val highlights = List(FragmentProtocol.Fragment(media.id, (media.mediaInfo.duration / 3, 3000), None, List.empty))
 
     Video(
       id        = media.id,
@@ -59,7 +63,7 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
       mediaInfo = mediaInfo,
       resourceInfo = resourceInfo,
       highlights = {
-        media.highlights.zipWithIndex.map { case (f, index) =>
+        highlights.zipWithIndex.map { case (f, index) =>
 
           val (start, end) = f.range
 

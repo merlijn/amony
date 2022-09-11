@@ -20,7 +20,7 @@ object WebModel {
 
     implicit val jsonCodec: Codec[Fragment] = deriveCodec
 
-    def toWebModel(transcodingSettings: List[TranscodeSettings], f: fragments.Protocol.Fragment): Fragment = {
+    def toWebModel(transcodingSettings: List[TranscodeSettings], f: fragments.FragmentProtocol.Fragment): Fragment = {
 
       val (start, end) = f.range
 
