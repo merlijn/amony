@@ -4,17 +4,18 @@ import MediaEvents.{MediaAdded, MediaRemoved}
 import MediaProtocol._
 import com.fasterxml.jackson.core.JsonEncoding
 import scribe.Logging
-import slick.jdbc.H2Profile
+import slick.basic.DatabaseConfig
+import slick.jdbc.JdbcProfile
 
 import java.io.ByteArrayOutputStream
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
 
-class MediaService(db: H2Profile.backend.Database)  extends Logging {
+class MediaService(dbConfig: DatabaseConfig[JdbcProfile]) extends Logging {
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  val mediaRepository = new MediaRepository(db)
+  val mediaRepository = new MediaRepository(dbConfig)
 
   var eventListener: MediaEvents.Event => Unit = _ => ()
 
@@ -22,7 +23,8 @@ class MediaService(db: H2Profile.backend.Database)  extends Logging {
     eventListener = listener
   }
 
-  def init() = Await.result(mediaRepository.createTables(), 5.seconds)
+  def init(): Unit =
+    Await.result(mediaRepository.createTables(), 5.seconds)
 
   def getById(id: String): Future[Option[Media]] = {
     mediaRepository.getById(id)

@@ -15,8 +15,9 @@ import nl.amony.service.media.tasks.LocalMediaScanner
 import nl.amony.service.resources.ResourceService
 import nl.amony.service.resources.local.LocalResourcesStore
 import scribe.Logging
+import slick.basic.DatabaseConfig
 import slick.jdbc
-import slick.jdbc.H2Profile
+import slick.jdbc.{H2Profile, JdbcProfile}
 
 import java.nio.file.Files
 import scala.concurrent.duration.DurationInt
@@ -42,8 +43,7 @@ object Main extends ConfigLoader with Logging {
       Behaviors.empty
     }
 
-  def initDb(): jdbc.H2Profile.backend.Database = {
-    import slick.jdbc.H2Profile.api._
+  def loadDbConfig(): DatabaseConfig[JdbcProfile] = {
 
     val config =
       """
@@ -55,16 +55,18 @@ object Main extends ConfigLoader with Logging {
         |}
         |""".stripMargin
 
-    Database.forConfig("h2mem1-test", ConfigFactory.parseString(config))
+    DatabaseConfig.forConfig[JdbcProfile]("h2mem1-test", ConfigFactory.parseString(config))
+
+//    Database.forConfig("h2mem1-test", ConfigFactory.parseString(config))
   }
 
   def main(args: Array[String]): Unit = {
 
     Files.createDirectories(appConfig.media.resourcePath)
 
-   val db: H2Profile.backend.Database = initDb()
+    val dbConfig = loadDbConfig()
 
-    val mediaService     = new MediaService(db)
+    val mediaService     = new MediaService(dbConfig)
     mediaService.init()
 
     val router: Behavior[Nothing]    = rootBehaviour(appConfig, mediaService)

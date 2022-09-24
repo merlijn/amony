@@ -1,14 +1,14 @@
 package nl.amony.service.media
 
-import nl.amony.service.media.MediaTable.{MediaRow, asRow, fromRow}
 import MediaProtocol.{Media, MediaInfo, MediaMeta, ResourceInfo}
+import nl.amony.service.media.MediaRepository.{MediaRow, asRow, fromRow}
 import scribe.Logging
-import slick.jdbc.H2Profile
-import slick.jdbc.H2Profile.api._
+import slick.basic.DatabaseConfig
+import slick.jdbc.JdbcProfile
 
 import scala.concurrent.Future
 
-object MediaTable {
+object MediaRepository {
 
   type MediaRow = (String, String, Long, Long, String, String, Long, Double, Long, Int, Int, Option[String], Option[String])
 
@@ -32,35 +32,38 @@ object MediaTable {
   }
 }
 
-class MediaTable(tag: Tag) extends Table[MediaRow](tag, "media") {
+class MediaRepository(dbConfig: DatabaseConfig[JdbcProfile]) extends Logging {
 
-  def mediaId            = column[String]("key", O.PrimaryKey) // This is the primary key column
+  import dbConfig.profile.api._
 
-  def uploader           = column[String]("uploader")
-  def uploadTimestamp    = column[Long]("upload_timestamp")
-  def thumbnailTimestamp = column[Long]("thumbnail_timestamp")
+  private class MediaTable(tag: Tag) extends Table[MediaRow](tag, "media") {
 
-  def resourceBucketId   = column[String]("resource_bucket_id")
-  def resourceHash       = column[String]("resource_hash")
-  def resourceSize       = column[Long]("resource_size")
+    def mediaId            = column[String]("key", O.PrimaryKey) // This is the primary key column
 
-  def mediaFps           = column[Double]("media_fps")
-  def mediaDuration      = column[Long]("media_duration")
-  def mediaResolutionX   = column[Int]("media_resolution_x")
-  def mediaResolutionY   = column[Int]("media_resolution_y")
+    def uploader           = column[String]("uploader")
+    def uploadTimestamp    = column[Long]("upload_timestamp")
+    def thumbnailTimestamp = column[Long]("thumbnail_timestamp")
 
-  def title              = column[Option[String]]("title")
-  def comment            = column[Option[String]]("comment")
+    def resourceBucketId   = column[String]("resource_bucket_id")
+    def resourceHash       = column[String]("resource_hash")
+    def resourceSize       = column[Long]("resource_size")
 
-  def * = (mediaId, uploader, uploadTimestamp, thumbnailTimestamp,
-           resourceBucketId, resourceHash, resourceSize,
-           mediaFps, mediaDuration, mediaResolutionX, mediaResolutionY,
-           title, comment)
-}
+    def mediaFps           = column[Double]("media_fps")
+    def mediaDuration      = column[Long]("media_duration")
+    def mediaResolutionX   = column[Int]("media_resolution_x")
+    def mediaResolutionY   = column[Int]("media_resolution_y")
 
-class MediaRepository(db: H2Profile.backend.Database) extends Logging {
+    def title              = column[Option[String]]("title")
+    def comment            = column[Option[String]]("comment")
 
-  val mediaTable = TableQuery[MediaTable]
+    def * = (mediaId, uploader, uploadTimestamp, thumbnailTimestamp,
+      resourceBucketId, resourceHash, resourceSize,
+      mediaFps, mediaDuration, mediaResolutionX, mediaResolutionY,
+      title, comment)
+  }
+
+  private val db = dbConfig.db
+  private val mediaTable = TableQuery[MediaTable]
   import scala.concurrent.ExecutionContext.Implicits.global
 
   def createTables(): Future[Unit] = db.run(mediaTable.schema.create)
@@ -86,7 +89,7 @@ class MediaRepository(db: H2Profile.backend.Database) extends Logging {
       case Some(n) => mediaTable.take(n)
     }
 
-    db.run(query.result.map(_.map(fromRow)))
+    db.run(query.result.map(_.map(MediaRepository.fromRow)))
   }
 
   def updateMeta(mediaId: String, meta: MediaMeta) = {

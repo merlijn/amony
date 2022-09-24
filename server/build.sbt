@@ -25,7 +25,8 @@ val circe                    = "io.circe"                 %% "circe-core"       
 val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
 val circeParser              = "io.circe"                 %% "circe-parser"               % circeVersion
 
-val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.4.0"
+val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.4.1"
+val slickHikariCp            = "com.typesafe.slick"       %% "slick-hikaricp"             % "3.4.1"
 val scalaLikeJdbc            = "org.scalikejdbc"          %% "scalikejdbc"                % "4.0.0"
 
 val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.5"
@@ -122,7 +123,8 @@ lazy val libEventStore =
         monixReactive,
         slick,
         scalaTest,
-        h2DB
+        slickHikariCp % "test",
+        h2DB % "test"
       )
     )
 
