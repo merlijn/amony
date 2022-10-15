@@ -1,8 +1,10 @@
 package nl.amony.lib.eventstore.h2
 
-import monix.eval.Task
-import monix.reactive.Observable
+import cats.Id
+import cats.effect.IO
+import fs2.{Pure, Stream}
 import nl.amony.lib.eventstore.{EventCodec, EventSourcedEntity, EventStore}
+
 import scala.concurrent.Future
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
@@ -41,15 +43,20 @@ class SlickEventStore[P <: JdbcProfile, S, E : EventCodec](private val dbConfig:
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  def createTables(): Task[Unit] =
-    Task.fromFuture(db.run(eventTable.schema.create))
+  def createTables(): IO[Unit] =
+    IO.fromFuture(IO(db.run(eventTable.schema.create)))
 
-  override def getEvents(): Observable[(String, E)] = ???
+  override def getEvents(): Stream[IO, (String, E)] = ???
 
-  override def index(): Observable[String] = {
+  override def index(): Stream[IO, String] = {
+
     val query = eventTable.map(_.id).distinct.result
-    val result = db.run(query).map(_.iterator)
-    Observable.fromIteratorF[Future, String](result)
+    val result: Stream[IO, String] =
+      Stream
+        .eval(IO.fromFuture(IO(db.run(query))))
+        .flatMap(r => Stream.fromIterator[IO](r.iterator, 1))
+
+    result
   }
 
   override def get(key: String): EventSourcedEntity[S, E] =
@@ -64,20 +71,22 @@ class SlickEventStore[P <: JdbcProfile, S, E : EventCodec](private val dbConfig:
       def insertEntry(seqNr: Long, e: E) =
         eventTable += EventEntry(0L, key, seqNr, System.currentTimeMillis(), eventCodec.getManifest(e), eventCodec.encode(e))
 
-      override def events(start: Long): Observable[E] = {
+      override def events(start: Long): Stream[IO, E] = {
         val query = eventTable
           .filter(_.id === key)
           .filter(_.sequenceNr >= start)
           .sortBy(_.sequenceNr.asc)
           .map(row => row.eventType -> row.eventData).result
 
-        val future = db.run(query).map(_.iterator)
-        Observable.fromIteratorF(future).map { case (manifest, data) => eventCodec.decode(manifest, data) }
+        Stream
+          .eval(IO.fromFuture(IO(db.run(query))))
+          .flatMap(result => Stream.fromIterator[IO](result.iterator, 1))
+          .map { case (manifest, data) => eventCodec.decode(manifest, data) }
       }
 
-      override def followEvents(start: Long): Observable[E] = ???
+      override def followEvents(start: Long): Stream[IO, E] = ???
 
-      override def persist(e: E): Task[S] = {
+      override def persist(e: E): IO[S] = {
 
         val persistQuery = (for {
           last  <- latestSeqNr().result
@@ -85,16 +94,16 @@ class SlickEventStore[P <: JdbcProfile, S, E : EventCodec](private val dbConfig:
           _     <- insertEntry(seqNr + 1, e)
         } yield ()).transactionally
 
-        Task.fromFuture(db.run(persistQuery)).map(_ => initialState)
+        IO.fromFuture(IO(db.run(persistQuery))).map(_ => initialState)
       }
 
-      override def current(): Task[S] = Task.now(initialState)
+      override def current(): IO[S] = IO.pure(initialState)
 
-      override def follow(start: Long): Observable[(E, S)] = ???
+      override def follow(start: Long): Stream[IO, (E, S)] = ???
     }
 
-  override def delete(id: String): Task[Unit] = {
+  override def delete(id: String): IO[Unit] = {
     val query = eventTable.filter(_.id === id).delete
-    Task.fromFuture(db.run(query)).map(_ => ())
+    IO.fromFuture(IO(db.run(query))).map(_ => ())
   }
 }

@@ -14,6 +14,7 @@ class MediaService(mediaRepository: MediaRepository[_]) extends Logging {
 
   var eventListener: MediaEvents.Event => Unit = _ => ()
 
+  // TODO ugly hack, remove
   def setEventListener(listener: MediaEvents.Event => Unit) = {
     eventListener = listener
     getAll().foreach { medias =>

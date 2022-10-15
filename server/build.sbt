@@ -35,7 +35,9 @@ val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"     
 
 val monixReactive            = "io.monix"                 %% "monix-reactive"             % "3.4.1"
 
-val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.12"           % Test
+val fs2Core = "co.fs2" %% "fs2-core" % "3.3.0"
+
+val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.14"           % Test
 val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
 
 val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.6.1"
@@ -120,7 +122,8 @@ lazy val libEventStore =
       name         := "amony-lib-eventstore",
       libraryDependencies ++= Seq(
         pureConfig,
-        monixReactive,
+//        monixReactive,
+        fs2Core,
         slick,
         scalaTest,
         slickHikariCp % "test",

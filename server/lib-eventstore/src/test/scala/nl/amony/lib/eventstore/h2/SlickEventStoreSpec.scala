@@ -1,7 +1,7 @@
 package nl.amony.lib.eventstore.h2
 
+import cats.effect.IO
 import com.typesafe.config.ConfigFactory
-import monix.reactive.Consumer
 import nl.amony.lib.eventstore.EventCodec
 import org.scalatest.flatspec.AnyFlatSpecLike
 import slick.basic.DatabaseConfig
@@ -31,8 +31,6 @@ class SlickEventStoreSpec extends AnyFlatSpecLike {
     case Removed(s) => set - s
   }
 
-  implicit val monixScheduler = monix.execution.Scheduler.Implicits.global
-
   val config =
     """
       |h2mem1-test = {
@@ -46,6 +44,7 @@ class SlickEventStoreSpec extends AnyFlatSpecLike {
       |}
       |""".stripMargin
 
+  import cats.effect.unsafe.implicits.global
   val dbConfig = DatabaseConfig.forConfig[H2Profile]("h2mem1-test", ConfigFactory.parseString(config))
 
   val store = new SlickEventStore[H2Profile, Set[String], TestEvent](dbConfig, eventSourceFn _, Set.empty)
@@ -54,7 +53,7 @@ class SlickEventStoreSpec extends AnyFlatSpecLike {
 
     val e = store.get("test")
 
-    store.createTables().runSyncUnsafe()
+    store.createTables().unsafeRunSync()
 
     val seq = for {
       _ <- e.persist(Added("foo"))
@@ -62,11 +61,13 @@ class SlickEventStoreSpec extends AnyFlatSpecLike {
       s <- e.current()
     } yield s
 
-    seq.runSyncUnsafe()
+    seq.unsafeRunSync()
 
-    println(store.index().consumeWith(Consumer.toList[String]).runSyncUnsafe())
+    val index = store.index().compile.toList.unsafeRunSync()
 
-    val events: Seq[Any] = e.events().consumeWith(Consumer.toList[TestEvent]).runSyncUnsafe()
+    println(index)
+
+    val events: Seq[Any] = e.events().compile.toList.unsafeRunSync()
 
     println(events)
   }

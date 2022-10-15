@@ -1,7 +1,8 @@
 package nl.amony.lib.eventstore
 
-import monix.eval.Task
-import monix.reactive.Observable
+import cats.Id
+import cats.effect.IO
+import fs2.Stream
 
 trait EventStore[Key, S, E] {
 
@@ -10,26 +11,26 @@ trait EventStore[Key, S, E] {
    *
    * @return
    */
-  def index(): Observable[Key]
+  def index(): Stream[IO, Key]
 
-  def getEvents(): Observable[(Key, E)]
+  def getEvents(): Stream[IO, (Key, E)]
 
   def get(key: Key): EventSourcedEntity[S, E]
 
-  def delete(id: Key): Task[Unit]
+  def delete(id: Key): IO[Unit]
 }
 
 trait EventSourcedEntity[S, E] {
 
-  def events(start: Long = 0L): Observable[E]
+  def events(start: Long = 0L): Stream[IO, E]
 
-  def followEvents(start: Long = 0L): Observable[E]
+  def followEvents(start: Long = 0L): Stream[IO, E]
 
-  def follow(start: Long = 0L): Observable[(E, S)]
+  def follow(start: Long = 0L): Stream[IO, (E, S)]
 
-  def persist(e: E): Task[S]
+  def persist(e: E): IO[S]
 
-  def current(): Task[S]
+  def current(): IO[S]
 }
 
 trait EventCodec[E] {
