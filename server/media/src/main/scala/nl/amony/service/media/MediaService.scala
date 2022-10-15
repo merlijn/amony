@@ -1,30 +1,25 @@
 package nl.amony.service.media
 
-import MediaEvents.{MediaAdded, MediaRemoved}
-import MediaProtocol._
 import com.fasterxml.jackson.core.JsonEncoding
+import nl.amony.service.media.MediaEvents.{MediaAdded, MediaRemoved}
+import nl.amony.service.media.MediaProtocol._
 import scribe.Logging
-import slick.basic.DatabaseConfig
-import slick.jdbc.JdbcProfile
 
 import java.io.ByteArrayOutputStream
-import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 
-class MediaService(dbConfig: DatabaseConfig[JdbcProfile]) extends Logging {
+class MediaService(mediaRepository: MediaRepository[_]) extends Logging {
 
   import scala.concurrent.ExecutionContext.Implicits.global
-
-  val mediaRepository = new MediaRepository(dbConfig)
 
   var eventListener: MediaEvents.Event => Unit = _ => ()
 
   def setEventListener(listener: MediaEvents.Event => Unit) = {
     eventListener = listener
+    getAll().foreach { medias =>
+      medias.foreach(m => eventListener.apply(MediaAdded(m)))
+    }
   }
-
-  def init(): Unit =
-    Await.result(mediaRepository.createTables(), 5.seconds)
 
   def getById(id: String): Future[Option[Media]] = {
     mediaRepository.getById(id)

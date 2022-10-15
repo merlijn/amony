@@ -219,7 +219,9 @@ lazy val amonyServer =
         akkaPersistence,
         akkaPersistenceQuery,
         akkaSerializationJackson,
-        levelDb, levelDbJndiAll, hsqlDB, flywayDbCore,
+        levelDb, levelDbJndiAll, flywayDbCore,
+        slickHikariCp, hsqlDB,
+        h2DB,
 //        akkaPersistenceJdbc,
 
         // akka http & json serialization

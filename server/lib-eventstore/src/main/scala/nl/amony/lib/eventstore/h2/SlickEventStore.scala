@@ -3,7 +3,6 @@ package nl.amony.lib.eventstore.h2
 import monix.eval.Task
 import monix.reactive.Observable
 import nl.amony.lib.eventstore.{EventCodec, EventSourcedEntity, EventStore}
-import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.Future
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
@@ -56,7 +55,14 @@ class SlickEventStore[P <: JdbcProfile, S, E : EventCodec](private val dbConfig:
   override def get(key: String): EventSourcedEntity[S, E] =
     new EventSourcedEntity[S, E] {
 
-      val seq = new AtomicLong(0)
+      def latestSeqNr() =
+        eventTable
+          .filter(_.id === key)
+          .sortBy(_.sequenceNr.asc)
+          .take(1)
+
+      def insertEntry(seqNr: Long, e: E) =
+        eventTable += EventEntry(0L, key, seqNr, System.currentTimeMillis(), eventCodec.getManifest(e), eventCodec.encode(e))
 
       override def events(start: Long): Observable[E] = {
         val query = eventTable
@@ -73,9 +79,13 @@ class SlickEventStore[P <: JdbcProfile, S, E : EventCodec](private val dbConfig:
 
       override def persist(e: E): Task[S] = {
 
-        val query = eventTable += EventEntry(0L, key, seq.incrementAndGet(), System.currentTimeMillis(), eventCodec.getManifest(e), eventCodec.encode(e))
+        val persistQuery = (for {
+          last  <- latestSeqNr().result
+          seqNr  = last.headOption.map(_.sequenceNr).getOrElse(0L)
+          _     <- insertEntry(seqNr + 1, e)
+        } yield ()).transactionally
 
-        Task.fromFuture(db.run(query)).map(_ => initialState)
+        Task.fromFuture(db.run(persistQuery)).map(_ => initialState)
       }
 
       override def current(): Task[S] = Task.now(initialState)

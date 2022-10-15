@@ -52,7 +52,9 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
     )
 
     // hard coded for now
-    val highlights = List(FragmentProtocol.Fragment(media.id, (media.mediaInfo.duration / 3, 3000), None, List.empty))
+    val start = (media.mediaInfo.duration / 3)
+    val range = (start, Math.min(media.mediaInfo.duration, start + 3000))
+    val highlights = List(FragmentProtocol.Fragment(media.id, range, None, List.empty))
 
     Video(
       id        = media.id,

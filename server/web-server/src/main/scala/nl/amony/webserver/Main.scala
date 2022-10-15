@@ -10,16 +10,16 @@ import nl.amony.search.InMemoryIndex
 import nl.amony.service.auth.AuthServiceImpl
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.fragments.FragmentService
-import nl.amony.service.media.MediaService
+import nl.amony.service.media.{MediaRepository, MediaService}
 import nl.amony.service.media.tasks.LocalMediaScanner
 import nl.amony.service.resources.ResourceService
 import nl.amony.service.resources.local.LocalResourcesStore
 import scribe.Logging
 import slick.basic.DatabaseConfig
-import slick.jdbc
-import slick.jdbc.{H2Profile, JdbcProfile}
+import slick.jdbc.{H2Profile, HsqldbProfile, JdbcProfile}
 
-import java.nio.file.Files
+import java.nio.file.{Files, Path}
+import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 
 object Main extends ConfigLoader with Logging {
@@ -43,31 +43,38 @@ object Main extends ConfigLoader with Logging {
       Behaviors.empty
     }
 
-  def loadDbConfig(): DatabaseConfig[JdbcProfile] = {
+  def h2Config(dbPath: Path): DatabaseConfig[HsqldbProfile] = {
+
+    val profile = "slick.jdbc.HsqldbProfile$"
 
     val config =
-      """
-        |h2mem1-test = {
-        |  url = "jdbc:h2:mem:test1"
-        |  driver = org.h2.Driver
+      s"""
+        |hsqldb-test = {
+        |  db {
+        |    url = "jdbc:hsqldb:file:${dbPath}/db;user=SA;password=;shutdown=true;hsqldb.applog=0"
+        |    driver = "org.hsqldb.jdbcDriver"
+        |  }
+        |
         |  connectionPool = disabled
+        |  profile = "$profile"
         |  keepAliveConnection = true
         |}
         |""".stripMargin
 
-    DatabaseConfig.forConfig[JdbcProfile]("h2mem1-test", ConfigFactory.parseString(config))
-
-//    Database.forConfig("h2mem1-test", ConfigFactory.parseString(config))
+    DatabaseConfig.forConfig[HsqldbProfile]("hsqldb-test", ConfigFactory.parseString(config))
   }
 
   def main(args: Array[String]): Unit = {
 
     Files.createDirectories(appConfig.media.resourcePath)
 
-    val dbConfig = loadDbConfig()
-
-    val mediaService     = new MediaService(dbConfig)
-    mediaService.init()
+    val mediaService     = {
+      val dbConfig = h2Config(appConfig.media.getIndexPath())
+      val mediaRepository = new MediaRepository(dbConfig)
+      Await.result(mediaRepository.createTables(), 5.seconds)
+      val service = new MediaService(mediaRepository)
+      service
+    }
 
     val router: Behavior[Nothing]    = rootBehaviour(appConfig, mediaService)
     val system: ActorSystem[Nothing] = ActorSystem[Nothing](router, "mediaLibrary", config)
