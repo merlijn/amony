@@ -1,11 +1,14 @@
-package nl.amony.lib.eventstore.h2
+package nl.amony.lib.eventstore.jdbc
 
 import cats.effect.IO
+import fs2.Stream
 import com.typesafe.config.ConfigFactory
-import nl.amony.lib.eventstore.EventCodec
+import nl.amony.lib.eventstore.{EventSourcedEntity, PersistenceCodec}
 import org.scalatest.flatspec.AnyFlatSpecLike
 import slick.basic.DatabaseConfig
 import slick.jdbc.H2Profile
+
+import scala.concurrent.duration.DurationInt
 
 class SlickEventStoreSpec extends AnyFlatSpecLike {
 
@@ -14,12 +17,15 @@ class SlickEventStoreSpec extends AnyFlatSpecLike {
   case class Added(msg: String) extends TestEvent
   case class Removed(msg: String) extends TestEvent
 
-  implicit val eventCodec: EventCodec[TestEvent] = new EventCodec[TestEvent] {
-    override def getManifest(e: TestEvent): String = e.getClass.getSimpleName
-    override def encode(e: TestEvent): Array[Byte] = e match {
-      case Added(msg)   => msg.getBytes
-      case Removed(msg) => msg.getBytes
+  implicit val eventCodec: PersistenceCodec[TestEvent] = new PersistenceCodec[TestEvent] {
+
+    override def getSerializerId(): Long = 78L
+
+    override def encode(e: TestEvent): (String, Array[Byte]) = e match {
+      case Added(msg)   => e.getClass.getSimpleName -> msg.getBytes
+      case Removed(msg) => e.getClass.getSimpleName -> msg.getBytes
     }
+
     override def decode(manifest: String, bytes: Array[Byte]): TestEvent = manifest match {
       case "Added"   => Added(new String(bytes))
       case "Removed" => Removed(new String(bytes))
@@ -48,27 +54,39 @@ class SlickEventStoreSpec extends AnyFlatSpecLike {
   val dbConfig = DatabaseConfig.forConfig[H2Profile]("h2mem1-test", ConfigFactory.parseString(config))
 
   val store = new SlickEventStore[H2Profile, Set[String], TestEvent](dbConfig, eventSourceFn _, Set.empty)
+  store.createIfNotExists().unsafeRunSync()
 
   it should "do something" in {
 
-    val e = store.get("test")
 
-    store.createTables().unsafeRunSync()
+    def storeEvents(e: EventSourcedEntity[Set[String], TestEvent]) = {
+      for {
+        _ <- e.persist(Added("foo"))
+        _ <- e.persist(Removed("foo"))
+        s <- e.state()
+      } yield s
+    }
 
-    val seq = for {
-      _ <- e.persist(Added("foo"))
-      _ <- e.persist(Removed("foo"))
-      s <- e.current()
-    } yield s
-
-    seq.unsafeRunSync()
+    val sa = storeEvents(store.get("a")).unsafeRunSync()
+    val sb = storeEvents(store.get("b")).unsafeRunSync()
 
     val index = store.index().compile.toList.unsafeRunSync()
 
     println(index)
+  }
 
-    val events: Seq[Any] = e.events().compile.toList.unsafeRunSync()
+  it should "follow a stream" in {
 
-    println(events)
+    val entity = store.get("test")
+
+    // persist events
+    Stream.awakeEvery[IO](500.millis)
+      .flatMap(ts => Stream.eval(IO { println(s"Adding event at $ts") } >> entity.persist(Added(s"foo: ${ts}"))))
+      .compile.drain.unsafeRunAndForget()
+
+    // read events
+    entity.followEvents(0).foreach {
+      e => IO { println(s"received: $e") }
+    }.compile.drain.unsafeRunSync()
   }
 }

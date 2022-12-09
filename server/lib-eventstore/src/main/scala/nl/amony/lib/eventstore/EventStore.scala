@@ -1,16 +1,10 @@
 package nl.amony.lib.eventstore
 
-import cats.Id
 import cats.effect.IO
 import fs2.Stream
 
 trait EventStore[Key, S, E] {
 
-  /**
-   * Returns all keys
-   *
-   * @return
-   */
   def index(): Stream[IO, Key]
 
   def getEvents(): Stream[IO, (Key, E)]
@@ -18,9 +12,13 @@ trait EventStore[Key, S, E] {
   def get(key: Key): EventSourcedEntity[S, E]
 
   def delete(id: Key): IO[Unit]
+
+  def follow(): Stream[IO, (Key, E)]
 }
 
 trait EventSourcedEntity[S, E] {
+
+  def eventCount(): IO[Long]
 
   def events(start: Long = 0L): Stream[IO, E]
 
@@ -30,14 +28,16 @@ trait EventSourcedEntity[S, E] {
 
   def persist(e: E): IO[S]
 
-  def current(): IO[S]
+  def update(fn: S => IO[E]): IO[S]
+
+  def state(): IO[S]
 }
 
-trait EventCodec[E] {
+trait PersistenceCodec[E] {
 
-  def getManifest(e: E): String
+  def getSerializerId(): Long
 
-  def encode(e: E): Array[Byte]
+  def encode(e: E): (String, Array[Byte])
 
   def decode(manifest: String, bytes: Array[Byte]): E
 }

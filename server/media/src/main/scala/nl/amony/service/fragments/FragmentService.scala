@@ -42,8 +42,7 @@ class FragmentStore {
 
 class FragmentService(system: ActorSystem[Nothing]) extends AkkaServiceModule(system) with Logging {
 
-  def getFragments(mediaId: String, userId: String): Future[List[Fragment]] =
-    Future.successful(List.empty)
+  def getFragments(mediaId: String, userId: String): Future[List[Fragment]] = Future.successful(List.empty)
 
   def addFragment(mediaId: String, userId: String, index: Int, range: (Long, Long)): Unit = ???
 

@@ -122,6 +122,7 @@ lazy val libEventStore =
       name         := "amony-lib-eventstore",
       libraryDependencies ++= Seq(
         pureConfig,
+        scribeSlf4j,
 //        monixReactive,
         fs2Core,
         slick,
