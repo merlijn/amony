@@ -45,8 +45,8 @@ val h2DB                     = "com.h2database"            % "h2"               
 val flywayDbCore             = "org.flywaydb"              % "flyway-core"                % "8.5.12"
 val caffeine                 = "com.github.ben-manes.caffeine" % "caffeine"               % "3.1.1"
 
-val pureConfig               = "com.github.pureconfig"    %% "pureconfig"                 % "0.17.1" // no scala 3
-val pureConfigSquants        = "com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.1" // no scala 3
+val pureConfig               = "com.github.pureconfig"    %% "pureconfig"                 % "0.17.2" // no scala 3
+val pureConfigSquants        = "com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.2" // no scala 3
 val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.2"
 
 //val betterFiles              = "com.github.pathikrit"     %% "better-files"               % "3.9.1"
@@ -120,11 +120,8 @@ lazy val libFFMPeg =
     .settings(
       name         := "amony-lib-ffmpeg",
       libraryDependencies ++= Seq(
-//        pureConfig,
         scribeSlf4j,
-//        monixReactive,
         fs2Core,
-//        slick,
         scalaTest,
       )
     )
@@ -136,7 +133,6 @@ lazy val libEventStore =
       libraryDependencies ++= Seq(
         pureConfig,
         scribeSlf4j,
-//        monixReactive,
         fs2Core,
         slick,
         scalaTest,
@@ -147,7 +143,7 @@ lazy val libEventStore =
 
 lazy val identity =
   module("identity")
-    .dependsOn(common)
+    .dependsOn(common, libEventStore)
     .settings(protobufSettings)
     .settings(
       name := "amony-service-auth",
@@ -168,7 +164,6 @@ lazy val resources =
       libraryDependencies ++= Seq(
         scribeSlf4j, akka, akkaPersistence, akkaSerializationJackson,
         akkaHttp, akkaHttpCirce, circe, circeGeneric,
-//        monixReactive,
         scalaTest,
         slick,
         scalaPbRuntimeGrcp
@@ -186,7 +181,6 @@ lazy val media =
         akka, akkaPersistence, akkaSerializationJackson,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
         akkaHttp, akkaHttpCirce, circe, circeGeneric,
-//        monixReactive,
         scalaTest,
         slick, h2DB
       )

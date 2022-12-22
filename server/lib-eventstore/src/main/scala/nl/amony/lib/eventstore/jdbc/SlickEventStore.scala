@@ -7,7 +7,6 @@ import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
 
-import scala.annotation.tailrec
 import scala.concurrent.duration.DurationInt
 
 case class EventRow(ord: Long,
@@ -47,12 +46,10 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
     def *            = (id, sequenceNr, data)
   }
 
-  private class Listeners(tag: Tag) extends Table[(String, Long)](tag, "consumers") {
-
-    def consumer_id = column[String]("listener_id")
-    def sequenceNr  = column[Long]("sequence_nr")
-
-    def * = (consumer_id, sequenceNr)
+  private class Followers(tag: Tag) extends Table[(String, Long)](tag, "followers") {
+    def followerId   = column[String]("follower_id", O.PrimaryKey)
+    def sequenceNr   = column[Long]("sequence_nr")
+    def *            = (followerId, sequenceNr)
   }
 
   private val eventTable = TableQuery[Events]
@@ -61,6 +58,7 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
   private val eventCodec = implicitly[PersistenceCodec[E]]
 
   private val pollInterval = 100.millis
+  private val batchSize = 1000
 
   val db = dbConfig.db
 
@@ -86,17 +84,30 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
     result
   }
 
+  private def latestSeqNrQuery(key: String) =
+    eventTable
+      .filter(_.id === key)
+      .sortBy(_.sequenceNr.desc)
+      .take(1)
+
+  private def eventQuery(key: String, start: Long, max: Option[Long]) = {
+    val unlimited = eventTable
+      .filter(_.id === key)
+      .filter(_.sequenceNr >= start)
+      .sortBy(_.sequenceNr.asc)
+      .map(row => row.eventType -> row.eventData)
+
+    max match {
+      case None => unlimited
+      case Some(n) => unlimited.take(n)
+    }
+  }
+
   override def get(key: String): EventSourcedEntity[S, E] =
     new EventSourcedEntity[S, E] {
 
-      def latestSeqNrQuery() =
-        eventTable
-          .filter(_.id === key)
-          .sortBy(_.sequenceNr.desc)
-          .take(1)
-
       override def eventCount(): IO[Long] =
-        databaseIO(latestSeqNrQuery().result).map(_.headOption.map(_.sequenceNr).getOrElse(0L))
+        databaseIO(latestSeqNrQuery(key).result).map(_.headOption.map(_.sequenceNr).getOrElse(0L))
 
       def insertEntry(seqNr: Long, e: E) = {
 
@@ -106,11 +117,7 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
       }
 
       override def events(start: Long): Stream[IO, E] = {
-        val query = eventTable
-          .filter(_.id === key)
-          .filter(_.sequenceNr >= start)
-          .sortBy(_.sequenceNr.asc)
-          .map(row => row.eventType -> row.eventData).result
+        val query = eventQuery(key, start, None).result
 
         Stream
           .eval(databaseIO(query))
@@ -134,7 +141,7 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
       override def persist(e: E): IO[S] = {
 
         val persistQuery = (for {
-          last  <- latestSeqNrQuery().result
+          last  <- latestSeqNrQuery(key).result
           seqNr  = last.headOption.map(_.sequenceNr).getOrElse(-1L)
           _     <- insertEntry(seqNr + 1, e)
         } yield ()).transactionally
@@ -161,4 +168,15 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
   }
 
   override def follow(): Stream[IO, (String, E)] = ???
+
+  private def followFrom(start: Long, max: Long) =
+    eventTable
+      .filter(_.ord >= start)
+      .sortBy(_.ord.asc)
+      .map(row => row.eventType -> row.eventData)
+      .take(max)
+
+  override def followPersistent(followId: String, fn: (String, E) => IO[Unit]): Unit = ???
+
+
 }

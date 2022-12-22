@@ -14,6 +14,8 @@ trait EventStore[Key, S, E] {
   def delete(id: Key): IO[Unit]
 
   def follow(): Stream[IO, (Key, E)]
+
+  def followPersistent(followId: String, fn: (Key, E) => IO[Unit])
 }
 
 trait EventSourcedEntity[S, E] {
