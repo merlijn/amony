@@ -1,4 +1,4 @@
-package nl.amony.lib
+package nl.amony.lib.ffmpeg
 
 import org.scalatest.flatspec.AnyFlatSpecLike
 import scribe.Logging

@@ -3,6 +3,7 @@ package nl.amony.lib.ffmpeg.tasks
 import monix.eval.Task
 import nl.amony.lib.ffmpeg.FFMpeg.{fastStartPattern, runUnsafe}
 import FFProbeModel.{ProbeDebugOutput, ProbeOutput}
+import cats.effect.IO
 import scribe.Logging
 
 import java.nio.file.Path

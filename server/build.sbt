@@ -116,6 +116,21 @@ lazy val common =
       )
     )
 
+lazy val libFFMPeg =
+  module("lib-ffmpeg")
+    .dependsOn(common)
+    .settings(
+      name         := "amony-lib-ffmpeg",
+      libraryDependencies ++= Seq(
+//        pureConfig,
+        scribeSlf4j,
+        monixReactive,
+//        fs2Core,
+//        slick,
+        scalaTest,
+      )
+    )
+
 lazy val libEventStore =
   module("lib-eventstore")
     .settings(
@@ -148,7 +163,7 @@ lazy val identity =
 
 lazy val resources =
   module("resources")
-    .dependsOn(common)
+    .dependsOn(common, libFFMPeg)
     .settings(protobufSettings)
     .settings(
       name := "amony-service-resources",
@@ -259,4 +274,4 @@ lazy val amony = project
     Global / cancelable   := true,
   )
   .disablePlugins(RevolverPlugin)
-  .aggregate(common, libEventStore, identity, media, searchApi, solrSearch, amonyServer)
+  .aggregate(common, libEventStore, libFFMPeg, identity, media, searchApi, solrSearch, amonyServer)
