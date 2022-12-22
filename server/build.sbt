@@ -9,7 +9,7 @@ val excludeLog4j =
 
 val akkaVersion     = "2.6.19"
 val akkaHttpVersion = "10.2.9"
-val circeVersion    = "0.14.2"
+val circeVersion    = "0.14.3"
 
 val akka                     = "com.typesafe.akka"        %% "akka-actor-typed"           % akkaVersion
 val akkaPersistence          = "com.typesafe.akka"        %% "akka-persistence-typed"     % akkaVersion
@@ -29,13 +29,13 @@ val slick                    = "com.typesafe.slick"       %% "slick"            
 val slickHikariCp            = "com.typesafe.slick"       %% "slick-hikaricp"             % "3.4.1"
 val scalaLikeJdbc            = "org.scalikejdbc"          %% "scalikejdbc"                % "4.0.0"
 
-val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "9.0.5"
-val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "1.7.30"
-val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.5.5"
+val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "9.1.2"
+val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.5"
+val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.10.5"
 
 val monixReactive            = "io.monix"                 %% "monix-reactive"             % "3.4.1"
 
-val fs2Core = "co.fs2" %% "fs2-core" % "3.3.0"
+val fs2Core = "co.fs2" %% "fs2-core" % "3.4.0"
 
 val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.14"           % Test
 val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
