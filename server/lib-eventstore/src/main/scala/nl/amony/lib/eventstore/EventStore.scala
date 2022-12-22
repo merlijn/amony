@@ -37,6 +37,12 @@ trait PersistenceCodec[E] {
 
   def getSerializerId(): Long
 
+  /**
+   * Encodes the given object to a (typeHint, bytes) tuple
+   *
+   * @param e The object to serialize
+   * @return
+   */
   def encode(e: E): (String, Array[Byte])
 
   def decode(manifest: String, bytes: Array[Byte]): E

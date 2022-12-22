@@ -58,11 +58,12 @@ class SlickEventStoreSpec extends AnyFlatSpecLike {
 
   it should "do something" in {
 
-
     def storeEvents(e: EventSourcedEntity[Set[String], TestEvent]) = {
       for {
         _ <- e.persist(Added("foo"))
         _ <- e.persist(Removed("foo"))
+        _ <- e.persist(Added("bar"))
+        _ <- e.persist(Added("baz"))
         s <- e.state()
       } yield s
     }

@@ -1,7 +1,7 @@
 package nl.amony.lib.eventstore.jdbc
 
 import cats.effect.IO
-import fs2.Stream
+import fs2.{Pull, Stream}
 import nl.amony.lib.eventstore.{EventSourcedEntity, EventStore, PersistenceCodec}
 import scribe.Logging
 import slick.basic.DatabaseConfig
@@ -18,7 +18,7 @@ case class EventRow(ord: Long,
                     eventType: String,
                     eventData: Array[Byte])
 
-class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbConfig: DatabaseConfig[P], fn: (S, E) => S, initialState: S) extends EventStore[String, S, E] with Logging {
+class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbConfig: DatabaseConfig[P], eventSourceFn: (S, E) => S, initialState: S) extends EventStore[String, S, E] with Logging {
 
   import dbConfig.profile.api._
 
@@ -60,11 +60,13 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
 
   private val eventCodec = implicitly[PersistenceCodec[E]]
 
+  private val pollInterval = 100.millis
+
   val db = dbConfig.db
 
-  def databaseIO[T](a: slick.dbio.DBIOAction[T, NoStream, Nothing]): IO[T] = IO.fromFuture(IO(db.run(a))).onError {
-    err => IO { logger.warn(err) }
-  }
+  def databaseIO[T](a: slick.dbio.DBIOAction[T, NoStream, Nothing]): IO[T] =
+    IO.fromFuture(IO(db.run(a)))
+      .onError { t => IO { logger.warn(t) } }
 
   def createIfNotExists(): IO[Unit] = for {
     _ <- databaseIO(eventTable.schema.createIfNotExists)
@@ -116,33 +118,36 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
           .map { case (manifest, data) => eventCodec.decode(manifest, data) }
       }
 
-//      @tailrec
       override def followEvents(start: Long): Stream[IO, E] = {
 
-        val current = events(start).zipWithIndex
+        val current = events(start)
 
-        current.map(_._1) ++ current.last.map {
+        current ++ current.zipWithIndex.last.map {
           case None           => start
           case Some((_, idx)) => start + idx + 1
         }.flatMap { lastSeq =>
-
-          Stream.sleep[IO](600.millis).flatMap(_ => followEvents(lastSeq))
+          // this recursion is stack safe because IO.flatmap is stack safe
+          Stream.sleep[IO](pollInterval).flatMap(_ => followEvents(lastSeq))
         }
-
       }
 
       override def persist(e: E): IO[S] = {
 
         val persistQuery = (for {
           last  <- latestSeqNrQuery().result
-          seqNr  = last.headOption.map(_.sequenceNr).getOrElse(0L)
+          seqNr  = last.headOption.map(_.sequenceNr).getOrElse(-1L)
           _     <- insertEntry(seqNr + 1, e)
         } yield ()).transactionally
 
         databaseIO(persistQuery).map(_ => initialState)
       }
 
-      override def state(): IO[S] = IO.pure(initialState)
+      override def state(): IO[S] = {
+
+        events()
+          .compile
+          .fold(initialState) { eventSourceFn }
+      }
 
       override def follow(start: Long): Stream[IO, (E, S)] = ???
 
