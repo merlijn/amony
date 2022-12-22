@@ -1,6 +1,6 @@
 package nl.amony.lib.ffmpeg.tasks
 
-import monix.eval.Task
+import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg.formatTime
 import nl.amony.lib.files.FileUtil.stripExtension
 import nl.amony.lib.files.PathOps
@@ -16,7 +16,7 @@ trait CreateThumbnail extends Logging {
     inputFile: Path,
     timestamp: Long,
     outputFile: Option[Path],
-    scaleHeight: Option[Int]): Task[Unit] = {
+    scaleHeight: Option[Int]): IO[Unit] = {
 
       val input  = inputFile.absoluteFileName()
       val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.webp")

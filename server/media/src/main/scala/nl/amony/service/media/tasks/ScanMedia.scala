@@ -1,6 +1,6 @@
 package nl.amony.service.media.tasks
 
-import monix.eval.Task
+import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.service.media.MediaProtocol._
 import scribe.Logging
@@ -14,7 +14,7 @@ object ScanMedia extends Logging {
        bucketId: String,
        basePath: Path,
        relativeMediaPath: Path,
-       hash: String): Task[Media] = {
+       hash: String): IO[Media] = {
 
     val mediaPath = basePath.resolve(relativeMediaPath)
 

@@ -1,6 +1,6 @@
 package nl.amony.lib.ffmpeg.tasks
 
-import monix.eval.Task
+import cats.effect.IO
 import scribe.Logging
 
 trait ProcessRunner extends Logging {
@@ -29,9 +29,9 @@ trait ProcessRunner extends Logging {
     output
   }
 
-  def runIgnoreOutput(cmds: Seq[String], useErrorStream: Boolean): Task[Unit] = runWithOutput(cmds, useErrorStream){ _ => Task.unit }
+  def runIgnoreOutput(cmds: Seq[String], useErrorStream: Boolean): IO[Unit] = runWithOutput(cmds, useErrorStream){ _ => IO.unit }
 
-  def runWithOutput[T](cmds: Seq[String], useErrorStream: Boolean)(fn: String => Task[T]): Task[T] = {
+  def runWithOutput[T](cmds: Seq[String], useErrorStream: Boolean)(fn: String => IO[T]): IO[T] = {
     runCmd(cmds) { process =>
 
       val output = getOutputAsString(process, useErrorStream, cmds)
@@ -40,10 +40,10 @@ trait ProcessRunner extends Logging {
     }
   }
 
-  def runCmd[T](cmds: Seq[String])(fn: Process => Task[T]): Task[T] = {
+  def runCmd[T](cmds: Seq[String])(fn: Process => IO[T]): IO[T] = {
 
-    Task { runUnsafe(cmds) }
-      .flatMap { process => fn(process).doOnCancel( Task { process.destroy() })
+    IO { runUnsafe(cmds) }
+      .flatMap { process => fn(process).onCancel( IO { process.destroy() })
     }
   }
 }

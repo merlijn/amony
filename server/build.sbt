@@ -33,7 +33,7 @@ val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"        
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.5"
 val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.10.5"
 
-val monixReactive            = "io.monix"                 %% "monix-reactive"             % "3.4.1"
+//val monixReactive            = "io.monix"                 %% "monix-reactive"             % "3.4.1"
 
 val fs2Core = "co.fs2" %% "fs2-core" % "3.4.0"
 
@@ -122,8 +122,8 @@ lazy val libFFMPeg =
       libraryDependencies ++= Seq(
 //        pureConfig,
         scribeSlf4j,
-        monixReactive,
-//        fs2Core,
+//        monixReactive,
+        fs2Core,
 //        slick,
         scalaTest,
       )
@@ -168,7 +168,7 @@ lazy val resources =
       libraryDependencies ++= Seq(
         scribeSlf4j, akka, akkaPersistence, akkaSerializationJackson,
         akkaHttp, akkaHttpCirce, circe, circeGeneric,
-        monixReactive,
+//        monixReactive,
         scalaTest,
         slick,
         scalaPbRuntimeGrcp
@@ -186,7 +186,7 @@ lazy val media =
         akka, akkaPersistence, akkaSerializationJackson,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
         akkaHttp, akkaHttpCirce, circe, circeGeneric,
-        monixReactive,
+//        monixReactive,
         scalaTest,
         slick, h2DB
       )
@@ -247,8 +247,7 @@ lazy val amonyServer =
         circe,
         circeGeneric,
         circeParser,
-
-        monixReactive,
+        fs2Core,
 
         // test
         scalaTest, scalaTestCheck

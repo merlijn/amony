@@ -9,13 +9,14 @@ import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
 import akka.stream.scaladsl.{FileIO, Sink}
 import akka.stream.{SourceRef, SystemMaterializer}
 import akka.util.ByteString
-import monix.eval.Task
-import monix.reactive.{Consumer, Observable}
+import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, SyncIO}
 import nl.amony.lib.akka.EventProcessing.ProcessedState
 import nl.amony.lib.akka.{GraphShapes, ServiceBehaviors}
 import nl.amony.lib.files.{FileUtil, PathOps}
 import nl.amony.service.resources.ResourceConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
 import scribe.Logging
+import fs2.Stream
 
 import java.awt.Desktop
 import java.nio.file.attribute.BasicFileAttributes
@@ -60,18 +61,17 @@ object LocalResourcesStore extends Logging {
 
   private case class UploadCompleted(relativePath: String, hash: String, originalSender: ActorRef[Boolean]) extends LocalResourceCommand
 
-  def scanDirectory(config: LocalResourcesConfig, snapshot: Set[LocalFile]): Observable[LocalFile] = {
-    Observable
-      .from(FileUtil.listFilesInDirectoryRecursive(config.mediaPath))
+  def scanDirectory(config: LocalResourcesConfig, snapshot: Set[LocalFile]): Stream[IO, LocalFile] = {
+    Stream.fromIterator[IO](FileUtil.listFilesInDirectoryRecursive(config.mediaPath).iterator, 10)
       .filter { file => config.filterFileName(file.getFileName.toString) }
-      .filterNot { file =>
+      .filter { file =>
         val isEmpty = Files.size(file) == 0
         if (isEmpty)
           logger.warn(s"Encountered empty file: ${file.getFileName.toString}")
-        isEmpty
+        !isEmpty
       }
-      .mapParallelUnordered(config.scanParallelFactor) { path =>
-        Task {
+      .parEvalMapUnordered(config.scanParallelFactor) { path =>
+        IO {
 
           val relativePath = config.mediaPath.relativize(path).toString
           val fileAttributes = Files.readAttributes(path, classOf[BasicFileAttributes])
@@ -127,8 +127,9 @@ object LocalResourcesStore extends Logging {
 
   def commandHandler(config: LocalResourcesConfig, context: ActorContext[LocalResourceCommand])(state: Set[LocalFile], cmd: LocalResourceCommand): Effect[LocalResourceEvent, Set[LocalFile]] = {
 
-    implicit val monixScheduler = monix.execution.Scheduler.Implicits.global
+    implicit val runtime = IORuntime.global
     implicit val mat = SystemMaterializer.get(context.system).materializer
+    implicit val ec = context.executionContext
 
     cmd match {
 
@@ -140,9 +141,7 @@ object LocalResourcesStore extends Logging {
 
       case FullScan(sender) =>
         val scannedResources =
-          scanDirectory(config, state)
-            .consumeWith(Consumer.toList)
-            .runSyncUnsafe().toSet
+          scanDirectory(config, state).compile.toList.unsafeRunSync().toSet
 
         val (colliding, nonColliding) = scannedResources
           .groupBy { _.hash }

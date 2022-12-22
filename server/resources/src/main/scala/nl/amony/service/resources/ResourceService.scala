@@ -3,11 +3,11 @@ package nl.amony.service.resources
 import akka.actor.typed.ActorSystem
 import akka.stream.scaladsl.{Source, StreamRefs}
 import akka.util.ByteString
-import monix.execution.Scheduler
 import nl.amony.lib.akka.AkkaServiceModule
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.files.PathOps
 import ResourceConfig.LocalResourcesConfig
+import cats.effect.unsafe.IORuntime
 import nl.amony.service.resources.local.LocalFileIOResponse
 import nl.amony.service.resources.local.LocalResourcesStore._
 
@@ -33,7 +33,8 @@ class ResourceService(system: ActorSystem[Nothing]) extends AkkaServiceModule(sy
   val timeout = 5.seconds
   val resourceStore = new ConcurrentHashMap[ResourceKey, Path]()
 
-  implicit val monixScheduler: Scheduler = Scheduler.forkJoin(5, 256)
+  // TODO think about replacing this with custom runtime
+  implicit val runtime: IORuntime = IORuntime.global
 
   def uploadResource(bucketId: String, fileName: String, source: Source[ByteString, Any]): Future[Boolean] =
     ask[LocalResourceCommand, Boolean](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref))
@@ -69,7 +70,7 @@ class ResourceService(system: ActorSystem[Nothing]) extends AkkaServiceModule(sy
           crf         = 23,
           scaleHeight = Some(key.quality),
           outputFile  = Some(fragmentPath),
-        ).runSyncUnsafe()
+        ).unsafeRunSync()
       }
 
       fragmentPath
@@ -90,7 +91,7 @@ class ResourceService(system: ActorSystem[Nothing]) extends AkkaServiceModule(sy
           timestamp   = key.timestamp,
           outputFile  = Some(thumbnailPath),
           scaleHeight = Some(key.quality)
-        ).runSyncUnsafe()
+        ).unsafeRunSync()
       }
 
       thumbnailPath

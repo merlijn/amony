@@ -1,6 +1,6 @@
 package nl.amony.lib.ffmpeg.tasks
 
-import monix.eval.Task
+import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg.formatTime
 import nl.amony.lib.files.PathOps
 import scribe.Logging
@@ -49,7 +49,7 @@ trait CreateThumbnailTile extends Logging {
        outputBaseName: Option[String] = None,
        height: Int = 90, // since 16:9 is most common aspect ratio
        overwrite: Boolean = false
-  ): Task[Unit] = {
+  ): IO[Unit] = {
 
     val fileBaseName = outputBaseName.getOrElse(inputFile.getFileName.stripExtension().toString)
 
@@ -58,7 +58,7 @@ trait CreateThumbnailTile extends Logging {
 
     if (Files.exists(outputDir.resolve(webpFilename)) && Files.exists(outputDir.resolve(vttFilename)) && !overwrite) {
       logger.info(s"Skipping $inputFile ($webpFilename)")
-      Task.unit
+      IO.unit
     } else {
 
       ffprobe(inputFile, false, 5.seconds).flatMap { probe =>
@@ -110,7 +110,7 @@ trait CreateThumbnailTile extends Logging {
             Files.write(outputDir.resolve(vttFilename), content.getBytes(StandardCharsets.UTF_8))
           }
 
-          Task { createWebVtt() }
+          IO { createWebVtt() }
         }
       }
     }

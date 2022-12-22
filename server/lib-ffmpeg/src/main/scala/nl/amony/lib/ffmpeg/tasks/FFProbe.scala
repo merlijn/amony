@@ -1,9 +1,8 @@
 package nl.amony.lib.ffmpeg.tasks
 
-import monix.eval.Task
-import nl.amony.lib.ffmpeg.FFMpeg.{fastStartPattern, runUnsafe}
-import FFProbeModel.{ProbeDebugOutput, ProbeOutput}
 import cats.effect.IO
+import nl.amony.lib.ffmpeg.FFMpeg.fastStartPattern
+import nl.amony.lib.ffmpeg.tasks.FFProbeModel.{ProbeDebugOutput, ProbeOutput}
 import scribe.Logging
 
 import java.nio.file.Path
@@ -15,7 +14,7 @@ trait FFProbe extends Logging with FFProbeJsonCodecs {
 
   val defaultProbeTimeout = 5.seconds
 
-  def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration = defaultProbeTimeout): Task[ProbeOutput] = {
+  def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration = defaultProbeTimeout): IO[ProbeOutput] = {
 
     val fileName = file.toAbsolutePath.normalize().toString
 
@@ -23,7 +22,7 @@ trait FFProbe extends Logging with FFProbeJsonCodecs {
     val args = List("-print_format", "json", "-show_streams", "-loglevel", v, fileName)
 
     runCmd("ffprobe" :: args) { process =>
-      Task {
+      IO {
         val jsonOutput = scala.io.Source.fromInputStream(process.getInputStream).mkString
 
         // setting -v to debug will hang the standard output stream on some files.

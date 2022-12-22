@@ -34,7 +34,6 @@ object Main extends ConfigLoader with Logging {
       mediaService.setEventListener((e) => localIndexRef.tell(e, ActorRef.noSender))
 
       val _      = context.spawn(LocalResourcesStore.behavior(config.media), "local-files-store")
-//      val _      = context.spawn(MediaService.behavior(), "medialib")
       val _      = context.spawn(AuthServiceImpl.behavior(), "users")
 
       logger.info(s"spawning scanner")
@@ -68,8 +67,9 @@ object Main extends ConfigLoader with Logging {
 
     Files.createDirectories(appConfig.media.resourcePath)
 
+    val dbConfig = h2Config(appConfig.media.getIndexPath())
+
     val mediaService     = {
-      val dbConfig = h2Config(appConfig.media.getIndexPath())
       val mediaRepository = new MediaRepository(dbConfig)
       Await.result(mediaRepository.createTables(), 5.seconds)
       val service = new MediaService(mediaRepository)

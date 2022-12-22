@@ -1,6 +1,6 @@
 package nl.amony.lib.ffmpeg
 
-import monix.eval.Task
+import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg.formatTime
 import nl.amony.lib.ffmpeg.tasks._
 import nl.amony.lib.files.FileUtil.stripExtension
@@ -48,7 +48,7 @@ object FFMpeg extends Logging
     s"$hours:$minutes:$seconds.$millis"
   }
 
-  def addFastStart(video: Path): Task[Path] = {
+  def addFastStart(video: Path): IO[Path] = {
 
     val out = s"${video.stripExtension}-faststart.mp4"
 
@@ -64,7 +64,7 @@ object FFMpeg extends Logging
         "-y",        out
       ),
       useErrorStream = true
-    )(_ => Task(Path.of(out)))
+    )(_ => IO(Path.of(out)))
   }
 
   def transcodeToMp4(
@@ -73,7 +73,7 @@ object FFMpeg extends Logging
       crf: Int = 24,
       scaleHeight: Option[Int],
       outputFile: Option[Path] = None
-  ): Task[Path] = {
+  ): IO[Path] = {
 
     val (ss, to) = range
     val input    = inputFile.absoluteFileName()
@@ -96,7 +96,7 @@ object FFMpeg extends Logging
       )
     // format: on
 
-    runWithOutput[Path](cmds = "ffmpeg" :: args, useErrorStream = true) { _ => Task.now(Path.of(output)) }
+    runWithOutput[Path](cmds = "ffmpeg" :: args, useErrorStream = true) { _ => IO.pure(Path.of(output)) }
   }
 
   def streamFragment(
