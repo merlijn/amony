@@ -103,13 +103,11 @@ lazy val common =
       libraryDependencies ++= Seq(
         akka,akkaStream,
         akkaPersistence,
-        monixReactive,
         pureConfig,
         scribeSlf4j,
         scalaTest,
-        directoryWatcher,
-        slick,
-//        scalaLikeJdbc,
+//        directoryWatcher,
+//        slick,
         circe,
         circeGeneric,
         circeParser,
@@ -169,7 +167,8 @@ lazy val resources =
       name := "amony-service-resources",
       libraryDependencies ++= Seq(
         scribeSlf4j, akka, akkaPersistence, akkaSerializationJackson,
-        akkaHttp, akkaHttpCirce, circe, circeGeneric, monixReactive,
+        akkaHttp, akkaHttpCirce, circe, circeGeneric,
+        monixReactive,
         scalaTest,
         slick,
         scalaPbRuntimeGrcp

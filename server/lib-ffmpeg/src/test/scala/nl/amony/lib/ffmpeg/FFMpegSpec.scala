@@ -18,10 +18,28 @@ class FFMpegSpec extends AnyFlatSpecLike with Logging {
 
   val ffProbeOutput =
     s"""
-      |some lines ...
-      |...
-      |Stream #0:0(und): ${testStreams(0)}
-      |...
-      |""".stripMargin
+       |some lines ...
+       |...
+       |Stream #0:0(und): ${testStreams(0)}
+       |...
+       |""".stripMargin
 
+  it should "create a sprite" in {
+
+    val times = Seq(
+      10 * 1000,
+      60 * 1000,
+      10 * 60 * 1000,
+      30 * 60 * 1000,
+      60 * 60 * 1000,
+      120 * 60 * 1000,
+    )
+
+    times.foreach { t =>
+
+      val frames = FFMpeg.calculateNrOfFrames(t)
+
+      println(s"${t / 1000} -> $frames")
+    }
+  }
 }
