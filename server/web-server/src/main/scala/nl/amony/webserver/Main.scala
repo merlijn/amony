@@ -6,8 +6,9 @@ import akka.actor.typed.{ActorSystem, Behavior}
 import akka.stream.Materializer
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
+import nl.amony.lib.config.ConfigHelper
 import nl.amony.search.InMemoryIndex
-import nl.amony.service.auth.AuthServiceImpl
+import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.fragments.FragmentService
 import nl.amony.service.media.{MediaRepository, MediaService}
@@ -34,7 +35,6 @@ object Main extends ConfigLoader with Logging {
       mediaService.setEventListener((e) => localIndexRef.tell(e, ActorRef.noSender))
 
       val _      = context.spawn(LocalResourcesStore.behavior(config.media), "local-files-store")
-      val _      = context.spawn(AuthServiceImpl.behavior(), "users")
 
       logger.info(s"spawning scanner")
       val _ = context.spawn(LocalMediaScanner.behavior(config.media, mediaService), "scanner")
@@ -79,9 +79,11 @@ object Main extends ConfigLoader with Logging {
     val router: Behavior[Nothing]    = rootBehaviour(appConfig, mediaService)
     val system: ActorSystem[Nothing] = ActorSystem[Nothing](router, "mediaLibrary", config)
 
-    implicit val timeout: Timeout = Timeout(10.seconds)
-
-    val userService: AuthService  = new AuthServiceImpl(system)
+    val authService: AuthService  = {
+      import pureconfig.generic.auto._
+      val config = ConfigHelper.loadConfig[AuthConfig](system.settings.config, "amony.auth")
+      new AuthServiceImpl(config)
+    }
 
     val resourcesService = new ResourceService(system)
     val fragmentService = new FragmentService(system)
@@ -101,7 +103,7 @@ object Main extends ConfigLoader with Logging {
 
     val routes = WebServerRoutes(
       system,
-      userService,
+      authService,
       mediaService,
       fragmentService,
       resourcesService,

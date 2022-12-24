@@ -1,30 +1,24 @@
 package nl.amony.service.media.web
 
-import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directive.addDirectiveApply
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.stream.Materializer
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.syntax._
+import nl.amony.service.media.web.MediaWebModel._
 import nl.amony.service.media.{MediaService, MediaProtocol => protocol}
 import nl.amony.service.resources.ResourceConfig.TranscodeSettings
-import nl.amony.service.media.web.MediaWebModel._
 import scribe.Logging
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 object MediaRoutes extends Logging {
 
   def apply(
-     system: ActorSystem[Nothing],
      mediaService: MediaService,
      transcodingSettings: List[TranscodeSettings]
   ): Route = {
-
-    implicit def materializer: Materializer = Materializer.createMaterializer(system)
-    implicit def executionContext: ExecutionContext = system.executionContext
 
     val jsonCodecs = new JsonCodecs(transcodingSettings)
     import jsonCodecs._

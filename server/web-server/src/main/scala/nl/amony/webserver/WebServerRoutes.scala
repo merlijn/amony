@@ -36,7 +36,7 @@ object WebServerRoutes {
     val identityRoutes = AuthRoutes(userService)
     val resourceRoutes = ResourceRoutes(resourceService, config.api.uploadSizeLimit.toBytes.toLong)
     val searchRoutes   = SearchRoutes(system, searchApi, config.search, config.media.transcode)
-    val mediaRoutes    = web.MediaRoutes(system, mediaService, config.media.transcode)
+    val mediaRoutes    = MediaRoutes(mediaService, config.media.transcode)
 
     // routes for the web app (javascript/html) resources
     val webAppResources = webAppRoutes(config.api)

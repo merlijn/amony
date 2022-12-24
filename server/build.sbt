@@ -7,13 +7,13 @@ import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
 val excludeLog4j =
   ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl")
 
-val akkaVersion     = "2.6.19"
+val akkaVersion     = "2.7.0"
 val akkaHttpVersion = "10.2.9"
 val circeVersion    = "0.14.3"
 
 val akka                     = "com.typesafe.akka"        %% "akka-actor-typed"           % akkaVersion
 val akkaPersistence          = "com.typesafe.akka"        %% "akka-persistence-typed"     % akkaVersion
-val akkaPersistenceJdbc      = "com.lightbend.akka"       %% "akka-persistence-jdbc"      % "5.0.4"         // no scala 3
+val akkaPersistenceJdbc      = "com.lightbend.akka"       %% "akka-persistence-jdbc"      % "5.2.0"         // no scala 3
 val akkaStream               = "com.typesafe.akka"        %% "akka-stream"                % akkaVersion
 val akkaPersistenceQuery     = "com.typesafe.akka"        %% "akka-persistence-query"     % akkaVersion
 val akkaSerializationJackson = "com.typesafe.akka"        %% "akka-serialization-jackson" % akkaVersion
@@ -35,7 +35,7 @@ val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"     
 
 //val monixReactive            = "io.monix"                 %% "monix-reactive"             % "3.4.1"
 
-val fs2Core = "co.fs2" %% "fs2-core" % "3.4.0"
+val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.4.0"
 
 val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.14"           % Test
 val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test

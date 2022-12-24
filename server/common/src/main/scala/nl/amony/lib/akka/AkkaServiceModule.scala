@@ -6,10 +6,11 @@ import akka.actor.typed.scaladsl.AskPattern.Askable
 import akka.actor.typed.{ActorRef, ActorSystem, Scheduler}
 import akka.stream.{Materializer, SystemMaterializer}
 import akka.util.Timeout
-import pureconfig.{ConfigReader, ConfigSource}
+import nl.amony.lib.config.ConfigHelper
+import pureconfig.ConfigReader
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
 
 abstract class AkkaServiceModule(val system: ActorSystem[Nothing]) {
@@ -22,13 +23,8 @@ abstract class AkkaServiceModule(val system: ActorSystem[Nothing]) {
 
   def ask[S : ServiceKey, Res](replyTo: ActorRef[Res] => S) = getServiceRef[S].flatMap(_.ask(replyTo))
 
-  def loadConfig[T : ClassTag](path: String)(implicit reader: ConfigReader[T]): T = {
-
-    val configSource = ConfigSource.fromConfig(system.settings.config.getConfig(path))
-    val config = configSource.loadOrThrow[T]
-
-    config
-  }
+  def loadConfig[T : ClassTag](path: String)(implicit reader: ConfigReader[T]): T =
+    ConfigHelper.loadConfig[T](system.settings.config, path)
 
   def getServiceRef[S : ServiceKey] =
     system.receptionist

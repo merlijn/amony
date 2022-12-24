@@ -8,6 +8,7 @@ import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.files.PathOps
 import ResourceConfig.LocalResourcesConfig
 import cats.effect.unsafe.IORuntime
+import nl.amony.service.resources.local.DirectoryScanner.LocalFile
 import nl.amony.service.resources.local.LocalFileIOResponse
 import nl.amony.service.resources.local.LocalResourcesStore._
 

@@ -6,7 +6,7 @@ import java.time.Instant
 
 class TokenManager(jwtConfig: JwtConfig) {
 
-  val expirationInSeconds = jwtConfig.tokenExpiration.toSeconds
+  private val expirationInSeconds = jwtConfig.tokenExpiration.toSeconds
 
   def createToken(userId: String): String = {
 

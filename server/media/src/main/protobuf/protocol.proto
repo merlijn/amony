@@ -11,11 +11,10 @@ message Fragment {
 
 message ResourceInfo {
 
-  string relativePath = 1;
-  string hash = 2;
-  uint64 size = 3;
-  uint64 createdTime = 4;
-  uint64 modifiedTime = 5;
+  string bucketId = 1;
+  string relativePath = 2;
+  string hash = 3;
+  uint64 size = 4;
 }
 
 message MediaMeta {

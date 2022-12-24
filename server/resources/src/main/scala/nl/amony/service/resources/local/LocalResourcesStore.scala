@@ -4,22 +4,19 @@ import akka.actor.typed.receptionist.ServiceKey
 import akka.actor.typed.scaladsl.ActorContext
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.http.scaladsl.util.FastFuture
-import akka.persistence.typed.{PersistenceId, RecoveryCompleted}
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
+import akka.persistence.typed.{PersistenceId, RecoveryCompleted}
 import akka.stream.scaladsl.{FileIO, Sink}
 import akka.stream.{SourceRef, SystemMaterializer}
 import akka.util.ByteString
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, SyncIO}
-import nl.amony.lib.akka.EventProcessing.ProcessedState
 import nl.amony.lib.akka.{GraphShapes, ServiceBehaviors}
-import nl.amony.lib.files.{FileUtil, PathOps}
+import nl.amony.lib.files.PathOps
 import nl.amony.service.resources.ResourceConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
+import nl.amony.service.resources.local.DirectoryScanner.{FileAdded, FileDeleted, FileMoved, LocalFile, LocalResourceEvent}
 import scribe.Logging
-import fs2.Stream
 
 import java.awt.Desktop
-import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -27,25 +24,6 @@ import scala.util.{Failure, Success}
 object LocalResourcesStore extends Logging {
 
   def persistenceId(directoryId: String) = s"local-resources-$directoryId"
-
-  sealed trait LocalResourceEvent
-
-  case class FileAdded(file: LocalFile) extends LocalResourceEvent
-  case class FileDeleted(hash: String, relativePath: String) extends LocalResourceEvent
-  case class FileMoved(hash: String, oldPath: String, newPath: String) extends LocalResourceEvent
-
-  case class LocalFile(
-      relativePath: String,
-      hash: String,
-      size: Long,
-      creationTime: Long,
-      lastModifiedTime: Long) {
-    def extension: String = relativePath.split('.').last
-    def hasEqualMeta(other: LocalFile) = {
-      // this depends on file system meta data and the fact that a file move does not update these attributes
-      hash == other.hash && creationTime == other.creationTime && lastModifiedTime == other.lastModifiedTime
-    }
-  }
 
   sealed trait LocalResourceCommand
 
@@ -60,41 +38,6 @@ object LocalResourcesStore extends Logging {
   case class DeleteFileByHash(hash: String, sender: ActorRef[Boolean]) extends LocalResourceCommand
 
   private case class UploadCompleted(relativePath: String, hash: String, originalSender: ActorRef[Boolean]) extends LocalResourceCommand
-
-  def scanDirectory(config: LocalResourcesConfig, snapshot: Set[LocalFile]): Stream[IO, LocalFile] = {
-    Stream.fromIterator[IO](FileUtil.listFilesInDirectoryRecursive(config.mediaPath).iterator, 10)
-      .filter { file => config.filterFileName(file.getFileName.toString) }
-      .filter { file =>
-        val isEmpty = Files.size(file) == 0
-        if (isEmpty)
-          logger.warn(s"Encountered empty file: ${file.getFileName.toString}")
-        !isEmpty
-      }
-      .parEvalMapUnordered(config.scanParallelFactor) { path =>
-        IO {
-
-          val relativePath = config.mediaPath.relativize(path).toString
-          val fileAttributes = Files.readAttributes(path, classOf[BasicFileAttributes])
-
-          val hash = if (config.verifyExistingHashes) {
-            config.hashingAlgorithm.createHash(path)
-          } else {
-            snapshot.find(_.relativePath == relativePath) match {
-              case None => config.hashingAlgorithm.createHash(path)
-              case Some(m) =>
-                if (m.lastModifiedTime != fileAttributes.lastModifiedTime().toMillis) {
-                  logger.warn(s"$path last modified time is different from what last seen, recomputing hash")
-                  config.hashingAlgorithm.createHash(path)
-                } else {
-                  m.hash
-                }
-            }
-          }
-
-          LocalFile(relativePath, hash, fileAttributes.size(), fileAttributes.creationTime().toMillis, fileAttributes.lastModifiedTime().toMillis)
-        }
-      }
-  }
 
   def behavior(config: LocalResourcesConfig): Behavior[LocalResourceCommand] =
     ServiceBehaviors.setupAndRegister[LocalResourceCommand] { context =>
@@ -140,49 +83,11 @@ object LocalResourcesStore extends Logging {
         Effect.reply(sender)(state.find(_.hash == hash))
 
       case FullScan(sender) =>
-        val scannedResources =
-          scanDirectory(config, state).compile.toList.unsafeRunSync().toSet
 
-        val (colliding, nonColliding) = scannedResources
-          .groupBy { _.hash }
-          .partition { case (_, files) => files.size > 1 }
-
-        colliding.foreach { case (hash, files) =>
-          val collidingFiles = files.map(_.relativePath).mkString("\n")
-          logger.warn(s"The following files share the same hash and will be ignored ($hash):\n$collidingFiles")
-        }
-
-        val nonCollidingResources = nonColliding.map(_._2).flatten
-
-        val newResources: List[FileAdded] =
-          nonCollidingResources
-            .filterNot(r => state.exists(_.hash == r.hash))
-            .map(r => FileAdded(r))
-            .toList
-
-        val deletedResources: List[FileDeleted] =
-          state
-            .filterNot(r => scannedResources.exists(_.hash == r.hash))
-            .map(r => FileDeleted(r.hash, r.relativePath))
-            .toList
-
-        val movedResources: List[FileMoved] =
-          state.flatMap { old =>
-
-            def equalMeta() = scannedResources.find { n => old.relativePath != n.relativePath && old.hasEqualMeta(n) }
-            def equalHash() = scannedResources.find { n => old.relativePath != n.relativePath && old.hash == n.hash }
-
-            // prefer the file with equal timestamp meta, otherwise fall back to just equal hash
-            equalMeta().orElse(equalHash()).map { n => FileMoved(n.hash, old.relativePath, n.relativePath)}
-
-          }.toList
-
-        newResources.foreach(e => logger.info(s"new file: ${e.file.relativePath}"))
-        deletedResources.foreach(e => logger.info(s"deleted file: ${e.relativePath}"))
-        movedResources.foreach(e => logger.info(s"moved file: ${e.oldPath} -> ${e.newPath}"))
+        val events = DirectoryScanner.diff(config, state)
 
         Effect
-          .persist(newResources ::: deletedResources ::: movedResources)
+          .persist(events)
           .thenReply[Set[LocalFile]](sender)(state => state)
 
       case DeleteFileByHash(hash, sender) =>
