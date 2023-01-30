@@ -5,6 +5,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import nl.amony.service.resources.ResourceDirectives.{randomAccessRangeSupport, uploadFiles}
+import nl.amony.service.resources.local.LocalDirectoryBucket
 import scribe.Logging
 
 object ResourceRoutes extends Logging {
@@ -28,26 +29,26 @@ object ResourceRoutes extends Logging {
   }
   // format: on
 
-  def apply(resourceApi: ResourceService, uploadLimitBytes: Long)(implicit timeout: Timeout): Route = {
+  def apply(buckets: Map[String, ResourceBucket], uploadLimitBytes: Long): Route = {
 
     pathPrefix("resources") {
 
       path("upload") {
         uploadFiles("video", uploadLimitBytes) { (fileInfo, source) =>
-          resourceApi.uploadResource("test", fileInfo.fileName, source)
+          buckets("local").uploadResource(fileInfo.fileName, source)
         } { medias => complete("OK") }
       } ~ pathPrefix("media" / Segment) { bucketId =>
 
         (get & path(Segment)) {
           case patterns.Thumbnail(id, _, timestamp, quality) =>
-            onSuccess(resourceApi.getThumbnail(bucketId, id, quality.toInt, timestamp.toLong)) {
+            onSuccess(buckets(bucketId).getThumbnail(id, quality.toInt, timestamp.toLong)) {
               case None => complete(StatusCodes.NotFound)
               case Some(ioResponse) =>
                 complete(HttpEntity(ContentType(MediaTypes.`image/webp`), ioResponse.getContent()))
             }
 
           case patterns.VideoFragment(id, start, end, quality) =>
-            onSuccess(resourceApi.getVideoFragment(bucketId, id, start.toInt, end.toInt, quality.toInt)) {
+            onSuccess(buckets(bucketId).getVideoFragment(id, start.toInt, end.toInt, quality.toInt)) {
               case None => complete(StatusCodes.NotFound)
               case Some(ioResponse) =>
                 randomAccessRangeSupport(
@@ -58,7 +59,7 @@ object ResourceRoutes extends Logging {
             }
 
           case patterns.Video(id, quality) =>
-            onSuccess(resourceApi.getResource(bucketId, id, quality.toInt)) {
+            onSuccess(buckets(bucketId).getResource(id, quality.toInt)) {
               case None => complete(StatusCodes.NotFound)
               case Some(ioResponse) =>
                 randomAccessRangeSupport(
@@ -69,14 +70,14 @@ object ResourceRoutes extends Logging {
             }
 
           case patterns.TimeLineVtt(id) =>
-            onSuccess(resourceApi.getPreviewSpriteVtt(bucketId, id)) {
+            onSuccess(buckets(bucketId).getPreviewSpriteVtt(id)) {
               case None => complete(StatusCodes.NotFound)
               case Some(content) =>
                 complete(content)
             }
 
           case patterns.TimeLineJpeg(id) =>
-            onSuccess(resourceApi.getPreviewSpriteImage(bucketId, id)) {
+            onSuccess(buckets(bucketId).getPreviewSpriteImage(id)) {
               case None => complete(StatusCodes.NotFound)
               case Some(ioResponse) =>
                 complete(HttpEntity(ContentType(MediaTypes.`image/webp`), ioResponse.getContent()))

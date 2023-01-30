@@ -10,7 +10,8 @@ import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.fragments.FragmentService
 import nl.amony.service.media.{MediaService, web}
 import nl.amony.service.media.web.MediaRoutes
-import nl.amony.service.resources.{ResourceRoutes, ResourceService}
+import nl.amony.service.resources.ResourceRoutes
+import nl.amony.service.resources.local.LocalDirectoryBucket
 
 import java.nio.file.{Files, Paths}
 import scala.concurrent.ExecutionContext
@@ -19,12 +20,12 @@ import scala.concurrent.duration.DurationInt
 object WebServerRoutes {
 
   def apply(
-       system: ActorSystem[Nothing],
-       userService: AuthService,
-       mediaService: MediaService,
-       fragmentService: FragmentService,
-       resourceService: ResourceService,
-       config: AmonyConfig
+             system: ActorSystem[Nothing],
+             userService: AuthService,
+             mediaService: MediaService,
+             fragmentService: FragmentService,
+             resourceService: LocalDirectoryBucket,
+             config: AmonyConfig
     ): Route = {
     implicit val ec: ExecutionContext = system.executionContext
     import akka.http.scaladsl.server.Directives._
@@ -34,7 +35,7 @@ object WebServerRoutes {
     val searchApi      = new SearchService(system)
 
     val identityRoutes = AuthRoutes(userService)
-    val resourceRoutes = ResourceRoutes(resourceService, config.api.uploadSizeLimit.toBytes.toLong)
+    val resourceRoutes = ResourceRoutes(Map("local" -> resourceService), config.api.uploadSizeLimit.toBytes.toLong)
     val searchRoutes   = SearchRoutes(system, searchApi, config.search, config.media.transcode)
     val mediaRoutes    = MediaRoutes(mediaService, config.media.transcode)
 

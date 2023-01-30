@@ -38,7 +38,7 @@ class LocalMediaScanner(mediaPath: Path, mediaService: MediaService) extends Log
       val relativePath = Path.of(resource.relativePath)
 
       ScanMedia
-        .scanMedia("test", mediaPath, relativePath, resource.hash)
+        .scanMedia("local", mediaPath, relativePath, resource.hash)
         .flatMap(media => IO.fromFuture(IO(mediaService.upsertMedia(media)))).unsafeRunSync()
 
       logger.info(s"Done scanning new media: ${resource.relativePath}")

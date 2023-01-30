@@ -1,16 +1,16 @@
-package nl.amony.webserver.util
-
-import akka.actor.typed.ActorSystem
-//import akka.persistence.jdbc.db.SlickExtension
-import org.flywaydb.core.Flyway
-import org.flywaydb.core.api.output.MigrateResult
-import slick.jdbc
-import slick.jdbc.JdbcBackend
-
-import java.io.PrintWriter
-import java.sql.{DriverManager, SQLException, SQLFeatureNotSupportedException}
-import javax.sql.DataSource
-
+//package nl.amony.webserver.util
+//
+//import akka.actor.typed.ActorSystem
+////import akka.persistence.jdbc.db.SlickExtension
+//import org.flywaydb.core.Flyway
+//import org.flywaydb.core.api.output.MigrateResult
+//import slick.jdbc
+//import slick.jdbc.JdbcBackend
+//
+//import java.io.PrintWriter
+//import java.sql.{DriverManager, SQLException, SQLFeatureNotSupportedException}
+//import javax.sql.DataSource
+//
 //class DatabaseDatasource(database: JdbcBackend#Database) extends DataSource {
 //  override def getConnection = database.createSession().conn
 //  override def getConnection(username: String, password: String) = throw new SQLFeatureNotSupportedException()

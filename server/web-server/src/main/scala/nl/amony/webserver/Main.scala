@@ -13,8 +13,7 @@ import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.fragments.FragmentService
 import nl.amony.service.media.{MediaRepository, MediaService}
 import nl.amony.service.media.tasks.LocalMediaScanner
-import nl.amony.service.resources.ResourceService
-import nl.amony.service.resources.local.LocalResourcesStore
+import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalResourcesStore}
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.{H2Profile, HsqldbProfile, JdbcProfile}
@@ -85,7 +84,7 @@ object Main extends ConfigLoader with Logging {
       new AuthServiceImpl(config)
     }
 
-    val resourcesService = new ResourceService(system)
+    val resourcesService = new LocalDirectoryBucket(system)
     val fragmentService = new FragmentService(system)
 
 //    Thread.sleep(500)
