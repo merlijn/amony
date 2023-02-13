@@ -3,7 +3,7 @@ package nl.amony.search
 import akka.actor.typed
 import akka.actor.typed.receptionist.ServiceKey
 import nl.amony.service.fragments.FragmentProtocol.Fragment
-import nl.amony.service.media.MediaProtocol.Media
+import nl.amony.service.media.api.protocol.Media
 
 object SearchProtocol {
 

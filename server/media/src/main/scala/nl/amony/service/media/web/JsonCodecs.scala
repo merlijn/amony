@@ -6,7 +6,7 @@ import nl.amony.service.fragments.FragmentProtocol
 import nl.amony.service.resources.ResourceConfig.TranscodeSettings
 import nl.amony.service.fragments.WebModel.Fragment
 import nl.amony.service.media.web.MediaWebModel._
-import nl.amony.service.media.{MediaProtocol => protocol}
+import nl.amony.service.media.api.protocol
 
 class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
 
@@ -43,9 +43,9 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
     val mediaInfo = MediaInfo(
       width     = media.width,
       height    = media.height,
-      duration  = media.mediaInfo.duration,
+      duration  = media.mediaInfo.durationInMillis,
       fps       = media.mediaInfo.fps,
-      codecName = media.mediaInfo.codecName,
+      codecName = media.mediaInfo.codecId,
     )
 
     val resourceInfo = ResourceInfo(
@@ -54,14 +54,14 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
     )
 
     // hard coded for now
-    val start = (media.mediaInfo.duration / 3)
-    val range = (start, Math.min(media.mediaInfo.duration, start + 3000))
+    val start = (media.mediaInfo.durationInMillis / 3)
+    val range = (start, Math.min(media.mediaInfo.durationInMillis, start + 3000))
     val highlights = List(FragmentProtocol.Fragment(media.mediaId, range, None, List.empty))
 
     Video(
       id        = media.mediaId,
-      uploader  = media.uploader,
-      uploadTimestamp = media.uploadTimestamp,
+      uploader  = media.userId,
+      uploadTimestamp = media.createdTimestamp,
       urls = urls,
       meta = meta,
       mediaInfo = mediaInfo,

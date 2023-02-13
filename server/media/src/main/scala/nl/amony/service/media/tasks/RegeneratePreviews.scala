@@ -7,7 +7,8 @@ import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
 import nl.amony.service.media.MediaService
 import scribe.Logging
 import fs2.Stream
-import nl.amony.service.media.MediaProtocol.Media
+import nl.amony.service.media.api.protocol.Media
+
 import scala.util.control.NonFatal
 
 object RegeneratePreviews extends Logging {

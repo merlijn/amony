@@ -6,7 +6,7 @@ import akka.actor.{Actor, ActorRef, Props}
 import akka.stream.Materializer
 import nl.amony.search.SearchProtocol._
 import nl.amony.service.media.MediaEvents
-import nl.amony.service.media.MediaProtocol.Media
+import nl.amony.service.media.api.protocol.Media
 import scribe.Logging
 
 object InMemoryIndex {
@@ -40,8 +40,8 @@ object InMemoryIndex {
       if (indexedAt < counter) {
         logger.debug("Updating index")
         sortedByTitle     = media.values.toVector.sortBy(m => m.meta.title.getOrElse(m.fileName()))
-        sortedByDateAdded = media.values.toVector.sortBy(_.uploadTimestamp)
-        sortedByDuration  = media.values.toVector.sortBy(_.mediaInfo.duration)
+        sortedByDateAdded = media.values.toVector.sortBy(_.createdTimestamp)
+        sortedByDuration  = media.values.toVector.sortBy(_.mediaInfo.durationInMillis)
         sortedBySize      = media.values.toVector.sortBy(_.resourceInfo.sizeInBytes)
         tags              = media.values.flatMap(_.meta.tags).toSet
         indexedAt         = counter
@@ -81,7 +81,7 @@ object InMemoryIndex {
           query.tags.forall(tag => m.meta.tags.contains(tag))
         def filterDuration(m: Media): Boolean =
           query.duration
-            .map { case (min, max) => m.mediaInfo.duration >= min && m.mediaInfo.duration <= max }
+            .map { case (min, max) => m.mediaInfo.durationInMillis >= min && m.mediaInfo.durationInMillis <= max }
             .getOrElse(true)
         def filterMedia(m: Media): Boolean = filterRes(m) && filterQuery(m) && filterTag(m) && filterDuration(m)
 

@@ -1,50 +1,52 @@
-syntax = "proto3";
+syntax = "proto2";
 
 import "google/protobuf/wrappers.proto";
 
 package nl.amony.service.media.api;
 
 message Fragment {
-  string mediaId = 1;
-  Range range = 2;
-  MediaMeta meta = 3;
+  required string mediaId = 1;
+  required Range range = 2;
+  required MediaMeta meta = 3;
 }
 
 message ResourceInfo {
-  string bucketId = 1;
-  string relativePath = 2;
-  string hash = 3;
-  uint64 sizeInBytes = 4;
+  required string bucketId = 1;
+  required string relativePath = 2;
+  required string hash = 3;
+  required uint64 sizeInBytes = 4;
 }
 
 message MediaMeta {
-  google.protobuf.StringValue title = 1;
-  google.protobuf.StringValue comment = 2;
+  optional string title = 1;
+  optional string comment = 2;
   repeated string tags = 3;
 }
 
 message MediaInfo {
-  string codecId = 1;
-  uint32 height = 2;
-  uint32 width = 3;
-  uint32 fps = 4;
-  uint64 durationInMillis = 5;
+  required string codecId = 1;
+  required uint32 width = 2;
+  required uint32 height = 3;
+  required float fps = 4;
+  required uint64 durationInMillis = 5;
 }
 
 message Range {
-  uint64 start = 1;
-  uint64 end = 2;
+  required uint64 start = 1;
+  required uint64 end = 2;
 }
 
 message MediaId {
-  string mediaId = 1;
+  required string mediaId = 1;
 }
 
 message Media {
 
-  string mediaId = 1;
-  string userId = 2;
-  uint64 addedOnTimestamp = 3;
-  MediaMeta meta = 4;
-  ResourceInfo resourceInfo = 5;
+  required string mediaId = 1;
+  required string userId = 2;
+  required uint64 createdTimestamp = 3;
+  required uint64 thumbnailTimestamp = 4;
+  required MediaMeta meta = 5;
+  required MediaInfo mediaInfo = 6;
+  required ResourceInfo resourceInfo = 7;
 }
