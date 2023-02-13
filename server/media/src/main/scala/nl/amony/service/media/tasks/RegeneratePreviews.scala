@@ -18,7 +18,7 @@ object RegeneratePreviews extends Logging {
       .foreach { m =>
         logger.info(s"generating thumbnail previews for '${m.fileName()}'")
         FFMpeg.createThumbnailTile(
-          inputFile      = m.resolvePath(config.mediaPath).toAbsolutePath,
+          inputFile      = config.mediaPath.resolve(m.resourceInfo.relativePath).toAbsolutePath,
           outputDir      = config.resourcePath,
           outputBaseName = Some(s"${m.mediaId}-timeline"),
           overwrite      = false

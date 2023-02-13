@@ -23,6 +23,7 @@ object WebServerRoutes {
              system: ActorSystem[Nothing],
              userService: AuthService,
              mediaService: MediaService,
+             searchService: SearchService,
              fragmentService: FragmentService,
              resourceService: LocalDirectoryBucket,
              config: AmonyConfig
@@ -32,11 +33,9 @@ object WebServerRoutes {
 
     implicit val requestTimeout = Timeout(5.seconds)
 
-    val searchApi      = new SearchService(system)
-
     val identityRoutes = AuthRoutes(userService)
     val resourceRoutes = ResourceRoutes(Map("local" -> resourceService), config.api.uploadSizeLimit.toBytes.toLong)
-    val searchRoutes   = SearchRoutes(system, searchApi, config.search, config.media.transcode)
+    val searchRoutes   = SearchRoutes(system, searchService, config.search, config.media.transcode)
     val mediaRoutes    = MediaRoutes(mediaService, config.media.transcode)
 
     // routes for the web app (javascript/html) resources

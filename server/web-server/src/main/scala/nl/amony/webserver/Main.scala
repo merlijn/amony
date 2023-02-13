@@ -7,7 +7,7 @@ import akka.stream.Materializer
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import nl.amony.lib.config.ConfigHelper
-import nl.amony.search.InMemoryIndex
+import nl.amony.search.InMemorySearchService
 import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.fragments.FragmentService
@@ -29,11 +29,8 @@ object Main extends ConfigLoader with Logging {
       implicit val mat = Materializer(context)
 
 //      DatabaseMigrations.run(context.system)
-      // TODO remove this ugly hack
-      val localIndexRef: ActorRef = InMemoryIndex.apply(context)
-      mediaService.setEventListener((e) => localIndexRef.tell(e, ActorRef.noSender))
 
-      val _      = context.spawn(LocalResourcesStore.behavior(config.media), "local-files-store")
+      val _ = context.spawn(LocalResourcesStore.behavior(config.media), "local-files-store")
 
       logger.info(s"spawning scanner")
       val _ = context.spawn(LocalMediaScanner.behavior(config.media, mediaService), "scanner")
@@ -75,6 +72,10 @@ object Main extends ConfigLoader with Logging {
       service
     }
 
+    val searchService = new InMemorySearchService()
+
+    mediaService.setEventListener(e => searchService.update(e))
+
     val router: Behavior[Nothing]    = rootBehaviour(appConfig, mediaService)
     val system: ActorSystem[Nothing] = ActorSystem[Nothing](router, "mediaLibrary", config)
 
@@ -104,6 +105,7 @@ object Main extends ConfigLoader with Logging {
       system,
       authService,
       mediaService,
+      searchService,
       fragmentService,
       resourcesService,
       appConfig
