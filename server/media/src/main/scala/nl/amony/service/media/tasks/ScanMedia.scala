@@ -3,6 +3,8 @@ package nl.amony.service.media.tasks
 import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.service.media.MediaProtocol._
+import nl.amony.service.media.api.protocol.{MediaMeta, ResourceInfo}
+import nl.amony.service.media.web.MediaWebModel.MediaInfo
 import scribe.Logging
 
 import java.nio.file.attribute.BasicFileAttributes
@@ -40,26 +42,27 @@ object ScanMedia extends Logging {
           bucketId         = bucketId,
           relativePath     = relativeMediaPath.toString,
           hash             = hash,
-          size             = fileAttributes.size(),
+          sizeInBytes      = fileAttributes.size(),
         )
 
         val videoInfo = MediaInfo(
+          mainVideoStream.width,
+          mainVideoStream.height,
           mainVideoStream.fps,
-          mainVideoStream.codec_name,
           mainVideoStream.durationMillis,
-          (mainVideoStream.width, mainVideoStream.height)
+          mainVideoStream.codec_name,
         )
 
         val mediaId = hash
 
         Media(
-          id                 = mediaId,
+          mediaId            = mediaId,
           uploader           = "0",
           uploadTimestamp    = System.currentTimeMillis(),
           meta = MediaMeta(
             title   = None,
             comment = None,
-            tags    = Set.empty
+            tags    = Seq.empty
           ),
           resourceInfo       = fileInfo,
           mediaInfo          = videoInfo,

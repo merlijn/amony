@@ -1,6 +1,7 @@
 package nl.amony.service.media
 
 import nl.amony.service.media.MediaProtocol._
+import nl.amony.service.media.api.protocol.MediaMeta
 import scribe.Logging
 
 object MediaEvents extends Logging {
@@ -18,31 +19,31 @@ object MediaEvents extends Logging {
   case class MediaUpdated(id: String, m: Media) extends Event
   case class MediaRemoved(id: String)           extends Event
 
-  def apply(state: State, event: Event): State = {
+  def apply(state: Map[String, Media], event: Event): Map[String, Media] = {
 
     logger.debug(s"Applying event: $event")
 
     event match {
 
       case MediaAdded(media) =>
-        state.copy(media = state.media + (media.id -> media))
+        state + (media.mediaId -> media)
 
       case MediaUpdated(id, newVid) =>
-        state.copy(media = state.media + (id -> newVid))
+        state + (id -> newVid)
 
       case MediaMetaDataUpdated(mediaId, title, comment, tagsAdded, tagsRemoved) =>
-        val media = state.media(mediaId)
+        val media = state(mediaId)
 
         val newMeta = MediaMeta(
           title = title.orElse(media.meta.title),
           comment = comment.orElse(media.meta.comment),
-          tags = media.meta.tags -- tagsRemoved ++ tagsAdded
+          tags = (media.meta.tags.toSet -- tagsRemoved ++ tagsAdded).toSeq.sortBy(media.meta.tags.indexOf)
         )
 
-        state.copy(media = state.media + (media.id -> media.copy(meta = newMeta)))
+        state + (media.mediaId -> media.copy(meta = newMeta))
 
       case MediaRemoved(id) =>
-        state.copy(media = state.media - id)
+        state - id
     }
   }
 }

@@ -23,14 +23,6 @@ object MediaRoutes extends Logging {
     val jsonCodecs = new JsonCodecs(transcodingSettings)
     import jsonCodecs._
 
-    def translateResponse(future: Future[Either[protocol.ErrorResponse, protocol.Media]]): Route = {
-      onSuccess(future) {
-        case Left(protocol.MediaNotFound(_))       => complete(StatusCodes.NotFound)
-        case Left(protocol.InvalidCommand(reason)) => complete(StatusCodes.BadRequest, reason)
-        case Right(media)                          => complete(media.asJson)
-      }
-    }
-
     pathPrefix("api") {
       pathPrefix("media" / Segment) { id =>
         pathEnd {
@@ -40,7 +32,10 @@ object MediaRoutes extends Logging {
               case None        => complete(StatusCodes.NotFound)
             }
           } ~ (post & entity(as[MediaMeta])) { meta =>
-            translateResponse(mediaService.updateMetaData(id, meta.title, meta.comment, meta.tags))
+            onSuccess(mediaService.updateMetaData(id, meta.title, meta.comment, meta.tags)) {
+              case None => complete(StatusCodes.NotFound)
+              case Some(media) => complete(media.asJson)
+            }
           } ~ delete {
             onSuccess(mediaService.deleteMedia(id, deleteResource = true)) { case _ =>
               complete(StatusCodes.OK, "{}")

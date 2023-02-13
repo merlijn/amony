@@ -39,7 +39,7 @@ object ConvertNonStreamableVideos extends Logging {
           mediaService.getById(oldHash).onComplete {
             case Success(Some(v)) =>
               val m = v.copy(
-                id = newHash,
+                mediaId = newHash,
                 resourceInfo = v.resourceInfo.copy(hash = newHash, relativePath = config.mediaPath.relativize(videoWithFaststart).toString)
               )
 

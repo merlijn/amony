@@ -1,9 +1,11 @@
 package nl.amony.service.media
 
-import MediaProtocol.{Media, MediaInfo, MediaMeta, ResourceInfo}
+import nl.amony.service.media.MediaProtocol.Media
 import nl.amony.service.media.MediaRepository.{MediaRow, asRow, fromRow}
+import nl.amony.service.media.api.protocol.{MediaMeta, ResourceInfo}
+import nl.amony.service.media.web.MediaWebModel.MediaInfo
 import scribe.Logging
-import slick.basic.{BasicProfile, DatabaseConfig}
+import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
 
 import scala.concurrent.Future
@@ -13,8 +15,8 @@ object MediaRepository {
   type MediaRow = (String, String, Long, Long, String, String, String, Long, Double, Long, Int, Int, Option[String], Option[String])
 
   def asRow(media: Media): MediaRow =
-    (media.id, media.uploader, media.uploadTimestamp, media.thumbnailTimestamp,
-      media.resourceInfo.bucketId, media.resourceInfo.hash, media.resourceInfo.relativePath, media.resourceInfo.size,
+    (media.mediaId, media.uploader, media.uploadTimestamp, media.thumbnailTimestamp,
+      media.resourceInfo.bucketId, media.resourceInfo.hash, media.resourceInfo.relativePath, media.resourceInfo.sizeInBytes,
       media.mediaInfo.fps, media.mediaInfo.duration, media.width, media.height,
       media.meta.title, media.meta.comment)
 
@@ -25,8 +27,8 @@ object MediaRepository {
           title, comment) =>
 
       val resourceInfo = ResourceInfo(resourceBucketId, resourcePath, resourceHash, resourceSize)
-      val mediaInfo = MediaInfo(videoFps, "mp4", videoDuration, (mediaWidth, mediaHeight))
-      val meta = MediaMeta(title, comment, Set.empty)
+      val mediaInfo = MediaInfo(mediaWidth, mediaHeight, videoFps, videoDuration, "mp4")
+      val meta = MediaMeta(title, comment, Seq.empty)
 
       Media(mediaId, uploader, uploadTimestamp, resourceInfo, mediaInfo, meta, thumbnailTimestamp)
   }

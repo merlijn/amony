@@ -3,6 +3,7 @@ package nl.amony.service.media
 import com.fasterxml.jackson.core.JsonEncoding
 import nl.amony.service.media.MediaEvents.{MediaAdded, MediaRemoved}
 import nl.amony.service.media.MediaProtocol._
+import nl.amony.service.media.api.protocol.MediaMeta
 import scribe.Logging
 
 import java.io.ByteArrayOutputStream
@@ -57,11 +58,11 @@ class MediaService(mediaRepository: MediaRepository[_]) extends Logging {
     }
   }
 
-  def updateMetaData(id: String, title: Option[String], comment: Option[String], tags: List[String]): Future[Either[ErrorResponse, Media]] = {
+  def updateMetaData(id: String, title: Option[String], comment: Option[String], tags: List[String]): Future[Option[Media]] = {
 
     mediaRepository.getById(id).flatMap {
-      case None        => Future.successful(Left(MediaNotFound(id)))
-      case Some(media) => mediaRepository.upsert(media.copy(meta = MediaMeta(title, comment, tags.toSet))).map(Right(_))
+      case None        => Future.successful(None)
+      case Some(media) => mediaRepository.upsert(media.copy(meta = MediaMeta(title, comment, tags))).map(Some(_))
     }
   }
 }

@@ -1,26 +1,34 @@
 syntax = "proto3";
 
+import "google/protobuf/wrappers.proto";
+
 package nl.amony.service.media.api;
 
 message Fragment {
-
   string mediaId = 1;
   Range range = 2;
   MediaMeta meta = 3;
 }
 
 message ResourceInfo {
-
   string bucketId = 1;
   string relativePath = 2;
   string hash = 3;
-  uint64 size = 4;
+  uint64 sizeInBytes = 4;
 }
 
 message MediaMeta {
-  string title = 1;
-  string comment = 2;
+  google.protobuf.StringValue title = 1;
+  google.protobuf.StringValue comment = 2;
   repeated string tags = 3;
+}
+
+message MediaInfo {
+  string codecId = 1;
+  uint32 height = 2;
+  uint32 width = 3;
+  uint32 fps = 4;
+  uint64 durationInMillis = 5;
 }
 
 message Range {
@@ -35,7 +43,8 @@ message MediaId {
 message Media {
 
   string mediaId = 1;
-  string uploader = 2;
-  MediaMeta meta = 3;
-  ResourceInfo resourceInfo = 4;
+  string userId = 2;
+  uint64 addedOnTimestamp = 3;
+  MediaMeta meta = 4;
+  ResourceInfo resourceInfo = 5;
 }

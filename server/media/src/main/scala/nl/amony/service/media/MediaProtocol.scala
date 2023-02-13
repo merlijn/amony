@@ -1,41 +1,15 @@
 package nl.amony.service.media
 
+import nl.amony.service.media.api.protocol.{MediaMeta, ResourceInfo}
+import nl.amony.service.media.web.MediaWebModel.MediaInfo
+
 import java.nio.file.Path
 
 object MediaProtocol {
 
-  sealed trait ErrorResponse
-
-  case class MediaNotFound(id: String)      extends ErrorResponse
-  case class InvalidCommand(reason: String) extends ErrorResponse
-
   // -- State
-  case class State(media: Map[String, Media])
-
-  case class ResourceInfo(
-      bucketId: String,
-      relativePath: String,
-      hash: String,
-      size: Long
-  ) {
-    def extension: String = relativePath.split('.').last
-  }
-
-  case class MediaInfo(
-    fps: Double,
-    videoCodec: String,
-    duration: Long,
-    resolution: (Int, Int)
-  )
-
-  case class MediaMeta(
-    title: Option[String],
-    comment: Option[String],
-    tags: Set[String]
-  )
-
   case class Media(
-    id: String,
+    mediaId: String,
     uploader: String,
     uploadTimestamp: Long,
     resourceInfo: ResourceInfo,
@@ -45,8 +19,8 @@ object MediaProtocol {
   ) {
     def resolvePath(baseDir: Path): Path = baseDir.resolve(resourceInfo.relativePath)
 
-    def width: Int = mediaInfo.resolution._1
-    def height: Int = mediaInfo.resolution._2
+    def width: Int = mediaInfo.width
+    def height: Int = mediaInfo.height
 
     def fileName(): String = {
       val slashIdx = resourceInfo.relativePath.lastIndexOf('/')

@@ -26,8 +26,10 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
 
     val resolutions = (media.height :: transcodingSettings.map(_.scaleHeight)).sorted
 
+    val extension = media.resourceInfo.relativePath.split('.').last
+
     val urls = MediaUrls(
-      originalResourceUrl  = s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}_${media.height}p.${media.resourceInfo.extension}",
+      originalResourceUrl  = s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}_${media.height}p.${extension}",
       thumbnailUrl         = s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}-${media.thumbnailTimestamp}_${resolutions.min}p.webp",
       previewThumbnailsUrl = Some(s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}-timeline.vtt")
     )
@@ -43,21 +45,21 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
       height    = media.height,
       duration  = media.mediaInfo.duration,
       fps       = media.mediaInfo.fps,
-      codecName = media.mediaInfo.videoCodec,
+      codecName = media.mediaInfo.codecName,
     )
 
     val resourceInfo = ResourceInfo(
-      sizeInBytes = media.resourceInfo.size,
+      sizeInBytes = media.resourceInfo.sizeInBytes,
       hash = media.resourceInfo.hash
     )
 
     // hard coded for now
     val start = (media.mediaInfo.duration / 3)
     val range = (start, Math.min(media.mediaInfo.duration, start + 3000))
-    val highlights = List(FragmentProtocol.Fragment(media.id, range, None, List.empty))
+    val highlights = List(FragmentProtocol.Fragment(media.mediaId, range, None, List.empty))
 
     Video(
-      id        = media.id,
+      id        = media.mediaId,
       uploader  = media.uploader,
       uploadTimestamp = media.uploadTimestamp,
       urls = urls,
@@ -70,11 +72,11 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
           val (start, end) = f.range
 
           val urls = resolutions.map(height =>
-            s"/resources/media/${media.resourceInfo.bucketId}/${media.id}~${start}-${end}_${height}p.mp4"
+            s"/resources/media/${media.resourceInfo.bucketId}/${media.mediaId}~${start}-${end}_${height}p.mp4"
           )
 
           Fragment(
-            media_id = media.id,
+            media_id = media.mediaId,
             index    = index,
             range    = (start, end),
             urls     = urls,

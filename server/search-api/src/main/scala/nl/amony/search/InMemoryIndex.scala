@@ -2,14 +2,11 @@ package nl.amony.search
 
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.ActorContext
-import akka.actor.{Actor, ActorRef, Props, typed}
-import akka.persistence.query.PersistenceQuery
-import akka.persistence.query.scaladsl.EventsByPersistenceIdQuery
+import akka.actor.{Actor, ActorRef, Props}
 import akka.stream.Materializer
-import nl.amony.lib.akka.EventProcessing
 import nl.amony.search.SearchProtocol._
-import nl.amony.service.media.{MediaEvents, MediaService}
-import nl.amony.service.media.MediaProtocol.{Media, State}
+import nl.amony.service.media.MediaEvents
+import nl.amony.service.media.MediaProtocol.Media
 import scribe.Logging
 
 object InMemoryIndex {
@@ -29,14 +26,14 @@ object InMemoryIndex {
 
     var counter: Long = 0L
     var indexedAt: Long = 0L
-    var state: State = State(Map.empty)
+    var state: Map[String, Media] = Map.empty
     var sortedByTitle: Vector[Media] = Vector.empty
     var sortedByDateAdded: Vector[Media] = Vector.empty
     var sortedByDuration: Vector[Media] = Vector.empty
     var sortedBySize: Vector[Media] = Vector.empty
     var tags: Set[String] = Set.empty
 
-    def media: Map[String, Media] = state.media
+    def media: Map[String, Media] = state
 
     def updateIndex() = {
 
@@ -45,7 +42,7 @@ object InMemoryIndex {
         sortedByTitle     = media.values.toVector.sortBy(m => m.meta.title.getOrElse(m.fileName()))
         sortedByDateAdded = media.values.toVector.sortBy(_.uploadTimestamp)
         sortedByDuration  = media.values.toVector.sortBy(_.mediaInfo.duration)
-        sortedBySize      = media.values.toVector.sortBy(_.resourceInfo.size)
+        sortedBySize      = media.values.toVector.sortBy(_.resourceInfo.sizeInBytes)
         tags              = media.values.flatMap(_.meta.tags).toSet
         indexedAt         = counter
       }
@@ -89,7 +86,7 @@ object InMemoryIndex {
         def filterMedia(m: Media): Boolean = filterRes(m) && filterQuery(m) && filterTag(m) && filterDuration(m)
 
         val unfiltered = query.sort match {
-          case None                        => state.media.values
+          case None                        => state.values
           case Some(Sort(Title, Asc))      => sortedByTitle
           case Some(Sort(Title, Desc))     => sortedByTitle.reverse
           case Some(Sort(DateAdded, Asc))  => sortedByDateAdded

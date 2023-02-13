@@ -19,7 +19,7 @@ object RegeneratePreviews extends Logging {
         FFMpeg.createThumbnailTile(
           inputFile      = m.resolvePath(config.mediaPath).toAbsolutePath,
           outputDir      = config.resourcePath,
-          outputBaseName = Some(s"${m.id}-timeline"),
+          outputBaseName = Some(s"${m.mediaId}-timeline"),
           overwrite      = false
         ).onError {
           case NonFatal(e) => IO { logger.warn(s"Failed to generate preview sprite for ${m.fileName()}", e) }
