@@ -3,7 +3,7 @@ package nl.amony.search
 import akka.actor.typed
 import akka.actor.typed.receptionist.ServiceKey
 import nl.amony.service.fragments.FragmentProtocol.Fragment
-import nl.amony.service.media.api.protocol.Media
+import nl.amony.service.media.api.Media
 
 object SearchProtocol {
 
@@ -13,7 +13,6 @@ object SearchProtocol {
     implicit val serviceKey: ServiceKey[QueryMessage] = ServiceKey[QueryMessage]("searchService")
   }
 
-  case class Search(query: Query, sender: typed.ActorRef[SearchResult]) extends QueryMessage
   case class SearchFragments(
       size: Int,
       offset: Int,

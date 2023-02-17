@@ -3,7 +3,7 @@ package nl.amony.search
 import nl.amony.search.SearchProtocol._
 import nl.amony.service.fragments.FragmentProtocol
 import nl.amony.service.media.MediaEvents
-import nl.amony.service.media.api.protocol.Media
+import nl.amony.service.media.api.Media
 import scribe.Logging
 
 import scala.concurrent.Future

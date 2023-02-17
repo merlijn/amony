@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-import "protocol.proto";
+import "MediaMessages.proto";
 import "scalapb/scalapb.proto";
 
 option (scalapb.options) = {

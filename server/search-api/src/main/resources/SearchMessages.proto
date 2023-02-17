@@ -1,0 +1,36 @@
+syntax = "proto2";
+
+import "MediaMessages.proto";
+import "scalapb/scalapb.proto";
+
+package nl.amony.service.media.api;
+
+message Query {
+  optional string q = 1;
+  optional int32 offset = 2;
+  optional int32 n = 3;
+  repeated string tags = 4;
+  optional string playlist = 5;
+  optional int32 minRes = 6;
+  optional int64 minDuration = 7;
+  optional int64 maxDuration = 8;
+}
+
+message SearchResult {
+  required int64 offset = 1;
+  required int32 total = 2;
+  repeated Media results = 3;
+  repeated string tags = 4;
+}
+
+enum SortField {
+  Title = 0;
+  DateAdded = 1;
+  Duration = 2;
+  Size = 3;
+}
+
+enum SortDirection {
+  Asc = 0;
+  Desc = 1;
+}

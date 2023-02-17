@@ -1,6 +1,6 @@
 package nl.amony.service
 
-import nl.amony.service.media.api.protocol.Media
+import nl.amony.service.media.api.Media
 
 package object media {
   implicit class MediaOps(media: Media) {

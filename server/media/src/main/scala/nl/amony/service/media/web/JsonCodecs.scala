@@ -6,7 +6,7 @@ import nl.amony.service.fragments.FragmentProtocol
 import nl.amony.service.resources.ResourceConfig.TranscodeSettings
 import nl.amony.service.fragments.WebModel.Fragment
 import nl.amony.service.media.web.MediaWebModel._
-import nl.amony.service.media.api.protocol
+import nl.amony.service.media.api
 
 class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
 
@@ -19,10 +19,10 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
   implicit val videoMetaCodec: Codec[MediaMeta]          = deriveCodec[MediaMeta]
 
   // contra map encoders for internal protocol classes
-  implicit val mediaEncoder: Encoder[protocol.Media] =
-    deriveEncoder[Video].contramapObject[protocol.Media](toWebModel)
+  implicit val mediaEncoder: Encoder[api.Media] =
+    deriveEncoder[Video].contramapObject[api.Media](toWebModel)
 
-  def toWebModel(media: protocol.Media): Video = {
+  def toWebModel(media: api.Media): Video = {
 
     val resolutions = (media.height :: transcodingSettings.map(_.scaleHeight)).sorted
 

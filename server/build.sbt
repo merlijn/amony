@@ -189,12 +189,14 @@ lazy val media =
 lazy val searchApi =
   module("search-api")
     .dependsOn(common, media)
+    .settings(protobufSettings)
     .settings(
       name := "amony-service-search-api",
       libraryDependencies ++= Seq(
         // akka
         akka, akkaPersistence, akkaPersistenceQuery, akkaHttp, akkaHttpCirce, circe, circeGeneric
-      )
+      ),
+      PB.includePaths in Compile += file("media/src/main/protobuf")
     )
 
 lazy val solrSearch =

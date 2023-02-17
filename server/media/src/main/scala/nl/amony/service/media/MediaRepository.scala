@@ -1,7 +1,7 @@
 package nl.amony.service.media
 
 import nl.amony.service.media.MediaRepository.{MediaRow, asRow, fromRow}
-import nl.amony.service.media.api.protocol.{Media, MediaInfo, MediaMeta, ResourceInfo}
+import nl.amony.service.media.api._
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile

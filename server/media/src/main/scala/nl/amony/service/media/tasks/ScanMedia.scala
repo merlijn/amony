@@ -2,7 +2,7 @@ package nl.amony.service.media.tasks
 
 import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.service.media.api.protocol.{Media, MediaInfo, MediaMeta, ResourceInfo}
+import nl.amony.service.media.api._
 import scribe.Logging
 
 import java.nio.file.attribute.BasicFileAttributes

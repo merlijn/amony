@@ -1,6 +1,6 @@
 package nl.amony.service.media
 
-import nl.amony.service.media.api.protocol.{Media, MediaMeta}
+import nl.amony.service.media.api._
 import scribe.Logging
 
 object MediaEvents extends Logging {

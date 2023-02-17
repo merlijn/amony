@@ -2,7 +2,7 @@ package nl.amony.service.media
 
 import com.fasterxml.jackson.core.JsonEncoding
 import nl.amony.service.media.MediaEvents.{MediaAdded, MediaRemoved}
-import nl.amony.service.media.api.protocol.{Media, MediaMeta}
+import nl.amony.service.media.api._
 import scribe.Logging
 
 import java.io.ByteArrayOutputStream
