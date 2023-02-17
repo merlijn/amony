@@ -78,9 +78,9 @@ lazy val noPublishSettings = Seq(
   publishArtifact := false
 )
 
-lazy val protobufSettings = Seq(
+def protobufSettings = Seq(
   Compile / PB.targets := Seq(
-    scalapb.gen() -> (Compile / sourceManaged).value / "scalapb"
+    scalapb.gen(flatPackage = true) -> (Compile / sourceManaged).value / "scalapb"
   )
 )
 
@@ -186,9 +186,9 @@ lazy val media =
       )
     )
 
-lazy val searchApi =
+lazy val searchService =
   module("search-api")
-    .dependsOn(common, media)
+    .dependsOn(media)
     .settings(protobufSettings)
     .settings(
       name := "amony-service-search-api",
@@ -196,12 +196,13 @@ lazy val searchApi =
         // akka
         akka, akkaPersistence, akkaPersistenceQuery, akkaHttp, akkaHttpCirce, circe, circeGeneric
       ),
-      PB.includePaths in Compile += file("media/src/main/protobuf")
+//      PB.includePaths in Compile ++= Seq(file("media/src/main/protobuf")),
+//      PB.includePaths in Compile += file("search-api/src/main/protobuf")
     )
 
 lazy val solrSearch =
   module("solr-search")
-    .dependsOn(common, searchApi)
+    .dependsOn(common, searchService)
     .settings(
       name := "amony-service-search-solr",
       libraryDependencies ++= Seq(
@@ -212,7 +213,7 @@ lazy val solrSearch =
 
 lazy val amonyServer =
   module("web-server", mainClass = true)
-    .dependsOn(identity, media, searchApi)
+    .dependsOn(identity, media, searchService)
     .settings(
       name := "amony-web-server",
       reStart / javaOptions ++= javaOpts,
@@ -268,4 +269,4 @@ lazy val amony = project
     Global / cancelable   := true,
   )
   .disablePlugins(RevolverPlugin)
-  .aggregate(common, libEventStore, libFFMPeg, identity, media, searchApi, solrSearch, amonyServer)
+  .aggregate(common, libEventStore, libFFMPeg, identity, media, searchService, solrSearch, amonyServer)

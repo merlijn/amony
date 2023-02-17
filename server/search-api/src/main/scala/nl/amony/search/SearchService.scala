@@ -2,14 +2,15 @@ package nl.amony.search
 
 import nl.amony.search.SearchProtocol._
 import nl.amony.service.fragments.FragmentProtocol.Fragment
+import nl.amony.service.search.api.{SearchResult, SortOption}
 
 import scala.concurrent.Future
 
 trait SearchService  {
 
   // format: off
-  def searchMedia(q: Option[String], offset: Option[Int], size: Int, tags: Set[String], playlist: Option[String],
-                  minRes: Option[Int], duration: Option[(Long,Long)], sort: Sort): Future[SearchResult]
+  def searchMedia(q: Option[String], offset: Option[Int], size: Int, tags: Seq[String], playlist: Option[String],
+                  minRes: Option[Int], duration: Option[(Long,Long)], sort: SortOption): Future[SearchResult]
 
   def searchTags(): Future[Set[String]]
 

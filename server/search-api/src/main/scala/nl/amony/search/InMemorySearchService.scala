@@ -1,9 +1,11 @@
 package nl.amony.search
 
-import nl.amony.search.SearchProtocol._
 import nl.amony.service.fragments.FragmentProtocol
 import nl.amony.service.media.MediaEvents
 import nl.amony.service.media.api.Media
+import nl.amony.service.search.api.SortDirection.{Asc, Desc}
+import nl.amony.service.search.api.SortField._
+import nl.amony.service.search.api.{Query, SearchResult, SortOption}
 import scribe.Logging
 
 import scala.concurrent.Future
@@ -63,23 +65,25 @@ class InMemorySearchService extends SearchService with Logging {
       def filterTag(m: Media): Boolean =
         query.tags.forall(tag => m.meta.tags.contains(tag))
 
-      def filterDuration(m: Media): Boolean =
-        query.duration
-          .map { case (min, max) => m.mediaInfo.durationInMillis >= min && m.mediaInfo.durationInMillis <= max }
-          .getOrElse(true)
+      def filterDuration(m: Media): Boolean = {
+        (query.minDuration, query.maxDuration) match {
+          case (Some(min), Some(max)) => m.mediaInfo.durationInMillis >= min && m.mediaInfo.durationInMillis <= max
+          case _ => true
+        }
+      }
 
       def filterMedia(m: Media): Boolean = filterRes(m) && filterQuery(m) && filterTag(m) && filterDuration(m)
 
       val unfiltered = query.sort match {
         case None => state.values
-        case Some(Sort(Title, Asc)) => sortedByTitle
-        case Some(Sort(Title, Desc)) => sortedByTitle.reverse
-        case Some(Sort(DateAdded, Asc)) => sortedByDateAdded
-        case Some(Sort(DateAdded, Desc)) => sortedByDateAdded.reverse
-        case Some(Sort(Duration, Asc)) => sortedByDuration
-        case Some(Sort(Duration, Desc)) => sortedByDuration.reverse
-        case Some(Sort(Size, Asc)) => sortedBySize
-        case Some(Sort(Size, Desc)) => sortedBySize.reverse
+        case Some(SortOption(Title, Asc)) => sortedByTitle
+        case Some(SortOption(Title, Desc)) => sortedByTitle.reverse
+        case Some(SortOption(DateAdded, Asc)) => sortedByDateAdded
+        case Some(SortOption(DateAdded, Desc)) => sortedByDateAdded.reverse
+        case Some(SortOption(Duration, Asc)) => sortedByDuration
+        case Some(SortOption(Duration, Desc)) => sortedByDuration.reverse
+        case Some(SortOption(Size, Asc)) => sortedBySize
+        case Some(SortOption(Size, Desc)) => sortedBySize.reverse
       }
 
       val result = unfiltered.filter(filterMedia)
@@ -89,11 +93,11 @@ class InMemorySearchService extends SearchService with Logging {
 
       val videos = if (offset > result.size) Nil else result.slice(offset, end)
 
-      SearchResult(offset, result.size, videos.toList, Map.empty)
+      SearchResult(offset, result.size, videos.toList, List.empty)
     }
 
-  override def searchMedia(q: Option[String], offset: Option[Int], size: Int, tags: Set[String], playlist: Option[String], minRes: Option[Int], duration: Option[(Long, Long)], sort: Sort): Future[SearchResult] =
-    Future.successful(search(Query(q, offset, size, tags, playlist, minRes, duration, Some(sort))))
+  override def searchMedia(q: Option[String], offset: Option[Int], size: Int, tags: Seq[String], playlist: Option[String], minRes: Option[Int], duration: Option[(Long, Long)], sort: SortOption): Future[SearchResult] =
+    Future.successful(search(Query(q, offset, size, tags, playlist, minRes, duration.map(_._1), duration.map(_._2), Some(sort))))
 
   override def searchTags(): Future[Set[String]] = Future.successful(tags)
 

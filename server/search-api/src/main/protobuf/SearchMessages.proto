@@ -3,24 +3,34 @@ syntax = "proto2";
 import "MediaMessages.proto";
 import "scalapb/scalapb.proto";
 
-package nl.amony.service.media.api;
+option (scalapb.options) = {
+  preserve_unknown_fields: false
+};
+
+package nl.amony.service.search.api;
 
 message Query {
   optional string q = 1;
   optional int32 offset = 2;
-  optional int32 n = 3;
+  required int32 n = 3;
   repeated string tags = 4;
   optional string playlist = 5;
   optional int32 minRes = 6;
   optional int64 minDuration = 7;
   optional int64 maxDuration = 8;
+  optional SortOption sort = 9;
 }
 
 message SearchResult {
   required int64 offset = 1;
   required int32 total = 2;
-  repeated Media results = 3;
+  repeated nl.amony.service.media.api.Media results = 3;
   repeated string tags = 4;
+}
+
+message SortOption {
+  required SortField field = 1;
+  required SortDirection direction = 2;
 }
 
 enum SortField {

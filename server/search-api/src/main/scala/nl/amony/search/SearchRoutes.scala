@@ -8,11 +8,13 @@ import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.syntax._
-import nl.amony.search.SearchProtocol._
 import nl.amony.service.fragments.WebModel.Fragment
+import nl.amony.service.search.api.SortField._
+import nl.amony.service.search.api.SortDirection._
 import nl.amony.service.resources.ResourceConfig.TranscodeSettings
 import nl.amony.service.media.web.MediaWebModel.Video
 import nl.amony.service.media.web.JsonCodecs
+import nl.amony.service.search.api.{SearchResult, SortDirection, SortField, SortOption}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -20,7 +22,7 @@ object SearchRoutes {
 
   val durationPattern = raw"(\d*)-(\d*)".r
 
-  case class SearchResponse(
+  case class WebSearchResponse(
      offset: Long,
      total: Long,
      videos: Seq[Video]
@@ -38,9 +40,9 @@ object SearchRoutes {
     val jsonCodecs = new JsonCodecs(transcodingSettings)
     import jsonCodecs._
 
-    implicit val searchResultEncoder: Encoder[SearchProtocol.SearchResult] =
-      deriveEncoder[SearchResponse].contramapObject[SearchProtocol.SearchResult](result =>
-        SearchResponse(result.offset, result.total, result.items.map(m => jsonCodecs.toWebModel(m)))
+    implicit val searchResultEncoder: Encoder[SearchResult] =
+      deriveEncoder[WebSearchResponse].contramapObject[SearchResult](result =>
+        WebSearchResponse(result.offset, result.total, result.results.map(m => jsonCodecs.toWebModel(m)))
       )
 
     pathPrefix("api" / "search") {
@@ -84,11 +86,11 @@ object SearchRoutes {
               q,
               offset.map(_.toInt),
               size,
-              tags.toSet,
+              tags.toSeq,
               playlist,
               minResY.map(_.toInt),
               duration,
-              Sort(sortField, sortDirection)
+              SortOption(sortField, sortDirection)
             )
 
           val response = searchResult.map(_.asJson)
