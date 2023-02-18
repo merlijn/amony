@@ -1,7 +1,7 @@
 package nl.amony.search
 
-import nl.amony.service.media.MediaEvents
-import nl.amony.service.media.api.Media
+import nl.amony.service.media.api.{Media, MediaMeta}
+import nl.amony.service.media.api.events._
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import nl.amony.service.search.api.SortDirection.{Asc, Desc}
 import nl.amony.service.search.api.SortField._
@@ -13,14 +13,18 @@ import scala.concurrent.Future
 /**
  * Proof of concept in memory search services.
  *
- * Note; this does not scale and will become slow quickly. Maybe suitable up to a few thousand entries but this is untested.
+ * Note:
+ *
+ * This was not written with performance in mind.
+ * It does not scale and will become slow quickly.
+ * May be suitable up to a few thousand entries but this is untested.
  *
  */
 class InMemorySearchService extends SearchService with Logging {
 
     private var counter: Long = 0L
     private var indexedAt: Long = 0L
-    private var media: Map[String, Media] = Map.empty
+    private var mediaIndex: Map[String, Media] = Map.empty
     private var sortedByTitle: Vector[Media] = Vector.empty
     private var sortedByDateAdded: Vector[Media] = Vector.empty
     private var sortedByDuration: Vector[Media] = Vector.empty
@@ -32,19 +36,42 @@ class InMemorySearchService extends SearchService with Logging {
       if (indexedAt < counter) {
         synchronized {
           logger.debug("Updating index")
-          sortedByTitle = media.values.toVector.sortBy(m => m.meta.title.getOrElse(m.fileName()))
-          sortedByDateAdded = media.values.toVector.sortBy(_.createdTimestamp)
-          sortedByDuration = media.values.toVector.sortBy(_.mediaInfo.durationInMillis)
-          sortedBySize = media.values.toVector.sortBy(_.resourceInfo.sizeInBytes)
-          tags = media.values.flatMap(_.meta.tags).toSet
+          sortedByTitle = mediaIndex.values.toVector.sortBy(m => m.meta.title.getOrElse(m.fileName()))
+          sortedByDateAdded = mediaIndex.values.toVector.sortBy(_.createdTimestamp)
+          sortedByDuration = mediaIndex.values.toVector.sortBy(_.mediaInfo.durationInMillis)
+          sortedBySize = mediaIndex.values.toVector.sortBy(_.resourceInfo.sizeInBytes)
+          tags = mediaIndex.values.flatMap(_.meta.tags).toSet
           indexedAt = counter
         }
       }
     }
 
-    def update(e: MediaEvents.Event) = {
+    def update(e: MediaEvent) = {
       synchronized {
-        media = MediaEvents.apply(media, e)
+        logger.debug(s"Applying event: $e")
+        e match {
+
+          case MediaAdded(media) =>
+            mediaIndex += (media.mediaId -> media)
+
+          case MediaUpdated(media) =>
+            mediaIndex += (media.mediaId -> media)
+
+          case MediaMetaDataUpdated(mediaId, title, comment, tagsAdded, tagsRemoved) =>
+            val media = mediaIndex(mediaId)
+
+            val newMeta = MediaMeta(
+              title = title.orElse(media.meta.title),
+              comment = comment.orElse(media.meta.comment),
+              tags = (media.meta.tags.toSet -- tagsRemoved ++ tagsAdded).toSeq.sortBy(media.meta.tags.indexOf)
+            )
+
+            mediaIndex += (media.mediaId -> media.copy(meta = newMeta))
+
+          case MediaRemoved(id) =>
+            mediaIndex -= id
+        }
+
         counter += 1
       }
     }
@@ -78,7 +105,7 @@ class InMemorySearchService extends SearchService with Logging {
         case Some(SortOption(Duration, Desc)) => sortedByDuration.reverse
         case Some(SortOption(Size, Asc)) => sortedBySize
         case Some(SortOption(Size, Desc)) => sortedBySize.reverse
-        case _ => media.values
+        case _ => mediaIndex.values
       }
 
       val result = unfiltered.filter(filterMedia)

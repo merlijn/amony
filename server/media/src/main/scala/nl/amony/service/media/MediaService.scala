@@ -1,8 +1,8 @@
 package nl.amony.service.media
 
 import com.fasterxml.jackson.core.JsonEncoding
-import nl.amony.service.media.MediaEvents.{MediaAdded, MediaRemoved}
 import nl.amony.service.media.api._
+import nl.amony.service.media.api.events._
 import scribe.Logging
 
 import java.io.ByteArrayOutputStream
@@ -12,10 +12,10 @@ class MediaService(mediaRepository: MediaRepository[_]) extends Logging {
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  var eventListener: MediaEvents.Event => Unit = _ => ()
+  var eventListener: MediaEvent => Unit = _ => ()
 
   // TODO ugly hack, remove
-  def setEventListener(listener: MediaEvents.Event => Unit) = {
+  def setEventListener(listener: MediaEvent => Unit) = {
     eventListener = listener
     getAll().foreach { medias =>
       medias.foreach(m => eventListener.apply(MediaAdded(m)))

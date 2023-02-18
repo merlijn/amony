@@ -1,0 +1,39 @@
+syntax = "proto2";
+
+import "MediaMessages.proto";
+import "scalapb/scalapb.proto";
+
+option (scalapb.options) = {
+  preserve_unknown_fields: false
+};
+
+package nl.amony.service.media.api.events;
+
+message MediaEvent {
+  oneof sealed_value {
+    MediaAdded added = 1;
+    MediaUpdated updated = 2;
+    MediaRemoved removed = 3;
+    MediaMetaDataUpdated metaDataUpdated = 4;
+  }
+}
+
+message MediaAdded {
+  required nl.amony.service.media.api.Media media = 1;
+}
+
+message MediaUpdated {
+  required nl.amony.service.media.api.Media media = 1;
+}
+
+message MediaRemoved {
+  required string mediaId = 1;
+}
+
+message MediaMetaDataUpdated {
+  required string mediaId = 1;
+  optional string title = 2;
+  optional string comment = 3;
+  repeated string tagsAdded = 4;
+  repeated string tagsRemoved = 5;
+}
