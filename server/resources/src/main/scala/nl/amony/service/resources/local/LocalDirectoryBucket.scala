@@ -1,23 +1,25 @@
 package nl.amony.service.resources.local
 
-import akka.actor.typed.ActorSystem
+import akka.actor.typed.receptionist.Receptionist.Find
+import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
+import akka.actor.typed.{ActorRef, ActorSystem, Scheduler}
 import akka.stream.scaladsl.{Source, StreamRefs}
-import akka.util.ByteString
-import cats.data.{NonEmptyMap, OptionT}
+import akka.stream.{Materializer, SystemMaterializer}
+import akka.util.{ByteString, Timeout}
 import cats.effect.unsafe.IORuntime
-import nl.amony.lib.akka.AkkaServiceModule
+import nl.amony.lib.config.ConfigHelper
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.ffmpeg.tasks.FFProbeModel.ProbeOutput
 import nl.amony.lib.files.PathOps
-import nl.amony.service.resources.{IOResponse, ResourceBucket}
 import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
 import nl.amony.service.resources.local.DirectoryScanner.LocalFile
 import nl.amony.service.resources.local.LocalResourcesStore._
+import nl.amony.service.resources.{IOResponse, ResourceBucket}
 
 import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 sealed trait ResourceKey
 
@@ -28,13 +30,30 @@ case class FragmentKey(resourceId: String, range: (Long, Long), quality: Int) ex
   def path: String = s"${resourceId}-${range._1}-${range._2}_${quality}p.mp4"
 }
 
-class LocalDirectoryBucket(system: ActorSystem[Nothing]) extends AkkaServiceModule(system) with ResourceBucket {
+class LocalDirectoryBucket(system: ActorSystem[Nothing]) extends ResourceBucket {
 
   import pureconfig.generic.auto._
-  val config = loadConfig[LocalResourcesConfig]("amony.media")
+  val config = ConfigHelper.loadConfig[LocalResourcesConfig](system.settings.config, "amony.media")
 
   private val timeout = 5.seconds
   private val resourceStore = new ConcurrentHashMap[ResourceKey, Path]()
+
+  import akka.actor.typed.scaladsl.AskPattern.Askable
+
+  implicit def askTimeout: Timeout = Timeout(5.seconds)
+
+  implicit val ec: ExecutionContext = system.executionContext
+  implicit val mat: Materializer = SystemMaterializer.get(system).materializer
+  implicit val scheduler: Scheduler = system.scheduler
+
+  def ask[S: ServiceKey, Res](replyTo: ActorRef[Res] => S) = {
+
+    val serviceRef = system.receptionist
+      .ask[Receptionist.Listing](ref => Find(implicitly[ServiceKey[S]], ref))
+      .map(_.serviceInstances(implicitly[ServiceKey[S]]).head)
+
+    serviceRef.flatMap(_.ask(replyTo))
+  }
 
   // TODO think about replacing this with custom runtime
   implicit val runtime: IORuntime = IORuntime.global

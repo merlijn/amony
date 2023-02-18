@@ -1,19 +1,19 @@
 package nl.amony.service.resources.local
 
-import akka.actor.typed.receptionist.ServiceKey
-import akka.actor.typed.scaladsl.ActorContext
+import akka.NotUsed
+import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.http.scaladsl.util.FastFuture
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
 import akka.persistence.typed.{PersistenceId, RecoveryCompleted}
-import akka.stream.scaladsl.{FileIO, Sink}
-import akka.stream.{SourceRef, SystemMaterializer}
+import akka.stream.scaladsl.{Broadcast, FileIO, GraphDSL, RunnableGraph, Sink, Source}
+import akka.stream.{ClosedShape, SourceRef, SystemMaterializer}
 import akka.util.ByteString
 import cats.effect.unsafe.IORuntime
-import nl.amony.lib.akka.{GraphShapes, ServiceBehaviors}
 import nl.amony.lib.files.PathOps
 import nl.amony.service.resources.ResourceConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
-import nl.amony.service.resources.local.DirectoryScanner.{ResourceAdded, ResourceDeleted, ResourceMoved, LocalFile, ResourceEvent}
+import nl.amony.service.resources.local.DirectoryScanner.{LocalFile, ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved}
 import scribe.Logging
 
 import java.awt.Desktop
@@ -31,6 +31,18 @@ object LocalResourcesStore extends Logging {
     implicit val serviceKey = ServiceKey[LocalResourceCommand]("local-resources-store")
   }
 
+  def broadcast[T, A, B](s: Source[T, NotUsed], a: Sink[T, A], b: Sink[T, B]): RunnableGraph[(A, B)] =
+    RunnableGraph.fromGraph(GraphDSL.createGraph(a, b)((_, _)) { implicit builder =>
+      (a, b) =>
+        import GraphDSL.Implicits._
+        val broadcast = builder.add(Broadcast[T](2))
+        s ~> broadcast.in
+        broadcast ~> a.in
+        broadcast ~> b.in
+        ClosedShape
+    })
+
+
   case class GetByHash(hash: String, sender: ActorRef[Option[LocalFile]]) extends LocalResourceCommand
   case class GetAll(sender: ActorRef[Set[LocalFile]]) extends LocalResourceCommand
   case class FullScan(sender: ActorRef[Set[LocalFile]]) extends LocalResourceCommand
@@ -39,8 +51,14 @@ object LocalResourcesStore extends Logging {
 
   private case class UploadCompleted(relativePath: String, hash: String, originalSender: ActorRef[Boolean]) extends LocalResourceCommand
 
+  private def setupAndRegister[T: ServiceKey](factory: ActorContext[T] => Behavior[T]): Behavior[T] =
+    Behaviors.setup { context =>
+      context.system.receptionist ! Receptionist.Register(implicitly[ServiceKey[T]], context.self)
+      factory(context)
+    }
+
   def behavior(config: LocalResourcesConfig): Behavior[LocalResourceCommand] =
-    ServiceBehaviors.setupAndRegister[LocalResourceCommand] { context =>
+    setupAndRegister[LocalResourceCommand] { context =>
 
       implicit val ec = context.executionContext
       implicit val sc = context.system.scheduler
@@ -136,7 +154,7 @@ object LocalResourcesStore extends Logging {
 
         val toPathSink = FileIO.toPath(path)
 
-        val (hashF, ioF) = GraphShapes.broadcast(sourceRef.source, hashSink, toPathSink).run()
+        val (hashF, ioF) = broadcast(sourceRef.source, hashSink, toPathSink).run()
 
         val futureResult = for (
           hash     <- hashF;
