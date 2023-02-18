@@ -1,8 +1,8 @@
 package nl.amony.search
 
-import nl.amony.service.fragments.FragmentProtocol
 import nl.amony.service.media.MediaEvents
 import nl.amony.service.media.api.Media
+import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import nl.amony.service.search.api.SortDirection.{Asc, Desc}
 import nl.amony.service.search.api.SortField._
 import nl.amony.service.search.api.{Query, SearchResult, SortOption}
@@ -12,18 +12,16 @@ import scala.concurrent.Future
 
 class InMemorySearchService extends SearchService with Logging {
 
-    var counter: Long = 0L
-    var indexedAt: Long = 0L
-    var state: Map[String, Media] = Map.empty
-    var sortedByTitle: Vector[Media] = Vector.empty
-    var sortedByDateAdded: Vector[Media] = Vector.empty
-    var sortedByDuration: Vector[Media] = Vector.empty
-    var sortedBySize: Vector[Media] = Vector.empty
+    private var counter: Long = 0L
+    private var indexedAt: Long = 0L
+    private var media: Map[String, Media] = Map.empty
+    private var sortedByTitle: Vector[Media] = Vector.empty
+    private var sortedByDateAdded: Vector[Media] = Vector.empty
+    private var sortedByDuration: Vector[Media] = Vector.empty
+    private var sortedBySize: Vector[Media] = Vector.empty
     var tags: Set[String] = Set.empty
 
-    def media: Map[String, Media] = state
-
-    def updateIndex(): Unit = {
+    private def updateIndex(): Unit = {
 
       if (indexedAt < counter) {
         synchronized {
@@ -40,21 +38,12 @@ class InMemorySearchService extends SearchService with Logging {
 
     def update(e: MediaEvents.Event) = {
       synchronized {
-        state = MediaEvents.apply(state, e)
+        media = MediaEvents.apply(media, e)
         counter += 1
       }
     }
 
-    def getTags() = {
-      updateIndex()
-      tags
-    }
-
-    def searchFragments(size: Int, offset: Int, maybeTag: String) = {
-      updateIndex()
-    }
-
-    def search(query: Query): SearchResult = {
+    override def searchMedia(query: Query): Future[SearchResult] = {
       updateIndex()
 
       def filterRes(m: Media): Boolean = query.minRes.map(res => m.height >= res).getOrElse(true)
@@ -75,7 +64,7 @@ class InMemorySearchService extends SearchService with Logging {
       def filterMedia(m: Media): Boolean = filterRes(m) && filterQuery(m) && filterTag(m) && filterDuration(m)
 
       val unfiltered = query.sort match {
-        case None => state.values
+        case None => media.values
         case Some(SortOption(Title, Asc)) => sortedByTitle
         case Some(SortOption(Title, Desc)) => sortedByTitle.reverse
         case Some(SortOption(DateAdded, Asc)) => sortedByDateAdded
@@ -93,13 +82,6 @@ class InMemorySearchService extends SearchService with Logging {
 
       val videos = if (offset > result.size) Nil else result.slice(offset, end)
 
-      SearchResult(offset, result.size, videos.toList, List.empty)
+      Future.successful(SearchResult(offset, result.size, videos.toList, tags.toList))
     }
-
-  override def searchMedia(q: Option[String], offset: Option[Int], size: Int, tags: Seq[String], playlist: Option[String], minRes: Option[Int], duration: Option[(Long, Long)], sort: SortOption): Future[SearchResult] =
-    Future.successful(search(Query(q, offset, size, tags, playlist, minRes, duration.map(_._1), duration.map(_._2), Some(sort))))
-
-  override def searchTags(): Future[Set[String]] = Future.successful(tags)
-
-  override def searchFragments(size: Int, offset: Int, tag: Option[String]): Future[Seq[FragmentProtocol.Fragment]] = ???
 }

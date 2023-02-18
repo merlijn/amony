@@ -33,7 +33,7 @@ object MediaRoutes extends Logging {
             }
           } ~ (post & entity(as[MediaMeta])) { meta =>
             onSuccess(mediaService.updateMetaData(id, meta.title, meta.comment, meta.tags)) {
-              case None => complete(StatusCodes.NotFound)
+              case None        => complete(StatusCodes.NotFound)
               case Some(media) => complete(media.asJson)
             }
           } ~ delete {

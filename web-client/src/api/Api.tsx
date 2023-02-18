@@ -88,7 +88,7 @@ export const Api = {
     return doGET(url)
   },
 
-  getVideoSelection: async function getVideoSelection(n: number, offset: number, selection: MediaSelection) {
+  searchMedia: async function searchMedia(n: number, offset: number, selection: MediaSelection) {
     return Api.getVideos(
               selection.query || "",
               n,
@@ -100,6 +100,7 @@ export const Api = {
               selection.sort)
   },
 
+  // TOOD remove
   getVideos: async function getVideos(
       q: string, 
       n: number,
@@ -137,10 +138,6 @@ export const Api = {
 
   getMediaById: async function (mediaId: string) {
     return doGET(`/api/media/${mediaId}`)
-  },
-
-  getTags: async function () {
-    return doGET(`/api/search/tags`)
   },
 
   updateVideoMetaData: async function(mediaId: string, meta: VideoMeta) {

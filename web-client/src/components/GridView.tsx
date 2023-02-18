@@ -19,7 +19,7 @@ export type GalleryProps = {
   onClick: (v: Video) => void
 }
 
-const initialSearchResult: SearchResult = { total: 0, videos: [] }
+const initialSearchResult: SearchResult = { total: 0, videos: [], tags: [] }
 
 const GridView = (props: GalleryProps) => {
 
@@ -37,7 +37,7 @@ const GridView = (props: GalleryProps) => {
     const n      = columns * 8
 
     if (n > 0 && fetchMore) {
-      Api.getVideoSelection(n, offset, props.selection).then(response => {
+      Api.searchMedia(n, offset, props.selection).then(response => {
 
           const result = response as SearchResult
           const videos = [...previous, ...result.videos]
@@ -102,7 +102,7 @@ const GridView = (props: GalleryProps) => {
 
   return(
     <div className = { props.className } style = { props.style }>
-      { props.showTagbar && <TagBar /> }
+      { props.showTagbar && <TagBar tags = { searchResult.tags } /> }
       <Scrollable
         style        = { style }
         className    = "gallery-container"

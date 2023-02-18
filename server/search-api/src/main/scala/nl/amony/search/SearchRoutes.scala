@@ -14,7 +14,8 @@ import nl.amony.service.search.api.SortDirection._
 import nl.amony.service.resources.ResourceConfig.TranscodeSettings
 import nl.amony.service.media.web.MediaWebModel.Video
 import nl.amony.service.media.web.JsonCodecs
-import nl.amony.service.search.api.{SearchResult, SortDirection, SortField, SortOption}
+import nl.amony.service.search.api.SearchServiceGrpc.SearchService
+import nl.amony.service.search.api.{Query, SearchResult, SortDirection, SortField, SortOption}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -25,14 +26,15 @@ object SearchRoutes {
   case class WebSearchResponse(
      offset: Long,
      total: Long,
-     videos: Seq[Video]
+     videos: Seq[Video],
+     tags: Seq[String]
    )
 
   def apply(
-     system: ActorSystem[Nothing],
-     searchApi: SearchService,
-     config: SearchConfig,
-     transcodingSettings: List[TranscodeSettings]
+       system: ActorSystem[Nothing],
+       searchService: SearchService,
+       config: SearchConfig,
+       transcodingSettings: List[TranscodeSettings]
   ): Route = {
 
     implicit def executionContext: ExecutionContext = system.executionContext
@@ -42,7 +44,7 @@ object SearchRoutes {
 
     implicit val searchResultEncoder: Encoder[SearchResult] =
       deriveEncoder[WebSearchResponse].contramapObject[SearchResult](result =>
-        WebSearchResponse(result.offset, result.total, result.results.map(m => jsonCodecs.toWebModel(m)))
+        WebSearchResponse(result.offset, result.total, result.results.map(m => jsonCodecs.toWebModel(m)), result.tags)
       )
 
     pathPrefix("api" / "search") {
@@ -81,37 +83,23 @@ object SearchRoutes {
             case _                         => None
           }
 
-          val searchResult: Future[SearchResult] =
-            searchApi.searchMedia(
-              q,
-              offset.map(_.toInt),
-              size,
-              tags.toSeq,
-              playlist,
-              minResY.map(_.toInt),
-              duration,
-              SortOption(sortField, sortDirection)
-            )
+          val query = Query(
+            q,
+            size,
+            offset.map(_.toInt),
+            tags.toSeq,
+            playlist,
+            minResY.map(_.toInt),
+            duration.map(_._1),
+            duration.map(_._2),
+            Some(SortOption(sortField, sortDirection))
+          )
 
+          val searchResult: Future[SearchResult] = searchService.searchMedia(query)
           val response = searchResult.map(_.asJson)
 
           complete(response)
         }
-      } ~ path("tags") {
-        get {
-          complete(searchApi.searchTags().map(_.asJson))
-        }
-      } ~ (path("fragments") & parameters("n".optional, "offset".optional, "tags".optional)) {
-        (nParam, offsetParam, tag) =>
-          get {
-
-            val n      = nParam.map(_.toInt).getOrElse(config.defaultNumberOfResults)
-            val offset = offsetParam.map(_.toInt).getOrElse(0)
-
-            complete(searchApi.searchFragments(n, offset, tag).map {
-              _.map { f => Fragment.toWebModel(transcodingSettings, f) }
-            })
-          }
       }
     }
   }

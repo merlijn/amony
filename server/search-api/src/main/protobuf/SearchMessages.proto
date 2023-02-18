@@ -10,10 +10,15 @@ option (scalapb.options) = {
 package nl.amony.service.search.api;
 
 message Query {
+  // The (optional) query. This is a constrained on the title.
   optional string q = 1;
-  optional int32 offset = 2;
-  required int32 n = 3;
+  // The number of items to return.
+  required int32 n = 2;
+  // The offset (in number of items) for the results. For pagination
+  optional int32 offset = 3;
+  // Specifies which tags the media must have. This is an AND condition.
   repeated string tags = 4;
+  // Specifies that all results must be listed in a particular playlist.
   optional string playlist = 5;
   optional int32 minRes = 6;
   optional int64 minDuration = 7;

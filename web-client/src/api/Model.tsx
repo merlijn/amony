@@ -57,6 +57,7 @@ export type MediaView = 'grid' | 'list'
 export type SearchResult = {
   total: number
   videos: Video[]
+  tags: string[]
 }
 
 export type Resolution = {
