@@ -12,18 +12,18 @@ import java.nio.file.attribute.BasicFileAttributes
 
 object DirectoryScanner extends Logging {
 
-  sealed trait LocalResourceEvent
+  sealed trait ResourceEvent
 
-  case class FileAdded(file: LocalFile) extends LocalResourceEvent
-  case class FileDeleted(hash: String, relativePath: String) extends LocalResourceEvent
-  case class FileMoved(hash: String, oldPath: String, newPath: String) extends LocalResourceEvent
+  case class ResourceAdded(resource: LocalFile) extends ResourceEvent
+  case class ResourceDeleted(hash: String, relativePath: String) extends ResourceEvent
+  case class ResourceMoved(hash: String, oldPath: String, newPath: String) extends ResourceEvent
 
   case class LocalFile(
-                        relativePath: String,
-                        hash: String,
-                        size: Long,
-                        creationTime: Long,
-                        lastModifiedTime: Long) {
+                      relativePath: String,
+                      hash: String,
+                      size: Long,
+                      creationTime: Long,
+                      lastModifiedTime: Long) {
     def extension: String = relativePath.split('.').last
 
     def hasEqualMeta(other: LocalFile) = {
@@ -71,7 +71,7 @@ object DirectoryScanner extends Logging {
       }
   }
 
-  def diff(config: LocalResourcesConfig, snapshot: Set[LocalFile])(implicit ioRuntime: IORuntime): List[LocalResourceEvent] = {
+  def diff(config: LocalResourcesConfig, snapshot: Set[LocalFile])(implicit ioRuntime: IORuntime): List[ResourceEvent] = {
 
     val scannedResources: Set[LocalFile] = scanDirectory(config, snapshot).compile.toList.unsafeRunSync().toSet
 
@@ -86,19 +86,19 @@ object DirectoryScanner extends Logging {
 
     val nonCollidingResources = nonColliding.map(_._2).flatten
 
-    val newResources: List[FileAdded] =
+    val newResources: List[ResourceAdded] =
       nonCollidingResources
         .filterNot(r => snapshot.exists(_.hash == r.hash))
-        .map(r => FileAdded(r))
+        .map(r => ResourceAdded(r))
         .toList
 
-    val deletedResources: List[FileDeleted] =
+    val deletedResources: List[ResourceDeleted] =
       snapshot
         .filterNot(r => scannedResources.exists(_.hash == r.hash))
-        .map(r => FileDeleted(r.hash, r.relativePath))
+        .map(r => ResourceDeleted(r.hash, r.relativePath))
         .toList
 
-    val movedResources: List[FileMoved] =
+    val movedResources: List[ResourceMoved] =
       snapshot.flatMap { old =>
 
         def equalMeta(): Option[LocalFile] = scannedResources.find { n => old.relativePath != n.relativePath && old.hasEqualMeta(n) }
@@ -106,11 +106,11 @@ object DirectoryScanner extends Logging {
         def equalHash(): Option[LocalFile] = scannedResources.find { n => old.relativePath != n.relativePath && old.hash == n.hash }
 
         // prefer the file with equal timestamp meta, otherwise fall back to just equal hash
-        equalMeta().orElse(equalHash()).map { n => FileMoved(n.hash, old.relativePath, n.relativePath) }
+        equalMeta().orElse(equalHash()).map { n => ResourceMoved(n.hash, old.relativePath, n.relativePath) }
 
       }.toList
 
-    newResources.foreach(e => logger.info(s"new file: ${e.file.relativePath}"))
+    newResources.foreach(e => logger.info(s"new file: ${e.resource.relativePath}"))
     deletedResources.foreach(e => logger.info(s"deleted file: ${e.relativePath}"))
     movedResources.foreach(e => logger.info(s"moved file: ${e.oldPath} -> ${e.newPath}"))
 

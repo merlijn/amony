@@ -29,11 +29,12 @@ object Main extends ConfigLoader with Logging {
       implicit val mat = Materializer(context)
 
 //      DatabaseMigrations.run(context.system)
+      val resourceBuckets = Map("local" -> new LocalDirectoryBucket(context.system))
 
       val _ = context.spawn(LocalResourcesStore.behavior(config.media), "local-files-store")
 
       logger.info(s"spawning scanner")
-      val _ = context.spawn(LocalMediaScanner.behavior(config.media, mediaService), "scanner")
+      val _ = context.spawn(LocalMediaScanner.behavior(config.media, resourceBuckets, mediaService), "scanner")
 
       Behaviors.empty
     }
@@ -85,9 +86,6 @@ object Main extends ConfigLoader with Logging {
       new AuthServiceImpl(config)
     }
 
-    val resourcesService = new LocalDirectoryBucket(system)
-    val fragmentService = new FragmentService(system)
-
 //    Thread.sleep(500)
 
 //    adminApi.scanLibrary()(timeout.duration)
@@ -106,8 +104,7 @@ object Main extends ConfigLoader with Logging {
       authService,
       mediaService,
       searchService,
-      fragmentService,
-      resourcesService,
+      Map("local" -> new LocalDirectoryBucket(system)),
       appConfig
     )
 

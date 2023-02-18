@@ -13,7 +13,7 @@ import cats.effect.unsafe.IORuntime
 import nl.amony.lib.akka.{GraphShapes, ServiceBehaviors}
 import nl.amony.lib.files.PathOps
 import nl.amony.service.resources.ResourceConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
-import nl.amony.service.resources.local.DirectoryScanner.{FileAdded, FileDeleted, FileMoved, LocalFile, LocalResourceEvent}
+import nl.amony.service.resources.local.DirectoryScanner.{ResourceAdded, ResourceDeleted, ResourceMoved, LocalFile, ResourceEvent}
 import scribe.Logging
 
 import java.awt.Desktop
@@ -45,7 +45,7 @@ object LocalResourcesStore extends Logging {
       implicit val ec = context.executionContext
       implicit val sc = context.system.scheduler
 
-      EventSourcedBehavior[LocalResourceCommand, LocalResourceEvent, Set[LocalFile]](
+      EventSourcedBehavior[LocalResourceCommand, ResourceEvent, Set[LocalFile]](
         persistenceId  = PersistenceId.ofUniqueId(persistenceId(config.id)),
         emptyState     = Set.empty[LocalFile],
         commandHandler = commandHandler(config, context),
@@ -58,17 +58,17 @@ object LocalResourcesStore extends Logging {
     }
 
 
-  def eventSource(state: Set[LocalFile], e: LocalResourceEvent): Set[LocalFile] = e match {
-    case FileAdded(resource) =>
+  def eventSource(state: Set[LocalFile], e: ResourceEvent): Set[LocalFile] = e match {
+    case ResourceAdded(resource) =>
       state + resource
-    case FileDeleted(hash, relativePath) =>
+    case ResourceDeleted(hash, relativePath) =>
       state -- state.find(r => r.relativePath == relativePath && r.hash == hash)
-    case FileMoved(hash, oldPath, newPath) =>
+    case ResourceMoved(hash, oldPath, newPath) =>
       val old = state.find(r => r.relativePath == oldPath && r.hash == hash)
       state -- old ++ old.map(_.copy(relativePath = newPath))
   }
 
-  def commandHandler(config: LocalResourcesConfig, context: ActorContext[LocalResourceCommand])(state: Set[LocalFile], cmd: LocalResourceCommand): Effect[LocalResourceEvent, Set[LocalFile]] = {
+  def commandHandler(config: LocalResourcesConfig, context: ActorContext[LocalResourceCommand])(state: Set[LocalFile], cmd: LocalResourceCommand): Effect[ResourceEvent, Set[LocalFile]] = {
 
     implicit val runtime = IORuntime.global
     implicit val mat = SystemMaterializer.get(context.system).materializer
@@ -103,7 +103,7 @@ object LocalResourcesStore extends Logging {
             }
           };
 
-          FileDeleted(hash, file.relativePath)
+          ResourceDeleted(hash, file.relativePath)
         }
 
         deleted match {
@@ -115,7 +115,7 @@ object LocalResourcesStore extends Logging {
 
         val path = Path.of(relativePath)
 
-        val event = FileAdded(LocalFile(relativePath, hash, path.size, path.creationTimeMillis(), path.lastModifiedMillis()))
+        val event = ResourceAdded(LocalFile(relativePath, hash, path.size, path.creationTimeMillis(), path.lastModifiedMillis()))
 
         Effect.persist(event).thenReply(originalSender)(_ => true)
 

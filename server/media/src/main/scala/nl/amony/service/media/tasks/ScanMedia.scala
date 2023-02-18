@@ -3,6 +3,8 @@ package nl.amony.service.media.tasks
 import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.service.media.api._
+import nl.amony.service.resources.ResourceBucket
+import nl.amony.service.resources.local.DirectoryScanner.LocalFile
 import scribe.Logging
 
 import java.nio.file.attribute.BasicFileAttributes
@@ -11,36 +13,32 @@ import java.nio.file.{Files, Path}
 object ScanMedia extends Logging {
 
   def scanMedia(
-       bucketId: String,
-       basePath: Path,
-       relativeMediaPath: Path,
-       hash: String): IO[Media] = {
+       resourceBucket: ResourceBucket,
+       resource: LocalFile,
+       bucketId: String): IO[Media] = {
 
-    val mediaPath = basePath.resolve(relativeMediaPath)
-
-    FFMpeg
-      .ffprobe(mediaPath, false)
-      .map { case probe =>
+    IO.fromFuture(IO(resourceBucket.getFFProbeOutput(resource.hash)))
+      .map {
+        case None        => throw new IllegalStateException(s"Resource does not exist: ${resource.relativePath}")
+        case Some(probe) =>
 
         val mainVideoStream =
-          probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${mediaPath}"))
+          probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${resource.relativePath}"))
 
         logger.debug(mainVideoStream.toString)
 
         probe.debugOutput.foreach { debug =>
           if (!debug.isFastStart)
-            logger.warn(s"Video is not optimized for streaming: ${mediaPath}")
+            logger.warn(s"Video is not optimized for streaming: ${resource.relativePath}")
         }
-
-        val fileAttributes = Files.readAttributes(mediaPath, classOf[BasicFileAttributes])
 
         val timeStamp = mainVideoStream.durationMillis / 3
 
         val fileInfo = ResourceInfo(
           bucketId         = bucketId,
-          relativePath     = relativeMediaPath.toString,
-          hash             = hash,
-          sizeInBytes      = fileAttributes.size(),
+          relativePath     = resource.relativePath,
+          hash             = resource.hash,
+          sizeInBytes      = resource.size,
         )
 
         val videoInfo = MediaInfo(
@@ -51,7 +49,7 @@ object ScanMedia extends Logging {
           mainVideoStream.durationMillis,
         )
 
-        val mediaId = hash
+        val mediaId = resource.hash
 
         Media(
           mediaId            = mediaId,

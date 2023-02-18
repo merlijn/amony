@@ -10,6 +10,12 @@ import scribe.Logging
 
 import scala.concurrent.Future
 
+/**
+ * Proof of concept in memory search services.
+ *
+ * Note; this does not scale and will become slow quickly. Maybe suitable up to a few thousand entries but this is untested.
+ *
+ */
 class InMemorySearchService extends SearchService with Logging {
 
     private var counter: Long = 0L
@@ -64,7 +70,6 @@ class InMemorySearchService extends SearchService with Logging {
       def filterMedia(m: Media): Boolean = filterRes(m) && filterQuery(m) && filterTag(m) && filterDuration(m)
 
       val unfiltered = query.sort match {
-        case None => media.values
         case Some(SortOption(Title, Asc)) => sortedByTitle
         case Some(SortOption(Title, Desc)) => sortedByTitle.reverse
         case Some(SortOption(DateAdded, Asc)) => sortedByDateAdded
@@ -73,6 +78,7 @@ class InMemorySearchService extends SearchService with Logging {
         case Some(SortOption(Duration, Desc)) => sortedByDuration.reverse
         case Some(SortOption(Size, Asc)) => sortedBySize
         case Some(SortOption(Size, Desc)) => sortedBySize.reverse
+        case _ => media.values
       }
 
       val result = unfiltered.filter(filterMedia)

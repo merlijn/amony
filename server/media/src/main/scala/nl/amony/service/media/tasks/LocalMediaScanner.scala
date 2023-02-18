@@ -6,8 +6,9 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import nl.amony.lib.akka.EventProcessing
 import nl.amony.service.media.MediaService
+import nl.amony.service.resources.ResourceBucket
 import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
-import nl.amony.service.resources.local.DirectoryScanner.{FileAdded, FileDeleted, FileMoved, LocalResourceEvent}
+import nl.amony.service.resources.local.DirectoryScanner.{ResourceEvent, ResourceAdded, ResourceDeleted, ResourceMoved}
 import nl.amony.service.resources.local.LocalResourcesStore
 import scribe.Logging
 
@@ -15,12 +16,12 @@ import java.nio.file.Path
 
 object LocalMediaScanner  {
 
-  def behavior(config: LocalResourcesConfig, mediaService: MediaService): Behavior[(Long, LocalResourceEvent)] =
+  def behavior(config: LocalResourcesConfig, resourceBuckets: Map[String, ResourceBucket], mediaService: MediaService): Behavior[(Long, ResourceEvent)] =
     Behaviors.setup { context =>
 
-      val scanner = new LocalMediaScanner(config.mediaPath, mediaService)
+      val scanner = new LocalMediaScanner(resourceBuckets, mediaService)
 
-      EventProcessing.processAtLeastOnce[LocalResourceEvent](
+      EventProcessing.processAtLeastOnce[ResourceEvent](
           LocalResourcesStore.persistenceId(config.id),
           "scanner",
           e => scanner.processEvent(e)
@@ -28,25 +29,27 @@ object LocalMediaScanner  {
     }
 }
 
-class LocalMediaScanner(mediaPath: Path, mediaService: MediaService) extends Logging {
+class LocalMediaScanner(resourceBuckets: Map[String, ResourceBucket], mediaService: MediaService) extends Logging {
 
   implicit val ioRuntime = IORuntime.global
 
-  def processEvent(e: LocalResourceEvent): Unit = e match {
-    case FileAdded(resource) =>
+  val bucketId = "local"
+
+  def processEvent(e: ResourceEvent): Unit = e match {
+    case ResourceAdded(resource) =>
       logger.info(s"Start scanning new media: ${resource.relativePath}")
       val relativePath = Path.of(resource.relativePath)
 
       ScanMedia
-        .scanMedia("local", mediaPath, relativePath, resource.hash)
+        .scanMedia(resourceBuckets(bucketId), resource, bucketId)
         .flatMap(media => IO.fromFuture(IO(mediaService.upsertMedia(media)))).unsafeRunSync()
 
       logger.info(s"Done scanning new media: ${resource.relativePath}")
 
-    case FileDeleted(hash, relativePath) =>
+    case ResourceDeleted(hash, relativePath) =>
       logger.info(s"Media was deleted: $relativePath")
       mediaService.deleteMedia(hash, false)
-    case FileMoved(hash, oldPath, newPath) =>
+    case ResourceMoved(hash, oldPath, newPath) =>
     // ignore for now, send rename command?
   }
 }

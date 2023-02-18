@@ -90,6 +90,7 @@ object SearchRoutes {
             tags.toSeq,
             playlist,
             minResY.map(_.toInt),
+            None,
             duration.map(_._1),
             duration.map(_._2),
             Some(SortOption(sortField, sortDirection))

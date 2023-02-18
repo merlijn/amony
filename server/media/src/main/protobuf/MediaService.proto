@@ -44,6 +44,6 @@ message DeleteFragment {
 
 message AddFragment {
   string mediaId = 1;
-  Range range = 2;
+  UInt64Range range = 2;
 }
 

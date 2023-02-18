@@ -2,12 +2,16 @@ package nl.amony.service.resources
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import nl.amony.lib.ffmpeg.tasks.FFProbeModel.ProbeOutput
 
 import scala.concurrent.Future
 
+// TODO GRPC
 trait ResourceBucket {
 
   def getResource(resourceId: String, quality: Int): Future[Option[IOResponse]]
+
+  def getFFProbeOutput(resourceId: String): Future[Option[ProbeOutput]]
 
   def uploadResource(fileName: String, source: Source[ByteString, Any]): Future[Boolean]
 

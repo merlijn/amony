@@ -9,9 +9,19 @@ option (scalapb.options) = {
 
 package nl.amony.service.media.api;
 
+message UInt64Range {
+  required uint64 start = 1;
+  required uint64 end = 2;
+}
+
+message UInt32Range {
+  required uint32 start = 1;
+  required uint32 end = 2;
+}
+
 message Fragment {
   required string mediaId = 1;
-  required Range range = 2;
+  required UInt64Range range = 2;
   required MediaMeta meta = 3;
 }
 
@@ -34,11 +44,6 @@ message MediaInfo {
   required uint32 height = 3;
   required float fps = 4;
   required uint64 durationInMillis = 5;
-}
-
-message Range {
-  required uint64 start = 1;
-  required uint64 end = 2;
 }
 
 message MediaId {

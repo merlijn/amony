@@ -1,7 +1,5 @@
 package nl.amony.service.fragments
 
-import akka.actor.typed.ActorSystem
-import nl.amony.lib.akka.AkkaServiceModule
 import nl.amony.service.fragments.FragmentProtocol.Fragment
 import nl.amony.service.resources.ResourceConfig.FragmentSettings
 import scribe.Logging
@@ -36,7 +34,7 @@ class FragmentStore {
 }
 
 
-class FragmentService(system: ActorSystem[Nothing]) extends AkkaServiceModule(system) with Logging {
+class FragmentService() extends Logging {
 
   def getFragments(mediaId: String, userId: String): Future[List[Fragment]] = Future.successful(List.empty)
 

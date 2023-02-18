@@ -3,9 +3,11 @@ package nl.amony.service.resources.local
 import akka.actor.typed.ActorSystem
 import akka.stream.scaladsl.{Source, StreamRefs}
 import akka.util.ByteString
+import cats.data.{NonEmptyMap, OptionT}
 import cats.effect.unsafe.IORuntime
 import nl.amony.lib.akka.AkkaServiceModule
 import nl.amony.lib.ffmpeg.FFMpeg
+import nl.amony.lib.ffmpeg.tasks.FFProbeModel.ProbeOutput
 import nl.amony.lib.files.PathOps
 import nl.amony.service.resources.{IOResponse, ResourceBucket}
 import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
@@ -123,5 +125,15 @@ class LocalDirectoryBucket(system: ActorSystem[Nothing]) extends AkkaServiceModu
   override def getPreviewSpriteImage(mediaId: String): Future[Option[IOResponse]] = {
     val path = config.resourcePath.resolve(s"$mediaId-timeline.webp")
     Future.successful(LocalFileIOResponse.option(path))
+  }
+
+  override def getFFProbeOutput(resourceId: String): Future[Option[ProbeOutput]] = {
+
+    getFileInfo(resourceId).flatMap {
+      case None       => Future.successful(None)
+      case Some(info) =>
+        val path = config.mediaPath.resolve(info.relativePath)
+        FFMpeg.ffprobe(path, false).unsafeToFuture().map(Some(_))
+    }
   }
 }

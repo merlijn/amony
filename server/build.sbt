@@ -8,8 +8,8 @@ val excludeLog4j =
   ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl")
 
 val akkaVersion     = "2.7.0"
-val akkaHttpVersion = "10.2.9"
-val circeVersion    = "0.14.3"
+val akkaHttpVersion = "10.4.0"
+val circeVersion    = "0.14.4"
 
 val akka                     = "com.typesafe.akka"        %% "akka-actor-typed"           % akkaVersion
 val akkaPersistence          = "com.typesafe.akka"        %% "akka-persistence-typed"     % akkaVersion

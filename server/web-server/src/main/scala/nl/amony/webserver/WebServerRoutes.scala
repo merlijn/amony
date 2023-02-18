@@ -10,7 +10,7 @@ import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.fragments.FragmentService
 import nl.amony.service.media.MediaService
 import nl.amony.service.media.web.MediaRoutes
-import nl.amony.service.resources.ResourceRoutes
+import nl.amony.service.resources.{ResourceBucket, ResourceRoutes}
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 
@@ -25,8 +25,7 @@ object WebServerRoutes {
              userService: AuthService,
              mediaService: MediaService,
              searchService: SearchService,
-             fragmentService: FragmentService,
-             resourceService: LocalDirectoryBucket,
+             resourceBuckets: Map[String, ResourceBucket],
              config: AmonyConfig
     ): Route = {
     implicit val ec: ExecutionContext = system.executionContext
@@ -35,7 +34,7 @@ object WebServerRoutes {
     implicit val requestTimeout = Timeout(5.seconds)
 
     val identityRoutes = AuthRoutes(userService)
-    val resourceRoutes = ResourceRoutes(Map("local" -> resourceService), config.api.uploadSizeLimit.toBytes.toLong)
+    val resourceRoutes = ResourceRoutes(resourceBuckets, config.api.uploadSizeLimit.toBytes.toLong)
     val searchRoutes   = SearchRoutes(system, searchService, config.search, config.media.transcode)
     val mediaRoutes    = MediaRoutes(mediaService, config.media.transcode)
 
