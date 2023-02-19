@@ -1,12 +1,5 @@
 syntax = "proto2";
 
-import "google/protobuf/wrappers.proto";
-import "scalapb/scalapb.proto";
-
-option (scalapb.options) = {
-  flat_package: true
-};
-
 package nl.amony.service.media.api;
 
 message UInt64Range {

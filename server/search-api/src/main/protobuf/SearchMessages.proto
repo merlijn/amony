@@ -1,16 +1,11 @@
 syntax = "proto2";
 
 import "MediaMessages.proto";
-import "scalapb/scalapb.proto";
-
-option (scalapb.options) = {
-  preserve_unknown_fields: false
-};
 
 package nl.amony.service.search.api;
 
 message Query {
-  // The (optional) query. This is a constrained on the title.
+  // The (optional) query. This is a constraint on the title.
   optional string q = 1;
   // The maximum number of results to return.
   required int32 n = 2;

@@ -176,7 +176,7 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
       .map(row => row.eventType -> row.eventData)
       .take(max)
 
-  override def followPersistent(followId: String, fn: (String, E) => IO[Unit]): Unit = ???
+  override def processAtLeastOnce(processorId: String, fn: (String, E) => IO[Unit]): Unit = ???
 
 
 }

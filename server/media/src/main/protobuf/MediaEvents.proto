@@ -1,11 +1,6 @@
 syntax = "proto2";
 
 import "MediaMessages.proto";
-import "scalapb/scalapb.proto";
-
-option (scalapb.options) = {
-  preserve_unknown_fields: false
-};
 
 package nl.amony.service.media.api.events;
 

@@ -3,6 +3,10 @@ package nl.amony.lib.eventstore
 import cats.effect.IO
 import fs2.Stream
 
+sealed trait ProcessorEvent[E]
+
+//case class EntityDeleted(key: Key)
+
 trait EventStore[Key, S, E] {
 
   def index(): Stream[IO, Key]
@@ -15,7 +19,7 @@ trait EventStore[Key, S, E] {
 
   def follow(): Stream[IO, (Key, E)]
 
-  def followPersistent(followId: String, fn: (Key, E) => IO[Unit])
+  def processAtLeastOnce(processorId: String, processor: (Key, E) => IO[Unit])
 }
 
 trait PersistenceCodec[E] {
