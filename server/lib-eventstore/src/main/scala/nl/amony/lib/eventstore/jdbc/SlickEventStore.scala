@@ -186,12 +186,12 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
         _.map { row => row.entityId -> eventCodec.decode(row.eventType, row.eventData) }
       }
 
-  def lastProcessorSeqNr(processorId: String) = processorTable
+  def lastProcessedSeqNr(processorId: String) = processorTable
     .filter(_.processorId === processorId)
     .filter(_.entityType === entityType)
     .take(1).result.headOption.map {
-      case Some((_, _, c)) => c
-      case None            => 0L
+      case Some((_, _, c)) => Some(c)
+      case None            => None
     }
 
   def storeProcessorSeqNr(processorId: String, seqNr: Long) =
@@ -200,15 +200,21 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
   override def processAtLeastOnce(processorId: String, processorFn: (String, E) => Unit)(implicit runtime: IORuntime): Unit = {
 
     def processBatch(): IO[Int] =
-      dbIO(lastProcessorSeqNr(processorId).flatMap { seqNr =>
-        getEvents(seqNr).flatMap { events =>
+      dbIO(lastProcessedSeqNr(processorId)).flatMap { optionalSeqNr =>
+
+        val lastProcessedSeqNr: Long = optionalSeqNr.getOrElse(0)
+
+        dbIO(getEvents(lastProcessedSeqNr + 1)).flatMap { events =>
           events.foreach {
             case (id, e) => processorFn(id, e)
           }
 
-          storeProcessorSeqNr(processorId, seqNr + events.size)
+          if (events.isEmpty)
+            IO(0)
+          else
+            dbIO(storeProcessorSeqNr(processorId, lastProcessedSeqNr + events.size ))
         }
-      })
+      }
 
     def pollRecursive(): Stream[IO, Int] = {
       Stream.sleep[IO](pollInterval)
