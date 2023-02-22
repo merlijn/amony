@@ -5,21 +5,19 @@ import fs2.Stream
 
 sealed trait ProcessorEvent[E]
 
-//case class EntityDeleted(key: Key)
+trait EventStore[S, E] {
 
-trait EventStore[Key, S, E] {
+  def index(): Stream[IO, String]
 
-  def index(): Stream[IO, Key]
+  def getEvents(): Stream[IO, (String, E)]
 
-  def getEvents(): Stream[IO, (Key, E)]
+  def get(key: String): EventSourcedEntity[S, E]
 
-  def get(key: Key): EventSourcedEntity[S, E]
+  def delete(id: String): IO[Unit]
 
-  def delete(id: Key): IO[Unit]
+  def followTail(): Stream[IO, (String, E)]
 
-  def follow(): Stream[IO, (Key, E)]
-
-  def processAtLeastOnce(processorId: String, processor: (Key, E) => IO[Unit])
+  def processAtLeastOnce(processorId: String, processor: (String, E) => IO[Unit])
 }
 
 trait PersistenceCodec[E] {

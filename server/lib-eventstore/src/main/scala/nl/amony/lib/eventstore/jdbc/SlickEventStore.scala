@@ -17,7 +17,7 @@ case class EventRow(ord: Long,
                     eventType: String,
                     eventData: Array[Byte])
 
-class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbConfig: DatabaseConfig[P], eventSourceFn: (S, E) => S, initialState: S) extends EventStore[String, S, E] with Logging {
+class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbConfig: DatabaseConfig[P], eventSourceFn: (S, E) => S, initialState: S) extends EventStore[S, E] with Logging {
 
   import dbConfig.profile.api._
 
@@ -32,6 +32,7 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
     def serializerId = column[Long]("serializer_id")
     def eventType    = column[String]("type")
     def eventData    = column[Array[Byte]]("data")
+
     def pk           = primaryKey("primary_key", (id, sequenceNr))
 
     def            * = (ord, id, sequenceNr, timestamp, serializerId, eventType, eventData) <> (EventRow.tupled, EventRow.unapply)
@@ -46,8 +47,8 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
     def *            = (id, sequenceNr, data)
   }
 
-  private class Followers(tag: Tag) extends Table[(String, Long)](tag, "followers") {
-    def followerId   = column[String]("follower_id", O.PrimaryKey)
+  private class Processors(tag: Tag) extends Table[(String, Long)](tag, "followers") {
+    def followerId   = column[String]("processor_id", O.PrimaryKey)
     def sequenceNr   = column[Long]("sequence_nr")
     def *            = (followerId, sequenceNr)
   }
@@ -63,8 +64,7 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
   val db = dbConfig.db
 
   def databaseIO[T](a: slick.dbio.DBIOAction[T, NoStream, Nothing]): IO[T] =
-    IO.fromFuture(IO(db.run(a)))
-      .onError { t => IO { logger.warn(t) } }
+    IO.fromFuture(IO(db.run(a))).onError { t => IO { logger.warn(t) } }
 
   def createIfNotExists(): IO[Unit] = for {
     _ <- databaseIO(eventTable.schema.createIfNotExists)
@@ -91,15 +91,15 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
       .take(1)
 
   private def eventQuery(key: String, start: Long, max: Option[Long]) = {
-    val unlimited = eventTable
+    val events = eventTable
       .filter(_.id === key)
       .filter(_.sequenceNr >= start)
       .sortBy(_.sequenceNr.asc)
       .map(row => row.eventType -> row.eventData)
 
     max match {
-      case None => unlimited
-      case Some(n) => unlimited.take(n)
+      case None => events
+      case Some(n) => events.take(n)
     }
   }
 
@@ -112,7 +112,7 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
       def insertEntry(seqNr: Long, e: E) = {
 
         val (manifest, data) = eventCodec.encode(e)
-        logger.debug(s"Inserting entry ($seqNr): $e")
+//        logger.debug(s"Inserting entry ($seqNr): $e")
         eventTable += EventRow(0L, key, seqNr, System.currentTimeMillis(), eventCodec.getSerializerId(), manifest, data)
       }
 
@@ -167,7 +167,7 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
     databaseIO(deleteEntries) >> IO.unit
   }
 
-  override def follow(): Stream[IO, (String, E)] = ???
+  override def followTail(): Stream[IO, (String, E)] = ???
 
   private def followFrom(start: Long, max: Long) =
     eventTable
