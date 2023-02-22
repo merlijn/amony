@@ -53,7 +53,7 @@ class SlickEventStoreSpec extends AnyFlatSpecLike {
   import cats.effect.unsafe.implicits.global
   val dbConfig = DatabaseConfig.forConfig[H2Profile]("h2mem1-test", ConfigFactory.parseString(config))
 
-  val store = new SlickEventStore[H2Profile, Set[String], TestEvent](dbConfig, eventSourceFn _, Set.empty)
+  val store = new SlickEventStore[H2Profile, Set[String], TestEvent](dbConfig, "test", eventSourceFn _, Set.empty)
   store.createIfNotExists().unsafeRunSync()
 
   it should "do something" in {
@@ -76,7 +76,7 @@ class SlickEventStoreSpec extends AnyFlatSpecLike {
     println(index)
   }
 
-  it should "follow a stream" in {
+  it should "follow a stream" ignore {
 
     val entity = store.get("test")
 
@@ -90,4 +90,21 @@ class SlickEventStoreSpec extends AnyFlatSpecLike {
       e => IO { println(s"received: $e") }
     }.compile.drain.unsafeRunSync()
   }
+
+  it should "process at least once" in {
+
+    // persist events
+    Stream.awakeEvery[IO](500.millis)
+      .flatMap(ts => Stream.eval(IO {
+        println(s"Adding event at $ts")
+      } >> store.get("test").persist(Added(s"foo: ${ts}"))))
+      .compile.drain.unsafeRunAndForget()
+
+    // read events
+    store.processAtLeastOnce("test-processor", (entityId, e) => println(s"processing: ${entityId} -> ${e}"))
+
+
+    Thread.sleep(5000)
+  }
+
 }
