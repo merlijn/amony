@@ -8,6 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpecLike
 import slick.basic.DatabaseConfig
 import slick.jdbc.H2Profile
 
+import java.util.UUID
 import scala.concurrent.duration.DurationInt
 
 class SlickEventStoreSpec extends AnyFlatSpecLike {
@@ -97,7 +98,7 @@ class SlickEventStoreSpec extends AnyFlatSpecLike {
     Stream.awakeEvery[IO](500.millis)
       .flatMap(ts => Stream.eval(IO {
         println(s"Adding event at $ts")
-      } >> store.get("test").persist(Added(s"foo: ${ts}"))))
+      } >> store.get(UUID.randomUUID().toString).persist(Added(s"foo: ${ts}"))))
       .compile.drain.unsafeRunAndForget()
 
     // read events

@@ -10,7 +10,7 @@ import slick.jdbc.JdbcProfile
 
 import scala.concurrent.duration.DurationInt
 
-case class EventRow(ord: Long,
+case class EventRow(ord: Option[Long],
                     entityType: String,
                     entityId: String,
                     sequenceNr: Long,
@@ -38,7 +38,7 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
 
     def pk           = primaryKey("events_primary_key", (entityId, eventType, eventSeqNr))
 
-    def            * = (ord, entityId, entityType, eventSeqNr, timestamp, serializerId, eventType, eventData) <> (EventRow.tupled, EventRow.unapply)
+    def            * = (ord.?, entityType, entityId, eventSeqNr, timestamp, serializerId, eventType, eventData) <> (EventRow.tupled, EventRow.unapply)
   }
 
   private class Snapshots(tag: Tag) extends Table[(String, Long, Array[Byte])](tag, "events") {
@@ -119,8 +119,9 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
       def insertEntry(seqNr: Long, e: E) = {
 
         val (manifest, data) = eventCodec.encode(e)
+
 //        logger.debug(s"Inserting entry ($seqNr): $e")
-        eventTable += EventRow(0L, entityType, entityId, seqNr, System.currentTimeMillis(), eventCodec.getSerializerId(), manifest, data)
+        eventTable += EventRow(None, entityType, entityId, seqNr, System.currentTimeMillis(), eventCodec.getSerializerId(), manifest, data)
       }
 
       override def events(start: Long): Stream[IO, E] = {
@@ -212,17 +213,17 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
           if (events.isEmpty)
             IO(0)
           else
-            dbIO(storeProcessorSeqNr(processorId, lastProcessedSeqNr + events.size ))
+            dbIO(storeProcessorSeqNr(processorId, lastProcessedSeqNr + events.size))
         }
       }
 
-    def pollRecursive(): Stream[IO, Int] = {
+    def pollBatchRecursive(): Stream[IO, Int] = {
       Stream.sleep[IO](pollInterval)
         .flatMap(_ => Stream.eval(processBatch()))
-        .flatMap(_ => pollRecursive())
+        .flatMap(_ => pollBatchRecursive())
     }
 
-    pollRecursive().compile.drain.unsafeRunAndForget()
+    pollBatchRecursive().compile.drain.unsafeRunAndForget()
   }
 
   override def create(initialState: S): EventSourcedEntity[S, E] = ???
