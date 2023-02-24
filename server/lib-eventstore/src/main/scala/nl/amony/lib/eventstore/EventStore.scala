@@ -4,8 +4,6 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
 
-sealed trait ProcessorEvent[E]
-
 trait EventStore[S, E] {
 
   def index(): Stream[IO, String]
@@ -20,7 +18,7 @@ trait EventStore[S, E] {
 
   def followTail(): Stream[IO, (String, E)]
 
-  def processAtLeastOnce(processorId: String, processor: (String, E) => Unit)(implicit runtime: IORuntime)
+  def processAtLeastOnce(processorId: String, batchSize: Int = 100)(processor: (String, E) => Unit): Stream[IO, Int]
 }
 
 trait PersistenceCodec[E] {

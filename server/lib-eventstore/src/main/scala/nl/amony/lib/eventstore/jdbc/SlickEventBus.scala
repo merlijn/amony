@@ -7,6 +7,8 @@ class SlickEventTopic[E : PersistenceCodec](topicId: String) extends EventTopic[
   override def followTail(listener: E => Unit): Unit = ???
 
   override def processAtLeastOnce(processorName: String, processor: E => Unit): Unit = ???
+
+  override def publish(event: E): Unit = ???
 }
 
 class SlickEventBus {

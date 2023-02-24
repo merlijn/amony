@@ -5,13 +5,15 @@ import fs2.Stream
 import com.typesafe.config.ConfigFactory
 import nl.amony.lib.eventstore.{EventSourcedEntity, PersistenceCodec}
 import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
+import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.H2Profile
 
 import java.util.UUID
 import scala.concurrent.duration.DurationInt
 
-class SlickEventStoreSpec extends AnyFlatSpecLike {
+class SlickEventStoreSpec extends AnyFlatSpecLike with Logging {
 
   trait TestEvent
 
@@ -92,20 +94,30 @@ class SlickEventStoreSpec extends AnyFlatSpecLike {
     }.compile.drain.unsafeRunSync()
   }
 
-  it should "process at least once" in {
+  it should "process at least once and continue where it left off" in {
 
-    // persist events
-    Stream.awakeEvery[IO](500.millis)
-      .flatMap(ts => Stream.eval(IO {
-        println(s"Adding event at $ts")
-      } >> store.get(UUID.randomUUID().toString).persist(Added(s"foo: ${ts}"))))
-      .compile.drain.unsafeRunAndForget()
+    val processorId = "test-processor"
+
+    def insertEvents(n: Int) = {
+
+      val events = (1 to n).map { i =>
+        UUID.randomUUID().toString -> Added(s"${i}")
+      }
+
+      Stream.fromIterator[IO](events.iterator, 1).evalMap {
+        case (entityId, e) => store.get(entityId).persist(e)
+      }.compile.drain.unsafeRunSync()
+    }
+
+    insertEvents(10)
 
     // read events
-    store.processAtLeastOnce("test-processor", (entityId, e) => println(s"processing: ${entityId} -> ${e}"))
+    val processingStream =
+      store.processAtLeastOnce(processorId, 1)(
+        (entityId, e) => logger.info(s"processing: $entityId")
+      )
 
-
-    Thread.sleep(5000)
+    // take the first 5
+    processingStream.take(5).compile.last.unsafeRunSync()
   }
-
 }
