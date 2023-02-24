@@ -98,11 +98,9 @@ class SlickEventStoreSpec extends AnyFlatSpecLike with Logging {
 
     val processorId = "test-processor"
 
-    def insertEvents(n: Int) = {
+    def insertEvents(n: Int): Unit = {
 
-      val events = (1 to n).map { i =>
-        UUID.randomUUID().toString -> Added(s"${i}")
-      }
+      val events = (1 to n).map { i => UUID.randomUUID().toString -> Added(s"${i}") }
 
       Stream.fromIterator[IO](events.iterator, 1).evalMap {
         case (entityId, e) => store.get(entityId).persist(e)

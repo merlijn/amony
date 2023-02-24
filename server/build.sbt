@@ -157,7 +157,7 @@ lazy val identity =
 
 lazy val resources =
   module("resources")
-    .dependsOn(common, libFFMPeg)
+    .dependsOn(common, libFFMPeg, libEventStore)
     .settings(protobufSettings)
     .settings(
       name := "amony-service-resources",

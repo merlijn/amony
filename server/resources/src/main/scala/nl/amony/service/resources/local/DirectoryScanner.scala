@@ -24,6 +24,7 @@ object DirectoryScanner extends Logging {
                       size: Long,
                       creationTime: Long,
                       lastModifiedTime: Long) {
+
     def extension: String = relativePath.split('.').last
 
     def hasEqualMeta(other: LocalFile) = {

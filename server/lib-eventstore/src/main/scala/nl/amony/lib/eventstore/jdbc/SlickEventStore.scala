@@ -64,19 +64,20 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
 
   private val eventCodec = implicitly[PersistenceCodec[E]]
 
-  private val pollInterval = 200.millis
-  private val defaultBatchSize    = 1000
+  private val pollInterval     = 200.millis
+  private val defaultBatchSize = 1000
 
   val db = dbConfig.db
 
   def dbIO[T](a: slick.dbio.DBIOAction[T, NoStream, Nothing]): IO[T] =
     IO.fromFuture(IO(db.run(a))).onError { t => IO { logger.warn(t) } }
 
-  def createIfNotExists(): IO[Unit] = for {
-    _ <- dbIO(eventTable.schema.createIfNotExists)
-    _ <- dbIO(snapshotTable.schema.createIfNotExists)
-    _ <- dbIO(processorTable.schema.createIfNotExists)
-  } yield ()
+  def createIfNotExists(): IO[Unit] =
+    for {
+      _ <- dbIO(eventTable.schema.createIfNotExists)
+      _ <- dbIO(snapshotTable.schema.createIfNotExists)
+      _ <- dbIO(processorTable.schema.createIfNotExists)
+    } yield ()
 
   override def getEvents(): Stream[IO, (String, E)] = ???
 
@@ -91,22 +92,47 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
     result
   }
 
-  private def latestSeqNrQuery(key: String) =
-    eventTable
-      .filter(_.entityId === key)
-      .sortBy(_.eventSeqNr.desc)
-      .take(1)
+  private object queries {
 
-  private def eventQuery(entityId: String, start: Long, max: Option[Long]) = {
-    val events = eventTable
-      .filter(_.entityId === entityId)
-      .filter(_.eventSeqNr >= start)
-      .sortBy(_.eventSeqNr.asc)
-      .map(row => row.eventType -> row.eventData)
+    def latestSeqNrQuery(entityId: String) =
+      eventTable
+        .filter(_.entityId === entityId)
+        .sortBy(_.eventSeqNr.desc)
+        .take(1)
 
-    max match {
-      case None    => events
-      case Some(n) => events.take(n)
+    def getEvents(start: Long, max: Long = defaultBatchSize) =
+      eventTable
+        .filter(_.ord >= start)
+        .sortBy(_.ord.asc)
+        .take(max)
+        .result
+        .map {
+          _.map { row => row.entityId -> eventCodec.decode(row.eventType, row.eventData) }
+        }
+
+    def lastProcessedSeqNr(processorId: String) =
+      processorTable
+        .filter(_.processorId === processorId)
+        .filter(_.entityType === entityType)
+        .take(1).result.headOption.map {
+        case Some((_, _, c)) => Some(c)
+        case None => None
+      }
+
+    def storeProcessorSeqNr(processorId: String, seqNr: Long) =
+      processorTable.insertOrUpdate((processorId, entityType, seqNr))
+
+    def getEvents(entityId: String, start: Long, max: Option[Long]) = {
+      val events = eventTable
+        .filter(_.entityId === entityId)
+        .filter(_.eventSeqNr >= start)
+        .sortBy(_.eventSeqNr.asc)
+        .map(row => row.eventType -> row.eventData)
+
+      max match {
+        case None    => events
+        case Some(n) => events.take(n)
+      }
     }
   }
 
@@ -114,21 +140,16 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
     new EventSourcedEntity[S, E] {
 
       override def eventCount(): IO[Long] =
-        dbIO(latestSeqNrQuery(entityId).result).map(_.headOption.map(_.sequenceNr).getOrElse(0L))
+        dbIO(queries.latestSeqNrQuery(entityId).result).map(_.headOption.map(_.sequenceNr).getOrElse(0L))
 
       def insertEntry(seqNr: Long, e: E) = {
-
         val (manifest, data) = eventCodec.encode(e)
-
-//        logger.info(s"Inserting entry ($seqNr): $e")
         eventTable += EventRow(None, entityType, entityId, seqNr, System.currentTimeMillis(), eventCodec.getSerializerId(), manifest, data)
       }
 
       override def events(start: Long): Stream[IO, E] = {
-        val query = eventQuery(entityId, start, None).result
-
         Stream
-          .eval(dbIO(query))
+          .eval(dbIO(queries.getEvents(entityId, start, None).result))
           .flatMap(result => Stream.fromIterator[IO](result.iterator, 1))
           .map { case (manifest, data) => eventCodec.decode(manifest, data) }
       }
@@ -142,14 +163,14 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
           case Some((_, idx)) => start + idx + 1
         }.flatMap { lastSeq =>
           // this recursion is stack safe because IO.flatmap is stack safe
-          Stream.sleep[IO](pollInterval).flatMap(_ => followEvents(lastSeq))
+          Stream.sleep[IO](pollInterval) >> followEvents(lastSeq)
         }
       }
 
       override def persist(e: E): IO[S] = {
 
         val persistQuery = (for {
-          last  <- latestSeqNrQuery(entityId).result
+          last  <- queries.latestSeqNrQuery(entityId).result
           seqNr  = last.headOption.map(_.sequenceNr).getOrElse(-1L)
           _     <- insertEntry(seqNr + 1, e)
         } yield ()).transactionally
@@ -157,12 +178,10 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
         dbIO(persistQuery).map(_ => initialState)
       }
 
-      override def state(): IO[S] = {
-
+      override def state(): IO[S] =
         events()
           .compile
           .fold(initialState) { eventSourceFn }
-      }
 
       override def follow(start: Long): Stream[IO, (E, S)] = ???
 
@@ -177,39 +196,15 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
 
   override def followTail(): Stream[IO, (String, E)] = ???
 
-  private def getEvents(start: Long, max: Long = defaultBatchSize) =
-    eventTable
-      .filter(_.ord >= start)
-      .sortBy(_.ord.asc)
-      .take(max)
-      .result
-      .map {
-        _.map { row => row.entityId -> eventCodec.decode(row.eventType, row.eventData) }
-      }
-
-  object queries {
-    def lastProcessedSeqNr(processorId: String) =
-      processorTable
-        .filter(_.processorId === processorId)
-        .filter(_.entityType === entityType)
-        .take(1).result.headOption.map {
-        case Some((_, _, c)) => Some(c)
-        case None => None
-      }
-
-    def storeProcessorSeqNr(processorId: String, seqNr: Long) =
-      processorTable.insertOrUpdate((processorId, entityType, seqNr))
-  }
-
   override def processAtLeastOnce(processorId: String, batchSize: Int)(processorFn: (String, E) => Unit): Stream[IO, Int] = {
 
-    def processBatch(batchSize: Int): IO[Int] =
+    def processBatch(batchSize: Int): IO[Int] = {
 
       dbIO(queries.lastProcessedSeqNr(processorId)).flatMap { optionalSeqNr =>
 
         val lastProcessedSeqNr: Long = optionalSeqNr.getOrElse(0)
 
-        dbIO(getEvents(lastProcessedSeqNr + 1, batchSize)).flatMap { events =>
+        dbIO(queries.getEvents(lastProcessedSeqNr + 1, batchSize)).flatMap { events =>
           events.foreach { case (id, e) => processorFn(id, e) }
 
           if (events.isEmpty)
@@ -218,14 +213,10 @@ class SlickEventStore[P <: JdbcProfile, S, E : PersistenceCodec](private val dbC
             dbIO(queries.storeProcessorSeqNr(processorId, lastProcessedSeqNr + events.size))
         }
       }
-
-    def pollBatchRecursive(): Stream[IO, Int] = {
-
-      Stream.sleep[IO](pollInterval)
-        .flatMap(_ =>
-          Stream.eval(processBatch(batchSize)) ++ pollBatchRecursive()
-        )
     }
+
+    def pollBatchRecursive(): Stream[IO, Int] =
+      Stream.sleep[IO](pollInterval) >> Stream.eval(processBatch(batchSize)) ++ pollBatchRecursive()
 
     pollBatchRecursive()
   }
