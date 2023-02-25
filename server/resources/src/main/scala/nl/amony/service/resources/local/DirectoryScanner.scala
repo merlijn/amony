@@ -15,15 +15,16 @@ object DirectoryScanner extends Logging {
   sealed trait ResourceEvent
 
   case class ResourceAdded(resource: LocalFile) extends ResourceEvent
-  case class ResourceDeleted(hash: String, relativePath: String) extends ResourceEvent
-  case class ResourceMoved(hash: String, oldPath: String, newPath: String) extends ResourceEvent
+  case class ResourceDeleted(bucketId: String, hash: String, relativePath: String) extends ResourceEvent
+  case class ResourceMoved(bucketId: String, hash: String, oldPath: String, newPath: String) extends ResourceEvent
 
   case class LocalFile(
-                      relativePath: String,
-                      hash: String,
-                      size: Long,
-                      creationTime: Long,
-                      lastModifiedTime: Long) {
+      bucketId: String,
+      relativePath: String,
+      hash: String,
+      size: Long,
+      creationTime: Long,
+      lastModifiedTime: Long) {
 
     def extension: String = relativePath.split('.').last
 
@@ -33,7 +34,7 @@ object DirectoryScanner extends Logging {
     }
   }
 
-  def scanDirectory(config: LocalResourcesConfig, snapshot: Set[LocalFile]): Stream[IO, LocalFile] = {
+  def scanDirectory(config: LocalResourcesConfig, getByRelativePath: String => Option[LocalFile]): Stream[IO, LocalFile] = {
 
     val mediaPath = config.mediaPath
     val hashingAlgorithm = config.hashingAlgorithm
@@ -55,7 +56,7 @@ object DirectoryScanner extends Logging {
           val hash = if (config.verifyExistingHashes) {
             hashingAlgorithm.createHash(path)
           } else {
-            snapshot.find(_.relativePath == relativePath) match {
+            getByRelativePath(relativePath) match {
               case None => hashingAlgorithm.createHash(path)
               case Some(m) =>
                 if (m.lastModifiedTime != fileAttributes.lastModifiedTime().toMillis) {
@@ -67,14 +68,14 @@ object DirectoryScanner extends Logging {
             }
           }
 
-          LocalFile(relativePath, hash, fileAttributes.size(), fileAttributes.creationTime().toMillis, fileAttributes.lastModifiedTime().toMillis)
+          LocalFile(config.id, relativePath, hash, fileAttributes.size(), fileAttributes.creationTime().toMillis, fileAttributes.lastModifiedTime().toMillis)
         }
       }
   }
 
   def diff(config: LocalResourcesConfig, snapshot: Set[LocalFile])(implicit ioRuntime: IORuntime): List[ResourceEvent] = {
 
-    val scannedResources: Set[LocalFile] = scanDirectory(config, snapshot).compile.toList.unsafeRunSync().toSet
+    val scannedResources: Set[LocalFile] = scanDirectory(config, path => snapshot.find(_.relativePath == path)).compile.toList.unsafeRunSync().toSet
 
     val (colliding, nonColliding) = scannedResources
       .groupBy(_.hash)
@@ -96,7 +97,7 @@ object DirectoryScanner extends Logging {
     val deletedResources: List[ResourceDeleted] =
       snapshot
         .filterNot(r => scannedResources.exists(_.hash == r.hash))
-        .map(r => ResourceDeleted(r.hash, r.relativePath))
+        .map(r => ResourceDeleted(config.id, r.hash, r.relativePath))
         .toList
 
     val movedResources: List[ResourceMoved] =
@@ -107,7 +108,7 @@ object DirectoryScanner extends Logging {
         def equalHash(): Option[LocalFile] = scannedResources.find { n => old.relativePath != n.relativePath && old.hash == n.hash }
 
         // prefer the file with equal timestamp meta, otherwise fall back to just equal hash
-        equalMeta().orElse(equalHash()).map { n => ResourceMoved(n.hash, old.relativePath, n.relativePath) }
+        equalMeta().orElse(equalHash()).map { n => ResourceMoved(config.id, n.hash, old.relativePath, n.relativePath) }
 
       }.toList
 

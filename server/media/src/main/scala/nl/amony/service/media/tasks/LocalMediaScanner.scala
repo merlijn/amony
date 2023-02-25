@@ -34,23 +34,21 @@ class LocalMediaScanner(resourceBuckets: Map[String, ResourceBucket], mediaServi
 
   implicit val ioRuntime = IORuntime.global
 
-  val bucketId = "local"
-
   def processEvent(e: ResourceEvent): Unit = e match {
     case ResourceAdded(resource) =>
       logger.info(s"Start scanning new media: ${resource.relativePath}")
 
       ScanMedia
-        .scanMedia(resourceBuckets(bucketId), resource, bucketId)
+        .scanMedia(resourceBuckets(resource.bucketId), resource, resource.bucketId)
         .flatMap(media => IO.fromFuture(IO(mediaService.upsertMedia(media)))).unsafeRunSync()
 
       logger.info(s"Done scanning new media: ${resource.relativePath}")
 
-    case ResourceDeleted(hash, relativePath) =>
+    case ResourceDeleted(bucketId, hash, relativePath) =>
       logger.info(s"Media was deleted: $relativePath")
       mediaService.deleteMedia(hash, false)
 
-    case ResourceMoved(hash, oldPath, newPath) =>
+    case ResourceMoved(bucketId, hash, oldPath, newPath) =>
     // ignore for now, send rename command?
   }
 }

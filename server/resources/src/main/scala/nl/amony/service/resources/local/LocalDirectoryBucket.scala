@@ -58,8 +58,8 @@ class LocalDirectoryBucket(system: ActorSystem[Nothing]) extends ResourceBucket 
   // TODO think about replacing this with custom runtime
   implicit val runtime: IORuntime = IORuntime.global
 
-  def uploadResource(fileName: String, source: Source[ByteString, Any]): Future[Boolean] =
-    ask[LocalResourceCommand, Boolean](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref))
+  def uploadResource(fileName: String, source: Source[ByteString, Any]): Future[Boolean] = ???
+//    ask[LocalResourceCommand, Boolean](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref))
 
   override def getResource(resourceId: String, quality: Int): Future[Option[IOResponse]] =
     ask[LocalResourceCommand, Option[LocalFile]](ref => GetByHash(resourceId, ref))

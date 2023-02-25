@@ -1,22 +1,19 @@
 package nl.amony.webserver
 
-import akka.actor.ActorRef
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorSystem, Behavior}
 import akka.stream.Materializer
-import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import nl.amony.lib.config.ConfigHelper
 import nl.amony.search.InMemorySearchService
-import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
-import nl.amony.service.fragments.FragmentService
-import nl.amony.service.media.{MediaRepository, MediaService}
+import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
 import nl.amony.service.media.tasks.LocalMediaScanner
-import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalResourcesStore}
+import nl.amony.service.media.{MediaRepository, MediaService}
+import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalResourcesStore, LocalResourcesStoreNew}
 import scribe.Logging
 import slick.basic.DatabaseConfig
-import slick.jdbc.{H2Profile, HsqldbProfile, JdbcProfile}
+import slick.jdbc.HsqldbProfile
 
 import java.nio.file.{Files, Path}
 import scala.concurrent.Await
@@ -80,11 +77,13 @@ object Main extends ConfigLoader with Logging {
     val router: Behavior[Nothing]    = rootBehaviour(appConfig, mediaService)
     val system: ActorSystem[Nothing] = ActorSystem[Nothing](router, "mediaLibrary", config)
 
-    val authService: AuthService  = {
+    val authService: AuthService = {
       import pureconfig.generic.auto._
       val config = ConfigHelper.loadConfig[AuthConfig](system.settings.config, "amony.auth")
       new AuthServiceImpl(config)
     }
+
+    val newStore = new LocalResourcesStoreNew(appConfig.media, dbConfig)
 
 //    Thread.sleep(500)
 
