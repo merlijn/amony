@@ -1,0 +1,30 @@
+syntax = "proto2";
+
+message ResourceEvent {
+  oneof sealed_value {
+    ResourceAdded lit = 1;
+    ResourceDeleted add = 2;
+    ResourceMoved mul = 3;
+  }
+}
+
+message ResourceAdded {
+  required Resource resource = 1;
+}
+
+message ResourceDeleted {
+  required Resource resource = 2;
+}
+
+message ResourceMoved {
+  required Resource resource = 1;
+  required string oldPath = 2;
+}
+
+message Resource {
+  required string path = 1;
+  required string hash = 2;
+  required int64 size = 3;
+  optional int64 creationTime = 4;
+  optional int64 modifiedTime = 5;
+}

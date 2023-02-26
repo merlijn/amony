@@ -1,14 +1,10 @@
 package nl.amony.service.media.tasks
 
 import cats.effect.IO
-import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.service.media.api._
 import nl.amony.service.resources.ResourceBucket
 import nl.amony.service.resources.local.DirectoryScanner.LocalFile
 import scribe.Logging
-
-import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{Files, Path}
 
 object ScanMedia extends Logging {
 
@@ -64,6 +60,8 @@ object ScanMedia extends Logging {
           mediaInfo          = videoInfo,
           thumbnailTimestamp = timeStamp,
         )
+      }.onError {
+        e => IO { logger.warn("Exception while scanning media", e) }
       }
   }
 }

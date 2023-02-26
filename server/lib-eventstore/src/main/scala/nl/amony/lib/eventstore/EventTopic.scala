@@ -17,7 +17,7 @@ trait EventTopic[E] {
   def processAtLeastOnce(processorName: String, processor: E => Unit)
 }
 
-trait EventBus {
+trait PersistentEventBus {
 
   def getTopic[E : EventTopicKey]: EventTopic[E] = getTopicForKey[E](implicitly[EventTopicKey[E]])
 

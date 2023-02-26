@@ -10,7 +10,7 @@ import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
 import nl.amony.service.media.tasks.LocalMediaScanner
 import nl.amony.service.media.{MediaRepository, MediaService}
-import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalResourcesStore, LocalResourcesStoreNew}
+import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalResourcesStore, LocalDirectoryRepository}
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.HsqldbProfile
@@ -26,7 +26,7 @@ object Main extends ConfigLoader with Logging {
       implicit val mat = Materializer(context)
 
 //      DatabaseMigrations.run(context.system)
-      val resourceBuckets = Map("local" -> new LocalDirectoryBucket(context.system))
+      val resourceBuckets = Map(config.media.id -> new LocalDirectoryBucket(context.system))
 
       val _ = context.spawn(LocalResourcesStore.behavior(config.media), "local-files-store")
 
@@ -83,7 +83,7 @@ object Main extends ConfigLoader with Logging {
       new AuthServiceImpl(config)
     }
 
-    val newStore = new LocalResourcesStoreNew(appConfig.media, dbConfig)
+    val newStore = new LocalDirectoryRepository(appConfig.media, dbConfig)
 
 //    Thread.sleep(500)
 
@@ -103,7 +103,7 @@ object Main extends ConfigLoader with Logging {
       authService,
       mediaService,
       searchService,
-      Map("local" -> new LocalDirectoryBucket(system)),
+      Map(appConfig.media.id -> new LocalDirectoryBucket(system)),
       appConfig
     )
 

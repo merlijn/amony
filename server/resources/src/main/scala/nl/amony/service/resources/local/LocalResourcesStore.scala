@@ -1,13 +1,11 @@
 package nl.amony.service.resources.local
 
-import akka.NotUsed
 import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
 import akka.persistence.typed.{PersistenceId, RecoveryCompleted}
-import akka.stream.scaladsl.{Broadcast, GraphDSL, RunnableGraph, Sink, Source}
-import akka.stream.{ClosedShape, SystemMaterializer}
+import akka.stream.SystemMaterializer
 import cats.effect.unsafe.IORuntime
 import nl.amony.service.resources.ResourceConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
 import nl.amony.service.resources.local.DirectoryScanner._
@@ -26,24 +24,10 @@ object LocalResourcesStore extends Logging {
     implicit val serviceKey = ServiceKey[LocalResourceCommand]("local-resources-store")
   }
 
-  def broadcast[T, A, B](s: Source[T, NotUsed], a: Sink[T, A], b: Sink[T, B]): RunnableGraph[(A, B)] =
-    RunnableGraph.fromGraph(GraphDSL.createGraph(a, b)((_, _)) { implicit builder =>
-      (a, b) =>
-        import GraphDSL.Implicits._
-        val broadcast = builder.add(Broadcast[T](2))
-        s ~> broadcast.in
-        broadcast ~> a.in
-        broadcast ~> b.in
-        ClosedShape
-    })
-
-
   case class GetByHash(hash: String, sender: ActorRef[Option[LocalFile]]) extends LocalResourceCommand
   case class GetAll(sender: ActorRef[Set[LocalFile]]) extends LocalResourceCommand
   case class FullScan(sender: ActorRef[Set[LocalFile]]) extends LocalResourceCommand
   case class DeleteFileByHash(hash: String, sender: ActorRef[Boolean]) extends LocalResourceCommand
-
-  private case class UploadCompleted(relativePath: String, hash: String, originalSender: ActorRef[Boolean]) extends LocalResourceCommand
 
   private def setupAndRegister[T: ServiceKey](factory: ActorContext[T] => Behavior[T]): Behavior[T] =
     Behaviors.setup { context =>
@@ -68,7 +52,6 @@ object LocalResourcesStore extends Logging {
           context.self ! FullScan(context.system.ignoreRef)
       }
     }
-
 
   def eventSource(state: Set[LocalFile], e: ResourceEvent): Set[LocalFile] = e match {
     case ResourceAdded(resource) =>

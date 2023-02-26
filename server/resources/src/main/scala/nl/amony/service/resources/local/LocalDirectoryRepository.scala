@@ -10,7 +10,7 @@ import fs2.Stream
 
 import scala.concurrent.duration.DurationInt
 
-class LocalResourcesStoreNew[P <: JdbcProfile](
+class LocalDirectoryRepository[P <: JdbcProfile](
    config: LocalResourcesConfig,
 //   topic: EventTopic[ResourceEvent],
    private val dbConfig: DatabaseConfig[P]) extends Logging {
@@ -40,7 +40,7 @@ class LocalResourcesStoreNew[P <: JdbcProfile](
   private val files = TableQuery[LocalFiles]
   val db = dbConfig.db
 
-  dbIO(files.schema.createIfNotExists).unsafeRunSync()
+  try { dbIO(files.schema.createIfNotExists).unsafeRunSync() }
 
   Stream
     .fixedDelay[IO](5.seconds)
@@ -54,10 +54,11 @@ class LocalResourcesStoreNew[P <: JdbcProfile](
         .filter(_.hash === hash)
         .delete
 
-    def delete(relativePath: String) = files
-      .filter(_.directoryId === config.id)
-      .filter(_.relativePath === relativePath)
-      .delete
+    def delete(relativePath: String) =
+      files
+        .filter(_.directoryId === config.id)
+        .filter(_.relativePath === relativePath)
+        .delete
 
     def insert(resource: LocalFile) =
       files.insertOrUpdate(resource)

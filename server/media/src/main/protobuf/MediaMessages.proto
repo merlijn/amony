@@ -1,6 +1,7 @@
 syntax = "proto2";
 
 package nl.amony.service.media.api;
+import "scalapb/scalapb.proto";
 
 message UInt64Range {
   required uint64 start = 1;
@@ -26,6 +27,7 @@ message ResourceInfo {
 }
 
 message MediaMeta {
+  option (scalapb.message).annotations = '@nl.amony.lib.EventId(id = "media_meta")';
   optional string title = 1;
   optional string comment = 2;
   repeated string tags = 3;

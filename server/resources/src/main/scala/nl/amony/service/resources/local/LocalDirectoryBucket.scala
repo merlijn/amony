@@ -14,7 +14,8 @@ import nl.amony.lib.files.PathOps
 import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
 import nl.amony.service.resources.local.DirectoryScanner.LocalFile
 import nl.amony.service.resources.local.LocalResourcesStore._
-import nl.amony.service.resources.{IOResponse, ResourceBucket}
+import nl.amony.service.resources.{IOResponse, LocalFileIOResponse, ResourceBucket}
+import scribe.Logging
 
 import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
@@ -30,7 +31,7 @@ case class FragmentKey(resourceId: String, range: (Long, Long), quality: Int) ex
   def path: String = s"${resourceId}-${range._1}-${range._2}_${quality}p.mp4"
 }
 
-class LocalDirectoryBucket(system: ActorSystem[Nothing]) extends ResourceBucket {
+class LocalDirectoryBucket(system: ActorSystem[Nothing]) extends ResourceBucket with Logging {
 
   import pureconfig.generic.auto._
   val config = ConfigHelper.loadConfig[LocalResourcesConfig](system.settings.config, "amony.media")
@@ -63,14 +64,14 @@ class LocalDirectoryBucket(system: ActorSystem[Nothing]) extends ResourceBucket 
 
   override def getResource(resourceId: String, quality: Int): Future[Option[IOResponse]] =
     ask[LocalResourceCommand, Option[LocalFile]](ref => GetByHash(resourceId, ref))
-      .map(_.flatMap(f => LocalFileIOResponse.option(config.mediaPath.resolve(f.relativePath))))
+      .map(_.flatMap(f => IOResponse.fromPath(config.mediaPath.resolve(f.relativePath))))
 
   override def getVideoFragment(resourceId: String, start: Long, end: Long, quality: Int): Future[Option[IOResponse]] = {
 
     val key = FragmentKey(resourceId, (start, end), quality)
     val path = resourceStore.compute(key, (_, value) => getOrCreateVideoFragment(key))
 
-    Future.successful(LocalFileIOResponse.option(path))
+    Future.successful(IOResponse.fromPath(path))
   }
 
   private def getFileInfo(resourceId: String): Future[Option[LocalFile]] =
@@ -125,7 +126,7 @@ class LocalDirectoryBucket(system: ActorSystem[Nothing]) extends ResourceBucket 
     val key = ThumbnailKey(resourceId, timestamp, quality)
     val path = resourceStore.compute(key, (_, value) => getOrCreateThumbnail(key))
 
-    Future.successful(LocalFileIOResponse.option(path))
+    Future.successful(IOResponse.fromPath(path))
   }
 
   override def getPreviewSpriteVtt(resourceId: String): Future[Option[String]] = {
@@ -143,11 +144,12 @@ class LocalDirectoryBucket(system: ActorSystem[Nothing]) extends ResourceBucket 
 
   override def getPreviewSpriteImage(mediaId: String): Future[Option[IOResponse]] = {
     val path = config.resourcePath.resolve(s"$mediaId-timeline.webp")
-    Future.successful(LocalFileIOResponse.option(path))
+    Future.successful(IOResponse.fromPath(path))
   }
 
   override def getFFProbeOutput(resourceId: String): Future[Option[ProbeOutput]] = {
 
+    logger.info("fooo--")
     getFileInfo(resourceId).flatMap {
       case None       => Future.successful(None)
       case Some(info) =>
