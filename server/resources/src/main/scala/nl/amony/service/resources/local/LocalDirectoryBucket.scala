@@ -12,7 +12,7 @@ import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.ffmpeg.tasks.FFProbeModel.ProbeOutput
 import nl.amony.lib.files.PathOps
 import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
-import nl.amony.service.resources.local.DirectoryScanner.LocalFile
+import nl.amony.service.resources.events.Resource
 import nl.amony.service.resources.local.LocalResourcesStore._
 import nl.amony.service.resources.{IOResponse, LocalFileIOResponse, ResourceBucket}
 import scribe.Logging
@@ -63,8 +63,8 @@ class LocalDirectoryBucket(system: ActorSystem[Nothing]) extends ResourceBucket 
 //    ask[LocalResourceCommand, Boolean](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref))
 
   override def getResource(resourceId: String, quality: Int): Future[Option[IOResponse]] =
-    ask[LocalResourceCommand, Option[LocalFile]](ref => GetByHash(resourceId, ref))
-      .map(_.flatMap(f => IOResponse.fromPath(config.mediaPath.resolve(f.relativePath))))
+    ask[LocalResourceCommand, Option[Resource]](ref => GetByHash(resourceId, ref))
+      .map(_.flatMap(f => IOResponse.fromPath(config.mediaPath.resolve(f.path))))
 
   override def getVideoFragment(resourceId: String, start: Long, end: Long, quality: Int): Future[Option[IOResponse]] = {
 
@@ -74,8 +74,8 @@ class LocalDirectoryBucket(system: ActorSystem[Nothing]) extends ResourceBucket 
     Future.successful(IOResponse.fromPath(path))
   }
 
-  private def getFileInfo(resourceId: String): Future[Option[LocalFile]] =
-    ask[LocalResourceCommand, Option[LocalFile]](ref => GetByHash(resourceId, ref))
+  private def getFileInfo(resourceId: String): Future[Option[Resource]] =
+    ask[LocalResourceCommand, Option[Resource]](ref => GetByHash(resourceId, ref))
 
   private def getOrCreateVideoFragment(key: FragmentKey): Path = {
 
@@ -88,7 +88,7 @@ class LocalDirectoryBucket(system: ActorSystem[Nothing]) extends ResourceBucket 
 
       resourceInfo.foreach { info =>
         FFMpeg.transcodeToMp4(
-          inputFile   = config.mediaPath.resolve(info.relativePath),
+          inputFile   = config.mediaPath.resolve(info.path),
           range       = key.range,
           crf         = 23,
           scaleHeight = Some(key.quality),
@@ -110,7 +110,7 @@ class LocalDirectoryBucket(system: ActorSystem[Nothing]) extends ResourceBucket 
 
       resourceInfo.foreach { info =>
         FFMpeg.createThumbnail(
-          inputFile   = config.mediaPath.resolve(info.relativePath),
+          inputFile   = config.mediaPath.resolve(info.path),
           timestamp   = key.timestamp,
           outputFile  = Some(thumbnailPath),
           scaleHeight = Some(key.quality)
@@ -153,7 +153,7 @@ class LocalDirectoryBucket(system: ActorSystem[Nothing]) extends ResourceBucket 
     getFileInfo(resourceId).flatMap {
       case None       => Future.successful(None)
       case Some(info) =>
-        val path = config.mediaPath.resolve(info.relativePath)
+        val path = config.mediaPath.resolve(info.path)
         FFMpeg.ffprobe(path, false).unsafeToFuture().map(Some(_))
     }
   }

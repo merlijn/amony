@@ -9,11 +9,10 @@ import nl.amony.lib.akka.EventProcessing.ProcessEventCmd
 import nl.amony.service.media.MediaService
 import nl.amony.service.resources.ResourceBucket
 import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
-import nl.amony.service.resources.local.DirectoryScanner.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved}
+import nl.amony.service.resources.events.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved}
 import nl.amony.service.resources.local.LocalResourcesStore
 import scribe.Logging
 
-import java.nio.file.Path
 
 object LocalMediaScanner  {
 
@@ -36,7 +35,7 @@ class LocalMediaScanner(resourceBuckets: Map[String, ResourceBucket], mediaServi
 
   def processEvent(e: ResourceEvent): Unit = e match {
     case ResourceAdded(resource) =>
-      logger.info(s"Start scanning new media: ${resource.relativePath}")
+      logger.info(s"Start scanning new media: ${resource.path}")
 
 //      logger.info(s"id: ${resource.bucketId}")
 //      logger.info(s"resouce: ${resourceBuckets.keys.mkString(",")}")
@@ -47,11 +46,11 @@ class LocalMediaScanner(resourceBuckets: Map[String, ResourceBucket], mediaServi
 
 //      logger.info(s"Done scanning new media: ${resource.relativePath}")
 
-    case ResourceDeleted(bucketId, hash, relativePath) =>
-      logger.info(s"Media was deleted: $relativePath")
-      mediaService.deleteMedia(hash, false)
+    case ResourceDeleted(resource) =>
+      logger.info(s"Media was deleted: ${resource.hash}")
+      mediaService.deleteMedia(resource.hash, false)
 
-    case ResourceMoved(bucketId, hash, oldPath, newPath) =>
+    case ResourceMoved(resource, oldPath) =>
     // ignore for now, send rename command?
   }
 }

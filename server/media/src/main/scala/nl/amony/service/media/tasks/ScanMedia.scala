@@ -3,36 +3,36 @@ package nl.amony.service.media.tasks
 import cats.effect.IO
 import nl.amony.service.media.api._
 import nl.amony.service.resources.ResourceBucket
-import nl.amony.service.resources.local.DirectoryScanner.LocalFile
+import nl.amony.service.resources.events.Resource
 import scribe.Logging
 
 object ScanMedia extends Logging {
 
   def scanMedia(
        resourceBucket: ResourceBucket,
-       resource: LocalFile,
+       resource: Resource,
        bucketId: String): IO[Media] = {
 
     IO.fromFuture(IO(resourceBucket.getFFProbeOutput(resource.hash)))
       .map {
-        case None        => throw new IllegalStateException(s"Resource does not exist: ${resource.relativePath}")
+        case None        => throw new IllegalStateException(s"Resource does not exist: ${resource.path}")
         case Some(probe) =>
 
         val mainVideoStream =
-          probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${resource.relativePath}"))
+          probe.firstVideoStream.getOrElse(throw new IllegalStateException(s"No video stream found for: ${resource.path}"))
 
         logger.debug(mainVideoStream.toString)
 
         probe.debugOutput.foreach { debug =>
           if (!debug.isFastStart)
-            logger.warn(s"Video is not optimized for streaming: ${resource.relativePath}")
+            logger.warn(s"Video is not optimized for streaming: ${resource.path}")
         }
 
         val timeStamp = mainVideoStream.durationMillis / 3
 
         val fileInfo = ResourceInfo(
           bucketId         = bucketId,
-          relativePath     = resource.relativePath,
+          relativePath     = resource.path,
           hash             = resource.hash,
           sizeInBytes      = resource.size,
         )

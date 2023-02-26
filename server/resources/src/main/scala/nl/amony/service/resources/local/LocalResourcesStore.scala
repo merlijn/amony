@@ -8,7 +8,7 @@ import akka.persistence.typed.{PersistenceId, RecoveryCompleted}
 import akka.stream.SystemMaterializer
 import cats.effect.unsafe.IORuntime
 import nl.amony.service.resources.ResourceConfig.{DeleteFile, LocalResourcesConfig, MoveToTrash}
-import nl.amony.service.resources.local.DirectoryScanner._
+import nl.amony.service.resources.events._
 import scribe.Logging
 
 import java.awt.Desktop
@@ -24,9 +24,9 @@ object LocalResourcesStore extends Logging {
     implicit val serviceKey = ServiceKey[LocalResourceCommand]("local-resources-store")
   }
 
-  case class GetByHash(hash: String, sender: ActorRef[Option[LocalFile]]) extends LocalResourceCommand
-  case class GetAll(sender: ActorRef[Set[LocalFile]]) extends LocalResourceCommand
-  case class FullScan(sender: ActorRef[Set[LocalFile]]) extends LocalResourceCommand
+  case class GetByHash(hash: String, sender: ActorRef[Option[Resource]]) extends LocalResourceCommand
+  case class GetAll(sender: ActorRef[Set[Resource]]) extends LocalResourceCommand
+  case class FullScan(sender: ActorRef[Set[Resource]]) extends LocalResourceCommand
   case class DeleteFileByHash(hash: String, sender: ActorRef[Boolean]) extends LocalResourceCommand
 
   private def setupAndRegister[T: ServiceKey](factory: ActorContext[T] => Behavior[T]): Behavior[T] =
@@ -41,9 +41,9 @@ object LocalResourcesStore extends Logging {
       implicit val ec = context.executionContext
       implicit val sc = context.system.scheduler
 
-      EventSourcedBehavior[LocalResourceCommand, ResourceEvent, Set[LocalFile]](
+      EventSourcedBehavior[LocalResourceCommand, ResourceEvent, Set[Resource]](
         persistenceId  = PersistenceId.ofUniqueId(persistenceId(config.id)),
-        emptyState     = Set.empty[LocalFile],
+        emptyState     = Set.empty[Resource],
         commandHandler = commandHandler(config, context),
         eventHandler   = eventSource
       ).receiveSignal {
@@ -53,17 +53,17 @@ object LocalResourcesStore extends Logging {
       }
     }
 
-  def eventSource(state: Set[LocalFile], e: ResourceEvent): Set[LocalFile] = e match {
+  def eventSource(state: Set[Resource], e: ResourceEvent): Set[Resource] = e match {
     case ResourceAdded(resource) =>
       state + resource
-    case ResourceDeleted(_, hash, relativePath) =>
-      state -- state.find(r => r.relativePath == relativePath && r.hash == hash)
-    case ResourceMoved(_, hash, oldPath, newPath) =>
-      val old = state.find(r => r.relativePath == oldPath && r.hash == hash)
-      state -- old ++ old.map(_.copy(relativePath = newPath))
+    case ResourceDeleted(resource) =>
+      state -- state.find(r => r.path == resource.path && r.hash == resource.hash)
+    case ResourceMoved(resource, oldPath) =>
+      val old = state.find(r => r.path == oldPath && r.hash == resource.hash)
+      state -- old + resource
   }
 
-  def commandHandler(config: LocalResourcesConfig, context: ActorContext[LocalResourceCommand])(state: Set[LocalFile], cmd: LocalResourceCommand): Effect[ResourceEvent, Set[LocalFile]] = {
+  def commandHandler(config: LocalResourcesConfig, context: ActorContext[LocalResourceCommand])(state: Set[Resource], cmd: LocalResourceCommand): Effect[ResourceEvent, Set[Resource]] = {
 
     implicit val runtime = IORuntime.global
     implicit val mat = SystemMaterializer.get(context.system).materializer
@@ -83,13 +83,13 @@ object LocalResourcesStore extends Logging {
 
         Effect
           .persist(events)
-          .thenReply[Set[LocalFile]](sender)(state => state)
+          .thenReply[Set[Resource]](sender)(state => state)
 
       case DeleteFileByHash(hash, sender) =>
 
         val deleted = state.find(_.hash == hash).map { file =>
 
-          val path = config.mediaPath.resolve(file.relativePath)
+          val path = config.mediaPath.resolve(file.path)
 
           if (Files.exists(path)) {
             config.deleteMedia match {
@@ -98,7 +98,7 @@ object LocalResourcesStore extends Logging {
             }
           };
 
-          ResourceDeleted(config.id, hash, file.relativePath)
+          ResourceDeleted(file)
         }
 
         deleted match {

@@ -5,6 +5,7 @@ import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import nl.amony.lib.files.FileUtil
 import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
+import nl.amony.service.resources.events.{Resource, ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved}
 import scribe.Logging
 
 import java.nio.file.Files
@@ -12,29 +13,7 @@ import java.nio.file.attribute.BasicFileAttributes
 
 object DirectoryScanner extends Logging {
 
-  sealed trait ResourceEvent
-
-  case class ResourceAdded(resource: LocalFile) extends ResourceEvent
-  case class ResourceDeleted(bucketId: String, hash: String, relativePath: String) extends ResourceEvent
-  case class ResourceMoved(bucketId: String, hash: String, oldPath: String, newPath: String) extends ResourceEvent
-
-  case class LocalFile(
-      bucketId: String,
-      relativePath: String,
-      hash: String,
-      size: Long,
-      creationTime: Long,
-      lastModifiedTime: Long) {
-
-    def extension: String = relativePath.split('.').last
-
-    def hasEqualMeta(other: LocalFile) = {
-      // this depends on file system meta data and the fact that a file move does not update these attributes
-      hash == other.hash && creationTime == other.creationTime && lastModifiedTime == other.lastModifiedTime
-    }
-  }
-
-  def scanDirectory(config: LocalResourcesConfig, getByRelativePath: String => Option[LocalFile]): Stream[IO, LocalFile] = {
+  def scanDirectory(config: LocalResourcesConfig, cache: String => Option[Resource]): Stream[IO, Resource] = {
 
     val mediaPath = config.mediaPath
     val hashingAlgorithm = config.hashingAlgorithm
@@ -56,10 +35,10 @@ object DirectoryScanner extends Logging {
           val hash = if (config.verifyExistingHashes) {
             hashingAlgorithm.createHash(path)
           } else {
-            getByRelativePath(relativePath) match {
+            cache(relativePath) match {
               case None => hashingAlgorithm.createHash(path)
               case Some(m) =>
-                if (m.lastModifiedTime != fileAttributes.lastModifiedTime().toMillis) {
+                if (m.modifiedTime != Some(fileAttributes.lastModifiedTime().toMillis)) {
                   logger.warn(s"$path last modified time is different from what last seen, recomputing hash")
                   hashingAlgorithm.createHash(path)
                 } else {
@@ -68,21 +47,26 @@ object DirectoryScanner extends Logging {
             }
           }
 
-          LocalFile(config.id, relativePath, hash, fileAttributes.size(), fileAttributes.creationTime().toMillis, fileAttributes.lastModifiedTime().toMillis)
+          Resource(config.id, relativePath, hash, fileAttributes.size(), Some(fileAttributes.creationTime().toMillis), Some(fileAttributes.lastModifiedTime().toMillis))
         }
       }
   }
 
-  def diff(config: LocalResourcesConfig, snapshot: Set[LocalFile])(implicit ioRuntime: IORuntime): List[ResourceEvent] = {
+  def hasEqualMeta(a: Resource, b: Resource) = {
+    // this depends on file system meta data and the fact that a file move does not update these attributes
+    a.hash == b.hash && a.creationTime == b.creationTime && a.modifiedTime == b.modifiedTime
+  }
 
-    val scannedResources: Set[LocalFile] = scanDirectory(config, path => snapshot.find(_.relativePath == path)).compile.toList.unsafeRunSync().toSet
+  def diff(config: LocalResourcesConfig, snapshot: Set[Resource])(implicit ioRuntime: IORuntime): List[ResourceEvent] = {
+
+    val scannedResources: Set[Resource] = scanDirectory(config, path => snapshot.find(_.path == path)).compile.toList.unsafeRunSync().toSet
 
     val (colliding, nonColliding) = scannedResources
       .groupBy(_.hash)
       .partition { case (_, files) => files.size > 1 }
 
     colliding.foreach { case (hash, files) =>
-      val collidingFiles = files.map(_.relativePath).mkString("\n")
+      val collidingFiles = files.map(_.path).mkString("\n")
       logger.warn(s"The following files share the same hash and will be ignored ($hash):\n$collidingFiles")
     }
 
@@ -97,24 +81,25 @@ object DirectoryScanner extends Logging {
     val deletedResources: List[ResourceDeleted] =
       snapshot
         .filterNot(r => scannedResources.exists(_.hash == r.hash))
-        .map(r => ResourceDeleted(config.id, r.hash, r.relativePath))
+        .map(r => ResourceDeleted(r))
         .toList
 
     val movedResources: List[ResourceMoved] =
       snapshot.flatMap { old =>
 
-        def equalMeta(): Option[LocalFile] = scannedResources.find { n => old.relativePath != n.relativePath && old.hasEqualMeta(n) }
+        // TODO there are some edge cases where this does not work
 
-        def equalHash(): Option[LocalFile] = scannedResources.find { n => old.relativePath != n.relativePath && old.hash == n.hash }
+        def equalMeta(): Option[Resource] = scannedResources.find { current => old.path != current.path && hasEqualMeta(current, old) }
+        def equalHash(): Option[Resource] = scannedResources.find { current => old.path != current.path && old.hash == current.hash }
 
         // prefer the file with equal timestamp meta, otherwise fall back to just equal hash
-        equalMeta().orElse(equalHash()).map { n => ResourceMoved(config.id, n.hash, old.relativePath, n.relativePath) }
+        equalMeta().orElse(equalHash()).map { n => ResourceMoved(old.copy(path = n.path), old.path) }
 
       }.toList
 
-    newResources.foreach(e => logger.info(s"new file: ${e.resource.relativePath}"))
-    deletedResources.foreach(e => logger.info(s"deleted file: ${e.relativePath}"))
-    movedResources.foreach(e => logger.info(s"moved file: ${e.oldPath} -> ${e.newPath}"))
+    newResources.foreach(e => logger.info(s"new file: ${e.resource.path}"))
+    deletedResources.foreach(e => logger.info(s"deleted file: ${e.resource.path}"))
+    movedResources.foreach(e => logger.info(s"moved file: ${e.oldPath} -> ${e.resource.path}"))
 
     newResources ::: deletedResources ::: movedResources
   }

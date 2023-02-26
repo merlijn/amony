@@ -166,7 +166,7 @@ lazy val resources =
         akkaHttp, akkaHttpCirce, circe, circeGeneric,
         scalaTest,
         slick,
-        scalaPbRuntimeGrcp
+        scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf
       )
     )
 
