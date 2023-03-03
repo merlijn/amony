@@ -59,6 +59,7 @@ val levelDbJndiAll           = "org.fusesource.leveldbjni" % "leveldbjni-all"   
 
 val scalaPbRuntimeGrcp       = "com.thesamet.scalapb"     %% "scalapb-runtime-grpc"       % scalapb.compiler.Version.scalapbVersion
 val scalaPbRuntimeProtobuf   = "com.thesamet.scalapb"     %% "scalapb-runtime"            % scalapb.compiler.Version.scalapbVersion % "protobuf"
+val scalaPbRuntime           = "com.thesamet.scalapb"     %% "scalapb-runtime"            % scalapb.compiler.Version.scalapbVersion
 
 
 val javaOpts = Nil
@@ -136,6 +137,7 @@ lazy val libEventStore =
         fs2Core,
         slick,
         scalaTest,
+        scalaPbRuntime,
         slickHikariCp % "test",
         h2DB % "test"
       )

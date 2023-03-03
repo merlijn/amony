@@ -5,12 +5,15 @@ import akka.actor.typed.{ActorSystem, Behavior}
 import akka.stream.Materializer
 import com.typesafe.config.ConfigFactory
 import nl.amony.lib.config.ConfigHelper
+import nl.amony.lib.eventbus.{EventTopicKey, PersistenceCodec}
+import nl.amony.lib.eventbus.jdbc.SlickEventBus
 import nl.amony.search.InMemorySearchService
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
 import nl.amony.service.media.tasks.LocalMediaScanner
 import nl.amony.service.media.{MediaRepository, MediaService}
-import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalResourcesStore, LocalDirectoryRepository}
+import nl.amony.service.resources.events.{ResourceEvent, ResourceEventMessage}
+import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalDirectoryRepository, LocalResourcesStore}
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.HsqldbProfile
@@ -82,6 +85,10 @@ object Main extends ConfigLoader with Logging {
       val config = ConfigHelper.loadConfig[AuthConfig](system.settings.config, "amony.auth")
       new AuthServiceImpl(config)
     }
+
+    val eventBus = new SlickEventBus(dbConfig)
+    import scalapb.{GeneratedMessage, GeneratedMessageCompanion}
+    val topic = eventBus.getTopicForKey(EventTopicKey[ResourceEvent]("resource_events")(PersistenceCodec.scalaPBPersistenceCodec[ResourceEventMessage]))
 
     val newStore = new LocalDirectoryRepository(appConfig.media, dbConfig)
 

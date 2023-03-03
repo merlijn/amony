@@ -6,13 +6,14 @@ import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
 import fs2.Stream
-import nl.amony.service.resources.events.{Resource, ResourceAdded, ResourceDeleted, ResourceMoved}
+import nl.amony.lib.eventbus.EventTopic
+import nl.amony.service.resources.events.{Resource, ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved}
 
 import scala.concurrent.duration.DurationInt
 
 class LocalDirectoryRepository[P <: JdbcProfile](
    config: LocalResourcesConfig,
-//   topic: EventTopic[ResourceEvent],
+   topic: EventTopic[ResourceEvent],
    private val dbConfig: DatabaseConfig[P]) extends Logging {
 
   import dbConfig.profile.api._
@@ -71,21 +72,23 @@ class LocalDirectoryRepository[P <: JdbcProfile](
 
   def sync(): Unit =
     DirectoryScanner.diff(config, getAll().unsafeRunSync()).map {
-      case ResourceAdded(resource)               =>
+      case e @ ResourceAdded(resource)               =>
         logger.info(s"File added: ${resource.path}")
         dbIO(files.insertOrUpdate(resource)).unsafeRunSync()
-      case ResourceDeleted(resource)   =>
+        topic.publish(e)
+      case e @ ResourceDeleted(resource)   =>
         logger.info(s"File deleted: ${resource.path}")
         dbIO(queries.delete(resource.path)).unsafeRunSync()
-      case ResourceMoved(resource, oldPath) =>
+        topic.publish(e)
+      case e @ ResourceMoved(resource, oldPath) =>
         logger.info(s"File moved: ${oldPath} -> ${resource.path}")
         val transaction = (for {
-          original <- queries.getByPath(oldPath)
           _        <- queries.insert(resource)
           _        <- queries.delete(oldPath)
         } yield ()).transactionally
 
         dbIO(transaction).unsafeRunSync()
+        topic.publish(e)
     }
 
   def getAll(): IO[Set[Resource]] =

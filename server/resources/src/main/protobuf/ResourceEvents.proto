@@ -10,9 +10,9 @@ option (scalapb.options) = {
 
 message ResourceEvent {
   oneof sealed_value {
-    ResourceAdded lit = 1;
-    ResourceDeleted add = 2;
-    ResourceMoved mul = 3;
+    ResourceAdded added = 1;
+    ResourceDeleted deleted = 2;
+    ResourceMoved moved = 3;
   }
 }
 
