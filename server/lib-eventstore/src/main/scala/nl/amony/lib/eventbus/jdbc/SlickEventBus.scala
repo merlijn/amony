@@ -39,7 +39,7 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
     def            * = (ord.?, entityId, eventSeqNr, timestamp, serializerId, eventType, eventData) <> (EventRow.tupled, EventRow.unapply)
   }
 
-  private class Snapshots(tag: Tag) extends Table[(String, Long, Array[Byte])](tag, "events") {
+  private class Snapshots(tag: Tag) extends Table[(String, Long, Array[Byte])](tag, "snapshots") {
     def id           = column[String]("key", O.PrimaryKey)
     def sequenceNr   = column[Long]("sequence_nr")
     def serializerId = column[Long]("serializer_id")
@@ -68,7 +68,7 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
   def dbIO[T](a: slick.dbio.DBIOAction[T, NoStream, Nothing]): IO[T] =
     IO.fromFuture(IO(db.run(a))).onError { t => IO { logger.warn(t) } }
 
-  def createIfNotExists(): IO[Unit] =
+  def createTablesIfNotExists(): IO[Unit] =
     for {
       _ <- dbIO(eventTable.schema.createIfNotExists)
       _ <- dbIO(snapshotTable.schema.createIfNotExists)
@@ -190,7 +190,6 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
   override def getTopicForKey[E](topic: EventTopicKey[E]): EventTopic[E] = {
 
     implicit val ioRuntime = cats.effect.unsafe.implicits.global
-    implicit val ec = scala.concurrent.ExecutionContext.global
 
     new EventTopic[E] {
       override def publish(e: E): Unit = {
@@ -219,11 +218,16 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
 
             val lastProcessedSeqNr: Long = optionalSeqNr.getOrElse(-1)
 
+//            logger.info(s"Last processed seq nr: $lastProcessedSeqNr")
+
             dbIO(queries.getEvents(topic.name, lastProcessedSeqNr + 1, Some(batchSize)))
               .map {
                 _.map { row => topic.persistenceCodec.decode(row.eventType, row.eventData) }
               }
               .flatMap { events =>
+
+//                logger.info(s"Events to be processed: ${events.size}")
+
                 events.foreach { e => processorFn(e) }
 
                 if (events.isEmpty)

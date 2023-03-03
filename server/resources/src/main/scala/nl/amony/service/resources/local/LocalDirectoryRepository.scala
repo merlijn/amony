@@ -10,6 +10,7 @@ import nl.amony.lib.eventbus.EventTopic
 import nl.amony.service.resources.events.{Resource, ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved}
 
 import scala.concurrent.duration.DurationInt
+import scala.util.Try
 
 class LocalDirectoryRepository[P <: JdbcProfile](
    config: LocalResourcesConfig,
@@ -41,7 +42,7 @@ class LocalDirectoryRepository[P <: JdbcProfile](
   private val files = TableQuery[LocalFiles]
   val db = dbConfig.db
 
-  try { dbIO(files.schema.createIfNotExists).unsafeRunSync() }
+  Try { dbIO(files.schema.createIfNotExists).unsafeRunSync() }
 
   Stream
     .fixedDelay[IO](5.seconds)

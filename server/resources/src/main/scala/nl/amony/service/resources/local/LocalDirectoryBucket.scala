@@ -13,9 +13,9 @@ import nl.amony.lib.ffmpeg.tasks.FFProbeModel.ProbeOutput
 import nl.amony.lib.files.PathOps
 import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
 import nl.amony.service.resources.events.Resource
-import nl.amony.service.resources.local.LocalResourcesStore._
 import nl.amony.service.resources.{IOResponse, LocalFileIOResponse, ResourceBucket}
 import scribe.Logging
+import slick.jdbc.JdbcProfile
 
 import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
@@ -31,40 +31,20 @@ case class FragmentKey(resourceId: String, range: (Long, Long), quality: Int) ex
   def path: String = s"${resourceId}-${range._1}-${range._2}_${quality}p.mp4"
 }
 
-class LocalDirectoryBucket(system: ActorSystem[Nothing]) extends ResourceBucket with Logging {
-
-  import pureconfig.generic.auto._
-  val config = ConfigHelper.loadConfig[LocalResourcesConfig](system.settings.config, "amony.media")
+class LocalDirectoryBucket[P <: JdbcProfile](config: LocalResourcesConfig, repository: LocalDirectoryRepository[P])(implicit ec: ExecutionContext) extends ResourceBucket with Logging {
 
   private val timeout = 5.seconds
   private val resourceStore = new ConcurrentHashMap[ResourceKey, Path]()
-
-  import akka.actor.typed.scaladsl.AskPattern.Askable
-
-  implicit def askTimeout: Timeout = Timeout(5.seconds)
-
-  implicit val ec: ExecutionContext = system.executionContext
-  implicit val mat: Materializer = SystemMaterializer.get(system).materializer
-  implicit val scheduler: Scheduler = system.scheduler
-
-  def ask[S: ServiceKey, Res](replyTo: ActorRef[Res] => S) = {
-
-    val serviceRef = system.receptionist
-      .ask[Receptionist.Listing](ref => Find(implicitly[ServiceKey[S]], ref))
-      .map(_.serviceInstances(implicitly[ServiceKey[S]]).head)
-
-    serviceRef.flatMap(_.ask(replyTo))
-  }
 
   // TODO think about replacing this with custom runtime
   implicit val runtime: IORuntime = IORuntime.global
 
   def uploadResource(fileName: String, source: Source[ByteString, Any]): Future[Boolean] = ???
-//    ask[LocalResourceCommand, Boolean](ref => Upload(fileName, source.runWith(StreamRefs.sourceRef()), ref))
 
-  override def getResource(resourceId: String, quality: Int): Future[Option[IOResponse]] =
-    ask[LocalResourceCommand, Option[Resource]](ref => GetByHash(resourceId, ref))
-      .map(_.flatMap(f => IOResponse.fromPath(config.mediaPath.resolve(f.path))))
+  override def getResource(resourceId: String, quality: Int): Future[Option[IOResponse]] = {
+    repository.getByHash(resourceId)
+      .map(_.flatMap(f => IOResponse.fromPath(config.mediaPath.resolve(f.path)))).unsafeToFuture()
+  }
 
   override def getVideoFragment(resourceId: String, start: Long, end: Long, quality: Int): Future[Option[IOResponse]] = {
 
@@ -75,7 +55,7 @@ class LocalDirectoryBucket(system: ActorSystem[Nothing]) extends ResourceBucket 
   }
 
   private def getFileInfo(resourceId: String): Future[Option[Resource]] =
-    ask[LocalResourceCommand, Option[Resource]](ref => GetByHash(resourceId, ref))
+    repository.getByHash(resourceId).unsafeToFuture()
 
   private def getOrCreateVideoFragment(key: FragmentKey): Path = {
 
@@ -149,7 +129,6 @@ class LocalDirectoryBucket(system: ActorSystem[Nothing]) extends ResourceBucket 
 
   override def getFFProbeOutput(resourceId: String): Future[Option[ProbeOutput]] = {
 
-    logger.info("fooo--")
     getFileInfo(resourceId).flatMap {
       case None       => Future.successful(None)
       case Some(info) =>

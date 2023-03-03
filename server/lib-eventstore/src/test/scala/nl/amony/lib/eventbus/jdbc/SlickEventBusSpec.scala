@@ -53,7 +53,7 @@ class SlickEventBusSpec extends AnyFlatSpecLike with Logging {
   val dbConfig = DatabaseConfig.forConfig[H2Profile]("h2mem1-test", ConfigFactory.parseString(config))
 
   val store = new SlickEventBus[H2Profile](dbConfig)
-  store.createIfNotExists().unsafeRunSync()
+  store.createTablesIfNotExists().unsafeRunSync()
 
 //  it should "do something" in {
 //

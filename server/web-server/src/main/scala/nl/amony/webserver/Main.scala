@@ -1,43 +1,28 @@
 package nl.amony.webserver
 
+import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorSystem, Behavior}
-import akka.stream.Materializer
 import com.typesafe.config.ConfigFactory
 import nl.amony.lib.config.ConfigHelper
-import nl.amony.lib.eventbus.{EventTopicKey, PersistenceCodec}
 import nl.amony.lib.eventbus.jdbc.SlickEventBus
+import nl.amony.lib.eventbus.{EventTopicKey, PersistenceCodec}
 import nl.amony.search.InMemorySearchService
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
 import nl.amony.service.media.tasks.LocalMediaScanner
 import nl.amony.service.media.{MediaRepository, MediaService}
 import nl.amony.service.resources.events.{ResourceEvent, ResourceEventMessage}
-import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalDirectoryRepository, LocalResourcesStore}
+import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalDirectoryRepository}
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.HsqldbProfile
 
 import java.nio.file.{Files, Path}
-import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
+import scala.concurrent.{Await, ExecutionContext}
+import scala.util.Try
 
 object Main extends ConfigLoader with Logging {
-
-  def rootBehaviour(config: AmonyConfig, mediaService: MediaService): Behavior[Nothing] =
-    Behaviors.setup[Nothing] { context =>
-      implicit val mat = Materializer(context)
-
-//      DatabaseMigrations.run(context.system)
-      val resourceBuckets = Map(config.media.id -> new LocalDirectoryBucket(context.system))
-
-      val _ = context.spawn(LocalResourcesStore.behavior(config.media), "local-files-store")
-
-      logger.info(s"spawning scanner")
-      val _ = context.spawn(LocalMediaScanner.behavior(config.media, resourceBuckets, mediaService), "scanner")
-
-      Behaviors.empty
-    }
 
   def h2Config(dbPath: Path): DatabaseConfig[HsqldbProfile] = {
 
@@ -77,40 +62,36 @@ object Main extends ConfigLoader with Logging {
 
     mediaService.setEventListener(e => searchService.update(e))
 
-    val router: Behavior[Nothing]    = rootBehaviour(appConfig, mediaService)
-    val system: ActorSystem[Nothing] = ActorSystem[Nothing](router, "mediaLibrary", config)
+    val system: ActorSystem[Nothing] = ActorSystem[Nothing](Behaviors.empty, "mediaLibrary", config)
+
+    implicit val ec: ExecutionContext = system.executionContext
+    import cats.effect.unsafe.implicits.global
 
     val authService: AuthService = {
       import pureconfig.generic.auto._
-      val config = ConfigHelper.loadConfig[AuthConfig](system.settings.config, "amony.auth")
-      new AuthServiceImpl(config)
+      new AuthServiceImpl(ConfigHelper.loadConfig[AuthConfig](config, "amony.auth"))
     }
 
     val eventBus = new SlickEventBus(dbConfig)
-    import scalapb.{GeneratedMessage, GeneratedMessageCompanion}
-    val topic = eventBus.getTopicForKey(EventTopicKey[ResourceEvent]("resource_events")(PersistenceCodec.scalaPBPersistenceCodec[ResourceEventMessage]))
+    Try { eventBus.createTablesIfNotExists().unsafeRunSync() }
 
-    val newStore = new LocalDirectoryRepository(appConfig.media, dbConfig)
+    val codec = PersistenceCodec.foo[ResourceEventMessage, ResourceEvent](msg => msg.toResourceEvent, msg => msg.asMessage)
+    val topic = eventBus.getTopicForKey(EventTopicKey[ResourceEvent]("resource_events")(codec))
 
-//    Thread.sleep(500)
+    val localFileRepository = new LocalDirectoryRepository(appConfig.media, topic, dbConfig)
 
-//    adminApi.scanLibrary()(timeout.duration)
+    val resourceBuckets = Map(appConfig.media.id -> new LocalDirectoryBucket(appConfig.media, localFileRepository))
+    val scanner = new LocalMediaScanner(resourceBuckets, mediaService)
 
-//    adminApi.generatePreviewSprites()
-
-//    probeAll(api)(system.executionContext)
-//    MediaLibScanner.convertNonStreamableVideos(mediaLibConfig, api)
-
-//    val path = appConfig.media.indexPath.resolve("export.json")
-//    MigrateMedia.importFromExport(path, mediaApi)(10.seconds)
-//    watchPath(appConfig.media.mediaPath)
+    topic.processAtLeastOnce("scan-media", 10) { e =>
+      scanner.processEvent(e)
+    }.compile.drain.unsafeRunAndForget()
 
     val routes = WebServerRoutes(
-      system,
       authService,
       mediaService,
       searchService,
-      Map(appConfig.media.id -> new LocalDirectoryBucket(system)),
+      resourceBuckets,
       appConfig
     )
 

@@ -22,9 +22,9 @@ class WebServer(val config: WebServerConfig)(implicit val system: ActorSystem[No
       f.onComplete {
         case Success(binding) =>
           val address = binding.localAddress
-          system.log.info("Server online at {}://{}:{}/", protocol, address.getHostString, address.getPort)
+          logger.info(s"Server online at ${protocol}://${address.getHostString}:${address.getPort}/")
         case Failure(ex) =>
-          system.log.error("Failed to bind to endpoint, terminating system", ex)
+          logger.error("Failed to bind to endpoint, terminating system", ex)
           system.terminate()
       }
 

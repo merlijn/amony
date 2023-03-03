@@ -31,13 +31,10 @@ object SearchRoutes {
    )
 
   def apply(
-       system: ActorSystem[Nothing],
        searchService: SearchService,
        config: SearchConfig,
        transcodingSettings: List[TranscodeSettings]
-  ): Route = {
-
-    implicit def executionContext: ExecutionContext = system.executionContext
+  )(implicit ec: ExecutionContext): Route = {
 
     val jsonCodecs = new JsonCodecs(transcodingSettings)
     import jsonCodecs._

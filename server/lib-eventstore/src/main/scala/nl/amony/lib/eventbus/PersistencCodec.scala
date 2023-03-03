@@ -1,6 +1,6 @@
 package nl.amony.lib.eventbus
 
-import scalapb.GeneratedMessage
+import scalapb.GeneratedSealedOneof
 
 trait PersistenceCodec[E] {
 
@@ -35,6 +35,28 @@ object PersistenceCodec {
       override def decode(typeHint: String, bytes: Array[Byte]): T = cmp.parseFrom(bytes)
     }
 
-  implicit def persistenceCodec[T <: GeneratedMessage](implicit cmp: GeneratedMessageCompanion[T]) =
-    scalaPBPersistenceCodec[T](cmp)
+  def foo[A <: GeneratedMessage, B](rmap: A => B, map: B => A)(implicit cmp: GeneratedMessageCompanion[A]): PersistenceCodec[B] = {
+
+    val codec = scalaPBPersistenceCodec[A]
+    new PersistenceCodec[B] {
+      override def getSerializerId(): Long = 3245172347L
+
+      override def encode(e: B): (String, Array[Byte]) = codec.encode(map(e))
+
+      override def decode(typeHint: String, bytes: Array[Byte]): B = rmap(codec.decode(typeHint, bytes))
+    }
+  }
+
+
+//  def scalaPBSealedTypePersistenceCodec[T <: GeneratedSealedOneof](implicit cmp: GeneratedMessageCompanion[T#MessageType]) =
+//    new PersistenceCodec[T] {
+//      override def getSerializerId(): Long = 742513401234L
+//
+//      override def encode(e: T): (String, Array[Byte]) = e.getClass.getSimpleName -> cmp.toByteArray(e.asMessage)
+//
+//      override def decode(typeHint: String, bytes: Array[Byte]): T = cmp.parseFrom(bytes)
+//    }
+
+//  implicit def persistenceCodec[T <: GeneratedMessage](implicit cmp: GeneratedMessageCompanion[T]) =
+//    scalaPBPersistenceCodec[T](cmp)
 }

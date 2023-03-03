@@ -1,33 +1,11 @@
 package nl.amony.service.media.tasks
 
-import akka.actor.typed.Behavior
-import akka.actor.typed.scaladsl.Behaviors
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import nl.amony.lib.akka.EventProcessing
-import nl.amony.lib.akka.EventProcessing.ProcessEventCmd
 import nl.amony.service.media.MediaService
 import nl.amony.service.resources.ResourceBucket
-import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
 import nl.amony.service.resources.events.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved}
-import nl.amony.service.resources.local.LocalResourcesStore
 import scribe.Logging
-
-
-object LocalMediaScanner  {
-
-  def behavior(config: LocalResourcesConfig, resourceBuckets: Map[String, ResourceBucket], mediaService: MediaService): Behavior[ProcessEventCmd[ResourceEvent]] =
-    Behaviors.setup { context =>
-
-      val scanner = new LocalMediaScanner(resourceBuckets, mediaService)
-
-      EventProcessing.processAtLeastOnce[ResourceEvent](
-          LocalResourcesStore.persistenceId(config.id),
-          "scanner",
-          e => scanner.processEvent(e)
-        )
-    }
-}
 
 class LocalMediaScanner(resourceBuckets: Map[String, ResourceBucket], mediaService: MediaService) extends Logging {
 
