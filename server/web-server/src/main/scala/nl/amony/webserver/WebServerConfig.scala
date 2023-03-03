@@ -21,6 +21,6 @@ case class HttpsConfig(
 )
 
 case class HttpConfig(
- enabled: Boolean,
- port: Int
+  enabled: Boolean,
+  port: Int
 )

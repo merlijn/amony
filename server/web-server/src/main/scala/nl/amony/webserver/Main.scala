@@ -49,9 +49,11 @@ object Main extends ConfigLoader with Logging {
 
     Files.createDirectories(appConfig.media.resourcePath)
 
-    val dbConfig = h2Config(appConfig.media.getIndexPath())
+    val dbConfig = h2Config(appConfig.media.getIndexPath().resolve("db"))
 
-    val mediaService     = {
+    val system: ActorSystem[Nothing] = ActorSystem[Nothing](Behaviors.empty, "mediaLibrary", config)
+
+    val mediaService = {
       val mediaRepository = new MediaRepository(dbConfig)
       Await.result(mediaRepository.createTables(), 5.seconds)
       val service = new MediaService(mediaRepository)
@@ -59,10 +61,7 @@ object Main extends ConfigLoader with Logging {
     }
 
     val searchService = new InMemorySearchService()
-
     mediaService.setEventListener(e => searchService.update(e))
-
-    val system: ActorSystem[Nothing] = ActorSystem[Nothing](Behaviors.empty, "mediaLibrary", config)
 
     implicit val ec: ExecutionContext = system.executionContext
     import cats.effect.unsafe.implicits.global
@@ -75,7 +74,7 @@ object Main extends ConfigLoader with Logging {
     val eventBus = new SlickEventBus(dbConfig)
     Try { eventBus.createTablesIfNotExists().unsafeRunSync() }
 
-    val codec = PersistenceCodec.foo[ResourceEventMessage, ResourceEvent](msg => msg.toResourceEvent, msg => msg.asMessage)
+    val codec = PersistenceCodec.scalaPBMappedPersistenceCodec[ResourceEventMessage, ResourceEvent]
     val topic = eventBus.getTopicForKey(EventTopicKey[ResourceEvent]("resource_events")(codec))
 
     val localFileRepository = new LocalDirectoryRepository(appConfig.media, topic, dbConfig)

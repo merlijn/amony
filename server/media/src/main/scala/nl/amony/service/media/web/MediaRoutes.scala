@@ -11,8 +11,6 @@ import nl.amony.service.media.MediaService
 import nl.amony.service.resources.ResourceConfig.TranscodeSettings
 import scribe.Logging
 
-import scala.concurrent.Future
-
 object MediaRoutes extends Logging {
 
   def apply(

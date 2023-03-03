@@ -1,19 +1,14 @@
 package nl.amony.service.resources.local
 
-import akka.actor.typed.receptionist.Receptionist.Find
-import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
-import akka.actor.typed.{ActorRef, ActorSystem, Scheduler}
-import akka.stream.scaladsl.{Source, StreamRefs}
-import akka.stream.{Materializer, SystemMaterializer}
-import akka.util.{ByteString, Timeout}
+import akka.stream.scaladsl.Source
+import akka.util.ByteString
 import cats.effect.unsafe.IORuntime
-import nl.amony.lib.config.ConfigHelper
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.ffmpeg.tasks.FFProbeModel.ProbeOutput
 import nl.amony.lib.files.PathOps
 import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
 import nl.amony.service.resources.events.Resource
-import nl.amony.service.resources.{IOResponse, LocalFileIOResponse, ResourceBucket}
+import nl.amony.service.resources.{IOResponse, ResourceBucket}
 import scribe.Logging
 import slick.jdbc.JdbcProfile
 

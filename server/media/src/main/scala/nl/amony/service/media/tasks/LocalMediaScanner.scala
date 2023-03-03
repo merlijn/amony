@@ -15,14 +15,9 @@ class LocalMediaScanner(resourceBuckets: Map[String, ResourceBucket], mediaServi
     case ResourceAdded(resource) =>
       logger.info(s"Start scanning new media: ${resource.path}")
 
-//      logger.info(s"id: ${resource.bucketId}")
-//      logger.info(s"resouce: ${resourceBuckets.keys.mkString(",")}")
-
       ScanMedia
         .scanMedia(resourceBuckets(resource.bucketId), resource, resource.bucketId)
         .flatMap(media => IO.fromFuture(IO(mediaService.upsertMedia(media)))).unsafeRunSync()
-
-//      logger.info(s"Done scanning new media: ${resource.relativePath}")
 
     case ResourceDeleted(resource) =>
       logger.info(s"Media was deleted: ${resource.hash}")
