@@ -1,6 +1,5 @@
 package nl.amony.search
 
-import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.Directive.addDirectiveApply
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
@@ -8,27 +7,18 @@ import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.syntax._
-import nl.amony.service.fragments.WebModel.Fragment
-import nl.amony.service.search.api.SortField._
-import nl.amony.service.search.api.SortDirection._
-import nl.amony.service.resources.ResourceConfig.TranscodeSettings
-import nl.amony.service.media.web.MediaWebModel.Video
 import nl.amony.service.media.web.JsonCodecs
+import nl.amony.service.resources.ResourceConfig.TranscodeSettings
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
-import nl.amony.service.search.api.{Query, SearchResult, SortDirection, SortField, SortOption}
+import nl.amony.service.search.api.SortDirection._
+import nl.amony.service.search.api.SortField._
+import nl.amony.service.search.api._
 
 import scala.concurrent.{ExecutionContext, Future}
 
 object SearchRoutes {
 
   val durationPattern = raw"(\d*)-(\d*)".r
-
-  case class WebSearchResponse(
-     offset: Long,
-     total: Long,
-     videos: Seq[Video],
-     tags: Seq[String]
-   )
 
   def apply(
        searchService: SearchService,

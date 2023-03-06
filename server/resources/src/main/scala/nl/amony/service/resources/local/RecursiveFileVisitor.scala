@@ -1,10 +1,10 @@
-package nl.amony.lib.files
+package nl.amony.service.resources.local
 
 import scribe.Logging
 
 import java.io.IOException
-import java.nio.file.{FileVisitResult, Path, SimpleFileVisitor}
 import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.{FileVisitResult, Path, SimpleFileVisitor}
 import scala.collection.mutable
 
 class RecursiveFileVisitor(skipHiddenFiles: Boolean) extends SimpleFileVisitor[Path] with Logging {
@@ -32,5 +32,15 @@ class RecursiveFileVisitor(skipHiddenFiles: Boolean) extends SimpleFileVisitor[P
   override def visitFileFailed(file: Path, exc: IOException): FileVisitResult = {
     logger.warn(s"Failed to visit path: $file")
     FileVisitResult.CONTINUE
+  }
+}
+
+object RecursiveFileVisitor {
+  def listFilesInDirectoryRecursive(dir: Path, skipHiddenFiles: Boolean = true): Iterable[Path] = {
+    import java.nio.file.Files
+
+    val r = new RecursiveFileVisitor(skipHiddenFiles)
+    Files.walkFileTree(dir, r)
+    r.getFiles()
   }
 }

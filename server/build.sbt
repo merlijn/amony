@@ -36,6 +36,8 @@ val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"     
 //val monixReactive            = "io.monix"                 %% "monix-reactive"             % "3.4.1"
 
 val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.4.0"
+val fs2Io                  = "co.fs2"                     %% "fs2-io"                   % "3.4.0"
+val catsEffect               = "org.typelevel" %% "cats-effect" % "3.4.8"
 
 val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.14"           % Test
 val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
@@ -61,6 +63,17 @@ val scalaPbRuntimeGrcp       = "com.thesamet.scalapb"     %% "scalapb-runtime-gr
 val scalaPbRuntimeProtobuf   = "com.thesamet.scalapb"     %% "scalapb-runtime"            % scalapb.compiler.Version.scalapbVersion % "protobuf"
 val scalaPbRuntime           = "com.thesamet.scalapb"     %% "scalapb-runtime"            % scalapb.compiler.Version.scalapbVersion
 
+
+val http4sVersion = "1.0.0-M39"
+
+val http4sEmberServer = "org.http4s" %% "http4s-ember-server" % http4sVersion
+val http4sEmberClient = "org.http4s" %% "http4s-ember-client" % http4sVersion
+val http4sDsl = "org.http4s" %% "http4s-dsl" % http4sVersion
+val http4sCirce = "org.http4s" %% "http4s-circe" % http4sVersion
+
+val tapirCirce = "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % "1.2.9"
+val tapir = "com.softwaremill.sttp.tapir" %% "tapir-core" % "1.2.9"
+val tarirHttp4s = "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % "1.2.9"
 
 val javaOpts = Nil
 
@@ -102,16 +115,12 @@ lazy val common =
     .settings(
       name := "amony-lib-common",
       libraryDependencies ++= Seq(
-        akka,akkaStream,
-        akkaPersistence,
         pureConfig,
         scribeSlf4j,
         scalaTest,
 //        directoryWatcher,
 //        slick,
-        circe,
-        circeGeneric,
-        circeParser,
+        catsEffect,
       )
     )
 
@@ -124,6 +133,9 @@ lazy val libFFMPeg =
         scribeSlf4j,
         fs2Core,
         scalaTest,
+        circe,
+        circeGeneric,
+        circeParser,
       )
     )
 
@@ -167,7 +179,7 @@ lazy val resources =
         scribeSlf4j, akka, akkaPersistence, akkaSerializationJackson,
         akkaHttp, akkaHttpCirce, circe, circeGeneric,
         scalaTest,
-        slick,
+        slick, fs2Core, fs2Io,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf
       )
     )
@@ -184,7 +196,9 @@ lazy val media =
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
         akkaHttp, akkaHttpCirce, circe, circeGeneric,
         scalaTest,
-        slick, h2DB
+//        tapir, tapirCirce,
+        slick, h2DB,
+        http4sDsl, http4sCirce
       )
     )
 
@@ -247,6 +261,8 @@ lazy val amonyServer =
         circeGeneric,
         circeParser,
         fs2Core,
+        http4sEmberServer,
+//        tarirHttp4s,
 
         // test
         scalaTest, scalaTestCheck

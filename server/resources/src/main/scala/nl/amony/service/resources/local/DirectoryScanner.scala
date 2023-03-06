@@ -3,9 +3,8 @@ package nl.amony.service.resources.local
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
-import nl.amony.lib.files.FileUtil
 import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
-import nl.amony.service.resources.events.{Resource, ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved}
+import nl.amony.service.resources.events._
 import scribe.Logging
 
 import java.nio.file.Files
@@ -18,7 +17,7 @@ object DirectoryScanner extends Logging {
     val mediaPath = config.mediaPath
     val hashingAlgorithm = config.hashingAlgorithm
 
-    Stream.fromIterator[IO](FileUtil.listFilesInDirectoryRecursive(mediaPath).iterator, 10)
+    Stream.fromIterator[IO](RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath).iterator, 10)
       .filter { file => config.filterFileName(file.getFileName.toString) }
       .filter { file =>
         val isEmpty = Files.size(file) == 0

@@ -2,17 +2,23 @@ package nl.amony.webserver
 
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
-import com.typesafe.config.ConfigFactory
-import nl.amony.lib.config.ConfigHelper
+import cats.effect.IO
+import cats.effect.unsafe.implicits.global
+import com.comcast.ip4s.IpLiteralSyntax
+import com.typesafe.config.{Config, ConfigFactory}
 import nl.amony.lib.eventbus.jdbc.SlickEventBus
 import nl.amony.lib.eventbus.{EventTopicKey, PersistenceCodec}
 import nl.amony.search.InMemorySearchService
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
 import nl.amony.service.media.tasks.LocalMediaScanner
+import nl.amony.service.media.web.MediaRoutesHttp4s
 import nl.amony.service.media.{MediaRepository, MediaService}
 import nl.amony.service.resources.events.{ResourceEvent, ResourceEventMessage}
 import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalDirectoryRepository}
+import org.http4s.ember.server.EmberServerBuilder
+import org.http4s.server.Router
+import pureconfig.{ConfigReader, ConfigSource}
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.HsqldbProfile
@@ -20,6 +26,7 @@ import slick.jdbc.HsqldbProfile
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, ExecutionContext}
+import scala.reflect.ClassTag
 import scala.util.Try
 
 object Main extends ConfigLoader with Logging {
@@ -45,6 +52,14 @@ object Main extends ConfigLoader with Logging {
     DatabaseConfig.forConfig[HsqldbProfile]("hsqldb-test", ConfigFactory.parseString(config))
   }
 
+  def loadConfig[T: ClassTag](config: Config, path: String)(implicit reader: ConfigReader[T]): T = {
+
+    val configSource = ConfigSource.fromConfig(config.getConfig(path))
+    val configObj = configSource.loadOrThrow[T]
+
+    configObj
+  }
+
   def main(args: Array[String]): Unit = {
 
     Files.createDirectories(appConfig.media.resourcePath)
@@ -68,7 +83,7 @@ object Main extends ConfigLoader with Logging {
 
     val authService: AuthService = {
       import pureconfig.generic.auto._
-      new AuthServiceImpl(ConfigHelper.loadConfig[AuthConfig](config, "amony.auth"))
+      new AuthServiceImpl(loadConfig[AuthConfig](config, "amony.auth"))
     }
 
     val eventBus = new SlickEventBus(dbConfig)
@@ -97,5 +112,23 @@ object Main extends ConfigLoader with Logging {
     val webServer = new WebServer(appConfig.api)(system)
 
     webServer.start(routes)
+    startHttp4sServer(mediaService, appConfig)
+//    tapirTest()
+  }
+
+  case class Test(foo: String, bar: String)
+
+  def startHttp4sServer(mediaService: MediaService, config: AmonyConfig) = {
+
+      val httpApp = Router("/" -> MediaRoutesHttp4s.apply(mediaService, config.media.transcode)).orNotFound
+
+      EmberServerBuilder
+        .default[IO]
+        .withHost(ipv4"0.0.0.0")
+        .withPort(port"8087")
+        .withHttpApp(httpApp)
+        .build
+        .allocated
+        .unsafeRunSync()
   }
 }

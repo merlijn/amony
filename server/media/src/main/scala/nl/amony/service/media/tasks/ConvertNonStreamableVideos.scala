@@ -2,12 +2,13 @@ package nl.amony.service.media.tasks
 
 import akka.util.Timeout
 import cats.effect.IO
-import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.lib.files.{FileUtil, PathOps}
-import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
-import nl.amony.service.media.MediaService
-import scribe.Logging
 import fs2.Stream
+import nl.amony.lib.ffmpeg.FFMpeg
+import nl.amony.lib.files.PathOps
+import nl.amony.service.media.MediaService
+import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
+import nl.amony.service.resources.local.RecursiveFileVisitor
+import scribe.Logging
 
 import scala.concurrent.duration.DurationInt
 import scala.util.Success
@@ -16,7 +17,7 @@ object ConvertNonStreamableVideos extends Logging {
 
   def convertNonStreamableVideos(config: LocalResourcesConfig, mediaService: MediaService): Unit = {
 
-    val files = FileUtil.listFilesInDirectoryRecursive(config.mediaPath)
+    val files = RecursiveFileVisitor.listFilesInDirectoryRecursive(config.mediaPath)
 
     implicit val timeout = Timeout(3.seconds)
     implicit val ec      = scala.concurrent.ExecutionContext.global
