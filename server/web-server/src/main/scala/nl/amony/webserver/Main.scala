@@ -4,6 +4,7 @@ import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import cats.implicits.toSemigroupKOps
 import com.comcast.ip4s.IpLiteralSyntax
 import com.typesafe.config.{Config, ConfigFactory}
 import nl.amony.lib.eventbus.jdbc.SlickEventBus
@@ -14,12 +15,13 @@ import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
 import nl.amony.service.media.tasks.LocalMediaScanner
 import nl.amony.service.media.web.MediaRoutesHttp4s
 import nl.amony.service.media.{MediaRepository, MediaService}
+import nl.amony.service.resources.{ResourceBucket, ResourceRoutesHttp4s}
 import nl.amony.service.resources.events.{ResourceEvent, ResourceEventMessage}
 import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalDirectoryRepository}
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Router
 import pureconfig.{ConfigReader, ConfigSource}
-import scribe.Logging
+import scribe.{Level, Logging}
 import slick.basic.DatabaseConfig
 import slick.jdbc.HsqldbProfile
 
@@ -112,15 +114,23 @@ object Main extends ConfigLoader with Logging {
     val webServer = new WebServer(appConfig.api)(system)
 
     webServer.start(routes)
-    startHttp4sServer(mediaService, appConfig)
+    startHttp4sServer(mediaService, appConfig, resourceBuckets)
+
+    scribe.Logger.root
+      .clearHandlers()
+      .clearModifiers()
+      .withHandler(minimumLevel = Some(Level.Debug))
+      .replace()
 //    tapirTest()
   }
 
   case class Test(foo: String, bar: String)
 
-  def startHttp4sServer(mediaService: MediaService, config: AmonyConfig) = {
+  def startHttp4sServer(mediaService: MediaService, config: AmonyConfig, resourceBuckets: Map[String, ResourceBucket]) = {
 
-      val httpApp = Router("/" -> MediaRoutesHttp4s.apply(mediaService, config.media.transcode)).orNotFound
+      val routes = MediaRoutesHttp4s.apply(mediaService, config.media.transcode) <+> ResourceRoutesHttp4s.apply(resourceBuckets)
+
+      val httpApp = Router("/" -> routes).orNotFound
 
       EmberServerBuilder
         .default[IO]

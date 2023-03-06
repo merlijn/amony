@@ -33,18 +33,13 @@ object ResourceRoutes extends Logging {
 
     pathPrefix("resources") {
 
-      path("upload") {
-        uploadFiles("video", uploadLimitBytes) { (fileInfo, source) =>
-          buckets("local").uploadResource(fileInfo.fileName, source)
-        } { medias => complete("OK") }
-      } ~ pathPrefix("media" / Segment) { bucketId =>
+      pathPrefix("media" / Segment) { bucketId =>
 
         (get & path(Segment)) {
           case patterns.Thumbnail(id, _, timestamp, quality) =>
             onSuccess(buckets(bucketId).getThumbnail(id, quality.toInt, timestamp.toLong)) {
-              case None => complete(StatusCodes.NotFound)
-              case Some(ioResponse) =>
-                complete(HttpEntity(ContentType(MediaTypes.`image/webp`), ioResponse.getContent()))
+              case None             => complete(StatusCodes.NotFound)
+              case Some(ioResponse) => complete(HttpEntity(ContentType(MediaTypes.`image/webp`), ioResponse.getContent()))
             }
 
           case patterns.VideoFragment(id, start, end, quality) =>

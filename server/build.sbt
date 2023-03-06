@@ -36,8 +36,8 @@ val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"     
 //val monixReactive            = "io.monix"                 %% "monix-reactive"             % "3.4.1"
 
 val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.4.0"
-val fs2Io                  = "co.fs2"                     %% "fs2-io"                   % "3.4.0"
-val catsEffect               = "org.typelevel" %% "cats-effect" % "3.4.8"
+val fs2Io                    = "co.fs2"                   %% "fs2-io"                     % "3.4.0"
+val catsEffect               = "org.typelevel"            %% "cats-effect"                % "3.4.8"
 
 val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.14"           % Test
 val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
@@ -71,9 +71,9 @@ val http4sEmberClient = "org.http4s" %% "http4s-ember-client" % http4sVersion
 val http4sDsl = "org.http4s" %% "http4s-dsl" % http4sVersion
 val http4sCirce = "org.http4s" %% "http4s-circe" % http4sVersion
 
-val tapirCirce = "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % "1.2.9"
-val tapir = "com.softwaremill.sttp.tapir" %% "tapir-core" % "1.2.9"
-val tarirHttp4s = "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % "1.2.9"
+//val tapirCirce = "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % "1.2.9"
+//val tapir = "com.softwaremill.sttp.tapir" %% "tapir-core" % "1.2.9"
+//val tarirHttp4s = "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % "1.2.9"
 
 val javaOpts = Nil
 
@@ -179,7 +179,7 @@ lazy val resources =
         scribeSlf4j, akka, akkaPersistence, akkaSerializationJackson,
         akkaHttp, akkaHttpCirce, circe, circeGeneric,
         scalaTest,
-        slick, fs2Core, fs2Io,
+        slick, fs2Core, fs2Io, http4sDsl,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf
       )
     )
@@ -253,17 +253,12 @@ lazy val amonyServer =
         levelDb, levelDbJndiAll, flywayDbCore,
         slickHikariCp, hsqlDB,
         h2DB,
-//        akkaPersistenceJdbc,
-
-        // akka http & json serialization
         akkaHttp, akkaHttpCirce,
         circe,
         circeGeneric,
         circeParser,
         fs2Core,
         http4sEmberServer,
-//        tarirHttp4s,
-
         // test
         scalaTest, scalaTestCheck
       ),
