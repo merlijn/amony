@@ -1,7 +1,6 @@
 package nl.amony.service.media
 
 import com.fasterxml.jackson.core.JsonEncoding
-import nl.amony.lib.EventId
 import nl.amony.service.media.api._
 import nl.amony.service.media.api.events._
 import scribe.Logging

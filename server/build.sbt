@@ -11,16 +11,6 @@ val akkaVersion     = "2.7.0"
 val akkaHttpVersion = "10.4.0"
 val circeVersion    = "0.14.4"
 
-val akka                     = "com.typesafe.akka"        %% "akka-actor-typed"           % akkaVersion
-val akkaPersistence          = "com.typesafe.akka"        %% "akka-persistence-typed"     % akkaVersion
-val akkaPersistenceJdbc      = "com.lightbend.akka"       %% "akka-persistence-jdbc"      % "5.2.0"         // no scala 3
-val akkaStream               = "com.typesafe.akka"        %% "akka-stream"                % akkaVersion
-val akkaPersistenceQuery     = "com.typesafe.akka"        %% "akka-persistence-query"     % akkaVersion
-val akkaSerializationJackson = "com.typesafe.akka"        %% "akka-serialization-jackson" % akkaVersion
-
-val akkaHttp                 = "com.typesafe.akka"        %% "akka-http"                  % akkaHttpVersion // no scala 3
-val akkaHttpCirce            = "de.heikoseeberger"        %% "akka-http-circe"            % "1.39.2"        // no scala 3
-
 val circe                    = "io.circe"                 %% "circe-core"                 % circeVersion
 val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
 val circeParser              = "io.circe"                 %% "circe-parser"               % circeVersion
@@ -46,6 +36,7 @@ val hsqlDB                   = "org.hsqldb"                % "hsqldb"           
 val h2DB                     = "com.h2database"            % "h2"                         % "2.1.214"
 val flywayDbCore             = "org.flywaydb"              % "flyway-core"                % "8.5.12"
 val caffeine                 = "com.github.ben-manes.caffeine" % "caffeine"               % "3.1.1"
+val jacksonDatabind          = "com.fasterxml.jackson.core" % "jackson-databind"          % "2.14.2"
 
 val pureConfig               = "com.github.pureconfig"    %% "pureconfig"                 % "0.17.2" // no scala 3
 val pureConfigSquants        = "com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.2" // no scala 3
@@ -163,7 +154,7 @@ lazy val identity =
       name := "amony-service-auth",
       libraryDependencies ++= Seq(
         // akka
-        akka, akkaPersistence, akkaHttp, jwtCirce, akkaHttpCirce,
+        jwtCirce,
         circe, circeGeneric, pureConfig, slick,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf
       )
@@ -176,8 +167,8 @@ lazy val resources =
     .settings(
       name := "amony-service-resources",
       libraryDependencies ++= Seq(
-        scribeSlf4j, akka, akkaPersistence, akkaSerializationJackson,
-        akkaHttp, akkaHttpCirce, circe, circeGeneric,
+        scribeSlf4j,
+        circe, circeGeneric,
         scalaTest,
         slick, fs2Core, fs2Io, http4sDsl,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf
@@ -192,9 +183,8 @@ lazy val media =
       name := "amony-service-media",
       libraryDependencies ++= Seq(
         scribeSlf4j,
-        akka, akkaPersistence, akkaSerializationJackson,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
-        akkaHttp, akkaHttpCirce, circe, circeGeneric,
+        circe, circeGeneric, jacksonDatabind,
         scalaTest,
 //        tapir, tapirCirce,
         slick, h2DB,
@@ -210,7 +200,7 @@ lazy val searchService =
       name := "amony-service-search-api",
       libraryDependencies ++= Seq(
         // akka
-        akka, akkaPersistence, akkaPersistenceQuery, akkaHttp, akkaHttpCirce, circe, circeGeneric
+        circe, circeGeneric
       ),
 //      PB.includePaths in Compile ++= Seq(file("media/src/main/protobuf")),
 //      PB.includePaths in Compile += file("search-api/src/main/protobuf")
@@ -223,7 +213,7 @@ lazy val solrSearch =
       name := "amony-service-search-solr",
       libraryDependencies ++= Seq(
         slf4jApi, scribeSlf4j,
-        akka, solr, solrLangId
+        solr, solrLangId
       )
     )
 
@@ -243,17 +233,9 @@ lazy val amonyServer =
         // config loading
         typesafeConfig, pureConfig, pureConfigSquants,
 
-        // akka
-        akka, akkaStream,
-
-        // akka persistence
-        akkaPersistence,
-        akkaPersistenceQuery,
-        akkaSerializationJackson,
         levelDb, levelDbJndiAll, flywayDbCore,
         slickHikariCp, hsqlDB,
         h2DB,
-        akkaHttp, akkaHttpCirce,
         circe,
         circeGeneric,
         circeParser,

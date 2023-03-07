@@ -1,58 +1,53 @@
 package nl.amony.webserver
 
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
+import cats.effect.IO
+import cats.implicits.toSemigroupKOps
+import com.comcast.ip4s.IpLiteralSyntax
 import nl.amony.search.SearchRoutes
-import nl.amony.service.auth.AuthRoutes
-import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.media.MediaService
 import nl.amony.service.media.web.MediaRoutes
-import nl.amony.service.resources.{ResourceBucket, ResourceRoutes}
+import nl.amony.service.resources.{ResourceBucket, ResourceDirectives, ResourceRoutes}
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
+import org.http4s.HttpRoutes
+import scribe.Logging
 
 import java.nio.file.{Files, Paths}
-import scala.concurrent.ExecutionContext
 
-object WebServerRoutes {
+object WebServerRoutes extends Logging {
 
-  def apply(
-         userService: AuthService,
-         mediaService: MediaService,
-         searchService: SearchService,
-         resourceBuckets: Map[String, ResourceBucket],
-         config: AmonyConfig
-    )(implicit ec: ExecutionContext): Route = {
-    import akka.http.scaladsl.server.Directives._
+  def routes(mediaService: MediaService,
+                        searchService: SearchService,
+                        config: AmonyConfig,
+                        resourceBuckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
 
-    val identityRoutes = AuthRoutes(userService)
-    val resourceRoutes = ResourceRoutes(resourceBuckets, config.api.uploadSizeLimit.toBytes.toLong)
-    val searchRoutes   = SearchRoutes(searchService, config.search, config.media.transcode)
-    val mediaRoutes    = MediaRoutes(mediaService, config.media.transcode)
+    import org.http4s._
+    import org.http4s.dsl.io._
 
     // routes for the web app (javascript/html) resources
-    val webAppResources = webAppRoutes(config.api)
-
-    mediaRoutes ~ searchRoutes ~ identityRoutes ~ resourceRoutes ~ webAppResources
-  }
-
-  // routes for the web app (javascript/html) resources
-  def webAppRoutes(config: WebServerConfig): Route =
-    rawPathPrefix(Slash) {
-      extractUnmatchedPath { urlPath =>
-        val filePath = urlPath.toString() match {
+    val webAppRoutes = HttpRoutes.of[IO] {
+      case req@GET -> rest =>
+        val filePath = rest.toString() match {
           case "" | "/" => "index.html"
-          case other    => other
+          case other => other
         }
 
         val targetFile = {
-          val requestedFile = Paths.get(config.webClientPath).resolve(filePath)
+          val requestedFile = Paths.get(config.api.webClientPath).resolve(filePath.stripMargin('/'))
           if (Files.exists(requestedFile))
             requestedFile
           else
-            Paths.get(config.webClientPath).resolve("index.html")
+            Paths.get(config.api.webClientPath).resolve("index.html")
         }
 
-        getFromFile(targetFile.toFile)
-      }
+        ResourceDirectives.fromPath[IO](req, fs2.io.file.Path.fromNioPath(targetFile), 32 * 1024)
     }
+
+    val routes =
+      MediaRoutes.apply(mediaService, config.media.transcode) <+>
+        ResourceRoutes.apply(resourceBuckets) <+>
+        SearchRoutes.apply(searchService, config.search, config.media.transcode) <+>
+        webAppRoutes
+
+    routes
+  }
 }

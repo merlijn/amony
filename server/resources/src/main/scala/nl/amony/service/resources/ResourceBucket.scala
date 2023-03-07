@@ -1,7 +1,6 @@
 package nl.amony.service.resources
 
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
+import cats.effect.IO
 import nl.amony.lib.ffmpeg.tasks.FFProbeModel.ProbeOutput
 
 import scala.concurrent.Future
@@ -13,7 +12,7 @@ trait ResourceBucket {
 
   def getFFProbeOutput(resourceId: String): Future[Option[ProbeOutput]]
 
-  def uploadResource(fileName: String, source: Source[ByteString, Any]): Future[Boolean]
+  def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): Future[Boolean]
 
   def getVideoFragment(resourceId: String, start: Long, end: Long, quality: Int): Future[Option[IOResponse]]
 

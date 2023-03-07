@@ -1,7 +1,6 @@
 package nl.amony.service.resources.local
 
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
+import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.ffmpeg.tasks.FFProbeModel.ProbeOutput
@@ -33,8 +32,6 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalResourcesConfig, repos
 
   // TODO think about replacing this with custom runtime
   implicit val runtime: IORuntime = IORuntime.global
-
-  def uploadResource(fileName: String, source: Source[ByteString, Any]): Future[Boolean] = ???
 
   override def getResource(resourceId: String, quality: Int): Future[Option[IOResponse]] = {
     repository.getByHash(resourceId)
@@ -131,4 +128,6 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalResourcesConfig, repos
         FFMpeg.ffprobe(path, false).unsafeToFuture().map(Some(_))
     }
   }
+
+  override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): Future[Boolean] = ???
 }
