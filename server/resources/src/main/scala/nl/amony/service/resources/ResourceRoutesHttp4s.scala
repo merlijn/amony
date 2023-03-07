@@ -15,7 +15,7 @@ object ResourceRoutesHttp4s extends Logging {
     ResourceDirectivesHttp4s.rangedResponse[IO](
       req,
       ioResponse.size(),
-      MediaType.video.mp4,
+      Some(MediaType.video.mp4),
       ioResponse.getContentRangeFs2
     )
 

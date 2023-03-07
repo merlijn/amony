@@ -9,15 +9,16 @@ import com.comcast.ip4s.IpLiteralSyntax
 import com.typesafe.config.{Config, ConfigFactory}
 import nl.amony.lib.eventbus.jdbc.SlickEventBus
 import nl.amony.lib.eventbus.{EventTopicKey, PersistenceCodec}
-import nl.amony.search.InMemorySearchService
+import nl.amony.search.{InMemorySearchService, SearchRoutesHttp4s}
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
 import nl.amony.service.media.tasks.LocalMediaScanner
 import nl.amony.service.media.web.MediaRoutesHttp4s
 import nl.amony.service.media.{MediaRepository, MediaService}
-import nl.amony.service.resources.{ResourceBucket, ResourceRoutesHttp4s}
+import nl.amony.service.resources.{ResourceBucket, ResourceDirectivesHttp4s, ResourceRoutesHttp4s}
 import nl.amony.service.resources.events.{ResourceEvent, ResourceEventMessage}
 import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalDirectoryRepository}
+import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Router
 import pureconfig.{ConfigReader, ConfigSource}
@@ -25,7 +26,7 @@ import scribe.{Level, Logging}
 import slick.basic.DatabaseConfig
 import slick.jdbc.HsqldbProfile
 
-import java.nio.file.{Files, Path}
+import java.nio.file.{Files, Path, Paths}
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, ExecutionContext}
 import scala.reflect.ClassTag
@@ -114,7 +115,7 @@ object Main extends ConfigLoader with Logging {
     val webServer = new WebServer(appConfig.api)(system)
 
     webServer.start(routes)
-    startHttp4sServer(mediaService, appConfig, resourceBuckets)
+    startHttp4sServer(mediaService, searchService, appConfig, resourceBuckets)
 
     scribe.Logger.root
       .clearHandlers()
@@ -126,9 +127,37 @@ object Main extends ConfigLoader with Logging {
 
   case class Test(foo: String, bar: String)
 
-  def startHttp4sServer(mediaService: MediaService, config: AmonyConfig, resourceBuckets: Map[String, ResourceBucket]) = {
+  def startHttp4sServer(mediaService: MediaService, searchService: SearchService, config: AmonyConfig, resourceBuckets: Map[String, ResourceBucket]) = {
 
-      val routes = MediaRoutesHttp4s.apply(mediaService, config.media.transcode) <+> ResourceRoutesHttp4s.apply(resourceBuckets)
+    import org.http4s._
+    import org.http4s.dsl.io._
+
+      val webAppRoutes = HttpRoutes.of[IO] {
+        case req @ GET -> rest =>
+          val filePath = rest.toString() match {
+            case "" | "/" => "index.html"
+            case other => other
+          }
+
+          logger.info(s"request for: $filePath")
+
+          val targetFile = {
+            val requestedFile = Paths.get(config.api.webClientPath).resolve(filePath.stripMargin('/'))
+            if (Files.exists(requestedFile))
+              requestedFile
+            else
+              Paths.get(config.api.webClientPath).resolve("index.html")
+          }
+
+          ResourceDirectivesHttp4s.fromPath[IO](req, fs2.io.file.Path.fromNioPath(targetFile), 32 * 1024)
+      }
+
+      val routes =
+          webAppRoutes <+>
+          MediaRoutesHttp4s.apply(mediaService, config.media.transcode) <+>
+          ResourceRoutesHttp4s.apply(resourceBuckets) <+>
+          SearchRoutesHttp4s.apply(searchService, config.search, config.media.transcode)
+
 
       val httpApp = Router("/" -> routes).orNotFound
 
