@@ -7,7 +7,7 @@ import nl.amony.service.resources.ResourceBucket
 import nl.amony.service.resources.events.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved}
 import scribe.Logging
 
-class LocalMediaScanner(resourceBuckets: Map[String, ResourceBucket], mediaService: MediaService) extends Logging {
+class MediaScanner(resourceBuckets: Map[String, ResourceBucket], mediaService: MediaService) extends Logging {
 
   implicit val ioRuntime = IORuntime.global
 

@@ -23,7 +23,9 @@ object RegeneratePreviews extends Logging {
           outputBaseName = Some(s"${m.mediaId}-timeline"),
           overwrite      = false
         ).onError {
-          case NonFatal(e) => IO { logger.warn(s"Failed to generate preview sprite for ${m.fileName()}", e) }
+          case NonFatal(e) => IO {
+            logger.warn(s"Failed to generate preview sprite for ${m.fileName()}", e)
+          }
         }
       }.compile.drain.unsafeRunSync()
   }

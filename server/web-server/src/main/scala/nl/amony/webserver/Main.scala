@@ -6,7 +6,7 @@ import nl.amony.lib.eventbus.{EventTopicKey, PersistenceCodec}
 import nl.amony.search.{InMemorySearchService, SearchRoutes}
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
-import nl.amony.service.media.tasks.LocalMediaScanner
+import nl.amony.service.media.tasks.MediaScanner
 import nl.amony.service.media.{MediaRepository, MediaService}
 import nl.amony.service.resources.events.{ResourceEvent, ResourceEventMessage}
 import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalDirectoryRepository}
@@ -85,7 +85,7 @@ object Main extends ConfigLoader with Logging {
     val localFileRepository = new LocalDirectoryRepository(appConfig.media, topic, dbConfig)
 
     val resourceBuckets = Map(appConfig.media.id -> new LocalDirectoryBucket(appConfig.media, localFileRepository))
-    val scanner = new LocalMediaScanner(resourceBuckets, mediaService)
+    val scanner = new MediaScanner(resourceBuckets, mediaService)
 
     topic.processAtLeastOnce("scan-media", 10) { e =>
       scanner.processEvent(e)

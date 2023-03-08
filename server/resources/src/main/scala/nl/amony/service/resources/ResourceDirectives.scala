@@ -60,22 +60,16 @@ object ResourceDirectives extends Logging {
 
     req.headers.get[Range] match {
       case Some(Range(RangeUnit.Bytes, NonEmptyList(SubRange(s, e), Nil))) =>
-
-        logger.info(s"Range requested: $s, $e")
-
         if (validRange(s, e, size)) {
           val start = if (s >= 0) s else math.max(0, size + s)
           val end = math.min(size - 1, e.getOrElse(size - 1)) // end is inclusive
           createResponse(start, end, true)
         } else {
-          logger.info(s"invalid range: $s, $e, $size")
           rangeNotSatisfiableResponse
         }
       case _ =>
         req.headers.get(ci"Range") match {
-          case Some(range) =>
-            logger.info(s"range not parseable: $range")
-            rangeNotSatisfiableResponse
+          case Some(_) => rangeNotSatisfiableResponse
           case None    => createResponse(0, size - 1, false)
         }
     }

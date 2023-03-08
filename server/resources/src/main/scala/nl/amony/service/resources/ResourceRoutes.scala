@@ -32,7 +32,7 @@ object ResourceRoutes extends Logging {
       req,
       ioResponse.size(),
       Some(MediaType.video.mp4),
-      ioResponse.getContentRangeFs2
+      ioResponse.getContentRange
     )
 
   def apply(buckets: Map[String, ResourceBucket]) = {
@@ -42,7 +42,7 @@ object ResourceRoutes extends Logging {
         case patterns.Thumbnail(id, _, timestamp, quality) =>
           buckets(bucketId).getThumbnail(id, quality.toInt, timestamp.toLong).toIO.flatMap {
             case None             => NotFound()
-            case Some(ioResponse) => Ok(ioResponse.getContentFs2())
+            case Some(ioResponse) => Ok(ioResponse.getContent())
           }
 
         case patterns.VideoFragment(id, start, end, quality) =>
