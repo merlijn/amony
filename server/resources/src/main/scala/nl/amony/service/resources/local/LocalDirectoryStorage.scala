@@ -12,7 +12,7 @@ import nl.amony.service.resources.events.{Resource, ResourceAdded, ResourceDelet
 import scala.concurrent.duration.DurationInt
 import scala.util.Try
 
-class LocalDirectoryRepository[P <: JdbcProfile](
+class LocalDirectoryStorage[P <: JdbcProfile](
    config: LocalResourcesConfig,
    topic: EventTopic[ResourceEvent],
    private val dbConfig: DatabaseConfig[P]) extends Logging {
@@ -21,13 +21,14 @@ class LocalDirectoryRepository[P <: JdbcProfile](
   import cats.effect.unsafe.implicits.global
   implicit val ec = scala.concurrent.ExecutionContext.global
 
-  def dbIO[T](a: DBIO[T]): IO[T] =
+  private def dbIO[T](a: DBIO[T]): IO[T] =
     IO.fromFuture(IO(db.run(a))).onError { t => IO { logger.warn(t) } }
 
   private class LocalFiles(tag: Tag) extends Table[Resource](tag, "files") {
 
     def directoryId = column[String]("directory_id")
     def relativePath = column[String]("relative_path")
+    def contentType = column[String]("content_type")
     def hash = column[String]("hash")
     def size = column[Long]("size")
     def creationTime = column[Option[Long]]("creation_time")
@@ -36,7 +37,7 @@ class LocalDirectoryRepository[P <: JdbcProfile](
     def hashIdx = index("hash_idx", hash)
     def pk = primaryKey("resources_pk", (directoryId, relativePath))
 
-    def * = (directoryId, relativePath, hash, size, creationTime, lastModifiedTime) <> ((Resource.apply _).tupled, Resource.unapply)
+    def * = (directoryId, relativePath, hash, contentType, size, creationTime, lastModifiedTime) <> ((Resource.apply _).tupled, Resource.unapply)
   }
 
   private val files = TableQuery[LocalFiles]
@@ -44,9 +45,11 @@ class LocalDirectoryRepository[P <: JdbcProfile](
 
   Try { dbIO(files.schema.createIfNotExists).unsafeRunSync() }
 
+  logger.info(s"Scanning directory: ${config.mediaPath}")
+
   Stream
     .fixedDelay[IO](5.seconds)
-    .evalMap(_ => IO(sync()))
+    .evalMap(_ => IO(scanDirectory()))
     .compile.drain.unsafeRunAndForget()
 
   private object queries {
@@ -71,8 +74,8 @@ class LocalDirectoryRepository[P <: JdbcProfile](
         .filter(_.relativePath === relativePath).take(1).result
   }
 
-  def sync(): Unit =
-    DirectoryScanner.diff(config, getAll().unsafeRunSync()).map {
+  def scanDirectory(): Unit =
+    LocalDirectoryScanner.diff(config, getAll().unsafeRunSync()).map {
       case e @ ResourceAdded(resource)               =>
         logger.info(s"File added: ${resource.path}")
         dbIO(files.insertOrUpdate(resource)).unsafeRunSync()

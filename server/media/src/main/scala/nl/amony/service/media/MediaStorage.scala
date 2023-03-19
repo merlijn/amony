@@ -1,6 +1,6 @@
 package nl.amony.service.media
 
-import nl.amony.service.media.MediaRepository.{MediaRow, asRow, fromRow}
+import nl.amony.service.media.MediaStorage.{MediaRow, asRow, fromRow}
 import nl.amony.service.media.api._
 import scribe.Logging
 import slick.basic.DatabaseConfig
@@ -8,31 +8,31 @@ import slick.jdbc.JdbcProfile
 
 import scala.concurrent.Future
 
-object MediaRepository {
+object MediaStorage {
 
-  type MediaRow = (String, String, Long, Long, String, String, String, Long, Float, Long, Int, Int, Option[String], Option[String])
+  type MediaRow = (String, String, Long, Long, String, String, String, Long, Float, Long, String, Int, Int, Option[String], Option[String])
 
   def asRow(media: Media): MediaRow =
     (media.mediaId, media.userId, media.createdTimestamp, media.thumbnailTimestamp,
       media.resourceInfo.bucketId, media.resourceInfo.hash, media.resourceInfo.relativePath, media.resourceInfo.sizeInBytes,
-      media.mediaInfo.fps, media.mediaInfo.durationInMillis, media.width, media.height,
+      media.mediaInfo.fps, media.mediaInfo.durationInMillis, media.mediaInfo.mediaType, media.width, media.height,
       media.meta.title, media.meta.comment)
 
   def fromRow(row: MediaRow): Media = row match {
     case (mediaId, userId, uploadTimestamp, thumbnailTimestamp,
           resourceBucketId, resourceHash, resourcePath, resourceSize,
-          videoFps, videoDuration, mediaWidth, mediaHeight,
+          videoFps, videoDuration, mediaType, mediaWidth, mediaHeight,
           title, comment) =>
 
       val resourceInfo = ResourceInfo(resourceBucketId, resourcePath, resourceHash, resourceSize)
-      val mediaInfo = MediaInfo("mp4", mediaWidth, mediaHeight, videoFps, videoDuration)
+      val mediaInfo = MediaInfo(mediaType, mediaWidth, mediaHeight, videoFps, videoDuration)
       val meta = MediaMeta(title, comment, Seq.empty)
 
       Media(mediaId, userId, uploadTimestamp, thumbnailTimestamp, meta, mediaInfo, resourceInfo)
   }
 }
 
-class MediaRepository[P <: JdbcProfile](dbConfig: DatabaseConfig[P]) extends Logging {
+class MediaStorage[P <: JdbcProfile](dbConfig: DatabaseConfig[P]) extends Logging {
 
   import dbConfig.profile.api._
 
@@ -49,17 +49,18 @@ class MediaRepository[P <: JdbcProfile](dbConfig: DatabaseConfig[P]) extends Log
     def resourcePath       = column[String]("resource_path")
     def resourceSize       = column[Long]("resource_size")
 
+    def mediaType          = column[String]("media_type")
     def mediaFps           = column[Float]("media_fps")
     def mediaDuration      = column[Long]("media_duration")
-    def mediaResolutionX   = column[Int]("media_resolution_x")
-    def mediaResolutionY   = column[Int]("media_resolution_y")
+    def mediaWidth         = column[Int]("media_width")
+    def mediaHeight        = column[Int]("media_height")
 
     def title              = column[Option[String]]("title")
     def comment            = column[Option[String]]("comment")
 
     def * = (mediaId, uploader, uploadTimestamp, thumbnailTimestamp,
       resourceBucketId, resourceHash, resourcePath, resourceSize,
-      mediaFps, mediaDuration, mediaResolutionX, mediaResolutionY,
+      mediaFps, mediaDuration, mediaType, mediaWidth, mediaHeight,
       title, comment)
   }
 
@@ -90,6 +91,6 @@ class MediaRepository[P <: JdbcProfile](dbConfig: DatabaseConfig[P]) extends Log
       case Some(n) => mediaTable.take(n)
     }
 
-    db.run(query.result.map(_.map(MediaRepository.fromRow)))
+    db.run(query.result.map(_.map(MediaStorage.fromRow)))
   }
 }

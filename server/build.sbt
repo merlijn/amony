@@ -21,7 +21,7 @@ val scalaLikeJdbc            = "org.scalikejdbc"          %% "scalikejdbc"      
 
 val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "9.1.2"
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.5"
-val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.10.5"
+val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.11.0"
 
 //val monixReactive            = "io.monix"                 %% "monix-reactive"             % "3.4.1"
 
@@ -29,7 +29,7 @@ val fs2Core                  = "co.fs2"                   %% "fs2-core"         
 val fs2Io                    = "co.fs2"                   %% "fs2-io"                     % "3.4.0"
 val catsEffect               = "org.typelevel"            %% "cats-effect"                % "3.4.8"
 
-val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.14"           % Test
+val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.15"           % Test
 val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
 
 val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.6.1"

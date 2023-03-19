@@ -218,15 +218,11 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
 
             val lastProcessedSeqNr: Long = optionalSeqNr.getOrElse(-1)
 
-//            logger.info(s"Last processed seq nr: $lastProcessedSeqNr")
-
             dbIO(queries.getEvents(topic.name, lastProcessedSeqNr + 1, Some(batchSize)))
               .map {
                 _.map { row => topic.persistenceCodec.decode(row.eventType, row.eventData) }
               }
               .flatMap { events =>
-
-//                logger.info(s"Events to be processed: ${events.size}")
 
                 events.foreach { e => processorFn(e) }
 

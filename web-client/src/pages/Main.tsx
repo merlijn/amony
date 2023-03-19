@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useHistory, useLocation } from "react-router";
 import { Constants, parseDurationParam, parseSortParam } from "../api/Constants";
-import { MediaSelection, MediaView, Prefs, Video } from "../api/Model";
+import { MediaSelection, MediaView, Prefs, Media } from "../api/Model";
 import { useCookiePrefs, useListener, useStateNeq } from "../api/ReactUtils";
 import GridView from "../components/GridView";
 import TopNavBar from "../components/navigation/TopNavBar";
@@ -17,7 +17,7 @@ const Main = () => {
   
     const history = useHistory();
     const location = useLocation();
-    const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
+    const [playVideo, setPlayVideo] = useState<Media | undefined>(undefined)
     const [showNavigation, setShowNavigation] = useState(true)
     const [view, setView] = useState<MediaView>('grid')
 
@@ -110,9 +110,9 @@ const Main = () => {
                     selection = { selection }
                     showTagbar = { showNavigation }
                     componentType = 'page' 
-                    onClick   = { (v: Video) => setPlayVideo(v) } 
+                    onClick   = { (v: Media) => setPlayVideo(v) }
                     columns   = { prefs.gallery_columns }
-                    previewOptionsFn = { (v: Video) => {
+                    previewOptionsFn = { (v: Media) => {
                         return {
                           showPreviewOnHover: !isMobile,
                           showInfoBar: prefs.showTitles,
@@ -129,7 +129,7 @@ const Main = () => {
                 <div style = { galleryStyle } key="main-content" className="main-content-container">
                   <ListView 
                     key       = "list"
-                    onClick   = { (v: Video) => setPlayVideo(v) } 
+                    onClick   = { (v: Media) => setPlayVideo(v) }
                     selection = {selection}
                    />
                 </div>

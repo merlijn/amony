@@ -45,7 +45,7 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
       height    = media.height,
       duration  = media.mediaInfo.durationInMillis,
       fps       = media.mediaInfo.fps,
-      codecName = media.mediaInfo.codecId,
+      mediaType = media.mediaInfo.mediaType,
     )
 
     val resourceInfo = ResourceInfo(

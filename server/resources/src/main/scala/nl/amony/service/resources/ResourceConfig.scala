@@ -14,8 +14,6 @@ object ResourceConfig {
       id: String,
       private val path: Path,
       private val indexPath: Path,
-      relativeUploadPath: Path,
-      deleteMedia: DeleteMediaOption,
       scanParallelFactor: Int,
       verifyExistingHashes: Boolean,
       hashingAlgorithm: HashingAlgorithm,
@@ -27,7 +25,6 @@ object ResourceConfig {
     def getIndexPath(): Path    = indexPath.toAbsolutePath.normalize()
     lazy val resourcePath: Path = indexPath.toAbsolutePath.normalize().resolve("resources")
     lazy val mediaPath: Path    = path.toAbsolutePath.normalize()
-    lazy val uploadPath: Path   = mediaPath.resolve(relativeUploadPath)
 
     def filterFileName(fileName: String): Boolean =
       extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
@@ -44,14 +41,6 @@ object ResourceConfig {
     scaleHeight: Int,
     crf: Int
   )
-
-  sealed trait DeleteMediaOption
-  case object DeleteFile  extends DeleteMediaOption
-  case object MoveToTrash extends DeleteMediaOption
-
-  object DeleteMediaOption {
-    implicit val deleteMediaOption: ConfigReader[DeleteMediaOption] = deriveEnumerationReader[DeleteMediaOption]
-  }
 
   sealed trait HashingAlgorithm {
     def algorithm: String

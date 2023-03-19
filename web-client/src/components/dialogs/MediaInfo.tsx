@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { VideoMeta } from "../../api/Model";
+import { MediaUserMeta } from "../../api/Model";
 import TagEditor from "../common/TagEditor";
 import './MediaInfo.scss';
 import { FiSave } from "react-icons/fi";
 import Dialog from "../common/Dialog";
 
-const MediaInfo = (props: {meta: VideoMeta, onClose: (meta: VideoMeta) => any }) => {
+const MediaInfo = (props: {meta: MediaUserMeta, onClose: (meta: MediaUserMeta) => any }) => {
 
   const [meta, setMeta] = useState(props.meta)
 

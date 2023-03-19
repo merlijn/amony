@@ -5,6 +5,8 @@ import cats.effect.unsafe.IORuntime
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.ffmpeg.tasks.FFProbeModel.ProbeOutput
 import nl.amony.lib.files.PathOps
+import nl.amony.lib.magick.ImageMagick
+import nl.amony.lib.magick.tasks.ImageMagickModel
 import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
 import nl.amony.service.resources.events.Resource
 import nl.amony.service.resources.{IOResponse, ResourceBucket}
@@ -25,7 +27,7 @@ case class FragmentKey(resourceId: String, range: (Long, Long), quality: Int) ex
   def path: String = s"${resourceId}-${range._1}-${range._2}_${quality}p.mp4"
 }
 
-class LocalDirectoryBucket[P <: JdbcProfile](config: LocalResourcesConfig, repository: LocalDirectoryRepository[P])(implicit ec: ExecutionContext) extends ResourceBucket with Logging {
+class LocalDirectoryBucket[P <: JdbcProfile](config: LocalResourcesConfig, repository: LocalDirectoryStorage[P])(implicit ec: ExecutionContext) extends ResourceBucket with Logging {
 
   private val timeout = 5.seconds
   private val resourceStore = new ConcurrentHashMap[ResourceKey, Path]()
@@ -130,4 +132,13 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalResourcesConfig, repos
   }
 
   override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): Future[Boolean] = ???
+
+  override def getImageMetaData(resourceId: String): Future[Option[ImageMagickModel.ImageMeta]] = {
+    getFileInfo(resourceId).flatMap {
+      case None       => Future.successful(None)
+      case Some(info) =>
+        val path = config.mediaPath.resolve(info.path)
+        ImageMagick.getImageMeta(path).unsafeToFuture().map(metas => Some(metas.head.image))
+    }
+  }
 }

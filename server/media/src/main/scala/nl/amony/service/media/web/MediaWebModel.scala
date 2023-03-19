@@ -20,7 +20,7 @@ object MediaWebModel {
     height: Int,
     fps: Double,
     duration: Long,
-    codecName: String
+    mediaType: String
   )
 
   case class MediaUrls(

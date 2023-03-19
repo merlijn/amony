@@ -5,7 +5,7 @@ export type MediaUrls = {
 }
 
 export type MediaInfo = {
-  codecName: string,
+  mediaType: string,
   fps: number,
   width: number,
   height: number,
@@ -17,12 +17,12 @@ export type ResourceInfo = {
   hash: string
 }
 
-export type Video = {
+export type Media = {
   id: string,
   uploader: string,
   uploadTimestamp: number,
   // the media info of the originally uploaded file
-  meta: VideoMeta,
+  meta: MediaUserMeta,
   mediaInfo: MediaInfo,
   resourceInfo: ResourceInfo,
   urls: MediaUrls,
@@ -37,7 +37,7 @@ export type Fragment = {
   tags: string[]
 }
 
-export type VideoMeta = {
+export type MediaUserMeta = {
   tags: string[]
   title: string
   comment?: string
@@ -56,7 +56,7 @@ export type MediaView = 'grid' | 'list'
 
 export type SearchResult = {
   total: number
-  videos: Video[]
+  videos: Media[]
   tags: string[]
 }
 

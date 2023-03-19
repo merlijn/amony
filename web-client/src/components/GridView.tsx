@@ -2,7 +2,7 @@ import React, { CSSProperties, useEffect, useState } from 'react';
 import useResizeObserver from 'use-resize-observer';
 import { Api } from '../api/Api';
 import { Constants } from "../api/Constants";
-import { Columns, MediaSelection, SearchResult, Video } from '../api/Model';
+import { Columns, MediaSelection, SearchResult, Media } from '../api/Model';
 import './GridView.scss';
 import TagBar from './navigation/TagBar';
 import Preview, { PreviewOptions } from './Preview';
@@ -15,8 +15,8 @@ export type GalleryProps = {
   componentType: 'page' | 'element'
   columns: Columns,
   showTagbar: boolean,
-  previewOptionsFn: (v: Video) => PreviewOptions,
-  onClick: (v: Video) => void
+  previewOptionsFn: (v: Media) => PreviewOptions,
+  onClick: (v: Media) => void
 }
 
 const initialSearchResult: SearchResult = { total: 0, videos: [], tags: [] }
@@ -31,7 +31,7 @@ const GridView = (props: GalleryProps) => {
 
   const gridSpacing = 1
 
-  const fetchData = (previous: Array<Video>) => {
+  const fetchData = (previous: Array<Media>) => {
 
     const offset = previous.length
     const n      = columns * 8

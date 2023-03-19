@@ -2,6 +2,7 @@ package nl.amony.service.resources
 
 import cats.effect.IO
 import nl.amony.lib.ffmpeg.tasks.FFProbeModel.ProbeOutput
+import nl.amony.lib.magick.tasks.ImageMagickModel.{ImageMeta, MagickImageMeta}
 
 import scala.concurrent.Future
 
@@ -11,6 +12,8 @@ trait ResourceBucket {
   def getResource(resourceId: String, quality: Int): Future[Option[IOResponse]]
 
   def getFFProbeOutput(resourceId: String): Future[Option[ProbeOutput]]
+
+  def getImageMetaData(resourceId: String): Future[Option[ImageMeta]]
 
   def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): Future[Boolean]
 

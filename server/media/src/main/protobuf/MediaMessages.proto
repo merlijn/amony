@@ -34,7 +34,7 @@ message MediaMeta {
 }
 
 message MediaInfo {
-  required string codecId = 1;
+  required string mediaType = 1;
   required uint32 width = 2;
   required uint32 height = 3;
   required float fps = 4;

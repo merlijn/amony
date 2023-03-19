@@ -1,14 +1,18 @@
 package nl.amony.webserver
 
-import cats.effect.IO
+import cats.effect.{ExitCode, IO}
 import cats.effect.unsafe.IORuntime
 import com.comcast.ip4s.IpLiteralSyntax
-import org.http4s.HttpRoutes
+import org.http4s.{HttpRoutes, Response, Status}
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Router
+import org.slf4j.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import scribe.Logging
 
 class WebServer(val config: WebServerConfig) extends Logging {
+
+  val slf4jLogger = LoggerFactory.getLogger(classOf[WebServer])
 
 //  def start(route: Route): Unit = {
 //
@@ -52,16 +56,26 @@ class WebServer(val config: WebServerConfig) extends Logging {
 //    }
 //  }
 
-  def start(routes: HttpRoutes[IO])(implicit io: IORuntime) = {
+  def setup(routes: HttpRoutes[IO])(implicit io: IORuntime): IO[ExitCode] = {
+    logger.info("Starting web server")
+
     val httpApp = Router("/" -> routes).orNotFound
+
+    val serverError = Response(Status.InternalServerError).putHeaders(org.http4s.headers.`Content-Length`.zero)
 
     EmberServerBuilder
       .default[IO]
       .withHost(ipv4"0.0.0.0")
       .withPort(port"8080")
       .withHttpApp(httpApp)
+      .withErrorHandler {
+        e =>
+          logger.warn("Internal server error", e)
+          IO(serverError)
+      }
+      .withLogger(Slf4jLogger.getLoggerFromSlf4j[IO](slf4jLogger))
       .build
-      .allocated
-      .unsafeRunSync()
+      .use(_ => IO.never)
+      .as(ExitCode.Success)
   }
 }

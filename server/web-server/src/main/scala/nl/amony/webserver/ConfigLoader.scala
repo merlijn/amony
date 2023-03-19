@@ -3,7 +3,7 @@ package nl.amony.webserver
 import com.typesafe.config.ConfigFactory
 import nl.amony.search.SearchConfig
 import nl.amony.service.auth.AuthConfig
-import nl.amony.service.resources.ResourceConfig.{DeleteMediaOption, HashingAlgorithm, LocalResourcesConfig}
+import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
 import scribe.Logging
 
 case class AmonyConfig(

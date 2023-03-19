@@ -5,7 +5,7 @@ import { IoCutSharp } from "react-icons/io5"
 import { AiOutlineDelete } from "react-icons/ai"
 import ProgressiveImage from "react-progressive-graceful-image"
 import { Api } from "../api/Api"
-import { MediaSelection, SearchResult, Video, VideoMeta } from "../api/Model"
+import { MediaSelection, SearchResult, Media, MediaUserMeta } from "../api/Model"
 import { dateMillisToString, formatByteSize } from "../api/Util"
 import './ListView.scss'
 import Scrollable from "./common/Scrollable"
@@ -15,7 +15,7 @@ import TagsBar from "./common/TagsBar"
 
 type ListProps = {
   selection: MediaSelection
-  onClick: (v: Video) => any
+  onClick: (v: Media) => any
 }
 
 const initialSearchResult: SearchResult = { total: 0, videos: [], tags: [] }
@@ -28,7 +28,7 @@ const ListView = (props: ListProps) => {
   const [fetchMore, setFetchMore] = useState(true)
   const history = useHistory();
 
-  const fetchData = (previous: Array<Video>) => {
+  const fetchData = (previous: Array<Media>) => {
 
     const offset = previous.length
     const n      = offset === 0 ? Math.ceil(window.outerHeight / rowHeight) : 32;
@@ -129,13 +129,13 @@ const ListView = (props: ListProps) => {
   );
 }
 
-const TagsCell = (props: {video: Video }) => {
+const TagsCell = (props: {video: Media }) => {
   const [tags, setTags] = useState(props.video.meta.tags)
   const isAdmin = Api.session().isAdmin()
 
   const updateTags = (newTags: Array<string>) => {
-    const meta: VideoMeta = { ...props.video.meta, tags: newTags }
-    Api.updateVideoMetaData(props.video.id, meta).then(() =>  {
+    const meta: MediaUserMeta = { ...props.video.meta, tags: newTags }
+    Api.updateMediaMetaData(props.video.id, meta).then(() =>  {
       setTags(newTags)
     })
   }
@@ -146,7 +146,7 @@ const TagsCell = (props: {video: Video }) => {
             showDeleteButton = {isAdmin} />
 }
 
-const TitleCell = (props: { video: Video} ) => {
+const TitleCell = (props: { video: Media} ) => {
 
   const [title, setTitle] = useState(props.video.meta.title)
   const [editTitle, setEditTitle] = useState(false)
@@ -158,8 +158,8 @@ const TitleCell = (props: { video: Video} ) => {
   }, [editTitle])
 
   const updateTitle = (newTitle: string) => {
-    const meta: VideoMeta = { ...props.video.meta, title: newTitle }
-    Api.updateVideoMetaData(props.video.id, meta).then(() =>  {
+    const meta: MediaUserMeta = { ...props.video.meta, title: newTitle }
+    Api.updateMediaMetaData(props.video.id, meta).then(() =>  {
       setTitle(newTitle)
       setEditTitle(false)
     })

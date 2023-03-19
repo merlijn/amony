@@ -1,5 +1,5 @@
 import Cookies from "js-cookie";
-import { MediaSelection, Sort, VideoMeta } from "./Model";
+import { MediaSelection, Sort, MediaUserMeta } from "./Model";
 import { buildUrl } from "./Util";
 import jwtDecode, { JwtPayload } from "jwt-decode";
 import axios from 'axios';
@@ -47,7 +47,7 @@ export const Api = {
     return anonymousSession;
   },
 
-  login: async function Login(username: string, password: string) {
+  login: async function(username: string, password: string) {
 
     return doPOST("/api/identity/login", { username: username, password: password})
   },
@@ -60,7 +60,7 @@ export const Api = {
     });
   },
 
-  uploadFile: async function uploadFile(file: File) {
+  uploadFile: async function(file: File) {
 
     const formData = new FormData();
 
@@ -73,7 +73,7 @@ export const Api = {
     axios.post("/resources/upload", formData);
   },
 
-  getFragments: async function getFragments(n: number, offset: number, tag?: string) {
+  getFragments: async function(n: number, offset: number, tag?: string) {
 
     const params = new Map([
       ["n", n.toString()],
@@ -88,8 +88,8 @@ export const Api = {
     return doGET(url)
   },
 
-  searchMedia: async function searchMedia(n: number, offset: number, selection: MediaSelection) {
-    return Api.getVideos(
+  searchMedia: async function(n: number, offset: number, selection: MediaSelection) {
+    return Api.getMedias(
               selection.query || "",
               n,
               offset,
@@ -101,7 +101,7 @@ export const Api = {
   },
 
   // TOOD remove
-  getVideos: async function getVideos(
+  getMedias: async function(
       q: string, 
       n: number,
       offset: number, 
@@ -140,7 +140,7 @@ export const Api = {
     return doGET(`/api/media/${mediaId}`)
   },
 
-  updateVideoMetaData: async function(mediaId: string, meta: VideoMeta) {
+  updateMediaMetaData: async function(mediaId: string, meta: MediaUserMeta) {
     return doPOST(`/api/media/${mediaId}`, meta)
   },
 

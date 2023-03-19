@@ -3,14 +3,25 @@ package nl.amony.service.resources.local
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
+import nl.amony.lib.files.PathOps
 import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
 import nl.amony.service.resources.events._
+import org.http4s.MediaType
 import scribe.Logging
 
 import java.nio.file.Files
 import java.nio.file.attribute.BasicFileAttributes
 
-object DirectoryScanner extends Logging {
+object LocalDirectoryScanner extends Logging {
+
+  def contentTypeFromPath(path: String): String = {
+
+    val maybeExt = java.nio.file.Path.of(path).fileExtension
+
+    maybeExt.flatMap { ext =>
+      MediaType.extensionMap.get(ext).map(m => s"${m.mainType}/${m.subType}")
+    }.getOrElse("unknown")
+  }
 
   def scanDirectory(config: LocalResourcesConfig, cache: String => Option[Resource]): Stream[IO, Resource] = {
 
@@ -26,8 +37,8 @@ object DirectoryScanner extends Logging {
         !isEmpty
       }
       .parEvalMapUnordered(config.scanParallelFactor) { path =>
-        IO {
 
+        IO {
           val relativePath = mediaPath.relativize(path).toString
           val fileAttributes = Files.readAttributes(path, classOf[BasicFileAttributes])
 
@@ -46,7 +57,14 @@ object DirectoryScanner extends Logging {
             }
           }
 
-          Resource(config.id, relativePath, hash, fileAttributes.size(), Some(fileAttributes.creationTime().toMillis), Some(fileAttributes.lastModifiedTime().toMillis))
+          Resource(
+            bucketId = config.id,
+            path = relativePath,
+            hash = hash,
+            contentType = contentTypeFromPath(relativePath),
+            fileAttributes.size(),
+            Some(fileAttributes.creationTime().toMillis),
+            Some(fileAttributes.lastModifiedTime().toMillis))
         }
       }
   }
@@ -56,9 +74,9 @@ object DirectoryScanner extends Logging {
     a.hash == b.hash && a.creationTime == b.creationTime && a.modifiedTime == b.modifiedTime
   }
 
-  def diff(config: LocalResourcesConfig, snapshot: Set[Resource])(implicit ioRuntime: IORuntime): List[ResourceEvent] = {
+  def diff(config: LocalResourcesConfig, previousState: Set[Resource])(implicit ioRuntime: IORuntime): List[ResourceEvent] = {
 
-    val scannedResources: Set[Resource] = scanDirectory(config, path => snapshot.find(_.path == path)).compile.toList.unsafeRunSync().toSet
+    val scannedResources: Set[Resource] = scanDirectory(config, path => previousState.find(_.path == path)).compile.toList.unsafeRunSync().toSet
 
     val (colliding, nonColliding) = scannedResources
       .groupBy(_.hash)
@@ -73,18 +91,18 @@ object DirectoryScanner extends Logging {
 
     val newResources: List[ResourceAdded] =
       nonCollidingResources
-        .filterNot(r => snapshot.exists(_.hash == r.hash))
+        .filterNot(r => previousState.exists(_.hash == r.hash))
         .map(r => ResourceAdded(r))
         .toList
 
     val deletedResources: List[ResourceDeleted] =
-      snapshot
+      previousState
         .filterNot(r => scannedResources.exists(_.hash == r.hash))
         .map(r => ResourceDeleted(r))
         .toList
 
     val movedResources: List[ResourceMoved] =
-      snapshot.flatMap { old =>
+      previousState.flatMap { old =>
 
         // TODO there are some edge cases where this does not work
 

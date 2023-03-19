@@ -1,4 +1,4 @@
-import {Video} from "../../api/Model";
+import {Media} from "../../api/Model";
 import React, {CSSProperties, useEffect, useRef} from "react";
 import Plyr from 'plyr';
 import {isMobile} from "react-device-detect";
@@ -6,7 +6,7 @@ import {BoundedRatioBox} from "../../api/Util";
 import './VideoModal.scss';
 import Modal from "./Modal";
 
-const VideoModal = (props: { video?: Video, onHide: () => void }) => {
+const VideoModal = (props: { video?: Media, onHide: () => void }) => {
 
   const videoElement = useRef<HTMLVideoElement>(null)
 
@@ -31,7 +31,7 @@ const VideoModal = (props: { video?: Video, onHide: () => void }) => {
     return () => { plyr && plyr.destroy() }
   },[props]);
 
-  const modalSize = (v: Video): CSSProperties => {
+  const modalSize = (v: Media): CSSProperties => {
 
     const w = isMobile ? "100vw" : "75vw"
     return BoundedRatioBox(w, "75vh", v.mediaInfo.width / v.mediaInfo.height)

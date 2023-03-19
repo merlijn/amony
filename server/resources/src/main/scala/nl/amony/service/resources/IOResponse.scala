@@ -1,6 +1,7 @@
 package nl.amony.service.resources
 
 import cats.effect.IO
+import org.http4s.MediaType
 
 import java.nio.file.{Files, Path}
 
@@ -13,19 +14,19 @@ trait IOResponse {
 
 object IOResponse {
   def fromPath(path: Path): Option[LocalFileIOResponse] =
-    Option.when(Files.exists(path))(LocalFileIOResponse(path))
+    Option.when(Files.exists(path))(LocalFileIOResponse(fs2.io.file.Path.fromNioPath(path)))
 }
 
-case class LocalFileIOResponse(path: Path) extends IOResponse {
+case class LocalFileIOResponse(path: fs2.io.file.Path) extends IOResponse {
 
   private val defaultChunkSize: Int = 64 * 1024
 
-  override def contentType(): String = "" //MediaType.extensionMap.get()
-  override def size(): Long = Files.size(path)
+  override def contentType(): String = MediaType.extensionMap.get(path.extName).map(_.toString()).getOrElse("")
+  override def size(): Long = Files.size(path.toNioPath)
 
   override def getContent(): fs2.Stream[IO, Byte] =
-    fs2.io.file.Files[IO].readAll(fs2.io.file.Path.fromNioPath(path), defaultChunkSize, fs2.io.file.Flags.Read)
+    fs2.io.file.Files[IO].readAll(path, defaultChunkSize, fs2.io.file.Flags.Read)
 
   override def getContentRange(start: Long, end: Long): fs2.Stream[IO, Byte] =
-    fs2.io.file.Files[IO].readRange(fs2.io.file.Path.fromNioPath(path), defaultChunkSize, start, end)
+    fs2.io.file.Files[IO].readRange(path, defaultChunkSize, start, end)
 }

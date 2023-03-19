@@ -1,6 +1,7 @@
 package nl.amony.service.media
 
 import com.fasterxml.jackson.core.JsonEncoding
+import nl.amony.lib.eventbus.EventTopic
 import nl.amony.service.media.api._
 import nl.amony.service.media.api.events._
 import scribe.Logging
@@ -8,19 +9,9 @@ import scribe.Logging
 import java.io.ByteArrayOutputStream
 import scala.concurrent.Future
 
-class MediaService(mediaRepository: MediaRepository[_]) extends Logging {
+class MediaService(mediaRepository: MediaStorage[_], mediaTopic: EventTopic[MediaEvent]) extends Logging {
 
   import scala.concurrent.ExecutionContext.Implicits.global
-
-  var eventListener: MediaEvent => Unit = _ => ()
-
-  // TODO ugly hack, remove
-  def setEventListener(listener: MediaEvent => Unit) = {
-    eventListener = listener
-    getAll().foreach { medias =>
-      medias.foreach(m => eventListener.apply(MediaAdded(m)))
-    }
-  }
 
   def getById(id: String): Future[Option[Media]] = {
     mediaRepository.getById(id)
@@ -44,7 +35,7 @@ class MediaService(mediaRepository: MediaRepository[_]) extends Logging {
 
   def upsertMedia(media: Media): Future[Media] = {
     mediaRepository.upsert(media).map { media =>
-      eventListener.apply(MediaAdded(media))
+      mediaTopic.publish(MediaAdded(media))
       media
     }
   }
@@ -52,7 +43,7 @@ class MediaService(mediaRepository: MediaRepository[_]) extends Logging {
   def deleteMedia(id: String, deleteResource: Boolean): Future[Boolean] = {
     mediaRepository.deleteById(id).map { n =>
       logger.info(s"Media removed: ${id}")
-      eventListener(MediaRemoved(id))
+      mediaTopic.publish(MediaRemoved(id))
       n > 0
     }
   }
