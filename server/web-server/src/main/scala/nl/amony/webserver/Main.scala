@@ -3,7 +3,7 @@ package nl.amony.webserver
 import com.typesafe.config.{Config, ConfigFactory}
 import nl.amony.lib.eventbus.jdbc.SlickEventBus
 import nl.amony.lib.eventbus.{EventTopic, EventTopicKey, PersistenceCodec}
-import nl.amony.search.{InMemorySearchService, SearchRoutes}
+import nl.amony.search.InMemorySearchService
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
 import nl.amony.service.media.api.events.{MediaAdded, MediaEvent}
@@ -12,11 +12,11 @@ import nl.amony.service.media.{MediaService, MediaStorage}
 import nl.amony.service.resources.events.{ResourceEvent, ResourceEventMessage}
 import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalDirectoryStorage}
 import pureconfig.{ConfigReader, ConfigSource}
-import scribe.{Level, Logging}
+import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.HsqldbProfile
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, ExecutionContext}
 import scala.reflect.ClassTag
@@ -55,6 +55,7 @@ object Main extends ConfigLoader with Logging {
 
   def main(args: Array[String]): Unit = {
 
+    import cats.effect.unsafe.implicits.global
     implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
 
     Files.createDirectories(appConfig.media.resourcePath)
@@ -73,8 +74,6 @@ object Main extends ConfigLoader with Logging {
       service.getAll().foreach { _.foreach(m => topic.publish(MediaAdded(m))) }
       service
     }
-
-    import cats.effect.unsafe.implicits.global
 
     val authService: AuthService = {
       import pureconfig.generic.auto._
@@ -97,7 +96,7 @@ object Main extends ConfigLoader with Logging {
     }.compile.drain.unsafeRunAndForget()
 
     val webServer = new WebServer(appConfig.api)
-    val routes = WebServerRoutes.routes(mediaService, searchService, appConfig, resourceBuckets)
+    val routes = WebServerRoutes.routes(authService, mediaService, searchService, appConfig, resourceBuckets)
 
     webServer.setup(routes).unsafeRunSync()
 

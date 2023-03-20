@@ -2,8 +2,9 @@ package nl.amony.webserver
 
 import cats.effect.IO
 import cats.implicits.toSemigroupKOps
-import com.comcast.ip4s.IpLiteralSyntax
 import nl.amony.search.SearchRoutes
+import nl.amony.service.auth.AuthRoutes
+import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.media.MediaService
 import nl.amony.service.media.web.MediaRoutes
 import nl.amony.service.resources.{ResourceBucket, ResourceDirectives, ResourceRoutes}
@@ -15,10 +16,11 @@ import java.nio.file.{Files, Paths}
 
 object WebServerRoutes extends Logging {
 
-  def routes(mediaService: MediaService,
-                        searchService: SearchService,
-                        config: AmonyConfig,
-                        resourceBuckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
+  def routes(authService: AuthService,
+             mediaService: MediaService,
+             searchService: SearchService,
+             config: AmonyConfig,
+             resourceBuckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
 
     import org.http4s._
     import org.http4s.dsl.io._
@@ -46,6 +48,7 @@ object WebServerRoutes extends Logging {
       MediaRoutes.apply(mediaService, config.media.transcode) <+>
         ResourceRoutes.apply(resourceBuckets) <+>
         SearchRoutes.apply(searchService, config.search, config.media.transcode) <+>
+        AuthRoutes.apply(authService) <+>
         webAppRoutes
 
     routes

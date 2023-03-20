@@ -156,7 +156,8 @@ lazy val identity =
         // akka
         jwtCirce,
         circe, circeGeneric, pureConfig, slick,
-        scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf
+        scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
+        http4sDsl, http4sCirce
       )
     )
 
