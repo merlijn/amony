@@ -56,6 +56,8 @@ object ResourceRoutes extends Logging {
             case None             => NotFound()
             case Some(ioResponse) => videoResponse(req, ioResponse)
           }
+        case _ =>
+          NotFound()
       }
     }
   }

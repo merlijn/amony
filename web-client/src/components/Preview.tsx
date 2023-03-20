@@ -12,7 +12,7 @@ import MediaInfo from './dialogs/MediaInfo';
 import './Preview.scss';
 
 export type PreviewProps = {
-  vid: Media,
+  media: Media,
   style?: CSSProperties,
   className?: string,
   lazyLoad?: boolean,
@@ -28,25 +28,13 @@ export type PreviewOptions = {
   showDuration: boolean,
   showMenu: boolean,
 }
-      
+
 const Preview = (props: PreviewProps) => {
-
-  if (props.vid.mediaInfo.mediaType.startsWith('video'))
-    return <VideoPreview {...props } />
-  else
-    return <ImagePreview {...props } />
-}
-
-const ImagePreview = (props: PreviewProps) => {
-  return <div />
-}
-
-const VideoPreview = (props: PreviewProps) => {
-  const [vid, setVid] = useState(props.vid)
+  const [media, setMedia] = useState(props.media)
   const [isHovering, setIsHovering] = useState(false)
   const [showVideoPreview, setShowVideoPreview] = useState(false)
 
-  const durationStr = durationInMillisToString(vid.mediaInfo.duration)
+  const durationStr = durationInMillisToString(media.mediaInfo.duration)
 
   useEffect(() => {
     setShowVideoPreview(isHovering)
@@ -54,9 +42,9 @@ const VideoPreview = (props: PreviewProps) => {
 
   const titlePanel =
       <div className = "preview-info-bar">
-        <span className="media-title" title={vid.meta.title}>{vid.meta.title}</span>
-        { props.options.showDates && <span className="media-date">{dateMillisToString(vid.uploadTimestamp)}</span> }
-        { !props.options.showDates && <span className="media-date">{`${vid.mediaInfo.height}p` }</span>}
+        <span className="media-title" title={media.meta.title}>{media.meta.title}</span>
+        { props.options.showDates && <span className="media-date">{dateMillisToString(media.uploadTimestamp)}</span> }
+        { !props.options.showDates && <span className="media-date">{`${media.mediaInfo.height}p` }</span>}
       </div>
 
   const overlay =
@@ -65,8 +53,8 @@ const VideoPreview = (props: PreviewProps) => {
             (props.options.showMenu && isHovering) &&
             <div className = "preview-menu-container">
               <PreviewMenu
-                  video        = { vid }
-                  setVideo     = { setVid }
+                  video        = { media }
+                  setVideo     = { setMedia }
                   onDialogOpen = { () => { setShowVideoPreview(false) } }/>
             </div>
         }
@@ -75,11 +63,11 @@ const VideoPreview = (props: PreviewProps) => {
       </div>
 
   const primaryThumbnail =
-      <ProgressiveImage src = { vid.urls.thumbnailUrl } placeholder="/image_placeholder.svg">
+      <ProgressiveImage src = { media.urls.thumbnailUrl } placeholder="/image_placeholder.svg">
         { (src: string) =>
             <img
                 src       = { src } alt="an image"
-                onClick   = { () => props.onClick(props.vid) }
+                onClick   = { () => props.onClick(props.media) }
                 className = { `preview-thumbnail preview-media` }
             />
         }
@@ -87,10 +75,10 @@ const VideoPreview = (props: PreviewProps) => {
 
   const videoPreview =
       <FragmentsPlayer
-          key       = { `video-preview-${props.vid.id}` }
+          key       = { `video-preview-${props.media.id}` }
           className = { `preview-video preview-media` }
-          onClick   = { () => props.onClick(props.vid) }
-          fragments = { props.vid.highlights } />
+          onClick   = { () => props.onClick(props.media) }
+          fragments = { props.media.highlights } />
 
   const preview =
       <div className    = "preview-media-container"
