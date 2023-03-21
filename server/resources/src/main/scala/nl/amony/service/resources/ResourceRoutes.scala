@@ -11,13 +11,14 @@ object ResourceRoutes extends Logging {
   // format: off
   object patterns {
     // example: j0rc1048yc1_720p.mp4
-    val Video = raw"(.+)_(\d+)p\.mp4".r
+    val Video = raw"(\w+)_(\d+)p\.mp4".r
 
     // example: j0rc1048yc1~1000-5000_720p.mp4
     val VideoFragment = raw"(.+)~(\d+)-(\d+)_(\d+)p\.mp4".r
 
-    // example: j0rc1048yc1_720p.webp or j0rc1048yc1~5000_720p.webp
-    val Thumbnail = raw"(\w+)(-(\d+))?_(\d+)p\.webp".r
+    val Thumbnail = raw"(\w+)_(\d+)p\.webp".r
+
+    val ThumbnailWithTimestamp = raw"(\w+)_(\d+)_(\d+)p\.webp".r
 
     // example: j0rc1048yc1-timeline.vtt
     val TimeLineVtt = raw"(\w+)-timeline\.vtt".r
@@ -37,28 +38,36 @@ object ResourceRoutes extends Logging {
 
   def apply(buckets: Map[String, ResourceBucket]) = {
     HttpRoutes.of[IO] {
-      case req @ GET -> Root / "resources" / "media" / bucketId / resourceId => resourceId match {
+      case req @ GET -> Root / "resources" / "media" / bucketId / resourceId =>
 
-        case patterns.Thumbnail(id, _, timestamp, quality) =>
-          buckets(bucketId).getThumbnail(id, quality.toInt, timestamp.toLong).toIO.flatMap {
-            case None             => NotFound()
-            case Some(ioResponse) => Ok(ioResponse.getContent())
-          }
+        resourceId match {
 
-        case patterns.VideoFragment(id, start, end, quality) =>
-          buckets(bucketId).getVideoFragment(id, start.toLong, end.toLong, quality.toInt).toIO.flatMap {
-            case None => NotFound()
-            case Some(ioResponse) => videoResponse(req, ioResponse)
-          }
+          case patterns.ThumbnailWithTimestamp(id, timestamp, quality) =>
+            buckets(bucketId).getThumbnail(id, quality.toInt, timestamp.toLong).toIO.flatMap {
+              case None => NotFound()
+              case Some(ioResponse) => Ok(ioResponse.getContent())
+            }
 
-        case patterns.Video(id, quality) =>
-          buckets(bucketId).getResource(id, quality.toInt).toIO.flatMap {
-            case None             => NotFound()
-            case Some(ioResponse) => videoResponse(req, ioResponse)
-          }
-        case _ =>
-          NotFound()
-      }
+          case patterns.Thumbnail(id, quality) =>
+            buckets(bucketId).getImageThumbnail(id, quality.toInt).toIO.flatMap {
+              case None             => NotFound()
+              case Some(ioResponse) => Ok(ioResponse.getContent())
+            }
+
+          case patterns.VideoFragment(id, start, end, quality) =>
+            buckets(bucketId).getVideoFragment(id, start.toLong, end.toLong, quality.toInt).toIO.flatMap {
+              case None => NotFound()
+              case Some(ioResponse) => videoResponse(req, ioResponse)
+            }
+
+          case patterns.Video(id, quality) =>
+            buckets(bucketId).getResource(id, quality.toInt).toIO.flatMap {
+              case None             => NotFound()
+              case Some(ioResponse) => videoResponse(req, ioResponse)
+            }
+          case _ =>
+            NotFound()
+        }
     }
   }
 }

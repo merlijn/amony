@@ -20,11 +20,16 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 
 sealed trait ResourceKey
 
-case class ThumbnailKey(resourceId: String, timestamp: Long, quality: Int) extends ResourceKey {
-  def path: String = s"${resourceId}-${timestamp}_${quality}p.webp"
+case class VideoThumbnailKey(resourceId: String, timestamp: Long, quality: Int) extends ResourceKey {
+  def path: String = s"${resourceId}_${timestamp}_${quality}p.webp"
 }
+
+case class ImageThumbnailKey(resourceId: String, quality: Int) extends ResourceKey {
+  def path: String = s"${resourceId}_${quality}p.webp"
+}
+
 case class FragmentKey(resourceId: String, range: (Long, Long), quality: Int) extends ResourceKey {
-  def path: String = s"${resourceId}-${range._1}-${range._2}_${quality}p.mp4"
+  def path: String = s"${resourceId}_${range._1}-${range._2}_${quality}p.mp4"
 }
 
 class LocalDirectoryBucket[P <: JdbcProfile](config: LocalResourcesConfig, repository: LocalDirectoryStorage[P])(implicit ec: ExecutionContext) extends ResourceBucket with Logging {
@@ -74,7 +79,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalResourcesConfig, repos
     }
   }
 
-  private def getOrCreateThumbnail(key: ThumbnailKey): Path = {
+  private def getOrCreateThumbnail(key: VideoThumbnailKey): Path = {
     val thumbnailPath = config.resourcePath.resolve(key.path)
 
     if (thumbnailPath.exists())
@@ -97,10 +102,36 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalResourcesConfig, repos
 
   override def getThumbnail(resourceId: String, quality: Int, timestamp: Long): Future[Option[IOResponse]] = {
 
-    val key = ThumbnailKey(resourceId, timestamp, quality)
+    val key = VideoThumbnailKey(resourceId, timestamp, quality)
     val path = resourceStore.compute(key, (_, value) => getOrCreateThumbnail(key))
 
     Future.successful(IOResponse.fromPath(path))
+  }
+
+  private def getOrCreateImageThumbnail(resourceInfo: Resource, key: ImageThumbnailKey): Path = {
+    val thumbnailPath = config.resourcePath.resolve(key.path)
+    if (thumbnailPath.exists())
+      thumbnailPath
+    else {
+      val op = ImageMagick.createThumbnail(
+        inputFile   = config.mediaPath.resolve(resourceInfo.path),
+        outputFile  = Some(thumbnailPath),
+        scaleHeight = key.quality
+      ).map(_ => thumbnailPath).unsafeToFuture()
+
+      Await.result(op, timeout)
+    }
+  }
+
+  override def getImageThumbnail(resourceId: String, quality: Int): Future[Option[IOResponse]] = {
+
+    getFileInfo(resourceId).flatMap {
+      case None               => Future.successful(None)
+      case Some(resourceInfo) =>
+        val key = ImageThumbnailKey(resourceId, quality)
+        val path = resourceStore.compute(key, (_, value) => getOrCreateImageThumbnail(resourceInfo, key))
+        Future.successful(IOResponse.fromPath(path))
+    }
   }
 
   override def getPreviewSpriteVtt(resourceId: String): Future[Option[String]] = {

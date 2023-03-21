@@ -24,4 +24,6 @@ trait ResourceBucket {
   def getPreviewSpriteImage(resourceId: String): Future[Option[IOResponse]]
 
   def getThumbnail(resourceId: String, quality: Int, timestamp: Long): Future[Option[IOResponse]]
+
+  def getImageThumbnail(resourceId: String, quality: Int): Future[Option[IOResponse]]
 }

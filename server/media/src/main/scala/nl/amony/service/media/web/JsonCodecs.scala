@@ -28,11 +28,16 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
 
     val extension = media.resourceInfo.relativePath.split('.').last
 
-    val urls = MediaUrls(
-      originalResourceUrl  = s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}_${media.height}p.${extension}",
-      thumbnailUrl         = s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}-${media.thumbnailTimestamp}_${resolutions.min}p.webp",
-      previewThumbnailsUrl = Some(s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}-timeline.vtt")
-    )
+    val urls = {
+
+      val tsPart = if (media.thumbnailTimestamp != 0) s"_${media.thumbnailTimestamp}" else ""
+
+      MediaUrls(
+        originalResourceUrl  = s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}_${media.height}p.${extension}",
+        thumbnailUrl         = s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}${tsPart}_${resolutions.min}p.webp",
+        previewThumbnailsUrl = Some(s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}-timeline.vtt")
+      )
+    }
 
     val meta = MediaMeta(
       title   = media.meta.title.orElse(Some(media.fileName())),
