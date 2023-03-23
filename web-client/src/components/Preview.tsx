@@ -84,7 +84,7 @@ const Preview = (props: PreviewProps) => {
       <div className    = "preview-media-container"
            onMouseEnter = { () => props.options.showPreviewOnHover && setIsHovering(true) }
            onMouseLeave = { () => setIsHovering(false) }>
-        { showVideoPreview && videoPreview }
+        { media.mediaInfo.mediaType.startsWith("video") && showVideoPreview && videoPreview }
         { primaryThumbnail }
         { overlay }
       </div>
