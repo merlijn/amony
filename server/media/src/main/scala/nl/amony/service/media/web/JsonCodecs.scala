@@ -33,7 +33,7 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
       val tsPart = if (media.thumbnailTimestamp != 0) s"_${media.thumbnailTimestamp}" else ""
 
       MediaUrls(
-        originalResourceUrl  = s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}_${media.height}p.${extension}",
+        originalResourceUrl  = s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}",
         thumbnailUrl         = s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}${tsPart}_${resolutions.min}p.webp",
         previewThumbnailsUrl = Some(s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}-timeline.vtt")
       )

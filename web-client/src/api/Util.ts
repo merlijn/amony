@@ -91,7 +91,7 @@ export function zeroPad(n: number, d: number) {
   return zeros + n.toString()
 }
 
-export function BoundedRatioBox(maxWidth: string, maxHeight: string, ratio: number): CSSProperties {
+export function boundedRatioBox(maxWidth: string, maxHeight: string, ratio: number): CSSProperties {
   return {
     width: `min(${maxWidth}, ${maxHeight} * ${ratio})`,
     height: `min(${maxHeight}, ${maxWidth} * 1 / ${ratio})`

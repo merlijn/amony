@@ -40,7 +40,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalResourcesConfig, repos
   // TODO think about replacing this with custom runtime
   implicit val runtime: IORuntime = IORuntime.global
 
-  override def getResource(resourceId: String, quality: Int): Future[Option[IOResponse]] = {
+  override def getVideo(resourceId: String, quality: Int): Future[Option[IOResponse]] = {
     repository.getByHash(resourceId)
       .map(_.flatMap(f => IOResponse.fromPath(config.mediaPath.resolve(f.path)))).unsafeToFuture()
   }
@@ -145,6 +145,15 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalResourcesConfig, repos
         "WEBVTT"
 
     Future.successful(Some(content))
+  }
+
+  override def getResource(resourceId: String): Future[Option[IOResponse]] = {
+    getFileInfo(resourceId).flatMap {
+      case None       => Future.successful(None)
+      case Some(info) =>
+        val path = config.mediaPath.resolve(info.path)
+        Future.successful(IOResponse.fromPath(path))
+    }
   }
 
   override def getPreviewSpriteImage(mediaId: String): Future[Option[IOResponse]] = {

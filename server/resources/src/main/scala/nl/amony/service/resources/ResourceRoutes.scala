@@ -4,6 +4,8 @@ import cats.effect.IO
 import nl.amony.lib.cats.FutureOps
 import org.http4s._
 import org.http4s.dsl.io._
+import org.http4s.headers.`Content-Type`
+import org.typelevel.ci.CIString
 import scribe.Logging
 
 object ResourceRoutes extends Logging {
@@ -28,11 +30,11 @@ object ResourceRoutes extends Logging {
   }
   // format: on
 
-  def videoResponse(req: Request[IO], ioResponse: IOResponse) =
-    ResourceDirectives.rangedResponse[IO](
+  def resourceResponse(req: Request[IO], ioResponse: IOResponse) =
+    ResourceDirectives.responseWithRangeSupport[IO](
       req,
       ioResponse.size(),
-      Some(MediaType.video.mp4),
+      ioResponse.contentType().map(MediaType.parse(_).toOption).flatten,
       ioResponse.getContentRange
     )
 
@@ -57,14 +59,21 @@ object ResourceRoutes extends Logging {
           case patterns.VideoFragment(id, start, end, quality) =>
             buckets(bucketId).getVideoFragment(id, start.toLong, end.toLong, quality.toInt).toIO.flatMap {
               case None => NotFound()
-              case Some(ioResponse) => videoResponse(req, ioResponse)
+              case Some(ioResponse) => resourceResponse(req, ioResponse)
             }
 
           case patterns.Video(id, quality) =>
-            buckets(bucketId).getResource(id, quality.toInt).toIO.flatMap {
+            buckets(bucketId).getVideo(id, quality.toInt).toIO.flatMap {
               case None             => NotFound()
-              case Some(ioResponse) => videoResponse(req, ioResponse)
+              case Some(ioResponse) => resourceResponse(req, ioResponse)
             }
+
+          case _ =>
+            buckets(bucketId).getResource(resourceId).toIO.flatMap {
+              case None             => NotFound()
+              case Some(ioResponse) => resourceResponse(req, ioResponse)
+            }
+
           case _ =>
             NotFound()
         }

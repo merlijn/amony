@@ -6,8 +6,6 @@ import nl.amony.service.resources.ResourceBucket
 import nl.amony.service.resources.events.Resource
 import scribe.Logging
 
-import scala.util.Try
-
 object ScanMedia extends Logging {
 
   def scanMedia(
@@ -15,10 +13,10 @@ object ScanMedia extends Logging {
        resource: Resource,
        bucketId: String): IO[Media] = {
 
-    Try { resource.contentType.split('/')(0) }.toOption match {
-      case None           => handleUnkown(resource)
-      case Some("video")  => handleVideo(resourceBucket, resource, bucketId)
-      case Some("image")  => handleImage(resourceBucket, resource, bucketId)
+    resource.contentType.flatMap(_.split('/').headOption) match {
+      case Some("video") => handleVideo(resourceBucket, resource, bucketId)
+      case Some("image") => handleImage(resourceBucket, resource, bucketId)
+      case _             => handleUnkown(resource)
     }
   }
 
@@ -43,7 +41,7 @@ object ScanMedia extends Logging {
         )
 
         val mediaInfo = MediaInfo(
-          mediaType        = resource.contentType,
+          mediaType        = resource.contentType.get,
           width            = meta.geometry.width,
           height           = meta.geometry.height,
           fps              = 0f,
@@ -92,7 +90,7 @@ object ScanMedia extends Logging {
           )
 
           val mediaInfo = MediaInfo(
-            mediaType        = resource.contentType,
+            mediaType        = resource.contentType.get,
             width            = mainVideoStream.width,
             height           = mainVideoStream.height,
             fps              = mainVideoStream.fps.toFloat,

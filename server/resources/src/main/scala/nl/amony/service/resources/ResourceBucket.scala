@@ -9,7 +9,9 @@ import scala.concurrent.Future
 // TODO GRPC
 trait ResourceBucket {
 
-  def getResource(resourceId: String, quality: Int): Future[Option[IOResponse]]
+  def getResource(resourceId: String): Future[Option[IOResponse]]
+
+  def getVideo(resourceId: String, quality: Int): Future[Option[IOResponse]]
 
   def getFFProbeOutput(resourceId: String): Future[Option[ProbeOutput]]
 

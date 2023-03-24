@@ -28,7 +28,7 @@ class LocalDirectoryStorage[P <: JdbcProfile](
 
     def directoryId = column[String]("directory_id")
     def relativePath = column[String]("relative_path")
-    def contentType = column[String]("content_type")
+    def contentType = column[Option[String]]("content_type")
     def hash = column[String]("hash")
     def size = column[Long]("size")
     def creationTime = column[Option[Long]]("creation_time")
@@ -37,7 +37,7 @@ class LocalDirectoryStorage[P <: JdbcProfile](
     def hashIdx = index("hash_idx", hash)
     def pk = primaryKey("resources_pk", (directoryId, relativePath))
 
-    def * = (directoryId, relativePath, hash, contentType, size, creationTime, lastModifiedTime) <> ((Resource.apply _).tupled, Resource.unapply)
+    def * = (directoryId, relativePath, hash, size, contentType, creationTime, lastModifiedTime) <> ((Resource.apply _).tupled, Resource.unapply)
   }
 
   private val files = TableQuery[LocalFiles]

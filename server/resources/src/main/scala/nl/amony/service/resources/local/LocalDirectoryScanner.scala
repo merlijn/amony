@@ -14,14 +14,7 @@ import java.nio.file.attribute.BasicFileAttributes
 
 object LocalDirectoryScanner extends Logging {
 
-  def contentTypeFromPath(path: String): String = {
 
-    val maybeExt = java.nio.file.Path.of(path).fileExtension
-
-    maybeExt.flatMap { ext =>
-      MediaType.extensionMap.get(ext).map(m => s"${m.mainType}/${m.subType}")
-    }.getOrElse("unknown")
-  }
 
   def scanDirectory(config: LocalResourcesConfig, cache: String => Option[Resource]): Stream[IO, Resource] = {
 
@@ -61,8 +54,8 @@ object LocalDirectoryScanner extends Logging {
             bucketId = config.id,
             path = relativePath,
             hash = hash,
-            contentType = contentTypeFromPath(relativePath),
             fileAttributes.size(),
+            contentType = LocalFileUtil.contentTypeFromPath(relativePath),
             Some(fileAttributes.creationTime().toMillis),
             Some(fileAttributes.lastModifiedTime().toMillis))
         }

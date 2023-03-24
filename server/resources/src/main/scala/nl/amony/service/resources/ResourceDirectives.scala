@@ -25,7 +25,7 @@ object ResourceDirectives extends Logging {
     Files[F].getBasicFileAttributes(path).flatMap { attr =>
       val mediaType = MediaType.extensionMap.get(path.extName)
 
-      rangedResponse(
+      responseWithRangeSupport(
         req, attr.size,
         mediaType,
         (start, end) => Files[F].readRange(path, chunkSize, start, end))
@@ -33,7 +33,7 @@ object ResourceDirectives extends Logging {
   }
 
   // Attempt to find a Range header and collect only the subrange of content requested
-  def rangedResponse[F[_]](req: Request[F], size: Long, maybeMediaType: Option[MediaType], rangeResponseFn: (Long, Long) => Stream[F, Byte])(implicit F: Async[F]): F[Response[F]] = {
+  def responseWithRangeSupport[F[_]](req: Request[F], size: Long, maybeMediaType: Option[MediaType], rangeResponseFn: (Long, Long) => Stream[F, Byte])(implicit F: Async[F]): F[Response[F]] = {
 
     val rangeNotSatisfiableResponse: F[Response[F]] =
       F.pure {

@@ -1,12 +1,13 @@
 package nl.amony.service.resources
 
 import cats.effect.IO
+import nl.amony.service.resources.local.LocalFileUtil
 import org.http4s.MediaType
 
 import java.nio.file.{Files, Path}
 
 trait IOResponse {
-  def contentType(): String
+  def contentType(): Option[String]
   def size(): Long
   def getContent(): fs2.Stream[IO, Byte]
   def getContentRange(start: Long, end: Long): fs2.Stream[IO, Byte]
@@ -21,7 +22,7 @@ case class LocalFileIOResponse(path: fs2.io.file.Path) extends IOResponse {
 
   private val defaultChunkSize: Int = 64 * 1024
 
-  override def contentType(): String = MediaType.extensionMap.get(path.extName).map(_.toString()).getOrElse("")
+  override def contentType(): Option[String] = LocalFileUtil.contentTypeFromPath(path.toString)
   override def size(): Long = Files.size(path.toNioPath)
 
   override def getContent(): fs2.Stream[IO, Byte] =
