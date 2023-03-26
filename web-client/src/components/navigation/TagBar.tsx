@@ -12,9 +12,9 @@ const TagBar = (props: { tags: Array<string> }) => {
   const [selectedTag, setSelectedTag] = useState<string | undefined>(undefined)
   // const [tags, setTags] = useState<Array<string>>(props.tags)
 
-  // useEffect(() => {
-  //   setSelectedTag(new URLSearchParams(location.search).get("tag") || undefined)
-  // }, [location]);
+  useEffect(() => {
+    setSelectedTag(new URLSearchParams(location.search).get("tag") || undefined)
+  }, [location]);
 
   const toggleTag = (tag: string) => {
     const params = new URLSearchParams(location.search)
@@ -25,6 +25,7 @@ const TagBar = (props: { tags: Array<string> }) => {
     else
       newParams.set("tag", tag)
 
+    // setSelectedTag(tag)
     history.push(buildUrl("/search", newParams));
   };
 

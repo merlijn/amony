@@ -3,18 +3,13 @@ package nl.amony.service.resources.local
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
-import nl.amony.lib.files.PathOps
 import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
 import nl.amony.service.resources.events._
-import org.http4s.MediaType
 import scribe.Logging
-
 import java.nio.file.Files
 import java.nio.file.attribute.BasicFileAttributes
 
 object LocalDirectoryScanner extends Logging {
-
-
 
   def scanDirectory(config: LocalResourcesConfig, cache: String => Option[Resource]): Stream[IO, Resource] = {
 
