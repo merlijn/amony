@@ -23,7 +23,10 @@ object ResourceDirectives extends Logging {
 
   def fromPath[F[_]](req: Request[F], path: Path, chunkSize: Int)(implicit F: Async[F]): F[Response[F]] = {
     Files[F].getBasicFileAttributes(path).flatMap { attr =>
-      val mediaType = MediaType.extensionMap.get(path.extName)
+
+      val mediaType =
+        Option.when(path.extName.nonEmpty)(path.extName.substring(1))
+          .flatMap(MediaType.forExtension)
 
       responseWithRangeSupport(
         req, attr.size,

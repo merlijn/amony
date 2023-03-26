@@ -52,7 +52,14 @@ class MediaService(mediaRepository: MediaStorage[_], mediaTopic: EventTopic[Medi
 
     mediaRepository.getById(id).flatMap {
       case None        => Future.successful(None)
-      case Some(media) => mediaRepository.upsert(media.copy(meta = MediaMeta(title, comment, tags))).map(Some(_))
+      case Some(oldMedia) =>
+        mediaRepository.upsert(oldMedia.copy(meta = MediaMeta(title, comment, tags))).map { m =>
+          val tagsAdded = tags.filterNot(oldMedia.meta.tags.contains)
+          val tagsRemoved = oldMedia.meta.tags.filterNot(tags.contains)
+          mediaTopic.publish(MediaMetaDataUpdated(id, title, comment, tagsAdded, tagsRemoved))
+          Some(m)
+        }
+
     }
   }
 }

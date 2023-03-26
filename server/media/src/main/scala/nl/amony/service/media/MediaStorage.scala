@@ -5,28 +5,32 @@ import nl.amony.service.media.api._
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
+import slick.model.PrimaryKey
 
 import scala.concurrent.Future
 
 object MediaStorage {
 
-  type MediaRow = (String, String, Long, Long, String, String, String, Long, Float, Long, String, Int, Int, Option[String], Option[String])
+  type MediaRow =
+    (String, String, Long, Long,
+     String, String, String, Long, Float, Long,
+     String, Int, Int, Option[String], Option[String], Option[String])
 
   def asRow(media: Media): MediaRow =
     (media.mediaId, media.userId, media.createdTimestamp, media.thumbnailTimestamp,
       media.resourceInfo.bucketId, media.resourceInfo.hash, media.resourceInfo.relativePath, media.resourceInfo.sizeInBytes,
       media.mediaInfo.fps, media.mediaInfo.durationInMillis, media.mediaInfo.mediaType, media.width, media.height,
-      media.meta.title, media.meta.comment)
+      media.meta.title, media.meta.comment, Option.when(media.meta.tags.nonEmpty)(media.meta.tags.mkString(",")))
 
   def fromRow(row: MediaRow): Media = row match {
     case (mediaId, userId, uploadTimestamp, thumbnailTimestamp,
           resourceBucketId, resourceHash, resourcePath, resourceSize,
           videoFps, videoDuration, mediaType, mediaWidth, mediaHeight,
-          title, comment) =>
+          title, comment, tags) =>
 
       val resourceInfo = ResourceInfo(resourceBucketId, resourcePath, resourceHash, resourceSize)
       val mediaInfo = MediaInfo(mediaType, mediaWidth, mediaHeight, videoFps, videoDuration)
-      val meta = MediaMeta(title, comment, Seq.empty)
+      val meta = MediaMeta(title, comment, tags.toList.flatMap(_.split(",")))
 
       Media(mediaId, userId, uploadTimestamp, thumbnailTimestamp, meta, mediaInfo, resourceInfo)
   }
@@ -57,11 +61,12 @@ class MediaStorage[P <: JdbcProfile](dbConfig: DatabaseConfig[P]) extends Loggin
 
     def title              = column[Option[String]]("title")
     def comment            = column[Option[String]]("comment")
+    def tags               = column[Option[String]]("tags")
 
     def * = (mediaId, uploader, uploadTimestamp, thumbnailTimestamp,
       resourceBucketId, resourceHash, resourcePath, resourceSize,
       mediaFps, mediaDuration, mediaType, mediaWidth, mediaHeight,
-      title, comment)
+      title, comment, tags)
   }
 
   private val db = dbConfig.db
@@ -71,7 +76,7 @@ class MediaStorage[P <: JdbcProfile](dbConfig: DatabaseConfig[P]) extends Loggin
   def createTables(): Future[Unit] = db.run(mediaTable.schema.createIfNotExists)
 
   def upsert(media: Media): Future[Media] = {
-    val query = mediaTable += asRow(media)
+    val query = mediaTable.insertOrUpdate(asRow(media))
     db.run(query).map(_ => media)
   }
 

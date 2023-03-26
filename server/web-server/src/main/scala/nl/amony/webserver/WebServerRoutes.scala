@@ -41,6 +41,8 @@ object WebServerRoutes extends Logging {
             Paths.get(config.api.webClientPath).resolve("index.html")
         }
 
+        logger.info(s"Request for $filePath, serving $targetFile")
+
         ResourceDirectives.fromPath[IO](req, fs2.io.file.Path.fromNioPath(targetFile), 32 * 1024)
     }
 

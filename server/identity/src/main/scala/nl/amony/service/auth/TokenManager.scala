@@ -13,7 +13,7 @@ class TokenManager(jwtConfig: JwtConfig) {
     val claim = JwtClaim(
       expiration = Some(Instant.now.plusSeconds(expirationInSeconds).getEpochSecond),
       issuedAt   = Some(Instant.now.getEpochSecond)
-    ) + ("userId", userId)
+    ) + ("userId", userId) + ("admin", true)
 
     val token = JwtCirce.encode(claim, jwtConfig.secretKey, jwtConfig.algo)
 

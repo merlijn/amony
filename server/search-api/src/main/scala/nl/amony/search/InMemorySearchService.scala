@@ -63,7 +63,7 @@ class InMemorySearchService extends SearchService with Logging {
             val newMeta = MediaMeta(
               title = title.orElse(media.meta.title),
               comment = comment.orElse(media.meta.comment),
-              tags = (media.meta.tags.toSet -- tagsRemoved ++ tagsAdded).toSeq.sortBy(media.meta.tags.indexOf)
+              tags = (media.meta.tags.filterNot(tagsRemoved.contains) ++ tagsAdded)
             )
 
             mediaIndex += (media.mediaId -> media.copy(meta = newMeta))
