@@ -27,7 +27,7 @@ object WebServerRoutes extends Logging {
 
     // routes for the web app (javascript/html) resources
     val webAppRoutes = HttpRoutes.of[IO] {
-      case req@GET -> rest =>
+      case req @ GET -> rest =>
         val filePath = rest.toString() match {
           case "" | "/" => "index.html"
           case other => other
@@ -40,8 +40,6 @@ object WebServerRoutes extends Logging {
           else
             Paths.get(config.api.webClientPath).resolve("index.html")
         }
-
-        logger.info(s"Request for $filePath, serving $targetFile")
 
         ResourceDirectives.fromPath[IO](req, fs2.io.file.Path.fromNioPath(targetFile), 32 * 1024)
     }

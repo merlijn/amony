@@ -67,10 +67,12 @@ object Main extends ConfigLoader with Logging {
     val mediaService = {
       val mediaStorage = new MediaStorage(dbConfig)
       Await.result(mediaStorage.createTables(), 5.seconds)
+
       val topic = EventTopic.transientEventTopic[MediaEvent]
+      topic.followTail(searchService.indexEvent _)
+
       val service = new MediaService(mediaStorage, topic)
 
-      topic.followTail(searchService.indexEvent _)
       service.getAll().foreach { _.foreach(m => topic.publish(MediaAdded(m))) }
       service
     }

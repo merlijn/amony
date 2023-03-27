@@ -36,6 +36,8 @@ const Preview = (props: PreviewProps) => {
 
   const durationStr = durationInMillisToString(media.mediaInfo.duration)
 
+  const isVideo = media.mediaInfo.mediaType.startsWith("video")
+
   useEffect(() => {
     setShowVideoPreview(isHovering)
   }, [isHovering])
@@ -58,7 +60,7 @@ const Preview = (props: PreviewProps) => {
                   onDialogOpen = { () => { setShowVideoPreview(false) } }/>
             </div>
         }
-        { props.options.showDuration && <div className="duration-overlay">{durationStr}</div> }
+        { (isVideo && props.options.showDuration) && <div className="duration-overlay">{durationStr}</div> }
         {/* { <div className="abs-bottom-right"><FiDownload /></div> } */}
       </div>
 
@@ -84,7 +86,7 @@ const Preview = (props: PreviewProps) => {
       <div className    = "preview-media-container"
            onMouseEnter = { () => props.options.showPreviewOnHover && setIsHovering(true) }
            onMouseLeave = { () => setIsHovering(false) }>
-        { media.mediaInfo.mediaType.startsWith("video") && showVideoPreview && videoPreview }
+        { isVideo && showVideoPreview && videoPreview }
         { primaryThumbnail }
         { overlay }
       </div>
