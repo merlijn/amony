@@ -3,6 +3,7 @@ package nl.amony.service.resources
 import nl.amony.lib.hash.Base32
 import nl.amony.lib.hash.PartialHash.partialHash
 import pureconfig.ConfigReader
+import pureconfig.generic.FieldCoproductHint
 import pureconfig.generic.semiauto.deriveEnumerationReader
 
 import java.nio.file.Path
@@ -10,20 +11,24 @@ import java.security.MessageDigest
 import scala.concurrent.duration.FiniteDuration
 
 object ResourceConfig {
-  case class LocalResourcesConfig(
+
+  implicit val typeNameHint = new FieldCoproductHint[ResourceBucketConfig]("type") {
+    override def fieldValue(name: String) = name.dropRight("Config".length)
+  }
+
+  sealed trait ResourceBucketConfig
+
+  case class LocalDirectoryConfig(
       id: String,
       private val path: Path,
-      private val indexPath: Path,
       scanParallelFactor: Int,
       verifyExistingHashes: Boolean,
       hashingAlgorithm: HashingAlgorithm,
-      fragments: FragmentSettings,
-      transcode: List[TranscodeSettings],
+      relativeResourcePath: Path,
       extensions: List[String]
-  ) {
+  ) extends ResourceBucketConfig {
 
-    def getIndexPath(): Path    = indexPath.toAbsolutePath.normalize()
-    lazy val resourcePath: Path = indexPath.toAbsolutePath.normalize().resolve("resources")
+    lazy val resourcePath: Path = path.toAbsolutePath.normalize().resolve(relativeResourcePath)
     lazy val mediaPath: Path    = path.toAbsolutePath.normalize()
 
     def filterFileName(fileName: String): Boolean =

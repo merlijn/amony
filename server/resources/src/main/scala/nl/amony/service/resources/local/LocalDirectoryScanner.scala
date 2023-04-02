@@ -3,7 +3,7 @@ package nl.amony.service.resources.local
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
-import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
+import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.events._
 import scribe.Logging
 import java.nio.file.Files
@@ -11,7 +11,7 @@ import java.nio.file.attribute.BasicFileAttributes
 
 object LocalDirectoryScanner extends Logging {
 
-  def scanDirectory(config: LocalResourcesConfig, cache: String => Option[Resource]): Stream[IO, Resource] = {
+  def scanDirectory(config: LocalDirectoryConfig, cache: String => Option[Resource]): Stream[IO, Resource] = {
 
     val mediaPath = config.mediaPath
     val hashingAlgorithm = config.hashingAlgorithm
@@ -21,7 +21,7 @@ object LocalDirectoryScanner extends Logging {
       .filter { file =>
         val isEmpty = Files.size(file) == 0
         if (isEmpty)
-          logger.warn(s"Encountered empty file: ${file.getFileName.toString}")
+          logger.warn(s"Ignoring empty file: ${file.getFileName.toString}")
         !isEmpty
       }
       .parEvalMapUnordered(config.scanParallelFactor) { path =>
@@ -62,7 +62,7 @@ object LocalDirectoryScanner extends Logging {
     a.hash == b.hash && a.creationTime == b.creationTime && a.modifiedTime == b.modifiedTime
   }
 
-  def diff(config: LocalResourcesConfig, previousState: Set[Resource])(implicit ioRuntime: IORuntime): List[ResourceEvent] = {
+  def diff(config: LocalDirectoryConfig, previousState: Set[Resource])(implicit ioRuntime: IORuntime): List[ResourceEvent] = {
 
     val scannedResources: Set[Resource] = scanDirectory(config, path => previousState.find(_.path == path)).compile.toList.unsafeRunSync().toSet
 

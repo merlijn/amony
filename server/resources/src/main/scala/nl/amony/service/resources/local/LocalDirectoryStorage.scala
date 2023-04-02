@@ -1,7 +1,7 @@
 package nl.amony.service.resources.local
 
 import cats.effect.IO
-import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
+import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
@@ -13,9 +13,9 @@ import scala.concurrent.duration.DurationInt
 import scala.util.Try
 
 class LocalDirectoryStorage[P <: JdbcProfile](
-   config: LocalResourcesConfig,
-   topic: EventTopic[ResourceEvent],
-   private val dbConfig: DatabaseConfig[P]) extends Logging {
+                                               config: LocalDirectoryConfig,
+                                               topic: EventTopic[ResourceEvent],
+                                               private val dbConfig: DatabaseConfig[P]) extends Logging {
 
   import dbConfig.profile.api._
   import cats.effect.unsafe.implicits.global

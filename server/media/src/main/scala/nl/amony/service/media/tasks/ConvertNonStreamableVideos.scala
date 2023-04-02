@@ -5,7 +5,7 @@ import fs2.Stream
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.files.PathOps
 import nl.amony.service.media.MediaService
-import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
+import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.local.RecursiveFileVisitor
 import scribe.Logging
 
@@ -14,7 +14,7 @@ import scala.util.Success
 
 object ConvertNonStreamableVideos extends Logging {
 
-  def convertNonStreamableVideos(config: LocalResourcesConfig, mediaService: MediaService)(implicit ec: ExecutionContext): Unit = {
+  def convertNonStreamableVideos(config: LocalDirectoryConfig, mediaService: MediaService)(implicit ec: ExecutionContext): Unit = {
 
     val files = RecursiveFileVisitor.listFilesInDirectoryRecursive(config.mediaPath)
     val parallelism      = config.scanParallelFactor

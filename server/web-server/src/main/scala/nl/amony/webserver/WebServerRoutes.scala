@@ -7,6 +7,7 @@ import nl.amony.service.auth.AuthRoutes
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.media.MediaService
 import nl.amony.service.media.web.MediaRoutes
+import nl.amony.service.resources.ResourceConfig.TranscodeSettings
 import nl.amony.service.resources.{ResourceBucket, ResourceDirectives, ResourceRoutes}
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import org.http4s.HttpRoutes
@@ -20,6 +21,7 @@ object WebServerRoutes extends Logging {
              mediaService: MediaService,
              searchService: SearchService,
              config: AmonyConfig,
+             transcodeSettings: List[TranscodeSettings],
              resourceBuckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
 
     import org.http4s._
@@ -45,9 +47,9 @@ object WebServerRoutes extends Logging {
     }
 
     val routes =
-      MediaRoutes.apply(mediaService, config.media.transcode) <+>
+      MediaRoutes.apply(mediaService, transcodeSettings) <+>
         ResourceRoutes.apply(resourceBuckets) <+>
-        SearchRoutes.apply(searchService, config.search, config.media.transcode) <+>
+        SearchRoutes.apply(searchService, config.search, transcodeSettings) <+>
         AuthRoutes.apply(authService) <+>
         webAppRoutes
 

@@ -7,7 +7,7 @@ import nl.amony.lib.ffmpeg.tasks.FFProbeModel.ProbeOutput
 import nl.amony.lib.files.PathOps
 import nl.amony.lib.magick.ImageMagick
 import nl.amony.lib.magick.tasks.ImageMagickModel
-import nl.amony.service.resources.ResourceConfig.LocalResourcesConfig
+import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.events.Resource
 import nl.amony.service.resources.{IOResponse, ResourceBucket}
 import scribe.Logging
@@ -32,13 +32,15 @@ case class FragmentKey(resourceId: String, range: (Long, Long), quality: Int) ex
   def path: String = s"${resourceId}_${range._1}-${range._2}_${quality}p.mp4"
 }
 
-class LocalDirectoryBucket[P <: JdbcProfile](config: LocalResourcesConfig, repository: LocalDirectoryStorage[P])(implicit ec: ExecutionContext) extends ResourceBucket with Logging {
+class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repository: LocalDirectoryStorage[P])(implicit ec: ExecutionContext) extends ResourceBucket with Logging {
 
   private val timeout = 5.seconds
   private val resourceStore = new ConcurrentHashMap[ResourceKey, Path]()
 
   // TODO think about replacing this with custom runtime
   implicit val runtime: IORuntime = IORuntime.global
+
+  Files.createDirectories(config.resourcePath)
 
   override def getVideo(resourceId: String, scaleHeight: Int): Future[Option[IOResponse]] = {
     repository.getByHash(resourceId)
