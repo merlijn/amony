@@ -69,7 +69,7 @@ object ScanMedia extends Logging {
   def handleVideo(resourceBucket: ResourceBucket,
                   resource: Resource,
                   bucketId: String): IO[Media] = {
-    IO.fromFuture(IO(resourceBucket.getFFProbeOutput(resource.hash)))
+    IO.fromFuture(IO(resourceBucket.getVideoMetaData(resource.hash)))
       .map {
         case None        => throw new IllegalStateException(s"Resource does not exist: ${resource.path}")
         case Some(probe) =>

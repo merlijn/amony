@@ -102,7 +102,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
     }
   }
 
-  override def getThumbnail(resourceId: String, quality: Int, timestamp: Long): Future[Option[IOResponse]] = {
+  override def getVideoThumbnail(resourceId: String, quality: Int, timestamp: Long): Future[Option[IOResponse]] = {
 
     val key = VideoThumbnailKey(resourceId, timestamp, quality)
     val path = resourceStore.compute(key, (_, value) => getOrCreateThumbnail(key))
@@ -163,7 +163,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
     Future.successful(IOResponse.fromPath(path))
   }
 
-  override def getFFProbeOutput(resourceId: String): Future[Option[ProbeOutput]] = {
+  override def getVideoMetaData(resourceId: String): Future[Option[ProbeOutput]] = {
 
     getFileInfo(resourceId).flatMap {
       case None       => Future.successful(None)

@@ -13,7 +13,7 @@ trait ResourceBucket {
 
   def getVideo(resourceId: String, scaleHeight: Int): Future[Option[IOResponse]]
 
-  def getFFProbeOutput(resourceId: String): Future[Option[ProbeOutput]]
+  def getVideoMetaData(resourceId: String): Future[Option[ProbeOutput]]
 
   def getImageMetaData(resourceId: String): Future[Option[ImageMeta]]
 
@@ -25,7 +25,7 @@ trait ResourceBucket {
 
   def getPreviewSpriteImage(resourceId: String): Future[Option[IOResponse]]
 
-  def getThumbnail(resourceId: String, quality: Int, timestamp: Long): Future[Option[IOResponse]]
+  def getVideoThumbnail(resourceId: String, quality: Int, timestamp: Long): Future[Option[IOResponse]]
 
   def getImageThumbnail(resourceId: String, scaleHeight: Int): Future[Option[IOResponse]]
 }

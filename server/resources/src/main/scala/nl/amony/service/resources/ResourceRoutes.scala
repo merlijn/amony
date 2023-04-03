@@ -45,7 +45,7 @@ object ResourceRoutes extends Logging {
         resourceId match {
 
           case patterns.ThumbnailWithTimestamp(id, timestamp, quality) =>
-            buckets(bucketId).getThumbnail(id, quality.toInt, timestamp.toLong).toIO.flatMap {
+            buckets(bucketId).getVideoThumbnail(id, quality.toInt, timestamp.toLong).toIO.flatMap {
               case None => NotFound()
               case Some(ioResponse) => Ok(ioResponse.getContent())
             }
