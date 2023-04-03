@@ -3,28 +3,26 @@ package nl.amony.service.media.web
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import io.circe.{Codec, Encoder}
 import nl.amony.service.fragments.FragmentProtocol
-import nl.amony.service.resources.ResourceConfig.TranscodeSettings
 import nl.amony.service.fragments.WebModel.Fragment
 import nl.amony.service.media.web.MediaWebModel._
 import nl.amony.service.media.api
 
-class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
+class JsonCodecs {
 
   // web model codecs
-  implicit val createFragmentCodec: Codec[Range]         = deriveCodec[Range]
   implicit val mediaInfoCodec: Codec[MediaInfo]          = deriveCodec[MediaInfo]
-  implicit val videoCodec: Codec[Video]                  = deriveCodec[Video]
+  implicit val videoCodec: Codec[Media]                  = deriveCodec[Media]
   implicit val urlsCodec: Codec[MediaUrls]               = deriveCodec[MediaUrls]
   implicit val codec: Codec[ResourceInfo]                = deriveCodec[ResourceInfo]
   implicit val videoMetaCodec: Codec[MediaMeta]          = deriveCodec[MediaMeta]
 
   // contra map encoders for internal protocol classes
   implicit val mediaEncoder: Encoder[api.Media] =
-    deriveEncoder[Video].contramapObject[api.Media](toWebModel)
+    deriveEncoder[Media].contramapObject[api.Media](toWebModel)
 
-  def toWebModel(media: api.Media): Video = {
+  def toWebModel(media: api.Media): Media = {
 
-    val resolutions = (media.height :: transcodingSettings.map(_.scaleHeight)).sorted
+    val resolutions = (media.height :: media.availableFormats.toList.map(_.scaleHeight)).sorted
 
     val extension = media.resourceInfo.relativePath.split('.').last
 
@@ -63,7 +61,7 @@ class JsonCodecs(transcodingSettings: List[TranscodeSettings]) {
     val range = (start, Math.min(media.mediaInfo.durationInMillis, start + 3000))
     val highlights = List(FragmentProtocol.Fragment(media.mediaId, range, None, List.empty))
 
-    Video(
+    Media(
       id        = media.mediaId,
       uploader  = media.userId,
       uploadTimestamp = media.createdTimestamp,

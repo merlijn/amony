@@ -22,10 +22,9 @@ object SearchRoutes {
   def apply(
          searchService: SearchService,
          config: SearchConfig,
-         transcodingSettings: List[TranscodeSettings]
     ): HttpRoutes[IO] = {
 
-    val jsonCodecs = new JsonCodecs(transcodingSettings)
+    val jsonCodecs = new JsonCodecs
     import jsonCodecs._
 
     implicit val searchResultEncoder: Encoder[SearchResult] =

@@ -47,9 +47,9 @@ object WebServerRoutes extends Logging {
     }
 
     val routes =
-      MediaRoutes.apply(mediaService, transcodeSettings) <+>
+      MediaRoutes.apply(mediaService) <+>
         ResourceRoutes.apply(resourceBuckets) <+>
-        SearchRoutes.apply(searchService, config.search, transcodeSettings) <+>
+        SearchRoutes.apply(searchService, config.search) <+>
         AuthRoutes.apply(authService) <+>
         webAppRoutes
 

@@ -12,10 +12,9 @@ import org.http4s.dsl.io._
 
 object MediaRoutes {
 
-  def apply(mediaService: MediaService,
-            transcodingSettings: List[TranscodeSettings]): HttpRoutes[IO] = {
+  def apply(mediaService: MediaService): HttpRoutes[IO] = {
 
-    val jsonCodecs = new JsonCodecs(transcodingSettings)
+    val jsonCodecs = new JsonCodecs
     import jsonCodecs._
 
     HttpRoutes.of[IO] {

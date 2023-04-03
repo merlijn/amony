@@ -4,11 +4,6 @@ import nl.amony.service.fragments.WebModel.Fragment
 
 object MediaWebModel {
 
-  case class Range(
-    start: Long,
-    end: Long
-  )
-
   case class MediaMeta(
     title: Option[String],
     comment: Option[String],
@@ -34,7 +29,7 @@ object MediaWebModel {
     sizeInBytes: Long
   )
 
-  case class Video(
+  case class Media(
     id: String,
     uploader: String,
     uploadTimestamp: Long,

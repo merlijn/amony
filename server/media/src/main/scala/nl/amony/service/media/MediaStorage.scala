@@ -5,7 +5,6 @@ import nl.amony.service.media.api._
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
-import slick.model.PrimaryKey
 
 import scala.concurrent.Future
 
@@ -32,7 +31,7 @@ object MediaStorage {
       val mediaInfo = MediaInfo(mediaType, mediaWidth, mediaHeight, videoFps, videoDuration)
       val meta = MediaMeta(title, comment, tags.toList.flatMap(_.split(",")))
 
-      Media(mediaId, userId, uploadTimestamp, thumbnailTimestamp, meta, mediaInfo, resourceInfo)
+      Media(mediaId, mediaType, userId, uploadTimestamp, thumbnailTimestamp, meta, mediaInfo, resourceInfo)
   }
 }
 

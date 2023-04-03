@@ -13,7 +13,7 @@ message UInt32Range {
   required uint32 end = 2;
 }
 
-message Fragment {
+message VideoFragment {
   required string mediaId = 1;
   required UInt64Range range = 2;
   required MediaMeta meta = 3;
@@ -41,16 +41,24 @@ message MediaInfo {
   required uint64 durationInMillis = 5;
 }
 
+message MediaType {
+  required string typeId = 1;
+  required string mediaType = 2;
+  required int32 scaleHeight = 3;
+}
+
 message MediaId {
   required string mediaId = 1;
 }
 
 message Media {
   required string mediaId = 1;
-  required string userId = 2;
-  required uint64 createdTimestamp = 3;
-  required uint64 thumbnailTimestamp = 4;
-  required MediaMeta meta = 5;
-  required MediaInfo mediaInfo = 6;
-  required ResourceInfo resourceInfo = 7;
+  required string mediaType = 2;
+  required string userId = 3;
+  required uint64 createdTimestamp = 4;
+  required uint64 thumbnailTimestamp = 5;
+  required MediaMeta meta = 6;
+  required MediaInfo mediaInfo = 7;
+  required ResourceInfo resourceInfo = 8;
+  repeated MediaType availableFormats = 9;
 }

@@ -1,7 +1,7 @@
 *.log
 
 # project specific
-videos/
+media/
 server/solr-search/solr/amony_embedded/data/
 
 # backend, java, scala

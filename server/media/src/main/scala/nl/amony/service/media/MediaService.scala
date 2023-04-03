@@ -13,12 +13,19 @@ class MediaService(mediaRepository: MediaStorage[_], mediaTopic: EventTopic[Medi
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
+  // temporary hack
+  private def addFormats(media: Media): Media = {
+    media.copy(availableFormats = List(
+      MediaType("mp4_lowres", "video/mp4", 320)
+    ))
+  }
+
   def getById(id: String): Future[Option[Media]] = {
-    mediaRepository.getById(id)
+    mediaRepository.getById(id).map(_.map(addFormats))
   }
 
   def getAll(): Future[Seq[Media]] = {
-    mediaRepository.getAll()
+    mediaRepository.getAll().map(_.map(addFormats))
   }
 
   def exportToJson(): Future[String] = {
@@ -59,7 +66,6 @@ class MediaService(mediaRepository: MediaStorage[_], mediaTopic: EventTopic[Medi
           mediaTopic.publish(MediaMetaDataUpdated(id, title, comment, tagsAdded, tagsRemoved))
           Some(m)
         }
-
     }
   }
 }

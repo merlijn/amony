@@ -50,6 +50,7 @@ object ScanMedia extends Logging {
 
         Media(
           mediaId = resource.hash,
+          mediaType = resource.contentType.get,
           userId = "0",
           createdTimestamp = System.currentTimeMillis(),
           meta = MediaMeta(
@@ -60,6 +61,7 @@ object ScanMedia extends Logging {
           resourceInfo = fileInfo,
           mediaInfo    = mediaInfo,
           thumbnailTimestamp = 0,
+          availableFormats = List.empty
         )
     }
   }
@@ -101,6 +103,7 @@ object ScanMedia extends Logging {
 
           Media(
             mediaId = mediaId,
+            mediaType = resource.contentType.get,
             userId = "0",
             createdTimestamp = System.currentTimeMillis(),
             meta = MediaMeta(
