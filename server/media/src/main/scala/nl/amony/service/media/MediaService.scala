@@ -15,9 +15,7 @@ class MediaService(mediaRepository: MediaStorage[_], mediaTopic: EventTopic[Medi
 
   // temporary hack
   private def addFormats(media: Media): Media = {
-    media.copy(availableFormats = List(
-      MediaType("mp4_lowres", "video/mp4", 320)
-    ))
+    media.copy(availableFormats = List(MediaType("mp4_lowres", "video/mp4", 320)))
   }
 
   def getById(id: String): Future[Option[Media]] = {

@@ -40,7 +40,7 @@ object ResourceRoutes extends Logging {
 
   def apply(buckets: Map[String, ResourceBucket]) = {
     HttpRoutes.of[IO] {
-      case req @ GET -> Root / "resources" / "media" / bucketId / resourceId =>
+      case req @ GET -> Root / "resources" / bucketId / resourceId =>
 
         resourceId match {
 

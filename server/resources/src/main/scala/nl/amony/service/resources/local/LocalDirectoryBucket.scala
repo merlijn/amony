@@ -9,7 +9,7 @@ import nl.amony.lib.magick.ImageMagick
 import nl.amony.lib.magick.tasks.ImageMagickModel
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.events.Resource
-import nl.amony.service.resources.{IOResponse, ResourceBucket}
+import nl.amony.service.resources.{IOResponse, ImageMeta, Other, ResourceBucket, ResourceMeta, VideoMeta}
 import scribe.Logging
 import slick.jdbc.JdbcProfile
 
@@ -163,24 +163,45 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
     Future.successful(IOResponse.fromPath(path))
   }
 
-  override def getVideoMetaData(resourceId: String): Future[Option[ProbeOutput]] = {
+  override def getResourceMeta(resourceId: String): Future[Option[ResourceMeta]] = {
 
     getFileInfo(resourceId).flatMap {
       case None       => Future.successful(None)
       case Some(info) =>
         val path = config.mediaPath.resolve(info.path)
-        FFMpeg.ffprobe(path, false).unsafeToFuture().map(Some(_))
+
+        info.contentType match {
+          case None => Future.successful(None)
+          case Some(contentType) if contentType.startsWith("video") =>
+            FFMpeg.ffprobe(path, false).unsafeToFuture().map {
+              probe => probe.firstVideoStream.map { stream =>
+                VideoMeta(
+                  contentType = contentType,
+                  width  = stream.width,
+                  height = stream.height,
+                  durationInMillis = stream.durationMillis,
+                  fps = stream.fps.toFloat,
+                  metaData = Map.empty,
+                )
+              }
+            }
+          case Some(contentType) if contentType.startsWith("image") =>
+            ImageMagick.getImageMeta(path).unsafeToFuture().map(out =>
+              out.headOption.map { meta =>
+                ImageMeta(
+                  contentType = contentType,
+                  width = meta.image.geometry.width,
+                  height = meta.image.geometry.height,
+                  metaData = meta.image.properties,
+                )
+              }
+            )
+          case Some(contentType) => Future.successful(Some(Other(contentType)))
+
+          case None => Future.successful(None)
+        }
     }
   }
 
   override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): Future[Boolean] = ???
-
-  override def getImageMetaData(resourceId: String): Future[Option[ImageMagickModel.ImageMeta]] = {
-    getFileInfo(resourceId).flatMap {
-      case None       => Future.successful(None)
-      case Some(info) =>
-        val path = config.mediaPath.resolve(info.path)
-        ImageMagick.getImageMeta(path).unsafeToFuture().map(metas => Some(metas.head.image))
-    }
-  }
 }

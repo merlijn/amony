@@ -13,6 +13,7 @@ object ImageMagickModel {
   case class ImageMeta(
     geometry: ImageGeometry,
     format: String,
+    mimeType: String,
     properties: Map[String, String]
   )
 

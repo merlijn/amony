@@ -21,11 +21,11 @@ const MediaModal = (props: { media?: Media, onHide: () => void }) => {
         fullscreen: {enabled: true},
         invertTime: false,
         keyboard: {focused: true, global: true},
-        previewThumbnails: {enabled: true, src: props.media.urls.previewThumbnailsUrl}
+        previewThumbnails: {enabled: false, src: props.media.urls.previewThumbnailsUrl}
       }
 
       const plyr = new Plyr(element, plyrOptions)
-      element.load()
+      // element.load()
       plyr.play()
     }
 
@@ -44,7 +44,7 @@ const MediaModal = (props: { media?: Media, onHide: () => void }) => {
 
   if(props.media && props.media.mediaInfo.mediaType.startsWith("video"))
     content =
-      <video tab-index='-1' id={`video-modal-${props.media?.id}`} ref={videoElement} playsInline controls>
+      <video tab-index='-1' id={`video-modal-${props.media.id}`} ref={videoElement} playsInline controls>
         { props.media && <source src={props.media.urls.originalResourceUrl} type="video/mp4"/> }
       </video>
   if(props.media && props.media.mediaInfo.mediaType.startsWith("image"))

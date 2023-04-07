@@ -31,9 +31,9 @@ object JsonCodecs {
       val tsPart = if (media.thumbnailTimestamp != 0) s"_${media.thumbnailTimestamp}" else ""
 
       MediaUrls(
-        originalResourceUrl  = s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}",
-        thumbnailUrl         = s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}${tsPart}_${resolutions.min}p.webp",
-        previewThumbnailsUrl = Some(s"/resources/media/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}-timeline.vtt")
+        originalResourceUrl  = s"/resources/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}.mp4",
+        thumbnailUrl         = s"/resources/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}${tsPart}_${resolutions.min}p.webp",
+        previewThumbnailsUrl = Some(s"/resources/${media.resourceInfo.bucketId}/${media.resourceInfo.hash}-timeline.vtt")
       )
     }
 
@@ -75,7 +75,7 @@ object JsonCodecs {
           val (start, end) = f.range
 
           val urls = resolutions.map(height =>
-            s"/resources/media/${media.resourceInfo.bucketId}/${media.mediaId}~${start}-${end}_${height}p.mp4"
+            s"/resources/${media.resourceInfo.bucketId}/${media.mediaId}~${start}-${end}_${height}p.mp4"
           )
 
           Fragment(

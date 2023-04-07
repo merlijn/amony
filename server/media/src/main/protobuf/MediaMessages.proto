@@ -3,22 +3,6 @@ syntax = "proto2";
 package nl.amony.service.media.api;
 import "scalapb/scalapb.proto";
 
-message UInt64Range {
-  required uint64 start = 1;
-  required uint64 end = 2;
-}
-
-message UInt32Range {
-  required uint32 start = 1;
-  required uint32 end = 2;
-}
-
-message VideoFragment {
-  required string mediaId = 1;
-  required UInt64Range range = 2;
-  required MediaMeta meta = 3;
-}
-
 message ResourceInfo {
   required string bucketId = 1;
   required string relativePath = 2;
@@ -31,6 +15,12 @@ message MediaMeta {
   optional string title = 1;
   optional string comment = 2;
   repeated string tags = 3;
+}
+
+enum MediaKind {
+  VIDEO = 0;
+  IMAGE = 1;
+  AUDIO = 2;
 }
 
 message MediaInfo {

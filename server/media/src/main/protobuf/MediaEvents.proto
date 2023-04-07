@@ -27,8 +27,8 @@ message MediaRemoved {
 
 message MediaMetaDataUpdated {
   required string mediaId = 1;
-  optional string title = 2;
-  optional string comment = 3;
+  optional string newTitle = 2;
+  optional string newComment = 3;
   repeated string tagsAdded = 4;
   repeated string tagsRemoved = 5;
 }

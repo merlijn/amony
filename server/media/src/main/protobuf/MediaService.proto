@@ -15,10 +15,6 @@ service MediaService {
   rpc deleteMedia(MediaId) returns (Media) { }
 
   rpc updateMediaMeta(UpdateMediaMeta) returns (Media) { }
-
-  rpc updateFragmentMeta(UpdateFragmentMeta) returns (Media) { }
-
-  rpc deleteFragment(DeleteFragment) returns (Media) { }
 }
 
 message GetAllMedia { }
@@ -26,19 +22,5 @@ message GetAllMedia { }
 message UpdateMediaMeta {
   string mediaId = 1;
   MediaMeta meta = 2;
-}
-
-message UpdateFragmentMeta {
-  MediaMeta meta = 1;
-}
-
-message DeleteFragment {
-  string mediaId = 1;
-  uint32 index = 2;
-}
-
-message AddFragment {
-  string mediaId = 1;
-  UInt64Range range = 2;
 }
 
