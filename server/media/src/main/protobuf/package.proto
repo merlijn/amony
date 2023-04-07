@@ -1,3 +1,5 @@
+syntax = "proto3";
+
 import "scalapb/scalapb.proto";
 
 package nl.amony.service.media;

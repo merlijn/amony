@@ -35,12 +35,6 @@ object ResourceConfig {
       extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
   }
 
-  case class FragmentSettings(
-    defaultFragmentLength: FiniteDuration,
-    minimumFragmentLength: FiniteDuration,
-    maximumFragmentLength: FiniteDuration,
-  )
-
   case class TranscodeSettings(
     format: String,
     scaleHeight: Int,

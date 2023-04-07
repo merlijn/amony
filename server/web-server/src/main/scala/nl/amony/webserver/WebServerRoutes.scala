@@ -21,7 +21,6 @@ object WebServerRoutes extends Logging {
              mediaService: MediaService,
              searchService: SearchService,
              config: AmonyConfig,
-             transcodeSettings: List[TranscodeSettings],
              resourceBuckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
 
     import org.http4s._

@@ -1,7 +1,6 @@
 package nl.amony.service.fragments
 
 import nl.amony.service.fragments.FragmentProtocol.Fragment
-import nl.amony.service.resources.ResourceConfig.FragmentSettings
 import scribe.Logging
 
 import scala.concurrent.Future

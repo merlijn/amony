@@ -19,7 +19,7 @@ export type GalleryProps = {
   onClick: (v: Media) => void
 }
 
-const initialSearchResult: SearchResult = { total: 0, videos: [], tags: [] }
+const initialSearchResult: SearchResult = { total: 0, media: [], tags: [] }
 
 const GridView = (props: GalleryProps) => {
 
@@ -40,13 +40,13 @@ const GridView = (props: GalleryProps) => {
       Api.searchMedia(n, offset, props.selection).then(response => {
 
           const result = response as SearchResult
-          const videos = [...previous, ...result.videos]
+          const videos = [...previous, ...result.media]
 
           if (videos.length >= result.total)
             setFetchMore(false)
 
           setIsFetching(false);
-          setSearchResult( {...response, videos: videos } );
+          setSearchResult( {...response, media: videos } );
         });
       }
   }
@@ -78,11 +78,11 @@ const GridView = (props: GalleryProps) => {
     setFetchMore(true)
   }, [props.selection])
 
-  useEffect(() => { fetchData(searchResult.videos) }, [columns])
+  useEffect(() => { fetchData(searchResult.media) }, [columns])
 
-  useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.videos); }, [isFetching]);
+  useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.media); }, [isFetching]);
 
-  const previews = searchResult.videos.map((vid, index) => {
+  const previews = searchResult.media.map((vid, index) => {
 
     const style = { "--ncols" : `${columns}` } as CSSProperties
 
@@ -106,7 +106,7 @@ const GridView = (props: GalleryProps) => {
       <Scrollable
         style        = { style }
         className    = "gallery-container"
-        fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.videos) } }
+        fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.media) } }
         scrollType   = { props.componentType }
         ref          = { ref }
         >

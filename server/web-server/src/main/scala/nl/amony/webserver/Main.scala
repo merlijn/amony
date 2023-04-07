@@ -33,12 +33,6 @@ object Main extends ConfigLoader with Logging {
     configObj
   }
 
-  val transcodeSettings = List(
-    TranscodeSettings(
-      "mp4", 320, 23
-    )
-  )
-
   def main(args: Array[String]): Unit = {
 
     import cats.effect.unsafe.implicits.global
@@ -85,7 +79,7 @@ object Main extends ConfigLoader with Logging {
     }.compile.drain.unsafeRunAndForget()
 
     val webServer = new WebServer(appConfig.api)
-    val routes = WebServerRoutes.routes(authService, mediaService, searchService, appConfig, transcodeSettings, resourceBuckets)
+    val routes = WebServerRoutes.routes(authService, mediaService, searchService, appConfig, resourceBuckets)
 
     webServer.setup(routes).unsafeRunSync()
 

@@ -5,8 +5,7 @@ import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.syntax._
 import nl.amony.lib.cats.FutureOps
-import nl.amony.service.media.web.JsonCodecs
-import nl.amony.service.resources.ResourceConfig.TranscodeSettings
+import nl.amony.service.media.web.JsonCodecs._
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import nl.amony.service.search.api.SortDirection.{Asc, Desc}
 import nl.amony.service.search.api.{Query, SearchResult, SortField, SortOption}
@@ -19,26 +18,23 @@ object SearchRoutes {
 
   val durationPattern = raw"(\d*)-(\d*)".r
 
+  implicit val searchResultEncoder: Encoder[SearchResult] =
+    deriveEncoder[WebSearchResponse].contramapObject[SearchResult](result =>
+      WebSearchResponse(result.offset, result.total, result.results.map(m => toWebModel(m)), result.tags)
+    )
+
   def apply(
          searchService: SearchService,
          config: SearchConfig,
     ): HttpRoutes[IO] = {
 
-    val jsonCodecs = new JsonCodecs
-    import jsonCodecs._
-
-    implicit val searchResultEncoder: Encoder[SearchResult] =
-      deriveEncoder[WebSearchResponse].contramapObject[SearchResult](result =>
-        WebSearchResponse(result.offset, result.total, result.results.map(m => jsonCodecs.toWebModel(m)), result.tags)
-      )
-
     HttpRoutes.of[IO] {
       case req @ GET -> Root / "api" / "search" / "media"  =>
 
         val params = req.params
-        val q      = params.get("q").headOption
-        val offset = params.get("offset").headOption.map(_.toInt)
-        val tags   = params.get("tags").headOption
+        val q      = params.get("q")
+        val offset = params.get("offset").map(_.toInt)
+        val tags   = params.get("tags")
         val minRes = params.get("offset").map(_.toInt)
 
         val sortDir = params.get("sort_dir").headOption match {
@@ -46,7 +42,7 @@ object SearchRoutes {
           case _ => Asc
         }
 
-        val sortField: SortField = req.params.get("sort_field").headOption
+        val sortField: SortField = req.params.get("sort_field")
           .map {
             case "title"      => Title
             case "size"       => Size
@@ -56,7 +52,7 @@ object SearchRoutes {
           }
           .getOrElse(Title)
 
-        val duration: Option[(Long, Long)] = params.get("d").headOption.flatMap {
+        val duration: Option[(Long, Long)] = params.get("d").flatMap {
           case durationPattern("", "") => None
           case durationPattern(min, "") => Some((min.toLong, Long.MaxValue))
           case durationPattern("", max) => Some((0, max.toLong))

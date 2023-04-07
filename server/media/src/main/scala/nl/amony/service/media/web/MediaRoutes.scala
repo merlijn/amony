@@ -4,7 +4,7 @@ import cats.effect.IO
 import nl.amony.lib.cats.FutureOps
 import nl.amony.service.media.MediaService
 import nl.amony.service.media.web.MediaWebModel.MediaMeta
-import nl.amony.service.resources.ResourceConfig.TranscodeSettings
+import JsonCodecs._
 import org.http4s.HttpRoutes
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.circe._
@@ -13,9 +13,6 @@ import org.http4s.dsl.io._
 object MediaRoutes {
 
   def apply(mediaService: MediaService): HttpRoutes[IO] = {
-
-    val jsonCodecs = new JsonCodecs
-    import jsonCodecs._
 
     HttpRoutes.of[IO] {
       case GET        -> Root / "api" / "media" / mediaId =>

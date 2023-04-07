@@ -18,7 +18,7 @@ type ListProps = {
   onClick: (v: Media) => any
 }
 
-const initialSearchResult: SearchResult = { total: 0, videos: [], tags: [] }
+const initialSearchResult: SearchResult = { total: 0, media: [], tags: [] }
 const rowHeight = 36
 
 const ListView = (props: ListProps) => {
@@ -37,13 +37,13 @@ const ListView = (props: ListProps) => {
       Api.searchMedia(n, offset, props.selection).then(response => {
 
           const result = response as SearchResult
-          const videos = [...previous, ...result.videos]
+          const videos = [...previous, ...result.media]
 
           if (videos.length >= result.total)
             setFetchMore(false)
 
           setIsFetching(false);
-          setSearchResult({...response, videos: videos});
+          setSearchResult({...response, media: videos});
         });
       }
   }
@@ -56,12 +56,12 @@ const ListView = (props: ListProps) => {
     setFetchMore(true)
   }, [props.selection])
 
-  useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.videos); }, [isFetching]);
+  useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.media); }, [isFetching]);
 
   return (
       <Scrollable
         className = "list-container"
-        fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.videos) } }
+        fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.media) } }
         scrollType = 'page'
       >
       <div key="row-header" className="list-row">
@@ -85,7 +85,7 @@ const ListView = (props: ListProps) => {
       
       <div key="row-spacer" className="list-row row-spacer"></div>
       {
-        searchResult.videos.map((v, index) => {
+        searchResult.media.map((v, index) => {
           return(
             <div key={`row-${v.id}`} className="list-row">
 

@@ -7,7 +7,7 @@ import nl.amony.service.fragments.WebModel.Fragment
 import nl.amony.service.media.web.MediaWebModel._
 import nl.amony.service.media.api
 
-class JsonCodecs {
+object JsonCodecs {
 
   // web model codecs
   implicit val mediaInfoCodec: Codec[MediaInfo]          = deriveCodec[MediaInfo]
