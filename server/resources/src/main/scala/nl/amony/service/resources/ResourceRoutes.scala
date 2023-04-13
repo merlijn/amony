@@ -8,6 +8,8 @@ import org.http4s.headers.`Content-Type`
 import org.typelevel.ci.CIString
 import scribe.Logging
 
+import scala.concurrent.Future
+
 object ResourceRoutes extends Logging {
 
   // format: off
@@ -30,52 +32,41 @@ object ResourceRoutes extends Logging {
   }
   // format: on
 
-  def resourceResponse(req: Request[IO], ioResponse: IOResponse) =
-    ResourceDirectives.responseWithRangeSupport[IO](
-      req,
-      ioResponse.size(),
-      ioResponse.contentType().map(MediaType.parse(_).toOption).flatten,
-      ioResponse.getContentRange
-    )
+  private def respondWithResource(req: Request[IO], fn: => Future[Option[IOResponse]]): IO[Response[IO]] =
+    IO.fromFuture(IO(fn)).flatMap {
+      case None             => NotFound()
+      case Some(ioResponse) => ResourceDirectives.responseWithRangeSupport[IO](
+        req,
+        ioResponse.size(),
+        ioResponse.contentType().map(MediaType.parse(_).toOption).flatten,
+        ioResponse.getContentRange
+      )
+    }
 
-  def apply(buckets: Map[String, ResourceBucket]) = {
+  def apply(buckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
     HttpRoutes.of[IO] {
       case req @ GET -> Root / "resources" / bucketId / resourceId =>
 
-        resourceId match {
+        buckets.get(bucketId) match {
+          case None => NotFound()
+          case Some(bucket) =>
+            resourceId match {
 
-          case patterns.ThumbnailWithTimestamp(id, timestamp, quality) =>
-            buckets(bucketId).getVideoThumbnail(id, quality.toInt, timestamp.toLong).toIO.flatMap {
-              case None => NotFound()
-              case Some(ioResponse) => Ok(ioResponse.getContent())
+              case patterns.ThumbnailWithTimestamp(id, timestamp, quality) =>
+                respondWithResource(req, bucket.getVideoThumbnail(id, quality.toInt, timestamp.toLong))
+
+              case patterns.Thumbnail(id, quality) =>
+                respondWithResource(req, bucket.getImageThumbnail(id, quality.toInt))
+
+              case patterns.VideoFragment(id, start, end, quality) =>
+                respondWithResource(req, bucket.getVideoFragment(id, start.toLong, end.toLong, quality.toInt))
+
+              case patterns.Video(id, quality) =>
+                respondWithResource(req, bucket.getVideo(id, quality.toInt))
+
+              case _ =>
+                respondWithResource(req, bucket.getResource(resourceId))
             }
-
-          case patterns.Thumbnail(id, quality) =>
-            buckets(bucketId).getImageThumbnail(id, quality.toInt).toIO.flatMap {
-              case None             => NotFound()
-              case Some(ioResponse) => Ok(ioResponse.getContent())
-            }
-
-          case patterns.VideoFragment(id, start, end, quality) =>
-            buckets(bucketId).getVideoFragment(id, start.toLong, end.toLong, quality.toInt).toIO.flatMap {
-              case None => NotFound()
-              case Some(ioResponse) => resourceResponse(req, ioResponse)
-            }
-
-          case patterns.Video(id, quality) =>
-            buckets(bucketId).getVideo(id, quality.toInt).toIO.flatMap {
-              case None             => NotFound()
-              case Some(ioResponse) => resourceResponse(req, ioResponse)
-            }
-
-          case _ =>
-            buckets(bucketId).getResource(resourceId).toIO.flatMap {
-              case None             => NotFound()
-              case Some(ioResponse) => resourceResponse(req, ioResponse)
-            }
-
-          case _ =>
-            NotFound()
         }
     }
   }

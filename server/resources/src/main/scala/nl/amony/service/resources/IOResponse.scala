@@ -1,7 +1,7 @@
 package nl.amony.service.resources
 
 import cats.effect.IO
-import nl.amony.service.resources.local.LocalFileUtil
+import nl.amony.lib.files.PathOps
 import org.http4s.MediaType
 
 import java.nio.file.{Files, Path}
@@ -22,7 +22,11 @@ case class LocalFileIOResponse(path: fs2.io.file.Path) extends IOResponse {
 
   private val defaultChunkSize: Int = 64 * 1024
 
-  override def contentType(): Option[String] = LocalFileUtil.contentTypeFromPath(path.toString)
+  override def contentType(): Option[String] = {
+    val maybeExt = java.nio.file.Path.of(path.toString).fileExtension
+    maybeExt.flatMap { ext => MediaType.extensionMap.get(ext).map(m => s"${m.mainType}/${m.subType}") }
+  }
+
   override def size(): Long = Files.size(path.toNioPath)
 
   override def getContent(): fs2.Stream[IO, Byte] =
