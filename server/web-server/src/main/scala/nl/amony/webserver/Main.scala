@@ -8,7 +8,7 @@ import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
 import nl.amony.service.media.api.events.{MediaAdded, MediaEvent}
 import nl.amony.service.media.tasks.MediaScanner
-import nl.amony.service.media.{MediaService, MediaStorage}
+import nl.amony.service.media.{MediaServiceImpl, MediaStorage}
 import nl.amony.service.resources.ResourceConfig.TranscodeSettings
 import nl.amony.service.resources.events.{ResourceEvent, ResourceEventMessage}
 import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalDirectoryStorage}
@@ -49,7 +49,7 @@ object Main extends ConfigLoader with Logging {
       val mediaTopic = EventTopic.transientEventTopic[MediaEvent]
       mediaTopic.followTail(searchService.indexEvent _)
 
-      val service = new MediaService(mediaStorage, mediaTopic)
+      val service = new MediaServiceImpl(mediaStorage, mediaTopic)
 
       service.getAll().foreach { _.foreach(m => mediaTopic.publish(MediaAdded(m))) }
       service

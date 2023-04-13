@@ -6,21 +6,30 @@ package nl.amony.service.media.api;
 
 service MediaService {
 
-  rpc getById(MediaId) returns (Media) { }
+  rpc getById(GetById) returns (Media) { }
 
   rpc getAll(GetAllMedia) returns (stream Media) { }
 
   rpc upsertMedia(Media) returns (Media) { }
 
-  rpc deleteMedia(MediaId) returns (Media) { }
+  rpc deleteById(DeleteById) returns (DeleteByIdResponse) { }
 
   rpc updateMediaMeta(UpdateMediaMeta) returns (Media) { }
 }
 
-message GetAllMedia { }
+message DeleteByIdResponse { }
 
-message UpdateMediaMeta {
+message MediaDeleted {
   string mediaId = 1;
-  MediaMeta meta = 2;
 }
+
+message GetById {
+  string mediaId = 1;
+}
+
+message DeleteById {
+  string mediaId = 1;
+}
+
+message GetAllMedia { }
 

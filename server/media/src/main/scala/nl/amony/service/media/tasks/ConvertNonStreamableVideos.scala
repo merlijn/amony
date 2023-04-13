@@ -4,7 +4,8 @@ import cats.effect.IO
 import fs2.Stream
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.files.PathOps
-import nl.amony.service.media.MediaService
+import nl.amony.service.media.MediaServiceImpl
+import nl.amony.service.media.api.{DeleteById, GetById}
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.local.RecursiveFileVisitor
 import scribe.Logging
@@ -14,7 +15,7 @@ import scala.util.Success
 
 object ConvertNonStreamableVideos extends Logging {
 
-  def convertNonStreamableVideos(config: LocalDirectoryConfig, mediaService: MediaService)(implicit ec: ExecutionContext): Unit = {
+  def convertNonStreamableVideos(config: LocalDirectoryConfig, mediaService: MediaServiceImpl)(implicit ec: ExecutionContext): Unit = {
 
     val files = RecursiveFileVisitor.listFilesInDirectoryRecursive(config.mediaPath)
     val parallelism      = config.scanParallelFactor
@@ -33,8 +34,8 @@ object ConvertNonStreamableVideos extends Logging {
 
           logger.info(s"$oldHash -> $newHash: ${config.mediaPath.relativize(videoWithFaststart).toString}")
 
-          mediaService.getById(oldHash).onComplete {
-            case Success(Some(v)) =>
+          mediaService.getById(GetById(oldHash)).onComplete {
+            case Success(v) =>
               val m = v.copy(
                 mediaId = newHash,
                 resourceInfo = v.resourceInfo.copy(hash = newHash, relativePath = config.mediaPath.relativize(videoWithFaststart).toString)
@@ -42,7 +43,8 @@ object ConvertNonStreamableVideos extends Logging {
 
               mediaService.upsertMedia(m).foreach { _ =>
 //                adminApi.regeneratePreviewForMedia(m)
-                mediaService.deleteMedia(oldHash, deleteResource = false)
+                val req = DeleteById(oldHash)
+                mediaService.deleteById(req)
                 video.deleteIfExists()
               }
             case other =>

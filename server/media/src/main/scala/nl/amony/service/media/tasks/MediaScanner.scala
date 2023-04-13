@@ -2,12 +2,13 @@ package nl.amony.service.media.tasks
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import nl.amony.service.media.MediaService
+import nl.amony.service.media.MediaServiceImpl
+import nl.amony.service.media.api.DeleteById
 import nl.amony.service.resources.ResourceBucket
 import nl.amony.service.resources.events.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved}
 import scribe.Logging
 
-class MediaScanner(resourceBuckets: Map[String, ResourceBucket], mediaService: MediaService) extends Logging {
+class MediaScanner(resourceBuckets: Map[String, ResourceBucket], mediaService: MediaServiceImpl) extends Logging {
 
   implicit val ioRuntime = IORuntime.global
 
@@ -21,7 +22,8 @@ class MediaScanner(resourceBuckets: Map[String, ResourceBucket], mediaService: M
 
     case ResourceDeleted(resource) =>
       logger.info(s"Media was deleted: ${resource.hash}")
-      mediaService.deleteMedia(resource.hash, false)
+      val req = DeleteById(resource.hash)
+      mediaService.deleteById(req)
 
     case ResourceMoved(resource, oldPath) =>
     // ignore for now, send rename command?

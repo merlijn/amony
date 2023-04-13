@@ -3,6 +3,11 @@ syntax = "proto2";
 package nl.amony.service.media.api;
 import "scalapb/scalapb.proto";
 
+message UpdateMediaMeta {
+  required string mediaId = 1;
+  required MediaMeta meta = 2;
+}
+
 message ResourceInfo {
   required string bucketId = 1;
   required string relativePath = 2;

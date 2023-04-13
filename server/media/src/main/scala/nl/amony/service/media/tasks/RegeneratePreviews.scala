@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
-import nl.amony.service.media.MediaService
+import nl.amony.service.media.MediaServiceImpl
 import scribe.Logging
 import fs2.Stream
 import nl.amony.service.media.api.Media
@@ -12,7 +12,7 @@ import nl.amony.service.media.api.Media
 import scala.util.control.NonFatal
 
 object RegeneratePreviews extends Logging {
-  def regeneratePreviewSprites(config: LocalDirectoryConfig, mediaService: MediaService)(implicit IORuntime: IORuntime) = {
+  def regeneratePreviewSprites(config: LocalDirectoryConfig, mediaService: MediaServiceImpl)(implicit IORuntime: IORuntime) = {
     Stream
       .evals[IO, Seq, Media](IO.fromFuture(IO(mediaService.getAll())))
       .foreach { m =>
