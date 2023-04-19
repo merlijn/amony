@@ -1,8 +1,6 @@
 package nl.amony.service.resources
 
 import cats.effect.IO
-import nl.amony.lib.ffmpeg.tasks.FFProbeModel.ProbeOutput
-import nl.amony.lib.magick.tasks.ImageMagickModel.{ImageMeta, MagickImageMeta}
 
 import scala.concurrent.Future
 
@@ -30,21 +28,21 @@ case class Other(contentType: String) extends ResourceMeta
 
 trait ResourceBucket {
 
-  def getResource(resourceId: String): Future[Option[IOResponse]]
+  def getResource(resourceId: String): IO[Option[IOResponse]]
 
-  def getVideo(resourceId: String, scaleHeight: Int): Future[Option[IOResponse]]
+  def getVideoTranscode(resourceId: String, scaleHeight: Int): IO[Option[IOResponse]]
 
-  def getResourceMeta(resourceId: String): Future[Option[ResourceMeta]]
+  def getResourceMeta(resourceId: String): IO[Option[ResourceMeta]]
 
-  def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): Future[Boolean]
+  def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[Boolean]
 
-  def getVideoFragment(resourceId: String, start: Long, end: Long, quality: Int): Future[Option[IOResponse]]
+  def getVideoFragment(resourceId: String, start: Long, end: Long, quality: Int): IO[Option[IOResponse]]
 
-  def getPreviewSpriteVtt(resourceId: String): Future[Option[String]]
+  def getPreviewSpriteVtt(resourceId: String): IO[Option[String]]
 
-  def getPreviewSpriteImage(resourceId: String): Future[Option[IOResponse]]
+  def getPreviewSpriteImage(resourceId: String): IO[Option[IOResponse]]
 
-  def getVideoThumbnail(resourceId: String, quality: Int, timestamp: Long): Future[Option[IOResponse]]
+  def getVideoThumbnail(resourceId: String, quality: Int, timestamp: Long): IO[Option[IOResponse]]
 
-  def getImageThumbnail(resourceId: String, scaleHeight: Int): Future[Option[IOResponse]]
+  def getImageThumbnail(resourceId: String, scaleHeight: Int): IO[Option[IOResponse]]
 }

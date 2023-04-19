@@ -3,9 +3,11 @@ package nl.amony.service.resources.local
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
+import nl.amony.service.resources.IOResponse
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.events._
 import scribe.Logging
+
 import java.nio.file.Files
 import java.nio.file.attribute.BasicFileAttributes
 
@@ -50,7 +52,7 @@ object LocalDirectoryScanner extends Logging {
             path = relativePath,
             hash = hash,
             fileAttributes.size(),
-            contentType = LocalFileUtil.contentTypeFromPath(relativePath),
+            contentType = IOResponse.fromPath(path).flatMap(_.contentType()),
             Some(fileAttributes.creationTime().toMillis),
             Some(fileAttributes.lastModifiedTime().toMillis))
         }

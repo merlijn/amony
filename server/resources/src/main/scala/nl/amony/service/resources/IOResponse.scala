@@ -14,7 +14,11 @@ trait IOResponse {
 }
 
 object IOResponse {
-  def fromPath(path: Path): Option[LocalFileIOResponse] =
+
+  def fromPath(path: String): Option[LocalFileIOResponse] =
+    fromPath(java.nio.file.Path.of(path))
+
+  def fromPath(path: java.nio.file.Path): Option[LocalFileIOResponse] =
     Option.when(Files.exists(path))(LocalFileIOResponse(fs2.io.file.Path.fromNioPath(path)))
 }
 

@@ -42,21 +42,21 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
 
   Files.createDirectories(config.resourcePath)
 
-  override def getVideo(resourceId: String, scaleHeight: Int): Future[Option[IOResponse]] = {
+  override def getVideoTranscode(resourceId: String, scaleHeight: Int): IO[Option[IOResponse]] = {
     repository.getByHash(resourceId)
-      .map(_.flatMap(f => IOResponse.fromPath(config.mediaPath.resolve(f.path)))).unsafeToFuture()
+      .map(_.flatMap(f => IOResponse.fromPath(config.mediaPath.resolve(f.path))))
   }
 
-  override def getVideoFragment(resourceId: String, start: Long, end: Long, quality: Int): Future[Option[IOResponse]] = {
+  override def getVideoFragment(resourceId: String, start: Long, end: Long, quality: Int): IO[Option[IOResponse]] = {
 
     val key = FragmentKey(resourceId, (start, end), quality)
     val path = resourceStore.compute(key, (_, value) => getOrCreateVideoFragment(key))
 
-    Future.successful(IOResponse.fromPath(path))
+    IO.pure(IOResponse.fromPath(path))
   }
 
-  private def getFileInfo(resourceId: String): Future[Option[Resource]] =
-    repository.getByHash(resourceId).unsafeToFuture()
+  private def getFileInfo(resourceId: String): IO[Option[Resource]] =
+    repository.getByHash(resourceId)
 
   private def getOrCreateVideoFragment(key: FragmentKey): Path = {
 
@@ -65,7 +65,9 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
     if (fragmentPath.exists())
       fragmentPath
     else {
-      val resourceInfo = Await.result(getFileInfo(key.resourceId), timeout)
+      val resourceInfo =
+
+        getFileInfo(key.resourceId).unsafeRunSync()
 
       resourceInfo.foreach { info =>
         FFMpeg.transcodeToMp4(
@@ -87,7 +89,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
     if (thumbnailPath.exists())
       thumbnailPath
     else {
-      val resourceInfo = Await.result(getFileInfo(key.resourceId), timeout)
+      val resourceInfo = getFileInfo(key.resourceId).unsafeRunSync()
 
       resourceInfo.foreach { info =>
         FFMpeg.createThumbnail(
@@ -102,12 +104,12 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
     }
   }
 
-  override def getVideoThumbnail(resourceId: String, quality: Int, timestamp: Long): Future[Option[IOResponse]] = {
+  override def getVideoThumbnail(resourceId: String, quality: Int, timestamp: Long): IO[Option[IOResponse]] = {
 
     val key = VideoThumbnailKey(resourceId, timestamp, quality)
     val path = resourceStore.compute(key, (_, value) => getOrCreateThumbnail(key))
 
-    Future.successful(IOResponse.fromPath(path))
+    IO.pure(IOResponse.fromPath(path))
   }
 
   private def getOrCreateImageThumbnail(resourceInfo: Resource, key: ImageThumbnailKey): Path = {
@@ -125,18 +127,18 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
     }
   }
 
-  override def getImageThumbnail(resourceId: String, scaleHeight: Int): Future[Option[IOResponse]] = {
+  override def getImageThumbnail(resourceId: String, scaleHeight: Int): IO[Option[IOResponse]] = {
 
     getFileInfo(resourceId).flatMap {
-      case None               => Future.successful(None)
+      case None               => IO.pure(None)
       case Some(resourceInfo) =>
         val key = ImageThumbnailKey(resourceId, scaleHeight)
         val path = resourceStore.compute(key, (_, value) => getOrCreateImageThumbnail(resourceInfo, key))
-        Future.successful(IOResponse.fromPath(path))
+        IO.pure(IOResponse.fromPath(path))
     }
   }
 
-  override def getPreviewSpriteVtt(resourceId: String): Future[Option[String]] = {
+  override def getPreviewSpriteVtt(resourceId: String): IO[Option[String]] = {
 
     val path = config.resourcePath.resolve(s"$resourceId-timeline.vtt")
 
@@ -146,34 +148,36 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
       else
         "WEBVTT"
 
-    Future.successful(Some(content))
+    IO.pure(Some(content))
   }
 
-  override def getResource(resourceId: String): Future[Option[IOResponse]] = {
+  override def getResource(resourceId: String): IO[Option[IOResponse]] = {
     getFileInfo(resourceId).flatMap {
-      case None       => Future.successful(None)
+      case None       => IO.pure(None)
       case Some(info) =>
         val path = config.mediaPath.resolve(info.path)
-        Future.successful(IOResponse.fromPath(path))
+        IO.pure(IOResponse.fromPath(path))
     }
   }
 
-  override def getPreviewSpriteImage(mediaId: String): Future[Option[IOResponse]] = {
+  override def getPreviewSpriteImage(mediaId: String): IO[Option[IOResponse]] = {
     val path = config.resourcePath.resolve(s"$mediaId-timeline.webp")
-    Future.successful(IOResponse.fromPath(path))
+    IO.pure(IOResponse.fromPath(path))
   }
 
-  override def getResourceMeta(resourceId: String): Future[Option[ResourceMeta]] = {
+  override def getResourceMeta(resourceId: String): IO[Option[ResourceMeta]] = {
 
     getFileInfo(resourceId).flatMap {
-      case None       => Future.successful(None)
+      case None       => IO.pure(None)
       case Some(info) =>
         val path = config.mediaPath.resolve(info.path)
 
         info.contentType match {
-          case None => Future.successful(None)
+          case None =>
+            logger.info(s"No content type for $resourceId")
+            IO.pure(None)
           case Some(contentType) if contentType.startsWith("video") =>
-            FFMpeg.ffprobe(path, false).unsafeToFuture().map {
+            FFMpeg.ffprobe(path, false).map {
               probe => probe.firstVideoStream.map { stream =>
                 VideoMeta(
                   contentType = contentType,
@@ -186,7 +190,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
               }
             }
           case Some(contentType) if contentType.startsWith("image") =>
-            ImageMagick.getImageMeta(path).unsafeToFuture().map(out =>
+            ImageMagick.getImageMeta(path).map(out =>
               out.headOption.map { meta =>
                 ImageMeta(
                   contentType = contentType,
@@ -196,12 +200,12 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
                 )
               }
             )
-          case Some(contentType) => Future.successful(Some(Other(contentType)))
+          case Some(contentType) => IO.pure(Some(Other(contentType)))
 
-          case None => Future.successful(None)
+          case None => IO.pure(None)
         }
     }
   }
 
-  override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): Future[Boolean] = ???
+  override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[Boolean] = ???
 }

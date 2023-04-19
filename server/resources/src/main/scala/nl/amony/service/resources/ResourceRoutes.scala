@@ -32,8 +32,8 @@ object ResourceRoutes extends Logging {
   }
   // format: on
 
-  private def respondWithResource(req: Request[IO], fn: => Future[Option[IOResponse]]): IO[Response[IO]] =
-    IO.fromFuture(IO(fn)).flatMap {
+  private def respondWithResource(req: Request[IO], fn: => IO[Option[IOResponse]]): IO[Response[IO]] =
+    fn.flatMap {
       case None             => NotFound()
       case Some(ioResponse) => ResourceDirectives.responseWithRangeSupport[IO](
         req,
@@ -62,7 +62,7 @@ object ResourceRoutes extends Logging {
                 respondWithResource(req, bucket.getVideoFragment(id, start.toLong, end.toLong, quality.toInt))
 
               case patterns.Video(id, quality) =>
-                respondWithResource(req, bucket.getVideo(id, quality.toInt))
+                respondWithResource(req, bucket.getVideoTranscode(id, quality.toInt))
 
               case _ =>
                 respondWithResource(req, bucket.getResource(resourceId))

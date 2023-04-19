@@ -14,7 +14,7 @@ object ScanMedia extends Logging {
        resource: Resource,
        bucketId: String): IO[Media] = {
 
-    resourceBucket.getResourceMeta(resource.hash).toIO.flatMap {
+    resourceBucket.getResourceMeta(resource.hash).flatMap {
       case Some(image: ImageMeta) => handleImage(image, resource, bucketId)
       case Some(video: VideoMeta) => handleVideo(video, resource, bucketId)
       case _                      => handleUnkown(resource)
