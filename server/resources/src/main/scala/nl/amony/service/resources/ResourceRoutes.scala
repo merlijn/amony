@@ -15,7 +15,7 @@ object ResourceRoutes extends Logging {
   // format: off
   object patterns {
     // example: j0rc1048yc1_720p.mp4
-    val Video = raw"(\w+)_(\d+)p\.mp4".r
+    val Video = raw"(\w+)(_(\d+)p)?\.mp4".r
 
     // example: j0rc1048yc1~1000-5000_720p.mp4
     val VideoFragment = raw"(.+)~(\d+)-(\d+)_(\d+)p\.mp4".r
@@ -34,7 +34,8 @@ object ResourceRoutes extends Logging {
 
   private def respondWithResource(req: Request[IO], fn: => IO[Option[IOResponse]]): IO[Response[IO]] =
     fn.flatMap {
-      case None             => NotFound()
+      case None             =>
+        NotFound()
       case Some(ioResponse) => ResourceDirectives.responseWithRangeSupport[IO](
         req,
         ioResponse.size(),
@@ -48,7 +49,9 @@ object ResourceRoutes extends Logging {
       case req @ GET -> Root / "resources" / bucketId / resourceId =>
 
         buckets.get(bucketId) match {
-          case None => NotFound()
+          case None =>
+            logger.info(s"Bucket $bucketId not found")
+            NotFound()
           case Some(bucket) =>
             resourceId match {
 
@@ -61,8 +64,8 @@ object ResourceRoutes extends Logging {
               case patterns.VideoFragment(id, start, end, quality) =>
                 respondWithResource(req, bucket.getVideoFragment(id, start.toLong, end.toLong, quality.toInt))
 
-              case patterns.Video(id, quality) =>
-                respondWithResource(req, bucket.getVideoTranscode(id, quality.toInt))
+              case patterns.Video(id, _, null) =>
+                respondWithResource(req, bucket.getResource(id))
 
               case _ =>
                 respondWithResource(req, bucket.getResource(resourceId))

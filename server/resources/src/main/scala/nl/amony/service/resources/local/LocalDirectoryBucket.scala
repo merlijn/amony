@@ -201,8 +201,6 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
               }
             )
           case Some(contentType) => IO.pure(Some(Other(contentType)))
-
-          case None => IO.pure(None)
         }
     }
   }
