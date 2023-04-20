@@ -8,7 +8,8 @@ import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.media.MediaServiceImpl
 import nl.amony.service.media.web.MediaRoutes
 import nl.amony.service.resources.ResourceConfig.TranscodeSettings
-import nl.amony.service.resources.{ResourceBucket, ResourceDirectives, ResourceRoutes}
+import nl.amony.service.resources.web.{ResourceDirectives, ResourceRoutes}
+import nl.amony.service.resources.ResourceBucket
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import org.http4s.HttpRoutes
 import scribe.Logging

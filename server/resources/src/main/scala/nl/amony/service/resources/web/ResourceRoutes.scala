@@ -1,14 +1,10 @@
-package nl.amony.service.resources
+package nl.amony.service.resources.web
 
 import cats.effect.IO
-import nl.amony.lib.cats.FutureOps
+import nl.amony.service.resources.{ResourceBucket, ResourceContent}
 import org.http4s._
 import org.http4s.dsl.io._
-import org.http4s.headers.`Content-Type`
-import org.typelevel.ci.CIString
 import scribe.Logging
-
-import scala.concurrent.Future
 
 object ResourceRoutes extends Logging {
 
@@ -32,7 +28,7 @@ object ResourceRoutes extends Logging {
   }
   // format: on
 
-  private def respondWithResource(req: Request[IO], fn: => IO[Option[IOResponse]]): IO[Response[IO]] =
+  private def respondWithResource(req: Request[IO], fn: => IO[Option[ResourceContent]]): IO[Response[IO]] =
     fn.flatMap {
       case None             =>
         NotFound()

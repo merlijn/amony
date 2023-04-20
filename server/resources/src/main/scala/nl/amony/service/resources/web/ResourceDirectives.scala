@@ -1,8 +1,8 @@
-package nl.amony.service.resources
+package nl.amony.service.resources.web
 
-import cats.data.{NonEmptyList, OptionT}
+import cats.data.NonEmptyList
 import cats.effect.Async
-import cats.implicits.{toFlatMapOps, toFunctorOps, toUnorderedFoldableOps}
+import cats.implicits.{toFlatMapOps, toFunctorOps}
 import fs2.Stream
 import fs2.io.file.{Files, Path}
 import org.http4s._

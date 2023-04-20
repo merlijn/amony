@@ -6,23 +6,23 @@ import org.http4s.MediaType
 
 import java.nio.file.{Files, Path}
 
-trait IOResponse {
+trait ResourceContent {
   def contentType(): Option[String]
   def size(): Long
   def getContent(): fs2.Stream[IO, Byte]
   def getContentRange(start: Long, end: Long): fs2.Stream[IO, Byte]
 }
 
-object IOResponse {
+object ResourceContent {
 
-  def fromPath(path: String): Option[LocalFileIOResponse] =
+  def fromPath(path: String): Option[LocalFileContent] =
     fromPath(java.nio.file.Path.of(path))
 
-  def fromPath(path: java.nio.file.Path): Option[LocalFileIOResponse] =
-    Option.when(Files.exists(path))(LocalFileIOResponse(fs2.io.file.Path.fromNioPath(path)))
+  def fromPath(path: java.nio.file.Path): Option[LocalFileContent] =
+    Option.when(Files.exists(path))(LocalFileContent(fs2.io.file.Path.fromNioPath(path)))
 }
 
-case class LocalFileIOResponse(path: fs2.io.file.Path) extends IOResponse {
+case class LocalFileContent(path: fs2.io.file.Path) extends ResourceContent {
 
   private val defaultChunkSize: Int = 64 * 1024
 

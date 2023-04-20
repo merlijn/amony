@@ -9,7 +9,7 @@ import nl.amony.lib.magick.ImageMagick
 import nl.amony.lib.magick.tasks.ImageMagickModel
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.events.Resource
-import nl.amony.service.resources.{IOResponse, ImageMeta, Other, ResourceBucket, ResourceMeta, VideoMeta}
+import nl.amony.service.resources.{ResourceContent, ImageMeta, Other, ResourceBucket, ResourceMeta, VideoMeta}
 import scribe.Logging
 import slick.jdbc.JdbcProfile
 
@@ -42,17 +42,17 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
 
   Files.createDirectories(config.resourcePath)
 
-  override def getVideoTranscode(resourceId: String, scaleHeight: Int): IO[Option[IOResponse]] = {
+  override def getVideoTranscode(resourceId: String, scaleHeight: Int): IO[Option[ResourceContent]] = {
     repository.getByHash(resourceId)
-      .map(_.flatMap(f => IOResponse.fromPath(config.mediaPath.resolve(f.path))))
+      .map(_.flatMap(f => ResourceContent.fromPath(config.mediaPath.resolve(f.path))))
   }
 
-  override def getVideoFragment(resourceId: String, start: Long, end: Long, quality: Int): IO[Option[IOResponse]] = {
+  override def getVideoFragment(resourceId: String, start: Long, end: Long, quality: Int): IO[Option[ResourceContent]] = {
 
     val key = FragmentKey(resourceId, (start, end), quality)
     val path = resourceStore.compute(key, (_, value) => getOrCreateVideoFragment(key))
 
-    IO.pure(IOResponse.fromPath(path))
+    IO.pure(ResourceContent.fromPath(path))
   }
 
   private def getFileInfo(resourceId: String): IO[Option[Resource]] =
@@ -65,11 +65,9 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
     if (fragmentPath.exists())
       fragmentPath
     else {
-      val resourceInfo =
+      val resourceInfo = getFileInfo(key.resourceId).unsafeRunSync()
 
-        getFileInfo(key.resourceId).unsafeRunSync()
-
-      resourceInfo.foreach { info =>
+      resourceInfo.map { info =>
         FFMpeg.transcodeToMp4(
           inputFile   = config.mediaPath.resolve(info.path),
           range       = key.range,
@@ -104,12 +102,12 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
     }
   }
 
-  override def getVideoThumbnail(resourceId: String, quality: Int, timestamp: Long): IO[Option[IOResponse]] = {
+  override def getVideoThumbnail(resourceId: String, quality: Int, timestamp: Long): IO[Option[ResourceContent]] = {
 
     val key = VideoThumbnailKey(resourceId, timestamp, quality)
     val path = resourceStore.compute(key, (_, value) => getOrCreateThumbnail(key))
 
-    IO.pure(IOResponse.fromPath(path))
+    IO.pure(ResourceContent.fromPath(path))
   }
 
   private def getOrCreateImageThumbnail(resourceInfo: Resource, key: ImageThumbnailKey): Path = {
@@ -127,14 +125,14 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
     }
   }
 
-  override def getImageThumbnail(resourceId: String, scaleHeight: Int): IO[Option[IOResponse]] = {
+  override def getImageThumbnail(resourceId: String, scaleHeight: Int): IO[Option[ResourceContent]] = {
 
     getFileInfo(resourceId).flatMap {
       case None               => IO.pure(None)
       case Some(resourceInfo) =>
         val key = ImageThumbnailKey(resourceId, scaleHeight)
         val path = resourceStore.compute(key, (_, value) => getOrCreateImageThumbnail(resourceInfo, key))
-        IO.pure(IOResponse.fromPath(path))
+        IO.pure(ResourceContent.fromPath(path))
     }
   }
 
@@ -151,18 +149,18 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
     IO.pure(Some(content))
   }
 
-  override def getResource(resourceId: String): IO[Option[IOResponse]] = {
+  override def getResource(resourceId: String): IO[Option[ResourceContent]] = {
     getFileInfo(resourceId).flatMap {
       case None       => IO.pure(None)
       case Some(info) =>
         val path = config.mediaPath.resolve(info.path)
-        IO.pure(IOResponse.fromPath(path))
+        IO.pure(ResourceContent.fromPath(path))
     }
   }
 
-  override def getPreviewSpriteImage(mediaId: String): IO[Option[IOResponse]] = {
+  override def getPreviewSpriteImage(mediaId: String): IO[Option[ResourceContent]] = {
     val path = config.resourcePath.resolve(s"$mediaId-timeline.webp")
-    IO.pure(IOResponse.fromPath(path))
+    IO.pure(ResourceContent.fromPath(path))
   }
 
   override def getResourceMeta(resourceId: String): IO[Option[ResourceMeta]] = {
