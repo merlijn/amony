@@ -19,12 +19,6 @@ object ResourceRoutes extends Logging {
     val Thumbnail = raw"(\w+)_(\d+)p\.webp".r
 
     val ThumbnailWithTimestamp = raw"(\w+)_(\d+)_(\d+)p\.webp".r
-
-    // example: j0rc1048yc1-timeline.vtt
-    val TimeLineVtt = raw"(\w+)-timeline\.vtt".r
-
-    // example: j0rc1048yc1-timeline.webp
-    val TimeLineJpeg = raw"(\w+)-timeline\.webp".r
   }
   // format: on
 
@@ -32,12 +26,13 @@ object ResourceRoutes extends Logging {
     fn.flatMap {
       case None             =>
         NotFound()
-      case Some(ioResponse) => ResourceDirectives.responseWithRangeSupport[IO](
-        req,
-        ioResponse.size(),
-        ioResponse.contentType().map(MediaType.parse(_).toOption).flatten,
-        ioResponse.getContentRange
-      )
+      case Some(ioResponse) =>
+        ResourceDirectives.responseWithRangeSupport[IO](
+          req,
+          ioResponse.size(),
+          ioResponse.contentType().map(MediaType.parse(_).toOption).flatten,
+          ioResponse.getContentRange
+        )
     }
 
   def apply(buckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
@@ -46,7 +41,6 @@ object ResourceRoutes extends Logging {
 
         buckets.get(bucketId) match {
           case None =>
-            logger.info(s"Bucket $bucketId not found")
             NotFound()
           case Some(bucket) =>
             resourceId match {

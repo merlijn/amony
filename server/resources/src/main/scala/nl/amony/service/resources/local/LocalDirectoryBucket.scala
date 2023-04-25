@@ -8,26 +8,13 @@ import nl.amony.lib.magick.ImageMagick
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources._
 import nl.amony.service.resources.events.Resource
+import nl.amony.service.resources.local.LocalResourceOperations._
 import scribe.Logging
 import slick.jdbc.JdbcProfile
 
 import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.ExecutionContext
-
-sealed trait ResourceKey
-
-case class VideoThumbnailKey(resourceId: String, timestamp: Long, quality: Int) extends ResourceKey {
-  def path: String = s"${resourceId}_${timestamp}_${quality}p.webp"
-}
-
-case class ImageThumbnailKey(resourceId: String, quality: Int) extends ResourceKey {
-  def path: String = s"${resourceId}_${quality}p.webp"
-}
-
-case class FragmentKey(resourceId: String, range: (Long, Long), quality: Int) extends ResourceKey {
-  def path: String = s"${resourceId}_${range._1}-${range._2}_${quality}p.mp4"
-}
 
 class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repository: LocalDirectoryStorage[P])(implicit ec: ExecutionContext) extends ResourceBucket with Logging {
 
@@ -43,85 +30,26 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
 
   override def getOrCreate(resourceId: String, operation: ResourceOperation): IO[Option[ResourceContent]] = {
 
-    getFileInfo(resourceId).flatMap { maybeResource =>
-      maybeResource match {
-        case None => IO.pure(None)
-        case Some(fileInfo) =>
-          operation match {
-            case VideoFragment(start, end, quality) =>
-              val key = FragmentKey(resourceId, (start, end), quality)
-              val path = resourceStore.compute(key, (_, value) => getOrCreateVideoFragment(fileInfo, key))
-
-              path.map(ResourceContent.fromPath)
-
-            case VideoThumbnail(timestamp, quality) =>
-              val key = VideoThumbnailKey(resourceId, timestamp, quality)
-              val path = resourceStore.compute(key, (_, value) => getOrCreateThumbnail(fileInfo, key))
-
-              path.map(ResourceContent.fromPath)
-
-            case ImageThumbnail(scaleHeight) =>
-              val key = ImageThumbnailKey(resourceId, scaleHeight)
-              val path = resourceStore.compute(key, (_, value) => getOrCreateImageThumbnail(fileInfo, key))
-
-              path.map(ResourceContent.fromPath)
+    getFileInfo(resourceId).flatMap {
+      case None => IO.pure(None)
+      case Some(fileInfo) =>
+        operation match {
+          case VideoFragment(start, end, quality) => derivedResource(fileInfo, FragmentKey(resourceId, (start, end), quality))
+          case VideoThumbnail(timestamp, quality) => derivedResource(fileInfo, VideoThumbnailKey(resourceId, timestamp, quality))
+          case ImageThumbnail(scaleHeight)        => derivedResource(fileInfo, ImageThumbnailKey(resourceId, scaleHeight))
         }
-      }
     }
   }
 
-  private def getOrCreateVideoFragment(resourceInfo: Resource, key: FragmentKey): IO[Path] = {
-
-    val fragmentPath = config.resourcePath.resolve(key.path)
-
-    if (!fragmentPath.exists()) {
-      logger.debug(s"Creating fragment for ${resourceInfo.path} with range ${key.range}")
-      FFMpeg.transcodeToMp4(
-        inputFile = config.mediaPath.resolve(resourceInfo.path),
-        range = key.range,
-        crf = 23,
-        scaleHeight = Some(key.quality),
-        outputFile = Some(fragmentPath),
-      ).map(_ => fragmentPath).memoize.flatten
-    }
-    else
-      IO.pure(fragmentPath)
-  }
-
-  private def getOrCreateThumbnail(resourceInfo: Resource, key: VideoThumbnailKey): IO[Path] = {
-    val thumbnailPath = config.resourcePath.resolve(key.path)
-
-    if (!thumbnailPath.exists()) {
-
-      logger.debug(s"Creating thumbnail for ${resourceInfo.path} with timestamp ${key.timestamp}")
-
-      FFMpeg.createThumbnail(
-        inputFile   = config.mediaPath.resolve(resourceInfo.path),
-        timestamp   = key.timestamp,
-        outputFile  = Some(thumbnailPath),
-        scaleHeight = Some(key.quality)
-      ).map(_ => thumbnailPath).memoize.flatten
-    }
-    else
-      IO.pure(thumbnailPath)
-  }
-
-  private def getOrCreateImageThumbnail(resourceInfo: Resource, key: ImageThumbnailKey): IO[Path] = {
-    val thumbnailPath = config.resourcePath.resolve(key.path)
-
-    if (!thumbnailPath.exists()) {
-
-      logger.debug(s"Creating image thumbnail for ${resourceInfo.path}")
-
-      ImageMagick.createThumbnail(
-        inputFile   = config.mediaPath.resolve(resourceInfo.path),
-        outputFile  = Some(thumbnailPath),
-        scaleHeight = key.quality
-      ).map(_ => thumbnailPath).memoize.flatten
-    }
-    else {
-      IO.pure(thumbnailPath)
-    }
+  private def derivedResource(fileInfo: Resource, key: ResourceKey): IO[Option[LocalFileContent]] ={
+    val path = config.resourcePath.resolve(key.outputPath)
+    val result = resourceStore.compute(key, (_, value) =>
+      if (!path.exists())
+        key.create(config, fileInfo.path).memoize.flatten
+      else
+        IO.pure(path)
+    )
+    result.map(ResourceContent.fromPath)
   }
 
   override def getContent(resourceId: String): IO[Option[ResourceContent]] = {

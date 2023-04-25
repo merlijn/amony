@@ -10,7 +10,7 @@ import java.nio.file.Path
 trait CreateThumbnail {
   self: ProcessRunner =>
 
-  def createThumbnail(inputFile: Path, outputFile: Option[Path], scaleHeight: Int): IO[Unit] = {
+  def resizeImage(inputFile: Path, outputFile: Option[Path], scaleHeight: Int): IO[Unit] = {
 
     val input  = inputFile.toAbsolutePath.normalize().toString
     val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.webp")
