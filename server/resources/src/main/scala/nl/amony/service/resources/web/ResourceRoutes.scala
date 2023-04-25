@@ -1,7 +1,7 @@
 package nl.amony.service.resources.web
 
 import cats.effect.IO
-import nl.amony.service.resources.{ResourceBucket, ResourceContent}
+import nl.amony.service.resources.{ImageThumbnail, ResourceBucket, ResourceContent, VideoFragment, VideoThumbnail}
 import org.http4s._
 import org.http4s.dsl.io._
 import scribe.Logging
@@ -52,19 +52,19 @@ object ResourceRoutes extends Logging {
             resourceId match {
 
               case patterns.ThumbnailWithTimestamp(id, timestamp, quality) =>
-                respondWithResource(req, bucket.getVideoThumbnail(id, quality.toInt, timestamp.toLong))
+                respondWithResource(req, bucket.getOrCreate(id, VideoThumbnail(timestamp.toLong, quality.toInt)))
 
-              case patterns.Thumbnail(id, quality) =>
-                respondWithResource(req, bucket.getImageThumbnail(id, quality.toInt))
+              case patterns.Thumbnail(id, scaleHeight) =>
+                respondWithResource(req, bucket.getOrCreate(id, ImageThumbnail(scaleHeight.toInt)))
 
               case patterns.VideoFragment(id, start, end, quality) =>
-                respondWithResource(req, bucket.getVideoFragment(id, start.toLong, end.toLong, quality.toInt))
+                respondWithResource(req, bucket.getOrCreate(id, VideoFragment(start.toLong, end.toLong, quality.toInt)))
 
               case patterns.Video(id, _, null) =>
-                respondWithResource(req, bucket.getResource(id))
+                respondWithResource(req, bucket.getContent(id))
 
               case _ =>
-                respondWithResource(req, bucket.getResource(resourceId))
+                respondWithResource(req, bucket.getContent(resourceId))
             }
         }
     }

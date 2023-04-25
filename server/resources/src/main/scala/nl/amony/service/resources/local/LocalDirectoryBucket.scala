@@ -3,20 +3,17 @@ package nl.amony.service.resources.local
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.lib.ffmpeg.tasks.FFProbeModel.ProbeOutput
 import nl.amony.lib.files.PathOps
 import nl.amony.lib.magick.ImageMagick
-import nl.amony.lib.magick.tasks.ImageMagickModel
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
+import nl.amony.service.resources._
 import nl.amony.service.resources.events.Resource
-import nl.amony.service.resources.{ResourceContent, ImageMeta, Other, ResourceBucket, ResourceMeta, VideoMeta}
 import scribe.Logging
 import slick.jdbc.JdbcProfile
 
 import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
-import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 sealed trait ResourceKey
 
@@ -34,133 +31,106 @@ case class FragmentKey(resourceId: String, range: (Long, Long), quality: Int) ex
 
 class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repository: LocalDirectoryStorage[P])(implicit ec: ExecutionContext) extends ResourceBucket with Logging {
 
-  private val timeout = 5.seconds
-  private val resourceStore = new ConcurrentHashMap[ResourceKey, Path]()
+  private val resourceStore = new ConcurrentHashMap[ResourceKey, IO[Path]]()
 
   // TODO think about replacing this with custom runtime
   implicit val runtime: IORuntime = IORuntime.global
 
   Files.createDirectories(config.resourcePath)
 
-  override def getVideoTranscode(resourceId: String, scaleHeight: Int): IO[Option[ResourceContent]] = {
-    repository.getByHash(resourceId)
-      .map(_.flatMap(f => ResourceContent.fromPath(config.mediaPath.resolve(f.path))))
-  }
-
-  override def getVideoFragment(resourceId: String, start: Long, end: Long, quality: Int): IO[Option[ResourceContent]] = {
-
-    val key = FragmentKey(resourceId, (start, end), quality)
-    val path = resourceStore.compute(key, (_, value) => getOrCreateVideoFragment(key))
-
-    IO.pure(ResourceContent.fromPath(path))
-  }
-
   private def getFileInfo(resourceId: String): IO[Option[Resource]] =
     repository.getByHash(resourceId)
 
-  private def getOrCreateVideoFragment(key: FragmentKey): Path = {
+  override def getOrCreate(resourceId: String, operation: ResourceOperation): IO[Option[ResourceContent]] = {
+
+    getFileInfo(resourceId).flatMap { maybeResource =>
+      maybeResource match {
+        case None => IO.pure(None)
+        case Some(fileInfo) =>
+          operation match {
+            case VideoFragment(start, end, quality) =>
+              val key = FragmentKey(resourceId, (start, end), quality)
+              val path = resourceStore.compute(key, (_, value) => getOrCreateVideoFragment(fileInfo, key))
+
+              path.map(ResourceContent.fromPath)
+
+            case VideoThumbnail(timestamp, quality) =>
+              val key = VideoThumbnailKey(resourceId, timestamp, quality)
+              val path = resourceStore.compute(key, (_, value) => getOrCreateThumbnail(fileInfo, key))
+
+              path.map(ResourceContent.fromPath)
+
+            case ImageThumbnail(scaleHeight) =>
+              val key = ImageThumbnailKey(resourceId, scaleHeight)
+              val path = resourceStore.compute(key, (_, value) => getOrCreateImageThumbnail(fileInfo, key))
+
+              path.map(ResourceContent.fromPath)
+        }
+      }
+    }
+  }
+
+  private def getOrCreateVideoFragment(resourceInfo: Resource, key: FragmentKey): IO[Path] = {
 
     val fragmentPath = config.resourcePath.resolve(key.path)
 
-    if (fragmentPath.exists())
-      fragmentPath
-    else {
-      val resourceInfo = getFileInfo(key.resourceId).unsafeRunSync()
-
-      resourceInfo.map { info =>
-        FFMpeg.transcodeToMp4(
-          inputFile   = config.mediaPath.resolve(info.path),
-          range       = key.range,
-          crf         = 23,
-          scaleHeight = Some(key.quality),
-          outputFile  = Some(fragmentPath),
-        ).unsafeRunSync()
-      }
-
-      fragmentPath
+    if (!fragmentPath.exists()) {
+      logger.debug(s"Creating fragment for ${resourceInfo.path} with range ${key.range}")
+      FFMpeg.transcodeToMp4(
+        inputFile = config.mediaPath.resolve(resourceInfo.path),
+        range = key.range,
+        crf = 23,
+        scaleHeight = Some(key.quality),
+        outputFile = Some(fragmentPath),
+      ).map(_ => fragmentPath).memoize.flatten
     }
+    else
+      IO.pure(fragmentPath)
   }
 
-  private def getOrCreateThumbnail(key: VideoThumbnailKey): Path = {
+  private def getOrCreateThumbnail(resourceInfo: Resource, key: VideoThumbnailKey): IO[Path] = {
     val thumbnailPath = config.resourcePath.resolve(key.path)
 
-    if (thumbnailPath.exists())
-      thumbnailPath
-    else {
-      val resourceInfo = getFileInfo(key.resourceId).unsafeRunSync()
+    if (!thumbnailPath.exists()) {
 
-      resourceInfo.foreach { info =>
-        FFMpeg.createThumbnail(
-          inputFile   = config.mediaPath.resolve(info.path),
-          timestamp   = key.timestamp,
-          outputFile  = Some(thumbnailPath),
-          scaleHeight = Some(key.quality)
-        ).unsafeRunSync()
-      }
+      logger.debug(s"Creating thumbnail for ${resourceInfo.path} with timestamp ${key.timestamp}")
 
-      thumbnailPath
+      FFMpeg.createThumbnail(
+        inputFile   = config.mediaPath.resolve(resourceInfo.path),
+        timestamp   = key.timestamp,
+        outputFile  = Some(thumbnailPath),
+        scaleHeight = Some(key.quality)
+      ).map(_ => thumbnailPath).memoize.flatten
     }
+    else
+      IO.pure(thumbnailPath)
   }
 
-  override def getVideoThumbnail(resourceId: String, quality: Int, timestamp: Long): IO[Option[ResourceContent]] = {
-
-    val key = VideoThumbnailKey(resourceId, timestamp, quality)
-    val path = resourceStore.compute(key, (_, value) => getOrCreateThumbnail(key))
-
-    IO.pure(ResourceContent.fromPath(path))
-  }
-
-  private def getOrCreateImageThumbnail(resourceInfo: Resource, key: ImageThumbnailKey): Path = {
+  private def getOrCreateImageThumbnail(resourceInfo: Resource, key: ImageThumbnailKey): IO[Path] = {
     val thumbnailPath = config.resourcePath.resolve(key.path)
-    if (thumbnailPath.exists())
-      thumbnailPath
-    else {
-      val op = ImageMagick.createThumbnail(
+
+    if (!thumbnailPath.exists()) {
+
+      logger.debug(s"Creating image thumbnail for ${resourceInfo.path}")
+
+      ImageMagick.createThumbnail(
         inputFile   = config.mediaPath.resolve(resourceInfo.path),
         outputFile  = Some(thumbnailPath),
         scaleHeight = key.quality
-      ).map(_ => thumbnailPath).unsafeToFuture()
-
-      Await.result(op, timeout)
+      ).map(_ => thumbnailPath).memoize.flatten
+    }
+    else {
+      IO.pure(thumbnailPath)
     }
   }
 
-  override def getImageThumbnail(resourceId: String, scaleHeight: Int): IO[Option[ResourceContent]] = {
-
-    getFileInfo(resourceId).flatMap {
-      case None               => IO.pure(None)
-      case Some(resourceInfo) =>
-        val key = ImageThumbnailKey(resourceId, scaleHeight)
-        val path = resourceStore.compute(key, (_, value) => getOrCreateImageThumbnail(resourceInfo, key))
-        IO.pure(ResourceContent.fromPath(path))
-    }
-  }
-
-  override def getPreviewSpriteVtt(resourceId: String): IO[Option[String]] = {
-
-    val path = config.resourcePath.resolve(s"$resourceId-timeline.vtt")
-
-    val content =
-      if (Files.exists(path))
-        scala.io.Source.fromFile(path.toFile).mkString
-      else
-        "WEBVTT"
-
-    IO.pure(Some(content))
-  }
-
-  override def getResource(resourceId: String): IO[Option[ResourceContent]] = {
+  override def getContent(resourceId: String): IO[Option[ResourceContent]] = {
     getFileInfo(resourceId).flatMap {
       case None       => IO.pure(None)
       case Some(info) =>
         val path = config.mediaPath.resolve(info.path)
         IO.pure(ResourceContent.fromPath(path))
     }
-  }
-
-  override def getPreviewSpriteImage(mediaId: String): IO[Option[ResourceContent]] = {
-    val path = config.resourcePath.resolve(s"$mediaId-timeline.webp")
-    IO.pure(ResourceContent.fromPath(path))
   }
 
   override def getResourceMeta(resourceId: String): IO[Option[ResourceMeta]] = {
