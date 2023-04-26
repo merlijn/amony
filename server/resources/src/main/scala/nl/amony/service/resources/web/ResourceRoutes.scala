@@ -10,28 +10,23 @@ object ResourceRoutes extends Logging {
 
   // format: off
   object patterns {
-    // example: j0rc1048yc1_720p.mp4
-    val Video = raw"(\w+)(_(\d+)p)?\.mp4".r
-
-    // example: j0rc1048yc1~1000-5000_720p.mp4
-    val VideoFragment = raw"(.+)~(\d+)-(\d+)_(\d+)p\.mp4".r
-
-    val Thumbnail = raw"(\w+)_(\d+)p\.webp".r
-
+    val Video                  = raw"(\w+)(_(\d+)p)?\.mp4".r
+    val VideoFragment          = raw"(.+)~(\d+)-(\d+)_(\d+)p\.mp4".r
+    val Thumbnail              = raw"(\w+)_(\d+)p\.webp".r
     val ThumbnailWithTimestamp = raw"(\w+)_(\d+)_(\d+)p\.webp".r
   }
   // format: on
 
-  private def respondWithResource(req: Request[IO], fn: => IO[Option[ResourceContent]]): IO[Response[IO]] =
-    fn.flatMap {
+  private def respondWithResource(req: Request[IO], resourceContent: => IO[Option[ResourceContent]]): IO[Response[IO]] =
+    resourceContent.flatMap {
       case None             =>
         NotFound()
-      case Some(ioResponse) =>
+      case Some(content) =>
         ResourceDirectives.responseWithRangeSupport[IO](
-          req,
-          ioResponse.size(),
-          ioResponse.contentType().map(MediaType.parse(_).toOption).flatten,
-          ioResponse.getContentRange
+          req = req,
+          size = content.size(),
+          maybeMediaType = content.contentType().map(MediaType.parse(_).toOption).flatten,
+          rangeResponseFn = content.getContentRange
         )
     }
 
@@ -44,21 +39,11 @@ object ResourceRoutes extends Logging {
             NotFound()
           case Some(bucket) =>
             resourceId match {
-
-              case patterns.ThumbnailWithTimestamp(id, timestamp, quality) =>
-                respondWithResource(req, bucket.getOrCreate(id, VideoThumbnail(timestamp.toLong, quality.toInt)))
-
-              case patterns.Thumbnail(id, scaleHeight) =>
-                respondWithResource(req, bucket.getOrCreate(id, ImageThumbnail(scaleHeight.toInt)))
-
-              case patterns.VideoFragment(id, start, end, quality) =>
-                respondWithResource(req, bucket.getOrCreate(id, VideoFragment(start.toLong, end.toLong, quality.toInt)))
-
-              case patterns.Video(id, _, null) =>
-                respondWithResource(req, bucket.getContent(id))
-
-              case _ =>
-                respondWithResource(req, bucket.getContent(resourceId))
+              case patterns.ThumbnailWithTimestamp(id, timestamp, quality) => respondWithResource(req, bucket.getOrCreate(id, VideoThumbnail(timestamp.toLong, quality.toInt)))
+              case patterns.Thumbnail(id, scaleHeight)                     => respondWithResource(req, bucket.getOrCreate(id, ImageThumbnail(scaleHeight.toInt)))
+              case patterns.VideoFragment(id, start, end, quality)         => respondWithResource(req, bucket.getOrCreate(id, VideoFragment(start.toLong, end.toLong, quality.toInt)))
+              case patterns.Video(id, _, null)                             => respondWithResource(req, bucket.getContent(id))
+              case _                                                       => respondWithResource(req, bucket.getContent(resourceId))
             }
         }
     }

@@ -18,7 +18,7 @@ import scala.concurrent.ExecutionContext
 
 class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repository: LocalDirectoryStorage[P])(implicit ec: ExecutionContext) extends ResourceBucket with Logging {
 
-  private val resourceStore = new ConcurrentHashMap[ResourceKey, IO[Path]]()
+  private val resourceStore = new ConcurrentHashMap[ResourceOp, IO[Path]]()
 
   // TODO think about replacing this with custom runtime
   implicit val runtime: IORuntime = IORuntime.global
@@ -34,15 +34,16 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
       case None => IO.pure(None)
       case Some(fileInfo) =>
         operation match {
-          case VideoFragment(start, end, quality) => derivedResource(fileInfo, FragmentKey(resourceId, (start, end), quality))
-          case VideoThumbnail(timestamp, quality) => derivedResource(fileInfo, VideoThumbnailKey(resourceId, timestamp, quality))
-          case ImageThumbnail(scaleHeight)        => derivedResource(fileInfo, ImageThumbnailKey(resourceId, scaleHeight))
+          case VideoFragment(start, end, quality) => derivedResource(fileInfo, VideoFragmentOp(resourceId, (start, end), quality))
+          case VideoThumbnail(timestamp, quality) => derivedResource(fileInfo, VideoThumbnailOp(resourceId, timestamp, quality))
+          case ImageThumbnail(scaleHeight)        => derivedResource(fileInfo, ImageThumbnailOp(resourceId, scaleHeight))
         }
     }
   }
 
-  private def derivedResource(fileInfo: Resource, key: ResourceKey): IO[Option[LocalFileContent]] ={
-    val path = config.resourcePath.resolve(key.outputPath)
+  private def derivedResource(fileInfo: Resource, key: ResourceOp): IO[Option[LocalFileContent]] = {
+    val path = config.resourcePath.resolve(key.outputFilename)
+    // this is to prevent 2 or more requests for the same resource to trigger the operation multiple times
     val result = resourceStore.compute(key, (_, value) =>
       if (!path.exists())
         key.create(config, fileInfo.path).memoize.flatten
