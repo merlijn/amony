@@ -33,11 +33,13 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
     getFileInfo(resourceId).flatMap {
       case None => IO.pure(None)
       case Some(fileInfo) =>
-        operation match {
-          case VideoFragment(start, end, quality) => derivedResource(fileInfo, VideoFragmentOp(resourceId, (start, end), quality))
-          case VideoThumbnail(timestamp, quality) => derivedResource(fileInfo, VideoThumbnailOp(resourceId, timestamp, quality))
-          case ImageThumbnail(scaleHeight)        => derivedResource(fileInfo, ImageThumbnailOp(resourceId, scaleHeight))
+        val localFileOp = operation match {
+          case VideoFragment(start, end, quality) => VideoFragmentOp(resourceId, (start, end), quality)
+          case VideoThumbnail(timestamp, quality) => VideoThumbnailOp(resourceId, timestamp, quality)
+          case ImageThumbnail(scaleHeight)        => ImageThumbnailOp(resourceId, scaleHeight)
         }
+
+        derivedResource(fileInfo, localFileOp)
     }
   }
 
@@ -103,4 +105,6 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
   }
 
   override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[Boolean] = ???
+
+  override def getOrCreate(resourceId: String, operationId: String): IO[Option[ResourceContent]] = ???
 }

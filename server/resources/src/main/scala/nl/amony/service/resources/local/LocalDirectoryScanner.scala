@@ -13,6 +13,11 @@ import java.nio.file.attribute.BasicFileAttributes
 
 object LocalDirectoryScanner extends Logging {
 
+  def contentTypeForPath(path: java.nio.file.Path): Option[String] = {
+    ResourceContent.fromPath(path).flatMap(_.contentType())
+  }
+
+
   def scanDirectory(config: LocalDirectoryConfig, cache: String => Option[Resource]): Stream[IO, Resource] = {
 
     val mediaPath = config.mediaPath
@@ -52,7 +57,7 @@ object LocalDirectoryScanner extends Logging {
             path = relativePath,
             hash = hash,
             fileAttributes.size(),
-            contentType = ResourceContent.fromPath(path).flatMap(_.contentType()),
+            contentType = contentTypeForPath(path),
             Some(fileAttributes.creationTime().toMillis),
             Some(fileAttributes.lastModifiedTime().toMillis))
         }
