@@ -75,7 +75,7 @@ class LocalDirectoryStorage[P <: JdbcProfile](
   }
 
   def scanDirectory(): Unit =
-    LocalDirectoryScanner.diff(config, getAll().unsafeRunSync()).map {
+    LocalDirectoryScanner.diff(config, getAll().unsafeRunSync()).foreach {
       case e @ ResourceAdded(resource)               =>
         logger.info(s"File added: ${resource.path}")
         dbIO(files.insertOrUpdate(resource)).unsafeRunSync()
