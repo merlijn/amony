@@ -5,7 +5,7 @@ import cats.effect.unsafe.IORuntime
 import nl.amony.service.media.MediaServiceImpl
 import nl.amony.service.media.api.DeleteById
 import nl.amony.service.resources.ResourceBucket
-import nl.amony.service.resources.events.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved}
+import nl.amony.service.resources.api.events.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved}
 import scribe.Logging
 
 class MediaScanner(resourceBuckets: Map[String, ResourceBucket], mediaService: MediaServiceImpl) extends Logging {

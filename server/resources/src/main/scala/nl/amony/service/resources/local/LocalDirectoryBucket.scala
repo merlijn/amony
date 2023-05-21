@@ -7,7 +7,7 @@ import nl.amony.lib.files.PathOps
 import nl.amony.lib.magick.ImageMagick
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources._
-import nl.amony.service.resources.events.Resource
+import nl.amony.service.resources.api.Resource
 import nl.amony.service.resources.local.LocalResourceOperations._
 import scribe.Logging
 import slick.jdbc.JdbcProfile
@@ -23,12 +23,12 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
   // TODO think about replacing this with custom runtime
   implicit val runtime: IORuntime = IORuntime.global
 
-  Files.createDirectories(config.resourcePath)
+  Files.createDirectories(config.writePath)
 
   private def getFileInfo(resourceId: String): IO[Option[Resource]] =
     repository.getByHash(resourceId)
 
-  override def getOrCreate(resourceId: String, operation: ResourceOperation): IO[Option[ResourceContent]] = {
+  override def getOrCreate(resourceId: String, operation: ResourceOperation, tags: Set[String]): IO[Option[ResourceContent]] = {
 
     getFileInfo(resourceId).flatMap {
       case None => IO.pure(None)
@@ -44,7 +44,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
   }
 
   private def derivedResource(fileInfo: Resource, key: ResourceOp): IO[Option[LocalFileContent]] = {
-    val path = config.resourcePath.resolve(key.outputFilename)
+    val path = config.writePath.resolve(key.outputFilename)
     // this is to prevent 2 or more requests for the same resource to trigger the operation multiple times
     val result = resourceStore.compute(key, (_, value) =>
       if (!path.exists())
@@ -59,7 +59,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
     getFileInfo(resourceId).flatMap {
       case None       => IO.pure(None)
       case Some(info) =>
-        val path = config.mediaPath.resolve(info.path)
+        val path = config.resourcePath.resolve(info.path)
         IO.pure(ResourceContent.fromPath(path))
     }
   }
@@ -69,7 +69,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
     getFileInfo(resourceId).flatMap {
       case None       => IO.pure(None)
       case Some(info) =>
-        val path = config.mediaPath.resolve(info.path)
+        val path = config.resourcePath.resolve(info.path)
 
         info.contentType match {
           case None =>
@@ -105,6 +105,4 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
   }
 
   override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[Boolean] = ???
-
-  override def getOrCreate(resourceId: String, operationId: String): IO[Option[ResourceContent]] = ???
 }

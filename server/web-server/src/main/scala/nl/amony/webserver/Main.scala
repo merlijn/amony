@@ -9,8 +9,7 @@ import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
 import nl.amony.service.media.api.events.{MediaAdded, MediaEvent}
 import nl.amony.service.media.tasks.MediaScanner
 import nl.amony.service.media.{MediaServiceImpl, MediaStorage}
-import nl.amony.service.resources.ResourceConfig.TranscodeSettings
-import nl.amony.service.resources.events.{ResourceEvent, ResourceEventMessage}
+import nl.amony.service.resources.api.events.{ResourceEvent, ResourceEventMessage}
 import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalDirectoryStorage}
 import nl.amony.service.resources.{ResourceBucket, ResourceConfig}
 import pureconfig.{ConfigReader, ConfigSource}
@@ -68,8 +67,9 @@ object Main extends ConfigLoader with Logging {
 
     val resourceBuckets: Map[String, ResourceBucket] = appConfig.resources.map {
       case localConfig : ResourceConfig.LocalDirectoryConfig =>
-        val localFileRepository = new LocalDirectoryStorage(localConfig, topic, databaseConfig)
-        localConfig.id -> new LocalDirectoryBucket(localConfig, localFileRepository)
+        val localFileStorage = new LocalDirectoryStorage(localConfig, topic, databaseConfig)
+        localFileStorage.createTablesIfNotExists()
+        localConfig.id -> new LocalDirectoryBucket(localConfig, localFileStorage)
     }.toMap
 
     val scanner = new MediaScanner(resourceBuckets, mediaService)

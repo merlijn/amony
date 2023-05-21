@@ -21,11 +21,11 @@ object LocalResourceOperations {
 
     override def create(config: LocalDirectoryConfig, relativePath: String): IO[Path] = {
 
-      val outputFile = config.resourcePath.resolve(outputFilename)
+      val outputFile = config.writePath.resolve(outputFilename)
       logger.debug(s"Creating thumbnail for ${relativePath} with timestamp ${timestamp}")
 
       FFMpeg.createThumbnail(
-        inputFile = config.mediaPath.resolve(relativePath),
+        inputFile = config.resourcePath.resolve(relativePath),
         timestamp = timestamp,
         outputFile = Some(outputFile),
         scaleHeight = Some(quality)
@@ -38,12 +38,12 @@ object LocalResourceOperations {
 
     override def create(config: LocalDirectoryConfig, relativePath: String): IO[Path] = {
 
-      val outputFile = config.resourcePath.resolve(outputFilename)
+      val outputFile = config.writePath.resolve(outputFilename)
 
       logger.debug(s"Creating image thumbnail for ${relativePath}")
 
       ImageMagick.resizeImage(
-        inputFile = config.mediaPath.resolve(relativePath),
+        inputFile = config.resourcePath.resolve(relativePath),
         outputFile = Some(outputFile),
         scaleHeight = quality
       ).map(_ => outputFile)
@@ -56,8 +56,8 @@ object LocalResourceOperations {
     def create(config: LocalDirectoryConfig, relativePath: String): IO[Path] = {
 
       logger.debug(s"Creating fragment for ${relativePath} with range ${range}")
-      val inputFile = config.mediaPath.resolve(relativePath)
-      val outputFile = config.resourcePath.resolve(outputFilename)
+      val inputFile = config.resourcePath.resolve(relativePath)
+      val outputFile = config.writePath.resolve(outputFilename)
 
       FFMpeg.transcodeToMp4(
         inputFile = inputFile,

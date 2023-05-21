@@ -17,7 +17,7 @@ object ConvertNonStreamableVideos extends Logging {
 
   def convertNonStreamableVideos(config: LocalDirectoryConfig, mediaService: MediaServiceImpl)(implicit ec: ExecutionContext): Unit = {
 
-    val files = RecursiveFileVisitor.listFilesInDirectoryRecursive(config.mediaPath)
+    val files = RecursiveFileVisitor.listFilesInDirectoryRecursive(config.resourcePath)
     val parallelism      = config.scanParallelFactor
 
     Stream.fromIterator[IO](files.iterator, 10)
@@ -32,13 +32,13 @@ object ConvertNonStreamableVideos extends Logging {
           val oldHash = config.hashingAlgorithm.createHash(video)
           val newHash = config.hashingAlgorithm.createHash(videoWithFaststart)
 
-          logger.info(s"$oldHash -> $newHash: ${config.mediaPath.relativize(videoWithFaststart).toString}")
+          logger.info(s"$oldHash -> $newHash: ${config.resourcePath.relativize(videoWithFaststart).toString}")
 
           mediaService.getById(GetById(oldHash)).onComplete {
             case Success(v) =>
               val m = v.copy(
                 mediaId = newHash,
-                resourceInfo = v.resourceInfo.copy(hash = newHash, relativePath = config.mediaPath.relativize(videoWithFaststart).toString)
+                resourceInfo = v.resourceInfo.copy(hash = newHash, relativePath = config.resourcePath.relativize(videoWithFaststart).toString)
               )
 
               mediaService.upsertMedia(m).foreach { _ =>

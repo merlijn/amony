@@ -1,0 +1,23 @@
+import "scalapb/scalapb.proto";
+package nl.amony.service.resources.api;
+
+option (scalapb.options) = {
+  flat_package: true
+  preserve_unknown_fields: false
+};
+
+message Resource {
+  required string bucketId = 1;
+  required string path = 2;
+  required string hash = 3;
+  required int64  size = 4;
+  optional string contentType = 5;
+  optional int64 creationTime = 6;
+  optional int64 lastModifiedTime = 7;
+  repeated string tags = 8;
+}
+
+message Tag {
+  required string tagId = 1;
+  required string tagName = 2;
+}

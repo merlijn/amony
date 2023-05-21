@@ -5,7 +5,8 @@ import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import nl.amony.service.resources.ResourceContent
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
-import nl.amony.service.resources.events._
+import nl.amony.service.resources.api.Resource
+import nl.amony.service.resources.api.events._
 import scribe.Logging
 
 import java.nio.file.Files
@@ -17,10 +18,9 @@ object LocalDirectoryScanner extends Logging {
     ResourceContent.fromPath(path).flatMap(_.contentType())
   }
 
-
   def scanDirectory(config: LocalDirectoryConfig, cache: String => Option[Resource]): Stream[IO, Resource] = {
 
-    val mediaPath = config.mediaPath
+    val mediaPath = config.resourcePath
     val hashingAlgorithm = config.hashingAlgorithm
 
     Stream.fromIterator[IO](RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath).iterator, 10)
@@ -43,7 +43,7 @@ object LocalDirectoryScanner extends Logging {
             cache(relativePath) match {
               case None => hashingAlgorithm.createHash(path)
               case Some(m) =>
-                if (m.modifiedTime != Some(fileAttributes.lastModifiedTime().toMillis)) {
+                if (m.lastModifiedTime != Some(fileAttributes.lastModifiedTime().toMillis)) {
                   logger.warn(s"$path last modified time is different from what last seen, recomputing hash")
                   hashingAlgorithm.createHash(path)
                 } else {
@@ -66,10 +66,10 @@ object LocalDirectoryScanner extends Logging {
 
   def hasEqualMeta(a: Resource, b: Resource) = {
     // this depends on file system meta data and the fact that a file move does not update these attributes
-    a.hash == b.hash && a.creationTime == b.creationTime && a.modifiedTime == b.modifiedTime
+    a.hash == b.hash && a.creationTime == b.creationTime && a.lastModifiedTime == b.lastModifiedTime
   }
 
-  def diff(config: LocalDirectoryConfig, previousState: Set[Resource])(implicit ioRuntime: IORuntime): List[ResourceEvent] = {
+  def diff(config: LocalDirectoryConfig, previousState: Seq[Resource])(implicit ioRuntime: IORuntime): List[ResourceEvent] = {
 
     val scannedResources: Set[Resource] = scanDirectory(config, path => previousState.find(_.path == path)).compile.toList.unsafeRunSync().toSet
 

@@ -1,10 +1,9 @@
 package nl.amony.service.media.tasks
 
 import cats.effect.IO
-import nl.amony.lib.cats.FutureOps
 import nl.amony.service.media.api._
+import nl.amony.service.resources.api.Resource
 import nl.amony.service.resources.{ImageMeta, ResourceBucket, VideoMeta}
-import nl.amony.service.resources.events.Resource
 import scribe.Logging
 
 object ScanMedia extends Logging {

@@ -1,7 +1,8 @@
 syntax = "proto2";
+import "ResourceMessages.proto";
 
 import "scalapb/scalapb.proto";
-package nl.amony.service.resources.events;
+package nl.amony.service.resources.api.events;
 
 option (scalapb.options) = {
   flat_package: true
@@ -17,24 +18,14 @@ message ResourceEvent {
 }
 
 message ResourceAdded {
-  required Resource resource = 1;
+  required nl.amony.service.resources.api.Resource resource = 1;
 }
 
 message ResourceDeleted {
-  required Resource resource = 2;
+  required nl.amony.service.resources.api.Resource resource = 1;
 }
 
 message ResourceMoved {
-  required Resource resource = 1;
+  required nl.amony.service.resources.api.Resource resource = 1;
   required string oldPath = 2;
-}
-
-message Resource {
-  required string bucketId = 1;
-  required string path = 2;
-  required string hash = 3;
-  required int64  size = 4;
-  optional string contentType = 5;
-  optional int64 creationTime = 6;
-  optional int64 modifiedTime = 7;
 }

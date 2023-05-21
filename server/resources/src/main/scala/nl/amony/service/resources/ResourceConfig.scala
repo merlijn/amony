@@ -28,8 +28,8 @@ object ResourceConfig {
       extensions: List[String]
   ) extends ResourceBucketConfig {
 
-    lazy val resourcePath: Path = path.toAbsolutePath.normalize().resolve(relativeResourcePath)
-    lazy val mediaPath: Path    = path.toAbsolutePath.normalize()
+    lazy val writePath: Path    = path.toAbsolutePath.normalize().resolve(relativeResourcePath)
+    lazy val resourcePath: Path = path.toAbsolutePath.normalize()
 
     def filterFileName(fileName: String): Boolean =
       extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
