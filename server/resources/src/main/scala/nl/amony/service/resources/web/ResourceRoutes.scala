@@ -42,8 +42,8 @@ object ResourceRoutes extends Logging {
               case patterns.ThumbnailWithTimestamp(id, timestamp, quality) => respondWithResource(req, bucket.getOrCreate(id, VideoThumbnail(timestamp.toLong, quality.toInt), Set.empty))
               case patterns.Thumbnail(id, scaleHeight)                     => respondWithResource(req, bucket.getOrCreate(id, ImageThumbnail(scaleHeight.toInt), Set.empty))
               case patterns.VideoFragment(id, start, end, quality)         => respondWithResource(req, bucket.getOrCreate(id, VideoFragment(start.toLong, end.toLong, quality.toInt), Set.empty))
-              case patterns.Video(id, _, null)                             => respondWithResource(req, bucket.getContent(id))
-              case _                                                       => respondWithResource(req, bucket.getContent(resourceId))
+              case patterns.Video(id, _, null)                             => respondWithResource(req, bucket.getResource(id))
+              case _                                                       => respondWithResource(req, bucket.getResource(resourceId))
             }
         }
     }

@@ -1,5 +1,6 @@
 package nl.amony.webserver
 
+import cats.effect.IO
 import com.typesafe.config.Config
 import nl.amony.lib.eventbus.jdbc.SlickEventBus
 import nl.amony.lib.eventbus.{EventTopic, EventTopicKey, PersistenceCodec}
@@ -10,7 +11,7 @@ import nl.amony.service.media.api.events.{MediaAdded, MediaEvent}
 import nl.amony.service.media.tasks.MediaScanner
 import nl.amony.service.media.{MediaServiceImpl, MediaStorage}
 import nl.amony.service.resources.api.events.{ResourceEvent, ResourceEventMessage}
-import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalDirectoryStorage}
+import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalDirectoryScanner}
 import nl.amony.service.resources.{ResourceBucket, ResourceConfig}
 import pureconfig.{ConfigReader, ConfigSource}
 import scribe.Logging
@@ -21,6 +22,8 @@ import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, ExecutionContext}
 import scala.reflect.ClassTag
 import scala.util.Try
+import fs2.Stream
+import nl.amony.service.resources.local.db.LocalDirectoryDb
 
 object Main extends ConfigLoader with Logging {
 
@@ -65,10 +68,19 @@ object Main extends ConfigLoader with Logging {
     val codec = PersistenceCodec.scalaPBMappedPersistenceCodec[ResourceEventMessage, ResourceEvent]
     val topic = eventBus.getTopicForKey(EventTopicKey[ResourceEvent]("resource_events")(codec))
 
+    val localFileStorage = new LocalDirectoryDb(databaseConfig)
+    localFileStorage.createTablesIfNotExists()
+
     val resourceBuckets: Map[String, ResourceBucket] = appConfig.resources.map {
       case localConfig : ResourceConfig.LocalDirectoryConfig =>
-        val localFileStorage = new LocalDirectoryStorage(localConfig, topic, databaseConfig)
-        localFileStorage.createTablesIfNotExists()
+
+        val scanner = new LocalDirectoryScanner(localConfig, localFileStorage)
+
+        Stream
+          .fixedDelay[IO](5.seconds)
+          .evalMap(_ => IO(scanner.sync(topic)))
+          .compile.drain.unsafeRunAndForget()
+
         localConfig.id -> new LocalDirectoryBucket(localConfig, localFileStorage)
     }.toMap
 

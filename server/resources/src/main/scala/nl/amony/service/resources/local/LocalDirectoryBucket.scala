@@ -9,6 +9,7 @@ import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources._
 import nl.amony.service.resources.api.Resource
 import nl.amony.service.resources.local.LocalResourceOperations._
+import nl.amony.service.resources.local.db.LocalDirectoryDb
 import scribe.Logging
 import slick.jdbc.JdbcProfile
 
@@ -16,7 +17,7 @@ import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.ExecutionContext
 
-class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repository: LocalDirectoryStorage[P])(implicit ec: ExecutionContext) extends ResourceBucket with Logging {
+class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: LocalDirectoryDb[P])(implicit ec: ExecutionContext) extends ResourceBucket with Logging {
 
   private val resourceStore = new ConcurrentHashMap[ResourceOp, IO[Path]]()
 
@@ -26,7 +27,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
   Files.createDirectories(config.writePath)
 
   private def getFileInfo(resourceId: String): IO[Option[Resource]] =
-    repository.getByHash(resourceId)
+    db.getByHash(config.id, resourceId)
 
   override def getOrCreate(resourceId: String, operation: ResourceOperation, tags: Set[String]): IO[Option[ResourceContent]] = {
 
@@ -44,23 +45,25 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
   }
 
   private def derivedResource(fileInfo: Resource, key: ResourceOp): IO[Option[LocalFileContent]] = {
-    val path = config.writePath.resolve(key.outputFilename)
+
     // this is to prevent 2 or more requests for the same resource to trigger the operation multiple times
-    val result = resourceStore.compute(key, (_, value) =>
-      if (!path.exists())
+    val result = resourceStore.compute(key, (_, value) => {
+      val file = config.writePath.resolve(key.outputFilename)
+      if (!file.exists())
         key.create(config, fileInfo.path).memoize.flatten
       else
-        IO.pure(path)
-    )
-    result.map(ResourceContent.fromPath)
+        IO.pure(file)
+    })
+
+    result.map(path => ResourceContent.fromPath(path, fileInfo))
   }
 
-  override def getContent(resourceId: String): IO[Option[ResourceContent]] = {
+  override def getResource(resourceId: String): IO[Option[ResourceContent]] = {
     getFileInfo(resourceId).flatMap {
       case None       => IO.pure(None)
       case Some(info) =>
         val path = config.resourcePath.resolve(info.path)
-        IO.pure(ResourceContent.fromPath(path))
+        IO.pure(ResourceContent.fromPath(path, info))
     }
   }
 
@@ -104,5 +107,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, repos
     }
   }
 
-  override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[Boolean] = ???
+  override def getChildren(resourceId: String, tags: Set[String]): IO[Seq[(ResourceOperation, Resource)]] = ???
+
+  override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[Resource] = ???
 }

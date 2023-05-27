@@ -8,16 +8,50 @@ option (scalapb.options) = {
 
 message Resource {
   required string bucketId = 1;
-  required string path = 2;
-  required string hash = 3;
-  required int64  size = 4;
-  optional string contentType = 5;
-  optional int64 creationTime = 6;
-  optional int64 lastModifiedTime = 7;
-  repeated string tags = 8;
+  optional string parentId = 2;
+  required string path = 3;
+  required string hash = 4;
+  required int64  size = 5;
+  optional string contentType = 6;
+  optional int64 creationTime = 7;
+  optional int64 lastModifiedTime = 8;
+  repeated string tags = 9;
+}
+
+message ResourceUserMeta {
+  optional string title = 1;
+  optional string comment = 2;
+  repeated string tags = 3;
 }
 
 message Tag {
   required string tagId = 1;
   required string tagName = 2;
+}
+
+message ResourceMeta {
+  oneof sealed_value {
+    VideoMeta video = 1;
+    ImageMeta image = 2;
+  }
+}
+
+message VideoMeta {
+  required string contentType = 1;
+  required int32 width = 2;
+  required int32 height = 3;
+  required float fps = 4;
+  required int64 durationInMillis = 5;
+  map<string, string> metaData = 6;
+}
+
+message ImageMeta {
+  required string contentType = 1;
+  required int32 width = 2;
+  required int32 height = 3;
+  map<string, string> metaData = 4;
+}
+
+message Unknown {
+
 }

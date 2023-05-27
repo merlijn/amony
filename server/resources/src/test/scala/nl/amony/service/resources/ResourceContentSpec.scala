@@ -4,10 +4,10 @@ import org.scalatest.flatspec.AnyFlatSpecLike
 
 class ResourceContentSpec extends AnyFlatSpecLike {
 
-  it should "foo" in {
-
-    ResourceContent.fromPath("/Users/merlijn/dev/amony/media/nature/plateau.mp4").foreach {
-      io => println(io.contentType())
-    }
-  }
+//  it should "foo" in {
+//
+//    ResourceContent.fromPath("/Users/merlijn/dev/amony/media/nature/plateau.mp4").foreach {
+//      io => println(io.contentType())
+//    }
+//  }
 }
