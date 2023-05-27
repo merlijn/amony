@@ -57,6 +57,7 @@ class LocalFilesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) {
     // we only store this to later check if the file has not been modified
     def lastModifiedTime = column[Option[Long]]("last_modified_time")
 
+    def bucketIdx = index("bucket_id_idx", bucketId)
     def hashIdx = index("hash_idx", hash)
     def pk = primaryKey("resources_pk", (bucketId, relativePath))
 
@@ -81,5 +82,6 @@ class LocalFilesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) {
   def insertOrUpdate(resource: Resource) =
     innerTable.insertOrUpdate(LocalFileRow.fromResource(resource))
 
-  def all = innerTable
+  def allForBucket(bucketId: String) =
+    innerTable.filter(_.bucketId === bucketId)
 }

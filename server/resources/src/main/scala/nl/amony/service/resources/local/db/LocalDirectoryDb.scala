@@ -18,8 +18,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
 
   private val localFilesTable = new LocalFilesTable[P](dbConfig)
   private val tagsTable = new ResourceTagsTable[P](dbConfig)
-
-  val db = dbConfig.db
+  private val db = dbConfig.db
 
   def createTablesIfNotExists(): Unit =
     Try {
@@ -31,8 +30,8 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       ).unsafeRunSync()
     }
 
-  def getAll(): IO[Seq[Resource]] = {
-    dbIO(localFilesTable.all.result).map(_.map(_.toResource(Seq.empty)).toSeq)
+  def getAll(bucketId: String): IO[Seq[Resource]] = {
+    dbIO(localFilesTable.allForBucket(bucketId).result).map(_.map(_.toResource(Seq.empty)).toSeq)
   }
 
   def deleteByRelativePath(bucketId: String, relativePath: String): IO[Int] = {

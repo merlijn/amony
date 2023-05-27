@@ -74,36 +74,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
       case Some(info) =>
         val path = config.resourcePath.resolve(info.path)
 
-        info.contentType match {
-          case None =>
-            logger.info(s"No content type for $resourceId")
-            IO.pure(None)
-          case Some(contentType) if contentType.startsWith("video") =>
-            FFMpeg.ffprobe(path, false).map {
-              probe => probe.firstVideoStream.map { stream =>
-                VideoMeta(
-                  contentType = contentType,
-                  width  = stream.width,
-                  height = stream.height,
-                  durationInMillis = stream.durationMillis,
-                  fps = stream.fps.toFloat,
-                  metaData = Map.empty,
-                )
-              }
-            }
-          case Some(contentType) if contentType.startsWith("image") =>
-            ImageMagick.getImageMeta(path).map(out =>
-              out.headOption.map { meta =>
-                ImageMeta(
-                  contentType = contentType,
-                  width = meta.image.geometry.width,
-                  height = meta.image.geometry.height,
-                  metaData = meta.image.properties,
-                )
-              }
-            )
-          case Some(contentType) => IO.pure(Some(Other(contentType)))
-        }
+        LocalResourceMeta.resolveMeta(path)
     }
   }
 

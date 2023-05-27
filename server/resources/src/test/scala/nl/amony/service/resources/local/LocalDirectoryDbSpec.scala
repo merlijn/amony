@@ -34,7 +34,7 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike {
     extensions = ???
   )
 
-  val store = new LocalDirectoryDb(localDirectoryConfig, dbConfig)
+  val store = new LocalDirectoryDb(dbConfig)
 
   it should "do something" in {
     println(store)

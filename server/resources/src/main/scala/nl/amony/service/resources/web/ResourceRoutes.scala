@@ -17,19 +17,6 @@ object ResourceRoutes extends Logging {
   }
   // format: on
 
-  private def respondWithResource(req: Request[IO], resourceContent: => IO[Option[ResourceContent]]): IO[Response[IO]] =
-    resourceContent.flatMap {
-      case None             =>
-        NotFound()
-      case Some(content) =>
-        ResourceDirectives.responseWithRangeSupport[IO](
-          req = req,
-          size = content.size(),
-          maybeMediaType = content.contentType().map(MediaType.parse(_).toOption).flatten,
-          rangeResponseFn = content.getContentRange
-        )
-    }
-
   def apply(buckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
     HttpRoutes.of[IO] {
       case req @ GET -> Root / "resources" / bucketId / resourceId =>
@@ -38,12 +25,25 @@ object ResourceRoutes extends Logging {
           case None =>
             NotFound()
           case Some(bucket) =>
-            resourceId match {
-              case patterns.ThumbnailWithTimestamp(id, timestamp, quality) => respondWithResource(req, bucket.getOrCreate(id, VideoThumbnail(timestamp.toLong, quality.toInt), Set.empty))
-              case patterns.Thumbnail(id, scaleHeight)                     => respondWithResource(req, bucket.getOrCreate(id, ImageThumbnail(scaleHeight.toInt), Set.empty))
-              case patterns.VideoFragment(id, start, end, quality)         => respondWithResource(req, bucket.getOrCreate(id, VideoFragment(start.toLong, end.toLong, quality.toInt), Set.empty))
-              case patterns.Video(id, _, null)                             => respondWithResource(req, bucket.getResource(id))
-              case _                                                       => respondWithResource(req, bucket.getResource(resourceId))
+            val maybeResource: IO[Option[ResourceContent]] =
+              resourceId match {
+                case patterns.ThumbnailWithTimestamp(id, timestamp, quality) => bucket.getOrCreate(id, VideoThumbnail(timestamp.toLong, quality.toInt), Set.empty)
+                case patterns.Thumbnail(id, scaleHeight)                     => bucket.getOrCreate(id, ImageThumbnail(scaleHeight.toInt), Set.empty)
+                case patterns.VideoFragment(id, start, end, quality)         => bucket.getOrCreate(id, VideoFragment(start.toLong, end.toLong, quality.toInt), Set.empty)
+                case patterns.Video(id, _, null)                             => bucket.getResource(id)
+                case _                                                       => bucket.getResource(resourceId)
+              }
+
+            maybeResource.flatMap {
+              case None =>
+                NotFound()
+              case Some(content) =>
+                ResourceDirectives.responseWithRangeSupport[IO](
+                  req = req,
+                  size = content.size(),
+                  maybeMediaType = content.contentType().map(MediaType.parse(_).toOption).flatten,
+                  rangeResponseFn = content.getContentRange
+                )
             }
         }
     }

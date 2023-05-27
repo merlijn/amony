@@ -117,7 +117,7 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
   }
 
   def sync(topic: EventTopic[ResourceEvent]): Unit =
-    diff(storage.getAll().unsafeRunSync()).foreach {
+    diff(storage.getAll(config.id).unsafeRunSync()).foreach {
       case e @ ResourceAdded(resource) =>
         logger.info(s"File added: ${resource.path}")
         storage.insert(resource, IO.unit).unsafeRunSync()
