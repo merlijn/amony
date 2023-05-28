@@ -2,9 +2,7 @@ package nl.amony.service.resources.local
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.files.PathOps
-import nl.amony.lib.magick.ImageMagick
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources._
 import nl.amony.service.resources.api.Resource
@@ -78,7 +76,20 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
     }
   }
 
-  override def getChildren(resourceId: String, tags: Set[String]): IO[Seq[(ResourceOperation, Resource)]] = ???
+  override def getChildren(resourceId: String, tags: Set[String]): IO[Seq[(ResourceOperation, Resource)]] = {
+    ???
+
+  }
 
   override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[Resource] = ???
+
+  override def deleteResource(resourceId: String): IO[Unit] =
+    getFileInfo(resourceId).flatMap {
+      case None       => IO.pure(())
+      case Some(info) =>
+        db.deleteResource(config.id, resourceId)
+        val path = config.resourcePath.resolve(info.path)
+
+        IO(path.deleteIfExists())
+    }
 }

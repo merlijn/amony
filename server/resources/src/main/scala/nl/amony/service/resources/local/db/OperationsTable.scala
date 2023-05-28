@@ -7,16 +7,25 @@ class OperationsTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) {
 
   import dbConfig.profile.api._
 
-  case class OperationRow(directoryId: String, operation: Array[Byte], operationId: String, output: String)
+  case class OperationRow(directoryId: String, inputId: String, operationData: Array[Byte], operationId: String, outputId: String)
 
   private class Operations(ttag: Tag) extends Table[OperationRow](ttag, "operations") {
 
-    def directoryId = column[String]("input")
-    def operation = column[Array[Byte]]("operation")
+    def bucketId = column[String]("bucket_id")
+    def inputId: Rep[String] = column[String]("input_id")
+    def operationData = column[Array[Byte]]("operation_data")
     def operationId: Rep[String] = column[String]("operation_id")
-    def output = column[String]("output")
+    def outputId = column[String]("output_id")
 
-    def pk = primaryKey("operations_pk", (directoryId, operation))
-    def * = (directoryId, operation, operationId, output) <> ((OperationRow.apply _).tupled, OperationRow.unapply)
+    def pk = primaryKey("operations_pk", (bucketId, inputId, operationId, outputId))
+    def * = (bucketId, inputId, operationData, operationId, outputId) <> ((OperationRow.apply _).tupled, OperationRow.unapply)
   }
+
+  private val innerTable = TableQuery[Operations]
+
+  def createIfNotExists: DBIO[Unit] =
+    innerTable.schema.createIfNotExists
+
+  def insert(operationRow: OperationRow): DBIO[Int] =
+    innerTable += operationRow
 }

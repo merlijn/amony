@@ -129,64 +129,6 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
     }
   }
 
-//  override def get(entityId: String): EventSourcedEntity[S, E] =
-//    new EventSourcedEntity[S, E] {
-//
-//      override def eventCount(): IO[Long] =
-//        dbIO(queries.latestSeqNrQuery(entityId).result).map(_.headOption.map(_.sequenceNr).getOrElse(0L))
-//
-//      def insertEntry(seqNr: Long, e: E) = {
-//        val (manifest, data) = eventCodec.encode(e)
-//        eventTable += EventRow(None, entityId, seqNr, System.currentTimeMillis(), eventCodec.getSerializerId(), manifest, data)
-//      }
-//
-//      override def events(start: Long): Stream[IO, E] = {
-//        Stream
-//          .eval(dbIO(queries.getEvents(entityId, start, None).result))
-//          .flatMap(result => Stream.fromIterator[IO](result.iterator, 1))
-//          .map { case (manifest, data) => eventCodec.decode(manifest, data) }
-//      }
-//
-//      override def followEvents(start: Long): Stream[IO, E] = {
-//
-//        val current = events(start)
-//
-//        current ++ current.zipWithIndex.last.map {
-//          case None           => start
-//          case Some((_, idx)) => start + idx + 1
-//        }.flatMap { lastSeq =>
-//          // this recursion is stack safe because IO.flatmap is stack safe
-//          Stream.sleep[IO](pollInterval) >> followEvents(lastSeq)
-//        }
-//      }
-//
-//      override def persist(e: E): IO[S] = {
-//
-//        val persistQuery = (for {
-//          last  <- queries.latestSeqNrQuery(entityId).result
-//          seqNr  = last.headOption.map(_.sequenceNr).getOrElse(-1L)
-//          _     <- insertEntry(seqNr + 1, e)
-//        } yield ()).transactionally
-//
-//        dbIO(persistQuery).map(_ => initialState)
-//      }
-//
-//      override def state(): IO[S] =
-//        events()
-//          .compile
-//          .fold(initialState) { eventSourceFn }
-//
-//      override def follow(start: Long): Stream[IO, (E, S)] = ???
-//
-//      override def update(fn: S => IO[E]): IO[S] = ???
-//    }
-
-//  override def delete(entityId: String): IO[Unit] = {
-//    val deleteEntries = eventTable.filter(_.entityId === entityId).delete
-//
-//    dbIO(deleteEntries) >> IO.unit
-//  }
-
   override def getTopicForKey[E](topic: EventTopicKey[E]): EventTopic[E] = {
 
     implicit val ioRuntime = cats.effect.unsafe.implicits.global

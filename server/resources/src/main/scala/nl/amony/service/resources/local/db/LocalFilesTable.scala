@@ -17,6 +17,7 @@ case class LocalFileRow(
   def toResource(tags: Seq[String]): Resource = {
     Resource(
       bucketId = bucketId,
+      parentId = parentId,
       path = relativePath,
       hash = hash,
       size = size,
@@ -51,28 +52,34 @@ class LocalFilesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) {
     def relativePath = column[String]("relative_path")
     def parentId = column[Option[String]]("parent_id")
     def contentType = column[Option[String]]("content_type")
-    def hash = column[String]("hash")
+    def resourceId = column[String]("resource_id")
     def size = column[Long]("size")
     def creationTime = column[Option[Long]]("creation_time")
     // we only store this to later check if the file has not been modified
     def lastModifiedTime = column[Option[Long]]("last_modified_time")
 
+    def parentIdx = index("parent_id_idx", (bucketId, parentId))
     def bucketIdx = index("bucket_id_idx", bucketId)
-    def hashIdx = index("hash_idx", hash)
-    def pk = primaryKey("resources_pk", (bucketId, relativePath))
+    def hashIdx = index("hash_idx", resourceId)
+    def pk = primaryKey("resources_pk", (bucketId, resourceId))
 
-    def * = (bucketId, parentId, relativePath, hash, size, contentType, creationTime, lastModifiedTime) <> ((LocalFileRow.apply _).tupled, LocalFileRow.unapply)
+    def * = (bucketId, parentId, relativePath, resourceId, size, contentType, creationTime, lastModifiedTime) <> ((LocalFileRow.apply _).tupled, LocalFileRow.unapply)
   }
 
-  private val innerTable = TableQuery[LocalFilesSchema]
+  val innerTable = TableQuery[LocalFilesSchema]
 
   def createIfNotExists: DBIO[Unit] =
     innerTable.schema.createIfNotExists
 
+  def queryByParentId(bucketId: String, parentId: String) =
+    innerTable
+      .filter(_.bucketId === bucketId)
+      .filter(_.parentId === parentId)
+
   def queryByHash(bucketId: String, hash: String): Query[LocalFilesSchema, LocalFileRow, Seq] =
     innerTable
       .filter(_.bucketId === bucketId)
-      .filter(_.hash === hash)
+      .filter(_.resourceId === hash)
 
   def queryByPath(bucketId: String, path: String) =
     innerTable

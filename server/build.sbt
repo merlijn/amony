@@ -172,7 +172,9 @@ lazy val resources =
         circe, circeGeneric,
         scalaTest,
         slick, fs2Core, fs2Io, http4sDsl,
-        scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf
+        scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
+        slickHikariCp % "test",
+        h2DB % "test"
       )
     )
 

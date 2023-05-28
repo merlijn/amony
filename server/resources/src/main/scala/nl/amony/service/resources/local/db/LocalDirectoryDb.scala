@@ -1,6 +1,8 @@
 package nl.amony.service.resources.local.db
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import nl.amony.service.resources.ResourceOperation
 import nl.amony.service.resources.api.Resource
 import scribe.Logging
 import slick.basic.DatabaseConfig
@@ -8,41 +10,51 @@ import slick.jdbc.JdbcProfile
 
 import scala.util.Try
 
-class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]) extends Logging {
+class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(implicit IORuntime: IORuntime) extends Logging {
 
-  import cats.effect.unsafe.implicits.global
   import dbConfig.profile.api._
   implicit val ec = scala.concurrent.ExecutionContext.global
 
+  private val db = dbConfig.db
+
   private def dbIO[T](a: DBIO[T]): IO[T] = IO.fromFuture(IO(db.run(a))).onError { t => IO { logger.warn(t) } }
 
-  private val localFilesTable = new LocalFilesTable[P](dbConfig)
+  private val resourcesTable = new LocalFilesTable[P](dbConfig)
   private val tagsTable = new ResourceTagsTable[P](dbConfig)
-  private val db = dbConfig.db
+  private val operationsTable = new OperationsTable[P](dbConfig)
+
+  private object queries {
+    def joinResourceWithTags(bucketId: String) =
+      resourcesTable.innerTable.join(tagsTable.innerTable)
+        .on((a, b) => a.bucketId === b.bucketId && a.resourceId === b.resourceId)
+        .filter(_._1.bucketId === bucketId)
+        .filter(_._2.bucketId === bucketId)
+  }
 
   def createTablesIfNotExists(): Unit =
     Try {
       dbIO(
         for {
-          _ <- localFilesTable.createIfNotExists
+          _ <- resourcesTable.createIfNotExists
           _ <- tagsTable.createIfNotExists
+          _ <- operationsTable.createIfNotExists
         } yield ()
       ).unsafeRunSync()
     }
 
   def getAll(bucketId: String): IO[Seq[Resource]] = {
-    dbIO(localFilesTable.allForBucket(bucketId).result).map(_.map(_.toResource(Seq.empty)).toSeq)
+    dbIO(resourcesTable.allForBucket(bucketId).result).map(_.map(_.toResource(Seq.empty)).toSeq)
   }
 
   def deleteByRelativePath(bucketId: String, relativePath: String): IO[Int] = {
-    dbIO(localFilesTable.queryByPath(bucketId, relativePath).delete)
+    dbIO(resourcesTable.queryByPath(bucketId, relativePath).delete)
   }
 
   def insert(resource: Resource, effect: => IO[Unit]): IO[Unit] = {
     dbIO(
       (for {
-        _ <- localFilesTable.insertOrUpdate(resource)
-        _ <- tagsTable.insert(resource.hash, resource.tags)
+        _ <- resourcesTable.insertOrUpdate(resource)
+        _ <- tagsTable.insert(resource.bucketId, resource.hash, resource.tags)
         _ <- DBIO.from(effect.unsafeToFuture())
       } yield ()).transactionally
     )
@@ -50,28 +62,66 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
 
   def move(bucketId: String, oldPath: String, resource: Resource): IO[Unit] = {
     val transaction = (for {
-      _ <- localFilesTable.insertOrUpdate(resource)
-      _ <- tagsTable.insert(resource.hash, resource.tags)
-      _ <- localFilesTable.queryByPath(bucketId, oldPath).delete
+      _ <- resourcesTable.insertOrUpdate(resource)
+      _ <- tagsTable.insert(bucketId, resource.hash, resource.tags)
+      _ <- resourcesTable.queryByPath(bucketId, oldPath).delete
     } yield ()).transactionally
 
     dbIO(transaction)
   }
 
+  def deleteResource(bucketId: String, resourceId: String): IO[Unit] = {
+    val transaction = (for {
+      _ <- resourcesTable.queryByHash(bucketId, resourceId).delete
+      _ <- tagsTable.queryById(bucketId, resourceId).delete
+    } yield ()).transactionally
+
+    dbIO(transaction)
+  }
+
+  def getAll(bucketId: String, resourceIds: Seq[String]) = {
+
+    val q = queries.joinResourceWithTags(bucketId)
+      .filter(_._1.resourceId.inSet(resourceIds))
+      .result
+      .map { rows =>
+        val tagsForResource: Map[String, Seq[String]] =
+          rows.groupBy(_._1.hash).view.mapValues { rows =>
+            rows.map(_._2.tag)
+          }.toSeq.toMap
+
+        rows.map { case (resourceRow, _) =>
+          resourceRow.toResource(tagsForResource.getOrElse(resourceRow.hash, Seq.empty))
+        }
+      }
+
+    dbIO(q)
+  }
+
+  def getChildren(bucketId: String, parentId: String, tags: Set[String]): IO[Seq[(Resource)]] = {
+    def resourceIdsForTag = queries.joinResourceWithTags(bucketId)
+      .filter(_._1.parentId === parentId)
+      .filter(_._2.tag.inSet(tags))
+      .distinct.map(_._1.resourceId).result
+
+    dbIO(resourceIdsForTag).flatMap {
+      resourceIds => getAll(bucketId, resourceIds)
+    }
+  }
+
+  def insertChildResource(parentId: String, operation: ResourceOperation, resource: Resource) = {
+
+  }
+
   def getByHash(bucketId: String, hash: String): IO[Option[Resource]] = {
 
     val q = for {
-      resourceRow  <- localFilesTable.queryByHash(bucketId, hash).take(1).result.headOption
-      resourceTags <- tagsTable.getTags(hash).result
+      resourceRow  <- resourcesTable.queryByHash(bucketId, hash).take(1).result.headOption
+      resourceTags <- tagsTable.getTags(bucketId, hash).result
     } yield {
       resourceRow.map { r => r.toResource(resourceTags) }
     }
 
     dbIO(q)
   }
-
-  // deletes all files with the given hash
-  def deleteByHash(bucketId: String, hash: String): IO[Int] =
-    dbIO(localFilesTable.queryByHash(bucketId, hash).delete)
-
 }
