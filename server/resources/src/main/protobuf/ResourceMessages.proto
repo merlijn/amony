@@ -8,7 +8,7 @@ option (scalapb.options) = {
   preserve_unknown_fields: false
 };
 
-message Resource {
+message ResourceInfo {
   required string bucketId = 1;
   optional string parentId = 2;
   required string path = 3;

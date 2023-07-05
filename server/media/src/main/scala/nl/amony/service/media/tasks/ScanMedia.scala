@@ -1,17 +1,17 @@
 package nl.amony.service.media.tasks
 
 import cats.effect.IO
-import nl.amony.service.media.api._
+import nl.amony.service.media.api
 import nl.amony.service.resources.ResourceBucket
-import nl.amony.service.resources.api.{ImageMeta, Resource, VideoMeta}
+import nl.amony.service.resources.api.{ImageMeta, ResourceInfo, VideoMeta}
 import scribe.Logging
 
 object ScanMedia extends Logging {
 
   def scanMedia(
        resourceBucket: ResourceBucket,
-       resource: Resource,
-       bucketId: String): IO[Media] = {
+       resource: ResourceInfo,
+       bucketId: String): IO[api.Media] = {
 
     resourceBucket.getResourceMeta(resource.hash).flatMap {
       case Some(image: ImageMeta) => handleImage(image, resource, bucketId)
@@ -20,29 +20,29 @@ object ScanMedia extends Logging {
     }
   }
 
-  def handleUnkown(resource: Resource) = {
+  def handleUnkown(resource: ResourceInfo) = {
     logger.info(s"Failed to get get content type for resource: ${resource.path}")
     IO.raiseError(new IllegalStateException())
   }
 
   def handleImage(meta: ImageMeta,
-                  resource: Resource,
-                  bucketId: String): IO[Media] = {
+                  resource: ResourceInfo,
+                  bucketId: String): IO[api.Media] = {
 
     IO {
-      val fileInfo = ResourceInfo(
+      val fileInfo = api.ResourceInfo(
         bucketId     = bucketId,
         relativePath = resource.path,
         hash         = resource.hash,
         sizeInBytes  = resource.size,
       )
 
-      Media(
+      api.Media(
         mediaId = resource.hash,
         mediaType = meta.contentType,
         userId = "0",
         createdTimestamp = System.currentTimeMillis(),
-        meta = MediaMeta(
+        meta = api.MediaMeta(
           title   = None,
           comment = None,
           tags    = Seq.empty
@@ -56,8 +56,8 @@ object ScanMedia extends Logging {
   }
 
   def handleVideo(meta: VideoMeta,
-                  resource: Resource,
-                  bucketId: String): IO[Media] = {
+                  resource: ResourceInfo,
+                  bucketId: String): IO[api.Media] = {
     IO {
 //        probe.debugOutput.foreach { debug =>
 //          if (!debug.isFastStart)
@@ -66,7 +66,7 @@ object ScanMedia extends Logging {
 
         val timeStamp = meta.durationInMillis / 3
 
-        val fileInfo = ResourceInfo(
+        val fileInfo = api.ResourceInfo(
           bucketId = bucketId,
           relativePath = resource.path,
           hash = resource.hash,
@@ -75,12 +75,12 @@ object ScanMedia extends Logging {
 
         val mediaId = resource.hash
 
-        Media(
+      api.Media(
           mediaId = mediaId,
           mediaType = resource.contentType.get,
           userId = "0",
           createdTimestamp = System.currentTimeMillis(),
-          meta = MediaMeta(
+          meta = api.MediaMeta(
             title = None,
             comment = None,
             tags = Seq.empty

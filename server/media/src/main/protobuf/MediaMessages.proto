@@ -23,20 +23,6 @@ message MediaMeta {
   repeated string tags = 3;
 }
 
-enum MediaKind {
-  VIDEO = 0;
-  IMAGE = 1;
-  AUDIO = 2;
-}
-
-message MediaInfo {
-  required string mediaType = 1;
-  required uint32 width = 2;
-  required uint32 height = 3;
-  required float fps = 4;
-  required uint64 durationInMillis = 5;
-}
-
 message MediaType {
   required string typeId = 1;
   required string mediaType = 2;

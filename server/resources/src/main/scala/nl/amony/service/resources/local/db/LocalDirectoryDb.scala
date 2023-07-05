@@ -2,7 +2,7 @@ package nl.amony.service.resources.local.db
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import nl.amony.service.resources.api.Resource
+import nl.amony.service.resources.api.ResourceInfo
 import nl.amony.service.resources.api.operations.ResourceOperation
 import scribe.Logging
 import slick.basic.DatabaseConfig
@@ -42,7 +42,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       ).unsafeRunSync()
     }
 
-  def getAll(bucketId: String): IO[Seq[Resource]] = {
+  def getAll(bucketId: String): IO[Seq[ResourceInfo]] = {
     dbIO(resourcesTable.allForBucket(bucketId).result).map(_.map(_.toResource(Seq.empty)).toSeq)
   }
 
@@ -50,7 +50,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
     dbIO(resourcesTable.queryByPath(bucketId, relativePath).delete)
   }
 
-  def insert(resource: Resource, effect: => IO[Unit]): IO[Unit] = {
+  def insert(resource: ResourceInfo, effect: => IO[Unit]): IO[Unit] = {
     dbIO(
       (for {
         _ <- resourcesTable.insertOrUpdate(resource)
@@ -60,7 +60,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
     )
   }
 
-  def move(bucketId: String, oldPath: String, resource: Resource): IO[Unit] = {
+  def move(bucketId: String, oldPath: String, resource: ResourceInfo): IO[Unit] = {
     val transaction = (for {
       _ <- resourcesTable.insertOrUpdate(resource)
       _ <- tagsTable.insert(bucketId, resource.hash, resource.tags)
@@ -98,7 +98,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
     dbIO(q)
   }
 
-  def getChildren(bucketId: String, parentId: String, tags: Set[String]): IO[Seq[(Resource)]] = {
+  def getChildren(bucketId: String, parentId: String, tags: Set[String]): IO[Seq[(ResourceInfo)]] = {
     def resourceIdsForTag = queries.joinResourceWithTags(bucketId)
       .filter(_._1.parentId === parentId)
       .filter(_._2.tag.inSet(tags))
@@ -109,11 +109,11 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
     }
   }
 
-  def insertChildResource(parentId: String, operation: ResourceOperation, resource: Resource) = {
+  def insertChildResource(parentId: String, operation: ResourceOperation, resource: ResourceInfo) = {
 
   }
 
-  def getByHash(bucketId: String, hash: String): IO[Option[Resource]] = {
+  def getByHash(bucketId: String, hash: String): IO[Option[ResourceInfo]] = {
 
     val q = for {
       resourceRow  <- resourcesTable.queryByHash(bucketId, hash).take(1).result.headOption

@@ -2,13 +2,13 @@ package nl.amony.service.resources
 
 import cats.effect.IO
 import nl.amony.lib.files.PathOps
-import nl.amony.service.resources.api.Resource
+import nl.amony.service.resources.api.ResourceInfo
 import org.http4s.MediaType
 
 import java.nio.file.{Files, Path}
 
 trait ResourceContent {
-  def info(): Resource
+  def info(): ResourceInfo
   def contentType(): Option[String]
   def size(): Long
   def getContent(): fs2.Stream[IO, Byte]
@@ -22,14 +22,14 @@ object ResourceContent {
     maybeExt.flatMap { ext => MediaType.extensionMap.get(ext).map(m => s"${m.mainType}/${m.subType}") }
   }
 
-  def fromPath(path: String, info: Resource): Option[LocalFileContent] =
+  def fromPath(path: String, info: ResourceInfo): Option[LocalFileContent] =
     fromPath(java.nio.file.Path.of(path), info)
 
-  def fromPath(path: java.nio.file.Path, info: Resource): Option[LocalFileContent] =
+  def fromPath(path: java.nio.file.Path, info: ResourceInfo): Option[LocalFileContent] =
     Option.when(Files.exists(path))(LocalFileContent(fs2.io.file.Path.fromNioPath(path), info))
 }
 
-case class LocalFileContent(path: fs2.io.file.Path, info: Resource) extends ResourceContent {
+case class LocalFileContent(path: fs2.io.file.Path, info: ResourceInfo) extends ResourceContent {
 
   private val defaultChunkSize: Int = 64 * 1024
 

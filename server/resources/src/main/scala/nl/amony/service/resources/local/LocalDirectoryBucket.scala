@@ -5,7 +5,7 @@ import cats.effect.unsafe.IORuntime
 import nl.amony.lib.files.PathOps
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources._
-import nl.amony.service.resources.api.{Resource, ResourceMeta}
+import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
 import nl.amony.service.resources.api.operations.{ImageThumbnail, ResourceOperation, VideoFragment, VideoThumbnail}
 import nl.amony.service.resources.local.LocalResourceOperations._
 import nl.amony.service.resources.local.db.LocalDirectoryDb
@@ -25,7 +25,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
 
   Files.createDirectories(config.writePath)
 
-  private def getFileInfo(resourceId: String): IO[Option[Resource]] =
+  private def getFileInfo(resourceId: String): IO[Option[ResourceInfo]] =
     db.getByHash(config.id, resourceId)
 
   override def getOrCreate(resourceId: String, operation: ResourceOperation, tags: Set[String]): IO[Option[ResourceContent]] = {
@@ -43,7 +43,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
     }
   }
 
-  private def derivedResource(fileInfo: Resource, key: ResourceOp): IO[Option[LocalFileContent]] = {
+  private def derivedResource(fileInfo: ResourceInfo, key: ResourceOp): IO[Option[LocalFileContent]] = {
 
     // this is to prevent 2 or more requests for the same resource to trigger the operation multiple times
     val result = resourceStore.compute(key, (_, value) => {
@@ -77,12 +77,12 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
     }
   }
 
-  override def getChildren(resourceId: String, tags: Set[String]): IO[Seq[(ResourceOperation, Resource)]] = {
+  override def getChildren(resourceId: String, tags: Set[String]): IO[Seq[(ResourceOperation, ResourceInfo)]] = {
     ???
 
   }
 
-  override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[Resource] = ???
+  override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[ResourceInfo] = ???
 
   override def deleteResource(resourceId: String): IO[Unit] =
     getFileInfo(resourceId).flatMap {

@@ -1,7 +1,7 @@
 package nl.amony.service.resources
 
 import cats.effect.IO
-import nl.amony.service.resources.api.{Resource, ResourceMeta}
+import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
 import nl.amony.service.resources.api.operations.ResourceOperation
 
 trait ResourceBucket {
@@ -20,7 +20,7 @@ trait ResourceBucket {
    */
   def getOrCreate(resourceId: String, operation: ResourceOperation, tags: Set[String]): IO[Option[ResourceContent]]
 
-  def getChildren(resourceId: String, tags: Set[String]): IO[Seq[(ResourceOperation, Resource)]]
+  def getChildren(resourceId: String, tags: Set[String]): IO[Seq[(ResourceOperation, ResourceInfo)]]
 
-  def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[Resource]
+  def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[ResourceInfo]
 }

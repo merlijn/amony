@@ -18,14 +18,14 @@ message ResourceEvent {
 }
 
 message ResourceAdded {
-  required nl.amony.service.resources.api.Resource resource = 1;
+  required nl.amony.service.resources.api.ResourceInfo resource = 1;
 }
 
 message ResourceDeleted {
-  required nl.amony.service.resources.api.Resource resource = 1;
+  required nl.amony.service.resources.api.ResourceInfo resource = 1;
 }
 
 message ResourceMoved {
-  required nl.amony.service.resources.api.Resource resource = 1;
+  required nl.amony.service.resources.api.ResourceInfo resource = 1;
   required string oldPath = 2;
 }

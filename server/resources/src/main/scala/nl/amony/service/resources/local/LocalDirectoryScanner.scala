@@ -6,7 +6,7 @@ import fs2.Stream
 import nl.amony.lib.eventbus.EventTopic
 import nl.amony.service.resources.ResourceContent
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
-import nl.amony.service.resources.api.Resource
+import nl.amony.service.resources.api.ResourceInfo
 import nl.amony.service.resources.api.events._
 import nl.amony.service.resources.local.db.LocalDirectoryDb
 import scribe.Logging
@@ -17,7 +17,7 @@ import java.nio.file.attribute.BasicFileAttributes
 
 class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, storage: LocalDirectoryDb[P])(implicit runtime: IORuntime) extends Logging {
 
-  private def scanDirectory(cache: String => Option[Resource]): Stream[IO, Resource] = {
+  private def scanDirectory(cache: String => Option[ResourceInfo]): Stream[IO, ResourceInfo] = {
 
     val mediaPath = config.resourcePath
     val hashingAlgorithm = config.hashingAlgorithm
@@ -51,7 +51,7 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
             }
           }
 
-          Resource(
+          ResourceInfo(
             bucketId = config.id,
             parentId = None,
             path = relativePath,
@@ -65,13 +65,13 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
   }
 
   // this depends on file system meta data and the fact that a file move does not update these attributes
-  def hasEqualMeta(a: Resource, b: Resource) = {
+  def hasEqualMeta(a: ResourceInfo, b: ResourceInfo) = {
     a.hash == b.hash && a.creationTime == b.creationTime && a.lastModifiedTime == b.lastModifiedTime
   }
 
-  def diff(previousState: Seq[Resource]): List[ResourceEvent] = {
+  def diff(previousState: Seq[ResourceInfo]): List[ResourceEvent] = {
 
-    val scannedResources: Set[Resource] = scanDirectory(path => previousState.find(_.path == path)).compile.toList.unsafeRunSync().toSet
+    val scannedResources: Set[ResourceInfo] = scanDirectory(path => previousState.find(_.path == path)).compile.toList.unsafeRunSync().toSet
 
     val (colliding, nonColliding) = scannedResources
       .groupBy(_.hash)
@@ -101,8 +101,8 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
 
         // TODO there are some edge cases where this does not work
 
-        def equalMeta(): Option[Resource] = scannedResources.find { current => old.path != current.path && hasEqualMeta(current, old) }
-        def equalHash(): Option[Resource] = scannedResources.find { current => old.path != current.path && old.hash == current.hash }
+        def equalMeta(): Option[ResourceInfo] = scannedResources.find { current => old.path != current.path && hasEqualMeta(current, old) }
+        def equalHash(): Option[ResourceInfo] = scannedResources.find { current => old.path != current.path && old.hash == current.hash }
 
         // prefer the file with equal timestamp meta, otherwise fall back to just equal hash
         equalMeta().orElse(equalHash()).map { moved => ResourceMoved(old.copy(path = moved.path), old.path) }

@@ -1,6 +1,6 @@
 package nl.amony.service.resources.local.db
 
-import nl.amony.service.resources.api.Resource
+import nl.amony.service.resources.api.ResourceInfo
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
 
@@ -14,8 +14,8 @@ case class LocalFileRow(
    creationTime: Option[Long],
    lastModifiedTime: Option[Long]) {
 
-  def toResource(tags: Seq[String]): Resource = {
-    Resource(
+  def toResource(tags: Seq[String]): ResourceInfo = {
+    ResourceInfo(
       bucketId = bucketId,
       parentId = parentId,
       path = relativePath,
@@ -30,7 +30,7 @@ case class LocalFileRow(
 }
 
 object LocalFileRow {
-  def fromResource(resource: Resource): LocalFileRow = LocalFileRow(
+  def fromResource(resource: ResourceInfo): LocalFileRow = LocalFileRow(
     bucketId = resource.bucketId,
     parentId = resource.parentId,
     relativePath = resource.path,
@@ -86,7 +86,7 @@ class LocalFilesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) {
       .filter(_.bucketId === bucketId)
       .filter(_.relativePath === path)
 
-  def insertOrUpdate(resource: Resource) =
+  def insertOrUpdate(resource: ResourceInfo) =
     innerTable.insertOrUpdate(LocalFileRow.fromResource(resource))
 
   def allForBucket(bucketId: String) =
