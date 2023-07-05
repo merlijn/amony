@@ -33,8 +33,8 @@ object LocalResourceOperations {
     }
   }
 
-  case class ImageThumbnailOp(resourceId: String, quality: Int) extends ResourceOp with Logging {
-    def outputFilename: String = s"${resourceId}_${quality}p.webp"
+  case class ImageThumbnailOp(resourceId: String, width: Option[Int], height: Option[Int]) extends ResourceOp with Logging {
+    def outputFilename: String = s"${resourceId}_${height.getOrElse("")}p.webp"
 
     override def create(config: LocalDirectoryConfig, relativePath: String): IO[Path] = {
 
@@ -45,13 +45,14 @@ object LocalResourceOperations {
       ImageMagick.resizeImage(
         inputFile = config.resourcePath.resolve(relativePath),
         outputFile = Some(outputFile),
-        scaleHeight = quality
+        width = width,
+        height = height
       ).map(_ => outputFile)
     }
   }
 
-  case class VideoFragmentOp(resourceId: String, range: (Long, Long), quality: Int) extends ResourceOp with Logging {
-    def outputFilename: String = s"${resourceId}_${range._1}-${range._2}_${quality}p.mp4"
+  case class VideoFragmentOp(resourceId: String, range: (Long, Long), height: Int) extends ResourceOp with Logging {
+    def outputFilename: String = s"${resourceId}_${range._1}-${range._2}_${height}p.mp4"
 
     def create(config: LocalDirectoryConfig, relativePath: String): IO[Path] = {
 
@@ -63,7 +64,7 @@ object LocalResourceOperations {
         inputFile = inputFile,
         range = range,
         crf = 23,
-        scaleHeight = Some(quality),
+        scaleHeight = Some(height),
         outputFile = Some(outputFile),
       )
     }

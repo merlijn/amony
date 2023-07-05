@@ -2,8 +2,8 @@ package nl.amony.service.resources.local.db
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import nl.amony.service.resources.ResourceOperation
 import nl.amony.service.resources.api.Resource
+import nl.amony.service.resources.api.operations.ResourceOperation
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile

@@ -6,6 +6,7 @@ import nl.amony.lib.files.PathOps
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources._
 import nl.amony.service.resources.api.Resource
+import nl.amony.service.resources.api.operations.{ImageThumbnail, ResourceOperation, VideoFragment, VideoThumbnail}
 import nl.amony.service.resources.local.LocalResourceOperations._
 import nl.amony.service.resources.local.db.LocalDirectoryDb
 import scribe.Logging
@@ -33,9 +34,9 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
       case None => IO.pure(None)
       case Some(fileInfo) =>
         val localFileOp = operation match {
-          case VideoFragment(start, end, quality) => VideoFragmentOp(resourceId, (start, end), quality)
-          case VideoThumbnail(timestamp, quality) => VideoThumbnailOp(resourceId, timestamp, quality)
-          case ImageThumbnail(scaleHeight)        => ImageThumbnailOp(resourceId, scaleHeight)
+          case VideoFragment(width, height, start, end, quality) => VideoFragmentOp(resourceId, (start, end), height.get)
+          case VideoThumbnail(width, height, quality, timestamp) => VideoThumbnailOp(resourceId, timestamp, height.get)
+          case ImageThumbnail(width, height, quality)            => ImageThumbnailOp(resourceId, width, height)
         }
 
         derivedResource(fileInfo, localFileOp)

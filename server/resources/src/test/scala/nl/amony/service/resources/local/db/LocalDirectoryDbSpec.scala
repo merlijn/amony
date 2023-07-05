@@ -7,8 +7,6 @@ import org.scalatest.flatspec.AnyFlatSpecLike
 import slick.basic.DatabaseConfig
 import slick.jdbc.H2Profile
 
-import scala.concurrent.duration.DurationInt
-
 class LocalDirectoryDbSpec extends AnyFlatSpecLike {
 
   import cats.effect.unsafe.implicits.global
@@ -89,8 +87,8 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike {
 
     val bucketId = "multiple-get-test"
 
-    val resource1 = createResource(bucketId, "1", Seq("a", "b"))
-    val resource2 = createResource(bucketId, "2", Seq("c", "d", "e"))
+    val resource1 = createResource(bucketId, "1", tags = Seq("a", "b"))
+    val resource2 = createResource(bucketId, "2", tags = Seq("c", "d", "e"))
 
     val result = for {
       _         <- store.insert(resource1, IO.unit)

@@ -1,7 +1,8 @@
 package nl.amony.service.resources.web
 
 import cats.effect.IO
-import nl.amony.service.resources.{ImageThumbnail, ResourceBucket, ResourceContent, VideoFragment, VideoThumbnail}
+import nl.amony.service.resources.api.operations.{ImageThumbnail, VideoFragment, VideoThumbnail}
+import nl.amony.service.resources.{ResourceBucket, ResourceContent}
 import org.http4s._
 import org.http4s.dsl.io._
 import scribe.Logging
@@ -19,19 +20,19 @@ object ResourceRoutes extends Logging {
 
   def apply(buckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
     HttpRoutes.of[IO] {
-      case req @ GET -> Root / "resources" / bucketId / resourceId =>
+      case req @ GET -> Root / "resources" / bucketId / resourcePattern =>
 
         buckets.get(bucketId) match {
           case None =>
             NotFound()
           case Some(bucket) =>
             val maybeResource: IO[Option[ResourceContent]] =
-              resourceId match {
-                case patterns.ThumbnailWithTimestamp(id, timestamp, quality) => bucket.getOrCreate(id, VideoThumbnail(timestamp.toLong, quality.toInt), Set.empty)
-                case patterns.Thumbnail(id, scaleHeight)                     => bucket.getOrCreate(id, ImageThumbnail(scaleHeight.toInt), Set.empty)
-                case patterns.VideoFragment(id, start, end, quality)         => bucket.getOrCreate(id, VideoFragment(start.toLong, end.toLong, quality.toInt), Set.empty)
-                case patterns.Video(id, _, null)                             => bucket.getResource(id)
-                case _                                                       => bucket.getResource(resourceId)
+              resourcePattern match {
+                case patterns.ThumbnailWithTimestamp(id, timestamp, height) => bucket.getOrCreate(id, VideoThumbnail(width = None, height = Some(height.toInt), 23, timestamp.toLong), Set.empty)
+                case patterns.Thumbnail(id, scaleHeight)                    => bucket.getOrCreate(id, ImageThumbnail(width = None, height = Some(scaleHeight.toInt), 0), Set.empty)
+                case patterns.VideoFragment(id, start, end, height)         => bucket.getOrCreate(id, VideoFragment(width = None, height = Some(height.toInt), start.toLong, end.toLong, 23), Set.empty)
+                case patterns.Video(id, _, null)                            => bucket.getResource(id)
+                case id                                                     => bucket.getResource(id)
               }
 
             maybeResource.flatMap {
