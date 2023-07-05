@@ -1,7 +1,5 @@
 package nl.amony.service.media.web
 
-import nl.amony.service.fragments.WebModel.Fragment
-
 object MediaWebModel {
 
   case class MediaMeta(
@@ -39,4 +37,13 @@ object MediaWebModel {
     urls: MediaUrls,
     highlights: List[Fragment],
   )
+
+  case class Fragment(
+     media_id: String,
+     index: Int,
+     range: (Long, Long),
+     urls: List[String],
+     comment: Option[String],
+     tags: List[String]
+   )
 }

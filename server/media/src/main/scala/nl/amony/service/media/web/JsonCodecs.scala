@@ -2,14 +2,13 @@ package nl.amony.service.media.web
 
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import io.circe.{Codec, Encoder}
-import nl.amony.service.fragments.FragmentProtocol
-import nl.amony.service.fragments.WebModel.Fragment
 import nl.amony.service.media.web.MediaWebModel._
 import nl.amony.service.media.api
 
 object JsonCodecs {
 
   // web model codecs
+  implicit val fragmentCodec: Codec[Fragment]            = deriveCodec[Fragment]
   implicit val mediaInfoCodec: Codec[MediaInfo]          = deriveCodec[MediaInfo]
   implicit val videoCodec: Codec[Media]                  = deriveCodec[Media]
   implicit val urlsCodec: Codec[MediaUrls]               = deriveCodec[MediaUrls]
@@ -59,7 +58,7 @@ object JsonCodecs {
     // hard coded for now
     val start = (media.mediaInfo.durationInMillis / 3)
     val range = (start, Math.min(media.mediaInfo.durationInMillis, start + 3000))
-    val highlights = List(FragmentProtocol.Fragment(media.mediaId, range, None, List.empty))
+    val highlights = List(Fragment(media.mediaId, 0, range, List.empty, None, List.empty))
 
     Media(
       id        = media.mediaId,
