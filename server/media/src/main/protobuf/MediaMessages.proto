@@ -2,6 +2,7 @@ syntax = "proto2";
 
 package nl.amony.service.media.api;
 import "scalapb/scalapb.proto";
+import "ResourceMeta.proto";
 
 message UpdateMediaMeta {
   required string mediaId = 1;
@@ -53,7 +54,7 @@ message Media {
   required uint64 createdTimestamp = 4;
   required uint64 thumbnailTimestamp = 5;
   required MediaMeta meta = 6;
-  required MediaInfo mediaInfo = 7;
+  required nl.amony.service.resources.api.ResourceMeta mediaInfo = 7;
   required ResourceInfo resourceInfo = 8;
   repeated MediaType availableFormats = 9;
 }

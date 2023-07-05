@@ -4,6 +4,7 @@ import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import io.circe.{Codec, Encoder}
 import nl.amony.service.media.web.MediaWebModel._
 import nl.amony.service.media.api
+import nl.amony.service.resources.api.{ImageMeta, VideoMeta}
 
 object JsonCodecs {
 
@@ -42,13 +43,25 @@ object JsonCodecs {
       tags    = media.meta.tags.toList
     )
 
-    val mediaInfo = MediaInfo(
-      width     = media.width,
-      height    = media.height,
-      duration  = media.mediaInfo.durationInMillis,
-      fps       = media.mediaInfo.fps,
-      mediaType = media.mediaInfo.mediaType,
-    )
+    val mediaInfo: MediaInfo = media.mediaInfo match {
+      case ImageMeta(contentType, width, height, _) =>
+          MediaInfo(
+            width     = width,
+            height    = height,
+            duration  = 0,
+            fps       = 0,
+            mediaType = contentType,
+          )
+
+      case VideoMeta(contentType, width, height, fps, duration, _) =>
+          MediaInfo(
+            width     = width,
+            height    = height,
+            duration  = duration,
+            fps       = fps,
+            mediaType = contentType,
+          )
+    }
 
     val resourceInfo = ResourceInfo(
       sizeInBytes = media.resourceInfo.sizeInBytes,
@@ -56,8 +69,8 @@ object JsonCodecs {
     )
 
     // hard coded for now
-    val start = (media.mediaInfo.durationInMillis / 3)
-    val range = (start, Math.min(media.mediaInfo.durationInMillis, start + 3000))
+    val start = (mediaInfo.duration / 3)
+    val range = (start, Math.min(mediaInfo.duration, start + 3000))
     val highlights = List(Fragment(media.mediaId, 0, range, List.empty, None, List.empty))
 
     Media(

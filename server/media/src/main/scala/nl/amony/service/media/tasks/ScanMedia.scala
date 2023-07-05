@@ -37,14 +37,6 @@ object ScanMedia extends Logging {
         sizeInBytes  = resource.size,
       )
 
-      val mediaInfo = MediaInfo(
-        mediaType        = meta.contentType,
-        width            = meta.width,
-        height           = meta.height,
-        fps              = 0f,
-        durationInMillis = 0,
-      )
-
       Media(
         mediaId = resource.hash,
         mediaType = meta.contentType,
@@ -56,7 +48,7 @@ object ScanMedia extends Logging {
           tags    = Seq.empty
         ),
         resourceInfo = fileInfo,
-        mediaInfo    = mediaInfo,
+        mediaInfo    = meta,
         thumbnailTimestamp = 0,
         availableFormats = List.empty
       )
@@ -81,14 +73,6 @@ object ScanMedia extends Logging {
           sizeInBytes = resource.size,
         )
 
-        val mediaInfo = MediaInfo(
-          mediaType        = resource.contentType.get,
-          width            = meta.width,
-          height           = meta.height,
-          fps              = meta.fps,
-          durationInMillis = meta.durationInMillis,
-        )
-
         val mediaId = resource.hash
 
         Media(
@@ -102,7 +86,7 @@ object ScanMedia extends Logging {
             tags = Seq.empty
           ),
           resourceInfo       = fileInfo,
-          mediaInfo          = mediaInfo,
+          mediaInfo          = meta,
           thumbnailTimestamp = timeStamp,
         )
       }.onError { e => IO { logger.warn("Exception while scanning media", e) } }

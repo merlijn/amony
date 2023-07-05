@@ -2,6 +2,7 @@ package nl.amony.service.media
 
 import nl.amony.service.media.MediaStorage.{MediaRow, asRow, fromRow}
 import nl.amony.service.media.api._
+import nl.amony.service.resources.api.{ImageMeta, ResourceMeta, VideoMeta}
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
@@ -15,23 +16,35 @@ object MediaStorage {
      String, String, String, Long, Float, Long,
      String, Int, Int, Option[String], Option[String], Option[String])
 
-  def asRow(media: Media): MediaRow =
+  def asRow(media: Media): MediaRow = {
+
+    val (fps, durationInMillis, contentType, width, height) =
+      media.mediaInfo match {
+        case VideoMeta(contentType, width, height, fps, durationInMillis, _) => (fps, durationInMillis, contentType, width, height)
+        case ImageMeta(contentType, width, height, _) => (0f, 0L, contentType, width, height)
+      }
+
     (media.mediaId, media.userId, media.createdTimestamp, media.thumbnailTimestamp,
       media.resourceInfo.bucketId, media.resourceInfo.hash, media.resourceInfo.relativePath, media.resourceInfo.sizeInBytes,
-      media.mediaInfo.fps, media.mediaInfo.durationInMillis, media.mediaInfo.mediaType, media.width, media.height,
+      fps, durationInMillis, contentType, width, height,
       media.meta.title, media.meta.comment, Option.when(media.meta.tags.nonEmpty)(media.meta.tags.mkString(",")))
+  }
 
   def fromRow(row: MediaRow): Media = row match {
     case (mediaId, userId, uploadTimestamp, thumbnailTimestamp,
           resourceBucketId, resourceHash, resourcePath, resourceSize,
-          videoFps, videoDuration, mediaType, mediaWidth, mediaHeight,
+          videoFps, videoDuration, contentType, mediaWidth, mediaHeight,
           title, comment, tags) =>
 
       val resourceInfo = ResourceInfo(resourceBucketId, resourcePath, resourceHash, resourceSize)
-      val mediaInfo = MediaInfo(mediaType, mediaWidth, mediaHeight, videoFps, videoDuration)
+      val resourceMeta: ResourceMeta = videoDuration match {
+        case 0 => ImageMeta(contentType, mediaWidth, mediaHeight, Map.empty)
+        case _ => VideoMeta(contentType, mediaWidth, mediaHeight, videoFps, videoDuration, Map.empty)
+      }
+
       val meta = MediaMeta(title, comment, tags.toList.flatMap(_.split(",")))
 
-      Media(mediaId, mediaType, userId, uploadTimestamp, thumbnailTimestamp, meta, mediaInfo, resourceInfo)
+      Media(mediaId, contentType, userId, uploadTimestamp, thumbnailTimestamp, meta, resourceMeta, resourceInfo)
   }
 }
 

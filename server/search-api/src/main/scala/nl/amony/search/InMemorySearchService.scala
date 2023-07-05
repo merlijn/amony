@@ -2,6 +2,7 @@ package nl.amony.search
 
 import nl.amony.service.media.api.{Media, MediaMeta}
 import nl.amony.service.media.api.events._
+import nl.amony.service.resources.api.{ResourceMeta, VideoMeta}
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import nl.amony.service.search.api.SortDirection.{Asc, Desc}
 import nl.amony.service.search.api.SortField._
@@ -43,6 +44,13 @@ class InMemorySearchService extends SearchService with Logging {
           tags = mediaIndex.values.flatMap(_.meta.tags).toSet
           indexedAt = counter
         }
+      }
+    }
+
+    implicit class ResourceMetaOps(meta: ResourceMeta) {
+      def durationInMillis() = meta match {
+        case m: VideoMeta => m.durationInMillis
+        case _            => 0L
       }
     }
 
