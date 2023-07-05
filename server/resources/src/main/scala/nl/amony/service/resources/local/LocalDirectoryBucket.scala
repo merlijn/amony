@@ -5,7 +5,7 @@ import cats.effect.unsafe.IORuntime
 import nl.amony.lib.files.PathOps
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources._
-import nl.amony.service.resources.api.Resource
+import nl.amony.service.resources.api.{Resource, ResourceMeta}
 import nl.amony.service.resources.api.operations.{ImageThumbnail, ResourceOperation, VideoFragment, VideoThumbnail}
 import nl.amony.service.resources.local.LocalResourceOperations._
 import nl.amony.service.resources.local.db.LocalDirectoryDb

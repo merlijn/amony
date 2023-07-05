@@ -1,12 +1,13 @@
 syntax = "proto2";
 
 import "scalapb/scalapb.proto";
-package nl.amony.service.resources.api.meta;
+package nl.amony.service.resources.api;
 
 message ResourceMeta {
   oneof sealed_value {
     VideoMeta video = 1;
     ImageMeta image = 2;
+    Other other = 3;
   }
 }
 
@@ -24,4 +25,8 @@ message ImageMeta {
   required int32 width = 2;
   required int32 height = 3;
   map<string, string> metaData = 4;
+}
+
+message Other {
+  required string contentType = 1;
 }
