@@ -6,7 +6,7 @@ import fs2.Stream
 import nl.amony.lib.eventbus.EventTopic
 import nl.amony.service.resources.ResourceContent
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
-import nl.amony.service.resources.api.ResourceInfo
+import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
 import nl.amony.service.resources.api.events._
 import nl.amony.service.resources.local.db.LocalDirectoryDb
 import scribe.Logging
@@ -58,6 +58,7 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
             hash = hash,
             fileAttributes.size(),
             contentType = ResourceContent.contentTypeForPath(path),
+            contentMeta = ResourceMeta.Empty,
             Some(fileAttributes.creationTime().toMillis),
             Some(fileAttributes.lastModifiedTime().toMillis))
         }

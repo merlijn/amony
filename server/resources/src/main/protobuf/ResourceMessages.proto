@@ -1,6 +1,8 @@
 syntax = "proto2";
 
 import "scalapb/scalapb.proto";
+import "ResourceMeta.proto";
+
 package nl.amony.service.resources.api;
 
 option (scalapb.options) = {
@@ -15,9 +17,10 @@ message ResourceInfo {
   required string hash = 4;
   required int64  size = 5;
   optional string contentType = 6;
-  optional int64 creationTime = 7;
-  optional int64 lastModifiedTime = 8;
-  repeated string tags = 9;
+  optional ResourceMeta contentMeta = 7;
+  optional int64 creationTime = 8;
+  optional int64 lastModifiedTime = 9;
+  repeated string tags = 10;
 }
 
 message ResourceUserMeta {

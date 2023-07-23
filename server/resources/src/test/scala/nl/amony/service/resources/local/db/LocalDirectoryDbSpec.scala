@@ -2,7 +2,7 @@ package nl.amony.service.resources.local.db
 
 import cats.effect.IO
 import com.typesafe.config.ConfigFactory
-import nl.amony.service.resources.api.Resource
+import nl.amony.service.resources.api.ResourceInfo
 import org.scalatest.flatspec.AnyFlatSpecLike
 import slick.basic.DatabaseConfig
 import slick.jdbc.H2Profile
@@ -30,8 +30,8 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike {
 
   store.createTablesIfNotExists()
 
-  def createResource(bucketId: String, resourceId: String = java.util.UUID.randomUUID().toString, tags: Seq[String] = Seq.empty): Resource = {
-    Resource(
+  def createResource(bucketId: String, resourceId: String = java.util.UUID.randomUUID().toString, tags: Seq[String] = Seq.empty): ResourceInfo = {
+    ResourceInfo(
       bucketId = bucketId,
       path = "test",
       hash = resourceId,
@@ -74,7 +74,7 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike {
     val result = for {
       _ <- store.insert(resource1, IO.unit)
       _ <- store.insert(resource2, IO.unit)
-      retrieved <- store.getAll(bucketId, Seq("1", "2"))
+      retrieved <- store.getAllByIds(bucketId, Seq("1", "2"))
     } yield {
 
       assert(retrieved.toSet == Set(resource1, resource2))

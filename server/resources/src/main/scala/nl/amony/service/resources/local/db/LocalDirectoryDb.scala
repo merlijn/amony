@@ -79,7 +79,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
     dbIO(transaction)
   }
 
-  def getAll(bucketId: String, resourceIds: Seq[String]) = {
+  def getAllByIds(bucketId: String, resourceIds: Seq[String]) = {
 
     val q = queries.joinResourceWithTags(bucketId)
       .filter(_._1.resourceId.inSet(resourceIds))
@@ -105,7 +105,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       .distinct.map(_._1.resourceId).result
 
     dbIO(resourceIdsForTag).flatMap {
-      resourceIds => getAll(bucketId, resourceIds)
+      resourceIds => getAllByIds(bucketId, resourceIds)
     }
   }
 
