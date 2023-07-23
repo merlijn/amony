@@ -122,6 +122,7 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
       case e @ ResourceAdded(resource) =>
         logger.info(s"File added: ${resource.path}")
         storage.insert(resource, IO.unit).unsafeRunSync()
+        logger.info(s"Publishing: ${resource.path}")
         topic.publish(e)
       case e @ ResourceDeleted(resource) =>
         logger.info(s"File deleted: ${resource.path}")
