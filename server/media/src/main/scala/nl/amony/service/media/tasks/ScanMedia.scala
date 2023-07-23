@@ -13,11 +13,17 @@ object ScanMedia extends Logging {
        resource: ResourceInfo,
        bucketId: String): IO[api.Media] = {
 
-    resourceBucket.getResourceMeta(resource.hash).flatMap {
-      case Some(image: ImageMeta) => handleImage(image, resource, bucketId)
-      case Some(video: VideoMeta) => handleVideo(video, resource, bucketId)
-      case _                      => handleUnkown(resource)
+    resource.contentMeta match {
+      case image: ImageMeta => handleImage(image, resource, bucketId)
+      case video: VideoMeta => handleVideo(video, resource, bucketId)
+      case _                => handleUnkown(resource)
     }
+
+//    resourceBucket.getResourceMeta(resource.hash).flatMap {
+//      case Some(image: ImageMeta) => handleImage(image, resource, bucketId)
+//      case Some(video: VideoMeta) => handleVideo(video, resource, bucketId)
+//      case _                      => handleUnkown(resource)
+//    }
   }
 
   def handleUnkown(resource: ResourceInfo) = {

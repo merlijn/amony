@@ -17,10 +17,13 @@ import java.nio.file.attribute.BasicFileAttributes
 
 class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, storage: LocalDirectoryDb[P])(implicit runtime: IORuntime) extends Logging {
 
-  private def scanDirectory(cache: String => Option[ResourceInfo]): Stream[IO, ResourceInfo] = {
+  private def scanDirectory(previousState: Seq[ResourceInfo]): Stream[IO, ResourceInfo] = {
 
     val mediaPath = config.resourcePath
     val hashingAlgorithm = config.hashingAlgorithm
+
+    def getByPath(path: String) = previousState.find(_.path == path)
+    def getByHash(hash: String) = previousState.find(_.hash == hash)
 
     Stream.fromIterator[IO](RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath).iterator, 10)
       .filter { file => config.filterFileName(file.getFileName.toString) }
@@ -32,25 +35,36 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
       }
       .parEvalMapUnordered(config.scanParallelFactor) { path =>
 
-        IO {
-          val relativePath = mediaPath.relativize(path).toString
-          val fileAttributes = Files.readAttributes(path, classOf[BasicFileAttributes])
+        val relativePath = mediaPath.relativize(path).toString
+        val fileAttributes = Files.readAttributes(path, classOf[BasicFileAttributes])
 
-          val hash = if (config.verifyExistingHashes) {
-            hashingAlgorithm.createHash(path)
-          } else {
-            cache(relativePath) match {
-              case None => hashingAlgorithm.createHash(path)
-              case Some(m) =>
-                if (m.lastModifiedTime != Some(fileAttributes.lastModifiedTime().toMillis)) {
-                  logger.warn(s"$path last modified time is different from what last seen, recomputing hash")
-                  hashingAlgorithm.createHash(path)
-                } else {
-                  m.hash
-                }
+        for  {
+          hash <- IO {
+            if (config.verifyExistingHashes) {
+              hashingAlgorithm.createHash(path)
+            } else {
+              getByPath(relativePath) match {
+                case None => hashingAlgorithm.createHash(path)
+                case Some(m) =>
+                  if (m.lastModifiedTime != Some(fileAttributes.lastModifiedTime().toMillis)) {
+                    logger.warn(s"$path last modified time is different from what last seen, recomputing hash")
+                    hashingAlgorithm.createHash(path)
+                  } else {
+                    m.hash
+                  }
+              }
             }
           }
+          meta <-
+            getByHash(hash) match {
+              case None    =>
+                logger.warn(s"Scanning meta data for $relativePath")
+                val path = mediaPath.resolve(relativePath)
+                LocalResourceMeta.resolveMeta(path).map(_.getOrElse(ResourceMeta.Empty))
+              case Some(m) => IO.pure(m.contentMeta)
+            }
 
+        } yield {
           ResourceInfo(
             bucketId = config.id,
             parentId = None,
@@ -58,7 +72,7 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
             hash = hash,
             fileAttributes.size(),
             contentType = ResourceContent.contentTypeForPath(path),
-            contentMeta = ResourceMeta.Empty,
+            contentMeta = meta,
             Some(fileAttributes.creationTime().toMillis),
             Some(fileAttributes.lastModifiedTime().toMillis))
         }
@@ -72,7 +86,7 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
 
   def diff(previousState: Seq[ResourceInfo]): List[ResourceEvent] = {
 
-    val scannedResources: Set[ResourceInfo] = scanDirectory(path => previousState.find(_.path == path)).compile.toList.unsafeRunSync().toSet
+    val scannedResources: Set[ResourceInfo] = scanDirectory(previousState).compile.toList.unsafeRunSync().toSet
 
     val (colliding, nonColliding) = scannedResources
       .groupBy(_.hash)
@@ -122,7 +136,6 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
       case e @ ResourceAdded(resource) =>
         logger.info(s"File added: ${resource.path}")
         storage.insert(resource, IO.unit).unsafeRunSync()
-        logger.info(s"Publishing: ${resource.path}")
         topic.publish(e)
       case e @ ResourceDeleted(resource) =>
         logger.info(s"File deleted: ${resource.path}")

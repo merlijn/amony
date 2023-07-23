@@ -42,9 +42,11 @@ object LocalFileRow  {
 
   def encodeMeta(meta: ResourceMeta): Option[Array[Byte]] = {
 
-    Option.when(!meta.isEmpty)(
-      ResourceMeta.ResourceMetaTypeMapper.toBase(meta).toByteArray
-    )
+    Option.when(!meta.isEmpty) {
+      val bytes = ResourceMeta.ResourceMetaTypeMapper.toBase(meta).toByteArray
+      println(s"Encoded meta: ${bytes.length} bytes")
+      bytes
+    }
   }
 
   def fromResource(resource: ResourceInfo): LocalFileRow = LocalFileRow(
@@ -105,7 +107,11 @@ class LocalFilesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) {
       .filter(_.bucketId === bucketId)
       .filter(_.relativePath === path)
 
+  def insert(resource: ResourceInfo) =
+    innerTable += LocalFileRow.fromResource(resource)
+
   def insertOrUpdate(resource: ResourceInfo) =
+    // This does not work in combination with a byte array field and hsqldb
     innerTable.insertOrUpdate(LocalFileRow.fromResource(resource))
 
   def allForBucket(bucketId: String) =

@@ -40,6 +40,8 @@ object Main extends ConfigLoader with Logging {
     import cats.effect.unsafe.implicits.global
     implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
 
+    logger.info(config.toString)
+
     val databaseConfig = DatabaseConfig.forConfig[HsqldbProfile]("amony.database", config)
 
     val searchService = new InMemorySearchService()

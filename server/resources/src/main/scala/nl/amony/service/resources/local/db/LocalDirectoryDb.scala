@@ -53,7 +53,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
   def insert(resource: ResourceInfo, effect: => IO[Unit]): IO[Unit] = {
     dbIO(
       (for {
-        _ <- resourcesTable.insertOrUpdate(resource)
+        _ <- resourcesTable.insert(resource)
         _ <- tagsTable.insert(resource.bucketId, resource.hash, resource.tags)
         _ <- DBIO.from(effect.unsafeToFuture())
       } yield ()).transactionally
