@@ -1,6 +1,6 @@
 import {durationInMillisToString} from "../../api/Util";
 import React, {CSSProperties, useState} from "react";
-import {Fragment, Media} from "../../api/Model";
+import {Fragment, Resource} from "../../api/Model";
 import {Api} from "../../api/Api";
 import './FragmentPreview.scss';
 import ImgWithAlt from "../common/ImgWithAlt";
@@ -13,7 +13,7 @@ interface Props {
   fragment: Fragment,
   showDeleteButton: boolean,
   showDuration?: boolean,
-  onDelete?: (vid: Media) => any,
+  onDelete?: (vid: Resource) => any,
   onClick?: () => any,
 }
 
@@ -27,7 +27,7 @@ const FragmentPreview = (props: Props) => {
 
     console.log(`Deleting fragment ${props.mediaId}:${props.fragment.index}`)
     Api.deleteFragment(props.mediaId, props.fragment.index).then((result) => {
-      props.onDelete && props.onDelete(result as Media)
+      props.onDelete && props.onDelete(result as Resource)
     })
   }
 

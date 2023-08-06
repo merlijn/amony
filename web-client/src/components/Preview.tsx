@@ -1,7 +1,7 @@
 import React, { CSSProperties, useEffect, useState } from 'react';
 import ProgressiveImage from "react-progressive-graceful-image";
 import { Api } from "../api/Api";
-import { Media } from "../api/Model";
+import { Resource } from "../api/Model";
 import {dateMillisToString, durationInMillisToString, labelForResolution} from "../api/Util";
 import Dialog from './common/Dialog';
 import { DropDown, MenuItem } from './common/DropDown';
@@ -12,12 +12,12 @@ import MediaInfo from './dialogs/MediaInfo';
 import './Preview.scss';
 
 export type PreviewProps = {
-  media: Media,
+  media: Resource,
   style?: CSSProperties,
   className?: string,
   lazyLoad?: boolean,
   options: PreviewOptions,
-  onClick: (v: Media) => any
+  onClick: (v: Resource) => any
 }
 
 export type PreviewOptions = {
@@ -34,9 +34,9 @@ const Preview = (props: PreviewProps) => {
   const [isHovering, setIsHovering] = useState(false)
   const [showVideoPreview, setShowVideoPreview] = useState(false)
 
-  const durationStr = durationInMillisToString(media.mediaInfo.duration)
+  const durationStr = durationInMillisToString(media.resourceMeta.duration)
 
-  const isVideo = media.mediaInfo.mediaType.startsWith("video")
+  const isVideo = media.resourceMeta.mediaType.startsWith("video")
 
   useEffect(() => {
     setShowVideoPreview(isHovering)
@@ -44,9 +44,9 @@ const Preview = (props: PreviewProps) => {
 
   const titlePanel =
       <div className = "preview-info-bar">
-        <span className="media-title" title={media.meta.title}>{media.meta.title}</span>
+        <span className="media-title" title={media.userMeta.title}>{media.userMeta.title}</span>
         { props.options.showDates && <span className="media-date">{dateMillisToString(media.uploadTimestamp)}</span> }
-        { !props.options.showDates && <span className="media-date">{`${media.mediaInfo.height}p` }</span>}
+        { !props.options.showDates && <span className="media-date">{`${media.resourceMeta.height}p` }</span>}
       </div>
 
   const overlay =
@@ -99,7 +99,7 @@ const Preview = (props: PreviewProps) => {
   )
 }
 
-const PreviewMenu = (props: {video: Media, setVideo: (v: Media) => void, onDialogOpen: () => any}) => {
+const PreviewMenu = (props: {video: Resource, setVideo: (v: Resource) => void, onDialogOpen: () => any}) => {
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false)
@@ -116,10 +116,10 @@ const PreviewMenu = (props: {video: Media, setVideo: (v: Media) => void, onDialo
     <>
       <Modal visible = { showInfoModal } onHide = {() => setShowInfoModal(false)} >
         <MediaInfo 
-          meta = { props.video.meta }
+          meta = { props.video.userMeta }
           onClose = { (meta) => {
             Api.updateMediaMetaData(props.video.id, meta).then(() => {
-              props.setVideo({...props.video, meta: meta });
+              props.setVideo({...props.video, userMeta: meta });
               setShowInfoModal(false)
             })
           } } 
@@ -128,7 +128,7 @@ const PreviewMenu = (props: {video: Media, setVideo: (v: Media) => void, onDialo
       
       <Modal visible = { showDeleteDialog } onHide = { cancelDelete }>
         <Dialog title = "Are you sure?">
-          <p>Do you want to delete: '{props.video.meta.title}'</p>
+          <p>Do you want to delete: '{props.video.userMeta.title}'</p>
           <p>
             <button className = "button-primary" onClick = { confirmDelete }>Yes</button>
             <button onClick = { cancelDelete }>No / Cancel</button>

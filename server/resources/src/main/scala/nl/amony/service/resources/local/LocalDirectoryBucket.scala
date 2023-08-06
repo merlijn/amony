@@ -66,17 +66,6 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
     }
   }
 
-  override def getResourceMeta(resourceId: String): IO[Option[ResourceMeta]] = {
-
-    getFileInfo(resourceId).flatMap {
-      case None       => IO.pure(None)
-      case Some(info) =>
-        val path = config.resourcePath.resolve(info.path)
-
-        LocalResourceMeta.resolveMeta(path)
-    }
-  }
-
   override def getChildren(resourceId: String, tags: Set[String]): IO[Seq[(ResourceOperation, ResourceInfo)]] = {
     ???
 

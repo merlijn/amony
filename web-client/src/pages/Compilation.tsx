@@ -11,7 +11,7 @@ const Compilation = () => {
   
         Api.getMedias("", 24, 0).then(response => {
             const f = response as SearchResult
-            const frags = f.media.flatMap((v) => { return v.highlights })
+            const frags = f.results.flatMap((v) => { return v.highlights })
             setFragments(frags)
         });
       }, []

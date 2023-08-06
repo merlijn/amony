@@ -2,7 +2,7 @@ import React, { CSSProperties, useEffect, useState } from 'react';
 import useResizeObserver from 'use-resize-observer';
 import { Api } from '../api/Api';
 import { Constants } from "../api/Constants";
-import { Columns, MediaSelection, SearchResult, Media } from '../api/Model';
+import { Columns, MediaSelection, SearchResult, Resource } from '../api/Model';
 import './GridView.scss';
 import TagBar from './navigation/TagBar';
 import Preview, { PreviewOptions } from './Preview';
@@ -15,11 +15,11 @@ export type GalleryProps = {
   componentType: 'page' | 'element'
   columns: Columns,
   showTagbar: boolean,
-  previewOptionsFn: (v: Media) => PreviewOptions,
-  onClick: (v: Media) => void
+  previewOptionsFn: (v: Resource) => PreviewOptions,
+  onClick: (v: Resource) => void
 }
 
-const initialSearchResult: SearchResult = { total: 0, media: [], tags: [] }
+const initialSearchResult: SearchResult = { total: 0, results: [], tags: [] }
 
 const GridView = (props: GalleryProps) => {
 
@@ -31,7 +31,7 @@ const GridView = (props: GalleryProps) => {
 
   const gridSpacing = 1
 
-  const fetchData = (previous: Array<Media>) => {
+  const fetchData = (previous: Array<Resource>) => {
 
     const offset = previous.length
     const n      = columns * 8
@@ -40,13 +40,13 @@ const GridView = (props: GalleryProps) => {
       Api.searchMedia(n, offset, props.selection).then(response => {
 
           const result = response as SearchResult
-          const videos = [...previous, ...result.media]
+          const videos = [...previous, ...result.results]
 
           if (videos.length >= result.total)
             setFetchMore(false)
 
           setIsFetching(false);
-          setSearchResult( {...response, media: videos } );
+          setSearchResult( {...response, results: videos } );
         });
       }
   }
@@ -78,11 +78,11 @@ const GridView = (props: GalleryProps) => {
     setFetchMore(true)
   }, [props.selection])
 
-  useEffect(() => { fetchData(searchResult.media) }, [columns])
+  useEffect(() => { fetchData(searchResult.results) }, [columns])
 
-  useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.media); }, [isFetching]);
+  useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.results); }, [isFetching]);
 
-  const previews = searchResult.media.map((vid, index) => {
+  const previews = searchResult.results.map((vid, index) => {
 
     const style = { "--ncols" : `${columns}` } as CSSProperties
 
@@ -106,7 +106,7 @@ const GridView = (props: GalleryProps) => {
       <Scrollable
         style        = { style }
         className    = "gallery-container"
-        fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.media) } }
+        fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.results) } }
         scrollType   = { props.componentType }
         ref          = { ref }
         >

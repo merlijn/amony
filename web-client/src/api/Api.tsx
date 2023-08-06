@@ -1,5 +1,5 @@
 import Cookies from "js-cookie";
-import { MediaSelection, Sort, MediaUserMeta } from "./Model";
+import { MediaSelection, Sort, ResourceUserMeta } from "./Model";
 import { buildUrl } from "./Util";
 import jwtDecode, { JwtPayload } from "jwt-decode";
 import axios from 'axios';
@@ -140,7 +140,7 @@ export const Api = {
     return doGET(`/api/media/${mediaId}`)
   },
 
-  updateMediaMetaData: async function(mediaId: string, meta: MediaUserMeta) {
+  updateMediaMetaData: async function(mediaId: string, meta: ResourceUserMeta) {
     return doPOST(`/api/media/${mediaId}`, meta)
   },
 

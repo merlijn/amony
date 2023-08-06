@@ -1,10 +1,10 @@
-export type MediaUrls = {
+export type ResourceUrls = {
   originalResourceUrl: string,
   thumbnailUrl: string,
   previewThumbnailsUrl?: string,
 }
 
-export type MediaInfo = {
+export type ResourceMeta = {
   mediaType: string,
   fps: number,
   width: number,
@@ -17,15 +17,15 @@ export type ResourceInfo = {
   hash: string
 }
 
-export type Media = {
+export type Resource = {
   id: string,
   uploader: string,
   uploadTimestamp: number,
   // the media info of the originally uploaded file
-  meta: MediaUserMeta,
-  mediaInfo: MediaInfo,
+  userMeta: ResourceUserMeta,
+  resourceMeta: ResourceMeta,
   resourceInfo: ResourceInfo,
-  urls: MediaUrls,
+  urls: ResourceUrls,
   highlights: Array<Fragment>,
 }
 
@@ -37,7 +37,7 @@ export type Fragment = {
   tags: string[]
 }
 
-export type MediaUserMeta = {
+export type ResourceUserMeta = {
   tags: string[]
   title: string
   comment?: string
@@ -56,7 +56,7 @@ export type MediaView = 'grid' | 'list'
 
 export type SearchResult = {
   total: number
-  media: Media[]
+  results: Resource[]
   tags: string[]
 }
 

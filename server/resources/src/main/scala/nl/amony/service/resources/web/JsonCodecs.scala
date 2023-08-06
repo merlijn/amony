@@ -8,12 +8,12 @@ import nl.amony.service.resources.api.{ImageMeta, VideoMeta}
 object JsonCodecs {
 
   // web model codecs
-  implicit val fragmentCodec: Codec[Fragment]            = deriveCodec[Fragment]
-  implicit val mediaInfoCodec: Codec[ResourceMeta]          = deriveCodec[ResourceMeta]
-  implicit val videoCodec: Codec[Media]                  = deriveCodec[Media]
-  implicit val urlsCodec: Codec[ResourceUrls]               = deriveCodec[ResourceUrls]
-  implicit val codec: Codec[ResourceInfo]                = deriveCodec[ResourceInfo]
-  implicit val videoMetaCodec: Codec[UserMeta]           = deriveCodec[UserMeta]
+  implicit val fragmentCodec: Codec[Fragment]      = deriveCodec[Fragment]
+  implicit val mediaInfoCodec: Codec[ResourceMeta] = deriveCodec[ResourceMeta]
+  implicit val videoCodec: Codec[Media]            = deriveCodec[Media]
+  implicit val urlsCodec: Codec[ResourceUrls]      = deriveCodec[ResourceUrls]
+  implicit val codec: Codec[ResourceInfo]          = deriveCodec[ResourceInfo]
+  implicit val videoMetaCodec: Codec[UserMeta]     = deriveCodec[UserMeta]
 
   // contra map encoders for internal protocol classes
   implicit val mediaEncoder: Encoder[nl.amony.service.resources.api.ResourceInfo] =
@@ -77,8 +77,8 @@ object JsonCodecs {
       uploader  = "0",
       uploadTimestamp = resource.getCreationTime,
       urls = urls,
-      meta = meta,
-      mediaInfo = mediaInfo,
+      userMeta = meta,
+      resourceMeta = mediaInfo,
       resourceInfo = resourceInfo,
       highlights = {
         highlights.zipWithIndex.map { case (f, index) =>

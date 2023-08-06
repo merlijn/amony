@@ -1,7 +1,7 @@
 import Plyr from 'plyr';
 import React, { useEffect, useState } from 'react';
 import { Api } from '../api/Api';
-import { Media } from '../api/Model';
+import { Resource } from '../api/Model';
 import FragmentList from '../components/fragments/FragmentList';
 import './Editor.scss';
 
@@ -13,11 +13,11 @@ export type EditFragment = {
 
 const Editor = (props: {videoId: string}) => {
 
-  const [vid, setVid] = useState<Media | null>(null)
+  const [vid, setVid] = useState<Resource | null>(null)
 
   useEffect(() => {
     Api.getMediaById(props.videoId).then(response => {
-        setVid((response as Media))
+        setVid((response as Resource))
       }
     );
   }, [props]);
@@ -27,10 +27,10 @@ const Editor = (props: {videoId: string}) => {
   );
 }
 
-const PlayerView = (props: {vid: Media}) => {
+const PlayerView = (props: {vid: Resource}) => {
 
   const [vid, setVid] = useState(props.vid)
-  const vidRatio = props.vid.mediaInfo.width / props.vid.mediaInfo.height;
+  const vidRatio = props.vid.resourceMeta.width / props.vid.resourceMeta.height;
   const id = '#video-' + props.vid.id
 
   const [plyr, setPlyr] = useState<Plyr | null>(null)
@@ -58,13 +58,13 @@ const PlayerView = (props: {vid: Media}) => {
        if (fragment.idx >= 0 && fragment.idx < vid.highlights.length) {
          console.log("updating fragment")
          Api.updateFragment(vid.id, fragment.idx, from, to).then (response => {
-           setVid(response as Media)
+           setVid(response as Resource)
          });
        }
        if (fragment.idx === vid.highlights.length) {
          console.log("adding fragment")
          Api.addFragment(vid.id, from, to).then (response => {
-           setVid(response as Media)
+           setVid(response as Resource)
          });
        }
      }

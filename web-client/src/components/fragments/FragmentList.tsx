@@ -1,4 +1,4 @@
-import {Media} from "../../api/Model";
+import {Resource} from "../../api/Model";
 import React, {CSSProperties, useState} from "react";
 import FragmentPreview from "./FragmentPreview";
 import './FragmentList.scss';
@@ -6,9 +6,9 @@ import ImgWithAlt from "../common/ImgWithAlt";
 import { EditFragment } from "../../pages/Editor";
 import { FiPlusCircle } from "react-icons/fi"
 
-const FragmentList = (props: {vid: Media, selected: number, selectFn: (f: EditFragment) => any, setVid: (vid: Media) => any}) => {
+const FragmentList = (props: {vid: Resource, selected: number, selectFn: (f: EditFragment) => any, setVid: (vid: Resource) => any}) => {
 
-  const ratio = (props.vid.mediaInfo.width / props.vid.mediaInfo.height).toFixed(2);
+  const ratio = (props.vid.resourceMeta.width / props.vid.resourceMeta.height).toFixed(2);
   const [showAddFragment, setShowAddFragment] = useState(false)
 
   const extraStyle = (idx: number): CSSProperties => {

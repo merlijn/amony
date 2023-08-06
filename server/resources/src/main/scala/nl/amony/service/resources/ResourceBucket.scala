@@ -13,8 +13,6 @@ trait ResourceBucket {
 
   def deleteResource(resourceId: String): IO[Unit]
 
-  def getResourceMeta(resourceId: String): IO[Option[ResourceMeta]]
-
   /**
    * Performs an operation on a resource and returns the resulting content
    */

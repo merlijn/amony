@@ -5,7 +5,7 @@ import { IoCutSharp } from "react-icons/io5"
 import { AiOutlineDelete } from "react-icons/ai"
 import ProgressiveImage from "react-progressive-graceful-image"
 import { Api } from "../api/Api"
-import { MediaSelection, SearchResult, Media, MediaUserMeta } from "../api/Model"
+import { MediaSelection, SearchResult, Resource, ResourceUserMeta } from "../api/Model"
 import { dateMillisToString, formatByteSize } from "../api/Util"
 import './ListView.scss'
 import Scrollable from "./common/Scrollable"
@@ -15,10 +15,10 @@ import TagsBar from "./common/TagsBar"
 
 type ListProps = {
   selection: MediaSelection
-  onClick: (v: Media) => any
+  onClick: (v: Resource) => any
 }
 
-const initialSearchResult: SearchResult = { total: 0, media: [], tags: [] }
+const initialSearchResult: SearchResult = { total: 0, results: [], tags: [] }
 const rowHeight = 36
 
 const ListView = (props: ListProps) => {
@@ -28,7 +28,7 @@ const ListView = (props: ListProps) => {
   const [fetchMore, setFetchMore] = useState(true)
   const history = useHistory();
 
-  const fetchData = (previous: Array<Media>) => {
+  const fetchData = (previous: Array<Resource>) => {
 
     const offset = previous.length
     const n      = offset === 0 ? Math.ceil(window.outerHeight / rowHeight) : 32;
@@ -37,13 +37,13 @@ const ListView = (props: ListProps) => {
       Api.searchMedia(n, offset, props.selection).then(response => {
 
           const result = response as SearchResult
-          const videos = [...previous, ...result.media]
+          const videos = [...previous, ...result.results]
 
           if (videos.length >= result.total)
             setFetchMore(false)
 
           setIsFetching(false);
-          setSearchResult({...response, media: videos});
+          setSearchResult({...response, results: videos});
         });
       }
   }
@@ -56,12 +56,12 @@ const ListView = (props: ListProps) => {
     setFetchMore(true)
   }, [props.selection])
 
-  useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.media); }, [isFetching]);
+  useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.results); }, [isFetching]);
 
   return (
       <Scrollable
         className = "list-container"
-        fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.media) } }
+        fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.results) } }
         scrollType = 'page'
       >
       <div key="row-header" className="list-row">
@@ -85,7 +85,7 @@ const ListView = (props: ListProps) => {
       
       <div key="row-spacer" className="list-row row-spacer"></div>
       {
-        searchResult.media.map((v, index) => {
+        searchResult.results.map((v, index) => {
           return(
             <div key={`row-${v.id}`} className="list-row">
 
@@ -117,7 +117,7 @@ const ListView = (props: ListProps) => {
                       <AiOutlineDelete className = "delete-action" />
                     </div> 
                 }
-                { `${v.mediaInfo.height}p` }
+                { `${v.resourceMeta.height}p` }
                 </div>
                 
               </div>
@@ -129,12 +129,12 @@ const ListView = (props: ListProps) => {
   );
 }
 
-const TagsCell = (props: {video: Media }) => {
-  const [tags, setTags] = useState(props.video.meta.tags)
+const TagsCell = (props: {video: Resource }) => {
+  const [tags, setTags] = useState(props.video.userMeta.tags)
   const isAdmin = Api.session().isAdmin()
 
   const updateTags = (newTags: Array<string>) => {
-    const meta: MediaUserMeta = { ...props.video.meta, tags: newTags }
+    const meta: ResourceUserMeta = { ...props.video.userMeta, tags: newTags }
     Api.updateMediaMetaData(props.video.id, meta).then(() =>  {
       setTags(newTags)
     })
@@ -146,9 +146,9 @@ const TagsCell = (props: {video: Media }) => {
             showDeleteButton = {isAdmin} />
 }
 
-const TitleCell = (props: { video: Media} ) => {
+const TitleCell = (props: { video: Resource} ) => {
 
-  const [title, setTitle] = useState(props.video.meta.title)
+  const [title, setTitle] = useState(props.video.userMeta.title)
   const [editTitle, setEditTitle] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -158,7 +158,7 @@ const TitleCell = (props: { video: Media} ) => {
   }, [editTitle])
 
   const updateTitle = (newTitle: string) => {
-    const meta: MediaUserMeta = { ...props.video.meta, title: newTitle }
+    const meta: ResourceUserMeta = { ...props.video.userMeta, title: newTitle }
     Api.updateMediaMetaData(props.video.id, meta).then(() =>  {
       setTitle(newTitle)
       setEditTitle(false)
