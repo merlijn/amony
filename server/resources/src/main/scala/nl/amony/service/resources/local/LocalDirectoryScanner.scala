@@ -58,7 +58,7 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
           meta <-
             getByHash(hash) match {
               case None    =>
-                logger.warn(s"Scanning meta data for $relativePath")
+                logger.info(s"Scanning new file $relativePath")
                 val path = mediaPath.resolve(relativePath)
                 LocalResourceMeta.resolveMeta(path).map(_.getOrElse(ResourceMeta.Empty))
               case Some(m) => IO.pure(m.contentMeta)

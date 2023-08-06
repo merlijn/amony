@@ -44,7 +44,6 @@ object LocalFileRow  {
 
     Option.when(!meta.isEmpty) {
       val bytes = ResourceMeta.ResourceMetaTypeMapper.toBase(meta).toByteArray
-      println(s"Encoded meta: ${bytes.length} bytes")
       bytes
     }
   }

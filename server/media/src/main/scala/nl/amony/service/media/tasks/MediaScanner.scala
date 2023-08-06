@@ -4,11 +4,10 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import nl.amony.service.media.MediaServiceImpl
 import nl.amony.service.media.api.DeleteById
-import nl.amony.service.resources.ResourceBucket
 import nl.amony.service.resources.api.events.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved}
 import scribe.Logging
 
-class MediaScanner(resourceBuckets: Map[String, ResourceBucket], mediaService: MediaServiceImpl) extends Logging {
+class MediaScanner(mediaService: MediaServiceImpl) extends Logging {
 
   implicit val ioRuntime = IORuntime.global
 
@@ -17,7 +16,7 @@ class MediaScanner(resourceBuckets: Map[String, ResourceBucket], mediaService: M
       logger.info(s"Start scanning new media: ${resource.path}")
 
       ScanMedia
-        .scanMedia(resourceBuckets(resource.bucketId), resource, resource.bucketId)
+        .asMedia(resource)
         .flatMap(media => IO.fromFuture(IO(mediaService.upsertMedia(media)))).unsafeRunSync()
 
     case ResourceDeleted(resource) =>

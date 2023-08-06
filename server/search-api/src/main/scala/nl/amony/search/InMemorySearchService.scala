@@ -56,7 +56,7 @@ class InMemorySearchService extends SearchService with Logging {
 
     def indexEvent(e: MediaEvent) = {
       synchronized {
-        logger.debug(s"Applying event: $e")
+        logger.info(s"Applying event: $e")
         e match {
 
           case MediaAdded(media) =>

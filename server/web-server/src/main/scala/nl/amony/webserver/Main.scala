@@ -86,7 +86,7 @@ object Main extends ConfigLoader with Logging {
         localConfig.id -> new LocalDirectoryBucket(localConfig, localFileStorage)
     }.toMap
 
-    val scanner = new MediaScanner(resourceBuckets, mediaService)
+    val scanner = new MediaScanner(mediaService)
 
     topic.processAtLeastOnce("scan-media", 10) { e =>
       scanner.processEvent(e)

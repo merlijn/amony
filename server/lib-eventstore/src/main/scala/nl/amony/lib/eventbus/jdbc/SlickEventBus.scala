@@ -176,8 +176,9 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
           }
         }
 
-        def pollBatchRecursive(): Stream[IO, Int] =
+        def pollBatchRecursive(): Stream[IO, Int] = {
           Stream.sleep[IO](pollInterval) >> Stream.eval(processBatch()) ++ pollBatchRecursive()
+        }
 
         pollBatchRecursive()
       }
