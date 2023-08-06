@@ -1,9 +1,8 @@
 package nl.amony.search
 
-import nl.amony.service.media.api.Media
+import nl.amony.service.resources.api.ResourceInfo
 import nl.amony.service.resources.api.events.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved}
-import nl.amony.service.resources.api.{ResourceMeta, VideoMeta}
-import nl.amony.service.resources.web.MediaOps
+import nl.amony.service.resources.web.ResurceOps
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import nl.amony.service.search.api.SortDirection.{Asc, Desc}
 import nl.amony.service.search.api.SortField._
@@ -26,11 +25,11 @@ class InMemorySearchService extends SearchService with Logging {
 
     private var counter: Long = 0L
     private var indexedAt: Long = 0L
-    private var mediaIndex: Map[String, Media] = Map.empty
-    private var sortedByTitle: Vector[Media] = Vector.empty
-    private var sortedByDateAdded: Vector[Media] = Vector.empty
-    private var sortedByDuration: Vector[Media] = Vector.empty
-    private var sortedBySize: Vector[Media] = Vector.empty
+    private var resourceIndex: Map[String, ResourceInfo] = Map.empty
+    private var sortedByTitle: Vector[ResourceInfo] = Vector.empty
+    private var sortedByDateAdded: Vector[ResourceInfo] = Vector.empty
+    private var sortedByDuration: Vector[ResourceInfo] = Vector.empty
+    private var sortedBySize: Vector[ResourceInfo] = Vector.empty
     var tags: Set[String] = Set.empty
 
     private def updateIndex(): Unit = {
@@ -38,20 +37,13 @@ class InMemorySearchService extends SearchService with Logging {
       if (indexedAt < counter) {
         synchronized {
           logger.debug("Updating index")
-          sortedByTitle = mediaIndex.values.toVector.sortBy(m => m.meta.title.getOrElse(m.fileName()))
-          sortedByDateAdded = mediaIndex.values.toVector.sortBy(_.createdTimestamp)
-          sortedByDuration = mediaIndex.values.toVector.sortBy(_.mediaInfo.durationInMillis)
-          sortedBySize = mediaIndex.values.toVector.sortBy(_.resourceInfo.sizeInBytes)
-          tags = mediaIndex.values.flatMap(_.meta.tags).toSet
+          sortedByTitle = resourceIndex.values.toVector.sortBy(_.fileName())
+          sortedByDateAdded = resourceIndex.values.toVector.sortBy(_.getCreationTime)
+          sortedByDuration = resourceIndex.values.toVector.sortBy(_.durationInMillis)
+          sortedBySize = resourceIndex.values.toVector.sortBy(_.size)
+          tags = resourceIndex.values.flatMap(_.tags).toSet
           indexedAt = counter
         }
-      }
-    }
-
-    implicit class ResourceMetaOps(meta: ResourceMeta) {
-      def durationInMillis() = meta match {
-        case m: VideoMeta => m.durationInMillis
-        case _            => 0L
       }
     }
 
@@ -61,17 +53,13 @@ class InMemorySearchService extends SearchService with Logging {
         e match {
 
           case ResourceAdded(resource) =>
-            ScanMedia.asMedia(resource).foreach { media =>
-              mediaIndex += (media.mediaId -> media)
-            }
+            resourceIndex += resource.hash -> resource
 
           case ResourceDeleted(resource) =>
-            mediaIndex -= resource.hash
+            resourceIndex -= resource.hash
 
           case ResourceMoved(resource, _) =>
-            ScanMedia.asMedia(resource).foreach { media =>
-              mediaIndex += (media.mediaId -> media)
-            }
+            resourceIndex += resource.hash -> resource
 
 //          case MediaMetaDataUpdated(mediaId, title, comment, tagsAdded, tagsRemoved) =>
 //            val media = mediaIndex(mediaId)
@@ -92,22 +80,22 @@ class InMemorySearchService extends SearchService with Logging {
     override def searchMedia(query: Query): Future[SearchResult] = {
       updateIndex()
 
-      def filterRes(m: Media): Boolean = query.minRes.map(res => m.height >= res).getOrElse(true)
+      def filterRes(m: ResourceInfo): Boolean = query.minRes.map(res => m.height >= res).getOrElse(true)
 
-      def filterQuery(m: Media): Boolean =
-        query.q.map(q => m.resourceInfo.relativePath.toLowerCase.contains(q.toLowerCase)).getOrElse(true)
+      def filterQuery(m: ResourceInfo): Boolean =
+        query.q.map(q => m.path.toLowerCase.contains(q.toLowerCase)).getOrElse(true)
 
-      def filterTag(m: Media): Boolean =
-        query.tags.forall(tag => m.meta.tags.contains(tag))
+      def filterTag(m: ResourceInfo): Boolean =
+        query.tags.forall(tag => m.tags.contains(tag))
 
-      def filterDuration(m: Media): Boolean = {
+      def filterDuration(m: ResourceInfo): Boolean = {
         (query.minDuration, query.maxDuration) match {
-          case (Some(min), Some(max)) => m.mediaInfo.durationInMillis >= min && m.mediaInfo.durationInMillis <= max
+          case (Some(min), Some(max)) => m.durationInMillis >= min && m.durationInMillis <= max
           case _ => true
         }
       }
 
-      def filterMedia(m: Media): Boolean = filterRes(m) && filterQuery(m) && filterTag(m) && filterDuration(m)
+      def filterMedia(m: ResourceInfo): Boolean = filterRes(m) && filterQuery(m) && filterTag(m) && filterDuration(m)
 
       val unfiltered = query.sort match {
         case Some(SortOption(Title, Asc)) => sortedByTitle
@@ -118,7 +106,7 @@ class InMemorySearchService extends SearchService with Logging {
         case Some(SortOption(Duration, Desc)) => sortedByDuration.reverse
         case Some(SortOption(Size, Asc)) => sortedBySize
         case Some(SortOption(Size, Desc)) => sortedBySize.reverse
-        case _ => mediaIndex.values
+        case _ => resourceIndex.values
       }
 
       val result = unfiltered.filter(filterMedia)

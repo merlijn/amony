@@ -1,29 +1,35 @@
 package nl.amony.service.resources
 
-import nl.amony.service.media.api.Media
-import nl.amony.service.resources.api.{ImageMeta, VideoMeta}
+import nl.amony.service.resources.api.{ImageMeta, ResourceInfo, VideoMeta}
 
 package object web {
-  implicit class MediaOps(media: Media) {
 
-    def width: Int = media.mediaInfo match {
+  implicit class ResurceOps(resource: ResourceInfo) {
+
+    def width: Int = resource.contentMeta match {
       case VideoMeta(_, w, _, _, _, _) => w
-      case ImageMeta(_, w, _, _)       => w
+      case ImageMeta(_, w, _, _) => w
     }
 
-    def height: Int = media.mediaInfo match {
+    def height: Int = resource.contentMeta match {
       case VideoMeta(_, _, h, _, _, _) => h
       case ImageMeta(_, _, h, _) => h
     }
 
+    def durationInMillis() = resource.contentMeta match {
+      case m: VideoMeta => m.durationInMillis
+      case _ => 0L
+    }
+
     def fileName(): String = {
-      val slashIdx = media.resourceInfo.relativePath.lastIndexOf('/')
-      val dotIdx = media.resourceInfo.relativePath.lastIndexOf('.')
+
+      val slashIdx = resource.path.lastIndexOf('/')
+      val dotIdx = resource.path.lastIndexOf('.')
 
       val startIdx = if (slashIdx >= 0) slashIdx + 1 else 0
-      val endIdx = if (dotIdx >= 0) dotIdx else media.resourceInfo.relativePath.length
+      val endIdx = if (dotIdx >= 0) dotIdx else resource.path.length
 
-      media.resourceInfo.relativePath.substring(startIdx, endIdx)
+      resource.path.substring(startIdx, endIdx)
     }
   }
 }
