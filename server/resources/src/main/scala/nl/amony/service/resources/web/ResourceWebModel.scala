@@ -1,6 +1,6 @@
-package nl.amony.service.media.web
+package nl.amony.service.resources.web
 
-object MediaWebModel {
+object ResourceWebModel {
 
   case class MediaMeta(
     title: Option[String],

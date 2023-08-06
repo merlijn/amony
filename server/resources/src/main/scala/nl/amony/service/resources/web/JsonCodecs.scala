@@ -1,9 +1,8 @@
-package nl.amony.service.media.web
+package nl.amony.service.resources.web
 
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import io.circe.{Codec, Encoder}
-import nl.amony.service.media.web.MediaWebModel._
-import nl.amony.service.media.api
+import nl.amony.service.resources.web.ResourceWebModel._
 import nl.amony.service.resources.api.{ImageMeta, VideoMeta}
 
 object JsonCodecs {
@@ -17,10 +16,10 @@ object JsonCodecs {
   implicit val videoMetaCodec: Codec[MediaMeta]          = deriveCodec[MediaMeta]
 
   // contra map encoders for internal protocol classes
-  implicit val mediaEncoder: Encoder[api.Media] =
-    deriveEncoder[Media].contramapObject[api.Media](toWebModel)
+  implicit val mediaEncoder: Encoder[nl.amony.service.media.api.Media] =
+    deriveEncoder[Media].contramapObject[nl.amony.service.media.api.Media](toWebModel)
 
-  def toWebModel(media: api.Media): Media = {
+  def toWebModel(media: nl.amony.service.media.api.Media): Media = {
 
     val resolutions = (media.height :: media.availableFormats.toList.map(_.scaleHeight)).sorted
 

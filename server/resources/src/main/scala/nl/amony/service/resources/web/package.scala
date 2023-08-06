@@ -1,9 +1,9 @@
-package nl.amony.service
+package nl.amony.service.resources
 
 import nl.amony.service.media.api.Media
 import nl.amony.service.resources.api.{ImageMeta, VideoMeta}
 
-package object media {
+package object web {
   implicit class MediaOps(media: Media) {
 
     def width: Int = media.mediaInfo match {

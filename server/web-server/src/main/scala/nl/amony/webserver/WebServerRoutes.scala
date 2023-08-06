@@ -5,9 +5,6 @@ import cats.implicits.toSemigroupKOps
 import nl.amony.search.SearchRoutes
 import nl.amony.service.auth.AuthRoutes
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
-import nl.amony.service.media.MediaServiceImpl
-import nl.amony.service.media.web.MediaRoutes
-import nl.amony.service.resources.ResourceConfig.TranscodeSettings
 import nl.amony.service.resources.web.{ResourceDirectives, ResourceRoutes}
 import nl.amony.service.resources.ResourceBucket
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
@@ -19,7 +16,6 @@ import java.nio.file.{Files, Paths}
 object WebServerRoutes extends Logging {
 
   def routes(authService: AuthService,
-             mediaService: MediaServiceImpl,
              searchService: SearchService,
              config: AmonyConfig,
              resourceBuckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
@@ -47,7 +43,6 @@ object WebServerRoutes extends Logging {
     }
 
     val routes =
-      MediaRoutes.apply(mediaService) <+>
         ResourceRoutes.apply(resourceBuckets) <+>
         SearchRoutes.apply(searchService, config.search) <+>
         AuthRoutes.apply(authService) <+>

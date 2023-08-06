@@ -1,8 +1,9 @@
 package nl.amony.search
 
-import nl.amony.service.media.api.{Media, MediaMeta}
-import nl.amony.service.media.api.events._
+import nl.amony.service.media.api.Media
+import nl.amony.service.resources.api.events.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved}
 import nl.amony.service.resources.api.{ResourceMeta, VideoMeta}
+import nl.amony.service.resources.web.MediaOps
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import nl.amony.service.search.api.SortDirection.{Asc, Desc}
 import nl.amony.service.search.api.SortField._
@@ -54,30 +55,34 @@ class InMemorySearchService extends SearchService with Logging {
       }
     }
 
-    def indexEvent(e: MediaEvent) = {
+    def indexEvent(e: ResourceEvent) = {
       synchronized {
         logger.info(s"Applying event: $e")
         e match {
 
-          case MediaAdded(media) =>
-            mediaIndex += (media.mediaId -> media)
+          case ResourceAdded(resource) =>
+            ScanMedia.asMedia(resource).foreach { media =>
+              mediaIndex += (media.mediaId -> media)
+            }
 
-          case MediaUpdated(media) =>
-            mediaIndex += (media.mediaId -> media)
+          case ResourceDeleted(resource) =>
+            mediaIndex -= resource.hash
 
-          case MediaMetaDataUpdated(mediaId, title, comment, tagsAdded, tagsRemoved) =>
-            val media = mediaIndex(mediaId)
+          case ResourceMoved(resource, _) =>
+            ScanMedia.asMedia(resource).foreach { media =>
+              mediaIndex += (media.mediaId -> media)
+            }
 
-            val newMeta = MediaMeta(
-              title = title.orElse(media.meta.title),
-              comment = comment.orElse(media.meta.comment),
-              tags = (media.meta.tags.filterNot(tagsRemoved.contains) ++ tagsAdded)
-            )
-
-            mediaIndex += (media.mediaId -> media.copy(meta = newMeta))
-
-          case MediaRemoved(id) =>
-            mediaIndex -= id
+//          case MediaMetaDataUpdated(mediaId, title, comment, tagsAdded, tagsRemoved) =>
+//            val media = mediaIndex(mediaId)
+//
+//            val newMeta = MediaMeta(
+//              title = title.orElse(media.meta.title),
+//              comment = comment.orElse(media.meta.comment),
+//              tags = (media.meta.tags.filterNot(tagsRemoved.contains) ++ tagsAdded)
+//            )
+//
+//            mediaIndex += (media.mediaId -> media.copy(meta = newMeta))
         }
 
         counter += 1

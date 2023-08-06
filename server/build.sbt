@@ -178,32 +178,17 @@ lazy val resources =
       )
     )
 
-lazy val media =
-  module("media")
-    .dependsOn(common, resources)
-    .settings(protobufSettings)
-    .settings(
-      name := "amony-service-media",
-      libraryDependencies ++= Seq(
-        scribeSlf4j,
-        scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
-        circe, circeGeneric, jacksonDatabind,
-        scalaTest,
-//        tapir, tapirCirce,
-        slick, h2DB,
-        http4sDsl, http4sCirce
-      )
-    )
-
 lazy val searchService =
   module("search-api")
-    .dependsOn(media)
+    .dependsOn(resources)
     .settings(protobufSettings)
     .settings(
       name := "amony-service-search-api",
       libraryDependencies ++= Seq(
         // akka
-        circe, circeGeneric
+        scribeSlf4j,
+        circe, circeGeneric, jacksonDatabind,
+        http4sDsl, http4sCirce
       ),
 //      PB.includePaths in Compile ++= Seq(file("media/src/main/protobuf")),
 //      PB.includePaths in Compile += file("search-api/src/main/protobuf")
@@ -222,7 +207,7 @@ lazy val solrSearch =
 
 lazy val amonyServer =
   module("web-server", mainClass = true)
-    .dependsOn(identity, media, searchService)
+    .dependsOn(identity, resources, searchService)
     .settings(
       name := "amony-web-server",
       reStart / javaOptions ++= javaOpts,
@@ -267,4 +252,4 @@ lazy val amony = project
     Global / cancelable   := true,
   )
   .disablePlugins(RevolverPlugin)
-  .aggregate(common, libEventStore, libFFMPeg, identity, media, searchService, solrSearch, amonyServer)
+  .aggregate(common, libEventStore, libFFMPeg, identity, searchService, solrSearch, amonyServer)
