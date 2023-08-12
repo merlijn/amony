@@ -2,13 +2,13 @@ package nl.amony.webserver
 
 import cats.effect.{ExitCode, IO}
 import cats.effect.unsafe.IORuntime
-import com.comcast.ip4s.IpLiteralSyntax
 import org.http4s.{HttpRoutes, Response, Status}
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Router
 import org.slf4j.LoggerFactory
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import scribe.Logging
+import com.comcast.ip4s.{Host, Port}
 
 class WebServer(val config: WebServerConfig) extends Logging {
 
@@ -65,8 +65,8 @@ class WebServer(val config: WebServerConfig) extends Logging {
 
     EmberServerBuilder
       .default[IO]
-      .withHost(ipv4"0.0.0.0")
-      .withPort(port"8080")
+      .withHost(Host.fromString("0.0.0.0").get)
+      .withPort(Port.fromInt(8080).get)
       .withHttpApp(httpApp)
       .withErrorHandler {
         e =>

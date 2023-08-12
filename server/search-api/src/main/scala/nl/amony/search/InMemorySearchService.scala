@@ -39,7 +39,7 @@ class InMemorySearchService extends SearchService with Logging {
           logger.debug("Updating index")
           sortedByTitle = resourceIndex.values.toVector.sortBy(_.fileName())
           sortedByDateAdded = resourceIndex.values.toVector.sortBy(_.getCreationTime)
-          sortedByDuration = resourceIndex.values.toVector.sortBy(_.durationInMillis)
+          sortedByDuration = resourceIndex.values.toVector.sortBy(_.durationInMillis())
           sortedBySize = resourceIndex.values.toVector.sortBy(_.size)
           tags = resourceIndex.values.flatMap(_.tags).toSet
           indexedAt = counter
@@ -90,7 +90,7 @@ class InMemorySearchService extends SearchService with Logging {
 
       def filterDuration(m: ResourceInfo): Boolean = {
         (query.minDuration, query.maxDuration) match {
-          case (Some(min), Some(max)) => m.durationInMillis >= min && m.durationInMillis <= max
+          case (Some(min), Some(max)) => m.durationInMillis() >= min && m.durationInMillis() <= max
           case _ => true
         }
       }

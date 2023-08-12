@@ -57,7 +57,6 @@ object Main extends ConfigLoader with Logging {
 //    }
 
     val authService: AuthService = {
-      import pureconfig.generic.auto._
       new AuthServiceImpl(loadConfig[AuthConfig](config, "amony.auth"))
     }
 
@@ -70,7 +69,7 @@ object Main extends ConfigLoader with Logging {
     val localFileStorage = new LocalDirectoryDb(databaseConfig)
     localFileStorage.createTablesIfNotExists()
 
-    val resourceTopic = EventTopic.transientEventTopic[ResourceEvent]
+    val resourceTopic = EventTopic.transientEventTopic[ResourceEvent]()
     resourceTopic.followTail(searchService.indexEvent _)
 
     val resourceBuckets: Map[String, ResourceBucket] = appConfig.resources.map {

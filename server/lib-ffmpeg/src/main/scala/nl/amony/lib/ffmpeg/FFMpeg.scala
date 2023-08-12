@@ -50,7 +50,7 @@ object FFMpeg extends Logging
 
   def addFastStart(video: Path): IO[Path] = {
 
-    val out = s"${video.stripExtension}-faststart.mp4"
+    val out = s"${video.stripExtension()}-faststart.mp4"
 
     logger.info(s"Adding faststart at: $out")
 

@@ -1,4 +1,4 @@
-import sbt.Keys.scalaVersion
+//import sbt.Keys.scalaVersion
 import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
 
 // --- Dependencies
@@ -38,8 +38,9 @@ val flywayDbCore             = "org.flywaydb"              % "flyway-core"      
 val caffeine                 = "com.github.ben-manes.caffeine" % "caffeine"               % "3.1.5"
 val jacksonDatabind          = "com.fasterxml.jackson.core" % "jackson-databind"          % "2.15.1"
 
-val pureConfig               = ("com.github.pureconfig"    %% "pureconfig"                 % "0.17.4") cross CrossVersion.for3Use2_13 // no scala 3
-val pureConfigSquants        = ("com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.2") cross CrossVersion.for3Use2_13 // no scala 3
+//val pureConfig               = ("com.github.pureconfig"    %% "pureconfig-core"            % "0.17.4") cross CrossVersion.for3Use2_13 // no scala 3
+val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.4"
+//val pureConfigSquants        = ("com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.2") cross CrossVersion.for3Use2_13 // no scala 3
 val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.2"
 
 //val betterFiles              = "com.github.pathikrit"     %% "better-files"               % "3.9.1"
@@ -68,10 +69,9 @@ val javaOpts = Nil
 
 // -- Shared options
 
-
 val commonSettings = Seq(
   organization := "nl.amony",
-  scalaVersion := "2.13.8"
+  scalaVersion := "3.3.0"
 )
 
 lazy val noPublishSettings = Seq(
@@ -216,7 +216,7 @@ lazy val amonyServer =
         slf4jApi, scribeSlf4j,
 
         // config loading
-        typesafeConfig, pureConfig, pureConfigSquants,
+        typesafeConfig, pureConfig,
         flywayDbCore,
         slickHikariCp, hsqlDB,
         h2DB,

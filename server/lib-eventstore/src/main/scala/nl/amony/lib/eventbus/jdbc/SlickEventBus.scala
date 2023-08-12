@@ -36,7 +36,7 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
 
     def pk           = primaryKey("events_primary_key", (entityId, eventSeqNr))
 
-    def            * = (ord.?, entityId, eventSeqNr, timestamp, serializerId, eventType, eventData) <> (EventRow.tupled, EventRow.unapply)
+    def            * = (ord.?, entityId, eventSeqNr, timestamp, serializerId, eventType, eventData) <> (EventRow.apply.tupled, EventRow.unapply)
   }
 
   private class Snapshots(tag: Tag) extends Table[(String, Long, Array[Byte])](tag, "snapshots") {

@@ -2,9 +2,8 @@ package nl.amony.service.resources
 
 import nl.amony.lib.hash.Base32
 import nl.amony.lib.hash.PartialHash.partialHash
-import pureconfig.ConfigReader
-import pureconfig.generic.FieldCoproductHint
-import pureconfig.generic.semiauto.deriveEnumerationReader
+import pureconfig._
+import pureconfig.generic.derivation.default._
 
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -12,11 +11,7 @@ import scala.concurrent.duration.FiniteDuration
 
 object ResourceConfig {
 
-  implicit val typeNameHint = new FieldCoproductHint[ResourceBucketConfig]("type") {
-    override def fieldValue(name: String) = name.dropRight("Config".length)
-  }
-
-  sealed trait ResourceBucketConfig
+  sealed trait ResourceBucketConfig derives ConfigReader
 
   case class LocalDirectoryConfig(
       id: String,
@@ -39,16 +34,12 @@ object ResourceConfig {
     format: String,
     scaleHeight: Int,
     crf: Int
-  )
+  ) derives ConfigReader
 
-  sealed trait HashingAlgorithm {
+  sealed trait HashingAlgorithm derives ConfigReader {
     def algorithm: String
     def createHash(path: Path): String
     def encodeHash(bytes: Array[Byte]): String
-  }
-
-  object HashingAlgorithm {
-    implicit val hashingAlgorithmReader: ConfigReader[HashingAlgorithm] = deriveEnumerationReader[HashingAlgorithm]
   }
 
   case object PartialHash extends HashingAlgorithm {

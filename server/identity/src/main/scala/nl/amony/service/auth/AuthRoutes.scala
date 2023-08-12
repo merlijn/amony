@@ -1,19 +1,20 @@
 package nl.amony.service.auth
 
 import cats.effect.IO
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import nl.amony.lib.cats.FutureOps
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import org.http4s.{Headers, HttpRoutes, ResponseCookie}
 import org.http4s.circe.toMessageSyntax
-import org.http4s.dsl.io._
+import org.http4s.dsl.io.*
 import scribe.Logging
 
 case class WebCredentials(username: String, password: String)
 
 object AuthRoutes extends Logging {
 
-  implicit val credDecoder = deriveCodec[WebCredentials]
+  implicit val credDecoder: Codec[WebCredentials] = deriveCodec[WebCredentials]
 
   def apply(authService: AuthService) = {
 

@@ -13,7 +13,7 @@ trait EventTopic[E] {
 
   def publish(event: E): Unit
 
-  def followTail(listener: E => Unit)
+  def followTail(listener: E => Unit): Unit
 
   def processAtLeastOnce(processorId: String, batchSize: Int)(processor: E => Unit): Stream[IO, Int]
 }

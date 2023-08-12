@@ -18,7 +18,7 @@ trait ResourceContent {
 object ResourceContent {
 
   def contentTypeForPath(path: java.nio.file.Path): Option[String] = {
-    val maybeExt = path.fileExtension
+    val maybeExt = path.fileExtension()
     maybeExt.flatMap { ext => MediaType.extensionMap.get(ext).map(m => s"${m.mainType}/${m.subType}") }
   }
 
@@ -29,7 +29,9 @@ object ResourceContent {
     Option.when(Files.exists(path))(LocalFileContent(fs2.io.file.Path.fromNioPath(path), info))
 }
 
-case class LocalFileContent(path: fs2.io.file.Path, info: ResourceInfo) extends ResourceContent {
+case class LocalFileContent(path: fs2.io.file.Path, resourceInfo: ResourceInfo) extends ResourceContent {
+
+  override def info() = resourceInfo
 
   private val defaultChunkSize: Int = 64 * 1024
 

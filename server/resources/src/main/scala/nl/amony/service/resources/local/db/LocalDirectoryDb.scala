@@ -8,12 +8,13 @@ import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
 
+import scala.concurrent.ExecutionContextExecutor
 import scala.util.Try
 
 class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(implicit IORuntime: IORuntime) extends Logging {
 
   import dbConfig.profile.api._
-  implicit val ec = scala.concurrent.ExecutionContext.global
+  implicit val ec: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
 
   private val db = dbConfig.db
 
