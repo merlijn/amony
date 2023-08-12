@@ -63,7 +63,7 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
   private val pollInterval     = 200.millis
   private val defaultBatchSize = 1000
 
-  val db = dbConfig.db
+  private val db = dbConfig.db
 
   def dbIO[T](a: slick.dbio.DBIOAction[T, NoStream, Nothing]): IO[T] =
     IO.fromFuture(IO(db.run(a))).onError { t => IO { logger.warn(t) } }

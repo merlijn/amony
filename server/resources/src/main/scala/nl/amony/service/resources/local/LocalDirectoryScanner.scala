@@ -124,9 +124,9 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
 
       }.toList
 
-    newResources.foreach(e => logger.info(s"new file: ${e.resource.path}"))
-    deletedResources.foreach(e => logger.info(s"deleted file: ${e.resource.path}"))
-    movedResources.foreach(e => logger.info(s"moved file: ${e.oldPath} -> ${e.resource.path}"))
+//    newResources.foreach(e => logger.info(s"new file: ${e.resource.path}"))
+//    deletedResources.foreach(e => logger.info(s"deleted file: ${e.resource.path}"))
+//    movedResources.foreach(e => logger.info(s"moved file: ${e.oldPath} -> ${e.resource.path}"))
 
     newResources ::: deletedResources ::: movedResources
   }
@@ -134,16 +134,16 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
   def sync(topic: EventTopic[ResourceEvent]): Unit =
     diff(storage.getAll(config.id).unsafeRunSync()).foreach {
       case e @ ResourceAdded(resource) =>
-        logger.info(s"File added: ${resource.path}")
+        logger.debug(s"File added: ${resource.path}")
         storage.insert(resource, IO.unit).unsafeRunSync()
         topic.publish(e)
       case e @ ResourceDeleted(resource) =>
-        logger.info(s"File deleted: ${resource.path}")
+        logger.debug(s"File deleted: ${resource.path}")
         storage.deleteByRelativePath(resource.bucketId, resource.path).unsafeRunSync()
 
         topic.publish(e)
       case e @ ResourceMoved(resource, oldPath) =>
-        logger.info(s"File moved: ${oldPath} -> ${resource.path}")
+        logger.debug(s"File moved: ${oldPath} -> ${resource.path}")
         storage.move(resource.bucketId, oldPath, resource).unsafeRunSync()
         topic.publish(e)
     }

@@ -49,7 +49,7 @@ class InMemorySearchService extends SearchService with Logging {
 
     def indexEvent(e: ResourceEvent) = {
       synchronized {
-        logger.info(s"Applying event: $e")
+//        logger.debug(s"Applying event: $e")
         e match {
 
           case ResourceAdded(resource) =>

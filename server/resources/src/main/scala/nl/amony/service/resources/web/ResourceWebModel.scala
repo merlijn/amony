@@ -8,7 +8,7 @@ object ResourceWebModel {
     tags: List[String]
   )
 
-  case class ResourceMeta(
+  case class ResourceMetaDto(
     width: Int,
     height: Int,
     fps: Double,
@@ -22,18 +22,18 @@ object ResourceWebModel {
     previewThumbnailsUrl: Option[String],
   )
 
-  case class ResourceInfo(
+  case class ResourceInfoDto(
     hash: String,
     sizeInBytes: Long
   )
 
-  case class Media(
+  case class ResourceDto(
     id: String,
     uploader: String,
     uploadTimestamp: Long,
     userMeta: UserMeta,
-    resourceMeta: ResourceMeta,
-    resourceInfo: ResourceInfo,
+    resourceMeta: ResourceMetaDto,
+    resourceInfo: ResourceInfoDto,
     urls: ResourceUrls,
     highlights: List[Fragment],
   )

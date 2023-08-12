@@ -9,46 +9,43 @@ val excludeLog4j =
 
 val akkaVersion     = "2.7.0"
 val akkaHttpVersion = "10.4.0"
-val circeVersion    = "0.14.4"
+val circeVersion    = "0.14.5"
 
 val circe                    = "io.circe"                 %% "circe-core"                 % circeVersion
 val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
 val circeParser              = "io.circe"                 %% "circe-parser"               % circeVersion
 
-val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.4.1"
-val slickHikariCp            = "com.typesafe.slick"       %% "slick-hikaricp"             % "3.4.1"
+val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.5.0-M4"
+val slickHikariCp            = "com.typesafe.slick"       %% "slick-hikaricp"             % "3.5.0-M4"
 val scalaLikeJdbc            = "org.scalikejdbc"          %% "scalikejdbc"                % "4.0.0"
 
-val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "9.1.2"
+val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "9.2.0"
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.5"
-val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.11.0"
+val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.11.2"
 
 //val monixReactive            = "io.monix"                 %% "monix-reactive"             % "3.4.1"
 
-val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.4.0"
-val fs2Io                    = "co.fs2"                   %% "fs2-io"                     % "3.4.0"
-val catsEffect               = "org.typelevel"            %% "cats-effect"                % "3.4.8"
+val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.7.0"
+val fs2Io                    = "co.fs2"                   %% "fs2-io"                     % "3.7.0"
+val catsEffect               = "org.typelevel"            %% "cats-effect"                % "3.4.11"
 
 val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.15"           % Test
 val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
 
 val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.6.1"
 val h2DB                     = "com.h2database"            % "h2"                         % "2.1.214"
-val flywayDbCore             = "org.flywaydb"              % "flyway-core"                % "8.5.12"
-val caffeine                 = "com.github.ben-manes.caffeine" % "caffeine"               % "3.1.1"
-val jacksonDatabind          = "com.fasterxml.jackson.core" % "jackson-databind"          % "2.14.2"
+val flywayDbCore             = "org.flywaydb"              % "flyway-core"                % "9.16.0"
+val caffeine                 = "com.github.ben-manes.caffeine" % "caffeine"               % "3.1.5"
+val jacksonDatabind          = "com.fasterxml.jackson.core" % "jackson-databind"          % "2.15.1"
 
-val pureConfig               = "com.github.pureconfig"    %% "pureconfig"                 % "0.17.2" // no scala 3
-val pureConfigSquants        = "com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.2" // no scala 3
+val pureConfig               = ("com.github.pureconfig"    %% "pureconfig"                 % "0.17.4") cross CrossVersion.for3Use2_13 // no scala 3
+val pureConfigSquants        = ("com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.2") cross CrossVersion.for3Use2_13 // no scala 3
 val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.2"
 
 //val betterFiles              = "com.github.pathikrit"     %% "better-files"               % "3.9.1"
-val directoryWatcher         = "io.methvin"                % "directory-watcher"          % "0.15.0"
+//val directoryWatcher         = "io.methvin"                % "directory-watcher"          % "0.15.0"
 val solr                     = "org.apache.solr"           % "solr-core"                  % "8.11.1" excludeAll(excludeLog4j)
 val solrLangId               = "org.apache.solr"           % "solr-langid"                % "8.11.1" excludeAll(excludeLog4j)
-
-val levelDb                  = "org.iq80.leveldb"          % "leveldb"                    % "0.12"
-val levelDbJndiAll           = "org.fusesource.leveldbjni" % "leveldbjni-all"             % "1.8"
 
 val scalaPbRuntimeGrcp       = "com.thesamet.scalapb"     %% "scalapb-runtime-grpc"       % scalapb.compiler.Version.scalapbVersion
 val scalaPbRuntimeProtobuf   = "com.thesamet.scalapb"     %% "scalapb-runtime"            % scalapb.compiler.Version.scalapbVersion % "protobuf"
@@ -220,8 +217,7 @@ lazy val amonyServer =
 
         // config loading
         typesafeConfig, pureConfig, pureConfigSquants,
-
-        levelDb, levelDbJndiAll, flywayDbCore,
+        flywayDbCore,
         slickHikariCp, hsqlDB,
         h2DB,
         circe,

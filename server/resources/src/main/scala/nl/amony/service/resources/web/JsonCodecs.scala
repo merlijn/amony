@@ -8,18 +8,18 @@ import nl.amony.service.resources.api.{ImageMeta, VideoMeta}
 object JsonCodecs {
 
   // web model codecs
-  implicit val fragmentCodec: Codec[Fragment]      = deriveCodec[Fragment]
-  implicit val mediaInfoCodec: Codec[ResourceMeta] = deriveCodec[ResourceMeta]
-  implicit val videoCodec: Codec[Media]            = deriveCodec[Media]
-  implicit val urlsCodec: Codec[ResourceUrls]      = deriveCodec[ResourceUrls]
-  implicit val codec: Codec[ResourceInfo]          = deriveCodec[ResourceInfo]
-  implicit val videoMetaCodec: Codec[UserMeta]     = deriveCodec[UserMeta]
+  implicit val fragmentCodec: Codec[Fragment]         = deriveCodec[Fragment]
+  implicit val mediaInfoCodec: Codec[ResourceMetaDto] = deriveCodec[ResourceMetaDto]
+  implicit val videoCodec: Codec[ResourceDto]         = deriveCodec[ResourceDto]
+  implicit val urlsCodec: Codec[ResourceUrls]         = deriveCodec[ResourceUrls]
+  implicit val codec: Codec[ResourceInfoDto]             = deriveCodec[ResourceInfoDto]
+  implicit val videoMetaCodec: Codec[UserMeta]        = deriveCodec[UserMeta]
 
   // contra map encoders for internal protocol classes
   implicit val mediaEncoder: Encoder[nl.amony.service.resources.api.ResourceInfo] =
-    deriveEncoder[Media].contramapObject[nl.amony.service.resources.api.ResourceInfo](toWebModel)
+    deriveEncoder[ResourceDto].contramapObject[nl.amony.service.resources.api.ResourceInfo](toWebModel)
 
-  def toWebModel(resource: nl.amony.service.resources.api.ResourceInfo): Media = {
+  def toWebModel(resource: nl.amony.service.resources.api.ResourceInfo): ResourceDto = {
 
     val resolutions: List[Int] = (resource.height :: List.empty).sorted
 
@@ -42,9 +42,9 @@ object JsonCodecs {
       tags    = resource.tags.toList
     )
 
-    val mediaInfo: ResourceMeta = resource.contentMeta match {
+    val mediaInfo: ResourceMetaDto = resource.contentMeta match {
       case ImageMeta(contentType, width, height, _) =>
-          ResourceMeta(
+          ResourceMetaDto(
             width     = width,
             height    = height,
             duration  = 0,
@@ -53,7 +53,7 @@ object JsonCodecs {
           )
 
       case VideoMeta(contentType, width, height, fps, duration, _) =>
-          ResourceMeta(
+          ResourceMetaDto(
             width     = width,
             height    = height,
             duration  = duration,
@@ -62,7 +62,7 @@ object JsonCodecs {
           )
     }
 
-    val resourceInfo = ResourceInfo(
+    val resourceInfo = ResourceInfoDto(
       sizeInBytes = resource.size,
       hash = resource.hash
     )
@@ -72,7 +72,7 @@ object JsonCodecs {
     val range = (start, Math.min(mediaInfo.duration, start + 3000))
     val highlights = List(Fragment(resource.hash, 0, range, List.empty, None, List.empty))
 
-    Media(
+    ResourceDto(
       id        = resource.hash,
       uploader  = "0",
       uploadTimestamp = resource.getCreationTime,

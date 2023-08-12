@@ -22,7 +22,7 @@ object LocalResourceOperations {
     override def create(config: LocalDirectoryConfig, relativePath: String): IO[Path] = {
 
       val outputFile = config.writePath.resolve(outputFilename)
-      logger.debug(s"Creating thumbnail for ${relativePath} with timestamp ${timestamp}")
+      logger.info(s"Creating thumbnail for ${relativePath} with timestamp ${timestamp}")
 
       FFMpeg.createThumbnail(
         inputFile = config.resourcePath.resolve(relativePath),
@@ -40,7 +40,7 @@ object LocalResourceOperations {
 
       val outputFile = config.writePath.resolve(outputFilename)
 
-      logger.debug(s"Creating image thumbnail for ${relativePath}")
+      logger.info(s"Creating image thumbnail for ${relativePath}")
 
       ImageMagick.resizeImage(
         inputFile = config.resourcePath.resolve(relativePath),

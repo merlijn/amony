@@ -110,7 +110,7 @@ class LocalFilesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) {
     innerTable += LocalFileRow.fromResource(resource)
 
   def insertOrUpdate(resource: ResourceInfo) =
-    // This does not work in combination with a byte array field and hsqldb
+    // The insertOrUpdate operation does not work in combination with a byte array field and hsqldb
     innerTable.insertOrUpdate(LocalFileRow.fromResource(resource))
 
   def allForBucket(bucketId: String) =
