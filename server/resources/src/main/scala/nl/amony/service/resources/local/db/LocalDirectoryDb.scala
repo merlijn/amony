@@ -114,6 +114,18 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
 
   }
 
+  def updateUserMeta(bucketId: String, hash: String, title: Option[String], description: Option[String]): IO[Unit] = {
+    val q = (for {
+      resourceRow <- resourcesTable.queryByHash(bucketId, hash).result
+      _ <- resourceRow.headOption.map { row =>
+              logger.info(s"Updating resource meta for $bucketId/$hash, title: $title, description: $description")
+              resourcesTable.update(row.copy(title = title, description = description))
+            }.getOrElse(DBIO.successful(0))
+    } yield ()).transactionally
+
+    dbIO(q)
+  }
+
   def getByHash(bucketId: String, hash: String): IO[Option[ResourceInfo]] = {
 
     val q = for {

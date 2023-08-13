@@ -166,7 +166,7 @@ lazy val resources =
       name := "amony-service-resources",
       libraryDependencies ++= Seq(
         scribeSlf4j,
-        circe, circeGeneric,
+        circe, circeGeneric, http4sCirce,
         scalaTest,
         slick, fs2Core, fs2Io, http4sDsl,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,

@@ -96,9 +96,9 @@ const ListView = (props: ListProps) => {
                 </ProgressiveImage>
               </div>
 
-              <TitleCell video = { v } />
+              <TitleCell resource= { v } />
               
-              <TagsCell video = { v } />
+              <TagsCell resource= { v } />
 
               <div key="date" className="list-cell list-date">
                 { dateMillisToString(v.uploadTimestamp) }
@@ -129,13 +129,13 @@ const ListView = (props: ListProps) => {
   );
 }
 
-const TagsCell = (props: {video: Resource }) => {
-  const [tags, setTags] = useState(props.video.userMeta.tags)
+const TagsCell = (props: {resource: Resource }) => {
+  const [tags, setTags] = useState(props.resource.userMeta.tags)
   const isAdmin = Api.session().isAdmin()
 
   const updateTags = (newTags: Array<string>) => {
-    const meta: ResourceUserMeta = { ...props.video.userMeta, tags: newTags }
-    Api.updateMediaMetaData(props.video.id, meta).then(() =>  {
+    const meta: ResourceUserMeta = { ...props.resource.userMeta, tags: newTags }
+    Api.updateMediaMetaData(props.resource.bucketId, props.resource.id, meta).then(() =>  {
       setTags(newTags)
     })
   }
@@ -146,9 +146,9 @@ const TagsCell = (props: {video: Resource }) => {
             showDeleteButton = {isAdmin} />
 }
 
-const TitleCell = (props: { video: Resource} ) => {
+const TitleCell = (props: { resource: Resource} ) => {
 
-  const [title, setTitle] = useState(props.video.userMeta.title)
+  const [title, setTitle] = useState(props.resource.userMeta.title)
   const [editTitle, setEditTitle] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -158,8 +158,8 @@ const TitleCell = (props: { video: Resource} ) => {
   }, [editTitle])
 
   const updateTitle = (newTitle: string) => {
-    const meta: ResourceUserMeta = { ...props.video.userMeta, title: newTitle }
-    Api.updateMediaMetaData(props.video.id, meta).then(() =>  {
+    const meta: ResourceUserMeta = { ...props.resource.userMeta, title: newTitle }
+    Api.updateMediaMetaData(props.resource.bucketId, props.resource.id, meta).then(() =>  {
       setTitle(newTitle)
       setEditTitle(false)
     })

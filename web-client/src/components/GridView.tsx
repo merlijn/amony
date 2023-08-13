@@ -88,7 +88,7 @@ const GridView = (props: GalleryProps) => {
 
     return <div key = { `preview-${vid.id}` } className = "grid-cell" style = { style } >
               <Preview
-                media    = { vid }
+                resource= { vid }
                 onClick  = { props.onClick }
                 options  = { props.previewOptionsFn(vid) }
               />

@@ -10,6 +10,8 @@ trait ResourceBucket {
    * Returns the content of a resource
    */
   def getResource(resourceId: String): IO[Option[ResourceContent]]
+  
+  def updateMeta(resourceId: String, title: Option[String], description: Option[String]): IO[Unit]
 
   def deleteResource(resourceId: String): IO[Unit]
 

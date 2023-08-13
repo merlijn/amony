@@ -37,8 +37,8 @@ object JsonCodecs {
     }
 
     val meta = UserMeta(
-      title   = Some(resource.fileName()),
-      comment = None,
+      title   = resource.title.orElse(Some(resource.fileName())),
+      comment = resource.description,
       tags    = resource.tags.toList
     )
 
@@ -73,6 +73,7 @@ object JsonCodecs {
     val highlights = List(Fragment(resource.hash, 0, range, List.empty, None, List.empty))
 
     ResourceDto(
+      bucketId  = resource.bucketId,
       id        = resource.hash,
       uploader  = "0",
       uploadTimestamp = resource.getCreationTime,

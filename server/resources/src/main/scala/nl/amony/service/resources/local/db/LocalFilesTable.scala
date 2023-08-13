@@ -28,7 +28,9 @@ case class LocalFileRow(
       contentMeta = LocalFileRow.decodeMeta(contentMeta),
       tags = tags,
       creationTime = creationTime,
-      lastModifiedTime = lastModifiedTime
+      lastModifiedTime = lastModifiedTime,
+      title = title,
+      description = description
     )
   }
 }
@@ -115,6 +117,9 @@ class LocalFilesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) {
 
   def insert(resource: ResourceInfo) =
     innerTable += LocalFileRow.fromResource(resource)
+
+  def update(row: LocalFileRow) =
+    queryByHash(row.bucketId, row.hash).update(row)
 
   def insertOrUpdate(resource: ResourceInfo) =
     // The insertOrUpdate operation does not work in combination with a byte array field and hsqldb

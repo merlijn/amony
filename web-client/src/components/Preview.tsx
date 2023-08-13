@@ -12,7 +12,7 @@ import MediaInfo from './dialogs/MediaInfo';
 import './Preview.scss';
 
 export type PreviewProps = {
-  media: Resource,
+  resource: Resource,
   style?: CSSProperties,
   className?: string,
   lazyLoad?: boolean,
@@ -30,7 +30,7 @@ export type PreviewOptions = {
 }
 
 const Preview = (props: PreviewProps) => {
-  const [media, setMedia] = useState(props.media)
+  const [media, setMedia] = useState(props.resource)
   const [isHovering, setIsHovering] = useState(false)
   const [showVideoPreview, setShowVideoPreview] = useState(false)
 
@@ -55,7 +55,7 @@ const Preview = (props: PreviewProps) => {
             (props.options.showMenu && isHovering) &&
             <div className = "preview-menu-container">
               <PreviewMenu
-                  video        = { media }
+                  resource     = { media }
                   setVideo     = { setMedia }
                   onDialogOpen = { () => { setShowVideoPreview(false) } }/>
             </div>
@@ -69,7 +69,7 @@ const Preview = (props: PreviewProps) => {
         { (src: string) =>
             <img
                 src       = { src } alt="an image"
-                onClick   = { () => props.onClick(props.media) }
+                onClick   = { () => props.onClick(props.resource) }
                 className = { `preview-thumbnail preview-media` }
             />
         }
@@ -77,10 +77,10 @@ const Preview = (props: PreviewProps) => {
 
   const videoPreview =
       <FragmentsPlayer
-          key       = { `video-preview-${props.media.id}` }
+          key       = { `video-preview-${props.resource.id}` }
           className = { `preview-video preview-media` }
-          onClick   = { () => props.onClick(props.media) }
-          fragments = { props.media.highlights } />
+          onClick   = { () => props.onClick(props.resource) }
+          fragments = { props.resource.highlights } />
 
   const preview =
       <div className    = "preview-media-container"
@@ -99,14 +99,14 @@ const Preview = (props: PreviewProps) => {
   )
 }
 
-const PreviewMenu = (props: {video: Resource, setVideo: (v: Resource) => void, onDialogOpen: () => any}) => {
+const PreviewMenu = (props: {resource: Resource, setVideo: (v: Resource) => void, onDialogOpen: () => any}) => {
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false)
 
   const cancelDelete = () => setShowDeleteDialog(false);
   const confirmDelete = () => {
-    Api.deleteMediaById(props.video.id).then(() => {
+    Api.deleteMediaById(props.resource.id).then(() => {
       console.log("video was deleted")
       setShowDeleteDialog(false)
     })
@@ -116,10 +116,10 @@ const PreviewMenu = (props: {video: Resource, setVideo: (v: Resource) => void, o
     <>
       <Modal visible = { showInfoModal } onHide = {() => setShowInfoModal(false)} >
         <MediaInfo 
-          meta = { props.video.userMeta }
+          meta = { props.resource.userMeta }
           onClose = { (meta) => {
-            Api.updateMediaMetaData(props.video.id, meta).then(() => {
-              props.setVideo({...props.video, userMeta: meta });
+            Api.updateMediaMetaData(props.resource.bucketId, props.resource.id, meta).then(() => {
+              props.setVideo({...props.resource, userMeta: meta });
               setShowInfoModal(false)
             })
           } } 
@@ -128,7 +128,7 @@ const PreviewMenu = (props: {video: Resource, setVideo: (v: Resource) => void, o
       
       <Modal visible = { showDeleteDialog } onHide = { cancelDelete }>
         <Dialog title = "Are you sure?">
-          <p>Do you want to delete: '{props.video.userMeta.title}'</p>
+          <p>Do you want to delete: '{props.resource.userMeta.title}'</p>
           <p>
             <button className = "button-primary" onClick = { confirmDelete }>Yes</button>
             <button onClick = { cancelDelete }>No / Cancel</button>
@@ -146,7 +146,7 @@ const PreviewMenu = (props: {video: Resource, setVideo: (v: Resource) => void, o
           <MenuItem onClick = { () => { setShowInfoModal(true); props.onDialogOpen() } }>
             <ImgWithAlt className="menu-icon" src="/icons/info.svg" />Info
           </MenuItem>
-          <MenuItem href={`/editor/${props.video.id}`}>
+          <MenuItem href={`/editor/${props.resource.id}`}>
             <ImgWithAlt className="menu-icon" src="/icons/edit.svg" />Fragments
           </MenuItem>
           <MenuItem onClick = { () => { setShowDeleteDialog(true); props.onDialogOpen() } }>

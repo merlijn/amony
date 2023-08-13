@@ -140,8 +140,8 @@ export const Api = {
     return doGET(`/api/media/${mediaId}`)
   },
 
-  updateMediaMetaData: async function(mediaId: string, meta: ResourceUserMeta) {
-    return doPOST(`/api/media/${mediaId}`, meta)
+  updateMediaMetaData: async function(bucketId: String, resourceId: string, meta: ResourceUserMeta) {
+    return doPOST(`/api/resources/${bucketId}/${resourceId}/update_user_meta`, meta)
   },
 
   deleteMediaById: async function (mediaId: string) {

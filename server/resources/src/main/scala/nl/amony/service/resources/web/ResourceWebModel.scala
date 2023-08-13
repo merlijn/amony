@@ -28,6 +28,7 @@ object ResourceWebModel {
   )
 
   case class ResourceDto(
+    bucketId: String,
     id: String,
     uploader: String,
     uploadTimestamp: Long,

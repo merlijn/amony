@@ -19,6 +19,7 @@ export type ResourceInfo = {
 
 export type Resource = {
   id: string,
+  bucketId: String,
   uploader: string,
   uploadTimestamp: number,
   // the media info of the originally uploaded file

@@ -82,4 +82,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
 
         IO(path.deleteIfExists())
     }
+
+  override def updateMeta(resourceId: String, title: Option[String], description: Option[String]): IO[Unit] =
+    db.updateUserMeta(config.id, resourceId, title, description)
 }
