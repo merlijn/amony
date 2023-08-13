@@ -2,7 +2,7 @@ package nl.amony.search
 
 import nl.amony.service.resources.api.ResourceInfo
 import nl.amony.service.resources.api.events.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved}
-import nl.amony.service.resources.web.ResurceOps
+import nl.amony.service.resources.web.{ durationInMillis, fileName, height }
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import nl.amony.service.search.api.SortDirection.{Asc, Desc}
 import nl.amony.service.search.api.SortField._

@@ -1,23 +1,23 @@
 package nl.amony.service.resources.web
 
-import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
-import io.circe.{Codec, Encoder}
-import nl.amony.service.resources.web.ResourceWebModel._
+import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
+import io.circe.{Codec, Decoder, Encoder}
+import nl.amony.service.resources.web.ResourceWebModel.*
 import nl.amony.service.resources.api.{ImageMeta, VideoMeta}
 
 object JsonCodecs {
 
   // web model codecs
-  implicit val fragmentCodec: Codec[Fragment]         = deriveCodec[Fragment]
-  implicit val mediaInfoCodec: Codec[ResourceMetaDto] = deriveCodec[ResourceMetaDto]
-  implicit val videoCodec: Codec[ResourceDto]         = deriveCodec[ResourceDto]
-  implicit val urlsCodec: Codec[ResourceUrls]         = deriveCodec[ResourceUrls]
-  implicit val codec: Codec[ResourceInfoDto]             = deriveCodec[ResourceInfoDto]
-  implicit val videoMetaCodec: Codec[UserMeta]        = deriveCodec[UserMeta]
+  given fragmentCodec: Codec[Fragment]         = deriveCodec[Fragment]
+  given mediaInfoCodec: Codec[ResourceMetaDto] = deriveCodec[ResourceMetaDto]
+  given urlsCodec: Codec[ResourceUrls]         = deriveCodec[ResourceUrls]
+  given codec: Codec[ResourceInfoDto]          = deriveCodec[ResourceInfoDto]
+  given videoMetaCodec: Codec[UserMeta]        = deriveCodec[UserMeta]
+  given resourceEncoder: Codec[ResourceDto]    = deriveCodec[ResourceDto]
 
   // contra map encoders for internal protocol classes
-  implicit val mediaEncoder: Encoder[nl.amony.service.resources.api.ResourceInfo] =
-    deriveEncoder[ResourceDto].contramapObject[nl.amony.service.resources.api.ResourceInfo](toWebModel)
+  given mediaEncoder: Encoder[nl.amony.service.resources.api.ResourceInfo] =
+    resourceEncoder.contramap[nl.amony.service.resources.api.ResourceInfo](toWebModel)
 
   def toWebModel(resource: nl.amony.service.resources.api.ResourceInfo): ResourceDto = {
 

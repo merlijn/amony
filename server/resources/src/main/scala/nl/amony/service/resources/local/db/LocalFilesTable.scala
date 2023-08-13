@@ -13,7 +13,9 @@ case class LocalFileRow(
    contentType: Option[String],
    contentMeta: Option[Array[Byte]],
    creationTime: Option[Long],
-   lastModifiedTime: Option[Long]) {
+   lastModifiedTime: Option[Long],
+   title: Option[String],
+   description: Option[String]) {
 
   def toResource(tags: Seq[String]): ResourceInfo = {
     ResourceInfo(
@@ -57,7 +59,9 @@ object LocalFileRow  {
     contentType = resource.contentType,
     contentMeta = encodeMeta(resource.contentMeta),
     creationTime = resource.creationTime,
-    lastModifiedTime = resource.lastModifiedTime
+    lastModifiedTime = resource.lastModifiedTime,
+    title = resource.title,
+    description = resource.description
   )
 }
 
@@ -77,13 +81,16 @@ class LocalFilesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) {
     def creationTime = column[Option[Long]]("creation_time")
     // we only store this to later check if the file has not been modified
     def lastModifiedTime = column[Option[Long]]("last_modified_time")
+    def title = column[Option[String]]("title")
+    def description = column[Option[String]]("description")
 
     def parentIdx = index("parent_id_idx", (bucketId, parentId))
     def bucketIdx = index("bucket_id_idx", bucketId)
     def hashIdx = index("hash_idx", resourceId)
     def pk = primaryKey("resources_pk", (bucketId, resourceId))
 
-    def * = (bucketId, parentId, relativePath, resourceId, size, contentType, contentMeta, creationTime, lastModifiedTime) <> ((LocalFileRow.apply _).tupled, LocalFileRow.unapply)
+    def * = (bucketId, parentId, relativePath, resourceId, size, contentType, contentMeta, creationTime, lastModifiedTime, title, description) <>
+      ((LocalFileRow.apply _).tupled, LocalFileRow.unapply)
   }
 
   val innerTable = TableQuery[LocalFilesSchema]

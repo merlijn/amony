@@ -4,7 +4,7 @@ import nl.amony.service.resources.api.{ImageMeta, ResourceInfo, VideoMeta}
 
 package object web {
 
-  implicit class ResurceOps(resource: ResourceInfo) {
+  extension (resource: ResourceInfo) {
 
     def width: Int = resource.contentMeta match {
       case VideoMeta(_, w, _, _, _, _) => w

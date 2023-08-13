@@ -20,13 +20,9 @@ message ResourceInfo {
   optional ResourceMeta contentMeta = 7;
   optional int64 creationTime = 8;
   optional int64 lastModifiedTime = 9;
-  repeated string tags = 10;
-}
-
-message ResourceUserMeta {
-  optional string title = 1;
-  optional string comment = 2;
-  repeated string tags = 3;
+  optional string title = 10;
+  optional string description = 11;
+  repeated string tags = 12;
 }
 
 message Tag {
