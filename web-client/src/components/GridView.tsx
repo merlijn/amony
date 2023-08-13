@@ -2,14 +2,14 @@ import React, { CSSProperties, useEffect, useState } from 'react';
 import useResizeObserver from 'use-resize-observer';
 import { Api } from '../api/Api';
 import { Constants } from "../api/Constants";
-import { Columns, MediaSelection, SearchResult, Resource } from '../api/Model';
+import { Columns, ResourceSelection, SearchResult, Resource } from '../api/Model';
 import './GridView.scss';
 import TagBar from './navigation/TagBar';
 import Preview, { PreviewOptions } from './Preview';
 import Scrollable from './common/Scrollable';
 
 export type GalleryProps = {
-  selection: MediaSelection
+  selection: ResourceSelection
   className?: string,
   style?: CSSProperties,
   componentType: 'page' | 'element'

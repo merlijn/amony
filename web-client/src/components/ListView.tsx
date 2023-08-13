@@ -5,7 +5,7 @@ import { IoCutSharp } from "react-icons/io5"
 import { AiOutlineDelete } from "react-icons/ai"
 import ProgressiveImage from "react-progressive-graceful-image"
 import { Api } from "../api/Api"
-import { MediaSelection, SearchResult, Resource, ResourceUserMeta } from "../api/Model"
+import { ResourceSelection, SearchResult, Resource, ResourceUserMeta } from "../api/Model"
 import { dateMillisToString, formatByteSize } from "../api/Util"
 import './ListView.scss'
 import Scrollable from "./common/Scrollable"
@@ -14,7 +14,7 @@ import { useHistory } from "react-router-dom"
 import TagsBar from "./common/TagsBar"
 
 type ListProps = {
-  selection: MediaSelection
+  selection: ResourceSelection
   onClick: (v: Resource) => any
 }
 
@@ -135,7 +135,7 @@ const TagsCell = (props: {resource: Resource }) => {
 
   const updateTags = (newTags: Array<string>) => {
     const meta: ResourceUserMeta = { ...props.resource.userMeta, tags: newTags }
-    Api.updateMediaMetaData(props.resource.bucketId, props.resource.id, meta).then(() =>  {
+    Api.updateUserMetaData(props.resource.bucketId, props.resource.id, meta).then(() =>  {
       setTags(newTags)
     })
   }
@@ -159,7 +159,7 @@ const TitleCell = (props: { resource: Resource} ) => {
 
   const updateTitle = (newTitle: string) => {
     const meta: ResourceUserMeta = { ...props.resource.userMeta, title: newTitle }
-    Api.updateMediaMetaData(props.resource.bucketId, props.resource.id, meta).then(() =>  {
+    Api.updateUserMetaData(props.resource.bucketId, props.resource.id, meta).then(() =>  {
       setTitle(newTitle)
       setEditTitle(false)
     })

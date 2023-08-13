@@ -4,7 +4,7 @@ object ResourceWebModel {
 
   case class UserMeta(
     title: Option[String],
-    comment: Option[String],
+    description: Option[String],
     tags: List[String]
   )
 

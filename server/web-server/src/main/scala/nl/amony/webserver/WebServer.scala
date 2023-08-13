@@ -5,14 +5,17 @@ import cats.effect.unsafe.IORuntime
 import org.http4s.{HttpRoutes, Response, Status}
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Router
-import org.slf4j.LoggerFactory
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import scribe.Logging
 import com.comcast.ip4s.{Host, Port}
+import org.slf4j
+import org.typelevel.log4cats.*
+// assumes dependency on log4cats-slf4j module
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 class WebServer(val config: WebServerConfig) extends Logging {
 
-  val slf4jLogger = LoggerFactory.getLogger(classOf[WebServer])
+  given slf4jLogger: LoggerFactory[IO] = Slf4jFactory.create[IO]
 
 //  def start(route: Route): Unit = {
 //
@@ -73,7 +76,7 @@ class WebServer(val config: WebServerConfig) extends Logging {
           logger.warn("Internal server error", e)
           IO(serverError)
       }
-      .withLogger(Slf4jLogger.getLoggerFromSlf4j[IO](slf4jLogger))
+//      .withLogger(Slf4jLogger.getLoggerFromSlf4j[IO](slf4jLogger))
       .build
       .use(_ => IO.never)
       .as(ExitCode.Success)

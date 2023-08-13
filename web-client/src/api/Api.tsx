@@ -1,5 +1,5 @@
 import Cookies from "js-cookie";
-import { MediaSelection, Sort, ResourceUserMeta } from "./Model";
+import { ResourceSelection, Sort, ResourceUserMeta } from "./Model";
 import { buildUrl } from "./Util";
 import jwtDecode, { JwtPayload } from "jwt-decode";
 import axios from 'axios';
@@ -88,7 +88,7 @@ export const Api = {
     return doGET(url)
   },
 
-  searchMedia: async function(n: number, offset: number, selection: MediaSelection) {
+  searchMedia: async function(n: number, offset: number, selection: ResourceSelection) {
     return Api.getMedias(
               selection.query || "",
               n,
@@ -137,14 +137,14 @@ export const Api = {
   },
 
   getMediaById: async function (mediaId: string) {
-    return doGET(`/api/media/${mediaId}`)
+    return doGET(`/api/resources/media/${mediaId}`)
   },
 
-  updateMediaMetaData: async function(bucketId: String, resourceId: string, meta: ResourceUserMeta) {
+  updateUserMetaData: async function(bucketId: String, resourceId: string, meta: ResourceUserMeta) {
     return doPOST(`/api/resources/${bucketId}/${resourceId}/update_user_meta`, meta)
   },
 
-  deleteMediaById: async function (mediaId: string) {
+  deleteResourceById: async function (bucketId: String, mediaId: string) {
     return doDelete(`/api/media/${mediaId}`)
   },
 

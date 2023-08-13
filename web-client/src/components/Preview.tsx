@@ -106,7 +106,7 @@ const PreviewMenu = (props: {resource: Resource, setVideo: (v: Resource) => void
 
   const cancelDelete = () => setShowDeleteDialog(false);
   const confirmDelete = () => {
-    Api.deleteMediaById(props.resource.id).then(() => {
+    Api.deleteResourceById(props.resource.bucketId, props.resource.id).then(() => {
       console.log("video was deleted")
       setShowDeleteDialog(false)
     })
@@ -118,7 +118,7 @@ const PreviewMenu = (props: {resource: Resource, setVideo: (v: Resource) => void
         <MediaInfo 
           meta = { props.resource.userMeta }
           onClose = { (meta) => {
-            Api.updateMediaMetaData(props.resource.bucketId, props.resource.id, meta).then(() => {
+            Api.updateUserMetaData(props.resource.bucketId, props.resource.id, meta).then(() => {
               props.setVideo({...props.resource, userMeta: meta });
               setShowInfoModal(false)
             })

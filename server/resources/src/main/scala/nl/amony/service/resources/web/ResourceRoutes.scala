@@ -53,7 +53,7 @@ object ResourceRoutes extends Logging {
             case None => NotFound()
             case Some(resource) =>
               req.as[UserMeta].flatMap { userMeta =>
-                bucket.updateMeta(resourceId, userMeta.title, userMeta.comment).flatMap(_ => Ok())
+                bucket.updateMeta(resourceId, userMeta.title, userMeta.description).flatMap(_ => Ok())
               }
           }
         }

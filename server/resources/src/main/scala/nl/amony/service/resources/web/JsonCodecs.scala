@@ -21,7 +21,7 @@ object JsonCodecs {
 
   def toWebModel(resource: nl.amony.service.resources.api.ResourceInfo): ResourceDto = {
 
-    val resolutions: List[Int] = (resource.height :: List.empty).sorted
+    val resolutions: List[Int] = (resource.height :: List(320)).sorted
 
     val urls = {
 
@@ -38,7 +38,7 @@ object JsonCodecs {
 
     val meta = UserMeta(
       title   = resource.title.orElse(Some(resource.fileName())),
-      comment = resource.description,
+      description = resource.description,
       tags    = resource.tags.toList
     )
 

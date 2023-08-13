@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useHistory, useLocation } from "react-router";
 import { Constants, parseDurationParam, parseSortParam } from "../api/Constants";
-import { MediaSelection, MediaView, Prefs, Resource } from "../api/Model";
+import { ResourceSelection, MediaView, Prefs, Resource } from "../api/Model";
 import { useCookiePrefs, useListener, useStateNeq } from "../api/ReactUtils";
 import GridView from "../components/GridView";
 import TopNavBar from "../components/navigation/TopNavBar";
@@ -23,7 +23,7 @@ const Main = () => {
 
     const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs/v1", "/", Constants.defaultPreferences)
 
-    const getSelection = (): MediaSelection => {
+    const getSelection = (): ResourceSelection => {
       const urlParams = new URLSearchParams(location.search)
 
       return {
@@ -36,7 +36,7 @@ const Main = () => {
       }
     }
 
-    const [selection, setSelection] = useStateNeq<MediaSelection>(getSelection)
+    const [selection, setSelection] = useStateNeq<ResourceSelection>(getSelection)
 
     useEffect(() => { 
 

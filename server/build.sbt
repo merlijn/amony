@@ -53,7 +53,7 @@ val scalaPbRuntimeProtobuf   = "com.thesamet.scalapb"     %% "scalapb-runtime"  
 val scalaPbRuntime           = "com.thesamet.scalapb"     %% "scalapb-runtime"            % scalapb.compiler.Version.scalapbVersion
 
 
-val http4sVersion = "1.0.0-M39"
+val http4sVersion = "1.0.0-M40"
 
 val http4sEmberServer = "org.http4s" %% "http4s-ember-server" % http4sVersion
 val http4sEmberClient = "org.http4s" %% "http4s-ember-client" % http4sVersion

@@ -15,7 +15,7 @@ const MediaInfo = (props: {meta: ResourceUserMeta, onClose: (meta: ResourceUserM
           <div className="header">Title</div>
           <input className="title-input" type="text" defaultValue={meta.title}/>
           <div className="header">Comment</div>
-          <textarea className="comment-input" placeholder="comment">{meta.comment}</textarea>
+          <textarea className="comment-input" placeholder="comment">{meta.description}</textarea>
           <div className="header">Tags</div>
           <TagEditor 
             showDeleteButton = { true }

@@ -41,10 +41,10 @@ export type Fragment = {
 export type ResourceUserMeta = {
   tags: string[]
   title: string
-  comment?: string
+  description?: string
 }
 
-export type MediaSelection = {
+export type ResourceSelection = {
   query?: string
   playlist?: string
   tag?: string
