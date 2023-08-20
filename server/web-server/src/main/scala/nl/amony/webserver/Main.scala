@@ -42,20 +42,7 @@ object Main extends ConfigLoader with Logging {
     val databaseConfig = DatabaseConfig.forConfig[HsqldbProfile]("amony.database", config)
 
     val searchService = new InMemorySearchService()
-
-//    val mediaService = {
-//      val mediaStorage = new MediaStorage(databaseConfig)
-//      Await.result(mediaStorage.createTables(), 5.seconds)
-//
-//      val mediaTopic = EventTopic.transientEventTopic[MediaEvent]
-//      mediaTopic.followTail(searchService.indexEvent _)
-//
-//      val service = new MediaServiceImpl(mediaStorage, mediaTopic)
-//
-//      service.getAll().foreach { _.foreach(m => mediaTopic.publish(MediaAdded(m))) }
-//      service
-//    }
-
+    
     val authService: AuthService = {
       new AuthServiceImpl(loadConfig[AuthConfig](config, "amony.auth"))
     }
@@ -79,7 +66,7 @@ object Main extends ConfigLoader with Logging {
 
         // hack to reindex everything on startup
         localFileStorage.getAll(localConfig.id).unsafeRunSync().foreach {
-          resource => searchService.indexEvent(ResourceAdded(resource))
+          resource => resourceTopic.publish(ResourceAdded(resource))
         }
 
         Stream
@@ -87,14 +74,8 @@ object Main extends ConfigLoader with Logging {
           .evalMap(_ => IO(scanner.sync(resourceTopic)))
           .compile.drain.unsafeRunAndForget()
 
-        localConfig.id -> new LocalDirectoryBucket(localConfig, localFileStorage)
+        localConfig.id -> new LocalDirectoryBucket(localConfig, localFileStorage, resourceTopic)
     }.toMap
-
-//    val scanner = new MediaScanner(mediaService)
-
-//    topic.processAtLeastOnce("scan-media", 10) { e =>
-//      scanner.processEvent(e)
-//    }.compile.drain.unsafeRunAndForget()
 
     val webServer = new WebServer(appConfig.api)
     val routes = WebServerRoutes.routes(authService, searchService, appConfig, resourceBuckets)

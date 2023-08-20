@@ -62,25 +62,27 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
   }
 
   def move(bucketId: String, oldPath: String, resource: ResourceInfo): IO[Unit] = {
-    val transaction = (for {
-      _ <- resourcesTable.insertOrUpdate(resource)
-      _ <- tagsTable.insert(bucketId, resource.hash, resource.tags)
-      _ <- resourcesTable.queryByPath(bucketId, oldPath).delete
-    } yield ()).transactionally
+    val transaction =
+      (for {
+        _ <- resourcesTable.insertOrUpdate(resource)
+        _ <- tagsTable.insert(bucketId, resource.hash, resource.tags)
+        _ <- resourcesTable.queryByPath(bucketId, oldPath).delete
+      } yield ()).transactionally
 
     dbIO(transaction)
   }
 
   def deleteResource(bucketId: String, resourceId: String): IO[Unit] = {
-    val transaction = (for {
-      _ <- resourcesTable.queryByHash(bucketId, resourceId).delete
-      _ <- tagsTable.queryById(bucketId, resourceId).delete
-    } yield ()).transactionally
+    val transaction =
+      (for {
+        _ <- resourcesTable.queryByHash(bucketId, resourceId).delete
+        _ <- tagsTable.queryById(bucketId, resourceId).delete
+      } yield ()).transactionally
 
     dbIO(transaction)
   }
 
-  def getAllByIds(bucketId: String, resourceIds: Seq[String]) = {
+  def getAllByIds(bucketId: String, resourceIds: Seq[String]): IO[Seq[ResourceInfo]] = {
 
     val q = queries.joinResourceWithTags(bucketId)
       .filter(_._1.resourceId.inSet(resourceIds))
@@ -114,13 +116,13 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
 
   }
 
-  def updateUserMeta(bucketId: String, hash: String, title: Option[String], description: Option[String]): IO[Unit] = {
+  def updateUserMeta(bucketId: String, hash: String, title: Option[String], description: Option[String], effect: IO[Unit]): IO[Unit] = {
     val q = (for {
       resourceRow <- resourcesTable.queryByHash(bucketId, hash).result
-      _ <- resourceRow.headOption.map { row =>
-              logger.info(s"Updating resource meta for $bucketId/$hash, title: $title, description: $description")
-              resourcesTable.update(row.copy(title = title, description = description))
-            }.getOrElse(DBIO.successful(0))
+                _ <- resourceRow.headOption.map { row =>
+                       resourcesTable.update(row.copy(title = title, description = description))
+                     }.getOrElse(DBIO.successful(0))
+                _ <- DBIO.from(effect.unsafeToFuture())
     } yield ()).transactionally
 
     dbIO(q)

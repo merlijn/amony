@@ -37,7 +37,7 @@ object ResourceRoutes extends Logging {
 
     HttpRoutes.of[IO] {
 
-      case req@GET -> Root / "api" / "resources" / bucketId / resourceId =>
+      case req @ GET -> Root / "api" / "resources" / bucketId / resourceId =>
 
         withBucket(bucketId) { bucket =>
           bucket.getResource(resourceId).flatMap {
@@ -53,7 +53,7 @@ object ResourceRoutes extends Logging {
             case None => NotFound()
             case Some(resource) =>
               req.as[UserMeta].flatMap { userMeta =>
-                bucket.updateMeta(resourceId, userMeta.title, userMeta.description).flatMap(_ => Ok())
+                bucket.updateUserMeta(resourceId, userMeta.title, userMeta.description).flatMap(_ => Ok())
               }
           }
         }
