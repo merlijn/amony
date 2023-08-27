@@ -1,25 +1,16 @@
 package nl.amony.service.resources.web
 
-import io.circe.generic.semiauto.deriveCodec
-import io.circe.{Codec, Decoder, Encoder}
-import nl.amony.service.resources.api.{ImageMeta, VideoMeta, ResourceMeta}
+import io.circe.Encoder
+import nl.amony.service.resources.api.{ImageMeta, ResourceInfo, ResourceMeta, VideoMeta}
 import nl.amony.service.resources.web.ResourceWebModel.*
 
 object JsonCodecs {
-
-  // web model codecs
-  given fragmentCodec: Codec[FragmentDto]      = deriveCodec[FragmentDto]
-  given mediaInfoCodec: Codec[ResourceMetaDto] = deriveCodec[ResourceMetaDto]
-  given urlsCodec: Codec[ResourceUrlsDto]      = deriveCodec[ResourceUrlsDto]
-  given codec: Codec[ResourceInfoDto]          = deriveCodec[ResourceInfoDto]
-  given videoMetaCodec: Codec[UserMetaDto]     = deriveCodec[UserMetaDto]
-  given resourceEncoder: Codec[ResourceDto]    = deriveCodec[ResourceDto]
-
+  
   // contra map encoders for internal protocol classes
-  given resourceInfoEncoder: Encoder[nl.amony.service.resources.api.ResourceInfo] =
-    resourceEncoder.contramap[nl.amony.service.resources.api.ResourceInfo](toDto)
+  given resourceInfoEncoder: Encoder[ResourceInfo] =
+    summon[Encoder[ResourceDto]].contramap[ResourceInfo](toDto)
 
-  def toDto(resource: nl.amony.service.resources.api.ResourceInfo): ResourceDto = {
+  def toDto(resource: ResourceInfo): ResourceDto = {
 
     val resolutions: List[Int] = (resource.height :: List(320)).sorted
 

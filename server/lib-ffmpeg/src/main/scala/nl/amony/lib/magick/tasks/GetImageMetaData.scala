@@ -2,7 +2,7 @@ package nl.amony.lib.magick.tasks
 
 import cats.effect.IO
 import nl.amony.lib.ffmpeg.tasks.ProcessRunner
-import nl.amony.lib.magick.tasks.ImageMagickModel.{ImageMeta, MagickImageMeta}
+import nl.amony.lib.magick.model.{ImageMeta, MagickImageMeta}
 
 import java.nio.file.Path
 
@@ -17,8 +17,6 @@ trait GetImageMetaData {
     val args = List(fileName, "-format", "%wx%h", "json:")
 
     runWithOutput("magick" :: args, false) { json =>
-
-//      logger.info(s"received json: $json")
 
       IO {
         io.circe.parser.decode[List[MagickImageMeta]](json) match {

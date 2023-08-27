@@ -1,30 +1,32 @@
 package nl.amony.service.resources.web
 
+import io.circe.*
+
 object ResourceWebModel {
 
   case class UserMetaDto(
     title: Option[String],
     description: Option[String],
     tags: List[String]
-  )
+  ) derives Encoder.AsObject, Decoder
 
   case class ResourceMetaDto(
     width: Int,
     height: Int,
     fps: Double,
     duration: Long,
-  )
+  ) derives Encoder.AsObject
 
   case class ResourceUrlsDto(
     originalResourceUrl: String,
     thumbnailUrl: String,
     previewThumbnailsUrl: Option[String],
-  )
+  ) derives Encoder.AsObject
 
   case class ResourceInfoDto(
     hash: String,
     sizeInBytes: Long
-  )
+  ) derives Encoder.AsObject
 
   case class ResourceDto(
     bucketId: String,
@@ -37,7 +39,7 @@ object ResourceWebModel {
     resourceInfo: ResourceInfoDto,
     urls: ResourceUrlsDto,
     highlights: List[FragmentDto],
-  )
+  ) derives Encoder.AsObject
 
   case class FragmentDto(
      media_id: String,
@@ -46,5 +48,5 @@ object ResourceWebModel {
      urls: List[String],
      comment: Option[String],
      tags: List[String]
-   )
+   ) derives Encoder.AsObject
 }

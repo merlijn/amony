@@ -49,9 +49,8 @@ class InMemorySearchService extends SearchService with Logging {
 
     def indexEvent(e: ResourceEvent) = {
       synchronized {
-//        logger.debug(s"Applying event: $e")
         e match {
-
+          
           case ResourceAdded(resource) =>
             resourceIndex += resource.hash -> resource
 
@@ -69,6 +68,9 @@ class InMemorySearchService extends SearchService with Logging {
             )
 
             resourceIndex += resourceId -> newResource
+
+          case ResourceEvent.Empty =>
+          // ignore
         }
 
         counter += 1
