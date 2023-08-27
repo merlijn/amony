@@ -4,8 +4,12 @@ import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
 // --- Dependencies
 
 
-val excludeLog4j =
-  ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl")
+val excludeLog4j = ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl")
+val excludeScalaJs = List(
+  ExclusionRule("org.scala-lang", "scala3-library_sjs"),
+  ExclusionRule("org.scala-lang", "scala3-library_sjs1_3"),
+  ExclusionRule("org.scala-js", "scalajs-library_2.13")
+)
 
 val akkaVersion     = "2.7.0"
 val akkaHttpVersion = "10.4.0"
@@ -66,12 +70,16 @@ val http4sCirce = "org.http4s" %% "http4s-circe" % http4sVersion
 
 val javaOpts = Nil
 
-
 // -- Shared options
 
 val commonSettings = Seq(
   organization := "nl.amony",
-  scalaVersion := "3.3.0"
+  scalaVersion := "3.3.0",
+  excludeDependencies ++= excludeScalaJs,
+  assembly / assemblyMergeStrategy := {
+    case path if path.endsWith(".proto") => MergeStrategy.discard
+    case x                               => (assembly / assemblyMergeStrategy).value.apply(x)
+  }
 )
 
 lazy val noPublishSettings = Seq(
