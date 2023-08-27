@@ -9,7 +9,7 @@ import org.http4s.*
 import org.http4s.dsl.io.*
 import scribe.Logging
 import io.circe.syntax.*
-import nl.amony.service.resources.web.ResourceWebModel.UserMeta
+import nl.amony.service.resources.web.ResourceWebModel.UserMetaDto
 import org.http4s.circe.*
 import org.http4s.circe.CirceEntityDecoder.circeEntityDecoder
 
@@ -52,13 +52,13 @@ object ResourceRoutes extends Logging {
           bucket.getResource(resourceId).flatMap {
             case None => NotFound()
             case Some(resource) =>
-              req.as[UserMeta].flatMap { userMeta =>
+              req.as[UserMetaDto].flatMap { userMeta =>
                 bucket.updateUserMeta(resourceId, userMeta.title, userMeta.description).flatMap(_ => Ok())
               }
           }
         }
 
-      case req@GET -> Root / "resources" / bucketId / resourcePattern =>
+      case req @ GET -> Root / "resources" / bucketId / resourcePattern =>
 
         withBucket(bucketId) { bucket =>
           val maybeResource: IO[Option[ResourceContent]] =
@@ -75,7 +75,7 @@ object ResourceRoutes extends Logging {
               NotFound()
             case Some(content) =>
               ResourceDirectives.responseWithRangeSupport[IO](
-                req = req,
+                request = req,
                 size = content.size(),
                 maybeMediaType = content.contentType().map(MediaType.parse(_).toOption).flatten,
                 rangeResponseFn = content.getContentRange

@@ -12,26 +12,19 @@ message ResourceMeta {
   oneof sealed_value {
     VideoMeta video = 1;
     ImageMeta image = 2;
-    Other other = 3;
   }
 }
 
 message VideoMeta {
-  required string contentType = 1;
-  required int32 width = 2;
-  required int32 height = 3;
-  required float fps = 4;
-  required int64 durationInMillis = 5;
-  map<string, string> metaData = 6;
+  required int32 width = 1;
+  required int32 height = 2;
+  required float fps = 3;
+  required int64 durationInMillis = 4;
+  map<string, string> metaData = 5;
 }
 
 message ImageMeta {
-  required string contentType = 1;
-  required int32 width = 2;
-  required int32 height = 3;
-  map<string, string> metaData = 4;
-}
-
-message Other {
-  required string contentType = 1;
+  required int32 width = 1;
+  required int32 height = 2;
+  map<string, string> metaData = 3;
 }

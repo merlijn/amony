@@ -22,7 +22,6 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
 
   private val resourcesTable = new LocalFilesTable[P](dbConfig)
   private val tagsTable = new ResourceTagsTable[P](dbConfig)
-  private val operationsTable = new OperationsTable[P](dbConfig)
 
   private object queries {
     def joinResourceWithTags(bucketId: String) =
@@ -38,7 +37,6 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
         for {
           _ <- resourcesTable.createIfNotExists
           _ <- tagsTable.createIfNotExists
-          _ <- operationsTable.createIfNotExists
         } yield ()
       ).unsafeRunSync()
     }

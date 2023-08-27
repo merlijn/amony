@@ -12,6 +12,7 @@ case class LocalFileRow(
    size: Long,
    contentType: Option[String],
    contentMeta: Option[Array[Byte]],
+   operationData: Option[Array[Byte]],
    creationTime: Option[Long],
    lastModifiedTime: Option[Long],
    title: Option[String],
@@ -60,6 +61,7 @@ object LocalFileRow  {
     size = resource.size,
     contentType = resource.contentType,
     contentMeta = encodeMeta(resource.contentMeta),
+    operationData = None,
     creationTime = resource.creationTime,
     lastModifiedTime = resource.lastModifiedTime,
     title = resource.title,
@@ -78,6 +80,7 @@ class LocalFilesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) {
     def parentId = column[Option[String]]("parent_id")
     def contentType = column[Option[String]]("content_type")
     def contentMeta = column[Option[Array[Byte]]]("content_meta")
+    def operationMeta = column[Option[Array[Byte]]]("operation")
     def resourceId = column[String]("resource_id")
     def size = column[Long]("size")
     def creationTime = column[Option[Long]]("creation_time")
@@ -91,7 +94,7 @@ class LocalFilesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) {
     def hashIdx = index("hash_idx", resourceId)
     def pk = primaryKey("resources_pk", (bucketId, resourceId))
 
-    def * = (bucketId, parentId, relativePath, resourceId, size, contentType, contentMeta, creationTime, lastModifiedTime, title, description) <>
+    def * = (bucketId, parentId, relativePath, resourceId, size, contentType, contentMeta, operationMeta, creationTime, lastModifiedTime, title, description) <>
       ((LocalFileRow.apply _).tupled, LocalFileRow.unapply)
   }
 

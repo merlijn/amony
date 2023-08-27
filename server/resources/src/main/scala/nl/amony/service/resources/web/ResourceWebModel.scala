@@ -2,7 +2,7 @@ package nl.amony.service.resources.web
 
 object ResourceWebModel {
 
-  case class UserMeta(
+  case class UserMetaDto(
     title: Option[String],
     description: Option[String],
     tags: List[String]
@@ -13,10 +13,9 @@ object ResourceWebModel {
     height: Int,
     fps: Double,
     duration: Long,
-    mediaType: String
   )
 
-  case class ResourceUrls(
+  case class ResourceUrlsDto(
     originalResourceUrl: String,
     thumbnailUrl: String,
     previewThumbnailsUrl: Option[String],
@@ -32,14 +31,15 @@ object ResourceWebModel {
     id: String,
     uploader: String,
     uploadTimestamp: Long,
-    userMeta: UserMeta,
+    userMeta: UserMetaDto,
+    contentType: String,
     resourceMeta: ResourceMetaDto,
     resourceInfo: ResourceInfoDto,
-    urls: ResourceUrls,
-    highlights: List[Fragment],
+    urls: ResourceUrlsDto,
+    highlights: List[FragmentDto],
   )
 
-  case class Fragment(
+  case class FragmentDto(
      media_id: String,
      index: Int,
      range: (Long, Long),

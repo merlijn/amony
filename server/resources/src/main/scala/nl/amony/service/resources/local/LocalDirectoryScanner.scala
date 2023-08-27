@@ -7,7 +7,8 @@ import nl.amony.lib.eventbus.EventTopic
 import nl.amony.service.resources.ResourceContent
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
-import nl.amony.service.resources.api.events._
+import nl.amony.service.resources.api.events.*
+import nl.amony.service.resources.api.operations.ResourceOperation
 import nl.amony.service.resources.local.db.LocalDirectoryDb
 import scribe.Logging
 import slick.jdbc.JdbcProfile
@@ -71,8 +72,9 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
             path = relativePath,
             hash = hash,
             fileAttributes.size(),
-            contentType = ResourceContent.contentTypeForPath(path),
+            contentType = ResourceContent.contentTypeForPath(path), // apache tika?
             contentMeta = meta,
+            operation = ResourceOperation.Empty,
             Some(fileAttributes.creationTime().toMillis),
             Some(fileAttributes.lastModifiedTime().toMillis))
         }

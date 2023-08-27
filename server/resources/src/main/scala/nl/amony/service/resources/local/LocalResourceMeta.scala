@@ -4,7 +4,7 @@ import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.magick.ImageMagick
 import nl.amony.service.resources._
-import nl.amony.service.resources.api.{ImageMeta, Other, ResourceMeta, VideoMeta}
+import nl.amony.service.resources.api.{ImageMeta, ResourceMeta, VideoMeta}
 import scribe.Logging
 
 import java.nio.file.Path
@@ -23,7 +23,6 @@ object LocalResourceMeta extends Logging {
           probe =>
             probe.firstVideoStream.map { stream =>
               VideoMeta(
-                contentType = contentType,
                 width = stream.width,
                 height = stream.height,
                 durationInMillis = stream.durationMillis,
@@ -36,14 +35,13 @@ object LocalResourceMeta extends Logging {
         ImageMagick.getImageMeta(path).map(out =>
           out.headOption.map { meta =>
             ImageMeta(
-              contentType = contentType,
               width = meta.image.geometry.width,
               height = meta.image.geometry.height,
               metaData = meta.image.properties,
             )
           }
         )
-      case Some(contentType) => IO.pure(Some(Other(contentType)))
+      case Some(contentType) => IO.pure(Some(ResourceMeta.Empty))
     }
   }
 }

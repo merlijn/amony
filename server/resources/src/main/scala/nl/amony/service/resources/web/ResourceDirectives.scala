@@ -36,7 +36,7 @@ object ResourceDirectives extends Logging {
   }
 
   // Attempt to find a Range header and collect only the subrange of content requested
-  def responseWithRangeSupport[F[_]](req: Request[F], size: Long, maybeMediaType: Option[MediaType], rangeResponseFn: (Long, Long) => Stream[F, Byte])(implicit F: Async[F]): F[Response[F]] = {
+  def responseWithRangeSupport[F[_]](request: Request[F], size: Long, maybeMediaType: Option[MediaType], rangeResponseFn: (Long, Long) => Stream[F, Byte])(implicit F: Async[F]): F[Response[F]] = {
 
     val rangeNotSatisfiableResponse: F[Response[F]] =
       F.pure {
@@ -61,7 +61,7 @@ object ResourceDirectives extends Logging {
       }
     }
 
-    req.headers.get[Range] match {
+    request.headers.get[Range] match {
       case Some(Range(RangeUnit.Bytes, NonEmptyList(SubRange(s, e), Nil))) =>
         if (validRange(s, e, size)) {
           val start = if (s >= 0) s else math.max(0, size + s)
@@ -71,7 +71,7 @@ object ResourceDirectives extends Logging {
           rangeNotSatisfiableResponse
         }
       case _ =>
-        req.headers.get(ci"Range") match {
+        request.headers.get(ci"Range") match {
           case Some(_) => rangeNotSatisfiableResponse
           case None    => createResponse(0, size - 1, false)
         }

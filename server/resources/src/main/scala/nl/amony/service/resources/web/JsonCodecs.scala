@@ -1,25 +1,25 @@
 package nl.amony.service.resources.web
 
-import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
+import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Codec, Decoder, Encoder}
+import nl.amony.service.resources.api.{ImageMeta, VideoMeta, ResourceMeta}
 import nl.amony.service.resources.web.ResourceWebModel.*
-import nl.amony.service.resources.api.{ImageMeta, VideoMeta}
 
 object JsonCodecs {
 
   // web model codecs
-  given fragmentCodec: Codec[Fragment]         = deriveCodec[Fragment]
+  given fragmentCodec: Codec[FragmentDto]      = deriveCodec[FragmentDto]
   given mediaInfoCodec: Codec[ResourceMetaDto] = deriveCodec[ResourceMetaDto]
-  given urlsCodec: Codec[ResourceUrls]         = deriveCodec[ResourceUrls]
+  given urlsCodec: Codec[ResourceUrlsDto]      = deriveCodec[ResourceUrlsDto]
   given codec: Codec[ResourceInfoDto]          = deriveCodec[ResourceInfoDto]
-  given videoMetaCodec: Codec[UserMeta]        = deriveCodec[UserMeta]
+  given videoMetaCodec: Codec[UserMetaDto]     = deriveCodec[UserMetaDto]
   given resourceEncoder: Codec[ResourceDto]    = deriveCodec[ResourceDto]
 
   // contra map encoders for internal protocol classes
-  given mediaEncoder: Encoder[nl.amony.service.resources.api.ResourceInfo] =
-    resourceEncoder.contramap[nl.amony.service.resources.api.ResourceInfo](toWebModel)
+  given resourceInfoEncoder: Encoder[nl.amony.service.resources.api.ResourceInfo] =
+    resourceEncoder.contramap[nl.amony.service.resources.api.ResourceInfo](toDto)
 
-  def toWebModel(resource: nl.amony.service.resources.api.ResourceInfo): ResourceDto = {
+  def toDto(resource: nl.amony.service.resources.api.ResourceInfo): ResourceDto = {
 
     val resolutions: List[Int] = (resource.height :: List(320)).sorted
 
@@ -29,36 +29,42 @@ object JsonCodecs {
 
       val tsPart = if (thumbnailTimestamp != 0) s"_${thumbnailTimestamp}" else ""
 
-      ResourceUrls(
+      ResourceUrlsDto(
         originalResourceUrl  = s"/resources/${resource.bucketId}/${resource.hash}.mp4",
         thumbnailUrl         = s"/resources/${resource.bucketId}/${resource.hash}${tsPart}_${resolutions.min}p.webp",
         previewThumbnailsUrl = Some(s"/resources/${resource.bucketId}/${resource.hash}-timeline.vtt")
       )
     }
 
-    val meta = UserMeta(
+    val meta = UserMetaDto(
       title   = resource.title.orElse(Some(resource.fileName())),
       description = resource.description,
       tags    = resource.tags.toList
     )
 
     val mediaInfo: ResourceMetaDto = resource.contentMeta match {
-      case ImageMeta(contentType, width, height, _) =>
+      case ImageMeta(width, height, _) =>
           ResourceMetaDto(
             width     = width,
             height    = height,
             duration  = 0,
             fps       = 0,
-            mediaType = contentType,
           )
 
-      case VideoMeta(contentType, width, height, fps, duration, _) =>
+      case VideoMeta(width, height, fps, duration, _) =>
           ResourceMetaDto(
             width     = width,
             height    = height,
             duration  = duration,
             fps       = fps,
-            mediaType = contentType,
+          )
+
+      case ResourceMeta.Empty =>
+          ResourceMetaDto(
+            width     = 0,
+            height    = 0,
+            duration  = 0,
+            fps       = 0,
           )
     }
 
@@ -70,7 +76,7 @@ object JsonCodecs {
     // hard coded for now
     val start = (mediaInfo.duration / 3)
     val range = (start, Math.min(mediaInfo.duration, start + 3000))
-    val highlights = List(Fragment(resource.hash, 0, range, List.empty, None, List.empty))
+    val highlights = List(FragmentDto(resource.hash, 0, range, List.empty, None, List.empty))
 
     ResourceDto(
       bucketId  = resource.bucketId,
@@ -79,6 +85,7 @@ object JsonCodecs {
       uploadTimestamp = resource.getCreationTime,
       urls = urls,
       userMeta = meta,
+      contentType = resource.contentType.getOrElse("unknown"),
       resourceMeta = mediaInfo,
       resourceInfo = resourceInfo,
       highlights = {
@@ -90,7 +97,7 @@ object JsonCodecs {
             s"/resources/${resource.bucketId}/${resource.hash}~${start}-${end}_${height}p.mp4"
           )
 
-          Fragment(
+          FragmentDto(
             media_id = resource.hash,
             index    = index,
             range    = (start, end),

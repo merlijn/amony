@@ -7,11 +7,13 @@ package nl.amony.service.search.api;
 message Query {
   // The (optional) query. This is a constraint on the title.
   optional string q = 1;
+  // The (optional) parent id the resource must have.
+  optional string parentId = 11;
   // The maximum number of results to return.
   required int32 n = 2;
   // The offset (in number of items) for the results. For pagination purposes
   optional int32 offset = 3;
-  // Specifies which tags the media must have. This is an AND condition.
+  // Specifies which tags the resource must have. This is an AND condition.
   repeated string tags = 4;
   // Specifies that all results must be listed in a particular playlist.
   optional string playlist = 5;

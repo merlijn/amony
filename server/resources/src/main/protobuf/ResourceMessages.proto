@@ -2,6 +2,7 @@ syntax = "proto2";
 
 import "scalapb/scalapb.proto";
 import "ResourceMeta.proto";
+import "ResourceOperations.proto";
 
 package nl.amony.service.resources.api;
 
@@ -18,11 +19,12 @@ message ResourceInfo {
   required int64  size = 5;
   optional string contentType = 6;
   optional ResourceMeta contentMeta = 7;
-  optional int64 creationTime = 8;
-  optional int64 lastModifiedTime = 9;
-  optional string title = 10;
-  optional string description = 11;
-  repeated string tags = 12;
+  optional nl.amony.service.resources.api.operations.ResourceOperation operation = 8;
+  optional int64 creationTime = 9;
+  optional int64 lastModifiedTime = 10;
+  optional string title = 11;
+  optional string description = 12;
+  repeated string tags = 13;
 }
 
 message Tag {

@@ -7,13 +7,13 @@ package object web {
   extension (resource: ResourceInfo) {
 
     def width: Int = resource.contentMeta match {
-      case VideoMeta(_, w, _, _, _, _) => w
-      case ImageMeta(_, w, _, _) => w
+      case VideoMeta(w, _, _, _, _) => w
+      case ImageMeta(w, _, _) => w
     }
 
     def height: Int = resource.contentMeta match {
-      case VideoMeta(_, _, h, _, _, _) => h
-      case ImageMeta(_, _, h, _) => h
+      case VideoMeta(_, h, _, _, _) => h
+      case ImageMeta(_, h, _) => h
     }
 
     def durationInMillis() = resource.contentMeta match {

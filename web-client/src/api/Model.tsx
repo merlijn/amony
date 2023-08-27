@@ -24,6 +24,7 @@ export type Resource = {
   uploadTimestamp: number,
   // the media info of the originally uploaded file
   userMeta: ResourceUserMeta,
+  contentType: String,
   resourceMeta: ResourceMeta,
   resourceInfo: ResourceInfo,
   urls: ResourceUrls,

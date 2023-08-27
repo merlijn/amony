@@ -30,13 +30,13 @@ export type PreviewOptions = {
 }
 
 const Preview = (props: PreviewProps) => {
-  const [media, setMedia] = useState(props.resource)
+  const [resource, setResource] = useState(props.resource)
   const [isHovering, setIsHovering] = useState(false)
   const [showVideoPreview, setShowVideoPreview] = useState(false)
 
-  const durationStr = durationInMillisToString(media.resourceMeta.duration)
+  const durationStr = durationInMillisToString(resource.resourceMeta.duration)
 
-  const isVideo = media.resourceMeta.mediaType.startsWith("video")
+  const isVideo = resource.contentType.startsWith("video")
 
   useEffect(() => {
     setShowVideoPreview(isHovering)
@@ -44,9 +44,9 @@ const Preview = (props: PreviewProps) => {
 
   const titlePanel =
       <div className = "preview-info-bar">
-        <span className="media-title" title={media.userMeta.title}>{media.userMeta.title}</span>
-        { props.options.showDates && <span className="media-date">{dateMillisToString(media.uploadTimestamp)}</span> }
-        { !props.options.showDates && <span className="media-date">{`${media.resourceMeta.height}p` }</span>}
+        <span className="media-title" title={resource.userMeta.title}>{resource.userMeta.title}</span>
+        { props.options.showDates && <span className="media-date">{dateMillisToString(resource.uploadTimestamp)}</span> }
+        { !props.options.showDates && <span className="media-date">{`${resource.resourceMeta.height}p` }</span>}
       </div>
 
   const overlay =
@@ -55,8 +55,8 @@ const Preview = (props: PreviewProps) => {
             (props.options.showMenu && isHovering) &&
             <div className = "preview-menu-container">
               <PreviewMenu
-                  resource     = { media }
-                  setVideo     = { setMedia }
+                  resource     = { resource }
+                  setVideo     = { setResource }
                   onDialogOpen = { () => { setShowVideoPreview(false) } }/>
             </div>
         }
@@ -65,7 +65,7 @@ const Preview = (props: PreviewProps) => {
       </div>
 
   const primaryThumbnail =
-      <ProgressiveImage src = { media.urls.thumbnailUrl } placeholder="/image_placeholder.svg">
+      <ProgressiveImage src = { resource.urls.thumbnailUrl } placeholder="/image_placeholder.svg">
         { (src: string) =>
             <img
                 src       = { src } alt="an image"

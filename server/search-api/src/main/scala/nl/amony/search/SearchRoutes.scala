@@ -20,7 +20,7 @@ object SearchRoutes {
 
   implicit val searchResultEncoder: Encoder[SearchResult] =
     deriveEncoder[WebSearchResponse].contramapObject[SearchResult](result =>
-      WebSearchResponse(result.offset, result.total, result.results.map(m => toWebModel(m)), result.tags)
+      WebSearchResponse(result.offset, result.total, result.results.map(m => toDto(m)), result.tags)
     )
 
   def apply(
