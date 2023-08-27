@@ -110,7 +110,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - web-server/target/scala-2.13/amony.jar
+            - web-server/target/scala-3.3.0/amony.jar
 
   build_web_client:
 
@@ -160,8 +160,8 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-      - run: mkdir -p server/web-server/target/scala-2.13
-      - run: mv web-server/target/scala-2.13/amony.jar server/web-server/target/scala-2.13
+      - run: mkdir -p server/web-server/target/scala-3.3.0
+      - run: mv web-server/target/scala-3.3.0/amony.jar server/web-server/target/scala-3.3.0
       - run: mv build web-client
       - my-gcp/build-and-publish:
           image: "amony/app"

@@ -4,17 +4,13 @@ import { Api } from "../../api/Api";
 import { buildUrl, copyParams } from "../../api/Util";
 import './TagBar.scss';
 
-const TagBar = () => {
+const TagBar = (props: { tags: Array<string> }) => {
 
   const location = useLocation();
   const history = useHistory();
 
   const [selectedTag, setSelectedTag] = useState<string | undefined>(undefined)
-  const [tags, setTags] = useState<Array<string>>([])
-
-  useEffect(() => {
-    Api.getTags().then((updatedTags) => { setTags(updatedTags as Array<string>) })
-  }, [])
+  // const [tags, setTags] = useState<Array<string>>(props.tags)
 
   useEffect(() => {
     setSelectedTag(new URLSearchParams(location.search).get("tag") || undefined)
@@ -29,6 +25,7 @@ const TagBar = () => {
     else
       newParams.set("tag", tag)
 
+    // setSelectedTag(tag)
     history.push(buildUrl("/search", newParams));
   };
 
@@ -36,7 +33,7 @@ const TagBar = () => {
     <div className="tag-bar">
       <div key="tags" className="tags">
         {
-          tags.map(tag => 
+          props.tags.map(tag =>
             <div key={`tag-${tag}`} className={ tag === selectedTag ? "tag selected-tag" : "tag"} onClick = {() => toggleTag(tag) }>{tag}</div>
           )
         }

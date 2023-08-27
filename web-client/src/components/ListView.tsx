@@ -5,7 +5,7 @@ import { IoCutSharp } from "react-icons/io5"
 import { AiOutlineDelete } from "react-icons/ai"
 import ProgressiveImage from "react-progressive-graceful-image"
 import { Api } from "../api/Api"
-import { MediaSelection, SearchResult, Video, VideoMeta } from "../api/Model"
+import { ResourceSelection, SearchResult, Resource, ResourceUserMeta } from "../api/Model"
 import { dateMillisToString, formatByteSize } from "../api/Util"
 import './ListView.scss'
 import Scrollable from "./common/Scrollable"
@@ -14,11 +14,11 @@ import { useHistory } from "react-router-dom"
 import TagsBar from "./common/TagsBar"
 
 type ListProps = {
-  selection: MediaSelection
-  onClick: (v: Video) => any
+  selection: ResourceSelection
+  onClick: (v: Resource) => any
 }
 
-const initialSearchResult: SearchResult = { total: 0, videos: [] }
+const initialSearchResult: SearchResult = { total: 0, results: [], tags: [] }
 const rowHeight = 36
 
 const ListView = (props: ListProps) => {
@@ -28,22 +28,22 @@ const ListView = (props: ListProps) => {
   const [fetchMore, setFetchMore] = useState(true)
   const history = useHistory();
 
-  const fetchData = (previous: Array<Video>) => {
+  const fetchData = (previous: Array<Resource>) => {
 
     const offset = previous.length
     const n      = offset === 0 ? Math.ceil(window.outerHeight / rowHeight) : 32;
 
     if (n > 0 && fetchMore) {
-      Api.getVideoSelection(n, offset, props.selection).then(response => {
+      Api.searchMedia(n, offset, props.selection).then(response => {
 
           const result = response as SearchResult
-          const videos = [...previous, ...result.videos]
+          const videos = [...previous, ...result.results]
 
           if (videos.length >= result.total)
             setFetchMore(false)
 
           setIsFetching(false);
-          setSearchResult({...response, videos: videos});
+          setSearchResult({...response, results: videos});
         });
       }
   }
@@ -56,12 +56,12 @@ const ListView = (props: ListProps) => {
     setFetchMore(true)
   }, [props.selection])
 
-  useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.videos); }, [isFetching]);
+  useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.results); }, [isFetching]);
 
   return (
       <Scrollable
         className = "list-container"
-        fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.videos) } }
+        fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.results) } }
         scrollType = 'page'
       >
       <div key="row-header" className="list-row">
@@ -85,27 +85,27 @@ const ListView = (props: ListProps) => {
       
       <div key="row-spacer" className="list-row row-spacer"></div>
       {
-        searchResult.videos.map((v, index) => {
+        searchResult.results.map((v, index) => {
           return(
             <div key={`row-${v.id}`} className="list-row">
 
               <div key="thumbnail" className="list-cell list-thumbnail">
-                <ProgressiveImage src={v.thumbnail_url} placeholder="/image_placeholder.svg">
+                <ProgressiveImage src={v.urls.thumbnailUrl} placeholder="/image_placeholder.svg">
                     { (src: string) => 
                       <img className="list-thumbnail-img" src={src} onClick={() => props.onClick(v) } alt="an image" /> }
                 </ProgressiveImage>
               </div>
 
-              <TitleCell video = { v } />
+              <TitleCell resource= { v } />
               
-              <TagsCell video = { v } />
+              <TagsCell resource= { v } />
 
               <div key="date" className="list-cell list-date">
-                { dateMillisToString(v.addedOn) }
+                { dateMillisToString(v.uploadTimestamp) }
               </div>
 
               <div key="size" className="list-cell list-size">
-                  { formatByteSize(v.size, 1) }
+                  { formatByteSize(v.resourceInfo.sizeInBytes, 1) }
               </div>
 
               <div key="resolution" className="list-cell list-resolution">
@@ -117,7 +117,7 @@ const ListView = (props: ListProps) => {
                       <AiOutlineDelete className = "delete-action" />
                     </div> 
                 }
-                { `${v.height}p` }
+                { `${v.resourceMeta.height}p` }
                 </div>
                 
               </div>
@@ -129,13 +129,13 @@ const ListView = (props: ListProps) => {
   );
 }
 
-const TagsCell = (props: {video: Video }) => {
-  const [tags, setTags] = useState(props.video.meta.tags)
+const TagsCell = (props: {resource: Resource }) => {
+  const [tags, setTags] = useState(props.resource.userMeta.tags)
   const isAdmin = Api.session().isAdmin()
 
   const updateTags = (newTags: Array<string>) => {
-    const meta: VideoMeta = { ...props.video.meta, tags: newTags }
-    Api.updateVideoMetaData(props.video.id, meta).then(() =>  {
+    const meta: ResourceUserMeta = { ...props.resource.userMeta, tags: newTags }
+    Api.updateUserMetaData(props.resource.bucketId, props.resource.id, meta).then(() =>  {
       setTags(newTags)
     })
   }
@@ -146,9 +146,9 @@ const TagsCell = (props: {video: Video }) => {
             showDeleteButton = {isAdmin} />
 }
 
-const TitleCell = (props: { video: Video} ) => {
+const TitleCell = (props: { resource: Resource} ) => {
 
-  const [title, setTitle] = useState(props.video.meta.title)
+  const [title, setTitle] = useState(props.resource.userMeta.title)
   const [editTitle, setEditTitle] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -158,8 +158,8 @@ const TitleCell = (props: { video: Video} ) => {
   }, [editTitle])
 
   const updateTitle = (newTitle: string) => {
-    const meta: VideoMeta = { ...props.video.meta, title: newTitle }
-    Api.updateVideoMetaData(props.video.id, meta).then(() =>  {
+    const meta: ResourceUserMeta = { ...props.resource.userMeta, title: newTitle }
+    Api.updateUserMetaData(props.resource.bucketId, props.resource.id, meta).then(() =>  {
       setTitle(newTitle)
       setEditTitle(false)
     })

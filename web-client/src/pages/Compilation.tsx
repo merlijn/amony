@@ -9,9 +9,9 @@ const Compilation = () => {
   
     useEffect(() => {
   
-        Api.getVideos("", 24, 0).then(response => {
+        Api.getMedias("", 24, 0).then(response => {
             const f = response as SearchResult
-            const frags = f.videos.flatMap((v) => { return v.fragments })
+            const frags = f.results.flatMap((v) => { return v.highlights })
             setFragments(frags)
         });
       }, []

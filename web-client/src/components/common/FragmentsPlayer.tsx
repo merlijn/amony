@@ -16,7 +16,7 @@ const FragmentsPlayer = (props: FragmentsPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null)
 
   // sort the fragments by start time
-  props.fragments.sort((a, b) => a.range.from > b.range.from ? 1 : -1)
+  props.fragments.sort((a, b) => a.range[0] > b.range[0] ? 1 : -1)
 
   useEffect(() => {
 

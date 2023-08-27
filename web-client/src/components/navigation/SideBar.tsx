@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { FaGithub } from "react-icons/fa";
-import { FiFolder, FiGrid, FiSettings, FiUpload, FiUser } from "react-icons/fi";
-import { GiAbstract020 } from "react-icons/gi";
+import {FiFolder, FiGrid, FiLogIn, FiSettings, FiUpload, FiUser} from "react-icons/fi";
 import { IoCloseSharp } from "react-icons/io5"
 import { useHistory } from "react-router-dom";
 import { Api } from "../../api/Api";
@@ -14,9 +13,9 @@ import './SideBar.scss';
 
 const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
 
-  const [showSettings, setShowSettings] = useState(false)
-  const [showLogin, setShowLogin] = useState(false)
-  const [showProfile, setShowProfile] = useState(false)
+  const [showSettings,   setShowSettings]   = useState(false)
+  const [showLogin,      setShowLogin]      = useState(false)
+  const [showProfile,    setShowProfile]    = useState(false)
   const [showFileUpload, setShowFileUpload] = useState(false)
   const history = useHistory();
 
@@ -44,7 +43,7 @@ const SideBar = (props: {collapsed: boolean, onHide: () => void }) => {
       </div>
       <div className = "sidebar-menu">
         <MenuItem 
-          icon    = { Api.session().isLoggedIn() ? <GiAbstract020 /> : <FiUser /> } 
+          icon    = { Api.session().isLoggedIn() ? <FiUser /> : <FiLogIn /> }
           label   = { Api.session().isLoggedIn() ? "Profile" : "Log in" }
           onClick = { () => { Api.session().isLoggedIn() ? setShowProfile(true) : setShowLogin(true) } } 
         />

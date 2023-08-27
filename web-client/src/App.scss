@@ -18,6 +18,17 @@
   }
 }
 
+.video-quality-overlay {
+  @extend .abs-bottom-right;
+
+  z-index: 8;
+  margin: 5px;
+  padding: 2px 5px;
+  color: white;
+  background-color: rgba(0, 0, 0, 0.6);
+  font-size: small;
+}
+
 .duration-overlay {
 
   @extend .abs-bottom-left;

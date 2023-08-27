@@ -1,101 +1,84 @@
 package nl.amony.webserver
 
-import akka.actor.typed.ActorSystem
-import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.{ConnectionContext, Http}
-import akka.util.Timeout
-import nl.amony.search.SearchApi
-import nl.amony.service.auth.{AuthApi, AuthRoutes}
-import nl.amony.service.media.MediaApi
-import nl.amony.service.resources.{ResourceApi, ResourceRoutes}
-import nl.amony.webserver.admin.AdminApi
-import nl.amony.webserver.routes.{AdminRoutes, MediaRoutes, SearchRoutes, WebAppRoutes}
+import cats.effect.{ExitCode, IO}
+import cats.effect.unsafe.IORuntime
+import org.http4s.{HttpRoutes, Response, Status}
+import org.http4s.ember.server.EmberServerBuilder
+import org.http4s.server.Router
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import scribe.Logging
+import com.comcast.ip4s.{Host, Port}
+import org.slf4j
+import org.typelevel.log4cats.*
+// assumes dependency on log4cats-slf4j module
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
-import java.nio.file.Paths
-import java.security.SecureRandom
-import javax.net.ssl.{KeyManagerFactory, SSLContext}
-import scala.concurrent.duration.DurationInt
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+class WebServer(val config: WebServerConfig) extends Logging {
 
-object AllRoutes {
+  given slf4jLogger: LoggerFactory[IO] = Slf4jFactory.create[IO]
 
-  def createRoutes(
-    system: ActorSystem[Nothing],
-    userApi: AuthApi,
-    mediaApi: MediaApi,
-    resourceApi: ResourceApi,
-    adminApi: AdminApi,
-    config: AmonyConfig
-  ): Route = {
-    implicit val ec: ExecutionContext = system.executionContext
-    import akka.http.scaladsl.server.Directives._
+//  def start(route: Route): Unit = {
+//
+//    implicit val ec: ExecutionContext = system.executionContext
+//
+//    def addBindingHooks(protocol: String, f: Future[Http.ServerBinding]) =
+//      f.onComplete {
+//        case Success(binding) =>
+//          val address = binding.localAddress
+//          logger.info(s"Server online at ${protocol}://${address.getHostString}:${address.getPort}/")
+//        case Failure(ex) =>
+//          logger.error("Failed to bind to endpoint, terminating system", ex)
+//          system.terminate()
+//      }
+//
+//    config.https.filter(_.enabled).foreach { httpsConfig =>
+//      val keyStore = PemReader.loadKeyStore(
+//        certificateChainFile = Paths.get(httpsConfig.certificateChainPem),
+//        privateKeyFile       = Paths.get(httpsConfig.privateKeyPem),
+//        keyPassword          = None
+//      )
+//
+//      val keyManagerFactory = KeyManagerFactory.getInstance("SunX509")
+//      keyManagerFactory.init(keyStore, "".toCharArray)
+//      val managers = keyManagerFactory.getKeyManagers
+//
+//      val sslContext: SSLContext = SSLContext.getInstance("TLS")
+//      sslContext.init(managers, null, new SecureRandom())
+//
+//      val httpsConnectionContext = ConnectionContext.httpsServer(sslContext)
+//
+//      val binding =
+//        Http().newServerAt(config.hostName, httpsConfig.port).enableHttps(httpsConnectionContext).bind(route)
+//
+//      addBindingHooks("https", binding)
+//    }
+//
+//    config.http.filter(_.enabled).foreach { httpConfig =>
+//      val bindingFuture = Http().newServerAt(config.hostName, httpConfig.port).bind(route)
+//      addBindingHooks("http", bindingFuture)
+//    }
+//  }
 
-    implicit val requestTimeout = Timeout(5.seconds)
+  def setup(routes: HttpRoutes[IO])(implicit io: IORuntime): IO[ExitCode] = {
+    logger.info("Starting web server")
 
-    val searchApi      = new SearchApi(system)
+    val httpApp = Router("/" -> routes).orNotFound
 
-    val identityRoutes = AuthRoutes(userApi)
-    val resourceRoutes = ResourceRoutes(resourceApi, config.api.uploadSizeLimit.toBytes.toLong)
-    val searchRoutes   = SearchRoutes(system, searchApi, config.search, config.media.transcode)
-    val adminRoutes    = AdminRoutes(adminApi, config.api)
-    val mediaRoutes    = MediaRoutes(system, mediaApi, config.media.transcode, config.api)
+    val serverError = Response(Status.InternalServerError).putHeaders(org.http4s.headers.`Content-Length`.zero)
 
-    // routes for the web app (javascript/html) resources
-    val webAppResources = WebAppRoutes(config.api)
-
-    val allApiRoutes =
-      if (config.api.enableAdmin)
-        mediaRoutes ~ adminRoutes
-      else
-        mediaRoutes
-
-    allApiRoutes ~ searchRoutes ~ identityRoutes ~ resourceRoutes ~ webAppResources
-  }
-}
-
-class WebServer(val config: WebServerConfig)(implicit val system: ActorSystem[Nothing]) extends Logging {
-
-  def start(route: Route): Unit = {
-
-    implicit val ec: ExecutionContext = system.executionContext
-
-    def addBindingHooks(protocol: String, f: Future[Http.ServerBinding]) =
-      f.onComplete {
-        case Success(binding) =>
-          val address = binding.localAddress
-          system.log.info("Server online at {}://{}:{}/", protocol, address.getHostString, address.getPort)
-        case Failure(ex) =>
-          system.log.error("Failed to bind to endpoint, terminating system", ex)
-          system.terminate()
+    EmberServerBuilder
+      .default[IO]
+      .withHost(Host.fromString("0.0.0.0").get)
+      .withPort(Port.fromInt(8080).get)
+      .withHttpApp(httpApp)
+      .withErrorHandler {
+        e =>
+          logger.warn("Internal server error", e)
+          IO(serverError)
       }
-
-    config.https.filter(_.enabled).foreach { httpsConfig =>
-      val keyStore = PemReader.loadKeyStore(
-        certificateChainFile = Paths.get(httpsConfig.certificateChainPem),
-        privateKeyFile       = Paths.get(httpsConfig.privateKeyPem),
-        keyPassword          = None
-      )
-
-      val keyManagerFactory = KeyManagerFactory.getInstance("SunX509")
-      keyManagerFactory.init(keyStore, "".toCharArray)
-      val managers = keyManagerFactory.getKeyManagers
-
-      val sslContext: SSLContext = SSLContext.getInstance("TLS")
-      sslContext.init(managers, null, new SecureRandom())
-
-      val httpsConnectionContext = ConnectionContext.httpsServer(sslContext)
-
-      val binding =
-        Http().newServerAt(config.hostName, httpsConfig.port).enableHttps(httpsConnectionContext).bind(route)
-
-      addBindingHooks("https", binding)
-    }
-
-    config.http.filter(_.enabled).foreach { httpConfig =>
-      val bindingFuture = Http().newServerAt(config.hostName, httpConfig.port).bind(route)
-      addBindingHooks("http", bindingFuture)
-    }
+//      .withLogger(Slf4jLogger.getLoggerFromSlf4j[IO](slf4jLogger))
+      .build
+      .use(_ => IO.never)
+      .as(ExitCode.Success)
   }
 }

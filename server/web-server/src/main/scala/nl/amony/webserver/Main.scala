@@ -1,85 +1,93 @@
 package nl.amony.webserver
 
-import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
-import akka.persistence.jdbc.db.SlickExtension
-import akka.persistence.jdbc.query.scaladsl.JdbcReadJournal
-import akka.persistence.query.PersistenceQuery
-import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
-import akka.persistence.query.scaladsl.EventsByPersistenceIdQuery
-import akka.stream.Materializer
-import akka.util.Timeout
-import nl.amony.lib.akka.ServiceBehaviors
-import nl.amony.search.InMemoryIndex
-import nl.amony.search.SearchProtocol.QueryMessage
-import nl.amony.service.auth.AuthApi
-import nl.amony.service.media.MediaApi
-import nl.amony.service.resources.ResourceApi
-import nl.amony.service.resources.local.LocalMediaScanner
-import nl.amony.webserver.admin.AdminApi
-import nl.amony.webserver.database.DatabaseMigrations
-import org.flywaydb.core.Flyway
+import cats.effect.IO
+import com.typesafe.config.Config
+import fs2.Stream
+import nl.amony.lib.eventbus.EventTopic
+import nl.amony.lib.eventbus.jdbc.SlickEventBus
+import nl.amony.search.InMemorySearchService
+import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
+import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
+import nl.amony.service.resources.api.events.{ResourceAdded, ResourceEvent}
+import nl.amony.service.resources.local.db.LocalDirectoryDb
+import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalDirectoryScanner}
+import nl.amony.service.resources.{ResourceBucket, ResourceConfig}
+import pureconfig.{ConfigReader, ConfigSource}
 import scribe.Logging
+import slick.basic.DatabaseConfig
+import slick.jdbc.HsqldbProfile
 
-import java.nio.file.{Files, Path}
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.DurationInt
+import scala.reflect.ClassTag
+import scala.util.Try
 
 object Main extends ConfigLoader with Logging {
 
-  def rootBehaviour(config: AmonyConfig, scanner: LocalMediaScanner): Behavior[Nothing] =
-    Behaviors.setup[Nothing] { context =>
-      implicit val mat = Materializer(context)
+  def loadConfig[T: ClassTag](config: Config, path: String)(implicit reader: ConfigReader[T]): T = {
 
-//      DatabaseMigrations.run(context.system)
+    val configSource = ConfigSource.fromConfig(config.getConfig(path))
+    val configObj = configSource.loadOrThrow[T]
 
-      val localIndexRef: ActorRef[QueryMessage] = InMemoryIndex.apply(context)
-      val resourceRef = context.spawn(ResourceApi.behavior(config.media, scanner), "resources")
-      val mediaRef    = context.spawn(MediaApi.behavior(config.media, resourceRef), "medialib")
-      val userRef     = context.spawn(AuthApi.behavior(), "users")
-
-      Behaviors.empty
-    }
+    configObj
+  }
 
   def main(args: Array[String]): Unit = {
 
-    Files.createDirectories(appConfig.media.resourcePath)
+    import cats.effect.unsafe.implicits.global
+    implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
 
-    val scanner                      = new LocalMediaScanner(appConfig.media)
-    val router: Behavior[Nothing]    = rootBehaviour(appConfig, scanner)
-    val system: ActorSystem[Nothing] = ActorSystem[Nothing](router, "mediaLibrary", config)
+    logger.info(config.toString)
 
-    implicit val timeout: Timeout = Timeout(10.seconds)
+    val databaseConfig = DatabaseConfig.forConfig[HsqldbProfile]("amony.database", config)
 
-    val userApi      = new AuthApi(system)
-    val mediaApi     = new MediaApi(system)
-    val resourcesApi = new ResourceApi(system, mediaApi)
-    val adminApi     = new AdminApi(mediaApi, resourcesApi, system, scanner, appConfig)
+    val searchService = new InMemorySearchService()
+    
+    val authService: AuthService = {
+      new AuthServiceImpl(loadConfig[AuthConfig](config, "amony.auth"))
+    }
 
+    val eventBus = new SlickEventBus(databaseConfig)
+    Try { eventBus.createTablesIfNotExists().unsafeRunSync() }
 
-    Thread.sleep(500)
-    userApi.upsertUser(userApi.config.adminUsername, userApi.config.adminPassword)
-    adminApi.scanLibrary()(timeout.duration)
+//    val codec = PersistenceCodec.scalaPBMappedPersistenceCodec[ResourceEventMessage, ResourceEvent]
+//    val topic = eventBus.getTopicForKey(EventTopicKey[ResourceEvent]("resource_events")(codec))
 
-//    adminApi.generatePreviewSprites()
+    val localFileStorage = new LocalDirectoryDb(databaseConfig)
+    localFileStorage.createTablesIfNotExists()
 
-//    probeAll(api)(system.executionContext)
-//    MediaLibScanner.convertNonStreamableVideos(mediaLibConfig, api)
+    val resourceTopic = EventTopic.transientEventTopic[ResourceEvent]()
+    resourceTopic.followTail(searchService.indexEvent _)
 
-//    val path = appConfig.media.indexPath.resolve("export.json")
-//    MigrateMedia.importFromExport(path, mediaApi)(10.seconds)
-//    watchPath(appConfig.media.mediaPath)
+    val resourceBuckets: Map[String, ResourceBucket] = appConfig.resources.map {
+      case localConfig : ResourceConfig.LocalDirectoryConfig =>
 
-    val routes = AllRoutes.createRoutes(
-      system,
-      userApi,
-      mediaApi,
-      resourcesApi,
-      adminApi,
-      appConfig
-    )
+        val scanner = new LocalDirectoryScanner(localConfig, localFileStorage)
 
-    val webServer = new WebServer(appConfig.api)(system)
+        // hack to reindex everything on startup
+        localFileStorage.getAll(localConfig.id).unsafeRunSync().foreach {
+          resource => resourceTopic.publish(ResourceAdded(resource))
+        }
 
-    webServer.start(routes)
+        Stream
+          .fixedDelay[IO](5.seconds)
+          .evalMap(_ => IO(scanner.sync(resourceTopic)))
+          .compile.drain.unsafeRunAndForget()
+
+        localConfig.id -> new LocalDirectoryBucket(localConfig, localFileStorage, resourceTopic)
+    }.toMap
+
+    val webServer = new WebServer(appConfig.api)
+    val routes = WebServerRoutes.routes(authService, searchService, appConfig, resourceBuckets)
+
+    webServer.setup(routes).unsafeRunSync()
+
+    logger.info("Exiting application")
+
+//    scribe.Logger.root
+//      .clearHandlers()
+//      .clearModifiers()
+//      .withHandler(minimumLevel = Some(Level.Debug))
+//      .replace()
   }
 }

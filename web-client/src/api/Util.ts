@@ -36,6 +36,12 @@ export function formatByteSize(bytes: number, decimals: number = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
+export function labelForResolution(height: number) {
+  const matches = Constants.resolutions.filter((e) => height >= e.value)
+
+  return matches[matches.length-1].label
+}
+
 export function durationInMillisToString(duration: number) {
 
   const secondsInMillis = 1000;
@@ -85,7 +91,7 @@ export function zeroPad(n: number, d: number) {
   return zeros + n.toString()
 }
 
-export function BoundedRatioBox(maxWidth: string, maxHeight: string, ratio: number): CSSProperties {
+export function boundedRatioBox(maxWidth: string, maxHeight: string, ratio: number): CSSProperties {
   return {
     width: `min(${maxWidth}, ${maxHeight} * ${ratio})`,
     height: `min(${maxHeight}, ${maxWidth} * 1 / ${ratio})`

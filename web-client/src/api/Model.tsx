@@ -1,33 +1,51 @@
-export type Video = {
-  id: string,
-  video_url: string,
-  meta: VideoMeta,
-  thumbnail_url: string,
-  preview_thumbnails_url: string,
-  fragments: Array<Fragment>,
+export type ResourceUrls = {
+  originalResourceUrl: string,
+  thumbnailUrl: string,
+  previewThumbnailsUrl?: string,
+}
+
+export type ResourceMeta = {
+  mediaType: string,
   fps: number,
-  size: number,
   width: number,
   height: number,
   duration: number, // in millis
-  addedOn: number
+}
+
+export type ResourceInfo = {
+  sizeInBytes: number,
+  hash: string
+}
+
+export type Resource = {
+  id: string,
+  bucketId: String,
+  uploader: string,
+  uploadTimestamp: number,
+  // the media info of the originally uploaded file
+  userMeta: ResourceUserMeta,
+  contentType: String,
+  resourceMeta: ResourceMeta,
+  resourceInfo: ResourceInfo,
+  urls: ResourceUrls,
+  highlights: Array<Fragment>,
 }
 
 export type Fragment = {
   media_id: string,
-  range: Range,
+  range: [number, number],
   index: number,
   urls: string[],
   tags: string[]
 }
 
-export type VideoMeta = {
+export type ResourceUserMeta = {
   tags: string[]
   title: string
-  comment?: string
+  description?: string
 }
 
-export type MediaSelection = {
+export type ResourceSelection = {
   query?: string
   playlist?: string
   tag?: string
@@ -40,7 +58,8 @@ export type MediaView = 'grid' | 'list'
 
 export type SearchResult = {
   total: number
-  videos: Video[]
+  results: Resource[]
+  tags: string[]
 }
 
 export type Resolution = {
@@ -48,14 +67,9 @@ export type Resolution = {
   label: string
 }
 
-export type Directory = {
-  id: number,
-  title: string
-}
-
 export type Range = {
-  from: number,
-  to: number
+  start: number,
+  end: number
 }
 
 export type Sort = {

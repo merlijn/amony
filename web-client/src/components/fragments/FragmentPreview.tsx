@@ -1,6 +1,6 @@
 import {durationInMillisToString} from "../../api/Util";
 import React, {CSSProperties, useState} from "react";
-import {Fragment, Video} from "../../api/Model";
+import {Fragment, Resource} from "../../api/Model";
 import {Api} from "../../api/Api";
 import './FragmentPreview.scss';
 import ImgWithAlt from "../common/ImgWithAlt";
@@ -9,31 +9,31 @@ import TagEditor from "../common/TagEditor";
 interface Props {
   style: CSSProperties,
   className: string,
-  vid: string,
+  mediaId: string,
   fragment: Fragment,
   showDeleteButton: boolean,
   showDuration?: boolean,
-  onDelete?: (vid: Video) => any,
+  onDelete?: (vid: Resource) => any,
   onClick?: () => any,
 }
 
 const FragmentPreview = (props: Props) => {
 
-  const durationInSeconds = Math.round((props.fragment.range.to - props.fragment.range.from) / 1000)
+  const durationInSeconds = Math.round((props.fragment.range[1] - props.fragment.range[0]) / 1000)
   const [showMetaPanel, setShowMetaPanel] = useState(false)
   const [tags, setTags] = useState<Array<string>>(props.fragment.tags)
 
   const deleteFragmentFn = () => {
 
-    console.log(`Deleting fragment ${props.vid}:${props.fragment.index}`)
-    Api.deleteFragment(props.vid, props.fragment.index).then((result) => {
-      props.onDelete && props.onDelete(result as Video)
+    console.log(`Deleting fragment ${props.mediaId}:${props.fragment.index}`)
+    Api.deleteFragment(props.mediaId, props.fragment.index).then((result) => {
+      props.onDelete && props.onDelete(result as Resource)
     })
   }
 
   const saveTags = () => {
 
-    Api.updateFragmentTags(props.vid, props.fragment.index, tags).then((result) => {
+    Api.updateFragmentTags(props.mediaId, props.fragment.index, tags).then((result) => {
       setTags(tags)
       console.log("Tags saved")
     })
@@ -53,7 +53,7 @@ const FragmentPreview = (props: Props) => {
     </div>
 
   return(
-    <div style={ props.style } className={ `${props.className} fragment-info-panel` } key={`fragment-${props.vid}-${props.fragment.range.from}`} >
+    <div style={ props.style } className={ `${props.className} fragment-info-panel` } key={`fragment-${props.mediaId}-${props.fragment.range[0]}`} >
       { showMetaPanel && metaPanel }
       <video muted
              onMouseEnter={(e) => e.currentTarget.play() }
@@ -61,7 +61,7 @@ const FragmentPreview = (props: Props) => {
              onClick={(e) => {  props.onClick && props.onClick() } }>
         <source src={props.fragment.urls[0]} type="video/mp4"/>
       </video>
-      <div className="abs-bottom-left duration-overlay">{`${durationInSeconds}s @ ${durationInMillisToString(props.fragment.range.to)}`}</div>
+      <div className="abs-bottom-left duration-overlay">{`${durationInSeconds}s @ ${durationInMillisToString(props.fragment.range[1])}`}</div>
       {
         props.showDeleteButton &&
           <div className="delete-fragment-icon">

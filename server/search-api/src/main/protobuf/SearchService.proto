@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+import "SearchMessages.proto";
+
+package nl.amony.service.search.api;
+
+service SearchService {
+
+  rpc searchMedia(Query) returns (SearchResult) { }
+}
+

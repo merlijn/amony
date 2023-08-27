@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { VideoMeta } from "../../api/Model";
+import { ResourceUserMeta } from "../../api/Model";
 import TagEditor from "../common/TagEditor";
 import './MediaInfo.scss';
 import { FiSave } from "react-icons/fi";
 import Dialog from "../common/Dialog";
 
-const MediaInfo = (props: {meta: VideoMeta, onClose: (meta: VideoMeta) => any }) => {
+const MediaInfo = (props: {meta: ResourceUserMeta, onClose: (meta: ResourceUserMeta) => any }) => {
 
   const [meta, setMeta] = useState(props.meta)
 
@@ -15,7 +15,7 @@ const MediaInfo = (props: {meta: VideoMeta, onClose: (meta: VideoMeta) => any })
           <div className="header">Title</div>
           <input className="title-input" type="text" defaultValue={meta.title}/>
           <div className="header">Comment</div>
-          <textarea className="comment-input" placeholder="comment">{meta.comment}</textarea>
+          <textarea className="comment-input" placeholder="comment">{meta.description}</textarea>
           <div className="header">Tags</div>
           <TagEditor 
             showDeleteButton = { true }

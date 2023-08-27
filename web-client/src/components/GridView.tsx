@@ -2,24 +2,24 @@ import React, { CSSProperties, useEffect, useState } from 'react';
 import useResizeObserver from 'use-resize-observer';
 import { Api } from '../api/Api';
 import { Constants } from "../api/Constants";
-import { Columns, MediaSelection, SearchResult, Video } from '../api/Model';
+import { Columns, ResourceSelection, SearchResult, Resource } from '../api/Model';
 import './GridView.scss';
 import TagBar from './navigation/TagBar';
 import Preview, { PreviewOptions } from './Preview';
 import Scrollable from './common/Scrollable';
 
 export type GalleryProps = {
-  selection: MediaSelection
+  selection: ResourceSelection
   className?: string,
   style?: CSSProperties,
   componentType: 'page' | 'element'
   columns: Columns,
   showTagbar: boolean,
-  previewOptionsFn: (v: Video) => PreviewOptions,
-  onClick: (v: Video) => void
+  previewOptionsFn: (v: Resource) => PreviewOptions,
+  onClick: (v: Resource) => void
 }
 
-const initialSearchResult: SearchResult = { total: 0, videos: [] }
+const initialSearchResult: SearchResult = { total: 0, results: [], tags: [] }
 
 const GridView = (props: GalleryProps) => {
 
@@ -31,22 +31,22 @@ const GridView = (props: GalleryProps) => {
 
   const gridSpacing = 1
 
-  const fetchData = (previous: Array<Video>) => {
+  const fetchData = (previous: Array<Resource>) => {
 
     const offset = previous.length
     const n      = columns * 8
 
     if (n > 0 && fetchMore) {
-      Api.getVideoSelection(n, offset, props.selection).then(response => {
+      Api.searchMedia(n, offset, props.selection).then(response => {
 
           const result = response as SearchResult
-          const videos = [...previous, ...result.videos]
+          const videos = [...previous, ...result.results]
 
           if (videos.length >= result.total)
             setFetchMore(false)
 
           setIsFetching(false);
-          setSearchResult( {...response, videos: videos } );
+          setSearchResult( {...response, results: videos } );
         });
       }
   }
@@ -78,17 +78,17 @@ const GridView = (props: GalleryProps) => {
     setFetchMore(true)
   }, [props.selection])
 
-  useEffect(() => { fetchData(searchResult.videos) }, [columns])
+  useEffect(() => { fetchData(searchResult.results) }, [columns])
 
-  useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.videos); }, [isFetching]);
+  useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.results); }, [isFetching]);
 
-  const previews = searchResult.videos.map((vid, index) => {
+  const previews = searchResult.results.map((vid, index) => {
 
     const style = { "--ncols" : `${columns}` } as CSSProperties
 
     return <div key = { `preview-${vid.id}` } className = "grid-cell" style = { style } >
               <Preview
-                vid      = { vid }
+                resource= { vid }
                 onClick  = { props.onClick }
                 options  = { props.previewOptionsFn(vid) }
               />
@@ -102,11 +102,11 @@ const GridView = (props: GalleryProps) => {
 
   return(
     <div className = { props.className } style = { props.style }>
-      { props.showTagbar && <TagBar /> }
+      { props.showTagbar && <TagBar tags = { searchResult.tags } /> }
       <Scrollable
         style        = { style }
         className    = "gallery-container"
-        fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.videos) } }
+        fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.results) } }
         scrollType   = { props.componentType }
         ref          = { ref }
         >

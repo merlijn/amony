@@ -13,7 +13,7 @@ const Modal = (props: { children?: ReactNode, visible: boolean, onHide: () => vo
       className = "modal-container">
 
       <div 
-        key       = "model-background"
+        key       = "modal-background"
         className = "modal-background"
         onClick   = { () => props.onHide() }
       />

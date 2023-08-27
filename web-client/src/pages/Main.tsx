@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useHistory, useLocation } from "react-router";
 import { Constants, parseDurationParam, parseSortParam } from "../api/Constants";
-import { MediaSelection, MediaView, Prefs, Video } from "../api/Model";
+import { ResourceSelection, MediaView, Prefs, Resource } from "../api/Model";
 import { useCookiePrefs, useListener, useStateNeq } from "../api/ReactUtils";
 import GridView from "../components/GridView";
 import TopNavBar from "../components/navigation/TopNavBar";
-import VideoModal from "../components/common/VideoModal";
+import MediaModal from "../components/common/MediaModal";
 import SideBar from "../components/navigation/SideBar";
 import { isMobile } from "react-device-detect";
 import './Main.scss';
@@ -17,13 +17,13 @@ const Main = () => {
   
     const history = useHistory();
     const location = useLocation();
-    const [playVideo, setPlayVideo] = useState<Video | undefined>(undefined)
+    const [showMedia, setShowMedia] = useState<Resource | undefined>(undefined)
     const [showNavigation, setShowNavigation] = useState(true)
     const [view, setView] = useState<MediaView>('grid')
 
     const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs/v1", "/", Constants.defaultPreferences)
 
-    const getSelection = (): MediaSelection => {
+    const getSelection = (): ResourceSelection => {
       const urlParams = new URLSearchParams(location.search)
 
       return {
@@ -36,7 +36,7 @@ const Main = () => {
       }
     }
 
-    const [selection, setSelection] = useStateNeq<MediaSelection>(getSelection)
+    const [selection, setSelection] = useStateNeq<ResourceSelection>(getSelection)
 
     useEffect(() => { 
 
@@ -80,7 +80,7 @@ const Main = () => {
 
     return (
         <>
-          { <VideoModal video = { playVideo } onHide={() => setPlayVideo(undefined) } />}
+          { <MediaModal media= { showMedia } onHide={() => setShowMedia(undefined) } />}
           
           <div className="main-page">
 
@@ -110,9 +110,9 @@ const Main = () => {
                     selection = { selection }
                     showTagbar = { showNavigation }
                     componentType = 'page' 
-                    onClick   = { (v: Video) => setPlayVideo(v) } 
+                    onClick   = { (v: Resource) => setShowMedia(v) }
                     columns   = { prefs.gallery_columns }
-                    previewOptionsFn = { (v: Video) => {
+                    previewOptionsFn = { (v: Resource) => {
                         return {
                           showPreviewOnHover: !isMobile,
                           showInfoBar: prefs.showTitles,
@@ -129,7 +129,7 @@ const Main = () => {
                 <div style = { galleryStyle } key="main-content" className="main-content-container">
                   <ListView 
                     key       = "list"
-                    onClick   = { (v: Video) => setPlayVideo(v) } 
+                    onClick   = { (v: Resource) => setShowMedia(v) }
                     selection = {selection}
                    />
                 </div>

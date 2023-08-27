@@ -1,5 +1,5 @@
 import Cookies from "js-cookie";
-import { MediaSelection, Sort, VideoMeta } from "./Model";
+import { ResourceSelection, Sort, ResourceUserMeta } from "./Model";
 import { buildUrl } from "./Util";
 import jwtDecode, { JwtPayload } from "jwt-decode";
 import axios from 'axios';
@@ -47,7 +47,7 @@ export const Api = {
     return anonymousSession;
   },
 
-  login: async function Login(username: string, password: string) {
+  login: async function(username: string, password: string) {
 
     return doPOST("/api/identity/login", { username: username, password: password})
   },
@@ -60,7 +60,7 @@ export const Api = {
     });
   },
 
-  uploadFile: async function uploadFile(file: File) {
+  uploadFile: async function(file: File) {
 
     const formData = new FormData();
 
@@ -73,7 +73,7 @@ export const Api = {
     axios.post("/resources/upload", formData);
   },
 
-  getFragments: async function getFragments(n: number, offset: number, tag?: string) {
+  getFragments: async function(n: number, offset: number, tag?: string) {
 
     const params = new Map([
       ["n", n.toString()],
@@ -88,8 +88,8 @@ export const Api = {
     return doGET(url)
   },
 
-  getVideoSelection: async function getVideoSelection(n: number, offset: number, selection: MediaSelection) {
-    return Api.getVideos(
+  searchMedia: async function(n: number, offset: number, selection: ResourceSelection) {
+    return Api.getMedias(
               selection.query || "",
               n,
               offset,
@@ -100,7 +100,8 @@ export const Api = {
               selection.sort)
   },
 
-  getVideos: async function getVideos(
+  // TOOD remove
+  getMedias: async function(
       q: string, 
       n: number,
       offset: number, 
@@ -135,36 +136,32 @@ export const Api = {
     return doGET(target)
   },
 
-  getMediaById: async function (id: string) {
-    return doGET(`/api/media/${id}`)
+  getMediaById: async function (mediaId: string) {
+    return doGET(`/api/resources/media/${mediaId}`)
   },
 
-  getTags: async function () {
-    return doGET(`/api/search/tags`)
+  updateUserMetaData: async function(bucketId: String, resourceId: string, meta: ResourceUserMeta) {
+    return doPOST(`/api/resources/${bucketId}/${resourceId}/update_user_meta`, meta)
   },
 
-  updateVideoMetaData: async function(id: string, meta: VideoMeta) {
-    return doPOST(`/api/media/${id}`, meta)
+  deleteResourceById: async function (bucketId: String, mediaId: string) {
+    return doDelete(`/api/media/${mediaId}`)
   },
 
-  deleteMediaById: async function (id: string) {
-    return doDelete(`/api/media/${id}`)
+  updateFragmentTags: async function (mediaId: string, idx: number, tags: Array<string>) {
+    return doPOST(`/api/fragments/${mediaId}/${idx}/tags`, tags)
   },
 
-  updateFragmentTags: async function (id: string, idx: number, tags: Array<string>) {
-    return doPOST(`/api/fragments/${id}/${idx}/tags`, tags)
+  addFragment: async function (mediaId: string, from: number, to: number) {
+    return doPOST(`/api/fragments/${mediaId}/add`, { from: from, to: to})
   },
 
-  addFragment: async function (id: string, from: number, to: number) {
-    return doPOST(`/api/fragments/${id}/add`, { from: from, to: to})
+  deleteFragment: async function (mediaId: string, idx: number) {
+    return doDelete(`/api/fragments/${mediaId}/${Math.trunc(idx)}`)
   },
 
-  deleteFragment: async function (id: string, idx: number) {
-    return doDelete(`/api/fragments/${id}/${Math.trunc(idx)}`)
-  },
-
-  updateFragment: async function (id: string, idx: number, from: number, to: number) {
-    return doPOST(`/api/fragments/${id}/${Math.trunc(idx)}`, { from: from, to: to})
+  updateFragment: async function (mediaId: string, idx: number, from: number, to: number) {
+    return doPOST(`/api/fragments/${mediaId}/${Math.trunc(idx)}`, { from: from, to: to})
   }
 }
 

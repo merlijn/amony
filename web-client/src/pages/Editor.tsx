@@ -1,7 +1,7 @@
 import Plyr from 'plyr';
 import React, { useEffect, useState } from 'react';
 import { Api } from '../api/Api';
-import { Video } from '../api/Model';
+import { Resource } from '../api/Model';
 import FragmentList from '../components/fragments/FragmentList';
 import './Editor.scss';
 
@@ -13,11 +13,11 @@ export type EditFragment = {
 
 const Editor = (props: {videoId: string}) => {
 
-  const [vid, setVid] = useState<Video | null>(null)
+  const [vid, setVid] = useState<Resource | null>(null)
 
   useEffect(() => {
     Api.getMediaById(props.videoId).then(response => {
-        setVid((response as Video))
+        setVid((response as Resource))
       }
     );
   }, [props]);
@@ -27,10 +27,10 @@ const Editor = (props: {videoId: string}) => {
   );
 }
 
-const PlayerView = (props: {vid: Video}) => {
+const PlayerView = (props: {vid: Resource}) => {
 
   const [vid, setVid] = useState(props.vid)
-  const vidRatio = props.vid.width / props.vid.height;
+  const vidRatio = props.vid.resourceMeta.width / props.vid.resourceMeta.height;
   const id = '#video-' + props.vid.id
 
   const [plyr, setPlyr] = useState<Plyr | null>(null)
@@ -55,16 +55,16 @@ const PlayerView = (props: {vid: Video}) => {
        const from = Math.trunc(fragment.start * 1000)
        const to = Math.trunc(fragment.end * 1000)
 
-       if (fragment.idx >= 0 && fragment.idx < vid.fragments.length) {
+       if (fragment.idx >= 0 && fragment.idx < vid.highlights.length) {
          console.log("updating fragment")
          Api.updateFragment(vid.id, fragment.idx, from, to).then (response => {
-           setVid(response as Video)
+           setVid(response as Resource)
          });
        }
-       if (fragment.idx === vid.fragments.length) {
+       if (fragment.idx === vid.highlights.length) {
          console.log("adding fragment")
          Api.addFragment(vid.id, from, to).then (response => {
-           setVid(response as Video)
+           setVid(response as Resource)
          });
        }
      }
@@ -120,7 +120,7 @@ const PlayerView = (props: {vid: Video}) => {
       <div style = { { width: totalWidth, height: videoSize.height } } className="abs-center">
         <div key={`video-${vid.id}-player`} style={videoSize} className="video-container">
           <video className="video-player" id={id} playsInline controls>
-            <source src={props.vid.video_url} type="video/mp4"/>
+            <source src={props.vid.urls.originalResourceUrl} type="video/mp4"/>
           </video>
           { showFragmentControls && fragmentPickingControls }
         </div>

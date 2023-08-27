@@ -1,0 +1,35 @@
+syntax = "proto2";
+
+import "scalapb/scalapb.proto";
+import "ResourceMeta.proto";
+import "ResourceOperations.proto";
+
+package nl.amony.service.resources.api;
+
+option (scalapb.options) = {
+  flat_package: true
+  preserve_unknown_fields: false
+};
+
+message ResourceInfo {
+  required string bucketId = 1;
+  optional string parentId = 2;
+  required string path = 3;
+  required string hash = 4;
+  required int64  size = 5;
+  optional string contentType = 6;
+  optional ResourceMeta contentMeta = 7;
+  optional nl.amony.service.resources.api.operations.ResourceOperation operation = 8;
+  optional int64 creationTime = 9;
+  optional int64 lastModifiedTime = 10;
+  optional string title = 11;
+  optional string description = 12;
+  repeated string tags = 13;
+}
+
+message Tag {
+  required string tagId = 1;
+  required string tagName = 2;
+}
+
+

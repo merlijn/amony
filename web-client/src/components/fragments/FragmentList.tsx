@@ -1,4 +1,4 @@
-import {Video} from "../../api/Model";
+import {Resource} from "../../api/Model";
 import React, {CSSProperties, useState} from "react";
 import FragmentPreview from "./FragmentPreview";
 import './FragmentList.scss';
@@ -6,9 +6,9 @@ import ImgWithAlt from "../common/ImgWithAlt";
 import { EditFragment } from "../../pages/Editor";
 import { FiPlusCircle } from "react-icons/fi"
 
-const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFragment) => any, setVid: (vid: Video) => any}) => {
+const FragmentList = (props: {vid: Resource, selected: number, selectFn: (f: EditFragment) => any, setVid: (vid: Resource) => any}) => {
 
-  const ratio = (props.vid.width / props.vid.height).toFixed(2);
+  const ratio = (props.vid.resourceMeta.width / props.vid.resourceMeta.height).toFixed(2);
   const [showAddFragment, setShowAddFragment] = useState(false)
 
   const extraStyle = (idx: number): CSSProperties => {
@@ -22,17 +22,17 @@ const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFr
   }
 
   const fragmentList =
-    props.vid.fragments.map((f, idx) => {
+    props.vid.highlights.map((f, idx) => {
       return (
         <FragmentPreview
           key={ f.urls[0] }
-          vid={ props.vid.id }
-          fragment = { props.vid.fragments[idx] }
+          mediaId={ props.vid.id }
+          fragment = { props.vid.highlights[idx] }
           style={ extraStyle(idx) }
           className = { (props.selected === idx ? "fragment-selected" : "fragment-not-selected") + " fragment" }
-          showDeleteButton = { props.vid.fragments.length > 1 }
+          showDeleteButton = { props.vid.highlights.length > 1 }
           onDelete = { (v) => props.setVid(v) }
-          onClick = { () => props.selectFn({ idx: idx, start: f.range.from / 1000, end: f.range.to / 1000 }) }
+          onClick = { () => props.selectFn({ idx: idx, start: f.range[0] / 1000, end: f.range[1] / 1000 }) }
         />);
     })
 
@@ -41,7 +41,7 @@ const FragmentList = (props: {vid: Video, selected: number, selectFn: (f: EditFr
     lineHeight: `calc(20vw * 1 / ${ratio})`
   }
 
-  const nrOfFragments = props.vid.fragments.length
+  const nrOfFragments = props.vid.highlights.length
 
   const addFragment =
     <div key={`fragment-${props.vid.id}-new`}
