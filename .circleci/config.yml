@@ -110,7 +110,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - web-server/target/scala-2.13/amony.jar
+            - web-server/target/scala-3.3.0/amony.jar
 
   build_web_client:
 
