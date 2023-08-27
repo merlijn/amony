@@ -6,7 +6,7 @@ import {boundedRatioBox} from "../../api/Util";
 import './MediaModal.scss';
 import Modal from "./Modal";
 
-const MediaModal = (props: { media?: Resource, onHide: () => void }) => {
+const MediaModal = (props: { resource?: Resource, onHide: () => void }) => {
 
   const videoElement = useRef<HTMLVideoElement>(null)
 
@@ -16,12 +16,12 @@ const MediaModal = (props: { media?: Resource, onHide: () => void }) => {
     const element = videoElement.current
     let plyr: Plyr | null = null
 
-    if (element && props.media) {
+    if (element && props.resource) {
       const plyrOptions = {
         fullscreen: {enabled: true},
         invertTime: false,
         keyboard: {focused: true, global: true},
-        previewThumbnails: {enabled: false, src: props.media.urls.previewThumbnailsUrl}
+        previewThumbnails: {enabled: false, src: props.resource.urls.previewThumbnailsUrl}
       }
 
       const plyr = new Plyr(element, plyrOptions)
@@ -42,18 +42,18 @@ const MediaModal = (props: { media?: Resource, onHide: () => void }) => {
 
   let content = <div />
 
-  if(props.media && props.media.resourceMeta.mediaType.startsWith("video"))
+  if(props.resource && props.resource.contentType.startsWith("video"))
     content =
-      <video tab-index='-1' id={`video-modal-${props.media.id}`} ref={videoElement} playsInline controls>
-        { props.media && <source src={props.media.urls.originalResourceUrl} type="video/mp4"/> }
+      <video tab-index='-1' id={`video-modal-${props.resource.id}`} ref={videoElement} playsInline controls>
+        { props.resource && <source src={props.resource.urls.originalResourceUrl} type="video/mp4"/> }
       </video>
-  if(props.media && props.media.resourceMeta.mediaType.startsWith("image"))
-    content = <img style = {{ width : "100%", height: "100%" }} src={props.media.urls.originalResourceUrl} />
+  if(props.resource && props.resource.contentType.startsWith("image"))
+    content = <img style = {{ width : "100%", height: "100%" }} src={props.resource.urls.originalResourceUrl} />
 
   return (
-      <Modal visible={props.media !== undefined} onHide={props.onHide}>
+      <Modal visible={props.resource !== undefined} onHide={props.onHide}>
         <div key="video-model-content" className="video-modal-content">
-          <div style={props.media && modalSize(props.media)}>
+          <div style={props.resource && modalSize(props.resource)}>
             {
               content
             }

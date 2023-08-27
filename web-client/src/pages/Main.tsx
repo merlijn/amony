@@ -80,7 +80,7 @@ const Main = () => {
 
     return (
         <>
-          { <MediaModal media= { showMedia } onHide={() => setShowMedia(undefined) } />}
+          { <MediaModal resource= { showMedia } onHide={() => setShowMedia(undefined) } />}
           
           <div className="main-page">
 
