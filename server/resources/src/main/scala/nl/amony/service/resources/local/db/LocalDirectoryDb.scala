@@ -114,7 +114,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
 
   }
 
-  def updateUserMeta(bucketId: String, hash: String, title: Option[String], description: Option[String], effect: IO[Unit]): IO[Unit] = {
+  def updateUserMeta(bucketId: String, hash: String, title: Option[String], description: Option[String], tags: List[String], effect: IO[Unit]): IO[Unit] = {
     val q = (for {
       resourceRow <- resourcesTable.queryByHash(bucketId, hash).result
                 _ <- resourceRow.headOption.map { row =>

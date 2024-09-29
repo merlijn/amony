@@ -43,7 +43,7 @@ val caffeine                 = "com.github.ben-manes.caffeine" % "caffeine"     
 val jacksonDatabind          = "com.fasterxml.jackson.core" % "jackson-databind"          % "2.15.1"
 
 //val pureConfig               = ("com.github.pureconfig"    %% "pureconfig-core"            % "0.17.4") cross CrossVersion.for3Use2_13 // no scala 3
-val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.4"
+val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.7"
 //val pureConfigSquants        = ("com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.2") cross CrossVersion.for3Use2_13 // no scala 3
 val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.2"
 
@@ -74,7 +74,7 @@ val javaOpts = Nil
 
 val commonSettings = Seq(
   organization := "nl.amony",
-  scalaVersion := "3.3.0",
+  scalaVersion := "3.3.4",
   excludeDependencies ++= excludeScalaJs,
   assembly / assemblyMergeStrategy := {
     case path if path.endsWith(".proto") => MergeStrategy.discard

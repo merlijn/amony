@@ -22,9 +22,6 @@ object ResourceContent {
     maybeExt.flatMap { ext => MediaType.extensionMap.get(ext).map(m => s"${m.mainType}/${m.subType}") }
   }
 
-  def fromPath(path: String, info: ResourceInfo): Option[LocalFileContent] =
-    fromPath(java.nio.file.Path.of(path), info)
-
   def fromPath(path: java.nio.file.Path, info: ResourceInfo): Option[LocalFileContent] =
     Option.when(Files.exists(path))(LocalFileContent(fs2.io.file.Path.fromNioPath(path), info))
 }

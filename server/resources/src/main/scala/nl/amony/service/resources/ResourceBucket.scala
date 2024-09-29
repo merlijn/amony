@@ -11,7 +11,7 @@ trait ResourceBucket {
    */
   def getResource(resourceId: String): IO[Option[ResourceContent]]
   
-  def updateUserMeta(resourceId: String, title: Option[String], description: Option[String]): IO[Unit]
+  def updateUserMeta(resourceId: String, title: Option[String], description: Option[String], tags: List[String]): IO[Unit]
 
   def deleteResource(resourceId: String): IO[Unit]
 

@@ -134,7 +134,7 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
   }
 
   def sync(topic: EventTopic[ResourceEvent]): Unit =
-    diff(storage.getAll(config.id).unsafeRunSync()).foreach {
+    diff(storage.getAll(config.id).unsafeRunSync()).foreach:
       case e @ ResourceAdded(resource) =>
         logger.debug(s"File added: ${resource.path}")
         storage.insert(resource, IO.unit).unsafeRunSync()
@@ -142,11 +142,10 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
       case e @ ResourceDeleted(resource) =>
         logger.debug(s"File deleted: ${resource.path}")
         storage.deleteByRelativePath(resource.bucketId, resource.path).unsafeRunSync()
-
         topic.publish(e)
       case e @ ResourceMoved(resource, oldPath) =>
         logger.debug(s"File moved: ${oldPath} -> ${resource.path}")
         storage.move(resource.bucketId, oldPath, resource).unsafeRunSync()
         topic.publish(e)
-    }
+      case _ => ()
 }

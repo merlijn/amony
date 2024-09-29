@@ -51,7 +51,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
     val result = resourceStore.compute(key, (_, value) => {
       val file = config.writePath.resolve(key.outputFilename)
       if (!file.exists())
-        key.create(config, fileInfo.path).memoize.flatten
+        key.createFile(config, fileInfo.path).memoize.flatten
       else
         IO.pure(file)
     })
@@ -85,8 +85,9 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
         IO(path.deleteIfExists())
     }
 
-  override def updateUserMeta(resourceId: String, title: Option[String], description: Option[String]): IO[Unit] =
+  override def updateUserMeta(resourceId: String, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] =
     db.updateUserMeta(
-      config.id, resourceId, title, description, IO { topic.publish(ResourceUserMetaUpdated(config.id, resourceId, title, description)) }
+      config.id, resourceId, title, description, tags, 
+      IO { topic.publish(ResourceUserMetaUpdated(config.id, resourceId, title, description)) }
     )
 }

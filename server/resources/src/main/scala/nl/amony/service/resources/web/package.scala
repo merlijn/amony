@@ -6,15 +6,16 @@ package object web {
 
   extension (resource: ResourceInfo) {
 
-    def width: Int = resource.contentMeta match {
+    def width: Int = resource.contentMeta match
       case VideoMeta(w, _, _, _, _) => w
       case ImageMeta(w, _, _) => w
-    }
+      case _ => 0
 
-    def height: Int = resource.contentMeta match {
+    def height: Int = resource.contentMeta match
       case VideoMeta(_, h, _, _, _) => h
       case ImageMeta(_, h, _) => h
-    }
+      case _ => 0
+
 
     def durationInMillis() = resource.contentMeta match {
       case m: VideoMeta => m.durationInMillis
