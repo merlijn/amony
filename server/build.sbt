@@ -64,6 +64,8 @@ val http4sEmberClient = "org.http4s" %% "http4s-ember-client" % http4sVersion
 val http4sDsl = "org.http4s" %% "http4s-dsl" % http4sVersion
 val http4sCirce = "org.http4s" %% "http4s-circe" % http4sVersion
 
+val embeddedKafka = "io.github.embeddedkafka" %% "embedded-kafka" % "3.8.0" // cross CrossVersion.for3Use2_13
+
 //val tapirCirce = "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % "1.2.9"
 //val tapir = "com.softwaremill.sttp.tapir" %% "tapir-core" % "1.2.9"
 //val tarirHttp4s = "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % "1.2.9"

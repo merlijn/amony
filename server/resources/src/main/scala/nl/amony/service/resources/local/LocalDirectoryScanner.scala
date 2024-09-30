@@ -13,7 +13,7 @@ import nl.amony.service.resources.local.db.LocalDirectoryDb
 import scribe.Logging
 import slick.jdbc.JdbcProfile
 
-import java.nio.file.Files
+import java.nio.file.{Files, Path}
 import java.nio.file.attribute.BasicFileAttributes
 
 class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, storage: LocalDirectoryDb[P])(implicit runtime: IORuntime) extends Logging {
@@ -25,9 +25,11 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
 
     def getByPath(path: String) = previousState.find(_.path == path)
     def getByHash(hash: String) = previousState.find(_.hash == hash)
+    def filterPath(path: Path) = config.filterFileName(path.getFileName.toString)
 
-    Stream.fromIterator[IO](RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath).iterator, 10)
-      .filter { file => config.filterFileName(file.getFileName.toString) }
+    def allFiles() = RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath, filterPath)
+
+    Stream.fromIterator[IO](allFiles().iterator, 10)
       .filter { file =>
         val isEmpty = Files.size(file) == 0
         if (isEmpty)
@@ -81,10 +83,7 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
       }
   }
 
-  // this depends on file system meta data and the fact that a file move does not update these attributes
-  def hasEqualMeta(a: ResourceInfo, b: ResourceInfo) = {
-    a.hash == b.hash && a.creationTime == b.creationTime && a.lastModifiedTime == b.lastModifiedTime
-  }
+
 
   def diff(previousState: Seq[ResourceInfo]): List[ResourceEvent] = {
 
@@ -116,13 +115,15 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
     val movedResources: List[ResourceMoved] =
       previousState.flatMap { old =>
 
-        // TODO there are some edge cases where this does not work
+        // this depends on file system meta data and the fact that a file move does not update these attributes
+        def hasEqualMeta(a: ResourceInfo, b: ResourceInfo) =
+          a.hash == b.hash && a.creationTime == b.creationTime && a.lastModifiedTime == b.lastModifiedTime
 
-        def equalMeta(): Option[ResourceInfo] = scannedResources.find { current => old.path != current.path && hasEqualMeta(current, old) }
-        def equalHash(): Option[ResourceInfo] = scannedResources.find { current => old.path != current.path && old.hash == current.hash }
+        def findByMeta(): Option[ResourceInfo] = scannedResources.find { current => old.path != current.path && hasEqualMeta(current, old) }
+        def findByHash(): Option[ResourceInfo] = scannedResources.find { current => old.path != current.path && old.hash == current.hash }
 
         // prefer the file with equal timestamp meta, otherwise fall back to just equal hash
-        equalMeta().orElse(equalHash()).map { moved => ResourceMoved(old.copy(path = moved.path), old.path) }
+        findByMeta().orElse(findByHash()).map { moved => ResourceMoved(old.copy(path = moved.path), old.path) }
 
       }.toList
 

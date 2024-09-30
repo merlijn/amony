@@ -18,12 +18,9 @@ import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.ExecutionContext
 
-class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: LocalDirectoryDb[P], topic: EventTopic[ResourceEvent])(implicit ec: ExecutionContext) extends ResourceBucket with Logging {
+class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: LocalDirectoryDb[P], topic: EventTopic[ResourceEvent]) extends ResourceBucket with Logging {
 
   private val resourceStore = new ConcurrentHashMap[ResourceOp, IO[Path]]()
-
-  // TODO think about replacing this with custom runtime
-  implicit val runtime: IORuntime = IORuntime.global
 
   Files.createDirectories(config.writePath)
 

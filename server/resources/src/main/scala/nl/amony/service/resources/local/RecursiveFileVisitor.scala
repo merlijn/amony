@@ -4,43 +4,29 @@ import scribe.Logging
 
 import java.io.IOException
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{FileVisitResult, Path, SimpleFileVisitor}
+import java.nio.file.{FileVisitResult, Files, Path, SimpleFileVisitor}
 import scala.collection.mutable
 
-class RecursiveFileVisitor(skipHiddenFiles: Boolean) extends SimpleFileVisitor[Path] with Logging {
+class RecursiveFileVisitor(fileNameFilter: Path => Boolean) extends SimpleFileVisitor[Path] with Logging:
 
-  private val files = mutable.ListBuffer.empty[Path]
+  val files = mutable.ListBuffer.empty[Path]
 
-  def getFiles(): Iterable[Path] = files
+  override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult =
+    if (!(fileNameFilter(dir))) FileVisitResult.SKIP_SUBTREE else FileVisitResult.CONTINUE
 
-  @throws[IOException]
-  override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult = {
-
-    if (dir.getFileName.toString.startsWith(".") && skipHiddenFiles)
-      FileVisitResult.SKIP_SUBTREE
-    else
-      FileVisitResult.CONTINUE
-  }
-
-  @throws[IOException]
-  override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
-    files.addOne(file)
+  override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult =
+    if (!(fileNameFilter(file)))
+      files.addOne(file)
     FileVisitResult.CONTINUE
-  }
 
-  @throws[IOException]
-  override def visitFileFailed(file: Path, exc: IOException): FileVisitResult = {
+  override def visitFileFailed(file: Path, exc: IOException): FileVisitResult = 
     logger.warn(s"Failed to visit path: $file")
     FileVisitResult.CONTINUE
-  }
-}
 
-object RecursiveFileVisitor {
-  def listFilesInDirectoryRecursive(dir: Path, skipHiddenFiles: Boolean = true): Iterable[Path] = {
-    import java.nio.file.Files
+object RecursiveFileVisitor:
+  def listFilesInDirectoryRecursive(dir: Path, fileNameFilter: Path => Boolean): Iterable[Path] =
+    
+    val visitor = new RecursiveFileVisitor(fileNameFilter)
+    Files.walkFileTree(dir, visitor)
+    visitor.files
 
-    val r = new RecursiveFileVisitor(skipHiddenFiles)
-    Files.walkFileTree(dir, r)
-    r.getFiles()
-  }
-}

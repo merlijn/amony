@@ -35,7 +35,6 @@ object Main extends ConfigLoader with Logging {
   def main(args: Array[String]): Unit = {
 
     import cats.effect.unsafe.implicits.global
-    implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
 
     logger.info(config.toString)
 

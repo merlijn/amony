@@ -56,7 +56,7 @@ object ResourceDirectives extends Logging {
         Response(
           status = if (partial) Status.PartialContent else Status.Ok,
           headers = headers,
-          entity = Entity(byteStream, Some(start - end))
+          entity = Entity.stream(byteStream, Some(start - end))
         )
       }
     }

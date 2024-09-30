@@ -26,51 +26,45 @@ object ResourceRoutes extends Logging {
 
   def apply(buckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
 
-    def withBucket[F[_]: Monad](bucketId: String)(fn: ResourceBucket => F[Response[F]]) = {
-      buckets.get(bucketId) match {
-        case None =>
-          NotFound()
-        case Some(bucket) =>
-          fn(bucket)
-      }
-    }
+    def withBucket[F[_]: Monad](bucketId: String)(fn: ResourceBucket => F[Response[F]]) =
+      buckets.get(bucketId) match
+        case None         => NotFound()
+        case Some(bucket) => fn(bucket)
 
     HttpRoutes.of[IO] {
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId =>
 
         withBucket(bucketId) { bucket =>
-          bucket.getResource(resourceId).flatMap {
-            case None => NotFound()
+          bucket.getResource(resourceId).flatMap:
+            case None           => NotFound()
             case Some(resource) => Ok(resource.info().asJson)
-          }
         }
 
       case req @ POST -> Root / "api" / "resources" / bucketId / resourceId / "update_user_meta" =>
 
         withBucket(bucketId) { bucket =>
-          bucket.getResource(resourceId).flatMap {
+          bucket.getResource(resourceId).flatMap: 
             case None => NotFound()
             case Some(resource) =>
               req.as[UserMetaDto].flatMap { userMeta =>
                 bucket.updateUserMeta(resourceId, userMeta.title, userMeta.description, List.empty).flatMap(_ => Ok())
               }
-          }
+          
         }
 
       case req @ GET -> Root / "resources" / bucketId / resourcePattern =>
 
         withBucket(bucketId) { bucket =>
           val maybeResource: IO[Option[ResourceContent]] =
-            resourcePattern match {
+            resourcePattern match
               case patterns.ThumbnailWithTimestamp(id, timestamp, height) => bucket.getOrCreate(id, VideoThumbnail(width = None, height = Some(height.toInt), 23, timestamp.toLong), Set.empty)
               case patterns.Thumbnail(id, scaleHeight) => bucket.getOrCreate(id, ImageThumbnail(width = None, height = Some(scaleHeight.toInt), 0), Set.empty)
               case patterns.VideoFragment(id, start, end, height) => bucket.getOrCreate(id, VideoFragment(width = None, height = Some(height.toInt), start.toLong, end.toLong, 23), Set.empty)
               case patterns.Video(id, _, null) => bucket.getResource(id)
               case id => bucket.getResource(id)
-            }
 
-          maybeResource.flatMap {
+          maybeResource.flatMap:
             case None =>
               NotFound()
             case Some(content) =>
@@ -80,7 +74,6 @@ object ResourceRoutes extends Logging {
                 maybeMediaType = content.contentType().map(MediaType.parse(_).toOption).flatten,
                 rangeResponseFn = content.getContentRange
               )
-          }
         }
     }
   }
