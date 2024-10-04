@@ -12,11 +12,15 @@ class RecursiveFileVisitor(fileNameFilter: Path => Boolean) extends SimpleFileVi
   val files = mutable.ListBuffer.empty[Path]
 
   override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult =
-    if (!(fileNameFilter(dir))) FileVisitResult.SKIP_SUBTREE else FileVisitResult.CONTINUE
+    if (dir.startsWith("."))
+      FileVisitResult.SKIP_SUBTREE
+    else
+      FileVisitResult.CONTINUE
 
   override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult =
-    if (!(fileNameFilter(file)))
+    if (fileNameFilter(file))
       files.addOne(file)
+
     FileVisitResult.CONTINUE
 
   override def visitFileFailed(file: Path, exc: IOException): FileVisitResult = 

@@ -3,10 +3,12 @@ package nl.amony.service.resources.local.db
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import nl.amony.service.resources.api.ResourceInfo
+import nl.amony.service.resources.api.events.ResourceEvent
 import nl.amony.service.resources.api.operations.ResourceOperation
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
+import nl.amony.service.resources.api.events.*
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.Try
@@ -41,15 +43,13 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       ).unsafeRunSync()
     }
 
-  def getAll(bucketId: String): IO[Seq[ResourceInfo]] = {
+  def getAll(bucketId: String): IO[Seq[ResourceInfo]] =
     dbIO(resourcesTable.allForBucket(bucketId).result).map(_.map(_.toResource(Seq.empty)).toSeq)
-  }
 
-  def deleteByRelativePath(bucketId: String, relativePath: String): IO[Int] = {
+  def deleteByRelativePath(bucketId: String, relativePath: String): IO[Int] = 
     dbIO(resourcesTable.queryByPath(bucketId, relativePath).delete)
-  }
 
-  def insert(resource: ResourceInfo, effect: => IO[Unit]): IO[Unit] = {
+  def insert(resource: ResourceInfo, effect: => IO[Unit]): IO[Unit] =
     dbIO(
       (for {
         _ <- resourcesTable.insert(resource)
@@ -57,7 +57,6 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
         _ <- DBIO.from(effect.unsafeToFuture())
       } yield ()).transactionally
     )
-  }
 
   def move(bucketId: String, oldPath: String, resource: ResourceInfo): IO[Unit] = {
     val transaction =
@@ -136,5 +135,13 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
     }
 
     dbIO(q)
+  }
+  
+  def applyEvent(event: ResourceEvent): IO[Unit] = {
+    event match {
+      case ResourceAdded(resource)          => insert(resource, IO.unit)
+      case ResourceDeleted(resource)        => deleteResource(resource.bucketId, resource.hash)
+      case ResourceMoved(resource, oldPath) => move(resource.bucketId, oldPath, resource)
+    }
   }
 }

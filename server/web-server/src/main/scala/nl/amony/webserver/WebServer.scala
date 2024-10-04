@@ -59,7 +59,7 @@ class WebServer(val config: WebServerConfig) extends Logging {
 //    }
 //  }
 
-  def setup(routes: HttpRoutes[IO])(implicit io: IORuntime): IO[ExitCode] = {
+  def run(routes: HttpRoutes[IO])(implicit io: IORuntime): IO[ExitCode] = {
     logger.info("Starting web server")
 
     val httpApp = Router("/" -> routes).orNotFound

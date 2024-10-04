@@ -2,30 +2,34 @@ package nl.amony.service.resources.local
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.implicits.*
 import fs2.Stream
-import nl.amony.lib.eventbus.EventTopic
-import nl.amony.service.resources.ResourceContent
+import fs2.Stream.suspend
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
-import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
+import nl.amony.service.resources.ResourceContent
 import nl.amony.service.resources.api.events.*
 import nl.amony.service.resources.api.operations.ResourceOperation
+import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
 import nl.amony.service.resources.local.db.LocalDirectoryDb
 import scribe.Logging
 import slick.jdbc.JdbcProfile
 
-import java.nio.file.{Files, Path}
 import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.{Files, Path}
+import scala.concurrent.duration.FiniteDuration
 
 class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, storage: LocalDirectoryDb[P])(implicit runtime: IORuntime) extends Logging {
 
-  private def scanDirectory(previousState: Seq[ResourceInfo]): Stream[IO, ResourceInfo] = {
+  private def scanDirectory(previousState: Set[ResourceInfo]): Stream[IO, ResourceInfo] = {
 
     val mediaPath = config.resourcePath
     val hashingAlgorithm = config.hashingAlgorithm
 
-    def getByPath(path: String) = previousState.find(_.path == path)
-    def getByHash(hash: String) = previousState.find(_.hash == hash)
+    def getByPath(path: String): Option[ResourceInfo] = previousState.find(_.path == path)
+    def getByHash(hash: String): Option[ResourceInfo] = previousState.find(_.hash == hash)
     def filterPath(path: Path) = config.filterFileName(path.getFileName.toString)
+
+    logger.info(s"Scanning directory: ${mediaPath.toAbsolutePath}")
 
     def allFiles() = RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath, filterPath)
 
@@ -82,14 +86,10 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
         }
       }
   }
+  
+  def diff(previousState: Set[ResourceInfo], currentState: Set[ResourceInfo]): List[ResourceEvent] = {
 
-
-
-  def diff(previousState: Seq[ResourceInfo]): List[ResourceEvent] = {
-
-    val scannedResources: Set[ResourceInfo] = scanDirectory(previousState).compile.toList.unsafeRunSync().toSet
-
-    val (colliding, nonColliding) = scannedResources
+    val (colliding, nonColliding) = currentState
       .groupBy(_.hash)
       .partition { case (_, files) => files.size > 1 }
 
@@ -108,7 +108,7 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
 
     val deletedResources: List[ResourceDeleted] =
       previousState
-        .filterNot(r => scannedResources.exists(_.hash == r.hash))
+        .filterNot(r => currentState.exists(_.hash == r.hash))
         .map(r => ResourceDeleted(r))
         .toList
 
@@ -119,34 +119,26 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
         def hasEqualMeta(a: ResourceInfo, b: ResourceInfo) =
           a.hash == b.hash && a.creationTime == b.creationTime && a.lastModifiedTime == b.lastModifiedTime
 
-        def findByMeta(): Option[ResourceInfo] = scannedResources.find { current => old.path != current.path && hasEqualMeta(current, old) }
-        def findByHash(): Option[ResourceInfo] = scannedResources.find { current => old.path != current.path && old.hash == current.hash }
+        def findByMeta(): Option[ResourceInfo] = currentState.find { current => old.path != current.path && hasEqualMeta(current, old) }
+        def findByHash(): Option[ResourceInfo] = currentState.find { current => old.path != current.path && old.hash == current.hash }
 
         // prefer the file with equal timestamp meta, otherwise fall back to just equal hash
         findByMeta().orElse(findByHash()).map { moved => ResourceMoved(old.copy(path = moved.path), old.path) }
 
       }.toList
 
-//    newResources.foreach(e => logger.info(s"new file: ${e.resource.path}"))
-//    deletedResources.foreach(e => logger.info(s"deleted file: ${e.resource.path}"))
-//    movedResources.foreach(e => logger.info(s"moved file: ${e.oldPath} -> ${e.resource.path}"))
-
     newResources ::: deletedResources ::: movedResources
   }
+  
+  def pollingStream(initialState: Set[ResourceInfo], pollInterval: FiniteDuration): Stream[IO, ResourceEvent] = {
 
-  def sync(topic: EventTopic[ResourceEvent]): Unit =
-    diff(storage.getAll(config.id).unsafeRunSync()).foreach:
-      case e @ ResourceAdded(resource) =>
-        logger.debug(s"File added: ${resource.path}")
-        storage.insert(resource, IO.unit).unsafeRunSync()
-        topic.publish(e)
-      case e @ ResourceDeleted(resource) =>
-        logger.debug(s"File deleted: ${resource.path}")
-        storage.deleteByRelativePath(resource.bucketId, resource.path).unsafeRunSync()
-        topic.publish(e)
-      case e @ ResourceMoved(resource, oldPath) =>
-        logger.debug(s"File moved: ${oldPath} -> ${resource.path}")
-        storage.move(resource.bucketId, oldPath, resource).unsafeRunSync()
-        topic.publish(e)
-      case _ => ()
+    def next(prev: Set[ResourceInfo]): IO[(Seq[ResourceEvent], Set[ResourceInfo])] =
+      scanDirectory(prev).compile.toList.map { current => diff(prev, current.toSet) -> current.toSet }
+
+    def recur(prev: Set[ResourceInfo]): Stream[IO, Seq[ResourceEvent]] =
+      Stream.eval(next(prev)).flatMap:
+        case (o, s) => Stream.emit(o) ++ (Stream.sleep[IO](pollInterval) >> recur(s))
+
+    Stream.suspend(recur(initialState)).flatMap(Stream.emits)
+  }
 }

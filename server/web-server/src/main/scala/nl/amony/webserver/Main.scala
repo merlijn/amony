@@ -1,8 +1,8 @@
 package nl.amony.webserver
 
-import cats.effect.IO
+import cats.effect.{ExitCode, IO, IOApp}
 import com.typesafe.config.Config
-import fs2.Stream
+import fs2.{Pipe, Stream}
 import nl.amony.lib.eventbus.EventTopic
 import nl.amony.lib.eventbus.jdbc.SlickEventBus
 import nl.amony.search.InMemorySearchService
@@ -17,14 +17,13 @@ import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.HsqldbProfile
 
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.DurationInt
 import scala.reflect.ClassTag
 import scala.util.Try
 
-object Main extends ConfigLoader with Logging {
+object Main extends IOApp with ConfigLoader with Logging {
 
-  def loadConfig[T: ClassTag](config: Config, path: String)(implicit reader: ConfigReader[T]): T = {
+  def loadConfig[T: ClassTag : ConfigReader](config: Config, path: String): T = {
 
     val configSource = ConfigSource.fromConfig(config.getConfig(path))
     val configObj = configSource.loadOrThrow[T]
@@ -32,19 +31,15 @@ object Main extends ConfigLoader with Logging {
     configObj
   }
 
-  def main(args: Array[String]): Unit = {
+  override def run(args: List[String]): IO[ExitCode] = {
 
     import cats.effect.unsafe.implicits.global
 
     logger.info(config.toString)
 
     val databaseConfig = DatabaseConfig.forConfig[HsqldbProfile]("amony.database", config)
-
     val searchService = new InMemorySearchService()
-    
-    val authService: AuthService = {
-      new AuthServiceImpl(loadConfig[AuthConfig](config, "amony.auth"))
-    }
+    val authService: AuthService = new AuthServiceImpl(loadConfig[AuthConfig](config, "amony.auth"))
 
     val eventBus = new SlickEventBus(databaseConfig)
     Try { eventBus.createTablesIfNotExists().unsafeRunSync() }
@@ -57,6 +52,7 @@ object Main extends ConfigLoader with Logging {
 
     val resourceTopic = EventTopic.transientEventTopic[ResourceEvent]()
     resourceTopic.followTail(searchService.indexEvent _)
+    val publish: Pipe[IO, ResourceEvent, ResourceEvent] = _.foreach(e => IO.pure(resourceTopic.publish(e)))
 
     val resourceBuckets: Map[String, ResourceBucket] = appConfig.resources.map {
       case localConfig : ResourceConfig.LocalDirectoryConfig =>
@@ -68,10 +64,18 @@ object Main extends ConfigLoader with Logging {
           resource => resourceTopic.publish(ResourceAdded(resource))
         }
 
-        Stream
-          .fixedDelay[IO](5.seconds)
-          .evalMap(_ => IO(scanner.sync(resourceTopic)))
-          .compile.drain.unsafeRunAndForget()
+        val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (localFileStorage.applyEvent)
+        val debug: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"File event: $e")))
+
+        logger.info(s"Starting scanner for ${localConfig.resourcePath.toAbsolutePath}")
+
+        val f = scanner.pollingStream(localFileStorage.getAll(localConfig.id).map(_.toSet).unsafeRunSync(), 5.seconds)
+          .through(debug)
+          .through(updateDb)
+          .through(publish)
+          .compile
+          .drain
+          .unsafeRunAsync(_ => ())
 
         localConfig.id -> new LocalDirectoryBucket(localConfig, localFileStorage, resourceTopic)
     }.toMap
@@ -79,9 +83,7 @@ object Main extends ConfigLoader with Logging {
     val webServer = new WebServer(appConfig.api)
     val routes = WebServerRoutes.routes(authService, searchService, appConfig, resourceBuckets)
 
-    webServer.setup(routes).unsafeRunSync()
-
-    logger.info("Exiting application")
+    webServer.run(routes).onCancel(IO(logger.info("Exiting application")))
 
 //    scribe.Logger.root
 //      .clearHandlers()
