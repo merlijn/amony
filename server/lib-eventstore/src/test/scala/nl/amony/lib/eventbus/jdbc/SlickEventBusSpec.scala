@@ -36,12 +36,17 @@ class SlickEventBusSpec extends AnyFlatSpecLike with Logging {
     case Removed(s) => set - s
   }
 
+  // we need to load the driver class or else we get a no suitable driver found exception
+  Class.forName("org.h2.Driver")
+
   val config =
     """
       |h2mem1-test = {
       |  db {
       |    url = "jdbc:h2:mem:test1"
       |  }
+      |
+      |  driver = org.h2.Driver
       |
       |  connectionPool = disabled
       |  profile = "slick.jdbc.H2Profile$"
@@ -51,8 +56,8 @@ class SlickEventBusSpec extends AnyFlatSpecLike with Logging {
 
   import cats.effect.unsafe.implicits.global
   val dbConfig = DatabaseConfig.forConfig[H2Profile]("h2mem1-test", ConfigFactory.parseString(config))
-
   val store = new SlickEventBus[H2Profile](dbConfig)
+
   store.createTablesIfNotExists().unsafeRunSync()
 
 //  it should "do something" in {
@@ -111,7 +116,7 @@ class SlickEventBusSpec extends AnyFlatSpecLike with Logging {
     // read events
     val processingStream =
       topic.processAtLeastOnce(processorId, 1)(
-        e => logger.info(s"processing: $e")
+        e => () //logger.info(s"processing: $e")
       )
 
     // take the first 5

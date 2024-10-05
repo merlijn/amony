@@ -13,39 +13,36 @@ val excludeScalaJs = List(
 
 val akkaVersion     = "2.7.0"
 val akkaHttpVersion = "10.4.0"
-val circeVersion    = "0.14.5"
+val circeVersion    = "0.14.9"
 
 val circe                    = "io.circe"                 %% "circe-core"                 % circeVersion
 val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
 val circeParser              = "io.circe"                 %% "circe-parser"               % circeVersion
 
-val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.5.0-M4"
-val slickHikariCp            = "com.typesafe.slick"       %% "slick-hikaricp"             % "3.5.0-M4"
-val scalaLikeJdbc            = "org.scalikejdbc"          %% "scalikejdbc"                % "4.0.0"
+val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.5.1"
+val slickHikariCp            = "com.typesafe.slick"       %% "slick-hikaricp"             % "3.5.1"
 
 val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "9.2.0"
-val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.5"
-val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.11.2"
+val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.12"
+val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.15.0"
 
-//val monixReactive            = "io.monix"                 %% "monix-reactive"             % "3.4.1"
+val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.10.2"
+val fs2Io                    = "co.fs2"                   %% "fs2-io"                     % "3.10.2"
+val catsEffect               = "org.typelevel"            %% "cats-effect"                % "3.5.4"
 
-val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.7.0"
-val fs2Io                    = "co.fs2"                   %% "fs2-io"                     % "3.7.0"
-val catsEffect               = "org.typelevel"            %% "cats-effect"                % "3.4.11"
-
-val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.15"           % Test
+val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.19"           % Test
 val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
 
-val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.6.1"
-val h2DB                     = "com.h2database"            % "h2"                         % "2.1.214"
-val flywayDbCore             = "org.flywaydb"              % "flyway-core"                % "9.16.0"
-val caffeine                 = "com.github.ben-manes.caffeine" % "caffeine"               % "3.1.5"
+val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.7.3"
+val h2DB                     = "com.h2database"            % "h2"                         % "2.2.224"
+val flywayDbCore             = "org.flywaydb"              % "flyway-core"                % "10.15.2"
+//val caffeine                 = "com.github.ben-manes.caffeine" % "caffeine"               % "3.1.5"
 val jacksonDatabind          = "com.fasterxml.jackson.core" % "jackson-databind"          % "2.15.1"
 
 //val pureConfig               = ("com.github.pureconfig"    %% "pureconfig-core"            % "0.17.4") cross CrossVersion.for3Use2_13 // no scala 3
 val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.7"
 //val pureConfigSquants        = ("com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.2") cross CrossVersion.for3Use2_13 // no scala 3
-val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.2"
+val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.3"
 
 //val betterFiles              = "com.github.pathikrit"     %% "better-files"               % "3.9.1"
 //val directoryWatcher         = "io.methvin"                % "directory-watcher"          % "0.15.0"

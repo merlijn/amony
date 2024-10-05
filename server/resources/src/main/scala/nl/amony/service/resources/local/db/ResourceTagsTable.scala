@@ -29,6 +29,9 @@ class ResourceTagsTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) {
 
   def getTags(bucketId: String, resourceId: String) =
     queryById(bucketId, resourceId).map(_.tag)
+    
+  def removeTags(bucketId: String, resourceId: String, tags: Seq[String]) =
+    queryById(bucketId, resourceId).filter(_.tag.inSet(tags)).delete
 
   def insert(bucketId: String, resourceId: String, tag: String): DBIO[Int] =
     innerTable += ResourceTagRow(bucketId, resourceId, tag)

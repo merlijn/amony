@@ -36,6 +36,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
           case VideoFragment(width, height, start, end, quality) => VideoFragmentOp(resourceId, (start, end), height.get)
           case VideoThumbnail(width, height, quality, timestamp) => VideoThumbnailOp(resourceId, timestamp, height.get)
           case ImageThumbnail(width, height, quality)            => ImageThumbnailOp(resourceId, width, height)
+          case _                                                 => NoOp
         }
 
         derivedResource(fileInfo, localFileOp)
@@ -66,10 +67,8 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
     }
   }
 
-  override def getChildren(resourceId: String, tags: Set[String]): IO[Seq[(ResourceOperation, ResourceInfo)]] = {
-    ???
-
-  }
+  override def getChildren(resourceId: String, tags: Set[String]): IO[Seq[ResourceInfo]] =
+    db.getChildren(config.id, resourceId, tags)
 
   override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[ResourceInfo] = ???
 

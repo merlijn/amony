@@ -18,7 +18,7 @@ object SearchRoutes {
 
   val durationPattern = raw"(\d*)-(\d*)".r
 
-  implicit val searchResultEncoder: Encoder[SearchResult] =
+  given searchResultEncoder: Encoder[SearchResult] =
     deriveEncoder[WebSearchResponse].contramapObject[SearchResult](result =>
       WebSearchResponse(result.offset, result.total, result.results.map(m => toDto(m)), result.tags)
     )

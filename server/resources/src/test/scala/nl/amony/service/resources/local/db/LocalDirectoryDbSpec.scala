@@ -4,19 +4,26 @@ import cats.effect.IO
 import com.typesafe.config.ConfigFactory
 import nl.amony.service.resources.api.ResourceInfo
 import org.scalatest.flatspec.AnyFlatSpecLike
+import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.H2Profile
+import slick.jdbc.H2Profile.api.*
 
-class LocalDirectoryDbSpec extends AnyFlatSpecLike {
+class LocalDirectoryDbSpec extends AnyFlatSpecLike with Logging {
 
   import cats.effect.unsafe.implicits.global
 
+  // we need to load the driver class or else we get a no suitable driver found exception
+  Class.forName("org.h2.Driver")
+  
   val config =
     """
       |h2mem1-test = {
       |  db {
       |    url = "jdbc:h2:mem:test1"
       |  }
+      |
+      |  driver = org.h2.Driver
       |
       |  connectionPool = disabled
       |  profile = "slick.jdbc.H2Profile$"
@@ -95,6 +102,9 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike {
       _         <- store.insert(resource2, IO.unit)
       retrieved <- store.getAll(bucketId)
     } yield {
+      
+      logger.info(s"retrieved: ${retrieved.mkString("\n")}")
+      
       assert(retrieved.toSet == Set(resource1, resource2))
     }
 
@@ -106,8 +116,8 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike {
     val bucketId = "child-tags-test"
     val parentId = "parent"
 
-    val resourceA = createResource(bucketId, "1", Seq("a", "b", "f")).copy(parentId = Some(parentId))
-    val resourceB = createResource(bucketId, "2", Seq("a", "c", "e")).copy(parentId = Some(parentId))
+    val resourceA = createResource(bucketId, "1", tags = Seq("a", "b", "f")).copy(parentId = Some(parentId))
+    val resourceB = createResource(bucketId, "2", tags = Seq("a", "c", "e")).copy(parentId = Some(parentId))
 
     val result = for {
       _ <- store.insert(resourceA, IO.unit)

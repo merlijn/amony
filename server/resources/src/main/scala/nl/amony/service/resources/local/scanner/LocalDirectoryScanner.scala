@@ -17,11 +17,6 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.FiniteDuration
 
-extension (path: Path)
-  def getFileName: String = path.getFileName.toString
-  def getCreationTime: Long = Files.readAttributes(path, classOf[BasicFileAttributes]).creationTime().toMillis
-  def getLastModifiedTime: Long = Files.readAttributes(path, classOf[BasicFileAttributes]).lastModifiedTime().toMillis
-
 class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, storage: LocalDirectoryDb[P])(implicit runtime: IORuntime) extends Logging {
 
   private def scanDirectory(previousState: Set[ResourceInfo]): Stream[IO, ResourceInfo] = {

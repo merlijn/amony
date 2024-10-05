@@ -42,8 +42,9 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       ).unsafeRunSync()
     }
 
+  // This should not be used except for testing purposes
   def getAll(bucketId: String): IO[Seq[ResourceInfo]] =
-    dbIO(resourcesTable.allForBucket(bucketId).result).map(_.map(_.toResource(Seq.empty)).toSeq)
+    getWithTags(bucketId)
 
   def deleteByRelativePath(bucketId: String, relativePath: String): IO[Int] = 
     dbIO(resourcesTable.queryByPath(bucketId, relativePath).delete)
@@ -78,23 +79,25 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
     dbIO(transaction)
   }
 
-  def getAllByIds(bucketId: String, resourceIds: Seq[String]): IO[Seq[ResourceInfo]] = {
+  private def getWithTags(bucketId: String, filter: Option[resourcesTable.LocalFilesSchema => Rep[Boolean]] = None) = {
+    val query = filter match {
+      case Some(f) => queries.joinResourceWithTags(bucketId).filter((resource, tag) => f(resource))
+      case None    => queries.joinResourceWithTags(bucketId)
+    }
 
-    val q = queries.joinResourceWithTags(bucketId)
-      .filter(_._1.resourceId.inSet(resourceIds))
-      .result
+    dbIO(query.result
       .map { rows =>
         val tagsForResource: Map[String, Seq[String]] =
-          rows.groupBy(_._1.hash).view.mapValues { rows =>
-            rows.map(_._2.tag)
-          }.toSeq.toMap
+          rows.groupBy(_._1.hash).view.mapValues { rows => rows.map(_._2.tag) }.toSeq.toMap
 
         rows.map { case (resourceRow, _) =>
           resourceRow.toResource(tagsForResource.getOrElse(resourceRow.hash, Seq.empty))
         }
-      }
+      })
+  }
 
-    dbIO(q)
+  def getAllByIds(bucketId: String, resourceIds: Seq[String]): IO[Seq[ResourceInfo]] = {
+    getWithTags(bucketId, Some(_.resourceId.inSet(resourceIds)))
   }
 
   def getChildren(bucketId: String, parentId: String, tags: Set[String]): IO[Seq[(ResourceInfo)]] = {
@@ -141,6 +144,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       case ResourceAdded(resource)          => insert(resource, IO.unit)
       case ResourceDeleted(resource)        => deleteResource(resource.bucketId, resource.hash)
       case ResourceMoved(resource, oldPath) => move(resource.bucketId, oldPath, resource)
+      case _ => IO.unit
     }
   }
 }

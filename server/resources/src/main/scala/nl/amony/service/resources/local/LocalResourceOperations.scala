@@ -15,6 +15,11 @@ object LocalResourceOperations {
     def outputFilename: String
     def createFile(inputFile: Path, outputDir: Path): IO[Path]
   }
+  
+  val NoOp = new ResourceOp {
+    override def outputFilename: String = ""
+    override def createFile(inputFile: Path, outputDir: Path): IO[Path] = IO.raiseError(new Exception("NoOp"))
+  }
 
   case class VideoThumbnailOp(resourceId: String, timestamp: Long, quality: Int) extends ResourceOp with Logging {
     def outputFilename: String = s"${resourceId}_${timestamp}_${quality}p.webp"

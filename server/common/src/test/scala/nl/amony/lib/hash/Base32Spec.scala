@@ -21,8 +21,5 @@ class Base32Spec extends AnyFlatSpecLike {
     hashBytes.copyToArray(hash15, 0, 15)
 
     val b = Base32.encode(hash15)
-
-    println(a)
-    println(b)
   }
 }

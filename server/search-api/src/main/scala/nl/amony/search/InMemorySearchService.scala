@@ -65,6 +65,7 @@ class InMemorySearchService extends SearchService with Logging {
             val newResource = resource.copy(
               title = title.orElse(resource.title),
               description = description.orElse(resource.description),
+              tags = (resource.tags.toSet -- deletedTags ++ newTags).toSeq
             )
 
             resourceIndex += resourceId -> newResource

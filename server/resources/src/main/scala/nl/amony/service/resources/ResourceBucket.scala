@@ -20,7 +20,7 @@ trait ResourceBucket {
    */
   def getOrCreate(resourceId: String, operation: ResourceOperation, tags: Set[String]): IO[Option[ResourceContent]]
 
-  def getChildren(resourceId: String, tags: Set[String]): IO[Seq[(ResourceOperation, ResourceInfo)]]
+  def getChildren(resourceId: String, tags: Set[String]): IO[Seq[ResourceInfo]]
 
   def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[ResourceInfo]
 }
