@@ -1,4 +1,4 @@
-package nl.amony.service.resources.local
+package nl.amony.service.resources.local.scanner
 
 import scribe.Logging
 
@@ -12,7 +12,7 @@ class RecursiveFileVisitor(fileNameFilter: Path => Boolean) extends SimpleFileVi
   val files = mutable.ListBuffer.empty[Path]
 
   override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult =
-    if (dir.startsWith("."))
+    if (dir.getFileName.toString.startsWith("."))
       FileVisitResult.SKIP_SUBTREE
     else
       FileVisitResult.CONTINUE

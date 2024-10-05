@@ -1,15 +1,14 @@
-package nl.amony.service.resources.local
+package nl.amony.service.resources.local.scanner
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import cats.implicits.*
 import fs2.Stream
-import fs2.Stream.suspend
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.ResourceContent
 import nl.amony.service.resources.api.events.*
 import nl.amony.service.resources.api.operations.ResourceOperation
 import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
+import nl.amony.service.resources.local.LocalResourceMeta
 import nl.amony.service.resources.local.db.LocalDirectoryDb
 import scribe.Logging
 import slick.jdbc.JdbcProfile
@@ -17,6 +16,11 @@ import slick.jdbc.JdbcProfile
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.FiniteDuration
+
+extension (path: Path)
+  def getFileName: String = path.getFileName.toString
+  def getCreationTime: Long = Files.readAttributes(path, classOf[BasicFileAttributes]).creationTime().toMillis
+  def getLastModifiedTime: Long = Files.readAttributes(path, classOf[BasicFileAttributes]).lastModifiedTime().toMillis
 
 class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, storage: LocalDirectoryDb[P])(implicit runtime: IORuntime) extends Logging {
 
@@ -29,9 +33,9 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
     def getByHash(hash: String): Option[ResourceInfo] = previousState.find(_.hash == hash)
     def filterPath(path: Path) = config.filterFileName(path.getFileName.toString)
 
-    logger.info(s"Scanning directory: ${mediaPath.toAbsolutePath}")
-
     def allFiles() = RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath, filterPath)
+    
+    logger.debug(s"Scanning directory: ${mediaPath.toAbsolutePath}")
 
     Stream.fromIterator[IO](allFiles().iterator, 10)
       .filter { file =>
@@ -53,11 +57,12 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
               getByPath(relativePath) match {
                 case None => hashingAlgorithm.createHash(path)
                 case Some(m) =>
-                  if (m.lastModifiedTime != Some(fileAttributes.lastModifiedTime().toMillis)) {
-                    logger.warn(s"$path last modified time is different from what last seen, recomputing hash")
-                    hashingAlgorithm.createHash(path)
-                  } else {
+                  // if the last modified time is equal to what we have seen before, we assume the hash is still valid
+                  if (m.lastModifiedTime == Some(fileAttributes.lastModifiedTime().toMillis)) {
                     m.hash
+                  } else {
+                    logger.warn(s"$path has been modified since last seen, recomputing hash")
+                    hashingAlgorithm.createHash(path)
                   }
               }
             }
@@ -129,16 +134,21 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
 
     newResources ::: deletedResources ::: movedResources
   }
-  
+
+  /**
+   * Given an initial state, this method will poll the directory for changes and emit events for new, deleted and moved resources.
+   * 
+   * The state will be kept in memory and is not persisted.
+   */
   def pollingStream(initialState: Set[ResourceInfo], pollInterval: FiniteDuration): Stream[IO, ResourceEvent] = {
 
     def next(prev: Set[ResourceInfo]): IO[(Seq[ResourceEvent], Set[ResourceInfo])] =
       scanDirectory(prev).compile.toList.map { current => diff(prev, current.toSet) -> current.toSet }
 
-    def recur(prev: Set[ResourceInfo]): Stream[IO, Seq[ResourceEvent]] =
+    def unfoldRecursive(prev: Set[ResourceInfo]): Stream[IO, Seq[ResourceEvent]] =
       Stream.eval(next(prev)).flatMap:
-        case (o, s) => Stream.emit(o) ++ (Stream.sleep[IO](pollInterval) >> recur(s))
+        case (events, state) => Stream.emit(events) ++ (Stream.sleep[IO](pollInterval) >> unfoldRecursive(state))
 
-    Stream.suspend(recur(initialState)).flatMap(Stream.emits)
+    Stream.suspend(unfoldRecursive(initialState)).flatMap(Stream.emits)
   }
 }

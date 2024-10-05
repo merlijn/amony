@@ -2,7 +2,7 @@ package nl.amony.webserver
 
 import cats.effect.{ExitCode, IO, IOApp}
 import com.typesafe.config.Config
-import fs2.{Pipe, Stream}
+import fs2.Pipe
 import nl.amony.lib.eventbus.EventTopic
 import nl.amony.lib.eventbus.jdbc.SlickEventBus
 import nl.amony.search.InMemorySearchService
@@ -10,7 +10,8 @@ import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
 import nl.amony.service.resources.api.events.{ResourceAdded, ResourceEvent}
 import nl.amony.service.resources.local.db.LocalDirectoryDb
-import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalDirectoryScanner}
+import nl.amony.service.resources.local.LocalDirectoryBucket
+import nl.amony.service.resources.local.scanner.LocalDirectoryScanner
 import nl.amony.service.resources.{ResourceBucket, ResourceConfig}
 import pureconfig.{ConfigReader, ConfigSource}
 import scribe.Logging
@@ -69,9 +70,9 @@ object Main extends IOApp with ConfigLoader with Logging {
 
         logger.info(s"Starting scanner for ${localConfig.resourcePath.toAbsolutePath}")
 
-        val f = scanner.pollingStream(localFileStorage.getAll(localConfig.id).map(_.toSet).unsafeRunSync(), 5.seconds)
-          .through(debug)
+        val f = scanner.pollingStream(localFileStorage.getAll(localConfig.id).map(_.toSet).unsafeRunSync(), 10.seconds)
           .through(updateDb)
+          .through(debug)
           .through(publish)
           .compile
           .drain

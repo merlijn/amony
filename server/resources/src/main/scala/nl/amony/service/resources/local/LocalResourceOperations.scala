@@ -13,19 +13,19 @@ object LocalResourceOperations {
   sealed trait ResourceOp {
 
     def outputFilename: String
-    def createFile(config: LocalDirectoryConfig, relativePath: String): IO[Path]
+    def createFile(inputFile: Path, outputDir: Path): IO[Path]
   }
 
   case class VideoThumbnailOp(resourceId: String, timestamp: Long, quality: Int) extends ResourceOp with Logging {
     def outputFilename: String = s"${resourceId}_${timestamp}_${quality}p.webp"
 
-    override def createFile(config: LocalDirectoryConfig, relativePath: String): IO[Path] = {
+    override def createFile(inputFile: Path, outputDir: Path): IO[Path] = {
 
-      val outputFile = config.writePath.resolve(outputFilename)
-      logger.info(s"Creating thumbnail for ${relativePath} with timestamp ${timestamp}")
+      val outputFile = outputDir.resolve(outputFilename)
+      logger.debug(s"Creating thumbnail for ${inputFile} with timestamp ${timestamp}")
 
       FFMpeg.createThumbnail(
-        inputFile = config.resourcePath.resolve(relativePath),
+        inputFile = inputFile,
         timestamp = timestamp,
         outputFile = Some(outputFile),
         scaleHeight = Some(quality)
@@ -36,14 +36,14 @@ object LocalResourceOperations {
   case class ImageThumbnailOp(resourceId: String, width: Option[Int], height: Option[Int]) extends ResourceOp with Logging {
     def outputFilename: String = s"${resourceId}_${height.getOrElse("")}p.webp"
 
-    override def createFile(config: LocalDirectoryConfig, relativePath: String): IO[Path] = {
+    override def createFile(inputFile: Path, outputDir: Path): IO[Path] = {
 
-      val outputFile = config.writePath.resolve(outputFilename)
+      val outputFile = outputDir.resolve(outputFilename)
 
-      logger.info(s"Creating image thumbnail for ${relativePath}")
+      logger.debug(s"Creating image thumbnail for ${inputFile}")
 
       ImageMagick.resizeImage(
-        inputFile = config.resourcePath.resolve(relativePath),
+        inputFile = inputFile,
         outputFile = Some(outputFile),
         width = width,
         height = height
@@ -54,11 +54,10 @@ object LocalResourceOperations {
   case class VideoFragmentOp(resourceId: String, range: (Long, Long), height: Int) extends ResourceOp with Logging {
     def outputFilename: String = s"${resourceId}_${range._1}-${range._2}_${height}p.mp4"
 
-    def createFile(config: LocalDirectoryConfig, relativePath: String): IO[Path] = {
+    def createFile(inputFile: Path, outputDir: Path): IO[Path] = {
 
-      logger.debug(s"Creating fragment for ${relativePath} with range ${range}")
-      val inputFile = config.resourcePath.resolve(relativePath)
-      val outputFile = config.writePath.resolve(outputFilename)
+      logger.debug(s"Creating fragment for ${inputFile} with range ${range}")
+      val outputFile = outputDir.resolve(outputFilename)
 
       FFMpeg.transcodeToMp4(
         inputFile = inputFile,

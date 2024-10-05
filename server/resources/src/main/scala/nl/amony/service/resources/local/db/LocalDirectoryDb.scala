@@ -3,7 +3,6 @@ package nl.amony.service.resources.local.db
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import nl.amony.service.resources.api.ResourceInfo
-import nl.amony.service.resources.api.events.ResourceEvent
 import nl.amony.service.resources.api.operations.ResourceOperation
 import scribe.Logging
 import slick.basic.DatabaseConfig

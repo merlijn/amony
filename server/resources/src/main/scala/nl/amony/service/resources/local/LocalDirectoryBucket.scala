@@ -42,13 +42,14 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
     }
   }
 
-  private def derivedResource(fileInfo: ResourceInfo, key: ResourceOp): IO[Option[LocalFileContent]] = {
+  private def derivedResource(fileInfo: ResourceInfo, operation: ResourceOp): IO[Option[LocalFileContent]] = {
 
     // this is to prevent 2 or more requests for the same resource to trigger the operation multiple times
-    val result = resourceStore.compute(key, (_, value) => {
-      val file = config.writePath.resolve(key.outputFilename)
+    val result = resourceStore.compute(operation, (_, value) => {
+      val outputDir = config.writePath
+      val file = outputDir.resolve(operation.outputFilename)
       if (!file.exists())
-        key.createFile(config, fileInfo.path).memoize.flatten
+        operation.createFile(config.resourcePath.resolve(fileInfo.path), outputDir).memoize.flatten
       else
         IO.pure(file)
     })
