@@ -8,6 +8,7 @@ import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
 import nl.amony.service.resources.api.events.*
+import slick.lifted.LiteralColumn
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.Try
@@ -26,10 +27,9 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
 
   private object queries {
     def joinResourceWithTags(bucketId: String) =
-      resourcesTable.innerTable.join(tagsTable.innerTable)
+      resourcesTable.innerTable.joinLeft(tagsTable.innerTable)
         .on((a, b) => a.bucketId === b.bucketId && a.resourceId === b.resourceId)
-        .filter(_._1.bucketId === bucketId)
-        .filter(_._2.bucketId === bucketId)
+        .filter((resource, maybeTag) => resource.bucketId === bucketId)
   }
 
   def createTablesIfNotExists(): Unit =
@@ -42,7 +42,6 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       ).unsafeRunSync()
     }
 
-  // This should not be used except for testing purposes
   def getAll(bucketId: String): IO[Seq[ResourceInfo]] =
     getWithTags(bucketId)
 
@@ -86,30 +85,26 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
     }
 
     dbIO(query.result
-      .map { rows =>
-        val tagsForResource: Map[String, Seq[String]] =
-          rows.groupBy(_._1.hash).view.mapValues { rows => rows.map(_._2.tag) }.toSeq.toMap
-
-        rows.map { case (resourceRow, _) =>
-          resourceRow.toResource(tagsForResource.getOrElse(resourceRow.hash, Seq.empty))
-        }
+      .map { _.groupBy(_._1).view.mapValues { 
+            rows => rows.map((_, maybeTag) => maybeTag.map(_.tag)).flatten
+          }.map {
+            case (resource, tags) => resource.toResource(tags)
+          }.toSeq
       })
   }
 
-  def getAllByIds(bucketId: String, resourceIds: Seq[String]): IO[Seq[ResourceInfo]] = {
+  def getAllByIds(bucketId: String, resourceIds: Seq[String]): IO[Seq[ResourceInfo]] =
     getWithTags(bucketId, Some(_.resourceId.inSet(resourceIds)))
-  }
 
-  def getChildren(bucketId: String, parentId: String, tags: Set[String]): IO[Seq[(ResourceInfo)]] = {
+  def getChildren(bucketId: String, parentId: String, tags: Set[String]): IO[Seq[(ResourceInfo)]] =
     def resourceIdsForTag = queries.joinResourceWithTags(bucketId)
-      .filter(_._1.parentId === parentId)
-      .filter(_._2.tag.inSet(tags))
+      .filter((resource, maybeTag) => resource.parentId === parentId)
+      .filter((resource, maybeTag) => maybeTag.fold(LiteralColumn(true))(_.tag.inSet(tags)))
       .distinct.map(_._1.resourceId).result
 
     dbIO(resourceIdsForTag).flatMap {
       resourceIds => getAllByIds(bucketId, resourceIds)
     }
-  }
 
   def insertChildResource(parentId: String, operation: ResourceOperation, resource: ResourceInfo) = {
 
@@ -141,7 +136,9 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
   
   def applyEvent(event: ResourceEvent): IO[Unit] = {
     event match {
-      case ResourceAdded(resource)          => insert(resource, IO.unit)
+      case ResourceAdded(resource)          =>
+        logger.info(s"Inserting resource: $resource")
+        insert(resource, IO.unit)
       case ResourceDeleted(resource)        => deleteResource(resource.bucketId, resource.hash)
       case ResourceMoved(resource, oldPath) => move(resource.bucketId, oldPath, resource)
       case _ => IO.unit

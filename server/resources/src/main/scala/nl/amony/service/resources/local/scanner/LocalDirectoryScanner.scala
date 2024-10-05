@@ -30,7 +30,7 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
 
     def allFiles() = RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath, filterPath)
     
-    logger.debug(s"Scanning directory: ${mediaPath.toAbsolutePath}")
+    logger.info(s"Scanning directory: ${mediaPath.toAbsolutePath}, previous state size: ${previousState.size}")
 
     Stream.fromIterator[IO](allFiles().iterator, 10)
       .filter { file =>

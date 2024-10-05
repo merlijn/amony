@@ -15,7 +15,7 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike with Logging {
 
   // we need to load the driver class or else we get a no suitable driver found exception
   Class.forName("org.h2.Driver")
-  
+
   val config =
     """
       |h2mem1-test = {
@@ -102,9 +102,6 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike with Logging {
       _         <- store.insert(resource2, IO.unit)
       retrieved <- store.getAll(bucketId)
     } yield {
-      
-      logger.info(s"retrieved: ${retrieved.mkString("\n")}")
-      
       assert(retrieved.toSet == Set(resource1, resource2))
     }
 
