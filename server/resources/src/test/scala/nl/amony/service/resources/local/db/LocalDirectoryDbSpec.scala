@@ -2,7 +2,7 @@ package nl.amony.service.resources.local.db
 
 import cats.effect.IO
 import com.typesafe.config.ConfigFactory
-import nl.amony.service.resources.api.ResourceInfo
+import nl.amony.service.resources.api.{ImageMeta, ResourceInfo}
 import org.scalatest.flatspec.AnyFlatSpecLike
 import scribe.Logging
 import slick.basic.DatabaseConfig
@@ -90,6 +90,24 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike with Logging {
     result.unsafeRunSync()
   }
 
+  it should "updating a resource with the same value should have no effect (idempotent)" in {
+
+    val bucketId = "update-same-resource-test"
+    val resourceId = randomId()
+    val resourceOriginal = createResource(bucketId, resourceId, tags = Seq("c", "d", "e")).copy(contentMeta = ImageMeta(100, 100))
+
+    val result = for {
+      _ <- store.upsert(resourceOriginal, IO.unit)
+      retrieved <- store.getByHash(bucketId, resourceId)
+      _ <- store.upsert(retrieved.get, IO.unit)
+      retrievedAgain <- store.getByHash(bucketId, resourceId)
+    } yield {
+      assert(retrievedAgain == Some(resourceOriginal))
+    }
+
+    result.unsafeRunSync()
+  }
+
   it should "retrieve multiple resources by id" in {
 
     val bucketId = "multiple-get-by-id-test"
@@ -114,7 +132,7 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike with Logging {
     val bucketId = "multiple-get-test"
 
     val resource1 = createResource(bucketId, "1", tags = Seq("a", "b"))
-    val resource2 = createResource(bucketId, "2", tags = Seq("c", "d", "e"))
+    val resource2 = createResource(bucketId, "2", tags = Seq("c", "d", "e")).copy(contentMeta = ImageMeta(100, 100))
 
     val result = for {
       _         <- store.insert(resource1, IO.unit)

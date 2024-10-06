@@ -1,6 +1,7 @@
 package nl.amony.service.resources.local.db
 
 import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta, ResourceMetaMessage}
+import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
 
@@ -69,7 +70,7 @@ object LocalFileRow  {
   )
 }
 
-class LocalFilesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) {
+class LocalFilesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends Logging {
 
   import dbConfig.profile.api._
 
@@ -124,8 +125,11 @@ class LocalFilesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) {
   def update(row: LocalFileRow) =
     queryByHash(row.bucketId, row.hash).update(row)
 
+  def update(resource: ResourceInfo) =
+    queryByHash(resource.bucketId, resource.hash).update(LocalFileRow.fromResource(resource))
+
   def insertOrUpdate(resource: ResourceInfo) =
-    // The insertOrUpdate operation does not work in combination with a byte array field and hsqldb
+    // ! The insertOrUpdate operation does not work in combination with a byte array field and hsqldb
     innerTable.insertOrUpdate(LocalFileRow.fromResource(resource))
 
   def allForBucket(bucketId: String) =

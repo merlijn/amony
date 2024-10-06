@@ -39,14 +39,15 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
 
       query.result
         .map {
-          _.groupBy(_._1).view.mapValues {
-            rows => rows.map((_, maybeTag) => maybeTag.map(_.tag)).flatten
-          }.map {
-            case (resource, tags) => resource.toResource(tags)
+          _.groupBy(_._1.hash).values.map {
+            rows =>
+              val tags = rows.map((_, maybeTag) => maybeTag.map(_.tag)).flatten
+              val resource = rows.head._1 // this is safe since we know there is at least one row
+              resource.toResource(tags)
           }.toSeq
         }
     }
-    
+
     def insertOrUpdate(resource: ResourceInfo) = {
       resourcesTable.insertOrUpdate(resource)
     }
@@ -71,7 +72,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
   def update(bucketId: String, resourceId: String)(fn: Option[ResourceInfo] => ResourceInfo): IO[Unit] = {
     val q = (for {
       resource <- queries.getWithTags(bucketId, Some(_.resourceId === resourceId))
-      _        <- resource.headOption.map { row => resourcesTable.insertOrUpdate(fn(Some(row))) }.getOrElse(DBIO.successful(0))
+      _        <- resource.headOption.map { row => resourcesTable.update(fn(Some(row))) }.getOrElse(DBIO.successful(0))
     } yield ()).transactionally
 
     dbIO(q)
@@ -85,7 +86,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
         _ <- DBIO.from(effect.unsafeToFuture())
       } yield ()).transactionally
     )
-    
+
   def upsert(resource: ResourceInfo, effect: => IO[Unit]): IO[Unit] =
     dbIO(
       (for {
@@ -95,16 +96,8 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       } yield ()).transactionally
     )
 
-  def move(bucketId: String, oldPath: String, resource: ResourceInfo): IO[Unit] = {
-    val transaction =
-      (for {
-        _ <- resourcesTable.insertOrUpdate(resource)
-        _ <- tagsTable.insert(bucketId, resource.hash, resource.tags.toSet)
-        _ <- resourcesTable.queryByPath(bucketId, oldPath).delete
-      } yield ()).transactionally
-
-    dbIO(transaction)
-  }
+  def move(bucketId: String, oldPath: String, resource: ResourceInfo): IO[Unit] =
+    dbIO(resourcesTable.update(resource)).map(_ => ())
 
   def deleteResource(bucketId: String, resourceId: String): IO[Unit] = {
     val transaction =

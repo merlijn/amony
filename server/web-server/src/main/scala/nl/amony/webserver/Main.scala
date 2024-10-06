@@ -71,8 +71,8 @@ object Main extends IOApp with ConfigLoader with Logging {
         logger.info(s"Starting scanner for ${localConfig.resourcePath.toAbsolutePath}")
 
         val f = scanner.pollingStream(localFileStorage.getAll(localConfig.id).map(_.toSet).unsafeRunSync(), 10.seconds)
-          .through(updateDb)
           .through(debug)
+          .through(updateDb)
           .through(publish)
           .compile
           .drain
