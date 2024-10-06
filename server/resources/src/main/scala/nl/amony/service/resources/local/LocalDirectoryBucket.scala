@@ -85,6 +85,6 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
   override def updateUserMeta(resourceId: String, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] =
     db.updateUserMeta(
       config.id, resourceId, title, description, tags, 
-      IO { topic.publish(ResourceUserMetaUpdated(config.id, resourceId, title, description)) }
+      IO { topic.publish(ResourceUserMetaUpdated(config.id, resourceId, title, description, tags)) }
     )
 }

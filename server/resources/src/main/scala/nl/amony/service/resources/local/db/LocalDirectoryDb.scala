@@ -136,6 +136,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
                 _ <- resourceRow.headOption.map { row =>
                        resourcesTable.update(row.copy(title = title, description = description))
                      }.getOrElse(DBIO.successful(0))
+                _ <- tagsTable.insertOrUpdate(bucketId, hash, tags.toSet)
                 _ <- DBIO.from(effect.unsafeToFuture())
     } yield ()).transactionally
 

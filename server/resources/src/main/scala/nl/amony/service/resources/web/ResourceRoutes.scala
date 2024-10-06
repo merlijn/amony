@@ -48,7 +48,7 @@ object ResourceRoutes extends Logging {
             case None => NotFound()
             case Some(resource) =>
               req.as[UserMetaDto].flatMap { userMeta =>
-                bucket.updateUserMeta(resourceId, userMeta.title, userMeta.description, List.empty).flatMap(_ => Ok())
+                bucket.updateUserMeta(resourceId, userMeta.title, userMeta.description, userMeta.tags).flatMap(_ => Ok())
               }
           
         }

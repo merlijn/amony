@@ -60,12 +60,12 @@ class InMemorySearchService extends SearchService with Logging {
           case ResourceMoved(resource, _) =>
             resourceIndex += resource.hash -> resource
 
-          case ResourceUserMetaUpdated(bucketId, resourceId, title, description, deletedTags, newTags) =>
+          case ResourceUserMetaUpdated(bucketId, resourceId, title, description, newTags) =>
             val resource = resourceIndex(resourceId)
             val newResource = resource.copy(
               title = title.orElse(resource.title),
               description = description.orElse(resource.description),
-              tags = (resource.tags.toSet -- deletedTags ++ newTags).toSeq
+              tags = newTags
             )
 
             resourceIndex += resourceId -> newResource

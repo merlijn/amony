@@ -32,7 +32,6 @@ message ResourceUserMetaUpdated {
   optional string newTitle = 3;
   optional string newDescription = 4;
   repeated string newTags = 5;
-  repeated string removedTags = 6;
 }
 
 message ResourceMoved {
