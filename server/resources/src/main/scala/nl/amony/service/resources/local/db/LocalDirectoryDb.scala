@@ -69,14 +69,13 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
   def deleteByRelativePath(bucketId: String, relativePath: String): IO[Int] = 
     dbIO(resourcesTable.queryByPath(bucketId, relativePath).delete)
 
-  def update(bucketId: String, resourceId: String)(fn: Option[ResourceInfo] => ResourceInfo): IO[Unit] = {
-    val q = (for {
-      resource <- queries.getWithTags(bucketId, Some(_.resourceId === resourceId))
-      _        <- resource.headOption.map { row => resourcesTable.update(fn(Some(row))) }.getOrElse(DBIO.successful(0))
-    } yield ()).transactionally
-
-    dbIO(q)
-  }
+  def update(bucketId: String, resourceId: String)(fn: Option[ResourceInfo] => ResourceInfo): IO[Unit] = 
+    dbIO(
+      (for {
+        resource <- queries.getWithTags(bucketId, Some(_.resourceId === resourceId))
+        _        <- resource.headOption.map { row => resourcesTable.update(fn(Some(row))) }.getOrElse(DBIO.successful(0))
+      } yield ()).transactionally
+    )
 
   def insert(resource: ResourceInfo, effect: => IO[Unit]): IO[Unit] =
     dbIO(
@@ -96,8 +95,13 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       } yield ()).transactionally
     )
 
-  def move(bucketId: String, oldPath: String, resource: ResourceInfo): IO[Unit] =
-    dbIO(resourcesTable.update(resource)).map(_ => ())
+  private def move(bucketId: String, oldPath: String, resource: ResourceInfo): IO[Unit] =
+    dbIO(
+      (for {
+        old <- resourcesTable.queryByPath(bucketId, oldPath).result.head
+        _   <- resourcesTable.update(old.copy(relativePath = resource.path))
+      } yield ()).transactionally
+    )
 
   def deleteResource(bucketId: String, resourceId: String): IO[Unit] = {
     val transaction =
