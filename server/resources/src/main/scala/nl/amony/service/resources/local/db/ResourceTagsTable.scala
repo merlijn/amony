@@ -1,13 +1,16 @@
 package nl.amony.service.resources.local.db
 
+import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
 
+import scala.concurrent.ExecutionContext
+
 case class ResourceTagRow(bucketId: String, resourceId: String, tag: String)
 
-class ResourceTagsTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) {
+class ResourceTagsTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends Logging {
 
-  import dbConfig.profile.api._
+  import dbConfig.profile.api.*
 
   class ResourceTags(ttag: Tag) extends Table[ResourceTagRow](ttag, "resource_tags") {
 
@@ -30,18 +33,21 @@ class ResourceTagsTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) {
   def getTags(bucketId: String, resourceId: String) =
     queryById(bucketId, resourceId).map(_.tag)
     
-  def removeTags(bucketId: String, resourceId: String, tags: Seq[String]) =
+  def removeTags(bucketId: String, resourceId: String, tags: Set[String]) =
     queryById(bucketId, resourceId).filter(_.tag.inSet(tags)).delete
 
-  def insert(bucketId: String, resourceId: String, tag: String): DBIO[Int] =
-    innerTable += ResourceTagRow(bucketId, resourceId, tag)
-
-  def insert(bucketId: String, resourceId: String, tags: Seq[String]): DBIO[Option[Int]] = {
+  def insert(bucketId: String, resourceId: String, tags: Set[String])(implicit ec: ExecutionContext): DBIO[Int] =
     if (tags.isEmpty)
-      DBIO.successful(None)
+      DBIO.successful(0)
     else
-      innerTable ++= tags.map(ResourceTagRow(bucketId, resourceId, _))
-  }
+      (innerTable ++= tags.map(ResourceTagRow(bucketId, resourceId, _))).map(_.getOrElse(0))
+
+  def insertOrUpdate(bucketId: String, resourceId: String, tags: Set[String])(implicit ec: ExecutionContext) =
+    for {
+      currentTags <- queryById(bucketId, resourceId).map(_.tag).result.map(_.toSet)
+      removedTags <- removeTags(bucketId, resourceId, currentTags -- tags)
+      addedTags   <- insert(bucketId, resourceId, tags -- currentTags)
+    } yield addedTags + removedTags
 
   def delete(bucketId: String, resourceId: String): DBIO[Int] =
     queryById(bucketId, resourceId).delete

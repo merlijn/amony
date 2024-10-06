@@ -71,6 +71,25 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike with Logging {
     result.unsafeRunSync()
   }
 
+  it should "update a resource" in {
+
+    val bucketId = "update-resource-test"
+    val resourceId = randomId()
+    val resourceOriginal = createResource(bucketId, resourceId, Seq("a"))
+    val resourceUpdated = resourceOriginal.copy(tags = Seq("b", "c"), description = Some("updated"))
+
+    val result = for {
+      _ <- store.upsert(resourceOriginal, IO.unit)
+      _ <- store.upsert(resourceUpdated, IO.unit)
+      retrieved <- store.getByHash(bucketId, resourceId)
+    } yield {
+
+      assert(retrieved == Some(resourceUpdated))
+    }
+
+    result.unsafeRunSync()
+  }
+
   it should "retrieve multiple resources by id" in {
 
     val bucketId = "multiple-get-by-id-test"

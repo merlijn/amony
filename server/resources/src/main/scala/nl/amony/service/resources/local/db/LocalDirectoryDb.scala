@@ -30,6 +30,26 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       resourcesTable.innerTable.joinLeft(tagsTable.innerTable)
         .on((a, b) => a.bucketId === b.bucketId && a.resourceId === b.resourceId)
         .filter((resource, maybeTag) => resource.bucketId === bucketId)
+
+    def getWithTags(bucketId: String, filter: Option[resourcesTable.LocalFilesSchema => Rep[Boolean]] = None) = {
+      val query = filter match {
+        case Some(f) => joinResourceWithTags(bucketId).filter((resource, tag) => f(resource))
+        case None => joinResourceWithTags(bucketId)
+      }
+
+      query.result
+        .map {
+          _.groupBy(_._1).view.mapValues {
+            rows => rows.map((_, maybeTag) => maybeTag.map(_.tag)).flatten
+          }.map {
+            case (resource, tags) => resource.toResource(tags)
+          }.toSeq
+        }
+    }
+    
+    def insertOrUpdate(resource: ResourceInfo) = {
+      resourcesTable.insertOrUpdate(resource)
+    }
   }
 
   def createTablesIfNotExists(): Unit =
@@ -43,16 +63,34 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
     }
 
   def getAll(bucketId: String): IO[Seq[ResourceInfo]] =
-    getWithTags(bucketId)
+    dbIO(queries.getWithTags(bucketId))
 
   def deleteByRelativePath(bucketId: String, relativePath: String): IO[Int] = 
     dbIO(resourcesTable.queryByPath(bucketId, relativePath).delete)
+
+  def update(bucketId: String, resourceId: String)(fn: Option[ResourceInfo] => ResourceInfo): IO[Unit] = {
+    val q = (for {
+      resource <- queries.getWithTags(bucketId, Some(_.resourceId === resourceId))
+      _        <- resource.headOption.map { row => resourcesTable.insertOrUpdate(fn(Some(row))) }.getOrElse(DBIO.successful(0))
+    } yield ()).transactionally
+
+    dbIO(q)
+  }
 
   def insert(resource: ResourceInfo, effect: => IO[Unit]): IO[Unit] =
     dbIO(
       (for {
         _ <- resourcesTable.insert(resource)
-        _ <- tagsTable.insert(resource.bucketId, resource.hash, resource.tags)
+        _ <- tagsTable.insert(resource.bucketId, resource.hash, resource.tags.toSet)
+        _ <- DBIO.from(effect.unsafeToFuture())
+      } yield ()).transactionally
+    )
+    
+  def upsert(resource: ResourceInfo, effect: => IO[Unit]): IO[Unit] =
+    dbIO(
+      (for {
+        _ <- resourcesTable.insertOrUpdate(resource)
+        _ <- tagsTable.insertOrUpdate(resource.bucketId, resource.hash, resource.tags.toSet)
         _ <- DBIO.from(effect.unsafeToFuture())
       } yield ()).transactionally
     )
@@ -61,7 +99,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
     val transaction =
       (for {
         _ <- resourcesTable.insertOrUpdate(resource)
-        _ <- tagsTable.insert(bucketId, resource.hash, resource.tags)
+        _ <- tagsTable.insert(bucketId, resource.hash, resource.tags.toSet)
         _ <- resourcesTable.queryByPath(bucketId, oldPath).delete
       } yield ()).transactionally
 
@@ -78,23 +116,8 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
     dbIO(transaction)
   }
 
-  private def getWithTags(bucketId: String, filter: Option[resourcesTable.LocalFilesSchema => Rep[Boolean]] = None) = {
-    val query = filter match {
-      case Some(f) => queries.joinResourceWithTags(bucketId).filter((resource, tag) => f(resource))
-      case None    => queries.joinResourceWithTags(bucketId)
-    }
-
-    dbIO(query.result
-      .map { _.groupBy(_._1).view.mapValues { 
-            rows => rows.map((_, maybeTag) => maybeTag.map(_.tag)).flatten
-          }.map {
-            case (resource, tags) => resource.toResource(tags)
-          }.toSeq
-      })
-  }
-
   def getAllByIds(bucketId: String, resourceIds: Seq[String]): IO[Seq[ResourceInfo]] =
-    getWithTags(bucketId, Some(_.resourceId.inSet(resourceIds)))
+    dbIO(queries.getWithTags(bucketId, Some(_.resourceId.inSet(resourceIds))))
 
   def getChildren(bucketId: String, parentId: String, tags: Set[String]): IO[Seq[(ResourceInfo)]] =
     def resourceIdsForTag = queries.joinResourceWithTags(bucketId)
@@ -136,9 +159,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
   
   def applyEvent(event: ResourceEvent): IO[Unit] = {
     event match {
-      case ResourceAdded(resource)          =>
-        logger.info(s"Inserting resource: $resource")
-        insert(resource, IO.unit)
+      case ResourceAdded(resource)          => insert(resource, IO.unit)
       case ResourceDeleted(resource)        => deleteResource(resource.bucketId, resource.hash)
       case ResourceMoved(resource, oldPath) => move(resource.bucketId, oldPath, resource)
       case _ => IO.unit
