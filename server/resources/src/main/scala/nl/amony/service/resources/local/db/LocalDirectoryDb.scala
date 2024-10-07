@@ -86,12 +86,12 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       } yield ()).transactionally
     )
 
-  def upsert(resource: ResourceInfo, effect: => IO[Unit]): IO[Unit] =
+  def upsert(resource: ResourceInfo, effect: () => IO[Unit]): IO[Unit] =
     dbIO(
       (for {
         _ <- resourcesTable.insertOrUpdate(resource)
         _ <- tagsTable.insertOrUpdate(resource.bucketId, resource.hash, resource.tags.toSet)
-        _ <- DBIO.from(effect.unsafeToFuture())
+        _ <- DBIO.from(effect().unsafeToFuture())
       } yield ()).transactionally
     )
 
@@ -103,11 +103,12 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       } yield ()).transactionally
     )
 
-  def deleteResource(bucketId: String, resourceId: String): IO[Unit] = {
+  def deleteResource(bucketId: String, resourceId: String, effect: () => IO[Unit] = () => IO.unit) : IO[Unit] = {
     val transaction =
       (for {
         _ <- resourcesTable.queryByHash(bucketId, resourceId).delete
         _ <- tagsTable.queryById(bucketId, resourceId).delete
+        _ <- DBIO.from(effect().unsafeToFuture())
       } yield ()).transactionally
 
     dbIO(transaction)
