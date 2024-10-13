@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
-import nl.amony.service.resources.ResourceContent
+import nl.amony.service.resources.Resource
 import nl.amony.service.resources.api.events.*
 import nl.amony.service.resources.api.operations.ResourceOperation
 import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
@@ -77,8 +77,8 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
             parentId = None,
             path = relativePath,
             hash = hash,
-            fileAttributes.size(),
-            contentType = ResourceContent.contentTypeForPath(path), // apache tika?
+            size = fileAttributes.size(),
+            contentType = Resource.contentTypeForPath(path), // apache tika?
             contentMeta = meta,
             operation = ResourceOperation.Empty,
             Some(fileAttributes.creationTime().toMillis),

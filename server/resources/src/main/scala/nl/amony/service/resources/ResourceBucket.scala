@@ -9,7 +9,7 @@ trait ResourceBucket {
   /**
    * Returns the content of a resource
    */
-  def getResource(resourceId: String): IO[Option[ResourceContent]]
+  def getResource(resourceId: String): IO[Option[Resource]]
   
   def updateUserMeta(resourceId: String, title: Option[String], description: Option[String], tags: List[String]): IO[Unit]
 
@@ -18,7 +18,7 @@ trait ResourceBucket {
   /**
    * Performs an operation on a resource and returns the resulting content
    */
-  def getOrCreate(resourceId: String, operation: ResourceOperation, tags: Set[String]): IO[Option[ResourceContent]]
+  def getOrCreate(resourceId: String, operation: ResourceOperation, tags: Set[String]): IO[Option[Resource]]
 
   def getChildren(resourceId: String, tags: Set[String]): IO[Seq[ResourceInfo]]
 

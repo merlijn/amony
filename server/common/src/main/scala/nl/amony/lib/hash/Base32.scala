@@ -33,6 +33,8 @@ object Base32 {
   /**
    * This currently works as is. Code looks a bit clunky and maybe inefficient though.
    *
+   * 26 + 10
+   *
    * @param bytes
    * @return
    */

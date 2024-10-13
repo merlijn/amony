@@ -7,7 +7,7 @@ import org.http4s.MediaType
 
 import java.nio.file.{Files, Path}
 
-trait ResourceContent {
+trait Resource {
   def info(): ResourceInfo
   def contentType(): Option[String]
   def size(): Long
@@ -15,24 +15,24 @@ trait ResourceContent {
   def getContentRange(start: Long, end: Long): fs2.Stream[IO, Byte]
 }
 
-object ResourceContent {
+object Resource {
 
   def contentTypeForPath(path: java.nio.file.Path): Option[String] = {
     val maybeExt = path.fileExtension()
     maybeExt.flatMap { ext => MediaType.extensionMap.get(ext).map(m => s"${m.mainType}/${m.subType}") }
   }
 
-  def fromPath(path: java.nio.file.Path, info: ResourceInfo): Option[LocalFileContent] =
-    Option.when(Files.exists(path))(LocalFileContent(fs2.io.file.Path.fromNioPath(path), info))
+  def fromPath(path: java.nio.file.Path, info: ResourceInfo): Option[LocalFile] =
+    Option.when(Files.exists(path))(LocalFile(fs2.io.file.Path.fromNioPath(path), info))
 }
 
-case class LocalFileContent(path: fs2.io.file.Path, resourceInfo: ResourceInfo) extends ResourceContent {
+case class LocalFile(path: fs2.io.file.Path, resourceInfo: ResourceInfo) extends Resource {
 
   override def info() = resourceInfo
 
   private val defaultChunkSize: Int = 64 * 1024
 
-  override def contentType(): Option[String] = ResourceContent.contentTypeForPath(path.toNioPath)
+  override def contentType(): Option[String] = Resource.contentTypeForPath(path.toNioPath)
 
   override def size(): Long = Files.size(path.toNioPath)
 

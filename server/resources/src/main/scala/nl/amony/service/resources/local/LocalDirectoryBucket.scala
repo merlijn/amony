@@ -7,7 +7,7 @@ import nl.amony.service.resources.*
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.api.ResourceInfo
 import nl.amony.service.resources.api.events.{ResourceEvent, ResourceUserMetaUpdated}
-import nl.amony.service.resources.api.operations.{ImageThumbnail, ResourceOperation, VideoFragment, VideoThumbnail}
+import nl.amony.service.resources.api.operations.ResourceOperation
 import nl.amony.service.resources.local.LocalResourceOperations.*
 import nl.amony.service.resources.local.db.LocalDirectoryDb
 import scribe.Logging
@@ -18,47 +18,30 @@ import java.util.concurrent.ConcurrentHashMap
 
 class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: LocalDirectoryDb[P], topic: EventTopic[ResourceEvent]) extends ResourceBucket with Logging {
 
-  private val resourceStore = new ConcurrentHashMap[ResourceOp, IO[Path]]()
+  private val resourceStore = new ConcurrentHashMap[LocalResourceOp, IO[Path]]()
 
   Files.createDirectories(config.writePath)
 
-  private def getFileInfo(resourceId: String): IO[Option[ResourceInfo]] =
-    db.getByHash(config.id, resourceId)
+  private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getByHash(config.id, resourceId)
+    
+  override def getOrCreate(resourceId: String, operation: ResourceOperation, tags: Set[String]): IO[Option[Resource]] =
+    getResourceInfo(resourceId).flatMap:
+      case None           => IO.pure(None)
+      case Some(fileInfo) => derivedResource(fileInfo, LocalResourceOp(resourceId, operation))
 
-  override def getOrCreate(resourceId: String, operation: ResourceOperation, tags: Set[String]): IO[Option[ResourceContent]] = {
-
-    getFileInfo(resourceId).flatMap:
-      case None => IO.pure(None)
-      case Some(fileInfo) =>
-        val localFileOp = operation match
-          case VideoFragment(width, height, start, end, quality) => VideoFragmentOp(resourceId, (start, end), height.get)
-          case VideoThumbnail(width, height, quality, timestamp) => VideoThumbnailOp(resourceId, timestamp, height.get)
-          case ImageThumbnail(width, height, quality)            => ImageThumbnailOp(resourceId, width, height)
-          case ResourceOperation.Empty                           => NoOp
-
-        derivedResource(fileInfo, localFileOp)
-  }
-
-  private def derivedResource(fileInfo: ResourceInfo, operation: ResourceOp): IO[Option[LocalFileContent]] =
-
+  private def derivedResource(inputResource: ResourceInfo, operation: LocalResourceOp): IO[Option[LocalFile]] =
     // this is to prevent 2 or more requests for the same resource to trigger the operation multiple times
-    val result = resourceStore.compute(operation, (_, value) => {
-      val outputDir = config.writePath
-      val file = outputDir.resolve(operation.outputFilename)
-      if (!file.exists())
-        operation.createFile(config.resourcePath.resolve(fileInfo.path), outputDir).memoize.flatten
-      else
-        IO.pure(file)
-    })
+    resourceStore
+      .compute(operation, (_, value) => { 
+        getOrCreateResource(config.resourcePath.resolve(inputResource.path), config.writePath, operation) 
+      }).map(path => Resource.fromPath(path, inputResource))
 
-    result.map(path => ResourceContent.fromPath(path, fileInfo))
-
-  override def getResource(resourceId: String): IO[Option[ResourceContent]] =
-    getFileInfo(resourceId).flatMap:
+  override def getResource(resourceId: String): IO[Option[Resource]] =
+    getResourceInfo(resourceId).flatMap:
       case None       => IO.pure(None)
       case Some(info) =>
         val path = config.resourcePath.resolve(info.path)
-        IO.pure(ResourceContent.fromPath(path, info))
+        IO.pure(Resource.fromPath(path, info))
 
   override def getChildren(resourceId: String, tags: Set[String]): IO[Seq[ResourceInfo]] =
     db.getChildren(config.id, resourceId, tags)
@@ -66,7 +49,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
   override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[ResourceInfo] = ???
 
   override def deleteResource(resourceId: String): IO[Unit] =
-    getFileInfo(resourceId).flatMap:
+    getResourceInfo(resourceId).flatMap:
       case None       => IO.pure(())
       case Some(info) =>
         val path = config.resourcePath.resolve(info.path)

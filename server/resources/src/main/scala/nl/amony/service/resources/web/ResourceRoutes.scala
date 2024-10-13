@@ -3,7 +3,7 @@ package nl.amony.service.resources.web
 import cats.Monad
 import cats.effect.IO
 import nl.amony.service.resources.api.operations.{ImageThumbnail, VideoFragment, VideoThumbnail}
-import nl.amony.service.resources.{ResourceBucket, ResourceContent}
+import nl.amony.service.resources.{ResourceBucket, Resource}
 import nl.amony.service.resources.web.JsonCodecs.given
 import org.http4s.*
 import org.http4s.dsl.io.*
@@ -56,7 +56,7 @@ object ResourceRoutes extends Logging {
       case req @ GET -> Root / "resources" / bucketId / resourcePattern =>
 
         withBucket(bucketId) { bucket =>
-          val maybeResource: IO[Option[ResourceContent]] =
+          val maybeResource: IO[Option[Resource]] =
             resourcePattern match
               case patterns.ThumbnailWithTimestamp(id, timestamp, height) => bucket.getOrCreate(id, VideoThumbnail(width = None, height = Some(height.toInt), 23, timestamp.toLong), Set.empty)
               case patterns.Thumbnail(id, scaleHeight) => bucket.getOrCreate(id, ImageThumbnail(width = None, height = Some(scaleHeight.toInt), 0), Set.empty)

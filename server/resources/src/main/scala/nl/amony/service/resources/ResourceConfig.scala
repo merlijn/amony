@@ -48,11 +48,11 @@ object ResourceConfig {
       partialHash(
         file    = path,
         nBytes  = 512,
-        hasher  = () => { MessageDigest.getInstance(algorithm) },
+        hasher  = () => MessageDigest.getInstance(algorithm),
         encoder = encodeHash
       )
 
     override def encodeHash(bytes: Array[Byte]): String =
-      Base32.encode(bytes).substring(0, 24)
+      Base32.encode(bytes).substring(0, 24) // this is a 24 character hash base 32 = 120 bits
   }
 }
