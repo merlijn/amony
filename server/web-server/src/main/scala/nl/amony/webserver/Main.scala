@@ -58,7 +58,7 @@ object Main extends IOApp with ConfigLoader with Logging {
     val resourceBuckets: Map[String, ResourceBucket] = appConfig.resources.map {
       case localConfig : ResourceConfig.LocalDirectoryConfig =>
 
-        val scanner = new LocalDirectoryScanner(localConfig, localFileStorage)
+        val scanner = new LocalDirectoryScanner(localConfig)
 
         // hack to reindex everything on startup
         localFileStorage.getAll(localConfig.id).unsafeRunSync().foreach {

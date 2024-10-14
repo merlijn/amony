@@ -1,6 +1,7 @@
 package nl.amony.service.resources.local
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import nl.amony.lib.eventbus.EventTopic
 import nl.amony.lib.files.PathOps
 import nl.amony.service.resources.*
@@ -10,20 +11,22 @@ import nl.amony.service.resources.api.events.{ResourceEvent, ResourceUserMetaUpd
 import nl.amony.service.resources.api.operations.ResourceOperation
 import nl.amony.service.resources.local.LocalResourceOperations.*
 import nl.amony.service.resources.local.db.LocalDirectoryDb
+import nl.amony.service.resources.local.scanner.LocalDirectoryScanner
 import scribe.Logging
 import slick.jdbc.JdbcProfile
 
 import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
 
-class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: LocalDirectoryDb[P], topic: EventTopic[ResourceEvent]) extends ResourceBucket with Logging {
+class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: LocalDirectoryDb[P], topic: EventTopic[ResourceEvent])(implicit runtime: IORuntime) extends ResourceBucket with Logging {
 
   private val resourceStore = new ConcurrentHashMap[LocalResourceOp, IO[Path]]()
-
+  private val scanner = LocalDirectoryScanner(config)
+  
   Files.createDirectories(config.writePath)
 
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getByHash(config.id, resourceId)
-    
+
   override def getOrCreate(resourceId: String, operation: ResourceOperation, tags: Set[String]): IO[Option[Resource]] =
     getResourceInfo(resourceId).flatMap:
       case None           => IO.pure(None)
@@ -32,8 +35,8 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
   private def derivedResource(inputResource: ResourceInfo, operation: LocalResourceOp): IO[Option[LocalFile]] =
     // this is to prevent 2 or more requests for the same resource to trigger the operation multiple times
     resourceStore
-      .compute(operation, (_, value) => { 
-        getOrCreateResource(config.resourcePath.resolve(inputResource.path), config.writePath, operation) 
+      .compute(operation, (_, value) => {
+        getOrCreateResource(config.resourcePath.resolve(inputResource.path), config.writePath, operation)
       }).map(path => Resource.fromPath(path, inputResource))
 
   override def getResource(resourceId: String): IO[Option[Resource]] =

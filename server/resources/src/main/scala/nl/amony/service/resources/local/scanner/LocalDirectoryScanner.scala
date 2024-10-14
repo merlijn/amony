@@ -17,13 +17,13 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.FiniteDuration
 
-class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, storage: LocalDirectoryDb[P])(implicit runtime: IORuntime) extends Logging {
+class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORuntime) extends Logging {
 
+  private val hashingAlgorithm = config.hashingAlgorithm
+  private val mediaPath = config.resourcePath
+  
   private def scanDirectory(previousState: Set[ResourceInfo]): Stream[IO, ResourceInfo] = {
-
-    val mediaPath = config.resourcePath
-    val hashingAlgorithm = config.hashingAlgorithm
-
+    
     def getByPath(path: String): Option[ResourceInfo] = previousState.find(_.path == path)
     def getByHash(hash: String): Option[ResourceInfo] = previousState.find(_.hash == hash)
     def filterPath(path: Path) = config.filterFileName(path.getFileName.toString)
@@ -39,52 +39,52 @@ class LocalDirectoryScanner[P <: JdbcProfile](config: LocalDirectoryConfig, stor
           logger.warn(s"Ignoring empty file: ${file.getFileName.toString}")
         !isEmpty
       }
-      .parEvalMapUnordered(config.scanParallelFactor) { path =>
+      .parEvalMapUnordered(config.scanParallelFactor) { path => scanFile(path, getByPath, getByHash) }
+  }
+  
+  def scanFile(absolutePath: Path, getByPath: String => Option[ResourceInfo], getByHash: String => Option[ResourceInfo]): IO[ResourceInfo] = {
+    val relativePath = mediaPath.relativize(absolutePath).toString
+    val fileAttributes = Files.readAttributes(absolutePath, classOf[BasicFileAttributes])
 
-        val relativePath = mediaPath.relativize(path).toString
-        val fileAttributes = Files.readAttributes(path, classOf[BasicFileAttributes])
-
-        for  {
-          hash <- IO {
-            if (config.verifyExistingHashes) {
-              hashingAlgorithm.createHash(path)
-            } else {
-              getByPath(relativePath) match {
-                case None => hashingAlgorithm.createHash(path)
-                case Some(m) =>
-                  // if the last modified time is equal to what we have seen before, we assume the hash is still valid
-                  if (m.lastModifiedTime == Some(fileAttributes.lastModifiedTime().toMillis)) {
-                    m.hash
-                  } else {
-                    logger.warn(s"$path has been modified since last seen, recomputing hash")
-                    hashingAlgorithm.createHash(path)
-                  }
+    for {
+      hash <- IO {
+        if (config.verifyExistingHashes) {
+          hashingAlgorithm.createHash(absolutePath)
+        } else {
+          getByPath(relativePath) match {
+            case None => hashingAlgorithm.createHash(absolutePath)
+            case Some(m) =>
+              // if the last modified time is equal to what we have seen before, we assume the hash is still valid
+              if (m.lastModifiedTime == Some(fileAttributes.lastModifiedTime().toMillis)) {
+                m.hash
+              } else {
+                logger.warn(s"$absolutePath has been modified since last seen, recomputing hash")
+                hashingAlgorithm.createHash(absolutePath)
               }
-            }
           }
-          meta <-
-            getByHash(hash) match {
-              case None    =>
-                logger.info(s"Scanning new file $relativePath")
-                val path = mediaPath.resolve(relativePath)
-                LocalResourceMeta.resolveMeta(path).map(_.getOrElse(ResourceMeta.Empty))
-              case Some(m) => IO.pure(m.contentMeta)
-            }
-
-        } yield {
-          ResourceInfo(
-            bucketId = config.id,
-            parentId = None,
-            path = relativePath,
-            hash = hash,
-            size = fileAttributes.size(),
-            contentType = Resource.contentTypeForPath(path), // apache tika?
-            contentMeta = meta,
-            operation = ResourceOperation.Empty,
-            Some(fileAttributes.creationTime().toMillis),
-            Some(fileAttributes.lastModifiedTime().toMillis))
         }
       }
+      meta <-
+        getByHash(hash) match {
+          case None =>
+            logger.info(s"Scanning new file $relativePath")
+            LocalResourceMeta.resolveMeta(absolutePath).map(_.getOrElse(ResourceMeta.Empty))
+          case Some(m) => IO.pure(m.contentMeta)
+        }
+
+    } yield {
+      ResourceInfo(
+        bucketId = config.id,
+        parentId = None,
+        path = relativePath,
+        hash = hash,
+        size = fileAttributes.size(),
+        contentType = Resource.contentTypeForPath(absolutePath), // apache tika?
+        contentMeta = meta,
+        operation = ResourceOperation.Empty,
+        Some(fileAttributes.creationTime().toMillis),
+        Some(fileAttributes.lastModifiedTime().toMillis))
+    }
   }
   
   def diff(previousState: Set[ResourceInfo], currentState: Set[ResourceInfo]): List[ResourceEvent] = {
