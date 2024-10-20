@@ -3,13 +3,13 @@ package nl.amony.service.resources.web
 import cats.Monad
 import cats.effect.IO
 import nl.amony.service.resources.api.operations.{ImageThumbnail, VideoFragment, VideoThumbnail}
-import nl.amony.service.resources.{ResourceBucket, Resource}
+import nl.amony.service.resources.{Resource, ResourceBucket}
 import nl.amony.service.resources.web.JsonCodecs.given
 import org.http4s.*
 import org.http4s.dsl.io.*
 import scribe.Logging
 import io.circe.syntax.*
-import nl.amony.service.resources.web.ResourceWebModel.UserMetaDto
+import nl.amony.service.resources.web.ResourceWebModel.{ThumbnailTimestampDto, UserMetaDto}
 import org.http4s.circe.*
 import org.http4s.circe.CirceEntityDecoder.circeEntityDecoder
 
@@ -39,6 +39,17 @@ object ResourceRoutes extends Logging {
           bucket.getResource(resourceId).flatMap:
             case None           => NotFound()
             case Some(resource) => Ok(resource.info().asJson)
+        }
+
+      case req @ POST -> Root / "api" / "resources" / bucketId / resourceId / "update_thumbnail_timestamp" =>
+
+        withBucket(bucketId) { bucket =>
+          bucket.getResource(resourceId).flatMap:
+            case None => NotFound()
+            case Some(resource) =>
+            req.as[ThumbnailTimestampDto].flatMap { dto =>
+                bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis).flatMap(_ => Ok())
+            }
         }
 
       case req @ POST -> Root / "api" / "resources" / bucketId / resourceId / "update_user_meta" =>

@@ -14,7 +14,7 @@ message ResourceEvent {
     ResourceAdded added = 1;
     ResourceDeleted deleted = 2;
     ResourceMoved moved = 3;
-    ResourceUserMetaUpdated user_meta_updated = 4;
+    ResourceUpdated updated = 4;
   }
 }
 
@@ -26,12 +26,8 @@ message ResourceDeleted {
   required nl.amony.service.resources.api.ResourceInfo resource = 1;
 }
 
-message ResourceUserMetaUpdated {
-  required string bucketId = 1;
-  required string resourceId = 2;
-  optional string newTitle = 3;
-  optional string newDescription = 4;
-  repeated string newTags = 5;
+message ResourceUpdated {
+  required nl.amony.service.resources.api.ResourceInfo resource = 1;
 }
 
 message ResourceMoved {

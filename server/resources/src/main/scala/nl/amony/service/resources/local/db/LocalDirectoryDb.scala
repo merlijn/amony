@@ -117,27 +117,30 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
   def getAllByIds(bucketId: String, resourceIds: Seq[String]): IO[Seq[ResourceInfo]] =
     dbIO(queries.getWithTags(bucketId, Some(_.resourceId.inSet(resourceIds))))
 
-  def getChildren(bucketId: String, tags: Set[String]): IO[Seq[(ResourceInfo)]] =
-    def resourceIdsForTag = queries.joinResourceWithTags(bucketId)
-      .filter((resource, maybeTag) => maybeTag.fold(LiteralColumn(true))(_.tag.inSet(tags)))
-      .distinct.map(_._1.resourceId).result
-
-    dbIO(resourceIdsForTag).flatMap {
-      resourceIds => getAllByIds(bucketId, resourceIds)
-    }
-
-  def insertChildResource(parentId: String, operation: ResourceOperation, resource: ResourceInfo) = {
-
+  def updateThumbnailTimestamp(bucketId: String, resourceId: String, timestamp: Long, effect: ResourceInfo => IO[Unit]): IO[Unit] = {
+    val q = (
+      for {
+        resourceRow <- resourcesTable.queryByHash(bucketId, resourceId).result
+        updated <- resourceRow.headOption.map { row =>
+          val updatedRow = row.copy(thumbnailTimestamp = Some(timestamp))
+          resourcesTable.update(updatedRow).map(_ => Some(updatedRow))
+        }.getOrElse(DBIO.successful(Option.empty[ResourceRow]))
+        tags <- tagsTable.getTags(bucketId, resourceId).result
+        _ <- updated.map(row => DBIO.from( effect(row.toResource(tags)).unsafeToFuture() )).getOrElse(DBIO.successful(()))
+      } yield ()).transactionally
+    
+    dbIO(q).map(_ => ())
   }
-
-  def updateUserMeta(bucketId: String, hash: String, title: Option[String], description: Option[String], tags: List[String], effect: IO[Unit]): IO[Unit] = {
+  
+  def updateUserMeta(bucketId: String, hash: String, title: Option[String], description: Option[String], tags: List[String], effect: ResourceInfo => IO[Unit]): IO[Unit] = {
     val q = (for {
       resourceRow <- resourcesTable.queryByHash(bucketId, hash).result
-                _ <- resourceRow.headOption.map { row =>
-                       resourcesTable.update(row.copy(title = title, description = description))
-                     }.getOrElse(DBIO.successful(0))
+          updated <- resourceRow.headOption.map { row =>
+                       val updatedRow = row.copy(title = title, description = description)
+                       resourcesTable.update(updatedRow).map(_ => Some(updatedRow))
+                     }.getOrElse(DBIO.successful(Option.empty[ResourceRow]))
                 _ <- tagsTable.insertOrUpdate(bucketId, hash, tags.toSet)
-                _ <- DBIO.from(effect.unsafeToFuture())
+                _ <- updated.map(row => DBIO.from( effect(row.toResource(tags)).unsafeToFuture() )).getOrElse(DBIO.successful(()))
     } yield ()).transactionally
 
     dbIO(q)

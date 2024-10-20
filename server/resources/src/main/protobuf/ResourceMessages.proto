@@ -23,6 +23,7 @@ message ResourceInfo {
   optional string title = 9;
   optional string description = 10;
   repeated string tags = 11;
+  optional int64 thumbnailTimestamp = 12;
 }
 
 message Tag {

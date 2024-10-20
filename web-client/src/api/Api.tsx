@@ -162,6 +162,10 @@ export const Api = {
 
   updateFragment: async function (mediaId: string, idx: number, from: number, to: number) {
     return doPOST(`/api/fragments/${mediaId}/${Math.trunc(idx)}`, { from: from, to: to})
+  },
+
+  updateThumbnailTimestamp: async function (mediaId: string, time: number) {
+    return doPOST(`/api/resources/media/${mediaId}/update_thumbnail_timestamp`, { timestampInMillis: time })
   }
 }
 

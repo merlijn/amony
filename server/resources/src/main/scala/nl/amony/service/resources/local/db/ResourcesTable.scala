@@ -15,7 +15,8 @@ case class ResourceRow(
    creationTime: Option[Long],
    lastModifiedTime: Option[Long],
    title: Option[String],
-   description: Option[String]) {
+   description: Option[String],
+   thumbnailTimestamp: Option[Long] = None) {
 
   def toResource(tags: Seq[String]): ResourceInfo = {
     ResourceInfo(
@@ -29,7 +30,8 @@ case class ResourceRow(
       creationTime = creationTime,
       lastModifiedTime = lastModifiedTime,
       title = title,
-      description = description
+      description = description,
+      thumbnailTimestamp = thumbnailTimestamp
     )
   }
 }
@@ -82,12 +84,13 @@ class ResourcesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends 
     def lastModifiedTime = column[Option[Long]]("last_modified_time")
     def title = column[Option[String]]("title")
     def description = column[Option[String]]("description")
+    def thumbnailTimestamp = column[Option[Long]]("thumbnail_timestamp")
 
     def bucketIdx = index("bucket_id_idx", bucketId)
     def hashIdx = index("hash_idx", resourceId)
     def pk = primaryKey("resources_pk", (bucketId, resourceId))
 
-    def * = (bucketId, relativePath, resourceId, size, contentType, contentMeta, creationTime, lastModifiedTime, title, description) <>
+    def * = (bucketId, relativePath, resourceId, size, contentType, contentMeta, creationTime, lastModifiedTime, title, description, thumbnailTimestamp) <>
       ((ResourceRow.apply _).tupled, ResourceRow.unapply)
   }
 

@@ -14,9 +14,9 @@ object JsonCodecs {
 
     val resolutions: List[Int] = (resource.height :: List(320)).sorted
 
-    val urls = {
+    val thumbnailTimestamp: Long = resource.thumbnailTimestamp.getOrElse(resource.durationInMillis() / 3)
 
-      val thumbnailTimestamp = resource.durationInMillis() / 3
+    val urls = {
 
       val tsPart = if (thumbnailTimestamp != 0) s"_${thumbnailTimestamp}" else ""
 
@@ -65,8 +65,7 @@ object JsonCodecs {
     )
 
     // hard coded for now
-    val start = (mediaInfo.duration / 3)
-    val range = (start, Math.min(mediaInfo.duration, start + 3000))
+    val range = (thumbnailTimestamp, Math.min(mediaInfo.duration, thumbnailTimestamp + 3000))
     val highlights = List(FragmentDto(resource.hash, 0, range, List.empty, None, List.empty))
 
     ResourceDto(
@@ -79,6 +78,7 @@ object JsonCodecs {
       contentType = resource.contentType.getOrElse("unknown"),
       resourceMeta = mediaInfo,
       resourceInfo = resourceInfo,
+      thumbnailTimestamp = resource.thumbnailTimestamp,
       highlights = {
         highlights.zipWithIndex.map { case (f, index) =>
 

@@ -3,6 +3,10 @@ package nl.amony.service.resources.web
 import io.circe.*
 
 object ResourceWebModel {
+  
+  case class ThumbnailTimestampDto(
+     timestampInMillis: Long
+  ) derives Encoder.AsObject, Decoder
 
   case class UserMetaDto(
     title: Option[String],
@@ -38,6 +42,7 @@ object ResourceWebModel {
     resourceMeta: ResourceMetaDto,
     resourceInfo: ResourceInfoDto,
     urls: ResourceUrlsDto,
+    thumbnailTimestamp: Option[Long],
     highlights: List[FragmentDto],
   ) derives Encoder.AsObject
 

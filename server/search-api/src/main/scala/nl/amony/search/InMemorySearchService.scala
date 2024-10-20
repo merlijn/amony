@@ -1,7 +1,7 @@
 package nl.amony.search
 
 import nl.amony.service.resources.api.ResourceInfo
-import nl.amony.service.resources.api.events.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved, ResourceUserMetaUpdated}
+import nl.amony.service.resources.api.events.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved, ResourceUpdated}
 import nl.amony.service.resources.web.{durationInMillis, fileName, height}
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import nl.amony.service.search.api.SortDirection.{Asc, Desc}
@@ -60,16 +60,9 @@ class InMemorySearchService extends SearchService with Logging {
           case ResourceMoved(resource, _) =>
             resourceIndex += resource.hash -> resource
 
-          case ResourceUserMetaUpdated(bucketId, resourceId, title, description, newTags) =>
-            val resource = resourceIndex(resourceId)
-            val newResource = resource.copy(
-              title = title.orElse(resource.title),
-              description = description.orElse(resource.description),
-              tags = newTags
-            )
-
-            resourceIndex += resourceId -> newResource
-
+          case ResourceUpdated(resource) =>
+            resourceIndex += resource.hash -> resource
+            
           case ResourceEvent.Empty =>
           // ignore
         }

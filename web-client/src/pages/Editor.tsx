@@ -45,6 +45,16 @@ const PlayerView = (props: {vid: Resource}) => {
     }
   }, [props]);
 
+  const updateThumbnailTimestamp = (e: any) => {
+    if (plyr) {
+      Api.updateThumbnailTimestamp(vid.id, Math.trunc(plyr.currentTime * 1000)).then (response => {
+          Api.getMediaById(vid.id).then(response => {
+            setVid((response as Resource))
+          })
+      })
+    }
+  }
+
   const updateFragment = (e: any) => {
 
     if (plyr) {
@@ -93,17 +103,21 @@ const PlayerView = (props: {vid: Resource}) => {
   }
 
   const fragmentPickingControls =
-    <div className="fragment-picker">
-      <button className="overlay-button" onClick={(e) => forwards(-1)}>-1s</button>
-      <button className="overlay-button" onClick={(e) => forwards(-0.1)}>-.1ms</button>
-      <button className="button-blue" onClick={(e) => seek(fragment.start) }>|&lt;</button>
-      <button className={fragment.start ? "button-green" : "button-orange"} onClick={(e) => setFragment({ ...fragment, start: plyr?.currentTime }) }>o&lt;</button>
-      <button className="button-green" onClick = { updateFragment }>o</button>
-      <button className={fragment.end ? "button-green" : "button-orange"} onClick={(e) => setFragment({ ...fragment, end: plyr?.currentTime }) }>&gt;o</button>
-      <button className="button-blue" onClick={(e) => seek(fragment.end) }>&gt;|</button>
-      <button className="overlay-button" onClick={(e) => forwards(0.1)}>+.1s</button>
-      <button className="overlay-button" onClick={(e) => forwards(1)}>+1s</button>
-    </div>
+      <div className="fragment-picker">
+        <button className="overlay-button" onClick={(e) => forwards(-1)}>-1s</button>
+        <button className="overlay-button" onClick={(e) => forwards(-0.1)}>-.1ms</button>
+        <button className="button-blue" onClick={(e) => seek(fragment.start)}>|&lt;</button>
+        <button className={fragment.start ? "button-green" : "button-orange"}
+                onClick={(e) => setFragment({...fragment, start: plyr?.currentTime})}>o&lt;</button>
+        <button className="button-green" onClick={updateFragment}>o</button>
+        <button className={fragment.end ? "button-green" : "button-orange"}
+                onClick={(e) => setFragment({...fragment, end: plyr?.currentTime})}>&gt;o
+        </button>
+        <button className="button-blue" onClick={(e) => seek(fragment.end)}>&gt;|</button>
+        <button className="overlay-button" onClick={(e) => forwards(0.1)}>+.1s</button>
+        <button className="overlay-button" onClick={(e) => forwards(1)}>+1s</button>
+        <button className="button-green" onClick={updateThumbnailTimestamp}>o</button>
+      </div>
 
   const maxWidth = "80vw"
   const maxHeight = "80vh"

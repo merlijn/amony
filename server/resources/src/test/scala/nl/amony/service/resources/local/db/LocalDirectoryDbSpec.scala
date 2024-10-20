@@ -144,27 +144,4 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike with Logging {
 
     result.unsafeRunSync()
   }
-
-  it should "retrieve all child resources with tags" in {
-
-    val bucketId = "child-tags-test"
-    val parentId = "parent"
-
-    val resourceA = createResource(bucketId, "1", tags = Seq("a", "b", "f")).copy(parentId = Some(parentId))
-    val resourceB = createResource(bucketId, "2", tags = Seq("a", "c", "e")).copy(parentId = Some(parentId))
-
-    val result = for {
-      _ <- store.insert(resourceA, IO.unit)
-      _ <- store.insert(resourceB, IO.unit)
-      retrievedCommon <- store.getChildren(bucketId, parentId, Set("a"))
-      retrievedA <- store.getChildren(bucketId, parentId, Set("b"))
-      retrievedB <- store.getChildren(bucketId, parentId, Set("c"))
-    } yield {
-      assert(retrievedCommon.toSet == Set(resourceA, resourceB))
-      assert(retrievedA.toSet == Set(resourceA))
-      assert(retrievedB.toSet == Set(resourceB))
-    }
-
-    result.unsafeRunSync()
-  }
 }
