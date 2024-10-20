@@ -13,18 +13,16 @@ option (scalapb.options) = {
 
 message ResourceInfo {
   required string bucketId = 1;
-  optional string parentId = 2;
-  required string path = 3;
-  required string hash = 4;
-  required int64  size = 5;
-  optional string contentType = 6;
-  optional ResourceMeta contentMeta = 7;
-  optional nl.amony.service.resources.api.operations.ResourceOperation operation = 8;
-  optional int64 creationTime = 9;
-  optional int64 lastModifiedTime = 10;
-  optional string title = 11;
-  optional string description = 12;
-  repeated string tags = 13;
+  required string path = 2;
+  required string hash = 3;
+  required int64  size = 4;
+  optional string contentType = 5;
+  optional ResourceMeta contentMeta = 6;
+  optional int64 creationTime = 7;
+  optional int64 lastModifiedTime = 8;
+  optional string title = 9;
+  optional string description = 10;
+  repeated string tags = 11;
 }
 
 message Tag {

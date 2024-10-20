@@ -75,13 +75,11 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
     } yield {
       ResourceInfo(
         bucketId = config.id,
-        parentId = None,
         path = relativePath,
         hash = hash,
         size = fileAttributes.size(),
         contentType = Resource.contentTypeForPath(absolutePath), // apache tika?
         contentMeta = meta,
-        operation = ResourceOperation.Empty,
         Some(fileAttributes.creationTime().toMillis),
         Some(fileAttributes.lastModifiedTime().toMillis))
     }

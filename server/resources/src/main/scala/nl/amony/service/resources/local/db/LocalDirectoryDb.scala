@@ -117,9 +117,8 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
   def getAllByIds(bucketId: String, resourceIds: Seq[String]): IO[Seq[ResourceInfo]] =
     dbIO(queries.getWithTags(bucketId, Some(_.resourceId.inSet(resourceIds))))
 
-  def getChildren(bucketId: String, parentId: String, tags: Set[String]): IO[Seq[(ResourceInfo)]] =
+  def getChildren(bucketId: String, tags: Set[String]): IO[Seq[(ResourceInfo)]] =
     def resourceIdsForTag = queries.joinResourceWithTags(bucketId)
-      .filter((resource, maybeTag) => resource.parentId === parentId)
       .filter((resource, maybeTag) => maybeTag.fold(LiteralColumn(true))(_.tag.inSet(tags)))
       .distinct.map(_._1.resourceId).result
 

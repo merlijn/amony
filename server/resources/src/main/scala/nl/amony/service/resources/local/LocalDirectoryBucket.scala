@@ -27,7 +27,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
 
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getByHash(config.id, resourceId)
 
-  override def getOrCreate(resourceId: String, operation: ResourceOperation, tags: Set[String]): IO[Option[Resource]] =
+  override def getOrCreate(resourceId: String, operation: ResourceOperation): IO[Option[Resource]] =
     getResourceInfo(resourceId).flatMap:
       case None           => IO.pure(None)
       case Some(fileInfo) => derivedResource(fileInfo, LocalResourceOp(resourceId, operation))
@@ -45,9 +45,6 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
       case Some(info) =>
         val path = config.resourcePath.resolve(info.path)
         IO.pure(Resource.fromPath(path, info))
-
-  override def getChildren(resourceId: String, tags: Set[String]): IO[Seq[ResourceInfo]] =
-    db.getChildren(config.id, resourceId, tags)
 
   override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[ResourceInfo] = ???
 
