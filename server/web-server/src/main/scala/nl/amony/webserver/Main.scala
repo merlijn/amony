@@ -38,7 +38,11 @@ object Main extends IOApp with ConfigLoader with Logging {
 
     logger.info(config.toString)
 
+
     val databaseConfig = DatabaseConfig.forConfig[HsqldbProfile]("amony.database", config)
+    
+    logger.info("Starting application, home directory: " + appConfig.amonyHome)
+    
     val searchService = new InMemorySearchService()
     val authService: AuthService = new AuthServiceImpl(loadConfig[AuthConfig](config, "amony.auth"))
 

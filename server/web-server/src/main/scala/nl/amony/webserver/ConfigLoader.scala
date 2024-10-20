@@ -10,10 +10,10 @@ import scribe.Logging
 import java.nio.file.Path
 
 case class AmonyConfig(
-  amonyPath: Path,
-  resources: List[ResourceBucketConfig],
-  api: WebServerConfig,
-  search: SearchConfig
+    amonyHome: Path,
+    resources: List[ResourceBucketConfig],
+    api: WebServerConfig,
+    search: SearchConfig
 ) derives ConfigReader
 
 trait ConfigLoader extends Logging {
