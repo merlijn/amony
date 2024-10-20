@@ -5,7 +5,7 @@ import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
 
-case class LocalFileRow(
+case class ResourceRow(
    bucketId: String,
    parentId: Option[String],
    relativePath: String,
@@ -27,7 +27,7 @@ case class LocalFileRow(
       hash = hash,
       size = size,
       contentType = contentType,
-      contentMeta = LocalFileRow.decodeMeta(contentMeta),
+      contentMeta = ResourceRow.decodeMeta(contentMeta),
       tags = tags,
       creationTime = creationTime,
       lastModifiedTime = lastModifiedTime,
@@ -37,7 +37,7 @@ case class LocalFileRow(
   }
 }
 
-object LocalFileRow  {
+object ResourceRow  {
 
   def decodeMeta(maybeBytes: Option[Array[Byte]]): ResourceMeta = maybeBytes match {
     case None => ResourceMeta.Empty
@@ -54,7 +54,7 @@ object LocalFileRow  {
     }
   }
 
-  def fromResource(resource: ResourceInfo): LocalFileRow = LocalFileRow(
+  def fromResource(resource: ResourceInfo): ResourceRow = ResourceRow(
     bucketId = resource.bucketId,
     parentId = resource.parentId,
     relativePath = resource.path,
@@ -70,11 +70,11 @@ object LocalFileRow  {
   )
 }
 
-class LocalFilesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends Logging {
+class ResourcesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends Logging {
 
   import dbConfig.profile.api._
 
-  class LocalFilesSchema(ttag: slick.lifted.Tag) extends Table[LocalFileRow](ttag, "files") {
+  class LocalFilesSchema(ttag: slick.lifted.Tag) extends Table[ResourceRow](ttag, "files") {
 
     def bucketId = column[String]("bucket_id")
     def relativePath = column[String]("relative_path")
@@ -96,7 +96,7 @@ class LocalFilesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends
     def pk = primaryKey("resources_pk", (bucketId, resourceId))
 
     def * = (bucketId, parentId, relativePath, resourceId, size, contentType, contentMeta, operationMeta, creationTime, lastModifiedTime, title, description) <>
-      ((LocalFileRow.apply _).tupled, LocalFileRow.unapply)
+      ((ResourceRow.apply _).tupled, ResourceRow.unapply)
   }
 
   val innerTable = TableQuery[LocalFilesSchema]
@@ -109,7 +109,7 @@ class LocalFilesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends
       .filter(_.bucketId === bucketId)
       .filter(_.parentId === parentId)
 
-  def queryByHash(bucketId: String, hash: String): Query[LocalFilesSchema, LocalFileRow, Seq] =
+  def queryByHash(bucketId: String, hash: String): Query[LocalFilesSchema, ResourceRow, Seq] =
     innerTable
       .filter(_.bucketId === bucketId)
       .filter(_.resourceId === hash)
@@ -120,17 +120,17 @@ class LocalFilesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends
       .filter(_.relativePath === path)
 
   def insert(resource: ResourceInfo) =
-    innerTable += LocalFileRow.fromResource(resource)
+    innerTable += ResourceRow.fromResource(resource)
 
-  def update(row: LocalFileRow) =
+  def update(row: ResourceRow) =
     queryByHash(row.bucketId, row.hash).update(row)
 
   def update(resource: ResourceInfo) =
-    queryByHash(resource.bucketId, resource.hash).update(LocalFileRow.fromResource(resource))
+    queryByHash(resource.bucketId, resource.hash).update(ResourceRow.fromResource(resource))
 
   def insertOrUpdate(resource: ResourceInfo) =
     // ! The insertOrUpdate operation does not work in combination with a byte array field and hsqldb
-    innerTable.insertOrUpdate(LocalFileRow.fromResource(resource))
+    innerTable.insertOrUpdate(ResourceRow.fromResource(resource))
 
   def allForBucket(bucketId: String) =
     innerTable.filter(_.bucketId === bucketId)

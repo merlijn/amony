@@ -22,8 +22,8 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
 
   private def dbIO[T](a: DBIO[T]): IO[T] = IO.fromFuture(IO(db.run(a))).onError { t => IO { logger.warn(t) } }
 
-  private val resourcesTable = new LocalFilesTable[P](dbConfig)
-  private val tagsTable = new ResourceTagsTable[P](dbConfig)
+  private val resourcesTable = new ResourcesTable[P](dbConfig)
+  private val tagsTable = new TagsTable[P](dbConfig)
 
   private object queries {
     def joinResourceWithTags(bucketId: String) =
