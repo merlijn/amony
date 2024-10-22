@@ -23,7 +23,7 @@ message ResourceAdded {
 }
 
 message ResourceDeleted {
-  required nl.amony.service.resources.api.ResourceInfo resource = 1;
+  required string resourceId = 1;
 }
 
 message ResourceUpdated {
@@ -31,6 +31,7 @@ message ResourceUpdated {
 }
 
 message ResourceMoved {
-  required nl.amony.service.resources.api.ResourceInfo resource = 1;
+  required string resourceId = 1;
   required string oldPath = 2;
+  required string newPath = 3;
 }

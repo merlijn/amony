@@ -8,6 +8,7 @@ import nl.amony.lib.eventbus.jdbc.SlickEventBus
 import nl.amony.search.InMemorySearchService
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
+import nl.amony.service.resources.api.ResourceInfo
 import nl.amony.service.resources.api.events.{ResourceAdded, ResourceEvent}
 import nl.amony.service.resources.local.db.LocalDirectoryDb
 import nl.amony.service.resources.local.LocalDirectoryBucket
@@ -69,20 +70,20 @@ object Main extends IOApp with ConfigLoader with Logging {
           resource => resourceTopic.publish(ResourceAdded(resource))
         }
 
-        val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (localFileStorage.applyEvent)
-        val debug: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"File event: $e")))
+        val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (localFileStorage.applyEvent(localConfig.id))
+        val debug: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"Resource event: $e")))
 
         logger.info(s"Starting scanner for ${localConfig.resourcePath.toAbsolutePath}")
         
-        val initialState = localFileStorage.getAll(localConfig.id).map(_.toSet).unsafeRunSync()
+        val initialState: Set[ResourceInfo] = localFileStorage.getAll(localConfig.id).map(_.toSet).unsafeRunSync()
 
-//        val f = scanner.pollingStream(Set.empty, 10.seconds)
-//          .through(debug)
-//          .through(updateDb)
-//          .through(publish)
-//          .compile
-//          .drain
-//          .unsafeRunAsync(_ => ())
+        val f = scanner.pollingResourceEventStream(initialState, 10.seconds)
+          .through(debug)
+          .through(updateDb)
+          .through(publish)
+          .compile
+          .drain
+          .unsafeRunAsync(_ => ())
 
         localConfig.id -> new LocalDirectoryBucket(localConfig, localFileStorage, resourceTopic)
     }.toMap

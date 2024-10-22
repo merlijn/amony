@@ -95,11 +95,11 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       } yield ()).transactionally
     )
 
-  private def move(bucketId: String, oldPath: String, resource: ResourceInfo): IO[Unit] =
+  private def move(bucketId: String, oldPath: String, newPath: String): IO[Unit] =
     dbIO(
       (for {
         old <- resourcesTable.queryByPath(bucketId, oldPath).result.head
-        _   <- resourcesTable.update(old.copy(relativePath = resource.path))
+        _   <- resourcesTable.update(old.copy(relativePath = newPath))
       } yield ()).transactionally
     )
 
@@ -158,11 +158,11 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
     dbIO(q)
   }
   
-  def applyEvent(event: ResourceEvent): IO[Unit] = {
+  def applyEvent(bucketId: String)(event: ResourceEvent): IO[Unit] = {
     event match {
-      case ResourceAdded(resource)          => insert(resource, IO.unit)
-      case ResourceDeleted(resource)        => deleteResource(resource.bucketId, resource.hash)
-      case ResourceMoved(resource, oldPath) => move(resource.bucketId, oldPath, resource)
+      case ResourceAdded(resource)             => insert(resource, IO.unit)
+      case ResourceDeleted(resourceId)         => deleteResource(bucketId, resourceId)
+      case ResourceMoved(id, oldPath, newPath) => move(bucketId, oldPath, newPath)
       case _ => IO.unit
     }
   }

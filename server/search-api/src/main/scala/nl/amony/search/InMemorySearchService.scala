@@ -54,11 +54,11 @@ class InMemorySearchService extends SearchService with Logging {
           case ResourceAdded(resource) =>
             resourceIndex += resource.hash -> resource
 
-          case ResourceDeleted(resource) =>
-            resourceIndex -= resource.hash
+          case ResourceDeleted(resourceId) =>
+            resourceIndex = resourceIndex.removed(resourceId)
 
-          case ResourceMoved(resource, _) =>
-            resourceIndex += resource.hash -> resource
+          case ResourceMoved(resourceId, oldPath, newPath) =>
+            resourceIndex += resourceId -> resourceIndex(resourceId).copy(path = newPath)
 
           case ResourceUpdated(resource) =>
             resourceIndex += resource.hash -> resource
