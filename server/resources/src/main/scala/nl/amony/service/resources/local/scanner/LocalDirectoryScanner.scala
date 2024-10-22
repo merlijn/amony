@@ -39,7 +39,7 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
 
     def currentFiles = RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath, filterPath)
     val previousFiles = previousState.map(f => mediaPath.resolve(f.relativePath))
-    
+
     logger.debug(s"Scanning directory: ${mediaPath.toAbsolutePath}, previous state size: ${previousState.size}, last modified: ${Files.getLastModifiedTime(mediaPath).toInstant}")
 
     // new files are either added or moved
@@ -51,6 +51,7 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
       val modifiedTime = Files.getLastModifiedTime(path).toMillis
       val size         = Files.size(path)
 
+      // a file that is just moved should have the same hash, creation time, modified time and size
       def equalMeta(r: FileInfo) = r.hash == hash && r.creationTime == creationTime && r.modifiedTime == modifiedTime && r.size == size
 
       previousState.find(equalMeta) match {
@@ -69,9 +70,10 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
       }
     }
 
-    val deleted = previousState.filterNot { r =>
-      currentFiles.exists(p => r.relativePath == mediaPath.relativize(p))
-    }.map(r => FileDeleted(r))
+    val deleted = previousState
+      .filterNot(f => currentFiles.exists(p => mediaPath.relativize(p) == f.relativePath))
+      .filterNot(f => moved.exists(_.hash == f.hash))
+      .map(r => FileDeleted(r))
 
     Stream.emit(moved.toSeq ++ added.toSeq ++ deleted.toSeq).flatMap(Stream.emits)
   }
@@ -126,12 +128,12 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
     val initialFiles = initialState.map { r =>
       FileInfo(Path.of(r.path), r.hash, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0))
     }
-    
+
     pollingStream(initialFiles, pollInterval).parEvalMap(4) {
       case FileAdded(f) =>
-        
+
         val absolutePath = mediaPath.resolve(f.relativePath)
-        
+
         for {
           meta <- LocalResourceMeta.resolveMeta(absolutePath).map(_.getOrElse(ResourceMeta.Empty))
         } yield ResourceAdded(ResourceInfo(
