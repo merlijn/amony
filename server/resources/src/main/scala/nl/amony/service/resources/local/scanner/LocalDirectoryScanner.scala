@@ -17,29 +17,76 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.FiniteDuration
 
+case class FileInfo(path: Path, hash: String, size: Long, creationTime: Long, modifiedTime: Long)
+
+sealed trait FileEvent
+case class FileAdded(fileInfo: FileInfo) extends FileEvent
+case class FileDeleted(fileInfo: FileInfo) extends FileEvent
+case class FileMoved(oldPath: Path, newPath: Path) extends FileEvent
+
 class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORuntime) extends Logging {
 
   private val hashingAlgorithm = config.hashingAlgorithm
   private val mediaPath = config.resourcePath
   
-  private def scanDirectory(previousState: Set[ResourceInfo]): Stream[IO, ResourceInfo] = {
+  private def scanDirectory(previousState: Set[FileInfo]): Stream[IO, FileEvent] = {
     
-    def getByPath(path: String): Option[ResourceInfo] = previousState.find(_.path == path)
-    def getByHash(hash: String): Option[ResourceInfo] = previousState.find(_.hash == hash)
     def filterPath(path: Path) = config.filterFileName(path.getFileName.toString)
 
-    def allFiles() = RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath, filterPath)
+    // this depends on file system meta data and the fact that a file move does not update these attributes
+    def hasEqualMeta(a: FileInfo, b: FileInfo) =
+      a.hash == b.hash && a.creationTime == b.creationTime && a.modifiedTime == b.modifiedTime
+
+    def currentFiles = RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath, filterPath)
     
     logger.debug(s"Scanning directory: ${mediaPath.toAbsolutePath}, previous state size: ${previousState.size}, last modified: ${Files.getLastModifiedTime(mediaPath).toInstant}")
 
-    Stream.fromIterator[IO](allFiles().iterator, 10)
-      .filter { file =>
-        val isEmpty = Files.size(file) == 0
-        if (isEmpty)
-          logger.warn(s"Ignoring empty file: ${file.getFileName.toString}")
-        !isEmpty
+    val previousFiles = previousState.map(_.path).map(mediaPath.resolve)
+
+    // new files are either added or moved
+    val (moved, added) = (currentFiles.toSet -- previousFiles).partitionMap { path =>
+      val hash = hashingAlgorithm.createHash(path)
+
+      val relativePath = mediaPath.relativize(path)
+      val creationTime = Files.readAttributes(path, classOf[BasicFileAttributes]).creationTime().toMillis
+      val modifiedTime = Files.getLastModifiedTime(path).toMillis
+      val size         = Files.size(path)
+
+      def equalMeta(r: FileInfo) = r.hash == hash && r.creationTime == creationTime && r.modifiedTime == modifiedTime && r.size == size
+
+      previousState.find(equalMeta) match {
+
+        case Some(old) => Left(FileMoved(old.path, relativePath))
+        case None    =>
+          val contentType = Resource.contentTypeForPath(path)
+          val fileInfo = FileInfo(
+            path = relativePath,
+            hash = hash,
+            size = size,
+            creationTime,
+            modifiedTime)
+
+          Right(FileAdded(fileInfo))
       }
-      .parEvalMapUnordered(config.scanParallelFactor) { path => scanFile(path, getByPath, getByHash) }
+    }
+
+    val deleted = previousState.filterNot { r =>
+      currentFiles.exists(p => r.path == mediaPath.relativize(p))
+    }.map(r => FileDeleted(r))
+
+    Stream.emit(moved.toSeq ++ added.toSeq ++ deleted.toSeq).flatMap(Stream.emits)
+  }
+
+  private def applyEvent(state: Set[FileInfo], e: FileEvent): Set[FileInfo] = e match {
+    case FileAdded(fileInfo) =>
+      state + fileInfo
+    case FileDeleted(fileInfo) =>
+      state.filterNot(_.path == fileInfo.path)
+    case FileMoved(oldPath, newPath) =>
+      state.map { r =>
+        if (r.path == oldPath) r.copy(path = newPath)
+        else r
+      }
   }
   
   def scanFile(absolutePath: Path, getByPath: String => Option[ResourceInfo], getByHash: String => Option[ResourceInfo]): IO[ResourceInfo] = {
@@ -84,64 +131,32 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
         Some(fileAttributes.lastModifiedTime().toMillis))
     }
   }
-  
-  def diff(previousState: Set[ResourceInfo], currentState: Set[ResourceInfo]): List[ResourceEvent] = {
 
-    val (colliding, nonColliding) = currentState
-      .groupBy(_.hash)
-      .partition { case (_, files) => files.size > 1 }
+  extension [F[_], T](stream: Stream[F, T])
+    def foldFlatMapLast[S](initial: S)(foldFn: (S, T) => S, fn: S => Stream[F, T]): Stream[F, T] = {
 
-    colliding.foreach { case (hash, files) =>
-      val collidingFiles = files.map(_.path).mkString("\n")
-      logger.warn(s"The following files share the same hash and will be ignored ($hash):\n$collidingFiles")
+      val r = stream.map(Some(_)) ++ Stream.emit[F, Option[T]](None)
+
+      val f: Stream[F, (S, Option[T])] = r.scan[(S, Option[T])](initial -> None) {
+        case ((acc, p), Some(e)) => foldFn(acc, e) -> Some(e)
+        case ((acc, p), None) => acc -> None
+      }
+
+      f.tail.flatMap:
+        case (s, Some(t)) => Stream.emit(t)
+        case (s, None) => fn(s)
     }
-
-    val nonCollidingResources = nonColliding.map(_._2).flatten
-
-    val newResources: List[ResourceAdded] =
-      nonCollidingResources
-        .filterNot(r => previousState.exists(_.hash == r.hash))
-        .map(r => ResourceAdded(r))
-        .toList
-
-    val deletedResources: List[ResourceDeleted] =
-      previousState
-        .filterNot(r => currentState.exists(_.hash == r.hash))
-        .map(r => ResourceDeleted(r))
-        .toList
-
-    val movedResources: List[ResourceMoved] =
-      previousState.flatMap { old =>
-
-        // this depends on file system meta data and the fact that a file move does not update these attributes
-        def hasEqualMeta(a: ResourceInfo, b: ResourceInfo) =
-          a.hash == b.hash && a.creationTime == b.creationTime && a.lastModifiedTime == b.lastModifiedTime
-
-        def findByMeta(): Option[ResourceInfo] = currentState.find { current => old.path != current.path && hasEqualMeta(current, old) }
-        def findByHash(): Option[ResourceInfo] = currentState.find { current => old.path != current.path && old.hash == current.hash }
-
-        // prefer the file with equal timestamp meta, otherwise fall back to just equal hash
-        findByMeta().orElse(findByHash()).map { moved => ResourceMoved(old.copy(path = moved.path), old.path) }
-
-      }.toList
-
-    newResources ::: deletedResources ::: movedResources
-  }
 
   /**
    * Given an initial state, this method will poll the directory for changes and emit events for new, deleted and moved resources.
    * 
    * The state will be kept in memory and is not persisted.
    */
-  def pollingStream(initialState: Set[ResourceInfo], pollInterval: FiniteDuration): Stream[IO, ResourceEvent] = {
+  def pollingStream(initialState: Set[FileInfo], pollInterval: FiniteDuration): Stream[IO, FileEvent] = {
 
-    def next(prev: Set[ResourceInfo]): IO[(Seq[ResourceEvent], Set[ResourceInfo])] =
-      scanDirectory(prev).compile.toList.map { current => diff(prev, current.toSet) -> current.toSet }
+    def unfoldRecursive(s: Set[FileInfo]): Stream[IO, FileEvent] =
+      scanDirectory(s).foldFlatMapLast(s)(applyEvent, s => Stream.sleep[IO](pollInterval) >> unfoldRecursive(s))
 
-    def unfoldRecursive(prev: Set[ResourceInfo]): Stream[IO, Seq[ResourceEvent]] =
-      Stream.eval(next(prev)).flatMap:
-        case (events, state) => Stream.emit(events) ++ (Stream.sleep[IO](pollInterval) >> unfoldRecursive(state))
-
-    Stream.suspend(unfoldRecursive(initialState)).flatMap(Stream.emits)
+    Stream.suspend(unfoldRecursive(initialState))
   }
 }

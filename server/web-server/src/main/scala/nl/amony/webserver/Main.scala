@@ -73,14 +73,16 @@ object Main extends IOApp with ConfigLoader with Logging {
         val debug: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"File event: $e")))
 
         logger.info(s"Starting scanner for ${localConfig.resourcePath.toAbsolutePath}")
+        
+        val initialState = localFileStorage.getAll(localConfig.id).map(_.toSet).unsafeRunSync()
 
-        val f = scanner.pollingStream(localFileStorage.getAll(localConfig.id).map(_.toSet).unsafeRunSync(), 10.seconds)
-          .through(debug)
-          .through(updateDb)
-          .through(publish)
-          .compile
-          .drain
-          .unsafeRunAsync(_ => ())
+//        val f = scanner.pollingStream(Set.empty, 10.seconds)
+//          .through(debug)
+//          .through(updateDb)
+//          .through(publish)
+//          .compile
+//          .drain
+//          .unsafeRunAsync(_ => ())
 
         localConfig.id -> new LocalDirectoryBucket(localConfig, localFileStorage, resourceTopic)
     }.toMap
