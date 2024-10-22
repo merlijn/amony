@@ -22,7 +22,23 @@ case class FileInfo(relativePath: Path, hash: String, size: Long, creationTime: 
 sealed trait FileEvent
 case class FileAdded(fileInfo: FileInfo) extends FileEvent
 case class FileDeleted(fileInfo: FileInfo) extends FileEvent
-case class FileMoved(hash: String, oldPath: Path, newPath: Path) extends FileEvent
+case class FileMoved(fileInfo: FileInfo, oldPath: Path) extends FileEvent
+
+
+extension [F[_], T](stream: Stream[F, T])
+  def foldFlatMapLast[S](initial: S)(foldFn: (S, T) => S, fn: S => Stream[F, T]): Stream[F, T] = {
+
+    val r = stream.map(Some(_)) ++ Stream.emit[F, Option[T]](None)
+
+    val f: Stream[F, (S, Option[T])] = r.scan[(S, Option[T])](initial -> None) {
+      case ((acc, p), Some(e)) => foldFn(acc, e) -> Some(e)
+      case ((acc, p), None) => acc -> None
+    }
+
+    f.tail.flatMap:
+      case (s, Some(t)) => Stream.emit(t)
+      case (s, None) => fn(s)
+  }
 
 class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORuntime) extends Logging {
 
@@ -33,8 +49,8 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
     
     def filterPath(path: Path) = config.filterFileName(path.getFileName.toString)
 
-    // this depends on file system meta data and the fact that a file move does not update these attributes
-    def hasEqualMeta(a: FileInfo, b: FileInfo) =
+    // a file that is just moved should have the same hash, creation time, modified time and size
+    def hasEqualMeta(a: FileInfo)(b: FileInfo): Boolean =
       a.hash == b.hash && a.creationTime == b.creationTime && a.modifiedTime == b.modifiedTime
 
     def currentFiles = RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath, filterPath)
@@ -44,35 +60,24 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
 
     // new files are either added or moved
     val (moved, added) = (currentFiles.toSet -- previousFiles).partitionMap { path =>
-      val hash = hashingAlgorithm.createHash(path)
+      
+      val fileInfo = FileInfo(
+        relativePath = mediaPath.relativize(path),
+        hash = hashingAlgorithm.createHash(path),
+        size = Files.size(path),
+        creationTime = Files.readAttributes(path, classOf[BasicFileAttributes]).creationTime().toMillis,
+        modifiedTime = Files.getLastModifiedTime(path).toMillis
+      )
 
-      val relativePath = mediaPath.relativize(path)
-      val creationTime = Files.readAttributes(path, classOf[BasicFileAttributes]).creationTime().toMillis
-      val modifiedTime = Files.getLastModifiedTime(path).toMillis
-      val size         = Files.size(path)
-
-      // a file that is just moved should have the same hash, creation time, modified time and size
-      def equalMeta(r: FileInfo) = r.hash == hash && r.creationTime == creationTime && r.modifiedTime == modifiedTime && r.size == size
-
-      previousState.find(equalMeta) match {
-
-        case Some(old) => Left(FileMoved(old.hash, old.relativePath, relativePath))
-        case None    =>
-          val contentType = Resource.contentTypeForPath(path)
-          val fileInfo = FileInfo(
-            relativePath = relativePath,
-            hash = hash,
-            size = size,
-            creationTime,
-            modifiedTime)
-
-          Right(FileAdded(fileInfo))
+      previousState.find(hasEqualMeta(fileInfo)) match {
+        case Some(old) => Left(FileMoved(fileInfo, old.relativePath))
+        case None      => Right(FileAdded(fileInfo))
       }
     }
 
     val deleted = previousState
       .filterNot(f => currentFiles.exists(p => mediaPath.relativize(p) == f.relativePath))
-      .filterNot(f => moved.exists(_.hash == f.hash))
+      .filterNot(f => moved.map(_.fileInfo).exists(hasEqualMeta(f)))
       .map(r => FileDeleted(r))
 
     Stream.emit(moved.toSeq ++ added.toSeq ++ deleted.toSeq).flatMap(Stream.emits)
@@ -83,27 +88,13 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
       state + fileInfo
     case FileDeleted(fileInfo) =>
       state.filterNot(_.relativePath == fileInfo.relativePath)
-    case FileMoved(hash, oldPath, newPath) =>
+    case FileMoved(fileInfo, oldPath) =>
       state.map { r =>
-        if (r.relativePath == oldPath) r.copy(relativePath = newPath)
+        if (r.relativePath == oldPath) r.copy(relativePath = fileInfo.relativePath)
         else r
       }
   }
 
-  extension [F[_], T](stream: Stream[F, T])
-    def foldFlatMapLast[S](initial: S)(foldFn: (S, T) => S, fn: S => Stream[F, T]): Stream[F, T] = {
-
-      val r = stream.map(Some(_)) ++ Stream.emit[F, Option[T]](None)
-
-      val f: Stream[F, (S, Option[T])] = r.scan[(S, Option[T])](initial -> None) {
-        case ((acc, p), Some(e)) => foldFn(acc, e) -> Some(e)
-        case ((acc, p), None) => acc -> None
-      }
-
-      f.tail.flatMap:
-        case (s, Some(t)) => Stream.emit(t)
-        case (s, None) => fn(s)
-    }
 
   /**
    * Given an initial state, this method will poll the directory for changes and emit events for new, deleted and moved resources.
@@ -150,8 +141,8 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
       case FileDeleted(f) =>
         IO(ResourceDeleted(f.hash))
 
-      case FileMoved(hash, oldPath, newPath) =>
-        IO(ResourceMoved(hash, oldPath.toString, newPath.toString))
+      case FileMoved(fileInfo, oldPath) =>
+        IO(ResourceMoved(fileInfo.hash, oldPath.toString, fileInfo.relativePath.toString))
     }
   }
 }
