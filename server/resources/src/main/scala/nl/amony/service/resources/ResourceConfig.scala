@@ -1,9 +1,10 @@
 package nl.amony.service.resources
 
+import cats.effect.IO
 import nl.amony.lib.hash.Base32
 import nl.amony.lib.hash.PartialHash.partialHash
-import pureconfig._
-import pureconfig.generic.derivation.default._
+import pureconfig.*
+import pureconfig.generic.derivation.default.*
 
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -38,18 +39,19 @@ object ResourceConfig {
 
   sealed trait HashingAlgorithm derives ConfigReader {
     def algorithm: String
-    def createHash(path: Path): String
+    def createHash(path: Path): IO[String]
     def encodeHash(bytes: Array[Byte]): String
   }
 
   case object PartialHash extends HashingAlgorithm {
     override val algorithm = "SHA-1"
-    override def createHash(path: Path): String =
+    override def createHash(path: Path): IO[String] =
       partialHash(
-        file    = path,
-        nBytes  = 512,
-        hasher  = () => MessageDigest.getInstance(algorithm),
-        encoder = encodeHash
+        file      = path,
+        nChunks   = 32,
+        chunkSize = 32,
+        hasher    = () => MessageDigest.getInstance(algorithm),
+        encoder   = encodeHash
       )
 
     override def encodeHash(bytes: Array[Byte]): String =

@@ -60,19 +60,19 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
     // new files are either added or moved
     val movedOrAdded = Stream.emits((currentFiles -- previousFiles).toSeq).evalMap { path =>
 
-      IO {
-        val fileInfo = FileInfo(
+      for {
+        hash    <- hashingAlgorithm.createHash(path)
+        fileInfo = FileInfo(
           relativePath = mediaPath.relativize(path),
-          hash         = hashingAlgorithm.createHash(path),
+          hash         = hash,
           size         = Files.size(path),
           creationTime = Files.readAttributes(path, classOf[BasicFileAttributes]).creationTime().toMillis,
           modifiedTime = Files.getLastModifiedTime(path).toMillis
         )
-
+      } yield
         previousState.find(hasEqualMeta(fileInfo)) match
           case Some(old) => FileMoved(fileInfo, old.relativePath)
           case None      => FileAdded(fileInfo)
-      }
     }
 
     // removed files might be deleted or moved

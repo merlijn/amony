@@ -74,10 +74,18 @@ object Main extends IOApp with ConfigLoader with Logging {
         val debug: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"Resource event: $e")))
 
         logger.info(s"Starting scanner for ${localConfig.resourcePath.toAbsolutePath}")
-        
-        val initialState: Set[ResourceInfo] = localFileStorage.getAll(localConfig.id).map(_.toSet).unsafeRunSync()
 
-        val f = scanner.pollingResourceEventStream(initialState, 10.seconds)
+        val pollInterval = 10.seconds
+
+        def stateFromStorage(): Set[ResourceInfo] = localFileStorage.getAll(localConfig.id).map(_.toSet).unsafeRunSync()
+
+        def pullRetry(s: Set[ResourceInfo]): fs2.Stream[IO, ResourceEvent] =
+          scanner.pollingResourceEventStream(stateFromStorage(), pollInterval).handleErrorWith { e =>
+            logger.error(s"Scanner failed for ${localConfig.resourcePath.toAbsolutePath}, retrying in $pollInterval", e)
+            fs2.Stream.sleep[IO](pollInterval) >> pullRetry(stateFromStorage())
+          }
+
+        pullRetry(stateFromStorage())
           .through(debug)
           .through(updateDb)
           .through(publish)
