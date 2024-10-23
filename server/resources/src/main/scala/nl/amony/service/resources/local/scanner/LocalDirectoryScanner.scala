@@ -59,28 +59,33 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
     logger.debug(s"Scanning directory: ${mediaPath.toAbsolutePath}, previous state size: ${previousState.size}, last modified: ${Files.getLastModifiedTime(mediaPath).toInstant}")
 
     // new files are either added or moved
-    val (moved, added) = (currentFiles.toSet -- previousFiles).partitionMap { path =>
-      
-      val fileInfo = FileInfo(
-        relativePath = mediaPath.relativize(path),
-        hash = hashingAlgorithm.createHash(path),
-        size = Files.size(path),
-        creationTime = Files.readAttributes(path, classOf[BasicFileAttributes]).creationTime().toMillis,
-        modifiedTime = Files.getLastModifiedTime(path).toMillis
-      )
+    val movedOrAdded = Stream.emits((currentFiles.toSet -- previousFiles).toSeq).evalMap { path =>
 
-      previousState.find(hasEqualMeta(fileInfo)) match {
-        case Some(old) => Left(FileMoved(fileInfo, old.relativePath))
-        case None      => Right(FileAdded(fileInfo))
+      IO {
+        val fileInfo = FileInfo(
+          relativePath = mediaPath.relativize(path),
+          hash         = hashingAlgorithm.createHash(path),
+          size         = Files.size(path),
+          creationTime = Files.readAttributes(path, classOf[BasicFileAttributes]).creationTime().toMillis,
+          modifiedTime = Files.getLastModifiedTime(path).toMillis
+        )
+
+        previousState.find(hasEqualMeta(fileInfo)) match {
+          case Some(old) => FileMoved(fileInfo, old.relativePath)
+          case None      => FileAdded(fileInfo)
+        }
       }
     }
 
-    val deleted = previousState
-      .filterNot(f => currentFiles.exists(p => mediaPath.relativize(p) == f.relativePath))
-      .filterNot(f => moved.map(_.fileInfo).exists(hasEqualMeta(f)))
-      .map(r => FileDeleted(r))
+    def deleted(state: Set[FileInfo]): Stream[IO, FileEvent] = Stream.emits(
+      previousState
+        .toSeq
+        .filterNot(f => state.exists(_.relativePath == f.relativePath))
+        .filterNot(f => state.exists(_.hash == f.hash))
+        .map(r => FileDeleted(r))
+    )
 
-    Stream.emit(moved.toSeq ++ added.toSeq ++ deleted.toSeq).flatMap(Stream.emits)
+    movedOrAdded.foldFlatMapLast(previousState)(applyEvent, deleted)
   }
 
   private def applyEvent(state: Set[FileInfo], e: FileEvent): Set[FileInfo] = e match {
