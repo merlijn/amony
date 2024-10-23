@@ -26,18 +26,17 @@ case class FileMoved(fileInfo: FileInfo, oldPath: Path) extends FileEvent
 
 
 extension [F[_], T](stream: Stream[F, T])
-  def foldFlatMapLast[S](initial: S)(foldFn: (S, T) => S, fn: S => Stream[F, T]): Stream[F, T] = {
+  def foldFlatMap[S](initial: S)(foldFn: (S, T) => S, nextFn: S => Stream[F, T]): Stream[F, T] = {
 
     val r = stream.map(Some(_)) ++ Stream.emit[F, Option[T]](None)
 
-    val f: Stream[F, (S, Option[T])] = r.scan[(S, Option[T])](initial -> None) {
+    val f: Stream[F, (S, Option[T])] = r.scan[(S, Option[T])](initial -> None):
       case ((acc, p), Some(e)) => foldFn(acc, e) -> Some(e)
-      case ((acc, p), None) => acc -> None
-    }
+      case ((acc, p), None)    => acc -> None
 
     f.tail.flatMap:
       case (s, Some(t)) => Stream.emit(t)
-      case (s, None) => fn(s)
+      case (s, None)    => nextFn(s)
   }
 
 class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORuntime) extends Logging {
@@ -53,13 +52,13 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
     def hasEqualMeta(a: FileInfo)(b: FileInfo): Boolean =
       a.hash == b.hash && a.creationTime == b.creationTime && a.modifiedTime == b.modifiedTime
 
-    def currentFiles = RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath, filterPath)
+    def currentFiles = RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath, filterPath).toSet
     val previousFiles = previousState.map(f => mediaPath.resolve(f.relativePath))
 
     logger.debug(s"Scanning directory: ${mediaPath.toAbsolutePath}, previous state size: ${previousState.size}, last modified: ${Files.getLastModifiedTime(mediaPath).toInstant}")
 
     // new files are either added or moved
-    val movedOrAdded = Stream.emits((currentFiles.toSet -- previousFiles).toSeq).evalMap { path =>
+    val movedOrAdded = Stream.emits((currentFiles -- previousFiles).toSeq).evalMap { path =>
 
       IO {
         val fileInfo = FileInfo(
@@ -70,22 +69,22 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
           modifiedTime = Files.getLastModifiedTime(path).toMillis
         )
 
-        previousState.find(hasEqualMeta(fileInfo)) match {
+        previousState.find(hasEqualMeta(fileInfo)) match
           case Some(old) => FileMoved(fileInfo, old.relativePath)
           case None      => FileAdded(fileInfo)
-        }
       }
     }
 
-    def deleted(state: Set[FileInfo]): Stream[IO, FileEvent] = Stream.emits(
-      previousState
-        .toSeq
-        .filterNot(f => state.exists(_.relativePath == f.relativePath))
-        .filterNot(f => state.exists(_.hash == f.hash))
-        .map(r => FileDeleted(r))
-    )
+    // removed files might be deleted or moved
+    val maybeDeleted = previousState.filterNot(f => currentFiles.contains(mediaPath.resolve(f.relativePath)))
 
-    movedOrAdded.foldFlatMapLast(previousState)(applyEvent, deleted)
+    def filterMoved(state: Set[FileInfo], e: FileEvent): Set[FileInfo] = e match
+      case FileMoved(fileInfo, oldPath) => state.filterNot(_.relativePath == oldPath)
+      case _                            => state
+
+    def emitDeleted(deleted: Set[FileInfo]): Stream[IO, FileEvent] = Stream.emits(deleted.toSeq.map(r => FileDeleted(r)))
+
+    movedOrAdded.foldFlatMap(maybeDeleted)(filterMoved, emitDeleted)
   }
 
   private def applyEvent(state: Set[FileInfo], e: FileEvent): Set[FileInfo] = e match {
@@ -109,7 +108,7 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
   def pollingStream(initialState: Set[FileInfo], pollInterval: FiniteDuration): Stream[IO, FileEvent] = {
 
     def unfoldRecursive(s: Set[FileInfo]): Stream[IO, FileEvent] =
-      scanDirectory(s).foldFlatMapLast(s)(applyEvent, s => Stream.sleep[IO](pollInterval) >> unfoldRecursive(s))
+      scanDirectory(s).foldFlatMap(s)(applyEvent, s => Stream.sleep[IO](pollInterval) >> unfoldRecursive(s))
 
     Stream.suspend(unfoldRecursive(initialState))
   }
