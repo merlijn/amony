@@ -75,8 +75,9 @@ object SearchRoutes {
           sort = Some(SortOption(sortField, sortDir))
         )
 
-        val searchResult = searchService.searchMedia(query).toIO
-        searchResult.map(_.asJson).flatMap(Ok(_))
+        IO.fromFuture(IO(searchService.searchMedia(query)))
+          .map(_.asJson)
+          .flatMap(Ok(_))
     }
   }
 }

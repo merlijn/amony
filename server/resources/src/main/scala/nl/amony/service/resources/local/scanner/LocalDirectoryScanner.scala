@@ -116,8 +116,8 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
 
     def unfoldRecursive(s: Set[FileInfo]): Stream[IO, FileEvent] = {
       val startTime = System.currentTimeMillis()
-      logger.info(s"Scanning directory: ${mediaPath.toAbsolutePath}")
-      def logTime = Stream.eval(IO { logger.info(s"Scanning took: ${System.currentTimeMillis() - startTime} ms") })
+      logger.debug(s"Scanning directory: ${mediaPath.toAbsolutePath}")
+      def logTime = Stream.eval(IO { logger.debug(s"Scanning took: ${System.currentTimeMillis() - startTime} ms") })
       scanDirectory(s).foldFlatMap(s)(applyEvent, s => logTime >> Stream.sleep[IO](pollInterval) >> unfoldRecursive(s))
     }
 

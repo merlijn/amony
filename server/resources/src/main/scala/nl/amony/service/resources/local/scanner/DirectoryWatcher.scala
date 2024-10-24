@@ -1,9 +1,11 @@
 package nl.amony.service.resources.local.scanner
 
-import java.nio.file._
+import cats.effect.IO
+
+import java.nio.file.*
 import java.util.concurrent.Flow
 import java.util.concurrent.SubmissionPublisher
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Using
 
 object DirectoryWatcher {
@@ -41,9 +43,9 @@ object DirectoryWatcher {
         while (true) {
           val key = watchService.take()
           key.pollEvents().forEach { event =>
+
             val kind = event.kind()
-            
-            val path = rootPath.resolve(event.context().asInstanceOf[Path])
+            lazy val path = rootPath.resolve(event.context().asInstanceOf[Path])
 
             val watchEvent = PartialFunction.condOpt(kind):
               case StandardWatchEventKinds.ENTRY_DELETE =>
@@ -59,7 +61,7 @@ object DirectoryWatcher {
 
             watchEvent.foreach(publisher.submit)
           }
-          
+
           key.reset()
         }
       } catch {
@@ -71,5 +73,10 @@ object DirectoryWatcher {
     }).start()
 
     publisher
+  }
+
+  def foo(rootPath: Path) = {
+    val watchDirectoryPublisher = watchDirectory(rootPath)
+    fs2.Stream.fromPublisher[IO](watchDirectoryPublisher, 1)
   }
 }
