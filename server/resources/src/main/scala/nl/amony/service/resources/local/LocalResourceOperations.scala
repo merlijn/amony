@@ -5,6 +5,7 @@ import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.magick.ImageMagick
 import nl.amony.lib.files.*
 import nl.amony.service.resources.*
+import nl.amony.service.resources.api.{ImageMeta, ResourceInfo, ResourceMeta, VideoMeta}
 import nl.amony.service.resources.api.operations.*
 import scribe.Logging
 
@@ -12,16 +13,19 @@ import java.nio.file.Path
 
 object LocalResourceOperations {
 
-  def getOrCreateResource(inputFile: Path, outputDir: Path, operation: LocalResourceOp): IO[Path] =
+  def getOrCreateResource(inputFile: Path, inputMeta: ResourceMeta, outputDir: Path, operation: LocalResourceOp): IO[Path] =
     val outputFile = outputDir.resolve(operation.outputFilename)
 
-    if (!outputFile.exists())
-      operation.createFile(inputFile, outputDir).memoize.flatten
-    else
+    if (!operation.isCompatibleWith(inputMeta))
+      IO.raiseError(new Exception(s"Operation ${operation} is not compatible with ${inputMeta}"))
+    else if (outputFile.exists())
       IO.pure(outputFile)
+    else
+      operation.createFile(inputFile, outputDir).memoize.flatten
 
   sealed trait LocalResourceOp {
 
+    def isCompatibleWith(meta: ResourceMeta): Boolean = true
     def outputFilename: String
     def createFile(inputFile: Path, outputDir: Path): IO[Path]
   }
@@ -35,12 +39,15 @@ object LocalResourceOperations {
   }
   
   val NoOp = new LocalResourceOp {
+    override def isCompatibleWith(meta: ResourceMeta): Boolean = false
     override def outputFilename: String = ""
     override def createFile(inputFile: Path, outputDir: Path): IO[Path] = IO.raiseError(new Exception("NoOp"))
   }
   
   case class VideoThumbnailOp(resourceId: String, timestamp: Long, quality: Int) extends LocalResourceOp with Logging {
     def outputFilename: String = s"${resourceId}_${timestamp}_${quality}p.webp"
+
+    override def isCompatibleWith(meta: ResourceMeta): Boolean = meta.isInstanceOf[VideoMeta]
 
     override def createFile(inputFile: Path, outputDir: Path): IO[Path] = {
 
@@ -58,6 +65,8 @@ object LocalResourceOperations {
 
   case class ImageThumbnailOp(resourceId: String, width: Option[Int], height: Option[Int]) extends LocalResourceOp with Logging {
     def outputFilename: String = s"${resourceId}_${height.getOrElse("")}p.webp"
+
+    override def isCompatibleWith(meta: ResourceMeta): Boolean = meta.isInstanceOf[ImageMeta]
 
     override def createFile(inputFile: Path, outputDir: Path): IO[Path] = {
 

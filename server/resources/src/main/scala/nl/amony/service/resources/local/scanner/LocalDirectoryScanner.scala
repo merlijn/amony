@@ -107,8 +107,12 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
    */
   def pollingStream(initialState: Set[FileInfo], pollInterval: FiniteDuration): Stream[IO, FileEvent] = {
 
-    def unfoldRecursive(s: Set[FileInfo]): Stream[IO, FileEvent] =
-      scanDirectory(s).foldFlatMap(s)(applyEvent, s => Stream.sleep[IO](pollInterval) >> unfoldRecursive(s))
+    def unfoldRecursive(s: Set[FileInfo]): Stream[IO, FileEvent] = {
+      val startTime = System.currentTimeMillis()
+      logger.info(s"Scanning directory: ${mediaPath.toAbsolutePath}")
+      def logTime = Stream.eval(IO { logger.info(s"Scanning took: ${System.currentTimeMillis() - startTime} ms") })
+      scanDirectory(s).foldFlatMap(s)(applyEvent, s => logTime >> Stream.sleep[IO](pollInterval) >> unfoldRecursive(s))
+    }
 
     Stream.suspend(unfoldRecursive(initialState))
   }
@@ -129,8 +133,15 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
 
         val absolutePath = mediaPath.resolve(f.relativePath)
 
+        val resourceMeta: IO[ResourceMeta] =
+          LocalResourceMeta.resolveMeta(absolutePath)
+            .map(_.getOrElse(ResourceMeta.Empty))
+            .recover {
+              case e => logger.error(s"Failed to resolve meta for $absolutePath", e); ResourceMeta.Empty
+            }
+
         for {
-          meta <- LocalResourceMeta.resolveMeta(absolutePath).map(_.getOrElse(ResourceMeta.Empty))
+          meta <- resourceMeta
         } yield ResourceAdded(ResourceInfo(
           bucketId = config.id,
           path = f.relativePath.toString,

@@ -36,7 +36,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
     // this is to prevent 2 or more requests for the same resource to trigger the operation multiple times
     resourceStore
       .compute(operation, (_, value) => {
-        getOrCreateResource(config.resourcePath.resolve(inputResource.path), config.writePath, operation)
+        getOrCreateResource(config.resourcePath.resolve(inputResource.path), inputResource.contentMeta, config.writePath, operation)
       }).map(path => Resource.fromPath(path, inputResource))
 
   override def getResource(resourceId: String): IO[Option[Resource]] =

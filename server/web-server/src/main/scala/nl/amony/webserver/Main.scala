@@ -38,8 +38,7 @@ object Main extends IOApp with ConfigLoader with Logging {
     import cats.effect.unsafe.implicits.global
 
     logger.info(config.toString)
-
-
+    
     val databaseConfig = DatabaseConfig.forConfig[HsqldbProfile]("amony.database", config)
     
     logger.info("Starting application, home directory: " + appConfig.amonyHome)
@@ -75,7 +74,7 @@ object Main extends IOApp with ConfigLoader with Logging {
 
         logger.info(s"Starting scanner for ${localConfig.resourcePath.toAbsolutePath}")
 
-        val pollInterval = 10.seconds
+        val pollInterval = 60.seconds
 
         def stateFromStorage(): Set[ResourceInfo] = localFileStorage.getAll(localConfig.id).map(_.toSet).unsafeRunSync()
 

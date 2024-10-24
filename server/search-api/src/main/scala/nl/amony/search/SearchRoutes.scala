@@ -35,7 +35,7 @@ object SearchRoutes {
         val q      = params.get("q")
         val offset = params.get("offset").map(_.toInt)
         val tags   = params.get("tags")
-        val minRes = params.get("offset").map(_.toInt)
+        val minRes = params.get("min_res").map(_.toInt)
 
         val sortDir = params.get("sort_dir").headOption match {
           case Some("desc") => Desc
@@ -48,7 +48,7 @@ object SearchRoutes {
             case "size"       => Size
             case "duration"   => Duration
             case "date_added" => DateAdded
-            case _ => throw new IllegalArgumentException("unkown sort field")
+            case _ => throw new IllegalArgumentException("unknown sort field")
           }
           .getOrElse(Title)
 
