@@ -43,7 +43,14 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
 
   private val hashingAlgorithm = config.hashingAlgorithm
   private val mediaPath = config.resourcePath
-  
+
+  /**
+   * In principle, between the last time the directory was scanned and now, **all** files could be renamed. For example
+   * using an automated renaming tool or script.
+   * 
+   * This means, the only thing we can rely on for checking equality is the metadata.
+   * 
+   */
   private def scanDirectory(previousState: Set[FileInfo]): Stream[IO, FileEvent] = {
     
     def filterPath(path: Path) = config.filterFileName(path.getFileName.toString)
