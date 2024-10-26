@@ -70,7 +70,7 @@ object JsonCodecs {
 
     ResourceDto(
       bucketId  = resource.bucketId,
-      id        = resource.hash,
+      resourceId        = resource.hash,
       uploader  = "0",
       uploadTimestamp = resource.getCreationTime,
       urls = urls,
@@ -89,7 +89,7 @@ object JsonCodecs {
           )
 
           FragmentDto(
-            media_id = resource.hash,
+            resourceId = resource.hash,
             index    = index,
             range    = (start, end),
             urls     = urls,

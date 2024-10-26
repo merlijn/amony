@@ -15,7 +15,7 @@ import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.local.scanner.LocalDirectoryScanner
 import nl.amony.service.resources.{ResourceBucket, ResourceConfig}
 import pureconfig.{ConfigReader, ConfigSource}
-import scribe.Logging
+import scribe.{Level, Logging}
 import slick.basic.DatabaseConfig
 import slick.jdbc.HsqldbProfile
 
@@ -74,7 +74,7 @@ object Main extends IOApp with ConfigLoader with Logging {
 
         logger.info(s"Starting scanner for ${localConfig.resourcePath.toAbsolutePath}")
 
-        val pollInterval = 60.seconds
+        val pollInterval = 10.seconds
 
         def stateFromStorage(): Set[ResourceInfo] = localFileStorage.getAll(localConfig.id).map(_.toSet).unsafeRunSync()
 
@@ -98,12 +98,12 @@ object Main extends IOApp with ConfigLoader with Logging {
     val webServer = new WebServer(appConfig.api)
     val routes = WebServerRoutes.routes(authService, searchService, appConfig, resourceBuckets)
 
-    webServer.run(routes).onCancel(IO(logger.info("Exiting application")))
+    scribe.Logger.root
+      .clearHandlers()
+      .clearModifiers()
+      .withHandler(minimumLevel = Some(Level.Debug))
+      .replace()
 
-//    scribe.Logger.root
-//      .clearHandlers()
-//      .clearModifiers()
-//      .withHandler(minimumLevel = Some(Level.Debug))
-//      .replace()
+    webServer.run(routes).onCancel(IO(logger.info("Exiting application")))
   }
 }

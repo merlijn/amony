@@ -34,7 +34,7 @@ object ResourceWebModel {
 
   case class ResourceDto(
     bucketId: String,
-    id: String,
+    resourceId: String,
     uploader: String,
     uploadTimestamp: Long,
     userMeta: UserMetaDto,
@@ -47,11 +47,11 @@ object ResourceWebModel {
   ) derives Encoder.AsObject
 
   case class FragmentDto(
-     media_id: String,
-     index: Int,
-     range: (Long, Long),
-     urls: List[String],
-     comment: Option[String],
-     tags: List[String]
+    resourceId: String,
+    index: Int,
+    range: (Long, Long),
+    urls: List[String],
+    comment: Option[String],
+    tags: List[String]
    ) derives Encoder.AsObject
 }

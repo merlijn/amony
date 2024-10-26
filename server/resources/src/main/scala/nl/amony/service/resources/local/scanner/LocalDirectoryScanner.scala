@@ -17,7 +17,12 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.FiniteDuration
 
-case class FileInfo(relativePath: Path, hash: String, size: Long, creationTime: Long, modifiedTime: Long)
+case class FileInfo(path: Path, hash: String, size: Long, creationTime: Long, modifiedTime: Long) {
+  def equalFileMeta(path: Path): Boolean = {
+    val attrs = Files.readAttributes(path, classOf[BasicFileAttributes])
+    size == Files.size(path) && creationTime == attrs.creationTime().toMillis && modifiedTime == Files.getLastModifiedTime(path).toMillis
+  }
+}
 
 sealed trait FileEvent
 case class FileAdded(fileInfo: FileInfo) extends FileEvent
@@ -55,57 +60,75 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
     
     def filterPath(path: Path) = config.filterFileName(path.getFileName.toString)
 
-    // a file that is just moved should have the same hash, creation time, modified time and size
-    def hasEqualMeta(a: FileInfo)(b: FileInfo): Boolean =
-      a.hash == b.hash && a.creationTime == b.creationTime && a.modifiedTime == b.modifiedTime
-
-    def currentFiles = RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath, filterPath).toSet
-    val previousFiles = previousState.map(f => mediaPath.resolve(f.relativePath))
-
     logger.debug(s"Scanning directory: ${mediaPath.toAbsolutePath}, previous state size: ${previousState.size}, last modified: ${Files.getLastModifiedTime(mediaPath).toInstant}")
 
+    val previousByPath: Map[Path, FileInfo]   = previousState.foldLeft(Map.empty)( (acc, f) => acc + (f.path -> f) )
+    val previousByHash: Map[String, FileInfo] = previousState.foldLeft(Map.empty)( (acc, f) => acc + (f.hash -> f) )
+
+    def getByPath(path: Path): Option[FileInfo]   = previousByPath.get(path)
+    def getByHash(hash: String): Option[FileInfo] = previousByHash.get(hash)
+
+    def currentFiles  = RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath, filterPath).toSet
+    val previousFiles = previousState.map(f => f.path)
+
     // new files are either added or moved
-    val movedOrAdded = Stream.emits((currentFiles -- previousFiles).toSeq).evalMap { path =>
+    val movedOrAdded = Stream.emits(currentFiles.toSeq).evalMap { path =>
+
+      val prevByPath: Option[FileInfo] = getByPath(path)
+
+      // if the metadata is equal to the previous file, we assume it was unchanged and re-use the hash
+      def calculateHash(): IO[String] =
+        prevByPath
+          .filter(_.equalFileMeta(path))
+          .map(i => IO.pure(i.hash))
+          .getOrElse(hashingAlgorithm.createHash(path))
 
       for {
-        hash    <- hashingAlgorithm.createHash(path)
-        fileInfo = FileInfo(
-          relativePath = mediaPath.relativize(path),
+        hash       <- calculateHash()
+        fileInfo   = FileInfo(
+          path         = path,
           hash         = hash,
           size         = Files.size(path),
           creationTime = Files.readAttributes(path, classOf[BasicFileAttributes]).creationTime().toMillis,
           modifiedTime = Files.getLastModifiedTime(path).toMillis
         )
       } yield
-        previousState.find(hasEqualMeta(fileInfo)) match
-          case Some(old) => FileMoved(fileInfo, old.relativePath)
-          case None      => FileAdded(fileInfo)
+        prevByPath match {
+          case Some(`fileInfo`) => None
+          case None             =>
+            getByHash(hash) match {
+              case Some(oldFileInfo) if oldFileInfo.equalFileMeta(path) =>
+                Some(FileMoved(fileInfo, oldFileInfo.path))
+              case _              =>
+                Some(FileAdded(fileInfo))
+            }
+        }
     }
 
+    def filterMoved(maybeDeleted: Map[Path, FileInfo], e: Option[FileEvent]): Map[Path, FileInfo] = e match
+      case Some(FileMoved(fileInfo, oldPath)) => maybeDeleted.removed(oldPath)
+      case _                                  => maybeDeleted
+
     // removed files might be deleted or moved
-    val maybeDeleted = previousState.filterNot(f => currentFiles.contains(mediaPath.resolve(f.relativePath)))
+    val maybeDeleted = previousByPath.view.filterKeys(!currentFiles.contains(_)).toMap
 
-    def filterMoved(state: Set[FileInfo], e: FileEvent): Set[FileInfo] = e match
-      case FileMoved(fileInfo, oldPath) => state.filterNot(_.relativePath == oldPath)
-      case _                            => state
+    def emitDeleted(deleted: Map[Path, FileInfo]): Stream[IO, Option[FileEvent]] =
+      Stream.fromIterator(deleted.values.iterator.map(r => Some(FileDeleted(r))), 1)
 
-    def emitDeleted(deleted: Set[FileInfo]): Stream[IO, FileEvent] = Stream.emits(deleted.toSeq.map(r => FileDeleted(r)))
-
-    movedOrAdded.foldFlatMap(maybeDeleted)(filterMoved, emitDeleted)
+    movedOrAdded.foldFlatMap(maybeDeleted)(filterMoved, emitDeleted).collect { case Some(e) => e}
   }
 
   private def applyEvent(state: Set[FileInfo], e: FileEvent): Set[FileInfo] = e match {
     case FileAdded(fileInfo) =>
       state + fileInfo
     case FileDeleted(fileInfo) =>
-      state.filterNot(_.relativePath == fileInfo.relativePath)
+      state.filterNot(_.path == fileInfo.path)
     case FileMoved(fileInfo, oldPath) =>
       state.map { r =>
-        if (r.relativePath == oldPath) r.copy(relativePath = fileInfo.relativePath)
+        if (r.path == oldPath) r.copy(path = fileInfo.path)
         else r
       }
   }
-
 
   /**
    * Given an initial state, this method will poll the directory for changes and emit events for new, deleted and moved resources.
@@ -132,29 +155,27 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
   def pollingResourceEventStream(initialState: Set[ResourceInfo], pollInterval: FiniteDuration): Stream[IO, ResourceEvent] = {
 
     val initialFiles = initialState.map { r =>
-      FileInfo(Path.of(r.path), r.hash, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0))
+      FileInfo(mediaPath.resolve(Path.of(r.path)), r.hash, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0))
     }
 
     pollingStream(initialFiles, pollInterval).parEvalMap(4) {
       case FileAdded(f) =>
 
-        val absolutePath = mediaPath.resolve(f.relativePath)
-
         val resourceMeta: IO[ResourceMeta] =
-          LocalResourceMeta.resolveMeta(absolutePath)
+          LocalResourceMeta.resolveMeta(f.path)
             .map(_.getOrElse(ResourceMeta.Empty))
             .recover {
-              case e => logger.error(s"Failed to resolve meta for $absolutePath", e); ResourceMeta.Empty
+              case e => logger.error(s"Failed to resolve meta for ${f.path}", e); ResourceMeta.Empty
             }
 
         for {
           meta <- resourceMeta
         } yield ResourceAdded(ResourceInfo(
           bucketId = config.id,
-          path = f.relativePath.toString,
+          path = mediaPath.relativize(f.path).toString,
           hash = f.hash,
           size = f.size,
-          contentType = Resource.contentTypeForPath(absolutePath),
+          contentType = Resource.contentTypeForPath(f.path),
           contentMeta = meta,
           creationTime = Some(f.creationTime),
           lastModifiedTime = Some(f.modifiedTime)
@@ -163,8 +184,8 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
       case FileDeleted(f) =>
         IO(ResourceDeleted(f.hash))
 
-      case FileMoved(fileInfo, oldPath) =>
-        IO(ResourceMoved(fileInfo.hash, oldPath.toString, fileInfo.relativePath.toString))
+      case FileMoved(f, oldPath) =>
+        IO(ResourceMoved(f.hash, mediaPath.relativize(oldPath).toString, mediaPath.relativize(f.path).toString))
     }
   }
 }
