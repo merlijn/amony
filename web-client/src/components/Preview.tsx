@@ -77,7 +77,7 @@ const Preview = (props: PreviewProps) => {
 
   const videoPreview =
       <FragmentsPlayer
-          key       = { `video-preview-${props.resource.id}` }
+          key       = { `video-preview-${props.resource.resourceId}` }
           className = { `preview-video preview-media` }
           onClick   = { () => props.onClick(props.resource) }
           fragments = { props.resource.highlights } />
@@ -106,7 +106,7 @@ const PreviewMenu = (props: {resource: Resource, setVideo: (v: Resource) => void
 
   const cancelDelete = () => setShowDeleteDialog(false);
   const confirmDelete = () => {
-    Api.deleteResourceById(props.resource.bucketId, props.resource.id).then(() => {
+    Api.deleteResourceById(props.resource.bucketId, props.resource.resourceId).then(() => {
       console.log("video was deleted")
       setShowDeleteDialog(false)
     })
@@ -118,7 +118,7 @@ const PreviewMenu = (props: {resource: Resource, setVideo: (v: Resource) => void
         <MediaInfo 
           meta = { props.resource.userMeta }
           onClose = { (meta) => {
-            Api.updateUserMetaData(props.resource.bucketId, props.resource.id, meta).then(() => {
+            Api.updateUserMetaData(props.resource.bucketId, props.resource.resourceId, meta).then(() => {
               props.setVideo({...props.resource, userMeta: meta });
               setShowInfoModal(false)
             })
@@ -146,7 +146,7 @@ const PreviewMenu = (props: {resource: Resource, setVideo: (v: Resource) => void
           <MenuItem onClick = { () => { setShowInfoModal(true); props.onDialogOpen() } }>
             <ImgWithAlt className="menu-icon" src="/icons/info.svg" />Info
           </MenuItem>
-          <MenuItem href={`/editor/${props.resource.id}`}>
+          <MenuItem href={`/editor/${props.resource.resourceId}`}>
             <ImgWithAlt className="menu-icon" src="/icons/edit.svg" />Fragments
           </MenuItem>
           <MenuItem onClick = { () => { setShowDeleteDialog(true); props.onDialogOpen() } }>

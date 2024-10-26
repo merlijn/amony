@@ -26,7 +26,7 @@ const FragmentList = (props: {vid: Resource, selected: number, selectFn: (f: Edi
       return (
         <FragmentPreview
           key={ f.urls[0] }
-          mediaId={ props.vid.id }
+          mediaId={ props.vid.resourceId }
           fragment = { props.vid.highlights[idx] }
           style={ extraStyle(idx) }
           className = { (props.selected === idx ? "fragment-selected" : "fragment-not-selected") + " fragment" }
@@ -44,7 +44,7 @@ const FragmentList = (props: {vid: Resource, selected: number, selectFn: (f: Edi
   const nrOfFragments = props.vid.highlights.length
 
   const addFragment =
-    <div key={`fragment-${props.vid.id}-new`}
+    <div key={`fragment-${props.vid.resourceId}-new`}
          style={ extraStyle(nrOfFragments) }
          className={ (props.selected === nrOfFragments ? "fragment-selected" : "fragment-not-selected") + " fragment" }
          onClick={(e) => { props.selectFn({ idx: nrOfFragments }) } }>

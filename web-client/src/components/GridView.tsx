@@ -86,7 +86,7 @@ const GridView = (props: GalleryProps) => {
 
     const style = { "--ncols" : `${columns}` } as CSSProperties
 
-    return <div key = { `preview-${vid.id}` } className = "grid-cell" style = { style } >
+    return <div key = { `preview-${vid.resourceId}` } className = "grid-cell" style = { style } >
               <Preview
                 resource= { vid }
                 onClick  = { props.onClick }

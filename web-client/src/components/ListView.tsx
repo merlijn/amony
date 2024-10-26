@@ -87,7 +87,7 @@ const ListView = (props: ListProps) => {
       {
         searchResult.results.map((v, index) => {
           return(
-            <div key={`row-${v.id}`} className="list-row">
+            <div key={`row-${v.resourceId}`} className="list-row">
 
               <div key="thumbnail" className="list-cell list-thumbnail">
                 <ProgressiveImage src={v.urls.thumbnailUrl} placeholder="/image_placeholder.svg">
@@ -113,7 +113,7 @@ const ListView = (props: ListProps) => {
                 { 
                   Api.session().isAdmin() && 
                     <div className = "media-actions">
-                      <IoCutSharp className = "fragments-action" onClick = { () => history.push(`/editor/${v.id}`) } />
+                      <IoCutSharp className = "fragments-action" onClick = { () => history.push(`/editor/${v.resourceId}`) } />
                       <AiOutlineDelete className = "delete-action" />
                     </div> 
                 }
@@ -135,7 +135,7 @@ const TagsCell = (props: {resource: Resource }) => {
 
   const updateTags = (newTags: Array<string>) => {
     const meta: ResourceUserMeta = { ...props.resource.userMeta, tags: newTags }
-    Api.updateUserMetaData(props.resource.bucketId, props.resource.id, meta).then(() =>  {
+    Api.updateUserMetaData(props.resource.bucketId, props.resource.resourceId, meta).then(() =>  {
       setTags(newTags)
     })
   }
@@ -159,7 +159,7 @@ const TitleCell = (props: { resource: Resource} ) => {
 
   const updateTitle = (newTitle: string) => {
     const meta: ResourceUserMeta = { ...props.resource.userMeta, title: newTitle }
-    Api.updateUserMetaData(props.resource.bucketId, props.resource.id, meta).then(() =>  {
+    Api.updateUserMetaData(props.resource.bucketId, props.resource.resourceId, meta).then(() =>  {
       setTitle(newTitle)
       setEditTitle(false)
     })

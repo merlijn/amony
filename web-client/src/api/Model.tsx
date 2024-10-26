@@ -18,7 +18,7 @@ export type ResourceInfo = {
 }
 
 export type Resource = {
-  id: string,
+  resourceId: string,
   bucketId: String,
   uploader: string,
   uploadTimestamp: number,

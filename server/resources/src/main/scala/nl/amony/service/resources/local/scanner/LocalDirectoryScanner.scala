@@ -60,9 +60,9 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
     
     def filterPath(path: Path) = config.filterFileName(path.getFileName.toString)
 
-    logger.debug(s"Scanning directory: ${mediaPath.toAbsolutePath}, previous state size: ${previousState.size}, last modified: ${Files.getLastModifiedTime(mediaPath).toInstant}")
-
     val previousByHash: Map[String, FileInfo] = previousState.values.foldLeft(Map.empty)((acc, f) => acc + (f.hash -> f) )
+
+    logger.debug(s"Calculated previous by hash")
 
     def getByPath(path: Path): Option[FileInfo]   = previousState.get(path)
     def getByHash(hash: String): Option[FileInfo] = previousByHash.get(hash)
@@ -70,8 +70,10 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
     def currentFiles  = RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath, filterPath).toSet
     val previousFiles = previousState.values.map(f => f.path)
 
+    logger.debug(s"Listed current directory")
+
     // new files are either added or moved
-    val movedOrAdded = Stream.emits(currentFiles.toSeq).evalMap { path =>
+    val movedOrAdded = Stream.fromIterator[IO](currentFiles.iterator, 1).evalMap { path =>
 
       val prevByPath: Option[FileInfo] = getByPath(path)
 
@@ -105,11 +107,13 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
     }
 
     def filterMoved(maybeDeleted: Map[Path, FileInfo], e: Option[FileEvent]): Map[Path, FileInfo] = e match
-      case Some(FileMoved(fileInfo, oldPath)) => maybeDeleted.removed(oldPath)
+      case Some(FileMoved(fileInfo, oldPath)) => maybeDeleted - oldPath
       case _                                  => maybeDeleted
 
     // removed files might be deleted or moved
-    val maybeDeleted = previousState.view.filterKeys(!currentFiles.contains(_)).toMap
+    val maybeDeleted = currentFiles.foldLeft(previousState)((acc, p) => acc - p)
+
+    logger.debug(s"Filtered maybe deleted")
 
     def emitDeleted(deleted: Map[Path, FileInfo]): Stream[IO, Option[FileEvent]] =
       Stream.fromIterator(deleted.values.iterator.map(r => Some(FileDeleted(r))), 1)
@@ -135,8 +139,8 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
   def pollingStream(initialState: Map[Path, FileInfo], pollInterval: FiniteDuration): Stream[IO, FileEvent] = {
 
     def unfoldRecursive(s: Map[Path, FileInfo]): Stream[IO, FileEvent] = {
+      logger.debug(s"Scanning directory: ${mediaPath.toAbsolutePath}, previous state size: ${s.size}")
       val startTime = System.currentTimeMillis()
-      logger.debug(s"Scanning directory: ${mediaPath.toAbsolutePath}")
       def logTime = Stream.eval(IO { logger.debug(s"Scanning took: ${System.currentTimeMillis() - startTime} ms") })
       scanDirectory(s).foldFlatMap(s)(applyEvent, s => logTime >> Stream.sleep[IO](pollInterval) >> unfoldRecursive(s))
     }

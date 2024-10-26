@@ -31,7 +31,7 @@ const PlayerView = (props: {vid: Resource}) => {
 
   const [vid, setVid] = useState(props.vid)
   const vidRatio = props.vid.resourceMeta.width / props.vid.resourceMeta.height;
-  const id = '#video-' + props.vid.id
+  const id = '#video-' + props.vid.resourceId
 
   const [plyr, setPlyr] = useState<Plyr | null>(null)
   const [showFragmentControls, setShowFragmentControls] = useState(false)
@@ -47,8 +47,8 @@ const PlayerView = (props: {vid: Resource}) => {
 
   const updateThumbnailTimestamp = (e: any) => {
     if (plyr) {
-      Api.updateThumbnailTimestamp(vid.id, Math.trunc(plyr.currentTime * 1000)).then (response => {
-          Api.getMediaById(vid.id).then(response => {
+      Api.updateThumbnailTimestamp(vid.resourceId, Math.trunc(plyr.currentTime * 1000)).then (response => {
+          Api.getMediaById(vid.resourceId).then(response => {
             setVid((response as Resource))
           })
       })
@@ -67,13 +67,13 @@ const PlayerView = (props: {vid: Resource}) => {
 
        if (fragment.idx >= 0 && fragment.idx < vid.highlights.length) {
          console.log("updating fragment")
-         Api.updateFragment(vid.id, fragment.idx, from, to).then (response => {
+         Api.updateFragment(vid.resourceId, fragment.idx, from, to).then (response => {
            setVid(response as Resource)
          });
        }
        if (fragment.idx === vid.highlights.length) {
          console.log("adding fragment")
-         Api.addFragment(vid.id, from, to).then (response => {
+         Api.addFragment(vid.resourceId, from, to).then (response => {
            setVid(response as Resource)
          });
        }
@@ -132,14 +132,14 @@ const PlayerView = (props: {vid: Resource}) => {
 
   return (
       <div style = { { width: totalWidth, height: videoSize.height } } className="abs-center">
-        <div key={`video-${vid.id}-player`} style={videoSize} className="video-container">
+        <div key={`video-${vid.resourceId}-player`} style={videoSize} className="video-container">
           <video className="video-player" id={id} playsInline controls>
             <source src={props.vid.urls.originalResourceUrl} type="video/mp4"/>
           </video>
           { showFragmentControls && fragmentPickingControls }
         </div>
 
-        <div key={`video-${vid.id}-fragments`} style={ { width: fragmentWidth, height: videoSize.height }} className="fragments-container">
+        <div key={`video-${vid.resourceId}-fragments`} style={ { width: fragmentWidth, height: videoSize.height }} className="fragments-container">
           <FragmentList 
             vid      = {vid} 
             selected = {fragment.idx} 

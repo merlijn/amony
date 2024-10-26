@@ -44,7 +44,7 @@ const MediaModal = (props: { resource?: Resource, onHide: () => void }) => {
 
   if(props.resource && props.resource.contentType.startsWith("video"))
     content =
-      <video tab-index='-1' id={`video-modal-${props.resource.id}`} ref={videoElement} playsInline controls>
+      <video tab-index='-1' id={`video-modal-${props.resource.resourceId}`} ref={videoElement} playsInline controls>
         { props.resource && <source src={props.resource.urls.originalResourceUrl} type="video/mp4"/> }
       </video>
   if(props.resource && props.resource.contentType.startsWith("image"))
