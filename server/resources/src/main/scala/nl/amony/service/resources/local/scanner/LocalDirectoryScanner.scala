@@ -15,13 +15,12 @@ import slick.jdbc.JdbcProfile
 
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
+import java.time.Instant
 import scala.concurrent.duration.FiniteDuration
 
 case class FileInfo(path: Path, hash: String, size: Long, creationTime: Long, modifiedTime: Long) {
-  def equalFileMeta(path: Path): Boolean = {
-    val attrs = Files.readAttributes(path, classOf[BasicFileAttributes])
+  def equalFileMeta(path: Path, attrs: BasicFileAttributes): Boolean =
     size == Files.size(path) && creationTime == attrs.creationTime().toMillis && modifiedTime == Files.getLastModifiedTime(path).toMillis
-  }
 }
 
 sealed trait FileEvent
@@ -56,49 +55,42 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
    * This means, the only thing we can rely on for checking equality is the metadata.
    * 
    */
-  private def scanDirectory(previousState: Map[Path, FileInfo]): Stream[IO, FileEvent] = {
+  private def scanDirectory(directory: Path, previousState: Map[Path, FileInfo], filter: Path => Boolean): Stream[IO, FileEvent] = {
     
-    def filterPath(path: Path) = config.filterFileName(path.getFileName.toString)
-
     val previousByHash: Map[String, FileInfo] = previousState.values.foldLeft(Map.empty)((acc, f) => acc + (f.hash -> f) )
-
-    logger.debug(s"Calculated previous by hash")
 
     def getByPath(path: Path): Option[FileInfo]   = previousState.get(path)
     def getByHash(hash: String): Option[FileInfo] = previousByHash.get(hash)
 
-    def currentFiles  = RecursiveFileVisitor.listFilesInDirectoryRecursive(mediaPath, filterPath).toSet
-    val previousFiles = previousState.values.map(f => f.path)
+    val start = System.currentTimeMillis()
 
-    logger.debug(s"Listed current directory")
+    val currentFiles  = RecursiveFileVisitor.listFilesInDirectoryRecursive(directory, filter)
+
+    logger.debug(s"Listed directory files in ${System.currentTimeMillis() - start} ms")
 
     // new files are either added or moved
-    val movedOrAdded = Stream.fromIterator[IO](currentFiles.iterator, 1).evalMap { path =>
-
-      val prevByPath: Option[FileInfo] = getByPath(path)
-
-      // if the metadata is equal to the previous file, we assume it was unchanged and re-use the hash
-      def calculateHash(): IO[String] =
-        prevByPath
-          .filter(_.equalFileMeta(path))
-          .map(i => IO.pure(i.hash))
-          .getOrElse(hashingAlgorithm.createHash(path))
+    val movedOrAdded = Stream.emits(currentFiles).evalMap { (path, attrs) =>
 
       for {
-        hash       <- calculateHash()
+        _          <- IO.unit
+        prevByPath = getByPath(path)
+        hash       <- prevByPath
+                        .filter(_.equalFileMeta(path, attrs))
+                        .map(i => IO.pure(i.hash))
+                        .getOrElse(hashingAlgorithm.createHash(path))
         fileInfo   = FileInfo(
           path         = path,
           hash         = hash,
-          size         = Files.size(path),
-          creationTime = Files.readAttributes(path, classOf[BasicFileAttributes]).creationTime().toMillis,
-          modifiedTime = Files.getLastModifiedTime(path).toMillis
+          size         = attrs.size(),
+          creationTime = attrs.creationTime().toMillis,
+          modifiedTime = attrs.lastModifiedTime().toMillis
         )
       } yield
         prevByPath match {
           case Some(`fileInfo`) => None
-          case None             =>
+          case _                =>
             getByHash(hash) match {
-              case Some(oldFileInfo) if oldFileInfo.equalFileMeta(path) =>
+              case Some(oldFileInfo) if oldFileInfo.equalFileMeta(path, attrs) =>
                 Some(FileMoved(fileInfo, oldFileInfo.path))
               case _              =>
                 Some(FileAdded(fileInfo))
@@ -106,14 +98,11 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
         }
     }
 
+    val maybeDeleted = currentFiles.foldLeft(previousState){ case (acc, (p, _)) => acc - p }
+
     def filterMoved(maybeDeleted: Map[Path, FileInfo], e: Option[FileEvent]): Map[Path, FileInfo] = e match
       case Some(FileMoved(fileInfo, oldPath)) => maybeDeleted - oldPath
       case _                                  => maybeDeleted
-
-    // removed files might be deleted or moved
-    val maybeDeleted = currentFiles.foldLeft(previousState)((acc, p) => acc - p)
-
-    logger.debug(s"Filtered maybe deleted")
 
     def emitDeleted(deleted: Map[Path, FileInfo]): Stream[IO, Option[FileEvent]] =
       Stream.fromIterator(deleted.values.iterator.map(r => Some(FileDeleted(r))), 1)
@@ -139,10 +128,13 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
   def pollingStream(initialState: Map[Path, FileInfo], pollInterval: FiniteDuration): Stream[IO, FileEvent] = {
 
     def unfoldRecursive(s: Map[Path, FileInfo]): Stream[IO, FileEvent] = {
-      logger.debug(s"Scanning directory: ${mediaPath.toAbsolutePath}, previous state size: ${s.size}")
+      logger.debug(s"Scanning directory: ${mediaPath.toAbsolutePath}, previous state size: ${s.size}, stack depth: ${Thread.currentThread().getStackTrace.length}")
       val startTime = System.currentTimeMillis()
+      def filterPath(path: Path) = config.filterFileName(path.getFileName.toString)
       def logTime = Stream.eval(IO { logger.debug(s"Scanning took: ${System.currentTimeMillis() - startTime} ms") })
-      scanDirectory(s).foldFlatMap(s)(applyEvent, s => logTime >> Stream.sleep[IO](pollInterval) >> unfoldRecursive(s))
+      def sleep = Stream.sleep[IO](pollInterval)
+
+      scanDirectory(mediaPath, s, filterPath).foldFlatMap(s)(applyEvent, s => logTime >> sleep >> unfoldRecursive(s))
     }
 
     Stream.suspend(unfoldRecursive(initialState))

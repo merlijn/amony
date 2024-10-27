@@ -74,7 +74,7 @@ object Main extends IOApp with ConfigLoader with Logging {
 
         logger.info(s"Starting scanner for ${localConfig.resourcePath.toAbsolutePath}")
 
-        val pollInterval = 60.seconds
+        val pollInterval = 5.seconds
 
         def stateFromStorage(): Set[ResourceInfo] = localFileStorage.getAll(localConfig.id).map(_.toSet).unsafeRunSync()
 
