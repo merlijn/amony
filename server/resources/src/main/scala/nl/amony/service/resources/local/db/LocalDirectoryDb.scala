@@ -3,23 +3,21 @@ package nl.amony.service.resources.local.db
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import nl.amony.service.resources.api.ResourceInfo
-import nl.amony.service.resources.api.operations.ResourceOperation
+import nl.amony.service.resources.api.events.*
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
-import nl.amony.service.resources.api.events.*
-import slick.lifted.LiteralColumn
 
-import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(implicit IORuntime: IORuntime) extends Logging {
 
-  import dbConfig.profile.api._
-  implicit val ec: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
-
+  import dbConfig.profile.api.*
   private val db = dbConfig.db
 
+  implicit val ec: ExecutionContext = db.executor.executionContext
+  
   private def dbIO[T](a: DBIO[T]): IO[T] = IO.fromFuture(IO(db.run(a))).onError { t => IO { logger.warn(t) } }
 
   private val resourcesTable = new ResourcesTable[P](dbConfig)
@@ -34,7 +32,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
     def getWithTags(bucketId: String, filter: Option[resourcesTable.LocalFilesSchema => Rep[Boolean]] = None) = {
       val query = filter match {
         case Some(f) => joinResourceWithTags(bucketId).filter((resource, tag) => f(resource))
-        case None => joinResourceWithTags(bucketId)
+        case None    => joinResourceWithTags(bucketId)
       }
 
       query.result
@@ -46,10 +44,6 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
               resource.toResource(tags)
           }.toSeq
         }
-    }
-
-    def insertOrUpdate(resource: ResourceInfo) = {
-      resourcesTable.insertOrUpdate(resource)
     }
   }
 

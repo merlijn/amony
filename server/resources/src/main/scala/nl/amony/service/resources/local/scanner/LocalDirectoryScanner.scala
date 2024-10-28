@@ -55,7 +55,7 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
    * This means, the only thing we can rely on for checking equality is the metadata.
    * 
    */
-  private def scanDirectory(directory: Path, previousState: Map[Path, FileInfo], filter: Path => Boolean): Stream[IO, FileEvent] = {
+  private def scanDirectory(directory: Path, previousState: Map[Path, FileInfo], filter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] = {
     
     val previousByHash: Map[String, FileInfo] = previousState.values.foldLeft(Map.empty)((acc, f) => acc + (f.hash -> f) )
 
@@ -77,7 +77,7 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
         hash       <- prevByPath
                         .filter(_.equalFileMeta(path, attrs))
                         .map(i => IO.pure(i.hash))
-                        .getOrElse(hashingAlgorithm.createHash(path))
+                        .getOrElse(hashFn(path))
         fileInfo   = FileInfo(
           path         = path,
           hash         = hash,
@@ -128,15 +128,17 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
   def pollingStream(initialState: Map[Path, FileInfo], pollInterval: FiniteDuration): Stream[IO, FileEvent] = {
 
     def unfoldRecursive(s: Map[Path, FileInfo]): Stream[IO, FileEvent] = {
-      logger.debug(s"Scanning directory: ${mediaPath.toAbsolutePath}, previous state size: ${s.size}, stack depth: ${Thread.currentThread().getStackTrace.length}")
       val startTime = System.currentTimeMillis()
+      logger.debug(s"Scanning directory: ${mediaPath.toAbsolutePath}, previous state size: ${s.size}, stack depth: ${Thread.currentThread().getStackTrace.length}")
+      
       def filterPath(path: Path) = config.filterFileName(path.getFileName.toString)
       def logTime = Stream.eval(IO { logger.debug(s"Scanning took: ${System.currentTimeMillis() - startTime} ms") })
       def sleep = Stream.sleep[IO](pollInterval)
 
-      scanDirectory(mediaPath, s, filterPath).foldFlatMap(s)(applyEvent, s => logTime >> sleep >> unfoldRecursive(s))
+      scanDirectory(mediaPath, s, filterPath, hashingAlgorithm.createHash)
+        .foldFlatMap(s)(applyEvent, s => logTime >> sleep >> unfoldRecursive(s))
     }
-
+    
     Stream.suspend(unfoldRecursive(initialState))
   }
 
