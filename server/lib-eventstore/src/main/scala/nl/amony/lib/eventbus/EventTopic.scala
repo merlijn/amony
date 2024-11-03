@@ -11,11 +11,11 @@ case class EventTopicKey[E : PersistenceCodec](name: String) {
 
 trait EventTopic[E] {
 
-  def publish(event: E): Unit
+  def publish(event: E): IO[Unit]
 
   def followTail(listener: E => Unit): Unit
 
-  def processAtLeastOnce(processorId: String, batchSize: Int)(processor: E => Unit): Stream[IO, Int]
+  def processAtLeastOnce(processorId: String, batchSize: Int)(processor: E => IO[Unit]): Stream[IO, Int]
 }
 
 object EventTopic {
@@ -23,15 +23,13 @@ object EventTopic {
   private class TransientEventTopic[E] extends EventTopic[E] {
     val processors = new ConcurrentHashMap[String, E => Unit]
 
-    override def publish(event: E): Unit = {
-      processors.values().forEach((processor) => processor(event))
-    }
+    override def publish(event: E): IO[Unit] =
+      IO(processors.values().forEach((processor) => processor(event)))
 
-    override def followTail(listener: E => Unit): Unit = {
+    override def followTail(listener: E => Unit): Unit =
       processors.putIfAbsent("", listener)
-    }
 
-    override def processAtLeastOnce(processorId: String, batchSize: Int)(processor: E => Unit): Stream[IO, Int] = {
+    override def processAtLeastOnce(processorId: String, batchSize: Int)(processor: E => IO[Unit]): Stream[IO, Int] = {
       ???
     }
   }

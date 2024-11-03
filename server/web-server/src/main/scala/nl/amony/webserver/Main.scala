@@ -55,9 +55,8 @@ object Main extends IOApp with ConfigLoader with Logging {
     val localFileStorage = new LocalDirectoryDb(databaseConfig)
     localFileStorage.createTablesIfNotExists()
 
-    val resourceTopic = EventTopic.transientEventTopic[ResourceEvent]()
-    resourceTopic.followTail(searchService.indexEvent _)
-    val publish: Pipe[IO, ResourceEvent, ResourceEvent] = _.foreach(e => IO.pure(resourceTopic.publish(e)))
+    val resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
+    resourceEventTopic.followTail(searchService.indexEvent _)
 
     val resourceBuckets: Map[String, ResourceBucket] = appConfig.resources.map {
       case localConfig : ResourceConfig.LocalDirectoryConfig =>
@@ -66,10 +65,10 @@ object Main extends IOApp with ConfigLoader with Logging {
 
         // hack to reindex everything on startup
         localFileStorage.getAll(localConfig.id).unsafeRunSync().foreach {
-          resource => resourceTopic.publish(ResourceAdded(resource))
+          resource => resourceEventTopic.publish(ResourceAdded(resource))
         }
 
-        val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (localFileStorage.applyEvent(localConfig.id))
+        val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (localFileStorage.applyEvent(localConfig.id, e => resourceEventTopic.publish(e)))
         val debug: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"Resource event: $e")))
 
         logger.info(s"Starting scanner for ${localConfig.resourcePath.toAbsolutePath}")
@@ -87,12 +86,11 @@ object Main extends IOApp with ConfigLoader with Logging {
         pullRetry(stateFromStorage())
           .through(debug)
           .through(updateDb)
-          .through(publish)
           .compile
           .drain
           .unsafeRunAsync(_ => ())
 
-        localConfig.id -> new LocalDirectoryBucket(localConfig, localFileStorage, resourceTopic)
+        localConfig.id -> new LocalDirectoryBucket(localConfig, localFileStorage, resourceEventTopic)
     }.toMap
 
     val webServer = new WebServer(appConfig.api)

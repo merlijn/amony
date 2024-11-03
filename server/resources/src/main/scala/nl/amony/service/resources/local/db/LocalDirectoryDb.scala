@@ -71,12 +71,12 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       } yield ()).transactionally
     )
 
-  def insert(resource: ResourceInfo, effect: => IO[Unit]): IO[Unit] =
+  def insert(resource: ResourceInfo, effect: () => IO[Unit]): IO[Unit] =
     dbIO(
       (for {
         _ <- resourcesTable.insert(resource)
         _ <- tagsTable.insert(resource.bucketId, resource.hash, resource.tags.toSet)
-        _ <- DBIO.from(effect.unsafeToFuture())
+        _ <- DBIO.from(effect().unsafeToFuture())
       } yield ()).transactionally
     )
 
@@ -89,11 +89,12 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       } yield ()).transactionally
     )
 
-  private def move(bucketId: String, oldPath: String, newPath: String): IO[Unit] =
+  private def move(bucketId: String, oldPath: String, newPath: String, effect: () => IO[Unit] = () => IO.unit): IO[Unit] =
     dbIO(
       (for {
         old <- resourcesTable.queryByPath(bucketId, oldPath).result.head
         _   <- resourcesTable.update(old.copy(relativePath = newPath))
+        _   <- DBIO.from(effect().unsafeToFuture())
       } yield ()).transactionally
     )
 
@@ -152,11 +153,11 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
     dbIO(q)
   }
   
-  def applyEvent(bucketId: String)(event: ResourceEvent): IO[Unit] = {
+  def applyEvent(bucketId: String, effect: ResourceEvent => IO[Unit])(event: ResourceEvent): IO[Unit] = {
     event match {
-      case ResourceAdded(resource)             => insert(resource, IO.unit)
-      case ResourceDeleted(resourceId)         => deleteResource(bucketId, resourceId)
-      case ResourceMoved(id, oldPath, newPath) => move(bucketId, oldPath, newPath)
+      case ResourceAdded(resource)             => insert(resource, () => effect(event))
+      case ResourceDeleted(resourceId)         => deleteResource(bucketId, resourceId, () => effect(event))
+      case ResourceMoved(id, oldPath, newPath) => move(bucketId, oldPath, newPath, () => effect(event))
       case _ => IO.unit
     }
   }

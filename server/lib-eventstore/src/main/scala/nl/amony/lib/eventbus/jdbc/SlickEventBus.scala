@@ -1,6 +1,7 @@
 package nl.amony.lib.eventbus.jdbc
 
 import cats.effect.IO
+import cats.implicits._
 import fs2.Stream
 import nl.amony.lib.eventbus.{EventTopic, EventTopicKey, PersistentEventBus}
 import scribe.Logging
@@ -10,11 +11,9 @@ import slick.jdbc.JdbcProfile
 import scala.concurrent.duration.DurationInt
 
 case class EventRow(ord: Option[Long],
-                    entityId: String,
+                    topicId: String,
                     sequenceNr: Long,
                     timestamp: Long,
-                    serializerId: Long,
-                    eventType: String,
                     eventData: Array[Byte])
 
 class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
@@ -27,37 +26,25 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
   private class Events(tag: Tag) extends Table[EventRow](tag, "events") {
 
     def ord          = column[Long]("ord", O.AutoInc)
-    def entityId     = column[String]("entity_id")
+    def topicId      = column[String]("topic_id")
     def timestamp    = column[Long]("timestamp")
-    def serializerId = column[Long]("serializer_id")
-    def eventType    = column[String]("event_type")
     def eventData    = column[Array[Byte]]("event_data")
     def eventSeqNr   = column[Long]("event_seq_nr")
 
-    def pk           = primaryKey("events_primary_key", (entityId, eventSeqNr))
+    def pk           = primaryKey("events_primary_key", (topicId, eventSeqNr))
 
-    def            * = (ord.?, entityId, eventSeqNr, timestamp, serializerId, eventType, eventData) <> (EventRow.apply.tupled, EventRow.unapply)
-  }
-
-  private class Snapshots(tag: Tag) extends Table[(String, Long, Array[Byte])](tag, "snapshots") {
-    def id           = column[String]("key", O.PrimaryKey)
-    def sequenceNr   = column[Long]("sequence_nr")
-    def serializerId = column[Long]("serializer_id")
-    def eventType    = column[String]("type")
-    def data         = column[Array[Byte]]("data")
-    def *            = (id, sequenceNr, data)
+    def            * = (ord.?, topicId, eventSeqNr, timestamp, eventData) <> (EventRow.apply.tupled, EventRow.unapply)
   }
 
   private class Processors(tag: Tag) extends Table[(String, String, Long)](tag, "processors") {
     def processorId  = column[String]("processor_id")
-    def entityId     = column[String]("entity_id")
+    def topicId      = column[String]("topic_id")
     def sequenceNr   = column[Long]("sequence_nr")
-    def pk           = primaryKey("processors_primary_key", (processorId, entityId))
-    def *            = (processorId, entityId, sequenceNr)
+    def pk           = primaryKey("processors_primary_key", (processorId, topicId))
+    def *            = (processorId, topicId, sequenceNr)
   }
 
   private val eventTable     = TableQuery[Events]
-  private val snapshotTable  = TableQuery[Snapshots]
   private val processorTable = TableQuery[Processors]
 
   private val pollInterval     = 200.millis
@@ -71,13 +58,12 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
   def createTablesIfNotExists(): IO[Unit] =
     for {
       _ <- dbIO(eventTable.schema.createIfNotExists)
-      _ <- dbIO(snapshotTable.schema.createIfNotExists)
       _ <- dbIO(processorTable.schema.createIfNotExists)
     } yield ()
 
   def index(): Stream[IO, String] = {
 
-    val query = eventTable.map(_.entityId).distinct.result
+    val query = eventTable.map(_.topicId).distinct.result
     val result: Stream[IO, String] =
       Stream
         .eval(dbIO(query))
@@ -86,11 +72,20 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
     result
   }
 
+  def getAllMessagesForTopic(topicId: String, start: Long, max: Option[Long]): Stream[IO, Array[Byte]] = {
+
+    val query = queries.getEvents(topicId, start, max)
+
+    Stream
+      .eval(dbIO(query))
+      .flatMap(r => Stream.fromIterator[IO](r.iterator, 1).map(_.eventData))
+  }
+
   private object queries {
 
     def latestSeqNrQuery(entityId: String) =
       eventTable
-        .filter(_.entityId === entityId)
+        .filter(_.topicId === entityId)
         .sortBy(_.eventSeqNr.desc)
         .take(1)
 
@@ -105,7 +100,7 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
     def lastProcessedSeqNr(processorId: String, entityId: String) =
       processorTable
         .filter(_.processorId === processorId)
-        .filter(_.entityId === entityId)
+        .filter(_.topicId === entityId)
         .take(1).result.headOption.map {
           case Some((_, _, c)) => Some(c)
           case None => None
@@ -114,9 +109,9 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
     def storeProcessorSeqNr(processorId: String, entityId: String, seqNr: Long) =
       processorTable.insertOrUpdate((processorId, entityId, seqNr))
 
-    def getEvents(entityId: String, start: Long, max: Option[Long]) = {
+    def getEvents(topicId: String, start: Long, max: Option[Long]) = {
       val events = eventTable
-        .filter(_.entityId === entityId)
+        .filter(_.topicId === topicId)
         .filter(_.eventSeqNr >= start)
         .sortBy(_.ord.asc)
 
@@ -134,25 +129,25 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
     implicit val ioRuntime = cats.effect.unsafe.implicits.global
 
     new EventTopic[E] {
-      override def publish(e: E): Unit = {
+      override def publish(e: E): IO[Unit] = {
 
-          def insertEntry(seqNr: Long, e: E) = {
-            val (manifest, data) = topic.persistenceCodec.encode(e)
-            eventTable += EventRow(None, topic.name, seqNr, System.currentTimeMillis(), topic.persistenceCodec.getSerializerId(), manifest, data)
-          }
+        def insertEntry(seqNr: Long, e: E) = {
+          val data = topic.persistenceCodec.encode(e)
+          eventTable += EventRow(None, topic.name, seqNr, System.currentTimeMillis(), data)
+        }
 
-          val persistQuery = (for {
-            last  <- queries.latestSeqNrQuery(topic.name).result
-            seqNr  = last.headOption.map(_.sequenceNr).getOrElse(-1L)
-            _     <- insertEntry(seqNr + 1, e)
-          } yield ()).transactionally
+        val persistQuery = (for {
+          last  <- queries.latestSeqNrQuery(topic.name).result
+          seqNr  = last.headOption.map(_.sequenceNr).getOrElse(-1L)
+          _     <- insertEntry(seqNr + 1, e)
+        } yield ()).transactionally
 
-          dbIO(persistQuery).unsafeRunSync()
+        dbIO(persistQuery)
       }
 
       override def followTail(listener: E => Unit): Unit = ???
 
-      override def processAtLeastOnce(processorId: String, batchSize: Int)(processorFn: E => Unit): Stream[IO, Int] = {
+      override def processAtLeastOnce(processorId: String, batchSize: Int)(processorFn: E => IO[Unit]): Stream[IO, Int] = {
 
         def processBatch(): IO[Int] = {
 
@@ -162,11 +157,13 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
 
             dbIO(queries.getEvents(topic.name, lastProcessedSeqNr + 1, Some(batchSize)))
               .map {
-                _.map { row => topic.persistenceCodec.decode(row.eventType, row.eventData) }
+                _.map { row => topic.persistenceCodec.decode(row.eventData) }
               }
               .flatMap { events =>
 
                 events.foreach { e => processorFn(e) }
+
+                val f: IO[Seq[Unit]] = events.map(e => processorFn(e)).sequence
 
                 if (events.isEmpty)
                   IO(0)
@@ -176,9 +173,21 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
           }
         }
 
-        def pollBatchRecursive(): Stream[IO, Int] = {
-          Stream.sleep[IO](pollInterval) >> Stream.eval(processBatch()) ++ pollBatchRecursive()
+        def processBatch2(): IO[Int] = {
+
+          val transaction = (for {
+            optionalSeqNr <- queries.lastProcessedSeqNr(processorId, topic.name)
+            lastProcessedSeqNr = optionalSeqNr.getOrElse(-1L)
+            events <- queries.getEvents(topic.name, lastProcessedSeqNr + 1, Some(batchSize)).map { _.map(row => topic.persistenceCodec.decode(row.eventData)) }
+            _ <- DBIO.from(events.map(e => processorFn(e)).sequence.unsafeToFuture())
+            n <- if (events.isEmpty) DBIO.successful(0) else queries.storeProcessorSeqNr(processorId, topic.name, lastProcessedSeqNr + events.size)
+          } yield n).transactionally
+
+          dbIO(transaction)
         }
+
+        def pollBatchRecursive(): Stream[IO, Int] =
+          Stream.sleep[IO](pollInterval) >> Stream.eval(processBatch2()) ++ pollBatchRecursive()
 
         pollBatchRecursive()
       }

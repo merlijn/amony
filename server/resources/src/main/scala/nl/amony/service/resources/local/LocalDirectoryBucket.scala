@@ -58,11 +58,11 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
   override def updateUserMeta(resourceId: String, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] =
     db.updateUserMeta(
       config.id, resourceId, title, description, tags, 
-      resource => IO { topic.publish(ResourceUpdated(resource)) }
+      resource => topic.publish(ResourceUpdated(resource))
     )
 
   override def updateThumbnailTimestamp(resourceId: String, timestamp: Long): IO[Unit] =
     db.updateThumbnailTimestamp(config.id, resourceId, timestamp,
-      resource => IO { topic.publish(ResourceUpdated(resource)) }
+      resource => topic.publish(ResourceUpdated(resource))
     )
 }

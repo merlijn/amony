@@ -5,15 +5,13 @@ import scalapb.TypeMapper
 
 trait PersistenceCodec[E] {
 
-  def getSerializerId(): Long
-
   /**
    * Encodes the given object to a (typeHint, bytes) tuple
    *
    * @param e The object to serialize
    * @return
    */
-  def encode(e: E): (String, Array[Byte])
+  def encode(e: E): Array[Byte]
 
   /**
    * Decodes a message
@@ -22,26 +20,24 @@ trait PersistenceCodec[E] {
    * @param bytes the data
    * @return
    */
-  def decode(typeHint: String, bytes: Array[Byte]): E
+  def decode(bytes: Array[Byte]): E
 }
 
 object PersistenceCodec {
 
   import scalapb.{GeneratedMessage, GeneratedMessageCompanion}
 
-  def scalaPBPersistenceCodec[T <: GeneratedMessage](implicit cmp: GeneratedMessageCompanion[T]) =
+  def scalaPBPersistenceCodec[T <: GeneratedMessage](implicit cmp: GeneratedMessageCompanion[T]): PersistenceCodec[T] =
     new PersistenceCodec[T] {
-      override def getSerializerId(): Long = 3245172347L
-      override def encode(e: T): (String, Array[Byte]) = e.getClass.getSimpleName -> cmp.toByteArray(e)
-      override def decode(typeHint: String, bytes: Array[Byte]): T = cmp.parseFrom(bytes)
+      override def encode(e: T) = cmp.toByteArray(e)
+      override def decode(bytes: Array[Byte]): T = cmp.parseFrom(bytes)
     }
 
   def scalaPBMappedPersistenceCodec[A <: GeneratedMessage, B](implicit tm: TypeMapper[A, B], cmp: GeneratedMessageCompanion[A]): PersistenceCodec[B] = {
     val codec = scalaPBPersistenceCodec[A]
     new PersistenceCodec[B] {
-      override def getSerializerId(): Long = 3245172347L
-      override def encode(msg: B): (String, Array[Byte]) = codec.encode(tm.toBase(msg))
-      override def decode(typeHint: String, bytes: Array[Byte]): B = tm.toCustom(codec.decode(typeHint, bytes))
+      override def encode(msg: B) = codec.encode(tm.toBase(msg))
+      override def decode(bytes: Array[Byte]): B = tm.toCustom(codec.decode(bytes))
     }
   }
 }

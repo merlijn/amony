@@ -5,35 +5,21 @@ import com.typesafe.config.ConfigFactory
 import fs2.Stream
 import nl.amony.lib.eventbus.{EventTopicKey, PersistenceCodec}
 import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers.shouldBe
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.H2Profile
 
+import java.util.UUID
+
 class SlickEventBusSpec extends AnyFlatSpecLike with Logging {
 
-  trait TestEvent
-
-  case class Added(msg: String) extends TestEvent
-  case class Removed(msg: String) extends TestEvent
+  case class TestEvent(msg: String)
 
   implicit val eventCodec: PersistenceCodec[TestEvent] = new PersistenceCodec[TestEvent] {
 
-    override def getSerializerId(): Long = 78L
-
-    override def encode(e: TestEvent): (String, Array[Byte]) = e match {
-      case Added(msg)   => e.getClass.getSimpleName -> msg.getBytes
-      case Removed(msg) => e.getClass.getSimpleName -> msg.getBytes
-    }
-
-    override def decode(typeHint: String, bytes: Array[Byte]): TestEvent = typeHint match {
-      case "Added"   => Added(new String(bytes))
-      case "Removed" => Removed(new String(bytes))
-    }
-  }
-
-  def eventSourceFn(set: Set[String], e: TestEvent): Set[String] = e match {
-    case Added(s)   => set + s
-    case Removed(s) => set - s
+    override def encode(e: TestEvent): Array[Byte] = e.msg.getBytes
+    override def decode(bytes: Array[Byte]): TestEvent = TestEvent(new String(bytes))
   }
 
   // we need to load the driver class or else we get a no suitable driver found exception
@@ -59,7 +45,7 @@ class SlickEventBusSpec extends AnyFlatSpecLike with Logging {
   val store = new SlickEventBus[H2Profile](dbConfig)
 
   store.createTablesIfNotExists().unsafeRunSync()
-
+//
 //  it should "do something" in {
 //
 //    def storeEvents(e: EventSourcedEntity[Set[String], TestEvent]) = {
@@ -97,29 +83,27 @@ class SlickEventBusSpec extends AnyFlatSpecLike with Logging {
 
   it should "process at least once and continue where it left off" in {
 
-    val processorId = "test-processor"
+    val processorId = UUID.randomUUID().toString
 
     val eventTopicKey = EventTopicKey[TestEvent]("test")
     val topic = store.getTopicForKey(eventTopicKey)
 
     def insertEvents(n: Int): Unit = {
 
-      val events = (1 to n).map { i => Added(s"${i}") }
-
-      Stream.fromIterator[IO](events.iterator, 1).evalMap {
-        e => IO { topic.publish(e) }
-      }.compile.drain.unsafeRunSync()
+      val events = (1 to n).map { i => TestEvent(s"${i}") }
+      Stream.fromIterator[IO](events.iterator, 1).evalMap { e => topic.publish(e) }.compile.drain.unsafeRunSync()
     }
 
     insertEvents(10)
 
+    store.getAllMessagesForTopic("test", 0, None).compile.toList.unsafeRunSync().size shouldBe 10
+    
     // read events
-    val processingStream =
-      topic.processAtLeastOnce(processorId, 1)(
-        e => () //logger.info(s"processing: $e")
-      )
+    val processingStream = topic.processAtLeastOnce(processorId, 1)(e => IO(logger.info(s"processing: $e")))
 
     // take the first 5
-    processingStream.take(5).compile.last.unsafeRunSync()
+    val n = processingStream.take(5).compile.last.unsafeRunSync()
+
+    logger.info(s"processed $n events")
   }
 }
