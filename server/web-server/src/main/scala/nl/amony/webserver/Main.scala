@@ -15,11 +15,13 @@ import nl.amony.service.resources.local.db.LocalDirectoryDb
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.local.scanner.LocalDirectoryScanner
 import nl.amony.service.resources.{ResourceBucket, ResourceConfig}
+import nl.amony.service.search.api.Query
 import pureconfig.{ConfigReader, ConfigSource}
 import scribe.{Level, Logging}
 import slick.basic.DatabaseConfig
 import slick.jdbc.HsqldbProfile
 
+import java.nio.file.Path
 import scala.concurrent.duration.DurationInt
 import scala.reflect.ClassTag
 import scala.util.Try
@@ -59,7 +61,13 @@ object Main extends IOApp with ConfigLoader with Logging {
     val resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
     resourceEventTopic.followTail(searchService.indexEvent _)
 
-    val solrIndex = new SolrIndex(appConfig.solrHome)
+    val solrPath = Path.of(config.getString("amony.solr.path")).toAbsolutePath.normalize()
+
+    logger.info(s"Solr path: $solrPath")
+
+    val solrIndex = new SolrIndex(solrPath)
+    solrIndex.search(Query(q = Some("water"), n = 10))
+    solrIndex.total()
 
     val resourceBuckets: Map[String, ResourceBucket] = appConfig.resources.map {
       case localConfig : ResourceConfig.LocalDirectoryConfig =>
@@ -68,7 +76,9 @@ object Main extends IOApp with ConfigLoader with Logging {
 
         // hack to reindex everything on startup
         localFileStorage.getAll(localConfig.id).unsafeRunSync().foreach {
-          resource => resourceEventTopic.publish(ResourceAdded(resource))
+          resource =>
+            resourceEventTopic.publish(ResourceAdded(resource))
+//            solrIndex.index(ResourceAdded(resource))
         }
 
         val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (localFileStorage.applyEvent(localConfig.id, e => resourceEventTopic.publish(e)))
