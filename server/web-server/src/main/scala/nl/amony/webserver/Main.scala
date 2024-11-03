@@ -6,6 +6,7 @@ import fs2.Pipe
 import nl.amony.lib.eventbus.EventTopic
 import nl.amony.lib.eventbus.jdbc.SlickEventBus
 import nl.amony.search.InMemorySearchService
+import nl.amony.search.solr.SolrIndex
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
 import nl.amony.service.resources.api.ResourceInfo
@@ -57,6 +58,8 @@ object Main extends IOApp with ConfigLoader with Logging {
 
     val resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
     resourceEventTopic.followTail(searchService.indexEvent _)
+
+    val solrIndex = new SolrIndex(appConfig.solrHome)
 
     val resourceBuckets: Map[String, ResourceBucket] = appConfig.resources.map {
       case localConfig : ResourceConfig.LocalDirectoryConfig =>

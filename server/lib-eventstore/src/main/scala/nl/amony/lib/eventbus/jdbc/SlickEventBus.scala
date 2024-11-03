@@ -1,7 +1,8 @@
 package nl.amony.lib.eventbus.jdbc
 
 import cats.effect.IO
-import cats.implicits._
+import cats.effect.unsafe.IORuntime
+import cats.implicits.*
 import fs2.Stream
 import nl.amony.lib.eventbus.{EventTopic, EventTopicKey, PersistentEventBus}
 import scribe.Logging
@@ -44,13 +45,56 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
     def *            = (processorId, topicId, sequenceNr)
   }
 
-  private val eventTable     = TableQuery[Events]
+  private val eventTable = TableQuery[Events]
   private val processorTable = TableQuery[Processors]
 
-  private val pollInterval     = 200.millis
+  private val pollInterval = 200.millis
   private val defaultBatchSize = 1000
 
   private val db = dbConfig.db
+
+  given ioRuntime: IORuntime = cats.effect.unsafe.implicits.global
+
+  private class SlickEventTopic[E](topic: EventTopicKey[E]) extends EventTopic[E] {
+    override def publish(e: E): IO[Unit] = {
+
+      def insertEntry(seqNr: Long, e: E) = {
+        val data = topic.persistenceCodec.encode(e)
+        eventTable += EventRow(None, topic.name, seqNr, System.currentTimeMillis(), data)
+      }
+
+      val persistQuery = (for {
+        last  <- queries.latestSeqNrQuery(topic.name).result
+        seqNr  = last.headOption.map(_.sequenceNr).getOrElse(-1L)
+        _     <- insertEntry(seqNr + 1, e)
+      } yield ()).transactionally
+
+      dbIO(persistQuery)
+    }
+
+    override def followTail(listener: E => Unit): Unit = ???
+
+    override def processAtLeastOnce(processorId: String, batchSize: Int)(processorFn: E => IO[Unit]): Stream[IO, Int] = {
+
+      def processBatch(): IO[Int] = {
+
+        val transaction = (for {
+          optionalSeqNr <- queries.lastProcessedSeqNr(processorId, topic.name)
+          lastProcessedSeqNr = optionalSeqNr.getOrElse(-1L)
+          events <- queries.getEvents(topic.name, lastProcessedSeqNr + 1, Some(batchSize)).map { _.map(row => topic.persistenceCodec.decode(row.eventData)) }
+          _ <- DBIO.from(events.map(e => processorFn(e)).sequence.unsafeToFuture())
+          n <- if (events.isEmpty) DBIO.successful(0) else queries.storeProcessorSeqNr(processorId, topic.name, lastProcessedSeqNr + events.size)
+        } yield n).transactionally
+
+        dbIO(transaction)
+      }
+
+      def pollBatchRecursive(): Stream[IO, Int] =
+        Stream.sleep[IO](pollInterval) >> Stream.eval(processBatch()) ++ pollBatchRecursive()
+
+      pollBatchRecursive()
+    }
+  }
 
   def dbIO[T](a: slick.dbio.DBIOAction[T, NoStream, Nothing]): IO[T] =
     IO.fromFuture(IO(db.run(a))).onError { t => IO { logger.warn(t) } }
@@ -72,14 +116,10 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
     result
   }
 
-  def getAllMessagesForTopic(topicId: String, start: Long, max: Option[Long]): Stream[IO, Array[Byte]] = {
-
-    val query = queries.getEvents(topicId, start, max)
-
+  protected[jdbc] def getAllMessagesForTopic(topicId: String, start: Long, max: Option[Long]): Stream[IO, Array[Byte]] =
     Stream
-      .eval(dbIO(query))
+      .eval(dbIO(queries.getEvents(topicId, start, max)))
       .flatMap(r => Stream.fromIterator[IO](r.iterator, 1).map(_.eventData))
-  }
 
   private object queries {
 
@@ -124,73 +164,5 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
     }
   }
 
-  override def getTopicForKey[E](topic: EventTopicKey[E]): EventTopic[E] = {
-
-    implicit val ioRuntime = cats.effect.unsafe.implicits.global
-
-    new EventTopic[E] {
-      override def publish(e: E): IO[Unit] = {
-
-        def insertEntry(seqNr: Long, e: E) = {
-          val data = topic.persistenceCodec.encode(e)
-          eventTable += EventRow(None, topic.name, seqNr, System.currentTimeMillis(), data)
-        }
-
-        val persistQuery = (for {
-          last  <- queries.latestSeqNrQuery(topic.name).result
-          seqNr  = last.headOption.map(_.sequenceNr).getOrElse(-1L)
-          _     <- insertEntry(seqNr + 1, e)
-        } yield ()).transactionally
-
-        dbIO(persistQuery)
-      }
-
-      override def followTail(listener: E => Unit): Unit = ???
-
-      override def processAtLeastOnce(processorId: String, batchSize: Int)(processorFn: E => IO[Unit]): Stream[IO, Int] = {
-
-        def processBatch(): IO[Int] = {
-
-          dbIO(queries.lastProcessedSeqNr(processorId, topic.name)).flatMap { optionalSeqNr =>
-
-            val lastProcessedSeqNr: Long = optionalSeqNr.getOrElse(-1)
-
-            dbIO(queries.getEvents(topic.name, lastProcessedSeqNr + 1, Some(batchSize)))
-              .map {
-                _.map { row => topic.persistenceCodec.decode(row.eventData) }
-              }
-              .flatMap { events =>
-
-                events.foreach { e => processorFn(e) }
-
-                val f: IO[Seq[Unit]] = events.map(e => processorFn(e)).sequence
-
-                if (events.isEmpty)
-                  IO(0)
-                else
-                  dbIO(queries.storeProcessorSeqNr(processorId, topic.name, lastProcessedSeqNr + events.size))
-              }
-          }
-        }
-
-        def processBatch2(): IO[Int] = {
-
-          val transaction = (for {
-            optionalSeqNr <- queries.lastProcessedSeqNr(processorId, topic.name)
-            lastProcessedSeqNr = optionalSeqNr.getOrElse(-1L)
-            events <- queries.getEvents(topic.name, lastProcessedSeqNr + 1, Some(batchSize)).map { _.map(row => topic.persistenceCodec.decode(row.eventData)) }
-            _ <- DBIO.from(events.map(e => processorFn(e)).sequence.unsafeToFuture())
-            n <- if (events.isEmpty) DBIO.successful(0) else queries.storeProcessorSeqNr(processorId, topic.name, lastProcessedSeqNr + events.size)
-          } yield n).transactionally
-
-          dbIO(transaction)
-        }
-
-        def pollBatchRecursive(): Stream[IO, Int] =
-          Stream.sleep[IO](pollInterval) >> Stream.eval(processBatch2()) ++ pollBatchRecursive()
-
-        pollBatchRecursive()
-      }
-    }
-  }
+  override def getTopicForKey[E](topic: EventTopicKey[E]): EventTopic[E] = new SlickEventTopic[E](topic)
 }

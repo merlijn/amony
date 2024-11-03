@@ -211,7 +211,7 @@ lazy val solrSearch =
 
 lazy val amonyServer =
   module("web-server", mainClass = true)
-    .dependsOn(identity, resources, searchService)
+    .dependsOn(identity, resources, searchService, solrSearch)
     .settings(
       name := "amony-web-server",
       reStart / javaOptions ++= javaOpts,
