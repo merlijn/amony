@@ -24,6 +24,9 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
   private val tagsTable = new TagsTable[P](dbConfig)
 
   private object queries {
+    
+    def bucketCount(bucketId: String) = resourcesTable.allForBucket(bucketId).length.result
+    
     def joinResourceWithTags(bucketId: String) =
       resourcesTable.innerTable.joinLeft(tagsTable.innerTable)
         .on((a, b) => a.bucketId === b.bucketId && a.resourceId === b.resourceId)
@@ -56,6 +59,9 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
         } yield ()
       ).unsafeRunSync()
     }
+
+  def count(bucketId: String): IO[Int] =
+    dbIO(queries.bucketCount(bucketId))
 
   def getAll(bucketId: String): IO[Seq[ResourceInfo]] =
     dbIO(queries.getWithTags(bucketId))

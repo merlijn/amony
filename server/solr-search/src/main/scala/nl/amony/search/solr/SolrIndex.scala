@@ -13,12 +13,21 @@ import org.apache.solr.common.{SolrDocument, SolrInputDocument}
 import org.apache.solr.core.CoreContainer
 import scribe.Logging
 
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 import java.util.Properties
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters.*
 
 class SolrIndex(solrHome: Path)(implicit ec: ExecutionContext) extends SearchService with Logging {
+
+  if (Files.exists(solrHome) && !Files.isDirectory(solrHome))
+    throw new RuntimeException(s"Solr home is not a directory: $solrHome")
+
+  if (!Files.exists(solrHome)) {
+    logger.info(s"Solr directory does not exists. Creating it at: $solrHome")
+    Files.createDirectories(solrHome)
+    TarGzExtractor.extractResourceTarGz("/solr.tar.gz", solrHome)
+  }
 
   System.getProperties.setProperty("solr.data.dir", solrHome.toAbsolutePath.toString)
 
@@ -28,7 +37,7 @@ class SolrIndex(solrHome: Path)(implicit ec: ExecutionContext) extends SearchSer
   val solr: SolrClient = new EmbeddedSolrServer(container, collectionName)
 
   private def toSolrDocument(resource: ResourceInfo): SolrInputDocument = {
-    logger.info(s"Indexing media: ${resource.path}")
+    logger.debug(s"Indexing media: ${resource.path}")
 
     val solrInputDocument: SolrInputDocument = new SolrInputDocument()
     solrInputDocument.addField("id", resource.hash)
@@ -106,11 +115,11 @@ class SolrIndex(solrHome: Path)(implicit ec: ExecutionContext) extends SearchSer
     val solrSort = {
 
       val solrField = sort.field match
-        case Title => "title_s"
+        case Title     => "title_s"
         case DateAdded => "created_l"
-        case Size => "filesize_l"
-        case Duration => "duration_l"
-        case _ => "created_l"
+        case Size      => "filesize_l"
+        case Duration  => "duration_l"
+        case _         => "created_l"
 
       val direction = if (sort.direction == Desc) "desc" else "asc"
 
@@ -124,6 +133,9 @@ class SolrIndex(solrHome: Path)(implicit ec: ExecutionContext) extends SearchSer
     solrParams.add(CommonParams.SORT, solrSort)
     solrParams
   }
+
+  def totalDocuments(bucketId: String): Long =
+    solr.query(collectionName, new SolrQuery(s"bucket_id_s:$bucketId")).getResults.getNumFound
 
   def index(event: ResourceEvent): Unit = event match {
 

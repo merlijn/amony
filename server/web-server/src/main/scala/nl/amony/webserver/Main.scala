@@ -51,7 +51,7 @@ object Main extends IOApp with ConfigLoader with Logging {
       val solrPath = Path.of(config.getString("amony.solr.path")).toAbsolutePath.normalize()
       logger.info(s"Solr path: $solrPath")
       new SolrIndex(solrPath)
-    } // new InMemorySearchService()
+    }
 
     val authService: AuthService = new AuthServiceImpl(loadConfig[AuthConfig](config, "amony.auth"))
 
@@ -72,11 +72,13 @@ object Main extends IOApp with ConfigLoader with Logging {
 
         val scanner = new LocalDirectoryScanner(localConfig)
 
-        // hack to reindex everything on startup
-        localFileStorage.getAll(localConfig.id).unsafeRunSync().foreach {
-          resource =>
-//            resourceEventTopic.publish(ResourceAdded(resource))
-            searchService.index(ResourceAdded(resource))
+        val indexedResources = searchService.totalDocuments(localConfig.id)
+        val dbResources = localFileStorage.count(localConfig.id).unsafeRunSync()
+
+        // hack to reindex everything on startup if the index might be out of sync
+        if (indexedResources < dbResources) {
+          logger.info(s"Number of indexed documents ($indexedResources) is smaller than the database count ($dbResources)) - Re-indexing all resources.")
+          localFileStorage.getAll(localConfig.id).unsafeRunSync().foreach { resource => searchService.index(ResourceAdded(resource)) }
         }
 
         val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (localFileStorage.applyEvent(localConfig.id, e => resourceEventTopic.publish(e)))
