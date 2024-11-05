@@ -77,7 +77,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       } yield ()).transactionally
     )
 
-  def insert(resource: ResourceInfo, effect: () => IO[Unit]): IO[Unit] =
+  def insert(resource: ResourceInfo, effect: () => IO[Unit] = () => IO.unit): IO[Unit] =
     dbIO(
       (for {
         _ <- resourcesTable.insert(resource)
@@ -86,7 +86,7 @@ class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       } yield ()).transactionally
     )
 
-  def upsert(resource: ResourceInfo, effect: () => IO[Unit]): IO[Unit] =
+  def upsert(resource: ResourceInfo, effect: () => IO[Unit] = () => IO.unit): IO[Unit] =
     dbIO(
       (for {
         _ <- resourcesTable.insertOrUpdate(resource)

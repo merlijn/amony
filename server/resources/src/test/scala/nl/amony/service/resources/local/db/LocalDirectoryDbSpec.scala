@@ -58,10 +58,10 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike with Logging {
     val bucketId = "test-bucket"
     val resource = createResource(bucketId, randomId(), Seq("a", "b", "d"))
 
-    store.insert(resource, IO.unit)
+    store.insert(resource)
 
     val result = for {
-      _         <- store.insert(resource, IO.unit)
+      _         <- store.insert(resource)
       retrieved <- store.getByHash(bucketId, resource.hash)
     } yield {
 
@@ -79,8 +79,8 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike with Logging {
     val resourceUpdated = resourceOriginal.copy(tags = Seq("b", "c"), description = Some("updated"))
 
     val result = for {
-      _ <- store.upsert(resourceOriginal, IO.unit)
-      _ <- store.upsert(resourceUpdated, IO.unit)
+      _ <- store.upsert(resourceOriginal)
+      _ <- store.upsert(resourceUpdated)
       retrieved <- store.getByHash(bucketId, resourceId)
     } yield {
 
@@ -97,9 +97,9 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike with Logging {
     val resourceOriginal = createResource(bucketId, resourceId, tags = Seq("c", "d", "e")).copy(contentMeta = ImageMeta(100, 100))
 
     val result = for {
-      _ <- store.upsert(resourceOriginal, IO.unit)
+      _ <- store.upsert(resourceOriginal)
       retrieved <- store.getByHash(bucketId, resourceId)
-      _ <- store.upsert(retrieved.get, IO.unit)
+      _ <- store.upsert(retrieved.get)
       retrievedAgain <- store.getByHash(bucketId, resourceId)
     } yield {
       assert(retrievedAgain == Some(resourceOriginal))
@@ -116,8 +116,8 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike with Logging {
     val resource2 = createResource(bucketId, "2", Seq("c", "d", "e"))
 
     val result = for {
-      _ <- store.insert(resource1, IO.unit)
-      _ <- store.insert(resource2, IO.unit)
+      _ <- store.insert(resource1)
+      _ <- store.insert(resource2)
       retrieved <- store.getAllByIds(bucketId, Seq("1", "2"))
     } yield {
 
@@ -135,8 +135,8 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike with Logging {
     val resource2 = createResource(bucketId, "2", tags = Seq("c", "d", "e")).copy(contentMeta = ImageMeta(100, 100))
 
     val result = for {
-      _         <- store.insert(resource1, IO.unit)
-      _         <- store.insert(resource2, IO.unit)
+      _         <- store.insert(resource1)
+      _         <- store.insert(resource2)
       retrieved <- store.getAll(bucketId)
     } yield {
       assert(retrieved.toSet == Set(resource1, resource2))
