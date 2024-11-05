@@ -19,6 +19,7 @@ object ResourceConfig {
       private val path: Path,
       scanParallelFactor: Int,
       verifyExistingHashes: Boolean,
+      pollInterval: FiniteDuration,
       hashingAlgorithm: HashingAlgorithm,
       relativeResourcePath: Path,
       extensions: List[String]

@@ -18,7 +18,11 @@ import java.util.Properties
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters.*
 
-class SolrIndex(solrHome: Path)(implicit ec: ExecutionContext) extends SearchService with Logging {
+class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends SearchService with Logging {
+
+  private val solrHome: Path = Path.of(config.path).toAbsolutePath.normalize()
+
+  logger.info(s"Solr home: $solrHome")
 
   if (Files.exists(solrHome) && !Files.isDirectory(solrHome))
     throw new RuntimeException(s"Solr home is not a directory: $solrHome")
@@ -29,12 +33,24 @@ class SolrIndex(solrHome: Path)(implicit ec: ExecutionContext) extends SearchSer
     TarGzExtractor.extractResourceTarGz("/solr.tar.gz", solrHome)
   }
 
+  private val lockfilePath = solrHome.resolve("index/write.lock")
+
+  if (Files.exists(lockfilePath) && config.deleteLockfileOnStartup) {
+    logger.info(s"Deleting lock file at: $lockfilePath")
+    Files.delete(lockfilePath)
+  }
+
+  // delete the lock file on shutdown
+  sys.addShutdownHook {
+    Files.delete(lockfilePath)
+  }
+
   System.getProperties.setProperty("solr.data.dir", solrHome.toAbsolutePath.toString)
 
-  val collectionName = "amony_embedded"
-  val container = new CoreContainer(solrHome, new Properties())
+  private val collectionName = "amony_embedded"
+  private val container = new CoreContainer(solrHome, new Properties())
   container.load()
-  val solr: SolrClient = new EmbeddedSolrServer(container, collectionName)
+  private val solr: SolrClient = new EmbeddedSolrServer(container, collectionName)
 
   private def toSolrDocument(resource: ResourceInfo): SolrInputDocument = {
     logger.debug(s"Indexing media: ${resource.path}")

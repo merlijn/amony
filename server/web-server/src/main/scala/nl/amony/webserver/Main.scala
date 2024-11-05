@@ -47,11 +47,7 @@ object Main extends IOApp with ConfigLoader with Logging {
     
     logger.info("Starting application, home directory: " + appConfig.amonyHome)
 
-    val searchService = {
-      val solrPath = Path.of(config.getString("amony.solr.path")).toAbsolutePath.normalize()
-      logger.info(s"Solr path: $solrPath")
-      new SolrIndex(solrPath)
-    }
+    val searchService = new SolrIndex(appConfig.solr)
 
     val authService: AuthService = new AuthServiceImpl(loadConfig[AuthConfig](config, "amony.auth"))
 
@@ -86,14 +82,12 @@ object Main extends IOApp with ConfigLoader with Logging {
 
         logger.info(s"Starting scanner for ${localConfig.resourcePath.toAbsolutePath}")
 
-        val pollInterval = 5.seconds
-
         def stateFromStorage(): Set[ResourceInfo] = localFileStorage.getAll(localConfig.id).map(_.toSet).unsafeRunSync()
 
         def pullRetry(s: Set[ResourceInfo]): fs2.Stream[IO, ResourceEvent] =
-          scanner.pollingResourceEventStream(stateFromStorage(), pollInterval).handleErrorWith { e =>
-            logger.error(s"Scanner failed for ${localConfig.resourcePath.toAbsolutePath}, retrying in $pollInterval", e)
-            fs2.Stream.sleep[IO](pollInterval) >> pullRetry(stateFromStorage())
+          scanner.pollingResourceEventStream(stateFromStorage(), localConfig.pollInterval).handleErrorWith { e =>
+            logger.error(s"Scanner failed for ${localConfig.resourcePath.toAbsolutePath}, retrying in ${localConfig.pollInterval}", e)
+            fs2.Stream.sleep[IO](localConfig.pollInterval) >> pullRetry(stateFromStorage())
           }
 
         pullRetry(stateFromStorage())

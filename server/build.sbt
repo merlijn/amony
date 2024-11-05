@@ -67,7 +67,7 @@ val embeddedKafka = "io.github.embeddedkafka" %% "embedded-kafka" % "3.8.0" // c
 //val tapir = "com.softwaremill.sttp.tapir" %% "tapir-core" % "1.2.9"
 //val tarirHttp4s = "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % "1.2.9"
 
-val javaOpts = Nil
+val javaOpts = Seq("-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true")
 
 // -- Shared options
 
