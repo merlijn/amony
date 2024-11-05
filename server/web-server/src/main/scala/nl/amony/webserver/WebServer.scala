@@ -63,22 +63,27 @@ class WebServer(val config: WebServerConfig) extends Logging {
     logger.info("Starting web server")
 
     val httpApp = Router("/" -> routes).orNotFound
-
     val serverError = Response(Status.InternalServerError).putHeaders(org.http4s.headers.`Content-Length`.zero)
 
-    EmberServerBuilder
-      .default[IO]
-      .withHost(Host.fromString("0.0.0.0").get)
-      .withPort(Port.fromInt(8080).get)
-      .withHttpApp(httpApp)
-      .withErrorHandler {
-        e =>
-          logger.warn("Internal server error", e)
-          IO(serverError)
-      }
-//      .withLogger(Slf4jLogger.getLoggerFromSlf4j[IO](slf4jLogger))
-      .build
-      .use(_ => IO.never)
-      .as(ExitCode.Success)
+    config.http match {
+      case Some(httpConfig) if httpConfig.enabled =>
+        logger.info(s"Starting HTTP server at ${httpConfig.host}:${httpConfig.port}")
+        EmberServerBuilder
+          .default[IO]
+          //.withLogger(Slf4jLogger.getLoggerFromSlf4j[IO](slf4jLogger))
+          .withHost(Host.fromString(httpConfig.host).get)
+          .withPort(Port.fromInt(httpConfig.port).get)
+          .withHttpApp(httpApp)
+          .withErrorHandler { e =>
+            logger.warn("Internal server error", e)
+            IO(serverError)
+          }
+          .build
+          .use(_ => IO.never)
+          .as(ExitCode.Success)
+      case _ =>
+        logger.info("HTTP server is disabled")
+        IO(ExitCode.Success)
+    }
   }
 }

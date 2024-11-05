@@ -179,7 +179,6 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
       val total = results.getNumFound
       val offset = results.getStart
 
-      logger.info(s"number found: ${queryResponse.getResults.getNumFound}")
       results.asScala.map(toResource).toList
 
       SearchResult(

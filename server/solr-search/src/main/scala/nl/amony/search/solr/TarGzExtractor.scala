@@ -4,7 +4,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 
 import java.io.{BufferedInputStream, FileOutputStream}
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import scala.util.Using
 
 object TarGzExtractor {
