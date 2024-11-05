@@ -39,14 +39,20 @@ object Main extends IOApp with ConfigLoader with Logging {
   override def run(args: List[String]): IO[ExitCode] = {
 
     import cats.effect.unsafe.implicits.global
+    import scala.concurrent.ExecutionContext.Implicits.global
 
     logger.info(config.toString)
     
     val databaseConfig = DatabaseConfig.forConfig[HsqldbProfile]("amony.database", config)
     
     logger.info("Starting application, home directory: " + appConfig.amonyHome)
-    
-    val searchService = new InMemorySearchService()
+
+    val searchService = {
+      val solrPath = Path.of(config.getString("amony.solr.path")).toAbsolutePath.normalize()
+      logger.info(s"Solr path: $solrPath")
+      new SolrIndex(solrPath)
+    } // new InMemorySearchService()
+
     val authService: AuthService = new AuthServiceImpl(loadConfig[AuthConfig](config, "amony.auth"))
 
     val eventBus = new SlickEventBus(databaseConfig)
@@ -59,15 +65,7 @@ object Main extends IOApp with ConfigLoader with Logging {
     localFileStorage.createTablesIfNotExists()
 
     val resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
-    resourceEventTopic.followTail(searchService.indexEvent _)
-
-    val solrPath = Path.of(config.getString("amony.solr.path")).toAbsolutePath.normalize()
-
-    logger.info(s"Solr path: $solrPath")
-
-    val solrIndex = new SolrIndex(solrPath)
-    solrIndex.search(Query(q = Some("water"), n = 10))
-    solrIndex.total()
+    resourceEventTopic.followTail(searchService.index)
 
     val resourceBuckets: Map[String, ResourceBucket] = appConfig.resources.map {
       case localConfig : ResourceConfig.LocalDirectoryConfig =>
@@ -77,8 +75,8 @@ object Main extends IOApp with ConfigLoader with Logging {
         // hack to reindex everything on startup
         localFileStorage.getAll(localConfig.id).unsafeRunSync().foreach {
           resource =>
-            resourceEventTopic.publish(ResourceAdded(resource))
-//            solrIndex.index(ResourceAdded(resource))
+//            resourceEventTopic.publish(ResourceAdded(resource))
+            searchService.index(ResourceAdded(resource))
         }
 
         val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (localFileStorage.applyEvent(localConfig.id, e => resourceEventTopic.publish(e)))
