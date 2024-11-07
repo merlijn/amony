@@ -24,6 +24,20 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
+  def dbIO[T](a: slick.dbio.DBIOAction[T, NoStream, Nothing]): IO[T] = {
+
+    def futureWithErrorLogging() = {
+      val f = db.run(a)
+      f.onComplete {
+        case scala.util.Success(_) => ()
+        case scala.util.Failure(t) => logger.warn("Exception executing query", t)
+      }
+      f
+    }
+
+    IO.fromFuture(IO(futureWithErrorLogging())).onError { t => IO { logger.warn("Exception executing query", t) } }
+  }
+
   private class Events(tag: Tag) extends Table[EventRow](tag, "events") {
 
     def ord          = column[Long]("ord", O.AutoInc)
@@ -76,7 +90,7 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
 
     override def processAtLeastOnce(processorId: String, batchSize: Int)(processorFn: E => IO[Unit]): Stream[IO, Int] = {
 
-      def processBatch(): IO[Int] = {
+      def processBatch(): IO[Int] = 
 
         val transaction = (for {
           optionalSeqNr <- queries.lastProcessedSeqNr(processorId, topic.name)
@@ -87,7 +101,6 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
         } yield n).transactionally
 
         dbIO(transaction)
-      }
 
       def pollBatchRecursive(): Stream[IO, Int] =
         Stream.sleep[IO](pollInterval) >> Stream.eval(processBatch()) ++ pollBatchRecursive()
@@ -95,10 +108,7 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
       pollBatchRecursive()
     }
   }
-
-  def dbIO[T](a: slick.dbio.DBIOAction[T, NoStream, Nothing]): IO[T] =
-    IO.fromFuture(IO(db.run(a))).onError { t => IO { logger.warn(t) } }
-
+  
   def createTablesIfNotExists(): IO[Unit] =
     for {
       _ <- dbIO(eventTable.schema.createIfNotExists)

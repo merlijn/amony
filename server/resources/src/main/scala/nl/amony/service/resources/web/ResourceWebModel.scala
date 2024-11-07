@@ -29,7 +29,8 @@ object ResourceWebModel {
 
   case class ResourceInfoDto(
     hash: String,
-    sizeInBytes: Long
+    sizeInBytes: Long,
+    path: String
   ) derives Encoder.AsObject
 
   case class ResourceDto(

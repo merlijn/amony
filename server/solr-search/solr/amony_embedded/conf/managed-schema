@@ -435,6 +435,27 @@
       <filter class="solr.LowerCaseFilterFactory"/>
     </analyzer>
   </fieldType>
+  <fieldType name="path_text_ci" class="solr.TextField" positionIncrementGap="100">
+      <analyzer type="index">
+          <!-- Tokenize as a single token -->
+          <tokenizer class="solr.KeywordTokenizerFactory"/>
+
+          <!-- Convert to lowercase -->
+          <filter class="solr.LowerCaseFilterFactory"/>
+
+          <!-- Remove unwanted characters: _ - / \ . -->
+          <filter class="solr.PatternReplaceFilterFactory"
+                  pattern="[_/\\.\\-]" replacement="" replace="all"/>
+      </analyzer>
+      <analyzer type="query">
+          <tokenizer class="solr.KeywordTokenizerFactory"/>
+          <filter class="solr.LowerCaseFilterFactory"/>
+          <filter class="solr.PatternReplaceFilterFactory"
+                  pattern="[_/\\.\\-]" replacement="" replace="all"/>
+      </analyzer>
+  </fieldType>
+
+  <field name="path_text_ci" type="path_text_ci" indexed="true" stored="true"/>
 
   <field name="id" type="string" multiValued="false" indexed="true" required="true" stored="true"/>
   <field name="_version_" type="plong" indexed="true" stored="true"/>

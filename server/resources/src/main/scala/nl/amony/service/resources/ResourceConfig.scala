@@ -25,7 +25,7 @@ object ResourceConfig {
       extensions: List[String]
   ) extends ResourceBucketConfig {
 
-    lazy val writePath: Path    = path.toAbsolutePath.normalize().resolve(relativeResourcePath)
+    lazy val cachePath: Path    = path.toAbsolutePath.normalize().resolve(relativeResourcePath)
     lazy val resourcePath: Path = path.toAbsolutePath.normalize()
 
     def filterFileName(fileName: String): Boolean =

@@ -30,11 +30,11 @@ object ResourceRoutes extends Logging {
       buckets.get(bucketId) match
         case None         => NotFound()
         case Some(bucket) => fn(bucket)
-
+    
     HttpRoutes.of[IO] {
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId =>
-
+        
         withBucket(bucketId) { bucket =>
           bucket.getResource(resourceId).flatMap:
             case None           => NotFound()

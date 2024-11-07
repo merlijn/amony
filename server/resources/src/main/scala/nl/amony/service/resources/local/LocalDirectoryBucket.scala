@@ -23,7 +23,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
   private val resourceStore = new ConcurrentHashMap[LocalResourceOp, IO[Path]]()
   private val scanner = LocalDirectoryScanner(config)
   
-  Files.createDirectories(config.writePath)
+  Files.createDirectories(config.cachePath)
 
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getByHash(config.id, resourceId)
 
@@ -32,12 +32,22 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
       case None           => IO.pure(None)
       case Some(fileInfo) => derivedResource(fileInfo, LocalResourceOp(resourceId, operation))
 
-  private def derivedResource(inputResource: ResourceInfo, operation: LocalResourceOp): IO[Option[LocalFile]] =
-    // this is to prevent 2 or more requests for the same resource to trigger the operation multiple times
-    resourceStore
-      .compute(operation, (_, value) => {
-        getOrCreateResource(config.resourcePath.resolve(inputResource.path), inputResource.contentMeta, config.writePath, operation)
-      }).map(path => Resource.fromPath(path, inputResource))
+  private def derivedResource(inputResource: ResourceInfo, operation: LocalResourceOp): IO[Option[LocalFile]] = {
+    val outputFile = config.cachePath.resolve(operation.outputFilename)
+
+    if (Files.exists(outputFile))
+      IO.pure(Resource.fromPath(outputFile, inputResource))
+    else {
+      /**
+       * This is not ideal, there is still a small time window in which the operation can be triggered multiple times, although it is very unlikely to happen
+       * TODO Create a full proof solution using a MapRef from cats
+       */
+      resourceStore
+        .compute(operation, (_, value) => { createResource(config.resourcePath.resolve(inputResource.path), inputResource.contentMeta, config.cachePath, operation) })
+        .map(path => Resource.fromPath(path, inputResource))
+        .flatTap { _ => IO(resourceStore.remove(operation)) } // removes the operation from the map to prevent memory leak, leaves a small gap
+    }
+  }
 
   override def getResource(resourceId: String): IO[Option[Resource]] =
     getResourceInfo(resourceId).flatMap:

@@ -4,7 +4,6 @@ import cats.effect.IO
 import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.syntax._
-import nl.amony.lib.cats.FutureOps
 import nl.amony.service.resources.web.JsonCodecs.{ _, given }
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import nl.amony.service.search.api.SortDirection.{Asc, Desc}

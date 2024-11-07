@@ -41,6 +41,12 @@ object Main extends IOApp with ConfigLoader with Logging {
     import cats.effect.unsafe.implicits.global
     import scala.concurrent.ExecutionContext.Implicits.global
 
+    scribe.Logger.root
+      .clearHandlers()
+      .clearModifiers()
+      .withHandler(minimumLevel = Some(Level.Debug))
+      .replace()
+
     logger.info(config.toString)
     
     val databaseConfig = DatabaseConfig.forConfig[HsqldbProfile]("amony.database", config)
@@ -75,6 +81,7 @@ object Main extends IOApp with ConfigLoader with Logging {
         if (indexedResources < dbResources) {
           logger.info(s"Number of indexed documents ($indexedResources) is smaller than the database count ($dbResources)) - Re-indexing all resources.")
           localFileStorage.getAll(localConfig.id).unsafeRunSync().foreach { resource => searchService.index(ResourceAdded(resource)) }
+          logger.info(s"Indexing done")
         }
 
         val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (localFileStorage.applyEvent(localConfig.id, e => resourceEventTopic.publish(e)))
@@ -103,11 +110,7 @@ object Main extends IOApp with ConfigLoader with Logging {
     val webServer = new WebServer(appConfig.api)
     val routes = WebServerRoutes.routes(authService, searchService, appConfig, resourceBuckets)
 
-    scribe.Logger.root
-      .clearHandlers()
-      .clearModifiers()
-      .withHandler(minimumLevel = Some(Level.Debug))
-      .replace()
+
 
     webServer.run(routes).onCancel(IO(logger.info("Exiting application")))
   }

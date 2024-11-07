@@ -86,7 +86,7 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
           modifiedTime = attrs.lastModifiedTime().toMillis
         )
       } yield
-        prevByPath match {
+        prevByPath match
           case Some(`fileInfo`) => None
           case _                =>
             getByHash(hash) match {
@@ -95,7 +95,6 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
               case _              =>
                 Some(FileAdded(fileInfo))
             }
-        }
     }
 
     val maybeDeleted = currentFiles.foldLeft(previousState){ case (acc, (p, _)) => acc - p }
@@ -110,7 +109,7 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
     movedOrAdded.foldFlatMap(maybeDeleted)(filterMoved, emitDeleted).collect { case Some(e) => e}
   }
 
-  private def applyEvent(state: Map[Path, FileInfo], e: FileEvent): Map[Path, FileInfo] = e match {
+  private def applyEvent(state: Map[Path, FileInfo], e: FileEvent): Map[Path, FileInfo] = e match
     case FileAdded(fileInfo) =>
       state + (fileInfo.path -> fileInfo)
     case FileDeleted(fileInfo) =>
@@ -118,7 +117,6 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORu
     case FileMoved(fileInfo, oldPath) =>
       val prev = state(oldPath)
       state - oldPath + (fileInfo.path -> prev.copy(path = fileInfo.path)) // we keep the old metadata
-  }
 
   /**
    * Given an initial state, this method will poll the directory for changes and emit events for new, deleted and moved resources.

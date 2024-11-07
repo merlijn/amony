@@ -61,7 +61,8 @@ object JsonCodecs {
 
     val resourceInfo = ResourceInfoDto(
       sizeInBytes = resource.size,
-      hash = resource.hash
+      hash = resource.hash,
+      path = resource.path
     )
 
     // hard coded for now

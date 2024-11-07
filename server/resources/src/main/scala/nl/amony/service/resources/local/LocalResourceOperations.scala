@@ -3,23 +3,20 @@ package nl.amony.service.resources.local
 import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.magick.ImageMagick
-import nl.amony.lib.files.*
 import nl.amony.service.resources.*
-import nl.amony.service.resources.api.{ImageMeta, ResourceInfo, ResourceMeta, VideoMeta}
 import nl.amony.service.resources.api.operations.*
+import nl.amony.service.resources.api.{ImageMeta, ResourceMeta, VideoMeta}
 import scribe.Logging
 
 import java.nio.file.Path
 
 object LocalResourceOperations {
 
-  def getOrCreateResource(inputFile: Path, inputMeta: ResourceMeta, outputDir: Path, operation: LocalResourceOp): IO[Path] =
+  def createResource(inputFile: Path, inputMeta: ResourceMeta, outputDir: Path, operation: LocalResourceOp): IO[Path] =
     val outputFile = outputDir.resolve(operation.outputFilename)
 
     if (!operation.isCompatibleWith(inputMeta))
       IO.raiseError(new Exception(s"Operation ${operation} is not compatible with ${inputMeta}"))
-    else if (outputFile.exists())
-      IO.pure(outputFile)
     else
       operation.createFile(inputFile, outputDir).memoize.flatten
 
@@ -34,14 +31,14 @@ object LocalResourceOperations {
     def apply(parentId: String, operation: ResourceOperation): LocalResourceOp = operation match
       case VideoFragment(width, height, start, end, quality) => VideoFragmentOp(parentId, (start, end), height.get)
       case VideoThumbnail(width, height, quality, timestamp) => VideoThumbnailOp(parentId, timestamp, height.get)
-      case ImageThumbnail(width, height, quality) => ImageThumbnailOp(parentId, width, height)
-      case ResourceOperation.Empty => NoOp
+      case ImageThumbnail(width, height, quality)            => ImageThumbnailOp(parentId, width, height)
+      case ResourceOperation.Empty                           => NoOp
   }
   
   val NoOp = new LocalResourceOp {
     override def isCompatibleWith(meta: ResourceMeta): Boolean = false
     override def outputFilename: String = ""
-    override def createFile(inputFile: Path, outputDir: Path): IO[Path] = IO.raiseError(new Exception("NoOp"))
+    override def createFile(inputFile: Path, outputDir: Path): IO[Path] = IO(inputFile)
   }
   
   case class VideoThumbnailOp(resourceId: String, timestamp: Long, quality: Int) extends LocalResourceOp with Logging {

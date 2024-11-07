@@ -1,5 +1,6 @@
 package nl.amony.search.solr
 
+import nl.amony.search.solr.SolrIndex.FieldNames
 import nl.amony.service.resources.api.*
 import nl.amony.service.resources.api.events.*
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
@@ -17,6 +18,28 @@ import java.nio.file.{Files, Path}
 import java.util.Properties
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters.*
+
+object SolrIndex {
+
+  object FieldNames {
+    val id = "id"
+    val bucketId = "bucket_id_s"
+    val path = "path_text_ci"
+    val filesize = "filesize_l"
+    val tags = "tags_ss"
+    val thumbnailTimestamp = "thumbnailtimestamp_l"
+    val title = "title_s"
+    val description = "description_s"
+    val created = "created_l"
+    val lastModified = "lastmodified_l"
+    val contentType = "content_type_s"
+    val width = "width_i"
+    val height = "height_i"
+    val duration = "duration_l"
+    val fps = "fps_d"
+    val resourceType = "resource_type_s"
+  }
+}
 
 class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends SearchService with Logging {
 
@@ -53,12 +76,12 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
   private val solr: SolrClient = new EmbeddedSolrServer(container, collectionName)
 
   private def toSolrDocument(resource: ResourceInfo): SolrInputDocument = {
-    logger.debug(s"Indexing media: ${resource.path}")
+
 
     val solrInputDocument: SolrInputDocument = new SolrInputDocument()
     solrInputDocument.addField("id", resource.hash)
     solrInputDocument.addField("bucket_id_s", resource.bucketId)
-    solrInputDocument.addField("path_s", resource.path)
+    solrInputDocument.addField(FieldNames.path, resource.path)
     solrInputDocument.addField("filesize_l", resource.size)
 
     val maybeTags = Option.when(resource.tags.nonEmpty)(resource.tags)
@@ -93,7 +116,7 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
     val id = document.getFieldValue("id").asInstanceOf[String]
     val bucketId = document.getFieldValue("bucket_id_s").asInstanceOf[String]
     val title = Option(document.getFieldValue("title_s")).map(_.asInstanceOf[String])
-    val path = document.getFieldValue("path_s").asInstanceOf[String]
+    val path = document.getFieldValue(FieldNames.path).asInstanceOf[String]
     val creationTime = Option(document.getFieldValue("created_l")).map(_.asInstanceOf[Long])
     val lastModified = Option(document.getFieldValue("lastmodified_l")).map(_.asInstanceOf[Long])
     val created = document.getFieldValue("created_l").asInstanceOf[Long]
@@ -143,7 +166,7 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
     }
 
     val solrParams = new ModifiableSolrParams
-    solrParams.add(CommonParams.Q, s"path_s:*${if (q.trim.isEmpty) "" else s"$q*"}")
+    solrParams.add(CommonParams.Q, s"${FieldNames.path}:*${if (q.trim.isEmpty) "" else s"$q*"}")
     solrParams.add(CommonParams.START, query.offset.getOrElse(0).toString)
     solrParams.add(CommonParams.ROWS, query.n.toString)
     solrParams.add(CommonParams.SORT, solrSort)
@@ -153,16 +176,21 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
   def totalDocuments(bucketId: String): Long =
     solr.query(collectionName, new SolrQuery(s"bucket_id_s:$bucketId")).getResults.getNumFound
 
+  private def insertDocument(resource: ResourceInfo) = {
+    try {
+      logger.debug(s"Indexing media: ${resource.path}")
+      val solrInputDocument = toSolrDocument(resource)
+      solr.add(collectionName, solrInputDocument, 5000).getStatus
+    }
+    catch {
+      case e: Exception => logger.error("Exception while trying to index document to solr", e)
+    }
+  }
+
   def index(event: ResourceEvent): Unit = event match {
 
-    case ResourceAdded(media) =>
-      try {
-        val solrInputDocument = toSolrDocument(media)
-        solr.add(collectionName, solrInputDocument, 5000).getStatus
-      }
-      catch {
-        case e: Exception => logger.error("Exception while trying to index document to solr", e)
-      }
+    case ResourceAdded(resource)   => insertDocument(resource)
+    case ResourceUpdated(resource) => insertDocument(resource)
     case _ =>
       logger.info(s"Ignoring event: $event")
       ()
@@ -180,6 +208,8 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
       val offset = results.getStart
 
       results.asScala.map(toResource).toList
+
+      logger.debug(s"Search query: ${solrParams.toString}, total: $total")
 
       SearchResult(
         offset = offset.toInt,

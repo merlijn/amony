@@ -23,21 +23,17 @@ trait PersistenceCodec[E] {
   def decode(bytes: Array[Byte]): E
 }
 
-object PersistenceCodec {
+object PersistenceCodec:
 
   import scalapb.{GeneratedMessage, GeneratedMessageCompanion}
 
-  def scalaPBPersistenceCodec[T <: GeneratedMessage](implicit cmp: GeneratedMessageCompanion[T]): PersistenceCodec[T] =
-    new PersistenceCodec[T] {
+  def scalaPBPersistenceCodec[T <: GeneratedMessage](using cmp: GeneratedMessageCompanion[T]): PersistenceCodec[T] =
+    new PersistenceCodec[T]:
       override def encode(e: T) = cmp.toByteArray(e)
       override def decode(bytes: Array[Byte]): T = cmp.parseFrom(bytes)
-    }
 
-  def scalaPBMappedPersistenceCodec[A <: GeneratedMessage, B](implicit tm: TypeMapper[A, B], cmp: GeneratedMessageCompanion[A]): PersistenceCodec[B] = {
+  def scalaPBMappedPersistenceCodec[A <: GeneratedMessage, B](using tm: TypeMapper[A, B], cmp: GeneratedMessageCompanion[A]): PersistenceCodec[B] =
     val codec = scalaPBPersistenceCodec[A]
-    new PersistenceCodec[B] {
+    new PersistenceCodec[B]: 
       override def encode(msg: B) = codec.encode(tm.toBase(msg))
       override def decode(bytes: Array[Byte]): B = tm.toCustom(codec.decode(bytes))
-    }
-  }
-}

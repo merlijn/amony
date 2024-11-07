@@ -3,7 +3,7 @@ package nl.amony.service.resources.local.scanner
 import cats.effect.IO
 
 import java.nio.file.*
-import java.util.concurrent.{Flow, SubmissionPublisher}
+import java.util.concurrent.*
 import scala.jdk.CollectionConverters.*
 import scala.util.Using
 
@@ -16,10 +16,14 @@ object DirectoryWatcher {
   case class FileCreated(path: Path) extends WatchEvent
   case class FileModified(path: Path) extends WatchEvent
   case class FileDeleted(path: Path) extends WatchEvent
+  case class FileMoved(oldPath: Path, newPath: Path) extends WatchEvent
 
-  def watchDirectory(directoryPath: Path): Flow.Publisher[WatchEvent] = {
+  def watchDirectory(directoryPath: Path, getByPath: Path => FileInfo, hashFn: Path => String): Flow.Publisher[WatchEvent] = {
     val publisher = new SubmissionPublisher[WatchEvent]()
     val watchService: WatchService = FileSystems.getDefault.newWatchService()
+
+    val deletedFilesBuffer = scala.collection.mutable.Map[Path, FileInfo]()
+    val scheduledExecutor: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
 
     def registerDirectory(dir: Path): Unit = {
       dir.register(
@@ -35,6 +39,14 @@ object DirectoryWatcher {
 
     registerDirectory(directoryPath)
 
+    def publishDeletedEvent(path: Path): Runnable = () => {
+      if (deletedFilesBuffer.contains(path)) {
+        logger.debug(s"File deleted: $path")
+        publisher.submit(FileDeleted(path))
+        deletedFilesBuffer.remove(path)
+      }
+    }
+
     new Thread(() => {
       try {
         while (true) {
@@ -42,20 +54,21 @@ object DirectoryWatcher {
           key.pollEvents().forEach { event =>
             val kind = event.kind()
             lazy val path = directoryPath.resolve(event.context().asInstanceOf[Path])
+            val fileInfo  = getByPath(path)
 
-            val watchEvent = PartialFunction.condOpt(kind):
+            kind match
               case StandardWatchEventKinds.ENTRY_DELETE =>
                 logger.debug(s"File deleted: $path")
-                FileDeleted(path)
+                scheduledExecutor.schedule(publishDeletedEvent(path), 100, TimeUnit.MILLISECONDS)
               case StandardWatchEventKinds.ENTRY_CREATE =>
                 if (Files.isDirectory(path)) registerDirectory(path)
+
+                val hash = hashFn(path)
                 logger.debug(s"File created: $path")
-                FileCreated(path)
+                publisher.submit(FileCreated(path))
               case StandardWatchEventKinds.ENTRY_MODIFY =>
                 logger.debug(s"File modified: $path")
-                FileModified(path)
-
-            watchEvent.foreach(publisher.submit)
+                publisher.submit(FileModified(path))
           }
 
           key.reset()
@@ -71,8 +84,8 @@ object DirectoryWatcher {
     publisher
   }
 
-  def watch(rootPath: Path): fs2.Stream[IO, WatchEvent] = {
-    val watchDirectoryPublisher = watchDirectory(rootPath)
+  def watch(rootPath: Path, getByPath: Path => FileInfo): fs2.Stream[IO, WatchEvent] = {
+    val watchDirectoryPublisher = watchDirectory(rootPath, getByPath, path => path.toString)
     fs2.Stream.fromPublisher[IO](watchDirectoryPublisher, 1)
   }
 }
