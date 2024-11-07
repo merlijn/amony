@@ -17,15 +17,16 @@ object SearchRoutes {
 
   val durationPattern = raw"(\d*)-(\d*)".r
 
-  given searchResultEncoder: Encoder[SearchResult] =
-    deriveEncoder[WebSearchResponse].contramapObject[SearchResult](result =>
-      WebSearchResponse(result.offset, result.total, result.results.map(m => toDto(m)), result.tags)
-    )
+  def getSortedTags(facetMap: Map[String, Long]): Seq[String] = {
+    facetMap.toSeq
+      .sortBy { case (key, count) => (-count, key) } // negative count for descending order
+      .map(_._1)
+  }
 
-  def apply(
-         searchService: SearchService,
-         config: SearchConfig,
-    ): HttpRoutes[IO] = {
+  given searchResultEncoder: Encoder[SearchResult] =
+    deriveEncoder[WebSearchResponse].contramapObject[SearchResult](result => WebSearchResponse(result.offset, result.total, result.results.map(m => toDto(m)), getSortedTags(result.tags)))
+
+  def apply(searchService: SearchService, config: SearchConfig): HttpRoutes[IO] = {
 
     HttpRoutes.of[IO] {
       case req @ GET -> Root / "api" / "search" / "media"  =>

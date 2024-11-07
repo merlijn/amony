@@ -110,6 +110,6 @@ class InMemorySearchService extends SearchService with Logging {
 
       val videos = if (offset > result.size) Nil else result.slice(offset, end)
 
-      Future.successful(SearchResult(offset, result.size, videos.toList, tags.toList))
+      Future.successful(SearchResult(offset, result.size, videos.toList, tags.toList.foldLeft(Map.empty[String, Long])((acc, tag) => acc.updated(tag, 1))))
     }
 }

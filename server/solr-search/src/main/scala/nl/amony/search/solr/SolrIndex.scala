@@ -9,7 +9,7 @@ import nl.amony.service.search.api.SortField.*
 import nl.amony.service.search.api.{Query, SearchResult, SortOption}
 import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer
 import org.apache.solr.client.solrj.{SolrClient, SolrQuery}
-import org.apache.solr.common.params.{CommonParams, ModifiableSolrParams}
+import org.apache.solr.common.params.{CommonParams, FacetParams, ModifiableSolrParams}
 import org.apache.solr.common.{SolrDocument, SolrInputDocument}
 import org.apache.solr.core.CoreContainer
 import scribe.Logging
@@ -18,6 +18,7 @@ import java.nio.file.{Files, Path}
 import java.util.Properties
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters.*
+import scala.util.Try
 
 object SolrIndex {
 
@@ -78,13 +79,13 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
 
 
     val solrInputDocument: SolrInputDocument = new SolrInputDocument()
-    solrInputDocument.addField("id", resource.hash)
-    solrInputDocument.addField("bucket_id_s", resource.bucketId)
+    solrInputDocument.addField(FieldNames.id, resource.hash)
+    solrInputDocument.addField(FieldNames.bucketId, resource.bucketId)
     solrInputDocument.addField(FieldNames.path, resource.path)
-    solrInputDocument.addField("filesize_l", resource.size)
+    solrInputDocument.addField(FieldNames.filesize, resource.size)
 
     val maybeTags = Option.when(resource.tags.nonEmpty)(resource.tags)
-    maybeTags.foreach(tags => solrInputDocument.addField("tags_ss", resource.tags.toList.asJava))
+    maybeTags.foreach(tags => solrInputDocument.addField(FieldNames.tags, resource.tags.toList.asJava))
 
     resource.thumbnailTimestamp.foreach(timestamp => solrInputDocument.addField("thumbnailtimestamp_l", timestamp))
     resource.title.foreach(title => solrInputDocument.addField("title_s", title))
@@ -130,7 +131,7 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
     val resourceType = document.getFieldValue("resource_type_s").asInstanceOf[String]
     val thumbnailTimestamp = Option(document.getFieldValue("thumbnailtimestamp_l")).map(_.asInstanceOf[Long])
 
-    val tags = Option(document.getFieldValues("tags_ss")).map(_.asInstanceOf[java.util.List[String]].asScala).getOrElse(List.empty).toSeq
+    val tags = Option(document.getFieldValues(FieldNames.tags)).map(_.asInstanceOf[java.util.List[String]].asScala).getOrElse(List.empty).toSeq
 
     val contentMeta: ResourceMeta = resourceType match {
 
@@ -146,7 +147,7 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
   }
 
   private def toSolrQuery(query: Query) = {
-    val q = query.q.getOrElse("")
+
     val defaultSort = SortOption(Title, Desc)
     val sort = query.sort.getOrElse(defaultSort)
 
@@ -164,11 +165,28 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
       s"$solrField $direction"
     }
 
+    // TODO add other filters like tags, time constraints, etc
     val solrParams = new ModifiableSolrParams
-    solrParams.add(CommonParams.Q, s"${FieldNames.path}:*${if (q.trim.isEmpty) "" else s"$q*"}")
+
+    val solrQ = {
+      val q = query.q.getOrElse("")
+      val sb = new StringBuilder()
+
+      sb.append(s"${FieldNames.path}:*${if (q.trim.isEmpty) "" else s"$q*"}")
+      if(query.tags.nonEmpty)
+        sb.append(s" AND ${FieldNames.tags}:(${query.tags.mkString(" OR ")})")
+
+      sb.result()
+    }
+
+    solrParams.add(CommonParams.Q, solrQ)
     solrParams.add(CommonParams.START, query.offset.getOrElse(0).toString)
     solrParams.add(CommonParams.ROWS, query.n.toString)
     solrParams.add(CommonParams.SORT, solrSort)
+    solrParams.add(FacetParams.FACET, "true")
+    solrParams.add(FacetParams.FACET_FIELD, FieldNames.tags)
+    solrParams.add(FacetParams.FACET_LIMIT, "12")
+
     solrParams
   }
 
@@ -206,15 +224,20 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
       val total = results.getNumFound
       val offset = results.getStart
 
-      results.asScala.map(toResource).toList
+      val tagsWithFrequency: Map[String, Long] = Option(queryResponse.getFacetFields)
+        .flatMap(fields => Try(fields.get(0)).toOption)
+        .map(field => field.getValues.asScala
+          .map(value => value.getName -> value.getCount)
+          .toMap)
+        .getOrElse(Map.empty[String, Long])
 
-      logger.debug(s"Search query: ${solrParams.toString}, total: $total")
+      logger.debug(s"Search query: ${solrParams.toString}, total: $total, tags: ${tagsWithFrequency.mkString(", ")}")
 
       SearchResult(
         offset = offset.toInt,
         total = total.toInt,
         results = results.asScala.map(toResource).toList,
-        tags = List.empty
+        tags = tagsWithFrequency
       )
     }
   }
