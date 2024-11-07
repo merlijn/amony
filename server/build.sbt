@@ -1,6 +1,8 @@
 //import sbt.Keys.scalaVersion
 import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
 
+import java.nio.file.Path
+
 // --- Dependencies
 
 
@@ -194,9 +196,9 @@ lazy val searchService =
         circe, circeGeneric, jacksonDatabind,
         http4sDsl, http4sCirce
       ),
-//      PB.includePaths in Compile ++= Seq(file("media/src/main/protobuf")),
-//      PB.includePaths in Compile += file("search-api/src/main/protobuf")
     )
+
+lazy val buildSolrTarGz = taskKey[Seq[File]]("Creates the solr.tar.gz file")
 
 lazy val solrSearch =
   module("solr-search")
@@ -205,8 +207,33 @@ lazy val solrSearch =
       name := "amony-service-search-solr",
       libraryDependencies ++= Seq(
         slf4jApi, scribeSlf4j,
-        solr, solrLangId
-      )
+        solr, solrLangId,
+      ),
+      buildSolrTarGz / fileInputs += baseDirectory.value.toGlob / "src" / "main" / "resources" / "solr" / "*",
+      buildSolrTarGz := {
+        import scala.sys.process._
+
+        val log = streams.value.log
+        val sourceDir = (Compile / resourceDirectory).value / "solr"
+        val targetFile = (Compile / resourceManaged).value / "solr.tar.gz"
+
+        log.info(s"Generating solr tar at: ${targetFile.getAbsolutePath}")
+
+        if (sourceDir.exists) {
+          // Ensure parent directory exists
+          IO.createDirectory(targetFile.getParentFile)
+
+          // Create tar.gz file using system commands
+          val tarCmd = s"tar -czf ${targetFile.getAbsolutePath} -C ${sourceDir.getAbsolutePath} ."
+          tarCmd.!
+
+          Seq(targetFile)
+        } else {
+          log.warn(s"Warning: Source directory ${sourceDir.getAbsolutePath} does not exist")
+          Seq.empty
+        }
+      },
+      Compile / resourceGenerators += buildSolrTarGz.taskValue
     )
 
 lazy val amonyServer =

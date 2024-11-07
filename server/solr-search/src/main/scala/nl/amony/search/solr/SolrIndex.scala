@@ -52,8 +52,9 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
 
   if (!Files.exists(solrHome)) {
     logger.info(s"Solr directory does not exists. Creating it at: $solrHome")
-    Files.createDirectories(solrHome)
-    TarGzExtractor.extractResourceTarGz("/solr.tar.gz", solrHome)
+    val parent = solrHome.getParent
+    Files.createDirectories(parent) // create parent directories
+    TarGzExtractor.extractResourceTarGz("/solr.tar.gz", parent) // the tarbal is in the resources
   }
 
   private val lockfilePath = solrHome.resolve("index/write.lock")
