@@ -36,25 +36,31 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: L
     val outputFile = config.cachePath.resolve(operation.outputFilename)
 
     if (Files.exists(outputFile))
-      IO.pure(Resource.fromPath(outputFile, inputResource))
+      IO.pure(Resource.fromPathMaybe(outputFile, inputResource))
     else {
       /**
        * This is not ideal, there is still a small time window in which the operation can be triggered multiple times, although it is very unlikely to happen
        * TODO Create a full proof solution using a MapRef from cats
        */
       resourceStore
-        .compute(operation, (_, value) => { createResource(config.resourcePath.resolve(inputResource.path), inputResource.contentMeta, config.cachePath, operation) })
-        .map(path => Resource.fromPath(path, inputResource))
+        .compute(operation, (_, value) => { createResource(config.resourcePath.resolve(inputResource.path), inputResource, config.cachePath, operation) })
+        .map(path => Resource.fromPathMaybe(path, inputResource))
         .flatTap { _ => IO(resourceStore.remove(operation)) } // removes the operation from the map to prevent memory leak, leaves a small gap
     }
   }
 
   override def getResource(resourceId: String): IO[Option[Resource]] =
     getResourceInfo(resourceId).flatMap:
-      case None       => IO.pure(None)
+      case None       =>
+        IO.pure(None)
       case Some(info) =>
         val path = config.resourcePath.resolve(info.path)
-        IO.pure(Resource.fromPath(path, info))
+        if(!path.exists()) {
+          logger.warn(s"Resource '$resourceId' was found in the database but no file exists: $path")
+          IO.pure(None)
+        } else {
+          IO.pure(Some(Resource.fromPath(path, info)))
+        }
 
   override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[ResourceInfo] = ???
 

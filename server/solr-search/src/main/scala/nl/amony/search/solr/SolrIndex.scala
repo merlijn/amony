@@ -208,6 +208,14 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
 
     case ResourceAdded(resource)   => insertDocument(resource)
     case ResourceUpdated(resource) => insertDocument(resource)
+    case ResourceDeleted(resourceId) =>
+      try {
+        logger.debug(s"Deleting document from index: $resourceId")
+        solr.deleteById(collectionName, resourceId, 5000).getStatus
+      }
+      catch {
+        case e: Exception => logger.error("Exception while trying to delete document from solr", e)
+      }
     case _ =>
       logger.info(s"Ignoring event: $event")
       ()
