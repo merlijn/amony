@@ -209,7 +209,7 @@ lazy val solrSearch =
         slf4jApi, scribeSlf4j,
         solr, solrLangId,
       ),
-      buildSolrTarGz / fileInputs += baseDirectory.value.toGlob / "src" / "main" / "resources" / "solr" / "*",
+      buildSolrTarGz / fileInputs += (Compile / resourceDirectory).value.toGlob / "solr" / "**",
       buildSolrTarGz := {
         import scala.sys.process._
 
@@ -217,9 +217,8 @@ lazy val solrSearch =
         val sourceDir = (Compile / resourceDirectory).value / "solr"
         val targetFile = (Compile / resourceManaged).value / "solr.tar.gz"
 
-        log.info(s"Generating solr tar at: ${targetFile.getAbsolutePath}")
-
-        if (sourceDir.exists) {
+        if (sourceDir.exists && buildSolrTarGz.inputFileChanges.hasChanges) {
+          log.info(s"Generating solr tar at: ${targetFile.getAbsolutePath}")
           // Ensure parent directory exists
           IO.createDirectory(targetFile.getParentFile)
 
@@ -229,7 +228,7 @@ lazy val solrSearch =
 
           Seq(targetFile)
         } else {
-          log.warn(s"Warning: Source directory ${sourceDir.getAbsolutePath} does not exist")
+          log.debug(s"Skipped generating solr tar")
           Seq.empty
         }
       },
