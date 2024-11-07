@@ -216,8 +216,12 @@ lazy val solrSearch =
         val log = streams.value.log
         val sourceDir = (Compile / resourceDirectory).value / "solr"
         val targetFile = (Compile / resourceManaged).value / "solr.tar.gz"
+        val hasChanges = buildSolrTarGz.inputFileChanges.hasChanges
 
-        if (sourceDir.exists && buildSolrTarGz.inputFileChanges.hasChanges) {
+        if (!sourceDir.exists) {
+          log.error(s"Source directory does not exist: ${sourceDir.getAbsolutePath}")
+          Seq.empty
+        } else if (hasChanges || !targetFile.exists) {
           log.info(s"Generating solr tar at: ${targetFile.getAbsolutePath}")
           // Ensure parent directory exists
           IO.createDirectory(targetFile.getParentFile)
@@ -225,11 +229,10 @@ lazy val solrSearch =
           // Create tar.gz file using system commands
           val tarCmd = s"tar -czf ${targetFile.getAbsolutePath} -C ${sourceDir.getAbsolutePath} ."
           tarCmd.!
-
           Seq(targetFile)
         } else {
           log.debug(s"Skipped generating solr tar")
-          Seq.empty
+          Seq(targetFile)
         }
       },
       Compile / resourceGenerators += buildSolrTarGz.taskValue
