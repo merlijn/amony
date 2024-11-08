@@ -17,7 +17,7 @@ object ResourceWebModel {
   case class ResourceMetaDto(
     width: Int,
     height: Int,
-    fps: Double,
+    fps: Float,
     duration: Long,
   ) derives Encoder.AsObject
 

@@ -7,6 +7,12 @@ import java.util.concurrent.*
 import scala.jdk.CollectionConverters.*
 import scala.util.Using
 
+trait FileStore {
+  def getByPath(path: Path): Option[FileInfo]
+  def deletePath(path: Path): Unit
+  def getAll(): Seq[FileInfo]
+}
+
 object DirectoryWatcher {
 
   val logger = scribe.Logger("DirectoryWatcher")
@@ -18,7 +24,7 @@ object DirectoryWatcher {
   case class FileDeleted(path: Path) extends WatchEvent
   case class FileMoved(oldPath: Path, newPath: Path) extends WatchEvent
 
-  def watchDirectory(directoryPath: Path, getByPath: Path => FileInfo, hashFn: Path => String): Flow.Publisher[WatchEvent] = {
+  def watchDirectory(directoryPath: Path, getByPath: Path => Option[FileInfo], hashFn: Path => String): Flow.Publisher[WatchEvent] = {
     val publisher = new SubmissionPublisher[WatchEvent]()
     val watchService: WatchService = FileSystems.getDefault.newWatchService()
 
@@ -84,7 +90,7 @@ object DirectoryWatcher {
     publisher
   }
 
-  def watch(rootPath: Path, getByPath: Path => FileInfo): fs2.Stream[IO, WatchEvent] = {
+  def watch(rootPath: Path, getByPath: Path => Option[FileInfo]): fs2.Stream[IO, WatchEvent] = {
     val watchDirectoryPublisher = watchDirectory(rootPath, getByPath, path => path.toString)
     fs2.Stream.fromPublisher[IO](watchDirectoryPublisher, 1)
   }

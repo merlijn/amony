@@ -11,12 +11,12 @@ import slick.jdbc.JdbcProfile
 import scala.concurrent.ExecutionContext
 import scala.util.Try
 
-class LocalDirectoryDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(implicit IORuntime: IORuntime) extends Logging {
+class ResourcesDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(using IORuntime: IORuntime) extends Logging {
 
   import dbConfig.profile.api.*
   private val db = dbConfig.db
 
-  implicit val ec: ExecutionContext = db.executor.executionContext
+  given ec: ExecutionContext = db.executor.executionContext
   
   private def dbIO[T](a: DBIO[T]): IO[T] = IO.fromFuture(IO(db.run(a))).onError { t => IO { logger.warn(t) } }
 

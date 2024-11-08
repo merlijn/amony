@@ -5,13 +5,12 @@ import com.typesafe.config.Config
 import fs2.Pipe
 import nl.amony.lib.eventbus.EventTopic
 import nl.amony.lib.eventbus.jdbc.SlickEventBus
-import nl.amony.search.InMemorySearchService
 import nl.amony.search.solr.SolrIndex
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
 import nl.amony.service.resources.api.ResourceInfo
 import nl.amony.service.resources.api.events.{ResourceAdded, ResourceEvent}
-import nl.amony.service.resources.local.db.LocalDirectoryDb
+import nl.amony.service.resources.local.db.ResourcesDb
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.local.scanner.LocalDirectoryScanner
 import nl.amony.service.resources.{ResourceBucket, ResourceConfig}
@@ -57,13 +56,13 @@ object Main extends IOApp with ConfigLoader with Logging {
 
     val authService: AuthService = new AuthServiceImpl(loadConfig[AuthConfig](config, "amony.auth"))
 
-    val eventBus = new SlickEventBus(databaseConfig)
-    Try { eventBus.createTablesIfNotExists().unsafeRunSync() }
+//    val eventBus = new SlickEventBus(databaseConfig)
+//    Try { eventBus.createTablesIfNotExists().unsafeRunSync() }
 
 //    val codec = PersistenceCodec.scalaPBMappedPersistenceCodec[ResourceEventMessage, ResourceEvent]
 //    val topic = eventBus.getTopicForKey(EventTopicKey[ResourceEvent]("resource_events")(codec))
 
-    val localFileStorage = new LocalDirectoryDb(databaseConfig)
+    val localFileStorage = new ResourcesDb(databaseConfig)
     localFileStorage.createTablesIfNotExists()
 
     val resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
@@ -109,9 +108,7 @@ object Main extends IOApp with ConfigLoader with Logging {
 
     val webServer = new WebServer(appConfig.api)
     val routes = WebServerRoutes.routes(authService, searchService, appConfig, resourceBuckets)
-
-
-
+    
     webServer.run(routes).onCancel(IO(logger.info("Exiting application")))
   }
 }

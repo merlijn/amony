@@ -36,13 +36,13 @@ class TagsTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends Loggi
   def removeTags(bucketId: String, resourceId: String, tags: Set[String]) =
     queryById(bucketId, resourceId).filter(_.tag.inSet(tags)).delete
 
-  def insert(bucketId: String, resourceId: String, tags: Set[String])(implicit ec: ExecutionContext): DBIO[Int] =
+  def insert(bucketId: String, resourceId: String, tags: Set[String])(using ec: ExecutionContext): DBIO[Int] =
     if (tags.isEmpty)
       DBIO.successful(0)
     else
       (innerTable ++= tags.map(ResourceTagRow(bucketId, resourceId, _))).map(_.getOrElse(0))
 
-  def insertOrUpdate(bucketId: String, resourceId: String, tags: Set[String])(implicit ec: ExecutionContext) =
+  def insertOrUpdate(bucketId: String, resourceId: String, tags: Set[String])(using ec: ExecutionContext) =
     for {
       currentTags <- queryById(bucketId, resourceId).map(_.tag).result.map(_.toSet)
       removedTags <- removeTags(bucketId, resourceId, currentTags -- tags)

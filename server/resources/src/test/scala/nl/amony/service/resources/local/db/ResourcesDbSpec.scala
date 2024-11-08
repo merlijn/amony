@@ -9,7 +9,7 @@ import slick.basic.DatabaseConfig
 import slick.jdbc.H2Profile
 import slick.jdbc.H2Profile.api.*
 
-class LocalDirectoryDbSpec extends AnyFlatSpecLike with Logging {
+class ResourcesDbSpec extends AnyFlatSpecLike with Logging {
 
   import cats.effect.unsafe.implicits.global
 
@@ -33,7 +33,7 @@ class LocalDirectoryDbSpec extends AnyFlatSpecLike with Logging {
 
   val dbConfig = DatabaseConfig.forConfig[H2Profile]("h2mem1-test", ConfigFactory.parseString(config))
 
-  val store = new LocalDirectoryDb(dbConfig)
+  val store = new ResourcesDb(dbConfig)
 
   store.createTablesIfNotExists()
 

@@ -9,7 +9,7 @@ import nl.amony.service.resources.api.events.*
 import nl.amony.service.resources.api.operations.ResourceOperation
 import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
 import nl.amony.service.resources.local.LocalResourceMeta
-import nl.amony.service.resources.local.db.LocalDirectoryDb
+import nl.amony.service.resources.local.db.ResourcesDb
 import scribe.Logging
 import slick.jdbc.JdbcProfile
 
@@ -43,7 +43,7 @@ extension [F[_], T](stream: Stream[F, T])
       case (s, None)    => nextFn(s)
   }
 
-class LocalDirectoryScanner(config: LocalDirectoryConfig)(implicit runtime: IORuntime) extends Logging {
+class LocalDirectoryScanner(config: LocalDirectoryConfig)(using runtime: IORuntime) extends Logging {
 
   private val hashingAlgorithm = config.hashingAlgorithm
   private val mediaPath = config.resourcePath

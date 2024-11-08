@@ -19,9 +19,16 @@ import java.util.Properties
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
+import SolrIndex.*
 
 object SolrIndex {
 
+  val collectionName = "amony_embedded"
+  val defaultSort = SortOption(DateAdded, Desc)
+  val tagsLimit = 12.toString
+  val commitWithinMillis = 5000
+  val solrTarGzResource = "/solr.tar.gz"
+  
   object FieldNames {
     val id = "id"
     val bucketId = "bucket_id_s"
@@ -37,12 +44,12 @@ object SolrIndex {
     val width = "width_i"
     val height = "height_i"
     val duration = "duration_l"
-    val fps = "fps_d"
+    val fps = "fps_f"
     val resourceType = "resource_type_s"
   }
 }
 
-class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends SearchService with Logging {
+class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchService with Logging {
 
   private val solrHome: Path = Path.of(config.path).toAbsolutePath.normalize()
 
@@ -53,7 +60,7 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
 
   if (!Files.exists(solrHome)) {
     logger.info(s"Solr directory does not exists. Creating it at: $solrHome")
-    TarGzExtractor.extractResourceTarGz("/solr.tar.gz", solrHome)
+    TarGzExtractor.extractResourceTarGz(solrTarGzResource, solrHome)
   }
 
   private val lockfilePath = solrHome.resolve("index/write.lock")
@@ -69,15 +76,13 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
   }
 
   System.getProperties.setProperty("solr.data.dir", solrHome.toAbsolutePath.toString)
-
-  private val collectionName = "amony_embedded"
+  
   private val container = new CoreContainer(solrHome, new Properties())
   container.load()
   private val solr: SolrClient = new EmbeddedSolrServer(container, collectionName)
 
   private def toSolrDocument(resource: ResourceInfo): SolrInputDocument = {
-
-
+    
     val solrInputDocument: SolrInputDocument = new SolrInputDocument()
     solrInputDocument.addField(FieldNames.id, resource.hash)
     solrInputDocument.addField(FieldNames.bucketId, resource.bucketId)
@@ -87,24 +92,24 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
     val maybeTags = Option.when(resource.tags.nonEmpty)(resource.tags)
     maybeTags.foreach(tags => solrInputDocument.addField(FieldNames.tags, resource.tags.toList.asJava))
 
-    resource.thumbnailTimestamp.foreach(timestamp => solrInputDocument.addField("thumbnailtimestamp_l", timestamp))
-    resource.title.foreach(title => solrInputDocument.addField("title_s", title))
-    resource.description.foreach(description => solrInputDocument.addField("description_s", description))
-    resource.creationTime.foreach(created => solrInputDocument.addField("created_l", created))
-    resource.lastModifiedTime.foreach(lastModified => solrInputDocument.addField("lastmodified_l", lastModified))
-    resource.contentType.foreach(contentType => solrInputDocument.addField("content_type_s", contentType))
+    resource.thumbnailTimestamp.foreach(timestamp => solrInputDocument.addField(FieldNames.thumbnailTimestamp, timestamp))
+    resource.title.foreach(title => solrInputDocument.addField(FieldNames.title, title))
+    resource.description.foreach(description => solrInputDocument.addField(FieldNames.description, description))
+    resource.creationTime.foreach(created => solrInputDocument.addField(FieldNames.created, created))
+    resource.lastModifiedTime.foreach(lastModified => solrInputDocument.addField(FieldNames.lastModified, lastModified))
+    resource.contentType.foreach(contentType => solrInputDocument.addField(FieldNames.contentType, contentType))
 
     resource.contentMeta match {
       case ImageMeta(w, h, _) =>
-        solrInputDocument.addField("width_i", w)
-        solrInputDocument.addField("height_i", h)
-        solrInputDocument.addField("resource_type_s", "image")
+        solrInputDocument.addField(FieldNames.width, w)
+        solrInputDocument.addField(FieldNames.height, h)
+        solrInputDocument.addField(FieldNames.resourceType, "image")
       case VideoMeta(w, h, fps, duration, _) =>
-        solrInputDocument.addField("width_i", w)
-        solrInputDocument.addField("height_i", h)
-        solrInputDocument.addField("duration_l", duration)
-        solrInputDocument.addField("fps_d", fps.toDouble)
-        solrInputDocument.addField("resource_type_s", "video")
+        solrInputDocument.addField(FieldNames.width, w)
+        solrInputDocument.addField(FieldNames.height, h)
+        solrInputDocument.addField(FieldNames.duration, duration)
+        solrInputDocument.addField(FieldNames.fps, fps)
+        solrInputDocument.addField(FieldNames.resourceType, "video")
       case _ =>
     }
 
@@ -113,23 +118,22 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
 
   private def toResource(document: SolrDocument): ResourceInfo = {
 
-    val id = document.getFieldValue("id").asInstanceOf[String]
-    val bucketId = document.getFieldValue("bucket_id_s").asInstanceOf[String]
-    val title = Option(document.getFieldValue("title_s")).map(_.asInstanceOf[String])
+    val id = document.getFieldValue(FieldNames.id).asInstanceOf[String]
+    val bucketId = document.getFieldValue(FieldNames.bucketId).asInstanceOf[String]
+    val title = Option(document.getFieldValue(FieldNames.title)).map(_.asInstanceOf[String])
     val path = document.getFieldValue(FieldNames.path).asInstanceOf[String]
-    val creationTime = Option(document.getFieldValue("created_l")).map(_.asInstanceOf[Long])
-    val lastModified = Option(document.getFieldValue("lastmodified_l")).map(_.asInstanceOf[Long])
-    val created = document.getFieldValue("created_l").asInstanceOf[Long]
-    val size = document.getFieldValue("filesize_l").asInstanceOf[Long]
+    val creationTime = Option(document.getFieldValue(FieldNames.created)).map(_.asInstanceOf[Long])
+    val lastModified = Option(document.getFieldValue(FieldNames.lastModified)).map(_.asInstanceOf[Long])
+    val size = document.getFieldValue(FieldNames.filesize).asInstanceOf[Long]
 
-    val contentType = Option(document.getFieldValue("content_type_s")).map(_.asInstanceOf[String])
+    val contentType = Option(document.getFieldValue(FieldNames.contentType)).map(_.asInstanceOf[String])
 
-    val width = document.getFieldValue("width_i").asInstanceOf[Int]
-    val height = document.getFieldValue("height_i").asInstanceOf[Int]
-    val description = Option(document.getFieldValue("description_s")).map(_.asInstanceOf[String])
+    val width = document.getFieldValue(FieldNames.width).asInstanceOf[Int]
+    val height = document.getFieldValue(FieldNames.height).asInstanceOf[Int]
+    val description = Option(document.getFieldValue(FieldNames.description)).map(_.asInstanceOf[String])
 
-    val resourceType = document.getFieldValue("resource_type_s").asInstanceOf[String]
-    val thumbnailTimestamp = Option(document.getFieldValue("thumbnailtimestamp_l")).map(_.asInstanceOf[Long])
+    val resourceType = document.getFieldValue(FieldNames.resourceType).asInstanceOf[String]
+    val thumbnailTimestamp = Option(document.getFieldValue(FieldNames.thumbnailTimestamp)).map(_.asInstanceOf[Long])
 
     val tags = Option(document.getFieldValues(FieldNames.tags)).map(_.asInstanceOf[java.util.List[String]].asScala).getOrElse(List.empty).toSeq
 
@@ -137,8 +141,8 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
 
       case "image" => ImageMeta(width, height)
       case "video" =>
-        val duration = document.getFieldValue("duration_l").asInstanceOf[Long]
-        val fps = document.getFieldValue("fps_f").asInstanceOf[Float]
+        val duration = document.getFieldValue(FieldNames.duration).asInstanceOf[Long]
+        val fps = document.getFieldValue(FieldNames.fps).asInstanceOf[Float]
         VideoMeta(width, height, fps, duration, Map.empty)
       case _ => ResourceMeta.Empty
     }
@@ -147,18 +151,17 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
   }
 
   private def toSolrQuery(query: Query) = {
-
-    val defaultSort = SortOption(Title, Desc)
+    
     val sort = query.sort.getOrElse(defaultSort)
 
     val solrSort = {
 
       val solrField = sort.field match
-        case Title     => "title_s"
-        case DateAdded => "created_l"
-        case Size      => "filesize_l"
-        case Duration  => "duration_l"
-        case _         => "created_l"
+        case Title     => FieldNames.title
+        case DateAdded => FieldNames.created
+        case Size      => FieldNames.filesize
+        case Duration  => FieldNames.duration
+        case _         => FieldNames.created
 
       val direction = if (sort.direction == Desc) "desc" else "asc"
 
@@ -175,7 +178,10 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
       sb.append(s"${FieldNames.path}:*${if (q.trim.isEmpty) "" else s"$q*"}")
       if(query.tags.nonEmpty)
         sb.append(s" AND ${FieldNames.tags}:(${query.tags.mkString(" OR ")})")
-
+      
+      if (query.minRes.isDefined || query.maxRes.isDefined)
+        sb.append(s" AND ${FieldNames.width}:[${query.minRes.getOrElse(0)} TO ${query.maxRes.getOrElse("*")}]")
+      
       sb.result()
     }
 
@@ -185,7 +191,7 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
     solrParams.add(CommonParams.SORT, solrSort)
     solrParams.add(FacetParams.FACET, "true")
     solrParams.add(FacetParams.FACET_FIELD, FieldNames.tags)
-    solrParams.add(FacetParams.FACET_LIMIT, "12")
+    solrParams.add(FacetParams.FACET_LIMIT, tagsLimit)
 
     solrParams
   }
@@ -197,7 +203,7 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
     try {
       logger.debug(s"Indexing media: ${resource.path}")
       val solrInputDocument = toSolrDocument(resource)
-      solr.add(collectionName, solrInputDocument, 5000).getStatus
+      solr.add(collectionName, solrInputDocument, commitWithinMillis).getStatus
     }
     catch {
       case e: Exception => logger.error("Exception while trying to index document to solr", e)
@@ -211,7 +217,7 @@ class SolrIndex(config: SolrConfig)(implicit ec: ExecutionContext) extends Searc
     case ResourceDeleted(resourceId) =>
       try {
         logger.debug(s"Deleting document from index: $resourceId")
-        solr.deleteById(collectionName, resourceId, 5000).getStatus
+        solr.deleteById(collectionName, resourceId, commitWithinMillis).getStatus
       }
       catch {
         case e: Exception => logger.error("Exception while trying to delete document from solr", e)
