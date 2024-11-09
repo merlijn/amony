@@ -1,4 +1,4 @@
-package nl.amony.lib.filewatcher
+package nl.amony.lib.files.watcher
 
 import cats.effect.IO
 

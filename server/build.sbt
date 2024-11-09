@@ -107,37 +107,8 @@ def module(name: String, mainClass: Boolean = false) = {
 
 // --- Modules
 
-lazy val common =
-  module("common")
-    .settings(
-      name := "amony-lib-common",
-      libraryDependencies ++= Seq(
-        pureConfig,
-        scribeSlf4j,
-        scalaTest,
-//        directoryWatcher,
-//        slick,
-        catsEffect,
-      )
-    )
-
-lazy val libFFMPeg =
-  module("lib-ffmpeg")
-    .dependsOn(common)
-    .settings(
-      name         := "amony-lib-ffmpeg",
-      libraryDependencies ++= Seq(
-        scribeSlf4j,
-        fs2Core,
-        scalaTest,
-        circe,
-        circeGeneric,
-        circeParser,
-      )
-    )
-
-lazy val libFileWatcher =
-  module("lib-filewatcher")
+lazy val libFiles =
+  module("lib-files")
     .settings(
       name         := "amony-lib-filewatcher",
       libraryDependencies ++= Seq(
@@ -149,6 +120,21 @@ lazy val libFileWatcher =
         scalaPbRuntime,
         slickHikariCp % "test",
         h2DB % "test"
+      )
+    )
+
+lazy val libFFMPeg =
+  module("lib-ffmpeg")
+    .dependsOn(libFiles)
+    .settings(
+      name         := "amony-lib-ffmpeg",
+      libraryDependencies ++= Seq(
+        scribeSlf4j,
+        fs2Core,
+        scalaTest,
+        circe,
+        circeGeneric,
+        circeParser,
       )
     )
 
@@ -170,7 +156,7 @@ lazy val libEventStore =
 
 lazy val identity =
   module("identity")
-    .dependsOn(common, libEventStore)
+    .dependsOn(libFiles, libEventStore)
     .settings(protobufSettings)
     .settings(
       name := "amony-service-auth",
@@ -185,7 +171,7 @@ lazy val identity =
 
 lazy val resources =
   module("resources")
-    .dependsOn(common, libFFMPeg, libEventStore, libFileWatcher)
+    .dependsOn(libFFMPeg, libEventStore, libFiles)
     .settings(protobufSettings)
     .settings(
       name := "amony-service-resources",
@@ -218,7 +204,7 @@ lazy val buildSolrTarGz = taskKey[Seq[File]]("Creates the solr.tar.gz file")
 
 lazy val solrSearch =
   module("solr-search")
-    .dependsOn(common, searchService)
+    .dependsOn(searchService)
     .settings(
       name := "amony-service-search-solr",
       libraryDependencies ++= Seq(
@@ -300,4 +286,4 @@ lazy val amony = project
     Global / cancelable   := true,
   )
   .disablePlugins(RevolverPlugin)
-  .aggregate(common, libEventStore, libFFMPeg, libFileWatcher, identity, searchService, solrSearch, amonyServer)
+  .aggregate(libEventStore, libFFMPeg, libFiles, identity, searchService, solrSearch, amonyServer)

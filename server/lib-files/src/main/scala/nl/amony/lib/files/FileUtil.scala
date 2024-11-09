@@ -1,11 +1,6 @@
 package nl.amony.lib.files
 
-import scribe.Logging
-
-import java.nio.file.Path
-
-object FileUtil extends Logging {
-
+object FileUtil {
   // strip extension
   def stripExtension(fileName: String): String = {
     val dotIdx = fileName.lastIndexOf('.')

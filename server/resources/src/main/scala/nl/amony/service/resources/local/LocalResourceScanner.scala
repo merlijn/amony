@@ -2,13 +2,13 @@ package nl.amony.service.resources.local
 
 import cats.effect.IO
 import fs2.Stream
+import nl.amony.lib.files.watcher.{FileAdded, FileDeleted, FileInfo, FileMoved, LocalDirectoryScanner}
 
 import java.nio.file.Path
 import scala.concurrent.duration.FiniteDuration
 import nl.amony.service.resources.Resource
 import nl.amony.service.resources.api.*
 import nl.amony.service.resources.api.events.*
-import nl.amony.lib.filewatcher.*
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 
 object LocalResourceScanner {
