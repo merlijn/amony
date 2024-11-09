@@ -3,7 +3,7 @@ package nl.amony.lib.magick.tasks
 import cats.effect.IO
 import nl.amony.lib.ffmpeg.tasks.ProcessRunner
 import nl.amony.lib.files.FileUtil.stripExtension
-import nl.amony.lib.files.PathOps
+import nl.amony.lib.files.*
 
 import java.nio.file.Path
 

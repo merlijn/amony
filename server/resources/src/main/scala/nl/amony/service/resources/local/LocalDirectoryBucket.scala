@@ -3,7 +3,7 @@ package nl.amony.service.resources.local
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import nl.amony.lib.eventbus.EventTopic
-import nl.amony.lib.files.PathOps
+import nl.amony.lib.files.*
 import nl.amony.service.resources.*
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.api.ResourceInfo

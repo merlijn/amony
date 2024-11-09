@@ -1,7 +1,7 @@
 package nl.amony.service.resources
 
 import cats.effect.IO
-import nl.amony.lib.files.PathOps
+import nl.amony.lib.files.*
 import nl.amony.service.resources.api.ResourceInfo
 import org.http4s.MediaType
 

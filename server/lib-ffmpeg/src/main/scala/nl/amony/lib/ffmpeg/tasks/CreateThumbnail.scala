@@ -3,7 +3,7 @@ package nl.amony.lib.ffmpeg.tasks
 import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg.formatTime
 import nl.amony.lib.files.FileUtil.stripExtension
-import nl.amony.lib.files.PathOps
+import nl.amony.lib.files.*
 import scribe.Logging
 
 import java.nio.file.Path

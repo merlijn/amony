@@ -7,7 +7,7 @@ import scala.io.Codec
 
 package object files {
 
-  implicit class PathOps(path: Path) {
+  extension(path: Path) {
 
     // strip extension
     def stripExtension(): Path = {

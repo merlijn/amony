@@ -4,7 +4,7 @@ import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg.formatTime
 import nl.amony.lib.ffmpeg.tasks._
 import nl.amony.lib.files.FileUtil.stripExtension
-import nl.amony.lib.files.PathOps
+import nl.amony.lib.files.*
 import scribe.Logging
 
 import java.io.InputStream

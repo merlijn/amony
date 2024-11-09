@@ -11,22 +11,10 @@ import java.nio.file.{Files, Path}
 import java.time.Instant
 import scala.concurrent.duration.FiniteDuration
 
-//trait FileStore {
-//  def getByPath(path: Path): IO[Option[FileInfo]]
-//  def deletePath(path: Path): IO[Unit]
-//  def getAll(): Seq[FileInfo]
-//}
-
-case class FileInfo(path: Path, hash: String, size: Long, creationTime: Long, modifiedTime: Long) {
-  def equalFileMeta(path: Path, attrs: BasicFileAttributes): Boolean =
-    size == Files.size(path) && creationTime == attrs.creationTime().toMillis && modifiedTime == Files.getLastModifiedTime(path).toMillis
-}
-
 sealed trait FileEvent
 case class FileAdded(fileInfo: FileInfo) extends FileEvent
 case class FileDeleted(fileInfo: FileInfo) extends FileEvent
 case class FileMoved(fileInfo: FileInfo, oldPath: Path) extends FileEvent
-
 
 extension [F[_], T](stream: Stream[F, T])
   def foldFlatMap[S](initial: S)(foldFn: (S, T) => S, nextFn: S => Stream[F, T]): Stream[F, T] = {
@@ -55,8 +43,8 @@ object LocalDirectoryScanner extends Logging {
     
     val previousByHash: Map[String, FileInfo] = previousState.values.foldLeft(Map.empty)((acc, f) => acc + (f.hash -> f) )
 
-    def getByPath(path: Path): Option[FileInfo]   = previousState.get(path)
-    def getByHash(hash: String): Option[FileInfo] = previousByHash.get(hash)
+    def getByPath(path: Path): Option[FileInfo] = previousState.get(path)
+    def getByHash(hash: String): Seq[FileInfo]  = previousByHash.get(hash).toSeq
 
     val start = System.currentTimeMillis()
 
@@ -85,8 +73,8 @@ object LocalDirectoryScanner extends Logging {
         prevByPath match
           case Some(`fileInfo`) => None
           case _                =>
-            getByHash(hash) match {
-              case Some(oldFileInfo) if oldFileInfo.equalFileMeta(path, attrs) =>
+            getByHash(hash).filter(_.equalFileMeta(path, attrs)).headOption match {
+              case Some(oldFileInfo) =>
                 Some(FileMoved(fileInfo, oldFileInfo.path))
               case _              =>
                 Some(FileAdded(fileInfo))

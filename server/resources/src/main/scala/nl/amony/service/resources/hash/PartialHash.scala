@@ -1,7 +1,7 @@
 package nl.amony.service.resources.hash
 
 import cats.effect.IO
-import nl.amony.lib.files.PathOps
+import nl.amony.lib.files.*
 import scribe.Logging
 
 import java.nio.ByteBuffer
