@@ -7,11 +7,12 @@ import nl.amony.service.resources.*
 import nl.amony.service.resources.api.operations.*
 import nl.amony.service.resources.api.{ImageMeta, ResourceInfo, ResourceMeta, VideoMeta}
 import scribe.Logging
+import scala.concurrent.ExecutionContext
 
 import java.nio.file.Path
 
 object LocalResourceOperations {
-
+  
   def createResource(inputFile: Path, inputMeta: ResourceInfo, outputDir: Path, operation: LocalResourceOp): IO[Path] =
     val outputFile = outputDir.resolve(operation.outputFilename)
 
@@ -103,7 +104,7 @@ object LocalResourceOperations {
         case video: VideoMeta =>
           val (start, end) = range
           val duration = end - start
-          (height > minHeight && height < maxHeight) && start >= 0 && end > start && duration > minLengthInMillis && duration < maxLengthInMillis && end < video.durationInMillis
+          (height > minHeight && height < maxHeight) && start >= 0 && end > start && duration > minLengthInMillis && duration < maxLengthInMillis && end <= video.durationInMillis
         case _                =>
           false
       }

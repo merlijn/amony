@@ -136,6 +136,22 @@ lazy val libFFMPeg =
       )
     )
 
+lazy val libFileWatcher =
+  module("lib-filewatcher")
+    .settings(
+      name         := "amony-lib-filewatcher",
+      libraryDependencies ++= Seq(
+        pureConfig,
+        scribeSlf4j,
+        fs2Core,
+        slick,
+        scalaTest,
+        scalaPbRuntime,
+        slickHikariCp % "test",
+        h2DB % "test"
+      )
+    )
+
 lazy val libEventStore =
   module("lib-eventstore")
     .settings(
@@ -169,7 +185,7 @@ lazy val identity =
 
 lazy val resources =
   module("resources")
-    .dependsOn(common, libFFMPeg, libEventStore)
+    .dependsOn(common, libFFMPeg, libEventStore, libFileWatcher)
     .settings(protobufSettings)
     .settings(
       name := "amony-service-resources",
@@ -284,4 +300,4 @@ lazy val amony = project
     Global / cancelable   := true,
   )
   .disablePlugins(RevolverPlugin)
-  .aggregate(common, libEventStore, libFFMPeg, identity, searchService, solrSearch, amonyServer)
+  .aggregate(common, libEventStore, libFFMPeg, libFileWatcher, identity, searchService, solrSearch, amonyServer)

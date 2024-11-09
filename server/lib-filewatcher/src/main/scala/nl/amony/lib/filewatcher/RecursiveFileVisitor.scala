@@ -1,4 +1,4 @@
-package nl.amony.service.resources.local.scanner
+package nl.amony.lib.filewatcher
 
 import scribe.Logging
 

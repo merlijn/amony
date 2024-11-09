@@ -1,15 +1,8 @@
-package nl.amony.service.resources.local.scanner
+package nl.amony.lib.filewatcher
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
-import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
-import nl.amony.service.resources.Resource
-import nl.amony.service.resources.api.events.*
-import nl.amony.service.resources.api.operations.ResourceOperation
-import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
-import nl.amony.service.resources.local.LocalResourceMeta
-import nl.amony.service.resources.local.db.ResourcesDb
 import scribe.Logging
 import slick.jdbc.JdbcProfile
 
@@ -17,6 +10,12 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
 import java.time.Instant
 import scala.concurrent.duration.FiniteDuration
+
+//trait FileStore {
+//  def getByPath(path: Path): IO[Option[FileInfo]]
+//  def deletePath(path: Path): IO[Unit]
+//  def getAll(): Seq[FileInfo]
+//}
 
 case class FileInfo(path: Path, hash: String, size: Long, creationTime: Long, modifiedTime: Long) {
   def equalFileMeta(path: Path, attrs: BasicFileAttributes): Boolean =
@@ -43,10 +42,7 @@ extension [F[_], T](stream: Stream[F, T])
       case (s, None)    => nextFn(s)
   }
 
-class LocalDirectoryScanner(config: LocalDirectoryConfig)(using runtime: IORuntime) extends Logging {
-
-  private val hashingAlgorithm = config.hashingAlgorithm
-  private val mediaPath = config.resourcePath
+object LocalDirectoryScanner extends Logging {
 
   /**
    * In principle, between the last time the directory was scanned and now, **all** files could be renamed. For example
@@ -123,63 +119,19 @@ class LocalDirectoryScanner(config: LocalDirectoryConfig)(using runtime: IORunti
    * 
    * The state will be kept in memory and is not persisted.
    */
-  def pollingStream(initialState: Map[Path, FileInfo], pollInterval: FiniteDuration): Stream[IO, FileEvent] = {
+  def pollingStream(directoryPath: Path, initialState: Map[Path, FileInfo], pollInterval: FiniteDuration, pathFilter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] = {
 
     def unfoldRecursive(s: Map[Path, FileInfo]): Stream[IO, FileEvent] = {
       val startTime = System.currentTimeMillis()
-      logger.debug(s"Scanning directory: ${mediaPath.toAbsolutePath}, previous state size: ${s.size}, stack depth: ${Thread.currentThread().getStackTrace.length}")
+      logger.debug(s"Scanning directory: ${directoryPath.toAbsolutePath}, previous state size: ${s.size}, stack depth: ${Thread.currentThread().getStackTrace.length}")
       
-      def filterPath(path: Path) = config.filterFileName(path.getFileName.toString)
       def logTime = Stream.eval(IO { logger.debug(s"Scanning took: ${System.currentTimeMillis() - startTime} ms") })
       def sleep = Stream.sleep[IO](pollInterval)
 
-      scanDirectory(mediaPath, s, filterPath, hashingAlgorithm.createHash)
+      scanDirectory(directoryPath, s, pathFilter, hashFn)
         .foldFlatMap(s)(applyEvent, s => logTime >> sleep >> unfoldRecursive(s))
     }
     
     Stream.suspend(unfoldRecursive(initialState))
-  }
-
-  /**
-   * Given an initial state, this method will poll the directory for changes and emit events for new, deleted and moved resources.
-   *
-   * The state will be kept in memory and is not persisted.
-   */
-  def pollingResourceEventStream(initialState: Set[ResourceInfo], pollInterval: FiniteDuration): Stream[IO, ResourceEvent] = {
-
-    val initialFiles: Map[Path, FileInfo] = initialState.map { r =>
-      val path = mediaPath.resolve(Path.of(r.path))
-      path -> FileInfo(mediaPath.resolve(Path.of(r.path)), r.hash, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0))
-    }.toMap
-
-    pollingStream(initialFiles, pollInterval).parEvalMap(4) {
-      case FileAdded(f) =>
-
-        val resourceMeta: IO[ResourceMeta] =
-          LocalResourceMeta.resolveMeta(f.path)
-            .map(_.getOrElse(ResourceMeta.Empty))
-            .recover {
-              case e => logger.error(s"Failed to resolve meta for ${f.path}", e); ResourceMeta.Empty
-            }
-
-        for {
-          meta <- resourceMeta
-        } yield ResourceAdded(ResourceInfo(
-          bucketId = config.id,
-          path = mediaPath.relativize(f.path).toString,
-          hash = f.hash,
-          size = f.size,
-          contentType = Resource.contentTypeForPath(f.path),
-          contentMeta = meta,
-          creationTime = Some(f.creationTime),
-          lastModifiedTime = Some(f.modifiedTime)
-        ))
-
-      case FileDeleted(f) =>
-        IO(ResourceDeleted(f.hash))
-
-      case FileMoved(f, oldPath) =>
-        IO(ResourceMoved(f.hash, mediaPath.relativize(oldPath).toString, mediaPath.relativize(f.path).toString))
-    }
   }
 }

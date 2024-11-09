@@ -168,7 +168,6 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
       s"$solrField $direction"
     }
 
-    // TODO add other filters like tags, time constraints, etc
     val solrParams = new ModifiableSolrParams
 
     val solrQ = {
@@ -181,6 +180,9 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
       
       if (query.minRes.isDefined || query.maxRes.isDefined)
         sb.append(s" AND ${FieldNames.width}:[${query.minRes.getOrElse(0)} TO ${query.maxRes.getOrElse("*")}]")
+        
+      if (query.minDuration.isDefined || query.maxDuration.isDefined)
+        sb.append(s" AND ${FieldNames.duration}:[${query.minDuration.getOrElse(0)} TO ${query.maxDuration.getOrElse("*")}]")  
       
       sb.result()
     }
@@ -240,10 +242,12 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
 
       val tagsWithFrequency: Map[String, Long] = Option(queryResponse.getFacetFields)
         .flatMap(fields => Try(fields.get(0)).toOption)
-        .map(field => field.getValues.asScala
-          .map(value => value.getName -> value.getCount)
-          .toMap)
-        .getOrElse(Map.empty[String, Long])
+        .map { results => 
+          results.getValues.iterator().asScala.foldLeft(Map.empty[String, Long]) {
+            case (acc, value) if value.getCount > 0 => acc + (value.getName -> value.getCount)
+            case (acc, _) => acc
+          }
+        }.getOrElse(Map.empty[String, Long])
 
       logger.debug(s"Search query: ${solrParams.toString}, total: $total, tags: ${tagsWithFrequency.mkString(", ")}")
 

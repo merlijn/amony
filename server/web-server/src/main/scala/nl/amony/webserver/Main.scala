@@ -11,8 +11,7 @@ import nl.amony.service.auth.{AuthConfig, AuthServiceImpl}
 import nl.amony.service.resources.api.ResourceInfo
 import nl.amony.service.resources.api.events.{ResourceAdded, ResourceEvent}
 import nl.amony.service.resources.local.db.ResourcesDb
-import nl.amony.service.resources.local.LocalDirectoryBucket
-import nl.amony.service.resources.local.scanner.LocalDirectoryScanner
+import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalResourceScanner}
 import nl.amony.service.resources.{ResourceBucket, ResourceConfig}
 import nl.amony.service.search.api.Query
 import pureconfig.{ConfigReader, ConfigSource}
@@ -71,8 +70,6 @@ object Main extends IOApp with ConfigLoader with Logging {
     val resourceBuckets: Map[String, ResourceBucket] = appConfig.resources.map {
       case localConfig : ResourceConfig.LocalDirectoryConfig =>
 
-        val scanner = new LocalDirectoryScanner(localConfig)
-
         val indexedResources = searchService.totalDocuments(localConfig.id)
         val dbResources = localFileStorage.count(localConfig.id).unsafeRunSync()
 
@@ -91,7 +88,7 @@ object Main extends IOApp with ConfigLoader with Logging {
         def stateFromStorage(): Set[ResourceInfo] = localFileStorage.getAll(localConfig.id).map(_.toSet).unsafeRunSync()
 
         def pullRetry(s: Set[ResourceInfo]): fs2.Stream[IO, ResourceEvent] =
-          scanner.pollingResourceEventStream(stateFromStorage(), localConfig.pollInterval).handleErrorWith { e =>
+          LocalResourceScanner.pollingResourceEventStream(stateFromStorage(), localConfig).handleErrorWith { e =>
             logger.error(s"Scanner failed for ${localConfig.resourcePath.toAbsolutePath}, retrying in ${localConfig.pollInterval}", e)
             fs2.Stream.sleep[IO](localConfig.pollInterval) >> pullRetry(stateFromStorage())
           }

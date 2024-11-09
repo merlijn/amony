@@ -7,11 +7,10 @@ import nl.amony.lib.files.PathOps
 import nl.amony.service.resources.*
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.api.ResourceInfo
-import nl.amony.service.resources.api.events.{ResourceEvent, ResourceUpdated }
+import nl.amony.service.resources.api.events.{ResourceEvent, ResourceUpdated}
 import nl.amony.service.resources.api.operations.ResourceOperation
 import nl.amony.service.resources.local.LocalResourceOperations.*
 import nl.amony.service.resources.local.db.ResourcesDb
-import nl.amony.service.resources.local.scanner.LocalDirectoryScanner
 import scribe.Logging
 import slick.jdbc.JdbcProfile
 
@@ -21,7 +20,6 @@ import java.util.concurrent.ConcurrentHashMap
 class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: ResourcesDb[P], topic: EventTopic[ResourceEvent])(using runtime: IORuntime) extends ResourceBucket with Logging {
 
   private val resourceStore = new ConcurrentHashMap[LocalResourceOp, IO[Path]]()
-  private val scanner = LocalDirectoryScanner(config)
   
   Files.createDirectories(config.cachePath)
 
