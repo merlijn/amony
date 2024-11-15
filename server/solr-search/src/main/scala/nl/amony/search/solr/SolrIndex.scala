@@ -212,10 +212,17 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
     }
   }
 
-  def index(event: ResourceEvent): Unit = event match {
+  def processEvent(event: ResourceEvent): Unit = event match {
 
     case ResourceAdded(resource)   => insertDocument(resource)
     case ResourceUpdated(resource) => insertDocument(resource)
+
+    case ResourceMoved(resourceId, oldPath, newPath) =>
+      val solrDocument = new SolrInputDocument()
+      solrDocument.addField(FieldNames.id, resourceId)
+      solrDocument.addField(FieldNames.path, Map("set" -> newPath).asJava)
+      solr.add(collectionName, solrDocument, commitWithinMillis).getStatus
+
     case ResourceDeleted(resourceId) =>
       try {
         logger.debug(s"Deleting document from index: $resourceId")
