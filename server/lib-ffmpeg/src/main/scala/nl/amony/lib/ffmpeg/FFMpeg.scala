@@ -125,7 +125,7 @@ object FFMpeg extends Logging
       )
     // format: on
 
-    runUnsafe("ffmpeg" :: args).getInputStream
+    exec("ffmpeg" :: args).getInputStream
   }
 
   def streamThumbnail(
@@ -146,7 +146,7 @@ object FFMpeg extends Logging
     )
     // format: on
 
-    runUnsafe("ffmpeg" :: args).getInputStream
+    exec("ffmpeg" :: args).getInputStream
   }
 
 }

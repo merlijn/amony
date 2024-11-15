@@ -5,16 +5,13 @@ import scribe.Logging
 
 trait ProcessRunner extends Logging {
 
-  def runUnsafe(cmds: Seq[String]): Process = {
-    logger.debug(s"Running command: ${cmds.mkString(",")}")
+  def exec(cmds: Seq[String]): Process = {
+    logger.debug(s"Running command: ${cmds.mkString(" ")}")
     Runtime.getRuntime.exec(cmds.toArray)
   }
 
-  def runSync(useErrorStream: Boolean, cmds: Seq[String]): String = {
-
-    logger.debug(s"Running command: ${cmds.mkString(",")}")
-
-    val process  = Runtime.getRuntime.exec(cmds.toArray)
+  def unsafeExecSync(useErrorStream: Boolean, cmds: Seq[String]): String = {
+    val process  = exec(cmds)
     getOutputAsString(process, useErrorStream, cmds)
   }
 
@@ -24,7 +21,7 @@ trait ProcessRunner extends Logging {
     val exitCode = process.waitFor()
 
     if (exitCode != 0)
-      logger.warn(s"""Non zero exit code for command: ${cmds.mkString(",")} \n""" + output)
+      logger.warn(s"""Non zero exit code for command: ${cmds.mkString(" ")} \n""" + output)
 
     output
   }
@@ -42,7 +39,7 @@ trait ProcessRunner extends Logging {
 
   def runCmd[T](cmds: Seq[String])(fn: Process => IO[T]): IO[T] = {
 
-    IO { runUnsafe(cmds) }
+    IO { exec(cmds) }
       .flatMap { process => fn(process).onCancel( IO { process.destroy() })
     }
   }
