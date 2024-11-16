@@ -65,7 +65,7 @@ object Main extends IOApp with ConfigLoader with Logging {
     localFileStorage.createTablesIfNotExists()
 
     val resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
-    resourceEventTopic.followTail(searchService.index)
+    resourceEventTopic.followTail(searchService.processEvent)
 
     val resourceBuckets: Map[String, ResourceBucket] = appConfig.resources.map {
       case localConfig : ResourceConfig.LocalDirectoryConfig =>
@@ -76,7 +76,7 @@ object Main extends IOApp with ConfigLoader with Logging {
         // hack to reindex everything on startup if the index might be out of sync
         if (indexedResources < dbResources) {
           logger.info(s"Number of indexed documents ($indexedResources) is smaller than the database count ($dbResources)) - Re-indexing all resources.")
-          localFileStorage.getAll(localConfig.id).unsafeRunSync().foreach { resource => searchService.index(ResourceAdded(resource)) }
+          localFileStorage.getAll(localConfig.id).unsafeRunSync().foreach { resource => searchService.processEvent(ResourceAdded(resource)) }
           logger.info(s"Indexing done")
         }
 

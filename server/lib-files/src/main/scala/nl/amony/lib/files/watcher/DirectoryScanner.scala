@@ -43,48 +43,41 @@ object LocalDirectoryScanner extends Logging {
     
     val previousByHash: Map[String, FileInfo] = previousState.values.foldLeft(Map.empty)((acc, f) => acc + (f.hash -> f) )
 
-    def getByPath(path: Path): Option[FileInfo] = previousState.get(path)
-    def getByHash(hash: String): Seq[FileInfo]  = previousByHash.get(hash).toSeq
+    def allPrevious(): Stream[IO, FileInfo] = Stream.emits(previousState.values.toSeq)
+    def getByPath(path: Path): IO[Option[FileInfo]] = IO.pure(previousState.get(path))
+    def getByHash(hash: String):IO[Seq[FileInfo]]   = IO.pure(previousByHash.get(hash).toSeq)
 
     val start = System.currentTimeMillis()
 
-    val currentFiles  = RecursiveFileVisitor.listFilesInDirectoryRecursive(directory, filter)
+    val currentFiles: Seq[(Path, BasicFileAttributes)] = RecursiveFileVisitor.listFilesInDirectoryRecursive(directory, filter)
 
     logger.debug(s"Listed directory files in ${System.currentTimeMillis() - start} ms")
 
     // new files are either added or moved
-    val movedOrAdded = Stream.emits(currentFiles).evalMap { (path, attrs) =>
+    val movedOrAdded: Stream[IO, Option[FileEvent]] = Stream.emits(currentFiles).evalMap { (path, attrs) =>
 
       for {
-        _          <- IO.unit
-        prevByPath = getByPath(path)
+        prevByPath <- getByPath(path)
         hash       <- prevByPath
                         .filter(_.equalFileMeta(path, attrs))
                         .map(i => IO.pure(i.hash))
                         .getOrElse(hashFn(path))
-        fileInfo   = FileInfo(
-          path         = path,
-          hash         = hash,
-          size         = attrs.size(),
-          creationTime = attrs.creationTime().toMillis,
-          modifiedTime = attrs.lastModifiedTime().toMillis
-        )
-      } yield
-        prevByPath match
-          case Some(`fileInfo`) => None
-          case _                =>
-            getByHash(hash).filter(_.equalFileMeta(path, attrs)).headOption match {
-              case Some(oldFileInfo) =>
-                Some(FileMoved(fileInfo, oldFileInfo.path))
-              case _              =>
-                Some(FileAdded(fileInfo))
-            }
+        fileInfo   = FileInfo(path, attrs, hash)
+        event <- prevByPath match
+                  case Some(`fileInfo`) => IO.pure(None)
+                  case _                =>
+                    getByHash(hash).map(_.filter(_.equalFileMeta(path, attrs)).headOption match {
+                      case Some(oldFileInfo) => Some(FileMoved(fileInfo, oldFileInfo.path))
+                      case _                 => Some(FileAdded(fileInfo))
+                    })
+      } yield event
     }
 
-    val maybeDeleted = currentFiles.foldLeft(previousState){ case (acc, (p, _)) => acc - p }
+    val maybeDeleted: Map[Path, FileInfo] = currentFiles.foldLeft(previousState){ case (acc, (p, _)) => acc - p }
 
     def filterMoved(maybeDeleted: Map[Path, FileInfo], e: Option[FileEvent]): Map[Path, FileInfo] = e match
       case Some(FileMoved(fileInfo, oldPath)) => maybeDeleted - oldPath
+      case Some(FileAdded(fileInfo)) if previousState.contains(fileInfo.path)  => maybeDeleted + (fileInfo.path -> previousState(fileInfo.path))
       case _                                  => maybeDeleted
 
     def emitDeleted(deleted: Map[Path, FileInfo]): Stream[IO, Option[FileEvent]] =

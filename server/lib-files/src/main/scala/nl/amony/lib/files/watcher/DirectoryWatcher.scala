@@ -17,15 +17,8 @@ object DirectoryWatcher {
 
   val logger = scribe.Logger("DirectoryWatcher")
 
-  sealed trait WatchEvent
-
-  case class FileCreated(path: Path) extends WatchEvent
-  case class FileModified(path: Path) extends WatchEvent
-  case class FileDeleted(path: Path) extends WatchEvent
-  case class FileMoved(oldPath: Path, newPath: Path) extends WatchEvent
-
-  def watchDirectory(directoryPath: Path, getByPath: Path => Option[FileInfo], hashFn: Path => String): Flow.Publisher[WatchEvent] = {
-    val publisher = new SubmissionPublisher[WatchEvent]()
+  def watchDirectory(directoryPath: Path, getByPath: Path => Option[FileInfo], hashFn: Path => String): Flow.Publisher[FileEvent] = {
+    val publisher = new SubmissionPublisher[FileEvent]()
     val watchService: WatchService = FileSystems.getDefault.newWatchService()
 
     val deletedFilesBuffer = scala.collection.mutable.Map[Path, FileInfo]()
@@ -46,10 +39,9 @@ object DirectoryWatcher {
     registerDirectory(directoryPath)
 
     def publishDeletedEvent(path: Path): Runnable = () => {
-      if (deletedFilesBuffer.contains(path)) {
+      deletedFilesBuffer.get(path).foreach { fileInfo =>
         logger.debug(s"File deleted: $path")
-        publisher.submit(FileDeleted(path))
-        deletedFilesBuffer.remove(path)
+        publisher.submit(FileDeleted(fileInfo))
       }
     }
 
@@ -64,17 +56,16 @@ object DirectoryWatcher {
 
             kind match
               case StandardWatchEventKinds.ENTRY_DELETE =>
-                logger.debug(s"File deleted: $path")
                 scheduledExecutor.schedule(publishDeletedEvent(path), 100, TimeUnit.MILLISECONDS)
               case StandardWatchEventKinds.ENTRY_CREATE =>
                 if (Files.isDirectory(path)) registerDirectory(path)
 
                 val hash = hashFn(path)
                 logger.debug(s"File created: $path")
-                publisher.submit(FileCreated(path))
+                publisher.submit(FileAdded(FileInfo(path, hash)))
               case StandardWatchEventKinds.ENTRY_MODIFY =>
                 logger.debug(s"File modified: $path")
-                publisher.submit(FileModified(path))
+//                publisher.submit(FileDeleted(path))
           }
 
           key.reset()
@@ -90,7 +81,7 @@ object DirectoryWatcher {
     publisher
   }
 
-  def watch(rootPath: Path, getByPath: Path => Option[FileInfo]): fs2.Stream[IO, WatchEvent] = 
+  def watch(rootPath: Path, getByPath: Path => Option[FileInfo]): fs2.Stream[IO, FileEvent] = 
     val watchDirectoryPublisher = watchDirectory(rootPath, getByPath, path => path.toString)
     fs2.Stream.fromPublisher[IO](watchDirectoryPublisher, 1)
 }

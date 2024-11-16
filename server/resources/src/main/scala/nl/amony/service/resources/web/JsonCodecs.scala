@@ -28,9 +28,9 @@ object JsonCodecs {
     }
 
     val meta = UserMetaDto(
-      title   = resource.title.orElse(Some(resource.fileName())),
+      title       = resource.title.orElse(Some(resource.fileName())),
       description = resource.description,
-      tags    = resource.tags.toList
+      tags        = resource.tags.toList
     )
 
     val mediaInfo: ResourceMetaDto = resource.contentMeta match {
@@ -61,8 +61,8 @@ object JsonCodecs {
 
     val resourceInfo = ResourceInfoDto(
       sizeInBytes = resource.size,
-      hash = resource.hash,
-      path = resource.path
+      hash        = resource.hash,
+      path        = resource.path
     )
 
     // hard coded for now
