@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {useHistory, useLocation} from "react-router";
+import {useNavigate, useLocation} from "react-router";
 import {Constants, parseDurationParam, parseSortParam} from "../api/Constants";
 import {MediaView, Prefs, Resource, ResourceSelection} from "../api/Model";
 import {useCookiePrefs, useListener, useStateNeq} from "../api/ReactUtils";
@@ -16,7 +16,7 @@ import ConfigMenu from "../components/dialogs/ConfigMenu";
 
 const Main = () => {
   
-    const history = useHistory();
+    const navigate = useNavigate();
     const location = useLocation();
     const [showMedia, setShowMedia] = useState<Resource | undefined>(undefined)
     const [showNavigation, setShowNavigation] = useState(true)
@@ -60,7 +60,7 @@ const Main = () => {
       const params = new URLSearchParams(location.search)
       const newParams = copyParams(params)
       newParams.set("view", e)
-      history.push(buildUrl("/search", newParams));
+        navigate(buildUrl("/search", newParams));
     };
 
     const keyDownHandler = (event: KeyboardEvent) => {

@@ -1,7 +1,7 @@
 import React, { MutableRefObject, useEffect, useRef, useState } from "react";
 import { useCookies } from "react-cookie";
 import _ from "lodash";
-import { useHistory, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { buildUrl, copyParams } from "./Util";
 
 export const useStateRef = <T>(value: T): [T, MutableRefObject<T>, ((e: T) => void)] => {
@@ -17,7 +17,7 @@ export const useStateRef = <T>(value: T): [T, MutableRefObject<T>, ((e: T) => vo
 
 export const useUrlParam = (name: string, defaultValue: string): [string, (v: string ) => any] => {
   const location = useLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [param, setParam] = useStateNeq<string>(defaultValue);
 
   useEffect(() => {
@@ -34,8 +34,8 @@ export const useUrlParam = (name: string, defaultValue: string): [string, (v: st
     else  
       newParams.set(name, value)
 
-    const url = buildUrl(history.location.pathname, newParams)
-    history.push(url)
+    const url = buildUrl(location.pathname, newParams)
+    navigate(url)
   }
 
   return [param, updateParam];

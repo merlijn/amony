@@ -5,7 +5,7 @@ import { BsListUl } from "react-icons/bs";
 import {GoGrabber, GoPerson, GoSearch} from "react-icons/go";
 import { IoGridOutline } from "react-icons/io5";
 import {MdClose, MdOutlineSettings, MdTune} from "react-icons/md";
-import { useHistory, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Constants, durationAsParam, parseDurationParam, useSortParam } from "../../api/Constants";
 import { MediaView } from "../../api/Model";
 import { useUrlParam } from "../../api/ReactUtils";
@@ -23,7 +23,7 @@ export type NavBarProps = {
 function TopNavBar(props: NavBarProps) {
 
   const location = useLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState("")
   const [showFilters, setShowFilters] = useState(false)
@@ -33,7 +33,7 @@ function TopNavBar(props: NavBarProps) {
     const params = new URLSearchParams(location.search)
     const newParams = copyParams(params)
     newParams.set("q", query)
-    history.push(buildUrl("/search", newParams));
+    navigate(buildUrl("/search", newParams));
   };
 
   useEffect(() => { 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useHistory, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Api } from "../../api/Api";
 import { buildUrl, copyParams } from "../../api/Util";
 import './TagBar.scss';
@@ -7,7 +7,7 @@ import './TagBar.scss';
 const TagBar = (props: { tags: Array<string> }) => {
 
   const location = useLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [selectedTag, setSelectedTag] = useState<string | undefined>(undefined)
   // const [tags, setTags] = useState<Array<string>>(props.tags)
@@ -26,7 +26,7 @@ const TagBar = (props: { tags: Array<string> }) => {
       newParams.set("tag", tag)
 
     // setSelectedTag(tag)
-    history.push(buildUrl("/search", newParams));
+    navigate(buildUrl("/search", newParams));
   };
 
   return (

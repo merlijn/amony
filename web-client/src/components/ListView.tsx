@@ -8,7 +8,7 @@ import {dateMillisToString, formatByteSize} from "../api/Util"
 import './ListView.scss'
 import Scrollable from "./common/Scrollable"
 import {useSortParam} from "../api/Constants"
-import {useHistory} from "react-router-dom"
+import {useNavigate} from "react-router-dom"
 import TagsBar from "./common/TagsBar"
 import {MdDelete, MdMovieEdit} from "react-icons/md";
 
@@ -25,7 +25,7 @@ const ListView = (props: ListProps) => {
   const [searchResult, setSearchResult] = useState(initialSearchResult);
   const [isFetching, setIsFetching] = useState(false)
   const [fetchMore, setFetchMore] = useState(true)
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const fetchData = (previous: Array<Resource>) => {
 
@@ -112,7 +112,7 @@ const ListView = (props: ListProps) => {
                 { 
                   Api.session().isAdmin() && 
                     <div className = "media-actions">
-                      <MdMovieEdit className = "fragments-action" onClick = { () => history.push(`/editor/${v.resourceId}`) } />
+                      <MdMovieEdit className = "fragments-action" onClick = { () => navigate(`/editor/${v.resourceId}`) } />
                       <MdDelete className = "delete-action" />
                     </div> 
                 }

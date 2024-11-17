@@ -1,7 +1,7 @@
 import Cookies from "js-cookie";
 import { ResourceSelection, Sort, ResourceUserMeta } from "./Model";
 import { buildUrl } from "./Util";
-import jwtDecode, { JwtPayload } from "jwt-decode";
+import { JwtPayload, jwtDecode } from "jwt-decode";
 import axios from 'axios';
 import { durationAsParam } from "./Constants";
 
