@@ -6,12 +6,27 @@ $row-height: 36px;
   width: 100%;
   height: auto;
   display: table;
+  table-layout: fixed;
 
   .action-icon {
       
     @extend .hover-pointer;
     width: 20px;
     height: 20px;
+  }
+
+  .list-cell {
+    @extend .v-align-center;
+
+    position: relative;
+    display: table-cell;
+
+    white-space: nowrap;
+    overflow: hidden;
+
+    border-bottom: 1px solid $gray-200;
+    padding: 0px 8px;
+    height: $row-height;
   }
 
   .list-header {
@@ -29,6 +44,26 @@ $row-height: 36px;
       visibility: hidden;
       float: right;
     }
+  }
+
+  .list-header-thumbnail {
+    @extend .list-header;
+    width: 80px;
+  }
+
+  .list-header-date {
+    @extend .list-header;
+    width: 110px;
+  }
+
+  .list-header-size {
+    @extend .list-header;
+    width: 100px;
+  }
+
+  .list-header-resolution {
+    @extend .list-header;
+    width: 80px;
   }
 
   .row-spacer {
@@ -176,17 +211,6 @@ $row-height: 36px;
       }
     }
 
-    .list-cell {
-      @extend .v-align-center;
 
-      position: relative;
-      display: table-cell;
-
-      white-space: nowrap;
-
-      border-bottom: 1px solid $gray-200;
-      padding: 0px 8px;
-      height: $row-height;
-    }
   }
 }

@@ -66,18 +66,18 @@ const ListView = (props: ListProps) => {
       >
       <div key="row-header" className="list-row">
         {/* <div className="list-cell list-header list-select"><input type="checkbox" /></div> */}
-        <div className="list-cell list-header"></div>
+        <div className="list-cell list-header-thumbnail"></div>
         <div className="list-cell list-header">Title
           <FaSort className="column-sort-icon" onClick = { () => setSort({field: "title", direction: sort.direction === "asc" ? "desc" : "asc" }) } />
         </div>
         <div className="list-cell list-header">Tags</div>
-        <div className="list-cell list-header">Date
+        <div className="list-cell list-header-date">Date
           <FaSort className="column-sort-icon" onClick = { () => setSort({field: "date_added", direction: sort.direction === "asc" ? "desc" : "asc" }) } />
         </div>
-        <div className="list-cell list-header">Size
+        <div className="list-cell list-header-size">Size
           <FaSort className="column-sort-icon" onClick = { () => setSort({field: "size", direction: sort.direction === "asc" ? "desc" : "asc" }) } />
         </div>
-        <div className="list-cell list-header">
+        <div className="list-cell list-header-resolution">Quality
           {/* <FaSort className="column-sort-icon" onClick = { () => setSort({field: "resolution", direction: sort.direction === "asc" ? "desc" : "asc" }) } /> */}
           {/* <BsThreeDotsVertical className="list-menu-icon" /> */}
         </div>
