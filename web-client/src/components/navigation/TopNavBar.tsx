@@ -4,7 +4,7 @@ import { isMobile } from "react-device-detect";
 import { BsListUl } from "react-icons/bs";
 import {GoGrabber, GoPerson, GoSearch} from "react-icons/go";
 import { IoGridOutline } from "react-icons/io5";
-import { MdClose, MdTune } from "react-icons/md";
+import {MdClose, MdOutlineSettings, MdTune} from "react-icons/md";
 import { useHistory, useLocation } from "react-router-dom";
 import { Constants, durationAsParam, parseDurationParam, useSortParam } from "../../api/Constants";
 import { MediaView } from "../../api/Model";
@@ -12,6 +12,7 @@ import { useUrlParam } from "../../api/ReactUtils";
 import { buildUrl, copyParams } from "../../api/Util";
 import { DropDown } from "../common/DropDown";
 import './TopNavBar.scss';
+import {FaBars} from "react-icons/fa6";
 
 export type NavBarProps = {
   onClickMenu: () => void, 
@@ -52,7 +53,7 @@ function TopNavBar(props: NavBarProps) {
   return(
     <div className = "nav-bar-container">
       <div className = "top-nav-bar">
-          <GoGrabber className = "nav-menu-button" onClick = { props.onClickMenu } />
+          <FaBars className = "nav-menu-button" onClick = { props.onClickMenu } />
           <div key = "nav-bar-center" className = "nav-bar-center">
             <form key="search-form" className = "nav-search-form" onSubmit = { doSearch } >
               <div className = "nav-search-input-container">

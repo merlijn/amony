@@ -17,8 +17,8 @@
     justify-content: center;
     width: 100vw;
   
-    background-color: white;
-    border-bottom: 1px solid $gray-200;
+    background-color: $gray-100;
+    //border-bottom: 2px solid $gray-200;
     height: 47px;
   
     @media only screen and (min-width: map-get($container-max-widths, md)) {
@@ -29,11 +29,11 @@
 
       @extend .hover-pointer, .abs-top-left;
     
-      width: 40px;
-      height: 40px;
+      width: 24px;
+      height: 24px;
       margin-bottom: 0px;
-      margin-top: 5px;
-      margin-left: 5px;
+      margin-top: 12px;
+      margin-left: 12px;
       user-select: none;
     }
   }
@@ -128,7 +128,7 @@
           outline: none;
           height: 35px !important;
           border-radius: 3px;
-          border: 1px solid $gray-300;
+          border: 2px solid $gray-300;
           padding-left: 35px;
           &:focus {
             border-color: $gray-500;
