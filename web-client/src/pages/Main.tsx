@@ -1,17 +1,18 @@
-import { useEffect, useState } from "react";
-import { useHistory, useLocation } from "react-router";
-import { Constants, parseDurationParam, parseSortParam } from "../api/Constants";
-import { ResourceSelection, MediaView, Prefs, Resource } from "../api/Model";
-import { useCookiePrefs, useListener, useStateNeq } from "../api/ReactUtils";
+import React, {useEffect, useState} from "react";
+import {useHistory, useLocation} from "react-router";
+import {Constants, parseDurationParam, parseSortParam} from "../api/Constants";
+import {MediaView, Prefs, Resource, ResourceSelection} from "../api/Model";
+import {useCookiePrefs, useListener, useStateNeq} from "../api/ReactUtils";
 import GridView from "../components/GridView";
 import TopNavBar from "../components/navigation/TopNavBar";
 import MediaModal from "../components/common/MediaModal";
-import SideBar from "../components/navigation/SideBar";
-import { isMobile } from "react-device-detect";
+import {isMobile} from "react-device-detect";
 import './Main.scss';
 import ListView from "../components/ListView";
-import { buildUrl, copyParams } from "../api/Util";
-import { Api } from "../api/Api";
+import {buildUrl, copyParams} from "../api/Util";
+import {Api} from "../api/Api";
+import Modal from "../components/common/Modal";
+import ConfigMenu from "../components/dialogs/ConfigMenu";
 
 const Main = () => {
   
@@ -20,7 +21,7 @@ const Main = () => {
     const [showMedia, setShowMedia] = useState<Resource | undefined>(undefined)
     const [showNavigation, setShowNavigation] = useState(true)
     const [view, setView] = useState<MediaView>('grid')
-
+    const [showSettings,   setShowSettings]   = useState(false)
     const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs/v1", "/", Constants.defaultPreferences)
 
     const getSelection = (): ResourceSelection => {
@@ -80,23 +81,17 @@ const Main = () => {
 
     return (
         <>
-          { <MediaModal resource= { showMedia } onHide={() => setShowMedia(undefined) } />}
-          
+          { <MediaModal resource= { showMedia } onHide = { () => setShowMedia(undefined) } />}
+            <Modal visible = { showSettings }   onHide = { () => setShowSettings(false) }>
+                <ConfigMenu />
+            </Modal>
           <div className="main-page">
 
-            { showNavigation && prefs.showSidebar && 
-                <SideBar 
-                  collapsed = { true } 
-                  onHide    = { () => setShowSidebar(!prefs.showSidebar) } 
-                /> 
-            }
-            
             { showNavigation && 
                 <TopNavBar 
                     key           = "top-nav-bar" 
-                    onClickMenu   = { () => setShowSidebar(true) } 
+                    onClickMenu   = { () => setShowSettings(true) }
                     activeView    = { view }
-                    // playList      = "nature"
                     onViewChange  = { updateView }
                 /> 
             }
@@ -109,7 +104,7 @@ const Main = () => {
                     key       = "gallery"
                     selection = { selection }
                     showTagbar = { showNavigation }
-                    componentType = 'page' 
+                    componentType = 'page'
                     onClick   = { (v: Resource) => setShowMedia(v) }
                     columns   = { prefs.gallery_columns }
                     previewOptionsFn = { (v: Resource) => {
@@ -118,6 +113,7 @@ const Main = () => {
                           showInfoBar: prefs.showTitles,
                           showDates: prefs.showDates,
                           showDuration: prefs.showDuration,
+                          showResolution: prefs.showResolution,
                           showMenu: Api.session().isAdmin()
                         } 
                       }

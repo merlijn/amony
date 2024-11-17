@@ -85,5 +85,6 @@ export type Prefs = {
   showTitles: boolean
   showDuration: boolean
   showDates: boolean
+  showResolution: boolean
   gallery_columns: Columns
 }

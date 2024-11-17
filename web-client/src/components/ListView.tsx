@@ -1,17 +1,16 @@
-import { CSSProperties, useEffect, useRef, useState } from "react"
-import { FaSort } from "react-icons/fa"
-import { FiEdit, FiPlusCircle } from "react-icons/fi"
-import { IoCutSharp } from "react-icons/io5"
-import { AiOutlineDelete } from "react-icons/ai"
+import {CSSProperties, useEffect, useRef, useState} from "react"
+import {FaSort} from "react-icons/fa"
+import {FiEdit} from "react-icons/fi"
 import ProgressiveImage from "react-progressive-graceful-image"
-import { Api } from "../api/Api"
-import { ResourceSelection, SearchResult, Resource, ResourceUserMeta } from "../api/Model"
-import { dateMillisToString, formatByteSize } from "../api/Util"
+import {Api} from "../api/Api"
+import {Resource, ResourceSelection, ResourceUserMeta, SearchResult} from "../api/Model"
+import {dateMillisToString, formatByteSize} from "../api/Util"
 import './ListView.scss'
 import Scrollable from "./common/Scrollable"
-import { useSortParam } from "../api/Constants"
-import { useHistory } from "react-router-dom"
+import {useSortParam} from "../api/Constants"
+import {useHistory} from "react-router-dom"
 import TagsBar from "./common/TagsBar"
+import {MdDelete, MdMovieEdit} from "react-icons/md";
 
 type ListProps = {
   selection: ResourceSelection
@@ -113,8 +112,8 @@ const ListView = (props: ListProps) => {
                 { 
                   Api.session().isAdmin() && 
                     <div className = "media-actions">
-                      <IoCutSharp className = "fragments-action" onClick = { () => history.push(`/editor/${v.resourceId}`) } />
-                      <AiOutlineDelete className = "delete-action" />
+                      <MdMovieEdit className = "fragments-action" onClick = { () => history.push(`/editor/${v.resourceId}`) } />
+                      <MdDelete className = "delete-action" />
                     </div> 
                 }
                 { `${v.resourceMeta.height}p` }

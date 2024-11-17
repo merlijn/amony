@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { FiPlusCircle } from "react-icons/fi"
 import TagEditor from "./TagEditor"
 import './TagsBar.scss'
+import {MdOutlineAddCircleOutline} from "react-icons/md";
 
 type TagsBarProps = {
   tags: Array<string>, 
@@ -30,7 +31,7 @@ const TagsBar = (props: TagsBarProps) => {
           showDeleteButton = { props.showDeleteButton }
           tags             = { props.tags } 
           callBack         = { (newTags) => { props.onTagsUpdated(newTags) } } />
-        { (!showNewTag && props.showAddTagButton) && <FiPlusCircle onClick = { (e) => setShowNewTag(true) } className="add-tag-button" /> }
+        { (!showNewTag && props.showAddTagButton) && <MdOutlineAddCircleOutline onClick = { (e) => setShowNewTag(true) } className="add-tag-button" /> }
         <span 
           contentEditable
           key        = "new-tag"

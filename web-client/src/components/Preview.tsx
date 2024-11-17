@@ -1,14 +1,9 @@
-import React, { CSSProperties, useEffect, useState } from 'react';
+import React, {CSSProperties, useEffect, useState} from 'react';
 import ProgressiveImage from "react-progressive-graceful-image";
-import { Api } from "../api/Api";
-import { Resource } from "../api/Model";
+import {Resource} from "../api/Model";
 import {dateMillisToString, durationInMillisToString, labelForResolution} from "../api/Util";
-import Dialog from './common/Dialog';
-import { DropDown, MenuItem } from './common/DropDown';
 import FragmentsPlayer from "./common/FragmentsPlayer";
 import ImgWithAlt from "./common/ImgWithAlt";
-import Modal from './common/Modal';
-import MediaInfo from './dialogs/MediaInfo';
 import './Preview.scss';
 
 export type PreviewProps = {
@@ -26,6 +21,7 @@ export type PreviewOptions = {
   showInfoBar: boolean,
   showDates: boolean,
   showDuration: boolean,
+  showResolution: boolean,
   showMenu: boolean,
 }
 
@@ -46,21 +42,13 @@ const Preview = (props: PreviewProps) => {
       <div className = "preview-info-bar">
         <span className="media-title" title={resource.userMeta.title}>{resource.userMeta.title}</span>
         { props.options.showDates && <span className="media-date">{dateMillisToString(resource.uploadTimestamp)}</span> }
-        { !props.options.showDates && <span className="media-date">{`${resource.resourceMeta.height}p` }</span>}
       </div>
 
   const overlay =
       <div className="preview-overlay">
-        {
-            (props.options.showMenu && isHovering) &&
-            <div className = "preview-menu-container">
-              <PreviewMenu
-                  resource     = { resource }
-                  setVideo     = { setResource }
-                  onDialogOpen = { () => { setShowVideoPreview(false) } }/>
-            </div>
-        }
+        { props.options.showResolution && <div className="preview-quality-overlay">{labelForResolution(resource.resourceMeta.height)}</div> }
         { (isVideo && props.options.showDuration) && <div className="duration-overlay">{durationStr}</div> }
+        { isHovering && <a className="preview-edit-icon-overlay" href={`/editor/${props.resource.resourceId}`}><ImgWithAlt src="/icons/edit.svg" /></a> }
         {/* { <div className="abs-bottom-right"><FiDownload /></div> } */}
       </div>
 
@@ -97,65 +85,6 @@ const Preview = (props: PreviewProps) => {
         { props.options.showInfoBar && titlePanel }
       </div>
   )
-}
-
-const PreviewMenu = (props: {resource: Resource, setVideo: (v: Resource) => void, onDialogOpen: () => any}) => {
-
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showInfoModal, setShowInfoModal] = useState(false)
-
-  const cancelDelete = () => setShowDeleteDialog(false);
-  const confirmDelete = () => {
-    Api.deleteResourceById(props.resource.bucketId, props.resource.resourceId).then(() => {
-      console.log("video was deleted")
-      setShowDeleteDialog(false)
-    })
-  };
-
-  return (
-    <>
-      <Modal visible = { showInfoModal } onHide = {() => setShowInfoModal(false)} >
-        <MediaInfo 
-          meta = { props.resource.userMeta }
-          onClose = { (meta) => {
-            Api.updateUserMetaData(props.resource.bucketId, props.resource.resourceId, meta).then(() => {
-              props.setVideo({...props.resource, userMeta: meta });
-              setShowInfoModal(false)
-            })
-          } } 
-        />
-      </Modal>
-      
-      <Modal visible = { showDeleteDialog } onHide = { cancelDelete }>
-        <Dialog title = "Are you sure?">
-          <p>Do you want to delete: '{props.resource.userMeta.title}'</p>
-          <p>
-            <button className = "button-primary" onClick = { confirmDelete }>Yes</button>
-            <button onClick = { cancelDelete }>No / Cancel</button>
-          </p>
-        </Dialog>
-      </Modal>
-
-      <div className = "preview-menu">
-
-        <DropDown 
-          align = 'right' 
-          contentClassName = "dropdown-menu" 
-          toggleIcon = { <ImgWithAlt className = "preview-menu-icon" src="/icons/more.svg" /> } 
-          hideOnClick = {true} >
-          <MenuItem onClick = { () => { setShowInfoModal(true); props.onDialogOpen() } }>
-            <ImgWithAlt className="menu-icon" src="/icons/info.svg" />Info
-          </MenuItem>
-          <MenuItem href={`/editor/${props.resource.resourceId}`}>
-            <ImgWithAlt className="menu-icon" src="/icons/edit.svg" />Fragments
-          </MenuItem>
-          <MenuItem onClick = { () => { setShowDeleteDialog(true); props.onDialogOpen() } }>
-            <ImgWithAlt className="menu-icon" src="/icons/delete.svg" />Delete
-          </MenuItem>
-        </DropDown>
-      </div>
-    </>
-  );
 }
 
 export default Preview

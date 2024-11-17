@@ -21,6 +21,12 @@ const anonymousSession: Session = {
   hasRole: (s: string) => false
 }
 
+const adminSession: Session = {
+  isLoggedIn: () => true,
+  isAdmin: () => true,
+  hasRole: (s: string) => true
+}
+
 const sessionFromToken = (token: any): Session => {
   return {
     isLoggedIn: () => true,
@@ -44,7 +50,7 @@ export const Api = {
       return sessionFromToken(jwtToken);
     }
 
-    return anonymousSession;
+    return adminSession // anonymousSession; TODO implement users / privileges
   },
 
   login: async function(username: string, password: string) {

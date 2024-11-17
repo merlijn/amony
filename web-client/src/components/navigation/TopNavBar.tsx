@@ -2,7 +2,7 @@ import _ from "lodash";
 import React, { useEffect, useRef, useState } from "react";
 import { isMobile } from "react-device-detect";
 import { BsListUl } from "react-icons/bs";
-import { GoGrabber, GoSearch } from "react-icons/go";
+import {GoGrabber, GoPerson, GoSearch} from "react-icons/go";
 import { IoGridOutline } from "react-icons/io5";
 import { MdClose, MdTune } from "react-icons/md";
 import { useHistory, useLocation } from "react-router-dom";
@@ -83,7 +83,7 @@ function TopNavBar(props: NavBarProps) {
                   </button>
                 </div>
             }
-            </div> 
+            </div>
       </div>
     </div>
   );
