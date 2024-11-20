@@ -1,10 +1,9 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import ReactDOM from 'react-dom/client';
 import App from './App';
 
 import './App.scss';
 import {CookiesProvider} from "react-cookie";
 
-ReactDOM.render(
-  <CookiesProvider><App /></CookiesProvider>,
-  document.getElementById('app-root'));
+const root = document.getElementById('app-root')!;
+ReactDOM.createRoot(root).render(<CookiesProvider><App /></CookiesProvider>);

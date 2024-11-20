@@ -76,6 +76,8 @@ export const Constants = {
 
   imgAlt: "<image here>",
 
+  preferenceKey: "prefs-v1",
+
   durationOptions: durationOptions,
 
   uploadOptions: uploadOptions,

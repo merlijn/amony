@@ -13,16 +13,17 @@ import {buildUrl, copyParams} from "../api/Util";
 import {Api} from "../api/Api";
 import Modal from "../components/common/Modal";
 import ConfigMenu from "../components/dialogs/ConfigMenu";
+import MediaModalNew from "../components/common/MediaModalNew";
 
 const Main = () => {
   
     const navigate = useNavigate();
     const location = useLocation();
-    const [showMedia, setShowMedia] = useState<Resource | undefined>(undefined)
+    const [showResource, setShowResource] = useState<Resource | undefined>(undefined)
     const [showNavigation, setShowNavigation] = useState(true)
     const [view, setView] = useState<MediaView>('grid')
     const [showSettings,   setShowSettings]   = useState(false)
-    const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs-v1", "/", Constants.defaultPreferences)
+    const [prefs, updatePrefs] = useCookiePrefs<Prefs>(Constants.preferenceKey, "/", Constants.defaultPreferences)
 
     const getSelection = (): ResourceSelection => {
       const urlParams = new URLSearchParams(location.search)
@@ -81,8 +82,8 @@ const Main = () => {
 
     return (
         <>
-          { <MediaModal resource= { showMedia } onHide = { () => setShowMedia(undefined) } />}
-            <Modal visible = { showSettings }   onHide = { () => setShowSettings(false) }>
+            <MediaModalNew resource= { showResource } onHide = { () => setShowResource(undefined) } />
+            <Modal visible = { showSettings } onHide = { () => setShowSettings(false) }>
                 <ConfigMenu />
             </Modal>
           <div className="main-page">
@@ -105,7 +106,7 @@ const Main = () => {
                     selection = { selection }
                     showTagbar = { showNavigation }
                     componentType = 'page'
-                    onClick   = { (v: Resource) => setShowMedia(v) }
+                    onClick   = { (v: Resource) => setShowResource(v) }
                     columns   = { prefs.gallery_columns }
                     previewOptionsFn = { (v: Resource) => {
                         return {
@@ -125,7 +126,7 @@ const Main = () => {
                 <div style = { galleryStyle } key="main-content" className="main-content-container">
                   <ListView 
                     key       = "list"
-                    onClick   = { (v: Resource) => setShowMedia(v) }
+                    onClick   = { (v: Resource) => setShowResource(v) }
                     selection = {selection}
                    />
                 </div>
