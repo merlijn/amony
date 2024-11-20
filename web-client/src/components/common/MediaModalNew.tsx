@@ -26,13 +26,11 @@ const MediaModalNew = (props: { resource?: Resource, onHide: () => void }) => {
 
   // show modal video player
   useEffect(() => {
-    console.log('settings src', props.resource?.urls.originalResourceUrl)
     setSrc(props.resource?.urls.originalResourceUrl || '')
   }, [props.resource]);
 
   useEffect(() => {
     console.log('player', player.current?.title)
-    // player.current.destroy()
   }, [player])
 
   const modalSize = (v: Resource): CSSProperties => {
@@ -55,8 +53,8 @@ const MediaModalNew = (props: { resource?: Resource, onHide: () => void }) => {
     }
   }
 
-  let isVideo = props.resource && props.resource.contentType.startsWith("video")
-  let isImage = props.resource && props.resource.contentType.startsWith("image")
+  let isVideo = props.resource && props.resource.contentType.startsWith("video") || false
+  let isImage = props.resource && props.resource.contentType.startsWith("image") || false
   // let src = props.resource?.urls.originalResourceUrl || ''
 
   const onHide = () => {
@@ -66,30 +64,29 @@ const MediaModalNew = (props: { resource?: Resource, onHide: () => void }) => {
 
   return (
       <Modal visible = { props.resource !== undefined } onHide = { onHide }>
-        <div className="video-modal-content">
-          <div style = { props.resource && modalSize(props.resource) }>
-            <>
-              <MediaPlayer
-                className = "player"
-                tab-index = '-1'
-                ref = { player }
-                src = { { src: src, type: "video/mp4"  } }
-                title = { props.resource?.userMeta.title }
-                playsInline
-                controlsDelay = { 1000 }
-                // keep-alive
-                // logLevel = "debug"
-                autoPlay = { true }
-                onDestroy = { () => console.log('destroyed') }
-                // onCanPlay = { autoPlay }
-                onProviderChange = { onProviderChange }
-              >
-                <MediaProvider />
-                <DefaultVideoLayout icons = { defaultLayoutIcons } />
-              </MediaPlayer>
-              { isImage &&  <img style = {{ width: "100%", height: "100%", visibility : isImage ? "visible" : "hidden" }} src = { src }/> }
-            </>
-          </div>
+        <div className="video-modal-content" style = { props.resource && modalSize(props.resource)}>
+          <>
+            <MediaPlayer
+              className = "player"
+              tab-index = '-1'
+              ref = { player }
+              src = { { src: src, type: "video/mp4"  } }
+              title = { props.resource?.userMeta.title }
+              playsInline
+              style = { !isVideo ? { display: "none" } : {} }
+              controlsDelay = { 1000 }
+              // keep-alive
+              // logLevel = "debug"
+              autoPlay = { true }
+              onDestroy = { () => console.log('destroyed') }
+              // onCanPlay = { autoPlay }
+              onProviderChange = { onProviderChange }
+            >
+              <MediaProvider />
+              <DefaultVideoLayout icons = { defaultLayoutIcons } />
+            </MediaPlayer>
+            { isImage &&  <img style = {{ width: "100%", height: "100%", visibility : isImage ? "visible" : "hidden" }} src = { src }/> }
+          </>
         </div>
       </Modal>
   );
