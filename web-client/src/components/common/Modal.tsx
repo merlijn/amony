@@ -1,15 +1,12 @@
 import React, { ReactNode, useEffect } from "react";
-import ReactDOM from "react-dom";
 import './Modal.scss';
 
 const Modal = (props: { children?: ReactNode, visible: boolean, onHide: () => void }) => {
 
-  const modalRoot = document.getElementById('modal-root');
-  const container = document.createElement("div")
-
-  const modal = (
+  return(
     <div
       key       = "modal-container"
+      style     = { { zIndex: props.visible ? 500 : -1, visibility: props.visible ? "visible" : "hidden" } }
       className = "modal-container">
 
       <div 
@@ -25,15 +22,6 @@ const Modal = (props: { children?: ReactNode, visible: boolean, onHide: () => vo
       </div>
     </div>
   );
-
-  useEffect(() => {
-    if (props.visible && modalRoot) {
-      modalRoot.appendChild(container)
-      return () => { modalRoot.removeChild(container); }
-    }
-  }, [props])
-
-  return(ReactDOM.createPortal(modal, container));
 }
 
 export default Modal

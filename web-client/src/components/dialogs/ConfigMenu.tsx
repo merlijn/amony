@@ -7,7 +7,7 @@ import './ConfigMenu.scss';
 
 const ConfigMenu = () => {
 
-  const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs/v1", "/", Constants.defaultPreferences)
+  const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs-v1", "/", Constants.defaultPreferences)
 
   const columns = [1, 2, 3, 4, 5, 6, 7].map((v) => {
     return { value: v, label: v.toString() }
@@ -107,7 +107,7 @@ const ConfigMenu = () => {
               />
             </div>
           </div>
-          <div key="dates" className="form-section">
+          <div key="resolution" className="form-section">
             <p key="header" className="form-label">Show resolution</p>
             <div key="content" className="form-content">
               <input

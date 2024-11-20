@@ -22,7 +22,7 @@ const Main = () => {
     const [showNavigation, setShowNavigation] = useState(true)
     const [view, setView] = useState<MediaView>('grid')
     const [showSettings,   setShowSettings]   = useState(false)
-    const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs/v1", "/", Constants.defaultPreferences)
+    const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs-v1", "/", Constants.defaultPreferences)
 
     const getSelection = (): ResourceSelection => {
       const urlParams = new URLSearchParams(location.search)

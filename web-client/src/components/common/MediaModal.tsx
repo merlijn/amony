@@ -1,5 +1,5 @@
 import {Resource} from "../../api/Model";
-import React, {CSSProperties, useEffect, useRef} from "react";
+import React, {CSSProperties, useEffect, useRef, useState} from "react";
 import Plyr from 'plyr';
 import {isMobile} from "react-device-detect";
 import {boundedRatioBox} from "../../api/Util";
@@ -9,30 +9,46 @@ import Modal from "./Modal";
 const MediaModal = (props: { resource?: Resource, onHide: () => void }) => {
 
   const videoElement = useRef<HTMLVideoElement>(null)
+  const [plyr, setPlyr] = useState<Plyr | null>(null)
 
   // show modal video player
   useEffect(() => {
 
     const element = videoElement.current
-    let plyr: Plyr | null = null
 
-    if (element && props.resource) {
+    if (element && !plyr) {
       const plyrOptions = {
         fullscreen: {enabled: true},
         invertTime: false,
         keyboard: {focused: true, global: true},
-        previewThumbnails: {enabled: false, src: props.resource.urls.previewThumbnailsUrl}
       }
 
       const plyr = new Plyr(element, plyrOptions)
-      // element.load()
-      plyr.play()
+      setPlyr(plyr)
+    }
+  }, [props, videoElement, plyr]);
+
+  useEffect(() => {
+
+    if (plyr && props.resource) {
+      plyr.source = {
+        type: 'video',
+        sources: [
+          {
+            src: props.resource.urls.originalResourceUrl,
+            type: 'video/mp4',
+          },
+        ],
+      }
     }
 
-    return () => {
-      plyr && plyr.destroy()
-    }
-  }, [props]);
+  }, [props.resource, plyr])
+
+  const onHideFn = () => {
+    if (plyr)
+      plyr.pause()
+    props.onHide()
+  }
 
   const modalSize = (v: Resource): CSSProperties => {
 
@@ -40,24 +56,24 @@ const MediaModal = (props: { resource?: Resource, onHide: () => void }) => {
     return boundedRatioBox(w, "75vh", v.resourceMeta.width / v.resourceMeta.height)
   }
 
-  let content = <div />
+  // let content = <div />
 
-  if(props.resource && props.resource.contentType.startsWith("video"))
-    content =
-      <video tab-index='-1' id={`video-modal-${props.resource.resourceId}`} ref={videoElement} playsInline controls>
-        { props.resource && <source src={props.resource.urls.originalResourceUrl} type="video/mp4"/> }
-      </video>
-  if(props.resource && props.resource.contentType.startsWith("image"))
-    content = <img style = {{ width : "100%", height: "100%" }} src={props.resource.urls.originalResourceUrl} />
+  // if(props.resource && props.resource.contentType.startsWith("video"))
+  //   content =
+  //     <video tab-index='-1' id = { `video-modal-${props.resource.resourceId}` } ref = { videoElement } playsInline controls>
+  //       { props.resource && <source src={props.resource.urls.originalResourceUrl} type="video/mp4"/> }
+  //     </video>
+  // if(props.resource && props.resource.contentType.startsWith("image"))
+  //   content = <img style = {{ width : "100%", height: "100%" }} src={props.resource.urls.originalResourceUrl} />
 
   return (
-      <Modal visible={props.resource !== undefined} onHide={props.onHide}>
+      <Modal visible = { props.resource !== undefined } onHide = { onHideFn }>
         <div key="video-model-content" className="video-modal-content">
           <div style={props.resource && modalSize(props.resource)}>
-            {
-              content
-            }
-            </div>
+            <video tab-index='-1' id={`video-modal`} ref={videoElement} playsInline controls autoPlay={true}>
+              {/*{props.resource && <source src = { props.resource.urls.originalResourceUrl } type="video/mp4"/>}*/}
+            </video>
+          </div>
         </div>
       </Modal>
   );
