@@ -1,11 +1,11 @@
 import React, {useEffect, useState} from "react";
-import {useNavigate, useLocation} from "react-router";
+import {useLocation, useNavigate} from "react-router";
 import {Constants, parseDurationParam, parseSortParam} from "../api/Constants";
 import {MediaView, Prefs, Resource, ResourceSelection} from "../api/Model";
 import {useCookiePrefs, useListener, useStateNeq} from "../api/ReactUtils";
 import GridView from "../components/GridView";
 import TopNavBar from "../components/navigation/TopNavBar";
-import MediaModal from "../components/common/MediaModal";
+import ResourceViewModal from "../components/common/ResourceViewModal";
 import {isMobile} from "react-device-detect";
 import './Main.scss';
 import ListView from "../components/ListView";
@@ -13,7 +13,6 @@ import {buildUrl, copyParams} from "../api/Util";
 import {Api} from "../api/Api";
 import Modal from "../components/common/Modal";
 import ConfigMenu from "../components/dialogs/ConfigMenu";
-import MediaModalNew from "../components/common/MediaModalNew";
 
 const Main = () => {
   
@@ -82,7 +81,7 @@ const Main = () => {
 
     return (
         <>
-            <MediaModalNew resource= { showResource } onHide = { () => setShowResource(undefined) } />
+            <ResourceViewModal resource= { showResource } onHide = { () => setShowResource(undefined) } />
             <Modal visible = { showSettings } onHide = { () => setShowSettings(false) }>
                 <ConfigMenu />
             </Modal>

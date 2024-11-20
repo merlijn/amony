@@ -2,16 +2,14 @@ import {Resource} from "../../api/Model";
 import React, {CSSProperties, useEffect, useRef, useState} from "react";
 import {isMobile} from "react-device-detect";
 import {boundedRatioBox} from "../../api/Util";
-import './MediaModalNew.css';
+import './ResourceViewModal.css';
 import Modal from "./Modal";
 import {
   isHLSProvider,
-  MediaCanPlayDetail,
-  MediaCanPlayEvent,
   MediaPlayer,
   MediaPlayerInstance, MediaProvider,
   MediaProviderAdapter,
-  MediaProviderChangeEvent, Poster
+  MediaProviderChangeEvent,
 } from "@vidstack/react";
 
 import {
@@ -19,7 +17,7 @@ import {
   DefaultVideoLayout,
 } from '@vidstack/react/player/layouts/default';
 
-const MediaModalNew = (props: { resource?: Resource, onHide: () => void }) => {
+const ResourceViewModal = (props: { resource?: Resource, onHide: () => void }) => {
 
   let player = useRef<MediaPlayerInstance>(null)
   let [src, setSrc] = useState('');
@@ -53,8 +51,8 @@ const MediaModalNew = (props: { resource?: Resource, onHide: () => void }) => {
     }
   }
 
-  let isVideo = props.resource && props.resource.contentType.startsWith("video") || false
-  let isImage = props.resource && props.resource.contentType.startsWith("image") || false
+  let isVideo = props.resource?.contentType.startsWith("video") || false
+  let isImage = props.resource?.contentType.startsWith("image") || false
   // let src = props.resource?.urls.originalResourceUrl || ''
 
   const onHide = () => {
@@ -74,7 +72,8 @@ const MediaModalNew = (props: { resource?: Resource, onHide: () => void }) => {
               title = { props.resource?.userMeta.title }
               playsInline
               style = { !isVideo ? { display: "none" } : {} }
-              controlsDelay = { 1000 }
+              controlsDelay = { 5000 }
+              hideControlsOnMouseLeave = { true }
               // keep-alive
               // logLevel = "debug"
               autoPlay = { true }
@@ -93,4 +92,4 @@ const MediaModalNew = (props: { resource?: Resource, onHide: () => void }) => {
 }
 
 
-export default MediaModalNew
+export default ResourceViewModal
