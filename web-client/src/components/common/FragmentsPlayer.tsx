@@ -6,13 +6,12 @@ type FragmentsPlayerProps = {
   style?: CSSProperties,
   fragments: Array<Fragment>
   onClick?: () => void
-  onMouseLeave?: (v: HTMLVideoElement) => void
 }
 
 const FragmentsPlayer = (props: FragmentsPlayerProps) => {
 
   const [currentPreviewIdx, setCurrentPreviewIdx] = useState(0)
-  const [playPromise, setPlayPromise] = useState<Promise<void>>(Promise.resolve())
+  // const [playPromise, setPlayPromise] = useState<Promise<void>>(Promise.resolve())
   const videoRef = useRef<HTMLVideoElement>(null)
 
   // sort the fragments by start time
@@ -20,10 +19,27 @@ const FragmentsPlayer = (props: FragmentsPlayerProps) => {
 
   useEffect(() => {
 
-    if (videoRef.current)
-      play(videoRef.current, true)
+    if (videoRef.current && videoRef.current.paused)
+      loadAndPlay(videoRef.current)
 
-  }, [currentPreviewIdx])
+  }, [currentPreviewIdx, videoRef])
+
+  const loadAndPlay = (v: HTMLVideoElement) => {
+    // playPromise.then(() => {
+      v.addEventListener("canplay", function onCanPlay() {
+        v.removeEventListener("canplay", onCanPlay);
+        v.play()
+      });
+      v.load()
+    // })
+  }
+
+  const playCurrent = (v: HTMLVideoElement) => {
+    v.play()
+    // playPromise.then(() => {
+    //   setPlayPromise(v.play())
+    // });
+  }
 
   const playNext = (v: HTMLVideoElement) => {
 
@@ -31,47 +47,22 @@ const FragmentsPlayer = (props: FragmentsPlayerProps) => {
     if (idx >= props.fragments.length)
       idx = 0
 
-    setCurrentPreviewIdx(idx)
-
-    if (props.fragments.length === 1)
-      play(v, false)
+    if (idx !== currentPreviewIdx)
+      setCurrentPreviewIdx(idx)
+    else
+      playCurrent(v)
   }
-
-  const play = (v: HTMLVideoElement, load: boolean) => {
-    playPromise.then(() => { 
-      if (load) {
-        // https://github.com/sampotts/plyr/issues/331#issuecomment-529398384
-        v.pause()
-        v.addEventListener("canplay", function onCanPlay() {
-          v.removeEventListener("canplay", onCanPlay);
-          setPlayPromise(v.play())
-        });
-        v.load()
-      } 
-      else if (v.paused)
-        setPlayPromise(v.play())
-    });
-  }
-
-  const onMouseLeave = (v: HTMLVideoElement) => {
-
-    playPromise.then(() => {
-      if (props.onMouseLeave !== undefined)
-        props.onMouseLeave(v)
-    });
-  };
 
   return(
     <video ref = { videoRef }
            style = {props.style ? props.style : {} }
            className = {props.className} muted
            onClick = { (e) => props.onClick && props.onClick() }
-           onMouseOver = { (e) => play(e.currentTarget, false) }
-           onMouseLeave = { (e) =>  onMouseLeave(e.currentTarget) }
-           onEnded = { (e) => playNext(e.currentTarget) } 
+           onMouseOver = { (e) => playCurrent(e.currentTarget) }
+           onEnded = { (e) => playNext(e.currentTarget) }
            preload = 'none' >
 
-      <source src={props.fragments[currentPreviewIdx].urls[0]} type="video/mp4"/>
+      <source src = { props.fragments[currentPreviewIdx].urls[0] } type="video/mp4"/>
     </video>
   );
 }

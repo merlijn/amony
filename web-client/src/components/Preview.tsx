@@ -5,6 +5,7 @@ import {dateMillisToString, durationInMillisToString, labelForResolution} from "
 import FragmentsPlayer from "./common/FragmentsPlayer";
 import ImgWithAlt from "./common/ImgWithAlt";
 import './Preview.scss';
+import {ErrorBoundary} from "react-error-boundary";
 
 export type PreviewProps = {
   resource: Resource,
@@ -28,15 +29,15 @@ export type PreviewOptions = {
 const Preview = (props: PreviewProps) => {
   const [resource, setResource] = useState(props.resource)
   const [isHovering, setIsHovering] = useState(false)
-  const [showVideoPreview, setShowVideoPreview] = useState(false)
+  // const [showVideoPreview, setShowVideoPreview] = useState(false)
 
   const durationStr = durationInMillisToString(resource.resourceMeta.duration)
 
   const isVideo = resource.contentType.startsWith("video")
 
-  useEffect(() => {
-    setShowVideoPreview(isHovering)
-  }, [isHovering])
+  // useEffect(() => {
+  //   setShowVideoPreview(isHovering)
+  // }, [isHovering])
 
   const titlePanel =
       <div className = "preview-info-bar">
@@ -71,13 +72,15 @@ const Preview = (props: PreviewProps) => {
           fragments = { props.resource.highlights } />
 
   const preview =
+    <ErrorBoundary fallback={ <div /> }>
       <div className    = "preview-media-container"
            onMouseEnter = { () => props.options.showPreviewOnHover && setIsHovering(true) }
            onMouseLeave = { () => setIsHovering(false) }>
-        { isVideo && showVideoPreview && videoPreview }
+        { isVideo && isHovering && videoPreview }
         { primaryThumbnail }
         { overlay }
       </div>
+    </ErrorBoundary>
 
   return (
       <div className = "preview-media">

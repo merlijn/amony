@@ -100,7 +100,7 @@ const ConfigMenu = () => {
             <div key="content" className="form-content">
               <input
                   type="checkbox"
-                  checked={prefs.showDates}
+                  checked = { prefs.showDates }
                   onChange={(e) => {
                     updatePrefs({showDates: !prefs.showDates})
                   }}
@@ -112,8 +112,8 @@ const ConfigMenu = () => {
             <div key="content" className="form-content">
               <input
                   type="checkbox"
-                  checked={prefs.showResolution}
-                  onChange={(e) => {
+                  checked = { prefs.showResolution }
+                  onChange = {(e) => {
                     updatePrefs({showResolution: !prefs.showResolution})
                   }}
               />
