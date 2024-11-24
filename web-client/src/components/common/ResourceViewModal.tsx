@@ -1,5 +1,5 @@
 import {Resource} from "../../api/Model";
-import React, {CSSProperties, useEffect, useRef, useState} from "react";
+import React, {CSSProperties, MouseEventHandler, useEffect, useRef, useState} from "react";
 import {isMobile} from "react-device-detect";
 import {boundedRatioBox} from "../../api/Util";
 import './ResourceViewModal.css';
@@ -37,20 +37,6 @@ const ResourceViewModal = (props: { resource?: Resource, onHide: () => void }) =
     return boundedRatioBox(w, "75vh", v.resourceMeta.width / v.resourceMeta.height)
   }
 
-  function onProviderChange(
-      provider: MediaProviderAdapter | null,
-      nativeEvent: MediaProviderChangeEvent,
-  ) {
-    console.log('provider', provider)
-    if (!provider) {
-      return;
-    }
-    // We can configure provider's here.
-    if (isHLSProvider(provider)) {
-      provider.config = {};
-    }
-  }
-
   let isVideo = props.resource?.contentType.startsWith("video") || false
   let isImage = props.resource?.contentType.startsWith("image") || false
   // let src = props.resource?.urls.originalResourceUrl || ''
@@ -60,32 +46,39 @@ const ResourceViewModal = (props: { resource?: Resource, onHide: () => void }) =
     props.onHide()
   }
 
+  const handleDoubleClick: MouseEventHandler<HTMLElement> = (event) => {
+    event.preventDefault();
+    event.stopPropagation(); // Stops the event from triggering any default or library behaviors
+  };
+
   return (
       <Modal visible = { props.resource !== undefined } onHide = { onHide }>
-        <div className="video-modal-content" style = { props.resource && modalSize(props.resource)}>
-          <>
-            <MediaPlayer
-              className = "player"
-              tab-index = '-1'
-              ref = { player }
-              src = { { src: src, type: "video/mp4"  } }
-              title = { props.resource?.userMeta.title }
-              playsInline
-              style = { !isVideo ? { display: "none" } : {} }
-              controlsDelay = { 5000 }
-              hideControlsOnMouseLeave = { true }
-              // keep-alive
-              // logLevel = "debug"
-              autoPlay = { true }
-              onDestroy = { () => console.log('destroyed') }
-              // onCanPlay = { autoPlay }
-              onProviderChange = { onProviderChange }
-            >
-              <MediaProvider />
-              <DefaultVideoLayout icons = { defaultLayoutIcons } />
-            </MediaPlayer>
-            { isImage &&  <img style = {{ width: "100%", height: "100%", visibility : isImage ? "visible" : "hidden" }} src = { src }/> }
-          </>
+        <div className="video-modal-content" style = { props.resource && modalSize(props.resource)} onDoubleClick = { handleDoubleClick }>
+          <MediaPlayer
+            className = "player"
+            tab-index = '-1'
+            playsInline
+            ref = { player }
+            src = { { src: src, type: "video/mp4"  } }
+            title = { props.resource?.userMeta.title }
+            style = { !isVideo ? { display: "none" } : {} }
+            controlsDelay = { 5000 }
+            hideControlsOnMouseLeave = { true }
+            onDoubleClick = { handleDoubleClick }
+            // keep-alive
+            // logLevel = "debug"
+            autoPlay = { true }
+            onDestroy = { () => console.log('destroyed') }
+            // onCanPlay = { autoPlay }
+            // onProviderChange = { onProviderChange }
+          >
+            <MediaProvider onDoubleClick={handleDoubleClick} />
+            <DefaultVideoLayout
+                icons = { defaultLayoutIcons }
+                onDoubleClick={handleDoubleClick}
+            />
+          </MediaPlayer>
+          { isImage &&  <img style = {{ width: "100%", height: "100%", visibility : isImage ? "visible" : "hidden" }} src = { src }/> }
         </div>
       </Modal>
   );
