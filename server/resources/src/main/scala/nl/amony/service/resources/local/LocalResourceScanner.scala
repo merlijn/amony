@@ -25,16 +25,22 @@ object LocalResourceScanner {
    */
   def pollingResourceEventStream(initialState: Set[ResourceInfo], config: LocalDirectoryConfig): Stream[IO, ResourceEvent] = {
 
-    val mediaPath = config.resourcePath
+    val resourcePath = config.resourcePath
+
+    // prevent data loss in case the cache directory is missing because of an unmounted path
+    if (!Files.exists(config.cachePath) && initialState.nonEmpty) {
+      logger.error(s"The stored directory state for ${config.resourcePath} is non empty but no cache directory was found. Not continuing to prevent data loss. Perhaps the directory is not mounted? If this is what you intend, please manually create the cache directory at: ${config.cachePath}")
+      return Stream.empty
+    }
     
     val initialFiles: Map[Path, FileInfo] = initialState.map { r =>
-      val path = mediaPath.resolve(Path.of(r.path))
-      path -> FileInfo(mediaPath.resolve(Path.of(r.path)), r.hash, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0))
+      val path = resourcePath.resolve(Path.of(r.path))
+      path -> FileInfo(resourcePath.resolve(Path.of(r.path)), r.hash, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0))
     }.toMap
 
     def filterPath(path: Path) = config.filterFileName(path.getFileName.toString)
 
-    LocalDirectoryScanner.pollingStream(mediaPath, initialFiles, config.pollInterval, filterPath, config.hashingAlgorithm.createHash).parEvalMap(4) {
+    LocalDirectoryScanner.pollingStream(resourcePath, initialFiles, config.pollInterval, filterPath, config.hashingAlgorithm.createHash).parEvalMap(4) {
       case FileAdded(f) =>
 
         val resourceMeta: IO[ResourceMeta] =
@@ -60,7 +66,7 @@ object LocalResourceScanner {
           }
         } yield ResourceAdded(ResourceInfo(
           bucketId = config.id,
-          path = mediaPath.relativize(f.path).toString,
+          path = resourcePath.relativize(f.path).toString,
           hash = f.hash,
           size = f.size,
           contentType = Resource.contentTypeForPath(f.path),
@@ -71,10 +77,10 @@ object LocalResourceScanner {
         ))
 
       case FileDeleted(f) =>
-        IO(ResourceDeleted(f.hash))
+        IO.pure(ResourceDeleted(f.hash))
 
       case FileMoved(f, oldPath) =>
-        IO(ResourceMoved(f.hash, mediaPath.relativize(oldPath).toString, mediaPath.relativize(f.path).toString))
+        IO.pure(ResourceMoved(f.hash, resourcePath.relativize(oldPath).toString, resourcePath.relativize(f.path).toString))
     }
   }
 }

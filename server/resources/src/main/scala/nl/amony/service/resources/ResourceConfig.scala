@@ -15,17 +15,17 @@ object ResourceConfig {
   sealed trait ResourceBucketConfig derives ConfigReader
 
   case class LocalDirectoryConfig(
-      id: String,
-      private val path: Path,
-      scanParallelFactor: Int,
-      verifyExistingHashes: Boolean,
-      pollInterval: FiniteDuration,
-      hashingAlgorithm: HashingAlgorithm,
-      relativeResourcePath: Path,
-      extensions: List[String]
+     id: String,
+     private val path: Path,
+     scanParallelFactor: Int,
+     verifyExistingHashes: Boolean,
+     pollInterval: FiniteDuration,
+     hashingAlgorithm: HashingAlgorithm,
+     relativeCachePath: Path,
+     extensions: List[String]
   ) extends ResourceBucketConfig {
 
-    lazy val cachePath: Path    = path.toAbsolutePath.normalize().resolve(relativeResourcePath)
+    lazy val cachePath: Path    = path.toAbsolutePath.normalize().resolve(relativeCachePath)
     lazy val resourcePath: Path = path.toAbsolutePath.normalize()
 
     def filterFileName(fileName: String): Boolean =
