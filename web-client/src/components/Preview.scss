@@ -17,33 +17,7 @@
     z-index: 4;
   
     .preview-overlay {
-       
       z-index: 7;
-  
-      .preview-menu-container {
-  
-        @extend .abs-top-right;
-        margin: 5px;
-        z-index: inherit;
-
-        .preview-menu {
-  
-          .preview-menu-icon {
-            @extend .action-icon-small;
-          }
-        
-          margin-top: 3px;
-        
-          .menu-icon {
-            float: left;
-            margin-right: 10px;
-          }
-        
-          .menu-item {
-            padding-left: 10px !important;
-          }
-        }
-      }
     }
   
     .preview-thumbnail {
