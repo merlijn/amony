@@ -1,4 +1,4 @@
-@import '../App.scss';
+@use '../App.scss' as *;
 
 .preview-media {
 
@@ -85,8 +85,8 @@
     color: #233453;
   
     .media-title {
-      flex-grow: 1;
       padding-left: $spacing-2;
+      flex-grow: 1;
       float: left;
       
       white-space: nowrap;

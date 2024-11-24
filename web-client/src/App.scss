@@ -1,6 +1,10 @@
-@import 'src/css/Constants.scss';
-@import 'src/css/Layout.scss';
-@import 'src/css/Defaults.scss';
+@use 'src/css/Constants.scss' as constants;
+@use 'src/css/Layout.scss' as layout;
+@use 'src/css/Defaults.scss';
+
+@forward 'src/css/Constants.scss';
+@forward 'src/css/Layout.scss';
+@forward 'src/css/Defaults.scss';
 
 .root {
   --text-bg-color: white;
@@ -16,17 +20,6 @@
   &:hover {
     cursor: pointer;
   }
-}
-
-.video-quality-overlay {
-  @extend .abs-bottom-right;
-
-  z-index: 8;
-  margin: 5px;
-  padding: 2px 5px;
-  color: white;
-  background-color: rgba(0, 0, 0, 0.6);
-  font-size: small;
 }
 
 .duration-overlay {
@@ -65,7 +58,7 @@
   background-color: rgba(0, 0, 0, 0.0);
   font-size: small;
   &:hover {
-    background-color: $gray-100;
+    background-color: constants.$gray-100;
     border-radius: 50%;
   }
 }
@@ -94,11 +87,12 @@
   padding: 8px 12px;
   border-radius: 5px;
   color: white;
-  background-color: $highlight-a;
-  border: 1px solid $highlight-a;
+  background-color: constants.$highlight-a;
+  border: 1px solid constants.$highlight-a;
 
   &:hover {
-    background-color: $secondary-a;
-    border-color: $secondary-a;
+    background-color: constants.$secondary-a;
+    border-color: constants.$secondary-a;
   }
 }
+

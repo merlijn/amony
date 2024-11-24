@@ -1,4 +1,4 @@
-@import 'src/App.scss';
+@use 'src/App.scss' as *;
 
 //index.module.css
 .dropdown-container {

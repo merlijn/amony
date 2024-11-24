@@ -1,5 +1,5 @@
 @use "sass:color";
-@import 'src/App.scss';
+@use 'src/App.scss' as *;
 
 .tag-bar {
   @extend .v-align-center;

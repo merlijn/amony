@@ -1,4 +1,4 @@
-@import '../App.scss';
+@use 'src/App.scss' as *;
 
 .main-page {
   width: 100%;
