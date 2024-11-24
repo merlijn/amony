@@ -4,12 +4,15 @@ import cats.effect.IO
 import fs2.Stream
 import nl.amony.lib.files.watcher.{FileAdded, FileDeleted, FileInfo, FileMoved, LocalDirectoryScanner}
 
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 import scala.concurrent.duration.FiniteDuration
 import nl.amony.service.resources.Resource
 import nl.amony.service.resources.api.*
 import nl.amony.service.resources.api.events.*
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
+
+import java.io.{File, FilenameFilter}
+import java.nio.file.attribute.BasicFileAttributes
 
 object LocalResourceScanner {
   
@@ -43,6 +46,18 @@ object LocalResourceScanner {
 
         for {
           meta <- resourceMeta
+          thumbnailTimestamp = meta match {
+            case vid: VideoMeta =>
+                val ts = config.cachePath.toFile.list((dir: File, name: String) => name.startsWith(f.hash) && name.endsWith(".webp")).toList.map {
+                  case name @ s"${hash}_${timestamp}_${quality}.webp" =>
+                    val path = config.cachePath.resolve(name)
+                    val attrs = Files.readAttributes(path, classOf[BasicFileAttributes])
+                    timestamp.toLong -> attrs.creationTime().toMillis
+                }.maxByOption(_._2).map(_._1)
+                ts.foreach(t => logger.info(s"Recovered timestamp $t for ${f.path}"))
+                ts
+            case _ => None
+          }
         } yield ResourceAdded(ResourceInfo(
           bucketId = config.id,
           path = mediaPath.relativize(f.path).toString,
@@ -51,7 +66,8 @@ object LocalResourceScanner {
           contentType = Resource.contentTypeForPath(f.path),
           contentMeta = meta,
           creationTime = Some(f.creationTime),
-          lastModifiedTime = Some(f.modifiedTime)
+          lastModifiedTime = Some(f.modifiedTime),
+          thumbnailTimestamp = thumbnailTimestamp
         ))
 
       case FileDeleted(f) =>
