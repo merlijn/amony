@@ -81,43 +81,43 @@ const Main = () => {
 
     return (
         <>
-            <ResourceViewModal resource= { showResource } onHide = { () => setShowResource(undefined) } />
-            <Modal visible = { showSettings } onHide = { () => setShowSettings(false) }>
-                <ConfigMenu />
-            </Modal>
+          <ResourceViewModal resource= { showResource } onHide = { () => setShowResource(undefined) } />
+          <Modal visible = { showSettings } onHide = { () => setShowSettings(false) }>
+              <ConfigMenu />
+          </Modal>
           <div className="main-page">
 
             { showNavigation && 
                 <TopNavBar 
-                    key           = "top-nav-bar" 
-                    onClickMenu   = { () => setShowSettings(true) }
-                    activeView    = { view }
-                    onViewChange  = { updateView }
+                  key           = "top-nav-bar"
+                  onClickMenu   = { () => setShowSettings(true) }
+                  activeView    = { view }
+                  onViewChange  = { updateView }
                 /> 
             }
 
             {
               (view === 'grid') &&
-                  <GridView 
-                    style     = { galleryStyle } 
-                    className = "main-content-container"
-                    key       = "gallery"
-                    selection = { selection }
-                    showTagbar = { showNavigation }
-                    componentType = 'page'
-                    onClick   = { (v: Resource) => setShowResource(v) }
-                    columns   = { prefs.gallery_columns }
-                    previewOptionsFn = { (v: Resource) => {
-                        return {
-                          showPreviewOnHover: !isMobile,
-                          showInfoBar: prefs.showTitles,
-                          showDates: prefs.showDates,
-                          showDuration: prefs.showDuration,
-                          showResolution: prefs.showResolution,
-                          showMenu: Api.session().isAdmin()
-                        } 
+                <GridView
+                  style     = { galleryStyle }
+                  className = "main-content-container"
+                  key       = "gallery"
+                  selection = { selection }
+                  showTagbar = { showNavigation }
+                  componentType = 'page'
+                  onClick   = { (v: Resource) => setShowResource(v) }
+                  columns   = { prefs.gallery_columns }
+                  previewOptionsFn = { (v: Resource) => {
+                      return {
+                        showPreviewOnHover: !isMobile,
+                        showInfoBar: prefs.showTitles,
+                        showDates: prefs.showDates,
+                        showDuration: prefs.showDuration,
+                        showResolution: prefs.showResolution,
+                        showMenu: Api.session().isAdmin()
                       }
-                    }/>
+                    }
+                  }/>
             }
 
             {

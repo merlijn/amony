@@ -165,6 +165,10 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
 
       val direction = if (sort.direction == Desc) "desc" else "asc"
 
+      // TODO add random sort feature
+      // https://ubuntuask.com/blog/how-to-boost-fields-with-random-sort-in-solr
+      // random_1234 desc
+
       s"$solrField $direction"
     }
 
