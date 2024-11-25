@@ -39,14 +39,8 @@ object LocalDirectoryScanner extends Logging {
    * This means, the only thing we can rely on for checking equality is the metadata.
    * 
    */
-  private def scanDirectory(directory: Path, previousState: Map[Path, FileInfo], filter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] = {
+  private def scanDirectory(directory: Path, previous: FileStore, filter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] = {
     
-    val previousByHash: Map[String, FileInfo] = previousState.values.foldLeft(Map.empty)((acc, f) => acc + (f.hash -> f) )
-
-    def allPrevious(): Stream[IO, FileInfo] = Stream.emits(previousState.values.toSeq)
-    def getByPath(path: Path): IO[Option[FileInfo]] = IO.pure(previousState.get(path))
-    def getByHash(hash: String):IO[Seq[FileInfo]]   = IO.pure(previousByHash.get(hash).toSeq)
-
     val start = System.currentTimeMillis()
 
     val currentFiles: Seq[(Path, BasicFileAttributes)] = RecursiveFileVisitor.listFilesInDirectoryRecursive(directory, filter)
@@ -57,7 +51,7 @@ object LocalDirectoryScanner extends Logging {
     val movedOrAdded: Stream[IO, Option[FileEvent]] = Stream.emits(currentFiles).evalMap { (path, attrs) =>
 
       for {
-        prevByPath <- getByPath(path)
+        prevByPath <- previous.getByPath(path)
         hash       <- prevByPath
                         .filter(_.equalFileMeta(path, attrs))
                         .map(i => IO.pure(i.hash))
@@ -66,24 +60,28 @@ object LocalDirectoryScanner extends Logging {
         event <- prevByPath match
                   case Some(`fileInfo`) => IO.pure(None)
                   case _                =>
-                    getByHash(hash).map(_.filter(_.equalFileMeta(path, attrs)).headOption match {
+                    previous.getByHash(hash).map(_.filter(_.equalFileMeta(path, attrs)).headOption match {
                       case Some(oldFileInfo) => Some(FileMoved(fileInfo, oldFileInfo.path))
                       case _                 => Some(FileAdded(fileInfo))
                     })
       } yield event
     }
 
-    val maybeDeleted: Map[Path, FileInfo] = currentFiles.foldLeft(previousState){ case (acc, (p, _)) => acc - p }
+    // this is not correct, even if the path exists, the previous file might be deleted
+    val maybeDeleted: Map[Path, FileInfo] = currentFiles.foldLeft(previous.getAll()){ case (acc, (p, _)) => acc - p }
 
     def filterMoved(maybeDeleted: Map[Path, FileInfo], e: Option[FileEvent]): Map[Path, FileInfo] = e match
-      case Some(FileMoved(fileInfo, oldPath)) => maybeDeleted - oldPath
-      case Some(FileAdded(fileInfo)) if previousState.contains(fileInfo.path)  => maybeDeleted + (fileInfo.path -> previousState(fileInfo.path))
+      case None => maybeDeleted
+      case Some(FileMoved(_, oldPath)) => maybeDeleted - oldPath
+//      case Some(FileAdded(fileInfo)) if previousState.contains(fileInfo.path)  => maybeDeleted + (fileInfo.path -> previousState(fileInfo.path))
       case _                                  => maybeDeleted
 
     def emitDeleted(deleted: Map[Path, FileInfo]): Stream[IO, Option[FileEvent]] =
       Stream.fromIterator(deleted.values.iterator.map(r => Some(FileDeleted(r))), 1)
 
-    movedOrAdded.foldFlatMap(maybeDeleted)(filterMoved, emitDeleted).collect { case Some(e) => e}
+//    previous.getAll().fi
+    
+    movedOrAdded.foldFlatMap(maybeDeleted)(filterMoved, emitDeleted).collect { case Some(e) => e }
   }
 
   private def applyEvent(state: Map[Path, FileInfo], e: FileEvent): Map[Path, FileInfo] = e match
@@ -109,7 +107,9 @@ object LocalDirectoryScanner extends Logging {
       def logTime = Stream.eval(IO { logger.debug(s"Scanning took: ${System.currentTimeMillis() - startTime} ms") })
       def sleep = Stream.sleep[IO](pollInterval)
 
-      scanDirectory(directoryPath, s, pathFilter, hashFn)
+      val fileStore = new InMemoryFileStore(s)
+      
+      scanDirectory(directoryPath, fileStore, pathFilter, hashFn)
         .foldFlatMap(s)(applyEvent, s => logTime >> sleep >> unfoldRecursive(s))
     }
     

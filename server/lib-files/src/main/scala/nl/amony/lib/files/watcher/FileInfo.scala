@@ -22,9 +22,18 @@ case class FileInfo(path: Path, hash: String, size: Long, creationTime: Long, mo
     
 }
 
-trait FileStore {
+trait FileStore:
+
   def getByPath(path: Path): IO[Option[FileInfo]]
-  def getByHash(path: Path): IO[Seq[FileInfo]]
-  def getAll(): fs2.Stream[IO, FileInfo]
-  def applyEvent(e: FileEvent): IO[Unit]
-}
+  def getByHash(hash: String): IO[Seq[FileInfo]]
+  def getAll(): Map[Path, FileInfo]
+
+
+class InMemoryFileStore(files: Map[Path, FileInfo]) extends FileStore:
+  private val byHash: Map[String, Seq[FileInfo]] = files.values.foldLeft(Map.empty) {
+    (acc, info) => acc.updated(info.hash, acc.getOrElse(info.hash, Seq.empty) :+ info)
+  }
+
+  def getByPath(path: Path): IO[Option[FileInfo]] = IO.pure(files.get(path))
+  def getByHash(hash: String): IO[Seq[FileInfo]] = IO.pure(byHash.get(hash).getOrElse(Seq.empty))
+  def getAll(): Map[Path, FileInfo] = files
