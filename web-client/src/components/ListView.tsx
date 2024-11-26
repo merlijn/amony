@@ -25,6 +25,7 @@ const ListView = (props: ListProps) => {
   const [searchResult, setSearchResult] = useState(initialSearchResult);
   const [isFetching, setIsFetching] = useState(false)
   const [fetchMore, setFetchMore] = useState(true)
+  const [selectedItems, setSelectedItems] = useState<Array<number>>([])
   const navigate = useNavigate();
 
   const fetchData = (previous: Array<Resource>) => {
@@ -63,48 +64,58 @@ const ListView = (props: ListProps) => {
         fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.results) } }
         scrollType = 'page'
       >
-      <div key="row-header" className="list-row">
-        {/* <div className="list-cell list-header list-select"><input type="checkbox" /></div> */}
-        <div className="list-cell list-header-thumbnail"></div>
-        <div className="list-cell list-header">Title
-          <FaSort className="column-sort-icon" onClick = { () => setSort({field: "title", direction: sort.direction === "asc" ? "desc" : "asc" }) } />
+        <div key="row-header" className="list-row">
+          {/* <div className="list-cell list-header list-select"><input type="checkbox" /></div> */}
+          <div className="list-cell list-header-select"><input type="checkbox"/></div>
+          <div className="list-cell list-header-thumbnail"></div>
+          <div className="list-cell list-header">Title
+            <FaSort className="column-sort-icon"
+                    onClick={() => setSort({field: "title", direction: sort.direction === "asc" ? "desc" : "asc" })}/>
+          </div>
+          <div className="list-cell list-header">Tags</div>
+          <div className="list-cell list-header-date">Date
+            <FaSort className="column-sort-icon" onClick={() => setSort({
+              field: "date_added",
+              direction: sort.direction === "asc" ? "desc" : "asc"
+            })}/>
+          </div>
+          <div className="list-cell list-header-size">Size
+            <FaSort className="column-sort-icon"
+                    onClick={() => setSort({field: "size", direction: sort.direction === "asc" ? "desc" : "asc"})}/>
+          </div>
+          <div className="list-cell list-header-resolution">Quality
+            {/* <FaSort className="column-sort-icon" onClick = { () => setSort({field: "resolution", direction: sort.direction === "asc" ? "desc" : "asc" }) } /> */}
+            {/* <BsThreeDotsVertical className="list-menu-icon" /> */}
+          </div>
         </div>
-        <div className="list-cell list-header">Tags</div>
-        <div className="list-cell list-header-date">Date
-          <FaSort className="column-sort-icon" onClick = { () => setSort({field: "date_added", direction: sort.direction === "asc" ? "desc" : "asc" }) } />
-        </div>
-        <div className="list-cell list-header-size">Size
-          <FaSort className="column-sort-icon" onClick = { () => setSort({field: "size", direction: sort.direction === "asc" ? "desc" : "asc" }) } />
-        </div>
-        <div className="list-cell list-header-resolution">Quality
-          {/* <FaSort className="column-sort-icon" onClick = { () => setSort({field: "resolution", direction: sort.direction === "asc" ? "desc" : "asc" }) } /> */}
-          {/* <BsThreeDotsVertical className="list-menu-icon" /> */}
-        </div>
-      </div>
-      
-      <div key="row-spacer" className="list-row row-spacer"></div>
-      {
-        searchResult.results.map((v, index) => {
-          return(
-            <div key={`row-${v.resourceId}`} className="list-row">
 
-              <div key="thumbnail" className="list-cell list-thumbnail">
-                <ProgressiveImage src={v.urls.thumbnailUrl} placeholder="/image_placeholder.svg">
+        <div key="row-spacer" className="list-row row-spacer"></div>
+      {
+        searchResult.results.map((resource, index) => {
+          return(
+            <div key={`row-${resource.resourceId}`} className="list-row">
+
+              <div key="select" className="list-select">
+                <input type="checkbox" />
+              </div>
+
+              <div key="thumbnail" className="list-thumbnail">
+                <ProgressiveImage src={resource.urls.thumbnailUrl} placeholder="/image_placeholder.svg">
                     { (src: string) => 
-                      <img className="list-thumbnail-img" src={src} onClick={() => props.onClick(v) } alt="an image" /> }
+                      <img className="list-thumbnail-img" src={src} onClick={() => props.onClick(resource) } alt="an image" /> }
                 </ProgressiveImage>
               </div>
 
-              <TitleCell resource= { v } />
+              <TitleCell resource= { resource } />
               
-              <TagsCell resource= { v } />
+              <TagsCell resource= { resource } />
 
               <div key="date" className="list-cell list-date">
-                { dateMillisToString(v.uploadTimestamp) }
+                { dateMillisToString(resource.uploadTimestamp) }
               </div>
 
               <div key="size" className="list-cell list-size">
-                  { formatByteSize(v.resourceInfo.sizeInBytes, 1) }
+                  { formatByteSize(resource.resourceInfo.sizeInBytes, 1) }
               </div>
 
               <div key="resolution" className="list-cell list-resolution">
@@ -112,11 +123,11 @@ const ListView = (props: ListProps) => {
                 { 
                   Api.session().isAdmin() && 
                     <div className = "media-actions">
-                      <MdMovieEdit className = "fragments-action" onClick = { () => navigate(`/editor/${v.resourceId}`) } />
+                      <MdMovieEdit className = "fragments-action" onClick = { () => navigate(`/editor/${resource.resourceId}`) } />
                       <MdDelete className = "delete-action" />
                     </div> 
                 }
-                { `${v.resourceMeta.height}p` }
+                { `${resource.resourceMeta.height}p` }
                 </div>
                 
               </div>
