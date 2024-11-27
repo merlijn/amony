@@ -11,6 +11,7 @@ import {useSortParam} from "../api/Constants"
 import {useNavigate} from "react-router-dom"
 import TagsBar from "./common/TagsBar"
 import {MdDelete, MdMovieEdit} from "react-icons/md";
+import {FaHashtag} from "react-icons/fa6";
 
 type ListProps = {
   selection: ResourceSelection
@@ -58,88 +59,126 @@ const ListView = (props: ListProps) => {
 
   useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.results); }, [isFetching]);
 
+  const toggle = (index: number)=>  {
+    const i = selectedItems.indexOf(index)
+    if (i > -1) {
+      setSelectedItems(selectedItems.filter((v) => v !== index))
+    } else {
+      setSelectedItems([...selectedItems, index])
+    }
+  }
+
+  const headers =
+    <tr key="row-header" className="list-row">
+      <th className="list-header-select"><input type="checkbox"/></th>
+      <th className="list-header-thumbnail"></th>
+      <th className="list-header">Title
+        <FaSort className="column-sort-icon"
+                onClick={() => setSort({field: "title", direction: sort.direction === "asc" ? "desc" : "asc"})}/>
+      </th>
+      <th className="list-header">Tags</th>
+      <th className="list-header-date">Date
+        <FaSort className="column-sort-icon" onClick={() => setSort({
+          field: "date_added",
+          direction: sort.direction === "asc" ? "desc" : "asc"
+        })}/>
+      </th>
+      <th className="list-header-size">Size
+        <FaSort className="column-sort-icon"
+                onClick={() => setSort({field: "size", direction: sort.direction === "asc" ? "desc" : "asc"})}/>
+      </th>
+      <th className="list-header-resolution">Quality
+        {/* <FaSort className="column-sort-icon" onClick = { () => setSort({field: "resolution", direction: sort.direction === "asc" ? "desc" : "asc" }) } /> */}
+        {/* <BsThreeDotsVertical className="list-menu-icon" /> */}
+      </th>
+    </tr>
+
+  const actionBar =
+    <tr key="row-header" className="list-row">
+      <th className = "list-header"><input type="checkbox"/></th>
+      <th className = "list-header" colSpan={6}>
+        <FaHashtag />
+        <MdDelete />
+      </th>
+    </tr>
+
   return (
-      <Scrollable
-        className = "list-container"
-        fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.results) } }
-        scrollType = 'page'
-      >
-        <div key="row-header" className="list-row">
-          {/* <div className="list-cell list-header list-select"><input type="checkbox" /></div> */}
-          <div className="list-cell list-header-select"><input type="checkbox"/></div>
-          <div className="list-cell list-header-thumbnail"></div>
-          <div className="list-cell list-header">Title
-            <FaSort className="column-sort-icon"
-                    onClick={() => setSort({field: "title", direction: sort.direction === "asc" ? "desc" : "asc" })}/>
-          </div>
-          <div className="list-cell list-header">Tags</div>
-          <div className="list-cell list-header-date">Date
-            <FaSort className="column-sort-icon" onClick={() => setSort({
-              field: "date_added",
-              direction: sort.direction === "asc" ? "desc" : "asc"
-            })}/>
-          </div>
-          <div className="list-cell list-header-size">Size
-            <FaSort className="column-sort-icon"
-                    onClick={() => setSort({field: "size", direction: sort.direction === "asc" ? "desc" : "asc"})}/>
-          </div>
-          <div className="list-cell list-header-resolution">Quality
-            {/* <FaSort className="column-sort-icon" onClick = { () => setSort({field: "resolution", direction: sort.direction === "asc" ? "desc" : "asc" }) } /> */}
-            {/* <BsThreeDotsVertical className="list-menu-icon" /> */}
-          </div>
-        </div>
+    <Scrollable
+      className="list-container"
+      fetchContent={() => {
+        if (!isFetching && fetchMore) setIsFetching(true);
+        fetchData(searchResult.results)
+      }}
+      scrollType='page'
+    >
+      <tr key="row-column-width-spacer" style ={ {height: 0 } }>
+        <td style={{width: 36}}></td>
+        <td style={{width: 80}}></td>
+        <td style={{width: "50%"}}></td>
+        <td style={{width: "50%"}}></td>
+        <td style={{width: 110}}></td>
+        <td style={{width: 100}}></td>
+        <td style={{width: 80}}></td>
+      </tr>
 
-        <div key="row-spacer" className="list-row row-spacer"></div>
-      {
-        searchResult.results.map((resource, index) => {
-          return(
-            <div key={`row-${resource.resourceId}`} className="list-row">
+      {selectedItems.length > 0 ? actionBar : headers}
 
-              <div key="select" className="list-select">
-                <input type="checkbox" />
-              </div>
+      <tr key="row-spacer" style = { { height : 4 } } />
+        {
+          searchResult.results.map((resource, index) => {
+            return (
+              <tr key={`row-${resource.resourceId}`} className="list-row">
 
-              <div key="thumbnail" className="list-thumbnail">
-                <ProgressiveImage src={resource.urls.thumbnailUrl} placeholder="/image_placeholder.svg">
-                    { (src: string) => 
-                      <img className="list-thumbnail-img" src={src} onClick={() => props.onClick(resource) } alt="an image" /> }
-                </ProgressiveImage>
-              </div>
+                <td key="select" className="list-select">
+                  <input type="checkbox" checked={selectedItems.indexOf(index) > -1}/>
+                </td>
 
-              <TitleCell resource= { resource } />
-              
-              <TagsCell resource= { resource } />
+                <td key="thumbnail" className="list-thumbnail">
+                  <ProgressiveImage src={resource.urls.thumbnailUrl} placeholder="/image_placeholder.svg">
+                    {(src: string) =>
+                      <img className="list-thumbnail-img" src={src} onClick={() => props.onClick(resource)}
+                           alt="an image"/>}
+                  </ProgressiveImage>
+                </td>
 
-              <div key="date" className="list-cell list-date">
-                { dateMillisToString(resource.uploadTimestamp) }
-              </div>
+                <TitleCell mediaResource={resource} onClick={() => {
+                  toggle(index)
+                }}/>
 
-              <div key="size" className="list-cell list-size">
-                  { formatByteSize(resource.resourceInfo.sizeInBytes, 1) }
-              </div>
+                <TagsCell resource={resource}/>
 
-              <div key="resolution" className="list-cell list-resolution">
-                <div className = "cell-wrapper">
-                { 
-                  Api.session().isAdmin() && 
-                    <div className = "media-actions">
-                      <MdMovieEdit className = "fragments-action" onClick = { () => navigate(`/editor/${resource.resourceId}`) } />
-                      <MdDelete className = "delete-action" />
-                    </div> 
-                }
-                { `${resource.resourceMeta.height}p` }
-                </div>
-                
-              </div>
-            </div>  
-          );
-        })
-      }
-      </Scrollable>
-  );
+                <td key="date" className="list-cell list-date">
+                  {dateMillisToString(resource.uploadTimestamp)}
+                </td>
+
+                <td key="size" className="list-cell list-size">
+                  {formatByteSize(resource.resourceInfo.sizeInBytes, 1)}
+                </td>
+
+                <td key="resolution" className="list-cell list-resolution">
+                  <div className="cell-wrapper">
+                    {
+                      Api.session().isAdmin() &&
+                        <div className="media-actions">
+                            <MdMovieEdit className="fragments-action"
+                                         onClick={() => navigate(`/editor/${resource.resourceId}`)}/>
+                            <MdDelete className="delete-action"/>
+                        </div>
+                    }
+                    {`${resource.resourceMeta.height}p`}
+                  </div>
+
+                </td>
+              </tr>
+            );
+          })
+        }
+    </Scrollable>
+);
 }
 
-const TagsCell = (props: {resource: Resource }) => {
+const TagsCell = (props: {
+  resource: Resource }) => {
   const [tags, setTags] = useState(props.resource.userMeta.tags)
   const isAdmin = Api.session().isAdmin()
 
@@ -156,9 +195,11 @@ const TagsCell = (props: {resource: Resource }) => {
             showDeleteButton = {isAdmin} />
 }
 
-const TitleCell = (props: { resource: Resource} ) => {
+type TitleCellProps =  { mediaResource: Resource; } & React.HTMLProps<HTMLTableCellElement>;
 
-  const [title, setTitle] = useState(props.resource.userMeta.title)
+const TitleCell = ({ mediaResource, ...elementProps }: TitleCellProps ) => {
+
+  const [title, setTitle] = useState(mediaResource.userMeta.title)
   const [editTitle, setEditTitle] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -168,8 +209,8 @@ const TitleCell = (props: { resource: Resource} ) => {
   }, [editTitle])
 
   const updateTitle = (newTitle: string) => {
-    const meta: ResourceUserMeta = { ...props.resource.userMeta, title: newTitle }
-    Api.updateUserMetaData(props.resource.bucketId, props.resource.resourceId, meta).then(() =>  {
+    const meta: ResourceUserMeta = { ...mediaResource.userMeta, title: newTitle }
+    Api.updateUserMetaData(mediaResource.bucketId, mediaResource.resourceId, meta).then(() =>  {
       setTitle(newTitle)
       setEditTitle(false)
     })
@@ -178,7 +219,7 @@ const TitleCell = (props: { resource: Resource} ) => {
   const style: CSSProperties = editTitle ? { paddingLeft: "3px"} : {}
 
   return(
-    <div style = { style } key="title" className="list-cell list-title">
+    <td style = { style } key="title" className="list-cell list-title" {...elementProps }>
       <div className="cell-wrapper">
         { !editTitle && title }
         { (!editTitle && Api.session().isAdmin()) && <FiEdit onClick = { () => { setEditTitle(true); } } className="edit-title action-icon hover-action" /> }
@@ -188,7 +229,7 @@ const TitleCell = (props: { resource: Resource} ) => {
             className  = "edit-title-input"
             type       = "text" 
             value      = { title } 
-            onBlur     = { () => { setEditTitle(false) } } 
+            onBlur     = { () => { setEditTitle(false) } }
             onChange   = { (e) => { setTitle(e.target.value ) } }
             onKeyPress = { (e) => {
               if (e.key === "Enter") {
@@ -199,7 +240,7 @@ const TitleCell = (props: { resource: Resource} ) => {
           />
         }
       </div>
-    </div>
+    </td>
   );
 }
 

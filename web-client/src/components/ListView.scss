@@ -33,12 +33,14 @@ $row-height: 36px;
     
     @extend .hover-pointer;
 
+    text-align: left;
+
     position: sticky;
-    position: -webkit-sticky;
     top: 0px;
     font-size: 15px;
     font-weight: 500;
     padding: 12px 8px;
+    border-bottom: 1px solid $gray-200;
 
     .column-sort-icon {
       visibility: hidden;
@@ -46,36 +48,31 @@ $row-height: 36px;
     }
   }
 
+  .list-header-actionbar {
+    @extend .list-header;
+    width: 100%;
+  }
+
   .list-header-select {
     @extend .list-header, .hover-pointer;
-    width: 36px;
     text-align: center;
     vertical-align: middle;
-    //padding: 12px 8px !important;
   }
 
   .list-header-thumbnail {
     @extend .list-header;
-    width: 80px;
   }
 
   .list-header-date {
     @extend .list-header;
-    width: 110px;
   }
 
   .list-header-size {
     @extend .list-header;
-    width: 100px;
   }
 
   .list-header-resolution {
     @extend .list-header;
-    width: 80px;
-  }
-
-  .row-spacer {
-    height: 5px !important;
   }
 
   .list-row {
@@ -160,8 +157,6 @@ $row-height: 36px;
           background-color: $gray-300;
         }
       }
-      //padding-left: 6px;
-      //padding-right: 8px;
     }
 
     .list-thumbnail {
