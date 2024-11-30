@@ -13,7 +13,7 @@ import org.typelevel.log4cats.*
 // assumes dependency on log4cats-slf4j module
 import org.typelevel.log4cats.slf4j.Slf4jFactory
 
-class WebServer(val config: WebServerConfig) extends Logging {
+object WebServer extends Logging {
 
   given slf4jLogger: LoggerFactory[IO] = Slf4jFactory.create[IO]
 
@@ -59,7 +59,7 @@ class WebServer(val config: WebServerConfig) extends Logging {
 //    }
 //  }
 
-  def run(routes: HttpRoutes[IO])(implicit io: IORuntime): IO[ExitCode] = {
+  def run(config: WebServerConfig, routes: HttpRoutes[IO])(implicit io: IORuntime): IO[ExitCode] = {
     logger.info("Starting web server")
 
     val httpApp = Router("/" -> routes).orNotFound

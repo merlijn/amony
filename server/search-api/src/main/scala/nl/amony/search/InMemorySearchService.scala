@@ -6,8 +6,9 @@ import nl.amony.service.resources.web.{durationInMillis, fileName, height}
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import nl.amony.service.search.api.SortDirection.{Asc, Desc}
 import nl.amony.service.search.api.SortField.*
-import nl.amony.service.search.api.{Query, SearchResult, SortOption}
+import nl.amony.service.search.api.*
 import scribe.Logging
+import io.grpc.stub.StreamObserver
 
 import scala.concurrent.Future
 
@@ -69,6 +70,10 @@ class InMemorySearchService extends SearchService with Logging {
 
         counter += 1
       }
+    }
+
+    override def reIndex(responseObserver: StreamObserver[ReIndexResult]): StreamObserver[ResourceInfo] = {
+      ???
     }
 
     override def searchMedia(query: Query): Future[SearchResult] = {

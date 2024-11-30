@@ -9,6 +9,7 @@ import pureconfig.generic.derivation.default.*
 import scribe.Logging
 
 import java.nio.file.Path
+import scala.reflect.ClassTag
 
 case class AmonyConfig(
     amonyHome: Path,
@@ -25,4 +26,12 @@ trait ConfigLoader extends Logging {
   val config       = ConfigFactory.load()
   val configSource = ConfigSource.fromConfig(config)
   val appConfig    = configSource.at("amony").loadOrThrow[AmonyConfig]
+
+  def loadConfig[T: ClassTag : ConfigReader](path: String): T = {
+
+    val configSource = ConfigSource.fromConfig(config.getConfig(path))
+    val configObj = configSource.loadOrThrow[T]
+
+    configObj
+  }
 }

@@ -1,11 +1,14 @@
 syntax = "proto3";
 
 import "SearchMessages.proto";
+import "ResourceMessages.proto";
 
 package nl.amony.service.search.api;
 
 service SearchService {
 
   rpc searchMedia(Query) returns (SearchResult) { }
+
+  rpc reIndex(stream nl.amony.service.resources.api.ResourceInfo) returns (ReIndexResult) { }
 }
 

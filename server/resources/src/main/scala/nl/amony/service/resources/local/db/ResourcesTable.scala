@@ -63,7 +63,8 @@ object ResourceRow  {
     creationTime = resource.creationTime,
     lastModifiedTime = resource.lastModifiedTime,
     title = resource.title,
-    description = resource.description
+    description = resource.description,
+    thumbnailTimestamp = resource.thumbnailTimestamp
   )
 }
 

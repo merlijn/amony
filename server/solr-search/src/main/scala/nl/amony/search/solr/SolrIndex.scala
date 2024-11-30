@@ -1,25 +1,25 @@
 package nl.amony.search.solr
 
-import nl.amony.search.solr.SolrIndex.FieldNames
+import nl.amony.search.solr.SolrIndex.*
 import nl.amony.service.resources.api.*
 import nl.amony.service.resources.api.events.*
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import nl.amony.service.search.api.SortDirection.Desc
 import nl.amony.service.search.api.SortField.*
-import nl.amony.service.search.api.{Query, SearchResult, SortOption}
+import nl.amony.service.search.api.*
 import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer
 import org.apache.solr.client.solrj.{SolrClient, SolrQuery}
 import org.apache.solr.common.params.{CommonParams, FacetParams, ModifiableSolrParams}
 import org.apache.solr.common.{SolrDocument, SolrInputDocument}
 import org.apache.solr.core.CoreContainer
 import scribe.Logging
+import io.grpc.stub.StreamObserver
 
 import java.nio.file.{Files, Path}
 import java.util.Properties
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
-import SolrIndex.*
 
 object SolrIndex {
 
@@ -187,7 +187,8 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
         
       if (query.minDuration.isDefined || query.maxDuration.isDefined)
         sb.append(s" AND ${FieldNames.duration}:[${query.minDuration.getOrElse(0)} TO ${query.maxDuration.getOrElse("*")}]")  
-      
+
+
       sb.result()
     }
 
@@ -238,6 +239,20 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
     case _ =>
       logger.info(s"Ignoring event: $event")
       ()
+  }
+  
+  override def reIndex(responseObserver: StreamObserver[ReIndexResult]): StreamObserver[ResourceInfo] = {
+    new StreamObserver[ResourceInfo] {
+      override def onNext(value: ResourceInfo): Unit = 
+        insertDocument(value)
+
+      override def onError(t: Throwable): Unit = 
+        logger.error("Error while re-indexing", t)
+
+      override def onCompleted(): Unit = 
+        responseObserver.onNext(ReIndexResult())
+        responseObserver.onCompleted()
+    }
   }
 
   override def searchMedia(query: Query): Future[SearchResult] = {

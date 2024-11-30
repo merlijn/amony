@@ -2,6 +2,7 @@ package nl.amony.service.resources.local
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import fs2.Pipe
 import nl.amony.lib.eventbus.EventTopic
 import nl.amony.lib.files.*
 import nl.amony.service.resources.*
@@ -79,4 +80,28 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
     db.updateThumbnailTimestamp(config.id, resourceId, timestamp,
       resource => topic.publish(ResourceUpdated(resource))
     )
+
+  def sync(): IO[Unit] = {
+
+    logger.info(s"Starting sync for directory: ${config.resourcePath.toAbsolutePath}")
+
+    val dbResources = db.count(config.id).unsafeRunSync()
+
+    val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (db.applyEvent(config.id, e => topic.publish(e)))
+    val debug: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"Resource event: $e")))
+    
+    def stateFromStorage(): Set[ResourceInfo] = db.getAll(config.id).map(_.toSet).unsafeRunSync()
+
+    def pullRetry(s: Set[ResourceInfo]): fs2.Stream[IO, ResourceEvent] =
+      LocalResourceScanner.pollingResourceEventStream(stateFromStorage(), config).handleErrorWith { e =>
+        logger.error(s"Scanner failed for ${config.resourcePath.toAbsolutePath}, retrying in ${config.pollInterval}", e)
+        fs2.Stream.sleep[IO](config.pollInterval) >> pullRetry(stateFromStorage())
+      }
+
+    pullRetry(stateFromStorage())
+      .through(debug)
+      .through(updateDb)
+      .compile
+      .drain
+  }
 }
