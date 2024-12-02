@@ -1,4 +1,4 @@
-package nl.amony.service.resources.local.db
+package nl.amony.service.resources.database
 
 import scribe.Logging
 import slick.basic.DatabaseConfig

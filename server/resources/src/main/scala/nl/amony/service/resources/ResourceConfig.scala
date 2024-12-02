@@ -1,8 +1,8 @@
 package nl.amony.service.resources
 
 import cats.effect.IO
-import nl.amony.service.resources.hash.Base32
-import nl.amony.service.resources.hash.PartialHash.partialHash
+import nl.amony.service.resources.util.Base32
+import nl.amony.service.resources.util.PartialHash.partialHash
 import pureconfig.*
 import pureconfig.generic.derivation.default.*
 

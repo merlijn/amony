@@ -1,4 +1,4 @@
-package nl.amony.service.resources.hash
+package nl.amony.service.resources.util
 
 import cats.effect.IO
 import nl.amony.lib.files.*

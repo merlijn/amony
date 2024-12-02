@@ -21,7 +21,7 @@ trait GetImageMetaData {
       IO {
         io.circe.parser.decode[List[MagickImageMeta]](json) match {
           case Left(error) => throw error
-          case Right(out) => out
+          case Right(out)  => out
         }
       }
     }

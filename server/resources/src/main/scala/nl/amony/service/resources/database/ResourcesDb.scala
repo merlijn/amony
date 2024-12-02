@@ -1,4 +1,4 @@
-package nl.amony.service.resources.local.db
+package nl.amony.service.resources.database
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
@@ -67,7 +67,7 @@ class ResourcesDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(usi
     dbIO(queries.getWithTags(bucketId))
 
   def deleteByRelativePath(bucketId: String, relativePath: String): IO[Int] = 
-    dbIO(resourcesTable.queryByPath(bucketId, relativePath).delete)
+    dbIO(resourcesTable.getByPath(bucketId, relativePath).delete)
 
   def update(bucketId: String, resourceId: String)(fn: Option[ResourceInfo] => ResourceInfo): IO[Unit] = 
     dbIO(
@@ -98,7 +98,7 @@ class ResourcesDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(usi
   private def move(bucketId: String, oldPath: String, newPath: String, effect: () => IO[Unit] = () => IO.unit): IO[Unit] =
     dbIO(
       (for {
-        old <- resourcesTable.queryByPath(bucketId, oldPath).result.head
+        old <- resourcesTable.getByPath(bucketId, oldPath).result.head
         _   <- resourcesTable.update(old.copy(relativePath = newPath))
         _   <- DBIO.from(effect().unsafeToFuture())
       } yield ()).transactionally
@@ -107,7 +107,7 @@ class ResourcesDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(usi
   def deleteResource(bucketId: String, resourceId: String, effect: () => IO[Unit] = () => IO.unit) : IO[Unit] = {
     val transaction =
       (for {
-        _ <- resourcesTable.queryByHash(bucketId, resourceId).delete
+        _ <- resourcesTable.getByHash(bucketId, resourceId).delete
         _ <- tagsTable.queryById(bucketId, resourceId).delete
         _ <- DBIO.from(effect().unsafeToFuture())
       } yield ()).transactionally
@@ -121,7 +121,7 @@ class ResourcesDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(usi
   def updateThumbnailTimestamp(bucketId: String, resourceId: String, timestamp: Long, effect: ResourceInfo => IO[Unit]): IO[Unit] = {
     val q = (
       for {
-        resourceRow <- resourcesTable.queryByHash(bucketId, resourceId).result
+        resourceRow <- resourcesTable.getByHash(bucketId, resourceId).result
         updated <- resourceRow.headOption.map { row =>
           val updatedRow = row.copy(thumbnailTimestamp = Some(timestamp))
           resourcesTable.update(updatedRow).map(_ => Some(updatedRow))
@@ -135,7 +135,7 @@ class ResourcesDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(usi
   
   def updateUserMeta(bucketId: String, hash: String, title: Option[String], description: Option[String], tags: List[String], effect: ResourceInfo => IO[Unit]): IO[Unit] = {
     val q = (for {
-      resourceRow <- resourcesTable.queryByHash(bucketId, hash).result
+      resourceRow <- resourcesTable.getByHash(bucketId, hash).result
           updated <- resourceRow.headOption.map { row =>
                        val updatedRow = row.copy(title = title, description = description)
                        resourcesTable.update(updatedRow).map(_ => Some(updatedRow))
@@ -150,7 +150,7 @@ class ResourcesDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(usi
   def getByHash(bucketId: String, hash: String): IO[Option[ResourceInfo]] = {
 
     val q = for {
-      resourceRow  <- resourcesTable.queryByHash(bucketId, hash).take(1).result.headOption
+      resourceRow  <- resourcesTable.getByHash(bucketId, hash).take(1).result.headOption
       resourceTags <- tagsTable.getTags(bucketId, hash).result
     } yield {
       resourceRow.map { r => r.toResource(resourceTags) }

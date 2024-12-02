@@ -1,40 +1,30 @@
 package nl.amony.webserver
 
 import cats.effect.{ExitCode, IO, IOApp}
-import com.typesafe.config.Config
-import fs2.Pipe
+import cats.implicits.toSemigroupKOps
 import nl.amony.lib.eventbus.EventTopic
-import nl.amony.lib.eventbus.jdbc.SlickEventBus
 import nl.amony.search.SearchRoutes
 import nl.amony.search.solr.SolrIndex
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.auth.{AuthConfig, AuthRoutes, AuthServiceImpl}
-import nl.amony.service.resources.api.ResourceInfo
 import nl.amony.service.resources.api.events.{ResourceAdded, ResourceEvent}
-import nl.amony.service.resources.local.db.ResourcesDb
-import nl.amony.service.resources.local.{LocalDirectoryBucket, LocalResourceScanner}
+import nl.amony.service.resources.database.ResourcesDb
+import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.ResourceRoutes
 import nl.amony.service.resources.{ResourceBucket, ResourceConfig}
-import nl.amony.service.search.api.Query
-import pureconfig.{ConfigReader, ConfigSource}
+import nl.amony.webserver.routes.WebAppRoutes
 import scribe.{Level, Logging}
 import slick.basic.DatabaseConfig
 import slick.jdbc.HsqldbProfile
-import org.http4s.*
-import org.http4s.dsl.io.*
-import cats.implicits.toSemigroupKOps
-import nl.amony.webserver.routes.WebAppRoutes
 
-import java.nio.file.Path
-import scala.concurrent.duration.DurationInt
 import scala.reflect.ClassTag
-import scala.util.Try
 
 object Main extends IOApp with ConfigLoader with Logging {
   
   override def run(args: List[String]): IO[ExitCode] = {
 
     import cats.effect.unsafe.implicits.global
+
     import scala.concurrent.ExecutionContext.Implicits.global
 
     scribe.Logger.root
@@ -45,7 +35,7 @@ object Main extends IOApp with ConfigLoader with Logging {
 
     logger.info(config.toString)
     logger.info("Starting application, home directory: " + appConfig.amonyHome)
-    
+
     val databaseConfig = DatabaseConfig.forConfig[HsqldbProfile]("amony.database", config)
     val searchService = new SolrIndex(appConfig.solr)
     val authService: AuthService = new AuthServiceImpl(loadConfig[AuthConfig]("amony.auth"))

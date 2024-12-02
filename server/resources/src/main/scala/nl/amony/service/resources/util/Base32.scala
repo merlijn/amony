@@ -1,4 +1,4 @@
-package nl.amony.service.resources.hash
+package nl.amony.service.resources.util
 
 object Base32 {
 

@@ -10,8 +10,8 @@ import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.api.ResourceInfo
 import nl.amony.service.resources.api.events.{ResourceEvent, ResourceUpdated}
 import nl.amony.service.resources.api.operations.ResourceOperation
+import nl.amony.service.resources.database.ResourcesDb
 import nl.amony.service.resources.local.LocalResourceOperations.*
-import nl.amony.service.resources.local.db.ResourcesDb
 import scribe.Logging
 import slick.jdbc.JdbcProfile
 
@@ -85,8 +85,6 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
 
     logger.info(s"Starting sync for directory: ${config.resourcePath.toAbsolutePath}")
 
-    val dbResources = db.count(config.id).unsafeRunSync()
-
     val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (db.applyEvent(config.id, e => topic.publish(e)))
     val debug: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"Resource event: $e")))
     
@@ -97,7 +95,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
         logger.error(s"Scanner failed for ${config.resourcePath.toAbsolutePath}, retrying in ${config.pollInterval}", e)
         fs2.Stream.sleep[IO](config.pollInterval) >> pullRetry(stateFromStorage())
       }
-
+      
     pullRetry(stateFromStorage())
       .through(debug)
       .through(updateDb)

@@ -3,6 +3,7 @@ package nl.amony.service.resources.local.db
 import cats.effect.IO
 import com.typesafe.config.ConfigFactory
 import nl.amony.service.resources.api.{ImageMeta, ResourceInfo}
+import nl.amony.service.resources.database.ResourcesDb
 import org.scalatest.flatspec.AnyFlatSpecLike
 import scribe.Logging
 import slick.basic.DatabaseConfig

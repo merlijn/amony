@@ -1,4 +1,4 @@
-package nl.amony.service.resources.local.db
+package nl.amony.service.resources.database
 
 import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta, ResourceMetaMessage}
 import scribe.Logging
@@ -70,7 +70,7 @@ object ResourceRow  {
 
 class ResourcesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends Logging {
 
-  import dbConfig.profile.api._
+  import dbConfig.profile.api.*
 
   class LocalFilesSchema(ttag: slick.lifted.Tag) extends Table[ResourceRow](ttag, "files") {
 
@@ -100,12 +100,12 @@ class ResourcesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends 
   def createIfNotExists: DBIO[Unit] =
     innerTable.schema.createIfNotExists
 
-  def queryByHash(bucketId: String, hash: String): Query[LocalFilesSchema, ResourceRow, Seq] =
+  def getByHash(bucketId: String, hash: String): Query[LocalFilesSchema, ResourceRow, Seq] =
     innerTable
       .filter(_.bucketId === bucketId)
       .filter(_.resourceId === hash)
 
-  def queryByPath(bucketId: String, path: String) =
+  def getByPath(bucketId: String, path: String) =
     innerTable
       .filter(_.bucketId === bucketId)
       .filter(_.relativePath === path)
@@ -114,10 +114,10 @@ class ResourcesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends 
     innerTable += ResourceRow.fromResource(resource)
 
   def update(row: ResourceRow) =
-    queryByHash(row.bucketId, row.hash).update(row)
+    getByHash(row.bucketId, row.hash).update(row)
 
   def update(resource: ResourceInfo) =
-    queryByHash(resource.bucketId, resource.hash).update(ResourceRow.fromResource(resource))
+    getByHash(resource.bucketId, resource.hash).update(ResourceRow.fromResource(resource))
 
   def insertOrUpdate(resource: ResourceInfo) =
     // ! The insertOrUpdate operation does not work in combination with a byte array field and hsqldb
