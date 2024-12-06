@@ -1,4 +1,4 @@
-package nl.amony.service.resources.local.db
+package nl.amony.service.resources.database
 
 import cats.effect.IO
 import com.typesafe.config.ConfigFactory
