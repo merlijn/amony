@@ -27,6 +27,7 @@ object LocalResourceMeta extends Logging {
                 height = stream.height,
                 durationInMillis = stream.durationMillis,
                 fps = stream.fps.toFloat,
+                codec = Some(stream.codec_name),
                 metaData = Map.empty,
               )
             }

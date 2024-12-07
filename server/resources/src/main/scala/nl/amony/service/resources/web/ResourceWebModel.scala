@@ -19,6 +19,7 @@ object ResourceWebModel {
     height: Int,
     fps: Float,
     duration: Long,
+    codec: Option[String],  
   ) derives Encoder.AsObject
 
   case class ResourceUrlsDto(

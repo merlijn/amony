@@ -25,7 +25,7 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
 
     import cats.effect.unsafe.implicits.global
     import scala.concurrent.ExecutionContext.Implicits.global
-    
+
     logger.info(config.toString)
     logger.info("Starting application, home directory: " + appConfig.amonyHome)
 
@@ -48,11 +48,9 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
     val resourceBuckets: Map[String, ResourceBucket] = appConfig.resources.map {
       case localConfig : ResourceConfig.LocalDirectoryConfig =>
         
-        val indexedResourcesCount = searchService.totalDocuments(localConfig.id)
-        val databaseResourcesCount = resourceDatabase.count(localConfig.id).unsafeRunSync().toLong
         val bucket = new LocalDirectoryBucket(localConfig, resourceDatabase, resourceEventTopic)
 
-        bucket.sync().unsafeRunAsync(_ => ())
+//        bucket.sync().unsafeRunAsync(_ => ())
         localConfig.id -> bucket
     }.toMap
 

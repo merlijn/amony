@@ -7,6 +7,9 @@ import org.http4s.*
 import org.http4s.dsl.io.*
 import scribe.Logging
 import cats.effect.unsafe.IORuntime
+import nl.amony.lib.ffmpeg.FFMpeg
+import nl.amony.service.resources.local.LocalDirectoryBucket
+
 import scala.concurrent.duration.*
 
 object AdminRoutes extends Logging:
@@ -23,6 +26,15 @@ object AdminRoutes extends Logging:
               .compile
               .drain
               .flatMap(_ => Ok())
+        }
+
+      case req @ POST -> Root / "api" / "admin" / "re-scan" =>
+        req.params.get("bucketId").flatMap(buckets.get) match {
+          case None => BadRequest("bucketId parameter missing or bucket not found.")
+          case Some(bucket: LocalDirectoryBucket[_]) =>
+            logger.info(s"Re-indexing all resources.")
+            bucket.reScanAll().flatMap(_ => Ok())
+          case _ => BadRequest("Bucket is not a LocalDirectoryBucket.")
         }
 
       case req @ POST -> Root / "api" / "admin" / "logging" / "set-log-level" =>

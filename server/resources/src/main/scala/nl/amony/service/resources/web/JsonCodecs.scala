@@ -40,14 +40,16 @@ object JsonCodecs {
             height    = height,
             duration  = 0,
             fps       = 0,
+            codec     = None,
           )
 
-      case VideoMeta(width, height, fps, duration, _) =>
+      case VideoMeta(width, height, fps, duration, codec, _) =>
           ResourceMetaDto(
             width     = width,
             height    = height,
             duration  = duration,
             fps       = fps,
+            codec     = codec,
           )
 
       case ResourceMeta.Empty =>
@@ -56,6 +58,7 @@ object JsonCodecs {
             height    = 0,
             duration  = 0,
             fps       = 0,
+            codec     = None,
           )
     }
 
@@ -71,7 +74,7 @@ object JsonCodecs {
 
     ResourceDto(
       bucketId  = resource.bucketId,
-      resourceId        = resource.hash,
+      resourceId = resource.hash,
       uploader  = "0",
       uploadTimestamp = resource.getCreationTime,
       urls = urls,

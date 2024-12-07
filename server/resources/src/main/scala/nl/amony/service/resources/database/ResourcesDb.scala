@@ -9,7 +9,12 @@ import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
 
 import scala.concurrent.ExecutionContext
-import scala.util.Try
+
+object ResourcesDb {
+    def apply[P <: JdbcProfile](dbConfig: DatabaseConfig[P])(using IORuntime: IORuntime): ResourcesDb[P] = {
+      new ResourcesDb(dbConfig)
+    }
+}
 
 class ResourcesDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(using IORuntime: IORuntime) extends Logging {
 
@@ -67,13 +72,8 @@ class ResourcesDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(usi
   def deleteByRelativePath(bucketId: String, relativePath: String): IO[Int] = 
     dbIO(resourcesTable.getByPath(bucketId, relativePath).delete)
 
-  def update(bucketId: String, resourceId: String)(fn: Option[ResourceInfo] => ResourceInfo): IO[Unit] = 
-    dbIO(
-      (for {
-        resource <- queries.getWithTags(bucketId, Some(_.resourceId === resourceId))
-        _        <- resource.headOption.map { row => resourcesTable.update(fn(Some(row))) }.getOrElse(DBIO.successful(0))
-      } yield ()).transactionally
-    )
+  def update(info: ResourceInfo): IO[Int] = 
+    dbIO(resourcesTable.update(info))
 
   def insert(resource: ResourceInfo, effect: () => IO[Unit] = () => IO.unit): IO[Unit] =
     dbIO(

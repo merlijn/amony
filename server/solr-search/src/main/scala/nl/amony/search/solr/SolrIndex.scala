@@ -38,6 +38,7 @@ object SolrIndex {
     val tags = "tags_ss"
     val thumbnailTimestamp = "thumbnailtimestamp_l"
     val title = "title_s"
+    val videoCodec = "video_codec_s"
     val description = "description_s"
     val created = "created_l"
     val lastModified = "lastmodified_l"
@@ -48,11 +49,9 @@ object SolrIndex {
     val fps = "fps_f"
     val resourceType = "resource_type_s"
   }
-  
-  def resource(config: SolrConfig)(using ec: ExecutionContext): Resource[IO, SolrIndex] = {
-    
+
+  def resource(config: SolrConfig)(using ec: ExecutionContext): Resource[IO, SolrIndex] =
     Resource.make[IO, SolrIndex](IO(new SolrIndex(config)))(_.close())
-  }
 }
 
 class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchService with Logging {
@@ -67,7 +66,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
   sys.addShutdownHook {
     Files.delete(lockfilePath)
   }
-  
+
   if (Files.exists(solrHome) && !Files.isDirectory(solrHome))
     throw new RuntimeException(s"Solr home is not a directory: $solrHome")
 
@@ -80,7 +79,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
     logger.info(s"Deleting lock file at: $lockfilePath")
     Files.delete(lockfilePath)
   }
-  
+
   protected def close(): IO[Unit] = IO {
     Files.delete(lockfilePath)
     solr.close()
@@ -116,10 +115,11 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
         solrInputDocument.addField(FieldNames.width, w)
         solrInputDocument.addField(FieldNames.height, h)
         solrInputDocument.addField(FieldNames.resourceType, "image")
-      case VideoMeta(w, h, fps, duration, _) =>
+      case VideoMeta(w, h, fps, duration, codec, _) =>
         solrInputDocument.addField(FieldNames.width, w)
         solrInputDocument.addField(FieldNames.height, h)
         solrInputDocument.addField(FieldNames.duration, duration)
+        codec.foreach(codec => solrInputDocument.addField(FieldNames.videoCodec, codec))
         solrInputDocument.addField(FieldNames.fps, fps)
         solrInputDocument.addField(FieldNames.resourceType, "video")
       case _ =>
@@ -155,7 +155,8 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
       case "video" =>
         val duration = document.getFieldValue(FieldNames.duration).asInstanceOf[Long]
         val fps = document.getFieldValue(FieldNames.fps).asInstanceOf[Float]
-        VideoMeta(width, height, fps, duration, Map.empty)
+        val codec = Option(document.getFieldValue(FieldNames.videoCodec)).map(_.asInstanceOf[String])
+        VideoMeta(width, height, fps, duration, codec, Map.empty)
       case _ => ResourceMeta.Empty
     }
 

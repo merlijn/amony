@@ -4,6 +4,7 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Pipe
 import nl.amony.lib.eventbus.EventTopic
+import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.files.*
 import nl.amony.service.resources.*
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
@@ -25,6 +26,18 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
   Files.createDirectories(config.cachePath)
 
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getByHash(config.id, resourceId)
+
+  def reScanAll(): IO[Unit] =
+    getAllResources().evalMap(resource => {
+        val f = config.resourcePath.resolve(resource.path)
+        logger.info(s"Scanning resource: $f")
+        LocalResourceMeta.resolveMeta(f).flatMap:
+          case None => IO.unit
+          case Some(meta) =>
+            val updated = resource.copy(contentMeta = meta)
+            db.update(updated) >> topic.publish(ResourceUpdated(updated))
+
+    }).compile.drain
 
   override def getOrCreate(resourceId: String, operation: ResourceOperation): IO[Option[Resource]] =
     getResourceInfo(resourceId).flatMap:
