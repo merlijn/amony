@@ -206,7 +206,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
   def totalDocuments(bucketId: String): Long =
     solr.query(collectionName, new SolrQuery(s"bucket_id_s:$bucketId")).getResults.getNumFound
 
-  private def insertDocument(resource: ResourceInfo) = {
+  private def insertResource(resource: ResourceInfo) = {
     try {
       logger.debug(s"Indexing media: ${resource.path}")
       val solrInputDocument = toSolrDocument(resource)
@@ -219,8 +219,8 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
 
   def processEvent(event: ResourceEvent): Unit = event match {
 
-    case ResourceAdded(resource)   => insertDocument(resource)
-    case ResourceUpdated(resource) => insertDocument(resource)
+    case ResourceAdded(resource)   => insertResource(resource)
+    case ResourceUpdated(resource) => insertResource(resource)
 
     case ResourceMoved(resourceId, oldPath, newPath) =>
       val solrDocument = new SolrInputDocument()
@@ -241,10 +241,10 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
       ()
   }
   
-  override def reIndex(responseObserver: StreamObserver[ReIndexResult]): StreamObserver[ResourceInfo] = {
+  override def indexAll(responseObserver: StreamObserver[ReIndexResult]): StreamObserver[ResourceInfo] = {
     new StreamObserver[ResourceInfo] {
       override def onNext(value: ResourceInfo): Unit = 
-        insertDocument(value)
+        insertResource(value)
 
       override def onError(t: Throwable): Unit = 
         logger.error("Error while re-indexing", t)
@@ -254,6 +254,8 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
         responseObserver.onCompleted()
     }
   }
+
+  override def index(request: ResourceInfo): Future[ReIndexResult] = Future { insertResource(request); ReIndexResult() }
 
   override def searchMedia(query: Query): Future[SearchResult] = {
 

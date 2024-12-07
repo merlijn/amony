@@ -72,9 +72,9 @@ class InMemorySearchService extends SearchService with Logging {
       }
     }
 
-    override def reIndex(responseObserver: StreamObserver[ReIndexResult]): StreamObserver[ResourceInfo] = {
-      ???
-    }
+    override def indexAll(responseObserver: StreamObserver[ReIndexResult]): StreamObserver[ResourceInfo] = ???
+
+    override def index(request: ResourceInfo): Future[ReIndexResult] = ???
 
     override def searchMedia(query: Query): Future[SearchResult] = {
       updateIndex()

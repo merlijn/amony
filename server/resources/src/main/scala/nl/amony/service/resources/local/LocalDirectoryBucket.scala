@@ -102,4 +102,10 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
       .compile
       .drain
   }
+
+  override def getAllResources(): fs2.Stream[IO, ResourceInfo] =
+    // TODO this should be a stream from the database
+    fs2.Stream.eval(db.getAll(config.id)).flatMap { resources =>
+      fs2.Stream.emits[IO, ResourceInfo](resources)
+    }
 }

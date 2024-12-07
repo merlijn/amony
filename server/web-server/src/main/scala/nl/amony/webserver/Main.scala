@@ -12,7 +12,7 @@ import nl.amony.service.resources.database.ResourcesDb
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.ResourceRoutes
 import nl.amony.service.resources.{ResourceBucket, ResourceConfig}
-import nl.amony.webserver.routes.WebAppRoutes
+import nl.amony.webserver.routes.{AdminRoutes, WebAppRoutes}
 import scribe.{Level, Logging}
 import slick.basic.DatabaseConfig
 import slick.jdbc.HsqldbProfile
@@ -57,14 +57,8 @@ object Main extends IOApp with ConfigLoader with Logging {
         
         val indexedResourcesCount = searchService.totalDocuments(localConfig.id)
         val databaseResourcesCount = resourceDatabase.count(localConfig.id).unsafeRunSync().toLong
-        
-        if (indexedResourcesCount < databaseResourcesCount) {
-          logger.info(s"Number of indexed documents ($indexedResourcesCount) is smaller than the database count ($databaseResourcesCount)) - Re-indexing all resources.")
-          resourceDatabase.getAll(localConfig.id).unsafeRunSync().foreach { resource => searchService.processEvent(ResourceAdded(resource)) }
-          logger.info(s"Indexing done")
-        }
-        
         val bucket = new LocalDirectoryBucket(localConfig, resourceDatabase, resourceEventTopic)
+
         bucket.sync().unsafeRunAsync(_ => ())
         localConfig.id -> bucket
     }.toMap
@@ -73,8 +67,9 @@ object Main extends IOApp with ConfigLoader with Logging {
       ResourceRoutes.apply(resourceBuckets) <+>
         SearchRoutes.apply(searchService, appConfig.search) <+>
         AuthRoutes.apply(authService) <+>
+        AdminRoutes.apply(searchService, resourceBuckets) <+>
         WebAppRoutes.apply(appConfig.api)
-    
+
     WebServer.run(appConfig.api, routes).onCancel(IO(logger.info("Exiting application")))
   }
 }

@@ -11,11 +11,13 @@ import slick.jdbc.JdbcProfile
 
 import scala.concurrent.duration.DurationInt
 
-case class EventRow(ord: Option[Long],
-                    topicId: String,
-                    sequenceNr: Long,
-                    timestamp: Long,
-                    eventData: Array[Byte])
+case class EventRow(
+  ord: Option[Long],
+  topicId: String,
+  sequenceNr: Long,
+  timestamp: Long,
+  eventData: Array[Byte]
+)
 
 class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
   extends PersistentEventBus with Logging {
@@ -46,17 +48,19 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
     def eventData    = column[Array[Byte]]("event_data")
     def eventSeqNr   = column[Long]("event_seq_nr")
 
+    def timestampIdx = index("timestamp_idx", timestamp)
     def pk           = primaryKey("events_primary_key", (topicId, eventSeqNr))
 
     def            * = (ord.?, topicId, eventSeqNr, timestamp, eventData) <> (EventRow.apply.tupled, EventRow.unapply)
   }
 
-  private class Processors(tag: Tag) extends Table[(String, String, Long)](tag, "processors") {
+  private class Processors(tag: Tag) extends Table[(String, String, Long, Long)](tag, "processors") {
     def processorId  = column[String]("processor_id")
     def topicId      = column[String]("topic_id")
     def sequenceNr   = column[Long]("sequence_nr")
+    def lastSeen     = column[Long]("last_seen")
     def pk           = primaryKey("processors_primary_key", (processorId, topicId))
-    def *            = (processorId, topicId, sequenceNr)
+    def *            = (processorId, topicId, sequenceNr, lastSeen)
   }
 
   private val eventTable = TableQuery[Events]
@@ -115,15 +119,12 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
       _ <- dbIO(processorTable.schema.createIfNotExists)
     } yield ()
 
-  def index(): Stream[IO, String] = {
+  def topicIds(): Stream[IO, String] = {
 
     val query = eventTable.map(_.topicId).distinct.result
-    val result: Stream[IO, String] =
-      Stream
-        .eval(dbIO(query))
-        .flatMap(r => Stream.fromIterator[IO](r.iterator, 1))
-
-    result
+    Stream
+      .eval(dbIO(query))
+      .flatMap(r => Stream.fromIterator[IO](r.iterator, 1))
   }
 
   protected[jdbc] def getAllMessagesForTopic(topicId: String, start: Long, max: Option[Long]): Stream[IO, Array[Byte]] =
@@ -152,12 +153,12 @@ class SlickEventBus[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])
         .filter(_.processorId === processorId)
         .filter(_.topicId === entityId)
         .take(1).result.headOption.map {
-          case Some((_, _, c)) => Some(c)
+          case Some((_, _, offset, _)) => Some(offset)
           case None => None
         }
 
     def storeProcessorSeqNr(processorId: String, entityId: String, seqNr: Long) =
-      processorTable.insertOrUpdate((processorId, entityId, seqNr))
+      processorTable.insertOrUpdate((processorId, entityId, seqNr, System.currentTimeMillis()))
 
     def getEvents(topicId: String, start: Long, max: Option[Long]) = {
       val events = eventTable

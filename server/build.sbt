@@ -21,12 +21,12 @@ val circe                    = "io.circe"                 %% "circe-core"       
 val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
 val circeParser              = "io.circe"                 %% "circe-parser"               % circeVersion
 
-val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.5.1"
-val slickHikariCp            = "com.typesafe.slick"       %% "slick-hikaricp"             % "3.5.1"
+val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.5.2"
+val slickHikariCp            = "com.typesafe.slick"       %% "slick-hikaricp"             % "3.5.2"
 
 val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "9.2.0"
-val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.12"
-val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.15.0"
+val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.16"
+val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.15.2"
 
 val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.10.2"
 val fs2Io                    = "co.fs2"                   %% "fs2-io"                     % "3.10.2"
@@ -38,12 +38,8 @@ val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"  
 val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.7.3"
 val h2DB                     = "com.h2database"            % "h2"                         % "2.2.224"
 val flywayDbCore             = "org.flywaydb"              % "flyway-core"                % "10.15.2"
-//val caffeine                 = "com.github.ben-manes.caffeine" % "caffeine"               % "3.1.5"
-val jacksonDatabind          = "com.fasterxml.jackson.core" % "jackson-databind"          % "2.15.1"
 
-//val pureConfig               = ("com.github.pureconfig"    %% "pureconfig-core"            % "0.17.4") cross CrossVersion.for3Use2_13 // no scala 3
-val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.7"
-//val pureConfigSquants        = ("com.github.pureconfig"    %% "pureconfig-squants"         % "0.17.2") cross CrossVersion.for3Use2_13 // no scala 3
+val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.8"
 val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.3"
 
 //val betterFiles              = "com.github.pathikrit"     %% "better-files"               % "3.9.1"
@@ -195,7 +191,7 @@ lazy val searchService =
       libraryDependencies ++= Seq(
         // akka
         scribeSlf4j,
-        circe, circeGeneric, jacksonDatabind,
+        circe, circeGeneric,
         http4sDsl, http4sCirce
       ),
     )

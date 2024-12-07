@@ -9,6 +9,8 @@ service SearchService {
 
   rpc searchMedia(Query) returns (SearchResult) { }
 
-  rpc reIndex(stream nl.amony.service.resources.api.ResourceInfo) returns (ReIndexResult) { }
+  rpc indexAll(stream nl.amony.service.resources.api.ResourceInfo) returns (ReIndexResult) { }
+
+  rpc index(nl.amony.service.resources.api.ResourceInfo) returns (ReIndexResult) { }
 }
 
