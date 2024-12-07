@@ -50,15 +50,13 @@ class ResourcesDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(usi
     }
   }
 
-  def createTablesIfNotExists(): Unit =
-    Try {
+  def createTablesIfNotExists(): IO[Unit] =
       dbIO(
         for {
           _ <- resourcesTable.createIfNotExists
           _ <- tagsTable.createIfNotExists
         } yield ()
-      ).unsafeRunSync()
-    }
+      )
 
   def count(bucketId: String): IO[Int] =
     dbIO(queries.bucketCount(bucketId))

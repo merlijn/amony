@@ -1,15 +1,13 @@
 package nl.amony.webserver
 
-import cats.effect.{ExitCode, IO}
 import cats.effect.unsafe.IORuntime
-import org.http4s.{HttpRoutes, Response, Status}
-import org.http4s.ember.server.EmberServerBuilder
-import org.http4s.server.Router
-import org.typelevel.log4cats.slf4j.Slf4jLogger
-import scribe.Logging
+import cats.effect.{ExitCode, IO, Resource}
 import com.comcast.ip4s.{Host, Port}
-import org.slf4j
+import org.http4s.ember.server.EmberServerBuilder
+import org.http4s.server.{Router, Server}
+import org.http4s.{HttpRoutes, Response, Status}
 import org.typelevel.log4cats.*
+import scribe.Logging
 // assumes dependency on log4cats-slf4j module
 import org.typelevel.log4cats.slf4j.Slf4jFactory
 
@@ -59,31 +57,31 @@ object WebServer extends Logging {
 //    }
 //  }
 
-  def run(config: WebServerConfig, routes: HttpRoutes[IO])(implicit io: IORuntime): IO[ExitCode] = {
-    logger.info("Starting web server")
+  def run(config: WebServerConfig, routes: HttpRoutes[IO])(implicit io: IORuntime): Resource[IO, Unit] = 
+    config.http match {
+      case Some(httpConfig) if httpConfig.enabled =>
+        logger.info(s"Starting HTTP server at ${httpConfig.host}:${httpConfig.port}")
+        httpServer(httpConfig, routes).map(_ => ())
+      case _ =>
+        logger.info("HTTP server is disabled")
+        Resource.unit[IO]
+    }
+
+  def httpServer(httpConfig: HttpConfig, routes: HttpRoutes[IO])(implicit io: IORuntime): Resource[IO, Server] = {
 
     val httpApp = Router("/" -> routes).orNotFound
     val serverError = Response(Status.InternalServerError).putHeaders(org.http4s.headers.`Content-Length`.zero)
 
-    config.http match {
-      case Some(httpConfig) if httpConfig.enabled =>
-        logger.info(s"Starting HTTP server at ${httpConfig.host}:${httpConfig.port}")
-        EmberServerBuilder
-          .default[IO]
-          //.withLogger(Slf4jLogger.getLoggerFromSlf4j[IO](slf4jLogger))
-          .withHost(Host.fromString(httpConfig.host).get)
-          .withPort(Port.fromInt(httpConfig.port).get)
-          .withHttpApp(httpApp)
-          .withErrorHandler { e =>
-            logger.warn("Internal server error", e)
-            IO(serverError)
-          }
-          .build
-          .use(_ => IO.never)
-          .as(ExitCode.Success)
-      case _ =>
-        logger.info("HTTP server is disabled")
-        IO(ExitCode.Success)
-    }
+    EmberServerBuilder
+      .default[IO]
+      //.withLogger(Slf4jLogger.getLoggerFromSlf4j[IO](slf4jLogger))
+      .withHost(Host.fromString(httpConfig.host).get)
+      .withPort(Port.fromInt(httpConfig.port).get)
+      .withHttpApp(httpApp)
+      .withErrorHandler { e =>
+        logger.warn("Internal server error", e)
+        IO(serverError)
+      }
+      .build
   }
 }

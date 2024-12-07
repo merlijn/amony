@@ -1,5 +1,6 @@
 package nl.amony.search.solr
 
+import cats.effect.{IO, Resource}
 import nl.amony.search.solr.SolrIndex.*
 import nl.amony.service.resources.api.*
 import nl.amony.service.resources.api.events.*
@@ -47,6 +48,11 @@ object SolrIndex {
     val fps = "fps_f"
     val resourceType = "resource_type_s"
   }
+  
+  def resource(config: SolrConfig)(using ec: ExecutionContext): Resource[IO, SolrIndex] = {
+    
+    Resource.make[IO, SolrIndex](IO(new SolrIndex(config)))(_.close())
+  }
 }
 
 class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchService with Logging {
@@ -55,6 +61,13 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
 
   logger.info(s"Solr home: $solrHome")
 
+  private val lockfilePath = solrHome.resolve("index/write.lock")
+
+  // delete the lock file on shutdown
+  sys.addShutdownHook {
+    Files.delete(lockfilePath)
+  }
+  
   if (Files.exists(solrHome) && !Files.isDirectory(solrHome))
     throw new RuntimeException(s"Solr home is not a directory: $solrHome")
 
@@ -63,16 +76,15 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
     TarGzExtractor.extractResourceTarGz(solrTarGzResource, solrHome)
   }
 
-  private val lockfilePath = solrHome.resolve("index/write.lock")
-
   if (Files.exists(lockfilePath) && config.deleteLockfileOnStartup) {
     logger.info(s"Deleting lock file at: $lockfilePath")
     Files.delete(lockfilePath)
   }
-
-  // delete the lock file on shutdown
-  sys.addShutdownHook {
+  
+  protected def close(): IO[Unit] = IO {
     Files.delete(lockfilePath)
+    solr.close()
+    container.shutdown()
   }
 
   System.getProperties.setProperty("solr.data.dir", solrHome.toAbsolutePath.toString)

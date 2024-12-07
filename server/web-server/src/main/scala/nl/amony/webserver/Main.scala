@@ -1,6 +1,6 @@
 package nl.amony.webserver
 
-import cats.effect.{ExitCode, IO, IOApp}
+import cats.effect.{ExitCode, IO, IOApp, Resource, ResourceApp}
 import cats.implicits.toSemigroupKOps
 import nl.amony.lib.eventbus.EventTopic
 import nl.amony.search.SearchRoutes
@@ -19,20 +19,13 @@ import slick.jdbc.HsqldbProfile
 
 import scala.reflect.ClassTag
 
-object Main extends IOApp with ConfigLoader with Logging {
+object Main extends ResourceApp.Forever with ConfigLoader with Logging {
   
-  override def run(args: List[String]): IO[ExitCode] = {
+  override def run(args: List[String]): Resource[IO, Unit] = {
 
     import cats.effect.unsafe.implicits.global
-
     import scala.concurrent.ExecutionContext.Implicits.global
-
-    scribe.Logger.root
-      .clearHandlers()
-      .clearModifiers()
-      .withHandler(minimumLevel = Some(Level.Debug))
-      .replace()
-
+    
     logger.info(config.toString)
     logger.info("Starting application, home directory: " + appConfig.amonyHome)
 
@@ -70,6 +63,6 @@ object Main extends IOApp with ConfigLoader with Logging {
         AdminRoutes.apply(searchService, resourceBuckets) <+>
         WebAppRoutes.apply(appConfig.api)
 
-    WebServer.run(appConfig.api, routes).onCancel(IO(logger.info("Exiting application")))
+    WebServer.run(appConfig.api, routes)
   }
 }

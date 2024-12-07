@@ -206,6 +206,7 @@ lazy val solrSearch =
       libraryDependencies ++= Seq(
         slf4jApi, scribeSlf4j,
         solr, solrLangId,
+        catsEffect,
       ),
       buildSolrTarGz / fileInputs += (Compile / resourceDirectory).value.toGlob / "solr" / "**",
       buildSolrTarGz := {
