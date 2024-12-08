@@ -34,9 +34,18 @@ object LocalResourceScanner {
       path -> FileInfo(resourcePath.resolve(Path.of(r.path)), r.hash, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0))
     }.toMap
 
-    def filterPath(path: Path) = config.filterFileName(path.getFileName.toString)
+    def filterPath(path: Path) = {
 
-    LocalDirectoryScanner.pollingStream(resourcePath, initialFiles, config.scan.pollInterval, filterPath, config.scan.hashingAlgorithm.createHash).parEvalMap(config.scan.scanParallelFactor) {
+      val fileName = path.getFileName.toString
+      config.scan.extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
+    }
+    
+    def filterDirectory(path: Path) = {
+      val fileName = path.getFileName.toString
+      !fileName.startsWith(".") && path != config.uploadPath
+    }
+
+    LocalDirectoryScanner.pollingStream(resourcePath, initialFiles, config.scan.pollInterval, filterDirectory, filterPath, config.scan.hashingAlgorithm.createHash).parEvalMap(config.scan.scanParallelFactor) {
       case FileAdded(f) =>
 
           LocalResourceMeta.resolveMeta(f.path)

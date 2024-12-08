@@ -39,11 +39,11 @@ object LocalDirectoryScanner extends Logging {
    * This means, the only thing we can rely on for checking equality is the metadata.
    * 
    */
-  private def scanDirectory(directory: Path, previous: FileStore, filter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] = {
+  private def scanDirectory(directory: Path, previous: FileStore, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] = {
     
     val start = System.currentTimeMillis()
 
-    val currentFiles: Seq[(Path, BasicFileAttributes)] = RecursiveFileVisitor.listFilesInDirectoryRecursive(directory, filter)
+    val currentFiles: Seq[(Path, BasicFileAttributes)] = RecursiveFileVisitor.listFilesInDirectoryRecursive(directory, directoryFilter, fileFilter)
 
     logger.debug(s"Listed directory files in ${System.currentTimeMillis() - start} ms")
 
@@ -58,7 +58,7 @@ object LocalDirectoryScanner extends Logging {
                         .getOrElse(hashFn(path))
         fileInfo   = FileInfo(path, attrs, hash)
         event <- prevByPath match
-                  case Some(`fileInfo`) => IO.pure(None)
+                  case Some(prev) if prev.hash == fileInfo.hash => IO.pure(None) // file has the same path and hash
                   case _                =>
                     previous.getByHash(hash).map(_.filter(_.equalFileMeta(path, attrs)).headOption match {
                       case Some(oldFileInfo) => Some(FileMoved(fileInfo, oldFileInfo.path))
@@ -98,7 +98,7 @@ object LocalDirectoryScanner extends Logging {
    * 
    * The state will be kept in memory and is not persisted.
    */
-  def pollingStream(directoryPath: Path, initialState: Map[Path, FileInfo], pollInterval: FiniteDuration, pathFilter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] = {
+  def pollingStream(directoryPath: Path, initialState: Map[Path, FileInfo], pollInterval: FiniteDuration, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] = {
 
     def unfoldRecursive(s: Map[Path, FileInfo]): Stream[IO, FileEvent] = {
       val startTime = System.currentTimeMillis()
@@ -109,7 +109,7 @@ object LocalDirectoryScanner extends Logging {
 
       val fileStore = new InMemoryFileStore(s)
       
-      scanDirectory(directoryPath, fileStore, pathFilter, hashFn)
+      scanDirectory(directoryPath, fileStore, directoryFilter, fileFilter, hashFn)
         .foldFlatMap(s)(applyEvent, s => logTime >> sleep >> unfoldRecursive(s))
     }
     
