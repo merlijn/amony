@@ -13,23 +13,29 @@ import scala.concurrent.duration.FiniteDuration
 object ResourceConfig {
 
   sealed trait ResourceBucketConfig derives ConfigReader
+  
+  case class ScanConfig(
+    enabled: Boolean,
+    parallelFactor: Int,
+    pollInterval: FiniteDuration,
+    verifyExistingHashes: Boolean,
+    hashingAlgorithm: HashingAlgorithm,
+    extensions: List[String],
+  ) derives ConfigReader
 
   case class LocalDirectoryConfig(
      id: String,
      private val path: Path,
-     scanParallelFactor: Int,
-     verifyExistingHashes: Boolean,
-     pollInterval: FiniteDuration,
-     hashingAlgorithm: HashingAlgorithm,
+     scan: ScanConfig,
      relativeCachePath: Path,
-     extensions: List[String]
+     
   ) extends ResourceBucketConfig {
 
     lazy val cachePath: Path    = path.toAbsolutePath.normalize().resolve(relativeCachePath)
     lazy val resourcePath: Path = path.toAbsolutePath.normalize()
 
     def filterFileName(fileName: String): Boolean =
-      extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
+      scan.extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
   }
 
   case class TranscodeSettings(

@@ -96,24 +96,28 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
 
   def sync(): IO[Unit] = {
 
-    logger.info(s"Starting sync for directory: ${config.resourcePath.toAbsolutePath}")
+    if (!config.scan.enabled)
+      IO.unit
+    else {
+      logger.info(s"Starting sync for directory: ${config.resourcePath.toAbsolutePath}")
 
-    val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (db.applyEvent(config.id, e => topic.publish(e)))
-    val debug: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"Resource event: $e")))
-    
-    def stateFromStorage(): Set[ResourceInfo] = db.getAll(config.id).map(_.toSet).unsafeRunSync()
+      val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (db.applyEvent(config.id, e => topic.publish(e)))
+      val debug: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"Resource event: $e")))
 
-    def pullRetry(s: Set[ResourceInfo]): fs2.Stream[IO, ResourceEvent] =
-      LocalResourceScanner.pollingResourceEventStream(stateFromStorage(), config).handleErrorWith { e =>
-        logger.error(s"Scanner failed for ${config.resourcePath.toAbsolutePath}, retrying in ${config.pollInterval}", e)
-        fs2.Stream.sleep[IO](config.pollInterval) >> pullRetry(stateFromStorage())
-      }
-      
-    pullRetry(stateFromStorage())
-      .through(debug)
-      .through(updateDb)
-      .compile
-      .drain
+      def stateFromStorage(): Set[ResourceInfo] = db.getAll(config.id).map(_.toSet).unsafeRunSync()
+
+      def pullRetry(s: Set[ResourceInfo]): fs2.Stream[IO, ResourceEvent] =
+        LocalResourceScanner.pollingResourceEventStream(stateFromStorage(), config).handleErrorWith { e =>
+          logger.error(s"Scanner failed for ${config.resourcePath.toAbsolutePath}, retrying in ${config.scan.pollInterval}", e)
+          fs2.Stream.sleep[IO](config.scan.pollInterval) >> pullRetry(stateFromStorage())
+        }
+
+      pullRetry(stateFromStorage())
+        .through(debug)
+        .through(updateDb)
+        .compile
+        .drain
+    }
   }
 
   override def getAllResources(): fs2.Stream[IO, ResourceInfo] =

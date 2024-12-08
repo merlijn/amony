@@ -36,7 +36,7 @@ object LocalResourceScanner {
 
     def filterPath(path: Path) = config.filterFileName(path.getFileName.toString)
 
-    LocalDirectoryScanner.pollingStream(resourcePath, initialFiles, config.pollInterval, filterPath, config.hashingAlgorithm.createHash).parEvalMap(4) {
+    LocalDirectoryScanner.pollingStream(resourcePath, initialFiles, config.scan.pollInterval, filterPath, config.scan.hashingAlgorithm.createHash).parEvalMap(4) {
       case FileAdded(f) =>
 
           LocalResourceMeta.resolveMeta(f.path)
