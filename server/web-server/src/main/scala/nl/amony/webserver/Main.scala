@@ -51,7 +51,7 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
         
         val bucket = new LocalDirectoryBucket(localConfig, resourceDatabase, resourceEventTopic)
 
-//        bucket.sync().unsafeRunAsync(_ => ())
+        bucket.sync().unsafeRunAsync(_ => ())
         localConfig.id -> bucket
     }.toMap
 
