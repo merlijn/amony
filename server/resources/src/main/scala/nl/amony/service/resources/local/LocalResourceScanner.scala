@@ -2,17 +2,13 @@ package nl.amony.service.resources.local
 
 import cats.effect.IO
 import fs2.Stream
-import nl.amony.lib.files.watcher.{FileAdded, FileDeleted, FileInfo, FileMoved, LocalDirectoryScanner}
-
-import java.nio.file.{Files, Path}
-import scala.concurrent.duration.FiniteDuration
+import nl.amony.lib.files.watcher.*
 import nl.amony.service.resources.Resource
+import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.api.*
 import nl.amony.service.resources.api.events.*
-import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 
-import java.io.{File, FilenameFilter}
-import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.{Files, Path}
 
 object LocalResourceScanner {
   
@@ -43,38 +39,25 @@ object LocalResourceScanner {
     LocalDirectoryScanner.pollingStream(resourcePath, initialFiles, config.pollInterval, filterPath, config.hashingAlgorithm.createHash).parEvalMap(4) {
       case FileAdded(f) =>
 
-        val resourceMeta: IO[ResourceMeta] =
           LocalResourceMeta.resolveMeta(f.path)
             .map(_.getOrElse(ResourceMeta.Empty))
             .recover {
               case e => logger.error(s"Failed to resolve meta for ${f.path}", e); ResourceMeta.Empty
+            }.map { meta =>
+              ResourceAdded(
+                ResourceInfo(
+                  bucketId = config.id,
+                  path = resourcePath.relativize(f.path).toString,
+                  hash = f.hash,
+                  size = f.size,
+                  contentType = Resource.contentTypeForPath(f.path),
+                  contentMeta = meta,
+                  creationTime = Some(f.creationTime),
+                  lastModifiedTime = Some(f.modifiedTime),
+                  thumbnailTimestamp = None
+                )
+              )
             }
-
-        for {
-          meta <- resourceMeta
-          thumbnailTimestamp = meta match {
-            case vid: VideoMeta =>
-                val ts = config.cachePath.toFile.list((dir: File, name: String) => name.startsWith(f.hash) && name.endsWith(".webp")).toList.map {
-                  case name @ s"${hash}_${timestamp}_${quality}.webp" =>
-                    val path = config.cachePath.resolve(name)
-                    val attrs = Files.readAttributes(path, classOf[BasicFileAttributes])
-                    timestamp.toLong -> attrs.creationTime().toMillis
-                }.maxByOption(_._2).map(_._1)
-                ts.foreach(t => logger.info(s"Recovered timestamp $t for ${f.path}"))
-                ts
-            case _ => None
-          }
-        } yield ResourceAdded(ResourceInfo(
-          bucketId = config.id,
-          path = resourcePath.relativize(f.path).toString,
-          hash = f.hash,
-          size = f.size,
-          contentType = Resource.contentTypeForPath(f.path),
-          contentMeta = meta,
-          creationTime = Some(f.creationTime),
-          lastModifiedTime = Some(f.modifiedTime),
-          thumbnailTimestamp = thumbnailTimestamp
-        ))
 
       case FileDeleted(f) =>
         IO.pure(ResourceDeleted(f.hash))

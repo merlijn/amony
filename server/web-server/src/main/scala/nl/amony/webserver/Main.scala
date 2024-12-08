@@ -1,19 +1,19 @@
 package nl.amony.webserver
 
-import cats.effect.{ExitCode, IO, IOApp, Resource, ResourceApp}
+import cats.effect.{IO, Resource, ResourceApp}
 import cats.implicits.toSemigroupKOps
 import nl.amony.lib.eventbus.EventTopic
 import nl.amony.search.SearchRoutes
 import nl.amony.search.solr.SolrIndex
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.auth.{AuthConfig, AuthRoutes, AuthServiceImpl}
-import nl.amony.service.resources.api.events.{ResourceAdded, ResourceEvent}
+import nl.amony.service.resources.api.events.ResourceEvent
 import nl.amony.service.resources.database.ResourcesDb
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.ResourceRoutes
 import nl.amony.service.resources.{ResourceBucket, ResourceConfig}
 import nl.amony.webserver.routes.{AdminRoutes, WebAppRoutes}
-import scribe.{Level, Logging}
+import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.HsqldbProfile
 
@@ -24,6 +24,7 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
   override def run(args: List[String]): Resource[IO, Unit] = {
 
     import cats.effect.unsafe.implicits.global
+
     import scala.concurrent.ExecutionContext.Implicits.global
 
     logger.info(config.toString)
