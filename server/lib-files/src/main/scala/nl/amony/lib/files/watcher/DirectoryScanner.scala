@@ -60,7 +60,7 @@ object LocalDirectoryScanner extends Logging {
         event <- prevByPath match
                   case Some(prev) if prev.hash == fileInfo.hash => IO.pure(None) // file has the same path and hash
                   case _                =>
-                    previous.getByHash(hash).map(_.filter(_.equalFileMeta(path, attrs)).headOption match {
+                    previous.getByHash(hash).map(_.headOption match {
                       case Some(oldFileInfo) => Some(FileMoved(fileInfo, oldFileInfo.path))
                       case _                 => Some(FileAdded(fileInfo))
                     })
