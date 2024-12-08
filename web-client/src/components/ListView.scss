@@ -3,6 +3,7 @@
 $row-height: 36px;
 
 .list-container {
+
   width: 100%;
   height: auto;
   display: table;
@@ -34,13 +35,19 @@ $row-height: 36px;
     @extend .hover-pointer;
 
     text-align: left;
+    vertical-align: middle;
 
     position: sticky;
-    top: 0px;
+    //top: 0px;
     font-size: 15px;
     font-weight: 500;
-    padding: 12px 8px;
+    height: 44px;
+    //padding: 12px 8px;
     border-bottom: 1px solid $gray-200;
+
+    span {
+      padding-left: 8px;
+    }
 
     .column-sort-icon {
       visibility: hidden;
@@ -49,8 +56,20 @@ $row-height: 36px;
   }
 
   .list-header-actionbar {
+
     @extend .list-header;
     width: 100%;
+    //text-align: center;
+    vertical-align: middle;
+
+    .action-bar-item {
+      @extend .hover-pointer;
+      width: 18px;
+      height: 18px;
+      margin-right: 8px;
+      //padding: 0px 8px;
+      //display: inline-block;
+    }
   }
 
   .list-header-select {
@@ -61,6 +80,16 @@ $row-height: 36px;
 
   .list-header-thumbnail {
     @extend .list-header;
+  }
+
+  .list-header-title {
+    @extend .list-header;
+    width: 65%;
+  }
+
+  .list-header-tags {
+    @extend .list-header;
+    width: 35%;
   }
 
   .list-header-date {
@@ -82,7 +111,6 @@ $row-height: 36px;
     .hover-action {
       visibility: hidden;
       position: absolute;
-      right: 0px;
     }
 
     .add-tag-button {
@@ -111,9 +139,12 @@ $row-height: 36px;
     }
 
     .edit-title {
-      @extend .hover-pointer;
-      width: 20px;
-      height: 20px;
+      @extend .hover-pointer, .action-icon, .hover-action;
+      background-color: $gray-100;
+      width: 30px;
+      right: -8px;
+      padding-left: 6px;
+      padding-right: 4px;
     }
 
     &:hover {
@@ -162,6 +193,7 @@ $row-height: 36px;
     .list-thumbnail {
       @extend .list-cell;
       padding-left: 0px;
+      padding-right: 0px;
       .list-thumbnail-img {
         @extend .hover-pointer;
         align-items: center;

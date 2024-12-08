@@ -72,22 +72,22 @@ const ListView = (props: ListProps) => {
     <tr key="row-header" className="list-row">
       <th className="list-header-select"><input type="checkbox"/></th>
       <th className="list-header-thumbnail"></th>
-      <th className="list-header">Title
+      <th className="list-header-title"><span>Title</span>
         <FaSort className="column-sort-icon"
                 onClick={() => setSort({field: "title", direction: sort.direction === "asc" ? "desc" : "asc"})}/>
       </th>
-      <th className="list-header">Tags</th>
-      <th className="list-header-date">Date
+      <th className="list-header-tags"><span>Tags</span></th>
+      <th className="list-header-date"><span>Date</span>
         <FaSort className="column-sort-icon" onClick={() => setSort({
           field: "date_added",
           direction: sort.direction === "asc" ? "desc" : "asc"
         })}/>
       </th>
-      <th className="list-header-size">Size
+      <th className="list-header-size"><span>Size</span>
         <FaSort className="column-sort-icon"
                 onClick={() => setSort({field: "size", direction: sort.direction === "asc" ? "desc" : "asc"})}/>
       </th>
-      <th className="list-header-resolution">Quality
+      <th className="list-header-resolution"><span>Quality</span>
         {/* <FaSort className="column-sort-icon" onClick = { () => setSort({field: "resolution", direction: sort.direction === "asc" ? "desc" : "asc" }) } /> */}
         {/* <BsThreeDotsVertical className="list-menu-icon" /> */}
       </th>
@@ -95,10 +95,10 @@ const ListView = (props: ListProps) => {
 
   const actionBar =
     <tr key="row-header" className="list-row">
-      <th className = "list-header"><input type="checkbox"/></th>
-      <th className = "list-header" colSpan={6}>
-        <FaHashtag />
-        <MdDelete />
+      <th className = "list-header-select"><input type="checkbox"/></th>
+      <th className = "list-header-actionbar" colSpan={6}>
+        <FaHashtag className= "action-bar-item" />
+        <MdDelete className = "action-bar-item" />
       </th>
     </tr>
 
@@ -113,9 +113,9 @@ const ListView = (props: ListProps) => {
     >
       <tr key="row-column-width-spacer" style ={ {height: 0 } }>
         <td style={{width: 36}}></td>
-        <td style={{width: 80}}></td>
-        <td style={{width: "50%"}}></td>
-        <td style={{width: "50%"}}></td>
+        <td style={{width: 72}}></td>
+        <td style={{width: "65%"}}></td>
+        <td style={{width: "35%"}}></td>
         <td style={{width: 110}}></td>
         <td style={{width: 100}}></td>
         <td style={{width: 80}}></td>
@@ -129,7 +129,7 @@ const ListView = (props: ListProps) => {
             return (
               <tr key={`row-${resource.resourceId}`} className="list-row">
 
-                <td key="select" className="list-select">
+                <td key="select" className="list-select" onClick={() => { toggle(index) }}>
                   <input type="checkbox" checked={selectedItems.indexOf(index) > -1}/>
                 </td>
 
@@ -141,9 +141,7 @@ const ListView = (props: ListProps) => {
                   </ProgressiveImage>
                 </td>
 
-                <TitleCell mediaResource={resource} onClick={() => {
-                  toggle(index)
-                }}/>
+                <TitleCell mediaResource={resource} onClick={() => { toggle(index) }}/>
 
                 <TagsCell resource={resource}/>
 
@@ -222,7 +220,8 @@ const TitleCell = ({ mediaResource, ...elementProps }: TitleCellProps ) => {
     <td style = { style } key="title" className="list-cell list-title" {...elementProps }>
       <div className="cell-wrapper">
         { !editTitle && title }
-        { (!editTitle && Api.session().isAdmin()) && <FiEdit onClick = { () => { setEditTitle(true); } } className="edit-title action-icon hover-action" /> }
+        { (!editTitle && Api.session().isAdmin()) &&
+            <FiEdit onClick = { () => { setEditTitle(true); } } className="edit-title" /> }
         { editTitle && 
           <input 
             ref        = { inputRef } 
