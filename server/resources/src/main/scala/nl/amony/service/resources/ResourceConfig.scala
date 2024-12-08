@@ -15,12 +15,12 @@ object ResourceConfig {
   sealed trait ResourceBucketConfig derives ConfigReader
   
   case class ScanConfig(
-    enabled: Boolean,
-    parallelFactor: Int,
-    pollInterval: FiniteDuration,
-    verifyExistingHashes: Boolean,
-    hashingAlgorithm: HashingAlgorithm,
-    extensions: List[String],
+     enabled: Boolean,
+     scanParallelFactor: Int,
+     pollInterval: FiniteDuration,
+     verifyExistingHashes: Boolean,
+     hashingAlgorithm: HashingAlgorithm,
+     extensions: List[String],
   ) derives ConfigReader
 
   case class LocalDirectoryConfig(
@@ -28,6 +28,7 @@ object ResourceConfig {
      private val path: Path,
      scan: ScanConfig,
      relativeCachePath: Path,
+     relativeUploadPath: Path,
      
   ) extends ResourceBucketConfig {
 
