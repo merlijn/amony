@@ -15,13 +15,15 @@
   .video-player {
     --plyr-video-controls-background: black;
     --plyr-color-main: #508ed1;
+    --plyr-border-radius: 0;
+
     width: 100%;
     height: 100%;
-  }
 
-  // hack to hide the center play button
-  > div > button[aria-Label="Play"] {
+    // hack to hide the center play button
+    > div > button[aria-Label="Play airport"] {
       display: none ! important;
+    }
   }
 }
 
