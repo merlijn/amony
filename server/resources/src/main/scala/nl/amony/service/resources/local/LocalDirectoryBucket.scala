@@ -29,7 +29,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
 
   override def id = config.id
 
-  def reScanAll(): IO[Unit] =
+  def reScanAllMetadata(): IO[Unit] =
     getAllResources().evalMap(resource => {
         val f = config.resourcePath.resolve(resource.path)
         logger.info(s"Scanning resource: $f")

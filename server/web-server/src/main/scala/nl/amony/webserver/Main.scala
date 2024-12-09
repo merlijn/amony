@@ -28,20 +28,15 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     logger.info(config.toString)
-    logger.info("Starting application, home directory: " + appConfig.amonyHome)
+    logger.info("Starting application, app home directory: " + appConfig.amonyHome)
 
     val databaseConfig = DatabaseConfig.forConfig[HsqldbProfile]("amony.database", config)
     val searchService = new SolrIndex(appConfig.solr)
     val authService: AuthService = new AuthServiceImpl(loadConfig[AuthConfig]("amony.auth"))
 
-//    val eventBus = new SlickEventBus(databaseConfig)
-//    Try { eventBus.createTablesIfNotExists().unsafeRunSync() }
-
-//    val codec = PersistenceCodec.scalaPBMappedPersistenceCodec[ResourceEventMessage, ResourceEvent]
-//    val topic = eventBus.getTopicForKey(EventTopicKey[ResourceEvent]("resource_events")(codec))
-
     val resourceDatabase = new ResourcesDb(databaseConfig)
-    resourceDatabase.createTablesIfNotExists()
+    if (databaseConfig.config.getBoolean("createTables"))
+      resourceDatabase.createTablesIfNotExists().unsafeRunSync()
 
     val resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
     resourceEventTopic.followTail(searchService.processEvent)

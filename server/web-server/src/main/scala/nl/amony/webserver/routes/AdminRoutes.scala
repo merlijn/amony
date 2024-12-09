@@ -37,12 +37,12 @@ object AdminRoutes extends Logging:
           case _ => BadRequest("Bucket is not a LocalDirectoryBucket.")
         }  
         
-      case req @ POST -> Root / "api" / "admin" / "re-scan" =>
+      case req @ POST -> Root / "api" / "admin" / "re-scan-metadata" =>
         req.params.get("bucketId").flatMap(buckets.get) match {
           case None => BadRequest("bucketId parameter missing or bucket not found.")
           case Some(bucket: LocalDirectoryBucket[_]) =>
             logger.info(s"Re-indexing all resources.")
-            bucket.reScanAll().flatMap(_ => Ok())
+            bucket.reScanAllMetadata().flatMap(_ => Ok())
           case _ => BadRequest("Bucket is not a LocalDirectoryBucket.")
         }
 
