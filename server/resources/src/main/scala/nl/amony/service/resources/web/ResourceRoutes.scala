@@ -3,7 +3,7 @@ package nl.amony.service.resources.web
 import cats.Monad
 import cats.effect.IO
 import nl.amony.service.resources.api.operations.{ImageThumbnail, VideoFragment, VideoThumbnail}
-import nl.amony.service.resources.{Resource, ResourceBucket}
+import nl.amony.service.resources.{Resource, ResourceBucket, ResourceWithRangeSupport}
 import nl.amony.service.resources.web.JsonCodecs.given
 import org.http4s.*
 import org.http4s.dsl.io.*
@@ -12,6 +12,7 @@ import io.circe.syntax.*
 import nl.amony.service.resources.web.ResourceWebModel.{ThumbnailTimestampDto, UserMetaDto}
 import org.http4s.circe.*
 import org.http4s.circe.CirceEntityDecoder.circeEntityDecoder
+import org.http4s.headers.`Content-Type`
 
 object ResourceRoutes extends Logging {
 
@@ -70,21 +71,29 @@ object ResourceRoutes extends Logging {
           val maybeResource: IO[Option[Resource]] =
             resourcePattern match
               case patterns.ThumbnailWithTimestamp(id, timestamp, height) => bucket.getOrCreate(id, VideoThumbnail(width = None, height = Some(height.toInt), 23, timestamp.toLong))
-              case patterns.Thumbnail(id, scaleHeight) => bucket.getOrCreate(id, ImageThumbnail(width = None, height = Some(scaleHeight.toInt), 0))
-              case patterns.VideoFragment(id, start, end, height) => bucket.getOrCreate(id, VideoFragment(width = None, height = Some(height.toInt), start.toLong, end.toLong, 23))
-              case patterns.Video(id, _, null) => bucket.getResource(id)
-              case id => bucket.getResource(id)
+              case patterns.Thumbnail(id, scaleHeight)                    => bucket.getOrCreate(id, ImageThumbnail(width = None, height = Some(scaleHeight.toInt), 0))
+              case patterns.VideoFragment(id, start, end, height)         => bucket.getOrCreate(id, VideoFragment(width = None, height = Some(height.toInt), start.toLong, end.toLong, 23))
+              case patterns.Video(id, _, null)                            => bucket.getResource(id)
+              case id                                                     => bucket.getResource(id)
 
           maybeResource.flatMap:
             case None =>
               NotFound()
-            case Some(content) =>
+            case Some(resource: ResourceWithRangeSupport) =>
               ResourceDirectives.responseWithRangeSupport[IO](
                 request = req,
-                size = content.size(),
-                maybeMediaType = content.contentType().map(MediaType.parse(_).toOption).flatten,
-                rangeResponseFn = content.getContentRange
+                size = resource.size(),
+                maybeMediaType = resource.contentType().map(MediaType.parse(_).toOption).flatten,
+                rangeResponseFn = resource.getContentRange
               )
+            case Some(resource) =>
+              Response(
+                status = Status.Ok,
+                headers = resource.contentType().map(MediaType.parse(_).toOption).flatten.map(mediaType => Headers(`Content-Type`(mediaType))).getOrElse(Headers.empty),
+                entity = Entity.stream(resource.getContent())
+              )
+
+              Ok(resource.getContent())
         }
     }
   }

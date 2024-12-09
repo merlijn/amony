@@ -14,12 +14,37 @@ object LocalResourceScanner {
   
   val logger = scribe.Logger("LocalResourceScanner")
 
-  /**
-   * Given an initial state, this method will poll the directory for changes and emit events for new, deleted and moved resources.
-   *
-   * The state will be kept in memory and is not persisted.
-   */
-  def pollingResourceEventStream(initialState: Set[ResourceInfo], config: LocalDirectoryConfig): Stream[IO, ResourceEvent] = {
+  private def mapEvent(basePath: Path, bucketId: String)(fileEvent: FileEvent): IO[ResourceEvent] = fileEvent match {
+    case FileAdded(f) =>
+
+      LocalResourceMeta.resolveMeta(f.path)
+        .map(_.getOrElse(ResourceMeta.Empty))
+        .recover {
+          case e => logger.error(s"Failed to resolve meta for ${f.path}", e); ResourceMeta.Empty
+        }.map { meta =>
+          ResourceAdded(
+            ResourceInfo(
+              bucketId = bucketId,
+              path = basePath.relativize(f.path).toString,
+              hash = f.hash,
+              size = f.size,
+              contentType = Resource.contentTypeForPath(f.path),
+              contentMeta = meta,
+              creationTime = Some(f.creationTime),
+              lastModifiedTime = Some(f.modifiedTime),
+              thumbnailTimestamp = None
+            )
+          )
+        }
+
+    case FileDeleted(f) =>
+      IO.pure(ResourceDeleted(f.hash))
+
+    case FileMoved(f, oldPath) =>
+      IO.pure(ResourceMoved(f.hash, basePath.relativize(oldPath).toString, basePath.relativize(f.path).toString))
+  }
+
+  private def scan(initialState: Set[ResourceInfo], config: LocalDirectoryConfig, poll: Boolean): Stream[IO, ResourceEvent] = {
 
     val resourcePath = config.resourcePath
 
@@ -28,51 +53,46 @@ object LocalResourceScanner {
       logger.error(s"The stored directory state for ${config.resourcePath} is non empty but no cache directory was found. Not continuing to prevent data loss. Perhaps the directory is not mounted? If this is what you intend, please manually create the cache directory at: ${config.cachePath}")
       return Stream.empty
     }
-    
+
     val initialFiles: Map[Path, FileInfo] = initialState.map { r =>
       val path = resourcePath.resolve(Path.of(r.path))
       path -> FileInfo(resourcePath.resolve(Path.of(r.path)), r.hash, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0))
     }.toMap
 
-    def filterPath(path: Path) = {
+    val fileStore = new InMemoryFileStore(initialFiles)
 
+    def filterFiles(path: Path) = {
       val fileName = path.getFileName.toString
       config.scan.extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
     }
-    
+
     def filterDirectory(path: Path) = {
       val fileName = path.getFileName.toString
       !fileName.startsWith(".") && path != config.uploadPath
     }
 
-    LocalDirectoryScanner.pollingStream(resourcePath, initialFiles, config.scan.pollInterval, filterDirectory, filterPath, config.scan.hashingAlgorithm.createHash).parEvalMap(config.scan.scanParallelFactor) {
-      case FileAdded(f) =>
-
-          LocalResourceMeta.resolveMeta(f.path)
-            .map(_.getOrElse(ResourceMeta.Empty))
-            .recover {
-              case e => logger.error(s"Failed to resolve meta for ${f.path}", e); ResourceMeta.Empty
-            }.map { meta =>
-              ResourceAdded(
-                ResourceInfo(
-                  bucketId = config.id,
-                  path = resourcePath.relativize(f.path).toString,
-                  hash = f.hash,
-                  size = f.size,
-                  contentType = Resource.contentTypeForPath(f.path),
-                  contentMeta = meta,
-                  creationTime = Some(f.creationTime),
-                  lastModifiedTime = Some(f.modifiedTime),
-                  thumbnailTimestamp = None
-                )
-              )
-            }
-
-      case FileDeleted(f) =>
-        IO.pure(ResourceDeleted(f.hash))
-
-      case FileMoved(f, oldPath) =>
-        IO.pure(ResourceMoved(f.hash, resourcePath.relativize(oldPath).toString, resourcePath.relativize(f.path).toString))
-    }
+    if (poll)
+      LocalDirectoryScanner
+        .pollingStream(resourcePath, fileStore, config.scan.pollInterval, filterDirectory, filterFiles, config.scan.hashingAlgorithm.createHash)
+        .parEvalMap(config.scan.scanParallelFactor)(mapEvent(resourcePath, config.id))
+    else
+      LocalDirectoryScanner.scanDirectory(resourcePath, fileStore, filterDirectory, filterFiles, config.scan.hashingAlgorithm.createHash)
+        .parEvalMap(config.scan.scanParallelFactor)(mapEvent(resourcePath, config.id))
   }
+
+  /**
+   * Given an initial state, this method will poll the directory for changes and emit events for new, deleted and moved resources.
+   *
+   * The state will be kept in memory and is not persisted.
+   */
+  def singleScan(initialState: Set[ResourceInfo], config: LocalDirectoryConfig): Stream[IO, ResourceEvent] =
+    scan(initialState, config, poll = false)
+
+  /**
+   * Given an initial state, this method will poll the directory for changes and emit events for new, deleted and moved resources.
+   *
+   * The state will be kept in memory and is not persisted.
+   */
+  def pollingResourceEventStream(initialState: Set[ResourceInfo], config: LocalDirectoryConfig): Stream[IO, ResourceEvent] =
+    scan(initialState, config, poll = true)
 }

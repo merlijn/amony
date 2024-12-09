@@ -127,6 +127,7 @@ lazy val libFFMPeg =
       libraryDependencies ++= Seq(
         scribeSlf4j,
         fs2Core,
+        fs2Io,
         scalaTest,
         circe,
         circeGeneric,

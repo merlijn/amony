@@ -39,7 +39,7 @@ object LocalDirectoryScanner extends Logging {
    * This means, the only thing we can rely on for checking equality is the metadata.
    * 
    */
-  private def scanDirectory(directory: Path, previous: FileStore, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] = {
+  def scanDirectory(directory: Path, previous: FileStore, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] = {
     
     val start = System.currentTimeMillis()
 
@@ -98,21 +98,19 @@ object LocalDirectoryScanner extends Logging {
    * 
    * The state will be kept in memory and is not persisted.
    */
-  def pollingStream(directoryPath: Path, initialState: Map[Path, FileInfo], pollInterval: FiniteDuration, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] = {
+  def pollingStream(directoryPath: Path, fileStore: FileStore, pollInterval: FiniteDuration, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] = {
 
-    def unfoldRecursive(s: Map[Path, FileInfo]): Stream[IO, FileEvent] = {
+    def unfoldRecursive(fs: FileStore): Stream[IO, FileEvent] = {
       val startTime = System.currentTimeMillis()
-      logger.debug(s"Scanning directory: ${directoryPath.toAbsolutePath}, previous state size: ${s.size}, stack depth: ${Thread.currentThread().getStackTrace.length}")
+      logger.debug(s"Scanning directory: ${directoryPath.toAbsolutePath}, previous state size: ${fs.getAll().size}, stack depth: ${Thread.currentThread().getStackTrace.length}")
       
       def logTime = Stream.eval(IO { logger.debug(s"Scanning took: ${System.currentTimeMillis() - startTime} ms") })
       def sleep = Stream.sleep[IO](pollInterval)
 
-      val fileStore = new InMemoryFileStore(s)
-      
       scanDirectory(directoryPath, fileStore, directoryFilter, fileFilter, hashFn)
-        .foldFlatMap(s)(applyEvent, s => logTime >> sleep >> unfoldRecursive(s))
+        .foldFlatMap(fs)((old, e) => old.applyEvent(e), s => logTime >> sleep >> unfoldRecursive(fs))
     }
     
-    Stream.suspend(unfoldRecursive(initialState))
+    Stream.suspend(unfoldRecursive(fileStore))
   }
 }

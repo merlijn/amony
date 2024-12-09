@@ -92,10 +92,10 @@ object LocalResourceOperations {
 
   case class VideoFragmentOp(resourceId: String, range: (Long, Long), height: Int) extends LocalResourceOp with Logging {
 
-    val minHeight = 64
+    val minHeight = 120
     val maxHeight = 4096
     val minLengthInMillis = 1000
-    val maxLengthInMillis = 30000
+    val maxLengthInMillis = 60000
 
     def outputFilename: String = s"${resourceId}_${range._1}-${range._2}_${height}p.mp4"
 
@@ -118,7 +118,6 @@ object LocalResourceOperations {
       FFMpeg.transcodeToMp4(
         inputFile = inputFile,
         range = range,
-        crf = 23,
         scaleHeight = Some(height),
         outputFile = Some(outputFile),
       )

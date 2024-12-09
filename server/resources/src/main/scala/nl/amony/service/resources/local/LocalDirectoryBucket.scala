@@ -27,6 +27,8 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
 
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getByHash(config.id, resourceId)
 
+  override def id = config.id
+
   def reScanAll(): IO[Unit] =
     getAllResources().evalMap(resource => {
         val f = config.resourcePath.resolve(resource.path)
@@ -94,6 +96,18 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
       resource => topic.publish(ResourceUpdated(resource))
     )
 
+  val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (db.applyEvent(config.id, e => topic.publish(e)))
+  val debug: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"Resource event: $e")))
+
+  def refresh(): IO[Unit] =
+    db.getAll(config.id).map(_.toSet).flatMap { allResources =>
+      LocalResourceScanner.singleScan(allResources, config)
+          .through(debug)
+          .through(updateDb)
+          .compile
+          .drain
+      }
+
   def sync(): IO[Unit] = {
 
     if (!config.scan.enabled)
@@ -101,18 +115,15 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
     else {
       logger.info(s"Starting sync for directory: ${config.resourcePath.toAbsolutePath}")
 
-      val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (db.applyEvent(config.id, e => topic.publish(e)))
-      val debug: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"Resource event: $e")))
-
       def stateFromStorage(): Set[ResourceInfo] = db.getAll(config.id).map(_.toSet).unsafeRunSync()
 
-      def pullRetry(s: Set[ResourceInfo]): fs2.Stream[IO, ResourceEvent] =
+      def pollRetry(s: Set[ResourceInfo]): fs2.Stream[IO, ResourceEvent] =
         LocalResourceScanner.pollingResourceEventStream(stateFromStorage(), config).handleErrorWith { e =>
           logger.error(s"Scanner failed for ${config.resourcePath.toAbsolutePath}, retrying in ${config.scan.pollInterval}", e)
-          fs2.Stream.sleep[IO](config.scan.pollInterval) >> pullRetry(stateFromStorage())
+          fs2.Stream.sleep[IO](config.scan.pollInterval) >> pollRetry(stateFromStorage())
         }
 
-      pullRetry(stateFromStorage())
+      pollRetry(stateFromStorage())
         .through(debug)
         .through(updateDb)
         .compile

@@ -12,7 +12,7 @@ object JsonCodecs {
 
   def toDto(resource: ResourceInfo): ResourceDto = {
 
-    val resolutions: List[Int] = (resource.height :: List(320)).sorted
+    val resolutions: List[Int] = (resource.height :: List(352)).sorted
 
     val thumbnailTimestamp: Long = resource.thumbnailTimestamp.getOrElse(resource.durationInMillis() / 3)
 

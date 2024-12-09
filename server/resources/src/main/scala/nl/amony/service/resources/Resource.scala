@@ -10,8 +10,11 @@ import java.nio.file.{Files, Path}
 trait Resource {
   def info(): ResourceInfo
   def contentType(): Option[String]
-  def size(): Long
   def getContent(): fs2.Stream[IO, Byte]
+}
+
+trait ResourceWithRangeSupport extends Resource {
+  def size(): Long
   def getContentRange(start: Long, end: Long): fs2.Stream[IO, Byte]
 }
 
@@ -29,7 +32,7 @@ object Resource {
     Option.when(Files.exists(path))(fromPath(path, info))
 }
 
-case class LocalFile(path: fs2.io.file.Path, resourceInfo: ResourceInfo) extends Resource {
+case class LocalFile(path: fs2.io.file.Path, resourceInfo: ResourceInfo) extends ResourceWithRangeSupport {
 
   override def info() = resourceInfo
 

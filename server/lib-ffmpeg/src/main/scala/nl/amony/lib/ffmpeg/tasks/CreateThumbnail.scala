@@ -35,10 +35,5 @@ trait CreateThumbnail extends Logging {
       // format: on
 
       runIgnoreOutput(cmds = "ffmpeg" :: args, useErrorStream = true)
-
-//      case e: Exception =>
-//        logger.warn(
-//          s"Failed to create thumbnail for inputFile: ${inputFile}, timestamp: ${formatTime(timestamp)}, outputFile: ${outputFile}, scaleHeight: ${scaleHeight}", e
-//        )
   }
 }

@@ -5,12 +5,14 @@ import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
 import nl.amony.service.resources.api.operations.ResourceOperation
 
 trait ResourceBucket {
+  
+  def id: String
 
   /**
    * Returns the content of a resource
    */
   def getResource(resourceId: String): IO[Option[Resource]]
-  
+
   def updateUserMeta(resourceId: String, title: Option[String], description: Option[String], tags: List[String]): IO[Unit]
   
   def updateThumbnailTimestamp(resourceId: String, timestamp: Long): IO[Unit]

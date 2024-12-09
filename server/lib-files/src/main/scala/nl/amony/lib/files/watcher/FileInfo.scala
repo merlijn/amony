@@ -27,6 +27,7 @@ trait FileStore:
   def getByPath(path: Path): IO[Option[FileInfo]]
   def getByHash(hash: String): IO[Seq[FileInfo]]
   def getAll(): Map[Path, FileInfo]
+  def applyEvent(e: FileEvent): FileStore
 
 
 class InMemoryFileStore(files: Map[Path, FileInfo]) extends FileStore:
@@ -37,3 +38,12 @@ class InMemoryFileStore(files: Map[Path, FileInfo]) extends FileStore:
   def getByPath(path: Path): IO[Option[FileInfo]] = IO.pure(files.get(path))
   def getByHash(hash: String): IO[Seq[FileInfo]] = IO.pure(byHash.get(hash).getOrElse(Seq.empty))
   def getAll(): Map[Path, FileInfo] = files
+
+  def applyEvent(e: FileEvent): InMemoryFileStore = e match
+    case FileAdded(fileInfo) =>
+      InMemoryFileStore(files + (fileInfo.path -> fileInfo))
+    case FileDeleted(fileInfo) =>
+      InMemoryFileStore(files - fileInfo.path)
+    case FileMoved(fileInfo, oldPath) =>
+      val prev = files(oldPath)
+      InMemoryFileStore(files - oldPath + (fileInfo.path -> prev.copy(path = fileInfo.path))) // we keep the old metadata
