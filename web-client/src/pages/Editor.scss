@@ -21,7 +21,7 @@
     height: 100%;
 
     // hack to hide the center play button
-    > div > button[aria-Label="Play airport"] {
+    > div > button.plyr__control--overlaid {
       display: none ! important;
     }
   }
