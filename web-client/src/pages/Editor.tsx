@@ -153,6 +153,7 @@ const PlayerView = (props: {vid: Resource}) => {
             <PlyrLayout
                 icons = { plyrLayoutIcons }
                 clickToFullscreen = { false }
+                invertTime = { false }
             />
             {/*<DefaultVideoLayout*/}
             {/*    icons = { defaultLayoutIcons }*/}
