@@ -16,7 +16,7 @@ trait CreateThumbnail extends Logging {
     inputFile: Path,
     timestamp: Long,
     outputFile: Option[Path],
-    scaleHeight: Option[Int]): IO[Unit] = {
+    scaleHeight: Option[Int]): IO[Int] = {
 
       val input  = inputFile.absoluteFileName()
       val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.webp")
@@ -34,6 +34,6 @@ trait CreateThumbnail extends Logging {
         )
       // format: on
 
-      runIgnoreOutput(cmds = "ffmpeg" :: args, useErrorStream = true)
+      runIgnoreOutput("ffmpeg", args)
   }
 }

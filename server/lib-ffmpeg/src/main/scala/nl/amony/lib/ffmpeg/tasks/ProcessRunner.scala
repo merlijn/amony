@@ -4,43 +4,29 @@ import cats.effect.IO
 import scribe.Logging
 
 trait ProcessRunner extends Logging {
+  
+  def toString(is: fs2.Stream[IO, Byte]): IO[String] = is.compile.toVector.map(_.toArray).map(new String(_))
 
-  def exec(cmds: Seq[String]): Process = {
-    logger.debug(s"Running command: ${cmds.mkString(" ")}")
-    Runtime.getRuntime.exec(cmds.toArray)
-  }
+  private def getOutputAsString(process: fs2.io.process.Process[IO], useErrorStream: Boolean, cmds: Seq[String]): IO[String] = {
+    val is       = if (useErrorStream) process.stderr else process.stdout
 
-  def unsafeExecSync(useErrorStream: Boolean, cmds: Seq[String]): String = {
-    val process  = exec(cmds)
-    getOutputAsString(process, useErrorStream, cmds)
-  }
-
-  private def getOutputAsString(process: Process, useErrorStream: Boolean, cmds: Seq[String]): String = {
-    val is       = if (useErrorStream) process.getErrorStream else process.getInputStream
-    val output   = scala.io.Source.fromInputStream(is).mkString
-    val exitCode = process.waitFor()
-
-    if (exitCode != 0)
-      logger.warn(s"""Non zero exit code for command: ${cmds.mkString(" ")} \n""" + output)
-
-    output
-  }
-
-  def runIgnoreOutput(cmds: Seq[String], useErrorStream: Boolean): IO[Unit] = runWithOutput(cmds, useErrorStream){ _ => IO.unit }
-
-  def runWithOutput[T](cmds: Seq[String], useErrorStream: Boolean)(fn: String => IO[T]): IO[T] = {
-    runCmd(cmds) { process =>
-
-      val output = getOutputAsString(process, useErrorStream, cmds)
-
-      fn(output)
+    process.exitValue.flatMap { exitCode =>
+      if (exitCode != 0)
+        logger.warn(s"""Non zero exit code for command: ${cmds.mkString(" ")} \n""")
+      
+      toString(is)
     }
   }
 
-  def runCmd[T](cmds: Seq[String])(fn: Process => IO[T]): IO[T] = {
+  def runIgnoreOutput(cmd: String, args: Seq[String]): IO[Int] = useProcess(cmd, args)(_.exitValue)
 
-    IO { exec(cmds) }
-      .flatMap { process => fn(process).onCancel( IO { process.destroy() })
+  def runWithOutput[T](cmd: String, args: Seq[String], useErrorStream: Boolean)(fn: String => IO[T]): IO[T] = 
+    useProcess(cmd, args) { process => getOutputAsString(process, useErrorStream, cmd +: args).flatMap(fn) }
+
+  def useProcess[T](cmd: String, args: Seq[String])(fn: fs2.io.process.Process[IO] => IO[T]): IO[T] = {
+
+    fs2.io.process.ProcessBuilder(cmd, args.toList).spawn[IO].use { process =>
+      fn(process)
     }
   }
 }

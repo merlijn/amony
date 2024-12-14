@@ -49,7 +49,7 @@ object ResourceRoutes extends Logging {
             case None => NotFound()
             case Some(resource) =>
             req.as[ThumbnailTimestampDto].flatMap { dto =>
-                bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis).flatMap(_ => Ok())
+              bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis).flatMap(_ => Ok())
             }
         }
 
@@ -87,9 +87,12 @@ object ResourceRoutes extends Logging {
                 rangeResponseFn = resource.getContentRange
               )
             case Some(resource) =>
+
+              val maybeMediaType = resource.contentType().map(MediaType.parse(_).toOption).flatten.map(`Content-Type`.apply)
+
               Response(
                 status = Status.Ok,
-                headers = resource.contentType().map(MediaType.parse(_).toOption).flatten.map(mediaType => Headers(`Content-Type`(mediaType))).getOrElse(Headers.empty),
+                headers = maybeMediaType.map(mediaType => Headers(mediaType)).getOrElse(Headers.empty),
                 entity = Entity.stream(resource.getContent())
               )
 

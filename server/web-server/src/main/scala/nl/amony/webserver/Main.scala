@@ -27,8 +27,8 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
 
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    logger.info(config.toString)
     logger.info("Starting application, app home directory: " + appConfig.amonyHome)
+    logger.debug("Configuration: " + appConfig)
 
     val databaseConfig = DatabaseConfig.forConfig[HsqldbProfile]("amony.database", config)
     val searchService = new SolrIndex(appConfig.solr)

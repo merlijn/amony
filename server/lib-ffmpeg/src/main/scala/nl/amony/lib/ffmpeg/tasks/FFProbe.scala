@@ -46,26 +46,17 @@ trait FFProbe extends Logging with FFProbeJsonCodecs {
     val v    = if (debug) "debug" else "quiet"
     val args = List("-print_format", "json", "-show_streams", "-loglevel", v, fileName)
 
-    runCmd("ffprobe" :: args) { process =>
-      IO {
-        val jsonOutput = scala.io.Source.fromInputStream(process.getInputStream).mkString
+    useProcess("ffprobe", args) { process =>
 
-        // setting -v to debug will hang the standard output stream on some files.
-        val debugOutput = {
-          if (debug) {
-            val debugOutput = scala.io.Source.fromInputStream(process.getErrorStream).mkString
-            val fastStart   = fastStartPattern.matches(debugOutput)
-            Some(ProbeDebugOutput(fastStart))
-          } else {
-            None
-          }
-        }
-
+      for {
+        jsonOutput <- toString(process.stdout)
+        debugOutput <- if (debug) toString(process.stderr).map(debugOutput => Some(ProbeDebugOutput(fastStartPattern.matches(debugOutput)))) else IO.pure(None)
+      } yield {
         io.circe.parser.decode[ProbeOutput](jsonOutput) match {
           case Left(error) => throw error
-          case Right(out)  => out.copy(debugOutput = debugOutput)
+          case Right(out) => out.copy(debugOutput = debugOutput)
         }
-      }.timeout(timeout)
-    }
+      }
+    }.timeout(timeout)
   }
 }

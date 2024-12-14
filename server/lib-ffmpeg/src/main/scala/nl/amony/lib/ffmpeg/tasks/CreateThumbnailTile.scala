@@ -82,7 +82,7 @@ trait CreateThumbnailTile extends Logging {
         )
         // format: on
 
-        runWithOutput[Unit](cmds = "ffmpeg" :: args, useErrorStream = true) { _ =>
+        runWithOutput[Unit]("ffmpeg", args, useErrorStream = true) { _ =>
           def createWebVtt() = {
 
             val thumbLength: Int = (stream.durationMillis / frames).toInt

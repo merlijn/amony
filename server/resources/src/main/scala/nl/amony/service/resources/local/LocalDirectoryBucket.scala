@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: ResourceDatabase[P], topic: EventTopic[ResourceEvent])(using runtime: IORuntime) extends ResourceBucket with Logging {
 
-  private val resourceStore = new ConcurrentHashMap[LocalResourceOp, IO[Path]]()
+  private val runningOperations = new ConcurrentHashMap[LocalResourceOp, IO[Path]]()
   
   Files.createDirectories(config.cachePath)
 
@@ -56,10 +56,10 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
        * This is not ideal, there is still a small time window in which the operation can be triggered multiple times, although it is very unlikely to happen
        * TODO Create a full proof solution using a MapRef from cats
        */
-      resourceStore
+      runningOperations
         .compute(operation, (_, value) => { createResource(config.resourcePath.resolve(inputResource.path), inputResource, config.cachePath, operation) })
         .map(path => Resource.fromPathMaybe(path, inputResource))
-        .flatTap { _ => IO(resourceStore.remove(operation)) } // removes the operation from the map to prevent memory leak, leaves a small gap
+        .flatTap { _ => IO(runningOperations.remove(operation)) }
     }
   }
 

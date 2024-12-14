@@ -66,8 +66,8 @@ object FFMpeg extends Logging
 
     logger.info(s"Adding faststart at: $out")
 
-    runWithOutput(
-      cmds = List(
+    runWithOutput("ffmpeg",
+      args = List(
         "ffmpeg",
         "-i",        video.absoluteFileName(),
         "-c",        "copy",
@@ -100,7 +100,7 @@ object FFMpeg extends Logging
       List("-v", "quiet", "-y",   output)
     // format: on
 
-    runWithOutput[Path](cmds = "ffmpeg" :: args, useErrorStream = true) { _ => IO.pure(Path.of(output)) }
+    runIgnoreOutput("ffmpeg", args).map { _ => Path.of(output) }
   }
 
   def transcodeStreamToMp4(
@@ -124,14 +124,14 @@ object FFMpeg extends Logging
       )
     // format: on
 
-    fs2.io.readInputStream[IO](IO(exec("ffmpeg" :: args).getInputStream), 1024)
+    fs2.Stream.force(useProcess("ffmpeg", args)(p => IO(p.stdout)))
   }
 
   def streamThumbnail(
       inputFile: Path,
       timestamp: Long,
       scaleHeight: Int
-  ): InputStream = {
+  ): fs2.Stream[IO, Byte] = {
 
     // format: off
     val args = List(
@@ -145,7 +145,6 @@ object FFMpeg extends Logging
     )
     // format: on
 
-    exec("ffmpeg" :: args).getInputStream
+    fs2.Stream.force(useProcess("ffmpeg", args)(p => IO(p.stdout)))
   }
-
 }
