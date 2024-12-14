@@ -68,7 +68,7 @@ object ResourceRow  {
   )
 }
 
-class ResourcesTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends Logging {
+class ResourceTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends Logging {
 
   import dbConfig.profile.api.*
 

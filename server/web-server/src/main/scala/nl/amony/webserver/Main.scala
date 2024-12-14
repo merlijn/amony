@@ -8,7 +8,7 @@ import nl.amony.search.solr.SolrIndex
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.auth.{AuthConfig, AuthRoutes, AuthServiceImpl}
 import nl.amony.service.resources.api.events.ResourceEvent
-import nl.amony.service.resources.database.ResourcesDb
+import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.ResourceRoutes
 import nl.amony.service.resources.{ResourceBucket, ResourceConfig}
@@ -34,7 +34,7 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
     val searchService = new SolrIndex(appConfig.solr)
     val authService: AuthService = new AuthServiceImpl(loadConfig[AuthConfig]("amony.auth"))
 
-    val resourceDatabase = new ResourcesDb(databaseConfig)
+    val resourceDatabase = new ResourceDatabase(databaseConfig)
     if (databaseConfig.config.getBoolean("createTables"))
       resourceDatabase.createTablesIfNotExists().unsafeRunSync()
 

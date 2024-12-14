@@ -10,13 +10,13 @@ import slick.jdbc.JdbcProfile
 
 import scala.concurrent.ExecutionContext
 
-object ResourcesDb {
-    def apply[P <: JdbcProfile](dbConfig: DatabaseConfig[P])(using IORuntime: IORuntime): ResourcesDb[P] = {
-      new ResourcesDb(dbConfig)
+object ResourceDatabase {
+    def apply[P <: JdbcProfile](dbConfig: DatabaseConfig[P])(using IORuntime: IORuntime): ResourceDatabase[P] = {
+      new ResourceDatabase(dbConfig)
     }
 }
 
-class ResourcesDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(using IORuntime: IORuntime) extends Logging {
+class ResourceDatabase[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(using IORuntime: IORuntime) extends Logging {
 
   import dbConfig.profile.api.*
   private val db = dbConfig.db
@@ -25,8 +25,8 @@ class ResourcesDb[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(usi
   
   private def dbIO[T](a: DBIO[T]): IO[T] = IO.fromFuture(IO(db.run(a))).onError { t => IO { logger.warn(t) } }
 
-  private val resourcesTable = new ResourcesTable[P](dbConfig)
-  private val tagsTable = new TagsTable[P](dbConfig)
+  private val resourcesTable = new ResourceTable[P](dbConfig)
+  private val tagsTable = new ResourceTagsTable[P](dbConfig)
 
   private object queries {
     

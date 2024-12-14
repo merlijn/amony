@@ -3,14 +3,14 @@ package nl.amony.service.resources.database
 import cats.effect.IO
 import com.typesafe.config.ConfigFactory
 import nl.amony.service.resources.api.{ImageMeta, ResourceInfo}
-import nl.amony.service.resources.database.ResourcesDb
+import nl.amony.service.resources.database.ResourceDatabase
 import org.scalatest.flatspec.AnyFlatSpecLike
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.H2Profile
 import slick.jdbc.H2Profile.api.*
 
-class ResourcesDbSpec extends AnyFlatSpecLike with Logging {
+class ResourceDatabaseSpec extends AnyFlatSpecLike with Logging {
 
   import cats.effect.unsafe.implicits.global
 
@@ -34,7 +34,7 @@ class ResourcesDbSpec extends AnyFlatSpecLike with Logging {
 
   val dbConfig = DatabaseConfig.forConfig[H2Profile]("h2mem1-test", ConfigFactory.parseString(config))
 
-  val store = new ResourcesDb(dbConfig)
+  val store = new ResourceDatabase(dbConfig)
 
   store.createTablesIfNotExists()
 

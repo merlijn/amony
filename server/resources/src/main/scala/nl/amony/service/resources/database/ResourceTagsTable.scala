@@ -8,7 +8,7 @@ import scala.concurrent.ExecutionContext
 
 case class ResourceTagRow(bucketId: String, resourceId: String, tag: String)
 
-class TagsTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends Logging {
+class ResourceTagsTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends Logging {
 
   import dbConfig.profile.api.*
 

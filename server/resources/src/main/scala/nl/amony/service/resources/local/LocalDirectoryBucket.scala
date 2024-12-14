@@ -11,7 +11,7 @@ import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.api.ResourceInfo
 import nl.amony.service.resources.api.events.{ResourceEvent, ResourceUpdated}
 import nl.amony.service.resources.api.operations.ResourceOperation
-import nl.amony.service.resources.database.ResourcesDb
+import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalResourceOperations.*
 import scribe.Logging
 import slick.jdbc.JdbcProfile
@@ -19,7 +19,7 @@ import slick.jdbc.JdbcProfile
 import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
 
-class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: ResourcesDb[P], topic: EventTopic[ResourceEvent])(using runtime: IORuntime) extends ResourceBucket with Logging {
+class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: ResourceDatabase[P], topic: EventTopic[ResourceEvent])(using runtime: IORuntime) extends ResourceBucket with Logging {
 
   private val resourceStore = new ConcurrentHashMap[LocalResourceOp, IO[Path]]()
   
@@ -100,13 +100,12 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
   val debug: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"Resource event: $e")))
 
   def refresh(): IO[Unit] =
-    db.getAll(config.id).map(_.toSet).flatMap { allResources =>
+    db.getAll(config.id).map(_.toSet).flatMap: allResources =>
       LocalResourceScanner.singleScan(allResources, config)
           .through(debug)
           .through(updateDb)
           .compile
           .drain
-      }
 
   def sync(): IO[Unit] = {
 
