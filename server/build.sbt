@@ -246,24 +246,37 @@ lazy val amonyServer =
       reStart / javaOptions ++= javaOpts,
       run / fork             := true,
       run / javaOptions     ++= javaOpts,
-      libraryDependencies ++= Seq(
+      outputStrategy         := Some(StdoutOutput),
 
+      jibBaseImage   := "europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/base:latest",
+//      jibPlatforms   := Set("linux/amd64"),
+      jibImageFormat := JibImageFormat.Docker,
+      jibRegistry    := "europe-west4-docker.pkg.dev",
+      jibName        := "amony-app",
+      jibTags        := List("latest"),
+      jibEntrypoint  := Some(List("java", "-jar", "/amony.jar")),
+      jibCustomRepositoryPath := Some("amony-04c85b/docker-images/amony"),
+
+      Compile / packageBin / mainClass := Some("nl.amony.webserver.WebServer"),
+
+      libraryDependencies ++= Seq(
         // logging
         slf4jApi, scribeSlf4j, log4CatsSlf4j,
-
         // config loading
         typesafeConfig, pureConfig,
-        liquibaseCore,
-        slickHikariCp, hsqlDB,
-        h2DB,
-        circe,
-        circeGeneric,
-        circeParser,
+        // database
+        liquibaseCore, slickHikariCp, hsqlDB, h2DB,
+        circe, circeGeneric, circeParser,
         fs2Core,
         http4sEmberServer,
         // test
         scalaTest, scalaTestCheck
       ),
+
+      excludeDependencies ++= List(
+        ExclusionRule("javax.xml.bind", "jaxb-api"),
+      ),
+
       //    assembly / logLevel := Level.Debug,
       assembly / assemblyJarName := "amony.jar",
       assembly / assemblyMergeStrategy := {
