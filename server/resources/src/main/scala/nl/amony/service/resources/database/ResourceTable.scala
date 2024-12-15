@@ -72,7 +72,7 @@ class ResourceTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends L
 
   import dbConfig.profile.api.*
 
-  class LocalFilesSchema(ttag: slick.lifted.Tag) extends Table[ResourceRow](ttag, "FILES") {
+  class LocalFilesSchema(ttag: slick.lifted.Tag) extends Table[ResourceRow](ttag, "files") {
 
     def bucketId = column[String]("bucket_id")
     def relativePath = column[String]("relative_path")

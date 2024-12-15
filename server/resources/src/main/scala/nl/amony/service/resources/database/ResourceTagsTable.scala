@@ -12,7 +12,7 @@ class ResourceTagsTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) exten
 
   import dbConfig.profile.api.*
 
-  class ResourceTags(ttag: Tag) extends Table[ResourceTagRow](ttag, "RESOURCE_TAGS") {
+  class ResourceTags(ttag: Tag) extends Table[ResourceTagRow](ttag, "resource_tags") {
 
     def bucketId: Rep[String] = column[String]("bucket_id")
     def resourceId = column[String]("resource_id")

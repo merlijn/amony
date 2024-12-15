@@ -1,4 +1,4 @@
-create table files
+create table "files"
 (
     "bucket_id"           VARCHAR(128)  not null,
     "relative_path"       VARCHAR(1024) not null,
@@ -14,11 +14,11 @@ create table files
     constraint "resources_pk" primary key ("bucket_id", "resource_id")
 );
 
-create index bucket_id_idx on files ("bucket_id");
+create index "bucket_id_idx" on "files" ("bucket_id");
 
-create index hash_idx on files ("resource_id");
+create index "hash_idx" on "files" ("resource_id");
 
-create table resource_tags
+create table "resource_tags"
 (
     "bucket_id"   VARCHAR(128) not null,
     "resource_id" VARCHAR(128) not null,
@@ -27,6 +27,6 @@ create table resource_tags
         primary key ("bucket_id", "resource_id", "tag")
 );
 
-create index resource_idx
-    on resource_tags ("bucket_id", "resource_id");
+create index "resource_idx"
+    on "resource_tags" ("bucket_id", "resource_id");
 
