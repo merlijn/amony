@@ -64,7 +64,8 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
 
   // delete the lock file on shutdown
   sys.addShutdownHook {
-    Files.delete(lockfilePath)
+    if (Files.exists(lockfilePath))
+      Files.delete(lockfilePath)
   }
 
   if (Files.exists(solrHome) && !Files.isDirectory(solrHome))

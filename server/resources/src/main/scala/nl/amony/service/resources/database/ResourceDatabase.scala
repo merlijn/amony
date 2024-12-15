@@ -1,7 +1,11 @@
 package nl.amony.service.resources.database
 
-import cats.effect.IO
+import cats.effect.{IO, Resource}
 import cats.effect.unsafe.IORuntime
+import liquibase.Liquibase
+import liquibase.database.jvm.JdbcConnection
+import liquibase.database.{Database, DatabaseFactory}
+import liquibase.resource.ClassLoaderResourceAccessor
 import nl.amony.service.resources.api.ResourceInfo
 import nl.amony.service.resources.api.events.*
 import scribe.Logging
@@ -11,8 +15,14 @@ import slick.jdbc.JdbcProfile
 import scala.concurrent.ExecutionContext
 
 object ResourceDatabase {
-    def apply[P <: JdbcProfile](dbConfig: DatabaseConfig[P])(using IORuntime: IORuntime): ResourceDatabase[P] = {
-      new ResourceDatabase(dbConfig)
+    def resource[P <: JdbcProfile](dbConfig: DatabaseConfig[P])(using IORuntime: IORuntime): Resource[IO, ResourceDatabase[P]] = {
+      Resource.make {
+        IO {
+          val db = new ResourceDatabase(dbConfig)
+          db.init()
+          db
+        }
+      } { db => IO(db.db.close()) }
     }
 }
 
@@ -54,15 +64,14 @@ class ResourceDatabase[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
         }
     }
   }
-
-  def createTablesIfNotExists(): IO[Unit] =
-      dbIO(
-        for {
-          _ <- resourcesTable.createIfNotExists
-          _ <- tagsTable.createIfNotExists
-        } yield ()
-      )
-
+  
+  def init() = {
+    val connection = db.source.createConnection()
+    val liquibaseDatabase = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connection));
+    val liquibase = new Liquibase("db/00-changelog.yaml", new ClassLoaderResourceAccessor(), liquibaseDatabase)
+    liquibase.update()
+  }
+  
   def count(bucketId: String): IO[Int] =
     dbIO(queries.bucketCount(bucketId))
 

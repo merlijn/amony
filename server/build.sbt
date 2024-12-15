@@ -39,6 +39,8 @@ val flywayDbCore             = "org.flywaydb"              % "flyway-core"      
 val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.8"
 val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.3"
 
+val liquibaseCore            = "org.liquibase" % "liquibase-core" % "4.30.0"
+
 val solr                     = "org.apache.solr"           % "solr-core"                  % "8.11.1" excludeAll(excludeLog4j)
 val solrLangId               = "org.apache.solr"           % "solr-langid"                % "8.11.1" excludeAll(excludeLog4j)
 
@@ -61,6 +63,9 @@ val embeddedKafka = "io.github.embeddedkafka" %% "embedded-kafka" % "3.8.0" // c
 //val tarirHttp4s = "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % "1.2.9"
 
 val javaOpts = Seq("-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true")
+
+//fork in Global := true
+cancelable in Global := true
 
 // -- Shared options
 
@@ -171,7 +176,7 @@ lazy val resources =
         scribeSlf4j,
         circe, circeGeneric, http4sCirce,
         scalaTest,
-        slick, fs2Core, fs2Io, http4sDsl,
+        slick, fs2Core, fs2Io, http4sDsl, liquibaseCore,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
         slickHikariCp % "test",
         h2DB % "test"
@@ -248,7 +253,7 @@ lazy val amonyServer =
 
         // config loading
         typesafeConfig, pureConfig,
-        flywayDbCore,
+        liquibaseCore,
         slickHikariCp, hsqlDB,
         h2DB,
         circe,
