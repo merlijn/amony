@@ -1,8 +1,6 @@
 //import sbt.Keys.scalaVersion
 import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
 
-import java.nio.file.Path
-
 // --- Dependencies
 
 
@@ -13,9 +11,8 @@ val excludeScalaJs = List(
   ExclusionRule("org.scala-js", "scalajs-library_2.13")
 )
 
-val akkaVersion     = "2.7.0"
-val akkaHttpVersion = "10.4.0"
-val circeVersion    = "0.14.9"
+val circeVersion    = "0.14.10"
+val http4sVersion   = "1.0.0-M44"
 
 val circe                    = "io.circe"                 %% "circe-core"                 % circeVersion
 val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
@@ -24,26 +21,24 @@ val circeParser              = "io.circe"                 %% "circe-parser"     
 val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.5.2"
 val slickHikariCp            = "com.typesafe.slick"       %% "slick-hikaricp"             % "3.5.2"
 
-val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "9.2.0"
+val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "10.0.1"
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.16"
 val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.15.2"
 
-val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.10.2"
-val fs2Io                    = "co.fs2"                   %% "fs2-io"                     % "3.10.2"
-val catsEffect               = "org.typelevel"            %% "cats-effect"                % "3.5.4"
+val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.11.0"
+val fs2Io                    = "co.fs2"                   %% "fs2-io"                     % "3.11.0"
+val catsEffect               = "org.typelevel"            %% "cats-effect"                % "3.5.7"
 
 val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.19"           % Test
 val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
 
-val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.7.3"
-val h2DB                     = "com.h2database"            % "h2"                         % "2.2.224"
-val flywayDbCore             = "org.flywaydb"              % "flyway-core"                % "10.15.2"
+val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.7.4"
+val h2DB                     = "com.h2database"            % "h2"                         % "2.3.232"
+val flywayDbCore             = "org.flywaydb"              % "flyway-core"                % "11.1.0"
 
 val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.8"
 val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.3"
 
-//val betterFiles              = "com.github.pathikrit"     %% "better-files"               % "3.9.1"
-//val directoryWatcher         = "io.methvin"                % "directory-watcher"          % "0.15.0"
 val solr                     = "org.apache.solr"           % "solr-core"                  % "8.11.1" excludeAll(excludeLog4j)
 val solrLangId               = "org.apache.solr"           % "solr-langid"                % "8.11.1" excludeAll(excludeLog4j)
 
@@ -51,8 +46,8 @@ val scalaPbRuntimeGrcp       = "com.thesamet.scalapb"     %% "scalapb-runtime-gr
 val scalaPbRuntimeProtobuf   = "com.thesamet.scalapb"     %% "scalapb-runtime"            % scalapb.compiler.Version.scalapbVersion % "protobuf"
 val scalaPbRuntime           = "com.thesamet.scalapb"     %% "scalapb-runtime"            % scalapb.compiler.Version.scalapbVersion
 
+val log4CatsSlf4j            = "org.typelevel" %% "log4cats-slf4j"   % "2.7.0"
 
-val http4sVersion = "1.0.0-M40"
 
 val http4sEmberServer = "org.http4s" %% "http4s-ember-server" % http4sVersion
 val http4sEmberClient = "org.http4s" %% "http4s-ember-client" % http4sVersion
@@ -249,7 +244,7 @@ lazy val amonyServer =
       libraryDependencies ++= Seq(
 
         // logging
-        slf4jApi, scribeSlf4j,
+        slf4jApi, scribeSlf4j, log4CatsSlf4j,
 
         // config loading
         typesafeConfig, pureConfig,

@@ -92,18 +92,16 @@ object FFMpeg extends Logging
     val input    = inputFile.absoluteFileName()
     val output   = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.${profile.ext}")
 
-    // format: off
     val args: List[String] =
       List("-ss",  formatTime(ss), "-to",  formatTime(to), "-i",   input) ++
         scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
         profile.args ++ Option.when(!includeAudio)("-an") ++
       List("-v", "quiet", "-y",   output)
-    // format: on
 
     runIgnoreOutput("ffmpeg", args).map { _ => Path.of(output) }
   }
 
-  def transcodeStreamToMp4(
+  def streamStranscodeMp4(
       inputFile: Path,
       scaleHeight: Option[Int] = None
   ): fs2.Stream[IO, Byte] = {

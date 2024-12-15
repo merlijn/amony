@@ -15,7 +15,6 @@ import scribe.Logging
 import java.nio.file.Path
 import java.security.SecureRandom
 import javax.net.ssl.{KeyManagerFactory, SNIHostName, SNIServerName, SSLContext}
-// assumes dependency on log4cats-slf4j module
 import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 object WebServer extends Logging {
