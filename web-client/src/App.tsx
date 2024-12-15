@@ -1,23 +1,26 @@
 import {BrowserRouter, Route, Routes, useParams} from 'react-router-dom';
-import Editor from './pages/Editor';
-import Compilation from './pages/Compilation';
-import Main from './pages/Main';
-import VideoWall from './pages/VideoWall';
+import React, { Suspense, lazy } from 'react';
+
+const Editor = lazy(() => import('./pages/Editor'));
+const Compilation = lazy(() => import('./pages/Compilation'));
+const Main = lazy(() => import('./pages/Main'));
+const VideoWall = lazy(() => import('./pages/VideoWall'));
 
 function App() {
 
   return (
     <div className="app-root">
       <BrowserRouter>
+        <Suspense fallback = { <div>Loading...</div> }>
           <Routes>
-            <Route path="/" element = { <Main /> }  />
-            <Route path="/search"  element = { <Main /> } />
-            <Route path="/editor/:id" element = { <EditorRouter /> } />
-            <Route path="/video-wall" element = { <VideoWall /> } />
-            <Route path="/compilation" element = { <Compilation /> } />
+            <Route path="/" element={<Main />} />
+            <Route path="/search" element={<Main />} />
+            <Route path="/editor/:id" element={<EditorRouter />} />
+            <Route path="/video-wall" element={<VideoWall />} />
+            <Route path="/compilation" element={<Compilation />} />
           </Routes>
+        </Suspense>
       </BrowserRouter>
-
     </div>
   );
 }

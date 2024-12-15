@@ -127,9 +127,6 @@ const PlayerView = (props: {vid: Resource}) => {
   return (
       <div style = { { width: totalWidth, height: videoSize.height } } className="abs-center">
         <div key={`video-${vid.resourceId}-player`} style={videoSize} className="video-container">
-          {/*<video className="video-player" id={id} playsInline controls>*/}
-          {/*  <source src={props.vid.urls.originalResourceUrl} type="video/mp4"/>*/}
-          {/*</video>*/}
         <MediaPlayer
             className = "video-player"
             tab-index = '-1'
@@ -138,16 +135,10 @@ const PlayerView = (props: {vid: Resource}) => {
             ref = { player }
             src = { { src: props.vid.urls.originalResourceUrl, type: "video/mp4"  } }
             title = { props.vid.userMeta.title }
-            // style = { !isVideo ? { display: "none" } : {} }
             controlsDelay = { 5000 }
-            // hideControlsOnMouseLeave = { true }
-            // keep-alive
-            // logLevel = "debug"
             autoPlay = { false }
             viewType = "video"
             onDestroy = { () => console.log('destroyed') }
-            // onCanPlay = { autoPlay }
-            // onProviderChange = { onProviderChange }
         >
             <MediaProvider />
             <PlyrLayout

@@ -1,4 +1,5 @@
 @use 'src/App.scss' as *;
+@use 'sass:map';
 
 .nav-bar-container {
 
@@ -18,10 +19,9 @@
     width: 100vw;
   
     background-color: $gray-100;
-    //border-bottom: 2px solid $gray-200;
     height: 47px;
   
-    @media only screen and (min-width: map-get($container-max-widths, md)) {
+    @media only screen and (min-width: map.get($container-max-widths, md)) {
       background-color: $gray-100;
     }
 
@@ -48,7 +48,7 @@
     max-width: 700px;
     padding: 6px 4px !important;
 
-    @media only screen and (max-width: map-get($container-max-widths, md)) {
+    @media only screen and (max-width: map.get($container-max-widths, md)) {
       margin-left: 45px;
     }
 

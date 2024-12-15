@@ -6,7 +6,14 @@ export default defineConfig({
     base: '/',
     publicDir: "public",
     environment: 'jsdom',
-    css: true,
+    css: {
+        preprocessorOptions: {
+            scss: {
+                // api: 'modern-compiler', // or "modern"
+                silenceDeprecations: ["legacy-js-api"],
+            }
+        }
+    },
     coverage: {
         reporter: ['text', 'json', 'html'],
         include: ['src/**/*'],
