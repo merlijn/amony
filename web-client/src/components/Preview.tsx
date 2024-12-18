@@ -69,7 +69,7 @@ const Preview = (props: PreviewProps) => {
           key       = { `video-preview-${props.resource.resourceId}` }
           className = { `preview-video preview-media` }
           onClick   = { () => props.onClick(props.resource) }
-          fragments = { props.resource.highlights } />
+          fragments = { props.resource.clips } />
 
   const preview =
     <ErrorBoundary fallback={ <div /> }>

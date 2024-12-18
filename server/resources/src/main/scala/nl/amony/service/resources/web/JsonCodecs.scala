@@ -70,7 +70,7 @@ object JsonCodecs {
 
     // hard coded for now
     val range = (thumbnailTimestamp, Math.min(mediaInfo.duration, thumbnailTimestamp + 3000))
-    val highlights = List(FragmentDto(resource.hash, 0, range, List.empty, None, List.empty))
+    val highlights = List(ClipDto(resource.hash, range, List.empty, None, List.empty))
 
     ResourceDto(
       bucketId  = resource.bucketId,
@@ -83,22 +83,20 @@ object JsonCodecs {
       resourceMeta = mediaInfo,
       resourceInfo = resourceInfo,
       thumbnailTimestamp = resource.thumbnailTimestamp,
-      highlights = {
-        highlights.zipWithIndex.map { case (f, index) =>
+      clips = {
+        highlights.map { f =>
 
           val (start, end) = f.range
-
           val urls = resolutions.map(height =>
             s"/resources/${resource.bucketId}/${resource.hash}~${start}-${end}_${height}p.mp4"
           )
 
-          FragmentDto(
-            resourceId = resource.hash,
-            index    = index,
-            range    = (start, end),
-            urls     = urls,
-            comment  = f.comment,
-            tags     = f.tags
+          ClipDto(
+            resourceId   = resource.hash,
+            range        = (start, end),
+            urls         = urls,
+            description  = f.description,
+            tags         = f.tags
           )
         }
       }

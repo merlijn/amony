@@ -45,15 +45,14 @@ object ResourceWebModel {
     resourceInfo: ResourceInfoDto,
     urls: ResourceUrlsDto,
     thumbnailTimestamp: Option[Long],
-    highlights: List[FragmentDto],
+    clips: List[ClipDto],
   ) derives Encoder.AsObject
 
-  case class FragmentDto(
+  case class ClipDto(
     resourceId: String,
-    index: Int,
     range: (Long, Long),
     urls: List[String],
-    comment: Option[String],
+    description: Option[String],
     tags: List[String]
    ) derives Encoder.AsObject
 }

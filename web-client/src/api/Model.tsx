@@ -22,17 +22,16 @@ export type Resource = {
   bucketId: String,
   uploader: string,
   uploadTimestamp: number,
-  // the media info of the originally uploaded file
   userMeta: ResourceUserMeta,
   contentType: String,
   resourceMeta: ResourceMeta,
   resourceInfo: ResourceInfo,
   urls: ResourceUrls,
-  highlights: Array<Fragment>,
+  clips: Array<Clip>,
 }
 
-export type Fragment = {
-  media_id: string,
+export type Clip = {
+  resourceId: string,
   range: [number, number],
   index: number,
   urls: string[],

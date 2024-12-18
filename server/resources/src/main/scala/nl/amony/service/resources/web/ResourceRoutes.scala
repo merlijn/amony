@@ -47,7 +47,7 @@ object ResourceRoutes extends Logging {
         withBucket(bucketId) { bucket =>
           bucket.getResource(resourceId).flatMap:
             case None => NotFound()
-            case Some(resource) =>
+            case Some(_) =>
             req.as[ThumbnailTimestampDto].flatMap { dto =>
               bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis).flatMap(_ => Ok())
             }
@@ -58,7 +58,7 @@ object ResourceRoutes extends Logging {
         withBucket(bucketId) { bucket =>
           bucket.getResource(resourceId).flatMap: 
             case None => NotFound()
-            case Some(resource) =>
+            case Some(_) =>
               req.as[UserMetaDto].flatMap { userMeta =>
                 bucket.updateUserMeta(resourceId, userMeta.title, userMeta.description, userMeta.tags).flatMap(_ => Ok())
               }

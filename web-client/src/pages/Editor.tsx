@@ -59,13 +59,13 @@ const PlayerView = (props: {vid: Resource}) => {
        const from = Math.trunc(fragment.start * 1000)
        const to = Math.trunc(fragment.end * 1000)
 
-       if (fragment.idx >= 0 && fragment.idx < vid.highlights.length) {
+       if (fragment.idx >= 0 && fragment.idx < vid.clips.length) {
          console.log("updating fragment")
          Api.updateFragment(vid.resourceId, fragment.idx, from, to).then (response => {
            setVid(response as Resource)
          });
        }
-       if (fragment.idx === vid.highlights.length) {
+       if (fragment.idx === vid.clips.length) {
          console.log("adding fragment")
          Api.addFragment(vid.resourceId, from, to).then (response => {
            setVid(response as Resource)

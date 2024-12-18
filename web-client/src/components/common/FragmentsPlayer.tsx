@@ -1,10 +1,10 @@
 import React, { CSSProperties, useEffect, useRef, useState } from "react";
-import { Fragment } from "../../api/Model";
+import { Clip } from "../../api/Model";
 
 type FragmentsPlayerProps = {
   className?: string,
   style?: CSSProperties,
-  fragments: Array<Fragment>
+  fragments: Array<Clip>
   onClick?: () => void
 }
 
