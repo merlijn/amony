@@ -13,7 +13,7 @@
   float: left;
 
   .video-player {
-    --plyr-video-controls-background: black;
+    //--plyr-video-controls-background: black;
     --plyr-color-main: #508ed1;
     --plyr-border-radius: 0;
 
@@ -23,6 +23,11 @@
     // hack to hide the center play button
     > div > button.plyr__control--overlaid {
       display: none ! important;
+    }
+
+    video {
+        width: 100%;
+        height: 100%;
     }
   }
 }
