@@ -16,7 +16,7 @@ trait GetImageMetaData {
 
     val args = List(fileName, "-format", "%wx%h", "json:")
 
-    runWithOutput("magick", args, false) { json =>
+    runWithOutput("convert", args, false) { json =>
 
       IO {
         io.circe.parser.decode[List[MagickImageMeta]](json) match {

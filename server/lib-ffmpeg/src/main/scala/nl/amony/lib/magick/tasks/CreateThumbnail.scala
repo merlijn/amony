@@ -17,6 +17,6 @@ trait CreateThumbnail {
 
     val args = List(input, "-resize", s"${width.getOrElse("")}x${height.getOrElse("")}", output)
 
-    runIgnoreOutput("magick", args)
+    runIgnoreOutput("convert", args)
   }
 }
