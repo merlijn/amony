@@ -6,9 +6,9 @@ import java.time.Instant
 
 class TokenManager(jwtConfig: JwtConfig) {
 
-  private val expirationInSeconds = jwtConfig.tokenExpiration.toSeconds
+  private val expirationInSeconds = jwtConfig.accessTokenExpiration.toSeconds
 
-  def createToken(userId: String): String = {
+  def createJwtToken(userId: String): String = {
 
     val claim = JwtClaim(
       expiration = Some(Instant.now.plusSeconds(expirationInSeconds).getEpochSecond),

@@ -8,7 +8,7 @@ Example screenshot:
 
 A live demo is available at [https://amony.nl](https://amony.nl). It is running on single [GCE](https://cloud.google.com/compute/) `e2-micro` instance.
 
-**Note:** All videos on the demo site are free and sourced from [Pexels](https://www.pexels.com/license/))
+**Note:** All videos on the demo site are free and sourced from [Pexels](https://www.pexels.com/license/)
 
 # How to use
 
@@ -19,7 +19,7 @@ A live demo is available at [https://amony.nl](https://amony.nl). It is running 
 
 ### 1. Pull the image
 
-The image is hosted on a public GC repository.
+The image is hosted on a public Google Cloud docker repository.
 
 ```bash
 docker pull europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/app:latest
@@ -27,8 +27,11 @@ docker pull europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/app:lat
 
 ### 2. Run the docker image
 
+The default location for the media files is `/amony/media`. You can mount a local directory to it.
+The default location for the solr index, database and config files is `/amony/data`. It is recommended to mount a local directory to it to persist the data.
+
 ```bash
-docker run -v /path/to/my/videos:/usr/local/amony/videos -p 8080:8080 --name amony europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/app:latest
+docker run -v /path/to/my/media:/amony/media -v /path/to/my/amony-data:/amony/data -p 8080:8080 --name amony europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/app:latest
 ```
 
 ### 3. Usage
@@ -46,9 +49,9 @@ The webapp now runs at http://localhost:8080
 - [scala 2.13](https://scala-lang.org/) & [sbt](https://www.scala-sbt.org/)
 - [fmpeg](https://ffmpeg.org/)
 
-### 1. Prepare your .mp4 files
+### 1. Prepare your media files
 
-In dev mode the `.mp4` files are expected to in a directory named `videos` inside the git repository. Move them there or create a symbolic link.
+In dev mode the media files are expected to in a directory named `media` inside the git repository. Move them there or create a symbolic link.
 
 ### 2. Start the server
 ```
@@ -108,5 +111,5 @@ The first time this can take a bit longer since it downloads & installs all depe
 ### 4. Run the docker image
 
 ```bash
-docker run -v /path/to/my/videos:/usr/local/amony/videos -p 8080:8080 my-amony-app:latest
+docker run -v /path/to/my/media:/amony/media -v /path/to/my/amony-data:/amony/data -p 8080:8080 my-amony-app:latest
 ```

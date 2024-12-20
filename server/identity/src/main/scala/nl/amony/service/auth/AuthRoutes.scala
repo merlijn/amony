@@ -14,6 +14,9 @@ object AuthRoutes extends Logging {
 
   def apply(authService: AuthService) =
     HttpRoutes.of[IO]:
+      case req @ POST -> Root / "login" =>
+        Ok("")
+
       case req @ POST -> Root / "api" / "identity" / "login" =>
 
         req.decodeJson[WebCredentials].flatMap: credentials =>

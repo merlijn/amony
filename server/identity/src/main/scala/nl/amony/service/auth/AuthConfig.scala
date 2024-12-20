@@ -12,6 +12,6 @@ case class AuthConfig(
     adminPassword: String
 ) derives ConfigReader
 
-case class JwtConfig(secretKey: String, tokenExpiration: FiniteDuration) derives ConfigReader {
+case class JwtConfig(secretKey: String, accessTokenExpiration: FiniteDuration) derives ConfigReader {
   val algo = JwtAlgorithm.HS256
 }
