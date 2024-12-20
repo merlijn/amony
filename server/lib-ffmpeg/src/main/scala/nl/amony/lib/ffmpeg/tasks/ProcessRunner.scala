@@ -23,10 +23,6 @@ trait ProcessRunner extends Logging {
   def runWithOutput[T](cmd: String, args: Seq[String], useErrorStream: Boolean)(fn: String => IO[T]): IO[T] = 
     useProcess(cmd, args) { process => getOutputAsString(process, useErrorStream, cmd +: args).flatMap(fn) }
 
-  def useProcess[T](cmd: String, args: Seq[String])(fn: fs2.io.process.Process[IO] => IO[T]): IO[T] = {
-
-    fs2.io.process.ProcessBuilder(cmd, args.toList).spawn[IO].use { process =>
-      fn(process)
-    }
-  }
+  def useProcess[T](cmd: String, args: Seq[String])(fn: fs2.io.process.Process[IO] => IO[T]): IO[T] =
+    fs2.io.process.ProcessBuilder(cmd, args.toList).spawn[IO].use { process => fn(process) }
 }
