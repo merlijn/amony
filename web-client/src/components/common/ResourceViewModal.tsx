@@ -44,6 +44,7 @@ const ResourceViewModal = (props: { resource?: Resource, onHide: () => void }) =
             style = { !isVideo ? { display: "none" } : {} }
             controlsDelay = { 5000 }
             hideControlsOnMouseLeave = { true }
+            volume = { 0.4 }
             // keep-alive
             // logLevel = "debug"
             autoPlay = { true }
