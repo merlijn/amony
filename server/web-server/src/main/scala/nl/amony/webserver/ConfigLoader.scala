@@ -21,11 +21,21 @@ case class AmonyConfig(
 
 trait ConfigLoader extends Logging {
 
-  import pureconfig._
+  import pureconfig.*
 
-  val config       = ConfigFactory.load()
-  val configSource = ConfigSource.fromConfig(config)
-  val appConfig    = configSource.at("amony").loadOrThrow[AmonyConfig]
+  lazy val config       = {
+    Option(System.getenv().get("AMONY_CONFIG_FILE")) match
+      case Some(fileName) =>
+        logger.info(s"Loading configuration from file: $fileName")
+        ConfigFactory.parseFile(Path.of(fileName).toFile)
+      case None =>
+        ConfigFactory.load()
+  }
+
+  lazy val appConfig    = {
+    val configSource = ConfigSource.fromConfig(config)
+    configSource.at("amony").loadOrThrow[AmonyConfig]
+  }
 
   def loadConfig[T: ClassTag : ConfigReader](path: String): T = {
 
