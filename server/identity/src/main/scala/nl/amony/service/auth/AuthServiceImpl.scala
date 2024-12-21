@@ -8,6 +8,8 @@ class AuthServiceImpl(config: AuthConfig) extends AuthServiceGrpc.AuthService {
 
   private val tokenManager = new TokenManager(config.jwt)
   private val adminUserId = "0"
+  
+  // https://github.com/Password4j/password4j
 
   override def login(request: Credentials): Future[LoginResponse] = {
 

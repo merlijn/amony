@@ -3,7 +3,6 @@ import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
 
 // --- Dependencies
 
-
 val excludeLog4j = ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl")
 val excludeScalaJs = List(
   ExclusionRule("org.scala-lang", "scala3-library_sjs"),

@@ -11,9 +11,11 @@ import scribe.Logging
 import io.circe.syntax.*
 import nl.amony.service.resources.web.ResourceDirectives.respondWithResourceContent
 import nl.amony.service.resources.web.ResourceWebModel.{ThumbnailTimestampDto, UserMetaDto}
+import org.http4s.CacheDirective.`max-age`
 import org.http4s.circe.*
 import org.http4s.circe.CirceEntityDecoder.circeEntityDecoder
-import org.http4s.headers.`Content-Type`
+import org.http4s.headers.{`Cache-Control`, `Content-Type`}
+import scala.concurrent.duration.DurationInt
 
 object ResourceRoutes extends Logging {
 
@@ -52,7 +54,7 @@ object ResourceRoutes extends Logging {
         withResource(bucketId, resourceId) { (_, resource) =>
           respondWithResourceContent(req, resource)
         }
-        
+
       case req @ POST -> Root / "api" / "resources" / bucketId / resourceId / "update_thumbnail_timestamp" =>
 
         withResource(bucketId, resourceId) { (bucket, resource) =>
@@ -70,14 +72,17 @@ object ResourceRoutes extends Logging {
         }
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern =>
-        
+
         withResource(bucketId, resourceId) { (bucket, resource) =>
           patterns.matchPf.lift(resourcePattern) match
             case None            => NotFound()
             case Some(operation) =>
               bucket.getOrCreate(resourceId, operation).flatMap:
                 case None           => NotFound()
-                case Some(resource) => respondWithResourceContent(req, resource)
+                case Some(resource) =>
+                  respondWithResourceContent(req, resource).map {
+                    r => r.addHeader(`Cache-Control`(`max-age`(365.days)))
+                  }
         }
     }
   }

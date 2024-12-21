@@ -1,3 +1,5 @@
-1. Scala 3
-2. Use lib-eventstore for persistence
-3. Remove akka
+TODO for 1.0
+
+- Require admin login for modify actions
+- Store raw meta json from ffmpeg and imagick in the database
+- Store tags as ids in the database so that they can be renamed
