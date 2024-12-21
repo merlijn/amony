@@ -2,20 +2,15 @@ package nl.amony.webserver
 
 import cats.effect.{IO, Resource, ResourceApp}
 import cats.implicits.toSemigroupKOps
-import liquibase.Liquibase
-import liquibase.database.{Database, DatabaseFactory}
-import liquibase.database.jvm.JdbcConnection
-import liquibase.resource.ClassLoaderResourceAccessor
 import nl.amony.lib.eventbus.EventTopic
 import nl.amony.search.SearchRoutes
 import nl.amony.search.solr.SolrIndex
-import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.auth.{AuthConfig, AuthRoutes, AuthServiceImpl}
+import nl.amony.service.resources.ResourceConfig
 import nl.amony.service.resources.api.events.ResourceEvent
 import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.ResourceRoutes
-import nl.amony.service.resources.{ResourceBucket, ResourceConfig}
 import nl.amony.webserver.routes.{AdminRoutes, WebAppRoutes}
 import scribe.Logging
 import slick.basic.DatabaseConfig

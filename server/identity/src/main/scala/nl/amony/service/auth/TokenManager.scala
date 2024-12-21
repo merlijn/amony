@@ -8,12 +8,13 @@ class TokenManager(jwtConfig: JwtConfig) {
 
   private val expirationInSeconds = jwtConfig.accessTokenExpiration.toSeconds
 
-  def createJwtToken(userId: String): String = {
+  def createJwtToken(userId: String, roles: Set[String]): String = {
 
     val claim = JwtClaim(
       expiration = Some(Instant.now.plusSeconds(expirationInSeconds).getEpochSecond),
-      issuedAt   = Some(Instant.now.getEpochSecond)
-    ) + ("userId", userId) + ("admin", true)
+      issuedAt   = Some(Instant.now.getEpochSecond),
+      notBefore  = Some(Instant.now.getEpochSecond),
+    ) + ("userId", userId) + ("roles", roles)
 
     val token = JwtCirce.encode(claim, jwtConfig.secretKey, jwtConfig.algo)
 

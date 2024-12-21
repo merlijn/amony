@@ -12,7 +12,7 @@ class AuthServiceImpl(config: AuthConfig) extends AuthServiceGrpc.AuthService {
   override def login(request: Credentials): Future[LoginResponse] = {
 
     if (request.username == config.adminUsername && request.password == config.adminPassword)
-      Future.successful(api.Authentication(adminUserId, tokenManager.createJwtToken(adminUserId)))
+      Future.successful(api.Authentication(adminUserId, tokenManager.createJwtToken(adminUserId, Set("admin"))))
     else
       Future.successful(api.InvalidCredentials())
   }

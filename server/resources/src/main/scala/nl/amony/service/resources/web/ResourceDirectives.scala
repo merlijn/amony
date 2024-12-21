@@ -1,17 +1,41 @@
 package nl.amony.service.resources.web
 
 import cats.data.NonEmptyList
-import cats.effect.Async
+import cats.effect.{Async, IO}
 import cats.implicits.{toFlatMapOps, toFunctorOps}
 import fs2.Stream
 import fs2.io.file.{Files, Path}
-import org.http4s._
+import nl.amony.service.resources.{Resource, ResourceWithRangeSupport}
+import org.http4s.*
+import org.http4s.dsl.io.*
 import org.http4s.headers.Range.SubRange
 import org.http4s.headers.{Range, `Accept-Ranges`, `Content-Range`, `Content-Type`}
 import org.typelevel.ci.CIStringSyntax
 import scribe.Logging
 
 object ResourceDirectives extends Logging {
+
+  def respondWithResourceContent(req: Request[IO], resource: Resource) = {
+    resource match {
+      case resource: ResourceWithRangeSupport =>
+        ResourceDirectives.responseWithRangeSupport[IO](
+          request = req,
+          size = resource.size(),
+          maybeMediaType = resource.contentType().map(MediaType.parse(_).toOption).flatten,
+          rangeResponseFn = resource.getContentRange
+        )
+      case _ =>
+        val maybeMediaType = resource.contentType().map(MediaType.parse(_).toOption).flatten.map(`Content-Type`.apply)
+
+        Response(
+          status = Status.Ok,
+          headers = maybeMediaType.map(mediaType => Headers(mediaType)).getOrElse(Headers.empty),
+          entity = Entity.stream(resource.getContent())
+        )
+
+        Ok(resource.getContent())
+    }
+  }
 
   val AcceptRangeHeader = `Accept-Ranges`(RangeUnit.Bytes)
 

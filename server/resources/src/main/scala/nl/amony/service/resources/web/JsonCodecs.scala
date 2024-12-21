@@ -21,9 +21,9 @@ object JsonCodecs {
       val tsPart = if (thumbnailTimestamp != 0) s"_${thumbnailTimestamp}" else ""
 
       ResourceUrlsDto(
-        originalResourceUrl  = s"/resources/${resource.bucketId}/${resource.hash}.mp4",
-        thumbnailUrl         = s"/resources/${resource.bucketId}/${resource.hash}${tsPart}_${resolutions.min}p.webp",
-        previewThumbnailsUrl = Some(s"/resources/${resource.bucketId}/${resource.hash}-timeline.vtt")
+        originalResourceUrl  = s"/api/resources/${resource.bucketId}/${resource.hash}/content",
+        thumbnailUrl         = s"/api/resources/${resource.bucketId}/${resource.hash}/thumb${tsPart}_${resolutions.min}p.webp",
+        previewThumbnailsUrl = Some(s"/api/resources/${resource.bucketId}/${resource.hash}/timeline.vtt")
       )
     }
 
@@ -88,7 +88,7 @@ object JsonCodecs {
 
           val (start, end) = f.range
           val urls = resolutions.map(height =>
-            s"/resources/${resource.bucketId}/${resource.hash}~${start}-${end}_${height}p.mp4"
+            s"/api/resources/${resource.bucketId}/${resource.hash}/clip_${start}-${end}_${height}p.mp4"
           )
 
           ClipDto(
