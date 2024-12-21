@@ -24,18 +24,6 @@
     @media only screen and (min-width: map.get($container-max-widths, md)) {
       background-color: $gray-100;
     }
-
-    .nav-menu-button {
-
-      @extend .hover-pointer, .abs-top-left;
-    
-      width: 24px;
-      height: 24px;
-      margin-bottom: 0px;
-      margin-top: 12px;
-      margin-left: 12px;
-      user-select: none;
-    }
   }
 
   .nav-bar-center {
@@ -50,6 +38,30 @@
 
     @media only screen and (max-width: map.get($container-max-widths, md)) {
       margin-left: 45px;
+    }
+
+    .nav-menu-button {
+
+      @extend .hover-pointer;
+
+      width: 34px;
+      height: 34px;
+
+      //background-color: $gray-300;
+      border: none;
+      border-radius: 3px;
+      color: $gray-800;
+
+      &:hover {
+        background-color: $gray-300;
+      }
+
+      padding: 2px;
+
+      //margin-bottom: 0px;
+      //margin-top: 4px;
+      //margin-left: 12px;
+      user-select: none;
     }
 
     .view-select-container {

@@ -4,7 +4,7 @@ import { Api } from "../../api/Api";
 import { buildUrl, copyParams } from "../../api/Util";
 import './TagBar.scss';
 
-const TagBar = (props: { tags: Array<string> }) => {
+const TagBar = (props: { tags: Array<string>, total: number }) => {
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -38,7 +38,7 @@ const TagBar = (props: { tags: Array<string> }) => {
           )
         }
       </div>
-
+      <div key="total" className="tag-bar-total"> results: { props.total }</div>
     </div>);
 }
 

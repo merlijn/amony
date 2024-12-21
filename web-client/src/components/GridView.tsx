@@ -100,7 +100,7 @@ const GridView = (props: GalleryProps) => {
 
   return(
     <div className = { props.className } style = { props.style }>
-      { props.showTagbar && <TagBar tags = { searchResult.tags } /> }
+      { props.showTagbar && <TagBar tags = { searchResult.tags } total = { searchResult.total } /> }
       <Scrollable
         style        = { style }
         className    = "gallery-container"

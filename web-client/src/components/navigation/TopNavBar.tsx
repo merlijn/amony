@@ -13,6 +13,7 @@ import { buildUrl, copyParams } from "../../api/Util";
 import { DropDown } from "../common/DropDown";
 import './TopNavBar.scss';
 import {FaBars} from "react-icons/fa6";
+import { AiOutlineSetting } from "react-icons/ai";
 
 export type NavBarProps = {
   onClickMenu: () => void, 
@@ -53,8 +54,8 @@ function TopNavBar(props: NavBarProps) {
   return(
     <div className = "nav-bar-container">
       <div className = "top-nav-bar">
-          <FaBars className = "nav-menu-button" onClick = { props.onClickMenu } />
           <div key = "nav-bar-center" className = "nav-bar-center">
+            <AiOutlineSetting className = "nav-menu-button" onClick = { props.onClickMenu } />
             <form key="search-form" className = "nav-search-form" onSubmit = { doSearch } >
               <div className = "nav-search-input-container">
                 <GoSearch className="search-icon" />

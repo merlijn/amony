@@ -17,6 +17,16 @@
   // padding: 4px 5px;
   z-index: 9;
 
+  .tag-bar-total {
+    font-size: 12px;
+    position: absolute;
+    right: 0px;
+    bottom: 0px;
+    color: $gray-800;
+    margin-right: 10px;
+    margin-bottom: 4px;
+  }
+
   .tags {
     @extend .v-align-center;
     display: flex;
