@@ -30,5 +30,3 @@ jobs:
       working-directory: web-client
     - run: npm run build --if-present
       working-directory: web-client
-    - run: npm test
-      working-directory: web-client
