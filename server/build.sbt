@@ -262,7 +262,11 @@ lazy val amonyServer =
         val target = "/app/web-client"
         MappingsHelper.contentOf(webClientDir, target)
       },
-      jibEnvironment := Map("JAVA_TOOL_OPTIONS" -> "-Dconfig.file=/app/resources/prod/application.conf"),
+      jibEnvironment := Map(
+        "JAVA_TOOL_OPTIONS"     -> "-Dconfig.file=/app/resources/application.conf",
+        "AMONY_WEB_CLIENT_PATH" -> "/app/web-client",
+        "AMONY_MEDIA_PATH"      -> "/media"
+      ),
       jibUseCurrentTimestamp := true,
 
       Compile / packageBin / mainClass := Some("nl.amony.webserver.Main"),
