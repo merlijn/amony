@@ -1,5 +1,7 @@
 //import sbt.Keys.scalaVersion
 import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
+import com.google.cloud.tools.jib.api.buildplan.Platform
+import de.gccc.jib.MappingsHelper
 
 // --- Dependencies
 
@@ -22,7 +24,7 @@ val slickHikariCp            = "com.typesafe.slick"       %% "slick-hikaricp"   
 
 val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "10.0.1"
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.16"
-val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.15.2"
+val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.15.3"
 
 val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.11.0"
 val fs2Io                    = "co.fs2"                   %% "fs2-io"                     % "3.11.0"
@@ -247,16 +249,23 @@ lazy val amonyServer =
       run / javaOptions     ++= javaOpts,
       outputStrategy         := Some(StdoutOutput),
 
-      jibBaseImage   := "europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/base:latest",
-//      jibPlatforms   := Set("linux/amd64"),
-      jibImageFormat := JibImageFormat.Docker,
-      jibRegistry    := "europe-west4-docker.pkg.dev",
-      jibName        := "amony-app",
-      jibTags        := List("latest"),
-      jibEntrypoint  := Some(List("java", "-jar", "/amony.jar")),
-      jibCustomRepositoryPath := Some("amony-04c85b/docker-images/amony"),
+      jibBaseImage            := "europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/base:latest",
+      jibRegistry             := "europe-west4-docker.pkg.dev",
+      jibName                 := "amony-app",
+      jibCustomRepositoryPath := Some("amony-04c85b/docker-images/amony/" + jibName.value),
+      jibPlatforms            := Set(new Platform("amd64", "linux")),
+      jibImageFormat          := JibImageFormat.Docker,
+      jibTags                 := List("latest"),
+      jibExtraMappings   ++= {
+        // this adds the frontend assets to the docker image
+        val webClientDir = (Compile / baseDirectory).value / ".." / ".." / "web-client" / "dist"
+        val target = "/app/web-client"
+        MappingsHelper.contentOf(webClientDir, target)
+      },
+      jibEnvironment := Map("JAVA_TOOL_OPTIONS" -> "-Dconfig.file=/app/resources/prod/application.conf"),
+      jibUseCurrentTimestamp := true,
 
-      Compile / packageBin / mainClass := Some("nl.amony.webserver.WebServer"),
+      Compile / packageBin / mainClass := Some("nl.amony.webserver.Main"),
 
       libraryDependencies ++= Seq(
         // logging
@@ -264,8 +273,7 @@ lazy val amonyServer =
         // config loading
         typesafeConfig, pureConfig,
         // database
-        liquibaseCore, slickHikariCp, hsqlDB, h2DB,
-        circe, circeGeneric, circeParser,
+        slickHikariCp, hsqlDB, h2DB,
         fs2Core,
         http4sEmberServer,
         // test
@@ -275,18 +283,6 @@ lazy val amonyServer =
       excludeDependencies ++= List(
         ExclusionRule("javax.xml.bind", "jaxb-api"),
       ),
-
-      //    assembly / logLevel := Level.Debug,
-      assembly / assemblyJarName := "amony.jar",
-      assembly / assemblyMergeStrategy := {
-        case s if s.endsWith("module-info.class")            => MergeStrategy.discard
-        case s if s.endsWith("Log4j2Plugins.dat")            => MergeStrategy.discard
-        case s if s.startsWith("org/iq80/leveldb")           => MergeStrategy.first
-        case s if s.endsWith("io.netty.versions.properties") => MergeStrategy.first
-        case x =>
-          val oldStrategy = (assembly / assemblyMergeStrategy).value
-          oldStrategy(x)
-      }
     )
 
 lazy val amony = project

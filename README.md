@@ -27,11 +27,11 @@ docker pull europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/app:lat
 
 ### 2. Run the docker image
 
-The default location for the media files is `/amony/media`. You can mount a local directory to it.
-The default location for the solr index, database and config files is `/amony/data`. It is recommended to mount a local directory to it to persist the data.
+The default location for the media files is `/media`. You can mount a local directory to it.
+The default location for the solr index, database and config files is `/app/data`. It is recommended to mount a local directory to it to persist the data.
 
 ```bash
-docker run -v /path/to/my/media:/amony/media -v /path/to/my/amony-data:/amony/data -p 8080:8080 --name amony europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/app:latest
+docker run -v /path/to/my/media:/media -v /path/to/my/amony-data:/app/data -p 8080:8080 --name amony europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/amony-app:latest
 ```
 
 ### 3. Usage
@@ -93,23 +93,15 @@ npm install --save
 npm run build
 ```
 
-### 2. Build the server
+### 2. Build the docker image
 
 ```
 cd server
-sbt assembly
+sbt web-server/jibDockerBuild
 ```
-
-### 3. Build the docker image
-
-```
-docker build -t my-amony-app:latest .
-```
-
-The first time this can take a bit longer since it downloads & installs all dependencies for `ffmpeg`.
 
 ### 4. Run the docker image
 
 ```bash
-docker run -v /path/to/my/media:/amony/media -v /path/to/my/amony-data:/amony/data -p 8080:8080 my-amony-app:latest
+docker run -v /path/to/my/media:/media -v /path/to/my/amony-data:/app/data -p 8080:8080 --name amony europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/amony-app:latest
 ```
