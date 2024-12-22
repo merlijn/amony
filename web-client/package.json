@@ -1,5 +1,7 @@
 {
   "name": "amony-web-client",
+  "os": ["darwin", "linux", "windows"],
+  "cpu": ["x64", "arm64"],
   "version": "0.1.0",
   "private": true,
   "dependencies": {
