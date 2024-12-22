@@ -22,10 +22,10 @@ jobs:
     - uses: actions/checkout@v4
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
-      working-directory: web-client
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
+        cache-dependency-path: web-client
     - run: npm ci
       working-directory: web-client
     - run: npm run build --if-present
