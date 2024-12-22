@@ -12,7 +12,7 @@ import java.nio.file.Path
 object LocalResourceMeta extends Logging {
 
   def resolveMeta(path: Path): IO[Option[ResourceMeta]] = {
-    ResourceContent.contentTypeForPath(path) match {
+    Resource.contentTypeForPath(path) match {
 
       case None =>
         logger.info(s"No content type found for $path")
@@ -27,6 +27,7 @@ object LocalResourceMeta extends Logging {
                 height = stream.height,
                 durationInMillis = stream.durationMillis,
                 fps = stream.fps.toFloat,
+                codec = Some(stream.codec_name),
                 metaData = Map.empty,
               )
             }

@@ -1,27 +1,28 @@
-import { useEffect, useState } from "react";
-import { useHistory, useLocation } from "react-router";
-import { Constants, parseDurationParam, parseSortParam } from "../api/Constants";
-import { ResourceSelection, MediaView, Prefs, Resource } from "../api/Model";
-import { useCookiePrefs, useListener, useStateNeq } from "../api/ReactUtils";
+import React, {useEffect, useState} from "react";
+import {useLocation, useNavigate} from "react-router";
+import {Constants, parseDurationParam, parseSortParam} from "../api/Constants";
+import {MediaView, Prefs, Resource, ResourceSelection} from "../api/Model";
+import {useCookiePrefs, useListener, useStateNeq} from "../api/ReactUtils";
 import GridView from "../components/GridView";
 import TopNavBar from "../components/navigation/TopNavBar";
-import MediaModal from "../components/common/MediaModal";
-import SideBar from "../components/navigation/SideBar";
-import { isMobile } from "react-device-detect";
+import ResourceViewModal from "../components/common/ResourceViewModal";
+import {isMobile} from "react-device-detect";
 import './Main.scss';
 import ListView from "../components/ListView";
-import { buildUrl, copyParams } from "../api/Util";
-import { Api } from "../api/Api";
+import {buildUrl, copyParams} from "../api/Util";
+import {Api} from "../api/Api";
+import Modal from "../components/common/Modal";
+import ConfigMenu from "../components/dialogs/ConfigMenu";
 
 const Main = () => {
   
-    const history = useHistory();
+    const navigate = useNavigate();
     const location = useLocation();
-    const [showMedia, setShowMedia] = useState<Resource | undefined>(undefined)
+    const [showResource, setShowResource] = useState<Resource | undefined>(undefined)
     const [showNavigation, setShowNavigation] = useState(true)
     const [view, setView] = useState<MediaView>('grid')
-
-    const [prefs, updatePrefs] = useCookiePrefs<Prefs>("prefs/v1", "/", Constants.defaultPreferences)
+    const [showSettings,   setShowSettings]   = useState(false)
+    const [prefs, updatePrefs] = useCookiePrefs<Prefs>(Constants.preferenceKey, "/", Constants.defaultPreferences)
 
     const getSelection = (): ResourceSelection => {
       const urlParams = new URLSearchParams(location.search)
@@ -59,7 +60,7 @@ const Main = () => {
       const params = new URLSearchParams(location.search)
       const newParams = copyParams(params)
       newParams.set("view", e)
-      history.push(buildUrl("/search", newParams));
+        navigate(buildUrl("/search", newParams));
     };
 
     const keyDownHandler = (event: KeyboardEvent) => {
@@ -80,48 +81,43 @@ const Main = () => {
 
     return (
         <>
-          { <MediaModal media= { showMedia } onHide={() => setShowMedia(undefined) } />}
-          
+          <ResourceViewModal resource= { showResource } onHide = { () => setShowResource(undefined) } />
+          <Modal visible = { showSettings } onHide = { () => setShowSettings(false) }>
+              <ConfigMenu />
+          </Modal>
           <div className="main-page">
 
-            { showNavigation && prefs.showSidebar && 
-                <SideBar 
-                  collapsed = { true } 
-                  onHide    = { () => setShowSidebar(!prefs.showSidebar) } 
-                /> 
-            }
-            
             { showNavigation && 
                 <TopNavBar 
-                    key           = "top-nav-bar" 
-                    onClickMenu   = { () => setShowSidebar(true) } 
-                    activeView    = { view }
-                    // playList      = "nature"
-                    onViewChange  = { updateView }
+                  key           = "top-nav-bar"
+                  onClickMenu   = { () => setShowSettings(true) }
+                  activeView    = { view }
+                  onViewChange  = { updateView }
                 /> 
             }
 
             {
               (view === 'grid') &&
-                  <GridView 
-                    style     = { galleryStyle } 
-                    className = "main-content-container"
-                    key       = "gallery"
-                    selection = { selection }
-                    showTagbar = { showNavigation }
-                    componentType = 'page' 
-                    onClick   = { (v: Resource) => setShowMedia(v) }
-                    columns   = { prefs.gallery_columns }
-                    previewOptionsFn = { (v: Resource) => {
-                        return {
-                          showPreviewOnHover: !isMobile,
-                          showInfoBar: prefs.showTitles,
-                          showDates: prefs.showDates,
-                          showDuration: prefs.showDuration,
-                          showMenu: Api.session().isAdmin()
-                        } 
+                <GridView
+                  style     = { galleryStyle }
+                  className = "main-content-container"
+                  key       = "gallery"
+                  selection = { selection }
+                  showTagbar = { showNavigation }
+                  componentType = 'page'
+                  onClick   = { (v: Resource) => setShowResource(v) }
+                  columns   = { prefs.gallery_columns }
+                  previewOptionsFn = { (v: Resource) => {
+                      return {
+                        showPreviewOnHover: !isMobile,
+                        showInfoBar: prefs.showTitles,
+                        showDates: prefs.showDates,
+                        showDuration: prefs.showDuration,
+                        showResolution: prefs.showResolution,
+                        showMenu: Api.session().isAdmin()
                       }
-                    }/>
+                    }
+                  }/>
             }
 
             {
@@ -129,7 +125,7 @@ const Main = () => {
                 <div style = { galleryStyle } key="main-content" className="main-content-container">
                   <ListView 
                     key       = "list"
-                    onClick   = { (v: Resource) => setShowMedia(v) }
+                    onClick   = { (v: Resource) => setShowResource(v) }
                     selection = {selection}
                    />
                 </div>

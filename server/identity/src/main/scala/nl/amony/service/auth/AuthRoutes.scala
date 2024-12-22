@@ -1,34 +1,29 @@
 package nl.amony.service.auth
 
 import cats.effect.IO
-import io.circe.Codec
-import io.circe.generic.semiauto.deriveCodec
-import nl.amony.lib.cats.FutureOps
+import io.circe.*
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
-import org.http4s.{Headers, HttpRoutes, ResponseCookie}
 import org.http4s.circe.toMessageSyntax
 import org.http4s.dsl.io.*
+import org.http4s.{HttpRoutes, ResponseCookie}
 import scribe.Logging
 
-case class WebCredentials(username: String, password: String)
+case class WebCredentials(username: String, password: String) derives Codec.AsObject
 
 object AuthRoutes extends Logging {
 
-  implicit val credDecoder: Codec[WebCredentials] = deriveCodec[WebCredentials]
+  def apply(authService: AuthService) =
+    HttpRoutes.of[IO]:
+      case req @ GET -> Root / "login" =>
+        Ok(fs2.io.readClassLoaderResource[IO]("login.html"))
 
-  def apply(authService: AuthService) = {
+      case req @ POST -> Root / "api" / "login" =>
 
-    HttpRoutes.of[IO] {
-      case req @ POST -> Root / "api" / "identity" / "login" =>
-
-        req.decodeJson[WebCredentials].flatMap { credentials =>
-          authService.login(api.Credentials(credentials.username, credentials.password)).toIO.flatMap {
+        req.decodeJson[WebCredentials].flatMap: credentials =>
+          IO.fromFuture(IO(authService.login(api.Credentials(credentials.username, credentials.password)))).flatMap:
             case api.InvalidCredentials()     => BadRequest("Invalid credentials")
             case api.Authentication(_, token) => Ok("").map(_.addCookie(ResponseCookie("session", token, path = Some("/"))))
-          }
-        }
-      case POST -> Root / "api" / "identity" / "logout" =>
-        Ok("")
-    }
-  }
+            case api.LoginResponse.Empty      => InternalServerError("Something went wrong")
+        
+      case POST -> Root / "api" / "logout" => Ok("")
 }

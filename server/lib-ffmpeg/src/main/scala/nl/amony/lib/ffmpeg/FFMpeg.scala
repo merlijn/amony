@@ -4,7 +4,7 @@ import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg.formatTime
 import nl.amony.lib.ffmpeg.tasks._
 import nl.amony.lib.files.FileUtil.stripExtension
-import nl.amony.lib.files.PathOps
+import nl.amony.lib.files.*
 import scribe.Logging
 
 import java.io.InputStream
@@ -23,6 +23,18 @@ object dsl {
   def input(fileName: String): Param = "-i" -> Some(fileName)
   def crf(q: Int): Param = "-crf" -> Some(q.toString)
   def noAudio(): Param = "-an" -> None
+}
+
+case class TranscodeProfile(
+  ext: String,
+  args: List[String],
+)
+
+object TranscodeProfile {
+  val default = TranscodeProfile(
+    ext = "mp4",
+    args = "-c:v libx264 -crf 23 -movflags +faststart".split(' ').toList
+  )
 }
 
 object FFMpeg extends Logging
@@ -54,8 +66,8 @@ object FFMpeg extends Logging
 
     logger.info(s"Adding faststart at: $out")
 
-    runWithOutput(
-      cmds = List(
+    runWithOutput("ffmpeg",
+      args = List(
         "ffmpeg",
         "-i",        video.absoluteFileName(),
         "-c",        "copy",
@@ -70,69 +82,54 @@ object FFMpeg extends Logging
   def transcodeToMp4(
       inputFile: Path,
       range: (Long, Long),
-      crf: Int = 24,
-      scaleHeight: Option[Int],
+      includeAudio: Boolean = true,
+      profile: TranscodeProfile = TranscodeProfile.default,
+      scaleHeight: Option[Int] = None,
       outputFile: Option[Path] = None
   ): IO[Path] = {
 
     val (ss, to) = range
     val input    = inputFile.absoluteFileName()
-    val output   = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.mp4")
+    val output   = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.${profile.ext}")
 
-    // format: off
     val args: List[String] =
-      List(
-        "-ss",  formatTime(ss),
-        "-to",  formatTime(to),
-        "-i",   input,
-      ) ++
+      List("-ss",  formatTime(ss), "-to",  formatTime(to), "-i",   input) ++
         scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
-      List(
-        "-movflags", "+faststart",
-        "-crf", s"$crf",
-        "-an", // no audio
-        "-v",   "quiet",
-        "-y",   output
-      )
-    // format: on
+        profile.args ++ Option.when(!includeAudio)("-an") ++
+      List("-v", "quiet", "-y",   output)
 
-    runWithOutput[Path](cmds = "ffmpeg" :: args, useErrorStream = true) { _ => IO.pure(Path.of(output)) }
+    runIgnoreOutput("ffmpeg", args).map { _ => Path.of(output) }
   }
 
-  def streamFragment(
-      inputFile: String,
-      from: Long,
-      to: Long,
-      crf: Int = 23,
+  def streamStranscodeMp4(
+      inputFile: Path,
       scaleHeight: Option[Int] = None
-  ): InputStream = {
+  ): fs2.Stream[IO, Byte] = {
 
     // format: off
     val args: List[String] =
     List(
-      "-ss",  formatTime(from),
-      "-to",  formatTime(to),
-      "-i",   inputFile,
+      "-i",   inputFile.absoluteFileName(),
     ) ++
       scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
       List(
         "-c:v",      "libx264",
         "-movflags", "+faststart+frag_keyframe+empty_moov",
-        "-crf",      s"$crf",
+        "-crf",      "23",
         "-f",        "mp4",
         "-an",       // no audio
         "pipe:1"
       )
     // format: on
 
-    runUnsafe("ffmpeg" :: args).getInputStream
+    fs2.Stream.force(useProcess("ffmpeg", args)(p => IO(p.stdout)))
   }
 
   def streamThumbnail(
       inputFile: Path,
       timestamp: Long,
       scaleHeight: Int
-  ): InputStream = {
+  ): fs2.Stream[IO, Byte] = {
 
     // format: off
     val args = List(
@@ -146,7 +143,6 @@ object FFMpeg extends Logging
     )
     // format: on
 
-    runUnsafe("ffmpeg" :: args).getInputStream
+    fs2.Stream.force(useProcess("ffmpeg", args)(p => IO(p.stdout)))
   }
-
 }

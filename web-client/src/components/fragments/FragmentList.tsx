@@ -22,15 +22,15 @@ const FragmentList = (props: {vid: Resource, selected: number, selectFn: (f: Edi
   }
 
   const fragmentList =
-    props.vid.highlights.map((f, idx) => {
+    props.vid.clips.map((f, idx) => {
       return (
         <FragmentPreview
           key={ f.urls[0] }
-          mediaId={ props.vid.id }
-          fragment = { props.vid.highlights[idx] }
+          mediaId={ props.vid.resourceId }
+          fragment = { props.vid.clips[idx] }
           style={ extraStyle(idx) }
           className = { (props.selected === idx ? "fragment-selected" : "fragment-not-selected") + " fragment" }
-          showDeleteButton = { props.vid.highlights.length > 1 }
+          showDeleteButton = { props.vid.clips.length > 1 }
           onDelete = { (v) => props.setVid(v) }
           onClick = { () => props.selectFn({ idx: idx, start: f.range[0] / 1000, end: f.range[1] / 1000 }) }
         />);
@@ -41,10 +41,10 @@ const FragmentList = (props: {vid: Resource, selected: number, selectFn: (f: Edi
     lineHeight: `calc(20vw * 1 / ${ratio})`
   }
 
-  const nrOfFragments = props.vid.highlights.length
+  const nrOfFragments = props.vid.clips.length
 
   const addFragment =
-    <div key={`fragment-${props.vid.id}-new`}
+    <div key={`fragment-${props.vid.resourceId}-new`}
          style={ extraStyle(nrOfFragments) }
          className={ (props.selected === nrOfFragments ? "fragment-selected" : "fragment-not-selected") + " fragment" }
          onClick={(e) => { props.selectFn({ idx: nrOfFragments }) } }>

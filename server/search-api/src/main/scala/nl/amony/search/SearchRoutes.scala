@@ -4,7 +4,6 @@ import cats.effect.IO
 import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.syntax._
-import nl.amony.lib.cats.FutureOps
 import nl.amony.service.resources.web.JsonCodecs.{ _, given }
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import nl.amony.service.search.api.SortDirection.{Asc, Desc}
@@ -18,15 +17,16 @@ object SearchRoutes {
 
   val durationPattern = raw"(\d*)-(\d*)".r
 
-  implicit val searchResultEncoder: Encoder[SearchResult] =
-    deriveEncoder[WebSearchResponse].contramapObject[SearchResult](result =>
-      WebSearchResponse(result.offset, result.total, result.results.map(m => toDto(m)), result.tags)
-    )
+  def getSortedTags(facetMap: Map[String, Long]): Seq[String] = {
+    facetMap.toSeq
+      .sortBy { case (key, count) => (-count, key) } // negative count for descending order
+      .map(_._1)
+  }
 
-  def apply(
-         searchService: SearchService,
-         config: SearchConfig,
-    ): HttpRoutes[IO] = {
+  given searchResultEncoder: Encoder[SearchResult] =
+    deriveEncoder[WebSearchResponse].contramapObject[SearchResult](result => WebSearchResponse(result.offset, result.total, result.results.map(m => toDto(m)), getSortedTags(result.tags)))
+
+  def apply(searchService: SearchService, config: SearchConfig): HttpRoutes[IO] = {
 
     HttpRoutes.of[IO] {
       case req @ GET -> Root / "api" / "search" / "media"  =>
@@ -35,7 +35,7 @@ object SearchRoutes {
         val q      = params.get("q")
         val offset = params.get("offset").map(_.toInt)
         val tags   = params.get("tags")
-        val minRes = params.get("offset").map(_.toInt)
+        val minRes = params.get("min_res").map(_.toInt)
 
         val sortDir = params.get("sort_dir").headOption match {
           case Some("desc") => Desc
@@ -48,7 +48,7 @@ object SearchRoutes {
             case "size"       => Size
             case "duration"   => Duration
             case "date_added" => DateAdded
-            case _ => throw new IllegalArgumentException("unkown sort field")
+            case _ => throw new IllegalArgumentException("unknown sort field")
           }
           .getOrElse(Title)
 
@@ -75,8 +75,9 @@ object SearchRoutes {
           sort = Some(SortOption(sortField, sortDir))
         )
 
-        val searchResult = searchService.searchMedia(query).toIO
-        searchResult.map(_.asJson).flatMap(Ok(_))
+        IO.fromFuture(IO(searchService.searchMedia(query)))
+          .map(_.asJson)
+          .flatMap(Ok(_))
     }
   }
 }

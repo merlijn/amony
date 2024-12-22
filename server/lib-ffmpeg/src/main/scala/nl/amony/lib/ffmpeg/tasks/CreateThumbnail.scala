@@ -3,7 +3,7 @@ package nl.amony.lib.ffmpeg.tasks
 import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg.formatTime
 import nl.amony.lib.files.FileUtil.stripExtension
-import nl.amony.lib.files.PathOps
+import nl.amony.lib.files.*
 import scribe.Logging
 
 import java.nio.file.Path
@@ -16,7 +16,7 @@ trait CreateThumbnail extends Logging {
     inputFile: Path,
     timestamp: Long,
     outputFile: Option[Path],
-    scaleHeight: Option[Int]): IO[Unit] = {
+    scaleHeight: Option[Int]): IO[Int] = {
 
       val input  = inputFile.absoluteFileName()
       val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.webp")
@@ -34,11 +34,6 @@ trait CreateThumbnail extends Logging {
         )
       // format: on
 
-      runIgnoreOutput(cmds = "ffmpeg" :: args, useErrorStream = true)
-
-//      case e: Exception =>
-//        logger.warn(
-//          s"Failed to create thumbnail for inputFile: ${inputFile}, timestamp: ${formatTime(timestamp)}, outputFile: ${outputFile}, scaleHeight: ${scaleHeight}", e
-//        )
+      runIgnoreOutput("ffmpeg", args)
   }
 }

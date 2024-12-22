@@ -1,6 +1,6 @@
 import {durationInMillisToString} from "../../api/Util";
 import React, {CSSProperties, useState} from "react";
-import {Fragment, Resource} from "../../api/Model";
+import {Clip, Resource} from "../../api/Model";
 import {Api} from "../../api/Api";
 import './FragmentPreview.scss';
 import ImgWithAlt from "../common/ImgWithAlt";
@@ -10,7 +10,7 @@ interface Props {
   style: CSSProperties,
   className: string,
   mediaId: string,
-  fragment: Fragment,
+  fragment: Clip,
   showDeleteButton: boolean,
   showDuration?: boolean,
   onDelete?: (vid: Resource) => any,

@@ -1,4 +1,5 @@
-@import '../App.scss';
+@use 'src/App.scss' as *;
+@use 'sass:map';
 
 .main-page {
   width: 100%;
@@ -11,9 +12,9 @@
   position: relative;
   margin-top: 37px;
   margin-bottom: 2px;
-  border: "none";
+  border: none;
 
-  @media only screen and (min-width: map-get($container-max-widths, md)) {
+  @media only screen and (min-width: map.get($container-max-widths, md)) {
     margin-top: 45px;
   }
 

@@ -1,116 +1,304 @@
-//package nl.amony.search.solr
-//
-//import akka.actor.Actor
-//import akka.actor.typed.ActorRef
-//import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer
-//import org.apache.solr.common.SolrInputDocument
-//import org.apache.solr.common.params.{CommonParams, ModifiableSolrParams}
-//import scribe.Logging
-//
-//import java.nio.file.Path
-//import java.util.Properties
-//import scala.util.{Failure, Success}
-//
-//object SolrIndex extends Logging {
-//
-//  def startSolr(): EmbeddedSolrServer = {
-//    import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer
-//    import org.apache.solr.core.CoreContainer
-//
-//    val solrPath = Path.of("./solr/solr-search")
-//
-//    System.getProperties.setProperty("solr.data.dir", appConfig.media.indexPath.resolve("solr").toAbsolutePath.toString)
-//
-//    val container = new CoreContainer(solrPath, new Properties())
-//    container.load()
-//    val server = new EmbeddedSolrServer(container, "amony_embedded")
-//    server
-//  }
-//
-//  class SolrIndexActor(media: ActorRef[Command]) extends Actor with Logging {
-//
-//    val solr = startSolr()
-//
-//
-//    def addMediaToSolr(media: Media): Unit = {
-//
-//      val solrInputDocument: SolrInputDocument = new SolrInputDocument()
-//      solrInputDocument.addField("id", media.id)
-//      solrInputDocument.addField("title_s", media.title.getOrElse(media.fileName()))
-//      solrInputDocument.addField("lastmodified_l", media.fileInfo.lastModifiedTime)
-//      solrInputDocument.addField("created_l", media.fileInfo.creationTime)
-//      solrInputDocument.addField("filesize_l", media.fileInfo.size)
-//      solrInputDocument.addField("tags_ss", media.tags.toList.asJava)
-//      solrInputDocument.addField("duration_l", media.videoInfo.duration)
-//      solrInputDocument.addField("fps_d", media.videoInfo.fps)
-//      solrInputDocument.addField("width_i", media.videoInfo.resolution._1)
-//      solrInputDocument.addField("height_i", media.videoInfo.resolution._2)
-//
-//      try {
-//        solr.add("amony_embedded", solrInputDocument).getStatus
-//      }
-//      catch {
-//        case e: Exception =>
-//          logger.warn("Exception while trying to index document to solr", e)
-//      }
-//    }
-//
-//    override def receive: Receive = {
-//
-//      case MediaAdded(media) =>
-//        addMediaToSolr(media)
-//
-//      case MediaUpdated(id, media) =>
-//        addMediaToSolr(media)
-//
-//      case MediaMetaDataUpdated(id, title, comment, tagsAdded, tagsRemoved) =>
-//        ()
-//
-//      case GetPlaylists(sender) =>
-//        sender.tell(List.empty)
-//
-//      case GetTags(sender) =>
-//        sender.tell(Set.empty)
-//
-//      case Search(query, sender) =>
-//
-//        logger.info(s"Query: $query")
-//
-//        val q = query.q.getOrElse("")
-//
-//        val solrParams = new ModifiableSolrParams
-//        solrParams.add(CommonParams.Q, s"title_s:*${if (q.trim.isEmpty) "" else s"$q*"}")
-//        solrParams.add(CommonParams.START, query.offset.getOrElse(0).toString)
-//        solrParams.add(CommonParams.ROWS, query.n.toString)
-//
-//        val sort: String = query.sort.map { option =>
-//          val solrField = option.field match {
-//            case FileName => "title_s"
-//            case DateAdded => "created_l"
-//            case FileSize => "filesize_l"
-//            case Duration => "duration_l"
-//          }
-//
-//          s"$solrField ${if (option.reverse) "desc" else "asc"}"
-//        }.getOrElse("created_l desc")
-//
-//        solrParams.add(CommonParams.SORT, sort)
-//
-//        val queryResponse = solr.query(solrParams)
-//
-//        val ids = queryResponse.getResults.asScala.map(_.getFieldValue("id").asInstanceOf[String])
-//        val total = queryResponse.getResults.getNumFound
-//        val offset = queryResponse.getResults.getStart
-//
-//        logger.info(s"number found: ${queryResponse.getResults.getNumFound}")
-//
-//        media.ask[Map[String, Media]](ref => GetByIds(ids.toSet, ref))(Timeout(5.seconds), context.system.toTyped.scheduler).onComplete {
-//          case Success(results) =>
-//            val medias: Seq[Media] = ids.map(id => results.get(id)).flatten.toSeq
-//            sender.tell(SearchResult(offset, total, medias, Map.empty))
-//          case Failure(e) =>
-//            sender.tell(SearchResult(offset, total, List.empty, Map.empty))
-//        }(context.dispatcher)
-//    }
-//  }
-//}
+package nl.amony.search.solr
+
+import cats.effect.{IO, Resource}
+import nl.amony.search.solr.SolrIndex.*
+import nl.amony.service.resources.api.*
+import nl.amony.service.resources.api.events.*
+import nl.amony.service.search.api.SearchServiceGrpc.SearchService
+import nl.amony.service.search.api.SortDirection.Desc
+import nl.amony.service.search.api.SortField.*
+import nl.amony.service.search.api.*
+import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer
+import org.apache.solr.client.solrj.{SolrClient, SolrQuery}
+import org.apache.solr.common.params.{CommonParams, FacetParams, ModifiableSolrParams}
+import org.apache.solr.common.{SolrDocument, SolrInputDocument}
+import org.apache.solr.core.CoreContainer
+import scribe.Logging
+import io.grpc.stub.StreamObserver
+
+import java.nio.file.{Files, Path}
+import java.util.Properties
+import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+object SolrIndex {
+
+  val collectionName = "amony_embedded"
+  val defaultSort = SortOption(DateAdded, Desc)
+  val tagsLimit = 12.toString
+  val commitWithinMillis = 5000
+  val solrTarGzResource = "/solr.tar.gz"
+  
+  object FieldNames {
+    val id = "id"
+    val bucketId = "bucket_id_s"
+    val path = "path_text_ci"
+    val filesize = "filesize_l"
+    val tags = "tags_ss"
+    val thumbnailTimestamp = "thumbnailtimestamp_l"
+    val title = "title_s"
+    val videoCodec = "video_codec_s"
+    val description = "description_s"
+    val created = "created_l"
+    val lastModified = "lastmodified_l"
+    val contentType = "content_type_s"
+    val width = "width_i"
+    val height = "height_i"
+    val duration = "duration_l"
+    val fps = "fps_f"
+    val resourceType = "resource_type_s"
+  }
+
+  def resource(config: SolrConfig)(using ec: ExecutionContext): Resource[IO, SolrIndex] =
+    Resource.make[IO, SolrIndex](IO(new SolrIndex(config)))(_.close())
+}
+
+class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchService with Logging {
+
+  private val solrHome: Path = Path.of(config.path).toAbsolutePath.normalize()
+
+  logger.info(s"Solr home: $solrHome")
+
+  private val lockfilePath = solrHome.resolve("index/write.lock")
+
+  // delete the lock file on shutdown
+  sys.addShutdownHook {
+    if (Files.exists(lockfilePath))
+      Files.delete(lockfilePath)
+  }
+
+  if (Files.exists(solrHome) && !Files.isDirectory(solrHome))
+    throw new RuntimeException(s"Solr home is not a directory: $solrHome")
+
+  if (!Files.exists(solrHome)) {
+    logger.info(s"Solr directory does not exists. Creating it at: $solrHome")
+    TarGzExtractor.extractResourceTarGz(solrTarGzResource, solrHome)
+  }
+
+  if (Files.exists(lockfilePath) && config.deleteLockfileOnStartup) {
+    logger.info(s"Deleting lock file at: $lockfilePath")
+    Files.delete(lockfilePath)
+  }
+
+  protected def close(): IO[Unit] = IO {
+    Files.delete(lockfilePath)
+    solr.close()
+    container.shutdown()
+  }
+
+  System.getProperties.setProperty("solr.data.dir", solrHome.toAbsolutePath.toString)
+  
+  private val container = new CoreContainer(solrHome, new Properties())
+  container.load()
+  private val solr: SolrClient = new EmbeddedSolrServer(container, collectionName)
+
+  private def toSolrDocument(resource: ResourceInfo): SolrInputDocument = {
+    
+    val solrInputDocument: SolrInputDocument = new SolrInputDocument()
+    solrInputDocument.addField(FieldNames.id, resource.hash)
+    solrInputDocument.addField(FieldNames.bucketId, resource.bucketId)
+    solrInputDocument.addField(FieldNames.path, resource.path)
+    solrInputDocument.addField(FieldNames.filesize, resource.size)
+
+    val maybeTags = Option.when(resource.tags.nonEmpty)(resource.tags)
+    maybeTags.foreach(tags => solrInputDocument.addField(FieldNames.tags, resource.tags.toList.asJava))
+
+    resource.thumbnailTimestamp.foreach(timestamp => solrInputDocument.addField(FieldNames.thumbnailTimestamp, timestamp))
+    resource.title.foreach(title => solrInputDocument.addField(FieldNames.title, title))
+    resource.description.foreach(description => solrInputDocument.addField(FieldNames.description, description))
+    resource.creationTime.foreach(created => solrInputDocument.addField(FieldNames.created, created))
+    resource.lastModifiedTime.foreach(lastModified => solrInputDocument.addField(FieldNames.lastModified, lastModified))
+    resource.contentType.foreach(contentType => solrInputDocument.addField(FieldNames.contentType, contentType))
+
+    resource.contentMeta match {
+      case ImageMeta(w, h, _) =>
+        solrInputDocument.addField(FieldNames.width, w)
+        solrInputDocument.addField(FieldNames.height, h)
+        solrInputDocument.addField(FieldNames.resourceType, "image")
+      case VideoMeta(w, h, fps, duration, codec, _) =>
+        solrInputDocument.addField(FieldNames.width, w)
+        solrInputDocument.addField(FieldNames.height, h)
+        solrInputDocument.addField(FieldNames.duration, duration)
+        codec.foreach(codec => solrInputDocument.addField(FieldNames.videoCodec, codec))
+        solrInputDocument.addField(FieldNames.fps, fps)
+        solrInputDocument.addField(FieldNames.resourceType, "video")
+      case _ =>
+    }
+
+    solrInputDocument
+  }
+
+  private def toResource(document: SolrDocument): ResourceInfo = {
+
+    val id = document.getFieldValue(FieldNames.id).asInstanceOf[String]
+    val bucketId = document.getFieldValue(FieldNames.bucketId).asInstanceOf[String]
+    val title = Option(document.getFieldValue(FieldNames.title)).map(_.asInstanceOf[String])
+    val path = document.getFieldValue(FieldNames.path).asInstanceOf[String]
+    val creationTime = Option(document.getFieldValue(FieldNames.created)).map(_.asInstanceOf[Long])
+    val lastModified = Option(document.getFieldValue(FieldNames.lastModified)).map(_.asInstanceOf[Long])
+    val size = document.getFieldValue(FieldNames.filesize).asInstanceOf[Long]
+
+    val contentType = Option(document.getFieldValue(FieldNames.contentType)).map(_.asInstanceOf[String])
+
+    val width = document.getFieldValue(FieldNames.width).asInstanceOf[Int]
+    val height = document.getFieldValue(FieldNames.height).asInstanceOf[Int]
+    val description = Option(document.getFieldValue(FieldNames.description)).map(_.asInstanceOf[String])
+
+    val resourceType = document.getFieldValue(FieldNames.resourceType).asInstanceOf[String]
+    val thumbnailTimestamp = Option(document.getFieldValue(FieldNames.thumbnailTimestamp)).map(_.asInstanceOf[Long])
+
+    val tags = Option(document.getFieldValues(FieldNames.tags)).map(_.asInstanceOf[java.util.List[String]].asScala).getOrElse(List.empty).toSeq
+
+    val contentMeta: ResourceMeta = resourceType match {
+
+      case "image" => ImageMeta(width, height)
+      case "video" =>
+        val duration = document.getFieldValue(FieldNames.duration).asInstanceOf[Long]
+        val fps = document.getFieldValue(FieldNames.fps).asInstanceOf[Float]
+        val codec = Option(document.getFieldValue(FieldNames.videoCodec)).map(_.asInstanceOf[String])
+        VideoMeta(width, height, fps, duration, codec, Map.empty)
+      case _ => ResourceMeta.Empty
+    }
+
+    ResourceInfo(bucketId, path, id, size, contentType, contentMeta, creationTime, lastModified, title, description, tags, thumbnailTimestamp)
+  }
+
+  private def toSolrQuery(query: Query) = {
+    
+    val sort = query.sort.getOrElse(defaultSort)
+
+    val solrSort = {
+
+      val solrField = sort.field match
+        case Title     => FieldNames.title
+        case DateAdded => FieldNames.created
+        case Size      => FieldNames.filesize
+        case Duration  => FieldNames.duration
+        case _         => FieldNames.created
+
+      val direction = if (sort.direction == Desc) "desc" else "asc"
+
+      // TODO add random sort feature
+      // https://ubuntuask.com/blog/how-to-boost-fields-with-random-sort-in-solr
+      // random_1234 desc
+
+      s"$solrField $direction"
+    }
+
+    val solrParams = new ModifiableSolrParams
+
+    val solrQ = {
+      val q = query.q.getOrElse("")
+      val sb = new StringBuilder()
+
+      sb.append(s"${FieldNames.path}:*${if (q.trim.isEmpty) "" else s"$q*"}")
+      if(query.tags.nonEmpty)
+        sb.append(s" AND ${FieldNames.tags}:(${query.tags.mkString(" OR ")})")
+      
+      if (query.minRes.isDefined || query.maxRes.isDefined)
+        sb.append(s" AND ${FieldNames.width}:[${query.minRes.getOrElse(0)} TO ${query.maxRes.getOrElse("*")}]")
+        
+      if (query.minDuration.isDefined || query.maxDuration.isDefined)
+        sb.append(s" AND ${FieldNames.duration}:[${query.minDuration.getOrElse(0)} TO ${query.maxDuration.getOrElse("*")}]")  
+
+
+      sb.result()
+    }
+
+    solrParams.add(CommonParams.Q, solrQ)
+    solrParams.add(CommonParams.START, query.offset.getOrElse(0).toString)
+    solrParams.add(CommonParams.ROWS, query.n.toString)
+    solrParams.add(CommonParams.SORT, solrSort)
+    solrParams.add(FacetParams.FACET, "true")
+    solrParams.add(FacetParams.FACET_FIELD, FieldNames.tags)
+    solrParams.add(FacetParams.FACET_LIMIT, tagsLimit)
+
+    solrParams
+  }
+
+  def totalDocuments(bucketId: String): Long =
+    solr.query(collectionName, new SolrQuery(s"bucket_id_s:$bucketId")).getResults.getNumFound
+
+  private def insertResource(resource: ResourceInfo) = {
+    try {
+      logger.debug(s"Indexing media: ${resource.path}")
+      val solrInputDocument = toSolrDocument(resource)
+      solr.add(collectionName, solrInputDocument, commitWithinMillis).getStatus
+    }
+    catch {
+      case e: Exception => logger.error("Exception while trying to index document to solr", e)
+    }
+  }
+
+  def processEvent(event: ResourceEvent): Unit = event match {
+
+    case ResourceAdded(resource)   => insertResource(resource)
+    case ResourceUpdated(resource) => insertResource(resource)
+
+    case ResourceMoved(resourceId, oldPath, newPath) =>
+      val solrDocument = new SolrInputDocument()
+      solrDocument.addField(FieldNames.id, resourceId)
+      solrDocument.addField(FieldNames.path, Map("set" -> newPath).asJava)
+      solr.add(collectionName, solrDocument, commitWithinMillis).getStatus
+
+    case ResourceDeleted(resourceId) =>
+      try {
+        logger.debug(s"Deleting document from index: $resourceId")
+        solr.deleteById(collectionName, resourceId, commitWithinMillis).getStatus
+      }
+      catch {
+        case e: Exception => logger.error("Exception while trying to delete document from solr", e)
+      }
+    case _ =>
+      logger.info(s"Ignoring event: $event")
+      ()
+  }
+  
+  override def indexAll(responseObserver: StreamObserver[ReIndexResult]): StreamObserver[ResourceInfo] = {
+    new StreamObserver[ResourceInfo] {
+      override def onNext(value: ResourceInfo): Unit = 
+        insertResource(value)
+
+      override def onError(t: Throwable): Unit = 
+        logger.error("Error while re-indexing", t)
+
+      override def onCompleted(): Unit = 
+        responseObserver.onNext(ReIndexResult())
+        responseObserver.onCompleted()
+    }
+  }
+
+  override def index(request: ResourceInfo): Future[ReIndexResult] = Future { insertResource(request); ReIndexResult() }
+
+  override def searchMedia(query: Query): Future[SearchResult] = {
+
+    Future {
+
+      val solrParams = toSolrQuery(query)
+      val queryResponse = solr.query(solrParams)
+      val results = queryResponse.getResults
+
+      val total = results.getNumFound
+      val offset = results.getStart
+
+      val tagsWithFrequency: Map[String, Long] = Option(queryResponse.getFacetFields)
+        .flatMap(fields => Try(fields.get(0)).toOption)
+        .map { results => 
+          results.getValues.iterator().asScala.foldLeft(Map.empty[String, Long]) {
+            case (acc, value) if value.getCount > 0 => acc + (value.getName -> value.getCount)
+            case (acc, _) => acc
+          }
+        }.getOrElse(Map.empty[String, Long])
+
+      logger.debug(s"Search query: ${solrParams.toString}, total: $total, tags: ${tagsWithFrequency.mkString(", ")}")
+
+      SearchResult(
+        offset = offset.toInt,
+        total = total.toInt,
+        results = results.asScala.map(toResource).toList,
+        tags = tagsWithFrequency
+      )
+    }
+  }
+}

@@ -29,7 +29,7 @@ message SearchResult {
   required int64 offset = 1;
   required int32 total = 2;
   repeated nl.amony.service.resources.api.ResourceInfo results = 3;
-  repeated string tags = 4;
+  map<string, uint64> tags = 4;
 }
 
 message SortOption {
@@ -48,3 +48,5 @@ enum SortDirection {
   Asc = 0;
   Desc = 1;
 }
+
+message ReIndexResult { }

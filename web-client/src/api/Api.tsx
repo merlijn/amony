@@ -1,7 +1,7 @@
 import Cookies from "js-cookie";
 import { ResourceSelection, Sort, ResourceUserMeta } from "./Model";
 import { buildUrl } from "./Util";
-import jwtDecode, { JwtPayload } from "jwt-decode";
+import { JwtPayload, jwtDecode } from "jwt-decode";
 import axios from 'axios';
 import { durationAsParam } from "./Constants";
 
@@ -19,6 +19,12 @@ const anonymousSession: Session = {
   isLoggedIn: () => false,
   isAdmin: () => false,
   hasRole: (s: string) => false
+}
+
+const adminSession: Session = {
+  isLoggedIn: () => true,
+  isAdmin: () => true,
+  hasRole: (s: string) => true
 }
 
 const sessionFromToken = (token: any): Session => {
@@ -44,7 +50,7 @@ export const Api = {
       return sessionFromToken(jwtToken);
     }
 
-    return anonymousSession;
+    return adminSession // anonymousSession; TODO implement users / privileges
   },
 
   login: async function(username: string, password: string) {
@@ -162,6 +168,10 @@ export const Api = {
 
   updateFragment: async function (mediaId: string, idx: number, from: number, to: number) {
     return doPOST(`/api/fragments/${mediaId}/${Math.trunc(idx)}`, { from: from, to: to})
+  },
+
+  updateThumbnailTimestamp: async function (mediaId: string, time: number) {
+    return doPOST(`/api/resources/media/${mediaId}/update_thumbnail_timestamp`, { timestampInMillis: time })
   }
 }
 

@@ -1,11 +1,13 @@
-@import 'src/App.scss';
+@use 'src/App.scss' as *;
 
 $row-height: 36px;
 
 .list-container {
+
   width: 100%;
   height: auto;
   display: table;
+  table-layout: fixed;
 
   .action-icon {
       
@@ -14,16 +16,38 @@ $row-height: 36px;
     height: 20px;
   }
 
+  .list-cell {
+    @extend .v-align-center;
+
+    position: relative;
+    display: table-cell;
+
+    white-space: nowrap;
+    overflow: hidden;
+
+    border-bottom: 1px solid $gray-200;
+    padding: 0px 8px;
+    height: $row-height;
+  }
+
   .list-header {
     
     @extend .hover-pointer;
 
-    position: sticky;
-    position: -webkit-sticky;
-    top: 0px;
+    text-align: left;
+    vertical-align: middle;
 
+    position: sticky;
+    //top: 0px;
+    font-size: 15px;
     font-weight: 500;
-    padding: 12px 8px !important;
+    height: 44px;
+    //padding: 12px 8px;
+    border-bottom: 1px solid $gray-200;
+
+    span {
+      padding-left: 8px;
+    }
 
     .column-sort-icon {
       visibility: hidden;
@@ -31,8 +55,53 @@ $row-height: 36px;
     }
   }
 
-  .row-spacer {
-    height: 5px !important;
+  .list-header-actionbar {
+
+    @extend .list-header;
+    width: 100%;
+    //text-align: center;
+    vertical-align: middle;
+
+    .action-bar-item {
+      @extend .hover-pointer;
+      width: 18px;
+      height: 18px;
+      margin-right: 8px;
+      //padding: 0px 8px;
+      //display: inline-block;
+    }
+  }
+
+  .list-header-select {
+    @extend .list-header, .hover-pointer;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .list-header-thumbnail {
+    @extend .list-header;
+  }
+
+  .list-header-title {
+    @extend .list-header;
+    width: 65%;
+  }
+
+  .list-header-tags {
+    @extend .list-header;
+    width: 35%;
+  }
+
+  .list-header-date {
+    @extend .list-header;
+  }
+
+  .list-header-size {
+    @extend .list-header;
+  }
+
+  .list-header-resolution {
+    @extend .list-header;
   }
 
   .list-row {
@@ -42,7 +111,6 @@ $row-height: 36px;
     .hover-action {
       visibility: hidden;
       position: absolute;
-      right: 0px;
     }
 
     .add-tag-button {
@@ -71,9 +139,12 @@ $row-height: 36px;
     }
 
     .edit-title {
-      @extend .hover-pointer;
-      width: 20px;
-      height: 20px;
+      @extend .hover-pointer, .action-icon, .hover-action;
+      background-color: $gray-100;
+      width: 30px;
+      right: -8px;
+      padding-left: 6px;
+      padding-right: 4px;
     }
 
     &:hover {
@@ -103,12 +174,26 @@ $row-height: 36px;
     }
 
     .list-select {
-      width: 1%;
-      padding-left: 16px !important;
+      @extend .list-cell, .hover-pointer;
+      text-align: center;
+      vertical-align: middle;
+      &:hover {
+        background-color: $gray-300;
+        border-radius: 50%;
+      }
+      input {
+        @extend .hover-pointer;
+        align-content: center;
+        &:hover {
+          background-color: $gray-300;
+        }
+      }
     }
 
     .list-thumbnail {
-      width: 1%;
+      @extend .list-cell;
+      padding-left: 0px;
+      padding-right: 0px;
       .list-thumbnail-img {
         @extend .hover-pointer;
         align-items: center;
@@ -129,7 +214,6 @@ $row-height: 36px;
 
     .list-size {
       text-align: right;
-
     }
 
     .list-title {
@@ -174,19 +258,6 @@ $row-height: 36px;
           margin-left: 5px;
         }
       }
-    }
-
-    .list-cell {
-      @extend .v-align-center;
-
-      position: relative;
-      display: table-cell;
-
-      white-space: nowrap;
-
-      border-bottom: 1px solid $gray-200;
-      padding: 0px 8px;
-      height: $row-height;
     }
   }
 }

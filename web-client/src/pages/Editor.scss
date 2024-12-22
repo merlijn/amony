@@ -1,4 +1,6 @@
-@import '../App.scss';
+@use 'src/App.scss' as *;
+
+@import '@vidstack/react/player/styles/plyr/theme.css';
 
 .video-background {
 
@@ -11,15 +13,22 @@
   float: left;
 
   .video-player {
-    --plyr-video-controls-background: black;
-    --plyr-color-main: #1ac266;
+    //--plyr-video-controls-background: black;
+    --plyr-color-main: #508ed1;
+    --plyr-border-radius: 0;
+
     width: 100%;
     height: 100%;
-  }
 
-  // hack to hide the center play button
-  > div > button[aria-Label="Play"] {
+    // hack to hide the center play button
+    > div > button.plyr__control--overlaid {
       display: none ! important;
+    }
+
+    video {
+        width: 100%;
+        height: 100%;
+    }
   }
 }
 
@@ -60,5 +69,3 @@
     float: left;
   }
 }
-
-@import 'node_modules/plyr/src/sass/plyr';

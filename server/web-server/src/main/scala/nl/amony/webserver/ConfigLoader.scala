@@ -2,26 +2,46 @@ package nl.amony.webserver
 
 import com.typesafe.config.ConfigFactory
 import nl.amony.search.SearchConfig
+import nl.amony.search.solr.SolrConfig
 import nl.amony.service.resources.ResourceConfig.*
-import pureconfig._
-import pureconfig.generic.derivation.default._
+import pureconfig.*
+import pureconfig.generic.derivation.default.*
 import scribe.Logging
 
 import java.nio.file.Path
+import scala.reflect.ClassTag
 
 case class AmonyConfig(
-  amonyPath: Path,
-  resources: List[ResourceBucketConfig],
-  api: WebServerConfig,
-  search: SearchConfig
+    amonyHome: Path,
+    resources: List[ResourceBucketConfig],
+    api: WebServerConfig,
+    search: SearchConfig,
+    solr: SolrConfig
 ) derives ConfigReader
 
 trait ConfigLoader extends Logging {
 
-  import pureconfig._
+  import pureconfig.*
 
-  val config       = ConfigFactory.load()
-  val configSource = ConfigSource.fromConfig(config)
+  lazy val config       = {
+    Option(System.getenv().get("AMONY_CONFIG_FILE")) match
+      case Some(fileName) =>
+        logger.info(s"Loading configuration from file: $fileName")
+        ConfigFactory.parseFile(Path.of(fileName).toFile)
+      case None =>
+        ConfigFactory.load()
+  }
 
-  val appConfig = configSource.at("amony").loadOrThrow[AmonyConfig]
+  lazy val appConfig    = {
+    val configSource = ConfigSource.fromConfig(config)
+    configSource.at("amony").loadOrThrow[AmonyConfig]
+  }
+
+  def loadConfig[T: ClassTag : ConfigReader](path: String): T = {
+
+    val configSource = ConfigSource.fromConfig(config.getConfig(path))
+    val configObj = configSource.loadOrThrow[T]
+
+    configObj
+  }
 }

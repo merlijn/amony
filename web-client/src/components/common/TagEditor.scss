@@ -1,4 +1,4 @@
-@import 'src/App.scss';
+@use 'src/App.scss' as *;
 
 .tag-container {
 
@@ -41,7 +41,7 @@
     float: left;
     color: black;
     background-color: $gray-300;
-    border: 1px solid $gray-400;
+    border: 2px solid $gray-400;
     font-size: small;
     padding: 6px 12px;
     border-radius: 25px;

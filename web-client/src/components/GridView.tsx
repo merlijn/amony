@@ -25,25 +25,26 @@ const GridView = (props: GalleryProps) => {
 
   const [searchResult, setSearchResult] = useState(initialSearchResult)
   const [isFetching, setIsFetching] = useState(false)
-  const [fetchMore, setFetchMore] = useState(true)
+  const [isEndReached, setIsEndReached] = useState(false)
   const { ref, width } = useResizeObserver<HTMLDivElement>();
   const [columns, setColumns] = useState<number>(props.columns === 'auto' ? 0 : props.columns)
 
   const gridSpacing = 1
 
-  const fetchData = (previous: Array<Resource>) => {
+  const fetchData = () => {
 
+    const previous = searchResult.results
     const offset = previous.length
     const n      = columns * 8
 
-    if (n > 0 && fetchMore) {
+    if (n > 0 && !isEndReached) {
       Api.searchMedia(n, offset, props.selection).then(response => {
 
           const result = response as SearchResult
           const videos = [...previous, ...result.results]
 
           if (videos.length >= result.total)
-            setFetchMore(false)
+            setIsEndReached(true)
 
           setIsFetching(false);
           setSearchResult( {...response, results: videos } );
@@ -53,14 +54,13 @@ const GridView = (props: GalleryProps) => {
 
   useEffect(() => {
     if (props.columns === 'auto') {
-
       const componentWidth = props.componentType === 'page' ? window.innerWidth : width
-
       if (componentWidth !== undefined) {
         const c = Math.max(1, Math.round(componentWidth / Constants.gridSize));
         if (c !== columns) {
           if (c > columns)
             setIsFetching(true)
+
           setColumns(c)
         }
       }
@@ -75,18 +75,16 @@ const GridView = (props: GalleryProps) => {
   useEffect(() => {
     setSearchResult(initialSearchResult)
     setIsFetching(true)
-    setFetchMore(true)
+    setIsEndReached(false)
   }, [props.selection])
 
-  useEffect(() => { fetchData(searchResult.results) }, [columns])
-
-  useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.results); }, [isFetching]);
+  useEffect(() => { if (isFetching && !isEndReached) fetchData(); }, [isFetching, isEndReached]);
 
   const previews = searchResult.results.map((vid, index) => {
 
     const style = { "--ncols" : `${columns}` } as CSSProperties
 
-    return <div key = { `preview-${vid.id}` } className = "grid-cell" style = { style } >
+    return <div key = { `preview-${vid.resourceId}` } className = "grid-cell" style = { style } >
               <Preview
                 resource= { vid }
                 onClick  = { props.onClick }
@@ -102,11 +100,11 @@ const GridView = (props: GalleryProps) => {
 
   return(
     <div className = { props.className } style = { props.style }>
-      { props.showTagbar && <TagBar tags = { searchResult.tags } /> }
+      { props.showTagbar && <TagBar tags = { searchResult.tags } total = { searchResult.total } /> }
       <Scrollable
         style        = { style }
         className    = "gallery-container"
-        fetchContent = { () => { if (!isFetching && fetchMore) setIsFetching(true); fetchData(searchResult.results) } }
+        fetchContent = { () => { if (!isFetching && !isEndReached) setIsFetching(true) } }
         scrollType   = { props.componentType }
         ref          = { ref }
         >

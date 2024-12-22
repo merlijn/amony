@@ -1,24 +1,27 @@
-@import 'src/App.scss';
+@use 'src/App.scss' as *;
 
 .modal-container {
 
   @extend .full-screen, .abs-top-left;
 
   position: fixed; 
-  z-index: 500!important; 
+  //z-index: 500!important;
   overflow: hidden;
 
   .modal-background {
 
     @extend .full-screen, .abs-top-left;
     position: fixed; 
-    z-index: 501!important; 
+    //z-index: 501!important;
+    visibility: inherit;
     overflow: hidden;
     background-color: rgb(0,0,0); /* Fallback color */
     background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
   }
 
   .modal-content {
+
+    visibility: inherit;
 
     @media (max-width: 768px) {
       position: absolute;
@@ -34,6 +37,6 @@
       transform: translate(-50%, -50%);
     }
 
-    z-index: 502!important;
+    //z-index: 502!important;
   }
 }

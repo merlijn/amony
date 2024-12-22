@@ -1,6 +1,10 @@
-@import 'src/css/Constants.scss';
-@import 'src/css/Layout.scss';
-@import 'src/css/Defaults.scss';
+@use 'src/css/Constants.scss' as constants;
+@use 'src/css/Layout.scss' as layout;
+@use 'src/css/Defaults.scss';
+
+@forward 'src/css/Constants.scss';
+@forward 'src/css/Layout.scss';
+@forward 'src/css/Defaults.scss';
 
 .root {
   --text-bg-color: white;
@@ -9,7 +13,7 @@
 
 .app-root {
   width: 100vw;
-  padding: 0px;
+  padding: 0;
 }
 
 .hover-pointer {
@@ -18,9 +22,10 @@
   }
 }
 
-.video-quality-overlay {
-  @extend .abs-bottom-right;
+.duration-overlay {
 
+  @extend .abs-bottom-right;
+  opacity: 0.9;
   z-index: 8;
   margin: 5px;
   padding: 2px 5px;
@@ -29,15 +34,33 @@
   font-size: small;
 }
 
-.duration-overlay {
+.preview-quality-overlay {
 
   @extend .abs-bottom-left;
+  opacity: 0.85;
+  z-index: 8;
+  margin: 5px;
+  padding: 2px 5px;
+  color: #f0f0f0;
+  -webkit-text-stroke: 4px #111;
+  paint-order: stroke fill;
+  //background-color: rgba(0, 0, 0, 0.6);
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.preview-edit-icon-overlay {
+  @extend .abs-top-right;
   z-index: 8;
   margin: 5px;
   padding: 2px 5px;
   color: white;
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: rgba(0, 0, 0, 0.0);
   font-size: small;
+  &:hover {
+    background-color: constants.$gray-100;
+    border-radius: 50%;
+  }
 }
 
 .action-icon-small {
@@ -64,11 +87,12 @@
   padding: 8px 12px;
   border-radius: 5px;
   color: white;
-  background-color: $highlight-a;
-  border: 1px solid $highlight-a;
+  background-color: constants.$highlight-a;
+  border: 1px solid constants.$highlight-a;
 
   &:hover {
-    background-color: $secondary-a;
-    border-color: $secondary-a;
+    background-color: constants.$secondary-a;
+    border-color: constants.$secondary-a;
   }
 }
+

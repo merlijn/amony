@@ -2,16 +2,18 @@ import _ from "lodash";
 import React, { useEffect, useRef, useState } from "react";
 import { isMobile } from "react-device-detect";
 import { BsListUl } from "react-icons/bs";
-import { GoGrabber, GoSearch } from "react-icons/go";
+import {GoGrabber, GoPerson, GoSearch} from "react-icons/go";
 import { IoGridOutline } from "react-icons/io5";
-import { MdClose, MdTune } from "react-icons/md";
-import { useHistory, useLocation } from "react-router-dom";
+import {MdClose, MdOutlineSettings, MdTune} from "react-icons/md";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Constants, durationAsParam, parseDurationParam, useSortParam } from "../../api/Constants";
 import { MediaView } from "../../api/Model";
 import { useUrlParam } from "../../api/ReactUtils";
 import { buildUrl, copyParams } from "../../api/Util";
 import { DropDown } from "../common/DropDown";
 import './TopNavBar.scss';
+import {FaBars} from "react-icons/fa6";
+import { AiOutlineSetting } from "react-icons/ai";
 
 export type NavBarProps = {
   onClickMenu: () => void, 
@@ -22,7 +24,7 @@ export type NavBarProps = {
 function TopNavBar(props: NavBarProps) {
 
   const location = useLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState("")
   const [showFilters, setShowFilters] = useState(false)
@@ -32,7 +34,7 @@ function TopNavBar(props: NavBarProps) {
     const params = new URLSearchParams(location.search)
     const newParams = copyParams(params)
     newParams.set("q", query)
-    history.push(buildUrl("/search", newParams));
+    navigate(buildUrl("/search", newParams));
   };
 
   useEffect(() => { 
@@ -52,8 +54,8 @@ function TopNavBar(props: NavBarProps) {
   return(
     <div className = "nav-bar-container">
       <div className = "top-nav-bar">
-          <GoGrabber className = "nav-menu-button" onClick = { props.onClickMenu } />
           <div key = "nav-bar-center" className = "nav-bar-center">
+            <AiOutlineSetting className = "nav-menu-button" onClick = { props.onClickMenu } />
             <form key="search-form" className = "nav-search-form" onSubmit = { doSearch } >
               <div className = "nav-search-input-container">
                 <GoSearch className="search-icon" />
@@ -83,7 +85,7 @@ function TopNavBar(props: NavBarProps) {
                   </button>
                 </div>
             }
-            </div> 
+            </div>
       </div>
     </div>
   );

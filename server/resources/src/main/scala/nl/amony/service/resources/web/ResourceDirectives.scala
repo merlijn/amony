@@ -1,17 +1,41 @@
 package nl.amony.service.resources.web
 
 import cats.data.NonEmptyList
-import cats.effect.Async
+import cats.effect.{Async, IO}
 import cats.implicits.{toFlatMapOps, toFunctorOps}
 import fs2.Stream
 import fs2.io.file.{Files, Path}
-import org.http4s._
+import nl.amony.service.resources.{Resource, ResourceWithRangeSupport}
+import org.http4s.*
+import org.http4s.dsl.io.*
 import org.http4s.headers.Range.SubRange
 import org.http4s.headers.{Range, `Accept-Ranges`, `Content-Range`, `Content-Type`}
 import org.typelevel.ci.CIStringSyntax
 import scribe.Logging
 
 object ResourceDirectives extends Logging {
+
+  def respondWithResourceContent(req: Request[IO], resource: Resource) = {
+    resource match {
+      case resource: ResourceWithRangeSupport =>
+        ResourceDirectives.responseWithRangeSupport[IO](
+          request = req,
+          size = resource.size(),
+          maybeMediaType = resource.contentType().map(MediaType.parse(_).toOption).flatten,
+          rangeResponseFn = resource.getContentRange
+        )
+      case _ =>
+        val maybeMediaType = resource.contentType().map(MediaType.parse(_).toOption).flatten.map(`Content-Type`.apply)
+
+        Response(
+          status = Status.Ok,
+          headers = maybeMediaType.map(mediaType => Headers(mediaType)).getOrElse(Headers.empty),
+          entity = Entity.stream(resource.getContent())
+        )
+
+        Ok(resource.getContent())
+    }
+  }
 
   val AcceptRangeHeader = `Accept-Ranges`(RangeUnit.Bytes)
 
@@ -21,7 +45,7 @@ object ResourceDirectives extends Logging {
       case None      => start >= 0 || fileLength + start - 1 >= 0
     })
 
-  def fromPath[F[_]](req: Request[F], path: Path, chunkSize: Int)(implicit F: Async[F]): F[Response[F]] = {
+  def fromPath[F[_]](req: Request[F], path: Path, chunkSize: Int)(using F: Async[F]): F[Response[F]] = {
     Files[F].getBasicFileAttributes(path).flatMap { attr =>
 
       val mediaType =
@@ -36,7 +60,7 @@ object ResourceDirectives extends Logging {
   }
 
   // Attempt to find a Range header and collect only the subrange of content requested
-  def responseWithRangeSupport[F[_]](request: Request[F], size: Long, maybeMediaType: Option[MediaType], rangeResponseFn: (Long, Long) => Stream[F, Byte])(implicit F: Async[F]): F[Response[F]] = {
+  def responseWithRangeSupport[F[_]](request: Request[F], size: Long, maybeMediaType: Option[MediaType], rangeResponseFn: (Long, Long) => Stream[F, Byte])(using F: Async[F]): F[Response[F]] = {
 
     val rangeNotSatisfiableResponse: F[Response[F]] =
       F.pure {
@@ -56,7 +80,7 @@ object ResourceDirectives extends Logging {
         Response(
           status = if (partial) Status.PartialContent else Status.Ok,
           headers = headers,
-          entity = Entity(byteStream, Some(start - end))
+          entity = Entity.stream(byteStream, Some(start - end))
         )
       }
     }

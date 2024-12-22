@@ -2,85 +2,87 @@ package nl.amony.service.resources.web
 
 import cats.Monad
 import cats.effect.IO
-import nl.amony.service.resources.api.operations.{ImageThumbnail, VideoFragment, VideoThumbnail}
-import nl.amony.service.resources.{ResourceBucket, ResourceContent}
+import nl.amony.service.resources.api.operations.{ImageThumbnail, ResourceOperation, VideoFragment, VideoThumbnail}
+import nl.amony.service.resources.{Resource, ResourceBucket, ResourceWithRangeSupport}
 import nl.amony.service.resources.web.JsonCodecs.given
 import org.http4s.*
 import org.http4s.dsl.io.*
 import scribe.Logging
 import io.circe.syntax.*
-import nl.amony.service.resources.web.ResourceWebModel.UserMetaDto
+import nl.amony.service.resources.web.ResourceDirectives.respondWithResourceContent
+import nl.amony.service.resources.web.ResourceWebModel.{ThumbnailTimestampDto, UserMetaDto}
+import org.http4s.CacheDirective.`max-age`
 import org.http4s.circe.*
 import org.http4s.circe.CirceEntityDecoder.circeEntityDecoder
+import org.http4s.headers.{`Cache-Control`, `Content-Type`}
+import scala.concurrent.duration.DurationInt
 
 object ResourceRoutes extends Logging {
 
-  // format: off
   object patterns {
-    val Video                  = raw"(\w+)(_(\d+)p)?\.mp4".r
-    val VideoFragment          = raw"(.+)~(\d+)-(\d+)_(\d+)p\.mp4".r
-    val Thumbnail              = raw"(\w+)_(\d+)p\.webp".r
-    val ThumbnailWithTimestamp = raw"(\w+)_(\d+)_(\d+)p\.webp".r
+    val ClipPattern                   = raw"clip_(\d+)-(\d+)_(\d+)p\.mp4".r
+    val ThumbnailPattern              = raw"thumb_(\d+)p\.webp".r
+    val ThumbnailWithTimestampPattern = raw"thumb_(\d+)_(\d+)p\.webp".r
+
+    val matchPf: PartialFunction[String, ResourceOperation] = {
+      case patterns.ThumbnailWithTimestampPattern(timestamp, height) => VideoThumbnail(width = None, height = Some(height.toInt), 23, timestamp.toLong)
+      case patterns.ThumbnailPattern(scaleHeight) => ImageThumbnail(width = None, height = Some(scaleHeight.toInt), 0)
+      case patterns.ClipPattern(start, end, height) => VideoFragment(width = None, height = Some(height.toInt), start.toLong, end.toLong, 23)
+    }
   }
-  // format: on
 
   def apply(buckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
 
-    def withBucket[F[_]: Monad](bucketId: String)(fn: ResourceBucket => F[Response[F]]) = {
-      buckets.get(bucketId) match {
-        case None =>
-          NotFound()
+    def withResource(bucketId: String, resourceId: String)(fn: (ResourceBucket, Resource) => IO[Response[IO]]) =
+      buckets.get(bucketId) match
+        case None => NotFound()
         case Some(bucket) =>
-          fn(bucket)
-      }
-    }
+          bucket.getResource(resourceId).flatMap:
+            case None => NotFound()
+            case Some(resource) => fn(bucket, resource)
 
     HttpRoutes.of[IO] {
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId =>
 
-        withBucket(bucketId) { bucket =>
-          bucket.getResource(resourceId).flatMap {
-            case None => NotFound()
-            case Some(resource) => Ok(resource.info().asJson)
+        withResource(bucketId, resourceId) { (_, resource) =>
+          Ok(resource.info().asJson)
+        }
+
+      case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / "content" =>
+
+        withResource(bucketId, resourceId) { (_, resource) =>
+          respondWithResourceContent(req, resource)
+        }
+
+      case req @ POST -> Root / "api" / "resources" / bucketId / resourceId / "update_thumbnail_timestamp" =>
+
+        withResource(bucketId, resourceId) { (bucket, resource) =>
+          req.as[ThumbnailTimestampDto].flatMap { dto =>
+            bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis).flatMap(_ => Ok())
           }
         }
 
       case req @ POST -> Root / "api" / "resources" / bucketId / resourceId / "update_user_meta" =>
 
-        withBucket(bucketId) { bucket =>
-          bucket.getResource(resourceId).flatMap {
-            case None => NotFound()
-            case Some(resource) =>
-              req.as[UserMetaDto].flatMap { userMeta =>
-                bucket.updateUserMeta(resourceId, userMeta.title, userMeta.description).flatMap(_ => Ok())
-              }
+        withResource(bucketId, resourceId) { (bucket, resource) =>
+          req.as[UserMetaDto].flatMap { userMeta =>
+            bucket.updateUserMeta(resourceId, userMeta.title, userMeta.description, userMeta.tags).flatMap(_ => Ok())
           }
         }
 
-      case req @ GET -> Root / "resources" / bucketId / resourcePattern =>
+      case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern =>
 
-        withBucket(bucketId) { bucket =>
-          val maybeResource: IO[Option[ResourceContent]] =
-            resourcePattern match {
-              case patterns.ThumbnailWithTimestamp(id, timestamp, height) => bucket.getOrCreate(id, VideoThumbnail(width = None, height = Some(height.toInt), 23, timestamp.toLong), Set.empty)
-              case patterns.Thumbnail(id, scaleHeight) => bucket.getOrCreate(id, ImageThumbnail(width = None, height = Some(scaleHeight.toInt), 0), Set.empty)
-              case patterns.VideoFragment(id, start, end, height) => bucket.getOrCreate(id, VideoFragment(width = None, height = Some(height.toInt), start.toLong, end.toLong, 23), Set.empty)
-              case patterns.Video(id, _, null) => bucket.getResource(id)
-              case id => bucket.getResource(id)
-            }
-
-          maybeResource.flatMap {
-            case None =>
-              NotFound()
-            case Some(content) =>
-              ResourceDirectives.responseWithRangeSupport[IO](
-                request = req,
-                size = content.size(),
-                maybeMediaType = content.contentType().map(MediaType.parse(_).toOption).flatten,
-                rangeResponseFn = content.getContentRange
-              )
-          }
+        withResource(bucketId, resourceId) { (bucket, resource) =>
+          patterns.matchPf.lift(resourcePattern) match
+            case None            => NotFound()
+            case Some(operation) =>
+              bucket.getOrCreate(resourceId, operation).flatMap:
+                case None           => NotFound()
+                case Some(resource) =>
+                  respondWithResourceContent(req, resource).map {
+                    r => r.addHeader(`Cache-Control`(`max-age`(365.days)))
+                  }
         }
     }
   }

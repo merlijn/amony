@@ -71,7 +71,7 @@ export const DropDown = (props: DropDownProps ) => {
                   if (props.hideOnClick) {
                     setShowDropDownFn(false)
                   }
-              } });
+              } } as any);
             })
           }
         </div>

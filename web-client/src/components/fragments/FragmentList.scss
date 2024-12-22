@@ -1,8 +1,7 @@
-@import 'src/App';
+@use 'src/App.scss' as *;
 
 .fragments-container {
 
-  //border-left: 4px  solid white;
   background-color: $gray-200;
   position: relative;
   overflow: scroll;

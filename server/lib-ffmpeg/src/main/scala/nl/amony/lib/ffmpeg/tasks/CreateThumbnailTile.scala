@@ -2,7 +2,7 @@ package nl.amony.lib.ffmpeg.tasks
 
 import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg.formatTime
-import nl.amony.lib.files.PathOps
+import nl.amony.lib.files.*
 import scribe.Logging
 
 import java.nio.charset.StandardCharsets
@@ -82,7 +82,7 @@ trait CreateThumbnailTile extends Logging {
         )
         // format: on
 
-        runWithOutput[Unit](cmds = "ffmpeg" :: args, useErrorStream = true) { _ =>
+        runWithOutput[Unit]("ffmpeg", args, useErrorStream = true) { _ =>
           def createWebVtt() = {
 
             val thumbLength: Int = (stream.durationMillis / frames).toInt

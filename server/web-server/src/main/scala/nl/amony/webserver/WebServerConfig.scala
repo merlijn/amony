@@ -5,7 +5,6 @@ import pureconfig._
 import pureconfig.generic.derivation.default._
 
 case class WebServerConfig(
-  hostName: String,
   webClientPath: String,
   requestTimeout: FiniteDuration,
   uploadSizeLimit: Long,
@@ -14,13 +13,15 @@ case class WebServerConfig(
 ) derives ConfigReader
 
 case class HttpsConfig(
-  enabled: Boolean,
+  host: String,
   port: Int,
+  enabled: Boolean,
   privateKeyPem: String,
   certificateChainPem: String
 ) derives ConfigReader
 
 case class HttpConfig(
+  host: String,
+  port: Int,
   enabled: Boolean,
-  port: Int
 ) derives ConfigReader

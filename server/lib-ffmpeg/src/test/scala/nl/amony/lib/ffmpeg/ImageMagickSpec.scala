@@ -9,7 +9,7 @@ import java.nio.file.Path
 
 class ImageMagickSpec extends AnyFlatSpecLike with Logging {
 
-   it should "get the meta data of an image" in {
+   ignore should "get the meta data of an image" in {
 
      val path = Path.of("/Users/merlijn/dev/stable-diffusion-webui/outputs/txt2img-images/2023-03-19/00006-3780544666.png")
 

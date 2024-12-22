@@ -1,13 +1,14 @@
 package nl.amony.search
 
 import nl.amony.service.resources.api.ResourceInfo
-import nl.amony.service.resources.api.events.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved, ResourceUserMetaUpdated}
+import nl.amony.service.resources.api.events.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceMoved, ResourceUpdated}
 import nl.amony.service.resources.web.{durationInMillis, fileName, height}
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import nl.amony.service.search.api.SortDirection.{Asc, Desc}
 import nl.amony.service.search.api.SortField.*
-import nl.amony.service.search.api.{Query, SearchResult, SortOption}
+import nl.amony.service.search.api.*
 import scribe.Logging
+import io.grpc.stub.StreamObserver
 
 import scala.concurrent.Future
 
@@ -49,31 +50,31 @@ class InMemorySearchService extends SearchService with Logging {
 
     def indexEvent(e: ResourceEvent) = {
       synchronized {
-//        logger.debug(s"Applying event: $e")
         e match {
-
+          
           case ResourceAdded(resource) =>
             resourceIndex += resource.hash -> resource
 
-          case ResourceDeleted(resource) =>
-            resourceIndex -= resource.hash
+          case ResourceDeleted(resourceId) =>
+            resourceIndex = resourceIndex.removed(resourceId)
 
-          case ResourceMoved(resource, _) =>
+          case ResourceMoved(resourceId, oldPath, newPath) =>
+            resourceIndex += resourceId -> resourceIndex(resourceId).copy(path = newPath)
+
+          case ResourceUpdated(resource) =>
             resourceIndex += resource.hash -> resource
-
-          case ResourceUserMetaUpdated(bucketId, resourceId, title, description, deletedTags, newTags) =>
-            val resource = resourceIndex(resourceId)
-            val newResource = resource.copy(
-              title = title.orElse(resource.title),
-              description = description.orElse(resource.description),
-            )
-
-            resourceIndex += resourceId -> newResource
+            
+          case ResourceEvent.Empty =>
+          // ignore
         }
 
         counter += 1
       }
     }
+
+    override def indexAll(responseObserver: StreamObserver[ReIndexResult]): StreamObserver[ResourceInfo] = ???
+
+    override def index(request: ResourceInfo): Future[ReIndexResult] = ???
 
     override def searchMedia(query: Query): Future[SearchResult] = {
       updateIndex()
@@ -114,6 +115,6 @@ class InMemorySearchService extends SearchService with Logging {
 
       val videos = if (offset > result.size) Nil else result.slice(offset, end)
 
-      Future.successful(SearchResult(offset, result.size, videos.toList, tags.toList))
+      Future.successful(SearchResult(offset, result.size, videos.toList, tags.toList.foldLeft(Map.empty[String, Long])((acc, tag) => acc.updated(tag, 1))))
     }
 }

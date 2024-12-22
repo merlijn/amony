@@ -67,13 +67,16 @@ const defaultPrefs: Prefs = {
   showSidebar:     false,
   showTitles:      true,
   showDuration:    true,
-  showDates:       false,
+  showDates:       true,
+  showResolution:  true,
   gallery_columns: "auto",
 }
 
 export const Constants = {
 
   imgAlt: "<image here>",
+
+  preferenceKey: "prefs-v1",
 
   durationOptions: durationOptions,
 
@@ -86,5 +89,7 @@ export const Constants = {
   defaultPreferences: defaultPrefs,
 
   gridSize: 400,
+
+  sideBarWidth: 150,
 }
 
