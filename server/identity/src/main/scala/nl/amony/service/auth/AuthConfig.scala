@@ -1,17 +1,63 @@
 package nl.amony.service.auth
 
-import pdi.jwt.JwtAlgorithm
-import pureconfig._
-import pureconfig.generic.derivation.default._
+import pdi.jwt.{JwtAlgorithm, JwtCirce, JwtClaim}
+import pureconfig.*
+import pureconfig.generic.derivation.default.*
 
+import java.security.KeyFactory
+import java.security.spec.{ECParameterSpec, ECPoint, ECPrivateKeySpec, ECPublicKeySpec}
 import scala.concurrent.duration.FiniteDuration
+import scala.util.Try
 
 case class AuthConfig(
-    jwt: JwtConfig,
-    adminUsername: String,
-    adminPassword: String
+  jwt: JwtConfig,
+  adminUsername: String,
+  adminPassword: String
 ) derives ConfigReader
 
-case class JwtConfig(secretKey: String, accessTokenExpiration: FiniteDuration) derives ConfigReader {
-  val algo = JwtAlgorithm.HS256
+
+case class JwtConfig(
+  accessTokenExpiration: FiniteDuration,
+  algorithm: JwtAlgorithmConfig
+)
+
+sealed trait JwtAlgorithmConfig derives ConfigReader {
+  
+  def encode(claim: JwtClaim): String
+  def decode(token: String): Try[JwtClaim]
+}
+
+case class ES512Config(privateKeyScalar: String,
+                       publicKeyX: String,
+                       publicKeyY: String,
+                       curveName: String = "secp256r1") extends JwtAlgorithmConfig {
+  private val algo = JwtAlgorithm.ES512
+
+  import org.bouncycastle.jce.ECNamedCurveTable
+  import org.bouncycastle.jce.spec.ECNamedCurveSpec
+
+  // Our saved params
+  private val S = BigInt(privateKeyScalar, 16)
+  private val X = BigInt(publicKeyX, 16)
+  private val Y = BigInt(publicKeyY, 16)
+
+  // Use the secp256r1 curve
+  private val curveParams = ECNamedCurveTable.getParameterSpec(curveName)
+  private val curveSpec: ECParameterSpec = new ECNamedCurveSpec(curveName, curveParams.getCurve(), curveParams.getG(), curveParams.getN(), curveParams.getH())
+
+  private val privateSpec = new ECPrivateKeySpec(S.underlying(), curveSpec)
+  private val publicSpec = new ECPublicKeySpec(new ECPoint(X.underlying(), Y.underlying()), curveSpec)
+
+  val privateKeyEC = KeyFactory.getInstance("ECDSA", "BC").generatePrivate(privateSpec)
+  val publicKeyEC = KeyFactory.getInstance("ECDSA", "BC").generatePublic(publicSpec)
+  
+  override def encode(claim: JwtClaim) = JwtCirce.encode(claim, privateKeyEC, algo)
+  override def decode(token: String)   = JwtCirce.decode(token, publicKeyEC, List(algo))
+}
+
+case class HS256Config(secretKey: String) extends JwtAlgorithmConfig {
+  private val algo = JwtAlgorithm.HS256
+  
+  override def encode(claim: JwtClaim) = JwtCirce.encode(claim, secretKey, algo)
+  override def decode(token: String)   = JwtCirce.decode(token, secretKey, List(algo))
 }

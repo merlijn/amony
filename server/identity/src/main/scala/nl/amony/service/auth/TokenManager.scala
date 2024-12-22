@@ -16,7 +16,7 @@ class TokenManager(jwtConfig: JwtConfig) {
       notBefore  = Some(Instant.now.getEpochSecond),
     ) + ("userId", userId) + ("roles", roles)
 
-    val token = JwtCirce.encode(claim, jwtConfig.secretKey, jwtConfig.algo)
+    val token = jwtConfig.algorithm.encode(claim)
 
     token
   }
