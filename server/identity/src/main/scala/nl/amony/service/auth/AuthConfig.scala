@@ -36,20 +36,18 @@ case class ES512Config(privateKeyScalar: String,
   import org.bouncycastle.jce.ECNamedCurveTable
   import org.bouncycastle.jce.spec.ECNamedCurveSpec
 
-  // Our saved params
   private val S = BigInt(privateKeyScalar, 16)
   private val X = BigInt(publicKeyX, 16)
   private val Y = BigInt(publicKeyY, 16)
 
-  // Use the secp256r1 curve
   private val curveParams = ECNamedCurveTable.getParameterSpec(curveName)
   private val curveSpec: ECParameterSpec = new ECNamedCurveSpec(curveName, curveParams.getCurve(), curveParams.getG(), curveParams.getN(), curveParams.getH())
 
   private val privateSpec = new ECPrivateKeySpec(S.underlying(), curveSpec)
   private val publicSpec = new ECPublicKeySpec(new ECPoint(X.underlying(), Y.underlying()), curveSpec)
 
-  val privateKeyEC = KeyFactory.getInstance("ECDSA", "BC").generatePrivate(privateSpec)
-  val publicKeyEC = KeyFactory.getInstance("ECDSA", "BC").generatePublic(publicSpec)
+  private val privateKeyEC = KeyFactory.getInstance("ECDSA", "BC").generatePrivate(privateSpec)
+  private val publicKeyEC = KeyFactory.getInstance("ECDSA", "BC").generatePublic(publicSpec)
   
   override def encode(claim: JwtClaim) = JwtCirce.encode(claim, privateKeyEC, algo)
   override def decode(token: String)   = JwtCirce.decode(token, publicKeyEC, List(algo))

@@ -43,7 +43,7 @@ val h2DB                     = "com.h2database"            % "h2"               
 val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.8"
 val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.3"
 
-val liquibaseCore            = "org.liquibase" % "liquibase-core" % "4.30.0"
+val liquibaseCore            = "org.liquibase"             % "liquibase-core"             % "4.30.0"
 
 val solr                     = "org.apache.solr"           % "solr-core"                  % "8.11.1" excludeAll(excludeLog4j)
 val solrLangId               = "org.apache.solr"           % "solr-langid"                % "8.11.1" excludeAll(excludeLog4j)
@@ -59,8 +59,6 @@ val http4sEmberServer = "org.http4s" %% "http4s-ember-server" % http4sVersion
 val http4sEmberClient = "org.http4s" %% "http4s-ember-client" % http4sVersion
 val http4sDsl         = "org.http4s" %% "http4s-dsl"          % http4sVersion
 val http4sCirce       = "org.http4s" %% "http4s-circe"        % http4sVersion
-
-val embeddedKafka = "io.github.embeddedkafka" %% "embedded-kafka" % "3.8.0" // cross CrossVersion.for3Use2_13
 
 //val tapirCirce = "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % "1.2.9"
 //val tapir = "com.softwaremill.sttp.tapir" %% "tapir-core" % "1.2.9"
