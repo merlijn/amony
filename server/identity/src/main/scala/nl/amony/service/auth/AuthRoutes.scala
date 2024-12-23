@@ -14,7 +14,7 @@ object AuthRoutes extends Logging {
 
   def apply(authService: AuthService) =
     HttpRoutes.of[IO]:
-      case req @ GET -> Root / "login" =>
+      case GET -> Root / "login" =>
         Ok(fs2.io.readClassLoaderResource[IO]("login.html"))
 
       case req @ POST -> Root / "api" / "login" =>
@@ -22,7 +22,7 @@ object AuthRoutes extends Logging {
         req.decodeJson[WebCredentials].flatMap: credentials =>
           IO.fromFuture(IO(authService.login(api.Credentials(credentials.username, credentials.password)))).flatMap:
             case api.InvalidCredentials()     => BadRequest("Invalid credentials")
-            case api.Authentication(_, token) => Ok("").map(_.addCookie(ResponseCookie("session", token, path = Some("/"))))
+            case api.Authentication(_, token) => Found("/").map(_.addCookie(ResponseCookie("session", token, path = Some("/"))))
             case api.LoginResponse.Empty      => InternalServerError("Something went wrong")
         
       case POST -> Root / "api" / "logout" => Ok("")

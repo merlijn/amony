@@ -31,24 +31,23 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
     val databaseConfig = DatabaseConfig.forConfig[HsqldbProfile]("amony.database", config)
 
     for {
-      searchService    <- SolrIndex.resource(appConfig.solr)
-      authService = new AuthServiceImpl(loadConfig[AuthConfig]("amony.auth"))
+      searchService     <- SolrIndex.resource(appConfig.solr)
+      authService        = new AuthServiceImpl(loadConfig[AuthConfig]("amony.auth"))
       resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
-      _ = resourceEventTopic.followTail(searchService.processEvent)
-      resourceDatabase <- ResourceDatabase.resource[HsqldbProfile](databaseConfig)
-      resourceBuckets = appConfig.resources.map {
-        case localConfig : ResourceConfig.LocalDirectoryConfig =>
-          val bucket = new LocalDirectoryBucket(localConfig, resourceDatabase, resourceEventTopic)
-          bucket.sync().unsafeRunAsync(_ => ())
-          localConfig.id -> bucket
-      }.toMap
-      routes =
-        ResourceRoutes.apply(resourceBuckets) <+>
-          SearchRoutes.apply(searchService, appConfig.search) <+>
-          AuthRoutes.apply(authService) <+>
-          AdminRoutes.apply(searchService, resourceBuckets) <+>
-          WebAppRoutes.apply(appConfig.api)
-      _ <- WebServer.run(appConfig.api, routes)
+      _                  = resourceEventTopic.followTail(searchService.processEvent)
+      resourceDatabase  <- ResourceDatabase.resource[HsqldbProfile](databaseConfig)
+      resourceBuckets    = appConfig.resources.map {
+                               case localConfig : ResourceConfig.LocalDirectoryConfig =>
+                                 val bucket = new LocalDirectoryBucket(localConfig, resourceDatabase, resourceEventTopic)
+                                 bucket.sync().unsafeRunAsync(_ => ())
+                                 localConfig.id -> bucket
+                             }.toMap
+      routes             = ResourceRoutes.apply(resourceBuckets) <+>
+                             SearchRoutes.apply(searchService, appConfig.search) <+>
+                             AuthRoutes.apply(authService) <+>
+                             AdminRoutes.apply(searchService, resourceBuckets) <+>
+                             WebAppRoutes.apply(appConfig.api)
+      _                 <- WebServer.run(appConfig.api, routes)
     } yield ()
   }
 }
