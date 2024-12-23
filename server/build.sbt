@@ -41,6 +41,7 @@ val hsqlDB                   = "org.hsqldb"                % "hsqldb"           
 val h2DB                     = "com.h2database"            % "h2"                         % "2.3.232"
 
 val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.8"
+val pureConfigGeneric        = "com.github.pureconfig"    %% "pureconfig-generic-scala3"  % "0.17.8"
 val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.3"
 
 val liquibaseCore            = "org.liquibase"             % "liquibase-core"             % "4.30.0"
@@ -162,7 +163,7 @@ lazy val identity =
       libraryDependencies ++= Seq(
         // akka
         jwtCirce, bouncyCastle,
-        circe, circeGeneric, pureConfig, slick,
+        circe, circeGeneric, pureConfig, pureConfigGeneric, slick,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
         http4sDsl, http4sCirce
       )
