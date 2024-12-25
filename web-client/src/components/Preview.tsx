@@ -1,4 +1,4 @@
-import React, {CSSProperties, useEffect, useState} from 'react';
+import React, {CSSProperties, useContext, useEffect, useState} from 'react';
 import ProgressiveImage from "react-progressive-graceful-image";
 import {Resource} from "../api/Model";
 import {dateMillisToString, durationInMillisToString, labelForResolution} from "../api/Util";
@@ -6,6 +6,7 @@ import FragmentsPlayer from "./common/FragmentsPlayer";
 import ImgWithAlt from "./common/ImgWithAlt";
 import './Preview.scss';
 import {ErrorBoundary} from "react-error-boundary";
+import {SessionContext} from "../api/Constants";
 
 export type PreviewProps = {
   resource: Resource,
@@ -23,21 +24,17 @@ export type PreviewOptions = {
   showDates: boolean,
   showDuration: boolean,
   showResolution: boolean,
-  showMenu: boolean,
 }
 
 const Preview = (props: PreviewProps) => {
   const [resource, setResource] = useState(props.resource)
   const [isHovering, setIsHovering] = useState(false)
-  // const [showVideoPreview, setShowVideoPreview] = useState(false)
 
   const durationStr = durationInMillisToString(resource.resourceMeta.duration)
 
   const isVideo = resource.contentType.startsWith("video")
 
-  // useEffect(() => {
-  //   setShowVideoPreview(isHovering)
-  // }, [isHovering])
+  const session = useContext(SessionContext)
 
   const titlePanel =
       <div className = "preview-info-bar">
@@ -49,7 +46,7 @@ const Preview = (props: PreviewProps) => {
       <div className="preview-overlay">
         { props.options.showResolution && <div className="preview-quality-overlay">{labelForResolution(resource.resourceMeta.height)}</div> }
         { (isVideo && props.options.showDuration) && <div className="duration-overlay">{durationStr}</div> }
-        { isHovering && <a className="preview-edit-icon-overlay" href={`/editor/${props.resource.resourceId}`}><ImgWithAlt src="/icons/edit.svg" /></a> }
+        { isHovering && session.isAdmin() && <a className="preview-edit-icon-overlay" href={`/editor/${props.resource.resourceId}`}><ImgWithAlt src="/icons/edit.svg" /></a> }
         {/* { <div className="abs-bottom-right"><FiDownload /></div> } */}
       </div>
 

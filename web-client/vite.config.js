@@ -22,7 +22,8 @@ export default defineConfig({
     server: {
         proxy: {
             '/api': 'http://127.0.0.1:8080',
-            '/resources': 'http://127.0.0.1:8080'
+            '/resources': 'http://127.0.0.1:8080',
+            '/login': 'http://127.0.0.1:8080'
         }
     }
 });

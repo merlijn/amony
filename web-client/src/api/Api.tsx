@@ -1,69 +1,47 @@
 import Cookies from "js-cookie";
-import { ResourceSelection, Sort, ResourceUserMeta } from "./Model";
+import {ResourceSelection, Sort, ResourceUserMeta, Resource} from "./Model";
 import { buildUrl } from "./Util";
-import { JwtPayload, jwtDecode } from "jwt-decode";
 import axios from 'axios';
-import { durationAsParam } from "./Constants";
+import {Constants, durationAsParam} from "./Constants";
 
-const headers = { 'Content-type': 'application/json; charset=UTF-8' };
-
-export type Session = {
+export type SessionInfo = {
   isLoggedIn: () => boolean
   isAdmin: () => boolean
-  hasRole: (role: string) => boolean
 }
 
-let jwtToken: any = undefined
-
-const anonymousSession: Session = {
-  isLoggedIn: () => false,
-  isAdmin: () => false,
-  hasRole: (s: string) => false
-}
-
-const adminSession: Session = {
-  isLoggedIn: () => true,
-  isAdmin: () => true,
-  hasRole: (s: string) => true
-}
-
-const sessionFromToken = (token: any): Session => {
-  return {
-    isLoggedIn: () => true,
-    isAdmin: () => jwtToken["admin"] as boolean,
-    hasRole: (role: string) => true
-  }
+type SessionData = {
+  userId: string
+  roles: string[]
 }
 
 export const Api = {
-  
-  session: function Session(): Session {
 
-    if (jwtToken) {
-      return sessionFromToken(jwtToken);
+  fetchSession: async function FetchSession() {
+    const response =  await doRequest('GET', "/api/auth/session")
+
+    if (response.status === 200) {
+      const sessionData = await parseResponseAsJson(response);
+      const sessionInfo: SessionInfo = {
+        isLoggedIn: ()    => true,
+        isAdmin: ()       => sessionData.roles.includes("admin")
+      }
+      return sessionInfo;
+    } else {
+      return Constants.anonymousSession;
     }
-
-    const sessionCookie = Cookies.get("session");
-    if (!jwtToken && sessionCookie) {
-      const decoded = jwtDecode<JwtPayload>(sessionCookie);
-      jwtToken = decoded;
-      return sessionFromToken(jwtToken);
-    }
-
-    return adminSession // anonymousSession; TODO implement users / privileges
   },
 
   login: async function(username: string, password: string) {
 
-    return doPOST("/api/identity/login", { username: username, password: password})
+    return doPOST("/api/auth/login", { username: username, password: password})
+  },
+
+  refreshToken: async function() {
+    return doRequest('POST', "/api/auth/refresh", false, null, false)
   },
 
   logout: async function Logout() {
-    return doPOST("/api/identity/logout").then(() => {
-
-      console.log("Logout completed, resetting jwt token")
-      jwtToken = ""
-    });
+    return doPOST("/api/auth/logout");
   },
 
   uploadFile: async function(file: File) {
@@ -76,7 +54,7 @@ export const Api = {
       file.name
     );
 
-    axios.post("/resources/upload", formData);
+    axios.post("/api/resources/upload", formData);
   },
 
   getFragments: async function(n: number, offset: number, tag?: string) {
@@ -142,16 +120,16 @@ export const Api = {
     return doGET(target)
   },
 
-  getMediaById: async function (mediaId: string) {
-    return doGET(`/api/resources/media/${mediaId}`)
+  getResourceById: async function (resourceId: string) {
+    return doGET(`/api/resources/media/${resourceId}`).then((response) => { return response as Resource })
   },
 
   updateUserMetaData: async function(bucketId: String, resourceId: string, meta: ResourceUserMeta) {
     return doPOST(`/api/resources/${bucketId}/${resourceId}/update_user_meta`, meta)
   },
 
-  deleteResourceById: async function (bucketId: String, mediaId: string) {
-    return doDelete(`/api/media/${mediaId}`)
+  deleteResourceById: async function (bucketId: String, resourceId: string) {
+    return doDelete(`/api/resources/${resourceId}`)
   },
 
   updateFragmentTags: async function (mediaId: string, idx: number, tags: Array<string>) {
@@ -175,48 +153,55 @@ export const Api = {
   }
 }
 
+const contentTypeHeader = { 'Content-type': 'application/json; charset=UTF-8' };
+
+function commonHeaders(requireJson: boolean = true): {} {
+  const xsrfTokenCookie = Cookies.get("XSRF-TOKEN");
+  const xXsrfToken = xsrfTokenCookie ?  { 'X-XSRF-TOKEN': xsrfTokenCookie } : { };
+  const acceptHeader = requireJson ? { 'Accept': 'application/json; charset=UTF-8' } : { };
+
+  return { ...acceptHeader, ...xXsrfToken }
+}
+
+async function parseResponseAsJson(response: Response) {
+  const data =  await response.text();
+  return data ? JSON.parse(data) : undefined;
+}
+
 export async function doGET(path: string) {
-  const headers = { 'Content-type': 'application/json; charset=UTF-8' };
-
-  const response = await fetch(path, {
-    method: 'GET',
-    headers
-  });
-
-  const data = await response.json();
-
-  if (data.error) {
-    throw new Error(data.error);
-  }
-
-  return data;
+  return await doRequest('GET', path).then(parseResponseAsJson)
 }
 
 export async function doDelete(path: string) {
-
-  const response = await fetch(path, { method: 'DELETE', headers});
-  const jsonBody = await response.json();
-
-  if (jsonBody.error) {
-    throw new Error(jsonBody.error);
-  }
-
-  return jsonBody;
+  return await doRequest('DELETE', path)
 }
 
 export async function doPOST(path: string, postData?: any) {
+  return await doRequest('POST', path, postData).then(parseResponseAsJson)
+}
 
-  let init: {} = {
-    method: 'POST',
-    headers
+export async function doRequest(method: string,
+                                path: string,
+                                requireJson: boolean = true,
+                                body?: any,
+                                refreshTokenOn401: boolean = true): Promise<Response> {
+
+  const init = body ?
+    { method: method, body: JSON.stringify(body), headers: { ...commonHeaders(requireJson), ...contentTypeHeader } } :
+    { method: method, headers: commonHeaders(requireJson) }
+
+  const response: Response = await fetch(path, init);
+
+  // Handle 401 Unauthorized
+  if (response.status === 401 && refreshTokenOn401) {
+    // Try to refresh token
+    console.log("Refreshing token")
+    const refreshResponse = await Api.refreshToken();
+    if (refreshResponse.status === 200) {
+      // Retry the original request
+      return await doRequest(method, path, requireJson, body, false);
+    }
   }
 
-  if (postData)
-    init = { ...init, body: JSON.stringify(postData) }
-
-  const response = await fetch(path, init);
-
-  const data = await response.text();
-
-  return data ? JSON.parse(data) : undefined;
+  return response;
 }

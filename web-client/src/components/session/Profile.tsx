@@ -1,6 +1,5 @@
 import { Api } from '../../api/Api';
 import Dialog from '../common/Dialog';
-import './Login.scss';
 
 const Profile = (props: {onLogout: () => void }) => {
 

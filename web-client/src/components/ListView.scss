@@ -192,7 +192,7 @@ $row-height: 36px;
 
     .list-thumbnail {
       @extend .list-cell;
-      padding-left: 0px;
+      //padding-left: 0px;
       padding-right: 0px;
       .list-thumbnail-img {
         @extend .hover-pointer;

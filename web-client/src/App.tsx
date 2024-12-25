@@ -1,5 +1,10 @@
 import {BrowserRouter, Route, Routes, useParams} from 'react-router-dom';
-import React, { Suspense, lazy } from 'react';
+import React, {Suspense, lazy, useEffect} from 'react';
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
+import { persistQueryClient } from '@tanstack/react-query-persist-client'
+import {Constants, SessionContext} from "./api/Constants";
+import {Api, SessionInfo} from "./api/Api";
 
 const Editor = lazy(() => import('./pages/Editor'));
 const Compilation = lazy(() => import('./pages/Compilation'));
@@ -8,20 +13,35 @@ const VideoWall = lazy(() => import('./pages/VideoWall'));
 
 function App() {
 
+  const [session, setSession] = React.useState<SessionInfo | null>(null);
+
+  useEffect(() => {
+    Api.fetchSession().then((sessionInfo) => {
+      setSession(sessionInfo);
+    });
+  }, []);
+
   return (
-    <div className="app-root">
-      <BrowserRouter>
-        <Suspense fallback = { <div>Loading...</div> }>
-          <Routes>
-            <Route path="/" element={<Main />} />
-            <Route path="/search" element={<Main />} />
-            <Route path="/editor/:id" element={<EditorRouter />} />
-            <Route path="/video-wall" element={<VideoWall />} />
-            <Route path="/compilation" element={<Compilation />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
-    </div>
+
+      <div className="app-root">
+        {
+          !session ? <div>Loading...</div> :
+            <BrowserRouter>
+              <Suspense fallback = { <div>Loading...</div> }>
+                <SessionContext.Provider value = { session }>
+                  <Routes>
+                    <Route path="/" element={<Main />} />
+                    <Route path="/search" element={<Main />} />
+                    <Route path="/editor/:id" element={<EditorRouter />} />
+                    <Route path="/video-wall" element={<VideoWall />} />
+                    <Route path="/compilation" element={<Compilation />} />
+                  </Routes>
+                </SessionContext.Provider>
+                </Suspense>
+            </BrowserRouter>
+        }
+      </div>
+
   );
 }
 

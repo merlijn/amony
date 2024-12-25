@@ -3,6 +3,8 @@ import { useCookies } from "react-cookie";
 import _ from "lodash";
 import { useNavigate, useLocation } from "react-router-dom";
 import { buildUrl, copyParams } from "./Util";
+import {useQuery} from "@tanstack/react-query";
+import {Api, SessionInfo} from "./Api";
 
 export const useStateRef = <T>(value: T): [T, MutableRefObject<T>, ((e: T) => void)] => {
   const [getState, _setState] = useState<T>(value)
@@ -46,6 +48,13 @@ export const useListener = <K extends keyof WindowEventMap>(type: K, listener: (
     window.addEventListener(type, listener)
     return () => window.removeEventListener(type, listener)
   })
+}
+
+export function useSession() {
+  return useQuery<SessionInfo, Error>( {
+    queryKey : ['session'],
+    queryFn : Api.fetchSession()
+  });
 }
 
 export function useCookiePrefs<T>(key: string, path: string, defaultPreferences: T): [T, ((e: T) => void)] {

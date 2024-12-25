@@ -11,7 +11,9 @@ package nl.amony.service.auth.api;
 
 service AuthService {
 
-  rpc login(Credentials) returns (LoginResponse) { }
+  rpc authenticate(Credentials) returns (AuthenticationResponse) { }
+
+  rpc refresh(Authentication) returns (AuthenticationResponse) { }
 
   rpc insertUser(UpsertUserRequest) returns (User) { }
 
@@ -23,7 +25,7 @@ message Credentials {
   string password = 2;
 }
 
-message LoginResponse {
+message AuthenticationResponse {
 
   oneof sealed_value {
 
@@ -44,8 +46,8 @@ message UpsertUserRequest {
 }
 
 message Authentication {
-  string userId = 1;
-  string token = 2;
+  string accessToken = 1;
+  string refreshToken = 2;
 }
 
 message User {

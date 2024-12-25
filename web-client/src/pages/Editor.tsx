@@ -17,8 +17,8 @@ const Editor = (props: {videoId: string}) => {
   const [vid, setVid] = useState<Resource | null>(null)
 
   useEffect(() => {
-    Api.getMediaById(props.videoId).then(response => {
-        setVid((response as Resource))
+    Api.getResourceById(props.videoId).then(resource => {
+        setVid(resource)
       }
     );
   }, [props]);
@@ -42,7 +42,7 @@ const PlayerView = (props: {vid: Resource}) => {
   const updateThumbnailTimestamp = (e: any) => {
     if (player.current) {
       Api.updateThumbnailTimestamp(vid.resourceId, Math.trunc(player.current.currentTime * 1000)).then (response => {
-          Api.getMediaById(vid.resourceId).then(response => {
+          Api.getResourceById(vid.resourceId).then(response => {
             setVid((response as Resource))
           })
       })

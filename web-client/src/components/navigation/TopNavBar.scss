@@ -26,6 +26,16 @@
     }
   }
 
+  .profile-button {
+    @extend .hover-pointer;
+    position: absolute;
+    right: 0px;
+    width: 34px;
+    height: 34px;
+    padding: 3px;
+    margin: 5px;
+  }
+
   .nav-bar-center {
 
     display: flex;
@@ -63,6 +73,8 @@
       //margin-left: 12px;
       user-select: none;
     }
+
+
 
     .view-select-container {
       

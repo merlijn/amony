@@ -61,11 +61,7 @@ val http4sEmberClient = "org.http4s" %% "http4s-ember-client" % http4sVersion
 val http4sDsl         = "org.http4s" %% "http4s-dsl"          % http4sVersion
 val http4sCirce       = "org.http4s" %% "http4s-circe"        % http4sVersion
 
-//val tapirCirce = "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % "1.2.9"
-//val tapir = "com.softwaremill.sttp.tapir" %% "tapir-core" % "1.2.9"
-//val tarirHttp4s = "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % "1.2.9"
-
-val javaOpts = Seq("-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true")
+val javaOpts = Seq("-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true", "-DAMONY_SECURE_COOKIES=false")
 
 //fork in Global := true
 cancelable in Global := true

@@ -32,7 +32,8 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
 
     for {
       searchService     <- SolrIndex.resource(appConfig.solr)
-      authService        = new AuthServiceImpl(loadConfig[AuthConfig]("amony.auth"))
+      authConfig         = loadConfig[AuthConfig]("amony.auth")
+      authService        = new AuthServiceImpl(authConfig)
       resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
       _                  = resourceEventTopic.followTail(searchService.processEvent)
       resourceDatabase  <- ResourceDatabase.resource[HsqldbProfile](databaseConfig)
@@ -44,7 +45,7 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
                              }.toMap
       routes             = ResourceRoutes.apply(resourceBuckets) <+>
                              SearchRoutes.apply(searchService, appConfig.search) <+>
-                             AuthRoutes.apply(authService) <+>
+                             AuthRoutes.apply(authService, authConfig) <+>
                              AdminRoutes.apply(searchService, resourceBuckets) <+>
                              WebAppRoutes.apply(appConfig.api)
       _                 <- WebServer.run(appConfig.api, routes)

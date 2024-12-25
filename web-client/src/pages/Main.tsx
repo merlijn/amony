@@ -113,8 +113,7 @@ const Main = () => {
                         showInfoBar: prefs.showTitles,
                         showDates: prefs.showDates,
                         showDuration: prefs.showDuration,
-                        showResolution: prefs.showResolution,
-                        showMenu: Api.session().isAdmin()
+                        showResolution: prefs.showResolution
                       }
                     }
                   }/>

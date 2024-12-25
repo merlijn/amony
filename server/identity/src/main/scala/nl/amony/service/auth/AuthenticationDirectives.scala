@@ -5,4 +5,5 @@ import org.http4s.{Request, Response}
 
 object AuthenticationDirectives:
 
-  def authenticated[F[_]](req: Request[F], requiredRole: String)(response: => F[Response[F]])(using F : Monad[F]): F[Response[F]] = response
+  def authenticated[F[_]](req: Request[F], requiredRole: String)(response: => F[Response[F]])(using F : Monad[F]): F[Response[F]] = 
+    response

@@ -1,4 +1,4 @@
-import {CSSProperties, useEffect, useRef, useState} from "react"
+import {CSSProperties, useContext, useEffect, useRef, useState} from "react"
 import {FaSort} from "react-icons/fa"
 import {FiEdit} from "react-icons/fi"
 import ProgressiveImage from "react-progressive-graceful-image"
@@ -7,7 +7,7 @@ import {Resource, ResourceSelection, ResourceUserMeta, SearchResult} from "../ap
 import {dateMillisToString, formatByteSize} from "../api/Util"
 import './ListView.scss'
 import Scrollable from "./common/Scrollable"
-import {useSortParam} from "../api/Constants"
+import {SessionContext, useSortParam} from "../api/Constants"
 import {useNavigate} from "react-router-dom"
 import TagsBar from "./common/TagsBar"
 import {MdDelete, MdMovieEdit} from "react-icons/md";
@@ -28,6 +28,7 @@ const ListView = (props: ListProps) => {
   const [fetchMore, setFetchMore] = useState(true)
   const [selectedItems, setSelectedItems] = useState<Array<number>>([])
   const navigate = useNavigate();
+  const session = useContext(SessionContext)
 
   const fetchData = (previous: Array<Resource>) => {
 
@@ -60,17 +61,19 @@ const ListView = (props: ListProps) => {
   useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.results); }, [isFetching]);
 
   const toggle = (index: number)=>  {
-    const i = selectedItems.indexOf(index)
-    if (i > -1) {
-      setSelectedItems(selectedItems.filter((v) => v !== index))
-    } else {
-      setSelectedItems([...selectedItems, index])
+    if (session.isAdmin()) {
+      const i = selectedItems.indexOf(index)
+      if (i > -1) {
+        setSelectedItems(selectedItems.filter((v) => v !== index))
+      } else {
+        setSelectedItems([...selectedItems, index])
+      }
     }
   }
 
   const headers =
     <tr key="row-header" className="list-row">
-      <th className="list-header-select"><input type="checkbox"/></th>
+      { session.isAdmin() && <th className="list-header-select"><input type="checkbox"/></th> }
       <th className="list-header-thumbnail"></th>
       <th className="list-header-title"><span>Title</span>
         <FaSort className="column-sort-icon"
@@ -112,7 +115,7 @@ const ListView = (props: ListProps) => {
       scrollType='page'
     >
       <tr key="row-column-width-spacer" style ={ {height: 0 } }>
-        <td style={{width: 36}}></td>
+        { session.isAdmin() && <td style = { {width: 36 } }></td> }
         <td style={{width: 72}}></td>
         <td style={{width: "65%"}}></td>
         <td style={{width: "35%"}}></td>
@@ -128,12 +131,13 @@ const ListView = (props: ListProps) => {
           searchResult.results.map((resource, index) => {
             return (
               <tr key={`row-${resource.resourceId}`} className="list-row">
-
-                <td key="select" className="list-select" onClick={() => { toggle(index) }}>
-                  <input type="checkbox" checked={selectedItems.indexOf(index) > -1}/>
-                </td>
-
-                <td key="thumbnail" className="list-thumbnail">
+                {
+                  session.isAdmin() &&
+                    <td key="select" className="list-select" onClick={() => { toggle(index) }}>
+                      <input type="checkbox" checked={selectedItems.indexOf(index) > -1}/>
+                    </td>
+                }
+                <td key="thumbnail" className="list-thumbnail" style = { { paddingLeft: session.isAdmin() ? 0 : 4}}>
                   <ProgressiveImage src={resource.urls.thumbnailUrl} placeholder="/image_placeholder.svg">
                     {(src: string) =>
                       <img className="list-thumbnail-img" src={src} onClick={() => props.onClick(resource)}
@@ -156,7 +160,7 @@ const ListView = (props: ListProps) => {
                 <td key="resolution" className="list-cell list-resolution">
                   <div className="cell-wrapper">
                     {
-                      Api.session().isAdmin() &&
+                      session.isAdmin() &&
                         <div className="media-actions">
                             <MdMovieEdit className="fragments-action"
                                          onClick={() => navigate(`/editor/${resource.resourceId}`)}/>
@@ -178,7 +182,7 @@ const ListView = (props: ListProps) => {
 const TagsCell = (props: {
   resource: Resource }) => {
   const [tags, setTags] = useState(props.resource.userMeta.tags)
-  const isAdmin = Api.session().isAdmin()
+  const session = useContext(SessionContext)
 
   const updateTags = (newTags: Array<string>) => {
     const meta: ResourceUserMeta = { ...props.resource.userMeta, tags: newTags }
@@ -189,8 +193,8 @@ const TagsCell = (props: {
   return <TagsBar 
             tags = { tags }
             onTagsUpdated = { updateTags }
-            showAddTagButton = {isAdmin} 
-            showDeleteButton = {isAdmin} />
+            showAddTagButton = {session.isAdmin()} 
+            showDeleteButton = {session.isAdmin()} />
 }
 
 type TitleCellProps =  { mediaResource: Resource; } & React.HTMLProps<HTMLTableCellElement>;
@@ -200,6 +204,7 @@ const TitleCell = ({ mediaResource, ...elementProps }: TitleCellProps ) => {
   const [title, setTitle] = useState(mediaResource.userMeta.title)
   const [editTitle, setEditTitle] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const session = useContext(SessionContext)
 
   useEffect(() => {
     if (editTitle)
@@ -220,7 +225,7 @@ const TitleCell = ({ mediaResource, ...elementProps }: TitleCellProps ) => {
     <td style = { style } key="title" className="list-cell list-title" {...elementProps }>
       <div className="cell-wrapper">
         { !editTitle && title }
-        { (!editTitle && Api.session().isAdmin()) &&
+        { (!editTitle && session.isAdmin()) &&
             <FiEdit onClick = { () => { setEditTitle(true); } } className="edit-title" /> }
         { editTitle && 
           <input 

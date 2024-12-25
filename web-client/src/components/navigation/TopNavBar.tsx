@@ -1,19 +1,23 @@
 import _ from "lodash";
-import React, { useEffect, useRef, useState } from "react";
-import { isMobile } from "react-device-detect";
-import { BsListUl } from "react-icons/bs";
-import {GoGrabber, GoPerson, GoSearch} from "react-icons/go";
-import { IoGridOutline } from "react-icons/io5";
-import {MdClose, MdOutlineSettings, MdTune} from "react-icons/md";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Constants, durationAsParam, parseDurationParam, useSortParam } from "../../api/Constants";
-import { MediaView } from "../../api/Model";
-import { useUrlParam } from "../../api/ReactUtils";
-import { buildUrl, copyParams } from "../../api/Util";
-import { DropDown } from "../common/DropDown";
+import React, {useContext, useEffect, useRef, useState} from "react";
+import {isMobile} from "react-device-detect";
+import {BsListUl} from "react-icons/bs";
+import {GoSearch} from "react-icons/go";
+import {IoGridOutline} from "react-icons/io5";
+import {MdClose, MdTune} from "react-icons/md";
+import {useLocation, useNavigate} from "react-router-dom";
+import {Constants, durationAsParam, parseDurationParam, SessionContext, useSortParam} from "../../api/Constants";
+import {MediaView} from "../../api/Model";
+import {useUrlParam} from "../../api/ReactUtils";
+import {buildUrl, copyParams} from "../../api/Util";
+import {DropDown} from "../common/DropDown";
 import './TopNavBar.scss';
-import {FaBars} from "react-icons/fa6";
-import { AiOutlineSetting } from "react-icons/ai";
+import {AiOutlineSetting} from "react-icons/ai";
+import {CgProfile} from "react-icons/cg";
+import Modal from "../common/Modal";
+import Profile from "../session/Profile";
+import {BiLogInCircle} from "react-icons/bi";
+
 
 export type NavBarProps = {
   onClickMenu: () => void, 
@@ -28,6 +32,8 @@ function TopNavBar(props: NavBarProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState("")
   const [showFilters, setShowFilters] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
+  const session = useContext(SessionContext)
 
   const doSearch = (e: any) => {
     e.preventDefault();
@@ -52,6 +58,10 @@ function TopNavBar(props: NavBarProps) {
   }
 
   return(
+    <>
+    <Modal visible = { showProfile } onHide = { () => setShowProfile(false) }>
+      <Profile onLogout = { () => {} } />
+    </Modal>
     <div className = "nav-bar-container">
       <div className = "top-nav-bar">
           <div key = "nav-bar-center" className = "nav-bar-center">
@@ -86,8 +96,14 @@ function TopNavBar(props: NavBarProps) {
                 </div>
             }
             </div>
+        {
+          session.isLoggedIn() ?
+            <CgProfile className = "profile-button" onClick = { () => setShowProfile(!showProfile) }/> :
+            <a href="/login"><BiLogInCircle className = "profile-button" onClick = { () => setShowProfile(!showProfile) }/></a>
+        }
       </div>
     </div>
+    </>
   );
 }
 
