@@ -17,6 +17,8 @@ val http4sVersion   = "0.23.30"
 
 val bouncyCastle = "org.apache.directory.studio" % "org.bouncycastle.bcprov.jdk15" % "140"
 
+val jsoup  = "org.jsoup" % "jsoup" % "1.18.3"
+
 val circe                    = "io.circe"                 %% "circe-core"                 % circeVersion
 val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
 val circeParser              = "io.circe"                 %% "circe-parser"               % circeVersion
@@ -183,7 +185,7 @@ lazy val resources =
       name := "amony-service-resources",
       libraryDependencies ++= Seq(
         scribe,
-        circe, circeGeneric, http4sCirce,
+        circe, circeGeneric, http4sCirce, jsoup,
         tapirCore, tapirCatsEffect, tapirCirce, tapirHttp4s,
         scalaTest,
         slick, fs2Core, fs2Io, http4sDsl, liquibaseCore,

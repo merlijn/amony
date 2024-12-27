@@ -1,6 +1,7 @@
 package nl.amony.service.auth
 
 import cats.effect.IO
+import io.circe.Codec
 import nl.amony.service.auth.RouteAuthenticator.validateSecurityInput
 import nl.amony.service.auth.tapir.{SecurityError, SecurityInput}
 import org.http4s.dsl.io.*
@@ -10,12 +11,6 @@ import org.typelevel.ci.CIStringSyntax
 import scribe.Logging
 
 object RouteAuthenticator:
-  def securityInputFromRequest(req: Request[IO]): SecurityInput =
-    SecurityInput(
-      accessToken  = req.cookies.find(_.name == "access_token").map(_.content),
-      xsrfCookie   = req.cookies.find(_.name == "XSRF-TOKEN").map(_.content),
-      xXsrfHeader  = req.headers.get(ci"X-XSRF-TOKEN").map(_.head.value)
-    )
 
   def validateSecurityInput(decoder: JwtDecoder, securityInput: SecurityInput, requiredRole: Role): Either[SecurityError, AuthToken] = {
     for {
@@ -33,7 +28,11 @@ class RouteAuthenticator(decoder: JwtDecoder) extends Logging:
 
   def authenticated(req: Request[IO], requiredRole: Role)(response: => IO[Response[IO]]): IO[Response[IO]] = {
 
-    val securityInput = RouteAuthenticator.securityInputFromRequest(req)
+    val securityInput = SecurityInput(
+      accessToken  = req.cookies.find(_.name == "access_token").map(_.content),
+      xsrfCookie   = req.cookies.find(_.name == "XSRF-TOKEN").map(_.content),
+      xXsrfHeader  = req.headers.get(ci"X-XSRF-TOKEN").map(_.head.value)
+    )
 
     IO.pure(validateSecurityInput(decoder, securityInput, requiredRole)).flatMap:
       case Right(_)  => response

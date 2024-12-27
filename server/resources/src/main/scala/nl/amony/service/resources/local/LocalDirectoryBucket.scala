@@ -85,11 +85,12 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
         val path = config.resourcePath.resolve(info.path)
         db.deleteResource(config.id, resourceId, () => IO(path.deleteIfExists()))
 
-  override def updateUserMeta(resourceId: String, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] =
+  override def updateUserMeta(resourceId: String, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] = {
     db.updateUserMeta(
       config.id, resourceId, title, description, tags, 
       resource => topic.publish(ResourceUpdated(resource))
     )
+  }
 
   override def updateThumbnailTimestamp(resourceId: String, timestamp: Long): IO[Unit] =
     db.updateThumbnailTimestamp(config.id, resourceId, timestamp,

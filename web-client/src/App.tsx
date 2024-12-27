@@ -25,9 +25,9 @@ function App() {
 
       <div className="app-root">
         {
-          !session ? <div>Loading...</div> :
+          !session ? <div /> :
             <BrowserRouter>
-              <Suspense fallback = { <div>Loading...</div> }>
+              <Suspense fallback = { <div /> }>
                 <SessionContext.Provider value = { session }>
                   <Routes>
                     <Route path="/" element={<Main />} />

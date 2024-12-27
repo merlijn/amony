@@ -1,13 +1,12 @@
 package nl.amony.service.auth
 
+import io.circe
 import io.circe.*
-import pdi.jwt.{JwtCirce, JwtClaim, JwtUtils}
+import pdi.jwt.JwtClaim
 
 import java.time.Instant
 
-case class AuthTokenContent(
-  roles: Set[String]
-) derives Decoder
+case class AuthTokenContent(roles: Set[String]) derives Codec
 
 class JwtDecoder(algo: JwtAlgorithmConfig):
   def decode(token: String): scala.util.Try[AuthToken] = {
@@ -27,15 +26,14 @@ class TokenManager(jwtConfig: JwtConfig) {
   
   def refreshAccessToken(refreshToken: String): Option[(String, String)] = {
     jwtConfig.algorithm.decode(refreshToken) match {
-      case scala.util.Success(token) =>
-        Some(createAccessAndRefreshTokens(token.subject, token.content))
-      case scala.util.Failure(_)     => 
-        None
+      case scala.util.Success(token) => Some(createAccessAndRefreshTokens(token.subject, token.content))
+      case scala.util.Failure(_)     => None
     }
   }
 
   def createAccessAndRefreshTokens(maybeSubject: Option[String], roles: Set[String]): (String, String) = {
-    val content = JwtUtils.mergeJson("{}", JwtUtils.hashToJson(Seq("roles" -> roles)))
+    val content = Encoder[AuthTokenContent].apply(AuthTokenContent(roles)).noSpaces
+
     createAccessAndRefreshTokens(maybeSubject, content)
   }
 

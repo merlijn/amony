@@ -7,7 +7,6 @@ import org.http4s.*
 import org.http4s.dsl.io.*
 import scribe.Logging
 import cats.effect.unsafe.IORuntime
-import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.service.auth.{Roles, RouteAuthenticator}
 import nl.amony.service.resources.local.LocalDirectoryBucket
 

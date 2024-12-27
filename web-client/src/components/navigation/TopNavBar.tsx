@@ -99,7 +99,7 @@ function TopNavBar(props: NavBarProps) {
         {
           session.isLoggedIn() ?
             <CgProfile className = "profile-button" onClick = { () => setShowProfile(!showProfile) }/> :
-            <a href="/login"><BiLogInCircle className = "profile-button" onClick = { () => setShowProfile(!showProfile) }/></a>
+            <a href="/login"><BiLogInCircle className = "profile-button" /></a>
         }
       </div>
     </div>

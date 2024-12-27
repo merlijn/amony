@@ -126,10 +126,10 @@ class ResourceDatabase[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
     dbIO(queries.getWithTags(bucketId, Some(_.resourceId.inSet(resourceIds))))
 
   def updateThumbnailTimestamp(bucketId: String, resourceId: String, timestamp: Long, effect: ResourceInfo => IO[Unit]): IO[Unit] = {
-    val q = (
+    def q = (
       for {
-        resourceRow <- resourcesTable.getByHash(bucketId, resourceId).result
-        updated <- resourceRow.headOption.map { row =>
+        resourceRow  <- resourcesTable.getByHash(bucketId, resourceId).result
+        updated      <- resourceRow.headOption.map { row =>
           val updatedRow = row.copy(thumbnailTimestamp = Some(timestamp))
           resourcesTable.update(updatedRow).map(_ => Some(updatedRow))
         }.getOrElse(DBIO.successful(Option.empty[ResourceRow]))
@@ -141,7 +141,7 @@ class ResourceDatabase[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
   }
   
   def updateUserMeta(bucketId: String, hash: String, title: Option[String], description: Option[String], tags: List[String], effect: ResourceInfo => IO[Unit]): IO[Unit] = {
-    val q = (for {
+    def q = (for {
       resourceRow <- resourcesTable.getByHash(bucketId, hash).result
           updated <- resourceRow.headOption.map { row =>
                        val updatedRow = row.copy(title = title, description = description)

@@ -8,6 +8,8 @@ import nl.amony.service.resources.web.JsonCodecs.toDto
 import nl.amony.service.resources.web.ResourceWebModel.{ResourceDto, ThumbnailTimestampDto, UserMetaDto}
 import nl.amony.service.resources.{Resource, ResourceBucket}
 import org.http4s.HttpRoutes
+import org.jsoup.Jsoup
+import org.jsoup.safety.Safelist
 import sttp.model.StatusCode
 import sttp.tapir.*
 import sttp.tapir.EndpointOutput.OneOfVariant
@@ -36,7 +38,7 @@ object ResourceEndpoints:
       .errorOut(errorOutput)
       .out(jsonBody[ResourceDto])
 
-  val updateUserMetaData: Endpoint[SecurityInput, (String, String, UserMetaDto), EndpointErrorOut | SecurityError, Unit, Any] = 
+  val updateUserMetaData: Endpoint[SecurityInput, (String, String, UserMetaDto), EndpointErrorOut | SecurityError, Unit, Any] =
     endpoint
       .name("updateUserMetaData")
       .description("Get information about a resource by its id")
@@ -80,9 +82,17 @@ object ResourceEndpoints:
     val updateUserMetaDataImpl =
       updateUserMetaData
         .serverSecurityLogic(authenticator.requireRole(Roles.Admin))
-        .serverLogic(_ => (bucketId, resourceId, userMeta: UserMetaDto) =>
-          getResource(bucketId, resourceId).map(_.map((bucket, _) => bucket.updateUserMeta(resourceId, userMeta.title, userMeta.description, userMeta.tags)))
-        )
+        .serverLogic(_ => (bucketId, resourceId, userMeta) => {
+          
+          val sanitizedTitle = userMeta.title.map(Jsoup.clean(_, Safelist.basic))
+          val sanitizedDescription = userMeta.description.map(Jsoup.clean(_, Safelist.basic))
+          val sanitizedTags = userMeta.tags.map(Jsoup.clean(_, Safelist.basic))
+
+          getResource(bucketId, resourceId).flatMap {
+            case Left(e)            => IO.pure(Left(e))
+            case Right((bucket, _)) => bucket.updateUserMeta(resourceId, sanitizedTitle, sanitizedDescription, sanitizedTags).map(_ => Right(()))
+          }
+        })
       
     val updateThumbnailTimestampImpl =
       updateThumbnailTimestamp

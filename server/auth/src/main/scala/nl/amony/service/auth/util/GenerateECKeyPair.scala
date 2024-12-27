@@ -1,7 +1,7 @@
-package nl.amony.service.auth
+package nl.amony.service.auth.util
 
-import java.security.{KeyPairGenerator, SecureRandom}
 import java.security.spec.ECGenParameterSpec
+import java.security.{KeyPairGenerator, SecureRandom}
 
 object GenerateECKeyPair extends App {
   // Initialize the key pair generator
