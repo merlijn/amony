@@ -26,15 +26,19 @@ object SearchRoutes {
   given searchResultEncoder: Encoder[SearchResult] =
     deriveEncoder[SearchResponseDto].contramapObject[SearchResult](result => SearchResponseDto(result.offset, result.total, result.results.map(m => toDto(m)), getSortedTags(result.tags)))
 
+  def sanitize(s: String, maxLength: Int): String = {
+    s.filter(c => c.isLetterOrDigit || c.isWhitespace).take(maxLength)
+  }
+  
   def apply(searchService: SearchService, config: SearchConfig): HttpRoutes[IO] = {
 
     HttpRoutes.of[IO] {
       case req @ GET -> Root / "api" / "search" / "media"  =>
 
         val params = req.params
-        val q      = params.get("q")
+        val q      = params.get("q").map(s => sanitize(s, 64))
+        val tags   = params.get("tags").map(s => sanitize(s, 32))
         val offset = params.get("offset").map(_.toInt)
-        val tags   = params.get("tags")
         val minRes = params.get("min_res").map(_.toInt)
 
         val sortDir = params.get("sort_dir").headOption match {
