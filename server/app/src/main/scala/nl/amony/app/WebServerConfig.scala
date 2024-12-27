@@ -1,4 +1,4 @@
-package nl.amony.webserver
+package nl.amony.app
 
 import scala.concurrent.duration.FiniteDuration
 import pureconfig._

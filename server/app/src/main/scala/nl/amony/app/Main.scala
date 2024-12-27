@@ -1,4 +1,4 @@
-package nl.amony.webserver
+package nl.amony.app
 
 import cats.effect.{IO, Resource, ResourceApp}
 import cats.implicits.toSemigroupKOps
@@ -11,7 +11,7 @@ import nl.amony.service.resources.api.events.ResourceEvent
 import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.ResourceRoutes
-import nl.amony.webserver.routes.{AdminRoutes, WebAppRoutes}
+import nl.amony.app.routes.{AdminRoutes, WebAppRoutes}
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.HsqldbProfile

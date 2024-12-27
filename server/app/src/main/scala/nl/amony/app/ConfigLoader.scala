@@ -1,4 +1,4 @@
-package nl.amony.webserver
+package nl.amony.app
 
 import com.typesafe.config.ConfigFactory
 import nl.amony.search.SearchConfig

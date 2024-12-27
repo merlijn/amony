@@ -1,4 +1,4 @@
-package nl.amony.webserver.util
+package nl.amony.app.util
 
 import java.io.{ByteArrayInputStream, File, IOException}
 import java.nio.charset.StandardCharsets.US_ASCII

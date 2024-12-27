@@ -1,8 +1,8 @@
-package nl.amony.webserver.routes
+package nl.amony.app.routes
 
 import cats.effect.IO
 import nl.amony.service.resources.web.ResourceDirectives
-import nl.amony.webserver.{AmonyConfig, WebServerConfig}
+import nl.amony.app.{AmonyConfig, WebServerConfig}
 import org.http4s.HttpRoutes
 import org.http4s.dsl.io.*
 

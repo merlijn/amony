@@ -238,10 +238,10 @@ lazy val solrSearch =
     )
 
 lazy val amonyServer =
-  module("web-server", mainClass = true)
+  module("app", mainClass = true)
     .dependsOn(identity, resources, searchService, solrSearch)
     .settings(
-      name := "amony-web-server",
+      name := "amony-app",
       reStart / javaOptions ++= javaOpts,
       run / fork             := true,
       run / javaOptions     ++= javaOpts,
@@ -268,7 +268,7 @@ lazy val amonyServer =
       ),
       jibUseCurrentTimestamp := true,
 
-      Compile / packageBin / mainClass := Some("nl.amony.webserver.Main"),
+      Compile / packageBin / mainClass := Some("nl.amony.app.Main"),
 
       libraryDependencies ++= Seq(
         // logging

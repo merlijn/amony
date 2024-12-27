@@ -1,4 +1,4 @@
-package nl.amony.webserver.routes
+package nl.amony.app.routes
 
 import cats.effect.IO
 import nl.amony.service.resources.ResourceBucket

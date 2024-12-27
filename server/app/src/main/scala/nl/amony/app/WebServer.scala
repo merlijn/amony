@@ -1,11 +1,11 @@
-package nl.amony.webserver
+package nl.amony.app
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource}
 import cats.implicits.catsSyntaxFlatMapOps
 import com.comcast.ip4s.{Host, Hostname, Port}
 import fs2.io.net.tls.{TLSContext, TLSParameters}
-import nl.amony.webserver.util.PemReader
+import nl.amony.app.util.PemReader
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.{Router, Server}
 import org.http4s.{HttpRoutes, Response, Status}
