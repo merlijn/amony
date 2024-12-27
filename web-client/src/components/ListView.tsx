@@ -137,7 +137,7 @@ const ListView = (props: ListProps) => {
                       <input type="checkbox" checked={selectedItems.indexOf(index) > -1}/>
                     </td>
                 }
-                <td key="thumbnail" className="list-thumbnail" style = { { paddingLeft: session.isAdmin() ? 0 : 4}}>
+                <td key="thumbnail" className="list-thumbnail" style = { { paddingLeft: session.isAdmin() ? 0 : 2}}>
                   <ProgressiveImage src={resource.urls.thumbnailUrl} placeholder="/image_placeholder.svg">
                     {(src: string) =>
                       <img className="list-thumbnail-img" src={src} onClick={() => props.onClick(resource)}
@@ -193,7 +193,7 @@ const TagsCell = (props: {
   return <TagsBar 
             tags = { tags }
             onTagsUpdated = { updateTags }
-            showAddTagButton = {session.isAdmin()} 
+            showAddTagButton = {session.isAdmin()}
             showDeleteButton = {session.isAdmin()} />
 }
 
