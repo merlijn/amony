@@ -8,14 +8,15 @@ import org.http4s.dsl.io.*
 import scribe.Logging
 import cats.effect.unsafe.IORuntime
 import nl.amony.lib.ffmpeg.FFMpeg
+import nl.amony.service.auth.{Roles, RouteAuthenticator}
 import nl.amony.service.resources.local.LocalDirectoryBucket
 
 import scala.concurrent.duration.*
 
 object AdminRoutes extends Logging:
 
-  def apply(searchService: SearchService, buckets: Map[String, ResourceBucket])(using runtime: IORuntime): HttpRoutes[IO] = {
-    HttpRoutes.of[IO]:
+  def apply(searchService: SearchService, buckets: Map[String, ResourceBucket], routeAuthenticator: RouteAuthenticator)(using runtime: IORuntime): HttpRoutes[IO] = {
+    routeAuthenticator.authenticated(Roles.Admin):
       case req @ POST -> Root / "api" / "admin" / "re-index" =>
         req.params.get("bucketId").flatMap(buckets.get) match {
           case None => BadRequest("bucketId parameter missing or bucket not found.")

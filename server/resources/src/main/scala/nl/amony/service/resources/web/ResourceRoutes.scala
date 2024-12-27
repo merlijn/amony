@@ -15,8 +15,9 @@ import org.http4s.CacheDirective.`max-age`
 import org.http4s.circe.*
 import org.http4s.circe.CirceEntityDecoder.circeEntityDecoder
 import org.http4s.headers.{`Cache-Control`, `Content-Type`}
+
 import scala.concurrent.duration.DurationInt
-import nl.amony.service.auth.AuthenticationDirectives.*
+import nl.amony.service.auth.{Roles, RouteAuthenticator}
 
 object ResourceRoutes extends Logging {
 
@@ -32,7 +33,7 @@ object ResourceRoutes extends Logging {
     }
   }
 
-  def apply(buckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
+  def apply(buckets: Map[String, ResourceBucket], authenticator: RouteAuthenticator): HttpRoutes[IO] = {
 
     def withResource(bucketId: String, resourceId: String)(fn: (ResourceBucket, Resource) => IO[Response[IO]]) =
       buckets.get(bucketId) match
@@ -58,7 +59,7 @@ object ResourceRoutes extends Logging {
 
       case req @ POST -> Root / "api" / "resources" / bucketId / resourceId / "update_thumbnail_timestamp" =>
 
-        authenticated(req, "admin"):
+        authenticator.authenticated(req, Roles.Admin):
           withResource(bucketId, resourceId) { (bucket, resource) =>
             req.as[ThumbnailTimestampDto].flatMap { dto =>
               bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis).flatMap(_ => Ok())
@@ -67,7 +68,7 @@ object ResourceRoutes extends Logging {
 
       case req @ POST -> Root / "api" / "resources" / bucketId / resourceId / "update_user_meta" =>
 
-        authenticated(req, "admin"):
+        authenticator.authenticated(req, Roles.Admin):
           withResource(bucketId, resourceId) { (bucket, resource) =>
             req.as[UserMetaDto].flatMap { userMeta =>
               bucket.updateUserMeta(resourceId, userMeta.title, userMeta.description, userMeta.tags).flatMap(_ => Ok())

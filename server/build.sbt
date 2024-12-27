@@ -150,8 +150,8 @@ lazy val libEventStore =
       )
     )
 
-lazy val identity =
-  module("identity")
+lazy val auth =
+  module("auth")
     .dependsOn(libFiles, libEventStore)
     .settings(protobufSettings)
     .settings(
@@ -167,7 +167,7 @@ lazy val identity =
 
 lazy val resources =
   module("resources")
-    .dependsOn(libFFMPeg, libEventStore, libFiles, identity)
+    .dependsOn(libFFMPeg, libEventStore, libFiles, auth)
     .settings(protobufSettings)
     .settings(
       name := "amony-service-resources",
@@ -239,7 +239,7 @@ lazy val solrSearch =
 
 lazy val amonyServer =
   module("app", mainClass = true)
-    .dependsOn(identity, resources, searchService, solrSearch)
+    .dependsOn(auth, resources, searchService, solrSearch)
     .settings(
       name := "amony-app",
       reStart / javaOptions ++= javaOpts,
@@ -295,4 +295,4 @@ lazy val amony = project
     Global / cancelable   := true,
   )
   .disablePlugins(RevolverPlugin)
-  .aggregate(libEventStore, libFFMPeg, libFiles, identity, searchService, solrSearch, amonyServer)
+  .aggregate(libEventStore, libFFMPeg, libFiles, auth, searchService, solrSearch, amonyServer)

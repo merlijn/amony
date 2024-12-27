@@ -177,7 +177,7 @@ export async function doDelete(path: string) {
 }
 
 export async function doPOST(path: string, postData?: any) {
-  return await doRequest('POST', path, postData).then(parseResponseAsJson)
+  return await doRequest('POST', path, true, postData).then(parseResponseAsJson)
 }
 
 export async function doRequest(method: string,

@@ -1,8 +1,25 @@
 package nl.amony.service.auth
 
+import io.circe.*
 import pdi.jwt.{JwtCirce, JwtClaim, JwtUtils}
 
 import java.time.Instant
+
+case class AuthTokenContent(
+  roles: Set[String]
+) derives Decoder
+
+class JwtDecoder(algo: JwtAlgorithmConfig):
+  def decode(token: String): scala.util.Try[AuthToken] = {
+    for {
+      decoded <- algo.decode(token)
+      content <- parser.decode[AuthTokenContent](decoded.content).toTry
+    } yield AuthToken(decoded.subject.getOrElse(""), content.roles.map(Role.apply))
+  }
+
+trait JwtEncoder:
+  def encode(claim: JwtClaim): String
+
 
 class TokenManager(jwtConfig: JwtConfig) {
 

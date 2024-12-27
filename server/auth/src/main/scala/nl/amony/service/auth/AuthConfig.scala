@@ -14,7 +14,10 @@ case class AuthConfig(
   secureCookies: Boolean,
   adminUsername: String,
   adminPassword: String
-) derives ConfigReader
+) derives ConfigReader {
+  
+  def decoder = JwtDecoder(jwt.algorithm)
+}
 
 case class JwtConfig(
   accessTokenExpiration: FiniteDuration,

@@ -33,7 +33,7 @@ class ResourceDatabase[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
 
   given ec: ExecutionContext = db.executor.executionContext
   
-  private def dbIO[T](a: DBIO[T]): IO[T] = IO.fromFuture(IO(db.run(a))).onError { t => IO { logger.warn(t) } }
+  private def dbIO[T](a: DBIO[T]): IO[T] = IO.fromFuture(IO(db.run(a))) //.onError { t => IO { logger.warn(t) } }
 
   private val resourcesTable = new ResourceTable[P](dbConfig)
   private val tagsTable = new ResourceTagsTable[P](dbConfig)
