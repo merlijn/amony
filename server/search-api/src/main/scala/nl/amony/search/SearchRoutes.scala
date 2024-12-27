@@ -15,9 +15,9 @@ import org.http4s.circe._
 
 object SearchRoutes {
 
-  val durationPattern = raw"(\d*)-(\d*)".r
+  private val durationPattern = raw"(\d*)-(\d*)".r
 
-  def getSortedTags(facetMap: Map[String, Long]): Seq[String] = {
+  private def getSortedTags(facetMap: Map[String, Long]): Seq[String] = {
     facetMap.toSeq
       .sortBy { case (key, count) => (-count, key) } // negative count for descending order
       .map(_._1)

@@ -60,7 +60,7 @@ function TopNavBar(props: NavBarProps) {
   return(
     <>
     <Modal visible = { showProfile } onHide = { () => setShowProfile(false) }>
-      <Profile onLogout = { () => {} } />
+      <Profile onLogout = { () => { window.location.reload(); } } />
     </Modal>
     <div className = "nav-bar-container">
       <div className = "top-nav-bar">
