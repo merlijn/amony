@@ -1,9 +1,11 @@
-import { Constants } from "../../api/Constants";
+import {Constants, SessionContext} from "../../api/Constants";
 import { Prefs } from "../../api/Model";
 import { useCookiePrefs } from "../../api/ReactUtils";
 import { calculateColumns } from "../../api/Util";
 import Dialog from "../common/Dialog";
 import './ConfigMenu.scss';
+import {Api} from "../../api/Api";
+import {useContext} from "react";
 
 const ConfigMenu = () => {
 
@@ -14,6 +16,7 @@ const ConfigMenu = () => {
   })
 
   const updatePrefs = (values: {}) => { setPrefs({...prefs, ...values} ) }
+  const session = useContext(SessionContext)
 
   return(
       <Dialog title = "Preferences">
@@ -121,9 +124,35 @@ const ConfigMenu = () => {
               />
             </div>
           </div>
+          { session.isAdmin() && <AdminOptions /> }
         </div>
       </Dialog>
   )
 }
 
-export default ConfigMenu
+const AdminOptions = () => {
+  return(
+    <>
+        <div key="refresh-bucket" className="form-section">
+          <p key="header" className="form-label">Refresh resources</p>
+          <div key="content" className="form-content">
+            <button key="clear-cache-button" onClick={() => {
+              Api.adminRefreshBucket('media')
+            }}>Go
+            </button>
+          </div>
+        </div>
+        <div key="reindex-bucket" className="form-section">
+          <p key="header" className="form-label">Reindex resources</p>
+          <div key="content" className="form-content">
+            <button key="clear-cache-button" onClick={() => {
+              Api.adminReindexBucket('media')
+            }}>Go
+            </button>
+          </div>
+        </div>
+      </>
+      )
+      }
+
+      export default ConfigMenu

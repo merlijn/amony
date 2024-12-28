@@ -24,10 +24,10 @@ const initialSearchResult: SearchResult = { total: 0, results: [], tags: [] }
 const GridView = (props: GalleryProps) => {
 
   const [searchResult, setSearchResult] = useState(initialSearchResult)
-  const [isFetching, setIsFetching] = useState(false)
+  const [isFetching, setIsFetching]     = useState(false)
   const [isEndReached, setIsEndReached] = useState(false)
-  const { ref, width } = useResizeObserver<HTMLDivElement>();
-  const [columns, setColumns] = useState<number>(props.columns === 'auto' ? 0 : props.columns)
+  const { ref, width }                  = useResizeObserver<HTMLDivElement>();
+  const [columns, setColumns]           = useState<number>(props.columns === 'auto' ? 0 : props.columns)
 
   const gridSpacing = 1
 
@@ -86,7 +86,7 @@ const GridView = (props: GalleryProps) => {
 
     return <div key = { `preview-${vid.resourceId}` } className = "grid-cell" style = { style } >
               <Preview
-                resource= { vid }
+                resource = { vid }
                 onClick  = { props.onClick }
                 options  = { props.previewOptionsFn(vid) }
               />

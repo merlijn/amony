@@ -109,10 +109,10 @@ function TopNavBar(props: NavBarProps) {
 
 const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
 
-  const [vqParam, setVqParam] = useUrlParam("vq", "0")
-  const [sortParam, setSortParam] = useSortParam()
+  const [vqParam, setVqParam]             = useUrlParam("vq", "0")
+  const [sortParam, setSortParam]         = useSortParam()
   const [durationParam, setDurationParam] = useUrlParam("d", "-")
-  const [uploadParam, setUploadParam] = useUrlParam("u", "-")
+  const [uploadParam, setUploadParam]     = useUrlParam("u", "-")
 
   return( 
     <div className = "filter-dropdown-container">

@@ -150,6 +150,14 @@ export const Api = {
 
   updateThumbnailTimestamp: async function (mediaId: string, time: number) {
     return doPOST(`/api/resources/media/${mediaId}/update_thumbnail_timestamp`, { timestampInMillis: time })
+  },
+
+  adminReindexBucket: async function (bucketId: string) {
+    return doPOST(buildUrl("/api/admin/reindex", new Map([["bucketId", bucketId]])))
+  },
+
+  adminRefreshBucket: async function (bucketId: string) {
+    return doPOST(buildUrl("/api/admin/refresh", new Map([["bucketId", bucketId]])))
   }
 }
 
