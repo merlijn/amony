@@ -13,7 +13,7 @@ val excludeScalaJs = List(
 )
 
 val circeVersion    = "0.14.10"
-val http4sVersion   = "1.0.0-M44"
+val http4sVersion   = "0.23.30"
 
 val bouncyCastle = "org.apache.directory.studio" % "org.bouncycastle.bcprov.jdk15" % "140"
 
@@ -61,7 +61,7 @@ val http4sEmberClient = "org.http4s" %% "http4s-ember-client" % http4sVersion
 val http4sDsl         = "org.http4s" %% "http4s-dsl"          % http4sVersion
 val http4sCirce       = "org.http4s" %% "http4s-circe"        % http4sVersion
 
-val javaOpts = Seq("-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true", "-DAMONY_SECURE_COOKIES=false")
+
 
 //fork in Global := true
 cancelable in Global := true
@@ -236,6 +236,8 @@ lazy val solrSearch =
       },
       Compile / resourceGenerators += buildSolrTarGz.taskValue
     )
+
+val javaOpts = Seq("-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true", "-DAMONY_SECURE_COOKIES=false", "-DAMONY_MEDIA_PATH=../../media")
 
 lazy val amonyServer =
   module("app", mainClass = true)

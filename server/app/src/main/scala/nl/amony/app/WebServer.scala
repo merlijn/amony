@@ -43,9 +43,11 @@ object WebServer extends Logging {
     httpResource >> httpsResource
   }
 
+  private val serverError = Response[IO](Status.InternalServerError).putHeaders(org.http4s.headers.`Content-Length`.zero)
+  
   def httpsServer(httpsConfig: HttpsConfig, routes: HttpRoutes[IO])(using io: IORuntime): Resource[IO, Server] = {
     val httpApp = Router("/" -> routes).orNotFound
-    val serverError = Response(Status.InternalServerError).putHeaders(org.http4s.headers.`Content-Length`.zero)
+    
 
     val sslContext = {
       val keyStore = PemReader.loadKeyStore(
@@ -82,7 +84,6 @@ object WebServer extends Logging {
   def httpServer(httpConfig: HttpConfig, routes: HttpRoutes[IO])(using io: IORuntime): Resource[IO, Server] = {
 
     val httpApp = Router("/" -> routes).orNotFound
-    val serverError = Response(Status.InternalServerError).putHeaders(org.http4s.headers.`Content-Length`.zero)
 
     EmberServerBuilder
       .default[IO]

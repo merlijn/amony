@@ -30,7 +30,7 @@ object ResourceDirectives extends Logging {
         Response(
           status = Status.Ok,
           headers = maybeMediaType.map(mediaType => Headers(mediaType)).getOrElse(Headers.empty),
-          entity = Entity.stream(resource.getContent())
+          body = resource.getContent()
         )
 
         Ok(resource.getContent())
@@ -75,12 +75,13 @@ object ResourceDirectives extends Logging {
 
         val headers =
           Headers(AcceptRangeHeader, `Content-Range`(SubRange(start, end), Some(size))) ++
-          Headers(maybeMediaType.map(mediaType => `Content-Type`(mediaType)).toList)
+          Headers(maybeMediaType.map(mediaType => `Content-Type`(mediaType)).toList) ++
+          Headers(Header.Raw(ci"Content-Length", size.toString))
 
         Response(
           status = if (partial) Status.PartialContent else Status.Ok,
           headers = headers,
-          entity = Entity.stream(byteStream, Some(start - end))
+          body = byteStream
         )
       }
     }
