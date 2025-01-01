@@ -6,33 +6,33 @@ object ResourceWebModel {
   
   case class ThumbnailTimestampDto(
      timestampInMillis: Long
-  ) derives Encoder.AsObject, Decoder
+  ) derives Codec, sttp.tapir.Schema
 
   case class UserMetaDto(
     title: Option[String],
     description: Option[String],
     tags: List[String]
-  ) derives Encoder.AsObject, Decoder
+  ) derives Codec, sttp.tapir.Schema
 
   case class ResourceMetaDto(
     width: Int,
     height: Int,
     fps: Float,
     duration: Long,
-    codec: Option[String],  
-  ) derives Encoder.AsObject
+    codec: Option[String],
+  ) derives Codec, sttp.tapir.Schema
 
   case class ResourceUrlsDto(
     originalResourceUrl: String,
     thumbnailUrl: String,
     previewThumbnailsUrl: Option[String],
-  ) derives Encoder.AsObject
+  ) derives Codec, sttp.tapir.Schema
 
   case class ResourceInfoDto(
     hash: String,
     sizeInBytes: Long,
     path: String
-  ) derives Encoder.AsObject
+  ) derives Codec, sttp.tapir.Schema
 
   case class ResourceDto(
     bucketId: String,
@@ -46,13 +46,14 @@ object ResourceWebModel {
     urls: ResourceUrlsDto,
     thumbnailTimestamp: Option[Long],
     clips: List[ClipDto],
-  ) derives Encoder.AsObject
+  ) derives Codec, sttp.tapir.Schema
 
   case class ClipDto(
     resourceId: String,
-    range: (Long, Long),
+    start: Long,
+    end: Long,
     urls: List[String],
     description: Option[String],
     tags: List[String]
-   ) derives Encoder.AsObject
+   ) derives Codec, sttp.tapir.Schema
 }

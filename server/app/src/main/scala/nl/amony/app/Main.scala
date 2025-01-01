@@ -2,7 +2,7 @@ package nl.amony.app
 
 import cats.effect.{IO, Resource, ResourceApp}
 import cats.implicits.toSemigroupKOps
-import nl.amony.app.routes.{AdminRoutes, HelloTapir, HelloWorldRoutes, WebAppRoutes}
+import nl.amony.app.routes.{AdminRoutes, WebAppRoutes}
 import nl.amony.lib.eventbus.EventTopic
 import nl.amony.search.SearchRoutes
 import nl.amony.search.solr.SolrIndex
@@ -11,7 +11,7 @@ import nl.amony.service.resources.ResourceConfig
 import nl.amony.service.resources.api.events.ResourceEvent
 import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalDirectoryBucket
-import nl.amony.service.resources.web.ResourceRoutes
+import nl.amony.service.resources.web.{ResourceEndpoints, ResourceRoutes}
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.HsqldbProfile
@@ -45,12 +45,11 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
                                  bucket.sync().unsafeRunAsync(_ => ())
                                  localConfig.id -> bucket
                              }.toMap
-      helloSmithy       <- HelloWorldRoutes.routes
-      helloTapir         = HelloTapir.helloRoutes
       routes             = ResourceRoutes.apply(resourceBuckets, routeAuthenticator) <+>
                              SearchRoutes.apply(searchService, appConfig.search) <+>
                              AuthRoutes.apply(authService, authConfig) <+>
-                             AdminRoutes.apply(searchService, resourceBuckets, routeAuthenticator) <+> helloSmithy <+> helloTapir <+>
+                             AdminRoutes.apply(searchService, resourceBuckets, routeAuthenticator) <+>
+                             ResourceEndpoints.endpointImplementations(resourceBuckets, authConfig.decoder) <+>
                              WebAppRoutes.apply(appConfig.api)
       _                 <- WebServer.run(appConfig.api, routes)
     } yield ()

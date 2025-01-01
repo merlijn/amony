@@ -37,7 +37,7 @@ object ResourceRoutes extends Logging {
 
     def withResource(bucketId: String, resourceId: String)(fn: (ResourceBucket, Resource) => IO[Response[IO]]) =
       buckets.get(bucketId) match
-        case None => NotFound()
+        case None         => NotFound()
         case Some(bucket) =>
           bucket.getResource(resourceId).flatMap:
             case None => NotFound()
@@ -45,35 +45,11 @@ object ResourceRoutes extends Logging {
 
     HttpRoutes.of[IO] {
 
-      case req @ GET -> Root / "api" / "resources" / bucketId / resourceId =>
-
-        withResource(bucketId, resourceId) { (_, resource) =>
-          Ok(resource.info().asJson)
-        }
-
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / "content" =>
 
         withResource(bucketId, resourceId) { (_, resource) =>
           respondWithResourceContent(req, resource)
         }
-
-      case req @ POST -> Root / "api" / "resources" / bucketId / resourceId / "update_thumbnail_timestamp" =>
-
-        authenticator.authenticated(req, Roles.Admin):
-          withResource(bucketId, resourceId) { (bucket, resource) =>
-            req.as[ThumbnailTimestampDto].flatMap { dto =>
-              bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis).flatMap(_ => Ok())
-            }
-          }
-
-      case req @ POST -> Root / "api" / "resources" / bucketId / resourceId / "update_user_meta" =>
-
-        authenticator.authenticated(req, Roles.Admin):
-          withResource(bucketId, resourceId) { (bucket, resource) =>
-            req.as[UserMetaDto].flatMap { userMeta =>
-              bucket.updateUserMeta(resourceId, userMeta.title, userMeta.description, userMeta.tags).flatMap(_ => Ok())
-            }
-          }
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern =>
 

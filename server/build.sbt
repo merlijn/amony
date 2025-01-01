@@ -27,6 +27,9 @@ val slickHikariCp            = "com.typesafe.slick"       %% "slick-hikaricp"   
 val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"             % "1.11.11"
 val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"    % "1.11.11"
 val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"      % "1.11.11"
+val tapirSwaggerUI           = "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % "1.11.11"
+val tapirCirce               = "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % "1.11.11"
+
 val tapirSharedFs2           = "com.softwaremill.sttp.shared"  %% "fs2"                    % "1.4.2"
 
 val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "10.0.1"
@@ -92,14 +95,6 @@ lazy val noPublishSettings = Seq(
 def protobufSettings = Seq(
   Compile / PB.targets := Seq(
     scalapb.gen(flatPackage = true) -> (Compile / sourceManaged).value / "scalapb"
-  )
-)
-
-def smithy4sSettings = Seq(
-  libraryDependencies ++= Seq(
-    "com.disneystreaming.smithy4s" %% "smithy4s-core" % smithy4sVersion.value,
-    "com.disneystreaming.smithy4s" %% "smithy4s-http4s" % smithy4sVersion.value,
-    "com.disneystreaming.smithy4s" %% "smithy4s-http4s-swagger" % smithy4sVersion.value,
   )
 )
 
@@ -172,6 +167,7 @@ lazy val auth =
       libraryDependencies ++= Seq(
         // akka
         jwtCirce, bouncyCastle,
+        tapirCore, tapirCatsEffect, tapirCirce,
         circe, circeGeneric, pureConfig, pureConfigGeneric, slick,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
         http4sDsl, http4sCirce
@@ -187,6 +183,7 @@ lazy val resources =
       libraryDependencies ++= Seq(
         scribe,
         circe, circeGeneric, http4sCirce,
+        tapirCore, tapirCatsEffect, tapirCirce, tapirHttp4s,
         scalaTest,
         slick, fs2Core, fs2Io, http4sDsl, liquibaseCore,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
@@ -255,9 +252,6 @@ val javaOpts = Seq("-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true", "-DAMONY_SECUR
 lazy val app =
   module("app", mainClass = true)
     .dependsOn(auth, resources, searchService, solrSearch)
-    .enablePlugins(Smithy4sCodegenPlugin)
-    .settings(smithy4sSettings)
-    .settings(libraryDependencies += "com.disneystreaming.smithy4s" %% "smithy4s-core" % smithy4sVersion.value)
     .settings(
       name := "amony-app",
       reStart / javaOptions ++= javaOpts,
@@ -297,7 +291,7 @@ lazy val app =
         slickHikariCp, hsqlDB, h2DB,
         fs2Core,
         http4sEmberServer,
-        tapirCore, tapirHttp4s, tapirCatsEffect, tapirSharedFs2,
+        tapirCore, tapirCatsEffect, tapirHttp4s,  tapirSharedFs2, tapirSwaggerUI,
         // test
         scalaTest, scalaTestCheck
       ),

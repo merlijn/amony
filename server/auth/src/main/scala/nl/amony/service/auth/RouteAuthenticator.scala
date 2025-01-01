@@ -1,28 +1,41 @@
 package nl.amony.service.auth
 
+import cats.effect.IO
+import nl.amony.service.auth.RouteAuthenticator.validateSecurityInput
+import nl.amony.service.auth.tapir.{SecurityError, SecurityInput}
 import org.http4s.dsl.io.*
 import org.http4s.headers.`WWW-Authenticate`
 import org.http4s.{Challenge, HttpRoutes, Request, Response}
-import cats.effect.IO
-import cats.data.EitherT
-import org.typelevel.ci.CIString
+import org.typelevel.ci.CIStringSyntax
 import scribe.Logging
+
+object RouteAuthenticator:
+  def securityInputFromRequest(req: Request[IO]): SecurityInput =
+    SecurityInput(
+      accessToken  = req.cookies.find(_.name == "access_token").map(_.content),
+      xsrfCookie   = req.cookies.find(_.name == "XSRF-TOKEN").map(_.content),
+      xXsrfHeader  = req.headers.get(ci"X-XSRF-TOKEN").map(_.head.value)
+    )
+
+  def validateSecurityInput(decoder: JwtDecoder, securityInput: SecurityInput, requiredRole: Role): Either[SecurityError, AuthToken] = {
+    for {
+      accessToken <- securityInput.accessToken.toRight(SecurityError.Unauthorized)
+      decoded     <- decoder.decode(accessToken).toEither.left.map(_ => SecurityError.Unauthorized)
+      _           <- if decoded.roles.contains(requiredRole) then Right(()) else Left(SecurityError.Forbidden)
+      xsrfToken   <- securityInput.xsrfCookie.toRight(SecurityError.Unauthorized)
+      xXsrfHeader <- securityInput.xXsrfHeader.toRight(SecurityError.Unauthorized)
+      _           <- if xsrfToken == xXsrfHeader then Right(()) else Left(SecurityError.Unauthorized)
+    } yield AuthToken(decoded.userId, decoded.roles)
+  }
 
 class RouteAuthenticator(decoder: JwtDecoder) extends Logging:
   private val unauthorizedResponse = Unauthorized(`WWW-Authenticate`(Challenge("Bearer", "api")))
 
   def authenticated(req: Request[IO], requiredRole: Role)(response: => IO[Response[IO]]): IO[Response[IO]] = {
 
-    val validation: EitherT[IO, String, Unit] = for {
-      accessToken <- EitherT.fromOption[IO](req.cookies.find(_.name == "access_token").map(_.content), "Missing access token")
-      decoded     <- EitherT.fromEither[IO](decoder.decode(accessToken).toEither.left.map(_ => "Invalid access token"))
-      _           <- EitherT.cond[IO](decoded.roles.contains(requiredRole), (), "Missing required role")
-      xsrfToken   <- EitherT.fromOption[IO](req.cookies.find(_.name == "XSRF-TOKEN").map(_.content), "Missing XSRF token")
-      xXsrfHeader <- EitherT.fromOption[IO](req.headers.get(CIString("X-XSRF-TOKEN")).map(_.head.value), "Missing X-XSRF-TOKEN header")
-      _           <- EitherT.cond[IO](xsrfToken == xXsrfHeader, (), "XSRF token mismatch")
-    } yield ()
+    val securityInput = RouteAuthenticator.securityInputFromRequest(req)
 
-    validation.value.flatMap:
+    IO.pure(validateSecurityInput(decoder, securityInput, requiredRole)).flatMap:
       case Right(_)  => response
       case Left(msg) =>
         logger.info(s"Unauthorized request: $msg")
