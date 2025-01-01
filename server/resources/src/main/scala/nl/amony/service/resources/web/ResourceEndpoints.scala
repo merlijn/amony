@@ -31,7 +31,7 @@ object ResourceEndpoints:
     endpoint
       .name("getResourceById")
       .description("Get information about a resource by its id")
-      .get.in("api" / "resources" / path[String] / path[String])
+      .get.in("api" / "resources" / path[String]("bucketId") / path[String]("resourceId"))
       .securityIn(securityInput)
       .errorOut(errorOutput)
       .out(jsonBody[ResourceDto])
@@ -40,7 +40,7 @@ object ResourceEndpoints:
     endpoint
       .name("updateUserMetaData")
       .description("Get information about a resource by its id")
-      .post.in("api" / "resources" / path[String] / path[String] / "update_user_meta")
+      .post.in("api" / "resources" / path[String]("bucketId") / path[String]("resourceId") / "update_user_meta")
       .securityIn(securityInput)
       .in(jsonBody[UserMetaDto])
       .errorOut(errorOutput)
@@ -50,13 +50,15 @@ object ResourceEndpoints:
     endpoint
       .name("updateThumbnailTimestamp")
       .description("Update the thumbnail timestamp of a resource")
-      .post.in("api" / "resources" / path[String] / path[String] / "update_thumbnail_timestamp")
+      .post.in("api" / "resources" / path[String]("bucketId") / path[String]("resourceId") / "update_thumbnail_timestamp")
       .securityIn(securityInput)
       .in(jsonBody[ThumbnailTimestampDto])
       .errorOut(errorOutput)
       .out(jsonBody[Unit])
+    
+  val endpoints = List(getResourceById, updateUserMetaData, updateThumbnailTimestamp)
 
-  def endpointImplementations(buckets: Map[String, ResourceBucket],decoder: JwtDecoder): HttpRoutes[IO] = {
+  def endpointImplementations(buckets: Map[String, ResourceBucket], decoder: JwtDecoder): HttpRoutes[IO] = {
 
     val authenticator = TapirAuthenticator(decoder)
 

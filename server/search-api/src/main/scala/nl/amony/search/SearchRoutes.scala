@@ -24,7 +24,7 @@ object SearchRoutes {
   }
 
   given searchResultEncoder: Encoder[SearchResult] =
-    deriveEncoder[WebSearchResponse].contramapObject[SearchResult](result => WebSearchResponse(result.offset, result.total, result.results.map(m => toDto(m)), getSortedTags(result.tags)))
+    deriveEncoder[SearchResponseDto].contramapObject[SearchResult](result => SearchResponseDto(result.offset, result.total, result.results.map(m => toDto(m)), getSortedTags(result.tags)))
 
   def apply(searchService: SearchService, config: SearchConfig): HttpRoutes[IO] = {
 

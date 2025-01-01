@@ -29,6 +29,7 @@ val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-
 val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"      % "1.11.11"
 val tapirSwaggerUI           = "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % "1.11.11"
 val tapirCirce               = "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % "1.11.11"
+val tapirCirceYamlSpec       = "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml" % "0.11.5"
 
 val tapirSharedFs2           = "com.softwaremill.sttp.shared"  %% "fs2"                    % "1.4.2"
 
@@ -291,7 +292,7 @@ lazy val app =
         slickHikariCp, hsqlDB, h2DB,
         fs2Core,
         http4sEmberServer,
-        tapirCore, tapirCatsEffect, tapirHttp4s,  tapirSharedFs2, tapirSwaggerUI,
+        tapirCore, tapirCatsEffect, tapirHttp4s,  tapirSharedFs2, tapirSwaggerUI, tapirCirceYamlSpec,
         // test
         scalaTest, scalaTestCheck
       ),

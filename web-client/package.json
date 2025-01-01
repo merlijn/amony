@@ -42,7 +42,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "serve": "vite preview"
+    "serve": "vite preview",
+    "generate": "orval --config ./orval.config.ts"
   },
   "eslintConfig": {
     "extends": [
@@ -66,6 +67,7 @@
     "@types/lodash": "^4.17.13",
     "@types/react-router-dom": "^5.3.3",
     "@vitejs/plugin-react": "^4.3.3",
+    "orval": "^7.3.0",
     "sass": "^1.81.0",
     "sass-loader": "^16.0.3",
     "vite": "^5.4.11",
