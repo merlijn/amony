@@ -2,6 +2,7 @@ package nl.amony.app
 
 import cats.effect.{IO, Resource, ResourceApp}
 import cats.implicits.toSemigroupKOps
+import nl.amony.app.routes.{AdminRoutes, HelloTapir, HelloWorldRoutes, WebAppRoutes}
 import nl.amony.lib.eventbus.EventTopic
 import nl.amony.search.SearchRoutes
 import nl.amony.search.solr.SolrIndex
@@ -11,7 +12,6 @@ import nl.amony.service.resources.api.events.ResourceEvent
 import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.ResourceRoutes
-import nl.amony.app.routes.{AdminRoutes, WebAppRoutes}
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.HsqldbProfile
@@ -23,6 +23,7 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
   override def run(args: List[String]): Resource[IO, Unit] = {
 
     import cats.effect.unsafe.implicits.global
+
     import scala.concurrent.ExecutionContext.Implicits.global
 
     logger.info("Starting application, app home directory: " + appConfig.amonyHome)
@@ -44,10 +45,12 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
                                  bucket.sync().unsafeRunAsync(_ => ())
                                  localConfig.id -> bucket
                              }.toMap
+      helloSmithy       <- HelloWorldRoutes.routes
+      helloTapir         = HelloTapir.helloRoutes
       routes             = ResourceRoutes.apply(resourceBuckets, routeAuthenticator) <+>
                              SearchRoutes.apply(searchService, appConfig.search) <+>
                              AuthRoutes.apply(authService, authConfig) <+>
-                             AdminRoutes.apply(searchService, resourceBuckets, routeAuthenticator) <+>
+                             AdminRoutes.apply(searchService, resourceBuckets, routeAuthenticator) <+> helloSmithy <+> helloTapir <+>
                              WebAppRoutes.apply(appConfig.api)
       _                 <- WebServer.run(appConfig.api, routes)
     } yield ()

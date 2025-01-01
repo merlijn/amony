@@ -24,6 +24,11 @@ val circeParser              = "io.circe"                 %% "circe-parser"     
 val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.5.2"
 val slickHikariCp            = "com.typesafe.slick"       %% "slick-hikaricp"             % "3.5.2"
 
+val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"             % "1.11.11"
+val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"    % "1.11.11"
+val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"      % "1.11.11"
+val tapirSharedFs2           = "com.softwaremill.sttp.shared"  %% "fs2"                    % "1.4.2"
+
 val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "10.0.1"
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.16"
 
@@ -87,6 +92,14 @@ lazy val noPublishSettings = Seq(
 def protobufSettings = Seq(
   Compile / PB.targets := Seq(
     scalapb.gen(flatPackage = true) -> (Compile / sourceManaged).value / "scalapb"
+  )
+)
+
+def smithy4sSettings = Seq(
+  libraryDependencies ++= Seq(
+    "com.disneystreaming.smithy4s" %% "smithy4s-core" % smithy4sVersion.value,
+    "com.disneystreaming.smithy4s" %% "smithy4s-http4s" % smithy4sVersion.value,
+    "com.disneystreaming.smithy4s" %% "smithy4s-http4s-swagger" % smithy4sVersion.value,
   )
 )
 
@@ -239,9 +252,12 @@ lazy val solrSearch =
 
 val javaOpts = Seq("-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true", "-DAMONY_SECURE_COOKIES=false", "-DAMONY_MEDIA_PATH=../../media")
 
-lazy val amonyServer =
+lazy val app =
   module("app", mainClass = true)
     .dependsOn(auth, resources, searchService, solrSearch)
+    .enablePlugins(Smithy4sCodegenPlugin)
+    .settings(smithy4sSettings)
+    .settings(libraryDependencies += "com.disneystreaming.smithy4s" %% "smithy4s-core" % smithy4sVersion.value)
     .settings(
       name := "amony-app",
       reStart / javaOptions ++= javaOpts,
@@ -281,6 +297,7 @@ lazy val amonyServer =
         slickHikariCp, hsqlDB, h2DB,
         fs2Core,
         http4sEmberServer,
+        tapirCore, tapirHttp4s, tapirCatsEffect, tapirSharedFs2,
         // test
         scalaTest, scalaTestCheck
       ),
@@ -297,4 +314,4 @@ lazy val amony = project
     Global / cancelable   := true,
   )
   .disablePlugins(RevolverPlugin)
-  .aggregate(libEventStore, libFFMPeg, libFiles, auth, searchService, solrSearch, amonyServer)
+  .aggregate(libEventStore, libFFMPeg, libFiles, auth, searchService, solrSearch, app)
