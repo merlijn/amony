@@ -1,25 +1,19 @@
 package nl.amony.service.resources.web
 
-import cats.Monad
 import cats.effect.IO
+import nl.amony.service.auth.RouteAuthenticator
 import nl.amony.service.resources.api.operations.{ImageThumbnail, ResourceOperation, VideoFragment, VideoThumbnail}
-import nl.amony.service.resources.{Resource, ResourceBucket, ResourceWithRangeSupport}
-import nl.amony.service.resources.web.JsonCodecs.given
-import org.http4s.*
-import org.http4s.dsl.io.*
-import scribe.Logging
-import io.circe.syntax.*
 import nl.amony.service.resources.web.ResourceDirectives.respondWithResourceContent
-import nl.amony.service.resources.web.ResourceWebModel.{ThumbnailTimestampDto, UserMetaDto}
+import nl.amony.service.resources.{Resource, ResourceBucket}
+import org.http4s.*
 import org.http4s.CacheDirective.`max-age`
-import org.http4s.circe.*
-import org.http4s.circe.CirceEntityDecoder.circeEntityDecoder
-import org.http4s.headers.{`Cache-Control`, `Content-Type`}
+import org.http4s.dsl.io.*
+import org.http4s.headers.`Cache-Control`
+import scribe.Logging
 
 import scala.concurrent.duration.DurationInt
-import nl.amony.service.auth.{Roles, RouteAuthenticator}
 
-object ResourceRoutes extends Logging {
+object ResourceContentRoutes extends Logging {
 
   object patterns {
     val ClipPattern                   = raw"clip_(\d+)-(\d+)_(\d+)p\.mp4".r

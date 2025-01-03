@@ -39,7 +39,7 @@ object ResourceDirectives extends Logging {
 
   val AcceptRangeHeader = `Accept-Ranges`(RangeUnit.Bytes)
 
-  private def validRange(start: Long, end: Option[Long], fileLength: Long): Boolean =
+  private def isValidRange(start: Long, end: Option[Long], fileLength: Long): Boolean =
     start < fileLength && (end match {
       case Some(end) => start >= 0 && start <= end
       case None      => start >= 0 || fileLength + start - 1 >= 0
@@ -88,7 +88,7 @@ object ResourceDirectives extends Logging {
 
     request.headers.get[Range] match {
       case Some(Range(RangeUnit.Bytes, NonEmptyList(SubRange(s, e), Nil))) =>
-        if (validRange(s, e, size)) {
+        if (isValidRange(s, e, size)) {
           val start = if (s >= 0) s else math.max(0, size + s)
           val end = math.min(size - 1, e.getOrElse(size - 1)) // end is inclusive
           createResponse(start, end, true)

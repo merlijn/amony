@@ -1,5 +1,6 @@
 package nl.amony.app.util
 
+import nl.amony.search.SearchRoutes
 import nl.amony.service.resources.web.ResourceEndpoints
 import sttp.apispec.openapi.circe.yaml.*
 import sttp.apispec.openapi.OpenAPI
@@ -11,11 +12,11 @@ import scala.util.Using
 @main
 def generateSpec(): Unit = {
 
-  val endpoints = ResourceEndpoints.endpoints
+  val endpoints = ResourceEndpoints.endpoints ++ SearchRoutes.endpoints
 
   val outputPath = "target/openapi.yaml"
 
-  val docs: OpenAPI = OpenAPIDocsInterpreter().toOpenAPI(endpoints, "My Bookshop", "1.0")
+  val docs: OpenAPI = OpenAPIDocsInterpreter().toOpenAPI(endpoints, "Amony API", "1.0")
 
   Using(new java.io.FileWriter(outputPath)) { writer =>
     writer.write(docs.toYaml)
