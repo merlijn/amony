@@ -1,10 +1,10 @@
 import React, {useEffect, useRef, useState} from 'react';
 import { Api } from '../api/Api';
-import { Resource } from '../api/Model';
 import FragmentList from '../components/fragments/FragmentList';
 import './Editor.scss';
 import {MediaPlayer, MediaPlayerInstance, MediaProvider} from "@vidstack/react";
 import { PlyrLayout, plyrLayoutIcons } from '@vidstack/react/player/layouts/plyr';
+import {getResourceById, ResourceDto} from "../api/generated";
 
 export type EditFragment = {
   idx: number
@@ -14,13 +14,13 @@ export type EditFragment = {
 
 const Editor = (props: {videoId: string}) => {
 
-  const [vid, setVid] = useState<Resource | null>(null)
+  const [vid, setVid] = useState<ResourceDto | null>(null)
 
   useEffect(() => {
-    Api.getResourceById(props.videoId).then(resource => {
-        setVid(resource)
-      }
-    );
+
+    getResourceById('media', props.videoId).then(resource => {
+      setVid(resource)
+    });
   }, [props]);
 
   return (
@@ -28,7 +28,7 @@ const Editor = (props: {videoId: string}) => {
   );
 }
 
-const PlayerView = (props: {vid: Resource}) => {
+const PlayerView = (props: {vid: ResourceDto}) => {
 
   const [vid, setVid] = useState(props.vid)
   let player = useRef<MediaPlayerInstance>(null)
@@ -42,9 +42,9 @@ const PlayerView = (props: {vid: Resource}) => {
   const updateThumbnailTimestamp = (e: any) => {
     if (player.current) {
       Api.updateThumbnailTimestamp(vid.resourceId, Math.trunc(player.current.currentTime * 1000)).then (response => {
-          Api.getResourceById(vid.resourceId).then(response => {
-            setVid((response as Resource))
-          })
+        getResourceById('media', vid.resourceId).then(resource => {
+          setVid(resource)
+        });
       })
     }
   }
@@ -61,15 +61,15 @@ const PlayerView = (props: {vid: Resource}) => {
 
        if (fragment.idx >= 0 && fragment.idx < vid.clips.length) {
          console.log("updating fragment")
-         Api.updateFragment(vid.resourceId, fragment.idx, from, to).then (response => {
-           setVid(response as Resource)
-         });
+         // Api.updateFragment(vid.resourceId, fragment.idx, from, to).then (response => {
+         //   setVid(response as Resource)
+         // });
        }
        if (fragment.idx === vid.clips.length) {
          console.log("adding fragment")
-         Api.addFragment(vid.resourceId, from, to).then (response => {
-           setVid(response as Resource)
-         });
+         // Api.addFragment(vid.resourceId, from, to).then (response => {
+         //   setVid(response as Resource)
+         // });
        }
      }
     }

@@ -3,6 +3,7 @@
 # project specific
 /media/
 server/solr-search/solr/amony_embedded/data/
+web-client/src/api/generated
 
 # backend, java, scala
 *.class

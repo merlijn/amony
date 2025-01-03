@@ -14,7 +14,7 @@ def generateSpec(): Unit = {
 
   val endpoints = ResourceEndpoints.endpoints ++ SearchRoutes.endpoints
 
-  val outputPath = "target/openapi.yaml"
+  val outputPath = "../web-client/openapi.yaml"
 
   val docs: OpenAPI = OpenAPIDocsInterpreter().toOpenAPI(endpoints, "Amony API", "1.0")
 

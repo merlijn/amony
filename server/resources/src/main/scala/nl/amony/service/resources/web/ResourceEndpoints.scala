@@ -10,7 +10,7 @@ import nl.amony.service.resources.{Resource, ResourceBucket}
 import org.http4s.HttpRoutes
 import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist
-import sttp.model.StatusCode
+import sttp.model.{HeaderNames, StatusCode}
 import sttp.tapir.*
 import sttp.tapir.EndpointOutput.OneOfVariant
 import sttp.tapir.json.circe.*
@@ -29,19 +29,26 @@ val errorOutput: EndpointOutput[EndpointErrorOut | SecurityError] = oneOfList(se
 
 object ResourceEndpoints:
 
-  val getResourceById: Endpoint[SecurityInput, (String, String), EndpointErrorOut | SecurityError, ResourceDto, Any] = 
+  private val apiCacheHeaders: EndpointOutput[Unit] = List(
+    header(HeaderNames.CacheControl, "no-cache, no-store, must-revalidate"),
+    header(HeaderNames.Pragma, "no-cache"),
+    header(HeaderNames.Expires, "0")
+  ).reduce(_ and _)
+
+  val getResourceById: Endpoint[SecurityInput, (String, String), EndpointErrorOut | SecurityError, ResourceDto, Any] =
     endpoint
       .name("getResourceById")
       .description("Get information about a resource by its id")
       .get.in("api" / "resources" / path[String]("bucketId") / path[String]("resourceId"))
       .securityIn(securityInput)
       .errorOut(errorOutput)
+      .out(apiCacheHeaders)
       .out(jsonBody[ResourceDto])
 
   val updateUserMetaData: Endpoint[SecurityInput, (String, String, UserMetaDto), EndpointErrorOut | SecurityError, Unit, Any] =
     endpoint
       .name("updateUserMetaData")
-      .description("Get information about a resource by its id")
+      .description("Update the user metadata of a resource")
       .post.in("api" / "resources" / path[String]("bucketId") / path[String]("resourceId") / "update_user_meta")
       .securityIn(securityInput)
       .in(jsonBody[UserMetaDto])
@@ -84,22 +91,23 @@ object ResourceEndpoints:
         .serverSecurityLogic(authenticator.requireRole(Roles.Admin))
         .serverLogic(_ => (bucketId, resourceId, userMeta) => {
           
-          val sanitizedTitle = userMeta.title.map(Jsoup.clean(_, Safelist.basic))
+          val sanitizedTitle       = userMeta.title.map(Jsoup.clean(_, Safelist.basic))
           val sanitizedDescription = userMeta.description.map(Jsoup.clean(_, Safelist.basic))
-          val sanitizedTags = userMeta.tags.map(Jsoup.clean(_, Safelist.basic))
+          val sanitizedTags        = userMeta.tags.map(Jsoup.clean(_, Safelist.basic))
 
-          getResource(bucketId, resourceId).flatMap {
+          getResource(bucketId, resourceId).flatMap:
             case Left(e)            => IO.pure(Left(e))
             case Right((bucket, _)) => bucket.updateUserMeta(resourceId, sanitizedTitle, sanitizedDescription, sanitizedTags).map(_ => Right(()))
-          }
         })
       
     val updateThumbnailTimestampImpl =
       updateThumbnailTimestamp
         .serverSecurityLogic(authenticator.requireRole(Roles.Admin))
         .serverLogic(_ => (bucketId, resourceId, dto) =>
-          getResource(bucketId, resourceId).map(_.map((bucket, _) => bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis)))
-        )  
+          getResource(bucketId, resourceId).flatMap:
+            case Left(e)            => IO.pure(Left(e))
+            case Right((bucket, _)) => bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis).map(_ => Right(()))
+        )
 
     Http4sServerInterpreter[IO]().toRoutes(
       List(getResourceByIdImpl, updateUserMetaDataImpl, updateThumbnailTimestampImpl)
