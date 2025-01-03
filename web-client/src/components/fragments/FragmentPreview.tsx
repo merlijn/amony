@@ -1,6 +1,5 @@
 import {durationInMillisToString} from "../../api/Util";
 import React, {CSSProperties, useState} from "react";
-import {Clip, Resource} from "../../api/Model";
 import {Api} from "../../api/Api";
 import './FragmentPreview.scss';
 import ImgWithAlt from "../common/ImgWithAlt";
@@ -35,10 +34,10 @@ const FragmentPreview = (props: Props) => {
 
   const saveTags = () => {
 
-    Api.updateFragmentTags(props.mediaId, props.index, tags).then((result) => {
-      setTags(tags)
-      console.log("Tags saved")
-    })
+    // Api.updateFragmentTags(props.mediaId, props.index, tags).then((result) => {
+    //   setTags(tags)
+    //   console.log("Tags saved")
+    // })
   }
 
   const metaPanel =

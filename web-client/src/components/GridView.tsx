@@ -1,12 +1,13 @@
-import React, { CSSProperties, useEffect, useState } from 'react';
+import React, {CSSProperties, useEffect, useState} from 'react';
 import useResizeObserver from 'use-resize-observer';
-import { Api } from '../api/Api';
-import { Constants } from "../api/Constants";
-import { Columns, ResourceSelection, SearchResult, Resource } from '../api/Model';
+import {Constants} from "../api/Constants";
+import {Columns, ResourceSelection} from '../api/Model';
 import './GridView.scss';
 import TagBar from './navigation/TagBar';
-import Preview, { PreviewOptions } from './Preview';
+import Preview, {PreviewOptions} from './Preview';
 import Scrollable from './common/Scrollable';
+import {findResources, FindResourcesParams, ResourceDto, SearchResponseDto} from "../api/generated";
+import {resourceSelectionToParams} from "../api/Util";
 
 export type GalleryProps = {
   selection: ResourceSelection
@@ -15,11 +16,11 @@ export type GalleryProps = {
   componentType: 'page' | 'element'
   columns: Columns,
   showTagbar: boolean,
-  previewOptionsFn: (v: Resource) => PreviewOptions,
-  onClick: (v: Resource) => void
+  previewOptionsFn: (v: ResourceDto) => PreviewOptions,
+  onClick: (v: ResourceDto) => void
 }
 
-const initialSearchResult: SearchResult = { total: 0, results: [], tags: [] }
+const initialSearchResult: SearchResponseDto = { offset: 0, total: 0, results: [], tags: [] }
 
 const GridView = (props: GalleryProps) => {
 
@@ -38,12 +39,14 @@ const GridView = (props: GalleryProps) => {
     const n      = columns * 8
 
     if (n > 0 && !isEndReached) {
-      Api.searchMedia(n, offset, props.selection).then(response => {
 
-          const result = response as SearchResult
-          const videos = [...previous, ...result.results]
+      const params: FindResourcesParams = resourceSelectionToParams(props.selection, offset, n)
 
-          if (videos.length >= result.total)
+      findResources(params).then(response => {
+
+          const videos = [...previous, ...response.results]
+
+          if (videos.length >= response.total)
             setIsEndReached(true)
 
           setIsFetching(false);

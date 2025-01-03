@@ -1,8 +1,7 @@
 import Cookies from "js-cookie";
-import {ResourceSelection, Sort, ResourceUserMeta, Resource} from "./Model";
-import { buildUrl } from "./Util";
+import {buildUrl} from "./Util";
 import axios from 'axios';
-import {Constants, durationAsParam} from "./Constants";
+import {Constants} from "./Constants";
 
 export type SessionInfo = {
   isLoggedIn: () => boolean
@@ -31,11 +30,6 @@ export const Api = {
     }
   },
 
-  login: async function(username: string, password: string) {
-
-    return doPOST("/api/auth/login", { username: username, password: password})
-  },
-
   refreshToken: async function() {
     return doRequest('POST', "/api/auth/refresh", false, null, false)
   },
@@ -55,97 +49,6 @@ export const Api = {
     );
 
     axios.post("/api/resources/upload", formData);
-  },
-
-  getFragments: async function(n: number, offset: number, tag?: string) {
-
-    const params = new Map([
-      ["n", n.toString()],
-      ["offset", offset.toString()]
-    ]);
-
-    if (tag)
-      params.set("tags", tag)
-
-    const url = buildUrl("/api/search/fragments", params)
-
-    return doGET(url)
-  },
-
-  searchMedia: async function(n: number, offset: number, selection: ResourceSelection) {
-    return Api.getMedias(
-              selection.query || "",
-              n,
-              offset,
-              selection.tag,
-              selection.playlist,
-              selection.minimumQuality,
-              selection.duration,
-              selection.sort)
-  },
-
-  // TOOD remove
-  getMedias: async function(
-      q: string, 
-      n: number,
-      offset: number, 
-      tag?: string,
-      playlist?: string, 
-      minRes?: number, 
-      duration?: [number?, number?],
-      sort?: Sort) {
-
-    const apiParams = new Map([
-      ["q", q],
-      ["n", n.toString()],
-      ["offset", offset.toString()]
-    ]);
-
-    if (tag)
-      apiParams.set("tags", tag)
-    if (playlist)
-      apiParams.set("playlist", playlist)
-    if (minRes)
-      apiParams.set("min_res", minRes.toString())
-    if (sort) {
-      apiParams.set("sort_field", sort.field)
-      apiParams.set("sort_dir", sort.direction)
-    }
-    if (duration) {
-      apiParams.set("d", durationAsParam([duration[0] ? duration[0] * 1000 : duration[0], duration[1] ? duration[1] * 1000 : duration[1]]))
-    }
-
-    const target = buildUrl("/api/search/media", apiParams)
-
-    return doGET(target)
-  },
-
-  getResourceById: async function (resourceId: string) {
-    return doGET(`/api/resources/media/${resourceId}`).then((response) => { return response as Resource })
-  },
-
-  updateUserMetaData: async function(bucketId: String, resourceId: string, meta: ResourceUserMeta) {
-    return doPOST(`/api/resources/${bucketId}/${resourceId}/update_user_meta`, meta)
-  },
-
-  deleteResourceById: async function (bucketId: String, resourceId: string) {
-    return doDelete(`/api/resources/${resourceId}`)
-  },
-
-  updateFragmentTags: async function (mediaId: string, idx: number, tags: Array<string>) {
-    return doPOST(`/api/fragments/${mediaId}/${idx}/tags`, tags)
-  },
-
-  addFragment: async function (mediaId: string, from: number, to: number) {
-    return doPOST(`/api/fragments/${mediaId}/add`, { from: from, to: to})
-  },
-
-  deleteFragment: async function (mediaId: string, idx: number) {
-    return doDelete(`/api/fragments/${mediaId}/${Math.trunc(idx)}`)
-  },
-
-  updateFragment: async function (mediaId: string, idx: number, from: number, to: number) {
-    return doPOST(`/api/fragments/${mediaId}/${Math.trunc(idx)}`, { from: from, to: to})
   },
 
   updateThumbnailTimestamp: async function (mediaId: string, time: number) {

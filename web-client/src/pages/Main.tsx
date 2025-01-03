@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from "react";
 import {useLocation, useNavigate} from "react-router";
 import {Constants, parseDurationParam, parseSortParam} from "../api/Constants";
-import {MediaView, Prefs, Resource, ResourceSelection} from "../api/Model";
+import {MediaView, Prefs, ResourceSelection} from "../api/Model";
 import {useCookiePrefs, useListener, useStateNeq} from "../api/ReactUtils";
 import GridView from "../components/GridView";
 import TopNavBar from "../components/navigation/TopNavBar";
@@ -10,15 +10,15 @@ import {isMobile} from "react-device-detect";
 import './Main.scss';
 import ListView from "../components/ListView";
 import {buildUrl, copyParams} from "../api/Util";
-import {Api} from "../api/Api";
 import Modal from "../components/common/Modal";
 import ConfigMenu from "../components/dialogs/ConfigMenu";
+import {ResourceDto} from "../api/generated";
 
 const Main = () => {
   
     const navigate = useNavigate();
     const location = useLocation();
-    const [showResource, setShowResource] = useState<Resource | undefined>(undefined)
+    const [showResource, setShowResource] = useState<ResourceDto | undefined>(undefined)
     const [showNavigation, setShowNavigation] = useState(true)
     const [view, setView] = useState<MediaView>('grid')
     const [showSettings,   setShowSettings]   = useState(false)
@@ -105,9 +105,9 @@ const Main = () => {
                   selection = { selection }
                   showTagbar = { showNavigation }
                   componentType = 'page'
-                  onClick   = { (v: Resource) => setShowResource(v) }
+                  onClick   = { (v: ResourceDto) => setShowResource(v) }
                   columns   = { prefs.gallery_columns }
-                  previewOptionsFn = { (v: Resource) => {
+                  previewOptionsFn = { (v: ResourceDto) => {
                       return {
                         showPreviewOnHover: !isMobile,
                         showInfoBar: prefs.showTitles,
@@ -124,7 +124,7 @@ const Main = () => {
                 <div style = { galleryStyle } key="main-content" className="main-content-container">
                   <ListView 
                     key       = "list"
-                    onClick   = { (v: Resource) => setShowResource(v) }
+                    onClick   = { (v: ResourceDto) => setShowResource(v) }
                     selection = {selection}
                    />
                 </div>

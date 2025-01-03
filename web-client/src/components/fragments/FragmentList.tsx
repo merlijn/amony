@@ -1,10 +1,9 @@
-import {Resource} from "../../api/Model";
 import React, {CSSProperties, useState} from "react";
 import FragmentPreview from "./FragmentPreview";
 import './FragmentList.scss';
 import ImgWithAlt from "../common/ImgWithAlt";
-import { EditFragment } from "../../pages/Editor";
-import { FiPlusCircle } from "react-icons/fi"
+import {EditFragment} from "../../pages/Editor";
+import {FiPlusCircle} from "react-icons/fi"
 import {ResourceDto} from "../../api/generated";
 
 const FragmentList = (props: {vid: ResourceDto, selected: number, selectFn: (f: EditFragment) => any, setVid: (vid: ResourceDto) => any}) => {

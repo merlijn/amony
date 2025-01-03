@@ -25,7 +25,7 @@ object SearchRoutes:
     sortDir: Option[String],
     minRes: Option[Int],
     offset: Option[Int],
-    tags: Option[CommaSeparated[String]]
+    tag: Option[String]
   )
 
   val q         = query[Option[String]]("q").description("The search query").example(Some("cats"))
@@ -35,7 +35,7 @@ object SearchRoutes:
   val sortDir   = query[Option[String]]("sort_dir").description("Indicates which direction to sort").example(Some("asc"))
   val minRes    = query[Option[Int]]("min_res").description("The minimum (vertical) resolution").example(Some(720))
   val offset    = query[Option[Int]]("offset").description("The offset for the search results").example(Some(12))
-  val tags      = query[Option[CommaSeparated[String]]]("tags").description("A comma separated list of tags")
+  val tag       = query[Option[String]]("tag").description("A comma separated list of tags")
 
   val errorOutput: EndpointOutput[SecurityError] = oneOfList(securityErrors)
 
@@ -43,7 +43,7 @@ object SearchRoutes:
     endpoint
       .name("findResources")
       .description("Find resources using a search query")
-      .get.in("api" / "search" / "media" / q and n and d and sortField and sortDir and minRes and offset and tags).mapInTo[SearchQueryInput]
+      .get.in("api" / "search" / "media" / q and n and d and sortField and sortDir and minRes and offset and tag).mapInTo[SearchQueryInput]
       .securityIn(securityInput)
       .errorOut(errorOutput)
       .out(jsonBody[SearchResponseDto])
@@ -97,7 +97,7 @@ object SearchRoutes:
           q = queryDto.q.map(s => sanitize(s, 64)),
           n = queryDto.n.getOrElse(config.defaultNumberOfResults),
           offset = queryDto.offset,
-          tags = queryDto.tags.map(_.values).getOrElse(Nil).map(s => sanitize(s, 32)),
+          tags = queryDto.tag.map(s => sanitize(s, 32)).toList,
           playlist = None,
           minRes = queryDto.minRes,
           maxRes = None,

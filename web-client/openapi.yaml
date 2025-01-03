@@ -230,15 +230,12 @@ paths:
           type: integer
           format: int32
         example: 12
-      - name: tags
+      - name: tag
         in: query
         description: A comma separated list of tags
         required: false
-        explode: false
         schema:
-          type: array
-          items:
-            type: string
+          type: string
       responses:
         '200':
           description: ''
@@ -252,7 +249,7 @@ paths:
             value for: query parameter n, Invalid value for: query parameter d, Invalid
             value for: query parameter sort_field, Invalid value for: query parameter
             sort_dir, Invalid value for: query parameter min_res, Invalid value for:
-            query parameter offset, Invalid value for: query parameter tags'
+            query parameter offset, Invalid value for: query parameter tag'
           content:
             text/plain:
               schema:
@@ -389,6 +386,8 @@ components:
       required:
       - offset
       - total
+      - results
+      - tags
       properties:
         offset:
           type: integer

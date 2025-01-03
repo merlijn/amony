@@ -1,10 +1,9 @@
 import React, {useEffect, useRef, useState} from 'react';
-import { Api } from '../api/Api';
 import FragmentList from '../components/fragments/FragmentList';
 import './Editor.scss';
 import {MediaPlayer, MediaPlayerInstance, MediaProvider} from "@vidstack/react";
 import { PlyrLayout, plyrLayoutIcons } from '@vidstack/react/player/layouts/plyr';
-import {getResourceById, ResourceDto} from "../api/generated";
+import {getResourceById, ResourceDto, updateThumbnailTimestamp} from "../api/generated";
 
 export type EditFragment = {
   idx: number
@@ -39,9 +38,9 @@ const PlayerView = (props: {vid: ResourceDto}) => {
   const [showFragmentControls, setShowFragmentControls] = useState(false)
   const [fragment, setFragment] = useState<EditFragment>({ idx: -1} )
 
-  const updateThumbnailTimestamp = (e: any) => {
+  const updateThumbnailTS = (e: any) => {
     if (player.current) {
-      Api.updateThumbnailTimestamp(vid.resourceId, Math.trunc(player.current.currentTime * 1000)).then (response => {
+      updateThumbnailTimestamp('media', vid.resourceId, { timestampInMillis: Math.trunc(player.current.currentTime * 1000) }).then (response => {
         getResourceById('media', vid.resourceId).then(resource => {
           setVid(resource)
         });
@@ -110,7 +109,7 @@ const PlayerView = (props: {vid: ResourceDto}) => {
         <button className="button-blue" onClick={(e) => seek(fragment.end)}>&gt;|</button>
         <button className="overlay-button" onClick={(e) => forwards(0.1)}>+.1s</button>
         <button className="overlay-button" onClick={(e) => forwards(1)}>+1s</button>
-        <button className="button-green" onClick={updateThumbnailTimestamp}>o</button>
+        <button className="button-green" onClick={updateThumbnailTS}>o</button>
       </div>
 
   const maxWidth = "80vw"

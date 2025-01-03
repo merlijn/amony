@@ -1,5 +1,7 @@
 import { CSSProperties } from "react";
-import { Constants } from "./Constants";
+import {Constants, durationAsParam} from "./Constants";
+import {ResourceSelection} from "./Model";
+import {FindResourcesParams} from "./generated";
 
 export function buildUrl(path: string, urlParams: Map<string, string> | undefined) {
 
@@ -89,6 +91,21 @@ export function zeroPad(n: number, d: number) {
     zeros += "0"
 
   return zeros + n.toString()
+}
+
+export function resourceSelectionToParams(selection: ResourceSelection, offset: number, n: number): FindResourcesParams {
+  const duration= selection.duration
+
+  return {
+    offset: offset,
+    n: n,
+    q: selection.query,
+    tag: selection.tag,
+    sort_field: selection.sort.field,
+    sort_dir: selection.sort.direction,
+    min_res: selection.minimumQuality,
+    d: duration ? durationAsParam([duration[0] ? duration[0] * 1000 : duration[0], duration[1] ? duration[1] * 1000 : duration[1]]) : undefined
+  }
 }
 
 export function boundedRatioBox(maxWidth: string, maxHeight: string, ratio: number): CSSProperties {

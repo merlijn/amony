@@ -1,20 +1,20 @@
 import React, {CSSProperties, useContext, useEffect, useState} from 'react';
 import ProgressiveImage from "react-progressive-graceful-image";
-import {Resource} from "../api/Model";
 import {dateMillisToString, durationInMillisToString, labelForResolution} from "../api/Util";
 import FragmentsPlayer from "./common/FragmentsPlayer";
 import ImgWithAlt from "./common/ImgWithAlt";
 import './Preview.scss';
 import {ErrorBoundary} from "react-error-boundary";
 import {SessionContext} from "../api/Constants";
+import {ResourceDto} from "../api/generated";
 
 export type PreviewProps = {
-  resource: Resource,
+  resource: ResourceDto,
   style?: CSSProperties,
   className?: string,
   lazyLoad?: boolean,
   options: PreviewOptions,
-  onClick: (v: Resource) => any
+  onClick: (v: ResourceDto) => any
 }
 
 export type PreviewOptions = {

@@ -2,9 +2,8 @@ import {CSSProperties, useContext, useEffect, useRef, useState} from "react"
 import {FaSort} from "react-icons/fa"
 import {FiEdit} from "react-icons/fi"
 import ProgressiveImage from "react-progressive-graceful-image"
-import {Api} from "../api/Api"
-import {Resource, ResourceSelection, ResourceUserMeta, SearchResult} from "../api/Model"
-import {dateMillisToString, formatByteSize} from "../api/Util"
+import {ResourceSelection} from "../api/Model"
+import {dateMillisToString, formatByteSize, resourceSelectionToParams} from "../api/Util"
 import './ListView.scss'
 import Scrollable from "./common/Scrollable"
 import {SessionContext, useSortParam} from "../api/Constants"
@@ -12,13 +11,21 @@ import {useNavigate} from "react-router-dom"
 import TagsBar from "./common/TagsBar"
 import {MdDelete, MdMovieEdit} from "react-icons/md";
 import {FaHashtag} from "react-icons/fa6";
+import {
+  findResources,
+  FindResourcesParams,
+  ResourceDto,
+  SearchResponseDto,
+  updateUserMetaData,
+  UserMetaDto
+} from "../api/generated";
 
 type ListProps = {
   selection: ResourceSelection
-  onClick: (v: Resource) => any
+  onClick: (v: ResourceDto) => any
 }
 
-const initialSearchResult: SearchResult = { total: 0, results: [], tags: [] }
+const initialSearchResult: SearchResponseDto = { offset: 0, total: 0, results: [], tags: [] }
 const rowHeight = 36
 
 const ListView = (props: ListProps) => {
@@ -30,24 +37,26 @@ const ListView = (props: ListProps) => {
   const navigate = useNavigate();
   const session = useContext(SessionContext)
 
-  const fetchData = (previous: Array<Resource>) => {
+  const fetchData = (previous: Array<ResourceDto>) => {
 
     const offset = previous.length
     const n      = offset === 0 ? Math.ceil(window.outerHeight / rowHeight) : 32;
 
     if (n > 0 && fetchMore) {
-      Api.searchMedia(n, offset, props.selection).then(response => {
 
-          const result = response as SearchResult
-          const videos = [...previous, ...result.results]
+      const params: FindResourcesParams = resourceSelectionToParams(props.selection, offset, n)
 
-          if (videos.length >= result.total)
-            setFetchMore(false)
+      findResources(params).then(response => {
 
-          setIsFetching(false);
-          setSearchResult({...response, results: videos});
-        });
-      }
+        const videos = [...previous, ...response.results]
+
+        if (videos.length >= response.total)
+          setFetchMore(false)
+
+        setIsFetching(false);
+        setSearchResult({...response, results: videos});
+      });
+    }
   }
 
   const [sort, setSort] = useSortParam()
@@ -180,13 +189,14 @@ const ListView = (props: ListProps) => {
 }
 
 const TagsCell = (props: {
-  resource: Resource }) => {
+  resource: ResourceDto }) => {
   const [tags, setTags] = useState(props.resource.userMeta.tags)
   const session = useContext(SessionContext)
 
   const updateTags = (newTags: Array<string>) => {
-    const meta: ResourceUserMeta = { ...props.resource.userMeta, tags: newTags }
-    Api.updateUserMetaData(props.resource.bucketId, props.resource.resourceId, meta).then(() =>  {
+    const meta: UserMetaDto = { ...props.resource.userMeta, tags: newTags }
+
+    updateUserMetaData(props.resource.bucketId, props.resource.resourceId, meta).then(() =>  {
       setTags(newTags)
     })
   }
@@ -197,7 +207,7 @@ const TagsCell = (props: {
             showDeleteButton = {session.isAdmin()} />
 }
 
-type TitleCellProps =  { mediaResource: Resource; } & React.HTMLProps<HTMLTableCellElement>;
+type TitleCellProps =  { mediaResource: ResourceDto; } & React.HTMLProps<HTMLTableCellElement>;
 
 const TitleCell = ({ mediaResource, ...elementProps }: TitleCellProps ) => {
 
@@ -212,8 +222,9 @@ const TitleCell = ({ mediaResource, ...elementProps }: TitleCellProps ) => {
   }, [editTitle])
 
   const updateTitle = (newTitle: string) => {
-    const meta: ResourceUserMeta = { ...mediaResource.userMeta, title: newTitle }
-    Api.updateUserMetaData(mediaResource.bucketId, mediaResource.resourceId, meta).then(() =>  {
+    const meta: UserMetaDto = { ...mediaResource.userMeta, title: newTitle }
+
+    updateUserMetaData(mediaResource.bucketId, mediaResource.resourceId, meta).then(() =>  {
       setTitle(newTitle)
       setEditTitle(false)
     })
@@ -238,7 +249,7 @@ const TitleCell = ({ mediaResource, ...elementProps }: TitleCellProps ) => {
             onKeyPress = { (e) => {
               if (e.key === "Enter") {
                 e.preventDefault()
-                updateTitle(title);
+                title && updateTitle(title);
               }
             }}
           />

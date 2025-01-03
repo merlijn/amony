@@ -1,49 +1,3 @@
-export type ResourceUrls = {
-  originalResourceUrl: string,
-  thumbnailUrl: string,
-  previewThumbnailsUrl?: string,
-}
-
-export type ResourceMeta = {
-  mediaType: string,
-  fps: number,
-  width: number,
-  height: number,
-  duration: number, // in millis
-}
-
-export type ResourceInfo = {
-  sizeInBytes: number,
-  hash: string
-}
-
-export type Resource = {
-  resourceId: string,
-  bucketId: String,
-  uploader: string,
-  uploadTimestamp: number,
-  userMeta: ResourceUserMeta,
-  contentType: String,
-  resourceMeta: ResourceMeta,
-  resourceInfo: ResourceInfo,
-  urls: ResourceUrls,
-  clips: Array<Clip>,
-}
-
-export type Clip = {
-  resourceId: string,
-  range: [number, number],
-  index: number,
-  urls: string[],
-  tags: string[]
-}
-
-export type ResourceUserMeta = {
-  tags: string[]
-  title: string
-  description?: string
-}
-
 export type ResourceSelection = {
   query?: string
   playlist?: string
@@ -55,20 +9,9 @@ export type ResourceSelection = {
 
 export type MediaView = 'grid' | 'list'
 
-export type SearchResult = {
-  total: number
-  results: Resource[]
-  tags: string[]
-}
-
 export type Resolution = {
   value: number,
   label: string
-}
-
-export type Range = {
-  start: number,
-  end: number
 }
 
 export type Sort = {

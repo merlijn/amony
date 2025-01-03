@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Api } from "../api/Api";
-import { Clip } from "../api/Model";
 import './VideoWall.scss';
+import {ClipDto} from "../api/generated";
 
 const VideoWall = () => {
 
-  const [fragments, setFragments] = useState<Array<Clip>>([])
+  const [fragments, setFragments] = useState<Array<ClipDto>>([])
 
   const [topLeft, setTopLeft] = useState(0)
   const [topRight, setTopRight] = useState(1)
@@ -22,12 +22,13 @@ const VideoWall = () => {
     return f.urls[f.urls.length-1]
   }
 
-  useEffect(() => {
-
-    Api.getFragments(32, 0).then(response => {
-        setFragments((response as Array<Clip>));
-      });
-  }, [])
+  // TODO FIX
+  // useEffect(() => {
+  //
+  //   Api.getFragments(32, 0).then(response => {
+  //       setFragments((response as Array<ClipDto>));
+  //     });
+  // }, [])
 
   return (
     <>
