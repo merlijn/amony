@@ -3,11 +3,14 @@ import Cookies from "js-cookie";
 
 async function refreshToken() {
 
-  // needs x-xsrf-token header
+  const response = await axios.post('/api/auth/refresh', undefined, { headers: xsrfTokenHeader() });
 
-  const response = await axios.post('/api/auth/refresh');
-  // Update token storage here if needed
   return response;
+}
+
+export function xsrfTokenHeader() {
+  const xsrfTokenCookie = Cookies.get("XSRF-TOKEN");
+  return xsrfTokenCookie ?  { 'X-XSRF-TOKEN': xsrfTokenCookie } : { };
 }
 
 export const customAxiosInstance = <T>(
@@ -15,9 +18,6 @@ export const customAxiosInstance = <T>(
   options?: AxiosRequestConfig
 ): Promise<T> => {
   const source = axios.CancelToken.source();
-
-  const xsrfTokenCookie = Cookies.get("XSRF-TOKEN");
-  const xXsrfTokenHeader = xsrfTokenCookie ?  { 'X-XSRF-TOKEN': xsrfTokenCookie } : { };
 
   const executeRequest = (
     config: AxiosRequestConfig,
@@ -29,7 +29,7 @@ export const customAxiosInstance = <T>(
       ...config,
       headers: {
         ...config.headers,
-        ...xXsrfTokenHeader,
+        ...xsrfTokenHeader(),
       },
     };
 
