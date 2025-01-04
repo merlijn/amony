@@ -19,6 +19,7 @@ object AdminRoutes extends Logging:
   val reIndex =
     endpoint
       .name("adminReindexBucket")
+      .tag("admin")
       .description("Re-index all resources in a bucket.")
       .post.in("api" / "admin" / "reindex")
       .in(query[String]("bucketId").description("The id of the bucket to re-index."))
@@ -28,6 +29,7 @@ object AdminRoutes extends Logging:
   val refresh =
     endpoint
       .name("adminRefreshBucket")
+      .tag("admin")
       .description("Refresh all resources in a bucket")
       .post.in("api" / "admin" / "refresh")
       .in(query[String]("bucketId").description("The id of the bucket to re-index."))
@@ -37,6 +39,7 @@ object AdminRoutes extends Logging:
   val rescanMetaData =
     endpoint
       .name("adminRescanMetaData")
+      .tag("admin")
       .description("Rescan the metadata of all files in a bucket")
       .post.in("api" / "admin" / "re-scan-metadata")
       .in(query[String]("bucketId").description("The id of the bucket to re-scan."))

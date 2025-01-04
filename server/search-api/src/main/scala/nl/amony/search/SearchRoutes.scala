@@ -41,6 +41,7 @@ object SearchRoutes:
   val searchResourcesEndpoint: Endpoint[SecurityInput, SearchQueryInput, SecurityError, SearchResponseDto, Any] =
     endpoint
       .name("findResources")
+      .tag("search")
       .description("Find resources using a search query")
       .get.in("api" / "search" / "media" / q and n and d and sortField and sortDir and minRes and offset and tag).mapInTo[SearchQueryInput]
       .securityIn(securityInput)

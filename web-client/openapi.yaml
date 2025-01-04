@@ -5,6 +5,8 @@ info:
 paths:
   /api/resources/{bucketId}/{resourceId}:
     get:
+      tags:
+      - resources
       description: Get information about a resource by its id
       operationId: getResourceById
       parameters:
@@ -63,6 +65,8 @@ paths:
           description: ''
   /api/resources/{bucketId}/{resourceId}/update_user_meta:
     post:
+      tags:
+      - resources
       description: Update the user metadata of a resource
       operationId: updateUserMetaData
       parameters:
@@ -114,6 +118,8 @@ paths:
           description: ''
   /api/resources/{bucketId}/{resourceId}/update_thumbnail_timestamp:
     post:
+      tags:
+      - resources
       description: Update the thumbnail timestamp of a resource
       operationId: updateThumbnailTimestamp
       parameters:
@@ -165,6 +171,8 @@ paths:
           description: ''
   /api/search/media:
     get:
+      tags:
+      - search
       description: Find resources using a search query
       operationId: findResources
       parameters:
@@ -260,6 +268,8 @@ paths:
           description: ''
   /api/admin/reindex:
     post:
+      tags:
+      - admin
       description: Re-index all resources in a bucket.
       operationId: adminReindexBucket
       parameters:
@@ -295,6 +305,8 @@ paths:
           description: ''
   /api/admin/refresh:
     post:
+      tags:
+      - admin
       description: Refresh all resources in a bucket
       operationId: adminRefreshBucket
       parameters:
@@ -330,6 +342,8 @@ paths:
           description: ''
   /api/admin/re-scan-metadata:
     post:
+      tags:
+      - admin
       description: Rescan the metadata of all files in a bucket
       operationId: adminRescanMetaData
       parameters:
@@ -407,6 +421,13 @@ paths:
       responses:
         '200':
           description: ''
+          headers:
+            Set-Cookie:
+              required: false
+              schema:
+                type: array
+                items:
+                  type: string
 components:
   schemas:
     AuthToken:

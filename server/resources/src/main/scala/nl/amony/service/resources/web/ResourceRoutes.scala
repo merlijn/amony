@@ -37,6 +37,7 @@ object ResourceRoutes:
   val getResourceById: Endpoint[SecurityInput, (String, String), EndpointErrorOut | SecurityError, ResourceDto, Any] =
     endpoint
       .name("getResourceById")
+      .tag("resources")
       .description("Get information about a resource by its id")
       .get.in("api" / "resources" / path[String]("bucketId") / path[String]("resourceId"))
       .securityIn(securityInput)
@@ -47,6 +48,7 @@ object ResourceRoutes:
   val updateUserMetaData: Endpoint[SecurityInput, (String, String, UserMetaDto), EndpointErrorOut | SecurityError, Unit, Any] =
     endpoint
       .name("updateUserMetaData")
+      .tag("resources")
       .description("Update the user metadata of a resource")
       .post.in("api" / "resources" / path[String]("bucketId") / path[String]("resourceId") / "update_user_meta")
       .securityIn(securityInput)
@@ -57,6 +59,7 @@ object ResourceRoutes:
   val updateThumbnailTimestamp: Endpoint[SecurityInput, (String, String, ThumbnailTimestampDto), EndpointErrorOut | SecurityError, Unit, Any] = 
     endpoint
       .name("updateThumbnailTimestamp")
+      .tag("resources")
       .description("Update the thumbnail timestamp of a resource")
       .post.in("api" / "resources" / path[String]("bucketId") / path[String]("resourceId") / "update_thumbnail_timestamp")
       .securityIn(securityInput)
