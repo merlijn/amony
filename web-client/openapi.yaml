@@ -363,8 +363,66 @@ paths:
           description: ''
         '403':
           description: ''
+  /api/auth/session:
+    get:
+      tags:
+      - auth
+      description: Get the current session
+      operationId: getSession
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthToken'
+        '400':
+          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
+            value for: cookie XSRF-TOKEN'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/auth/logout:
+    post:
+      tags:
+      - auth
+      description: Logout the current user
+      operationId: authLogout
+      responses:
+        '200':
+          description: ''
 components:
   schemas:
+    AuthToken:
+      title: AuthToken
+      type: object
+      required:
+      - userId
+      - roles
+      properties:
+        userId:
+          type: string
+        roles:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
     ClipDto:
       title: ClipDto
       type: object

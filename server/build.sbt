@@ -170,7 +170,7 @@ lazy val auth =
       libraryDependencies ++= Seq(
         // akka
         jwtCirce, bouncyCastle,
-        tapirCore, tapirCatsEffect, tapirCirce,
+        tapirCore, tapirCatsEffect, tapirCirce, tapirHttp4s,
         circe, circeGeneric, pureConfig, pureConfigGeneric, slick,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
         http4sDsl, http4sCirce

@@ -12,6 +12,9 @@ val securityInput: EndpointInput[SecurityInput] =
     .and(cookie[Option[String]]("XSRF-TOKEN"))
     .mapTo[SecurityInput]
 
+val unauthorizedOutput = oneOfVariantSingletonMatcher(statusCode(StatusCode.Unauthorized))(SecurityError.Unauthorized)
+val forbiddenOutput    = oneOfVariantSingletonMatcher(statusCode(StatusCode.Forbidden))(SecurityError.Forbidden)
+
 val securityErrors = List(
   oneOfVariantSingletonMatcher(statusCode(StatusCode.Unauthorized))(SecurityError.Unauthorized),
   oneOfVariantSingletonMatcher(statusCode(StatusCode.Forbidden))(SecurityError.Forbidden),

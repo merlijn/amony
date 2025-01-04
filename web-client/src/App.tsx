@@ -5,6 +5,7 @@ import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persist
 import { persistQueryClient } from '@tanstack/react-query-persist-client'
 import {Constants, SessionContext} from "./api/Constants";
 import {Api, SessionInfo} from "./api/Api";
+import {getSession} from "./api/generated";
 
 const Editor = lazy(() => import('./pages/Editor'));
 const Compilation = lazy(() => import('./pages/Compilation'));
@@ -16,7 +17,12 @@ function App() {
   const [session, setSession] = React.useState<SessionInfo | null>(null);
 
   useEffect(() => {
-    Api.fetchSession().then((sessionInfo) => {
+
+    getSession().then((authToken) => {
+      const sessionInfo: SessionInfo = {
+        isLoggedIn()   { return true },
+        isAdmin: ()=> authToken.roles.includes("admin")
+      }
       setSession(sessionInfo);
     });
   }, []);

@@ -50,13 +50,6 @@ export const useListener = <K extends keyof WindowEventMap>(type: K, listener: (
   })
 }
 
-export function useSession() {
-  return useQuery<SessionInfo, Error>( {
-    queryKey : ['session'],
-    queryFn : Api.fetchSession()
-  });
-}
-
 export function useCookiePrefs<T>(key: string, path: string, defaultPreferences: T): [T, ((e: T) => void)] {
 
   const [cookiePreferences, setCookiePrefs] = useCookies([key])

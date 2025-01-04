@@ -46,6 +46,7 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
                              }.toMap
       routes             = ResourceContentRoutes.apply(resourceBuckets) <+>
                              AuthRoutes.apply(authService, authConfig) <+>
+                             AuthRoutes.routes(authService, authConfig, authConfig.decoder) <+>
                              AdminRoutes.apply(searchService, resourceBuckets, authConfig.decoder) <+>
                              SearchRoutes.searchResourceRoutes(searchService, appConfig.search, authConfig.decoder) <+>
                              ResourceRoutes.endpointImplementations(resourceBuckets, authConfig.decoder) <+>

@@ -20,10 +20,10 @@ const FileUpload = () => {
     const onFileUpload = () => {
     
       if (file) {
-        Api.uploadFile(file).then(() => {
-          setFeedback("Done!")
-          setFile(undefined)
-        });
+        // Api.uploadFile(file).then(() => {
+        //   setFeedback("Done!")
+        //   setFile(undefined)
+        // });
       }
     };
     
