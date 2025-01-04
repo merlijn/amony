@@ -1,7 +1,7 @@
 package nl.amony.search
 
 import io.circe.Codec
-import nl.amony.service.resources.web.ResourceWebModel.{ResourceDto, required}
+import nl.amony.service.resources.web.dto.{ResourceDto, required}
 import sttp.tapir.Schema
 import sttp.tapir.Schema.annotations.customise
 

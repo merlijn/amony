@@ -258,6 +258,111 @@ paths:
           description: ''
         '403':
           description: ''
+  /api/admin/reindex:
+    post:
+      description: Re-index all resources in a bucket.
+      operationId: adminReindexBucket
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: query
+        description: The id of the bucket to re-index.
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
+            value for: cookie XSRF-TOKEN, Invalid value for: query parameter bucketId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/admin/refresh:
+    post:
+      description: Refresh all resources in a bucket
+      operationId: adminRefreshBucket
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: query
+        description: The id of the bucket to re-index.
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
+            value for: cookie XSRF-TOKEN, Invalid value for: query parameter bucketId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/admin/re-scan-metadata:
+    post:
+      description: Rescan the metadata of all files in a bucket
+      operationId: adminRescanMetaData
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: query
+        description: The id of the bucket to re-scan.
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
+            value for: cookie XSRF-TOKEN, Invalid value for: query parameter bucketId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
 components:
   schemas:
     ClipDto:

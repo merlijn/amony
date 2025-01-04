@@ -4,8 +4,7 @@ import cats.effect.IO
 import nl.amony.service.auth.tapir.*
 import nl.amony.service.auth.{JwtDecoder, Roles}
 import nl.amony.service.resources.web.EndpointErrorOut.NotFound
-import nl.amony.service.resources.web.JsonCodecs.toDto
-import nl.amony.service.resources.web.ResourceWebModel.{ResourceDto, ThumbnailTimestampDto, UserMetaDto}
+import nl.amony.service.resources.web.dto.*
 import nl.amony.service.resources.{Resource, ResourceBucket}
 import org.http4s.HttpRoutes
 import org.jsoup.Jsoup
@@ -27,7 +26,7 @@ val apiErrorOutputs = List(
 
 val errorOutput: EndpointOutput[EndpointErrorOut | SecurityError] = oneOfList(securityErrors ++ apiErrorOutputs)
 
-object ResourceEndpoints:
+object ResourceRoutes:
 
   private val apiCacheHeaders: EndpointOutput[Unit] = List(
     header(HeaderNames.CacheControl, "no-cache, no-store, must-revalidate"),

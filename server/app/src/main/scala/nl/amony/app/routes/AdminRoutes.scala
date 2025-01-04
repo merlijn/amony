@@ -1,72 +1,93 @@
 package nl.amony.app.routes
 
 import cats.effect.IO
+import nl.amony.service.auth.tapir.{SecurityError, TapirAuthenticator, securityErrors, securityInput}
+import nl.amony.service.auth.{JwtDecoder, Roles}
 import nl.amony.service.resources.ResourceBucket
+import nl.amony.service.resources.local.LocalDirectoryBucket
+import nl.amony.service.resources.web.oneOfList
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import org.http4s.*
-import org.http4s.dsl.io.*
 import scribe.Logging
-import cats.effect.unsafe.IORuntime
-import nl.amony.service.auth.{Roles, RouteAuthenticator}
-import nl.amony.service.resources.local.LocalDirectoryBucket
-
-import scala.concurrent.duration.*
+import sttp.tapir.*
+import sttp.tapir.server.http4s.Http4sServerInterpreter
 
 object AdminRoutes extends Logging:
 
-  def apply(searchService: SearchService, buckets: Map[String, ResourceBucket], routeAuthenticator: RouteAuthenticator)(using runtime: IORuntime): HttpRoutes[IO] = {
-    routeAuthenticator.authenticated(Roles.Admin):
-      case req @ POST -> Root / "api" / "admin" / "reindex" =>
-        req.params.get("bucketId").flatMap(buckets.get) match
-          case None => BadRequest("bucketId parameter missing or bucket not found.")
-          case Some(bucket) =>
-            logger.info(s"Re-indexing all resources.")
-            bucket
-              .getAllResources().foreach { resource => IO.fromFuture(IO(searchService.index(resource))).map(_ => ()) }
-              .compile
-              .drain
-              .flatMap(_ => Ok())
+  val errorOutput: EndpointOutput[SecurityError] = oneOfList(securityErrors)
+  
+  val reIndex =
+    endpoint
+      .name("adminReindexBucket")
+      .description("Re-index all resources in a bucket.")
+      .post.in("api" / "admin" / "reindex")
+      .in(query[String]("bucketId").description("The id of the bucket to re-index."))
+      .securityIn(securityInput)
+      .errorOut(errorOutput)
 
-      case req @ POST -> Root / "api" / "admin" / "refresh" =>
-        req.params.get("bucketId").flatMap(buckets.get) match {
-          case None => BadRequest("bucketId parameter missing or bucket not found.")
-          case Some(bucket: LocalDirectoryBucket[_]) =>
-            logger.info(s"Refreshing bucket: ${bucket.id}")
-            bucket.refresh().flatMap(_ => Ok())
-          case _ => BadRequest("Bucket is not a LocalDirectoryBucket.")
-        }
+  val refresh =
+    endpoint
+      .name("adminRefreshBucket")
+      .description("Refresh all resources in a bucket")
+      .post.in("api" / "admin" / "refresh")
+      .in(query[String]("bucketId").description("The id of the bucket to re-index."))
+      .securityIn(securityInput)
+      .errorOut(errorOutput)
 
-      case req @ POST -> Root / "api" / "admin" / "backup" =>
-        req.params.get("bucketId").flatMap(buckets.get) match {
-          case None => BadRequest("bucketId parameter missing or bucket not found.")
-          case Some(bucket: LocalDirectoryBucket[_]) =>
-            logger.info(s"Refreshing bucket: ${bucket.id}")
-            bucket.refresh().flatMap(_ => Ok())
-          case _ => BadRequest("Bucket is not a LocalDirectoryBucket.")
-        }
+  val rescanMetaData =
+    endpoint
+      .name("adminRescanMetaData")
+      .description("Rescan the metadata of all files in a bucket")
+      .post.in("api" / "admin" / "re-scan-metadata")
+      .in(query[String]("bucketId").description("The id of the bucket to re-scan."))
+      .securityIn(securityInput)
+      .errorOut(errorOutput)  
+    
+  val endpoints = List(reIndex, refresh, rescanMetaData)
+  
+  def apply(searchService: SearchService, buckets: Map[String, ResourceBucket], jwtDecoder: JwtDecoder): HttpRoutes[IO] = {
+    
+    val authenticator = TapirAuthenticator(jwtDecoder)
+    
+    val reIndexImpl = 
+      reIndex
+        .serverSecurityLogic(authenticator.requireRole(Roles.Admin))
+        .serverLogicSuccess(_ => bucketId => 
+          buckets.get(bucketId) match
+            case None         => IO.unit
+            case Some(bucket) =>
+              logger.info(s"Re-indexing all resources.")
+              bucket
+                .getAllResources().foreach { resource => IO.fromFuture(IO(searchService.index(resource))).map(_ => ()) }
+                .compile
+                .drain
+        )
 
-      case req @ POST -> Root / "api" / "admin" / "re-scan-metadata" =>
-        req.params.get("bucketId").flatMap(buckets.get) match {
-          case None => BadRequest("bucketId parameter missing or bucket not found.")
-          case Some(bucket: LocalDirectoryBucket[_]) =>
-            logger.info(s"Re-indexing all resources.")
-            bucket.reScanAllMetadata().flatMap(_ => Ok())
-          case _ => BadRequest("Bucket is not a LocalDirectoryBucket.")
-        }
-
-      case req @ POST -> Root / "api" / "admin" / "logging" / "set-log-level" =>
-        req.params.get("level") match {
-          case None => BadRequest("level parameter missing.")
-          case Some(level) =>
-            logger.info(s"Setting log level to $level.")
-            scribe.Logger.root
-              .clearHandlers()
-              .clearModifiers()
-              .withHandler(minimumLevel = Some(scribe.Level(level)))
-              .replace()
-            Ok()
-        }
-
-      case req @ GET -> Root / "api" / "admin" / "logging" / "tail" =>
-        Ok(fs2.Stream.awakeEvery[IO](1.seconds).map { d => d.toString.appended('\n') }.onFinalize(IO(logger.info("Tail logging stopped."))))
+    val refreshImpl =
+      refresh
+        .serverSecurityLogic(authenticator.requireRole(Roles.Admin))
+        .serverLogicSuccess(_ => bucketId =>
+          buckets.get(bucketId) match
+            case None => IO.unit
+            case Some(bucket: LocalDirectoryBucket[_]) =>
+              logger.info(s"Re-indexing all resources.")
+              bucket.refresh()
+            case _ => IO.unit
+        )
+    
+    val rescanMetaDataImpl =
+      rescanMetaData
+        .serverSecurityLogic(authenticator.requireRole(Roles.Admin))
+        .serverLogicSuccess(_ => bucketId =>
+          buckets.get(bucketId) match
+            case None => IO.unit
+            case Some(bucket: LocalDirectoryBucket[_]) =>
+              logger.info(s"Re-indexing all resources.")
+              bucket.reScanAllMetadata().flatMap(_ => IO.unit)
+            case _ => IO.unit
+        )
+    
+    Http4sServerInterpreter[IO]().toRoutes(
+      List(reIndexImpl, refreshImpl)
+    )
   }

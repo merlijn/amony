@@ -23,11 +23,6 @@ val securityErrors = List(
   oneOfVariantSingletonMatcher(statusCode(StatusCode.Forbidden))(SecurityError.Forbidden),
 )
 
-val foo = oneOf(
-  oneOfVariantSingletonMatcher(statusCode(StatusCode.Unauthorized))(SecurityError.Unauthorized),
-  oneOfVariantSingletonMatcher(statusCode(StatusCode.Forbidden))(SecurityError.Forbidden),
-)
-
 class TapirAuthenticator(decoder: JwtDecoder):
 
   def publicEndpoint(securityInput: SecurityInput): IO[Either[SecurityError, AuthToken]] =

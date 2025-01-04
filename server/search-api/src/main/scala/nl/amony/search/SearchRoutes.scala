@@ -3,7 +3,7 @@ package nl.amony.search
 import cats.effect.IO
 import nl.amony.service.auth.JwtDecoder
 import nl.amony.service.auth.tapir.*
-import nl.amony.service.resources.web.JsonCodecs.toDto
+import nl.amony.service.resources.web.dto.toDto
 import nl.amony.service.resources.web.oneOfList
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import nl.amony.service.search.api.SortDirection.{Asc, Desc}
@@ -12,7 +12,6 @@ import nl.amony.service.search.api.{Query, SortField, SortOption}
 import org.http4s.HttpRoutes
 import sttp.tapir.*
 import sttp.tapir.json.circe.jsonBody
-import sttp.tapir.model.CommaSeparated
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
 object SearchRoutes:

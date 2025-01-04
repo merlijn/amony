@@ -1,16 +1,10 @@
 import Cookies from "js-cookie";
-import {buildUrl} from "./Util";
 import axios from 'axios';
 import {Constants} from "./Constants";
 
 export type SessionInfo = {
   isLoggedIn: () => boolean
   isAdmin: () => boolean
-}
-
-type SessionData = {
-  userId: string
-  roles: string[]
 }
 
 export const Api = {
@@ -50,18 +44,6 @@ export const Api = {
 
     axios.post("/api/resources/upload", formData);
   },
-
-  updateThumbnailTimestamp: async function (mediaId: string, time: number) {
-    return doPOST(`/api/resources/media/${mediaId}/update_thumbnail_timestamp`, { timestampInMillis: time })
-  },
-
-  adminReindexBucket: async function (bucketId: string) {
-    return doPOST(buildUrl("/api/admin/reindex", new Map([["bucketId", bucketId]])))
-  },
-
-  adminRefreshBucket: async function (bucketId: string) {
-    return doPOST(buildUrl("/api/admin/refresh", new Map([["bucketId", bucketId]])))
-  }
 }
 
 const contentTypeHeader = { 'Content-type': 'application/json; charset=UTF-8' };
@@ -77,14 +59,6 @@ function commonHeaders(requireJson: boolean = true): {} {
 async function parseResponseAsJson(response: Response) {
   const data =  await response.text();
   return data ? JSON.parse(data) : undefined;
-}
-
-export async function doGET(path: string) {
-  return await doRequest('GET', path).then(parseResponseAsJson)
-}
-
-export async function doDelete(path: string) {
-  return await doRequest('DELETE', path)
 }
 
 export async function doPOST(path: string, postData?: any) {

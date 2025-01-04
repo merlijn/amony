@@ -1,7 +1,8 @@
 package nl.amony.app.util
 
+import nl.amony.app.routes.AdminRoutes
 import nl.amony.search.SearchRoutes
-import nl.amony.service.resources.web.ResourceEndpoints
+import nl.amony.service.resources.web.ResourceRoutes
 import sttp.apispec.openapi.circe.yaml.*
 import sttp.apispec.openapi.OpenAPI
 import sttp.tapir.*
@@ -12,7 +13,7 @@ import scala.util.Using
 @main
 def generateSpec(): Unit = {
 
-  val endpoints = ResourceEndpoints.endpoints ++ SearchRoutes.endpoints
+  val endpoints = ResourceRoutes.endpoints ++ SearchRoutes.endpoints ++ AdminRoutes.endpoints
 
   val outputPath = "../web-client/openapi.yaml"
 
