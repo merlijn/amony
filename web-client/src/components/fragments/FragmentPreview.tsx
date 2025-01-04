@@ -1,6 +1,5 @@
 import {durationInMillisToString} from "../../api/Util";
 import React, {CSSProperties, useState} from "react";
-import {Api} from "../../api/Api";
 import './FragmentPreview.scss';
 import ImgWithAlt from "../common/ImgWithAlt";
 import TagEditor from "../common/TagEditor";

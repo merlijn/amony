@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Api } from "../api/Api";
 import './VideoWall.scss';
 import {ClipDto} from "../api/generated";
 

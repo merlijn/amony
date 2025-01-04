@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Api } from "../../api/Api";
-import { buildUrl, copyParams } from "../../api/Util";
+import {useEffect, useState} from "react";
+import {useLocation, useNavigate} from "react-router-dom";
+import {buildUrl, copyParams} from "../../api/Util";
 import './TagBar.scss';
 
 const TagBar = (props: { tags: Array<string>, total: number }) => {

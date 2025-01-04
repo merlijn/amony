@@ -1,11 +1,9 @@
 import {BrowserRouter, Route, Routes, useParams} from 'react-router-dom';
-import React, {Suspense, lazy, useEffect} from 'react';
-import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
-import { persistQueryClient } from '@tanstack/react-query-persist-client'
+import React, {lazy, Suspense, useEffect} from 'react';
 import {Constants, SessionContext} from "./api/Constants";
-import {Api, SessionInfo} from "./api/Api";
+import {SessionInfo} from "./api/Api";
 import {getSession} from "./api/generated";
+import {AxiosError} from "axios";
 
 const Editor = lazy(() => import('./pages/Editor'));
 const Compilation = lazy(() => import('./pages/Compilation'));
@@ -24,6 +22,12 @@ function App() {
         isAdmin: ()=> authToken.roles.includes("admin")
       }
       setSession(sessionInfo);
+    }).catch((error: AxiosError) => {
+      if (error.response?.status === 401) {
+        setSession(Constants.anonymousSession);
+        return;
+      }
+      console.log("Error getting session", e);
     });
   }, []);
 

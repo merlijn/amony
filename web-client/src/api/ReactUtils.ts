@@ -1,10 +1,8 @@
-import React, { MutableRefObject, useEffect, useRef, useState } from "react";
-import { useCookies } from "react-cookie";
+import React, {MutableRefObject, useEffect, useRef, useState} from "react";
+import {useCookies} from "react-cookie";
 import _ from "lodash";
-import { useNavigate, useLocation } from "react-router-dom";
-import { buildUrl, copyParams } from "./Util";
-import {useQuery} from "@tanstack/react-query";
-import {Api, SessionInfo} from "./Api";
+import {useLocation, useNavigate} from "react-router-dom";
+import {buildUrl, copyParams} from "./Util";
 
 export const useStateRef = <T>(value: T): [T, MutableRefObject<T>, ((e: T) => void)] => {
   const [getState, _setState] = useState<T>(value)

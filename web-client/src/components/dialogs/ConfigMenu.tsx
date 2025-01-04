@@ -4,7 +4,6 @@ import { useCookiePrefs } from "../../api/ReactUtils";
 import { calculateColumns } from "../../api/Util";
 import Dialog from "../common/Dialog";
 import './ConfigMenu.scss';
-import {Api} from "../../api/Api";
 import {useContext} from "react";
 import {adminRefreshBucket, adminReindexBucket} from "../../api/generated";
 

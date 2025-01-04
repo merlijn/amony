@@ -1,10 +1,10 @@
-import { Api } from '../../api/Api';
 import Dialog from '../common/Dialog';
+import {authLogout} from "../../api/generated";
 
 const Profile = (props: {onLogout: () => void }) => {
 
   const doLogout = () => { 
-    Api.logout().then(props.onLogout); 
+    authLogout().then(props.onLogout);
   }
 
   return (
