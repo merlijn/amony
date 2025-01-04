@@ -5,8 +5,6 @@ import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import org.http4s.UrlForm.given
 import org.http4s.dsl.io.*
 import org.http4s.headers.{Location, `WWW-Authenticate`}
-import io.circe.syntax.*
-import org.http4s.circe.*
 import org.http4s.{Challenge, Header, HttpDate, HttpRoutes, ResponseCookie, Uri, UrlForm}
 import scribe.Logging
 

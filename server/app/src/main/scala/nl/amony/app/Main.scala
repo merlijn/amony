@@ -6,7 +6,7 @@ import nl.amony.app.routes.{AdminRoutes, WebAppRoutes}
 import nl.amony.lib.eventbus.EventTopic
 import nl.amony.search.SearchRoutes
 import nl.amony.search.solr.SolrIndex
-import nl.amony.service.auth.{AuthConfig, AuthRoutes, AuthServiceImpl, RouteAuthenticator}
+import nl.amony.service.auth.{AuthConfig, AuthRoutes, AuthServiceImpl}
 import nl.amony.service.resources.ResourceConfig
 import nl.amony.service.resources.api.events.ResourceEvent
 import nl.amony.service.resources.database.ResourceDatabase
@@ -35,7 +35,6 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
       searchService     <- SolrIndex.resource(appConfig.solr)
       authConfig         = loadConfig[AuthConfig]("amony.auth")
       authService        = new AuthServiceImpl(authConfig)
-      routeAuthenticator = RouteAuthenticator(authConfig.decoder)
       resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
       _                  = resourceEventTopic.followTail(searchService.processEvent)
       resourceDatabase  <- ResourceDatabase.resource[HsqldbProfile](databaseConfig)
@@ -45,7 +44,7 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
                                  bucket.sync().unsafeRunAsync(_ => ())
                                  localConfig.id -> bucket
                              }.toMap
-      routes             = ResourceContentRoutes.apply(resourceBuckets, routeAuthenticator) <+>
+      routes             = ResourceContentRoutes.apply(resourceBuckets) <+>
                              AuthRoutes.apply(authService, authConfig) <+>
                              AdminRoutes.apply(searchService, resourceBuckets, authConfig.decoder) <+>
                              SearchRoutes.searchResourceRoutes(searchService, appConfig.search, authConfig.decoder) <+>

@@ -1,8 +1,8 @@
 package nl.amony.app.routes
 
 import cats.effect.IO
-import nl.amony.service.auth.tapir.{SecurityError, TapirAuthenticator, securityErrors, securityInput}
-import nl.amony.service.auth.{JwtDecoder, Roles}
+import nl.amony.service.auth.tapir.{securityErrors, securityInput}
+import nl.amony.service.auth.{Authenticator, JwtDecoder, Roles, SecurityError}
 import nl.amony.service.resources.ResourceBucket
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.oneOfList
@@ -15,7 +15,7 @@ import sttp.tapir.server.http4s.Http4sServerInterpreter
 object AdminRoutes extends Logging:
 
   val errorOutput: EndpointOutput[SecurityError] = oneOfList(securityErrors)
-  
+
   val reIndex =
     endpoint
       .name("adminReindexBucket")
@@ -41,18 +41,18 @@ object AdminRoutes extends Logging:
       .post.in("api" / "admin" / "re-scan-metadata")
       .in(query[String]("bucketId").description("The id of the bucket to re-scan."))
       .securityIn(securityInput)
-      .errorOut(errorOutput)  
-    
+      .errorOut(errorOutput)
+
   val endpoints = List(reIndex, refresh, rescanMetaData)
-  
+
   def apply(searchService: SearchService, buckets: Map[String, ResourceBucket], jwtDecoder: JwtDecoder): HttpRoutes[IO] = {
-    
-    val authenticator = TapirAuthenticator(jwtDecoder)
-    
-    val reIndexImpl = 
+
+    val authenticator = Authenticator(jwtDecoder)
+
+    val reIndexImpl =
       reIndex
         .serverSecurityLogic(authenticator.requireRole(Roles.Admin))
-        .serverLogicSuccess(_ => bucketId => 
+        .serverLogicSuccess(_ => bucketId =>
           buckets.get(bucketId) match
             case None         => IO.unit
             case Some(bucket) =>
@@ -74,7 +74,7 @@ object AdminRoutes extends Logging:
               bucket.refresh()
             case _ => IO.unit
         )
-    
+
     val rescanMetaDataImpl =
       rescanMetaData
         .serverSecurityLogic(authenticator.requireRole(Roles.Admin))
@@ -86,7 +86,7 @@ object AdminRoutes extends Logging:
               bucket.reScanAllMetadata().flatMap(_ => IO.unit)
             case _ => IO.unit
         )
-    
+
     Http4sServerInterpreter[IO]().toRoutes(
       List(reIndexImpl, refreshImpl)
     )

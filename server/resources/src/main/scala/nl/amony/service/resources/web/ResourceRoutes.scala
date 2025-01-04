@@ -2,7 +2,7 @@ package nl.amony.service.resources.web
 
 import cats.effect.IO
 import nl.amony.service.auth.tapir.*
-import nl.amony.service.auth.{JwtDecoder, Roles}
+import nl.amony.service.auth.{Authenticator, JwtDecoder, Roles, SecurityError}
 import nl.amony.service.resources.web.EndpointErrorOut.NotFound
 import nl.amony.service.resources.web.dto.*
 import nl.amony.service.resources.{Resource, ResourceBucket}
@@ -68,7 +68,7 @@ object ResourceRoutes:
 
   def endpointImplementations(buckets: Map[String, ResourceBucket], decoder: JwtDecoder): HttpRoutes[IO] = {
 
-    val authenticator = TapirAuthenticator(decoder)
+    val authenticator = Authenticator(decoder)
 
     def getResource(bucketId: String, resourceId: String): IO[Either[EndpointErrorOut, (ResourceBucket, Resource)]] =
       buckets.get(bucketId) match

@@ -1,7 +1,6 @@
 package nl.amony.service.resources.web
 
 import cats.effect.IO
-import nl.amony.service.auth.RouteAuthenticator
 import nl.amony.service.resources.api.operations.{ImageThumbnail, ResourceOperation, VideoFragment, VideoThumbnail}
 import nl.amony.service.resources.web.ResourceDirectives.respondWithResourceContent
 import nl.amony.service.resources.{Resource, ResourceBucket}
@@ -27,7 +26,7 @@ object ResourceContentRoutes extends Logging {
     }
   }
 
-  def apply(buckets: Map[String, ResourceBucket], authenticator: RouteAuthenticator): HttpRoutes[IO] = {
+  def apply(buckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
 
     def withResource(bucketId: String, resourceId: String)(fn: (ResourceBucket, Resource) => IO[Response[IO]]) =
       buckets.get(bucketId) match

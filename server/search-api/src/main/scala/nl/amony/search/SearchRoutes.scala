@@ -1,7 +1,7 @@
 package nl.amony.search
 
 import cats.effect.IO
-import nl.amony.service.auth.JwtDecoder
+import nl.amony.service.auth.{Authenticator, JwtDecoder, SecurityError}
 import nl.amony.service.auth.tapir.*
 import nl.amony.service.resources.web.dto.toDto
 import nl.amony.service.resources.web.oneOfList
@@ -59,7 +59,7 @@ object SearchRoutes:
 
   def searchResourceRoutes(searchService: SearchService, config: SearchConfig, jwtDecoder: JwtDecoder): HttpRoutes[IO] = {
 
-    val security = TapirAuthenticator(jwtDecoder)
+    val security = Authenticator(jwtDecoder)
 
     def sanitize(s: String, maxLength: Int): String = {
       s.filter(c => c.isLetterOrDigit || c.isWhitespace).take(maxLength)
