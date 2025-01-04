@@ -14,7 +14,7 @@ export default defineConfig({
             clean: true,
             override: {
                 mutator: {
-                    path: '../customAxiosInstance.ts',
+                    path: '../AxiosInstance.ts',
                     name: 'customAxiosInstance',
                 },
                 useTypeOverInterfaces: true,
