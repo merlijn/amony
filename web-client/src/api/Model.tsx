@@ -30,3 +30,8 @@ export type Prefs = {
   showResolution: boolean
   gallery_columns: Columns
 }
+
+export type SessionInfo = {
+  isLoggedIn: () => boolean
+  isAdmin: () => boolean
+}

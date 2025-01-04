@@ -1,7 +1,6 @@
-import {Prefs, Resolution, Sort, SortDirection} from "./Model";
+import {Prefs, Resolution, SessionInfo, Sort, SortDirection} from "./Model";
 import { useUrlParam } from "./ReactUtils";
 import React from "react";
-import {SessionInfo} from "./Api";
 
 const resolutions: Array<Resolution> =
    [{ value: 0,    label: "SD"},

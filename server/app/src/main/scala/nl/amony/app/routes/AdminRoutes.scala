@@ -59,7 +59,7 @@ object AdminRoutes extends Logging:
           buckets.get(bucketId) match
             case None         => IO.unit
             case Some(bucket) =>
-              logger.info(s"Re-indexing all resources.")
+              logger.info(s"Re-indexing all resources in bucket '$bucketId'")
               bucket
                 .getAllResources().foreach { resource => IO.fromFuture(IO(searchService.index(resource))).map(_ => ()) }
                 .compile
@@ -73,7 +73,7 @@ object AdminRoutes extends Logging:
           buckets.get(bucketId) match
             case None => IO.unit
             case Some(bucket: LocalDirectoryBucket[_]) =>
-              logger.info(s"Re-indexing all resources.")
+              logger.info(s"Refreshing resources in bucket '$bucketId'")
               bucket.refresh()
             case _ => IO.unit
         )
@@ -85,7 +85,7 @@ object AdminRoutes extends Logging:
           buckets.get(bucketId) match
             case None => IO.unit
             case Some(bucket: LocalDirectoryBucket[_]) =>
-              logger.info(s"Re-indexing all resources.")
+              logger.info(s"Re-scanning meta data of all resources in bucket '$bucketId'")
               bucket.reScanAllMetadata().flatMap(_ => IO.unit)
             case _ => IO.unit
         )

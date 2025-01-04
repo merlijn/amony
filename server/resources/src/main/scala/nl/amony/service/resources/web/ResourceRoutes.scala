@@ -1,5 +1,6 @@
 package nl.amony.service.resources.web
 
+import cats.data.EitherT
 import cats.effect.IO
 import nl.amony.service.auth.tapir.*
 import nl.amony.service.auth.{Authenticator, JwtDecoder, Roles, SecurityError}
@@ -54,7 +55,6 @@ object ResourceRoutes:
       .securityIn(securityInput)
       .in(jsonBody[UserMetaDto])
       .errorOut(errorOutput)
-      .out(jsonBody[Unit])
   
   val updateThumbnailTimestamp: Endpoint[SecurityInput, (String, String, ThumbnailTimestampDto), EndpointErrorOut | SecurityError, Unit, Any] = 
     endpoint
@@ -65,7 +65,6 @@ object ResourceRoutes:
       .securityIn(securityInput)
       .in(jsonBody[ThumbnailTimestampDto])
       .errorOut(errorOutput)
-      .out(jsonBody[Unit])
     
   val endpoints = List(getResourceById, updateUserMetaData, updateThumbnailTimestamp)
 
@@ -73,19 +72,17 @@ object ResourceRoutes:
 
     val authenticator = Authenticator(decoder)
 
-    def getResource(bucketId: String, resourceId: String): IO[Either[EndpointErrorOut, (ResourceBucket, Resource)]] =
-      buckets.get(bucketId) match
-        case None         => IO.pure(Left(NotFound))
-        case Some(bucket) =>
-          bucket.getResource(resourceId).map:
-            case None           => Left(NotFound)
-            case Some(resource) => Right((bucket, resource))
+    def getResource(bucketId: String, resourceId: String): EitherT[IO, EndpointErrorOut, (ResourceBucket, Resource)] = 
+      for {
+        bucket   <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
+        resource <- EitherT.fromOptionF(bucket.getResource(resourceId), NotFound)
+      } yield bucket -> resource
 
     val getResourceByIdImpl =
       getResourceById
         .serverSecurityLogic(authenticator.publicEndpoint)
-        .serverLogic(_ => (bucketId, resourceId) => 
-          getResource(bucketId, resourceId).map(_.map((_, resource) => toDto(resource.info())))
+        .serverLogic(_ => (bucketId, resourceId) =>
+          getResource(bucketId, resourceId).map((_, resource) => toDto(resource.info())).value
         )
 
     val updateUserMetaDataImpl =
@@ -97,18 +94,18 @@ object ResourceRoutes:
           val sanitizedDescription = userMeta.description.map(Jsoup.clean(_, Safelist.basic))
           val sanitizedTags        = userMeta.tags.map(Jsoup.clean(_, Safelist.basic))
 
-          getResource(bucketId, resourceId).flatMap:
-            case Left(e)            => IO.pure(Left(e))
-            case Right((bucket, _)) => bucket.updateUserMeta(resourceId, sanitizedTitle, sanitizedDescription, sanitizedTags).map(_ => Right(()))
+          getResource(bucketId, resourceId).flatMap {
+            (bucket, _) => EitherT.right(bucket.updateUserMeta(resourceId, sanitizedTitle, sanitizedDescription, sanitizedTags)) 
+          }.value
         })
       
     val updateThumbnailTimestampImpl =
       updateThumbnailTimestamp
         .serverSecurityLogic(authenticator.requireRole(Roles.Admin))
         .serverLogic(_ => (bucketId, resourceId, dto) =>
-          getResource(bucketId, resourceId).flatMap:
-            case Left(e)            => IO.pure(Left(e))
-            case Right((bucket, _)) => bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis).map(_ => Right(()))
+          getResource(bucketId, resourceId).flatMap {
+            (bucket, _) => EitherT.right(bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis))
+          }.value
         )
 
     Http4sServerInterpreter[IO]().toRoutes(

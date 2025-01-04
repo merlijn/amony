@@ -1,9 +1,9 @@
 import {BrowserRouter, Route, Routes, useParams} from 'react-router-dom';
 import React, {lazy, Suspense, useEffect} from 'react';
 import {Constants, SessionContext} from "./api/Constants";
-import {SessionInfo} from "./api/Api";
 import {getSession} from "./api/generated";
 import {AxiosError} from "axios";
+import {SessionInfo} from "./api/Model";
 
 const Editor = lazy(() => import('./pages/Editor'));
 const Compilation = lazy(() => import('./pages/Compilation'));
