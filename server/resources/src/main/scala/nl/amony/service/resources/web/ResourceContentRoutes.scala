@@ -2,7 +2,7 @@ package nl.amony.service.resources.web
 
 import cats.effect.IO
 import nl.amony.service.resources.api.operations.{ImageThumbnail, ResourceOperation, VideoFragment, VideoThumbnail}
-import nl.amony.service.resources.web.ResourceDirectives.respondWithResourceContent
+import nl.amony.service.resources.web.ResourceDirectives.responseFromResource
 import nl.amony.service.resources.{Resource, ResourceBucket}
 import org.http4s.*
 import org.http4s.CacheDirective.`max-age`
@@ -41,7 +41,7 @@ object ResourceContentRoutes extends Logging {
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / "content" =>
 
         withResource(bucketId, resourceId) { (_, resource) =>
-          respondWithResourceContent(req, resource)
+          responseFromResource(req, resource)
         }
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern =>
@@ -53,7 +53,7 @@ object ResourceContentRoutes extends Logging {
               bucket.getOrCreate(resourceId, operation).flatMap:
                 case None           => NotFound()
                 case Some(resource) =>
-                  respondWithResourceContent(req, resource).map {
+                  responseFromResource(req, resource).map {
                     r => r.addHeader(`Cache-Control`(`max-age`(365.days)))
                   }
         }
