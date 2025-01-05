@@ -1,7 +1,7 @@
 package nl.amony.app
 
 import cats.effect.{IO, Resource, ResourceApp}
-import cats.implicits.toSemigroupKOps
+import cats.implicits.*
 import nl.amony.app.routes.{AdminRoutes, WebAppRoutes}
 import nl.amony.lib.eventbus.EventTopic
 import nl.amony.search.SearchRoutes
@@ -38,18 +38,17 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
       resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
       _                  = resourceEventTopic.followTail(searchService.processEvent)
       resourceDatabase  <- ResourceDatabase.resource[HsqldbProfile](databaseConfig)
-      resourceBuckets    = appConfig.resources.map {
-                               case localConfig : ResourceConfig.LocalDirectoryConfig =>
-                                 val bucket = new LocalDirectoryBucket(localConfig, resourceDatabase, resourceEventTopic)
-                                 bucket.sync().unsafeRunAsync(_ => ())
-                                 localConfig.id -> bucket
-                             }.toMap
-      routes             = ResourceContentRoutes.apply(resourceBuckets) <+>
+      resourceBuckets   <- appConfig.resources.map {
+                               case localConfig : ResourceConfig.LocalDirectoryConfig => 
+                                 LocalDirectoryBucket.resource(localConfig, resourceDatabase, resourceEventTopic)
+                             }.sequence
+      resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
+      routes             = ResourceContentRoutes.apply(resourceBucketMap) <+>
                              AuthRoutes.apply(authService, authConfig) <+>
                              AuthRoutes.routes(authService, authConfig, authConfig.decoder) <+>
-                             AdminRoutes.apply(searchService, resourceBuckets, authConfig.decoder) <+>
+                             AdminRoutes.apply(searchService, resourceBucketMap, authConfig.decoder) <+>
                              SearchRoutes.searchResourceRoutes(searchService, appConfig.search, authConfig.decoder) <+>
-                             ResourceRoutes.endpointImplementations(resourceBuckets, authConfig.decoder) <+>
+                             ResourceRoutes.endpointImplementations(resourceBucketMap, authConfig.decoder) <+>
                              WebAppRoutes.apply(appConfig.api)
       _                 <- WebServer.run(appConfig.api, routes)
     } yield ()

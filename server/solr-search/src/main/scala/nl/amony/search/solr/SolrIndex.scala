@@ -82,7 +82,9 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
   }
 
   protected def close(): IO[Unit] = IO {
-    Files.delete(lockfilePath)
+    if (Files.exists(lockfilePath))
+      Files.delete(lockfilePath)
+    
     solr.close()
     container.shutdown()
   }

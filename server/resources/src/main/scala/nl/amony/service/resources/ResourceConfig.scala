@@ -1,7 +1,6 @@
 package nl.amony.service.resources
 
 import cats.effect.IO
-import nl.amony.service.auth.JwtAlgorithmConfig
 import nl.amony.service.resources.util.Base32
 import nl.amony.service.resources.util.PartialHash.partialHash
 import pureconfig.*

@@ -19,6 +19,18 @@ import slick.jdbc.JdbcProfile
 import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
 
+object LocalDirectoryBucket:
+  
+  def resource[P <: JdbcProfile](config: LocalDirectoryConfig, db: ResourceDatabase[P], topic: EventTopic[ResourceEvent])(using runtime: IORuntime): cats.effect.Resource[IO, LocalDirectoryBucket[P]] = {
+    cats.effect.Resource.make {
+      IO {
+        val bucket = LocalDirectoryBucket(config, db, topic)
+        bucket.sync().unsafeRunAsync(_ => ())
+        bucket
+      }
+    }{  _ => IO.unit }
+  }
+
 class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: ResourceDatabase[P], topic: EventTopic[ResourceEvent])(using runtime: IORuntime) extends ResourceBucket with Logging {
 
   private val runningOperations = new ConcurrentHashMap[LocalResourceOp, IO[Path]]()
