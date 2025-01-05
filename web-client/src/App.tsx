@@ -27,7 +27,7 @@ function App() {
         setSession(Constants.anonymousSession);
         return;
       }
-      console.log("Error getting session", e);
+      console.log("Error getting session", error);
     });
   }, []);
 
@@ -42,7 +42,7 @@ function App() {
                   <Routes>
                     <Route path="/" element={<Main />} />
                     <Route path="/search" element={<Main />} />
-                    <Route path="/editor/:id" element={<EditorRouter />} />
+                    <Route path="/editor/:bucketId/:resourceId" element={<EditorRouter />} />
                     <Route path="/video-wall" element={<VideoWall />} />
                     <Route path="/compilation" element={<Compilation />} />
                   </Routes>
@@ -56,10 +56,10 @@ function App() {
 }
 
 function EditorRouter() {
-  let { id } = useParams<{ id: string }>();
+  let { bucketId, resourceId } = useParams<{ bucketId: string, resourceId: string }>();
   return (
       <>
-          { id && <Editor videoId = { id } /> }
+          { (bucketId && resourceId) && <Editor bucketId = { bucketId } resourceId = { resourceId } /> }
       </>
   );
 }

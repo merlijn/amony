@@ -15,7 +15,7 @@ import './TopNavBar.scss';
 import {AiOutlineSetting} from "react-icons/ai";
 import {CgProfile} from "react-icons/cg";
 import Modal from "../common/Modal";
-import Profile from "../session/Profile";
+import Profile from "../dialogs/Profile";
 import {BiLogInCircle} from "react-icons/bi";
 
 
