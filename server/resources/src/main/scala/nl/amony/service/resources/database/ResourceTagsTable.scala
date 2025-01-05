@@ -23,12 +23,10 @@ class ResourceTagsTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) exten
     def * = (bucketId, resourceId, tag) <> ((ResourceTagRow.apply _).tupled, ResourceTagRow.unapply)
   }
 
-  val innerTable = TableQuery[ResourceTags]
-
-  def createIfNotExists: DBIO[Unit] = innerTable.schema.createIfNotExists
+  val tableQuery = TableQuery[ResourceTags]
 
   def queryById(bucketId: String, resourceId: String) =
-    innerTable.filter(r => r.bucketId === bucketId && r.resourceId === resourceId)
+    tableQuery.filter(r => r.bucketId === bucketId && r.resourceId === resourceId)
 
   def getTags(bucketId: String, resourceId: String) =
     queryById(bucketId, resourceId).map(_.tag)
@@ -40,7 +38,7 @@ class ResourceTagsTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) exten
     if (tags.isEmpty)
       DBIO.successful(0)
     else
-      (innerTable ++= tags.map(ResourceTagRow(bucketId, resourceId, _))).map(_.getOrElse(0))
+      (tableQuery ++= tags.map(ResourceTagRow(bucketId, resourceId, _))).map(_.getOrElse(0))
 
   def insertOrUpdate(bucketId: String, resourceId: String, tags: Set[String])(using ec: ExecutionContext) =
     for {

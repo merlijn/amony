@@ -43,7 +43,7 @@ class ResourceDatabase[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
     def bucketCount(bucketId: String) = resourcesTable.allForBucket(bucketId).length.result
     
     def joinResourceWithTags(bucketId: String) =
-      resourcesTable.innerTable.joinLeft(tagsTable.innerTable)
+      resourcesTable.innerTable.joinLeft(tagsTable.tableQuery)
         .on((a, b) => a.bucketId === b.bucketId && a.resourceId === b.resourceId)
         .filter((resource, maybeTag) => resource.bucketId === bucketId)
 

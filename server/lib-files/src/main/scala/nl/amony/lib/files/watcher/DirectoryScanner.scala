@@ -36,7 +36,7 @@ object LocalDirectoryScanner extends Logging {
    * In principle, between the last time the directory was scanned and now, **all** files could be renamed. For example
    * using an automated renaming tool or script.
    * 
-   * This means, the only thing we can rely on for checking equality is the metadata.
+   * This means, the only thing we can rely on for checking equality is the metadata, not the filename.
    * 
    */
   def scanDirectory(directory: Path, previous: FileStore, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] = {

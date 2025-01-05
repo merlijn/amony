@@ -97,9 +97,6 @@ class ResourceTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends L
 
   val innerTable = TableQuery[LocalFilesSchema]
 
-  def createIfNotExists: DBIO[Unit] =
-    innerTable.schema.createIfNotExists
-
   def getByHash(bucketId: String, hash: String): Query[LocalFilesSchema, ResourceRow, Seq] =
     innerTable
       .filter(_.bucketId === bucketId)
