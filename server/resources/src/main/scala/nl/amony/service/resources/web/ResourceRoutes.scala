@@ -4,7 +4,7 @@ import cats.data.EitherT
 import cats.effect.IO
 import nl.amony.service.auth.tapir.*
 import nl.amony.service.auth.{Authenticator, JwtDecoder, Roles, SecurityError}
-import nl.amony.service.resources.web.EndpointErrorOut.NotFound
+import nl.amony.service.resources.web.ApiError.NotFound
 import nl.amony.service.resources.web.dto.*
 import nl.amony.service.resources.{Resource, ResourceBucket}
 import org.http4s.HttpRoutes
@@ -18,14 +18,14 @@ import sttp.tapir.server.http4s.Http4sServerInterpreter
 
 def oneOfList[T](variants: List[OneOfVariant[_ <: T]]) = EndpointOutput.OneOf[T, T](variants, Mapping.id)
 
-enum EndpointErrorOut:
+enum ApiError:
   case NotFound
 
 val apiErrorOutputs = List(
-  oneOfVariantSingletonMatcher(statusCode(StatusCode.NotFound))(EndpointErrorOut.NotFound),
+  oneOfVariantSingletonMatcher(statusCode(StatusCode.NotFound))(ApiError.NotFound),
 )
 
-val errorOutput: EndpointOutput[EndpointErrorOut | SecurityError] = oneOfList(securityErrors ++ apiErrorOutputs)
+val errorOutput: EndpointOutput[ApiError | SecurityError] = oneOfList(securityErrors ++ apiErrorOutputs)
 
 object ResourceRoutes:
 
@@ -35,7 +35,7 @@ object ResourceRoutes:
     header(HeaderNames.Expires, "0")
   ).reduce(_ and _)
 
-  val getResourceById: Endpoint[SecurityInput, (String, String), EndpointErrorOut | SecurityError, ResourceDto, Any] =
+  val getResourceById: Endpoint[SecurityInput, (String, String), ApiError | SecurityError, ResourceDto, Any] =
     endpoint
       .name("getResourceById")
       .tag("resources")
@@ -46,7 +46,7 @@ object ResourceRoutes:
       .out(apiCacheHeaders)
       .out(jsonBody[ResourceDto])
 
-  val updateUserMetaData: Endpoint[SecurityInput, (String, String, UserMetaDto), EndpointErrorOut | SecurityError, Unit, Any] =
+  val updateUserMetaData: Endpoint[SecurityInput, (String, String, UserMetaDto), ApiError | SecurityError, Unit, Any] =
     endpoint
       .name("updateUserMetaData")
       .tag("resources")
@@ -56,7 +56,7 @@ object ResourceRoutes:
       .in(jsonBody[UserMetaDto])
       .errorOut(errorOutput)
   
-  val updateThumbnailTimestamp: Endpoint[SecurityInput, (String, String, ThumbnailTimestampDto), EndpointErrorOut | SecurityError, Unit, Any] = 
+  val updateThumbnailTimestamp: Endpoint[SecurityInput, (String, String, ThumbnailTimestampDto), ApiError | SecurityError, Unit, Any] = 
     endpoint
       .name("updateThumbnailTimestamp")
       .tag("resources")
@@ -72,7 +72,7 @@ object ResourceRoutes:
 
     val authenticator = Authenticator(decoder)
 
-    def getResource(bucketId: String, resourceId: String): EitherT[IO, EndpointErrorOut, (ResourceBucket, Resource)] = 
+    def getResource(bucketId: String, resourceId: String): EitherT[IO, ApiError, (ResourceBucket, Resource)] = 
       for {
         bucket   <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
         resource <- EitherT.fromOptionF(bucket.getResource(resourceId), NotFound)

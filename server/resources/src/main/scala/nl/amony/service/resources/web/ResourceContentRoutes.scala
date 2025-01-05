@@ -1,5 +1,6 @@
 package nl.amony.service.resources.web
 
+import cats.data.OptionT
 import cats.effect.IO
 import nl.amony.service.resources.api.operations.{ImageThumbnail, ResourceOperation, VideoFragment, VideoThumbnail}
 import nl.amony.service.resources.web.ResourceDirectives.responseFromResource
@@ -28,35 +29,29 @@ object ResourceContentRoutes extends Logging {
 
   def apply(buckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
 
-    def withResource(bucketId: String, resourceId: String)(fn: (ResourceBucket, Resource) => IO[Response[IO]]) =
-      buckets.get(bucketId) match
-        case None         => NotFound()
-        case Some(bucket) =>
-          bucket.getResource(resourceId).flatMap:
-            case None => NotFound()
-            case Some(resource) => fn(bucket, resource)
+    def getResource(bucketId: String, resourceId: String): OptionT[IO, (ResourceBucket, Resource)] =
+      for {
+        bucket   <- OptionT.fromOption[IO](buckets.get(bucketId))
+        resource <- OptionT(bucket.getResource(resourceId))
+      } yield bucket -> resource
+   
+    def toResponse(option: OptionT[IO, Response[IO]]): IO[Response[IO]] =
+     option.value.map(_.getOrElse(Response(Status.NotFound)))
 
     HttpRoutes.of[IO] {
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / "content" =>
-
-        withResource(bucketId, resourceId) { (_, resource) =>
-          responseFromResource(req, resource)
-        }
+        toResponse:
+          getResource(bucketId, resourceId).semiflatMap { (_, resource) => responseFromResource(req, resource) }
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern =>
-
-        withResource(bucketId, resourceId) { (bucket, resource) =>
-          patterns.matchPF.lift(resourcePattern) match
-            case None            => NotFound()
-            case Some(operation) =>
-              bucket.getOrCreate(resourceId, operation).flatMap:
-                case None           => NotFound()
-                case Some(resource) =>
-                  responseFromResource(req, resource).map {
-                    r => r.addHeader(`Cache-Control`(`max-age`(365.days)))
-                  }
-        }
+        toResponse:
+          for {
+            (bucket, resource) <- getResource(bucketId, resourceId)
+            operation          <- OptionT.fromOption(patterns.matchPF.lift(resourcePattern))
+            derivedResource    <- OptionT(bucket.getOrCreate(resourceId, operation))
+            response           <- OptionT.liftF(responseFromResource(req, derivedResource).map(r => r.addHeader(`Cache-Control`(`max-age`(365.days)))))
+          } yield response
     }
   }
 }
