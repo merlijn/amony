@@ -17,6 +17,7 @@ message ResourceInfo {
   required string hash = 3;
   required int64  size = 4;
   optional string contentType = 5;
+  optional ResourceMetaSource contentMetaSource = 13;
   optional ResourceMeta contentMeta = 6;
   optional int64 creationTime = 7;
   optional int64 lastModifiedTime = 8;

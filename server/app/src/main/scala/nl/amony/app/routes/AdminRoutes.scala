@@ -71,7 +71,6 @@ object AdminRoutes extends Logging:
         .serverSecurityLogic(authenticator.requireRole(Roles.Admin))
         .serverLogicSuccess(_ => bucketId =>
           buckets.get(bucketId) match
-            case None => IO.unit
             case Some(bucket: LocalDirectoryBucket[_]) =>
               logger.info(s"Refreshing resources in bucket '$bucketId'")
               bucket.refresh()
@@ -83,7 +82,6 @@ object AdminRoutes extends Logging:
         .serverSecurityLogic(authenticator.requireRole(Roles.Admin))
         .serverLogicSuccess(_ => bucketId =>
           buckets.get(bucketId) match
-            case None => IO.unit
             case Some(bucket: LocalDirectoryBucket[_]) =>
               logger.info(s"Re-scanning meta data of all resources in bucket '$bucketId'")
               bucket.reScanAllMetadata().flatMap(_ => IO.unit)
@@ -91,6 +89,6 @@ object AdminRoutes extends Logging:
         )
 
     Http4sServerInterpreter[IO]().toRoutes(
-      List(reIndexImpl, refreshImpl)
+      List(reIndexImpl, refreshImpl, rescanMetaDataImpl)
     )
   }

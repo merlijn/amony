@@ -163,7 +163,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
       case _ => ResourceMeta.Empty
     }
 
-    ResourceInfo(bucketId, path, id, size, contentType, contentMeta, creationTime, lastModified, title, description, tags, thumbnailTimestamp)
+    ResourceInfo(bucketId, path, id, size, contentType, None, contentMeta, creationTime, lastModified, title, description, tags, thumbnailTimestamp)
   }
 
   private def toSolrQuery(query: Query) = {

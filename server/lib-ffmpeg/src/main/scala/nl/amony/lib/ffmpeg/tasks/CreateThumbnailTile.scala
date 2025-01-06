@@ -63,7 +63,8 @@ trait CreateThumbnailTile extends Logging {
 
       ffprobe(inputFile, false, 5.seconds).flatMap { probe =>
 
-        val stream             = probe.firstVideoStream.getOrElse(throw new IllegalStateException("no video stream found"))
+        val result             = probe.getOrElse(throw new IllegalStateException("ffprobe failed"))
+        val stream             = result.output.firstVideoStream.getOrElse(throw new IllegalStateException("no video stream found"))
         val (frames, tileSize) = calculateNrOfFrames(stream.durationMillis)
 
         val mod                = ((stream.fps * (stream.durationMillis / 1000)) / frames).toInt

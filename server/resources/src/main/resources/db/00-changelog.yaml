@@ -13,3 +13,30 @@ databaseChangeLog:
             path: db/01-create-tables.sql
             splitStatements: true
             endDelimiter: ";"
+#  - changeSet:
+#      id: 2
+#      author: merlijn
+#      context: resources
+#      changes:
+#        - renameTable:
+#            schemaName: public
+#            oldTableName: "files"
+#            newTableName: "resources"
+#        - dropColumn:
+#            schemaName: public
+#            columnName: "content_meta"
+#            tableName: "resources"
+#        - addColumn:
+#            schemaName: public
+#            tableName: "resources"
+#            columns:
+#              - column:
+#                  name: "content_meta_tool_name"
+#                  type: "varchar(32)"
+#                  constraints:
+#                      nullable: false
+#              - column:
+#                  name: "content_meta_tool_data"
+#                  type: "clob"
+#                  constraints:
+#                    nullable: false

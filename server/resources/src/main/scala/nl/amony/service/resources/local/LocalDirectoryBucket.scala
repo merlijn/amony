@@ -47,8 +47,8 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
         logger.info(s"Scanning resource: $f")
         LocalResourceMeta.resolveMeta(f).flatMap:
           case None => IO.unit
-          case Some(meta) =>
-            val updated = resource.copy(contentMeta = meta)
+          case Some((metaSource, meta)) =>
+            val updated = resource.copy(contentMetaSource = Some(metaSource), contentMeta = meta)
             db.update(updated) >> topic.publish(ResourceUpdated(updated))
 
     }).compile.drain

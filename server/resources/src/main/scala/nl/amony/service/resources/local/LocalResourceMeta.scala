@@ -3,15 +3,16 @@ package nl.amony.service.resources.local
 import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.magick.ImageMagick
-import nl.amony.service.resources._
-import nl.amony.service.resources.api.{ImageMeta, ResourceMeta, VideoMeta}
+import nl.amony.service.resources.*
+import nl.amony.service.resources.api.{ImageMeta, ResourceMeta, ResourceMetaSource, VideoMeta}
 import scribe.Logging
 
 import java.nio.file.Path
+import scala.util.{Failure, Success}
 
 object LocalResourceMeta extends Logging {
 
-  def resolveMeta(path: Path): IO[Option[ResourceMeta]] = {
+  def resolveMeta(path: Path): IO[Option[(ResourceMetaSource, ResourceMeta)]] = {
     Resource.contentTypeForPath(path) match {
 
       case None =>
@@ -19,30 +20,43 @@ object LocalResourceMeta extends Logging {
         IO.pure(None)
 
       case Some(contentType) if contentType.startsWith("video") =>
-        FFMpeg.ffprobe(path, false).map {
-          probe =>
-            probe.firstVideoStream.map { stream =>
-              VideoMeta(
+        FFMpeg.ffprobe(path, false).map:
+          case Failure(exception) =>
+            logger.error(s"Failed to get video meta for $path", exception)
+            None
+          case Success(ffprobeResult) =>
+            ffprobeResult.output.firstVideoStream.map { stream =>
+              
+              val source = ResourceMetaSource("ffprobe/1", ffprobeResult.rawJson.noSpaces)
+              
+              val meta = VideoMeta(
                 width = stream.width,
                 height = stream.height,
                 durationInMillis = stream.durationMillis,
                 fps = stream.fps.toFloat,
                 codec = Some(stream.codec_name),
-                metaData = Map.empty,
+                metaData = Map.empty
               )
+              
+              source -> meta
             }
-        }
       case Some(contentType) if contentType.startsWith("image") =>
-        ImageMagick.getImageMeta(path).map(out =>
-          out.headOption.map { meta =>
-            ImageMeta(
-              width = meta.image.geometry.width,
-              height = meta.image.geometry.height,
-              metaData = meta.image.properties,
-            )
-          }
-        )
-      case Some(contentType) => IO.pure(Some(ResourceMeta.Empty))
+        ImageMagick.getImageMeta(path).map:
+          case Failure(e) =>
+            logger.error(s"Failed to get image meta for $path", e)
+            None
+          case Success(result) =>
+            val source = ResourceMetaSource("magick/1", result.rawJson.noSpaces)
+            result.output.headOption.map { magick =>
+              val meta = ImageMeta(
+                width = magick.image.geometry.width,
+                height = magick.image.geometry.height,
+                metaData = magick.image.properties
+              )
+              source -> meta
+            }
+        
+      case _ => IO.pure(None)
     }
   }
 }

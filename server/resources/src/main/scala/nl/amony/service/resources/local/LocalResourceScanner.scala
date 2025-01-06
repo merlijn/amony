@@ -18,23 +18,23 @@ object LocalResourceScanner {
     case FileAdded(f) =>
 
       LocalResourceMeta.resolveMeta(f.path)
-        .map(_.getOrElse(ResourceMeta.Empty))
-        .recover {
-          case e => logger.error(s"Failed to resolve meta for ${f.path}", e); ResourceMeta.Empty
-        }.map { meta =>
-          ResourceAdded(
-            ResourceInfo(
-              bucketId = bucketId,
-              path = basePath.relativize(f.path).toString,
-              hash = f.hash,
-              size = f.size,
-              contentType = Resource.contentTypeForPath(f.path),
-              contentMeta = meta,
-              creationTime = Some(f.creationTime),
-              lastModifiedTime = Some(f.modifiedTime),
-              thumbnailTimestamp = None
+        .recover { case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None }
+        .map {
+          meta =>
+            ResourceAdded(
+              ResourceInfo(
+                bucketId = bucketId,
+                path = basePath.relativize(f.path).toString,
+                hash = f.hash,
+                size = f.size,
+                contentType = Resource.contentTypeForPath(f.path),
+                contentMetaSource = meta.map(_._1),
+                contentMeta = meta.map(_._2).getOrElse(ResourceMeta.Empty),
+                creationTime = Some(f.creationTime),
+                lastModifiedTime = Some(f.modifiedTime),
+                thumbnailTimestamp = None
+              )
             )
-          )
         }
 
     case FileDeleted(f) =>

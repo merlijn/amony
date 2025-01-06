@@ -4,42 +4,21 @@ import cats.effect.IO
 import io.circe.{Decoder, HCursor}
 import io.circe.generic.semiauto.deriveDecoder
 import nl.amony.lib.ffmpeg.FFMpeg.fastStartPattern
-import nl.amony.lib.ffmpeg.tasks.FFProbeModel.{AudioStream, ProbeDebugOutput, ProbeOutput, Stream, UnkownStream, VideoStream}
+import nl.amony.lib.ffmpeg.tasks.FFProbeModel.*
 import scribe.Logging
 
 import java.nio.file.Path
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.util.{Failure, Try}
+import FFProbeJsonCodecs.given
 
-private[ffmpeg] trait FFProbeJsonCodecs extends Logging {
-  implicit val unkownStreamDecoder: Decoder[UnkownStream] = deriveDecoder[UnkownStream]
-  implicit val videoStreamDecoder: Decoder[VideoStream]   = deriveDecoder[VideoStream]
-  implicit val audioStreamDecoder: Decoder[AudioStream]   = deriveDecoder[AudioStream]
-  implicit val debugDecoder: Decoder[ProbeDebugOutput]    = deriveDecoder[ProbeDebugOutput]
-  implicit val probeDecoder: Decoder[ProbeOutput]         = deriveDecoder[ProbeOutput]
-
-  implicit val streamDecoder: Decoder[Stream] = (c: HCursor) => {
-    c.downField("codec_type")
-      .as[String]
-      .flatMap {
-        case "video" => c.as[VideoStream]
-        case "audio" => c.as[AudioStream]
-        case _ => c.as[UnkownStream]
-      }
-      .left
-      .map(error => {
-        logger.warn(s"Failed to decode stream: ${c.value}", error)
-        error
-      })
-  }
-}
-
-trait FFProbe extends Logging with FFProbeJsonCodecs {
+trait FFProbe extends Logging {
 
   self: ProcessRunner =>
 
   val defaultProbeTimeout = 5.seconds
 
-  def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration = defaultProbeTimeout): IO[ProbeOutput] = {
+  def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration = defaultProbeTimeout): IO[Try[FFProbeResult]] = {
 
     val fileName = file.toAbsolutePath.normalize().toString
 
@@ -49,14 +28,17 @@ trait FFProbe extends Logging with FFProbeJsonCodecs {
     useProcess("ffprobe", args) { process =>
 
       for {
-        jsonOutput <- toString(process.stdout)
+        jsonOutput  <- toString(process.stdout)
         debugOutput <- if (debug) toString(process.stderr).map(debugOutput => Some(ProbeDebugOutput(fastStartPattern.matches(debugOutput)))) else IO.pure(None)
       } yield {
-        io.circe.parser.decode[ProbeOutput](jsonOutput) match {
-          case Left(error) => throw error
-          case Right(out) => out.copy(debugOutput = debugOutput)
-        }
+
+        (for {
+          json <- io.circe.parser.parse(jsonOutput)
+          out  <- json.as[FFProbeOutput]
+        } yield FFProbeResult(out, debugOutput, json)).toTry
       }
-    }.timeout(timeout)
+    }.timeout(timeout).recover {
+      case e: java.util.concurrent.TimeoutException => Failure(e)
+    }
   }
 }
