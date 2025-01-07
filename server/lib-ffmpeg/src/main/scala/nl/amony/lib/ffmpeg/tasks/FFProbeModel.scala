@@ -1,23 +1,26 @@
 package nl.amony.lib.ffmpeg.tasks
 
 import io.circe.generic.semiauto.deriveDecoder
-import io.circe.{Decoder, HCursor, Json}
-import nl.amony.lib.ffmpeg.tasks.FFProbeJsonCodecs.logger
-import nl.amony.lib.ffmpeg.tasks.FFProbeModel.{AudioStream, FFProbeOutput, ProbeDebugOutput, Stream, UnkownStream, VideoStream}
+import io.circe.*
 import scribe.Logging
 
 import scala.util.matching.UnanchoredRegex
 
-object FFProbeModel {
+object FFProbeModel extends Logging {
 
   case class ProbeDebugOutput(isFastStart: Boolean)
 
-  case class FFProbeOutput(streams: List[Stream]) {
-    def firstVideoStream: Option[VideoStream] = streams.sortBy(_.index).collectFirst { case v: VideoStream => v }
+  case class FFProbeVersion(
+    version: String,
+    copyright: String,
+    compiler_ident: String,
+    configuration: String,
+  ) derives Decoder
+
+  case class FFProbeOutput(program_version: Option[FFProbeVersion], streams: Option[List[Stream]], debugOutput: Option[ProbeDebugOutput]) derives Decoder {
+    def firstVideoStream: Option[VideoStream] = streams.flatMap(_.sortBy(_.index).collectFirst { case v: VideoStream => v })
   }
   
-  case class FFProbeResult(output: FFProbeOutput, debugOutput: Option[ProbeDebugOutput], rawJson: Json)
-
   val durationPattern: UnanchoredRegex = raw"(\d{2}):(\d{2}):(\d{2})\.(\d*)".r.unanchored
 
   sealed trait Stream {
@@ -64,13 +67,14 @@ object FFProbeModel {
       divident / divisor
     }
   }
-}
 
-object FFProbeJsonCodecs extends Logging {
   given unkownStreamDecoder: Decoder[UnkownStream] = deriveDecoder[UnkownStream]
-  given videoStreamDecoder: Decoder[VideoStream]   = deriveDecoder[VideoStream]
-  given audioStreamDecoder: Decoder[AudioStream]   = deriveDecoder[AudioStream]
-  given debugDecoder: Decoder[ProbeDebugOutput]    = deriveDecoder[ProbeDebugOutput]
+
+  given videoStreamDecoder: Decoder[VideoStream] = deriveDecoder[VideoStream]
+
+  given audioStreamDecoder: Decoder[AudioStream] = deriveDecoder[AudioStream]
+
+  given debugDecoder: Decoder[ProbeDebugOutput] = deriveDecoder[ProbeDebugOutput]
 
   given streamDecoder: Decoder[Stream] = (c: HCursor) => {
     c.downField("codec_type")

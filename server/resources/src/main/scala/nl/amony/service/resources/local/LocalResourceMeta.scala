@@ -20,26 +20,26 @@ object LocalResourceMeta extends Logging {
         IO.pure(None)
 
       case Some(contentType) if contentType.startsWith("video") =>
-        FFMpeg.ffprobe(path, false).map:
-          case Failure(exception) =>
-            logger.error(s"Failed to get video meta for $path", exception)
-            None
-          case Success(ffprobeResult) =>
-            ffprobeResult.output.firstVideoStream.map { stream =>
-              
-              val source = ResourceMetaSource("ffprobe/1", ffprobeResult.rawJson.noSpaces)
-              
-              val meta = VideoMeta(
-                width = stream.width,
-                height = stream.height,
-                durationInMillis = stream.durationMillis,
-                fps = stream.fps.toFloat,
-                codec = Some(stream.codec_name),
-                metaData = Map.empty
-              )
-              
-              source -> meta
-            }
+        FFMpeg.ffprobe(path, false).map { (ffprobeResult, json) =>
+          ffprobeResult.firstVideoStream.map { stream =>
+
+            val version = ffprobeResult.program_version.map(_.version).getOrElse("unknown")
+            val source  = ResourceMetaSource(s"ffprobe/$version", json.noSpaces)
+
+            val meta = VideoMeta(
+              width = stream.width,
+              height = stream.height,
+              durationInMillis = stream.durationMillis,
+              fps = stream.fps.toFloat,
+              codec = Some(stream.codec_name),
+              metaData = Map.empty
+            )
+
+            source -> meta
+          }
+        }.recover {
+          case e: Throwable => logger.error(s"Failed to get video meta for $path", e); None
+        }
       case Some(contentType) if contentType.startsWith("image") =>
         ImageMagick.getImageMeta(path).map:
           case Failure(e) =>

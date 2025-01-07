@@ -66,7 +66,7 @@ object FFMpeg extends Logging
 
     logger.info(s"Adding faststart at: $out")
 
-    runWithOutput("ffmpeg",
+    useProcessOutput("ffmpeg",
       args = List(
         "ffmpeg",
         "-i",        video.absoluteFileName(),

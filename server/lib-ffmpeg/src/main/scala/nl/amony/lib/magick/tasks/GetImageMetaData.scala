@@ -17,7 +17,7 @@ trait GetImageMetaData {
 
     val args = List(fileName, "-format", "json:")
 
-    runWithOutput("convert", args, false) { processOutput =>
+    useProcessOutput("convert", args, false) { processOutput =>
       IO {
         (for {
           json <- io.circe.parser.parse(processOutput)
