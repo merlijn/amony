@@ -1,11 +1,9 @@
 package nl.amony.service.resources
 
 import cats.effect.IO
-import nl.amony.lib.files.*
 import nl.amony.service.resources.api.ResourceInfo
-import org.http4s.MediaType
 
-import java.nio.file.{Files, Path}
+import java.nio.file.Files
 
 trait Resource {
   def info(): ResourceInfo
@@ -20,11 +18,6 @@ trait ResourceWithRangeSupport extends Resource {
 
 object Resource {
 
-  def contentTypeForPath(path: java.nio.file.Path): Option[String] = {
-    val maybeExt = path.fileExtension()
-    maybeExt.flatMap { ext => MediaType.extensionMap.get(ext).map(m => s"${m.mainType}/${m.subType}") }
-  }
-
   def fromPath(path: java.nio.file.Path, info: ResourceInfo): LocalFile =
     LocalFile(fs2.io.file.Path.fromNioPath(path), info)
   
@@ -38,7 +31,7 @@ case class LocalFile(path: fs2.io.file.Path, resourceInfo: ResourceInfo) extends
 
   private val defaultChunkSize: Int = 64 * 1024
 
-  override def contentType(): Option[String] = Resource.contentTypeForPath(path.toNioPath)
+  override def contentType(): Option[String] = resourceInfo.contentType
 
   override def size(): Long = Files.size(path.toNioPath)
 

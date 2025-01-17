@@ -38,6 +38,11 @@ case class ResourceInfoDto(
   path: String
 ) derives Codec, sttp.tapir.Schema
 
+case class ResourceToolMeta(
+  toolName: String,
+  toolData: String,
+) derives Codec, sttp.tapir.Schema
+
 case class ResourceDto(
   bucketId: String,
   resourceId: String,
@@ -46,6 +51,7 @@ case class ResourceDto(
   userMeta: UserMetaDto,
   contentType: String,
   resourceMeta: ResourceMetaDto,
+  resourceToolMeta: Option[ResourceToolMeta],
   resourceInfo: ResourceInfoDto,
   urls: ResourceUrlsDto,
   thumbnailTimestamp: Option[Long],
@@ -156,6 +162,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     userMeta = meta,
     contentType = resource.contentType.getOrElse("unknown"),
     resourceMeta = mediaInfo,
+    resourceToolMeta = resource.contentMetaSource.map(s => ResourceToolMeta(s.toolName, s.toolData)),
     resourceInfo = resourceInfo,
     thumbnailTimestamp = resource.thumbnailTimestamp,
     clips = {

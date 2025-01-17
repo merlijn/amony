@@ -26,6 +26,14 @@ trait FFProbe extends Logging {
       IO.pure(result.toTry.get)
     }.timeout(defaultProbeTimeout).memoize.flatten
 
+  def ffprobe(jsonString: String) = IO[FFProbeOutput] {
+    val json = io.circe.parser.parse(jsonString).toTry.get
+    val result = for {
+      decoded <- json.as[FFProbeOutput]
+    } yield decoded
+    result.toTry.get
+  }
+  
   def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration = defaultProbeTimeout): IO[(FFProbeOutput, Json)] =
     ffprobeVersion.flatMap { version =>
       val fileName = file.toAbsolutePath.normalize().toString

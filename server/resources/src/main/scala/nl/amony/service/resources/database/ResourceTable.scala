@@ -1,6 +1,6 @@
 package nl.amony.service.resources.database
 
-import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta, ResourceMetaMessage}
+import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta, ResourceMetaMessage, ResourceMetaSource}
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
@@ -11,7 +11,8 @@ case class ResourceRow(
    hash: String,
    size: Long,
    contentType: Option[String],
-   contentMeta: Option[Array[Byte]],
+   contentMetaToolName: Option[String],
+   contentMetaToolData: Option[String],
    creationTime: Option[Long],
    lastModifiedTime: Option[Long],
    title: Option[String],
@@ -25,7 +26,8 @@ case class ResourceRow(
       hash = hash,
       size = size,
       contentType = contentType,
-      contentMeta = ResourceRow.decodeMeta(contentMeta),
+      contentMetaSource = contentMetaToolName.map(name => ResourceMetaSource(name, contentMetaToolData.getOrElse(""))),
+      contentMeta = ResourceMeta.Empty,
       tags = tags,
       creationTime = creationTime,
       lastModifiedTime = lastModifiedTime,
@@ -38,28 +40,14 @@ case class ResourceRow(
 
 object ResourceRow  {
 
-  def decodeMeta(maybeBytes: Option[Array[Byte]]): ResourceMeta = maybeBytes match {
-    case None => ResourceMeta.Empty
-    case Some(bytes) =>
-      val msg = ResourceMetaMessage.parseFrom(bytes)
-      ResourceMeta.ResourceMetaTypeMapper.toCustom(msg)
-  }
-
-  def encodeMeta(meta: ResourceMeta): Option[Array[Byte]] = {
-
-    Option.when(!meta.isEmpty) {
-      val bytes = ResourceMeta.ResourceMetaTypeMapper.toBase(meta).toByteArray
-      bytes
-    }
-  }
-
   def fromResource(resource: ResourceInfo): ResourceRow = ResourceRow(
     bucketId = resource.bucketId,
     relativePath = resource.path,
     hash = resource.hash,
     size = resource.size,
     contentType = resource.contentType,
-    contentMeta = encodeMeta(resource.contentMeta),
+    contentMetaToolName = resource.contentMetaSource.map(_.toolName),
+    contentMetaToolData = resource.contentMetaSource.map(_.toolData),
     creationTime = resource.creationTime,
     lastModifiedTime = resource.lastModifiedTime,
     title = resource.title,
@@ -77,7 +65,8 @@ class ResourceTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends L
     def bucketId = column[String]("bucket_id")
     def relativePath = column[String]("relative_path")
     def contentType = column[Option[String]]("content_type")
-    def contentMeta = column[Option[Array[Byte]]]("content_meta")
+    def contentMetaToolName = column[Option[String]]("content_meta_tool_name")
+    def contentMetaToolData = column[Option[String]]("content_meta_tool_data")
     def resourceId = column[String]("resource_id")
     def size = column[Long]("size")
     def creationTime = column[Option[Long]]("creation_time")
@@ -91,7 +80,7 @@ class ResourceTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends L
     def hashIdx = index("hash_idx", resourceId)
     def pk = primaryKey("resources_pk", (bucketId, resourceId))
 
-    def * = (bucketId, relativePath, resourceId, size, contentType, contentMeta, creationTime, lastModifiedTime, title, description, thumbnailTimestamp) <>
+    def * = (bucketId, relativePath, resourceId, size, contentType, contentMetaToolName, contentMetaToolData, creationTime, lastModifiedTime, title, description, thumbnailTimestamp) <>
       ((ResourceRow.apply _).tupled, ResourceRow.unapply)
   }
 

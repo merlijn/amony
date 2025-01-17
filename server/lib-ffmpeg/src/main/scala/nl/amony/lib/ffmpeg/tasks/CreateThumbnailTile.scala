@@ -52,7 +52,6 @@ trait CreateThumbnailTile extends Logging {
   ): IO[Unit] = {
 
     val fileBaseName = outputBaseName.getOrElse(inputFile.getFileName.stripExtension().toString)
-
     val vttFilename  = s"$fileBaseName.vtt"
     val webpFilename = s"$fileBaseName.webp"
 
@@ -65,10 +64,8 @@ trait CreateThumbnailTile extends Logging {
 
         val stream             = probe.firstVideoStream.getOrElse(throw new IllegalStateException("no video stream found"))
         val (frames, tileSize) = calculateNrOfFrames(stream.durationMillis)
-
         val mod                = ((stream.fps * (stream.durationMillis / 1000)) / frames).toInt
-
-        val width: Int = ((stream.width.toDouble / stream.height) * height).toInt
+        val width: Int         = ((stream.width.toDouble / stream.height) * height).toInt
 
         // format: off
         val args = List(

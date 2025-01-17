@@ -27,9 +27,9 @@ object LocalResourceScanner {
                 path = basePath.relativize(f.path).toString,
                 hash = f.hash,
                 size = f.size,
-                contentType = Resource.contentTypeForPath(f.path),
-                contentMetaSource = meta.map(_._1),
-                contentMeta = meta.map(_._2).getOrElse(ResourceMeta.Empty),
+                contentType = meta.map(_.contentType),
+                contentMetaSource = meta.flatMap(_.toolMeta),
+                contentMeta = meta.map(_.meta).getOrElse(ResourceMeta.Empty),
                 creationTime = Some(f.creationTime),
                 lastModifiedTime = Some(f.modifiedTime),
                 thumbnailTimestamp = None

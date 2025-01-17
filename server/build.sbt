@@ -26,20 +26,22 @@ val circeParser              = "io.circe"                 %% "circe-parser"     
 val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.5.2"
 val slickHikariCp            = "com.typesafe.slick"       %% "slick-hikaricp"             % "3.5.2"
 
-val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"             % "1.11.11"
-val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"    % "1.11.11"
-val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"      % "1.11.11"
+val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"            % "1.11.11"
+val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"   % "1.11.11"
+val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"     % "1.11.11"
 val tapirSwaggerUI           = "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % "1.11.11"
-val tapirCirce               = "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % "1.11.11"
-val tapirCirceYamlSpec       = "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml" % "0.11.5"
+val tapirCirce               = "com.softwaremill.sttp.tapir" %% "tapir-json-circe"        % "1.11.11"
+val tapirCirceYamlSpec       = "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"    % "0.11.5"
 
-val tapirSharedFs2           = "com.softwaremill.sttp.shared"  %% "fs2"                    % "1.4.2"
+val tapirSharedFs2           = "com.softwaremill.sttp.shared"  %% "fs2"                   % "1.4.2"
 
 val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "10.0.1"
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.16"
 
 val scribe                   = "com.outr"                 %% "scribe"                     % "3.15.3"
 val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.15.3"
+
+val tikaCore                 = "org.apache.tika"           % "tika-core"                  % "3.0.0"
 
 val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.11.0"
 val fs2Io                    = "co.fs2"                   %% "fs2-io"                     % "3.11.0"
@@ -185,7 +187,7 @@ lazy val resources =
       name := "amony-service-resources",
       libraryDependencies ++= Seq(
         scribe,
-        circe, circeGeneric, http4sCirce, jsoup,
+        circe, circeGeneric, http4sCirce, jsoup, tikaCore,
         tapirCore, tapirCatsEffect, tapirCirce, tapirHttp4s,
         scalaTest,
         slick, fs2Core, fs2Io, http4sDsl, liquibaseCore,

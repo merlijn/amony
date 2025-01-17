@@ -5,7 +5,7 @@ import { calculateColumns } from "../../api/Util";
 import Dialog from "../common/Dialog";
 import './ConfigMenu.scss';
 import {useContext} from "react";
-import {adminRefreshBucket, adminReindexBucket} from "../../api/generated";
+import {adminRefreshBucket, adminReindexBucket, adminRescanMetaData} from "../../api/generated";
 
 const ConfigMenu = () => {
 
@@ -133,26 +133,35 @@ const ConfigMenu = () => {
 const AdminOptions = () => {
   return(
     <>
-        <div key="refresh-bucket" className="form-section">
-          <p key="header" className="form-label">Refresh resources</p>
-          <div key="content" className="form-content">
-            <button key="clear-cache-button" onClick={() => {
-              adminRefreshBucket({ 'bucketId' : 'media' })
-            }}>Go
-            </button>
-          </div>
+      <div key="refresh-bucket" className="form-section">
+        <p key="header" className="form-label">Refresh resources</p>
+        <div key="content" className="form-content">
+          <button key="clear-cache-button" onClick={() => {
+            adminRefreshBucket({'bucketId': 'media'})
+          }}>Go
+          </button>
         </div>
-        <div key="reindex-bucket" className="form-section">
-          <p key="header" className="form-label">Reindex resources</p>
-          <div key="content" className="form-content">
-            <button key="clear-cache-button" onClick={() => {
-              adminReindexBucket({ 'bucketId' : 'media' })
-            }}>Go
-            </button>
-          </div>
+      </div>
+      <div key="reindex-bucket" className="form-section">
+        <p key="header" className="form-label">Reindex resources</p>
+        <div key="content" className="form-content">
+          <button key="clear-cache-button" onClick={() => {
+            adminReindexBucket({'bucketId': 'media'})
+          }}>Go
+          </button>
         </div>
-      </>
-      )
-      }
+      </div>
+      <div key="rescan-meta-bucket" className="form-section">
+        <p key="header" className="form-label">Rescan metadata</p>
+        <div key="content" className="form-content">
+          <button key="clear-cache-button" onClick={() => {
+            adminRescanMetaData({'bucketId': 'media'})
+          }}>Go
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
 
-      export default ConfigMenu
+export default ConfigMenu
