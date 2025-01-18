@@ -48,11 +48,18 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
   def reScanAllMetadata(): IO[Unit] =
     getAllResources().evalMap(resource => {
         val f = config.resourcePath.resolve(resource.path)
-        logger.info(s"Scanning resource: $f")
-        LocalResourceMeta.resolveMeta(f).flatMap:
-          case None => IO.unit
+        LocalResourceMeta.detectMetaData(f).flatMap:
+          case None => 
+            logger.warn(s"Failed to scan metadata for $f")
+            IO.unit
           case Some(localResourceMeta) =>
-            val updated = resource.copy(contentMetaSource = localResourceMeta.toolMeta, contentMeta = localResourceMeta.meta)
+            
+            logger.info(s"Updating metadata for $f")
+            val updated = resource.copy(
+              contentType = Some(localResourceMeta.contentType), 
+              contentMetaSource = localResourceMeta.toolMeta,
+              contentMeta = localResourceMeta.meta)
+            
             db.update(updated) >> topic.publish(ResourceUpdated(updated))
 
     }).compile.drain

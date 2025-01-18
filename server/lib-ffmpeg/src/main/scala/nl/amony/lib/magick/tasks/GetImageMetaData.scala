@@ -15,7 +15,7 @@ trait GetImageMetaData {
 
     val fileName = path.toAbsolutePath.normalize().toString
 
-    val args = List(fileName, "-format", "json:")
+    val args = List(fileName, "json:")
 
     useProcessOutput("convert", args, false) { processOutput =>
       IO {

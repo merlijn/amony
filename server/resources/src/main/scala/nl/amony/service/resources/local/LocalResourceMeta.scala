@@ -61,7 +61,7 @@ object LocalResourceMeta extends Logging {
       )
     }.toRight(new Exception("No video stream found")).toTry
   
-  def resolveMeta(path: Path): IO[Option[LocalResourceMeta]] = {
+  def detectMetaData(path: Path): IO[Option[LocalResourceMeta]] = {
     contentTypeForPath(path) match {
 
       case None =>

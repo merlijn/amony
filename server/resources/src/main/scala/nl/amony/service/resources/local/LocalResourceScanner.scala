@@ -17,7 +17,7 @@ object LocalResourceScanner {
   private def mapEvent(basePath: Path, bucketId: String)(fileEvent: FileEvent): IO[ResourceEvent] = fileEvent match {
     case FileAdded(f) =>
 
-      LocalResourceMeta.resolveMeta(f.path)
+      LocalResourceMeta.detectMetaData(f.path)
         .recover { case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None }
         .map {
           meta =>
