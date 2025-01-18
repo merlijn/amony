@@ -30,7 +30,7 @@ const Preview = (props: PreviewProps) => {
   const [resource, setResource] = useState(props.resource)
   const [isHovering, setIsHovering] = useState(false)
 
-  const durationStr = durationInMillisToString(resource.resourceMeta.duration)
+  const durationStr = durationInMillisToString(resource.contentMeta.duration)
 
   const isVideo = resource.contentType.startsWith("video")
 
@@ -44,7 +44,7 @@ const Preview = (props: PreviewProps) => {
 
   const overlay =
       <div className="preview-overlay">
-        { props.options.showResolution && <div className="preview-quality-overlay">{labelForResolution(resource.resourceMeta.height)}</div> }
+        { props.options.showResolution && <div className="preview-quality-overlay">{labelForResolution(resource.contentMeta.height)}</div> }
         { (isVideo && props.options.showDuration) && <div className="duration-overlay">{durationStr}</div> }
         { isHovering && session.isAdmin() && <a className="preview-edit-icon-overlay" href={`/editor/${props.resource.bucketId}/${props.resource.resourceId}`}><ImgWithAlt src="/icons/edit.svg" /></a> }
         {/* { <div className="abs-bottom-right"><FiDownload /></div> } */}

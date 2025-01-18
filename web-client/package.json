@@ -1,5 +1,6 @@
 {
   "name": "amony-web-client",
+  "type": "module",
   "os": [
     "darwin",
     "linux",
@@ -41,7 +42,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc && vite build",
     "serve": "vite preview",
     "generate": "orval --config ./orval.config.ts"
   },

@@ -19,7 +19,7 @@ const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }
   }, [props.resource]);
 
   const modalSize = (v: ResourceDto): CSSProperties => {
-    return boundedRatioBox(isMobile ? "100vw" : "75vw", "75vh", v.resourceMeta.width / v.resourceMeta.height)
+    return boundedRatioBox(isMobile ? "100vw" : "75vw", "75vh", v.contentMeta.width / v.contentMeta.height)
   }
 
   let isVideo = props.resource?.contentType.startsWith("video") || false

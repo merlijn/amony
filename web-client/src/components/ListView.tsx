@@ -163,7 +163,7 @@ const ListView = (props: ListProps) => {
                 </td>
 
                 <td key="size" className="list-cell list-size">
-                  {formatByteSize(resource.resourceInfo.sizeInBytes, 1)}
+                  {formatByteSize(resource.sizeInBytes, 1)}
                 </td>
 
                 <td key="resolution" className="list-cell list-resolution">
@@ -176,7 +176,7 @@ const ListView = (props: ListProps) => {
                             <MdDelete className="delete-action"/>
                         </div>
                     }
-                    {`${resource.resourceMeta.height}p`}
+                    {`${resource.contentMeta.height}p`}
                   </div>
 
                 </td>

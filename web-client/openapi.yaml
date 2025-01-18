@@ -99,10 +99,6 @@ paths:
       responses:
         '200':
           description: ''
-          content:
-            application/json:
-              schema:
-                type: object
         '400':
           description: 'Invalid value for: cookie access_token, Invalid value, Invalid
             value for: cookie XSRF-TOKEN, Invalid value for: body'
@@ -152,10 +148,6 @@ paths:
       responses:
         '200':
           description: ''
-          content:
-            application/json:
-              schema:
-                type: object
         '400':
           description: 'Invalid value for: cookie access_token, Invalid value, Invalid
             value for: cookie XSRF-TOKEN, Invalid value for: body'
@@ -478,18 +470,26 @@ components:
       required:
       - bucketId
       - resourceId
+      - sizeInBytes
+      - path
       - uploader
       - uploadTimestamp
       - userMeta
       - contentType
-      - resourceMeta
-      - resourceInfo
+      - contentMeta
       - urls
       - clips
       properties:
         bucketId:
           type: string
         resourceId:
+          type: string
+        hash:
+          type: string
+        sizeInBytes:
+          type: integer
+          format: int64
+        path:
           type: string
         uploader:
           type: string
@@ -500,10 +500,10 @@ components:
           $ref: '#/components/schemas/UserMetaDto'
         contentType:
           type: string
-        resourceMeta:
+        contentMeta:
           $ref: '#/components/schemas/ResourceMetaDto'
-        resourceInfo:
-          $ref: '#/components/schemas/ResourceInfoDto'
+        contentMetaSource:
+          $ref: '#/components/schemas/ResourceToolMetaDto'
         urls:
           $ref: '#/components/schemas/ResourceUrlsDto'
         thumbnailTimestamp:
@@ -513,21 +513,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ClipDto'
-    ResourceInfoDto:
-      title: ResourceInfoDto
-      type: object
-      required:
-      - hash
-      - sizeInBytes
-      - path
-      properties:
-        hash:
-          type: string
-        sizeInBytes:
-          type: integer
-          format: int64
-        path:
-          type: string
     ResourceMetaDto:
       title: ResourceMetaDto
       type: object
@@ -550,6 +535,17 @@ components:
           type: integer
           format: int64
         codec:
+          type: string
+    ResourceToolMetaDto:
+      title: ResourceToolMetaDto
+      type: object
+      required:
+      - toolName
+      - toolData
+      properties:
+        toolName:
+          type: string
+        toolData:
           type: string
     ResourceUrlsDto:
       title: ResourceUrlsDto

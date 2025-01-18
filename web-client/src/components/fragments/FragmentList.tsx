@@ -8,7 +8,7 @@ import {ResourceDto} from "../../api/generated";
 
 const FragmentList = (props: {vid: ResourceDto, selected: number, selectFn: (f: EditFragment) => any, setVid: (vid: ResourceDto) => any}) => {
 
-  const ratio = (props.vid.resourceMeta.width / props.vid.resourceMeta.height).toFixed(2);
+  const ratio = (props.vid.contentMeta.width / props.vid.contentMeta.height).toFixed(2);
   const [showAddFragment, setShowAddFragment] = useState(false)
 
   const extraStyle = (idx: number): CSSProperties => {

@@ -32,13 +32,7 @@ case class ResourceUrlsDto(
   previewThumbnailsUrl: Option[String],
 ) derives Codec, sttp.tapir.Schema
 
-case class ResourceInfoDto(
-  hash: String,
-  sizeInBytes: Long,
-  path: String
-) derives Codec, sttp.tapir.Schema
-
-case class ResourceToolMeta(
+case class ResourceToolMetaDto(
   toolName: String,
   toolData: String,
 ) derives Codec, sttp.tapir.Schema
@@ -46,13 +40,15 @@ case class ResourceToolMeta(
 case class ResourceDto(
   bucketId: String,
   resourceId: String,
+  hash: Option[String],
+  sizeInBytes: Long,
+  path: String,
   uploader: String,
   uploadTimestamp: Long,
   userMeta: UserMetaDto,
   contentType: String,
-  resourceMeta: ResourceMetaDto,
-  resourceToolMeta: Option[ResourceToolMeta],
-  resourceInfo: ResourceInfoDto,
+  contentMeta: ResourceMetaDto,
+  contentMetaSource: Option[ResourceToolMetaDto],
   urls: ResourceUrlsDto,
   thumbnailTimestamp: Option[Long],
   @customise(required)
@@ -93,8 +89,8 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     val tsPart = if (thumbnailTimestamp != 0) s"_${thumbnailTimestamp}" else ""
 
     ResourceUrlsDto(
-      originalResourceUrl = s"/api/resources/${resource.bucketId}/${resource.hash}/content",
-      thumbnailUrl = s"/api/resources/${resource.bucketId}/${resource.hash}/thumb${tsPart}_${resolutions.min}p.webp",
+      originalResourceUrl  = s"/api/resources/${resource.bucketId}/${resource.hash}/content",
+      thumbnailUrl         = s"/api/resources/${resource.bucketId}/${resource.hash}/thumb${tsPart}_${resolutions.min}p.webp",
       previewThumbnailsUrl = Some(s"/api/resources/${resource.bucketId}/${resource.hash}/timeline.vtt")
     )
   }
@@ -109,13 +105,13 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     resource.path.substring(startIdx, endIdx)
   }
 
-  val meta = UserMetaDto(
-    title = resource.title.orElse(Some(filename)),
+  val userMeta = UserMetaDto(
+    title       = resource.title.orElse(Some(filename)),
     description = resource.description,
-    tags = resource.tags.toList
+    tags        = resource.tags.toList
   )
 
-  val mediaInfo: ResourceMetaDto = resource.contentMeta match {
+  val contentMeta: ResourceMetaDto = resource.contentMeta match {
     case ImageMeta(width, height, _) =>
       ResourceMetaDto(
         width = width,
@@ -144,26 +140,22 @@ def toDto(resource: ResourceInfo): ResourceDto = {
       )
   }
 
-  val resourceInfo = ResourceInfoDto(
-    sizeInBytes = resource.size,
-    hash = resource.hash,
-    path = resource.path
-  )
-
   // hard coded for now
-  val highlights = List(ClipDto(resource.hash, thumbnailTimestamp, Math.min(mediaInfo.duration, thumbnailTimestamp + 3000), List.empty, None, List.empty))
+  val highlights = List(ClipDto(resource.hash, thumbnailTimestamp, Math.min(contentMeta.duration, thumbnailTimestamp + 3000), List.empty, None, List.empty))
 
   ResourceDto(
     bucketId = resource.bucketId,
     resourceId = resource.hash,
+    hash = Some(resource.hash),
+    sizeInBytes = resource.size,
+    path = resource.path,
     uploader = "0",
     uploadTimestamp = resource.getCreationTime,
     urls = urls,
-    userMeta = meta,
+    userMeta = userMeta,
     contentType = resource.contentType.getOrElse("unknown"),
-    resourceMeta = mediaInfo,
-    resourceToolMeta = resource.contentMetaSource.map(s => ResourceToolMeta(s.toolName, s.toolData)),
-    resourceInfo = resourceInfo,
+    contentMeta = contentMeta,
+    contentMetaSource = resource.contentMetaSource.map(s => ResourceToolMetaDto(s.toolName, s.toolData)),
     thumbnailTimestamp = resource.thumbnailTimestamp,
     clips = {
       highlights.map { f =>

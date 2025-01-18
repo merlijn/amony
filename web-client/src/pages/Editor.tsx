@@ -31,7 +31,7 @@ const PlayerView = (props: {vid: ResourceDto}) => {
 
   const [resource, setResource] = useState(props.vid)
   let player = useRef<MediaPlayerInstance>(null)
-  const vidRatio = props.vid.resourceMeta.width / props.vid.resourceMeta.height;
+  const vidRatio = props.vid.contentMeta.width / props.vid.contentMeta.height;
   const id = '#video-' + props.vid.resourceId
 
   // const [plyr, setPlyr] = useState<Plyr | null>(null)
