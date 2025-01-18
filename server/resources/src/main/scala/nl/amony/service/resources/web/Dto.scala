@@ -2,7 +2,8 @@ package nl.amony.service.resources.web.dto
 
 import io.circe.*
 import nl.amony.service.resources.api.*
-import sttp.tapir.Schema
+import sttp.tapir.Schema.SName
+import sttp.tapir.{FieldName, Schema, SchemaType}
 import sttp.tapir.Schema.annotations.customise
 
 def required[T](s: Schema[T]) = s.copy(isOptional = false)
@@ -34,8 +35,13 @@ case class ResourceUrlsDto(
 
 case class ResourceToolMetaDto(
   toolName: String,
-  toolData: String,
-) derives Codec, sttp.tapir.Schema
+  toolData: Json,
+) derives Codec
+
+object ResourceToolMetaDto {
+  given schemaForCirceJsonAny: Schema[Json] = Schema.any[Json]
+  given Schema[ResourceToolMetaDto] = Schema.derived[ResourceToolMetaDto]
+}
 
 case class ResourceDto(
   bucketId: String,
@@ -143,6 +149,10 @@ def toDto(resource: ResourceInfo): ResourceDto = {
   // hard coded for now
   val highlights = List(ClipDto(resource.hash, thumbnailTimestamp, Math.min(contentMeta.duration, thumbnailTimestamp + 3000), List.empty, None, List.empty))
 
+  val contentMetaSource = resource.contentMetaSource.map(
+    s => ResourceToolMetaDto(s.toolName, io.circe.parser.parse(s.toolData).getOrElse(Json.fromString(s.toolData)))
+  )
+
   ResourceDto(
     bucketId = resource.bucketId,
     resourceId = resource.hash,
@@ -155,7 +165,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     userMeta = userMeta,
     contentType = resource.contentType.getOrElse("unknown"),
     contentMeta = contentMeta,
-    contentMetaSource = resource.contentMetaSource.map(s => ResourceToolMetaDto(s.toolName, s.toolData)),
+    contentMetaSource = contentMetaSource,
     thumbnailTimestamp = resource.thumbnailTimestamp,
     clips = {
       highlights.map { f =>

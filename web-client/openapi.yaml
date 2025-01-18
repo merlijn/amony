@@ -545,8 +545,7 @@ components:
       properties:
         toolName:
           type: string
-        toolData:
-          type: string
+        toolData: {}
     ResourceUrlsDto:
       title: ResourceUrlsDto
       type: object
