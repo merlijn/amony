@@ -35,6 +35,15 @@ object ResourceRoutes:
     header(HeaderNames.Expires, "0")
   ).reduce(_ and _)
 
+  val getBuckets =
+    endpoint
+      .name("getBuckets")
+      .tag("resources")
+      .description("Get information about a resource by its id")
+      .get.in("api" / "resources" / "buckets")
+      .out(apiCacheHeaders)
+      .out(jsonBody[List[BucketDto]])
+  
   val getResourceById: Endpoint[SecurityInput, (String, String), ApiError | SecurityError, ResourceDto, Any] =
     endpoint
       .name("getResourceById")

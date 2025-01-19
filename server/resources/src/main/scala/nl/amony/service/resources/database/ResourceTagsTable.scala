@@ -40,7 +40,7 @@ class ResourceTagsTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) exten
     else
       (tableQuery ++= tags.map(ResourceTagRow(bucketId, resourceId, _))).map(_.getOrElse(0))
 
-  def insertOrUpdate(bucketId: String, resourceId: String, tags: Set[String])(using ec: ExecutionContext) =
+  def upsert(bucketId: String, resourceId: String, tags: Set[String])(using ec: ExecutionContext) =
     for {
       currentTags <- queryById(bucketId, resourceId).map(_.tag).result.map(_.toSet)
       removedTags <- removeTags(bucketId, resourceId, currentTags -- tags)

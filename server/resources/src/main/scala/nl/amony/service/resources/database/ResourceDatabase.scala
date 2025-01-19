@@ -47,7 +47,7 @@ class ResourceDatabase[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
         .on((a, b) => a.bucketId === b.bucketId && a.resourceId === b.resourceId)
         .filter((resource, maybeTag) => resource.bucketId === bucketId)
 
-    def getWithTags(bucketId: String, filter: Option[resourcesTable.LocalFilesSchema => Rep[Boolean]] = None) = {
+    def getWithTags(bucketId: String, filter: Option[resourcesTable.ResourceSchema => Rep[Boolean]] = None) = {
       val query = filter match {
         case Some(f) => joinResourceWithTags(bucketId).filter((resource, tag) => f(resource))
         case None    => joinResourceWithTags(bucketId)
@@ -96,8 +96,8 @@ class ResourceDatabase[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
   def upsert(resource: ResourceInfo, effect: () => IO[Unit] = () => IO.unit): IO[Unit] =
     dbIO(
       (for {
-        _ <- resourcesTable.insertOrUpdate(resource)
-        _ <- tagsTable.insertOrUpdate(resource.bucketId, resource.hash, resource.tags.toSet)
+        _ <- resourcesTable.upsert(resource)
+        _ <- tagsTable.upsert(resource.bucketId, resource.hash, resource.tags.toSet)
         _ <- DBIO.from(effect().unsafeToFuture())
       } yield ()).transactionally
     )
@@ -112,14 +112,13 @@ class ResourceDatabase[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
     )
 
   def deleteResource(bucketId: String, resourceId: String, effect: () => IO[Unit] = () => IO.unit) : IO[Unit] = {
-    val transaction =
+    dbIO(
       (for {
         _ <- resourcesTable.getByHash(bucketId, resourceId).delete
         _ <- tagsTable.queryById(bucketId, resourceId).delete
         _ <- DBIO.from(effect().unsafeToFuture())
       } yield ()).transactionally
-
-    dbIO(transaction)
+    )
   }
 
   def getAllByIds(bucketId: String, resourceIds: Seq[String]): IO[Seq[ResourceInfo]] =
@@ -147,7 +146,7 @@ class ResourceDatabase[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
                        val updatedRow = row.copy(title = title, description = description)
                        resourcesTable.update(updatedRow).map(_ => Some(updatedRow))
                      }.getOrElse(DBIO.successful(Option.empty[ResourceRow]))
-                _ <- tagsTable.insertOrUpdate(bucketId, hash, tags.toSet)
+                _ <- tagsTable.upsert(bucketId, hash, tags.toSet)
                 _ <- updated.map(row => DBIO.from( effect(row.toResource(tags)).unsafeToFuture() )).getOrElse(DBIO.successful(()))
     } yield ()).transactionally
 

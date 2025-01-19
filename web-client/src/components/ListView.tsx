@@ -159,7 +159,7 @@ const ListView = (props: ListProps) => {
                 <TagsCell resource={resource}/>
 
                 <td key="date" className="list-cell list-date">
-                  {dateMillisToString(resource.uploadTimestamp)}
+                  {dateMillisToString(resource.timeCreated)}
                 </td>
 
                 <td key="size" className="list-cell list-size">
@@ -190,11 +190,11 @@ const ListView = (props: ListProps) => {
 
 const TagsCell = (props: {
   resource: ResourceDto }) => {
-  const [tags, setTags] = useState(props.resource.userMeta.tags)
+  const [tags, setTags] = useState(props.resource.tags)
   const session = useContext(SessionContext)
 
   const updateTags = (newTags: Array<string>) => {
-    const meta: UserMetaDto = { ...props.resource.userMeta, tags: newTags }
+    const meta: UserMetaDto = { title: props.resource.title, description: props.resource.description, tags: newTags }
 
     updateUserMetaData(props.resource.bucketId, props.resource.resourceId, meta).then(() =>  {
       setTags(newTags)
@@ -211,7 +211,7 @@ type TitleCellProps =  { mediaResource: ResourceDto; } & React.HTMLProps<HTMLTab
 
 const TitleCell = ({ mediaResource, ...elementProps }: TitleCellProps ) => {
 
-  const [title, setTitle] = useState(mediaResource.userMeta.title)
+  const [title, setTitle] = useState(mediaResource.title)
   const [editTitle, setEditTitle] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const session = useContext(SessionContext)
@@ -222,7 +222,7 @@ const TitleCell = ({ mediaResource, ...elementProps }: TitleCellProps ) => {
   }, [editTitle])
 
   const updateTitle = (newTitle: string) => {
-    const meta: UserMetaDto = { ...mediaResource.userMeta, title: newTitle }
+    const meta: UserMetaDto = { tags: mediaResource.tags, description: mediaResource.description, title: newTitle }
 
     updateUserMetaData(mediaResource.bucketId, mediaResource.resourceId, meta).then(() =>  {
       setTitle(newTitle)

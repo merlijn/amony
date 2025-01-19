@@ -2,7 +2,7 @@ package nl.amony.service.auth
 
 import cats.effect.IO
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
-import nl.amony.service.auth.tapir.securityInput
+import nl.amony.service.auth.tapir.{SecurityInput, securityInput}
 import org.http4s.UrlForm.given
 import org.http4s.dsl.io.*
 import org.http4s.headers.{Location, `WWW-Authenticate`}
@@ -26,7 +26,7 @@ object AuthRoutes extends Logging {
   
   val errorOutput = oneOf[SecurityError](unauthorizedOutput, forbiddenOutput)
   
-  val session =
+  val session: Endpoint[SecurityInput, Unit, SecurityError, AuthToken, Any] =
     endpoint
       .name("getSession")
       .tag("auth")
@@ -36,7 +36,7 @@ object AuthRoutes extends Logging {
       .out(jsonBody[AuthToken])
       .errorOut(errorOutput)
   
-  val logout =
+  val logout: Endpoint[Unit, Unit, Unit, (CookieValueWithMeta, CookieValueWithMeta, CookieValueWithMeta), Any] =
     endpoint
       .name("authLogout")
       .tag("auth")
@@ -67,8 +67,7 @@ object AuthRoutes extends Logging {
     
     Http4sServerInterpreter[IO]().toRoutes(List(sessionImpl, logoutImpl))
   }
-    
-
+  
   def apply(authService: AuthService, authConfig: AuthConfig) =
     HttpRoutes.of[IO]:
       case GET -> Root / "login" =>

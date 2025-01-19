@@ -60,7 +60,7 @@ class ResourceTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends L
 
   import dbConfig.profile.api.*
 
-  class LocalFilesSchema(ttag: slick.lifted.Tag) extends Table[ResourceRow](ttag, "files") {
+  class ResourceSchema(ttag: slick.lifted.Tag) extends Table[ResourceRow](ttag, "files") {
 
     def bucketId = column[String]("bucket_id")
     def relativePath = column[String]("relative_path")
@@ -84,9 +84,9 @@ class ResourceTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends L
       ((ResourceRow.apply _).tupled, ResourceRow.unapply)
   }
 
-  val innerTable = TableQuery[LocalFilesSchema]
+  val innerTable = TableQuery[ResourceSchema]
 
-  def getByHash(bucketId: String, hash: String): Query[LocalFilesSchema, ResourceRow, Seq] =
+  def getByHash(bucketId: String, hash: String): Query[ResourceSchema, ResourceRow, Seq] =
     innerTable
       .filter(_.bucketId === bucketId)
       .filter(_.resourceId === hash)
@@ -105,8 +105,7 @@ class ResourceTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends L
   def update(resource: ResourceInfo) =
     getByHash(resource.bucketId, resource.hash).update(ResourceRow.fromResource(resource))
 
-  def insertOrUpdate(resource: ResourceInfo) =
-    // ! The insertOrUpdate operation does not work in combination with a byte array field and hsqldb
+  def upsert(resource: ResourceInfo) =
     innerTable.insertOrUpdate(ResourceRow.fromResource(resource))
 
   def allForBucket(bucketId: String) =

@@ -36,7 +36,7 @@ class ResourceDatabaseSpec extends AnyFlatSpecLike with Logging {
 
   val store = new ResourceDatabase(dbConfig)
 
-  store.createTablesIfNotExists()
+//  store.createTablesIfNotExists()
 
   def createResource(bucketId: String, resourceId: String = java.util.UUID.randomUUID().toString, tags: Seq[String] = Seq.empty): ResourceInfo = {
     ResourceInfo(

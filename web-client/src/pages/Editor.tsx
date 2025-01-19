@@ -133,7 +133,7 @@ const PlayerView = (props: {vid: ResourceDto}) => {
             id = {id}
             ref = { player }
             src = { { src: props.vid.urls.originalResourceUrl, type: "video/mp4"  } }
-            title = { props.vid.userMeta.title }
+            title = { props.vid.title }
             controlsDelay = { 5000 }
             autoPlay = { false }
             viewType = "video"

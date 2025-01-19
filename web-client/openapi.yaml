@@ -472,9 +472,9 @@ components:
       - resourceId
       - sizeInBytes
       - path
-      - uploader
-      - uploadTimestamp
-      - userMeta
+      - timeCreated
+      - userId
+      - tags
       - contentType
       - contentMeta
       - urls
@@ -491,13 +491,19 @@ components:
           format: int64
         path:
           type: string
-        uploader:
-          type: string
-        uploadTimestamp:
+        timeCreated:
           type: integer
           format: int64
-        userMeta:
-          $ref: '#/components/schemas/UserMetaDto'
+        userId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
         contentType:
           type: string
         contentMeta:

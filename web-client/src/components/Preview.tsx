@@ -38,8 +38,8 @@ const Preview = (props: PreviewProps) => {
 
   const titlePanel =
       <div className = "preview-info-bar">
-        <span className="media-title" title={resource.userMeta.title}>{resource.userMeta.title}</span>
-        { props.options.showDates && <span className="media-date">{dateMillisToString(resource.uploadTimestamp)}</span> }
+        <span className="media-title" title={resource.title}>{resource.title}</span>
+        { props.options.showDates && <span className="media-date">{dateMillisToString(resource.timeCreated)}</span> }
       </div>
 
   const overlay =

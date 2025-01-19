@@ -40,7 +40,7 @@ const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }
             playsInline
             ref = { player }
             src = { { src: src, type: "video/mp4"  } }
-            title = { props.resource?.userMeta.title }
+            title = { props.resource?.title }
             style = { !isVideo ? { display: "none" } : {} }
             controlsDelay = { 5000 }
             hideControlsOnMouseLeave = { true }
