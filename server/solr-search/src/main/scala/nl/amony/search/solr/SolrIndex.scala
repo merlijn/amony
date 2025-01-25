@@ -33,6 +33,7 @@ object SolrIndex {
   object FieldNames {
     val id = "id"
     val bucketId = "bucket_id_s"
+    val hash = "hash_s"
     val path = "path_text_ci"
     val filesize = "filesize_l"
     val tags = "tags_ss"
@@ -78,7 +79,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
 
   if (Files.exists(lockfilePath) && config.deleteLockfileOnStartup) {
     logger.info(s"Deleting lock file at: $lockfilePath")
-    Files.delete(lockfilePath)
+//    Files.delete(lockfilePath)
   }
 
   protected def close(): IO[Unit] = IO {
@@ -98,7 +99,8 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
   private def toSolrDocument(resource: ResourceInfo): SolrInputDocument = {
     
     val solrInputDocument: SolrInputDocument = new SolrInputDocument()
-    solrInputDocument.addField(FieldNames.id, resource.hash)
+
+    solrInputDocument.addField(FieldNames.id, resource.resourceId)
     solrInputDocument.addField(FieldNames.bucketId, resource.bucketId)
     solrInputDocument.addField(FieldNames.path, resource.path)
     solrInputDocument.addField(FieldNames.filesize, resource.size)
@@ -128,12 +130,15 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
       case _ =>
     }
 
+    logger.debug(s"Indexing document: $solrInputDocument")
+    
     solrInputDocument
   }
 
   private def toResource(document: SolrDocument): ResourceInfo = {
 
-    val id = document.getFieldValue(FieldNames.id).asInstanceOf[String]
+    val resourceId = document.getFieldValue(FieldNames.id).asInstanceOf[String]
+    val hash = Option(document.getFieldValue(FieldNames.hash)).map(_.asInstanceOf[String])
     val bucketId = document.getFieldValue(FieldNames.bucketId).asInstanceOf[String]
     val title = Option(document.getFieldValue(FieldNames.title)).map(_.asInstanceOf[String])
     val path = document.getFieldValue(FieldNames.path).asInstanceOf[String]
@@ -150,7 +155,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
     val resourceType = document.getFieldValue(FieldNames.resourceType).asInstanceOf[String]
     val thumbnailTimestamp = Option(document.getFieldValue(FieldNames.thumbnailTimestamp)).map(_.asInstanceOf[Long])
 
-    val tags = Option(document.getFieldValues(FieldNames.tags)).map(_.asInstanceOf[java.util.List[String]].asScala).getOrElse(List.empty).toSeq
+    val tags = Option(document.getFieldValues(FieldNames.tags)).map(_.asInstanceOf[java.util.List[String]].asScala).getOrElse(List.empty).toSet
 
     val contentMeta: ResourceMeta = resourceType match {
 
@@ -163,7 +168,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
       case _ => ResourceMeta.Empty
     }
 
-    ResourceInfo(bucketId, path, id, size, contentType, None, contentMeta, creationTime, lastModified, title, description, tags, thumbnailTimestamp)
+    ResourceInfo(bucketId, resourceId, path, size, hash, contentType, None, contentMeta, creationTime, lastModified, title, description, tags, thumbnailTimestamp)
   }
 
   private def toSolrQuery(query: Query) = {
@@ -303,4 +308,10 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
       )
     }
   }
+
+  override def forceCommit(request: ForceCommitRequest): Future[ForceCommitResult] =
+    Future {
+      logger.info("Forcing commit")
+      solr.commit(collectionName); ForceCommitResult()
+    }
 }

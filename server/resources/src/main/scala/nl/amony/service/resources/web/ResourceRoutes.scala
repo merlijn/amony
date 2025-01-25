@@ -14,7 +14,7 @@ import sttp.model.{HeaderNames, StatusCode}
 import sttp.tapir.*
 import sttp.tapir.EndpointOutput.OneOfVariant
 import sttp.tapir.json.circe.*
-import sttp.tapir.server.http4s.Http4sServerInterpreter
+import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 
 def oneOfList[T](variants: List[OneOfVariant[_ <: T]]) = EndpointOutput.OneOf[T, T](variants, Mapping.id)
 
@@ -116,8 +116,15 @@ object ResourceRoutes:
             (bucket, _) => EitherT.right(bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis))
           }.value
         )
+      
+//    val serverLog = Http4sServerOptions.defaultServerLog[IO].copy(
+//      doLogExceptions = (msg, throwable) => IO(throwable.printStackTrace()), 
+//    )
 
-    Http4sServerInterpreter[IO]().toRoutes(
-      List(getResourceByIdImpl, updateUserMetaDataImpl, updateThumbnailTimestampImpl)
-    )
+    val serverOptions: Http4sServerOptions[IO] = Http4sServerOptions
+      .customiseInterceptors[IO]
+      .options
+    
+    Http4sServerInterpreter[IO](serverOptions)
+      .toRoutes(List(getResourceByIdImpl, updateUserMetaDataImpl, updateThumbnailTimestampImpl))
   }

@@ -6,6 +6,7 @@ import nl.amony.service.auth.{Authenticator, JwtDecoder, Roles, SecurityError}
 import nl.amony.service.resources.ResourceBucket
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.oneOfList
+import nl.amony.service.search.api.ForceCommitRequest
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import org.http4s.*
 import scribe.Logging
@@ -46,6 +47,15 @@ object AdminRoutes extends Logging:
       .securityIn(securityInput)
       .errorOut(errorOutput)
 
+  val backupBucket =
+    endpoint
+      .name("adminBackupBucket")
+      .tag("admin")
+      .description("Backup all resources in a bucket")
+      .get.in("api" / "admin" / "backup" / path[String]("bucketId"))
+      .securityIn(securityInput)
+      .errorOut(errorOutput)
+  
   val endpoints = List(reIndex, refresh, rescanMetaData)
 
   def apply(searchService: SearchService, buckets: Map[String, ResourceBucket], jwtDecoder: JwtDecoder): HttpRoutes[IO] = {
@@ -64,6 +74,7 @@ object AdminRoutes extends Logging:
                 .getAllResources().foreach { resource => IO.fromFuture(IO(searchService.index(resource))).map(_ => ()) }
                 .compile
                 .drain
+                .flatMap(_ => IO.fromFuture(IO(searchService.forceCommit(ForceCommitRequest()))).map(_ => ()))
         )
 
     val refreshImpl =

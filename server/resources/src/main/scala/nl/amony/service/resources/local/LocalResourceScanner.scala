@@ -24,8 +24,9 @@ object LocalResourceScanner {
             ResourceAdded(
               ResourceInfo(
                 bucketId = bucketId,
+                resourceId = f.hash,
                 path = basePath.relativize(f.path).toString,
-                hash = f.hash,
+                hash = Some(f.hash),
                 size = f.size,
                 contentType = meta.map(_.contentType),
                 contentMetaSource = meta.flatMap(_.toolMeta),
@@ -56,7 +57,7 @@ object LocalResourceScanner {
 
     val initialFiles: Map[Path, FileInfo] = initialState.map { r =>
       val path = resourcePath.resolve(Path.of(r.path))
-      path -> FileInfo(resourcePath.resolve(Path.of(r.path)), r.hash, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0))
+      path -> FileInfo(resourcePath.resolve(Path.of(r.path)), r.hash.get, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0))
     }.toMap
 
     val fileStore = new InMemoryFileStore(initialFiles)

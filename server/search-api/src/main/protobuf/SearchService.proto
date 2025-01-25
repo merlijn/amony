@@ -12,5 +12,10 @@ service SearchService {
   rpc indexAll(stream nl.amony.service.resources.api.ResourceInfo) returns (ReIndexResult) { }
 
   rpc index(nl.amony.service.resources.api.ResourceInfo) returns (ReIndexResult) { }
+
+  rpc forceCommit(ForceCommitRequest) returns (ForceCommitResult) { }
 }
 
+message ForceCommitRequest { }
+
+message ForceCommitResult { }

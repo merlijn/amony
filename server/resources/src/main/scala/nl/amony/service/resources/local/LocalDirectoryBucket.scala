@@ -37,10 +37,11 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
   Files.createDirectories(config.cachePath)
 
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = 
-    db.getByHash(config.id, resourceId).map { _.map { info =>
-      val meta: Option[ResourceMeta] = info.contentMetaSource.flatMap(meta => LocalResourceMeta.scanToolMeta(meta).toOption)
-      info.copy(contentMeta = meta.getOrElse(ResourceMeta.Empty))
-    }
+    db.getByResourceId(config.id, resourceId).map(_.map(recoverMeta))
+    
+  private def recoverMeta(info: ResourceInfo) = {
+    val meta: Option[ResourceMeta] = info.contentMetaSource.flatMap(meta => LocalResourceMeta.scanToolMeta(meta).toOption)
+    info.copy(contentMeta = meta.getOrElse(ResourceMeta.Empty))
   }
 
   override def id = config.id
@@ -164,5 +165,5 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
 
   override def getAllResources(): fs2.Stream[IO, ResourceInfo] =
     // TODO this should be a stream from the database
-    fs2.Stream.eval(db.getAll(config.id)).flatMap { resources => fs2.Stream.emits[IO, ResourceInfo](resources) }
+    fs2.Stream.eval(db.getAll(config.id)).flatMap { resources => fs2.Stream.emits[IO, ResourceInfo](resources.map(recoverMeta)) }
 }

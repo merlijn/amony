@@ -2,14 +2,7 @@ package nl.amony.service.resources.util
 
 object Base32 {
 
-  //  val alphabet2 = "abcdefghijklmnopqrstuvwxyz234567".toCharArray
-  // format: off
-
-  val alphabet: Array[Char] = Array(
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
-    'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '2', '3', '4', '5', '6', '7'
-  )
-  // format: on
+  val alphabet = "abcdefghijklmnopqrstuvwxyz234567".toCharArray
 
   val byteN = 8
 
@@ -101,7 +94,7 @@ object Base32 {
 //    value
 //  }
 
-  def extractBits(bytes: Array[Byte], startBit: Int, bitsToRead: Int): Int = {
+  private def extractBits(bytes: Array[Byte], startBit: Int, bitsToRead: Int): Int = {
     if (bitsToRead <= 0) return 0
 
     val startByte = startBit / 8
@@ -128,10 +121,8 @@ object Base32 {
     }
 
     // Handle remaining bits in the last byte
-    if (remainingBits > 0) {
-      result = (result << remainingBits) |
-        ((bytes(currentByte) & 0xFF) >>> (8 - remainingBits))
-    }
+    if (remainingBits > 0)
+      result = (result << remainingBits) | ((bytes(currentByte) & 0xFF) >>> (8 - remainingBits))
 
     result
   }

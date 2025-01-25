@@ -90,13 +90,14 @@ def fromDto(dto: ResourceDto): ResourceInfo = {
   
   ResourceInfo(
     bucketId = dto.bucketId,
+    resourceId = dto.resourceId,
     path = dto.path,
-    hash = dto.resourceId,
+    hash = dto.hash,
     size = dto.sizeInBytes,
     contentType = Some(dto.contentType),
     contentMeta = ResourceMeta.Empty, // Can be re-created from the source
     contentMetaSource = contentMetaSource,
-    tags = dto.tags,
+    tags = dto.tags.toSet,
     creationTime = Some(dto.timeCreated),
     title = dto.title,
     description = dto.description,
@@ -127,9 +128,9 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     val tsPart = if (thumbnailTimestamp != 0) s"_${thumbnailTimestamp}" else ""
 
     ResourceUrlsDto(
-      originalResourceUrl  = s"/api/resources/${resource.bucketId}/${resource.hash}/content",
-      thumbnailUrl         = s"/api/resources/${resource.bucketId}/${resource.hash}/thumb${tsPart}_${resolutions.min}p.webp",
-      previewThumbnailsUrl = Some(s"/api/resources/${resource.bucketId}/${resource.hash}/timeline.vtt")
+      originalResourceUrl  = s"/api/resources/${resource.bucketId}/${resource.resourceId}/content",
+      thumbnailUrl         = s"/api/resources/${resource.bucketId}/${resource.resourceId}/thumb${tsPart}_${resolutions.min}p.webp",
+      previewThumbnailsUrl = Some(s"/api/resources/${resource.bucketId}/${resource.resourceId}/timeline.vtt")
     )
   }
 
@@ -173,7 +174,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
   }
 
   // hard coded for now
-  val clips = List(ClipDto(resource.hash, thumbnailTimestamp, Math.min(contentMeta.duration, thumbnailTimestamp + 3000), List.empty, None, List.empty))
+  val clips = List(ClipDto(resource.resourceId, thumbnailTimestamp, Math.min(contentMeta.duration, thumbnailTimestamp + 3000), List.empty, None, List.empty))
 
   val contentMetaSource = resource.contentMetaSource.map(
     s => ResourceToolMetaDto(s.toolName, io.circe.parser.parse(s.toolData).getOrElse(Json.fromString(s.toolData)))
@@ -181,8 +182,8 @@ def toDto(resource: ResourceInfo): ResourceDto = {
 
   ResourceDto(
     bucketId    = resource.bucketId,
-    resourceId  = resource.hash,
-    hash        = Some(resource.hash),
+    resourceId  = resource.resourceId,
+    hash        = resource.hash,
     sizeInBytes = resource.size,
     path        = resource.path,
     timeCreated = resource.getCreationTime,
@@ -199,11 +200,11 @@ def toDto(resource: ResourceInfo): ResourceDto = {
       clips.map { f =>
 
         val urls = resolutions.map(height =>
-          s"/api/resources/${resource.bucketId}/${resource.hash}/clip_${f.start}-${f.end}_${height}p.mp4"
+          s"/api/resources/${resource.bucketId}/${resource.resourceId}/clip_${f.start}-${f.end}_${height}p.mp4"
         )
 
         ClipDto(
-          resourceId = resource.hash,
+          resourceId = resource.resourceId,
           start = f.start,
           end = f.end,
           urls = urls,

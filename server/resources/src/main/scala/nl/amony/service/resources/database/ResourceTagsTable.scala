@@ -6,7 +6,7 @@ import slick.jdbc.JdbcProfile
 
 import scala.concurrent.ExecutionContext
 
-case class ResourceTagRow(bucketId: String, resourceId: String, tag: String)
+case class ResourceTagRow(bucketId: String, resourceId: String, tag: Int)
 
 class ResourceTagsTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends Logging {
 
@@ -16,33 +16,33 @@ class ResourceTagsTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) exten
 
     def bucketId: Rep[String] = column[String]("bucket_id")
     def resourceId = column[String]("resource_id")
-    def tag = column[String]("tag")
+    def tagId = column[Int]("tag_id")
     def resourceId_idx = index("resource_idx", (bucketId, resourceId))
-    def pk = primaryKey("resource_tags_pk", (bucketId, resourceId, tag))
+    def pk = primaryKey("resource_tags_pk", (bucketId, resourceId, tagId))
 
-    def * = (bucketId, resourceId, tag) <> ((ResourceTagRow.apply _).tupled, ResourceTagRow.unapply)
+    def * = (bucketId, resourceId, tagId) <> ((ResourceTagRow.apply _).tupled, ResourceTagRow.unapply)
   }
 
-  val tableQuery = TableQuery[ResourceTags]
+  val table = TableQuery[ResourceTags]
 
   def queryById(bucketId: String, resourceId: String) =
-    tableQuery.filter(r => r.bucketId === bucketId && r.resourceId === resourceId)
+    table.filter(r => r.bucketId === bucketId && r.resourceId === resourceId)
 
   def getTags(bucketId: String, resourceId: String) =
-    queryById(bucketId, resourceId).map(_.tag)
+    queryById(bucketId, resourceId).map(_.tagId)
     
-  def removeTags(bucketId: String, resourceId: String, tags: Set[String]) =
-    queryById(bucketId, resourceId).filter(_.tag.inSet(tags)).delete
+  def removeTags(bucketId: String, resourceId: String, tags: Set[Int]) =
+    queryById(bucketId, resourceId).filter(_.tagId.inSet(tags)).delete
 
-  def insert(bucketId: String, resourceId: String, tags: Set[String])(using ec: ExecutionContext): DBIO[Int] =
+  def insert(bucketId: String, resourceId: String, tags: Set[Int])(using ec: ExecutionContext): DBIO[Int] =
     if (tags.isEmpty)
       DBIO.successful(0)
     else
-      (tableQuery ++= tags.map(ResourceTagRow(bucketId, resourceId, _))).map(_.getOrElse(0))
+      (table ++= tags.map(ResourceTagRow(bucketId, resourceId, _))).map(_.getOrElse(0))
 
-  def upsert(bucketId: String, resourceId: String, tags: Set[String])(using ec: ExecutionContext) =
+  def upsert(bucketId: String, resourceId: String, tags: Set[Int])(using ec: ExecutionContext) =
     for {
-      currentTags <- queryById(bucketId, resourceId).map(_.tag).result.map(_.toSet)
+      currentTags <- queryById(bucketId, resourceId).map(_.tagId).result.map(_.toSet)
       removedTags <- removeTags(bucketId, resourceId, currentTags -- tags)
       addedTags   <- insert(bucketId, resourceId, tags -- currentTags)
     } yield addedTags + removedTags

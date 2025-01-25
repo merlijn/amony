@@ -26,6 +26,8 @@ val circeParser              = "io.circe"                 %% "circe-parser"     
 val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.5.2"
 val slickHikariCp            = "com.typesafe.slick"       %% "slick-hikaricp"             % "3.5.2"
 
+val sqids                    = "org.sqids" %% "sqids" % "0.5.0"
+
 val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"            % "1.11.11"
 val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"   % "1.11.11"
 val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"     % "1.11.11"
@@ -186,7 +188,7 @@ lazy val resources =
     .settings(
       name := "amony-service-resources",
       libraryDependencies ++= Seq(
-        scribe,
+        scribe, sqids,
         circe, circeGeneric, http4sCirce, jsoup, tikaCore,
         tapirCore, tapirCatsEffect, tapirCirce, tapirHttp4s,
         scalaTest,
@@ -252,16 +254,16 @@ lazy val solrSearch =
       Compile / resourceGenerators += buildSolrTarGz.taskValue
     )
 
-val javaOpts = Seq("-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true", "-DAMONY_SECURE_COOKIES=false", "-DAMONY_MEDIA_PATH=../../media")
+val javaDevOpts = Seq("-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true", "-DAMONY_SECURE_COOKIES=false", "-DAMONY_MEDIA_PATH=../../media")
 
 lazy val app =
   module("app", mainClass = true)
     .dependsOn(auth, resources, searchService, solrSearch)
     .settings(
       name := "amony-app",
-      reStart / javaOptions ++= javaOpts,
+      reStart / javaOptions ++= javaDevOpts,
       run / fork             := true,
-      run / javaOptions     ++= javaOpts,
+      run / javaOptions     ++= javaDevOpts,
       outputStrategy         := Some(StdoutOutput),
 
       jibBaseImage            := "europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/base:latest",

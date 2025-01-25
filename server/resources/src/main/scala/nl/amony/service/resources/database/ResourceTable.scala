@@ -19,16 +19,17 @@ case class ResourceRow(
    description: Option[String],
    thumbnailTimestamp: Option[Long] = None) {
 
-  def toResource(tags: Seq[String]): ResourceInfo = {
+  def toResource(tagLabels: Set[String]): ResourceInfo = {
     ResourceInfo(
       bucketId = bucketId,
+      resourceId = hash,
       path = relativePath,
-      hash = hash,
+      hash = Some(hash),
       size = size,
       contentType = contentType,
       contentMetaSource = contentMetaToolName.map(name => ResourceMetaSource(name, contentMetaToolData.getOrElse(""))),
       contentMeta = ResourceMeta.Empty,
-      tags = tags,
+      tags = tagLabels,
       creationTime = creationTime,
       lastModifiedTime = lastModifiedTime,
       title = title,
@@ -43,7 +44,7 @@ object ResourceRow  {
   def fromResource(resource: ResourceInfo): ResourceRow = ResourceRow(
     bucketId = resource.bucketId,
     relativePath = resource.path,
-    hash = resource.hash,
+    hash = resource.hash.get,
     size = resource.size,
     contentType = resource.contentType,
     contentMetaToolName = resource.contentMetaSource.map(_.toolName),
@@ -84,30 +85,30 @@ class ResourceTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends L
       ((ResourceRow.apply _).tupled, ResourceRow.unapply)
   }
 
-  val innerTable = TableQuery[ResourceSchema]
+  val table = TableQuery[ResourceSchema]
 
-  def getByHash(bucketId: String, hash: String): Query[ResourceSchema, ResourceRow, Seq] =
-    innerTable
+  def getById(bucketId: String, resourceId: String): Query[ResourceSchema, ResourceRow, Seq] =
+    table
       .filter(_.bucketId === bucketId)
-      .filter(_.resourceId === hash)
+      .filter(_.resourceId === resourceId)
 
   def getByPath(bucketId: String, path: String) =
-    innerTable
+    table
       .filter(_.bucketId === bucketId)
       .filter(_.relativePath === path)
 
   def insert(resource: ResourceInfo) =
-    innerTable += ResourceRow.fromResource(resource)
+    table += ResourceRow.fromResource(resource)
 
   def update(row: ResourceRow) =
-    getByHash(row.bucketId, row.hash).update(row)
+    getById(row.bucketId, row.hash).update(row)
 
   def update(resource: ResourceInfo) =
-    getByHash(resource.bucketId, resource.hash).update(ResourceRow.fromResource(resource))
+    getById(resource.bucketId, resource.resourceId).update(ResourceRow.fromResource(resource))
 
   def upsert(resource: ResourceInfo) =
-    innerTable.insertOrUpdate(ResourceRow.fromResource(resource))
+    table.insertOrUpdate(ResourceRow.fromResource(resource))
 
   def allForBucket(bucketId: String) =
-    innerTable.filter(_.bucketId === bucketId)
+    table.filter(_.bucketId === bucketId)
 }
