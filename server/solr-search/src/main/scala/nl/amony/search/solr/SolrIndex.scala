@@ -77,15 +77,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
     TarGzExtractor.extractResourceTarGz(solrTarGzResource, solrHome)
   }
 
-  if (Files.exists(lockfilePath) && config.deleteLockfileOnStartup) {
-    logger.info(s"Deleting lock file at: $lockfilePath")
-//    Files.delete(lockfilePath)
-  }
-
   protected def close(): IO[Unit] = IO {
-    if (Files.exists(lockfilePath))
-      Files.delete(lockfilePath)
-    
     solr.close()
     container.shutdown()
   }
@@ -107,7 +99,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
 
     val maybeTags = Option.when(resource.tags.nonEmpty)(resource.tags)
     maybeTags.foreach(tags => solrInputDocument.addField(FieldNames.tags, resource.tags.toList.asJava))
-
+    
     resource.thumbnailTimestamp.foreach(timestamp => solrInputDocument.addField(FieldNames.thumbnailTimestamp, timestamp))
     resource.title.foreach(title => solrInputDocument.addField(FieldNames.title, title))
     resource.description.foreach(description => solrInputDocument.addField(FieldNames.description, description))
@@ -130,12 +122,14 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
       case _ =>
     }
 
-    logger.debug(s"Indexing document: $solrInputDocument")
+    logger.info(s"Indexing document: $solrInputDocument")
     
     solrInputDocument
   }
 
   private def toResource(document: SolrDocument): ResourceInfo = {
+    
+    logger.info(s"Decoding document: $document")
 
     val resourceId = document.getFieldValue(FieldNames.id).asInstanceOf[String]
     val hash = Option(document.getFieldValue(FieldNames.hash)).map(_.asInstanceOf[String])

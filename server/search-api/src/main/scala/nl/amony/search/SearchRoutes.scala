@@ -12,7 +12,7 @@ import nl.amony.service.search.api.{Query, SortField, SortOption}
 import org.http4s.HttpRoutes
 import sttp.tapir.*
 import sttp.tapir.json.circe.jsonBody
-import sttp.tapir.server.http4s.Http4sServerInterpreter
+import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 
 object SearchRoutes:
 
@@ -58,7 +58,7 @@ object SearchRoutes:
 
   private val durationPattern = raw"(\d*)-(\d*)".r
 
-  def searchResourceRoutes(searchService: SearchService, config: SearchConfig, jwtDecoder: JwtDecoder): HttpRoutes[IO] = {
+  def apply(searchService: SearchService, config: SearchConfig, jwtDecoder: JwtDecoder)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
 
     val security = Authenticator(jwtDecoder)
 
@@ -118,5 +118,5 @@ object SearchRoutes:
         }
       }
 
-    Http4sServerInterpreter[IO]().toRoutes(List(routeImpl))
+    Http4sServerInterpreter[IO](serverOptions).toRoutes(List(routeImpl))
   }

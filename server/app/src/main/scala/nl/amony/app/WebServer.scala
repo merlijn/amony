@@ -15,7 +15,7 @@ import scribe.Logging
 import java.nio.file.Path
 import java.security.SecureRandom
 import javax.net.ssl.{KeyManagerFactory, SNIHostName, SNIServerName, SSLContext}
-import org.typelevel.log4cats.slf4j.Slf4jFactory
+import org.typelevel.log4cats.slf4j.{Slf4jFactory, Slf4jLogger}
 
 object WebServer extends Logging {
 
@@ -67,6 +67,7 @@ object WebServer extends Logging {
 
     val tlsContext = TLSContext.Builder.forAsync[IO].fromSSLContext(sslContext)
     val tlsParameters = TLSParameters(serverNames = Some(List(new SNIHostName(httpsConfig.host))))
+    val serverLogger = Slf4jLogger.getLoggerFromName[IO]("nl.amony.app.WebServer")
 
     EmberServerBuilder
       .default[IO]
@@ -74,7 +75,9 @@ object WebServer extends Logging {
       .withPort(Port.fromInt(httpsConfig.port).get)
       .withHttpApp(httpApp)
       .withTLS(tlsContext, tlsParameters)
+      .withLogger(serverLogger)
       .withErrorHandler { e =>
+        println("Internal server error")
         logger.warn("Internal server error", e)
         IO(serverError)
       }
@@ -84,13 +87,16 @@ object WebServer extends Logging {
   def httpServer(httpConfig: HttpConfig, routes: HttpRoutes[IO])(using io: IORuntime): Resource[IO, Server] = {
 
     val httpApp = Router("/" -> routes).orNotFound
+    val serverLogger = Slf4jLogger.getLoggerFromName[IO]("nl.amony.app.WebServer")
 
     EmberServerBuilder
       .default[IO]
       .withHost(Host.fromString(httpConfig.host).get)
       .withPort(Port.fromInt(httpConfig.port).get)
       .withHttpApp(httpApp)
+      .withLogger(serverLogger)
       .withErrorHandler { e =>
+        println("Internal server error")
         logger.warn("Internal server error", e)
         IO(serverError)
       }

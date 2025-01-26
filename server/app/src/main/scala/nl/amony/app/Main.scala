@@ -12,9 +12,10 @@ import nl.amony.service.resources.api.events.ResourceEvent
 import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.{ResourceContentRoutes, ResourceRoutes}
-import scribe.Logging
+import scribe.{Logger, Logging}
 import slick.basic.DatabaseConfig
 import slick.jdbc.HsqldbProfile
+import sttp.tapir.server.http4s.Http4sServerOptions
 
 import scala.reflect.ClassTag
 
@@ -31,6 +32,20 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
 
     val databaseConfig = DatabaseConfig.forConfig[HsqldbProfile]("amony.database", config)
 
+    // somehow the default (slf4j) logger is not working, so we explicitly set it here
+    val serverLog = {
+      val serverLogger = Logger("nl.amony.app.Main.serverLogger")
+      Http4sServerOptions.defaultServerLog[IO].copy(
+        logLogicExceptions = true,
+        doLogExceptions = (msg, throwable) => IO { serverLogger.error(msg, throwable) },
+      )
+    }
+
+    given serverOptions: Http4sServerOptions[IO] = Http4sServerOptions
+      .customiseInterceptors[IO]
+      .serverLog(serverLog)
+      .options
+
     for {
       searchService     <- SolrIndex.resource(appConfig.solr)
       authConfig         = loadConfig[AuthConfig]("amony.auth")
@@ -44,11 +59,10 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
                              }.sequence
       resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
       routes             = ResourceContentRoutes.apply(resourceBucketMap) <+>
-                             AuthRoutes.apply(authService, authConfig) <+>
-                             AuthRoutes.routes(authService, authConfig, authConfig.decoder) <+>
+                             AuthRoutes.apply(authService, authConfig, authConfig.decoder) <+>
                              AdminRoutes.apply(searchService, resourceBucketMap, authConfig.decoder) <+>
-                             SearchRoutes.searchResourceRoutes(searchService, appConfig.search, authConfig.decoder) <+>
-                             ResourceRoutes.endpointImplementations(resourceBucketMap, authConfig.decoder) <+>
+                             SearchRoutes.apply(searchService, appConfig.search, authConfig.decoder) <+>
+                             ResourceRoutes.apply(resourceBucketMap, authConfig.decoder) <+>
                              WebAppRoutes.apply(appConfig.api)
       _                 <- WebServer.run(appConfig.api, routes)
     } yield ()

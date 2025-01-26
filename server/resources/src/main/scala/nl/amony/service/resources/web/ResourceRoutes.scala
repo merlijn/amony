@@ -20,9 +20,11 @@ def oneOfList[T](variants: List[OneOfVariant[_ <: T]]) = EndpointOutput.OneOf[T,
 
 enum ApiError:
   case NotFound
+  case BadRequest
 
 val apiErrorOutputs = List(
   oneOfVariantSingletonMatcher(statusCode(StatusCode.NotFound))(ApiError.NotFound),
+  oneOfVariantSingletonMatcher(statusCode(StatusCode.BadRequest))(ApiError.BadRequest),
 )
 
 val errorOutput: EndpointOutput[ApiError | SecurityError] = oneOfList(securityErrors ++ apiErrorOutputs)
@@ -77,7 +79,7 @@ object ResourceRoutes:
     
   val endpoints = List(getResourceById, updateUserMetaData, updateThumbnailTimestamp)
 
-  def endpointImplementations(buckets: Map[String, ResourceBucket], decoder: JwtDecoder): HttpRoutes[IO] = {
+  def apply(buckets: Map[String, ResourceBucket], decoder: JwtDecoder)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
 
     val authenticator = Authenticator(decoder)
 
@@ -104,7 +106,8 @@ object ResourceRoutes:
           val sanitizedTags        = userMeta.tags.map(Jsoup.clean(_, Safelist.basic))
 
           getResource(bucketId, resourceId).flatMap {
-            (bucket, _) => EitherT.right(bucket.updateUserMeta(resourceId, sanitizedTitle, sanitizedDescription, sanitizedTags)) 
+            (bucket, _) =>
+              EitherT.right(bucket.updateUserMeta(resourceId, sanitizedTitle, sanitizedDescription, sanitizedTags))
           }.value
         })
       
@@ -116,15 +119,7 @@ object ResourceRoutes:
             (bucket, _) => EitherT.right(bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis))
           }.value
         )
-      
-//    val serverLog = Http4sServerOptions.defaultServerLog[IO].copy(
-//      doLogExceptions = (msg, throwable) => IO(throwable.printStackTrace()), 
-//    )
 
-    val serverOptions: Http4sServerOptions[IO] = Http4sServerOptions
-      .customiseInterceptors[IO]
-      .options
-    
     Http4sServerInterpreter[IO](serverOptions)
       .toRoutes(List(getResourceByIdImpl, updateUserMetaDataImpl, updateThumbnailTimestampImpl))
   }

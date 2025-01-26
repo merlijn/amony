@@ -11,7 +11,7 @@ import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import org.http4s.*
 import scribe.Logging
 import sttp.tapir.*
-import sttp.tapir.server.http4s.Http4sServerInterpreter
+import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 
 object AdminRoutes extends Logging:
 
@@ -58,7 +58,7 @@ object AdminRoutes extends Logging:
   
   val endpoints = List(reIndex, refresh, rescanMetaData)
 
-  def apply(searchService: SearchService, buckets: Map[String, ResourceBucket], jwtDecoder: JwtDecoder): HttpRoutes[IO] = {
+  def apply(searchService: SearchService, buckets: Map[String, ResourceBucket], jwtDecoder: JwtDecoder)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
 
     val authenticator = Authenticator(jwtDecoder)
 
@@ -99,7 +99,7 @@ object AdminRoutes extends Logging:
             case _ => IO.unit
         )
 
-    Http4sServerInterpreter[IO]().toRoutes(
+    Http4sServerInterpreter[IO](serverOptions).toRoutes(
       List(reIndexImpl, refreshImpl, rescanMetaDataImpl)
     )
   }

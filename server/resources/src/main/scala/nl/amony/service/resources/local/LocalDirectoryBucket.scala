@@ -38,7 +38,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
 
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = 
     db.getByResourceId(config.id, resourceId).map(_.map(recoverMeta))
-    
+
   private def recoverMeta(info: ResourceInfo) = {
     val meta: Option[ResourceMeta] = info.contentMetaSource.flatMap(meta => LocalResourceMeta.scanToolMeta(meta).toOption)
     info.copy(contentMeta = meta.getOrElse(ResourceMeta.Empty))
@@ -120,13 +120,13 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
   override def updateUserMeta(resourceId: String, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] = {
     db.updateUserMeta(
       config.id, resourceId, title, description, tags, 
-      resource => topic.publish(ResourceUpdated(resource))
+      resource => topic.publish(ResourceUpdated(recoverMeta(resource)))
     )
   }
 
   override def updateThumbnailTimestamp(resourceId: String, timestamp: Long): IO[Unit] =
     db.updateThumbnailTimestamp(config.id, resourceId, timestamp,
-      resource => topic.publish(ResourceUpdated(resource))
+      resource => topic.publish(ResourceUpdated(recoverMeta(resource)))
     )
 
   val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (db.applyEvent(config.id, e => topic.publish(e)))

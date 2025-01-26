@@ -1,6 +1,7 @@
 package nl.amony.service.auth
 
 import cats.effect.IO
+import cats.implicits.toSemigroupKOps
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
 import nl.amony.service.auth.tapir.{SecurityInput, securityInput}
 import org.http4s.UrlForm.given
@@ -12,7 +13,7 @@ import sttp.model.StatusCode
 import sttp.model.headers.CookieValueWithMeta
 import sttp.tapir.*
 import sttp.tapir.json.circe.jsonBody
-import sttp.tapir.server.http4s.Http4sServerInterpreter
+import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 
 import java.time.Instant
 import java.util.UUID
@@ -49,7 +50,7 @@ object AuthRoutes extends Logging {
     
   val endpoints = List(session, logout)
   
-  def routes(authService: AuthService, authConfig: AuthConfig, jwtDecoder: JwtDecoder): HttpRoutes[IO] = {
+  def apply(authService: AuthService, authConfig: AuthConfig, jwtDecoder: JwtDecoder)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
     
     val authenticator = Authenticator(jwtDecoder)
     
@@ -65,10 +66,10 @@ object AuthRoutes extends Logging {
         IO(Right((expiredEmptyCookie, expiredEmptyCookie, expiredEmptyCookie))) 
       })
     
-    Http4sServerInterpreter[IO]().toRoutes(List(sessionImpl, logoutImpl))
+    Http4sServerInterpreter[IO](serverOptions).toRoutes(List(sessionImpl, logoutImpl)) <+> undocumented(authService, authConfig)
   }
   
-  def apply(authService: AuthService, authConfig: AuthConfig) =
+  def undocumented(authService: AuthService, authConfig: AuthConfig) =
     HttpRoutes.of[IO]:
       case GET -> Root / "login" =>
         Ok(fs2.io.readClassLoaderResource[IO]("login.html"))
