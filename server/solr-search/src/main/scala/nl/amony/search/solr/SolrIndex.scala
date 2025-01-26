@@ -122,15 +122,13 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
       case _ =>
     }
 
-    logger.info(s"Indexing document: $solrInputDocument")
+    logger.debug(s"Indexing document: $solrInputDocument")
     
     solrInputDocument
   }
 
   private def toResource(document: SolrDocument): ResourceInfo = {
     
-    logger.info(s"Decoding document: $document")
-
     val resourceId = document.getFieldValue(FieldNames.id).asInstanceOf[String]
     val hash = Option(document.getFieldValue(FieldNames.hash)).map(_.asInstanceOf[String])
     val bucketId = document.getFieldValue(FieldNames.bucketId).asInstanceOf[String]
@@ -202,7 +200,6 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
         
       if (query.minDuration.isDefined || query.maxDuration.isDefined)
         sb.append(s" AND ${FieldNames.duration}:[${query.minDuration.getOrElse(0)} TO ${query.maxDuration.getOrElse("*")}]")  
-
 
       sb.result()
     }
@@ -278,6 +275,9 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
 
       val solrParams = toSolrQuery(query)
       val queryResponse = solr.query(solrParams)
+      
+      logger.debug(s"Executing solr query: ${solrParams.toString}")
+      
       val results = queryResponse.getResults
 
       val total = results.getNumFound
@@ -292,7 +292,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
           }
         }.getOrElse(Map.empty[String, Long])
 
-      logger.debug(s"Search query: ${solrParams.toString}, total: $total, tags: ${tagsWithFrequency.mkString(", ")}")
+      logger.debug(s"Solr response size: ${results.size()}, tags: ${tagsWithFrequency.mkString(", ")}")
 
       SearchResult(
         offset = offset.toInt,
