@@ -3,7 +3,8 @@ package nl.amony.app.routes
 import cats.effect.IO
 import nl.amony.service.auth.tapir.{securityErrors, securityInput}
 import nl.amony.service.auth.{Authenticator, JwtDecoder, Roles, SecurityError}
-import nl.amony.service.resources.ResourceBucket
+import nl.amony.service.resources.api.ResourceInfo
+import nl.amony.service.resources.{Resource, ResourceBucket}
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.oneOfList
 import nl.amony.service.search.api.ForceCommitRequest
@@ -70,11 +71,14 @@ object AdminRoutes extends Logging:
             case None         => IO.unit
             case Some(bucket) =>
               logger.info(s"Re-indexing all resources in bucket '$bucketId'")
+              
+              def indexResource(resource: ResourceInfo) = IO.fromFuture(IO(searchService.index(resource))) >> IO.unit
+              def commit: IO[Unit] = IO.fromFuture(IO(searchService.forceCommit(ForceCommitRequest()))) >> IO.unit
+              
               bucket
-                .getAllResources().foreach { resource => IO.fromFuture(IO(searchService.index(resource))).map(_ => ()) }
+                .getAllResources().foreach(indexResource)
                 .compile
-                .drain
-                .flatMap(_ => IO.fromFuture(IO(searchService.forceCommit(ForceCommitRequest()))).map(_ => ()))
+                .drain >> commit >> IO(logger.info(s"Finished re-indexing all resources in bucket '$bucketId'"))
         )
 
     val refreshImpl =
@@ -84,8 +88,9 @@ object AdminRoutes extends Logging:
           buckets.get(bucketId) match
             case Some(bucket: LocalDirectoryBucket[_]) =>
               logger.info(s"Refreshing resources in bucket '$bucketId'")
-              bucket.refresh()
-            case _ => IO.unit
+              bucket.refresh() >> IO(logger.info(s"Finished refreshing resources in bucket '$bucketId'"))
+            case _ => 
+              IO(logger.info(s"Cannot refresh bucket '$bucketId'"))
         )
 
     val rescanMetaDataImpl =
@@ -95,8 +100,10 @@ object AdminRoutes extends Logging:
           buckets.get(bucketId) match
             case Some(bucket: LocalDirectoryBucket[_]) =>
               logger.info(s"Re-scanning meta data of all resources in bucket '$bucketId'")
-              bucket.reScanAllMetadata().flatMap(_ => IO.unit)
-            case _ => IO.unit
+              bucket.reScanAllMetadata() >> IO(logger.info(s"Finished re-scanning meta data of all resources in bucket '$bucketId'"))
+            case _ =>
+              logger.info(s"Cannot re-scan meta data of bucket '$bucketId'")
+              IO.unit
         )
 
     Http4sServerInterpreter[IO](serverOptions).toRoutes(

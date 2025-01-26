@@ -130,12 +130,12 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
     )
 
   val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (db.applyEvent(config.id, e => topic.publish(e)))
-  val debug: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"Resource event: $e")))
+  val logEvent: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"Resource event: $e")))
 
   def refresh(): IO[Unit] =
     db.getAll(config.id).map(_.toSet).flatMap: allResources =>
       LocalResourceScanner.singleScan(allResources, config)
-          .through(debug)
+          .through(logEvent)
           .through(updateDb)
           .compile
           .drain
@@ -156,7 +156,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
         }
 
       pollRetry(stateFromStorage())
-        .through(debug)
+        .through(logEvent)
         .through(updateDb)
         .compile
         .drain

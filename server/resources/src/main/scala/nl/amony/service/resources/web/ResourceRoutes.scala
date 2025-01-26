@@ -19,8 +19,7 @@ import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 def oneOfList[T](variants: List[OneOfVariant[_ <: T]]) = EndpointOutput.OneOf[T, T](variants, Mapping.id)
 
 enum ApiError:
-  case NotFound
-  case BadRequest
+  case NotFound, BadRequest
 
 val apiErrorOutputs = List(
   oneOfVariantSingletonMatcher(statusCode(StatusCode.NotFound))(ApiError.NotFound),
