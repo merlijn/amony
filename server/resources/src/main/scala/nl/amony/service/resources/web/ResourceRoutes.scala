@@ -2,6 +2,7 @@ package nl.amony.service.resources.web
 
 import cats.data.EitherT
 import cats.effect.IO
+import cats.implicits.*
 import nl.amony.service.auth.tapir.*
 import nl.amony.service.auth.{Authenticator, JwtDecoder, Roles, SecurityError}
 import nl.amony.service.resources.web.ApiError.NotFound
@@ -99,14 +100,27 @@ object ResourceRoutes:
       updateUserMetaData
         .serverSecurityLogic(authenticator.requireRole(Roles.Admin))
         .serverLogic(_ => (bucketId, resourceId, userMeta) => {
-          
-          val sanitizedTitle       = userMeta.title.map(Jsoup.clean(_, Safelist.basic))
-          val sanitizedDescription = userMeta.description.map(Jsoup.clean(_, Safelist.basic))
-          val sanitizedTags        = userMeta.tags.map(Jsoup.clean(_, Safelist.basic))
 
-          getResource(bucketId, resourceId).flatMap {
-            (bucket, _) => EitherT.right(bucket.updateUserMeta(resourceId, sanitizedTitle, sanitizedDescription, sanitizedTags))
-          }.value
+          // TODO rewrite this using tapir Validators ?
+          def sanitize(s: String, maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, String] =
+            for {
+              _ <- EitherT.cond[IO](s.length <= maxLength, (), ApiError.BadRequest)
+              _ <- EitherT.cond[IO](s.forall(characterAllowFn), (), ApiError.BadRequest)
+              trimmed = s.trim
+              _ <- EitherT.cond[IO](trimmed == Jsoup.clean(trimmed, Safelist.basic), (), ApiError.BadRequest)
+            } yield trimmed
+
+          def sanitizeOpt(s: Option[String], maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, Option[String]] =
+            s.map(sanitize(_, maxLength, characterAllowFn).map(Some(_))).getOrElse(EitherT.rightT[IO, ApiError](None))
+
+          (for {
+            sanitizedTitle       <- sanitizeOpt(userMeta.title, 128, _ => true)
+            sanitizedDescription <- sanitizeOpt(userMeta.description, 1280, _ => true)
+            sanitizedTags        <- userMeta.tags.map(tag => sanitize(tag, 64, c => c.isLetterOrDigit)).sequence
+            response             <- getResource(bucketId, resourceId)
+            (bucket, _)           = response
+            _                    <- EitherT.right(bucket.updateUserMeta(resourceId, sanitizedTitle, sanitizedDescription, sanitizedTags))
+          } yield ()).value
         })
       
     val updateThumbnailTimestampImpl =

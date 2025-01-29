@@ -154,12 +154,12 @@ class ResourceDatabase[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
   
   def updateUserMeta(bucketId: String, resourceId: String, title: Option[String], description: Option[String], tagLabels: List[String], effect: ResourceInfo => IO[Unit]): IO[Unit] = {
     def q = (for {
-      resourceRow <- resources.getById(bucketId, resourceId).result
-       updatedRow <- resourceRow.headOption.map { row =>
-                       val updatedRow = row.copy(title = title, description = description)
-                       resources.update(updatedRow).map(_ => Some(updatedRow))
-                     }.getOrElse(DBIO.successful(Option.empty[ResourceRow]))
-          rtags  <- tags.upsertMissingLabels(tagLabels.toSet)
+      resourceRow  <- resources.getById(bucketId, resourceId).result
+       updatedRow  <- resourceRow.headOption.map { row =>
+                        val updatedRow = row.copy(title = title, description = description)
+                        resources.update(updatedRow).map(_ => Some(updatedRow))
+                      }.getOrElse(DBIO.successful(Option.empty[ResourceRow]))
+          rtags    <- tags.upsertMissingLabels(tagLabels.toSet)
           tagIds    = rtags.flatMap(_.id).toSet
           tagLabels = rtags.map(_.label).toSet
                 _   <- resourceTags.upsert(bucketId, resourceId, tagIds)

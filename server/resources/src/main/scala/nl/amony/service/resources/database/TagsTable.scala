@@ -16,9 +16,8 @@ class TagsTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends Loggi
   import dbConfig.profile.api.*
 
   class TagsSchema(ttag: slick.lifted.Tag) extends Table[TagRow](ttag, "tags") {
-    def id    = column[Int]("id", O.PrimaryKey, O.AutoInc)
-    def label = column[String]("label", O.Unique)
-
+    def id         = column[Int]("id", O.PrimaryKey, O.AutoInc)
+    def label      = column[String]("label", O.Unique)
     def labelIndex = index("tags_label_idx", label, unique = true)
     
     def * = (id.?, label) <> ((TagRow.apply _).tupled, TagRow.unapply)
