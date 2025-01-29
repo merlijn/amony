@@ -1,5 +1,6 @@
 import axios, {AxiosError, AxiosRequestConfig} from "axios";
 import Cookies from "js-cookie";
+import qs from 'qs'
 
 async function refreshToken() {
 
@@ -8,7 +9,7 @@ async function refreshToken() {
   return response;
 }
 
-export function xsrfTokenHeader() {
+function xsrfTokenHeader() {
   const xsrfTokenCookie = Cookies.get("XSRF-TOKEN");
   return xsrfTokenCookie ?  { 'X-XSRF-TOKEN': xsrfTokenCookie } : { };
 }
@@ -25,8 +26,9 @@ export const customAxiosInstance = <T>(
     refreshTokenOn401: boolean = true
   ): Promise<T> => {
 
-    const currentConfig = {
+    const configWithOverrides: AxiosRequestConfig = {
       ...config,
+      paramsSerializer: (params: any) => qs.stringify(params, { arrayFormat: 'repeat' }), // this is to prevent array params from being serialized as "paramName[]=value"
       headers: {
         ...config.headers,
         ...xsrfTokenHeader(),
@@ -34,8 +36,7 @@ export const customAxiosInstance = <T>(
     };
 
     const promise = axios({
-      ...currentConfig,
-      ...options,
+      ...configWithOverrides,
       cancelToken: source.token,
     })
       .then(({ data }) => data)
