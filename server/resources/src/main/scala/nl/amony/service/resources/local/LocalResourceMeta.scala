@@ -65,7 +65,7 @@ object LocalResourceMeta extends Logging {
     contentTypeForPath(path) match {
 
       case None =>
-        logger.info(s"No content type found for $path")
+        logger.warn(s"Failed to detect content type for: $path")
         IO.pure(None)
 
       case Some(contentType) if contentType.startsWith("video/") =>
@@ -75,12 +75,12 @@ object LocalResourceMeta extends Logging {
             LocalResourceMeta(contentType, Some(ResourceMetaSource(s"ffprobe/$version", json.noSpaces)), meta)
           }
         }.recover {
-          case e: Throwable => logger.error(s"Failed to get video meta for $path", e); None
+          case e: Throwable => logger.error(s"Failed to get video meta data for $path", e); None
         }
-      case Some(contentType) if contentType.startsWith("image") =>
+      case Some(contentType) if contentType.startsWith("image/") =>
         ImageMagick.getImageMeta(path).map:
           case Failure(e) =>
-            logger.error(s"Failed to get image meta for $path", e)
+            logger.error(s"Failed to get image meta data for $path", e)
             None
           case Success(result) =>
             val source = ResourceMetaSource("magick/1", result.rawJson.noSpaces)

@@ -2,7 +2,7 @@ package nl.amony.service.auth
 
 import io.circe.Codec
 
-opaque type Role = String
+opaque type Role <: String = String
 
 object Role:
   def apply(d: String): Role = d

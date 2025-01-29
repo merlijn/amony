@@ -105,8 +105,7 @@ object ResourceRoutes:
           val sanitizedTags        = userMeta.tags.map(Jsoup.clean(_, Safelist.basic))
 
           getResource(bucketId, resourceId).flatMap {
-            (bucket, _) =>
-              EitherT.right(bucket.updateUserMeta(resourceId, sanitizedTitle, sanitizedDescription, sanitizedTags))
+            (bucket, _) => EitherT.right(bucket.updateUserMeta(resourceId, sanitizedTitle, sanitizedDescription, sanitizedTags))
           }.value
         })
       
