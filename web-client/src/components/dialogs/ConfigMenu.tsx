@@ -32,22 +32,23 @@ const ConfigMenu = () => {
                   name="ncols-option"
                   type="radio"
                   value={0}
-                  checked={prefs.gallery_columns === 'auto'}
-                  onChange={(e) => {
-                    if (prefs.gallery_columns > 0) {
-                      updatePrefs({gallery_columns: 'auto'})
+                  checked  = { prefs.gallery_columns === 'auto' }
+                  onChange = { (e) => {
+                    if ( prefs.gallery_columns !== 'auto') {
+                      updatePrefs( {gallery_columns: 'auto'} )
                     }
                   }}
                 />
                 <span key="auto-label" style={{float: "left"}}>auto</span>
+
                 <input
                   key="custom-radio"
                   style={{float: "left"}}
                   className="mr-1"
                   name="ncols-option"
                   type="radio"
-                  value={0}
-                  checked={prefs.gallery_columns > 0}
+                  value = { 0 }
+                  checked = { prefs.gallery_columns !== 'auto' }
                   onChange={(e) => {
                     if (prefs.gallery_columns === 'auto')
                       updatePrefs({gallery_columns: calculateColumns()})
@@ -55,10 +56,10 @@ const ConfigMenu = () => {
                 />
                 <span key="custom-label" style={{float: "left"}}>other</span>
                 <select
-                  key="custom-value"
-                  name="ncols"
-                  value={prefs.gallery_columns}
-                  onChange={(e) => {
+                  key      = "custom-value"
+                  name     = "ncols"
+                  value    = { prefs.gallery_columns }
+                  onChange = { (e) => {
                     updatePrefs({gallery_columns: parseInt(e.target.value)})
                   }}>
                   {
