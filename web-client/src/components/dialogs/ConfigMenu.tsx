@@ -1,15 +1,15 @@
 import {Constants, SessionContext} from "../../api/Constants";
-import { Prefs } from "../../api/Model";
-import { useCookiePrefs } from "../../api/ReactUtils";
-import { calculateColumns } from "../../api/Util";
+import {calculateColumns} from "../../api/Util";
 import Dialog from "../common/Dialog";
 import './ConfigMenu.scss';
 import {useContext} from "react";
 import {adminRefreshBucket, adminReindexBucket, adminRescanMetaData} from "../../api/generated";
+import {useLocalStorage} from "usehooks-ts";
 
 const ConfigMenu = () => {
 
-  const [prefs, setPrefs] = useCookiePrefs<Prefs>("prefs-v1", "/", Constants.defaultPreferences)
+  // const [prefs, setPrefs] = useLocalStoragePrefs<Prefs>("prefs-v1", Constants.defaultPreferences)
+  const [prefs, setPrefs, removeValue] = useLocalStorage(Constants.preferenceKey, Constants.defaultPreferences)
 
   const columns = [1, 2, 3, 4, 5, 6, 7].map((v) => {
     return { value: v, label: v.toString() }

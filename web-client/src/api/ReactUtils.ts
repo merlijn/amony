@@ -1,5 +1,4 @@
 import React, {MutableRefObject, useEffect, useRef, useState} from "react";
-import {useCookies} from "react-cookie";
 import _ from "lodash";
 import {useLocation, useNavigate} from "react-router-dom";
 import {buildUrl, copyParams} from "./Util";
@@ -46,24 +45,6 @@ export const useListener = <K extends keyof WindowEventMap>(type: K, listener: (
     window.addEventListener(type, listener)
     return () => window.removeEventListener(type, listener)
   })
-}
-
-export function useCookiePrefs<T>(key: string, path: string, defaultPreferences: T): [T, ((e: T) => void)] {
-
-  const [cookiePreferences, setCookiePrefs] = useCookies([key])
-
-  const setPrefsAndCookie = (s: T) => {
-    setCookiePrefs(key, s)
-  }
-
-  if (cookiePreferences[key] === undefined) {
-    console.log("setting defaults")
-    setCookiePrefs(key, defaultPreferences, {path: path})
-    return [defaultPreferences, setPrefsAndCookie];
-  }
-  else {
-    return [cookiePreferences[key], setPrefsAndCookie]
-  }
 }
 
 export const usePrevious = <T>(value: T): T | undefined => {

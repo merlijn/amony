@@ -1,8 +1,8 @@
 import React, {useEffect, useState} from "react";
 import {useLocation, useNavigate} from "react-router";
 import {Constants, parseDurationParam, parseSortParam} from "../api/Constants";
-import {MediaView, Prefs, ResourceSelection} from "../api/Model";
-import {useCookiePrefs, useListener, useStateNeq} from "../api/ReactUtils";
+import {MediaView, ResourceSelection} from "../api/Model";
+import {useListener, useStateNeq} from "../api/ReactUtils";
 import GridView from "../components/GridView";
 import TopNavBar from "../components/navigation/TopNavBar";
 import ResourceViewModal from "../components/common/ResourceViewModal";
@@ -13,6 +13,7 @@ import {buildUrl, copyParams} from "../api/Util";
 import Modal from "../components/common/Modal";
 import ConfigMenu from "../components/dialogs/ConfigMenu";
 import {ResourceDto} from "../api/generated";
+import {useLocalStorage} from "usehooks-ts";
 
 const Main = () => {
   
@@ -22,7 +23,8 @@ const Main = () => {
     const [showNavigation, setShowNavigation] = useState(true)
     const [view, setView] = useState<MediaView>('grid')
     const [showSettings,   setShowSettings]   = useState(false)
-    const [prefs, updatePrefs] = useCookiePrefs<Prefs>(Constants.preferenceKey, "/", Constants.defaultPreferences)
+    // const [prefs, updatePrefs] = useLocalStoragePrefs<Prefs>(Constants.preferenceKey, Constants.defaultPreferences)
+    const [prefs, updatePrefs, removeValue] = useLocalStorage(Constants.preferenceKey, Constants.defaultPreferences)
 
     const getSelection = (): ResourceSelection => {
       const urlParams = new URLSearchParams(location.search)
