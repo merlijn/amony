@@ -72,7 +72,7 @@ function TopNavBar(props: NavBarProps) {
                 <FilterDropDown onToggleFilter = { (v) => setShowFilters(v) } />
                 <input 
                   ref         = { inputRef } 
-                  style       = { showFilters ? { borderBottom: "none", borderBottomLeftRadius: 0, borderBottomRightRadius: 0, paddingBottom: 2 } : { } }
+                  style       = { showFilters ? { borderBottom: "none", borderBottomLeftRadius: 0, borderBottomRightRadius: 0, paddingBottom: 3 } : { } }
                   key         = "nav-search-input" 
                   className   = "nav-search-input" 
                   placeholder = "Search" 
