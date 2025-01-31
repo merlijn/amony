@@ -50,6 +50,7 @@ object SolrIndex {
     val duration = "duration_l"
     val fps = "fps_f"
     val resourceType = "resource_type_s"
+    val userId = "user_id_s"
   }
 
   def resource(config: SolrConfig)(using ec: ExecutionContext): Resource[IO, SolrIndex] =
@@ -95,6 +96,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
 
     solrInputDocument.addField(FieldNames.id, resource.resourceId)
     solrInputDocument.addField(FieldNames.bucketId, resource.bucketId)
+    solrInputDocument.addField(FieldNames.userId, resource.userId)
     solrInputDocument.addField(FieldNames.path, resource.path)
     solrInputDocument.addField(FieldNames.filesize, resource.size)
 
@@ -150,6 +152,8 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
 
     val tags = Option(document.getFieldValues(FieldNames.tags)).map(_.asInstanceOf[java.util.List[String]].asScala).getOrElse(List.empty).toSet
 
+    val userId = Option(document.getFieldValue(FieldNames.userId)).map(_.asInstanceOf[String])
+
     val contentMeta: ResourceMeta = resourceType match {
 
       case "image" => ImageMeta(width, height)
@@ -161,7 +165,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
       case _ => ResourceMeta.Empty
     }
 
-    ResourceInfo(bucketId, resourceId, path, size, hash, contentType, None, contentMeta, creationTime, lastModified, title, description, tags, thumbnailTimestamp)
+    ResourceInfo(bucketId, resourceId, userId.getOrElse(""), path, size, hash, contentType, None, contentMeta, creationTime, lastModified, title, description, tags, thumbnailTimestamp)
   }
 
   private def toSolrQuery(query: Query) = {

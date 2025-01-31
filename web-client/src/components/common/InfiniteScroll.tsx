@@ -12,7 +12,7 @@ export type InfiniteScrollProps = {
   children: ReactNode
 }
 
-const Scrollable = React.forwardRef<HTMLDivElement,InfiniteScrollProps>((props, ref) => {
+const InfiniteScroll = React.forwardRef<HTMLDivElement,InfiniteScrollProps>((props, ref) => {
 
   const fetchMargin = props.fetchMargin !== undefined ? props.fetchMargin : defaultFetchMargin;
 
@@ -43,4 +43,4 @@ const Scrollable = React.forwardRef<HTMLDivElement,InfiniteScrollProps>((props, 
   );
 })
 
-export default Scrollable
+export default InfiniteScroll

@@ -23,6 +23,7 @@ case class ResourceRow(
     ResourceInfo(
       bucketId = bucketId,
       resourceId = hash,
+      userId = "0",
       path = relativePath,
       hash = Some(hash),
       size = size,

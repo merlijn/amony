@@ -5,7 +5,7 @@ import {Columns, ResourceSelection} from '../api/Model';
 import './GridView.scss';
 import TagBar from './navigation/TagBar';
 import Preview, {PreviewOptions} from './Preview';
-import Scrollable from './common/Scrollable';
+import InfiniteScroll from './common/InfiniteScroll';
 import {findResources, FindResourcesParams, ResourceDto, SearchResponseDto} from "../api/generated";
 import {resourceSelectionToParams} from "../api/Util";
 
@@ -104,7 +104,7 @@ const GridView = (props: GalleryProps) => {
   return(
     <div className = { props.className } style = { props.style }>
       { props.showTagbar && <TagBar tags = { searchResult.tags } total = { searchResult.total } /> }
-      <Scrollable
+      <InfiniteScroll
         style        = { style }
         className    = "gallery-container"
         fetchContent = { () => { if (!isFetching && !isEndReached) setIsFetching(true) } }
@@ -112,7 +112,7 @@ const GridView = (props: GalleryProps) => {
         ref          = { ref }
         >
         { previews }
-      </Scrollable>
+      </InfiniteScroll>
     </div>
   );
 }

@@ -14,16 +14,17 @@ option (scalapb.options) = {
 message ResourceInfo {
   required string bucketId = 1;
   required string resourceId = 2;
-  required string path = 3;
-  required int64  size = 4;
-  optional string hash = 5;
-  optional string contentType = 6;
-  optional ResourceMetaSource contentMetaSource = 7;
-  optional ResourceMeta contentMeta = 8;
-  optional int64 creationTime = 9;
-  optional int64 lastModifiedTime = 10;
-  optional string title = 11;
-  optional string description = 12;
-  repeated string tags = 13 [ (scalapb.field).collection_type="Set" ];
-  optional int64 thumbnailTimestamp = 14;
+  required string userId = 3;
+  required string path = 4;
+  required int64  size = 5;
+  optional string hash = 6;
+  optional string contentType = 7;
+  optional ResourceMetaSource contentMetaSource = 8;
+  optional ResourceMeta contentMeta = 9;
+  optional int64 creationTime = 10;
+  optional int64 lastModifiedTime = 11;
+  optional string title = 12;
+  optional string description = 13;
+  repeated string tags = 14 [ (scalapb.field).collection_type="Set" ];
+  optional int64 thumbnailTimestamp = 15;
 }

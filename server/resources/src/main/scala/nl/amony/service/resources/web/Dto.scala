@@ -91,6 +91,7 @@ def fromDto(dto: ResourceDto): ResourceInfo = {
   ResourceInfo(
     bucketId = dto.bucketId,
     resourceId = dto.resourceId,
+    userId = dto.userId,
     path = dto.path,
     hash = dto.hash,
     size = dto.sizeInBytes,
@@ -187,7 +188,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     sizeInBytes = resource.size,
     path        = resource.path,
     timeCreated = resource.getCreationTime,
-    userId      = "0",
+    userId      = resource.userId,
     title       = resource.title.orElse(Some(filename)),
     description = resource.description,
     tags        = resource.tags.toList,

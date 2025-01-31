@@ -5,7 +5,7 @@ import ProgressiveImage from "react-progressive-graceful-image"
 import {ResourceSelection} from "../api/Model"
 import {dateMillisToString, formatByteSize, resourceSelectionToParams} from "../api/Util"
 import './ListView.scss'
-import Scrollable from "./common/Scrollable"
+import InfiniteScroll from "./common/InfiniteScroll"
 import {SessionContext, useSortParam} from "../api/Constants"
 import {useNavigate} from "react-router-dom"
 import TagsBar from "./common/TagsBar"
@@ -115,11 +115,11 @@ const ListView = (props: ListProps) => {
     </tr>
 
   return (
-    <Scrollable
+    <InfiniteScroll
       className="list-container"
       fetchContent={() => {
         if (!isFetching && fetchMore) setIsFetching(true);
-        fetchData(searchResult.results)
+          fetchData(searchResult.results)
       }}
       scrollType='page'
     >
@@ -184,7 +184,7 @@ const ListView = (props: ListProps) => {
             );
           })
         }
-    </Scrollable>
+    </InfiniteScroll>
 );
 }
 

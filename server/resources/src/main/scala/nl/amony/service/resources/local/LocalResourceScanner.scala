@@ -25,6 +25,7 @@ object LocalResourceScanner {
               ResourceInfo(
                 bucketId = bucketId,
                 resourceId = f.hash,
+                userId = "0",
                 path = basePath.relativize(f.path).toString,
                 hash = Some(f.hash),
                 size = f.size,
