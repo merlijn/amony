@@ -13,6 +13,7 @@ import org.apache.solr.client.solrj.{SolrClient, SolrQuery}
 import org.apache.solr.common.params.{CommonParams, FacetParams, ModifiableSolrParams}
 import org.apache.solr.common.{SolrDocument, SolrInputDocument}
 import org.apache.solr.core.CoreContainer
+import org.apache.solr.client.solrj.util.ClientUtils
 import scribe.Logging
 import io.grpc.stub.StreamObserver
 
@@ -188,7 +189,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
     val solrParams = new ModifiableSolrParams
 
     val solrQ = {
-      val q = query.q.getOrElse("")
+      val q = ClientUtils.escapeQueryChars(query.q.getOrElse(""))
       val sb = new StringBuilder()
 
       sb.append(s"${FieldNames.path}:*${if (q.trim.isEmpty) "" else s"$q*"}")
