@@ -27,6 +27,9 @@ jobs:
         cache: 'npm'
         cache-dependency-path: web-client
 
+    - run: npm install --save
+      working-directory: web-client
+
     - run: npm run generate
       working-directory: web-client
 
