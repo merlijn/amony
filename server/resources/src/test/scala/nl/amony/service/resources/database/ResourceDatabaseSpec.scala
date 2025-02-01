@@ -2,7 +2,7 @@ package nl.amony.service.resources.database
 
 import cats.effect.IO
 import com.typesafe.config.ConfigFactory
-import nl.amony.service.resources.api.{ImageMeta, ResourceInfo}
+import nl.amony.service.resources.api.{ImageMeta, ResourceInfo, ResourceMeta, ResourceMetaSource}
 import nl.amony.service.resources.database.ResourceDatabase
 import org.scalatest.flatspec.AnyFlatSpecLike
 import scribe.Logging
@@ -35,15 +35,15 @@ class ResourceDatabaseSpec extends AnyFlatSpecLike with Logging {
   val dbConfig = DatabaseConfig.forConfig[H2Profile]("h2mem1-test", ConfigFactory.parseString(config))
 
   val store = new ResourceDatabase(dbConfig)
+  store.init()
 
-  store.createTablesIfNotExists()
-
-  def createResource(bucketId: String, resourceId: String = java.util.UUID.randomUUID().toString, tags: Seq[String] = Seq.empty): ResourceInfo = {
+  def createResource(bucketId: String, resourceId: String = java.util.UUID.randomUUID().toString, tags: Set[String] = Set.empty): ResourceInfo = {
     ResourceInfo(
       bucketId = bucketId,
       path = "test",
-      hash = resourceId,
+      resourceId = resourceId,
       size = 1,
+      hash = Some(resourceId),
       contentType = None,
       tags = tags,
       creationTime = None,
@@ -57,15 +57,16 @@ class ResourceDatabaseSpec extends AnyFlatSpecLike with Logging {
   it should "insert a resource and retrieve it" in {
 
     val bucketId = "test-bucket"
-    val resource = createResource(bucketId, randomId(), Seq("a", "b", "d"))
+    val resource = createResource(bucketId, randomId(), Set("a", "b", "d"))
 
     store.insert(resource)
 
     val result = for {
       _         <- store.insert(resource)
-      retrieved <- store.getByHash(bucketId, resource.hash)
+      retrieved <- store.getByResourceId(bucketId, resource.resourceId)
+      tagLabels <- store.getAllTagLabels()
     } yield {
-
+      assert(tagLabels == Set("a", "b", "d"))
       assert(retrieved == Some(resource))
     }
 
@@ -76,13 +77,13 @@ class ResourceDatabaseSpec extends AnyFlatSpecLike with Logging {
 
     val bucketId = "update-resource-test"
     val resourceId = randomId()
-    val resourceOriginal = createResource(bucketId, resourceId, Seq("a"))
-    val resourceUpdated = resourceOriginal.copy(tags = Seq("b", "c"), description = Some("updated"))
+    val resourceOriginal = createResource(bucketId, resourceId, Set("a"))
+    val resourceUpdated = resourceOriginal.copy(tags = Set("b", "c"), description = Some("updated"))
 
     val result = for {
       _ <- store.upsert(resourceOriginal)
       _ <- store.upsert(resourceUpdated)
-      retrieved <- store.getByHash(bucketId, resourceId)
+      retrieved <- store.getByResourceId(bucketId, resourceId)
     } yield {
 
       assert(retrieved == Some(resourceUpdated))
@@ -95,13 +96,13 @@ class ResourceDatabaseSpec extends AnyFlatSpecLike with Logging {
 
     val bucketId = "update-same-resource-test"
     val resourceId = randomId()
-    val resourceOriginal = createResource(bucketId, resourceId, tags = Seq("c", "d", "e")).copy(contentMeta = ImageMeta(100, 100))
+    val resourceOriginal = createResource(bucketId, resourceId, tags = Set("c", "d", "e")).copy(contentMetaSource = Some(ResourceMetaSource("tool", "data")))
 
     val result = for {
       _ <- store.upsert(resourceOriginal)
-      retrieved <- store.getByHash(bucketId, resourceId)
+      retrieved <- store.getByResourceId(bucketId, resourceId)
       _ <- store.upsert(retrieved.get)
-      retrievedAgain <- store.getByHash(bucketId, resourceId)
+      retrievedAgain <- store.getByResourceId(bucketId, resourceId)
     } yield {
       assert(retrievedAgain == Some(resourceOriginal))
     }
@@ -113,8 +114,8 @@ class ResourceDatabaseSpec extends AnyFlatSpecLike with Logging {
 
     val bucketId = "multiple-get-by-id-test"
 
-    val resource1 = createResource(bucketId, "1", Seq("a", "b"))
-    val resource2 = createResource(bucketId, "2", Seq("c", "d", "e"))
+    val resource1 = createResource(bucketId, "1", Set("a", "b"))
+    val resource2 = createResource(bucketId, "2", Set("c", "d", "e"))
 
     val result = for {
       _ <- store.insert(resource1)
@@ -132,8 +133,8 @@ class ResourceDatabaseSpec extends AnyFlatSpecLike with Logging {
 
     val bucketId = "multiple-get-test"
 
-    val resource1 = createResource(bucketId, "1", tags = Seq("a", "b"))
-    val resource2 = createResource(bucketId, "2", tags = Seq("c", "d", "e")).copy(contentMeta = ImageMeta(100, 100))
+    val resource1 = createResource(bucketId, "1", tags = Set("a", "b"))
+    val resource2 = createResource(bucketId, "2", tags = Set("c", "d", "e")).copy(contentMetaSource = Some(ResourceMetaSource("tool", "data")))
 
     val result = for {
       _         <- store.insert(resource1)

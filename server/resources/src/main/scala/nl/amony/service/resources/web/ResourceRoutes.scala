@@ -1,89 +1,137 @@
 package nl.amony.service.resources.web
 
-import cats.Monad
+import cats.data.EitherT
 import cats.effect.IO
-import nl.amony.service.resources.api.operations.{ImageThumbnail, ResourceOperation, VideoFragment, VideoThumbnail}
-import nl.amony.service.resources.{Resource, ResourceBucket, ResourceWithRangeSupport}
-import nl.amony.service.resources.web.JsonCodecs.given
-import org.http4s.*
-import org.http4s.dsl.io.*
-import scribe.Logging
-import io.circe.syntax.*
-import nl.amony.service.resources.web.ResourceDirectives.respondWithResourceContent
-import nl.amony.service.resources.web.ResourceWebModel.{ThumbnailTimestampDto, UserMetaDto}
-import org.http4s.CacheDirective.`max-age`
-import org.http4s.circe.*
-import org.http4s.circe.CirceEntityDecoder.circeEntityDecoder
-import org.http4s.headers.{`Cache-Control`, `Content-Type`}
-import scala.concurrent.duration.DurationInt
+import cats.implicits.*
+import nl.amony.service.auth.tapir.*
+import nl.amony.service.auth.{Authenticator, JwtDecoder, Roles, SecurityError}
+import nl.amony.service.resources.web.ApiError.NotFound
+import nl.amony.service.resources.web.dto.*
+import nl.amony.service.resources.{Resource, ResourceBucket}
+import org.http4s.HttpRoutes
+import org.jsoup.Jsoup
+import org.jsoup.safety.Safelist
+import sttp.model.{HeaderNames, StatusCode}
+import sttp.tapir.*
+import sttp.tapir.EndpointOutput.OneOfVariant
+import sttp.tapir.json.circe.*
+import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 
-object ResourceRoutes extends Logging {
+def oneOfList[T](variants: List[OneOfVariant[_ <: T]]) = EndpointOutput.OneOf[T, T](variants, Mapping.id)
 
-  object patterns {
-    val ClipPattern                   = raw"clip_(\d+)-(\d+)_(\d+)p\.mp4".r
-    val ThumbnailPattern              = raw"thumb_(\d+)p\.webp".r
-    val ThumbnailWithTimestampPattern = raw"thumb_(\d+)_(\d+)p\.webp".r
+enum ApiError:
+  case NotFound, BadRequest
 
-    val matchPf: PartialFunction[String, ResourceOperation] = {
-      case patterns.ThumbnailWithTimestampPattern(timestamp, height) => VideoThumbnail(width = None, height = Some(height.toInt), 23, timestamp.toLong)
-      case patterns.ThumbnailPattern(scaleHeight) => ImageThumbnail(width = None, height = Some(scaleHeight.toInt), 0)
-      case patterns.ClipPattern(start, end, height) => VideoFragment(width = None, height = Some(height.toInt), start.toLong, end.toLong, 23)
-    }
+val apiErrorOutputs = List(
+  oneOfVariantSingletonMatcher(statusCode(StatusCode.NotFound))(ApiError.NotFound),
+  oneOfVariantSingletonMatcher(statusCode(StatusCode.BadRequest))(ApiError.BadRequest),
+)
+
+val errorOutput: EndpointOutput[ApiError | SecurityError] = oneOfList(securityErrors ++ apiErrorOutputs)
+
+object ResourceRoutes:
+
+  private val apiCacheHeaders: EndpointOutput[Unit] = List(
+    header(HeaderNames.CacheControl, "no-cache, no-store, must-revalidate"),
+    header(HeaderNames.Pragma, "no-cache"),
+    header(HeaderNames.Expires, "0")
+  ).reduce(_ and _)
+
+  val getBuckets =
+    endpoint
+      .name("getBuckets")
+      .tag("resources")
+      .description("Get information about a resource by its id")
+      .get.in("api" / "resources" / "buckets")
+      .out(apiCacheHeaders)
+      .out(jsonBody[List[BucketDto]])
+  
+  val getResourceById: Endpoint[SecurityInput, (String, String), ApiError | SecurityError, ResourceDto, Any] =
+    endpoint
+      .name("getResourceById")
+      .tag("resources")
+      .description("Get information about a resource by its id")
+      .get.in("api" / "resources" / path[String]("bucketId") / path[String]("resourceId"))
+      .securityIn(securityInput)
+      .errorOut(errorOutput)
+      .out(apiCacheHeaders)
+      .out(jsonBody[ResourceDto])
+
+  val updateUserMetaData: Endpoint[SecurityInput, (String, String, UserMetaDto), ApiError | SecurityError, Unit, Any] =
+    endpoint
+      .name("updateUserMetaData")
+      .tag("resources")
+      .description("Update the user metadata of a resource")
+      .post.in("api" / "resources" / path[String]("bucketId") / path[String]("resourceId") / "update_user_meta")
+      .securityIn(securityInput)
+      .in(jsonBody[UserMetaDto])
+      .errorOut(errorOutput)
+  
+  val updateThumbnailTimestamp: Endpoint[SecurityInput, (String, String, ThumbnailTimestampDto), ApiError | SecurityError, Unit, Any] = 
+    endpoint
+      .name("updateThumbnailTimestamp")
+      .tag("resources")
+      .description("Update the thumbnail timestamp of a resource")
+      .post.in("api" / "resources" / path[String]("bucketId") / path[String]("resourceId") / "update_thumbnail_timestamp")
+      .securityIn(securityInput)
+      .in(jsonBody[ThumbnailTimestampDto])
+      .errorOut(errorOutput)
+    
+  val endpoints = List(getResourceById, updateUserMetaData, updateThumbnailTimestamp)
+
+  def apply(buckets: Map[String, ResourceBucket], decoder: JwtDecoder)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
+
+    val authenticator = Authenticator(decoder)
+
+    def getResource(bucketId: String, resourceId: String): EitherT[IO, ApiError, (ResourceBucket, Resource)] = 
+      for {
+        bucket   <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
+        resource <- EitherT.fromOptionF(bucket.getResource(resourceId), NotFound)
+      } yield bucket -> resource
+
+    val getResourceByIdImpl =
+      getResourceById
+        .serverSecurityLogic(authenticator.publicEndpoint)
+        .serverLogic(_ => (bucketId, resourceId) =>
+          getResource(bucketId, resourceId).map((_, resource) => toDto(resource.info())).value
+        )
+
+    val updateUserMetaDataImpl =
+      updateUserMetaData
+        .serverSecurityLogic(authenticator.requireRole(Roles.Admin))
+        .serverLogic(_ => (bucketId, resourceId, userMeta) => {
+
+          // TODO rewrite this using tapir Validators ?
+          def sanitize(s: String, maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, String] =
+            for {
+              _ <- EitherT.cond[IO](s.length <= maxLength, (), ApiError.BadRequest)
+              _ <- EitherT.cond[IO](s.forall(characterAllowFn), (), ApiError.BadRequest)
+              trimmed = s.trim
+              _ <- EitherT.cond[IO](trimmed == Jsoup.clean(trimmed, Safelist.basic), (), ApiError.BadRequest)
+            } yield trimmed
+
+          def sanitizeOpt(s: Option[String], maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, Option[String]] =
+            s.map(sanitize(_, maxLength, characterAllowFn).map(Some(_))).getOrElse(EitherT.rightT[IO, ApiError](None))
+
+          (for {
+            sanitizedTitle       <- sanitizeOpt(userMeta.title, 128, _ => true)
+            sanitizedDescription <- sanitizeOpt(userMeta.description, 1280, _ => true)
+            sanitizedTags        <- userMeta.tags.map(tag => sanitize(tag, 64, c => c.isLetterOrDigit)).sequence
+            response             <- getResource(bucketId, resourceId)
+            (bucket, _)           = response
+            _                    <- EitherT.right(bucket.updateUserMeta(resourceId, sanitizedTitle, sanitizedDescription, sanitizedTags))
+          } yield ()).value
+        })
+      
+    val updateThumbnailTimestampImpl =
+      updateThumbnailTimestamp
+        .serverSecurityLogic(authenticator.requireRole(Roles.Admin))
+        .serverLogic(_ => (bucketId, resourceId, dto) =>
+          getResource(bucketId, resourceId).flatMap {
+            (bucket, _) => EitherT.right(bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis))
+          }.value
+        )
+
+    Http4sServerInterpreter[IO](serverOptions)
+      .toRoutes(List(getResourceByIdImpl, updateUserMetaDataImpl, updateThumbnailTimestampImpl))
   }
-
-  def apply(buckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
-
-    def withResource(bucketId: String, resourceId: String)(fn: (ResourceBucket, Resource) => IO[Response[IO]]) =
-      buckets.get(bucketId) match
-        case None => NotFound()
-        case Some(bucket) =>
-          bucket.getResource(resourceId).flatMap:
-            case None => NotFound()
-            case Some(resource) => fn(bucket, resource)
-
-    HttpRoutes.of[IO] {
-
-      case req @ GET -> Root / "api" / "resources" / bucketId / resourceId =>
-
-        withResource(bucketId, resourceId) { (_, resource) =>
-          Ok(resource.info().asJson)
-        }
-
-      case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / "content" =>
-
-        withResource(bucketId, resourceId) { (_, resource) =>
-          respondWithResourceContent(req, resource)
-        }
-
-      case req @ POST -> Root / "api" / "resources" / bucketId / resourceId / "update_thumbnail_timestamp" =>
-
-        withResource(bucketId, resourceId) { (bucket, resource) =>
-          req.as[ThumbnailTimestampDto].flatMap { dto =>
-            bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis).flatMap(_ => Ok())
-          }
-        }
-
-      case req @ POST -> Root / "api" / "resources" / bucketId / resourceId / "update_user_meta" =>
-
-        withResource(bucketId, resourceId) { (bucket, resource) =>
-          req.as[UserMetaDto].flatMap { userMeta =>
-            bucket.updateUserMeta(resourceId, userMeta.title, userMeta.description, userMeta.tags).flatMap(_ => Ok())
-          }
-        }
-
-      case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern =>
-
-        withResource(bucketId, resourceId) { (bucket, resource) =>
-          patterns.matchPf.lift(resourcePattern) match
-            case None            => NotFound()
-            case Some(operation) =>
-              bucket.getOrCreate(resourceId, operation).flatMap:
-                case None           => NotFound()
-                case Some(resource) =>
-                  respondWithResourceContent(req, resource).map {
-                    r => r.addHeader(`Cache-Control`(`max-age`(365.days)))
-                  }
-        }
-    }
-  }
-}

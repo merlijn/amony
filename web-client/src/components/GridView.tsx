@@ -1,12 +1,13 @@
-import React, { CSSProperties, useEffect, useState } from 'react';
+import React, {CSSProperties, useEffect, useState} from 'react';
 import useResizeObserver from 'use-resize-observer';
-import { Api } from '../api/Api';
-import { Constants } from "../api/Constants";
-import { Columns, ResourceSelection, SearchResult, Resource } from '../api/Model';
+import {Constants} from "../api/Constants";
+import {Columns, ResourceSelection} from '../api/Model';
 import './GridView.scss';
 import TagBar from './navigation/TagBar';
-import Preview, { PreviewOptions } from './Preview';
-import Scrollable from './common/Scrollable';
+import Preview, {PreviewOptions} from './Preview';
+import InfiniteScroll from './common/InfiniteScroll';
+import {findResources, FindResourcesParams, ResourceDto, SearchResponseDto} from "../api/generated";
+import {resourceSelectionToParams} from "../api/Util";
 
 export type GalleryProps = {
   selection: ResourceSelection
@@ -15,19 +16,19 @@ export type GalleryProps = {
   componentType: 'page' | 'element'
   columns: Columns,
   showTagbar: boolean,
-  previewOptionsFn: (v: Resource) => PreviewOptions,
-  onClick: (v: Resource) => void
+  previewOptionsFn: (v: ResourceDto) => PreviewOptions,
+  onClick: (v: ResourceDto) => void
 }
 
-const initialSearchResult: SearchResult = { total: 0, results: [], tags: [] }
+const initialSearchResult: SearchResponseDto = { offset: 0, total: 0, results: [], tags: [] }
 
 const GridView = (props: GalleryProps) => {
 
   const [searchResult, setSearchResult] = useState(initialSearchResult)
-  const [isFetching, setIsFetching] = useState(false)
+  const [isFetching, setIsFetching]     = useState(false)
   const [isEndReached, setIsEndReached] = useState(false)
-  const { ref, width } = useResizeObserver<HTMLDivElement>();
-  const [columns, setColumns] = useState<number>(props.columns === 'auto' ? 0 : props.columns)
+  const { ref, width }                  = useResizeObserver<HTMLDivElement>();
+  const [columns, setColumns]           = useState<number>(props.columns === 'auto' ? 0 : props.columns)
 
   const gridSpacing = 1
 
@@ -38,12 +39,14 @@ const GridView = (props: GalleryProps) => {
     const n      = columns * 8
 
     if (n > 0 && !isEndReached) {
-      Api.searchMedia(n, offset, props.selection).then(response => {
 
-          const result = response as SearchResult
-          const videos = [...previous, ...result.results]
+      const params: FindResourcesParams = resourceSelectionToParams(props.selection, offset, n)
 
-          if (videos.length >= result.total)
+      findResources(params).then(response => {
+
+          const videos = [...previous, ...response.results]
+
+          if (videos.length >= response.total)
             setIsEndReached(true)
 
           setIsFetching(false);
@@ -86,7 +89,7 @@ const GridView = (props: GalleryProps) => {
 
     return <div key = { `preview-${vid.resourceId}` } className = "grid-cell" style = { style } >
               <Preview
-                resource= { vid }
+                resource = { vid }
                 onClick  = { props.onClick }
                 options  = { props.previewOptionsFn(vid) }
               />
@@ -101,7 +104,7 @@ const GridView = (props: GalleryProps) => {
   return(
     <div className = { props.className } style = { props.style }>
       { props.showTagbar && <TagBar tags = { searchResult.tags } total = { searchResult.total } /> }
-      <Scrollable
+      <InfiniteScroll
         style        = { style }
         className    = "gallery-container"
         fetchContent = { () => { if (!isFetching && !isEndReached) setIsFetching(true) } }
@@ -109,7 +112,7 @@ const GridView = (props: GalleryProps) => {
         ref          = { ref }
         >
         { previews }
-      </Scrollable>
+      </InfiniteScroll>
     </div>
   );
 }

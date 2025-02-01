@@ -2,14 +2,7 @@ package nl.amony.service.resources.util
 
 object Base32 {
 
-  //  val alphabet2 = "abcdefghijklmnopqrstuvwxyz234567".toCharArray
-  // format: off
-
-  val alphabet: Array[Char] = Array(
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
-    'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '2', '3', '4', '5', '6', '7'
-  )
-  // format: on
+  val alphabet = "abcdefghijklmnopqrstuvwxyz234567".toCharArray
 
   val byteN = 8
 
@@ -32,8 +25,6 @@ object Base32 {
 
   /**
    * This currently works as is. Code looks a bit clunky and maybe inefficient though.
-   *
-   * 26 + 10
    *
    * @param bytes
    * @return
@@ -70,5 +61,69 @@ object Base32 {
     }
 
     stringBuilder.toString()
+  }
+
+  def encode2(bytes: Array[Byte]): String = {
+    val totalBits = bytes.length * 8
+    var bitIndex = 0
+    val sb = new StringBuilder
+
+    while (bitIndex < totalBits) {
+      val bitsToRead = math.min(5, totalBits - bitIndex)
+      val bits = extractBits(bytes, bitIndex, bitsToRead)
+      val c = alphabet(bits)
+      sb.append(c)
+      bitIndex += bitsToRead
+    }
+    sb.toString
+  }
+
+//  def extractBit(bytes: Array[Byte], bitIndex: Int): Int = {
+//    val byteIndex = bitIndex / 8
+//    val bitOffset = 7 - (bitIndex % 8)
+//    val b = bytes(byteIndex) & 0xFF
+//    (b >> bitOffset) & 1
+//  }
+//
+//  def extractBits(bytes: Array[Byte], bitIndex: Int, bitsToRead: Int): Int = {
+//    var value = 0
+//    for (i <- 0 until bitsToRead) {
+//      val bit = extractBit(bytes, bitIndex + i)
+//      value = (value << 1) | bit
+//    }
+//    value
+//  }
+
+  private def extractBits(bytes: Array[Byte], startBit: Int, bitsToRead: Int): Int = {
+    if (bitsToRead <= 0) return 0
+
+    val startByte = startBit / 8
+    val startBitOffset = startBit % 8
+    var result = 0
+    var remainingBits = bitsToRead
+    var currentByte = startByte
+
+    // Handle first byte specially if we're not starting at a byte boundary
+    if (startBitOffset > 0) {
+      val availableBits = 8 - startBitOffset
+      val bitsToTake = math.min(remainingBits, availableBits)
+      val mask = (1 << bitsToTake) - 1
+      result = (bytes(currentByte) >> (8 - startBitOffset - bitsToTake)) & mask
+      remainingBits -= bitsToTake
+      currentByte += 1
+    }
+
+    // Process full bytes
+    while (remainingBits >= 8) {
+      result = (result << 8) | (bytes(currentByte) & 0xFF)
+      remainingBits -= 8
+      currentByte += 1
+    }
+
+    // Handle remaining bits in the last byte
+    if (remainingBits > 0)
+      result = (result << remainingBits) | ((bytes(currentByte) & 0xFF) >>> (8 - remainingBits))
+
+    result
   }
 }

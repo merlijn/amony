@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+import "scalapb/scalapb.proto";
+
+option (scalapb.options) = {
+  flat_package: true
+  preserve_unknown_fields: false
+};
+
+package nl.amony.service.auth.api;
+
+service AuthService {
+
+  rpc authenticate(Credentials) returns (AuthenticationResponse) { }
+
+  rpc refresh(Authentication) returns (AuthenticationResponse) { }
+
+  rpc insertUser(UpsertUserRequest) returns (User) { }
+
+  rpc getByExternalId(GetByExternalId) returns (User) { }
+}
+
+message Credentials {
+  string username = 1;
+  string password = 2;
+}
+
+message AuthenticationResponse {
+
+  oneof sealed_value {
+
+    Authentication authentication = 1;
+    InvalidCredentials invalidCredentials = 2;
+  }
+}
+
+message GetByExternalId {
+  string externalId = 1;
+}
+
+message InvalidCredentials { }
+
+message UpsertUserRequest {
+  string externalId = 1;
+  string password = 2;
+}
+
+message Authentication {
+  string accessToken = 1;
+  string refreshToken = 2;
+}
+
+message User {
+  // unique identifier for the user, for example a uuid
+  string userId = 1;
+  // external id, could be an email, phone number
+  string externalId = 2;
+  // the hashed password of the user
+  string passwordHash = 3;
+}
+

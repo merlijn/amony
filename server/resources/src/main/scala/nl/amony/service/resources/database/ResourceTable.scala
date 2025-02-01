@@ -1,6 +1,6 @@
 package nl.amony.service.resources.database
 
-import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta, ResourceMetaMessage}
+import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta, ResourceMetaMessage, ResourceMetaSource}
 import scribe.Logging
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
@@ -11,22 +11,26 @@ case class ResourceRow(
    hash: String,
    size: Long,
    contentType: Option[String],
-   contentMeta: Option[Array[Byte]],
+   contentMetaToolName: Option[String],
+   contentMetaToolData: Option[String],
    creationTime: Option[Long],
    lastModifiedTime: Option[Long],
    title: Option[String],
    description: Option[String],
    thumbnailTimestamp: Option[Long] = None) {
 
-  def toResource(tags: Seq[String]): ResourceInfo = {
+  def toResource(tagLabels: Set[String]): ResourceInfo = {
     ResourceInfo(
       bucketId = bucketId,
+      resourceId = hash,
+      userId = "0",
       path = relativePath,
-      hash = hash,
+      hash = Some(hash),
       size = size,
       contentType = contentType,
-      contentMeta = ResourceRow.decodeMeta(contentMeta),
-      tags = tags,
+      contentMetaSource = contentMetaToolName.map(name => ResourceMetaSource(name, contentMetaToolData.getOrElse(""))),
+      contentMeta = ResourceMeta.Empty,
+      tags = tagLabels,
       creationTime = creationTime,
       lastModifiedTime = lastModifiedTime,
       title = title,
@@ -38,28 +42,14 @@ case class ResourceRow(
 
 object ResourceRow  {
 
-  def decodeMeta(maybeBytes: Option[Array[Byte]]): ResourceMeta = maybeBytes match {
-    case None => ResourceMeta.Empty
-    case Some(bytes) =>
-      val msg = ResourceMetaMessage.parseFrom(bytes)
-      ResourceMeta.ResourceMetaTypeMapper.toCustom(msg)
-  }
-
-  def encodeMeta(meta: ResourceMeta): Option[Array[Byte]] = {
-
-    Option.when(!meta.isEmpty) {
-      val bytes = ResourceMeta.ResourceMetaTypeMapper.toBase(meta).toByteArray
-      bytes
-    }
-  }
-
   def fromResource(resource: ResourceInfo): ResourceRow = ResourceRow(
     bucketId = resource.bucketId,
     relativePath = resource.path,
-    hash = resource.hash,
+    hash = resource.hash.get,
     size = resource.size,
     contentType = resource.contentType,
-    contentMeta = encodeMeta(resource.contentMeta),
+    contentMetaToolName = resource.contentMetaSource.map(_.toolName),
+    contentMetaToolData = resource.contentMetaSource.map(_.toolData),
     creationTime = resource.creationTime,
     lastModifiedTime = resource.lastModifiedTime,
     title = resource.title,
@@ -72,12 +62,13 @@ class ResourceTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends L
 
   import dbConfig.profile.api.*
 
-  class LocalFilesSchema(ttag: slick.lifted.Tag) extends Table[ResourceRow](ttag, "files") {
+  class ResourceSchema(ttag: slick.lifted.Tag) extends Table[ResourceRow](ttag, "files") {
 
     def bucketId = column[String]("bucket_id")
     def relativePath = column[String]("relative_path")
     def contentType = column[Option[String]]("content_type")
-    def contentMeta = column[Option[Array[Byte]]]("content_meta")
+    def contentMetaToolName = column[Option[String]]("content_meta_tool_name")
+    def contentMetaToolData = column[Option[String]]("content_meta_tool_data")
     def resourceId = column[String]("resource_id")
     def size = column[Long]("size")
     def creationTime = column[Option[Long]]("creation_time")
@@ -91,38 +82,34 @@ class ResourceTable[P <: JdbcProfile](val dbConfig: DatabaseConfig[P]) extends L
     def hashIdx = index("hash_idx", resourceId)
     def pk = primaryKey("resources_pk", (bucketId, resourceId))
 
-    def * = (bucketId, relativePath, resourceId, size, contentType, contentMeta, creationTime, lastModifiedTime, title, description, thumbnailTimestamp) <>
+    def * = (bucketId, relativePath, resourceId, size, contentType, contentMetaToolName, contentMetaToolData, creationTime, lastModifiedTime, title, description, thumbnailTimestamp) <>
       ((ResourceRow.apply _).tupled, ResourceRow.unapply)
   }
 
-  val innerTable = TableQuery[LocalFilesSchema]
+  val table = TableQuery[ResourceSchema]
 
-  def createIfNotExists: DBIO[Unit] =
-    innerTable.schema.createIfNotExists
-
-  def getByHash(bucketId: String, hash: String): Query[LocalFilesSchema, ResourceRow, Seq] =
-    innerTable
+  def getById(bucketId: String, resourceId: String): Query[ResourceSchema, ResourceRow, Seq] =
+    table
       .filter(_.bucketId === bucketId)
-      .filter(_.resourceId === hash)
+      .filter(_.resourceId === resourceId)
 
   def getByPath(bucketId: String, path: String) =
-    innerTable
+    table
       .filter(_.bucketId === bucketId)
       .filter(_.relativePath === path)
 
   def insert(resource: ResourceInfo) =
-    innerTable += ResourceRow.fromResource(resource)
+    table += ResourceRow.fromResource(resource)
 
   def update(row: ResourceRow) =
-    getByHash(row.bucketId, row.hash).update(row)
+    getById(row.bucketId, row.hash).update(row)
 
   def update(resource: ResourceInfo) =
-    getByHash(resource.bucketId, resource.hash).update(ResourceRow.fromResource(resource))
+    getById(resource.bucketId, resource.resourceId).update(ResourceRow.fromResource(resource))
 
-  def insertOrUpdate(resource: ResourceInfo) =
-    // ! The insertOrUpdate operation does not work in combination with a byte array field and hsqldb
-    innerTable.insertOrUpdate(ResourceRow.fromResource(resource))
+  def upsert(resource: ResourceInfo) =
+    table.insertOrUpdate(ResourceRow.fromResource(resource))
 
   def allForBucket(bucketId: String) =
-    innerTable.filter(_.bucketId === bucketId)
+    table.filter(_.bucketId === bucketId)
 }

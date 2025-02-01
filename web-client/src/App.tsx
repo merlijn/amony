@@ -1,5 +1,9 @@
 import {BrowserRouter, Route, Routes, useParams} from 'react-router-dom';
-import React, { Suspense, lazy } from 'react';
+import React, {lazy, Suspense, useEffect} from 'react';
+import {Constants, SessionContext} from "./api/Constants";
+import {getSession} from "./api/generated";
+import {AxiosError} from "axios";
+import {SessionInfo} from "./api/Model";
 
 const Editor = lazy(() => import('./pages/Editor'));
 const Compilation = lazy(() => import('./pages/Compilation'));
@@ -8,28 +12,54 @@ const VideoWall = lazy(() => import('./pages/VideoWall'));
 
 function App() {
 
+  const [session, setSession] = React.useState<SessionInfo | null>(null);
+
+  useEffect(() => {
+
+    getSession().then((authToken) => {
+      const sessionInfo: SessionInfo = {
+        isLoggedIn()   { return true },
+        isAdmin: ()=> authToken.roles.includes("admin")
+      }
+      setSession(sessionInfo);
+    }).catch((error: AxiosError) => {
+      if (error.response?.status === 401) {
+        setSession(Constants.anonymousSession);
+        return;
+      }
+      console.log("Error getting session", error);
+    });
+  }, []);
+
   return (
-    <div className="app-root">
-      <BrowserRouter>
-        <Suspense fallback = { <div>Loading...</div> }>
-          <Routes>
-            <Route path="/" element={<Main />} />
-            <Route path="/search" element={<Main />} />
-            <Route path="/editor/:id" element={<EditorRouter />} />
-            <Route path="/video-wall" element={<VideoWall />} />
-            <Route path="/compilation" element={<Compilation />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
-    </div>
+
+      <div className="app-root">
+        {
+          !session ? <div /> :
+            <BrowserRouter>
+              <Suspense fallback = { <div /> }>
+                <SessionContext.Provider value = { session }>
+                  <Routes>
+                    <Route path="/" element={<Main />} />
+                    <Route path="/search" element={<Main />} />
+                    <Route path="/editor/:bucketId/:resourceId" element={<EditorRouter />} />
+                    <Route path="/video-wall" element={<VideoWall />} />
+                    <Route path="/compilation" element={<Compilation />} />
+                  </Routes>
+                </SessionContext.Provider>
+                </Suspense>
+            </BrowserRouter>
+        }
+      </div>
+
   );
 }
 
 function EditorRouter() {
-  let { id } = useParams<{ id: string }>();
+  let { bucketId, resourceId } = useParams<{ bucketId: string, resourceId: string }>();
   return (
       <>
-          { id && <Editor videoId = { id } /> }
+          { (bucketId && resourceId) && <Editor bucketId = { bucketId } resourceId = { resourceId } /> }
       </>
   );
 }

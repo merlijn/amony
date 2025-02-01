@@ -1,5 +1,10 @@
 TODO for 1.0
 
-- Require admin login for modify actions
-- Store raw meta json from ffmpeg and imagick in the database
-- Store tags as ids in the database so that they can be renamed
+[x] BE: sanitize input everywhere
+[ ] BE: switch to a proper database like postgres
+[ ] BE: add an auto deploy pipeline
+[ ] BE/FE : user registration flow
+[ ] BE/FE : allow setting login required mode
+[ ] FE: allow sort direction in grid view
+[ ] FE: use sidebar for more options like an admin panel
+[ ] FE: allow filtering on media type (image/video/audio etc...)

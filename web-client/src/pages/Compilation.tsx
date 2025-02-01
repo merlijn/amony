@@ -1,19 +1,18 @@
-import { useState, useEffect } from "react";
-import { Api } from "../api/Api";
-import { Clip, SearchResult } from "../api/Model";
+import {useEffect, useState} from "react";
 import FragmentsPlayer from "../components/common/FragmentsPlayer";
+import {ClipDto} from "../api/generated";
 
 const Compilation = () => {
 
-    const [fragments, setFragments] = useState<Array<Clip>>([])
+    const [fragments, setFragments] = useState<Array<ClipDto>>([])
   
     useEffect(() => {
   
-        Api.getMedias("", 24, 0).then(response => {
-            const f = response as SearchResult
-            const frags = f.results.flatMap((v) => { return v.clips })
-            setFragments(frags)
-        });
+        // Api.getMedias("", 24, 0).then(response => {
+        //     const f = response as SearchResult
+        //     const frags = f.results.flatMap((v) => { return v.clips })
+        //     setFragments(frags)
+        // });
       }, []
     )
   

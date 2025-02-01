@@ -1,19 +1,20 @@
-import React, {CSSProperties, useEffect, useState} from 'react';
-import ProgressiveImage from "react-progressive-graceful-image";
-import {Resource} from "../api/Model";
+import React, {CSSProperties, useContext, useState} from 'react';
 import {dateMillisToString, durationInMillisToString, labelForResolution} from "../api/Util";
 import FragmentsPlayer from "./common/FragmentsPlayer";
 import ImgWithAlt from "./common/ImgWithAlt";
 import './Preview.scss';
 import {ErrorBoundary} from "react-error-boundary";
+import {SessionContext} from "../api/Constants";
+import {ResourceDto} from "../api/generated";
+import LazyImage from "./common/LazyImage";
 
 export type PreviewProps = {
-  resource: Resource,
+  resource: ResourceDto,
   style?: CSSProperties,
   className?: string,
   lazyLoad?: boolean,
   options: PreviewOptions,
-  onClick: (v: Resource) => any
+  onClick: (v: ResourceDto) => any
 }
 
 export type PreviewOptions = {
@@ -23,46 +24,42 @@ export type PreviewOptions = {
   showDates: boolean,
   showDuration: boolean,
   showResolution: boolean,
-  showMenu: boolean,
 }
 
 const Preview = (props: PreviewProps) => {
   const [resource, setResource] = useState(props.resource)
   const [isHovering, setIsHovering] = useState(false)
-  // const [showVideoPreview, setShowVideoPreview] = useState(false)
 
-  const durationStr = durationInMillisToString(resource.resourceMeta.duration)
+  const durationStr = durationInMillisToString(resource.contentMeta.duration)
 
   const isVideo = resource.contentType.startsWith("video")
 
-  // useEffect(() => {
-  //   setShowVideoPreview(isHovering)
-  // }, [isHovering])
+  const session = useContext(SessionContext)
 
   const titlePanel =
       <div className = "preview-info-bar">
-        <span className="media-title" title={resource.userMeta.title}>{resource.userMeta.title}</span>
-        { props.options.showDates && <span className="media-date">{dateMillisToString(resource.uploadTimestamp)}</span> }
+        <span className="media-title" title={resource.title}>{resource.title}</span>
+        { props.options.showDates && <span className="media-date">{dateMillisToString(resource.timeCreated)}</span> }
       </div>
 
   const overlay =
       <div className="preview-overlay">
-        { props.options.showResolution && <div className="preview-quality-overlay">{labelForResolution(resource.resourceMeta.height)}</div> }
+        { props.options.showResolution && <div className="preview-quality-overlay">{labelForResolution(resource.contentMeta.height)}</div> }
         { (isVideo && props.options.showDuration) && <div className="duration-overlay">{durationStr}</div> }
-        { isHovering && <a className="preview-edit-icon-overlay" href={`/editor/${props.resource.resourceId}`}><ImgWithAlt src="/icons/edit.svg" /></a> }
+        { isHovering && session.isAdmin() && <a className="preview-edit-icon-overlay" href={`/editor/${props.resource.bucketId}/${props.resource.resourceId}`}><ImgWithAlt src="/icons/edit.svg" /></a> }
         {/* { <div className="abs-bottom-right"><FiDownload /></div> } */}
       </div>
 
   const primaryThumbnail =
-      <ProgressiveImage src = { resource.urls.thumbnailUrl } placeholder="/image_placeholder.svg">
-        { (src: string) =>
-            <img
-                src       = { src } alt="an image"
-                onClick   = { () => props.onClick(props.resource) }
-                className = { `preview-thumbnail preview-media` }
-            />
+      <LazyImage
+        loadImage = { () =>
+          <img
+              src       = { resource.urls.thumbnailUrl } alt="an image"
+              onClick   = { () => props.onClick(props.resource) }
+              className = { `preview-thumbnail preview-media` }
+          />
         }
-      </ProgressiveImage>
+      />
 
   const videoPreview =
       <FragmentsPlayer

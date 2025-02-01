@@ -17,24 +17,26 @@ object LocalResourceScanner {
   private def mapEvent(basePath: Path, bucketId: String)(fileEvent: FileEvent): IO[ResourceEvent] = fileEvent match {
     case FileAdded(f) =>
 
-      LocalResourceMeta.resolveMeta(f.path)
-        .map(_.getOrElse(ResourceMeta.Empty))
-        .recover {
-          case e => logger.error(s"Failed to resolve meta for ${f.path}", e); ResourceMeta.Empty
-        }.map { meta =>
-          ResourceAdded(
-            ResourceInfo(
-              bucketId = bucketId,
-              path = basePath.relativize(f.path).toString,
-              hash = f.hash,
-              size = f.size,
-              contentType = Resource.contentTypeForPath(f.path),
-              contentMeta = meta,
-              creationTime = Some(f.creationTime),
-              lastModifiedTime = Some(f.modifiedTime),
-              thumbnailTimestamp = None
+      LocalResourceMeta.detectMetaData(f.path)
+        .recover { case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None }
+        .map {
+          meta =>
+            ResourceAdded(
+              ResourceInfo(
+                bucketId = bucketId,
+                resourceId = f.hash,
+                userId = "0",
+                path = basePath.relativize(f.path).toString,
+                hash = Some(f.hash),
+                size = f.size,
+                contentType = meta.map(_.contentType),
+                contentMetaSource = meta.flatMap(_.toolMeta),
+                contentMeta = meta.map(_.meta).getOrElse(ResourceMeta.Empty),
+                creationTime = Some(f.creationTime),
+                lastModifiedTime = Some(f.modifiedTime),
+                thumbnailTimestamp = None
+              )
             )
-          )
         }
 
     case FileDeleted(f) =>
@@ -56,7 +58,7 @@ object LocalResourceScanner {
 
     val initialFiles: Map[Path, FileInfo] = initialState.map { r =>
       val path = resourcePath.resolve(Path.of(r.path))
-      path -> FileInfo(resourcePath.resolve(Path.of(r.path)), r.hash, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0))
+      path -> FileInfo(resourcePath.resolve(Path.of(r.path)), r.hash.get, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0))
     }.toMap
 
     val fileStore = new InMemoryFileStore(initialFiles)

@@ -18,3 +18,9 @@ case class MagickImageMeta(
   version: String,
   image: ImageMeta
 ) derives Decoder
+
+case class MagickResult(
+  output: List[MagickImageMeta],
+  rawJson: Json,
+)
+

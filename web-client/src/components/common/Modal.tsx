@@ -5,7 +5,6 @@ const Modal = (props: { children?: ReactNode, visible: boolean, onHide: () => vo
 
   return(
     <div
-      key       = "modal-container"
       style     = { { zIndex: props.visible ? 500 : -1, visibility: props.visible ? "visible" : "hidden" } }
       className = "modal-container">
 

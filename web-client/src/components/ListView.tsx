@@ -1,24 +1,31 @@
-import {CSSProperties, useEffect, useRef, useState} from "react"
+import React, {CSSProperties, useContext, useEffect, useRef, useState} from "react"
 import {FaSort} from "react-icons/fa"
 import {FiEdit} from "react-icons/fi"
-import ProgressiveImage from "react-progressive-graceful-image"
-import {Api} from "../api/Api"
-import {Resource, ResourceSelection, ResourceUserMeta, SearchResult} from "../api/Model"
-import {dateMillisToString, formatByteSize} from "../api/Util"
+import {ResourceSelection} from "../api/Model"
+import {dateMillisToString, formatByteSize, resourceSelectionToParams} from "../api/Util"
 import './ListView.scss'
-import Scrollable from "./common/Scrollable"
-import {useSortParam} from "../api/Constants"
+import InfiniteScroll from "./common/InfiniteScroll"
+import {SessionContext, useSortParam} from "../api/Constants"
 import {useNavigate} from "react-router-dom"
 import TagsBar from "./common/TagsBar"
 import {MdDelete, MdMovieEdit} from "react-icons/md";
 import {FaHashtag} from "react-icons/fa6";
+import {
+  findResources,
+  FindResourcesParams,
+  ResourceDto,
+  SearchResponseDto,
+  updateUserMetaData,
+  UserMetaDto
+} from "../api/generated";
+import LazyImage from "./common/LazyImage";
 
 type ListProps = {
   selection: ResourceSelection
-  onClick: (v: Resource) => any
+  onClick: (v: ResourceDto) => any
 }
 
-const initialSearchResult: SearchResult = { total: 0, results: [], tags: [] }
+const initialSearchResult: SearchResponseDto = { offset: 0, total: 0, results: [], tags: [] }
 const rowHeight = 36
 
 const ListView = (props: ListProps) => {
@@ -28,25 +35,28 @@ const ListView = (props: ListProps) => {
   const [fetchMore, setFetchMore] = useState(true)
   const [selectedItems, setSelectedItems] = useState<Array<number>>([])
   const navigate = useNavigate();
+  const session = useContext(SessionContext)
 
-  const fetchData = (previous: Array<Resource>) => {
+  const fetchData = (previous: Array<ResourceDto>) => {
 
     const offset = previous.length
     const n      = offset === 0 ? Math.ceil(window.outerHeight / rowHeight) : 32;
 
     if (n > 0 && fetchMore) {
-      Api.searchMedia(n, offset, props.selection).then(response => {
 
-          const result = response as SearchResult
-          const videos = [...previous, ...result.results]
+      const params: FindResourcesParams = resourceSelectionToParams(props.selection, offset, n)
 
-          if (videos.length >= result.total)
-            setFetchMore(false)
+      findResources(params).then(response => {
 
-          setIsFetching(false);
-          setSearchResult({...response, results: videos});
-        });
-      }
+        const videos = [...previous, ...response.results]
+
+        if (videos.length >= response.total)
+          setFetchMore(false)
+
+        setIsFetching(false);
+        setSearchResult({...response, results: videos});
+      });
+    }
   }
 
   const [sort, setSort] = useSortParam()
@@ -60,17 +70,19 @@ const ListView = (props: ListProps) => {
   useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.results); }, [isFetching]);
 
   const toggle = (index: number)=>  {
-    const i = selectedItems.indexOf(index)
-    if (i > -1) {
-      setSelectedItems(selectedItems.filter((v) => v !== index))
-    } else {
-      setSelectedItems([...selectedItems, index])
+    if (session.isAdmin()) {
+      const i = selectedItems.indexOf(index)
+      if (i > -1) {
+        setSelectedItems(selectedItems.filter((v) => v !== index))
+      } else {
+        setSelectedItems([...selectedItems, index])
+      }
     }
   }
 
   const headers =
     <tr key="row-header" className="list-row">
-      <th className="list-header-select"><input type="checkbox"/></th>
+      { session.isAdmin() && <th className="list-header-select"><input type="checkbox"/></th> }
       <th className="list-header-thumbnail"></th>
       <th className="list-header-title"><span>Title</span>
         <FaSort className="column-sort-icon"
@@ -103,16 +115,16 @@ const ListView = (props: ListProps) => {
     </tr>
 
   return (
-    <Scrollable
+    <InfiniteScroll
       className="list-container"
       fetchContent={() => {
         if (!isFetching && fetchMore) setIsFetching(true);
-        fetchData(searchResult.results)
+          fetchData(searchResult.results)
       }}
       scrollType='page'
     >
       <tr key="row-column-width-spacer" style ={ {height: 0 } }>
-        <td style={{width: 36}}></td>
+        { session.isAdmin() && <td style = { {width: 36 } }></td> }
         <td style={{width: 72}}></td>
         <td style={{width: "65%"}}></td>
         <td style={{width: "35%"}}></td>
@@ -128,17 +140,23 @@ const ListView = (props: ListProps) => {
           searchResult.results.map((resource, index) => {
             return (
               <tr key={`row-${resource.resourceId}`} className="list-row">
+                {
+                  session.isAdmin() &&
+                    <td key="select" className="list-select" onClick={() => { toggle(index) }}>
+                      <input type="checkbox" checked={selectedItems.indexOf(index) > -1}/>
+                    </td>
+                }
+                <td key="thumbnail" className="list-thumbnail" style = { { paddingLeft: session.isAdmin() ? 0 : 2}}>
 
-                <td key="select" className="list-select" onClick={() => { toggle(index) }}>
-                  <input type="checkbox" checked={selectedItems.indexOf(index) > -1}/>
-                </td>
-
-                <td key="thumbnail" className="list-thumbnail">
-                  <ProgressiveImage src={resource.urls.thumbnailUrl} placeholder="/image_placeholder.svg">
-                    {(src: string) =>
-                      <img className="list-thumbnail-img" src={src} onClick={() => props.onClick(resource)}
-                           alt="an image"/>}
-                  </ProgressiveImage>
+                  <LazyImage
+                    loadImage = { () =>
+                      <img
+                        src       = { resource.urls.thumbnailUrl } alt="an image"
+                        onClick   = { () => props.onClick(resource) }
+                        className = "list-thumbnail-img"
+                      />
+                    }
+                  />
                 </td>
 
                 <TitleCell mediaResource={resource} onClick={() => { toggle(index) }}/>
@@ -146,24 +164,24 @@ const ListView = (props: ListProps) => {
                 <TagsCell resource={resource}/>
 
                 <td key="date" className="list-cell list-date">
-                  {dateMillisToString(resource.uploadTimestamp)}
+                  {dateMillisToString(resource.timeCreated)}
                 </td>
 
                 <td key="size" className="list-cell list-size">
-                  {formatByteSize(resource.resourceInfo.sizeInBytes, 1)}
+                  {formatByteSize(resource.sizeInBytes, 1)}
                 </td>
 
                 <td key="resolution" className="list-cell list-resolution">
                   <div className="cell-wrapper">
                     {
-                      Api.session().isAdmin() &&
+                      session.isAdmin() &&
                         <div className="media-actions">
                             <MdMovieEdit className="fragments-action"
                                          onClick={() => navigate(`/editor/${resource.resourceId}`)}/>
                             <MdDelete className="delete-action"/>
                         </div>
                     }
-                    {`${resource.resourceMeta.height}p`}
+                    {`${resource.contentMeta.height}p`}
                   </div>
 
                 </td>
@@ -171,35 +189,37 @@ const ListView = (props: ListProps) => {
             );
           })
         }
-    </Scrollable>
+    </InfiniteScroll>
 );
 }
 
 const TagsCell = (props: {
-  resource: Resource }) => {
-  const [tags, setTags] = useState(props.resource.userMeta.tags)
-  const isAdmin = Api.session().isAdmin()
+  resource: ResourceDto }) => {
+  const [tags, setTags] = useState(props.resource.tags)
+  const session = useContext(SessionContext)
 
   const updateTags = (newTags: Array<string>) => {
-    const meta: ResourceUserMeta = { ...props.resource.userMeta, tags: newTags }
-    Api.updateUserMetaData(props.resource.bucketId, props.resource.resourceId, meta).then(() =>  {
+    const meta: UserMetaDto = { title: props.resource.title, description: props.resource.description, tags: newTags }
+
+    updateUserMetaData(props.resource.bucketId, props.resource.resourceId, meta).then(() =>  {
       setTags(newTags)
     })
   }
   return <TagsBar 
             tags = { tags }
             onTagsUpdated = { updateTags }
-            showAddTagButton = {isAdmin} 
-            showDeleteButton = {isAdmin} />
+            showAddTagButton = {session.isAdmin()}
+            showDeleteButton = {session.isAdmin()} />
 }
 
-type TitleCellProps =  { mediaResource: Resource; } & React.HTMLProps<HTMLTableCellElement>;
+type TitleCellProps =  { mediaResource: ResourceDto; } & React.HTMLProps<HTMLTableCellElement>;
 
 const TitleCell = ({ mediaResource, ...elementProps }: TitleCellProps ) => {
 
-  const [title, setTitle] = useState(mediaResource.userMeta.title)
+  const [title, setTitle] = useState(mediaResource.title)
   const [editTitle, setEditTitle] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const session = useContext(SessionContext)
 
   useEffect(() => {
     if (editTitle)
@@ -207,8 +227,9 @@ const TitleCell = ({ mediaResource, ...elementProps }: TitleCellProps ) => {
   }, [editTitle])
 
   const updateTitle = (newTitle: string) => {
-    const meta: ResourceUserMeta = { ...mediaResource.userMeta, title: newTitle }
-    Api.updateUserMetaData(mediaResource.bucketId, mediaResource.resourceId, meta).then(() =>  {
+    const meta: UserMetaDto = { tags: mediaResource.tags, description: mediaResource.description, title: newTitle }
+
+    updateUserMetaData(mediaResource.bucketId, mediaResource.resourceId, meta).then(() =>  {
       setTitle(newTitle)
       setEditTitle(false)
     })
@@ -220,7 +241,7 @@ const TitleCell = ({ mediaResource, ...elementProps }: TitleCellProps ) => {
     <td style = { style } key="title" className="list-cell list-title" {...elementProps }>
       <div className="cell-wrapper">
         { !editTitle && title }
-        { (!editTitle && Api.session().isAdmin()) &&
+        { (!editTitle && session.isAdmin()) &&
             <FiEdit onClick = { () => { setEditTitle(true); } } className="edit-title" /> }
         { editTitle && 
           <input 
@@ -233,7 +254,7 @@ const TitleCell = ({ mediaResource, ...elementProps }: TitleCellProps ) => {
             onKeyPress = { (e) => {
               if (e.key === "Enter") {
                 e.preventDefault()
-                updateTitle(title);
+                title && updateTitle(title);
               }
             }}
           />

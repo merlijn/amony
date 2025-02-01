@@ -1,4 +1,3 @@
-import {Resource} from "../../api/Model";
 import React, {CSSProperties, MouseEventHandler, useEffect, useRef, useState} from "react";
 import {isMobile} from "react-device-detect";
 import {boundedRatioBox} from "../../api/Util";
@@ -7,8 +6,9 @@ import Modal from "./Modal";
 import {MediaPlayer, MediaPlayerInstance, MediaProvider,} from "@vidstack/react";
 
 import {defaultLayoutIcons, DefaultVideoLayout,} from '@vidstack/react/player/layouts/default';
+import {ResourceDto} from "../../api/generated";
 
-const ResourceViewModal = (props: { resource?: Resource, onHide: () => void }) => {
+const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }) => {
 
   let player = useRef<MediaPlayerInstance>(null)
   let [src, setSrc] = useState('');
@@ -18,8 +18,8 @@ const ResourceViewModal = (props: { resource?: Resource, onHide: () => void }) =
     setSrc(props.resource?.urls.originalResourceUrl || '')
   }, [props.resource]);
 
-  const modalSize = (v: Resource): CSSProperties => {
-    return boundedRatioBox(isMobile ? "100vw" : "75vw", "75vh", v.resourceMeta.width / v.resourceMeta.height)
+  const modalSize = (v: ResourceDto): CSSProperties => {
+    return boundedRatioBox(isMobile ? "100vw" : "75vw", "75vh", v.contentMeta.width / v.contentMeta.height)
   }
 
   let isVideo = props.resource?.contentType.startsWith("video") || false
@@ -40,7 +40,7 @@ const ResourceViewModal = (props: { resource?: Resource, onHide: () => void }) =
             playsInline
             ref = { player }
             src = { { src: src, type: "video/mp4"  } }
-            title = { props.resource?.userMeta.title }
+            title = { props.resource?.title }
             style = { !isVideo ? { display: "none" } : {} }
             controlsDelay = { 5000 }
             hideControlsOnMouseLeave = { true }

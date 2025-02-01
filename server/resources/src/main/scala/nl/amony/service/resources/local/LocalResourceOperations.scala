@@ -5,25 +5,22 @@ import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.magick.ImageMagick
 import nl.amony.service.resources.*
 import nl.amony.service.resources.api.operations.*
-import nl.amony.service.resources.api.{ImageMeta, ResourceInfo, ResourceMeta, VideoMeta}
+import nl.amony.service.resources.api.{ImageMeta, ResourceInfo, VideoMeta}
 import scribe.Logging
-import scala.concurrent.ExecutionContext
 
 import java.nio.file.Path
 
 object LocalResourceOperations {
   
   def createResource(inputFile: Path, inputMeta: ResourceInfo, outputDir: Path, operation: LocalResourceOp): IO[Path] =
-    val outputFile = outputDir.resolve(operation.outputFilename)
-
-    if (!operation.validate(inputMeta))
-      IO.raiseError(new Exception(s"Operation ${operation} is invalid or not compatible with ${inputMeta}"))
-    else
-      operation.createFile(inputFile, outputDir).memoize.flatten
+    operation.validate(inputMeta) match
+      case Left(error) => IO.raiseError(new Exception(error))
+      case Right(_)    => operation.createFile(inputFile, outputDir).memoize.flatten
 
   sealed trait LocalResourceOp {
 
-    def validate(meta: ResourceInfo): Boolean = true
+    def contentType: String
+    def validate(meta: ResourceInfo): Either[String, Unit] = Right(())
     def outputFilename: String
     def createFile(inputFile: Path, outputDir: Path): IO[Path]
   }
@@ -37,18 +34,27 @@ object LocalResourceOperations {
   }
   
   val NoOp = new LocalResourceOp {
-    override def validate(meta: ResourceInfo): Boolean = false
+    override def contentType: String = ""
+    override def validate(meta: ResourceInfo): Either[String, Unit] = Left("No operation")
     override def outputFilename: String = ""
     override def createFile(inputFile: Path, outputDir: Path): IO[Path] = IO(inputFile)
   }
   
   case class VideoThumbnailOp(resourceId: String, timestamp: Long, quality: Int) extends LocalResourceOp with Logging {
+
+    override def contentType = "image/webp"
+
     def outputFilename: String = s"${resourceId}_${timestamp}_${quality}p.webp"
 
-    override def validate(info: ResourceInfo): Boolean = info.contentMeta match {
-        case video: VideoMeta => timestamp > 0 && video.durationInMillis > timestamp
-        case _               => false
-    }
+    override def validate(info: ResourceInfo): Either[String, Unit] =
+      info.contentMeta match {
+        case video: VideoMeta =>
+          for {
+            _ <- Either.cond(timestamp > 0 && timestamp < video.durationInMillis, (), "Timestamp is out of bounds")
+          } yield ()
+        case other               =>
+          Left("Wrong content type, expected video, got: " + other)
+      }
 
     override def createFile(inputFile: Path, outputDir: Path): IO[Path] = {
 
@@ -65,6 +71,9 @@ object LocalResourceOperations {
   }
 
   case class ImageThumbnailOp(resourceId: String, width: Option[Int], height: Option[Int]) extends LocalResourceOp with Logging {
+
+    override def contentType = "image/webp"
+
     def outputFilename: String = s"${resourceId}_${height.getOrElse("")}p.webp"
 
     val minHeight = 64
@@ -72,8 +81,15 @@ object LocalResourceOperations {
     val maxHeight = 4096
     val maxWidth = 4096
 
-    override def validate(info: ResourceInfo): Boolean =
-      info.contentMeta.isInstanceOf[ImageMeta] && (height.getOrElse(0) > minHeight || width.getOrElse(0) > minWidth) && (height.getOrElse(0) < maxHeight || width.getOrElse(0) < maxHeight)
+    override def validate(info: ResourceInfo): Either[String, Unit] = {
+
+      for {
+        _ <- Either.cond(height.getOrElse(Int.MaxValue) > minHeight, (), "Height too small")
+        _ <- Either.cond(width.getOrElse(Int.MaxValue) > minWidth, (), "Width too small")
+        _ <- Either.cond(height.getOrElse(0) < maxHeight, (), "Height too large")
+        _ <- Either.cond(width.getOrElse(0) < maxWidth, (), "Width too large")
+      } yield ()
+    }
 
     override def createFile(inputFile: Path, outputDir: Path): IO[Path] = {
 
@@ -92,6 +108,8 @@ object LocalResourceOperations {
 
   case class VideoFragmentOp(resourceId: String, range: (Long, Long), height: Int) extends LocalResourceOp with Logging {
 
+    override def contentType = "video/mp4"
+
     val minHeight = 120
     val maxHeight = 4096
     val minLengthInMillis = 1000
@@ -99,14 +117,19 @@ object LocalResourceOperations {
 
     def outputFilename: String = s"${resourceId}_${range._1}-${range._2}_${height}p.mp4"
 
-    override def validate(info: ResourceInfo): Boolean = {
+    override def validate(info: ResourceInfo): Either[String, Unit] = {
       info.contentMeta match {
         case video: VideoMeta =>
           val (start, end) = range
           val duration = end - start
-          (height > minHeight && height < maxHeight) && start >= 0 && end > start && duration > minLengthInMillis && duration < maxLengthInMillis && end <= video.durationInMillis
-        case _                =>
-          false
+          for {
+            _ <- Either.cond(height > minHeight || height < maxHeight, (), "Height out of bounds")
+            _ <- Either.cond(start >= 0, (), "Start time is negative")
+            _ <- Either.cond(end > start, (), "End time is before start time")
+            _ <- Either.cond(duration > minLengthInMillis, (), "Duration too short")
+            _ <- Either.cond(duration < maxLengthInMillis, (), "Duration too long")
+          } yield ()
+        case other => Left("Wrong content type, expected video, got: " + other)
       }
     }
 

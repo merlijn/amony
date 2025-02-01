@@ -2,27 +2,25 @@ package nl.amony.lib.magick.tasks
 
 import cats.effect.IO
 import nl.amony.lib.ffmpeg.tasks.ProcessRunner
-import nl.amony.lib.magick.model.{ImageMeta, MagickImageMeta}
+import nl.amony.lib.magick.model.{MagickImageMeta, MagickResult}
 
 import java.nio.file.Path
+import scala.util.Try
 
 trait GetImageMetaData {
 
   self: ProcessRunner =>
 
-  def getImageMeta(path: Path): IO[List[MagickImageMeta]] = {
+  def getImageMeta(path: Path): IO[Try[MagickResult]] = {
 
     val fileName = path.toAbsolutePath.normalize().toString
 
-    val args = List(fileName, "-format", "%wx%h", "json:")
-
-    runWithOutput("convert", args, false) { json =>
-
+    useProcessOutput("convert", List(fileName, "json:"), false) { processOutput =>
       IO {
-        io.circe.parser.decode[List[MagickImageMeta]](json) match {
-          case Left(error) => throw error
-          case Right(out)  => out
-        }
+        (for {
+          json <- io.circe.parser.parse(processOutput)
+          out  <- json.as[List[MagickImageMeta]]
+        } yield MagickResult(out, json)).toTry
       }
     }
   }

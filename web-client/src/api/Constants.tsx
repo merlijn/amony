@@ -1,5 +1,6 @@
-import {Prefs, Resolution, Sort, SortDirection} from "./Model";
+import {Prefs, Resolution, SessionInfo, Sort, SortDirection} from "./Model";
 import { useUrlParam } from "./ReactUtils";
+import React from "react";
 
 const resolutions: Array<Resolution> =
    [{ value: 0,    label: "SD"},
@@ -72,7 +73,16 @@ const defaultPrefs: Prefs = {
   gallery_columns: "auto",
 }
 
+const anonymousSession: SessionInfo = {
+  isLoggedIn: () => false,
+  isAdmin: () => false,
+}
+
+export const SessionContext = React.createContext<SessionInfo>(anonymousSession);
+
 export const Constants = {
+
+  anonymousSession: anonymousSession,
 
   imgAlt: "<image here>",
 

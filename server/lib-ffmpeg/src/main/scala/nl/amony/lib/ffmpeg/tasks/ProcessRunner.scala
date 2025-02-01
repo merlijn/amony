@@ -20,7 +20,7 @@ trait ProcessRunner extends Logging {
 
   def runIgnoreOutput(cmd: String, args: Seq[String]): IO[Int] = useProcess(cmd, args)(_.exitValue)
 
-  def runWithOutput[T](cmd: String, args: Seq[String], useErrorStream: Boolean)(fn: String => IO[T]): IO[T] = 
+  def useProcessOutput[T](cmd: String, args: Seq[String], useErrorStream: Boolean)(fn: String => IO[T]): IO[T] = 
     useProcess(cmd, args) { process => getOutputAsString(process, useErrorStream, cmd +: args).flatMap(fn) }
 
   def useProcess[T](cmd: String, args: Seq[String])(fn: fs2.io.process.Process[IO] => IO[T]): IO[T] =

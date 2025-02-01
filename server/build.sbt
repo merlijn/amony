@@ -13,7 +13,11 @@ val excludeScalaJs = List(
 )
 
 val circeVersion    = "0.14.10"
-val http4sVersion   = "1.0.0-M44"
+val http4sVersion   = "0.23.30"
+
+val bouncyCastle = "org.apache.directory.studio" % "org.bouncycastle.bcprov.jdk15" % "140"
+
+val jsoup  = "org.jsoup" % "jsoup" % "1.18.3"
 
 val circe                    = "io.circe"                 %% "circe-core"                 % circeVersion
 val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
@@ -22,9 +26,24 @@ val circeParser              = "io.circe"                 %% "circe-parser"     
 val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.5.2"
 val slickHikariCp            = "com.typesafe.slick"       %% "slick-hikaricp"             % "3.5.2"
 
+val sqids                    = "org.sqids" %% "sqids" % "0.5.0"
+
+val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"            % "1.11.11"
+val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"   % "1.11.11"
+val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"     % "1.11.11"
+val tapirSwaggerUI           = "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % "1.11.11"
+val tapirCirce               = "com.softwaremill.sttp.tapir" %% "tapir-json-circe"        % "1.11.11"
+val tapirCirceYamlSpec       = "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"    % "0.11.5"
+
+val tapirSharedFs2           = "com.softwaremill.sttp.shared"  %% "fs2"                   % "1.4.2"
+
 val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "10.0.1"
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.16"
+
+val scribe                   = "com.outr"                 %% "scribe"                     % "3.15.3"
 val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.15.3"
+
+val tikaCore                 = "org.apache.tika"           % "tika-core"                  % "3.0.0"
 
 val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.11.0"
 val fs2Io                    = "co.fs2"                   %% "fs2-io"                     % "3.11.0"
@@ -35,12 +54,12 @@ val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"  
 
 val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.7.4"
 val h2DB                     = "com.h2database"            % "h2"                         % "2.3.232"
-val flywayDbCore             = "org.flywaydb"              % "flyway-core"                % "11.1.0"
 
 val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.8"
+val pureConfigGeneric        = "com.github.pureconfig"    %% "pureconfig-generic-scala3"  % "0.17.8"
 val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.3"
 
-val liquibaseCore            = "org.liquibase" % "liquibase-core" % "4.30.0"
+val liquibaseCore            = "org.liquibase"             % "liquibase-core"             % "4.30.0"
 
 val solr                     = "org.apache.solr"           % "solr-core"                  % "8.11.1" excludeAll(excludeLog4j)
 val solrLangId               = "org.apache.solr"           % "solr-langid"                % "8.11.1" excludeAll(excludeLog4j)
@@ -49,21 +68,15 @@ val scalaPbRuntimeGrcp       = "com.thesamet.scalapb"     %% "scalapb-runtime-gr
 val scalaPbRuntimeProtobuf   = "com.thesamet.scalapb"     %% "scalapb-runtime"            % scalapb.compiler.Version.scalapbVersion % "protobuf"
 val scalaPbRuntime           = "com.thesamet.scalapb"     %% "scalapb-runtime"            % scalapb.compiler.Version.scalapbVersion
 
-val log4CatsSlf4j            = "org.typelevel" %% "log4cats-slf4j"   % "2.7.0"
+val log4CatsSlf4j            = "org.typelevel"            %% "log4cats-slf4j"             % "2.7.0"
 
 
 val http4sEmberServer = "org.http4s" %% "http4s-ember-server" % http4sVersion
 val http4sEmberClient = "org.http4s" %% "http4s-ember-client" % http4sVersion
-val http4sDsl = "org.http4s" %% "http4s-dsl" % http4sVersion
-val http4sCirce = "org.http4s" %% "http4s-circe" % http4sVersion
+val http4sDsl         = "org.http4s" %% "http4s-dsl"          % http4sVersion
+val http4sCirce       = "org.http4s" %% "http4s-circe"        % http4sVersion
 
-val embeddedKafka = "io.github.embeddedkafka" %% "embedded-kafka" % "3.8.0" // cross CrossVersion.for3Use2_13
 
-//val tapirCirce = "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % "1.2.9"
-//val tapir = "com.softwaremill.sttp.tapir" %% "tapir-core" % "1.2.9"
-//val tarirHttp4s = "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % "1.2.9"
-
-val javaOpts = Seq("-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true")
 
 //fork in Global := true
 cancelable in Global := true
@@ -110,7 +123,7 @@ lazy val libFiles =
       name         := "amony-lib-filewatcher",
       libraryDependencies ++= Seq(
         pureConfig,
-        scribeSlf4j,
+        scribe,
         fs2Core,
         slick,
         scalaTest,
@@ -126,7 +139,7 @@ lazy val libFFMPeg =
     .settings(
       name         := "amony-lib-ffmpeg",
       libraryDependencies ++= Seq(
-        scribeSlf4j,
+        scribe,
         fs2Core,
         fs2Io,
         scalaTest,
@@ -142,7 +155,7 @@ lazy val libEventStore =
       name         := "amony-lib-eventstore",
       libraryDependencies ++= Seq(
         pureConfig,
-        scribeSlf4j,
+        scribe,
         fs2Core,
         slick,
         scalaTest,
@@ -152,16 +165,17 @@ lazy val libEventStore =
       )
     )
 
-lazy val identity =
-  module("identity")
+lazy val auth =
+  module("auth")
     .dependsOn(libFiles, libEventStore)
     .settings(protobufSettings)
     .settings(
       name := "amony-service-auth",
       libraryDependencies ++= Seq(
         // akka
-        jwtCirce,
-        circe, circeGeneric, pureConfig, slick,
+        jwtCirce, bouncyCastle,
+        tapirCore, tapirCatsEffect, tapirCirce, tapirHttp4s,
+        circe, circeGeneric, pureConfig, pureConfigGeneric, slick,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
         http4sDsl, http4sCirce
       )
@@ -169,13 +183,14 @@ lazy val identity =
 
 lazy val resources =
   module("resources")
-    .dependsOn(libFFMPeg, libEventStore, libFiles)
+    .dependsOn(libFFMPeg, libEventStore, libFiles, auth)
     .settings(protobufSettings)
     .settings(
       name := "amony-service-resources",
       libraryDependencies ++= Seq(
-        scribeSlf4j,
-        circe, circeGeneric, http4sCirce,
+        scribe, sqids,
+        circe, circeGeneric, http4sCirce, jsoup, tikaCore,
+        tapirCore, tapirCatsEffect, tapirCirce, tapirHttp4s,
         scalaTest,
         slick, fs2Core, fs2Io, http4sDsl, liquibaseCore,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
@@ -239,14 +254,16 @@ lazy val solrSearch =
       Compile / resourceGenerators += buildSolrTarGz.taskValue
     )
 
-lazy val amonyServer =
-  module("web-server", mainClass = true)
-    .dependsOn(identity, resources, searchService, solrSearch)
+val javaDevOpts = Seq("-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true", "-DAMONY_SECURE_COOKIES=false", "-DAMONY_MEDIA_PATH=../../media")
+
+lazy val app =
+  module("app", mainClass = true)
+    .dependsOn(auth, resources, searchService, solrSearch)
     .settings(
-      name := "amony-web-server",
-      reStart / javaOptions ++= javaOpts,
+      name := "amony-app",
+      reStart / javaOptions ++= javaDevOpts,
       run / fork             := true,
-      run / javaOptions     ++= javaOpts,
+      run / javaOptions     ++= javaDevOpts,
       outputStrategy         := Some(StdoutOutput),
 
       jibBaseImage            := "europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/base:latest",
@@ -259,23 +276,29 @@ lazy val amonyServer =
       jibExtraMappings   ++= {
         // this adds the frontend assets to the docker image
         val webClientDir = (Compile / baseDirectory).value / ".." / ".." / "web-client" / "dist"
-        val target = "/app/web-client"
+        val target = "/app/assets"
         MappingsHelper.contentOf(webClientDir, target)
       },
-      jibEnvironment := Map("JAVA_TOOL_OPTIONS" -> "-Dconfig.file=/app/resources/prod/application.conf"),
+      jibEnvironment := Map(
+        "JAVA_TOOL_OPTIONS"     -> "-Dconfig.file=/app/resources/application.conf",
+        "AMONY_HOME"            -> "/app",
+        "AMONY_WEB_CLIENT_PATH" -> "/app/assets",
+        "AMONY_MEDIA_PATH"      -> "/media"
+      ),
       jibUseCurrentTimestamp := true,
 
-      Compile / packageBin / mainClass := Some("nl.amony.webserver.Main"),
+      Compile / packageBin / mainClass := Some("nl.amony.app.Main"),
 
       libraryDependencies ++= Seq(
         // logging
-        slf4jApi, scribeSlf4j, log4CatsSlf4j,
+        scribeSlf4j, log4CatsSlf4j,
         // config loading
         typesafeConfig, pureConfig,
         // database
         slickHikariCp, hsqlDB, h2DB,
         fs2Core,
         http4sEmberServer,
+        tapirCore, tapirCatsEffect, tapirHttp4s,  tapirSharedFs2, tapirSwaggerUI, tapirCirceYamlSpec,
         // test
         scalaTest, scalaTestCheck
       ),
@@ -292,4 +315,4 @@ lazy val amony = project
     Global / cancelable   := true,
   )
   .disablePlugins(RevolverPlugin)
-  .aggregate(libEventStore, libFFMPeg, libFiles, identity, searchService, solrSearch, amonyServer)
+  .aggregate(libEventStore, libFFMPeg, libFiles, auth, searchService, solrSearch, app)

@@ -1,10 +1,9 @@
 import React, {useEffect, useRef, useState} from 'react';
-import { Api } from '../api/Api';
-import { Resource } from '../api/Model';
 import FragmentList from '../components/fragments/FragmentList';
 import './Editor.scss';
 import {MediaPlayer, MediaPlayerInstance, MediaProvider} from "@vidstack/react";
 import { PlyrLayout, plyrLayoutIcons } from '@vidstack/react/player/layouts/plyr';
+import {getResourceById, ResourceDto, updateThumbnailTimestamp} from "../api/generated";
 
 export type EditFragment = {
   idx: number
@@ -12,15 +11,15 @@ export type EditFragment = {
   end?: number,
 }
 
-const Editor = (props: {videoId: string}) => {
+const Editor = (props: {bucketId: string, resourceId: string}) => {
 
-  const [vid, setVid] = useState<Resource | null>(null)
+  const [vid, setVid] = useState<ResourceDto | null>(null)
 
   useEffect(() => {
-    Api.getMediaById(props.videoId).then(response => {
-        setVid((response as Resource))
-      }
-    );
+
+    getResourceById(props.bucketId, props.resourceId).then(resource => {
+      setVid(resource)
+    });
   }, [props]);
 
   return (
@@ -28,23 +27,23 @@ const Editor = (props: {videoId: string}) => {
   );
 }
 
-const PlayerView = (props: {vid: Resource}) => {
+const PlayerView = (props: {vid: ResourceDto}) => {
 
-  const [vid, setVid] = useState(props.vid)
+  const [resource, setResource] = useState(props.vid)
   let player = useRef<MediaPlayerInstance>(null)
-  const vidRatio = props.vid.resourceMeta.width / props.vid.resourceMeta.height;
+  const vidRatio = props.vid.contentMeta.width / props.vid.contentMeta.height;
   const id = '#video-' + props.vid.resourceId
 
   // const [plyr, setPlyr] = useState<Plyr | null>(null)
   const [showFragmentControls, setShowFragmentControls] = useState(false)
   const [fragment, setFragment] = useState<EditFragment>({ idx: -1} )
 
-  const updateThumbnailTimestamp = (e: any) => {
+  const updateThumbnailTS = (e: any) => {
     if (player.current) {
-      Api.updateThumbnailTimestamp(vid.resourceId, Math.trunc(player.current.currentTime * 1000)).then (response => {
-          Api.getMediaById(vid.resourceId).then(response => {
-            setVid((response as Resource))
-          })
+      updateThumbnailTimestamp(resource.bucketId, resource.resourceId, { timestampInMillis: Math.trunc(player.current.currentTime * 1000) }).then (response => {
+        getResourceById(resource.bucketId, resource.resourceId).then(resource => {
+          setResource(resource)
+        });
       })
     }
   }
@@ -59,17 +58,17 @@ const PlayerView = (props: {vid: Resource}) => {
        const from = Math.trunc(fragment.start * 1000)
        const to = Math.trunc(fragment.end * 1000)
 
-       if (fragment.idx >= 0 && fragment.idx < vid.clips.length) {
+       if (fragment.idx >= 0 && fragment.idx < resource.clips.length) {
          console.log("updating fragment")
-         Api.updateFragment(vid.resourceId, fragment.idx, from, to).then (response => {
-           setVid(response as Resource)
-         });
+         // Api.updateFragment(vid.resourceId, fragment.idx, from, to).then (response => {
+         //   setVid(response as Resource)
+         // });
        }
-       if (fragment.idx === vid.clips.length) {
+       if (fragment.idx === resource.clips.length) {
          console.log("adding fragment")
-         Api.addFragment(vid.resourceId, from, to).then (response => {
-           setVid(response as Resource)
-         });
+         // Api.addFragment(vid.resourceId, from, to).then (response => {
+         //   setVid(response as Resource)
+         // });
        }
      }
     }
@@ -110,7 +109,7 @@ const PlayerView = (props: {vid: Resource}) => {
         <button className="button-blue" onClick={(e) => seek(fragment.end)}>&gt;|</button>
         <button className="overlay-button" onClick={(e) => forwards(0.1)}>+.1s</button>
         <button className="overlay-button" onClick={(e) => forwards(1)}>+1s</button>
-        <button className="button-green" onClick={updateThumbnailTimestamp}>o</button>
+        <button className="button-green" onClick={updateThumbnailTS}>o</button>
       </div>
 
   const maxWidth = "80vw"
@@ -126,7 +125,7 @@ const PlayerView = (props: {vid: Resource}) => {
 
   return (
       <div style = { { width: totalWidth, height: videoSize.height } } className="abs-center">
-        <div key={`video-${vid.resourceId}-player`} style={videoSize} className="video-container">
+        <div key={`video-${resource.resourceId}-player`} style={videoSize} className="video-container">
         <MediaPlayer
             className = "video-player"
             tab-index = '-1'
@@ -134,7 +133,7 @@ const PlayerView = (props: {vid: Resource}) => {
             id = {id}
             ref = { player }
             src = { { src: props.vid.urls.originalResourceUrl, type: "video/mp4"  } }
-            title = { props.vid.userMeta.title }
+            title = { props.vid.title }
             controlsDelay = { 5000 }
             autoPlay = { false }
             viewType = "video"
@@ -153,12 +152,12 @@ const PlayerView = (props: {vid: Resource}) => {
           { showFragmentControls && fragmentPickingControls }
         </div>
 
-        <div key={`video-${vid.resourceId}-fragments`} style={ { width: fragmentWidth, height: videoSize.height }} className="fragments-container">
+        <div key={`video-${resource.resourceId}-fragments`} style={ { width: fragmentWidth, height: videoSize.height }} className="fragments-container">
           <FragmentList 
-            vid      = {vid} 
+            vid      = {resource}
             selected = {fragment.idx} 
             selectFn = {selectFragment} 
-            setVid   = {(v) => { setVid(v); setFragment({ idx: -1}) }} />
+            setVid   = {(v) => { setResource(v); setFragment({ idx: -1}) }} />
         </div>
       </div>
   );

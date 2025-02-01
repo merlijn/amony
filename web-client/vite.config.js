@@ -1,8 +1,19 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import viteCompression from 'vite-plugin-compression'
 
 export default defineConfig({
-    plugins: [react()],
+    plugins: [
+        react(),
+        viteCompression({
+            algorithm: 'brotliCompress',
+            ext: '.br',
+        }),
+        viteCompression({
+            algorithm: 'gzip',
+            ext: '.gz',
+        })
+    ],
     base: '/',
     publicDir: "public",
     environment: 'jsdom',
@@ -22,7 +33,8 @@ export default defineConfig({
     server: {
         proxy: {
             '/api': 'http://127.0.0.1:8080',
-            '/resources': 'http://127.0.0.1:8080'
+            '/resources': 'http://127.0.0.1:8080',
+            '/login': 'http://127.0.0.1:8080'
         }
     }
 });

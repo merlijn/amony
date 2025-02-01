@@ -1,5 +1,4 @@
 import React, { ChangeEvent, useState } from 'react';
-import { Api } from '../../api/Api';
 import { dateMillisToString } from '../../api/Util';
 import Dialog from '../common/Dialog';
  
@@ -20,10 +19,10 @@ const FileUpload = () => {
     const onFileUpload = () => {
     
       if (file) {
-        Api.uploadFile(file).then(() => {
-          setFeedback("Done!")
-          setFile(undefined)
-        });
+        // Api.uploadFile(file).then(() => {
+        //   setFeedback("Done!")
+        //   setFile(undefined)
+        // });
       }
     };
     

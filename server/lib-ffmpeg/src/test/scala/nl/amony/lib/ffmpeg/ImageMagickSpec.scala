@@ -15,6 +15,6 @@ class ImageMagickSpec extends AnyFlatSpecLike with Logging {
 
      val metas = ImageMagick.getImageMeta(path)
 
-     logger.info(metas.unsafeRunSync().mkString(","))
+//     logger.info(metas.unsafeRunSync().mkString(","))
    }
 }

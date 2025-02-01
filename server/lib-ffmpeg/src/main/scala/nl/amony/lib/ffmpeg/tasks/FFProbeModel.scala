@@ -1,16 +1,26 @@
 package nl.amony.lib.ffmpeg.tasks
 
+import io.circe.generic.semiauto.deriveDecoder
+import io.circe.*
+import scribe.Logging
+
 import scala.util.matching.UnanchoredRegex
 
-object FFProbeModel {
+object FFProbeModel extends Logging {
 
   case class ProbeDebugOutput(isFastStart: Boolean)
 
-  case class ProbeOutput(streams: List[Stream], debugOutput: Option[ProbeDebugOutput]) {
-    def firstVideoStream: Option[VideoStream] =
-      streams.sortBy(_.index).collectFirst { case v: VideoStream => v }
-  }
+  case class FFProbeVersion(
+    version: String,
+    copyright: String,
+    compiler_ident: String,
+    configuration: String,
+  ) derives Decoder
 
+  case class FFProbeOutput(program_version: Option[FFProbeVersion], streams: Option[List[Stream]], debugOutput: Option[ProbeDebugOutput]) derives Decoder {
+    def firstVideoStream: Option[VideoStream] = streams.flatMap(_.sortBy(_.index).collectFirst { case v: VideoStream => v })
+  }
+  
   val durationPattern: UnanchoredRegex = raw"(\d{2}):(\d{2}):(\d{2})\.(\d*)".r.unanchored
 
   sealed trait Stream {
@@ -57,4 +67,29 @@ object FFProbeModel {
       divident / divisor
     }
   }
+
+  given unkownStreamDecoder: Decoder[UnkownStream] = deriveDecoder[UnkownStream]
+
+  given videoStreamDecoder: Decoder[VideoStream] = deriveDecoder[VideoStream]
+
+  given audioStreamDecoder: Decoder[AudioStream] = deriveDecoder[AudioStream]
+
+  given debugDecoder: Decoder[ProbeDebugOutput] = deriveDecoder[ProbeDebugOutput]
+
+  given streamDecoder: Decoder[Stream] = (c: HCursor) => {
+    c.downField("codec_type")
+      .as[String]
+      .flatMap {
+        case "video" => c.as[VideoStream]
+        case "audio" => c.as[AudioStream]
+        case _ => c.as[UnkownStream]
+      }
+      .left
+      .map(error => {
+        logger.warn(s"Failed to decode stream: ${c.value}", error)
+        error
+      })
+  }
+
+  given ffprobeOutputDecoder: Decoder[FFProbeOutput] = deriveDecoder[FFProbeOutput]
 }

@@ -1,0 +1,613 @@
+openapi: 3.1.0
+info:
+  title: Amony API
+  version: '1.0'
+paths:
+  /api/resources/{bucketId}/{resourceId}:
+    get:
+      tags:
+      - resources
+      description: Get information about a resource by its id
+      operationId: getResourceById
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+            Pragma:
+              required: true
+              schema:
+                type: string
+            Expires:
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceDto'
+        '400':
+          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
+            value for: cookie XSRF-TOKEN'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+        '404':
+          description: ''
+  /api/resources/{bucketId}/{resourceId}/update_user_meta:
+    post:
+      tags:
+      - resources
+      description: Update the user metadata of a resource
+      operationId: updateUserMetaData
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserMetaDto'
+        required: true
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
+            value for: cookie XSRF-TOKEN, Invalid value for: body'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+        '404':
+          description: ''
+  /api/resources/{bucketId}/{resourceId}/update_thumbnail_timestamp:
+    post:
+      tags:
+      - resources
+      description: Update the thumbnail timestamp of a resource
+      operationId: updateThumbnailTimestamp
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThumbnailTimestampDto'
+        required: true
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
+            value for: cookie XSRF-TOKEN, Invalid value for: body'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+        '404':
+          description: ''
+  /api/search/media:
+    get:
+      tags:
+      - search
+      description: Find resources using a search query
+      operationId: findResources
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: q
+        in: query
+        description: The search query
+        required: false
+        schema:
+          type: string
+        example: cats
+      - name: n
+        in: query
+        description: The number of results to return
+        required: false
+        schema:
+          type: integer
+          format: int32
+        example: 10
+      - name: d
+        in: query
+        description: The duration range in minutes
+        required: false
+        schema:
+          type: string
+        example: 10-30
+      - name: sort_field
+        in: query
+        description: Indicates what field to sort
+        required: false
+        schema:
+          type: string
+        example: title
+      - name: sort_dir
+        in: query
+        description: Indicates which direction to sort
+        required: false
+        schema:
+          type: string
+        example: asc
+      - name: min_res
+        in: query
+        description: The minimum (vertical) resolution
+        required: false
+        schema:
+          type: integer
+          format: int32
+        example: 720
+      - name: offset
+        in: query
+        description: The offset for the search results
+        required: false
+        schema:
+          type: integer
+          format: int32
+        example: 12
+      - name: tag
+        in: query
+        description: A comma separated list of tags
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponseDto'
+        '400':
+          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
+            value for: cookie XSRF-TOKEN, Invalid value for: query parameter q, Invalid
+            value for: query parameter n, Invalid value for: query parameter d, Invalid
+            value for: query parameter sort_field, Invalid value for: query parameter
+            sort_dir, Invalid value for: query parameter min_res, Invalid value for:
+            query parameter offset, Invalid value for: query parameter tag'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/admin/reindex:
+    post:
+      tags:
+      - admin
+      description: Re-index all resources in a bucket.
+      operationId: adminReindexBucket
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: query
+        description: The id of the bucket to re-index.
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
+            value for: cookie XSRF-TOKEN, Invalid value for: query parameter bucketId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/admin/refresh:
+    post:
+      tags:
+      - admin
+      description: Refresh all resources in a bucket
+      operationId: adminRefreshBucket
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: query
+        description: The id of the bucket to re-index.
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
+            value for: cookie XSRF-TOKEN, Invalid value for: query parameter bucketId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/admin/re-scan-metadata:
+    post:
+      tags:
+      - admin
+      description: Rescan the metadata of all files in a bucket
+      operationId: adminRescanMetaData
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: query
+        description: The id of the bucket to re-scan.
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
+            value for: cookie XSRF-TOKEN, Invalid value for: query parameter bucketId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/auth/session:
+    get:
+      tags:
+      - auth
+      description: Get the current session
+      operationId: getSession
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthToken'
+        '400':
+          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
+            value for: cookie XSRF-TOKEN'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/auth/logout:
+    post:
+      tags:
+      - auth
+      description: Logout the current user
+      operationId: authLogout
+      responses:
+        '200':
+          description: ''
+          headers:
+            Set-Cookie:
+              required: false
+              schema:
+                type: array
+                items:
+                  type: string
+components:
+  schemas:
+    AuthToken:
+      title: AuthToken
+      type: object
+      required:
+      - userId
+      - roles
+      properties:
+        userId:
+          type: string
+        roles:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+    ClipDto:
+      title: ClipDto
+      type: object
+      required:
+      - resourceId
+      - start
+      - end
+      - urls
+      - tags
+      properties:
+        resourceId:
+          type: string
+        start:
+          type: integer
+          format: int64
+        end:
+          type: integer
+          format: int64
+        urls:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+    ResourceDto:
+      title: ResourceDto
+      type: object
+      required:
+      - bucketId
+      - resourceId
+      - sizeInBytes
+      - path
+      - timeCreated
+      - userId
+      - tags
+      - contentType
+      - contentMeta
+      - urls
+      - clips
+      properties:
+        bucketId:
+          type: string
+        resourceId:
+          type: string
+        hash:
+          type: string
+        sizeInBytes:
+          type: integer
+          format: int64
+        path:
+          type: string
+        timeCreated:
+          type: integer
+          format: int64
+        userId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        contentType:
+          type: string
+        contentMeta:
+          $ref: '#/components/schemas/ResourceMetaDto'
+        contentMetaSource:
+          $ref: '#/components/schemas/ResourceToolMetaDto'
+        urls:
+          $ref: '#/components/schemas/ResourceUrlsDto'
+        thumbnailTimestamp:
+          type: integer
+          format: int64
+        clips:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClipDto'
+    ResourceMetaDto:
+      title: ResourceMetaDto
+      type: object
+      required:
+      - width
+      - height
+      - fps
+      - duration
+      properties:
+        width:
+          type: integer
+          format: int32
+        height:
+          type: integer
+          format: int32
+        fps:
+          type: number
+          format: float
+        duration:
+          type: integer
+          format: int64
+        codec:
+          type: string
+    ResourceToolMetaDto:
+      title: ResourceToolMetaDto
+      type: object
+      required:
+      - toolName
+      - toolData
+      properties:
+        toolName:
+          type: string
+        toolData: {}
+    ResourceUrlsDto:
+      title: ResourceUrlsDto
+      type: object
+      required:
+      - originalResourceUrl
+      - thumbnailUrl
+      properties:
+        originalResourceUrl:
+          type: string
+        thumbnailUrl:
+          type: string
+        previewThumbnailsUrl:
+          type: string
+    SearchResponseDto:
+      title: SearchResponseDto
+      type: object
+      required:
+      - offset
+      - total
+      - results
+      - tags
+      properties:
+        offset:
+          type: integer
+          format: int64
+        total:
+          type: integer
+          format: int64
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceDto'
+        tags:
+          type: array
+          items:
+            type: string
+    ThumbnailTimestampDto:
+      title: ThumbnailTimestampDto
+      type: object
+      required:
+      - timestampInMillis
+      properties:
+        timestampInMillis:
+          type: integer
+          format: int64
+    UserMetaDto:
+      title: UserMetaDto
+      type: object
+      required:
+      - tags
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string

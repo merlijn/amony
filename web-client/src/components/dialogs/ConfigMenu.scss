@@ -23,6 +23,14 @@
       
       display: table-cell;
 
+      button {
+        @extend .hover-pointer;
+      }
+
+      input {
+        @extend .hover-pointer;
+      }
+
       .column-select {
 
         @extend .v-align-center;

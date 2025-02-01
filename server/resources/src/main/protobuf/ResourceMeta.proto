@@ -8,6 +8,11 @@ option (scalapb.options) = {
   preserve_unknown_fields: false
 };
 
+message ResourceMetaSource {
+  required string toolName = 1;
+  required string toolData = 2;
+}
+
 message ResourceMeta {
   oneof sealed_value {
     VideoMeta video = 1;

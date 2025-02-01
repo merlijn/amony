@@ -4,7 +4,8 @@ import cats.effect.IO
 import nl.amony.service.resources.util.Base32
 import nl.amony.service.resources.util.PartialHash.partialHash
 import pureconfig.*
-import pureconfig.generic.derivation.default.*
+import pureconfig.generic.FieldCoproductHint
+import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
 
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -12,7 +13,13 @@ import scala.concurrent.duration.FiniteDuration
 
 object ResourceConfig {
 
-  sealed trait ResourceBucketConfig derives ConfigReader
+  sealed trait ResourceBucketConfig
+
+  object ResourceBucketConfig:
+    given FieldCoproductHint[ResourceBucketConfig] = new FieldCoproductHint[ResourceBucketConfig]("type"):
+      override def fieldValue(name: String) = name.dropRight("Config".length)
+
+    given ConfigReader[ResourceBucketConfig] = deriveReader
   
   case class ScanConfig(
      enabled: Boolean,

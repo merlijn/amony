@@ -13,6 +13,7 @@ import org.apache.solr.client.solrj.{SolrClient, SolrQuery}
 import org.apache.solr.common.params.{CommonParams, FacetParams, ModifiableSolrParams}
 import org.apache.solr.common.{SolrDocument, SolrInputDocument}
 import org.apache.solr.core.CoreContainer
+import org.apache.solr.client.solrj.util.ClientUtils
 import scribe.Logging
 import io.grpc.stub.StreamObserver
 
@@ -33,6 +34,7 @@ object SolrIndex {
   object FieldNames {
     val id = "id"
     val bucketId = "bucket_id_s"
+    val hash = "hash_s"
     val path = "path_text_ci"
     val filesize = "filesize_l"
     val tags = "tags_ss"
@@ -48,6 +50,7 @@ object SolrIndex {
     val duration = "duration_l"
     val fps = "fps_f"
     val resourceType = "resource_type_s"
+    val userId = "user_id_s"
   }
 
   def resource(config: SolrConfig)(using ec: ExecutionContext): Resource[IO, SolrIndex] =
@@ -76,13 +79,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
     TarGzExtractor.extractResourceTarGz(solrTarGzResource, solrHome)
   }
 
-  if (Files.exists(lockfilePath) && config.deleteLockfileOnStartup) {
-    logger.info(s"Deleting lock file at: $lockfilePath")
-    Files.delete(lockfilePath)
-  }
-
   protected def close(): IO[Unit] = IO {
-    Files.delete(lockfilePath)
     solr.close()
     container.shutdown()
   }
@@ -96,14 +93,16 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
   private def toSolrDocument(resource: ResourceInfo): SolrInputDocument = {
     
     val solrInputDocument: SolrInputDocument = new SolrInputDocument()
-    solrInputDocument.addField(FieldNames.id, resource.hash)
+
+    solrInputDocument.addField(FieldNames.id, resource.resourceId)
     solrInputDocument.addField(FieldNames.bucketId, resource.bucketId)
+    solrInputDocument.addField(FieldNames.userId, resource.userId)
     solrInputDocument.addField(FieldNames.path, resource.path)
     solrInputDocument.addField(FieldNames.filesize, resource.size)
 
     val maybeTags = Option.when(resource.tags.nonEmpty)(resource.tags)
     maybeTags.foreach(tags => solrInputDocument.addField(FieldNames.tags, resource.tags.toList.asJava))
-
+    
     resource.thumbnailTimestamp.foreach(timestamp => solrInputDocument.addField(FieldNames.thumbnailTimestamp, timestamp))
     resource.title.foreach(title => solrInputDocument.addField(FieldNames.title, title))
     resource.description.foreach(description => solrInputDocument.addField(FieldNames.description, description))
@@ -126,12 +125,15 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
       case _ =>
     }
 
+    logger.debug(s"Indexing document: $solrInputDocument")
+    
     solrInputDocument
   }
 
   private def toResource(document: SolrDocument): ResourceInfo = {
-
-    val id = document.getFieldValue(FieldNames.id).asInstanceOf[String]
+    
+    val resourceId = document.getFieldValue(FieldNames.id).asInstanceOf[String]
+    val hash = Option(document.getFieldValue(FieldNames.hash)).map(_.asInstanceOf[String])
     val bucketId = document.getFieldValue(FieldNames.bucketId).asInstanceOf[String]
     val title = Option(document.getFieldValue(FieldNames.title)).map(_.asInstanceOf[String])
     val path = document.getFieldValue(FieldNames.path).asInstanceOf[String]
@@ -148,7 +150,9 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
     val resourceType = document.getFieldValue(FieldNames.resourceType).asInstanceOf[String]
     val thumbnailTimestamp = Option(document.getFieldValue(FieldNames.thumbnailTimestamp)).map(_.asInstanceOf[Long])
 
-    val tags = Option(document.getFieldValues(FieldNames.tags)).map(_.asInstanceOf[java.util.List[String]].asScala).getOrElse(List.empty).toSeq
+    val tags = Option(document.getFieldValues(FieldNames.tags)).map(_.asInstanceOf[java.util.List[String]].asScala).getOrElse(List.empty).toSet
+
+    val userId = Option(document.getFieldValue(FieldNames.userId)).map(_.asInstanceOf[String])
 
     val contentMeta: ResourceMeta = resourceType match {
 
@@ -161,7 +165,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
       case _ => ResourceMeta.Empty
     }
 
-    ResourceInfo(bucketId, path, id, size, contentType, contentMeta, creationTime, lastModified, title, description, tags, thumbnailTimestamp)
+    ResourceInfo(bucketId, resourceId, userId.getOrElse(""), path, size, hash, contentType, None, contentMeta, creationTime, lastModified, title, description, tags, thumbnailTimestamp)
   }
 
   private def toSolrQuery(query: Query) = {
@@ -189,7 +193,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
     val solrParams = new ModifiableSolrParams
 
     val solrQ = {
-      val q = query.q.getOrElse("")
+      val q = ClientUtils.escapeQueryChars(query.q.getOrElse(""))
       val sb = new StringBuilder()
 
       sb.append(s"${FieldNames.path}:*${if (q.trim.isEmpty) "" else s"$q*"}")
@@ -201,7 +205,6 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
         
       if (query.minDuration.isDefined || query.maxDuration.isDefined)
         sb.append(s" AND ${FieldNames.duration}:[${query.minDuration.getOrElse(0)} TO ${query.maxDuration.getOrElse("*")}]")  
-
 
       sb.result()
     }
@@ -277,6 +280,9 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
 
       val solrParams = toSolrQuery(query)
       val queryResponse = solr.query(solrParams)
+      
+      logger.debug(s"Executing solr query: ${solrParams.toString}")
+      
       val results = queryResponse.getResults
 
       val total = results.getNumFound
@@ -291,7 +297,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
           }
         }.getOrElse(Map.empty[String, Long])
 
-      logger.debug(s"Search query: ${solrParams.toString}, total: $total, tags: ${tagsWithFrequency.mkString(", ")}")
+      logger.debug(s"Solr response size: ${results.size()}, tags: ${tagsWithFrequency.mkString(", ")}")
 
       SearchResult(
         offset = offset.toInt,
@@ -301,4 +307,10 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
       )
     }
   }
+
+  override def forceCommit(request: ForceCommitRequest): Future[ForceCommitResult] =
+    Future {
+      logger.info("Forcing commit")
+      solr.commit(collectionName); ForceCommitResult()
+    }
 }

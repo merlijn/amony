@@ -1,14 +1,14 @@
-import {Resource} from "../../api/Model";
 import React, {CSSProperties, useState} from "react";
 import FragmentPreview from "./FragmentPreview";
 import './FragmentList.scss';
 import ImgWithAlt from "../common/ImgWithAlt";
-import { EditFragment } from "../../pages/Editor";
-import { FiPlusCircle } from "react-icons/fi"
+import {EditFragment} from "../../pages/Editor";
+import {FiPlusCircle} from "react-icons/fi"
+import {ResourceDto} from "../../api/generated";
 
-const FragmentList = (props: {vid: Resource, selected: number, selectFn: (f: EditFragment) => any, setVid: (vid: Resource) => any}) => {
+const FragmentList = (props: {vid: ResourceDto, selected: number, selectFn: (f: EditFragment) => any, setVid: (vid: ResourceDto) => any}) => {
 
-  const ratio = (props.vid.resourceMeta.width / props.vid.resourceMeta.height).toFixed(2);
+  const ratio = (props.vid.contentMeta.width / props.vid.contentMeta.height).toFixed(2);
   const [showAddFragment, setShowAddFragment] = useState(false)
 
   const extraStyle = (idx: number): CSSProperties => {
@@ -28,11 +28,12 @@ const FragmentList = (props: {vid: Resource, selected: number, selectFn: (f: Edi
           key={ f.urls[0] }
           mediaId={ props.vid.resourceId }
           fragment = { props.vid.clips[idx] }
+          index = { idx }
           style={ extraStyle(idx) }
           className = { (props.selected === idx ? "fragment-selected" : "fragment-not-selected") + " fragment" }
           showDeleteButton = { props.vid.clips.length > 1 }
           onDelete = { (v) => props.setVid(v) }
-          onClick = { () => props.selectFn({ idx: idx, start: f.range[0] / 1000, end: f.range[1] / 1000 }) }
+          onClick = { () => props.selectFn({ idx: idx, start: f.start / 1000, end: f.end / 1000 }) }
         />);
     })
 

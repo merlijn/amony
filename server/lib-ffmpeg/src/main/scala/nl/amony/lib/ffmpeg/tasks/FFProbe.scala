@@ -1,62 +1,58 @@
 package nl.amony.lib.ffmpeg.tasks
 
 import cats.effect.IO
-import io.circe.{Decoder, HCursor}
-import io.circe.generic.semiauto.deriveDecoder
+import io.circe.{Decoder, HCursor, Json}
 import nl.amony.lib.ffmpeg.FFMpeg.fastStartPattern
-import nl.amony.lib.ffmpeg.tasks.FFProbeModel.{AudioStream, ProbeDebugOutput, ProbeOutput, Stream, UnkownStream, VideoStream}
 import scribe.Logging
 
 import java.nio.file.Path
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.util.{Failure, Try}
+import FFProbeModel.{*, given}
 
-private[ffmpeg] trait FFProbeJsonCodecs extends Logging {
-  implicit val unkownStreamDecoder: Decoder[UnkownStream] = deriveDecoder[UnkownStream]
-  implicit val videoStreamDecoder: Decoder[VideoStream]   = deriveDecoder[VideoStream]
-  implicit val audioStreamDecoder: Decoder[AudioStream]   = deriveDecoder[AudioStream]
-  implicit val debugDecoder: Decoder[ProbeDebugOutput]    = deriveDecoder[ProbeDebugOutput]
-  implicit val probeDecoder: Decoder[ProbeOutput]         = deriveDecoder[ProbeOutput]
-
-  implicit val streamDecoder: Decoder[Stream] = (c: HCursor) => {
-    c.downField("codec_type")
-      .as[String]
-      .flatMap {
-        case "video" => c.as[VideoStream]
-        case "audio" => c.as[AudioStream]
-        case _ => c.as[UnkownStream]
-      }
-      .left
-      .map(error => {
-        logger.warn(s"Failed to decode stream: ${c.value}", error)
-        error
-      })
-  }
-}
-
-trait FFProbe extends Logging with FFProbeJsonCodecs {
+trait FFProbe extends Logging {
 
   self: ProcessRunner =>
 
   val defaultProbeTimeout = 5.seconds
 
-  def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration = defaultProbeTimeout): IO[ProbeOutput] = {
+  val ffprobeVersion: IO[FFProbeVersion]  =
+    useProcessOutput("ffprobe", List("-print_format", "json", "-show_program_version", "-loglevel", "quiet"), false) { stdout =>
+      val result = for {
+        json     <- io.circe.parser.parse(stdout)
+        version  <- json.asObject.flatMap(_.apply("program_version")).toRight(new Exception("No program_version found"))
+        decoded  <- version.as[FFProbeVersion]
+      } yield decoded
+      IO.pure(result.toTry.get)
+    }.timeout(defaultProbeTimeout).memoize.flatten
 
-    val fileName = file.toAbsolutePath.normalize().toString
+  def ffprobe(jsonString: String) = IO[FFProbeOutput] {
+    val json = io.circe.parser.parse(jsonString).toTry.get
+    val result = for {
+      decoded <- json.as[FFProbeOutput]
+    } yield decoded
+    result.toTry.get
+  }
+  
+  def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration = defaultProbeTimeout): IO[(FFProbeOutput, Json)] =
+    ffprobeVersion.flatMap { version =>
+      val fileName = file.toAbsolutePath.normalize().toString
+      val v    = if (debug) "debug" else "quiet"
+      val args = List("-print_format", "json", "-show_streams", "-loglevel", v, fileName)
 
-    val v    = if (debug) "debug" else "quiet"
-    val args = List("-print_format", "json", "-show_streams", "-loglevel", v, fileName)
+      useProcess("ffprobe", args) { process =>
 
-    useProcess("ffprobe", args) { process =>
+        for {
+          jsonOutput  <- toString(process.stdout)
+          debugOutput <- if (debug) toString(process.stderr).map(debugOutput => Some(ProbeDebugOutput(fastStartPattern.matches(debugOutput)))) else IO.pure(None)
+        } yield {
 
-      for {
-        jsonOutput <- toString(process.stdout)
-        debugOutput <- if (debug) toString(process.stderr).map(debugOutput => Some(ProbeDebugOutput(fastStartPattern.matches(debugOutput)))) else IO.pure(None)
-      } yield {
-        io.circe.parser.decode[ProbeOutput](jsonOutput) match {
-          case Left(error) => throw error
-          case Right(out) => out.copy(debugOutput = debugOutput)
+          (for {
+            json     <- io.circe.parser.parse(jsonOutput)
+            streams  <- json.asObject.flatMap(_.apply("streams")).toRight(new Exception("No streams found"))
+            decoded  <- streams.as[List[Stream]]
+          } yield FFProbeOutput(Some(version), Some(decoded), debugOutput) -> json).toTry.get
         }
-      }
-    }.timeout(timeout)
+      }.timeout(timeout)
   }
 }

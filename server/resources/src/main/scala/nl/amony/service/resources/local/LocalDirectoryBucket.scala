@@ -4,11 +4,10 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Pipe
 import nl.amony.lib.eventbus.EventTopic
-import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.files.*
 import nl.amony.service.resources.*
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
-import nl.amony.service.resources.api.ResourceInfo
+import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
 import nl.amony.service.resources.api.events.{ResourceEvent, ResourceUpdated}
 import nl.amony.service.resources.api.operations.ResourceOperation
 import nl.amony.service.resources.database.ResourceDatabase
@@ -19,24 +18,49 @@ import slick.jdbc.JdbcProfile
 import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
 
+object LocalDirectoryBucket:
+  
+  def resource[P <: JdbcProfile](config: LocalDirectoryConfig, db: ResourceDatabase[P], topic: EventTopic[ResourceEvent])(using runtime: IORuntime): cats.effect.Resource[IO, LocalDirectoryBucket[P]] = {
+    cats.effect.Resource.make {
+      IO {
+        val bucket = LocalDirectoryBucket(config, db, topic)
+        bucket.sync().unsafeRunAsync(_ => ())
+        bucket
+      }
+    }{  _ => IO.unit }
+  }
+
 class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: ResourceDatabase[P], topic: EventTopic[ResourceEvent])(using runtime: IORuntime) extends ResourceBucket with Logging {
 
   private val runningOperations = new ConcurrentHashMap[LocalResourceOp, IO[Path]]()
   
   Files.createDirectories(config.cachePath)
 
-  private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getByHash(config.id, resourceId)
+  private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = 
+    db.getByResourceId(config.id, resourceId).map(_.map(recoverMeta))
+
+  private def recoverMeta(info: ResourceInfo) = {
+    val meta: Option[ResourceMeta] = info.contentMetaSource.flatMap(meta => LocalResourceMeta.scanToolMeta(meta).toOption)
+    info.copy(contentMeta = meta.getOrElse(ResourceMeta.Empty))
+  }
 
   override def id = config.id
 
   def reScanAllMetadata(): IO[Unit] =
     getAllResources().evalMap(resource => {
         val f = config.resourcePath.resolve(resource.path)
-        logger.info(s"Scanning resource: $f")
-        LocalResourceMeta.resolveMeta(f).flatMap:
-          case None => IO.unit
-          case Some(meta) =>
-            val updated = resource.copy(contentMeta = meta)
+        LocalResourceMeta.detectMetaData(f).flatMap:
+          case None => 
+            logger.warn(s"Failed to scan metadata for $f")
+            IO.unit
+          case Some(localResourceMeta) =>
+            
+            logger.info(s"Updating metadata for $f")
+            val updated = resource.copy(
+              contentType = Some(localResourceMeta.contentType), 
+              contentMetaSource = localResourceMeta.toolMeta,
+              contentMeta = localResourceMeta.meta)
+            
             db.update(updated) >> topic.publish(ResourceUpdated(updated))
 
     }).compile.drain
@@ -47,10 +71,18 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
       case Some(fileInfo) => derivedResource(fileInfo, LocalResourceOp(resourceId, operation))
 
   private def derivedResource(inputResource: ResourceInfo, operation: LocalResourceOp): IO[Option[LocalFile]] = {
+    
     val outputFile = config.cachePath.resolve(operation.outputFilename)
+    
+    val derivedResourceInfo = inputResource.copy(
+      path = outputFile.getFileName.toString,
+      contentType = Some(operation.contentType),
+      contentMetaSource = None,
+      contentMeta = ResourceMeta.Empty
+    )
 
     if (Files.exists(outputFile))
-      IO.pure(Resource.fromPathMaybe(outputFile, inputResource))
+      IO.pure(Resource.fromPathMaybe(outputFile, derivedResourceInfo))
     else {
       /**
        * This is not ideal, there is still a small time window in which the operation can be triggered multiple times, although it is very unlikely to happen
@@ -58,7 +90,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
        */
       runningOperations
         .compute(operation, (_, value) => { createResource(config.resourcePath.resolve(inputResource.path), inputResource, config.cachePath, operation) })
-        .map(path => Resource.fromPathMaybe(path, inputResource))
+        .map(path => Resource.fromPathMaybe(path, derivedResourceInfo))
         .flatTap { _ => IO(runningOperations.remove(operation)) }
     }
   }
@@ -85,24 +117,25 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
         val path = config.resourcePath.resolve(info.path)
         db.deleteResource(config.id, resourceId, () => IO(path.deleteIfExists()))
 
-  override def updateUserMeta(resourceId: String, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] =
+  override def updateUserMeta(resourceId: String, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] = {
     db.updateUserMeta(
       config.id, resourceId, title, description, tags, 
-      resource => topic.publish(ResourceUpdated(resource))
+      resource => topic.publish(ResourceUpdated(recoverMeta(resource)))
     )
+  }
 
   override def updateThumbnailTimestamp(resourceId: String, timestamp: Long): IO[Unit] =
     db.updateThumbnailTimestamp(config.id, resourceId, timestamp,
-      resource => topic.publish(ResourceUpdated(resource))
+      resource => topic.publish(ResourceUpdated(recoverMeta(resource)))
     )
 
   val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (db.applyEvent(config.id, e => topic.publish(e)))
-  val debug: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"Resource event: $e")))
+  val logEvent: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"Resource event: $e")))
 
   def refresh(): IO[Unit] =
     db.getAll(config.id).map(_.toSet).flatMap: allResources =>
       LocalResourceScanner.singleScan(allResources, config)
-          .through(debug)
+          .through(logEvent)
           .through(updateDb)
           .compile
           .drain
@@ -123,7 +156,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
         }
 
       pollRetry(stateFromStorage())
-        .through(debug)
+        .through(logEvent)
         .through(updateDb)
         .compile
         .drain
@@ -132,7 +165,5 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
 
   override def getAllResources(): fs2.Stream[IO, ResourceInfo] =
     // TODO this should be a stream from the database
-    fs2.Stream.eval(db.getAll(config.id)).flatMap { resources =>
-      fs2.Stream.emits[IO, ResourceInfo](resources)
-    }
+    fs2.Stream.eval(db.getAll(config.id)).flatMap { resources => fs2.Stream.emits[IO, ResourceInfo](resources.map(recoverMeta)) }
 }
