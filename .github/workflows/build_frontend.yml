@@ -10,7 +10,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build-frontend:
 
     runs-on: ubuntu-latest
 
@@ -34,3 +34,33 @@ jobs:
     - run: npm install --save
     - run: npm run generate
     - run: npm run build --if-present
+
+  build-backend:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'sbt'
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Download frontend artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: frontend-dist
+          path: web-client/dist
+
+      - name: Build with sbt
+        run: sbt clean test app/jibDockerBuild
