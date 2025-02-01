@@ -1,5 +1,4 @@
-import React, {CSSProperties, useContext, useEffect, useState} from 'react';
-import ProgressiveImage from "react-progressive-graceful-image";
+import React, {CSSProperties, useContext, useState} from 'react';
 import {dateMillisToString, durationInMillisToString, labelForResolution} from "../api/Util";
 import FragmentsPlayer from "./common/FragmentsPlayer";
 import ImgWithAlt from "./common/ImgWithAlt";
@@ -7,6 +6,7 @@ import './Preview.scss';
 import {ErrorBoundary} from "react-error-boundary";
 import {SessionContext} from "../api/Constants";
 import {ResourceDto} from "../api/generated";
+import LazyImage from "./common/LazyImage";
 
 export type PreviewProps = {
   resource: ResourceDto,
@@ -51,15 +51,15 @@ const Preview = (props: PreviewProps) => {
       </div>
 
   const primaryThumbnail =
-      <ProgressiveImage src = { resource.urls.thumbnailUrl } placeholder="/image_placeholder.svg">
-        { (src: string) =>
-            <img
-                src       = { src } alt="an image"
-                onClick   = { () => props.onClick(props.resource) }
-                className = { `preview-thumbnail preview-media` }
-            />
+      <LazyImage
+        loadImage = { () =>
+          <img
+              src       = { resource.urls.thumbnailUrl } alt="an image"
+              onClick   = { () => props.onClick(props.resource) }
+              className = { `preview-thumbnail preview-media` }
+          />
         }
-      </ProgressiveImage>
+      />
 
   const videoPreview =
       <FragmentsPlayer

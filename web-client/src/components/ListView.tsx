@@ -1,7 +1,6 @@
-import {CSSProperties, useContext, useEffect, useRef, useState} from "react"
+import React, {CSSProperties, useContext, useEffect, useRef, useState} from "react"
 import {FaSort} from "react-icons/fa"
 import {FiEdit} from "react-icons/fi"
-import ProgressiveImage from "react-progressive-graceful-image"
 import {ResourceSelection} from "../api/Model"
 import {dateMillisToString, formatByteSize, resourceSelectionToParams} from "../api/Util"
 import './ListView.scss'
@@ -19,6 +18,7 @@ import {
   updateUserMetaData,
   UserMetaDto
 } from "../api/generated";
+import LazyImage from "./common/LazyImage";
 
 type ListProps = {
   selection: ResourceSelection
@@ -147,11 +147,16 @@ const ListView = (props: ListProps) => {
                     </td>
                 }
                 <td key="thumbnail" className="list-thumbnail" style = { { paddingLeft: session.isAdmin() ? 0 : 2}}>
-                  <ProgressiveImage src={resource.urls.thumbnailUrl} placeholder="/image_placeholder.svg">
-                    {(src: string) =>
-                      <img className="list-thumbnail-img" src={src} onClick={() => props.onClick(resource)}
-                           alt="an image"/>}
-                  </ProgressiveImage>
+
+                  <LazyImage
+                    loadImage = { () =>
+                      <img
+                        src       = { resource.urls.thumbnailUrl } alt="an image"
+                        onClick   = { () => props.onClick(resource) }
+                        className = "list-thumbnail-img"
+                      />
+                    }
+                  />
                 </td>
 
                 <TitleCell mediaResource={resource} onClick={() => { toggle(index) }}/>
