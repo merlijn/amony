@@ -14,6 +14,10 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: web-client
+
     strategy:
       matrix:
         node-version: [18.x]
@@ -28,10 +32,5 @@ jobs:
         cache-dependency-path: web-client
 
     - run: npm install --save
-      working-directory: web-client
-
     - run: npm run generate
-      working-directory: web-client
-
     - run: npm run build --if-present
-      working-directory: web-client
