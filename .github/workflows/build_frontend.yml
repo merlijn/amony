@@ -35,6 +35,12 @@ jobs:
     - run: npm run generate
     - run: npm run build --if-present
 
+    - name: Upload frontend build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-dist
+        path: web-client/dist
+
   build-backend:
     needs: build-frontend
     runs-on: ubuntu-latest
