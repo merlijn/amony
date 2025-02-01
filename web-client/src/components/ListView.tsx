@@ -177,7 +177,7 @@ const ListView = (props: ListProps) => {
                       session.isAdmin() &&
                         <div className="media-actions">
                             <MdMovieEdit className="fragments-action"
-                                         onClick={() => navigate(`/editor/${resource.resourceId}`)}/>
+                                         onClick={() => navigate(`/editor/${resource.bucketId}/${resource.resourceId}`)}/>
                             <MdDelete className="delete-action"/>
                         </div>
                     }
