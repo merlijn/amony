@@ -57,6 +57,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-tags: true
+          fetch-depth: '8'
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -97,17 +98,24 @@ jobs:
         run: |
           echo "-- jib docker image tags --"
           cat app/.docker-tags.txt
-          echo "-- git tags --"
+          echo "\n-- git tags --"
           git --no-pager tag --list
-          echo "--"
-          echo "current_tag=$(git tag --points-at HEAD)" >> $GITHUB_OUTPUT
-          echo "current tag: $current_tag"
-          echo "commit_message=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
-          echo "current commit message: $(git log -1 --pretty=%s)"
+          echo "\n--"
+          
+          if [ "${{ github.event_name }}" == "push" ]; then
+            commit_sha="${{ github.sha }}"
+          else
+            commit_sha="${{ github.event.pull_request.head.sha }}"
+          fi
+          
+          echo "commit_tag=$(git tag --points-at HEAD)" >> $GITHUB_OUTPUT
+          echo "commit tag: $(git tag --points-at HEAD)"
+          echo "commit_msg=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
+          echo "commit msg: $(git log -1 --pretty=%s)"
 
       - name: Push Docker image
         if: |
-          steps.git-info.outputs.current_tag != '' || contains(steps.git-info.outputs.commit_message, '#push')
+          steps.git-info.outputs.current_tag != '' || contains(steps.git-info.outputs.commit_msg, '#push')
         run: |
           # for each line in the app/.docker-tags.txt push that tag to the registry
           while IFS= read -r tag || [ -n "$tag" ]; do
