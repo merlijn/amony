@@ -3,6 +3,7 @@ name: Build and deploy
 on:
   push:
     branches: [ "main" ]
+    tags: [ '*' ]
   pull_request:
     branches: [ "main" ]
 
@@ -94,14 +95,19 @@ jobs:
       - name: Get git info
         id: git-info
         run: |
-          echo "has_tag=$(git tag --points-at HEAD)" >> $GITHUB_OUTPUT
-          echo "$has_tag"
+          echo "-- jib docker image tags --"
+          cat app/.docker-tags.txt
+          echo "-- git tags --"
+          git --no-pager tag --list
+          echo "--"
+          echo "current_tag=$(git tag --points-at HEAD)" >> $GITHUB_OUTPUT
+          echo "current tag: $current_tag"
           echo "commit_message=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
-          echo "$commit_message"
+          echo "current commit message: $commit_message"
 
       - name: Push Docker image
         if: |
-          steps.git-info.outputs.has_tag != '' || contains(steps.git-info.outputs.commit_message, '#push')
+          steps.git-info.outputs.current_tag != '' || contains(steps.git-info.outputs.commit_message, '#push')
         run: |
           # for each line in the app/.docker-tags.txt push that tag to the registry
           while IFS= read -r tag || [ -n "$tag" ]; do
