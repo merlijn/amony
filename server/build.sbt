@@ -262,6 +262,8 @@ lazy val solrSearch =
       Compile / resourceGenerators += buildSolrTarGz.taskValue
     )
 
+lazy val jibWriteDockerTagsFile = taskKey[File]("Creates the version.txt file")
+
 val javaDevOpts = Seq("-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true", "-DAMONY_SECURE_COOKIES=false", "-DAMONY_MEDIA_PATH=../../media")
 
 lazy val app =
@@ -295,6 +297,14 @@ lazy val app =
         "AMONY_MEDIA_PATH"      -> "/media"
       ),
       jibUseCurrentTimestamp := true,
+
+      // This is a hack to make to create a file with the same docker tags from the jib build to be able to push them
+      jibWriteDockerTagsFile := {
+        val versionFile = (Compile / baseDirectory).value / ".docker-tags.txt"
+        val tags = jibTags.value :+ jibVersion.value
+        IO.write(versionFile, tags.mkString("\n"))
+        versionFile
+      },
 
       Compile / packageBin / mainClass := Some("nl.amony.app.Main"),
 

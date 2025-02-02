@@ -87,4 +87,11 @@ jobs:
           path: web-client/dist
 
       - name: Build with sbt
-        run: sbt clean test app/jibDockerBuild
+        run: sbt clean test app/jibDockerBuild app/jibWriteDockerTagsFile
+
+      - name: Push Docker image
+        run: |
+          # for each line in the app/.docker-tags.txt push that tag to the registry
+          while IFS= read -r tag || [ -n "$tag" ]; do
+            docker push $DOCKER_REGISTRY/$PROJECT_ID/$REPOSITORY:$tag
+          done < app/.docker-tags.txt
