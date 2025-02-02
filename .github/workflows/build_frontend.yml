@@ -102,8 +102,8 @@ jobs:
           echo "--"
           echo "current_tag=$(git tag --points-at HEAD)" >> $GITHUB_OUTPUT
           echo "current tag: $current_tag"
-          echo "commit_message=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
-          echo "current commit message: $commit_message"
+          echo "commit_message=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
+          echo "current commit message: $(git log -1 --pretty=%s)"
 
       - name: Push Docker image
         if: |
