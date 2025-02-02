@@ -1,0 +1,126 @@
+name: Build and deploy
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ '*' ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-frontend:
+
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: web-client
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: web-client
+
+    - run: npm install --save
+    - run: npm run generate
+    - run: npm run build --if-present
+
+    - name: Upload frontend build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-dist
+        path: web-client/dist
+
+  build-backend:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: server
+
+    env:
+      DOCKER_REGISTRY: europe-west4-docker.pkg.dev
+      PROJECT_ID: amony-04c85b
+      IMAGE_NAME: amony-app
+      REPOSITORY_PATH: docker-images/amony
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: tree:0
+          fetch-tags: true
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'sbt'
+
+      - name: Setup sbt launcher
+        uses: sbt/setup-sbt@v1
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      # Authenticate to Google Cloud
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GC_SERVICE_ACCOUNT }}'
+
+      # Configure docker to use the gcloud command-line tool as a credential helper
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker $DOCKER_REGISTRY --quiet
+
+      - name: Download frontend artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: web-client/dist
+
+      - name: Build with sbt
+        run: sbt clean test app/jibDockerBuild app/jibWriteDockerTagsFile
+
+      - name: Get git info
+        id: git-info
+        run: |
+          echo "-- jib docker image tags --"
+          cat app/.docker-tags.txt
+          echo "\n-- git tags --"
+          git --no-pager tag --list
+          echo "\n--"
+          
+          echo "github event name: ${{ github.event_name }}"
+          
+          if [ "${{ github.event_name }}" == "push" ]; then
+            commit_sha="${{ github.sha }}"
+          else
+            commit_sha="${{ github.event.pull_request.head.sha }}"
+          fi
+          
+          echo "commit_tag=$(git tag --points-at HEAD)" >> $GITHUB_OUTPUT
+          echo "commit tag: $(git tag --points-at HEAD)"
+          echo "commit_msg=$(git log -1 --pretty=%s $commit_sha)" >> $GITHUB_OUTPUT
+          echo "commit msg: $(git log -1 --pretty=%s $commit_sha)"
+
+      - name: Push Docker image
+        if: |
+          steps.git-info.outputs.current_tag != '' || contains(steps.git-info.outputs.commit_msg, '#push')
+        run: |
+          # for each line in the app/.docker-tags.txt push that tag to the registry
+          while IFS= read -r tag || [ -n "$tag" ]; do
+            docker push $DOCKER_REGISTRY/$PROJECT_ID/$REPOSITORY_PATH/$IMAGE_NAME:$tag
+          done < app/.docker-tags.txt

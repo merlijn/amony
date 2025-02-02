@@ -2,15 +2,19 @@
 import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
 import com.google.cloud.tools.jib.api.buildplan.Platform
 import de.gccc.jib.MappingsHelper
+import scala.sys.process._
+
+def isMainBranch: Boolean = {
+  val currentBranch = "git rev-parse --abbrev-ref HEAD".!!.trim
+  currentBranch == "main"
+}
+
+def hasNoLocalChanges: Boolean = {
+  val status = "git status --porcelain".!!
+  status.isEmpty
+}
 
 // --- Dependencies
-
-val excludeLog4j = ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl")
-val excludeScalaJs = List(
-  ExclusionRule("org.scala-lang", "scala3-library_sjs"),
-  ExclusionRule("org.scala-lang", "scala3-library_sjs1_3"),
-  ExclusionRule("org.scala-js", "scalajs-library_2.13")
-)
 
 val circeVersion    = "0.14.10"
 val http4sVersion   = "0.23.30"
@@ -61,8 +65,8 @@ val typesafeConfig           = "com.typesafe"              % "config"           
 
 val liquibaseCore            = "org.liquibase"             % "liquibase-core"             % "4.30.0"
 
-val solr                     = "org.apache.solr"           % "solr-core"                  % "8.11.1" excludeAll(excludeLog4j)
-val solrLangId               = "org.apache.solr"           % "solr-langid"                % "8.11.1" excludeAll(excludeLog4j)
+val solr                     = "org.apache.solr"           % "solr-core"                  % "8.11.1"
+val solrLangId               = "org.apache.solr"           % "solr-langid"                % "8.11.1"
 
 val scalaPbRuntimeGrcp       = "com.thesamet.scalapb"     %% "scalapb-runtime-grpc"       % scalapb.compiler.Version.scalapbVersion
 val scalaPbRuntimeProtobuf   = "com.thesamet.scalapb"     %% "scalapb-runtime"            % scalapb.compiler.Version.scalapbVersion % "protobuf"
@@ -77,7 +81,6 @@ val http4sDsl         = "org.http4s" %% "http4s-dsl"          % http4sVersion
 val http4sCirce       = "org.http4s" %% "http4s-circe"        % http4sVersion
 
 
-
 //fork in Global := true
 cancelable in Global := true
 
@@ -86,7 +89,12 @@ cancelable in Global := true
 val commonSettings = Seq(
   organization := "nl.amony",
   scalaVersion := "3.3.4",
-  excludeDependencies ++= excludeScalaJs,
+  excludeDependencies ++= List(
+    ExclusionRule("org.scala-lang", "scala3-library_sjs"),
+    ExclusionRule("org.scala-lang", "scala3-library_sjs1_3"),
+    ExclusionRule("org.scala-js", "scalajs-library_2.13"),
+    ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl")
+  ),
   assembly / assemblyMergeStrategy := {
     case path if path.endsWith(".proto") => MergeStrategy.discard
     case x                               => (assembly / assemblyMergeStrategy).value.apply(x)
@@ -254,6 +262,8 @@ lazy val solrSearch =
       Compile / resourceGenerators += buildSolrTarGz.taskValue
     )
 
+lazy val jibWriteDockerTagsFile = taskKey[File]("Creates the version.txt file")
+
 val javaDevOpts = Seq("-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true", "-DAMONY_SECURE_COOKIES=false", "-DAMONY_MEDIA_PATH=../../media")
 
 lazy val app =
@@ -269,10 +279,11 @@ lazy val app =
       jibBaseImage            := "europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/base:latest",
       jibRegistry             := "europe-west4-docker.pkg.dev",
       jibName                 := "amony-app",
+      jibVersion              := version.value.replace('+', '-'), // + sign is not valid in a docker tag
       jibCustomRepositoryPath := Some("amony-04c85b/docker-images/amony/" + jibName.value),
       jibPlatforms            := Set(new Platform("amd64", "linux")),
       jibImageFormat          := JibImageFormat.Docker,
-      jibTags                 := List("latest"),
+      jibTags                 := { if (isMainBranch && hasNoLocalChanges) List("latest") else List.empty[String] },
       jibExtraMappings   ++= {
         // this adds the frontend assets to the docker image
         val webClientDir = (Compile / baseDirectory).value / ".." / ".." / "web-client" / "dist"
@@ -286,6 +297,14 @@ lazy val app =
         "AMONY_MEDIA_PATH"      -> "/media"
       ),
       jibUseCurrentTimestamp := true,
+
+      // This is a hack to make to create a file with the same docker tags from the jib build to be able to push them
+      jibWriteDockerTagsFile := {
+        val versionFile = (Compile / baseDirectory).value / ".docker-tags.txt"
+        val tags = jibTags.value :+ jibVersion.value
+        IO.write(versionFile, tags.mkString("\n"))
+        versionFile
+      },
 
       Compile / packageBin / mainClass := Some("nl.amony.app.Main"),
 

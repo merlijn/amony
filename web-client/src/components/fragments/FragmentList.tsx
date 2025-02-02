@@ -57,7 +57,7 @@ const FragmentList = (props: {vid: ResourceDto, selected: number, selectFn: (f: 
 
   const fragmentsHeader =
     <div key="fragments-header" className = "fragments-header">
-      <div>Fragments</div>
+      <div>Clips</div>
     
       <FiPlusCircle className="ml-2 action-icon-medium"
                   onClick = {(e) => { setShowAddFragment(true); props.selectFn({ idx: nrOfFragments }) } } />
