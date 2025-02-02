@@ -54,6 +54,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -89,7 +91,17 @@ jobs:
       - name: Build with sbt
         run: sbt clean test app/jibDockerBuild app/jibWriteDockerTagsFile
 
+      - name: Get git info
+        id: git-info
+        run: |
+          echo "has_tag=$(git tag --points-at HEAD)" >> $GITHUB_OUTPUT
+          echo "$has_tag"
+          echo "commit_message=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
+          echo "$commit_message"
+
       - name: Push Docker image
+        if: |
+          steps.git-info.outputs.has_tag != '' || contains(steps.git-info.outputs.commit_message, '#push')
         run: |
           # for each line in the app/.docker-tags.txt push that tag to the registry
           while IFS= read -r tag || [ -n "$tag" ]; do
