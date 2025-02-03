@@ -51,12 +51,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ResourceDto'
         '400':
-          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
-            value for: cookie XSRF-TOKEN'
-          content:
-            text/plain:
-              schema:
-                type: string
+          description: ''
         '401':
           description: ''
         '403':
@@ -100,12 +95,7 @@ paths:
         '200':
           description: ''
         '400':
-          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
-            value for: cookie XSRF-TOKEN, Invalid value for: body'
-          content:
-            text/plain:
-              schema:
-                type: string
+          description: ''
         '401':
           description: ''
         '403':
@@ -149,12 +139,7 @@ paths:
         '200':
           description: ''
         '400':
-          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
-            value for: cookie XSRF-TOKEN, Invalid value for: body'
-          content:
-            text/plain:
-              schema:
-                type: string
+          description: ''
         '401':
           description: ''
         '403':
@@ -244,19 +229,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/SearchResponseDto'
         '400':
-          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
-            value for: cookie XSRF-TOKEN, Invalid value for: query parameter q, Invalid
-            value for: query parameter n, Invalid value for: query parameter d, Invalid
-            value for: query parameter sort_field, Invalid value for: query parameter
-            sort_dir, Invalid value for: query parameter min_res, Invalid value for:
-            query parameter offset, Invalid value for: query parameter tag'
-          content:
-            text/plain:
-              schema:
-                type: string
+          description: ''
         '401':
           description: ''
         '403':
+          description: ''
+        '404':
           description: ''
   /api/admin/reindex:
     post:
@@ -361,6 +339,83 @@ paths:
         '400':
           description: 'Invalid value for: cookie access_token, Invalid value, Invalid
             value for: cookie XSRF-TOKEN, Invalid value for: query parameter bucketId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/admin/re-compute-hashes:
+    post:
+      tags:
+      - admin
+      description: Recompute the hashes of all files in a bucket
+      operationId: adminReComputeHashes
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: query
+        description: The id of the bucket to re-scan.
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
+            value for: cookie XSRF-TOKEN, Invalid value for: query parameter bucketId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/admin/export/{bucketId}:
+    get:
+      tags:
+      - admin
+      description: Export all resources in a bucket
+      operationId: adminExportBucket
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/x-ndjson:
+              schema:
+                $ref: '#/components/schemas/ResourceDto'
+        '400':
+          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
+            value for: cookie XSRF-TOKEN'
           content:
             text/plain:
               schema:

@@ -3,6 +3,7 @@ import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
 import com.google.cloud.tools.jib.api.buildplan.Platform
 import de.gccc.jib.MappingsHelper
 import scala.sys.process._
+import sbt.Keys.streams
 
 def isMainBranch: Boolean = {
   val currentBranch = "git rev-parse --abbrev-ref HEAD".!!.trim
@@ -292,7 +293,10 @@ lazy val app =
         // this adds the frontend assets to the docker image
         val webClientDir = (Compile / baseDirectory).value / ".." / ".." / "web-client" / "dist"
         val target = "/app/assets"
-        MappingsHelper.contentOf(webClientDir, target)
+        val contents = MappingsHelper.contentOf(webClientDir, target)
+        val log = streams.value.log
+        log.info(s"web-client assets file count: ${contents.size}")
+        contents
       },
       jibEnvironment := Map(
         "JAVA_TOOL_OPTIONS"     -> "-Dconfig.file=/app/resources/application.conf",
