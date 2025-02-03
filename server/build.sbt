@@ -58,6 +58,7 @@ val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"  
 
 val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.7.4"
 val h2DB                     = "com.h2database"            % "h2"                         % "2.3.232"
+val postgres                 = "org.postgresql"            % "postgresql"                 % "42.7.5"
 
 val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.8"
 val pureConfigGeneric        = "com.github.pureconfig"    %% "pureconfig-generic-scala3"  % "0.17.8"
@@ -199,9 +200,9 @@ lazy val resources =
         scribe, sqids,
         circe, circeGeneric, http4sCirce, jsoup, tikaCore,
         tapirCore, tapirCatsEffect, tapirCirce, tapirHttp4s,
-        scalaTest,
         slick, fs2Core, fs2Io, http4sDsl, liquibaseCore,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
+        scalaTest,
         slickHikariCp % "test",
         h2DB % "test"
       )
@@ -283,7 +284,7 @@ lazy val app =
       jibCustomRepositoryPath := Some("amony-04c85b/docker-images/amony/" + jibName.value),
       jibPlatforms            := Set(new Platform("amd64", "linux")),
       jibImageFormat          := JibImageFormat.Docker,
-      jibTags                 := { if (isMainBranch && hasNoLocalChanges) List("latest") else List.empty[String] },
+      jibTags                 := { if (isMainBranch && hasNoLocalChanges) List("latest") else List("dev") },
       jibExtraMappings   ++= {
         // this adds the frontend assets to the docker image
         val webClientDir = (Compile / baseDirectory).value / ".." / ".." / "web-client" / "dist"
@@ -314,7 +315,7 @@ lazy val app =
         // config loading
         typesafeConfig, pureConfig,
         // database
-        slickHikariCp, hsqlDB, h2DB,
+        slickHikariCp, hsqlDB, h2DB, postgres,
         fs2Core,
         http4sEmberServer,
         tapirCore, tapirCatsEffect, tapirHttp4s,  tapirSharedFs2, tapirSwaggerUI, tapirCirceYamlSpec,
@@ -334,4 +335,4 @@ lazy val amony = project
     Global / cancelable   := true,
   )
   .disablePlugins(RevolverPlugin)
-  .aggregate(libEventStore, libFFMPeg, libFiles, auth, searchService, solrSearch, app)
+  .aggregate(libEventStore, libFFMPeg, libFiles, auth, searchService, resources, solrSearch, app)

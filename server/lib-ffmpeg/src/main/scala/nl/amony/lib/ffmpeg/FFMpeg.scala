@@ -1,29 +1,13 @@
 package nl.amony.lib.ffmpeg
 
 import cats.effect.IO
-import nl.amony.lib.ffmpeg.FFMpeg.formatTime
 import nl.amony.lib.ffmpeg.tasks._
 import nl.amony.lib.files.FileUtil.stripExtension
 import nl.amony.lib.files.*
 import scribe.Logging
 
-import java.io.InputStream
 import java.nio.file.Path
 import java.time.Duration
-
-object dsl {
-
-  type Param = (String, Option[String])
-
-  def params(params: (String, Option[String])*): Seq[String] =
-    params.toList.flatMap { case (name, value) => name :: value.toList }
-
-  def startTime(ts: Long): Param = "-ss" -> Some(formatTime(ts))
-  def endTime(ts: Long): Param =  "-to" -> Some(formatTime(ts))
-  def input(fileName: String): Param = "-i" -> Some(fileName)
-  def crf(q: Int): Param = "-crf" -> Some(q.toString)
-  def noAudio(): Param = "-an" -> None
-}
 
 case class TranscodeProfile(
   ext: String,
@@ -68,7 +52,6 @@ object FFMpeg extends Logging
 
     useProcessOutput("ffmpeg",
       args = List(
-        "ffmpeg",
         "-i",        video.absoluteFileName(),
         "-c",        "copy",
         "-map",      "0",

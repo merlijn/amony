@@ -8,7 +8,7 @@ import nl.amony.lib.files.*
 import nl.amony.service.resources.*
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
-import nl.amony.service.resources.api.events.{ResourceEvent, ResourceUpdated}
+import nl.amony.service.resources.api.events.{ResourceDeleted, ResourceEvent, ResourceUpdated}
 import nl.amony.service.resources.api.operations.ResourceOperation
 import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalResourceOperations.*
@@ -65,6 +65,21 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
 
     }).compile.drain
 
+  def reComputeHashes(): IO[Unit] =
+    getAllResources().evalMap(resource => {
+      val file = config.resourcePath.resolve(resource.path)
+      config.scan.hashingAlgorithm.createHash(file).flatMap:
+        hash =>
+          val oldResourceId = resource.resourceId
+          val updated = resource.copy(resourceId = hash, hash = Some(hash))
+          if (oldResourceId != hash)
+            logger.info(s"Updating hash for $file from $oldResourceId to $hash")
+            db.deleteResource(config.id, resource.resourceId, topic.publish(ResourceDeleted(oldResourceId))) >> db.insert(updated, () => topic.publish(ResourceUpdated(updated)))
+          else
+            IO.unit
+
+    }).compile.drain
+
   override def getOrCreate(resourceId: String, operation: ResourceOperation): IO[Option[Resource]] =
     getResourceInfo(resourceId).flatMap:
       case None           => IO.pure(None)
@@ -115,7 +130,7 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
       case None       => IO.pure(())
       case Some(info) =>
         val path = config.resourcePath.resolve(info.path)
-        db.deleteResource(config.id, resourceId, () => IO(path.deleteIfExists()))
+        db.deleteResource(config.id, resourceId, IO(path.deleteIfExists()))
 
   override def updateUserMeta(resourceId: String, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] = {
     db.updateUserMeta(

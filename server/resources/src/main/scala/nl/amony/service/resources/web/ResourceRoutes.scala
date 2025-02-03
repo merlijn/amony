@@ -91,14 +91,14 @@ object ResourceRoutes:
 
     val getResourceByIdImpl =
       getResourceById
-        .serverSecurityLogic(authenticator.publicEndpoint)
+        .serverSecurityLogicPure(authenticator.publicEndpoint)
         .serverLogic(_ => (bucketId, resourceId) =>
           getResource(bucketId, resourceId).map((_, resource) => toDto(resource.info())).value
         )
 
     val updateUserMetaDataImpl =
       updateUserMetaData
-        .serverSecurityLogic(authenticator.requireRole(Roles.Admin))
+        .serverSecurityLogicPure(authenticator.requireRole(Roles.Admin))
         .serverLogic(_ => (bucketId, resourceId, userMeta) => {
 
           // TODO rewrite this using tapir Validators ?
@@ -125,7 +125,7 @@ object ResourceRoutes:
       
     val updateThumbnailTimestampImpl =
       updateThumbnailTimestamp
-        .serverSecurityLogic(authenticator.requireRole(Roles.Admin))
+        .serverSecurityLogicPure(authenticator.requireRole(Roles.Admin))
         .serverLogic(_ => (bucketId, resourceId, dto) =>
           getResource(bucketId, resourceId).flatMap {
             (bucket, _) => EitherT.right(bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis))

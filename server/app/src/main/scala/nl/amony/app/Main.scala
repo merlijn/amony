@@ -14,7 +14,7 @@ import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.{ResourceContentRoutes, ResourceRoutes}
 import scribe.{Logger, Logging}
 import slick.basic.DatabaseConfig
-import slick.jdbc.HsqldbProfile
+import slick.jdbc.{H2Profile, HsqldbProfile}
 import sttp.tapir.server.http4s.Http4sServerOptions
 
 import scala.reflect.ClassTag
@@ -29,8 +29,6 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
 
     logger.info("Starting application, app home directory: " + appConfig.amonyHome)
     logger.debug("Configuration: " + appConfig)
-
-    val databaseConfig = DatabaseConfig.forConfig[HsqldbProfile]("amony.database", config)
 
     // somehow the default (slf4j) logger is not working, so we explicitly set it here
     val serverLog = {
@@ -52,7 +50,7 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
       authService        = new AuthServiceImpl(authConfig)
       resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
       _                  = resourceEventTopic.followTail(searchService.processEvent)
-      resourceDatabase  <- ResourceDatabase.resource[HsqldbProfile](databaseConfig)
+      resourceDatabase  <- ResourceDatabase.resource(config)
       resourceBuckets   <- appConfig.resources.map {
                                case localConfig : ResourceConfig.LocalDirectoryConfig => 
                                  LocalDirectoryBucket.resource(localConfig, resourceDatabase, resourceEventTopic)

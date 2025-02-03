@@ -2,6 +2,7 @@ TODO for 1.0
 
 [x] BE: sanitize input everywhere
 [ ] BE: switch to a proper database like postgres
+[ ] BE: switch to a proper authentication system like ory kratos
 [ ] BE: add an auto deploy pipeline
 [ ] BE/FE : user registration flow
 [ ] BE/FE : allow setting login required mode
