@@ -118,7 +118,7 @@ jobs:
 
       - name: Push Docker image
         if: |
-          steps.git-info.outputs.current_tag != '' || contains(steps.git-info.outputs.commit_msg, '#push')
+          steps.git-info.outputs.commit_tag != '' || contains(steps.git-info.outputs.commit_msg, '#push')
         run: |
           # for each line in the app/.docker-tags.txt push that tag to the registry
           while IFS= read -r tag || [ -n "$tag" ]; do
