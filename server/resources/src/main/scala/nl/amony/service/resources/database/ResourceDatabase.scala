@@ -2,6 +2,7 @@ package nl.amony.service.resources.database
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource}
+import com.typesafe.config.Config
 import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
@@ -10,20 +11,31 @@ import nl.amony.service.resources.api.events.*
 import nl.amony.service.resources.api.ResourceInfo
 import scribe.Logging
 import slick.basic.DatabaseConfig
-import slick.jdbc.JdbcProfile
+import slick.jdbc.{H2Profile, HsqldbProfile, JdbcProfile, MySQLProfile, PostgresProfile}
 
 import scala.concurrent.ExecutionContext
 
 object ResourceDatabase {
-    def resource[P <: JdbcProfile](dbConfig: DatabaseConfig[P])(using IORuntime: IORuntime): Resource[IO, ResourceDatabase[P]] = {
-      Resource.make {
-        IO {
-          val db = new ResourceDatabase(dbConfig)
-          db.init()
-          db
-        }
-      } { db => IO(db.db.close()) }
-    }
+  def resource[P <: JdbcProfile](dbConfig: DatabaseConfig[P])(using IORuntime: IORuntime): Resource[IO, ResourceDatabase[P]] = {
+    Resource.make {
+      IO {
+        val db = new ResourceDatabase(dbConfig)
+        db.init()
+        db
+      }
+    } { db => IO(db.db.close()) }
+  }
+  
+  def resource(config: Config)(using runtime: IORuntime): Resource[IO, ResourceDatabase[_]] = {
+    val dbConfig = config.getString("amony.database.profile") match
+      case "slick.jdbc.HsqldbProfile$"   => DatabaseConfig.forConfig[HsqldbProfile]("amony.database", config)
+      case "slick.jdbc.H2Profile$"       => DatabaseConfig.forConfig[H2Profile]("amony.database", config)
+      case "slick.jdbc.MySqlProfile$"    => DatabaseConfig.forConfig[MySQLProfile]("amony.database", config)
+      case "slick.jdbc.PostgresProfile$" => DatabaseConfig.forConfig[PostgresProfile]("amony.database", config)
+      case other                         => throw new IllegalArgumentException(s"Unsupported database profile: $other")
+    
+    resource(dbConfig)
+  }
 }
 
 class ResourceDatabase[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(using IORuntime: IORuntime) extends Logging {
@@ -120,12 +132,12 @@ class ResourceDatabase[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
       } yield ()).transactionally
     )
 
-  def deleteResource(bucketId: String, resourceId: String, effect: () => IO[Unit] = () => IO.unit) : IO[Unit] = {
+  def deleteResource(bucketId: String, resourceId: String, effect: IO[Unit] = IO.unit) : IO[Unit] = {
     dbIO(
       (for {
         _ <- resources.getById(bucketId, resourceId).delete
         _ <- resourceTags.queryById(bucketId, resourceId).delete
-        _ <- DBIO.from(effect().unsafeToFuture())
+        _ <- DBIO.from(effect.unsafeToFuture())
       } yield ()).transactionally
     )
   }
@@ -175,7 +187,7 @@ class ResourceDatabase[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P]
   def applyEvent(bucketId: String, effect: ResourceEvent => IO[Unit])(event: ResourceEvent): IO[Unit] = {
     event match {
       case ResourceAdded(resource)             => insert(resource, () => effect(event))
-      case ResourceDeleted(resourceId)         => deleteResource(bucketId, resourceId, () => effect(event))
+      case ResourceDeleted(resourceId)         => deleteResource(bucketId, resourceId, effect(event))
       case ResourceMoved(id, oldPath, newPath) => move(bucketId, oldPath, newPath, () => effect(event))
       case _ => IO.unit
     }

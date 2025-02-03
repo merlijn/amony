@@ -76,7 +76,7 @@ object SearchRoutes:
     def sanitize(s: String, maxLength: Int, isCharAllowed: Char => Boolean): String = s.filter(isCharAllowed).take(maxLength)
 
     val routeImpl = searchResourcesEndpoint
-      .serverSecurityLogic(security.publicEndpoint)
+      .serverSecurityLogicPure(security.publicEndpoint)
       .serverLogic { auth => queryDto =>
 
         val duration: Option[(Long, Long)] = queryDto.d.flatMap:

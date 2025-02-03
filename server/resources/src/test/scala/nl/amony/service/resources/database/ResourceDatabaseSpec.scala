@@ -1,9 +1,7 @@
 package nl.amony.service.resources.database
 
-import cats.effect.IO
 import com.typesafe.config.ConfigFactory
-import nl.amony.service.resources.api.{ImageMeta, ResourceInfo, ResourceMeta, ResourceMetaSource}
-import nl.amony.service.resources.database.ResourceDatabase
+import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta, ResourceMetaSource}
 import org.scalatest.flatspec.AnyFlatSpecLike
 import scribe.Logging
 import slick.basic.DatabaseConfig
@@ -41,6 +39,7 @@ class ResourceDatabaseSpec extends AnyFlatSpecLike with Logging {
     ResourceInfo(
       bucketId = bucketId,
       path = "test",
+      userId = "0",
       resourceId = resourceId,
       size = 1,
       hash = Some(resourceId),

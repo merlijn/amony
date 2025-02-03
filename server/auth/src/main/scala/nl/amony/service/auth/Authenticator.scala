@@ -18,13 +18,11 @@ class Authenticator(decoder: JwtDecoder):
       _           <- if xsrfToken == xXsrfHeader then Right(()) else Left(SecurityError.Unauthorized)
     } yield AuthToken(decoded.userId, decoded.roles)
   
-  def publicEndpoint(securityInput: SecurityInput): IO[Either[SecurityError, AuthToken]] =
-    IO.pure(Right(AuthToken.anonymous))
+  def publicEndpoint(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
+    Right(AuthToken.anonymous)
   
-  def requireRole(requiredRole: Role)(securityInput: SecurityInput): IO[Either[SecurityError, AuthToken]] =
-    IO.pure(
-      requireSession(securityInput).flatMap { token =>
-        if token.roles.contains(requiredRole) then Right(token)
-        else Left(SecurityError.Forbidden)
-      }
-    )
+  def requireRole(requiredRole: Role)(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
+    requireSession(securityInput).flatMap { token =>
+      if token.roles.contains(requiredRole) then Right(token)
+      else Left(SecurityError.Forbidden)
+    }

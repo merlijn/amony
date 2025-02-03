@@ -29,7 +29,7 @@ object Base32 {
    * @param bytes
    * @return
    */
-  def encode(bytes: Array[Byte]): String = {
+  def encode2(bytes: Array[Byte]): String = {
 
     // calculate the size of the string
     val size          = Math.ceil((byteN * bytes.length) / baseN.toDouble).toInt
@@ -63,7 +63,7 @@ object Base32 {
     stringBuilder.toString()
   }
 
-  def encode2(bytes: Array[Byte]): String = {
+  def encode(bytes: Array[Byte]): String = {
     val totalBits = bytes.length * 8
     var bitIndex = 0
     val sb = new StringBuilder
