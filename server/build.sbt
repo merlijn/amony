@@ -75,6 +75,8 @@ val scalaPbRuntime           = "com.thesamet.scalapb"     %% "scalapb-runtime"  
 
 val log4CatsSlf4j            = "org.typelevel"            %% "log4cats-slf4j"             % "2.7.0"
 
+val apacheCommonsCodec = "commons-codec" % "commons-codec" % "1.15"
+
 
 val http4sEmberServer = "org.http4s" %% "http4s-ember-server" % http4sVersion
 val http4sEmberClient = "org.http4s" %% "http4s-ember-client" % http4sVersion
@@ -204,7 +206,8 @@ lazy val resources =
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
         scalaTest,
         slickHikariCp % "test",
-        h2DB % "test"
+        h2DB % "test",
+        "commons-codec" % "commons-codec"% "1.18.0" % "test"
       )
     )
 
