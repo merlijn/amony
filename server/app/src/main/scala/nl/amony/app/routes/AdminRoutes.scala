@@ -125,7 +125,7 @@ object AdminRoutes extends Logging:
 
     val recomputeHashesImpl =
       reComputeHashes
-        .serverSecurityLogicPure(authenticator.publicEndpoint)
+        .serverSecurityLogicPure(authenticator.requireRole(Roles.Admin))
         .serverLogicSuccess(_ => bucketId =>
           buckets.get(bucketId) match
             case Some(bucket: LocalDirectoryBucket[_]) =>
