@@ -1,32 +1,46 @@
-create table "files"
-(
-    "bucket_id"           VARCHAR(128)  not null,
-    "relative_path"       VARCHAR(1024) not null,
-    "resource_id"         VARCHAR(128)  not null,
-    "size"                BIGINT        not null,
-    "content_type"        VARCHAR(128),
-    "content_meta"        VARBINARY,
-    "creation_time"       BIGINT,
-    "last_modified_time"  BIGINT,
-    "title"               VARCHAR(128),
-    "description"         VARCHAR(1024),
-    "thumbnail_timestamp" BIGINT,
-    constraint "resources_pk" primary key ("bucket_id", "resource_id")
+CREATE TABLE resources (
+    bucket_id              VARCHAR(64)   NOT NULL,
+    resource_id            VARCHAR(64)   NOT NULL,
+    user_id                VARCHAR(64)   NOT NULL,
+    relative_path          VARCHAR(1024) NOT NULL,
+    size                   BIGINT        NOT NULL,
+    hash                   VARCHAR(64),
+    content_type           VARCHAR(128),
+    content_meta_tool_name VARCHAR(32),
+    content_meta_tool_data VARCHAR,
+    creation_time          TIMESTAMP,
+    last_modified_time     TIMESTAMP,
+    title                  VARCHAR(128),
+    description            VARCHAR(1024),
+    thumbnail_timestamp    BIGINT,
+    CONSTRAINT resources_pk PRIMARY KEY (bucket_id, resource_id)
 );
 
-create index "bucket_id_idx" on "files" ("bucket_id");
+CREATE INDEX resources_bucket_id_idx ON resources (bucket_id);
 
-create index "hash_idx" on "files" ("resource_id");
+CREATE INDEX resources_hash_idx ON resources (resource_id);
 
-create table "resource_tags"
-(
-    "bucket_id"   VARCHAR(128) not null,
-    "resource_id" VARCHAR(128) not null,
-    "tag"         VARCHAR(128) not null,
-    constraint "resource_tags_pk"
-        primary key ("bucket_id", "resource_id", "tag")
+CREATE TABLE tags (
+    id         SERIAL NOT NULL,  -- Changed from IDENTITY to SERIAL
+    label      VARCHAR(64) NOT NULL,
+    CONSTRAINT tags_pk PRIMARY KEY (id),
+    CONSTRAINT label_unq UNIQUE (label)
 );
 
-create index "resource_idx"
-    on "resource_tags" ("bucket_id", "resource_id");
+CREATE INDEX tags_label_idx ON tags (label);
 
+CREATE TABLE resource_tags (
+    bucket_id   VARCHAR(128) NOT NULL,
+    resource_id VARCHAR(128) NOT NULL,
+    tag_id      INTEGER NOT NULL,
+    CONSTRAINT resource_tags_pk
+       PRIMARY KEY (bucket_id, resource_id, tag_id),
+    CONSTRAINT resource_tags_tag_fk
+       FOREIGN KEY (tag_id) REFERENCES tags (id),
+   CONSTRAINT resource_tags_resource_fk
+        FOREIGN KEY (bucket_id, resource_id)
+        REFERENCES resources (bucket_id, resource_id)
+);
+
+CREATE INDEX resource_tags_by_id_idx
+    ON resource_tags (bucket_id, resource_id);

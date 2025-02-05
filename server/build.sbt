@@ -31,22 +31,25 @@ val circeParser              = "io.circe"                 %% "circe-parser"     
 val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.5.2"
 val slickHikariCp            = "com.typesafe.slick"       %% "slick-hikaricp"             % "3.5.2"
 
+val skunkCore                = "org.tpolecat"             %% "skunk-core"                 % "1.0.0-M10"
+val skunkCirce               = "org.tpolecat"             %% "skunk-circe"                % "1.0.0-M10"
+
 val sqids                    = "org.sqids" %% "sqids" % "0.5.0"
 
-val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"            % "1.11.11"
-val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"   % "1.11.11"
-val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"     % "1.11.11"
-val tapirSwaggerUI           = "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % "1.11.11"
-val tapirCirce               = "com.softwaremill.sttp.tapir" %% "tapir-json-circe"        % "1.11.11"
-val tapirCirceYamlSpec       = "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"    % "0.11.5"
+val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"            % "1.11.13"
+val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"   % "1.11.13"
+val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"     % "1.11.13"
+val tapirSwaggerUI           = "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % "1.11.13"
+val tapirCirce               = "com.softwaremill.sttp.tapir" %% "tapir-json-circe"        % "1.11.13"
+val tapirCirceYamlSpec       = "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"    % "0.11.7"
 
 val tapirSharedFs2           = "com.softwaremill.sttp.shared"  %% "fs2"                   % "1.4.2"
 
 val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "10.0.1"
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.16"
 
-val scribe                   = "com.outr"                 %% "scribe"                     % "3.15.3"
-val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.15.3"
+val scribe                   = "com.outr"                 %% "scribe"                     % "3.16.0"
+val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.16.0"
 
 val tikaCore                 = "org.apache.tika"           % "tika-core"                  % "3.0.0"
 
@@ -198,16 +201,21 @@ lazy val resources =
     .dependsOn(libFFMPeg, libEventStore, libFiles, auth)
     .settings(protobufSettings)
     .settings(
+      Test / fork := true,
       name := "amony-service-resources",
       libraryDependencies ++= Seq(
         scribe, sqids,
         circe, circeGeneric, http4sCirce, jsoup, tikaCore,
-        tapirCore, tapirCatsEffect, tapirCirce, tapirHttp4s,
-        slick, fs2Core, fs2Io, http4sDsl, liquibaseCore,
+        tapirCore, tapirCatsEffect, tapirCirce, tapirHttp4s, fs2Io,
+        slick, fs2Core,
+        http4sDsl, liquibaseCore,
+        skunkCore, skunkCirce,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
         scalaTest,
+        postgres % "test",
         slickHikariCp % "test",
         h2DB % "test",
+        "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.41.8" % "test",
         "commons-codec" % "commons-codec"% "1.18.0" % "test"
       )
     )

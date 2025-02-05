@@ -39,7 +39,7 @@ object LocalDirectoryScanner extends Logging {
    * This means, the only thing we can rely on for checking equality is the metadata, not the filename.
    * 
    */
-  def scanDirectory(directory: Path, previous: FileStore, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] = {
+  def scanDirectory(directory: Path, previous: FileStore, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFunction: Path => IO[String]): Stream[IO, FileEvent] = {
     
     val start = System.currentTimeMillis()
 
@@ -55,7 +55,7 @@ object LocalDirectoryScanner extends Logging {
         hash       <- prevByPath
                         .filter(_.equalFileMeta(path, attrs))
                         .map(i => IO.pure(i.hash))
-                        .getOrElse(hashFn(path))
+                        .getOrElse(hashFunction(path))
         fileInfo   = FileInfo(path, attrs, hash)
         event <- prevByPath match
                   case Some(prev) if prev.hash == fileInfo.hash => IO.pure(None) // file has the same path and hash
@@ -67,7 +67,7 @@ object LocalDirectoryScanner extends Logging {
       } yield event
     }
 
-    // this is not correct, even if the path exists, the previous file might be deleted
+    // this is not correct, even if the path exists, the previous file might be deleted and replaced by another
     val maybeDeleted: Map[Path, FileInfo] = currentFiles.foldLeft(previous.getAll()){ case (acc, (p, _)) => acc - p }
 
     def filterMoved(maybeDeleted: Map[Path, FileInfo], e: Option[FileEvent]): Map[Path, FileInfo] = e match
