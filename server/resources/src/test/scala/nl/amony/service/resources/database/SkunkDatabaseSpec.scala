@@ -6,9 +6,15 @@ import com.dimafeng.testcontainers.scalatest.TestContainerForAll
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
 import cats.effect.unsafe.implicits.global
+import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
+import org.scalatest.matchers.should.Matchers
 import scribe.Logging
+import cats.implicits.*
 
-class SkunkDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with Logging {
+import java.util.UUID
+import scala.util.Random
+
+class SkunkDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with Logging with Matchers {
 
   override val containerDef: GenericContainer.Def[GenericContainer] =
     GenericContainer.Def(
@@ -40,8 +46,31 @@ class SkunkDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with Lo
       description = None
     )
 
+  val alphabet = ('a' to 'z').toList
+
+  def randomTag = alphabet(Random.nextInt(alphabet.size)).toString
+
+  def genResource(): ResourceInfo =
+    ResourceInfo(
+      bucketId = UUID.randomUUID().toString,
+      resourceId = UUID.randomUUID().toString,
+      userId = UUID.randomUUID().toString,
+      path = "path",
+      hash = Some("hash"),
+      size = 0,
+      contentType = None,
+      contentMetaSource = None,
+      contentMeta = ResourceMeta.Empty,
+      tags = Set.fill(Random.nextInt(10))(randomTag),
+      creationTime = None,
+      lastModifiedTime = None,
+      title = None,
+      description = None,
+      thumbnailTimestamp = None
+    )
+
   "The Database" should {
-    "start up" in {
+    "insert a resource row and retrieve it" in {
       withContainers { container =>
 
         logger.info(s"Container IP: ${container.containerIpAddress}")
@@ -56,13 +85,40 @@ class SkunkDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with Lo
         )
 
         SkunkDatabase.make(dbConfig).use(db =>
-          logger.info(s"--- executing queries")
-          for {
-            _           <- db.insertRow(row)
-            returnedRow <- db.getRowById(row.bucket_id, row.resource_id)
-          } yield logger.info(s"returned row: $returnedRow")
+          insertResource(db) // *> insertRow(db)
+          
         ).unsafeRunSync()
       }
     }
   }
+
+  def insertResource(db: SkunkDatabase): IO[Unit] = {
+
+    def identityTest(resource: ResourceInfo) =
+      for {
+        _        <- db.insertResource(resource)
+        returned <- db.getById(resource.bucketId, resource.resourceId)
+      } yield {
+        Some(resource) shouldBe returned
+      }
+
+    (List.fill(100)(genResource()).map(identityTest)).sequence >> IO.unit
+  }
+
+  def insertTags(db: SkunkDatabase): IO[Unit] =
+    for {
+      _    <- db.tables.tags.upsert(Set("a", "b", "c"))
+      _    <- db.tables.tags.upsert(Set("a", "b", "c", "d", "e"))
+      tags <- db.tables.tags.all
+    } yield {
+      logger.info(s"tags: ${tags.mkString(", ")}")
+      tags.map(_.label) should contain theSameElementsAs Set("a", "b", "c", "d", "e")
+    }
+  
+  
+  def insertRow(db: SkunkDatabase): IO[Unit] =
+    for {
+      _           <- db.tables.resources.insert(row)
+      returnedRow <- db.tables.resources.getById(row.bucket_id, row.resource_id)
+    } yield logger.info(s"returned row: $returnedRow")
 }
