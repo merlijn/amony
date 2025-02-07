@@ -92,6 +92,7 @@ jobs:
           path: web-client/dist
 
       - name: Build with sbt
+        timeout-minutes: 5
         run: sbt clean test app/jibDockerBuild app/jibWriteDockerTagsFile
 
       - name: Get git info
