@@ -200,23 +200,19 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
     }
   }
 
-  def insertResource(resource: ResourceInfo): IO[Unit] = {
-    session.transaction.use { tx =>
+  def insertResource(resource: ResourceInfo): IO[Unit] =
+    session.transaction.use: tx =>
       for {
         _ <- tables.resources.insert(ResourceRow.fromResource(resource))
         _ <- updateTags(resource.bucketId, resource.resourceId, resource.tags.toList)
       } yield ()
-    }
-  }
 
-  def upsert(resource: ResourceInfo): IO[Unit] = {
-    session.transaction.use { tx =>
+  def upsert(resource: ResourceInfo): IO[Unit] =
+    session.transaction.use: tx =>
       for {
         _  <- tables.resources.upsert(ResourceRow.fromResource(resource))
         _  <- updateTags(resource.bucketId, resource.resourceId, resource.tags.toList)
       } yield ()
-    }
-  }
 
   private def updateTags(bucketId: String, resourceId: String, tags: List[String]) =
     for {
