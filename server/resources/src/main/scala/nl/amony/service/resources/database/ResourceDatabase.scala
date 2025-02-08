@@ -76,15 +76,16 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
         def all(bucketId: String): Query[String, ResourceRow] =
           sql"select to_json(r.*) from resources r where bucket_id = $varchar".query(json).map(_.as[ResourceRow].toOption.get)
 
-        def allJoined(bucketId: String): Query[String, (ResourceRow, Arr[String])] =
+        def allJoined(bucketId: String): Query[String, (ResourceRow, Option[Arr[String]])] =
           sql"""
-           SELECT to_json(r.*), array_agg(t.label) FROM resources r
+           SELECT to_json(r.*), array_agg(t.label) FILTER (WHERE t.label IS NOT NULL) as tags
+           FROM resources r
            LEFT JOIN resource_tags rt
              ON r.bucket_id = rt.bucket_id AND r.resource_id = rt.resource_id
            LEFT JOIN tags t ON rt.tag_id = t.id
            WHERE r.bucket_id = $varchar
            GROUP BY (${ResourceRow.columns})
-          """.query(json *: _varchar).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
+          """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
 
         val getById: Query[(String, String), ResourceRow] =
           sql"select to_json(r.*) from resources r where bucket_id = $varchar and resource_id = $varchar"
@@ -140,15 +141,16 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
       def getById(bucketId: String, resourceId: String): IO[List[ResourceTagsRow]] =
         session.prepare(queries.getById).flatMap(_.stream((bucketId, resourceId), defaultChunkSize).compile.toList)
 
-      def replaceAll(bucketId: String, resourceId: String, tagIds: List[Int]): IO[Completion] =
+      def replaceAll(bucketId: String, resourceId: String, tagIds: List[Int]): IO[Unit] =
         for {
           _          <- session.prepare(queries.delete).flatMap(_.execute(bucketId, resourceId))
           rows       = tagIds.map(tagId => ResourceTagsRow(bucketId, resourceId, tagId))
-          completion <- session.prepare(queries.upsert(rows.size)).flatMap(_.execute(rows))
-        } yield completion
+          completion <- if (tagIds.nonEmpty) session.prepare(queries.upsert(rows.size)).flatMap(_.execute(rows)) else IO.unit
+        } yield ()
 
-      def upsert(tags: List[ResourceTagsRow]) =
-        session.prepare(queries.upsert(tags.size)).flatMap(_.execute(tags))
+      def upsert(bucketId: String, resourceId: String, tagIds: List[Int]) =
+        val rows = tagIds.map(tagId => ResourceTagsRow(bucketId, resourceId, tagId))
+        session.prepare(queries.upsert(rows.size)).flatMap(_.execute(rows))
     }
 
     object tags {
@@ -184,40 +186,41 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
       def all =
         session.prepare(queries.all).flatMap(_.stream(Void, defaultChunkSize).compile.toList)
 
-      def upsert(tagLabels: Set[String]): IO[Completion] =
+      def upsert(tagLabels: List[String]): IO[Completion] =
         session.prepare(queries.upsert(tagLabels.size)).flatMap(_.execute(tagLabels.toList))
 
-      def getByLabels(labels: List[String]) =
+      def getByLabels(labels: List[String]): IO[List[TagRow]] =
         session.prepare(queries.getByLabels(labels.size)).flatMap(_.stream(labels, defaultChunkSize).compile.toList)
 
-      def getByIds(ids: List[Int]) =
+      def getByIds(ids: List[Int]): IO[List[TagRow]] =
         session.prepare(queries.getByIds(ids.size)).flatMap(_.stream(ids, defaultChunkSize).compile.toList)
     }
   }
 
-  def insertResource(resource: ResourceInfo): IO[Completion] = {
+  def insertResource(resource: ResourceInfo): IO[Unit] = {
     session.transaction.use { tx =>
       for {
-        _           <- tables.resources.insert(ResourceRow.fromResource(resource))
-        _           <- tables.tags.upsert(resource.tags)
-        tags        <- tables.tags.getByLabels(resource.tags.toList)
-        resourceTags = tags.map(tag => ResourceTagsRow(resource.bucketId, resource.resourceId, tag.id))
-        completion  <- tables.resource_tags.upsert(resourceTags)
-      } yield completion
+        _ <- tables.resources.insert(ResourceRow.fromResource(resource))
+        _ <- updateTags(resource.bucketId, resource.resourceId, resource.tags.toList)
+      } yield ()
     }
   }
 
-  def upsert(resource: ResourceInfo): IO[Completion] = {
+  def upsert(resource: ResourceInfo): IO[Unit] = {
     session.transaction.use { tx =>
       for {
-        _ <- tables.resources.upsert(ResourceRow.fromResource(resource))
-        _ <- tables.tags.upsert(resource.tags)
-        tags <- tables.tags.getByLabels(resource.tags.toList)
-        tagIds = tags.map(_.id)
-        completion <- tables.resource_tags.replaceAll(resource.bucketId, resource.resourceId, tagIds)
-      } yield completion
+        _  <- tables.resources.upsert(ResourceRow.fromResource(resource))
+        _  <- updateTags(resource.bucketId, resource.resourceId, resource.tags.toList)
+      } yield ()
     }
   }
+
+  private def updateTags(bucketId: String, resourceId: String, tags: List[String]) =
+    for {
+      _          <- if (tags.nonEmpty) tables.tags.upsert(tags) else IO.unit
+      tags       <- if (tags.nonEmpty) tables.tags.getByLabels(tags) else IO.pure(List.empty)
+      completion <- tables.resource_tags.replaceAll(bucketId, resourceId, tags.map(_.id))
+    } yield ()
 
   def getAll(bucketId: String): IO[List[ResourceInfo]] =
     getStream(bucketId).compile.toList
@@ -225,7 +228,8 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
   def getStream(bucketId: String) =
     fs2.Stream.force(
       session.prepare(tables.resources.queries.allJoined(bucketId)).map(
-        _.stream(bucketId, defaultChunkSize).map((resourceRow, tagLabels) => resourceRow.toResource(tagLabels.flattenTo(Set)))
+        _.stream(bucketId, defaultChunkSize)
+          .map((resourceRow, tagLabels) => resourceRow.toResource(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty)))
       )
     )
 
@@ -234,7 +238,7 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
       for {
         resourceRow  <- OptionT(tables.resources.getById(bucketId, resourceId))
         resourceTags <- OptionT.liftF(tables.resource_tags.getById(bucketId, resourceId))
-        tags         <- OptionT.liftF(tables.tags.getByIds(resourceTags.map(_.tag_id)))
+        tags         <- if (resourceTags.nonEmpty) OptionT.liftF(tables.tags.getByIds(resourceTags.map(_.tag_id))) else OptionT.some[IO](List.empty)
       } yield resourceRow.toResource(tags.map(_.label).toSet)
 
     result.value

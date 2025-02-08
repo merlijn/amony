@@ -47,7 +47,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       contentType = None,
       contentMetaSource = None,
       contentMeta = ResourceMeta.Empty,
-      tags = Set.fill(Random.nextInt(8) + 1)(randomTag),
+      tags = Set.fill(Random.nextInt(5))(randomTag),
       creationTime = Some(nextTimestamp),
       lastModifiedTime = Some(nextTimestamp),
       title = Some(randomString),
@@ -113,11 +113,11 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
   def insertTags(db: ResourceDatabase): IO[Unit] =
     for {
-      _    <- db.tables.tags.upsert(Set("a", "b", "c"))
-      _    <- db.tables.tags.upsert(Set("a", "b", "c", "d", "e"))
+      _    <- db.tables.tags.upsert(List("a", "b", "c"))
+      _    <- db.tables.tags.upsert(List("a", "b", "c", "d", "e"))
       tags <- db.tables.tags.all
     } yield {
       logger.info(s"tags: ${tags.mkString(", ")}")
-      tags.map(_.label) should contain theSameElementsAs Set("a", "b", "c", "d", "e")
+      tags.map(_.label) should contain theSameElementsAs List("a", "b", "c", "d", "e")
     }
 }
