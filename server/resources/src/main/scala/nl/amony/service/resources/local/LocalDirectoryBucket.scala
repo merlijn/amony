@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 object LocalDirectoryBucket:
   
-  def resource[P <: JdbcProfile](config: LocalDirectoryConfig, db: ResourceDatabase[P], topic: EventTopic[ResourceEvent])(using runtime: IORuntime): cats.effect.Resource[IO, LocalDirectoryBucket[P]] = {
+  def resource(config: LocalDirectoryConfig, db: ResourceDatabase, topic: EventTopic[ResourceEvent])(using runtime: IORuntime): cats.effect.Resource[IO, LocalDirectoryBucket] = {
     cats.effect.Resource.make {
       IO {
         val bucket = LocalDirectoryBucket(config, db, topic)
@@ -30,14 +30,14 @@ object LocalDirectoryBucket:
     }{  _ => IO.unit }
   }
 
-class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: ResourceDatabase[P], topic: EventTopic[ResourceEvent])(using runtime: IORuntime) extends ResourceBucket with Logging {
+class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, topic: EventTopic[ResourceEvent])(using runtime: IORuntime) extends ResourceBucket with Logging {
 
   private val runningOperations = new ConcurrentHashMap[LocalResourceOp, IO[Path]]()
   
   Files.createDirectories(config.cachePath)
 
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = 
-    db.getByResourceId(config.id, resourceId).map(_.map(recoverMeta))
+    db.getById(config.id, resourceId).map(_.map(recoverMeta))
 
   private def recoverMeta(info: ResourceInfo) = {
     val meta: Option[ResourceMeta] = info.contentMetaSource.flatMap(meta => LocalResourceMeta.scanToolMeta(meta).toOption)
@@ -57,11 +57,12 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
             
             logger.info(s"Updating metadata for $f")
             val updated = resource.copy(
-              contentType = Some(localResourceMeta.contentType), 
+              contentType       = Some(localResourceMeta.contentType), 
               contentMetaSource = localResourceMeta.toolMeta,
-              contentMeta = localResourceMeta.meta)
+              contentMeta       = localResourceMeta.meta)
             
-            db.update(updated) >> topic.publish(ResourceUpdated(updated))
+            IO.unit
+//            db.update(updated) >> topic.publish(ResourceUpdated(updated))
 
     }).compile.drain
 
@@ -74,7 +75,8 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
           val updated = resource.copy(resourceId = hash, hash = Some(hash))
           if (oldResourceId != hash)
             logger.info(s"Updating hash for $file from $oldResourceId to $hash")
-            db.deleteResource(config.id, resource.resourceId, topic.publish(ResourceDeleted(oldResourceId))) >> db.insert(updated, () => topic.publish(ResourceUpdated(updated)))
+            db.deleteResource(config.id, resource.resourceId) >> topic.publish(ResourceDeleted(oldResourceId)) >> 
+              db.insertResource(updated) >> topic.publish(ResourceUpdated(updated))
           else
             IO.unit
 
@@ -130,18 +132,17 @@ class LocalDirectoryBucket[P <: JdbcProfile](config: LocalDirectoryConfig, db: R
       case None       => IO.pure(())
       case Some(info) =>
         val path = config.resourcePath.resolve(info.path)
-        db.deleteResource(config.id, resourceId, IO(path.deleteIfExists()))
+        db.deleteResource(config.id, resourceId) >> IO(path.deleteIfExists())
 
   override def updateUserMeta(resourceId: String, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] = {
-    db.updateUserMeta(
-      config.id, resourceId, title, description, tags, 
-      resource => topic.publish(ResourceUpdated(recoverMeta(resource)))
+    db.updateUserMeta(config.id, resourceId, title, description, tags).flatMap(
+      _.map(updated => topic.publish(ResourceUpdated(recoverMeta(updated)))).getOrElse(IO.unit)
     )
   }
 
   override def updateThumbnailTimestamp(resourceId: String, timestamp: Long): IO[Unit] =
-    db.updateThumbnailTimestamp(config.id, resourceId, timestamp,
-      resource => topic.publish(ResourceUpdated(recoverMeta(resource)))
+    db.updateThumbnailTimestamp(config.id, resourceId, timestamp).flatMap(
+      _.map(updated => topic.publish(ResourceUpdated(recoverMeta(updated)))).getOrElse(IO.unit)
     )
 
   val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (db.applyEvent(config.id, e => topic.publish(e)))

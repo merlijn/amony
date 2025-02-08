@@ -4,6 +4,7 @@ import com.typesafe.config.ConfigFactory
 import nl.amony.search.SearchConfig
 import nl.amony.search.solr.SolrConfig
 import nl.amony.service.resources.ResourceConfig.*
+import nl.amony.service.resources.database.DatabaseConfig
 import pureconfig.*
 import scribe.Logging
 
@@ -15,7 +16,8 @@ case class AmonyConfig(
     resources: List[ResourceBucketConfig],
     api: WebServerConfig,
     search: SearchConfig,
-    solr: SolrConfig
+    solr: SolrConfig,
+    db: DatabaseConfig,
 ) derives ConfigReader
 
 trait ConfigLoader extends Logging {
