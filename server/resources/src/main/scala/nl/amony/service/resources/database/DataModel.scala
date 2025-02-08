@@ -14,7 +14,7 @@ case class ResourceRow(
   bucket_id: String,
   resource_id: String,
   user_id: String,
-  hash: String,
+  hash: Option[String],
   size: Long,
   content_type: Option[String],
   content_meta_tool_name: Option[String],
@@ -32,7 +32,7 @@ case class ResourceRow(
       resourceId = resource_id,
       userId = user_id,
       path = fs_path,
-      hash = Some(hash),
+      hash = hash,
       size = size,
       contentType = content_type,
       contentMetaSource = content_meta_tool_name.map(name => ResourceMetaSource(name, content_meta_tool_data.getOrElse(""))),
@@ -47,7 +47,11 @@ case class ResourceRow(
   }
 }
 
+
 object ResourceRow {
+
+  val idColumns    = sql"r.bucket_id, r.resource_id"
+  val valueColumns = sql"r.user_id, r.hash, r.size, r.content_type, r.content_meta_tool_name, r.content_meta_tool_data, r.fs_path, r.fs_creation_time, r.fs_last_modified_time, r.title, r.description, r.thumbnail_timestamp"
 
   val columns = sql"r.bucket_id, r.resource_id, r.user_id, r.hash, r.size, r.content_type, r.content_meta_tool_name, r.content_meta_tool_data, r.fs_path, r.fs_creation_time, r.fs_last_modified_time, r.title, r.description, r.thumbnail_timestamp"
 
@@ -55,7 +59,7 @@ object ResourceRow {
     bucket_id = resource.bucketId,
     resource_id = resource.resourceId,
     user_id = resource.userId,
-    hash = resource.hash.get,
+    hash = resource.hash,
     size = resource.size,
     content_type = resource.contentType,
     content_meta_tool_name = resource.contentMetaSource.map(_.toolName),

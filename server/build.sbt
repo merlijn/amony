@@ -216,7 +216,8 @@ lazy val resources =
         slickHikariCp % "test",
         h2DB % "test",
         "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.41.8" % "test",
-        "commons-codec" % "commons-codec"% "1.18.0" % "test"
+        "commons-codec" % "commons-codec"% "1.18.0" % "test",
+        "org.scalacheck" %% "scalacheck" % "1.18.1" % "test"
       )
     )
 

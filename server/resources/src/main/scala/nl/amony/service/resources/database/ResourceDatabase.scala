@@ -96,9 +96,10 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
 
         val upsert: Command[Json] =
           sql"""
-            insert into resources SELECT * FROM json_populate_record(NULL::resources, $json)
-            on conflict (bucket_id, resource_id) do update
-            set = EXCLUDED.*
+            INSERT INTO resources SELECT * FROM json_populate_record(NULL::resources, $json)
+            ON CONFLICT (bucket_id, resource_id) DO UPDATE
+            SET(user_id, hash, size, content_type, content_meta_tool_name, content_meta_tool_data, fs_path, fs_creation_time, fs_last_modified_time, title, description, thumbnail_timestamp) =
+            (EXCLUDED.user_id, EXCLUDED.hash, EXCLUDED.size, EXCLUDED.content_type, EXCLUDED.content_meta_tool_name, EXCLUDED.content_meta_tool_data, EXCLUDED.fs_path, EXCLUDED.fs_creation_time, EXCLUDED.fs_last_modified_time, EXCLUDED.title, EXCLUDED.description, EXCLUDED.thumbnail_timestamp)
           """.command
 
         val bucketCount: Query[String, Int] =
@@ -112,6 +113,9 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
       def insert(row: ResourceRow): IO[Completion] =
         session.prepare(queries.insert).flatMap(_.execute(row.asJson))
 
+      def upsert(row: ResourceRow): IO[Completion] =
+        session.prepare(queries.upsert).flatMap(_.execute(row.asJson))
+
       def getById(bucketId: String, resourceId: String): IO[Option[ResourceRow]] =
         session.prepare(queries.getById).flatMap(_.option(bucketId, resourceId))
 
@@ -122,17 +126,28 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
     object resource_tags {
 
       object queries {
+
         def upsert(n: Int): Command[List[ResourceTagsRow]] =
           sql"insert into resource_tags (bucket_id, resource_id, tag_id) values ${ResourceTagsRow.codec.values.list(n)} on conflict (bucket_id, resource_id, tag_id) do nothing".command
 
         val getById: Query[(String, String), ResourceTagsRow] =
           sql"select bucket_id, resource_id, tag_id from resource_tags where bucket_id = ${varchar(64)} and resource_id = ${varchar(64)}".query(ResourceTagsRow.codec)
+
+        def delete: Command[(String, String)] =
+          sql"delete from resource_tags where bucket_id = $varchar and resource_id = $varchar".command
       }
 
       def getById(bucketId: String, resourceId: String): IO[List[ResourceTagsRow]] =
         session.prepare(queries.getById).flatMap(_.stream((bucketId, resourceId), defaultChunkSize).compile.toList)
 
-      def upsert(tags: List[ResourceTagsRow]) = 
+      def replaceAll(bucketId: String, resourceId: String, tagIds: List[Int]): IO[Completion] =
+        for {
+          _          <- session.prepare(queries.delete).flatMap(_.execute(bucketId, resourceId))
+          rows       = tagIds.map(tagId => ResourceTagsRow(bucketId, resourceId, tagId))
+          completion <- session.prepare(queries.upsert(rows.size)).flatMap(_.execute(rows))
+        } yield completion
+
+      def upsert(tags: List[ResourceTagsRow]) =
         session.prepare(queries.upsert(tags.size)).flatMap(_.execute(tags))
     }
 
@@ -180,8 +195,6 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
     }
   }
 
-
-
   def insertResource(resource: ResourceInfo): IO[Completion] = {
     session.transaction.use { tx =>
       for {
@@ -194,10 +207,25 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
     }
   }
 
-  def getAll(bucketId: String) =
-    session.prepare(tables.resources.queries.allJoined(bucketId)).flatMap(
-      _.stream(bucketId, defaultChunkSize).compile.toList.map(rows => rows.map(
-        (resourceRow, tagLabels) => resourceRow.toResource(tagLabels.flattenTo(Set)))
+  def upsert(resource: ResourceInfo): IO[Completion] = {
+    session.transaction.use { tx =>
+      for {
+        _ <- tables.resources.upsert(ResourceRow.fromResource(resource))
+        _ <- tables.tags.upsert(resource.tags)
+        tags <- tables.tags.getByLabels(resource.tags.toList)
+        tagIds = tags.map(_.id)
+        completion <- tables.resource_tags.replaceAll(resource.bucketId, resource.resourceId, tagIds)
+      } yield completion
+    }
+  }
+
+  def getAll(bucketId: String): IO[List[ResourceInfo]] =
+    getStream(bucketId).compile.toList
+
+  def getStream(bucketId: String) =
+    fs2.Stream.force(
+      session.prepare(tables.resources.queries.allJoined(bucketId)).map(
+        _.stream(bucketId, defaultChunkSize).map((resourceRow, tagLabels) => resourceRow.toResource(tagLabels.flattenTo(Set)))
       )
     )
 

@@ -29,23 +29,6 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       )
     )
 
-  val row =
-    ResourceRow(
-      bucket_id = "bucket",
-      resource_id = "resource",
-      user_id = "user",
-      hash = "hash",
-      size = 0,
-      content_type = None,
-      content_meta_tool_name = None,
-      content_meta_tool_data = None,
-      fs_path = "path",
-      fs_creation_time = None,
-      fs_last_modified_time = None,
-      title = None,
-      description = None
-    )
-
   val alphabet = ('a' to 'z').toList
 
   def randomTag = alphabet(Random.nextInt(alphabet.size)).toString
@@ -59,7 +42,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       resourceId = UUID.randomUUID().toString,
       userId = UUID.randomUUID().toString,
       path = randomString,
-      hash = Some(randomString),
+      hash = None,
       size = Random.nextLong(),
       contentType = None,
       contentMetaSource = None,
@@ -97,7 +80,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
   def insertResourcesTest(db: ResourceDatabase): IO[Unit] = {
 
-    def identityTest(resource: ResourceInfo) =
+    def insertIdentityCheck(resource: ResourceInfo) =
       for {
         _        <- db.insertResource(resource)
         returned <- db.getById(resource.bucketId, resource.resourceId)
@@ -105,11 +88,27 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
         Some(resource) shouldBe returned
       }
 
-    val resources = List.fill(8)(genResource().copy(bucketId = "test"))
+    def upsertIdentityCheck(resource: ResourceInfo) =
+      for {
+        _        <- db.upsert(resource)
+        returned <- db.getById(resource.bucketId, resource.resourceId)
+      } yield {
+        Some(resource) shouldBe returned
+      }
 
-    resources.map(identityTest).sequence >> db.getAll("test").map { inserted =>
-      inserted should contain theSameElementsAs resources
-    }
+    def validateAll(expected: List[ResourceInfo]) =
+      db.getAll("test").map { inserted =>
+        logger.info(s"validated: ${inserted.size}")
+        inserted should contain theSameElementsAs expected
+      }
+
+    val inserted = List.fill(32)(genResource().copy(bucketId = "test"))
+    val updated  = inserted.map(orig => genResource().copy(bucketId = orig.bucketId, resourceId = orig.resourceId))
+
+    val insertChecks = inserted.map(insertIdentityCheck).sequence >> validateAll(inserted)
+    val upsertChecks = updated.map(upsertIdentityCheck).sequence >> validateAll(updated)
+
+    insertChecks >> upsertChecks >> IO.unit
   }
 
   def insertTags(db: ResourceDatabase): IO[Unit] =
@@ -121,11 +120,4 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       logger.info(s"tags: ${tags.mkString(", ")}")
       tags.map(_.label) should contain theSameElementsAs Set("a", "b", "c", "d", "e")
     }
-  
-  
-  def insertRow(db: ResourceDatabase): IO[Unit] =
-    for {
-      _           <- db.tables.resources.insert(row)
-      returnedRow <- db.tables.resources.getById(row.bucket_id, row.resource_id)
-    } yield logger.info(s"returned row: $returnedRow")
 }
