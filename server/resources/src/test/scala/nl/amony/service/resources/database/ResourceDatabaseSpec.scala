@@ -42,11 +42,11 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       resourceId = UUID.randomUUID().toString,
       userId = UUID.randomUUID().toString,
       path = randomString,
-      hash = None,
+      hash = Some(randomString),
       size = Random.nextLong(),
       contentType = None,
       contentMetaSource = None,
-      contentMeta = ResourceMeta.Empty,
+      contentMeta = ResourceMeta.Empty, // this field is not stored
       tags = Set.fill(Random.nextInt(5))(randomTag),
       creationTime = Some(nextTimestamp),
       lastModifiedTime = Some(nextTimestamp),

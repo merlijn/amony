@@ -25,7 +25,7 @@ object Resource {
     Option.when(Files.exists(path))(fromPath(path, info))
 }
 
-case class LocalFile(path: fs2.io.file.Path, resourceInfo: ResourceInfo) extends ResourceWithRangeSupport {
+case class LocalFile(path: fs2.io.file.Path, resourceInfo: ResourceInfo) extends ResourceWithRangeSupport:
 
   override def info() = resourceInfo
 
@@ -40,4 +40,3 @@ case class LocalFile(path: fs2.io.file.Path, resourceInfo: ResourceInfo) extends
 
   override def getContentRange(start: Long, end: Long): fs2.Stream[IO, Byte] =
     fs2.io.file.Files[IO].readRange(path, defaultChunkSize, start, end)
-}

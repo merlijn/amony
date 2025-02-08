@@ -61,8 +61,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
               contentMetaSource = localResourceMeta.toolMeta,
               contentMeta       = localResourceMeta.meta)
 
-            IO.unit
-//            db.update(updated) >> topic.publish(ResourceUpdated(updated))
+            db.upsert(updated) >> topic.publish(ResourceUpdated(updated))
 
     }).compile.drain
 
@@ -180,6 +179,5 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
   }
 
   override def getAllResources(): fs2.Stream[IO, ResourceInfo] =
-    // TODO this should be a stream from the database
-    fs2.Stream.eval(db.getAll(config.id)).flatMap { resources => fs2.Stream.emits[IO, ResourceInfo](resources.map(recoverMeta)) }
+    db.getStream(config.id).map(recoverMeta)
 }

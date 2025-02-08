@@ -54,7 +54,7 @@ object LocalResourceMeta extends Logging {
       VideoMeta(
         width = stream.width,
         height = stream.height,
-        durationInMillis = stream.durationMillis.toInt,
+        durationInMillis = stream.durationMillis,
         fps = stream.fps.toFloat,
         codec = Some(stream.codec_name),
         metaData = Map.empty

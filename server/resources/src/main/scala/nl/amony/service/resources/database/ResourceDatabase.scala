@@ -214,17 +214,16 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
         _  <- updateTags(resource.bucketId, resource.resourceId, resource.tags.toList)
       } yield ()
 
-  private def updateTags(bucketId: String, resourceId: String, tags: List[String]) =
+  private def updateTags(bucketId: String, resourceId: String, tagLabels: List[String]) =
     for {
-      _          <- if (tags.nonEmpty) tables.tags.upsert(tags) else IO.unit
-      tags       <- if (tags.nonEmpty) tables.tags.getByLabels(tags) else IO.pure(List.empty)
-      completion <- tables.resource_tags.replaceAll(bucketId, resourceId, tags.map(_.id))
+      tags <- if (tagLabels.nonEmpty) tables.tags.upsert(tagLabels) >> tables.tags.getByLabels(tagLabels) else IO.pure(List.empty)
+      _    <- tables.resource_tags.replaceAll(bucketId, resourceId, tags.map(_.id))
     } yield ()
 
   def getAll(bucketId: String): IO[List[ResourceInfo]] =
     getStream(bucketId).compile.toList
 
-  def getStream(bucketId: String) =
+  def getStream(bucketId: String): fs2.Stream[IO, ResourceInfo] =
     fs2.Stream.force(
       session.prepare(tables.resources.queries.allJoined(bucketId)).map(
         _.stream(bucketId, defaultChunkSize)
@@ -233,14 +232,11 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
     )
 
   def getById(bucketId: String, resourceId: String): IO[Option[ResourceInfo]] =
-    val result =
-      for {
-        resourceRow  <- OptionT(tables.resources.getById(bucketId, resourceId))
-        resourceTags <- OptionT.liftF(tables.resource_tags.getById(bucketId, resourceId))
-        tags         <- if (resourceTags.nonEmpty) OptionT.liftF(tables.tags.getByIds(resourceTags.map(_.tag_id))) else OptionT.some[IO](List.empty)
-      } yield resourceRow.toResource(tags.map(_.label).toSet)
-
-    result.value
+    (for 
+       resourceRow  <- OptionT(tables.resources.getById(bucketId, resourceId))
+       resourceTags <- OptionT.liftF(tables.resource_tags.getById(bucketId, resourceId))
+       tags         <- if (resourceTags.nonEmpty) OptionT.liftF(tables.tags.getByIds(resourceTags.map(_.tag_id))) else OptionT.some[IO](List.empty)
+     yield resourceRow.toResource(tags.map(_.label).toSet)).value
 
   def updateThumbnailTimestamp(bucketId: String, resourceId: String, timestamp: Int): IO[Option[ResourceInfo]] =
     (for {
@@ -258,7 +254,7 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
 
   def move(bucketId: String, resourceId: String, newPath: String): IO[Unit] =
     tables.resources.getById(bucketId, resourceId).flatMap:
-      case Some(old) => tables.resources.insert(old.copy(fs_path = newPath)) >> IO.unit
+      case Some(old) => tables.resources.upsert(old.copy(fs_path = newPath)) >> IO.unit
       case None      => IO.unit
 
   def deleteResource(bucketId: String, resourceId: String): IO[Unit] =

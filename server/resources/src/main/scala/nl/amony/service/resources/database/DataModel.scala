@@ -50,9 +50,6 @@ case class ResourceRow(
 
 object ResourceRow {
 
-  val idColumns    = sql"r.bucket_id, r.resource_id"
-  val valueColumns = sql"r.user_id, r.hash, r.size, r.content_type, r.content_meta_tool_name, r.content_meta_tool_data, r.fs_path, r.fs_creation_time, r.fs_last_modified_time, r.title, r.description, r.thumbnail_timestamp"
-
   val columns = sql"r.bucket_id, r.resource_id, r.user_id, r.hash, r.size, r.content_type, r.content_meta_tool_name, r.content_meta_tool_data, r.fs_path, r.fs_creation_time, r.fs_last_modified_time, r.title, r.description, r.thumbnail_timestamp"
 
   def fromResource(resource: ResourceInfo): ResourceRow = ResourceRow(
