@@ -66,7 +66,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
           host = container.containerIpAddress,
           port = container.mappedPort(5432),
           database = "test",
-          user = "test",
+          username = "test",
           password = Some("test")
         )
 

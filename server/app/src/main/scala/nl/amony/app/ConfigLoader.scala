@@ -17,7 +17,7 @@ case class AmonyConfig(
     api: WebServerConfig,
     search: SearchConfig,
     solr: SolrConfig,
-    db: DatabaseConfig,
+    database: DatabaseConfig,
 ) derives ConfigReader
 
 trait ConfigLoader extends Logging {

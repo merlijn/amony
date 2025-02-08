@@ -50,7 +50,7 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
       authService        = new AuthServiceImpl(authConfig)
       resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
       _                  = resourceEventTopic.followTail(searchService.processEvent)
-      resourceDatabase  <- ResourceDatabase.make(appConfig.db)
+      resourceDatabase  <- ResourceDatabase.make(appConfig.database)
       resourceBuckets   <- appConfig.resources.map {
                                case localConfig : ResourceConfig.LocalDirectoryConfig => 
                                  LocalDirectoryBucket.resource(localConfig, resourceDatabase, resourceEventTopic)

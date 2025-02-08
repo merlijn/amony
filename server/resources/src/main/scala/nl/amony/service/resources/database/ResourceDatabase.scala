@@ -22,11 +22,11 @@ import skunk.data.{Arr, Completion}
 import java.sql.{Connection, DriverManager}
 
 case class DatabaseConfig(
-  host: String,
-  port: Int,
-  user: String,
-  database: String,
-  password: Option[String]
+   host: String,
+   port: Int,
+   database: String,
+   username: String,
+   password: Option[String]
 )
 
 object ResourceDatabase:
@@ -39,7 +39,7 @@ object ResourceDatabase:
       try {
         Class.forName("org.postgresql.Driver")
         val jdbcUrl = s"jdbc:postgresql://${config.host}:${config.port}/${config.database}"
-        connection = DriverManager.getConnection(jdbcUrl, config.user, config.password.getOrElse(null))
+        connection = DriverManager.getConnection(jdbcUrl, config.username, config.password.getOrElse(null))
         val liquibaseDatabase = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connection));
         val liquibase = new Liquibase("db/00-changelog.yaml", new ClassLoaderResourceAccessor(), liquibaseDatabase)
         liquibase.update()
@@ -53,7 +53,7 @@ object ResourceDatabase:
     Session.single[IO](
       host = config.host,
       port = config.port,
-      user = config.user,
+      user = config.username,
       database = config.database,
       password = config.password,
     ).map { session =>
