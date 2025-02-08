@@ -148,6 +148,9 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
           completion <- if (tagIds.nonEmpty) session.prepare(queries.upsert(rows.size)).flatMap(_.execute(rows)) else IO.unit
         } yield ()
 
+      def delete(bucketId: String, resourceId: String): IO[Completion] =
+        session.prepare(queries.delete).flatMap(_.execute(bucketId, resourceId))
+
       def upsert(bucketId: String, resourceId: String, tagIds: List[Int]) =
         val rows = tagIds.map(tagId => ResourceTagsRow(bucketId, resourceId, tagId))
         session.prepare(queries.upsert(rows.size)).flatMap(_.execute(rows))
@@ -258,13 +261,16 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
     } yield updated).value
 
   def move(bucketId: String, resourceId: String, newPath: String): IO[Unit] =
-    tables.resources.getById(bucketId, resourceId).flatMap {
+    tables.resources.getById(bucketId, resourceId).flatMap:
       case Some(old) => tables.resources.insert(old.copy(fs_path = newPath)) >> IO.unit
       case None      => IO.unit
-    }
 
-  def deleteResource(bucketId: String, resourceId: String): IO[Completion] =
-    tables.resources.delete(bucketId, resourceId)
+  def deleteResource(bucketId: String, resourceId: String): IO[Unit] =
+    session.transaction.use: tx =>
+      for {
+        _ <- tables.resource_tags.delete(bucketId, resourceId)
+        _ <- tables.resources.delete(bucketId, resourceId)
+      } yield ()
 
   def applyEvent(bucketId: String, effect: ResourceEvent => IO[Unit])(event: ResourceEvent): IO[Unit] = {
     event match {

@@ -95,6 +95,14 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       } yield {
         Some(resource) shouldBe returned
       }
+      
+    def deleteCheck(resourceInfo: ResourceInfo) = 
+      for {
+        _      <- db.deleteResource(resourceInfo.bucketId, resourceInfo.resourceId)
+        result <- db.getById(resourceInfo.bucketId, resourceInfo.resourceId)
+      } yield {
+        result shouldBe None
+      }  
 
     def validateAll(expected: List[ResourceInfo]) =
       db.getAll("test").map { inserted =>
@@ -102,13 +110,17 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
         inserted should contain theSameElementsAs expected
       }
 
-    val inserted = List.fill(32)(genResource().copy(bucketId = "test"))
-    val updated  = inserted.map(orig => genResource().copy(bucketId = orig.bucketId, resourceId = orig.resourceId))
+    val inserted  = List.fill(32)(genResource().copy(bucketId = "test"))
+    val updated   = inserted.map(orig => genResource().copy(bucketId = orig.bucketId, resourceId = orig.resourceId))
+    val shuffled  = scala.util.Random.shuffle(updated)
+    val toDelete  = shuffled.take(16)
+    val remaining = shuffled.drop(16)
 
     val insertChecks = inserted.map(insertIdentityCheck).sequence >> validateAll(inserted)
     val upsertChecks = updated.map(upsertIdentityCheck).sequence >> validateAll(updated)
+    val deleteChecks = toDelete.map(deleteCheck).sequence >> validateAll(remaining)
 
-    insertChecks >> upsertChecks >> IO.unit
+    insertChecks >> upsertChecks >> deleteChecks >> IO.unit
   }
 
   def insertTags(db: ResourceDatabase): IO[Unit] =
