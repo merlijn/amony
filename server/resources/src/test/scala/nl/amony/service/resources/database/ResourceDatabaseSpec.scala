@@ -34,14 +34,14 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       bucket_id = "bucket",
       resource_id = "resource",
       user_id = "user",
-      relative_path = "path",
       hash = "hash",
       size = 0,
       content_type = None,
       content_meta_tool_name = None,
       content_meta_tool_data = None,
-      creation_time = None,
-      last_modified_time = None,
+      fs_path = "path",
+      fs_creation_time = None,
+      fs_last_modified_time = None,
       title = None,
       description = None
     )
@@ -50,23 +50,26 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
   def randomTag = alphabet(Random.nextInt(alphabet.size)).toString
 
+  def randomString = Random.alphanumeric.take(8).mkString
+  def nextTimestamp = Math.max(0, Random.nextInt())
+
   def genResource(): ResourceInfo =
     ResourceInfo(
       bucketId = UUID.randomUUID().toString,
       resourceId = UUID.randomUUID().toString,
       userId = UUID.randomUUID().toString,
-      path = "path",
-      hash = Some("hash"),
-      size = 0,
+      path = randomString,
+      hash = Some(randomString),
+      size = Random.nextLong(),
       contentType = None,
       contentMetaSource = None,
       contentMeta = ResourceMeta.Empty,
-      tags = Set.fill(Random.nextInt(10))(randomTag),
-      creationTime = None,
-      lastModifiedTime = None,
-      title = None,
-      description = None,
-      thumbnailTimestamp = None
+      tags = Set.fill(Random.nextInt(8) + 1)(randomTag),
+      creationTime = Some(nextTimestamp),
+      lastModifiedTime = Some(nextTimestamp),
+      title = Some(randomString),
+      description = Some(randomString),
+      thumbnailTimestamp = Some(nextTimestamp)
     )
 
   "The Database" should {
@@ -85,14 +88,14 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
         )
 
         ResourceDatabase.make(dbConfig).use(db =>
-          insertResource(db) // *> insertRow(db)
+          insertResourcesTest(db) // *> insertRow(db)
           
         ).unsafeRunSync()
       }
     }
   }
 
-  def insertResource(db: ResourceDatabase): IO[Unit] = {
+  def insertResourcesTest(db: ResourceDatabase): IO[Unit] = {
 
     def identityTest(resource: ResourceInfo) =
       for {
@@ -102,7 +105,11 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
         Some(resource) shouldBe returned
       }
 
-    (List.fill(100)(genResource()).map(identityTest)).sequence >> IO.unit
+    val resources = List.fill(8)(genResource().copy(bucketId = "test"))
+
+    resources.map(identityTest).sequence >> db.getAll("test").map { inserted =>
+      inserted should contain theSameElementsAs resources
+    }
   }
 
   def insertTags(db: ResourceDatabase): IO[Unit] =

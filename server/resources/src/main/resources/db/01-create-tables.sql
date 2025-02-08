@@ -2,16 +2,16 @@ CREATE TABLE resources (
     bucket_id              VARCHAR(64)   NOT NULL,
     resource_id            VARCHAR(64)   NOT NULL,
     user_id                VARCHAR(64)   NOT NULL,
-    relative_path          VARCHAR(1024) NOT NULL,
     size                   BIGINT        NOT NULL,
     hash                   VARCHAR(64),
-    content_type           VARCHAR(128),
-    content_meta_tool_name VARCHAR(32),
+    content_type           VARCHAR(64),
+    content_meta_tool_name VARCHAR(64),
     content_meta_tool_data VARCHAR,
-    creation_time          TIMESTAMP,
-    last_modified_time     TIMESTAMP,
+    fs_path                VARCHAR,
+    fs_creation_time       TIMESTAMPTZ,
+    fs_last_modified_time  TIMESTAMPTZ,
     title                  VARCHAR(128),
-    description            VARCHAR(1024),
+    description            VARCHAR,
     thumbnail_timestamp    BIGINT,
     CONSTRAINT resources_pk PRIMARY KEY (bucket_id, resource_id)
 );
@@ -30,8 +30,8 @@ CREATE TABLE tags (
 CREATE INDEX tags_label_idx ON tags (label);
 
 CREATE TABLE resource_tags (
-    bucket_id   VARCHAR(128) NOT NULL,
-    resource_id VARCHAR(128) NOT NULL,
+    bucket_id   VARCHAR(64) NOT NULL,
+    resource_id VARCHAR(64) NOT NULL,
     tag_id      INTEGER NOT NULL,
     CONSTRAINT resource_tags_pk
        PRIMARY KEY (bucket_id, resource_id, tag_id),

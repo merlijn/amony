@@ -57,10 +57,10 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
             
             logger.info(s"Updating metadata for $f")
             val updated = resource.copy(
-              contentType       = Some(localResourceMeta.contentType), 
+              contentType       = Some(localResourceMeta.contentType),
               contentMetaSource = localResourceMeta.toolMeta,
               contentMeta       = localResourceMeta.meta)
-            
+
             IO.unit
 //            db.update(updated) >> topic.publish(ResourceUpdated(updated))
 
@@ -140,7 +140,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
     )
   }
 
-  override def updateThumbnailTimestamp(resourceId: String, timestamp: Long): IO[Unit] =
+  override def updateThumbnailTimestamp(resourceId: String, timestamp: Int): IO[Unit] =
     db.updateThumbnailTimestamp(config.id, resourceId, timestamp).flatMap(
       _.map(updated => topic.publish(ResourceUpdated(recoverMeta(updated)))).getOrElse(IO.unit)
     )

@@ -65,7 +65,7 @@ object ResourceDatabase:
 class ResourceDatabase(session: Session[IO]) extends Logging:
 
   val defaultChunkSize = 128
-  
+
   private[database] object tables {
 
     object resources {
@@ -78,14 +78,18 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
 
         def allJoined(bucketId: String): Query[String, (ResourceRow, Arr[String])] =
           sql"""
-           select to_json(r.*), array_agg(t.label) from resources r
+           SELECT to_json(r.*), array_agg(t.label) FROM resources r
+           LEFT JOIN resource_tags rt
+             ON r.bucket_id = rt.bucket_id AND r.resource_id = rt.resource_id
+           LEFT JOIN tags t ON rt.tag_id = t.id
            WHERE r.bucket_id = $varchar
-           LEFT JOIN resource_tags rt ON r.bucket_id = rt.bucket_id AND r.resource_id = rt.resource_id
-           LEFT JOIN tags t ON rt.tag_id = t.id;
+           GROUP BY (${ResourceRow.columns})
           """.query(json *: _varchar).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
 
         val getById: Query[(String, String), ResourceRow] =
-          sql"select to_json(r.*) from resources r where bucket_id = $varchar and resource_id = $varchar".query(json).map(_.as[ResourceRow].toOption.get)
+          sql"select to_json(r.*) from resources r where bucket_id = $varchar and resource_id = $varchar"
+            .query(json)
+            .map(_.as[ResourceRow].left.map(err => logger.warn(err)).toOption.get)
 
         val insert: Command[Json] =
           sql"insert into resources SELECT * FROM json_populate_record(NULL::resources, $json)".command
@@ -122,7 +126,7 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
           sql"insert into resource_tags (bucket_id, resource_id, tag_id) values ${ResourceTagsRow.codec.values.list(n)} on conflict (bucket_id, resource_id, tag_id) do nothing".command
 
         val getById: Query[(String, String), ResourceTagsRow] =
-          sql"select bucket_id, resource_id, tag_id from resource_tags where bucket_id = ${varchar(128)} and resource_id = ${varchar(128)}".query(ResourceTagsRow.codec)
+          sql"select bucket_id, resource_id, tag_id from resource_tags where bucket_id = ${varchar(64)} and resource_id = ${varchar(64)}".query(ResourceTagsRow.codec)
       }
 
       def getById(bucketId: String, resourceId: String): IO[List[ResourceTagsRow]] =
@@ -175,8 +179,8 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
         session.prepare(queries.getByIds(ids.size)).flatMap(_.stream(ids, defaultChunkSize).compile.toList)
     }
   }
-  
-  
+
+
 
   def insertResource(resource: ResourceInfo): IO[Completion] = {
     session.transaction.use { tx =>
@@ -196,7 +200,7 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
         (resourceRow, tagLabels) => resourceRow.toResource(tagLabels.flattenTo(Set)))
       )
     )
-  
+
   def getById(bucketId: String, resourceId: String): IO[Option[ResourceInfo]] =
     val result =
       for {
@@ -207,7 +211,7 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
 
     result.value
 
-  def updateThumbnailTimestamp(bucketId: String, resourceId: String, timestamp: Long): IO[Option[ResourceInfo]] =
+  def updateThumbnailTimestamp(bucketId: String, resourceId: String, timestamp: Int): IO[Option[ResourceInfo]] =
     (for {
       resource <- OptionT(getById(bucketId, resourceId))
       updated  = resource.copy(thumbnailTimestamp = Some(timestamp))
@@ -223,7 +227,7 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
 
   def move(bucketId: String, resourceId: String, newPath: String): IO[Unit] =
     tables.resources.getById(bucketId, resourceId).flatMap {
-      case Some(old) => tables.resources.insert(old.copy(relative_path = newPath)) >> IO.unit
+      case Some(old) => tables.resources.insert(old.copy(fs_path = newPath)) >> IO.unit
       case None      => IO.unit
     }
 

@@ -47,7 +47,7 @@ object SolrIndex {
     val contentType = "content_type_s"
     val width = "width_i"
     val height = "height_i"
-    val duration = "duration_l"
+    val duration = "duration_i"
     val fps = "fps_f"
     val resourceType = "resource_type_s"
     val userId = "user_id_s"
@@ -148,7 +148,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
     val description = Option(document.getFieldValue(FieldNames.description)).map(_.asInstanceOf[String])
 
     val resourceType = document.getFieldValue(FieldNames.resourceType).asInstanceOf[String]
-    val thumbnailTimestamp = Option(document.getFieldValue(FieldNames.thumbnailTimestamp)).map(_.asInstanceOf[Long])
+    val thumbnailTimestamp = Option(document.getFieldValue(FieldNames.thumbnailTimestamp)).map(_.asInstanceOf[Int])
 
     val tags = Option(document.getFieldValues(FieldNames.tags)).map(_.asInstanceOf[java.util.List[String]].asScala).getOrElse(List.empty).toSet
 
@@ -158,7 +158,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
 
       case "image" => ImageMeta(width, height)
       case "video" =>
-        val duration = document.getFieldValue(FieldNames.duration).asInstanceOf[Long]
+        val duration = document.getFieldValue(FieldNames.duration).asInstanceOf[Int]
         val fps = document.getFieldValue(FieldNames.fps).asInstanceOf[Float]
         val codec = Option(document.getFieldValue(FieldNames.videoCodec)).map(_.asInstanceOf[String])
         VideoMeta(width, height, fps, duration, codec, Map.empty)
