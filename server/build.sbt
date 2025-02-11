@@ -28,24 +28,21 @@ val circe                    = "io.circe"                 %% "circe-core"       
 val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
 val circeParser              = "io.circe"                 %% "circe-parser"               % circeVersion
 
-val slick                    = "com.typesafe.slick"       %% "slick"                      % "3.5.2"
-val slickHikariCp            = "com.typesafe.slick"       %% "slick-hikaricp"             % "3.5.2"
-
 val skunkCore                = "org.tpolecat"             %% "skunk-core"                 % "1.0.0-M10"
 val skunkCirce               = "org.tpolecat"             %% "skunk-circe"                % "1.0.0-M10"
 
 val sqids                    = "org.sqids" %% "sqids" % "0.5.0"
 
-val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"            % "1.11.13"
-val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"   % "1.11.13"
-val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"     % "1.11.13"
-val tapirSwaggerUI           = "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % "1.11.13"
-val tapirCirce               = "com.softwaremill.sttp.tapir" %% "tapir-json-circe"        % "1.11.13"
+val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"            % "1.11.14"
+val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"   % "1.11.14"
+val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"     % "1.11.14"
+val tapirSwaggerUI           = "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % "1.11.14"
+val tapirCirce               = "com.softwaremill.sttp.tapir" %% "tapir-json-circe"        % "1.11.14"
 val tapirCirceYamlSpec       = "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"    % "0.11.7"
 
 val tapirSharedFs2           = "com.softwaremill.sttp.shared"  %% "fs2"                   % "1.4.2"
 
-val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "10.0.1"
+val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "10.0.4"
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.16"
 
 val scribe                   = "com.outr"                 %% "scribe"                     % "3.16.0"
@@ -62,13 +59,13 @@ val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"  
 
 val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.7.4"
 val h2DB                     = "com.h2database"            % "h2"                         % "2.3.232"
-val postgres                 = "org.postgresql"            % "postgresql"                 % "42.7.5"
+val postgresDriver           = "org.postgresql"            % "postgresql"                 % "42.7.5"
 
 val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.8"
 val pureConfigGeneric        = "com.github.pureconfig"    %% "pureconfig-generic-scala3"  % "0.17.8"
 val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.3"
 
-val liquibaseCore            = "org.liquibase"             % "liquibase-core"             % "4.30.0"
+val liquibaseCore            = "org.liquibase"             % "liquibase-core"             % "4.31.0"
 
 val solr                     = "org.apache.solr"           % "solr-core"                  % "8.11.1"
 val solrLangId               = "org.apache.solr"           % "solr-langid"                % "8.11.1"
@@ -140,10 +137,8 @@ lazy val libFiles =
         pureConfig,
         scribe,
         fs2Core,
-        slick,
         scalaTest,
         scalaPbRuntime,
-        slickHikariCp % "test",
         h2DB % "test"
       )
     )
@@ -172,10 +167,8 @@ lazy val libEventStore =
         pureConfig,
         scribe,
         fs2Core,
-        slick,
         scalaTest,
         scalaPbRuntime,
-        slickHikariCp % "test",
         h2DB % "test"
       )
     )
@@ -190,7 +183,7 @@ lazy val auth =
         // akka
         jwtCirce, bouncyCastle,
         tapirCore, tapirCatsEffect, tapirCirce, tapirHttp4s,
-        circe, circeGeneric, pureConfig, pureConfigGeneric, slick,
+        circe, circeGeneric, pureConfig, pureConfigGeneric,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
         http4sDsl, http4sCirce
       )
@@ -206,14 +199,12 @@ lazy val resources =
       libraryDependencies ++= Seq(
         scribe, sqids,
         circe, circeGeneric, http4sCirce, jsoup, tikaCore,
-        tapirCore, tapirCatsEffect, tapirCirce, tapirHttp4s, fs2Io,
-        slick, fs2Core,
+        tapirCore, tapirCatsEffect, tapirCirce, tapirHttp4s, fs2Io, fs2Core,
         http4sDsl, liquibaseCore,
         skunkCore, skunkCirce,
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
         scalaTest,
-        postgres % "test",
-        slickHikariCp % "test",
+        postgresDriver % "test",
         h2DB % "test",
         "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.41.8" % "test",
         "commons-codec" % "commons-codec"% "1.18.0" % "test",
@@ -331,7 +322,7 @@ lazy val app =
         // config loading
         typesafeConfig, pureConfig,
         // database
-        slickHikariCp, hsqlDB, h2DB, postgres,
+        postgresDriver,
         fs2Core,
         http4sEmberServer,
         tapirCore, tapirCatsEffect, tapirHttp4s,  tapirSharedFs2, tapirSwaggerUI, tapirCirceYamlSpec,

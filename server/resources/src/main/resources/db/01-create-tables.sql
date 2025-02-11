@@ -21,7 +21,7 @@ CREATE INDEX resources_bucket_id_idx ON resources (bucket_id);
 CREATE INDEX resources_hash_idx ON resources (resource_id);
 
 CREATE TABLE tags (
-    id         SERIAL NOT NULL,  -- Changed from IDENTITY to SERIAL
+    id         SERIAL NOT NULL,
     label      VARCHAR(64) NOT NULL,
     CONSTRAINT tags_pk PRIMARY KEY (id),
     CONSTRAINT label_unq UNIQUE (label)

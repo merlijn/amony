@@ -79,11 +79,8 @@ case class ResourceTagsRow(
 object ResourceTagsRow:
   val codec: Codec[ResourceTagsRow] = (varchar(64) *: varchar(64) *: int4).to[ResourceTagsRow]
 
-case class TagRow(
-  id: Int,
-  label: String
-)
+case class TagRow(id: Int, label: String)
 
-val tagRow: Codec[TagRow] =
-  (int4 *: varchar(64)).imap((TagRow.apply _).tupled)(tag => (tag.id, tag.label))  
+object TagRow:
+  val codec: Codec[TagRow] = (int4 *: varchar(64)).imap((TagRow.apply _).tupled)(tag => (tag.id, tag.label))  
 

@@ -13,7 +13,6 @@ import nl.amony.service.resources.api.operations.ResourceOperation
 import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalResourceOperations.*
 import scribe.Logging
-import slick.jdbc.JdbcProfile
 
 import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap

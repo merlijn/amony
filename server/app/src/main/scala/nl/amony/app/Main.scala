@@ -13,8 +13,6 @@ import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.{ResourceContentRoutes, ResourceRoutes}
 import scribe.{Logger, Logging}
-import slick.basic.DatabaseConfig
-import slick.jdbc.{H2Profile, HsqldbProfile}
 import sttp.tapir.server.http4s.Http4sServerOptions
 
 import scala.reflect.ClassTag

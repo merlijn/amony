@@ -1,14 +1,11 @@
 package nl.amony.lib.files.watcher
 
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import scribe.Logging
-import slick.jdbc.JdbcProfile
 
+import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{Files, Path}
-import java.time.Instant
 import scala.concurrent.duration.FiniteDuration
 
 sealed trait FileEvent
