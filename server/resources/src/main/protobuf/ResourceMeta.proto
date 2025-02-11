@@ -24,7 +24,7 @@ message VideoMeta {
   required int32 width = 1;
   required int32 height = 2;
   required float fps = 3;
-  required int64 durationInMillis = 4;
+  required int32 durationInMillis = 4;
   optional string codec = 6;
   map<string, string> metaData = 5;
 }

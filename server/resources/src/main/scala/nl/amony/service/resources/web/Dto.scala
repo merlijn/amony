@@ -15,7 +15,7 @@ case class BucketDto(
 ) derives Codec, sttp.tapir.Schema
 
 case class ThumbnailTimestampDto(
-   timestampInMillis: Long
+   timestampInMillis: Int
 ) derives Codec, sttp.tapir.Schema
 
 case class UserMetaDto(
@@ -65,7 +65,7 @@ case class ResourceDto(
   contentMeta: ResourceMetaDto,
   contentMetaSource: Option[ResourceToolMetaDto],
   urls: ResourceUrlsDto,
-  thumbnailTimestamp: Option[Long],
+  thumbnailTimestamp: Option[Int],
   @customise(required)
   clips: List[ClipDto],
 ) derives Codec, sttp.tapir.Schema
@@ -119,10 +119,10 @@ def toDto(resource: ResourceInfo): ResourceDto = {
   val durationInMillis =
     resource.contentMeta match {
       case m: VideoMeta => m.durationInMillis
-      case _ => 0L
+      case _ => 0
     }
 
-  val thumbnailTimestamp: Long = resource.thumbnailTimestamp.getOrElse(durationInMillis / 3)
+  val thumbnailTimestamp: Int = resource.thumbnailTimestamp.getOrElse(durationInMillis / 3)
 
   val urls = {
 

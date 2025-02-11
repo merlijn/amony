@@ -1,148 +1,135 @@
 package nl.amony.service.resources.database
 
-import com.typesafe.config.ConfigFactory
-import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta, ResourceMetaSource}
-import org.scalatest.flatspec.AnyFlatSpecLike
+import cats.effect.IO
+import com.dimafeng.testcontainers.GenericContainer
+import com.dimafeng.testcontainers.scalatest.TestContainerForAll
+import org.scalatest.wordspec.AnyWordSpecLike
+import org.testcontainers.containers.wait.strategy.Wait
+import cats.effect.unsafe.implicits.global
+import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
+import org.scalatest.matchers.should.Matchers
 import scribe.Logging
-import slick.basic.DatabaseConfig
-import slick.jdbc.H2Profile
-import slick.jdbc.H2Profile.api.*
+import cats.implicits.*
 
-class ResourceDatabaseSpec extends AnyFlatSpecLike with Logging {
+import java.util.UUID
+import scala.util.Random
 
-  import cats.effect.unsafe.implicits.global
+class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with Logging with Matchers {
 
-  // we need to load the driver class or else we get a no suitable driver found exception
-  Class.forName("org.h2.Driver")
-
-  val config =
-    """
-      |h2mem1-test = {
-      |  db {
-      |    url = "jdbc:h2:mem:test1"
-      |  }
-      |
-      |  driver = org.h2.Driver
-      |
-      |  connectionPool = disabled
-      |  profile = "slick.jdbc.H2Profile$"
-      |  keepAliveConnection = true
-      |}
-      |""".stripMargin
-
-  val dbConfig = DatabaseConfig.forConfig[H2Profile]("h2mem1-test", ConfigFactory.parseString(config))
-
-  val store = new ResourceDatabase(dbConfig)
-  store.init()
-
-  def createResource(bucketId: String, resourceId: String = java.util.UUID.randomUUID().toString, tags: Set[String] = Set.empty): ResourceInfo = {
-    ResourceInfo(
-      bucketId = bucketId,
-      path = "test",
-      userId = "0",
-      resourceId = resourceId,
-      size = 1,
-      hash = Some(resourceId),
-      contentType = None,
-      tags = tags,
-      creationTime = None,
-      lastModifiedTime = None
+  override val containerDef: GenericContainer.Def[GenericContainer] =
+    GenericContainer.Def(
+      "postgres:17.2",
+      exposedPorts = Seq(5432),
+      waitStrategy = Wait.forLogMessage(".*database system is ready to accept connections.*", 2),
+      env = Map(
+        "POSTGRES_USER" -> "test",
+        "PGUSER" -> "test",
+        "POSTGRES_PASSWORD" -> "test",
+        "POSTGRES_DB" -> "test"
+      )
     )
-  }
 
+  val alphabet = ('a' to 'z').toList
 
-  def randomId() = java.util.UUID.randomUUID().toString
+  def randomTag = alphabet(Random.nextInt(alphabet.size)).toString
 
-  it should "insert a resource and retrieve it" in {
+  def randomString = Random.alphanumeric.take(8).mkString
+  def nextTimestamp = Math.max(0, Random.nextInt())
 
-    val bucketId = "test-bucket"
-    val resource = createResource(bucketId, randomId(), Set("a", "b", "d"))
+  def genResource(): ResourceInfo =
+    ResourceInfo(
+      bucketId = UUID.randomUUID().toString,
+      resourceId = UUID.randomUUID().toString,
+      userId = UUID.randomUUID().toString,
+      path = randomString,
+      hash = Some(randomString),
+      size = Random.nextLong(),
+      contentType = None,
+      contentMetaSource = None,
+      contentMeta = ResourceMeta.Empty, // this field is not stored
+      tags = Set.fill(Random.nextInt(5))(randomTag),
+      creationTime = Some(nextTimestamp),
+      lastModifiedTime = Some(nextTimestamp),
+      title = Some(randomString),
+      description = Some(randomString),
+      thumbnailTimestamp = Some(nextTimestamp)
+    )
 
-    store.insert(resource)
+  "The Database" should {
+    "insert a resource row and retrieve it" in {
+      withContainers { container =>
 
-    val result = for {
-      _         <- store.insert(resource)
-      retrieved <- store.getByResourceId(bucketId, resource.resourceId)
-      tagLabels <- store.getAllTagLabels()
-    } yield {
-      assert(tagLabels == Set("a", "b", "d"))
-      assert(retrieved == Some(resource))
+        logger.info(s"Container IP: ${container.containerIpAddress}")
+        logger.info(s"Container Port: ${container.mappedPort(5432)}")
+
+        val dbConfig = DatabaseConfig(
+          host = container.containerIpAddress,
+          port = container.mappedPort(5432),
+          database = "test",
+          username = "test",
+          password = Some("test")
+        )
+
+        ResourceDatabase.make(dbConfig).use(db =>
+          insertResourcesTest(db) // *> insertRow(db)
+          
+        ).unsafeRunSync()
+      }
     }
-
-    result.unsafeRunSync()
   }
 
-  it should "update a resource" in {
+  def insertResourcesTest(db: ResourceDatabase): IO[Unit] = {
 
-    val bucketId = "update-resource-test"
-    val resourceId = randomId()
-    val resourceOriginal = createResource(bucketId, resourceId, Set("a"))
-    val resourceUpdated = resourceOriginal.copy(tags = Set("b", "c"), description = Some("updated"))
+    def insertIdentityCheck(resource: ResourceInfo) =
+      for {
+        _        <- db.insertResource(resource)
+        returned <- db.getById(resource.bucketId, resource.resourceId)
+      } yield {
+        Some(resource) shouldBe returned
+      }
 
-    val result = for {
-      _ <- store.upsert(resourceOriginal)
-      _ <- store.upsert(resourceUpdated)
-      retrieved <- store.getByResourceId(bucketId, resourceId)
+    def upsertIdentityCheck(resource: ResourceInfo) =
+      for {
+        _        <- db.upsert(resource)
+        returned <- db.getById(resource.bucketId, resource.resourceId)
+      } yield {
+        Some(resource) shouldBe returned
+      }
+      
+    def deleteCheck(resourceInfo: ResourceInfo) = 
+      for {
+        _      <- db.deleteResource(resourceInfo.bucketId, resourceInfo.resourceId)
+        result <- db.getById(resourceInfo.bucketId, resourceInfo.resourceId)
+      } yield {
+        result shouldBe None
+      }  
+
+    def validateAll(expected: List[ResourceInfo]) =
+      db.getAll("test").map { inserted =>
+        logger.info(s"validated: ${inserted.size}")
+        inserted should contain theSameElementsAs expected
+      }
+
+    val inserted  = List.fill(32)(genResource().copy(bucketId = "test"))
+    val updated   = inserted.map(orig => genResource().copy(bucketId = orig.bucketId, resourceId = orig.resourceId))
+    val shuffled  = scala.util.Random.shuffle(updated)
+    val toDelete  = shuffled.take(16)
+    val remaining = shuffled.drop(16)
+
+    val insertChecks = inserted.map(insertIdentityCheck).sequence >> validateAll(inserted)
+    val upsertChecks = updated.map(upsertIdentityCheck).sequence >> validateAll(updated)
+    val deleteChecks = toDelete.map(deleteCheck).sequence >> validateAll(remaining)
+
+    insertChecks >> upsertChecks >> deleteChecks >> IO.unit
+  }
+
+  def insertTags(db: ResourceDatabase): IO[Unit] =
+    for {
+      _    <- db.tables.tags.upsert(List("a", "b", "c"))
+      _    <- db.tables.tags.upsert(List("a", "b", "c", "d", "e"))
+      tags <- db.tables.tags.all
     } yield {
-
-      assert(retrieved == Some(resourceUpdated))
+      logger.info(s"tags: ${tags.mkString(", ")}")
+      tags.map(_.label) should contain theSameElementsAs List("a", "b", "c", "d", "e")
     }
-
-    result.unsafeRunSync()
-  }
-
-  it should "updating a resource with the same value should have no effect (idempotent)" in {
-
-    val bucketId = "update-same-resource-test"
-    val resourceId = randomId()
-    val resourceOriginal = createResource(bucketId, resourceId, tags = Set("c", "d", "e")).copy(contentMetaSource = Some(ResourceMetaSource("tool", "data")))
-
-    val result = for {
-      _ <- store.upsert(resourceOriginal)
-      retrieved <- store.getByResourceId(bucketId, resourceId)
-      _ <- store.upsert(retrieved.get)
-      retrievedAgain <- store.getByResourceId(bucketId, resourceId)
-    } yield {
-      assert(retrievedAgain == Some(resourceOriginal))
-    }
-
-    result.unsafeRunSync()
-  }
-
-  it should "retrieve multiple resources by id" in {
-
-    val bucketId = "multiple-get-by-id-test"
-
-    val resource1 = createResource(bucketId, "1", Set("a", "b"))
-    val resource2 = createResource(bucketId, "2", Set("c", "d", "e"))
-
-    val result = for {
-      _ <- store.insert(resource1)
-      _ <- store.insert(resource2)
-      retrieved <- store.getAllByIds(bucketId, Seq("1", "2"))
-    } yield {
-
-      assert(retrieved.toSet == Set(resource1, resource2))
-    }
-
-    result.unsafeRunSync()
-  }
-
-  it should "retrieve all resources for a bucket" in {
-
-    val bucketId = "multiple-get-test"
-
-    val resource1 = createResource(bucketId, "1", tags = Set("a", "b"))
-    val resource2 = createResource(bucketId, "2", tags = Set("c", "d", "e")).copy(contentMetaSource = Some(ResourceMetaSource("tool", "data")))
-
-    val result = for {
-      _         <- store.insert(resource1)
-      _         <- store.insert(resource2)
-      retrieved <- store.getAll(bucketId)
-    } yield {
-      assert(retrieved.toSet == Set(resource1, resource2))
-    }
-
-    result.unsafeRunSync()
-  }
 }

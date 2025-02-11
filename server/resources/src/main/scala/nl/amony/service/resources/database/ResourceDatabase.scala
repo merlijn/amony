@@ -1,195 +1,196 @@
 package nl.amony.service.resources.database
 
-import cats.effect.unsafe.IORuntime
+import cats.data.OptionT
 import cats.effect.{IO, Resource}
-import com.typesafe.config.Config
+import nl.amony.service.resources.api.*
+import nl.amony.service.resources.api.events.*
+import skunk.*
+import skunk.circe.codec.all.*
+import org.typelevel.otel4s.trace.Tracer.Implicits.noop
+import io.circe.syntax.*
 import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
-import nl.amony.service.resources.api.events.*
-import nl.amony.service.resources.api.ResourceInfo
+import nl.amony.service.resources.api.events.ResourceEvent
 import scribe.Logging
-import slick.basic.DatabaseConfig
-import slick.jdbc.{H2Profile, HsqldbProfile, JdbcProfile, MySQLProfile, PostgresProfile}
+import skunk.data.{Arr, Completion}
 
-import scala.concurrent.ExecutionContext
+import java.sql.{Connection, DriverManager}
 
-object ResourceDatabase {
-  def resource[P <: JdbcProfile](dbConfig: DatabaseConfig[P])(using IORuntime: IORuntime): Resource[IO, ResourceDatabase[P]] = {
-    Resource.make {
-      IO {
-        val db = new ResourceDatabase(dbConfig)
-        db.init()
-        db
+case class DatabaseConfig(
+   host: String,
+   port: Int,
+   database: String,
+   username: String,
+   password: Option[String]
+)
+
+object ResourceDatabase:
+
+  def make(config: DatabaseConfig): Resource[IO, ResourceDatabase] = {
+    def runDbMigrations() = {
+
+      var connection: Connection = null
+
+      try {
+        Class.forName("org.postgresql.Driver")
+        val jdbcUrl = s"jdbc:postgresql://${config.host}:${config.port}/${config.database}"
+        connection = DriverManager.getConnection(jdbcUrl, config.username, config.password.getOrElse(null))
+        val liquibaseDatabase = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connection));
+        val liquibase = new Liquibase("db/00-changelog.yaml", new ClassLoaderResourceAccessor(), liquibaseDatabase)
+        liquibase.update()
       }
-    } { db => IO(db.db.close()) }
-  }
-  
-  def resource(config: Config)(using runtime: IORuntime): Resource[IO, ResourceDatabase[_]] = {
-    val dbConfig = config.getString("amony.database.profile") match
-      case "slick.jdbc.HsqldbProfile$"   => DatabaseConfig.forConfig[HsqldbProfile]("amony.database", config)
-      case "slick.jdbc.H2Profile$"       => DatabaseConfig.forConfig[H2Profile]("amony.database", config)
-      case "slick.jdbc.MySqlProfile$"    => DatabaseConfig.forConfig[MySQLProfile]("amony.database", config)
-      case "slick.jdbc.PostgresProfile$" => DatabaseConfig.forConfig[PostgresProfile]("amony.database", config)
-      case other                         => throw new IllegalArgumentException(s"Unsupported database profile: $other")
-    
-    resource(dbConfig)
-  }
+      finally {
+        if (connection != null)
+          connection.close()
+      }
+    }
+
+    Session.single[IO](
+      host = config.host,
+      port = config.port,
+      user = config.username,
+      database = config.database,
+      password = config.password,
+    ).map { session =>
+      runDbMigrations()
+      new ResourceDatabase(session)
+    }
 }
 
-class ResourceDatabase[P <: JdbcProfile](private val dbConfig: DatabaseConfig[P])(using IORuntime: IORuntime) extends Logging {
+class ResourceDatabase(session: Session[IO]) extends Logging:
 
-  import dbConfig.profile.api.*
-  private val db: dbConfig.profile.backend.JdbcDatabaseDef = dbConfig.db
+  val defaultChunkSize = 128
 
-  given ec: ExecutionContext = db.executor.executionContext
-  
-  private def dbIO[T](a: => DBIO[T]): IO[T] = IO.fromFuture(IO(db.run(a))) //.onError { t => IO { logger.warn(t) } }
+  // table specific methods
+  private[database] object tables {
 
-  private val resources = new ResourceTable[P](dbConfig)
-  private val resourceTags = new ResourceTagsTable[P](dbConfig)
-  private val tags = new TagsTable[P](dbConfig)
+    object resources {
 
-  private object queries {
-    
-    def bucketCount(bucketId: String) = resources.allForBucket(bucketId).length.result
-    
-    def joinResourceWithTags(bucketId: String) =
-      resources.table.joinLeft(resourceTags.table)
-        .on((a, b) => a.bucketId === b.bucketId && a.resourceId === b.resourceId)
-        .joinLeft(tags.table).on((a, b) => a._2.map(_.tagId) === b.id)
-        .filter {
-          case ((resource, maybeTag), _) => resource.bucketId === bucketId
-        }.map {
-          case ((resource, maybeTag), tags) => (resource, maybeTag, tags)
-        }
+      def insert(row: ResourceRow): IO[Completion] =
+        session.prepare(Queries.resources.insert).flatMap(_.execute(row.asJson))
 
-    def getWithTags(bucketId: String, filter: Option[resources.ResourceSchema => Rep[Boolean]] = None) = {
-      val query = filter match {
-        case Some(f) => joinResourceWithTags(bucketId).filter((resource, tag, _) => f(resource))
-        case None    => joinResourceWithTags(bucketId)
-      }
+      def upsert(row: ResourceRow): IO[Completion] =
+        session.prepare(Queries.resources.upsert).flatMap(_.execute(row.asJson))
 
-      query.result
-        .map {
-          _.groupBy(_._1.hash).values.map {
-            rows =>
-              val tags: Seq[String] = rows.collect { case (_, Some(tagId), Some(tagInfo)) => tagInfo.label }
+      def getById(bucketId: String, resourceId: String): IO[Option[ResourceRow]] =
+        session.prepare(Queries.resources.getById).flatMap(_.option(bucketId, resourceId))
 
-              val resource = rows.head._1 // this is safe since we know there is at least one row
-              resource.toResource(tags.toSet)
-          }.toSeq
-        }
+      def delete(bucketId: String, resourceId: String) =
+        session.prepare(Queries.resources.delete).flatMap(_.execute(bucketId, resourceId))
+    }
+
+    object resource_tags {
+
+      def getById(bucketId: String, resourceId: String): IO[List[ResourceTagsRow]] =
+        session.prepare(Queries.resource_tags.getById).flatMap(_.stream((bucketId, resourceId), defaultChunkSize).compile.toList)
+
+      def replaceAll(bucketId: String, resourceId: String, tagIds: List[Int]): IO[Unit] =
+        for {
+          _    <- session.prepare(Queries.resource_tags.delete).flatMap(_.execute(bucketId, resourceId))
+          rows = tagIds.map(tagId => ResourceTagsRow(bucketId, resourceId, tagId))
+          _    <- if (tagIds.nonEmpty) session.prepare(Queries.resource_tags.upsert(rows.size)).flatMap(_.execute(rows)) else IO.unit
+        } yield ()
+
+      def delete(bucketId: String, resourceId: String): IO[Completion] =
+        session.prepare(Queries.resource_tags.delete).flatMap(_.execute(bucketId, resourceId))
+
+      def upsert(bucketId: String, resourceId: String, tagIds: List[Int]) =
+        val rows = tagIds.map(tagId => ResourceTagsRow(bucketId, resourceId, tagId))
+        session.prepare(Queries.resource_tags.upsert(rows.size)).flatMap(_.execute(rows))
+    }
+
+    object tags {
+
+      def all =
+        session.prepare(Queries.tags.all).flatMap(_.stream(Void, defaultChunkSize).compile.toList)
+
+      def upsert(tagLabels: List[String]): IO[Completion] =
+        session.prepare(Queries.tags.upsert(tagLabels.size)).flatMap(_.execute(tagLabels.toList))
+
+      def getByLabels(labels: List[String]): IO[List[TagRow]] =
+        session.prepare(Queries.tags.getByLabels(labels.size)).flatMap(_.stream(labels, defaultChunkSize).compile.toList)
+
+      def getByIds(ids: List[Int]): IO[List[TagRow]] =
+        session.prepare(Queries.tags.getByIds(ids.size)).flatMap(_.stream(ids, defaultChunkSize).compile.toList)
     }
   }
-  
-  def init() = {
-    val connection = db.source.createConnection()
-    val liquibaseDatabase = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connection));
-    val liquibase = new Liquibase("db/00-changelog.yaml", new ClassLoaderResourceAccessor(), liquibaseDatabase)
-    liquibase.update()
-  }
-  
-  def count(bucketId: String): IO[Int] =
-    dbIO(queries.bucketCount(bucketId))
 
-  def getAll(bucketId: String): IO[Seq[ResourceInfo]] =
-    dbIO(queries.getWithTags(bucketId))
-
-  def deleteByRelativePath(bucketId: String, relativePath: String): IO[Int] = 
-    dbIO(resources.getByPath(bucketId, relativePath).delete)
-
-  def update(info: ResourceInfo): IO[Int] = 
-    dbIO(resources.update(info))
-
-  def insert(resource: ResourceInfo, effect: () => IO[Unit] = () => IO.unit): IO[Unit] =
-    dbIO(
-      (for {
-        _      <- resources.insert(resource)
-        tagIds <- tags.upsertMissingLabels(resource.tags).map(_.flatMap(_.id).toSeq)
-        _      <- resourceTags.insert(resource.bucketId, resource.resourceId, tagIds.toSet)
-        _      <- DBIO.from(effect().unsafeToFuture())
-      } yield ()).transactionally
-    )
-
-  def upsert(resource: ResourceInfo, effect: () => IO[Unit] = () => IO.unit): IO[Unit] =
-    dbIO(
-      (for {
-        _       <- resources.upsert(resource)
-        tagIds  <- tags.upsertMissingLabels(resource.tags).map(_.flatMap(_.id).toSeq)
-        _       <- resourceTags.upsert(resource.bucketId, resource.resourceId, tagIds.toSet)
-        _       <- DBIO.from(effect().unsafeToFuture())
-      } yield ()).transactionally
-    )
-
-  private def move(bucketId: String, oldPath: String, newPath: String, effect: () => IO[Unit] = () => IO.unit): IO[Unit] =
-    dbIO(
-      (for {
-        old <- resources.getByPath(bucketId, oldPath).result.head
-        _   <- resources.update(old.copy(relativePath = newPath))
-        _   <- DBIO.from(effect().unsafeToFuture())
-      } yield ()).transactionally
-    )
-
-  def deleteResource(bucketId: String, resourceId: String, effect: IO[Unit] = IO.unit) : IO[Unit] = {
-    dbIO(
-      (for {
-        _ <- resources.getById(bucketId, resourceId).delete
-        _ <- resourceTags.queryById(bucketId, resourceId).delete
-        _ <- DBIO.from(effect.unsafeToFuture())
-      } yield ()).transactionally
-    )
-  }
-
-  def getAllByIds(bucketId: String, resourceIds: Seq[String]): IO[Seq[ResourceInfo]] =
-    dbIO(queries.getWithTags(bucketId, Some(_.resourceId.inSet(resourceIds))))
-    
-  def getAllTagLabels() = 
-    dbIO(tags.getAllLabels()).map(_.toSet)
-
-  def updateThumbnailTimestamp(bucketId: String, resourceId: String, timestamp: Long, effect: ResourceInfo => IO[Unit]): IO[Unit] = {
-    def q = (
+  def insertResource(resource: ResourceInfo): IO[Unit] =
+    session.transaction.use: tx =>
       for {
-        resourceRow  <- resources.getById(bucketId, resourceId).result
-        updated      <- resourceRow.headOption.map { row =>
-          val updatedRow = row.copy(thumbnailTimestamp = Some(timestamp))
-          resources.update(updatedRow).map(_ => Some(updatedRow))
-        }.getOrElse(DBIO.successful(Option.empty[ResourceRow]))
-        tagIds    <- resourceTags.getTags(bucketId, resourceId).result
-        tagLabels <- tags.getTagsByIds(tagIds).map(_.map(_.label).toSet)
-        _ <- updated.map(row => DBIO.from( effect(row.toResource(tagLabels)).unsafeToFuture() )).getOrElse(DBIO.successful(()))
-      } yield ()).transactionally
-    
-    dbIO(q).map(_ => ())
-  }
-  
-  def updateUserMeta(bucketId: String, resourceId: String, title: Option[String], description: Option[String], tagLabels: List[String], effect: ResourceInfo => IO[Unit]): IO[Unit] = {
-    def q = (for {
-      resourceRow  <- resources.getById(bucketId, resourceId).result
-       updatedRow  <- resourceRow.headOption.map { row =>
-                        val updatedRow = row.copy(title = title, description = description)
-                        resources.update(updatedRow).map(_ => Some(updatedRow))
-                      }.getOrElse(DBIO.successful(Option.empty[ResourceRow]))
-          rtags    <- tags.upsertMissingLabels(tagLabels.toSet)
-          tagIds    = rtags.flatMap(_.id).toSet
-          tagLabels = rtags.map(_.label).toSet
-                _   <- resourceTags.upsert(bucketId, resourceId, tagIds)
-                _   <- updatedRow.map(row => DBIO.from(effect(row.toResource(tagLabels)).unsafeToFuture() )).getOrElse(DBIO.successful(()))
-    } yield ()).transactionally
+        _ <- tables.resources.insert(ResourceRow.fromResource(resource))
+        _ <- updateResourceTags(resource.bucketId, resource.resourceId, resource.tags.toList)
+      } yield ()
 
-    dbIO(q)
-  }
+  def upsert(resource: ResourceInfo): IO[Unit] =
+    session.transaction.use: tx =>
+      for {
+        _  <- tables.resources.upsert(ResourceRow.fromResource(resource))
+        _  <- updateResourceTags(resource.bucketId, resource.resourceId, resource.tags.toList)
+      } yield ()
 
-  def getByResourceId(bucketId: String, resourceId: String): IO[Option[ResourceInfo]] =
-    dbIO(queries.getWithTags(bucketId, Some(_.resourceId === resourceId))).map(_.headOption)
-  
+  private def updateResourceTags(bucketId: String, resourceId: String, tagLabels: List[String]) =
+    for {
+      tags <- if (tagLabels.nonEmpty) tables.tags.upsert(tagLabels) >> tables.tags.getByLabels(tagLabels) else IO.pure(List.empty)
+      _    <- tables.resource_tags.replaceAll(bucketId, resourceId, tags.map(_.id))
+    } yield ()
+
+  def getAll(bucketId: String): IO[List[ResourceInfo]] =
+    getStream(bucketId).compile.toList
+
+  def getStream(bucketId: String): fs2.Stream[IO, ResourceInfo] =
+    fs2.Stream.force(
+      session.prepare(Queries.resources.allJoined).map(
+        _.stream(bucketId, defaultChunkSize)
+          .map((resourceRow, tagLabels) => resourceRow.toResource(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty)))
+      )
+    )
+
+  def getById(bucketId: String, resourceId: String): IO[Option[ResourceInfo]] =
+    (for 
+       resourceRow  <- OptionT(tables.resources.getById(bucketId, resourceId))
+       resourceTags <- OptionT.liftF(tables.resource_tags.getById(bucketId, resourceId))
+       tags         <- if (resourceTags.nonEmpty) OptionT.liftF(tables.tags.getByIds(resourceTags.map(_.tag_id))) else OptionT.some[IO](List.empty)
+     yield resourceRow.toResource(tags.map(_.label).toSet)).value
+
+  def updateThumbnailTimestamp(bucketId: String, resourceId: String, timestamp: Int): IO[Option[ResourceInfo]] =
+    (for {
+      resource <- OptionT(getById(bucketId, resourceId))
+      updated  = resource.copy(thumbnailTimestamp = Some(timestamp))
+      _       <- OptionT.liftF(tables.resources.upsert(ResourceRow.fromResource(updated)))
+    } yield updated).value
+
+  def updateUserMeta(bucketId: String, resourceId: String, title: Option[String], description: Option[String], tagLabels: List[String]): IO[Option[ResourceInfo]] =
+    session.transaction.use: tx =>
+      getById(bucketId, resourceId).flatMap:
+        case None           => IO.pure(None)
+        case Some(resource) =>
+          val updated = resource.copy(title = title, description = description)
+          for {
+            _ <- tables.resources.upsert(ResourceRow.fromResource(updated))
+            _ <- updateResourceTags(bucketId, resourceId, tagLabels)
+          } yield Some(updated)
+
+  def move(bucketId: String, resourceId: String, newPath: String): IO[Unit] =
+    tables.resources.getById(bucketId, resourceId).flatMap:
+      case Some(old) => tables.resources.upsert(old.copy(fs_path = newPath)) >> IO.unit
+      case None      => IO.unit
+
+  def deleteResource(bucketId: String, resourceId: String): IO[Unit] =
+    session.transaction.use: tx =>
+      for {
+        _ <- tables.resource_tags.delete(bucketId, resourceId)
+        _ <- tables.resources.delete(bucketId, resourceId)
+      } yield ()
+
   def applyEvent(bucketId: String, effect: ResourceEvent => IO[Unit])(event: ResourceEvent): IO[Unit] = {
     event match {
-      case ResourceAdded(resource)             => insert(resource, () => effect(event))
-      case ResourceDeleted(resourceId)         => deleteResource(bucketId, resourceId, effect(event))
-      case ResourceMoved(id, oldPath, newPath) => move(bucketId, oldPath, newPath, () => effect(event))
+      case ResourceAdded(resource)       => insertResource(resource) >> effect(event)
+      case ResourceDeleted(resourceId)   => deleteResource(bucketId, resourceId) >> effect(event)
+      case ResourceMoved(id, _, newPath) => move(bucketId, id, newPath) >> effect(event)
       case _ => IO.unit
     }
   }
-}
+

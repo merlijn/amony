@@ -13,8 +13,6 @@ import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.{ResourceContentRoutes, ResourceRoutes}
 import scribe.{Logger, Logging}
-import slick.basic.DatabaseConfig
-import slick.jdbc.{H2Profile, HsqldbProfile}
 import sttp.tapir.server.http4s.Http4sServerOptions
 
 import scala.reflect.ClassTag
@@ -50,7 +48,7 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
       authService        = new AuthServiceImpl(authConfig)
       resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
       _                  = resourceEventTopic.followTail(searchService.processEvent)
-      resourceDatabase  <- ResourceDatabase.resource(config)
+      resourceDatabase  <- ResourceDatabase.make(appConfig.database)
       resourceBuckets   <- appConfig.resources.map {
                                case localConfig : ResourceConfig.LocalDirectoryConfig => 
                                  LocalDirectoryBucket.resource(localConfig, resourceDatabase, resourceEventTopic)

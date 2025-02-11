@@ -26,5 +26,5 @@ message ResourceInfo {
   optional string title = 12;
   optional string description = 13;
   repeated string tags = 14 [ (scalapb.field).collection_type="Set" ];
-  optional int64 thumbnailTimestamp = 15;
+  optional int32 thumbnailTimestamp = 15;
 }

@@ -15,7 +15,7 @@ trait ResourceBucket {
 
   def updateUserMeta(resourceId: String, title: Option[String], description: Option[String], tags: List[String]): IO[Unit]
   
-  def updateThumbnailTimestamp(resourceId: String, timestamp: Long): IO[Unit]
+  def updateThumbnailTimestamp(resourceId: String, timestamp: Int): IO[Unit]
 
   def deleteResource(resourceId: String): IO[Unit]
 

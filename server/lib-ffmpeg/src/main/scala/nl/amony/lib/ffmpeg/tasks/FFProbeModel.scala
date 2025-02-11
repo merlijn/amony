@@ -45,20 +45,20 @@ object FFProbeModel extends Logging {
       tags: Option[Map[String, String]]
   ) extends Stream {
     
-    def durationFromField: Option[Long] = duration.map(d => (d.toDouble * 1000L).toLong)
-    def durationFromMkvTag: Option[Long] =
+    def durationFromField: Option[Int] = duration.map(d => (d.toDouble * 1000).toInt)
+    def durationFromMkvTag: Option[Int] =
       tags.flatMap(_.get("DURATION")).flatMap {
         case durationPattern(hours, minutes, seconds, subseconds) =>
           Some(
-            hours.toLong * 60 * 60 * 1000L +
-              minutes.toLong * 60 * 1000L +
-              seconds.toLong * 1000L +
-              (s"0.$subseconds".toDouble * 1000L).toLong
+            hours.toInt * 60 * 60 * 1000 +
+              minutes.toInt * 60 * 1000 +
+              seconds.toInt * 1000 +
+              (s"0.$subseconds".toDouble * 1000).toInt
           )
         case _ => None
       }
 
-    def durationMillis: Long = durationFromField.orElse(durationFromMkvTag).getOrElse(0L)
+    def durationMillis: Int = durationFromField.orElse(durationFromMkvTag).getOrElse(0)
     def fps: Double = {
       val splitted = avg_frame_rate.split('/')
       val divident = splitted(0).toDouble

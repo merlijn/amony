@@ -103,7 +103,7 @@ object AdminRoutes extends Logging:
         .serverSecurityLogicPure(authenticator.requireRole(Roles.Admin))
         .serverLogicSuccess(_ => bucketId =>
           buckets.get(bucketId) match
-            case Some(bucket: LocalDirectoryBucket[_]) =>
+            case Some(bucket: LocalDirectoryBucket) =>
               logger.info(s"Refreshing resources in bucket '$bucketId'")
               bucket.refresh() >> IO(logger.info(s"Finished refreshing resources in bucket '$bucketId'"))
             case _ => 
@@ -115,7 +115,7 @@ object AdminRoutes extends Logging:
         .serverSecurityLogicPure(authenticator.requireRole(Roles.Admin))
         .serverLogicSuccess(_ => bucketId =>
           buckets.get(bucketId) match
-            case Some(bucket: LocalDirectoryBucket[_]) =>
+            case Some(bucket: LocalDirectoryBucket) =>
               logger.info(s"Re-scanning meta data of all resources in bucket '$bucketId'")
               bucket.reScanAllMetadata() >> IO(logger.info(s"Finished re-scanning meta data of all resources in bucket '$bucketId'"))
             case _ =>
@@ -128,7 +128,7 @@ object AdminRoutes extends Logging:
         .serverSecurityLogicPure(authenticator.requireRole(Roles.Admin))
         .serverLogicSuccess(_ => bucketId =>
           buckets.get(bucketId) match
-            case Some(bucket: LocalDirectoryBucket[_]) =>
+            case Some(bucket: LocalDirectoryBucket) =>
               logger.info(s"Re-computing hashes of all resources in bucket '$bucketId'")
               bucket.reComputeHashes() >> IO(logger.info(s"Finished re-computing hashes of all resources in bucket '$bucketId'"))
             case _ =>
@@ -141,7 +141,7 @@ object AdminRoutes extends Logging:
         .serverSecurityLogicPure(authenticator.publicEndpoint)
         .serverLogic(_ => bucketId =>
           buckets.get(bucketId) match
-            case Some(bucket: LocalDirectoryBucket[_]) =>
+            case Some(bucket: LocalDirectoryBucket) =>
               logger.info(s"Exporting resources in bucket '$bucketId'")
               val stream = bucket.getAllResources().map(resource => ResourceDto.derived$Codec.apply(toDto(resource)).noSpaces).intersperse("\n").through(fs2.text.utf8.encode[IO])
               IO(Right(stream))

@@ -12,9 +12,8 @@ services:
       - "127.0.0.1:8080:8080"
     environment:
       AMONY_ADMIN_USERNAME: "admin"
-      AMONY_ADMIN_PASSWORD: "changme"
-      AMONY_DATABASE_PROFILE: "slick.jdbc.PostgresProfile$"
-      AMONY_DATABASE_URL: "jdbc:postgresql://database:5432/amony"
+      AMONY_ADMIN_PASSWORD: "changeme"
+      AMONY_DATABASE_HOST: "postgres"
       AMONY_DATABASE_USERNAME: "postgres"
       AMONY_DATABASE_PASSWORD: "changeme"
     volumes:
@@ -28,7 +27,7 @@ services:
       interval: 3s
       timeout: 3s
       retries: 5
-    container_name: database
+    container_name: postgres
     image: postgres:17.2
     environment:
       POSTGRES_DB: "amony"
