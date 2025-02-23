@@ -9,6 +9,8 @@ import java.nio.file.attribute.BasicFileAttributes
 import scala.concurrent.duration.FiniteDuration
 
 sealed trait FileEvent
+
+case class FileMetaChanged(fileInfo: FileInfo) extends FileEvent
 case class FileAdded(fileInfo: FileInfo) extends FileEvent
 case class FileDeleted(fileInfo: FileInfo) extends FileEvent
 case class FileMoved(fileInfo: FileInfo, oldPath: Path) extends FileEvent
@@ -29,6 +31,12 @@ extension [F[_], T](stream: Stream[F, T])
 
 object LocalDirectoryScanner extends Logging {
 
+  def scanDirectory(directory: Path, previous: FileStore, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFunction: Path => IO[String]): Stream[IO, FileEvent] = {
+
+    val currentFiles: Seq[(Path, BasicFileAttributes)] = RecursiveFileVisitor.listFilesInDirectoryRecursive(directory, directoryFilter, fileFilter)
+    scanDirectory(currentFiles, previous, hashFunction)
+  }
+
   /**
    * In principle, between the last time the directory was scanned and now, **all** files could be renamed. For example
    * using an automated renaming tool or script.
@@ -36,59 +44,58 @@ object LocalDirectoryScanner extends Logging {
    * This means, the only thing we can rely on for checking equality is the metadata, not the filename.
    * 
    */
-  def scanDirectory(directory: Path, previous: FileStore, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFunction: Path => IO[String]): Stream[IO, FileEvent] = {
+  def scanDirectory(currentFiles: Seq[(Path, BasicFileAttributes)],
+                    previous: FileStore,
+                    hashFunction: Path => IO[String]): Stream[IO, FileEvent] = {
     
-    val start = System.currentTimeMillis()
-
-    val currentFiles: Seq[(Path, BasicFileAttributes)] = RecursiveFileVisitor.listFilesInDirectoryRecursive(directory, directoryFilter, fileFilter)
-
-    logger.debug(s"Listed directory files in ${System.currentTimeMillis() - start} ms")
-
     // new files are either added or moved
-    val movedOrAdded: Stream[IO, Option[FileEvent]] = Stream.emits(currentFiles).evalMap { (path, attrs) =>
+    def movedOrAdded(): Stream[IO, (Path, Option[FileEvent])] = Stream.emits(currentFiles).evalMap { (path, attrs) =>
 
       for {
-        prevByPath <- previous.getByPath(path)
-        hash       <- prevByPath
-                        .filter(_.equalFileMeta(path, attrs))
-                        .map(i => IO.pure(i.hash))
-                        .getOrElse(hashFunction(path))
+        previousByPath <- previous.getByPath(path)
+        equalMeta       = previousByPath.exists(_.equalFileMeta(attrs))
+        hash           <- previousByPath
+                           .filter(_ => equalMeta)
+                           .map(i => IO.pure(i.hash))
+                           .getOrElse(hashFunction(path))
+
         fileInfo   = FileInfo(path, attrs, hash)
-        event <- prevByPath match
-                  case Some(prev) if prev.hash == fileInfo.hash => IO.pure(None) // file has the same path and hash
+        event <- previousByPath match
+                  case Some(prev) if prev.hash == fileInfo.hash =>
+                    if (equalMeta)
+                      IO.pure(path -> None) // no change, the exact same file was found at the same path
+                    else
+                      /**
+                       * A file with the same hash and name but different metadata was encountered.
+                       * This may happen in case of backup recovery or moving files to/from different file systems.
+                       */
+                      IO.pure(path -> Some(FileMetaChanged(fileInfo)))
                   case _                =>
-                    previous.getByHash(hash).map(_.headOption match {
-                      case Some(oldFileInfo) => Some(FileMoved(fileInfo, oldFileInfo.path))
-                      case _                 => Some(FileAdded(fileInfo))
-                    })
+                    previous.getByHash(hash).map:
+                      case previousByHash :: Nil if previousByHash.equalFileMeta(attrs) => path -> Some(FileMoved(fileInfo, previousByHash.path))
+                      case previousByHash :: Nil                                        => path -> Some(FileMoved(fileInfo, previousByHash.path))
+                      case Nil                                                          => path -> Some(FileAdded(fileInfo))
+                      case _                                                            => path -> None
+                    
       } yield event
     }
 
     // this is not correct, even if the path exists, the previous file might be deleted and replaced by another
-    val maybeDeleted: Map[Path, FileInfo] = currentFiles.foldLeft(previous.getAll()){ case (acc, (p, _)) => acc - p }
+//    val maybeDeleted: Map[Path, FileInfo] = currentFiles.foldLeft(previous.getAll()) { case (acc, (p, _)) => acc - p }
 
-    def filterMoved(maybeDeleted: Map[Path, FileInfo], e: Option[FileEvent]): Map[Path, FileInfo] = e match
-      case None => maybeDeleted
-      case Some(FileMoved(_, oldPath)) => maybeDeleted - oldPath
+//    def filterMoved(maybeDeleted: Map[Path, FileInfo], e: Option[FileEvent]): Map[Path, FileInfo] = e match
+//      case None => maybeDeleted
+//      case Some(FileMoved(_, oldPath)) => maybeDeleted - oldPath
 //      case Some(FileAdded(fileInfo)) if previousState.contains(fileInfo.path)  => maybeDeleted + (fileInfo.path -> previousState(fileInfo.path))
-      case _                                  => maybeDeleted
+//      case _                           => maybeDeleted
 
-    def emitDeleted(deleted: Map[Path, FileInfo]): Stream[IO, Option[FileEvent]] =
-      Stream.fromIterator(deleted.values.iterator.map(r => Some(FileDeleted(r))), 1)
+//    def emitDeleted(deleted: Map[Path, FileInfo]): Stream[IO, Option[FileEvent]] =
+//      Stream.fromIterator(deleted.values.iterator.map(r => Some(FileDeleted(r))), 1)
 
-//    previous.getAll().fi
+//    previous.getAll().flatMap { f => Stream.emit(Some(FileDeleted(f))) }.merge(movedOrAdded).map(_.map(Some(_)))
     
-    movedOrAdded.foldFlatMap(maybeDeleted)(filterMoved, emitDeleted).collect { case Some(e) => e }
+    movedOrAdded().collect { case (p, Some(e)) => e }
   }
-
-  private def applyEvent(state: Map[Path, FileInfo], e: FileEvent): Map[Path, FileInfo] = e match
-    case FileAdded(fileInfo) =>
-      state + (fileInfo.path -> fileInfo)
-    case FileDeleted(fileInfo) =>
-      state - fileInfo.path
-    case FileMoved(fileInfo, oldPath) =>
-      val prev = state(oldPath)
-      state - oldPath + (fileInfo.path -> prev.copy(path = fileInfo.path)) // we keep the old metadata
 
   /**
    * Given an initial state, this method will poll the directory for changes and emit events for new, deleted and moved resources.
@@ -99,7 +106,7 @@ object LocalDirectoryScanner extends Logging {
 
     def unfoldRecursive(fs: FileStore): Stream[IO, FileEvent] = {
       val startTime = System.currentTimeMillis()
-      logger.debug(s"Scanning directory: ${directoryPath.toAbsolutePath}, previous state size: ${fs.getAll().size}, stack depth: ${Thread.currentThread().getStackTrace.length}")
+      logger.debug(s"Scanning directory: ${directoryPath.toAbsolutePath}, previous state size: ${fs.size()}, stack depth: ${Thread.currentThread().getStackTrace.length}")
       
       def logTime = Stream.eval(IO { logger.debug(s"Scanning took: ${System.currentTimeMillis() - startTime} ms") })
       def sleep = Stream.sleep[IO](pollInterval)

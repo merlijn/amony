@@ -14,6 +14,7 @@ import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalResourceOperations.*
 import scribe.Logging
 
+import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
 
@@ -47,23 +48,42 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
 
   def reScanAllMetadata(): IO[Unit] =
     getAllResources().evalMap(resource => {
-        val f = config.resourcePath.resolve(resource.path)
-        LocalResourceMeta.detectMetaData(f).flatMap:
+        val resourcePath = config.resourcePath.resolve(resource.path)
+        LocalResourceMeta.detectMetaData(resourcePath).flatMap:
           case None => 
-            logger.warn(s"Failed to scan metadata for $f")
+            logger.warn(s"Failed to scan metadata for $resourcePath")
             IO.unit
           case Some(localResourceMeta) =>
             
-            logger.info(s"Updating metadata for $f")
+            logger.info(s"Updating metadata for $resourcePath")
+            
             val updated = resource.copy(
               contentType       = Some(localResourceMeta.contentType),
               contentMetaSource = localResourceMeta.toolMeta,
-              contentMeta       = localResourceMeta.meta)
+              contentMeta       = localResourceMeta.meta,
+            )
 
             db.upsert(updated) >> topic.publish(ResourceUpdated(updated))
 
     }).compile.drain
 
+  def updateFileSystemMetaData(): IO[Unit] =
+    getAllResources().evalMap(resource => {
+      val resourcePath = config.resourcePath.resolve(resource.path)
+      val attrs = Files.readAttributes(resourcePath, classOf[BasicFileAttributes])
+      val updated = resource.copy(
+        size             = attrs.size(),
+        creationTime     = Some(attrs.creationTime().toMillis),
+        lastModifiedTime = Some(attrs.lastModifiedTime().toMillis)
+      )
+      
+      if (updated.size != resource.size || updated.creationTime != resource.creationTime || updated.lastModifiedTime != resource.lastModifiedTime)
+        logger.info(s"File system metadata changed for $resourcePath")
+        db.upsert(updated) >> topic.publish(ResourceUpdated(updated))
+      else
+        IO.unit
+    }).compile.drain
+  
   def reComputeHashes(): IO[Unit] =
     getAllResources().evalMap(resource => {
       val file = config.resourcePath.resolve(resource.path)
