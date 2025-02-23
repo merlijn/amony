@@ -13,7 +13,7 @@ object Queries extends Logging {
   object tags {
       val all: Query[Void, TagRow] = sql"select id, label from tags".query(TagRow.codec)
 
-      def truncate: Command[Void] = sql"truncate table tags".command
+      def truncateCascade: Command[Void] = sql"truncate table tags cascade".command
 
       def getByLabels(n: Int): Query[List[String], TagRow] =
         sql"select id,label from tags where label in (${varchar.list(n)})".query(TagRow.codec)
@@ -38,6 +38,8 @@ object Queries extends Logging {
   }
   
   object resource_tags {
+
+    val truncateCascade: Command[Void] = sql"truncate table resource_tags cascade".command
     
     def upsert(n: Int): Command[List[ResourceTagsRow]] =
       sql"insert into resource_tags (bucket_id, resource_id, tag_id) values ${ResourceTagsRow.codec.values.list(n)} on conflict (bucket_id, resource_id, tag_id) do nothing".command
@@ -50,7 +52,10 @@ object Queries extends Logging {
   }
 
   object resources {
-    val delete: Command[(String, String)] =
+    
+    val truncateCascade: Command[Void] = sql"truncate table resources cascade".command
+    
+    val deleteBucket: Command[(String, String)] =
       sql"delete from resources where bucket_id = $varchar and resource_id = $varchar".command
 
     val allJoined: Query[String, (ResourceRow, Option[Arr[String]])] =

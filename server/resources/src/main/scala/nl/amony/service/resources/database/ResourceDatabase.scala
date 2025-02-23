@@ -70,15 +70,21 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
 
       def insert(row: ResourceRow): IO[Completion] =
         session.prepare(Queries.resources.insert).flatMap(_.execute(row.asJson))
+          .recoverWith {
+            case SqlState.UniqueViolation(_) => IO.raiseError(new Exception(s"Resource with path ${row.fs_path} already exists"))
+          }
 
       def upsert(row: ResourceRow): IO[Completion] =
         session.prepare(Queries.resources.upsert).flatMap(_.execute(row.asJson))
+          .recoverWith {
+            case SqlState.UniqueViolation(_) => IO.raiseError(new Exception(s"Resource with path ${row.fs_path} already exists"))
+          }
 
       def getById(bucketId: String, resourceId: String): IO[Option[ResourceRow]] =
         session.prepare(Queries.resources.getById).flatMap(_.option(bucketId, resourceId))
 
       def delete(bucketId: String, resourceId: String) =
-        session.prepare(Queries.resources.delete).flatMap(_.execute(bucketId, resourceId))
+        session.prepare(Queries.resources.deleteBucket).flatMap(_.execute(bucketId, resourceId))
     }
 
     object resource_tags {
@@ -183,6 +189,14 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
       for {
         _ <- tables.resource_tags.delete(bucketId, resourceId)
         _ <- tables.resources.delete(bucketId, resourceId)
+      } yield ()
+
+  private[database] def truncateTables(): IO[Unit] =
+    session.transaction.use: tx =>
+      for {
+        _ <- session.execute(Queries.tags.truncateCascade)
+        _ <- session.execute(Queries.resource_tags.truncateCascade)
+        _ <- session.execute(Queries.resources.truncateCascade)
       } yield ()
 
   def applyEvent(bucketId: String, effect: ResourceEvent => IO[Unit])(event: ResourceEvent): IO[Unit] = {

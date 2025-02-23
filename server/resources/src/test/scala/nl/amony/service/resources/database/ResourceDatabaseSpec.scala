@@ -71,10 +71,39 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
         )
 
         ResourceDatabase.make(dbConfig).use(db =>
-          insertResourcesTest(db) // *> insertRow(db)
-          
+          insertResourcesTest(db) >> updateUserMetaTest(db) >> uniquePathConstraint(db) >> db.truncateTables()
+
         ).unsafeRunSync()
       }
+    }
+  }
+
+  def uniquePathConstraint(db: ResourceDatabase): IO[Unit] = {
+    val resourceA  = genResource()
+    val resourceB = genResource().copy(bucketId = resourceA.bucketId, path = resourceA.path)
+    for {
+      _ <- db.insertResource(resourceA)
+      _ <- db.insertResource(resourceB)
+    } yield ()
+  }
+
+  def updateUserMetaTest(db: ResourceDatabase): IO[Unit] = {
+
+    val resource = genResource()
+    val updated = resource.copy(
+      title = Some("new title"),
+      description = Some("new description"),
+      tags = Set("update-a", "update-b", "update-c")
+    )
+
+    for {
+      _      <- db.insertResource(resource)
+      _      <- db.updateUserMeta(resource.bucketId, resource.resourceId, updated.title, updated.description, updated.tags.toList)
+      result <- db.getById(resource.bucketId, resource.resourceId)
+    } yield {
+      result.flatMap(_.title) shouldBe updated.title
+      result.flatMap(_.description) shouldBe updated.description
+      result.map(_.tags) shouldBe Some(updated.tags)
     }
   }
 

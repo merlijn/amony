@@ -13,12 +13,13 @@ CREATE TABLE resources (
     title                  VARCHAR(128),
     description            VARCHAR,
     thumbnail_timestamp    BIGINT,
-    CONSTRAINT resources_pk PRIMARY KEY (bucket_id, resource_id)
+    CONSTRAINT resources_pk PRIMARY KEY (bucket_id, resource_id),
+    CONSTRAINT fs_path_unq  UNIQUE      (bucket_id, fs_path)
 );
 
 CREATE INDEX resources_bucket_id_idx ON resources (bucket_id);
-
-CREATE INDEX resources_hash_idx ON resources (resource_id);
+CREATE INDEX resources_hash_idx ON resources (bucket_id, resource_id);
+CREATE INDEX resources_path ON resources (bucket_id, fs_path);
 
 CREATE TABLE tags (
     id         SERIAL NOT NULL,
