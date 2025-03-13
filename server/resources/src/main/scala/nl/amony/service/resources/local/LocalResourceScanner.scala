@@ -56,12 +56,9 @@ object LocalResourceScanner {
       return Stream.empty
     }
 
-    val initialFiles: Map[Path, FileInfo] = initialState.map { r =>
-      val path = resourcePath.resolve(Path.of(r.path))
-      path -> FileInfo(resourcePath.resolve(Path.of(r.path)), r.hash.get, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0))
-    }.toMap
+    val initialFiles: Seq[FileInfo] = initialState.map { r => FileInfo(resourcePath.resolve(Path.of(r.path)), r.hash.get, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0)) }.toSeq
 
-    val fileStore = new InMemoryFileStore(initialFiles)
+    val previous = InMemoryFileStore(initialFiles)
 
     def filterFiles(path: Path) = {
       val fileName = path.getFileName.toString
@@ -75,10 +72,10 @@ object LocalResourceScanner {
 
     if (poll)
       LocalDirectoryScanner
-        .pollingStream(resourcePath, fileStore, config.scan.pollInterval, filterDirectory, filterFiles, config.scan.hashingAlgorithm.createHash)
+        .pollingStream(resourcePath, previous, config.scan.pollInterval, filterDirectory, filterFiles, config.scan.hashingAlgorithm.createHash)
         .parEvalMap(config.scan.scanParallelFactor)(mapEvent(resourcePath, config.id))
     else
-      LocalDirectoryScanner.scanDirectory(resourcePath, fileStore, filterDirectory, filterFiles, config.scan.hashingAlgorithm.createHash)
+      LocalDirectoryScanner.scanDirectory(resourcePath, previous, filterDirectory, filterFiles, config.scan.hashingAlgorithm.createHash)
         .parEvalMap(config.scan.scanParallelFactor)(mapEvent(resourcePath, config.id))
   }
 
@@ -87,8 +84,10 @@ object LocalResourceScanner {
    *
    * The state will be kept in memory and is not persisted.
    */
-  def singleScan(initialState: Set[ResourceInfo], config: LocalDirectoryConfig): Stream[IO, ResourceEvent] =
+  def singleScan(initialState: Set[ResourceInfo], config: LocalDirectoryConfig): Stream[IO, ResourceEvent] = {
+    logger.info(s"Scanning directory: ${config.resourcePath}")
     scan(initialState, config, poll = false)
+  }
 
   /**
    * Given an initial state, this method will poll the directory for changes and emit events for new, deleted and moved resources.

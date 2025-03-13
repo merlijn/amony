@@ -3,6 +3,8 @@ package nl.amony.lib.files.watcher
 import cats.effect.IO
 
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
+import scala.jdk.CollectionConverters.*
 
 trait FileStore:
 
@@ -14,32 +16,56 @@ trait FileStore:
 
   def size(): Int
 
-  def applyEvent(e: FileEvent): FileStore
+  def applyEvent(e: FileEvent): IO[Unit]
   
   def insert(fileInfo: FileInfo): IO[Unit] = IO(applyEvent(FileAdded(fileInfo)))
 
 
-class InMemoryFileStore(files: Map[Path, FileInfo]) extends FileStore:
-  private val byHash: Map[String, Seq[FileInfo]] = files.values.foldLeft(Map.empty) {
-    (acc, info) => acc.updated(info.hash, acc.getOrElse(info.hash, Seq.empty) :+ info)
-  }
+class InMemoryFileStore() extends FileStore:
+  
+  private val files = new ConcurrentHashMap[Path, FileInfo]()
+  private var byHashIndex: Map[String, Set[FileInfo]] = Map.empty
 
-  def getByPath(path: Path): IO[Option[FileInfo]] = IO.pure(files.get(path))
-  
-  def getByHash(hash: String): IO[Seq[FileInfo]] = IO.pure(byHash.get(hash).getOrElse(Seq.empty))
-  
-  def getAll(): fs2.Stream[IO, FileInfo] = fs2.Stream.emits(files.values.toSeq)
-  
-  def size(): Int = files.size
+  override def getByPath(path: Path): IO[Option[FileInfo]] = IO.pure(Option(files.get(path)))
 
-  def applyEvent(e: FileEvent): InMemoryFileStore = e match
+  override def getByHash(hash: String): IO[Seq[FileInfo]] = IO.pure(byHashIndex.get(hash).map(_.toSeq).getOrElse(Seq.empty))
+  
+  override def getAll(): fs2.Stream[IO, FileInfo] = fs2.Stream.emits(files.values.asScala.toSeq)
+
+  override def size(): Int = files.size
+
+  override def insert(fileInfo: FileInfo): IO[Unit] = IO(insertSync(fileInfo))
+
+  override def applyEvent(e: FileEvent): IO[Unit] = IO(applyEventSync(e))
+  
+  def insertSync(fileInfo: FileInfo): Unit = applyEventSync(FileAdded(fileInfo))
+  
+  def insertAllSync(files: Iterable[FileInfo]): Unit = files.foreach(insertSync)
+
+  def applyEventSync(e: FileEvent): Unit = e match
     case FileAdded(fileInfo) =>
-      new InMemoryFileStore(files + (fileInfo.path -> fileInfo))
+      synchronized {
+        files.put(fileInfo.path, fileInfo)
+        byHashIndex = byHashIndex.updated(fileInfo.hash, byHashIndex.getOrElse(fileInfo.hash, Set.empty) + fileInfo)
+      }
     case FileDeleted(fileInfo) =>
-      new InMemoryFileStore(files - fileInfo.path)
+      synchronized {
+        files.remove(fileInfo.path)
+        byHashIndex = byHashIndex.updated(fileInfo.hash, byHashIndex.getOrElse(fileInfo.hash, Set.empty).filterNot(_ == fileInfo))
+      }
     case FileMoved(fileInfo, oldPath) =>
-      val prev = files(oldPath)
-      new InMemoryFileStore(files - oldPath + (fileInfo.path -> prev.copy(path = fileInfo.path))) // we keep the old metadata
+      synchronized {
+        files.remove(oldPath)
+        files.put(fileInfo.path, fileInfo)
+        byHashIndex = byHashIndex.updated(fileInfo.hash, byHashIndex.getOrElse(fileInfo.hash, Set.empty).filterNot(_.path == oldPath) + fileInfo)
+      }
 
 object InMemoryFileStore:
-  def apply(files: Seq[FileInfo]): InMemoryFileStore = new InMemoryFileStore(files.map(f => f.path -> f).toMap)
+  
+  val empty = new InMemoryFileStore()
+  
+  def apply(files: Iterable[FileInfo]): InMemoryFileStore = {
+    val store = new InMemoryFileStore()
+    store.insertAllSync(files)
+    store
+  }

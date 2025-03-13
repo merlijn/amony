@@ -12,10 +12,10 @@ class RecursiveFileVisitor(directoryFilter: Path => Boolean, fileNameFilter: Pat
   var files = Seq.empty[(Path, BasicFileAttributes)]
 
   override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult =
-    if (!directoryFilter(dir))
-      FileVisitResult.SKIP_SUBTREE
-    else
+    if (directoryFilter(dir))
       FileVisitResult.CONTINUE
+    else
+      FileVisitResult.SKIP_SUBTREE
 
   override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult =
     if (fileNameFilter(file))

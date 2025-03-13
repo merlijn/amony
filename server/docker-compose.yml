@@ -3,7 +3,7 @@ name: amony
 services:
   amony:
     image: europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/amony-app:dev
-    container_name: amony
+    container_name: amony-app
     depends_on:
       postgres:
         condition: service_healthy
@@ -27,7 +27,7 @@ services:
       interval: 3s
       timeout: 3s
       retries: 5
-    container_name: postgres
+    container_name: amony-postgres
     image: postgres:17.2
     environment:
       POSTGRES_DB: "amony"

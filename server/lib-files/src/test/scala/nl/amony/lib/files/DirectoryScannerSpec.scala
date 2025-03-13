@@ -25,7 +25,7 @@ class DirectoryScannerSpec extends AnyWordSpecLike with Matchers {
   def toAttributes(files: Seq[FileInfo]): fs2.Stream[IO, (java.nio.file.Path, BasicFileAttributes)] = 
     fs2.Stream.emits(files.map { f => f.path -> LocalFileMeta(f.size, f.creationTime, f.modifiedTime) })
 
-  def toFileStore(files: Seq[FileInfo]): FileStore = new InMemoryFileStore(files.map(f => f.path -> f).toMap)
+  def toFileStore(files: Seq[FileInfo]): FileStore = InMemoryFileStore.apply(files)
 
   def hashFunction(files: Seq[FileInfo])(path: java.nio.file.Path): cats.effect.IO[String] = IO {
     files.find(_.path == path) match
@@ -37,31 +37,34 @@ class DirectoryScannerSpec extends AnyWordSpecLike with Matchers {
   val fileB = FileInfo(Paths.get("b.txt"), hash = "b", size = 200, creationTime = 2, modifiedTime = 2)
   val fileC = FileInfo(Paths.get("c.txt"), hash = "c", size = 300, creationTime = 3, modifiedTime = 3)
 
+  def getEventSet(previous: FileStore, current: FileStore): Set[FileEvent] =
+    LocalDirectoryScanner.compareFileStores(previous, current).compile.toList.unsafeRunSync().toSet
+
   "DirectoryScanner" should {
     "detected added files" in {
 
-      val currentFiles = Seq(fileA, fileB, fileC)
-      val previous = new InMemoryFileStore(Map.empty)
+      val currentFiles  = Set(fileA, fileB, fileC)
+      val previous = InMemoryFileStore.empty
 
-      val events = LocalDirectoryScanner.scanDirectory2(toFileStore(currentFiles), previous)
+      val events = getEventSet(previous, InMemoryFileStore(currentFiles))
 
-      events.compile.toList.unsafeRunSync() shouldBe currentFiles.map(FileInfo => FileAdded(FileInfo))
+      events shouldBe currentFiles.map(FileInfo => FileAdded(FileInfo))
     }
 
     "detect files with modified meta data" in {
 
-        val currentFiles = Seq(fileA, fileB, fileC)
+        val currentFiles = Set(fileA, fileB, fileC)
 
-        val previousFiles = Seq(
+        val previousFiles = Set(
           fileA.copy(size = 200),
           fileB.copy(creationTime = 3),
           fileC.copy(modifiedTime = 4)
         )
 
-        val fileStore = InMemoryFileStore(previousFiles)
-        val events = LocalDirectoryScanner.scanDirectory2(toFileStore(currentFiles), fileStore)
+        val previous = InMemoryFileStore(previousFiles)
+        val events = getEventSet(previous, InMemoryFileStore(currentFiles))
 
-        events.compile.toList.unsafeRunSync() shouldBe Seq(
+        events shouldBe Set(
           FileMetaChanged(fileA),
           FileMetaChanged(fileB),
           FileMetaChanged(fileC)
@@ -70,18 +73,18 @@ class DirectoryScannerSpec extends AnyWordSpecLike with Matchers {
 
     "detected moved files (simple case)" in {
 
-      val currentFiles = Seq(fileA, fileB, fileC)
+      val currentFiles = Set(fileA, fileB, fileC)
 
-      val previousFiles = Seq(
+      val previousFiles = Set(
         fileA.copy(path = Paths.get("d.txt")),
         fileB.copy(path = Paths.get("e.txt")),
         fileC.copy(path = Paths.get("f.txt"))
       )
 
-      val fileStore = InMemoryFileStore(previousFiles)
-      val events = LocalDirectoryScanner.scanDirectory2(toFileStore(currentFiles), fileStore)
+      val previous = InMemoryFileStore(previousFiles)
+      val events = getEventSet(previous, InMemoryFileStore(currentFiles))
 
-      events.compile.toList.unsafeRunSync() shouldBe Seq(
+      events shouldBe Set(
         FileMoved(fileA, Paths.get("d.txt")),
         FileMoved(fileB, Paths.get("e.txt")),
         FileMoved(fileC, Paths.get("f.txt"))
@@ -98,13 +101,28 @@ class DirectoryScannerSpec extends AnyWordSpecLike with Matchers {
         fileC.copy(path = Paths.get("a.txt"))
       ))
 
-      val events = LocalDirectoryScanner.scanDirectory2(current, previous)
+      val events = getEventSet(previous, current)
 
-      events.compile.toList.unsafeRunSync() shouldBe Seq(
+      events shouldBe Set(
         FileMoved(fileA, Paths.get("b.txt")),
         FileMoved(fileB, Paths.get("c.txt")),
         FileMoved(fileC, Paths.get("a.txt"))
       )
+    }
+
+    "foo" ignore {
+
+      def randomString(length: Int): String = scala.util.Random.alphanumeric.take(length).mkString
+
+      val events = LocalDirectoryScanner.scanDirectory(
+        directory = Paths.get("/Users/merlijn/dev/amony/media"),
+        previous = new InMemoryFileStore(),
+        directoryFilter = d => !d.getFileName.toString.startsWith("."),
+        fileFilter = f => !f.getFileName.toString.startsWith("."),
+        hashFunction = f => IO(randomString(8))
+      ).compile.toList.unsafeRunSync()
+
+      println(s"---\n${events.mkString}")
     }
   }
 }
