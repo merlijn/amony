@@ -8,20 +8,6 @@ import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
 import scala.concurrent.duration.FiniteDuration
 
-extension [F[_], T](stream: Stream[F, T])
-  def foldFlatMap[S](initial: S)(foldFn: (S, T) => S, nextFn: S => Stream[F, T]): Stream[F, T] = {
-
-    val r = stream.map(Some(_)) ++ Stream.emit[F, Option[T]](None)
-
-    val f: Stream[F, (S, Option[T])] = r.scan[(S, Option[T])](initial -> None):
-      case ((acc, p), Some(e)) => foldFn(acc, e) -> Some(e)
-      case ((acc, p), None)    => acc -> None
-
-    f.tail.flatMap:
-      case (s, Some(t)) => Stream.emit(t)
-      case (s, None)    => nextFn(s)
-  }
-
 object LocalDirectoryScanner extends Logging {
 
   def scanDirectory(directory: Path, previous: FileStore, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFunction: Path => IO[String]): Stream[IO, FileEvent] = {
@@ -67,7 +53,14 @@ object LocalDirectoryScanner extends Logging {
     def maybeMetaChanged(file: FileInfo, previous: FileInfo): Option[FileEvent] =
       if (file == previous) None
       else Some(FileMetaChanged(file))
-    
+
+    val removed = previous.getAll().evalMap { file =>
+      current.getByHash(file.hash).map {
+        case Nil => Some(FileDeleted(file))
+        case _ => None
+      }
+    }
+
     val movedOrAdded = current.getAll().evalMap { file =>
 
       previous.getByHash(file.hash).map {
@@ -80,18 +73,11 @@ object LocalDirectoryScanner extends Logging {
         case multipleMatches       =>
           multipleMatches.find(_.path == file.path) match
             case Some(p) => maybeMetaChanged(file, p)
-            case None    => Some(FileMoved(file, multipleMatches.head.path))
+            case None    => Some(FileMoved(file, multipleMatches.head.path)) // not correct
       }
-    }.collect { case Some(e) => e }
-    
-    val removed = previous.getAll().evalMap { file =>
-      current.getByHash(file.hash).map {
-        case Nil => Some(FileDeleted(file))
-        case _   => None
-      }
-    }.collect { case Some(e) => e }
-    
-    movedOrAdded ++ removed
+    }
+
+    (removed ++ movedOrAdded).collect { case Some(e) => e }
   }
 
   /**

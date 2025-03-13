@@ -37,8 +37,11 @@ class DirectoryScannerSpec extends AnyWordSpecLike with Matchers {
   val fileB = FileInfo(Paths.get("b.txt"), hash = "b", size = 200, creationTime = 2, modifiedTime = 2)
   val fileC = FileInfo(Paths.get("c.txt"), hash = "c", size = 300, creationTime = 3, modifiedTime = 3)
 
-  def getEventSet(previous: FileStore, current: FileStore): Set[FileEvent] =
+  def compare(previous: FileStore, current: FileStore): Set[FileEvent] =
     LocalDirectoryScanner.compareFileStores(previous, current).compile.toList.unsafeRunSync().toSet
+
+  def compare(previous: Set[FileInfo], current: Set[FileInfo]): Set[FileEvent] =
+    compare(InMemoryFileStore(previous), InMemoryFileStore(current))
 
   "DirectoryScanner" should {
     "detected added files" in {
@@ -46,7 +49,7 @@ class DirectoryScannerSpec extends AnyWordSpecLike with Matchers {
       val currentFiles  = Set(fileA, fileB, fileC)
       val previous = InMemoryFileStore.empty
 
-      val events = getEventSet(previous, InMemoryFileStore(currentFiles))
+      val events = compare(previous, InMemoryFileStore(currentFiles))
 
       events shouldBe currentFiles.map(FileInfo => FileAdded(FileInfo))
     }
@@ -61,14 +64,25 @@ class DirectoryScannerSpec extends AnyWordSpecLike with Matchers {
           fileC.copy(modifiedTime = 4)
         )
 
-        val previous = InMemoryFileStore(previousFiles)
-        val events = getEventSet(previous, InMemoryFileStore(currentFiles))
+        val events = compare(previousFiles, currentFiles)
 
         events shouldBe Set(
           FileMetaChanged(fileA),
           FileMetaChanged(fileB),
           FileMetaChanged(fileC)
         )
+    }
+
+    "detect modified files" in {
+
+      val currentFiles = Set(fileA)
+      val previousFiles = Set(fileA.copy(hash = "b"))
+
+      val events = compare(previousFiles, currentFiles)
+
+      events shouldBe Set(
+        FileDeleted(fileA.copy(hash = "b")), FileAdded(fileA)
+      )
     }
 
     "detected moved files (simple case)" in {
@@ -81,8 +95,7 @@ class DirectoryScannerSpec extends AnyWordSpecLike with Matchers {
         fileC.copy(path = Paths.get("f.txt"))
       )
 
-      val previous = InMemoryFileStore(previousFiles)
-      val events = getEventSet(previous, InMemoryFileStore(currentFiles))
+      val events = compare(previousFiles, currentFiles)
 
       events shouldBe Set(
         FileMoved(fileA, Paths.get("d.txt")),
@@ -101,7 +114,7 @@ class DirectoryScannerSpec extends AnyWordSpecLike with Matchers {
         fileC.copy(path = Paths.get("a.txt"))
       ))
 
-      val events = getEventSet(previous, current)
+      val events = compare(previous, current)
 
       events shouldBe Set(
         FileMoved(fileA, Paths.get("b.txt")),
