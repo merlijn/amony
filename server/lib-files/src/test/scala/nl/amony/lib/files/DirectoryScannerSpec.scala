@@ -22,9 +22,10 @@ class DirectoryScannerSpec extends AnyWordSpecLike with Matchers {
     override def isOther(): Boolean = false
   }
 
-  def toAttributes(files: Seq[FileInfo]): Seq[(java.nio.file.Path, BasicFileAttributes)] = {
-    files.map { f => f.path -> LocalFileMeta(f.size, f.creationTime, f.modifiedTime) }
-  }
+  def toAttributes(files: Seq[FileInfo]): fs2.Stream[IO, (java.nio.file.Path, BasicFileAttributes)] = 
+    fs2.Stream.emits(files.map { f => f.path -> LocalFileMeta(f.size, f.creationTime, f.modifiedTime) })
+
+  def toFileStore(files: Seq[FileInfo]): FileStore = new InMemoryFileStore(files.map(f => f.path -> f).toMap)
 
   def hashFunction(files: Seq[FileInfo])(path: java.nio.file.Path): cats.effect.IO[String] = IO {
     files.find(_.path == path) match
@@ -40,9 +41,9 @@ class DirectoryScannerSpec extends AnyWordSpecLike with Matchers {
     "detected added files" in {
 
       val currentFiles = Seq(fileA, fileB, fileC)
-      val fileStore = new InMemoryFileStore(Map.empty)
+      val previous = new InMemoryFileStore(Map.empty)
 
-      val events = LocalDirectoryScanner.scanDirectory(toAttributes(currentFiles), fileStore, hashFunction(currentFiles))
+      val events = LocalDirectoryScanner.scanDirectory2(toFileStore(currentFiles), previous)
 
       events.compile.toList.unsafeRunSync() shouldBe currentFiles.map(FileInfo => FileAdded(FileInfo))
     }
@@ -58,7 +59,7 @@ class DirectoryScannerSpec extends AnyWordSpecLike with Matchers {
         )
 
         val fileStore = InMemoryFileStore(previousFiles)
-        val events = LocalDirectoryScanner.scanDirectory(toAttributes(currentFiles), fileStore, hashFunction(currentFiles))
+        val events = LocalDirectoryScanner.scanDirectory2(toFileStore(currentFiles), fileStore)
 
         events.compile.toList.unsafeRunSync() shouldBe Seq(
           FileMetaChanged(fileA),
@@ -78,7 +79,7 @@ class DirectoryScannerSpec extends AnyWordSpecLike with Matchers {
       )
 
       val fileStore = InMemoryFileStore(previousFiles)
-      val events = LocalDirectoryScanner.scanDirectory(toAttributes(currentFiles), fileStore, hashFunction(currentFiles))
+      val events = LocalDirectoryScanner.scanDirectory2(toFileStore(currentFiles), fileStore)
 
       events.compile.toList.unsafeRunSync() shouldBe Seq(
         FileMoved(fileA, Paths.get("d.txt")),
@@ -89,21 +90,20 @@ class DirectoryScannerSpec extends AnyWordSpecLike with Matchers {
 
     "detected moved files (edge case)" in {
 
-      val currentFiles = Seq(fileA, fileB, fileC)
+      val current = toFileStore(Seq(fileA, fileB, fileC))
 
-      val previousFiles = Seq(
+      val previous = toFileStore(Seq(
         fileA.copy(path = Paths.get("b.txt")),
-        fileB.copy(path = Paths.get("a.txt")),
-        fileC.copy(path = Paths.get("c.txt"))
-      )
+        fileB.copy(path = Paths.get("c.txt")),
+        fileC.copy(path = Paths.get("a.txt"))
+      ))
 
-      val fileStore = InMemoryFileStore(previousFiles)
-      val events = LocalDirectoryScanner.scanDirectory(toAttributes(currentFiles), fileStore, hashFunction(currentFiles))
+      val events = LocalDirectoryScanner.scanDirectory2(current, previous)
 
       events.compile.toList.unsafeRunSync() shouldBe Seq(
         FileMoved(fileA, Paths.get("b.txt")),
-        FileMoved(fileB, Paths.get("a.txt")),
-        FileMoved(fileC, Paths.get("c.txt"))
+        FileMoved(fileB, Paths.get("c.txt")),
+        FileMoved(fileC, Paths.get("a.txt"))
       )
     }
   }

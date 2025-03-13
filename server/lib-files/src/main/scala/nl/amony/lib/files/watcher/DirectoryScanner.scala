@@ -8,13 +8,6 @@ import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
 import scala.concurrent.duration.FiniteDuration
 
-sealed trait FileEvent
-
-case class FileMetaChanged(fileInfo: FileInfo) extends FileEvent
-case class FileAdded(fileInfo: FileInfo) extends FileEvent
-case class FileDeleted(fileInfo: FileInfo) extends FileEvent
-case class FileMoved(fileInfo: FileInfo, oldPath: Path) extends FileEvent
-
 extension [F[_], T](stream: Stream[F, T])
   def foldFlatMap[S](initial: S)(foldFn: (S, T) => S, nextFn: S => Stream[F, T]): Stream[F, T] = {
 
@@ -34,7 +27,63 @@ object LocalDirectoryScanner extends Logging {
   def scanDirectory(directory: Path, previous: FileStore, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFunction: Path => IO[String]): Stream[IO, FileEvent] = {
 
     val currentFiles: Seq[(Path, BasicFileAttributes)] = RecursiveFileVisitor.listFilesInDirectoryRecursive(directory, directoryFilter, fileFilter)
-    scanDirectory(currentFiles, previous, hashFunction)
+    scanDirectory(Stream.emits(currentFiles), previous, hashFunction)
+  }
+
+  def populateStore(currentFiles: Stream[IO, (Path, BasicFileAttributes)],
+                    snapshot: FileStore,
+                    current: FileStore,
+                    hashFunction: Path => IO[String]): IO[Unit] = {
+
+    currentFiles.evalMap { (path, attrs) =>
+      for {
+        previousByPath <- snapshot.getByPath(path)
+        equalMeta = previousByPath.exists(_.equalFileMeta(attrs))
+        hash <- previousByPath
+          .filter(_ => equalMeta)
+          .map(i => IO.pure(i.hash))
+          .getOrElse(hashFunction(path))
+      } yield FileInfo(path, attrs, hash)
+    }.evalMap(current.insert(_)).compile.drain
+  }
+
+  /**
+   * In principle, between the last time the directory was scanned and now, **all** files could be renamed. For example
+   * using an automated renaming tool or script.
+   *
+   * This means, the only thing we can rely on for checking equality is the metadata, not the filename.
+   *
+   */
+  def scanDirectory2(current: FileStore,
+                     previous: FileStore): Stream[IO, FileEvent] = {
+
+    val movedOrAdded = current.getAll().evalMap { file =>
+
+      previous.getByHash(file.hash).map {
+        case Nil      => Some(FileAdded(file))
+        case f :: Nil => 
+          if (f.path == file.path) 
+            if (f == file) 
+              None
+            else 
+              Some(FileMetaChanged(file))
+          else 
+            Some(FileMoved(file, f.path))
+        case multipleMatches       =>
+          multipleMatches.find(_.path == file.path) match
+            case Some(_) => None
+            case None    => Some(FileMoved(file, multipleMatches.head.path))
+      }
+    }.collect { case Some(e) => e }
+    
+    val removed = previous.getAll().evalMap { file =>
+      current.getByHash(file.hash).map {
+        case Nil => Some(FileDeleted(file))
+        case _   => None
+      }
+    }.collect { case Some(e) => e }
+    
+    movedOrAdded ++ removed
   }
 
   /**
@@ -44,15 +93,15 @@ object LocalDirectoryScanner extends Logging {
    * This means, the only thing we can rely on for checking equality is the metadata, not the filename.
    * 
    */
-  def scanDirectory(currentFiles: Seq[(Path, BasicFileAttributes)],
-                    previous: FileStore,
+  def scanDirectory(currentFiles: Stream[IO, (Path, BasicFileAttributes)],
+                    fileStore: FileStore,
                     hashFunction: Path => IO[String]): Stream[IO, FileEvent] = {
     
     // new files are either added or moved
-    def movedOrAdded(): Stream[IO, (Path, Option[FileEvent])] = Stream.emits(currentFiles).evalMap { (path, attrs) =>
+    def movedOrAdded(): Stream[IO, (Path, Option[FileEvent])] = currentFiles.evalMap { (path, attrs) =>
 
       for {
-        previousByPath <- previous.getByPath(path)
+        previousByPath <- fileStore.getByPath(path)
         equalMeta       = previousByPath.exists(_.equalFileMeta(attrs))
         hash           <- previousByPath
                            .filter(_ => equalMeta)
@@ -71,11 +120,10 @@ object LocalDirectoryScanner extends Logging {
                        */
                       IO.pure(path -> Some(FileMetaChanged(fileInfo)))
                   case _                =>
-                    previous.getByHash(hash).map:
-                      case previousByHash :: Nil if previousByHash.equalFileMeta(attrs) => path -> Some(FileMoved(fileInfo, previousByHash.path))
-                      case previousByHash :: Nil                                        => path -> Some(FileMoved(fileInfo, previousByHash.path))
-                      case Nil                                                          => path -> Some(FileAdded(fileInfo))
-                      case _                                                            => path -> None
+                    fileStore.getByHash(hash).map:
+                      case Nil                   => path -> Some(FileAdded(fileInfo))
+                      case previousByHash :: Nil => path -> Some(FileMoved(fileInfo, previousByHash.path))
+                      case _                     => path -> None
                     
       } yield event
     }
@@ -92,8 +140,6 @@ object LocalDirectoryScanner extends Logging {
 //    def emitDeleted(deleted: Map[Path, FileInfo]): Stream[IO, Option[FileEvent]] =
 //      Stream.fromIterator(deleted.values.iterator.map(r => Some(FileDeleted(r))), 1)
 
-//    previous.getAll().flatMap { f => Stream.emit(Some(FileDeleted(f))) }.merge(movedOrAdded).map(_.map(Some(_)))
-    
     movedOrAdded().collect { case (p, Some(e)) => e }
   }
 
