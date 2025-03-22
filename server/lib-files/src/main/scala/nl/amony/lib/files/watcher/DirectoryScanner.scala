@@ -12,10 +12,19 @@ object LocalDirectoryScanner extends Logging {
 
   def scanDirectory(directory: Path, previous: FileStore, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFunction: Path => IO[String]): Stream[IO, FileEvent] = {
 
-    val currentFiles: Seq[(Path, BasicFileAttributes)] = RecursiveFileVisitor.listFilesInDirectoryRecursive(directory, directoryFilter, fileFilter)
+    scanDirectory(
+      RecursiveFileVisitor.streamFilesInDirectoryRecursive(directory, directoryFilter, fileFilter),
+      previous,
+      directoryFilter,
+      fileFilter,
+      hashFunction
+    )
+  }
+
+  def scanDirectory(currentFiles: Stream[IO, (Path, BasicFileAttributes)], previous: FileStore, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFunction: Path => IO[String]): Stream[IO, FileEvent] = {
 
     val current = populateStore(
-      Stream.emits(currentFiles),
+      currentFiles,
       previous,
       new InMemoryFileStore(),
       hashFunction
@@ -32,9 +41,8 @@ object LocalDirectoryScanner extends Logging {
     currentFiles.evalMap { (path, attrs) =>
       for {
         previousByPath <- previous.getByPath(path)
-        equalMeta = previousByPath.exists(_.equalFileMeta(attrs))
         hash <- previousByPath
-          .filter(_ => equalMeta)
+          .filter(_.equalFileMeta(attrs))
           .map(i => IO.pure(i.hash))
           .getOrElse(hashFunction(path))
       } yield FileInfo(path, attrs, hash)
@@ -85,19 +93,30 @@ object LocalDirectoryScanner extends Logging {
    * 
    * The state will be kept in memory and is not persisted.
    */
-  def pollingStream(directoryPath: Path, fileStore: FileStore, pollInterval: FiniteDuration, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] = {
+  def pollingStream(directory: Path, fileStore: FileStore, pollInterval: FiniteDuration, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] =
+    pollingStream(() => RecursiveFileVisitor.streamFilesInDirectoryRecursive(directory, directoryFilter, fileFilter), fileStore, pollInterval, directoryFilter, fileFilter, hashFn)
+
+  /**
+   * Given an initial state, this method will poll the directory for changes and emit events for new, deleted and moved resources.
+   *
+   * The state will be kept in memory and is not persisted.
+   */
+  def pollingStream(scanFn: () => Stream[IO, (Path, BasicFileAttributes)], fileStore: FileStore, pollInterval: FiniteDuration, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] = {
 
     def unfoldRecursive(fs: FileStore): Stream[IO, FileEvent] = {
       val startTime = System.currentTimeMillis()
-      logger.debug(s"Scanning directory: ${directoryPath.toAbsolutePath}, previous state size: ${fs.size()}, stack depth: ${Thread.currentThread().getStackTrace.length}")
-      
-      def logTime = Stream.eval(IO { logger.debug(s"Scanning took: ${System.currentTimeMillis() - startTime} ms") })
+      logger.debug(s"Scanning, previous state size: ${fs.size()}, stack depth: ${Thread.currentThread().getStackTrace.length}")
+
+      def logTime = Stream.eval(IO {
+        logger.debug(s"Scanning took: ${System.currentTimeMillis() - startTime} ms")
+      })
+
       def sleep = Stream.sleep[IO](pollInterval)
 
-      scanDirectory(directoryPath, fileStore, directoryFilter, fileFilter, hashFn)
+      scanDirectory(scanFn(), fileStore, directoryFilter, fileFilter, hashFn)
         .evalMap(e => fs.applyEvent(e).map(_ => e)) >> logTime >> sleep >> unfoldRecursive(fs)
     }
-    
+
     Stream.suspend(unfoldRecursive(fileStore))
   }
 }

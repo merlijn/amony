@@ -1,29 +1,14 @@
 package nl.amony.lib.files
 
 import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 import nl.amony.lib.files.watcher.*
-import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import java.nio.file.Paths
-import java.nio.file.attribute.{BasicFileAttributes, FileTime}
-import cats.effect.unsafe.implicits.global
-import org.scalatest.matchers.should.Matchers
 
-class DirectoryScannerSpec extends AnyWordSpecLike with Matchers {
-
-  case class LocalFileMeta(override val size: Long, creationTimeMillis: Long, modifiedTimeMillis: Long) extends BasicFileAttributes {
-    override def fileKey(): AnyRef = null
-    override def lastAccessTime(): java.nio.file.attribute.FileTime = null
-    override def lastModifiedTime(): java.nio.file.attribute.FileTime = FileTime.fromMillis(modifiedTimeMillis)
-    override def creationTime(): java.nio.file.attribute.FileTime = FileTime.fromMillis(creationTimeMillis)
-    override def isRegularFile(): Boolean = true
-    override def isDirectory(): Boolean = false
-    override def isSymbolicLink(): Boolean = false
-    override def isOther(): Boolean = false
-  }
-
-  def toAttributes(files: Seq[FileInfo]): fs2.Stream[IO, (java.nio.file.Path, BasicFileAttributes)] = 
-    fs2.Stream.emits(files.map { f => f.path -> LocalFileMeta(f.size, f.creationTime, f.modifiedTime) })
+class DirectoryScannerSpec extends AnyWordSpec with Matchers {
 
   def toFileStore(files: Seq[FileInfo]): FileStore = InMemoryFileStore.apply(files)
 
@@ -101,6 +86,23 @@ class DirectoryScannerSpec extends AnyWordSpecLike with Matchers {
         FileMoved(fileA, Paths.get("d.txt")),
         FileMoved(fileB, Paths.get("e.txt")),
         FileMoved(fileC, Paths.get("f.txt"))
+      )
+    }
+
+    "moved + added (same name)" in {
+
+      val previousFiles = Set(fileA)
+
+      val renamedA = fileA.copy(path = Paths.get("renamed.txt"))
+      val sameNameAdded = fileA.copy(hash = "b")
+
+      val currentFiles = Set(renamedA, sameNameAdded)
+
+      val events = compare(previousFiles, currentFiles)
+
+      events shouldBe Set(
+        FileMoved(renamedA, Paths.get("a.txt")),
+        FileAdded(sameNameAdded)
       )
     }
 

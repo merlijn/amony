@@ -5,10 +5,8 @@ import java.nio.file.attribute.BasicFileAttributes
 
 object FileInfo {
   
-  def apply(path: Path, hash: String): FileInfo = {
-    val attrs = Files.readAttributes(path, classOf[BasicFileAttributes])
-    FileInfo(path, attrs, hash)
-  }
+  def apply(path: Path, hash: String): FileInfo = 
+    FileInfo(path, Files.readAttributes(path, classOf[BasicFileAttributes]), hash)
 
   def apply(path: Path, attrs: BasicFileAttributes, hash: String): FileInfo =
     FileInfo(path, hash, attrs.size(), attrs.creationTime().toMillis, attrs.lastModifiedTime().toMillis)

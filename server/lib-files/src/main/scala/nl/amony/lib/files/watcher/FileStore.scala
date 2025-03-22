@@ -8,8 +8,20 @@ import scala.jdk.CollectionConverters.*
 
 trait FileStore:
 
+  /**
+   * Returns the file info for the given path, if it exists.
+   *
+   * @param path
+   * @return
+   */
   def getByPath(path: Path): IO[Option[FileInfo]]
 
+  /**
+   * Returns all files with the given hash. May return an empty list if no files with the given hash exist.
+   *
+   * @param hash
+   * @return
+   */
   def getByHash(hash: String): IO[Seq[FileInfo]]
 
   def getAll(): fs2.Stream[IO, FileInfo]
@@ -21,18 +33,20 @@ trait FileStore:
   def insert(fileInfo: FileInfo): IO[Unit] = IO(applyEvent(FileAdded(fileInfo)))
 
 
-class InMemoryFileStore() extends FileStore:
+class InMemoryFileStore extends FileStore:
   
-  private val files = new ConcurrentHashMap[Path, FileInfo]()
-  private var byHashIndex: Map[String, Set[FileInfo]] = Map.empty
+  private val byPath = new ConcurrentHashMap[Path, FileInfo]()
+  private val byHashIndex = new ConcurrentHashMap[String, Set[FileInfo]]()
 
-  override def getByPath(path: Path): IO[Option[FileInfo]] = IO.pure(Option(files.get(path)))
+  private def getHashBucket(hash: String): Set[FileInfo] = byHashIndex.getOrDefault(hash, Set.empty)
 
-  override def getByHash(hash: String): IO[Seq[FileInfo]] = IO.pure(byHashIndex.get(hash).map(_.toSeq).getOrElse(Seq.empty))
+  override def getByPath(path: Path): IO[Option[FileInfo]] = IO.pure(Option(byPath.get(path)))
+
+  override def getByHash(hash: String): IO[Seq[FileInfo]] = IO.pure(Option(byHashIndex.get(hash)).map(_.toSeq).getOrElse(Seq.empty))
   
-  override def getAll(): fs2.Stream[IO, FileInfo] = fs2.Stream.emits(files.values.asScala.toSeq)
+  override def getAll(): fs2.Stream[IO, FileInfo] = fs2.Stream.emits(byPath.values.asScala.toSeq)
 
-  override def size(): Int = files.size
+  override def size(): Int = byPath.size
 
   override def insert(fileInfo: FileInfo): IO[Unit] = IO(insertSync(fileInfo))
 
@@ -45,24 +59,29 @@ class InMemoryFileStore() extends FileStore:
   def applyEventSync(e: FileEvent): Unit = e match
     case FileAdded(fileInfo) =>
       synchronized {
-        files.put(fileInfo.path, fileInfo)
-        byHashIndex = byHashIndex.updated(fileInfo.hash, byHashIndex.getOrElse(fileInfo.hash, Set.empty) + fileInfo)
+        byPath.put(fileInfo.path, fileInfo)
+        byHashIndex.put(fileInfo.hash, getHashBucket(fileInfo.hash) + fileInfo)
       }
     case FileDeleted(fileInfo) =>
       synchronized {
-        files.remove(fileInfo.path)
-        byHashIndex = byHashIndex.updated(fileInfo.hash, byHashIndex.getOrElse(fileInfo.hash, Set.empty).filterNot(_ == fileInfo))
+        byPath.remove(fileInfo.path)
+        val updatedHashBucket = getHashBucket(fileInfo.hash).filterNot(_ == fileInfo)
+        if (updatedHashBucket.isEmpty)
+          byHashIndex.remove(fileInfo.hash)
+        else
+          byHashIndex.put(fileInfo.hash, updatedHashBucket)
       }
     case FileMoved(fileInfo, oldPath) =>
       synchronized {
-        files.remove(oldPath)
-        files.put(fileInfo.path, fileInfo)
-        byHashIndex = byHashIndex.updated(fileInfo.hash, byHashIndex.getOrElse(fileInfo.hash, Set.empty).filterNot(_.path == oldPath) + fileInfo)
+        byPath.remove(oldPath)
+        byPath.put(fileInfo.path, fileInfo)
+        val updatedHashBucket = getHashBucket(fileInfo.hash).filterNot(_.path == oldPath) + fileInfo
+        byHashIndex.put(fileInfo.hash, updatedHashBucket)
       }
 
 object InMemoryFileStore:
   
-  val empty = new InMemoryFileStore()
+  def empty = new InMemoryFileStore()
   
   def apply(files: Iterable[FileInfo]): InMemoryFileStore = {
     val store = new InMemoryFileStore()

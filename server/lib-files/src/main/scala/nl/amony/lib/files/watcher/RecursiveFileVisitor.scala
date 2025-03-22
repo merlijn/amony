@@ -1,5 +1,7 @@
 package nl.amony.lib.files.watcher
 
+import cats.effect.IO
+import fs2.Stream
 import scribe.Logging
 
 import java.io.IOException
@@ -33,4 +35,7 @@ object RecursiveFileVisitor:
     val visitor = new RecursiveFileVisitor(directoryFilter, fileFilter)
     Files.walkFileTree(dir, visitor)
     visitor.files
+    
+  def streamFilesInDirectoryRecursive(dir: Path, directoryFilter: Path => Boolean, fileFilter: Path => Boolean): Stream[IO, (Path, BasicFileAttributes)] =
+    fs2.Stream.emits(listFilesInDirectoryRecursive(dir, directoryFilter, fileFilter))
 
