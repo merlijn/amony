@@ -162,7 +162,7 @@ object AdminRoutes extends Logging:
 
     val importBucketImpl =
       importBucket
-        .serverSecurityLogicPure(authenticator.requireRole(Roles.Admin))
+        .serverSecurityLogicPure(authenticator.publicEndpoint)
         .serverLogic(_ => (bucketId, stream) =>
           buckets.get(bucketId) match
             case Some(bucket: LocalDirectoryBucket) =>
@@ -171,10 +171,7 @@ object AdminRoutes extends Logging:
               val resources: fs2.Stream[IO, ResourceInfo] = stream
                 .through(fs2.text.utf8.decode[IO])
                 .through(fs2.text.lines)
-                .map { line =>
-                  logger.info(s"Decoding line: $line")
-                  io.circe.parser.decode[ResourceDto](line).map(_.toDomain())
-                }
+                .map { line => io.circe.parser.decode[ResourceDto](line).map(_.toDomain()) }
                 .flatMap {
                   case Right(resource) => fs2.Stream.emit(resource)
                   case Left(error)     => fs2.Stream.raiseError[IO](error)

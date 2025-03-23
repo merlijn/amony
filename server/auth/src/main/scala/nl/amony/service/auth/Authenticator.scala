@@ -1,6 +1,5 @@
 package nl.amony.service.auth
 
-import cats.effect.IO
 import nl.amony.service.auth.tapir.SecurityInput
 
 enum SecurityError:
