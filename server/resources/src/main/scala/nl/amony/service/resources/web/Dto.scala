@@ -68,7 +68,30 @@ case class ResourceDto(
   thumbnailTimestamp: Option[Int],
   @customise(required)
   clips: List[ClipDto],
-) derives Codec, sttp.tapir.Schema
+) derives Codec, sttp.tapir.Schema {
+
+  def toDomain(): ResourceInfo = {
+    
+    ResourceInfo(
+      bucketId = bucketId,
+      resourceId = resourceId,
+      userId = userId,
+      path = path,
+      hash = hash,
+      size = sizeInBytes,
+      contentType = Some(contentType),
+      contentMeta = ResourceMeta.Empty, // Can be re-created from the source
+      contentMetaSource = contentMetaSource.map(
+        s => ResourceMetaSource(s.toolName, s.toolData.noSpaces)
+      ),
+      tags = tags.toSet,
+      creationTime = Some(timeCreated),
+      title = title,
+      description = description,
+      thumbnailTimestamp = thumbnailTimestamp
+    )
+  }
+}
 
 case class ClipDto(
   resourceId: String,
@@ -82,29 +105,7 @@ case class ClipDto(
  ) derives Codec, sttp.tapir.Schema
 
 
-def fromDto(dto: ResourceDto): ResourceInfo = {
-  
-  val contentMetaSource = dto.contentMetaSource.map(
-      s => ResourceMetaSource(s.toolName, s.toolData.noSpaces)
-  )
-  
-  ResourceInfo(
-    bucketId = dto.bucketId,
-    resourceId = dto.resourceId,
-    userId = dto.userId,
-    path = dto.path,
-    hash = dto.hash,
-    size = dto.sizeInBytes,
-    contentType = Some(dto.contentType),
-    contentMeta = ResourceMeta.Empty, // Can be re-created from the source
-    contentMetaSource = contentMetaSource,
-    tags = dto.tags.toSet,
-    creationTime = Some(dto.timeCreated),
-    title = dto.title,
-    description = dto.description,
-    thumbnailTimestamp = dto.thumbnailTimestamp
-  )
-}
+
 
 def toDto(resource: ResourceInfo): ResourceDto = {
 

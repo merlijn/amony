@@ -191,7 +191,7 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
         _ <- tables.resources.delete(bucketId, resourceId)
       } yield ()
 
-  private[database] def truncateTables(): IO[Unit] =
+  private[resources] def truncateTables(): IO[Unit] =
     session.transaction.use: tx =>
       for {
         _ <- session.execute(Queries.tags.truncateCascade)

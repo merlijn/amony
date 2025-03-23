@@ -71,9 +71,19 @@ object AdminRoutes extends Logging:
       .description("Export all resources in a bucket")
       .get.in("api" / "admin" / "export" / path[String]("bucketId"))
       .securityIn(securityInput)
-      .out(streamBody(Fs2Streams[IO])(Schema.derived[ResourceDto], NdJson()))
+      .out(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson()))
       .errorOut(errorOutput)
-  
+
+  val importBucket =
+    endpoint
+      .name("adminImportBucket")
+      .tag("admin")
+      .description("Import all resources in a bucket")
+      .post.in("api" / "admin" / "import" / path[String]("bucketId"))
+      .in(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson()))
+      .securityIn(securityInput)
+      .errorOut(errorOutput)
+
   val endpoints = List(reIndex, refresh, rescanMetaData, reComputeHashes, exportBucket)
 
   def apply(searchService: SearchService, buckets: Map[String, ResourceBucket], jwtDecoder: JwtDecoder)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
@@ -138,7 +148,7 @@ object AdminRoutes extends Logging:
 
     val exportBucketImpl =
       exportBucket
-        .serverSecurityLogicPure(authenticator.publicEndpoint)
+        .serverSecurityLogicPure(authenticator.requireRole(Roles.Admin))
         .serverLogic(_ => bucketId =>
           buckets.get(bucketId) match
             case Some(bucket: LocalDirectoryBucket) =>
@@ -150,7 +160,33 @@ object AdminRoutes extends Logging:
               IO(Right(fs2.Stream.empty[IO]))
         )
 
+    val importBucketImpl =
+      importBucket
+        .serverSecurityLogicPure(authenticator.requireRole(Roles.Admin))
+        .serverLogic(_ => (bucketId, stream) =>
+          buckets.get(bucketId) match
+            case Some(bucket: LocalDirectoryBucket) =>
+              logger.info(s"Importing resources into bucket '$bucketId'")
+
+              val resources: fs2.Stream[IO, ResourceInfo] = stream
+                .through(fs2.text.utf8.decode[IO])
+                .through(fs2.text.lines)
+                .map { line =>
+                  logger.info(s"Decoding line: $line")
+                  io.circe.parser.decode[ResourceDto](line).map(_.toDomain())
+                }
+                .flatMap {
+                  case Right(resource) => fs2.Stream.emit(resource)
+                  case Left(error)     => fs2.Stream.raiseError[IO](error)
+                }
+
+                bucket.importBackup(resources).map(_ => Right(()))
+            case _ =>
+              logger.info(s"Cannot import into bucket '$bucketId'")
+              IO(Right(()))
+        )
+
     Http4sServerInterpreter[IO](serverOptions).toRoutes(
-      List(reIndexImpl, refreshImpl, rescanMetaDataImpl, recomputeHashesImpl, exportBucketImpl)
+      List(reIndexImpl, refreshImpl, rescanMetaDataImpl, recomputeHashesImpl, exportBucketImpl, importBucketImpl)
     )
   }

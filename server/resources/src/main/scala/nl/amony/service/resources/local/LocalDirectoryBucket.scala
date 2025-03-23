@@ -174,6 +174,12 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
           .compile
           .drain
 
+  def importBackup(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] = 
+    db.truncateTables() >> resources
+      .evalMap(resource => IO(logger.info(s"Inserting resource: ${resource.resourceId}")) >> db.insertResource(recoverMeta(resource)))
+      .compile
+      .drain
+  
   def sync(): IO[Unit] = {
 
     if (!config.scan.enabled)

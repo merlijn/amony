@@ -42,7 +42,9 @@ object ResourceRoutes:
       .name("getBuckets")
       .tag("resources")
       .description("Get information about a resource by its id")
-      .get.in("api" / "resources" / "buckets")
+      .get.in("api" / "buckets")
+      .securityIn(securityInput)
+      .errorOut(errorOutput)
       .out(apiCacheHeaders)
       .out(jsonBody[List[BucketDto]])
   
@@ -88,6 +90,11 @@ object ResourceRoutes:
         bucket   <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
         resource <- EitherT.fromOptionF(bucket.getResource(resourceId), NotFound)
       } yield bucket -> resource
+
+    val getBucketsImpl =
+      getBuckets
+        .serverSecurityLogicPure(authenticator.publicEndpoint)
+        .serverLogicSuccess(_ => _ => IO.pure(buckets.values.map(bucket => BucketDto(bucket.id, "", "")).toList))
 
     val getResourceByIdImpl =
       getResourceById
