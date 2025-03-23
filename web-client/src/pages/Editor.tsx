@@ -98,7 +98,8 @@ const PlayerView = (props: {vid: ResourceDto}) => {
   const fragmentPickingControls =
       <div className="fragment-picker">
         <button className="overlay-button" onClick={(e) => forwards(-1)}>-1s</button>
-        <button className="overlay-button" onClick={(e) => forwards(-0.1)}>-.1ms</button>
+        <button className="overlay-button" onClick={(e) => forwards(-0.1)}>-.1s</button>
+        <button className="overlay-button" onClick={(e) => forwards(-(1/props.vid.contentMeta.fps))}>-1f</button>
         <button className="button-blue" onClick={(e) => seek(fragment.start)}>|&lt;</button>
         <button className={fragment.start ? "button-green" : "button-orange"}
                 onClick={(e) => setFragment({...fragment, start: player.current?.currentTime})}>o&lt;</button>
@@ -107,6 +108,7 @@ const PlayerView = (props: {vid: ResourceDto}) => {
                 onClick={(e) => setFragment({...fragment, end: player.current?.currentTime})}>&gt;o
         </button>
         <button className="button-blue" onClick={(e) => seek(fragment.end)}>&gt;|</button>
+        <button className="overlay-button" onClick={(e) => forwards((1/props.vid.contentMeta.fps))}>1f</button>
         <button className="overlay-button" onClick={(e) => forwards(0.1)}>+.1s</button>
         <button className="overlay-button" onClick={(e) => forwards(1)}>+1s</button>
         <button className="button-green" onClick={updateThumbnailTS}>o</button>
