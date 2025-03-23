@@ -28,7 +28,6 @@ object SolrIndex {
   val collectionName = "amony_embedded"
   val defaultSort = SortOption(DateAdded, Desc)
   val tagsLimit = 12.toString
-  val commitWithinMillis = 5000
   val solrTarGzResource = "/solr.tar.gz"
   
   object FieldNames {
@@ -67,8 +66,12 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
 
   // delete the lock file on shutdown
   sys.addShutdownHook {
-    if (Files.exists(lockfilePath))
-      Files.delete(lockfilePath)
+    try {
+      logger.warn("JVM shutdown hook: committing solr")
+      solr.commit(collectionName)
+    } catch {
+      case e: Exception => logger.error("Error while closing solr", e)
+    }
   }
 
   if (Files.exists(solrHome) && !Files.isDirectory(solrHome))
@@ -80,6 +83,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
   }
 
   protected def close(): IO[Unit] = IO {
+    solr.commit(collectionName)
     solr.close()
     container.shutdown()
   }
@@ -227,7 +231,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
     try {
       logger.debug(s"Indexing media: ${resource.path}")
       val solrInputDocument = toSolrDocument(resource)
-      solr.add(collectionName, solrInputDocument, commitWithinMillis).getStatus
+      solr.add(collectionName, solrInputDocument, config.commitWithinMillis).getStatus
     }
     catch {
       case e: Exception => logger.error("Exception while trying to index document to solr", e)
@@ -243,12 +247,12 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
       val solrDocument = new SolrInputDocument()
       solrDocument.addField(FieldNames.id, resourceId)
       solrDocument.addField(FieldNames.path, Map("set" -> newPath).asJava)
-      solr.add(collectionName, solrDocument, commitWithinMillis).getStatus
+      solr.add(collectionName, solrDocument, config.commitWithinMillis).getStatus
 
     case ResourceDeleted(resourceId) =>
       try {
         logger.debug(s"Deleting document from index: $resourceId")
-        solr.deleteById(collectionName, resourceId, commitWithinMillis).getStatus
+        solr.deleteById(collectionName, resourceId, config.commitWithinMillis).getStatus
       }
       catch {
         case e: Exception => logger.error("Exception while trying to delete document from solr", e)
