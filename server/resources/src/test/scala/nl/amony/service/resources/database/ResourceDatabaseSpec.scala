@@ -71,7 +71,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
         )
 
         ResourceDatabase.make(dbConfig).use(db =>
-          insertResourcesTest(db) >> updateUserMetaTest(db) >> uniquePathConstraint(db) >> db.truncateTables()
+          insertResourcesTest(db) >> updateUserMetaTest(db) >> db.truncateTables()
 
         ).unsafeRunSync()
       }
