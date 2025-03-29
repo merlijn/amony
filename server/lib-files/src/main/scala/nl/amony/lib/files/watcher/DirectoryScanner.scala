@@ -60,6 +60,15 @@ object LocalDirectoryScanner extends Logging {
     }.foreach(e => current.insert(e)).compile.drain >> IO.pure(current)
   }
 
+  /**
+   * Compares two file stores and emits events for added, deleted and moved files.
+   * 
+   * Delete events are guaranteed to be emitted before move or added events.
+   * 
+   * @param previous
+   * @param current
+   * @return
+   */
   def compareFileStores(previous: FileStore, current: FileStore): Stream[IO, FileEvent] = {
 
     def maybeMetaChanged(file: FileInfo, previous: FileInfo): Stream[IO, FileEvent] =

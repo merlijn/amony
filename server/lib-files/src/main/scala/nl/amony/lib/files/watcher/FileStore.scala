@@ -26,6 +26,8 @@ trait FileStore:
 
   def getAll(): fs2.Stream[IO, FileInfo]
 
+  def getAllByHash(): fs2.Stream[IO, (String, Set[FileInfo])]
+
   def size(): Int
 
   def applyEvent(e: FileEvent): IO[Unit]
@@ -37,7 +39,6 @@ class InMemoryFileStore extends FileStore:
   
   private val byPath = new ConcurrentHashMap[Path, FileInfo]()
   private val byHashIndex = new ConcurrentHashMap[String, Set[FileInfo]]()
-  private val stale = new ConcurrentHashMap[String, FileInfo]()
 
   private def getHashBucket(hash: String): Set[FileInfo] = byHashIndex.getOrDefault(hash, Set.empty)
 
@@ -46,6 +47,11 @@ class InMemoryFileStore extends FileStore:
   override def getByHash(hash: String): IO[Seq[FileInfo]] = IO.pure(Option(byHashIndex.get(hash)).map(_.toSeq).getOrElse(Seq.empty))
   
   override def getAll(): fs2.Stream[IO, FileInfo] = fs2.Stream.emits(byPath.values.asScala.toSeq)
+
+  override def getAllByHash(): fs2.Stream[IO, (String, Set[FileInfo])] =
+    fs2.Stream
+      .emits(byHashIndex.asScala.toSeq)
+      .map { case (hash, files) => (hash, files) }
 
   def getAllSync() = byPath.values.asScala.toSeq
 

@@ -42,8 +42,8 @@ object LocalResourceScanner {
     case FileDeleted(f) =>
       IO.pure(ResourceDeleted(f.hash))
 
-    case FileMoved(f, oldPath) =>
-      IO.pure(ResourceMoved(f.hash, basePath.relativize(oldPath).toString, basePath.relativize(f.path).toString))
+    case FileMoved(file, oldPath) =>
+      IO.pure(ResourceMoved(file.hash, basePath.relativize(oldPath).toString, basePath.relativize(file.path).toString))
   }
 
   private def scan(initialState: Set[ResourceInfo], config: LocalDirectoryConfig, poll: Boolean): Stream[IO, ResourceEvent] = {
@@ -58,7 +58,7 @@ object LocalResourceScanner {
 
     val initialFiles: Seq[FileInfo] = initialState.map { r => FileInfo(resourcePath.resolve(Path.of(r.path)), r.hash.get, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0)) }.toSeq
 
-    val previous = InMemoryFileStore(initialFiles)
+    val fileStore = InMemoryFileStore(initialFiles)
 
     def filterFiles(path: Path) = {
       val fileName = path.getFileName.toString
@@ -72,10 +72,10 @@ object LocalResourceScanner {
 
     if (poll)
       LocalDirectoryScanner
-        .pollingStream(resourcePath, previous, config.scan.pollInterval, filterDirectory, filterFiles, config.scan.hashingAlgorithm.createHash)
+        .pollingStream(resourcePath, fileStore, config.scan.pollInterval, filterDirectory, filterFiles, config.scan.hashingAlgorithm.createHash)
         .parEvalMap(config.scan.scanParallelFactor)(mapEvent(resourcePath, config.id))
     else
-      LocalDirectoryScanner.scanDirectory(resourcePath, previous, filterDirectory, filterFiles, config.scan.hashingAlgorithm.createHash)
+      LocalDirectoryScanner.scanDirectory(resourcePath, fileStore, filterDirectory, filterFiles, config.scan.hashingAlgorithm.createHash)
         .parEvalMap(config.scan.scanParallelFactor)(mapEvent(resourcePath, config.id))
   }
 
