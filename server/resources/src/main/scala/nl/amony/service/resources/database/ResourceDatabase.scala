@@ -173,7 +173,7 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
       getById(bucketId, resourceId).flatMap:
         case None           => IO.pure(None)
         case Some(resource) =>
-          val updated = resource.copy(title = title, description = description)
+          val updated = resource.copy(title = title, description = description, tags = tagLabels.toSet)
           for {
             _ <- tables.resources.upsert(ResourceRow.fromResource(updated))
             _ <- updateResourceTags(bucketId, resourceId, tagLabels)
