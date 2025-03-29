@@ -37,6 +37,7 @@ class InMemoryFileStore extends FileStore:
   
   private val byPath = new ConcurrentHashMap[Path, FileInfo]()
   private val byHashIndex = new ConcurrentHashMap[String, Set[FileInfo]]()
+  private val stale = new ConcurrentHashMap[String, FileInfo]()
 
   private def getHashBucket(hash: String): Set[FileInfo] = byHashIndex.getOrDefault(hash, Set.empty)
 
@@ -45,6 +46,8 @@ class InMemoryFileStore extends FileStore:
   override def getByHash(hash: String): IO[Seq[FileInfo]] = IO.pure(Option(byHashIndex.get(hash)).map(_.toSeq).getOrElse(Seq.empty))
   
   override def getAll(): fs2.Stream[IO, FileInfo] = fs2.Stream.emits(byPath.values.asScala.toSeq)
+
+  def getAllSync() = byPath.values.asScala.toSeq
 
   override def size(): Int = byPath.size
 
@@ -73,9 +76,12 @@ class InMemoryFileStore extends FileStore:
       }
     case FileMoved(fileInfo, oldPath) =>
       synchronized {
-        byPath.remove(oldPath)
+        // this check is done to allow circular renames (e.g. a.txt -> b.txt -> a.txt)
+        if (Option(byPath.get(oldPath)).exists(_.hash == fileInfo.hash))
+          byPath.remove(oldPath)
+
         byPath.put(fileInfo.path, fileInfo)
-        val updatedHashBucket = getHashBucket(fileInfo.hash).filterNot(_.path == oldPath) + fileInfo
+        val updatedHashBucket = getHashBucket(fileInfo.hash).filterNot(f => f.path == oldPath && f.hash == fileInfo.hash) + fileInfo
         byHashIndex.put(fileInfo.hash, updatedHashBucket)
       }
 

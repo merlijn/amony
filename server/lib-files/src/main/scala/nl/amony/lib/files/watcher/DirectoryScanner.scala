@@ -10,6 +10,17 @@ import scala.concurrent.duration.FiniteDuration
 
 object LocalDirectoryScanner extends Logging {
 
+  extension [F[_], T](stream: Stream[F, T]) {
+    def foldFlatMap[S, E](initial: S)(foldFn: (S, T) => (S, Stream[F, E])): Stream[F, E] = {
+
+      val f: Stream[F, (S, Stream[F, E])] = stream.scan[(S, Stream[F, E])](initial -> Stream.empty[F]):
+        case ((acc, p), e) => foldFn(acc, e)
+
+      f.flatMap:
+        case (s, stream) => stream
+    }
+  }
+
   def scanDirectory(directory: Path, previous: FileStore, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFunction: Path => IO[String]): Stream[IO, FileEvent] = {
 
     scanDirectory(
@@ -49,43 +60,40 @@ object LocalDirectoryScanner extends Logging {
     }.foreach(e => current.insert(e)).compile.drain >> IO.pure(current)
   }
 
-  /**
-   * In principle, between the last time the directory was scanned and now, **all** files could be renamed. For example
-   * using an automated renaming tool or script.
-   *
-   * This means, the only thing we can rely on for checking equality is the metadata, not the filename.
-   *
-   */
   def compareFileStores(previous: FileStore, current: FileStore): Stream[IO, FileEvent] = {
 
-    def maybeMetaChanged(file: FileInfo, previous: FileInfo): Option[FileEvent] =
-      if (file == previous) None
-      else Some(FileMetaChanged(file))
+    def maybeMetaChanged(file: FileInfo, previous: FileInfo): Stream[IO, FileEvent] =
+      if (file == previous) Stream.empty
+      else Stream.emit(FileMetaChanged(file))
 
-    val removed = previous.getAll().evalMap { file =>
-      current.getByHash(file.hash).map {
-        case Nil => Some(FileDeleted(file))
-        case _ => None
-      }
+    val removed: Stream[IO, FileEvent] = previous.getAll().flatMap { file =>
+      Stream.force(current.getByHash(file.hash).map {
+        case Nil => Stream.emit(FileDeleted(file))
+        case _   => Stream.empty
+      })
     }
 
-    val movedOrAdded = current.getAll().evalMap { file =>
+    val movedOrAdded: Stream[IO, FileEvent] = current.getAll().foldFlatMap(Seq.empty[FileEvent]) { (carriedEvents, file) =>
 
-      previous.getByHash(file.hash).map {
-        case Nil      => Some(FileAdded(file))
-        case p :: Nil => 
+      val e: IO[Stream[IO, FileEvent]] = previous.getByHash(file.hash).map {
+        case Nil      =>
+          Stream.emit(FileAdded(file))
+        // a single file with the same hash was found
+        case p :: Nil =>
           if (p.path == file.path)
             maybeMetaChanged(file, p)
-          else 
-            Some(FileMoved(file, p.path))
+          else
+            Stream.emit(FileMoved(file, p.path))
         case multipleMatches       =>
           multipleMatches.find(_.path == file.path) match
             case Some(p) => maybeMetaChanged(file, p)
-            case None    => Some(FileMoved(file, multipleMatches.head.path)) // not correct
+            case None    => Stream.emit(FileMoved(file, multipleMatches.head.path)) // not correct
       }
+
+      (carriedEvents, Stream.force(e))
     }
 
-    (removed ++ movedOrAdded).collect { case Some(e) => e }
+    removed ++ movedOrAdded
   }
 
   /**
@@ -103,7 +111,7 @@ object LocalDirectoryScanner extends Logging {
    */
   def pollingStream(scanFn: () => Stream[IO, (Path, BasicFileAttributes)], fileStore: FileStore, pollInterval: FiniteDuration, directoryFilter: Path => Boolean, fileFilter: Path => Boolean, hashFn: Path => IO[String]): Stream[IO, FileEvent] = {
 
-    def unfoldRecursive(fs: FileStore): Stream[IO, FileEvent] = {
+    def pollRecursive(fs: FileStore): Stream[IO, FileEvent] = {
       val startTime = System.currentTimeMillis()
       logger.debug(s"Scanning, previous state size: ${fs.size()}, stack depth: ${Thread.currentThread().getStackTrace.length}")
 
@@ -114,9 +122,9 @@ object LocalDirectoryScanner extends Logging {
       def sleep = Stream.sleep[IO](pollInterval)
 
       scanDirectory(scanFn(), fileStore, directoryFilter, fileFilter, hashFn)
-        .evalMap(e => fs.applyEvent(e).map(_ => e)) >> logTime >> sleep >> unfoldRecursive(fs)
+        .evalMap(e => fs.applyEvent(e).map(_ => e)) >> logTime >> sleep >> pollRecursive(fs)
     }
 
-    Stream.suspend(unfoldRecursive(fileStore))
+    Stream.suspend(pollRecursive(fileStore))
   }
 }

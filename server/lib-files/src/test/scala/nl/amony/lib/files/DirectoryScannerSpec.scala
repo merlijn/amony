@@ -22,10 +22,10 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
   val fileB = FileInfo(Paths.get("b.txt"), hash = "b", size = 200, creationTime = 2, modifiedTime = 2)
   val fileC = FileInfo(Paths.get("c.txt"), hash = "c", size = 300, creationTime = 3, modifiedTime = 3)
 
-  def compare(previous: FileStore, current: FileStore): Set[FileEvent] =
-    LocalDirectoryScanner.compareFileStores(previous, current).compile.toList.unsafeRunSync().toSet
+  def compare(previous: FileStore, current: FileStore): Seq[FileEvent] =
+    LocalDirectoryScanner.compareFileStores(previous, current).compile.toList.unsafeRunSync()
 
-  def compare(previous: Set[FileInfo], current: Set[FileInfo]): Set[FileEvent] =
+  def compare(previous: Set[FileInfo], current: Set[FileInfo]): Seq[FileEvent] =
     compare(InMemoryFileStore(previous), InMemoryFileStore(current))
 
   "DirectoryScanner" should {
@@ -34,7 +34,7 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
       val currentFiles  = Set(fileA, fileB, fileC)
       val previous = InMemoryFileStore.empty
 
-      val events = compare(previous, InMemoryFileStore(currentFiles))
+      val events = compare(previous, InMemoryFileStore(currentFiles)).toSet
 
       events shouldBe currentFiles.map(FileInfo => FileAdded(FileInfo))
     }
@@ -49,7 +49,7 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
           fileC.copy(modifiedTime = 4)
         )
 
-        val events = compare(previousFiles, currentFiles)
+        val events = compare(previousFiles, currentFiles).toSet
 
         events shouldBe Set(
           FileMetaChanged(fileA),
@@ -63,7 +63,7 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
       val currentFiles = Set(fileA)
       val previousFiles = Set(fileA.copy(hash = "b"))
 
-      val events = compare(previousFiles, currentFiles)
+      val events = compare(previousFiles, currentFiles).toSet
 
       events shouldBe Set(
         FileDeleted(fileA.copy(hash = "b")), FileAdded(fileA)
@@ -72,7 +72,7 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
 
     "detected moved files (simple case)" in {
 
-      val currentFiles = Set(fileA, fileB, fileC)
+      val currentFiles = Set(fileA, fileB, fileC).toSet
 
       val previousFiles = Set(
         fileA.copy(path = Paths.get("d.txt")),
@@ -80,7 +80,7 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
         fileC.copy(path = Paths.get("f.txt"))
       )
 
-      val events = compare(previousFiles, currentFiles)
+      val events = compare(previousFiles, currentFiles).toSet
 
       events shouldBe Set(
         FileMoved(fileA, Paths.get("d.txt")),
@@ -89,21 +89,48 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
       )
     }
 
+    "circular rename" in {
+
+      val previousFiles = Set(fileA, fileB)
+
+      val renamedA = fileA.copy(path = Paths.get("b.txt"))
+      val renamedB = fileB.copy(path = Paths.get("a.txt"))
+
+      val currentFiles = Set(renamedA, renamedB)
+
+      val events = compare(previousFiles, currentFiles)
+
+      val fs = InMemoryFileStore(previousFiles)
+      events.foreach(fs.applyEventSync)
+
+      fs.getAllSync().toSet shouldBe currentFiles
+      fs.getByHash("a").unsafeRunSync() shouldBe Seq(renamedA)
+      fs.getByHash("b").unsafeRunSync() shouldBe Seq(renamedB)
+    }
+
+
     "moved + added (same name)" in {
 
-      val previousFiles = Set(fileA)
+      val previousFiles = Set(fileC)
 
-      val renamedA = fileA.copy(path = Paths.get("renamed.txt"))
-      val sameNameAdded = fileA.copy(hash = "b")
+      val renamedA = fileC.copy(path = Paths.get("a.txt"))
+      val sameNameAdded = fileC.copy(hash = "newhash")
 
       val currentFiles = Set(renamedA, sameNameAdded)
 
       val events = compare(previousFiles, currentFiles)
 
-      events shouldBe Set(
-        FileMoved(renamedA, Paths.get("a.txt")),
-        FileAdded(sameNameAdded)
+      events shouldBe Seq(
+        FileAdded(sameNameAdded),
+        FileMoved(renamedA, oldPath = Paths.get("c.txt")),
       )
+
+      val fs = InMemoryFileStore(previousFiles)
+      events.foreach(fs.applyEventSync)
+
+      fs.getAllSync().toSet shouldBe currentFiles
+      fs.getByHash("c").unsafeRunSync() shouldBe Seq(renamedA)
+      fs.getByHash("newhash").unsafeRunSync() shouldBe Seq(sameNameAdded)
     }
 
     "detected moved files (edge case)" in {
@@ -116,7 +143,7 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
         fileC.copy(path = Paths.get("a.txt"))
       ))
 
-      val events = compare(previous, current)
+      val events = compare(previous, current).toSet
 
       events shouldBe Set(
         FileMoved(fileA, Paths.get("b.txt")),
