@@ -5,6 +5,8 @@
 server/solr-search/solr/amony_embedded/data/
 web-client/src/api/generated
 
+.env
+
 # backend, java, scala
 *.class
 target/
