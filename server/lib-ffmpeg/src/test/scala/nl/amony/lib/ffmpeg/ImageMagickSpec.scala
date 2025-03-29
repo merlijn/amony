@@ -3,7 +3,6 @@ package nl.amony.lib.ffmpeg
 import cats.effect.unsafe.implicits.global
 import nl.amony.lib.magick.ImageMagick
 import org.scalatest.flatspec.AnyFlatSpecLike
-import scribe.Logging
 
 import java.nio.file.Path
 

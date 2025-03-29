@@ -14,7 +14,6 @@ import org.apache.solr.common.params.{CommonParams, FacetParams, ModifiableSolrP
 import org.apache.solr.common.{SolrDocument, SolrInputDocument}
 import org.apache.solr.core.CoreContainer
 import org.apache.solr.client.solrj.util.ClientUtils
-import scribe.Logging
 import io.grpc.stub.StreamObserver
 
 import java.nio.file.{Files, Path}
@@ -56,7 +55,9 @@ object SolrIndex {
     Resource.make[IO, SolrIndex](IO(new SolrIndex(config)))(_.close())
 }
 
-class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchService with Logging {
+class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchService {
+  
+  private val logger = org.slf4j.LoggerFactory.getLogger(classOf[SolrIndex])
 
   private val solrHome: Path = Path.of(config.path).toAbsolutePath.normalize()
 

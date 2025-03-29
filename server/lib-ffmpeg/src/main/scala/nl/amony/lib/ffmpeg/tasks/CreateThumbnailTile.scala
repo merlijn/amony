@@ -3,16 +3,16 @@ package nl.amony.lib.ffmpeg.tasks
 import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg.formatTime
 import nl.amony.lib.files.*
-import scribe.Logging
+import org.slf4j.LoggerFactory
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.DurationInt
 
-trait CreateThumbnailTile extends Logging {
+trait CreateThumbnailTile {
 
   self: ProcessRunner with FFProbe =>
-
+  
   def calculateNrOfFrames(length: Long): (Int, Int) = {
 
     // 2, 3,  4,  5,  6,  7,  8,  9,  10,  11,  12

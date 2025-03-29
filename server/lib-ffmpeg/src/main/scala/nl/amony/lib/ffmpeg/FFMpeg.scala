@@ -1,10 +1,10 @@
 package nl.amony.lib.ffmpeg
 
 import cats.effect.IO
-import nl.amony.lib.ffmpeg.tasks._
+import nl.amony.lib.ffmpeg.tasks.*
 import nl.amony.lib.files.FileUtil.stripExtension
 import nl.amony.lib.files.*
-import scribe.Logging
+import org.slf4j.LoggerFactory
 
 import java.nio.file.Path
 import java.time.Duration
@@ -21,12 +21,11 @@ object TranscodeProfile {
   )
 }
 
-object FFMpeg extends Logging
-  with ProcessRunner
+object FFMpeg extends ProcessRunner
   with CreateThumbnail
   with CreateThumbnailTile
   with FFProbe {
-
+  
   // https://stackoverflow.com/questions/56963790/how-to-tell-if-faststart-for-video-is-set-using-ffmpeg-or-ffprobe/56963953#56963953
   // Before avformat_find_stream_info() pos: 3193581 bytes read:3217069 seeks:0 nb_streams:2
   val fastStartPattern =

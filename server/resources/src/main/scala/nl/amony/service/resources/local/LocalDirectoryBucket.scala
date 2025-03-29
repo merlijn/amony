@@ -12,7 +12,7 @@ import nl.amony.service.resources.api.events.{ResourceDeleted, ResourceEvent, Re
 import nl.amony.service.resources.api.operations.ResourceOperation
 import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalResourceOperations.*
-import scribe.Logging
+import org.slf4j.LoggerFactory
 
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
@@ -30,8 +30,10 @@ object LocalDirectoryBucket:
     }{  _ => IO.unit }
   }
 
-class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, topic: EventTopic[ResourceEvent])(using runtime: IORuntime) extends ResourceBucket with Logging {
+class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, topic: EventTopic[ResourceEvent])(using runtime: IORuntime) extends ResourceBucket {
 
+  private val logger = LoggerFactory.getLogger(getClass)
+  
   private val runningOperations = new ConcurrentHashMap[LocalResourceOp, IO[Path]]()
   
   Files.createDirectories(config.cachePath)

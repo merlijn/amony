@@ -43,10 +43,8 @@ val tapirCirceYamlSpec       = "com.softwaremill.sttp.apispec" %% "openapi-circe
 val tapirSharedFs2           = "com.softwaremill.sttp.shared"  %% "fs2"                   % "1.4.2"
 
 val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "10.0.4"
-val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.16"
-
-val scribe                   = "com.outr"                 %% "scribe"                     % "3.16.0"
-val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.16.0"
+val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.17"
+val logbackClassic           = "ch.qos.logback"            % "logback-classic"            % "1.5.18"
 
 val tikaCore                 = "org.apache.tika"           % "tika-core"                  % "3.0.0"
 
@@ -135,7 +133,7 @@ lazy val libFiles =
       name         := "amony-lib-filewatcher",
       libraryDependencies ++= Seq(
         pureConfig,
-        scribe,
+        slf4jApi,
         fs2Core,
         scalaTest,
         scalaPbRuntime,
@@ -149,7 +147,7 @@ lazy val libFFMPeg =
     .settings(
       name         := "amony-lib-ffmpeg",
       libraryDependencies ++= Seq(
-        scribe,
+        slf4jApi,
         fs2Core,
         fs2Io,
         scalaTest,
@@ -165,7 +163,7 @@ lazy val libEventStore =
       name         := "amony-lib-eventstore",
       libraryDependencies ++= Seq(
         pureConfig,
-        scribe,
+        slf4jApi,
         fs2Core,
         scalaTest,
         scalaPbRuntime,
@@ -197,7 +195,7 @@ lazy val resources =
       Test / fork := true,
       name := "amony-service-resources",
       libraryDependencies ++= Seq(
-        scribe, sqids,
+        slf4jApi, sqids,
         circe, circeGeneric, http4sCirce, jsoup, tikaCore,
         tapirCore, tapirCatsEffect, tapirCirce, tapirHttp4s, fs2Io, fs2Core,
         http4sDsl, liquibaseCore,
@@ -220,7 +218,7 @@ lazy val searchService =
       name := "amony-service-search-api",
       libraryDependencies ++= Seq(
         // akka
-        scribeSlf4j,
+        slf4jApi,
         circe, circeGeneric,
         http4sDsl, http4sCirce
       ),
@@ -234,7 +232,7 @@ lazy val solrSearch =
     .settings(
       name := "amony-service-search-solr",
       libraryDependencies ++= Seq(
-        slf4jApi, scribeSlf4j,
+        slf4jApi,
         solr, solrLangId,
         catsEffect,
       ),
@@ -318,7 +316,7 @@ lazy val app =
 
       libraryDependencies ++= Seq(
         // logging
-        scribeSlf4j, log4CatsSlf4j,
+        slf4jApi, log4CatsSlf4j, logbackClassic,
         // config loading
         typesafeConfig, pureConfig,
         // database

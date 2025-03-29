@@ -13,7 +13,6 @@ import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
 import nl.amony.service.resources.api.events.ResourceEvent
-import scribe.Logging
 import skunk.data.{Arr, Completion}
 
 import java.sql.{Connection, DriverManager}
@@ -59,7 +58,7 @@ object ResourceDatabase:
     }
 }
 
-class ResourceDatabase(session: Session[IO]) extends Logging:
+class ResourceDatabase(session: Session[IO]):
 
   val defaultChunkSize = 128
 

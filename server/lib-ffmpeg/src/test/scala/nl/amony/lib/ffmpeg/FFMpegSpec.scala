@@ -1,7 +1,6 @@
 package nl.amony.lib.ffmpeg
 
 import org.scalatest.flatspec.AnyFlatSpecLike
-import scribe.Logging
 
 class FFMpegSpec extends AnyFlatSpecLike with Logging {
 

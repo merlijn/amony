@@ -8,7 +8,6 @@ import org.http4s.UrlForm.given
 import org.http4s.dsl.io.*
 import org.http4s.headers.{Location, `WWW-Authenticate`}
 import org.http4s.{Challenge, Header, HttpDate, HttpRoutes, ResponseCookie, Uri, UrlForm}
-import scribe.Logging
 import sttp.model.StatusCode
 import sttp.model.headers.CookieValueWithMeta
 import sttp.tapir.*
@@ -18,7 +17,7 @@ import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 import java.time.Instant
 import java.util.UUID
 
-object AuthRoutes extends Logging {
+object AuthRoutes {
 
   private val unauthorizedResponse = Unauthorized(`WWW-Authenticate`(Challenge("Bearer", "api")))
 

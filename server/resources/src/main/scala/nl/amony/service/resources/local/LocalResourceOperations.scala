@@ -6,7 +6,7 @@ import nl.amony.lib.magick.ImageMagick
 import nl.amony.service.resources.*
 import nl.amony.service.resources.api.operations.*
 import nl.amony.service.resources.api.{ImageMeta, ResourceInfo, VideoMeta}
-import scribe.Logging
+import org.slf4j.LoggerFactory
 
 import java.nio.file.Path
 
@@ -40,8 +40,10 @@ object LocalResourceOperations {
     override def createFile(inputFile: Path, outputDir: Path): IO[Path] = IO(inputFile)
   }
   
-  case class VideoThumbnailOp(resourceId: String, timestamp: Long, quality: Int) extends LocalResourceOp with Logging {
+  case class VideoThumbnailOp(resourceId: String, timestamp: Long, quality: Int) extends LocalResourceOp {
 
+    private val logger = LoggerFactory.getLogger(getClass)
+    
     override def contentType = "image/webp"
 
     def outputFilename: String = s"${resourceId}_${timestamp}_${quality}p.webp"
@@ -70,8 +72,10 @@ object LocalResourceOperations {
     }
   }
 
-  case class ImageThumbnailOp(resourceId: String, width: Option[Int], height: Option[Int]) extends LocalResourceOp with Logging {
+  case class ImageThumbnailOp(resourceId: String, width: Option[Int], height: Option[Int]) extends LocalResourceOp {
 
+    private val logger = LoggerFactory.getLogger(getClass)
+    
     override def contentType = "image/webp"
 
     def outputFilename: String = s"${resourceId}_${height.getOrElse("")}p.webp"
@@ -106,8 +110,10 @@ object LocalResourceOperations {
     }
   }
 
-  case class VideoFragmentOp(resourceId: String, range: (Long, Long), height: Int) extends LocalResourceOp with Logging {
+  case class VideoFragmentOp(resourceId: String, range: (Long, Long), height: Int) extends LocalResourceOp {
 
+    private val logger = LoggerFactory.getLogger(getClass)
+    
     override def contentType = "video/mp4"
 
     val minHeight = 120

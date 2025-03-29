@@ -11,13 +11,15 @@ import nl.amony.service.resources.web.oneOfList
 import nl.amony.service.search.api.ForceCommitRequest
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import org.http4s.*
-import scribe.Logging
+import org.slf4j.LoggerFactory
 import sttp.capabilities.fs2.Fs2Streams
 import sttp.tapir.*
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 
-object AdminRoutes extends Logging:
+object AdminRoutes:
 
+  val logger = LoggerFactory.getLogger(getClass)
+  
   val errorOutput: EndpointOutput[SecurityError] = oneOfList(securityErrors)
 
   val reIndex =

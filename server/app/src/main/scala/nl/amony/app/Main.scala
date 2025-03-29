@@ -12,13 +12,13 @@ import nl.amony.service.resources.api.events.ResourceEvent
 import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.{ResourceContentRoutes, ResourceRoutes}
-import scribe.{Logger, Logging}
+import org.slf4j.LoggerFactory
 import sttp.tapir.server.http4s.Http4sServerOptions
 
 import scala.reflect.ClassTag
 
-object Main extends ResourceApp.Forever with ConfigLoader with Logging {
-
+object Main extends ResourceApp.Forever with ConfigLoader {
+  
   override def run(args: List[String]): Resource[IO, Unit] = {
 
     import cats.effect.unsafe.implicits.global
@@ -30,7 +30,7 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
 
     // somehow the default (slf4j) logger is not working, so we explicitly set it here
     val serverLog = {
-      val serverLogger = Logger("nl.amony.app.Main.serverLogger")
+      val serverLogger = LoggerFactory.getLogger("nl.amony.app.Main.serverLogger")
       Http4sServerOptions.defaultServerLog[IO].copy(
         logLogicExceptions = true,
         doLogExceptions = (msg, throwable) => IO { serverLogger.error(msg, throwable) },

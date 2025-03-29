@@ -9,11 +9,10 @@ import org.http4s.*
 import org.http4s.CacheDirective.`max-age`
 import org.http4s.dsl.io.*
 import org.http4s.headers.`Cache-Control`
-import scribe.Logging
 
 import scala.concurrent.duration.DurationInt
 
-object ResourceContentRoutes extends Logging {
+object ResourceContentRoutes {
 
   object patterns {
     val ClipPattern                   = raw"clip_(\d+)-(\d+)_(\d+)p\.mp4".r

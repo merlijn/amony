@@ -4,11 +4,10 @@ import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg.formatTime
 import nl.amony.lib.files.FileUtil.stripExtension
 import nl.amony.lib.files.*
-import scribe.Logging
 
 import java.nio.file.Path
 
-trait CreateThumbnail extends Logging {
+trait CreateThumbnail {
 
   self: ProcessRunner with FFProbe =>
 

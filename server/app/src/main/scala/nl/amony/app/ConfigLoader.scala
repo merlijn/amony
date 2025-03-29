@@ -5,8 +5,8 @@ import nl.amony.search.SearchConfig
 import nl.amony.search.solr.SolrConfig
 import nl.amony.service.resources.ResourceConfig.*
 import nl.amony.service.resources.database.DatabaseConfig
+import org.slf4j.LoggerFactory
 import pureconfig.*
-import scribe.Logging
 
 import java.nio.file.Path
 import scala.reflect.ClassTag
@@ -20,7 +20,9 @@ case class AmonyConfig(
     database: DatabaseConfig,
 ) derives ConfigReader
 
-trait ConfigLoader extends Logging {
+trait ConfigLoader {
+  
+  val logger = LoggerFactory.getLogger(getClass)
 
   lazy val config       = {
     Option(System.getenv().get("AMONY_CONFIG_FILE")) match
