@@ -291,11 +291,11 @@ lazy val app =
       jibTags                 := { if (isMainBranch && hasNoLocalChanges) List("latest") else List("dev") },
       jibExtraMappings   ++= {
         // this adds the frontend assets to the docker image
-        val webClientDir = (Compile / baseDirectory).value / ".." / ".." / "web-client" / "dist"
+        val webClientDir = (Compile / baseDirectory).value / ".." / ".." / "frontend" / "dist"
         val target = "/app/assets"
         val contents = MappingsHelper.contentOf(webClientDir, target)
         val log = streams.value.log
-        log.info(s"web-client assets file count: ${contents.size}")
+        log.info(s"frontend assets file count: ${contents.size}")
         contents
       },
       jibEnvironment := Map(

@@ -1,5 +1,5 @@
 {
-  "name": "amony-web-client",
+  "name": "amony-frontend",
   "type": "module",
   "os": [
     "darwin",

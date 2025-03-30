@@ -63,14 +63,14 @@ Inside the sbt console run the command `~reStart`
 
 After compiling the server will be running on port `8080`. It will start scanning the `videos` directory and log its progress.
 
-### 3. Start the web client
+### 3. Start the frontend
 ```bash
-cd web-client
+cd frontend
 npm install --save
 npm start
 ```
 
-After compiling the web-client will be running on port `3000`. It will proxy all api requests to the server on port `8080`.
+After compiling the frontend will be running on port `3000`. It will proxy all api requests to the server on port `8080`.
 
 ### 4. Open your web browser
 
@@ -88,7 +88,7 @@ Set location to `localhost:3000`
 ### 1. Build the web client
 
 ```bash
-cd web-client
+cd frontend
 npm install --save
 npm run build
 ```

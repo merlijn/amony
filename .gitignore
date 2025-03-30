@@ -3,7 +3,7 @@
 # project specific
 /media/
 server/solr-search/solr/amony_embedded/data/
-web-client/src/api/generated
+frontend/src/api/generated
 
 .env
 
@@ -27,8 +27,8 @@ yarn-debug.log*
 yarn-error.log*
 /.pnp
 .pnp.js
-/web-client/build
-/web-client/dist
+/frontend/build
+/frontend/dist
 
 # testing
 /coverage
