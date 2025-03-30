@@ -99,13 +99,15 @@ object AdminRoutes extends Logging:
             case Some(bucket) =>
               logger.info(s"Re-indexing all resources in bucket '$bucketId'")
               
-              def indexResource(resource: ResourceInfo) = IO.fromFuture(IO(searchService.index(resource))) >> IO.unit
+              def indexResource(resource: ResourceInfo, index: Long) = IO.fromFuture(IO(searchService.index(resource))) >> IO.pure(index)
               def commit: IO[Unit] = IO.fromFuture(IO(searchService.forceCommit(ForceCommitRequest()))) >> IO.unit
               
               bucket
-                .getAllResources().foreach(indexResource)
-                .compile
-                .drain >> commit >> IO(logger.info(s"Finished re-indexing all resources in bucket '$bucketId'"))
+                .getAllResources().zipWithIndex.evalMap(indexResource)
+                .compile.last.flatMap {
+                  case Some(size) => commit >> IO(logger.info(s"Re-indexed $size resources in bucket '$bucketId'"))
+                  case None => IO(logger.info(s"No resources found in bucket '$bucketId'"))
+                }
         )
 
     val refreshImpl =

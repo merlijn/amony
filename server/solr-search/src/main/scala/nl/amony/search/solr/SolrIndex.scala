@@ -37,7 +37,7 @@ object SolrIndex {
     val path = "path_text_ci"
     val filesize = "filesize_l"
     val tags = "tags_ss"
-    val thumbnailTimestamp = "thumbnailtimestamp_l"
+    val thumbnailTimestamp = "thumbnailtimestamp_i"
     val title = "title_s"
     val videoCodec = "video_codec_s"
     val description = "description_s"
@@ -61,6 +61,14 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
   private val solrHome: Path = Path.of(config.path).toAbsolutePath.normalize()
 
   logger.info(s"Solr home: $solrHome")
+
+  def loggingFailureFuture[T](f: => T): Future[T] = {
+    Future(f).recover {
+      case e: Exception =>
+        logger.error("Error while executing solr query", e)
+        throw e
+    }
+  }
 
   private val lockfilePath = solrHome.resolve("index/write.lock")
 
@@ -288,7 +296,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
 
   override def searchMedia(query: Query): Future[SearchResult] = {
 
-    Future {
+    loggingFailureFuture {
 
       val solrParams = toSolrQuery(query)
       val queryResponse = solr.query(solrParams)
@@ -321,7 +329,7 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
   }
 
   override def forceCommit(request: ForceCommitRequest): Future[ForceCommitResult] =
-    Future {
+    loggingFailureFuture {
       logger.info("Forcing commit")
       solr.commit(collectionName); ForceCommitResult()
     }
