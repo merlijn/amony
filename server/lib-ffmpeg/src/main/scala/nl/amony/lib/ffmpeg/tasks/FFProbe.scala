@@ -3,13 +3,14 @@ package nl.amony.lib.ffmpeg.tasks
 import cats.effect.IO
 import io.circe.{Decoder, HCursor, Json}
 import nl.amony.lib.ffmpeg.FFMpeg.fastStartPattern
+import scribe.Logging
 
 import java.nio.file.Path
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.util.{Failure, Try}
 import FFProbeModel.{*, given}
 
-trait FFProbe {
+trait FFProbe extends Logging {
 
   self: ProcessRunner =>
 

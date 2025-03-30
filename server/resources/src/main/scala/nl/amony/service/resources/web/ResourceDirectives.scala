@@ -11,8 +11,9 @@ import org.http4s.dsl.io.*
 import org.http4s.headers.Range.SubRange
 import org.http4s.headers.{Range, `Accept-Encoding`, `Accept-Ranges`, `Content-Encoding`, `Content-Length`, `Content-Range`, `Content-Type`}
 import org.typelevel.ci.CIStringSyntax
+import scribe.Logging
 
-object ResourceDirectives {
+object ResourceDirectives extends Logging {
 
   def responseFromResource(req: Request[IO], resource: Resource): IO[Response[IO]] = {
 

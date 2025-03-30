@@ -1,7 +1,6 @@
 package nl.amony.lib.files.watcher
 
 import cats.effect.IO
-import org.slf4j.LoggerFactory
 
 import java.nio.file.*
 import java.util.concurrent.*
@@ -16,7 +15,7 @@ import scala.util.Using
  */
 object DirectoryWatcher {
 
-  val logger = LoggerFactory.getLogger("DirectoryWatcher")
+  val logger = scribe.Logger("DirectoryWatcher")
 
   def watchDirectory(directoryPath: Path, getByPath: Path => Option[FileInfo], hashFn: Path => String): Flow.Publisher[FileEvent] = {
     val publisher = new SubmissionPublisher[FileEvent]()

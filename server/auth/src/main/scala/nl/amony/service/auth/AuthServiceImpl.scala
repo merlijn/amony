@@ -1,13 +1,14 @@
 package nl.amony.service.auth
 
 import nl.amony.service.auth.api.*
+import scribe.Logging
 
 import scala.concurrent.Future
 
-class AuthServiceImpl(config: AuthConfig) extends AuthServiceGrpc.AuthService {
+class AuthServiceImpl(config: AuthConfig) extends AuthServiceGrpc.AuthService with Logging {
 
   private val tokenManager = new TokenManager(config.jwt)
-  
+
   // https://github.com/Password4j/password4j
 
   override def authenticate(request: Credentials): Future[AuthenticationResponse] =

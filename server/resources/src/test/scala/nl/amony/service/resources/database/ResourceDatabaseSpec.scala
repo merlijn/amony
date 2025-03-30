@@ -8,16 +8,14 @@ import org.testcontainers.containers.wait.strategy.Wait
 import cats.effect.unsafe.implicits.global
 import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
 import org.scalatest.matchers.should.Matchers
+import scribe.Logging
 import cats.implicits.*
-import org.slf4j.LoggerFactory
 
 import java.util.UUID
 import scala.util.Random
 
-class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with Matchers {
+class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with Logging with Matchers {
 
-  val logger = LoggerFactory.getLogger(classOf[ResourceDatabaseSpec])
-  
   override val containerDef: GenericContainer.Def[GenericContainer] =
     GenericContainer.Def(
       "postgres:17.2",

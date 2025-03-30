@@ -1,11 +1,9 @@
 package nl.amony.lib.ffmpeg.tasks
 
 import cats.effect.IO
-import org.slf4j.LoggerFactory
+import scribe.Logging
 
-trait ProcessRunner {
-  
-  val logger = LoggerFactory.getLogger(getClass)
+trait ProcessRunner extends Logging {
   
   def toString(is: fs2.Stream[IO, Byte]): IO[String] = is.compile.toVector.map(_.toArray).map(new String(_))
 

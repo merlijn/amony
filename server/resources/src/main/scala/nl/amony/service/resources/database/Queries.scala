@@ -1,17 +1,15 @@
 package nl.amony.service.resources.database
 
 import io.circe.Json
-import org.slf4j.LoggerFactory
+import scribe.Logging
 import skunk.*
 import skunk.circe.codec.all.*
 import skunk.implicits.*
 import skunk.codec.all.*
 import skunk.data.Arr
 
-object Queries {
-
-  private val logger = LoggerFactory.getLogger(getClass)
-
+object Queries extends Logging {
+  
   object tags {
       val all: Query[Void, TagRow] = sql"select id, label from tags".query(TagRow.codec)
 
@@ -74,7 +72,7 @@ object Queries {
     val getById: Query[(String, String), ResourceRow] =
       sql"select to_json(r.*) from resources r where bucket_id = $varchar and resource_id = $varchar"
         .query(json)
-        .map(_.as[ResourceRow].left.map(err => logger.warn(err.toString)).toOption.get)
+        .map(_.as[ResourceRow].left.map(err => logger.warn(err)).toOption.get)
 
     val insert: Command[Json] =
       sql"insert into resources SELECT * FROM json_populate_record(NULL::resources, $json)".command

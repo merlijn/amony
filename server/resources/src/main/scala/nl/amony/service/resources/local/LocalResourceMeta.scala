@@ -7,17 +7,15 @@ import nl.amony.lib.magick.ImageMagick
 import nl.amony.service.resources.*
 import nl.amony.service.resources.api.{ImageMeta, ResourceMeta, ResourceMetaSource, VideoMeta}
 import org.apache.tika.Tika
+import scribe.Logging
 
 import java.nio.file.Path
 import scala.util.{Failure, Success, Try}
 import nl.amony.lib.ffmpeg.tasks.FFProbeModel.given
 import nl.amony.lib.magick.model.{MagickImageMeta, MagickResult}
-import org.slf4j.LoggerFactory
 
-object LocalResourceMeta {
+object LocalResourceMeta extends Logging {
 
-  private val logger = LoggerFactory.getLogger(getClass)
-  
   case class LocalResourceMeta(contentType: String, toolMeta: Option[ResourceMetaSource], meta: ResourceMeta)
 
   private val tika = new Tika()

@@ -10,15 +10,15 @@ import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.{Router, Server}
 import org.http4s.{HttpRoutes, Response, Status}
 import org.typelevel.log4cats.*
+import scribe.Logging
 
 import java.nio.file.Path
 import java.security.SecureRandom
 import javax.net.ssl.{KeyManagerFactory, SNIHostName, SNIServerName, SSLContext}
 import org.typelevel.log4cats.slf4j.{Slf4jFactory, Slf4jLogger}
 
-object WebServer {
+object WebServer extends Logging {
 
-  val logger = org.slf4j.LoggerFactory.getLogger(getClass)
   given slf4jLogger: LoggerFactory[IO] = Slf4jFactory.create[IO]
 
   def run(config: WebServerConfig, routes: HttpRoutes[IO])(implicit io: IORuntime): Resource[IO, Unit] = {

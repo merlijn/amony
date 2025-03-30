@@ -2,15 +2,13 @@ package nl.amony.lib.files.watcher
 
 import cats.effect.IO
 import fs2.Stream
-import org.slf4j.LoggerFactory
+import scribe.Logging
 
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
 import scala.concurrent.duration.FiniteDuration
 
-object LocalDirectoryScanner {
-
-  private val logger = LoggerFactory.getLogger(getClass)
+object LocalDirectoryScanner extends Logging {
 
   extension [F[_], T](stream: Stream[F, T]) {
     def foldFlatMap[S, E](initial: S)(foldFn: (S, T) => (S, Stream[F, E])): Stream[F, E] = {

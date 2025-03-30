@@ -11,8 +11,8 @@ import nl.amony.service.resources.api.events.*
 import java.nio.file.{Files, Path}
 
 object LocalResourceScanner {
-
-  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
+  
+  val logger = scribe.Logger("LocalResourceScanner")
 
   private def mapEvent(basePath: Path, bucketId: String)(fileEvent: FileEvent): IO[ResourceEvent] = fileEvent match {
     case FileAdded(f) =>

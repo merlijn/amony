@@ -2,13 +2,11 @@ package nl.amony.lib.ffmpeg.tasks
 
 import io.circe.generic.semiauto.deriveDecoder
 import io.circe.*
-import org.slf4j.LoggerFactory
+import scribe.Logging
 
 import scala.util.matching.UnanchoredRegex
 
-object FFProbeModel {
-  
-  val logger = LoggerFactory.getLogger(getClass)
+object FFProbeModel extends Logging {
 
   case class ProbeDebugOutput(isFastStart: Boolean)
 

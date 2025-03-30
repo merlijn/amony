@@ -2,7 +2,7 @@ package nl.amony.service.resources.util
 
 import cats.effect.IO
 import nl.amony.lib.files.*
-import org.slf4j.LoggerFactory
+import scribe.Logging
 
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
@@ -11,9 +11,7 @@ import java.security.MessageDigest
 import java.util
 import scala.util.{Random, Using}
 
-object PartialHash {
-
-  private val logger = LoggerFactory.getLogger(getClass)
+object PartialHash extends Logging {
 
   /**
    * Randomly samples given number of bytes from a file.
