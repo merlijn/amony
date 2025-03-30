@@ -45,7 +45,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: server
+        working-directory: backend
 
     env:
       DOCKER_REGISTRY: europe-west4-docker.pkg.dev

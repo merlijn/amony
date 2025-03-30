@@ -2,7 +2,7 @@
 
 # project specific
 /media/
-server/solr-search/solr/amony_embedded/data/
+backend/solr-search/solr/amony_embedded/data/
 frontend/src/api/generated
 
 .env
