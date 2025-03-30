@@ -56,7 +56,7 @@ object SolrIndex {
 }
 
 class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchService {
-  
+
   private val logger = org.slf4j.LoggerFactory.getLogger(classOf[SolrIndex])
 
   private val solrHome: Path = Path.of(config.path).toAbsolutePath.normalize()
@@ -242,12 +242,20 @@ class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchSe
   def processEvent(event: ResourceEvent): Unit = event match {
 
     case ResourceAdded(resource)   => insertResource(resource)
+
     case ResourceUpdated(resource) => insertResource(resource)
 
     case ResourceMoved(resourceId, oldPath, newPath) =>
       val solrDocument = new SolrInputDocument()
       solrDocument.addField(FieldNames.id, resourceId)
       solrDocument.addField(FieldNames.path, Map("set" -> newPath).asJava)
+      solr.add(collectionName, solrDocument, config.commitWithinMillis).getStatus
+
+    case ResourceFileMetaChanged(id, creationTime, lastModifiedTime) =>
+      val solrDocument = new SolrInputDocument()
+      solrDocument.addField(FieldNames.id, id)
+      creationTime.foreach(time => solrDocument.addField(FieldNames.created, Map("set" -> time).asJava))
+      lastModifiedTime.foreach(time => solrDocument.addField(FieldNames.lastModified, Map("set" -> time).asJava))
       solr.add(collectionName, solrDocument, config.commitWithinMillis).getStatus
 
     case ResourceDeleted(resourceId) =>

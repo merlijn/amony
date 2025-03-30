@@ -203,6 +203,13 @@ class ResourceDatabase(session: Session[IO]):
       case ResourceAdded(resource)       => insertResource(resource) >> effect(event)
       case ResourceDeleted(resourceId)   => deleteResource(bucketId, resourceId) >> effect(event)
       case ResourceMoved(id, _, newPath) => move(bucketId, id, newPath) >> effect(event)
+      case ResourceFileMetaChanged(id, creationTime, lastModifiedTime) =>
+        getById(bucketId, id).flatMap {
+          case Some(resource) =>
+            val updated = resource.copy(creationTime = creationTime, lastModifiedTime = lastModifiedTime)
+            tables.resources.upsert(ResourceRow.fromResource(updated)) >> effect(event)
+          case None => IO.unit
+        }
       case _ => IO.unit
     }
   }

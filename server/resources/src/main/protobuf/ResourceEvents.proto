@@ -15,6 +15,7 @@ message ResourceEvent {
     ResourceDeleted deleted = 2;
     ResourceMoved moved = 3;
     ResourceUpdated updated = 4;
+    ResourceFileMetaChanged fileMetaChanged = 5;
   }
 }
 
@@ -28,6 +29,12 @@ message ResourceDeleted {
 
 message ResourceUpdated {
   required nl.amony.service.resources.api.ResourceInfo resource = 1;
+}
+
+message ResourceFileMetaChanged {
+  required string resourceId = 1;
+  optional int64 creationTime = 2;
+  optional int64 lastModifiedTime = 3;
 }
 
 message ResourceMoved {

@@ -39,6 +39,9 @@ object LocalResourceScanner {
             )
         }
 
+    case FileMetaChanged(file) =>
+      IO.pure(ResourceFileMetaChanged(file.hash, Some(file.creationTime), Some(file.modifiedTime)))
+
     case FileDeleted(f) =>
       IO.pure(ResourceDeleted(f.hash))
 
