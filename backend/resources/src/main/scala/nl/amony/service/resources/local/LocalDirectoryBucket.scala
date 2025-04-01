@@ -3,8 +3,8 @@ package nl.amony.service.resources.local
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Pipe
-import nl.amony.lib.eventbus.EventTopic
 import nl.amony.lib.files.*
+import nl.amony.lib.messagebus.EventTopic
 import nl.amony.service.resources.*
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}

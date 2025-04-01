@@ -1,4 +1,4 @@
-package nl.amony.lib.eventbus
+package nl.amony.lib.messagebus
 
 import cats.effect.IO
 import fs2.Stream

@@ -3,7 +3,7 @@ package nl.amony.app
 import cats.effect.{IO, Resource, ResourceApp}
 import cats.implicits.*
 import nl.amony.app.routes.{AdminRoutes, WebAppRoutes}
-import nl.amony.lib.eventbus.EventTopic
+import nl.amony.lib.messagebus.EventTopic
 import nl.amony.search.SearchRoutes
 import nl.amony.search.solr.SolrIndex
 import nl.amony.service.auth.{AuthConfig, AuthRoutes, AuthServiceImpl}
