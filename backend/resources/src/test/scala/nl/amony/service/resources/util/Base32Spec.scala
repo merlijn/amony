@@ -1,8 +1,6 @@
 package nl.amony.service.resources.util
 
-import nl.amony.service.resources.util.Base32
-as ApacheBase32
-import org.apache.commons.codec.binary.Base32
+import org.apache.commons.codec.binary.{ Base32 as ApacheBase32 }
 import org.scalatest.wordspec.AnyWordSpecLike
 
 class Base32Spec extends AnyWordSpecLike {
