@@ -215,11 +215,11 @@ lazy val resources =
 lazy val buildSolrTarGz = taskKey[Seq[File]]("Creates the solr.tar.gz file")
 
 lazy val searchService =
-  module("solr-search")
+  module("service-search")
     .dependsOn(resources)
     .settings(protobufSettings)
     .settings(
-      name := "amony-service-search-solr",
+      name := "amony-service-search",
       libraryDependencies ++= Seq(
         slf4jApi, scribeSlf4j,
         solr, solrLangId,

@@ -16,7 +16,6 @@ trait PersistenceCodec[E] {
   /**
    * Decodes a message
    *
-   * @param typeHint indicates which type of message is contained in the data
    * @param bytes the data
    * @return
    */
