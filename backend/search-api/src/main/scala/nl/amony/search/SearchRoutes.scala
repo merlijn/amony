@@ -1,8 +1,7 @@
 package nl.amony.search
 
 import cats.effect.IO
-import nl.amony.service.auth.{Authenticator, JwtDecoder, SecurityError}
-import nl.amony.service.auth.tapir.*
+import nl.amony.lib.auth.*
 import nl.amony.service.resources.web.dto.toDto
 import nl.amony.service.resources.web.{ApiError, oneOfList}
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
@@ -69,14 +68,12 @@ object SearchRoutes:
 
   private val durationPattern = raw"(\d*)-(\d*)".r
 
-  def apply(searchService: SearchService, config: SearchConfig, jwtDecoder: JwtDecoder)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
-
-    val security = Authenticator(jwtDecoder)
+  def apply(searchService: SearchService, config: SearchConfig, apiSecurity: ApiSecurity)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
 
     def sanitize(s: String, maxLength: Int, isCharAllowed: Char => Boolean): String = s.filter(isCharAllowed).take(maxLength)
 
     val routeImpl = searchResourcesEndpoint
-      .serverSecurityLogicPure(security.publicEndpoint)
+      .serverSecurityLogicPure(apiSecurity.publicEndpoint)
       .serverLogic { auth => queryDto =>
 
         val duration: Option[(Long, Long)] = queryDto.d.flatMap:

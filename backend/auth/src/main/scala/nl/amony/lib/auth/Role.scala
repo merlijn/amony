@@ -1,4 +1,4 @@
-package nl.amony.service.auth
+package nl.amony.lib.auth
 
 import io.circe.Codec
 

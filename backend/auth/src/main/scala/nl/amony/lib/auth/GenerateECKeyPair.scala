@@ -1,4 +1,4 @@
-package nl.amony.service.auth.util
+package nl.amony.lib.auth
 
 import java.security.spec.ECGenParameterSpec
 import java.security.{KeyPairGenerator, SecureRandom}

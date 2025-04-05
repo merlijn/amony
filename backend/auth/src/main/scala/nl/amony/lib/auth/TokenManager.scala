@@ -1,7 +1,8 @@
-package nl.amony.service.auth
+package nl.amony.lib.auth
 
 import io.circe
 import io.circe.*
+import nl.amony.service.auth.*
 import pdi.jwt.JwtClaim
 
 import java.time.Instant

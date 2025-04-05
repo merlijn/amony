@@ -1,12 +1,10 @@
-package nl.amony.service.auth
-
-import nl.amony.service.auth.tapir.SecurityInput
+package nl.amony.lib.auth
 
 enum SecurityError:
   case Unauthorized
   case Forbidden
 
-class Authenticator(decoder: JwtDecoder):
+class ApiSecurity(decoder: JwtDecoder):
 
   def requireSession(securityInput: SecurityInput): Either[SecurityError, AuthToken] = 
     for {

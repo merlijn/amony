@@ -1,9 +1,11 @@
 package nl.amony.service.auth
 
+import nl.amony.lib.auth.JwtDecoder
 import pdi.jwt.{JwtAlgorithm, JwtCirce, JwtClaim}
 import pureconfig.*
 import pureconfig.generic.FieldCoproductHint
 import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
+
 import java.security.KeyFactory
 import java.security.spec.{ECParameterSpec, ECPoint, ECPrivateKeySpec, ECPublicKeySpec}
 import scala.concurrent.duration.FiniteDuration

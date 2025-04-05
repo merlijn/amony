@@ -17,8 +17,11 @@ object FFProbeModel extends Logging {
     configuration: String,
   ) derives Decoder
 
-  case class FFProbeOutput(program_version: Option[FFProbeVersion], streams: Option[List[Stream]], debugOutput: Option[ProbeDebugOutput]) derives Decoder {
-    def firstVideoStream: Option[VideoStream] = streams.flatMap(_.sortBy(_.index).collectFirst { case v: VideoStream => v })
+  case class FFProbeOutput(program_version: Option[FFProbeVersion], 
+                           streams: Option[List[Stream]], 
+                           debugOutput: Option[ProbeDebugOutput]) derives Decoder {
+    def firstVideoStream: Option[VideoStream] = 
+      streams.flatMap(_.sortBy(_.index).collectFirst { case v: VideoStream => v })
   }
   
   val durationPattern: UnanchoredRegex = raw"(\d{2}):(\d{2}):(\d{2})\.(\d*)".r.unanchored

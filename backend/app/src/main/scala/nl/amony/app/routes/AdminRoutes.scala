@@ -1,8 +1,7 @@
 package nl.amony.app.routes
 
 import cats.effect.IO
-import nl.amony.service.auth.tapir.{SecurityInput, securityErrors, securityInput}
-import nl.amony.service.auth.{AuthToken, Authenticator, JwtDecoder, Roles, SecurityError}
+import nl.amony.lib.auth.{AuthToken, ApiSecurity, JwtDecoder, Roles, SecurityError, SecurityInput, securityErrors, securityInput}
 import nl.amony.service.resources.api.ResourceInfo
 import nl.amony.service.resources.{Resource, ResourceBucket}
 import nl.amony.service.resources.local.LocalDirectoryBucket
@@ -86,13 +85,11 @@ object AdminRoutes extends Logging:
 
   val endpoints = List(reIndex, refresh, rescanMetaData, reComputeHashes, exportBucket)
 
-  def apply(searchService: SearchService, buckets: Map[String, ResourceBucket], jwtDecoder: JwtDecoder)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
-
-    val authenticator = Authenticator(jwtDecoder)
+  def apply(searchService: SearchService, buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
 
     val reIndexImpl =
       reIndex
-        .serverSecurityLogicPure(authenticator.requireRole(Roles.Admin))
+        .serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin))
         .serverLogicSuccess(_ => bucketId =>
           buckets.get(bucketId) match
             case None         => IO.unit
@@ -112,7 +109,7 @@ object AdminRoutes extends Logging:
 
     val refreshImpl =
       refresh
-        .serverSecurityLogicPure(authenticator.requireRole(Roles.Admin))
+        .serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin))
         .serverLogicSuccess(_ => bucketId =>
           buckets.get(bucketId) match
             case Some(bucket: LocalDirectoryBucket) =>
@@ -124,7 +121,7 @@ object AdminRoutes extends Logging:
 
     val rescanMetaDataImpl =
       rescanMetaData
-        .serverSecurityLogicPure(authenticator.requireRole(Roles.Admin))
+        .serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin))
         .serverLogicSuccess(_ => bucketId =>
           buckets.get(bucketId) match
             case Some(bucket: LocalDirectoryBucket) =>
@@ -137,7 +134,7 @@ object AdminRoutes extends Logging:
 
     val recomputeHashesImpl =
       reComputeHashes
-        .serverSecurityLogicPure(authenticator.requireRole(Roles.Admin))
+        .serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin))
         .serverLogicSuccess(_ => bucketId =>
           buckets.get(bucketId) match
             case Some(bucket: LocalDirectoryBucket) =>
@@ -150,7 +147,7 @@ object AdminRoutes extends Logging:
 
     val exportBucketImpl =
       exportBucket
-        .serverSecurityLogicPure(authenticator.requireRole(Roles.Admin))
+        .serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin))
         .serverLogic(_ => bucketId =>
           buckets.get(bucketId) match
             case Some(bucket: LocalDirectoryBucket) =>
@@ -164,7 +161,7 @@ object AdminRoutes extends Logging:
 
     val importBucketImpl =
       importBucket
-        .serverSecurityLogicPure(authenticator.publicEndpoint)
+        .serverSecurityLogicPure(apiSecurity.publicEndpoint)
         .serverLogic(_ => (bucketId, stream) =>
           buckets.get(bucketId) match
             case Some(bucket: LocalDirectoryBucket) =>

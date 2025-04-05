@@ -3,8 +3,7 @@ package nl.amony.service.resources.web
 import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.*
-import nl.amony.service.auth.tapir.*
-import nl.amony.service.auth.{Authenticator, JwtDecoder, Roles, SecurityError}
+import nl.amony.lib.auth.*
 import nl.amony.service.resources.web.ApiError.NotFound
 import nl.amony.service.resources.web.dto.*
 import nl.amony.service.resources.{Resource, ResourceBucket}
@@ -81,9 +80,7 @@ object ResourceRoutes:
     
   val endpoints = List(getResourceById, updateUserMetaData, updateThumbnailTimestamp)
 
-  def apply(buckets: Map[String, ResourceBucket], decoder: JwtDecoder)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
-
-    val authenticator = Authenticator(decoder)
+  def apply(buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
 
     def getResource(bucketId: String, resourceId: String): EitherT[IO, ApiError, (ResourceBucket, Resource)] = 
       for {
@@ -93,19 +90,19 @@ object ResourceRoutes:
 
     val getBucketsImpl =
       getBuckets
-        .serverSecurityLogicPure(authenticator.publicEndpoint)
+        .serverSecurityLogicPure(apiSecurity.publicEndpoint)
         .serverLogicSuccess(_ => _ => IO.pure(buckets.values.map(bucket => BucketDto(bucket.id, "", "")).toList))
 
     val getResourceByIdImpl =
       getResourceById
-        .serverSecurityLogicPure(authenticator.publicEndpoint)
+        .serverSecurityLogicPure(apiSecurity.publicEndpoint)
         .serverLogic(_ => (bucketId, resourceId) =>
           getResource(bucketId, resourceId).map((_, resource) => toDto(resource.info())).value
         )
 
     val updateUserMetaDataImpl =
       updateUserMetaData
-        .serverSecurityLogicPure(authenticator.requireRole(Roles.Admin))
+        .serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin))
         .serverLogic(_ => (bucketId, resourceId, userMeta) => {
 
           // TODO rewrite this using tapir Validators ?
@@ -132,7 +129,7 @@ object ResourceRoutes:
       
     val updateThumbnailTimestampImpl =
       updateThumbnailTimestamp
-        .serverSecurityLogicPure(authenticator.requireRole(Roles.Admin))
+        .serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin))
         .serverLogic(_ => (bucketId, resourceId, dto) =>
           getResource(bucketId, resourceId).flatMap {
             (bucket, _) => EitherT.right(bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis))

@@ -1,5 +1,6 @@
 package nl.amony.service.auth
 
+import nl.amony.lib.auth.TokenManager
 import nl.amony.service.auth.api.*
 import scribe.Logging
 

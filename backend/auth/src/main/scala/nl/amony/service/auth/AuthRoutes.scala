@@ -2,8 +2,8 @@ package nl.amony.service.auth
 
 import cats.effect.IO
 import cats.implicits.toSemigroupKOps
+import nl.amony.lib.auth.{AuthToken, ApiSecurity, JwtDecoder, SecurityError, SecurityInput, securityInput}
 import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
-import nl.amony.service.auth.tapir.{SecurityInput, securityInput}
 import org.http4s.UrlForm.given
 import org.http4s.dsl.io.*
 import org.http4s.headers.{Location, `WWW-Authenticate`}
@@ -50,12 +50,10 @@ object AuthRoutes extends Logging {
     
   val endpoints = List(session, logout)
   
-  def apply(authService: AuthService, authConfig: AuthConfig, jwtDecoder: JwtDecoder)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
-    
-    val authenticator = Authenticator(jwtDecoder)
+  def apply(authService: AuthService, authConfig: AuthConfig, apiSecurity: ApiSecurity)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
     
     val sessionImpl = session
-      .serverSecurityLogicPure(authenticator.requireSession)
+      .serverSecurityLogicPure(apiSecurity.requireSession)
       .serverLogic(auth => _ => IO(Right(auth)))
 
     val logoutImpl = logout

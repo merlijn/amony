@@ -1,6 +1,5 @@
-package nl.amony.service.auth.tapir
+package nl.amony.lib.auth
 
-import nl.amony.service.auth.SecurityError
 import sttp.model.StatusCode
 import sttp.tapir.*
 

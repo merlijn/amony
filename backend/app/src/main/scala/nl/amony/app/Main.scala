@@ -4,6 +4,7 @@ import cats.effect.{IO, Resource, ResourceApp}
 import cats.implicits.*
 import nl.amony.app.routes.{AdminRoutes, WebAppRoutes}
 import nl.amony.lib.messagebus.EventTopic
+import nl.amony.lib.auth.ApiSecurity
 import nl.amony.search.SearchRoutes
 import nl.amony.search.solr.SolrIndex
 import nl.amony.service.auth.{AuthConfig, AuthRoutes, AuthServiceImpl}
@@ -54,11 +55,12 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
                                  LocalDirectoryBucket.resource(localConfig, resourceDatabase, resourceEventTopic)
                              }.sequence
       resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
+      apiSecurity        = ApiSecurity(authConfig.decoder)
       routes             = ResourceContentRoutes.apply(resourceBucketMap) <+>
-                             AuthRoutes.apply(authService, authConfig, authConfig.decoder) <+>
-                             AdminRoutes.apply(searchService, resourceBucketMap, authConfig.decoder) <+>
-                             SearchRoutes.apply(searchService, appConfig.search, authConfig.decoder) <+>
-                             ResourceRoutes.apply(resourceBucketMap, authConfig.decoder) <+>
+                             AuthRoutes.apply(authService, authConfig, apiSecurity) <+>
+                             AdminRoutes.apply(searchService, resourceBucketMap, apiSecurity) <+>
+                             SearchRoutes.apply(searchService, appConfig.search, apiSecurity) <+>
+                             ResourceRoutes.apply(resourceBucketMap, apiSecurity) <+>
                              WebAppRoutes.apply(appConfig.api)
       _                 <- WebServer.run(appConfig.api, routes)
     } yield ()
