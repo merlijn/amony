@@ -14,7 +14,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: web-client
+        working-directory: frontend
 
     strategy:
       matrix:
@@ -27,7 +27,7 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-        cache-dependency-path: web-client
+        cache-dependency-path: frontend
 
     - run: npm install --save
     - run: npm run generate
@@ -37,7 +37,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: frontend-dist
-        path: web-client/dist
+        path: frontend/dist
 
   build-backend:
     needs: build-frontend
@@ -45,7 +45,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: server
+        working-directory: backend
 
     env:
       DOCKER_REGISTRY: europe-west4-docker.pkg.dev
@@ -89,9 +89,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist
-          path: web-client/dist
+          path: frontend/dist
 
       - name: Build with sbt
+        timeout-minutes: 5
         run: sbt clean test app/jibDockerBuild app/jibWriteDockerTagsFile
 
       - name: Get git info

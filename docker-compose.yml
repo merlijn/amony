@@ -1,0 +1,45 @@
+name: amony
+
+services:
+  amony:
+    image: europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/amony-app:dev
+    container_name: amony-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+#    user: "1000:1000"
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      AMONY_ADMIN_USERNAME: ${AMONY_ADMIN_USERNAME}
+      AMONY_ADMIN_PASSWORD: ${AMONY_ADMIN_PASSWORD}
+      AMONY_DATABASE_HOST: "postgres"
+      AMONY_DATABASE_USERNAME: ${DATABASE_USERNAME}
+      AMONY_DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+    volumes:
+      - ${AMONY_LOCAL_MEDIA_PATH}:/media
+      - app_data:/app/data
+    restart: "no"
+
+  postgres:
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready", "-U", "${DATABASE_USERNAME}", "-d", "amony" ]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+    container_name: amony-postgres
+    image: postgres:17.2
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_DB: "amony"
+      PGUSER: ${DATABASE_USERNAME}
+      POSTGRES_USER: ${DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    restart: always
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+volumes:
+  pg_data:
+  app_data:

@@ -2,8 +2,10 @@
 
 # project specific
 /media/
-server/solr-search/solr/amony_embedded/data/
-web-client/src/api/generated
+backend/solr-search/solr/amony_embedded/data/
+frontend/src/api/generated
+
+.env
 
 # backend, java, scala
 *.class
@@ -25,8 +27,8 @@ yarn-debug.log*
 yarn-error.log*
 /.pnp
 .pnp.js
-/web-client/build
-/web-client/dist
+/frontend/build
+/frontend/dist
 
 # testing
 /coverage

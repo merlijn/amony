@@ -53,24 +53,24 @@ The webapp now runs at http://localhost:8080
 
 In dev mode the media files are expected to in a directory named `media` inside the git repository. Move them there or create a symbolic link.
 
-### 2. Start the server
+### 2. Start the backend
 ```
-cd server
+cd backend
 sbt
 ```
 
 Inside the sbt console run the command `~reStart`
 
-After compiling the server will be running on port `8080`. It will start scanning the `videos` directory and log its progress.
+After compiling the backend will be running on port `8080`. It will start scanning the `videos` directory and log its progress.
 
-### 3. Start the web client
+### 3. Start the frontend
 ```bash
-cd web-client
+cd frontend
 npm install --save
 npm start
 ```
 
-After compiling the web-client will be running on port `3000`. It will proxy all api requests to the server on port `8080`.
+After compiling the frontend will be running on port `3000`. It will proxy all api requests to the backend on port `8080`.
 
 ### 4. Open your web browser
 
@@ -88,7 +88,7 @@ Set location to `localhost:3000`
 ### 1. Build the web client
 
 ```bash
-cd web-client
+cd frontend
 npm install --save
 npm run build
 ```
