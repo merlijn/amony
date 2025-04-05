@@ -1,4 +1,4 @@
-package nl.amony.search.solr
+package nl.amony.service.search.solr
 
 case class SolrConfig(
    path: String,

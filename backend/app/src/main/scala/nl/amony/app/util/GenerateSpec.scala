@@ -1,9 +1,9 @@
 package nl.amony.app.util
 
 import nl.amony.app.routes.AdminRoutes
-import nl.amony.search.SearchRoutes
 import nl.amony.service.auth.AuthRoutes
 import nl.amony.service.resources.web.ResourceRoutes
+import nl.amony.service.search.SearchRoutes
 import sttp.apispec.openapi.circe.yaml.*
 import sttp.apispec.openapi.OpenAPI
 import sttp.tapir.*

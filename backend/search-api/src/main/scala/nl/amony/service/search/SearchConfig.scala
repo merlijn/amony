@@ -1,4 +1,4 @@
-package nl.amony.search
+package nl.amony.service.search
 
 case class SearchConfig(
   defaultNumberOfResults: Int,

@@ -1,4 +1,4 @@
-package nl.amony.search
+package nl.amony.service.search
 
 import cats.effect.IO
 import nl.amony.lib.auth.*

@@ -1,4 +1,4 @@
-package nl.amony.search
+package nl.amony.service.search
 
 import io.circe.Codec
 import nl.amony.service.resources.web.dto.{ResourceDto, required}

@@ -1,10 +1,10 @@
 package nl.amony.app
 
 import com.typesafe.config.ConfigFactory
-import nl.amony.search.SearchConfig
-import nl.amony.search.solr.SolrConfig
 import nl.amony.service.resources.ResourceConfig.*
 import nl.amony.service.resources.database.DatabaseConfig
+import nl.amony.service.search.SearchConfig
+import nl.amony.service.search.solr.SolrConfig
 import pureconfig.*
 import scribe.Logging
 

@@ -5,14 +5,14 @@ import cats.implicits.*
 import nl.amony.app.routes.{AdminRoutes, WebAppRoutes}
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.lib.auth.ApiSecurity
-import nl.amony.search.SearchRoutes
-import nl.amony.search.solr.SolrIndex
 import nl.amony.service.auth.{AuthConfig, AuthRoutes, AuthServiceImpl}
 import nl.amony.service.resources.ResourceConfig
 import nl.amony.service.resources.api.events.ResourceEvent
 import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.{ResourceContentRoutes, ResourceRoutes}
+import nl.amony.service.search.SearchRoutes
+import nl.amony.service.search.solr.SolrSearchService
 import scribe.{Logger, Logging}
 import sttp.tapir.server.http4s.Http4sServerOptions
 
@@ -44,7 +44,7 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
       .options
 
     for {
-      searchService     <- SolrIndex.resource(appConfig.solr)
+      searchService     <- SolrSearchService.resource(appConfig.solr)
       authConfig         = loadConfig[AuthConfig]("amony.auth")
       authService        = new AuthServiceImpl(authConfig)
       resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()

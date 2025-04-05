@@ -1,7 +1,7 @@
-package nl.amony.search.solr
+package nl.amony.service.search.solr
 
 import cats.effect.{IO, Resource}
-import nl.amony.search.solr.SolrIndex.*
+import SolrSearchService.*
 import nl.amony.service.resources.api.*
 import nl.amony.service.resources.api.events.*
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
@@ -23,7 +23,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
-object SolrIndex {
+object SolrSearchService {
 
   val collectionName = "amony_embedded"
   val defaultSort = SortOption(DateAdded, Desc)
@@ -52,11 +52,11 @@ object SolrIndex {
     val userId = "user_id_s"
   }
 
-  def resource(config: SolrConfig)(using ec: ExecutionContext): Resource[IO, SolrIndex] =
-    Resource.make[IO, SolrIndex](IO(new SolrIndex(config)))(_.close())
+  def resource(config: SolrConfig)(using ec: ExecutionContext): Resource[IO, SolrSearchService] =
+    Resource.make[IO, SolrSearchService](IO(new SolrSearchService(config)))(_.close())
 }
 
-class SolrIndex(config: SolrConfig)(using ec: ExecutionContext) extends SearchService with Logging {
+class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends SearchService with Logging {
 
   private val solrHome: Path = Path.of(config.path).toAbsolutePath.normalize()
 

@@ -1,4 +1,4 @@
-package nl.amony.search.solr
+package nl.amony.service.search.solr
 
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
