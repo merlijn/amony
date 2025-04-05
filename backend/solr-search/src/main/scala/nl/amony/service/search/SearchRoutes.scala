@@ -3,16 +3,16 @@ package nl.amony.service.search
 import cats.effect.IO
 import nl.amony.lib.auth.*
 import nl.amony.service.resources.web.dto.toDto
-import nl.amony.service.resources.web.{ApiError, oneOfList}
+import nl.amony.service.resources.web.oneOfList
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import nl.amony.service.search.api.SortDirection.{Asc, Desc}
 import nl.amony.service.search.api.SortField.*
 import nl.amony.service.search.api.{Query, SortField, SortOption}
 import org.http4s.HttpRoutes
 import sttp.model.StatusCode
-import sttp.tapir.*
 import sttp.tapir.json.circe.jsonBody
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
+import sttp.tapir.{query, *}
 
 import scala.util.Try
 

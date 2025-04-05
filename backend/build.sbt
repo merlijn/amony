@@ -212,30 +212,19 @@ lazy val resources =
       )
     )
 
-lazy val searchService =
-  module("search-api")
-    .dependsOn(resources)
-    .settings(protobufSettings)
-    .settings(
-      name := "amony-service-search-api",
-      libraryDependencies ++= Seq(
-        // akka
-        scribeSlf4j,
-        circe, circeGeneric,
-        http4sDsl, http4sCirce
-      ),
-    )
-
 lazy val buildSolrTarGz = taskKey[Seq[File]]("Creates the solr.tar.gz file")
 
-lazy val solrSearch =
+lazy val searchService =
   module("solr-search")
-    .dependsOn(searchService)
+    .dependsOn(resources)
+    .settings(protobufSettings)
     .settings(
       name := "amony-service-search-solr",
       libraryDependencies ++= Seq(
         slf4jApi, scribeSlf4j,
         solr, solrLangId,
+        circe, circeGeneric,
+        http4sDsl, http4sCirce,
         catsEffect,
       ),
       buildSolrTarGz / fileInputs += (Compile / resourceDirectory).value.toGlob / "solr" / "**",
@@ -273,7 +262,7 @@ val javaDevOpts = Seq("-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true", "-DAMONY_SE
 
 lazy val app =
   module("app", mainClass = true)
-    .dependsOn(auth, resources, searchService, solrSearch)
+    .dependsOn(auth, resources, searchService)
     .settings(
       name := "amony-app",
       reStart / javaOptions ++= javaDevOpts,
@@ -342,4 +331,4 @@ lazy val amony = project
     Global / cancelable   := true,
   )
   .disablePlugins(RevolverPlugin)
-  .aggregate(libEventStore, libFFMPeg, libFiles, auth, searchService, resources, solrSearch, app)
+  .aggregate(libEventStore, libFFMPeg, libFiles, auth, resources, searchService, app)
