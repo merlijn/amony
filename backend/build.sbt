@@ -22,7 +22,7 @@ val http4sVersion   = "0.23.30"
 
 val bouncyCastle = "org.apache.directory.studio" % "org.bouncycastle.bcprov.jdk15" % "140"
 
-val jsoup  = "org.jsoup" % "jsoup" % "1.18.3"
+val jsoup  = "org.jsoup" % "jsoup" % "1.19.1"
 
 val circe                    = "io.circe"                 %% "circe-core"                 % circeVersion
 val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
@@ -92,7 +92,7 @@ cancelable in Global := true
 
 val commonSettings = Seq(
   organization := "nl.amony",
-  scalaVersion := "3.3.4",
+  scalaVersion := "3.3.5",
   excludeDependencies ++= List(
     ExclusionRule("org.scala-lang", "scala3-library_sjs"),
     ExclusionRule("org.scala-lang", "scala3-library_sjs1_3"),
