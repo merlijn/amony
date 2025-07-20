@@ -45,8 +45,6 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
 
     for {
       searchService     <- SolrSearchService.resource(appConfig.solr)
-      authConfig         = loadConfig[AuthConfig]("amony.auth")
-      authService        = new AuthServiceImpl(authConfig)
       resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
       _                  = resourceEventTopic.followTail(searchService.processEvent)
       resourceDatabase  <- ResourceDatabase.make(appConfig.database)
@@ -55,6 +53,8 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
                                  LocalDirectoryBucket.resource(localConfig, resourceDatabase, resourceEventTopic)
                              }.sequence
       resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
+      authConfig         = loadConfig[AuthConfig]("amony.auth")
+      authService        = new AuthServiceImpl(authConfig)
       apiSecurity        = ApiSecurity(authConfig.decoder)
       routes             = ResourceContentRoutes.apply(resourceBucketMap) <+>
                              AuthRoutes.apply(authService, authConfig, apiSecurity) <+>

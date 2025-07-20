@@ -48,7 +48,6 @@ object WebServer extends Logging {
   def httpsServer(httpsConfig: HttpsConfig, routes: HttpRoutes[IO])(using io: IORuntime): Resource[IO, Server] = {
     val httpApp = Router("/" -> routes).orNotFound
     
-
     val sslContext = {
       val keyStore = PemReader.loadKeyStore(
         certificateChainFile = Path.of(httpsConfig.certificateChainPem),
@@ -77,7 +76,6 @@ object WebServer extends Logging {
       .withTLS(tlsContext, tlsParameters)
       .withLogger(serverLogger)
       .withErrorHandler { e =>
-        println("Internal server error")
         logger.warn("Internal server error", e)
         IO(serverError)
       }
@@ -96,7 +94,6 @@ object WebServer extends Logging {
       .withHttpApp(httpApp)
       .withLogger(serverLogger)
       .withErrorHandler { e =>
-        println("Internal server error")
         logger.warn("Internal server error", e)
         IO(serverError)
       }

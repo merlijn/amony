@@ -71,9 +71,9 @@ object LocalDirectoryScanner extends Logging {
    */
   def compareFileStores(previous: FileStore, current: FileStore): Stream[IO, FileEvent] = {
 
-    def maybeMetaChanged(file: FileInfo, previous: FileInfo): Stream[IO, FileEvent] =
-      if (file == previous) Stream.empty
-      else Stream.emit(FileMetaChanged(file))
+    def maybeMetaChanged(file: FileInfo, previous: FileInfo): Option[FileEvent] =
+      if (file == previous) None
+      else Some(FileMetaChanged(file))
 
     val removed: Stream[IO, FileEvent] = previous.getAll().flatMap { file =>
       Stream.force(current.getByHash(file.hash).map {
@@ -82,25 +82,32 @@ object LocalDirectoryScanner extends Logging {
       })
     }
 
-    val movedOrAdded: Stream[IO, FileEvent] = current.getAll().foldFlatMap(Seq.empty[FileEvent]) { (carriedEvents, file) =>
+    val movedOrAdded: Stream[IO, FileEvent] = current.getAllByHash().foldFlatMap(Seq.empty[FileEvent]) {
+      case (carriedEvents, (hash, files)) =>
 
-      val e: IO[Stream[IO, FileEvent]] = previous.getByHash(file.hash).map {
-        case Nil      =>
-          Stream.emit(FileAdded(file))
-        // a single file with the same hash was found
-        case p :: Nil =>
-          if (p.path == file.path)
-            maybeMetaChanged(file, p)
-          else
-            Stream.emit(FileMoved(file, p.path))
-        case multipleMatches       =>
-          multipleMatches.find(_.path == file.path) match
-            case Some(p) => maybeMetaChanged(file, p)
-            case None    => Stream.emit(FileMoved(file, multipleMatches.head.path)) // not correct
+        val e: IO[Stream[IO, FileEvent]] = previous.getByHash(hash).map { prev =>
+
+          val filesA = prev.toSeq
+          val filesB = files.toSeq
+
+          val notMoved = Stream.emits(filesB.flatMap(b => filesA.find(_.path == b.path).map(_ -> b))
+            .flatMap((a, b) => maybeMetaChanged(b, a)))
+
+          val maybeDeleted = filesA.filterNot(f => filesB.exists(_.path == f.path))
+          val maybeAdded   = filesB.filterNot(f => filesA.exists(_.path == f.path))
+
+          val other = (maybeDeleted, maybeAdded) match {
+            // file moved scenario
+            case (a :: Nil, b :: Nil) => Stream.emit(FileMoved(b, a.path))
+            // in other cases, we cannot determine if a file was moved, so we emit delete and add events
+            case (a, b)               => Stream.emits(a.map(FileDeleted(_)) ++ b.map(FileAdded(_)))
+          }
+
+          notMoved ++ other
+        }
+
+        (carriedEvents, Stream.force(e))
       }
-
-      (carriedEvents, Stream.force(e))
-    }
 
     removed ++ movedOrAdded
   }
