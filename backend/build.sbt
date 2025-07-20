@@ -17,7 +17,7 @@ def hasNoLocalChanges: Boolean = {
 
 // --- Dependencies
 
-val circeVersion    = "0.14.12"
+val circeVersion    = "0.14.14"
 val http4sVersion   = "0.23.30"
 
 val bouncyCastle = "org.apache.directory.studio" % "org.bouncycastle.bcprov.jdk15" % "140"
@@ -33,16 +33,16 @@ val skunkCirce               = "org.tpolecat"             %% "skunk-circe"      
 
 val sqids                    = "org.sqids" %% "sqids" % "0.5.0"
 
-val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"            % "1.11.23"
-val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"   % "1.11.23"
-val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"     % "1.11.23"
-val tapirSwaggerUI           = "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % "1.11.23"
-val tapirCirce               = "com.softwaremill.sttp.tapir" %% "tapir-json-circe"        % "1.11.23"
-val tapirCirceYamlSpec       = "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"    % "0.11.7"
+val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"            % "1.11.37"
+val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"   % "1.11.37"
+val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"     % "1.11.37"
+val tapirSwaggerUI           = "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % "1.11.37"
+val tapirCirce               = "com.softwaremill.sttp.tapir" %% "tapir-json-circe"        % "1.11.37"
+val tapirCirceYamlSpec       = "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"    % "0.11.10"
 
 val tapirSharedFs2           = "com.softwaremill.sttp.shared"  %% "fs2"                   % "1.5.0"
 
-val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "10.0.4"
+val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "11.0.2"
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.17"
 
 val scribe                   = "com.outr"                 %% "scribe"                     % "3.16.1"
@@ -52,20 +52,20 @@ val tikaCore                 = "org.apache.tika"           % "tika-core"        
 
 val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.12.0"
 val fs2Io                    = "co.fs2"                   %% "fs2-io"                     % "3.12.0"
-val catsEffect               = "org.typelevel"            %% "cats-effect"                % "3.6.0"
+val catsEffect               = "org.typelevel"            %% "cats-effect"                % "3.6.2"
 
 val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.19"           % Test
 val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
 
 val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.7.4"
 val h2DB                     = "com.h2database"            % "h2"                         % "2.3.232"
-val postgresDriver           = "org.postgresql"            % "postgresql"                 % "42.7.5"
+val postgresDriver           = "org.postgresql"            % "postgresql"                 % "42.7.7"
 
-val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.8"
-val pureConfigGeneric        = "com.github.pureconfig"    %% "pureconfig-generic-scala3"  % "0.17.8"
-val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.3"
+val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.9"
+val pureConfigGeneric        = "com.github.pureconfig"    %% "pureconfig-generic-scala3"  % "0.17.9"
+val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.4"
 
-val liquibaseCore            = "org.liquibase"             % "liquibase-core"             % "4.31.1"
+val liquibaseCore            = "org.liquibase"             % "liquibase-core"             % "4.33.0"
 
 val solr                     = "org.apache.solr"           % "solr-core"                  % "8.11.1"
 val solrLangId               = "org.apache.solr"           % "solr-langid"                % "8.11.1"
