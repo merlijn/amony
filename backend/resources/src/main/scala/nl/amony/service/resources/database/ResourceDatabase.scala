@@ -143,26 +143,26 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
       _    <- tables.resource_tags.replaceAll(bucketId, resourceId, tags.map(_.id))
     } yield ()
 
-  def getAll(bucketId: String): IO[List[ResourceInfo]] =
+  def getAll(bucketId: String): IO[List[ResourceInfo]] = 
     getStream(bucketId).compile.toList
 
+  
+  def toResource(resourceRow: ResourceRow, tagLabels: Option[Arr[String]]): ResourceInfo =
+    resourceRow.toResource(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty))
+  
   def getStream(bucketId: String): fs2.Stream[IO, ResourceInfo] =
     fs2.Stream.force(
-      session.prepare(Queries.resources.allJoined).map(
-        _.stream(bucketId, defaultChunkSize).map((resourceRow, tagLabels) => resourceRow.toResource(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty)))
-      )
+      session.prepare(Queries.resources.allJoined).map(_.stream(bucketId, defaultChunkSize).map(toResource))
     )
 
   def getById(bucketId: String, resourceId: String): IO[Option[ResourceInfo]] =
-    (for 
-       resourceRow  <- OptionT(tables.resources.getById(bucketId, resourceId))
-       resourceTags <- OptionT.liftF(tables.resource_tags.getById(bucketId, resourceId))
-       tags         <- if (resourceTags.nonEmpty) OptionT.liftF(tables.tags.getByIds(resourceTags.map(_.tag_id))) else OptionT.some[IO](List.empty)
-     yield resourceRow.toResource(tags.map(_.label).toSet)).value
+    session.prepare(Queries.resources.getByIdJoined).flatMap(
+      _.stream((bucketId, resourceId), defaultChunkSize).map(toResource).compile.toList.map(_.headOption)
+    )
 
   def getByHash(bucketId: String, hash: String): IO[List[ResourceInfo]] =
-    session.prepare(Queries.resources.allJoined).flatMap(
-      _.stream(bucketId, defaultChunkSize).map((resourceRow, tagLabels) => resourceRow.toResource(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty))).compile.toList
+    session.prepare(Queries.resources.getByHashJoined).flatMap(
+      _.stream((bucketId, hash), defaultChunkSize).map(toResource).compile.toList
     )
   
   def updateThumbnailTimestamp(bucketId: String, resourceId: String, timestamp: Int): IO[Option[ResourceInfo]] =

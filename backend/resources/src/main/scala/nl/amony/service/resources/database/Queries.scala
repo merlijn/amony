@@ -73,6 +73,13 @@ object Queries extends Logging {
         WHERE r.bucket_id = $varchar AND r.hash = $varchar
         GROUP BY (${ResourceRow.columns})
       """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
+
+    val getByIdJoined: Query[(String, String), (ResourceRow, Option[Arr[String]])] =
+      sql"""
+        ${joinTables}
+        WHERE r.bucket_id = $varchar AND r.resource_id = $varchar
+        GROUP BY (${ResourceRow.columns})
+      """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))  
     
     val allJoined: Query[String, (ResourceRow, Option[Arr[String]])] =
       sql"""

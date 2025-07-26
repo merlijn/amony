@@ -71,7 +71,9 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
         )
 
         ResourceDatabase.make(dbConfig).use(db =>
-          insertResourcesTest(db) >> updateUserMetaTest(db) >> db.truncateTables()
+          insertResourcesTest(db) >> db.truncateTables() >>
+            updateUserMetaTest(db) >> db.truncateTables() >>
+            duplicateHashesTest(db) >> db.truncateTables()
 
         ).unsafeRunSync()
       }
@@ -107,6 +109,19 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
     }
   }
 
+  def duplicateHashesTest(db: ResourceDatabase): IO[Unit] = {
+    val resourceA = genResource()
+    val resourceB = resourceA.copy(resourceId = UUID.randomUUID().toString, bucketId = resourceA.bucketId)
+
+    for {
+      _ <- db.insertResource(resourceA)
+      _ <- db.insertResource(resourceB.copy(hash = resourceA.hash)) // This should not throw an error
+      byHash <- db.getByHash(resourceA.bucketId, resourceA.hash.get)
+    } yield {
+      byHash should contain theSameElementsAs List(resourceA, resourceB)
+    }
+  }
+
   def insertResourcesTest(db: ResourceDatabase): IO[Unit] = {
 
     def insertIdentityCheck(resource: ResourceInfo) =
@@ -119,10 +134,12 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
     def upsertIdentityCheck(resource: ResourceInfo) =
       for {
-        _        <- db.upsert(resource)
-        returned <- db.getById(resource.bucketId, resource.resourceId)
+        _      <- db.upsert(resource)
+        byId   <- db.getById(resource.bucketId, resource.resourceId)
+        byHash <- db.getByHash(resource.bucketId, resource.hash.get)
       } yield {
-        Some(resource) shouldBe returned
+        byId shouldBe Some(resource)
+        byHash shouldBe List(resource)
       }
       
     def deleteCheck(resourceInfo: ResourceInfo) = 
