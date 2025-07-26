@@ -31,7 +31,7 @@ val circeParser              = "io.circe"                 %% "circe-parser"     
 val skunkCore                = "org.tpolecat"             %% "skunk-core"                 % "1.0.0-M10"
 val skunkCirce               = "org.tpolecat"             %% "skunk-circe"                % "1.0.0-M10"
 
-val sqids                    = "org.sqids" %% "sqids" % "0.5.0"
+val sqids                    = "org.sqids" %% "sqids" % "0.6.0"
 
 val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"              % "1.11.40"
 val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"     % "1.11.40"

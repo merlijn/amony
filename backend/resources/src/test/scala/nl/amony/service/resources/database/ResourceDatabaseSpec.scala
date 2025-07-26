@@ -168,14 +168,4 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
     insertChecks >> upsertChecks >> deleteChecks >> IO.unit
   }
-
-  def insertTags(db: ResourceDatabase): IO[Unit] =
-    for {
-      _    <- db.tables.tags.upsert(List("a", "b", "c"))
-      _    <- db.tables.tags.upsert(List("a", "b", "c", "d", "e"))
-      tags <- db.tables.tags.all
-    } yield {
-      logger.info(s"tags: ${tags.mkString(", ")}")
-      tags.map(_.label) should contain theSameElementsAs List("a", "b", "c", "d", "e")
-    }
 }

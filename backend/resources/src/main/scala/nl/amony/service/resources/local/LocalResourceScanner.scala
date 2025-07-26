@@ -15,39 +15,55 @@ object LocalResourceScanner {
   
   val logger = scribe.Logger("LocalResourceScanner")
 
-  private def mapEvent(db: ResourceDatabase, basePath: Path, bucketId: String)(fileEvent: FileEvent): IO[ResourceEvent] = fileEvent match {
-    case FileAdded(f) =>
-
-      LocalResourceMeta.detectMetaData(f.path)
-        .recover { case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None }
-        .map {
-          meta =>
-            ResourceAdded(
-              ResourceInfo(
-                bucketId = bucketId,
-                resourceId = f.hash,
-                userId = "0",
-                path = basePath.relativize(f.path).toString,
-                hash = Some(f.hash),
-                size = f.size,
-                contentType = meta.map(_.contentType),
-                contentMetaSource = meta.flatMap(_.toolMeta),
-                contentMeta = meta.map(_.meta).getOrElse(ResourceMeta.Empty),
-                creationTime = Some(f.creationTime),
-                lastModifiedTime = Some(f.modifiedTime),
-                thumbnailTimestamp = None
+  private def mapEvent(db: ResourceDatabase, config: LocalDirectoryConfig)(fileEvent: FileEvent): IO[ResourceEvent] =
+    
+    fileEvent match {
+      
+      case FileAdded(f) =>
+        val resourcePath = config.resourcePath.relativize(f.path).toString    
+        LocalResourceMeta.detectMetaData(f.path)
+          .recover { case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None }
+          .map {
+            meta =>
+              ResourceAdded(
+                ResourceInfo(
+                  bucketId = config.id,
+                  resourceId = config.generateId(),
+                  userId = "0",
+                  path = resourcePath,
+                  hash = Some(f.hash),
+                  size = f.size,
+                  contentType = meta.map(_.contentType),
+                  contentMetaSource = meta.flatMap(_.toolMeta),
+                  contentMeta = meta.map(_.meta).getOrElse(ResourceMeta.Empty),
+                  creationTime = Some(f.creationTime),
+                  lastModifiedTime = Some(f.modifiedTime),
+                  thumbnailTimestamp = None
+                )
               )
-            )
+          }
+  
+      case FileMetaChanged(file) =>
+        IO.pure(ResourceFileMetaChanged(file.hash, Some(file.creationTime), Some(file.modifiedTime)))
+  
+      case FileDeleted(f) =>
+        IO.pure(ResourceDeleted(f.hash))
+  
+      case FileMoved(file, oldFilePath) =>
+        val newPath = config.resourcePath.relativize(file.path).toString
+        val oldPath = config.resourcePath.relativize(oldFilePath).toString
+        
+        db.getByHash(config.id, file.hash).map { resources =>
+          
+          resources.find(_.path == oldPath) match {
+            case None =>
+              val msg = s"File moved event for unknown file: ${file.path}, hash: ${file.hash}"
+              logger.error(msg)
+              throw new IllegalStateException(msg)
+            case Some(resource) =>
+              ResourceMoved(resource.resourceId, oldPath, newPath)
+          }
         }
-
-    case FileMetaChanged(file) =>
-      IO.pure(ResourceFileMetaChanged(file.hash, Some(file.creationTime), Some(file.modifiedTime)))
-
-    case FileDeleted(f) =>
-      IO.pure(ResourceDeleted(f.hash))
-
-    case FileMoved(file, oldPath) =>
-      IO.pure(ResourceMoved(file.hash, basePath.relativize(oldPath).toString, basePath.relativize(file.path).toString))
   }
 
   private def toFileStore(db: ResourceDatabase, config: LocalDirectoryConfig): IO[FileStore] = {
@@ -66,7 +82,7 @@ object LocalResourceScanner {
     logger.info(s"Scanning directory: ${config.resourcePath}")
     Stream.eval(toFileStore(db, config)).flatMap: fileStore =>
       LocalDirectoryScanner.scanDirectory(config.resourcePath, fileStore, config.filterDirectory, config.filterFiles, config.scan.hashingAlgorithm.createHash)
-        .parEvalMap(config.scan.scanParallelFactor)(mapEvent(db, config.resourcePath, config.id))
+        .parEvalMap(config.scan.scanParallelFactor)(mapEvent(db, config))
   }
 
   /**
@@ -78,5 +94,5 @@ object LocalResourceScanner {
     Stream.eval(toFileStore(db, config)).flatMap: fileStore =>
       LocalDirectoryScanner
         .pollingStream(config.resourcePath, fileStore, config.scan.pollInterval, config.filterDirectory, config.filterFiles, config.scan.hashingAlgorithm.createHash)
-        .parEvalMap(config.scan.scanParallelFactor)(mapEvent(db, config.resourcePath, config.id))
+        .parEvalMap(config.scan.scanParallelFactor)(mapEvent(db, config))
 }

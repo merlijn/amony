@@ -11,11 +11,11 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
     environment:
-      AMONY_ADMIN_USERNAME: ${AMONY_ADMIN_USERNAME}
-      AMONY_ADMIN_PASSWORD: ${AMONY_ADMIN_PASSWORD}
+      AMONY_ADMIN_USERNAME: ${AMONY_ADMIN_USERNAME:-admin}
+      AMONY_ADMIN_PASSWORD: ${AMONY_ADMIN_PASSWORD:-changeme}
       AMONY_DATABASE_HOST: "postgres"
-      AMONY_DATABASE_USERNAME: ${DATABASE_USERNAME}
-      AMONY_DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      AMONY_DATABASE_USERNAME: ${DATABASE_USERNAME:-admin}
+      AMONY_DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
     volumes:
       - ${AMONY_LOCAL_MEDIA_PATH}:/media
       - app_data:/app/data
@@ -33,9 +33,9 @@ services:
       - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_DB: "amony"
-      PGUSER: ${DATABASE_USERNAME}
-      POSTGRES_USER: ${DATABASE_USERNAME}
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      PGUSER: ${DATABASE_USERNAME:-admin}
+      POSTGRES_USER: ${DATABASE_USERNAME:-admin}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-changeme}
     restart: always
     volumes:
       - pg_data:/var/lib/postgresql/data

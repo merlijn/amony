@@ -6,6 +6,7 @@ import nl.amony.service.resources.util.PartialHash.partialHash
 import pureconfig.*
 import pureconfig.generic.FieldCoproductHint
 import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
+import sqids.Sqids
 
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -39,6 +40,7 @@ object ResourceConfig {
      
   ) extends ResourceBucketConfig {
 
+    val random = new scala.util.Random()
     lazy val cachePath: Path    = path.toAbsolutePath.normalize().resolve(relativeCachePath)
     lazy val resourcePath: Path = path.toAbsolutePath.normalize()
     lazy val uploadPath: Path   = path.toAbsolutePath.normalize().resolve(relativeUploadPath)
@@ -52,6 +54,8 @@ object ResourceConfig {
       val fileName = path.getFileName.toString
       !fileName.startsWith(".") && path != uploadPath
     }
+    
+    def generateId() = Base32.encode(random.nextBytes(15)).substring(0, 24)
   }
 
   case class TranscodeSettings(

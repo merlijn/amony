@@ -147,7 +147,7 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
     getStream(bucketId).compile.toList
 
   
-  def toResource(resourceRow: ResourceRow, tagLabels: Option[Arr[String]]): ResourceInfo =
+  private def toResource(resourceRow: ResourceRow, tagLabels: Option[Arr[String]]): ResourceInfo =
     resourceRow.toResource(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty))
   
   def getStream(bucketId: String): fs2.Stream[IO, ResourceInfo] =

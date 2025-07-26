@@ -17,8 +17,8 @@ CREATE TABLE resources (
 );
 
 CREATE INDEX resources_bucket_id_idx ON resources (bucket_id);
-CREATE INDEX resources_hash_idx ON resources (bucket_id, resource_id);
-CREATE INDEX resources_path ON resources (bucket_id, fs_path);
+CREATE INDEX resources_hash_idx      ON resources (bucket_id, resource_id);
+CREATE INDEX resources_path_idx      ON resources (bucket_id, fs_path);
 
 CREATE TABLE tags (
     id         SERIAL NOT NULL,
