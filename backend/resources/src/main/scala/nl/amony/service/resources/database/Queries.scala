@@ -58,13 +58,25 @@ object Queries extends Logging {
     val deleteBucket: Command[(String, String)] =
       sql"delete from resources where bucket_id = $varchar and resource_id = $varchar".command
 
+    private val joinTables =
+      sql"""
+         SELECT to_json(r.*), array_agg(t.label) FILTER (WHERE t.label IS NOT NULL) as tags
+         FROM resources r
+         LEFT JOIN resource_tags rt
+           ON r.bucket_id = rt.bucket_id AND r.resource_id = rt.resource_id
+         LEFT JOIN tags t ON rt.tag_id = t.id
+       """
+
+    val getByHashJoined: Query[(String, String), (ResourceRow, Option[Arr[String]])] =
+      sql"""
+        ${joinTables}
+        WHERE r.bucket_id = $varchar AND r.hash = $varchar
+        GROUP BY (${ResourceRow.columns})
+      """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
+    
     val allJoined: Query[String, (ResourceRow, Option[Arr[String]])] =
       sql"""
-       SELECT to_json(r.*), array_agg(t.label) FILTER (WHERE t.label IS NOT NULL) as tags
-       FROM resources r
-       LEFT JOIN resource_tags rt
-         ON r.bucket_id = rt.bucket_id AND r.resource_id = rt.resource_id
-       LEFT JOIN tags t ON rt.tag_id = t.id
+       ${joinTables}
        WHERE r.bucket_id = $varchar
        GROUP BY (${ResourceRow.columns})
       """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))

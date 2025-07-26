@@ -13,7 +13,7 @@ CREATE TABLE resources (
     title                  VARCHAR(128),
     description            VARCHAR,
     thumbnail_timestamp    BIGINT,
-    CONSTRAINT resources_pk PRIMARY KEY (bucket_id, resource_id),
+    CONSTRAINT resources_pk PRIMARY KEY (bucket_id, resource_id)
 );
 
 CREATE INDEX resources_bucket_id_idx ON resources (bucket_id);

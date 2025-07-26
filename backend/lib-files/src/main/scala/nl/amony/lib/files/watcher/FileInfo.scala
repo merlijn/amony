@@ -13,6 +13,9 @@ object FileInfo {
 }
 
 case class FileInfo(path: Path, hash: String, size: Long, creationTime: Long, modifiedTime: Long) {
-  def equalFileMeta(attrs: BasicFileAttributes): Boolean =
+  def isSameFileMeta(attrs: BasicFileAttributes): Boolean =
     size == attrs.size() && creationTime == attrs.creationTime().toMillis && modifiedTime == attrs.lastModifiedTime().toMillis
+
+  def isSameFileMeta(other: FileInfo): Boolean =
+    other.hash == hash && size == other.size && creationTime == other.creationTime && modifiedTime == other.modifiedTime
 }

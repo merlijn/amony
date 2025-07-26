@@ -83,8 +83,6 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
       def getById(bucketId: String, resourceId: String): IO[Option[ResourceRow]] =
         session.prepare(Queries.resources.getById).flatMap(_.option(bucketId, resourceId))
 
-      def getByHash(bucketId: String, hash: String): IO[List[ResourceRow]] = ???
-      
       def delete(bucketId: String, resourceId: String) =
         session.prepare(Queries.resources.deleteBucket).flatMap(_.execute(bucketId, resourceId))
     }
@@ -151,8 +149,7 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
   def getStream(bucketId: String): fs2.Stream[IO, ResourceInfo] =
     fs2.Stream.force(
       session.prepare(Queries.resources.allJoined).map(
-        _.stream(bucketId, defaultChunkSize)
-          .map((resourceRow, tagLabels) => resourceRow.toResource(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty)))
+        _.stream(bucketId, defaultChunkSize).map((resourceRow, tagLabels) => resourceRow.toResource(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty)))
       )
     )
 
@@ -163,12 +160,10 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
        tags         <- if (resourceTags.nonEmpty) OptionT.liftF(tables.tags.getByIds(resourceTags.map(_.tag_id))) else OptionT.some[IO](List.empty)
      yield resourceRow.toResource(tags.map(_.label).toSet)).value
 
-  def getByHash(bucketId: String, hash: String): IO[Option[ResourceInfo]] =
-    (for
-      resourceRow  <- OptionT(tables.resources.getById(bucketId, hash))
-      resourceTags <- OptionT.liftF(tables.resource_tags.getById(bucketId, hash))
-      tags <- if (resourceTags.nonEmpty) OptionT.liftF(tables.tags.getByIds(resourceTags.map(_.tag_id))) else OptionT.some[IO](List.empty)
-    yield resourceRow.toResource(tags.map(_.label).toSet)).value
+  def getByHash(bucketId: String, hash: String): IO[List[ResourceInfo]] =
+    session.prepare(Queries.resources.allJoined).flatMap(
+      _.stream(bucketId, defaultChunkSize).map((resourceRow, tagLabels) => resourceRow.toResource(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty))).compile.toList
+    )
   
   def updateThumbnailTimestamp(bucketId: String, resourceId: String, timestamp: Int): IO[Option[ResourceInfo]] =
     (for {

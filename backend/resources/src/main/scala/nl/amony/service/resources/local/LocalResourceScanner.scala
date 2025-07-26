@@ -7,6 +7,7 @@ import nl.amony.service.resources.Resource
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.api.*
 import nl.amony.service.resources.api.events.*
+import nl.amony.service.resources.database.ResourceDatabase
 
 import java.nio.file.{Files, Path}
 
@@ -14,7 +15,7 @@ object LocalResourceScanner {
   
   val logger = scribe.Logger("LocalResourceScanner")
 
-  private def mapEvent(basePath: Path, bucketId: String)(fileEvent: FileEvent): IO[ResourceEvent] = fileEvent match {
+  private def mapEvent(db: ResourceDatabase, basePath: Path, bucketId: String)(fileEvent: FileEvent): IO[ResourceEvent] = fileEvent match {
     case FileAdded(f) =>
 
       LocalResourceMeta.detectMetaData(f.path)
@@ -49,37 +50,11 @@ object LocalResourceScanner {
       IO.pure(ResourceMoved(file.hash, basePath.relativize(oldPath).toString, basePath.relativize(file.path).toString))
   }
 
-  private def scan(initialState: Set[ResourceInfo], config: LocalDirectoryConfig, poll: Boolean): Stream[IO, ResourceEvent] = {
-
-    val resourcePath = config.resourcePath
-
-    // prevent data loss in case the cache directory is missing because of an unmounted path
-    if (!Files.exists(config.cachePath) && initialState.nonEmpty) {
-      logger.error(s"The stored directory state for ${config.resourcePath} is non empty but no cache directory was found. Not continuing to prevent data loss. Perhaps the directory is not mounted? If this is what you intend, please manually create the cache directory at: ${config.cachePath}")
-      return Stream.empty
+  private def toFileStore(db: ResourceDatabase, config: LocalDirectoryConfig): IO[FileStore] = {
+    db.getAll(config.id).map { resources =>
+      val initialFiles: Seq[FileInfo] = resources.map { r => FileInfo(config.resourcePath.resolve(Path.of(r.path)), r.hash.get, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0)) }
+      InMemoryFileStore(initialFiles)
     }
-
-    val initialFiles: Seq[FileInfo] = initialState.map { r => FileInfo(resourcePath.resolve(Path.of(r.path)), r.hash.get, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0)) }.toSeq
-
-    val fileStore = InMemoryFileStore(initialFiles)
-
-    def filterFiles(path: Path) = {
-      val fileName = path.getFileName.toString
-      config.scan.extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
-    }
-
-    def filterDirectory(path: Path) = {
-      val fileName = path.getFileName.toString
-      !fileName.startsWith(".") && path != config.uploadPath
-    }
-
-    if (poll)
-      LocalDirectoryScanner
-        .pollingStream(resourcePath, fileStore, config.scan.pollInterval, filterDirectory, filterFiles, config.scan.hashingAlgorithm.createHash)
-        .parEvalMap(config.scan.scanParallelFactor)(mapEvent(resourcePath, config.id))
-    else
-      LocalDirectoryScanner.scanDirectory(resourcePath, fileStore, filterDirectory, filterFiles, config.scan.hashingAlgorithm.createHash)
-        .parEvalMap(config.scan.scanParallelFactor)(mapEvent(resourcePath, config.id))
   }
 
   /**
@@ -87,9 +62,11 @@ object LocalResourceScanner {
    *
    * The state will be kept in memory and is not persisted.
    */
-  def singleScan(initialState: Set[ResourceInfo], config: LocalDirectoryConfig): Stream[IO, ResourceEvent] = {
+  def singleScan(db: ResourceDatabase, config: LocalDirectoryConfig): Stream[IO, ResourceEvent] = {
     logger.info(s"Scanning directory: ${config.resourcePath}")
-    scan(initialState, config, poll = false)
+    Stream.eval(toFileStore(db, config)).flatMap: fileStore =>
+      LocalDirectoryScanner.scanDirectory(config.resourcePath, fileStore, config.filterDirectory, config.filterFiles, config.scan.hashingAlgorithm.createHash)
+        .parEvalMap(config.scan.scanParallelFactor)(mapEvent(db, config.resourcePath, config.id))
   }
 
   /**
@@ -97,6 +74,9 @@ object LocalResourceScanner {
    *
    * The state will be kept in memory and is not persisted.
    */
-  def pollingResourceEventStream(initialState: Set[ResourceInfo], config: LocalDirectoryConfig): Stream[IO, ResourceEvent] =
-    scan(initialState, config, poll = true)
+  def pollingResourceEventStream(db: ResourceDatabase, config: LocalDirectoryConfig): Stream[IO, ResourceEvent] =
+    Stream.eval(toFileStore(db, config)).flatMap: fileStore =>
+      LocalDirectoryScanner
+        .pollingStream(config.resourcePath, fileStore, config.scan.pollInterval, config.filterDirectory, config.filterFiles, config.scan.hashingAlgorithm.createHash)
+        .parEvalMap(config.scan.scanParallelFactor)(mapEvent(db, config.resourcePath, config.id))
 }

@@ -35,9 +35,9 @@ object AuthRoutes extends Logging {
     oneOf[SecurityError](unauthorizedOutput, forbiddenOutput)
   }
 
-  val cookieOutput = (setCookie("access_token") and setCookie("refresh_token") and setCookie("XSRF-TOKEN")).mapTo[AuthCookies]
+  private val cookieOutput = (setCookie("access_token") and setCookie("refresh_token") and setCookie("XSRF-TOKEN")).mapTo[AuthCookies]
 
-  val redirectOut = (statusCode(StatusCode.Found) and header[String](HeaderNames.Location)).mapTo[RedirectResponse]
+  private val redirectOut = (statusCode(StatusCode.Found) and header[String](HeaderNames.Location)).mapTo[RedirectResponse]
 
   val sessionEndpoint: Endpoint[SecurityInput, Unit, SecurityError, AuthToken, Any] =
     endpoint
@@ -53,7 +53,7 @@ object AuthRoutes extends Logging {
     endpoint
       .name("authLogin")
       .tag("auth")
-      .description("Logout the current user")
+      .description("Login the current user")
       .post.in("api" / "auth" / "login")
       .in(formBody[LoginCredentials]: EndpointIO.Body[String, LoginCredentials])
       .out(redirectOut and cookieOutput)
@@ -61,9 +61,9 @@ object AuthRoutes extends Logging {
 
   val refreshEndpoint =
     endpoint
-      .name("authRefresh")
+      .name("authRefreshTokens")
       .tag("auth")
-      .description("Logout the current user")
+      .description("Refresh the users auth tokens")
       .post.in("api" / "auth" / "refresh")
       .in(header[String]("refresh_token"))
       .out(cookieOutput)

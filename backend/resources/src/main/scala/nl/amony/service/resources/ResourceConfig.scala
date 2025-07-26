@@ -42,6 +42,16 @@ object ResourceConfig {
     lazy val cachePath: Path    = path.toAbsolutePath.normalize().resolve(relativeCachePath)
     lazy val resourcePath: Path = path.toAbsolutePath.normalize()
     lazy val uploadPath: Path   = path.toAbsolutePath.normalize().resolve(relativeUploadPath)
+
+    def filterFiles(path: Path) = {
+      val fileName = path.getFileName.toString
+      scan.extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
+    }
+
+    def filterDirectory(path: Path) = {
+      val fileName = path.getFileName.toString
+      !fileName.startsWith(".") && path != uploadPath
+    }
   }
 
   case class TranscodeSettings(
