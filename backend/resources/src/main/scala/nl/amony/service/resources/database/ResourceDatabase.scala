@@ -83,6 +83,8 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
       def getById(bucketId: String, resourceId: String): IO[Option[ResourceRow]] =
         session.prepare(Queries.resources.getById).flatMap(_.option(bucketId, resourceId))
 
+      def getByHash(bucketId: String, hash: String): IO[List[ResourceRow]] = ???
+      
       def delete(bucketId: String, resourceId: String) =
         session.prepare(Queries.resources.deleteBucket).flatMap(_.execute(bucketId, resourceId))
     }
@@ -161,6 +163,13 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
        tags         <- if (resourceTags.nonEmpty) OptionT.liftF(tables.tags.getByIds(resourceTags.map(_.tag_id))) else OptionT.some[IO](List.empty)
      yield resourceRow.toResource(tags.map(_.label).toSet)).value
 
+  def getByHash(bucketId: String, hash: String): IO[Option[ResourceInfo]] =
+    (for
+      resourceRow  <- OptionT(tables.resources.getById(bucketId, hash))
+      resourceTags <- OptionT.liftF(tables.resource_tags.getById(bucketId, hash))
+      tags <- if (resourceTags.nonEmpty) OptionT.liftF(tables.tags.getByIds(resourceTags.map(_.tag_id))) else OptionT.some[IO](List.empty)
+    yield resourceRow.toResource(tags.map(_.label).toSet)).value
+  
   def updateThumbnailTimestamp(bucketId: String, resourceId: String, timestamp: Int): IO[Option[ResourceInfo]] =
     (for {
       resource <- OptionT(getById(bucketId, resourceId))
@@ -198,20 +207,3 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
         _ <- session.execute(Queries.resource_tags.truncateCascade)
         _ <- session.execute(Queries.resources.truncateCascade)
       } yield ()
-
-  def applyEvent(bucketId: String, effect: ResourceEvent => IO[Unit])(event: ResourceEvent): IO[Unit] = {
-    event match {
-      case ResourceAdded(resource)       => insertResource(resource) >> effect(event)
-      case ResourceDeleted(resourceId)   => deleteResource(bucketId, resourceId) >> effect(event)
-      case ResourceMoved(id, _, newPath) => move(bucketId, id, newPath) >> effect(event)
-      case ResourceFileMetaChanged(id, creationTime, lastModifiedTime) =>
-        getById(bucketId, id).flatMap {
-          case Some(resource) =>
-            val updated = resource.copy(creationTime = creationTime, lastModifiedTime = lastModifiedTime)
-            tables.resources.upsert(ResourceRow.fromResource(updated)) >> effect(event)
-          case None => IO.unit
-        }
-      case _ => IO.unit
-    }
-  }
-
