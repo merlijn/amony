@@ -17,7 +17,7 @@ object ResourceDirectives extends Logging {
 
   def responseFromResource(req: Request[IO], resource: Resource): IO[Response[IO]] = {
 
-    val maybeMediaType = resource.contentType().map(MediaType.parse(_).toOption).flatten
+    val maybeMediaType = resource.info().contentType.map(MediaType.parse(_).toOption).flatten
     val additionalHeaders = Headers(maybeMediaType.map(mediaType => `Content-Type`(mediaType)).toList)
 
     resource match {

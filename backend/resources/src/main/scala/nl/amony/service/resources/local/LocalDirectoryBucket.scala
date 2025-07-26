@@ -8,7 +8,7 @@ import nl.amony.lib.messagebus.EventTopic
 import nl.amony.service.resources.*
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
-import nl.amony.service.resources.api.events.{ResourceDeleted, ResourceEvent, ResourceUpdated}
+import nl.amony.service.resources.api.events.*
 import nl.amony.service.resources.api.operations.ResourceOperation
 import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalResourceOperations.*
@@ -163,7 +163,20 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
       _.map(updated => topic.publish(ResourceUpdated(recoverMeta(updated)))).getOrElse(IO.unit)
     )
 
-  val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (db.applyEvent(config.id, e => topic.publish(e)))
+  private def applyEventToDb(bucketId: String, effect: ResourceEvent => IO[Unit])(event: ResourceEvent): IO[Unit] = {
+    event match {
+      case ResourceAdded(resource)       => db.insertResource(resource) >> effect(event)
+      case ResourceDeleted(resourceId)   => db.deleteResource(bucketId, resourceId) >> effect(event)
+      case ResourceMoved(id, _, newPath) => db.move(bucketId, id, newPath) >> effect(event)
+      case ResourceFileMetaChanged(id, creationTime, lastModifiedTime) =>
+        db.getById(bucketId, id).flatMap {
+          case Some(resource) => db.upsert(resource.copy(creationTime = creationTime, lastModifiedTime = lastModifiedTime)) >> effect(event)
+          case None => IO.unit
+        }
+      case _ => IO.unit
+    }
+  
+  val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (applyEventToDb(config.id, e => topic.publish(e)))
   val logEvent: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"Resource event: $e")))
 
   def refresh(): IO[Unit] =

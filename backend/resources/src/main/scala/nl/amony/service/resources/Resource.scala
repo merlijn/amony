@@ -7,7 +7,6 @@ import java.nio.file.Files
 
 trait Resource {
   def info(): ResourceInfo
-  def contentType(): Option[String]
   def getContent(): fs2.Stream[IO, Byte]
 }
 
@@ -30,8 +29,6 @@ case class LocalFile(path: fs2.io.file.Path, resourceInfo: ResourceInfo) extends
   override def info() = resourceInfo
 
   private val defaultChunkSize: Int = 64 * 1024
-
-  override def contentType(): Option[String] = resourceInfo.contentType
 
   override def size(): Long = Files.size(path.toNioPath)
 

@@ -14,7 +14,6 @@ CREATE TABLE resources (
     description            VARCHAR,
     thumbnail_timestamp    BIGINT,
     CONSTRAINT resources_pk PRIMARY KEY (bucket_id, resource_id),
-    CONSTRAINT fs_path_unq  UNIQUE      (bucket_id, fs_path)
 );
 
 CREATE INDEX resources_bucket_id_idx ON resources (bucket_id);
