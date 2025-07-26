@@ -22,7 +22,7 @@ val http4sVersion   = "0.23.30"
 
 val bouncyCastle = "org.apache.directory.studio" % "org.bouncycastle.bcprov.jdk15" % "140"
 
-val jsoup  = "org.jsoup" % "jsoup" % "1.19.1"
+val jsoup  = "org.jsoup" % "jsoup" % "1.21.1"
 
 val circe                    = "io.circe"                 %% "circe-core"                 % circeVersion
 val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
@@ -33,20 +33,20 @@ val skunkCirce               = "org.tpolecat"             %% "skunk-circe"      
 
 val sqids                    = "org.sqids" %% "sqids" % "0.5.0"
 
-val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"            % "1.11.37"
-val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"   % "1.11.37"
-val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"     % "1.11.37"
-val tapirSwaggerUI           = "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % "1.11.37"
-val tapirCirce               = "com.softwaremill.sttp.tapir" %% "tapir-json-circe"        % "1.11.37"
-val tapirCirceYamlSpec       = "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"    % "0.11.10"
+val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"              % "1.11.40"
+val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"     % "1.11.40"
+val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"       % "1.11.40"
+val tapirSwaggerUI           = "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle" % "1.11.40"
+val tapirCirce               = "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"        % "1.11.40"
+val tapirCirceYamlSpec       = "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"      % "0.11.10"
 
 val tapirSharedFs2           = "com.softwaremill.sttp.shared"  %% "fs2"                   % "1.5.0"
 
 val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "11.0.2"
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.17"
 
-val scribe                   = "com.outr"                 %% "scribe"                     % "3.16.1"
-val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.16.1"
+val scribe                   = "com.outr"                 %% "scribe"                     % "3.17.0"
+val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.17.0"
 
 val tikaCore                 = "org.apache.tika"           % "tika-core"                  % "3.1.0"
 
@@ -92,7 +92,7 @@ cancelable in Global := true
 
 val commonSettings = Seq(
   organization := "nl.amony",
-  scalaVersion := "3.3.5",
+  scalaVersion := "3.3.6",
   excludeDependencies ++= List(
     ExclusionRule("org.scala-lang", "scala3-library_sjs"),
     ExclusionRule("org.scala-lang", "scala3-library_sjs1_3"),

@@ -163,7 +163,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
       _.map(updated => topic.publish(ResourceUpdated(recoverMeta(updated)))).getOrElse(IO.unit)
     )
 
-  private def applyEventToDb(bucketId: String, effect: ResourceEvent => IO[Unit])(event: ResourceEvent): IO[Unit] = {
+  private def applyEventToDb(bucketId: String, effect: ResourceEvent => IO[Unit])(event: ResourceEvent): IO[Unit] = 
     event match {
       case ResourceAdded(resource)       => db.insertResource(resource) >> effect(event)
       case ResourceDeleted(resourceId)   => db.deleteResource(bucketId, resourceId) >> effect(event)
