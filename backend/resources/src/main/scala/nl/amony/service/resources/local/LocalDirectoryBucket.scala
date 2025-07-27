@@ -2,7 +2,6 @@ package nl.amony.service.resources.local
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import fs2.Pipe
 import nl.amony.lib.files.*
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.service.resources.*
@@ -24,6 +23,7 @@ object LocalDirectoryBucket:
     cats.effect.Resource.make {
       IO {
         val bucket = LocalDirectoryBucket(config, db, topic)
+        Files.createDirectories(config.cachePath)
         bucket.sync().unsafeRunAsync(_ => ())
         bucket
       }
@@ -33,8 +33,7 @@ object LocalDirectoryBucket:
 class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, topic: EventTopic[ResourceEvent])(using runtime: IORuntime) extends ResourceBucket with Logging {
 
   private val runningOperations = new ConcurrentHashMap[LocalResourceOp, IO[Path]]()
-  
-  Files.createDirectories(config.cachePath)
+  private val scanner           = LocalResourceSyncer(db, config, topic)
 
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = 
     db.getById(config.id, resourceId).map(_.map(recoverMeta))
@@ -162,54 +161,15 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
       _.map(updated => topic.publish(ResourceUpdated(recoverMeta(updated)))).getOrElse(IO.unit)
     )
 
-  private def applyEventToDb(bucketId: String, effect: ResourceEvent => IO[Unit])(event: ResourceEvent): IO[Unit] =
-    event match {
-      case ResourceAdded(resource)       => db.insertResource(resource) >> effect(event)
-      case ResourceDeleted(resourceId)   => db.deleteResource(bucketId, resourceId) >> effect(event)
-      case ResourceMoved(id, _, newPath) => db.move(bucketId, id, newPath) >> effect(event)
-      case ResourceFileMetaChanged(id, creationTime, lastModifiedTime) =>
-        db.getById(bucketId, id).flatMap {
-          case Some(resource) => db.upsert(resource.copy(creationTime = creationTime, lastModifiedTime = lastModifiedTime)) >> effect(event)
-          case None => IO.unit
-        }
-      case _ => IO.unit
-    }
-  
-  val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (applyEventToDb(config.id, e => topic.publish(e)))
-  val logEvent: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"Resource event: $e")))
-
-  def refresh(): IO[Unit] =
-    LocalResourceScanner.singleScan(db, config)
-        .through(logEvent)
-        .through(updateDb)
-        .compile
-        .drain
-
   def importBackup(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] = 
     db.truncateTables() >> resources
       .evalMap(resource => IO(logger.info(s"Inserting resource: ${resource.resourceId}")) >> db.insertResource(recoverMeta(resource)))
       .compile
       .drain
-  
-  def sync(): IO[Unit] = {
 
-    if (!config.scan.enabled)
-      IO.unit
-    else {
-      logger.info(s"Starting sync for directory: ${config.resourcePath.toAbsolutePath}")
+  def refresh(): IO[Unit] = scanner.refresh()
 
-      def pollWithRetryOnException(): fs2.Stream[IO, ResourceEvent] =
-        LocalResourceScanner.pollingResourceEventStream(db, config)
-          .through(logEvent)
-          .through(updateDb)
-          .handleErrorWith { e =>
-            logger.error(s"Scanner failed for ${config.resourcePath.toAbsolutePath}, retrying in ${config.scan.pollInterval}", e)
-            fs2.Stream.sleep[IO](config.scan.pollInterval) >> pollWithRetryOnException()
-          }
-
-      pollWithRetryOnException().compile.drain
-    }
-  }
+  def sync(): IO[Unit] = scanner.sync()
 
   override def getAllResources(): fs2.Stream[IO, ResourceInfo] =
     db.getStream(config.id).map(recoverMeta)
