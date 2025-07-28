@@ -53,7 +53,7 @@ object LocalDirectoryScanner extends Logging {
       for {
         previousByPath <- previous.getByPath(path)
         hash <- previousByPath
-          .filter(_.equalFileMeta(attrs))
+          .filter(_.isSameFileMeta(attrs))
           .map(i => IO.pure(i.hash))
           .getOrElse(hashFunction(path))
       } yield FileInfo(path, attrs, hash)
@@ -85,7 +85,7 @@ object LocalDirectoryScanner extends Logging {
     val movedOrAdded: Stream[IO, FileEvent] = current.getAllByHash().foldFlatMap(Seq.empty[FileEvent]) {
       case (carriedEvents, (hash, files)) =>
 
-        val e: IO[Stream[IO, FileEvent]] = previous.getByHash(hash).map { prev =>
+        val events: IO[Stream[IO, FileEvent]] = previous.getByHash(hash).map { prev =>
 
           val filesA = prev.toSeq
           val filesB = files.toSeq
@@ -106,7 +106,7 @@ object LocalDirectoryScanner extends Logging {
           notMoved ++ other
         }
 
-        (carriedEvents, Stream.force(e))
+        (carriedEvents, Stream.force(events))
       }
 
     removed ++ movedOrAdded

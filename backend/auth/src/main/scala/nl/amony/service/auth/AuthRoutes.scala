@@ -35,9 +35,9 @@ object AuthRoutes extends Logging {
     oneOf[SecurityError](unauthorizedOutput, forbiddenOutput)
   }
 
-  val cookieOutput = (setCookie("access_token") and setCookie("refresh_token") and setCookie("XSRF-TOKEN")).mapTo[AuthCookies]
+  private val cookieOutput = (setCookie("access_token") and setCookie("refresh_token") and setCookie("XSRF-TOKEN")).mapTo[AuthCookies]
 
-  val redirectOut = (statusCode(StatusCode.Found) and header[String](HeaderNames.Location)).mapTo[RedirectResponse]
+  private val redirectOut = (statusCode(StatusCode.Found) and header[String](HeaderNames.Location)).mapTo[RedirectResponse]
 
   val sessionEndpoint: Endpoint[SecurityInput, Unit, SecurityError, AuthToken, Any] =
     endpoint
@@ -53,7 +53,7 @@ object AuthRoutes extends Logging {
     endpoint
       .name("authLogin")
       .tag("auth")
-      .description("Logout the current user")
+      .description("Login the current user")
       .post.in("api" / "auth" / "login")
       .in(formBody[LoginCredentials]: EndpointIO.Body[String, LoginCredentials])
       .out(redirectOut and cookieOutput)
@@ -61,9 +61,9 @@ object AuthRoutes extends Logging {
 
   val refreshEndpoint =
     endpoint
-      .name("authRefresh")
+      .name("authRefreshTokens")
       .tag("auth")
-      .description("Logout the current user")
+      .description("Refresh the users auth tokens")
       .post.in("api" / "auth" / "refresh")
       .in(header[String]("refresh_token"))
       .out(cookieOutput)
@@ -113,18 +113,18 @@ object AuthRoutes extends Logging {
       .serverLogic(auth => _ => IO(Right(auth)))
 
     val loginImpl = loginEndpoint
-      .serverLogic(req => {
+      .serverLogic: req =>
         IO.fromFuture(IO(authService.authenticate(api.Credentials(req.username, req.password)))).flatMap:
           case api.InvalidCredentials()           => IO(Left(SecurityError.Unauthorized))
           case authentication: api.Authentication => IO(Right(RedirectResponse("/") -> createCookies(authentication)))
-      })
+          case _                                  => throw new RuntimeException("Unexpected response from authentication service")
 
     val refreshImpl = refreshEndpoint
-      .serverLogic(refreshToken => {
+      .serverLogic: refreshToken =>
         IO.fromFuture(IO(authService.refresh(api.Authentication("", refreshToken = refreshToken)))).flatMap:
           case api.InvalidCredentials()           => IO(Left(SecurityError.Unauthorized))
           case authentication: api.Authentication => IO(Right(createCookies(authentication)))
-      })
+          case _                                  => throw new RuntimeException("Unexpected response from authentication service")
 
     val logoutImpl = logoutEndpoint
       .serverLogic(_ => {
@@ -134,10 +134,10 @@ object AuthRoutes extends Logging {
         IO(Right(AuthCookies(expiredEmptyCookie, expiredEmptyCookie, expiredEmptyCookie)))
       })
     
-    Http4sServerInterpreter[IO](serverOptions).toRoutes(List(loginImpl, sessionImpl, logoutImpl)) <+> undocumented(authService, authConfig)
+    Http4sServerInterpreter[IO](serverOptions).toRoutes(List(loginImpl, sessionImpl, logoutImpl)) <+> loginPage(authService, authConfig)
   }
   
-  def undocumented(authService: AuthService, authConfig: AuthConfig) =
+  private def loginPage(authService: AuthService, authConfig: AuthConfig) =
     HttpRoutes.of[IO]:
       case GET -> Root / "login" => Ok(fs2.io.readClassLoaderResource[IO]("login.html"))
 }

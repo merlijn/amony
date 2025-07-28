@@ -2,13 +2,12 @@ package nl.amony.service.resources.local
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import fs2.Pipe
 import nl.amony.lib.files.*
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.service.resources.*
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
-import nl.amony.service.resources.api.events.{ResourceDeleted, ResourceEvent, ResourceUpdated}
+import nl.amony.service.resources.api.events.*
 import nl.amony.service.resources.api.operations.ResourceOperation
 import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalResourceOperations.*
@@ -24,6 +23,7 @@ object LocalDirectoryBucket:
     cats.effect.Resource.make {
       IO {
         val bucket = LocalDirectoryBucket(config, db, topic)
+        Files.createDirectories(config.cachePath)
         bucket.sync().unsafeRunAsync(_ => ())
         bucket
       }
@@ -33,8 +33,7 @@ object LocalDirectoryBucket:
 class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, topic: EventTopic[ResourceEvent])(using runtime: IORuntime) extends ResourceBucket with Logging {
 
   private val runningOperations = new ConcurrentHashMap[LocalResourceOp, IO[Path]]()
-  
-  Files.createDirectories(config.cachePath)
+  private val scanner           = LocalResourceSyncer(db, config, topic)
 
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = 
     db.getById(config.id, resourceId).map(_.map(recoverMeta))
@@ -131,16 +130,15 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
   }
 
   override def getResource(resourceId: String): IO[Option[Resource]] =
-    getResourceInfo(resourceId).flatMap:
-      case None       =>
-        IO.pure(None)
+    getResourceInfo(resourceId).map:
+      case None       => None
       case Some(info) =>
         val path = config.resourcePath.resolve(info.path)
         if(!path.exists()) {
           logger.warn(s"Resource '$resourceId' was found in the database but no file exists: $path")
-          IO.pure(None)
+          None
         } else {
-          IO.pure(Some(Resource.fromPath(path, info)))
+          Some(Resource.fromPath(path, info))
         }
 
   override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[ResourceInfo] = ???
@@ -163,45 +161,15 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
       _.map(updated => topic.publish(ResourceUpdated(recoverMeta(updated)))).getOrElse(IO.unit)
     )
 
-  val updateDb: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (db.applyEvent(config.id, e => topic.publish(e)))
-  val logEvent: Pipe[IO, ResourceEvent, ResourceEvent] = _ evalTap (e => IO(logger.info(s"Resource event: $e")))
-
-  def refresh(): IO[Unit] =
-    db.getAll(config.id).map(_.toSet).flatMap: allResources =>
-      LocalResourceScanner.singleScan(allResources, config)
-          .through(logEvent)
-          .through(updateDb)
-          .compile
-          .drain
-
   def importBackup(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] = 
     db.truncateTables() >> resources
       .evalMap(resource => IO(logger.info(s"Inserting resource: ${resource.resourceId}")) >> db.insertResource(recoverMeta(resource)))
       .compile
       .drain
-  
-  def sync(): IO[Unit] = {
 
-    if (!config.scan.enabled)
-      IO.unit
-    else {
-      logger.info(s"Starting sync for directory: ${config.resourcePath.toAbsolutePath}")
+  def refresh(): IO[Unit] = scanner.refresh()
 
-      def stateFromStorage(): Set[ResourceInfo] = db.getAll(config.id).map(_.toSet).unsafeRunSync()
-
-      def pollRetry(s: Set[ResourceInfo]): fs2.Stream[IO, ResourceEvent] =
-        LocalResourceScanner.pollingResourceEventStream(stateFromStorage(), config).handleErrorWith { e =>
-          logger.error(s"Scanner failed for ${config.resourcePath.toAbsolutePath}, retrying in ${config.scan.pollInterval}", e)
-          fs2.Stream.sleep[IO](config.scan.pollInterval) >> pollRetry(stateFromStorage())
-        }
-
-      pollRetry(stateFromStorage())
-        .through(logEvent)
-        .through(updateDb)
-        .compile
-        .drain
-    }
-  }
+  def sync(): IO[Unit] = scanner.sync()
 
   override def getAllResources(): fs2.Stream[IO, ResourceInfo] =
     db.getStream(config.id).map(recoverMeta)
