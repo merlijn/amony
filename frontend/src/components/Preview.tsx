@@ -1,5 +1,11 @@
 import React, {CSSProperties, useContext, useState} from 'react';
-import {dateMillisToString, durationInMillisToString, labelForResolution, titleFromPath} from "../api/Util";
+import {
+  canBrowserPlayType,
+  dateMillisToString,
+  durationInMillisToString,
+  labelForResolution,
+  titleFromPath
+} from "../api/Util";
 import FragmentsPlayer from "./common/FragmentsPlayer";
 import ImgWithAlt from "./common/ImgWithAlt";
 import './Preview.scss';
@@ -7,6 +13,7 @@ import {ErrorBoundary} from "react-error-boundary";
 import {SessionContext} from "../api/Constants";
 import {ResourceDto} from "../api/generated";
 import LazyImage from "./common/LazyImage";
+import {FiAlertCircle} from "react-icons/fi";
 
 export type PreviewProps = {
   resource: ResourceDto,
@@ -35,6 +42,7 @@ const Preview = (props: PreviewProps) => {
   const mediaTitle  = resource.title || titleFromPath(resource.path)
   const isVideo   = resource.contentType.startsWith("video")
   const session = useContext(SessionContext)
+  const isMediaTypeSupported = canBrowserPlayType(resource.contentType)
 
   const titlePanel =
       <div className = "preview-info-bar">
@@ -47,6 +55,7 @@ const Preview = (props: PreviewProps) => {
         { props.options.showResolution && <div className="preview-quality-overlay">{labelForResolution(resource.contentMeta.height)}</div> }
         { (isVideo && props.options.showDuration) && <div className="duration-overlay">{durationStr}</div> }
         { isHovering && session.isAdmin() && <a className="preview-edit-icon-overlay" href={`/editor/${props.resource.bucketId}/${props.resource.resourceId}`}><ImgWithAlt src="/icons/edit.svg" /></a> }
+        { !isMediaTypeSupported && <div className="preview-unsupported-overlay"><FiAlertCircle color="#fff" /></div> }
         {/* { <div className="abs-bottom-right"><FiDownload /></div> } */}
       </div>
 

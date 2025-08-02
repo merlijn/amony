@@ -24,7 +24,6 @@ const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }
 
   let isVideo = props.resource?.contentType.startsWith("video") || false
   let isImage = props.resource?.contentType.startsWith("image") || false
-  // let src = props.resource?.urls.originalResourceUrl || ''
 
   const onHide = () => {
     player.current?.pause()
