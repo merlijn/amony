@@ -112,9 +112,7 @@ lazy val noPublishSettings = Seq(
 )
 
 def protobufSettings = Seq(
-  Compile / PB.targets := Seq(
-    scalapb.gen(flatPackage = true) -> (Compile / sourceManaged).value / "scalapb"
-  )
+  Compile / PB.targets := Seq(scalapb.gen(flatPackage = true) -> (Compile / sourceManaged).value / "scalapb")
 )
 
 def module(name: String, mainClass: Boolean = false) = {

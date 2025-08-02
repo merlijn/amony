@@ -30,7 +30,7 @@ val errorOutput: EndpointOutput[ApiError | SecurityError] = oneOfList(securityEr
 
 object ResourceRoutes:
 
-  private val apiCacheHeaders: EndpointOutput[Unit] = List(
+  private val apiNoCacheHeaders: EndpointOutput[Unit] = List(
     header(HeaderNames.CacheControl, "no-cache, no-store, must-revalidate"),
     header(HeaderNames.Pragma, "no-cache"),
     header(HeaderNames.Expires, "0")
@@ -44,7 +44,7 @@ object ResourceRoutes:
       .get.in("api" / "buckets")
       .securityIn(securityInput)
       .errorOut(errorOutput)
-      .out(apiCacheHeaders)
+      .out(apiNoCacheHeaders)
       .out(jsonBody[List[BucketDto]])
   
   val getResourceById: Endpoint[SecurityInput, (String, String), ApiError | SecurityError, ResourceDto, Any] =
@@ -55,7 +55,7 @@ object ResourceRoutes:
       .get.in("api" / "resources" / path[String]("bucketId") / path[String]("resourceId"))
       .securityIn(securityInput)
       .errorOut(errorOutput)
-      .out(apiCacheHeaders)
+      .out(apiNoCacheHeaders)
       .out(jsonBody[ResourceDto])
 
   val updateUserMetaData: Endpoint[SecurityInput, (String, String, UserMetaDto), ApiError | SecurityError, Unit, Any] =

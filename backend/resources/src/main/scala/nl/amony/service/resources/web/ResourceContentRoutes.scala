@@ -22,8 +22,8 @@ object ResourceContentRoutes extends Logging {
 
     val matchPF: PartialFunction[String, ResourceOperation] = {
       case patterns.ThumbnailWithTimestampPattern(timestamp, height) => VideoThumbnail(width = None, height = Some(height.toInt), 23, timestamp.toLong)
-      case patterns.ThumbnailPattern(scaleHeight) => ImageThumbnail(width = None, height = Some(scaleHeight.toInt), 0)
-      case patterns.ClipPattern(start, end, height) => VideoFragment(width = None, height = Some(height.toInt), start.toLong, end.toLong, 23)
+      case patterns.ThumbnailPattern(scaleHeight)                    => ImageThumbnail(width = None, height = Some(scaleHeight.toInt), 0)
+      case patterns.ClipPattern(start, end, height)                  => VideoFragment(width = None, height = Some(height.toInt), start.toLong, end.toLong, 23)
     }
   }
 

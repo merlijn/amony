@@ -53,9 +53,9 @@ object LocalDirectoryScanner extends Logging {
       for {
         previousByPath <- previous.getByPath(path)
         hash <- previousByPath
-          .filter(_.isSameFileMeta(attrs))
-          .map(i => IO.pure(i.hash))
-          .getOrElse(hashFunction(path))
+                  .filter(_.isSameFileMeta(attrs))
+                  .map(i => IO.pure(i.hash))
+                  .getOrElse(hashFunction(path))
       } yield FileInfo(path, attrs, hash)
     }.foreach(e => current.insert(e)).compile.drain >> IO.pure(current)
   }

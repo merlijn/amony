@@ -1,5 +1,5 @@
 import React, {CSSProperties, useContext, useState} from 'react';
-import {dateMillisToString, durationInMillisToString, labelForResolution} from "../api/Util";
+import {dateMillisToString, durationInMillisToString, labelForResolution, titleFromPath} from "../api/Util";
 import FragmentsPlayer from "./common/FragmentsPlayer";
 import ImgWithAlt from "./common/ImgWithAlt";
 import './Preview.scss';
@@ -32,13 +32,13 @@ const Preview = (props: PreviewProps) => {
 
   const durationStr = durationInMillisToString(resource.contentMeta.duration)
 
-  const isVideo = resource.contentType.startsWith("video")
-
+  const mediaTitle  = resource.title || titleFromPath(resource.path)
+  const isVideo   = resource.contentType.startsWith("video")
   const session = useContext(SessionContext)
 
   const titlePanel =
       <div className = "preview-info-bar">
-        <span className="media-title" title={resource.title}>{resource.title}</span>
+        <span className="media-title" title={mediaTitle}>{mediaTitle}</span>
         { props.options.showDates && <span className="media-date">{dateMillisToString(resource.timeCreated)}</span> }
       </div>
 
