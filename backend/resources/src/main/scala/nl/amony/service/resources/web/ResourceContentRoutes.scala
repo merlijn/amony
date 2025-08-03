@@ -10,6 +10,9 @@ import org.http4s.CacheDirective.`max-age`
 import org.http4s.dsl.io.*
 import org.http4s.headers.`Cache-Control`
 import scribe.Logging
+import io.circe.syntax.*
+import org.http4s.circe.given
+import nl.amony.service.resources.web.dto.toDto
 
 import scala.concurrent.duration.DurationInt
 
@@ -35,17 +38,25 @@ object ResourceContentRoutes extends Logging {
         resource <- OptionT(bucket.getResource(resourceId))
       } yield bucket -> resource
    
-    def toResponse(option: OptionT[IO, Response[IO]]): IO[Response[IO]] =
+    def maybeResponse(option: OptionT[IO, Response[IO]]): IO[Response[IO]] =
      option.value.map(_.getOrElse(Response(Status.NotFound)))
 
     HttpRoutes.of[IO] {
 
+      case req @ POST -> Root / "api" / "resources" / bucketId / "upload" =>
+        maybeResponse:
+          for {
+            bucket   <- OptionT.fromOption[IO](buckets.get(bucketId))
+            resource <- OptionT.liftF(bucket.uploadResource("0", "test", req.body))
+            response <- OptionT.liftF(Ok(toDto(resource).asJson))
+          } yield response
+
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / "content" =>
-        toResponse:
+        maybeResponse:
           getResource(bucketId, resourceId).semiflatMap { (_, resource) => responseFromResource(req, resource) }
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern =>
-        toResponse:
+        maybeResponse:
           for {
             (bucket, resource) <- getResource(bucketId, resourceId)
             operation          <- OptionT.fromOption(patterns.matchPF.lift(resourcePattern))

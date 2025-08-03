@@ -14,7 +14,7 @@ import nl.amony.service.resources.database.ResourceDatabase
 import java.nio.file.{Files, Path}
 
 /**
- * Functionality to synchronize a local directory bucket with the database.
+ * Functionality to synchronize a local directory with the database state.
  */
 class LocalResourceSyncer(db: ResourceDatabase, config: LocalDirectoryConfig, topic: EventTopic[ResourceEvent]) {
 
@@ -42,27 +42,7 @@ class LocalResourceSyncer(db: ResourceDatabase, config: LocalDirectoryConfig, to
         withRequireResource(f.hash, f.path)(r => ResourceDeleted(r.resourceId))
 
       case FileAdded(f) =>
-        LocalResourceMeta.detectMetaData(f.path)
-          .recover { case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None }
-          .map {
-            meta =>
-              ResourceAdded(
-                ResourceInfo(
-                  bucketId = bucketId,
-                  resourceId = config.generateId(),
-                  userId = "0",
-                  path = relativizePath(f.path),
-                  hash = Some(f.hash),
-                  size = f.size,
-                  contentType = meta.map(_.contentType),
-                  contentMetaSource = meta.flatMap(_.toolMeta),
-                  contentMeta = meta.map(_.meta).getOrElse(ResourceMeta.Empty),
-                  creationTime = Some(f.creationTime),
-                  lastModifiedTime = Some(f.modifiedTime),
-                  thumbnailTimestamp = None
-                )
-              )
-          }
+        asNewResource(f, "0").map(ResourceAdded(_))
 
       case FileMoved(file, oldFilePath) =>
         val newPath = relativizePath(file.path)
@@ -70,6 +50,27 @@ class LocalResourceSyncer(db: ResourceDatabase, config: LocalDirectoryConfig, to
 
         withRequireResource(file.hash, oldFilePath)(r => ResourceMoved(r.resourceId, oldPath, newPath))
     }
+  }
+  
+  private[local] def asNewResource(f: FileInfo, userId: String): IO[ResourceInfo] = {
+    LocalResourceMeta.detectMetaData(f.path)
+      .recover { case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None }
+      .map { meta =>
+        ResourceInfo(
+          bucketId = bucketId,
+          resourceId = config.generateId(),
+          userId = userId,
+          path = relativizePath(f.path),
+          hash = Some(f.hash),
+          size = f.size,
+          contentType = meta.map(_.contentType),
+          contentMetaSource = meta.flatMap(_.toolMeta),
+          contentMeta = meta.map(_.meta).getOrElse(ResourceMeta.Empty),
+          creationTime = Some(f.creationTime),
+          lastModifiedTime = Some(f.modifiedTime),
+          thumbnailTimestamp = None
+        )
+      }
   }
 
   private def toFileStore(): IO[FileStore] =

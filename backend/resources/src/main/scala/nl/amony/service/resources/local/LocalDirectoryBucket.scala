@@ -2,19 +2,22 @@ package nl.amony.service.resources.local
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import fs2.{Chunk, Pipe}
 import nl.amony.lib.files.*
+import nl.amony.lib.files.watcher.FileInfo
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.service.resources.*
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
-import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
 import nl.amony.service.resources.api.events.*
 import nl.amony.service.resources.api.operations.ResourceOperation
+import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
 import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.local.LocalResourceOperations.*
 import scribe.Logging
 
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
+import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 
 object LocalDirectoryBucket:
@@ -141,7 +144,47 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
           Some(Resource.fromPath(path, info))
         }
 
-  override def uploadResource(fileName: String, source: fs2.Stream[IO, Byte]): IO[ResourceInfo] = ???
+  override def uploadResource(userId: String, fileName: String, source: fs2.Stream[IO, Byte]): IO[ResourceInfo] = {
+
+    val uploadPath = config.uploadPath.resolve(fileName)
+    val targetPath = config.resourcePath.resolve(fileName)
+
+    val writeFile: Pipe[IO, Byte, Nothing] = fs2.io.file.Files.forIO.writeAll(uploadPath)
+    val calculateHash: Pipe[IO, Byte, MessageDigest] = {
+
+      val initialDigest = MessageDigest.getInstance("SHA-1")
+
+      def updateDigest(digest: MessageDigest, chunk: Chunk[Byte]): MessageDigest = {
+        digest.update(chunk.toArray)
+        digest
+      }
+      _.chunks.fold(initialDigest)(updateDigest)
+    }
+
+    def insertResource(digest: Array[Byte]): IO[ResourceInfo] = {
+      val encodedHash = config.scan.hashingAlgorithm.encodeHash(digest)
+
+      for {
+        resourceInfo <- scanner.asNewResource(FileInfo(uploadPath, encodedHash), userId)
+        _            <- db.insertResource(resourceInfo)
+        _            <- topic.publish(ResourceAdded(resourceInfo))
+        _            <- IO(logger.info(s"Uploaded resource: $resourceInfo"))
+//        _            <- IO(uploadPath.moveTo(targetPath))
+      } yield resourceInfo
+    }
+
+    source
+      .observe(writeFile)
+      .through(calculateHash)
+      .compile.last
+      .flatMap {
+        case Some(digest) => insertResource(digest.digest())
+        case None         => IO.raiseError(new RuntimeException("Failed to compute hash for uploaded file"))
+      }
+      .recoverWith {
+        e => fs2.io.file.Files.forIO.delete(uploadPath) >> IO.raiseError(new RuntimeException(s"Failed to upload resource: $fileName", e))
+      }
+  }
 
   override def deleteResource(resourceId: String): IO[Unit] =
     getResourceInfo(resourceId).flatMap:

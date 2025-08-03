@@ -237,7 +237,7 @@ class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends 
 
   private def insertResource(resource: ResourceInfo) = {
     try {
-      logger.debug(s"Indexing media: ${resource.path}")
+      logger.info(s"Indexing media: ${resource.path}")
       val solrInputDocument = toSolrDocument(resource)
       solr.add(collectionName, solrInputDocument, config.commitWithinMillis).getStatus
     }

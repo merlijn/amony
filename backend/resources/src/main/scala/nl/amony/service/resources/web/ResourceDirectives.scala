@@ -29,13 +29,12 @@ object ResourceDirectives extends Logging {
           rangeResponseFn = resource.getContentRange,
         )
       case _ =>
-        Response(
+        val response = Response(
           status = Status.Ok,
           headers = additionalHeaders,
           body = resource.getContent()
         )
-
-        Ok(resource.getContent())
+        IO.pure(response)
     }
   }
 
