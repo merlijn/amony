@@ -38,7 +38,7 @@ trait FFProbe extends Logging {
     ffprobeVersion.flatMap { version =>
       val fileName = file.toAbsolutePath.normalize().toString
       val v    = if (debug) "debug" else "quiet"
-      val args = List("-print_format", "json", "-show_streams", "-loglevel", v, fileName)
+      val args = List("-print_format", "json", "-show_streams", "-show_format", "-loglevel", v, fileName)
 
       useProcess("ffprobe", args) { process =>
 

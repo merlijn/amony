@@ -103,8 +103,8 @@ class LocalResourceSyncer(db: ResourceDatabase, config: LocalDirectoryConfig, to
 
   private def applyEventToDb(event: ResourceEvent): IO[Unit] =
     event match {
-      case ResourceAdded(resource) => db.insertResource(resource)
-      case ResourceDeleted(resourceId) => db.deleteResource(config.id, resourceId)
+      case ResourceAdded(resource)       => db.insertResource(resource)
+      case ResourceDeleted(resourceId)   => db.deleteResource(config.id, resourceId)
       case ResourceMoved(id, _, newPath) => db.move(config.id, id, newPath)
       case ResourceFileMetaChanged(id, creationTime, lastModifiedTime) =>
         db.getById(config.id, id).flatMap {
