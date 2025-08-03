@@ -65,7 +65,7 @@ object AuthRoutes extends Logging {
       .tag("auth")
       .description("Refresh the users auth tokens")
       .post.in("api" / "auth" / "refresh")
-      .in(header[String]("refresh_token"))
+      .in(cookie[String]("refresh_token"))
       .out(cookieOutput)
       .errorOut(errorOutput)
 
@@ -120,11 +120,12 @@ object AuthRoutes extends Logging {
           case _                                  => throw new RuntimeException("Unexpected response from authentication service")
 
     val refreshImpl = refreshEndpoint
-      .serverLogic: refreshToken =>
+      .serverLogic { refreshToken =>
         IO.fromFuture(IO(authService.refresh(api.Authentication("", refreshToken = refreshToken)))).flatMap:
           case api.InvalidCredentials()           => IO(Left(SecurityError.Unauthorized))
           case authentication: api.Authentication => IO(Right(createCookies(authentication)))
           case _                                  => throw new RuntimeException("Unexpected response from authentication service")
+      }
 
     val logoutImpl = logoutEndpoint
       .serverLogic(_ => {
@@ -134,7 +135,7 @@ object AuthRoutes extends Logging {
         IO(Right(AuthCookies(expiredEmptyCookie, expiredEmptyCookie, expiredEmptyCookie)))
       })
     
-    Http4sServerInterpreter[IO](serverOptions).toRoutes(List(loginImpl, sessionImpl, logoutImpl)) <+> loginPage(authService, authConfig)
+    Http4sServerInterpreter[IO](serverOptions).toRoutes(List(loginImpl, refreshImpl, sessionImpl, logoutImpl)) <+> loginPage(authService, authConfig)
   }
   
   private def loginPage(authService: AuthService, authConfig: AuthConfig) =
