@@ -34,9 +34,7 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
 
       for {
         resourceInfo <- newResource(FileInfo(uploadPath, encodedHash), userId)
-        _            <- db.insertResource(resourceInfo)
-        _            <- topic.publish(ResourceAdded(resourceInfo))
-        _            <- IO(logger.info(s"Uploaded resource: $resourceInfo"))
+        _            <- processEvent(ResourceAdded(resourceInfo))
         //        _            <- IO(uploadPath.moveTo(targetPath))
       } yield resourceInfo
     }

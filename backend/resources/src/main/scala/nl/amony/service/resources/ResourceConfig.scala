@@ -24,7 +24,8 @@ object ResourceConfig {
   
   case class ScanConfig(
      enabled: Boolean,
-     syncOnStartup: Boolean, 
+     syncOnStartup: Boolean,
+     newFilesOwner: String, 
      scanParallelFactor: Int,
      pollInterval: FiniteDuration,
      verifyExistingHashes: Boolean,
@@ -79,7 +80,7 @@ object ResourceConfig {
         file      = path,
         nChunks   = 32,
         chunkSize = 32,
-        hasher    = () => MessageDigest.getInstance(algorithm),
+        digestFn  = () => newDigest(),
         encoder   = encodeHash
       )
 

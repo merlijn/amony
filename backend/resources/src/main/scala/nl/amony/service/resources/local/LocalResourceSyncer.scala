@@ -40,7 +40,7 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
         withRequireResource(f.hash, f.path)(r => ResourceDeleted(r.resourceId))
 
       case FileAdded(f) =>
-        newResource(f, "0").map(ResourceAdded(_))
+        newResource(f, config.sync.newFilesOwner).map(ResourceAdded(_))
 
       case FileMoved(file, oldFilePath) =>
         val newPath = relativizePath(file.path)
@@ -112,13 +112,13 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
       case _ => IO.unit
     }
 
-  private val processEvent: Pipe[IO, ResourceEvent, ResourceEvent]     =
-    _ evalTap (e => applyEventToDb(e) >> topic.publish(e) >> IO(logger.info(s"Resource event: $e")))
+  private[local] def processEvent(event: ResourceEvent) =
+    applyEventToDb(event) >> topic.publish(event) >> IO(logger.info(s"[${config.id}] $event"))
 
   private def startSync(interrupter: SignallingRef[IO, Boolean]): IO[Unit] = {
     def pollWithRetryOnException(): fs2.Stream[IO, ResourceEvent] =
       pollingResourceEventStream()
-        .through(processEvent)
+        .through(_ evalTap processEvent)
         .interruptWhen(interrupter)
         .handleErrorWith { e =>
           logger.error(s"Error while scanning directory ${config.resourcePath.toAbsolutePath}, retrying in ${config.sync.pollInterval}", e)
@@ -132,7 +132,7 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
 
   def refresh() =
     singleScan()
-      .through(processEvent)
+      .through(_ evalTap processEvent)
       .compile
       .drain
 
