@@ -137,9 +137,15 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
       .drain
 
   def sync(): IO[Unit] = {
-    if (!config.sync.enabled)
-      IO.unit
-    else
+    if (config.sync.enabled)
+      logger.info(s"Starting sync process using polling for directory: ${config.resourcePath}")
       SignallingRef[IO, Boolean](false).flatMap(signal => startSync(signal))
+    else if (config.sync.syncOnStartup) {
+      logger.info(s"Syncing resources on startup for directory: ${config.resourcePath}")
+      refresh()
+    } else {
+      logger.info(s"Resource sync is disabled for directory: ${config.resourcePath}")
+      IO.unit
+    }
   }
 }

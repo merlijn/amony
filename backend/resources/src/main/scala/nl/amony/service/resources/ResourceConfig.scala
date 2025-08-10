@@ -24,6 +24,7 @@ object ResourceConfig {
   
   case class ScanConfig(
      enabled: Boolean,
+     syncOnStartup: Boolean, 
      scanParallelFactor: Int,
      pollInterval: FiniteDuration,
      verifyExistingHashes: Boolean,
