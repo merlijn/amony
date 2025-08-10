@@ -91,7 +91,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
       config.hashingAlgorithm.createHash(file).flatMap:
         hash =>
           val oldResourceId = resource.resourceId
-          val updated = resource.copy(resourceId = hash, hash = Some(hash))
+          val updated = resource.copy(hash = Some(hash))
           if (oldResourceId != hash)
             logger.info(s"Updating hash for $file from $oldResourceId to $hash")
             db.deleteResource(config.id, resource.resourceId) >> topic.publish(ResourceDeleted(oldResourceId)) >> 
@@ -162,7 +162,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
     )
 
   def importBackup(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] = 
-    db.truncateTables() >> resources
+    db.truncateTables() >> resources.map(r => r.copy(resourceId = config.generateId()))
       .evalMap(resource => IO(logger.info(s"Inserting resource: ${resource.resourceId}")) >> db.insertResource(recoverMeta(resource)))
       .compile
       .drain
