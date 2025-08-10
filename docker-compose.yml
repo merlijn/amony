@@ -2,7 +2,7 @@ name: amony
 
 services:
   amony:
-    image: europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/amony-app:dev
+    image: europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/amony-app:0.0.3-20-cd4d5ab3
     container_name: amony-app
     depends_on:
       postgres:
@@ -21,12 +21,14 @@ services:
       - sh
       - -c
       - |
-        # Fix permissions of app_data volume
-        echo "Setting ownership on /app/data..."
+        echo "Setting users and permissions for amony application"
+        
+        addgroup --gid $AMONY_DOCKER_USER_ID amony
+        adduser --uid $AMONY_DOCKER_USER_ID --gid $AMONY_DOCKER_USER_ID --disabled-password --gecos "" amony
         chown -R $AMONY_DOCKER_USER_ID:$AMONY_DOCKER_USER_ID /app/data
         
         # Drop to limited user to run the application
-        exec su-exec $AMONY_DOCKER_USER_ID:$AMONY_DOCKER_USER_ID java -cp /app/resources:/app/classes:/app/libs/* nl.amony.app.Main
+        su -s /bin/sh -c "java -cp /app/resources:/app/classes:/app/libs/* nl.amony.app.Main" amony
     volumes:
       - ${AMONY_MEDIA_PATH}:/media
       - app_data:/app/data
