@@ -104,9 +104,6 @@ case class ClipDto(
   tags: List[String]
  ) derives Codec, sttp.tapir.Schema
 
-
-
-
 def toDto(resource: ResourceInfo): ResourceDto = {
 
   val resourceHeight =
@@ -174,47 +171,44 @@ def toDto(resource: ResourceInfo): ResourceDto = {
         codec = None,
       )
   }
+  
+  // a clip that starts at the thumbnail timestamp and lasts for 3 seconds
+  val thumbnailClip = {
+    val start = thumbnailTimestamp
+    val end   = Math.min(contentMeta.duration, thumbnailTimestamp + 3000)
+    val urls  = resolutions.map(height => s"/api/resources/${resource.bucketId}/${resource.resourceId}/clip_${start}-${end}_${height}p.mp4")
 
-  // hard coded for now
-  val clips = List(ClipDto(resource.resourceId, thumbnailTimestamp, Math.min(contentMeta.duration, thumbnailTimestamp + 3000), List.empty, None, List.empty))
+    ClipDto(
+      resourceId = resource.resourceId,
+      start = start,
+      end = end,
+      urls = urls,
+      description = None,
+      tags = List.empty
+    )
+  }
 
   val contentMetaSource = resource.contentMetaSource.map(
     s => ResourceToolMetaDto(s.toolName, io.circe.parser.parse(s.toolData).getOrElse(Json.fromString(s.toolData)))
   )
 
   ResourceDto(
-    bucketId    = resource.bucketId,
-    resourceId  = resource.resourceId,
-    hash        = resource.hash,
-    sizeInBytes = resource.size,
-    path        = resource.path,
-    timeCreated = resource.creationTime.getOrElse(0L),
-    userId      = resource.userId,
-    title       = resource.title.orElse(Some(filename)),
-    description = resource.description,
-    tags        = resource.tags.toList,
-    contentType = resource.contentType.getOrElse("application/octet-stream"),
-    contentMeta = contentMeta,
-    contentMetaSource = contentMetaSource,
-    urls = urls,
+    bucketId           = resource.bucketId,
+    resourceId         = resource.resourceId,
+    hash               = resource.hash,
+    sizeInBytes        = resource.size,
+    path               = resource.path,
+    timeCreated        = resource.creationTime.getOrElse(0L),
+    userId             = resource.userId,
+    title              = resource.title,
+    description        = resource.description,
+    tags               = resource.tags.toList,
+    contentType        = resource.contentType.getOrElse("application/octet-stream"),
+    contentMeta        = contentMeta,
+    contentMetaSource  = contentMetaSource,
+    urls               = urls,
     thumbnailTimestamp = resource.thumbnailTimestamp,
-    clips = {
-      clips.map { f =>
-
-        val urls = resolutions.map(height =>
-          s"/api/resources/${resource.bucketId}/${resource.resourceId}/clip_${f.start}-${f.end}_${height}p.mp4"
-        )
-
-        ClipDto(
-          resourceId = resource.resourceId,
-          start = f.start,
-          end = f.end,
-          urls = urls,
-          description = f.description,
-          tags = f.tags
-        )
-      }
-    }
+    clips              = List(thumbnailClip)
   )
 }
 
