@@ -7,17 +7,28 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-#    user: "1000:1000"
+    user: "0:0"
     ports:
       - "127.0.0.1:8080:8080"
     environment:
+      AMONY_DOCKER_USER_ID: ${AMONY_DOCKER_USER_ID:-1000}
       AMONY_ADMIN_USERNAME: ${AMONY_ADMIN_USERNAME:-admin}
       AMONY_ADMIN_PASSWORD: ${AMONY_ADMIN_PASSWORD:-changeme}
-      AMONY_DATABASE_HOST: "postgres"
-      AMONY_DATABASE_USERNAME: ${DATABASE_USERNAME:-admin}
-      AMONY_DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
+      DATABASE_HOST: "postgres"
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-admin}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
+    entrypoint:
+      - sh
+      - -c
+      - |
+        # Fix permissions of app_data volume
+        echo "Setting ownership on /app/data..."
+        chown -R $AMONY_DOCKER_USER_ID:$AMONY_DOCKER_USER_ID /app/data
+        
+        # Drop to limited user to run the application
+        exec su-exec $AMONY_DOCKER_USER_ID:$AMONY_DOCKER_USER_ID java -cp /app/resources:/app/classes:/app/libs/* nl.amony.app.Main
     volumes:
-      - ${AMONY_LOCAL_MEDIA_PATH}:/media
+      - ${AMONY_MEDIA_PATH}:/media
       - app_data:/app/data
     restart: "no"
 
