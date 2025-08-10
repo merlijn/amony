@@ -16,14 +16,12 @@ import java.nio.file.{Files, Path}
 /**
  * Functionality to synchronize a local directory with the database state.
  */
-class LocalResourceSyncer(db: ResourceDatabase, config: LocalDirectoryConfig, topic: EventTopic[ResourceEvent]) {
+trait LocalResourceSyncer extends LocalDirectoryDependencies {
 
-  private val logger = scribe.Logger("LocalResourceSyncer")
-
+  private val logger   = scribe.Logger("LocalResourceSyncer")
   private val bucketId = config.id
 
   private def relativizePath(path: Path): String = config.resourcePath.relativize(path).toString
-
   private def mapFileEvent(fileEvent: FileEvent): IO[ResourceEvent] = {
 
     def withRequireResource(hash: String, path: Path)(fn: ResourceInfo => ResourceEvent): IO[ResourceEvent] =
@@ -42,7 +40,7 @@ class LocalResourceSyncer(db: ResourceDatabase, config: LocalDirectoryConfig, to
         withRequireResource(f.hash, f.path)(r => ResourceDeleted(r.resourceId))
 
       case FileAdded(f) =>
-        asNewResource(f, "0").map(ResourceAdded(_))
+        newResource(f, "0").map(ResourceAdded(_))
 
       case FileMoved(file, oldFilePath) =>
         val newPath = relativizePath(file.path)
@@ -51,8 +49,8 @@ class LocalResourceSyncer(db: ResourceDatabase, config: LocalDirectoryConfig, to
         withRequireResource(file.hash, oldFilePath)(r => ResourceMoved(r.resourceId, oldPath, newPath))
     }
   }
-  
-  private[local] def asNewResource(f: FileInfo, userId: String): IO[ResourceInfo] = {
+
+  private[local] def newResource(f: FileInfo, userId: String): IO[ResourceInfo] = {
     LocalResourceMeta.detectMetaData(f.path)
       .recover { case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None }
       .map { meta =>
@@ -87,8 +85,8 @@ class LocalResourceSyncer(db: ResourceDatabase, config: LocalDirectoryConfig, to
   private def singleScan(): Stream[IO, ResourceEvent] =
     logger.info(s"Scanning directory: ${config.resourcePath}")
     Stream.eval(toFileStore()).flatMap: fileStore =>
-      LocalDirectoryScanner.scanDirectory(config.resourcePath, fileStore, config.filterDirectory, config.filterFiles, config.scan.hashingAlgorithm.createHash)
-        .parEvalMap(config.scan.scanParallelFactor)(mapFileEvent)
+      LocalDirectoryScanner.scanDirectory(config.resourcePath, fileStore, config.filterDirectory, config.filterFiles, config.hashingAlgorithm.createHash)
+        .parEvalMap(config.sync.scanParallelFactor)(mapFileEvent)
 
   /**
    * Given an initial state, this method will poll the directory for changes and emit events for new, deleted and moved resources.
@@ -98,8 +96,8 @@ class LocalResourceSyncer(db: ResourceDatabase, config: LocalDirectoryConfig, to
   private def pollingResourceEventStream(): Stream[IO, ResourceEvent] =
     Stream.eval(toFileStore()).flatMap: fileStore =>
       LocalDirectoryScanner
-        .pollingStream(config.resourcePath, fileStore, config.scan.pollInterval, config.filterDirectory, config.filterFiles, config.scan.hashingAlgorithm.createHash)
-        .parEvalMap(config.scan.scanParallelFactor)(mapFileEvent)
+        .pollingStream(config.resourcePath, fileStore, config.sync.pollInterval, config.filterDirectory, config.filterFiles, config.hashingAlgorithm.createHash)
+        .parEvalMap(config.sync.scanParallelFactor)(mapFileEvent)
 
   private def applyEventToDb(event: ResourceEvent): IO[Unit] =
     event match {
@@ -123,11 +121,11 @@ class LocalResourceSyncer(db: ResourceDatabase, config: LocalDirectoryConfig, to
         .through(processEvent)
         .interruptWhen(interrupter)
         .handleErrorWith { e =>
-          logger.error(s"Error while scanning directory ${config.resourcePath.toAbsolutePath}, retrying in ${config.scan.pollInterval}", e)
-          fs2.Stream.sleep[IO](config.scan.pollInterval) >> pollWithRetryOnException()
+          logger.error(s"Error while scanning directory ${config.resourcePath.toAbsolutePath}, retrying in ${config.sync.pollInterval}", e)
+          fs2.Stream.sleep[IO](config.sync.pollInterval) >> pollWithRetryOnException()
         }
 
-    logger.info(s"Starting polling at interval ${config.scan.pollInterval} for: ${config.resourcePath.toAbsolutePath}")
+    logger.info(s"Starting polling at interval ${config.sync.pollInterval} for: ${config.resourcePath.toAbsolutePath}")
 
     pollWithRetryOnException().compile.drain
   }
@@ -139,7 +137,7 @@ class LocalResourceSyncer(db: ResourceDatabase, config: LocalDirectoryConfig, to
       .drain
 
   def sync(): IO[Unit] = {
-    if (!config.scan.enabled)
+    if (!config.sync.enabled)
       IO.unit
     else
       SignallingRef[IO, Boolean](false).flatMap(signal => startSync(signal))

@@ -28,6 +28,11 @@ object FFProbeModel extends Logging {
 
   sealed trait Stream {
     val index: Int
+    val codec_type: String = this match {
+      case _: VideoStream => "video"
+      case _: AudioStream => "audio"
+      case _              => "unknown"
+    }
   }
 
   case class UnkownStream(override val index: Int) extends Stream
@@ -85,7 +90,7 @@ object FFProbeModel extends Logging {
       .flatMap {
         case "video" => c.as[VideoStream]
         case "audio" => c.as[AudioStream]
-        case _ => c.as[UnkownStream]
+        case _       => c.as[UnkownStream]
       }
       .left
       .map(error => {

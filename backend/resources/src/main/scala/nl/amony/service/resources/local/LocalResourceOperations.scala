@@ -139,10 +139,10 @@ object LocalResourceOperations {
       val outputFile = outputDir.resolve(outputFilename)
 
       FFMpeg.transcodeToMp4(
-        inputFile = inputFile,
-        range = range,
+        inputFile   = inputFile,
+        range       = range,
         scaleHeight = Some(height),
-        outputFile = Some(outputFile),
+        outputFile  = Some(outputFile),
       )
     }
   }

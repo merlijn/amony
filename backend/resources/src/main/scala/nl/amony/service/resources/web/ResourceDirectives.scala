@@ -17,14 +17,14 @@ object ResourceDirectives extends Logging {
 
   def responseFromResource(req: Request[IO], resource: Resource): IO[Response[IO]] = {
 
-    val maybeMediaType = resource.info().contentType.map(MediaType.parse(_).toOption).flatten
+    val maybeMediaType = resource.info.contentType.map(MediaType.parse(_).toOption).flatten
     val additionalHeaders = Headers(maybeMediaType.map(mediaType => `Content-Type`(mediaType)).toList)
 
     resource match {
       case resource: ResourceWithRangeSupport =>
         ResourceDirectives.responseWithRangeSupport[IO](
           request = req,
-          size = resource.size(),
+          size = resource.size,
           additionalHeaders = additionalHeaders,
           rangeResponseFn = resource.getContentRange,
         )
@@ -32,7 +32,7 @@ object ResourceDirectives extends Logging {
         val response = Response(
           status = Status.Ok,
           headers = additionalHeaders,
-          body = resource.getContent()
+          body = resource.getContent
         )
         IO.pure(response)
     }

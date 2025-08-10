@@ -27,14 +27,14 @@ object ResourceConfig {
      scanParallelFactor: Int,
      pollInterval: FiniteDuration,
      verifyExistingHashes: Boolean,
-     hashingAlgorithm: HashingAlgorithm,
      extensions: List[String],
   ) derives ConfigReader
 
   case class LocalDirectoryConfig(
      id: String,
      private val path: Path,
-     scan: ScanConfig,
+     sync: ScanConfig,
+     hashingAlgorithm: HashingAlgorithm,
      relativeCachePath: Path,
      relativeUploadPath: Path,
      
@@ -47,7 +47,7 @@ object ResourceConfig {
 
     def filterFiles(path: Path) = {
       val fileName = path.getFileName.toString
-      scan.extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
+      sync.extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
     }
 
     def filterDirectory(path: Path) = {
@@ -66,6 +66,7 @@ object ResourceConfig {
 
   sealed trait HashingAlgorithm derives ConfigReader {
     def algorithm: String
+    def newDigest(): MessageDigest = MessageDigest.getInstance(algorithm)
     def createHash(path: Path): IO[String]
     def encodeHash(bytes: Array[Byte]): String
   }

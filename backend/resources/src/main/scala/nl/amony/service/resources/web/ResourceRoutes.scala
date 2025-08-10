@@ -97,7 +97,7 @@ object ResourceRoutes:
       getResourceById
         .serverSecurityLogicPure(apiSecurity.publicEndpoint)
         .serverLogic(_ => (bucketId, resourceId) =>
-          getResource(bucketId, resourceId).map((_, resource) => toDto(resource.info())).value
+          getResource(bucketId, resourceId).map((_, resource) => toDto(resource.info)).value
         )
 
     val updateUserMetaDataImpl =

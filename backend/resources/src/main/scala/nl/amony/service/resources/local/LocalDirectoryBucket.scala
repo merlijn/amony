@@ -2,9 +2,7 @@ package nl.amony.service.resources.local
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import fs2.{Chunk, Pipe}
 import nl.amony.lib.files.*
-import nl.amony.lib.files.watcher.FileInfo
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.service.resources.*
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
@@ -16,9 +14,10 @@ import nl.amony.service.resources.local.LocalResourceOperations.*
 import scribe.Logging
 
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{Files, Path}
-import java.security.MessageDigest
+import java.nio.file.{Files, Path as JPath}
 import java.util.concurrent.ConcurrentHashMap
+
+trait LocalDirectoryDependencies(val config: LocalDirectoryConfig, val db: ResourceDatabase, val topic: EventTopic[ResourceEvent])
 
 object LocalDirectoryBucket:
   
@@ -33,10 +32,10 @@ object LocalDirectoryBucket:
     }{  _ => IO.unit }
   }
 
-class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, topic: EventTopic[ResourceEvent])(using runtime: IORuntime) extends ResourceBucket with Logging {
+class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, topic: EventTopic[ResourceEvent])(using runtime: IORuntime) 
+  extends LocalDirectoryDependencies(config, db, topic), ResourceBucket, LocalResourceSyncer, UploadResource, Logging {
 
-  private val runningOperations = new ConcurrentHashMap[LocalResourceOp, IO[Path]]()
-  private val scanner           = LocalResourceSyncer(db, config, topic)
+  private val runningOperations = new ConcurrentHashMap[LocalResourceOp, IO[JPath]]()
 
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = 
     db.getById(config.id, resourceId).map(_.map(recoverMeta))
@@ -89,7 +88,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
   def reComputeHashes(): IO[Unit] =
     getAllResources().evalMap(resource => {
       val file = config.resourcePath.resolve(resource.path)
-      config.scan.hashingAlgorithm.createHash(file).flatMap:
+      config.hashingAlgorithm.createHash(file).flatMap:
         hash =>
           val oldResourceId = resource.resourceId
           val updated = resource.copy(resourceId = hash, hash = Some(hash))
@@ -144,48 +143,6 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
           Some(Resource.fromPath(path, info))
         }
 
-  override def uploadResource(userId: String, fileName: String, source: fs2.Stream[IO, Byte]): IO[ResourceInfo] = {
-
-    val uploadPath = config.uploadPath.resolve(fileName)
-    val targetPath = config.resourcePath.resolve(fileName)
-
-    val writeFile: Pipe[IO, Byte, Nothing] = fs2.io.file.Files.forIO.writeAll(uploadPath)
-    val calculateHash: Pipe[IO, Byte, MessageDigest] = {
-
-      val initialDigest = MessageDigest.getInstance("SHA-1")
-
-      def updateDigest(digest: MessageDigest, chunk: Chunk[Byte]): MessageDigest = {
-        digest.update(chunk.toArray)
-        digest
-      }
-      _.chunks.fold(initialDigest)(updateDigest)
-    }
-
-    def insertResource(digest: Array[Byte]): IO[ResourceInfo] = {
-      val encodedHash = config.scan.hashingAlgorithm.encodeHash(digest)
-
-      for {
-        resourceInfo <- scanner.asNewResource(FileInfo(uploadPath, encodedHash), userId)
-        _            <- db.insertResource(resourceInfo)
-        _            <- topic.publish(ResourceAdded(resourceInfo))
-        _            <- IO(logger.info(s"Uploaded resource: $resourceInfo"))
-//        _            <- IO(uploadPath.moveTo(targetPath))
-      } yield resourceInfo
-    }
-
-    source
-      .observe(writeFile)
-      .through(calculateHash)
-      .compile.last
-      .flatMap {
-        case Some(digest) => insertResource(digest.digest())
-        case None         => IO.raiseError(new RuntimeException("Failed to compute hash for uploaded file"))
-      }
-      .recoverWith {
-        e => fs2.io.file.Files.forIO.delete(uploadPath) >> IO.raiseError(new RuntimeException(s"Failed to upload resource: $fileName", e))
-      }
-  }
-
   override def deleteResource(resourceId: String): IO[Unit] =
     getResourceInfo(resourceId).flatMap:
       case None       => IO.pure(())
@@ -209,10 +166,6 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
       .evalMap(resource => IO(logger.info(s"Inserting resource: ${resource.resourceId}")) >> db.insertResource(recoverMeta(resource)))
       .compile
       .drain
-
-  def refresh(): IO[Unit] = scanner.refresh()
-
-  def sync(): IO[Unit] = scanner.sync()
 
   override def getAllResources(): fs2.Stream[IO, ResourceInfo] =
     db.getStream(config.id).map(recoverMeta)
