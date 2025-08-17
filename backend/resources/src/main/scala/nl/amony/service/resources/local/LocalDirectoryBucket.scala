@@ -162,7 +162,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
     )
 
   def importBackup(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] = 
-    db.truncateTables() >> resources.map(r => r.copy(resourceId = config.generateId()))
+    db.truncateTables() >> resources.map(r => r.copy(resourceId = config.generateId(), title = None))
       .evalMap(resource => IO(logger.info(s"Inserting resource: ${resource.resourceId}")) >> db.insertResource(recoverMeta(resource)))
       .compile
       .drain

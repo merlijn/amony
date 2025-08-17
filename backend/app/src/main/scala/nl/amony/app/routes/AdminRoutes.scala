@@ -1,13 +1,13 @@
 package nl.amony.app.routes
 
 import cats.effect.IO
-import nl.amony.lib.auth.{AuthToken, ApiSecurity, JwtDecoder, Roles, SecurityError, SecurityInput, securityErrors, securityInput}
+import nl.amony.lib.auth.{ApiSecurity, AuthToken, JwtDecoder, Roles, SecurityError, SecurityInput, securityErrors, securityInput}
 import nl.amony.service.resources.api.ResourceInfo
 import nl.amony.service.resources.{Resource, ResourceBucket}
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.dto.{ResourceDto, toDto}
 import nl.amony.service.resources.web.oneOfList
-import nl.amony.service.search.api.ForceCommitRequest
+import nl.amony.service.search.api.{DeleteBucketRequest, ForceCommitRequest}
 import nl.amony.service.search.api.SearchServiceGrpc.SearchService
 import org.http4s.*
 import scribe.Logging
@@ -95,11 +95,12 @@ object AdminRoutes extends Logging:
             case None         => IO.unit
             case Some(bucket) =>
               logger.info(s"Re-indexing all resources in bucket '$bucketId'")
-              
+
+              def deleteBucket() = IO.fromFuture(IO(searchService.deleteBucket(DeleteBucketRequest(bucketId))))
               def indexResource(resource: ResourceInfo, index: Long) = IO.fromFuture(IO(searchService.index(resource))) >> IO.pure(index)
               def commit: IO[Unit] = IO.fromFuture(IO(searchService.forceCommit(ForceCommitRequest()))) >> IO.unit
-              
-              bucket
+
+              deleteBucket() >> bucket
                 .getAllResources().zipWithIndex.evalMap(indexResource)
                 .compile.last.flatMap {
                   case Some(size) => commit >> IO(logger.info(s"Re-indexed $size resources in bucket '$bucketId'"))

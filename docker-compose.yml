@@ -30,7 +30,7 @@ services:
         # Drop to limited user to run the application
         su -s /bin/sh -c "java -cp /app/resources:/app/classes:/app/libs/* nl.amony.app.Main" amony
     volumes:
-      - ${AMONY_MEDIA_PATH}:/media
+      - ${AMONY_HOST_MEDIA_PATH}:/media
       - app_data:/app/data
     restart: "no"
 

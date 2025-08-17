@@ -7,6 +7,8 @@ package nl.amony.service.search.api;
 
 service SearchService {
 
+  rpc deleteBucket(DeleteBucketRequest) returns (DeleteBucketResult) { }
+
   rpc searchMedia(Query) returns (SearchResult) { }
 
   rpc indexAll(stream nl.amony.service.resources.api.ResourceInfo) returns (ReIndexResult) { }
@@ -14,6 +16,14 @@ service SearchService {
   rpc index(nl.amony.service.resources.api.ResourceInfo) returns (ReIndexResult) { }
 
   rpc forceCommit(ForceCommitRequest) returns (ForceCommitResult) { }
+}
+
+message DeleteBucketRequest {
+  string bucketId = 1;
+}
+
+message DeleteBucketResult {
+  bool success = 1;
 }
 
 message ForceCommitRequest { }
