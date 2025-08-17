@@ -6,6 +6,7 @@ import nl.amony.service.resources.util.PartialHash.partialHash
 import pureconfig.*
 import pureconfig.generic.FieldCoproductHint
 import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
+import sqids.Sqids
 
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -23,25 +24,40 @@ object ResourceConfig {
   
   case class ScanConfig(
      enabled: Boolean,
+     syncOnStartup: Boolean,
+     newFilesOwner: String, 
      scanParallelFactor: Int,
      pollInterval: FiniteDuration,
      verifyExistingHashes: Boolean,
-     hashingAlgorithm: HashingAlgorithm,
      extensions: List[String],
   ) derives ConfigReader
 
   case class LocalDirectoryConfig(
      id: String,
      private val path: Path,
-     scan: ScanConfig,
+     sync: ScanConfig,
+     hashingAlgorithm: HashingAlgorithm,
      relativeCachePath: Path,
      relativeUploadPath: Path,
      
   ) extends ResourceBucketConfig {
 
+    val random = new scala.util.Random()
     lazy val cachePath: Path    = path.toAbsolutePath.normalize().resolve(relativeCachePath)
     lazy val resourcePath: Path = path.toAbsolutePath.normalize()
     lazy val uploadPath: Path   = path.toAbsolutePath.normalize().resolve(relativeUploadPath)
+
+    def filterFiles(path: Path) = {
+      val fileName = path.getFileName.toString
+      sync.extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
+    }
+
+    def filterDirectory(path: Path) = {
+      val fileName = path.getFileName.toString
+      !fileName.startsWith(".") && path != uploadPath
+    }
+    
+    def generateId() = Base32.encode(random.nextBytes(15)).substring(0, 24)
   }
 
   case class TranscodeSettings(
@@ -52,6 +68,7 @@ object ResourceConfig {
 
   sealed trait HashingAlgorithm derives ConfigReader {
     def algorithm: String
+    def newDigest(): MessageDigest = MessageDigest.getInstance(algorithm)
     def createHash(path: Path): IO[String]
     def encodeHash(bytes: Array[Byte]): String
   }
@@ -63,7 +80,7 @@ object ResourceConfig {
         file      = path,
         nChunks   = 32,
         chunkSize = 32,
-        hasher    = () => MessageDigest.getInstance(algorithm),
+        digestFn  = () => newDigest(),
         encoder   = encodeHash
       )
 

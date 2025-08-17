@@ -2,7 +2,7 @@ import React, {CSSProperties, useContext, useEffect, useRef, useState} from "rea
 import {FaSort} from "react-icons/fa"
 import {FiEdit} from "react-icons/fi"
 import {ResourceSelection} from "../api/Model"
-import {dateMillisToString, formatByteSize, resourceSelectionToParams} from "../api/Util"
+import {dateMillisToString, formatByteSize, resourceSelectionToParams, titleFromPath} from "../api/Util"
 import './ListView.scss'
 import InfiniteScroll from "./common/InfiniteScroll"
 import {SessionContext, useSortParam} from "../api/Constants"
@@ -216,7 +216,8 @@ type TitleCellProps =  { mediaResource: ResourceDto; } & React.HTMLProps<HTMLTab
 
 const TitleCell = ({ mediaResource, ...elementProps }: TitleCellProps ) => {
 
-  const [title, setTitle] = useState(mediaResource.title)
+  const initialTitle = mediaResource.title || titleFromPath(mediaResource.path)
+  const [title, setTitle] = useState(initialTitle)
   const [editTitle, setEditTitle] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const session = useContext(SessionContext)

@@ -49,11 +49,11 @@ object PartialHash extends Logging {
   }
 
   // samples a file randomly and creates a hash from that
-  def partialHash(file: Path, nChunks: Int = 32, chunkSize: Int = 32, hasher: () => MessageDigest, encoder: Array[Byte] => String): IO[String] = IO {
+  def partialHash(file: Path, nChunks: Int = 32, chunkSize: Int = 32, digestFn: () => MessageDigest, encoder: Array[Byte] => String): IO[String] = IO {
 
     val bytes = sampleBytesFromFile(file, nChunks, chunkSize)
 
-    val digest = hasher()
+    val digest = digestFn()
     val hash = digest.digest(bytes)
     val encodedHash = encoder(hash)
 

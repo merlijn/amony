@@ -333,4 +333,12 @@ class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends 
       logger.info("Forcing commit")
       solr.commit(collectionName); ForceCommitResult()
     }
+
+  override def deleteBucket(request: DeleteBucketRequest): Future[DeleteBucketResult] =
+    loggingFailureFuture {
+      logger.info(s"Deleting bucket: ${request.bucketId}")
+      solr.deleteByQuery(collectionName, s"${FieldNames.bucketId}:${ClientUtils.escapeQueryChars(request.bucketId)}", config.commitWithinMillis)
+      solr.commit(collectionName)
+      DeleteBucketResult()
+    }
 }
