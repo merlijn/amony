@@ -20,8 +20,9 @@ case class ResourceRow(
   content_meta_tool_name: Option[String],
   content_meta_tool_data: Option[String],
   fs_path: String,
-  fs_creation_time: Option[Instant],
-  fs_last_modified_time: Option[Instant],
+  time_added: Instant,
+  time_created: Option[Instant],
+  time_last_modified: Option[Instant],
   title: Option[String],
   description: Option[String],
   thumbnail_timestamp: Option[Int] = None) derives io.circe.Codec {
@@ -38,8 +39,9 @@ case class ResourceRow(
       contentMetaSource = content_meta_tool_name.map(name => ResourceMetaSource(name, content_meta_tool_data.getOrElse(""))),
       contentMeta = ResourceMeta.Empty,
       tags = tagLabels,
-      creationTime = fs_creation_time.map(_.toEpochMilli),
-      lastModifiedTime = fs_last_modified_time.map(_.toEpochMilli),
+      timeAdded = Some(time_added.toEpochMilli),
+      timeCreated = time_created.map(_.toEpochMilli),
+      timeLastModified = time_last_modified.map(_.toEpochMilli),
       title = title,
       description = description,
       thumbnailTimestamp = thumbnail_timestamp
@@ -50,7 +52,7 @@ case class ResourceRow(
 
 object ResourceRow {
 
-  val columns = sql"r.bucket_id, r.resource_id, r.user_id, r.hash, r.size, r.content_type, r.content_meta_tool_name, r.content_meta_tool_data, r.fs_path, r.fs_creation_time, r.fs_last_modified_time, r.title, r.description, r.thumbnail_timestamp"
+  val columns = sql"r.bucket_id, r.resource_id, r.user_id, r.hash, r.size, r.content_type, r.content_meta_tool_name, r.content_meta_tool_data, r.fs_path, r.time_added, r.time_last_modified, r.title, r.description, r.thumbnail_timestamp"
 
   def fromResource(resource: ResourceInfo): ResourceRow = ResourceRow(
     bucket_id = resource.bucketId,
@@ -62,8 +64,9 @@ object ResourceRow {
     content_meta_tool_name = resource.contentMetaSource.map(_.toolName),
     content_meta_tool_data = resource.contentMetaSource.map(_.toolData),
     fs_path = resource.path,
-    fs_creation_time = resource.creationTime.map(Instant.ofEpochMilli),
-    fs_last_modified_time = resource.lastModifiedTime.map(Instant.ofEpochMilli),
+    time_added = Instant.ofEpochMilli(resource.timeAdded.getOrElse(0L)),
+    time_created = None,
+    time_last_modified = resource.timeLastModified.map(Instant.ofEpochMilli),
     title = resource.title,
     description = resource.description,
     thumbnail_timestamp = resource.thumbnailTimestamp

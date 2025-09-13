@@ -100,8 +100,8 @@ object Queries extends Logging {
       sql"""
         INSERT INTO resources SELECT * FROM json_populate_record(NULL::resources, $json)
         ON CONFLICT (bucket_id, resource_id) DO UPDATE
-        SET(user_id, hash, size, content_type, content_meta_tool_name, content_meta_tool_data, fs_path, fs_creation_time, fs_last_modified_time, title, description, thumbnail_timestamp) =
-        (EXCLUDED.user_id, EXCLUDED.hash, EXCLUDED.size, EXCLUDED.content_type, EXCLUDED.content_meta_tool_name, EXCLUDED.content_meta_tool_data, EXCLUDED.fs_path, EXCLUDED.fs_creation_time, EXCLUDED.fs_last_modified_time, EXCLUDED.title, EXCLUDED.description, EXCLUDED.thumbnail_timestamp)
+        SET(user_id, hash, size, content_type, content_meta_tool_name, content_meta_tool_data, fs_path, time_added, time_created, time_last_modified, title, description, thumbnail_timestamp) =
+        (EXCLUDED.user_id, EXCLUDED.hash, EXCLUDED.size, EXCLUDED.content_type, EXCLUDED.content_meta_tool_name, EXCLUDED.content_meta_tool_data, EXCLUDED.fs_path, EXCLUDED.time_added, EXCLUDED.time_created, EXCLUDED.time_last_modified, EXCLUDED.title, EXCLUDED.description, EXCLUDED.thumbnail_timestamp)
       """.command
 
     val bucketCount: Query[String, Int] =

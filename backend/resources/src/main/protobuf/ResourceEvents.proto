@@ -33,8 +33,7 @@ message ResourceUpdated {
 
 message ResourceFileMetaChanged {
   required string resourceId = 1;
-  optional int64 creationTime = 2;
-  optional int64 lastModifiedTime = 3;
+  required int64 lastModifiedTime = 2;
 }
 
 message ResourceMoved {

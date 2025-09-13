@@ -41,8 +41,9 @@ object SolrSearchService {
     val title = "title_s"
     val videoCodec = "video_codec_s"
     val description = "description_s"
-    val created = "created_l"
-    val lastModified = "lastmodified_l"
+    val timeCreated = "time_created_l"
+    val timeAdded = "time_added_l"
+    val lastModified = "time_last_modified_l"
     val contentType = "content_type_s"
     val width = "width_i"
     val height = "height_i"
@@ -118,8 +119,8 @@ class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends 
     resource.thumbnailTimestamp.foreach(timestamp => solrInputDocument.addField(FieldNames.thumbnailTimestamp, timestamp))
     resource.title.foreach(title => solrInputDocument.addField(FieldNames.title, title))
     resource.description.foreach(description => solrInputDocument.addField(FieldNames.description, description))
-    resource.creationTime.foreach(created => solrInputDocument.addField(FieldNames.created, created))
-    resource.lastModifiedTime.foreach(lastModified => solrInputDocument.addField(FieldNames.lastModified, lastModified))
+    resource.timeAdded.foreach(created => solrInputDocument.addField(FieldNames.timeAdded, created))
+    resource.timeLastModified.foreach(lastModified => solrInputDocument.addField(FieldNames.lastModified, lastModified))
     resource.contentType.foreach(contentType => solrInputDocument.addField(FieldNames.contentType, contentType))
 
     resource.contentMeta match {
@@ -149,7 +150,8 @@ class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends 
     val bucketId = document.getFieldValue(FieldNames.bucketId).asInstanceOf[String]
     val title = Option(document.getFieldValue(FieldNames.title)).map(_.asInstanceOf[String])
     val path = document.getFieldValue(FieldNames.path).asInstanceOf[String]
-    val creationTime = Option(document.getFieldValue(FieldNames.created)).map(_.asInstanceOf[Long])
+    val timeAdded = Option(document.getFieldValue(FieldNames.timeAdded)).map(_.asInstanceOf[Long])
+    val timeCreated = Option(document.getFieldValue(FieldNames.timeCreated)).map(_.asInstanceOf[Long])
     val lastModified = Option(document.getFieldValue(FieldNames.lastModified)).map(_.asInstanceOf[Long])
     val size = document.getFieldValue(FieldNames.filesize).asInstanceOf[Long]
 
@@ -177,7 +179,7 @@ class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends 
       case _ => ResourceMeta.Empty
     }
 
-    ResourceInfo(bucketId, resourceId, userId.getOrElse(""), path, size, hash, contentType, None, contentMeta, creationTime, lastModified, title, description, tags, thumbnailTimestamp)
+    ResourceInfo(bucketId, resourceId, userId.getOrElse(""), path, size, hash, contentType, None, contentMeta, timeAdded, timeCreated, lastModified, title, description, tags, thumbnailTimestamp)
   }
 
   private def toSolrQuery(query: Query) = {
@@ -188,10 +190,10 @@ class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends 
 
       val solrField = sort.field match
         case Title     => FieldNames.title
-        case DateAdded => FieldNames.created
+        case DateAdded => FieldNames.timeAdded
         case Size      => FieldNames.filesize
         case Duration  => FieldNames.duration
-        case _         => FieldNames.created
+        case _         => FieldNames.timeAdded
 
       val direction = if (sort.direction == Desc) "desc" else "asc"
 
@@ -258,11 +260,10 @@ class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends 
       solrDocument.addField(FieldNames.path, Map("set" -> newPath).asJava)
       solr.add(collectionName, solrDocument, config.commitWithinMillis).getStatus
 
-    case ResourceFileMetaChanged(id, creationTime, lastModifiedTime) =>
+    case ResourceFileMetaChanged(id, lastModifiedTime) =>
       val solrDocument = new SolrInputDocument()
       solrDocument.addField(FieldNames.id, id)
-      creationTime.foreach(time => solrDocument.addField(FieldNames.created, Map("set" -> time).asJava))
-      lastModifiedTime.foreach(time => solrDocument.addField(FieldNames.lastModified, Map("set" -> time).asJava))
+      solrDocument.addField(FieldNames.lastModified, Map("set" -> lastModifiedTime).asJava)
       solr.add(collectionName, solrDocument, config.commitWithinMillis).getStatus
 
     case ResourceDeleted(resourceId) =>

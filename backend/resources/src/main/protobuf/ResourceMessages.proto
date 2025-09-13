@@ -21,8 +21,9 @@ message ResourceInfo {
   optional string contentType = 7;
   optional ResourceMetaSource contentMetaSource = 8;
   optional ResourceMeta contentMeta = 9;
-  optional int64 creationTime = 10;
-  optional int64 lastModifiedTime = 11;
+  optional int64 timeAdded = 10;
+  optional int64 timeCreated = 16;
+  optional int64 timeLastModified = 11;
   optional string title = 12;
   optional string description = 13;
   repeated string tags = 14 [ (scalapb.field).collection_type="Set" ];

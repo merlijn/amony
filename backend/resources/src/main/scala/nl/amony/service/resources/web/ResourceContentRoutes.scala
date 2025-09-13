@@ -3,7 +3,7 @@ package nl.amony.service.resources.web
 import cats.data.OptionT
 import cats.effect.IO
 import nl.amony.service.resources.api.operations.{ImageThumbnail, ResourceOperation, VideoFragment, VideoThumbnail}
-import nl.amony.service.resources.web.ResourceDirectives.responseFromResource
+import nl.amony.service.resources.web.ResourceDirectives.resourceContentsResponse
 import nl.amony.service.resources.{Resource, ResourceBucket}
 import org.http4s.*
 import org.http4s.CacheDirective.`max-age`
@@ -22,6 +22,18 @@ object ResourceContentRoutes extends Logging {
     val ClipPattern                   = raw"clip_(\d+)-(\d+)_(\d+)p\.mp4".r
     val ThumbnailPattern              = raw"thumb_(\d+)p\.webp".r
     val ThumbnailWithTimestampPattern = raw"thumb_(\d+)_(\d+)p\.webp".r
+    
+    val resolutions = List(
+      120,
+      240,
+      320,
+      480,
+      640,
+      1024,
+      1920,
+      2160,
+      4320
+    )
 
     val matchPF: PartialFunction[String, ResourceOperation] = {
       case patterns.ThumbnailWithTimestampPattern(timestamp, height) => VideoThumbnail(width = None, height = Some(height.toInt), 23, timestamp.toLong)
@@ -53,7 +65,7 @@ object ResourceContentRoutes extends Logging {
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / "content" =>
         maybeResponse:
-          getResource(bucketId, resourceId).semiflatMap { (_, resource) => responseFromResource(req, resource) }
+          getResource(bucketId, resourceId).semiflatMap { (_, resource) => resourceContentsResponse(req, resource) }
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern =>
         maybeResponse:
@@ -61,7 +73,7 @@ object ResourceContentRoutes extends Logging {
             (bucket, resource) <- getResource(bucketId, resourceId)
             operation          <- OptionT.fromOption(patterns.matchPF.lift(resourcePattern))
             derivedResource    <- OptionT(bucket.getOrCreate(resourceId, operation))
-            response           <- OptionT.liftF(responseFromResource(req, derivedResource).map(r => r.addHeader(`Cache-Control`(`max-age`(365.days)))))
+            response           <- OptionT.liftF(resourceContentsResponse(req, derivedResource).map(r => r.addHeader(`Cache-Control`(`max-age`(365.days)))))
           } yield response
     }
   }

@@ -48,8 +48,9 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       contentMetaSource = None,
       contentMeta = ResourceMeta.Empty, // this field is not stored
       tags = Set.fill(Random.nextInt(5))(randomTag),
-      creationTime = Some(nextTimestamp),
-      lastModifiedTime = Some(nextTimestamp),
+      timeAdded = Some(nextTimestamp),
+      timeCreated = None,
+      timeLastModified = Some(nextTimestamp),
       title = Some(randomString),
       description = Some(randomString),
       thumbnailTimestamp = Some(nextTimestamp)

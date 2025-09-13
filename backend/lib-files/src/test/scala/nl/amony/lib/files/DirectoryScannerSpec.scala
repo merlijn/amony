@@ -19,9 +19,9 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
       fileInfo.copy(path = Paths.get(fileName))
   }
 
-  val fileA = FileInfo(Paths.get("a"), hash = "a", size = 100, creationTime = 1, modifiedTime = 1)
-  val fileB = FileInfo(Paths.get("b"), hash = "b", size = 200, creationTime = 2, modifiedTime = 2)
-  val fileC = FileInfo(Paths.get("c"), hash = "c", size = 300, creationTime = 3, modifiedTime = 3)
+  val fileA = FileInfo(Paths.get("a"), hash = "a", size = 100, modifiedTime = 1)
+  val fileB = FileInfo(Paths.get("b"), hash = "b", size = 200, modifiedTime = 2)
+  val fileC = FileInfo(Paths.get("c"), hash = "c", size = 300, modifiedTime = 3)
 
   def randomFile() = {
     val id = java.util.UUID.randomUUID().toString
@@ -29,7 +29,6 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
       path = Paths.get(id),
       hash = id,
       size = random.nextInt(100000) + 1,
-      creationTime = random.nextInt(100000),
       modifiedTime = random.nextInt(100000)
     )
   }
@@ -60,7 +59,7 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
 
         val previousFiles = Set(
           fileA.copy(size = 200),
-          fileB.copy(creationTime = 3),
+          fileB.copy(modifiedTime = 3),
           fileC.copy(modifiedTime = 4)
         )
 

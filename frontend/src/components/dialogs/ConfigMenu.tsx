@@ -11,7 +11,7 @@ const ConfigMenu = () => {
   // const [prefs, setPrefs] = useLocalStoragePrefs<Prefs>("prefs-v1", Constants.defaultPreferences)
   const [prefs, setPrefs, removeValue] = useLocalStorage(Constants.preferenceKey, Constants.defaultPreferences)
 
-  const columns = [1, 2, 3, 4, 5, 6, 7].map((v) => {
+  const columns = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => {
     return { value: v, label: v.toString() }
   })
 
@@ -32,34 +32,37 @@ const ConfigMenu = () => {
                   name="ncols-option"
                   type="radio"
                   value={0}
-                  checked  = { prefs.gallery_columns === 'auto' }
-                  onChange = { (e) => {
-                    if ( prefs.gallery_columns !== 'auto') {
-                      updatePrefs( {gallery_columns: 'auto'} )
+                  checked={prefs.gallery_columns === 'auto'}
+                  onChange={(e) => {
+                    if (prefs.gallery_columns !== 'auto') {
+                      updatePrefs({gallery_columns: 'auto'})
                     }
                   }}
                 />
-                <span key="auto-label" style={{float: "left"}}>auto</span>
+                <span key="auto-label" style = {{float: "left"}}>auto</span>
+
+                {/*<input style = {{float: "left"}} type="range" id="mySlider" min="0" max="100" step="25" value="0"/>*/}
 
                 <input
                   key="custom-radio"
-                  style={{float: "left"}}
+                  style = {{float: "left"}}
                   className="mr-1"
                   name="ncols-option"
                   type="radio"
-                  value = { 0 }
-                  checked = { prefs.gallery_columns !== 'auto' }
+                  value={0}
+                  checked={prefs.gallery_columns !== 'auto'}
                   onChange={(e) => {
                     if (prefs.gallery_columns === 'auto')
                       updatePrefs({gallery_columns: calculateColumns()})
                   }}
                 />
-                <span key="custom-label" style={{float: "left"}}>other</span>
+
+                <span key="custom-label" style={{float: "left"}}>custom</span>
                 <select
-                  key      = "custom-value"
-                  name     = "ncols"
-                  value    = { prefs.gallery_columns }
-                  onChange = { (e) => {
+                  key="custom-value"
+                  name="ncols"
+                  value={prefs.gallery_columns}
+                  onChange={(e) => {
                     updatePrefs({gallery_columns: parseInt(e.target.value)})
                   }}>
                   {
@@ -77,7 +80,7 @@ const ConfigMenu = () => {
           </div>
 
           <div key="info-bar" className="form-section">
-            <p key="header" className="form-label">Show info bar</p>
+          <p key="header" className="form-label">Show info bar</p>
             <div key="content" className="form-content">
               <input
                 type="checkbox"

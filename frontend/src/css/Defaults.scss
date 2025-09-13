@@ -1,4 +1,4 @@
-@use './Constants.scss' as *;
+@use './Constants.scss' as constants;
 
 *,
 *::before,
@@ -15,8 +15,8 @@ body {
 
 .text-input {
   outline: none;
-  border-radius: $spacing-1;
-  border: 1px solid $gray-400;
+  border-radius: constants.$spacing-1;
+  border: 1px solid constants.$gray-400;
   &:focus {
     border-color: rgb(128, 189, 255);
     outline: solid rgba(128, 189, 255, 0.4);

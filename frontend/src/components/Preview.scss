@@ -1,4 +1,5 @@
-@use '../App.scss' as *;
+@use '../css/Layout.scss' as layout;
+@use '../css/Constants.scss' as constants;
 
 .preview-media {
 
@@ -64,7 +65,7 @@
       background-color: rgba(0, 0, 0, 0.0);
       font-size: small;
       &:hover {
-        background-color: $gray-100;
+        background-color: constants.$gray-100;
         border-radius: 50%;
       }
     }
@@ -96,11 +97,11 @@
     width: 100%;
     padding-top: 1px;
   
-    background-image: linear-gradient(to right, $gray-400, #ffffff);
+    background-image: linear-gradient(to right, constants.$gray-400, #ffffff);
     color: #233453;
   
     .media-title {
-      padding-left: $spacing-2;
+      padding-left: constants.$spacing-2;
       flex-grow: 1;
       float: left;
       

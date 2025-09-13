@@ -12,6 +12,7 @@ import nl.amony.service.resources.api.events.*
 import nl.amony.service.resources.database.ResourceDatabase
 
 import java.nio.file.{Files, Path}
+import java.time.Instant
 
 /**
  * Functionality to synchronize a local directory with the database state.
@@ -34,7 +35,7 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
     fileEvent match {
 
       case FileMetaChanged(f) =>
-        withRequireResource(f.hash, f.path)(r => ResourceFileMetaChanged(r.resourceId, Some(f.creationTime), Some(f.modifiedTime)))
+        withRequireResource(f.hash, f.path)(r => ResourceFileMetaChanged(r.resourceId, f.modifiedTime))
 
       case FileDeleted(f) =>
         withRequireResource(f.hash, f.path)(r => ResourceDeleted(r.resourceId))
@@ -64,8 +65,9 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
           contentType = meta.map(_.contentType),
           contentMetaSource = meta.flatMap(_.toolMeta),
           contentMeta = meta.map(_.meta).getOrElse(ResourceMeta.Empty),
-          creationTime = Some(f.creationTime),
-          lastModifiedTime = Some(f.modifiedTime),
+          timeAdded = Some(Instant.now().toEpochMilli),
+          timeCreated = None,
+          timeLastModified = Some(f.modifiedTime),
           thumbnailTimestamp = None
         )
       }
@@ -73,7 +75,7 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
 
   private def toFileStore(): IO[FileStore] =
     db.getAll(bucketId).map { resources =>
-      val initialFiles: Seq[FileInfo] = resources.map { r => FileInfo(config.resourcePath.resolve(Path.of(r.path)), r.hash.get, r.size, r.creationTime.getOrElse(0), r.lastModifiedTime.getOrElse(0)) }
+      val initialFiles: Seq[FileInfo] = resources.map { r => FileInfo(config.resourcePath.resolve(Path.of(r.path)), r.hash.get, r.size, r.timeLastModified.getOrElse(0)) }
       InMemoryFileStore(initialFiles)
     }
 
@@ -104,9 +106,9 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
       case ResourceAdded(resource)       => db.insertResource(resource)
       case ResourceDeleted(resourceId)   => db.deleteResource(config.id, resourceId)
       case ResourceMoved(id, _, newPath) => db.move(config.id, id, newPath)
-      case ResourceFileMetaChanged(id, creationTime, lastModifiedTime) =>
+      case ResourceFileMetaChanged(id, lastModifiedTime) =>
         db.getById(config.id, id).flatMap {
-          case Some(resource) => db.upsert(resource.copy(creationTime = creationTime, lastModifiedTime = lastModifiedTime))
+          case Some(resource) => db.upsert(resource.copy(timeLastModified = Some(lastModifiedTime)))
           case None => IO.unit
         }
       case _ => IO.unit

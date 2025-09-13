@@ -53,7 +53,7 @@ object LocalDirectoryScanner extends Logging {
       for {
         previousByPath <- previous.getByPath(path)
         hash <- previousByPath
-                  .filter(_.isSameFileMeta(attrs))
+                  .filter(f => f.size == attrs.size && f.modifiedTime == attrs.lastModifiedTime().toMillis) // here we assume the file has not been modified if size and modified time are the same
                   .map(i => IO.pure(i.hash))
                   .getOrElse(hashFunction(path))
       } yield FileInfo(path, attrs, hash)

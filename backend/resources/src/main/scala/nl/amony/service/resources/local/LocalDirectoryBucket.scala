@@ -74,11 +74,10 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
       val attrs = Files.readAttributes(resourcePath, classOf[BasicFileAttributes])
       val updated = resource.copy(
         size             = attrs.size(),
-        creationTime     = Some(attrs.creationTime().toMillis),
-        lastModifiedTime = Some(attrs.lastModifiedTime().toMillis)
+        timeLastModified = Some(attrs.lastModifiedTime().toMillis)
       )
       
-      if (updated.size != resource.size || updated.creationTime != resource.creationTime || updated.lastModifiedTime != resource.lastModifiedTime)
+      if (updated.size != resource.size || updated.timeLastModified != resource.timeLastModified)
         logger.info(s"File system metadata changed for $resourcePath")
         db.upsert(updated) >> topic.publish(ResourceUpdated(updated))
       else

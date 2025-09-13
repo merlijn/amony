@@ -9,13 +9,10 @@ object FileInfo {
     FileInfo(path, Files.readAttributes(path, classOf[BasicFileAttributes]), hash)
 
   def apply(path: Path, attrs: BasicFileAttributes, hash: String): FileInfo =
-    FileInfo(path, hash, attrs.size(), attrs.creationTime().toMillis, attrs.lastModifiedTime().toMillis)
+    FileInfo(path, hash, attrs.size(), attrs.lastModifiedTime().toMillis)
 }
 
-case class FileInfo(path: Path, hash: String, size: Long, creationTime: Long, modifiedTime: Long) {
-  def isSameFileMeta(attrs: BasicFileAttributes): Boolean =
-    size == attrs.size() && creationTime == attrs.creationTime().toMillis && modifiedTime == attrs.lastModifiedTime().toMillis
-
+case class FileInfo(path: Path, hash: String, size: Long, modifiedTime: Long) {
   def isSameFileMeta(other: FileInfo): Boolean =
-    other.hash == hash && size == other.size && creationTime == other.creationTime && modifiedTime == other.modifiedTime
+    other.hash == hash && size == other.size && modifiedTime == other.modifiedTime
 }
