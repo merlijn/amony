@@ -17,6 +17,7 @@ import scribe.Logging
 import skunk.data.{Arr, Completion}
 
 import java.sql.{Connection, DriverManager}
+import scala.util.Using
 
 case class DatabaseConfig(
    host: String,
@@ -24,26 +25,22 @@ case class DatabaseConfig(
    database: String,
    username: String,
    password: Option[String]
-)
+) {
+  def getJdbcConnection: Connection = {
+    Class.forName("org.postgresql.Driver")
+    val jdbcUrl = s"jdbc:postgresql://${host}:${port}/${database}"
+    DriverManager.getConnection(jdbcUrl, username, password.getOrElse(null))
+  }
+}
 
 object ResourceDatabase:
 
   def make(config: DatabaseConfig): Resource[IO, ResourceDatabase] = {
     def runDbMigrations() = {
-
-      var connection: Connection = null
-
-      try {
-        Class.forName("org.postgresql.Driver")
-        val jdbcUrl = s"jdbc:postgresql://${config.host}:${config.port}/${config.database}"
-        connection = DriverManager.getConnection(jdbcUrl, config.username, config.password.getOrElse(null))
-        val liquibaseDatabase = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connection));
+      Using(config.getJdbcConnection) { conn =>
+        val liquibaseDatabase = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(conn));
         val liquibase = new Liquibase("db/00-changelog.yaml", new ClassLoaderResourceAccessor(), liquibaseDatabase)
         liquibase.update()
-      }
-      finally {
-        if (connection != null)
-          connection.close()
       }
     }
 
