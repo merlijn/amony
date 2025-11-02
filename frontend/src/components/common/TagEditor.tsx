@@ -1,4 +1,3 @@
-import ImgWithAlt from "./ImgWithAlt";
 import React, {useEffect, useRef, useState} from "react";
 import './TagEditor.scss';
 import { MdClose } from "react-icons/md";

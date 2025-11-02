@@ -24,7 +24,6 @@ const TagBar = (props: { tags: Array<string>, total: number }) => {
     else
       newParams.set("tag", tag)
 
-    // setSelectedTag(tag)
     navigate(buildUrl("/search", newParams));
   };
 
