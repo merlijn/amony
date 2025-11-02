@@ -23,10 +23,7 @@ object Queries extends Logging {
 
       def insert(n: Int): Command[List[String]] =
         sql"insert into tags (label) values ${varchar.values.list(n)}".command
-
-      def upsertSql(n: Int): Command[List[String]] =
-        sql"insert into tags (label) values ${varchar.values.list(n)} on conflict (label) do nothing".command
-
+    
       def upsert(n: Int): Command[List[String]] =
         sql"""
           WITH new_tags (label) AS (VALUES ${varchar.values.list(n)})

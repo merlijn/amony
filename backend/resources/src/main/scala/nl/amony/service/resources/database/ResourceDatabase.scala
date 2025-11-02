@@ -124,25 +124,30 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
     session.transaction.use: tx =>
       for {
         _ <- tables.resources.insert(ResourceRow.fromResource(resource))
-        _ <- updateResourceTags(resource.bucketId, resource.resourceId, resource.tags.toList)
+        _ <- updateTagsForResource(resource.bucketId, resource.resourceId, resource.tags.toList)
       } yield ()
 
   def upsert(resource: ResourceInfo): IO[Unit] =
     session.transaction.use: tx =>
       for {
         _  <- tables.resources.upsert(ResourceRow.fromResource(resource))
-        _  <- updateResourceTags(resource.bucketId, resource.resourceId, resource.tags.toList)
+        _  <- updateTagsForResource(resource.bucketId, resource.resourceId, resource.tags.toList)
       } yield ()
 
-  private def updateResourceTags(bucketId: String, resourceId: String, tagLabels: List[String]) =
+  private def updateTagsForResource(bucketId: String, resourceId: String, tagLabels: List[String]) =
     for {
       tags <- if (tagLabels.nonEmpty) tables.tags.upsert(tagLabels) >> tables.tags.getByLabels(tagLabels) else IO.pure(List.empty)
       _    <- tables.resource_tags.replaceAll(bucketId, resourceId, tags.map(_.id))
     } yield ()
 
+  private def updateResourceWithTags(resource: ResourceInfo): IO[Unit] =
+    for {
+      _ <- tables.resources.upsert(ResourceRow.fromResource(resource))
+      _ <- updateTagsForResource(resource.bucketId, resource.resourceId, resource.tags.toList)
+    } yield ()
+
   def getAll(bucketId: String): IO[List[ResourceInfo]] = 
     getStream(bucketId).compile.toList
-
   
   private def toResource(resourceRow: ResourceRow, tagLabels: Option[Arr[String]]): ResourceInfo =
     resourceRow.toResource(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty))
@@ -174,11 +179,8 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
       getById(bucketId, resourceId).flatMap:
         case None           => IO.pure(None)
         case Some(resource) =>
-          val updated = resource.copy(title = title, description = description, tags = tagLabels.toSet)
-          for {
-            _ <- tables.resources.upsert(ResourceRow.fromResource(updated))
-            _ <- updateResourceTags(bucketId, resourceId, tagLabels)
-          } yield Some(updated)
+          val updatedResource = resource.copy(title = title, description = description, tags = tagLabels.toSet)
+          updateResourceWithTags(updatedResource) >> IO.pure(Some(updatedResource))
 
   def modifyTags(bucketId: String, resourceId: String, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Option[ResourceInfo]] =
     session.transaction.use: tx =>
@@ -187,10 +189,7 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
         case Some(resource) =>
           val updatedTags = ((resource.tags ++ tagsToAdd) -- tagsToRemove).toList
           val updatedResource = resource.copy(tags = updatedTags.toSet)
-          for {
-            _ <- tables.resources.upsert(ResourceRow.fromResource(updatedResource))
-            _ <- updateResourceTags(bucketId, resourceId, updatedTags)
-          } yield Some(updatedResource)
+          updateResourceWithTags(updatedResource) >> IO.pure(Some(updatedResource))
 
   def move(bucketId: String, resourceId: String, newPath: String): IO[Unit] =
     tables.resources.getById(bucketId, resourceId).flatMap:

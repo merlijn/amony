@@ -146,6 +146,40 @@ paths:
           description: ''
         '404':
           description: ''
+  /api/resources/bulk/tags:
+    post:
+      tags:
+      - resources
+      description: Add or remove tags for multiple resources
+      operationId: modifyResourceTagsBulk
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkTagsUpdateDto'
+        required: true
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: ''
+        '401':
+          description: ''
+        '403':
+          description: ''
+        '404':
+          description: ''
   /api/search/media:
     get:
       tags:
@@ -263,8 +297,7 @@ paths:
         '200':
           description: ''
         '400':
-          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
-            value for: cookie XSRF-TOKEN, Invalid value for: query parameter bucketId'
+          description: 'Invalid value, Invalid value for: query parameter bucketId'
           content:
             text/plain:
               schema:
@@ -300,8 +333,7 @@ paths:
         '200':
           description: ''
         '400':
-          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
-            value for: cookie XSRF-TOKEN, Invalid value for: query parameter bucketId'
+          description: 'Invalid value, Invalid value for: query parameter bucketId'
           content:
             text/plain:
               schema:
@@ -337,8 +369,7 @@ paths:
         '200':
           description: ''
         '400':
-          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
-            value for: cookie XSRF-TOKEN, Invalid value for: query parameter bucketId'
+          description: 'Invalid value, Invalid value for: query parameter bucketId'
           content:
             text/plain:
               schema:
@@ -374,8 +405,7 @@ paths:
         '200':
           description: ''
         '400':
-          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
-            value for: cookie XSRF-TOKEN, Invalid value for: query parameter bucketId'
+          description: 'Invalid value, Invalid value for: query parameter bucketId'
           content:
             text/plain:
               schema:
@@ -414,8 +444,75 @@ paths:
               schema:
                 $ref: '#/components/schemas/ResourceDto'
         '400':
-          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
-            value for: cookie XSRF-TOKEN'
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/auth/login:
+    post:
+      tags:
+      - auth
+      description: Login the current user
+      operationId: authLogin
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginCredentials'
+        required: true
+      responses:
+        '302':
+          description: ''
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+            Set-Cookie:
+              required: false
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          description: 'Invalid value for: body'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/auth/refresh:
+    post:
+      tags:
+      - auth
+      description: Refresh the users auth tokens
+      operationId: authRefreshTokens
+      parameters:
+      - name: refresh_token
+        in: cookie
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          headers:
+            Set-Cookie:
+              required: false
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          description: 'Invalid value for: cookie refresh_token'
           content:
             text/plain:
               schema:
@@ -449,8 +546,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuthToken'
         '400':
-          description: 'Invalid value for: cookie access_token, Invalid value, Invalid
-            value for: cookie XSRF-TOKEN'
+          description: Invalid value
           content:
             text/plain:
               schema:
@@ -491,6 +587,22 @@ components:
           uniqueItems: true
           items:
             type: string
+    BulkTagsUpdateDto:
+      title: BulkTagsUpdateDto
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+        tagsToRemove:
+          type: array
+          items:
+            type: string
+        tagsToAdd:
+          type: array
+          items:
+            type: string
     ClipDto:
       title: ClipDto
       type: object
@@ -519,6 +631,17 @@ components:
           type: array
           items:
             type: string
+    LoginCredentials:
+      title: LoginCredentials
+      type: object
+      required:
+      - username
+      - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
     ResourceDto:
       title: ResourceDto
       type: object
@@ -527,7 +650,7 @@ components:
       - resourceId
       - sizeInBytes
       - path
-      - timeCreated
+      - timeAdded
       - userId
       - tags
       - contentType
@@ -546,7 +669,13 @@ components:
           format: int64
         path:
           type: string
+        timeAdded:
+          type: integer
+          format: int64
         timeCreated:
+          type: integer
+          format: int64
+        timeLastModified:
           type: integer
           format: int64
         userId:
@@ -569,7 +698,7 @@ components:
           $ref: '#/components/schemas/ResourceUrlsDto'
         thumbnailTimestamp:
           type: integer
-          format: int64
+          format: int32
         clips:
           type: array
           items:
@@ -651,7 +780,7 @@ components:
       properties:
         timestampInMillis:
           type: integer
-          format: int64
+          format: int32
     UserMetaDto:
       title: UserMetaDto
       type: object

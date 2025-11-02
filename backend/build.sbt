@@ -18,11 +18,11 @@ def hasNoLocalChanges: Boolean = {
 // --- Dependencies
 
 val circeVersion    = "0.14.14"
-val http4sVersion   = "0.23.30"
+val http4sVersion   = "0.23.33"
 
 val bouncyCastle = "org.apache.directory.studio" % "org.bouncycastle.bcprov.jdk15" % "140"
 
-val jsoup  = "org.jsoup" % "jsoup" % "1.21.1"
+val jsoup  = "org.jsoup" % "jsoup" % "1.21.2"
 
 val circe                    = "io.circe"                 %% "circe-core"                 % circeVersion
 val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
@@ -74,7 +74,7 @@ val scalaPbRuntimeGrcp       = "com.thesamet.scalapb"     %% "scalapb-runtime-gr
 val scalaPbRuntimeProtobuf   = "com.thesamet.scalapb"     %% "scalapb-runtime"            % scalapb.compiler.Version.scalapbVersion % "protobuf"
 val scalaPbRuntime           = "com.thesamet.scalapb"     %% "scalapb-runtime"            % scalapb.compiler.Version.scalapbVersion
 
-val log4CatsSlf4j            = "org.typelevel"            %% "log4cats-slf4j"             % "2.7.0"
+val log4CatsSlf4j            = "org.typelevel"            %% "log4cats-slf4j"             % "2.7.1"
 
 val apacheCommonsCodec = "commons-codec" % "commons-codec" % "1.15"
 
@@ -229,6 +229,7 @@ lazy val searchService =
     )
 
 lazy val jibWriteDockerTagsFile = taskKey[File]("Creates the version.txt file")
+lazy val generateSpec = taskKey[File]("Generates the OpenAPI specification for the frontend")
 
 val javaDevOpts = Seq("-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true", "-DAMONY_SECURE_COOKIES=false", "-DAMONY_MEDIA_PATH=../../media")
 
@@ -273,6 +274,21 @@ lazy val app =
         val tags = jibTags.value :+ jibVersion.value
         IO.write(versionFile, tags.mkString("\n"))
         versionFile
+      },
+
+      // Task to generate the OpenAPI spec file
+      generateSpec := {
+        val log = streams.value.log
+        val outputPath = ((Compile / baseDirectory).value / ".." / ".." / "frontend" / "openapi.yaml").toPath.normalize()
+        log.info(s"Writing open api spec to: $outputPath")
+        val classpath = (Compile / fullClasspath).value.map(_.data)
+        val urls = classpath.map(_.toURI.toURL).toArray
+        val parentLoader = ClassLoader.getPlatformClassLoader
+        val loader = new java.net.URLClassLoader(urls, parentLoader)
+        val cls = loader.loadClass("nl.amony.app.util.GenerateSpec$")
+        val module = cls.getField("MODULE$").get(null)
+        val method = cls.getMethod("generate", classOf[java.nio.file.Path])
+        method.invoke(module, outputPath).asInstanceOf[java.nio.file.Path].toFile
       },
 
       Compile / packageBin / mainClass := Some("nl.amony.app.Main"),
