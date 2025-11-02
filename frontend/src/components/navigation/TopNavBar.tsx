@@ -1,23 +1,20 @@
-import _ from "lodash";
 import React, {useContext, useEffect, useRef, useState} from "react";
 import {isMobile} from "react-device-detect";
 import {BsListUl} from "react-icons/bs";
 import {GoSearch} from "react-icons/go";
 import {IoGridOutline} from "react-icons/io5";
-import {MdClose, MdTune} from "react-icons/md";
+import {MdClose} from "react-icons/md";
 import {useLocation, useNavigate} from "react-router-dom";
-import {Constants, durationAsParam, parseDurationParam, SessionContext, useSortParam} from "../../api/Constants";
+import {SessionContext} from "../../api/Constants";
 import {MediaView} from "../../api/Model";
-import {useUrlParam} from "../../api/ReactUtils";
 import {buildUrl, copyParams} from "../../api/Util";
-import {DropDown} from "../common/DropDown";
 import './TopNavBar.scss';
 import {AiOutlineSetting} from "react-icons/ai";
 import {CgProfile} from "react-icons/cg";
 import Modal from "../common/Modal";
 import Profile from "../dialogs/Profile";
 import {BiLogInCircle} from "react-icons/bi";
-
+import FilterDropDown from "./FilterDropdown";
 
 export type NavBarProps = {
   onClickMenu: () => void, 
@@ -106,77 +103,5 @@ function TopNavBar(props: NavBarProps) {
     </>
   );
 }
-
-const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
-
-  const [vqParam, setVqParam]             = useUrlParam("vq", "0")
-  const [sortParam, setSortParam]         = useSortParam()
-  const [durationParam, setDurationParam] = useUrlParam("d", "-")
-  const [uploadParam, setUploadParam]     = useUrlParam("u", "-")
-
-  return( 
-    <div className = "filter-dropdown-container">
-      
-      <DropDown 
-        toggleIcon = { <MdTune className="filter-dropdown-icon" /> } 
-        hideOnClick = { false } 
-        onToggle = { props.onToggleFilter }
-        contentClassName = "filter-dropdown-content">
-        <div className = "filter-container">
-          <RadioSelectGroup
-            header        = "Sort"
-            options       = { Constants.sortOptions }
-            selectedValue = { sortParam }
-            onChange      = { setSortParam }
-          />
-          <RadioSelectGroup
-            header        = "Resolution"
-            options       = { Constants.resolutions.map(option => ({ label: option.label, value: option.value.toString() })) }
-            selectedValue = { vqParam }
-            onChange      = { value => setVqParam(value) }
-          />
-          <RadioSelectGroup
-            header        = "Duration"
-            options       = { Constants.durationOptions }
-            selectedValue = { parseDurationParam(durationParam) }
-            onChange      = { value => setDurationParam(durationAsParam(value)) }
-          />
-          <RadioSelectGroup
-            header        = "Upload date"
-            options       = { Constants.uploadOptions }
-            selectedValue = { parseDurationParam(durationParam)}
-            onChange      = { value => setDurationParam(durationAsParam(value)) }
-          />
-        </div>
-      </DropDown>
-    </div>);
-}
-
-type RadioSelectProps<T> = {
-  header: string;
-  options: Array<{ label: string, value: T }>;
-  selectedValue: T;
-  onChange: (value: T) => void;
-};
-
-const RadioSelectGroup = <T,>({ header, options, selectedValue, onChange }: RadioSelectProps<T>) => {
-  return (
-    <div className="filter-section">
-      <div className="section-header">{header}</div>
-      {options.map((option, index) => (
-        <div key={`${header}-${index}`} className="filter-option" onClick={() => onChange(option.value)}>
-          <input
-            type="radio"
-            name={header}
-            value={option.label}
-            checked={_.isEqual(selectedValue, option.value)}
-            onChange={() => onChange(option.value)}
-          />
-          {option.label}
-        </div>
-      ))}
-    </div>
-  );
-};
 
 export default TopNavBar

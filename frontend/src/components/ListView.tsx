@@ -1,4 +1,4 @@
-import React, {CSSProperties, useContext, useEffect, useRef, useState} from "react"
+import React, {CSSProperties, useContext, useEffect, useMemo, useRef, useState} from "react"
 import {FaSort} from "react-icons/fa"
 import {FiEdit} from "react-icons/fi"
 import {ResourceSelection} from "../api/Model"
@@ -19,6 +19,7 @@ import {
   UserMetaDto
 } from "../api/generated";
 import LazyImage from "./common/LazyImage";
+import BulkUpdateTagsDialog from "./dialogs/BulkUpdateTagsDialog";
 
 type ListProps = {
   selection: ResourceSelection
@@ -34,8 +35,18 @@ const ListView = (props: ListProps) => {
   const [isFetching, setIsFetching] = useState(false)
   const [fetchMore, setFetchMore] = useState(true)
   const [selectedItems, setSelectedItems] = useState<Array<number>>([])
+
+  const [showBulkTagModal, setShowBulkTagModal] = useState(false)
+
   const navigate = useNavigate();
   const session = useContext(SessionContext)
+
+  const selectedResources = useMemo(
+    () => selectedItems
+      .map(index => searchResult.results[index])
+      .filter((resource): resource is ResourceDto => resource !== undefined),
+    [selectedItems, searchResult.results]
+  )
 
   const fetchData = (previous: Array<ResourceDto>) => {
 
@@ -69,20 +80,69 @@ const ListView = (props: ListProps) => {
 
   useEffect(() => { if (isFetching && fetchMore) fetchData(searchResult.results); }, [isFetching]);
 
+  useEffect(() => {
+    setSelectedItems(previous => previous.filter(index => index < searchResult.results.length))
+  }, [searchResult.results.length])
+
   const toggle = (index: number)=>  {
     if (session.isAdmin()) {
-      const i = selectedItems.indexOf(index)
-      if (i > -1) {
-        setSelectedItems(selectedItems.filter((v) => v !== index))
-      } else {
-        setSelectedItems([...selectedItems, index])
-      }
+      setSelectedItems(prev => {
+        const i = prev.indexOf(index)
+        if (i > -1) {
+          return prev.filter((v) => v !== index)
+        } else {
+          return [...prev, index]
+        }
+      })
     }
   }
 
+  const toggleAll = (checked: boolean) => {
+    if (!session.isAdmin()) return
+
+    if (checked) {
+      setSelectedItems(searchResult.results.map((_, idx) => idx))
+    } else {
+      setSelectedItems([])
+    }
+  }
+
+  const openBulkTagModal = () => { setShowBulkTagModal(true) }
+  const closeBulkTagModal = () => { setShowBulkTagModal(false) }
+
+  const handleBulkTagsUpdated = (result: { tagsAdded: string[]; tagsRemoved: string[] }) => {
+    if (selectedResources.length === 0) {
+      setShowBulkTagModal(false)
+      return
+    }
+
+    const selectedIds = new Set(selectedResources.map(resource => resource.resourceId))
+
+    setSearchResult(previous => ({
+      ...previous,
+      results: previous.results.map(resource => {
+        if (!selectedIds.has(resource.resourceId)) {
+          return resource
+        }
+        const tagSet = new Set(resource.tags)
+        result.tagsRemoved.forEach(tag => tagSet.delete(tag))
+        result.tagsAdded.forEach(tag => tagSet.add(tag))
+        return {
+          ...resource,
+          tags: Array.from(tagSet).sort((a, b) => a.localeCompare(b))
+        }
+      })
+    }))
+
+    setSelectedItems([])
+    setShowBulkTagModal(false)
+  }
+
+  const allSelected = selectedItems.length > 0 && selectedItems.length === searchResult.results.length && searchResult.results.length > 0
+
   const headers =
     <tr key="row-header" className="list-row">
-      { session.isAdmin() && <th className="list-header-select"><input type="checkbox"/></th> }
+      { session.isAdmin() && <th className="list-header-select"><input type="checkbox" checked={allSelected} onChange={(event) => toggleAll(event.target.checked)} /></th> }
       <th className="list-header-thumbnail"></th>
       <th className="list-header-title"><span>Title</span>
         <FaSort className="column-sort-icon"
@@ -107,22 +167,23 @@ const ListView = (props: ListProps) => {
 
   const actionBar =
     <tr key="row-header" className="list-row">
-      <th className = "list-header-select"><input type="checkbox"/></th>
+      <th className = "list-header-select"><input type="checkbox" checked={allSelected} onChange={(event) => toggleAll(event.target.checked)} /></th>
       <th className = "list-header-actionbar" colSpan={6}>
-        <FaHashtag className= "action-bar-item" />
+        <FaHashtag className= "action-bar-item" title="Update tags" onClick = { openBulkTagModal } />
         <MdDelete className = "action-bar-item" />
       </th>
     </tr>
 
   return (
-    <InfiniteScroll
-      className="list-container"
-      fetchContent={() => {
-        if (!isFetching && fetchMore) setIsFetching(true);
-          fetchData(searchResult.results)
-      }}
-      scrollType='page'
-    >
+    <>
+      <InfiniteScroll
+        className="list-container"
+        fetchContent={() => {
+          if (!isFetching && fetchMore) setIsFetching(true);
+            fetchData(searchResult.results)
+        }}
+        scrollType='page'
+      >
       <tr key="row-column-width-spacer" style ={ {height: 0 } }>
         { session.isAdmin() && <td style = { {width: 36 } }></td> }
         <td style={{width: 72}}></td>
@@ -164,7 +225,7 @@ const ListView = (props: ListProps) => {
                 <TagsCell resource={resource}/>
 
                 <td key="date" className="list-cell list-date">
-                  {dateMillisToString(resource.timeCreated)}
+                  {dateMillisToString(resource.timeCreated ?? resource.timeAdded)}
                 </td>
 
                 <td key="size" className="list-cell list-size">
@@ -189,14 +250,24 @@ const ListView = (props: ListProps) => {
             );
           })
         }
-    </InfiniteScroll>
-);
+      </InfiniteScroll>
+
+      <BulkUpdateTagsDialog
+        visible           = { showBulkTagModal }
+        onHide            = { closeBulkTagModal }
+        onUpdate          = { handleBulkTagsUpdated }
+        selectedResources = { selectedResources }
+      />
+    </>
+  );
 }
 
 const TagsCell = (props: {
   resource: ResourceDto }) => {
   const [tags, setTags] = useState(props.resource.tags)
   const session = useContext(SessionContext)
+
+  useEffect(() => { setTags(props.resource.tags) }, [props.resource.tags])
 
   const updateTags = (newTags: Array<string>) => {
     const meta: UserMetaDto = { title: props.resource.title, description: props.resource.description, tags: newTags }
