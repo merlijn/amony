@@ -127,53 +127,27 @@ def module(name: String, mainClass: Boolean = false) = {
 
 // --- Modules
 
-lazy val libFiles =
-  module("lib-files")
+lazy val lib =
+  module("lib")
     .settings(
-      name         := "amony-lib-filewatcher",
+      name         := "amony-lib",
       libraryDependencies ++= Seq(
-        pureConfig,
-        scribe,
-        fs2Core,
-        scalaTest,
-        scalaPbRuntime,
-        h2DB % "test"
-      )
-    )
-
-lazy val libFFMPeg =
-  module("lib-ffmpeg")
-    .dependsOn(libFiles)
-    .settings(
-      name         := "amony-lib-ffmpeg",
-      libraryDependencies ++= Seq(
-        scribe,
-        fs2Core,
-        fs2Io,
-        scalaTest,
         circe,
         circeGeneric,
         circeParser,
-      )
-    )
-
-lazy val libEventStore =
-  module("lib-eventstore")
-    .settings(
-      name         := "amony-lib-eventstore",
-      libraryDependencies ++= Seq(
+        fs2Core,
+        fs2Io,
+        h2DB % "test",
         pureConfig,
         scribe,
-        fs2Core,
-        scalaTest,
         scalaPbRuntime,
-        h2DB % "test"
+        scalaTest
       )
     )
 
 lazy val auth =
   module("auth")
-    .dependsOn(libFiles, libEventStore)
+    .dependsOn(lib)
     .settings(protobufSettings)
     .settings(
       name := "amony-service-auth",
@@ -189,7 +163,7 @@ lazy val auth =
 
 lazy val resources =
   module("resources")
-    .dependsOn(libFFMPeg, libEventStore, libFiles, auth)
+    .dependsOn(lib, auth)
     .settings(protobufSettings)
     .settings(
       Test / fork := true,
@@ -329,4 +303,4 @@ lazy val amony = project
     Global / cancelable   := true,
   )
   .disablePlugins(RevolverPlugin)
-  .aggregate(libEventStore, libFFMPeg, libFiles, auth, resources, searchService, app)
+  .aggregate(lib, auth, resources, searchService, app)
