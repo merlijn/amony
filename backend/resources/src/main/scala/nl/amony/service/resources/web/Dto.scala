@@ -25,6 +25,12 @@ case class UserMetaDto(
   tags: List[String]
 ) derives Codec, sttp.tapir.Schema
 
+case class BulkTagsUpdateDto(
+  ids: List[String],
+  tagsToRemove: List[String],
+  tagsToAdd: List[String]
+) derives Codec, sttp.tapir.Schema
+
 case class ResourceMetaDto(
   width: Int,
   height: Int,

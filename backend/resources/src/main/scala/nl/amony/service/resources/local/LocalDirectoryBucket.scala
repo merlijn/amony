@@ -2,6 +2,7 @@ package nl.amony.service.resources.local
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.implicits.*
 import nl.amony.lib.files.*
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.service.resources.*
@@ -154,6 +155,15 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
       _.map(updated => topic.publish(ResourceUpdated(recoverMeta(updated)))).getOrElse(IO.unit)
     )
   }
+
+  override def modifyTags(resourceId: String, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Option[ResourceInfo]] =
+    db.modifyTags(config.id, resourceId, tagsToAdd, tagsToRemove).flatMap {
+      case Some(updated) =>
+        val recovered = recoverMeta(updated)
+        topic.publish(ResourceUpdated(recovered)).as(Some(recovered))
+      case None =>
+        IO.pure(None)
+    }
 
   override def updateThumbnailTimestamp(resourceId: String, timestamp: Int): IO[Unit] =
     db.updateThumbnailTimestamp(config.id, resourceId, timestamp).flatMap(

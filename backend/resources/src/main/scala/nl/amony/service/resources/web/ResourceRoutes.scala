@@ -77,8 +77,18 @@ object ResourceRoutes:
       .securityIn(securityInput)
       .in(jsonBody[ThumbnailTimestampDto])
       .errorOut(errorOutput)
+
+  val modifyTagsBulk: Endpoint[SecurityInput, BulkTagsUpdateDto, ApiError | SecurityError, Unit, Any] =
+    endpoint
+      .name("modifyResourceTagsBulk")
+      .tag("resources")
+      .description("Add or remove tags for multiple resources")
+      .post.in("api" / "resources" / "bulk" / "tags")
+      .securityIn(securityInput)
+      .in(jsonBody[BulkTagsUpdateDto])
+      .errorOut(errorOutput)
     
-  val endpoints = List(getResourceById, updateUserMetaData, updateThumbnailTimestamp)
+  val endpoints = List(getResourceById, updateUserMetaData, updateThumbnailTimestamp, modifyTagsBulk)
 
   def apply(buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
 
@@ -87,6 +97,35 @@ object ResourceRoutes:
         bucket   <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
         resource <- EitherT.fromOptionF(bucket.getResource(resourceId), NotFound)
       } yield bucket -> resource
+
+    val bucketList = buckets.values.toList
+
+    def sanitize(input: String, maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, String] =
+      for {
+        _ <- EitherT.cond[IO](input.length <= maxLength, (), ApiError.BadRequest)
+        _ <- EitherT.cond[IO](input.forall(characterAllowFn), (), ApiError.BadRequest)
+        trimmed = input.trim
+        _ <- EitherT.cond[IO](trimmed == Jsoup.clean(trimmed, Safelist.basic), (), ApiError.BadRequest)
+      } yield trimmed
+
+    def sanitizeOpt(input: Option[String], maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, Option[String]] =
+      input.map(sanitize(_, maxLength, characterAllowFn).map(Some(_))).getOrElse(EitherT.rightT[IO, ApiError](None))
+
+    def sanitizeTags(tags: List[String]): EitherT[IO, ApiError, List[String]] =
+      tags.map(sanitize(_, 64, _.isLetterOrDigit)).sequence
+
+    def updateTagsForResource(resourceId: String, tagsToAdd: Set[String], tagsToRemove: Set[String]): EitherT[IO, ApiError, Unit] =
+      EitherT {
+        def loop(remaining: List[ResourceBucket]): IO[Either[ApiError, Unit]] =
+          remaining match
+            case Nil => IO.pure(Left(NotFound))
+            case bucket :: tail =>
+              bucket.modifyTags(resourceId, tagsToAdd, tagsToRemove).flatMap {
+                case Some(_) => IO.pure(Right(()))
+                case None    => loop(tail)
+              }
+        loop(bucketList)
+      }
 
     val getBucketsImpl =
       getBuckets
@@ -105,22 +144,10 @@ object ResourceRoutes:
         .serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin))
         .serverLogic(_ => (bucketId, resourceId, userMeta) => {
 
-          // TODO rewrite this using tapir Validators ?
-          def sanitize(s: String, maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, String] =
-            for {
-              _ <- EitherT.cond[IO](s.length <= maxLength, (), ApiError.BadRequest)
-              _ <- EitherT.cond[IO](s.forall(characterAllowFn), (), ApiError.BadRequest)
-              trimmed = s.trim
-              _ <- EitherT.cond[IO](trimmed == Jsoup.clean(trimmed, Safelist.basic), (), ApiError.BadRequest)
-            } yield trimmed
-
-          def sanitizeOpt(s: Option[String], maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, Option[String]] =
-            s.map(sanitize(_, maxLength, characterAllowFn).map(Some(_))).getOrElse(EitherT.rightT[IO, ApiError](None))
-
           (for {
             sanitizedTitle       <- sanitizeOpt(userMeta.title, 128, _ => true)
             sanitizedDescription <- sanitizeOpt(userMeta.description, 1280, _ => true)
-            sanitizedTags        <- userMeta.tags.map(tag => sanitize(tag, 64, c => c.isLetterOrDigit)).sequence
+            sanitizedTags        <- sanitizeTags(userMeta.tags)
             response             <- getResource(bucketId, resourceId)
             (bucket, _)           = response
             _                    <- EitherT.right(bucket.updateUserMeta(resourceId, sanitizedTitle, sanitizedDescription, sanitizedTags))
@@ -136,6 +163,20 @@ object ResourceRoutes:
           }.value
         )
 
+    val modifyTagsBulkImpl =
+      modifyTagsBulk
+        .serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin))
+        .serverLogic(_ => dto => {
+          val action = for {
+            _              <- EitherT.cond[IO](dto.ids.nonEmpty, (), ApiError.BadRequest)
+            sanitizedIds    = dto.ids.distinct
+            sanitizedAdd    <- sanitizeTags(dto.tagsToAdd).map(_.toSet)
+            sanitizedRemove <- sanitizeTags(dto.tagsToRemove).map(_.toSet)
+            _              <- sanitizedIds.traverse_(id => updateTagsForResource(id, sanitizedAdd, sanitizedRemove))
+          } yield ()
+          action.value
+        })
+
     Http4sServerInterpreter[IO](serverOptions)
-      .toRoutes(List(getResourceByIdImpl, updateUserMetaDataImpl, updateThumbnailTimestampImpl))
+      .toRoutes(List(getResourceByIdImpl, updateUserMetaDataImpl, updateThumbnailTimestampImpl, modifyTagsBulkImpl))
   }

@@ -180,6 +180,18 @@ class ResourceDatabase(session: Session[IO]) extends Logging:
             _ <- updateResourceTags(bucketId, resourceId, tagLabels)
           } yield Some(updated)
 
+  def modifyTags(bucketId: String, resourceId: String, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Option[ResourceInfo]] =
+    session.transaction.use: tx =>
+      getById(bucketId, resourceId).flatMap:
+        case None => IO.pure(None)
+        case Some(resource) =>
+          val updatedTags = ((resource.tags ++ tagsToAdd) -- tagsToRemove).toList
+          val updatedResource = resource.copy(tags = updatedTags.toSet)
+          for {
+            _ <- tables.resources.upsert(ResourceRow.fromResource(updatedResource))
+            _ <- updateResourceTags(bucketId, resourceId, updatedTags)
+          } yield Some(updatedResource)
+
   def move(bucketId: String, resourceId: String, newPath: String): IO[Unit] =
     tables.resources.getById(bucketId, resourceId).flatMap:
       case Some(old) => tables.resources.upsert(old.copy(fs_path = newPath)) >> IO.unit

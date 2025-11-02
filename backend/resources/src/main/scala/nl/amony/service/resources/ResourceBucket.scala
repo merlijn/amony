@@ -10,10 +10,15 @@ trait ResourceBucket {
 
   /**
    * Returns the content of a resource
-   */
+  */
   def getResource(resourceId: String): IO[Option[Resource]]
 
   def updateUserMeta(resourceId: String, title: Option[String], description: Option[String], tags: List[String]): IO[Unit]
+
+  /**
+   * Adds and removes tags for a given resource. Returns the updated resource info when the resource exists.
+   */
+  def modifyTags(resourceId: String, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Option[ResourceInfo]]
   
   def updateThumbnailTimestamp(resourceId: String, timestamp: Int): IO[Unit]
 
