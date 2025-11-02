@@ -1,7 +1,7 @@
 import React, {useEffect, useMemo, useRef, useState} from "react"
 import {BulkTagsUpdateDto, modifyResourceTagsBulk, ResourceDto} from "../../api/generated"
 import Modal from "../common/Modal"
-import "./BulkUpdateTags.scss"
+import "./BulkUpdateTagsDialog.scss"
 import Dialog from "../common/Dialog";
 
 type BulkUpdateTagsProps = {
@@ -173,7 +173,7 @@ const BulkUpdateTagsDialog = ({selectedResources, visible, onUpdate, onHide}: Bu
   }
 
   return (
-    <Modal visible={visible} onHide={onHide}>
+    <Modal visible = { visible } onHide = { onHide }>
       <Dialog>
         <div className="bulk-tag-modal">
           <h2>Update tags</h2>
