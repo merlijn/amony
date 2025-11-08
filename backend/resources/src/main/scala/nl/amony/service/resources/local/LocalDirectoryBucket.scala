@@ -10,7 +10,7 @@ import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.api.events.*
 import nl.amony.service.resources.api.operations.ResourceOperation
 import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
-import nl.amony.service.resources.database.ResourceDatabase
+import nl.amony.service.resources.database.{Queries, ResourceDatabase}
 import nl.amony.service.resources.local.LocalResourceOperations.*
 import scribe.Logging
 
@@ -156,14 +156,14 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
     )
   }
 
-  override def modifyTags(resourceId: String, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Option[ResourceInfo]] =
-    db.modifyTags(config.id, resourceId, tagsToAdd, tagsToRemove).flatMap {
-      case Some(updated) =>
-        val recovered = recoverMeta(updated)
-        topic.publish(ResourceUpdated(recovered)).as(Some(recovered))
-      case None =>
-        IO.pure(None)
-    }
+  override def modifyTags(resourceIds: Set[String], tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] = {
+    def modifyTagsSingle(resourceId: String, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] =
+      db.modifyTags(config.id, resourceId, tagsToAdd, tagsToRemove).flatMap:
+        case None          => IO.unit
+        case Some(updated) => topic.publish(ResourceUpdated(recoverMeta(updated)))
+
+    resourceIds.map( id => modifyTagsSingle(id, tagsToAdd, tagsToRemove)).toList.sequence.as(None)
+  }
 
   override def updateThumbnailTimestamp(resourceId: String, timestamp: Int): IO[Unit] =
     db.updateThumbnailTimestamp(config.id, resourceId, timestamp).flatMap(

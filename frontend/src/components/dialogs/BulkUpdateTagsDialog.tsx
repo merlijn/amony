@@ -136,7 +136,7 @@ const BulkUpdateTagsDialog = ({selectedResources, visible, onUpdate, onHide}: Bu
     setIsSubmitting(true)
     setError(undefined)
 
-    modifyResourceTagsBulk(payload)
+    modifyResourceTagsBulk(selectedResources[0].bucketId, payload) // TODO Using the bucketId of the first resource is not proper
       .then(() => {
         onUpdate({ tagsAdded: add, tagsRemoved: remove })
       })

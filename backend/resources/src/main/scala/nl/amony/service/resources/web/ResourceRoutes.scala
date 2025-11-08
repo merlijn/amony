@@ -78,12 +78,12 @@ object ResourceRoutes:
       .in(jsonBody[ThumbnailTimestampDto])
       .errorOut(errorOutput)
 
-  val modifyTagsBulk: Endpoint[SecurityInput, BulkTagsUpdateDto, ApiError | SecurityError, Unit, Any] =
+  val modifyTagsBulk: Endpoint[SecurityInput, (String, BulkTagsUpdateDto), ApiError | SecurityError, Unit, Any] =
     endpoint
       .name("modifyResourceTagsBulk")
       .tag("resources")
       .description("Add or remove tags for multiple resources")
-      .post.in("api" / "resources" / "bulk" / "tags")
+      .post.in("api" / "resources" / path[String]("bucketId") / "bulk" / "tags")
       .securityIn(securityInput)
       .in(jsonBody[BulkTagsUpdateDto])
       .errorOut(errorOutput)
@@ -113,19 +113,6 @@ object ResourceRoutes:
 
     def sanitizeTags(tags: List[String]): EitherT[IO, ApiError, List[String]] =
       tags.map(sanitize(_, 64, _.isLetterOrDigit)).sequence
-
-    def updateTagsForResource(resourceId: String, tagsToAdd: Set[String], tagsToRemove: Set[String]): EitherT[IO, ApiError, Unit] =
-      EitherT {
-        def loop(remaining: List[ResourceBucket]): IO[Either[ApiError, Unit]] =
-          remaining match
-            case Nil => IO.pure(Left(NotFound))
-            case bucket :: tail =>
-              bucket.modifyTags(resourceId, tagsToAdd, tagsToRemove).flatMap {
-                case Some(_) => IO.pure(Right(()))
-                case None    => loop(tail)
-              }
-        loop(bucketList)
-      }
 
     val getBucketsImpl =
       getBuckets
@@ -166,13 +153,14 @@ object ResourceRoutes:
     val modifyTagsBulkImpl =
       modifyTagsBulk
         .serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin))
-        .serverLogic(_ => dto => {
+        .serverLogic(_ => (bucketId, dto) => {
           val action = for {
             _              <- EitherT.cond[IO](dto.ids.nonEmpty, (), ApiError.BadRequest)
-            sanitizedIds    = dto.ids.distinct
+            sanitizedIds    = dto.ids.distinct.toSet
             sanitizedAdd    <- sanitizeTags(dto.tagsToAdd).map(_.toSet)
             sanitizedRemove <- sanitizeTags(dto.tagsToRemove).map(_.toSet)
-            _              <- sanitizedIds.traverse_(id => updateTagsForResource(id, sanitizedAdd, sanitizedRemove))
+            bucket          <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
+            _               <- EitherT.right(bucket.modifyTags(sanitizedIds, sanitizedAdd, sanitizedRemove))
           } yield ()
           action.value
         })

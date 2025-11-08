@@ -42,28 +42,27 @@ val tapirCirceYamlSpec       = "com.softwaremill.sttp.apispec" %% "openapi-circe
 
 val tapirSharedFs2           = "com.softwaremill.sttp.shared"  %% "fs2"                   % "1.5.0"
 
-val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "11.0.2"
+val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "11.0.3"
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.17"
 
 val scribe                   = "com.outr"                 %% "scribe"                     % "3.17.0"
 val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.17.0"
 
-val tikaCore                 = "org.apache.tika"           % "tika-core"                  % "3.1.0"
+val tikaCore                 = "org.apache.tika"           % "tika-core"                  % "3.2.3"
 
-val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.12.0"
-val fs2Io                    = "co.fs2"                   %% "fs2-io"                     % "3.12.0"
-val catsEffect               = "org.typelevel"            %% "cats-effect"                % "3.6.2"
+val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.12.2"
+val fs2Io                    = "co.fs2"                   %% "fs2-io"                     % "3.12.2"
+val catsEffect               = "org.typelevel"            %% "cats-effect"                % "3.6.3"
 
 val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.19"           % Test
 val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
 
 val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.7.4"
-val h2DB                     = "com.h2database"            % "h2"                         % "2.3.232"
-val postgresDriver           = "org.postgresql"            % "postgresql"                 % "42.7.7"
+val postgresDriver           = "org.postgresql"            % "postgresql"                 % "42.7.8"
 
 val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.9"
 val pureConfigGeneric        = "com.github.pureconfig"    %% "pureconfig-generic-scala3"  % "0.17.9"
-val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.4"
+val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.5"
 
 val liquibaseCore            = "org.liquibase"             % "liquibase-core"             % "4.33.0"
 

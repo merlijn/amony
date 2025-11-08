@@ -146,7 +146,7 @@ paths:
           description: ''
         '404':
           description: ''
-  /api/resources/bulk/tags:
+  /api/resources/{bucketId}/bulk/tags:
     post:
       tags:
       - resources
@@ -161,6 +161,11 @@ paths:
       - name: XSRF-TOKEN
         in: cookie
         required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
         schema:
           type: string
       requestBody:
