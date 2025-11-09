@@ -61,7 +61,7 @@ class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends 
 
   private val solrHome: Path = Path.of(config.path).toAbsolutePath.normalize()
 
-  logger.withMinimumLevel(Level.Debug).replace()
+//  logger.withMinimumLevel(Level.Debug).replace()
   logger.info(s"Solr home: $solrHome")
 
   def loggingFailureFuture[T](f: => T): Future[T] = {
@@ -250,9 +250,9 @@ class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends 
   }
 
   def processEvent(event: ResourceEvent): Unit = {
-    
+
     logger.debug(s"Processing event: $event")
-    
+
     event match {
 
       case ResourceAdded(resource)   => insertResource(resource)
