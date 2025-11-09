@@ -14,7 +14,7 @@ import org.apache.solr.common.params.{CommonParams, FacetParams, ModifiableSolrP
 import org.apache.solr.common.{SolrDocument, SolrInputDocument}
 import org.apache.solr.core.CoreContainer
 import org.apache.solr.client.solrj.util.ClientUtils
-import scribe.Logging
+import scribe.{Level, Logging}
 import io.grpc.stub.StreamObserver
 
 import java.nio.file.{Files, Path}
@@ -61,6 +61,7 @@ class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends 
 
   private val solrHome: Path = Path.of(config.path).toAbsolutePath.normalize()
 
+  logger.withMinimumLevel(Level.Debug).replace()
   logger.info(s"Solr home: $solrHome")
 
   def loggingFailureFuture[T](f: => T): Future[T] = {
@@ -248,35 +249,40 @@ class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends 
     }
   }
 
-  def processEvent(event: ResourceEvent): Unit = event match {
+  def processEvent(event: ResourceEvent): Unit = {
+    
+    logger.debug(s"Processing event: $event")
+    
+    event match {
 
-    case ResourceAdded(resource)   => insertResource(resource)
+      case ResourceAdded(resource)   => insertResource(resource)
 
-    case ResourceUpdated(resource) => insertResource(resource)
+      case ResourceUpdated(resource) => insertResource(resource)
 
-    case ResourceMoved(resourceId, oldPath, newPath) =>
-      val solrDocument = new SolrInputDocument()
-      solrDocument.addField(FieldNames.id, resourceId)
-      solrDocument.addField(FieldNames.path, Map("set" -> newPath).asJava)
-      solr.add(collectionName, solrDocument, config.commitWithinMillis).getStatus
+      case ResourceMoved(resourceId, oldPath, newPath) =>
+        val solrDocument = new SolrInputDocument()
+        solrDocument.addField(FieldNames.id, resourceId)
+        solrDocument.addField(FieldNames.path, Map("set" -> newPath).asJava)
+        solr.add(collectionName, solrDocument, config.commitWithinMillis).getStatus
 
-    case ResourceFileMetaChanged(id, lastModifiedTime) =>
-      val solrDocument = new SolrInputDocument()
-      solrDocument.addField(FieldNames.id, id)
-      solrDocument.addField(FieldNames.lastModified, Map("set" -> lastModifiedTime).asJava)
-      solr.add(collectionName, solrDocument, config.commitWithinMillis).getStatus
+      case ResourceFileMetaChanged(id, lastModifiedTime) =>
+        val solrDocument = new SolrInputDocument()
+        solrDocument.addField(FieldNames.id, id)
+        solrDocument.addField(FieldNames.lastModified, Map("set" -> lastModifiedTime).asJava)
+        solr.add(collectionName, solrDocument, config.commitWithinMillis).getStatus
 
-    case ResourceDeleted(resourceId) =>
-      try {
-        logger.debug(s"Deleting document from index: $resourceId")
-        solr.deleteById(collectionName, resourceId, config.commitWithinMillis).getStatus
-      }
-      catch {
-        case e: Exception => logger.error("Exception while trying to delete document from solr", e)
-      }
-    case _ =>
-      logger.info(s"Ignoring event: $event")
-      ()
+      case ResourceDeleted(resourceId) =>
+        try {
+          logger.debug(s"Deleting document from index: $resourceId")
+          solr.deleteById(collectionName, resourceId, config.commitWithinMillis).getStatus
+        }
+        catch {
+          case e: Exception => logger.error("Exception while trying to delete document from solr", e)
+        }
+      case _ =>
+        logger.info(s"Ignoring event: $event")
+        ()
+    }
   }
   
   override def indexAll(responseObserver: StreamObserver[ReIndexResult]): StreamObserver[ResourceInfo] = {

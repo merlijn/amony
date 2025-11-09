@@ -93,6 +93,38 @@ object Queries extends Logging {
     val insert: Command[Json] =
       sql"insert into resources SELECT * FROM json_populate_record(NULL::resources, $json)".command
 
+    def modifyTagsBulk(resourceIdSize: Int, tagsToAddSize: Int, tagsToRemoveSize: Int) =
+      sql"""
+          WITH
+          params AS (
+            SELECT
+              $varchar::VARCHAR(64) AS bucket_id,
+              ${varchar.list(resourceIdSize)}::VARCHAR(64)[] AS resource_ids,
+              ${int4.list(tagsToAddSize)}::INTEGER[] AS tags_to_add,
+              ${int4.list(tagsToRemoveSize)}::INTEGER[] AS tags_to_remove
+          ),
+          deleted AS (
+              DELETE FROM resource_tags
+              WHERE bucket_id = (SELECT bucket_id FROM params)
+                AND resource_id = ANY((SELECT resource_ids FROM params))
+                AND tag_id = ANY((SELECT tags_to_remove FROM params))
+              RETURNING bucket_id, resource_id, tag_id
+          ),
+          inserted AS (
+              INSERT INTO resource_tags (bucket_id, resource_id, tag_id)
+              SELECT
+                  p.bucket_id,
+                  unnest(p.resource_ids) AS resource_id,
+                  unnest(p.tags_to_add) AS tag_id
+              FROM params p
+              ON CONFLICT (bucket_id, resource_id, tag_id) DO NOTHING
+              RETURNING bucket_id, resource_id, tag_id
+          )
+          SELECT
+              (SELECT COUNT(*) FROM deleted) AS tags_removed,
+              (SELECT COUNT(*) FROM inserted) AS tags_added;
+          """.command
+
     val upsert: Command[Json] =
       sql"""
         INSERT INTO resources SELECT * FROM json_populate_record(NULL::resources, $json)

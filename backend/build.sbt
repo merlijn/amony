@@ -136,7 +136,6 @@ lazy val lib =
         circeParser,
         fs2Core,
         fs2Io,
-        h2DB % "test",
         pureConfig,
         scribe,
         scalaPbRuntime,
@@ -176,7 +175,6 @@ lazy val resources =
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
         scalaTest,
         postgresDriver % "test",
-        h2DB % "test",
         "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.41.8" % "test",
         "commons-codec" % "commons-codec"% "1.18.0" % "test",
         "org.scalacheck" %% "scalacheck" % "1.18.1" % "test"
