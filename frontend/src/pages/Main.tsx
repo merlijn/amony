@@ -72,8 +72,9 @@ const Main = () => {
   
     useListener('keydown', keyDownHandler)
   
-    const galleryStyle = { 
-      marginTop: showNavigation ? 47 : 0,
+    const galleryStyle = {
+      display: 'relative',
+      paddingTop: showNavigation ? 47 : 0,
       marginLeft: 0
     }
 

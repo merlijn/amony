@@ -10,12 +10,12 @@
 .main-content-container {
   width: 100%;
   position: relative;
-  margin-top: 37px;
+  //margin-top: 37px;
   margin-bottom: 2px;
   border: none;
 
-  @media only screen and (min-width: map.get($container-max-widths, md)) {
-    margin-top: 45px;
-  }
+  //@media only screen and (min-width: map.get($container-max-widths, md)) {
+  //  margin-top: 45px;
+  //}
 
 }

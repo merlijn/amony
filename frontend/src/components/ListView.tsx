@@ -184,6 +184,8 @@ const ListView = (props: ListProps) => {
         }}
         scrollType='page'
       >
+      <table className="list-table">
+
       <tr key="row-column-width-spacer" style ={ {height: 0 } }>
         { session.isAdmin() && <td style = { {width: 36 } }></td> }
         <td style={{width: 72}}></td>
@@ -194,7 +196,9 @@ const ListView = (props: ListProps) => {
         <td style={{width: 80}}></td>
       </tr>
 
-      {selectedItems.length > 0 ? actionBar : headers}
+      <thead>
+        {selectedItems.length > 0 ? actionBar : headers}
+      </thead>
 
       <tr key="row-spacer" style = { { height : 4 } } />
         {
@@ -250,6 +254,7 @@ const ListView = (props: ListProps) => {
             );
           })
         }
+        </table>
       </InfiniteScroll>
 
       <BulkUpdateTagsDialog
