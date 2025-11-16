@@ -2,6 +2,7 @@ export type ResourceSelection = {
   query?: string
   playlist?: string
   tag?: string
+  untagged?: boolean
   duration?: [number?, number?]
   minimumQuality: number
   sort: Sort
