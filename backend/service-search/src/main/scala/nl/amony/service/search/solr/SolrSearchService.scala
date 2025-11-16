@@ -214,6 +214,8 @@ class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends 
       sb.append(s"${FieldNames.path}:*${if (q.trim.isEmpty) "" else s"$q*"}")
       if(query.tags.nonEmpty)
         sb.append(s" AND ${FieldNames.tags}:(${query.tags.mkString(" OR ")})")
+      if(query.untagged.contains(true))
+        sb.append(s" AND -${FieldNames.tags}:[* TO *]")
       
       if (query.minRes.isDefined || query.maxRes.isDefined)
         sb.append(s" AND ${FieldNames.width}:[${query.minRes.getOrElse(0)} TO ${query.maxRes.getOrElse("*")}]")

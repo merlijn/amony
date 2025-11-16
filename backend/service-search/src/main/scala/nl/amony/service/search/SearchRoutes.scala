@@ -36,7 +36,8 @@ object SearchRoutes:
     sortDir: Option[String],
     minRes: Option[Int],
     offset: Option[Int],
-    tag: Option[String]
+    tag: Option[String],
+    untagged: Option[Boolean]
   )
 
   val q         = query[Option[String]]("q").description("The search query").example(Some("cats"))
@@ -46,14 +47,15 @@ object SearchRoutes:
   val sortDir   = query[Option[String]]("sort_dir").description("Indicates which direction to sort").example(Some("asc"))
   val minRes    = query[Option[Int]]("min_res").description("The minimum (vertical) resolution").example(Some(720))
   val offset    = query[Option[Int]]("offset").description("The offset for the search results").example(Some(12))
-  val tag       = query[Option[String]]("tag").description("A comma separated list of tags")
+  val tag       = query[Option[String]]("tag").description("An optional tag")
+  val untagged  = query[Option[Boolean]]("untagged").description("Only return resources without tags").example(Some(false))
 
   val searchResourcesEndpoint: Endpoint[SecurityInput, SearchQueryInput, ApiError | SecurityError, SearchResponseDto, Any] =
     endpoint
       .name("findResources")
       .tag("search")
       .description("Find resources using a search query")
-      .get.in("api" / "search" / "media" / q and n and d and sortField and sortDir and minRes and offset and tag).mapInTo[SearchQueryInput]
+      .get.in("api" / "search" / "media" / q and n and d and sortField and sortDir and minRes and offset and tag and untagged).mapInTo[SearchQueryInput]
       .securityIn(securityInput)
       .errorOut(errorOutput)
       .out(jsonBody[SearchResponseDto])
@@ -102,13 +104,14 @@ object SearchRoutes:
           q           = queryDto.q.map(s => sanitize(s, 64, c => c.isLetterOrDigit || c.isWhitespace)),
           n           = Math.min(queryDto.n.getOrElse(config.defaultNumberOfResults), config.maximumNumberOfResults),
           offset      = queryDto.offset.map(n => Math.max(0, n)),
-          tags        = queryDto.tag.map(s => sanitize(s, 32, c => c.isLetterOrDigit)).toList,
+          tags        = if queryDto.untagged.contains(true) then List.empty else queryDto.tag.map(s => sanitize(s, 32, c => c.isLetterOrDigit)).toList,
           playlist    = None,
           minRes      = queryDto.minRes.map(n => Math.max(0, n)),
           maxRes      = None,
           minDuration = duration.map(_._1),
           maxDuration = duration.map(_._2),
-          sort        = Some(SortOption(sortField, sortDir))
+          sort        = Some(SortOption(sortField, sortDir)),
+          untagged    = queryDto.untagged.filter(identity)
         )
 
         IO.fromFuture(IO(searchService.searchMedia(query))).map { response =>

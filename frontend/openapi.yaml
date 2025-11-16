@@ -256,10 +256,17 @@ paths:
         example: 12
       - name: tag
         in: query
-        description: A comma separated list of tags
+        description: An optional tag
         required: false
         schema:
           type: string
+      - name: untagged
+        in: query
+        description: Only return resources without tags
+        required: false
+        schema:
+          type: boolean
+        example: false
       responses:
         '200':
           description: ''

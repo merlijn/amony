@@ -23,6 +23,8 @@ message Query {
   optional int64 minDuration = 8;
   optional int64 maxDuration = 9;
   optional SortOption sort = 10;
+  // If true, only resources without tags are returned.
+  optional bool untagged = 12;
 }
 
 message SearchResult {
