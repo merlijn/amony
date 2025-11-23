@@ -19,6 +19,7 @@ def hasNoLocalChanges: Boolean = {
 
 val circeVersion    = "0.14.14"
 val http4sVersion   = "0.23.33"
+val tapirVersion    = "1.12.3"
 
 val bouncyCastle = "org.apache.directory.studio" % "org.bouncycastle.bcprov.jdk15" % "140"
 
@@ -33,11 +34,11 @@ val skunkCirce               = "org.tpolecat"             %% "skunk-circe"      
 
 val sqids                    = "org.sqids" %% "sqids" % "0.6.0"
 
-val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"              % "1.11.40"
-val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"     % "1.11.40"
-val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"       % "1.11.40"
-val tapirSwaggerUI           = "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle" % "1.11.40"
-val tapirCirce               = "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"        % "1.11.40"
+val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"              % tapirVersion
+val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"     % tapirVersion
+val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"       % tapirVersion
+val tapirSwaggerUI           = "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle" % tapirVersion
+val tapirCirce               = "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"        % tapirVersion
 val tapirCirceYamlSpec       = "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"      % "0.11.10"
 
 val tapirSharedFs2           = "com.softwaremill.sttp.shared"  %% "fs2"                   % "1.5.0"
@@ -175,8 +176,8 @@ lazy val resources =
         scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
         scalaTest,
         postgresDriver % "test",
-        "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.41.8" % "test",
-        "commons-codec" % "commons-codec"% "1.18.0" % "test",
+        "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.43.6" % "test",
+        "commons-codec" % "commons-codec" % "1.18.0" % "test",
         "org.scalacheck" %% "scalacheck" % "1.18.1" % "test"
       )
     )
