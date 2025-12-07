@@ -3,7 +3,7 @@ import {isMobile} from "react-device-detect";
 import {boundedRatioBox} from "../../api/Util";
 import './ResourceViewModal.css';
 import Modal from "./Modal";
-import {MediaPlayer, MediaPlayerInstance, MediaProvider,} from "@vidstack/react";
+import {MediaPlayer, MediaPlayerInstance, MediaProvider, VideoMimeType,} from "@vidstack/react";
 
 import {defaultLayoutIcons, DefaultVideoLayout,} from '@vidstack/react/player/layouts/default';
 import {ResourceDto} from "../../api/generated";
@@ -25,6 +25,16 @@ const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }
   let isVideo = props.resource?.contentType.startsWith("video") || false
   let isImage = props.resource?.contentType.startsWith("image") || false
 
+
+  function toVideoMimeType(value?: string): VideoMimeType {
+    // Add basic mime type validation
+    const mimePattern = /^video\/(mp4|webm|3gp|ogg|avi|mpeg|object)$/;
+
+    return value && mimePattern.test(value) ? (value as VideoMimeType) : 'video/mp4';
+  }
+
+  let contentType: VideoMimeType = toVideoMimeType(props.resource?.contentType);
+
   const onHide = () => {
     player.current?.pause()
     props.onHide()
@@ -38,7 +48,7 @@ const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }
             tab-index = '-1'
             playsInline
             ref = { player }
-            src = { { src: src, type: "video/mp4"  } }
+            src = { { src: src, type: contentType  } }
             title = { props.resource?.title }
             style = { !isVideo ? { display: "none" } : {} }
             controlsDelay = { 5000 }
