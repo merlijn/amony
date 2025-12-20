@@ -28,7 +28,7 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
     logger.info("Starting application, app home directory: " + appConfig.amonyHome)
     logger.debug("Configuration: " + appConfig)
 
-    // somehow the default (slf4j) logger is not working, so we explicitly set it here
+    // somehow the default (slf4j) logger for http4s is not working, so we explicitly set it here
     val serverLog = {
       val serverLogger = Logger("nl.amony.app.Main.serverLogger")
       Http4sServerOptions.defaultServerLog[IO].copy(
