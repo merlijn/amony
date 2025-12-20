@@ -9,7 +9,7 @@ import nl.amony.service.resources.*
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.domain.events.*
 import nl.amony.service.resources.domain.operations.ResourceOperation
-import nl.amony.service.resources.domain.{ResourceInfo, ResourceMeta}
+import nl.amony.service.resources.domain.{LocalFile, Resource, ResourceBucket, ResourceInfo, ResourceMeta}
 import nl.amony.service.resources.database.{Queries, ResourceDatabase}
 import nl.amony.service.resources.local.LocalResourceOperations.*
 import scribe.Logging

@@ -2,8 +2,7 @@ package nl.amony.app.routes
 
 import cats.effect.IO
 import nl.amony.lib.auth.{ApiSecurity, AuthToken, JwtDecoder, Roles, SecurityError, SecurityInput, securityErrors, securityInput}
-import nl.amony.service.resources.domain.ResourceInfo
-import nl.amony.service.resources.{Resource, ResourceBucket}
+import nl.amony.service.resources.domain.{Resource, ResourceBucket, ResourceInfo}
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.dto.{ResourceDto, toDto}
 import nl.amony.service.resources.web.oneOfList

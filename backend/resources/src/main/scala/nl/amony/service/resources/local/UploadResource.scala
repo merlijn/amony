@@ -3,8 +3,7 @@ package nl.amony.service.resources.local
 import cats.effect.IO
 import fs2.{Chunk, Pipe}
 import nl.amony.lib.files.watcher.FileInfo
-import nl.amony.service.resources.ResourceBucket
-import nl.amony.service.resources.domain.ResourceInfo
+import nl.amony.service.resources.domain.{ResourceBucket, ResourceInfo}
 import nl.amony.service.resources.domain.events.ResourceAdded
 import scribe.Logging
 

@@ -1,4 +1,4 @@
-package nl.amony.service.resources
+package nl.amony.service.resources.domain
 
 import cats.effect.IO
 import nl.amony.service.resources.domain.ResourceInfo

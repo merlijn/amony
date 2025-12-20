@@ -6,7 +6,7 @@ import cats.implicits.*
 import nl.amony.lib.auth.*
 import nl.amony.service.resources.web.ApiError.NotFound
 import nl.amony.service.resources.web.dto.*
-import nl.amony.service.resources.{Resource, ResourceBucket}
+import nl.amony.service.resources.domain.{Resource, ResourceBucket}
 import org.http4s.HttpRoutes
 import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist

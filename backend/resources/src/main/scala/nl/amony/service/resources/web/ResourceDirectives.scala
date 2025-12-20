@@ -5,7 +5,7 @@ import cats.effect.{Async, IO}
 import cats.implicits.{toFlatMapOps, toFunctorOps}
 import fs2.Stream
 import fs2.io.file.{Files, Path}
-import nl.amony.service.resources.{Resource, ResourceWithRangeSupport}
+import nl.amony.service.resources.domain.{Resource, ResourceWithRangeSupport}
 import org.http4s.*
 import org.http4s.dsl.io.*
 import org.http4s.headers.Range.SubRange
