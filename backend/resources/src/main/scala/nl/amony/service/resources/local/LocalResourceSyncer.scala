@@ -1,19 +1,14 @@
 package nl.amony.service.resources.local
 
 import cats.effect.IO
+import fs2.Stream
 import fs2.concurrent.SignallingRef
-import fs2.{Pipe, Stream}
 import nl.amony.lib.files.watcher.*
-import nl.amony.lib.messagebus.EventTopic
-import nl.amony.service.resources.Resource
-import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.service.resources.domain.*
 import nl.amony.service.resources.domain.events.*
-import nl.amony.service.resources.database.ResourceDatabase
 
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 import java.time.Instant
-import scala.util.Try
 
 /**
  * Functionality to synchronize a local directory with the database state.
@@ -52,29 +47,6 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
     }
   }
 
-  private lazy val cacheFilesAtBoot = config.cachePath.toFile.listFiles().toList
-
-  private [local] def recoverTimestamp(f: FileInfo, hash: String): Option[Int] = {
-
-    // list files starting with hash
-    cacheFilesAtBoot
-      .filter(file => file.getName.startsWith(hash))
-      .sortBy(_.lastModified())
-      .lastOption
-      .flatMap { cacheFile =>
-        // extract the timestamp part from the file attributes
-        val nameParts = cacheFile.getName.split("_").toList
-        if (nameParts.length >= 3) {
-          Try {
-            val result = nameParts.apply(1).toInt
-            logger.info(s"Recovered thumbnail timestamp $result for file ${f.path}")
-            result
-          }.toOption
-        }
-        None
-      }
-  }
-
   private[local] def newResource(f: FileInfo, userId: String): IO[ResourceInfo] = {
     LocalResourceMeta.detectMetaData(f.path)
       .recover { case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None }
@@ -88,11 +60,11 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
           size = f.size,
           contentType = meta.map(_.contentType),
           contentMetaSource = meta.flatMap(_.toolMeta),
-          contentMeta = meta.map(_.meta).getOrElse(ResourceMeta.Empty),
+          contentMeta = meta.map(_.meta),
           timeAdded = Some(Instant.now().toEpochMilli),
           timeCreated = None,
           timeLastModified = Some(f.modifiedTime),
-          thumbnailTimestamp = recoverTimestamp(f, f.hash)
+          thumbnailTimestamp = None,
         )
       }
   }

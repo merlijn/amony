@@ -11,21 +11,21 @@ class AuthServiceImpl(config: AuthConfig) extends AuthService with Logging {
 
   // https://github.com/Password4j/password4j
 
-  override def authenticate(request: Credentials): IO[AuthenticationResponse] =
-    if (request.username == config.adminUsername && request.password == config.adminPassword) {
-      val (accessToken, refreshToken) = tokenManager.createAccessAndRefreshTokens(Some(request.username), Set("admin"))
+  override def authenticate(username: String, password: String): IO[AuthenticationResponse] =
+    if (username == config.adminUsername && password == config.adminPassword) {
+      val (accessToken, refreshToken) = tokenManager.createAccessAndRefreshTokens(Some(username), Set("admin"))
       IO.pure(Authentication(accessToken, refreshToken))
     } else
       IO.pure(InvalidCredentials())
 
-  override def insertUser(request: UpsertUserRequest): IO[User] =
+  override def insertUser(externalId: String, password: String): IO[User] =
     IO.raiseError(new RuntimeException("Not implemented"))
 
-  override def getByExternalId(request: GetByExternalId): IO[User] =
+  override def getByExternalId(externalId: String): IO[User] =
     IO.raiseError(new RuntimeException("Not implemented"))
 
-  override def refresh(request: Authentication): IO[AuthenticationResponse] =
-    tokenManager.refreshAccessToken(request.refreshToken) match
+  override def refresh(accessToken: String, refreshToken: String): IO[AuthenticationResponse] =
+    tokenManager.refreshAccessToken(refreshToken) match
       case Some((accessToken, refreshToken)) => IO.pure(Authentication(accessToken, refreshToken))
       case None                              => IO.pure(InvalidCredentials())
 }

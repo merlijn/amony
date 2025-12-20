@@ -40,7 +40,7 @@ object LocalResourceOperations {
 
     override def validate(info: ResourceInfo): Either[String, Unit] =
       info.contentMeta match {
-        case video: VideoMeta =>
+        case Some(video: VideoMeta) =>
           for {
             _ <- Either.cond(timestamp > 0 && timestamp < video.durationInMillis, (), "Timestamp is out of bounds")
           } yield ()
@@ -111,7 +111,7 @@ object LocalResourceOperations {
 
     override def validate(info: ResourceInfo): Either[String, Unit] = {
       info.contentMeta match {
-        case video: VideoMeta =>
+        case Some(video: VideoMeta) =>
           val (start, end) = range
           val duration = end - start
           for {

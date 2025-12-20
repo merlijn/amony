@@ -34,13 +34,3 @@ case class SearchResult(
   results: List[ResourceInfo],
   tags: Map[String, Long]
 )
-
-case class ReIndexResult()
-
-case class DeleteBucketRequest(bucketId: String)
-
-case class DeleteBucketResult(success: Boolean = true)
-
-case class ForceCommitRequest()
-
-case class ForceCommitResult()

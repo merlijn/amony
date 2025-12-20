@@ -7,7 +7,6 @@ import nl.amony.service.resources.{Resource, ResourceBucket}
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.dto.{ResourceDto, toDto}
 import nl.amony.service.resources.web.oneOfList
-import nl.amony.service.search.domain.{DeleteBucketRequest, ForceCommitRequest}
 import nl.amony.service.search.domain.SearchService
 import org.http4s.*
 import scribe.Logging
@@ -96,8 +95,8 @@ object AdminRoutes extends Logging:
             case Some(bucket) =>
               logger.info(s"Re-indexing all resources in bucket '$bucketId'")
 
-              def deleteBucket() = searchService.deleteBucket(DeleteBucketRequest(bucketId))
-              def commit: IO[Unit] = searchService.forceCommit(ForceCommitRequest()) >> IO.unit
+              def deleteBucket() = searchService.deleteBucket(bucketId)
+              def commit: IO[Unit] = searchService.forceCommit()
 
               val resourceStream = bucket.getAllResources()
               

@@ -3,7 +3,7 @@ package nl.amony.service.auth
 import cats.effect.IO
 import cats.implicits.toSemigroupKOps
 import nl.amony.lib.auth.{ApiSecurity, AuthToken, SecurityError, SecurityInput, securityInput}
-import nl.amony.service.auth.domain.{AuthService, Authentication, Credentials, InvalidCredentials}
+import nl.amony.service.auth.domain.{AuthService, Authentication, InvalidCredentials}
 import org.http4s.UrlForm.given
 import org.http4s.dsl.io.*
 import org.http4s.HttpRoutes
@@ -114,13 +114,13 @@ object AuthRoutes extends Logging {
 
     val loginImpl = loginEndpoint
       .serverLogic: req =>
-        authService.authenticate(Credentials(req.username, req.password)).flatMap:
+        authService.authenticate(req.username, req.password).flatMap:
           case InvalidCredentials()           => IO(Left(SecurityError.Unauthorized))
           case authentication: Authentication => IO(Right(RedirectResponse("/") -> createCookies(authentication)))
 
     val refreshImpl = refreshEndpoint
       .serverLogic { refreshToken =>
-        authService.refresh(Authentication("", refreshToken = refreshToken)).flatMap:
+        authService.refresh("", refreshToken).flatMap:
           case InvalidCredentials()           => IO(Left(SecurityError.Unauthorized))
           case authentication: Authentication => IO(Right(createCookies(authentication)))
       }

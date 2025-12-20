@@ -37,7 +37,7 @@ case class ResourceRow(
       size = size,
       contentType = content_type,
       contentMetaSource = content_meta_tool_name.map(name => ResourceMetaSource(name, content_meta_tool_data.getOrElse(""))),
-      contentMeta = ResourceMeta.Empty,
+      contentMeta = None,
       tags = tagLabels,
       timeAdded = Some(time_added.toEpochMilli),
       timeCreated = time_created.map(_.toEpochMilli),

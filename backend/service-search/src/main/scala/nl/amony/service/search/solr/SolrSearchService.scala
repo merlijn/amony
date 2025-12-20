@@ -122,11 +122,11 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
     resource.contentType.foreach(contentType => solrInputDocument.addField(FieldNames.contentType, contentType))
 
     resource.contentMeta match {
-      case ImageMeta(w, h, _) =>
+      case Some(ImageMeta(w, h, _)) =>
         solrInputDocument.addField(FieldNames.width, w)
         solrInputDocument.addField(FieldNames.height, h)
         solrInputDocument.addField(FieldNames.resourceType, "image")
-      case VideoMeta(w, h, fps, duration, codec, _) =>
+      case Some(VideoMeta(w, h, fps, duration, codec, _)) =>
         solrInputDocument.addField(FieldNames.width, w)
         solrInputDocument.addField(FieldNames.height, h)
         solrInputDocument.addField(FieldNames.duration, duration)
@@ -166,15 +166,15 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
 
     val userId = Option(document.getFieldValue(FieldNames.userId)).map(_.asInstanceOf[String])
 
-    val contentMeta: ResourceMeta = resourceType match {
+    val contentMeta: Option[ResourceMeta] = resourceType match {
 
-      case "image" => ImageMeta(width, height)
+      case "image" => Some(ImageMeta(width, height))
       case "video" =>
         val duration = document.getFieldValue(FieldNames.duration).asInstanceOf[Int]
         val fps = document.getFieldValue(FieldNames.fps).asInstanceOf[Float]
         val codec = Option(document.getFieldValue(FieldNames.videoCodec)).map(_.asInstanceOf[String])
-        VideoMeta(width, height, fps, duration, codec, Map.empty)
-      case _ => ResourceMeta.Empty
+        Some(VideoMeta(width, height, fps, duration, codec, Map.empty))
+      case _ => None
     }
 
     ResourceInfo(bucketId, resourceId, userId.getOrElse(""), path, size, hash, contentType, None, contentMeta, timeAdded, timeCreated, lastModified, title, description, tags, thumbnailTimestamp)
@@ -280,18 +280,17 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
     }
   }
   
-  override def indexAll(resources: fs2.Stream[IO, ResourceInfo]): IO[ReIndexResult] = {
+  override def indexAll(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] = {
     resources
       .evalMap(resource => IO(insertResource(resource)))
       .compile
       .drain
-      .as(ReIndexResult())
       .handleErrorWith { t =>
         IO(logger.error("Error while re-indexing", t)) >> IO.raiseError(t)
       }
   }
 
-  override def index(request: ResourceInfo): IO[ReIndexResult] = IO { insertResource(request); ReIndexResult() }
+  override def index(resource: ResourceInfo): IO[Unit] = IO(insertResource(resource))
 
   override def searchMedia(query: Query): IO[SearchResult] = {
 
@@ -327,17 +326,16 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
     }
   }
 
-  override def forceCommit(request: ForceCommitRequest): IO[ForceCommitResult] =
+  override def forceCommit(): IO[Unit] =
     loggingFailureIO {
       logger.info("Forcing commit")
-      solr.commit(collectionName); ForceCommitResult()
+      solr.commit(collectionName)
     }
 
-  override def deleteBucket(request: DeleteBucketRequest): IO[DeleteBucketResult] =
+  override def deleteBucket(bucketId: String): IO[Unit] =
     loggingFailureIO {
-      logger.info(s"Deleting bucket: ${request.bucketId}")
-      solr.deleteByQuery(collectionName, s"${FieldNames.bucketId}:${ClientUtils.escapeQueryChars(request.bucketId)}", config.commitWithinMillis)
+      logger.info(s"Deleting bucket: $bucketId")
+      solr.deleteByQuery(collectionName, s"${FieldNames.bucketId}:${ClientUtils.escapeQueryChars(bucketId)}", config.commitWithinMillis)
       solr.commit(collectionName)
-      DeleteBucketResult()
     }
 }

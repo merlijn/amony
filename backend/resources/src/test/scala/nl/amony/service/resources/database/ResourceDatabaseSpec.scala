@@ -46,7 +46,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       size = Random.nextLong(),
       contentType = None,
       contentMetaSource = None,
-      contentMeta = ResourceMeta.Empty, // this field is not stored
+      contentMeta = None, // this field is not stored
       tags = Set.fill(Random.nextInt(5))(randomTag),
       timeAdded = Some(nextTimestamp),
       timeCreated = None,

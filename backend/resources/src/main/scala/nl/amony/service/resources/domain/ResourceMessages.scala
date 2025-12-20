@@ -7,9 +7,6 @@ case class ResourceMetaSource(
 
 sealed trait ResourceMeta
 
-object ResourceMeta:
-  case object Empty extends ResourceMeta
-
 case class VideoMeta(
   width: Int,
   height: Int,
@@ -34,7 +31,7 @@ case class ResourceInfo(
   hash: Option[String] = None,
   contentType: Option[String] = None,
   contentMetaSource: Option[ResourceMetaSource] = None,
-  contentMeta: ResourceMeta = ResourceMeta.Empty,
+  contentMeta: Option[ResourceMeta] = None,
   timeAdded: Option[Long] = None,
   timeCreated: Option[Long] = None,
   timeLastModified: Option[Long] = None,

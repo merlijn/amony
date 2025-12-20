@@ -43,7 +43,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
 
   private def recoverMeta(info: ResourceInfo) = {
     val meta: Option[ResourceMeta] = info.contentMetaSource.flatMap(meta => LocalResourceMeta.scanToolMeta(meta).toOption)
-    info.copy(contentMeta = meta.getOrElse(ResourceMeta.Empty))
+    info.copy(contentMeta = meta)
   }
 
   override def id = config.id
@@ -62,7 +62,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
             val updated = resource.copy(
               contentType       = Some(localResourceMeta.contentType),
               contentMetaSource = localResourceMeta.toolMeta,
-              contentMeta       = localResourceMeta.meta,
+              contentMeta       = Some(localResourceMeta.meta),
             )
 
             db.upsert(updated) >> topic.publish(ResourceUpdated(updated))
@@ -114,7 +114,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
       path = outputFile.getFileName.toString,
       contentType = Some(operation.contentType),
       contentMetaSource = None,
-      contentMeta = ResourceMeta.Empty
+      contentMeta = None
     )
 
     if (Files.exists(outputFile))

@@ -88,7 +88,7 @@ case class ResourceDto(
       hash = hash,
       size = sizeInBytes,
       contentType = Some(contentType),
-      contentMeta = ResourceMeta.Empty, // Can be re-created from the source
+      contentMeta = None, // Can be re-created from the source
       contentMetaSource = contentMetaSource.map(
         s => ResourceMetaSource(s.toolName, s.toolData.noSpaces)
       ),
@@ -116,15 +116,15 @@ def toDto(resource: ResourceInfo): ResourceDto = {
 
   val resourceHeight =
     resource.contentMeta match
-      case VideoMeta(_, h, _, _, _, _) => h
-      case ImageMeta(_, h, _) => h
+      case Some(VideoMeta(_, h, _, _, _, _)) => h
+      case Some(ImageMeta(_, h, _)) => h
       case _ => 0
 
   val resolutions: List[Int] = (resourceHeight :: List(352)).sorted
 
   val durationInMillis =
     resource.contentMeta match {
-      case m: VideoMeta => m.durationInMillis
+      case Some(m: VideoMeta) => m.durationInMillis
       case _ => 0
     }
 
@@ -152,7 +152,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
   }
   
   val contentMeta: ResourceMetaDto = resource.contentMeta match {
-    case ImageMeta(width, height, _) =>
+    case Some(ImageMeta(width, height, _)) =>
       ResourceMetaDto(
         width = width,
         height = height,
@@ -161,7 +161,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
         codec = None,
       )
 
-    case VideoMeta(width, height, fps, duration, codec, _) =>
+    case Some(VideoMeta(width, height, fps, duration, codec, _)) =>
       ResourceMetaDto(
         width = width,
         height = height,
@@ -170,7 +170,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
         codec = codec,
       )
 
-    case ResourceMeta.Empty =>
+    case None =>
       ResourceMetaDto(
         width = 0,
         height = 0,

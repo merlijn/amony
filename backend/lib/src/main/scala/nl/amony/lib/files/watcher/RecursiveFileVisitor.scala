@@ -29,11 +29,12 @@ class RecursiveFileVisitor(directoryFilter: Path => Boolean, fileNameFilter: Pat
     logger.warn(s"Failed to visit path: $file")
     FileVisitResult.CONTINUE
 
-object RecursiveFileVisitor:
+object RecursiveFileVisitor extends Logging:
   def listFilesInDirectoryRecursive(dir: Path, directoryFilter: Path => Boolean, fileFilter: Path => Boolean): Seq[(Path, BasicFileAttributes)] =
     
     val visitor = new RecursiveFileVisitor(directoryFilter, fileFilter)
     Files.walkFileTree(dir, visitor)
+    logger.info("Scanned directory: " + dir.toString + ", found files: " + visitor.files.size)
     visitor.files
     
   def streamFilesInDirectoryRecursive(dir: Path, directoryFilter: Path => Boolean, fileFilter: Path => Boolean): Stream[IO, (Path, BasicFileAttributes)] =

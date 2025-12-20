@@ -24,7 +24,7 @@ object WebServer extends Logging {
   def run(config: WebServerConfig, routes: HttpRoutes[IO])(implicit io: IORuntime): Resource[IO, Unit] = {
     val httpResource = config.http match {
       case Some(httpConfig) if httpConfig.enabled =>
-        logger.info(s"Starting HTTP server at ${httpConfig.host}:${httpConfig.port}")
+        Resource.eval(IO(logger.info(s"Starting HTTP server at ${httpConfig.host}:${httpConfig.port}"))) >>
         httpServer(httpConfig, routes).map(_ => ())
       case _ =>
         logger.info("HTTP server is disabled")
@@ -33,11 +33,10 @@ object WebServer extends Logging {
 
     val httpsResource = config.https match {
       case Some(httpsConfig) if httpsConfig.enabled =>
-        logger.info(s"Starting HTTPS server at ${httpsConfig.host}:${httpsConfig.port}")
+        Resource.eval(IO(logger.info(s"Starting HTTPS server at ${httpsConfig.host}:${httpsConfig.port}"))) >>
         httpsServer(httpsConfig, routes).map(_ => ())
       case _ =>
-        logger.info("HTTPS server is disabled")
-        Resource.unit[IO]
+        Resource.eval(IO(logger.info("HTTPS server is disabled")))
     }
 
     httpResource >> httpsResource

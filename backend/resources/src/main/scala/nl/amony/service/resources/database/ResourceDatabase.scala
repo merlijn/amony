@@ -3,7 +3,6 @@ package nl.amony.service.resources.database
 import cats.data.OptionT
 import cats.effect.{IO, Resource}
 import nl.amony.service.resources.domain.*
-import nl.amony.service.resources.domain.events.*
 import skunk.*
 import skunk.circe.codec.all.*
 import org.typelevel.otel4s.trace.Tracer.Implicits.noop
@@ -27,21 +26,24 @@ case class DatabaseConfig(
    poolSize: Int,
    password: Option[String]
 ) {
-  def getJdbcConnection: Connection = {
+  def getJdbcConnection: IO[Connection] = IO {
     Class.forName("org.postgresql.Driver")
     val jdbcUrl = s"jdbc:postgresql://${host}:${port}/${database}"
     DriverManager.getConnection(jdbcUrl, username, password.getOrElse(null))
   }
 }
 
-object ResourceDatabase:
+object ResourceDatabase extends Logging:
 
   def make(config: DatabaseConfig): Resource[IO, ResourceDatabase] = {
-    def runDbMigrations() = {
-      Using(config.getJdbcConnection) { conn =>
-        val liquibaseDatabase = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(conn));
-        val liquibase = new Liquibase("db/00-changelog.yaml", new ClassLoaderResourceAccessor(), liquibaseDatabase)
-        liquibase.update()
+    def runDbMigrations(): IO[Unit] = {
+      config.getJdbcConnection.flatMap { connection =>
+        IO.fromTry(Using(connection) { conn =>
+          logger.info("Running database migrations...")
+          val liquibaseDatabase = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(conn));
+          val liquibase = new Liquibase("db/00-changelog.yaml", new ClassLoaderResourceAccessor(), liquibaseDatabase)
+          liquibase.update()
+        })
       }
     }
 
@@ -54,11 +56,13 @@ object ResourceDatabase:
           database = config.database,
           password = config.password,
         )
-      _ <- Resource.eval(IO(runDbMigrations()))
+      _ <- Resource.eval(runDbMigrations())
     } yield ResourceDatabase(pool)
 }
 
 class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
+
+  logger.info("ResourceDatabase initialized")
 
   val defaultChunkSize = 128
   
