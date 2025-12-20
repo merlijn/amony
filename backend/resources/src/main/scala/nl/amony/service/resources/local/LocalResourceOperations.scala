@@ -30,14 +30,6 @@ object LocalResourceOperations {
       case VideoFragment(width, height, start, end, quality) => VideoFragmentOp(parentId, (start, end), height.get)
       case VideoThumbnail(width, height, quality, timestamp) => VideoThumbnailOp(parentId, timestamp, height.get)
       case ImageThumbnail(width, height, quality)            => ImageThumbnailOp(parentId, width, height)
-      case ResourceOperation.Empty                           => NoOp
-  }
-  
-  val NoOp = new LocalResourceOp {
-    override def contentType: String = ""
-    override def validate(meta: ResourceInfo): Either[String, Unit] = Left("No operation")
-    override def outputFilename: String = ""
-    override def createFile(inputFile: Path, outputDir: Path): IO[Path] = IO(inputFile)
   }
   
   case class VideoThumbnailOp(resourceId: String, timestamp: Long, quality: Int) extends LocalResourceOp with Logging {

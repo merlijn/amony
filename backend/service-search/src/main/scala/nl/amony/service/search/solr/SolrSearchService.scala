@@ -18,7 +18,6 @@ import scribe.{Level, Logging}
 
 import java.nio.file.{Files, Path}
 import java.util.Properties
-import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
@@ -52,22 +51,21 @@ object SolrSearchService {
     val userId = "user_id_s"
   }
 
-  def resource(config: SolrConfig)(using ec: ExecutionContext): Resource[IO, SolrSearchService] =
+  def resource(config: SolrConfig): Resource[IO, SolrSearchService] =
     Resource.make[IO, SolrSearchService](IO(new SolrSearchService(config)))(_.close())
 }
 
-class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends SearchService with Logging {
+class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
 
   private val solrHome: Path = Path.of(config.path).toAbsolutePath.normalize()
 
 //  logger.withMinimumLevel(Level.Debug).replace()
   logger.info(s"Solr home: $solrHome")
 
-  def loggingFailureFuture[T](f: => T): Future[T] = {
-    Future(f).recover {
+  def loggingFailureIO[T](f: => T): IO[T] = {
+    IO(f).handleErrorWith {
       case e: Exception =>
-        logger.error("Error while executing solr query", e)
-        throw e
+        IO(logger.error("Error while executing solr query", e)) >> IO.raiseError(e)
     }
   }
 
@@ -193,7 +191,6 @@ class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends 
         case DateAdded => FieldNames.timeAdded
         case Size      => FieldNames.filesize
         case Duration  => FieldNames.duration
-        case _         => FieldNames.timeAdded
 
       val direction = if (sort.direction == Desc) "desc" else "asc"
 
@@ -280,9 +277,6 @@ class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends 
         catch {
           case e: Exception => logger.error("Exception while trying to delete document from solr", e)
         }
-      case _ =>
-        logger.info(s"Ignoring event: $event")
-        ()
     }
   }
   
@@ -297,11 +291,11 @@ class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends 
       }
   }
 
-  override def index(request: ResourceInfo): Future[ReIndexResult] = Future { insertResource(request); ReIndexResult() }
+  override def index(request: ResourceInfo): IO[ReIndexResult] = IO { insertResource(request); ReIndexResult() }
 
-  override def searchMedia(query: Query): Future[SearchResult] = {
+  override def searchMedia(query: Query): IO[SearchResult] = {
 
-    loggingFailureFuture {
+    loggingFailureIO {
 
       val solrParams = toSolrQuery(query)
       val queryResponse = solr.query(solrParams)
@@ -333,14 +327,14 @@ class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends 
     }
   }
 
-  override def forceCommit(request: ForceCommitRequest): Future[ForceCommitResult] =
-    loggingFailureFuture {
+  override def forceCommit(request: ForceCommitRequest): IO[ForceCommitResult] =
+    loggingFailureIO {
       logger.info("Forcing commit")
       solr.commit(collectionName); ForceCommitResult()
     }
 
-  override def deleteBucket(request: DeleteBucketRequest): Future[DeleteBucketResult] =
-    loggingFailureFuture {
+  override def deleteBucket(request: DeleteBucketRequest): IO[DeleteBucketResult] =
+    loggingFailureIO {
       logger.info(s"Deleting bucket: ${request.bucketId}")
       solr.deleteByQuery(collectionName, s"${FieldNames.bucketId}:${ClientUtils.escapeQueryChars(request.bucketId)}", config.commitWithinMillis)
       solr.commit(collectionName)

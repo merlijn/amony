@@ -114,7 +114,7 @@ object SearchRoutes:
           untagged    = queryDto.untagged.filter(identity)
         )
 
-        IO.fromFuture(IO(searchService.searchMedia(query))).map { response =>
+        searchService.searchMedia(query).map { response =>
           Right(
             SearchResponseDto(
               offset = response.offset,

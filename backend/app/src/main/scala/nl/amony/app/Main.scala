@@ -23,7 +23,6 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
   override def run(args: List[String]): Resource[IO, Unit] = {
 
     import cats.effect.unsafe.implicits.global
-    import scala.concurrent.ExecutionContext.Implicits.global
 
     logger.info("Starting application, app home directory: " + appConfig.amonyHome)
     logger.debug("Configuration: " + appConfig)

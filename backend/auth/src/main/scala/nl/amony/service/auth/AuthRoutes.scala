@@ -114,17 +114,15 @@ object AuthRoutes extends Logging {
 
     val loginImpl = loginEndpoint
       .serverLogic: req =>
-        IO.fromFuture(IO(authService.authenticate(Credentials(req.username, req.password)))).flatMap:
+        authService.authenticate(Credentials(req.username, req.password)).flatMap:
           case InvalidCredentials()           => IO(Left(SecurityError.Unauthorized))
           case authentication: Authentication => IO(Right(RedirectResponse("/") -> createCookies(authentication)))
-          case _                              => throw new RuntimeException("Unexpected response from authentication service")
 
     val refreshImpl = refreshEndpoint
       .serverLogic { refreshToken =>
-        IO.fromFuture(IO(authService.refresh(Authentication("", refreshToken = refreshToken)))).flatMap:
+        authService.refresh(Authentication("", refreshToken = refreshToken)).flatMap:
           case InvalidCredentials()           => IO(Left(SecurityError.Unauthorized))
           case authentication: Authentication => IO(Right(createCookies(authentication)))
-          case _                              => throw new RuntimeException("Unexpected response from authentication service")
       }
 
     val logoutImpl = logoutEndpoint

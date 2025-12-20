@@ -96,8 +96,8 @@ object AdminRoutes extends Logging:
             case Some(bucket) =>
               logger.info(s"Re-indexing all resources in bucket '$bucketId'")
 
-              def deleteBucket() = IO.fromFuture(IO(searchService.deleteBucket(DeleteBucketRequest(bucketId))))
-              def commit: IO[Unit] = IO.fromFuture(IO(searchService.forceCommit(ForceCommitRequest()))) >> IO.unit
+              def deleteBucket() = searchService.deleteBucket(DeleteBucketRequest(bucketId))
+              def commit: IO[Unit] = searchService.forceCommit(ForceCommitRequest()) >> IO.unit
 
               val resourceStream = bucket.getAllResources()
               

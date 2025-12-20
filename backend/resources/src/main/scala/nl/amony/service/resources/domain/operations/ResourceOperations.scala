@@ -2,9 +2,6 @@ package nl.amony.service.resources.domain.operations
 
 sealed trait ResourceOperation
 
-object ResourceOperation:
-  case object Empty extends ResourceOperation
-
 case class VideoThumbnail(
   width: Option[Int] = None,
   height: Option[Int] = None,
