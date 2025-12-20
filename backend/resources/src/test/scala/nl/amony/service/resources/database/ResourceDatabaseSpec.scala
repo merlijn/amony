@@ -6,7 +6,7 @@ import com.dimafeng.testcontainers.scalatest.TestContainerForAll
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
 import cats.effect.unsafe.implicits.global
-import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
+import nl.amony.service.resources.domain.{ResourceInfo, ResourceMeta}
 import org.scalatest.matchers.should.Matchers
 import scribe.Logging
 import cats.implicits.*

@@ -1,8 +1,8 @@
 package nl.amony.service.resources
 
 import cats.effect.IO
-import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
-import nl.amony.service.resources.api.operations.ResourceOperation
+import nl.amony.service.resources.domain.{ResourceInfo, ResourceMeta}
+import nl.amony.service.resources.domain.operations.ResourceOperation
 
 trait ResourceBucket {
   

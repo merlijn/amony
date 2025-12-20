@@ -2,12 +2,12 @@ package nl.amony.service.search.solr
 
 import cats.effect.{IO, Resource}
 import SolrSearchService.*
-import nl.amony.service.resources.api.*
-import nl.amony.service.resources.api.events.*
-import nl.amony.service.search.api.SearchServiceGrpc.SearchService
-import nl.amony.service.search.api.SortDirection.Desc
-import nl.amony.service.search.api.SortField.*
-import nl.amony.service.search.api.*
+import nl.amony.service.resources.domain.*
+import nl.amony.service.resources.domain.events.*
+import nl.amony.service.search.domain.SearchService
+import nl.amony.service.search.domain.SortDirection.Desc
+import nl.amony.service.search.domain.SortField.*
+import nl.amony.service.search.domain.*
 import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer
 import org.apache.solr.client.solrj.{SolrClient, SolrQuery}
 import org.apache.solr.common.params.{CommonParams, FacetParams, ModifiableSolrParams}
@@ -15,7 +15,6 @@ import org.apache.solr.common.{SolrDocument, SolrInputDocument}
 import org.apache.solr.core.CoreContainer
 import org.apache.solr.client.solrj.util.ClientUtils
 import scribe.{Level, Logging}
-import io.grpc.stub.StreamObserver
 
 import java.nio.file.{Files, Path}
 import java.util.Properties
@@ -287,18 +286,15 @@ class SolrSearchService(config: SolrConfig)(using ec: ExecutionContext) extends 
     }
   }
   
-  override def indexAll(responseObserver: StreamObserver[ReIndexResult]): StreamObserver[ResourceInfo] = {
-    new StreamObserver[ResourceInfo] {
-      override def onNext(value: ResourceInfo): Unit = 
-        insertResource(value)
-
-      override def onError(t: Throwable): Unit = 
-        logger.error("Error while re-indexing", t)
-
-      override def onCompleted(): Unit = 
-        responseObserver.onNext(ReIndexResult())
-        responseObserver.onCompleted()
-    }
+  override def indexAll(resources: fs2.Stream[IO, ResourceInfo]): IO[ReIndexResult] = {
+    resources
+      .evalMap(resource => IO(insertResource(resource)))
+      .compile
+      .drain
+      .as(ReIndexResult())
+      .handleErrorWith { t =>
+        IO(logger.error("Error while re-indexing", t)) >> IO.raiseError(t)
+      }
   }
 
   override def index(request: ResourceInfo): Future[ReIndexResult] = Future { insertResource(request); ReIndexResult() }

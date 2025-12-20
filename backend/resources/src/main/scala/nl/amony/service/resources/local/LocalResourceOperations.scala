@@ -4,8 +4,8 @@ import cats.effect.IO
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.magick.ImageMagick
 import nl.amony.service.resources.*
-import nl.amony.service.resources.api.operations.*
-import nl.amony.service.resources.api.{ImageMeta, ResourceInfo, VideoMeta}
+import nl.amony.service.resources.domain.operations.*
+import nl.amony.service.resources.domain.{ImageMeta, ResourceInfo, VideoMeta}
 import scribe.Logging
 
 import java.nio.file.Path

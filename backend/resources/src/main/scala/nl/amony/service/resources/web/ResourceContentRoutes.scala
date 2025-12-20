@@ -2,7 +2,7 @@ package nl.amony.service.resources.web
 
 import cats.data.OptionT
 import cats.effect.IO
-import nl.amony.service.resources.api.operations.{ImageThumbnail, ResourceOperation, VideoFragment, VideoThumbnail}
+import nl.amony.service.resources.domain.operations.{ImageThumbnail, ResourceOperation, VideoFragment, VideoThumbnail}
 import nl.amony.service.resources.web.ResourceDirectives.resourceContentsResponse
 import nl.amony.service.resources.{Resource, ResourceBucket}
 import org.http4s.*

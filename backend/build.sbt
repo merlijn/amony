@@ -70,10 +70,6 @@ val liquibaseCore            = "org.liquibase"             % "liquibase-core"   
 val solr                     = "org.apache.solr"           % "solr-core"                  % "8.11.1"
 val solrLangId               = "org.apache.solr"           % "solr-langid"                % "8.11.1"
 
-val scalaPbRuntimeGrcp       = "com.thesamet.scalapb"     %% "scalapb-runtime-grpc"       % scalapb.compiler.Version.scalapbVersion
-val scalaPbRuntimeProtobuf   = "com.thesamet.scalapb"     %% "scalapb-runtime"            % scalapb.compiler.Version.scalapbVersion % "protobuf"
-val scalaPbRuntime           = "com.thesamet.scalapb"     %% "scalapb-runtime"            % scalapb.compiler.Version.scalapbVersion
-
 val log4CatsSlf4j            = "org.typelevel"            %% "log4cats-slf4j"             % "2.7.1"
 
 val apacheCommonsCodec = "commons-codec" % "commons-codec" % "1.15"
@@ -98,21 +94,13 @@ val commonSettings = Seq(
     ExclusionRule("org.scala-lang", "scala3-library_sjs1_3"),
     ExclusionRule("org.scala-js", "scalajs-library_2.13"),
     ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl")
-  ),
-  assembly / assemblyMergeStrategy := {
-    case path if path.endsWith(".proto") => MergeStrategy.discard
-    case x                               => (assembly / assemblyMergeStrategy).value.apply(x)
-  }
+  )
 )
 
 lazy val noPublishSettings = Seq(
   publish         := {},
   publishLocal    := {},
   publishArtifact := false
-)
-
-def protobufSettings = Seq(
-  Compile / PB.targets := Seq(scalapb.gen(flatPackage = true) -> (Compile / sourceManaged).value / "scalapb")
 )
 
 def module(name: String, mainClass: Boolean = false) = {
@@ -139,7 +127,6 @@ lazy val lib =
         fs2Io,
         pureConfig,
         scribe,
-        scalaPbRuntime,
         scalaTest
       )
     )
@@ -147,7 +134,6 @@ lazy val lib =
 lazy val auth =
   module("auth")
     .dependsOn(lib)
-    .settings(protobufSettings)
     .settings(
       name := "amony-service-auth",
       libraryDependencies ++= Seq(
@@ -155,7 +141,6 @@ lazy val auth =
         jwtCirce, bouncyCastle,
         tapirCore, tapirCatsEffect, tapirCirce, tapirHttp4s,
         circe, circeGeneric, pureConfig, pureConfigGeneric,
-        scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
         http4sDsl, http4sCirce
       )
     )
@@ -163,7 +148,6 @@ lazy val auth =
 lazy val resources =
   module("resources")
     .dependsOn(lib, auth)
-    .settings(protobufSettings)
     .settings(
       Test / fork := true,
       name := "amony-service-resources",
@@ -173,7 +157,6 @@ lazy val resources =
         tapirCore, tapirCatsEffect, tapirCirce, tapirHttp4s, fs2Io, fs2Core,
         http4sDsl, liquibaseCore,
         skunkCore, skunkCirce,
-        scalaPbRuntimeGrcp, scalaPbRuntimeProtobuf,
         scalaTest,
         postgresDriver % "test",
         "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.43.6" % "test",
@@ -187,7 +170,6 @@ lazy val buildSolrTarGz = taskKey[Seq[File]]("Creates the solr.tar.gz file")
 lazy val searchService =
   module("service-search")
     .dependsOn(resources)
-    .settings(protobufSettings)
     .settings(
       name := "amony-service-search",
       libraryDependencies ++= Seq(

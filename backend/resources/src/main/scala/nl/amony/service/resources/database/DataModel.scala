@@ -1,6 +1,6 @@
 package nl.amony.service.resources.database
 
-import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta, ResourceMetaSource}
+import nl.amony.service.resources.domain.{ResourceInfo, ResourceMeta, ResourceMetaSource}
 import skunk.Codec
 import skunk.codec.all.{int4, timestamptz, varchar}
 import skunk.implicits.sql

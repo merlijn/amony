@@ -1,7 +1,7 @@
 package nl.amony.service.resources
 
 import cats.effect.IO
-import nl.amony.service.resources.api.ResourceInfo
+import nl.amony.service.resources.domain.ResourceInfo
 
 import java.nio.file.Files
 

@@ -4,10 +4,10 @@ import cats.effect.IO
 import nl.amony.lib.auth.*
 import nl.amony.service.resources.web.dto.toDto
 import nl.amony.service.resources.web.oneOfList
-import nl.amony.service.search.api.SearchServiceGrpc.SearchService
-import nl.amony.service.search.api.SortDirection.{Asc, Desc}
-import nl.amony.service.search.api.SortField.*
-import nl.amony.service.search.api.{Query, SortField, SortOption}
+import nl.amony.service.search.domain.SearchService
+import nl.amony.service.search.domain.SortDirection.{Asc, Desc}
+import nl.amony.service.search.domain.SortField.*
+import nl.amony.service.search.domain.{Query, SortField, SortOption}
 import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.json.circe.jsonBody

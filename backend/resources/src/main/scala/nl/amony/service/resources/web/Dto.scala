@@ -1,7 +1,7 @@
 package nl.amony.service.resources.web.dto
 
 import io.circe.*
-import nl.amony.service.resources.api.*
+import nl.amony.service.resources.domain.*
 import sttp.tapir.Schema.SName
 import sttp.tapir.{FieldName, Schema, SchemaType}
 import sttp.tapir.Schema.annotations.customise

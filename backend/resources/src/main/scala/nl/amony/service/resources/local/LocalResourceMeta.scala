@@ -5,7 +5,7 @@ import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.ffmpeg.tasks.FFProbeModel.FFProbeOutput
 import nl.amony.lib.magick.ImageMagick
 import nl.amony.service.resources.*
-import nl.amony.service.resources.api.{ImageMeta, ResourceMeta, ResourceMetaSource, VideoMeta}
+import nl.amony.service.resources.domain.{ImageMeta, ResourceMeta, ResourceMetaSource, VideoMeta}
 import org.apache.tika.Tika
 import scribe.Logging
 

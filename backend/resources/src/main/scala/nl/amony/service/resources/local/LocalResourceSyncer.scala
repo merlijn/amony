@@ -7,8 +7,8 @@ import nl.amony.lib.files.watcher.*
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.service.resources.Resource
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
-import nl.amony.service.resources.api.*
-import nl.amony.service.resources.api.events.*
+import nl.amony.service.resources.domain.*
+import nl.amony.service.resources.domain.events.*
 import nl.amony.service.resources.database.ResourceDatabase
 
 import java.nio.file.{Files, Path}

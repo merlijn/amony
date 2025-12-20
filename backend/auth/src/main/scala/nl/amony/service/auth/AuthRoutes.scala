@@ -3,7 +3,7 @@ package nl.amony.service.auth
 import cats.effect.IO
 import cats.implicits.toSemigroupKOps
 import nl.amony.lib.auth.{ApiSecurity, AuthToken, SecurityError, SecurityInput, securityInput}
-import nl.amony.service.auth.api.AuthServiceGrpc.AuthService
+import nl.amony.service.auth.domain.{AuthService, Authentication, Credentials, InvalidCredentials}
 import org.http4s.UrlForm.given
 import org.http4s.dsl.io.*
 import org.http4s.HttpRoutes
@@ -82,7 +82,7 @@ object AuthRoutes extends Logging {
   
   def apply(authService: AuthService, authConfig: AuthConfig, apiSecurity: ApiSecurity)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
 
-    def createCookies(apiAuthentication: api.Authentication): AuthCookies = {
+    def createCookies(apiAuthentication: Authentication): AuthCookies = {
       val accessTokenCookie = CookieValueWithMeta.unsafeApply(
         value = apiAuthentication.accessToken,
         path = Some("/"),
@@ -114,17 +114,17 @@ object AuthRoutes extends Logging {
 
     val loginImpl = loginEndpoint
       .serverLogic: req =>
-        IO.fromFuture(IO(authService.authenticate(api.Credentials(req.username, req.password)))).flatMap:
-          case api.InvalidCredentials()           => IO(Left(SecurityError.Unauthorized))
-          case authentication: api.Authentication => IO(Right(RedirectResponse("/") -> createCookies(authentication)))
-          case _                                  => throw new RuntimeException("Unexpected response from authentication service")
+        IO.fromFuture(IO(authService.authenticate(Credentials(req.username, req.password)))).flatMap:
+          case InvalidCredentials()           => IO(Left(SecurityError.Unauthorized))
+          case authentication: Authentication => IO(Right(RedirectResponse("/") -> createCookies(authentication)))
+          case _                              => throw new RuntimeException("Unexpected response from authentication service")
 
     val refreshImpl = refreshEndpoint
       .serverLogic { refreshToken =>
-        IO.fromFuture(IO(authService.refresh(api.Authentication("", refreshToken = refreshToken)))).flatMap:
-          case api.InvalidCredentials()           => IO(Left(SecurityError.Unauthorized))
-          case authentication: api.Authentication => IO(Right(createCookies(authentication)))
-          case _                                  => throw new RuntimeException("Unexpected response from authentication service")
+        IO.fromFuture(IO(authService.refresh(Authentication("", refreshToken = refreshToken)))).flatMap:
+          case InvalidCredentials()           => IO(Left(SecurityError.Unauthorized))
+          case authentication: Authentication => IO(Right(createCookies(authentication)))
+          case _                              => throw new RuntimeException("Unexpected response from authentication service")
       }
 
     val logoutImpl = logoutEndpoint

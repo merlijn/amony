@@ -2,8 +2,8 @@ package nl.amony.service.resources.database
 
 import cats.data.OptionT
 import cats.effect.{IO, Resource}
-import nl.amony.service.resources.api.*
-import nl.amony.service.resources.api.events.*
+import nl.amony.service.resources.domain.*
+import nl.amony.service.resources.domain.events.*
 import skunk.*
 import skunk.circe.codec.all.*
 import org.typelevel.otel4s.trace.Tracer.Implicits.noop
@@ -12,7 +12,7 @@ import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
-import nl.amony.service.resources.api.events.ResourceEvent
+
 import scribe.Logging
 import skunk.data.{Arr, Completion}
 

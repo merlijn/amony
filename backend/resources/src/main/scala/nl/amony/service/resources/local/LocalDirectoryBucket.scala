@@ -7,9 +7,9 @@ import nl.amony.lib.files.*
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.service.resources.*
 import nl.amony.service.resources.ResourceConfig.LocalDirectoryConfig
-import nl.amony.service.resources.api.events.*
-import nl.amony.service.resources.api.operations.ResourceOperation
-import nl.amony.service.resources.api.{ResourceInfo, ResourceMeta}
+import nl.amony.service.resources.domain.events.*
+import nl.amony.service.resources.domain.operations.ResourceOperation
+import nl.amony.service.resources.domain.{ResourceInfo, ResourceMeta}
 import nl.amony.service.resources.database.{Queries, ResourceDatabase}
 import nl.amony.service.resources.local.LocalResourceOperations.*
 import scribe.Logging
