@@ -2,7 +2,6 @@ package nl.amony.lib.messagebus
 
 //import scalapb.TypeMapper
 
-
 trait PersistenceCodec[E] {
 
   /**
@@ -33,6 +32,6 @@ trait PersistenceCodec[E] {
 //
 //  def scalaPBMappedPersistenceCodec[A <: GeneratedMessage, B](using tm: TypeMapper[A, B], cmp: GeneratedMessageCompanion[A]): PersistenceCodec[B] =
 //    val codec = scalaPBPersistenceCodec[A]
-//    new PersistenceCodec[B]: 
+//    new PersistenceCodec[B]:
 //      override def encode(msg: B) = codec.encode(tm.toBase(msg))
 //      override def decode(bytes: Array[Byte]): B = tm.toCustom(codec.decode(bytes))

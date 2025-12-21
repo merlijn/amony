@@ -1,10 +1,11 @@
 package nl.amony.lib.files.watcher
 
-import cats.effect.IO
-
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
+
 import scala.jdk.CollectionConverters.*
+
+import cats.effect.IO
 
 trait FileStore:
 
@@ -31,13 +32,12 @@ trait FileStore:
   def size(): Int
 
   def applyEvent(e: FileEvent): IO[Unit]
-  
+
   def insert(fileInfo: FileInfo): IO[Unit] = IO(applyEvent(FileAdded(fileInfo)))
 
-
 class InMemoryFileStore extends FileStore:
-  
-  private val byPath = new ConcurrentHashMap[Path, FileInfo]()
+
+  private val byPath      = new ConcurrentHashMap[Path, FileInfo]()
   private val byHashIndex = new ConcurrentHashMap[String, Set[FileInfo]]()
 
   private def getHashBucket(hash: String): Set[FileInfo] = byHashIndex.getOrDefault(hash, Set.empty)
@@ -45,13 +45,11 @@ class InMemoryFileStore extends FileStore:
   override def getByPath(path: Path): IO[Option[FileInfo]] = IO.pure(Option(byPath.get(path)))
 
   override def getByHash(hash: String): IO[Seq[FileInfo]] = IO.pure(Option(byHashIndex.get(hash)).map(_.toSeq).getOrElse(Seq.empty))
-  
+
   override def getAll(): fs2.Stream[IO, FileInfo] = fs2.Stream.emits(byPath.values.asScala.toSeq)
 
-  override def getAllByHash(): fs2.Stream[IO, (String, Set[FileInfo])] =
-    fs2.Stream
-      .emits(byHashIndex.asScala.toSeq)
-      .map { case (hash, files) => (hash, files) }
+  override def getAllByHash(): fs2.Stream[IO, (String, Set[FileInfo])] = fs2.Stream.emits(byHashIndex.asScala.toSeq)
+    .map { case (hash, files) => (hash, files) }
 
   def getAllSync() = byPath.values.asScala.toSeq
 
@@ -60,38 +58,30 @@ class InMemoryFileStore extends FileStore:
   override def insert(fileInfo: FileInfo): IO[Unit] = IO(insertSync(fileInfo))
 
   override def applyEvent(e: FileEvent): IO[Unit] = IO(applyEventSync(e))
-  
+
   def insertSync(fileInfo: FileInfo): Unit = applyEventSync(FileAdded(fileInfo))
-  
+
   def insertAllSync(files: Iterable[FileInfo]): Unit = files.foreach(insertSync)
 
   def applyEventSync(e: FileEvent): Unit = e match
-    case FileMetaChanged(fileInfo) =>
-      synchronized {
+    case FileMetaChanged(fileInfo) => synchronized {
         byPath.put(fileInfo.path, fileInfo)
         val updatedHashBucket = getHashBucket(fileInfo.hash).filterNot(_.path == fileInfo.path) + fileInfo
         byHashIndex.put(fileInfo.hash, updatedHashBucket)
       }
-    
-    case FileAdded(fileInfo) =>
-      synchronized {
+
+    case FileAdded(fileInfo)          => synchronized {
         byPath.put(fileInfo.path, fileInfo)
         byHashIndex.put(fileInfo.hash, getHashBucket(fileInfo.hash) + fileInfo)
       }
-    case FileDeleted(fileInfo) =>
-      synchronized {
+    case FileDeleted(fileInfo)        => synchronized {
         byPath.remove(fileInfo.path)
         val updatedHashBucket = getHashBucket(fileInfo.hash).filterNot(_ == fileInfo)
-        if (updatedHashBucket.isEmpty)
-          byHashIndex.remove(fileInfo.hash)
-        else
-          byHashIndex.put(fileInfo.hash, updatedHashBucket)
+        if updatedHashBucket.isEmpty then byHashIndex.remove(fileInfo.hash) else byHashIndex.put(fileInfo.hash, updatedHashBucket)
       }
-    case FileMoved(fileInfo, oldPath) =>
-      synchronized {
+    case FileMoved(fileInfo, oldPath) => synchronized {
         // this check is done to allow circular renames (e.g. a.txt -> b.txt -> a.txt)
-        if (Option(byPath.get(oldPath)).exists(_.hash == fileInfo.hash))
-          byPath.remove(oldPath)
+        if Option(byPath.get(oldPath)).exists(_.hash == fileInfo.hash) then byPath.remove(oldPath)
 
         byPath.put(fileInfo.path, fileInfo)
         val updatedHashBucket = getHashBucket(fileInfo.hash).filterNot(f => f.path == oldPath && f.hash == fileInfo.hash) + fileInfo
@@ -99,9 +89,9 @@ class InMemoryFileStore extends FileStore:
       }
 
 object InMemoryFileStore:
-  
+
   def empty = new InMemoryFileStore()
-  
+
   def apply(files: Iterable[FileInfo]): InMemoryFileStore = {
     val store = new InMemoryFileStore()
     store.insertAllSync(files)

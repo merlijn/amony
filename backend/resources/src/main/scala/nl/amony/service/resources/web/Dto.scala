@@ -1,22 +1,17 @@
 package nl.amony.service.resources.web.dto
 
 import io.circe.*
-import nl.amony.service.resources.domain.*
 import sttp.tapir.Schema.SName
-import sttp.tapir.{FieldName, Schema, SchemaType}
 import sttp.tapir.Schema.annotations.customise
+import sttp.tapir.{FieldName, Schema, SchemaType}
+
+import nl.amony.service.resources.domain.*
 
 def required[T](s: Schema[T]) = s.copy(isOptional = false)
 
-case class BucketDto(
-  bucketId: String,
-  name: String,
-  `type`: String, 
-) derives Codec, sttp.tapir.Schema
+case class BucketDto(bucketId: String, name: String, `type`: String) derives Codec, sttp.tapir.Schema
 
-case class ThumbnailTimestampDto(
-   timestampInMillis: Int
-) derives Codec, sttp.tapir.Schema
+case class ThumbnailTimestampDto(timestampInMillis: Int) derives Codec, sttp.tapir.Schema
 
 case class UserMetaDto(
   title: Option[String],
@@ -25,34 +20,17 @@ case class UserMetaDto(
   tags: List[String]
 ) derives Codec, sttp.tapir.Schema
 
-case class BulkTagsUpdateDto(
-  ids: List[String],
-  tagsToRemove: List[String],
-  tagsToAdd: List[String]
-) derives Codec, sttp.tapir.Schema
+case class BulkTagsUpdateDto(ids: List[String], tagsToRemove: List[String], tagsToAdd: List[String]) derives Codec, sttp.tapir.Schema
 
-case class ResourceMetaDto(
-  width: Int,
-  height: Int,
-  fps: Float,
-  duration: Long,
-  codec: Option[String],
-) derives Codec, sttp.tapir.Schema
+case class ResourceMetaDto(width: Int, height: Int, fps: Float, duration: Long, codec: Option[String]) derives Codec, sttp.tapir.Schema
 
-case class ResourceUrlsDto(
-  originalResourceUrl: String,
-  thumbnailUrl: String,
-  previewThumbnailsUrl: Option[String],
-) derives Codec, sttp.tapir.Schema
+case class ResourceUrlsDto(originalResourceUrl: String, thumbnailUrl: String, previewThumbnailsUrl: Option[String]) derives Codec, sttp.tapir.Schema
 
-case class ResourceToolMetaDto(
-  toolName: String,
-  toolData: Json,
-) derives Codec
+case class ResourceToolMetaDto(toolName: String, toolData: Json) derives Codec
 
 object ResourceToolMetaDto {
   given schemaForCirceJsonAny: Schema[Json] = Schema.any[Json]
-  given Schema[ResourceToolMetaDto] = Schema.derived[ResourceToolMetaDto]
+  given Schema[ResourceToolMetaDto]         = Schema.derived[ResourceToolMetaDto]
 }
 
 case class ResourceDto(
@@ -63,7 +41,7 @@ case class ResourceDto(
   path: String,
   timeAdded: Long,
   timeCreated: Option[Long],
-  timeLastModified: Option[Long], 
+  timeLastModified: Option[Long],
   userId: String,
   title: Option[String],
   description: Option[String],
@@ -75,27 +53,25 @@ case class ResourceDto(
   urls: ResourceUrlsDto,
   thumbnailTimestamp: Option[Int],
   @customise(required)
-  clips: List[ClipDto],
+  clips: List[ClipDto]
 ) derives Codec, sttp.tapir.Schema {
 
   def toDomain(): ResourceInfo = {
-    
+
     ResourceInfo(
-      bucketId = bucketId,
-      resourceId = resourceId,
-      userId = userId,
-      path = path,
-      hash = hash,
-      size = sizeInBytes,
-      contentType = Some(contentType),
-      contentMeta = None, // Can be re-created from the source
-      contentMetaSource = contentMetaSource.map(
-        s => ResourceMetaSource(s.toolName, s.toolData.noSpaces)
-      ),
-      tags = tags.toSet,
-      timeAdded = Some(timeAdded),
-      title = title,
-      description = description,
+      bucketId           = bucketId,
+      resourceId         = resourceId,
+      userId             = userId,
+      path               = path,
+      hash               = hash,
+      size               = sizeInBytes,
+      contentType        = Some(contentType),
+      contentMeta        = None, // Can be re-created from the source
+      contentMetaSource  = contentMetaSource.map(s => ResourceMetaSource(s.toolName, s.toolData.noSpaces)),
+      tags               = tags.toSet,
+      timeAdded          = Some(timeAdded),
+      title              = title,
+      description        = description,
       thumbnailTimestamp = thumbnailTimestamp
     )
   }
@@ -110,29 +86,27 @@ case class ClipDto(
   description: Option[String],
   @customise(required)
   tags: List[String]
- ) derives Codec, sttp.tapir.Schema
+) derives Codec, sttp.tapir.Schema
 
 def toDto(resource: ResourceInfo): ResourceDto = {
 
-  val resourceHeight =
-    resource.contentMeta match
-      case Some(VideoMeta(_, h, _, _, _, _)) => h
-      case Some(ImageMeta(_, h, _)) => h
-      case _ => 0
+  val resourceHeight = resource.contentMeta match
+    case Some(VideoMeta(_, h, _, _, _, _)) => h
+    case Some(ImageMeta(_, h, _))          => h
+    case _                                 => 0
 
   val resolutions: List[Int] = (resourceHeight :: List(352)).sorted
 
-  val durationInMillis =
-    resource.contentMeta match {
-      case Some(m: VideoMeta) => m.durationInMillis
-      case _ => 0
-    }
+  val durationInMillis = resource.contentMeta match {
+    case Some(m: VideoMeta) => m.durationInMillis
+    case _                  => 0
+  }
 
   val thumbnailTimestamp: Int = resource.thumbnailTimestamp.getOrElse(durationInMillis / 3)
 
   val urls = {
 
-    val tsPart = if (thumbnailTimestamp != 0) s"_${thumbnailTimestamp}" else ""
+    val tsPart = if thumbnailTimestamp != 0 then s"_$thumbnailTimestamp" else ""
 
     ResourceUrlsDto(
       originalResourceUrl  = s"/api/resources/${resource.bucketId}/${resource.resourceId}/content",
@@ -143,62 +117,34 @@ def toDto(resource: ResourceInfo): ResourceDto = {
 
   val filename = {
     val slashIdx = resource.path.lastIndexOf('/')
-    val dotIdx = resource.path.lastIndexOf('.')
+    val dotIdx   = resource.path.lastIndexOf('.')
 
-    val startIdx = if (slashIdx >= 0) slashIdx + 1 else 0
-    val endIdx = if (dotIdx >= 0) dotIdx else resource.path.length
+    val startIdx = if slashIdx >= 0 then slashIdx + 1 else 0
+    val endIdx   = if dotIdx >= 0 then dotIdx else resource.path.length
 
     resource.path.substring(startIdx, endIdx)
   }
-  
+
   val contentMeta: ResourceMetaDto = resource.contentMeta match {
-    case Some(ImageMeta(width, height, _)) =>
-      ResourceMetaDto(
-        width = width,
-        height = height,
-        duration = 0,
-        fps = 0,
-        codec = None,
-      )
+    case Some(ImageMeta(width, height, _)) => ResourceMetaDto(width = width, height = height, duration = 0, fps = 0, codec = None)
 
     case Some(VideoMeta(width, height, fps, duration, codec, _)) =>
-      ResourceMetaDto(
-        width = width,
-        height = height,
-        duration = duration,
-        fps = fps,
-        codec = codec,
-      )
+      ResourceMetaDto(width = width, height = height, duration = duration, fps = fps, codec = codec)
 
-    case None =>
-      ResourceMetaDto(
-        width = 0,
-        height = 0,
-        duration = 0,
-        fps = 0,
-        codec = None,
-      )
+    case None => ResourceMetaDto(width = 0, height = 0, duration = 0, fps = 0, codec = None)
   }
-  
+
   // a clip that starts at the thumbnail timestamp and lasts for 3 seconds
   val thumbnailClip = {
     val start = thumbnailTimestamp
     val end   = Math.min(contentMeta.duration, thumbnailTimestamp + 3000)
-    val urls  = resolutions.map(height => s"/api/resources/${resource.bucketId}/${resource.resourceId}/clip_${start}-${end}_${height}p.mp4")
+    val urls  = resolutions.map(height => s"/api/resources/${resource.bucketId}/${resource.resourceId}/clip_$start-${end}_${height}p.mp4")
 
-    ClipDto(
-      resourceId = resource.resourceId,
-      start = start,
-      end = end,
-      urls = urls,
-      description = None,
-      tags = List.empty
-    )
+    ClipDto(resourceId = resource.resourceId, start = start, end = end, urls = urls, description = None, tags = List.empty)
   }
 
-  val contentMetaSource = resource.contentMetaSource.map(
-    s => ResourceToolMetaDto(s.toolName, io.circe.parser.parse(s.toolData).getOrElse(Json.fromString(s.toolData)))
-  )
+  val contentMetaSource = resource.contentMetaSource
+    .map(s => ResourceToolMetaDto(s.toolName, io.circe.parser.parse(s.toolData).getOrElse(Json.fromString(s.toolData))))
 
   ResourceDto(
     bucketId           = resource.bucketId,
@@ -221,4 +167,3 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     clips              = List(thumbnailClip)
   )
 }
-

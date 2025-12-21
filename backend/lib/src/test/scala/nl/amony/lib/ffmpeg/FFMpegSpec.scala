@@ -32,14 +32,15 @@ class FFMpegSpec extends AnyFlatSpecLike with Logging {
       10 * 60 * 1000,
       30 * 60 * 1000,
       60 * 60 * 1000,
-      120 * 60 * 1000,
+      120 * 60 * 1000
     )
 
-    times.foreach { t =>
+    times.foreach {
+      t =>
 
-      val frames = FFMpeg.calculateNrOfFrames(t)
+        val frames = FFMpeg.calculateNrOfFrames(t)
 
-      println(s"${t / 1000} -> $frames")
+        println(s"${t / 1000} -> $frames")
     }
   }
 }

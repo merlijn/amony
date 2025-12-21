@@ -1,9 +1,10 @@
 package nl.amony.service.search
 
 import io.circe.Codec
-import nl.amony.service.resources.web.dto.{ResourceDto, required}
 import sttp.tapir.Schema
 import sttp.tapir.Schema.annotations.customise
+
+import nl.amony.service.resources.web.dto.{ResourceDto, required}
 
 case class SearchResponseDto(
   offset: Long,

@@ -8,29 +8,21 @@ enum SortField:
 enum SortDirection:
   case Asc, Desc
 
-case class SortOption(
-  field: SortField,
-  direction: SortDirection
-)
+case class SortOption(field: SortField, direction: SortDirection)
 
 case class Query(
-  q: Option[String] = None,
-  parentId: Option[String] = None,
+  q: Option[String]         = None,
+  parentId: Option[String]  = None,
   n: Int,
-  offset: Option[Int] = None,
-  tags: List[String] = List.empty,
-  playlist: Option[String] = None,
-  minRes: Option[Int] = None,
-  maxRes: Option[Int] = None,
+  offset: Option[Int]       = None,
+  tags: List[String]        = List.empty,
+  playlist: Option[String]  = None,
+  minRes: Option[Int]       = None,
+  maxRes: Option[Int]       = None,
   minDuration: Option[Long] = None,
   maxDuration: Option[Long] = None,
-  sort: Option[SortOption] = None,
+  sort: Option[SortOption]  = None,
   untagged: Option[Boolean] = None
 )
 
-case class SearchResult(
-  offset: Int,
-  total: Int,
-  results: List[ResourceInfo],
-  tags: Map[String, Long]
-)
+case class SearchResult(offset: Int, total: Int, results: List[ResourceInfo], tags: Map[String, Long])

@@ -1,36 +1,26 @@
 package nl.amony.lib.ffmpeg
 
-import cats.effect.IO
-import nl.amony.lib.ffmpeg.tasks._
-import nl.amony.lib.files.FileUtil.stripExtension
-import nl.amony.lib.files.*
-import scribe.Logging
-
 import java.nio.file.Path
 import java.time.Duration
 
-case class TranscodeProfile(
-  ext: String,
-  args: List[String],
-)
+import cats.effect.IO
+import scribe.Logging
+
+import nl.amony.lib.ffmpeg.tasks.*
+import nl.amony.lib.files.*
+import nl.amony.lib.files.FileUtil.stripExtension
+
+case class TranscodeProfile(ext: String, args: List[String])
 
 object TranscodeProfile {
-  val default = TranscodeProfile(
-    ext = "mp4",
-    args = "-c:v libx264 -crf 23 -movflags +faststart".split(' ').toList
-  )
+  val default = TranscodeProfile(ext = "mp4", args = "-c:v libx264 -crf 23 -movflags +faststart".split(' ').toList)
 }
 
-object FFMpeg extends Logging
-  with ProcessRunner
-  with CreateThumbnail
-  with CreateThumbnailTile
-  with FFProbe {
+object FFMpeg extends Logging with ProcessRunner with CreateThumbnail with CreateThumbnailTile with FFProbe {
 
   // https://stackoverflow.com/questions/56963790/how-to-tell-if-faststart-for-video-is-set-using-ffmpeg-or-ffprobe/56963953#56963953
   // Before avformat_find_stream_info() pos: 3193581 bytes read:3217069 seeks:0 nb_streams:2
-  val fastStartPattern =
-    raw"""Before\savformat_find_stream_info\(\)\spos:\s\d+\sbytes\sread:\d+\sseeks:0""".r.unanchored
+  val fastStartPattern = raw"""Before\savformat_find_stream_info\(\)\spos:\s\d+\sbytes\sread:\d+\sseeks:0""".r.unanchored
 
   def formatTime(timestamp: Long): String = {
 
@@ -50,44 +40,34 @@ object FFMpeg extends Logging
 
     logger.info(s"Adding faststart at: $out")
 
-    useProcessOutput("ffmpeg",
-      args = List(
-        "-i",        video.absoluteFileName(),
-        "-c",        "copy",
-        "-map",      "0",
-        "-movflags", "+faststart",
-        "-y",        out
-      ),
+    useProcessOutput(
+      "ffmpeg",
+      args           = List("-i", video.absoluteFileName(), "-c", "copy", "-map", "0", "-movflags", "+faststart", "-y", out),
       useErrorStream = true
     )(_ => IO(Path.of(out)))
   }
 
   def transcodeToMp4(
-      inputFile: Path,
-      range: (Long, Long),
-      includeAudio: Boolean = true,
-      profile: TranscodeProfile = TranscodeProfile.default,
-      scaleHeight: Option[Int] = None,
-      outputFile: Option[Path] = None
+    inputFile: Path,
+    range: (Long, Long),
+    includeAudio: Boolean     = true,
+    profile: TranscodeProfile = TranscodeProfile.default,
+    scaleHeight: Option[Int]  = None,
+    outputFile: Option[Path]  = None
   ): IO[Path] = {
 
     val (ss, to) = range
     val input    = inputFile.absoluteFileName()
     val output   = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.${profile.ext}")
 
-    val args: List[String] =
-      List("-ss",  formatTime(ss), "-to",  formatTime(to), "-i",   input) ++
-        scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
-        profile.args ++ Option.when(!includeAudio)("-an") ++
-      List("-v", "quiet", "-y",   output)
+    val args: List[String] = List("-ss", formatTime(ss), "-to", formatTime(to), "-i", input) ++
+      scaleHeight.toList.flatMap(height => List("-vf", s"scale=-2:$height")) ++ profile.args ++ Option.when(!includeAudio)("-an") ++
+      List("-v", "quiet", "-y", output)
 
-    runIgnoreOutput("ffmpeg", args).map { _ => Path.of(output) }
+    runIgnoreOutput("ffmpeg", args).map(_ => Path.of(output))
   }
 
-  def streamStranscodeMp4(
-      inputFile: Path,
-      scaleHeight: Option[Int] = None
-  ): fs2.Stream[IO, Byte] = {
+  def streamStranscodeMp4(inputFile: Path, scaleHeight: Option[Int] = None): fs2.Stream[IO, Byte] = {
 
     // format: off
     val args: List[String] =
@@ -108,11 +88,7 @@ object FFMpeg extends Logging
     fs2.Stream.force(useProcess("ffmpeg", args)(p => IO(p.stdout)))
   }
 
-  def streamThumbnail(
-      inputFile: Path,
-      timestamp: Long,
-      scaleHeight: Int
-  ): fs2.Stream[IO, Byte] = {
+  def streamThumbnail(inputFile: Path, timestamp: Long, scaleHeight: Int): fs2.Stream[IO, Byte] = {
 
     // format: off
     val args = List(

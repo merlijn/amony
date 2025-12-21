@@ -1,6 +1,7 @@
 package nl.amony.service.search.domain
 
 import cats.effect.IO
+
 import nl.amony.service.resources.domain.ResourceInfo
 
 trait SearchService:

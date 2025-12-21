@@ -1,12 +1,13 @@
 package nl.amony.lib.files
 
+import java.nio.file.Paths
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import nl.amony.lib.files.watcher.*
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-import java.nio.file.Paths
+import nl.amony.lib.files.watcher.*
 
 class DirectoryScannerSpec extends AnyWordSpec with Matchers {
 
@@ -24,11 +25,11 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
   val fileC = FileInfo(Paths.get("c"), hash = "c", size = 300, modifiedTime = 3)
 
   def randomFile() = {
-    val id = java.util.UUID.randomUUID().toString
+    val id         = java.util.UUID.randomUUID().toString
     FileInfo(
-      path = Paths.get(id),
-      hash = id,
-      size = random.nextInt(100000) + 1,
+      path         = Paths.get(id),
+      hash         = id,
+      size         = random.nextInt(100000) + 1,
       modifiedTime = random.nextInt(100000)
     )
   }
@@ -45,8 +46,8 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
   "DirectoryScanner" should {
     "detected added files" in {
 
-      val currentFiles  = Set(fileA, fileB, fileC)
-      val previous = Set.empty[FileInfo]
+      val currentFiles = Set(fileA, fileB, fileC)
+      val previous     = Set.empty[FileInfo]
 
       val events = compare(previous, currentFiles)
 
@@ -55,32 +56,33 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
 
     "detect files with modified meta data" in {
 
-        val currentFiles = Set(fileA, fileB, fileC)
+      val currentFiles = Set(fileA, fileB, fileC)
 
-        val previousFiles = Set(
-          fileA.copy(size = 200),
-          fileB.copy(modifiedTime = 3),
-          fileC.copy(modifiedTime = 4)
-        )
+      val previousFiles = Set(
+        fileA.copy(size         = 200),
+        fileB.copy(modifiedTime = 3),
+        fileC.copy(modifiedTime = 4)
+      )
 
-        val events = compare(previousFiles, currentFiles)
+      val events = compare(previousFiles, currentFiles)
 
-        events shouldBe Set(
-          FileMetaChanged(fileA),
-          FileMetaChanged(fileB),
-          FileMetaChanged(fileC)
-        )
+      events shouldBe Set(
+        FileMetaChanged(fileA),
+        FileMetaChanged(fileB),
+        FileMetaChanged(fileC)
+      )
     }
 
     "detect modified files" in {
 
-      val currentFiles = Set(fileA)
+      val currentFiles  = Set(fileA)
       val previousFiles = Set(fileA.copy(hash = "b"))
 
       val events = compare(previousFiles, currentFiles)
 
       events shouldBe Set(
-        FileDeleted(fileA.copy(hash = "b")), FileAdded(fileA)
+        FileDeleted(fileA.copy(hash = "b")),
+        FileAdded(fileA)
       )
     }
 
@@ -208,7 +210,7 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
        */
       val previousFiles = Set(fileA)
 
-      val renamedA = fileA.copy(path = Paths.get("c"))
+      val renamedA      = fileA.copy(path = Paths.get("c"))
       val sameNameAdded = fileA.copy(hash = "newhash")
 
       val currentFiles = Set(renamedA, sameNameAdded)
@@ -217,7 +219,7 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
 
       events shouldBe Set(
         FileAdded(sameNameAdded),
-        FileMoved(renamedA, oldPath = Paths.get("a")),
+        FileMoved(renamedA, oldPath = Paths.get("a"))
       )
 
       val fs = InMemoryFileStore(previousFiles)

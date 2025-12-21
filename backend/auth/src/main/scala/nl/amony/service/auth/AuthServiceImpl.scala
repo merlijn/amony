@@ -1,9 +1,10 @@
 package nl.amony.service.auth
 
 import cats.effect.IO
+import scribe.Logging
+
 import nl.amony.lib.auth.TokenManager
 import nl.amony.service.auth.domain.*
-import scribe.Logging
 
 class AuthServiceImpl(config: AuthConfig) extends AuthService with Logging {
 
@@ -12,17 +13,14 @@ class AuthServiceImpl(config: AuthConfig) extends AuthService with Logging {
   // https://github.com/Password4j/password4j
 
   override def authenticate(username: String, password: String): IO[AuthenticationResponse] =
-    if (username == config.adminUsername && password == config.adminPassword) {
+    if username == config.adminUsername && password == config.adminPassword then {
       val (accessToken, refreshToken) = tokenManager.createAccessAndRefreshTokens(Some(username), Set("admin"))
       IO.pure(Authentication(accessToken, refreshToken))
-    } else
-      IO.pure(InvalidCredentials())
+    } else IO.pure(InvalidCredentials())
 
-  override def insertUser(externalId: String, password: String): IO[User] =
-    IO.raiseError(new RuntimeException("Not implemented"))
+  override def insertUser(externalId: String, password: String): IO[User] = IO.raiseError(new RuntimeException("Not implemented"))
 
-  override def getByExternalId(externalId: String): IO[User] =
-    IO.raiseError(new RuntimeException("Not implemented"))
+  override def getByExternalId(externalId: String): IO[User] = IO.raiseError(new RuntimeException("Not implemented"))
 
   override def refresh(accessToken: String, refreshToken: String): IO[AuthenticationResponse] =
     tokenManager.refreshAccessToken(refreshToken) match

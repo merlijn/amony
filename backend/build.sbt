@@ -17,7 +17,7 @@ def hasNoLocalChanges: Boolean = {
 
 // --- Dependencies
 
-val circeVersion    = "0.14.14"
+val circeVersion    = "0.14.15"
 val http4sVersion   = "0.23.33"
 val tapirVersion    = "1.12.3"
 
@@ -29,8 +29,8 @@ val circe                    = "io.circe"                 %% "circe-core"       
 val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
 val circeParser              = "io.circe"                 %% "circe-parser"               % circeVersion
 
-val skunkCore                = "org.tpolecat"             %% "skunk-core"                 % "1.0.0-M10"
-val skunkCirce               = "org.tpolecat"             %% "skunk-circe"                % "1.0.0-M10"
+val skunkCore                = "org.tpolecat"             %% "skunk-core"                 % "1.0.0-M12"
+val skunkCirce               = "org.tpolecat"             %% "skunk-circe"                % "1.0.0-M12"
 
 val sqids                    = "org.sqids" %% "sqids" % "0.6.0"
 
@@ -88,7 +88,11 @@ cancelable in Global := true
 
 val commonSettings = Seq(
   organization := "nl.amony",
-  scalaVersion := "3.3.6",
+  scalaVersion := "3.7.4",
+  scalacOptions := Seq(
+    "-rewrite",
+    "-source", "3.7-migration",
+    "-encoding", "utf-8"),
   excludeDependencies ++= List(
     ExclusionRule("org.scala-lang", "scala3-library_sjs"),
     ExclusionRule("org.scala-lang", "scala3-library_sjs1_3"),
@@ -159,7 +163,7 @@ lazy val resources =
         skunkCore, skunkCirce,
         scalaTest,
         postgresDriver % "test",
-        "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.43.6" % "test",
+        "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.44.0" % "test",
         "commons-codec" % "commons-codec" % "1.18.0" % "test",
         "org.scalacheck" %% "scalacheck" % "1.18.1" % "test"
       )

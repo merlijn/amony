@@ -1,20 +1,20 @@
 package nl.amony.service.search
 
+import scala.util.Try
+
 import cats.effect.IO
-import nl.amony.lib.auth.*
-import nl.amony.service.resources.web.dto.toDto
-import nl.amony.service.resources.web.oneOfList
-import nl.amony.service.search.domain.SearchService
-import nl.amony.service.search.domain.SortDirection.{Asc, Desc}
-import nl.amony.service.search.domain.SortField.*
-import nl.amony.service.search.domain.{Query, SortField, SortOption}
 import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.json.circe.jsonBody
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 import sttp.tapir.{query, *}
 
-import scala.util.Try
+import nl.amony.lib.auth.*
+import nl.amony.service.resources.web.dto.toDto
+import nl.amony.service.resources.web.oneOfList
+import nl.amony.service.search.domain.SortDirection.{Asc, Desc}
+import nl.amony.service.search.domain.SortField.*
+import nl.amony.service.search.domain.{Query, SearchService, SortField, SortOption}
 
 object SearchRoutes:
 
@@ -23,7 +23,7 @@ object SearchRoutes:
 
   val apiErrorOutputs = List(
     oneOfVariantSingletonMatcher(statusCode(StatusCode.NotFound))(ApiError.NotFound),
-    oneOfVariantSingletonMatcher(statusCode(StatusCode.BadRequest))(ApiError.BadRequest),
+    oneOfVariantSingletonMatcher(statusCode(StatusCode.BadRequest))(ApiError.BadRequest)
   )
 
   val errorOutput: EndpointOutput[ApiError | SecurityError] = oneOfList(securityErrors ++ apiErrorOutputs)
@@ -50,33 +50,27 @@ object SearchRoutes:
   val tag       = query[Option[String]]("tag").description("An optional tag")
   val untagged  = query[Option[Boolean]]("untagged").description("Only return resources without tags").example(Some(false))
 
-  val searchResourcesEndpoint: Endpoint[SecurityInput, SearchQueryInput, ApiError | SecurityError, SearchResponseDto, Any] =
-    endpoint
-      .name("findResources")
-      .tag("search")
-      .description("Find resources using a search query")
-      .get.in("api" / "search" / "media" / q and n and d and sortField and sortDir and minRes and offset and tag and untagged).mapInTo[SearchQueryInput]
-      .securityIn(securityInput)
-      .errorOut(errorOutput)
-      .out(jsonBody[SearchResponseDto])
+  val searchResourcesEndpoint: Endpoint[SecurityInput, SearchQueryInput, ApiError | SecurityError, SearchResponseDto, Any] = endpoint
+    .name("findResources").tag("search").description("Find resources using a search query").get
+    .in("api" / "search" / "media" / q and n and d and sortField and sortDir and minRes and offset and tag and untagged).mapInTo[SearchQueryInput]
+    .securityIn(securityInput).errorOut(errorOutput).out(jsonBody[SearchResponseDto])
 
   val endpoints = List(searchResourcesEndpoint)
 
-  private def getSortedTags(facetMap: Map[String, Long]): Seq[String] = {
-    facetMap.toSeq
-      .sortBy { case (key, count) => (-count, key) } // negative count for descending order
-      .map(_._1)
-  }
+  private def getSortedTags(facetMap: Map[String, Long]): Seq[String] = facetMap.toSeq
+    .sortBy { case (key, count) => (-count, key) } // negative count for descending order
+    .map(_._1)
 
   private val durationPattern = raw"(\d*)-(\d*)".r
 
-  def apply(searchService: SearchService, config: SearchConfig, apiSecurity: ApiSecurity)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
+  def apply(searchService: SearchService, config: SearchConfig, apiSecurity: ApiSecurity)(
+    using serverOptions: Http4sServerOptions[IO]
+  ): HttpRoutes[IO] = {
 
     def sanitize(s: String, maxLength: Int, isCharAllowed: Char => Boolean): String = s.filter(isCharAllowed).take(maxLength)
 
-    val routeImpl = searchResourcesEndpoint
-      .serverSecurityLogicPure(apiSecurity.publicEndpoint)
-      .serverLogic { auth => queryDto =>
+    val routeImpl = searchResourcesEndpoint.serverSecurityLogicPure(apiSecurity.publicEndpoint).serverLogic {
+      auth => queryDto =>
 
         val duration: Option[(Long, Long)] = queryDto.d.flatMap:
           case durationPattern("", "")   => None
@@ -85,15 +79,13 @@ object SearchRoutes:
           case durationPattern(min, max) => Try((min.toLong, max.toLong)).toOption
           case _                         => None
 
-        val sortField: SortField = queryDto.sortField
-          .map {
-            case "title"      => Title
-            case "size"       => Size
-            case "duration"   => Duration
-            case "date_added" => DateAdded
-            case _            => Title
-          }
-          .getOrElse(Title)
+        val sortField: SortField = queryDto.sortField.map {
+          case "title"      => Title
+          case "size"       => Size
+          case "duration"   => Duration
+          case "date_added" => DateAdded
+          case _            => Title
+        }.getOrElse(Title)
 
         val sortDir = queryDto.sortDir match {
           case Some("desc") => Desc
@@ -114,17 +106,16 @@ object SearchRoutes:
           untagged    = queryDto.untagged.filter(identity)
         )
 
-        searchService.searchMedia(query).map { response =>
-          Right(
-            SearchResponseDto(
-              offset = response.offset,
-              total = response.total,
+        searchService.searchMedia(query).map {
+          response =>
+            Right(SearchResponseDto(
+              offset  = response.offset,
+              total   = response.total,
               results = response.results.map(toDto),
-              tags = getSortedTags(response.tags)
-            )
-          )
+              tags    = getSortedTags(response.tags)
+            ))
         }
-      }
+    }
 
     Http4sServerInterpreter[IO](serverOptions).toRoutes(List(routeImpl))
   }

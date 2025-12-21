@@ -4,7 +4,7 @@ object FileUtil {
   // strip extension
   def stripExtension(fileName: String): String = {
     val dotIdx = fileName.lastIndexOf('.')
-    val last   = if (dotIdx >= 0) dotIdx else fileName.length
+    val last   = if dotIdx >= 0 then dotIdx else fileName.length
     fileName.substring(0, last)
   }
 }

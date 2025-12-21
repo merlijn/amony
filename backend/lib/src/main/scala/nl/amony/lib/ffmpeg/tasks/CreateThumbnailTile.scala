@@ -1,17 +1,19 @@
 package nl.amony.lib.ffmpeg.tasks
 
-import cats.effect.IO
-import nl.amony.lib.ffmpeg.FFMpeg.formatTime
-import nl.amony.lib.files.*
-import scribe.Logging
-
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
+
 import scala.concurrent.duration.DurationInt
+
+import cats.effect.IO
+import scribe.Logging
+
+import nl.amony.lib.ffmpeg.FFMpeg.formatTime
+import nl.amony.lib.files.*
 
 trait CreateThumbnailTile extends Logging {
 
-  self: ProcessRunner with FFProbe =>
+  self: ProcessRunner & FFProbe =>
 
   def calculateNrOfFrames(length: Long): (Int, Int) = {
 
@@ -36,7 +38,7 @@ trait CreateThumbnailTile extends Logging {
     val lowerBound = Math.min(minFrameCount, minByInterval)
     val upperBound = Math.min(maxFrameCount, maxByInterval)
 
-    val frames   = Math.max(lowerBound, upperBound)
+    val frames = Math.max(lowerBound, upperBound)
 
     val tileSize = Math.ceil(Math.sqrt(frames.toDouble)).toInt
 
@@ -44,71 +46,74 @@ trait CreateThumbnailTile extends Logging {
   }
 
   def createThumbnailTile(
-       inputFile: Path,
-       outputDir: Path,
-       outputBaseName: Option[String] = None,
-       height: Int = 90, // since 16:9 is most common aspect ratio
-       overwrite: Boolean = false
+    inputFile: Path,
+    outputDir: Path,
+    outputBaseName: Option[String] = None,
+    height: Int                    = 90, // since 16:9 is most common aspect ratio
+    overwrite: Boolean             = false
   ): IO[Unit] = {
 
     val fileBaseName = outputBaseName.getOrElse(inputFile.getFileName.stripExtension().toString)
     val vttFilename  = s"$fileBaseName.vtt"
     val webpFilename = s"$fileBaseName.webp"
 
-    if (Files.exists(outputDir.resolve(webpFilename)) && Files.exists(outputDir.resolve(vttFilename)) && !overwrite) {
+    if Files.exists(outputDir.resolve(webpFilename)) && Files.exists(outputDir.resolve(vttFilename)) && !overwrite then {
       logger.info(s"Skipping $inputFile ($webpFilename)")
       IO.unit
     } else {
 
-      ffprobe(inputFile, false, 5.seconds).flatMap { (ffProbeOutput, _) =>
+      ffprobe(inputFile, false, 5.seconds).flatMap {
+        (ffProbeOutput, _) =>
 
-        val stream             = ffProbeOutput.firstVideoStream.getOrElse(throw new IllegalStateException("no video stream found"))
-        val (frames, tileSize) = calculateNrOfFrames(stream.durationMillis)
-        val mod                = ((stream.fps * (stream.durationMillis / 1000)) / frames).toInt
-        val width: Int         = ((stream.width.toDouble / stream.height) * height).toInt
+          val stream             = ffProbeOutput.firstVideoStream.getOrElse(throw new IllegalStateException("no video stream found"))
+          val (frames, tileSize) = calculateNrOfFrames(stream.durationMillis)
+          val mod                = ((stream.fps * (stream.durationMillis / 1000)) / frames).toInt
+          val width: Int         = ((stream.width.toDouble / stream.height) * height).toInt
 
-        // format: off
-        val args = List(
-          "-i",              inputFile.absoluteFileName(),
-          "-filter_complex", s"select='not(mod(n,$mod))',scale=$width:$height,tile=${tileSize}x${tileSize}",
-          "-vframes",        "1",
-          "-quality",        "80",
-          "-y",
-          "-an",
-          s"$outputDir/$webpFilename"
-        )
-        // format: on
+          val args = List(
+            "-i",
+            inputFile.absoluteFileName(),
+            "-filter_complex",
+            s"select='not(mod(n,$mod))',scale=$width:$height,tile=${tileSize}x$tileSize",
+            "-vframes",
+            "1",
+            "-quality",
+            "80",
+            "-y",
+            "-an",
+            s"$outputDir/$webpFilename"
+          )
 
-        useProcessOutput[Unit]("ffmpeg", args, useErrorStream = true) { _ =>
-          def createWebVtt() = {
+          useProcessOutput[Unit]("ffmpeg", args, useErrorStream = true) {
+            _ =>
+              def createWebVtt() = {
 
-            val thumbLength: Int = (stream.durationMillis / frames).toInt
-            val builder = new StringBuilder()
+                val thumbLength: Int = (stream.durationMillis / frames).toInt
+                val builder          = new StringBuilder()
 
-            builder.append("WEBVTT\n")
+                builder.append("WEBVTT\n")
 
-            (0 until frames).foreach { n =>
-              val start  = formatTime(thumbLength * n)
-              val end    = formatTime(thumbLength * (n + 1))
-              val x: Int = n % tileSize
-              val y: Int = Math.floor(n / tileSize).toInt
+                (0 until frames).foreach {
+                  n =>
+                    val start  = formatTime(thumbLength * n)
+                    val end    = formatTime(thumbLength * (n + 1))
+                    val x: Int = n % tileSize
+                    val y: Int = Math.floor(n / tileSize).toInt
 
-              builder.append(
-                s"""
-                   |${n + 1}
-                   |${start} --> $end
-                   |$webpFilename#xywh=${x * width},${y * height},${width},${height}
-                   |""".stripMargin
-              )
-            }
+                    builder.append(s"""
+                       |${n + 1}
+                       |$start --> $end
+                       |$webpFilename#xywh=${x * width},${y * height},$width,$height
+                       |""".stripMargin)
+                }
 
-            val content = builder.toString()
+                val content = builder.toString()
 
-            Files.write(outputDir.resolve(vttFilename), content.getBytes(StandardCharsets.UTF_8))
+                Files.write(outputDir.resolve(vttFilename), content.getBytes(StandardCharsets.UTF_8))
+              }
+
+              IO(createWebVtt())
           }
-
-          IO { createWebVtt() }
-        }
       }
     }
   }

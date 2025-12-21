@@ -10,9 +10,9 @@ object GenerateECKeyPair extends App {
   keyGen.initialize(ecSpec, new SecureRandom())
 
   // Generate the key pair
-  val keyPair = keyGen.generateKeyPair()
+  val keyPair    = keyGen.generateKeyPair()
   val privateKey = keyPair.getPrivate.asInstanceOf[java.security.interfaces.ECPrivateKey]
-  val publicKey = keyPair.getPublic.asInstanceOf[java.security.interfaces.ECPublicKey]
+  val publicKey  = keyPair.getPublic.asInstanceOf[java.security.interfaces.ECPublicKey]
 
   // Get the private key S value
   val s = privateKey.getS

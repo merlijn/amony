@@ -1,11 +1,12 @@
 package nl.amony.lib.magick.tasks
 
-import cats.effect.IO
-import nl.amony.lib.ffmpeg.tasks.ProcessRunner
-import nl.amony.lib.files.FileUtil.stripExtension
-import nl.amony.lib.files.*
-
 import java.nio.file.Path
+
+import cats.effect.IO
+
+import nl.amony.lib.ffmpeg.tasks.ProcessRunner
+import nl.amony.lib.files.*
+import nl.amony.lib.files.FileUtil.stripExtension
 
 trait CreateThumbnail {
   self: ProcessRunner =>

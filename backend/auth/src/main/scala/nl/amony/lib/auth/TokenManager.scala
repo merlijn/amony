@@ -1,11 +1,12 @@
 package nl.amony.lib.auth
 
+import java.time.Instant
+
 import io.circe
 import io.circe.*
-import nl.amony.service.auth.*
 import pdi.jwt.JwtClaim
 
-import java.time.Instant
+import nl.amony.service.auth.*
 
 case class AuthTokenContent(roles: Set[String]) derives Codec
 
@@ -20,11 +21,10 @@ class JwtDecoder(algo: JwtAlgorithmConfig):
 trait JwtEncoder:
   def encode(claim: JwtClaim): String
 
-
 class TokenManager(jwtConfig: JwtConfig) {
 
   private val expirationInSeconds = jwtConfig.accessTokenExpiration.toSeconds
-  
+
   def refreshAccessToken(refreshToken: String): Option[(String, String)] = {
     jwtConfig.algorithm.decode(refreshToken) match {
       case scala.util.Success(token) => Some(createAccessAndRefreshTokens(token.subject, token.content))
@@ -41,7 +41,7 @@ class TokenManager(jwtConfig: JwtConfig) {
   def createAccessAndRefreshTokens(maybeSubject: Option[String], content: String = "{}"): (String, String) = {
 
     val now = Instant.now
-    
+
     val accessTokenClaim = JwtClaim(
       expiration = Some(now.plusSeconds(expirationInSeconds).getEpochSecond),
       issuedAt   = Some(now.getEpochSecond),

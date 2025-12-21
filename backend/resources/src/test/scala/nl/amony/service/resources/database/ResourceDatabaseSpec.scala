@@ -1,18 +1,20 @@
 package nl.amony.service.resources.database
 
+import java.util.UUID
+
+import scala.util.Random
+
 import cats.effect.IO
+import cats.effect.unsafe.implicits.global
+import cats.implicits.*
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
-import cats.effect.unsafe.implicits.global
-import nl.amony.service.resources.domain.{ResourceInfo, ResourceMeta}
-import org.scalatest.matchers.should.Matchers
 import scribe.Logging
-import cats.implicits.*
 
-import java.util.UUID
-import scala.util.Random
+import nl.amony.service.resources.domain.{ResourceInfo, ResourceMeta}
 
 class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with Logging with Matchers {
 
@@ -21,11 +23,11 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       "postgres:17.2",
       exposedPorts = Seq(5432),
       waitStrategy = Wait.forLogMessage(".*database system is ready to accept connections.*", 2),
-      env = Map(
-        "POSTGRES_USER" -> "test",
-        "PGUSER" -> "test",
+      env          = Map(
+        "POSTGRES_USER"     -> "test",
+        "PGUSER"            -> "test",
         "POSTGRES_PASSWORD" -> "test",
-        "POSTGRES_DB" -> "test"
+        "POSTGRES_DB"       -> "test"
       )
     )
 
@@ -33,57 +35,58 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
   def randomTag = alphabet(Random.nextInt(alphabet.size)).toString
 
-  def randomString = Random.alphanumeric.take(8).mkString
+  def randomString  = Random.alphanumeric.take(8).mkString
   def nextTimestamp = Math.max(0, Random.nextInt())
 
   def genResource(): ResourceInfo =
     ResourceInfo(
-      bucketId = UUID.randomUUID().toString,
-      resourceId = UUID.randomUUID().toString,
-      userId = UUID.randomUUID().toString,
-      path = randomString,
-      hash = Some(randomString),
-      size = Random.nextLong(),
-      contentType = None,
-      contentMetaSource = None,
-      contentMeta = None, // this field is not stored
-      tags = Set.fill(Random.nextInt(5))(randomTag),
-      timeAdded = Some(nextTimestamp),
-      timeCreated = None,
-      timeLastModified = Some(nextTimestamp),
-      title = Some(randomString),
-      description = Some(randomString),
+      bucketId           = UUID.randomUUID().toString,
+      resourceId         = UUID.randomUUID().toString,
+      userId             = UUID.randomUUID().toString,
+      path               = randomString,
+      hash               = Some(randomString),
+      size               = Random.nextLong(),
+      contentType        = None,
+      contentMetaSource  = None,
+      contentMeta        = None, // this field is not stored
+      tags               = Set.fill(Random.nextInt(5))(randomTag),
+      timeAdded          = Some(nextTimestamp),
+      timeCreated        = None,
+      timeLastModified   = Some(nextTimestamp),
+      title              = Some(randomString),
+      description        = Some(randomString),
       thumbnailTimestamp = Some(nextTimestamp)
     )
 
   "The Database" should {
     "insert a resource row and retrieve it" in {
-      withContainers { container =>
+      withContainers {
+        container =>
 
-        logger.info(s"Container IP: ${container.containerIpAddress}")
-        logger.info(s"Container Port: ${container.mappedPort(5432)}")
+          logger.info(s"Container IP: ${container.containerIpAddress}")
+          logger.info(s"Container Port: ${container.mappedPort(5432)}")
 
-        val dbConfig = DatabaseConfig(
-          host = container.containerIpAddress,
-          port = container.mappedPort(5432),
-          database = "test",
-          username = "test",
-          password = Some("test"),
-          poolSize = 3
-        )
+          val dbConfig = DatabaseConfig(
+            host     = container.containerIpAddress,
+            port     = container.mappedPort(5432),
+            database = "test",
+            username = "test",
+            password = Some("test"),
+            poolSize = 3
+          )
 
-        ResourceDatabase.make(dbConfig).use(db =>
-          insertResourcesTest(db) >> db.truncateTables() >>
-            updateUserMetaTest(db) >> db.truncateTables() >>
-            duplicateHashesTest(db) >> db.truncateTables()
-
-        ).unsafeRunSync()
+          ResourceDatabase.make(dbConfig).use(
+            db =>
+              insertResourcesTest(db) >> db.truncateTables() >>
+                updateUserMetaTest(db) >> db.truncateTables() >>
+                duplicateHashesTest(db) >> db.truncateTables()
+          ).unsafeRunSync()
       }
     }
   }
 
   def uniquePathConstraint(db: ResourceDatabase): IO[Unit] = {
-    val resourceA  = genResource()
+    val resourceA = genResource()
     val resourceB = genResource().copy(bucketId = resourceA.bucketId, path = resourceA.path)
     for {
       _ <- db.insertResource(resourceA)
@@ -94,10 +97,10 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
   def updateUserMetaTest(db: ResourceDatabase): IO[Unit] = {
 
     val resource = genResource()
-    val updated = resource.copy(
-      title = Some("new title"),
+    val updated  = resource.copy(
+      title       = Some("new title"),
       description = Some("new description"),
-      tags = Set("update-a", "update-b", "update-c")
+      tags        = Set("update-a", "update-b", "update-c")
     )
 
     for {
@@ -116,12 +119,10 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
     val resourceB = resourceA.copy(resourceId = UUID.randomUUID().toString, bucketId = resourceA.bucketId)
 
     for {
-      _ <- db.insertResource(resourceA)
-      _ <- db.insertResource(resourceB.copy(hash = resourceA.hash)) // This should not throw an error
+      _      <- db.insertResource(resourceA)
+      _      <- db.insertResource(resourceB.copy(hash = resourceA.hash)) // This should not throw an error
       byHash <- db.getByHash(resourceA.bucketId, resourceA.hash.get)
-    } yield {
-      byHash should contain theSameElementsAs List(resourceA, resourceB)
-    }
+    } yield byHash should contain theSameElementsAs List(resourceA, resourceB)
   }
 
   def insertResourcesTest(db: ResourceDatabase): IO[Unit] = {
@@ -130,9 +131,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       for {
         _        <- db.insertResource(resource)
         returned <- db.getById(resource.bucketId, resource.resourceId)
-      } yield {
-        Some(resource) shouldBe returned
-      }
+      } yield Some(resource) shouldBe returned
 
     def upsertIdentityCheck(resource: ResourceInfo) =
       for {
@@ -143,19 +142,18 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
         byId shouldBe Some(resource)
         byHash shouldBe List(resource)
       }
-      
-    def deleteCheck(resourceInfo: ResourceInfo) = 
+
+    def deleteCheck(resourceInfo: ResourceInfo) =
       for {
         _      <- db.deleteResource(resourceInfo.bucketId, resourceInfo.resourceId)
         result <- db.getById(resourceInfo.bucketId, resourceInfo.resourceId)
-      } yield {
-        result shouldBe None
-      }  
+      } yield result shouldBe None
 
     def validateAll(expected: List[ResourceInfo]) =
-      db.getAll("test").map { inserted =>
-        logger.info(s"validated: ${inserted.size}")
-        inserted should contain theSameElementsAs expected
+      db.getAll("test").map {
+        inserted =>
+          logger.info(s"validated: ${inserted.size}")
+          inserted should contain theSameElementsAs expected
       }
 
     val inserted  = List.fill(32)(genResource().copy(bucketId = "test"))
