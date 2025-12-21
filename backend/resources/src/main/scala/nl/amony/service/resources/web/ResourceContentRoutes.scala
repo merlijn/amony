@@ -2,7 +2,6 @@ package nl.amony.service.resources.web
 
 import cats.data.OptionT
 import cats.effect.IO
-import nl.amony.service.resources.domain.operations.{ImageThumbnail, ResourceOperation, VideoFragment, VideoThumbnail}
 import nl.amony.service.resources.web.ResourceDirectives.resourceContentsResponse
 import org.http4s.*
 import org.http4s.CacheDirective.`max-age`
@@ -10,7 +9,7 @@ import org.http4s.dsl.io.*
 import org.http4s.headers.`Cache-Control`
 import scribe.Logging
 import io.circe.syntax.*
-import nl.amony.service.resources.domain.{Resource, ResourceBucket}
+import nl.amony.service.resources.domain.*
 import org.http4s.circe.given
 import nl.amony.service.resources.web.dto.toDto
 

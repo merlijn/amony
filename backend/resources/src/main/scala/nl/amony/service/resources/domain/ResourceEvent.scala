@@ -1,4 +1,4 @@
-package nl.amony.service.resources.domain.events
+package nl.amony.service.resources.domain
 
 import nl.amony.service.resources.domain.ResourceInfo
 

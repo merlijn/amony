@@ -1,4 +1,4 @@
-package nl.amony.service.resources.domain.operations
+package nl.amony.service.resources.domain
 
 sealed trait ResourceOperation
 

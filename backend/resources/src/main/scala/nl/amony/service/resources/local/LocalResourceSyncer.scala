@@ -5,7 +5,6 @@ import fs2.Stream
 import fs2.concurrent.SignallingRef
 import nl.amony.lib.files.watcher.*
 import nl.amony.service.resources.domain.*
-import nl.amony.service.resources.domain.events.*
 
 import java.nio.file.Path
 import java.time.Instant

@@ -3,7 +3,6 @@ package nl.amony.service.search.solr
 import cats.effect.{IO, Resource}
 import SolrSearchService.*
 import nl.amony.service.resources.domain.*
-import nl.amony.service.resources.domain.events.*
 import nl.amony.service.search.domain.SearchService
 import nl.amony.service.search.domain.SortDirection.Desc
 import nl.amony.service.search.domain.SortField.*

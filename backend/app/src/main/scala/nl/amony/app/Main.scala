@@ -7,8 +7,8 @@ import nl.amony.lib.messagebus.EventTopic
 import nl.amony.lib.auth.ApiSecurity
 import nl.amony.service.auth.{AuthConfig, AuthRoutes, AuthServiceImpl}
 import nl.amony.service.resources.ResourceConfig
-import nl.amony.service.resources.domain.events.ResourceEvent
 import nl.amony.service.resources.database.ResourceDatabase
+import nl.amony.service.resources.domain.ResourceEvent
 import nl.amony.service.resources.local.LocalDirectoryBucket
 import nl.amony.service.resources.web.{ResourceContentRoutes, ResourceRoutes}
 import nl.amony.service.search.SearchRoutes
