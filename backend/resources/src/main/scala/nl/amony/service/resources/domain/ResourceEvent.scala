@@ -1,7 +1,5 @@
 package nl.amony.service.resources.domain
 
-import nl.amony.service.resources.domain.ResourceInfo
-
 sealed trait ResourceEvent
 
 case class ResourceAdded(resource: ResourceInfo) extends ResourceEvent
