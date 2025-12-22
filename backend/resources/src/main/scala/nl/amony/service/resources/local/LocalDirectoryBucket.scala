@@ -42,7 +42,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getById(config.id, resourceId).map(_.map(recoverMeta))
 
   private def recoverMeta(info: ResourceInfo) = {
-    val meta: Option[ResourceMeta] = info.contentMetaSource.flatMap(meta => LocalResourceMeta.scanToolMeta(meta).toOption)
+    val meta: Option[ResourceMeta] = info.contentMetaSource.flatMap(meta => ResourceMeta.scanToolMeta(meta).toOption)
     info.copy(contentMeta = meta)
   }
 
