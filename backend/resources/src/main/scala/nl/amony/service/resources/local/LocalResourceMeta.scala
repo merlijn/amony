@@ -11,11 +11,11 @@ import scribe.Logging
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.magick.ImageMagick
 import nl.amony.service.resources.*
-import nl.amony.service.resources.domain.{ImageMeta, ResourceMeta, ResourceMetaSource}
+import nl.amony.service.resources.domain.{ContentProperties, ImageMeta, ResourceMeta}
 
 object LocalResourceMeta extends Logging {
 
-  case class LocalResourceMeta(contentType: String, toolMeta: Option[ResourceMetaSource], meta: ResourceMeta)
+  case class LocalResourceMeta(contentType: String, meta: ResourceMeta)
 
   private val tika = new Tika()
 
@@ -31,10 +31,10 @@ object LocalResourceMeta extends Logging {
       case Some(contentType) if contentType.startsWith("video/") =>
         FFMpeg.ffprobe(path, false).map {
           (ffprobeResult, json) =>
-            ResourceMeta.ffprobeOutputToContentMeta(ffprobeResult).toOption.map {
-              meta =>
+            ContentProperties.ffprobeOutputToContentMeta(ffprobeResult).toOption.map {
+              properties =>
                 val version = ffprobeResult.program_version.map(_.version).getOrElse("unknown")
-                LocalResourceMeta(contentType, Some(ResourceMetaSource(s"ffprobe/$version", json.noSpaces)), meta)
+                LocalResourceMeta(contentType, ResourceMeta(s"ffprobe/$version", json.noSpaces, properties))
             }
         }.recover { case e: Throwable => logger.error(s"Failed to get video meta data for $path", e); None }
       case Some(contentType) if contentType.startsWith("image/") =>
@@ -43,11 +43,11 @@ object LocalResourceMeta extends Logging {
             logger.error(s"Failed to get image meta data for $path", e)
             None
           case Success(result) =>
-            val source = ResourceMetaSource("magick/1", result.rawJson.noSpaces)
             result.output.headOption.map {
               magick =>
-                val meta = ImageMeta(width = magick.image.geometry.width, height = magick.image.geometry.height, metaData = magick.image.properties)
-                LocalResourceMeta(contentType, Some(source), meta)
+                val properties =
+                  ImageMeta(width = magick.image.geometry.width, height = magick.image.geometry.height, metaData = magick.image.properties)
+                LocalResourceMeta(contentType, ResourceMeta("magick/1", result.rawJson.noSpaces, properties))
             }
 
       case _ => IO.pure(None)

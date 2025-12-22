@@ -49,7 +49,6 @@ case class ResourceDto(
   tags: List[String],
   contentType: String,
   contentMeta: ResourceMetaDto,
-  contentMetaSource: Option[ResourceToolMetaDto],
   urls: ResourceUrlsDto,
   thumbnailTimestamp: Option[Int],
   @customise(required)
@@ -66,8 +65,7 @@ case class ResourceDto(
       hash               = hash,
       size               = sizeInBytes,
       contentType        = Some(contentType),
-      contentMeta        = None, // Can be re-created from the source
-      contentMetaSource  = contentMetaSource.map(s => ResourceMetaSource(s.toolName, s.toolData.noSpaces)),
+      contentMeta        = None,
       tags               = tags.toSet,
       timeAdded          = Some(timeAdded),
       title              = title,
@@ -91,13 +89,13 @@ case class ClipDto(
 def toDto(resource: ResourceInfo): ResourceDto = {
 
   val resourceHeight = resource.contentMeta match
-    case Some(VideoMeta(_, h, _, _, _, _)) => h
-    case Some(ImageMeta(_, h, _))          => h
-    case _                                 => 0
+    case Some(ResourceMeta(_, _, VideoMeta(_, h, _, _, _, _))) => h
+    case Some(ResourceMeta(_, _, ImageMeta(_, h, _)))          => h
+    case _                                                     => 0
 
   val resolutions: List[Int] = (resourceHeight :: List(352)).sorted
 
-  val durationInMillis = resource.contentMeta match {
+  val durationInMillis = resource.contentMeta.map(_.properties) match {
     case Some(m: VideoMeta) => m.durationInMillis
     case _                  => 0
   }
@@ -125,7 +123,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     resource.path.substring(startIdx, endIdx)
   }
 
-  val contentMeta: ResourceMetaDto = resource.contentMeta match {
+  val contentMeta: ResourceMetaDto = resource.contentMeta.map(_.properties) match {
     case Some(ImageMeta(width, height, _)) => ResourceMetaDto(width = width, height = height, duration = 0, fps = 0, codec = None)
 
     case Some(VideoMeta(width, height, fps, duration, codec, _)) =>
@@ -143,7 +141,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     ClipDto(resourceId = resource.resourceId, start = start, end = end, urls = urls, description = None, tags = List.empty)
   }
 
-  val contentMetaSource = resource.contentMetaSource
+  val contentMetaSource = resource.contentMeta
     .map(s => ResourceToolMetaDto(s.toolName, io.circe.parser.parse(s.toolData).getOrElse(Json.fromString(s.toolData))))
 
   ResourceDto(
@@ -161,7 +159,6 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     tags               = resource.tags.toList,
     contentType        = resource.contentType.getOrElse("application/octet-stream"),
     contentMeta        = contentMeta,
-    contentMetaSource  = contentMetaSource,
     urls               = urls,
     thumbnailTimestamp = resource.thumbnailTimestamp,
     clips              = List(thumbnailClip)

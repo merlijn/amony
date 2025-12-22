@@ -14,7 +14,7 @@ import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
 import scribe.Logging
 
-import nl.amony.service.resources.domain.{ResourceInfo, ResourceMeta}
+import nl.amony.service.resources.domain.{ResourceInfo, ContentProperties}
 
 class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with Logging with Matchers {
 

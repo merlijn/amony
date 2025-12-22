@@ -5,9 +5,13 @@ import scala.util.{Failure, Try}
 import nl.amony.lib.ffmpeg.tasks.FFProbeModel.{FFProbeOutput, given}
 import nl.amony.lib.magick.model.MagickImageMeta
 
-case class ResourceMetaSource(toolName: String, toolData: String)
+case class ResourceMeta(toolName: String, toolData: String, properties: ContentProperties)
 
-sealed trait ResourceMeta
+object ResourceMeta:
+  def recover(toolName: String, toolData: String): Option[ResourceMeta] =
+    ContentProperties(toolName, toolData).toOption.map(p => ResourceMeta(toolName, toolData, p))
+
+sealed trait ContentProperties
 
 case class VideoMeta(
   width: Int,
@@ -16,22 +20,23 @@ case class VideoMeta(
   durationInMillis: Int,
   codec: Option[String]         = None,
   metaData: Map[String, String] = Map.empty
-) extends ResourceMeta
+) extends ContentProperties
 
-case class ImageMeta(width: Int, height: Int, metaData: Map[String, String] = Map.empty) extends ResourceMeta
+case class ImageMeta(width: Int, height: Int, metaData: Map[String, String] = Map.empty) extends ContentProperties
 
-object ResourceMeta:
-  def scanToolMeta(source: ResourceMetaSource): Try[ResourceMeta] = source.toolName match {
+object ContentProperties:
+
+  def apply(toolName: String, toolData: String): Try[ContentProperties] = toolName match {
     case s if s.startsWith("ffprobe/") =>
       for {
-        json    <- io.circe.parser.parse(source.toolData).toTry
+        json    <- io.circe.parser.parse(toolData).toTry
         decoded <- json.as[FFProbeOutput].toTry
         result  <- ffprobeOutputToContentMeta(decoded)
       } yield result
 
     case s if s.startsWith("magick/") =>
       for {
-        json    <- io.circe.parser.parse(source.toolData).toTry
+        json    <- io.circe.parser.parse(toolData).toTry
         decoded <- json.as[List[MagickImageMeta]].toTry
         result  <- magickOutputToContentMeta(decoded)
       } yield result

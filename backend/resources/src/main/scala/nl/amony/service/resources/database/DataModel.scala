@@ -6,7 +6,7 @@ import skunk.Codec
 import skunk.codec.all.{int4, timestamptz, varchar}
 import skunk.implicits.sql
 
-import nl.amony.service.resources.domain.{ResourceInfo, ResourceMeta, ResourceMetaSource}
+import nl.amony.service.resources.domain.{ContentProperties, ResourceInfo, ResourceMeta}
 
 val instantCodec: Codec[Instant] = timestamptz.imap(_.toInstant)(_.atOffset(ZoneOffset.UTC))
 
@@ -37,8 +37,7 @@ case class ResourceRow(
       hash               = hash,
       size               = size,
       contentType        = content_type,
-      contentMetaSource  = content_meta_tool_name.map(name => ResourceMetaSource(name, content_meta_tool_data.getOrElse(""))),
-      contentMeta        = None,
+      contentMeta        = content_meta_tool_name.flatMap(name => ResourceMeta.recover(name, content_meta_tool_data.getOrElse(""))),
       tags               = tagLabels,
       timeAdded          = Some(time_added.toEpochMilli),
       timeCreated        = time_created.map(_.toEpochMilli),
@@ -62,8 +61,8 @@ object ResourceRow {
     hash                   = resource.hash,
     size                   = resource.size,
     content_type           = resource.contentType,
-    content_meta_tool_name = resource.contentMetaSource.map(_.toolName),
-    content_meta_tool_data = resource.contentMetaSource.map(_.toolData),
+    content_meta_tool_name = resource.contentMeta.map(_.toolName),
+    content_meta_tool_data = resource.contentMeta.map(_.toolData),
     fs_path                = resource.path,
     time_added             = Instant.ofEpochMilli(resource.timeAdded.getOrElse(0L)),
     time_created           = None,

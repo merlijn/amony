@@ -53,7 +53,6 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
           hash               = Some(f.hash),
           size               = f.size,
           contentType        = meta.map(_.contentType),
-          contentMetaSource  = meta.flatMap(_.toolMeta),
           contentMeta        = meta.map(_.meta),
           timeAdded          = Some(Instant.now().toEpochMilli),
           timeCreated        = None,

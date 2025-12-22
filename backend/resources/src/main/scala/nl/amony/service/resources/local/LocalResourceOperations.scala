@@ -38,7 +38,7 @@ object LocalResourceOperations {
 
     def outputFilename: String = s"${resourceId}_${timestamp}_${quality}p.webp"
 
-    override def validate(info: ResourceInfo): Either[String, Unit] = info.contentMeta match {
+    override def validate(info: ResourceInfo): Either[String, Unit] = info.contentMeta.map(_.properties) match {
       case Some(video: VideoMeta) =>
         for { _ <- Either.cond(timestamp > 0 && timestamp < video.durationInMillis, (), "Timestamp is out of bounds") } yield ()
       case other                  => Left("Wrong content type, expected video, got: " + other)
@@ -97,7 +97,7 @@ object LocalResourceOperations {
     def outputFilename: String = s"${resourceId}_${range._1}-${range._2}_${height}p.mp4"
 
     override def validate(info: ResourceInfo): Either[String, Unit] = {
-      info.contentMeta match {
+      info.contentMeta.map(_.properties) match {
         case Some(video: VideoMeta) =>
           val (start, end) = range
           val duration     = end - start

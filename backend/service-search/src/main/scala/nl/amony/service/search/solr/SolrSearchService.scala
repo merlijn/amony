@@ -39,6 +39,7 @@ object SolrSearchService {
     val title              = "title_s"
     val videoCodec         = "video_codec_s"
     val description        = "description_s"
+    val metaToolName       = "meta_tool_name_s"
     val timeCreated        = "time_created_l"
     val timeAdded          = "time_added_l"
     val lastModified       = "time_last_modified_l"
@@ -114,7 +115,9 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
     resource.timeLastModified.foreach(lastModified => solrInputDocument.addField(FieldNames.lastModified, lastModified))
     resource.contentType.foreach(contentType => solrInputDocument.addField(FieldNames.contentType, contentType))
 
-    resource.contentMeta match {
+    resource.contentMeta.foreach(meta => solrInputDocument.addField(FieldNames.metaToolName, meta.toolName))
+
+    resource.contentMeta.map(_.properties) match {
       case Some(ImageMeta(w, h, _))                       =>
         solrInputDocument.addField(FieldNames.width, w)
         solrInputDocument.addField(FieldNames.height, h)
@@ -154,12 +157,13 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
 
     val resourceType       = document.getFieldValue(FieldNames.resourceType).asInstanceOf[String]
     val thumbnailTimestamp = Option(document.getFieldValue(FieldNames.thumbnailTimestamp)).map(_.asInstanceOf[Int])
+    val metaToolName       = Option(document.getFieldValue(FieldNames.metaToolName)).map(_.asInstanceOf[String])
 
     val tags = Option(document.getFieldValues(FieldNames.tags)).map(_.asInstanceOf[java.util.List[String]].asScala).getOrElse(List.empty).toSet
 
     val userId = Option(document.getFieldValue(FieldNames.userId)).map(_.asInstanceOf[String])
 
-    val contentMeta: Option[ResourceMeta] = resourceType match {
+    val contentProperties: Option[ContentProperties] = resourceType match {
 
       case "image" => Some(ImageMeta(width, height))
       case "video" =>
@@ -171,22 +175,21 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
     }
 
     ResourceInfo(
-      bucketId,
-      resourceId,
-      userId.getOrElse(""),
-      path,
-      size,
-      hash,
-      contentType,
-      None,
-      contentMeta,
-      timeAdded,
-      timeCreated,
-      lastModified,
-      title,
-      description,
-      tags,
-      thumbnailTimestamp
+      bucketId           = bucketId,
+      resourceId         = resourceId,
+      userId             = userId.getOrElse(""),
+      path               = path,
+      size               = size,
+      hash               = hash,
+      contentType        = contentType,
+      contentMeta        = contentProperties.map(props => ResourceMeta(metaToolName.getOrElse("unknown"), "", props)),
+      timeAdded          = timeAdded,
+      timeCreated        = timeCreated,
+      timeLastModified   = lastModified,
+      title              = title,
+      description        = description,
+      tags               = tags,
+      thumbnailTimestamp = thumbnailTimestamp
     )
   }
 

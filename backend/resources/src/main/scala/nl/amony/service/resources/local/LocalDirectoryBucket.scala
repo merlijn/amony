@@ -39,12 +39,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
 
   private val runningOperations = new ConcurrentHashMap[LocalResourceOp, IO[JPath]]()
 
-  private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getById(config.id, resourceId).map(_.map(recoverMeta))
-
-  private def recoverMeta(info: ResourceInfo) = {
-    val meta: Option[ResourceMeta] = info.contentMetaSource.flatMap(meta => ResourceMeta.scanToolMeta(meta).toOption)
-    info.copy(contentMeta = meta)
-  }
+  private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getById(config.id, resourceId)
 
   override def id = config.id
 
@@ -60,9 +55,8 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
           logger.info(s"Updating metadata for $resourcePath")
 
           val updated = resource.copy(
-            contentType       = Some(localResourceMeta.contentType),
-            contentMetaSource = localResourceMeta.toolMeta,
-            contentMeta       = Some(localResourceMeta.meta)
+            contentType = Some(localResourceMeta.contentType),
+            contentMeta = Some(localResourceMeta.meta)
           )
 
           db.upsert(updated) >> topic.publish(ResourceUpdated(updated))
@@ -102,7 +96,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
     val outputFile = config.cachePath.resolve(operation.outputFilename)
 
     val derivedResourceInfo = inputResource
-      .copy(path = outputFile.getFileName.toString, contentType = Some(operation.contentType), contentMetaSource = None, contentMeta = None)
+      .copy(path = outputFile.getFileName.toString, contentType = Some(operation.contentType), contentMeta = None)
 
     if Files.exists(outputFile) then IO.pure(Resource.fromPathMaybe(outputFile, derivedResourceInfo))
     else {
@@ -136,25 +130,25 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
 
   override def updateUserMeta(resourceId: String, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] =
     db.updateUserMeta(config.id, resourceId, title, description, tags)
-      .flatMap(_.map(updated => topic.publish(ResourceUpdated(recoverMeta(updated)))).getOrElse(IO.unit))
+      .flatMap(_.map(updated => topic.publish(ResourceUpdated(updated))).getOrElse(IO.unit))
 
   override def modifyTags(resourceIds: Set[String], tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] = {
     def modifyTagsSingle(resourceId: String, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] =
       db.modifyTags(config.id, resourceId, tagsToAdd, tagsToRemove).flatMap:
         case None          => IO.unit
-        case Some(updated) => topic.publish(ResourceUpdated(recoverMeta(updated)))
+        case Some(updated) => topic.publish(ResourceUpdated(updated))
 
     resourceIds.map(id => modifyTagsSingle(id, tagsToAdd, tagsToRemove)).toList.sequence.as(None)
   }
 
   override def updateThumbnailTimestamp(resourceId: String, timestamp: Int): IO[Unit] =
     db.updateThumbnailTimestamp(config.id, resourceId, timestamp)
-      .flatMap(_.map(updated => topic.publish(ResourceUpdated(recoverMeta(updated)))).getOrElse(IO.unit))
+      .flatMap(_.map(updated => topic.publish(ResourceUpdated(updated))).getOrElse(IO.unit))
 
   def importBackup(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] =
     db.truncateTables() >> resources.map(r => r.copy(resourceId = config.generateId(), title = None))
-      .evalMap(resource => IO(logger.info(s"Inserting resource: ${resource.resourceId}")) >> db.insertResource(recoverMeta(resource))).compile.drain
+      .evalMap(resource => IO(logger.info(s"Inserting resource: ${resource.resourceId}")) >> db.insertResource(resource)).compile.drain
 
   override def getAllResources: fs2.Stream[IO, ResourceInfo] =
-    db.getStream(config.id).map(recoverMeta)
+    db.getStream(config.id)
 }
