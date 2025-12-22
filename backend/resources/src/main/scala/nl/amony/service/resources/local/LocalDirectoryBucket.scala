@@ -41,22 +41,22 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
 
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getById(config.id, resourceId)
 
-  override def id = config.id
+  override def id: String = config.id
 
   def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap {
     resource =>
       val resourcePath = config.resourcePath.resolve(resource.path)
-      LocalResourceMeta.detectMetaData(resourcePath).flatMap:
-        case None                    =>
+      LocalResourceMeta(resourcePath).flatMap:
+        case None                      =>
           logger.warn(s"Failed to scan metadata for $resourcePath")
           IO.unit
-        case Some(localResourceMeta) =>
+        case Some((contentType, meta)) =>
 
           logger.info(s"Updating metadata for $resourcePath")
 
           val updated = resource.copy(
-            contentType = Some(localResourceMeta.contentType),
-            contentMeta = Some(localResourceMeta.meta)
+            contentType = Some(contentType),
+            contentMeta = Some(meta)
           )
 
           db.upsert(updated) >> topic.publish(ResourceUpdated(updated))

@@ -89,15 +89,15 @@ case class ClipDto(
 def toDto(resource: ResourceInfo): ResourceDto = {
 
   val resourceHeight = resource.contentMeta match
-    case Some(ResourceMeta(_, _, VideoMeta(_, h, _, _, _, _))) => h
-    case Some(ResourceMeta(_, _, ImageMeta(_, h, _)))          => h
-    case _                                                     => 0
+    case Some(ResourceMeta(_, _, VideoProperties(_, h, _, _, _, _))) => h
+    case Some(ResourceMeta(_, _, ImageProperties(_, h, _)))          => h
+    case _                                                           => 0
 
   val resolutions: List[Int] = (resourceHeight :: List(352)).sorted
 
   val durationInMillis = resource.contentMeta.map(_.properties) match {
-    case Some(m: VideoMeta) => m.durationInMillis
-    case _                  => 0
+    case Some(m: VideoProperties) => m.durationInMillis
+    case _                        => 0
   }
 
   val thumbnailTimestamp: Int = resource.thumbnailTimestamp.getOrElse(durationInMillis / 3)
@@ -124,9 +124,9 @@ def toDto(resource: ResourceInfo): ResourceDto = {
   }
 
   val contentMeta: ResourceMetaDto = resource.contentMeta.map(_.properties) match {
-    case Some(ImageMeta(width, height, _)) => ResourceMetaDto(width = width, height = height, duration = 0, fps = 0, codec = None)
+    case Some(ImageProperties(width, height, _)) => ResourceMetaDto(width = width, height = height, duration = 0, fps = 0, codec = None)
 
-    case Some(VideoMeta(width, height, fps, duration, codec, _)) =>
+    case Some(VideoProperties(width, height, fps, duration, codec, _)) =>
       ResourceMetaDto(width = width, height = height, duration = duration, fps = fps, codec = codec)
 
     case None => ResourceMetaDto(width = 0, height = 0, duration = 0, fps = 0, codec = None)

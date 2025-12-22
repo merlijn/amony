@@ -11,21 +11,24 @@ import scribe.Logging
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.magick.ImageMagick
 import nl.amony.service.resources.*
-import nl.amony.service.resources.domain.{ContentProperties, ImageMeta, ResourceMeta}
+import nl.amony.service.resources.domain.{ContentProperties, ImageProperties, ResourceMeta}
 
 object LocalResourceMeta extends Logging {
 
-  case class LocalResourceMeta(contentType: String, meta: ResourceMeta)
-
   private val tika = new Tika()
 
-  private def contentTypeForPath(path: java.nio.file.Path): Option[String] = Try(tika.detect(path)).toOption
+  private def contentTypeForPath(path: java.nio.file.Path): Option[String] =
+    Try(tika.detect(path)) match
+      case Success(contentType) =>
+        Some(contentType)
+      case Failure(exception)   =>
+        logger.warn(s"Error detecting content type for path: $path", exception)
+        None
 
-  def detectMetaData(path: Path): IO[Option[LocalResourceMeta]] = {
+  def apply(path: Path): IO[Option[(contentType: String, meta: ResourceMeta)]] = {
     contentTypeForPath(path) match {
 
       case None =>
-        logger.warn(s"Failed to detect content type for: $path")
         IO.pure(None)
 
       case Some(contentType) if contentType.startsWith("video/") =>
@@ -34,7 +37,7 @@ object LocalResourceMeta extends Logging {
             ContentProperties.ffprobeOutputToContentMeta(ffprobeResult).toOption.map {
               properties =>
                 val version = ffprobeResult.program_version.map(_.version).getOrElse("unknown")
-                LocalResourceMeta(contentType, ResourceMeta(s"ffprobe/$version", json.noSpaces, properties))
+                (contentType, ResourceMeta(s"ffprobe/$version", json.noSpaces, properties))
             }
         }.recover { case e: Throwable => logger.error(s"Failed to get video meta data for $path", e); None }
       case Some(contentType) if contentType.startsWith("image/") =>
@@ -46,8 +49,8 @@ object LocalResourceMeta extends Logging {
             result.output.headOption.map {
               magick =>
                 val properties =
-                  ImageMeta(width = magick.image.geometry.width, height = magick.image.geometry.height, metaData = magick.image.properties)
-                LocalResourceMeta(contentType, ResourceMeta("magick/1", result.rawJson.noSpaces, properties))
+                  ImageProperties(width = magick.image.geometry.width, height = magick.image.geometry.height, metaData = magick.image.properties)
+                (contentType, ResourceMeta("magick/1", result.rawJson.noSpaces, properties))
             }
 
       case _ => IO.pure(None)

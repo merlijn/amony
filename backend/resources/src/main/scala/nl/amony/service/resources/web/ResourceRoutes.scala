@@ -41,7 +41,8 @@ object ResourceRoutes:
     endpoint
       .name("getBuckets").tag("resources").description("Get information about a resource by its id")
       .get.in("api" / "buckets")
-      .securityIn(securityInput).errorOut(errorOutput).out(apiNoCacheHeaders).out(jsonBody[List[BucketDto]])
+      .securityIn(securityInput).errorOut(errorOutput)
+      .out(apiNoCacheHeaders).out(jsonBody[List[BucketDto]])
 
   val getResourceById: Endpoint[SecurityInput, (String, String), ApiError | SecurityError, ResourceDto, Any] =
     endpoint
@@ -75,22 +76,24 @@ object ResourceRoutes:
 
   def apply(buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
 
-    def getResource(bucketId: String, resourceId: String): EitherT[IO, ApiError, (ResourceBucket, Resource)] = for {
-      bucket   <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
-      resource <- EitherT.fromOptionF(bucket.getResource(resourceId), NotFound)
-    } yield bucket -> resource
+    def getResource(bucketId: String, resourceId: String): EitherT[IO, ApiError, (ResourceBucket, Resource)] =
+      for {
+        bucket   <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
+        resource <- EitherT.fromOptionF(bucket.getResource(resourceId), NotFound)
+      } yield bucket -> resource
 
     val bucketList = buckets.values.toList
 
-    def sanitize(input: String, maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, String] = for {
-      _      <- EitherT.cond[IO](input.length <= maxLength, (), ApiError.BadRequest)
-      _      <- EitherT.cond[IO](input.forall(characterAllowFn), (), ApiError.BadRequest)
-      trimmed = input.trim
-      _      <- EitherT.cond[IO](trimmed == Jsoup.clean(trimmed, Safelist.basic), (), ApiError.BadRequest)
-    } yield trimmed
+    def sanitize(input: String, maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, String] =
+      for {
+        _      <- EitherT.cond[IO](input.length <= maxLength, (), ApiError.BadRequest)
+        _      <- EitherT.cond[IO](input.forall(characterAllowFn), (), ApiError.BadRequest)
+        trimmed = input.trim
+        _      <- EitherT.cond[IO](trimmed == Jsoup.clean(trimmed, Safelist.basic), (), ApiError.BadRequest)
+      } yield trimmed
 
-    def sanitizeOpt(input: Option[String], maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, Option[String]] = input
-      .map(sanitize(_, maxLength, characterAllowFn).map(Some(_))).getOrElse(EitherT.rightT[IO, ApiError](None))
+    def sanitizeOpt(input: Option[String], maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, Option[String]] =
+      input.map(sanitize(_, maxLength, characterAllowFn).map(Some(_))).getOrElse(EitherT.rightT[IO, ApiError](None))
 
     def sanitizeTags(tags: List[String]): EitherT[IO, ApiError, List[String]] = tags.map(sanitize(_, 64, _.isLetterOrDigit)).sequence
 

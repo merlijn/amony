@@ -39,9 +39,9 @@ object LocalResourceOperations {
     def outputFilename: String = s"${resourceId}_${timestamp}_${quality}p.webp"
 
     override def validate(info: ResourceInfo): Either[String, Unit] = info.contentMeta.map(_.properties) match {
-      case Some(video: VideoMeta) =>
+      case Some(video: VideoProperties) =>
         for { _ <- Either.cond(timestamp > 0 && timestamp < video.durationInMillis, (), "Timestamp is out of bounds") } yield ()
-      case other                  => Left("Wrong content type, expected video, got: " + other)
+      case other                        => Left("Wrong content type, expected video, got: " + other)
     }
 
     override def createFile(inputFile: Path, outputDir: Path): IO[Path] = {
@@ -98,7 +98,7 @@ object LocalResourceOperations {
 
     override def validate(info: ResourceInfo): Either[String, Unit] = {
       info.contentMeta.map(_.properties) match {
-        case Some(video: VideoMeta) =>
+        case Some(video: VideoProperties) =>
           val (start, end) = range
           val duration     = end - start
           for {
@@ -108,7 +108,7 @@ object LocalResourceOperations {
             _ <- Either.cond(duration > minLengthInMillis, (), "Duration too short")
             _ <- Either.cond(duration < maxLengthInMillis, (), "Duration too long")
           } yield ()
-        case other                  => Left("Wrong content type, expected video, got: " + other)
+        case other                        => Left("Wrong content type, expected video, got: " + other)
       }
     }
 

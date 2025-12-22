@@ -118,18 +118,18 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
     resource.contentMeta.foreach(meta => solrInputDocument.addField(FieldNames.metaToolName, meta.toolName))
 
     resource.contentMeta.map(_.properties) match {
-      case Some(ImageMeta(w, h, _))                       =>
+      case Some(ImageProperties(w, h, _))                       =>
         solrInputDocument.addField(FieldNames.width, w)
         solrInputDocument.addField(FieldNames.height, h)
         solrInputDocument.addField(FieldNames.resourceType, "image")
-      case Some(VideoMeta(w, h, fps, duration, codec, _)) =>
+      case Some(VideoProperties(w, h, fps, duration, codec, _)) =>
         solrInputDocument.addField(FieldNames.width, w)
         solrInputDocument.addField(FieldNames.height, h)
         solrInputDocument.addField(FieldNames.duration, duration)
         codec.foreach(codec => solrInputDocument.addField(FieldNames.videoCodec, codec))
         solrInputDocument.addField(FieldNames.fps, fps)
         solrInputDocument.addField(FieldNames.resourceType, "video")
-      case _                                              =>
+      case _                                                    =>
     }
 
     logger.debug(s"Indexing document: $solrInputDocument")
@@ -165,12 +165,12 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
 
     val contentProperties: Option[ContentProperties] = resourceType match {
 
-      case "image" => Some(ImageMeta(width, height))
+      case "image" => Some(ImageProperties(width, height))
       case "video" =>
         val duration = document.getFieldValue(FieldNames.duration).asInstanceOf[Int]
         val fps      = document.getFieldValue(FieldNames.fps).asInstanceOf[Float]
         val codec    = Option(document.getFieldValue(FieldNames.videoCodec)).map(_.asInstanceOf[String])
-        Some(VideoMeta(width, height, fps, duration, codec, Map.empty))
+        Some(VideoProperties(width, height, fps, duration, codec, Map.empty))
       case _       => None
     }
 

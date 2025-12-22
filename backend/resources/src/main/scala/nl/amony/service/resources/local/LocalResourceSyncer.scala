@@ -42,8 +42,8 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
     }
   }
 
-  private[local] def newResource(f: FileInfo, userId: String): IO[ResourceInfo] = LocalResourceMeta.detectMetaData(f.path)
-    .recover { case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None }.map {
+  private[local] def newResource(f: FileInfo, userId: String): IO[ResourceInfo] =
+    LocalResourceMeta(f.path).recover { case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None }.map {
       meta =>
         ResourceInfo(
           bucketId           = bucketId,

@@ -13,7 +13,7 @@ object ResourceMeta:
 
 sealed trait ContentProperties
 
-case class VideoMeta(
+case class VideoProperties(
   width: Int,
   height: Int,
   fps: Float,
@@ -22,7 +22,7 @@ case class VideoMeta(
   metaData: Map[String, String] = Map.empty
 ) extends ContentProperties
 
-case class ImageMeta(width: Int, height: Int, metaData: Map[String, String] = Map.empty) extends ContentProperties
+case class ImageProperties(width: Int, height: Int, metaData: Map[String, String] = Map.empty) extends ContentProperties
 
 object ContentProperties:
 
@@ -44,13 +44,13 @@ object ContentProperties:
     case other => Failure(new Exception(s"Unknown tool meta source: $other"))
   }
 
-  def magickOutputToContentMeta(magickResult: List[MagickImageMeta]): Try[ImageMeta] = magickResult.headOption
-    .map(magick => ImageMeta(width = magick.image.geometry.width, height = magick.image.geometry.height, metaData = magick.image.properties))
+  def magickOutputToContentMeta(magickResult: List[MagickImageMeta]): Try[ImageProperties] = magickResult.headOption
+    .map(magick => ImageProperties(width = magick.image.geometry.width, height = magick.image.geometry.height, metaData = magick.image.properties))
     .toRight(new Exception("No video stream found")).toTry
 
-  def ffprobeOutputToContentMeta(FFProbeOutput: FFProbeOutput): Try[VideoMeta] = FFProbeOutput.firstVideoStream.map {
+  def ffprobeOutputToContentMeta(FFProbeOutput: FFProbeOutput): Try[VideoProperties] = FFProbeOutput.firstVideoStream.map {
     stream =>
-      VideoMeta(
+      VideoProperties(
         width            = stream.width,
         height           = stream.height,
         durationInMillis = stream.durationMillis,
