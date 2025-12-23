@@ -4,7 +4,6 @@ import cats.effect.IO
 import scribe.Logging
 
 import nl.amony.lib.auth.TokenManager
-import nl.amony.service.auth.domain.*
 
 class AuthServiceImpl(config: AuthConfig) extends AuthService with Logging {
 
@@ -17,10 +16,6 @@ class AuthServiceImpl(config: AuthConfig) extends AuthService with Logging {
       val (accessToken, refreshToken) = tokenManager.createAccessAndRefreshTokens(Some(username), Set("admin"))
       IO.pure(Authentication(accessToken, refreshToken))
     } else IO.pure(InvalidCredentials())
-
-  override def insertUser(externalId: String, password: String): IO[User] = IO.raiseError(new RuntimeException("Not implemented"))
-
-  override def getByExternalId(externalId: String): IO[User] = IO.raiseError(new RuntimeException("Not implemented"))
 
   override def refresh(accessToken: String, refreshToken: String): IO[AuthenticationResponse] =
     tokenManager.refreshAccessToken(refreshToken) match

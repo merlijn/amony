@@ -16,7 +16,6 @@ import sttp.tapir.json.circe.jsonBody
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 
 import nl.amony.lib.auth.{ApiSecurity, AuthToken, SecurityError, SecurityInput, securityInput}
-import nl.amony.service.auth.domain.{AuthService, Authentication, InvalidCredentials}
 
 case class LoginCredentials(username: String, password: String) derives Schema
 
