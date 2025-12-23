@@ -36,18 +36,35 @@ object AuthRoutes extends Logging {
 
   private val redirectOut = (statusCode(StatusCode.Found) and header[String](HeaderNames.Location)).mapTo[RedirectResponse]
 
-  val sessionEndpoint: Endpoint[SecurityInput, Unit, SecurityError, AuthToken, Any] = endpoint.name("getSession").tag("auth")
-    .description("Get the current session").get.in("api" / "auth" / "session").securityIn(securityInput).out(jsonBody[AuthToken])
-    .errorOut(errorOutput)
+  val sessionEndpoint: Endpoint[SecurityInput, Unit, SecurityError, AuthToken, Any] =
+    endpoint
+      .tag("auth").name("getSession").description("Get the current session")
+      .get.in("api" / "auth" / "session")
+      .securityIn(securityInput)
+      .out(jsonBody[AuthToken])
+      .errorOut(errorOutput)
 
-  val loginEndpoint = endpoint.name("authLogin").tag("auth").description("Login the current user").post.in("api" / "auth" / "login")
-    .in(formBody[LoginCredentials]: EndpointIO.Body[String, LoginCredentials]).out(redirectOut and cookieOutput).errorOut(errorOutput)
+  val loginEndpoint = 
+    endpoint.tag("auth").name("authLogin").description("Login the current user")
+      .post.in("api" / "auth" / "login")
+      .in(formBody[LoginCredentials]: EndpointIO.Body[String, LoginCredentials])
+      .out(redirectOut and cookieOutput)
+      .errorOut(errorOutput)
 
-  val refreshEndpoint = endpoint.name("authRefreshTokens").tag("auth").description("Refresh the users auth tokens").post
-    .in("api" / "auth" / "refresh").in(cookie[String]("refresh_token")).out(cookieOutput).errorOut(errorOutput)
+  val refreshEndpoint = 
+    endpoint
+      .tag("auth").name("authRefreshTokens").description("Refresh the users auth tokens")
+      .post.in("api" / "auth" / "refresh")
+      .in(cookie[String]("refresh_token"))
+      .out(cookieOutput)
+      .errorOut(errorOutput)
 
-  val logoutEndpoint: Endpoint[Unit, Unit, Unit, AuthCookies, Any] = endpoint.name("authLogout").tag("auth").description("Logout the current user")
-    .post.in("api" / "auth" / "logout").out(statusCode(StatusCode.Ok)).out(cookieOutput)
+  val logoutEndpoint: Endpoint[Unit, Unit, Unit, AuthCookies, Any] = 
+    endpoint
+      .tag("auth").name("authLogout").description("Logout the current user")
+      .post.in("api" / "auth" / "logout")
+      .out(statusCode(StatusCode.Ok))
+      .out(cookieOutput)
 
   val endpoints = List(loginEndpoint, refreshEndpoint, sessionEndpoint, logoutEndpoint)
 
