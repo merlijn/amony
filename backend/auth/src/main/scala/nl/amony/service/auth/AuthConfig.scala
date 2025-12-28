@@ -8,12 +8,37 @@ import scala.util.Try
 
 import pdi.jwt.{JwtAlgorithm, JwtCirce, JwtClaim}
 import pureconfig.*
+import pureconfig.error.{CannotConvert, FailureReason}
 import pureconfig.generic.FieldCoproductHint
 import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
+import sttp.model.Uri
 
 import nl.amony.lib.auth.JwtDecoder
 
-case class AuthConfig(jwt: JwtConfig, secureCookies: Boolean, adminUsername: String, adminPassword: String) derives ConfigReader {
+given ConfigReader[Uri] = ConfigReader.fromString[Uri](str => Uri.parse(str).left.map(err => CannotConvert(str, "Uri", err)))
+
+case class OauthProvider(
+  name: String,
+  clientId: String,
+  clientSecret: String,
+  host: Uri,
+  authorizeEndpoint: String = "authorize",
+  tokenEndpoint: String     = "token",
+  scopes: List[String]      = List("openid", "profile", "email")
+) derives ConfigReader {
+
+  def authorizeUri: Uri = host.addPath(authorizeEndpoint)
+  def tokenUri: Uri     = host.addPath(tokenEndpoint)
+}
+
+case class AuthConfig(
+  jwt: JwtConfig,
+  publicUri: Uri,
+  secureCookies: Boolean,
+  oauthProviders: List[OauthProvider],
+  adminUsername: String,
+  adminPassword: String
+) derives ConfigReader {
 
   def decoder = JwtDecoder(jwt.algorithm)
 }

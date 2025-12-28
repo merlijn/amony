@@ -72,6 +72,10 @@ val solrLangId               = "org.apache.solr"           % "solr-langid"      
 
 val log4CatsSlf4j            = "org.typelevel"            %% "log4cats-slf4j"             % "2.7.1"
 
+val sttpClientCore                = "com.softwaremill.sttp.client4" %% "core" % "4.0.13"
+val sttpClientCirce                = "com.softwaremill.sttp.client4" %% "circe" % "4.0.13"
+val sttpClientCats                 = "com.softwaremill.sttp.client4" %% "cats" % "4.0.13"
+
 val apacheCommonsCodec = "commons-codec" % "commons-codec" % "1.15"
 
 
@@ -131,7 +135,9 @@ lazy val lib =
         fs2Io,
         pureConfig,
         scribe,
-        scalaTest
+        scalaTest,
+        tapirCore,
+        tapirCirce
       )
     )
 
@@ -145,7 +151,7 @@ lazy val auth =
         jwtCirce, bouncyCastle,
         tapirCore, tapirCatsEffect, tapirCirce, tapirHttp4s,
         circe, circeGeneric, pureConfig, pureConfigGeneric,
-        http4sDsl, http4sCirce
+        http4sDsl, http4sCirce, sttpClientCore, sttpClientCirce
       )
     )
 
@@ -288,7 +294,7 @@ lazy val app =
         http4sEmberServer,
         tapirCore, tapirCatsEffect, tapirHttp4s,  tapirSharedFs2, tapirSwaggerUI, tapirCirceYamlSpec,
         // test
-        scalaTest, scalaTestCheck
+        scalaTest, scalaTestCheck, sttpClientCats
       ),
 
       excludeDependencies ++= List(

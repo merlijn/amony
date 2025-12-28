@@ -5,12 +5,13 @@ import scala.reflect.ClassTag
 import cats.effect.{IO, Resource, ResourceApp}
 import cats.implicits.*
 import scribe.{Logger, Logging}
+import sttp.client4.httpclient.cats.HttpClientCatsBackend
 import sttp.tapir.server.http4s.Http4sServerOptions
 
 import nl.amony.app.routes.{AdminRoutes, WebAppRoutes}
 import nl.amony.lib.auth.ApiSecurity
 import nl.amony.lib.messagebus.EventTopic
-import nl.amony.service.auth.{AuthConfig, AuthRoutes, AuthServiceImpl}
+import nl.amony.service.auth.{AuthConfig, AuthEndpointServerLogic, AuthServiceImpl}
 import nl.amony.service.resources.ResourceConfig
 import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.domain.ResourceEvent
@@ -48,10 +49,11 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
                            }.sequence
       resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
       authConfig         = loadConfig[AuthConfig]("amony.auth")
-      authService        = new AuthServiceImpl(authConfig)
-      apiSecurity        = ApiSecurity(authConfig.decoder)
+      httpBackend       <- HttpClientCatsBackend.resource[IO]()
+      authService        = new AuthServiceImpl(authConfig, httpBackend)
+      apiSecurity        = ApiSecurity(authConfig)
       routes             = ResourceContentRoutes.apply(resourceBucketMap) <+>
-                             AuthRoutes.apply(authService, authConfig, apiSecurity) <+>
+                             AuthEndpointServerLogic.apply(authConfig.publicUri, authService, authConfig, apiSecurity) <+>
                              AdminRoutes.apply(searchService, resourceBucketMap, apiSecurity) <+>
                              SearchRoutes.apply(searchService, appConfig.search, apiSecurity) <+>
                              ResourceRoutes.apply(resourceBucketMap, apiSecurity) <+>

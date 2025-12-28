@@ -1,10 +1,20 @@
 package nl.amony.lib.auth
 
+import java.time.{Duration, Instant}
+import java.util.UUID
+
+import sttp.model.headers.CookieValueWithMeta
+
+import nl.amony.lib.tapir.AuthCookies
+import nl.amony.service.auth.{AuthConfig, Authentication}
+
 enum SecurityError:
   case Unauthorized
   case Forbidden
 
-class ApiSecurity(decoder: JwtDecoder):
+class ApiSecurity(authConfig: AuthConfig):
+
+  private val decoder: JwtDecoder = authConfig.decoder
 
   def requireSession(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
     for {
@@ -19,3 +29,26 @@ class ApiSecurity(decoder: JwtDecoder):
 
   def requireRole(requiredRole: Role)(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
     requireSession(securityInput).flatMap(token => if token.roles.contains(requiredRole) then Right(token) else Left(SecurityError.Forbidden))
+
+  def createCookies(apiAuthentication: Authentication): AuthCookies = {
+    val accessTokenCookie = CookieValueWithMeta.unsafeApply(
+      value    = apiAuthentication.accessToken,
+      path     = Some("/"),
+      httpOnly = true,
+      secure   = authConfig.secureCookies,
+      expires  = Some(Instant.now().plus(Duration.ofSeconds(authConfig.jwt.accessTokenExpiration.toSeconds)))
+    )
+
+    val refreshCookie = CookieValueWithMeta.unsafeApply(
+      value    = apiAuthentication.refreshToken,
+      path     = Some("/"),
+      httpOnly = true,
+      secure   = authConfig.secureCookies,
+      expires  = Some(Instant.now().plus(Duration.ofSeconds(authConfig.jwt.refreshTokenExpiration.toSeconds)))
+    )
+
+    val xsrfCookie = CookieValueWithMeta
+      .unsafeApply(value = UUID.randomUUID().toString, path = Some("/"), httpOnly = false, secure = authConfig.secureCookies)
+
+    AuthCookies(accessTokenCookie, refreshCookie, xsrfCookie)
+  }
