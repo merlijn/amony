@@ -7,12 +7,11 @@ import sttp.capabilities.fs2.Fs2Streams
 import sttp.tapir.*
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 
-import nl.amony.lib.auth.{ApiSecurity, AuthToken, JwtDecoder, Roles, SecurityError, SecurityInput, securityErrors, securityInput}
-import nl.amony.service.resources.domain.{Resource, ResourceBucket, ResourceInfo}
-import nl.amony.service.resources.local.LocalDirectoryBucket
-import nl.amony.service.resources.web.dto.{ResourceDto, toDto}
-import nl.amony.service.resources.web.oneOfList
-import nl.amony.service.search.domain.SearchService
+import nl.amony.lib.auth.{ApiSecurity, AuthToken, Roles, SecurityError, SecurityInput, securityErrors, securityInput}
+import nl.amony.modules.resources.domain.{Resource, ResourceBucket, ResourceInfo}
+import nl.amony.modules.resources.local.LocalDirectoryBucket
+import nl.amony.modules.resources.web.{ResourceDto, oneOfList, toDto}
+import nl.amony.modules.search.domain.SearchService
 
 object AdminRoutes extends Logging:
 

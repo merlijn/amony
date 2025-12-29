@@ -10,9 +10,9 @@ import sttp.tapir.*
 import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 
 import nl.amony.app.routes.AdminRoutes
-import nl.amony.service.auth.{AuthEndpointDefs, AuthEndpointServerLogic}
-import nl.amony.service.resources.web.ResourceRoutes
-import nl.amony.service.search.SearchRoutes
+import nl.amony.modules.auth.{AuthEndpointDefs, AuthEndpointServerLogic}
+import nl.amony.modules.resources.web.ResourceRoutes
+import nl.amony.modules.search.SearchRoutes
 
 object GenerateSpec:
 

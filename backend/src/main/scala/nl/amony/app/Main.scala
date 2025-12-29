@@ -11,14 +11,14 @@ import sttp.tapir.server.http4s.Http4sServerOptions
 import nl.amony.app.routes.{AdminRoutes, WebAppRoutes}
 import nl.amony.lib.auth.ApiSecurity
 import nl.amony.lib.messagebus.EventTopic
-import nl.amony.service.auth.{AuthConfig, AuthEndpointServerLogic, AuthService}
-import nl.amony.service.resources.ResourceConfig
-import nl.amony.service.resources.database.ResourceDatabase
-import nl.amony.service.resources.domain.ResourceEvent
-import nl.amony.service.resources.local.LocalDirectoryBucket
-import nl.amony.service.resources.web.{ResourceContentRoutes, ResourceRoutes}
-import nl.amony.service.search.SearchRoutes
-import nl.amony.service.search.solr.SolrSearchService
+import nl.amony.modules.auth.*
+import nl.amony.modules.resources.ResourceConfig
+import nl.amony.modules.resources.database.ResourceDatabase
+import nl.amony.modules.resources.domain.ResourceEvent
+import nl.amony.modules.resources.local.LocalDirectoryBucket
+import nl.amony.modules.resources.web.{ResourceContentRoutes, ResourceRoutes}
+import nl.amony.modules.search.SearchRoutes
+import nl.amony.modules.search.solr.SolrSearchService
 
 object Main extends ResourceApp.Forever with ConfigLoader with Logging {
 

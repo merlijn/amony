@@ -10,7 +10,7 @@ import org.http4s.headers.`Cache-Control`
 import org.http4s.{Headers, HttpRoutes}
 
 import nl.amony.app.WebServerConfig
-import nl.amony.service.resources.web.ResourceDirectives
+import nl.amony.modules.resources.web.ResourceDirectives
 
 object WebAppRoutes:
 

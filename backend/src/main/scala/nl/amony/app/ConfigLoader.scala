@@ -8,10 +8,10 @@ import com.typesafe.config.{Config, ConfigFactory}
 import pureconfig.*
 import scribe.Logging
 
-import nl.amony.service.resources.ResourceConfig.*
-import nl.amony.service.resources.database.DatabaseConfig
-import nl.amony.service.search.SearchConfig
-import nl.amony.service.search.solr.SolrConfig
+import nl.amony.modules.resources.ResourceConfig.ResourceBucketConfig
+import nl.amony.modules.resources.database.DatabaseConfig
+import nl.amony.modules.search.SearchConfig
+import nl.amony.modules.search.solr.SolrConfig
 
 case class AmonyConfig(
   amonyHome: Path,

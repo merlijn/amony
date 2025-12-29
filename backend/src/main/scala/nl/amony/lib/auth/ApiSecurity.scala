@@ -6,7 +6,7 @@ import java.util.UUID
 import sttp.model.headers.CookieValueWithMeta
 
 import nl.amony.lib.tapir.AuthCookies
-import nl.amony.service.auth.{AuthConfig, Authentication}
+import nl.amony.modules.auth.*
 
 enum SecurityError:
   case Unauthorized

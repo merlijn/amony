@@ -1,20 +1,18 @@
 package nl.amony.service.resources.database
 
 import java.util.UUID
-
 import scala.util.Random
-
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits.*
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
+import nl.amony.modules.resources.database.{DatabaseConfig, ResourceDatabase}
+import nl.amony.modules.resources.domain.ResourceInfo
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
 import scribe.Logging
-
-import nl.amony.service.resources.domain.{ResourceInfo, ContentProperties}
 
 class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with Logging with Matchers {
 
