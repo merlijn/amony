@@ -1,4 +1,4 @@
-package nl.amony.app.routes
+package nl.amony.modules.admin
 
 import cats.effect.IO
 import org.http4s.*
@@ -7,7 +7,7 @@ import sttp.capabilities.fs2.Fs2Streams
 import sttp.tapir.*
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 
-import nl.amony.lib.auth.{ApiSecurity, AuthToken, Roles, SecurityError, SecurityInput, securityErrors, securityInput}
+import nl.amony.lib.auth.*
 import nl.amony.modules.resources.domain.{Resource, ResourceBucket, ResourceInfo}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.modules.resources.web.{ResourceDto, oneOfList, toDto}

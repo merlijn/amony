@@ -1,4 +1,4 @@
-package nl.amony.service.resources.util
+package nl.amony.lib.hash
 
 import nl.amony.modules.resources.util.Base32
 import org.apache.commons.codec.binary.Base32 as ApacheBase32

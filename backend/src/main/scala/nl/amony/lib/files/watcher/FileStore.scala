@@ -2,7 +2,6 @@ package nl.amony.lib.files.watcher
 
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
-
 import scala.jdk.CollectionConverters.*
 
 import cats.effect.IO

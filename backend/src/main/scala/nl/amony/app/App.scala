@@ -1,16 +1,19 @@
 package nl.amony.app
 
+import java.nio.file.Path
 import scala.reflect.ClassTag
 
 import cats.effect.{IO, Resource, ResourceApp}
 import cats.implicits.*
+import com.typesafe.config.{Config, ConfigFactory}
+import pureconfig.{ConfigReader, ConfigSource}
 import scribe.{Logger, Logging}
 import sttp.client4.httpclient.cats.HttpClientCatsBackend
 import sttp.tapir.server.http4s.Http4sServerOptions
 
-import nl.amony.app.routes.{AdminRoutes, WebAppRoutes}
 import nl.amony.lib.auth.ApiSecurity
 import nl.amony.lib.messagebus.EventTopic
+import nl.amony.modules.admin.AdminRoutes
 import nl.amony.modules.auth.*
 import nl.amony.modules.resources.ResourceConfig
 import nl.amony.modules.resources.database.ResourceDatabase
@@ -20,7 +23,27 @@ import nl.amony.modules.resources.web.{ResourceContentRoutes, ResourceRoutes}
 import nl.amony.modules.search.SearchRoutes
 import nl.amony.modules.search.solr.SolrSearchService
 
-object Main extends ResourceApp.Forever with ConfigLoader with Logging {
+object App extends ResourceApp.Forever with Logging {
+
+  lazy val config: Config =
+    Option(System.getenv().get("AMONY_CONFIG_FILE")) match
+      case Some(fileName) =>
+        logger.info(s"Loading configuration from file: $fileName")
+        ConfigFactory.parseFile(Path.of(fileName).toFile)
+      case None           => ConfigFactory.load()
+
+  lazy val appConfig: AppConfig = {
+    val configSource = ConfigSource.fromConfig(config)
+    configSource.at("amony").loadOrThrow[AppConfig]
+  }
+
+  def loadConfig[T: {ClassTag, ConfigReader}](path: String): T = {
+
+    val configSource = ConfigSource.fromConfig(config.getConfig(path))
+    val configObj    = configSource.loadOrThrow[T]
+
+    configObj
+  }
 
   override def run(args: List[String]): Resource[IO, Unit] = {
 
@@ -52,13 +75,12 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
       httpBackend       <- HttpClientCatsBackend.resource[IO]()
       authService        = AuthService(authConfig, httpBackend)
       apiSecurity        = ApiSecurity(authConfig)
-      routes             = ResourceContentRoutes.apply(resourceBucketMap) <+>
+      apiRoutes          = ResourceContentRoutes.apply(resourceBucketMap) <+>
                              AuthEndpointServerLogic.apply(authConfig.publicUri, authService, authConfig, apiSecurity) <+>
                              AdminRoutes.apply(searchService, resourceBucketMap, apiSecurity) <+>
                              SearchRoutes.apply(searchService, appConfig.search, apiSecurity) <+>
-                             ResourceRoutes.apply(resourceBucketMap, apiSecurity) <+>
-                             WebAppRoutes.apply(appConfig.api)
-      _                 <- WebServer.run(appConfig.api, routes)
+                             ResourceRoutes.apply(resourceBucketMap, apiSecurity)
+      _                 <- WebServer.run(appConfig.api, apiRoutes)
     } yield ()
   }
 }

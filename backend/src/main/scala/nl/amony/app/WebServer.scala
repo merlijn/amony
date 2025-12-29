@@ -1,29 +1,38 @@
 package nl.amony.app
 
-import java.nio.file.Path
 import java.security.SecureRandom
-
-import javax.net.ssl.{KeyManagerFactory, SNIHostName, SNIServerName, SSLContext}
+import javax.net.ssl.{KeyManagerFactory, SNIHostName, SSLContext}
+import scala.concurrent.duration.DurationInt
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource}
 import cats.implicits.catsSyntaxFlatMapOps
-import com.comcast.ip4s.{Host, Hostname, Port}
+import cats.syntax.all.toSemigroupKOps
+import com.comcast.ip4s.{Host, Port}
+import fs2.io.file.{Files, Path}
 import fs2.io.net.tls.{TLSContext, TLSParameters}
+import org.http4s.CacheDirective.`max-age`
+import org.http4s.dsl.io.*
 import org.http4s.ember.server.EmberServerBuilder
+import org.http4s.headers.`Cache-Control`
 import org.http4s.server.{Router, Server}
-import org.http4s.{HttpRoutes, Response, Status}
+import org.http4s.{Headers, HttpRoutes, Response, Status}
 import org.typelevel.log4cats.*
 import org.typelevel.log4cats.slf4j.{Slf4jFactory, Slf4jLogger}
 import scribe.Logging
 
-import nl.amony.app.util.PemReader
+import nl.amony.app.App.appConfig
+import nl.amony.lib.auth.PemReader
+import nl.amony.modules.resources.web.ResourceDirectives
 
 object WebServer extends Logging {
 
   given slf4jLogger: LoggerFactory[IO] = Slf4jFactory.create[IO]
 
-  def run(config: WebServerConfig, routes: HttpRoutes[IO])(implicit io: IORuntime): Resource[IO, Unit] = {
+  def run(config: WebServerConfig, apiRoutes: HttpRoutes[IO])(implicit io: IORuntime): Resource[IO, Unit] = {
+
+    val routes = apiRoutes <+> webAppRoutes(appConfig.api)
+
     val httpResource = config.http match {
       case Some(httpConfig) if httpConfig.enabled =>
         Resource.eval(IO(logger.info(s"Starting HTTP server at ${httpConfig.host}:${httpConfig.port}"))) >> httpServer(httpConfig, routes)
@@ -50,8 +59,8 @@ object WebServer extends Logging {
 
     val sslContext = {
       val keyStore = PemReader.loadKeyStore(
-        certificateChainFile = Path.of(httpsConfig.certificateChainPem),
-        privateKeyFile       = Path.of(httpsConfig.privateKeyPem),
+        certificateChainFile = java.nio.file.Path.of(httpsConfig.certificateChainPem),
+        privateKeyFile       = java.nio.file.Path.of(httpsConfig.privateKeyPem),
         keyPassword          = None
       )
 
@@ -87,5 +96,36 @@ object WebServer extends Logging {
           logger.warn("Internal server error", e)
           IO(serverError)
       }.build
+  }
+
+  def webAppRoutes(config: WebServerConfig) = {
+
+    val basePath          = Path.apply(config.webClientPath)
+    val indexFile         = basePath.resolve("index.html")
+    val chunkSize         = 32 * 1024
+    val assetsCachePeriod = 365.days
+
+    HttpRoutes.of[IO]:
+      case req @ GET -> rest =>
+        val requestedPath = rest.toString() match
+          case "" | "/" => "index.html"
+          case other    => other
+
+        val requestedFile = basePath.resolve(requestedPath.stripMargin('/'))
+
+        Files[IO].exists(requestedFile).map {
+          case true  => requestedFile
+          case false => indexFile
+        }.flatMap {
+          file =>
+
+            val cacheControlHeaders =
+              // files in the assets folder are suffixed with a hash and can be cached indefinitely
+              if requestedPath.startsWith("/assets/") then {
+                Headers(`Cache-Control`(`max-age`(assetsCachePeriod)))
+              } else Headers.empty
+
+            ResourceDirectives.responseFromFile[IO](req, file, chunkSize, additionalHeaders = cacheControlHeaders)
+        }
   }
 }

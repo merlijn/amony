@@ -2,7 +2,6 @@ package nl.amony.lib.ffmpeg.tasks
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
-
 import scala.concurrent.duration.DurationInt
 
 import cats.effect.IO

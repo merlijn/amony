@@ -2,7 +2,6 @@ package nl.amony.modules.auth
 
 import java.security.KeyFactory
 import java.security.spec.{ECParameterSpec, ECPoint, ECPrivateKeySpec, ECPublicKeySpec}
-
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 

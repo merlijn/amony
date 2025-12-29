@@ -1,7 +1,6 @@
 package nl.amony.lib.magick.tasks
 
 import java.nio.file.Path
-
 import scala.util.Try
 
 import cats.effect.IO

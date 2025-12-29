@@ -1,4 +1,4 @@
-package nl.amony.app.util
+package nl.amony.lib.auth
 
 import java.io.{ByteArrayInputStream, File, IOException}
 import java.nio.charset.StandardCharsets.US_ASCII
@@ -10,11 +10,9 @@ import java.util
 import java.util.Base64
 import java.util.regex.Pattern
 import java.util.regex.Pattern.CASE_INSENSITIVE
-
 import javax.crypto.Cipher.DECRYPT_MODE
 import javax.crypto.spec.PBEKeySpec
 import javax.crypto.{Cipher, EncryptedPrivateKeyInfo, SecretKeyFactory}
-
 import scala.io.Codec
 import scala.jdk.CollectionConverters.*
 import scala.util.Try

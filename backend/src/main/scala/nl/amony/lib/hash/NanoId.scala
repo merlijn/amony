@@ -1,4 +1,4 @@
-package nl.amony.modules.resources.util
+package nl.amony.lib.hash
 
 import scala.util.Random
 

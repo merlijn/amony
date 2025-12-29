@@ -2,7 +2,6 @@ package nl.amony.lib.files.watcher
 
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
-
 import scala.concurrent.duration.FiniteDuration
 
 import cats.effect.IO

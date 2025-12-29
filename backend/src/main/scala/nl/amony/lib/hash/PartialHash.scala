@@ -1,11 +1,10 @@
-package nl.amony.modules.resources.util
+package nl.amony.lib.hash
 
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.{Path, StandardOpenOption}
 import java.security.MessageDigest
 import java.util
-
 import scala.util.{Random, Using}
 
 import cats.effect.IO

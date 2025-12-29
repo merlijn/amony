@@ -2,7 +2,6 @@ package nl.amony.lib.files.watcher
 
 import java.nio.file.*
 import java.util.concurrent.*
-
 import scala.jdk.CollectionConverters.*
 import scala.util.Using
 

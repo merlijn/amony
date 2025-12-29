@@ -1,7 +1,6 @@
 package nl.amony.lib.ffmpeg.tasks
 
 import java.nio.file.Path
-
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.util.{Failure, Try}
 

@@ -2,7 +2,6 @@ package nl.amony.modules.search.solr
 
 import java.io.{BufferedInputStream, FileOutputStream}
 import java.nio.file.{Files, Path}
-
 import scala.util.Using
 
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream

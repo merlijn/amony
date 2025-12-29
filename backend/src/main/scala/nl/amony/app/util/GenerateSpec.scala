@@ -1,7 +1,6 @@
 package nl.amony.app.util
 
 import java.nio.file.{Files, Path}
-
 import scala.util.Using
 
 import sttp.apispec.openapi.OpenAPI
@@ -9,7 +8,7 @@ import sttp.apispec.openapi.circe.yaml.*
 import sttp.tapir.*
 import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 
-import nl.amony.app.routes.AdminRoutes
+import nl.amony.modules.admin.AdminRoutes
 import nl.amony.modules.auth.{AuthEndpointDefs, AuthEndpointServerLogic}
 import nl.amony.modules.resources.web.ResourceRoutes
 import nl.amony.modules.search.SearchRoutes

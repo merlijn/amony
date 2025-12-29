@@ -2,17 +2,15 @@ package nl.amony.modules.resources
 
 import java.nio.file.Path
 import java.security.MessageDigest
-
 import scala.concurrent.duration.FiniteDuration
 
 import cats.effect.IO
 import pureconfig.*
 import pureconfig.generic.FieldCoproductHint
 import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
-import sqids.Sqids
 
-import nl.amony.modules.resources.util.Base32
-import nl.amony.modules.resources.util.PartialHash.partialHash
+import nl.amony.lib.hash.Base32
+import nl.amony.lib.hash.PartialHash.partialHash
 
 object ResourceConfig {
 

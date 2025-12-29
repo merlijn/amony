@@ -1,7 +1,6 @@
 package nl.amony.modules.resources.database
 
 import java.sql.{Connection, DriverManager}
-
 import scala.util.Using
 
 import cats.data.OptionT

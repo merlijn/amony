@@ -1,7 +1,6 @@
 package nl.amony.modules.resources.local
 
 import java.nio.file.Path
-
 import scala.util.{Failure, Success, Try}
 
 import cats.effect.IO

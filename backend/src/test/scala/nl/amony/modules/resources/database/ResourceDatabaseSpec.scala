@@ -1,7 +1,5 @@
-package nl.amony.service.resources.database
+package nl.amony.modules.resources.database
 
-import java.util.UUID
-import scala.util.Random
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits.*
@@ -13,6 +11,9 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
 import scribe.Logging
+
+import java.util.UUID
+import scala.util.Random
 
 class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with Logging with Matchers {
 

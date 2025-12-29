@@ -2,7 +2,6 @@ package nl.amony.modules.search.solr
 
 import java.nio.file.{Files, Path}
 import java.util.Properties
-
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 

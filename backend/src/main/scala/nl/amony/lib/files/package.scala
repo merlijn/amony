@@ -3,7 +3,6 @@ package nl.amony.lib
 import java.nio.charset.Charset
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
-
 import scala.io.Codec
 
 package object files {
