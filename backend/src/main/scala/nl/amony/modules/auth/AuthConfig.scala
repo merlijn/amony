@@ -29,6 +29,7 @@ case class OauthProvider(
 }
 
 case class AuthConfig(
+  enabled: Boolean,
   jwt: JwtConfig,
   publicUri: Uri,
   secureCookies: Boolean,

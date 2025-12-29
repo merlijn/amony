@@ -1,12 +1,14 @@
 package nl.amony.lib.auth
 
+import cats.effect.IO
+
 import java.time.{Duration, Instant}
 import java.util.UUID
-
 import sttp.model.headers.CookieValueWithMeta
-
 import nl.amony.lib.tapir.AuthCookies
 import nl.amony.modules.auth.*
+import org.http4s.Request
+import org.typelevel.ci.CIStringSyntax
 
 enum SecurityError:
   case Unauthorized
@@ -15,6 +17,15 @@ enum SecurityError:
 class ApiSecurity(authConfig: AuthConfig):
 
   private val decoder: JwtDecoder = authConfig.decoder
+
+  def requireSession(req: Request[IO]): Either[SecurityError, AuthToken] = {
+    val securityInput = SecurityInput(
+      accessToken = req.cookies.find(_.name == "access_token").map(_.content),
+      xsrfCookie  = req.cookies.find(_.name == "XSRF-TOKEN").map(_.content),
+      xXsrfHeader = req.headers.get(ci"X-XSRF-TOKEN").map(_.head.value)
+    )
+    requireSession(securityInput)
+  }
 
   def requireSession(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
     for {

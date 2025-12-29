@@ -45,17 +45,20 @@ object ResourceContentRoutes extends Logging {
 
     HttpRoutes.of[IO] {
 
-      case req @ POST -> Root / "api" / "resources" / bucketId / "upload" => maybeResponse:
+      case req @ POST -> Root / "api" / "resources" / bucketId / "upload" =>
+        maybeResponse:
           for {
             bucket   <- OptionT.fromOption[IO](buckets.get(bucketId))
             resource <- OptionT.liftF(bucket.uploadResource("0", "test", req.body))
             response <- OptionT.liftF(Ok(toDto(resource).asJson))
           } yield response
 
-      case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / "content" => maybeResponse:
+      case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / "content" => 
+        maybeResponse:
           getResource(bucketId, resourceId).semiflatMap((_, resource) => resourceContentsResponse(req, resource))
 
-      case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern => maybeResponse:
+      case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern => 
+        maybeResponse:
           for {
             (bucket, resource) <- getResource(bucketId, resourceId)
             operation          <- OptionT.fromOption(patterns.matchPF.lift(resourcePattern))
