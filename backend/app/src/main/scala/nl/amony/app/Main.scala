@@ -11,7 +11,7 @@ import sttp.tapir.server.http4s.Http4sServerOptions
 import nl.amony.app.routes.{AdminRoutes, WebAppRoutes}
 import nl.amony.lib.auth.ApiSecurity
 import nl.amony.lib.messagebus.EventTopic
-import nl.amony.service.auth.{AuthConfig, AuthEndpointServerLogic, AuthServiceImpl}
+import nl.amony.service.auth.{AuthConfig, AuthEndpointServerLogic, AuthService}
 import nl.amony.service.resources.ResourceConfig
 import nl.amony.service.resources.database.ResourceDatabase
 import nl.amony.service.resources.domain.ResourceEvent
@@ -50,7 +50,7 @@ object Main extends ResourceApp.Forever with ConfigLoader with Logging {
       resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
       authConfig         = loadConfig[AuthConfig]("amony.auth")
       httpBackend       <- HttpClientCatsBackend.resource[IO]()
-      authService        = new AuthServiceImpl(authConfig, httpBackend)
+      authService        = AuthService(authConfig, httpBackend)
       apiSecurity        = ApiSecurity(authConfig)
       routes             = ResourceContentRoutes.apply(resourceBucketMap) <+>
                              AuthEndpointServerLogic.apply(authConfig.publicUri, authService, authConfig, apiSecurity) <+>
