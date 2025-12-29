@@ -53,11 +53,11 @@ object ResourceContentRoutes extends Logging {
             response <- OptionT.liftF(Ok(toDto(resource).asJson))
           } yield response
 
-      case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / "content" => 
+      case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / "content" =>
         maybeResponse:
           getResource(bucketId, resourceId).semiflatMap((_, resource) => resourceContentsResponse(req, resource))
 
-      case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern => 
+      case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern =>
         maybeResponse:
           for {
             (bucket, resource) <- getResource(bucketId, resourceId)

@@ -94,7 +94,13 @@ lazy val buildSolrTarGz = taskKey[Seq[File]]("Creates the solr.tar.gz file")
 lazy val jibWriteDockerTagsFile = taskKey[File]("Creates the version.txt file")
 lazy val generateSpec = taskKey[File]("Generates the OpenAPI specification for the frontend")
 
-val javaDevOpts = Seq("-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true", "-DAMONY_SECURE_COOKIES=false", "-DAMONY_MEDIA_PATH=../../media")
+val javaDevOpts = Seq(
+  "-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true",
+  "-DAMONY_SECURE_COOKIES=false",
+  "-DAMONY_MEDIA_PATH=../media",
+  "-DAMONY_HOME=../media/.amony",
+  "-DAMONY_WEB_CLIENT_PATH=../frontend/dist",
+)
 
 // --- Main project
 
@@ -116,7 +122,7 @@ lazy val amony = project
     run / javaOptions     ++= javaDevOpts,
     outputStrategy         := Some(StdoutOutput),
     
-    Compile / packageBin / mainClass := Some("nl.amony.app.Main"),
+    Compile / packageBin / mainClass := Some("nl.amony.app.App"),
 
     // Jib Docker settings
     jibBaseImage            := "europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/base:latest",
@@ -190,7 +196,7 @@ lazy val amony = project
       val urls = classpath.map(_.toURI.toURL).toArray
       val parentLoader = ClassLoader.getPlatformClassLoader
       val loader = new java.net.URLClassLoader(urls, parentLoader)
-      val cls = loader.loadClass("nl.amony.app.util.GenerateSpec$")
+      val cls = loader.loadClass("nl.amony.GenerateSpec$")
       val module = cls.getField("MODULE$").get(null)
       val method = cls.getMethod("generate", classOf[java.nio.file.Path])
       method.invoke(module, outputPath).asInstanceOf[java.nio.file.Path].toFile

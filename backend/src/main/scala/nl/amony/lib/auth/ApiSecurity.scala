@@ -1,14 +1,15 @@
 package nl.amony.lib.auth
 
-import cats.effect.IO
-
 import java.time.{Duration, Instant}
 import java.util.UUID
-import sttp.model.headers.CookieValueWithMeta
-import nl.amony.lib.tapir.AuthCookies
-import nl.amony.modules.auth.*
+
+import cats.effect.IO
 import org.http4s.Request
 import org.typelevel.ci.CIStringSyntax
+import sttp.model.headers.CookieValueWithMeta
+
+import nl.amony.lib.tapir.AuthCookies
+import nl.amony.modules.auth.*
 
 enum SecurityError:
   case Unauthorized

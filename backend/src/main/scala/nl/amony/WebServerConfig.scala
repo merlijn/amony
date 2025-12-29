@@ -1,9 +1,8 @@
-package nl.amony.app
+package nl.amony
 
 import scala.concurrent.duration.FiniteDuration
 
 import pureconfig.*
-import pureconfig.generic.derivation.default.*
 
 case class WebServerConfig(
   webClientPath: String,

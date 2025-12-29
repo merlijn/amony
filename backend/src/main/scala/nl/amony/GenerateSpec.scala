@@ -1,4 +1,4 @@
-package nl.amony.app.util
+package nl.amony
 
 import java.nio.file.{Files, Path}
 import scala.util.Using

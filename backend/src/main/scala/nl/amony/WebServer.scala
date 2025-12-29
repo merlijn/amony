@@ -1,4 +1,4 @@
-package nl.amony.app
+package nl.amony
 
 import java.security.SecureRandom
 import javax.net.ssl.{KeyManagerFactory, SNIHostName, SSLContext}
@@ -21,9 +21,9 @@ import org.typelevel.log4cats.*
 import org.typelevel.log4cats.slf4j.{Slf4jFactory, Slf4jLogger}
 import scribe.Logging
 
-import nl.amony.app.App.appConfig
 import nl.amony.lib.auth.PemReader
 import nl.amony.modules.resources.web.ResourceDirectives
+import nl.amony.{HttpConfig, HttpsConfig, WebServerConfig}
 
 object WebServer extends Logging {
 
@@ -31,7 +31,7 @@ object WebServer extends Logging {
 
   def run(config: WebServerConfig, apiRoutes: HttpRoutes[IO])(implicit io: IORuntime): Resource[IO, Unit] = {
 
-    val routes = apiRoutes <+> webAppRoutes(appConfig.api)
+    val routes = apiRoutes <+> webAppRoutes(config)
 
     val httpResource = config.http match {
       case Some(httpConfig) if httpConfig.enabled =>
@@ -90,7 +90,10 @@ object WebServer extends Logging {
     val httpApp      = Router("/" -> routes).orNotFound
     val serverLogger = Slf4jLogger.getLoggerFromName[IO]("nl.amony.app.WebServer")
 
-    EmberServerBuilder.default[IO].withHost(Host.fromString(httpConfig.host).get).withPort(Port.fromInt(httpConfig.port).get).withHttpApp(httpApp)
+    EmberServerBuilder.default[IO]
+      .withHost(Host.fromString(httpConfig.host).get)
+      .withPort(Port.fromInt(httpConfig.port).get)
+      .withHttpApp(httpApp)
       .withLogger(serverLogger).withErrorHandler {
         e =>
           logger.warn("Internal server error", e)

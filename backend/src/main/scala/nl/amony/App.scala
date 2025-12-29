@@ -1,4 +1,4 @@
-package nl.amony.app
+package nl.amony
 
 import java.nio.file.Path
 import scala.reflect.ClassTag
@@ -71,12 +71,11 @@ object App extends ResourceApp.Forever with Logging {
                                  .resource(localConfig, resourceDatabase, resourceEventTopic)
                            }.sequence
       resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
-      authConfig         = loadConfig[AuthConfig]("amony.auth")
       httpBackend       <- HttpClientCatsBackend.resource[IO]()
-      authService        = AuthService(authConfig, httpBackend)
-      apiSecurity        = ApiSecurity(authConfig)
+      authService        = AuthService(appConfig.auth, httpBackend)
+      apiSecurity        = ApiSecurity(appConfig.auth)
       apiRoutes          = ResourceContentRoutes.apply(resourceBucketMap) <+>
-                             AuthEndpointServerLogic.apply(authConfig.publicUri, authService, authConfig, apiSecurity) <+>
+                             AuthEndpointServerLogic.apply(authService, appConfig.auth, apiSecurity) <+>
                              AdminRoutes.apply(searchService, resourceBucketMap, apiSecurity) <+>
                              SearchRoutes.apply(searchService, appConfig.search, apiSecurity) <+>
                              ResourceRoutes.apply(resourceBucketMap, apiSecurity)

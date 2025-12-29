@@ -20,7 +20,7 @@ import nl.amony.modules.auth.AuthEndpointDefs.*
 
 object AuthEndpointServerLogic extends Logging {
 
-  def apply(publicUri: Uri, authService: AuthService, authConfig: AuthConfig, apiSecurity: ApiSecurity)(
+  def apply(authService: AuthService, authConfig: AuthConfig, apiSecurity: ApiSecurity)(
     using serverOptions: Http4sServerOptions[IO]
   ): HttpRoutes[IO] = {
 
@@ -53,7 +53,7 @@ object AuthEndpointServerLogic extends Logging {
           params          = Map(
                               "client_id"     -> providerConfig.clientId,
                               "response_type" -> "code",
-                              "redirect_uri"  -> publicUri.addPath("api", "oauth", "callback", providerConfig.name).toString,
+                              "redirect_uri"  -> authConfig.publicUri.addPath("api", "oauth", "callback", providerConfig.name).toString,
                               "scope"         -> providerConfig.scopes.mkString(" "),
                               "state"         -> state
                             )

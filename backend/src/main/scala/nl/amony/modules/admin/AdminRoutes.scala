@@ -16,33 +16,53 @@ import nl.amony.modules.search.domain.SearchService
 object AdminRoutes extends Logging:
 
   val errorOutput: EndpointOutput[SecurityError] = oneOfList(securityErrors)
-
-  val reIndex = endpoint.name("adminReindexBucket").tag("admin").description("Re-index all resources in a bucket.").post
-    .in("api" / "admin" / "reindex").in(query[String]("bucketId").description("The id of the bucket to re-index.")).securityIn(securityInput)
-    .errorOut(errorOutput)
-
-  val refresh = endpoint.name("adminRefreshBucket").tag("admin").description("Refresh all resources in a bucket").post.in("api" / "admin" / "refresh")
-    .in(query[String]("bucketId").description("The id of the bucket to re-index.")).securityIn(securityInput).errorOut(errorOutput)
-
-  val rescanMetaData = endpoint.name("adminRescanMetaData").tag("admin").description("Rescan the metadata of all files in a bucket").post
-    .in("api" / "admin" / "re-scan-metadata").in(query[String]("bucketId").description("The id of the bucket to re-scan.")).securityIn(securityInput)
-    .errorOut(errorOutput)
-
-  val reComputeHashes = endpoint.name("adminReComputeHashes").tag("admin").description("Recompute the hashes of all files in a bucket").post
-    .in("api" / "admin" / "re-compute-hashes").in(query[String]("bucketId").description("The id of the bucket to re-scan.")).securityIn(securityInput)
-    .errorOut(errorOutput)
-
+  
   private case class NdJson() extends CodecFormat {
     override val mediaType: sttp.model.MediaType = sttp.model.MediaType.unsafeParse("application/x-ndjson")
   }
+  
+  val reIndex = 
+    endpoint.tag("admin").name("adminReindexBucket").description("Re-index all resources in a bucket.")
+      .post.in("api" / "admin" / "reindex")
+      .in(query[String]("bucketId").description("The id of the bucket to re-index."))
+      .securityIn(securityInput)
+      .errorOut(errorOutput)
 
-  val exportBucket = endpoint.name("adminExportBucket").tag("admin").description("Export all resources in a bucket").get
-    .in("api" / "admin" / "export" / path[String]("bucketId")).securityIn(securityInput)
-    .out(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson())).errorOut(errorOutput)
+  val refresh = 
+    endpoint.name("adminRefreshBucket").tag("admin").description("Refresh all resources in a bucket")
+      .post.in("api" / "admin" / "refresh")
+      .in(query[String]("bucketId").description("The id of the bucket to re-index."))
+      .securityIn(securityInput)
+      .errorOut(errorOutput)
 
-  val importBucket = endpoint.name("adminImportBucket").tag("admin").description("Import all resources in a bucket").post
-    .in("api" / "admin" / "import" / path[String]("bucketId")).in(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson()))
-    .securityIn(securityInput).errorOut(errorOutput)
+  val rescanMetaData = 
+    endpoint
+      .tag("admin").name("adminRescanMetaData").description("Rescan the metadata of all files in a bucket")
+      .post.in("api" / "admin" / "re-scan-metadata")
+      .in(query[String]("bucketId").description("The id of the bucket to re-scan."))
+      .securityIn(securityInput)
+      .errorOut(errorOutput)
+
+  val reComputeHashes = 
+    endpoint.name("adminReComputeHashes").tag("admin").description("Recompute the hashes of all files in a bucket")
+      .post.in("api" / "admin" / "re-compute-hashes")
+      .in(query[String]("bucketId").description("The id of the bucket to re-scan."))
+      .securityIn(securityInput)
+      .errorOut(errorOutput)
+
+  val exportBucket = 
+    endpoint.name("adminExportBucket").tag("admin").description("Export all resources in a bucket")
+      .get.in("api" / "admin" / "export" / path[String]("bucketId"))
+      .securityIn(securityInput)
+      .out(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson()))
+      .errorOut(errorOutput)
+
+  val importBucket = 
+    endpoint.name("adminImportBucket").tag("admin").description("Import all resources in a bucket")
+      .post.in("api" / "admin" / "import" / path[String]("bucketId"))
+      .in(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson()))
+      .securityIn(securityInput)
+      .errorOut(errorOutput)
 
   val endpoints = List(reIndex, refresh, rescanMetaData, reComputeHashes, exportBucket)
 
