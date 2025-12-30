@@ -1,6 +1,7 @@
 package nl.amony.modules.admin
 
 import cats.effect.IO
+import com.typesafe.config.{Config, ConfigRenderOptions}
 import org.http4s.*
 import scribe.Logging
 import sttp.capabilities.fs2.Fs2Streams
@@ -64,9 +65,16 @@ object AdminRoutes extends Logging:
       .securityIn(securityInput)
       .errorOut(errorOutput)
 
-  val endpoints = List(reIndex, refresh, rescanMetaData, reComputeHashes, exportBucket)
+  val getConfig =
+    endpoint.name("adminGetConfig").tag("admin").description("Get the full application configuration")
+      .get.in("api" / "admin" / "config")
+      .securityIn(securityInput)
+      .out(stringBody)
+      .errorOut(errorOutput)
 
-  def apply(searchService: SearchService, buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity)(
+  val endpoints = List(reIndex, refresh, rescanMetaData, reComputeHashes, exportBucket, getConfig)
+
+  def apply(searchService: SearchService, buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity, config: Config)(
     using serverOptions: Http4sServerOptions[IO]
   ): HttpRoutes[IO] = {
 
@@ -154,6 +162,19 @@ object AdminRoutes extends Logging:
               IO(Right(()))
     )
 
+    val getConfigImpl = getConfig.serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin)).serverLogicSuccess(
+      _ => _ =>
+        IO {
+          val renderOptions = ConfigRenderOptions.defaults()
+            .setOriginComments(false)
+            .setComments(false)
+            .setJson(true)
+            .setFormatted(true)
+          
+          config.root().render(renderOptions)
+        }
+    )
+
     Http4sServerInterpreter[IO](serverOptions)
-      .toRoutes(List(reIndexImpl, refreshImpl, rescanMetaDataImpl, recomputeHashesImpl, exportBucketImpl, importBucketImpl))
+      .toRoutes(List(reIndexImpl, refreshImpl, rescanMetaDataImpl, recomputeHashesImpl, exportBucketImpl, importBucketImpl, getConfigImpl))
   }
