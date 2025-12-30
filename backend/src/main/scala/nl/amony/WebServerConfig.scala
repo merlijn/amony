@@ -1,11 +1,12 @@
 package nl.amony
 
+import java.nio.file.Path
 import scala.concurrent.duration.FiniteDuration
 
 import pureconfig.*
 
 case class WebServerConfig(
-  webClientPath: String,
+  webClientPath: Path,
   requestTimeout: FiniteDuration,
   uploadSizeLimit: Long,
   http: Option[HttpConfig],

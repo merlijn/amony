@@ -1,67 +1,21 @@
 package nl.amony.modules.resources.database
 
-import java.sql.{Connection, DriverManager}
-import scala.util.Using
-
 import cats.data.OptionT
 import cats.effect.{IO, Resource}
 import io.circe.syntax.*
-import liquibase.Liquibase
-import liquibase.database.DatabaseFactory
-import liquibase.database.jvm.JdbcConnection
-import liquibase.resource.ClassLoaderResourceAccessor
-import org.typelevel.otel4s.trace.Tracer.Implicits.noop
 import scribe.Logging
 import skunk.*
-import skunk.circe.codec.all.*
 import skunk.data.{Arr, Completion}
 
-import nl.amony.modules.resources.domain.*
 import nl.amony.modules.resources.domain.ResourceInfo
-
-case class DatabaseConfig(host: String, port: Int, database: String, username: String, poolSize: Int, password: Option[String]) {
-  def getJdbcConnection: IO[Connection] = IO {
-    Class.forName("org.postgresql.Driver")
-    val jdbcUrl = s"jdbc:postgresql://$host:$port/$database"
-    DriverManager.getConnection(jdbcUrl, username, password.getOrElse(null))
-  }
-}
-
-object ResourceDatabase extends Logging:
-
-  def make(config: DatabaseConfig): Resource[IO, ResourceDatabase] = {
-    def runDbMigrations(): IO[Unit] =
-      config.getJdbcConnection.flatMap: connection =>
-        IO.fromTry(Using(connection) {
-          conn =>
-            logger.info("Running database migrations...")
-            val liquibaseDatabase = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(conn));
-            val liquibase         = new Liquibase("db/00-changelog.yaml", new ClassLoaderResourceAccessor(), liquibaseDatabase)
-            liquibase.update()
-        })
-
-    for {
-      pool <- Session.pooled[IO](
-                host     = config.host,
-                port     = config.port,
-                user     = config.username,
-                max      = config.poolSize,
-                database = config.database,
-                password = config.password
-              )
-      _    <- Resource.eval(runDbMigrations())
-    } yield ResourceDatabase(pool)
-  }
 
 class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
 
-  logger.info("ResourceDatabase initialized")
-
   val defaultChunkSize = 128
 
-  def useSession[A](s: Session[IO] => IO[A]): IO[A] = pool.use(s)
+  private def useSession[A](s: Session[IO] => IO[A]): IO[A] = pool.use(s)
 
-  def useTransaction[A](f: (Session[IO], Transaction[IO]) => IO[A]): IO[A] = pool.use(s => s.transaction.use(tx => f(s, tx)))
+  private def useTransaction[A](f: (Session[IO], Transaction[IO]) => IO[A]): IO[A] = pool.use(s => s.transaction.use(tx => f(s, tx)))
 
   // table specific methods
   private[database] object tables {

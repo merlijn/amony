@@ -2,12 +2,19 @@ package nl.amony
 
 import java.nio.file.Path
 import scala.reflect.ClassTag
+import scala.util.Using
 
 import cats.effect.{IO, Resource, ResourceApp}
 import cats.implicits.*
 import com.typesafe.config.{Config, ConfigFactory}
+import liquibase.Liquibase
+import liquibase.database.DatabaseFactory
+import liquibase.database.jvm.JdbcConnection
+import liquibase.resource.ClassLoaderResourceAccessor
+import org.typelevel.otel4s.trace.Tracer.Implicits.noop
 import pureconfig.{ConfigReader, ConfigSource}
 import scribe.{Logger, Logging}
+import skunk.Session
 import sttp.client4.httpclient.cats.HttpClientCatsBackend
 import sttp.tapir.server.http4s.Http4sServerOptions
 
@@ -25,29 +32,42 @@ import nl.amony.modules.search.solr.SolrSearchService
 
 object App extends ResourceApp.Forever with Logging {
 
-  lazy val config: Config =
+  private lazy val config: Config =
     Option(System.getenv().get("AMONY_CONFIG_FILE")) match
       case Some(fileName) =>
         logger.info(s"Loading configuration from file: $fileName")
         ConfigFactory.parseFile(Path.of(fileName).toFile)
       case None           => ConfigFactory.load()
 
-  lazy val appConfig: AppConfig = {
-    val configSource = ConfigSource.fromConfig(config)
-    configSource.at("amony").loadOrThrow[AppConfig]
-  }
+  def makeDatabasePool(config: DatabaseConfig): Resource[IO, Resource[IO, Session[IO]]] = {
+    def runMigrations(): IO[Unit] =
+      config.getJdbcConnection.flatMap: connection =>
+        IO.fromTry(Using(connection) {
+          conn =>
+            logger.info("Running database migrations...")
+            val liquibaseDatabase = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(conn));
+            val liquibase         = new Liquibase("db/00-changelog.yaml", new ClassLoaderResourceAccessor(), liquibaseDatabase)
+            liquibase.update()
+        })
 
-  def loadConfig[T: {ClassTag, ConfigReader}](path: String): T = {
-
-    val configSource = ConfigSource.fromConfig(config.getConfig(path))
-    val configObj    = configSource.loadOrThrow[T]
-
-    configObj
+    for {
+      pool <- Session.pooled[IO](
+                host     = config.host,
+                port     = config.port,
+                user     = config.username,
+                max      = config.poolSize,
+                database = config.database,
+                password = config.password
+              )
+      _    <- Resource.eval(runMigrations())
+    } yield pool
   }
 
   override def run(args: List[String]): Resource[IO, Unit] = {
 
     import cats.effect.unsafe.implicits.global
+
+    val appConfig: AppConfig = ConfigSource.fromConfig(config).at("amony").loadOrThrow[AppConfig]
 
     logger.info("Starting application, app home directory: " + appConfig.amonyHome)
     logger.debug("Configuration: " + appConfig)
@@ -65,8 +85,9 @@ object App extends ResourceApp.Forever with Logging {
       searchService     <- SolrSearchService.resource(appConfig.solr)
       resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
       _                  = resourceEventTopic.followTail(searchService.processEvent)
-      resourceDatabase  <- ResourceDatabase.make(appConfig.database)
-      resourceBuckets   <- appConfig.resources.map {
+      databasePool      <- makeDatabasePool(appConfig.database)
+      resourceDatabase   = ResourceDatabase(databasePool)
+      resourceBuckets   <- appConfig.resourceBuckets.map {
                              case localConfig: ResourceConfig.LocalDirectoryConfig => LocalDirectoryBucket
                                  .resource(localConfig, resourceDatabase, resourceEventTopic)
                            }.sequence

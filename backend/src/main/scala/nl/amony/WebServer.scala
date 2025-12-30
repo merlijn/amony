@@ -103,7 +103,7 @@ object WebServer extends Logging {
 
   def webAppRoutes(config: WebServerConfig) = {
 
-    val basePath          = Path.apply(config.webClientPath)
+    val basePath          = Path.fromNioPath(config.webClientPath)
     val indexFile         = basePath.resolve("index.html")
     val chunkSize         = 32 * 1024
     val assetsCachePeriod = 365.days

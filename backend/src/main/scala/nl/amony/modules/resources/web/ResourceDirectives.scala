@@ -22,7 +22,8 @@ object ResourceDirectives extends Logging {
     val additionalHeaders = Headers(maybeMediaType.map(mediaType => `Content-Type`(mediaType)).toList)
 
     resource match {
-      case resource: ResourceWithRangeSupport => ResourceDirectives.responseWithRangeSupport[IO](
+      case resource: ResourceWithRangeSupport =>
+        ResourceDirectives.responseWithRangeSupport[IO](
           request           = req,
           size              = resource.size,
           additionalHeaders = additionalHeaders,
@@ -52,12 +53,13 @@ object ResourceDirectives extends Logging {
           else Headers.empty
         }
 
-        def responseWithoutCompression() = responseWithRangeSupport(
-          req,
-          fileAttributes.size,
-          mediaTypeHeaders ++ additionalHeaders,
-          (start, end) => Files[F].readRange(path, chunkSize, start, end)
-        )
+        def responseWithoutCompression =
+          responseWithRangeSupport(
+            req,
+            fileAttributes.size,
+            mediaTypeHeaders ++ additionalHeaders,
+            (start, end) => Files[F].readRange(path, chunkSize, start, end)
+          )
 
         def supportsBrEncoding = req.headers.get[`Accept-Encoding`].map(_.values.exists(_.coding == "br")).getOrElse(false)
 
@@ -72,8 +74,8 @@ object ResourceDirectives extends Logging {
                 detectMediaType = false,
                 useCompression  = false
               )
-            case false => responseWithoutCompression()
-        } else responseWithoutCompression()
+            case false => responseWithoutCompression
+        } else responseWithoutCompression
     }
   }
 

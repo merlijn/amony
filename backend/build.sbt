@@ -94,6 +94,8 @@ lazy val buildSolrTarGz = taskKey[Seq[File]]("Creates the solr.tar.gz file")
 lazy val jibWriteDockerTagsFile = taskKey[File]("Creates the version.txt file")
 lazy val generateSpec = taskKey[File]("Generates the OpenAPI specification for the frontend")
 
+addCommandAlias("format", "; scalafmt; test:scalafmt")
+
 val javaDevOpts = Seq(
   "-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true",
   "-DAMONY_SECURE_COOKIES=false",
