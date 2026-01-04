@@ -39,17 +39,17 @@ object App extends ResourceApp.Forever with Logging {
         ConfigFactory.parseFile(Path.of(fileName).toFile)
       case None           => ConfigFactory.load()
 
-  def makeDatabasePool(config: DatabaseConfig): Resource[IO, Resource[IO, Session[IO]]] = {
-    def runMigrations(): IO[Unit] =
-      config.getJdbcConnection.flatMap: connection =>
-        IO.fromTry(Using(connection) {
-          conn =>
-            logger.info("Running database migrations...")
-            val liquibaseDatabase = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(conn));
-            val liquibase         = new Liquibase("db/00-changelog.yaml", new ClassLoaderResourceAccessor(), liquibaseDatabase)
-            liquibase.update()
-        })
+  def runDatabaseMigrations(config: DatabaseConfig): IO[Unit] =
+    config.getJdbcConnection.flatMap: connection =>
+      IO.fromTry(Using(connection) {
+        conn =>
+          logger.info("Running database migrations...")
+          val liquibaseDatabase = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(conn));
+          val liquibase         = new Liquibase("db/00-changelog.yaml", new ClassLoaderResourceAccessor(), liquibaseDatabase)
+          liquibase.update()
+      })
 
+  def makeDatabasePool(config: DatabaseConfig): Resource[IO, Resource[IO, Session[IO]]] = {
     for {
       pool <- Session.pooled[IO](
                 host     = config.host,
@@ -59,7 +59,7 @@ object App extends ResourceApp.Forever with Logging {
                 database = config.database,
                 password = config.password
               )
-      _    <- Resource.eval(runMigrations())
+      _    <- Resource.eval(runDatabaseMigrations(config))
     } yield pool
   }
 
