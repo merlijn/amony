@@ -58,6 +58,16 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       thumbnailTimestamp = Some(nextTimestamp)
     )
 
+  def configForContainer(container: GenericContainer) =
+    DatabaseConfig(
+      host     = container.containerIpAddress,
+      port     = container.mappedPort(5432),
+      database = "test",
+      username = "test",
+      password = Some("test"),
+      poolSize = 3
+    )
+
   "The Database" should {
     "insert a resource row and retrieve it" in {
       withContainers {
@@ -66,14 +76,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
           logger.info(s"Container IP: ${container.containerIpAddress}")
           logger.info(s"Container Port: ${container.mappedPort(5432)}")
 
-          val dbConfig = DatabaseConfig(
-            host     = container.containerIpAddress,
-            port     = container.mappedPort(5432),
-            database = "test",
-            username = "test",
-            password = Some("test"),
-            poolSize = 3
-          )
+          val dbConfig = configForContainer(container)
 
           App.makeDatabasePool(dbConfig).map(ResourceDatabase(_)).use(
             db =>
@@ -81,6 +84,43 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
                 updateUserMetaTest(db) >> db.truncateTables() >>
                 duplicateHashesTest(db) >> db.truncateTables()
           ).unsafeRunSync()
+      }
+    }
+
+    "export DDL schema" in {
+      withContainers {
+        container =>
+
+          logger.info(s"Container IP: ${container.containerIpAddress}")
+          logger.info(s"Container Port: ${container.mappedPort(5432)}")
+
+          val dbConfig = configForContainer(container)
+
+          // Run migrations explicitly
+          App.runDatabaseMigrations(dbConfig).unsafeRunSync()
+
+          // Export schema using pg_dump
+          val outputFile = java.nio.file.Paths.get("target", "test-schema.sql")
+          val pgDumpCommand = List(
+            "docker", "exec", "-i", container.containerId,
+            "pg_dump",
+            "-U", "test",
+            "-d", "test",
+            "--schema-only",
+            "--no-owner",
+            "--no-acl"
+          )
+
+          import scala.sys.process.*
+          val exitCode = pgDumpCommand.#>(outputFile.toFile).!
+
+          exitCode shouldBe 0
+          logger.info(s"Schema DDL exported to: ${outputFile.toAbsolutePath}")
+
+          // Verify the file exists and has content
+          val schemaContent = scala.io.Source.fromFile(outputFile.toFile).mkString
+          schemaContent should not be empty
+          schemaContent should include("CREATE TABLE")
       }
     }
   }
