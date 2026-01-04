@@ -115,12 +115,12 @@ object ResourceRoutes:
         } yield ()).value
     }
 
-    val updateThumbnailTimestampImpl = updateThumbnailTimestamp.serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin)).serverLogic(
-      _ =>
-        (bucketId, resourceId, dto) =>
+    val updateThumbnailTimestampImpl = 
+      updateThumbnailTimestamp.serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin))
+        .serverLogic(_ => (bucketId, resourceId, dto) =>
           getResource(bucketId, resourceId).flatMap((bucket, _) => EitherT.right(bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis)))
             .value
-    )
+        )
 
     val modifyTagsBulkImpl = modifyTagsBulk.serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin)).serverLogic {
       _ => (bucketId, dto) =>

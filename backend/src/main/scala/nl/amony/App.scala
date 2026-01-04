@@ -97,7 +97,7 @@ object App extends ResourceApp.Forever with Logging {
       apiSecurity        = ApiSecurity(appConfig.auth)
       apiRoutes          = ResourceContentRoutes.apply(resourceBucketMap) <+>
                              AuthEndpointServerLogic.apply(authService, appConfig.auth, apiSecurity) <+>
-                             AdminRoutes.apply(searchService, resourceBucketMap, apiSecurity, config) <+>
+                             AdminRoutes.apply(searchService, resourceBucketMap, apiSecurity) <+>
                              SearchRoutes.apply(searchService, appConfig.search, apiSecurity) <+>
                              ResourceRoutes.apply(resourceBucketMap, apiSecurity)
       _                 <- WebServer.run(appConfig.api, apiRoutes)

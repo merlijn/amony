@@ -18,9 +18,8 @@ object AdminRoutes extends Logging:
 
   val errorOutput: EndpointOutput[SecurityError] = oneOfList(securityErrors)
 
-  private case class NdJson() extends CodecFormat {
+  case object NdJson extends CodecFormat:
     override val mediaType: sttp.model.MediaType = sttp.model.MediaType.unsafeParse("application/x-ndjson")
-  }
 
   val reIndex =
     endpoint.tag("admin").name("adminReindexBucket").description("Re-index all resources in a bucket.")
@@ -55,26 +54,19 @@ object AdminRoutes extends Logging:
     endpoint.name("adminExportBucket").tag("admin").description("Export all resources in a bucket")
       .get.in("api" / "admin" / "export" / path[String]("bucketId"))
       .securityIn(securityInput)
-      .out(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson()))
+      .out(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson))
       .errorOut(errorOutput)
 
   val importBucket =
     endpoint.name("adminImportBucket").tag("admin").description("Import all resources in a bucket")
       .post.in("api" / "admin" / "import" / path[String]("bucketId"))
-      .in(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson()))
+      .in(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson))
       .securityIn(securityInput)
       .errorOut(errorOutput)
 
-  val getConfig =
-    endpoint.name("adminGetConfig").tag("admin").description("Get the full application configuration")
-      .get.in("api" / "admin" / "config")
-      .securityIn(securityInput)
-      .out(stringBody)
-      .errorOut(errorOutput)
+  val endpoints = List(reIndex, refresh, rescanMetaData, reComputeHashes, exportBucket)
 
-  val endpoints = List(reIndex, refresh, rescanMetaData, reComputeHashes, exportBucket, getConfig)
-
-  def apply(searchService: SearchService, buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity, config: Config)(
+  def apply(searchService: SearchService, buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity)(
     using serverOptions: Http4sServerOptions[IO]
   ): HttpRoutes[IO] = {
 
@@ -86,24 +78,25 @@ object AdminRoutes extends Logging:
             case Some(bucket) =>
               logger.info(s"Re-indexing all resources in bucket '$bucketId'")
 
-              def deleteBucket()   = searchService.deleteBucket(bucketId)
-              def commit: IO[Unit] = searchService.forceCommit()
-
-              val resourceStream = bucket.getAllResources
-
-              deleteBucket() >> searchService.indexAll(resourceStream)
-                .flatMap(_ => commit >> IO(logger.info(s"Re-indexed all resources in bucket '$bucketId'")))
+              for {
+                _ <- searchService.deleteBucket(bucketId)
+                _ <- searchService.indexAll(bucket.getAllResources)
+                _ <- searchService.forceCommit()
+                _ <- IO(logger.info(s"Re-indexed all resources in bucket '$bucketId'"))
+              } yield ()
     )
 
-    val refreshImpl = refresh.serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin)).serverLogicSuccess(
-      _ =>
-        bucketId =>
-          buckets.get(bucketId) match
-            case Some(bucket: LocalDirectoryBucket) =>
-              logger.info(s"Refreshing resources in bucket '$bucketId'")
-              bucket.refresh() >> IO(logger.info(s"Finished refreshing resources in bucket '$bucketId'"))
-            case _                                  => IO(logger.info(s"Cannot refresh bucket '$bucketId'"))
-    )
+    val refreshImpl =
+      refresh.serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin))
+        .serverLogicSuccess(
+          _ =>
+            bucketId =>
+              buckets.get(bucketId) match
+                case Some(bucket: LocalDirectoryBucket) =>
+                  logger.info(s"Refreshing resources in bucket '$bucketId'")
+                  bucket.refresh() >> IO(logger.info(s"Finished refreshing resources in bucket '$bucketId'"))
+                case _                                  => IO(logger.info(s"Cannot refresh bucket '$bucketId'"))
+        )
 
     val rescanMetaDataImpl = rescanMetaData.serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin)).serverLogicSuccess(
       _ =>
@@ -162,19 +155,6 @@ object AdminRoutes extends Logging:
               IO(Right(()))
     )
 
-    val getConfigImpl = getConfig.serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin)).serverLogicSuccess(
-      _ => _ =>
-        IO {
-          val renderOptions = ConfigRenderOptions.defaults()
-            .setOriginComments(false)
-            .setComments(false)
-            .setJson(true)
-            .setFormatted(true)
-          
-          config.root().render(renderOptions)
-        }
-    )
-
     Http4sServerInterpreter[IO](serverOptions)
-      .toRoutes(List(reIndexImpl, refreshImpl, rescanMetaDataImpl, recomputeHashesImpl, exportBucketImpl, importBucketImpl, getConfigImpl))
+      .toRoutes(List(reIndexImpl, refreshImpl, rescanMetaDataImpl, recomputeHashesImpl, exportBucketImpl, importBucketImpl))
   }

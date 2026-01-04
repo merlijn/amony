@@ -24,7 +24,9 @@ object AuthEndpointServerLogic extends Logging {
     using serverOptions: Http4sServerOptions[IO]
   ): HttpRoutes[IO] = {
 
-    val sessionImpl = sessionEndpoint.serverSecurityLogicPure(apiSecurity.requireSession).serverLogic(auth => _ => IO(Right(auth)))
+    val sessionImpl = sessionEndpoint
+      .serverSecurityLogicPure(i => apiSecurity.requireSession(i, xsrfProtection = false))
+      .serverLogic(auth => _ => IO(Right(auth)))
 
     val loginImpl = loginEndpoint.serverLogic: credentials =>
       authService.authenticate(credentials.username, credentials.password).map:
@@ -36,14 +38,7 @@ object AuthEndpointServerLogic extends Logging {
         case Left(_)               => Left(SecurityError.Unauthorized)
         case Right(authentication) => Right(apiSecurity.createCookies(authentication))
 
-    val logoutImpl = logoutEndpoint.serverLogic {
-      _ =>
-
-        val expiredEmptyCookie = CookieValueWithMeta
-          .unsafeApply("", path = Some("/"), httpOnly = true, secure = authConfig.secureCookies, expires = Some(Instant.ofEpochSecond(0L)))
-
-        IO(Right(AuthCookies(expiredEmptyCookie, expiredEmptyCookie, expiredEmptyCookie)))
-    }
+    val logoutImpl = logoutEndpoint.serverLogicSuccessPure[IO] { _ => apiSecurity.createLogoutCookes }
 
     val oauthLoginLogic = oauth2loginEndpoint.serverLogicPure[IO] {
       provider =>
