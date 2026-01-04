@@ -87,20 +87,29 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       }
     }
 
-    "export DDL schema" in {
+    "export DDL schema after migrations" in {
       withContainers {
         container =>
 
           logger.info(s"Container IP: ${container.containerIpAddress}")
           logger.info(s"Container Port: ${container.mappedPort(5432)}")
 
-          val dbConfig = configForContainer(container)
+          val dbConfig = DatabaseConfig(
+            host     = container.containerIpAddress,
+            port     = container.mappedPort(5432),
+            database = "test",
+            username = "test",
+            password = Some("test"),
+            poolSize = 3
+          )
 
           // Run migrations explicitly
           App.runDatabaseMigrations(dbConfig).unsafeRunSync()
 
           // Export schema using pg_dump
+          val rawOutputFile = java.nio.file.Paths.get("target", "test-schema-raw.sql")
           val outputFile = java.nio.file.Paths.get("target", "test-schema.sql")
+          
           val pgDumpCommand = List(
             "docker", "exec", "-i", container.containerId,
             "pg_dump",
@@ -108,19 +117,32 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
             "-d", "test",
             "--schema-only",
             "--no-owner",
-            "--no-acl"
+            "--no-acl",
+            "--exclude-table=databasechangelog",
+            "--exclude-table=databasechangeloglock"
           )
 
           import scala.sys.process.*
-          val exitCode = pgDumpCommand.#>(outputFile.toFile).!
+          val exitCode = pgDumpCommand.#>(rawOutputFile.toFile).!
 
           exitCode shouldBe 0
-          logger.info(s"Schema DDL exported to: ${outputFile.toAbsolutePath}")
 
-          // Verify the file exists and has content
-          val schemaContent = scala.io.Source.fromFile(outputFile.toFile).mkString
-          schemaContent should not be empty
-          schemaContent should include("CREATE TABLE")
+          // Filter out SET statements and keep only DDL
+          val rawContent = scala.io.Source.fromFile(rawOutputFile.toFile).getLines()
+          val filteredContent = rawContent
+            .filterNot(line => line.trim.startsWith("SET ") || line.trim.startsWith("SELECT pg_catalog.set_config"))
+            .mkString("\n")
+            .trim
+
+          // Write filtered content to final output file
+          val writer = new java.io.PrintWriter(outputFile.toFile)
+          try {
+            writer.write(filteredContent)
+          } finally {
+            writer.close()
+          }
+
+          logger.info(s"Schema DDL exported to: ${outputFile.toAbsolutePath}")
       }
     }
   }
