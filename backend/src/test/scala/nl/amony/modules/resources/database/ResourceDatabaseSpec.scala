@@ -127,12 +127,31 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
           exitCode shouldBe 0
 
-          // Filter out SET statements and keep only DDL
+          // Filter out SET statements, comments, and normalize empty lines
           val rawContent = scala.io.Source.fromFile(rawOutputFile.toFile).getLines()
-          val filteredContent = rawContent
-            .filterNot(line => line.trim.startsWith("SET ") || line.trim.startsWith("SELECT pg_catalog.set_config"))
-            .mkString("\n")
-            .trim
+          val filteredLines = rawContent
+            .filterNot(line => 
+              line.trim.startsWith("SET ") || 
+              line.trim.startsWith("SELECT pg_catalog.set_config") ||
+              line.trim.startsWith("--")
+            )
+            .toList
+
+          // Normalize empty lines: keep only single empty line between constructs
+          val normalizedLines = filteredLines
+            .foldLeft(List.empty[String]) { (acc, line) =>
+              if (line.trim.isEmpty) {
+                // Only add empty line if the previous line was not empty
+                acc.lastOption match {
+                  case Some(last) if last.trim.nonEmpty => acc :+ ""
+                  case _ => acc
+                }
+              } else {
+                acc :+ line
+              }
+            }
+
+          val filteredContent = normalizedLines.mkString("\n").trim
 
           // Write filtered content to final output file
           val writer = new java.io.PrintWriter(outputFile.toFile)
