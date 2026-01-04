@@ -1,5 +1,4 @@
-import React, {CSSProperties, useEffect, useState} from 'react';
-import useResizeObserver from 'use-resize-observer';
+import React, {CSSProperties, useEffect, useState, useRef, useCallback} from 'react';
 import {Constants} from "../api/Constants";
 import {Columns, ResourceSelection} from '../api/Model';
 import './GridView.scss';
@@ -8,6 +7,7 @@ import Preview, {PreviewOptions} from './Preview';
 import InfiniteScroll from './common/InfiniteScroll';
 import {findResources, FindResourcesParams, ResourceDto, SearchResponseDto} from "../api/generated";
 import {resourceSelectionToParams} from "../api/Util";
+import {useResizeObserver} from "../api/ReactUtils";
 
 export type GalleryProps = {
   selection: ResourceSelection

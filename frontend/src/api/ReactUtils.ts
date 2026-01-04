@@ -1,18 +1,7 @@
-import React, {MutableRefObject, useEffect, useRef, useState} from "react";
+import React, {MutableRefObject, useCallback, useEffect, useRef, useState} from "react";
 import _ from "lodash";
 import {useLocation, useNavigate} from "react-router-dom";
 import {buildUrl, copyParams} from "./Util";
-
-export const useStateRef = <T>(value: T): [T, MutableRefObject<T>, ((e: T) => void)] => {
-  const [getState, _setState] = useState<T>(value)
-  const stateRef = React.useRef(getState);
-  const setState = (v: T) => {
-    stateRef.current = v;
-    _setState(v);
-  };
-
-  return [getState, stateRef, setState]
-}
 
 export const useUrlParam = (name: string, defaultValue: string): [string, (v: string ) => any] => {
   const location = useLocation();
@@ -48,7 +37,7 @@ export const useListener = <K extends keyof WindowEventMap>(type: K, listener: (
 }
 
 export const usePrevious = <T>(value: T): T | undefined => {
-  const ref = useRef<T>();
+  const ref = useRef<T>(undefined);
   useEffect(() => { ref.current = value });
   return ref.current;
 };
@@ -70,4 +59,38 @@ export const useStateNeq = <S>(initial: S | (() => S)): [S, (s:S) => void] => {
   }
 
   return [state, updateState]
+}
+
+// Custom hook to observe element resize using native ResizeObserver API
+export function useResizeObserver<T extends HTMLElement>() {
+  const [width, setWidth] = useState<number | undefined>(undefined);
+  const [height, setHeight] = useState<number | undefined>(undefined);
+  const elementRef = useRef<T>(null);
+
+  const ref = useCallback((element: T | null) => {
+    if (element) {
+      elementRef.current = element;
+    }
+  }, []);
+
+  useEffect(() => {
+    const element = elementRef.current;
+    if (!element) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      if (entries[0]) {
+        const { width, height } = entries[0].contentRect;
+        setWidth(width);
+        setHeight(height);
+      }
+    });
+
+    resizeObserver.observe(element);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  return { ref, width, height };
 }
