@@ -35,25 +35,27 @@
 .overlay-button {
   @extend .v-align-center, .hover-pointer;
   font-size: small;
-  padding: $spacing-2 $spacing-3;
-  border: 1px solid $gray-300;
+  padding: $spacing-s $spacing-m;
+  border: 1px solid var(--border-secondary);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .button-green {
   @extend .overlay-button;
   color: white;
-  background-color: $highlight-e;
+  background-color: #45C53FFF;
 }
 
 .button-orange {
   @extend .overlay-button;
-  background-color:$highlight-c;
+  background-color: #FFBA08FF;
 }
 
 .button-blue {
   @extend .overlay-button;
   color: white;
-  background-color:$highlight-a;
+  background-color: #3F88C5FF;
 }
 
 .fragment-picker {

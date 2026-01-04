@@ -14,7 +14,7 @@ $row-height: 36px;
     thead {
       position: sticky;
       top: $page-header-height;
-      background: white;
+      background: var(--bg-primary);
       z-index: 10;
     }
 
@@ -34,7 +34,7 @@ $row-height: 36px;
       white-space: nowrap;
       overflow: hidden;
 
-      border-bottom: 1px solid $gray-200;
+      border-bottom: 1px solid var(--border-secondary);
       padding: 0px 8px;
       height: $row-height;
     }
@@ -49,8 +49,8 @@ $row-height: 36px;
       font-size: 15px;
       font-weight: 500;
       height: 44px;
-      border-bottom: 1px solid $gray-200;
-      background-color: white;
+      border-bottom: 1px solid var(--border-secondary);
+      background-color: var(--bg-primary);
 
       span {
         padding-left: 8px;
@@ -127,9 +127,9 @@ $row-height: 36px;
       .media-actions {
         @extend .hover-action, .v-align-center;
         display: flex;
-        gap: $spacing-2;
-        padding-left: $spacing-3;
-        background-color: $gray-100;
+        gap: $spacing-s;
+        padding-left: $spacing-m;
+        background-color: var(--bg-secondary);
         height: 100%;
 
         .fragments-action {
@@ -147,7 +147,7 @@ $row-height: 36px;
 
       .edit-title {
         @extend .hover-pointer, .action-icon, .hover-action;
-        background-color: $gray-100;
+        background-color: var(--bg-secondary);
         width: 30px;
         right: -8px;
         padding-left: 6px;
@@ -155,7 +155,7 @@ $row-height: 36px;
       }
 
       &:hover {
-        background-color: $gray-100;
+        background-color: var(--bg-secondary);
 
         .hover-action {
           visibility: visible;
@@ -185,14 +185,14 @@ $row-height: 36px;
         text-align: center;
         vertical-align: middle;
         &:hover {
-          background-color: $gray-300;
+          background-color: var(--bg-hover);
           border-radius: 50%;
         }
         input {
           @extend .hover-pointer;
           align-content: center;
           &:hover {
-            background-color: $gray-300;
+            background-color: var(--bg-hover);
           }
         }
       }
@@ -248,7 +248,7 @@ $row-height: 36px;
 
           padding: 6px 10px;
           border-radius: 25px;
-          border: 1px solid $highlight-e;
+          border: 1px solid var(--highlight-e);
         }
       }
 

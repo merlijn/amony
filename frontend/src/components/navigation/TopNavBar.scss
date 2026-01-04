@@ -19,11 +19,11 @@
     justify-content: center;
     width: 100vw;
   
-    background-color: constants.$gray-100;
+    background-color: var(--bg-secondary);
     height: 47px;
   
     @media only screen and (min-width: map.get(constants.$container-max-widths, md)) {
-      background-color: constants.$gray-100;
+      background-color: var(--bg-secondary);
     }
   }
 
@@ -60,10 +60,10 @@
       //background-color: $gray-300;
       border: none;
       border-radius: 3px;
-      color: constants.$gray-800;
+      color: var(--text-secondary);
 
       &:hover {
-        background-color: constants.$gray-300;
+        background-color: var(--bg-hover);
       }
 
       padding: 3px;
@@ -78,18 +78,18 @@
       margin-left: 5px;
 
       .view-selected {
-        background-color: constants.$gray-500 !important;
-        color: rgb(250, 250, 250);
+        background-color: var(--bg-active) !important;
+        color: var(--text-inverse);
       }
 
       .view-button {
         @extend .hover-pointer;
-        background-color: constants.$gray-300;
+        background-color: var(--bg-hover);
         border: none;
         height: 35px;
     
         &:hover {
-          background-color: constants.$gray-400;
+          background-color: var(--bg-active);
         }
       }
 
@@ -136,7 +136,7 @@
           height: 20px;
           margin-top: 8px;
           margin-left: 7px;
-          color: constants.$gray-700;
+          color: var(--text-secondary);
         }
     
         .nav-search-input {
@@ -147,11 +147,13 @@
           outline: none;
           height: 35px !important;
           border-radius: 3px;
-          border: 2px solid constants.$gray-300;
+          border: 2px solid var(--border-secondary);
+          background-color: var(--bg-primary);
+          color: var(--text-primary);
           padding-left: 35px;
           &:focus {
-            border-color: constants.$gray-500;
-            outline: solid constants.$gray-200;
+            border-color: var(--border-primary);
+            outline: solid var(--bg-tertiary);
             outline-width: 3px;
           }
         }
@@ -163,10 +165,10 @@
           height: 24px;
           right: 32px;
           top: 6px;
-          color: rgba(0, 0, 0, 0.6);
+          color: var(--text-tertiary);
 
           &:hover {
-            color: rgba(0, 0, 0, 0.9);
+            color: var(--text-primary);
           }
         }
 
@@ -186,7 +188,7 @@
             height: 25px;
 
             &:hover {
-              background-color: constants.$gray-200;
+              background-color: var(--bg-tertiary);
             }
           }
 
@@ -197,11 +199,11 @@
             z-index: 11 !important;
 
             border-radius: 0px 0px 3px 3px;
-            border: 1px solid constants.$gray-300;
-            border-top: 1px solid constants.$gray-200;
+            border: 1px solid var(--border-secondary);
+            border-top: 1px solid var(--bg-tertiary);
             margin-top: 29px;
             width: 100%;
-            background-color: constants.$gray-100;
+            background-color: var(--bg-secondary);
 
             .filter-container {
               padding: 15px;
@@ -220,7 +222,7 @@
                   font-weight: 500;
                   padding-bottom: 8px;
                   margin-bottom: 12px;
-                  border-bottom: 1px solid constants.$gray-300;
+                  border-bottom: 1px solid var(--border-secondary);
                 }
 
                 .filter-option {
@@ -235,11 +237,11 @@
                   }
 
                   label {
-                    margin-left: constants.$spacing-3;
+                    margin-left: constants.$spacing-m;
                   }
 
                   &:hover {
-                    background-color: constants.$gray-200;
+                    background-color: var(--bg-tertiary);
                   }
                 }
               }

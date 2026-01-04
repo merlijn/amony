@@ -3,7 +3,7 @@
 .bulk-tag-modal {
   display: flex;
   flex-direction: column;
-  gap: $spacing-3;
+  gap: $spacing-m;
   min-width: 360px;
 
   h2 {
@@ -17,19 +17,19 @@
 
   p {
     margin: 0;
-    color: $gray-600;
+    color: var(--text-tertiary);
   }
 }
 
 .bulk-tag-section {
   display: flex;
   flex-direction: column;
-  gap: $spacing-2;
+  gap: $spacing-s;
 
   .bulk-tag-list {
     display: flex;
     flex-direction: column;
-    gap: $spacing-2;
+    gap: $spacing-s;
     max-height: 220px;
     overflow-y: auto;
   }
@@ -37,7 +37,7 @@
   .bulk-tag-item {
     display: flex;
     align-items: center;
-    gap: $spacing-2;
+    gap: $spacing-s;
 
     input[type="checkbox"] {
       width: 16px;
@@ -50,61 +50,63 @@
 
     .bulk-tag-indicator {
       font-size: 12px;
-      color: $gray-500;
+      color: var(--text-muted);
     }
   }
 
   .bulk-tag-empty {
-    color: $gray-600;
+    color: var(--text-tertiary);
     font-style: italic;
   }
 
   .bulk-tag-new {
     display: flex;
-    gap: $spacing-2;
-    margin-top: $spacing-2;
+    gap: $spacing-s;
+    margin-top: $spacing-s;
 
     .bulk-tag-input {
       flex: 1;
       padding: 6px 10px;
       border-radius: 4px;
-      border: 1px solid $gray-400;
+      border: 1px solid var(--border-primary);
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
     }
   }
 }
 
 .bulk-tag-error {
-  color: $highlight-b;
+  color: var(--highlight-b);
   font-size: 14px;
 }
 
 .bulk-tag-actions {
   display: flex;
   justify-content: flex-end;
-  gap: $spacing-3;
+  gap: $spacing-m;
 }
 
 .bulk-tag-button {
   @extend .hover-pointer;
   padding: 6px 12px;
   border-radius: 4px;
-  border: 1px solid $gray-400;
-  background-color: white;
-  color: $gray-700;
+  border: 1px solid var(--border-primary);
+  background-color: var(--bg-primary);
+  color: var(--text-secondary);
 
   &.secondary {
-    background-color: $gray-100;
-    border-color: $gray-400;
+    background-color: var(--bg-secondary);
+    border-color: var(--border-primary);
   }
 
   &.primary {
-    background-color: $highlight-a;
-    border-color: $highlight-a;
-    color: white;
+    background-color: var(--highlight-a);
+    border-color: var(--highlight-a);
+    color: var(--text-inverse);
 
     &:hover {
-      background-color: $secondary-a;
-      border-color: $secondary-a;
+      background-color: var(--secondary-a);
+      border-color: var(--secondary-a);
     }
   }
 

@@ -25,11 +25,9 @@ const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }
   let isVideo = props.resource?.contentType.startsWith("video") || false
   let isImage = props.resource?.contentType.startsWith("image") || false
 
-
   function toVideoMimeType(value?: string): VideoMimeType {
     // Add basic mime type validation
     const mimePattern = /^video\/(mp4|webm|3gp|ogg|avi|mpeg|object)$/;
-
     return value && mimePattern.test(value) ? (value as VideoMimeType) : 'video/mp4';
   }
 
