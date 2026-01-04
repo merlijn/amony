@@ -38,7 +38,7 @@ object AuthEndpointServerLogic extends Logging {
         case Left(_)               => Left(SecurityError.Unauthorized)
         case Right(authentication) => Right(apiSecurity.createCookies(authentication))
 
-    val logoutImpl = logoutEndpoint.serverLogicSuccessPure[IO] { _ => apiSecurity.createLogoutCookes }
+    val logoutImpl = logoutEndpoint.serverLogicSuccessPure[IO](_ => apiSecurity.createLogoutCookes)
 
     val oauthLoginLogic = oauth2loginEndpoint.serverLogicPure[IO] {
       provider =>

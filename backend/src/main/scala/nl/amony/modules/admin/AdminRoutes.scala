@@ -95,7 +95,8 @@ object AdminRoutes extends Logging:
                 case Some(bucket: LocalDirectoryBucket) =>
                   logger.info(s"Refreshing resources in bucket '$bucketId'")
                   bucket.refresh() >> IO(logger.info(s"Finished refreshing resources in bucket '$bucketId'"))
-                case _                                  => IO(logger.info(s"Cannot refresh bucket '$bucketId'"))
+                case _                                  =>
+                  IO(logger.info(s"Cannot refresh bucket '$bucketId'"))
         )
 
     val rescanMetaDataImpl = rescanMetaData.serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin)).serverLogicSuccess(

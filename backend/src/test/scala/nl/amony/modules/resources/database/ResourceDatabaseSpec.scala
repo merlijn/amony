@@ -13,8 +13,9 @@ import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
 import scribe.Logging
 
-import nl.amony.modules.resources.database.{DatabaseConfig, ResourceDatabase}
+import nl.amony.modules.resources.database.ResourceDatabase
 import nl.amony.modules.resources.domain.ResourceInfo
+import nl.amony.{App, DatabaseConfig}
 
 class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with Logging with Matchers {
 
@@ -74,7 +75,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
             poolSize = 3
           )
 
-          ResourceDatabase.make(dbConfig).use(
+          App.makeDatabasePool(dbConfig).map(ResourceDatabase(_)).use(
             db =>
               insertResourcesTest(db) >> db.truncateTables() >>
                 updateUserMetaTest(db) >> db.truncateTables() >>

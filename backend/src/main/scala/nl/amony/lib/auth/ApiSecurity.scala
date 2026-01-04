@@ -71,15 +71,15 @@ class ApiSecurity(authConfig: AuthConfig):
 
     AuthCookies(accessTokenCookie, refreshCookie, xsrfCookie)
   }
-  
+
   def createLogoutCookes = {
     val expiredEmptyCookie =
       CookieValueWithMeta.unsafeApply(
-        value = "",
-        path = Some("/"),
+        value    = "",
+        path     = Some("/"),
         httpOnly = true,
-        secure = authConfig.secureCookies,
-        expires = Some(Instant.ofEpochSecond(0L))
+        secure   = authConfig.secureCookies,
+        expires  = Some(Instant.ofEpochSecond(0L))
       )
 
     AuthCookies(expiredEmptyCookie, expiredEmptyCookie, expiredEmptyCookie)
