@@ -69,7 +69,7 @@ object AdminRoutes extends Logging:
     using serverOptions: Http4sServerOptions[IO]
   ): HttpRoutes[IO] = {
 
-    val reIndexImpl = reIndex.serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin)).serverLogicSuccess(
+    val reIndexImpl = reIndex.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogicSuccess(
       _ =>
         bucketId =>
           buckets.get(bucketId) match
@@ -86,7 +86,7 @@ object AdminRoutes extends Logging:
     )
 
     val refreshImpl =
-      refresh.serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin))
+      refresh.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin))
         .serverLogicSuccess(
           _ =>
             bucketId =>
@@ -98,7 +98,7 @@ object AdminRoutes extends Logging:
                   IO(logger.info(s"Cannot refresh bucket '$bucketId'"))
         )
 
-    val rescanMetaDataImpl = rescanMetaData.serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin)).serverLogicSuccess(
+    val rescanMetaDataImpl = rescanMetaData.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogicSuccess(
       _ =>
         bucketId =>
           buckets.get(bucketId) match
@@ -110,7 +110,7 @@ object AdminRoutes extends Logging:
               IO.unit
     )
 
-    val recomputeHashesImpl = reComputeHashes.serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin)).serverLogicSuccess(
+    val recomputeHashesImpl = reComputeHashes.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogicSuccess(
       _ =>
         bucketId =>
           buckets.get(bucketId) match
@@ -122,7 +122,7 @@ object AdminRoutes extends Logging:
               IO.unit
     )
 
-    val exportBucketImpl = exportBucket.serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin)).serverLogic(
+    val exportBucketImpl = exportBucket.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogic(
       _ =>
         bucketId =>
           buckets.get(bucketId) match

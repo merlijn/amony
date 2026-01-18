@@ -18,7 +18,7 @@ class ApiSecurity(authConfig: AuthConfig):
 
   private val adminToken = AuthToken(
     userId = UserId("admin"),
-    roles  = Set(Roles.Admin)
+    roles  = Set(Role.Admin)
   )
 
   def requireSession(req: Request[IO]): Either[SecurityError, AuthToken] = {

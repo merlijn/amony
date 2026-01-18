@@ -102,7 +102,7 @@ object ResourceRoutes:
     val getResourceByIdImpl = getResourceById.serverSecurityLogicPure(apiSecurity.publicEndpoint)
       .serverLogic(_ => (bucketId, resourceId) => getResource(bucketId, resourceId).map((_, resource) => toDto(resource.info)).value)
 
-    val updateUserMetaDataImpl = updateUserMetaData.serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin)).serverLogic {
+    val updateUserMetaDataImpl = updateUserMetaData.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogic {
       _ => (bucketId, resourceId, userMeta) =>
 
         (for {
@@ -116,7 +116,7 @@ object ResourceRoutes:
     }
 
     val updateThumbnailTimestampImpl =
-      updateThumbnailTimestamp.serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin))
+      updateThumbnailTimestamp.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin))
         .serverLogic(
           _ =>
             (bucketId, resourceId, dto) =>
@@ -126,7 +126,7 @@ object ResourceRoutes:
                 .value
         )
 
-    val modifyTagsBulkImpl = modifyTagsBulk.serverSecurityLogicPure(apiSecurity.requireRole(Roles.Admin)).serverLogic {
+    val modifyTagsBulkImpl = modifyTagsBulk.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogic {
       _ => (bucketId, dto) =>
         val action = for {
           _               <- EitherT.cond[IO](dto.ids.nonEmpty, (), ApiError.BadRequest)
