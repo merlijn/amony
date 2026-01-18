@@ -23,7 +23,7 @@ val tapirVersion    = "1.13.5"
 
 val bouncyCastle = "org.apache.directory.studio" % "org.bouncycastle.bcprov.jdk15" % "140"
 
-val jsoup  = "org.jsoup" % "jsoup" % "1.21.2"
+val jsoup  = "org.jsoup" % "jsoup" % "1.22.1"
 
 val circe                    = "io.circe"                 %% "circe-core"                 % circeVersion
 val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
@@ -59,7 +59,7 @@ val scalaTest                = "org.scalatest"            %% "scalatest"        
 val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
 
 val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.7.4"
-val postgresDriver           = "org.postgresql"            % "postgresql"                 % "42.7.8"
+val postgresDriver           = "org.postgresql"            % "postgresql"                 % "42.7.9"
 
 val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.9"
 val pureConfigGeneric        = "com.github.pureconfig"    %% "pureconfig-generic-scala3"  % "0.17.9"
@@ -72,11 +72,11 @@ val solrLangId               = "org.apache.solr"           % "solr-langid"      
 
 val log4CatsSlf4j            = "org.typelevel"            %% "log4cats-slf4j"             % "2.7.1"
 
-val sttpClientCore                = "com.softwaremill.sttp.client4" %% "core" % "4.0.13"
-val sttpClientCirce                = "com.softwaremill.sttp.client4" %% "circe" % "4.0.13"
-val sttpClientCats                 = "com.softwaremill.sttp.client4" %% "cats" % "4.0.13"
+val sttpClientCore                = "com.softwaremill.sttp.client4" %% "core" % "4.0.14"
+val sttpClientCirce                = "com.softwaremill.sttp.client4" %% "circe" % "4.0.14"
+val sttpClientCats                 = "com.softwaremill.sttp.client4" %% "cats" % "4.0.14"
 
-val apacheCommonsCodec = "commons-codec" % "commons-codec" % "1.15"
+val apacheCommonsCodec = "commons-codec" % "commons-codec" % "1.20.0"
 
 
 val http4sEmberServer = "org.http4s" %% "http4s-ember-server" % http4sVersion
@@ -125,7 +125,7 @@ lazy val amony = project
     run / javaOptions     ++= javaDevOpts,
     outputStrategy         := Some(StdoutOutput),
     
-    Compile / packageBin / mainClass := Some("nl.amony.app.App"),
+    Compile / packageBin / mainClass := Some("nl.amony.App"),
 
     // Jib Docker settings
     jibBaseImage            := "europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/base:latest",

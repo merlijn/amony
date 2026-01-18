@@ -121,7 +121,7 @@ jobs:
         if: |
           steps.git-info.outputs.commit_tag != '' || contains(steps.git-info.outputs.commit_msg, '#push')
         run: |
-          # The app/.docker-tags.txt file is created by the jibWriteDockerTagsFile task in the build.sbt
+          # The .docker-tags.txt file is created by the jibWriteDockerTagsFile task in the build.sbt
           while IFS= read -r tag || [ -n "$tag" ]; do
             docker push $DOCKER_REGISTRY/$PROJECT_ID/$REPOSITORY_PATH/$IMAGE_NAME:$tag
-          done < app/.docker-tags.txt
+          done < .docker-tags.txt

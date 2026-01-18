@@ -2,7 +2,7 @@
 
 # project specific
 /media/
-backend/solr-search/solr/amony_embedded/data/
+backend/.docker-tags.txt
 frontend/src/api/generated
 
 .env
@@ -16,6 +16,7 @@ target/
 .metals/
 /**/metals.sbt
 .vscode/
+
 
 # mac
 /**/.DS_Store
