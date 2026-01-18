@@ -47,8 +47,8 @@ object LocalResourceOperations {
 
     override def createFile(inputFile: Path, outputDir: Path): IO[Path] = {
 
+      logger.info(s"Creating thumbnail for $inputFile with timestamp $timestamp")
       val outputFile = outputDir.resolve(outputFilename)
-      logger.debug(s"Creating thumbnail for $inputFile with timestamp $timestamp")
 
       FFMpeg.createThumbnail(inputFile = inputFile, timestamp = timestamp, outputFile = Some(outputFile), scaleHeight = Some(quality))
         .map(_ => outputFile)

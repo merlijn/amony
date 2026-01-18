@@ -9,7 +9,5 @@ object Role:
   given schema: sttp.tapir.Schema[Role] = sttp.tapir.Schema.string
   given codec: Codec[Role]              = Codec.implied[String]
 
-extension (role: Role) def value: String = role
-
 object Roles:
   val Admin = Role("admin")

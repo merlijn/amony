@@ -102,6 +102,7 @@ val javaDevOpts = Seq(
   "-DAMONY_MEDIA_PATH=../media",
   "-DAMONY_HOME=../media/.amony",
   "-DAMONY_WEB_CLIENT_PATH=../frontend/dist",
+  "-DAMONY_AUTH_ENABLED=false"
 )
 
 // --- Main project

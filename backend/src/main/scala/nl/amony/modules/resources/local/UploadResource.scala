@@ -1,9 +1,11 @@
 package nl.amony.modules.resources.local
 
 import java.security.MessageDigest
+
 import cats.effect.IO
 import fs2.{Chunk, Pipe}
 import scribe.Logging
+
 import nl.amony.lib.files.watcher.FileInfo
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.{ResourceAdded, ResourceBucket, ResourceInfo}

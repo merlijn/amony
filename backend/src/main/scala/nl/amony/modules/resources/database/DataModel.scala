@@ -1,11 +1,12 @@
 package nl.amony.modules.resources.database
 
-import nl.amony.modules.auth.api.UserId
-
 import java.time.{Instant, ZoneOffset}
+
 import skunk.Codec
 import skunk.codec.all.{int4, timestamptz, varchar}
 import skunk.implicits.sql
+
+import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.{ResourceInfo, ResourceMeta}
 
 val instantCodec: Codec[Instant] = timestamptz.imap(_.toInstant)(_.atOffset(ZoneOffset.UTC))

@@ -27,6 +27,5 @@ case class AppConfig(
   auth: AuthConfig,
   api: WebServerConfig,
   search: SearchConfig,
-  solr: SolrConfig,
   database: DatabaseConfig
 ) derives ConfigReader

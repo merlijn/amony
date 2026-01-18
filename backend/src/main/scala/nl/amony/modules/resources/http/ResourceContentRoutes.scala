@@ -1,17 +1,19 @@
 package nl.amony.modules.resources.http
 
 import scala.concurrent.duration.DurationInt
+
 import ResourceDirectives.resourceContentsResponse
 import cats.data.OptionT
 import cats.effect.IO
 import io.circe.syntax.*
-import nl.amony.modules.auth.api.ApiSecurity
 import org.http4s.*
 import org.http4s.CacheDirective.`max-age`
 import org.http4s.circe.given
 import org.http4s.dsl.io.*
 import org.http4s.headers.`Cache-Control`
 import scribe.Logging
+
+import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.api.{ImageThumbnail, Resource, ResourceBucket, ResourceOperation, VideoFragment, VideoThumbnail}
 
@@ -25,7 +27,8 @@ object ResourceContentRoutes extends Logging {
     val resolutions = List(120, 240, 320, 480, 640, 1024, 1920, 2160, 4320)
 
     val matchPF: PartialFunction[String, ResourceOperation] = {
-      case patterns.ThumbnailWithTimestampPattern(timestamp, height) => VideoThumbnail(width = None, height = Some(height.toInt), 23, timestamp.toLong)
+      case patterns.ThumbnailWithTimestampPattern(timestamp, height) =>
+        VideoThumbnail(width = None, height = Some(height.toInt), 23, timestamp.toLong)
       case patterns.ThumbnailPattern(scaleHeight)                    => ImageThumbnail(width = None, height = Some(scaleHeight.toInt), 0)
       case patterns.ClipPattern(start, end, height)                  => VideoFragment(width = None, height = Some(height.toInt), start.toLong, end.toLong, 23)
     }
@@ -47,8 +50,8 @@ object ResourceContentRoutes extends Logging {
       case req @ POST -> Root / "api" / "resources" / bucketId / "upload" =>
         maybeResponse {
           for {
-            session <- OptionT.fromOption[IO](apiSecurity.requireSession(req).toOption)
-            bucket <- OptionT.fromOption[IO](buckets.get(bucketId))
+            session  <- OptionT.fromOption[IO](apiSecurity.requireSession(req).toOption)
+            bucket   <- OptionT.fromOption[IO](buckets.get(bucketId))
             resource <- OptionT.liftF(bucket.uploadResource(session.userId, "test", req.body))
             response <- OptionT.liftF(Ok(toDto(resource).asJson))
           } yield response

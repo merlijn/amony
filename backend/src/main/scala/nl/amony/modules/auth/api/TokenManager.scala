@@ -1,12 +1,13 @@
 package nl.amony.modules.auth.api
 
 import java.time.Instant
+import scala.util.{Failure, Try}
+
 import io.circe
 import io.circe.*
 import pdi.jwt.JwtClaim
-import nl.amony.modules.auth.{JwtAlgorithmConfig, JwtConfig}
 
-import scala.util.{Failure, Try}
+import nl.amony.modules.auth.{JwtAlgorithmConfig, JwtConfig}
 
 case class AuthTokenContent(roles: Set[String]) derives Codec
 

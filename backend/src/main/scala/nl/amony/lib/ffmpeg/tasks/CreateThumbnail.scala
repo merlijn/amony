@@ -18,18 +18,18 @@ trait CreateThumbnail extends Logging {
     val input  = inputFile.absoluteFileName()
     val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.webp")
 
-      // format: off
-      val args = List(
-        "-ss",      formatTime(timestamp),
-        "-i",       input
-      ) ++ scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
-        List(
-          "-quality", "80", // 1 - 31 (best-worst) for jpeg, 1-100 (worst-best) for webp
-          "-vframes", "1",
-          "-v",       "quiet",
-          "-y",       output
-        )
-      // format: on
+    // format: off
+    val args = List(
+      "-ss",      formatTime(timestamp),
+      "-i",       input
+    ) ++ scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
+      List(
+        "-quality", "80", // 1 - 31 (best-worst) for jpeg, 1-100 (worst-best) for webp
+        "-vframes", "1",
+        "-v",       "quiet",
+        "-y",       output
+      )
+    // format: on
 
     runIgnoreOutput("ffmpeg", args)
   }

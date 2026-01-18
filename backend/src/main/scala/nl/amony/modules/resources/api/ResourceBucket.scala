@@ -1,6 +1,7 @@
 package nl.amony.modules.resources.api
 
 import cats.effect.IO
+
 import nl.amony.modules.auth.api.UserId
 
 trait ResourceBucket {

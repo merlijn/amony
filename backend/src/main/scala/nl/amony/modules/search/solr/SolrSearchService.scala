@@ -4,8 +4,8 @@ import java.nio.file.{Files, Path}
 import java.util.Properties
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
 import cats.effect.{IO, Resource}
-import nl.amony.modules.auth.api.UserId
 import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer
 import org.apache.solr.client.solrj.util.ClientUtils
 import org.apache.solr.client.solrj.{SolrClient, SolrQuery}
@@ -13,6 +13,8 @@ import org.apache.solr.common.params.{CommonParams, FacetParams, ModifiableSolrP
 import org.apache.solr.common.{SolrDocument, SolrInputDocument}
 import org.apache.solr.core.CoreContainer
 import scribe.Logging
+
+import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.search.api.SortDirection.Desc
 import nl.amony.modules.search.api.SortField.*
@@ -159,7 +161,7 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
 
     val tags = Option(document.getFieldValues(FieldNames.tags)).map(_.asInstanceOf[java.util.List[String]].asScala).getOrElse(List.empty).toSet
 
-    val maybeUserId = Option(document.getFieldValue(FieldNames.userId)).map(_.asInstanceOf[String])
+    val userId = document.getFieldValue(FieldNames.userId).asInstanceOf[String]
 
     val contentProperties: Option[ContentProperties] = resourceType match {
 
@@ -175,7 +177,7 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
     ResourceInfo(
       bucketId           = bucketId,
       resourceId         = resourceId,
-      userId             = maybeUserId.map(UserId(_)).getOrElse(UserId.anonymous),
+      userId             = UserId(userId),
       path               = path,
       size               = size,
       hash               = hash,

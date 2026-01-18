@@ -30,7 +30,7 @@ class ApiSecurity(authConfig: AuthConfig):
     requireSession(securityInput)
   }
 
-  def requireXsrfProtection(securityInput: SecurityInput): Either[SecurityError, Unit] =
+  private def requireXsrfProtection(securityInput: SecurityInput): Either[SecurityError, Unit] =
     for {
       xsrfToken   <- securityInput.xsrfCookie.toRight(SecurityError.Unauthorized)
       xXsrfHeader <- securityInput.xXsrfHeader.toRight(SecurityError.Unauthorized)

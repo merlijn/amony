@@ -84,7 +84,7 @@ object App extends ResourceApp.Forever with Logging {
       databasePool      <- makeDatabasePool(appConfig.database)
       httpClientBackend <- HttpClientCatsBackend.resource[IO]()
       resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
-      searchService     <- SolrSearchService.resource(appConfig.solr)
+      searchService     <- SolrSearchService.resource(appConfig.search.solr)
       _                  = resourceEventTopic.followTail(searchService.processEvent)
       resourceDatabase   = ResourceDatabase(databasePool)
       resourceBuckets   <- appConfig.resources.buckets.map {

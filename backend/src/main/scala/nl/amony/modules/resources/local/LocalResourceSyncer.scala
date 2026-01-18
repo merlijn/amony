@@ -2,9 +2,11 @@ package nl.amony.modules.resources.local
 
 import java.nio.file.Path
 import java.time.Instant
+
 import cats.effect.IO
 import fs2.Stream
 import fs2.concurrent.SignallingRef
+
 import nl.amony.lib.files.watcher.*
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*

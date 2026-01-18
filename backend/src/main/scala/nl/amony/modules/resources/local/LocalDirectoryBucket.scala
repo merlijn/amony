@@ -4,8 +4,8 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path as JPath}
 import java.util.concurrent.ConcurrentHashMap
 
-import LocalResourceOperations.*
 import cats.effect.IO
+import cats.effect.kernel.Outcome.{Canceled, Errored, Succeeded}
 import cats.effect.unsafe.IORuntime
 import cats.implicits.*
 import scribe.Logging
@@ -15,17 +15,8 @@ import nl.amony.lib.messagebus.EventTopic
 import nl.amony.modules.resources.*
 import nl.amony.modules.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.modules.resources.api.*
-import nl.amony.modules.resources.api.{
-  LocalFile,
-  Resource,
-  ResourceBucket,
-  ResourceDeleted,
-  ResourceEvent,
-  ResourceInfo,
-  ResourceOperation,
-  ResourceUpdated
-}
-import nl.amony.modules.resources.database.{Queries, ResourceDatabase}
+import nl.amony.modules.resources.database.ResourceDatabase
+import nl.amony.modules.resources.local.LocalResourceOperations.*
 
 trait LocalDirectoryDependencies(val config: LocalDirectoryConfig, val db: ResourceDatabase, val topic: EventTopic[ResourceEvent])
 
@@ -110,14 +101,31 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
 
     if Files.exists(outputFile) then IO.pure(Resource.fromPathMaybe(outputFile, derivedResourceInfo))
     else {
+      logger.info(s"Creating derived resource for operation $operation from resource ${inputResource.resourceId}")
 
       /**
        * This is not ideal, there is still a small time window in which the operation can be triggered multiple times, although it is very unlikely to happen
        * TODO Create a full proof solution using a MapRef from cats
        */
+      def cleanup: IO[Unit] = IO(runningOperations.remove(operation))
+
       runningOperations
         .compute(operation, (_, value) => createResource(config.resourcePath.resolve(inputResource.path), inputResource, config.cachePath, operation))
-        .map(path => Resource.fromPathMaybe(path, derivedResourceInfo)).flatTap(_ => IO(runningOperations.remove(operation)))
+        .map {
+          path =>
+            logger.info(s"- Derived resource created at $path for operation $operation from resource ${inputResource.resourceId}")
+            Resource.fromPathMaybe(path, derivedResourceInfo)
+        }.guaranteeCase {
+          case Errored(e)   =>
+            logger.warn(s"Operation failed: $operation for resource ${inputResource.resourceId}: $e")
+            cleanup
+          case Succeeded(_) =>
+            logger.trace(s"Operation succeeded: $operation for resource ${inputResource.resourceId}")
+            cleanup
+          case Canceled()   =>
+            logger.warn(s"Operation cancelled: $operation for resource ${inputResource.resourceId}")
+            cleanup
+        }
     }
   }
 

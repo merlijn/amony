@@ -11,4 +11,4 @@ object UserId:
   val anonymous = UserId("anonymous")
 
   given schema: sttp.tapir.Schema[UserId] = sttp.tapir.Schema.string
-  given codec: Codec[UserId] = Codec.implied[String]
+  given codec: Codec[UserId]              = Codec.implied[String]
