@@ -6,7 +6,7 @@ import skunk.Codec
 import skunk.codec.all.{int4, timestamptz, varchar}
 import skunk.implicits.sql
 
-import nl.amony.modules.resources.domain.{ResourceInfo, ResourceMeta}
+import nl.amony.modules.resources.api.{ResourceInfo, ResourceMeta}
 
 val instantCodec: Codec[Instant] = timestamptz.imap(_.toInstant)(_.atOffset(ZoneOffset.UTC))
 

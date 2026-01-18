@@ -1,18 +1,17 @@
 package nl.amony.modules.admin
 
 import cats.effect.IO
-import com.typesafe.config.{Config, ConfigRenderOptions}
 import org.http4s.*
 import scribe.Logging
 import sttp.capabilities.fs2.Fs2Streams
 import sttp.tapir.*
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 
-import nl.amony.lib.auth.*
-import nl.amony.modules.resources.domain.{Resource, ResourceBucket, ResourceInfo}
+import nl.amony.modules.auth.api.*
+import nl.amony.modules.resources.api.{ResourceBucket, ResourceInfo}
+import nl.amony.modules.resources.http.{ResourceDto, oneOfList, toDto}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
-import nl.amony.modules.resources.web.{ResourceDto, oneOfList, toDto}
-import nl.amony.modules.search.domain.SearchService
+import nl.amony.modules.search.api.SearchService
 
 object AdminRoutes extends Logging:
 

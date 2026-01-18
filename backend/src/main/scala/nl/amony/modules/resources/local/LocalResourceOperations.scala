@@ -8,8 +8,8 @@ import scribe.Logging
 import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.magick.ImageMagick
 import nl.amony.modules.resources.*
-import nl.amony.modules.resources.domain.*
-import nl.amony.modules.resources.domain.{ImageThumbnail, ResourceInfo, ResourceOperation, VideoFragment, VideoProperties, VideoThumbnail}
+import nl.amony.modules.resources.api.*
+import nl.amony.modules.resources.api.{ImageThumbnail, ResourceInfo, ResourceOperation, VideoFragment, VideoProperties, VideoThumbnail}
 
 object LocalResourceOperations {
 

@@ -12,6 +12,8 @@ import pureconfig.generic.FieldCoproductHint
 import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
 import sttp.model.Uri
 
+import nl.amony.modules.auth.api.JwtDecoder
+
 given ConfigReader[Uri] = ConfigReader.fromString[Uri](str => Uri.parse(str).left.map(err => CannotConvert(str, "Uri", err)))
 
 case class OauthProvider(

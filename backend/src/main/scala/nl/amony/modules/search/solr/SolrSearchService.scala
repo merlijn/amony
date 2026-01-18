@@ -5,7 +5,6 @@ import java.util.Properties
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
-import SolrSearchService.*
 import cats.effect.{IO, Resource}
 import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer
 import org.apache.solr.client.solrj.util.ClientUtils
@@ -13,26 +12,13 @@ import org.apache.solr.client.solrj.{SolrClient, SolrQuery}
 import org.apache.solr.common.params.{CommonParams, FacetParams, ModifiableSolrParams}
 import org.apache.solr.common.{SolrDocument, SolrInputDocument}
 import org.apache.solr.core.CoreContainer
-import scribe.{Level, Logging}
+import scribe.Logging
 
-import nl.amony.modules.resources.domain.*
-import nl.amony.modules.resources.domain.{
-  ContentProperties,
-  ImageProperties,
-  ResourceAdded,
-  ResourceDeleted,
-  ResourceEvent,
-  ResourceFileMetaChanged,
-  ResourceInfo,
-  ResourceMeta,
-  ResourceMoved,
-  ResourceUpdated,
-  VideoProperties
-}
-import nl.amony.modules.search.domain.*
-import nl.amony.modules.search.domain.SortDirection.Desc
-import nl.amony.modules.search.domain.SortField.*
-import nl.amony.modules.search.domain.{Query, SearchResult, SearchService, SortOption}
+import nl.amony.modules.resources.api.*
+import nl.amony.modules.search.api.SortDirection.Desc
+import nl.amony.modules.search.api.SortField.*
+import nl.amony.modules.search.api.{Query, SearchResult, SearchService, SortOption}
+import nl.amony.modules.search.solr.SolrSearchService.*
 
 object SolrSearchService {
 

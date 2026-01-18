@@ -13,8 +13,8 @@ import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
 import scribe.Logging
 
+import nl.amony.modules.resources.api.ResourceInfo
 import nl.amony.modules.resources.database.ResourceDatabase
-import nl.amony.modules.resources.domain.ResourceInfo
 import nl.amony.{App, DatabaseConfig}
 
 class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with Logging with Matchers {
@@ -108,13 +108,18 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
           // Export schema using pg_dump
           val rawOutputFile = java.nio.file.Paths.get("target", "test-schema-raw.sql")
-          val outputFile = java.nio.file.Paths.get("target", "test-schema.sql")
-          
+          val outputFile    = java.nio.file.Paths.get("target", "test-schema.sql")
+
           val pgDumpCommand = List(
-            "docker", "exec", "-i", container.containerId,
+            "docker",
+            "exec",
+            "-i",
+            container.containerId,
             "pg_dump",
-            "-U", "test",
-            "-d", "test",
+            "-U",
+            "test",
+            "-d",
+            "test",
             "--schema-only",
             "--no-owner",
             "--no-acl",
@@ -128,38 +133,39 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
           exitCode shouldBe 0
 
           // Filter out SET statements, comments, and normalize empty lines
-          val rawContent = scala.io.Source.fromFile(rawOutputFile.toFile).getLines()
+          val rawContent    = scala.io.Source.fromFile(rawOutputFile.toFile).getLines()
           val filteredLines = rawContent
-            .filterNot(line => 
-              line.trim.startsWith("SET ") || 
-              line.trim.startsWith("SELECT pg_catalog.set_config") ||
-              line.trim.startsWith("--")
+            .filterNot(
+              line =>
+                line.trim.startsWith("SET ") ||
+                  line.trim.startsWith("SELECT pg_catalog.set_config") ||
+                  line.trim.startsWith("--")
             )
             .toList
 
           // Normalize empty lines: keep only single empty line between constructs
           val normalizedLines = filteredLines
-            .foldLeft(List.empty[String]) { (acc, line) =>
-              if (line.trim.isEmpty) {
-                // Only add empty line if the previous line was not empty
-                acc.lastOption match {
-                  case Some(last) if last.trim.nonEmpty => acc :+ ""
-                  case _ => acc
+            .foldLeft(List.empty[String]) {
+              (acc, line) =>
+                if line.trim.isEmpty then {
+                  // Only add empty line if the previous line was not empty
+                  acc.lastOption match {
+                    case Some(last) if last.trim.nonEmpty => acc :+ ""
+                    case _                                => acc
+                  }
+                } else {
+                  acc :+ line
                 }
-              } else {
-                acc :+ line
-              }
             }
 
           val filteredContent = normalizedLines.mkString("\n").trim
 
           // Write filtered content to final output file
           val writer = new java.io.PrintWriter(outputFile.toFile)
-          try {
+          try
             writer.write(filteredContent)
-          } finally {
+          finally
             writer.close()
-          }
 
           logger.info(s"Schema DDL exported to: ${outputFile.toAbsolutePath}")
       }

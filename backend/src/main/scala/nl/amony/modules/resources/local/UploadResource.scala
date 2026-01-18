@@ -7,7 +7,7 @@ import fs2.{Chunk, Pipe}
 import scribe.Logging
 
 import nl.amony.lib.files.watcher.FileInfo
-import nl.amony.modules.resources.domain.{ResourceAdded, ResourceBucket, ResourceInfo}
+import nl.amony.modules.resources.api.{ResourceAdded, ResourceBucket, ResourceInfo}
 
 trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
 

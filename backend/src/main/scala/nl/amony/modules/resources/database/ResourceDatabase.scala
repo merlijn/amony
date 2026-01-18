@@ -7,7 +7,7 @@ import scribe.Logging
 import skunk.*
 import skunk.data.{Arr, Completion}
 
-import nl.amony.modules.resources.domain.ResourceInfo
+import nl.amony.modules.resources.api.ResourceInfo
 
 class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
 
@@ -72,19 +72,8 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
     }
   }
 
-  def insertResource(resource: ResourceInfo): IO[Unit] =
-    useTransaction: (s, tx) =>
-      for {
-        _ <- tables.resources.insert(s, ResourceRow.fromResource(resource))
-        _ <- updateTagsForResource(s, resource.bucketId, resource.resourceId, resource.tags.toList)
-      } yield ()
-
-  def upsert(resource: ResourceInfo): IO[Unit] =
-    useTransaction: (s, tx) =>
-      for {
-        _ <- tables.resources.upsert(s, ResourceRow.fromResource(resource))
-        _ <- updateTagsForResource(s, resource.bucketId, resource.resourceId, resource.tags.toList)
-      } yield ()
+  private def toResource(resourceRow: ResourceRow, tagLabels: Option[Arr[String]]): ResourceInfo =
+    resourceRow.toResource(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty))
 
   private def updateTagsForResource(s: Session[IO], bucketId: String, resourceId: String, tagLabels: List[String]) =
     for {
@@ -98,15 +87,32 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
       _ <- updateTagsForResource(s, resource.bucketId, resource.resourceId, resource.tags.toList)
     } yield ()
 
+  private[resources] def truncateTables(): IO[Unit] =
+    useTransaction: (s, tx) =>
+      for {
+        _ <- s.execute(Queries.tags.truncateCascade)
+        _ <- s.execute(Queries.resource_tags.truncateCascade)
+        _ <- s.execute(Queries.resources.truncateCascade)
+      } yield ()
+
   def getAll(bucketId: String): IO[List[ResourceInfo]] = getStream(bucketId).compile.toList
 
-  private def toResource(resourceRow: ResourceRow, tagLabels: Option[Arr[String]]): ResourceInfo =
-    resourceRow.toResource(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty))
+  def insertResource(resource: ResourceInfo): IO[Unit] =
+    useTransaction: (s, tx) =>
+      for {
+        _ <- tables.resources.insert(s, ResourceRow.fromResource(resource))
+        _ <- updateTagsForResource(s, resource.bucketId, resource.resourceId, resource.tags.toList)
+      } yield ()
 
-  def getStream(bucketId: String): fs2.Stream[IO, ResourceInfo] = fs2.Stream.force(
-    useSession: s =>
-      s.prepare(Queries.resources.allJoined).map(_.stream(bucketId, defaultChunkSize).map(toResource))
-  )
+  def upsert(resource: ResourceInfo): IO[Unit] =
+    useTransaction: (s, tx) =>
+      updateResourceWithTags(s, resource)
+
+  def getStream(bucketId: String): fs2.Stream[IO, ResourceInfo] =
+    fs2.Stream.force(
+      useSession: s =>
+        s.prepare(Queries.resources.allJoined).map(_.stream(bucketId, defaultChunkSize).map(toResource))
+    )
 
   def getById(bucketId: String, resourceId: String): IO[Option[ResourceInfo]] =
     useSession: s =>
@@ -130,14 +136,15 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
     title: Option[String],
     description: Option[String],
     tagLabels: List[String]
-  ): IO[Option[ResourceInfo]] = useTransaction: (s, tx) =>
-    getById(bucketId, resourceId).flatMap:
-      case None           => IO.pure(None)
-      case Some(resource) =>
-        val updatedResource = resource.copy(title = title, description = description, tags = tagLabels.toSet)
-        updateResourceWithTags(s, updatedResource) >> IO.pure(Some(updatedResource))
+  ): IO[Option[ResourceInfo]] =
+    useTransaction: (s, tx) =>
+      getById(bucketId, resourceId).flatMap:
+        case None           => IO.pure(None)
+        case Some(resource) =>
+          val updatedResource = resource.copy(title = title, description = description, tags = tagLabels.toSet)
+          updateResourceWithTags(s, updatedResource) >> IO.pure(Some(updatedResource))
 
-  def modifyTags(bucketId: String, resourceId: String, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Option[ResourceInfo]] = {
+  def modifyTags(bucketId: String, resourceId: String, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Option[ResourceInfo]] =
     useTransaction: (s, tx) =>
       getById(bucketId, resourceId).flatMap:
         case None           => IO.pure(None)
@@ -145,7 +152,6 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
           val updatedTags     = ((resource.tags ++ tagsToAdd) -- tagsToRemove).toList
           val updatedResource = resource.copy(tags = updatedTags.toSet)
           updateResourceWithTags(s, updatedResource) >> IO.pure(Some(updatedResource))
-  }
 
   def move(bucketId: String, resourceId: String, newPath: String): IO[Unit] =
     useSession: s =>
@@ -158,12 +164,4 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
       for {
         _ <- tables.resource_tags.delete(s, bucketId, resourceId)
         _ <- tables.resources.delete(s, bucketId, resourceId)
-      } yield ()
-
-  private[resources] def truncateTables(): IO[Unit] =
-    useTransaction: (s, tx) =>
-      for {
-        _ <- s.execute(Queries.tags.truncateCascade)
-        _ <- s.execute(Queries.resource_tags.truncateCascade)
-        _ <- s.execute(Queries.resources.truncateCascade)
       } yield ()

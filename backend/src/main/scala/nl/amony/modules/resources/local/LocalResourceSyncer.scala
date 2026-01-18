@@ -8,8 +8,8 @@ import fs2.Stream
 import fs2.concurrent.SignallingRef
 
 import nl.amony.lib.files.watcher.*
-import nl.amony.modules.resources.domain.*
-import nl.amony.modules.resources.domain.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceFileMetaChanged, ResourceInfo, ResourceMoved}
+import nl.amony.modules.resources.api.*
+import nl.amony.modules.resources.api.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceFileMetaChanged, ResourceInfo, ResourceMoved}
 
 /**
  * Functionality to synchronize a local directory with the database state.

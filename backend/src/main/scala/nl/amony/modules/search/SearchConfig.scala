@@ -1,3 +1,9 @@
 package nl.amony.modules.search
 
-case class SearchConfig(defaultNumberOfResults: Int, maximumNumberOfResults: Int)
+import nl.amony.modules.search.solr.SolrConfig
+
+case class SearchConfig(
+  defaultNumberOfResults: Int,
+  maximumNumberOfResults: Int,
+  solr: SolrConfig
+)

@@ -21,8 +21,8 @@ import org.typelevel.log4cats.*
 import org.typelevel.log4cats.slf4j.{Slf4jFactory, Slf4jLogger}
 import scribe.Logging
 
-import nl.amony.lib.auth.PemReader
-import nl.amony.modules.resources.web.ResourceDirectives
+import nl.amony.modules.auth.api.PemReader
+import nl.amony.modules.resources.http.ResourceDirectives
 import nl.amony.{HttpConfig, HttpsConfig, WebServerConfig}
 
 object WebServer extends Logging {
