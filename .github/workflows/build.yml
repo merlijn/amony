@@ -99,7 +99,7 @@ jobs:
         id: git-info
         run: |
           echo "-- jib docker image tags --"
-          cat app/.docker-tags.txt
+          cat .docker-tags.txt
           echo "\n-- git tags --"
           git --no-pager tag --list
           echo "\n--"

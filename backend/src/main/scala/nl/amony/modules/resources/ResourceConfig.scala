@@ -3,6 +3,7 @@ package nl.amony.modules.resources
 import java.nio.file.Path
 import java.security.MessageDigest
 import scala.concurrent.duration.FiniteDuration
+import scala.language.adhocExtensions
 
 import cats.effect.IO
 import pureconfig.*
@@ -21,8 +22,9 @@ object ResourceConfig {
   sealed trait ResourceBucketConfig
 
   object ResourceBucketConfig:
-    given FieldCoproductHint[ResourceBucketConfig] = new FieldCoproductHint[ResourceBucketConfig]("type"):
-      override def fieldValue(name: String) = name.dropRight("Config".length)
+    given FieldCoproductHint[ResourceBucketConfig] =
+      new FieldCoproductHint[ResourceBucketConfig]("type"):
+        override def fieldValue(name: String) = name.dropRight("Config".length)
 
     given ConfigReader[ResourceBucketConfig] = deriveReader
 

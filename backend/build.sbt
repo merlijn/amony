@@ -115,7 +115,6 @@ lazy val amony = project
     scalaVersion := "3.7.4",
     scalacOptions := Seq(
       "-rewrite",
-      "-source", "3.7-migration",
       "-source", "future",
       "-encoding", "utf-8"),
     
