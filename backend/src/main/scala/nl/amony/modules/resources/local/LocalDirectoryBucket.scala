@@ -4,9 +4,9 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path as JPath}
 import java.util.concurrent.ConcurrentHashMap
 
-import cats.effect.IO
-import cats.effect.kernel.Outcome.{Canceled, Errored, Succeeded}
+import cats.effect.std.MapRef
 import cats.effect.unsafe.IORuntime
+import cats.effect.{Deferred, IO}
 import cats.implicits.*
 import scribe.Logging
 
@@ -40,6 +40,11 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
 
   private val runningOperations = new ConcurrentHashMap[LocalResourceOp, IO[JPath]]()
 
+  private val mapRefOps: MapRef[IO, LocalResourceOp, Option[Deferred[IO, Either[Throwable, JPath]]]] =
+    MapRef.fromConcurrentHashMap[IO, LocalResourceOp, Deferred[IO, Either[Throwable, JPath]]](
+      new ConcurrentHashMap[LocalResourceOp, Deferred[IO, Either[Throwable, JPath]]]()
+    )
+
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getById(config.id, resourceId)
 
   override def id: String = config.id
@@ -52,9 +57,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
           logger.warn(s"Failed to scan metadata for $resourcePath")
           IO.unit
         case Some((contentType, meta)) =>
-
           logger.info(s"Updating metadata for $resourcePath")
-
           val updated = resource.copy(
             contentType = Some(contentType),
             contentMeta = Some(meta)
@@ -90,42 +93,30 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
 
   override def getOrCreate(resourceId: String, operation: ResourceOperation): IO[Option[Resource]] = getResourceInfo(resourceId).flatMap:
     case None           => IO.pure(None)
-    case Some(fileInfo) => derivedResource(fileInfo, LocalResourceOp(resourceId, operation))
+    case Some(fileInfo) => cachedResourceOperation(fileInfo, LocalResourceOp(resourceId, operation))
 
-  private def derivedResource(inputResource: ResourceInfo, operation: LocalResourceOp): IO[Option[LocalFile]] = {
-
-    val outputFile = config.cachePath.resolve(operation.outputFilename)
-
+  private[local] def cachedResourceOperation(inputResource: ResourceInfo, operation: LocalResourceOp): IO[Option[LocalFile]] = {
+    val outputFile          = config.cachePath.resolve(operation.outputFilename)
     val derivedResourceInfo = inputResource
       .copy(path = outputFile.getFileName.toString, contentType = Some(operation.contentType), contentMeta = None)
 
     if Files.exists(outputFile) then IO.pure(Resource.fromPathMaybe(outputFile, derivedResourceInfo))
     else {
-      logger.info(s"Creating derived resource for operation $operation from resource ${inputResource.resourceId}")
 
-      /**
-       * This is not ideal, there is still a small time window in which the operation can be triggered multiple times, although it is very unlikely to happen
-       * TODO Create a full proof solution using a MapRef from cats
-       */
-      def cleanup: IO[Unit] = IO(runningOperations.remove(operation))
+      def runOperation(deferred: Deferred[IO, Either[Throwable, JPath]]): IO[JPath] =
+        createResource(config.resourcePath.resolve(inputResource.path), inputResource, config.cachePath, operation)
+          .attempt
+          .flatTap(result => deferred.complete(result))
+          .flatTap(_ => mapRefOps(operation).set(None))
+          .rethrow
 
-      runningOperations
-        .compute(operation, (_, value) => createResource(config.resourcePath.resolve(inputResource.path), inputResource, config.cachePath, operation))
-        .map {
-          path =>
-            logger.info(s"- Derived resource created at $path for operation $operation from resource ${inputResource.resourceId}")
-            Resource.fromPathMaybe(path, derivedResourceInfo)
-        }.guaranteeCase {
-          case Errored(e)   =>
-            logger.warn(s"Operation failed: $operation for resource ${inputResource.resourceId}: $e")
-            cleanup
-          case Succeeded(_) =>
-            logger.trace(s"Operation succeeded: $operation for resource ${inputResource.resourceId}")
-            cleanup
-          case Canceled()   =>
-            logger.warn(s"Operation cancelled: $operation for resource ${inputResource.resourceId}")
-            cleanup
-        }
+      Deferred[IO, Either[Throwable, JPath]].flatMap {
+        newDeferred =>
+          mapRefOps(operation).modify {
+            case Some(existing) => (Some(existing), existing.get.rethrow)
+            case None           => (Some(newDeferred), runOperation(newDeferred))
+          }
+      }.flatten.map(path => Resource.fromPathMaybe(path, derivedResourceInfo))
     }
   }
 

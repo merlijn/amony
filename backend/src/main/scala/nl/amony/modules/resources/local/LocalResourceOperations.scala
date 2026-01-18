@@ -9,7 +9,6 @@ import nl.amony.lib.ffmpeg.FFMpeg
 import nl.amony.lib.magick.ImageMagick
 import nl.amony.modules.resources.*
 import nl.amony.modules.resources.api.*
-import nl.amony.modules.resources.api.{ImageThumbnail, ResourceInfo, ResourceOperation, VideoFragment, VideoProperties, VideoThumbnail}
 
 object LocalResourceOperations {
 
@@ -47,7 +46,7 @@ object LocalResourceOperations {
 
     override def createFile(inputFile: Path, outputDir: Path): IO[Path] = {
 
-      logger.info(s"Creating thumbnail for $inputFile with timestamp $timestamp")
+      logger.debug(s"Creating thumbnail for $inputFile at timestamp $timestamp")
       val outputFile = outputDir.resolve(outputFilename)
 
       FFMpeg.createThumbnail(inputFile = inputFile, timestamp = timestamp, outputFile = Some(outputFile), scaleHeight = Some(quality))

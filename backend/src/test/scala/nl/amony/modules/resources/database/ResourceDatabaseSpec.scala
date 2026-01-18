@@ -13,6 +13,7 @@ import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
 import scribe.Logging
 
+import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.ResourceInfo
 import nl.amony.modules.resources.database.ResourceDatabase
 import nl.amony.{App, DatabaseConfig}
@@ -43,7 +44,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
     ResourceInfo(
       bucketId           = UUID.randomUUID().toString,
       resourceId         = UUID.randomUUID().toString,
-      userId             = UUID.randomUUID().toString,
+      userId             = UserId(UUID.randomUUID().toString),
       path               = randomString,
       hash               = Some(randomString),
       size               = Random.nextLong(),
