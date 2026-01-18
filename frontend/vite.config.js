@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import viteCompression from 'vite-plugin-compression'
 import path from 'path';
 
-const backendHost  = 'https://127.0.0.1:8080';
+const backendHost  = 'https://127.0.0.1:8182';
 
 export default defineConfig({
     plugins: [

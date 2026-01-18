@@ -71,6 +71,7 @@ const defaultPrefs: Prefs = {
   showDates:       true,
   showResolution:  true,
   gallery_columns: "auto",
+  theme:           "system",
 }
 
 const anonymousSession: SessionInfo = {

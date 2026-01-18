@@ -1,10 +1,10 @@
 import {BrowserRouter, Route, Routes, useParams} from 'react-router-dom';
-import React, {lazy, Suspense, useEffect, useMemo, use} from 'react';
+import React, {lazy, Suspense, useMemo, use} from 'react';
 import {Constants, SessionContext} from "./api/Constants";
 import {getSession} from "./api/generated";
 import {AxiosError} from "axios";
 import {SessionInfo} from "./api/Model";
-import {applyTheme, CURRENT_THEME} from "./theme";
+import {ThemeProvider} from "./ThemeContext";
 
 const Editor = lazy(() => import('./pages/Editor'));
 const Compilation = lazy(() => import('./pages/Compilation'));
@@ -12,10 +12,6 @@ const Main = lazy(() => import('./pages/Main'));
 const VideoWall = lazy(() => import('./pages/VideoWall'));
 
 function App() {
-  useEffect(() => {
-    applyTheme(CURRENT_THEME);
-  }, []);
-
   const sessionPromise = useMemo(() =>
       getSession()
         .then((authToken) => ({
@@ -32,21 +28,23 @@ function App() {
     []);
 
   return (
-    <div className="app-root">
-      <BrowserRouter>
-        <Suspense fallback={<div />}>
-          <SessionProvider sessionPromise={sessionPromise}>
-            <Routes>
-              <Route path="/" element={<Main />} />
-              <Route path="/search" element={<Main />} />
-              <Route path="/editor/:bucketId/:resourceId" element={<EditorRouter />} />
-              <Route path="/video-wall" element={<VideoWall />} />
-              <Route path="/compilation" element={<Compilation />} />
-            </Routes>
-          </SessionProvider>
-        </Suspense>
-      </BrowserRouter>
-    </div>
+    <ThemeProvider>
+      <div className="app-root">
+        <BrowserRouter>
+          <Suspense fallback={<div />}>
+            <SessionProvider sessionPromise={sessionPromise}>
+              <Routes>
+                <Route path="/" element={<Main />} />
+                <Route path="/search" element={<Main />} />
+                <Route path="/editor/:bucketId/:resourceId" element={<EditorRouter />} />
+                <Route path="/video-wall" element={<VideoWall />} />
+                <Route path="/compilation" element={<Compilation />} />
+              </Routes>
+            </SessionProvider>
+          </Suspense>
+        </BrowserRouter>
+      </div>
+    </ThemeProvider>
   );
 }
 

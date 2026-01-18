@@ -40,6 +40,21 @@
           @extend .mr-2;
         }
       }
+
+      .theme-select {
+        @extend .v-align-center;
+        display: flex;
+
+        .theme-option {
+          @extend .mr-3, .hover-pointer;
+          display: flex;
+          align-items: center;
+
+          input {
+            @extend .mr-1;
+          }
+        }
+      }
     }
   }
 }

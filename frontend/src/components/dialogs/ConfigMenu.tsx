@@ -5,15 +5,24 @@ import './ConfigMenu.scss';
 import {useContext} from "react";
 import {adminReComputeHashes, adminRefreshBucket, adminReindexBucket, adminRescanMetaData} from "../../api/generated";
 import {useLocalStorage} from "usehooks-ts";
+import {useTheme} from "../../ThemeContext";
+import {ThemeSetting} from "../../api/Model";
 
 const ConfigMenu = () => {
 
   // const [prefs, setPrefs] = useLocalStoragePrefs<Prefs>("prefs-v1", Constants.defaultPreferences)
   const [prefs, setPrefs, removeValue] = useLocalStorage(Constants.preferenceKey, Constants.defaultPreferences)
+  const { themeSetting, setTheme } = useTheme();
 
   const columns = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => {
     return { value: v, label: v.toString() }
   })
+
+  const themeOptions: Array<{value: ThemeSetting, label: string}> = [
+    { value: 'system', label: 'System' },
+    { value: 'light', label: 'Light' },
+    { value: 'dark', label: 'Dark' },
+  ]
 
   const updatePrefs = (values: {}) => { setPrefs({...prefs, ...values} ) }
   const session = useContext(SessionContext)
@@ -75,6 +84,26 @@ const ConfigMenu = () => {
                     })
                   }
                 </select>
+              </div>
+            </div>
+          </div>
+
+          <div key="theme" className="form-section">
+            <p key="header" className="form-label">Theme</p>
+            <div key="content" className="form-content">
+              <div className="theme-select">
+                {themeOptions.map((option) => (
+                  <label key={option.value} className="theme-option">
+                    <input
+                      type="radio"
+                      name="theme-option"
+                      value={option.value}
+                      checked={themeSetting === option.value}
+                      onChange={() => setTheme(option.value)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
               </div>
             </div>
           </div>

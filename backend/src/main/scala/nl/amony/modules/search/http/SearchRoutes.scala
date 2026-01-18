@@ -72,7 +72,7 @@ object SearchRoutes:
     val routeImpl = searchResourcesEndpoint.serverSecurityLogicPure(apiSecurity.publicEndpoint).serverLogic {
       auth => queryDto =>
 
-        val duration: Option[(Long, Long)] = queryDto.d.flatMap:
+        val duration: Option[(min: Long, max: Long)] = queryDto.d.flatMap:
           case durationPattern("", "")   => None
           case durationPattern(min, "")  => Try((min.toLong, Long.MaxValue)).toOption
           case durationPattern("", max)  => Try((0L, max.toLong)).toOption
@@ -100,8 +100,8 @@ object SearchRoutes:
           playlist    = None,
           minRes      = queryDto.minRes.map(n => Math.max(0, n)),
           maxRes      = None,
-          minDuration = duration.map(_._1),
-          maxDuration = duration.map(_._2),
+          minDuration = duration.map(_.min),
+          maxDuration = duration.map(_.max),
           sort        = Some(SortOption(sortField, sortDir)),
           untagged    = queryDto.untagged.filter(identity)
         )
