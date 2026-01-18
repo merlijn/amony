@@ -12,7 +12,7 @@ import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
 import org.typelevel.otel4s.trace.Tracer.Implicits.noop
-import pureconfig.{ConfigReader, ConfigSource}
+import pureconfig.ConfigSource
 import scribe.{Logger, Logging}
 import skunk.Session
 import sttp.client4.httpclient.cats.HttpClientCatsBackend
@@ -21,8 +21,6 @@ import sttp.tapir.server.http4s.Http4sServerOptions
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.modules.admin.AdminRoutes
 import nl.amony.modules.auth.*
-import nl.amony.modules.auth.api.{ApiSecurity, AuthService}
-import nl.amony.modules.auth.http.AuthEndpointServerLogic
 import nl.amony.modules.resources.ResourceConfig
 import nl.amony.modules.resources.api.ResourceEvent
 import nl.amony.modules.resources.database.ResourceDatabase
@@ -85,17 +83,17 @@ object App extends ResourceApp.Forever with Logging {
     for {
       databasePool      <- makeDatabasePool(appConfig.database)
       httpClientBackend <- HttpClientCatsBackend.resource[IO]()
-      searchService     <- SolrSearchService.resource(appConfig.solr)
       resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
+      searchService     <- SolrSearchService.resource(appConfig.solr)
       _                  = resourceEventTopic.followTail(searchService.processEvent)
       resourceDatabase   = ResourceDatabase(databasePool)
-      resourceBuckets   <- appConfig.resourceBuckets.map {
+      resourceBuckets   <- appConfig.resources.buckets.map {
                              case localConfig: ResourceConfig.LocalDirectoryConfig =>
                                LocalDirectoryBucket.resource(localConfig, resourceDatabase, resourceEventTopic)
                            }.sequence
       resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
       authModule         = AuthModule(appConfig.auth, httpClientBackend)
-      apiRoutes          = ResourceContentRoutes.apply(resourceBucketMap) <+>
+      apiRoutes          = ResourceContentRoutes.apply(resourceBucketMap, authModule.apiSecurity) <+>
                              authModule.routes <+>
                              AdminRoutes.apply(searchService, resourceBucketMap, authModule.apiSecurity) <+>
                              SearchRoutes.apply(searchService, appConfig.search, authModule.apiSecurity) <+>

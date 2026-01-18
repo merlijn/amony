@@ -1,18 +1,17 @@
 package nl.amony.modules.resources.http
 
 import scala.concurrent.duration.DurationInt
-
 import ResourceDirectives.resourceContentsResponse
 import cats.data.OptionT
 import cats.effect.IO
 import io.circe.syntax.*
+import nl.amony.modules.auth.api.ApiSecurity
 import org.http4s.*
 import org.http4s.CacheDirective.`max-age`
 import org.http4s.circe.given
 import org.http4s.dsl.io.*
 import org.http4s.headers.`Cache-Control`
 import scribe.Logging
-
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.api.{ImageThumbnail, Resource, ResourceBucket, ResourceOperation, VideoFragment, VideoThumbnail}
 
@@ -26,14 +25,13 @@ object ResourceContentRoutes extends Logging {
     val resolutions = List(120, 240, 320, 480, 640, 1024, 1920, 2160, 4320)
 
     val matchPF: PartialFunction[String, ResourceOperation] = {
-      case patterns.ThumbnailWithTimestampPattern(timestamp, height) =>
-        VideoThumbnail(width = None, height = Some(height.toInt), 23, timestamp.toLong)
+      case patterns.ThumbnailWithTimestampPattern(timestamp, height) => VideoThumbnail(width = None, height = Some(height.toInt), 23, timestamp.toLong)
       case patterns.ThumbnailPattern(scaleHeight)                    => ImageThumbnail(width = None, height = Some(scaleHeight.toInt), 0)
       case patterns.ClipPattern(start, end, height)                  => VideoFragment(width = None, height = Some(height.toInt), start.toLong, end.toLong, 23)
     }
   }
 
-  def apply(buckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
+  def apply(buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity): HttpRoutes[IO] = {
 
     def getResource(bucketId: String, resourceId: String): OptionT[IO, (ResourceBucket, Resource)] =
       for {
@@ -45,13 +43,16 @@ object ResourceContentRoutes extends Logging {
 
     HttpRoutes.of[IO] {
 
+      // TODO: rewrite upload to tapir
       case req @ POST -> Root / "api" / "resources" / bucketId / "upload" =>
-        maybeResponse:
+        maybeResponse {
           for {
-            bucket   <- OptionT.fromOption[IO](buckets.get(bucketId))
-            resource <- OptionT.liftF(bucket.uploadResource("0", "test", req.body))
+            session <- OptionT.fromOption[IO](apiSecurity.requireSession(req).toOption)
+            bucket <- OptionT.fromOption[IO](buckets.get(bucketId))
+            resource <- OptionT.liftF(bucket.uploadResource(session.userId, "test", req.body))
             response <- OptionT.liftF(Ok(toDto(resource).asJson))
           } yield response
+        }
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / "content" =>
         maybeResponse:

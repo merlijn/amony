@@ -1,17 +1,16 @@
 package nl.amony.modules.resources.local
 
 import java.security.MessageDigest
-
 import cats.effect.IO
 import fs2.{Chunk, Pipe}
 import scribe.Logging
-
 import nl.amony.lib.files.watcher.FileInfo
+import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.{ResourceAdded, ResourceBucket, ResourceInfo}
 
 trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
 
-  override def uploadResource(userId: String, fileName: String, source: fs2.Stream[IO, Byte]): IO[ResourceInfo] =
+  override def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[ResourceInfo] =
 
     val uploadPath = config.uploadPath.resolve(fileName)
     val targetPath = config.resourcePath.resolve(fileName)

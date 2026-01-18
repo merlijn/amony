@@ -7,6 +7,7 @@ import cats.effect.IO
 import pureconfig.*
 
 import nl.amony.modules.auth.AuthConfig
+import nl.amony.modules.resources.ResourceConfig
 import nl.amony.modules.resources.ResourceConfig.ResourceBucketConfig
 import nl.amony.modules.search.SearchConfig
 import nl.amony.modules.search.solr.SolrConfig
@@ -22,7 +23,7 @@ case class DatabaseConfig(host: String, port: Int, database: String, username: S
 
 case class AppConfig(
   amonyHome: Path,
-  resourceBuckets: List[ResourceBucketConfig],
+  resources: ResourceConfig,
   auth: AuthConfig,
   api: WebServerConfig,
   search: SearchConfig,

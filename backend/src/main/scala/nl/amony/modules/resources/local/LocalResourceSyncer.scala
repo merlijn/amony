@@ -2,12 +2,11 @@ package nl.amony.modules.resources.local
 
 import java.nio.file.Path
 import java.time.Instant
-
 import cats.effect.IO
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-
 import nl.amony.lib.files.watcher.*
+import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.api.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceFileMetaChanged, ResourceInfo, ResourceMoved}
 
@@ -33,7 +32,7 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
 
       case FileDeleted(f) => withRequireResource(f.hash, f.path)(r => ResourceDeleted(r.resourceId))
 
-      case FileAdded(f) => newResource(f, config.sync.newFilesOwner).map(ResourceAdded(_))
+      case FileAdded(f) => newResource(f, UserId(config.sync.newFilesOwner)).map(ResourceAdded(_))
 
       case FileMoved(file, oldFilePath) =>
         val newPath = relativizePath(file.path)
@@ -43,7 +42,7 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
     }
   }
 
-  private[local] def newResource(f: FileInfo, userId: String): IO[ResourceInfo] =
+  private[local] def newResource(f: FileInfo, userId: UserId): IO[ResourceInfo] =
     LocalResourceMeta(f.path).recover { case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None }.map {
       meta =>
         ResourceInfo(

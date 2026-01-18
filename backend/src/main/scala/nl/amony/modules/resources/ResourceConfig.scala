@@ -11,6 +11,9 @@ import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
 
 import nl.amony.lib.hash.Base32
 import nl.amony.lib.hash.PartialHash.partialHash
+import nl.amony.modules.resources.ResourceConfig.ResourceBucketConfig
+
+case class ResourceConfig(buckets: List[ResourceBucketConfig]) derives ConfigReader
 
 object ResourceConfig {
 

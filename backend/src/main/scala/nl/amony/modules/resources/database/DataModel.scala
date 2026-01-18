@@ -1,11 +1,11 @@
 package nl.amony.modules.resources.database
 
-import java.time.{Instant, ZoneOffset}
+import nl.amony.modules.auth.api.UserId
 
+import java.time.{Instant, ZoneOffset}
 import skunk.Codec
 import skunk.codec.all.{int4, timestamptz, varchar}
 import skunk.implicits.sql
-
 import nl.amony.modules.resources.api.{ResourceInfo, ResourceMeta}
 
 val instantCodec: Codec[Instant] = timestamptz.imap(_.toInstant)(_.atOffset(ZoneOffset.UTC))
@@ -32,7 +32,7 @@ case class ResourceRow(
     ResourceInfo(
       bucketId           = bucket_id,
       resourceId         = resource_id,
-      userId             = user_id,
+      userId             = UserId(user_id),
       path               = fs_path,
       hash               = hash,
       size               = size,

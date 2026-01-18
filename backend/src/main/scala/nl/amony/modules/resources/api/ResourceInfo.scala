@@ -1,9 +1,11 @@
 package nl.amony.modules.resources.api
 
+import nl.amony.modules.auth.api.UserId
+
 case class ResourceInfo(
   bucketId: String,
   resourceId: String,
-  userId: String,
+  userId: UserId,
   path: String,
   size: Long,
   hash: Option[String]              = None,

@@ -1,21 +1,22 @@
 package nl.amony.modules.auth.api
 
 import java.time.Instant
-
 import io.circe
 import io.circe.*
 import pdi.jwt.JwtClaim
-
 import nl.amony.modules.auth.{JwtAlgorithmConfig, JwtConfig}
+
+import scala.util.{Failure, Try}
 
 case class AuthTokenContent(roles: Set[String]) derives Codec
 
 class JwtDecoder(algo: JwtAlgorithmConfig):
-  def decode(token: String): scala.util.Try[AuthToken] = {
+  def decode(token: String): Either[Throwable, AuthToken] = {
     for {
-      decoded <- algo.decode(token)
-      content <- parser.decode[AuthTokenContent](decoded.content).toTry
-    } yield AuthToken(decoded.subject.getOrElse(""), content.roles.map(Role.apply))
+      decoded <- algo.decode(token).toEither
+      content <- parser.decode[AuthTokenContent](decoded.content)
+      subject <- decoded.subject.toRight(new IllegalStateException("Token subject is missing"))
+    } yield AuthToken(UserId(subject), content.roles.map(Role.apply))
   }
 
 trait JwtEncoder:

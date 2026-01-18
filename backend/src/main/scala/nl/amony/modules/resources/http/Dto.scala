@@ -1,10 +1,10 @@
 package nl.amony.modules.resources.http
 
 import io.circe.*
+import nl.amony.modules.auth.api.UserId
 import sttp.tapir.Schema.SName
 import sttp.tapir.Schema.annotations.customise
 import sttp.tapir.{FieldName, Schema, SchemaType}
-
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.api.{ImageProperties, ResourceInfo, ResourceMeta, VideoProperties}
 
@@ -61,7 +61,7 @@ case class ResourceDto(
     ResourceInfo(
       bucketId           = bucketId,
       resourceId         = resourceId,
-      userId             = userId,
+      userId             = UserId(userId),
       path               = path,
       hash               = hash,
       size               = sizeInBytes,
