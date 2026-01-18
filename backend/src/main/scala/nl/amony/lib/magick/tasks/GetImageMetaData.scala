@@ -19,10 +19,10 @@ trait GetImageMetaData {
     useProcessOutput("convert", List(fileName, "json:"), false) {
       processOutput =>
         IO {
-          (for {
+          (for
             json <- io.circe.parser.parse(processOutput)
             out  <- json.as[List[MagickImageMeta]]
-          } yield MagickResult(out, json)).toTry
+          yield MagickResult(out, json)).toTry
         }
     }
   }

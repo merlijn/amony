@@ -79,20 +79,20 @@ object ResourceRoutes:
   def apply(buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
 
     def getResource(bucketId: String, resourceId: ResourceId): EitherT[IO, ApiError, (ResourceBucket, Resource)] =
-      for {
+      for
         bucket   <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
         resource <- EitherT.fromOptionF(bucket.getResource(resourceId), NotFound)
-      } yield bucket -> resource
+      yield bucket -> resource
 
     val bucketList = buckets.values.toList
 
     def sanitize(input: String, maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, String] =
-      for {
+      for
         _      <- EitherT.cond[IO](input.length <= maxLength, (), ApiError.BadRequest)
         _      <- EitherT.cond[IO](input.forall(characterAllowFn), (), ApiError.BadRequest)
         trimmed = input.trim
         _      <- EitherT.cond[IO](trimmed == Jsoup.clean(trimmed, Safelist.basic), (), ApiError.BadRequest)
-      } yield trimmed
+      yield trimmed
 
     def sanitizeOpt(input: Option[String], maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, Option[String]] =
       input.map(sanitize(_, maxLength, characterAllowFn).map(Some(_))).getOrElse(EitherT.rightT[IO, ApiError](None))
@@ -108,14 +108,14 @@ object ResourceRoutes:
     val updateUserMetaDataImpl = updateUserMetaData.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogic {
       _ => (bucketId, resourceId, userMeta) =>
 
-        (for {
+        (for
           sanitizedTitle       <- sanitizeOpt(userMeta.title, 128, _ => true)
           sanitizedDescription <- sanitizeOpt(userMeta.description, 1280, _ => true)
           sanitizedTags        <- sanitizeTags(userMeta.tags)
           response             <- getResource(bucketId, resourceId)
           (bucket, _)           = response
           _                    <- EitherT.right(bucket.updateUserMeta(resourceId, sanitizedTitle, sanitizedDescription, sanitizedTags))
-        } yield ()).value
+        yield ()).value
     }
 
     val updateThumbnailTimestampImpl =
@@ -131,14 +131,14 @@ object ResourceRoutes:
 
     val modifyTagsBulkImpl = modifyTagsBulk.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogic {
       _ => (bucketId, dto) =>
-        val action = for {
+        val action = for
           _               <- EitherT.cond[IO](dto.ids.nonEmpty, (), ApiError.BadRequest)
           sanitizedIds     = dto.ids.distinct.toSet.map(ResourceId(_))
           sanitizedAdd    <- sanitizeTags(dto.tagsToAdd).map(_.toSet)
           sanitizedRemove <- sanitizeTags(dto.tagsToRemove).map(_.toSet)
           bucket          <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
           _               <- EitherT.right(bucket.modifyTags(sanitizedIds, sanitizedAdd, sanitizedRemove))
-        } yield ()
+        yield ()
         action.value
     }
 

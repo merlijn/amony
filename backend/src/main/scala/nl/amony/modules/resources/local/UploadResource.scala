@@ -32,11 +32,11 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
     def insertResource(digest: Array[Byte]): IO[ResourceInfo] = {
       val encodedHash = config.hashingAlgorithm.encodeHash(digest)
 
-      for {
+      for
         resourceInfo <- newResource(FileInfo(uploadPath, encodedHash), userId)
         _            <- processEvent(ResourceAdded(resourceInfo))
         //        _            <- IO(uploadPath.moveTo(targetPath))
-      } yield resourceInfo
+      yield resourceInfo
     }
 
     source.observe(writeToFile).through(calculateHash).compile.last.flatMap {

@@ -29,7 +29,7 @@ object WebServer extends Logging {
 
   given slf4jLogger: LoggerFactory[IO] = Slf4jFactory.create[IO]
 
-  def run(config: WebServerConfig, apiRoutes: HttpRoutes[IO])(implicit io: IORuntime): Resource[IO, Unit] = {
+  def run(config: WebServerConfig, apiRoutes: HttpRoutes[IO])(using io: IORuntime): Resource[IO, Unit] = {
 
     val routes = apiRoutes <+> webAppRoutes(config)
 

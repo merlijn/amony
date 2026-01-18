@@ -60,14 +60,14 @@ object LocalDirectoryScanner extends Logging {
 
     currentFiles.evalMap {
       (path, attrs) =>
-        for {
+        for
           previousByPath <- previous.getByPath(path)
           hash           <- previousByPath
                               .filter(
                                 f => f.size == attrs.size && f.modifiedTime == attrs.lastModifiedTime().toMillis
                               ) // here we assume the file has not been modified if size and modified time are the same
                               .map(i => IO.pure(i.hash)).getOrElse(hashFunction(path))
-        } yield FileInfo(path, attrs, hash)
+        yield FileInfo(path, attrs, hash)
     }.foreach(e => current.insert(e)).compile.drain >> IO.pure(current)
   }
 

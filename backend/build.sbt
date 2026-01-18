@@ -116,6 +116,7 @@ lazy val amony = project
     scalacOptions := Seq(
       "-rewrite",
       "-source", "3.7-migration",
+      "-source", "future",
       "-encoding", "utf-8"),
     
     Global / cancelable   := true,

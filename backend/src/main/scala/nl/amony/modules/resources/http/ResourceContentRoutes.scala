@@ -37,10 +37,10 @@ object ResourceContentRoutes extends Logging {
   def apply(buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity): HttpRoutes[IO] = {
 
     def getResource(bucketId: String, resourceId: ResourceId): OptionT[IO, (ResourceBucket, Resource)] =
-      for {
+      for
         bucket   <- OptionT.fromOption[IO](buckets.get(bucketId))
         resource <- OptionT(bucket.getResource(resourceId))
-      } yield bucket -> resource
+      yield bucket -> resource
 
     def maybeResponse(option: OptionT[IO, Response[IO]]): IO[Response[IO]] = option.value.map(_.getOrElse(Response(Status.NotFound)))
 
@@ -49,12 +49,12 @@ object ResourceContentRoutes extends Logging {
       // TODO: rewrite upload to tapir
       case req @ POST -> Root / "api" / "resources" / bucketId / "upload" =>
         maybeResponse {
-          for {
+          for
             session  <- OptionT.fromOption[IO](apiSecurity.requireSession(req).toOption)
             bucket   <- OptionT.fromOption[IO](buckets.get(bucketId))
             resource <- OptionT.liftF(bucket.uploadResource(session.userId, "test", req.body))
             response <- OptionT.liftF(Ok(toDto(resource).asJson))
-          } yield response
+          yield response
         }
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / "content" =>
@@ -63,12 +63,12 @@ object ResourceContentRoutes extends Logging {
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern =>
         maybeResponse:
-          for {
+          for
             (bucket, resource) <- getResource(bucketId, ResourceId(resourceId))
             operation          <- OptionT.fromOption(patterns.matchPF.lift(resourcePattern))
             derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))
             response           <- OptionT.liftF(resourceContentsResponse(req, derivedResource).map(r => r.addHeader(`Cache-Control`(`max-age`(365.days)))))
-          } yield response
+          yield response
     }
   }
 }

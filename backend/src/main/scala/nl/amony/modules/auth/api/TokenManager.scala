@@ -13,11 +13,11 @@ case class AuthTokenContent(roles: Set[String]) derives Codec
 
 class JwtDecoder(algo: JwtAlgorithmConfig):
   def decode(token: String): Either[Throwable, AuthToken] = {
-    for {
+    for
       decoded <- algo.decode(token).toEither
       content <- parser.decode[AuthTokenContent](decoded.content)
       subject <- decoded.subject.toRight(new IllegalStateException("Token subject is missing"))
-    } yield AuthToken(UserId(subject), content.roles.map(Role.apply))
+    yield AuthToken(UserId(subject), content.roles.map(Role.apply))
   }
 
 trait JwtEncoder:

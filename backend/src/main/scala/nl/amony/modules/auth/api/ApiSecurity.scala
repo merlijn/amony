@@ -31,19 +31,19 @@ class ApiSecurity(authConfig: AuthConfig):
   }
 
   private def requireXsrfProtection(securityInput: SecurityInput): Either[SecurityError, Unit] =
-    for {
+    for
       xsrfToken   <- securityInput.xsrfCookie.toRight(SecurityError.Unauthorized)
       xXsrfHeader <- securityInput.xXsrfHeader.toRight(SecurityError.Unauthorized)
       _           <- if xsrfToken == xXsrfHeader then Right(()) else Left(SecurityError.Unauthorized)
-    } yield ()
+    yield ()
 
   def requireSession(securityInput: SecurityInput, xsrfProtection: Boolean = true): Either[SecurityError, AuthToken] = {
     def validateInput =
-      for {
+      for
         accessToken <- securityInput.accessToken.toRight(SecurityError.Unauthorized)
         decoded     <- decoder.decode(accessToken).left.map(_ => SecurityError.Unauthorized)
         _           <- if xsrfProtection then requireXsrfProtection(securityInput) else Right(())
-      } yield AuthToken(decoded.userId, decoded.roles)
+      yield AuthToken(decoded.userId, decoded.roles)
 
     if authConfig.enabled then validateInput else Right(adminToken)
   }

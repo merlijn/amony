@@ -77,12 +77,12 @@ object AdminRoutes extends Logging:
             case Some(bucket) =>
               logger.info(s"Re-indexing all resources in bucket '$bucketId'")
 
-              for {
+              for
                 _ <- searchService.deleteBucket(bucketId)
                 _ <- searchService.indexAll(bucket.getAllResources)
                 _ <- searchService.forceCommit()
                 _ <- IO(logger.info(s"Re-indexed all resources in bucket '$bucketId'"))
-              } yield ()
+              yield ()
     )
 
     val refreshImpl =

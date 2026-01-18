@@ -43,11 +43,11 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
         s.prepare(Queries.resource_tags.getById).flatMap(_.stream((bucketId, resourceId), defaultChunkSize).compile.toList)
 
       def replaceAll(s: Session[IO], bucketId: String, resourceId: String, tagIds: List[Int]): IO[Unit] =
-        for {
+        for
           _   <- s.prepare(Queries.resource_tags.delete).flatMap(_.execute(bucketId, resourceId))
           rows = tagIds.map(tagId => ResourceTagsRow(bucketId, resourceId, tagId))
           _   <- if tagIds.nonEmpty then s.prepare(Queries.resource_tags.upsert(rows.size)).flatMap(_.execute(rows)) else IO.unit
-        } yield ()
+        yield ()
 
       def delete(s: Session[IO], bucketId: String, resourceId: String): IO[Completion] =
         s.prepare(Queries.resource_tags.delete).flatMap(_.execute(bucketId, resourceId))
@@ -76,33 +76,33 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
     resourceRow.toResource(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty))
 
   private def updateTagsForResource(s: Session[IO], bucketId: String, resourceId: String, tagLabels: List[String]) =
-    for {
+    for
       tags <- if tagLabels.nonEmpty then tables.tags.upsert(s, tagLabels) >> tables.tags.getByLabels(s, tagLabels) else IO.pure(List.empty)
       _    <- tables.resource_tags.replaceAll(s, bucketId, resourceId, tags.map(_.id))
-    } yield ()
+    yield ()
 
   private def updateResourceWithTags(s: Session[IO], resource: ResourceInfo): IO[Unit] =
-    for {
+    for
       _ <- tables.resources.upsert(s, ResourceRow.fromResource(resource))
       _ <- updateTagsForResource(s, resource.bucketId, resource.resourceId, resource.tags.toList)
-    } yield ()
+    yield ()
 
   private[resources] def truncateTables(): IO[Unit] =
     useTransaction: (s, tx) =>
-      for {
+      for
         _ <- s.execute(Queries.tags.truncateCascade)
         _ <- s.execute(Queries.resource_tags.truncateCascade)
         _ <- s.execute(Queries.resources.truncateCascade)
-      } yield ()
+      yield ()
 
   def getAll(bucketId: String): IO[List[ResourceInfo]] = getStream(bucketId).compile.toList
 
   def insertResource(resource: ResourceInfo): IO[Unit] =
     useTransaction: (s, tx) =>
-      for {
+      for
         _ <- tables.resources.insert(s, ResourceRow.fromResource(resource))
         _ <- updateTagsForResource(s, resource.bucketId, resource.resourceId, resource.tags.toList)
-      } yield ()
+      yield ()
 
   def upsert(resource: ResourceInfo): IO[Unit] =
     useTransaction: (s, tx) =>
@@ -124,11 +124,11 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
       s.prepare(Queries.resources.getByHashJoined).flatMap(_.stream((bucketId, hash), defaultChunkSize).map(toResource).compile.toList)
 
   def updateThumbnailTimestamp(bucketId: String, resourceId: String, timestamp: Int): IO[Option[ResourceInfo]] = useSession: s =>
-    (for {
+    (for
       resource <- OptionT(getById(bucketId, resourceId))
       updated   = resource.copy(thumbnailTimestamp = Some(timestamp))
       _        <- OptionT.liftF(tables.resources.upsert(s, ResourceRow.fromResource(updated)))
-    } yield updated).value
+    yield updated).value
 
   def updateUserMeta(
     bucketId: String,
@@ -161,7 +161,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
 
   def deleteResource(bucketId: String, resourceId: String): IO[Unit] =
     useTransaction: (s, tx) =>
-      for {
+      for
         _ <- tables.resource_tags.delete(s, bucketId, resourceId)
         _ <- tables.resources.delete(s, bucketId, resourceId)
-      } yield ()
+      yield ()

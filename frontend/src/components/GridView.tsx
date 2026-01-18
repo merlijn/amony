@@ -1,4 +1,4 @@
-import React, {CSSProperties, useEffect, useState, useRef, useCallback} from 'react';
+import React, {CSSProperties, useEffect, useState, useRef, useCallback, useLayoutEffect} from 'react';
 import {Constants} from "../api/Constants";
 import {Columns, ResourceSelection} from '../api/Model';
 import './GridView.scss';

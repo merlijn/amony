@@ -40,7 +40,7 @@ object LocalResourceOperations {
 
     override def validate(info: ResourceInfo): Either[String, Unit] = info.contentMeta.map(_.properties) match {
       case Some(video: VideoProperties) =>
-        for { _ <- Either.cond(timestamp > 0 && timestamp < video.durationInMillis, (), "Timestamp is out of bounds") } yield ()
+        for  _ <- Either.cond(timestamp > 0 && timestamp < video.durationInMillis, (), "Timestamp is out of bounds")  yield ()
       case other                        => Left("Wrong content type, expected video, got: " + other)
     }
 
@@ -67,12 +67,12 @@ object LocalResourceOperations {
 
     override def validate(info: ResourceInfo): Either[String, Unit] = {
 
-      for {
+      for
         _ <- Either.cond(height.getOrElse(Int.MaxValue) > minHeight, (), "Height too small")
         _ <- Either.cond(width.getOrElse(Int.MaxValue) > minWidth, (), "Width too small")
         _ <- Either.cond(height.getOrElse(0) < maxHeight, (), "Height too large")
         _ <- Either.cond(width.getOrElse(0) < maxWidth, (), "Width too large")
-      } yield ()
+      yield ()
     }
 
     override def createFile(inputFile: Path, outputDir: Path): IO[Path] = {
@@ -101,13 +101,13 @@ object LocalResourceOperations {
         case Some(video: VideoProperties) =>
           val (start, end) = range
           val duration     = end - start
-          for {
+          for
             _ <- Either.cond(height > minHeight || height < maxHeight, (), "Height out of bounds")
             _ <- Either.cond(start >= 0, (), "Start time is negative")
             _ <- Either.cond(end > start, (), "End time is before start time")
             _ <- Either.cond(duration > minLengthInMillis, (), "Duration too short")
             _ <- Either.cond(duration < maxLengthInMillis, (), "Duration too long")
-          } yield ()
+          yield ()
         case other                        => Left("Wrong content type, expected video, got: " + other)
       }
     }

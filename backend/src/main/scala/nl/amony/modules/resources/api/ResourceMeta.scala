@@ -28,18 +28,18 @@ object ContentProperties:
 
   def apply(toolName: String, toolData: String): Try[ContentProperties] = toolName match {
     case s if s.startsWith("ffprobe/") =>
-      for {
+      for
         json    <- io.circe.parser.parse(toolData).toTry
         decoded <- json.as[FFProbeOutput].toTry
         result  <- ffprobeOutputToContentMeta(decoded)
-      } yield result
+      yield result
 
     case s if s.startsWith("magick/") =>
-      for {
+      for
         json    <- io.circe.parser.parse(toolData).toTry
         decoded <- json.as[List[MagickImageMeta]].toTry
         result  <- magickOutputToContentMeta(decoded)
-      } yield result
+      yield result
 
     case other => Failure(new Exception(s"Unknown tool meta source: $other"))
   }

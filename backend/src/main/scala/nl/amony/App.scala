@@ -49,7 +49,7 @@ object App extends ResourceApp.Forever with Logging {
       })
 
   def makeDatabasePool(config: DatabaseConfig): Resource[IO, Resource[IO, Session[IO]]] = {
-    for {
+    for
       pool <- Session.pooled[IO](
                 host     = config.host,
                 port     = config.port,
@@ -59,7 +59,7 @@ object App extends ResourceApp.Forever with Logging {
                 password = config.password
               )
       _    <- Resource.eval(runDatabaseMigrations(config))
-    } yield pool
+    yield pool
   }
 
   override def run(args: List[String]): Resource[IO, Unit] = {
@@ -80,7 +80,7 @@ object App extends ResourceApp.Forever with Logging {
 
     given serverOptions: Http4sServerOptions[IO] = Http4sServerOptions.customiseInterceptors[IO].serverLog(serverLog).options
 
-    for {
+    for
       databasePool      <- makeDatabasePool(appConfig.database)
       httpClientBackend <- HttpClientCatsBackend.resource[IO]()
       resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
@@ -99,6 +99,6 @@ object App extends ResourceApp.Forever with Logging {
                              SearchRoutes.apply(searchService, appConfig.search, authModule.apiSecurity) <+>
                              ResourceRoutes.apply(resourceBucketMap, authModule.apiSecurity)
       _                 <- WebServer.run(appConfig.api, apiRoutes)
-    } yield ()
+    yield ()
   }
 }
