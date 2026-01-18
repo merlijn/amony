@@ -93,7 +93,7 @@ jobs:
 
       - name: Build with sbt
         timeout-minutes: 5
-        run: sbt clean test app/jibDockerBuild app/jibWriteDockerTagsFile
+        run: sbt clean test jibDockerBuild jibWriteDockerTagsFile
 
       - name: Get git info
         id: git-info
