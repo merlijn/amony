@@ -36,7 +36,7 @@ object ResourceContentRoutes extends Logging {
 
   def apply(buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity): HttpRoutes[IO] = {
 
-    def getResource(bucketId: String, resourceId: String): OptionT[IO, (ResourceBucket, Resource)] =
+    def getResource(bucketId: String, resourceId: ResourceId): OptionT[IO, (ResourceBucket, Resource)] =
       for {
         bucket   <- OptionT.fromOption[IO](buckets.get(bucketId))
         resource <- OptionT(bucket.getResource(resourceId))
@@ -59,14 +59,14 @@ object ResourceContentRoutes extends Logging {
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / "content" =>
         maybeResponse:
-          getResource(bucketId, resourceId).semiflatMap((_, resource) => resourceContentsResponse(req, resource))
+          getResource(bucketId, ResourceId(resourceId)).semiflatMap((_, resource) => resourceContentsResponse(req, resource))
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern =>
         maybeResponse:
           for {
-            (bucket, resource) <- getResource(bucketId, resourceId)
+            (bucket, resource) <- getResource(bucketId, ResourceId(resourceId))
             operation          <- OptionT.fromOption(patterns.matchPF.lift(resourcePattern))
-            derivedResource    <- OptionT(bucket.getOrCreate(resourceId, operation))
+            derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))
             response           <- OptionT.liftF(resourceContentsResponse(req, derivedResource).map(r => r.addHeader(`Cache-Control`(`max-age`(365.days)))))
           } yield response
     }

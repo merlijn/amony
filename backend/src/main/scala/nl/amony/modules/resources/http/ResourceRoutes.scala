@@ -9,12 +9,13 @@ import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist
 import sttp.model.{HeaderNames, StatusCode}
 import sttp.tapir.*
+import sttp.tapir.CodecFormat.TextPlain
 import sttp.tapir.EndpointOutput.OneOfVariant
 import sttp.tapir.json.circe.*
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 
 import nl.amony.modules.auth.api.*
-import nl.amony.modules.resources.api.{Resource, ResourceBucket}
+import nl.amony.modules.resources.api.{Resource, ResourceBucket, ResourceId}
 
 def oneOfList[T](variants: List[OneOfVariant[? <: T]]) = EndpointOutput.OneOf[T, T](variants, Mapping.id)
 
@@ -36,6 +37,8 @@ object ResourceRoutes:
     header(HeaderNames.Expires, "0")
   ).reduce(_ and _)
 
+  given Codec[String, ResourceId, TextPlain] = Codec.string.mapDecode(s => DecodeResult.Value(ResourceId.apply(s)))(identity)
+
   val getBuckets =
     endpoint
       .name("getBuckets").tag("resources").description("Get information about a resource by its id")
@@ -43,24 +46,24 @@ object ResourceRoutes:
       .securityIn(securityInput).errorOut(errorOutput)
       .out(apiNoCacheHeaders).out(jsonBody[List[BucketDto]])
 
-  val getResourceById: Endpoint[SecurityInput, (String, String), ApiError | SecurityError, ResourceDto, Any] =
+  val getResourceById: Endpoint[SecurityInput, (String, ResourceId), ApiError | SecurityError, ResourceDto, Any] =
     endpoint
       .name("getResourceById").tag("resources").description("Get information about a resource by its id")
-      .get.in("api" / "resources" / path[String]("bucketId") / path[String]("resourceId"))
+      .get.in("api" / "resources" / path[String]("bucketId") / path[ResourceId]("resourceId"))
       .securityIn(securityInput).errorOut(errorOutput)
       .out(apiNoCacheHeaders).out(jsonBody[ResourceDto])
 
-  val updateUserMetaData: Endpoint[SecurityInput, (String, String, UserMetaDto), ApiError | SecurityError, Unit, Any] =
+  val updateUserMetaData: Endpoint[SecurityInput, (String, ResourceId, UserMetaDto), ApiError | SecurityError, Unit, Any] =
     endpoint
       .name("updateUserMetaData").tag("resources").description("Update the user metadata of a resource")
-      .post.in("api" / "resources" / path[String]("bucketId") / path[String]("resourceId") / "update_user_meta")
+      .post.in("api" / "resources" / path[String]("bucketId") / path[ResourceId]("resourceId") / "update_user_meta")
       .securityIn(securityInput)
       .in(jsonBody[UserMetaDto]).errorOut(errorOutput)
 
-  val updateThumbnailTimestamp: Endpoint[SecurityInput, (String, String, ThumbnailTimestampDto), ApiError | SecurityError, Unit, Any] =
+  val updateThumbnailTimestamp: Endpoint[SecurityInput, (String, ResourceId, ThumbnailTimestampDto), ApiError | SecurityError, Unit, Any] =
     endpoint
       .name("updateThumbnailTimestamp").tag("resources").description("Update the thumbnail timestamp of a resource")
-      .post.in("api" / "resources" / path[String]("bucketId") / path[String]("resourceId") / "update_thumbnail_timestamp")
+      .post.in("api" / "resources" / path[String]("bucketId") / path[ResourceId]("resourceId") / "update_thumbnail_timestamp")
       .securityIn(securityInput)
       .in(jsonBody[ThumbnailTimestampDto]).errorOut(errorOutput)
 
@@ -75,7 +78,7 @@ object ResourceRoutes:
 
   def apply(buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
 
-    def getResource(bucketId: String, resourceId: String): EitherT[IO, ApiError, (ResourceBucket, Resource)] =
+    def getResource(bucketId: String, resourceId: ResourceId): EitherT[IO, ApiError, (ResourceBucket, Resource)] =
       for {
         bucket   <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
         resource <- EitherT.fromOptionF(bucket.getResource(resourceId), NotFound)
@@ -130,7 +133,7 @@ object ResourceRoutes:
       _ => (bucketId, dto) =>
         val action = for {
           _               <- EitherT.cond[IO](dto.ids.nonEmpty, (), ApiError.BadRequest)
-          sanitizedIds     = dto.ids.distinct.toSet
+          sanitizedIds     = dto.ids.distinct.toSet.map(ResourceId(_))
           sanitizedAdd    <- sanitizeTags(dto.tagsToAdd).map(_.toSet)
           sanitizedRemove <- sanitizeTags(dto.tagsToRemove).map(_.toSet)
           bucket          <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)

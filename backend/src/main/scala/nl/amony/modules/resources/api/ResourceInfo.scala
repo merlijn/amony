@@ -4,7 +4,7 @@ import nl.amony.modules.auth.api.UserId
 
 case class ResourceInfo(
   bucketId: String,
-  resourceId: String,
+  resourceId: ResourceId,
   userId: UserId,
   path: String,
   size: Long,

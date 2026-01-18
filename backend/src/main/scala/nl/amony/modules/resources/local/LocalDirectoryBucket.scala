@@ -14,7 +14,7 @@ import nl.amony.lib.files.*
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.modules.resources.*
 import nl.amony.modules.resources.ResourceConfig.LocalDirectoryConfig
-import nl.amony.modules.resources.api.*
+import nl.amony.modules.resources.api.{ResourceId, *}
 import nl.amony.modules.resources.database.ResourceDatabase
 import nl.amony.modules.resources.local.LocalResourceOperations.*
 
@@ -91,7 +91,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
         else IO.unit
   }.compile.drain
 
-  override def getOrCreate(resourceId: String, operation: ResourceOperation): IO[Option[Resource]] = getResourceInfo(resourceId).flatMap:
+  override def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[Resource]] = getResourceInfo(resourceId).flatMap:
     case None           => IO.pure(None)
     case Some(fileInfo) => cachedResourceOperation(fileInfo, LocalResourceOp(resourceId, operation))
 
@@ -120,7 +120,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
     }
   }
 
-  override def getResource(resourceId: String): IO[Option[Resource]] =
+  override def getResource(resourceId: ResourceId): IO[Option[Resource]] =
     getResourceInfo(resourceId).map:
       case None       => None
       case Some(info) =>
@@ -130,19 +130,19 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
           None
         } else { Some(Resource.fromPath(path, info)) }
 
-  override def deleteResource(resourceId: String): IO[Unit] =
+  override def deleteResource(resourceId: ResourceId): IO[Unit] =
     getResourceInfo(resourceId).flatMap:
       case None       => IO.pure(())
       case Some(info) =>
         val path = config.resourcePath.resolve(info.path)
         db.deleteResource(config.id, resourceId) >> IO(path.deleteIfExists())
 
-  override def updateUserMeta(resourceId: String, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] =
+  override def updateUserMeta(resourceId: ResourceId, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] =
     db.updateUserMeta(config.id, resourceId, title, description, tags)
       .flatMap(_.map(updated => topic.publish(ResourceUpdated(updated))).getOrElse(IO.unit))
 
-  override def modifyTags(resourceIds: Set[String], tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] = {
-    def modifyTagsSingle(resourceId: String, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] =
+  override def modifyTags(resourceIds: Set[ResourceId], tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] = {
+    def modifyTagsSingle(resourceId: ResourceId, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] =
       db.modifyTags(config.id, resourceId, tagsToAdd, tagsToRemove).flatMap:
         case None          => IO.unit
         case Some(updated) => topic.publish(ResourceUpdated(updated))
@@ -150,7 +150,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
     resourceIds.map(id => modifyTagsSingle(id, tagsToAdd, tagsToRemove)).toList.sequence.as(None)
   }
 
-  override def updateThumbnailTimestamp(resourceId: String, timestamp: Int): IO[Unit] =
+  override def updateThumbnailTimestamp(resourceId: ResourceId, timestamp: Int): IO[Unit] =
     db.updateThumbnailTimestamp(config.id, resourceId, timestamp)
       .flatMap(_.map(updated => topic.publish(ResourceUpdated(updated))).getOrElse(IO.unit))
 

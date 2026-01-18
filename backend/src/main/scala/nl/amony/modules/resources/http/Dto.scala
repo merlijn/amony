@@ -61,7 +61,7 @@ case class ResourceDto(
 
     ResourceInfo(
       bucketId           = bucketId,
-      resourceId         = resourceId,
+      resourceId         = ResourceId(resourceId),
       userId             = UserId(userId),
       path               = path,
       hash               = hash,

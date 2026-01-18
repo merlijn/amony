@@ -176,7 +176,7 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
 
     ResourceInfo(
       bucketId           = bucketId,
-      resourceId         = resourceId,
+      resourceId         = ResourceId(resourceId),
       userId             = UserId(userId),
       path               = path,
       size               = size,

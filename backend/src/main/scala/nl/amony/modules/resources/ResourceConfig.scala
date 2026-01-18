@@ -12,6 +12,7 @@ import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
 import nl.amony.lib.hash.Base32
 import nl.amony.lib.hash.PartialHash.partialHash
 import nl.amony.modules.resources.ResourceConfig.ResourceBucketConfig
+import nl.amony.modules.resources.api.ResourceId
 
 case class ResourceConfig(buckets: List[ResourceBucketConfig]) derives ConfigReader
 
@@ -59,7 +60,7 @@ object ResourceConfig {
       !fileName.startsWith(".") && path != uploadPath
     }
 
-    def generateId() = Base32.encode(random.nextBytes(15)).substring(0, 24)
+    def generateId(): ResourceId = ResourceId(Base32.encode(random.nextBytes(15)).substring(0, 24))
   }
 
   case class TranscodeSettings(format: String, scaleHeight: Int, crf: Int) derives ConfigReader

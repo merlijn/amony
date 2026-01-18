@@ -14,7 +14,7 @@ import org.testcontainers.containers.wait.strategy.Wait
 import scribe.Logging
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.ResourceInfo
+import nl.amony.modules.resources.api.{ResourceId, ResourceInfo}
 import nl.amony.modules.resources.database.ResourceDatabase
 import nl.amony.{App, DatabaseConfig}
 
@@ -43,7 +43,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
   def genResource(): ResourceInfo =
     ResourceInfo(
       bucketId           = UUID.randomUUID().toString,
-      resourceId         = UUID.randomUUID().toString,
+      resourceId         = ResourceId(UUID.randomUUID().toString),
       userId             = UserId(UUID.randomUUID().toString),
       path               = randomString,
       hash               = Some(randomString),
@@ -204,7 +204,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
   def duplicateHashesTest(db: ResourceDatabase): IO[Unit] = {
     val resourceA = genResource()
-    val resourceB = resourceA.copy(resourceId = UUID.randomUUID().toString, bucketId = resourceA.bucketId)
+    val resourceB = resourceA.copy(resourceId = ResourceId(UUID.randomUUID().toString), bucketId = resourceA.bucketId)
 
     for {
       _      <- db.insertResource(resourceA)
