@@ -28,7 +28,7 @@ object AdminRoutes extends Logging:
       .errorOut(errorOutput)
 
   val refresh =
-    endpoint.name("adminRefreshBucket").tag("admin").description("Refresh all resources in a bucket")
+    endpoint.tag("admin").name("adminRefreshBucket").description("Refresh all resources in a bucket")
       .post.in("api" / "admin" / "refresh")
       .in(query[String]("bucketId").description("The id of the bucket to re-index."))
       .securityIn(securityInput)

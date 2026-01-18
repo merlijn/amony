@@ -19,7 +19,7 @@ def hasNoLocalChanges: Boolean = {
 
 val circeVersion    = "0.14.15"
 val http4sVersion   = "0.23.33"
-val tapirVersion    = "1.12.3"
+val tapirVersion    = "1.13.5"
 
 val bouncyCastle = "org.apache.directory.studio" % "org.bouncycastle.bcprov.jdk15" % "140"
 
