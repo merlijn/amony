@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {useLocation, useNavigate} from "react-router";
+import {useLocation, useNavigate} from "react-router-dom";
 import {Constants, parseDurationParam, parseSortParam} from "../api/Constants";
 import {MediaView, ResourceSelection} from "../api/Model";
 import {useListener, useStateNeq} from "../api/ReactUtils";
