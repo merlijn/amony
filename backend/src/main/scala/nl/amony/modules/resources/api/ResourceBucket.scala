@@ -33,6 +33,14 @@ trait ResourceBucket {
    */
   def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]]
 
+  /**
+   * Uploads a resource to the bucket
+   * 
+   * @param userId
+   * @param fileName
+   * @param source
+   * @return
+   */
   def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, ResourceInfo]]
 
   def getAllResources: fs2.Stream[IO, ResourceInfo]
