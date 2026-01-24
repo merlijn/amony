@@ -17,9 +17,7 @@ sealed trait AuthenticationError
 case object InvalidCredentials   extends AuthenticationError
 case object UnknownOAuthProvider extends AuthenticationError
 
-case class User(userId: String, externalId: String, passwordHash: String)
-
-case class OauthToken(provider: String, token: String)
+case class OauthTokenCredentials(provider: String, token: String)
 
 case class OauthTokenResponse(
   access_token: String,
@@ -56,7 +54,7 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO]) extends Logging {
       IO.pure(Right(Authentication(accessToken, refreshToken)))
     } else IO.pure(Left(InvalidCredentials))
 
-  def authenticate(oauthToken: OauthToken): IO[Either[AuthenticationError, Authentication]] = {
+  def authenticate(oauthToken: OauthTokenCredentials): IO[Either[AuthenticationError, Authentication]] = {
 
     oauthProviders.get(oauthToken.provider) match
       case None           =>

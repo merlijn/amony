@@ -3,8 +3,8 @@ package nl.amony.modules.auth
 import java.security.KeyFactory
 import java.security.spec.{ECParameterSpec, ECPoint, ECPrivateKeySpec, ECPublicKeySpec}
 import scala.concurrent.duration.FiniteDuration
-import scala.util.Try
 import scala.language.adhocExtensions
+import scala.util.Try
 
 import pdi.jwt.{JwtAlgorithm, JwtCirce, JwtClaim}
 import pureconfig.*
@@ -54,7 +54,7 @@ sealed trait JwtAlgorithmConfig {
 
 object JwtAlgorithmConfig {
 
-  given FieldCoproductHint[JwtAlgorithmConfig] = 
+  given FieldCoproductHint[JwtAlgorithmConfig] =
     new FieldCoproductHint[JwtAlgorithmConfig]("type"):
       override def fieldValue(name: String): String = name.dropRight("Config".length)
 

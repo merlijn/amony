@@ -69,7 +69,7 @@ object AuthEndpointServerLogic extends Logging {
           for
             _              <- EitherT.fromOption[IO](authService.oauthProviders.get(provider), ErrorResponse.notFound())
             _              <- EitherT.cond[IO](state == clientState, (), ErrorResponse.badRequest(message = "Invalid state parameter"))
-            authentication <- EitherT(authService.authenticate(OauthToken(provider, code)).map {
+            authentication <- EitherT(authService.authenticate(OauthTokenCredentials(provider, code)).map {
                                 case Right(authentication) => Right(authentication)
                                 case Left(_)               => Left(ErrorResponse.unauthorized(message = "Invalid credentials"))
                               })

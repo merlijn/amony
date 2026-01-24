@@ -176,10 +176,10 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
   def uniquePathConstraint(db: ResourceDatabase): IO[Unit] = {
     val resourceA = genResource()
     val resourceB = genResource().copy(bucketId = resourceA.bucketId, path = resourceA.path)
-    for {
+    for
       _ <- db.insertResource(resourceA)
       _ <- db.insertResource(resourceB)
-    } yield ()
+    yield ()
   }
 
   def updateUserMetaTest(db: ResourceDatabase): IO[Unit] = {
@@ -191,11 +191,11 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       tags        = Set("update-a", "update-b", "update-c")
     )
 
-    for {
+    for
       _      <- db.insertResource(resource)
       _      <- db.updateUserMeta(resource.bucketId, resource.resourceId, updated.title, updated.description, updated.tags.toList)
       result <- db.getById(resource.bucketId, resource.resourceId)
-    } yield {
+    yield {
       result.flatMap(_.title) shouldBe updated.title
       result.flatMap(_.description) shouldBe updated.description
       result.map(_.tags) shouldBe Some(updated.tags)
@@ -206,36 +206,36 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
     val resourceA = genResource()
     val resourceB = resourceA.copy(resourceId = ResourceId(UUID.randomUUID().toString), bucketId = resourceA.bucketId)
 
-    for {
+    for
       _      <- db.insertResource(resourceA)
       _      <- db.insertResource(resourceB.copy(hash = resourceA.hash)) // This should not throw an error
       byHash <- db.getByHash(resourceA.bucketId, resourceA.hash.get)
-    } yield byHash should contain theSameElementsAs List(resourceA, resourceB)
+    yield byHash should contain theSameElementsAs List(resourceA, resourceB)
   }
 
   def insertResourcesTest(db: ResourceDatabase): IO[Unit] = {
 
     def insertIdentityCheck(resource: ResourceInfo) =
-      for {
+      for
         _        <- db.insertResource(resource)
         returned <- db.getById(resource.bucketId, resource.resourceId)
-      } yield Some(resource) shouldBe returned
+      yield Some(resource) shouldBe returned
 
     def upsertIdentityCheck(resource: ResourceInfo) =
-      for {
+      for
         _      <- db.upsert(resource)
         byId   <- db.getById(resource.bucketId, resource.resourceId)
         byHash <- db.getByHash(resource.bucketId, resource.hash.get)
-      } yield {
+      yield {
         byId shouldBe Some(resource)
         byHash shouldBe List(resource)
       }
 
     def deleteCheck(resourceInfo: ResourceInfo) =
-      for {
+      for
         _      <- db.deleteResource(resourceInfo.bucketId, resourceInfo.resourceId)
         result <- db.getById(resourceInfo.bucketId, resourceInfo.resourceId)
-      } yield result shouldBe None
+      yield result shouldBe None
 
     def validateAll(expected: List[ResourceInfo]) =
       db.getAll("test").map {

@@ -18,8 +18,7 @@ case class VideoProperties(
   height: Int,
   fps: Float,
   durationInMillis: Int,
-  codec: Option[String]         = None,
-  metaData: Map[String, String] = Map.empty
+  codec: Option[String] = None
 ) extends ContentProperties
 
 case class ImageProperties(width: Int, height: Int, metaData: Map[String, String] = Map.empty) extends ContentProperties
@@ -55,7 +54,6 @@ object ContentProperties:
         height           = stream.height,
         durationInMillis = stream.durationMillis,
         fps              = stream.fps.toFloat,
-        codec            = Some(stream.codec_name),
-        metaData         = Map.empty
+        codec            = Some(stream.codec_name)
       )
   }.toRight(new Exception("No video stream found")).toTry

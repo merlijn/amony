@@ -57,9 +57,10 @@ object SearchRoutes:
 
   val endpoints = List(searchResourcesEndpoint)
 
-  private def getSortedTags(facetMap: Map[String, Long]): Seq[String] = facetMap.toSeq
-    .sortBy { case (key, count) => (-count, key) } // negative count for descending order
-    .map(_._1)
+  private def getSortedTags(facetMap: Map[String, Long]): Seq[String] =
+    facetMap.toSeq
+      .sortBy { case (key, count) => (-count, key) } // negative count for descending order
+      .map(_._1)
 
   private val durationPattern = raw"(\d*)-(\d*)".r
 

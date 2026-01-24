@@ -35,7 +35,7 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
       for
         resourceInfo <- newResource(FileInfo(uploadPath, encodedHash), userId)
         _            <- processEvent(ResourceAdded(resourceInfo))
-        //        _            <- IO(uploadPath.moveTo(targetPath))
+      //        _            <- IO(uploadPath.moveTo(targetPath))
       yield resourceInfo
     }
 

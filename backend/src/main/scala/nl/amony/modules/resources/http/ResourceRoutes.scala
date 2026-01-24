@@ -131,14 +131,15 @@ object ResourceRoutes:
 
     val modifyTagsBulkImpl = modifyTagsBulk.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogic {
       _ => (bucketId, dto) =>
-        val action = for
-          _               <- EitherT.cond[IO](dto.ids.nonEmpty, (), ApiError.BadRequest)
-          sanitizedIds     = dto.ids.distinct.toSet.map(ResourceId(_))
-          sanitizedAdd    <- sanitizeTags(dto.tagsToAdd).map(_.toSet)
-          sanitizedRemove <- sanitizeTags(dto.tagsToRemove).map(_.toSet)
-          bucket          <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
-          _               <- EitherT.right(bucket.modifyTags(sanitizedIds, sanitizedAdd, sanitizedRemove))
-        yield ()
+        val action =
+          for
+            _               <- EitherT.cond[IO](dto.ids.nonEmpty, (), ApiError.BadRequest)
+            sanitizedIds     = dto.ids.distinct.toSet.map(ResourceId(_))
+            sanitizedAdd    <- sanitizeTags(dto.tagsToAdd).map(_.toSet)
+            sanitizedRemove <- sanitizeTags(dto.tagsToRemove).map(_.toSet)
+            bucket          <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
+            _               <- EitherT.right(bucket.modifyTags(sanitizedIds, sanitizedAdd, sanitizedRemove))
+          yield ()
         action.value
     }
 

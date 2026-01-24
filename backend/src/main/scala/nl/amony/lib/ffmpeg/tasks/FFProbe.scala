@@ -20,11 +20,12 @@ trait FFProbe extends Logging {
   val ffprobeVersion: IO[FFProbeVersion] =
     useProcessOutput("ffprobe", List("-print_format", "json", "-show_program_version", "-loglevel", "quiet"), false) {
       stdout =>
-        val result = for
-          json    <- io.circe.parser.parse(stdout)
-          version <- json.asObject.flatMap(_.apply("program_version")).toRight(new Exception("No program_version found"))
-          decoded <- version.as[FFProbeVersion]
-        yield decoded
+        val result =
+          for
+            json    <- io.circe.parser.parse(stdout)
+            version <- json.asObject.flatMap(_.apply("program_version")).toRight(new Exception("No program_version found"))
+            decoded <- version.as[FFProbeVersion]
+          yield decoded
         IO.pure(result.toTry.get)
     }.timeout(defaultProbeTimeout).memoize.flatten
 
