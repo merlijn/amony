@@ -64,11 +64,17 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
       def insertResource(digest: Array[Byte]): EitherT[IO, UploadError, ResourceInfo] = {
         val encodedHash = config.hashingAlgorithm.encodeHash(digest)
 
+        /**
+         * TODO 
+         * 
+         * 1. There are a bunch of steps which are not guaranteed to all succeed or fail together (no transactionality)
+         * 2. The file extension might not be correct for the content type, we might want to validate or change the extension
+         */
         for
           targetPath   <- EitherT.fromEither[IO](resolveTargetPath(config.resourcePath.resolve(fileName), 100))
+          _            <- EitherT.right[UploadError](IO(Files.move(uploadPath, targetPath)))
           resourceInfo <- EitherT.right[UploadError](newResource(FileInfo(targetPath, encodedHash), userId))
           _            <- EitherT.right[UploadError](processEvent(ResourceAdded(resourceInfo)))
-          _            <- EitherT.right[UploadError](IO(Files.move(uploadPath, targetPath)))
         yield resourceInfo
       }
 

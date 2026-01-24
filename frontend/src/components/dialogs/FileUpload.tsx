@@ -26,9 +26,6 @@ const FileUpload = () => {
     const onFileUpload = () => {
       if (!file) return;
 
-      const formData = new FormData();
-      formData.append('file', file);
-
       const xhr = new XMLHttpRequest();
       
       xhr.upload.addEventListener('progress', (event) => {
@@ -58,7 +55,9 @@ const FileUpload = () => {
       setStatus('uploading');
       setFeedback(undefined);
       xhr.open('POST', UPLOAD_ENDPOINT);
-      xhr.send(formData);
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+      xhr.setRequestHeader('X-Filename', encodeURIComponent(file.name));
+      xhr.send(file);
     };
     
     return (
