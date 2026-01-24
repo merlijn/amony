@@ -4,25 +4,26 @@ import java.nio.file.Files
 
 import cats.effect.IO
 
-trait Resource:
-  def info: ResourceInfo
-  def getContent: fs2.Stream[IO, Byte]
+trait ResourceContent:
+  def contentType: String
+  def stream: fs2.Stream[IO, Byte]
 
-trait ResourceWithRangeSupport extends Resource:
+object ResourceContent:
+  def fromPath(path: java.nio.file.Path, contentType: Option[String]): ResourceContentWithRangeSupport = LocalFile(fs2.io.file.Path.fromNioPath(path), contentType.getOrElse("application/octet-stream"))
+
+trait ResourceContentWithRangeSupport extends ResourceContent:
   def size: Long
-  def getContentRange(start: Long, end: Long): fs2.Stream[IO, Byte]
+  def streamRange(start: Long, end: Long): fs2.Stream[IO, Byte]
 
-object Resource:
-  def fromPath(path: java.nio.file.Path, info: ResourceInfo): LocalFile = LocalFile(fs2.io.file.Path.fromNioPath(path), info)
-
-  def fromPathMaybe(path: java.nio.file.Path, info: ResourceInfo): Option[LocalFile] = Option.when(Files.exists(path))(fromPath(path, info))
-
-case class LocalFile(path: fs2.io.file.Path, override val info: ResourceInfo) extends ResourceWithRangeSupport:
+case class LocalFile(path: fs2.io.file.Path, contentType: String) extends ResourceContentWithRangeSupport:
 
   private val defaultChunkSize: Int = 64 * 1024
 
   override def size: Long = Files.size(path.toNioPath)
+  override def stream: fs2.Stream[IO, Byte] = fs2.io.file.Files[IO].readAll(path, defaultChunkSize, fs2.io.file.Flags.Read)
+  override def streamRange(start: Long, end: Long): fs2.Stream[IO, Byte] = fs2.io.file.Files[IO].readRange(path, defaultChunkSize, start, end)
 
-  override def getContent: fs2.Stream[IO, Byte] = fs2.io.file.Files[IO].readAll(path, defaultChunkSize, fs2.io.file.Flags.Read)
-
-  override def getContentRange(start: Long, end: Long): fs2.Stream[IO, Byte] = fs2.io.file.Files[IO].readRange(path, defaultChunkSize, start, end)
+case class Resource(
+  info: ResourceInfo,
+  content: ResourceContentWithRangeSupport
+)

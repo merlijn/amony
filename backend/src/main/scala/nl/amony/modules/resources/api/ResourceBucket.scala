@@ -27,7 +27,7 @@ trait ResourceBucket {
   /**
    * Performs an operation on a resource and returns the resulting content
    */
-  def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[Resource]]
+  def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]]
 
   def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[ResourceInfo]
 

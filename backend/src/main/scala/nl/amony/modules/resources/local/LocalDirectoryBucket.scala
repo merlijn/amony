@@ -91,16 +91,14 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
         else IO.unit
   }.compile.drain
 
-  override def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[Resource]] = getResourceInfo(resourceId).flatMap:
+  override def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]] = getResourceInfo(resourceId).flatMap:
     case None           => IO.pure(None)
     case Some(fileInfo) => cachedResourceOperation(fileInfo, LocalResourceOp(resourceId, operation))
 
-  private[local] def cachedResourceOperation(inputResource: ResourceInfo, operation: LocalResourceOp): IO[Option[LocalFile]] = {
+  private[local] def cachedResourceOperation(inputResource: ResourceInfo, operation: LocalResourceOp): IO[Option[ResourceContent]] = {
     val outputFile          = config.cachePath.resolve(operation.outputFilename)
-    val derivedResourceInfo = inputResource
-      .copy(path = outputFile.getFileName.toString, contentType = Some(operation.contentType), contentMeta = None)
 
-    if Files.exists(outputFile) then IO.pure(Resource.fromPathMaybe(outputFile, derivedResourceInfo))
+    if Files.exists(outputFile) then IO.pure(ResourceContent.fromPath(outputFile, Some(operation.contentType)).some)
     else {
 
       def runOperation(deferred: Deferred[IO, Either[Throwable, JPath]]): IO[JPath] =
@@ -116,7 +114,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
             case Some(existing) => (Some(existing), existing.get.rethrow)
             case None           => (Some(newDeferred), runOperation(newDeferred))
           }
-      }.flatten.map(path => Resource.fromPathMaybe(path, derivedResourceInfo))
+      }.flatten.map(path => ResourceContent.fromPath(outputFile, Some(operation.contentType)).some)
     }
   }
 
@@ -128,7 +126,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
         if !path.exists() then {
           logger.warn(s"Resource '$resourceId' was found in the database but no file exists: $path")
           None
-        } else { Some(Resource.fromPath(path, info)) }
+        } else { Some(Resource(info, ResourceContent.fromPath(path, info.contentType))) }
 
   override def deleteResource(resourceId: ResourceId): IO[Unit] =
     getResourceInfo(resourceId).flatMap:

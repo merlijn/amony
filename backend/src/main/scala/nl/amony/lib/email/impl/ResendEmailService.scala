@@ -5,10 +5,11 @@ import cats.{Applicative, FlatMap}
 import io.circe.derivation.Configuration
 import io.circe.syntax.*
 import io.circe.{Codec, Json, Printer}
+import scribe.Logging
 import sttp.client4.{Backend, StringBody, UriContext}
 import sttp.model.{MediaType, Uri}
+
 import nl.amony.lib.email.*
-import scribe.Logging
 
 given Configuration = Configuration.default.withSnakeCaseMemberNames
 
