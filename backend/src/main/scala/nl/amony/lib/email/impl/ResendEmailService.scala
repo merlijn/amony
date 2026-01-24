@@ -1,13 +1,14 @@
 package nl.amony.lib.email.impl
 
-import cats.effect.IO
+import cats.implicits.toFlatMapOps
+import cats.{Applicative, FlatMap}
 import io.circe.derivation.Configuration
 import io.circe.syntax.*
 import io.circe.{Codec, Json, Printer}
-import sttp.client4.{Backend, UriContext}
-import sttp.model.Uri
-
+import sttp.client4.{Backend, StringBody, UriContext}
+import sttp.model.{MediaType, Uri}
 import nl.amony.lib.email.*
+import scribe.Logging
 
 given Configuration = Configuration.default.withSnakeCaseMemberNames
 
@@ -45,11 +46,12 @@ case class Attachment(
 
 case class SendEmailResponse(id: String) derives Codec
 
-class ResendEmailService(apiKey: String, httpClient: Backend[IO], url: Uri = uri"""https://api.resend.com""") extends EmailService:
+class ResendEmailService[F[_]: {FlatMap, Applicative}](httpClient: Backend[F], apiKey: String, url: Uri = uri"""https://api.resend.com""")
+    extends EmailService[F], Logging:
 
   private val jsonPrinter = Printer.spaces2.copy(dropNullValues = true)
 
-  override def send(email: Email): IO[Unit] = {
+  override def send(email: Email): F[Unit] = {
 
     val emailRequest = SendEmailRequest(
       from    = email.from,
@@ -61,12 +63,13 @@ class ResendEmailService(apiKey: String, httpClient: Backend[IO], url: Uri = uri
       html    = Some(email.body)
     )
 
-    sttp.client4.basicRequest
+    val httpRequest = sttp.client4.basicRequest
       .header("Authorization", s"Bearer $apiKey")
-      .body(emailRequest.asJson.printWith(jsonPrinter))
+      .body(StringBody(emailRequest.asJson.printWith(jsonPrinter), "utf-8", MediaType.ApplicationJson))
       .post(url.addPath("emails"))
-      .send(httpClient).flatMap: response =>
-        response.body match
-          case Left(error)  => IO.raiseError(new Exception(s"Failed to send email: $error"))
-          case Right(value) => IO.pure(println(s"Email sent successfully, body: $value"))
+
+    httpClient.send(httpRequest).flatMap: response =>
+      response.body match
+        case Left(error) => Applicative[F].pure(throw new Exception(s"Failed to send email: $error"))
+        case Right(body) => Applicative[F].pure(logger.info(s"Email sent: $body"))
   }

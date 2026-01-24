@@ -1,7 +1,6 @@
 package nl.amony.lib.email
 
 import cats.data.NonEmptyList
-import cats.effect.IO
 
 case class Email(
   to: NonEmptyList[EmailAddress],
@@ -13,5 +12,5 @@ case class Email(
   replyTo: Seq[EmailAddress] = Nil
 )
 
-trait EmailService:
-  def send(email: Email): IO[Unit]
+trait EmailService[F[_]]:
+  def send(email: Email): F[Unit]
