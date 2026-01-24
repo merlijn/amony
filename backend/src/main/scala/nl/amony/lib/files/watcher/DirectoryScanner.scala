@@ -58,16 +58,13 @@ object LocalDirectoryScanner extends Logging {
     hashFunction: Path => IO[String]
   ): IO[FileStore] = {
 
-    currentFiles.evalMap {
-      (path, attrs) =>
-        for
-          previousByPath <- previous.getByPath(path)
-          hash           <- previousByPath
-                              .filter(
-                                f => f.size == attrs.size && f.modifiedTime == attrs.lastModifiedTime().toMillis
-                              ) // here we assume the file has not been modified if size and modified time are the same
-                              .map(i => IO.pure(i.hash)).getOrElse(hashFunction(path))
-        yield FileInfo(path, attrs, hash)
+    currentFiles.evalMap { (path, attrs) =>
+      for
+        previousByPath <- previous.getByPath(path)
+        hash           <- previousByPath
+                            .filter(f => f.size == attrs.size && f.modifiedTime == attrs.lastModifiedTime().toMillis)
+                            .map(i => IO.pure(i.hash)).getOrElse(hashFunction(path))
+      yield FileInfo(path, attrs, hash)
     }.foreach(e => current.insert(e)).compile.drain >> IO.pure(current)
   }
 
@@ -84,36 +81,34 @@ object LocalDirectoryScanner extends Logging {
 
     def maybeMetaChanged(file: FileInfo, previous: FileInfo): Option[FileEvent] = if file == previous then None else Some(FileMetaChanged(file))
 
-    val removed: Stream[IO, FileEvent] = previous.getAll().flatMap {
-      file =>
-        Stream.force(current.getByHash(file.hash).map {
-          case Nil => Stream.emit(FileDeleted(file))
-          case _   => Stream.empty
-        })
+    val removed: Stream[IO, FileEvent] = previous.getAll().flatMap { file =>
+      Stream.force(current.getByHash(file.hash).map {
+        case Nil => Stream.emit(FileDeleted(file))
+        case _   => Stream.empty
+      })
     }
 
     val movedOrAdded: Stream[IO, FileEvent] = current.getAllByHash().foldFlatMap(Seq.empty[FileEvent]) {
       case (carriedEvents, (hash, files)) =>
 
-        val events: IO[Stream[IO, FileEvent]] = previous.getByHash(hash).map {
-          prev =>
+        val events: IO[Stream[IO, FileEvent]] = previous.getByHash(hash).map { prev =>
 
-            val filesA = prev.toSeq
-            val filesB = files.toSeq
+          val filesA = prev.toSeq
+          val filesB = files.toSeq
 
-            val notMoved = Stream.emits(filesB.flatMap(b => filesA.find(_.path == b.path).map(_ -> b)).flatMap((a, b) => maybeMetaChanged(b, a)))
+          val notMoved = Stream.emits(filesB.flatMap(b => filesA.find(_.path == b.path).map(_ -> b)).flatMap((a, b) => maybeMetaChanged(b, a)))
 
-            val maybeDeleted = filesA.filterNot(f => filesB.exists(_.path == f.path))
-            val maybeAdded   = filesB.filterNot(f => filesA.exists(_.path == f.path))
+          val maybeDeleted = filesA.filterNot(f => filesB.exists(_.path == f.path))
+          val maybeAdded   = filesB.filterNot(f => filesA.exists(_.path == f.path))
 
-            val other = (maybeDeleted, maybeAdded) match {
-              // file moved scenario
-              case (a :: Nil, b :: Nil) => Stream.emit(FileMoved(b, a.path))
-              // in other cases, we cannot determine if a file was moved, so we emit delete and add events
-              case (a, b)               => Stream.emits(a.map(FileDeleted(_)) ++ b.map(FileAdded(_)))
-            }
+          val other = (maybeDeleted, maybeAdded) match {
+            // file moved scenario
+            case (a :: Nil, b :: Nil) => Stream.emit(FileMoved(b, a.path))
+            // in other cases, we cannot determine if a file was moved, so we emit delete and add events
+            case (a, b)               => Stream.emits(a.map(FileDeleted(_)) ++ b.map(FileAdded(_)))
+          }
 
-            notMoved ++ other
+          notMoved ++ other
         }
 
         (carriedEvents, Stream.force(events))

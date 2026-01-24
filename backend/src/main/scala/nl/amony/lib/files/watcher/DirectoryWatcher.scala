@@ -39,39 +39,37 @@ object DirectoryWatcher {
       }
     }
 
-    new Thread(
-      () => {
-        try {
-          while true do {
-            val key = watchService.take()
-            key.pollEvents().forEach {
-              event =>
-                val kind      = event.kind()
-                lazy val path = directoryPath.resolve(event.context().asInstanceOf[Path])
-                val fileInfo  = getByPath(path)
+    new Thread(() => {
+      try {
+        while true do {
+          val key = watchService.take()
+          key.pollEvents().forEach {
+            event =>
+              val kind      = event.kind()
+              lazy val path = directoryPath.resolve(event.context().asInstanceOf[Path])
+              val fileInfo  = getByPath(path)
 
-                kind match
-                  case StandardWatchEventKinds.ENTRY_DELETE => scheduledExecutor.schedule(publishDeletedEvent(path), 100, TimeUnit.MILLISECONDS)
-                  case StandardWatchEventKinds.ENTRY_CREATE =>
-                    if Files.isDirectory(path) then registerDirectory(path)
+              kind match
+                case StandardWatchEventKinds.ENTRY_DELETE => scheduledExecutor.schedule(publishDeletedEvent(path), 100, TimeUnit.MILLISECONDS)
+                case StandardWatchEventKinds.ENTRY_CREATE =>
+                  if Files.isDirectory(path) then registerDirectory(path)
 
-                    val hash = hashFn(path)
-                    logger.debug(s"File created: $path")
-                    publisher.submit(FileAdded(FileInfo(path, hash)))
-                  case StandardWatchEventKinds.ENTRY_MODIFY => logger.debug(s"File modified: $path")
+                  val hash = hashFn(path)
+                  logger.debug(s"File created: $path")
+                  publisher.submit(FileAdded(FileInfo(path, hash)))
+                case StandardWatchEventKinds.ENTRY_MODIFY => logger.debug(s"File modified: $path")
 //                publisher.submit(FileDeleted(path))
-            }
-
-            key.reset()
           }
-        } catch {
-          case _: InterruptedException => // Thread interrupted, exit loop
-        } finally {
-          Using.resource(watchService)(_.close())
-          publisher.close()
+
+          key.reset()
         }
+      } catch {
+        case _: InterruptedException => // Thread interrupted, exit loop
+      } finally {
+        Using.resource(watchService)(_.close())
+        publisher.close()
       }
-    ).start()
+    }).start()
 
     publisher
   }

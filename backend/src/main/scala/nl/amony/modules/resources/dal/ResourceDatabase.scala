@@ -159,6 +159,10 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
         case Some(old) => tables.resources.upsert(s, old.copy(fs_path = newPath)) >> IO.unit
         case None      => IO.unit
 
+  def bucketSize(bucketId: String): IO[Int] =
+    useSession: s =>
+      s.prepare(Queries.resources.bucketCount).flatMap(_.option(bucketId)).map(_.getOrElse(0))
+
   def deleteResource(bucketId: String, resourceId: String): IO[Unit] =
     useTransaction: (s, tx) =>
       for

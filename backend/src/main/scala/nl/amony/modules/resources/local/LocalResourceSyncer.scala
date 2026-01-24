@@ -1,5 +1,6 @@
 package nl.amony.modules.resources.local
 
+import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
 
@@ -63,12 +64,13 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
         )
     }
 
-  private def toFileStore(): IO[FileStore] = db.getAll(bucketId).map {
-    resources =>
-      val initialFiles: Seq[FileInfo] = resources
-        .map(r => FileInfo(config.resourcePath.resolve(Path.of(r.path)), r.hash.get, r.size, r.timeLastModified.getOrElse(0)))
-      InMemoryFileStore(initialFiles)
-  }
+  private def toFileStore(): IO[FileStore] =
+    db.getAll(bucketId).map {
+      resources =>
+        val initialFiles: Seq[FileInfo] = resources
+          .map(r => FileInfo(config.resourcePath.resolve(Path.of(r.path)), r.hash.get, r.size, r.timeLastModified.getOrElse(0)))
+        InMemoryFileStore(initialFiles)
+    }
 
   /**
    * Given an initial state, this method will poll the directory for changes and emit events for new, deleted and moved resources.
@@ -77,10 +79,23 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
    */
   private def singleScan(): Stream[IO, ResourceEvent] =
     logger.info(s"Scanning directory: ${config.resourcePath}")
-    Stream.eval(toFileStore()).flatMap: fileStore =>
-      LocalDirectoryScanner
-        .scanDirectory(config.resourcePath, fileStore, config.filterDirectory, config.filterFiles, config.hashingAlgorithm.createHash)
-        .parEvalMap(config.sync.scanParallelFactor)(mapFileEvent)
+
+    Stream.eval(toFileStore()).flatMap { fileStore =>
+      if !Files.exists(config.cachePath) then {
+        if fileStore.size() == 0 then {
+          logger.info(s"Cache directory ${config.cachePath} does not exist, creating it.")
+          Files.createDirectories(config.cachePath)
+          LocalDirectoryScanner
+            .scanDirectory(config.resourcePath, fileStore, config.filterDirectory, config.filterFiles, config.hashingAlgorithm.createHash)
+            .parEvalMap(config.sync.scanParallelFactor)(mapFileEvent)
+        } else {
+          logger.error(
+            s"Cache directory ${config.cachePath} does not exist, but database is not empty. This may lead data loss. Not scanning for changes."
+          )
+          Stream.empty[ResourceEvent]
+        }
+      }
+    }
 
   /**
    * Given an initial state, this method will poll the directory for changes and emit events for new, deleted and moved resources.
@@ -111,12 +126,14 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
   private[local] def processEvent(event: ResourceEvent) = applyEventToDb(event) >> topic.publish(event) >> IO(logger.info(s"[${config.id}] $event"))
 
   private def startSync(interrupter: SignallingRef[IO, Boolean]): IO[Unit] = {
-    def pollWithRetryOnException(): fs2.Stream[IO, ResourceEvent] = pollingResourceEventStream().through(_ evalTap processEvent)
-      .interruptWhen(interrupter).handleErrorWith {
-        e =>
-          logger.error(s"Error while scanning directory ${config.resourcePath.toAbsolutePath}, retrying in ${config.sync.pollInterval}", e)
-          fs2.Stream.sleep[IO](config.sync.pollInterval) >> pollWithRetryOnException()
-      }
+    def pollWithRetryOnException(): fs2.Stream[IO, ResourceEvent] =
+      pollingResourceEventStream()
+        .through(_ evalTap processEvent)
+        .interruptWhen(interrupter).handleErrorWith {
+          e =>
+            logger.error(s"Error while scanning directory ${config.resourcePath.toAbsolutePath}, retrying in ${config.sync.pollInterval}", e)
+            fs2.Stream.sleep[IO](config.sync.pollInterval) >> pollWithRetryOnException()
+        }
 
     logger.info(s"Starting polling at interval ${config.sync.pollInterval} for: ${config.resourcePath.toAbsolutePath}")
 

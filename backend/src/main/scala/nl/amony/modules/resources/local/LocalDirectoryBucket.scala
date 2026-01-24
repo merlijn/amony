@@ -28,7 +28,6 @@ object LocalDirectoryBucket:
     cats.effect.Resource.make {
       IO {
         val bucket = LocalDirectoryBucket(config, db, topic)
-        Files.createDirectories(config.cachePath)
         bucket.sync().unsafeRunAsync(_ => ())
         bucket
       }

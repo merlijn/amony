@@ -1,6 +1,7 @@
 package nl.amony.modules.resources.http
 
 import scala.concurrent.duration.DurationInt
+
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import io.circe.syntax.*
@@ -9,14 +10,15 @@ import org.http4s.CacheDirective.`max-age`
 import org.http4s.circe.given
 import org.http4s.dsl.io.*
 import org.http4s.headers.`Cache-Control`
+import org.typelevel.ci
+import org.typelevel.ci.CIStringSyntax
 import scribe.Logging
 import sttp.model.StatusCode
+
 import nl.amony.lib.tapir.ErrorResponse
 import nl.amony.modules.auth.api.{ApiSecurity, SecurityError}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.http.ResourceDirectives.resourceContentsResponse
-import org.typelevel.ci
-import org.typelevel.ci.CIStringSyntax
 
 object ResourceContentRoutes extends Logging {
 
@@ -68,7 +70,10 @@ object ResourceContentRoutes extends Logging {
           for
             session  <- EitherT.fromEither[IO](apiSecurity.requireSession(req)).leftMap(mapSecurityError)
             bucket   <- EitherT.fromOption[IO](buckets.get(bucketId), ErrorResponse.notFound("bucket_not_found", s"Bucket '$bucketId' not found"))
-            fileName <- EitherT.fromOption[IO](req.headers.get(ci"X-Filename").map(_.head.value), ErrorResponse.badRequest("missing_filename", "Missing 'filename' parameter"))
+            fileName <- EitherT.fromOption[IO](
+                          req.headers.get(ci"X-Filename").map(_.head.value),
+                          ErrorResponse.badRequest("missing_filename", "Missing 'filename' parameter")
+                        )
             resource <- EitherT(bucket.uploadResource(session.userId, fileName, req.body)).leftMap(mapUploadError)
             response <- EitherT.liftF(Ok(toDto(resource).asJson))
           yield response

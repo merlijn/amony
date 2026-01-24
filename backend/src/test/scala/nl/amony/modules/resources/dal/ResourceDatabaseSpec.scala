@@ -79,11 +79,10 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
           val dbConfig = configForContainer(container)
 
-          App.makeDatabasePool(dbConfig).map(ResourceDatabase(_)).use(
-            db =>
-              insertResourcesTest(db) >> db.truncateTables() >>
-                updateUserMetaTest(db) >> db.truncateTables() >>
-                duplicateHashesTest(db) >> db.truncateTables()
+          App.makeDatabasePool(dbConfig).map(ResourceDatabase(_)).use(db =>
+            insertResourcesTest(db) >> db.truncateTables() >>
+              updateUserMetaTest(db) >> db.truncateTables() >>
+              duplicateHashesTest(db) >> db.truncateTables()
           ).unsafeRunSync()
       }
     }
@@ -136,11 +135,10 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
           // Filter out SET statements, comments, and normalize empty lines
           val rawContent    = scala.io.Source.fromFile(rawOutputFile.toFile).getLines()
           val filteredLines = rawContent
-            .filterNot(
-              line =>
-                line.trim.startsWith("SET ") ||
-                  line.trim.startsWith("SELECT pg_catalog.set_config") ||
-                  line.trim.startsWith("--")
+            .filterNot(line =>
+              line.trim.startsWith("SET ") ||
+                line.trim.startsWith("SELECT pg_catalog.set_config") ||
+                line.trim.startsWith("--")
             )
             .toList
 
