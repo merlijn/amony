@@ -1,45 +1,78 @@
 package nl.amony.modules.resources.local
 
+import java.nio.file.{Files, Path, Paths}
 import java.security.MessageDigest
 
+import cats.data.EitherT
 import cats.effect.IO
 import fs2.{Chunk, Pipe}
 import scribe.Logging
 
 import nl.amony.lib.files.watcher.FileInfo
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{ResourceAdded, ResourceBucket, ResourceInfo}
+import nl.amony.modules.resources.api.{ResourceAdded, ResourceBucket, ResourceInfo, UploadError}
 
 trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
 
-  override def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[ResourceInfo] =
+  private val invalidSequences = List("/", "\\", "..")
 
-    val uploadPath = config.uploadPath.resolve(fileName)
-    val targetPath = config.resourcePath.resolve(fileName)
+  private def resolveTargetPath(path: Path, maxAttempt: Int): Either[UploadError, Path] = {
 
-    val writeToFile: Pipe[IO, Byte, Nothing]         = fs2.io.file.Files[IO].writeAll(uploadPath)
-    val calculateHash: Pipe[IO, Byte, MessageDigest] = {
+    var target: Path = path
+    var counter: Int = 1
 
-      val initialDigest = config.hashingAlgorithm.newDigest()
+    while Files.exists(target) && counter < maxAttempt do
+      val fileNameWithoutExt = target.getFileName.toString.lastIndexOf('.') match
+        case -1  => target.getFileName.toString
+        case idx => target.getFileName.toString.substring(0, idx)
 
-      def updateDigest(digest: MessageDigest, chunk: Chunk[Byte]): MessageDigest = {
-        digest.update(chunk.toArray)
-        digest
+      val extension = target.getFileName.toString.lastIndexOf('.') match
+        case -1  => ""
+        case idx => target.getFileName.toString.substring(idx)
+
+      target = path.getParent.resolve(s"${fileNameWithoutExt}_$counter$extension")
+      counter += 1
+
+    if Files.exists(target) then
+      Left(UploadError.StorageError("Failed to resolve unique file name after 100 attempts"))
+    else
+      Right(target)
+  }
+
+  override def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, ResourceInfo]] =
+
+    if invalidSequences.exists(fileName.contains) then
+      IO.pure(Left(UploadError.InvalidFileName(s"File name '$fileName' contains invalid sequences")))
+    else
+
+      val temporaryFileName = s"${config.random.alphanumeric.take(8).mkString}_$fileName"
+
+      val uploadPath = config.uploadPath.resolve(temporaryFileName)
+
+      val writeToFile: Pipe[IO, Byte, Nothing]         = fs2.io.file.Files[IO].writeAll(uploadPath)
+      val calculateHash: Pipe[IO, Byte, MessageDigest] = {
+
+        val initialDigest = config.hashingAlgorithm.newDigest()
+
+        def updateDigest(digest: MessageDigest, chunk: Chunk[Byte]): MessageDigest = {
+          digest.update(chunk.toArray)
+          digest
+        }
+        _.chunks.fold(initialDigest)(updateDigest)
       }
-      _.chunks.fold(initialDigest)(updateDigest)
-    }
 
-    def insertResource(digest: Array[Byte]): IO[ResourceInfo] = {
-      val encodedHash = config.hashingAlgorithm.encodeHash(digest)
+      def insertResource(digest: Array[Byte]): EitherT[IO, UploadError, ResourceInfo] = {
+        val encodedHash = config.hashingAlgorithm.encodeHash(digest)
 
-      for
-        resourceInfo <- newResource(FileInfo(uploadPath, encodedHash), userId)
-        _            <- processEvent(ResourceAdded(resourceInfo))
-      //        _            <- IO(uploadPath.moveTo(targetPath))
-      yield resourceInfo
-    }
+        for
+          targetPath   <- EitherT.fromEither[IO](resolveTargetPath(config.resourcePath.resolve(fileName), 100))
+          resourceInfo <- EitherT.right[UploadError](newResource(FileInfo(targetPath, encodedHash), userId))
+          _            <- EitherT.right[UploadError](processEvent(ResourceAdded(resourceInfo)))
+          _            <- EitherT.right[UploadError](IO(Files.move(uploadPath, targetPath)))
+        yield resourceInfo
+      }
 
-    source.observe(writeToFile).through(calculateHash).compile.last.flatMap {
-      case Some(digest) => insertResource(digest.digest())
-      case None         => IO.raiseError(new RuntimeException("Failed to compute hash for uploaded file"))
-    }.recoverWith(e => fs2.io.file.Files[IO].delete(uploadPath) >> IO.raiseError(new RuntimeException(s"Failed to upload resource: $fileName", e)))
+      source.observe(writeToFile).through(calculateHash).compile.last.flatMap {
+        case Some(digest) => insertResource(digest.digest()).value
+        case None         => IO.raiseError(new RuntimeException("Failed to compute hash for uploaded file"))
+      }.recoverWith(e => fs2.io.file.Files[IO].delete(uploadPath) >> IO.raiseError(new RuntimeException(s"Failed to upload resource: $fileName", e)))

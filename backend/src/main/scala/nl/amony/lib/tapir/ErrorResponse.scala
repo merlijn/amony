@@ -20,3 +20,6 @@ object ErrorResponse:
 
   def unauthorized(code: String = "unauthorized", message: String = "Unauthorized"): ErrorResponse =
     ErrorResponse(StatusCode.Unauthorized, ErrorResponseBody(code, message))
+
+  def forbidden(code: String = "forbidden", message: String = "Forbidden"): ErrorResponse =
+    ErrorResponse(StatusCode.Forbidden, ErrorResponseBody(code, message))

@@ -96,7 +96,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
     case Some(fileInfo) => cachedResourceOperation(fileInfo, LocalResourceOp(resourceId, operation))
 
   private[local] def cachedResourceOperation(inputResource: ResourceInfo, operation: LocalResourceOp): IO[Option[ResourceContent]] = {
-    val outputFile          = config.cachePath.resolve(operation.outputFilename)
+    val outputFile = config.cachePath.resolve(operation.outputFilename)
 
     if Files.exists(outputFile) then IO.pure(ResourceContent.fromPath(outputFile, Some(operation.contentType)).some)
     else {

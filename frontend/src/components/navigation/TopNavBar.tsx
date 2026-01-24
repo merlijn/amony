@@ -13,7 +13,9 @@ import {AiOutlineSetting} from "react-icons/ai";
 import {CgProfile} from "react-icons/cg";
 import Modal from "../common/Modal";
 import Profile from "../dialogs/Profile";
+import FileUpload from "../dialogs/FileUpload";
 import {BiLogInCircle} from "react-icons/bi";
+import {FiUpload} from "react-icons/fi";
 import FilterDropDown from "./FilterDropdown";
 
 export type NavBarProps = {
@@ -30,6 +32,7 @@ function TopNavBar(props: NavBarProps) {
   const [query, setQuery] = useState("")
   const [showFilters, setShowFilters] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
+  const [showUpload, setShowUpload] = useState(false)
   const session = useContext(SessionContext)
 
   const doSearch = (e: any) => {
@@ -59,10 +62,14 @@ function TopNavBar(props: NavBarProps) {
     <Modal visible = { showProfile } onHide = { () => setShowProfile(false) }>
       <Profile onLogout = { () => { window.location.reload(); } } />
     </Modal>
+    <Modal visible = { showUpload } onHide = { () => setShowUpload(false) }>
+      <FileUpload />
+    </Modal>
     <div className = "nav-bar-container">
       <div className = "top-nav-bar">
           <div key = "nav-bar-center" className = "nav-bar-center">
             <AiOutlineSetting className = "nav-menu-button" onClick = { props.onClickMenu } />
+            <FiUpload className = "nav-menu-button" onClick = { () => setShowUpload(true) } />
             <form key="search-form" className = "nav-search-form" onSubmit = { doSearch } >
               <div className = "nav-search-input-container">
                 <GoSearch className="search-icon" />

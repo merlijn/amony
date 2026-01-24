@@ -1,0 +1,89 @@
+.file-upload-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 300px;
+  padding-bottom: 50px;
+
+  .file-input-container {
+    input[type="file"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px dashed var(--border-secondary);
+      border-radius: 4px;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      cursor: pointer;
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  .file-info {
+    padding: 12px;
+    background-color: var(--bg-tertiary);
+    border-radius: 4px;
+    font-size: 0.9em;
+
+    p {
+      margin: 4px 0;
+      color: var(--text-secondary);
+
+      strong {
+        color: var(--text-primary);
+      }
+    }
+  }
+
+  .progress-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .progress-bar {
+      flex: 1;
+      height: 8px;
+      background-color: var(--bg-tertiary);
+      border-radius: 4px;
+      overflow: hidden;
+
+      .progress-fill {
+        height: 100%;
+        background-color: var(--bg-active);
+        transition: width 0.2s ease;
+      }
+    }
+
+    .progress-text {
+      font-size: 0.85em;
+      color: var(--text-secondary);
+      min-width: 40px;
+    }
+  }
+
+  .feedback {
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 0.9em;
+
+    &.feedback-success {
+      background-color: rgba(76, 175, 80, 0.2);
+      color: #4caf50;
+    }
+
+    &.feedback-error {
+      background-color: rgba(244, 67, 54, 0.2);
+      color: #f44336;
+    }
+  }
+
+  button {
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}

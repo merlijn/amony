@@ -5,12 +5,13 @@ import cats.effect.{Async, IO}
 import cats.implicits.{toFlatMapOps, toFunctorOps}
 import fs2.Stream
 import fs2.io.file.{Files, Path}
-import nl.amony.modules.resources.api.{Resource, ResourceContent, ResourceContentWithRangeSupport}
 import org.http4s.*
 import org.http4s.headers.Range.SubRange
 import org.http4s.headers.{Range, `Accept-Encoding`, `Accept-Ranges`, `Content-Encoding`, `Content-Length`, `Content-Range`, `Content-Type`}
 import org.typelevel.ci.CIStringSyntax
 import scribe.Logging
+
+import nl.amony.modules.resources.api.{Resource, ResourceContent, ResourceContentWithRangeSupport}
 
 object ResourceDirectives extends Logging {
 
@@ -27,7 +28,7 @@ object ResourceDirectives extends Logging {
           additionalHeaders = additionalHeaders,
           rangeResponseFn   = resource.streamRange
         )
-      case _                                  =>
+      case _                                         =>
         val response = Response(status = Status.Ok, headers = additionalHeaders, body = resource.stream)
         IO.pure(response)
     }

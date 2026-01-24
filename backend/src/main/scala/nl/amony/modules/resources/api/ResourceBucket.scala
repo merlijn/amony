@@ -4,6 +4,10 @@ import cats.effect.IO
 
 import nl.amony.modules.auth.api.UserId
 
+enum UploadError:
+  case InvalidFileName(message: String)
+  case StorageError(message: String)
+
 trait ResourceBucket {
 
   def id: String
@@ -29,7 +33,7 @@ trait ResourceBucket {
    */
   def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]]
 
-  def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[ResourceInfo]
+  def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, ResourceInfo]]
 
   def getAllResources: fs2.Stream[IO, ResourceInfo]
 }
