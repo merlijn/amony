@@ -1,4 +1,4 @@
-package nl.amony.modules.resources.database
+package nl.amony.modules.resources.dal
 
 import java.util.UUID
 import scala.util.Random
@@ -15,7 +15,7 @@ import scribe.Logging
 
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.{ResourceId, ResourceInfo}
-import nl.amony.modules.resources.database.ResourceDatabase
+import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.{App, DatabaseConfig}
 
 class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with Logging with Matchers {

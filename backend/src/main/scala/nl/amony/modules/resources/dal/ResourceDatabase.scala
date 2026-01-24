@@ -1,4 +1,4 @@
-package nl.amony.modules.resources.database
+package nl.amony.modules.resources.dal
 
 import cats.data.OptionT
 import cats.effect.{IO, Resource}
@@ -18,7 +18,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
   private def useTransaction[A](f: (Session[IO], Transaction[IO]) => IO[A]): IO[A] = pool.use(s => s.transaction.use(tx => f(s, tx)))
 
   // table specific methods
-  private[database] object tables {
+  private[dal] object tables {
 
     object resources {
 

@@ -14,8 +14,8 @@ import nl.amony.lib.files.*
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.modules.resources.*
 import nl.amony.modules.resources.ResourceConfig.LocalDirectoryConfig
-import nl.amony.modules.resources.api.{ResourceId, *}
-import nl.amony.modules.resources.database.ResourceDatabase
+import nl.amony.modules.resources.api.*
+import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.modules.resources.local.LocalResourceOperations.*
 
 trait LocalDirectoryDependencies(val config: LocalDirectoryConfig, val db: ResourceDatabase, val topic: EventTopic[ResourceEvent])

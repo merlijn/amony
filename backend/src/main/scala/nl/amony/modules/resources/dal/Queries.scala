@@ -1,4 +1,4 @@
-package nl.amony.modules.resources.database
+package nl.amony.modules.resources.dal
 
 import io.circe.Json
 import scribe.Logging

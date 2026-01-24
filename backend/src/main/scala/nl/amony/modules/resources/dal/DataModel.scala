@@ -1,4 +1,4 @@
-package nl.amony.modules.resources.database
+package nl.amony.modules.resources.dal
 
 import java.time.{Instant, ZoneOffset}
 

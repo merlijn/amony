@@ -23,7 +23,7 @@ import nl.amony.modules.admin.AdminRoutes
 import nl.amony.modules.auth.*
 import nl.amony.modules.resources.ResourceConfig
 import nl.amony.modules.resources.api.ResourceEvent
-import nl.amony.modules.resources.database.ResourceDatabase
+import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.modules.resources.http.{ResourceContentRoutes, ResourceRoutes}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.modules.search.http.SearchRoutes
