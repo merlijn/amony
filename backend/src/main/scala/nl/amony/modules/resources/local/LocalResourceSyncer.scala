@@ -46,22 +46,23 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
   }
 
   private[local] def newResource(f: FileInfo, userId: UserId): IO[ResourceInfo] =
-    LocalResourceMeta(f.path).recover { case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None }.map {
-      meta =>
-        ResourceInfo(
-          bucketId           = bucketId,
-          resourceId         = config.generateId(),
-          userId             = userId,
-          path               = relativizePath(f.path),
-          hash               = Some(f.hash),
-          size               = f.size,
-          contentType        = meta.map(_.contentType),
-          contentMeta        = meta.map(_.meta),
-          timeAdded          = Some(Instant.now().toEpochMilli),
-          timeCreated        = None,
-          timeLastModified   = Some(f.modifiedTime),
-          thumbnailTimestamp = None
-        )
+    LocalResourceMeta(f.path).recover { 
+      case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None 
+    }.map { meta =>
+      ResourceInfo(
+        bucketId           = bucketId,
+        resourceId         = config.generateId(),
+        userId             = userId,
+        path               = relativizePath(f.path),
+        hash               = Some(f.hash),
+        size               = f.size,
+        contentType        = meta.map(_.contentType),
+        contentMeta        = meta.map(_.meta),
+        timeAdded          = Some(Instant.now().toEpochMilli),
+        timeCreated        = None,
+        timeLastModified   = Some(f.modifiedTime),
+        thumbnailTimestamp = None
+      )
     }
 
   private def toFileStore(): IO[FileStore] =
@@ -78,12 +79,12 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
    * The state will be kept in memory and is not persisted.
    */
   private def singleScan(): Stream[IO, ResourceEvent] =
-    logger.info(s"Scanning directory: ${config.resourcePath}")
+    
 
     Stream.eval(toFileStore()).flatMap { fileStore =>
       if !Files.exists(config.cachePath) then {
         if fileStore.size() == 0 then {
-          logger.info(s"Cache directory ${config.cachePath} does not exist, creating it.")
+          logger.info(s"Scanning directory: ${config.resourcePath}")
           Files.createDirectories(config.cachePath)
           LocalDirectoryScanner
             .scanDirectory(config.resourcePath, fileStore, config.filterDirectory, config.filterFiles, config.hashingAlgorithm.createHash)
