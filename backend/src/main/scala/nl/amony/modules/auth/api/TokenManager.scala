@@ -6,18 +6,19 @@ import scala.util.{Failure, Try}
 import io.circe
 import io.circe.*
 import pdi.jwt.JwtClaim
+import scribe.Logging
 
 import nl.amony.modules.auth.{JwtAlgorithmConfig, JwtConfig}
 
-case class AuthTokenContent(roles: Set[String]) derives Codec
+case class AuthTokenContent(roles: Set[Role]) derives Codec
 
-class JwtDecoder(algo: JwtAlgorithmConfig):
+class JwtDecoder(algo: JwtAlgorithmConfig) extends Logging:
   def decode(token: String): Either[Throwable, AuthToken] = {
     for
       decoded <- algo.decode(token).toEither
       content <- parser.decode[AuthTokenContent](decoded.content)
       subject <- decoded.subject.toRight(new IllegalStateException("Token subject is missing"))
-    yield AuthToken(UserId(subject), content.roles.map(Role.apply))
+    yield AuthToken(UserId(subject), content.roles)
   }
 
 trait JwtEncoder:
@@ -34,13 +35,13 @@ class TokenManager(jwtConfig: JwtConfig) {
     }
   }
 
-  def createAccessAndRefreshTokens(maybeSubject: Option[String], roles: Set[String]): (String, String) = {
+  def createAccessAndRefreshTokens(maybeSubject: Option[String], roles: Set[Role]): (String, String) = {
     val content = Encoder[AuthTokenContent].apply(AuthTokenContent(roles)).noSpaces
 
     createAccessAndRefreshTokens(maybeSubject, content)
   }
 
-  def createAccessAndRefreshTokens(maybeSubject: Option[String], content: String = "{}"): (String, String) = {
+  private def createAccessAndRefreshTokens(maybeSubject: Option[String], content: String = "{}"): (String, String) = {
 
     val now = Instant.now
 

@@ -17,6 +17,9 @@ import FileUpload from "../dialogs/FileUpload";
 import {BiLogInCircle} from "react-icons/bi";
 import {FiUpload} from "react-icons/fi";
 import FilterDropDown from "./FilterDropdown";
+import LoginDialog from "../dialogs/LoginDialog";
+import { getOAuthProviders } from "../../api/generated";
+import { OAuthProviderDto } from "../../api/generated/model";
 
 export type NavBarProps = {
   onClickMenu: () => void, 
@@ -33,7 +36,35 @@ function TopNavBar(props: NavBarProps) {
   const [showFilters, setShowFilters] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
+  const [showLogin, setShowLogin] = useState(false)
+  const [oauthProviders, setOauthProviders] = useState<OAuthProviderDto[] | null>(null)
   const session = useContext(SessionContext)
+
+  const handleLoginClick = () => {
+    // If we already fetched providers and there are multiple, show dialog
+    if (oauthProviders && oauthProviders.length > 1) {
+      setShowLogin(true);
+      return;
+    }
+    
+    // Otherwise fetch providers first
+    getOAuthProviders()
+      .then((data) => {
+        setOauthProviders(data);
+        if (data.length === 1) {
+          // Single provider - redirect directly
+          window.location.href = data[0].loginUrl;
+        } else if (data.length > 1) {
+          // Multiple providers - show dialog
+          setShowLogin(true);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load OAuth providers', err);
+        // Show dialog anyway to display error
+        setShowLogin(true);
+      });
+  };
 
   const doSearch = (e: any) => {
     e.preventDefault();
@@ -64,6 +95,9 @@ function TopNavBar(props: NavBarProps) {
     </Modal>
     <Modal visible = { showUpload } onHide = { () => setShowUpload(false) }>
       <FileUpload />
+    </Modal>
+    <Modal visible = { showLogin } onHide = { () => setShowLogin(false) }>
+      <LoginDialog onClose = { () => setShowLogin(false) } providers = { oauthProviders } />
     </Modal>
     <div className = "nav-bar-container">
       <div className = "top-nav-bar">
@@ -103,7 +137,7 @@ function TopNavBar(props: NavBarProps) {
         {
           session.isLoggedIn() ?
             <CgProfile className = "profile-button" onClick = { () => setShowProfile(!showProfile) }/> :
-            <a href="/login"><BiLogInCircle className = "profile-button" /></a>
+            <BiLogInCircle className = "profile-button" onClick = { handleLoginClick } />
         }
       </div>
     </div>

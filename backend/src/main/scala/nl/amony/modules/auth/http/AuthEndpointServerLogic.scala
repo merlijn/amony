@@ -27,11 +27,6 @@ object AuthEndpointServerLogic extends Logging {
       .serverSecurityLogicPure(i => apiSecurity.requireSession(i, xsrfProtection = false))
       .serverLogic(auth => _ => IO(Right(auth)))
 
-    val loginImpl = loginEndpoint.serverLogic: credentials =>
-      authService.authenticate(credentials.username, credentials.password).map:
-        case Left(_)               => Left(SecurityError.Unauthorized)
-        case Right(authentication) => Right(RedirectResponse("/") -> apiSecurity.createCookies(authentication))
-
     val refreshImpl = refreshEndpoint.serverLogic: refreshToken =>
       authService.refresh("", refreshToken).map:
         case Left(_)               => Left(SecurityError.Unauthorized)
@@ -47,7 +42,7 @@ object AuthEndpointServerLogic extends Logging {
           params          = Map(
                               "client_id"     -> providerConfig.clientId,
                               "response_type" -> "code",
-                              "redirect_uri"  -> authConfig.publicUri.addPath("api", "oauth", "callback", providerConfig.name).toString,
+                              "redirect_uri"  -> authConfig.publicUri.addPath("api", "auth", "callback", providerConfig.name).toString,
                               "scope"         -> providerConfig.scopes.mkString(" "),
                               "state"         -> state
                             )
@@ -78,7 +73,23 @@ object AuthEndpointServerLogic extends Logging {
         result.value
     }
 
-    Http4sServerInterpreter[IO](serverOptions).toRoutes(List(loginImpl, refreshImpl, sessionImpl, logoutImpl, oauthLoginLogic, oauth2CallbackLogic))
+    val getOAuthProvidersLogic = getOAuthProvidersEndpoint.serverLogicSuccessPure[IO] { _ =>
+      authService.oauthProviders.values.map { provider =>
+        OAuthProviderDto(
+          name     = provider.name,
+          loginUrl = s"/api/auth/login/${provider.name}"
+        )
+      }.toList
+    }
+
+    Http4sServerInterpreter[IO](serverOptions).toRoutes(List(
+      refreshImpl,
+      sessionImpl,
+      logoutImpl,
+      oauthLoginLogic,
+      oauth2CallbackLogic,
+      getOAuthProvidersLogic
+    ))
       <+> loginPage(authService, authConfig)
   }
 

@@ -13,7 +13,7 @@ import pureconfig.generic.FieldCoproductHint
 import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
 import sttp.model.Uri
 
-import nl.amony.modules.auth.api.JwtDecoder
+import nl.amony.modules.auth.api.{JwtDecoder, Role}
 
 given ConfigReader[Uri] = ConfigReader.fromString[Uri](str => Uri.parse(str).left.map(err => CannotConvert(str, "Uri", err)))
 
@@ -24,11 +24,12 @@ case class OauthProvider(
   host: Uri,
   authorizeEndpoint: String = "authorize",
   tokenEndpoint: String     = "token",
-  scopes: List[String]      = List("openid", "profile", "email")
+  scopes: List[String]      = List("openid", "profile", "email"),
+  defaultRoles: Set[Role]   = Set.empty
 ) derives ConfigReader {
 
-  def authorizeUri: Uri = host.addPath(authorizeEndpoint)
-  def tokenUri: Uri     = host.addPath(tokenEndpoint)
+  def authorizeUri: Uri = host.addPath(authorizeEndpoint.split("/").filter(_.nonEmpty))
+  def tokenUri: Uri     = host.addPath(tokenEndpoint.split("/").filter(_.nonEmpty))
 }
 
 case class AuthConfig(
@@ -36,9 +37,7 @@ case class AuthConfig(
   jwt: JwtConfig,
   publicUri: Uri,
   secureCookies: Boolean,
-  oauthProviders: List[OauthProvider],
-  adminUsername: String,
-  adminPassword: String
+  oauthProviders: List[OauthProvider]
 ) derives ConfigReader {
 
   def decoder = JwtDecoder(jwt.algorithm)

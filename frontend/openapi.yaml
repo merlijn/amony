@@ -465,42 +465,6 @@ paths:
           description: ''
         '403':
           description: ''
-  /api/auth/login:
-    post:
-      tags:
-      - auth
-      description: Login the current user
-      operationId: authLogin
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/LoginCredentials'
-        required: true
-      responses:
-        '302':
-          description: ''
-          headers:
-            Location:
-              required: true
-              schema:
-                type: string
-            Set-Cookie:
-              required: false
-              schema:
-                type: array
-                items:
-                  type: string
-        '400':
-          description: 'Invalid value for: body'
-          content:
-            text/plain:
-              schema:
-                type: string
-        '401':
-          description: ''
-        '403':
-          description: ''
   /api/auth/refresh:
     post:
       tags:
@@ -583,6 +547,110 @@ paths:
                 type: array
                 items:
                   type: string
+  /api/auth/login/{provider}:
+    get:
+      tags:
+      - auth
+      description: Redirect to OAuth2 provider for login
+      operationId: authLogin
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '302':
+          description: ''
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+            Set-Cookie:
+              required: false
+              schema:
+                type: array
+                items:
+                  type: string
+        default:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseBody'
+  /api/auth/callback/{provider}:
+    get:
+      tags:
+      - auth
+      description: OAuth2 callback endpoint
+      operationId: authCallback
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: code
+        in: query
+        description: The authorization code returned by the OAuth2 provider
+        required: true
+        schema:
+          type: string
+      - name: state
+        in: query
+        description: The state parameter returned by the OAuth2 provider
+        required: true
+        schema:
+          type: string
+      - name: oauth_login_state
+        in: cookie
+        description: The state cookie to prevent CSRF attacks
+        required: true
+        schema:
+          type: string
+      responses:
+        '302':
+          description: ''
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+            Set-Cookie:
+              required: false
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          description: 'Invalid value for: query parameter code, Invalid value for:
+            query parameter state, Invalid value for: cookie oauth_login_state'
+          content:
+            text/plain:
+              schema:
+                type: string
+        default:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseBody'
+  /api/auth/oauth-providers:
+    get:
+      tags:
+      - auth
+      description: Get the list of available OAuth providers
+      operationId: getOAuthProviders
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OAuthProviderDto'
 components:
   schemas:
     AuthToken:
@@ -643,16 +711,27 @@ components:
           type: array
           items:
             type: string
-    LoginCredentials:
-      title: LoginCredentials
+    ErrorResponseBody:
+      title: ErrorResponseBody
       type: object
       required:
-      - username
-      - password
+      - code
+      - message
       properties:
-        username:
+        code:
           type: string
-        password:
+        message:
+          type: string
+    OAuthProviderDto:
+      title: OAuthProviderDto
+      type: object
+      required:
+      - name
+      - loginUrl
+      properties:
+        name:
+          type: string
+        loginUrl:
           type: string
     ResourceDto:
       title: ResourceDto
@@ -704,8 +783,6 @@ components:
           type: string
         contentMeta:
           $ref: '#/components/schemas/ResourceMetaDto'
-        contentMetaSource:
-          $ref: '#/components/schemas/ResourceToolMetaDto'
         urls:
           $ref: '#/components/schemas/ResourceUrlsDto'
         thumbnailTimestamp:
@@ -738,16 +815,6 @@ components:
           format: int64
         codec:
           type: string
-    ResourceToolMetaDto:
-      title: ResourceToolMetaDto
-      type: object
-      required:
-      - toolName
-      - toolData
-      properties:
-        toolName:
-          type: string
-        toolData: {}
     ResourceUrlsDto:
       title: ResourceUrlsDto
       type: object
