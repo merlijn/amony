@@ -6,13 +6,14 @@ import java.util.UUID
 import cats.effect.IO
 import org.http4s.Request
 import org.typelevel.ci.CIStringSyntax
+import scribe.Logging
 import sttp.model.headers.CookieValueWithMeta
 
 import nl.amony.lib.tapir.AuthCookies
 import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.{Authentication, JwtDecoder}
 
-class ApiSecurity(authConfig: AuthConfig):
+class ApiSecurity(authConfig: AuthConfig) extends Logging:
 
   private val decoder: JwtDecoder = authConfig.decoder
 

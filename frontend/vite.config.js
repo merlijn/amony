@@ -41,8 +41,7 @@ export default defineConfig({
     server: {
         proxy: {
             '/api': backendHost,
-            '/resources': backendHost,
-            '/login': backendHost
+            '/resources': backendHost
         }
     }
 });

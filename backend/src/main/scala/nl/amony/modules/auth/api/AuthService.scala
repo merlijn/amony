@@ -1,5 +1,7 @@
 package nl.amony.modules.auth.api
 
+import java.util.UUID
+
 import cats.effect.IO
 import scribe.Logging
 import sttp.client4.Backend
@@ -35,7 +37,7 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO]) extends Logging {
 
   private def getToken(provider: OauthProvider, code: String): IO[Either[String, OauthTokenResponse]] = {
 
-    val redirectUri = config.publicUri.addPath("api", "oauth", "callback", provider.name)
+    val redirectUri = config.publicUri.addPath("api", "auth", "callback", provider.name)
 
     val body = Map(
       "grant_type"    -> "authorization_code",
@@ -46,18 +48,12 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO]) extends Logging {
     )
 
     val req = sttp.client4.basicRequest
-      .post(provider.host.addPath(provider.tokenEndpoint))
+      .post(provider.tokenUri)
       .body(body)
       .response(asJson[OauthTokenResponse])
 
     httpClient.send(req).map(_.body.left.map(_.getMessage))
   }
-
-  def authenticate(username: String, password: String): IO[Either[AuthenticationError, Authentication]] =
-    if username == config.adminUsername && password == config.adminPassword then {
-      val (accessToken, refreshToken) = tokenManager.createAccessAndRefreshTokens(Some(username), Set("admin"))
-      IO.pure(Right(Authentication(accessToken, refreshToken)))
-    } else IO.pure(Left(InvalidCredentials))
 
   def authenticate(oauthToken: OauthTokenCredentials): IO[Either[AuthenticationError, Authentication]] = {
 
@@ -71,7 +67,8 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO]) extends Logging {
             logger.error(s"Error fetching token from OAuth provider ${oauthToken.provider}: $error")
             IO.raiseError(new RuntimeException(s"Error fetching token from OAuth provider ${oauthToken.provider}: $error"))
           case Right(tokenResponse) =>
-            val (accessToken, refreshToken) = tokenManager.createAccessAndRefreshTokens(None, Set(oauthToken.provider))
+            val (accessToken, refreshToken) =
+              tokenManager.createAccessAndRefreshTokens(Some(UUID.randomUUID().toString), roles = provider.defaultRoles)
             IO.pure(Right(Authentication(accessToken, refreshToken)))
   }
 

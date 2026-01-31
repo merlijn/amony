@@ -1,5 +1,6 @@
 package nl.amony.modules.auth.http
 
+import io.circe.Codec
 import sttp.model.StatusCode
 import sttp.tapir.*
 import sttp.tapir.json.circe.jsonBody
@@ -7,9 +8,9 @@ import sttp.tapir.json.circe.jsonBody
 import nl.amony.lib.tapir.*
 import nl.amony.modules.auth.api.*
 
-object AuthEndpointDefs {
+case class OAuthProviderDto(name: String, loginUrl: String) derives Codec, Schema
 
-  case class LoginCredentialsForm(username: String, password: String) derives Schema
+object AuthEndpointDefs {
 
   val errorOutput = {
     val unauthorizedOutput = oneOfVariantSingletonMatcher(statusCode(StatusCode.Unauthorized))(SecurityError.Unauthorized)
@@ -24,13 +25,6 @@ object AuthEndpointDefs {
       .get.in("api" / "auth" / "session")
       .securityIn(securityInput)
       .out(jsonBody[AuthToken])
-      .errorOut(errorOutput)
-
-  val loginEndpoint =
-    endpoint.tag("auth").name("authLogin").description("Login the current user")
-      .post.in("api" / "auth" / "login")
-      .in(formBody[LoginCredentialsForm]: EndpointIO.Body[String, LoginCredentialsForm])
-      .out(RedirectResponse.endpointOutput and AuthCookies.endpointOutput)
       .errorOut(errorOutput)
 
   val refreshEndpoint =
@@ -50,13 +44,13 @@ object AuthEndpointDefs {
 
   val oauth2loginEndpoint =
     endpoint.tag("auth").name("authLogin").description("Redirect to OAuth2 provider for login")
-      .get.in("api" / "oauth" / "login" / path[String]("provider"))
+      .get.in("api" / "auth" / "login" / path[String]("provider"))
       .out(RedirectResponse.endpointOutput and setCookie("oauth_login_state"))
       .errorOut(ErrorResponse.endpointOutput)
 
   val oauth2CallbackEndpoint =
     endpoint.tag("auth").name("authCallback").description("OAuth2 callback endpoint")
-      .get.in("api" / "oauth" / "callback" / path[String]("provider"))
+      .get.in("api" / "auth" / "callback" / path[String]("provider"))
       .in(query[String]("code").description("The authorization code returned by the OAuth2 provider"))
       .in(query[String]("state").description("The state parameter returned by the OAuth2 provider"))
       .in(cookie[String]("oauth_login_state").description("The state cookie to prevent CSRF attacks"))
@@ -64,5 +58,12 @@ object AuthEndpointDefs {
       .out(AuthCookies.endpointOutput)
       .errorOut(ErrorResponse.endpointOutput)
 
-  val endpoints = List(loginEndpoint, refreshEndpoint, sessionEndpoint, logoutEndpoint, oauth2loginEndpoint, oauth2CallbackEndpoint)
+  val getOAuthProvidersEndpoint: Endpoint[Unit, Unit, Unit, List[OAuthProviderDto], Any] =
+    endpoint
+      .tag("auth").name("getOAuthProviders").description("Get the list of available OAuth providers")
+      .get.in("api" / "auth" / "oauth-providers")
+      .out(jsonBody[List[OAuthProviderDto]])
+
+  val endpoints =
+    List(refreshEndpoint, sessionEndpoint, logoutEndpoint, oauth2loginEndpoint, oauth2CallbackEndpoint, getOAuthProvidersEndpoint)
 }
