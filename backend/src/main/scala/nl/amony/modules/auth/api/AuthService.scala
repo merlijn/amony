@@ -10,9 +10,7 @@ import sttp.client4.circe.asJson
 import nl.amony.modules.*
 import nl.amony.modules.auth.*
 
-sealed trait AuthenticationResponse
-
-case class Authentication(accessToken: String, refreshToken: String) extends AuthenticationResponse
+case class Authentication(accessToken: String, refreshToken: String)
 
 sealed trait AuthenticationError
 

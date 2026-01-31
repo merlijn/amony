@@ -21,9 +21,6 @@ class JwtDecoder(algo: JwtAlgorithmConfig) extends Logging:
     yield AuthToken(UserId(subject), content.roles)
   }
 
-trait JwtEncoder:
-  def encode(claim: JwtClaim): String
-
 class TokenManager(jwtConfig: JwtConfig) {
 
   private val expirationInSeconds = jwtConfig.accessTokenExpiration.toSeconds

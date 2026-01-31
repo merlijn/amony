@@ -221,7 +221,11 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
       val sb = new StringBuilder()
 
       sb.append(s"${FieldNames.path}:*${if q.trim.isEmpty then "" else s"$q*"}")
-      if query.tags.nonEmpty then sb.append(s" AND ${FieldNames.tags}:(${query.tags.mkString(" OR ")})")
+      
+      val includeTags = query.includeTags -- query.excludeTags
+      
+      if includeTags.nonEmpty then sb.append(s" AND ${FieldNames.tags}:(${includeTags.mkString(" OR ")})")
+      if query.excludeTags.nonEmpty then sb.append(s" AND -${FieldNames.tags}:(${query.excludeTags.mkString(" OR ")})")
       if query.untagged.contains(true) then sb.append(s" AND -${FieldNames.tags}:[* TO *]")
 
       if query.minRes.isDefined || query.maxRes.isDefined then

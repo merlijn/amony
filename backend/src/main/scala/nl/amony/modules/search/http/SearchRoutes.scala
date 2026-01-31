@@ -93,12 +93,14 @@ object SearchRoutes:
           case _            => Asc
         }
 
+        val excludeTags = apiSecurity.permissions(auth).hiddenTags
+
         val query = Query(
           q           = queryDto.q.map(s => sanitize(s, 64, c => c.isLetterOrDigit || c.isWhitespace)),
           n           = Math.min(queryDto.n.getOrElse(config.defaultNumberOfResults), config.maximumNumberOfResults),
           offset      = queryDto.offset.map(n => Math.max(0, n)),
-          tags        = if queryDto.untagged.contains(true) then List.empty else queryDto.tag.map(s => sanitize(s, 32, c => c.isLetterOrDigit)).toList,
-          playlist    = None,
+          includeTags = if queryDto.untagged.contains(true) then Set.empty else queryDto.tag.map(s => sanitize(s, 32, c => c.isLetterOrDigit)).toSet,
+          excludeTags = excludeTags,
           minRes      = queryDto.minRes.map(n => Math.max(0, n)),
           maxRes      = None,
           minDuration = duration.map(_.min),

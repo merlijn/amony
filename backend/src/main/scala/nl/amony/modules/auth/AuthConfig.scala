@@ -5,17 +5,29 @@ import java.security.spec.{ECParameterSpec, ECPoint, ECPrivateKeySpec, ECPublicK
 import scala.concurrent.duration.FiniteDuration
 import scala.language.adhocExtensions
 import scala.util.Try
-
 import pdi.jwt.{JwtAlgorithm, JwtCirce, JwtClaim}
 import pureconfig.*
 import pureconfig.error.{CannotConvert, FailureReason}
 import pureconfig.generic.FieldCoproductHint
 import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
 import sttp.model.Uri
-
 import nl.amony.modules.auth.api.{JwtDecoder, Role}
+import pureconfig.generic.derivation.EnumConfigReader
 
 given ConfigReader[Uri] = ConfigReader.fromString[Uri](str => Uri.parse(str).left.map(err => CannotConvert(str, "Uri", err)))
+
+enum Action derives EnumConfigReader:
+  case Search
+  case Preview
+  case View
+  case Download
+  case Upload
+
+case class AccessControlConfig(
+   hiddenTags: Set[String],
+   hiddenBuckets: Set[String],
+   allowedActions: Set[Action]
+) derives ConfigReader
 
 case class OauthProvider(
   name: String,
@@ -37,8 +49,36 @@ case class AuthConfig(
   jwt: JwtConfig,
   publicUri: Uri,
   secureCookies: Boolean,
-  oauthProviders: List[OauthProvider]
+  oauthProviders: List[OauthProvider],
+  accessControl: Map[String, AccessControlConfig]
 ) derives ConfigReader {
+
+  val anonymousAccess: AccessControlConfig = accessControl("anonymous")
+  val authenticatedAccess: AccessControlConfig = accessControl("authenticated")
+  val adminAccess: AccessControlConfig = AccessControlConfig(
+    hiddenTags      = Set.empty,
+    hiddenBuckets   = Set.empty,
+    allowedActions  = Set(Action.Search, Action.Preview, Action.View, Action.Download, Action.Upload)
+  )
+  
+  def access(roles: Set[Role]): AccessControlConfig = {
+
+    def roleAccess(role: Role): AccessControlConfig =
+      role match
+        case Role.Admin => adminAccess
+        case _ => accessControl.getOrElse(role, authenticatedAccess)
+    
+    def merge(configs: Set[AccessControlConfig]): AccessControlConfig =
+      configs.foldLeft(anonymousAccess) { (acc, cfg) =>
+        AccessControlConfig(
+          hiddenTags = acc.hiddenTags intersect cfg.hiddenTags,
+          hiddenBuckets = acc.hiddenBuckets intersect cfg.hiddenBuckets,
+          allowedActions = acc.allowedActions ++ cfg.allowedActions
+        )
+      }
+      
+    merge(roles.map(roleAccess))
+  }
 
   def decoder = JwtDecoder(jwt.algorithm)
 }

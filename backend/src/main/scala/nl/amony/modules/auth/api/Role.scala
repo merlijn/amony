@@ -10,3 +10,5 @@ object Role:
   given codec: Codec[Role]                          = Codec.implied[String]
   given configReader: pureconfig.ConfigReader[Role] = pureconfig.ConfigReader.fromString[Role](str => Right(Role(str)))
   val Admin                                         = Role("admin")
+  val Authenticated                                 = Role("authenticated")
+  val Anonymous                                     = Role("anonymous")
