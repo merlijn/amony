@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {useLocation, useNavigate} from "react-router";
+import {useLocation, useNavigate} from "react-router-dom";
 import {Constants, parseDurationParam, parseSortParam} from "../api/Constants";
 import {MediaView, ResourceSelection} from "../api/Model";
 import {useListener, useStateNeq} from "../api/ReactUtils";
@@ -29,10 +29,13 @@ const Main = () => {
     const getSelection = (): ResourceSelection => {
       const urlParams = new URLSearchParams(location.search)
 
+      const untagged = (urlParams.get("untagged") || "").toLowerCase() === "true"
+
       return {
         query: urlParams.get("q") || undefined,
         playlist: urlParams.get("playlist") || undefined,
-        tag: urlParams.get("tag") || undefined,
+        tag: untagged ? undefined : urlParams.get("tag") || undefined,
+        untagged: untagged || undefined,
         sort: parseSortParam(urlParams.get("s") || "date_added;desc"),
         duration: urlParams.has("d") ? parseDurationParam(urlParams.get("d") || "-") : undefined,
         minimumQuality: parseInt(urlParams.get("vq") || "0")
@@ -72,8 +75,9 @@ const Main = () => {
   
     useListener('keydown', keyDownHandler)
   
-    const galleryStyle = { 
-      marginTop: showNavigation ? 47 : 0,
+    const galleryStyle = {
+      display: 'relative',
+      paddingTop: showNavigation ? 47 : 0,
       marginLeft: 0
     }
 

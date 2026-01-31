@@ -15,6 +15,31 @@ export function buildUrl(path: string, urlParams: Map<string, string> | undefine
   return result
 }
 
+export const titleFromPath = (path: string) => {
+  const fileNameIncludingExtension = path.split('/').pop() || "Untitled"
+  return fileNameIncludingExtension.split('.').slice(0, -1).join('.')
+}
+
+const canPlayTypeCache: Record<string, boolean> = {};
+
+export function canBrowserPlayType(contentType: string): boolean {
+  if (canPlayTypeCache.hasOwnProperty(contentType)) {
+    return canPlayTypeCache[contentType];
+  }
+  let result = false;
+  if (contentType.startsWith('video/')) {
+    const video = document.createElement('video');
+    result = video.canPlayType(contentType) !== '';
+  } else if (contentType.startsWith('audio/')) {
+    const audio = document.createElement('audio');
+    result = audio.canPlayType(contentType) !== '';
+  } else if (contentType.startsWith('image/')) {
+    result = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'].includes(contentType);
+  }
+  canPlayTypeCache[contentType] = result;
+  return result;
+}
+
 export function copyParams(params: URLSearchParams) {
 
   const copy = new Map<string, string>()
@@ -100,7 +125,8 @@ export function resourceSelectionToParams(selection: ResourceSelection, offset: 
     offset: offset,
     n: n,
     q: selection.query,
-    tag: selection.tag,
+    tag: selection.untagged ? undefined : selection.tag,
+    untagged: selection.untagged || undefined,
     sort_field: selection.sort.field,
     sort_dir: selection.sort.direction,
     min_res: selection.minimumQuality,

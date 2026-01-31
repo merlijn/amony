@@ -29,11 +29,11 @@
 .dropdown-menu {
   @extend .hover-pointer;
   
-  background-color: white;
+  background-color: var(--bg-primary);
   border-radius: 5px;
   padding: 5px 0px;
   transition: height 1s ease;
-  border: 1px solid $gray-400;
+  border: 1px solid var(--border-primary);
 
   min-width: 100px;
   max-width: 500px;
@@ -45,7 +45,7 @@
 }
 
 .menu-item-selected {
-  background-color: $secondary-a !important;
+  background-color: var(--secondary-a) !important;
 }
 
 .dropdown-menu-item {
@@ -54,10 +54,10 @@
   display: flex;
   font-size: normal;
   padding: 6px 12px;
-  color: black;
+  color: var(--text-primary);
 
   &:hover {
-    color: white;
-    background-color: $secondary-a;
+    color: var(--text-inverse);
+    background-color: var(--secondary-a);
   }
 }

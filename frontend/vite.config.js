@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import viteCompression from 'vite-plugin-compression'
+import path from 'path';
+
+const backendHost  = 'http://127.0.0.1:8182';
 
 export default defineConfig({
     plugins: [
@@ -17,6 +20,11 @@ export default defineConfig({
     base: '/',
     publicDir: "public",
     environment: 'jsdom',
+    resolve: {
+        alias: {
+            'src': path.resolve(__dirname, './src')
+        }
+    },
     css: {
         preprocessorOptions: {
             scss: {
@@ -32,9 +40,9 @@ export default defineConfig({
     },
     server: {
         proxy: {
-            '/api': 'http://127.0.0.1:8080',
-            '/resources': 'http://127.0.0.1:8080',
-            '/login': 'http://127.0.0.1:8080'
+            '/api': backendHost,
+            '/resources': backendHost,
+            '/login': backendHost
         }
     }
 });

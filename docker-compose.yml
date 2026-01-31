@@ -1,45 +1,125 @@
 name: amony
 
 services:
-  amony:
-    image: europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/amony-app:dev
-    container_name: amony-app
-    depends_on:
-      postgres:
-        condition: service_healthy
-#    user: "1000:1000"
-    ports:
-      - "127.0.0.1:8080:8080"
-    environment:
-      AMONY_ADMIN_USERNAME: ${AMONY_ADMIN_USERNAME}
-      AMONY_ADMIN_PASSWORD: ${AMONY_ADMIN_PASSWORD}
-      AMONY_DATABASE_HOST: "postgres"
-      AMONY_DATABASE_USERNAME: ${DATABASE_USERNAME}
-      AMONY_DATABASE_PASSWORD: ${DATABASE_PASSWORD}
-    volumes:
-      - ${AMONY_LOCAL_MEDIA_PATH}:/media
-      - app_data:/app/data
-    restart: "no"
-
   postgres:
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready", "-U", "${DATABASE_USERNAME}", "-d", "amony" ]
+      test: ["CMD", "pg_isready", "-U", "${DATABASE_USERNAME}", "-d", "amony"]
       interval: 3s
       timeout: 3s
       retries: 5
     container_name: amony-postgres
     image: postgres:17.2
+#    user: "${AMONY_DOCKER_USER_ID}:${AMONY_DOCKER_USER_ID}"
     ports:
       - "127.0.0.1:5432:5432"
+    env_file:
+      - .env
     environment:
       POSTGRES_DB: "amony"
-      PGUSER: ${DATABASE_USERNAME}
-      POSTGRES_USER: ${DATABASE_USERNAME}
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_USER: ${DATABASE_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-changeme}
     restart: always
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - ${AMONY_HOST_MEDIA_PATH}/.amony/data/postgres:/var/lib/postgresql/data
 
-volumes:
-  pg_data:
-  app_data:
+  amony:
+    image: europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/amony-app:0.0.3-38-2a4fe8e0
+    platform: linux/amd64
+    container_name: amony-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    user: "${AMONY_DOCKER_USER_ID}:${AMONY_DOCKER_USER_ID}"
+    ports:
+      - "127.0.0.1:8182:8182"
+    env_file:
+      - .env
+    environment:
+      AMONY_ADMIN_USERNAME: ${AMONY_ADMIN_USERNAME:-admin}
+      AMONY_ADMIN_PASSWORD: ${AMONY_ADMIN_PASSWORD:-changeme}
+      DATABASE_HOST: "postgres"
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-admin}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
+    volumes:
+      - ${AMONY_HOST_MEDIA_PATH}:/media
+      - ${AMONY_HOST_MEDIA_PATH}/.amony/data:/app/data
+    restart: "no"
+
+  zitadel:
+    restart: unless-stopped
+    image: ghcr.io/zitadel/zitadel:latest
+    command: start-from-init --masterkey "MasterkeyNeedsToHave32Characters"
+    env_file:
+      - .env
+    environment:
+      # See "What's next" to learn about how to serve Zitadel on a different domain or IP.
+      ZITADEL_EXTERNALDOMAIN: localhost
+
+      # See "What's next" to learn about how to enable TLS.
+      ZITADEL_EXTERNALSECURE: false
+      ZITADEL_TLS_ENABLED: false
+
+      # Database connection settings.
+      ZITADEL_DATABASE_POSTGRES_HOST: postgres
+      ZITADEL_DATABASE_POSTGRES_PORT: 5432
+      # The database is created by the init job if it does not exist.
+      ZITADEL_DATABASE_POSTGRES_DATABASE: zitadel
+      # The admin user must already exist in the database.
+      ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: ${DATABASE_USERNAME:-admin}
+      ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: ${DATABASE_PASSWORD:-changeme}
+      ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: disable
+      # The zitadel user is created by the init job if it does not exist.
+      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE: disable
+
+      # By configuring a login client, the setup job creates a user of type machine with the role IAM_LOGIN_CLIENT.
+      # It writes a PAT to the path specified in ZITADEL_FIRSTINSTANCE_LOGINCLIENTPATPATH.
+      # The PAT is passed to the login container via the environment variable ZITADEL_SERVICE_USER_TOKEN_FILE.
+      ZITADEL_FIRSTINSTANCE_LOGINCLIENTPATPATH: /current-dir/login-client.pat
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED: false
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_USERNAME: login-client
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_NAME: Automatically Initialized IAM_LOGIN_CLIENT
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_PAT_EXPIRATIONDATE: '2029-01-01T00:00:00Z'
+      # Activate the login v2 on an installation from scratch.
+      # To activate the login v2 on an existing installation, read the "What's next" section.
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: true # To use the login v1, set this to false.
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI: http://localhost:3000/ui/v2/login
+      # Configure the redirection paths to the login v2.
+      ZITADEL_OIDC_DEFAULTLOGINURLV2: http://localhost:3000/ui/v2/login/login?authRequest=
+      ZITADEL_OIDC_DEFAULTLOGOUTURLV2: http://localhost:3000/ui/v2/login/logout?post_logout_redirect=
+      ZITADEL_SAML_DEFAULTLOGINURLV2: http://localhost:3000/ui/v2/login/login?samlRequest=
+      # ZITADEL_LOG_LEVEL: debug
+
+    healthcheck:
+      test:
+        - CMD
+        - /app/zitadel
+        - ready
+      interval: 10s
+      timeout: 60s
+      retries: 5
+      start_period: 10s
+    user: "0"
+    volumes:
+      - .:/current-dir:delegated
+    ports:
+      - 8080:8080
+      - 3000:3000
+
+  zitadel-login:
+    restart: unless-stopped
+    image: ghcr.io/zitadel/zitadel-login:latest
+    # If you can't use the network_mode service:zitadel, you can pass the environment variables ZITADEL_API_URL=http://zitadel:8080 and CUSTOM_REQUEST_HEADERS=Host:localhost instead.
+    environment:
+      - ZITADEL_API_URL=http://localhost:8080
+      - NEXT_PUBLIC_BASE_PATH=/ui/v2/login
+      - ZITADEL_SERVICE_USER_TOKEN_FILE=/current-dir/login-client.pat
+    network_mode: service:zitadel
+    user: "0"
+    volumes:
+      - .:/current-dir:ro
+    depends_on:
+      zitadel:
+        condition: service_healthy
+        restart: false

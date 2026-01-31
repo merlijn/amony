@@ -18,7 +18,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x]
+        node-version: [24.x]
 
     steps:
     - uses: actions/checkout@v4
@@ -93,13 +93,13 @@ jobs:
 
       - name: Build with sbt
         timeout-minutes: 5
-        run: sbt clean test app/jibDockerBuild app/jibWriteDockerTagsFile
+        run: sbt clean test jibDockerBuild jibWriteDockerTagsFile
 
       - name: Get git info
         id: git-info
         run: |
           echo "-- jib docker image tags --"
-          cat app/.docker-tags.txt
+          cat .docker-tags.txt
           echo "\n-- git tags --"
           git --no-pager tag --list
           echo "\n--"
@@ -121,7 +121,7 @@ jobs:
         if: |
           steps.git-info.outputs.commit_tag != '' || contains(steps.git-info.outputs.commit_msg, '#push')
         run: |
-          # The app/.docker-tags.txt file is created by the jibWriteDockerTagsFile task in the build.sbt
+          # The .docker-tags.txt file is created by the jibWriteDockerTagsFile task in the build.sbt
           while IFS= read -r tag || [ -n "$tag" ]; do
             docker push $DOCKER_REGISTRY/$PROJECT_ID/$REPOSITORY_PATH/$IMAGE_NAME:$tag
-          done < app/.docker-tags.txt
+          done < .docker-tags.txt

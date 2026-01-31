@@ -2,10 +2,10 @@
 
 .modal-dialog-container {
   min-width: 500px;
-  padding: $spacing-4;
-  border-radius: $spacing-2;
-  background-color: var(--text-bg-color);
-  color: var(--text-fg-color);
+  padding: $spacing-l;
+  border-radius: $spacing-s;
+  background-color: var(--text-inverse);
+  color: var(--text-primary);
   display: flex;
   flex-direction: column;
 
@@ -19,9 +19,9 @@
 
   @extend .mt-2, .pb-3, .mb-4;
   position: relative;
-  border-bottom: $gray-400 1px solid;
+  border-bottom: var(--border-primary) 1px solid;
   width: 100%;
-  color: $highlight-d;
+  color: var(--highlight-d);
   font-size: x-large;
   font-weight: bold;
 }

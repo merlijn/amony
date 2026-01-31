@@ -8,8 +8,8 @@
   position: fixed;
   // float: left;
   width: 100%;
-  background-color: var(--text-bg-color);
-  border-bottom: 1px solid $gray-200;
+  background-color: var(--bg-primary);
+  border-bottom: 1px solid var(--border-secondary);
 
   height: 44px;
   display: flex;
@@ -22,7 +22,7 @@
     position: absolute;
     right: 0px;
     bottom: 0px;
-    color: $gray-800;
+    color: var(--text-secondary);
     margin-right: 10px;
     margin-bottom: 4px;
   }
@@ -39,34 +39,34 @@
     display: flex;
     text-align: center;
     margin: 0px 4px;
-    color: black;
-    background-color: $gray-300;
-    border: 2px solid $gray-400;
+    color: var(--text-primary);
+    background-color: var(--bg-hover);
+    border: 2px solid var(--border-primary);
     font-size: small;
     padding: 6px 12px;
     border-radius: 25px;
 
     &:hover {
-      background-color: $gray-400;
-      color: rgba(black, 0.8);
+      background-color: var(--bg-active);
+      color: var(--text-primary);
     }
   }
 
   .selected-tag {
-    color: white;
-    border-color: $gray-500;
-    background-color: $gray-500 !important;
+    color: var(--text-inverse);
+    border-color: var(--bg-active);
+    background-color: var(--bg-active) !important;
     &:hover {
-      color: white;
+      color: var(--text-inverse);
     }
   }
 
   .custom-dropdown-toggle {
     border-radius: 25px !important;
-    background-color: $gray-500 !important;
-    border-color: $gray-500 !important;
+    background-color: var(--bg-active) !important;
+    border-color: var(--bg-active) !important;
     font-size: small !important;
-    color: white;
+    color: var(--text-inverse);
     padding: 3px 10px;
     margin: 0px 4px;
     display: flex;

@@ -2,260 +2,268 @@
 
 $row-height: 36px;
 
+// https://stackoverflow.com/questions/24840074/how-to-stick-table-headerthead-on-top-while-scrolling-down-the-table-rows-with
 .list-container {
 
-  width: 100%;
-  height: auto;
-  display: table;
-  table-layout: fixed;
-
-  .action-icon {
-      
-    @extend .hover-pointer;
-    width: 20px;
-    height: 20px;
-  }
-
-  .list-cell {
-    @extend .v-align-center;
-
-    position: relative;
-    display: table-cell;
-
-    white-space: nowrap;
-    overflow: hidden;
-
-    border-bottom: 1px solid $gray-200;
-    padding: 0px 8px;
-    height: $row-height;
-  }
-
-  .list-header {
-    
-    @extend .hover-pointer;
-
-    text-align: left;
-    vertical-align: middle;
-
-    position: sticky;
-    //top: 0px;
-    font-size: 15px;
-    font-weight: 500;
-    height: 44px;
-    //padding: 12px 8px;
-    border-bottom: 1px solid $gray-200;
-
-    span {
-      padding-left: 8px;
-    }
-
-    .column-sort-icon {
-      visibility: hidden;
-      float: right;
-    }
-  }
-
-  .list-header-actionbar {
-
-    @extend .list-header;
+  .list-table {
     width: 100%;
-    //text-align: center;
-    vertical-align: middle;
+    //height: auto;
+    display: table;
+    position: relative;
 
-    .action-bar-item {
+    thead {
+      position: sticky;
+      top: $page-header-height;
+      background: var(--bg-primary);
+      z-index: 10;
+    }
+
+    .action-icon {
+
       @extend .hover-pointer;
-      width: 18px;
-      height: 18px;
-      margin-right: 8px;
-      //padding: 0px 8px;
-      //display: inline-block;
-    }
-  }
-
-  .list-header-select {
-    @extend .list-header, .hover-pointer;
-    text-align: center;
-    vertical-align: middle;
-  }
-
-  .list-header-thumbnail {
-    @extend .list-header;
-  }
-
-  .list-header-title {
-    @extend .list-header;
-    width: 65%;
-  }
-
-  .list-header-tags {
-    @extend .list-header;
-    width: 35%;
-  }
-
-  .list-header-date {
-    @extend .list-header;
-  }
-
-  .list-header-size {
-    @extend .list-header;
-  }
-
-  .list-header-resolution {
-    @extend .list-header;
-  }
-
-  .list-row {
-    display: table-row;
-    height: $row-height;
-
-    .hover-action {
-      visibility: hidden;
-      position: absolute;
+      width: 20px;
+      height: 20px;
     }
 
-    .add-tag-button {
-      visibility: hidden;
-    }
-
-    .media-actions {
-      @extend .hover-action, .v-align-center;
-      display: flex;
-      gap: $spacing-2;
-      padding-left: $spacing-3;
-      background-color: $gray-100;
-      height: 100%;
-
-      .fragments-action {
-        @extend .hover-pointer;
-        width: 24px;
-        height: 24px;
-      }
-
-      .delete-action {
-        @extend .hover-pointer;
-        width: 24px;
-        height: 24px;
-      }
-    }
-
-    .edit-title {
-      @extend .hover-pointer, .action-icon, .hover-action;
-      background-color: $gray-100;
-      width: 30px;
-      right: -8px;
-      padding-left: 6px;
-      padding-right: 4px;
-    }
-
-    &:hover {
-      background-color: $gray-100;
-
-      .hover-action {
-        visibility: visible;
-      }
-
-      .add-tag-button {
-        visibility: visible;
-      }
-
-      .column-sort-icon {
-        visibility: visible;
-      }
-    }
-
-    .cell-wrapper {
-
+    .list-cell {
       @extend .v-align-center;
 
       position: relative;
-      width: 100%;
-      height: 100%;
-      display: flex;
+      display: table-cell;
+
+      white-space: nowrap;
+      overflow: hidden;
+
+      border-bottom: 1px solid var(--border-secondary);
+      padding: 0px 8px;
+      height: $row-height;
     }
 
-    .list-select {
-      @extend .list-cell, .hover-pointer;
+    .list-header {
+
+      @extend .hover-pointer;
+
+      text-align: left;
+      vertical-align: middle;
+
+      font-size: 15px;
+      font-weight: 500;
+      height: 44px;
+      border-bottom: 1px solid var(--border-secondary);
+      background-color: var(--bg-primary);
+
+      span {
+        padding-left: 8px;
+      }
+
+      .column-sort-icon {
+        visibility: hidden;
+        float: right;
+      }
+    }
+
+    .list-header-actionbar {
+
+      @extend .list-header;
+      width: 100%;
+      //text-align: center;
+      vertical-align: middle;
+
+      .action-bar-item {
+        @extend .hover-pointer;
+        width: 18px;
+        height: 18px;
+        margin-right: 8px;
+        //padding: 0px 8px;
+        //display: inline-block;
+      }
+    }
+
+    .list-header-select {
+      @extend .list-header, .hover-pointer;
       text-align: center;
       vertical-align: middle;
-      &:hover {
-        background-color: $gray-300;
-        border-radius: 50%;
-      }
-      input {
-        @extend .hover-pointer;
-        align-content: center;
-        &:hover {
-          background-color: $gray-300;
-        }
-      }
     }
 
-    .list-thumbnail {
-      @extend .list-cell;
-      //padding-left: 0px;
-      padding-right: 0px;
-      .list-thumbnail-img {
-        @extend .hover-pointer;
-        align-items: center;
-        vertical-align: middle;
-        width: 64px;
-        height: 36px; 
-      }
+    .list-header-thumbnail {
+      @extend .list-header;
     }
 
-    .list-resolution {
-      width: 1%;
+    .list-header-title {
+      @extend .list-header;
+      width: 65%;
     }
 
-    .list-date {
-      width: 1%;
-      white-space: nowrap;
+    .list-header-tags {
+      @extend .list-header;
+      width: 35%;
     }
 
-    .list-size {
-      text-align: right;
+    .list-header-date {
+      @extend .list-header;
     }
 
-    .list-title {
-      width: 40%;
-
-      .edit-title-input {
-        width: calc(100% - 28px);
-        padding: 4px;
-      }
+    .list-header-size {
+      @extend .list-header;
     }
 
-    .list-tags {
-      width: 50%;
+    .list-header-resolution {
+      @extend .list-header;
+    }
 
-      .add-tag-action {
-        @extend .hover-action, .action-icon;
-        width: 24px;
-        height: 24px;
-      }
+    .list-row {
+      display: table-row;
+      height: $row-height;
 
-      .new-tag {
+      .hover-action {
+        visibility: hidden;
         position: absolute;
-        right: 5px;
-        min-width: 25px;
-
-        padding: 6px 10px;
-        border-radius: 25px;
-        border: 1px solid $highlight-e;
       }
-    }
 
-    .list-actions {
+      .add-tag-button {
+        visibility: hidden;
+      }
 
-      width: 1%;
+      .media-actions {
+        @extend .hover-action, .v-align-center;
+        display: flex;
+        gap: $spacing-s;
+        padding-left: $spacing-m;
+        background-color: var(--bg-secondary);
+        height: 100%;
 
-      .actions-container {
-        width: 50px;
+        .fragments-action {
+          @extend .hover-pointer;
+          width: 24px;
+          height: 24px;
+        }
 
         .delete-action {
-          @extend .hover-pointer, .action-icon;
-          float: right;
-          margin-left: 5px;
+          @extend .hover-pointer;
+          width: 24px;
+          height: 24px;
+        }
+      }
+
+      .edit-title {
+        @extend .hover-pointer, .action-icon, .hover-action;
+        background-color: var(--bg-secondary);
+        width: 30px;
+        right: -8px;
+        padding-left: 6px;
+        padding-right: 4px;
+      }
+
+      &:hover {
+        background-color: var(--bg-secondary);
+
+        .hover-action {
+          visibility: visible;
+        }
+
+        .add-tag-button {
+          visibility: visible;
+        }
+
+        .column-sort-icon {
+          visibility: visible;
+        }
+      }
+
+      .cell-wrapper {
+
+        @extend .v-align-center;
+
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+      }
+
+      .list-select {
+        @extend .list-cell, .hover-pointer;
+        text-align: center;
+        vertical-align: middle;
+        &:hover {
+          background-color: var(--bg-hover);
+          border-radius: 50%;
+        }
+        input {
+          @extend .hover-pointer;
+          align-content: center;
+          &:hover {
+            background-color: var(--bg-hover);
+          }
+        }
+      }
+
+      .list-thumbnail {
+        @extend .list-cell;
+        //padding-left: 0px;
+        padding-right: 0px;
+        .list-thumbnail-img {
+          @extend .hover-pointer;
+          align-items: center;
+          vertical-align: middle;
+          width: 64px;
+          height: 36px;
+        }
+      }
+
+      .list-resolution {
+        width: 1%;
+      }
+
+      .list-date {
+        width: 1%;
+        white-space: nowrap;
+      }
+
+      .list-size {
+        text-align: right;
+      }
+
+      .list-title {
+        width: 40%;
+
+        .edit-title-input {
+          width: calc(100% - 28px);
+          padding: 4px;
+        }
+      }
+
+      .list-tags {
+        width: 50%;
+
+        .add-tag-action {
+          @extend .hover-action, .action-icon;
+          width: 24px;
+          height: 24px;
+        }
+
+        .new-tag {
+          position: absolute;
+          right: 5px;
+          min-width: 25px;
+
+          padding: 6px 10px;
+          border-radius: 25px;
+          border: 1px solid var(--highlight-e);
+        }
+      }
+
+      .list-actions {
+
+        width: 1%;
+
+        .actions-container {
+          width: 50px;
+
+          .delete-action {
+            @extend .hover-pointer, .action-icon;
+            float: right;
+            margin-left: 5px;
+          }
         }
       }
     }

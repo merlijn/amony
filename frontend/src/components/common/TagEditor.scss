@@ -14,9 +14,9 @@
 
     span {
       @extend .v-align-center;
-      color: white;
-      background-color: $highlight-e;
-      border: 1px solid $secondary-e;
+      color: var(--text-inverse);
+      background-color: var(--highlight-e);
+      border: 1px solid var(--secondary-e);
       min-width: 50px;
 
 
@@ -39,9 +39,9 @@
     text-align: center;
     margin-right: 4px;
     float: left;
-    color: black;
-    background-color: $gray-300;
-    border: 2px solid $gray-400;
+    color: var(--text-primary);
+    background-color: var(--bg-hover);
+    border: 2px solid var(--border-primary);
     font-size: small;
     padding: 6px 12px;
     border-radius: 25px;
@@ -55,18 +55,18 @@
     .delete-tag {
 
       border-radius: 16px;
-      background-color: white;
+      background-color: var(--bg-primary);
       position: absolute;
       right: 1px;
       visibility: hidden;
       vertical-align: middle;
-      border: 1px solid black;
+      border: 1px solid var(--text-primary);
       margin: 0px;
       // margin-top: 1px;
       padding-top: 1px;
       height: 22px;
       width: 22px;
-      color: black;
+      color: var(--text-primary);
       opacity: 60%;
 
       &:hover {

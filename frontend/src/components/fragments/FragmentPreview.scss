@@ -7,14 +7,14 @@
 
   .tags-button {
     @extend .abs-top-left, .action-icon-small;
-    margin: $spacing-2;
+    margin: $spacing-s;
   }
 
   .meta-panel-title {
     font-size: small;
     font-weight: bold;
     padding-top: 1px;
-    margin-bottom: $spacing-3;
+    margin-bottom: $spacing-m;
   }
 
   .tag-list {

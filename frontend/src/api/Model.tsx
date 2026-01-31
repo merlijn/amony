@@ -2,6 +2,7 @@ export type ResourceSelection = {
   query?: string
   playlist?: string
   tag?: string
+  untagged?: boolean
   duration?: [number?, number?]
   minimumQuality: number
   sort: Sort
@@ -21,6 +22,7 @@ export type Sort = {
 
 export type SortDirection = 'asc' | 'desc'
 export type Columns = 'auto' | number
+export type ThemeSetting = 'light' | 'dark' | 'system'
 
 export type Prefs = {
   showSidebar: boolean
@@ -29,6 +31,7 @@ export type Prefs = {
   showDates: boolean
   showResolution: boolean
   gallery_columns: Columns
+  theme: ThemeSetting
 }
 
 export type SessionInfo = {

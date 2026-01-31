@@ -1,4 +1,4 @@
-@use './Constants.scss' as *;
+@use './Constants.scss' as constants;
 
 .abs-center {
   position: absolute;
@@ -49,29 +49,29 @@
 .mb-0 { margin-bottom: 0px; }
 .ml-0 { margin-left: 0px; }
 
-.m-1 { margin: $spacing-1; }
-.mt-1 { margin-top: $spacing-1; }
-.mr-1 { margin-right: $spacing-1; }
-.mb-1 { margin-bottom: $spacing-1; }
-.ml-1 { margin-left: $spacing-1; }
+.m-1 { margin: constants.$spacing-xs; }
+.mt-1 { margin-top: constants.$spacing-xs; }
+.mr-1 { margin-right: constants.$spacing-xs; }
+.mb-1 { margin-bottom: constants.$spacing-xs; }
+.ml-1 { margin-left: constants.$spacing-xs; }
 
-.m-2 { margin: $spacing-2; }
-.mt-2 { margin-top: $spacing-2; }
-.mr-2 { margin-right: $spacing-2; }
-.mb-2 { margin-bottom: $spacing-2; }
-.ml-2 { margin-left: $spacing-2; }
+.m-2 { margin: constants.$spacing-s; }
+.mt-2 { margin-top: constants.$spacing-s; }
+.mr-2 { margin-right: constants.$spacing-s; }
+.mb-2 { margin-bottom: constants.$spacing-s; }
+.ml-2 { margin-left: constants.$spacing-s; }
 
-.m-3 { margin: $spacing-3; }
-.mt-3 { margin-top: $spacing-3; }
-.mr-3 { margin-right: $spacing-3; }
-.mb-3 { margin-bottom: $spacing-3; }
-.ml-3 { margin-left: $spacing-3; }
+.m-3 { margin: constants.$spacing-m; }
+.mt-3 { margin-top: constants.$spacing-m; }
+.mr-3 { margin-right: constants.$spacing-m; }
+.mb-3 { margin-bottom: constants.$spacing-m; }
+.ml-3 { margin-left: constants.$spacing-m; }
 
-.m-4 { margin: $spacing-4; }
-.mt-4 { margin-top: $spacing-4; }
-.mr-4 { margin-right: $spacing-4; }
-.mb-4 { margin-bottom: $spacing-4; }
-.ml-4 { margin-left: $spacing-4; }
+.m-4 { margin: constants.$spacing-l; }
+.mt-4 { margin-top: constants.$spacing-l; }
+.mr-4 { margin-right: constants.$spacing-l; }
+.mb-4 { margin-bottom: constants.$spacing-l; }
+.ml-4 { margin-left: constants.$spacing-l; }
 
 // --- Padding
 
@@ -81,26 +81,26 @@
 .pb-0 { padding-bottom: 0px; }
 .pr-0 { padding-right: 0px; }
 
-.p-1 { padding: $spacing-1; }
-.pt-1 { padding-top: $spacing-1; }
-.pl-1 { padding-left: $spacing-1; }
-.pb-1 { padding-bottom: $spacing-1; }
-.pr-1 { padding-right: $spacing-1; }
+.p-1 { padding: constants.$spacing-xs; }
+.pt-1 { padding-top: constants.$spacing-xs; }
+.pl-1 { padding-left: constants.$spacing-xs; }
+.pb-1 { padding-bottom: constants.$spacing-xs; }
+.pr-1 { padding-right: constants.$spacing-xs; }
 
-.p-2 { padding: $spacing-2; }
-.pt-2 { padding-top: $spacing-2; }
-.pl-2 { padding-left: $spacing-2; }
-.pb-2 { padding-bottom: $spacing-2; }
-.pr-2 { padding-right: $spacing-2; }
+.p-2 { padding: constants.$spacing-s; }
+.pt-2 { padding-top: constants.$spacing-s; }
+.pl-2 { padding-left: constants.$spacing-s; }
+.pb-2 { padding-bottom: constants.$spacing-s; }
+.pr-2 { padding-right: constants.$spacing-s; }
 
-.p-3 { padding: $spacing-3; }
-.pt-3 { padding-top: $spacing-3; }
-.pl-3 { padding-left: $spacing-3; }
-.pb-3 { padding-bottom: $spacing-3; }
-.pr-3 { padding-right: $spacing-3; }
+.p-3 { padding: constants.$spacing-m; }
+.pt-3 { padding-top: constants.$spacing-m; }
+.pl-3 { padding-left: constants.$spacing-m; }
+.pb-3 { padding-bottom: constants.$spacing-m; }
+.pr-3 { padding-right: constants.$spacing-m; }
 
-.p-4 { padding: $spacing-4; }
-.pt-4 { padding-top: $spacing-4; }
-.pl-4 { padding-left: $spacing-4; }
-.pb-4 { padding-bottom: $spacing-4; }
-.pr-4 { padding-right: $spacing-4; }
+.p-4 { padding: constants.$spacing-l; }
+.pt-4 { padding-top: constants.$spacing-l; }
+.pl-4 { padding-left: constants.$spacing-l; }
+.pb-4 { padding-bottom: constants.$spacing-l; }
+.pr-4 { padding-right: constants.$spacing-l; }
