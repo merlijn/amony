@@ -36,7 +36,7 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO]) extends Logging {
   private def getToken(provider: OauthProvider, code: String): IO[Either[String, OauthTokenResponse]] = {
 
     val redirectUri = config.publicUri.addPath("api", "oauth", "callback", provider.name)
-    val req         = sttp.client4.basicRequest.post(provider.host.addPath(provider.tokenEndpoint))
+    
     val body        = Map(
       "grant_type"    -> "authorization_code",
       "code"          -> code,
@@ -45,7 +45,12 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO]) extends Logging {
       "redirect_uri"  -> redirectUri.toString
     )
 
-    req.body(body).response(asJson[OauthTokenResponse]).send(httpClient).map(_.body.left.map(_.getMessage))
+    val req = sttp.client4.basicRequest
+      .post(provider.host.addPath(provider.tokenEndpoint))
+      .body(body)
+      .response(asJson[OauthTokenResponse])
+
+    httpClient.send(req).map(_.body.left.map(_.getMessage))
   }
 
   def authenticate(username: String, password: String): IO[Either[AuthenticationError, Authentication]] =
