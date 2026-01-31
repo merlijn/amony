@@ -46,8 +46,8 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
   }
 
   private[local] def newResource(f: FileInfo, userId: UserId): IO[ResourceInfo] =
-    LocalResourceMeta(f.path).recover { 
-      case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None 
+    LocalResourceMeta(f.path).recover {
+      case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None
     }.map { meta =>
       ResourceInfo(
         bucketId           = bucketId,
@@ -79,22 +79,18 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
    * The state will be kept in memory and is not persisted.
    */
   private def singleScan(): Stream[IO, ResourceEvent] =
-    
-
     Stream.eval(toFileStore()).flatMap { fileStore =>
-      if !Files.exists(config.cachePath) then {
-        if fileStore.size() == 0 then {
-          logger.info(s"Scanning directory: ${config.resourcePath}")
-          Files.createDirectories(config.cachePath)
-          LocalDirectoryScanner
-            .scanDirectory(config.resourcePath, fileStore, config.filterDirectory, config.filterFiles, config.hashingAlgorithm.createHash)
-            .parEvalMap(config.sync.scanParallelFactor)(mapFileEvent)
-        } else {
-          logger.error(
-            s"Cache directory ${config.cachePath} does not exist, but database is not empty. This may lead data loss. Not scanning for changes."
-          )
-          Stream.empty[ResourceEvent]
-        }
+      if Files.exists(config.cachePath) || fileStore.size() == 0 then {
+        logger.info(s"Scanning directory: ${config.resourcePath}")
+        Files.createDirectories(config.cachePath)
+        LocalDirectoryScanner
+          .scanDirectory(config.resourcePath, fileStore, config.filterDirectory, config.filterFiles, config.hashingAlgorithm.createHash)
+          .parEvalMap(config.sync.scanParallelFactor)(mapFileEvent)
+      } else {
+        logger.error(
+          s"Cache directory ${config.cachePath} does not exist, but database is not empty. This may lead data loss. Not scanning for changes."
+        )
+        Stream.empty
       }
     }
 

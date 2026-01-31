@@ -36,8 +36,8 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO]) extends Logging {
   private def getToken(provider: OauthProvider, code: String): IO[Either[String, OauthTokenResponse]] = {
 
     val redirectUri = config.publicUri.addPath("api", "oauth", "callback", provider.name)
-    
-    val body        = Map(
+
+    val body = Map(
       "grant_type"    -> "authorization_code",
       "code"          -> code,
       "client_id"     -> provider.clientId,
