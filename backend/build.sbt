@@ -146,7 +146,7 @@ lazy val amony = project
       contents
     },
     jibEnvironment := Map(
-      "JAVA_TOOL_OPTIONS"     -> "-Dconfig.file=/app/resources/application.conf",
+      "JAVA_TOOL_OPTIONS"     -> "-Dconfig.file=/app/resources/application.conf -Dcats.effect.detectBlockedThreads=true",
       "AMONY_HOME"            -> "/app",
       "AMONY_WEB_CLIENT_PATH" -> "/app/assets",
       "AMONY_MEDIA_PATH"      -> "/media"
