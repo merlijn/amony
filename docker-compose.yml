@@ -55,6 +55,30 @@ services:
       - ./dex-config.yaml:/etc/dex/config.yaml
     command: ["dex", "serve", "/etc/dex/config.yaml"]
 
+  postgres-backup:
+    image: postgres:17.2
+    container_name: amony-postgres-backup
+    profiles:
+      - backup
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
+      DATABASE_NAME: amony
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-0 2 * * *}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_DIR: /backups
+      BACKUP_ON_STARTUP: ${BACKUP_ON_STARTUP:-false}
+    volumes:
+      - ./docker/scripts/pg-backup.sh:/scripts/pg-backup.sh:ro
+      - ./docker/scripts/backup-entrypoint.sh:/scripts/backup-entrypoint.sh:ro
+      - ${BACKUP_HOST_PATH:-./backups}:/backups
+    restart: unless-stopped
+    entrypoint: ["/scripts/backup-entrypoint.sh"]
+
 volumes:
   amony-postgres-data:
     driver: local
