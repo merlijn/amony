@@ -143,6 +143,7 @@ jobs:
         with:
           name: docker-tags-${{ matrix.arch }}
           path: backend/.docker-tags.txt
+          include-hidden-files: true
 
   create-manifest:
     needs: build-backend
