@@ -25,7 +25,7 @@ enum Action derives EnumConfigReader:
   case Download
   case Upload
 
-case class AccessControlConfig(
+case class UserAccessConfig(
   hiddenTags: Set[String],
   hiddenBuckets: Set[String],
   allowedActions: Set[Action]
@@ -52,27 +52,27 @@ case class AuthConfig(
   publicUri: Uri,
   secureCookies: Boolean,
   oauthProviders: List[OauthProvider],
-  accessControl: Map[String, AccessControlConfig]
+  accessControl: Map[String, UserAccessConfig]
 ) derives ConfigReader {
 
-  val anonymousAccess: AccessControlConfig     = accessControl("anonymous")
-  val authenticatedAccess: AccessControlConfig = accessControl("authenticated")
-  val adminAccess: AccessControlConfig         = AccessControlConfig(
+  val anonymousAccess: UserAccessConfig     = accessControl("anonymous")
+  val authenticatedAccess: UserAccessConfig = accessControl("authenticated")
+  val adminAccess: UserAccessConfig         = UserAccessConfig(
     hiddenTags     = Set.empty,
     hiddenBuckets  = Set.empty,
     allowedActions = Set(Action.Search, Action.Preview, Action.View, Action.Download, Action.Upload)
   )
 
-  def access(roles: Set[Role]): AccessControlConfig = {
+  def access(roles: Set[Role]): UserAccessConfig = {
 
-    def roleAccess(role: Role): AccessControlConfig =
+    def roleAccess(role: Role): UserAccessConfig =
       role match
         case Role.Admin => adminAccess
         case _          => accessControl.getOrElse(role, authenticatedAccess)
 
-    def merge(configs: Set[AccessControlConfig]): AccessControlConfig =
+    def merge(configs: Set[UserAccessConfig]): UserAccessConfig =
       configs.foldLeft(anonymousAccess) { (acc, cfg) =>
-        AccessControlConfig(
+        UserAccessConfig(
           hiddenTags     = acc.hiddenTags intersect cfg.hiddenTags,
           hiddenBuckets  = acc.hiddenBuckets intersect cfg.hiddenBuckets,
           allowedActions = acc.allowedActions ++ cfg.allowedActions

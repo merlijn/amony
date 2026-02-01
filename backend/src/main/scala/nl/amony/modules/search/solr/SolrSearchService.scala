@@ -75,10 +75,11 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
     } catch { case e: Exception => logger.error("Error while closing solr", e) }
   }
 
-  if Files.exists(solrHome) && !Files.isDirectory(solrHome) then throw new RuntimeException(s"Solr home is not a directory: $solrHome")
+  if Files.exists(solrHome) && !Files.isDirectory(solrHome) then
+    throw new RuntimeException(s"Solr home is not a directory: $solrHome")
 
-  if !Files.exists(solrHome) then {
-    logger.info(s"Solr directory does not exists. Creating it at: $solrHome")
+  if !Files.exists(solrHome) || Files.list(solrHome).findAny().isEmpty then {
+    logger.info(s"Solr directory does not exists or is empty. Extracting config at: $solrHome")
     TarGzExtractor.extractResourceTarGz(solrTarGzResource, solrHome)
   }
 

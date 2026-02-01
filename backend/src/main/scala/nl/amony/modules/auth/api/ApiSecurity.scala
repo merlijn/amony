@@ -57,7 +57,7 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       if token.roles.contains(requiredRole) then Right(token) else Left(SecurityError.Forbidden)
     )
 
-  def permissions(authToken: AuthToken): AccessControlConfig = authConfig.access(authToken.roles)
+  def userAccess(authToken: AuthToken): UserAccessConfig = authConfig.access(authToken.roles)
 
   def createCookies(apiAuthentication: Authentication): AuthCookies = {
     val accessTokenCookie = CookieValueWithMeta.unsafeApply(

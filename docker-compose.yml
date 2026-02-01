@@ -20,7 +20,7 @@ services:
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-changeme}
     restart: always
     volumes:
-      - ${AMONY_HOST_MEDIA_PATH}/.amony/data/postgres:/var/lib/postgresql/data
+      - amony-postgres-data:/var/lib/postgresql/data
 
   amony:
     image: europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/amony-app:0.0.3-106-3d31d9c0
@@ -42,7 +42,7 @@ services:
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
     volumes:
       - ${AMONY_HOST_MEDIA_PATH}:/media
-      - ${AMONY_HOST_MEDIA_PATH}/.amony/data:/app/data
+      - amony-solr-data:/app/data/solr
     restart: "no"
 
   dex:
@@ -54,3 +54,9 @@ services:
     volumes:
       - ./dex-config.yaml:/etc/dex/config.yaml
     command: ["dex", "serve", "/etc/dex/config.yaml"]
+
+volumes:
+  amony-postgres-data:
+    driver: local
+  amony-solr-data:
+    driver: local
