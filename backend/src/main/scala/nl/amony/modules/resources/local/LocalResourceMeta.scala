@@ -16,17 +16,18 @@ object LocalResourceMeta extends Logging {
 
   private val tika = new Tika()
 
-  private def contentTypeForPath(path: java.nio.file.Path): Option[String] =
-    Try(tika.detect(path)) match
-      case Success(contentType) =>
-        Some(contentType)
-      case Failure(exception)   =>
-        logger.warn(s"Error detecting content type for path: $path", exception)
-        None
+  private def contentTypeForPath(path: java.nio.file.Path): IO[Option[String]] =
+    IO.blocking {
+      Try(tika.detect(path)) match
+        case Success(contentType) =>
+          Some(contentType)
+        case Failure(exception)   =>
+          logger.warn(s"Error detecting content type for path: $path", exception)
+          None
+    }
 
   def apply(path: Path): IO[Option[(contentType: String, meta: ResourceMeta)]] = {
-    contentTypeForPath(path) match {
-
+    contentTypeForPath(path).flatMap {
       case None =>
         IO.pure(None)
 
