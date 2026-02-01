@@ -20,7 +20,7 @@ services:
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-changeme}
     restart: always
     volumes:
-      - amony-postgres-data:/var/lib/postgresql/data
+      - ${AMONY_DATA:-./data}/postgres:/var/lib/postgresql/data
 
   postgres-restore:
     image: postgres:17.2
@@ -41,7 +41,7 @@ services:
       RESTORE_FILE: ${RESTORE_FILE}
     volumes:
       - ./docker/scripts/pg-restore.sh:/scripts/pg-restore.sh:ro
-      - ${BACKUP_HOST_PATH:-./backups}:/backups:ro
+      - ${AMONY_DATA:-./data}/backups:/backups:ro
     entrypoint: ["/scripts/pg-restore.sh"]
 
   postgres-backup:
@@ -66,7 +66,7 @@ services:
     volumes:
       - ./docker/scripts/pg-backup.sh:/scripts/pg-backup.sh:ro
       - ./docker/scripts/backup-entrypoint.sh:/scripts/backup-entrypoint.sh:ro
-      - ${BACKUP_HOST_PATH:-./backups}:/backups
+      - ${AMONY_DATA:-./data}/backups:/backups
     restart: unless-stopped
     entrypoint: ["/scripts/backup-entrypoint.sh"]
 
@@ -93,7 +93,7 @@ services:
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
     volumes:
       - ${AMONY_HOST_MEDIA_PATH}:/media
-      - amony-solr-data:/app/data/solr
+      - ${AMONY_DATA:-./data}/solr:/app/data/solr
     restart: "no"
 
   dex:
@@ -105,9 +105,3 @@ services:
     volumes:
       - ./docker/dex-config.yaml:/etc/dex/config.yaml
     command: ["dex", "serve", "/etc/dex/config.yaml"]
-
-volumes:
-  amony-postgres-data:
-    driver: local
-  amony-solr-data:
-    driver: local
