@@ -72,7 +72,6 @@ services:
 
   amony:
     image: europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/amony-app:0.0.3-14-82d8afe0
-    platform: linux/amd64
     container_name: amony-app
     depends_on:
       postgres:

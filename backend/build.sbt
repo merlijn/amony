@@ -133,6 +133,7 @@ lazy val amony = project
     jibName                 := "amony-app",
     jibVersion              := version.value.replace('+', '-'), // + sign is not valid in a docker tag
     jibCustomRepositoryPath := Some("amony-04c85b/docker-images/amony/" + jibName.value),
+    jibPlatforms            := Set({if (System.getProperty("os.arch") == "aarch64") JibPlatforms.arm64 else JibPlatforms.amd64}),
     jibImageFormat          := JibImageFormat.OCI,
     jibTags                 := { if (isMainBranch && hasNoLocalChanges) List("latest") else List("dev") },
     jibExtraMappings   ++= {
