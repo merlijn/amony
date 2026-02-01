@@ -51,12 +51,12 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
 
   def publicEndpoint(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
     requireSession(securityInput).orElse(Right(AuthToken.anonymous))
-  
+
   def requireRole(requiredRole: Role, xsrfProtection: Boolean = true)(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
     requireSession(securityInput, xsrfProtection).flatMap(token =>
       if token.roles.contains(requiredRole) then Right(token) else Left(SecurityError.Forbidden)
     )
-    
+
   def permissions(authToken: AuthToken): AccessControlConfig = authConfig.access(authToken.roles)
 
   def createCookies(apiAuthentication: Authentication): AuthCookies = {

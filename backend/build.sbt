@@ -19,7 +19,7 @@ def hasNoLocalChanges: Boolean = {
 
 val circeVersion    = "0.14.15"
 val http4sVersion   = "0.23.33"
-val tapirVersion    = "1.13.5"
+val tapirVersion    = "1.13.6"
 
 val bouncyCastle = "org.apache.directory.studio" % "org.bouncycastle.bcprov.jdk15" % "140"
 
@@ -61,8 +61,8 @@ val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"  
 val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.7.4"
 val postgresDriver           = "org.postgresql"            % "postgresql"                 % "42.7.9"
 
-val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.9"
-val pureConfigGeneric        = "com.github.pureconfig"    %% "pureconfig-generic-scala3"  % "0.17.9"
+val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.10"
+val pureConfigGeneric        = "com.github.pureconfig"    %% "pureconfig-generic-scala3"  % "0.17.10"
 val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.5"
 
 val liquibaseCore            = "org.liquibase"             % "liquibase-core"             % "4.33.0"
@@ -241,9 +241,9 @@ lazy val amony = project
       scalaTest,
       scalaTestCheck,
       postgresDriver % "test",
-      "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.44.0" % "test",
-      "commons-codec" % "commons-codec" % "1.18.0" % "test",
-      "org.scalacheck" %% "scalacheck" % "1.18.1" % "test"
+      "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.44.1" % "test",
+      "commons-codec" % "commons-codec" % "1.21.0" % "test",
+      "org.scalacheck" %% "scalacheck" % "1.19.0" % "test"
     ),
 
     excludeDependencies ++= List(
