@@ -29,8 +29,7 @@ object ResourceDirectives extends Logging {
           rangeResponseFn   = resource.streamRange
         )
       case _                                         =>
-        val response = Response(status = Status.Ok, headers = additionalHeaders, body = resource.stream)
-        IO.pure(response)
+        IO.pure(Response(status = Status.Ok, headers = additionalHeaders, body = resource.stream))
     }
   }
 
@@ -97,10 +96,9 @@ object ResourceDirectives extends Logging {
     }
 
     def createResponse(start: Long, end: Long, partial: Boolean) = {
-      F.pure(rangeResponseFn(start, end + 1)).map {
-        byteStream =>
-          val rangeHeaders = Headers(`Accept-Ranges`(RangeUnit.Bytes), `Content-Range`(SubRange(start, end), Some(size)), `Content-Length`(size))
-          Response(status = if partial then Status.PartialContent else Status.Ok, headers = additionalHeaders ++ rangeHeaders, body = byteStream)
+      F.pure(rangeResponseFn(start, end + 1)).map { byteStream =>
+        val rangeHeaders = Headers(`Accept-Ranges`(RangeUnit.Bytes), `Content-Range`(SubRange(start, end), Some(size)), `Content-Length`(size))
+        Response(status = if partial then Status.PartialContent else Status.Ok, headers = additionalHeaders ++ rangeHeaders, body = byteStream)
       }
     }
 

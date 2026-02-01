@@ -109,12 +109,12 @@ object SearchRoutes:
         )
 
         searchService.searchMedia(query).map { response =>
-            Right(SearchResponseDto(
-              offset  = response.offset,
-              total   = response.total,
-              results = response.results.map(toDto),
-              tags    = getSortedTags(response.tags)
-            ))
+          Right(SearchResponseDto(
+            offset  = response.offset,
+            total   = response.total,
+            results = response.results.map(toDto),
+            tags    = getSortedTags(response.tags)
+          ))
         }
     }
 

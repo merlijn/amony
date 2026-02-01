@@ -20,16 +20,14 @@ trait ProcessRunner extends Logging {
       .map(_.getOrElse(""))
 
   private def failOnNonZeroExit(cmds: Seq[String])(process: fs2.io.process.Process[IO]): IO[Int] = {
-    process.exitValue.flatMap {
-      exitCode =>
-        if exitCode != 0 then {
-          tail(process.stderr, 10).flatMap {
-            errOutput =>
-              val msg = s"""Non zero exit code for command: ${cmds.mkString(" ")} \nLast 10 lines of error output:\n$errOutput"""
-              IO(logger.error(msg)) >> IO.raiseError(new IllegalStateException(msg))
-          }
-        } else
-          IO.pure(exitCode)
+    process.exitValue.flatMap { exitCode =>
+      if exitCode != 0 then {
+        tail(process.stderr, 10).flatMap { errOutput =>
+          val msg = s"""Non zero exit code for command: ${cmds.mkString(" ")} \nLast 10 lines of error output:\n$errOutput"""
+          IO(logger.error(msg)) >> IO.raiseError(new IllegalStateException(msg))
+        }
+      } else
+        IO.pure(exitCode)
     }
   }
 

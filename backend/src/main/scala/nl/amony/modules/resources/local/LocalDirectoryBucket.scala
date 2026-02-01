@@ -77,22 +77,22 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
       else IO.unit
   }.compile.drain
 
-  def reComputeHashes(): IO[Unit] = getAllResources.evalMap {
-    resource =>
-      val file = config.resourcePath.resolve(resource.path)
-      config.hashingAlgorithm.createHash(file).flatMap: hash =>
-        val oldResourceId = resource.resourceId
-        val updated       = resource.copy(hash = Some(hash))
-        if oldResourceId != hash then
-          logger.info(s"Updating hash for $file from $oldResourceId to $hash")
-          db.deleteResource(config.id, resource.resourceId) >> topic.publish(ResourceDeleted(oldResourceId)) >> db.insertResource(updated) >>
-            topic.publish(ResourceUpdated(updated))
-        else IO.unit
+  def reComputeHashes(): IO[Unit] = getAllResources.evalMap { resource =>
+    val file = config.resourcePath.resolve(resource.path)
+    config.hashingAlgorithm.createHash(file).flatMap: hash =>
+      val oldResourceId = resource.resourceId
+      val updated       = resource.copy(hash = Some(hash))
+      if oldResourceId != hash then
+        logger.info(s"Updating hash for $file from $oldResourceId to $hash")
+        db.deleteResource(config.id, resource.resourceId) >> topic.publish(ResourceDeleted(oldResourceId)) >> db.insertResource(updated) >>
+          topic.publish(ResourceUpdated(updated))
+      else IO.unit
   }.compile.drain
 
-  override def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]] = getResourceInfo(resourceId).flatMap:
-    case None           => IO.pure(None)
-    case Some(fileInfo) => cachedResourceOperation(fileInfo, LocalResourceOp(resourceId, operation))
+  override def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]] =
+    getResourceInfo(resourceId).flatMap:
+      case None           => IO.pure(None)
+      case Some(fileInfo) => cachedResourceOperation(fileInfo, LocalResourceOp(resourceId, operation))
 
   private[local] def cachedResourceOperation(inputResource: ResourceInfo, operation: LocalResourceOp): IO[Option[ResourceContent]] = {
     val outputFile = config.cachePath.resolve(operation.outputFilename)
