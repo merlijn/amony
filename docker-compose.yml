@@ -71,7 +71,7 @@ services:
     entrypoint: ["/scripts/backup-entrypoint.sh"]
 
   amony:
-    image: europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/amony-app:0.0.3-30-6f904ac7
+    image: europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/amony-app:dev
     container_name: amony-app
     depends_on:
       postgres:
