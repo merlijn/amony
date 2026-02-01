@@ -22,8 +22,56 @@ services:
     volumes:
       - amony-postgres-data:/var/lib/postgresql/data
 
+  postgres-restore:
+    image: postgres:17.2
+    container_name: amony-postgres-restore
+    profiles:
+      - restore
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
+      DATABASE_NAME: amony
+      BACKUP_DIR: /backups
+      RESTORE_FILE: ${RESTORE_FILE}
+    volumes:
+      - ./docker/scripts/pg-restore.sh:/scripts/pg-restore.sh:ro
+      - ${BACKUP_HOST_PATH:-./backups}:/backups:ro
+    entrypoint: ["/scripts/pg-restore.sh"]
+
+  postgres-backup:
+    image: postgres:17.2
+    container_name: amony-postgres-backup
+    profiles:
+      - backup
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
+      DATABASE_NAME: amony
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-0 2 * * *}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_DIR: /backups
+      BACKUP_ON_STARTUP: ${BACKUP_ON_STARTUP:-false}
+    volumes:
+      - ./docker/scripts/pg-backup.sh:/scripts/pg-backup.sh:ro
+      - ./docker/scripts/backup-entrypoint.sh:/scripts/backup-entrypoint.sh:ro
+      - ${BACKUP_HOST_PATH:-./backups}:/backups
+    restart: unless-stopped
+    entrypoint: ["/scripts/backup-entrypoint.sh"]
+
   amony:
-    image: europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/amony-app:0.0.3-106-3d31d9c0
+    image: europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/amony-app:0.0.3-11-b022feac
     platform: linux/amd64
     container_name: amony-app
     depends_on:
@@ -57,54 +105,6 @@ services:
     volumes:
       - ./docker/dex-config.yaml:/etc/dex/config.yaml
     command: ["dex", "serve", "/etc/dex/config.yaml"]
-
-  postgres-backup:
-    image: postgres:17.2
-    container_name: amony-postgres-backup
-    profiles:
-      - backup
-    depends_on:
-      postgres:
-        condition: service_healthy
-    env_file:
-      - .env
-    environment:
-      DATABASE_HOST: postgres
-      DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
-      DATABASE_NAME: amony
-      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-0 2 * * *}
-      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
-      BACKUP_DIR: /backups
-      BACKUP_ON_STARTUP: ${BACKUP_ON_STARTUP:-false}
-    volumes:
-      - ./docker/scripts/pg-backup.sh:/scripts/pg-backup.sh:ro
-      - ./docker/scripts/backup-entrypoint.sh:/scripts/backup-entrypoint.sh:ro
-      - ${BACKUP_HOST_PATH:-./backups}:/backups
-    restart: unless-stopped
-    entrypoint: ["/scripts/backup-entrypoint.sh"]
-
-  postgres-restore:
-    image: postgres:17.2
-    container_name: amony-postgres-restore
-    profiles:
-      - restore
-    depends_on:
-      postgres:
-        condition: service_healthy
-    env_file:
-      - .env
-    environment:
-      DATABASE_HOST: postgres
-      DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
-      DATABASE_NAME: amony
-      BACKUP_DIR: /backups
-      RESTORE_FILE: ${RESTORE_FILE}
-    volumes:
-      - ./docker/scripts/pg-restore.sh:/scripts/pg-restore.sh:ro
-      - ${BACKUP_HOST_PATH:-./backups}:/backups:ro
-    entrypoint: ["/scripts/pg-restore.sh"]
 
 volumes:
   amony-postgres-data:
