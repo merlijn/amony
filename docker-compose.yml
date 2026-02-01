@@ -29,6 +29,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-restore:
+        condition: service_completed_successfully
+        required: false
     user: "${AMONY_DOCKER_USER_ID}:${AMONY_DOCKER_USER_ID}"
     ports:
       - "127.0.0.1:8182:8182"
@@ -63,6 +66,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    env_file:
+      - .env
     environment:
       DATABASE_HOST: postgres
       DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
@@ -78,6 +83,28 @@ services:
       - ${BACKUP_HOST_PATH:-./backups}:/backups
     restart: unless-stopped
     entrypoint: ["/scripts/backup-entrypoint.sh"]
+
+  postgres-restore:
+    image: postgres:17.2
+    container_name: amony-postgres-restore
+    profiles:
+      - restore
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
+      DATABASE_NAME: amony
+      BACKUP_DIR: /backups
+      RESTORE_FILE: ${RESTORE_FILE}
+    volumes:
+      - ./docker/scripts/pg-restore.sh:/scripts/pg-restore.sh:ro
+      - ${BACKUP_HOST_PATH:-./backups}:/backups:ro
+    entrypoint: ["/scripts/pg-restore.sh"]
 
 volumes:
   amony-postgres-data:
