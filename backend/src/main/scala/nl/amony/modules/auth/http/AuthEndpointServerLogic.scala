@@ -46,7 +46,7 @@ object AuthEndpointServerLogic extends Logging {
                               "scope"         -> providerConfig.scopes.mkString(" "),
                               "state"         -> state
                             )
-          redirectUri     = providerConfig.authorizeUri.addParams(params)
+          redirectUri     = providerConfig.authorizeUrl.addParams(params)
           stateCookie     = CookieValueWithMeta.unsafeApply(
                               value    = state,
                               path     = Some("/"),

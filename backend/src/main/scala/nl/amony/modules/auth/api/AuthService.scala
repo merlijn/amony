@@ -46,7 +46,7 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO]) extends Logging {
     )
 
     val req = sttp.client4.basicRequest
-      .post(provider.tokenUri)
+      .post(provider.tokenUrl)
       .body(body)
       .response(asJson[OauthTokenResponse])
 

@@ -35,16 +35,11 @@ case class OauthProvider(
   name: String,
   clientId: String,
   clientSecret: String,
-  host: Uri,
-  authorizeEndpoint: String = "authorize",
-  tokenEndpoint: String     = "token",
-  scopes: List[String]      = List("openid", "profile", "email"),
-  defaultRoles: Set[Role]   = Set.empty
-) derives ConfigReader {
-
-  def authorizeUri: Uri = host.addPath(authorizeEndpoint.split("/").filter(_.nonEmpty))
-  def tokenUri: Uri     = host.addPath(tokenEndpoint.split("/").filter(_.nonEmpty))
-}
+  authorizeUrl: Uri,
+  tokenUrl: Uri,
+  scopes: List[String]    = List("openid", "profile", "email"),
+  defaultRoles: Set[Role] = Set.empty
+) derives ConfigReader
 
 case class AuthConfig(
   enabled: Boolean,

@@ -1,5 +1,3 @@
-//import sbt.Keys.scalaVersion
-import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
 import de.gccc.jib.MappingsHelper
 import scala.sys.process._
 import sbt.Keys.streams
@@ -9,10 +7,7 @@ def isMainBranch: Boolean = {
   currentBranch == "main"
 }
 
-def hasNoLocalChanges: Boolean = {
-  val status = "git status --porcelain".!!
-  status.isEmpty
-}
+def hasNoLocalChanges: Boolean = "git status --porcelain".!!.isEmpty
 
 // --- Dependencies
 
@@ -72,9 +67,9 @@ val solrLangId               = "org.apache.solr"           % "solr-langid"      
 
 val log4CatsSlf4j            = "org.typelevel"            %% "log4cats-slf4j"             % "2.7.1"
 
-val sttpClientCore                = "com.softwaremill.sttp.client4" %% "core" % sttpVersion
-val sttpClientCirce                = "com.softwaremill.sttp.client4" %% "circe" % sttpVersion
-val sttpClientCats                 = "com.softwaremill.sttp.client4" %% "cats" % sttpVersion
+val sttpClientCore           = "com.softwaremill.sttp.client4" %% "core"                  % sttpVersion
+val sttpClientCirce          = "com.softwaremill.sttp.client4" %% "circe"                  % sttpVersion
+val sttpClientCats           = "com.softwaremill.sttp.client4" %% "cats"                  % sttpVersion
 
 val apacheCommonsCodec = "commons-codec" % "commons-codec" % "1.21.0"
 
