@@ -19,6 +19,7 @@ def hasNoLocalChanges: Boolean = {
 val circeVersion    = "0.14.15"
 val http4sVersion   = "0.23.33"
 val tapirVersion    = "1.13.6"
+val sttpVersion     = "4.0.15"
 
 val bouncyCastle = "org.apache.directory.studio" % "org.bouncycastle.bcprov.jdk15" % "140"
 
@@ -71,11 +72,11 @@ val solrLangId               = "org.apache.solr"           % "solr-langid"      
 
 val log4CatsSlf4j            = "org.typelevel"            %% "log4cats-slf4j"             % "2.7.1"
 
-val sttpClientCore                = "com.softwaremill.sttp.client4" %% "core" % "4.0.14"
-val sttpClientCirce                = "com.softwaremill.sttp.client4" %% "circe" % "4.0.14"
-val sttpClientCats                 = "com.softwaremill.sttp.client4" %% "cats" % "4.0.14"
+val sttpClientCore                = "com.softwaremill.sttp.client4" %% "core" % sttpVersion
+val sttpClientCirce                = "com.softwaremill.sttp.client4" %% "circe" % sttpVersion
+val sttpClientCats                 = "com.softwaremill.sttp.client4" %% "cats" % sttpVersion
 
-val apacheCommonsCodec = "commons-codec" % "commons-codec" % "1.20.0"
+val apacheCommonsCodec = "commons-codec" % "commons-codec" % "1.21.0"
 
 
 val http4sEmberServer = "org.http4s" %% "http4s-ember-server" % http4sVersion
@@ -132,7 +133,6 @@ lazy val amony = project
     jibName                 := "amony-app",
     jibVersion              := version.value.replace('+', '-'), // + sign is not valid in a docker tag
     jibCustomRepositoryPath := Some("amony-04c85b/docker-images/amony/" + jibName.value),
-
     jibImageFormat          := JibImageFormat.OCI,
     jibTags                 := { if (isMainBranch && hasNoLocalChanges) List("latest") else List("dev") },
     jibExtraMappings   ++= {

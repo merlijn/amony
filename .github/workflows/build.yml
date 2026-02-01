@@ -142,7 +142,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: docker-tags-${{ matrix.arch }}
-          path: .docker-tags.txt
+          path: backend/.docker-tags.txt
 
   create-manifest:
     needs: build-backend
