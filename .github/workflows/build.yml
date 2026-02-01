@@ -130,9 +130,10 @@ jobs:
           steps.git-info.outputs.commit_tag != '' || contains(steps.git-info.outputs.commit_msg, '#push')
         run: |
           # The .docker-tags.txt file is created by the jibWriteDockerTagsFile task in the build.sbt
+          IMAGE=$DOCKER_REGISTRY/$PROJECT_ID/$REPOSITORY_PATH/$IMAGE_NAME
           while IFS= read -r tag || [ -n "$tag" ]; do
-            docker tag $IMAGE_NAME:$tag $DOCKER_REGISTRY/$PROJECT_ID/$REPOSITORY_PATH/$IMAGE_NAME:$tag-${{ matrix.arch }}
-            docker push $DOCKER_REGISTRY/$PROJECT_ID/$REPOSITORY_PATH/$IMAGE_NAME:$tag-${{ matrix.arch }}
+            docker tag $IMAGE:$tag $IMAGE:$tag-${{ matrix.arch }}
+            docker push $IMAGE:$tag-${{ matrix.arch }}
           done < .docker-tags.txt
           
       - name: Upload docker tags artifact
