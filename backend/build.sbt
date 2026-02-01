@@ -134,7 +134,7 @@ lazy val amony = project
     jibVersion              := version.value.replace('+', '-'), // + sign is not valid in a docker tag
     jibCustomRepositoryPath := Some("amony-04c85b/docker-images/amony/" + jibName.value),
     jibPlatforms            := Set(new Platform("amd64", "linux"), new Platform("arm64", "linux")),
-    jibImageFormat          := JibImageFormat.Docker,
+    jibImageFormat          := JibImageFormat.OCI,
     jibTags                 := { if (isMainBranch && hasNoLocalChanges) List("latest") else List("dev") },
     jibExtraMappings   ++= {
       // this adds the frontend assets to the docker image
