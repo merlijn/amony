@@ -1,6 +1,5 @@
 //import sbt.Keys.scalaVersion
 import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
-import com.google.cloud.tools.jib.api.buildplan.Platform
 import de.gccc.jib.MappingsHelper
 import scala.sys.process._
 import sbt.Keys.streams
@@ -133,7 +132,7 @@ lazy val amony = project
     jibName                 := "amony-app",
     jibVersion              := version.value.replace('+', '-'), // + sign is not valid in a docker tag
     jibCustomRepositoryPath := Some("amony-04c85b/docker-images/amony/" + jibName.value),
-    jibPlatforms            := Set(JibPlatforms.amd64, JibPlatforms.arm64),
+
     jibImageFormat          := JibImageFormat.OCI,
     jibTags                 := { if (isMainBranch && hasNoLocalChanges) List("latest") else List("dev") },
     jibExtraMappings   ++= {
