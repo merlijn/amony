@@ -142,13 +142,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: docker-tags-${{ matrix.arch }}
-          path: backend/.docker-tags.txt
+          path: ${{ github.workspace }}/backend/.docker-tags.txt
 
   create-manifest:
     needs: build-backend
     runs-on: ubuntu-latest
-    if: |
-      always() && needs.build-backend.result == 'success'
+    if: needs.build-backend.result == 'success'
     
     env:
       DOCKER_REGISTRY: europe-west4-docker.pkg.dev
@@ -157,30 +156,10 @@ jobs:
       REPOSITORY_PATH: docker-images/amony
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          filter: tree:0
-          fetch-tags: true
-          
-      - name: Get git info
-        id: git-info
-        run: |
-          echo "github event name: ${{ github.event_name }}"
-          
-          if [ "${{ github.event_name }}" == "push" ]; then
-            commit_sha="${{ github.sha }}"
-          else
-            commit_sha="${{ github.event.pull_request.head.sha }}"
-          fi
-          
-          echo "commit_tag=$(git tag --points-at HEAD)" >> $GITHUB_OUTPUT
-          echo "commit_msg=$(git log -1 --pretty=%s $commit_sha)" >> $GITHUB_OUTPUT
-
       - name: Download docker tags
-        if: |
-          steps.git-info.outputs.commit_tag != '' || contains(steps.git-info.outputs.commit_msg, '#push')
+        id: download
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: docker-tags-amd64
           path: .
@@ -188,21 +167,18 @@ jobs:
       # Authenticate to Google Cloud
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
-        if: |
-          steps.git-info.outputs.commit_tag != '' || contains(steps.git-info.outputs.commit_msg, '#push')
+        if: steps.download.outcome == 'success'
         uses: 'google-github-actions/auth@v1'
         with:
           credentials_json: '${{ secrets.GC_SERVICE_ACCOUNT }}'
 
       - name: Configure Docker for Artifact Registry
-        if: |
-          steps.git-info.outputs.commit_tag != '' || contains(steps.git-info.outputs.commit_msg, '#push')
+        if: steps.download.outcome == 'success'
         run: |
           gcloud auth configure-docker $DOCKER_REGISTRY --quiet
 
       - name: Create and push multi-arch manifest
-        if: |
-          steps.git-info.outputs.commit_tag != '' || contains(steps.git-info.outputs.commit_msg, '#push')
+        if: steps.download.outcome == 'success'
         run: |
           while IFS= read -r tag || [ -n "$tag" ]; do
             IMAGE=$DOCKER_REGISTRY/$PROJECT_ID/$REPOSITORY_PATH/$IMAGE_NAME
