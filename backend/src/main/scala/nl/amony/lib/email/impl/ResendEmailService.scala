@@ -1,7 +1,7 @@
 package nl.amony.lib.email.impl
 
 import cats.implicits.toFlatMapOps
-import cats.{Applicative, FlatMap}
+import cats.{Applicative, FlatMap, Monad}
 import io.circe.derivation.Configuration
 import io.circe.syntax.*
 import io.circe.{Codec, Json, Printer}
@@ -47,7 +47,7 @@ case class Attachment(
 
 case class SendEmailResponse(id: String) derives Codec
 
-class ResendEmailService[F[_]: {FlatMap, Applicative}](httpClient: Backend[F], apiKey: String, url: Uri = uri"""https://api.resend.com""")
+class ResendEmailService[F[_]: Monad](httpClient: Backend[F], apiKey: String, url: Uri = uri"""https://api.resend.com""")
     extends EmailService[F], Logging:
 
   private val jsonPrinter = Printer.spaces2.copy(dropNullValues = true)
@@ -71,6 +71,6 @@ class ResendEmailService[F[_]: {FlatMap, Applicative}](httpClient: Backend[F], a
 
     httpClient.send(httpRequest).flatMap: response =>
       response.body match
-        case Left(error) => Applicative[F].pure(throw new Exception(s"Failed to send email: $error"))
-        case Right(body) => Applicative[F].pure(logger.info(s"Email sent: $body"))
+        case Left(error) => Monad[F].pure(throw new Exception(s"Failed to send email: $error"))
+        case Right(body) => Monad[F].pure(logger.info(s"Email sent: $body"))
   }

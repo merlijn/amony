@@ -11,6 +11,7 @@ import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
+import org.typelevel.otel4s.oteljava.OtelJava
 import org.typelevel.otel4s.trace.Tracer.Implicits.noop
 import pureconfig.ConfigSource
 import scribe.{Logger, Logging}
@@ -82,6 +83,7 @@ object App extends ResourceApp.Forever with Logging {
 
     for
       databasePool      <- makeDatabasePool(appConfig.database)
+      otel4j            <- OtelJava.autoConfigured[IO]()
       httpClientBackend <- HttpClientCatsBackend.resource[IO]()
       resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
       searchService     <- SolrSearchService.resource(appConfig.search.solr)
@@ -89,7 +91,7 @@ object App extends ResourceApp.Forever with Logging {
       resourceDatabase   = ResourceDatabase(databasePool)
       resourceBuckets   <- appConfig.resources.buckets.map {
                              case localConfig: ResourceConfig.LocalDirectoryConfig =>
-                               LocalDirectoryBucket.resource(localConfig, resourceDatabase, resourceEventTopic)
+                               LocalDirectoryBucket.resource(localConfig, resourceDatabase, resourceEventTopic, otel4j.meterProvider)
                            }.sequence
       resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
       authModule         = AuthModule(appConfig.auth, httpClientBackend)

@@ -4,9 +4,9 @@ import java.nio.file.Path
 
 import cats.effect.IO
 
-import nl.amony.lib.process.ProcessRunner
 import nl.amony.lib.files.*
 import nl.amony.lib.files.FileUtil.stripExtension
+import nl.amony.lib.process.ProcessRunner
 
 trait CreateThumbnail {
   self: ProcessRunner =>

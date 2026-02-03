@@ -3,11 +3,13 @@ package nl.amony.lib.process.ffmpeg.tasks
 import java.nio.file.Path
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.util.{Failure, Try}
+
 import FFProbeModel.{*, given}
 import cats.effect.IO
 import io.circe.{Decoder, HCursor, Json}
-import nl.amony.lib.process.ProcessRunner
 import scribe.Logging
+
+import nl.amony.lib.process.ProcessRunner
 import nl.amony.lib.process.ffmpeg.FFMpeg.fastStartPattern
 
 trait FFProbe extends Logging:
@@ -28,7 +30,7 @@ trait FFProbe extends Logging:
         IO.pure(result.toTry.get)
     }.timeout(defaultProbeTimeout).memoize.flatten
 
-  def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration = defaultProbeTimeout): IO[(FFProbeOutput, Json)] = 
+  def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration = defaultProbeTimeout): IO[(FFProbeOutput, Json)] =
     ffprobeVersion.flatMap { version =>
       val fileName = file.toAbsolutePath.normalize().toString
       val v        = if debug then "debug" else "quiet"

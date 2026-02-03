@@ -30,7 +30,7 @@ object ResourceDirectives extends Logging {
           additionalHeaders = additionalHeaders,
           rangeResponseFn   = resource.streamRange
         )
-      case _                                         =>
+      case _                                                                                 =>
         IO.pure(Response(status = Status.Ok, headers = additionalHeaders, body = resource.stream))
     }
   }

@@ -1,17 +1,19 @@
 package nl.amony.lib.process.ffmpeg.tasks
 
 import java.nio.file.Path
+
 import cats.effect.IO
 import scribe.Logging
-import nl.amony.lib.process.ffmpeg.FFMpeg.formatTime
+
 import nl.amony.lib.files.*
 import nl.amony.lib.files.FileUtil.stripExtension
 import nl.amony.lib.process.ProcessRunner
+import nl.amony.lib.process.ffmpeg.FFMpeg.formatTime
 
 trait CreateThumbnail:
-  
+
   self: ProcessRunner =>
-  
+
   def createThumbnail(inputFile: Path, timestamp: Long, outputFile: Option[Path], scaleHeight: Option[Int]): IO[Int] =
 
     val input  = inputFile.absoluteFileName()

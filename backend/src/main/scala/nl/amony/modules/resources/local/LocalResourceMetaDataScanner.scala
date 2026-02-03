@@ -4,16 +4,15 @@ import java.nio.file.Path
 import scala.util.{Failure, Success, Try}
 
 import cats.effect.IO
-import nl.amony.lib.process.ffmpeg.FFMpeg
 import org.apache.tika.Tika
 import scribe.Logging
+
+import nl.amony.lib.process.ffmpeg.FFMpeg
 import nl.amony.lib.process.magick.ImageMagick
 import nl.amony.modules.resources.*
 import nl.amony.modules.resources.api.{ContentProperties, ImageProperties, ResourceMeta}
 
-object LocalResourceMeta extends Logging {
-
-  private val tika = new Tika()
+class LocalResourceMetaDataScanner(tika: Tika, ffmpeg: FFMpeg, imageMagick: ImageMagick) extends Logging {
 
   private def contentTypeForPath(path: java.nio.file.Path): IO[Option[String]] =
     IO.blocking {
@@ -31,7 +30,7 @@ object LocalResourceMeta extends Logging {
         IO.pure(None)
 
       case Some(contentType) if contentType.startsWith("video/") =>
-        FFMpeg.ffprobe(path, false).map {
+        ffmpeg.ffprobe(path, false).map {
           (ffprobeResult, json) =>
             ContentProperties.ffprobeOutputToContentMeta(ffprobeResult).toOption.map {
               properties =>
@@ -40,7 +39,7 @@ object LocalResourceMeta extends Logging {
             }
         }.recover { case e: Throwable => logger.error(s"Failed to get video meta data for $path", e); None }
       case Some(contentType) if contentType.startsWith("image/") =>
-        ImageMagick.getImageMeta(path).map:
+        imageMagick.getImageMeta(path).map:
           case Failure(e)      =>
             logger.error(s"Failed to get image meta data for $path", e)
             None

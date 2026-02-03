@@ -1,9 +1,10 @@
 package nl.amony.lib.process
 
 import cats.effect.IO
+import org.typelevel.otel4s.metrics.MeterProvider
 import scribe.Logging
 
-trait ProcessRunner extends Logging {
+trait ProcessRunner(val meterProvider: MeterProvider[IO]) extends Logging {
 
   def toString(is: fs2.Stream[IO, Byte]): IO[String] = is.compile.toVector.map(_.toArray).map(new String(_))
 
@@ -19,7 +20,7 @@ trait ProcessRunner extends Logging {
       .last
       .map(_.getOrElse(""))
 
-  private def failOnNonZeroExit(cmds: Seq[String])(process: fs2.io.process.Process[IO]): IO[Int] = 
+  private def failOnNonZeroExit(cmds: Seq[String])(process: fs2.io.process.Process[IO]): IO[Int] =
     process.exitValue.flatMap { exitCode =>
       if exitCode != 0 then {
         tail(process.stderr, 10).flatMap { errOutput =>
@@ -46,9 +47,12 @@ trait ProcessRunner extends Logging {
   def useProcess[T](cmd: String, args: Seq[String])(processHandler: fs2.io.process.Process[IO] => IO[T]): IO[T] = {
     fs2.io.process.ProcessBuilder(cmd, args.toList)
       .spawn[IO].use(processHandler)
-      .timed.map { case (duration, result) =>
+      .timed.flatMap { case (duration, result) =>
         logger.debug(s"Process '$cmd ${args.mkString(" ")}' completed in ${duration.toMillis} ms")
-        result
+        meterProvider
+          .get("process")
+          .flatMap(_.counter[Long]("duration-ms").create)
+          .flatMap(_.inc()) >> IO.pure(result)
       }
   }
 }

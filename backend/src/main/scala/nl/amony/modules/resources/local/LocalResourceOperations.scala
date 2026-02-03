@@ -1,120 +1,74 @@
 package nl.amony.modules.resources.local
 
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
+import java.util.concurrent.ConcurrentHashMap
 
-import cats.effect.IO
-import nl.amony.lib.process.ffmpeg.FFMpeg
+import cats.effect.std.MapRef
+import cats.effect.{Deferred, IO}
+import cats.implicits.*
 import scribe.Logging
-import nl.amony.lib.process.magick.ImageMagick
-import nl.amony.modules.resources.*
+
 import nl.amony.modules.resources.api.*
 
-object LocalResourceOperations {
+trait LocalResourceOperations extends LocalDirectoryDependencies with Logging {
 
-  def createResource(inputFile: Path, inputMeta: ResourceInfo, outputDir: Path, operation: LocalResourceOp): IO[Path] =
-    operation.validate(inputMeta) match
+  type OperationKey = (resourceId: ResourceId, operation: ResourceOperation)
+
+  extension (operation: ResourceOperation)
+    def outputFilename(resourceId: ResourceId): String = operation match
+      case VideoFragment(width, height, start, end, quality) => s"${resourceId}_${height.get}_$start-$end.mp4"
+      case VideoThumbnail(width, height, quality, timestamp) => s"${resourceId}_${height.get}_$timestamp.webp"
+      case ImageThumbnail(width, height, quality)            => s"${resourceId}_${height.get}.webp"
+
+  private val mapRefOps: MapRef[IO, OperationKey, Option[Deferred[IO, Either[Throwable, Path]]]] =
+    MapRef.fromConcurrentHashMap[IO, OperationKey, Deferred[IO, Either[Throwable, Path]]](
+      new ConcurrentHashMap[OperationKey, Deferred[IO, Either[Throwable, Path]]]()
+    )
+
+  private[local] def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]] = {
+
+    val outputFile = config.cachePath.resolve(operation.outputFilename(info.resourceId))
+    val key        = (resourceId = info.resourceId, operation = operation)
+
+    if Files.exists(outputFile) then IO.pure(ResourceContent.fromPath(outputFile, Some(key.operation.contentType)).some)
+    else {
+
+      def runOperation(deferred: Deferred[IO, Either[Throwable, Path]]): IO[Path] =
+        createResource(config.resourcePath.resolve(info.path), info, config.cachePath, key.operation)
+          .attempt
+          .flatTap(result => deferred.complete(result))
+          .flatTap(_ => mapRefOps(key).set(None))
+          .rethrow
+
+      Deferred[IO, Either[Throwable, Path]].flatMap {
+        newDeferred =>
+          mapRefOps(key).modify {
+            case Some(existing) => (Some(existing), existing.get.rethrow)
+            case None           => (Some(newDeferred), runOperation(newDeferred))
+          }
+      }.flatten.map(path => ResourceContent.fromPath(outputFile, Some(key.operation.contentType)).some)
+    }
+  }
+
+  private def createResource(inputFile: Path, info: ResourceInfo, outputDir: Path, operation: ResourceOperation): IO[Path] =
+    operation.validate(info) match
       case Left(error) => IO.raiseError(new Exception(error))
-      case Right(_)    => operation.createFile(inputFile, outputDir).memoize.flatten
+      case Right(_)    => run(info, inputFile, outputDir.resolve(operation.outputFilename(info.resourceId)), operation).memoize.flatten
 
-  sealed trait LocalResourceOp {
+  private def run(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: ResourceOperation): IO[Path] = operation match
+    case VideoFragment(width, height, start, end, quality) =>
+      logger.debug(s"Creating video fragment for $inputFile with range $start-$end")
+      // TODO Remove Option.get
+      ffmpeg.transcodeToMp4(inputFile = inputFile, range = (start, end), scaleHeight = Some(height.get), outputFile = Some(outputFile)).map(_ =>
+        outputFile
+      )
 
-    def contentType: String
-    def validate(meta: ResourceInfo): Either[String, Unit] = Right(())
-    def outputFilename: String
-    def createFile(inputFile: Path, outputDir: Path): IO[Path]
-  }
-
-  object LocalResourceOp {
-    def apply(parentId: String, operation: ResourceOperation): LocalResourceOp = operation match
-      case VideoFragment(width, height, start, end, quality) => VideoFragmentOp(parentId, (start, end), height.get)
-      case VideoThumbnail(width, height, quality, timestamp) => VideoThumbnailOp(parentId, timestamp, height.get)
-      case ImageThumbnail(width, height, quality)            => ImageThumbnailOp(parentId, width, height)
-  }
-
-  case class VideoThumbnailOp(resourceId: String, timestamp: Long, quality: Int) extends LocalResourceOp with Logging {
-
-    override def contentType = "image/webp"
-
-    def outputFilename: String = s"${resourceId}_${timestamp}_${quality}p.webp"
-
-    override def validate(info: ResourceInfo): Either[String, Unit] = info.contentMeta.map(_.properties) match {
-      case Some(video: VideoProperties) =>
-        for _ <- Either.cond(timestamp > 0 && timestamp < video.durationInMillis, (), "Timestamp is out of bounds") yield ()
-      case other                        => Left("Wrong content type, expected video, got: " + other)
-    }
-
-    override def createFile(inputFile: Path, outputDir: Path): IO[Path] = {
-
+    case VideoThumbnail(width, height, quality, timestamp) =>
       logger.debug(s"Creating thumbnail for $inputFile at timestamp $timestamp")
-      val outputFile = outputDir.resolve(outputFilename)
-
-      FFMpeg.createThumbnail(inputFile = inputFile, timestamp = timestamp, outputFile = Some(outputFile), scaleHeight = Some(quality))
-        .map(_ => outputFile)
-    }
-  }
-
-  case class ImageThumbnailOp(resourceId: String, width: Option[Int], height: Option[Int]) extends LocalResourceOp with Logging {
-
-    override def contentType = "image/webp"
-
-    def outputFilename: String = s"${resourceId}_${height.getOrElse("")}p.webp"
-
-    val minHeight = 64
-    val minWidth  = 64
-    val maxHeight = 4096
-    val maxWidth  = 4096
-
-    override def validate(info: ResourceInfo): Either[String, Unit] =
-      for
-        _ <- Either.cond(height.getOrElse(Int.MaxValue) > minHeight, (), "Height too small")
-        _ <- Either.cond(width.getOrElse(Int.MaxValue) > minWidth, (), "Width too small")
-        _ <- Either.cond(height.getOrElse(0) < maxHeight, (), "Height too large")
-        _ <- Either.cond(width.getOrElse(0) < maxWidth, (), "Width too large")
-      yield ()
-
-    override def createFile(inputFile: Path, outputDir: Path): IO[Path] = {
-
-      val outputFile = outputDir.resolve(outputFilename)
-
+      ffmpeg.createThumbnail(inputFile = inputFile, timestamp = timestamp, outputFile = Some(outputFile), scaleHeight = Some(quality)).map(_ =>
+        outputFile
+      )
+    case ImageThumbnail(width, height, quality)            =>
       logger.debug(s"Creating image thumbnail for $inputFile")
-
-      ImageMagick.resizeImage(inputFile = inputFile, outputFile = Some(outputFile), width = width, height = height).map(_ => outputFile)
-    }
-  }
-
-  case class VideoFragmentOp(resourceId: String, range: (start: Long, end: Long), height: Int) extends LocalResourceOp with Logging {
-
-    override def contentType = "video/mp4"
-
-    val minHeight         = 120
-    val maxHeight         = 4096
-    val minLengthInMillis = 1000
-    val maxLengthInMillis = 60000
-
-    def outputFilename: String = s"${resourceId}_${range.start}-${range.end}_${height}p.mp4"
-
-    override def validate(info: ResourceInfo): Either[String, Unit] = {
-      info.contentMeta.map(_.properties) match {
-        case Some(video: VideoProperties) =>
-          val (start, end) = range
-          val duration     = end - start
-          for
-            _ <- Either.cond(height > minHeight || height < maxHeight, (), "Height out of bounds")
-            _ <- Either.cond(start >= 0, (), "Start time is negative")
-            _ <- Either.cond(end > start, (), "End time is before start time")
-            _ <- Either.cond(duration > minLengthInMillis, (), "Duration too short")
-            _ <- Either.cond(duration < maxLengthInMillis, (), "Duration too long")
-          yield ()
-        case other                        => Left("Wrong content type, expected video, got: " + other)
-      }
-    }
-
-    def createFile(inputFile: Path, outputDir: Path): IO[Path] = {
-
-      logger.debug(s"Creating video fragment for $inputFile with range $range")
-      val outputFile = outputDir.resolve(outputFilename)
-
-      FFMpeg.transcodeToMp4(inputFile = inputFile, range = range, scaleHeight = Some(height), outputFile = Some(outputFile))
-    }
-  }
+      imageMagick.resizeImage(inputFile = inputFile, outputFile = Some(outputFile), width = width, height = height).map(_ => outputFile)
 }

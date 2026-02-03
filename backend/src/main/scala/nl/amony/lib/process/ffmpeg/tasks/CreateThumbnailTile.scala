@@ -3,11 +3,13 @@ package nl.amony.lib.process.ffmpeg.tasks
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.DurationInt
+
 import cats.effect.IO
 import scribe.Logging
-import nl.amony.lib.process.ffmpeg.FFMpeg.formatTime
+
 import nl.amony.lib.files.*
 import nl.amony.lib.process.ProcessRunner
+import nl.amony.lib.process.ffmpeg.FFMpeg.formatTime
 
 trait CreateThumbnailTile extends Logging {
 
