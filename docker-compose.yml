@@ -85,8 +85,7 @@ services:
     env_file:
       - .env
     environment:
-      AMONY_ADMIN_USERNAME: ${AMONY_ADMIN_USERNAME:-admin}
-      AMONY_ADMIN_PASSWORD: ${AMONY_ADMIN_PASSWORD:-changeme}
+      AMONY_ADMIN_USER: ${AMONY_ADMIN_USER:-admin}
       DATABASE_HOST: "postgres"
       DATABASE_USERNAME: ${DATABASE_USERNAME:-admin}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
@@ -103,6 +102,8 @@ services:
     restart: unless-stopped
     ports:
       - "5556:5556"
+    env_file:
+      - .env
     volumes:
-      - ./docker/dex-config.yaml:/etc/dex/config.yaml
+      - ./docker/dex/config.yaml:/etc/dex/config.yaml
     command: ["dex", "serve", "/etc/dex/config.yaml"]

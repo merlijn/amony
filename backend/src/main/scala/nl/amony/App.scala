@@ -3,7 +3,6 @@ package nl.amony
 import java.nio.file.Path
 import scala.reflect.ClassTag
 import scala.util.Using
-
 import cats.effect.{IO, Resource, ResourceApp}
 import cats.implicits.*
 import com.typesafe.config.{Config, ConfigFactory}
@@ -18,7 +17,6 @@ import scribe.{Logger, Logging}
 import skunk.Session
 import sttp.client4.httpclient.cats.HttpClientCatsBackend
 import sttp.tapir.server.http4s.Http4sServerOptions
-
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.modules.admin.AdminRoutes
 import nl.amony.modules.auth.*
@@ -29,6 +27,7 @@ import nl.amony.modules.resources.http.{ResourceContentRoutes, ResourceRoutes}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.modules.search.http.SearchRoutes
 import nl.amony.modules.search.solr.SolrSearchService
+import org.typelevel.otel4s.metrics.MeterProvider
 
 object App extends ResourceApp.Forever with Logging {
 
@@ -83,7 +82,8 @@ object App extends ResourceApp.Forever with Logging {
 
     for
       databasePool      <- makeDatabasePool(appConfig.database)
-      otel4j            <- OtelJava.autoConfigured[IO]()
+//      otel4j            <- OtelJava.autoConfigured[IO]()
+      meterProvider      = MeterProvider.noop[IO]
       httpClientBackend <- HttpClientCatsBackend.resource[IO]()
       resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
       searchService     <- SolrSearchService.resource(appConfig.search.solr)
@@ -91,7 +91,7 @@ object App extends ResourceApp.Forever with Logging {
       resourceDatabase   = ResourceDatabase(databasePool)
       resourceBuckets   <- appConfig.resources.buckets.map {
                              case localConfig: ResourceConfig.LocalDirectoryConfig =>
-                               LocalDirectoryBucket.resource(localConfig, resourceDatabase, resourceEventTopic, otel4j.meterProvider)
+                               LocalDirectoryBucket.resource(localConfig, resourceDatabase, resourceEventTopic, meterProvider)
                            }.sequence
       resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
       authModule         = AuthModule(appConfig.auth, httpClientBackend)
