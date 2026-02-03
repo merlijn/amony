@@ -2,19 +2,21 @@ package nl.amony.lib.process.ffmpeg.tasks
 
 import java.nio.file.Path
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
-import scala.util.{Failure, Try}
 
-import FFProbeModel.{*, given}
 import cats.effect.IO
-import io.circe.{Decoder, HCursor, Json}
+import io.circe.{Decoder, Json}
 import scribe.Logging
 
 import nl.amony.lib.process.ProcessRunner
-import nl.amony.lib.process.ffmpeg.FFMpeg.fastStartPattern
+import nl.amony.lib.process.ffmpeg.tasks.FFProbeModel.{*, given}
 
 trait FFProbe extends Logging:
 
   self: ProcessRunner =>
+
+  // https://stackoverflow.com/questions/56963790/how-to-tell-if-faststart-for-video-is-set-using-ffmpeg-or-ffprobe/56963953#56963953
+  // Before avformat_find_stream_info() pos: 3193581 bytes read:3217069 seeks:0 nb_streams:2
+  val fastStartPattern = raw"""Before\savformat_find_stream_info\(\)\spos:\s\d+\sbytes\sread:\d+\sseeks:0""".r.unanchored
 
   val defaultProbeTimeout = 5.seconds
 

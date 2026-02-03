@@ -33,3 +33,20 @@ trait CreateThumbnail:
     // format: on
 
     runIgnoreOutput("ffmpeg", args)
+
+  def streamThumbnail(inputFile: Path, timestamp: Long, scaleHeight: Int): fs2.Stream[IO, Byte] = {
+  
+    // format: off
+    val args = List(
+      "-ss", formatTime(timestamp),
+      "-i", inputFile.toString,
+      "-vcodec", "webp",
+      "-vf", s"scale=-2:$scaleHeight",
+      "-vframes", "1",
+      "-f", "image2pipe",
+      "-"
+    )
+    // format: on
+
+    fs2.Stream.force(useProcess("ffmpeg", args)(p => IO(p.stdout)))
+  }

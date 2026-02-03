@@ -16,7 +16,7 @@ trait LocalResourceOperations extends LocalDirectoryDependencies with Logging {
 
   extension (operation: ResourceOperation)
     def outputFilename(resourceId: ResourceId): String = operation match
-      case VideoFragment(width, height, start, end, quality) => s"${resourceId}_${start}-${end}_${height.get}p.mp4"
+      case VideoFragment(width, height, start, end, quality) => s"${resourceId}_$start-${end}_${height.get}p.mp4"
       case VideoThumbnail(width, height, quality, timestamp) => s"${resourceId}_${timestamp}_${height.get}p.webp"
       case ImageThumbnail(width, height, quality)            => s"${resourceId}_${height.get}.webp"
 
