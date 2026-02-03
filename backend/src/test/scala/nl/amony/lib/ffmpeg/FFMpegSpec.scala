@@ -1,5 +1,6 @@
 package nl.amony.lib.ffmpeg
 
+import nl.amony.lib.process.ffmpeg.FFMpeg
 import org.scalatest.flatspec.AnyFlatSpecLike
 import scribe.Logging
 

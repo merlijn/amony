@@ -1,10 +1,10 @@
-package nl.amony.lib.magick.tasks
+package nl.amony.lib.process.magick.tasks
 
 import java.nio.file.Path
 
 import cats.effect.IO
 
-import nl.amony.lib.ffmpeg.tasks.ProcessRunner
+import nl.amony.lib.process.ProcessRunner
 import nl.amony.lib.files.*
 import nl.amony.lib.files.FileUtil.stripExtension
 

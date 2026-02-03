@@ -41,9 +41,6 @@ val tapirSharedFs2           = "com.softwaremill.sttp.shared"  %% "fs2"         
 val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "11.0.3"
 val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.17"
 
-val scribe                   = "com.outr"                 %% "scribe"                     % "3.17.0"
-val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.17.0"
-
 val tikaCore                 = "org.apache.tika"           % "tika-core"                  % "3.2.3"
 
 val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.12.2"
@@ -97,7 +94,8 @@ val javaDevOpts = Seq(
   "-DAMONY_MEDIA_PATH=../media",
   "-DAMONY_HOME=../media/.amony",
   "-DAMONY_WEB_CLIENT_PATH=../frontend/dist",
-  "-DAMONY_AUTH_ENABLED=false"
+  "-DAMONY_AUTH_ENABLED=false",
+  "-DAMONY_JWT_SECRET_KEY=development-key"
 )
 
 // --- Main project
@@ -203,10 +201,16 @@ lazy val amony = project
     // All dependencies from all modules combined
     libraryDependencies ++= Seq(
       // From lib
-      circe, circeGeneric, circeParser,
-      fs2Core, fs2Io,
-      pureConfig, pureConfigGeneric,
-      scribe, scribeSlf4j,
+      circe, circeGeneric,
+      circeParser,
+      fs2Core,
+      fs2Io,
+      pureConfig,
+      pureConfigGeneric,
+      "com.outr"                 %% "scribe"               % "3.17.0",
+      "com.outr"                 %% "scribe-slf4j"         % "3.17.0",
+      "org.typelevel" %% "otel4s-oteljava" % "0.14.0",
+
       tapirCore, tapirCirce, tapirCatsEffect, tapirHttp4s, tapirSharedFs2, tapirSwaggerUI, tapirCirceYamlSpec,
       
       // From auth

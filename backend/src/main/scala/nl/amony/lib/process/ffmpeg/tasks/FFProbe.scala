@@ -1,17 +1,16 @@
-package nl.amony.lib.ffmpeg.tasks
+package nl.amony.lib.process.ffmpeg.tasks
 
 import java.nio.file.Path
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.util.{Failure, Try}
-
 import FFProbeModel.{*, given}
 import cats.effect.IO
 import io.circe.{Decoder, HCursor, Json}
+import nl.amony.lib.process.ProcessRunner
 import scribe.Logging
+import nl.amony.lib.process.ffmpeg.FFMpeg.fastStartPattern
 
-import nl.amony.lib.ffmpeg.FFMpeg.fastStartPattern
-
-trait FFProbe extends Logging {
+trait FFProbe extends Logging:
 
   self: ProcessRunner =>
 
@@ -29,28 +28,25 @@ trait FFProbe extends Logging {
         IO.pure(result.toTry.get)
     }.timeout(defaultProbeTimeout).memoize.flatten
 
-  def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration = defaultProbeTimeout): IO[(FFProbeOutput, Json)] = ffprobeVersion.flatMap {
-    version =>
+  def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration = defaultProbeTimeout): IO[(FFProbeOutput, Json)] = 
+    ffprobeVersion.flatMap { version =>
       val fileName = file.toAbsolutePath.normalize().toString
       val v        = if debug then "debug" else "quiet"
       val args     = List("-print_format", "json", "-show_streams", "-show_format", "-loglevel", v, fileName)
 
-      useProcess("ffprobe", args) {
-        process =>
+      useProcess("ffprobe", args) { process =>
+        for
+          jsonOutput  <- toString(process.stdout)
+          debugOutput <-
+            if debug then toString(process.stderr).map(debugOutput => Some(ProbeDebugOutput(fastStartPattern.matches(debugOutput))))
+            else IO.pure(None)
+        yield {
 
-          for
-            jsonOutput  <- toString(process.stdout)
-            debugOutput <-
-              if debug then toString(process.stderr).map(debugOutput => Some(ProbeDebugOutput(fastStartPattern.matches(debugOutput))))
-              else IO.pure(None)
-          yield {
-
-            (for
-              json    <- io.circe.parser.parse(jsonOutput)
-              streams <- json.asObject.flatMap(_.apply("streams")).toRight(new Exception("No streams found"))
-              decoded <- streams.as[List[Stream]]
-            yield FFProbeOutput(Some(version), Some(decoded), debugOutput) -> json).toTry.get
-          }
+          (for
+            json    <- io.circe.parser.parse(jsonOutput)
+            streams <- json.asObject.flatMap(_.apply("streams")).toRight(new Exception("No streams found"))
+            decoded <- streams.as[List[Stream]]
+          yield FFProbeOutput(Some(version), Some(decoded), debugOutput) -> json).toTry.get
+        }
       }.timeout(timeout)
-  }
-}
+    }

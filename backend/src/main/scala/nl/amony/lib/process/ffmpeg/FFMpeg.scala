@@ -1,14 +1,14 @@
-package nl.amony.lib.ffmpeg
+package nl.amony.lib.process.ffmpeg
+
+import cats.effect.IO
+import nl.amony.lib.files.*
+import nl.amony.lib.files.FileUtil.stripExtension
+import nl.amony.lib.process.ProcessRunner
+import nl.amony.lib.process.ffmpeg.tasks.{AddFastStart, CreateThumbnail, CreateThumbnailTile, FFProbe}
+import scribe.Logging
 
 import java.nio.file.Path
 import java.time.Duration
-
-import cats.effect.IO
-import scribe.Logging
-
-import nl.amony.lib.ffmpeg.tasks.*
-import nl.amony.lib.files.*
-import nl.amony.lib.files.FileUtil.stripExtension
 
 case class TranscodeProfile(ext: String, args: List[String])
 
@@ -16,7 +16,7 @@ object TranscodeProfile {
   val default = TranscodeProfile(ext = "mp4", args = "-c:v libx264 -crf 23 -movflags +faststart".split(' ').toList)
 }
 
-object FFMpeg extends Logging with ProcessRunner with CreateThumbnail with CreateThumbnailTile with FFProbe {
+object FFMpeg extends Logging with ProcessRunner with CreateThumbnail with CreateThumbnailTile with FFProbe with AddFastStart {
 
   // https://stackoverflow.com/questions/56963790/how-to-tell-if-faststart-for-video-is-set-using-ffmpeg-or-ffprobe/56963953#56963953
   // Before avformat_find_stream_info() pos: 3193581 bytes read:3217069 seeks:0 nb_streams:2
@@ -33,20 +33,7 @@ object FFMpeg extends Logging with ProcessRunner with CreateThumbnail with Creat
 
     s"$hours:$minutes:$seconds.$millis"
   }
-
-  def addFastStart(video: Path): IO[Path] = {
-
-    val out = s"${video.stripExtension()}-faststart.mp4"
-
-    logger.info(s"Adding faststart at: $out")
-
-    useProcessOutput(
-      "ffmpeg",
-      args           = List("-i", video.absoluteFileName(), "-c", "copy", "-map", "0", "-movflags", "+faststart", "-y", out),
-      useErrorStream = true
-    )(_ => IO(Path.of(out)))
-  }
-
+  
   def transcodeToMp4(
     inputFile: Path,
     range: (Long, Long),
@@ -71,9 +58,7 @@ object FFMpeg extends Logging with ProcessRunner with CreateThumbnail with Creat
 
     // format: off
     val args: List[String] =
-    List(
-      "-i",   inputFile.absoluteFileName(),
-    ) ++
+      List("-i",   inputFile.absoluteFileName()) ++
       scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
       List(
         "-c:v",      "libx264",

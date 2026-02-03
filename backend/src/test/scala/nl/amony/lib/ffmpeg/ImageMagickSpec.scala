@@ -1,12 +1,10 @@
 package nl.amony.lib.ffmpeg
 
 import java.nio.file.Path
-
 import cats.effect.unsafe.implicits.global
+import nl.amony.lib.process.magick.ImageMagick
 import org.scalatest.flatspec.AnyFlatSpecLike
 import scribe.Logging
-
-import nl.amony.lib.magick.ImageMagick
 
 class ImageMagickSpec extends AnyFlatSpecLike with Logging {
 

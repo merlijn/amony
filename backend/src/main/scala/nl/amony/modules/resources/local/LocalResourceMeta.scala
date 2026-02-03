@@ -4,11 +4,10 @@ import java.nio.file.Path
 import scala.util.{Failure, Success, Try}
 
 import cats.effect.IO
+import nl.amony.lib.process.ffmpeg.FFMpeg
 import org.apache.tika.Tika
 import scribe.Logging
-
-import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.lib.magick.ImageMagick
+import nl.amony.lib.process.magick.ImageMagick
 import nl.amony.modules.resources.*
 import nl.amony.modules.resources.api.{ContentProperties, ImageProperties, ResourceMeta}
 

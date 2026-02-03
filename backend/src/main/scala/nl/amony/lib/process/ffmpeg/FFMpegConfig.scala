@@ -1,4 +1,4 @@
-package nl.amony.lib.ffmpeg
+package nl.amony.lib.process.ffmpeg
 
 import scala.concurrent.duration.FiniteDuration
 

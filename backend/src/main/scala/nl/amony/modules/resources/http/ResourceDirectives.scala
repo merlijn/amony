@@ -15,13 +15,15 @@ import nl.amony.modules.resources.api.{Resource, ResourceContent, ResourceConten
 
 object ResourceDirectives extends Logging {
 
+  private val rangedResponseCutoff: Long = 1024 * 1024 // 1 MB
+
   def resourceContentsResponse(req: Request[IO], resource: ResourceContent): IO[Response[IO]] = {
 
     val maybeMediaType    = MediaType.parse(resource.contentType).toOption
     val additionalHeaders = Headers(maybeMediaType.map(mediaType => `Content-Type`(mediaType)).toList)
 
     resource match {
-      case resource: ResourceContentWithRangeSupport =>
+      case resource: ResourceContentWithRangeSupport if resource.size > rangedResponseCutoff =>
         ResourceDirectives.responseWithRangeSupport[IO](
           request           = req,
           size              = resource.size,
@@ -41,39 +43,38 @@ object ResourceDirectives extends Logging {
     detectMediaType: Boolean   = true,
     useCompression: Boolean    = true
   )(using F: Async[F]): F[Response[F]] = {
-    Files[F].getBasicFileAttributes(path).flatMap {
-      fileAttributes =>
+    Files[F].getBasicFileAttributes(path).flatMap { fileAttributes =>
+      val mediaTypeHeaders = {
+        if detectMediaType then
+          val maybeMediaType = Option.when(path.extName.nonEmpty)(path.extName.substring(1)).flatMap(MediaType.forExtension)
+          Headers(maybeMediaType.map(mediaType => `Content-Type`(mediaType)).toList)
+        else Headers.empty
+      }
 
-        val mediaTypeHeaders = {
-          if detectMediaType then
-            val maybeMediaType = Option.when(path.extName.nonEmpty)(path.extName.substring(1)).flatMap(MediaType.forExtension)
-            Headers(maybeMediaType.map(mediaType => `Content-Type`(mediaType)).toList)
-          else Headers.empty
-        }
+      def responseWithoutCompression =
+        responseWithRangeSupport(
+          req,
+          fileAttributes.size,
+          mediaTypeHeaders ++ additionalHeaders,
+          (start, end) => Files[F].readRange(path, chunkSize, start, end)
+        )
 
-        def responseWithoutCompression =
-          responseWithRangeSupport(
-            req,
-            fileAttributes.size,
-            mediaTypeHeaders ++ additionalHeaders,
-            (start, end) => Files[F].readRange(path, chunkSize, start, end)
-          )
+      def supportsBrEncoding = req.headers.get[`Accept-Encoding`].map(_.values.exists(_.coding == "br")).getOrElse(false)
 
-        def supportsBrEncoding = req.headers.get[`Accept-Encoding`].map(_.values.exists(_.coding == "br")).getOrElse(false)
-
-        if useCompression && supportsBrEncoding then {
-          val brPath = path.resolveSibling(path.fileName.toString + ".br")
-          Files[F].exists(brPath).flatMap:
-            case true  => responseFromFile(
-                req,
-                brPath,
-                chunkSize,
-                additionalHeaders ++ mediaTypeHeaders ++ Headers(`Content-Encoding`(ContentCoding.br)),
-                detectMediaType = false,
-                useCompression  = false
-              )
-            case false => responseWithoutCompression
-        } else responseWithoutCompression
+      if useCompression && supportsBrEncoding then {
+        val brPath = path.resolveSibling(path.fileName.toString + ".br")
+        Files[F].exists(brPath).flatMap:
+          case true  =>
+            responseFromFile(
+              req,
+              brPath,
+              chunkSize,
+              additionalHeaders ++ mediaTypeHeaders ++ Headers(`Content-Encoding`(ContentCoding.br)),
+              detectMediaType = false,
+              useCompression  = false
+            )
+          case false => responseWithoutCompression
+      } else responseWithoutCompression
     }
   }
 

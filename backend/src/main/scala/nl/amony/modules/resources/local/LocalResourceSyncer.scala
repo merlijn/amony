@@ -66,11 +66,10 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
     }
 
   private def toFileStore(): IO[FileStore] =
-    db.getAll(bucketId).map {
-      resources =>
-        val initialFiles: Seq[FileInfo] = resources
-          .map(r => FileInfo(config.resourcePath.resolve(Path.of(r.path)), r.hash.get, r.size, r.timeLastModified.getOrElse(0)))
-        InMemoryFileStore(initialFiles)
+    db.getAll(bucketId).map { resources =>
+      val initialFiles: Seq[FileInfo] = resources
+        .map(r => FileInfo(config.resourcePath.resolve(Path.of(r.path)), r.hash.get, r.size, r.timeLastModified.getOrElse(0)))
+      InMemoryFileStore(initialFiles)
     }
 
   /**
