@@ -139,67 +139,67 @@ lazy val amony = project
     libraryDependencies ++= Seq(
 
       // general
-      "org.sqids"                   %% "sqids"                         % "0.6.0",
-      "com.github.jwt-scala"        %% "jwt-circe"                     % "11.0.3",
-      "org.apache.tika"              % "tika-core"                     % "3.2.3",
-      "org.typelevel"               %% "cats-effect"                   % "3.6.3",
-      "co.fs2"                      %% "fs2-core"                      % "3.12.2",
-      "co.fs2"                      %% "fs2-io"                        % "3.12.2",
-      "org.apache.directory.studio"  % "org.bouncycastle.bcprov.jdk15" % "140",
+      "org.sqids"                   %% "sqids"                                       % "0.6.0",
+      "com.github.jwt-scala"        %% "jwt-circe"                                   % "11.0.3",
+      "org.apache.tika"              % "tika-core"                                   % "3.2.3",
+      "org.typelevel"               %% "cats-effect"                                 % "3.6.3",
+      "co.fs2"                      %% "fs2-core"                                    % "3.12.2",
+      "co.fs2"                      %% "fs2-io"                                      % "3.12.2",
+      "org.apache.directory.studio"  % "org.bouncycastle.bcprov.jdk15"               % "140",
 
       // config
-      "com.github.pureconfig"        %% "pureconfig-core"            % "0.17.10",
-      "com.github.pureconfig"        %% "pureconfig-generic-scala3"  % "0.17.10",
-      "com.typesafe"                  % "config"                     % "1.4.5",
+      "com.github.pureconfig"        %% "pureconfig-core"                            % "0.17.10",
+      "com.github.pureconfig"        %% "pureconfig-generic-scala3"                  % "0.17.10",
+      "com.typesafe"                  % "config"                                     % "1.4.5",
 
       // database
-      "org.tpolecat"                 %% "skunk-core"                 % "1.0.0-M12",
-      "org.tpolecat"                 %% "skunk-circe"                % "1.0.0-M12",
-      "org.postgresql"                % "postgresql"                 % "42.7.9",
-      "org.liquibase"                 % "liquibase-core"             % "4.33.0",
+      "org.tpolecat"                 %% "skunk-core"                                 % "1.0.0-M12",
+      "org.tpolecat"                 %% "skunk-circe"                                % "1.0.0-M12",
+      "org.postgresql"                % "postgresql"                                 % "42.7.9",
+      "org.liquibase"                 % "liquibase-core"                             % "4.33.0",
 
       // json
-      "io.circe"                     %% "circe-core"                 % circeVersion,
-      "io.circe"                     %% "circe-generic"              % circeVersion,
-      "io.circe"                     %% "circe-parser"               % circeVersion,
+      "io.circe"                     %% "circe-core"                                 % circeVersion,
+      "io.circe"                     %% "circe-generic"                              % circeVersion,
+      "io.circe"                     %% "circe-parser"                               % circeVersion,
 
       // observability
       "com.outr"                      %% "scribe"                                    % "3.17.0",
       "com.outr"                      %% "scribe-slf4j"                              % "3.17.0",
-      "org.typelevel"                 %% "otel4s-oteljava" % "0.14.0",
+      "org.typelevel"                 %% "otel4s-oteljava"                           % "0.14.0",
       "io.opentelemetry"               % "opentelemetry-exporter-otlp"               % "1.58.0" % Runtime,
       "io.opentelemetry"               % "opentelemetry-sdk-extension-autoconfigure" % "1.58.0" % Runtime,
       "org.slf4j"                      % "slf4j-api"                                 % "2.0.17",
       "org.typelevel"                 %% "log4cats-slf4j"                            % "2.7.1",
 
       // http client
-      "com.softwaremill.sttp.client4" %% "core"                    % sttpVersion,
-      "com.softwaremill.sttp.client4" %% "circe"                   % sttpVersion,
-      "com.softwaremill.sttp.client4" %% "cats"                    % sttpVersion,
+      "com.softwaremill.sttp.client4" %% "core"                                      % sttpVersion,
+      "com.softwaremill.sttp.client4" %% "circe"                                     % sttpVersion,
+      "com.softwaremill.sttp.client4" %% "cats"                                      % sttpVersion,
 
       // http server
-      "com.softwaremill.sttp.tapir"   %% "tapir-core"              % tapirVersion,
-      "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"     % tapirVersion,
-      "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"       % tapirVersion,
-      "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle" % tapirVersion,
-      "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"        % tapirVersion,
-      "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"      % "0.11.10",
-      "com.softwaremill.sttp.shared"  %% "fs2"                     % "1.5.0",
-      "org.http4s"                    %% "http4s-ember-server"     % http4sVersion,
-      "org.http4s"                    %% "http4s-dsl"              % http4sVersion,
-      "org.http4s"                    %% "http4s-circe"            % http4sVersion,
-      "org.jsoup"                      % "jsoup"                   % "1.22.1",
+      "com.softwaremill.sttp.tapir"   %% "tapir-core"                                % tapirVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"                       % tapirVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"                         % tapirVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle"                   % tapirVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"                          % tapirVersion,
+      "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"                        % "0.11.10",
+      "com.softwaremill.sttp.shared"  %% "fs2"                                       % "1.5.0",
+      "org.http4s"                    %% "http4s-ember-server"                       % http4sVersion,
+      "org.http4s"                    %% "http4s-dsl"                                % http4sVersion,
+      "org.http4s"                    %% "http4s-circe"                              % http4sVersion,
+      "org.jsoup"                      % "jsoup"                                     % "1.22.1",
 
       // solr search
-      "org.apache.solr"                % "solr-core"                  % "8.11.1",
-      "org.apache.solr"                % "solr-langid"                % "8.11.1",
+      "org.apache.solr"                % "solr-core"                                 % "8.11.1",
+      "org.apache.solr"                % "solr-langid"                               % "8.11.1",
 
       // Test dependencies
-      "org.scalatest"                 %% "scalatest"                      % "3.2.19"   % Test,
-      "org.scalatestplus"             %% "scalacheck-1-15"                % "3.2.11.0" % Test,
-      "com.dimafeng"                  %% "testcontainers-scala-scalatest" % "0.44.1"   % Test,
-      "commons-codec"                  % "commons-codec"                  % "1.21.0"   % Test,
-      "org.scalacheck"                %% "scalacheck"                     % "1.19.0"   % Test
+      "org.scalatest"                 %% "scalatest"                                 % "3.2.19"   % Test,
+      "org.scalatestplus"             %% "scalacheck-1-15"                           % "3.2.11.0" % Test,
+      "com.dimafeng"                  %% "testcontainers-scala-scalatest"            % "0.44.1"   % Test,
+      "commons-codec"                  % "commons-codec"                             % "1.21.0"   % Test,
+      "org.scalacheck"                %% "scalacheck"                                % "1.19.0"   % Test
     ),
 
     excludeDependencies ++= List(
