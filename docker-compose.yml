@@ -91,6 +91,7 @@ services:
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
       AMONY_OAUTH_AUTHORIZE_URL: ${AMONY_OAUTH_HOST:-http://localhost:5556/dex/auth}
       AMONY_OAUTH_TOKEN_URL: ${AMONY_OAUTH_HOST:-http://dex:5556/dex/token}
+      AMONY_OAUTH_USERINFO_URL: ${AMONY_OAUTH_HOST:-http://dex:5556/dex/userinfo}
     volumes:
       - ${AMONY_HOST_MEDIA_PATH}:/media
       - ${AMONY_DATA:-./data}/solr:/app/data/solr
