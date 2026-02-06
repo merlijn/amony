@@ -1,12 +1,10 @@
 package nl.amony.modules.resources.local
 
+import java.nio.file.Files
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{Files, Path as JPath}
-import java.util.concurrent.ConcurrentHashMap
 
-import cats.effect.std.MapRef
+import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, IO}
 import cats.implicits.*
 import org.apache.tika.Tika
 import org.typelevel.otel4s.metrics.MeterProvider

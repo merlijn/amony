@@ -3,6 +3,7 @@ package nl.amony
 import java.nio.file.Path
 import scala.reflect.ClassTag
 import scala.util.Using
+
 import cats.effect.{IO, Resource, ResourceApp}
 import cats.implicits.*
 import com.typesafe.config.{Config, ConfigFactory}
@@ -10,6 +11,7 @@ import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
+import org.typelevel.otel4s.metrics.MeterProvider
 import org.typelevel.otel4s.oteljava.OtelJava
 import org.typelevel.otel4s.trace.Tracer.Implicits.noop
 import pureconfig.ConfigSource
@@ -17,6 +19,7 @@ import scribe.{Logger, Logging}
 import skunk.Session
 import sttp.client4.httpclient.cats.HttpClientCatsBackend
 import sttp.tapir.server.http4s.Http4sServerOptions
+
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.modules.admin.AdminRoutes
 import nl.amony.modules.auth.*
@@ -27,7 +30,6 @@ import nl.amony.modules.resources.http.{ResourceContentRoutes, ResourceRoutes}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.modules.search.http.SearchRoutes
 import nl.amony.modules.search.solr.SolrSearchService
-import org.typelevel.otel4s.metrics.MeterProvider
 
 object App extends ResourceApp.Forever with Logging {
 

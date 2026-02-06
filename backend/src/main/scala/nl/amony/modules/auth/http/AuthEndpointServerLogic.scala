@@ -28,7 +28,7 @@ object AuthEndpointServerLogic extends Logging {
       .serverLogic(auth => _ => IO(Right(auth)))
 
     val refreshImpl = refreshEndpoint.serverLogic: refreshToken =>
-      authService.refresh("", refreshToken).map:
+      authService.refresh(refreshToken).map:
         case Left(_)               => Left(SecurityError.Unauthorized)
         case Right(authentication) => Right(apiSecurity.createCookies(authentication))
 
@@ -65,8 +65,9 @@ object AuthEndpointServerLogic extends Logging {
             _              <- EitherT.fromOption[IO](authService.oauthProviders.get(provider), ErrorResponse.notFound())
             _              <- EitherT.cond[IO](state == clientState, (), ErrorResponse.badRequest(message = "Invalid state parameter"))
             authentication <- EitherT(authService.authenticate(OauthTokenCredentials(provider, code)).map {
-                                case Right(authentication) => Right(authentication)
-                                case Left(_)               => Left(ErrorResponse.unauthorized(message = "Invalid credentials"))
+                                case Right(authentication)      => Right(authentication)
+                                case Left(UnknownOAuthProvider) => Left(ErrorResponse.notFound())
+                                case Left(_)                    => Left(ErrorResponse.unauthorized(message = "Invalid credentials"))
                               })
           yield RedirectResponse("/") -> apiSecurity.createCookies(authentication)
 

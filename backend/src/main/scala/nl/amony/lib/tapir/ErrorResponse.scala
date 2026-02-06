@@ -12,6 +12,9 @@ object ErrorResponse:
 
   val endpointOutput: EndpointOutput[ErrorResponse] = (statusCode and jsonBody[ErrorResponseBody]).mapTo[ErrorResponse]
 
+  def internalServerError(code: String = "internal_server_error", message: String = "Internal server error"): ErrorResponse =
+    ErrorResponse(StatusCode.InternalServerError, ErrorResponseBody(code, message))
+
   def notFound(code: String = "not_found", message: String = "Resource not found"): ErrorResponse =
     ErrorResponse(StatusCode.NotFound, ErrorResponseBody(code, message))
 

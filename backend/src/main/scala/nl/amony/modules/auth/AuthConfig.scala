@@ -37,6 +37,7 @@ case class OauthProvider(
   clientSecret: String,
   authorizeUrl: Uri,
   tokenUrl: Uri,
+  userInfoUrl: Uri,
   scopes: List[String]    = List("openid", "profile", "email"),
   defaultRoles: Set[Role] = Set.empty
 ) derives ConfigReader

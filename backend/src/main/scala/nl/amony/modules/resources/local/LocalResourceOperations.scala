@@ -15,10 +15,14 @@ trait LocalResourceOperations extends LocalDirectoryDependencies with Logging {
   type OperationKey = (resourceId: ResourceId, operation: ResourceOperation)
 
   extension (operation: ResourceOperation)
-    def outputFilename(resourceId: ResourceId): String = operation match
-      case VideoFragment(width, height, start, end, quality) => s"${resourceId}_$start-${end}_${height.get}p.mp4"
-      case VideoThumbnail(width, height, quality, timestamp) => s"${resourceId}_${timestamp}_${height.get}p.webp"
-      case ImageThumbnail(width, height, quality)            => s"${resourceId}_${height.get}.webp"
+    def outputFile(resourceId: ResourceId): Path = {
+      val fileName = operation match
+        case VideoFragment(width, height, start, end, quality) => s"${resourceId}_$start-${end}_${height.get}p.mp4"
+        case VideoThumbnail(width, height, quality, timestamp) => s"${resourceId}_${timestamp}_${height.get}p.webp"
+        case ImageThumbnail(width, height, quality)            => s"${resourceId}_${height.get}.webp"
+
+      config.cachePath.resolve(fileName)
+    }
 
   private val mapRefOps: MapRef[IO, OperationKey, Option[Deferred[IO, Either[Throwable, Path]]]] =
     MapRef.fromConcurrentHashMap[IO, OperationKey, Deferred[IO, Either[Throwable, Path]]](
@@ -27,14 +31,14 @@ trait LocalResourceOperations extends LocalDirectoryDependencies with Logging {
 
   private[local] def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]] = {
 
-    val outputFile = config.cachePath.resolve(operation.outputFilename(info.resourceId))
+    val outputFile = operation.outputFile(info.resourceId)
     val key        = (resourceId = info.resourceId, operation = operation)
 
     if Files.exists(outputFile) then IO.pure(ResourceContent.fromPath(outputFile, Some(key.operation.contentType)).some)
     else {
 
       def runOperation(deferred: Deferred[IO, Either[Throwable, Path]]): IO[Path] =
-        createResource(config.resourcePath.resolve(info.path), info, config.cachePath, key.operation)
+        createResource(config.resourcePath.resolve(info.path), info, key.operation)
           .attempt
           .flatTap(result => deferred.complete(result))
           .flatTap(_ => mapRefOps(key).set(None))
@@ -50,10 +54,10 @@ trait LocalResourceOperations extends LocalDirectoryDependencies with Logging {
     }
   }
 
-  private def createResource(inputFile: Path, info: ResourceInfo, outputDir: Path, operation: ResourceOperation): IO[Path] =
+  private def createResource(inputFile: Path, info: ResourceInfo, operation: ResourceOperation): IO[Path] =
     operation.validate(info) match
       case Left(error) => IO.raiseError(new Exception(error))
-      case Right(_)    => run(info, inputFile, outputDir.resolve(operation.outputFilename(info.resourceId)), operation).memoize.flatten
+      case Right(_)    => run(info, inputFile, operation.outputFile(info.resourceId), operation).memoize.flatten
 
   private def run(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: ResourceOperation): IO[Path] = operation match
     case VideoFragment(width, height, start, end, quality) =>
