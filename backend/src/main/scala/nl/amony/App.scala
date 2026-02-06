@@ -96,7 +96,7 @@ object App extends ResourceApp.Forever with Logging {
                                LocalDirectoryBucket.resource(localConfig, resourceDatabase, resourceEventTopic, meterProvider)
                            }.sequence
       resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
-      authModule         = AuthModule(appConfig.auth, httpClientBackend)
+      authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
       apiRoutes          = ResourceContentRoutes.apply(resourceBucketMap, authModule.apiSecurity) <+>
                              authModule.routes <+>
                              AdminRoutes.apply(searchService, resourceBucketMap, authModule.apiSecurity) <+>

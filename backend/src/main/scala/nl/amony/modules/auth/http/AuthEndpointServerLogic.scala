@@ -64,11 +64,10 @@ object AuthEndpointServerLogic extends Logging {
           for
             _              <- EitherT.fromOption[IO](authService.oauthProviders.get(provider), ErrorResponse.notFound())
             _              <- EitherT.cond[IO](state == clientState, (), ErrorResponse.badRequest(message = "Invalid state parameter"))
-            authentication <- EitherT(authService.authenticate(OauthTokenCredentials(provider, code)).map {
-                                case Right(authentication)      => Right(authentication)
-                                case Left(UnknownOAuthProvider) => Left(ErrorResponse.notFound())
-                                case Left(_)                    => Left(ErrorResponse.unauthorized(message = "Invalid credentials"))
-                              })
+            authentication <- authService.authenticate(OauthTokenCredentials(provider, code)).leftMap:
+                                case UnknownOAuthProvider => ErrorResponse.notFound()
+                                case UnknownError         => ErrorResponse.internalServerError(message = "An unknown error occurred")
+                                case _                    => ErrorResponse.unauthorized(message = "Invalid credentials")
           yield RedirectResponse("/") -> apiSecurity.createCookies(authentication)
 
         result.value

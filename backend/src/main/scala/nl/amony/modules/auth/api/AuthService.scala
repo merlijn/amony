@@ -1,5 +1,6 @@
 package nl.amony.modules.auth.api
 
+import java.time.Instant
 import java.util.UUID
 
 import cats.data.EitherT
@@ -10,6 +11,7 @@ import sttp.client4.circe.asJson
 
 import nl.amony.modules.*
 import nl.amony.modules.auth.*
+import nl.amony.modules.auth.dal.{UserDatabase, UserRow}
 
 sealed trait AuthenticationError
 
@@ -38,7 +40,7 @@ case class UserInfo(
   locale: Option[String]
 ) derives io.circe.Codec
 
-class AuthService(config: AuthConfig, httpClient: Backend[IO]) extends Logging {
+class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: UserDatabase) extends Logging {
 
   private val tokenManager = new TokenManager(config.jwt)
 
@@ -67,25 +69,42 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO]) extends Logging {
     }
   }
 
-  private def getUserInfo(provider: OauthProvider, accessToken: String): IO[Either[String, UserInfo]] = {
+  private def getUserInfo(provider: OauthProvider, accessToken: String): EitherT[IO, AuthenticationError, UserInfo] = {
     val req = sttp.client4.basicRequest
       .get(provider.userInfoUrl)
       .header("Authorization", s"Bearer $accessToken")
       .response(asJson[UserInfo])
 
-    httpClient.send(req).map(_.body.left.map(_.getMessage))
+    EitherT(httpClient.send(req).map(_.body.left.map(_.getMessage))).leftMap { error =>
+      logger.error(s"Error fetching user info from OAuth provider $provider: $error")
+      UnknownError
+    }
   }
 
-  def authenticate(oauthToken: OauthTokenCredentials): IO[Either[AuthenticationError, Authentication]] = {
-
-    val result =
-      for
-        provider      <- EitherT.fromOption[IO](oauthProviders.get(oauthToken.provider), UnknownOAuthProvider: AuthenticationError)
-        tokenResponse <- getToken(provider, oauthToken.token)
-      yield tokenManager.createAccessAndRefreshTokens(Some(UUID.randomUUID().toString), roles = provider.defaultRoles)
-
-    result.value
+  private def getOrInsertUser(provider: OauthProvider, userInfo: UserInfo, email: String): IO[User] = {
+    userDatabase.getByEmail(email).flatMap {
+      case Some(userRow) => IO.pure(userRow.toUser)
+      case None          =>
+        val newUser = User(
+          id             = UserId(UUID.randomUUID().toString),
+          email          = email,
+          authProvider   = provider.name,
+          authSubject    = userInfo.sub,
+          timeRegistered = Instant.now,
+          roles          = provider.defaultRoles
+        )
+        userDatabase.insert(UserRow.fromUser(newUser)).map(_ => newUser)
+    }
   }
+
+  def authenticate(oauthToken: OauthTokenCredentials): EitherT[IO, AuthenticationError, Authentication] =
+    for
+      provider      <- EitherT.fromOption[IO](oauthProviders.get(oauthToken.provider), UnknownOAuthProvider: AuthenticationError)
+      tokenResponse <- getToken(provider, oauthToken.token)
+      userInfo      <- getUserInfo(provider, tokenResponse.access_token)
+      email         <- EitherT.fromOption[IO](userInfo.email, UnknownError: AuthenticationError)
+      user          <- EitherT.liftF(getOrInsertUser(provider, userInfo, email))
+    yield tokenManager.createAccessAndRefreshTokens(Some(user.id), roles = user.roles)
 
   def refresh(refreshToken: String): IO[Either[AuthenticationError, Authentication]] =
     tokenManager.refreshAccessToken(refreshToken) match

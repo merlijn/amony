@@ -22,12 +22,12 @@ databaseChangeLog:
             path: db/02-update-time-columns.sql
             splitStatements: true
             endDelimiter: ";"
-#  - changeSet:
-#      id: 3
-#      author: merlijn
-#      context: resources
-#      changes:
-#        - sqlFile:
-#            path: db/03-hash-collisions.sql
-#            splitStatements: true
-#            endDelimiter: ";"
+  - changeSet:
+      id: 3
+      author: merlijn
+      context: auth
+      changes:
+        - sqlFile:
+            path: db/03-auth.sql
+            splitStatements: true
+            endDelimiter: ";"

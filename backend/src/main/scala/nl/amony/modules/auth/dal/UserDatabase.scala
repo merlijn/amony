@@ -2,10 +2,32 @@ package nl.amony.modules.auth.dal
 
 import cats.effect.{IO, Resource}
 import scribe.Logging
-import skunk.Session
-
-case class UserRow(id: String, email: String, oauth_provider: String, oauth_subject: String)
+import skunk.*
+import skunk.codec.all.*
+import skunk.implicits.*
+import skunk.{Decoder, Session}
 
 class UserDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
 
-  def getById(userId: String): IO[Option[UserRow]] = ???
+  private def useSession[A](s: Session[IO] => IO[A]): IO[A]                        = pool.use(s)
+  private def useTransaction[A](f: (Session[IO], Transaction[IO]) => IO[A]): IO[A] = pool.use(s => s.transaction.use(tx => f(s, tx)))
+
+  val getByIdQuery: skunk.Query[String, UserRow] =
+    sql"SELECT id, email, oauth_provider, oauth_subject FROM users WHERE id = $varchar(64)".query(UserRow.decoder)
+
+  val getByEmailQuery: skunk.Query[String, UserRow] =
+    sql"SELECT id, email, oauth_provider, oauth_subject FROM users WHERE email = $varchar(64)".query(UserRow.decoder)
+
+  val insertQuery: skunk.Command[UserRow] =
+    sql"INSERT INTO users (id, email, oauth_provider, oauth_subject) VALUES ($varchar(64), $varchar(64), $varchar(64), $varchar(64), $timestamptz, $_varchar)".command.to[
+      UserRow
+    ]
+
+  def getById(userId: String): IO[Option[UserRow]] =
+    pool.use(_.prepare(getByIdQuery).flatMap(_.option(userId)))
+
+  def getByEmail(email: String): IO[Option[UserRow]] =
+    pool.use(_.prepare(getByEmailQuery).flatMap(_.option(email)))
+
+  def insert(user: UserRow): IO[Unit] =
+    pool.use(_.prepare(insertQuery).flatMap(_.execute(user))).map(_ => ())
