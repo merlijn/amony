@@ -7,3 +7,5 @@ CREATE TABLE users (
     roles            VARCHAR(256)[] NOT NULL,
     CONSTRAINT unique_user_auth UNIQUE (auth_provider, auth_subject)
 );
+
+CREATE SEQUENCE user_id_seq MAXVALUE 2147483647;

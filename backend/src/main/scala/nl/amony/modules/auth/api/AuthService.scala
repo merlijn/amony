@@ -107,7 +107,7 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: Use
     yield tokenManager.createAccessAndRefreshTokens(Some(user.id), roles = user.roles)
 
   def refresh(refreshToken: String): IO[Either[AuthenticationError, Authentication]] =
-    tokenManager.refreshAccessToken(refreshToken) match
+    tokenManager.refreshAuthentication(refreshToken) match
       case Some(authentication) => IO.pure(Right(authentication))
       case None                 => IO.pure(Left(InvalidCredentials))
 }
