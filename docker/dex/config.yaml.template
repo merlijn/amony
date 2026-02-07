@@ -1,0 +1,25 @@
+# Dex configuration for local development/testing
+issuer: https://account.${DOMAIN}/dex
+
+storage:
+  type: memory
+
+web:
+  http: 0.0.0.0:5556
+
+oauth2:
+  skipApprovalScreen: true
+
+staticClients:
+  - id: amony-app
+    redirectURIs:
+      - 'https://media.${DOMAIN}/api/auth/callback/dex'
+    name: 'Amony App'
+    secret: amony-dex-secret
+
+enablePasswordDB: true
+staticPasswords:
+  - email: "${DEX_ADMIN_EMAIL}"
+    hash: "${DEX_ADMIN_PASSWORD_HASH}"
+    username: "${DEX_ADMIN_USERNAME}"
+    userID: "admin-user-id"

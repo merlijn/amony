@@ -100,13 +100,20 @@ services:
     restart: "no"
 
   auth:
-    image: dexidp/dex:latest
+    build:
+      context: docker/dex
+      dockerfile: dex.dockerfile
+    image: amony/dex
     container_name: auth
     restart: unless-stopped
     ports:
       - "127.0.0.1:5556:5556"
     env_file:
       - .env
+    environment:
+      DOMAIN: ${DOMAIN:-localhost:5556}
+      DEX_ADMIN_EMAIL: ${DEX_ADMIN_EMAIL:-admin@example.com}
+      DEX_ADMIN_USERNAME: ${DEX_ADMIN_USERNAME:-admin}
+      DEX_ADMIN_PASSWORD_HASH: ${DEX_ADMIN_PASSWORD_HASH:-$$2a$$10$$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W}
     volumes:
-      - ./docker/dex/config.yaml:/etc/dex/config.yaml
-    command: ["dex", "serve", "/etc/dex/config.yaml"]
+      - ./docker/dex/config.yaml.template:/etc/dex/config.yaml.template:ro
