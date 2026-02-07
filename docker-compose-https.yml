@@ -1,4 +1,3 @@
-name: nginx-reverse-proxy
 services:
   nginx:
     container_name: nginx-reverse-proxy
@@ -9,14 +8,12 @@ services:
     ports:
       - "443:443"
     volumes:
-      - ./nginx/config:/etc/nginx:ro
+      - ./docker/reverse-proxy/nginx/config:/etc/nginx:ro
       - certbot-data:/etc/letsencrypt
     restart: unless-stopped
     networks:
       - default
       - https-proxy
-    extra_hosts:
-      - "host.docker.internal:172.17.0.1"
 
   certbot:
     container_name: nginx-certbot
