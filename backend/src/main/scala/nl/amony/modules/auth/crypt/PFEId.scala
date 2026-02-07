@@ -3,9 +3,9 @@ package nl.amony.modules.auth.crypt
 import org.bouncycastle.crypto.fpe.FPEFF1Engine
 import org.bouncycastle.crypto.params.{FPEParameters, KeyParameter}
 
-import nl.amony.modules.auth.crypt.FPE.*
+import nl.amony.modules.auth.crypt.FPEId.*
 
-object FPE:
+object FPEId:
   private val radix            = 16
   private val versionHexDigits = 2
 
@@ -20,7 +20,7 @@ object FPE:
     val obfuscatedVersion = Integer.parseInt(versionPart, radix).toByte
     (obfuscatedVersion ^ obfuscationByte(encryptedValue)).toByte
 
-class FPE(key: Array[Byte], tweak: Array[Byte], bitSize: Int = 32):
+class FPEId(key: Array[Byte], tweak: Array[Byte], bitSize: Int = 32):
 
   require(bitSize % 4 == 0, "bitSize must be a multiple of 4 for hex encoding")
   require(bitSize > 0 && bitSize <= 64, "bitSize must be between 4 and 64")

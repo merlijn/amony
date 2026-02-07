@@ -167,10 +167,10 @@ lazy val amony = project
       "com.outr"                      %% "scribe"                                    % "3.17.0",
       "com.outr"                      %% "scribe-slf4j"                              % "3.17.0",
       "org.typelevel"                 %% "otel4s-oteljava"                           % "0.14.0",
+      "org.typelevel"                 %% "log4cats-slf4j"                            % "2.7.1",
       "io.opentelemetry"               % "opentelemetry-exporter-otlp"               % "1.58.0" % Runtime,
       "io.opentelemetry"               % "opentelemetry-sdk-extension-autoconfigure" % "1.58.0" % Runtime,
       "org.slf4j"                      % "slf4j-api"                                 % "2.0.17",
-      "org.typelevel"                 %% "log4cats-slf4j"                            % "2.7.1",
 
       // http client
       "com.softwaremill.sttp.client4" %% "core"                                      % sttpVersion,

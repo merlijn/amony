@@ -4,14 +4,14 @@ import scala.util.Random
 
 import org.scalatest.wordspec.AnyWordSpecLike
 
-class PFESpec extends AnyWordSpecLike {
+class PFEIdSpec extends AnyWordSpecLike {
 
   val key   = Random.nextBytes(32)
   val tweak = "tweak".getBytes("UTF-8")
 
   "FPE" should {
     "encrypt and decrypt values correctly" in {
-      val fpe = new FPE(key, tweak, 32)
+      val fpe = new FPEId(key, tweak, 32)
 
       (1 to 10).foreach { i =>
         val encrypted = fpe.encrypt(i, version = 2)
@@ -23,7 +23,7 @@ class PFESpec extends AnyWordSpecLike {
       }
 
       println("Testing version extraction:")
-      println(FPE.extractVersion("e2e04de5c9"))
+      println(FPEId.extractVersion("e2e04de5c9"))
     }
   }
 
