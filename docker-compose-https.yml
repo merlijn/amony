@@ -11,6 +11,8 @@ services:
       - ./docker/reverse-proxy/nginx/config:/etc/nginx/templates:ro
       - ./docker/reverse-proxy/nginx/config/shared-proxy-settings.conf:/etc/nginx/shared-proxy-settings.conf:ro
       - certbot-data:/etc/letsencrypt
+    env_file:
+      - .env
     environment:
       - DOMAIN=${DOMAIN}
     restart: unless-stopped
@@ -25,6 +27,8 @@ services:
     image: amony/certbot
     volumes:
       - certbot-data:/etc/letsencrypt
+    env_file:
+      - .env
     environment:
       - PORKBUN_API_KEY=${PORKBUN_API_KEY}
       - PORKBUN_SECRET_KEY=${PORKBUN_SECRET_KEY}
@@ -48,6 +52,8 @@ services:
       context: docker/dex
       dockerfile: dex.dockerfile
     image: amony/dex
+    env_file:
+      - .env
     environment:
       DOMAIN: ${DOMAIN}
       DEX_ADMIN_EMAIL: ${DEX_ADMIN_EMAIL:-admin@example.com}
@@ -69,6 +75,8 @@ services:
         required: false
     volumes:
       - certbot-data:/etc/letsencrypt
+    env_file:
+      - .env
     environment:
       - PORKBUN_API_KEY=${PORKBUN_API_KEY}
       - PORKBUN_SECRET_KEY=${PORKBUN_SECRET_KEY}
