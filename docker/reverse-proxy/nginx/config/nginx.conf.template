@@ -40,6 +40,12 @@ http {
 		server amony-app:8182 resolve;
 	}
 
+	# Upstream for auth provider
+	upstream auth_backend {
+		zone auth_backend 64k;
+		server auth:5556 resolve;
+	}
+
 	# Default SSL server - close unknown connections
 	server {
 		listen 443 ssl default_server;
@@ -67,6 +73,23 @@ http {
 
 		location / {
 			proxy_pass http://amony_backend;
+		}
+	}
+
+	# Auth provider
+	server {
+		listen 443 ssl;
+		server_name account.${DOMAIN};
+
+		include ssl-certificate.conf;
+		include shared-proxy-settings.conf;
+
+		proxy_connect_timeout 60s;
+		proxy_send_timeout    60s;
+		proxy_read_timeout    60s;
+
+		location / {
+			proxy_pass http://auth_backend;
 		}
 	}
 }
