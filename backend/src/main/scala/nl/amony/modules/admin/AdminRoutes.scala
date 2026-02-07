@@ -69,20 +69,21 @@ object AdminRoutes extends Logging:
     using serverOptions: Http4sServerOptions[IO]
   ): HttpRoutes[IO] = {
 
-    val reIndexImpl = reIndex.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogicSuccess(_ =>
-      bucketId =>
-        buckets.get(bucketId) match
-          case None         => IO.unit
-          case Some(bucket) =>
-            logger.info(s"Re-indexing all resources in bucket '$bucketId'")
+    val reIndexImpl = reIndex.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin))
+      .serverLogicSuccess(_ =>
+        bucketId =>
+          buckets.get(bucketId) match
+            case None         => IO.unit
+            case Some(bucket) =>
+              logger.info(s"Re-indexing all resources in bucket '$bucketId'")
 
-            for
-              _ <- searchService.deleteBucket(bucketId)
-              _ <- searchService.indexAll(bucket.getAllResources)
-              _ <- searchService.forceCommit()
-              _ <- IO(logger.info(s"Re-indexed all resources in bucket '$bucketId'"))
-            yield ()
-    )
+              for
+                _ <- searchService.deleteBucket(bucketId)
+                _ <- searchService.indexAll(bucket.getAllResources)
+                _ <- searchService.forceCommit()
+                _ <- IO(logger.info(s"Re-indexed all resources in bucket '$bucketId'"))
+              yield ()
+      )
 
     val refreshImpl =
       refresh.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin))

@@ -84,13 +84,14 @@ object ResourceContentRoutes extends Logging {
           getResource(bucketId, ResourceId(resourceId)).semiflatMap((_, resource) => resourceContentsResponse(req, resource.content))
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern =>
-        maybeResponse:
+        maybeResponse(
           for
             (bucket, resource) <- getResource(bucketId, ResourceId(resourceId))
             operation          <- OptionT.fromOption(patterns.matchPF.lift(resourcePattern))
             derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))
             response           <- OptionT.liftF(resourceContentsResponse(req, derivedResource).map(r => r.addHeader(`Cache-Control`(`max-age`(365.days)))))
           yield response
+        )
     }
   }
 }

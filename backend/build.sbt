@@ -1,6 +1,3 @@
-//import sbt.Keys.scalaVersion
-import sbtassembly.AssemblyPlugin.autoImport.assemblyMergeStrategy
-import com.google.cloud.tools.jib.api.buildplan.Platform
 import de.gccc.jib.MappingsHelper
 import scala.sys.process._
 import sbt.Keys.streams
@@ -10,80 +7,7 @@ def isMainBranch: Boolean = {
   currentBranch == "main"
 }
 
-def hasNoLocalChanges: Boolean = {
-  val status = "git status --porcelain".!!
-  status.isEmpty
-}
-
-// --- Dependencies
-
-val circeVersion    = "0.14.15"
-val http4sVersion   = "0.23.33"
-val tapirVersion    = "1.13.5"
-
-val bouncyCastle = "org.apache.directory.studio" % "org.bouncycastle.bcprov.jdk15" % "140"
-
-val jsoup  = "org.jsoup" % "jsoup" % "1.22.1"
-
-val circe                    = "io.circe"                 %% "circe-core"                 % circeVersion
-val circeGeneric             = "io.circe"                 %% "circe-generic"              % circeVersion
-val circeParser              = "io.circe"                 %% "circe-parser"               % circeVersion
-
-val skunkCore                = "org.tpolecat"             %% "skunk-core"                 % "1.0.0-M12"
-val skunkCirce               = "org.tpolecat"             %% "skunk-circe"                % "1.0.0-M12"
-
-val sqids                    = "org.sqids" %% "sqids" % "0.6.0"
-
-val tapirCore                = "com.softwaremill.sttp.tapir"   %% "tapir-core"              % tapirVersion
-val tapirHttp4s              = "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"     % tapirVersion
-val tapirCatsEffect          = "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"       % tapirVersion
-val tapirSwaggerUI           = "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle" % tapirVersion
-val tapirCirce               = "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"        % tapirVersion
-val tapirCirceYamlSpec       = "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"      % "0.11.10"
-
-val tapirSharedFs2           = "com.softwaremill.sttp.shared"  %% "fs2"                   % "1.5.0"
-
-val jwtCirce                 = "com.github.jwt-scala"     %% "jwt-circe"                  % "11.0.3"
-val slf4jApi                 = "org.slf4j"                 % "slf4j-api"                  % "2.0.17"
-
-val scribe                   = "com.outr"                 %% "scribe"                     % "3.17.0"
-val scribeSlf4j              = "com.outr"                 %% "scribe-slf4j"               % "3.17.0"
-
-val tikaCore                 = "org.apache.tika"           % "tika-core"                  % "3.2.3"
-
-val fs2Core                  = "co.fs2"                   %% "fs2-core"                   % "3.12.2"
-val fs2Io                    = "co.fs2"                   %% "fs2-io"                     % "3.12.2"
-val catsEffect               = "org.typelevel"            %% "cats-effect"                % "3.6.3"
-
-val scalaTest                = "org.scalatest"            %% "scalatest"                  % "3.2.19"           % Test
-val scalaTestCheck           = "org.scalatestplus"        %% "scalacheck-1-15"            % "3.2.11.0"         % Test
-
-val hsqlDB                   = "org.hsqldb"                % "hsqldb"                     % "2.7.4"
-val postgresDriver           = "org.postgresql"            % "postgresql"                 % "42.7.9"
-
-val pureConfig               = "com.github.pureconfig"    %% "pureconfig-core"            % "0.17.9"
-val pureConfigGeneric        = "com.github.pureconfig"    %% "pureconfig-generic-scala3"  % "0.17.9"
-val typesafeConfig           = "com.typesafe"              % "config"                     % "1.4.5"
-
-val liquibaseCore            = "org.liquibase"             % "liquibase-core"             % "4.33.0"
-
-val solr                     = "org.apache.solr"           % "solr-core"                  % "8.11.1"
-val solrLangId               = "org.apache.solr"           % "solr-langid"                % "8.11.1"
-
-val log4CatsSlf4j            = "org.typelevel"            %% "log4cats-slf4j"             % "2.7.1"
-
-val sttpClientCore                = "com.softwaremill.sttp.client4" %% "core" % "4.0.14"
-val sttpClientCirce                = "com.softwaremill.sttp.client4" %% "circe" % "4.0.14"
-val sttpClientCats                 = "com.softwaremill.sttp.client4" %% "cats" % "4.0.14"
-
-val apacheCommonsCodec = "commons-codec" % "commons-codec" % "1.20.0"
-
-
-val http4sEmberServer = "org.http4s" %% "http4s-ember-server" % http4sVersion
-val http4sEmberClient = "org.http4s" %% "http4s-ember-client" % http4sVersion
-val http4sDsl         = "org.http4s" %% "http4s-dsl"          % http4sVersion
-val http4sCirce       = "org.http4s" %% "http4s-circe"        % http4sVersion
-
+def hasNoLocalChanges: Boolean = "git status --porcelain".!!.isEmpty
 
 //fork in Global := true
 cancelable in Global := true
@@ -102,10 +26,16 @@ val javaDevOpts = Seq(
   "-DAMONY_MEDIA_PATH=../media",
   "-DAMONY_HOME=../media/.amony",
   "-DAMONY_WEB_CLIENT_PATH=../frontend/dist",
-  "-DAMONY_AUTH_ENABLED=false"
+  "-DAMONY_AUTH_ENABLED=false",
+  "-DAMONY_JWT_SECRET_KEY=development-key"
 )
 
 // --- Main project
+
+val circeVersion    = "0.14.15"
+val http4sVersion   = "0.23.33"
+val tapirVersion    = "1.13.6"
+val sttpVersion     = "4.0.15"
 
 lazy val amony = project
   .in(file("."))
@@ -133,8 +63,8 @@ lazy val amony = project
     jibName                 := "amony-app",
     jibVersion              := version.value.replace('+', '-'), // + sign is not valid in a docker tag
     jibCustomRepositoryPath := Some("amony-04c85b/docker-images/amony/" + jibName.value),
-    jibPlatforms            := Set(new Platform("amd64", "linux")),
-    jibImageFormat          := JibImageFormat.Docker,
+    jibPlatforms            := Set({if (System.getProperty("os.arch") == "aarch64") JibPlatforms.arm64 else JibPlatforms.amd64}),
+    jibImageFormat          := JibImageFormat.OCI,
     jibTags                 := { if (isMainBranch && hasNoLocalChanges) List("latest") else List("dev") },
     jibExtraMappings   ++= {
       // this adds the frontend assets to the docker image
@@ -207,43 +137,69 @@ lazy val amony = project
 
     // All dependencies from all modules combined
     libraryDependencies ++= Seq(
-      // From lib
-      circe, circeGeneric, circeParser,
-      fs2Core, fs2Io,
-      pureConfig, pureConfigGeneric,
-      scribe, scribeSlf4j,
-      tapirCore, tapirCirce, tapirCatsEffect, tapirHttp4s, tapirSharedFs2, tapirSwaggerUI, tapirCirceYamlSpec,
-      
-      // From auth
-      jwtCirce, bouncyCastle,
-      
-      // From resources
-      sqids, jsoup, tikaCore,
-      http4sDsl, http4sCirce,
-      liquibaseCore,
-      skunkCore, skunkCirce,
-      
-      // From search service
-      slf4jApi,
-      solr, solrLangId,
-      catsEffect,
-      
-      // From app
-      log4CatsSlf4j,
-      typesafeConfig,
-      postgresDriver,
-      http4sEmberServer,
-      
-      // STTP clients
-      sttpClientCore, sttpClientCirce, sttpClientCats,
-      
+
+      // general
+      "org.sqids"                   %% "sqids"                                       % "0.6.0",
+      "com.github.jwt-scala"        %% "jwt-circe"                                   % "11.0.3",
+      "org.apache.tika"              % "tika-core"                                   % "3.2.3",
+      "org.typelevel"               %% "cats-effect"                                 % "3.6.3",
+      "co.fs2"                      %% "fs2-core"                                    % "3.12.2",
+      "co.fs2"                      %% "fs2-io"                                      % "3.12.2",
+//      "org.apache.directory.studio"  % "org.bouncycastle.bcprov.jdk15"               % "140",
+
+      // config
+      "com.github.pureconfig"        %% "pureconfig-core"                            % "0.17.10",
+      "com.github.pureconfig"        %% "pureconfig-generic-scala3"                  % "0.17.10",
+      "com.typesafe"                  % "config"                                     % "1.4.5",
+
+      // database
+      "org.tpolecat"                 %% "skunk-core"                                 % "1.0.0-M12",
+      "org.tpolecat"                 %% "skunk-circe"                                % "1.0.0-M12",
+      "org.postgresql"                % "postgresql"                                 % "42.7.9",
+      "org.liquibase"                 % "liquibase-core"                             % "4.33.0",
+
+      // json
+      "io.circe"                     %% "circe-core"                                 % circeVersion,
+      "io.circe"                     %% "circe-generic"                              % circeVersion,
+      "io.circe"                     %% "circe-parser"                               % circeVersion,
+
+      // observability
+      "com.outr"                      %% "scribe"                                    % "3.17.0",
+      "com.outr"                      %% "scribe-slf4j"                              % "3.17.0",
+      "org.typelevel"                 %% "otel4s-oteljava"                           % "0.14.0",
+      "org.typelevel"                 %% "log4cats-slf4j"                            % "2.7.1",
+      "io.opentelemetry"               % "opentelemetry-exporter-otlp"               % "1.58.0" % Runtime,
+      "io.opentelemetry"               % "opentelemetry-sdk-extension-autoconfigure" % "1.58.0" % Runtime,
+      "org.slf4j"                      % "slf4j-api"                                 % "2.0.17",
+
+      // http client
+      "com.softwaremill.sttp.client4" %% "core"                                      % sttpVersion,
+      "com.softwaremill.sttp.client4" %% "circe"                                     % sttpVersion,
+      "com.softwaremill.sttp.client4" %% "cats"                                      % sttpVersion,
+
+      // http server
+      "com.softwaremill.sttp.tapir"   %% "tapir-core"                                % tapirVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"                       % tapirVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"                         % tapirVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle"                   % tapirVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"                          % tapirVersion,
+      "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"                        % "0.11.10",
+      "com.softwaremill.sttp.shared"  %% "fs2"                                       % "1.5.0",
+      "org.http4s"                    %% "http4s-ember-server"                       % http4sVersion,
+      "org.http4s"                    %% "http4s-dsl"                                % http4sVersion,
+      "org.http4s"                    %% "http4s-circe"                              % http4sVersion,
+      "org.jsoup"                      % "jsoup"                                     % "1.22.1",
+
+      // solr search
+      "org.apache.solr"                % "solr-core"                                 % "8.11.1",
+      "org.apache.solr"                % "solr-langid"                               % "8.11.1",
+
       // Test dependencies
-      scalaTest,
-      scalaTestCheck,
-      postgresDriver % "test",
-      "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.44.0" % "test",
-      "commons-codec" % "commons-codec" % "1.18.0" % "test",
-      "org.scalacheck" %% "scalacheck" % "1.18.1" % "test"
+      "org.scalatest"                 %% "scalatest"                                 % "3.2.19"   % Test,
+      "org.scalatestplus"             %% "scalacheck-1-15"                           % "3.2.11.0" % Test,
+      "com.dimafeng"                  %% "testcontainers-scala-scalatest"            % "0.44.1"   % Test,
+      "commons-codec"                  % "commons-codec"                             % "1.21.0"   % Test,
+      "org.scalacheck"                %% "scalacheck"                                % "1.19.0"   % Test
     ),
 
     excludeDependencies ++= List(

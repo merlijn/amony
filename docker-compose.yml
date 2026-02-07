@@ -20,29 +20,81 @@ services:
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-changeme}
     restart: always
     volumes:
-      - ${AMONY_HOST_MEDIA_PATH}/.amony/data/postgres:/var/lib/postgresql/data
+      - ${AMONY_DATA:-./data}/postgres:/var/lib/postgresql/data
+
+  postgres-restore:
+    image: postgres:17.2
+    container_name: amony-postgres-restore
+    profiles:
+      - restore
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
+      DATABASE_NAME: amony
+      BACKUP_DIR: /backups
+      RESTORE_FILE: ${RESTORE_FILE}
+    volumes:
+      - ./docker/scripts/pg-restore.sh:/scripts/pg-restore.sh:ro
+      - ${AMONY_DATA:-./data}/backups:/backups:ro
+    entrypoint: ["/scripts/pg-restore.sh"]
+
+  postgres-backup:
+    image: postgres:17.2
+    container_name: amony-postgres-backup
+    profiles:
+      - backup
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
+      DATABASE_NAME: amony
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-0 2 * * *}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_DIR: /backups
+      BACKUP_ON_STARTUP: ${BACKUP_ON_STARTUP:-false}
+    volumes:
+      - ./docker/scripts/pg-backup.sh:/scripts/pg-backup.sh:ro
+      - ./docker/scripts/backup-entrypoint.sh:/scripts/backup-entrypoint.sh:ro
+      - ${AMONY_DATA:-./data}/backups:/backups
+    restart: unless-stopped
+    entrypoint: ["/scripts/backup-entrypoint.sh"]
 
   amony:
-    image: europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/amony-app:0.0.3-106-3d31d9c0
-    platform: linux/amd64
+    image: europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/amony-app:dev
     container_name: amony-app
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-restore:
+        condition: service_completed_successfully
+        required: false
     user: "${AMONY_DOCKER_USER_ID}:${AMONY_DOCKER_USER_ID}"
     ports:
       - "127.0.0.1:8182:8182"
     env_file:
       - .env
     environment:
-      AMONY_ADMIN_USERNAME: ${AMONY_ADMIN_USERNAME:-admin}
-      AMONY_ADMIN_PASSWORD: ${AMONY_ADMIN_PASSWORD:-changeme}
+      AMONY_ADMIN_USER: ${AMONY_ADMIN_USER:-admin}
       DATABASE_HOST: "postgres"
       DATABASE_USERNAME: ${DATABASE_USERNAME:-admin}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
+      AMONY_OAUTH_AUTHORIZE_URL: ${AMONY_OAUTH_HOST:-http://localhost:5556/dex/auth}
+      AMONY_OAUTH_TOKEN_URL: ${AMONY_OAUTH_HOST:-http://dex:5556/dex/token}
+      AMONY_OAUTH_USERINFO_URL: ${AMONY_OAUTH_HOST:-http://dex:5556/dex/userinfo}
     volumes:
       - ${AMONY_HOST_MEDIA_PATH}:/media
-      - ${AMONY_HOST_MEDIA_PATH}/.amony/data:/app/data
+      - ${AMONY_DATA:-./data}/solr:/app/data/solr
     restart: "no"
 
   dex:
@@ -51,6 +103,8 @@ services:
     restart: unless-stopped
     ports:
       - "5556:5556"
+    env_file:
+      - .env
     volumes:
-      - ./dex-config.yaml:/etc/dex/config.yaml
+      - ./docker/dex/config.yaml:/etc/dex/config.yaml
     command: ["dex", "serve", "/etc/dex/config.yaml"]

@@ -42,7 +42,7 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
   override def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, ResourceInfo]] =
 
     if invalidSequences.exists(fileName.contains) then
-      IO.pure(Left(UploadError.InvalidFileName(s"File name '$fileName' contains invalid sequences")))
+      IO.pure(Left(UploadError.InvalidFileName(s"File name '$fileName' is invalid")))
     else
 
       val temporaryFileName = s"${config.random.alphanumeric.take(8).mkString}_$fileName"

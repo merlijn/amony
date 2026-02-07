@@ -41,7 +41,15 @@ jobs:
 
   build-backend:
     needs: build-frontend
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
+    
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
 
     defaults:
       run:
@@ -92,7 +100,7 @@ jobs:
           path: frontend/dist
 
       - name: Build with sbt
-        timeout-minutes: 5
+        timeout-minutes: 10
         run: sbt clean test jibDockerBuild jibWriteDockerTagsFile
 
       - name: Get git info
@@ -117,11 +125,73 @@ jobs:
           echo "commit_msg=$(git log -1 --pretty=%s $commit_sha)" >> $GITHUB_OUTPUT
           echo "commit msg: $(git log -1 --pretty=%s $commit_sha)"
 
-      - name: Push Docker image
+      - name: Push Docker image with arch suffix
         if: |
           steps.git-info.outputs.commit_tag != '' || contains(steps.git-info.outputs.commit_msg, '#push')
         run: |
           # The .docker-tags.txt file is created by the jibWriteDockerTagsFile task in the build.sbt
+          IMAGE=$DOCKER_REGISTRY/$PROJECT_ID/$REPOSITORY_PATH/$IMAGE_NAME
           while IFS= read -r tag || [ -n "$tag" ]; do
-            docker push $DOCKER_REGISTRY/$PROJECT_ID/$REPOSITORY_PATH/$IMAGE_NAME:$tag
+            docker tag $IMAGE:$tag $IMAGE:$tag-${{ matrix.arch }}
+            docker push $IMAGE:$tag-${{ matrix.arch }}
           done < .docker-tags.txt
+          
+      - name: Upload docker tags artifact
+        if: |
+          steps.git-info.outputs.commit_tag != '' || contains(steps.git-info.outputs.commit_msg, '#push')
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-tags-${{ matrix.arch }}
+          path: backend/.docker-tags.txt
+          include-hidden-files: true
+
+  create-manifest:
+    needs: build-backend
+    runs-on: ubuntu-latest
+    if: needs.build-backend.result == 'success'
+    
+    env:
+      DOCKER_REGISTRY: europe-west4-docker.pkg.dev
+      PROJECT_ID: amony-04c85b
+      IMAGE_NAME: amony-app
+      REPOSITORY_PATH: docker-images/amony
+
+    steps:
+      - name: Download docker tags
+        id: download
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: docker-tags-amd64
+          path: .
+
+      # Authenticate to Google Cloud
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        if: steps.download.outcome == 'success'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GC_SERVICE_ACCOUNT }}'
+
+      - name: Configure Docker for Artifact Registry
+        if: steps.download.outcome == 'success'
+        run: |
+          gcloud auth configure-docker $DOCKER_REGISTRY --quiet
+
+      - name: Create and push multi-arch manifest
+        if: steps.download.outcome == 'success'
+        run: |
+          while IFS= read -r tag || [ -n "$tag" ]; do
+            IMAGE=$DOCKER_REGISTRY/$PROJECT_ID/$REPOSITORY_PATH/$IMAGE_NAME
+          
+            echo "Creating manifest for $IMAGE:$tag"
+            docker manifest create $IMAGE:$tag \
+              $IMAGE:$tag-amd64 \
+              $IMAGE:$tag-arm64
+          
+            docker manifest annotate $IMAGE:$tag $IMAGE:$tag-amd64 --os linux --arch amd64
+            docker manifest annotate $IMAGE:$tag $IMAGE:$tag-arm64 --os linux --arch arm64
+          
+            docker manifest push $IMAGE:$tag
+          done < .docker-tags.txt
+

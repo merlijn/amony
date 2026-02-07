@@ -7,31 +7,30 @@ import cats.effect.IO
 import org.apache.tika.Tika
 import scribe.Logging
 
-import nl.amony.lib.ffmpeg.FFMpeg
-import nl.amony.lib.magick.ImageMagick
+import nl.amony.lib.process.ffmpeg.FFMpeg
+import nl.amony.lib.process.magick.ImageMagick
 import nl.amony.modules.resources.*
 import nl.amony.modules.resources.api.{ContentProperties, ImageProperties, ResourceMeta}
 
-object LocalResourceMeta extends Logging {
+class LocalResourceMetaDataScanner(tika: Tika, ffmpeg: FFMpeg, imageMagick: ImageMagick) extends Logging {
 
-  private val tika = new Tika()
-
-  private def contentTypeForPath(path: java.nio.file.Path): Option[String] =
-    Try(tika.detect(path)) match
-      case Success(contentType) =>
-        Some(contentType)
-      case Failure(exception)   =>
-        logger.warn(s"Error detecting content type for path: $path", exception)
-        None
+  private def contentTypeForPath(path: java.nio.file.Path): IO[Option[String]] =
+    IO.blocking {
+      Try(tika.detect(path)) match
+        case Success(contentType) =>
+          Some(contentType)
+        case Failure(exception)   =>
+          logger.warn(s"Error detecting content type for path: $path", exception)
+          None
+    }
 
   def apply(path: Path): IO[Option[(contentType: String, meta: ResourceMeta)]] = {
-    contentTypeForPath(path) match {
-
+    contentTypeForPath(path).flatMap {
       case None =>
         IO.pure(None)
 
       case Some(contentType) if contentType.startsWith("video/") =>
-        FFMpeg.ffprobe(path, false).map {
+        ffmpeg.ffprobe(path, false).map {
           (ffprobeResult, json) =>
             ContentProperties.ffprobeOutputToContentMeta(ffprobeResult).toOption.map {
               properties =>
@@ -40,7 +39,7 @@ object LocalResourceMeta extends Logging {
             }
         }.recover { case e: Throwable => logger.error(s"Failed to get video meta data for $path", e); None }
       case Some(contentType) if contentType.startsWith("image/") =>
-        ImageMagick.getImageMeta(path).map:
+        imageMagick.getImageMeta(path).map:
           case Failure(e)      =>
             logger.error(s"Failed to get image meta data for $path", e)
             None

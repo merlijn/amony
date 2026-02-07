@@ -2,6 +2,8 @@
 
 # project specific
 /media/
+/data/
+
 backend/.docker-tags.txt
 frontend/src/api/generated
 

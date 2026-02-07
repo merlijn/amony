@@ -46,7 +46,7 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
   }
 
   private[local] def newResource(f: FileInfo, userId: UserId): IO[ResourceInfo] =
-    LocalResourceMeta(f.path).recover {
+    meta.apply(f.path).recover {
       case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None
     }.map { meta =>
       ResourceInfo(
@@ -66,11 +66,10 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
     }
 
   private def toFileStore(): IO[FileStore] =
-    db.getAll(bucketId).map {
-      resources =>
-        val initialFiles: Seq[FileInfo] = resources
-          .map(r => FileInfo(config.resourcePath.resolve(Path.of(r.path)), r.hash.get, r.size, r.timeLastModified.getOrElse(0)))
-        InMemoryFileStore(initialFiles)
+    db.getAll(bucketId).map { resources =>
+      val initialFiles: Seq[FileInfo] = resources
+        .map(r => FileInfo(config.resourcePath.resolve(Path.of(r.path)), r.hash.get, r.size, r.timeLastModified.getOrElse(0)))
+      InMemoryFileStore(initialFiles)
     }
 
   /**

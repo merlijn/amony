@@ -2,8 +2,8 @@ package nl.amony.modules.resources.api
 
 import scala.util.{Failure, Try}
 
-import nl.amony.lib.ffmpeg.tasks.FFProbeModel.{FFProbeOutput, given}
-import nl.amony.lib.magick.model.MagickImageMeta
+import nl.amony.lib.process.ffmpeg.tasks.FFProbeModel.{FFProbeOutput, given}
+import nl.amony.lib.process.magick.MagickImageMeta
 
 case class ResourceMeta(toolName: String, toolData: String, properties: ContentProperties)
 

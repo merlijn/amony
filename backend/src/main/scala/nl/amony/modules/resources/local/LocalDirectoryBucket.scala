@@ -1,48 +1,59 @@
 package nl.amony.modules.resources.local
 
+import java.nio.file.Files
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{Files, Path as JPath}
-import java.util.concurrent.ConcurrentHashMap
 
-import cats.effect.std.MapRef
+import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, IO}
 import cats.implicits.*
+import org.apache.tika.Tika
+import org.typelevel.otel4s.metrics.MeterProvider
 import scribe.Logging
 
 import nl.amony.lib.files.*
 import nl.amony.lib.messagebus.EventTopic
+import nl.amony.lib.process.ffmpeg.FFMpeg
+import nl.amony.lib.process.magick.ImageMagick
 import nl.amony.modules.resources.*
 import nl.amony.modules.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.ResourceDatabase
-import nl.amony.modules.resources.local.LocalResourceOperations.*
 
-trait LocalDirectoryDependencies(val config: LocalDirectoryConfig, val db: ResourceDatabase, val topic: EventTopic[ResourceEvent])
+trait LocalDirectoryDependencies(
+  val config: LocalDirectoryConfig,
+  val db: ResourceDatabase,
+  val topic: EventTopic[ResourceEvent],
+  meterProvider: MeterProvider[IO]
+) {
+
+  val ffmpeg      = new FFMpeg(meterProvider)
+  val imageMagick = new ImageMagick(meterProvider)
+
+  val meta = LocalResourceMetaDataScanner(new Tika(), ffmpeg, imageMagick)
+}
 
 object LocalDirectoryBucket:
 
-  def resource(config: LocalDirectoryConfig, db: ResourceDatabase, topic: EventTopic[ResourceEvent])(
+  def resource(config: LocalDirectoryConfig, db: ResourceDatabase, topic: EventTopic[ResourceEvent], meterProvider: MeterProvider[IO])(
     using runtime: IORuntime
   ): cats.effect.Resource[IO, LocalDirectoryBucket] = {
     cats.effect.Resource.make {
       IO {
-        val bucket = LocalDirectoryBucket(config, db, topic)
+        val bucket = LocalDirectoryBucket(config, db, topic, meterProvider)
         bucket.sync().unsafeRunAsync(_ => ())
         bucket
       }
     }(_ => IO.unit)
   }
 
-class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, topic: EventTopic[ResourceEvent])(using runtime: IORuntime)
-    extends LocalDirectoryDependencies(config, db, topic), ResourceBucket, LocalResourceSyncer, UploadResource, Logging {
-
-  private val runningOperations = new ConcurrentHashMap[LocalResourceOp, IO[JPath]]()
-
-  private val mapRefOps: MapRef[IO, LocalResourceOp, Option[Deferred[IO, Either[Throwable, JPath]]]] =
-    MapRef.fromConcurrentHashMap[IO, LocalResourceOp, Deferred[IO, Either[Throwable, JPath]]](
-      new ConcurrentHashMap[LocalResourceOp, Deferred[IO, Either[Throwable, JPath]]]()
-    )
+class LocalDirectoryBucket(
+  config: LocalDirectoryConfig,
+  db: ResourceDatabase,
+  topic: EventTopic[ResourceEvent],
+  meterProvider: MeterProvider[IO]
+)(using runtime: IORuntime)
+    extends LocalDirectoryDependencies(config, db, topic, meterProvider), LocalResourceOperations, ResourceBucket, LocalResourceSyncer,
+      UploadResource, Logging {
 
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getById(config.id, resourceId)
 
@@ -51,7 +62,7 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
   def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap {
     resource =>
       val resourcePath = config.resourcePath.resolve(resource.path)
-      LocalResourceMeta(resourcePath).flatMap:
+      meta.apply(resourcePath).flatMap:
         case None                      =>
           logger.warn(s"Failed to scan metadata for $resourcePath")
           IO.unit
@@ -77,45 +88,22 @@ class LocalDirectoryBucket(config: LocalDirectoryConfig, db: ResourceDatabase, t
       else IO.unit
   }.compile.drain
 
-  def reComputeHashes(): IO[Unit] = getAllResources.evalMap {
-    resource =>
-      val file = config.resourcePath.resolve(resource.path)
-      config.hashingAlgorithm.createHash(file).flatMap: hash =>
-        val oldResourceId = resource.resourceId
-        val updated       = resource.copy(hash = Some(hash))
-        if oldResourceId != hash then
-          logger.info(s"Updating hash for $file from $oldResourceId to $hash")
-          db.deleteResource(config.id, resource.resourceId) >> topic.publish(ResourceDeleted(oldResourceId)) >> db.insertResource(updated) >>
-            topic.publish(ResourceUpdated(updated))
-        else IO.unit
+  def reComputeHashes(): IO[Unit] = getAllResources.evalMap { resource =>
+    val file = config.resourcePath.resolve(resource.path)
+    config.hashingAlgorithm.createHash(file).flatMap: hash =>
+      val oldResourceId = resource.resourceId
+      val updated       = resource.copy(hash = Some(hash))
+      if oldResourceId != hash then
+        logger.info(s"Updating hash for $file from $oldResourceId to $hash")
+        db.deleteResource(config.id, resource.resourceId) >> topic.publish(ResourceDeleted(oldResourceId)) >> db.insertResource(updated) >>
+          topic.publish(ResourceUpdated(updated))
+      else IO.unit
   }.compile.drain
 
-  override def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]] = getResourceInfo(resourceId).flatMap:
-    case None           => IO.pure(None)
-    case Some(fileInfo) => cachedResourceOperation(fileInfo, LocalResourceOp(resourceId, operation))
-
-  private[local] def cachedResourceOperation(inputResource: ResourceInfo, operation: LocalResourceOp): IO[Option[ResourceContent]] = {
-    val outputFile = config.cachePath.resolve(operation.outputFilename)
-
-    if Files.exists(outputFile) then IO.pure(ResourceContent.fromPath(outputFile, Some(operation.contentType)).some)
-    else {
-
-      def runOperation(deferred: Deferred[IO, Either[Throwable, JPath]]): IO[JPath] =
-        createResource(config.resourcePath.resolve(inputResource.path), inputResource, config.cachePath, operation)
-          .attempt
-          .flatTap(result => deferred.complete(result))
-          .flatTap(_ => mapRefOps(operation).set(None))
-          .rethrow
-
-      Deferred[IO, Either[Throwable, JPath]].flatMap {
-        newDeferred =>
-          mapRefOps(operation).modify {
-            case Some(existing) => (Some(existing), existing.get.rethrow)
-            case None           => (Some(newDeferred), runOperation(newDeferred))
-          }
-      }.flatten.map(path => ResourceContent.fromPath(outputFile, Some(operation.contentType)).some)
-    }
-  }
+  override def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]] =
+    getResourceInfo(resourceId).flatMap:
+      case None       => IO.pure(None)
+      case Some(info) => derivedResource(info, operation)
 
   override def getResource(resourceId: ResourceId): IO[Option[Resource]] =
     getResourceInfo(resourceId).map:

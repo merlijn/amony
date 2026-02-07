@@ -60,7 +60,6 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
 
   private val solrHome: Path = Path.of(config.path).toAbsolutePath.normalize()
 
-//  logger.withMinimumLevel(Level.Debug).replace()
   logger.info(s"Solr home: $solrHome")
 
   def loggingFailureIO[T](f: => T): IO[T] = IO(f)
@@ -76,10 +75,11 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
     } catch { case e: Exception => logger.error("Error while closing solr", e) }
   }
 
-  if Files.exists(solrHome) && !Files.isDirectory(solrHome) then throw new RuntimeException(s"Solr home is not a directory: $solrHome")
+  if Files.exists(solrHome) && !Files.isDirectory(solrHome) then
+    throw new RuntimeException(s"Solr home is not a directory: $solrHome")
 
-  if !Files.exists(solrHome) then {
-    logger.info(s"Solr directory does not exists. Creating it at: $solrHome")
+  if !Files.exists(solrHome) || Files.list(solrHome).findAny().isEmpty then {
+    logger.info(s"Solr directory does not exists or is empty. Extracting config at: $solrHome")
     TarGzExtractor.extractResourceTarGz(solrTarGzResource, solrHome)
   }
 
@@ -221,7 +221,21 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
       val sb = new StringBuilder()
 
       sb.append(s"${FieldNames.path}:*${if q.trim.isEmpty then "" else s"$q*"}")
-      if query.tags.nonEmpty then sb.append(s" AND ${FieldNames.tags}:(${query.tags.mkString(" OR ")})")
+
+      val includeTags = query.includeTags -- query.excludeTags
+
+      if includeTags.nonEmpty then
+        val escapedTags = includeTags.map(ClientUtils.escapeQueryChars)
+        sb.append(s" AND ${FieldNames.tags}:(${escapedTags.mkString(" OR ")})")
+
+      if query.excludeTags.nonEmpty then
+        val escapedTags = query.excludeTags.map(ClientUtils.escapeQueryChars)
+        sb.append(s" AND -${FieldNames.tags}:(${escapedTags.mkString(" OR ")})")
+
+      if query.excludeBuckets.nonEmpty then
+        val escapedBuckets = query.excludeBuckets.map(ClientUtils.escapeQueryChars)
+        sb.append(s" AND -${FieldNames.bucketId}:(${escapedBuckets.mkString(" OR ")})")
+
       if query.untagged.contains(true) then sb.append(s" AND -${FieldNames.tags}:[* TO *]")
 
       if query.minRes.isDefined || query.maxRes.isDefined then

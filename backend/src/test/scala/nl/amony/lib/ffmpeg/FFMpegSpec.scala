@@ -1,7 +1,11 @@
 package nl.amony.lib.ffmpeg
 
+import cats.effect.IO
 import org.scalatest.flatspec.AnyFlatSpecLike
+import org.typelevel.otel4s.metrics.MeterProvider
 import scribe.Logging
+
+import nl.amony.lib.process.ffmpeg.FFMpeg
 
 class FFMpegSpec extends AnyFlatSpecLike with Logging {
 
@@ -24,6 +28,8 @@ class FFMpegSpec extends AnyFlatSpecLike with Logging {
        |...
        |""".stripMargin
 
+  val ffmpeg = new FFMpeg(MeterProvider.noop[IO])
+
   it should "create a sprite" in {
 
     val times = Seq(
@@ -38,7 +44,7 @@ class FFMpegSpec extends AnyFlatSpecLike with Logging {
     times.foreach {
       t =>
 
-        val frames = FFMpeg.calculateNrOfFrames(t)
+        val frames = ffmpeg.calculateNrOfFrames(t)
 
         println(s"${t / 1000} -> $frames")
     }

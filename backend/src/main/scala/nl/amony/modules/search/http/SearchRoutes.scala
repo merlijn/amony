@@ -94,27 +94,27 @@ object SearchRoutes:
         }
 
         val query = Query(
-          q           = queryDto.q.map(s => sanitize(s, 64, c => c.isLetterOrDigit || c.isWhitespace)),
-          n           = Math.min(queryDto.n.getOrElse(config.defaultNumberOfResults), config.maximumNumberOfResults),
-          offset      = queryDto.offset.map(n => Math.max(0, n)),
-          tags        = if queryDto.untagged.contains(true) then List.empty else queryDto.tag.map(s => sanitize(s, 32, c => c.isLetterOrDigit)).toList,
-          playlist    = None,
-          minRes      = queryDto.minRes.map(n => Math.max(0, n)),
-          maxRes      = None,
-          minDuration = duration.map(_.min),
-          maxDuration = duration.map(_.max),
-          sort        = Some(SortOption(sortField, sortDir)),
-          untagged    = queryDto.untagged.filter(identity)
+          q              = queryDto.q.map(s => sanitize(s, 64, c => c.isLetterOrDigit || c.isWhitespace)),
+          n              = Math.min(queryDto.n.getOrElse(config.defaultNumberOfResults), config.maximumNumberOfResults),
+          offset         = queryDto.offset.map(n => Math.max(0, n)),
+          includeTags    = if queryDto.untagged.contains(true) then Set.empty else queryDto.tag.map(s => sanitize(s, 32, c => c.isLetterOrDigit)).toSet,
+          excludeTags    = apiSecurity.userAccess(auth).hiddenTags,
+          excludeBuckets = apiSecurity.userAccess(auth).hiddenBuckets,
+          minRes         = queryDto.minRes.map(n => Math.max(0, n)),
+          maxRes         = None,
+          minDuration    = duration.map(_.min),
+          maxDuration    = duration.map(_.max),
+          sort           = Some(SortOption(sortField, sortDir)),
+          untagged       = queryDto.untagged.filter(identity)
         )
 
-        searchService.searchMedia(query).map {
-          response =>
-            Right(SearchResponseDto(
-              offset  = response.offset,
-              total   = response.total,
-              results = response.results.map(toDto),
-              tags    = getSortedTags(response.tags)
-            ))
+        searchService.searchMedia(query).map { response =>
+          Right(SearchResponseDto(
+            offset  = response.offset,
+            total   = response.total,
+            results = response.results.map(toDto),
+            tags    = getSortedTags(response.tags)
+          ))
         }
     }
 
