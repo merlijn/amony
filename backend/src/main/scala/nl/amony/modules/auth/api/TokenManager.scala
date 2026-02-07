@@ -13,7 +13,7 @@ import nl.amony.modules.auth.{JwtAlgorithmConfig, JwtConfig}
 case class AuthTokenContent(roles: Set[Role]) derives Codec
 
 class JwtDecoder(algo: JwtAlgorithmConfig) extends Logging:
-  def decode(token: String): Either[Throwable, AuthToken] = 
+  def decode(token: String): Either[Throwable, AuthToken] =
     for
       decoded <- algo.decode(token).toEither
       content <- parser.decode[AuthTokenContent](decoded.content)

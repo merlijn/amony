@@ -5,6 +5,7 @@ import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import skunk.Decoder
 import skunk.codec.all.*
 import skunk.data.Arr
+import skunk.implicits.sql
 
 import nl.amony.modules.auth.api.{Role, User, UserId}
 
@@ -22,6 +23,8 @@ case class UserRow(id: String, email: String, oauth_provider: String, oauth_subj
 }
 
 object UserRow {
+
+  val columns = sql"id, email, auth_provider, auth_subject, time_registered, roles"
 
   val decoder: Decoder[UserRow] =
     (varchar(64) *: varchar(64) *: varchar(64) *: varchar(64) *: timestamptz *: _varchar).to[UserRow]
