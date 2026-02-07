@@ -3,7 +3,7 @@ services:
     container_name: nginx-reverse-proxy
     build:
       context: docker/reverse-proxy/nginx
-      dockerfile: docker/reverse-proxy/nginx/nginx.dockerfile
+      dockerfile: nginx.dockerfile
     image: amony/nginx
     ports:
       - "443:443"
@@ -22,7 +22,7 @@ services:
     container_name: nginx-certbot
     build:
       context: docker/reverse-proxy/certbot
-      dockerfile: docker/certbot/reverse-proxy/certbot.dockerfile
+      dockerfile: certbot.dockerfile
     image: amony/certbot
     volumes:
       - certbot-data:/etc/letsencrypt
@@ -33,9 +33,37 @@ services:
       [
         "/bin/sh",
         "-c",
-        "trap exit TERM; while :; do echo \"[$(date)] Running certbot renew\"; certbot renew; sleep 12h & wait $${!}; done;"
+        "trap exit TERM; while :; do echo \"[$(date)] Running certbot renew\"; certbot renew; sleep 12h & wait $${!}; done;",
       ]
     restart: unless-stopped
+
+  init-certificate:
+    container_name: nginx-init-certificate
+    profiles:
+      - initial-certificate
+    build:
+      context: docker/reverse-proxy/certbot
+      dockerfile: certbot.dockerfile
+    image: amony/certbot
+    volumes:
+      - certbot-data:/etc/letsencrypt
+    environment:
+      - PORKBUN_API_KEY=${PORKBUN_API_KEY}
+      - PORKBUN_SECRET_KEY=${PORKBUN_SECRET_KEY}
+      - DOMAIN=${DOMAIN}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+    command:
+      [
+        "certbot", "certonly",
+        "--authenticator", "dns-porkbun",
+        "--dns-porkbun-credentials", "/etc/certbot-porkbun.ini",
+        "--dns-porkbun-propagation-seconds", "60",
+        "--email", "${LETSENCRYPT_EMAIL}",
+        "--agree-tos",
+        "--no-eff-email",
+        "-d", "*.${DOMAIN}",
+      ]
+    restart: "no"
 
 volumes:
   certbot-data:
