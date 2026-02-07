@@ -1,0 +1,9 @@
+server {
+    listen 443 ssl default_server;
+    server_name _;
+
+    include snippets/ssl-certificate.conf;
+
+    # Close connection without response
+    return 444;
+}

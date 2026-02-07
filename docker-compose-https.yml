@@ -1,0 +1,45 @@
+name: nginx-reverse-proxy
+services:
+  nginx:
+    container_name: nginx-reverse-proxy
+    build:
+      context: docker/reverse-proxy/nginx
+      dockerfile: docker/reverse-proxy/nginx/nginx.dockerfile
+    image: amony/nginx
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx/config:/etc/nginx:ro
+      - certbot-data:/etc/letsencrypt
+    restart: unless-stopped
+    networks:
+      - default
+      - https-proxy
+    extra_hosts:
+      - "host.docker.internal:172.17.0.1"
+
+  certbot:
+    container_name: nginx-certbot
+    build:
+      context: docker/reverse-proxy/certbot
+      dockerfile: docker/certbot/reverse-proxy/certbot.dockerfile
+    image: amony/certbot
+    volumes:
+      - certbot-data:/etc/letsencrypt
+    environment:
+      - PORKBUN_API_KEY=${PORKBUN_API_KEY}
+      - PORKBUN_SECRET_KEY=${PORKBUN_SECRET_KEY}
+    command:
+      [
+        "/bin/sh",
+        "-c",
+        "trap exit TERM; while :; do echo \"[$(date)] Running certbot renew\"; certbot renew; sleep 12h & wait $${!}; done;"
+      ]
+    restart: unless-stopped
+
+volumes:
+  certbot-data:
+
+networks:
+  https-proxy:
+    external: true
