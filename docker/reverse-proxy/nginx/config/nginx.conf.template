@@ -54,7 +54,7 @@ http {
 	# Media server
 	server {
 		listen 443 ssl;
-		server_name media.amony.app;
+		server_name media.${DOMAIN};
 
 		include ssl-certificate.conf;
 		include shared-proxy-settings.conf;

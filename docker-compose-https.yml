@@ -8,8 +8,11 @@ services:
     ports:
       - "443:443"
     volumes:
-      - ./docker/reverse-proxy/nginx/config:/etc/nginx:ro
+      - ./docker/reverse-proxy/nginx/config:/etc/nginx/templates:ro
+      - ./docker/reverse-proxy/nginx/config/shared-proxy-settings.conf:/etc/nginx/shared-proxy-settings.conf:ro
       - certbot-data:/etc/letsencrypt
+    environment:
+      - DOMAIN=${DOMAIN}
     restart: unless-stopped
     networks:
       - default
