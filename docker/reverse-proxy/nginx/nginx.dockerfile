@@ -5,7 +5,7 @@ RUN apk add --no-cache \
     nginx \
     nginx-mod-http-headers-more
 
-COPY watch-reload.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/watch-reload.sh
+COPY reload-on-certificate-change.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/reload-on-certificate-change.sh
 
-CMD ["/bin/sh", "-c", "/usr/local/bin/watch-reload.sh & nginx -g 'daemon off;'"]
+CMD ["/bin/sh", "-c", "/usr/local/bin/reload-on-certificate-change.sh & nginx -g 'daemon off;'"]
