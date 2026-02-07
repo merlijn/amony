@@ -21,6 +21,20 @@ http {
     ''      '';
   }
 
+  # Map client address to a rate limit key:
+  #   - IPv4: use the address as-is
+  #   - IPv6: extract the /64 prefix to prevent bypass via address rotation
+  map $remote_addr $rate_limit_key {
+    ~^([0-9a-f]+:[0-9a-f]+:[0-9a-f]+:[0-9a-f]+): $1;
+    default                                        $remote_addr;
+  }
+
+  # Rate limit zones for the auth provider
+  #   - Baseline: generous limit applied to all auth requests
+  #   - Throttle: strict limit applied only after 40x error responses
+  limit_req_zone $rate_limit_key zone=auth_baseline:10m rate=10r/s;
+  limit_req_zone $rate_limit_key zone=auth_throttle:10m rate=6r/m;
+
   proxy_headers_hash_max_size 1024;
   proxy_headers_hash_bucket_size 128;
 
@@ -89,7 +103,27 @@ http {
 		proxy_read_timeout    60s;
 
 		location / {
+			# Baseline rate limit: 10 req/s with burst of 20
+			limit_req zone=auth_baseline burst=20 nodelay;
+			limit_req_status 429;
+
+			# Intercept 40x errors from upstream and route them through
+			# the throttled error handler to penalize repeat offenders
+			proxy_intercept_errors on;
+			error_page 400 401 403 404 405 408 429 = @auth_error;
+
 			proxy_pass http://auth_backend;
+		}
+
+		# Error handler for 40x responses — applies a strict rate limit
+		# so that clients producing many errors get throttled to 1 req/10s
+		location @auth_error {
+			limit_req zone=auth_throttle burst=10 nodelay;
+			limit_req_status 429;
+
+			# Return the original upstream status code and a generic error body
+			# Note: $status here holds the upstream response code from the error_page directive
+			try_files /dev/null =;
 		}
 	}
 }
