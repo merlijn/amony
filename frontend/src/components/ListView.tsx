@@ -20,6 +20,7 @@ import {
 } from "../api/generated";
 import LazyImage from "./common/LazyImage";
 import BulkUpdateTagsDialog from "./dialogs/BulkUpdateTagsDialog";
+import DeleteResourceDialog from "./dialogs/DeleteResourceDialog";
 
 type ListProps = {
   selection: ResourceSelection
@@ -37,6 +38,7 @@ const ListView = (props: ListProps) => {
   const [selectedItems, setSelectedItems] = useState<Array<number>>([])
 
   const [showBulkTagModal, setShowBulkTagModal] = useState(false)
+  const [resourceToDelete, setResourceToDelete] = useState<ResourceDto | undefined>(undefined)
 
   const navigate = useNavigate();
   const session = useContext(SessionContext)
@@ -136,6 +138,15 @@ const ListView = (props: ListProps) => {
 
     setSelectedItems([])
     setShowBulkTagModal(false)
+  }
+
+  const handleResourceDeleted = (resource: ResourceDto) => {
+    setResourceToDelete(undefined)
+    setSearchResult(previous => ({
+      ...previous,
+      total: previous.total - 1,
+      results: previous.results.filter(r => r.resourceId !== resource.resourceId)
+    }))
   }
 
   const allSelected = selectedItems.length > 0 && selectedItems.length === searchResult.results.length && searchResult.results.length > 0
@@ -241,7 +252,8 @@ const ListView = (props: ListProps) => {
                         <div className="media-actions">
                             <MdMovieEdit className="fragments-action"
                                          onClick={() => navigate(`/editor/${resource.bucketId}/${resource.resourceId}`)}/>
-                            <MdDelete className="delete-action"/>
+                            <MdDelete className="delete-action"
+                                     onClick={() => setResourceToDelete(resource)}/>
                         </div>
                     }
                     {`${resource.contentMeta.height}p`}
@@ -260,6 +272,13 @@ const ListView = (props: ListProps) => {
         onHide            = { closeBulkTagModal }
         onUpdate          = { handleBulkTagsUpdated }
         selectedResources = { selectedResources }
+      />
+
+      <DeleteResourceDialog
+        resource  = { resourceToDelete }
+        visible   = { resourceToDelete !== undefined }
+        onDeleted = { handleResourceDeleted }
+        onHide    = { () => setResourceToDelete(undefined) }
       />
     </>
   );

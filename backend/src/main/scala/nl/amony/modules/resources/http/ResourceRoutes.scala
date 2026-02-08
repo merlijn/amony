@@ -67,6 +67,12 @@ object ResourceRoutes:
       .securityIn(securityInput)
       .in(jsonBody[ThumbnailTimestampDto]).errorOut(errorOutput)
 
+  val deleteResource: Endpoint[SecurityInput, (String, ResourceId), ApiError | SecurityError, Unit, Any] =
+    endpoint
+      .name("deleteResource").tag("resources").description("Delete a resource by its id")
+      .delete.in("api" / "resources" / path[String]("bucketId") / path[ResourceId]("resourceId"))
+      .securityIn(securityInput).errorOut(errorOutput)
+
   val modifyTagsBulk: Endpoint[SecurityInput, (String, BulkTagsUpdateDto), ApiError | SecurityError, Unit, Any] =
     endpoint
       .name("modifyResourceTagsBulk").tag("resources").description("Add or remove tags for multiple resources")
@@ -74,7 +80,7 @@ object ResourceRoutes:
       .in(jsonBody[BulkTagsUpdateDto])
       .errorOut(errorOutput)
 
-  val endpoints = List(getResourceById, updateUserMetaData, updateThumbnailTimestamp, modifyTagsBulk)
+  val endpoints = List(getResourceById, deleteResource, updateUserMetaData, updateThumbnailTimestamp, modifyTagsBulk)
 
   def apply(buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
 
@@ -128,6 +134,14 @@ object ResourceRoutes:
               .value
         )
 
+    val deleteResourceImpl = deleteResource.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin))
+      .serverLogic(_ => (bucketId, resourceId) =>
+        (for
+          bucket <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
+          _      <- EitherT.right(bucket.deleteResource(resourceId))
+        yield ()).value
+      )
+
     val modifyTagsBulkImpl = modifyTagsBulk.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogic {
       _ => (bucketId, dto) =>
         val action =
@@ -143,5 +157,5 @@ object ResourceRoutes:
     }
 
     Http4sServerInterpreter[IO](serverOptions)
-      .toRoutes(List(getResourceByIdImpl, updateUserMetaDataImpl, updateThumbnailTimestampImpl, modifyTagsBulkImpl))
+      .toRoutes(List(getResourceByIdImpl, deleteResourceImpl, updateUserMetaDataImpl, updateThumbnailTimestampImpl, modifyTagsBulkImpl))
   }
