@@ -159,7 +159,7 @@ const ListView = (props: ListProps) => {
         <FaSort className="column-sort-icon"
                 onClick={() => setSort({field: "size", direction: sort.direction === "asc" ? "desc" : "asc"})}/>
       </th>
-      <th className="list-header-resolution"><span>Quality</span>
+      <th className="list-header-resolution last-column"><span>Quality</span>
         {/* <FaSort className="column-sort-icon" onClick = { () => setSort({field: "resolution", direction: sort.direction === "asc" ? "desc" : "asc" }) } /> */}
         {/* <BsThreeDotsVertical className="list-menu-icon" /> */}
       </th>
@@ -186,15 +186,15 @@ const ListView = (props: ListProps) => {
       >
       <table className="list-table">
 
-      <tr key="row-column-width-spacer" style ={ {height: 0 } }>
-        { session.isAdmin() && <td style = { {width: 36 } }></td> }
-        <td style={{width: 72}}></td>
-        <td style={{width: "65%"}}></td>
-        <td style={{width: "35%"}}></td>
-        <td style={{width: 110}}></td>
-        <td style={{width: 100}}></td>
-        <td style={{width: 80}}></td>
-      </tr>
+      {/*<tr key="row-column-width-spacer" style ={ {height: 0 } }>*/}
+      {/*  { session.isAdmin() && <td style = { {width: 36 } }></td> }*/}
+      {/*  <td style={{width: 72}}></td>*/}
+      {/*  <td style={{width: "65%"}}></td>*/}
+      {/*  <td style={{width: "35%"}}></td>*/}
+      {/*  <td style={{width: 110}}></td>*/}
+      {/*  <td style={{width: 100}}></td>*/}
+      {/*  <td style={{width: 80}}></td>*/}
+      {/*</tr>*/}
 
       <thead>
         {selectedItems.length > 0 ? actionBar : headers}
@@ -236,7 +236,7 @@ const ListView = (props: ListProps) => {
                   {formatByteSize(resource.sizeInBytes, 1)}
                 </td>
 
-                <td key="resolution" className="list-cell list-resolution">
+                <td key="resolution" className="list-cell list-resolution last-column">
                   <div className="cell-wrapper">
                     {
                       session.isAdmin() &&

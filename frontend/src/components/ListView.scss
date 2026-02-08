@@ -10,12 +10,18 @@ $row-height: 36px;
     //height: auto;
     display: table;
     position: relative;
+    border: none;
+    border-collapse: collapse;
 
     thead {
       position: sticky;
       top: $page-header-height;
       background: var(--bg-primary);
       z-index: 10;
+    }
+
+    .last-column {
+      padding-right: 8px !important;
     }
 
     .action-icon {
@@ -46,6 +52,7 @@ $row-height: 36px;
       text-align: left;
       vertical-align: middle;
 
+      padding: 0px;
       font-size: 15px;
       font-weight: 500;
       height: 44px;
@@ -91,12 +98,12 @@ $row-height: 36px;
 
     .list-header-title {
       @extend .list-header;
-      width: 65%;
+      width: 60%;
     }
 
     .list-header-tags {
       @extend .list-header;
-      width: 35%;
+      width: 30%;
     }
 
     .list-header-date {
@@ -122,27 +129,6 @@ $row-height: 36px;
 
       .add-tag-button {
         visibility: hidden;
-      }
-
-      .media-actions {
-        @extend .hover-action, .v-align-center;
-        display: flex;
-        gap: $spacing-s;
-        padding-left: $spacing-m;
-        background-color: var(--bg-secondary);
-        height: 100%;
-
-        .fragments-action {
-          @extend .hover-pointer;
-          width: 24px;
-          height: 24px;
-        }
-
-        .delete-action {
-          @extend .hover-pointer;
-          width: 24px;
-          height: 24px;
-        }
       }
 
       .edit-title {
@@ -212,6 +198,29 @@ $row-height: 36px;
 
       .list-resolution {
         width: 1%;
+
+        .media-actions {
+          @extend .hover-action, .v-align-center;
+
+          display: flex;
+          //left: -2px;
+          gap: $spacing-s;
+          padding-left: 0px;
+          background-color: var(--bg-secondary);
+          height: 100%;
+
+          .fragments-action {
+            @extend .hover-pointer;
+            width: 24px;
+            height: 24px;
+          }
+
+          .delete-action {
+            @extend .hover-pointer;
+            width: 24px;
+            height: 24px;
+          }
+        }
       }
 
       .list-date {
@@ -224,7 +233,7 @@ $row-height: 36px;
       }
 
       .list-title {
-        width: 40%;
+        width: 60%;
 
         .edit-title-input {
           width: calc(100% - 28px);
@@ -233,7 +242,7 @@ $row-height: 36px;
       }
 
       .list-tags {
-        width: 50%;
+        width: 30%;
 
         .add-tag-action {
           @extend .hover-action, .action-icon;
@@ -249,21 +258,6 @@ $row-height: 36px;
           padding: 6px 10px;
           border-radius: 25px;
           border: 1px solid var(--highlight-e);
-        }
-      }
-
-      .list-actions {
-
-        width: 1%;
-
-        .actions-container {
-          width: 50px;
-
-          .delete-action {
-            @extend .hover-pointer, .action-icon;
-            float: right;
-            margin-left: 5px;
-          }
         }
       }
     }
