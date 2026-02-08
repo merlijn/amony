@@ -14,34 +14,6 @@ $row-height: 36px;
     border-collapse: collapse;
     table-layout: fixed;
 
-    @mixin column-select {
-      //width: 28px;
-    }
-
-    @mixin column-thumbnail {
-      //width: 64px;
-    }
-
-    @mixin column-tags {
-      //width: 30%;
-    }
-
-    @mixin column-title {
-      //width: 60%;
-    }
-
-    @mixin column-date {
-      //width: 1%;
-    }
-
-    @mixin column-size {
-      //width: 1%;
-    }
-
-    @mixin column-quality {
-      //width: 1%;
-    }
-
     thead {
       position: sticky;
       top: $page-header-height;
@@ -115,39 +87,32 @@ $row-height: 36px;
     }
 
     .list-header-select {
-      @include column-select;
       @extend .list-header, .hover-pointer;
       text-align: center;
       vertical-align: middle;
     }
 
     .list-header-thumbnail {
-      @include column-thumbnail;
       @extend .list-header;
     }
 
     .list-header-title {
-      @include column-title;
       @extend .list-header;
     }
 
     .list-header-tags {
-      @include column-tags;
       @extend .list-header;
     }
 
     .list-header-date {
-      @include column-date;
       @extend .list-header;
     }
 
     .list-header-size {
-      @include column-size;
       @extend .list-header;
     }
 
     .list-header-resolution {
-      @include column-quality;
       @extend .list-header;
     }
 
@@ -200,7 +165,6 @@ $row-height: 36px;
       }
 
       .list-select {
-        @include column-select;
         @extend .list-cell;
         cursor: pointer;
         text-align: center;
@@ -216,9 +180,7 @@ $row-height: 36px;
       }
 
       .list-thumbnail {
-        @include column-thumbnail;
         @extend .list-cell;
-        //padding-left: 0px;
         padding-right: 0px;
         .list-thumbnail-img {
           @extend .hover-pointer;
@@ -230,8 +192,6 @@ $row-height: 36px;
       }
 
       .list-title {
-        @include column-title;
-
         .edit-title-input {
           width: calc(100% - 28px);
           padding: 4px;
@@ -239,8 +199,6 @@ $row-height: 36px;
       }
 
       .list-tags {
-        @include column-tags;
-
         .add-tag-action {
           @extend .hover-action, .action-icon;
           width: 24px;
@@ -259,18 +217,14 @@ $row-height: 36px;
       }
 
       .list-date {
-        @include column-date;
         white-space: nowrap;
       }
 
       .list-size {
-        @include column-size;
         text-align: right;
       }
 
       .list-resolution {
-        @include column-quality;
-
         .media-actions {
           @extend .hover-action, .v-align-center;
 
