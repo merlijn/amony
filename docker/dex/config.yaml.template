@@ -1,5 +1,5 @@
 # Dex configuration for local development/testing
-issuer: https://account.${DOMAIN}/dex
+issuer: https://${DOMAIN_SUB_AUTH}.${DOMAIN_TLD}/dex
 
 storage:
   type: memory
@@ -13,7 +13,7 @@ oauth2:
 staticClients:
   - id: amony-app
     redirectURIs:
-      - 'https://media.${DOMAIN}/api/auth/callback/dex'
+      - 'https://${DOMAIN_SUB_AMONY}.${DOMAIN_TLD}/api/auth/callback/dex'
     name: 'Amony App'
     secret: amony-dex-secret
 

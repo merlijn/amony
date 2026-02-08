@@ -13,8 +13,6 @@ services:
       - certbot-data:/etc/letsencrypt
     env_file:
       - .env
-    environment:
-      - DOMAIN=${DOMAIN}
     restart: unless-stopped
 
   init-certificate:
@@ -29,11 +27,6 @@ services:
       - certbot-data:/etc/letsencrypt
     env_file:
       - .env
-    environment:
-      - PORKBUN_API_KEY=${PORKBUN_API_KEY}
-      - PORKBUN_SECRET_KEY=${PORKBUN_SECRET_KEY}
-      - DOMAIN=${DOMAIN}
-      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
     command:
       [
         "certbot", "certonly",
@@ -43,7 +36,7 @@ services:
         "--email", "${LETSENCRYPT_EMAIL}",
         "--agree-tos",
         "--no-eff-email",
-        "-d", "*.${DOMAIN}",
+        "-d", "*.${DOMAIN_TLD}",
       ]
     restart: "no"
 
@@ -77,9 +70,6 @@ services:
       - certbot-data:/etc/letsencrypt
     env_file:
       - .env
-    environment:
-      - PORKBUN_API_KEY=${PORKBUN_API_KEY}
-      - PORKBUN_SECRET_KEY=${PORKBUN_SECRET_KEY}
     command:
       [
         "/bin/sh",

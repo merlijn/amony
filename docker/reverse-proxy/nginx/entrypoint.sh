@@ -5,7 +5,7 @@ set -e
 for template in /etc/nginx/templates/*.template; do
     if [ -f "$template" ]; then
         filename=$(basename "$template" .template)
-        envsubst '${DOMAIN}' < "$template" > "/etc/nginx/$filename"
+        envsubst '${DOMAIN_TLD} ${DOMAIN_SUB_AUTH} ${DOMAIN_SUB_AMONY}' < "$template" > "/etc/nginx/$filename"
         echo "Generated /etc/nginx/$filename from $template"
     fi
 done
