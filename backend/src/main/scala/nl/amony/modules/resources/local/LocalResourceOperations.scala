@@ -63,7 +63,7 @@ trait LocalResourceOperations extends LocalDirectoryDependencies with Logging {
     case VideoFragment(width, height, start, end, quality) =>
       logger.debug(s"Creating video fragment for $inputFile with range $start-$end")
       // TODO Remove Option.get
-      ffmpeg.transcodeToMp4(inputFile = inputFile, range = (start, end), scaleHeight = Some(height.get), outputFile = Some(outputFile)).map(_ =>
+      ffmpeg.transcodeToMp4(inputFile = inputFile, range = (start, end), scaleHeight = height, outputFile = Some(outputFile)).map(_ =>
         outputFile
       )
 
