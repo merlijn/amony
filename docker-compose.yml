@@ -48,7 +48,6 @@ services:
   postgres-backup:
     image: postgres:17.2
     container_name: amony-postgres-backup
-    user: "${AMONY_DOCKER_USER_ID}:${AMONY_DOCKER_USER_ID}"
     profiles:
       - backup
     depends_on:
