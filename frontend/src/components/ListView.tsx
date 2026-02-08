@@ -20,6 +20,7 @@ import {
 } from "../api/generated";
 import LazyImage from "./common/LazyImage";
 import BulkUpdateTagsDialog from "./dialogs/BulkUpdateTagsDialog";
+import DeleteResourceDialog from "./dialogs/DeleteResourceDialog";
 
 type ListProps = {
   selection: ResourceSelection
@@ -37,6 +38,7 @@ const ListView = (props: ListProps) => {
   const [selectedItems, setSelectedItems] = useState<Array<number>>([])
 
   const [showBulkTagModal, setShowBulkTagModal] = useState(false)
+  const [resourceToDelete, setResourceToDelete] = useState<ResourceDto | undefined>(undefined)
 
   const navigate = useNavigate();
   const session = useContext(SessionContext)
@@ -138,6 +140,15 @@ const ListView = (props: ListProps) => {
     setShowBulkTagModal(false)
   }
 
+  const handleResourceDeleted = (resource: ResourceDto) => {
+    setResourceToDelete(undefined)
+    setSearchResult(previous => ({
+      ...previous,
+      total: previous.total - 1,
+      results: previous.results.filter(r => r.resourceId !== resource.resourceId)
+    }))
+  }
+
   const allSelected = selectedItems.length > 0 && selectedItems.length === searchResult.results.length && searchResult.results.length > 0
 
   const headers =
@@ -145,8 +156,7 @@ const ListView = (props: ListProps) => {
       { session.isAdmin() && <th className="list-header-select"><input type="checkbox" checked={allSelected} onChange={(event) => toggleAll(event.target.checked)} /></th> }
       <th className="list-header-thumbnail"></th>
       <th className="list-header-title"><span>Title</span>
-        <FaSort className="column-sort-icon"
-                onClick={() => setSort({field: "title", direction: sort.direction === "asc" ? "desc" : "asc"})}/>
+        <FaSort className="column-sort-icon" onClick={() => setSort({field: "title", direction: sort.direction === "asc" ? "desc" : "asc"})}/>
       </th>
       <th className="list-header-tags"><span>Tags</span></th>
       <th className="list-header-date"><span>Date</span>
@@ -156,10 +166,9 @@ const ListView = (props: ListProps) => {
         })}/>
       </th>
       <th className="list-header-size"><span>Size</span>
-        <FaSort className="column-sort-icon"
-                onClick={() => setSort({field: "size", direction: sort.direction === "asc" ? "desc" : "asc"})}/>
+        <FaSort className="column-sort-icon" onClick={() => setSort({field: "size", direction: sort.direction === "asc" ? "desc" : "asc"})}/>
       </th>
-      <th className="list-header-resolution"><span>Quality</span>
+      <th className="list-header-resolution last-column"><span>Quality</span>
         {/* <FaSort className="column-sort-icon" onClick = { () => setSort({field: "resolution", direction: sort.direction === "asc" ? "desc" : "asc" }) } /> */}
         {/* <BsThreeDotsVertical className="list-menu-icon" /> */}
       </th>
@@ -168,11 +177,22 @@ const ListView = (props: ListProps) => {
   const actionBar =
     <tr key="row-header" className="list-row">
       <th className = "list-header-select"><input type="checkbox" checked={allSelected} onChange={(event) => toggleAll(event.target.checked)} /></th>
-      <th className = "list-header-actionbar" colSpan={6}>
+      <th className = "list-header-actionbar last-column" colSpan={6}>
         <FaHashtag className= "action-bar-item" title="Update tags" onClick = { openBulkTagModal } />
         <MdDelete className = "action-bar-item" />
       </th>
     </tr>
+
+  const colGroup =
+    <colgroup key="row-column-width-spacer" style ={ {height: 0 } }>
+      { session.isAdmin() && <col style = { {width: 36 } }></col> }
+      <col style={{width: 72}}></col>
+      <col style={{width: "60%"}}></col>
+      <col style={{width: "30%"}}></col>
+      <col style={{width: 110}}></col>
+      <col style={{width: 100}}></col>
+      <col style={{width: 70}}></col>
+    </colgroup>
 
   return (
     <>
@@ -185,22 +205,12 @@ const ListView = (props: ListProps) => {
         scrollType='page'
       >
       <table className="list-table">
-
-      <tr key="row-column-width-spacer" style ={ {height: 0 } }>
-        { session.isAdmin() && <td style = { {width: 36 } }></td> }
-        <td style={{width: 72}}></td>
-        <td style={{width: "65%"}}></td>
-        <td style={{width: "35%"}}></td>
-        <td style={{width: 110}}></td>
-        <td style={{width: 100}}></td>
-        <td style={{width: 80}}></td>
-      </tr>
-
+      { colGroup }
       <thead>
         {selectedItems.length > 0 ? actionBar : headers}
       </thead>
-
-      <tr key="row-spacer" style = { { height : 4 } } />
+      <tbody>
+      {/*<tr key="row-spacer" style = { { height : 4 } } />*/}
         {
           searchResult.results.map((resource, index) => {
             return (
@@ -208,7 +218,7 @@ const ListView = (props: ListProps) => {
                 {
                   session.isAdmin() &&
                     <td key="select" className="list-select" onClick={() => { toggle(index) }}>
-                      <input type="checkbox" checked={selectedItems.indexOf(index) > -1}/>
+                        <input type="checkbox" checked={selectedItems.indexOf(index) > -1}/>
                     </td>
                 }
                 <td key="thumbnail" className="list-thumbnail" style = { { paddingLeft: session.isAdmin() ? 0 : 2}}>
@@ -236,14 +246,15 @@ const ListView = (props: ListProps) => {
                   {formatByteSize(resource.sizeInBytes, 1)}
                 </td>
 
-                <td key="resolution" className="list-cell list-resolution">
+                <td key="resolution" className="list-cell list-resolution last-column">
                   <div className="cell-wrapper">
                     {
                       session.isAdmin() &&
                         <div className="media-actions">
                             <MdMovieEdit className="fragments-action"
                                          onClick={() => navigate(`/editor/${resource.bucketId}/${resource.resourceId}`)}/>
-                            <MdDelete className="delete-action"/>
+                            <MdDelete className="delete-action"
+                                     onClick={() => setResourceToDelete(resource)}/>
                         </div>
                     }
                     {`${resource.contentMeta.height}p`}
@@ -254,6 +265,7 @@ const ListView = (props: ListProps) => {
             );
           })
         }
+        </tbody>
         </table>
       </InfiniteScroll>
 
@@ -262,6 +274,13 @@ const ListView = (props: ListProps) => {
         onHide            = { closeBulkTagModal }
         onUpdate          = { handleBulkTagsUpdated }
         selectedResources = { selectedResources }
+      />
+
+      <DeleteResourceDialog
+        resource  = { resourceToDelete }
+        visible   = { resourceToDelete !== undefined }
+        onDeleted = { handleResourceDeleted }
+        onHide    = { () => setResourceToDelete(undefined) }
       />
     </>
   );

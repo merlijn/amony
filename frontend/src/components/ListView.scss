@@ -10,12 +10,20 @@ $row-height: 36px;
     //height: auto;
     display: table;
     position: relative;
+    border: none;
+    border-collapse: collapse;
+    table-layout: fixed;
 
     thead {
       position: sticky;
       top: $page-header-height;
       background: var(--bg-primary);
       z-index: 10;
+    }
+
+    .last-column {
+      // TODO enabling the padding causes the layout to shift when selecting rows
+      //padding-right: 8px !important;
     }
 
     .action-icon {
@@ -46,6 +54,7 @@ $row-height: 36px;
       text-align: left;
       vertical-align: middle;
 
+      padding: 0px;
       font-size: 15px;
       font-weight: 500;
       height: 44px;
@@ -65,7 +74,7 @@ $row-height: 36px;
     .list-header-actionbar {
 
       @extend .list-header;
-      width: 100%;
+      width: 90%;
       //text-align: center;
       vertical-align: middle;
 
@@ -74,8 +83,6 @@ $row-height: 36px;
         width: 18px;
         height: 18px;
         margin-right: 8px;
-        //padding: 0px 8px;
-        //display: inline-block;
       }
     }
 
@@ -91,12 +98,10 @@ $row-height: 36px;
 
     .list-header-title {
       @extend .list-header;
-      width: 65%;
     }
 
     .list-header-tags {
       @extend .list-header;
-      width: 35%;
     }
 
     .list-header-date {
@@ -122,27 +127,6 @@ $row-height: 36px;
 
       .add-tag-button {
         visibility: hidden;
-      }
-
-      .media-actions {
-        @extend .hover-action, .v-align-center;
-        display: flex;
-        gap: $spacing-s;
-        padding-left: $spacing-m;
-        background-color: var(--bg-secondary);
-        height: 100%;
-
-        .fragments-action {
-          @extend .hover-pointer;
-          width: 24px;
-          height: 24px;
-        }
-
-        .delete-action {
-          @extend .hover-pointer;
-          width: 24px;
-          height: 24px;
-        }
       }
 
       .edit-title {
@@ -181,7 +165,8 @@ $row-height: 36px;
       }
 
       .list-select {
-        @extend .list-cell, .hover-pointer;
+        @extend .list-cell;
+        cursor: pointer;
         text-align: center;
         vertical-align: middle;
         &:hover {
@@ -189,17 +174,13 @@ $row-height: 36px;
           border-radius: 50%;
         }
         input {
-          @extend .hover-pointer;
+          pointer-events: none;
           align-content: center;
-          &:hover {
-            background-color: var(--bg-hover);
-          }
         }
       }
 
       .list-thumbnail {
         @extend .list-cell;
-        //padding-left: 0px;
         padding-right: 0px;
         .list-thumbnail-img {
           @extend .hover-pointer;
@@ -210,22 +191,7 @@ $row-height: 36px;
         }
       }
 
-      .list-resolution {
-        width: 1%;
-      }
-
-      .list-date {
-        width: 1%;
-        white-space: nowrap;
-      }
-
-      .list-size {
-        text-align: right;
-      }
-
       .list-title {
-        width: 40%;
-
         .edit-title-input {
           width: calc(100% - 28px);
           padding: 4px;
@@ -233,8 +199,6 @@ $row-height: 36px;
       }
 
       .list-tags {
-        width: 50%;
-
         .add-tag-action {
           @extend .hover-action, .action-icon;
           width: 24px;
@@ -252,17 +216,35 @@ $row-height: 36px;
         }
       }
 
-      .list-actions {
+      .list-date {
+        white-space: nowrap;
+      }
 
-        width: 1%;
+      .list-size {
+        text-align: right;
+      }
 
-        .actions-container {
-          width: 50px;
+      .list-resolution {
+        .media-actions {
+          @extend .hover-action, .v-align-center;
+
+          display: flex;
+          //left: -2px;
+          gap: $spacing-s;
+          padding-left: 0px;
+          background-color: var(--bg-secondary);
+          height: 100%;
+
+          .fragments-action {
+            @extend .hover-pointer;
+            width: 24px;
+            height: 24px;
+          }
 
           .delete-action {
-            @extend .hover-pointer, .action-icon;
-            float: right;
-            margin-left: 5px;
+            @extend .hover-pointer;
+            width: 24px;
+            height: 24px;
           }
         }
       }
