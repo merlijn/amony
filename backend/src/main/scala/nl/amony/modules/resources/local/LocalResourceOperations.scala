@@ -69,7 +69,7 @@ trait LocalResourceOperations extends LocalDirectoryDependencies with Logging {
 
     case VideoThumbnail(width, height, quality, timestamp) =>
       logger.debug(s"Creating thumbnail for $inputFile at timestamp $timestamp")
-      ffmpeg.createThumbnail(inputFile = inputFile, timestamp = timestamp, outputFile = Some(outputFile), scaleHeight = Some(quality)).map(_ =>
+      ffmpeg.createThumbnail(inputFile = inputFile, timestamp = timestamp, outputFile = Some(outputFile), scaleHeight = height).map(_ =>
         outputFile
       )
     case ImageThumbnail(width, height, quality)            =>

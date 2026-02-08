@@ -1,0 +1,77 @@
+services:
+  nginx:
+    container_name: nginx-reverse-proxy
+    build:
+      context: docker/reverse-proxy/nginx
+      dockerfile: nginx.dockerfile
+    image: amony/nginx
+    ports:
+      - "443:443"
+    volumes:
+      - ./docker/reverse-proxy/nginx/config:/etc/nginx/templates:ro
+      - ./docker/reverse-proxy/nginx/config/shared-proxy-settings.conf:/etc/nginx/shared-proxy-settings.conf:ro
+      - certbot-data:/etc/letsencrypt
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  init-certificate:
+    container_name: nginx-init-certificate
+    profiles:
+      - initial-certificate
+    build:
+      context: docker/reverse-proxy/certbot
+      dockerfile: certbot.dockerfile
+    image: amony/certbot
+    volumes:
+      - certbot-data:/etc/letsencrypt
+    env_file:
+      - .env
+    command:
+      [
+        "certbot", "certonly",
+        "--authenticator", "dns-porkbun",
+        "--dns-porkbun-credentials", "/etc/certbot-porkbun.ini",
+        "--dns-porkbun-propagation-seconds", "60",
+        "--email", "${LETSENCRYPT_EMAIL}",
+        "--agree-tos",
+        "--no-eff-email",
+        "-d", "*.${DOMAIN_TLD}",
+      ]
+    restart: "no"
+
+  auth:
+    build:
+      context: docker/dex
+      dockerfile: dex.dockerfile
+    image: amony/dex
+    env_file:
+      - .env
+    volumes:
+      - ./docker/dex/config.yaml.template:/etc/dex/config.yaml.template:ro
+    command: []
+
+  certbot:
+    container_name: nginx-certbot
+    build:
+      context: docker/reverse-proxy/certbot
+      dockerfile: certbot.dockerfile
+    image: amony/certbot
+    depends_on:
+      init-certificate:
+        condition: service_completed_successfully
+        required: false
+    volumes:
+      - certbot-data:/etc/letsencrypt
+    env_file:
+      - .env
+    command:
+      [
+        "/bin/sh",
+        "-c",
+        "trap exit TERM; while :; do echo \"[$(date)] Running certbot renew\"; certbot renew; sleep 12h & wait $${!}; done;",
+      ]
+    restart: unless-stopped
+
+volumes:
+  certbot-data:

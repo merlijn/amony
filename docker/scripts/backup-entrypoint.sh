@@ -16,7 +16,7 @@ apt-get update -qq && apt-get install -y -qq cron > /dev/null
 echo "${BACKUP_SCHEDULE} DATABASE_HOST=${DATABASE_HOST:-postgres} DATABASE_USERNAME=${DATABASE_USERNAME:-postgres} DATABASE_PASSWORD=${DATABASE_PASSWORD} DATABASE_NAME=${DATABASE_NAME:-amony} BACKUP_DIR=${BACKUP_DIR:-/backups} BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7} /scripts/pg-backup.sh >> /var/log/backup.log 2>&1" | crontab -
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Cron job configured:"
-crontab -l
+crontab -l | sed "s/DATABASE_PASSWORD=[^ ]*/DATABASE_PASSWORD=***/"
 
 # Run initial backup if BACKUP_ON_STARTUP is set
 if [ "${BACKUP_ON_STARTUP:-false}" = "true" ]; then

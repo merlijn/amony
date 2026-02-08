@@ -1,0 +1,129 @@
+user nginx;
+worker_processes auto;
+pid /run/nginx.pid;
+error_log /dev/stderr;
+
+load_module modules/ngx_http_headers_more_filter_module.so;
+
+events {
+	worker_connections 768;
+	# multi_accept on;
+}
+
+http {
+
+  # Enable DNS resolution for Docker service names
+  resolver 127.0.0.11 valid=60s;
+
+  # Map to handle both WebSocket upgrades and SSE streaming
+  map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      '';
+  }
+
+  # Map client address to a rate limit key:
+  #   - IPv4: use the address as-is
+  #   - IPv6: extract the /64 prefix to prevent bypass via address rotation
+  map $remote_addr $rate_limit_key {
+    ~^([0-9a-f]+:[0-9a-f]+:[0-9a-f]+:[0-9a-f]+): $1;
+    default                                        $remote_addr;
+  }
+
+  # Rate limit zones for the auth provider
+  #   - Baseline: generous limit applied to all auth requests
+  #   - Throttle: strict limit applied only after 40x error responses
+  limit_req_zone $rate_limit_key zone=auth_baseline:10m rate=10r/s;
+  limit_req_zone $rate_limit_key zone=auth_throttle:10m rate=6r/m;
+
+  proxy_headers_hash_max_size 1024;
+  proxy_headers_hash_bucket_size 128;
+
+	types_hash_max_size 2048;
+	server_tokens off; # Hide build/version details
+
+	ssl_protocols TLSv1.2 TLSv1.3; # Dropping SSLv3 (POODLE), TLS 1.0, 1.1
+	ssl_prefer_server_ciphers off; # Don't force server cipher order.
+
+	access_log /var/log/nginx/access.log;
+
+	gzip on;
+
+	# Upstream for amony backend
+	upstream amony_backend {
+		zone amony_backend 64k;
+		server amony-app:8182 resolve;
+	}
+
+	# Upstream for auth provider
+	upstream auth_backend {
+		zone auth_backend 64k;
+		server auth:5556 resolve;
+	}
+
+	# Default SSL server - close unknown connections
+	server {
+		listen 443 ssl default_server;
+		server_name _;
+
+		include ssl-certificate.conf;
+
+		# Close connection without response
+		return 444;
+	}
+
+	# Media server
+	server {
+		listen 443 ssl;
+		server_name ${DOMAIN_SUB_AMONY}.${DOMAIN_TLD};
+
+		include ssl-certificate.conf;
+		include shared-proxy-settings.conf;
+
+		proxy_connect_timeout 60s;
+		proxy_send_timeout    60s;
+		proxy_read_timeout    60s;
+
+		client_max_body_size 20m;
+
+		location / {
+			proxy_pass http://amony_backend;
+		}
+	}
+
+	# Auth provider
+	server {
+		listen 443 ssl;
+		server_name account.${DOMAIN_TLD};
+
+		include ssl-certificate.conf;
+		include shared-proxy-settings.conf;
+
+		proxy_connect_timeout 60s;
+		proxy_send_timeout    60s;
+		proxy_read_timeout    60s;
+
+		location / {
+			# Baseline rate limit: 10 req/s with burst of 20
+			limit_req zone=auth_baseline burst=20 nodelay;
+			limit_req_status 429;
+
+			# Intercept 40x errors from upstream and route them through
+			# the throttled error handler to penalize repeat offenders
+			proxy_intercept_errors on;
+			error_page 400 401 403 404 405 408 429 = @auth_error;
+
+			proxy_pass http://auth_backend;
+		}
+
+		# Error handler for 40x responses — applies a strict rate limit
+		# so that clients producing many errors get throttled to 1 req/10s
+		location @auth_error {
+			limit_req zone=auth_throttle burst=10 nodelay;
+			limit_req_status 429;
+
+			# Return the original upstream status code and a generic error body
+			# Note: $status here holds the upstream response code from the error_page directive
+			try_files /dev/null =;
+		}
+	}
+}
