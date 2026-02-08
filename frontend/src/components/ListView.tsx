@@ -206,7 +206,7 @@ const ListView = (props: ListProps) => {
                 {
                   session.isAdmin() &&
                     <td key="select" className="list-select" onClick={() => { toggle(index) }}>
-                      <input type="checkbox" checked={selectedItems.indexOf(index) > -1}/>
+                        <input type="checkbox" checked={selectedItems.indexOf(index) > -1}/>
                     </td>
                 }
                 <td key="thumbnail" className="list-thumbnail" style = { { paddingLeft: session.isAdmin() ? 0 : 2}}>

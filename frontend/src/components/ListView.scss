@@ -179,7 +179,8 @@ $row-height: 36px;
 
       .list-select {
         @include column-select;
-        @extend .list-cell, .hover-pointer;
+        @extend .list-cell;
+        cursor: pointer;
         text-align: center;
         vertical-align: middle;
         &:hover {
@@ -187,11 +188,8 @@ $row-height: 36px;
           border-radius: 50%;
         }
         input {
-          @extend .hover-pointer;
+          pointer-events: none;
           align-content: center;
-          &:hover {
-            background-color: var(--bg-hover);
-          }
         }
       }
 
