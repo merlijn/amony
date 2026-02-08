@@ -183,6 +183,17 @@ const ListView = (props: ListProps) => {
       </th>
     </tr>
 
+  const colGroup =
+    <colgroup key="row-column-width-spacer" style ={ {height: 0 } }>
+      { session.isAdmin() && <col style = { {width: 36 } }></col> }
+      <col style={{width: 72}}></col>
+      <col style={{width: "60%"}}></col>
+      <col style={{width: "30%"}}></col>
+      <col style={{width: 110}}></col>
+      <col style={{width: 100}}></col>
+      <col style={{width: 70}}></col>
+    </colgroup>
+
   return (
     <>
       <InfiniteScroll
@@ -194,22 +205,12 @@ const ListView = (props: ListProps) => {
         scrollType='page'
       >
       <table className="list-table">
-
-      {/*<tr key="row-column-width-spacer" style ={ {height: 0 } }>*/}
-      {/*  { session.isAdmin() && <td style = { {width: 36 } }></td> }*/}
-      {/*  <td style={{width: 72}}></td>*/}
-      {/*  <td style={{width: "60%"}}></td>*/}
-      {/*  <td style={{width: "30%"}}></td>*/}
-      {/*  <td style={{width: 110}}></td>*/}
-      {/*  <td style={{width: 100}}></td>*/}
-      {/*  <td style={{width: 80}}></td>*/}
-      {/*</tr>*/}
-
+      { colGroup }
       <thead>
         {selectedItems.length > 0 ? actionBar : headers}
       </thead>
-
-      <tr key="row-spacer" style = { { height : 4 } } />
+      <tbody>
+      {/*<tr key="row-spacer" style = { { height : 4 } } />*/}
         {
           searchResult.results.map((resource, index) => {
             return (
@@ -264,6 +265,7 @@ const ListView = (props: ListProps) => {
             );
           })
         }
+        </tbody>
         </table>
       </InfiniteScroll>
 
