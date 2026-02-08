@@ -145,8 +145,7 @@ const ListView = (props: ListProps) => {
       { session.isAdmin() && <th className="list-header-select"><input type="checkbox" checked={allSelected} onChange={(event) => toggleAll(event.target.checked)} /></th> }
       <th className="list-header-thumbnail"></th>
       <th className="list-header-title"><span>Title</span>
-        <FaSort className="column-sort-icon"
-                onClick={() => setSort({field: "title", direction: sort.direction === "asc" ? "desc" : "asc"})}/>
+        <FaSort className="column-sort-icon" onClick={() => setSort({field: "title", direction: sort.direction === "asc" ? "desc" : "asc"})}/>
       </th>
       <th className="list-header-tags"><span>Tags</span></th>
       <th className="list-header-date"><span>Date</span>
@@ -156,8 +155,7 @@ const ListView = (props: ListProps) => {
         })}/>
       </th>
       <th className="list-header-size"><span>Size</span>
-        <FaSort className="column-sort-icon"
-                onClick={() => setSort({field: "size", direction: sort.direction === "asc" ? "desc" : "asc"})}/>
+        <FaSort className="column-sort-icon" onClick={() => setSort({field: "size", direction: sort.direction === "asc" ? "desc" : "asc"})}/>
       </th>
       <th className="list-header-resolution last-column"><span>Quality</span>
         {/* <FaSort className="column-sort-icon" onClick = { () => setSort({field: "resolution", direction: sort.direction === "asc" ? "desc" : "asc" }) } /> */}
@@ -168,7 +166,7 @@ const ListView = (props: ListProps) => {
   const actionBar =
     <tr key="row-header" className="list-row">
       <th className = "list-header-select"><input type="checkbox" checked={allSelected} onChange={(event) => toggleAll(event.target.checked)} /></th>
-      <th className = "list-header-actionbar" colSpan={6}>
+      <th className = "list-header-actionbar last-column" colSpan={6}>
         <FaHashtag className= "action-bar-item" title="Update tags" onClick = { openBulkTagModal } />
         <MdDelete className = "action-bar-item" />
       </th>
@@ -189,8 +187,8 @@ const ListView = (props: ListProps) => {
       {/*<tr key="row-column-width-spacer" style ={ {height: 0 } }>*/}
       {/*  { session.isAdmin() && <td style = { {width: 36 } }></td> }*/}
       {/*  <td style={{width: 72}}></td>*/}
-      {/*  <td style={{width: "65%"}}></td>*/}
-      {/*  <td style={{width: "35%"}}></td>*/}
+      {/*  <td style={{width: "60%"}}></td>*/}
+      {/*  <td style={{width: "30%"}}></td>*/}
       {/*  <td style={{width: 110}}></td>*/}
       {/*  <td style={{width: 100}}></td>*/}
       {/*  <td style={{width: 80}}></td>*/}

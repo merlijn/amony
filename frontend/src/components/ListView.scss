@@ -13,6 +13,14 @@ $row-height: 36px;
     border: none;
     border-collapse: collapse;
 
+    @mixin column-select {
+      width: 28px;
+    }
+
+    @mixin column-quality {
+      width: 50px;
+    }
+
     thead {
       position: sticky;
       top: $page-header-height;
@@ -21,7 +29,8 @@ $row-height: 36px;
     }
 
     .last-column {
-      padding-right: 8px !important;
+      // TODO enabling the padding causes the layout to shift when selecting rows
+      //padding-right: 8px !important;
     }
 
     .action-icon {
@@ -87,6 +96,7 @@ $row-height: 36px;
     }
 
     .list-header-select {
+      @include column-select;
       @extend .list-header, .hover-pointer;
       text-align: center;
       vertical-align: middle;
@@ -115,6 +125,7 @@ $row-height: 36px;
     }
 
     .list-header-resolution {
+      @include column-quality;
       @extend .list-header;
     }
 
@@ -167,6 +178,7 @@ $row-height: 36px;
       }
 
       .list-select {
+        @include column-select;
         @extend .list-cell, .hover-pointer;
         text-align: center;
         vertical-align: middle;
@@ -197,7 +209,7 @@ $row-height: 36px;
       }
 
       .list-resolution {
-        width: 1%;
+        @include column-quality;
 
         .media-actions {
           @extend .hover-action, .v-align-center;
