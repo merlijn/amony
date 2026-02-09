@@ -22,7 +22,7 @@ case class ResourceRow(
   content_meta_tool_data: Option[String],
   fs_path: String,
   time_added: Instant,
-  time_created: Option[Instant],
+  time_created: Option[Instant], // TODO remove this field
   time_last_modified: Option[Instant],
   title: Option[String],
   description: Option[String],
@@ -41,7 +41,6 @@ case class ResourceRow(
       contentMeta        = content_meta_tool_name.flatMap(name => ResourceMeta.recover(name, content_meta_tool_data.getOrElse(""))),
       tags               = tagLabels,
       timeAdded          = Some(time_added.toEpochMilli),
-      timeCreated        = time_created.map(_.toEpochMilli),
       timeLastModified   = time_last_modified.map(_.toEpochMilli),
       title              = title,
       description        = description,

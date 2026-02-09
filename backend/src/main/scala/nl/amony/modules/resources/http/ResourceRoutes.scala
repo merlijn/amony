@@ -135,11 +135,12 @@ object ResourceRoutes:
         )
 
     val deleteResourceImpl = deleteResource.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin))
-      .serverLogic(_ => (bucketId, resourceId) =>
-        (for
-          bucket <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
-          _      <- EitherT.right(bucket.deleteResource(resourceId))
-        yield ()).value
+      .serverLogic(_ =>
+        (bucketId, resourceId) =>
+          (for
+            bucket <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
+            _      <- EitherT.right(bucket.deleteResource(resourceId))
+          yield ()).value
       )
 
     val modifyTagsBulkImpl = modifyTagsBulk.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogic {

@@ -59,7 +59,6 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
         contentType        = meta.map(_.contentType),
         contentMeta        = meta.map(_.meta),
         timeAdded          = Some(Instant.now().toEpochMilli),
-        timeCreated        = None,
         timeLastModified   = Some(f.modifiedTime),
         thumbnailTimestamp = None
       )
