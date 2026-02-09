@@ -1,17 +1,13 @@
 package nl.amony.modules.search.solr
 
-import java.nio.file.{Files, Path}
-import java.util.Properties
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 import cats.effect.{IO, Resource}
-import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer
 import org.apache.solr.client.solrj.util.ClientUtils
 import org.apache.solr.client.solrj.{SolrClient, SolrQuery}
 import org.apache.solr.common.params.{CommonParams, FacetParams, ModifiableSolrParams}
 import org.apache.solr.common.{SolrDocument, SolrInputDocument}
-import org.apache.solr.core.CoreContainer
 import scribe.Logging
 
 import nl.amony.modules.auth.api.UserId
@@ -23,7 +19,7 @@ import nl.amony.modules.search.solr.SolrSearchService.*
 
 object SolrSearchService {
 
-  val collectionName    = "amony_embedded"
+  val collectionName    = "resources"
   val defaultSort       = SortOption(DateAdded, Desc)
   val tagsLimit         = 12.toString
   val solrTarGzResource = "/solr.tar.gz"
@@ -51,48 +47,14 @@ object SolrSearchService {
     val userId             = "user_id_s"
   }
 
-  def resource(config: SolrConfig): Resource[IO, SolrSearchService] = Resource
-    .make[IO, SolrSearchService](IO(new SolrSearchService(config)))(_.close())
+  def resource(config: SolrConfig): Resource[IO, SolrSearchService] =
+    SolrResource.make(config).map(solr => new SolrSearchService(config, solr))
 }
 
-class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
-
-  private val solrHome: Path = Path.of(config.path).toAbsolutePath.normalize()
-
-  logger.info(s"Solr home: $solrHome")
+class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchService with Logging {
 
   def loggingFailureIO[T](f: => T): IO[T] = IO(f)
     .handleErrorWith { case e: Exception => IO(logger.error("Error while executing solr query", e)) >> IO.raiseError(e) }
-
-  private val lockfilePath = solrHome.resolve("index/write.lock")
-
-  // delete the lock file on shutdown
-  sys.addShutdownHook {
-    try {
-      logger.warn("JVM shutdown hook: committing solr")
-      solr.commit(collectionName)
-    } catch { case e: Exception => logger.error("Error while closing solr", e) }
-  }
-
-  if Files.exists(solrHome) && !Files.isDirectory(solrHome) then
-    throw new RuntimeException(s"Solr home is not a directory: $solrHome")
-
-  if !Files.exists(solrHome) || Files.list(solrHome).findAny().isEmpty then {
-    logger.info(s"Solr directory does not exists or is empty. Extracting config at: $solrHome")
-    TarGzExtractor.extractResourceTarGz(solrTarGzResource, solrHome)
-  }
-
-  protected def close(): IO[Unit] = IO {
-    solr.commit(collectionName)
-    solr.close()
-    container.shutdown()
-  }
-
-  System.getProperties.setProperty("solr.data.dir", solrHome.toAbsolutePath.toString)
-
-  private val container        = new CoreContainer(solrHome, new Properties())
-  container.load()
-  private val solr: SolrClient = new EmbeddedSolrServer(container, collectionName)
 
   private def toSolrDocument(resource: ResourceInfo): SolrInputDocument = {
 
