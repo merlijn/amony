@@ -8,7 +8,7 @@ sealed trait ResourceOperation {
 case class VideoThumbnail(width: Option[Int] = None, height: Option[Int] = None, quality: Int, timestamp: Long) extends ResourceOperation {
   override def contentType: String = "image/webp"
 
-  override def validate(info: ResourceInfo): Either[String, Unit] = info.contentMeta.map(_.properties) match {
+  override def validate(info: ResourceInfo): Either[String, Unit] = info.basicContentProperties match {
     case Some(video: VideoProperties) =>
       for _ <- Either.cond(timestamp > 0 && timestamp < video.durationInMillis, (), "Timestamp is out of bounds") yield ()
     case other                        => Left("Wrong content type, expected video, got: " + other)
@@ -29,7 +29,7 @@ case class VideoFragment(width: Option[Int] = None, height: Option[Int] = None, 
   override def contentType: String = "video/mp4"
 
   override def validate(info: ResourceInfo): Either[String, Unit] = {
-    info.contentMeta.map(_.properties) match {
+    info.basicContentProperties match {
       case Some(video: VideoProperties) =>
         val duration = end - start
         for

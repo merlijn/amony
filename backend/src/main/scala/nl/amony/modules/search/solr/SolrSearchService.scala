@@ -116,7 +116,7 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
 
     resource.contentMeta.foreach(meta => solrInputDocument.addField(FieldNames.metaToolName, meta.toolName))
 
-    resource.contentMeta.map(_.properties) match {
+    resource.basicContentProperties match {
       case Some(ImageProperties(w, h, _))                    =>
         solrInputDocument.addField(FieldNames.width, w)
         solrInputDocument.addField(FieldNames.height, h)

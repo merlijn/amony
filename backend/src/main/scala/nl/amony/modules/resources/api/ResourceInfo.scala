@@ -17,4 +17,7 @@ case class ResourceInfo(
   description: Option[String]       = None,
   tags: Set[String]                 = Set.empty,
   thumbnailTimestamp: Option[Int]   = None
-)
+) {
+  
+  def basicContentProperties: Option[ContentProperties] = contentMeta.map(_.properties)
+}

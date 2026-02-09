@@ -9,7 +9,6 @@ import cats.implicits.*
 import org.apache.tika.Tika
 import org.typelevel.otel4s.metrics.MeterProvider
 import scribe.Logging
-
 import nl.amony.lib.files.*
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.lib.process.ffmpeg.FFMpeg
@@ -18,6 +17,7 @@ import nl.amony.modules.resources.*
 import nl.amony.modules.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.ResourceDatabase
+import skunk.Session
 
 trait LocalDirectoryDependencies(
   val config: LocalDirectoryConfig,
@@ -34,12 +34,12 @@ trait LocalDirectoryDependencies(
 
 object LocalDirectoryBucket:
 
-  def resource(config: LocalDirectoryConfig, db: ResourceDatabase, topic: EventTopic[ResourceEvent], meterProvider: MeterProvider[IO])(
+  def resource(config: LocalDirectoryConfig, pool: cats.effect.Resource[IO, Session[IO]], topic: EventTopic[ResourceEvent], meterProvider: MeterProvider[IO])(
     using runtime: IORuntime
   ): cats.effect.Resource[IO, LocalDirectoryBucket] = {
     cats.effect.Resource.make {
       IO {
-        val bucket = LocalDirectoryBucket(config, db, topic, meterProvider)
+        val bucket = LocalDirectoryBucket(config, ResourceDatabase(pool), topic, meterProvider)
         bucket.sync().unsafeRunAsync(_ => ())
         bucket
       }
