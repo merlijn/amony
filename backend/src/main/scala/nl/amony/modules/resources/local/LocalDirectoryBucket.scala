@@ -6,40 +6,30 @@ import java.nio.file.attribute.BasicFileAttributes
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import cats.implicits.*
-import org.apache.tika.Tika
 import org.typelevel.otel4s.metrics.MeterProvider
 import scribe.Logging
+import skunk.Session
 
 import nl.amony.lib.files.*
 import nl.amony.lib.messagebus.EventTopic
-import nl.amony.lib.process.ffmpeg.FFMpeg
-import nl.amony.lib.process.magick.ImageMagick
 import nl.amony.modules.resources.*
 import nl.amony.modules.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.ResourceDatabase
 
-trait LocalDirectoryDependencies(
-  val config: LocalDirectoryConfig,
-  val db: ResourceDatabase,
-  val topic: EventTopic[ResourceEvent],
-  meterProvider: MeterProvider[IO]
-) {
-
-  val ffmpeg      = new FFMpeg(meterProvider)
-  val imageMagick = new ImageMagick(meterProvider)
-
-  val meta = LocalResourceMetaDataScanner(new Tika(), ffmpeg, imageMagick)
-}
-
 object LocalDirectoryBucket:
 
-  def resource(config: LocalDirectoryConfig, db: ResourceDatabase, topic: EventTopic[ResourceEvent], meterProvider: MeterProvider[IO])(
+  def resource(
+    config: LocalDirectoryConfig,
+    pool: cats.effect.Resource[IO, Session[IO]],
+    topic: EventTopic[ResourceEvent],
+    meterProvider: MeterProvider[IO]
+  )(
     using runtime: IORuntime
   ): cats.effect.Resource[IO, LocalDirectoryBucket] = {
     cats.effect.Resource.make {
       IO {
-        val bucket = LocalDirectoryBucket(config, db, topic, meterProvider)
+        val bucket = LocalDirectoryBucket(config, ResourceDatabase(pool), topic, meterProvider)
         bucket.sync().unsafeRunAsync(_ => ())
         bucket
       }
@@ -52,7 +42,7 @@ class LocalDirectoryBucket(
   topic: EventTopic[ResourceEvent],
   meterProvider: MeterProvider[IO]
 )(using runtime: IORuntime)
-    extends LocalDirectoryDependencies(config, db, topic, meterProvider), LocalResourceOperations, ResourceBucket, LocalResourceSyncer,
+    extends LocalDirectoryBase(config, db, topic, meterProvider), LocalResourceOperations, ResourceBucket, LocalResourceSyncer,
       UploadResource, Logging {
 
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getById(config.id, resourceId)
@@ -132,7 +122,7 @@ class LocalDirectoryBucket(
         case None          => IO.unit
         case Some(updated) => topic.publish(ResourceUpdated(updated))
 
-    resourceIds.map(id => modifyTagsSingle(id, tagsToAdd, tagsToRemove)).toList.sequence.as(None)
+    resourceIds.map(id => modifyTagsSingle(id, tagsToAdd, tagsToRemove)).toList.sequence.as(())
   }
 
   override def updateThumbnailTimestamp(resourceId: ResourceId, timestamp: Int): IO[Unit] =

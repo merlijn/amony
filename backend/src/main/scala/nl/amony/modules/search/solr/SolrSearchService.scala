@@ -40,7 +40,6 @@ object SolrSearchService {
     val videoCodec         = "video_codec_s"
     val description        = "description_s"
     val metaToolName       = "meta_tool_name_s"
-    val timeCreated        = "time_created_l"
     val timeAdded          = "time_added_l"
     val lastModified       = "time_last_modified_l"
     val contentType        = "content_type_s"
@@ -117,7 +116,7 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
 
     resource.contentMeta.foreach(meta => solrInputDocument.addField(FieldNames.metaToolName, meta.toolName))
 
-    resource.contentMeta.map(_.properties) match {
+    resource.basicContentProperties match {
       case Some(ImageProperties(w, h, _))                    =>
         solrInputDocument.addField(FieldNames.width, w)
         solrInputDocument.addField(FieldNames.height, h)
@@ -145,7 +144,6 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
     val title        = Option(document.getFieldValue(FieldNames.title)).map(_.asInstanceOf[String])
     val path         = document.getFieldValue(FieldNames.path).asInstanceOf[String]
     val timeAdded    = Option(document.getFieldValue(FieldNames.timeAdded)).map(_.asInstanceOf[Long])
-    val timeCreated  = Option(document.getFieldValue(FieldNames.timeCreated)).map(_.asInstanceOf[Long])
     val lastModified = Option(document.getFieldValue(FieldNames.lastModified)).map(_.asInstanceOf[Long])
     val size         = document.getFieldValue(FieldNames.filesize).asInstanceOf[Long]
 
@@ -184,7 +182,6 @@ class SolrSearchService(config: SolrConfig) extends SearchService with Logging {
       contentType        = contentType,
       contentMeta        = contentProperties.map(props => ResourceMeta(metaToolName.getOrElse("unknown"), "", props)),
       timeAdded          = timeAdded,
-      timeCreated        = timeCreated,
       timeLastModified   = lastModified,
       title              = title,
       description        = description,

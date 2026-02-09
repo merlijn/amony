@@ -84,16 +84,14 @@ object App extends ResourceApp.Forever with Logging {
 
     for
       databasePool      <- makeDatabasePool(appConfig.database)
-//      otel4j            <- OtelJava.autoConfigured[IO]()
-      meterProvider      = MeterProvider.noop[IO]
+      meterProvider      = MeterProvider.noop[IO] // OtelJava.autoConfigured[IO]()
       httpClientBackend <- HttpClientCatsBackend.resource[IO]()
       resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
       searchService     <- SolrSearchService.resource(appConfig.search.solr)
       _                  = resourceEventTopic.followTail(searchService.processEvent)
-      resourceDatabase   = ResourceDatabase(databasePool)
       resourceBuckets   <- appConfig.resources.buckets.map {
                              case localConfig: ResourceConfig.LocalDirectoryConfig =>
-                               LocalDirectoryBucket.resource(localConfig, resourceDatabase, resourceEventTopic, meterProvider)
+                               LocalDirectoryBucket.resource(localConfig, databasePool, resourceEventTopic, meterProvider)
                            }.sequence
       resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
       authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)

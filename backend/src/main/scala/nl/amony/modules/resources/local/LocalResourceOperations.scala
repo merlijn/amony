@@ -10,7 +10,7 @@ import scribe.Logging
 
 import nl.amony.modules.resources.api.*
 
-trait LocalResourceOperations extends LocalDirectoryDependencies with Logging {
+trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
   type OperationKey = (resourceId: ResourceId, operation: ResourceOperation)
 

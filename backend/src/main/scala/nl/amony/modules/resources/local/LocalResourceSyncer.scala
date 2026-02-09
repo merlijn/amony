@@ -16,7 +16,7 @@ import nl.amony.modules.resources.api.{ResourceAdded, ResourceDeleted, ResourceE
 /**
  * Functionality to synchronize a local directory with the database state.
  */
-trait LocalResourceSyncer extends LocalDirectoryDependencies {
+trait LocalResourceSyncer extends LocalDirectoryBase {
 
   private val logger   = scribe.Logger("LocalResourceSyncer")
   private val bucketId = config.id
@@ -59,7 +59,6 @@ trait LocalResourceSyncer extends LocalDirectoryDependencies {
         contentType        = meta.map(_.contentType),
         contentMeta        = meta.map(_.meta),
         timeAdded          = Some(Instant.now().toEpochMilli),
-        timeCreated        = None,
         timeLastModified   = Some(f.modifiedTime),
         thumbnailTimestamp = None
       )

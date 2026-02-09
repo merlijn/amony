@@ -42,7 +42,6 @@ case class ResourceDto(
   sizeInBytes: Long,
   path: String,
   timeAdded: Long,
-  timeCreated: Option[Long],
   timeLastModified: Option[Long],
   userId: String,
   title: Option[String],
@@ -90,14 +89,14 @@ case class ClipDto(
 
 def toDto(resource: ResourceInfo): ResourceDto = {
 
-  val resourceHeight = resource.contentMeta match
-    case Some(ResourceMeta(_, _, VideoProperties(_, h, _, _, _))) => h
-    case Some(ResourceMeta(_, _, ImageProperties(_, h, _)))       => h
-    case _                                                        => 0
+  val resourceHeight = resource.basicContentProperties match
+    case Some(VideoProperties(_, h, _, _, _)) => h
+    case Some(ImageProperties(_, h, _))       => h
+    case _                                    => 0
 
   val resolutions: List[Int] = (resourceHeight :: List(352)).sorted
 
-  val durationInMillis = resource.contentMeta.map(_.properties) match {
+  val durationInMillis = resource.basicContentProperties match {
     case Some(m: VideoProperties) => m.durationInMillis
     case _                        => 0
   }
@@ -125,7 +124,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     resource.path.substring(startIdx, endIdx)
   }
 
-  val contentMeta: ResourceMetaDto = resource.contentMeta.map(_.properties) match {
+  val contentMeta: ResourceMetaDto = resource.basicContentProperties match {
     case Some(ImageProperties(width, height, _)) => ResourceMetaDto(width = width, height = height, duration = 0, fps = 0, codec = None)
 
     case Some(VideoProperties(width, height, fps, duration, codec)) =>
@@ -153,7 +152,6 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     sizeInBytes        = resource.size,
     path               = resource.path,
     timeAdded          = resource.timeAdded.getOrElse(0L),
-    timeCreated        = resource.timeCreated,
     timeLastModified   = resource.timeLastModified,
     userId             = resource.userId,
     title              = resource.title,
