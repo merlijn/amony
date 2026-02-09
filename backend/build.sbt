@@ -26,7 +26,10 @@ val javaDevOpts = Seq(
   "-DAMONY_MEDIA_PATH=../media",
   "-DAMONY_HOME=../media/.amony",
   "-DAMONY_WEB_CLIENT_PATH=../frontend/dist",
-  "-DAMONY_AUTH_ENABLED=false",
+  "-DAMONY_AUTH_ENABLED=true",
+  "-DAMONY_OAUTH_AUTHORIZE_URL=http://localhost:5556/dex/auth",
+  "-DAMONY_OAUTH_TOKEN_URL=http://localhost:5556/dex/token",
+  "-DAMONY_OAUTH_USERINFO_URL=http://localhost:5556/dex/userinfo",
   "-DAMONY_JWT_SECRET_KEY=development-key"
 )
 
@@ -42,7 +45,7 @@ lazy val amony = project
   .settings(
     organization := "nl.amony",
     name := "amony-app",
-    scalaVersion := "3.7.4",
+    scalaVersion := "3.8.1",
     scalacOptions := Seq(
       "-rewrite",
       "-source", "future",

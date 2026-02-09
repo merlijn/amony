@@ -34,8 +34,6 @@ services:
       - .env
     environment:
       DATABASE_HOST: postgres
-      DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
       DATABASE_NAME: amony
       BACKUP_DIR: /backups
       RESTORE_FILE: ${RESTORE_FILE}
@@ -56,8 +54,6 @@ services:
       - .env
     environment:
       DATABASE_HOST: postgres
-      DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
       DATABASE_NAME: amony
       BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-0 2 * * *}
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
@@ -85,13 +81,7 @@ services:
     env_file:
       - .env
     environment:
-      AMONY_ADMIN_USER: ${AMONY_ADMIN_USER:-admin}
       DATABASE_HOST: "postgres"
-      DATABASE_USERNAME: ${DATABASE_USERNAME:-admin}
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-changeme}
-      AMONY_OAUTH_AUTHORIZE_URL: ${AMONY_OAUTH_AUTHORIZE_URL:-http://localhost:5556/dex/auth}
-      AMONY_OAUTH_TOKEN_URL: ${AMONY_OAUTH_TOKEN_URL:-http://auth:5556/dex/token}
-      AMONY_OAUTH_USERINFO_URL: ${AMONY_OAUTH_USERINFO_URL:-http://auth:5556/dex/userinfo}
     volumes:
       - ${AMONY_HOST_MEDIA_PATH}:/media
       - ${AMONY_DATA:-./data}/solr:/app/data/solr

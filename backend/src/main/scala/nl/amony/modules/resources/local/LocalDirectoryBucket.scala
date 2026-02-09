@@ -132,7 +132,7 @@ class LocalDirectoryBucket(
         case None          => IO.unit
         case Some(updated) => topic.publish(ResourceUpdated(updated))
 
-    resourceIds.map(id => modifyTagsSingle(id, tagsToAdd, tagsToRemove)).toList.sequence.as(None)
+    resourceIds.map(id => modifyTagsSingle(id, tagsToAdd, tagsToRemove)).toList.sequence.as(())
   }
 
   override def updateThumbnailTimestamp(resourceId: ResourceId, timestamp: Int): IO[Unit] =
