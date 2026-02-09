@@ -12,11 +12,23 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Backup directory: ${BACKUP_DIR:-/backups}"
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Installing cron..."
 apt-get update -qq && apt-get install -y -qq cron > /dev/null
 
-# Create cron job with environment variables
-echo "${BACKUP_SCHEDULE} DATABASE_HOST=${DATABASE_HOST:-postgres} DATABASE_USERNAME=${DATABASE_USERNAME:-postgres} DATABASE_PASSWORD=${DATABASE_PASSWORD} DATABASE_NAME=${DATABASE_NAME:-amony} BACKUP_DIR=${BACKUP_DIR:-/backups} BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7} /scripts/pg-backup.sh >> /var/log/backup.log 2>&1" | crontab -
+# Write environment variables to a file so cron jobs can source them
+ENV_FILE="/etc/backup-env.sh"
+cat > "${ENV_FILE}" <<EOF
+export DATABASE_HOST="${DATABASE_HOST:-postgres}"
+export DATABASE_USERNAME="${DATABASE_USERNAME:-postgres}"
+export DATABASE_PASSWORD="${DATABASE_PASSWORD}"
+export DATABASE_NAME="${DATABASE_NAME:-amony}"
+export BACKUP_DIR="${BACKUP_DIR:-/backups}"
+export BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-7}"
+EOF
+chmod 600 "${ENV_FILE}"
+
+# Create cron job that sources the environment file before running the backup
+echo "${BACKUP_SCHEDULE} . ${ENV_FILE} && /scripts/pg-backup.sh >> /var/log/backup.log 2>&1" | crontab -
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Cron job configured:"
-crontab -l | sed "s/DATABASE_PASSWORD=[^ ]*/DATABASE_PASSWORD=***/"
+crontab -l
 
 # Run initial backup if BACKUP_ON_STARTUP is set
 if [ "${BACKUP_ON_STARTUP:-false}" = "true" ]; then
