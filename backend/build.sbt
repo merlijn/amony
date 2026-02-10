@@ -39,6 +39,7 @@ val circeVersion    = "0.14.15"
 val http4sVersion   = "0.23.33"
 val tapirVersion    = "1.13.6"
 val sttpVersion     = "4.0.15"
+val otel4sVersion   = "0.15.1"
 
 lazy val amony = project
   .in(file("."))
@@ -169,9 +170,12 @@ lazy val amony = project
       // observability
       "com.outr"                      %% "scribe"                                    % "3.17.0",
       "com.outr"                      %% "scribe-slf4j"                              % "3.17.0",
-      "org.typelevel"                 %% "otel4s-oteljava"                           % "0.14.0",
-      "org.typelevel"                 %% "otel4s-semconv"                            % "0.14.0",
+      "org.typelevel"                 %% "otel4s-core"                               % otel4sVersion,
+      "org.typelevel"                 %% "otel4s-core-trace"                         % otel4sVersion,
+      "org.typelevel"                 %% "otel4s-oteljava"                           % otel4sVersion,
+      "org.typelevel"                 %% "otel4s-semconv"                            % otel4sVersion,
       "org.typelevel"                 %% "log4cats-slf4j"                            % "2.7.1",
+      "com.softwaremill.sttp.tapir"   %% "tapir-otel4s-tracing"                      % tapirVersion,
       "io.opentelemetry"               % "opentelemetry-exporter-otlp"               % "1.59.0" % Runtime,
       "io.opentelemetry"               % "opentelemetry-sdk-extension-autoconfigure" % "1.59.0" % Runtime,
       "org.slf4j"                      % "slf4j-api"                                 % "2.0.17",
@@ -204,6 +208,11 @@ lazy val amony = project
       "com.dimafeng"                  %% "testcontainers-scala-scalatest"            % "0.44.1"   % Test,
       "commons-codec"                  % "commons-codec"                             % "1.21.0"   % Test,
       "org.scalacheck"                %% "scalacheck"                                % "1.19.0"   % Test
+    ),
+
+    // TODO remove this override once skunk has been updated to use otel4s 0.15.x
+    dependencyOverrides ++= Seq(
+      "org.typelevel"               %% "otel4s-core-trace"  % otel4sVersion,
     ),
 
     excludeDependencies ++= List(

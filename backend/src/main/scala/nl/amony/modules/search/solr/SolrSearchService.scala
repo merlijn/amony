@@ -267,7 +267,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
     loggingFailureIO {
 
       val solrParams    = toSolrQuery(query)
-      val queryResponse = solr.query(solrParams)
+      val queryResponse = solr.query(collectionName, solrParams)
 
       logger.debug(s"Executing solr query: ${solrParams.toString}")
 
