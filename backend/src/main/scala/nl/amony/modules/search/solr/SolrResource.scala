@@ -16,8 +16,18 @@ object SolrResource extends Logging {
 
   val collections = Seq("resources")
 
-  def make(config: SolrConfig): Resource[IO, SolrClient] = Resource
-    .make[IO, SolrClient](IO.blocking {
+  def make(config: SolrConfig): Resource[IO, SolrClient] = {
+
+    def close(solr: SolrClient): Unit =
+      try {
+        logger.warn("Shutting down solr")
+        collections.foreach(collectionName => solr.commit(collectionName))
+        solr.close()
+      } catch {
+        case e: Exception => logger.error("Error while closing solr", e)
+      }
+
+    Resource.make[IO, SolrClient](IO.blocking {
 
       val solrHome: Path = Path.of(config.path).toAbsolutePath.normalize()
       logger.info(s"Solr home: $solrHome")
@@ -37,21 +47,10 @@ object SolrResource extends Logging {
       val solr: SolrClient = new EmbeddedSolrServer(container, null)
 
       sys.addShutdownHook {
-        try {
-          logger.warn("JVM shutdown hook: committing solr")
-          collections.foreach(collectionName => solr.commit(collectionName))
-          solr.close()
-        } catch {
-          case e: Exception => logger.error("Error while closing solr", e)
-        }
+        close(solr)
       }
 
       solr
-    }) { solr =>
-      IO {
-        logger.info("Closing solr client")
-        collections.foreach(collectionName => solr.commit(collectionName))
-        solr.close()
-      }
-    }
+    })(solr => IO(close(solr)))
+  }
 }

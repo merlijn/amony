@@ -81,7 +81,7 @@ object App extends ResourceApp.Forever with Logging {
 
     val appConfig: AppConfig = ConfigSource.fromConfig(config).at("amony").loadOrThrow[AppConfig]
 
-    logger.info("Starting application, app home directory: " + appConfig.amonyHome)
+    logger.info("Starting application")
     logger.debug("Configuration: " + appConfig)
 
     // somehow the default (slf4j) logger for http4s is not working, so we explicitly set it here

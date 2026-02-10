@@ -23,7 +23,6 @@ case class DatabaseConfig(host: String, port: Int, database: String, username: S
 case class ObservabilityConfig(otelEnabled: Boolean) derives ConfigReader
 
 case class AppConfig(
-  amonyHome: Path,
   resources: ResourceConfig,
   auth: AuthConfig,
   api: WebServerConfig,

@@ -21,12 +21,13 @@ lazy val generateSpec = taskKey[File]("Generates the OpenAPI specification for t
 addCommandAlias("format", "; scalafmt; test:scalafmt")
 
 val javaDevOpts = Seq(
-  "-DAMONY_SOLR_DELETE_LOCKFILE_ONSTARTUP=true",
   "-DAMONY_SECURE_COOKIES=false",
+  "-DAMONY_OTEL_ENABLED=false",
+  "-DOTEL_SERVICE_NAME=amony-app",
   "-DAMONY_MEDIA_PATH=../media",
-  "-DAMONY_HOME=../media/.amony",
+  "-DAMONY_SOLR_PATH=../data/solr",
   "-DAMONY_WEB_CLIENT_PATH=../frontend/dist",
-  "-DAMONY_AUTH_ENABLED=true",
+  "-DAMONY_AUTH_ENABLED=false",
   "-DAMONY_OAUTH_AUTHORIZE_URL=http://localhost:5556/dex/auth",
   "-DAMONY_OAUTH_TOKEN_URL=http://localhost:5556/dex/token",
   "-DAMONY_OAUTH_USERINFO_URL=http://localhost:5556/dex/userinfo",
@@ -81,9 +82,10 @@ lazy val amony = project
     },
     jibEnvironment := Map(
       "JAVA_TOOL_OPTIONS"     -> "-Dconfig.file=/app/resources/application.conf",
-      "AMONY_HOME"            -> "/app",
       "AMONY_WEB_CLIENT_PATH" -> "/app/assets",
-      "AMONY_MEDIA_PATH"      -> "/media"
+      "AMONY_SOLR_PATH"       -> "/app/data/solr",
+      "AMONY_MEDIA_PATH"      -> "/media",
+      "OTEL_SERVICE_NAME"     -> "amony-app"
     ),
     jibUseCurrentTimestamp := true,
 

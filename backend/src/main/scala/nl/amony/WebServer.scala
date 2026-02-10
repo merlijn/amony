@@ -4,8 +4,9 @@ import java.security.SecureRandom
 import javax.net.ssl.{KeyManagerFactory, SNIHostName, SSLContext}
 import scala.concurrent.duration.DurationInt
 
+import cats.Monad
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, Resource}
+import cats.effect.{Async, IO, Resource}
 import cats.implicits.catsSyntaxFlatMapOps
 import cats.syntax.all.toSemigroupKOps
 import com.comcast.ip4s.{Host, Port}
@@ -85,7 +86,10 @@ object WebServer extends Logging {
     val tlsParameters = TLSParameters(serverNames = Some(List(new SNIHostName(httpsConfig.host))))
     val serverLogger  = Slf4jLogger.getLoggerFromName[IO]("nl.amony.app.WebServer")
 
-    EmberServerBuilder.default[IO].withHost(Host.fromString(httpsConfig.host).get).withPort(Port.fromInt(httpsConfig.port).get).withHttpApp(httpApp)
+    EmberServerBuilder.default[IO]
+      .withHost(Host.fromString(httpsConfig.host).get)
+      .withPort(Port.fromInt(httpsConfig.port).get)
+      .withHttpApp(httpApp)
       .withTLS(tlsContext, tlsParameters).withLogger(serverLogger).withErrorHandler {
         e =>
           logger.warn("Internal server error", e)
