@@ -1,10 +1,10 @@
 package nl.amony.lib.process
 
 import cats.effect.IO
-import org.typelevel.otel4s.metrics.MeterProvider
+import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
 import scribe.Logging
 
-trait ProcessRunner(val meterProvider: MeterProvider[IO]) extends Logging {
+trait ProcessRunner(val meter: Meter[IO]) extends Logging {
 
   def toString(is: fs2.Stream[IO, Byte]): IO[String] = is.compile.toVector.map(_.toArray).map(new String(_))
 
@@ -49,10 +49,7 @@ trait ProcessRunner(val meterProvider: MeterProvider[IO]) extends Logging {
       .spawn[IO].use(processHandler)
       .timed.flatMap { case (duration, result) =>
         logger.debug(s"Process '$cmd ${args.mkString(" ")}' completed in ${duration.toMillis} ms")
-        meterProvider
-          .get("process")
-          .flatMap(_.counter[Long]("duration-ms").create)
-          .flatMap(_.inc()) >> IO.pure(result)
+        meter.counter[Long]("duration-ms").create.flatMap(_.inc()) >> IO.pure(result)
       }
   }
 }
