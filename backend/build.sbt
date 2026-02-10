@@ -174,6 +174,8 @@ lazy val amony = project
       "org.typelevel"                 %% "otel4s-core-trace"                         % otel4sVersion,
       "org.typelevel"                 %% "otel4s-oteljava"                           % otel4sVersion,
       "org.typelevel"                 %% "otel4s-semconv"                            % otel4sVersion,
+      "org.http4s"                    %% "http4s-otel4s-middleware-core"             % "0.16.0",
+      "org.http4s"                    %% "http4s-otel4s-middleware-metrics"          % "0.16.0",
       "org.typelevel"                 %% "log4cats-slf4j"                            % "2.7.1",
       "com.softwaremill.sttp.tapir"   %% "tapir-otel4s-tracing"                      % tapirVersion,
       "io.opentelemetry"               % "opentelemetry-exporter-otlp"               % "1.59.0" % Runtime,

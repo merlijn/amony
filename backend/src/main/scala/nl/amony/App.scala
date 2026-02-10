@@ -11,9 +11,10 @@ import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
-import org.typelevel.otel4s.metrics.Meter
+import org.http4s.otel4s.middleware.metrics.OtelMetrics
+import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
 import org.typelevel.otel4s.oteljava.OtelJava
-import org.typelevel.otel4s.trace.Tracer
+import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import pureconfig.ConfigSource
 import scribe.{Logger, Logging}
 import skunk.Session
@@ -62,16 +63,14 @@ object App extends ResourceApp.Forever with Logging {
     yield pool
   }
 
-  def observability(config: ObservabilityConfig): Resource[IO, (meter: Meter[IO], tracer: Tracer[IO])] = {
-    def otelObservability(): Resource[IO, (meter: Meter[IO], tracer: Tracer[IO])] =
+  def observability(config: ObservabilityConfig): Resource[IO, (MeterProvider[IO], TracerProvider[IO])] = {
+    def otelObservability(): Resource[IO, (MeterProvider[IO], TracerProvider[IO])] =
       for
-        otel           <- OtelJava.autoConfigured[IO]()
-        meterProvider  <- Resource.eval(otel.meterProvider.get("app.amony"))
-        tracerProvider <- Resource.eval(otel.tracerProvider.get("app.amony"))
-      yield (meterProvider, tracerProvider)
+        otel <- OtelJava.autoConfigured[IO]()
+      yield (otel.meterProvider, otel.tracerProvider)
 
-    def nooopObservability(): Resource[IO, (meter: Meter[IO], tracer: Tracer[IO])] =
-      Resource.pure((Meter.noop[IO], Tracer.noop[IO]))
+    def nooopObservability(): Resource[IO, (MeterProvider[IO], TracerProvider[IO])] =
+      Resource.pure(MeterProvider.noop[IO], TracerProvider.noop[IO])
 
     if config.otelEnabled then otelObservability() else nooopObservability()
   }
@@ -92,11 +91,18 @@ object App extends ResourceApp.Forever with Logging {
       Http4sServerOptions.defaultServerLog[IO]
         .copy(
           logLogicExceptions = true,
-          doLogWhenHandled = (msg, throwable) => IO(accessLogger.info(msg)),
-          doLogExceptions = (msg, throwable) => IO(serverLogger.error(msg, throwable)))
+          doLogWhenHandled   = (msg, throwable) => IO(accessLogger.info(msg)),
+          doLogExceptions    = (msg, throwable) => IO(serverLogger.error(msg, throwable))
+        )
     }
 
-    def application(using tracer: Tracer[IO], meter: Meter[IO]): Resource[IO, Unit] = {
+    def application(
+      using meterProvider: MeterProvider[IO],
+      meter: Meter[IO],
+      tracerProvider: TracerProvider[IO],
+      tracer: Tracer[IO]
+    ): Resource[IO, Unit] = {
+
       given serverOptions: Http4sServerOptions[IO] =
         Http4sServerOptions.customiseInterceptors[IO]
           .prependInterceptor(Otel4sTracing(tracer))
@@ -124,8 +130,10 @@ object App extends ResourceApp.Forever with Logging {
     }
 
     for
-      (meter, tracer) <- observability(appConfig.observability)
-      _               <- application(using tracer, meter)
+      (meterProvider, tracerProvider) <- observability(appConfig.observability)
+      meter                           <- Resource.eval(meterProvider.get("app.amony"))
+      tracer                          <- Resource.eval(tracerProvider.get("app.amony"))
+      _                               <- application(using meterProvider, meter, tracerProvider, tracer)
     yield ()
   }
 }
