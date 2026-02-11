@@ -13,12 +13,12 @@ import org.typelevel.otel4s.semconv.attributes.{CodeAttributes, ExceptionAttribu
 import org.typelevel.otel4s.{AnyValue, Attribute, Attributes}
 import scribe.*
 
-final class ScriberLoggerSupport[F[_]: Monad, Ctx](
+class ScribeLoggerSupport[F[_]: Monad, Ctx](
   provider: LoggerProvider[F, Ctx],
   local: Local[F, Ctx]
 ) extends LoggerSupport[F[Unit]] {
 
-  def log(record: => LogRecord): F[Unit] =
+  override def log(record: => LogRecord): F[Unit] =
     for
       r      <- Monad[F].pure(record)
       // use the library version here
@@ -48,9 +48,9 @@ final class ScriberLoggerSupport[F[_]: Monad, Ctx](
       .withBody(AnyValue.string(record.logOutput.plainText))
       .pipe { builder =>
         builder.addAttributes(
-          if record.thread.threadId != -1 then {
+          if record.thread.getId != -1 then {
             Attributes(
-              Attribute("thread.id", record.thread.threadId),
+              Attribute("thread.id", record.thread.getId),
               Attribute("thread.name", record.thread.getName)
             )
           } else {
