@@ -3,7 +3,7 @@ package nl.amony.lib.process.ffmpeg
 import java.time.Duration
 
 import cats.effect.IO
-import org.typelevel.otel4s.metrics.MeterProvider
+import org.typelevel.otel4s.metrics.Meter
 import scribe.Logging
 
 import nl.amony.lib.process.ProcessRunner
@@ -24,6 +24,6 @@ object FFMpeg {
   }
 }
 
-class FFMpeg(meterProvider: MeterProvider[IO]) extends Logging with ProcessRunner(meterProvider)
+class FFMpeg(meter: Meter[IO]) extends Logging with ProcessRunner(meter)
     with CreateThumbnail with CreateThumbnailTile
     with FFProbe with AddFastStart with Transcode

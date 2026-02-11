@@ -22,6 +22,16 @@ services:
     volumes:
       - ${AMONY_DATA:-./data}/postgres:/var/lib/postgresql/data
 
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    profiles:
+      - otel
+    volumes:
+      - ./docker/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317" # gRPC
+
   postgres-restore:
     image: postgres:17.2
     container_name: amony-postgres-restore

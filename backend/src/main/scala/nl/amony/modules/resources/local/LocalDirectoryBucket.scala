@@ -6,7 +6,7 @@ import java.nio.file.attribute.BasicFileAttributes
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import cats.implicits.*
-import org.typelevel.otel4s.metrics.MeterProvider
+import org.typelevel.otel4s.metrics.Meter
 import scribe.Logging
 import skunk.Session
 
@@ -22,14 +22,14 @@ object LocalDirectoryBucket:
   def resource(
     config: LocalDirectoryConfig,
     pool: cats.effect.Resource[IO, Session[IO]],
-    topic: EventTopic[ResourceEvent],
-    meterProvider: MeterProvider[IO]
+    topic: EventTopic[ResourceEvent]
   )(
-    using runtime: IORuntime
+    using runtime: IORuntime,
+    meter: Meter[IO]
   ): cats.effect.Resource[IO, LocalDirectoryBucket] = {
     cats.effect.Resource.make {
       IO {
-        val bucket = LocalDirectoryBucket(config, ResourceDatabase(pool), topic, meterProvider)
+        val bucket = LocalDirectoryBucket(config, ResourceDatabase(pool), topic)
         bucket.sync().unsafeRunAsync(_ => ())
         bucket
       }
@@ -39,11 +39,9 @@ object LocalDirectoryBucket:
 class LocalDirectoryBucket(
   config: LocalDirectoryConfig,
   db: ResourceDatabase,
-  topic: EventTopic[ResourceEvent],
-  meterProvider: MeterProvider[IO]
-)(using runtime: IORuntime)
-    extends LocalDirectoryBase(config, db, topic, meterProvider), LocalResourceOperations, ResourceBucket, LocalResourceSyncer,
-      UploadResource, Logging {
+  topic: EventTopic[ResourceEvent]
+)(using runtime: IORuntime, meter: Meter[IO])
+    extends LocalDirectoryBase(config, db, topic), LocalResourceOperations, ResourceBucket, LocalResourceSyncer, UploadResource, Logging {
 
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getById(config.id, resourceId)
 

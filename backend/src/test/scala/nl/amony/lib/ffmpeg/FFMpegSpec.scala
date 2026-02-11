@@ -2,7 +2,7 @@ package nl.amony.lib.ffmpeg
 
 import cats.effect.IO
 import org.scalatest.flatspec.AnyFlatSpecLike
-import org.typelevel.otel4s.metrics.MeterProvider
+import org.typelevel.otel4s.metrics.Meter
 import scribe.Logging
 
 import nl.amony.lib.process.ffmpeg.FFMpeg
@@ -28,7 +28,7 @@ class FFMpegSpec extends AnyFlatSpecLike with Logging {
        |...
        |""".stripMargin
 
-  val ffmpeg = new FFMpeg(MeterProvider.noop[IO])
+  val ffmpeg = new FFMpeg(Meter.noop[IO])
 
   it should "create a sprite" in {
 

@@ -4,6 +4,7 @@ import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 import cats.effect.{IO, Resource}
+import fs2.Chunk
 import org.apache.solr.client.solrj.util.ClientUtils
 import org.apache.solr.client.solrj.{SolrClient, SolrQuery}
 import org.apache.solr.common.params.{CommonParams, FacetParams, ModifiableSolrParams}
@@ -53,8 +54,11 @@ object SolrSearchService {
 
 class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchService with Logging {
 
-  def loggingFailureIO[T](f: => T): IO[T] = IO(f)
-    .handleErrorWith { case e: Exception => IO(logger.error("Error while executing solr query", e)) >> IO.raiseError(e) }
+  def loggingFailureIO[T](f: => T): IO[T] =
+    IO.blocking(f)
+      .handleErrorWith {
+        case e: Exception => IO(logger.error("Error while executing solr query", e)) >> IO.raiseError(e)
+      }
 
   private def toSolrDocument(resource: ResourceInfo): SolrInputDocument = {
 
@@ -219,13 +223,19 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
 
   def totalDocuments(bucketId: String): Long = solr.query(collectionName, new SolrQuery(s"bucket_id_s:$bucketId")).getResults.getNumFound
 
-  private def insertResource(resource: ResourceInfo) = {
+  private def insert(resource: ResourceInfo, commitWithinMs: Int = config.commitWithinMillis) =
     try {
       logger.debug(s"Indexing media: ${resource.path}")
       val solrInputDocument = toSolrDocument(resource)
-      solr.add(collectionName, solrInputDocument, config.commitWithinMillis).getStatus
+      solr.add(collectionName, solrInputDocument, commitWithinMs).getStatus
     } catch { case e: Exception => logger.error("Exception while trying to index document to solr", e) }
-  }
+
+  private def insertAll(resources: Chunk[ResourceInfo], commitWithinMs: Int = config.commitWithinMillis) =
+    try {
+      logger.debug(s"Indexing batch of media, size: ${resources.size}")
+      val solrInputDocuments = resources.map(toSolrDocument).asJava
+      solr.add(collectionName, solrInputDocuments, commitWithinMs).getStatus
+    } catch { case e: Exception => logger.error("Exception while trying to index documents to solr", e) }
 
   def processEvent(event: ResourceEvent): Unit = {
 
@@ -233,9 +243,9 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
 
     event match {
 
-      case ResourceAdded(resource) => insertResource(resource)
+      case ResourceAdded(resource) => insert(resource)
 
-      case ResourceUpdated(resource) => insertResource(resource)
+      case ResourceUpdated(resource) => insert(resource)
 
       case ResourceMoved(resourceId, oldPath, newPath) =>
         val solrDocument = new SolrInputDocument()
@@ -257,17 +267,21 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
     }
   }
 
-  override def indexAll(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] = resources.evalMap(resource => IO(insertResource(resource))).compile.drain
-    .handleErrorWith(t => IO(logger.error("Error while re-indexing", t)) >> IO.raiseError(t))
+  override def indexAll(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] =
+    resources
+      .chunkN(100)
+      .evalMap(resources => IO.blocking(insertAll(resources, commitWithinMs = 60000)))
+      .compile.drain
+      .handleErrorWith(t => IO(logger.error("Error while re-indexing", t)) >> IO.raiseError(t))
 
-  override def index(resource: ResourceInfo): IO[Unit] = IO(insertResource(resource))
+  override def index(resource: ResourceInfo): IO[Unit] = IO(insert(resource))
 
-  override def searchMedia(query: Query): IO[SearchResult] = {
+  override def searchMedia(query: Query): IO[SearchResult] =
 
     loggingFailureIO {
 
       val solrParams    = toSolrQuery(query)
-      val queryResponse = solr.query(solrParams)
+      val queryResponse = solr.query(collectionName, solrParams)
 
       logger.debug(s"Executing solr query: ${solrParams.toString}")
 
@@ -288,16 +302,17 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
 
       SearchResult(offset = offset.toInt, total = total.toInt, results = results.asScala.map(toResource).toList, tags = tagsWithFrequency)
     }
-  }
 
-  override def forceCommit(): IO[Unit] = loggingFailureIO {
-    logger.info("Forcing commit")
-    solr.commit(collectionName)
-  }
+  override def forceCommit(): IO[Unit] =
+    loggingFailureIO {
+      logger.info("Forcing commit")
+      solr.commit(collectionName)
+    }
 
-  override def deleteBucket(bucketId: String): IO[Unit] = loggingFailureIO {
-    logger.info(s"Deleting bucket: $bucketId")
-    solr.deleteByQuery(collectionName, s"${FieldNames.bucketId}:${ClientUtils.escapeQueryChars(bucketId)}", config.commitWithinMillis)
-    solr.commit(collectionName)
-  }
+  override def deleteBucket(bucketId: String): IO[Unit] =
+    loggingFailureIO {
+      logger.info(s"Deleting bucket: $bucketId")
+      solr.deleteByQuery(collectionName, s"${FieldNames.bucketId}:${ClientUtils.escapeQueryChars(bucketId)}", config.commitWithinMillis)
+      solr.commit(collectionName)
+    }
 }

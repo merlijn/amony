@@ -11,6 +11,7 @@ import com.dimafeng.testcontainers.scalatest.TestContainerForAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
+import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 import nl.amony.modules.auth.api.UserId
@@ -64,7 +65,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       port     = container.mappedPort(5432),
       database = "test",
       username = "test",
-      password = Some("test"),
+      password = "test",
       poolSize = 3
     )
 
@@ -76,7 +77,8 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
           logger.info(s"Container IP: ${container.containerIpAddress}")
           logger.info(s"Container Port: ${container.mappedPort(5432)}")
 
-          val dbConfig = configForContainer(container)
+          val dbConfig             = configForContainer(container)
+          given tracer: Tracer[IO] = Tracer.noop[IO]
 
           App.makeDatabasePool(dbConfig).map(ResourceDatabase(_)).use(db =>
             insertResourcesTest(db) >> db.truncateTables() >>
@@ -98,7 +100,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
             port     = container.mappedPort(5432),
             database = "test",
             username = "test",
-            password = Some("test"),
+            password = "test",
             poolSize = 3
           )
 

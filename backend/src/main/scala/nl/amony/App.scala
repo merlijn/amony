@@ -4,28 +4,35 @@ import java.nio.file.Path
 import scala.reflect.ClassTag
 import scala.util.Using
 
-import cats.effect.{IO, Resource, ResourceApp}
+import cats.Monad
+import cats.effect.std.Dispatcher
+import cats.effect.{Async, IO, Resource, ResourceApp}
 import cats.implicits.*
 import com.typesafe.config.{Config, ConfigFactory}
 import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
-import org.typelevel.otel4s.metrics.MeterProvider
+import org.typelevel.otel4s.logs.LoggerProvider
+import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
 import org.typelevel.otel4s.oteljava.OtelJava
-import org.typelevel.otel4s.trace.Tracer.Implicits.noop
+import org.typelevel.otel4s.oteljava.context.{Context, LocalContextProvider}
+import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import pureconfig.ConfigSource
+import scribe.format.Formatter
+import scribe.handler.{AsynchronousLogHandle, Overflow}
 import scribe.{Logger, Logging}
 import skunk.Session
 import sttp.client4.httpclient.cats.HttpClientCatsBackend
 import sttp.tapir.server.http4s.Http4sServerOptions
+import sttp.tapir.server.tracing.otel4s.Otel4sTracing
 
 import nl.amony.lib.messagebus.EventTopic
+import nl.amony.lib.otel.ScribeOtel4sWriter
 import nl.amony.modules.admin.AdminRoutes
 import nl.amony.modules.auth.*
 import nl.amony.modules.resources.ResourceConfig
 import nl.amony.modules.resources.api.ResourceEvent
-import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.modules.resources.http.{ResourceContentRoutes, ResourceRoutes}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.modules.search.http.SearchRoutes
@@ -50,18 +57,47 @@ object App extends ResourceApp.Forever with Logging {
           liquibase.update()
       })
 
-  def makeDatabasePool(config: DatabaseConfig): Resource[IO, Resource[IO, Session[IO]]] = {
+  def makeDatabasePool(config: DatabaseConfig)(using tracer: Tracer[IO]): Resource[IO, Resource[IO, Session[IO]]] = {
     for
-      pool <- Session.pooled[IO](
-                host     = config.host,
-                port     = config.port,
-                user     = config.username,
-                max      = config.poolSize,
-                database = config.database,
-                password = config.password
-              )
+      pool <- Session.Builder[IO]
+                .withHost(config.host)
+                .withPort(config.port)
+                .withUserAndPassword(config.username, config.password)
+                .withDatabase(config.database)
+                .pooled(config.poolSize)
       _    <- Resource.eval(runDatabaseMigrations(config))
     yield pool
+  }
+
+  def observability[F[_]: {Monad, Async,
+    LocalContextProvider}](config: ObservabilityConfig): Resource[F, (MeterProvider[F], TracerProvider[F], LoggerProvider[F, Context])] = {
+
+    def otelObservability(): Resource[F, (MeterProvider[F], TracerProvider[F], LoggerProvider[F, Context])] =
+      for
+        dispatcher <- Dispatcher.sequential[F]
+        otel       <- OtelJava.autoConfigured[F]()
+      yield {
+        val otelWriter = new ScribeOtel4sWriter[F, Context](otel.loggerProvider, otel.localContext, dispatcher)
+
+        logger.info("Configuring otel logger ...")
+
+        Logger.root.clearHandlers()
+          .withHandler(formatter = Formatter.classic) // default console handler
+          .withHandler(
+            writer = otelWriter,
+            handle = AsynchronousLogHandle(
+              maxBuffer = 1024,
+              overflow  = Overflow.DropOld
+            )
+          ).replace()
+
+        (otel.meterProvider, otel.tracerProvider, otel.loggerProvider)
+      }
+
+    def nooopObservability(): Resource[F, (MeterProvider[F], TracerProvider[F], LoggerProvider[F, Context])] =
+      Resource.pure(MeterProvider.noop[F], TracerProvider.noop[F], LoggerProvider.noop[F, Context])
+
+    if config.otelEnabled then otelObservability() else nooopObservability()
   }
 
   override def run(args: List[String]): Resource[IO, Unit] = {
@@ -70,37 +106,59 @@ object App extends ResourceApp.Forever with Logging {
 
     val appConfig: AppConfig = ConfigSource.fromConfig(config).at("amony").loadOrThrow[AppConfig]
 
-    logger.info("Starting application, app home directory: " + appConfig.amonyHome)
+    logger.info("Starting application")
     logger.debug("Configuration: " + appConfig)
 
     // somehow the default (slf4j) logger for http4s is not working, so we explicitly set it here
     val serverLog = {
       val serverLogger = Logger("nl.amony.app.Main.serverLogger")
+      val accessLogger = Logger("nl.amony.app.Main.accessLogger")
       Http4sServerOptions.defaultServerLog[IO]
-        .copy(logLogicExceptions = true, doLogExceptions = (msg, throwable) => IO(serverLogger.error(msg, throwable)))
+        .copy(
+          logLogicExceptions = true,
+          doLogWhenHandled   = (msg, throwable) => IO(accessLogger.info(msg)),
+          doLogExceptions    = (msg, throwable) => IO(serverLogger.error(msg, throwable))
+        )
     }
 
-    given serverOptions: Http4sServerOptions[IO] = Http4sServerOptions.customiseInterceptors[IO].serverLog(serverLog).options
+    def application(
+      using meterProvider: MeterProvider[IO],
+      meter: Meter[IO],
+      tracerProvider: TracerProvider[IO],
+      tracer: Tracer[IO]
+    ): Resource[IO, Unit] = {
+
+      given serverOptions: Http4sServerOptions[IO] =
+        Http4sServerOptions.customiseInterceptors[IO]
+          .prependInterceptor(Otel4sTracing(tracer))
+          .serverLog(serverLog).options
+
+      for
+        databasePool      <- makeDatabasePool(appConfig.database)
+        httpClientBackend <- HttpClientCatsBackend.resource[IO]()
+        resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
+        searchService     <- SolrSearchService.resource(appConfig.search.solr)
+        _                  = resourceEventTopic.followTail(searchService.processEvent)
+        resourceBuckets   <- appConfig.resources.buckets.map {
+                               case localConfig: ResourceConfig.LocalDirectoryConfig =>
+                                 LocalDirectoryBucket.resource(localConfig, databasePool, resourceEventTopic)
+                             }.sequence
+        resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
+        authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
+        apiRoutes          = ResourceContentRoutes.apply(resourceBucketMap, authModule.apiSecurity) <+>
+                               authModule.routes <+>
+                               AdminRoutes.apply(searchService, resourceBucketMap, authModule.apiSecurity) <+>
+                               SearchRoutes.apply(searchService, appConfig.search, authModule.apiSecurity) <+>
+                               ResourceRoutes.apply(resourceBucketMap, authModule.apiSecurity)
+        _                 <- WebServer.run(appConfig.api, apiRoutes)
+      yield ()
+    }
 
     for
-      databasePool      <- makeDatabasePool(appConfig.database)
-      meterProvider      = MeterProvider.noop[IO] // OtelJava.autoConfigured[IO]()
-      httpClientBackend <- HttpClientCatsBackend.resource[IO]()
-      resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
-      searchService     <- SolrSearchService.resource(appConfig.search.solr)
-      _                  = resourceEventTopic.followTail(searchService.processEvent)
-      resourceBuckets   <- appConfig.resources.buckets.map {
-                             case localConfig: ResourceConfig.LocalDirectoryConfig =>
-                               LocalDirectoryBucket.resource(localConfig, databasePool, resourceEventTopic, meterProvider)
-                           }.sequence
-      resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
-      authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
-      apiRoutes          = ResourceContentRoutes.apply(resourceBucketMap, authModule.apiSecurity) <+>
-                             authModule.routes <+>
-                             AdminRoutes.apply(searchService, resourceBucketMap, authModule.apiSecurity) <+>
-                             SearchRoutes.apply(searchService, appConfig.search, authModule.apiSecurity) <+>
-                             ResourceRoutes.apply(resourceBucketMap, authModule.apiSecurity)
-      _                 <- WebServer.run(appConfig.api, apiRoutes)
+      (meterProvider, tracerProvider, f) <- observability[IO](appConfig.observability)
+      meter                              <- Resource.eval(meterProvider.get("app.amony"))
+      tracer                             <- Resource.eval(tracerProvider.get("app.amony"))
+      _                                  <- application(using meterProvider, meter, tracerProvider, tracer)
     yield ()
   }
 }

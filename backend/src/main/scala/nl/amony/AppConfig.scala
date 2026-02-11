@@ -8,24 +8,25 @@ import pureconfig.*
 
 import nl.amony.modules.auth.AuthConfig
 import nl.amony.modules.resources.ResourceConfig
-import nl.amony.modules.resources.ResourceConfig.ResourceBucketConfig
 import nl.amony.modules.search.SearchConfig
 import nl.amony.modules.search.solr.SolrConfig
 
-case class DatabaseConfig(host: String, port: Int, database: String, username: String, poolSize: Int, password: Option[String]) derives ConfigReader {
+case class DatabaseConfig(host: String, port: Int, database: String, username: String, poolSize: Int, password: String) derives ConfigReader {
   def getJdbcConnection: IO[Connection] =
     IO {
       Class.forName("org.postgresql.Driver")
       val jdbcUrl = s"jdbc:postgresql://$host:$port/$database"
-      DriverManager.getConnection(jdbcUrl, username, password.getOrElse(null))
+      DriverManager.getConnection(jdbcUrl, username, password)
     }
 }
 
+case class ObservabilityConfig(otelEnabled: Boolean) derives ConfigReader
+
 case class AppConfig(
-  amonyHome: Path,
   resources: ResourceConfig,
   auth: AuthConfig,
   api: WebServerConfig,
   search: SearchConfig,
-  database: DatabaseConfig
+  database: DatabaseConfig,
+  observability: ObservabilityConfig
 ) derives ConfigReader
