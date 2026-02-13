@@ -17,8 +17,8 @@ trait LocalDirectoryBase(
   val topic: EventTopic[ResourceEvent]
 )(using meter: Meter[IO]) {
 
-  val ffmpeg      = new FFMpeg(meter)
-  val imageMagick = new ImageMagick(meter)
+  val ffmpeg      = new FFMpeg
+  val imageMagick = new ImageMagick
 
   val meta = LocalResourceMetaDataScanner(new Tika(), ffmpeg, imageMagick)
 }

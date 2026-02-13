@@ -40,9 +40,9 @@ trait FFProbe extends Logging:
 
       useProcess("ffprobe", args) { process =>
         for
-          jsonOutput  <- toString(process.stdout)
+          jsonOutput  <- compileToString(process.stdout)
           debugOutput <-
-            if debug then toString(process.stderr).map(debugOutput => Some(ProbeDebugOutput(fastStartPattern.matches(debugOutput))))
+            if debug then compileToString(process.stderr).map(debugOutput => Some(ProbeDebugOutput(fastStartPattern.matches(debugOutput))))
             else IO.pure(None)
         yield {
 

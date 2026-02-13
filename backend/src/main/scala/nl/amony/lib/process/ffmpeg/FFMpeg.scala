@@ -24,6 +24,6 @@ object FFMpeg {
   }
 }
 
-class FFMpeg(meter: Meter[IO]) extends Logging with ProcessRunner(meter)
+class FFMpeg(using meter: Meter[IO]) extends Logging with ProcessRunner
     with CreateThumbnail with CreateThumbnailTile
     with FFProbe with AddFastStart with Transcode

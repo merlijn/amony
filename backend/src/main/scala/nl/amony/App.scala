@@ -4,23 +4,17 @@ import java.nio.file.Path
 import scala.reflect.ClassTag
 import scala.util.Using
 
-import cats.Monad
-import cats.effect.std.Dispatcher
-import cats.effect.{Async, IO, Resource, ResourceApp}
+import cats.effect.{IO, Resource, ResourceApp}
 import cats.implicits.*
 import com.typesafe.config.{Config, ConfigFactory}
 import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
-import org.typelevel.otel4s.logs.LoggerProvider
 import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
-import org.typelevel.otel4s.oteljava.OtelJava
-import org.typelevel.otel4s.oteljava.context.{Context, LocalContextProvider}
+import org.typelevel.otel4s.oteljava.context.Context
 import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import pureconfig.ConfigSource
-import scribe.format.Formatter
-import scribe.handler.{AsynchronousLogHandle, Overflow}
 import scribe.{Logger, Logging}
 import skunk.Session
 import sttp.client4.httpclient.cats.HttpClientCatsBackend
@@ -28,7 +22,7 @@ import sttp.tapir.server.http4s.Http4sServerOptions
 import sttp.tapir.server.tracing.otel4s.Otel4sTracing
 
 import nl.amony.lib.messagebus.EventTopic
-import nl.amony.lib.otel.ScribeOtel4sWriter
+import nl.amony.lib.observability.Observability
 import nl.amony.modules.admin.AdminRoutes
 import nl.amony.modules.auth.*
 import nl.amony.modules.resources.ResourceConfig
@@ -49,12 +43,11 @@ object App extends ResourceApp.Forever with Logging {
 
   def runDatabaseMigrations(config: DatabaseConfig): IO[Unit] =
     config.getJdbcConnection.flatMap: connection =>
-      IO.fromTry(Using(connection) {
-        conn =>
-          logger.info("Running database migrations...")
-          val liquibaseDatabase = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(conn));
-          val liquibase         = new Liquibase("db/00-changelog.yaml", new ClassLoaderResourceAccessor(), liquibaseDatabase)
-          liquibase.update()
+      IO.fromTry(Using(connection) { conn =>
+        logger.info("Running database migrations...")
+        val liquibaseDatabase = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(conn));
+        val liquibase         = new Liquibase("db/00-changelog.yaml", new ClassLoaderResourceAccessor(), liquibaseDatabase)
+        liquibase.update()
       })
 
   def makeDatabasePool(config: DatabaseConfig)(using tracer: Tracer[IO]): Resource[IO, Resource[IO, Session[IO]]] = {
@@ -67,37 +60,6 @@ object App extends ResourceApp.Forever with Logging {
                 .pooled(config.poolSize)
       _    <- Resource.eval(runDatabaseMigrations(config))
     yield pool
-  }
-
-  def observability[F[_]: {Monad, Async,
-    LocalContextProvider}](config: ObservabilityConfig): Resource[F, (MeterProvider[F], TracerProvider[F], LoggerProvider[F, Context])] = {
-
-    def otelObservability(): Resource[F, (MeterProvider[F], TracerProvider[F], LoggerProvider[F, Context])] =
-      for
-        dispatcher <- Dispatcher.sequential[F]
-        otel       <- OtelJava.autoConfigured[F]()
-      yield {
-        val otelWriter = new ScribeOtel4sWriter[F, Context](otel.loggerProvider, otel.localContext, dispatcher)
-
-        logger.info("Configuring otel logger ...")
-
-        Logger.root.clearHandlers()
-          .withHandler(formatter = Formatter.classic) // default console handler
-          .withHandler(
-            writer = otelWriter,
-            handle = AsynchronousLogHandle(
-              maxBuffer = 1024,
-              overflow  = Overflow.DropOld
-            )
-          ).replace()
-
-        (otel.meterProvider, otel.tracerProvider, otel.loggerProvider)
-      }
-
-    def nooopObservability(): Resource[F, (MeterProvider[F], TracerProvider[F], LoggerProvider[F, Context])] =
-      Resource.pure(MeterProvider.noop[F], TracerProvider.noop[F], LoggerProvider.noop[F, Context])
-
-    if config.otelEnabled then otelObservability() else nooopObservability()
   }
 
   override def run(args: List[String]): Resource[IO, Unit] = {
@@ -155,7 +117,7 @@ object App extends ResourceApp.Forever with Logging {
     }
 
     for
-      (meterProvider, tracerProvider, f) <- observability[IO](appConfig.observability)
+      (meterProvider, tracerProvider, f) <- Observability.resource[IO](appConfig.observability)
       meter                              <- Resource.eval(meterProvider.get("app.amony"))
       tracer                             <- Resource.eval(tracerProvider.get("app.amony"))
       _                                  <- application(using meterProvider, meter, tracerProvider, tracer)

@@ -1,12 +1,12 @@
 package nl.amony.lib.process
 
 import cats.effect.IO
-import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
+import org.typelevel.otel4s.metrics.Meter
 import scribe.Logging
 
-trait ProcessRunner(val meter: Meter[IO]) extends Logging {
+trait ProcessRunner(using meter: Meter[IO]) extends Logging {
 
-  def toString(is: fs2.Stream[IO, Byte]): IO[String] = is.compile.toVector.map(_.toArray).map(new String(_))
+  def compileToString(is: fs2.Stream[IO, Byte]): IO[String] = is.compile.toVector.map(_.toArray).map(new String(_))
 
   def tail(is: fs2.Stream[IO, Byte], nrOfLines: Int): IO[String] =
     is.through(fs2.text.utf8.decode)
@@ -35,7 +35,7 @@ trait ProcessRunner(val meter: Meter[IO]) extends Logging {
     val is = if useErrorStream then process.stderr else process.stdout
     process.exitValue.flatMap { exitCode =>
       if exitCode != 0 then logger.warn(s"""Non zero exit code for command: ${cmds.mkString(" ")} \n""")
-      toString(is)
+      compileToString(is)
     }
 
   def runIgnoreOutput(cmd: String, args: Seq[String]): IO[Int] =
@@ -49,7 +49,7 @@ trait ProcessRunner(val meter: Meter[IO]) extends Logging {
       .spawn[IO].use(processHandler)
       .timed.flatMap { case (duration, result) =>
         logger.debug(s"Process '$cmd ${args.mkString(" ")}' completed in ${duration.toMillis} ms")
-        meter.counter[Long]("duration-ms").create.flatMap(_.inc()) >> IO.pure(result)
+        meter.histogram[Long](cmd).create.flatMap(_.record(duration.toMillis)) >> IO.pure(result)
       }
   }
 }

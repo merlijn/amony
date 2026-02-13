@@ -1,4 +1,4 @@
-package nl.amony.lib.otel
+package nl.amony.lib.observability
 
 import cats.Monad
 import cats.effect.kernel.{Async, Sync}
