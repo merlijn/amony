@@ -4,6 +4,7 @@ import java.time.Duration
 
 import cats.effect.IO
 import org.typelevel.otel4s.metrics.Meter
+import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 import nl.amony.lib.process.ProcessRunner
@@ -24,6 +25,6 @@ object FFMpeg {
   }
 }
 
-class FFMpeg(using meter: Meter[IO]) extends Logging with ProcessRunner
+class FFMpeg(using meter: Meter[IO], tracer: Tracer[IO]) extends Logging with ProcessRunner
     with CreateThumbnail with CreateThumbnailTile
     with FFProbe with AddFastStart with Transcode

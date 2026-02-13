@@ -33,7 +33,7 @@ case class VideoFragment(width: Option[Int] = None, height: Option[Int] = None, 
       case Some(video: VideoProperties) =>
         val duration = end - start
         for
-          _ <- Either.cond(height.get > minHeight || height.get < maxHeight, (), "Height out of bounds") // TODO Remove Option.get
+          _ <- Either.cond(height.exists(_ > minHeight) || height.exists(_ < maxHeight), (), "Height out of bounds")
           _ <- Either.cond(start >= 0, (), "Start time is negative")
           _ <- Either.cond(end > start, (), "End time is before start time")
           _ <- Either.cond(duration > minLengthInMillis, (), "Duration too short")

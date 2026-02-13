@@ -2,13 +2,14 @@ package nl.amony.lib.process
 
 import cats.effect.IO
 import org.typelevel.otel4s.metrics.Meter
+import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 case class Command(cmd: String, args: Seq[String]) {
   override def toString: String = s"$cmd ${args.mkString(" ")}"
 }
 
-trait ProcessRunner(using meter: Meter[IO]) extends Logging {
+trait ProcessRunner(using meter: Meter[IO], tracer: Tracer[IO]) extends Logging {
 
   def compileToString(is: fs2.Stream[IO, Byte]): IO[String] = is.compile.toVector.map(_.toArray).map(new String(_))
 
@@ -48,11 +49,14 @@ trait ProcessRunner(using meter: Meter[IO]) extends Logging {
   def useProcessOutput[T](name: String, command: Command, useErrorStream: Boolean)(fn: String => IO[T]): IO[T] =
     useProcess(name, command)(process => getOutputAsString(process, useErrorStream, command).flatMap(fn))
 
-  def useProcess[T](name: String, cmd: Command)(processHandler: fs2.io.process.Process[IO] => IO[T]): IO[T] =
-    fs2.io.process.ProcessBuilder(cmd.cmd, cmd.args.toList)
-      .spawn[IO].use(processHandler)
-      .timed.flatMap { case (duration, result) =>
-        logger.debug(s"Process '$cmd ${cmd.args.mkString(" ")}' completed in ${duration.toMillis} ms")
-        meter.histogram[Long](cmd.cmd).create.flatMap(_.record(duration.toMillis)) >> IO.pure(result)
-      }
+  def useProcess[T](name: String, cmd: Command)(processHandler: fs2.io.process.Process[IO] => IO[T]): IO[T] = {
+    tracer.span(s"process.$name").use { _ =>
+      fs2.io.process.ProcessBuilder(cmd.cmd, cmd.args.toList)
+        .spawn[IO].use(processHandler)
+        .timed.flatMap { case (duration, result) =>
+          logger.debug(s"Process '$cmd' completed in ${duration.toMillis} ms")
+          meter.histogram[Long](s"process.$name").create.flatMap(_.record(duration.toMillis)) >> IO.pure(result)
+        }
+    }
+  }
 }
