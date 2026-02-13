@@ -6,8 +6,8 @@ import cats.effect.IO
 import scribe.Logging
 
 import nl.amony.lib.files.*
-import nl.amony.lib.process.ProcessRunner
 import nl.amony.lib.process.ffmpeg.FFMpeg.formatTime
+import nl.amony.lib.process.{Command, ProcessRunner}
 
 case class TranscodeProfile(ext: String, args: List[String])
 
@@ -36,7 +36,7 @@ trait Transcode extends Logging {
       scaleHeight.toList.flatMap(height => List("-vf", s"scale=-2:$height")) ++ profile.args ++ Option.when(!includeAudio)("-an") ++
       List("-v", "quiet", "-y", output)
 
-    runIgnoreOutput("ffmpeg", args).map(_ => Path.of(output))
+    runIgnoreOutput("ffmpeg-transcode", Command("ffmpeg", args)).map(_ => Path.of(output))
   }
 
   def streamStranscodeMp4(inputFile: Path, scaleHeight: Option[Int] = None): fs2.Stream[IO, Byte] = {
@@ -55,6 +55,6 @@ trait Transcode extends Logging {
         )
     // format: on
 
-    fs2.Stream.force(useProcess("ffmpeg", args)(p => IO(p.stdout)))
+    fs2.Stream.force(useProcess("ffmpeg-stream-transcode", Command("ffmpeg", args))(p => IO(p.stdout)))
   }
 }
