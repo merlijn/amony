@@ -22,7 +22,7 @@ addCommandAlias("format", "; scalafmt; test:scalafmt")
 
 val javaDevOpts = Seq(
   "-DAMONY_SECURE_COOKIES=false",
-  "-DAMONY_OTEL_ENABLED=true",
+  "-DAMONY_OTEL_ENABLED=false",
   "-DOTEL_SERVICE_NAME=amony-app",
   "-DAMONY_MEDIA_PATH=../media",
   "-DAMONY_SOLR_PATH=../data/solr",

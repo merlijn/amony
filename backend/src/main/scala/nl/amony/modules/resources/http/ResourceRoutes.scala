@@ -7,6 +7,7 @@ import cats.implicits.*
 import org.http4s.HttpRoutes
 import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist
+import sttp.capabilities.fs2.Fs2Streams
 import sttp.model.{HeaderNames, StatusCode}
 import sttp.tapir.*
 import sttp.tapir.CodecFormat.TextPlain
@@ -15,7 +16,7 @@ import sttp.tapir.json.circe.*
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 
 import nl.amony.modules.auth.api.*
-import nl.amony.modules.resources.api.{Resource, ResourceBucket, ResourceId}
+import nl.amony.modules.resources.api.{Resource, ResourceBucket, ResourceId, UploadError}
 
 def oneOfList[T](variants: List[OneOfVariant[? <: T]]) = EndpointOutput.OneOf[T, T](variants, Mapping.id)
 
@@ -80,7 +81,16 @@ object ResourceRoutes:
       .in(jsonBody[BulkTagsUpdateDto])
       .errorOut(errorOutput)
 
-  val endpoints = List(getResourceById, deleteResource, updateUserMetaData, updateThumbnailTimestamp, modifyTagsBulk)
+  val uploadResource =
+    endpoint
+      .name("uploadResource").tag("resources").description("Upload a resource to a bucket")
+      .post.in("api" / "resources" / path[String]("bucketId") / "upload")
+      .securityIn(securityInput).errorOut(errorOutput)
+      .in(header[String]("X-Filename"))
+      .in(streamBody(Fs2Streams[IO])(Schema.schemaForByteArray, CodecFormat.OctetStream()))
+      .out(jsonBody[ResourceDto])
+
+  val endpoints = List(getResourceById, deleteResource, updateUserMetaData, updateThumbnailTimestamp, modifyTagsBulk, uploadResource)
 
   def apply(buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
 
@@ -157,6 +167,19 @@ object ResourceRoutes:
         action.value
     }
 
+    def mapUploadError(uploadError: UploadError): ApiError | SecurityError =
+      uploadError match
+        case UploadError.InvalidFileName(_) => ApiError.BadRequest
+        case UploadError.StorageError(_)    => ApiError.BadRequest
+
+    val uploadResourceImpl = uploadResource.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogic {
+      token => (bucketId, fileName, body) =>
+        (for
+          bucket   <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound: ApiError | SecurityError)
+          resource <- EitherT(bucket.uploadResource(token.userId, fileName, body)).leftMap(mapUploadError)
+        yield toDto(resource)).value
+    }
+
     Http4sServerInterpreter[IO](serverOptions)
-      .toRoutes(List(getResourceByIdImpl, deleteResourceImpl, updateUserMetaDataImpl, updateThumbnailTimestampImpl, modifyTagsBulkImpl))
+      .toRoutes(List(getResourceByIdImpl, deleteResourceImpl, updateUserMetaDataImpl, updateThumbnailTimestampImpl, modifyTagsBulkImpl, uploadResourceImpl))
   }
