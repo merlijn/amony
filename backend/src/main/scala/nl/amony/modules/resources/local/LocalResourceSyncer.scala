@@ -72,22 +72,48 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
     }
 
   /**
-   * Given an initial state, this method will poll the directory for changes and emit events for new, deleted and moved resources.
-   *
-   * The state will be kept in memory and is not persisted.
+   * Verifies that the bucket identity file matches the expected bucket id.
+   * If the database is empty, the identity file is created.
+   * Returns true if scanning may proceed, false otherwise.
    */
+  private def verifyBucketIdentity(dbIsEmpty: Boolean): Boolean = {
+    if dbIsEmpty then {
+      Files.createDirectories(config.amonyPath)
+      Files.writeString(config.bucketIdPath, bucketId)
+      true
+    } else if !Files.exists(config.bucketIdPath) then {
+      logger.error(
+        s"""No Bucket identity file found at ${config.bucketIdPath}
+           |This may indicate the wrong directory was mounted. To prevent data loss, scanning will not proceed.
+           |To bypass this create a file with the content '$bucketId' at ${config.bucketIdPath}
+           |Make sure to verify the following directory is mounted correctly and contains the expected resources before doing so: ${config.resourcePath.toAbsolutePath}
+           |""".stripMargin
+      )
+      false
+    } else {
+      val storedId = Files.readString(config.bucketIdPath).strip()
+      if storedId == bucketId then true
+      else {
+        logger.error(
+          s"""Bucket identity mismatch: expected '$bucketId' but found '$storedId' in ${config.bucketIdPath}.
+             |This may indicate the wrong directory was mounted, or that the bucket identity file was modified. To prevent data loss, scanning will not proceed.
+             |To bypass this create a file at ${config.bucketIdPath} with the content '$bucketId'.
+             |Make sure to verify the following directory is mounted correctly and contains the expected resources before doing so: ${config.resourcePath.toAbsolutePath}
+             |""".stripMargin
+        )
+        false
+      }
+    }
+  }
+
   private def singleScan(): Stream[IO, ResourceEvent] =
     Stream.eval(toFileStore()).flatMap { fileStore =>
-      if Files.exists(config.cachePath) || fileStore.size() == 0 then {
+      if verifyBucketIdentity(dbIsEmpty = fileStore.size() == 0) then {
         logger.info(s"Scanning directory: ${config.resourcePath}")
-        Files.createDirectories(config.cachePath)
         LocalDirectoryScanner
           .scanDirectory(config.resourcePath, fileStore, config.filterDirectory, config.filterFiles, config.hashingAlgorithm.createHash)
           .parEvalMap(config.sync.scanParallelFactor)(mapFileEvent)
       } else {
-        logger.error(
-          s"Cache directory ${config.cachePath} does not exist, but database is not empty. This may lead data loss. Not scanning for changes."
-        )
         Stream.empty
       }
     }

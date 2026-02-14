@@ -181,5 +181,12 @@ object ResourceRoutes:
     }
 
     Http4sServerInterpreter[IO](serverOptions)
-      .toRoutes(List(getResourceByIdImpl, deleteResourceImpl, updateUserMetaDataImpl, updateThumbnailTimestampImpl, modifyTagsBulkImpl, uploadResourceImpl))
+      .toRoutes(List(
+        getResourceByIdImpl,
+        deleteResourceImpl,
+        updateUserMetaDataImpl,
+        updateThumbnailTimestampImpl,
+        modifyTagsBulkImpl,
+        uploadResourceImpl
+      ))
   }

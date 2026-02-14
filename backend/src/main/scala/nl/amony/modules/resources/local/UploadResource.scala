@@ -1,25 +1,26 @@
 package nl.amony.modules.resources.local
 
+import java.nio.file.{Files as JFiles, Path as JPath}
+import java.security.MessageDigest
+
 import cats.data.EitherT
 import cats.effect.IO
 import fs2.{Chunk, Pipe}
+import scribe.Logging
+
 import nl.amony.lib.files.watcher.FileInfo
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.{ResourceAdded, ResourceBucket, ResourceInfo, UploadError}
-import scribe.Logging
-
-import java.nio.file.{Files as JFiles, Path as JPath}
-import java.security.MessageDigest
 
 trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
 
   private val invalidSequences = List("/", "\\", "..")
-  private val files = summon[fs2.io.file.Files[IO]]
+  private val files            = summon[fs2.io.file.Files[IO]]
 
   private def resolveTargetPath(path: JPath, maxAttempt: Int): Either[UploadError, JPath] = {
 
     var target: JPath = path
-    var counter: Int = 1
+    var counter: Int  = 1
 
     while JFiles.exists(target) && counter < maxAttempt do
       val fileNameWithoutExt = target.getFileName.toString.lastIndexOf('.') match
@@ -47,7 +48,7 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
 
       val temporaryFileName = s"${config.random.alphanumeric.take(8).mkString}_$fileName"
 
-      val uploadPath = config.uploadPath.resolve(temporaryFileName)
+      val uploadPath                                   = config.uploadPath.resolve(temporaryFileName)
       val writeToFile: Pipe[IO, Byte, Nothing]         = fs2.io.file.Files[IO].writeAll(fs2.io.file.Path.fromNioPath(uploadPath))
       val calculateHash: Pipe[IO, Byte, MessageDigest] = {
 
