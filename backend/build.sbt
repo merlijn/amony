@@ -22,8 +22,12 @@ addCommandAlias("format", "; scalafmt; test:scalafmt")
 
 val javaDevOpts = Seq(
   "-DAMONY_SECURE_COOKIES=false",
-  "-DAMONY_OTEL_ENABLED=true",
-  "-DOTEL_SERVICE_NAME=amony-app",
+  "-DAMONY_OTEL_ENABLED=false",
+  "-Dotel.service.name=amony-app",
+// Open observe config
+//  "-Dotel.exporter.otlp.endpoint=http://localhost:5080/api/default",
+//  "-Dotel.exporter.otlp.headers=Authorization=Basic <key>",
+//  "-Dotel.exporter.otlp.protocol=http/protobuf",
   "-DAMONY_MEDIA_PATH=../media",
   "-DAMONY_SOLR_PATH=../data/solr",
   "-DAMONY_WEB_CLIENT_PATH=../frontend/dist",

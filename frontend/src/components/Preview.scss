@@ -55,16 +55,23 @@
       font-size: 13px;
     }
 
-    .preview-edit-icon-overlay {
+    .preview-delete-icon-overlay {
       @extend .abs-top-right;
       z-index: 8;
       margin: 5px;
-      padding: 2px 5px;
-      color: var(--text-inverse);
-      background-color: rgba(var(--text-primary), 0.0);
-      font-size: small;
+      padding: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      svg {
+        width: 20px;
+        height: 20px;
+        color: #fff;
+        filter: drop-shadow(0 0 4px rgba(0,0,0,0.9));
+      }
       &:hover {
-        background-color: var(--bg-hover);
+        background-color: rgba(0,0,0,0.5);
         border-radius: 50%;
       }
     }

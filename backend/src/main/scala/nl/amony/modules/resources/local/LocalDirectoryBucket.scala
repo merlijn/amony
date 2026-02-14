@@ -7,6 +7,7 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import cats.implicits.*
 import org.typelevel.otel4s.metrics.Meter
+import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 import skunk.Session
 
@@ -25,7 +26,8 @@ object LocalDirectoryBucket:
     topic: EventTopic[ResourceEvent]
   )(
     using runtime: IORuntime,
-    meter: Meter[IO]
+    meter: Meter[IO],
+    tracer: Tracer[IO]
   ): cats.effect.Resource[IO, LocalDirectoryBucket] = {
     cats.effect.Resource.make {
       IO {
@@ -40,7 +42,7 @@ class LocalDirectoryBucket(
   config: LocalDirectoryConfig,
   db: ResourceDatabase,
   topic: EventTopic[ResourceEvent]
-)(using runtime: IORuntime, meter: Meter[IO])
+)(using runtime: IORuntime, meter: Meter[IO], tracer: Tracer[IO])
     extends LocalDirectoryBase(config, db, topic), LocalResourceOperations, ResourceBucket, LocalResourceSyncer, UploadResource, Logging {
 
   private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getById(config.id, resourceId)

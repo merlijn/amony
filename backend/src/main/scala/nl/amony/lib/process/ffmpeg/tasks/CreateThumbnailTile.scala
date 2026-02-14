@@ -8,8 +8,8 @@ import cats.effect.IO
 import scribe.Logging
 
 import nl.amony.lib.files.*
-import nl.amony.lib.process.ProcessRunner
 import nl.amony.lib.process.ffmpeg.FFMpeg.formatTime
+import nl.amony.lib.process.{Command, ProcessRunner}
 
 trait CreateThumbnailTile extends Logging {
 
@@ -84,7 +84,7 @@ trait CreateThumbnailTile extends Logging {
             s"$outputDir/$webpFilename"
           )
 
-          useProcessOutput[Unit]("ffmpeg", args, useErrorStream = true) {
+          useProcessOutput[Unit]("ffmpeg-create-thumbnail-tile", Command("ffmpeg", args), useErrorStream = true) {
             _ =>
               def createWebVtt() = {
 

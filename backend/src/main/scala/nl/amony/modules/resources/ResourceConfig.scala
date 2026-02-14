@@ -43,12 +43,13 @@ object ResourceConfig {
     private val path: Path,
     sync: ScanConfig,
     hashingAlgorithm: HashingAlgorithm,
-    relativeCachePath: Path,
     relativeUploadPath: Path
   ) extends ResourceBucketConfig {
 
     val random                  = new scala.util.Random()
-    lazy val cachePath: Path    = path.toAbsolutePath.normalize().resolve(relativeCachePath)
+    lazy val amonyPath: Path    = path.toAbsolutePath.normalize().resolve(".amony")
+    lazy val bucketIdPath: Path = amonyPath.resolve("bucketId")
+    lazy val cachePath: Path    = amonyPath.resolve("cache")
     lazy val resourcePath: Path = path.toAbsolutePath.normalize()
     lazy val uploadPath: Path   = path.toAbsolutePath.normalize().resolve(relativeUploadPath)
 

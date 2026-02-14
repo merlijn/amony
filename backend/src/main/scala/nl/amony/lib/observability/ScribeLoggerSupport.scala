@@ -1,4 +1,4 @@
-package nl.amony.lib.otel
+package nl.amony.lib.observability
 
 import java.io.{PrintWriter, StringWriter}
 import scala.concurrent.duration.*

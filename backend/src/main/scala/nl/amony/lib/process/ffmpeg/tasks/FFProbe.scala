@@ -7,8 +7,8 @@ import cats.effect.IO
 import io.circe.{Decoder, Json}
 import scribe.Logging
 
-import nl.amony.lib.process.ProcessRunner
 import nl.amony.lib.process.ffmpeg.tasks.FFProbeModel.{*, given}
+import nl.amony.lib.process.{Command, ProcessRunner}
 
 trait FFProbe extends Logging:
 
@@ -21,7 +21,7 @@ trait FFProbe extends Logging:
   val defaultProbeTimeout = 5.seconds
 
   val ffprobeVersion: IO[FFProbeVersion] =
-    useProcessOutput("ffprobe", List("-print_format", "json", "-show_program_version", "-loglevel", "quiet"), false) {
+    useProcessOutput("ffprobe-version", Command("ffprobe", List("-print_format", "json", "-show_program_version", "-loglevel", "quiet")), false) {
       stdout =>
         val result =
           for
@@ -38,11 +38,11 @@ trait FFProbe extends Logging:
       val v        = if debug then "debug" else "quiet"
       val args     = List("-print_format", "json", "-show_streams", "-show_format", "-loglevel", v, fileName)
 
-      useProcess("ffprobe", args) { process =>
+      useProcess("ffprobe-show", Command("ffprobe", args)) { process =>
         for
-          jsonOutput  <- toString(process.stdout)
+          jsonOutput  <- compileToString(process.stdout)
           debugOutput <-
-            if debug then toString(process.stderr).map(debugOutput => Some(ProbeDebugOutput(fastStartPattern.matches(debugOutput))))
+            if debug then compileToString(process.stderr).map(debugOutput => Some(ProbeDebugOutput(fastStartPattern.matches(debugOutput))))
             else IO.pure(None)
         yield {
 

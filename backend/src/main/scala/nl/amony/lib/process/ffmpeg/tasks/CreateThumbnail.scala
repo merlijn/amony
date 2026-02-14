@@ -7,8 +7,8 @@ import scribe.Logging
 
 import nl.amony.lib.files.*
 import nl.amony.lib.files.FileUtil.stripExtension
-import nl.amony.lib.process.ProcessRunner
 import nl.amony.lib.process.ffmpeg.FFMpeg.formatTime
+import nl.amony.lib.process.{Command, ProcessRunner}
 
 trait CreateThumbnail:
 
@@ -32,7 +32,7 @@ trait CreateThumbnail:
       )
     // format: on
 
-    runIgnoreOutput("ffmpeg", args)
+    runIgnoreOutput("ffmpeg-create-video-thumbnail", Command("ffmpeg", args))
 
   def streamThumbnail(inputFile: Path, timestamp: Long, scaleHeight: Int): fs2.Stream[IO, Byte] = {
   
@@ -48,5 +48,5 @@ trait CreateThumbnail:
     )
     // format: on
 
-    fs2.Stream.force(useProcess("ffmpeg", args)(p => IO(p.stdout)))
+    fs2.Stream.force(useProcess("ffmpeg-stream-video-thumbnail", Command("ffmpeg", args))(p => IO(p.stdout)))
   }

@@ -6,7 +6,7 @@ import cats.effect.IO
 
 import nl.amony.lib.files.*
 import nl.amony.lib.files.FileUtil.stripExtension
-import nl.amony.lib.process.ProcessRunner
+import nl.amony.lib.process.{Command, ProcessRunner}
 
 trait CreateThumbnail {
   self: ProcessRunner =>
@@ -18,6 +18,6 @@ trait CreateThumbnail {
 
     val args = List(input, "-resize", s"${width.getOrElse("")}x${height.getOrElse("")}", output)
 
-    runIgnoreOutput("convert", args)
+    runIgnoreOutput("create-image-thumbnail", Command("convert", args))
   }
 }

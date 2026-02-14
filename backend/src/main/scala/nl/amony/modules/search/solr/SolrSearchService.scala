@@ -104,28 +104,23 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
 
   private def toResource(document: SolrDocument): ResourceInfo = {
 
-    val resourceId   = document.getFieldValue(FieldNames.id).asInstanceOf[String]
-    val hash         = Option(document.getFieldValue(FieldNames.hash)).map(_.asInstanceOf[String])
-    val bucketId     = document.getFieldValue(FieldNames.bucketId).asInstanceOf[String]
-    val title        = Option(document.getFieldValue(FieldNames.title)).map(_.asInstanceOf[String])
-    val path         = document.getFieldValue(FieldNames.path).asInstanceOf[String]
-    val timeAdded    = Option(document.getFieldValue(FieldNames.timeAdded)).map(_.asInstanceOf[Long])
-    val lastModified = Option(document.getFieldValue(FieldNames.lastModified)).map(_.asInstanceOf[Long])
-    val size         = document.getFieldValue(FieldNames.filesize).asInstanceOf[Long]
-
-    val contentType = Option(document.getFieldValue(FieldNames.contentType)).map(_.asInstanceOf[String])
-
-    val width       = document.getFieldValue(FieldNames.width).asInstanceOf[Int]
-    val height      = document.getFieldValue(FieldNames.height).asInstanceOf[Int]
-    val description = Option(document.getFieldValue(FieldNames.description)).map(_.asInstanceOf[String])
-
+    val resourceId         = document.getFieldValue(FieldNames.id).asInstanceOf[String]
+    val hash               = Option(document.getFieldValue(FieldNames.hash)).map(_.asInstanceOf[String])
+    val bucketId           = document.getFieldValue(FieldNames.bucketId).asInstanceOf[String]
+    val title              = Option(document.getFieldValue(FieldNames.title)).map(_.asInstanceOf[String])
+    val path               = document.getFieldValue(FieldNames.path).asInstanceOf[String]
+    val timeAdded          = Option(document.getFieldValue(FieldNames.timeAdded)).map(_.asInstanceOf[Long])
+    val lastModified       = Option(document.getFieldValue(FieldNames.lastModified)).map(_.asInstanceOf[Long])
+    val size               = document.getFieldValue(FieldNames.filesize).asInstanceOf[Long]
+    val contentType        = Option(document.getFieldValue(FieldNames.contentType)).map(_.asInstanceOf[String])
+    val width              = document.getFieldValue(FieldNames.width).asInstanceOf[Int]
+    val height             = document.getFieldValue(FieldNames.height).asInstanceOf[Int]
+    val description        = Option(document.getFieldValue(FieldNames.description)).map(_.asInstanceOf[String])
     val resourceType       = document.getFieldValue(FieldNames.resourceType).asInstanceOf[String]
     val thumbnailTimestamp = Option(document.getFieldValue(FieldNames.thumbnailTimestamp)).map(_.asInstanceOf[Int])
     val metaToolName       = Option(document.getFieldValue(FieldNames.metaToolName)).map(_.asInstanceOf[String])
-
-    val tags = Option(document.getFieldValues(FieldNames.tags)).map(_.asInstanceOf[java.util.List[String]].asScala).getOrElse(List.empty).toSet
-
-    val userId = document.getFieldValue(FieldNames.userId).asInstanceOf[String]
+    val tags               = Option(document.getFieldValues(FieldNames.tags)).map(_.asInstanceOf[java.util.List[String]].asScala).getOrElse(List.empty).toSet
+    val userId             = document.getFieldValue(FieldNames.userId).asInstanceOf[String]
 
     val contentProperties: Option[ContentProperties] = resourceType match {
 

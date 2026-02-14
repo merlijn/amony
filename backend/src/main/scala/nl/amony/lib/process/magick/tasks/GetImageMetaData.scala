@@ -5,8 +5,8 @@ import scala.util.Try
 
 import cats.effect.IO
 
-import nl.amony.lib.process.ProcessRunner
 import nl.amony.lib.process.magick.{MagickImageMeta, MagickResult}
+import nl.amony.lib.process.{Command, ProcessRunner}
 
 trait GetImageMetaData {
 
@@ -16,7 +16,7 @@ trait GetImageMetaData {
 
     val fileName = path.toAbsolutePath.normalize().toString
 
-    useProcessOutput("convert", List(fileName, "json:"), false) {
+    useProcessOutput("get-image-metadata", Command("convert", List(fileName, "json:")), false) {
       processOutput =>
         IO {
           (for

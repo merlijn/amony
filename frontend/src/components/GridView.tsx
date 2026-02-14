@@ -87,11 +87,20 @@ const GridView = (props: GalleryProps) => {
 
     const style = { "--ncols" : `${columns}` } as CSSProperties
 
+    const handleDelete = (deleted: ResourceDto) => {
+      setSearchResult(prev => ({
+        ...prev,
+        total: prev.total - 1,
+        results: prev.results.filter(r => r.resourceId !== deleted.resourceId)
+      }))
+    }
+
     return <div key = { `preview-${vid.resourceId}` } className = "grid-cell" style = { style } >
               <Preview
                 resource = { vid }
                 onClick  = { props.onClick }
                 options  = { props.previewOptionsFn(vid) }
+                onDelete = { handleDelete }
               />
             </div>
   })

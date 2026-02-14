@@ -1,10 +1,11 @@
 package nl.amony.modules.resources.local
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files as JFiles, Path as JPath}
 import java.security.MessageDigest
 
 import cats.data.EitherT
 import cats.effect.IO
+import fs2.io.file.{ Files, Path }
 import fs2.{Chunk, Pipe}
 import scribe.Logging
 
@@ -15,13 +16,14 @@ import nl.amony.modules.resources.api.{ResourceAdded, ResourceBucket, ResourceIn
 trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
 
   private val invalidSequences = List("/", "\\", "..")
+  private val files            = summon[fs2.io.file.Files[IO]]
 
-  private def resolveTargetPath(path: Path, maxAttempt: Int): Either[UploadError, Path] = {
+  private def resolveTargetPath(path: JPath, maxAttempt: Int): Either[UploadError, JPath] = {
 
-    var target: Path = path
-    var counter: Int = 1
+    var target: JPath = path
+    var counter: Int  = 1
 
-    while Files.exists(target) && counter < maxAttempt do
+    while JFiles.exists(target) && counter < maxAttempt do
       val fileNameWithoutExt = target.getFileName.toString.lastIndexOf('.') match
         case -1  => target.getFileName.toString
         case idx => target.getFileName.toString.substring(0, idx)
@@ -33,7 +35,7 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
       target = path.getParent.resolve(s"${fileNameWithoutExt}_$counter$extension")
       counter += 1
 
-    if Files.exists(target) then
+    if JFiles.exists(target) then
       Left(UploadError.StorageError("Failed to resolve unique file name after 100 attempts"))
     else
       Right(target)
@@ -47,9 +49,8 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
 
       val temporaryFileName = s"${config.random.alphanumeric.take(8).mkString}_$fileName"
 
-      val uploadPath = config.uploadPath.resolve(temporaryFileName)
-
-      val writeToFile: Pipe[IO, Byte, Nothing]         = fs2.io.file.Files[IO].writeAll(uploadPath)
+      val uploadPath                                   = config.uploadPath.resolve(temporaryFileName)
+      val writeToFile: Pipe[IO, Byte, Nothing]         = Files[IO].writeAll(Path.fromNioPath(uploadPath))
       val calculateHash: Pipe[IO, Byte, MessageDigest] = {
 
         val initialDigest = config.hashingAlgorithm.newDigest()
@@ -72,7 +73,7 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
          */
         for
           targetPath   <- EitherT.fromEither[IO](resolveTargetPath(config.resourcePath.resolve(fileName), 100))
-          _            <- EitherT.right[UploadError](IO(Files.move(uploadPath, targetPath)))
+          _            <- EitherT.right[UploadError](IO(JFiles.move(uploadPath, targetPath)))
           resourceInfo <- EitherT.right[UploadError](newResource(FileInfo(targetPath, encodedHash), userId))
           _            <- EitherT.right[UploadError](processEvent(ResourceAdded(resourceInfo)))
         yield resourceInfo

@@ -160,7 +160,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     contentType        = resource.contentType.getOrElse("application/octet-stream"),
     contentMeta        = contentMeta,
     urls               = urls,
-    thumbnailTimestamp = resource.thumbnailTimestamp,
+    thumbnailTimestamp = Some(thumbnailTimestamp),
     clips              = List(thumbnailClip)
   )
 }

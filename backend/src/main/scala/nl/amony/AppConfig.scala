@@ -1,11 +1,11 @@
 package nl.amony
 
-import java.nio.file.Path
 import java.sql.{Connection, DriverManager}
 
 import cats.effect.IO
 import pureconfig.*
 
+import nl.amony.lib.observability.ObservabilityConfig
 import nl.amony.modules.auth.AuthConfig
 import nl.amony.modules.resources.ResourceConfig
 import nl.amony.modules.search.SearchConfig
@@ -19,8 +19,6 @@ case class DatabaseConfig(host: String, port: Int, database: String, username: S
       DriverManager.getConnection(jdbcUrl, username, password)
     }
 }
-
-case class ObservabilityConfig(otelEnabled: Boolean) derives ConfigReader
 
 case class AppConfig(
   resources: ResourceConfig,
