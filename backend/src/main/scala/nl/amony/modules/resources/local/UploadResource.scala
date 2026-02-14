@@ -5,6 +5,7 @@ import java.security.MessageDigest
 
 import cats.data.EitherT
 import cats.effect.IO
+import fs2.io.file.{ Files, Path }
 import fs2.{Chunk, Pipe}
 import scribe.Logging
 
@@ -49,7 +50,7 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
       val temporaryFileName = s"${config.random.alphanumeric.take(8).mkString}_$fileName"
 
       val uploadPath                                   = config.uploadPath.resolve(temporaryFileName)
-      val writeToFile: Pipe[IO, Byte, Nothing]         = fs2.io.file.Files[IO].writeAll(fs2.io.file.Path.fromNioPath(uploadPath))
+      val writeToFile: Pipe[IO, Byte, Nothing]         = Files[IO].writeAll(Path.fromNioPath(uploadPath))
       val calculateHash: Pipe[IO, Byte, MessageDigest] = {
 
         val initialDigest = config.hashingAlgorithm.newDigest()
