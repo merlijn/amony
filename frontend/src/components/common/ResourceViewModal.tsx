@@ -1,4 +1,4 @@
-import React, {CSSProperties, MouseEventHandler, useEffect, useRef, useState} from "react";
+import React, {CSSProperties, useEffect, useRef, useState} from "react";
 import {isMobile} from "react-device-detect";
 import {boundedRatioBox} from "../../api/Util";
 import './ResourceViewModal.css';
@@ -7,14 +7,17 @@ import {MediaPlayer, MediaPlayerInstance, MediaProvider, VideoMimeType,} from "@
 
 import {defaultLayoutIcons, DefaultVideoLayout,} from '@vidstack/react/player/layouts/default';
 import {ResourceDto} from "../../api/generated";
+import ThumbnailEditor from "./ThumbnailEditor";
 
 const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }) => {
 
   let player = useRef<MediaPlayerInstance>(null)
   let [src, setSrc] = useState('');
+  let [resource, setResource] = useState<ResourceDto | undefined>(props.resource);
 
   // show modal video player
   useEffect(() => {
+    setResource(props.resource);
     setSrc(props.resource?.urls.originalResourceUrl || '')
   }, [props.resource]);
 
@@ -22,8 +25,8 @@ const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }
     return boundedRatioBox(isMobile ? "100vw" : "75vw", "75vh", v.contentMeta.width / v.contentMeta.height)
   }
 
-  let isVideo = props.resource?.contentType.startsWith("video") || false
-  let isImage = props.resource?.contentType.startsWith("image") || false
+  let isVideo = resource?.contentType.startsWith("video") || false
+  let isImage = resource?.contentType.startsWith("image") || false
 
   function toVideoMimeType(value?: string): VideoMimeType {
     // Add basic mime type validation
@@ -31,7 +34,7 @@ const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }
     return value && mimePattern.test(value) ? (value as VideoMimeType) : 'video/mp4';
   }
 
-  let contentType: VideoMimeType = toVideoMimeType(props.resource?.contentType);
+  let contentType: VideoMimeType = toVideoMimeType(resource?.contentType);
 
   const onHide = () => {
     player.current?.pause()
@@ -39,15 +42,15 @@ const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }
   }
 
   return (
-      <Modal visible = { props.resource !== undefined } onHide = { onHide }>
-        <div className="video-modal-content" style = { props.resource && modalSize(props.resource)}>
+      <Modal visible = { resource !== undefined } onHide = { onHide }>
+        <div className="video-modal-content" style = { resource && modalSize(resource)}>
           <MediaPlayer
             className = "player"
             tab-index = '-1'
             playsInline
             ref = { player }
             src = { { src: src, type: contentType  } }
-            title = { props.resource?.title }
+            title = { resource?.title }
             style = { !isVideo ? { display: "none" } : {} }
             controlsDelay = { 5000 }
             hideControlsOnMouseLeave = { true }
@@ -63,6 +66,13 @@ const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }
             <DefaultVideoLayout icons = { defaultLayoutIcons } />
           </MediaPlayer>
           { isImage &&  <img style = {{ width: "100%", height: "100%", visibility : isImage ? "visible" : "hidden" }} src = { src }/> }
+          { isVideo && resource &&
+            <ThumbnailEditor
+              resource = { resource }
+              player = { player }
+              onResourceUpdated = { (updated) => setResource(updated) }
+            />
+          }
         </div>
       </Modal>
   );
