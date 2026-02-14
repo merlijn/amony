@@ -14,6 +14,14 @@ const ThumbnailEditor = ({resource, player, onResourceUpdated}: ThumbnailEditorP
   const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const onThumbnailClick = () => {
+    if (player.current && resource.thumbnailTimestamp !== undefined) {
+      player.current.currentTime = resource.thumbnailTimestamp / 1000;
+      player.current.pause();
+    }
+    setExpanded(true);
+  }
+
   const forwards = (amount: number) => {
     if (player.current) {
       player.current.pause();
@@ -65,7 +73,7 @@ const ThumbnailEditor = ({resource, player, onResourceUpdated}: ThumbnailEditorP
   }
 
   return (
-    <div className="thumbnail-editor-collapsed" onClick={() => setExpanded(true)}>
+    <div className="thumbnail-editor-collapsed" onClick={onThumbnailClick}>
       <img
         src={resource.urls.thumbnailUrl}
         alt="thumbnail"

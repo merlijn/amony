@@ -20,33 +20,35 @@
 
 .thumbnail-editor-collapsed img {
   display: block;
-  width: 80px;
+  width: 120px;
   height: auto;
 }
 
-/* Expanded state: controls bar at top with thumbnail preview beside it */
+/* Expanded state: controls in top-left, thumbnail stays top-right */
 .thumbnail-editor-expanded {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 10;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
+  pointer-events: none;
 }
 
 .thumbnail-editor-controls {
+  position: absolute;
+  top: 8px;
+  left: 8px;
   display: flex;
-  gap: 2px;
+  gap: 3px;
   background: rgba(0, 0, 0, 0.75);
   border-radius: 4px;
-  padding: 4px;
+  padding: 5px;
+  pointer-events: auto;
 }
 
 .te-btn {
-  font-size: 11px;
-  padding: 4px 7px;
+  font-size: 13px;
+  padding: 5px 10px;
   border: 1px solid rgba(255, 255, 255, 0.3);
   background: rgba(60, 60, 60, 0.9);
   color: #e0e0e0;
@@ -89,14 +91,18 @@
 }
 
 .thumbnail-editor-preview {
+  position: absolute;
+  top: 8px;
+  right: 8px;
   border: 2px solid rgba(255, 255, 255, 0.5);
   border-radius: 3px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
 }
 
 .thumbnail-editor-preview img {
   display: block;
-  width: 80px;
+  width: 120px;
   height: auto;
 }
