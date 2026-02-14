@@ -55,7 +55,7 @@ const Preview = (props: PreviewProps) => {
       <div className="preview-overlay">
         { props.options.showResolution && <div className="preview-quality-overlay">{labelForResolution(resource.contentMeta.height)}</div> }
         { (isVideo && props.options.showDuration) && <div className="duration-overlay">{durationStr}</div> }
-        { isHovering && session.isAdmin() && <Link className="preview-edit-icon-overlay" to={`/editor/${props.resource.bucketId}/${props.resource.resourceId}`}><ImgWithAlt src="/icons/edit.svg" /></Link> }
+        {/*{ isHovering && session.isAdmin() && <Link className="preview-edit-icon-overlay" to={`/editor/${props.resource.bucketId}/${props.resource.resourceId}`}><ImgWithAlt src="/icons/edit.svg" /></Link> }*/}
         { !isMediaTypeSupported && <div className="preview-unsupported-overlay"><FiAlertCircle color="#fff" /></div> }
         {/* { <div className="abs-bottom-right"><FiDownload /></div> } */}
       </div>
