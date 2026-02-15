@@ -1,4 +1,4 @@
-import {Prefs, Resolution, SessionInfo, Sort, SortDirection} from "./Model";
+import {Prefs, Resolution, SessionInfo, Sort, SortDirection, RegularSort} from "./Model";
 import { useUrlParam } from "./ReactUtils";
 import React from "react";
 
@@ -8,15 +8,23 @@ const resolutions: Array<Resolution> =
     { value: 1080, label: "FHD"},
     { value: 2160, label: "4K"}]
 
-const sortingOptions: Array<{value: Sort, label: string}> = [
+const sortingOptions: Array<{value: RegularSort, label: string}> = [
   { value: { field: "date_added", direction: "desc" }, label: "By date" },
   { value: { field: "title", direction: "asc" },       label: "By title" },
   { value: { field: "duration", direction: "asc" },    label: "By duration" }];
 
 export const parseSortParam = (param: string): Sort => {
 
+  if (param.startsWith("random-")) {
+    const seedStr = param.substring(7)
+    const seed = parseInt(seedStr, 10)
+    if (!isNaN(seed) && seedStr.length === 5) {
+      return { field: "random", seed }
+    }
+  }
+
   const split = param.split(";")
-  const field = split[0]
+  const field = split[0] as 'title' | 'date_added' | 'duration' | 'size'
   const dir   = split[1] as SortDirection
   return { field : field, direction: dir }
 }
@@ -25,7 +33,11 @@ export const useSortParam = (): [Sort, (v: Sort) => void] => {
 
   const [param, setParam] = useUrlParam("s", "date_added;desc");
   const sort: Sort = parseSortParam(param)
-  const updateParam = (s: Sort) => { setParam(`${s.field};${s.direction}`) }
+  const updateParam = (s: Sort) => { 
+    setParam(s.field === "random" 
+      ? `random-${s.seed.toString().padStart(5, '0')}` 
+      : `${s.field};${s.direction}`) 
+  }
 
   return [sort, updateParam];
 }

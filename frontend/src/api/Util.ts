@@ -122,7 +122,7 @@ export function resourceSelectionToParams(selection: ResourceSelection, offset: 
   const duration= selection.duration
 
   const sort = selection.sort.field === "random"
-    ? selection.sort.direction
+    ? `random-${selection.sort.seed.toString().padStart(5, '0')}`
     : `${selection.sort.field}-${selection.sort.direction}`;
 
   return {
