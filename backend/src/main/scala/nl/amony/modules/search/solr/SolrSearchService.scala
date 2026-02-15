@@ -158,7 +158,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
     val solrSort = {
 
       val solrField = sort.field match
-        case Title     => FieldNames.title
+        case Title     => FieldNames.path
         case DateAdded => FieldNames.timeAdded
         case Size      => FieldNames.filesize
         case Duration  => FieldNames.duration
