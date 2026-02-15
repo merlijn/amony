@@ -3,12 +3,12 @@
 .thumbnail-editor-preview-container {
   @extend .abs-top-right;
   display: flex;
-  width: 10%;
+  width: 12%;
   z-index: 10;
   transition: width 0.3s ease;
 
   &.expanded {
-    width: 15%;
+    width: 18%;
   }
 
   .thumbnail-editor-preview {
