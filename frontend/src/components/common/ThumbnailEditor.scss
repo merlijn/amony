@@ -16,30 +16,42 @@
     position: relative;
     width: 100%;
     margin: 8px;
-    cursor: pointer;
 
-    img {
+    cursor: pointer;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 3px;
+
+    .thumbnail-editor-media {
+      @extend .abs-top-right;
       width: 100%;
-      height: auto;
-      border: 2px solid rgba(255, 255, 255, 0.5);
-      border-radius: 3px;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      height: 100%;
+      display: block;
+      object-fit: cover;
+
+      &.hidden {
+        display: none;
+      }
+    }
+
+    .thumbnail-editor-img {
+      @extend .thumbnail-editor-media;
+      z-index: 10;
+
+    }
+
+    .thumbnail-editor-video {
+      @extend .thumbnail-editor-media;
+      z-index: 11;
+    }
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.75);
     }
 
     &.collapsed {
       @extend .thumbnail-editor-preview;
       opacity: 0.7;
       transition: opacity 0.2s ease;
-
-      &:hover {
-        opacity: 1;
-        border-color: rgba(255, 255, 255, 0.9);
-      }
-    }
-
-    &.selected {
-      @extend .thumbnail-editor-preview;
     }
   }
 }

@@ -8,12 +8,14 @@ import {MediaPlayer, MediaPlayerInstance, MediaProvider, VideoMimeType,} from "@
 import {defaultLayoutIcons, DefaultVideoLayout,} from '@vidstack/react/player/layouts/default';
 import {ResourceDto} from "../../api/generated";
 import ThumbnailEditor from "./ThumbnailEditor";
+import {useEventBus} from "./EventBus";
 
 const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }) => {
 
   let player = useRef<MediaPlayerInstance>(null)
   let [src, setSrc] = useState('');
   let [resource, setResource] = useState<ResourceDto | undefined>(props.resource);
+  let eventBus = useEventBus()
 
   // show modal video player
   useEffect(() => {
@@ -69,7 +71,11 @@ const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }
             <ThumbnailEditor
               resource = { resource }
               player = { player }
-              onResourceUpdated = { (updated) => setResource(updated) }
+              onResourceUpdated = { (updated) => {
+                  setResource(updated)
+                  eventBus.emit("resource-updated", updated)
+                }
+              }
             />
           }
         </div>

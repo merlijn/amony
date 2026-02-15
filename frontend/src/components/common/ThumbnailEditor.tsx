@@ -1,6 +1,7 @@
 import React, {useEffect, useRef, useState} from "react";
 import {MediaPlayerInstance} from "@vidstack/react";
 import {getResourceById, ResourceDto, updateThumbnailTimestamp} from "../../api/generated";
+import FragmentsPlayer from "./FragmentsPlayer";
 import './ThumbnailEditor.scss';
 
 interface ThumbnailEditorProps {
@@ -13,6 +14,7 @@ const ThumbnailEditor = ({resource, player, onResourceUpdated}: ThumbnailEditorP
 
   const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
   const expandedRef = useRef(false);
 
   // Keep controls pinned while the thumbnail editor is expanded.
@@ -81,6 +83,8 @@ const ThumbnailEditor = ({resource, player, onResourceUpdated}: ThumbnailEditorP
 
   const fps = resource.contentMeta.fps;
 
+  const aspectRatioCss = { aspectRatio: `${resource.contentMeta.width} / ${resource.contentMeta.height}` }
+
   return (
     <>
       <div className={`thumbnail-editor-controls ${expanded ? "thumbnail-editor-controls-visible" : ""}`}>
@@ -95,12 +99,23 @@ const ThumbnailEditor = ({resource, player, onResourceUpdated}: ThumbnailEditorP
         <button className="te-btn" onClick={() => forwards(1)}>+1s</button>
         <button className="te-btn te-btn-close" onClick={onClose}>✕</button>
       </div>
-      <div className = {`thumbnail-editor-preview-container ${expanded ? "expanded" : "collapsed"}`}>
-        <div className= { `thumbnail-editor-preview ${expanded ? "expanded" : "collapsed"}` } onClick={onThumbnailClick}>
+      <div 
+        className = {`thumbnail-editor-preview-container ${expanded ? "expanded" : "collapsed"}`}
+        onMouseEnter = { () => expanded && setIsHovering(true) }
+        onMouseLeave = { () => setIsHovering(false) }
+      >
+        <div style = { aspectRatioCss } className= { `thumbnail-editor-preview ${expanded ? "expanded" : "collapsed"}` } onClick={onThumbnailClick}>
           <img
             src={resource.urls.thumbnailUrl}
             alt="thumbnail"
+            className={`thumbnail-editor-img`}
           />
+          { expanded && isHovering && (
+            <FragmentsPlayer
+              className = "thumbnail-editor-video"
+              fragments = { resource.clips }
+            />
+          )}
         </div>
       </div>
     </>

@@ -5,6 +5,7 @@ import {getSession} from "./api/generated";
 import {AxiosError} from "axios";
 import {SessionInfo} from "./api/Model";
 import {ThemeProvider} from "./ThemeContext";
+import {EventBusProvider} from "./components/common/EventBus";
 
 const Editor = lazy(() => import('./pages/Editor'));
 const Compilation = lazy(() => import('./pages/Compilation'));
@@ -32,15 +33,17 @@ function App() {
       <div className="app-root">
         <BrowserRouter>
           <Suspense fallback={<div />}>
-            <SessionProvider sessionPromise={sessionPromise}>
-              <Routes>
-                <Route path="/" element={<Main />} />
-                <Route path="/search" element={<Main />} />
-                <Route path="/editor/:bucketId/:resourceId" element={<EditorRouter />} />
-                <Route path="/video-wall" element={<VideoWall />} />
-                <Route path="/compilation" element={<Compilation />} />
-              </Routes>
-            </SessionProvider>
+            <EventBusProvider>
+              <SessionProvider sessionPromise={sessionPromise}>
+                <Routes>
+                  <Route path="/" element={<Main />} />
+                  <Route path="/search" element={<Main />} />
+                  <Route path="/editor/:bucketId/:resourceId" element={<EditorRouter />} />
+                  <Route path="/video-wall" element={<VideoWall />} />
+                  <Route path="/compilation" element={<Compilation />} />
+                </Routes>
+              </SessionProvider>
+            </EventBusProvider>
           </Suspense>
         </BrowserRouter>
       </div>

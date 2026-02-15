@@ -1,4 +1,4 @@
-import React, {CSSProperties, useContext, useState} from 'react';
+import React, {useContext, useState} from 'react';
 import {
   canBrowserPlayType,
   dateMillisToString,
@@ -33,7 +33,7 @@ export type PreviewOptions = {
 }
 
 const Preview = (props: PreviewProps) => {
-  const [resource, setResource] = useState(props.resource)
+  const resource = props.resource
   const [isHovering, setIsHovering] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
