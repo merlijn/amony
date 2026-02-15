@@ -1,7 +1,7 @@
 import React, {useEffect, useRef, useState} from "react";
 import {MediaPlayerInstance} from "@vidstack/react";
 import {getResourceById, ResourceDto, updateThumbnailTimestamp} from "../../api/generated";
-import './ThumbnailEditor.css';
+import './ThumbnailEditor.scss';
 
 interface ThumbnailEditorProps {
   resource: ResourceDto;
@@ -79,31 +79,31 @@ const ThumbnailEditor = ({resource, player, onResourceUpdated}: ThumbnailEditorP
 
   if (expanded) {
     return (
-      <div className="thumbnail-editor-expanded">
-        <div className="thumbnail-editor-controls">
-          <button className="te-btn" onClick={() => forwards(-1)}>-1s</button>
-          <button className="te-btn" onClick={() => forwards(-0.1)}>-.1s</button>
-          <button className="te-btn" onClick={() => forwards(-(1 / fps))}>-1f</button>
-          <button className="te-btn te-btn-save" onClick={updateThumbnailTS} disabled={saving}>
-            {saving ? '...' : 'Set'}
-          </button>
-          <button className="te-btn" onClick={() => forwards(1 / fps)}>+1f</button>
-          <button className="te-btn" onClick={() => forwards(0.1)}>+.1s</button>
-          <button className="te-btn" onClick={() => forwards(1)}>+1s</button>
-          <button className="te-btn te-btn-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="thumbnail-editor-preview">
-          <img
-            src={resource.urls.thumbnailUrl}
-            alt="thumbnail"
-          />
-        </div>
+      <>
+      <div className="thumbnail-editor-controls">
+        <button className="te-btn" onClick={() => forwards(-1)}>-1s</button>
+        <button className="te-btn" onClick={() => forwards(-0.1)}>-.1s</button>
+        <button className="te-btn" onClick={() => forwards(-(1 / fps))}>-1f</button>
+        <button className="te-btn te-btn-save" onClick={updateThumbnailTS} disabled={saving}>
+          {saving ? '...' : 'Set'}
+        </button>
+        <button className="te-btn" onClick={() => forwards(1 / fps)}>+1f</button>
+        <button className="te-btn" onClick={() => forwards(0.1)}>+.1s</button>
+        <button className="te-btn" onClick={() => forwards(1)}>+1s</button>
+        <button className="te-btn te-btn-close" onClick={onClose}>✕</button>
       </div>
+      <div className="thumbnail-editor-preview-selected">
+        <img
+          src={resource.urls.thumbnailUrl}
+          alt="thumbnail"
+        />
+      </div>
+      </>
     );
   }
 
   return (
-    <div className="thumbnail-editor-collapsed" onClick={onThumbnailClick}>
+    <div className="thumbnail-editor-preview-collapsed" onClick={onThumbnailClick}>
       <img
         src={resource.urls.thumbnailUrl}
         alt="thumbnail"
