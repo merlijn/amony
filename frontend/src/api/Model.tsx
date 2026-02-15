@@ -15,12 +15,20 @@ export type Resolution = {
   label: string
 }
 
-export type Sort = {
-  field: string
+export type SortField = 'title' | 'date_added' | 'duration' | 'size'
+export type SortDirection = 'asc' | 'desc'
+
+export type RegularSort = {
+  field: SortField
   direction: SortDirection
 }
 
-export type SortDirection = 'asc' | 'desc'
+export type RandomSort = {
+  field: 'random'
+  seed: number
+}
+
+export type Sort = RegularSort | RandomSort
 export type Columns = 'auto' | number
 export type ThemeSetting = 'light' | 'dark' | 'system'
 

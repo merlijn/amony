@@ -158,16 +158,13 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
     val solrSort = {
 
       val solrField = sort.field match
-        case Title     => FieldNames.path
-        case DateAdded => FieldNames.timeAdded
-        case Size      => FieldNames.filesize
-        case Duration  => FieldNames.duration
+        case Title           => FieldNames.path
+        case DateAdded       => FieldNames.timeAdded
+        case Size            => FieldNames.filesize
+        case Duration        => FieldNames.duration
+        case Random(seed)    => s"random_$seed"
 
       val direction = if sort.direction == Desc then "desc" else "asc"
-
-      // TODO add random sort feature
-      // https://ubuntuask.com/blog/how-to-boost-fields-with-random-sort-in-solr
-      // random_1234 desc
 
       s"$solrField $direction"
     }

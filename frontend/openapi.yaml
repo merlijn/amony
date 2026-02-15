@@ -4,41 +4,6 @@ info:
   version: '1.0'
 paths:
   /api/resources/{bucketId}/{resourceId}:
-    delete:
-      tags:
-      - resources
-      description: Delete a resource by its id
-      operationId: deleteResource
-      parameters:
-      - name: access_token
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: XSRF-TOKEN
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: bucketId
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: resourceId
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: ''
-        '401':
-          description: ''
-        '403':
-          description: ''
-        '404':
-          description: ''
     get:
       tags:
       - resources
@@ -85,6 +50,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResourceDto'
+        '400':
+          description: ''
+        '401':
+          description: ''
+        '403':
+          description: ''
+        '404':
+          description: ''
+    delete:
+      tags:
+      - resources
+      description: Delete a resource by its id
+      operationId: deleteResource
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
         '400':
           description: ''
         '401':
@@ -220,6 +222,55 @@ paths:
           description: ''
         '404':
           description: ''
+  /api/resources/{bucketId}/upload:
+    post:
+      tags:
+      - resources
+      description: Upload a resource to a bucket
+      operationId: uploadResource
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-Filename
+        in: header
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceDto'
+        '400':
+          description: ''
+        '401':
+          description: ''
+        '403':
+          description: ''
+        '404':
+          description: ''
   /api/search/media:
     get:
       tags:
@@ -259,20 +310,13 @@ paths:
         schema:
           type: string
         example: 10-30
-      - name: sort_field
+      - name: sort
         in: query
-        description: Indicates what field to sort
+        description: Sort field and direction (e.g., title-asc, random-12345)
         required: false
         schema:
           type: string
-        example: title
-      - name: sort_dir
-        in: query
-        description: Indicates which direction to sort
-        required: false
-        schema:
-          type: string
-        example: asc
+        example: title-asc
       - name: min_res
         in: query
         description: The minimum (vertical) resolution
@@ -796,9 +840,6 @@ components:
         path:
           type: string
         timeAdded:
-          type: integer
-          format: int64
-        timeCreated:
           type: integer
           format: int64
         timeLastModified:

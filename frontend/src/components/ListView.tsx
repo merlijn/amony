@@ -1,7 +1,7 @@
 import React, {CSSProperties, useContext, useEffect, useMemo, useRef, useState} from "react"
 import {FaSort} from "react-icons/fa"
 import {FiEdit} from "react-icons/fi"
-import {ResourceSelection} from "../api/Model"
+import {ResourceSelection, SortField} from "../api/Model"
 import {dateMillisToString, formatByteSize, resourceSelectionToParams, titleFromPath} from "../api/Util"
 import './ListView.scss'
 import InfiniteScroll from "./common/InfiniteScroll"
@@ -73,6 +73,14 @@ const ListView = (props: ListProps) => {
   }
 
   const [sort, setSort] = useSortParam()
+
+  const toggleSort = (field: SortField) => {
+    if (sort.field === field) {
+      setSort({ field, direction: sort.direction === 'asc' ? 'desc' : 'asc' })
+    } else {
+      setSort({ field, direction: 'asc' })
+    }
+  }
 
   useEffect(() => {
     setSearchResult(initialSearchResult)
@@ -156,20 +164,17 @@ const ListView = (props: ListProps) => {
       { session.isAdmin() && <th className="list-header-select"><input type="checkbox" checked={allSelected} onChange={(event) => toggleAll(event.target.checked)} /></th> }
       <th className="list-header-thumbnail"></th>
       <th className="list-header-title"><span>Title</span>
-        <FaSort className="column-sort-icon" onClick={() => setSort({field: "title", direction: sort.direction === "asc" ? "desc" : "asc"})}/>
+        <FaSort className="column-sort-icon" onClick={() => toggleSort("title")}/>
       </th>
       <th className="list-header-tags"><span>Tags</span></th>
       <th className="list-header-date"><span>Date</span>
-        <FaSort className="column-sort-icon" onClick={() => setSort({
-          field: "date_added",
-          direction: sort.direction === "asc" ? "desc" : "asc"
-        })}/>
+        <FaSort className="column-sort-icon" onClick={() => toggleSort("date_added")}/>
       </th>
       <th className="list-header-size"><span>Size</span>
-        <FaSort className="column-sort-icon" onClick={() => setSort({field: "size", direction: sort.direction === "asc" ? "desc" : "asc"})}/>
+        <FaSort className="column-sort-icon" onClick={() => toggleSort("size")}/>
       </th>
       <th className="list-header-resolution last-column"><span>Quality</span>
-        {/* <FaSort className="column-sort-icon" onClick = { () => setSort({field: "resolution", direction: sort.direction === "asc" ? "desc" : "asc" }) } /> */}
+        {/* <FaSort className="column-sort-icon" onClick = { () => toggleSort("resolution") } /> */}
         {/* <BsThreeDotsVertical className="list-menu-icon" /> */}
       </th>
     </tr>
@@ -239,7 +244,7 @@ const ListView = (props: ListProps) => {
                 <TagsCell resource={resource}/>
 
                 <td key="date" className="list-cell list-date">
-                  {dateMillisToString(resource.timeCreated ?? resource.timeAdded)}
+                  {dateMillisToString(resource.timeAdded)}
                 </td>
 
                 <td key="size" className="list-cell list-size">

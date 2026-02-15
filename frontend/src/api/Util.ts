@@ -121,14 +121,17 @@ export function zeroPad(n: number, d: number) {
 export function resourceSelectionToParams(selection: ResourceSelection, offset: number, n: number): FindResourcesParams {
   const duration= selection.duration
 
+  const sort = selection.sort.field === "random"
+    ? `random-${selection.sort.seed.toString().padStart(5, '0')}`
+    : `${selection.sort.field}-${selection.sort.direction}`;
+
   return {
     offset: offset,
     n: n,
     q: selection.query,
     tag: selection.untagged ? undefined : selection.tag,
     untagged: selection.untagged || undefined,
-    sort_field: selection.sort.field,
-    sort_dir: selection.sort.direction,
+    sort: sort,
     min_res: selection.minimumQuality,
     d: duration ? durationAsParam([duration[0] ? duration[0] * 1000 : duration[0], duration[1] ? duration[1] * 1000 : duration[1]]) : undefined
   }
