@@ -18,9 +18,6 @@ import DeleteResourceDialog from "./dialogs/DeleteResourceDialog";
 
 export type PreviewProps = {
   resource: ResourceDto,
-  style?: CSSProperties,
-  className?: string,
-  lazyLoad?: boolean,
   options: PreviewOptions,
   onClick: (v: ResourceDto) => any,
   onDelete?: (v: ResourceDto) => void
@@ -91,7 +88,7 @@ const Preview = (props: PreviewProps) => {
     </ErrorBoundary>
 
   return (
-      <div className = "preview-media">
+      <div className = "preview-resource">
         { preview }
         { props.options.showInfoBar && titlePanel }
         <DeleteResourceDialog

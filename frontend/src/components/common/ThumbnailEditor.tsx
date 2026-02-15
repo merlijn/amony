@@ -39,13 +39,17 @@ const ThumbnailEditor = ({resource, player, onResourceUpdated}: ThumbnailEditorP
   }, [expanded, player]);
 
   const onThumbnailClick = () => {
-    if (player.current) {
-      if (resource.thumbnailTimestamp !== undefined) {
-        player.current.currentTime = resource.thumbnailTimestamp / 1000;
+    if (!expanded) {
+      if (player.current) {
+        if (resource.thumbnailTimestamp !== undefined) {
+          player.current.currentTime = resource.thumbnailTimestamp / 1000;
+        }
+        player.current.pause();
       }
-      player.current.pause();
+      setExpanded(true);
     }
-    setExpanded(true);
+    else
+      setExpanded(false);
   }
 
   const onClose = () => {
@@ -80,36 +84,41 @@ const ThumbnailEditor = ({resource, player, onResourceUpdated}: ThumbnailEditorP
   if (expanded) {
     return (
       <>
-      <div className="thumbnail-editor-controls">
-        <button className="te-btn" onClick={() => forwards(-1)}>-1s</button>
-        <button className="te-btn" onClick={() => forwards(-0.1)}>-.1s</button>
-        <button className="te-btn" onClick={() => forwards(-(1 / fps))}>-1f</button>
-        <button className="te-btn te-btn-save" onClick={updateThumbnailTS} disabled={saving}>
-          {saving ? '...' : 'Set'}
-        </button>
-        <button className="te-btn" onClick={() => forwards(1 / fps)}>+1f</button>
-        <button className="te-btn" onClick={() => forwards(0.1)}>+.1s</button>
-        <button className="te-btn" onClick={() => forwards(1)}>+1s</button>
-        <button className="te-btn te-btn-close" onClick={onClose}>✕</button>
-      </div>
-      <div className="thumbnail-editor-preview-selected">
-        <img
-          src={resource.urls.thumbnailUrl}
-          alt="thumbnail"
-        />
-      </div>
+        <div className="thumbnail-editor-controls">
+          <button className="te-btn" onClick={() => forwards(-1)}>-1s</button>
+          <button className="te-btn" onClick={() => forwards(-0.1)}>-.1s</button>
+          <button className="te-btn" onClick={() => forwards(-(1 / fps))}>-1f</button>
+          <button className="te-btn te-btn-save" onClick={updateThumbnailTS} disabled={saving}>
+            {saving ? '...' : 'Set'}
+          </button>
+          <button className="te-btn" onClick={() => forwards(1 / fps)}>+1f</button>
+          <button className="te-btn" onClick={() => forwards(0.1)}>+.1s</button>
+          <button className="te-btn" onClick={() => forwards(1)}>+1s</button>
+          <button className="te-btn te-btn-close" onClick={onClose}>✕</button>
+        </div>
+        <div className = "thumbnail-editor-preview-container">
+          <div className="thumbnail-editor-preview-selected" onClick={onThumbnailClick}>
+            <img
+              src={resource.urls.thumbnailUrl}
+              alt="thumbnail"
+            />
+          </div>
+        </div>
       </>
     );
   }
 
   return (
-    <div className="thumbnail-editor-preview-collapsed" onClick={onThumbnailClick}>
-      <img
-        src={resource.urls.thumbnailUrl}
-        alt="thumbnail"
-      />
+    <div className = "thumbnail-editor-preview-container">
+      <div className="thumbnail-editor-preview-collapsed" onClick={onThumbnailClick}>
+        <img
+          src={resource.urls.thumbnailUrl}
+          alt="thumbnail"
+        />
+      </div>
     </div>
   );
+
 }
 
 export default ThumbnailEditor;
