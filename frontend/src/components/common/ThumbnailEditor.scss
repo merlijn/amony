@@ -1,0 +1,121 @@
+@use 'src/App.scss' as *;
+
+.thumbnail-editor-preview-container {
+  @extend .abs-top-right;
+  display: flex;
+  width: 12%;
+  z-index: 10;
+  transition: width 0.3s ease;
+
+  &.expanded {
+    width: 18%;
+  }
+
+  .thumbnail-editor-preview {
+
+    position: relative;
+    width: 100%;
+    margin: 8px;
+
+    cursor: pointer;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 3px;
+
+    .thumbnail-editor-media {
+      @extend .abs-top-right;
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+
+      &.hidden {
+        display: none;
+      }
+    }
+
+    .thumbnail-editor-img {
+      @extend .thumbnail-editor-media;
+      z-index: 10;
+
+    }
+
+    .thumbnail-editor-video {
+      @extend .thumbnail-editor-media;
+      z-index: 11;
+    }
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.75);
+    }
+
+    &.collapsed {
+      @extend .thumbnail-editor-preview;
+      opacity: 0.7;
+      transition: opacity 0.2s ease;
+    }
+  }
+}
+
+.thumbnail-editor-controls {
+
+  @extend .abs-top-left;
+  margin: 8px;
+  display: flex;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.75);
+  border-radius: 4px;
+  padding: 5px;
+  pointer-events: auto;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+
+  &.thumbnail-editor-controls-visible {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .te-btn {
+    font-size: 13px;
+    padding: 5px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(60, 60, 60, 0.9);
+    color: #e0e0e0;
+    cursor: pointer;
+    border-radius: 3px;
+    white-space: nowrap;
+    line-height: 1;
+  }
+
+  .te-btn:hover {
+    background: rgba(100, 100, 100, 0.9);
+    color: #fff;
+  }
+
+  .te-btn-save {
+    background: #45C53F;
+    color: white;
+    border-color: #3aad35;
+    font-weight: bold;
+  }
+
+  .te-btn-save:hover {
+    background: #3aad35;
+  }
+
+  .te-btn-save:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .te-btn-close {
+    background: rgba(80, 80, 80, 0.9);
+    color: #ccc;
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .te-btn-close:hover {
+    background: rgba(120, 40, 40, 0.9);
+    color: #fff;
+  }
+}

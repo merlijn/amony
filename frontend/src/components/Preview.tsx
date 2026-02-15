@@ -1,4 +1,4 @@
-import React, {CSSProperties, useContext, useState} from 'react';
+import React, {useContext, useState} from 'react';
 import {
   canBrowserPlayType,
   dateMillisToString,
@@ -18,9 +18,6 @@ import DeleteResourceDialog from "./dialogs/DeleteResourceDialog";
 
 export type PreviewProps = {
   resource: ResourceDto,
-  style?: CSSProperties,
-  className?: string,
-  lazyLoad?: boolean,
   options: PreviewOptions,
   onClick: (v: ResourceDto) => any,
   onDelete?: (v: ResourceDto) => void
@@ -36,7 +33,7 @@ export type PreviewOptions = {
 }
 
 const Preview = (props: PreviewProps) => {
-  const [resource, setResource] = useState(props.resource)
+  const resource = props.resource
   const [isHovering, setIsHovering] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
@@ -91,7 +88,7 @@ const Preview = (props: PreviewProps) => {
     </ErrorBoundary>
 
   return (
-      <div className = "preview-media">
+      <div className = "preview-resource">
         { preview }
         { props.options.showInfoBar && titlePanel }
         <DeleteResourceDialog

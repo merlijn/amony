@@ -1,4 +1,4 @@
-import React, {CSSProperties, useEffect, useState, useRef, useCallback, useLayoutEffect} from 'react';
+import React, {CSSProperties, useEffect, useState, useCallback, useMemo} from 'react';
 import {Constants} from "../api/Constants";
 import {Columns, ResourceSelection} from '../api/Model';
 import './GridView.scss';
@@ -8,6 +8,7 @@ import InfiniteScroll from './common/InfiniteScroll';
 import {findResources, FindResourcesParams, ResourceDto, SearchResponseDto} from "../api/generated";
 import {resourceSelectionToParams} from "../api/Util";
 import {useResizeObserver} from "../api/ReactUtils";
+import {useEventListener} from "./common/EventBus";
 
 export type GalleryProps = {
   selection: ResourceSelection
@@ -22,6 +23,29 @@ export type GalleryProps = {
 
 const initialSearchResult: SearchResponseDto = { offset: 0, total: 0, results: [], tags: [] }
 
+type GridCellProps = {
+  resource: ResourceDto,
+  columns: number,
+  previewOptions: PreviewOptions,
+  onClick: (v: ResourceDto) => void,
+  onDelete: (v: ResourceDto) => void
+}
+
+const GridCell = React.memo(({ resource, columns, previewOptions, onClick, onDelete }: GridCellProps) => {
+  const style = { "--ncols": `${columns}` } as CSSProperties
+
+  return (
+    <div className="grid-cell" style={style}>
+      <Preview
+        resource={resource}
+        onClick={onClick}
+        options={previewOptions}
+        onDelete={onDelete}
+      />
+    </div>
+  )
+})
+
 const GridView = (props: GalleryProps) => {
 
   const [searchResult, setSearchResult] = useState(initialSearchResult)
@@ -30,7 +54,26 @@ const GridView = (props: GalleryProps) => {
   const { ref, width }                  = useResizeObserver<HTMLDivElement>();
   const [columns, setColumns]           = useState<number>(props.columns === 'auto' ? 0 : props.columns)
 
+  function handleUpdate(resource: ResourceDto) {
+    console.log(`Updating resource ${resource.resourceId} in grid view`)
+    setSearchResult(prev => ({
+      ...prev,
+      results: prev.results.map(r => r.resourceId === resource.resourceId ? resource : r)
+    }))
+  }
+
+  useEventListener('resource-updated', handleUpdate)
+
   const gridSpacing = 1
+
+  // Memoize the delete handler to maintain referential equality
+  const handleDelete = useCallback((deleted: ResourceDto) => {
+    setSearchResult(prev => ({
+      ...prev,
+      total: prev.total - 1,
+      results: prev.results.filter(r => r.resourceId !== deleted.resourceId)
+    }))
+  }, [])
 
   const fetchData = () => {
 
@@ -83,27 +126,19 @@ const GridView = (props: GalleryProps) => {
 
   useEffect(() => { if (isFetching && !isEndReached) fetchData(); }, [isFetching, isEndReached]);
 
-  const previews = searchResult.results.map((vid, index) => {
-
-    const style = { "--ncols" : `${columns}` } as CSSProperties
-
-    const handleDelete = (deleted: ResourceDto) => {
-      setSearchResult(prev => ({
-        ...prev,
-        total: prev.total - 1,
-        results: prev.results.filter(r => r.resourceId !== deleted.resourceId)
-      }))
-    }
-
-    return <div key = { `preview-${vid.resourceId}` } className = "grid-cell" style = { style } >
-              <Preview
-                resource = { vid }
-                onClick  = { props.onClick }
-                options  = { props.previewOptionsFn(vid) }
-                onDelete = { handleDelete }
-              />
-            </div>
-  })
+  // Memoize previews to prevent unnecessary re-creation of the array
+  const previews = useMemo(() =>
+    searchResult.results.map((vid) => (
+      <GridCell
+        key={`preview-${vid.resourceId}`}
+        resource={vid}
+        columns={columns}
+        previewOptions={props.previewOptionsFn(vid)}
+        onClick={props.onClick}
+        onDelete={handleDelete}
+      />
+    )), [searchResult.results, columns, props.previewOptionsFn, props.onClick, handleDelete]
+  )
 
   let style = { "--grid-spacing" : `${gridSpacing}px` } as CSSProperties
 
