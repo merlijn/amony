@@ -5,6 +5,11 @@
   display: flex;
   width: 10%;
   z-index: 10;
+  transition: width 0.3s ease;
+
+  &.expanded {
+    width: 15%;
+  }
 
   .thumbnail-editor-preview {
 
@@ -21,21 +26,21 @@
       overflow: hidden;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     }
-  }
 
-  .thumbnail-editor-preview-collapsed {
-    @extend .thumbnail-editor-preview;
-    opacity: 0.7;
-    transition: opacity 0.2s ease;
+    &.collapsed {
+      @extend .thumbnail-editor-preview;
+      opacity: 0.7;
+      transition: opacity 0.2s ease;
 
-    &:hover {
-      opacity: 1;
-      border-color: rgba(255, 255, 255, 0.9);
+      &:hover {
+        opacity: 1;
+        border-color: rgba(255, 255, 255, 0.9);
+      }
     }
-  }
 
-  .thumbnail-editor-preview-selected {
-    @extend .thumbnail-editor-preview;
+    &.selected {
+      @extend .thumbnail-editor-preview;
+    }
   }
 }
 
@@ -49,6 +54,14 @@
   border-radius: 4px;
   padding: 5px;
   pointer-events: auto;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+
+  &.thumbnail-editor-controls-visible {
+    opacity: 1;
+    visibility: visible;
+  }
 
   .te-btn {
     font-size: 13px;

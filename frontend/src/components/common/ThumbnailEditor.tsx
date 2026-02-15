@@ -81,11 +81,9 @@ const ThumbnailEditor = ({resource, player, onResourceUpdated}: ThumbnailEditorP
 
   const fps = resource.contentMeta.fps;
 
-  const thumbnailClassName = `thumbnail-editor-preview ${expanded ? "thumbnail-editor-preview-expanded" : "thumbnail-editor-preview-collapsed"}`
-
   return (
     <>
-      <div className="thumbnail-editor-controls" style = { !expanded ? { "display" : "none" } : { } as React.CSSProperties }>
+      <div className={`thumbnail-editor-controls ${expanded ? "thumbnail-editor-controls-visible" : ""}`}>
         <button className="te-btn" onClick={() => forwards(-1)}>-1s</button>
         <button className="te-btn" onClick={() => forwards(-0.1)}>-.1s</button>
         <button className="te-btn" onClick={() => forwards(-(1 / fps))}>-1f</button>
@@ -97,8 +95,8 @@ const ThumbnailEditor = ({resource, player, onResourceUpdated}: ThumbnailEditorP
         <button className="te-btn" onClick={() => forwards(1)}>+1s</button>
         <button className="te-btn te-btn-close" onClick={onClose}>✕</button>
       </div>
-      <div className = "thumbnail-editor-preview-container">
-        <div className= { thumbnailClassName } onClick={onThumbnailClick}>
+      <div className = {`thumbnail-editor-preview-container ${expanded ? "expanded" : "collapsed"}`}>
+        <div className= { `thumbnail-editor-preview ${expanded ? "expanded" : "collapsed"}` } onClick={onThumbnailClick}>
           <img
             src={resource.urls.thumbnailUrl}
             alt="thumbnail"
