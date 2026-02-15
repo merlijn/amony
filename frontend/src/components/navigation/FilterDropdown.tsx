@@ -1,9 +1,10 @@
 import {useUrlParam} from "../../api/ReactUtils";
-import {Constants, durationAsParam, parseDurationParam, useSortParam} from "../../api/Constants";
+import {Constants, durationAsParam, parseDurationParam, useSortParam, generateRandomSeed} from "../../api/Constants";
 import {DropDown} from "../common/DropDown";
-import {MdTune} from "react-icons/md";
+import {MdTune, MdRefresh} from "react-icons/md";
 import _ from "lodash";
 import React from "react";
+import {Sort} from "../../api/Model";
 
 const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
 
@@ -21,9 +22,7 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
         onToggle = { props.onToggleFilter }
         contentClassName = "filter-dropdown-content">
         <div className = "filter-container">
-          <RadioSelectGroup
-            header        = "Sort"
-            options       = { Constants.sortOptions }
+          <SortSection
             selectedValue = { sortParam }
             onChange      = { setSortParam }
           />
@@ -49,6 +48,61 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
       </DropDown>
     </div>);
 }
+
+type SortSectionProps = {
+  selectedValue: Sort;
+  onChange: (value: Sort) => void;
+};
+
+const SortSection = ({ selectedValue, onChange }: SortSectionProps) => {
+  const isRandom = selectedValue.field === "random";
+
+  const selectRandom = () => {
+    onChange({ field: "random", seed: generateRandomSeed() });
+  };
+
+  const refreshRandom = () => {
+    onChange({ field: "random", seed: generateRandomSeed() });
+  };
+
+  return (
+    <div className="filter-section">
+      <div className="section-header">Sort</div>
+      {Constants.sortOptions.map((option, index) => (
+        <div key={`sort-${index}`} className="filter-option" onClick={() => onChange(option.value)}>
+          <input
+            type="radio"
+            name="Sort"
+            value={option.label}
+            checked={!isRandom && _.isEqual(selectedValue, option.value)}
+            onChange={() => onChange(option.value)}
+          />
+          {option.label}
+        </div>
+      ))}
+      <div className="filter-option" onClick={selectRandom}>
+        <input
+          type="radio"
+          name="Sort"
+          value="Random"
+          checked={isRandom}
+          onChange={selectRandom}
+        />
+        Random
+        {isRandom && (
+          <MdRefresh
+            className="random-refresh-icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              refreshRandom();
+            }}
+            title="New random order"
+          />
+        )}
+      </div>
+    </div>
+  );
+};
 
 type RadioSelectProps<T> = {
   header: string;

@@ -243,6 +243,16 @@
                   &:hover {
                     background-color: var(--bg-tertiary);
                   }
+
+                  .random-refresh-icon {
+                    margin-left: 8px;
+                    cursor: pointer;
+                    vertical-align: middle;
+                    
+                    &:hover {
+                      color: var(--text-primary);
+                    }
+                  }
                 }
               }
             }

@@ -13,6 +13,10 @@ const sortingOptions: Array<{value: RegularSort, label: string}> = [
   { value: { field: "title", direction: "asc" },       label: "By title" },
   { value: { field: "duration", direction: "asc" },    label: "By duration" }];
 
+export const generateRandomSeed = (): number => {
+  return Math.floor(10000 + Math.random() * 90000);
+}
+
 export const parseSortParam = (param: string): Sort => {
 
   if (param.startsWith("random-")) {
