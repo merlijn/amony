@@ -4,6 +4,7 @@ import nl.amony.modules.resources.api.ResourceInfo
 
 enum SortField:
   case Title, DateAdded, Duration, Size
+  case Random(seed: Int)
 
 enum SortDirection:
   case Asc, Desc

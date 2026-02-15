@@ -239,7 +239,7 @@ const ListView = (props: ListProps) => {
                 <TagsCell resource={resource}/>
 
                 <td key="date" className="list-cell list-date">
-                  {dateMillisToString(resource.timeCreated ?? resource.timeAdded)}
+                  {dateMillisToString(resource.timeAdded)}
                 </td>
 
                 <td key="size" className="list-cell list-size">

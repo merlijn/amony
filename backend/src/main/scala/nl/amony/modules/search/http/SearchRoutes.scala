@@ -32,27 +32,25 @@ object SearchRoutes:
     q: Option[String],
     n: Option[Int],
     d: Option[String],
-    sortField: Option[String],
-    sortDir: Option[String],
+    sort: Option[String],
     minRes: Option[Int],
     offset: Option[Int],
     tag: Option[String],
     untagged: Option[Boolean]
   )
 
-  val q         = query[Option[String]]("q").description("The search query").example(Some("cats"))
-  val n         = query[Option[Int]]("n").description("The number of results to return").example(Some(10))
-  val d         = query[Option[String]]("d").description("The duration range in minutes").example(Some("10-30"))
-  val sortField = query[Option[String]]("sort_field").description("Indicates what field to sort").example(Some("title"))
-  val sortDir   = query[Option[String]]("sort_dir").description("Indicates which direction to sort").example(Some("asc"))
-  val minRes    = query[Option[Int]]("min_res").description("The minimum (vertical) resolution").example(Some(720))
-  val offset    = query[Option[Int]]("offset").description("The offset for the search results").example(Some(12))
-  val tag       = query[Option[String]]("tag").description("An optional tag")
-  val untagged  = query[Option[Boolean]]("untagged").description("Only return resources without tags").example(Some(false))
+  val q        = query[Option[String]]("q").description("The search query").example(Some("cats"))
+  val n        = query[Option[Int]]("n").description("The number of results to return").example(Some(10))
+  val d        = query[Option[String]]("d").description("The duration range in minutes").example(Some("10-30"))
+  val sort     = query[Option[String]]("sort").description("Sort field and direction (e.g., title-asc, random-12345)").example(Some("title-asc"))
+  val minRes   = query[Option[Int]]("min_res").description("The minimum (vertical) resolution").example(Some(720))
+  val offset   = query[Option[Int]]("offset").description("The offset for the search results").example(Some(12))
+  val tag      = query[Option[String]]("tag").description("An optional tag")
+  val untagged = query[Option[Boolean]]("untagged").description("Only return resources without tags").example(Some(false))
 
   val searchResourcesEndpoint: Endpoint[SecurityInput, SearchQueryInput, ApiError | SecurityError, SearchResponseDto, Any] = endpoint
     .name("findResources").tag("search").description("Find resources using a search query").get
-    .in("api" / "search" / "media" / q and n and d and sortField and sortDir and minRes and offset and tag and untagged).mapInTo[SearchQueryInput]
+    .in("api" / "search" / "media" / q and n and d and sort and minRes and offset and tag and untagged).mapInTo[SearchQueryInput]
     .securityIn(securityInput).errorOut(errorOutput).out(jsonBody[SearchResponseDto])
 
   val endpoints = List(searchResourcesEndpoint)
@@ -63,6 +61,8 @@ object SearchRoutes:
       .map(_._1)
 
   private val durationPattern = raw"(\d*)-(\d*)".r
+  private val randomPattern = raw"random-(\d{5})".r
+  private val sortPattern = raw"(\w+)(?:-(asc|desc))?".r
 
   def apply(searchService: SearchService, config: SearchConfig, apiSecurity: ApiSecurity)(
     using serverOptions: Http4sServerOptions[IO]
@@ -80,18 +80,20 @@ object SearchRoutes:
           case durationPattern(min, max) => Try((min.toLong, max.toLong)).toOption
           case _                         => None
 
-        val sortField: SortField = queryDto.sortField.map {
-          case "title"      => Title
-          case "size"       => Size
-          case "duration"   => Duration
-          case "date_added" => DateAdded
-          case _            => Title
-        }.getOrElse(Title)
-
-        val sortDir = queryDto.sortDir match {
-          case Some("desc") => Desc
-          case _            => Asc
-        }
+        val sortOption: SortOption = queryDto.sort.flatMap {
+          case randomPattern(seedStr) =>
+            Try(seedStr.toInt).toOption.map(seed => SortOption(SortField.Random(seed), Desc))
+          case sortPattern(field, dir) =>
+            val sortField: SortField = field match
+              case "title"      => Title
+              case "size"       => Size
+              case "duration"   => Duration
+              case "date_added" => DateAdded
+              case _            => Title
+            val sortDir = if dir == "desc" then Desc else Asc
+            Some(SortOption(sortField, sortDir))
+          case _ => None
+        }.getOrElse(SortOption(Title, Asc))
 
         val query = Query(
           q              = queryDto.q.map(s => sanitize(s, 64, c => c.isLetterOrDigit || c.isWhitespace)),
@@ -104,7 +106,7 @@ object SearchRoutes:
           maxRes         = None,
           minDuration    = duration.map(_.min),
           maxDuration    = duration.map(_.max),
-          sort           = Some(SortOption(sortField, sortDir)),
+          sort           = Some(sortOption),
           untagged       = queryDto.untagged.filter(identity)
         )
 
