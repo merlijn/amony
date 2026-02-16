@@ -16,7 +16,6 @@ import nl.amony.modules.resources.api.{ResourceAdded, ResourceBucket, ResourceIn
 trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
 
   private val invalidSequences = List("/", "\\", "..")
-  private val files            = summon[fs2.io.file.Files[IO]]
 
   private def resolveTargetPath(path: JPath, maxAttempt: Int): Either[UploadError, JPath] = {
 

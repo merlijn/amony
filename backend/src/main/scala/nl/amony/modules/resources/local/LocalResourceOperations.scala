@@ -50,7 +50,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
             case Some(existing) => (Some(existing), existing.get.rethrow)
             case None           => (Some(newDeferred), runOperation(newDeferred))
           }
-      }.flatten.map(path => ResourceContent.fromPath(outputFile, Some(key.operation.contentType)).some)
+      }.flatten.map(_ => ResourceContent.fromPath(outputFile, Some(key.operation.contentType)).some)
     }
   }
 

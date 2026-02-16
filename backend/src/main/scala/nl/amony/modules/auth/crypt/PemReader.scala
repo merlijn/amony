@@ -1,6 +1,6 @@
 package nl.amony.modules.auth.crypt
 
-import java.io.{ByteArrayInputStream, File, IOException}
+import java.io.{ByteArrayInputStream, IOException}
 import java.nio.charset.StandardCharsets.US_ASCII
 import java.nio.file.Path
 import java.security.cert.{CertificateException, CertificateFactory, X509Certificate}

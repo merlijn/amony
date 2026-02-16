@@ -8,7 +8,7 @@ import scala.util.Try
 
 import pdi.jwt.{JwtAlgorithm, JwtCirce, JwtClaim}
 import pureconfig.*
-import pureconfig.error.{CannotConvert, FailureReason}
+import pureconfig.error.CannotConvert
 import pureconfig.generic.FieldCoproductHint
 import pureconfig.generic.derivation.EnumConfigReader
 import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader

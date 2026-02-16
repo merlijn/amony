@@ -1,6 +1,7 @@
 import de.gccc.jib.MappingsHelper
-import scala.sys.process._
-import sbt.Keys.streams
+
+import scala.sys.process.*
+import sbt.Keys.{scalaVersion, streams}
 import sbt.Command
 
 val devScalacOptions = Seq(
@@ -13,9 +14,10 @@ val prodScalacOptions = Seq(
   "-source", "future",
   "-encoding", "utf-8",
   "-Wunused:all",
+//  "-Xfatal-warnings"
 //  "-deprecation",
   "-feature",
-  "-Xfatal-warnings")
+  )
 
 def isMainBranch: Boolean = {
   val currentBranch = "git rev-parse --abbrev-ref HEAD".!!.trim
@@ -35,14 +37,32 @@ lazy val jibWriteDockerTagsFile = taskKey[File]("Creates the version.txt file")
 addCommandAlias("format", "; scalafmt; test:scalafmt")
 addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
 
-commands += Command.command("compileProd") { state =>
+inThisBuild(
+  List(
+    scalaVersion := "3.8.1",
+    semanticdbEnabled := true,
+    semanticdbVersion := scalafixSemanticdb.revision
+  )
+)
+
+commands += Command.command("prod") { state =>
+  val settings = Seq(
+    Compile / scalacOptions := prodScalacOptions,
+    scalaVersion := "3.8.1",
+    semanticdbEnabled := true,
+    semanticdbVersion := scalafixSemanticdb.revision
+  )
+
+  Project.extract(state).appendWithSession(settings, state)
+}
+
+commands += Command.command("dev") { state =>
   val extracted = Project.extract(state)
-  val newState = extracted.appendWithSession(
-    Seq(Compile / scalacOptions := prodScalacOptions),
+
+  extracted.appendWithSession(
+    Seq(Compile / scalacOptions := devScalacOptions),
     state
   )
-  val (s, _) = Project.extract(newState).runTask(Compile / compile, newState)
-  s
 }
 
 val javaDevOpts = Seq(
@@ -78,8 +98,7 @@ lazy val amony = project
     organization := "nl.amony",
     name := "amony-app",
     scalaVersion := "3.8.1",
-    scalacOptions := devScalacOptions,
-    
+    scalacOptions := prodScalacOptions,
     Global / cancelable   := true,
     Test / fork := true,
     reStart / javaOptions ++= javaDevOpts,

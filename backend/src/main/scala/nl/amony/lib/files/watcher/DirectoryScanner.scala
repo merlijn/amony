@@ -14,10 +14,10 @@ object LocalDirectoryScanner extends Logging {
     def foldFlatMap[S, E](initial: S)(foldFn: (S, T) => (S, Stream[F, E])): Stream[F, E] = {
 
       val f: Stream[F, (S, Stream[F, E])] = stream.scan[(S, Stream[F, E])](initial -> Stream.empty[F]):
-        case ((acc, p), e) => foldFn(acc, e)
+        case ((acc, _), e) => foldFn(acc, e)
 
       f.flatMap:
-        case (s, stream) => stream
+        case (_, stream) => stream
     }
   }
 

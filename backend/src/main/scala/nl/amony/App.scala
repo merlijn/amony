@@ -78,7 +78,7 @@ object App extends ResourceApp.Forever with Logging {
       Http4sServerOptions.defaultServerLog[IO]
         .copy(
           logLogicExceptions = true,
-          doLogWhenHandled   = (msg, throwable) => IO(accessLogger.info(msg)),
+          doLogWhenHandled   = (msg, _) => IO(accessLogger.info(msg)),
           doLogExceptions    = (msg, throwable) => IO(serverLogger.error(msg, throwable))
         )
     }

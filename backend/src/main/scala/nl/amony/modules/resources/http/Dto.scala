@@ -7,7 +7,7 @@ import sttp.tapir.{FieldName, Schema, SchemaType}
 
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
-import nl.amony.modules.resources.api.{ImageProperties, ResourceInfo, ResourceMeta, VideoProperties}
+import nl.amony.modules.resources.api.{ImageProperties, ResourceInfo, VideoProperties}
 
 def required[T](s: Schema[T]) = s.copy(isOptional = false)
 
@@ -114,16 +114,6 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     )
   }
 
-  val filename = {
-    val slashIdx = resource.path.lastIndexOf('/')
-    val dotIdx   = resource.path.lastIndexOf('.')
-
-    val startIdx = if slashIdx >= 0 then slashIdx + 1 else 0
-    val endIdx   = if dotIdx >= 0 then dotIdx else resource.path.length
-
-    resource.path.substring(startIdx, endIdx)
-  }
-
   val contentMeta: ResourceMetaDto = resource.basicContentProperties match {
     case Some(ImageProperties(width, height, _)) => ResourceMetaDto(width = width, height = height, duration = 0, fps = 0, codec = None)
 
@@ -141,9 +131,6 @@ def toDto(resource: ResourceInfo): ResourceDto = {
 
     ClipDto(resourceId = resource.resourceId, start = start, end = end, urls = urls, description = None, tags = List.empty)
   }
-
-  val contentMetaSource = resource.contentMeta
-    .map(s => ResourceToolMetaDto(s.toolName, io.circe.parser.parse(s.toolData).getOrElse(Json.fromString(s.toolData))))
 
   ResourceDto(
     bucketId           = resource.bucketId,

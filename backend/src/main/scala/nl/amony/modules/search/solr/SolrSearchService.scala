@@ -71,7 +71,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
     solrInputDocument.addField(FieldNames.filesize, resource.size)
 
     val maybeTags = Option.when(resource.tags.nonEmpty)(resource.tags)
-    maybeTags.foreach(tags => solrInputDocument.addField(FieldNames.tags, resource.tags.toList.asJava))
+    maybeTags.foreach(tags => solrInputDocument.addField(FieldNames.tags, tags.toList.asJava))
 
     resource.thumbnailTimestamp.foreach(timestamp => solrInputDocument.addField(FieldNames.thumbnailTimestamp, timestamp))
     resource.title.foreach(title => solrInputDocument.addField(FieldNames.title, title))

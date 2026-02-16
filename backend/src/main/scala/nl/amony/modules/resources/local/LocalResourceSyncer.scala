@@ -10,7 +10,6 @@ import fs2.concurrent.SignallingRef
 
 import nl.amony.lib.files.watcher.*
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.api.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceFileMetaChanged, ResourceInfo, ResourceMoved}
 
 /**

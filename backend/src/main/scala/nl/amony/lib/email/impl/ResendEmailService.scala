@@ -1,7 +1,7 @@
 package nl.amony.lib.email.impl
 
+import cats.Monad
 import cats.implicits.toFlatMapOps
-import cats.{Applicative, FlatMap, Monad}
 import io.circe.derivation.Configuration
 import io.circe.syntax.*
 import io.circe.{Codec, Json, Printer}

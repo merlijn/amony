@@ -47,7 +47,6 @@ object DirectoryWatcher {
             event =>
               val kind      = event.kind()
               lazy val path = directoryPath.resolve(event.context().asInstanceOf[Path])
-              val fileInfo  = getByPath(path)
 
               kind match
                 case StandardWatchEventKinds.ENTRY_DELETE => scheduledExecutor.schedule(publishDeletedEvent(path), 100, TimeUnit.MILLISECONDS)

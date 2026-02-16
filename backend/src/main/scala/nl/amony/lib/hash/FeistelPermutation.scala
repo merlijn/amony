@@ -1,8 +1,5 @@
 package nl.amony.lib.hash
 
-import java.nio.ByteBuffer
-import java.security.MessageDigest
-
 /**
  * Pseudo-random permutation using a Feistel network.
  * Provides a 1-to-1 mapping from [0, maxVal] to [0, maxVal].

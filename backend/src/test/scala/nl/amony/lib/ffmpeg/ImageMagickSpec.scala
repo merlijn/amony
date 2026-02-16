@@ -18,7 +18,7 @@ class ImageMagickSpec extends AnyFlatSpecLike with Logging {
 
     val imageMagick = new ImageMagick(using Meter.noop[IO], Tracer.noop[IO])
 
-    val metas = imageMagick.getImageMeta(path)
+    imageMagick.getImageMeta(path)
 
 //     logger.info(metas.unsafeRunSync().mkString(","))
   }

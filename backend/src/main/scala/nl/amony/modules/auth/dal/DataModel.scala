@@ -1,6 +1,6 @@
 package nl.amony.modules.auth.dal
 
-import java.time.{Instant, OffsetDateTime, ZoneOffset}
+import java.time.{OffsetDateTime, ZoneOffset}
 
 import skunk.Decoder
 import skunk.codec.all.*

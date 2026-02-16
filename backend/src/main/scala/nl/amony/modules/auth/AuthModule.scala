@@ -6,7 +6,7 @@ import skunk.Session
 import sttp.client4.Backend
 import sttp.tapir.server.http4s.Http4sServerOptions
 
-import nl.amony.modules.auth.api.{ApiSecurity, AuthService, SecurityError}
+import nl.amony.modules.auth.api.{ApiSecurity, AuthService}
 import nl.amony.modules.auth.http.AuthEndpointServerLogic
 
 class AuthModule(config: AuthConfig, httpClientBackend: Backend[IO], pool: Resource[IO, Session[IO]]) extends Logging {

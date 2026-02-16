@@ -9,7 +9,7 @@ import sttp.tapir.*
 import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 
 import nl.amony.modules.admin.AdminRoutes
-import nl.amony.modules.auth.http.{AuthEndpointDefs, AuthEndpointServerLogic}
+import nl.amony.modules.auth.http.AuthEndpointDefs
 import nl.amony.modules.resources.http.ResourceRoutes
 import nl.amony.modules.search.http.SearchRoutes
 
@@ -29,6 +29,6 @@ object GenerateSpec:
     absolutePath
 
   def main(args: Array[String]): Unit =
-    val outputPath = args.headOption.getOrElse("../frontend/openapi.yaml")
+    val outputPath  = args.headOption.getOrElse("../frontend/openapi.yaml")
     val writtenPath = generate(Paths.get(outputPath))
-    println(s"OpenAPI spec written to: ${writtenPath}")
+    println(s"OpenAPI spec written to: $writtenPath")

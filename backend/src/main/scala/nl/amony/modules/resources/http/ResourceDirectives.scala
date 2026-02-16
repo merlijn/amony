@@ -11,7 +11,7 @@ import org.http4s.headers.{Range, `Accept-Encoding`, `Accept-Ranges`, `Content-E
 import org.typelevel.ci.CIStringSyntax
 import scribe.Logging
 
-import nl.amony.modules.resources.api.{Resource, ResourceContent, ResourceContentWithRangeSupport}
+import nl.amony.modules.resources.api.{ResourceContent, ResourceContentWithRangeSupport}
 
 object ResourceDirectives extends Logging {
 
