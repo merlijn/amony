@@ -16,9 +16,9 @@ cancelable in Global := true
 
 lazy val buildSolrTarGz = taskKey[Seq[File]]("Creates the solr.tar.gz file")
 lazy val jibWriteDockerTagsFile = taskKey[File]("Creates the version.txt file")
-lazy val generateSpec = taskKey[File]("Generates the OpenAPI specification for the frontend")
 
 addCommandAlias("format", "; scalafmt; test:scalafmt")
+addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
 
 val javaDevOpts = Seq(
   "-DAMONY_SECURE_COOKIES=false",
@@ -64,7 +64,8 @@ lazy val amony = project
     run / fork             := true,
     run / javaOptions     ++= javaDevOpts,
     outputStrategy         := Some(StdoutOutput),
-    
+
+    Compile / run / mainClass := Some("nl.amony.App"),
     Compile / packageBin / mainClass := Some("nl.amony.App"),
 
     // Jib Docker settings
@@ -129,21 +130,6 @@ lazy val amony = project
       val tags = jibTags.value :+ jibVersion.value
       IO.write(versionFile, tags.mkString("\n"))
       versionFile
-    },
-
-    // Task to generate the OpenAPI spec file
-    generateSpec := {
-      val log = streams.value.log
-      val outputPath = ((Compile / baseDirectory).value / ".." / "frontend" / "openapi.yaml").toPath.normalize()
-      log.info(s"Writing open api spec to: $outputPath")
-      val classpath = (Compile / fullClasspath).value.map(_.data)
-      val urls = classpath.map(_.toURI.toURL).toArray
-      val parentLoader = ClassLoader.getPlatformClassLoader
-      val loader = new java.net.URLClassLoader(urls, parentLoader)
-      val cls = loader.loadClass("nl.amony.GenerateSpec$")
-      val module = cls.getField("MODULE$").get(null)
-      val method = cls.getMethod("generate", classOf[java.nio.file.Path])
-      method.invoke(module, outputPath).asInstanceOf[java.nio.file.Path].toFile
     },
 
     // All dependencies from all modules combined

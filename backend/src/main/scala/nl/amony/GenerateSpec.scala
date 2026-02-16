@@ -1,6 +1,6 @@
 package nl.amony
 
-import java.nio.file.{Files, Path}
+import java.nio.file.{Files, Path, Paths}
 import scala.util.Using
 
 import sttp.apispec.openapi.OpenAPI
@@ -27,3 +27,8 @@ object GenerateSpec:
 
     Using.resource(new java.io.FileWriter(absolutePath.toFile))(_.write(docs.toYaml))
     absolutePath
+
+  def main(args: Array[String]): Unit =
+    val outputPath = args.headOption.getOrElse("../frontend/openapi.yaml")
+    val writtenPath = generate(Paths.get(outputPath))
+    println(s"OpenAPI spec written to: ${writtenPath}")
