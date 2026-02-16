@@ -1,6 +1,21 @@
 import de.gccc.jib.MappingsHelper
 import scala.sys.process._
 import sbt.Keys.streams
+import sbt.Command
+
+val devScalacOptions = Seq(
+  "-rewrite",
+  "-source", "future",
+  "-encoding", "utf-8")
+
+val prodScalacOptions = Seq(
+  "-rewrite",
+  "-source", "future",
+  "-encoding", "utf-8",
+  "-Wunused:all",
+//  "-deprecation",
+  "-feature",
+  "-Xfatal-warnings")
 
 def isMainBranch: Boolean = {
   val currentBranch = "git rev-parse --abbrev-ref HEAD".!!.trim
@@ -19,6 +34,16 @@ lazy val jibWriteDockerTagsFile = taskKey[File]("Creates the version.txt file")
 
 addCommandAlias("format", "; scalafmt; test:scalafmt")
 addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
+
+commands += Command.command("compileProd") { state =>
+  val extracted = Project.extract(state)
+  val newState = extracted.appendWithSession(
+    Seq(Compile / scalacOptions := prodScalacOptions),
+    state
+  )
+  val (s, _) = Project.extract(newState).runTask(Compile / compile, newState)
+  s
+}
 
 val javaDevOpts = Seq(
   "-DAMONY_SECURE_COOKIES=false",
@@ -53,10 +78,7 @@ lazy val amony = project
     organization := "nl.amony",
     name := "amony-app",
     scalaVersion := "3.8.1",
-    scalacOptions := Seq(
-      "-rewrite",
-      "-source", "future",
-      "-encoding", "utf-8"),
+    scalacOptions := devScalacOptions,
     
     Global / cancelable   := true,
     Test / fork := true,
