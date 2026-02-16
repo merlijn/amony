@@ -158,11 +158,11 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
     val solrSort = {
 
       val solrField = sort.field match
-        case Title           => FieldNames.path
-        case DateAdded       => FieldNames.timeAdded
-        case Size            => FieldNames.filesize
-        case Duration        => FieldNames.duration
-        case Random(seed)    => s"random_$seed"
+        case Title        => FieldNames.path
+        case DateAdded    => FieldNames.timeAdded
+        case Size         => FieldNames.filesize
+        case Duration     => FieldNames.duration
+        case Random(seed) => s"random_$seed"
 
       val direction = if sort.direction == Desc then "desc" else "asc"
 

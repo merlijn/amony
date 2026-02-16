@@ -23,8 +23,9 @@ addCommandAlias("format", "; scalafmt; test:scalafmt")
 val javaDevOpts = Seq(
   "-DAMONY_SECURE_COOKIES=false",
   "-DAMONY_OTEL_ENABLED=false",
+  // OTEL
+  "-Dotel.sdk.disabled=true",
   "-Dotel.service.name=amony-app",
-// Open observe config
 //  "-Dotel.exporter.otlp.endpoint=http://localhost:5080/api/default",
 //  "-Dotel.exporter.otlp.headers=Authorization=Basic <key>",
 //  "-Dotel.exporter.otlp.protocol=http/protobuf",
@@ -42,8 +43,8 @@ val javaDevOpts = Seq(
 
 val circeVersion    = "0.14.15"
 val http4sVersion   = "0.23.33"
-val tapirVersion    = "1.13.6"
-val sttpVersion     = "4.0.15"
+val tapirVersion    = "1.13.8"
+val sttpVersion     = "4.0.16"
 val otel4sVersion   = "0.15.1"
 
 lazy val amony = project
@@ -165,8 +166,8 @@ lazy val amony = project
       // database
       "org.tpolecat"                 %% "skunk-core"                                 % "1.0.0-M12",
       "org.tpolecat"                 %% "skunk-circe"                                % "1.0.0-M12",
-      "org.postgresql"                % "postgresql"                                 % "42.7.9",
-      "org.liquibase"                 % "liquibase-core"                             % "4.33.0",
+      "org.postgresql"                % "postgresql"                                 % "42.7.10",
+      "org.liquibase"                 % "liquibase-core"                             % "5.0.1",
 
       // json
       "io.circe"                     %% "circe-core"                                 % circeVersion,
@@ -207,8 +208,9 @@ lazy val amony = project
       "org.jsoup"                      % "jsoup"                                     % "1.22.1",
 
       // solr search
-      "org.apache.solr"                % "solr-core"                                 % "8.11.1",
-      "org.apache.solr"                % "solr-langid"                               % "8.11.1",
+      "org.apache.solr"                % "solr-core"                                 % "9.10.1",
+      "org.apache.commons"             % "commons-compress"                          % "1.28.0",
+      "org.bouncycastle"               % "bcprov-jdk18on"                            % "1.83",
 
       // Test dependencies
       "org.scalatest"                 %% "scalatest"                                 % "3.2.19"   % Test,

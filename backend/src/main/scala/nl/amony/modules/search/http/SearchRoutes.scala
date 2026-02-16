@@ -61,8 +61,8 @@ object SearchRoutes:
       .map(_._1)
 
   private val durationPattern = raw"(\d*)-(\d*)".r
-  private val randomPattern = raw"random-(\d{5})".r
-  private val sortPattern = raw"(\w+)(?:-(asc|desc))?".r
+  private val randomPattern   = raw"random-(\d{5})".r
+  private val sortPattern     = raw"(\w+)(?:-(asc|desc))?".r
 
   def apply(searchService: SearchService, config: SearchConfig, apiSecurity: ApiSecurity)(
     using serverOptions: Http4sServerOptions[IO]
@@ -81,7 +81,7 @@ object SearchRoutes:
           case _                         => None
 
         val sortOption: SortOption = queryDto.sort.flatMap {
-          case randomPattern(seedStr) =>
+          case randomPattern(seedStr)  =>
             Try(seedStr.toInt).toOption.map(seed => SortOption(SortField.Random(seed), Desc))
           case sortPattern(field, dir) =>
             val sortField: SortField = field match
@@ -90,9 +90,9 @@ object SearchRoutes:
               case "duration"   => Duration
               case "date_added" => DateAdded
               case _            => Title
-            val sortDir = if dir == "desc" then Desc else Asc
+            val sortDir              = if dir == "desc" then Desc else Asc
             Some(SortOption(sortField, sortDir))
-          case _ => None
+          case _                       => None
         }.getOrElse(SortOption(Title, Asc))
 
         val query = Query(

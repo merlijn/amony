@@ -5,7 +5,7 @@ import java.security.MessageDigest
 
 import cats.data.EitherT
 import cats.effect.IO
-import fs2.io.file.{ Files, Path }
+import fs2.io.file.{Files, Path}
 import fs2.{Chunk, Pipe}
 import scribe.Logging
 

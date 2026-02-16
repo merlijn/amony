@@ -41,6 +41,7 @@ object SolrResource extends Logging {
       }
 
       System.getProperties.setProperty("solr.data.dir", solrHome.toAbsolutePath.toString)
+      System.getProperties.setProperty("solr.opentelemetry.enabled", "false")
 
       val container        = new CoreContainer(solrHome, new Properties())
       container.load()

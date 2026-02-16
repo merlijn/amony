@@ -24,10 +24,11 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
   private def relativizePath(path: Path): String                    = config.resourcePath.relativize(path).toString
   private def mapFileEvent(fileEvent: FileEvent): IO[ResourceEvent] = {
 
-    def withRequireResource(hash: String, path: Path)(fn: ResourceInfo => ResourceEvent): IO[ResourceEvent] = db.getByHash(bucketId, hash)
-      .map(_.find(_.path == relativizePath(path))).flatMap:
-        case None    => IO.raiseError(new IllegalStateException("No such file in database"))
-        case Some(r) => IO.pure(fn(r))
+    def withRequireResource(hash: String, path: Path)(fn: ResourceInfo => ResourceEvent): IO[ResourceEvent] =
+      db.getByHash(bucketId, hash)
+        .map(_.find(_.path == relativizePath(path))).flatMap:
+          case None    => IO.raiseError(new IllegalStateException("No such file in database"))
+          case Some(r) => IO.pure(fn(r))
 
     fileEvent match {
 
