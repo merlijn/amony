@@ -41,8 +41,8 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
           <RadioSelectGroup
             header        = "Upload date"
             options       = { Constants.uploadOptions }
-            selectedValue = { parseDurationParam(durationParam)}
-            onChange      = { value => setDurationParam(durationAsParam(value)) }
+            selectedValue = { parseDurationParam(uploadParam)}
+            onChange      = { value => setUploadParam(durationAsParam(value)) }
           />
         </div>
       </DropDown>
