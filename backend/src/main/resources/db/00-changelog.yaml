@@ -31,3 +31,12 @@ databaseChangeLog:
             path: db/03-auth.sql
             splitStatements: true
             endDelimiter: ";"
+  - changeSet:
+      id: 4
+      author: merlijn
+      context: auth
+      changes:
+        - sqlFile:
+            path: db/04-oauth-state.sql
+            splitStatements: true
+            endDelimiter: ";"

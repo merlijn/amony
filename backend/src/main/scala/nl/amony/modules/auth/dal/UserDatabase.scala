@@ -9,9 +9,6 @@ import skunk.implicits.*
 
 class UserDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
 
-  
-  
-
   val getByIdQuery: skunk.Query[String, UserRow] =
     sql"SELECT ${UserRow.columns} FROM users WHERE id = ${varchar(64)}".query(UserRow.decoder)
 

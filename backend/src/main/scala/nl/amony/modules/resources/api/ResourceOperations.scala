@@ -39,7 +39,7 @@ case class VideoFragment(width: Option[Int] = None, height: Option[Int] = None, 
           _ <- Either.cond(duration > minLengthInMillis, (), "Duration too short")
           _ <- Either.cond(duration < maxLengthInMillis, (), "Duration too long")
         yield ()
-      case other                        => Left("Wrong content type, expected video, got: " + other)
+      case other                    => Left("Wrong content type, expected video, got: " + other)
     }
   }
 }

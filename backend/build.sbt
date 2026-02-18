@@ -13,7 +13,7 @@ val prodScalacOptions = Seq(
   "-rewrite",
   "-source", "future",
   "-encoding", "utf-8",
-  "-Wunused:all",
+//  "-Wunused:all",
 //  "-Xfatal-warnings"
 //  "-deprecation",
   "-feature",
@@ -77,7 +77,7 @@ val javaDevOpts = Seq(
   "-DAMONY_MEDIA_PATH=../media",
   "-DAMONY_SOLR_PATH=../data/solr",
   "-DAMONY_WEB_CLIENT_PATH=../frontend/dist",
-  "-DAMONY_AUTH_ENABLED=false",
+//  "-DAMONY_AUTH_ENABLED=false",
   "-DAMONY_OAUTH_AUTHORIZE_URL=http://localhost:5556/dex/auth",
   "-DAMONY_OAUTH_TOKEN_URL=http://localhost:5556/dex/token",
   "-DAMONY_OAUTH_USERINFO_URL=http://localhost:5556/dex/userinfo",

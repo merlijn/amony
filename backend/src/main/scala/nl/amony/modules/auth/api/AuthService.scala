@@ -1,7 +1,8 @@
 package nl.amony.modules.auth.api
 
-import java.time.Instant
+import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import java.util.UUID
+import scala.util.Random
 
 import cats.data.EitherT
 import cats.effect.IO
@@ -9,9 +10,10 @@ import scribe.Logging
 import sttp.client4.Backend
 import sttp.client4.circe.asJson
 
+import nl.amony.lib.hash.Base32
 import nl.amony.modules.*
 import nl.amony.modules.auth.*
-import nl.amony.modules.auth.dal.{UserDatabase, UserRow}
+import nl.amony.modules.auth.dal.{OAuthStateDatabase, OAuthStateRow, UserDatabase, UserRow}
 
 sealed trait AuthenticationError
 
@@ -40,11 +42,32 @@ case class UserInfo(
   locale: Option[String]
 ) derives io.circe.Codec
 
-class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: UserDatabase) extends Logging {
+class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: UserDatabase, oauthStateDatabase: OAuthStateDatabase) extends Logging {
 
   private val tokenManager = new TokenManager(config.jwt)
 
   val oauthProviders: Map[String, OauthProvider] = config.oauthProviders.map(p => p.name -> p).toMap
+
+  private val oauthStateValidityDuration = java.time.Duration.ofMinutes(15)
+
+  def createState(provider: String): IO[String] = {
+    val stateId = Base32.encode(Random.nextBytes(10))
+
+    val stateRow = OAuthStateRow(
+      id         = stateId,
+      provider   = provider,
+      created_at = OffsetDateTime.now(ZoneOffset.UTC)
+    )
+    oauthStateDatabase.insert(stateRow).map(_ => stateId)
+  }
+
+  def validateAndConsumeState(provider: String, stateId: String): EitherT[IO, AuthenticationError, Unit] =
+    for
+      stateRow <- EitherT.fromOptionF(oauthStateDatabase.getById(stateId), InvalidCredentials)
+      _        <- EitherT.liftF(oauthStateDatabase.delete(stateId))
+      isValid   = stateRow.provider == provider && stateRow.created_at.plus(oauthStateValidityDuration).isAfter(OffsetDateTime.now(ZoneOffset.UTC))
+      _        <- EitherT.cond[IO](isValid, (), InvalidCredentials)
+    yield ()
 
   private def getToken(provider: OauthProvider, code: String): EitherT[IO, AuthenticationError, OauthTokenResponse] = {
 

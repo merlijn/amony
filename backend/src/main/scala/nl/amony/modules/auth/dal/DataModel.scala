@@ -9,6 +9,13 @@ import skunk.implicits.sql
 
 import nl.amony.modules.auth.api.{Role, User, UserId}
 
+case class OAuthStateRow(id: String, provider: String, created_at: OffsetDateTime)
+
+object OAuthStateRow {
+  val columns                         = sql"id, provider, created_at"
+  val decoder: Decoder[OAuthStateRow] = (varchar(64) *: varchar(64) *: timestamptz).to[OAuthStateRow]
+}
+
 case class UserRow(id: String, email: String, oauth_provider: String, oauth_subject: String, time_registered: OffsetDateTime, roles: Arr[String]) {
 
   def toUser: User =
