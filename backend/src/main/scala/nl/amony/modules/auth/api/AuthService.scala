@@ -48,15 +48,15 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: Use
 
   val oauthProviders: Map[String, OauthProvider] = config.oauthProviders.map(p => p.name -> p).toMap
 
-  private val oauthStateValidityDuration = java.time.Duration.ofMinutes(15)
+  private def nowUTC = OffsetDateTime.now(ZoneOffset.UTC)
 
   def createState(provider: String): IO[String] = {
-    val stateId = Random.nextLong
+    val stateId = config.random.nextLong
 
     val stateRow = OAuthStateRow(
       id         = stateId,
       provider   = provider,
-      created_at = OffsetDateTime.now(ZoneOffset.UTC)
+      created_at = nowUTC
     )
     oauthStateDatabase.insert(stateRow).map(_ => java.lang.Long.toUnsignedString(stateId, 16))
   }
@@ -66,7 +66,7 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: Use
       stateId  <- EitherT.fromOption[IO](Try(java.lang.Long.parseUnsignedLong(state, 16)).toOption, InvalidCredentials)
       stateRow <- EitherT.fromOptionF(oauthStateDatabase.getById(stateId), InvalidCredentials)
       _        <- EitherT.liftF(oauthStateDatabase.delete(stateId))
-      isValid   = stateRow.provider == provider && stateRow.created_at.plus(oauthStateValidityDuration).isAfter(OffsetDateTime.now(ZoneOffset.UTC))
+      isValid   = stateRow.provider == provider && nowUTC.isBefore(stateRow.created_at.plus(config.oauthStateValidityDuration))
       _        <- EitherT.cond[IO](isValid, (), InvalidCredentials)
     yield ()
 

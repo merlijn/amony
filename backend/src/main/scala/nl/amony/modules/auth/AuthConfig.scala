@@ -50,6 +50,10 @@ case class AuthConfig(
   oauthProviders: List[OauthProvider],
   accessControl: Map[String, UserAccessConfig]
 ) derives ConfigReader {
+  
+  val random = new java.security.SecureRandom
+
+  val oauthStateValidityDuration = java.time.Duration.ofMinutes(5)
 
   val anonymousAccess: UserAccessConfig     = accessControl("anonymous")
   val authenticatedAccess: UserAccessConfig = accessControl("authenticated")
