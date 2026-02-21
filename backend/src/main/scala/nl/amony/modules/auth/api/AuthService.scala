@@ -2,7 +2,7 @@ package nl.amony.modules.auth.api
 
 import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import java.util.UUID
-import scala.util.Random
+import scala.util.{Random, Try}
 
 import cats.data.EitherT
 import cats.effect.IO
@@ -51,18 +51,19 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: Use
   private val oauthStateValidityDuration = java.time.Duration.ofMinutes(15)
 
   def createState(provider: String): IO[String] = {
-    val stateId = Base32.encode(Random.nextBytes(10))
+    val stateId = Random.nextLong
 
     val stateRow = OAuthStateRow(
       id         = stateId,
       provider   = provider,
       created_at = OffsetDateTime.now(ZoneOffset.UTC)
     )
-    oauthStateDatabase.insert(stateRow).map(_ => stateId)
+    oauthStateDatabase.insert(stateRow).map(_ => java.lang.Long.toUnsignedString(stateId, 16))
   }
 
-  def validateAndConsumeState(provider: String, stateId: String): EitherT[IO, AuthenticationError, Unit] =
+  def validateAndConsumeState(provider: String, state: String): EitherT[IO, AuthenticationError, Unit] =
     for
+      stateId  <- EitherT.fromOption[IO](Try(java.lang.Long.parseUnsignedLong(state, 16)).toOption, InvalidCredentials)
       stateRow <- EitherT.fromOptionF(oauthStateDatabase.getById(stateId), InvalidCredentials)
       _        <- EitherT.liftF(oauthStateDatabase.delete(stateId))
       isValid   = stateRow.provider == provider && stateRow.created_at.plus(oauthStateValidityDuration).isAfter(OffsetDateTime.now(ZoneOffset.UTC))

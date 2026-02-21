@@ -1,5 +1,5 @@
 CREATE TABLE oauth_state (
-    id              VARCHAR(64) PRIMARY KEY,
+    id              BIGINT PRIMARY KEY,
     provider        VARCHAR(64) NOT NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
