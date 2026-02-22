@@ -1,6 +1,7 @@
 FROM alpine:3.23
 
 RUN apk add --no-cache \
+    gettext \
     inotify-tools \
     nginx \
     nginx-mod-http-headers-more
