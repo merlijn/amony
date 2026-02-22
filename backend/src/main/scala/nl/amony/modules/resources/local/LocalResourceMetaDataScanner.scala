@@ -9,7 +9,6 @@ import scribe.Logging
 
 import nl.amony.lib.process.ffmpeg.FFMpeg
 import nl.amony.lib.process.magick.ImageMagick
-import nl.amony.modules.resources.*
 import nl.amony.modules.resources.api.{ContentProperties, ImageProperties, ResourceMeta}
 
 class LocalResourceMetaDataScanner(tika: Tika, ffmpeg: FFMpeg, imageMagick: ImageMagick) extends Logging {

@@ -1,7 +1,7 @@
 package nl.amony.lib.process.magick
 
 import cats.effect.IO
-import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
+import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 
 import nl.amony.lib.process.ProcessRunner

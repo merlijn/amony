@@ -88,7 +88,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
     yield ()
 
   private[resources] def truncateTables(): IO[Unit] =
-    useTransaction: (s, tx) =>
+    useTransaction: (s, _) =>
       for
         _ <- s.execute(Queries.tags.truncateCascade)
         _ <- s.execute(Queries.resource_tags.truncateCascade)
@@ -98,14 +98,14 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
   def getAll(bucketId: String): IO[List[ResourceInfo]] = getStream(bucketId).compile.toList
 
   def insertResource(resource: ResourceInfo): IO[Unit] =
-    useTransaction: (s, tx) =>
+    useTransaction: (s, _) =>
       for
         _ <- tables.resources.insert(s, ResourceRow.fromResource(resource))
         _ <- updateTagsForResource(s, resource.bucketId, resource.resourceId, resource.tags.toList)
       yield ()
 
   def upsert(resource: ResourceInfo): IO[Unit] =
-    useTransaction: (s, tx) =>
+    useTransaction: (s, _) =>
       updateResourceWithTags(s, resource)
 
   def getStream(bucketId: String): fs2.Stream[IO, ResourceInfo] =
@@ -137,7 +137,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
     description: Option[String],
     tagLabels: List[String]
   ): IO[Option[ResourceInfo]] =
-    useTransaction: (s, tx) =>
+    useTransaction: (s, _) =>
       getById(bucketId, resourceId).flatMap:
         case None           => IO.pure(None)
         case Some(resource) =>
@@ -145,7 +145,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
           updateResourceWithTags(s, updatedResource) >> IO.pure(Some(updatedResource))
 
   def modifyTags(bucketId: String, resourceId: String, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Option[ResourceInfo]] =
-    useTransaction: (s, tx) =>
+    useTransaction: (s, _) =>
       getById(bucketId, resourceId).flatMap:
         case None           => IO.pure(None)
         case Some(resource) =>
@@ -164,7 +164,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
       s.prepare(Queries.resources.bucketCount).flatMap(_.option(bucketId)).map(_.getOrElse(0))
 
   def deleteResource(bucketId: String, resourceId: String): IO[Unit] =
-    useTransaction: (s, tx) =>
+    useTransaction: (s, _) =>
       for
         _ <- tables.resource_tags.delete(s, bucketId, resourceId)
         _ <- tables.resources.delete(s, bucketId, resourceId)

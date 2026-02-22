@@ -12,9 +12,9 @@ import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.http.{oneOfList, toDto}
 import nl.amony.modules.search.SearchConfig
+import nl.amony.modules.search.api.*
 import nl.amony.modules.search.api.SortDirection.{Asc, Desc}
 import nl.amony.modules.search.api.SortField.*
-import nl.amony.modules.search.api.{Query, SearchService, SortField, SortOption}
 
 object SearchRoutes:
 
@@ -32,6 +32,7 @@ object SearchRoutes:
     q: Option[String],
     n: Option[Int],
     d: Option[String],
+    u: Option[String],
     sort: Option[String],
     minRes: Option[Int],
     offset: Option[Int],
@@ -42,6 +43,7 @@ object SearchRoutes:
   val q        = query[Option[String]]("q").description("The search query").example(Some("cats"))
   val n        = query[Option[Int]]("n").description("The number of results to return").example(Some(10))
   val d        = query[Option[String]]("d").description("The duration range in minutes").example(Some("10-30"))
+  val u        = query[Option[String]]("u").description("The upload date range (milliseconds since UTC)").example(Some("1771751993045-"))
   val sort     = query[Option[String]]("sort").description("Sort field and direction (e.g., title-asc, random-12345)").example(Some("title-asc"))
   val minRes   = query[Option[Int]]("min_res").description("The minimum (vertical) resolution").example(Some(720))
   val offset   = query[Option[Int]]("offset").description("The offset for the search results").example(Some(12))
@@ -50,7 +52,7 @@ object SearchRoutes:
 
   val searchResourcesEndpoint: Endpoint[SecurityInput, SearchQueryInput, ApiError | SecurityError, SearchResponseDto, Any] = endpoint
     .name("findResources").tag("search").description("Find resources using a search query").get
-    .in("api" / "search" / "media" / q and n and d and sort and minRes and offset and tag and untagged).mapInTo[SearchQueryInput]
+    .in("api" / "search" / "media" / q and n and d and u and sort and minRes and offset and tag and untagged).mapInTo[SearchQueryInput]
     .securityIn(securityInput).errorOut(errorOutput).out(jsonBody[SearchResponseDto])
 
   val endpoints = List(searchResourcesEndpoint)
@@ -73,12 +75,15 @@ object SearchRoutes:
     val routeImpl = searchResourcesEndpoint.serverSecurityLogicPure(apiSecurity.publicEndpoint).serverLogic {
       auth => queryDto =>
 
-        val duration: Option[(min: Long, max: Long)] = queryDto.d.flatMap:
-          case durationPattern("", "")   => None
-          case durationPattern(min, "")  => Try((min.toLong, Long.MaxValue)).toOption
-          case durationPattern("", max)  => Try((0L, max.toLong)).toOption
-          case durationPattern(min, max) => Try((min.toLong, max.toLong)).toOption
-          case _                         => None
+        def parseRange(s: Option[String]): (Option[Long], Option[Long]) = s match
+          case Some(durationPattern("", ""))   => (None, None)
+          case Some(durationPattern(min, ""))  => (Try(min.toLong).toOption, None)
+          case Some(durationPattern("", max))  => (None, Try(max.toLong).toOption)
+          case Some(durationPattern(min, max)) => (Try(min.toLong).toOption, Try(max.toLong).toOption)
+          case _                               => (None, None)
+
+        val (minDuration, maxDuration)     = parseRange(queryDto.d)
+        val (minUploadDate, maxUploadDate) = parseRange(queryDto.u)
 
         val sortOption: SortOption = queryDto.sort.flatMap {
           case randomPattern(seedStr)  =>
@@ -96,18 +101,17 @@ object SearchRoutes:
         }.getOrElse(SortOption(Title, Asc))
 
         val query = Query(
-          q              = queryDto.q.map(s => sanitize(s, 64, c => c.isLetterOrDigit || c.isWhitespace)),
-          n              = Math.min(queryDto.n.getOrElse(config.defaultNumberOfResults), config.maximumNumberOfResults),
-          offset         = queryDto.offset.map(n => Math.max(0, n)),
-          includeTags    = if queryDto.untagged.contains(true) then Set.empty else queryDto.tag.map(s => sanitize(s, 32, c => c.isLetterOrDigit)).toSet,
-          excludeTags    = apiSecurity.userAccess(auth).hiddenTags,
-          excludeBuckets = apiSecurity.userAccess(auth).hiddenBuckets,
-          minRes         = queryDto.minRes.map(n => Math.max(0, n)),
-          maxRes         = None,
-          minDuration    = duration.map(_.min),
-          maxDuration    = duration.map(_.max),
-          sort           = Some(sortOption),
-          untagged       = queryDto.untagged.filter(identity)
+          q               = queryDto.q.map(s => sanitize(s, 64, c => c.isLetterOrDigit || c.isWhitespace)),
+          n               = Math.min(queryDto.n.getOrElse(config.defaultNumberOfResults), config.maximumNumberOfResults),
+          offset          = queryDto.offset.map(n => Math.max(0, n)),
+          includeTags     = if queryDto.untagged.contains(true) then Set.empty else queryDto.tag.map(s => sanitize(s, 32, c => c.isLetterOrDigit)).toSet,
+          excludeTags     = apiSecurity.userAccess(auth).hiddenTags,
+          excludeBuckets  = apiSecurity.userAccess(auth).hiddenBuckets,
+          resolutionRange = ResolutionRange(min = queryDto.minRes, max = None),
+          durationRange   = DurationRange(minDuration, maxDuration),
+          uploadDateRange = UploadDateRange(minUploadDate, maxUploadDate),
+          sort            = Some(sortOption),
+          untagged        = queryDto.untagged.filter(identity)
         )
 
         searchService.searchMedia(query).map { response =>

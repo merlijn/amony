@@ -1,7 +1,8 @@
 package nl.amony.modules.auth.api
 
-import java.time.Instant
+import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import java.util.UUID
+import scala.util.{Random, Try}
 
 import cats.data.EitherT
 import cats.effect.IO
@@ -9,9 +10,10 @@ import scribe.Logging
 import sttp.client4.Backend
 import sttp.client4.circe.asJson
 
+import nl.amony.lib.hash.Base32
 import nl.amony.modules.*
 import nl.amony.modules.auth.*
-import nl.amony.modules.auth.dal.{UserDatabase, UserRow}
+import nl.amony.modules.auth.dal.{OAuthStateDatabase, OAuthStateRow, UserDatabase, UserRow}
 
 sealed trait AuthenticationError
 
@@ -40,11 +42,33 @@ case class UserInfo(
   locale: Option[String]
 ) derives io.circe.Codec
 
-class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: UserDatabase) extends Logging {
+class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: UserDatabase, oauthStateDatabase: OAuthStateDatabase) extends Logging {
 
   private val tokenManager = new TokenManager(config.jwt)
 
   val oauthProviders: Map[String, OauthProvider] = config.oauthProviders.map(p => p.name -> p).toMap
+
+  private def nowUTC = OffsetDateTime.now(ZoneOffset.UTC)
+
+  def createState(provider: String): IO[String] = {
+    val stateId = config.random.nextLong
+
+    val stateRow = OAuthStateRow(
+      id         = stateId,
+      provider   = provider,
+      created_at = nowUTC
+    )
+    oauthStateDatabase.insert(stateRow).map(_ => java.lang.Long.toUnsignedString(stateId, 16))
+  }
+
+  def validateAndConsumeState(provider: String, state: String): EitherT[IO, AuthenticationError, Unit] =
+    for
+      stateId  <- EitherT.fromOption[IO](Try(java.lang.Long.parseUnsignedLong(state, 16)).toOption, InvalidCredentials)
+      stateRow <- EitherT.fromOptionF(oauthStateDatabase.getById(stateId), InvalidCredentials)
+      _        <- EitherT.liftF(oauthStateDatabase.delete(stateId))
+      isValid   = stateRow.provider == provider && nowUTC.isBefore(stateRow.created_at.plus(config.oauthStateValidityDuration))
+      _        <- EitherT.cond[IO](isValid, (), InvalidCredentials)
+    yield ()
 
   private def getToken(provider: OauthProvider, code: String): EitherT[IO, AuthenticationError, OauthTokenResponse] = {
 

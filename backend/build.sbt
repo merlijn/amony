@@ -1,6 +1,23 @@
 import de.gccc.jib.MappingsHelper
-import scala.sys.process._
-import sbt.Keys.streams
+
+import scala.sys.process.*
+import sbt.Keys.{scalaVersion, streams}
+import sbt.Command
+
+val devScalacOptions = Seq(
+  "-rewrite",
+  "-source", "future",
+  "-encoding", "utf-8")
+
+val prodScalacOptions = Seq(
+  "-rewrite",
+  "-source", "future",
+  "-encoding", "utf-8",
+//  "-Wunused:all",
+//  "-Xfatal-warnings"
+//  "-deprecation",
+  "-feature",
+  )
 
 def isMainBranch: Boolean = {
   val currentBranch = "git rev-parse --abbrev-ref HEAD".!!.trim
@@ -16,9 +33,37 @@ cancelable in Global := true
 
 lazy val buildSolrTarGz = taskKey[Seq[File]]("Creates the solr.tar.gz file")
 lazy val jibWriteDockerTagsFile = taskKey[File]("Creates the version.txt file")
-lazy val generateSpec = taskKey[File]("Generates the OpenAPI specification for the frontend")
 
 addCommandAlias("format", "; scalafmt; test:scalafmt")
+addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
+
+inThisBuild(
+  List(
+    scalaVersion := "3.8.1",
+    semanticdbEnabled := true,
+    semanticdbVersion := scalafixSemanticdb.revision
+  )
+)
+
+commands += Command.command("prod") { state =>
+  val settings = Seq(
+    Compile / scalacOptions := prodScalacOptions,
+    scalaVersion := "3.8.1",
+    semanticdbEnabled := true,
+    semanticdbVersion := scalafixSemanticdb.revision
+  )
+
+  Project.extract(state).appendWithSession(settings, state)
+}
+
+commands += Command.command("dev") { state =>
+  val extracted = Project.extract(state)
+
+  extracted.appendWithSession(
+    Seq(Compile / scalacOptions := devScalacOptions),
+    state
+  )
+}
 
 val javaDevOpts = Seq(
   "-DAMONY_SECURE_COOKIES=false",
@@ -32,7 +77,7 @@ val javaDevOpts = Seq(
   "-DAMONY_MEDIA_PATH=../media",
   "-DAMONY_SOLR_PATH=../data/solr",
   "-DAMONY_WEB_CLIENT_PATH=../frontend/dist",
-  "-DAMONY_AUTH_ENABLED=false",
+//  "-DAMONY_AUTH_ENABLED=false",
   "-DAMONY_OAUTH_AUTHORIZE_URL=http://localhost:5556/dex/auth",
   "-DAMONY_OAUTH_TOKEN_URL=http://localhost:5556/dex/token",
   "-DAMONY_OAUTH_USERINFO_URL=http://localhost:5556/dex/userinfo",
@@ -44,7 +89,7 @@ val javaDevOpts = Seq(
 val circeVersion    = "0.14.15"
 val http4sVersion   = "0.23.33"
 val tapirVersion    = "1.13.8"
-val sttpVersion     = "4.0.16"
+val sttpVersion     = "4.0.19"
 val otel4sVersion   = "0.15.1"
 
 lazy val amony = project
@@ -53,18 +98,15 @@ lazy val amony = project
     organization := "nl.amony",
     name := "amony-app",
     scalaVersion := "3.8.1",
-    scalacOptions := Seq(
-      "-rewrite",
-      "-source", "future",
-      "-encoding", "utf-8"),
-    
+    scalacOptions := devScalacOptions,
     Global / cancelable   := true,
     Test / fork := true,
     reStart / javaOptions ++= javaDevOpts,
     run / fork             := true,
     run / javaOptions     ++= javaDevOpts,
     outputStrategy         := Some(StdoutOutput),
-    
+
+    Compile / run / mainClass := Some("nl.amony.App"),
     Compile / packageBin / mainClass := Some("nl.amony.App"),
 
     // Jib Docker settings
@@ -129,21 +171,6 @@ lazy val amony = project
       val tags = jibTags.value :+ jibVersion.value
       IO.write(versionFile, tags.mkString("\n"))
       versionFile
-    },
-
-    // Task to generate the OpenAPI spec file
-    generateSpec := {
-      val log = streams.value.log
-      val outputPath = ((Compile / baseDirectory).value / ".." / "frontend" / "openapi.yaml").toPath.normalize()
-      log.info(s"Writing open api spec to: $outputPath")
-      val classpath = (Compile / fullClasspath).value.map(_.data)
-      val urls = classpath.map(_.toURI.toURL).toArray
-      val parentLoader = ClassLoader.getPlatformClassLoader
-      val loader = new java.net.URLClassLoader(urls, parentLoader)
-      val cls = loader.loadClass("nl.amony.GenerateSpec$")
-      val module = cls.getField("MODULE$").get(null)
-      val method = cls.getMethod("generate", classOf[java.nio.file.Path])
-      method.invoke(module, outputPath).asInstanceOf[java.nio.file.Path].toFile
     },
 
     // All dependencies from all modules combined

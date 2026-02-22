@@ -1,11 +1,8 @@
 package nl.amony.lib.email
 
 import cats.data.NonEmptyList
-import cats.effect.IO
-import cats.effect.unsafe.implicits.global
 import org.scalatest.wordspec.AnyWordSpecLike
 import sttp.client4.UriContext
-import sttp.client4.httpclient.cats.HttpClientCatsBackend
 import sttp.client4.testing.*
 import sttp.model.Method
 

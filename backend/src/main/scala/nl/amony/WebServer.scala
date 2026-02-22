@@ -4,9 +4,8 @@ import java.security.SecureRandom
 import javax.net.ssl.{KeyManagerFactory, SNIHostName, SSLContext}
 import scala.concurrent.duration.DurationInt
 
-import cats.Monad
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Async, IO, Resource}
+import cats.effect.{IO, Resource}
 import cats.implicits.catsSyntaxFlatMapOps
 import cats.syntax.all.toSemigroupKOps
 import com.comcast.ip4s.{Host, Port}
@@ -21,12 +20,10 @@ import org.http4s.otel4s.middleware.metrics.OtelMetrics
 import org.http4s.server.middleware.Metrics
 import org.http4s.server.{Router, Server}
 import org.http4s.{Headers, HttpRoutes, Response, Status}
-import org.typelevel.log4cats.*
-import org.typelevel.log4cats.slf4j.{Slf4jFactory, Slf4jLogger}
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.typelevel.otel4s.metrics.MeterProvider
 import scribe.Logging
 
-import nl.amony.WebServer.httpServer
 import nl.amony.modules.auth.crypt.PemReader
 import nl.amony.modules.resources.http.ResourceDirectives
 import nl.amony.{HttpConfig, HttpsConfig, WebServerConfig}

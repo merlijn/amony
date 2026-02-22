@@ -1,5 +1,5 @@
 import { CSSProperties } from "react";
-import {Constants, durationAsParam} from "./Constants";
+import {Constants, rangeAsParameter} from "./Constants";
 import {ResourceSelection} from "./Model";
 import {FindResourcesParams} from "./generated";
 
@@ -120,6 +120,8 @@ export function zeroPad(n: number, d: number) {
 
 export function resourceSelectionToParams(selection: ResourceSelection, offset: number, n: number): FindResourcesParams {
   const duration= selection.duration
+  const uploadAge = selection.uploadAge
+  const nowMillis = Date.now()
 
   const sort = selection.sort.field === "random"
     ? `random-${selection.sort.seed.toString().padStart(5, '0')}`
@@ -133,7 +135,8 @@ export function resourceSelectionToParams(selection: ResourceSelection, offset: 
     untagged: selection.untagged || undefined,
     sort: sort,
     min_res: selection.minimumQuality,
-    d: duration ? durationAsParam([duration[0] ? duration[0] * 1000 : duration[0], duration[1] ? duration[1] * 1000 : duration[1]]) : undefined
+    d: duration ? rangeAsParameter([duration[0] ? duration[0] * 1000 : duration[0], duration[1] ? duration[1] * 1000 : duration[1]]) : undefined,
+    u: uploadAge ? rangeAsParameter([uploadAge[1] ? nowMillis - uploadAge[1] * 1000 : uploadAge[1], uploadAge[0] ? nowMillis - uploadAge[0] * 1000 : uploadAge[0]]) : undefined
   }
 }
 

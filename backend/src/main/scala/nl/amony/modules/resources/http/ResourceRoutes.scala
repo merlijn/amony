@@ -100,8 +100,6 @@ object ResourceRoutes:
         resource <- EitherT.fromOptionF(bucket.getResource(resourceId), NotFound)
       yield bucket -> resource
 
-    val bucketList = buckets.values.toList
-
     def sanitize(input: String, maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, String] =
       for
         _      <- EitherT.cond[IO](input.length <= maxLength, (), ApiError.BadRequest)
@@ -187,6 +185,7 @@ object ResourceRoutes:
         updateUserMetaDataImpl,
         updateThumbnailTimestampImpl,
         modifyTagsBulkImpl,
-        uploadResourceImpl
+        uploadResourceImpl,
+        getBucketsImpl
       ))
   }

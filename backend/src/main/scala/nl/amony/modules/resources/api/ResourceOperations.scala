@@ -30,7 +30,7 @@ case class VideoFragment(width: Option[Int] = None, height: Option[Int] = None, 
 
   override def validate(info: ResourceInfo): Either[String, Unit] = {
     info.basicContentProperties match {
-      case Some(video: VideoProperties) =>
+      case Some(_: VideoProperties) =>
         val duration = end - start
         for
           _ <- Either.cond(height.exists(_ > minHeight) || height.exists(_ < maxHeight), (), "Height out of bounds")
@@ -39,7 +39,7 @@ case class VideoFragment(width: Option[Int] = None, height: Option[Int] = None, 
           _ <- Either.cond(duration > minLengthInMillis, (), "Duration too short")
           _ <- Either.cond(duration < maxLengthInMillis, (), "Duration too long")
         yield ()
-      case other                        => Left("Wrong content type, expected video, got: " + other)
+      case other                    => Left("Wrong content type, expected video, got: " + other)
     }
   }
 }

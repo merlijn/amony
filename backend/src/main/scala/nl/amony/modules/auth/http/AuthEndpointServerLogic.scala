@@ -1,11 +1,10 @@
 package nl.amony.modules.auth.http
 
 import java.time.{Duration, Instant}
-import java.util.UUID
 
 import cats.data.EitherT
 import cats.effect.IO
-import cats.implicits.toSemigroupKOps
+import cats.implicits.*
 import org.http4s.HttpRoutes
 import org.http4s.dsl.io.*
 import scribe.Logging
@@ -34,28 +33,35 @@ object AuthEndpointServerLogic extends Logging {
 
     val logoutImpl = logoutEndpoint.serverLogicSuccessPure[IO](_ => apiSecurity.createLogoutCookes)
 
-    val oauthLoginLogic = oauth2loginEndpoint.serverLogicPure[IO] {
+    val oauthLoginLogic = oauth2loginEndpoint.serverLogic[IO] {
       provider =>
-        for
-          providerConfig <- authService.oauthProviders.get(provider).toRight(ErrorResponse.notFound())
-          state           = UUID.randomUUID().toString
-          params          = Map(
+        authService.oauthProviders.get(provider) match
+          case None                 => IO.pure(Left(ErrorResponse.notFound()))
+          case Some(providerConfig) =>
+            for
+              state      <- authService.createState(provider)
+              params      = Map(
                               "client_id"     -> providerConfig.clientId,
                               "response_type" -> "code",
                               "redirect_uri"  -> authConfig.publicUri.addPath("api", "auth", "callback", providerConfig.name).toString,
                               "scope"         -> providerConfig.scopes.mkString(" "),
                               "state"         -> state
                             )
-          redirectUri     = providerConfig.authorizeUrl.addParams(params)
-          stateCookie     = CookieValueWithMeta.unsafeApply(
+              redirectUri = providerConfig.authorizeUrl.addParams(params)
+              stateCookie = CookieValueWithMeta.unsafeApply(
                               value    = state,
                               path     = Some("/"),
                               httpOnly = true,
                               secure   = false,
-                              expires  = Some(Instant.now().plus(Duration.ofSeconds(300)))
+                              expires  = Some(Instant.now().plus(Duration.ofSeconds(900)))
                             )
-        yield RedirectResponse(redirectUri.toString) -> stateCookie
+            yield Right(RedirectResponse(redirectUri.toString) -> stateCookie)
     }
+
+    def mapAuthenticationErrorToResponse(error: AuthenticationError): ErrorResponse = error match
+      case InvalidCredentials   => ErrorResponse.unauthorized(message = "Invalid credentials")
+      case UnknownOAuthProvider => ErrorResponse.notFound()
+      case UnknownError         => ErrorResponse.internalServerError(message = "An unknown error occurred")
 
     val oauth2CallbackLogic = oauth2CallbackEndpoint.serverLogic[IO] {
       case (provider, code, state, clientState) =>
@@ -63,11 +69,9 @@ object AuthEndpointServerLogic extends Logging {
         val result =
           for
             _              <- EitherT.fromOption[IO](authService.oauthProviders.get(provider), ErrorResponse.notFound())
-            _              <- EitherT.cond[IO](state == clientState, (), ErrorResponse.badRequest(message = "Invalid state parameter"))
-            authentication <- authService.authenticate(OauthTokenCredentials(provider, code)).leftMap:
-                                case UnknownOAuthProvider => ErrorResponse.notFound()
-                                case UnknownError         => ErrorResponse.internalServerError(message = "An unknown error occurred")
-                                case _                    => ErrorResponse.unauthorized(message = "Invalid credentials")
+            _              <- EitherT.cond[IO](state == clientState, (), ErrorResponse.badRequest(message = "State mismatch"))
+            _              <- authService.validateAndConsumeState(provider, clientState).leftMap(mapAuthenticationErrorToResponse)
+            authentication <- authService.authenticate(OauthTokenCredentials(provider, code)).leftMap(mapAuthenticationErrorToResponse)
           yield RedirectResponse("/") -> apiSecurity.createCookies(authentication)
 
         result.value

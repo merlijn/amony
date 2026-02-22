@@ -103,7 +103,7 @@ function TopNavBar(props: NavBarProps) {
       <div className = "top-nav-bar">
           <div key = "nav-bar-center" className = "nav-bar-center">
             <AiOutlineSetting className = "nav-menu-button" onClick = { props.onClickMenu } />
-            <FiUpload className = "nav-menu-button" onClick = { () => setShowUpload(true) } />
+            { session.isAdmin() && <FiUpload className = "nav-menu-button" onClick = { () => setShowUpload(true) } /> }
             <form key="search-form" className = "nav-search-form" onSubmit = { doSearch } >
               <div className = "nav-search-input-container">
                 <GoSearch className="search-icon" />

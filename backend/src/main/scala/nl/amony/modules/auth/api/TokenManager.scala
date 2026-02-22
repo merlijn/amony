@@ -1,7 +1,7 @@
 package nl.amony.modules.auth.api
 
 import java.time.Instant
-import scala.util.{Failure, Try}
+import scala.util.Failure
 
 import io.circe
 import io.circe.*

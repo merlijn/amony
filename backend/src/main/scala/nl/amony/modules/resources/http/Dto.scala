@@ -7,7 +7,7 @@ import sttp.tapir.{FieldName, Schema, SchemaType}
 
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
-import nl.amony.modules.resources.api.{ImageProperties, ResourceInfo, ResourceMeta, VideoProperties}
+import nl.amony.modules.resources.api.{ImageProperties, ResourceInfo, VideoProperties}
 
 def required[T](s: Schema[T]) = s.copy(isOptional = false)
 
@@ -89,40 +89,16 @@ case class ClipDto(
 
 def toDto(resource: ResourceInfo): ResourceDto = {
 
-  val resourceHeight = resource.basicContentProperties match
-    case Some(VideoProperties(_, h, _, _, _)) => h
-    case Some(ImageProperties(_, h, _))       => h
-    case _                                    => 0
-
-  val resolutions: List[Int] = (resourceHeight :: List(352)).sorted
+  // Default resolution key used in public URLs
+  val defaultResolutionKey = "s"
 
   val durationInMillis = resource.basicContentProperties match {
     case Some(m: VideoProperties) => m.durationInMillis
     case _                        => 0
   }
 
+  // Thumbnail timestamp: use saved value, fall back to 1/3 of duration
   val thumbnailTimestamp: Int = resource.thumbnailTimestamp.getOrElse(durationInMillis / 3)
-
-  val urls = {
-
-    val tsPart = if thumbnailTimestamp != 0 then s"_$thumbnailTimestamp" else ""
-
-    ResourceUrlsDto(
-      originalResourceUrl  = s"/api/resources/${resource.bucketId}/${resource.resourceId}/content",
-      thumbnailUrl         = s"/api/resources/${resource.bucketId}/${resource.resourceId}/thumb${tsPart}_${resolutions.min}p.webp",
-      previewThumbnailsUrl = Some(s"/api/resources/${resource.bucketId}/${resource.resourceId}/timeline.vtt")
-    )
-  }
-
-  val filename = {
-    val slashIdx = resource.path.lastIndexOf('/')
-    val dotIdx   = resource.path.lastIndexOf('.')
-
-    val startIdx = if slashIdx >= 0 then slashIdx + 1 else 0
-    val endIdx   = if dotIdx >= 0 then dotIdx else resource.path.length
-
-    resource.path.substring(startIdx, endIdx)
-  }
 
   val contentMeta: ResourceMetaDto = resource.basicContentProperties match {
     case Some(ImageProperties(width, height, _)) => ResourceMetaDto(width = width, height = height, duration = 0, fps = 0, codec = None)
@@ -133,17 +109,24 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     case None => ResourceMetaDto(width = 0, height = 0, duration = 0, fps = 0, codec = None)
   }
 
-  // a clip that starts at the thumbnail timestamp and lasts for 3 seconds
-  val thumbnailClip = {
-    val start = thumbnailTimestamp
-    val end   = Math.min(contentMeta.duration, thumbnailTimestamp + 3000)
-    val urls  = resolutions.map(height => s"/api/resources/${resource.bucketId}/${resource.resourceId}/clip_$start-${end}_${height}p.mp4")
+  // Timestamp is embedded in URLs for browser cache-busting: when the thumbnail
+  // timestamp changes the URL changes, forcing a fresh fetch.
+  val urls = ResourceUrlsDto(
+    originalResourceUrl  = s"/api/resources/${resource.bucketId}/${resource.resourceId}/content",
+    thumbnailUrl         = s"/api/resources/${resource.bucketId}/${resource.resourceId}/thumb_${thumbnailTimestamp}_$defaultResolutionKey.webp",
+    previewThumbnailsUrl = Some(s"/api/resources/${resource.bucketId}/${resource.resourceId}/timeline.vtt")
+  )
 
-    ClipDto(resourceId = resource.resourceId, start = start, end = end, urls = urls, description = None, tags = List.empty)
+  // A preview clip starting at the thumbnail timestamp, capped at 3 seconds and the video length
+  val thumbnailClip = resource.basicContentProperties match {
+    case Some(_: VideoProperties) =>
+      val start    = thumbnailTimestamp.toLong
+      val end      = Math.min(contentMeta.duration, start + 3000L)
+      val clipUrls = List(s"/api/resources/${resource.bucketId}/${resource.resourceId}/clip_${thumbnailTimestamp}_$defaultResolutionKey.mp4")
+      Some(ClipDto(resourceId = resource.resourceId, start = start, end = end, urls = clipUrls, description = None, tags = List.empty))
+    case _                        =>
+      None
   }
-
-  val contentMetaSource = resource.contentMeta
-    .map(s => ResourceToolMetaDto(s.toolName, io.circe.parser.parse(s.toolData).getOrElse(Json.fromString(s.toolData))))
 
   ResourceDto(
     bucketId           = resource.bucketId,
@@ -161,6 +144,6 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     contentMeta        = contentMeta,
     urls               = urls,
     thumbnailTimestamp = Some(thumbnailTimestamp),
-    clips              = List(thumbnailClip)
+    clips              = thumbnailClip.toList
   )
 }

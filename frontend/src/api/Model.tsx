@@ -4,6 +4,7 @@ export type ResourceSelection = {
   tag?: string
   untagged?: boolean
   duration?: [number?, number?]
+  uploadAge?: [number?, number?]
   minimumQuality: number
   sort: Sort
 }
