@@ -9,13 +9,13 @@ import skunk.implicits.*
 
 class UserDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
 
-  val getByIdQuery: skunk.Query[String, UserRow] =
+  private val getByIdQuery: skunk.Query[String, UserRow] =
     sql"SELECT ${UserRow.columns} FROM users WHERE id = ${varchar(64)}".query(UserRow.decoder)
 
-  val getByEmailQuery: skunk.Query[String, UserRow] =
+  private val getByEmailQuery: skunk.Query[String, UserRow] =
     sql"SELECT ${UserRow.columns} FROM users WHERE email = ${varchar(64)}".query(UserRow.decoder)
 
-  val insertQuery: skunk.Command[UserRow] =
+  private val insertQuery: skunk.Command[UserRow] =
     sql"""
       INSERT INTO users (id, email, auth_provider, auth_subject, time_registered, roles)
       VALUES (${varchar(64)}, ${varchar(64)}, ${varchar(64)}, ${varchar(64)}, $timestamptz, $_varchar)
