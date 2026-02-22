@@ -89,7 +89,7 @@ val javaDevOpts = Seq(
 val circeVersion    = "0.14.15"
 val http4sVersion   = "0.23.33"
 val tapirVersion    = "1.13.8"
-val sttpVersion     = "4.0.16"
+val sttpVersion     = "4.0.19"
 val otel4sVersion   = "0.15.1"
 
 lazy val amony = project
