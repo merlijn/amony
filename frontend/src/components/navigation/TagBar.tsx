@@ -1,7 +1,8 @@
-import {useEffect, useMemo, useState} from "react";
+import {useContext, useEffect, useMemo, useState} from "react";
 import {useLocation, useNavigate} from "react-router-dom";
 import {buildUrl, copyParams} from "../../api/Util";
 import './TagBar.scss';
+import {SessionContext} from "../../api/Constants";
 
 const NONE_TAG_LABEL = "<>"
 
@@ -9,6 +10,7 @@ const TagBar = (props: { tags: Array<string>, total: number }) => {
 
   const location = useLocation();
   const navigate = useNavigate();
+  const session = useContext(SessionContext)
 
   const [selectedTag, setSelectedTag] = useState<string | undefined>(undefined)
   const [untaggedSelected, setUntaggedSelected] = useState(false)
@@ -52,8 +54,9 @@ const TagBar = (props: { tags: Array<string>, total: number }) => {
   }
 
   const tags = useMemo(
-    () => [NONE_TAG_LABEL, ...props.tags.filter(tag => tag !== NONE_TAG_LABEL)],
-    [props.tags]
+    () => session.isAdmin()
+      ? [NONE_TAG_LABEL, ...props.tags.filter(tag => tag !== NONE_TAG_LABEL)]
+      : props.tags.filter(tag => tag !== NONE_TAG_LABEL), [props.tags]
   )
 
   return (
