@@ -10,21 +10,23 @@ enum SortDirection:
   case Asc, Desc
 
 case class SortOption(field: SortField, direction: SortDirection)
+case class DurationRange(min: Option[Long], max: Option[Long])
+case class ResolutionRange(min: Option[Int], max: Option[Int])
+case class UploadDateRange(min: Option[Long], max: Option[Long])
 
 case class Query(
-  q: Option[String]           = None,
-  parentId: Option[String]    = None,
+  q: Option[String]                = None,
+  parentId: Option[String]         = None,
   n: Int,
-  offset: Option[Int]         = None,
-  includeTags: Set[String]    = Set.empty,
-  excludeTags: Set[String]    = Set.empty,
-  excludeBuckets: Set[String] = Set.empty,
-  minRes: Option[Int]         = None,
-  maxRes: Option[Int]         = None,
-  minDuration: Option[Long]   = None,
-  maxDuration: Option[Long]   = None,
-  sort: Option[SortOption]    = None,
-  untagged: Option[Boolean]   = None
+  offset: Option[Int]              = None,
+  includeTags: Set[String]         = Set.empty,
+  excludeTags: Set[String]         = Set.empty,
+  excludeBuckets: Set[String]      = Set.empty,
+  resolutionRange: ResolutionRange = ResolutionRange(None, None),
+  durationRange: DurationRange     = DurationRange(None, None),
+  uploadDateRange: UploadDateRange = UploadDateRange(None, None),
+  sort: Option[SortOption]         = None,
+  untagged: Option[Boolean]        = None
 )
 
 case class SearchResult(offset: Int, total: Int, results: List[ResourceInfo], tags: Map[String, Long])

@@ -1,5 +1,5 @@
 import {useUrlParam} from "../../api/ReactUtils";
-import {Constants, durationAsParam, parseDurationParam, useSortParam, generateRandomSeed} from "../../api/Constants";
+import {Constants, rangeAsParameter, parseDurationParam, useSortParam, generateRandomSeed} from "../../api/Constants";
 import {DropDown} from "../common/DropDown";
 import {MdTune, MdRefresh} from "react-icons/md";
 import _ from "lodash";
@@ -36,13 +36,13 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
             header        = "Duration"
             options       = { Constants.durationOptions }
             selectedValue = { parseDurationParam(durationParam) }
-            onChange      = { value => setDurationParam(durationAsParam(value)) }
+            onChange      = { value => setDurationParam(rangeAsParameter(value)) }
           />
           <RadioSelectGroup
             header        = "Upload date"
             options       = { Constants.uploadOptions }
             selectedValue = { parseDurationParam(uploadParam)}
-            onChange      = { value => setUploadParam(durationAsParam(value)) }
+            onChange      = { value => setUploadParam(rangeAsParameter(value)) }
           />
         </div>
       </DropDown>

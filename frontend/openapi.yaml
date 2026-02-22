@@ -310,6 +310,13 @@ paths:
         schema:
           type: string
         example: 10-30
+      - name: u
+        in: query
+        description: The upload date range (milliseconds since UTC)
+        required: false
+        schema:
+          type: string
+        example: 1771751993045-
       - name: sort
         in: query
         description: Sort field and direction (e.g., title-asc, random-12345)

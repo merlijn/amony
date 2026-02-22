@@ -193,11 +193,14 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
 
       if query.untagged.contains(true) then sb.append(s" AND -${FieldNames.tags}:[* TO *]")
 
-      if query.minRes.isDefined || query.maxRes.isDefined then
-        sb.append(s" AND ${FieldNames.width}:[${query.minRes.getOrElse(0)} TO ${query.maxRes.getOrElse("*")}]")
+      if query.resolutionRange.min.isDefined || query.resolutionRange.max.isDefined then
+        sb.append(s" AND ${FieldNames.width}:[${query.resolutionRange.min.getOrElse(0)} TO ${query.resolutionRange.max.getOrElse("*")}]")
 
-      if query.minDuration.isDefined || query.maxDuration.isDefined then
-        sb.append(s" AND ${FieldNames.duration}:[${query.minDuration.getOrElse(0)} TO ${query.maxDuration.getOrElse("*")}]")
+      if query.durationRange.min.isDefined || query.durationRange.max.isDefined then
+        sb.append(s" AND ${FieldNames.duration}:[${query.durationRange.min.getOrElse(0)} TO ${query.durationRange.max.getOrElse("*")}]")
+
+      if query.uploadDateRange.min.isDefined || query.uploadDateRange.max.isDefined then
+        sb.append(s" AND ${FieldNames.timeAdded}:[${query.uploadDateRange.min.getOrElse(0)} TO ${query.uploadDateRange.max.getOrElse("*")}]")
 
       sb.result()
     }

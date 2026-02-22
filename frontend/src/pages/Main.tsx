@@ -38,6 +38,7 @@ const Main = () => {
         untagged: untagged || undefined,
         sort: parseSortParam(urlParams.get("s") || "date_added;desc"),
         duration: urlParams.has("d") ? parseDurationParam(urlParams.get("d") || "-") : undefined,
+        uploadAge: urlParams.has("u") ? parseDurationParam(urlParams.get("u") || "-") : undefined,
         minimumQuality: parseInt(urlParams.get("vq") || "0")
       }
     }
