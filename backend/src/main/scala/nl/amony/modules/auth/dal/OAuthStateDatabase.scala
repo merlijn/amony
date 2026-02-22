@@ -11,19 +11,19 @@ import skunk.implicits.*
 
 class OAuthStateDatabase(pool: Resource[IO, Session[IO]]):
 
-  val insertQuery: skunk.Command[OAuthStateRow] =
+  private val insertQuery: skunk.Command[OAuthStateRow] =
     sql"""
       INSERT INTO oauth_state (id, provider, created_at)
       VALUES ($int8, ${varchar(64)}, $timestamptz)
     """.command.to[OAuthStateRow]
 
-  val getByIdQuery: skunk.Query[Long, OAuthStateRow] =
+  private val getByIdQuery: skunk.Query[Long, OAuthStateRow] =
     sql"SELECT ${OAuthStateRow.columns} FROM oauth_state WHERE id = $int8".query(OAuthStateRow.decoder)
 
-  val deleteQuery: skunk.Command[Long] =
+  private val deleteQuery: skunk.Command[Long] =
     sql"DELETE FROM oauth_state WHERE id = $int8".command
 
-  val deleteExpiredQuery: skunk.Command[OffsetDateTime] =
+  private val deleteExpiredQuery: skunk.Command[OffsetDateTime] =
     sql"DELETE FROM oauth_state WHERE created_at < $timestamptz".command
 
   def insert(state: OAuthStateRow): IO[Unit] =
