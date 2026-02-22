@@ -17,16 +17,53 @@ import nl.amony.modules.resources.http.ResourceDirectives.resourceContentsRespon
 object ResourceContentRoutes extends Logging {
 
   object patterns {
+
+    // Internal patterns used by ResourceOperation (allow specific parameters)
     val ClipPattern                   = raw"clip_(\d+)-(\d+)_(\d+)p\.mp4".r
     val ThumbnailPattern              = raw"thumb_(\d+)p\.webp".r
     val ThumbnailWithTimestampPattern = raw"thumb_(\d+)_(\d+)p\.webp".r
 
-    val resolutions = List(120, 240, 320, 480, 640, 1024, 1920, 2160, 4320)
+    val resolutionsMap = Map(
+      "xxs" -> 120,
+      "xs"  -> 240,
+      "s"   -> 320,
+      "m"   -> 480,
+      "l"   -> 1024,
+      "xl"  -> 1920,
+      "xxl" -> 4320
+    )
 
-    val matchPF: PartialFunction[String, ResourceOperation] = {
-      case ThumbnailWithTimestampPattern(timestamp, height) => VideoThumbnail(width = None, height = Some(height.toInt), 23, timestamp.toLong)
-      case ThumbnailPattern(scaleHeight)                    => ImageThumbnail(width = None, height = Some(scaleHeight.toInt), 0)
-      case ClipPattern(start, end, height)                  => VideoFragment(width = None, height = Some(height.toInt), start.toLong, end.toLong, 23)
+    val defaultResolution = "s"
+
+    // Public patterns use a resolution key (e.g. "s", "m") instead of arbitrary pixel heights
+    val PublicThumbnailPattern = raw"thumb_([a-z]+)\.webp".r
+    val PublicClipPattern      = raw"clip_([a-z]+)\.mp4".r
+
+    /** Derives a thumbnail operation from a resource, ignoring user-supplied timestamp/resolution. */
+    def thumbnailOperation(resolutionKey: String, resource: ResourceInfo): Option[ResourceOperation] = {
+      val height = resolutionsMap.getOrElse(resolutionKey, resolutionsMap(defaultResolution))
+      resource.basicContentProperties match {
+        case Some(video: VideoProperties) =>
+          val timestamp = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
+          Some(VideoThumbnail(width = None, height = Some(height), quality = 23, timestamp = timestamp))
+        case Some(_: ImageProperties) =>
+          Some(ImageThumbnail(width = None, height = Some(height), quality = 0))
+        case _ =>
+          None
+      }
+    }
+
+    /** Derives a preview clip operation from a resource, ignoring user-supplied timestamps/resolution. */
+    def clipOperation(resolutionKey: String, resource: ResourceInfo): Option[ResourceOperation] = {
+      val height = resolutionsMap.getOrElse(resolutionKey, resolutionsMap(defaultResolution))
+      resource.basicContentProperties match {
+        case Some(video: VideoProperties) =>
+          val start = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
+          val end   = Math.min(video.durationInMillis.toLong, start + 3000L)
+          Some(VideoFragment(width = None, height = Some(height), start = start, end = end, quality = 23))
+        case _ =>
+          None
+      }
     }
   }
 
@@ -38,7 +75,8 @@ object ResourceContentRoutes extends Logging {
         resource <- OptionT(bucket.getResource(resourceId))
       yield bucket -> resource
 
-    def maybeResponse(option: OptionT[IO, Response[IO]]): IO[Response[IO]] = option.value.map(_.getOrElse(Response(Status.NotFound)))
+    def maybeResponse(option: OptionT[IO, Response[IO]]): IO[Response[IO]] =
+      option.value.map(_.getOrElse(Response(Status.NotFound)))
 
     HttpRoutes.of[IO] {
 
@@ -49,10 +87,15 @@ object ResourceContentRoutes extends Logging {
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern =>
         maybeResponse(
           for
-            (bucket, resource) <- getResource(bucketId, ResourceId(resourceId))
-            operation          <- OptionT.fromOption(patterns.matchPF.lift(resourcePattern))
-            derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))
-            response           <- OptionT.liftF(resourceContentsResponse(req, derivedResource).map(r => r.addHeader(`Cache-Control`(`max-age`(365.days)))))
+            (bucket, resource)  <- getResource(bucketId, ResourceId(resourceId))
+            operation           <- OptionT.fromOption(resourcePattern match {
+                                     case patterns.PublicThumbnailPattern(resKey) => patterns.thumbnailOperation(resKey, resource.info)
+                                     case patterns.PublicClipPattern(resKey)      => patterns.clipOperation(resKey, resource.info)
+                                     case _                                       => None
+                                   })
+            derivedResource     <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))
+            response            <- OptionT.liftF(resourceContentsResponse(req, derivedResource)
+                                     .map(r => r.addHeader(`Cache-Control`(`max-age`(365.days)))))
           yield response
         )
     }
