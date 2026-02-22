@@ -37,17 +37,6 @@ object ResourceContentRoutes extends Logging {
     val PublicClipPattern      = raw"clip_(\d+)_([a-z]+)\.mp4".r
 
     /**
-     * Derives the canonical thumbnail timestamp for a resource:
-     * uses the stored thumbnailTimestamp, or falls back to durationInMillis / 3.
-     */
-    def canonicalTimestamp(resource: ResourceInfo): Long =
-      resource.basicContentProperties match {
-        case Some(video: VideoProperties) =>
-          resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
-        case _                            => 0L
-      }
-
-    /**
      * Builds a thumbnail operation only when the URL timestamp matches the resource's
      * canonical timestamp, preventing arbitrary timestamp injection.
      */
