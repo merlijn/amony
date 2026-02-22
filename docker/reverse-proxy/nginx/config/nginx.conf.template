@@ -21,12 +21,11 @@ http {
     ''      '';
   }
 
-  # Map client address to a rate limit key:
-  #   - IPv4: use the address as-is
-  #   - IPv6: extract the /64 prefix to prevent bypass via address rotation
   map $remote_addr $rate_limit_key {
-    ~^([0-9a-f]+:[0-9a-f]+:[0-9a-f]+:[0-9a-f]+): $1;
-    default                                        $remote_addr;
+      # IPv6: extract /64 prefix (first 4 groups)
+      "~^(?<ipv6_prefix>[0-9a-fA-F]+:[0-9a-fA-F]+:[0-9a-fA-F]+:[0-9a-fA-F]+):" $ipv6_prefix;
+      # IPv4 or fallback
+      default $remote_addr;
   }
 
   # Rate limit zones for the auth provider
@@ -121,9 +120,7 @@ http {
 			limit_req zone=auth_throttle burst=10 nodelay;
 			limit_req_status 429;
 
-			# Return the original upstream status code and a generic error body
-			# Note: $status here holds the upstream response code from the error_page directive
-			try_files /dev/null =;
+			return 429 '{"error": "too many requests"}';
 		}
 	}
 }
