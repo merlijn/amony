@@ -47,11 +47,8 @@ object ResourceContentRoutes extends Logging {
           val ts = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
           if urlTimestamp == ts then Some(VideoThumbnail(width = None, height = Some(height), quality = 23, timestamp = ts))
           else None
-        case Some(_: ImageProperties)     =>
-          // Images have no meaningful timestamp; accept any value (timestamp is only for cache-busting)
-          Some(ImageThumbnail(width = None, height = Some(height), quality = 0))
-        case _                            =>
-          None
+        case Some(_: ImageProperties)     => Some(ImageThumbnail(width = None, height = Some(height), quality = 0))
+        case _                            => None
       }
     }
 
