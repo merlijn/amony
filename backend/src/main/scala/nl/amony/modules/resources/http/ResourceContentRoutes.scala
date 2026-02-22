@@ -24,13 +24,13 @@ object ResourceContentRoutes extends Logging {
     val ThumbnailWithTimestampPattern = raw"thumb_(\d+)_(\d+)p\.webp".r
 
     val resolutionsMap = Map(
-      "xxs" -> 120,
+      "xxs" -> 144,
       "xs"  -> 240,
-      "s"   -> 320,
-      "m"   -> 480,
-      "l"   -> 1024,
-      "xl"  -> 1920,
-      "xxl" -> 4320
+      "s"   -> 352,
+      "m"   -> 512,
+      "l"   -> 1080, // FHD
+      "xl"  -> 2160, // 4k
+      "xxl" -> 4320  // 8k
     )
 
     val defaultResolution = "s"
