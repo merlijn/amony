@@ -4,6 +4,7 @@ import java.security.SecureRandom
 import javax.net.ssl.{KeyManagerFactory, SNIHostName, SSLContext}
 import scala.concurrent.duration.DurationInt
 
+import cats.data.Kleisli
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource}
 import cats.implicits.catsSyntaxFlatMapOps
@@ -17,9 +18,9 @@ import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.headers.`Cache-Control`
 import org.http4s.metrics.MetricsOps
 import org.http4s.otel4s.middleware.metrics.OtelMetrics
-import org.http4s.server.middleware.Metrics
+import org.http4s.server.middleware.{Logger, Metrics}
 import org.http4s.server.{Router, Server}
-import org.http4s.{Headers, HttpRoutes, Response, Status}
+import org.http4s.{Headers, HttpRoutes, Request, Response, Status}
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.typelevel.otel4s.metrics.MeterProvider
 import scribe.Logging
@@ -61,7 +62,13 @@ object WebServer extends Logging {
   private val serverError = Response[IO](Status.InternalServerError).putHeaders(org.http4s.headers.`Content-Length`.zero)
 
   def httpsServer(httpsConfig: HttpsConfig, routes: HttpRoutes[IO])(using io: IORuntime): Resource[IO, Server] = {
-    val httpApp = Router("/" -> routes).orNotFound
+
+    val httpApp = Logger.httpRoutes[IO](
+      logHeaders        = false,
+      logBody           = true,
+      redactHeadersWhen = _ => false,
+      logAction         = Some((msg: String) => cats.effect.std.Console[IO].println(msg))
+    )(Router("/" -> routes)).orNotFound
 
     val sslContext = {
       val keyStore = PemReader.loadKeyStore(
@@ -96,14 +103,25 @@ object WebServer extends Logging {
 
   def httpServer(httpConfig: HttpConfig, metricOps: MetricsOps[IO], routes: HttpRoutes[IO])(using io: IORuntime): Resource[IO, Server] = {
 
-    val httpApp      = Router("/" -> Metrics(metricOps)(routes)).orNotFound
-    val serverLogger = Slf4jLogger.getLoggerFromName[IO]("nl.amony.app.WebServer")
+    val httpApp = Router("/" -> Metrics(metricOps)(routes)).orNotFound
+
+    val httpAppWithLogging = Kleisli((req: Request[IO]) =>
+      httpApp.apply(req).timed.map {
+        (duration, response) =>
+          val (durationStr, unit) =
+            if duration.toMillis < 1000 then (s"${duration.toMillis}", "ms")
+            else (f"${duration.toMillis / 1000.0}%.1f", "s ")
+          val durationFormatted   = s"${durationStr.reverse.padTo(4, ' ').reverse}$unit"
+          logger.info(s"$durationFormatted - ${response.status.code} - ${req.method.name} ${req.uri}")
+          response
+      }
+    )
 
     EmberServerBuilder.default[IO]
       .withHost(Host.fromString(httpConfig.host).get)
       .withPort(Port.fromInt(httpConfig.port).get)
-      .withHttpApp(httpApp)
-      .withLogger(serverLogger).withErrorHandler {
+      .withHttpApp(httpAppWithLogging)
+      .withErrorHandler {
         e =>
           logger.warn("Internal server error", e)
           IO(serverError)
