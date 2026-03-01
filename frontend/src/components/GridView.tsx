@@ -1,4 +1,4 @@
-import React, {CSSProperties, useEffect, useState, useCallback, useMemo} from 'react';
+import React, {CSSProperties, useEffect, useState, useMemo} from 'react';
 import {Constants} from "../api/Constants";
 import {Columns, ResourceSelection} from '../api/Model';
 import './GridView.scss';
@@ -28,10 +28,9 @@ type GridCellProps = {
   columns: number,
   previewOptions: PreviewOptions,
   onClick: (v: ResourceDto) => void,
-  onDelete: (v: ResourceDto) => void
 }
 
-const GridCell = React.memo(({ resource, columns, previewOptions, onClick, onDelete }: GridCellProps) => {
+const GridCell = React.memo(({ resource, columns, previewOptions, onClick }: GridCellProps) => {
   const style = { "--ncols": `${columns}` } as CSSProperties
 
   return (
@@ -40,7 +39,6 @@ const GridCell = React.memo(({ resource, columns, previewOptions, onClick, onDel
         resource={resource}
         onClick={onClick}
         options={previewOptions}
-        onDelete={onDelete}
       />
     </div>
   )
@@ -62,18 +60,18 @@ const GridView = (props: GalleryProps) => {
     }))
   }
 
-  useEventListener('resource-updated', handleUpdate)
-
-  const gridSpacing = 1
-
-  // Memoize the delete handler to maintain referential equality
-  const handleDelete = useCallback((deleted: ResourceDto) => {
+  function handleDelete(deleted: ResourceDto) {
     setSearchResult(prev => ({
       ...prev,
       total: prev.total - 1,
       results: prev.results.filter(r => r.resourceId !== deleted.resourceId)
     }))
-  }, [])
+  }
+
+  useEventListener('resource-updated', handleUpdate)
+  useEventListener('resource-deleted', handleDelete)
+
+  const gridSpacing = 1
 
   const fetchData = () => {
 
@@ -135,9 +133,8 @@ const GridView = (props: GalleryProps) => {
         columns={columns}
         previewOptions={props.previewOptionsFn(vid)}
         onClick={props.onClick}
-        onDelete={handleDelete}
       />
-    )), [searchResult.results, columns, props.previewOptionsFn, props.onClick, handleDelete]
+    )), [searchResult.results, columns, props.previewOptionsFn, props.onClick]
   )
 
   let style = { "--grid-spacing" : `${gridSpacing}px` } as CSSProperties

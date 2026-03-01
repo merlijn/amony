@@ -6,7 +6,7 @@ import {ResourceDto} from "../../api/generated";
 // Define your events
 export type Events = {
   'resource-updated': ResourceDto
-  'resource-deleted': string
+  'resource-deleted': ResourceDto
 }
 
 const EventBusContext = createContext<Emitter<Events> | null>(null)

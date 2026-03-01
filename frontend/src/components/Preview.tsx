@@ -20,7 +20,6 @@ export type PreviewProps = {
   resource: ResourceDto,
   options: PreviewOptions,
   onClick: (v: ResourceDto) => any,
-  onDelete?: (v: ResourceDto) => void
 }
 
 export type PreviewOptions = {
@@ -54,7 +53,7 @@ const Preview = (props: PreviewProps) => {
       <div className="preview-overlay">
         { props.options.showResolution && <div className="preview-quality-overlay">{labelForResolution(resource.contentMeta.height)}</div> }
         { (isVideo && props.options.showDuration) && <div className="duration-overlay">{durationStr}</div> }
-        { isHovering && session.isAdmin() && props.onDelete && <div className="preview-delete-icon-overlay" onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true) }}><MdDelete /></div> }
+        { isHovering && session.isAdmin() && <div className="preview-delete-icon-overlay" onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true) }}><MdDelete /></div> }
         { !isMediaTypeSupported && <div className="preview-unsupported-overlay"><FiAlertCircle color="#fff" /></div> }
       </div>
 
@@ -94,7 +93,7 @@ const Preview = (props: PreviewProps) => {
         <DeleteResourceDialog
           resource={props.resource}
           visible={showDeleteDialog}
-          onDeleted={(r) => { setShowDeleteDialog(false); props.onDelete?.(r) }}
+          onDeleted={() => setShowDeleteDialog(false)}
           onHide={() => setShowDeleteDialog(false)}
         />
       </div>

@@ -225,11 +225,16 @@ $row-height: 36px;
       }
 
       .list-resolution {
+
+        @extend .list-cell;
+
         .media-actions {
           @extend .hover-action, .v-align-center;
 
+          width: 100%;
+          right: 4px;
           display: flex;
-          //left: -2px;
+          justify-content: flex-end;
           gap: $spacing-s;
           padding-left: 0px;
           background-color: var(--bg-secondary);

@@ -21,6 +21,7 @@ import {
 import LazyImage from "./common/LazyImage";
 import BulkUpdateTagsDialog from "./dialogs/BulkUpdateTagsDialog";
 import DeleteResourceDialog from "./dialogs/DeleteResourceDialog";
+import {useEventListener} from "./common/EventBus";
 
 type ListProps = {
   selection: ResourceSelection
@@ -157,6 +158,8 @@ const ListView = (props: ListProps) => {
     }))
   }
 
+  // useEventListener('resource-deleted', handleResourceDeleted)
+
   const allSelected = selectedItems.length > 0 && selectedItems.length === searchResult.results.length && searchResult.results.length > 0
 
   const headers =
@@ -256,10 +259,7 @@ const ListView = (props: ListProps) => {
                     {
                       session.isAdmin() &&
                         <div className="media-actions">
-                            <MdMovieEdit className="fragments-action"
-                                         onClick={() => navigate(`/editor/${resource.bucketId}/${resource.resourceId}`)}/>
-                            <MdDelete className="delete-action"
-                                     onClick={() => setResourceToDelete(resource)}/>
+                            <MdDelete className="delete-action" onClick={() => setResourceToDelete(resource)}/>
                         </div>
                     }
                     {`${resource.contentMeta.height}p`}

@@ -2,6 +2,7 @@ import React, {useState} from "react"
 import {deleteResource, ResourceDto} from "../../api/generated"
 import Modal from "../common/Modal"
 import Dialog from "../common/Dialog"
+import {useEventBus} from "../common/EventBus"
 import "./DeleteResourceDialog.scss"
 
 type DeleteResourceDialogProps = {
@@ -14,6 +15,7 @@ type DeleteResourceDialogProps = {
 const DeleteResourceDialog = ({resource, visible, onDeleted, onHide}: DeleteResourceDialogProps) => {
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | undefined>(undefined)
+  const emitter = useEventBus()
 
   const handleDelete = () => {
     if (!resource) return
@@ -24,6 +26,7 @@ const DeleteResourceDialog = ({resource, visible, onDeleted, onHide}: DeleteReso
     deleteResource(resource.bucketId, resource.resourceId)
       .then(() => {
         setIsDeleting(false)
+        emitter.emit('resource-deleted', resource)
         onDeleted(resource)
       })
       .catch(() => {
