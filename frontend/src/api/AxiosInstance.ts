@@ -28,9 +28,11 @@ export const customAxiosInstance = <T>(
 
     const configWithOverrides: AxiosRequestConfig = {
       ...config,
-      paramsSerializer: (params: any) => qs.stringify(params, { arrayFormat: 'repeat' }), // this is to prevent array params from being serialized as "paramName[]=value"
+      ...options,
+      paramsSerializer: (params: any) => qs.stringify(params, { arrayFormat: 'repeat' }),
       headers: {
         ...config.headers,
+        ...options?.headers,
         ...xsrfTokenHeader(),
       },
     };

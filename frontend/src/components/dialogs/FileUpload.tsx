@@ -1,9 +1,10 @@
 import React, { ChangeEvent, useState } from 'react';
 import { dateMillisToString } from '../../api/Util';
+import { uploadResource } from '../../api/generated';
 import Dialog from '../common/Dialog';
 import './FileUpload.scss';
 
-const UPLOAD_ENDPOINT = '/api/resources/media/upload';
+const DEFAULT_BUCKET_ID = 'media';
 
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
 
@@ -23,41 +24,35 @@ const FileUpload = () => {
       }    
     };
     
-    const onFileUpload = () => {
+    const onFileUpload = async () => {
       if (!file) return;
-
-      const xhr = new XMLHttpRequest();
-      
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          const percentComplete = Math.round((event.loaded / event.total) * 100);
-          setProgress(percentComplete);
-        }
-      });
-
-      xhr.addEventListener('load', () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          setStatus('success');
-          setFeedback('Upload complete!');
-          setFile(undefined);
-          setProgress(0);
-        } else {
-          setStatus('error');
-          setFeedback(`Upload failed: ${xhr.statusText || 'Unknown error'}`);
-        }
-      });
-
-      xhr.addEventListener('error', () => {
-        setStatus('error');
-        setFeedback('Upload failed: Network error');
-      });
 
       setStatus('uploading');
       setFeedback(undefined);
-      xhr.open('POST', UPLOAD_ENDPOINT);
-      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-      xhr.setRequestHeader('X-Filename', encodeURIComponent(file.name));
-      xhr.send(file);
+      setProgress(0);
+
+      try {
+        await uploadResource(DEFAULT_BUCKET_ID, file, {
+          headers: {
+            'Content-Type': file.type || 'application/octet-stream',
+            'X-Filename': encodeURIComponent(file.name),
+          },
+          onUploadProgress: (progressEvent) => {
+            if (progressEvent.total) {
+              const percentComplete = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+              setProgress(percentComplete);
+            }
+          },
+        });
+
+        setStatus('success');
+        setFeedback('Upload complete!');
+        setFile(undefined);
+        setProgress(0);
+      } catch {
+        setStatus('error');
+        setFeedback('Upload failed');
+      }
     };
     
     return (
