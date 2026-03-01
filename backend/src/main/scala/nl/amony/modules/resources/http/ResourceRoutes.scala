@@ -90,7 +90,7 @@ object ResourceRoutes:
       .in(streamBody(Fs2Streams[IO])(Schema.schemaForByteArray, CodecFormat.OctetStream()))
       .out(jsonBody[ResourceDto])
 
-  val endpoints = List(getResourceById, deleteResource, updateUserMetaData, updateThumbnailTimestamp, modifyTagsBulk, uploadResource)
+  val endpoints = List(getBuckets, getResourceById, deleteResource, updateUserMetaData, updateThumbnailTimestamp, modifyTagsBulk, uploadResource)
 
   def apply(buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
 

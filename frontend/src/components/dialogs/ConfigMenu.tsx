@@ -2,11 +2,12 @@ import {Constants, SessionContext} from "../../api/Constants";
 import {calculateColumns} from "../../api/Util";
 import Dialog from "../common/Dialog";
 import './ConfigMenu.scss';
-import {useContext} from "react";
-import {adminReComputeHashes, adminRefreshBucket, adminReindexBucket, adminRescanMetaData} from "../../api/generated";
+import {useContext, useEffect, useState} from "react";
+import {adminReComputeHashes, adminRefreshBucket, adminReindexBucket, adminRescanMetaData, getBuckets} from "../../api/generated";
 import {useLocalStorage} from "usehooks-ts";
 import {useTheme} from "../../ThemeContext";
 import {ThemeSetting} from "../../api/Model";
+import {BucketDto} from "../../api/generated/model/bucketDto";
 
 const ConfigMenu = () => {
 
@@ -164,13 +165,40 @@ const ConfigMenu = () => {
 }
 
 const AdminOptions = () => {
+  const [buckets, setBuckets] = useState<BucketDto[]>([]);
+  const [selectedBucket, setSelectedBucket] = useState<string>('');
+
+  useEffect(() => {
+    getBuckets().then((data) => {
+      setBuckets(data);
+      if (data.length > 0) {
+        setSelectedBucket(data[0].bucketId);
+      }
+    });
+  }, []);
+
   return(
     <>
+      <div key="bucket-select" className="form-section">
+        <p key="header" className="form-label">Bucket</p>
+        <div key="content" className="form-content">
+          <select
+            value={selectedBucket}
+            onChange={(e) => setSelectedBucket(e.target.value)}
+          >
+            {buckets?.map((bucket: BucketDto) => (
+              <option key={bucket.bucketId} value={bucket.bucketId}>
+                {bucket.bucketId}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
       <div key="refresh-bucket" className="form-section">
         <p key="header" className="form-label">Refresh resources</p>
         <div key="content" className="form-content">
           <button onClick={() => {
-            adminRefreshBucket({'bucketId': 'media'})
+            adminRefreshBucket({'bucketId': selectedBucket})
           }}>Go
           </button>
         </div>
@@ -179,7 +207,7 @@ const AdminOptions = () => {
         <p key="header" className="form-label">Reindex resources</p>
         <div key="content" className="form-content">
           <button onClick={() => {
-            adminReindexBucket({'bucketId': 'media'})
+            adminReindexBucket({'bucketId': selectedBucket})
           }}>Go
           </button>
         </div>
@@ -188,7 +216,7 @@ const AdminOptions = () => {
         <p key="header" className="form-label">Rescan metadata</p>
         <div key="content" className="form-content">
           <button onClick={() => {
-            adminRescanMetaData({'bucketId': 'media'})
+            adminRescanMetaData({'bucketId': selectedBucket})
           }}>Go
           </button>
         </div>
@@ -197,7 +225,7 @@ const AdminOptions = () => {
         <p key="header" className="form-label">ReCompute hashes</p>
         <div key="content" className="form-content">
           <button onClick={() => {
-            adminReComputeHashes({'bucketId': 'media'})
+            adminReComputeHashes({'bucketId': selectedBucket})
           }}>Go
           </button>
         </div>

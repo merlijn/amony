@@ -3,6 +3,53 @@ info:
   title: Amony API
   version: '1.0'
 paths:
+  /api/buckets:
+    get:
+      tags:
+      - resources
+      description: Get information about a resource by its id
+      operationId: getBuckets
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+            Pragma:
+              required: true
+              schema:
+                type: string
+            Expires:
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BucketDto'
+        '400':
+          description: ''
+        '401':
+          description: ''
+        '403':
+          description: ''
+        '404':
+          description: ''
   /api/resources/{bucketId}/{resourceId}:
     get:
       tags:
@@ -753,6 +800,20 @@ components:
           uniqueItems: true
           items:
             type: string
+    BucketDto:
+      title: BucketDto
+      type: object
+      required:
+      - bucketId
+      - name
+      - type
+      properties:
+        bucketId:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
     BulkTagsUpdateDto:
       title: BulkTagsUpdateDto
       type: object
