@@ -1,12 +1,12 @@
 # Amony
 
-A self-hosted media library web application. It scans a local directory for media files and lets you browse, organize and view them in a web browser.
+A self-hosted media server application with a simple web UI. It scans a local directory for media files and lets you browse, organize and view them in a web browser.
 
 The server should work well for personal use up to 100k media files, depending on your hardware. Beyond that is untested.
 
-A live demo is available at [https://demo.amony.app](https://demo.amony.app). It is running on a single [Hetzner](https://www.hetzner.com/) Cost-Optimized server (~$4/month).
-
 ![](docs/app-screenshot.png)
+
+A live demo is available at [https://demo.amony.app](https://demo.amony.app). It is running on a single [Hetzner](https://www.hetzner.com/) Cost-Optimized server (~$4/month).
 
 **Note:** All videos on the demo site are free (public domain) and sourced from [Pexels](https://www.pexels.com/license/)
 ## Features
