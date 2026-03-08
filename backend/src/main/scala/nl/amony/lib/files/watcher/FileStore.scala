@@ -22,11 +22,11 @@ trait FileStore:
    * @param hash
    * @return
    */
-  def getByHash(hash: String): IO[Seq[FileInfo]]
+  def getByDedupId(hash: String): IO[Seq[FileInfo]]
 
   def getAll(): fs2.Stream[IO, FileInfo]
 
-  def getAllByHash(): fs2.Stream[IO, (String, Set[FileInfo])]
+  def getAllDedupId(): fs2.Stream[IO, (String, Set[FileInfo])]
 
   def size(): Int
 
@@ -36,18 +36,18 @@ trait FileStore:
 
 class InMemoryFileStore extends FileStore:
 
-  private val byPath      = new ConcurrentHashMap[Path, FileInfo]()
-  private val byHashIndex = new ConcurrentHashMap[String, Set[FileInfo]]()
+  private val byPath         = new ConcurrentHashMap[Path, FileInfo]()
+  private val byDedupIdIndex = new ConcurrentHashMap[String, Set[FileInfo]]()
 
-  private def getHashBucket(hash: String): Set[FileInfo] = byHashIndex.getOrDefault(hash, Set.empty)
+  private def getDedupBucket(dedupId: String): Set[FileInfo] = byDedupIdIndex.getOrDefault(dedupId, Set.empty)
 
   override def getByPath(path: Path): IO[Option[FileInfo]] = IO.pure(Option(byPath.get(path)))
 
-  override def getByHash(hash: String): IO[Seq[FileInfo]] = IO.pure(Option(byHashIndex.get(hash)).map(_.toSeq).getOrElse(Seq.empty))
+  override def getByDedupId(hash: String): IO[Seq[FileInfo]] = IO.pure(Option(byDedupIdIndex.get(hash)).map(_.toSeq).getOrElse(Seq.empty))
 
   override def getAll(): fs2.Stream[IO, FileInfo] = fs2.Stream.emits(byPath.values.asScala.toSeq)
 
-  override def getAllByHash(): fs2.Stream[IO, (String, Set[FileInfo])] = fs2.Stream.emits(byHashIndex.asScala.toSeq)
+  override def getAllDedupId(): fs2.Stream[IO, (String, Set[FileInfo])] = fs2.Stream.emits(byDedupIdIndex.asScala.toSeq)
     .map { case (hash, files) => (hash, files) }
 
   def getAllSync() = byPath.values.asScala.toSeq
@@ -63,28 +63,33 @@ class InMemoryFileStore extends FileStore:
   def insertAllSync(files: Iterable[FileInfo]): Unit = files.foreach(insertSync)
 
   def applyEventSync(e: FileEvent): Unit = e match
-    case FileMetaChanged(fileInfo) => synchronized {
+    case FileMetaChanged(fileInfo) =>
+      synchronized {
         byPath.put(fileInfo.path, fileInfo)
-        val updatedHashBucket = getHashBucket(fileInfo.hash).filterNot(_.path == fileInfo.path) + fileInfo
-        byHashIndex.put(fileInfo.hash, updatedHashBucket)
+        val updatedHashBucket = getDedupBucket(fileInfo.dedupId).filterNot(_.path == fileInfo.path) + fileInfo
+        byDedupIdIndex.put(fileInfo.dedupId, updatedHashBucket)
       }
 
-    case FileAdded(fileInfo)          => synchronized {
+    case FileAdded(fileInfo)          =>
+      synchronized {
         byPath.put(fileInfo.path, fileInfo)
-        byHashIndex.put(fileInfo.hash, getHashBucket(fileInfo.hash) + fileInfo)
+        byDedupIdIndex.put(fileInfo.dedupId, getDedupBucket(fileInfo.dedupId) + fileInfo)
       }
-    case FileDeleted(fileInfo)        => synchronized {
+    case FileDeleted(fileInfo)        =>
+      synchronized {
         byPath.remove(fileInfo.path)
-        val updatedHashBucket = getHashBucket(fileInfo.hash).filterNot(_ == fileInfo)
-        if updatedHashBucket.isEmpty then byHashIndex.remove(fileInfo.hash) else byHashIndex.put(fileInfo.hash, updatedHashBucket)
+        val updatedHashBucket = getDedupBucket(fileInfo.dedupId).filterNot(_ == fileInfo)
+        if updatedHashBucket.isEmpty then byDedupIdIndex.remove(fileInfo.dedupId) else byDedupIdIndex.put(fileInfo.dedupId, updatedHashBucket)
       }
-    case FileMoved(fileInfo, oldPath) => synchronized {
-        // this check is done to allow circular renames (e.g. a.txt -> b.txt -> a.txt)
-        if Option(byPath.get(oldPath)).exists(_.hash == fileInfo.hash) then byPath.remove(oldPath)
+    case FileMoved(fileInfo, oldPath) =>
+      synchronized {
+        // This is done to allow circular renames (e.g. FileMoved(a.txt, b.txt) -> FileMoved(b.txt, a.txt))
+        // We first remove the old path
+        if Option(byPath.get(oldPath)).exists(_.dedupId == fileInfo.dedupId) then byPath.remove(oldPath)
 
         byPath.put(fileInfo.path, fileInfo)
-        val updatedHashBucket = getHashBucket(fileInfo.hash).filterNot(f => f.path == oldPath && f.hash == fileInfo.hash) + fileInfo
-        byHashIndex.put(fileInfo.hash, updatedHashBucket)
+        val updatedHashBucket = getDedupBucket(fileInfo.dedupId).filterNot(f => f.path == oldPath && f.dedupId == fileInfo.dedupId) + fileInfo
+        byDedupIdIndex.put(fileInfo.dedupId, updatedHashBucket)
       }
 
 object InMemoryFileStore:

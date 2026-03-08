@@ -31,9 +31,9 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
 
     fileEvent match {
 
-      case FileMetaChanged(f) => withRequireResource(f.hash, f.path)(r => ResourceFileMetaChanged(r.resourceId, f.modifiedTime))
+      case FileMetaChanged(f) => withRequireResource(f.dedupId, f.path)(r => ResourceFileMetaChanged(r.resourceId, f.modifiedTime))
 
-      case FileDeleted(f) => withRequireResource(f.hash, f.path)(r => ResourceDeleted(r.resourceId))
+      case FileDeleted(f) => withRequireResource(f.dedupId, f.path)(r => ResourceDeleted(r.resourceId))
 
       case FileAdded(f) => newResource(f, UserId(config.sync.newFilesOwner)).map(ResourceAdded(_))
 
@@ -41,7 +41,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
         val newPath = relativizePath(file.path)
         val oldPath = relativizePath(oldFilePath)
 
-        withRequireResource(file.hash, oldFilePath)(r => ResourceMoved(r.resourceId, oldPath, newPath))
+        withRequireResource(file.dedupId, oldFilePath)(r => ResourceMoved(r.resourceId, oldPath, newPath))
     }
   }
 
@@ -54,7 +54,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
         resourceId         = config.generateId(),
         userId             = userId,
         path               = relativizePath(f.path),
-        hash               = Some(f.hash),
+        hash               = Some(f.dedupId),
         size               = f.size,
         contentType        = meta.map(_.contentType),
         contentMeta        = meta.map(_.meta),

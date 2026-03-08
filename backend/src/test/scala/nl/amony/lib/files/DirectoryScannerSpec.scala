@@ -20,15 +20,15 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
       fileInfo.copy(path = Paths.get(fileName))
   }
 
-  val fileA = FileInfo(Paths.get("a"), hash = "a", size = 100, modifiedTime = 1)
-  val fileB = FileInfo(Paths.get("b"), hash = "b", size = 200, modifiedTime = 2)
-  val fileC = FileInfo(Paths.get("c"), hash = "c", size = 300, modifiedTime = 3)
+  val fileA = FileInfo(Paths.get("a"), dedupId = "a", size = 100, modifiedTime = 1)
+  val fileB = FileInfo(Paths.get("b"), dedupId = "b", size = 200, modifiedTime = 2)
+  val fileC = FileInfo(Paths.get("c"), dedupId = "c", size = 300, modifiedTime = 3)
 
   def randomFile() = {
     val id         = java.util.UUID.randomUUID().toString
     FileInfo(
       path         = Paths.get(id),
-      hash         = id,
+      dedupId      = id,
       size         = random.nextInt(100000) + 1,
       modifiedTime = random.nextInt(100000)
     )
@@ -76,12 +76,12 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
     "detect modified files" in {
 
       val currentFiles  = Set(fileA)
-      val previousFiles = Set(fileA.copy(hash = "b"))
+      val previousFiles = Set(fileA.copy(dedupId = "b"))
 
       val events = compare(previousFiles, currentFiles)
 
       events shouldBe Set(
-        FileDeleted(fileA.copy(hash = "b")),
+        FileDeleted(fileA.copy(dedupId = "b")),
         FileAdded(fileA)
       )
     }
@@ -125,8 +125,8 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
       events.foreach(fs.applyEventSync)
 
       fs.getAllSync().toSet shouldBe currentFiles
-      fs.getByHash("a").unsafeRunSync() shouldBe Seq(renamedA)
-      fs.getByHash("b").unsafeRunSync() shouldBe Seq(renamedB)
+      fs.getByDedupId("a").unsafeRunSync() shouldBe Seq(renamedA)
+      fs.getByDedupId("b").unsafeRunSync() shouldBe Seq(renamedB)
     }
 
     "circular rename - 3 files" in {
@@ -211,7 +211,7 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
       val previousFiles = Set(fileA)
 
       val renamedA      = fileA.copy(path = Paths.get("c"))
-      val sameNameAdded = fileA.copy(hash = "newhash")
+      val sameNameAdded = fileA.copy(dedupId = "newhash")
 
       val currentFiles = Set(renamedA, sameNameAdded)
 

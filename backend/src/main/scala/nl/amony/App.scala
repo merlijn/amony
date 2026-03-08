@@ -74,7 +74,6 @@ object App extends ResourceApp.Forever with Logging {
     // somehow the default (slf4j) logger for http4s is not working, so we explicitly set it here
     val serverLog = {
       val serverLogger = Logger("nl.amony.app.Main.serverLogger")
-//      val accessLogger = Logger("nl.amony.app.Main.accessLogger")
       Http4sServerOptions.defaultServerLog[IO]
         .copy(
           logLogicExceptions = true,
