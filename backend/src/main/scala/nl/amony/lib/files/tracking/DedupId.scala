@@ -2,6 +2,7 @@ package nl.amony.lib.files.tracking
 
 
 import java.io.RandomAccessFile
+import java.nio.file.Path
 import java.security.MessageDigest
 import scala.util.Random
 
@@ -14,45 +15,81 @@ case class SamplingConfig(
 
 object DedupId {
 
-  def sampleFile(path: String, config: SamplingConfig): Array[Byte] =
-    val file = RandomAccessFile(path, "r")
-    val fileSize = file.length()
-    val rand = Random(fileSize)
-    val digest = MessageDigest.getInstance("SHA-1")
+  /**
+   * Calculates a deduplication ID for a file by sampling blocks of data across the file, updating the provided MessageDigest, 
+   * and tracking byte frequencies to estimate entropy.
+   *
+   * The first and last blocks are always included, since they are most likely to reveal differences between files.
+   * Additional blocks are sampled in shuffled order until either the maximum number of blocks is read or the estimated
+   * entropy exceeds the specified threshold, ensuring a balance between accuracy and performance.
+   *
+   * If the file is smaller than minBlocks * blockSize, the entire file is read.
+   * 
+   * @param path The file path to sample
+   * @param digest The (new) digest instance
+   */
+  def sampledHash(path: Path, digest: MessageDigest, config: SamplingConfig): Array[Byte] =
+    val file = RandomAccessFile(path.toFile, "r")
+    try
+      val fileSize = file.length()
 
-    // Track byte frequencies across all sampled blocks
-    val freq = Array.fill(256)(0L)
-    var totalBytes = 0L
-    var blocksRead = 0
+      if fileSize == 0 then
+        return digest.digest()
 
-    // Pre-calculate valid block positions
-    val maxBlocks = math.min(config.maxBlocks, (fileSize / config.blockSize).toInt)
-    val positions = (0 until maxBlocks)
-      .map(_ * config.blockSize.toLong)
-      .toArray
+      val rand = Random(fileSize)
 
-    // Shuffle positions deterministically
-    val shuffled = rand.shuffle(positions.toSeq)
+      // Track byte frequencies across all sampled blocks
+      val freq = Array.fill(256)(0L)
+      var totalBytes = 0L
+      var blocksRead = 0
+      val readPositions = scala.collection.mutable.Set[Long]()
 
-    val buffer = new Array[Byte](config.blockSize)
+      val buffer = new Array[Byte](config.blockSize)
 
-    for
-      pos <- shuffled
-      if blocksRead < config.maxBlocks &&
-        (blocksRead < config.minBlocks || currentEntropy(freq, totalBytes) < config.entropyThreshold)
-    do
-      file.seek(pos)
-      val bytesRead = file.read(buffer)
-      if bytesRead > 0 then
-        digest.update(buffer, 0, bytesRead)
-        // Update frequencies
-        for i <- 0 until bytesRead do
-          freq(buffer(i) & 0xFF) += 1
-        totalBytes += bytesRead
-        blocksRead += 1
+      def readBlock(pos: Long): Unit =
+        if pos >= 0 && pos < fileSize && !readPositions.contains(pos) then
+          readPositions += pos
+          file.seek(pos)
+          val bytesRead = file.read(buffer)
+          if bytesRead > 0 then
+            digest.update(buffer, 0, bytesRead)
+            for i <- 0 until bytesRead do
+              freq(buffer(i) & 0xFF) += 1
+            totalBytes += bytesRead
+            blocksRead += 1
 
-    file.close()
-    digest.digest()
+      // If the entire file fits in minBlocks * blockSize, read it all sequentially
+      if fileSize <= config.minBlocks.toLong * config.blockSize then
+        var pos = 0L
+        while pos < fileSize do
+          readBlock(pos)
+          pos += config.blockSize
+      else
+        // Always read the first and last blocks first
+        readBlock(0)
+        val lastBlockPos = (fileSize - config.blockSize) / config.blockSize * config.blockSize
+        readBlock(lastBlockPos)
+
+        // Pre-calculate remaining block positions (excluding first and last)
+        val totalFileBlocks = ((fileSize + config.blockSize - 1) / config.blockSize).toInt
+        val remainingPositions = (0 until totalFileBlocks)
+          .map(_.toLong * config.blockSize)
+          .filter(pos => !readPositions.contains(pos))
+          .toArray
+
+        // Shuffle remaining positions deterministically
+        val shuffled = rand.shuffle(remainingPositions.toSeq)
+
+        for
+          pos <- shuffled
+          if blocksRead < config.maxBlocks &&
+            (blocksRead < config.minBlocks || currentEntropy(freq, totalBytes) < config.entropyThreshold)
+        do
+          readBlock(pos)
+
+      digest.digest()
+    finally
+      file.close()
 
   def currentEntropy(freq: Array[Long], total: Long): Double =
     if total == 0 then 0.0
