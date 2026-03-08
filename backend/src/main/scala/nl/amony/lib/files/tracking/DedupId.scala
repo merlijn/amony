@@ -8,30 +8,35 @@ import scala.util.Random
 
 case class SamplingConfig(
    blockSize: Int = 4 * 1024, // this is the minimal block size that HDDs read internally
-   minBlocks: Int = 4,
+   minBlocks: Int = 16,
    maxBlocks: Int = 64,
-   entropyThreshold: Double = 7.5  // bits per byte (max is 8)
+   entropyThreshold: Double = 5,  // bits per byte (max is 8)
+   scaleFactor: Long = 128L * 1024 * 1024, // add 1 extra min block per this many bytes of file size
+   digestAlgorithm: String = "SHA-1"
 )
 
 object DedupId {
+  
+  private val defaultSamplingConfig = SamplingConfig()
 
   /**
-   * Calculates a deduplication ID for a file by sampling blocks of data across the file, updating the provided MessageDigest, 
+   * Calculates a deduplication ID for a file by sampling blocks of data across the file, updating the provided MessageDigest,
    * and tracking byte frequencies to estimate entropy.
    *
-   * The first and last blocks are always included, since they are most likely to reveal differences between files.
+   * The first and last blocks are always included, since they are most likely to reveal differences in files.
    * Additional blocks are sampled in shuffled order until either the maximum number of blocks is read or the estimated
    * entropy exceeds the specified threshold, ensuring a balance between accuracy and performance.
    *
    * If the file is smaller than minBlocks * blockSize, the entire file is read.
-   * 
+   *
    * @param path The file path to sample
    * @param digest The (new) digest instance
    */
-  def sampledHash(path: Path, digest: MessageDigest, config: SamplingConfig): Array[Byte] =
+  def sampledHash(path: Path, config: SamplingConfig = defaultSamplingConfig): Array[Byte] =
     val file = RandomAccessFile(path.toFile, "r")
     try
       val fileSize = file.length()
+      val digest = MessageDigest.getInstance(config.digestAlgorithm)
 
       if fileSize == 0 then
         return digest.digest()
@@ -65,6 +70,10 @@ object DedupId {
           readBlock(pos)
           pos += config.blockSize
       else
+        // Scale baseline with file size: larger files get more samples
+        val sizeScaledBlocks = (fileSize / config.scaleFactor).toInt
+        val effectiveMinBlocks = math.min(config.maxBlocks, config.minBlocks + sizeScaledBlocks)
+
         // Always read the first and last blocks first
         readBlock(0)
         val lastBlockPos = (fileSize - config.blockSize) / config.blockSize * config.blockSize
@@ -83,7 +92,7 @@ object DedupId {
         for
           pos <- shuffled
           if blocksRead < config.maxBlocks &&
-            (blocksRead < config.minBlocks || currentEntropy(freq, totalBytes) < config.entropyThreshold)
+            (blocksRead < effectiveMinBlocks || currentEntropy(freq, totalBytes) < config.entropyThreshold)
         do
           readBlock(pos)
 
@@ -91,7 +100,7 @@ object DedupId {
     finally
       file.close()
 
-  def currentEntropy(freq: Array[Long], total: Long): Double =
+  private def currentEntropy(freq: Array[Long], total: Long): Double =
     if total == 0 then 0.0
     else
       var entropy = 0.0
