@@ -20,7 +20,7 @@ object PartialHash extends Logging {
    * @param nChunks The number of bytes to sample
    * @return
    */
-  def sampleBytesFromFile(file: Path, nChunks: Int, chunkSize: Int = 1): Array[Byte] = {
+  private def sampleBytesFromFile(file: Path, nChunks: Int, chunkSize: Int = 1): Array[Byte] = {
     val size   = file.size()
     val result = new Array[Byte](nChunks * chunkSize)
 

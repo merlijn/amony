@@ -24,9 +24,9 @@ object LocalDirectoryScanner extends Logging {
   }
 
   private def streamFilesInDirectoryRecursive(
-    dir: Path,
-    directoryFilter: Path => Boolean,
-    fileFilter: Path => Boolean
+     directory: Path,
+     directoryFilter: Path => Boolean,
+     fileFilter: Path => Boolean
   ): Stream[IO, (Path, BasicFileAttributes)] =
 
     Stream.eval(Queue.unbounded[IO, Option[(Path, BasicFileAttributes)]]).flatMap { queue =>
@@ -43,7 +43,9 @@ object LocalDirectoryScanner extends Logging {
           logger.warn(s"Failed to visit path: $file")
           FileVisitResult.CONTINUE
 
-      val walkTree = IO.blocking(Files.walkFileTree(dir,visitor)).guarantee(queue.offer(None)) // signal end of stream
+      val walkTree = 
+        IO.blocking(Files.walkFileTree(directory,visitor))
+          .guarantee(queue.offer(None)) // signal end of stream
 
       val dequeue = Stream.fromQueueNoneTerminated(queue)
 

@@ -16,7 +16,7 @@ case class SamplingConfig(
 )
 
 object DedupId {
-  
+
   private val defaultSamplingConfig = SamplingConfig()
 
   /**
@@ -24,13 +24,14 @@ object DedupId {
    * and tracking byte frequencies to estimate entropy.
    *
    * The first and last blocks are always included, since they are most likely to reveal differences in files.
-   * Additional blocks are sampled in shuffled order until either the maximum number of blocks is read or the estimated
-   * entropy exceeds the specified threshold, ensuring a balance between accuracy and performance.
+   * Additional blocks are sampled via stratified random sampling: the file is divided into equal segments and one
+   * random block-aligned position is picked per segment. Segments are visited in shuffled order until either the
+   * maximum number of blocks is read or the estimated entropy exceeds the specified threshold.
    *
    * If the file is smaller than minBlocks * blockSize, the entire file is read.
    *
    * @param path The file path to sample
-   * @param digest The (new) digest instance
+   * @param config The sampling configuration
    */
   def sampledHash(path: Path, config: SamplingConfig = defaultSamplingConfig): Array[Byte] =
     val file = RandomAccessFile(path.toFile, "r")
@@ -79,22 +80,29 @@ object DedupId {
         val lastBlockPos = (fileSize - config.blockSize) / config.blockSize * config.blockSize
         readBlock(lastBlockPos)
 
-        // Pre-calculate remaining block positions (excluding first and last)
+        // Stratified random sampling for the remaining blocks
+        // Reserve 2 slots for head/tail, divide the file into segments for the rest
+        val remainingSlots = config.maxBlocks - 2
         val totalFileBlocks = ((fileSize + config.blockSize - 1) / config.blockSize).toInt
-        val remainingPositions = (0 until totalFileBlocks)
-          .map(_.toLong * config.blockSize)
-          .filter(pos => !readPositions.contains(pos))
-          .toArray
+        val segmentCount = math.min(remainingSlots, totalFileBlocks)
+        val segmentSize = fileSize.toDouble / segmentCount
 
-        // Shuffle remaining positions deterministically
-        val shuffled = rand.shuffle(remainingPositions.toSeq)
+        // Shuffle segment indices so early-exit doesn't bias toward the start of the file
+        val segmentIndices = rand.shuffle(0 until segmentCount)
 
         for
-          pos <- shuffled
+          segIdx <- segmentIndices
           if blocksRead < config.maxBlocks &&
             (blocksRead < effectiveMinBlocks || currentEntropy(freq, totalBytes) < config.entropyThreshold)
         do
-          readBlock(pos)
+          val segStart = (segIdx * segmentSize).toLong
+          val segEnd = math.min(((segIdx + 1) * segmentSize).toLong, fileSize)
+          // Pick a random block-aligned position within this segment
+          val maxBlockStart = math.max(segStart, segEnd - config.blockSize)
+          val blocksInSegment = (maxBlockStart - segStart) / config.blockSize + 1
+          val blockIndex = if blocksInSegment > 1 then rand.nextLong().abs % blocksInSegment else 0L
+          val pos = segStart + blockIndex * config.blockSize
+          readBlock(math.min(pos, fileSize - config.blockSize))
 
       digest.digest()
     finally
