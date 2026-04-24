@@ -17,16 +17,16 @@ trait FileStore:
   def getByPath(path: Path): IO[Option[FileInfo]]
 
   /**
-   * Returns all files with the given hash. May return an empty list if no files with the given hash exist.
+   * Returns all files with the given partialHash. May return an empty list if no files with the given partialHash exist.
    *
-   * @param hash
+   * @param partialHash
    * @return
    */
-  def getByHash(hash: String): IO[Seq[FileInfo]]
+  def getByPartialHash(partialHash: String): IO[Seq[FileInfo]]
 
   def getAll(): fs2.Stream[IO, FileInfo]
 
-  def getAllByHash(): fs2.Stream[IO, (String, Set[FileInfo])]
+  def getAllByPartialHash(): fs2.Stream[IO, (String, Set[FileInfo])]
 
   def size(): Int
 
@@ -36,19 +36,20 @@ trait FileStore:
 
 class InMemoryFileStore extends FileStore:
 
-  private val byPath      = new ConcurrentHashMap[Path, FileInfo]()
-  private val byHashIndex = new ConcurrentHashMap[String, Set[FileInfo]]()
+  private val byPath             = new ConcurrentHashMap[Path, FileInfo]()
+  private val byPartialHashIndex = new ConcurrentHashMap[String, Set[FileInfo]]()
 
-  private def getHashBucket(hash: String): Set[FileInfo] = byHashIndex.getOrDefault(hash, Set.empty)
+  private def getPartialHashBucket(partialHash: String): Set[FileInfo] = byPartialHashIndex.getOrDefault(partialHash, Set.empty)
 
   override def getByPath(path: Path): IO[Option[FileInfo]] = IO.pure(Option(byPath.get(path)))
 
-  override def getByHash(hash: String): IO[Seq[FileInfo]] = IO.pure(Option(byHashIndex.get(hash)).map(_.toSeq).getOrElse(Seq.empty))
+  override def getByPartialHash(partialHash: String): IO[Seq[FileInfo]] =
+    IO.pure(Option(byPartialHashIndex.get(partialHash)).map(_.toSeq).getOrElse(Seq.empty))
 
   override def getAll(): fs2.Stream[IO, FileInfo] = fs2.Stream.emits(byPath.values.asScala.toSeq)
 
-  override def getAllByHash(): fs2.Stream[IO, (String, Set[FileInfo])] = fs2.Stream.emits(byHashIndex.asScala.toSeq)
-    .map { case (hash, files) => (hash, files) }
+  override def getAllByPartialHash(): fs2.Stream[IO, (String, Set[FileInfo])] = fs2.Stream.emits(byPartialHashIndex.asScala.toSeq)
+    .map { case (partialHash, files) => (partialHash, files) }
 
   def getAllSync() = byPath.values.asScala.toSeq
 
@@ -65,26 +66,28 @@ class InMemoryFileStore extends FileStore:
   def applyEventSync(e: FileEvent): Unit = e match
     case FileMetaChanged(fileInfo) => synchronized {
         byPath.put(fileInfo.path, fileInfo)
-        val updatedHashBucket = getHashBucket(fileInfo.hash).filterNot(_.path == fileInfo.path) + fileInfo
-        byHashIndex.put(fileInfo.hash, updatedHashBucket)
+        val updatedPartialHashBucket = getPartialHashBucket(fileInfo.partialHash).filterNot(_.path == fileInfo.path) + fileInfo
+        byPartialHashIndex.put(fileInfo.partialHash, updatedPartialHashBucket)
       }
 
     case FileAdded(fileInfo)          => synchronized {
         byPath.put(fileInfo.path, fileInfo)
-        byHashIndex.put(fileInfo.hash, getHashBucket(fileInfo.hash) + fileInfo)
+        byPartialHashIndex.put(fileInfo.partialHash, getPartialHashBucket(fileInfo.partialHash) + fileInfo)
       }
     case FileDeleted(fileInfo)        => synchronized {
         byPath.remove(fileInfo.path)
-        val updatedHashBucket = getHashBucket(fileInfo.hash).filterNot(_ == fileInfo)
-        if updatedHashBucket.isEmpty then byHashIndex.remove(fileInfo.hash) else byHashIndex.put(fileInfo.hash, updatedHashBucket)
+        val updatedPartialHashBucket = getPartialHashBucket(fileInfo.partialHash).filterNot(_ == fileInfo)
+        if updatedPartialHashBucket.isEmpty then byPartialHashIndex.remove(fileInfo.partialHash)
+        else byPartialHashIndex.put(fileInfo.partialHash, updatedPartialHashBucket)
       }
     case FileMoved(fileInfo, oldPath) => synchronized {
         // this check is done to allow circular renames (e.g. a.txt -> b.txt -> a.txt)
-        if Option(byPath.get(oldPath)).exists(_.hash == fileInfo.hash) then byPath.remove(oldPath)
+        if Option(byPath.get(oldPath)).exists(_.partialHash == fileInfo.partialHash) then byPath.remove(oldPath)
 
         byPath.put(fileInfo.path, fileInfo)
-        val updatedHashBucket = getHashBucket(fileInfo.hash).filterNot(f => f.path == oldPath && f.hash == fileInfo.hash) + fileInfo
-        byHashIndex.put(fileInfo.hash, updatedHashBucket)
+        val updatedPartialHashBucket =
+          getPartialHashBucket(fileInfo.partialHash).filterNot(f => f.path == oldPath && f.partialHash == fileInfo.partialHash) + fileInfo
+        byPartialHashIndex.put(fileInfo.partialHash, updatedPartialHashBucket)
       }
 
 object InMemoryFileStore:

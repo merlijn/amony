@@ -78,13 +78,13 @@ class LocalDirectoryBucket(
       else IO.unit
   }.compile.drain
 
-  def reComputeHashes(): IO[Unit] = getAllResources.evalMap { resource =>
+  def reComputePartialHashs(): IO[Unit] = getAllResources.evalMap { resource =>
     val file = config.resourcePath.resolve(resource.path)
-    config.hashingAlgorithm.createHash(file).flatMap: hash =>
+    config.hashingAlgorithm.createHash(file).flatMap: partialHash =>
       val oldResourceId = resource.resourceId
-      val updated       = resource.copy(hash = Some(hash))
-      if oldResourceId != hash then
-        logger.info(s"Updating hash for $file from $oldResourceId to $hash")
+      val updated       = resource.copy(partialHash = Some(partialHash))
+      if oldResourceId != partialHash then
+        logger.info(s"Updating partialHash for $file from $oldResourceId to $partialHash")
         db.deleteResource(config.id, resource.resourceId) >> topic.publish(ResourceDeleted(oldResourceId)) >> db.insertResource(updated) >>
           topic.publish(ResourceUpdated(updated))
       else IO.unit

@@ -8,7 +8,7 @@ case class ResourceInfo(
   userId: UserId,
   path: String,
   size: Long,
-  hash: Option[String]              = None,
+  partialHash: Option[String]       = None,
   contentType: Option[String]       = None,
   contentMeta: Option[ResourceMeta] = None,
   timeAdded: Option[Long]           = None,

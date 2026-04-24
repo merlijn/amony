@@ -62,7 +62,7 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
       }
 
       def insertResource(digest: Array[Byte]): EitherT[IO, UploadError, ResourceInfo] = {
-        val encodedHash = config.hashingAlgorithm.encodeHash(digest)
+        val encodedPartialHash = config.hashingAlgorithm.encodeHash(digest)
 
         /**
          * TODO 
@@ -73,12 +73,12 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
         for
           targetPath   <- EitherT.fromEither[IO](resolveTargetPath(config.resourcePath.resolve(fileName), 100))
           _            <- EitherT.right[UploadError](IO(JFiles.move(uploadPath, targetPath)))
-          resourceInfo <- EitherT.right[UploadError](newResource(FileInfo(targetPath, encodedHash), userId))
+          resourceInfo <- EitherT.right[UploadError](newResource(FileInfo(targetPath, encodedPartialHash), userId))
           _            <- EitherT.right[UploadError](processEvent(ResourceAdded(resourceInfo)))
         yield resourceInfo
       }
 
       source.observe(writeToFile).through(calculateHash).compile.last.flatMap {
         case Some(digest) => insertResource(digest.digest()).value
-        case None         => IO.raiseError(new RuntimeException("Failed to compute hash for uploaded file"))
+        case None         => IO.raiseError(new RuntimeException("Failed to compute partialHash for uploaded file"))
       }.recoverWith(e => fs2.io.file.Files[IO].delete(uploadPath) >> IO.raiseError(new RuntimeException(s"Failed to upload resource: $fileName", e)))

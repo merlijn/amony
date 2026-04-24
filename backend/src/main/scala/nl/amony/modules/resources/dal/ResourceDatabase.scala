@@ -119,9 +119,9 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
       s.prepare(Queries.resources.getByIdJoined)
         .flatMap(_.stream((bucketId, resourceId), defaultChunkSize).map(toResource).compile.toList.map(_.headOption))
 
-  def getByHash(bucketId: String, hash: String): IO[List[ResourceInfo]] =
+  def getByPartialHash(bucketId: String, partialHash: String): IO[List[ResourceInfo]] =
     useSession: s =>
-      s.prepare(Queries.resources.getByHashJoined).flatMap(_.stream((bucketId, hash), defaultChunkSize).map(toResource).compile.toList)
+      s.prepare(Queries.resources.getByPartialHashJoined).flatMap(_.stream((bucketId, partialHash), defaultChunkSize).map(toResource).compile.toList)
 
   def updateThumbnailTimestamp(bucketId: String, resourceId: String, timestamp: Int): IO[Option[ResourceInfo]] = useSession: s =>
     (for

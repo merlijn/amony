@@ -5,11 +5,12 @@ import java.nio.file.{Files, Path}
 
 object FileInfo {
 
-  def apply(path: Path, hash: String): FileInfo = FileInfo(path, Files.readAttributes(path, classOf[BasicFileAttributes]), hash)
+  def apply(path: Path, partialHash: String): FileInfo = FileInfo(path, Files.readAttributes(path, classOf[BasicFileAttributes]), partialHash)
 
-  def apply(path: Path, attrs: BasicFileAttributes, hash: String): FileInfo = FileInfo(path, hash, attrs.size(), attrs.lastModifiedTime().toMillis)
+  def apply(path: Path, attrs: BasicFileAttributes, partialHash: String): FileInfo =
+    FileInfo(path, partialHash, attrs.size(), attrs.lastModifiedTime().toMillis)
 }
 
-case class FileInfo(path: Path, hash: String, size: Long, modifiedTime: Long) {
-  def isSameFileMeta(other: FileInfo): Boolean = other.hash == hash && size == other.size && modifiedTime == other.modifiedTime
+case class FileInfo(path: Path, partialHash: String, size: Long, modifiedTime: Long) {
+  def isSameFileMeta(other: FileInfo): Boolean = other.partialHash == partialHash && size == other.size && modifiedTime == other.modifiedTime
 }

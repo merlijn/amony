@@ -23,17 +23,17 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
   private def relativizePath(path: Path): String                    = config.resourcePath.relativize(path).toString
   private def mapFileEvent(fileEvent: FileEvent): IO[ResourceEvent] = {
 
-    def withRequireResource(hash: String, path: Path)(fn: ResourceInfo => ResourceEvent): IO[ResourceEvent] =
-      db.getByHash(bucketId, hash)
+    def withRequireResource(partialHash: String, path: Path)(fn: ResourceInfo => ResourceEvent): IO[ResourceEvent] =
+      db.getByPartialHash(bucketId, partialHash)
         .map(_.find(_.path == relativizePath(path))).flatMap:
           case None    => IO.raiseError(new IllegalStateException("No such file in database"))
           case Some(r) => IO.pure(fn(r))
 
     fileEvent match {
 
-      case FileMetaChanged(f) => withRequireResource(f.hash, f.path)(r => ResourceFileMetaChanged(r.resourceId, f.modifiedTime))
+      case FileMetaChanged(f) => withRequireResource(f.partialHash, f.path)(r => ResourceFileMetaChanged(r.resourceId, f.modifiedTime))
 
-      case FileDeleted(f) => withRequireResource(f.hash, f.path)(r => ResourceDeleted(r.resourceId))
+      case FileDeleted(f) => withRequireResource(f.partialHash, f.path)(r => ResourceDeleted(r.resourceId))
 
       case FileAdded(f) => newResource(f, UserId(config.sync.newFilesOwner)).map(ResourceAdded(_))
 
@@ -41,7 +41,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
         val newPath = relativizePath(file.path)
         val oldPath = relativizePath(oldFilePath)
 
-        withRequireResource(file.hash, oldFilePath)(r => ResourceMoved(r.resourceId, oldPath, newPath))
+        withRequireResource(file.partialHash, oldFilePath)(r => ResourceMoved(r.resourceId, oldPath, newPath))
     }
   }
 
@@ -54,7 +54,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
         resourceId         = config.generateId(),
         userId             = userId,
         path               = relativizePath(f.path),
-        hash               = Some(f.hash),
+        partialHash        = Some(f.partialHash),
         size               = f.size,
         contentType        = meta.map(_.contentType),
         contentMeta        = meta.map(_.meta),
@@ -67,7 +67,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
   private def toFileStore(): IO[FileStore] =
     db.getAll(bucketId).map { resources =>
       val initialFiles: Seq[FileInfo] = resources
-        .map(r => FileInfo(config.resourcePath.resolve(Path.of(r.path)), r.hash.get, r.size, r.timeLastModified.getOrElse(0)))
+        .map(r => FileInfo(config.resourcePath.resolve(Path.of(r.path)), r.partialHash.get, r.size, r.timeLastModified.getOrElse(0)))
       InMemoryFileStore(initialFiles)
     }
 

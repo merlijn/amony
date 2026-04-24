@@ -900,7 +900,7 @@ components:
           type: string
         resourceId:
           type: string
-        hash:
+        dedupId:
           type: string
         sizeInBytes:
           type: integer

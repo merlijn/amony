@@ -112,10 +112,10 @@ object AdminRoutes extends Logging:
       bucketId =>
         buckets.get(bucketId) match
           case Some(bucket: LocalDirectoryBucket) =>
-            logger.info(s"Re-computing hashes of all resources in bucket '$bucketId'")
-            bucket.reComputeHashes() >> IO(logger.info(s"Finished re-computing hashes of all resources in bucket '$bucketId'"))
+            logger.info(s"Re-computing partialHashs of all resources in bucket '$bucketId'")
+            bucket.reComputePartialHashs() >> IO(logger.info(s"Finished re-computing partialHashs of all resources in bucket '$bucketId'"))
           case _                                  =>
-            logger.info(s"Cannot re-compute hashes of bucket '$bucketId'")
+            logger.info(s"Cannot re-compute partialHashs of bucket '$bucketId'")
             IO.unit
     )
 

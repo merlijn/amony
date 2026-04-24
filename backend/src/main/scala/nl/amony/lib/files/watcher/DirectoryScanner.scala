@@ -26,7 +26,7 @@ object LocalDirectoryScanner extends Logging {
     previous: FileStore,
     directoryFilter: Path => Boolean,
     fileFilter: Path => Boolean,
-    hashFunction: Path => IO[String]
+    partialHashFunction: Path => IO[String]
   ): Stream[IO, FileEvent] = {
 
     scanDirectory(
@@ -34,7 +34,7 @@ object LocalDirectoryScanner extends Logging {
       previous,
       directoryFilter,
       fileFilter,
-      hashFunction
+      partialHashFunction
     )
   }
 
@@ -43,10 +43,10 @@ object LocalDirectoryScanner extends Logging {
     previous: FileStore,
     directoryFilter: Path => Boolean,
     fileFilter: Path => Boolean,
-    hashFunction: Path => IO[String]
+    partialHashFunction: Path => IO[String]
   ): Stream[IO, FileEvent] = {
 
-    val current = populateStore(currentFiles, previous, new InMemoryFileStore(), hashFunction)
+    val current = populateStore(currentFiles, previous, new InMemoryFileStore(), partialHashFunction)
 
     Stream.eval(current).flatMap(c => compareFileStores(previous, c))
   }
@@ -55,16 +55,16 @@ object LocalDirectoryScanner extends Logging {
     currentFiles: Stream[IO, (Path, BasicFileAttributes)],
     previous: FileStore,
     current: FileStore,
-    hashFunction: Path => IO[String]
+    partialHashFunction: Path => IO[String]
   ): IO[FileStore] = {
 
     currentFiles.evalMap { (path, attrs) =>
       for
         previousByPath <- previous.getByPath(path)
-        hash           <- previousByPath
+        partialHash    <- previousByPath
                             .filter(f => f.size == attrs.size && f.modifiedTime == attrs.lastModifiedTime().toMillis)
-                            .map(i => IO.pure(i.hash)).getOrElse(hashFunction(path))
-      yield FileInfo(path, attrs, hash)
+                            .map(i => IO.pure(i.partialHash)).getOrElse(partialHashFunction(path))
+      yield FileInfo(path, attrs, partialHash)
     }.foreach(e => current.insert(e)).compile.drain >> IO.pure(current)
   }
 
@@ -82,16 +82,16 @@ object LocalDirectoryScanner extends Logging {
     def maybeMetaChanged(file: FileInfo, previous: FileInfo): Option[FileEvent] = if file == previous then None else Some(FileMetaChanged(file))
 
     val removed: Stream[IO, FileEvent] = previous.getAll().flatMap { file =>
-      Stream.force(current.getByHash(file.hash).map {
+      Stream.force(current.getByPartialHash(file.partialHash).map {
         case Nil => Stream.emit(FileDeleted(file))
         case _   => Stream.empty
       })
     }
 
-    val movedOrAdded: Stream[IO, FileEvent] = current.getAllByHash().foldFlatMap(Seq.empty[FileEvent]) {
-      case (carriedEvents, (hash, files)) =>
+    val movedOrAdded: Stream[IO, FileEvent] = current.getAllByPartialHash().foldFlatMap(Seq.empty[FileEvent]) {
+      case (carriedEvents, (partialHash, files)) =>
 
-        val events: IO[Stream[IO, FileEvent]] = previous.getByHash(hash).map { prev =>
+        val events: IO[Stream[IO, FileEvent]] = previous.getByPartialHash(partialHash).map { prev =>
 
           val filesA = prev.toSeq
           val filesB = files.toSeq
@@ -128,14 +128,14 @@ object LocalDirectoryScanner extends Logging {
     pollInterval: FiniteDuration,
     directoryFilter: Path => Boolean,
     fileFilter: Path => Boolean,
-    hashFn: Path => IO[String]
+    partialHashFn: Path => IO[String]
   ): Stream[IO, FileEvent] = pollingStream(
     () => RecursiveFileVisitor.streamFilesInDirectoryRecursive(directory, directoryFilter, fileFilter),
     fileStore,
     pollInterval,
     directoryFilter,
     fileFilter,
-    hashFn
+    partialHashFn
   )
 
   /**
@@ -149,7 +149,7 @@ object LocalDirectoryScanner extends Logging {
     pollInterval: FiniteDuration,
     directoryFilter: Path => Boolean,
     fileFilter: Path => Boolean,
-    hashFn: Path => IO[String]
+    partialHashFn: Path => IO[String]
   ): Stream[IO, FileEvent] = {
 
     def pollRecursive(fs: FileStore): Stream[IO, FileEvent] = {
@@ -160,7 +160,7 @@ object LocalDirectoryScanner extends Logging {
 
       def sleep = Stream.sleep[IO](pollInterval)
 
-      scanDirectory(scanFn(), fileStore, directoryFilter, fileFilter, hashFn).evalMap(e => fs.applyEvent(e).map(_ => e)) >> logTime >> sleep >>
+      scanDirectory(scanFn(), fileStore, directoryFilter, fileFilter, partialHashFn).evalMap(e => fs.applyEvent(e).map(_ => e)) >> logTime >> sleep >>
         pollRecursive(fs)
     }
 

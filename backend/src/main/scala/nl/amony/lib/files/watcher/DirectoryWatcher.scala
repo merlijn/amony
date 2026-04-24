@@ -17,7 +17,7 @@ object DirectoryWatcher {
 
   val logger = scribe.Logger("DirectoryWatcher")
 
-  def watchDirectory(directoryPath: Path, getByPath: Path => Option[FileInfo], hashFn: Path => String): Flow.Publisher[FileEvent] = {
+  def watchDirectory(directoryPath: Path, getByPath: Path => Option[FileInfo], partialHashFn: Path => String): Flow.Publisher[FileEvent] = {
     val publisher                  = new SubmissionPublisher[FileEvent]()
     val watchService: WatchService = FileSystems.getDefault.newWatchService()
 
@@ -53,9 +53,9 @@ object DirectoryWatcher {
                 case StandardWatchEventKinds.ENTRY_CREATE =>
                   if Files.isDirectory(path) then registerDirectory(path)
 
-                  val hash = hashFn(path)
+                  val partialHash = partialHashFn(path)
                   logger.debug(s"File created: $path")
-                  publisher.submit(FileAdded(FileInfo(path, hash)))
+                  publisher.submit(FileAdded(FileInfo(path, partialHash)))
                 case StandardWatchEventKinds.ENTRY_MODIFY => logger.debug(s"File modified: $path")
 //                publisher.submit(FileDeleted(path))
           }

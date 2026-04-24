@@ -60,10 +60,10 @@ object Queries extends Logging {
          LEFT JOIN tags t ON rt.tag_id = t.id
        """
 
-    val getByHashJoined: Query[(String, String), (ResourceRow, Option[Arr[String]])] =
+    val getByPartialHashJoined: Query[(String, String), (ResourceRow, Option[Arr[String]])] =
       sql"""
         $joinTables
-        WHERE r.bucket_id = $varchar AND r.hash = $varchar
+        WHERE r.bucket_id = $varchar AND r.partial_hash = $varchar
         GROUP BY (${ResourceRow.columns})
       """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
 
@@ -121,8 +121,8 @@ object Queries extends Logging {
     val upsert: Command[Json] = sql"""
         INSERT INTO resources SELECT * FROM json_populate_record(NULL::resources, $json)
         ON CONFLICT (bucket_id, resource_id) DO UPDATE
-        SET(user_id, hash, size, content_type, content_meta_tool_name, content_meta_tool_data, fs_path, time_added, time_created, time_last_modified, title, description, thumbnail_timestamp) =
-        (EXCLUDED.user_id, EXCLUDED.hash, EXCLUDED.size, EXCLUDED.content_type, EXCLUDED.content_meta_tool_name, EXCLUDED.content_meta_tool_data, EXCLUDED.fs_path, EXCLUDED.time_added, EXCLUDED.time_created, EXCLUDED.time_last_modified, EXCLUDED.title, EXCLUDED.description, EXCLUDED.thumbnail_timestamp)
+        SET(user_id, partial_hash, size, content_type, content_meta_tool_name, content_meta_tool_data, fs_path, time_added, time_created, time_last_modified, title, description, thumbnail_timestamp) =
+        (EXCLUDED.user_id, EXCLUDED.partial_hash, EXCLUDED.size, EXCLUDED.content_type, EXCLUDED.content_meta_tool_name, EXCLUDED.content_meta_tool_data, EXCLUDED.fs_path, EXCLUDED.time_added, EXCLUDED.time_created, EXCLUDED.time_last_modified, EXCLUDED.title, EXCLUDED.description, EXCLUDED.thumbnail_timestamp)
       """.command
 
     val bucketCount: Query[String, Int] = sql"select count(*) from resources where bucket_id = $varchar".query(int4)

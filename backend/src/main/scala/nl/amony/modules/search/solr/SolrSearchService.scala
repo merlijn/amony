@@ -28,7 +28,7 @@ object SolrSearchService {
   object FieldNames {
     val id                 = "id"
     val bucketId           = "bucket_id_s"
-    val hash               = "hash_s"
+    val partialHash        = "partial_hash_s"
     val path               = "path_text_ci"
     val filesize           = "filesize_l"
     val tags               = "tags_ss"
@@ -105,7 +105,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
   private def toResource(document: SolrDocument): ResourceInfo = {
 
     val resourceId         = document.getFieldValue(FieldNames.id).asInstanceOf[String]
-    val hash               = Option(document.getFieldValue(FieldNames.hash)).map(_.asInstanceOf[String])
+    val partialHash        = Option(document.getFieldValue(FieldNames.partialHash)).map(_.asInstanceOf[String])
     val bucketId           = document.getFieldValue(FieldNames.bucketId).asInstanceOf[String]
     val title              = Option(document.getFieldValue(FieldNames.title)).map(_.asInstanceOf[String])
     val path               = document.getFieldValue(FieldNames.path).asInstanceOf[String]
@@ -139,7 +139,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
       userId             = UserId(userId),
       path               = path,
       size               = size,
-      hash               = hash,
+      partialHash        = partialHash,
       contentType        = contentType,
       contentMeta        = contentProperties.map(props => ResourceMeta(metaToolName.getOrElse("unknown"), "", props)),
       timeAdded          = timeAdded,

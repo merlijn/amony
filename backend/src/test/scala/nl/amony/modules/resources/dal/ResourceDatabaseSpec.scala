@@ -47,7 +47,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       resourceId         = ResourceId(UUID.randomUUID().toString),
       userId             = UserId(UUID.randomUUID().toString),
       path               = randomString,
-      hash               = Some(randomString),
+      partialHash        = Some(randomString),
       size               = Random.nextLong(),
       contentType        = None,
       contentMeta        = None, // this field is not stored
@@ -83,7 +83,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
           App.makeDatabasePool(dbConfig).map(ResourceDatabase(_)).use(db =>
             insertResourcesTest(db) >> db.truncateTables() >>
               updateUserMetaTest(db) >> db.truncateTables() >>
-              duplicateHashesTest(db) >> db.truncateTables()
+              duplicatePartialHashsTest(db) >> db.truncateTables()
           ).unsafeRunSync()
       }
     }
@@ -201,15 +201,15 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
     }
   }
 
-  def duplicateHashesTest(db: ResourceDatabase): IO[Unit] = {
+  def duplicatePartialHashsTest(db: ResourceDatabase): IO[Unit] = {
     val resourceA = genResource()
     val resourceB = resourceA.copy(resourceId = ResourceId(UUID.randomUUID().toString), bucketId = resourceA.bucketId)
 
     for
-      _      <- db.insertResource(resourceA)
-      _      <- db.insertResource(resourceB.copy(hash = resourceA.hash)) // This should not throw an error
-      byHash <- db.getByHash(resourceA.bucketId, resourceA.hash.get)
-    yield byHash should contain theSameElementsAs List(resourceA, resourceB)
+      _             <- db.insertResource(resourceA)
+      _             <- db.insertResource(resourceB.copy(partialHash = resourceA.partialHash)) // This should not throw an error
+      byPartialHash <- db.getByPartialHash(resourceA.bucketId, resourceA.partialHash.get)
+    yield byPartialHash should contain theSameElementsAs List(resourceA, resourceB)
   }
 
   def insertResourcesTest(db: ResourceDatabase): IO[Unit] = {
@@ -222,12 +222,12 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
     def upsertIdentityCheck(resource: ResourceInfo) =
       for
-        _      <- db.upsert(resource)
-        byId   <- db.getById(resource.bucketId, resource.resourceId)
-        byHash <- db.getByHash(resource.bucketId, resource.hash.get)
+        _             <- db.upsert(resource)
+        byId          <- db.getById(resource.bucketId, resource.resourceId)
+        byPartialHash <- db.getByPartialHash(resource.bucketId, resource.partialHash.get)
       yield {
         byId shouldBe Some(resource)
-        byHash shouldBe List(resource)
+        byPartialHash shouldBe List(resource)
       }
 
     def deleteCheck(resourceInfo: ResourceInfo) =

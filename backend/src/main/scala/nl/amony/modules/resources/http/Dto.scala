@@ -38,7 +38,7 @@ object ResourceToolMetaDto {
 case class ResourceDto(
   bucketId: String,
   resourceId: String,
-  hash: Option[String],
+  partialHash: Option[String],
   sizeInBytes: Long,
   path: String,
   timeAdded: Long,
@@ -63,7 +63,7 @@ case class ResourceDto(
       resourceId         = ResourceId(resourceId),
       userId             = UserId(userId),
       path               = path,
-      hash               = hash,
+      partialHash        = partialHash,
       size               = sizeInBytes,
       contentType        = Some(contentType),
       contentMeta        = None,
@@ -131,7 +131,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
   ResourceDto(
     bucketId           = resource.bucketId,
     resourceId         = resource.resourceId,
-    hash               = resource.hash,
+    partialHash        = resource.partialHash,
     sizeInBytes        = resource.size,
     path               = resource.path,
     timeAdded          = resource.timeAdded.getOrElse(0L),
