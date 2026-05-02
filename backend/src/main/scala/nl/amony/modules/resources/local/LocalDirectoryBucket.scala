@@ -45,7 +45,7 @@ class LocalDirectoryBucket(
 )(using runtime: IORuntime, meter: Meter[IO], tracer: Tracer[IO])
     extends LocalDirectoryBase(config, db, topic), LocalResourceOperations, ResourceBucket, LocalResourceSyncer, UploadResource, Logging {
 
-  private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getById(config.id, resourceId)
+  private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getResourceById(config.id, resourceId)
 
   override def id: String = config.id
 
@@ -63,7 +63,7 @@ class LocalDirectoryBucket(
             contentMeta = Some(meta)
           )
 
-          db.upsert(updated) >> topic.publish(ResourceUpdated(updated))
+          db.upsertResource(updated) >> topic.publish(ResourceUpdated(updated))
   }.compile.drain
 
   def updateFileSystemMetaData(): IO[Unit] = getAllResources.evalMap {
@@ -74,7 +74,7 @@ class LocalDirectoryBucket(
 
       if updated.size != resource.size || updated.timeLastModified != resource.timeLastModified then
         logger.info(s"File system metadata changed for $resourcePath")
-        db.upsert(updated) >> topic.publish(ResourceUpdated(updated))
+        db.upsertResource(updated) >> topic.publish(ResourceUpdated(updated))
       else IO.unit
   }.compile.drain
 

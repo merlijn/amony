@@ -24,7 +24,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
   private def mapFileEvent(fileEvent: FileEvent): IO[ResourceEvent] = {
 
     def withRequireResource(partialHash: String, path: Path)(fn: ResourceInfo => ResourceEvent): IO[ResourceEvent] =
-      db.getByPartialHash(bucketId, partialHash)
+      db.getResourceByPartialHash(bucketId, partialHash)
         .map(_.find(_.path == relativizePath(path))).flatMap:
           case None    => IO.raiseError(new IllegalStateException("No such file in database"))
           case Some(r) => IO.pure(fn(r))
@@ -137,8 +137,8 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
     case ResourceAdded(resource)                       => db.insertResource(resource)
     case ResourceDeleted(resourceId)                   => db.deleteResource(config.id, resourceId)
     case ResourceMoved(id, _, newPath)                 => db.move(config.id, id, newPath)
-    case ResourceFileMetaChanged(id, lastModifiedTime) => db.getById(config.id, id).flatMap {
-        case Some(resource) => db.upsert(resource.copy(timeLastModified = Some(lastModifiedTime)))
+    case ResourceFileMetaChanged(id, lastModifiedTime) => db.getResourceById(config.id, id).flatMap {
+        case Some(resource) => db.upsertResource(resource.copy(timeLastModified = Some(lastModifiedTime)))
         case None           => IO.unit
       }
     case _                                             => IO.unit

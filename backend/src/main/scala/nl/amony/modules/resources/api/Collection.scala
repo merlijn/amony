@@ -7,6 +7,6 @@ case class Collection(
   parentId: Option[CollectionId] = None,
   userId: UserId,
   name: String,
-  description: Option[String] = None,
-  tags: Set[String] = Set.empty
+  description: Option[String]    = None,
+  tags: Set[String]              = Set.empty
 )
