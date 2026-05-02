@@ -51,12 +51,7 @@ object CollectionRoutes:
   val endpoints = List(getCollections, createCollection, addResourceToCollection, removeResourceFromCollection, getResourcesInCollection)
 
   def apply(collectionsDal: CollectionsDal, apiSecurity: ApiSecurity)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
-
-    def sanitizeOpt(input: Option[String], maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, Option[String]] =
-      input.map(sanitize(_, maxLength, characterAllowFn).map(Some(_))).getOrElse(EitherT.rightT[IO, ApiError](None))
-
-    def sanitizeTags(tags: List[String]): EitherT[IO, ApiError, List[String]] = tags.map(sanitize(_, 64, _.isLetterOrDigit)).sequence
-
+    
     val getCollectionsImpl = getCollections.serverSecurityLogicPure(s => apiSecurity.requireSession(s))
       .serverLogic { token => _ =>
         collectionsDal.getCollectionsForUser(token.userId).map(_.map(toDto)).map(Right(_))

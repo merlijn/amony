@@ -39,7 +39,7 @@ addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
 
 inThisBuild(
   List(
-    scalaVersion := "3.8.1",
+    scalaVersion := "3.8.3",
     semanticdbEnabled := true,
     semanticdbVersion := scalafixSemanticdb.revision
   )
@@ -48,7 +48,7 @@ inThisBuild(
 commands += Command.command("prod") { state =>
   val settings = Seq(
     Compile / scalacOptions := prodScalacOptions,
-    scalaVersion := "3.8.1",
+    scalaVersion := "3.8.3",
     semanticdbEnabled := true,
     semanticdbVersion := scalafixSemanticdb.revision
   )
@@ -97,7 +97,7 @@ lazy val amony = project
   .settings(
     organization := "nl.amony",
     name := "amony-app",
-    scalaVersion := "3.8.1",
+    scalaVersion := "3.8.3",
     scalacOptions := devScalacOptions,
     Global / cancelable   := true,
     Test / fork := true,
