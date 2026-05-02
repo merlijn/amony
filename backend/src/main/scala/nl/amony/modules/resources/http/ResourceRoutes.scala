@@ -5,34 +5,18 @@ import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.*
 import org.http4s.HttpRoutes
-import org.jsoup.Jsoup
-import org.jsoup.safety.Safelist
 import sttp.capabilities.fs2.Fs2Streams
 import sttp.model.{HeaderNames, StatusCode}
 import sttp.tapir.*
-import sttp.tapir.CodecFormat.TextPlain
-import sttp.tapir.EndpointOutput.OneOfVariant
 import sttp.tapir.json.circe.*
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.{Resource, ResourceBucket, ResourceId, UploadError}
 
-def oneOfList[T](variants: List[OneOfVariant[? <: T]]) = EndpointOutput.OneOf[T, T](variants, Mapping.id)
-
-enum ApiError:
-  case NotFound, BadRequest
-
-val apiErrorOutputs = List(
-  oneOfVariantSingletonMatcher(statusCode(StatusCode.NotFound))(ApiError.NotFound),
-  oneOfVariantSingletonMatcher(statusCode(StatusCode.BadRequest))(ApiError.BadRequest)
-)
-
 val errorOutput: EndpointOutput[ApiError | SecurityError] = oneOfList(securityErrors ++ apiErrorOutputs)
 
 object ResourceRoutes:
-
-  given Codec[String, ResourceId, TextPlain] = Codec.string.mapDecode(s => DecodeResult.Value(ResourceId.apply(s)))(identity)
 
   val getBuckets =
     endpoint
@@ -94,11 +78,6 @@ object ResourceRoutes:
         resource <- EitherT.fromOptionF(bucket.getResource(resourceId), NotFound)
       yield bucket -> resource
 
-    def sanitizeOpt(input: Option[String], maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, Option[String]] =
-      input.map(sanitize(_, maxLength, characterAllowFn).map(Some(_))).getOrElse(EitherT.rightT[IO, ApiError](None))
-
-    def sanitizeTags(tags: List[String]): EitherT[IO, ApiError, List[String]] = tags.map(sanitize(_, 64, _.isLetterOrDigit)).sequence
-
     val getBucketsImpl = getBuckets.serverSecurityLogicPure(apiSecurity.publicEndpoint)
       .serverLogicSuccess(_ => _ => IO.pure(buckets.values.map(bucket => BucketDto(bucket.id, "", "")).toList))
 
@@ -124,8 +103,7 @@ object ResourceRoutes:
           (bucketId, resourceId, dto) =>
             getResource(bucketId, resourceId).flatMap((bucket, _) =>
               EitherT.right(bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis))
-            )
-              .value
+            ).value
         )
 
     val deleteResourceImpl = deleteResource.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin))

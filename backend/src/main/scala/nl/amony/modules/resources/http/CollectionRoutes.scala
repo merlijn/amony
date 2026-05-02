@@ -1,16 +1,10 @@
 package nl.amony.modules.resources.http
 
-import ApiError.NotFound
 import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.*
 import org.http4s.HttpRoutes
-import org.jsoup.Jsoup
-import org.jsoup.safety.Safelist
-import sttp.model.{HeaderNames, StatusCode}
 import sttp.tapir.*
-import sttp.tapir.CodecFormat.TextPlain
-import sttp.tapir.EndpointOutput.OneOfVariant
 import sttp.tapir.json.circe.*
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 
@@ -19,8 +13,6 @@ import nl.amony.modules.resources.api.{Collection, CollectionId, ResourceId}
 import nl.amony.modules.resources.dal.CollectionsDal
 
 object CollectionRoutes:
-
-  given Codec[String, ResourceId, TextPlain] = Codec.string.mapDecode(s => DecodeResult.Value(ResourceId.apply(s)))(identity)
 
   val getCollections: Endpoint[SecurityInput, Unit, ApiError | SecurityError, List[CollectionDto], Any] =
     endpoint
