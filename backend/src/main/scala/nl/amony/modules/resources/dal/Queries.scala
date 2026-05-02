@@ -45,6 +45,79 @@ object Queries extends Logging {
     def delete: Command[(String, String)] = sql"delete from resource_tags where bucket_id = $varchar and resource_id = $varchar".command
   }
 
+  object collection_tags {
+
+    val truncateCascade: Command[Void] = sql"truncate table collection_tags cascade".command
+
+    def upsert(n: Int): Command[List[CollectionTagsRow]] =
+      sql"insert into collection_tags (collection_id, tag_id) values ${CollectionTagsRow.codec.values.list(n)} on conflict (collection_id, tag_id) do nothing".command
+
+    def delete: Command[java.util.UUID] = sql"delete from collection_tags where collection_id = $uuid".command
+  }
+
+  object collection_resources {
+
+    val truncateCascade: Command[Void] = sql"truncate table collection_resources cascade".command
+
+    val insert: Command[CollectionResourcesRow] =
+      sql"insert into collection_resources (collection_id, bucket_id, resource_id) values ($uuid, ${varchar(64)}, ${varchar(64)}) on conflict (collection_id, bucket_id, resource_id) do nothing".command
+        .to[CollectionResourcesRow]
+
+    val delete: Command[(java.util.UUID, String, String)] =
+      sql"delete from collection_resources where collection_id = $uuid and bucket_id = ${varchar(64)} and resource_id = ${varchar(64)}".command
+  }
+
+  object collections {
+
+    val truncateCascade: Command[Void] = sql"truncate table collections cascade".command
+
+    private val joinTables =
+      sql"""
+         SELECT to_json(c.*), array_agg(t.label) FILTER (WHERE t.label IS NOT NULL) as tags
+         FROM collections c
+         LEFT JOIN collection_tags ct ON c.id = ct.collection_id
+         LEFT JOIN tags t ON ct.tag_id = t.id
+       """
+
+    val allJoined: Query[Void, (CollectionRow, Option[Arr[String]])] =
+      sql"""
+        $joinTables
+        GROUP BY (${CollectionRow.columns})
+      """.query(json *: _varchar.opt).map((collection, tagLabels) => (collection.as[CollectionRow].toOption.get, tagLabels))
+
+    val getByIdJoined: Query[java.util.UUID, (CollectionRow, Option[Arr[String]])] =
+      sql"""
+        $joinTables
+        WHERE c.id = $uuid
+        GROUP BY (${CollectionRow.columns})
+      """.query(json *: _varchar.opt).map((collection, tagLabels) => (collection.as[CollectionRow].toOption.get, tagLabels))
+
+    val getByParentIdJoined: Query[Option[java.util.UUID], (CollectionRow, Option[Arr[String]])] =
+      sql"""
+        $joinTables
+        WHERE c.parent_id IS NOT DISTINCT FROM ${uuid.opt}
+        GROUP BY (${CollectionRow.columns})
+      """.query(json *: _varchar.opt).map((collection, tagLabels) => (collection.as[CollectionRow].toOption.get, tagLabels))
+
+    val getByResourceIdJoined: Query[(String, String), (CollectionRow, Option[Arr[String]])] =
+      sql"""
+        $joinTables
+        INNER JOIN collection_resources cr ON c.id = cr.collection_id
+        WHERE cr.bucket_id = ${varchar(64)} AND cr.resource_id = ${varchar(64)}
+        GROUP BY (${CollectionRow.columns})
+      """.query(json *: _varchar.opt).map((collection, tagLabels) => (collection.as[CollectionRow].toOption.get, tagLabels))
+
+    val insert: Command[Json] = sql"insert into collections SELECT * FROM json_populate_record(NULL::collections, $json)".command
+
+    val upsert: Command[Json] = sql"""
+        INSERT INTO collections SELECT * FROM json_populate_record(NULL::collections, $json)
+        ON CONFLICT (id) DO UPDATE
+        SET(parent_id, description) = (EXCLUDED.parent_id, EXCLUDED.description)
+      """.command
+
+    val delete: Command[java.util.UUID] = sql"delete from collections where id = $uuid".command
+  }
+
   object resources {
 
     val truncateCascade: Command[Void] = sql"truncate table resources cascade".command
@@ -78,6 +151,19 @@ object Queries extends Logging {
       sql"""
        $joinTables
        WHERE r.bucket_id = $varchar
+       GROUP BY (${ResourceRow.columns})
+      """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
+
+    val getByCollectionIdJoined: Query[java.util.UUID, (ResourceRow, Option[Arr[String]])] =
+      sql"""
+       SELECT to_json(r.*), array_agg(t.label) FILTER (WHERE t.label IS NOT NULL) as tags
+       FROM resources r
+       INNER JOIN collection_resources cr
+         ON r.bucket_id = cr.bucket_id AND r.resource_id = cr.resource_id
+       LEFT JOIN resource_tags rt
+         ON r.bucket_id = rt.bucket_id AND r.resource_id = rt.resource_id
+       LEFT JOIN tags t ON rt.tag_id = t.id
+       WHERE cr.collection_id = $uuid
        GROUP BY (${ResourceRow.columns})
       """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
 

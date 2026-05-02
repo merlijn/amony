@@ -15,7 +15,7 @@ import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{ResourceId, ResourceInfo}
+import nl.amony.modules.resources.api.{Collection, ResourceId, ResourceInfo}
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.{App, DatabaseConfig}
 
@@ -59,6 +59,14 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       thumbnailTimestamp = Some(nextTimestamp)
     )
 
+  def genCollection(parentId: Option[UUID] = None): Collection =
+    Collection(
+      id          = UUID.randomUUID(),
+      parentId    = parentId,
+      description = Some(randomString),
+      tags        = Set.fill(Random.nextInt(5))(randomTag)
+    )
+
   def configForContainer(container: GenericContainer) =
     DatabaseConfig(
       host     = container.containerIpAddress,
@@ -80,11 +88,13 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
           val dbConfig             = configForContainer(container)
           given tracer: Tracer[IO] = Tracer.noop[IO]
 
-          App.makeDatabasePool(dbConfig).map(ResourceDatabase(_)).use(db =>
-            insertResourcesTest(db) >> db.truncateTables() >>
-              updateUserMetaTest(db) >> db.truncateTables() >>
-              duplicatePartialHashsTest(db) >> db.truncateTables()
-          ).unsafeRunSync()
+           App.makeDatabasePool(dbConfig).map(ResourceDatabase(_)).use(db =>
+             insertResourcesTest(db) >> db.truncateTables() >>
+               updateUserMetaTest(db) >> db.truncateTables() >>
+               duplicatePartialHashsTest(db) >> db.truncateTables() >>
+               collectionsTest(db) >> db.truncateTables() >>
+               collectionResourcesTest(db) >> db.truncateTables()
+           ).unsafeRunSync()
       }
     }
 
@@ -254,5 +264,48 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
     val deleteChecks = toDelete.map(deleteCheck).sequence >> validateAll(remaining)
 
     insertChecks >> upsertChecks >> deleteChecks >> IO.unit
+  }
+
+  def collectionsTest(db: ResourceDatabase): IO[Unit] = {
+    val root    = genCollection()
+    val child   = genCollection(parentId = Some(root.id))
+    val updated = root.copy(description = Some("updated description"), tags = Set("root-a", "root-b"))
+
+    for
+      _           <- db.insertCollection(root)
+      _           <- db.insertCollection(child)
+      fetchedRoot <- db.getCollectionById(root.id)
+      children    <- db.getCollectionsByParentId(Some(root.id))
+      roots       <- db.getCollectionsByParentId(None)
+      _           <- db.upsertCollection(updated)
+      fetchedUp   <- db.getCollectionById(root.id)
+      _           <- db.deleteCollection(root.id)
+      childAfter  <- db.getCollectionById(child.id)
+    yield {
+      fetchedRoot shouldBe Some(root)
+      children should contain only child
+      roots should contain(root)
+      fetchedUp shouldBe Some(updated)
+      childAfter shouldBe None
+    }
+  }
+
+  def collectionResourcesTest(db: ResourceDatabase): IO[Unit] = {
+    val resource   = genResource().copy(bucketId = "test")
+    val collection = genCollection()
+
+    for
+      _                     <- db.insertResource(resource)
+      _                     <- db.insertCollection(collection)
+      _                     <- db.addResourceToCollection(collection.id, resource.bucketId, resource.resourceId)
+      collectionsForResource <- db.getCollectionsForResource(resource.bucketId, resource.resourceId)
+      resourcesInCollection <- db.getResourcesInCollection(collection.id)
+      _                     <- db.removeResourceFromCollection(collection.id, resource.bucketId, resource.resourceId)
+      collectionsAfter      <- db.getCollectionsForResource(resource.bucketId, resource.resourceId)
+    yield {
+      collectionsForResource should contain only collection
+      resourcesInCollection should contain only resource
+      collectionsAfter shouldBe Nil
+    }
   }
 }

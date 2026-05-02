@@ -1,5 +1,7 @@
 package nl.amony.modules.resources.dal
 
+import java.util.UUID
+
 import cats.data.OptionT
 import cats.effect.{IO, Resource}
 import io.circe.syntax.*
@@ -7,7 +9,7 @@ import scribe.Logging
 import skunk.*
 import skunk.data.{Arr, Completion}
 
-import nl.amony.modules.resources.api.ResourceInfo
+import nl.amony.modules.resources.api.{Collection, ResourceId, ResourceInfo}
 
 class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
 
@@ -19,6 +21,37 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
 
   // table specific methods
   private[dal] object tables {
+
+    object collections {
+
+      def insert(s: Session[IO], row: CollectionRow): IO[Completion] =
+        s.prepare(Queries.collections.insert).flatMap(_.execute(row.asJson))
+
+      def upsert(s: Session[IO], row: CollectionRow): IO[Completion] =
+        s.prepare(Queries.collections.upsert).flatMap(_.execute(row.asJson))
+
+      def delete(s: Session[IO], collectionId: UUID): IO[Completion] =
+        s.prepare(Queries.collections.delete).flatMap(_.execute(collectionId))
+    }
+
+    object collection_tags {
+
+      def replaceAll(s: Session[IO], collectionId: UUID, tagIds: List[Int]): IO[Unit] =
+        for
+          _    <- s.prepare(Queries.collection_tags.delete).flatMap(_.execute(collectionId))
+          rows  = tagIds.map(tagId => CollectionTagsRow(collectionId, tagId))
+          _    <- if tagIds.nonEmpty then s.prepare(Queries.collection_tags.upsert(rows.size)).flatMap(_.execute(rows)) else IO.unit
+        yield ()
+    }
+
+    object collection_resources {
+
+      def insert(s: Session[IO], collectionId: UUID, bucketId: String, resourceId: String): IO[Completion] =
+        s.prepare(Queries.collection_resources.insert).flatMap(_.execute(CollectionResourcesRow(collectionId, bucketId, resourceId)))
+
+      def delete(s: Session[IO], collectionId: UUID, bucketId: String, resourceId: String): IO[Completion] =
+        s.prepare(Queries.collection_resources.delete).flatMap(_.execute((collectionId, bucketId, resourceId)))
+    }
 
     object resources {
 
@@ -75,6 +108,9 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
   private def toResource(resourceRow: ResourceRow, tagLabels: Option[Arr[String]]): ResourceInfo =
     resourceRow.toResource(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty))
 
+  private def toCollection(collectionRow: CollectionRow, tagLabels: Option[Arr[String]]): Collection =
+    collectionRow.toCollection(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty))
+
   private def updateTagsForResource(s: Session[IO], bucketId: String, resourceId: String, tagLabels: List[String]) =
     for
       tags <- if tagLabels.nonEmpty then tables.tags.upsert(s, tagLabels) >> tables.tags.getByLabels(s, tagLabels) else IO.pure(List.empty)
@@ -87,9 +123,28 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
       _ <- updateTagsForResource(s, resource.bucketId, resource.resourceId, resource.tags.toList)
     yield ()
 
+  private def updateTagsForCollection(s: Session[IO], collection: Collection): IO[Unit] =
+    for
+      tags <- if collection.tags.nonEmpty then tables.tags.upsert(s, collection.tags.toList) >> tables.tags.getByLabels(s, collection.tags.toList) else IO.pure(List.empty)
+      _    <- tables.collection_tags.replaceAll(s, collection.id, tags.map(_.id))
+    yield ()
+
+  private def updateCollectionWithTags(s: Session[IO], collection: Collection): IO[Unit] =
+    for
+      _ <- tables.collections.upsert(s, CollectionRow.fromCollection(collection))
+      _ <- updateTagsForCollection(s, collection)
+    yield ()
+
+  private def getCollectionByIdWithSession(s: Session[IO], collectionId: UUID): IO[Option[Collection]] =
+    s.prepare(Queries.collections.getByIdJoined)
+      .flatMap(_.stream(collectionId, defaultChunkSize).map(toCollection).compile.toList.map(_.headOption))
+
   private[resources] def truncateTables(): IO[Unit] =
     useTransaction: (s, _) =>
       for
+        _ <- s.execute(Queries.collection_resources.truncateCascade)
+        _ <- s.execute(Queries.collection_tags.truncateCascade)
+        _ <- s.execute(Queries.collections.truncateCascade)
         _ <- s.execute(Queries.tags.truncateCascade)
         _ <- s.execute(Queries.resource_tags.truncateCascade)
         _ <- s.execute(Queries.resources.truncateCascade)
@@ -162,6 +217,48 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
   def bucketSize(bucketId: String): IO[Int] =
     useSession: s =>
       s.prepare(Queries.resources.bucketCount).flatMap(_.option(bucketId)).map(_.getOrElse(0))
+
+  def getAllCollections(): IO[List[Collection]] =
+    useSession: s =>
+      s.prepare(Queries.collections.allJoined).flatMap(_.stream(Void, defaultChunkSize).map(toCollection).compile.toList)
+
+  def getCollectionById(collectionId: UUID): IO[Option[Collection]] =
+    useSession(s => getCollectionByIdWithSession(s, collectionId))
+
+  def getCollectionsByParentId(parentId: Option[UUID]): IO[List[Collection]] =
+    useSession: s =>
+      s.prepare(Queries.collections.getByParentIdJoined).flatMap(_.stream(parentId, defaultChunkSize).map(toCollection).compile.toList)
+
+  def getCollectionsForResource(bucketId: String, resourceId: ResourceId): IO[List[Collection]] =
+    useSession: s =>
+      s.prepare(Queries.collections.getByResourceIdJoined).flatMap(_.stream((bucketId, resourceId), defaultChunkSize).map(toCollection).compile.toList)
+
+  def getResourcesInCollection(collectionId: UUID): IO[List[ResourceInfo]] =
+    useSession: s =>
+      s.prepare(Queries.resources.getByCollectionIdJoined).flatMap(_.stream(collectionId, defaultChunkSize).map(toResource).compile.toList)
+
+  def insertCollection(collection: Collection): IO[Unit] =
+    useTransaction: (s, _) =>
+      for
+        _ <- tables.collections.insert(s, CollectionRow.fromCollection(collection))
+        _ <- updateTagsForCollection(s, collection)
+      yield ()
+
+  def upsertCollection(collection: Collection): IO[Unit] =
+    useTransaction: (s, _) =>
+      updateCollectionWithTags(s, collection)
+
+  def deleteCollection(collectionId: UUID): IO[Unit] =
+    useSession: s =>
+      tables.collections.delete(s, collectionId).void
+
+  def addResourceToCollection(collectionId: UUID, bucketId: String, resourceId: ResourceId): IO[Unit] =
+    useSession: s =>
+      tables.collection_resources.insert(s, collectionId, bucketId, resourceId).void
+
+  def removeResourceFromCollection(collectionId: UUID, bucketId: String, resourceId: ResourceId): IO[Unit] =
+    useSession: s =>
+      tables.collection_resources.delete(s, collectionId, bucketId, resourceId).void
 
   def deleteResource(bucketId: String, resourceId: String): IO[Unit] =
     useTransaction: (s, _) =>
