@@ -32,12 +32,6 @@ val errorOutput: EndpointOutput[ApiError | SecurityError] = oneOfList(securityEr
 
 object ResourceRoutes:
 
-  private val apiNoCacheHeaders: EndpointOutput[Unit] = List(
-    header(HeaderNames.CacheControl, "no-cache, no-store, must-revalidate"),
-    header(HeaderNames.Pragma, "no-cache"),
-    header(HeaderNames.Expires, "0")
-  ).reduce(_ and _)
-
   given Codec[String, ResourceId, TextPlain] = Codec.string.mapDecode(s => DecodeResult.Value(ResourceId.apply(s)))(identity)
 
   val getBuckets =
@@ -99,14 +93,6 @@ object ResourceRoutes:
         bucket   <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
         resource <- EitherT.fromOptionF(bucket.getResource(resourceId), NotFound)
       yield bucket -> resource
-
-    def sanitize(input: String, maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, String] =
-      for
-        _      <- EitherT.cond[IO](input.length <= maxLength, (), ApiError.BadRequest)
-        _      <- EitherT.cond[IO](input.forall(characterAllowFn), (), ApiError.BadRequest)
-        trimmed = input.trim
-        _      <- EitherT.cond[IO](trimmed == Jsoup.clean(trimmed, Safelist.basic), (), ApiError.BadRequest)
-      yield trimmed
 
     def sanitizeOpt(input: Option[String], maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, ApiError, Option[String]] =
       input.map(sanitize(_, maxLength, characterAllowFn).map(Some(_))).getOrElse(EitherT.rightT[IO, ApiError](None))
