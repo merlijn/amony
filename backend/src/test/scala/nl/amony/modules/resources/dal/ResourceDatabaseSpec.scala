@@ -15,7 +15,7 @@ import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{Collection, ResourceId, ResourceInfo}
+import nl.amony.modules.resources.api.{Collection, CollectionId, ResourceId, ResourceInfo}
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.{App, DatabaseConfig}
 
@@ -59,10 +59,12 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       thumbnailTimestamp = Some(nextTimestamp)
     )
 
-  def genCollection(parentId: Option[UUID] = None): Collection =
+  def genCollection(parentId: Option[CollectionId] = None, userId: UserId = UserId(UUID.randomUUID().toString)): Collection =
     Collection(
-      id          = UUID.randomUUID(),
+      id          = CollectionId(UUID.randomUUID()),
       parentId    = parentId,
+      userId      = userId,
+      name        = randomString,
       description = Some(randomString),
       tags        = Set.fill(Random.nextInt(5))(randomTag)
     )

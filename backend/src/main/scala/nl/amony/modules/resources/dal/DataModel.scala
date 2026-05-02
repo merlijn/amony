@@ -8,7 +8,7 @@ import skunk.codec.all.{int4, timestamptz, uuid, varchar}
 import skunk.implicits.sql
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{Collection, ResourceId, ResourceInfo, ResourceMeta}
+import nl.amony.modules.resources.api.{Collection, CollectionId, ResourceId, ResourceInfo, ResourceMeta}
 
 val instantCodec: Codec[Instant] = timestamptz.imap(_.toInstant)(_.atOffset(ZoneOffset.UTC))
 
@@ -77,13 +77,17 @@ object ResourceRow {
 case class CollectionRow(
   id: UUID,
   parent_id: Option[UUID],
+  user_id: String,
+  name: String,
   description: Option[String]
 ) derives io.circe.Codec {
 
   def toCollection(tagLabels: Set[String]): Collection =
     Collection(
-      id          = id,
-      parentId    = parent_id,
+      id          = CollectionId(id),
+      parentId    = parent_id.map(CollectionId(_)),
+      userId      = UserId(user_id),
+      name        = name,
       description = description,
       tags        = tagLabels
     )
@@ -91,14 +95,16 @@ case class CollectionRow(
 
 object CollectionRow {
 
-  val columns = sql"c.id, c.parent_id, c.description"
+  val columns = sql"c.id, c.parent_id, c.user_id, c.name, c.description"
 
-  val codec: Codec[CollectionRow] = (uuid *: uuid.opt *: varchar.opt).to[CollectionRow]
+  val codec: Codec[CollectionRow] = (uuid *: uuid.opt *: varchar(64) *: varchar(64) *: varchar.opt).to[CollectionRow]
 
   def fromCollection(collection: Collection): CollectionRow =
     CollectionRow(
-      id          = collection.id,
-      parent_id   = collection.parentId,
+      id          = collection.id.value,
+      parent_id   = collection.parentId.map(_.value),
+      user_id     = collection.userId,
+      name        = collection.name,
       description = collection.description
     )
 }

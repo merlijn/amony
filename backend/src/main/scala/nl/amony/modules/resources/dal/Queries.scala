@@ -107,12 +107,19 @@ object Queries extends Logging {
         GROUP BY (${CollectionRow.columns})
       """.query(json *: _varchar.opt).map((collection, tagLabels) => (collection.as[CollectionRow].toOption.get, tagLabels))
 
+    val getByUserIdJoined: Query[(String, Option[java.util.UUID]), (CollectionRow, Option[Arr[String]])] =
+      sql"""
+        $joinTables
+        WHERE c.user_id = ${varchar(64)} AND c.parent_id IS NOT DISTINCT FROM ${uuid.opt}
+        GROUP BY (${CollectionRow.columns})
+      """.query(json *: _varchar.opt).map((collection, tagLabels) => (collection.as[CollectionRow].toOption.get, tagLabels))
+
     val insert: Command[Json] = sql"insert into collections SELECT * FROM json_populate_record(NULL::collections, $json)".command
 
     val upsert: Command[Json] = sql"""
         INSERT INTO collections SELECT * FROM json_populate_record(NULL::collections, $json)
         ON CONFLICT (id) DO UPDATE
-        SET(parent_id, description) = (EXCLUDED.parent_id, EXCLUDED.description)
+        SET(parent_id, user_id, name, description) = (EXCLUDED.parent_id, EXCLUDED.user_id, EXCLUDED.name, EXCLUDED.description)
       """.command
 
     val delete: Command[java.util.UUID] = sql"delete from collections where id = $uuid".command

@@ -1,6 +1,8 @@
 CREATE TABLE collections (
     id          UUID NOT NULL,
     parent_id   UUID,
+    user_id     VARCHAR(64) NOT NULL,
+    name        VARCHAR NOT NULL,
     description VARCHAR,
     CONSTRAINT collections_pk PRIMARY KEY (id),
     CONSTRAINT collections_parent_fk
@@ -8,6 +10,7 @@ CREATE TABLE collections (
 );
 
 CREATE INDEX collections_parent_id_idx ON collections (parent_id);
+CREATE INDEX collections_user_id_idx ON collections (user_id);
 
 CREATE TABLE collection_tags (
     collection_id UUID NOT NULL,
