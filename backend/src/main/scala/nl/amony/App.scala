@@ -50,7 +50,7 @@ object App extends ResourceApp.Forever with Logging {
         liquibase.update()
       })
 
-  def makeDatabasePool(config: DatabaseConfig)(using tracer: Tracer[IO]): Resource[IO, Resource[IO, Session[IO]]] = {
+  def makeDatabasePool(config: DatabaseConfig)(using tracer: Tracer[IO], meter: Meter[IO]): Resource[IO, Resource[IO, Session[IO]]] = {
     for
       pool <- Session.Builder[IO]
                 .withHost(config.host)
