@@ -9,11 +9,11 @@ This is a media management server project. It can be used to view and organize m
 The backend written in Scala 3 using the Cats Effect ecosystem.
 
 The purpose of the backend is to host media files from a directory and provide an API for the frontend to interact with. 
-It uses a PostgreSQL database to stores metadata about the media files. 
+It uses a PostgreSQL database to store metadata about the media files. 
 It uses Tapir to define the API endpoints and generate an OpenAPI specification.
 
 Useful commands:
-- `sbt generarateSpec` - Generates the OpenAPI specification and places it in the frontend folder.
+- `sbt generateSpec` - Generates the OpenAPI specification and places it in the frontend folder.
 
 ### /frontend
 
