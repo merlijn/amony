@@ -45,7 +45,7 @@ class LocalDirectoryBucket(
 )(using runtime: IORuntime, meter: Meter[IO], tracer: Tracer[IO])
     extends LocalDirectoryBase(config, db, topic), LocalResourceOperations, ResourceBucket, LocalResourceSyncer, UploadResource, Logging {
 
-  private def getResourceInfo(resourceId: String): IO[Option[ResourceInfo]] = db.getResourceById(config.id, resourceId)
+  private def getResourceInfo(resourceId: ResourceId): IO[Option[ResourceInfo]] = db.getResourceById(config.id, resourceId)
 
   override def id: String = config.id
 

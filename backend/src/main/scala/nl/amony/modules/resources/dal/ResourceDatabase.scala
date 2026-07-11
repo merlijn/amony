@@ -7,7 +7,7 @@ import scribe.Logging
 import skunk.*
 import skunk.data.{Arr, Completion}
 
-import nl.amony.modules.resources.api.ResourceInfo
+import nl.amony.modules.resources.api.{ResourceId, ResourceInfo}
 
 class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(pool) with Logging:
 
@@ -112,7 +112,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
         s.prepare(Queries.resources.allJoined).map(_.stream(bucketId, defaultChunkSize).map(toResource))
     )
 
-  def getResourceById(bucketId: String, resourceId: String): IO[Option[ResourceInfo]] =
+  def getResourceById(bucketId: String, resourceId: ResourceId): IO[Option[ResourceInfo]] =
     useSession: s =>
       s.prepare(Queries.resources.getByIdJoined)
         .flatMap(_.stream((bucketId, resourceId), defaultChunkSize).map(toResource).compile.toList.map(_.headOption))
@@ -121,7 +121,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
     useSession: s =>
       s.prepare(Queries.resources.getByPartialHashJoined).flatMap(_.stream((bucketId, partialHash), defaultChunkSize).map(toResource).compile.toList)
 
-  def updateThumbnailTimestamp(bucketId: String, resourceId: String, timestamp: Int): IO[Option[ResourceInfo]] = useSession: s =>
+  def updateThumbnailTimestamp(bucketId: String, resourceId: ResourceId, timestamp: Int): IO[Option[ResourceInfo]] = useSession: s =>
     (for
       resource <- OptionT(getResourceById(bucketId, resourceId))
       updated   = resource.copy(thumbnailTimestamp = Some(timestamp))
@@ -130,7 +130,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
 
   def updateUserMeta(
     bucketId: String,
-    resourceId: String,
+    resourceId: ResourceId,
     title: Option[String],
     description: Option[String],
     tagLabels: List[String]
@@ -142,7 +142,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
           val updatedResource = resource.copy(title = title, description = description, tags = tagLabels.toSet)
           updateResourceWithTags(s, updatedResource) >> IO.pure(Some(updatedResource))
 
-  def modifyTags(bucketId: String, resourceId: String, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Option[ResourceInfo]] =
+  def modifyTags(bucketId: String, resourceId: ResourceId, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Option[ResourceInfo]] =
     useTransaction: (s, _) =>
       getResourceById(bucketId, resourceId).flatMap:
         case None           => IO.pure(None)

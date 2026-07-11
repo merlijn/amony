@@ -51,7 +51,7 @@ object CollectionRoutes:
   val endpoints = List(getCollections, createCollection, addResourceToCollection, removeResourceFromCollection, getResourcesInCollection)
 
   def apply(collectionsDal: CollectionsDal, apiSecurity: ApiSecurity)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
-    
+
     val getCollectionsImpl = getCollections.serverSecurityLogicPure(s => apiSecurity.requireSession(s))
       .serverLogic { token => _ =>
         collectionsDal.getCollectionsForUser(token.userId).map(_.map(toDto)).map(Right(_))

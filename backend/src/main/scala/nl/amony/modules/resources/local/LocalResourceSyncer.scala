@@ -10,7 +10,15 @@ import fs2.concurrent.SignallingRef
 
 import nl.amony.lib.files.watcher.*
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceFileMetaChanged, ResourceInfo, ResourceMoved}
+import nl.amony.modules.resources.api.{
+  ResourceAdded,
+  ResourceDeleted,
+  ResourceEvent,
+  ResourceFileMetaChanged,
+  ResourceId,
+  ResourceInfo,
+  ResourceMoved
+}
 
 /**
  * Functionality to synchronize a local directory with the database state.
@@ -135,9 +143,9 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
 
   private def applyEventToDb(event: ResourceEvent): IO[Unit] = event match {
     case ResourceAdded(resource)                       => db.insertResource(resource)
-    case ResourceDeleted(resourceId)                   => db.deleteResource(config.id, resourceId)
-    case ResourceMoved(id, _, newPath)                 => db.move(config.id, id, newPath)
-    case ResourceFileMetaChanged(id, lastModifiedTime) => db.getResourceById(config.id, id).flatMap {
+    case ResourceDeleted(resourceId)                   => db.deleteResource(config.id, ResourceId(resourceId))
+    case ResourceMoved(id, _, newPath)                 => db.move(config.id, ResourceId(id), newPath)
+    case ResourceFileMetaChanged(id, lastModifiedTime) => db.getResourceById(config.id, ResourceId(id)).flatMap {
         case Some(resource) => db.upsertResource(resource.copy(timeLastModified = Some(lastModifiedTime)))
         case None           => IO.unit
       }
