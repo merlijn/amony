@@ -124,7 +124,7 @@ object ResourceRoutes:
             sanitizedAdd    <- sanitizeTags(dto.tagsToAdd).map(_.toSet)
             sanitizedRemove <- sanitizeTags(dto.tagsToRemove).map(_.toSet)
             bucket          <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
-            _               <- EitherT.right(bucket.modifyTags(sanitizedIds, sanitizedAdd, sanitizedRemove))
+            _               <- EitherT.right(bucket.updateResourceTags(sanitizedIds, sanitizedAdd, sanitizedRemove))
           yield ()
         action.value
     }

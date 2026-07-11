@@ -142,7 +142,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
           val updatedResource = resource.copy(title = title, description = description, tags = tagLabels.toSet)
           updateResourceWithTags(s, updatedResource) >> IO.pure(Some(updatedResource))
 
-  def modifyTags(bucketId: String, resourceId: ResourceId, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Option[ResourceInfo]] =
+  def updateResourceTags(bucketId: String, resourceId: ResourceId, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Option[ResourceInfo]] =
     useTransaction: (s, _) =>
       getResourceById(bucketId, resourceId).flatMap:
         case None           => IO.pure(None)

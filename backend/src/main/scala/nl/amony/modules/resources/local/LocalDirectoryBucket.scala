@@ -116,13 +116,13 @@ class LocalDirectoryBucket(
     db.updateUserMeta(config.id, resourceId, title, description, tags)
       .flatMap(_.map(updated => topic.publish(ResourceUpdated(updated))).getOrElse(IO.unit))
 
-  override def modifyTags(resourceIds: Set[ResourceId], tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] = {
-    def modifyTagsSingle(resourceId: ResourceId, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] =
-      db.modifyTags(config.id, resourceId, tagsToAdd, tagsToRemove).flatMap:
+  override def updateResourceTags(resourceIds: Set[ResourceId], tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] = {
+    def updateTagsSingle(resourceId: ResourceId, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] =
+      db.updateResourceTags(config.id, resourceId, tagsToAdd, tagsToRemove).flatMap:
         case None          => IO.unit
         case Some(updated) => topic.publish(ResourceUpdated(updated))
 
-    resourceIds.map(id => modifyTagsSingle(id, tagsToAdd, tagsToRemove)).toList.sequence.as(())
+    resourceIds.map(id => updateTagsSingle(id, tagsToAdd, tagsToRemove)).toList.sequence.as(())
   }
 
   override def updateThumbnailTimestamp(resourceId: ResourceId, timestamp: Int): IO[Unit] =
