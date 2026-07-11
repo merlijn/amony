@@ -61,10 +61,10 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
     }
   }
 
-  override protected def tagsUpsert(s: Session[IO], tagLabels: List[String]): IO[Completion] =
+  override protected def upsertTags(s: Session[IO], tagLabels: List[String]): IO[Completion] =
     tables.tags.upsert(s, tagLabels)
 
-  override protected def tagsGetByLabels(s: Session[IO], labels: List[String]): IO[List[TagRow]] =
+  override protected def getTagsByLabels(s: Session[IO], labels: List[String]): IO[List[TagRow]] =
     tables.tags.getByLabels(s, labels)
 
   override protected def toResource(resourceRow: ResourceRow, tagLabels: Option[Arr[String]]): ResourceInfo =

@@ -17,8 +17,8 @@ trait CollectionsDal(pool: Resource[IO, Session[IO]]) extends Logging:
   protected def useTransaction[A](f: (Session[IO], Transaction[IO]) => IO[A]): IO[A] = pool.use(s => s.transaction.use(tx => f(s, tx)))
 
   // Abstract helpers that ResourceDatabase must provide
-  protected def tagsUpsert(s: Session[IO], tagLabels: List[String]): IO[Completion]
-  protected def tagsGetByLabels(s: Session[IO], labels: List[String]): IO[List[TagRow]]
+  protected def upsertTags(s: Session[IO], tagLabels: List[String]): IO[Completion]
+  protected def getTagsByLabels(s: Session[IO], labels: List[String]): IO[List[TagRow]]
   protected def toResource(resourceRow: ResourceRow, tagLabels: Option[Arr[String]]): ResourceInfo
 
   private[dal] object collectionTables:
@@ -56,7 +56,7 @@ trait CollectionsDal(pool: Resource[IO, Session[IO]]) extends Logging:
   private def updateTagsForCollection(s: Session[IO], collection: Collection): IO[Unit] =
     for
       tags <-
-        if collection.tags.nonEmpty then tagsUpsert(s, collection.tags.toList) >> tagsGetByLabels(s, collection.tags.toList) else IO.pure(List.empty)
+        if collection.tags.nonEmpty then upsertTags(s, collection.tags.toList) >> getTagsByLabels(s, collection.tags.toList) else IO.pure(List.empty)
       _    <- collectionTables.collection_tags.replaceAll(s, collection.id, tags.map(_.id))
     yield ()
 
