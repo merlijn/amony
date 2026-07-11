@@ -132,7 +132,7 @@ object AdminRoutes extends Logging:
             IO(Right(fs2.Stream.empty[IO]))
     )
 
-    val importBucketImpl = importBucket.serverSecurityLogicPure(apiSecurity.publicEndpoint).serverLogic(_ =>
+    val importBucketImpl = importBucket.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogic(_ =>
       (bucketId, stream) =>
         buckets.get(bucketId) match
           case Some(bucket: LocalDirectoryBucket) =>
