@@ -89,7 +89,7 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: Use
 
     EitherT(httpClient.send(req).map(_.body.left.map(_.getMessage))).leftMap { error =>
       logger.error(s"Error fetching token from OAuth provider $provider: $error")
-      UnknownOAuthProvider
+      UnknownError
     }
   }
 
