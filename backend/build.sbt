@@ -179,7 +179,7 @@ lazy val amony = project
       // general
       "org.sqids"                   %% "sqids"                                       % "0.6.0",
       "com.github.jwt-scala"        %% "jwt-circe"                                   % "11.0.4",
-      "org.apache.tika"              % "tika-core"                                   % "3.3.0",
+      "org.apache.tika"              % "tika-core"                                   % "3.3.1",
       "org.typelevel"               %% "cats-effect"                                 % "3.7.0",
       "co.fs2"                      %% "fs2-core"                                    % "3.13.0",
       "co.fs2"                      %% "fs2-io"                                      % "3.13.0",
@@ -188,13 +188,13 @@ lazy val amony = project
       // config
       "com.github.pureconfig"        %% "pureconfig-core"                            % "0.17.10",
       "com.github.pureconfig"        %% "pureconfig-generic-scala3"                  % "0.17.10",
-      "com.typesafe"                  % "config"                                     % "1.4.7",
+      "com.typesafe"                  % "config"                                     % "1.4.9",
 
       // database
       "org.tpolecat"                 %% "skunk-core"                                 % "1.0.0",
       "org.tpolecat"                 %% "skunk-circe"                                % "1.0.0",
-      "org.postgresql"                % "postgresql"                                 % "42.7.11",
-      "org.liquibase"                 % "liquibase-core"                             % "5.0.2",
+      "org.postgresql"                % "postgresql"                                 % "42.7.13",
+      "org.liquibase"                 % "liquibase-core"                             % "5.0.3",
 
       // json
       "io.circe"                     %% "circe-core"                                 % circeVersion,
