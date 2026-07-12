@@ -30,8 +30,9 @@ export type RandomSort = {
 }
 
 export type Sort = RegularSort | RandomSort
-export type Columns = 'auto' | number
 export type ThemeSetting = 'light' | 'dark' | 'system'
+export type GridAspectRatio = '2/1' | '9/16' | '1.5/1' | '5/4' | '1/1'
+export type GridOrientation = 'landscape' | 'portrait'
 
 export type Prefs = {
   showSidebar: boolean
@@ -39,8 +40,10 @@ export type Prefs = {
   showDuration: boolean
   showDates: boolean
   showResolution: boolean
-  gallery_columns: Columns
+  gallery_columns: number
   theme: ThemeSetting
+  gridAspectRatio: GridAspectRatio
+  gridOrientation: GridOrientation
 }
 
 export type SessionInfo = {

@@ -9,7 +9,7 @@ import ResourceViewModal from "../components/common/ResourceViewModal";
 import {isMobile} from "react-device-detect";
 import './Main.scss';
 import ListView from "../components/ListView";
-import {buildUrl, copyParams} from "../api/Util";
+import {buildUrl, copyParams, cssAspectRatio} from "../api/Util";
 import Modal from "../components/common/Modal";
 import ConfigMenu from "../components/dialogs/ConfigMenu";
 import {ResourceDto} from "../api/generated";
@@ -113,14 +113,18 @@ const Main = () => {
                   showTagbar = { showNavigation }
                   componentType = 'page'
                   onClick   = { (v: ResourceDto) => setShowResource(v) }
-                  columns   = { prefs.gallery_columns }
+                  columns   = { typeof prefs.gallery_columns === 'number' ? prefs.gallery_columns : Constants.defaultPreferences.gallery_columns }
                   previewOptionsFn = { (v: ResourceDto) => {
                       return {
                         showPreviewOnHover: !isMobile,
                         showInfoBar: prefs.showTitles,
                         showDates: prefs.showDates,
                         showDuration: prefs.showDuration,
-                        showResolution: prefs.showResolution
+                        showResolution: prefs.showResolution,
+                        aspectRatio: cssAspectRatio(
+                          prefs.gridAspectRatio ?? "9/16",
+                          prefs.gridOrientation ?? "landscape"
+                        )
                       }
                     }
                   }/>

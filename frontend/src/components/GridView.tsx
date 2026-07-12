@@ -1,12 +1,11 @@
 import React, {CSSProperties, useEffect, useState, useMemo} from 'react';
-import {Constants} from "../api/Constants";
-import {Columns, ResourceSelection} from '../api/Model';
+import {ResourceSelection} from '../api/Model';
 import './GridView.scss';
 import TagBar from './navigation/TagBar';
 import Preview, {PreviewOptions} from './Preview';
 import InfiniteScroll from './common/InfiniteScroll';
 import {findResources, FindResourcesParams, ResourceDto, SearchResponseDto} from "../api/generated";
-import {resourceSelectionToParams} from "../api/Util";
+import {clampGridColumns, resourceSelectionToParams} from "../api/Util";
 import {useResizeObserver} from "../api/ReactUtils";
 import {useEventListener} from "./common/EventBus";
 
@@ -15,7 +14,7 @@ export type GalleryProps = {
   className?: string,
   style?: CSSProperties,
   componentType: 'page' | 'element'
-  columns: Columns,
+  columns: number,
   showTagbar: boolean,
   previewOptionsFn: (v: ResourceDto) => PreviewOptions,
   onClick: (v: ResourceDto) => void
@@ -50,7 +49,7 @@ const GridView = (props: GalleryProps) => {
   const [isFetching, setIsFetching]     = useState(false)
   const [isEndReached, setIsEndReached] = useState(false)
   const { ref, width }                  = useResizeObserver<HTMLDivElement>();
-  const [columns, setColumns]           = useState<number>(props.columns === 'auto' ? 0 : props.columns)
+  const [columns, setColumns]           = useState<number>(clampGridColumns(props.columns))
 
   function handleUpdate(resource: ResourceDto) {
     console.log(`Updating resource ${resource.resourceId} in grid view`)
@@ -97,24 +96,17 @@ const GridView = (props: GalleryProps) => {
   }
 
   useEffect(() => {
-    if (props.columns === 'auto') {
-      const componentWidth = props.componentType === 'page' ? window.innerWidth : width
-      if (componentWidth !== undefined) {
-        const c = Math.max(1, Math.round(componentWidth / Constants.gridSize));
-        if (c !== columns) {
-          if (c > columns)
-            setIsFetching(true)
+    const componentWidth = props.componentType === 'page' ? window.innerWidth : width
+    if (componentWidth === undefined)
+      return
 
-          setColumns(c)
-        }
-      }
-    } else {
-      setColumns(props.columns)
-      if (props.columns > columns)
+    const c = clampGridColumns(props.columns, componentWidth)
+    if (c !== columns) {
+      if (c > columns)
         setIsFetching(true)
+      setColumns(c)
     }
-
-  }, [width, props.columns])
+  }, [width, props.columns, props.componentType])
 
   useEffect(() => {
     setSearchResult(initialSearchResult)

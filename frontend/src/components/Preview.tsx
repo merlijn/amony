@@ -1,4 +1,4 @@
-import React, {useContext, useState} from 'react';
+import React, {CSSProperties, useContext, useState} from 'react';
 import {
   canBrowserPlayType,
   dateMillisToString,
@@ -29,6 +29,7 @@ export type PreviewOptions = {
   showDates: boolean,
   showDuration: boolean,
   showResolution: boolean,
+  aspectRatio?: string,
 }
 
 const Preview = (props: PreviewProps) => {
@@ -75,9 +76,14 @@ const Preview = (props: PreviewProps) => {
           onClick   = { () => props.onClick(props.resource) }
           fragments = { props.resource.clips } />
 
+  const mediaContainerStyle = props.options.aspectRatio
+    ? { "--preview-aspect-ratio": props.options.aspectRatio } as CSSProperties
+    : undefined
+
   const preview =
     <ErrorBoundary fallback={ <div /> }>
       <div className    = "preview-media-container"
+           style        = { mediaContainerStyle }
            onMouseEnter = { () => props.options.showPreviewOnHover && setIsHovering(true) }
            onMouseLeave = { () => setIsHovering(false) }>
         { isVideo && isHovering && videoPreview }

@@ -1,12 +1,12 @@
 import {Constants, SessionContext} from "../../api/Constants";
-import {calculateColumns} from "../../api/Util";
+import {clampGridColumns, maxGridColumns} from "../../api/Util";
 import Dialog from "../common/Dialog";
 import './ConfigMenu.scss';
 import {useContext, useEffect, useState} from "react";
 import {adminReComputeHashes, adminRefreshBucket, adminReindexBucket, adminRescanMetaData, getBuckets} from "../../api/generated";
 import {useLocalStorage} from "usehooks-ts";
 import {useTheme} from "../../ThemeContext";
-import {ThemeSetting} from "../../api/Model";
+import {GridAspectRatio, GridOrientation, ThemeSetting} from "../../api/Model";
 import {BucketDto} from "../../api/generated/model/bucketDto";
 
 const ConfigMenu = () => {
@@ -14,16 +14,40 @@ const ConfigMenu = () => {
   // const [prefs, setPrefs] = useLocalStoragePrefs<Prefs>("prefs-v1", Constants.defaultPreferences)
   const [prefs, setPrefs, removeValue] = useLocalStorage(Constants.preferenceKey, Constants.defaultPreferences)
   const { themeSetting, setTheme } = useTheme();
+  const [maxColumns, setMaxColumns] = useState(() => maxGridColumns())
 
-  const columns = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => {
-    return { value: v, label: v.toString() }
-  })
+  useEffect(() => {
+    const updateMaxColumns = () => setMaxColumns(maxGridColumns())
+    updateMaxColumns()
+    window.addEventListener('resize', updateMaxColumns)
+    return () => window.removeEventListener('resize', updateMaxColumns)
+  }, [])
 
   const themeOptions: Array<{value: ThemeSetting, label: string}> = [
     { value: 'system', label: 'System' },
     { value: 'light', label: 'Light' },
     { value: 'dark', label: 'Dark' },
   ]
+
+  const aspectRatioOptions: Array<{value: GridAspectRatio, label: string}> = [
+    { value: '2/1', label: '2 / 1' },
+    { value: '9/16', label: '9 / 16' },
+    { value: '1.5/1', label: '1.5 / 1' },
+    { value: '5/4', label: '5 / 4' },
+    { value: '1/1', label: '1 / 1' },
+  ]
+
+  const orientationOptions: Array<{value: GridOrientation, label: string}> = [
+    { value: 'landscape', label: 'Landscape' },
+    { value: 'portrait', label: 'Portrait' },
+  ]
+
+  const gridAspectRatio = prefs.gridAspectRatio ?? '9/16'
+  const gridOrientation = prefs.gridOrientation ?? 'landscape'
+  const galleryColumns = clampGridColumns(
+    typeof prefs.gallery_columns === 'number' ? prefs.gallery_columns : Constants.defaultPreferences.gallery_columns,
+    window.innerWidth
+  )
 
   const updatePrefs = (values: {}) => { setPrefs({...prefs, ...values} ) }
   const session = useContext(SessionContext)
@@ -32,59 +56,54 @@ const ConfigMenu = () => {
       <Dialog title = "Preferences">
         <div key="config-form" className="config-form">
           <div key="columns" className="form-section">
-            <p key="header" className="form-label">Number of columns</p>
+            <p key="header" className="form-label">Grid size</p>
             <div key="content" className="form-content">
-              <div className="column-select">
+              <div className="column-slider">
+                <span className="column-slider-label">Less</span>
                 <input
-                  key="auto-radio"
-                  style={{float: "left"}}
-                  className="mr-1"
-                  name="ncols-option"
-                  type="radio"
-                  value={0}
-                  checked={prefs.gallery_columns === 'auto'}
+                  type="range"
+                  min={1}
+                  max={maxColumns}
+                  step={1}
+                  value={galleryColumns}
                   onChange={(e) => {
-                    if (prefs.gallery_columns !== 'auto') {
-                      updatePrefs({gallery_columns: 'auto'})
-                    }
+                    updatePrefs({gallery_columns: parseInt(e.target.value, 10)})
                   }}
                 />
-                <span key="auto-label" style = {{float: "left"}}>auto</span>
+                <span className="column-slider-label">More</span>
+              </div>
+            </div>
+          </div>
 
-                {/*<input style = {{float: "left"}} type="range" id="mySlider" min="0" max="100" step="25" value="0"/>*/}
-
-                <input
-                  key="custom-radio"
-                  style = {{float: "left"}}
-                  className="mr-1"
-                  name="ncols-option"
-                  type="radio"
-                  value={0}
-                  checked={prefs.gallery_columns !== 'auto'}
-                  onChange={(e) => {
-                    if (prefs.gallery_columns === 'auto')
-                      updatePrefs({gallery_columns: calculateColumns()})
-                  }}
-                />
-
-                <span key="custom-label" style={{float: "left"}}>custom</span>
+          <div key="aspect-ratio" className="form-section">
+            <p key="header" className="form-label">Grid aspect ratio</p>
+            <div key="content" className="form-content">
+              <div className="aspect-ratio-select">
                 <select
-                  key="custom-value"
-                  name="ncols"
-                  value={prefs.gallery_columns}
+                  name="aspect-ratio"
+                  value={gridAspectRatio}
                   onChange={(e) => {
-                    updatePrefs({gallery_columns: parseInt(e.target.value)})
-                  }}>
-                  {
-                    columns.map((v, index) => {
-                      return <option
-                        key={`value-${index}`}
-                        value={v.value}
-                        label={v.label}
-                      />;
-                    })
-                  }
+                    updatePrefs({gridAspectRatio: e.target.value as GridAspectRatio})
+                  }}
+                >
+                  {aspectRatioOptions.map((option) => (
+                    <option key={option.value} value={option.value} label={option.label} />
+                  ))}
                 </select>
+                <div className="orientation-select">
+                  {orientationOptions.map((option) => (
+                    <label key={option.value} className="orientation-option">
+                      <input
+                        type="radio"
+                        name="orientation-option"
+                        value={option.value}
+                        checked={gridOrientation === option.value}
+                        onChange={() => updatePrefs({gridOrientation: option.value})}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

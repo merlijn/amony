@@ -88,8 +88,10 @@ const defaultPrefs: Prefs = {
   showDuration:    true,
   showDates:       true,
   showResolution:  true,
-  gallery_columns: "auto",
+  gallery_columns: 4,
   theme:           "system",
+  gridAspectRatio: "9/16",
+  gridOrientation: "landscape",
 }
 
 const anonymousSession: SessionInfo = {
@@ -117,7 +119,7 @@ export const Constants = {
 
   defaultPreferences: defaultPrefs,
 
-  gridSize: 400,
+  minGridCellWidth: 100,
 
   sideBarWidth: 150,
 }

@@ -31,13 +31,21 @@
         @extend .hover-pointer;
       }
 
-      .column-select {
-
+      .column-slider {
         @extend .v-align-center;
         display: flex;
+        gap: var(--spacing-s);
+        min-width: 220px;
 
-        * {
-          @extend .mr-2;
+        input[type="range"] {
+          flex: 1;
+          min-width: 120px;
+        }
+
+        .column-slider-label {
+          color: var(--text-tertiary);
+          font-size: small;
+          white-space: nowrap;
         }
       }
 
@@ -52,6 +60,32 @@
 
           input {
             @extend .mr-1;
+          }
+        }
+      }
+
+      .aspect-ratio-select {
+        @extend .v-align-center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-s);
+
+        select {
+          @extend .mr-2;
+        }
+
+        .orientation-select {
+          @extend .v-align-center;
+          display: flex;
+
+          .orientation-option {
+            @extend .mr-3, .hover-pointer;
+            display: flex;
+            align-items: center;
+
+            input {
+              @extend .mr-1;
+            }
           }
         }
       }
