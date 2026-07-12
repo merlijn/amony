@@ -54,13 +54,4 @@ function SessionProvider({ sessionPromise, children }: { sessionPromise: Promise
   return <SessionContext.Provider value={session}>{children}</SessionContext.Provider>;
 }
 
-function EditorRouter() {
-  let { bucketId, resourceId } = useParams<{ bucketId: string, resourceId: string }>();
-  return (
-    <>
-      {(bucketId && resourceId) && <Editor bucketId={bucketId} resourceId={resourceId} />}
-    </>
-  );
-}
-
 export default App;
