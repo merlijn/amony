@@ -3,7 +3,7 @@
 .bulk-tag-modal {
   display: flex;
   flex-direction: column;
-  gap: $spacing-m;
+  gap: var(--spacing-m);
   min-width: 360px;
 
   h2 {
@@ -24,12 +24,12 @@
 .bulk-tag-section {
   display: flex;
   flex-direction: column;
-  gap: $spacing-s;
+  gap: var(--spacing-s);
 
   .bulk-tag-list {
     display: flex;
     flex-direction: column;
-    gap: $spacing-s;
+    gap: var(--spacing-s);
     max-height: 220px;
     overflow-y: auto;
   }
@@ -37,7 +37,7 @@
   .bulk-tag-item {
     display: flex;
     align-items: center;
-    gap: $spacing-s;
+    gap: var(--spacing-s);
 
     input[type="checkbox"] {
       width: 16px;
@@ -61,8 +61,8 @@
 
   .bulk-tag-new {
     display: flex;
-    gap: $spacing-s;
-    margin-top: $spacing-s;
+    gap: var(--spacing-s);
+    margin-top: var(--spacing-s);
 
     .bulk-tag-input {
       flex: 1;
@@ -83,7 +83,7 @@
 .bulk-tag-actions {
   display: flex;
   justify-content: flex-end;
-  gap: $spacing-m;
+  gap: var(--spacing-m);
 }
 
 .bulk-tag-button {

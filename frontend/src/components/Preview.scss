@@ -1,5 +1,4 @@
 @use '../css/Layout.scss' as layout;
-@use '../css/Constants.scss' as constants;
 
 .preview-resource {
 
@@ -107,7 +106,7 @@
     color: var(--text-primary);
   
     .media-title {
-      padding-left: constants.$spacing-s;
+      padding-left: var(--spacing-s);
       flex-grow: 1;
       float: left;
       

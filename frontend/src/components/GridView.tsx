@@ -147,7 +147,7 @@ const GridView = (props: GalleryProps) => {
       { props.showTagbar && <TagBar tags = { searchResult.tags } total = { searchResult.total } /> }
       <InfiniteScroll
         style        = { style }
-        className    = "gallery-container"
+        className    = "grid-container"
         fetchContent = { () => { if (!isFetching && !isEndReached) setIsFetching(true) } }
         scrollType   = { props.componentType }
         ref          = { ref }

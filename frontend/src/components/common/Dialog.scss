@@ -2,8 +2,8 @@
 
 .modal-dialog-container {
   min-width: 500px;
-  padding: $spacing-l;
-  border-radius: $spacing-s;
+  padding: var(--spacing-l);
+  border-radius: var(--spacing-s);
   background-color: var(--text-inverse);
   color: var(--text-primary);
   display: flex;

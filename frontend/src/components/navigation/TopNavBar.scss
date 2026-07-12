@@ -237,7 +237,7 @@
                   }
 
                   label {
-                    margin-left: constants.$spacing-m;
+                    margin-left: var(--spacing-m);
                   }
 
                   &:hover {
