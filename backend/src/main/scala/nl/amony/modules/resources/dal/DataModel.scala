@@ -1,13 +1,14 @@
 package nl.amony.modules.resources.dal
 
 import java.time.{Instant, ZoneOffset}
+import java.util.UUID
 
 import skunk.Codec
-import skunk.codec.all.{int4, timestamptz, varchar}
+import skunk.codec.all.{int4, timestamptz, uuid, varchar}
 import skunk.implicits.sql
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{ResourceId, ResourceInfo, ResourceMeta}
+import nl.amony.modules.resources.api.{Collection, CollectionId, ResourceId, ResourceInfo, ResourceMeta}
 
 val instantCodec: Codec[Instant] = timestamptz.imap(_.toInstant)(_.atOffset(ZoneOffset.UTC))
 
@@ -73,10 +74,55 @@ object ResourceRow {
   )
 }
 
+case class CollectionRow(
+  id: UUID,
+  parent_id: Option[UUID],
+  user_id: String,
+  name: String,
+  description: Option[String]
+) derives io.circe.Codec {
+
+  def toCollection(tagLabels: Set[String]): Collection =
+    Collection(
+      id          = CollectionId(id),
+      parentId    = parent_id.map(CollectionId(_)),
+      userId      = UserId(user_id),
+      name        = name,
+      description = description,
+      tags        = tagLabels
+    )
+}
+
+object CollectionRow {
+
+  val columns = sql"c.id, c.parent_id, c.user_id, c.name, c.description"
+
+  val codec: Codec[CollectionRow] = (uuid *: uuid.opt *: varchar(64) *: varchar(64) *: varchar.opt).to[CollectionRow]
+
+  def fromCollection(collection: Collection): CollectionRow =
+    CollectionRow(
+      id          = collection.id.value,
+      parent_id   = collection.parentId.map(_.value),
+      user_id     = collection.userId,
+      name        = collection.name,
+      description = collection.description
+    )
+}
+
 case class ResourceTagsRow(bucket_id: String, resource_id: String, tag_id: Int)
 
 object ResourceTagsRow:
   val codec: Codec[ResourceTagsRow] = (varchar(64) *: varchar(64) *: int4).to[ResourceTagsRow]
+
+case class CollectionTagsRow(collection_id: UUID, tag_id: Int)
+
+object CollectionTagsRow:
+  val codec: Codec[CollectionTagsRow] = (uuid *: int4).to[CollectionTagsRow]
+
+case class CollectionResourcesRow(collection_id: UUID, bucket_id: String, resource_id: String)
+
+object CollectionResourcesRow:
+  val codec: Codec[CollectionResourcesRow] = (uuid *: varchar(64) *: varchar(64)).to[CollectionResourcesRow]
 
 case class TagRow(id: Int, label: String)
 

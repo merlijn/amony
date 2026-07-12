@@ -7,21 +7,12 @@ import scribe.Logging
 import skunk.*
 import skunk.data.{Arr, Completion}
 
-import nl.amony.modules.resources.api.ResourceInfo
+import nl.amony.modules.resources.api.{ResourceId, ResourceInfo}
 
-class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
+class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(pool) with Logging:
 
-  val defaultChunkSize = 128
-
-  private def useSession[A](s: Session[IO] => IO[A]): IO[A] = pool.use(s)
-
-  private def useTransaction[A](f: (Session[IO], Transaction[IO]) => IO[A]): IO[A] = pool.use(s => s.transaction.use(tx => f(s, tx)))
-
-  // table specific methods
   private[dal] object tables {
-
     object resources {
-
       def insert(s: Session[IO], row: ResourceRow): IO[Completion] =
         s.prepare(Queries.resources.insert).flatMap(_.execute(row.asJson))
           .recoverWith { case SqlState.UniqueViolation(_) => IO.raiseError(new Exception(s"Resource with path ${row.fs_path} already exists")) }
@@ -38,7 +29,6 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
     }
 
     object resource_tags {
-
       def getById(s: Session[IO], bucketId: String, resourceId: String): IO[List[ResourceTagsRow]] =
         s.prepare(Queries.resource_tags.getById).flatMap(_.stream((bucketId, resourceId), defaultChunkSize).compile.toList)
 
@@ -58,7 +48,6 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
     }
 
     object tags {
-
       def all(s: Session[IO]) = s.prepare(Queries.tags.all).flatMap(_.stream(Void, defaultChunkSize).compile.toList)
 
       def upsert(s: Session[IO], tagLabels: List[String]): IO[Completion] =
@@ -72,7 +61,13 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
     }
   }
 
-  private def toResource(resourceRow: ResourceRow, tagLabels: Option[Arr[String]]): ResourceInfo =
+  override protected def upsertTags(s: Session[IO], tagLabels: List[String]): IO[Completion] =
+    tables.tags.upsert(s, tagLabels)
+
+  override protected def getTagsByLabels(s: Session[IO], labels: List[String]): IO[List[TagRow]] =
+    tables.tags.getByLabels(s, labels)
+
+  override protected def toResource(resourceRow: ResourceRow, tagLabels: Option[Arr[String]]): ResourceInfo =
     resourceRow.toResource(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty))
 
   private def updateTagsForResource(s: Session[IO], bucketId: String, resourceId: String, tagLabels: List[String]) =
@@ -90,6 +85,9 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
   private[resources] def truncateTables(): IO[Unit] =
     useTransaction: (s, _) =>
       for
+        _ <- s.execute(Queries.collection_resources.truncateCascade)
+        _ <- s.execute(Queries.collection_tags.truncateCascade)
+        _ <- s.execute(Queries.collections.truncateCascade)
         _ <- s.execute(Queries.tags.truncateCascade)
         _ <- s.execute(Queries.resource_tags.truncateCascade)
         _ <- s.execute(Queries.resources.truncateCascade)
@@ -104,7 +102,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
         _ <- updateTagsForResource(s, resource.bucketId, resource.resourceId, resource.tags.toList)
       yield ()
 
-  def upsert(resource: ResourceInfo): IO[Unit] =
+  def upsertResource(resource: ResourceInfo): IO[Unit] =
     useTransaction: (s, _) =>
       updateResourceWithTags(s, resource)
 
@@ -114,39 +112,39 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
         s.prepare(Queries.resources.allJoined).map(_.stream(bucketId, defaultChunkSize).map(toResource))
     )
 
-  def getById(bucketId: String, resourceId: String): IO[Option[ResourceInfo]] =
+  def getResourceById(bucketId: String, resourceId: ResourceId): IO[Option[ResourceInfo]] =
     useSession: s =>
       s.prepare(Queries.resources.getByIdJoined)
         .flatMap(_.stream((bucketId, resourceId), defaultChunkSize).map(toResource).compile.toList.map(_.headOption))
 
-  def getByPartialHash(bucketId: String, partialHash: String): IO[List[ResourceInfo]] =
+  def getResourceByPartialHash(bucketId: String, partialHash: String): IO[List[ResourceInfo]] =
     useSession: s =>
       s.prepare(Queries.resources.getByPartialHashJoined).flatMap(_.stream((bucketId, partialHash), defaultChunkSize).map(toResource).compile.toList)
 
-  def updateThumbnailTimestamp(bucketId: String, resourceId: String, timestamp: Int): IO[Option[ResourceInfo]] = useSession: s =>
+  def updateThumbnailTimestamp(bucketId: String, resourceId: ResourceId, timestamp: Int): IO[Option[ResourceInfo]] = useSession: s =>
     (for
-      resource <- OptionT(getById(bucketId, resourceId))
+      resource <- OptionT(getResourceById(bucketId, resourceId))
       updated   = resource.copy(thumbnailTimestamp = Some(timestamp))
       _        <- OptionT.liftF(tables.resources.upsert(s, ResourceRow.fromResource(updated)))
     yield updated).value
 
   def updateUserMeta(
     bucketId: String,
-    resourceId: String,
+    resourceId: ResourceId,
     title: Option[String],
     description: Option[String],
     tagLabels: List[String]
   ): IO[Option[ResourceInfo]] =
     useTransaction: (s, _) =>
-      getById(bucketId, resourceId).flatMap:
+      getResourceById(bucketId, resourceId).flatMap:
         case None           => IO.pure(None)
         case Some(resource) =>
           val updatedResource = resource.copy(title = title, description = description, tags = tagLabels.toSet)
           updateResourceWithTags(s, updatedResource) >> IO.pure(Some(updatedResource))
 
-  def modifyTags(bucketId: String, resourceId: String, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Option[ResourceInfo]] =
+  def updateResourceTags(bucketId: String, resourceId: ResourceId, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Option[ResourceInfo]] =
     useTransaction: (s, _) =>
-      getById(bucketId, resourceId).flatMap:
+      getResourceById(bucketId, resourceId).flatMap:
         case None           => IO.pure(None)
         case Some(resource) =>
           val updatedTags     = ((resource.tags ++ tagsToAdd) -- tagsToRemove).toList

@@ -30,7 +30,7 @@ object AdminRoutes extends Logging:
   val refresh =
     endpoint.tag("admin").name("adminRefreshBucket").description("Refresh all resources in a bucket")
       .post.in("api" / "admin" / "refresh")
-      .in(query[String]("bucketId").description("The id of the bucket to re-index."))
+      .in(query[String]("bucketId").description("The id of the bucket to refresh."))
       .securityIn(securityInput)
       .errorOut(errorOutput)
 
@@ -45,7 +45,7 @@ object AdminRoutes extends Logging:
   val reComputeHashes =
     endpoint.name("adminReComputeHashes").tag("admin").description("Recompute the hashes of all files in a bucket")
       .post.in("api" / "admin" / "re-compute-hashes")
-      .in(query[String]("bucketId").description("The id of the bucket to re-scan."))
+      .in(query[String]("bucketId").description("The id of the bucket to re-compute the hashes for."))
       .securityIn(securityInput)
       .errorOut(errorOutput)
 
@@ -63,7 +63,7 @@ object AdminRoutes extends Logging:
       .securityIn(securityInput)
       .errorOut(errorOutput)
 
-  val endpoints = List(reIndex, refresh, rescanMetaData, reComputeHashes, exportBucket)
+  val endpoints = List(reIndex, refresh, rescanMetaData, reComputeHashes, exportBucket, importBucket)
 
   def apply(searchService: SearchService, buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity)(
     using serverOptions: Http4sServerOptions[IO]
@@ -132,7 +132,7 @@ object AdminRoutes extends Logging:
             IO(Right(fs2.Stream.empty[IO]))
     )
 
-    val importBucketImpl = importBucket.serverSecurityLogicPure(apiSecurity.publicEndpoint).serverLogic(_ =>
+    val importBucketImpl = importBucket.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogic(_ =>
       (bucketId, stream) =>
         buckets.get(bucketId) match
           case Some(bucket: LocalDirectoryBucket) =>

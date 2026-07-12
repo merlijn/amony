@@ -11,11 +11,12 @@ import com.dimafeng.testcontainers.scalatest.TestContainerForAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
+import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{ResourceId, ResourceInfo}
+import nl.amony.modules.resources.api.{Collection, CollectionId, ResourceId, ResourceInfo}
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.{App, DatabaseConfig}
 
@@ -59,6 +60,16 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       thumbnailTimestamp = Some(nextTimestamp)
     )
 
+  def genCollection(parentId: Option[CollectionId] = None, userId: UserId = UserId(UUID.randomUUID().toString)): Collection =
+    Collection(
+      id          = CollectionId(UUID.randomUUID()),
+      parentId    = parentId,
+      userId      = userId,
+      name        = randomString,
+      description = Some(randomString),
+      tags        = Set.fill(Random.nextInt(5))(randomTag)
+    )
+
   def configForContainer(container: GenericContainer) =
     DatabaseConfig(
       host     = container.containerIpAddress,
@@ -79,11 +90,14 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
           val dbConfig             = configForContainer(container)
           given tracer: Tracer[IO] = Tracer.noop[IO]
+          given meter: Meter[IO]   = Meter.noop[IO]
 
           App.makeDatabasePool(dbConfig).map(ResourceDatabase(_)).use(db =>
             insertResourcesTest(db) >> db.truncateTables() >>
               updateUserMetaTest(db) >> db.truncateTables() >>
-              duplicatePartialHashsTest(db) >> db.truncateTables()
+              duplicatePartialHashsTest(db) >> db.truncateTables() >>
+              collectionsTest(db) >> db.truncateTables() >>
+              collectionResourcesTest(db) >> db.truncateTables()
           ).unsafeRunSync()
       }
     }
@@ -193,7 +207,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
     for
       _      <- db.insertResource(resource)
       _      <- db.updateUserMeta(resource.bucketId, resource.resourceId, updated.title, updated.description, updated.tags.toList)
-      result <- db.getById(resource.bucketId, resource.resourceId)
+      result <- db.getResourceById(resource.bucketId, resource.resourceId)
     yield {
       result.flatMap(_.title) shouldBe updated.title
       result.flatMap(_.description) shouldBe updated.description
@@ -208,7 +222,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
     for
       _             <- db.insertResource(resourceA)
       _             <- db.insertResource(resourceB.copy(partialHash = resourceA.partialHash)) // This should not throw an error
-      byPartialHash <- db.getByPartialHash(resourceA.bucketId, resourceA.partialHash.get)
+      byPartialHash <- db.getResourceByPartialHash(resourceA.bucketId, resourceA.partialHash.get)
     yield byPartialHash should contain theSameElementsAs List(resourceA, resourceB)
   }
 
@@ -217,14 +231,14 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
     def insertIdentityCheck(resource: ResourceInfo) =
       for
         _        <- db.insertResource(resource)
-        returned <- db.getById(resource.bucketId, resource.resourceId)
+        returned <- db.getResourceById(resource.bucketId, resource.resourceId)
       yield Some(resource) shouldBe returned
 
     def upsertIdentityCheck(resource: ResourceInfo) =
       for
-        _             <- db.upsert(resource)
-        byId          <- db.getById(resource.bucketId, resource.resourceId)
-        byPartialHash <- db.getByPartialHash(resource.bucketId, resource.partialHash.get)
+        _             <- db.upsertResource(resource)
+        byId          <- db.getResourceById(resource.bucketId, resource.resourceId)
+        byPartialHash <- db.getResourceByPartialHash(resource.bucketId, resource.partialHash.get)
       yield {
         byId shouldBe Some(resource)
         byPartialHash shouldBe List(resource)
@@ -233,7 +247,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
     def deleteCheck(resourceInfo: ResourceInfo) =
       for
         _      <- db.deleteResource(resourceInfo.bucketId, resourceInfo.resourceId)
-        result <- db.getById(resourceInfo.bucketId, resourceInfo.resourceId)
+        result <- db.getResourceById(resourceInfo.bucketId, resourceInfo.resourceId)
       yield result shouldBe None
 
     def validateAll(expected: List[ResourceInfo]) =
@@ -254,5 +268,48 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
     val deleteChecks = toDelete.map(deleteCheck).sequence >> validateAll(remaining)
 
     insertChecks >> upsertChecks >> deleteChecks >> IO.unit
+  }
+
+  def collectionsTest(db: ResourceDatabase): IO[Unit] = {
+    val root    = genCollection()
+    val child   = genCollection(parentId = Some(root.id))
+    val updated = root.copy(description = Some("updated description"), tags = Set("root-a", "root-b"))
+
+    for
+      _           <- db.insertCollection(root)
+      _           <- db.insertCollection(child)
+      fetchedRoot <- db.getCollectionById(root.id)
+      children    <- db.getCollectionsByParentId(Some(root.id))
+      roots       <- db.getCollectionsByParentId(None)
+      _           <- db.upsertCollection(updated)
+      fetchedUp   <- db.getCollectionById(root.id)
+      _           <- db.deleteCollection(root.id)
+      childAfter  <- db.getCollectionById(child.id)
+    yield {
+      fetchedRoot shouldBe Some(root)
+      children should contain only child
+      roots should contain(root)
+      fetchedUp shouldBe Some(updated)
+      childAfter shouldBe None
+    }
+  }
+
+  def collectionResourcesTest(db: ResourceDatabase): IO[Unit] = {
+    val resource   = genResource().copy(bucketId = "test")
+    val collection = genCollection()
+
+    for
+      _                      <- db.insertResource(resource)
+      _                      <- db.insertCollection(collection)
+      _                      <- db.addResourceToCollection(collection.id, resource.bucketId, resource.resourceId)
+      collectionsForResource <- db.getCollectionsForResource(resource.bucketId, resource.resourceId)
+      resourcesInCollection  <- db.getResourcesInCollection(collection.id)
+      _                      <- db.removeResourceFromCollection(collection.id, resource.bucketId, resource.resourceId)
+      collectionsAfter       <- db.getCollectionsForResource(resource.bucketId, resource.resourceId)
+    yield {
+      collectionsForResource should contain only collection
+      resourcesInCollection should contain only resource
+      collectionsAfter shouldBe Nil
+    }
   }
 }

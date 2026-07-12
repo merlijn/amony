@@ -39,7 +39,7 @@ addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
 
 inThisBuild(
   List(
-    scalaVersion := "3.8.1",
+    scalaVersion := "3.8.3",
     semanticdbEnabled := true,
     semanticdbVersion := scalafixSemanticdb.revision
   )
@@ -48,7 +48,7 @@ inThisBuild(
 commands += Command.command("prod") { state =>
   val settings = Seq(
     Compile / scalacOptions := prodScalacOptions,
-    scalaVersion := "3.8.1",
+    scalaVersion := "3.8.3",
     semanticdbEnabled := true,
     semanticdbVersion := scalafixSemanticdb.revision
   )
@@ -87,17 +87,17 @@ val javaDevOpts = Seq(
 // --- Main project
 
 val circeVersion    = "0.14.15"
-val http4sVersion   = "0.23.33"
-val tapirVersion    = "1.13.8"
-val sttpVersion     = "4.0.19"
-val otel4sVersion   = "0.15.1"
+val http4sVersion   = "0.23.34"
+val tapirVersion    = "1.13.18"
+val sttpVersion     = "4.0.23"
+val otel4sVersion   = "0.16.0"
 
 lazy val amony = project
   .in(file("."))
   .settings(
     organization := "nl.amony",
     name := "amony-app",
-    scalaVersion := "3.8.1",
+    scalaVersion := "3.8.3",
     scalacOptions := devScalacOptions,
     Global / cancelable   := true,
     Test / fork := true,
@@ -178,23 +178,23 @@ lazy val amony = project
 
       // general
       "org.sqids"                   %% "sqids"                                       % "0.6.0",
-      "com.github.jwt-scala"        %% "jwt-circe"                                   % "11.0.3",
-      "org.apache.tika"              % "tika-core"                                   % "3.2.3",
-      "org.typelevel"               %% "cats-effect"                                 % "3.6.3",
-      "co.fs2"                      %% "fs2-core"                                    % "3.12.2",
-      "co.fs2"                      %% "fs2-io"                                      % "3.12.2",
+      "com.github.jwt-scala"        %% "jwt-circe"                                   % "11.0.4",
+      "org.apache.tika"              % "tika-core"                                   % "3.3.1",
+      "org.typelevel"               %% "cats-effect"                                 % "3.7.0",
+      "co.fs2"                      %% "fs2-core"                                    % "3.13.0",
+      "co.fs2"                      %% "fs2-io"                                      % "3.13.0",
 //      "org.apache.directory.studio"  % "org.bouncycastle.bcprov.jdk15"               % "140",
 
       // config
       "com.github.pureconfig"        %% "pureconfig-core"                            % "0.17.10",
       "com.github.pureconfig"        %% "pureconfig-generic-scala3"                  % "0.17.10",
-      "com.typesafe"                  % "config"                                     % "1.4.5",
+      "com.typesafe"                  % "config"                                     % "1.4.9",
 
       // database
-      "org.tpolecat"                 %% "skunk-core"                                 % "1.0.0-M12",
-      "org.tpolecat"                 %% "skunk-circe"                                % "1.0.0-M12",
-      "org.postgresql"                % "postgresql"                                 % "42.7.10",
-      "org.liquibase"                 % "liquibase-core"                             % "5.0.1",
+      "org.tpolecat"                 %% "skunk-core"                                 % "1.0.0",
+      "org.tpolecat"                 %% "skunk-circe"                                % "1.0.0",
+      "org.postgresql"                % "postgresql"                                 % "42.7.13",
+      "org.liquibase"                 % "liquibase-core"                             % "5.0.3",
 
       // json
       "io.circe"                     %% "circe-core"                                 % circeVersion,
@@ -202,18 +202,18 @@ lazy val amony = project
       "io.circe"                     %% "circe-parser"                               % circeVersion,
 
       // observability
-      "com.outr"                      %% "scribe"                                    % "3.17.0",
-      "com.outr"                      %% "scribe-slf4j"                              % "3.17.0",
+      "com.outr"                      %% "scribe"                                    % "3.19.0",
+      "com.outr"                      %% "scribe-slf4j"                              % "3.19.0",
       "org.typelevel"                 %% "otel4s-core"                               % otel4sVersion,
       "org.typelevel"                 %% "otel4s-core-trace"                         % otel4sVersion,
       "org.typelevel"                 %% "otel4s-oteljava"                           % otel4sVersion,
       "org.typelevel"                 %% "otel4s-semconv"                            % otel4sVersion,
-      "org.http4s"                    %% "http4s-otel4s-middleware-core"             % "0.16.0",
-      "org.http4s"                    %% "http4s-otel4s-middleware-metrics"          % "0.16.0",
-      "org.typelevel"                 %% "log4cats-slf4j"                            % "2.7.1",
+      "org.http4s"                    %% "http4s-otel4s-middleware-core"             % "0.17.0",
+      "org.http4s"                    %% "http4s-otel4s-middleware-metrics"          % "0.17.0",
+      "org.typelevel"                 %% "log4cats-slf4j"                            % "2.8.0",
       "com.softwaremill.sttp.tapir"   %% "tapir-otel4s-tracing"                      % tapirVersion,
-      "io.opentelemetry"               % "opentelemetry-exporter-otlp"               % "1.59.0" % Runtime,
-      "io.opentelemetry"               % "opentelemetry-sdk-extension-autoconfigure" % "1.59.0" % Runtime,
+      "io.opentelemetry"               % "opentelemetry-exporter-otlp"               % "1.61.0" % Runtime,
+      "io.opentelemetry"               % "opentelemetry-sdk-extension-autoconfigure" % "1.61.0" % Runtime,
       "org.slf4j"                      % "slf4j-api"                                 % "2.0.17",
 
       // http client
@@ -228,28 +228,32 @@ lazy val amony = project
       "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle"                   % tapirVersion,
       "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"                          % tapirVersion,
       "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"                        % "0.11.10",
-      "com.softwaremill.sttp.shared"  %% "fs2"                                       % "1.5.0",
+      "com.softwaremill.sttp.shared"  %% "fs2"                                       % "1.5.2",
       "org.http4s"                    %% "http4s-ember-server"                       % http4sVersion,
       "org.http4s"                    %% "http4s-dsl"                                % http4sVersion,
       "org.http4s"                    %% "http4s-circe"                              % http4sVersion,
-      "org.jsoup"                      % "jsoup"                                     % "1.22.1",
+      "org.jsoup"                      % "jsoup"                                     % "1.22.2",
 
       // solr search
       "org.apache.solr"                % "solr-core"                                 % "9.10.1",
       "org.apache.commons"             % "commons-compress"                          % "1.28.0",
-      "org.bouncycastle"               % "bcprov-jdk18on"                            % "1.83",
+      "org.bouncycastle"               % "bcprov-jdk18on"                            % "1.84",
 
       // Test dependencies
-      "org.scalatest"                 %% "scalatest"                                 % "3.2.19"   % Test,
+      "org.scalatest"                 %% "scalatest"                                 % "3.2.20"   % Test,
       "org.scalatestplus"             %% "scalacheck-1-15"                           % "3.2.11.0" % Test,
       "com.dimafeng"                  %% "testcontainers-scala-scalatest"            % "0.44.1"   % Test,
-      "commons-codec"                  % "commons-codec"                             % "1.21.0"   % Test,
+      "commons-codec"                  % "commons-codec"                             % "1.22.0"   % Test,
       "org.scalacheck"                %% "scalacheck"                                % "1.19.0"   % Test
     ),
 
     // TODO remove this override once skunk has been updated to use otel4s 0.15.x
     dependencyOverrides ++= Seq(
       "org.typelevel"               %% "otel4s-core-trace"  % otel4sVersion,
+      "org.typelevel"               %% "otel4s-core-logs"  % otel4sVersion,
+      "org.typelevel"               %% "otel4s-core-common"  % otel4sVersion,
+      "org.typelevel"               %% "otel4s-oteljava"  % otel4sVersion,
+      "org.typelevel"               %% "otel4s-semconv"  % otel4sVersion,
     ),
 
     excludeDependencies ++= List(

@@ -87,6 +87,21 @@ case class ClipDto(
   tags: List[String]
 ) derives Codec, sttp.tapir.Schema
 
+case class CollectionDto(
+  id: CollectionId,
+  parentId: Option[CollectionId],
+  name: String,
+  description: Option[String],
+  @customise(required)
+  tags: List[String]
+) derives Codec, sttp.tapir.Schema
+
+case class CreateCollectionDto(
+  name: String,
+  parentId: Option[CollectionId],
+  description: Option[String]
+) derives Codec, sttp.tapir.Schema
+
 def toDto(resource: ResourceInfo): ResourceDto = {
 
   // Default resolution key used in public URLs
@@ -147,3 +162,12 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     clips              = thumbnailClip.toList
   )
 }
+
+def toDto(collection: Collection): CollectionDto =
+  CollectionDto(
+    id          = collection.id,
+    parentId    = collection.parentId,
+    name        = collection.name,
+    description = collection.description,
+    tags        = collection.tags.toList
+  )

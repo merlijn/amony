@@ -27,7 +27,8 @@ import nl.amony.modules.admin.AdminRoutes
 import nl.amony.modules.auth.*
 import nl.amony.modules.resources.ResourceConfig
 import nl.amony.modules.resources.api.ResourceEvent
-import nl.amony.modules.resources.http.{ResourceContentRoutes, ResourceRoutes}
+import nl.amony.modules.resources.dal.ResourceDatabase
+import nl.amony.modules.resources.http.{CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.modules.search.http.SearchRoutes
 import nl.amony.modules.search.solr.SolrSearchService
@@ -50,7 +51,7 @@ object App extends ResourceApp.Forever with Logging {
         liquibase.update()
       })
 
-  def makeDatabasePool(config: DatabaseConfig)(using tracer: Tracer[IO]): Resource[IO, Resource[IO, Session[IO]]] = {
+  def makeDatabasePool(config: DatabaseConfig)(using tracer: Tracer[IO], meter: Meter[IO]): Resource[IO, Resource[IO, Session[IO]]] = {
     for
       pool <- Session.Builder[IO]
                 .withHost(config.host)
@@ -107,8 +108,10 @@ object App extends ResourceApp.Forever with Logging {
                              }.sequence
         resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
         authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
+        collectionsDal     = ResourceDatabase(databasePool)
         apiRoutes          = ResourceContentRoutes.apply(resourceBucketMap, authModule.apiSecurity) <+>
                                authModule.routes <+>
+                               CollectionRoutes.apply(collectionsDal, authModule.apiSecurity) <+>
                                AdminRoutes.apply(searchService, resourceBucketMap, authModule.apiSecurity) <+>
                                SearchRoutes.apply(searchService, appConfig.search, authModule.apiSecurity) <+>
                                ResourceRoutes.apply(resourceBucketMap, authModule.apiSecurity)

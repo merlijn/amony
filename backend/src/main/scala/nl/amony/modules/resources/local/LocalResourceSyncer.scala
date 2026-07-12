@@ -10,7 +10,15 @@ import fs2.concurrent.SignallingRef
 
 import nl.amony.lib.files.watcher.*
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{ResourceAdded, ResourceDeleted, ResourceEvent, ResourceFileMetaChanged, ResourceInfo, ResourceMoved}
+import nl.amony.modules.resources.api.{
+  ResourceAdded,
+  ResourceDeleted,
+  ResourceEvent,
+  ResourceFileMetaChanged,
+  ResourceId,
+  ResourceInfo,
+  ResourceMoved
+}
 
 /**
  * Functionality to synchronize a local directory with the database state.
@@ -24,7 +32,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
   private def mapFileEvent(fileEvent: FileEvent): IO[ResourceEvent] = {
 
     def withRequireResource(partialHash: String, path: Path)(fn: ResourceInfo => ResourceEvent): IO[ResourceEvent] =
-      db.getByPartialHash(bucketId, partialHash)
+      db.getResourceByPartialHash(bucketId, partialHash)
         .map(_.find(_.path == relativizePath(path))).flatMap:
           case None    => IO.raiseError(new IllegalStateException("No such file in database"))
           case Some(r) => IO.pure(fn(r))
@@ -135,10 +143,10 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
 
   private def applyEventToDb(event: ResourceEvent): IO[Unit] = event match {
     case ResourceAdded(resource)                       => db.insertResource(resource)
-    case ResourceDeleted(resourceId)                   => db.deleteResource(config.id, resourceId)
-    case ResourceMoved(id, _, newPath)                 => db.move(config.id, id, newPath)
-    case ResourceFileMetaChanged(id, lastModifiedTime) => db.getById(config.id, id).flatMap {
-        case Some(resource) => db.upsert(resource.copy(timeLastModified = Some(lastModifiedTime)))
+    case ResourceDeleted(resourceId)                   => db.deleteResource(config.id, ResourceId(resourceId))
+    case ResourceMoved(id, _, newPath)                 => db.move(config.id, ResourceId(id), newPath)
+    case ResourceFileMetaChanged(id, lastModifiedTime) => db.getResourceById(config.id, ResourceId(id)).flatMap {
+        case Some(resource) => db.upsertResource(resource.copy(timeLastModified = Some(lastModifiedTime)))
         case None           => IO.unit
       }
     case _                                             => IO.unit
