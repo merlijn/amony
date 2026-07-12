@@ -66,9 +66,8 @@ commands += Command.command("dev") { state =>
 }
 
 val javaDevOpts = Seq(
-  "-DAMONY_SECURE_COOKIES=false",
-  "-DAMONY_OTEL_ENABLED=false",
   // OTEL
+  "-DAMONY_OTEL_ENABLED=false",
   "-Dotel.sdk.disabled=true",
   "-Dotel.service.name=amony-app",
 //  "-Dotel.exporter.otlp.endpoint=http://localhost:5080/api/default",
@@ -77,7 +76,9 @@ val javaDevOpts = Seq(
   "-DAMONY_MEDIA_PATH=../data/media",
   "-DAMONY_SOLR_PATH=../data/solr",
   "-DAMONY_WEB_CLIENT_PATH=../frontend/dist",
+  // Auth
   "-DAMONY_AUTH_ENABLED=false",
+  "-DAMONY_SECURE_COOKIES=false",
   "-DAMONY_OAUTH_AUTHORIZE_URL=http://localhost:5556/dex/auth",
   "-DAMONY_OAUTH_TOKEN_URL=http://localhost:5556/dex/token",
   "-DAMONY_OAUTH_USERINFO_URL=http://localhost:5556/dex/userinfo",

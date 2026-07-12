@@ -7,7 +7,6 @@ import {SessionInfo} from "./api/Model";
 import {ThemeProvider} from "./ThemeContext";
 import {EventBusProvider} from "./components/common/EventBus";
 
-const Editor = lazy(() => import('./pages/Editor'));
 const Compilation = lazy(() => import('./pages/Compilation'));
 const Main = lazy(() => import('./pages/Main'));
 const VideoWall = lazy(() => import('./pages/VideoWall'));
@@ -38,7 +37,6 @@ function App() {
                 <Routes>
                   <Route path="/" element={<Main />} />
                   <Route path="/search" element={<Main />} />
-                  <Route path="/editor/:bucketId/:resourceId" element={<EditorRouter />} />
                   <Route path="/video-wall" element={<VideoWall />} />
                   <Route path="/compilation" element={<Compilation />} />
                 </Routes>
