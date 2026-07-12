@@ -15,7 +15,7 @@ staticClients:
     redirectURIs:
       - 'https://${DOMAIN_SUB_AMONY}.${DOMAIN_TLD}/api/auth/callback/dex'
     name: 'Amony App'
-    secret: amony-dex-secret
+    secret: ${DEX_CLIENT_SECRET}
 
 enablePasswordDB: true
 staticPasswords:
