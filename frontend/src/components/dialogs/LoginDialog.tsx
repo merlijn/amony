@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import Dialog from '../common/Dialog';
+import DialogWindow from '../common/DialogWindow';
 import { getOAuthProviders } from '../../api/generated';
 import { OAuthProviderDto } from '../../api/generated/model';
 import './LoginDialog.scss';
@@ -52,26 +52,26 @@ const LoginDialog = (props: LoginDialogProps) => {
 
   if (loading) {
     return (
-      <Dialog title="Login">
+      <DialogWindow title="Login">
         <div className="login-dialog-content">
           <p>Loading...</p>
         </div>
-      </Dialog>
+      </DialogWindow>
     );
   }
 
   if (error) {
     return (
-      <Dialog title="Login">
+      <DialogWindow title="Login">
         <div className="login-dialog-content">
           <p className="login-error">{error}</p>
         </div>
-      </Dialog>
+      </DialogWindow>
     );
   }
 
   return (
-    <Dialog title="Login">
+    <DialogWindow title="Login">
       <div className="login-dialog-content">
         <div className="providers-list">
           {providers.map((provider) => (
@@ -86,7 +86,7 @@ const LoginDialog = (props: LoginDialogProps) => {
           ))}
         </div>
       </div>
-    </Dialog>
+    </DialogWindow>
   );
 };
 

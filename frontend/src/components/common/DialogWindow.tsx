@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import './Dialog.scss';
+import './DialogWindow.scss';
 
 const Dialog = (props: { title?: string, children: ReactNode}) => {
   return(

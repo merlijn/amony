@@ -1,6 +1,6 @@
 import {Constants, SessionContext} from "../../api/Constants";
 import {clampGridColumns, maxGridColumns} from "../../api/Util";
-import Dialog from "../common/Dialog";
+import DialogWindow from "../common/DialogWindow";
 import './ConfigMenu.scss';
 import {useContext, useEffect, useState} from "react";
 import {adminReComputeHashes, adminRefreshBucket, adminReindexBucket, adminRescanMetaData, getBuckets} from "../../api/generated";
@@ -53,7 +53,7 @@ const ConfigMenu = () => {
   const session = useContext(SessionContext)
 
   return(
-      <Dialog title = "Preferences">
+      <DialogWindow title = "Preferences">
         <div key="config-form" className="config-form">
           <div key="columns" className="form-section">
             <p key="header" className="form-label">Grid size</p>
@@ -179,7 +179,7 @@ const ConfigMenu = () => {
           </div>
           { session.isAdmin() && <AdminOptions /> }
         </div>
-      </Dialog>
+      </DialogWindow>
   )
 }
 
