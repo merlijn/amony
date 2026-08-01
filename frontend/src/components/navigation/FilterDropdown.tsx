@@ -1,9 +1,10 @@
 import {useUrlParam} from "../../api/ReactUtils";
 import {Constants, rangeAsParameter, parseDurationParam, useSortParam, generateRandomSeed} from "../../api/Constants";
-import {DropDown} from "../common/DropDown";
+import * as Popover from "@radix-ui/react-popover";
+import './FilterDropdown.scss';
 import {MdTune, MdRefresh} from "react-icons/md";
 import _ from "lodash";
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {Sort} from "../../api/Model";
 
 const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
@@ -12,41 +13,53 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
   const [sortParam, setSortParam]         = useSortParam()
   const [durationParam, setDurationParam] = useUrlParam("d", "-")
   const [uploadParam, setUploadParam]     = useUrlParam("u", "-")
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const [contentWidth, setContentWidth] = useState(0)
+
+  useEffect(() => {
+    const parent = triggerRef.current?.parentElement
+    if (!parent) return
+    const update = () => setContentWidth(parent.offsetWidth-2)
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(parent)
+    return () => observer.disconnect()
+  }, [])
 
   return(
-    <div className = "filter-dropdown-container">
-
-      <DropDown
-        toggleIcon = { <MdTune className="filter-dropdown-icon" /> }
-        hideOnClick = { false }
-        onToggle = { props.onToggleFilter }
-        contentClassName = "filter-dropdown-content">
-        <div className = "filter-container">
-          <SortSection
-            selectedValue = { sortParam }
-            onChange      = { setSortParam }
-          />
-          <RadioSelectGroup
-            header        = "Resolution"
-            options       = { Constants.resolutions.map(option => ({ label: option.label, value: option.value.toString() })) }
-            selectedValue = { vqParam }
-            onChange      = { value => setVqParam(value) }
-          />
-          <RadioSelectGroup
-            header        = "Duration"
-            options       = { Constants.durationOptions }
-            selectedValue = { parseDurationParam(durationParam) }
-            onChange      = { value => setDurationParam(rangeAsParameter(value)) }
-          />
-          <RadioSelectGroup
-            header        = "Upload date"
-            options       = { Constants.uploadOptions }
-            selectedValue = { parseDurationParam(uploadParam)}
-            onChange      = { value => setUploadParam(rangeAsParameter(value)) }
-          />
-        </div>
-      </DropDown>
-    </div>);
+    <Popover.Root onOpenChange={props.onToggleFilter}>
+      <Popover.Trigger className="filter-dropdown-icon" ref={triggerRef}>
+        <MdTune size={25} />
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content className="filter-dropdown-content" side="bottom" align="end" sideOffset={0} style={{ width: contentWidth || undefined }}>
+          <div className = "filter-container">
+            <SortSection
+              selectedValue = { sortParam }
+              onChange      = { setSortParam }
+            />
+            <RadioSelectGroup
+              header        = "Resolution"
+              options       = { Constants.resolutions.map(option => ({ label: option.label, value: option.value.toString() })) }
+              selectedValue = { vqParam }
+              onChange      = { value => setVqParam(value) }
+            />
+            <RadioSelectGroup
+              header        = "Duration"
+              options       = { Constants.durationOptions }
+              selectedValue = { parseDurationParam(durationParam) }
+              onChange      = { value => setDurationParam(rangeAsParameter(value)) }
+            />
+            <RadioSelectGroup
+              header        = "Upload date"
+              options       = { Constants.uploadOptions }
+              selectedValue = { parseDurationParam(uploadParam)}
+              onChange      = { value => setUploadParam(rangeAsParameter(value)) }
+            />
+          </div>
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>);
 }
 
 type SortSectionProps = {
