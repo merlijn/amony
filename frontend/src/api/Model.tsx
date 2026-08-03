@@ -31,7 +31,7 @@ export type RandomSort = {
 
 export type Sort = RegularSort | RandomSort
 export type ThemeSetting = 'light' | 'dark' | 'system'
-export type GridAspectRatio = '2/1' | '9/16' | '1.5/1' | '5/4' | '1/1'
+export type GridAspectRatio = '2/1' | '16/9' | '15/10' | '5/4' | '1/1'
 export type GridOrientation = 'landscape' | 'portrait'
 
 export type Prefs = {

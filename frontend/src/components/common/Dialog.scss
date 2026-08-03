@@ -27,3 +27,12 @@
     transform: translate(-50%, -50%);
   }
 }
+
+.dialog-content-window {
+  @extend .dialog-content;
+  width: 50%;
+  height: 75%;
+  //max-width: 90vw;
+  //max-height: 90vh;
+  overflow-y: auto;
+}

@@ -93,7 +93,7 @@ const Main = () => {
           <Dialog.Root open={showSettings} onOpenChange={setShowSettings}>
             <Dialog.Portal>
               <Dialog.Overlay className="dialog-overlay" />
-              <Dialog.Content className="dialog-content">
+              <Dialog.Content className="dialog-content-window">
                 <ConfigMenu />
               </Dialog.Content>
             </Dialog.Portal>
@@ -128,7 +128,7 @@ const Main = () => {
                         showDuration: prefs.showDuration,
                         showResolution: prefs.showResolution,
                         aspectRatio: cssAspectRatio(
-                          prefs.gridAspectRatio ?? "9/16",
+                          prefs.gridAspectRatio ?? "16/9",
                           prefs.gridOrientation ?? "landscape"
                         )
                       }

@@ -1,7 +1,9 @@
 @use 'src/App.scss' as *;
 
 .modal-dialog-container {
-  min-width: 500px;
+  //min-width: 500px;
+  height: 100%;
+  width: 100%;
   padding: var(--spacing-l);
   border-radius: var(--spacing-s);
   background-color: var(--text-inverse);

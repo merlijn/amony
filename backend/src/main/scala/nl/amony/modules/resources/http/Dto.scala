@@ -35,6 +35,10 @@ object ResourceToolMetaDto {
   given Schema[ResourceToolMetaDto]         = Schema.derived[ResourceToolMetaDto]
 }
 
+object ResourceDto:
+  given schemaForCirceJsonAny: Schema[Option[Json]] = Schema.any[Option[Json]]
+  given Schema[ResourceDto] = Schema.derived[ResourceDto]
+
 case class ResourceDto(
   bucketId: String,
   resourceId: String,
@@ -53,8 +57,9 @@ case class ResourceDto(
   urls: ResourceUrlsDto,
   thumbnailTimestamp: Option[Int],
   @customise(required)
-  clips: List[ClipDto]
-) derives Codec, sttp.tapir.Schema {
+  clips: List[ClipDto],
+  fullMeta: Option[Json] = None
+) derives Codec {
 
   def toDomain(): ResourceInfo = {
 
@@ -143,6 +148,11 @@ def toDto(resource: ResourceInfo): ResourceDto = {
       None
   }
 
+  val fullMeta: Option[Json] =
+    resource.contentMeta.flatMap { meta =>
+      io.circe.parser.parse(meta.toolData).toOption
+    }
+
   ResourceDto(
     bucketId           = resource.bucketId,
     resourceId         = resource.resourceId,
@@ -159,7 +169,8 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     contentMeta        = contentMeta,
     urls               = urls,
     thumbnailTimestamp = Some(thumbnailTimestamp),
-    clips              = thumbnailClip.toList
+    clips              = thumbnailClip.toList,
+    fullMeta           = fullMeta
   )
 }
 

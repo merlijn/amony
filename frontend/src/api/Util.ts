@@ -157,8 +157,8 @@ export const clampGridColumns = (columns: number, width: number = window.innerWi
 
 const aspectRatioValues: Record<GridAspectRatio, number> = {
   '2/1': 2,
-  '9/16': 16 / 9,
-  '1.5/1': 1.5,
+  '16/9': 16 / 9,
+  '15/10': 1.5,
   '5/4': 5 / 4,
   '1/1': 1,
 }
