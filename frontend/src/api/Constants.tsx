@@ -90,7 +90,7 @@ const defaultPrefs: Prefs = {
   showResolution:  true,
   gallery_columns: 4,
   theme:           "system",
-  gridAspectRatio: "9/16",
+  gridAspectRatio: "16/9",
   gridOrientation: "landscape",
 }
 
