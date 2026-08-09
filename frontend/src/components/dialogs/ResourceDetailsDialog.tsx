@@ -123,11 +123,11 @@ const ResourceDetailsDialog = ({resource, visible, onHide}: ResourceDetailsDialo
     <RadixDialog.Root open={visible} onOpenChange={(open) => { if (!open) onHide() }}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="dialog-overlay" />
-        <RadixDialog.Content className="dialog-content-window">
+        <RadixDialog.Content className="dialog-content-window resource-details-dialog">
           <DialogWindow>
             {isLoading && !fullResource && <div className="resource-details-loading">Loading...</div>}
             {!isLoading && (
-              <Tabs.Root defaultValue="details">
+              <Tabs.Root className="tabs-root" defaultValue="details">
                 <Tabs.List className="tabs-list">
                   <Tabs.Trigger className="tab-trigger" value="details">Details</Tabs.Trigger>
                   {fullMeta && <Tabs.Trigger className="tab-trigger" value="metadata">Metadata</Tabs.Trigger>}
