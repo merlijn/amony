@@ -126,3 +126,17 @@
   }
 }
 
+.admin-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--text-tertiary);
+  border-top-color: var(--text-primary);
+  border-radius: 50%;
+  animation: admin-spin 0.6s linear infinite;
+}
+
+@keyframes admin-spin {
+  to { transform: rotate(360deg); }
+}
+

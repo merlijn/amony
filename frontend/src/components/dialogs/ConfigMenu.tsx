@@ -200,9 +200,12 @@ const ConfigMenu = () => {
   )
 }
 
+type AdminAction = 'refresh' | 'reindex' | 'rescan' | 'recompute'
+
 const AdminOptions = () => {
   const [buckets, setBuckets] = useState<BucketDto[]>([]);
   const [selectedBucket, setSelectedBucket] = useState<string>('');
+  const [activeAction, setActiveAction] = useState<AdminAction | null>(null);
 
   useEffect(() => {
     getBuckets().then((data) => {
@@ -213,6 +216,25 @@ const AdminOptions = () => {
     });
   }, []);
 
+  const runAction = (action: AdminAction, apiCall: () => Promise<unknown>) => {
+    setActiveAction(action)
+    apiCall().finally(() => setActiveAction(null))
+  }
+
+  const isLoading = (action: AdminAction) => activeAction === action
+  const anyLoading = activeAction !== null
+
+  type BtnProps = { action: AdminAction; apiCall: () => Promise<unknown>; label?: string }
+
+  const ActionButton = ({ action, apiCall, label = "Go" }: BtnProps) => (
+    <button
+      disabled={isLoading(action)}
+      onClick={() => runAction(action, apiCall)}
+    >
+      {isLoading(action) ? <span className="admin-spinner" /> : label}
+    </button>
+  )
+
   return(
     <>
       <div key="bucket-select" className="form-section">
@@ -221,6 +243,7 @@ const AdminOptions = () => {
           <select
             value={selectedBucket}
             onChange={(e) => setSelectedBucket(e.target.value)}
+            disabled={anyLoading}
           >
             {buckets?.map((bucket: BucketDto) => (
               <option key={bucket.bucketId} value={bucket.bucketId}>
@@ -233,37 +256,37 @@ const AdminOptions = () => {
       <div key="refresh-bucket" className="form-section">
         <p key="header" className="form-label">Refresh resources</p>
         <div key="content" className="form-content">
-          <button onClick={() => {
-            adminRefreshBucket({'bucketId': selectedBucket})
-          }}>Go
-          </button>
+          <ActionButton
+            action="refresh"
+            apiCall={() => adminRefreshBucket({'bucketId': selectedBucket})}
+          />
         </div>
       </div>
       <div key="reindex-bucket" className="form-section">
         <p key="header" className="form-label">Reindex resources</p>
         <div key="content" className="form-content">
-          <button onClick={() => {
-            adminReindexBucket({'bucketId': selectedBucket})
-          }}>Go
-          </button>
+          <ActionButton
+            action="reindex"
+            apiCall={() => adminReindexBucket({'bucketId': selectedBucket})}
+          />
         </div>
       </div>
       <div key="rescan-meta-bucket" className="form-section">
         <p key="header" className="form-label">Rescan metadata</p>
         <div key="content" className="form-content">
-          <button onClick={() => {
-            adminRescanMetaData({'bucketId': selectedBucket})
-          }}>Go
-          </button>
+          <ActionButton
+            action="rescan"
+            apiCall={() => adminRescanMetaData({'bucketId': selectedBucket})}
+          />
         </div>
       </div>
       <div key="re-compute-hashes-bucket" className="form-section">
         <p key="header" className="form-label">ReCompute hashes</p>
         <div key="content" className="form-content">
-          <button onClick={() => {
-            adminReComputeHashes({'bucketId': selectedBucket})
-          }}>Go
-          </button>
+          <ActionButton
+            action="recompute"
+            apiCall={() => adminReComputeHashes({'bucketId': selectedBucket})}
+          />
         </div>
       </div>
     </>
