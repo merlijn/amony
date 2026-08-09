@@ -39,8 +39,28 @@ const ResourceDetailsDialog = ({resource, visible, onHide}: ResourceDetailsDialo
   const detailsContent = (
     <div className="resource-details">
       <div className="detail-section">
+        <p className="detail-label">Resource ID</p>
+        <div className="detail-value">{displayResource.resourceId}</div>
+      </div>
+      <div className="detail-section">
+        <p className="detail-label">Hash</p>
+        <div className="detail-value">{displayResource.partialHash || "-"}</div>
+      </div>
+      <div className="detail-section">
+        <p className="detail-label">Bucket ID</p>
+        <div className="detail-value">{displayResource.bucketId}</div>
+      </div>
+      <div className="detail-section">
+        <p className="detail-label">Owner</p>
+        <div className="detail-value">{displayResource.userId}</div>
+      </div>
+      <div className="detail-section">
         <p className="detail-label">Path</p>
         <div className="detail-value">{displayResource.path}</div>
+      </div>
+      <div className="detail-section">
+        <p className="detail-label">File size</p>
+        <div className="detail-value">{fileSize} ({displayResource.sizeInBytes} bytes)</div>
       </div>
       <div className="detail-section">
         <p className="detail-label">Title</p>
@@ -55,16 +75,18 @@ const ResourceDetailsDialog = ({resource, visible, onHide}: ResourceDetailsDialo
         <div className="detail-value">{displayResource.tags.length > 0 ? displayResource.tags.join(", ") : "-"}</div>
       </div>
       <div className="detail-section">
+        <p className="detail-label">Date added</p>
+        <div className="detail-value">{dateAdded}</div>
+      </div>
+      {dateModified && (
+        <div className="detail-section">
+          <p className="detail-label">Last modified</p>
+          <div className="detail-value">{dateModified}</div>
+        </div>
+      )}
+      <div className="detail-section">
         <p className="detail-label">Content type</p>
         <div className="detail-value">{displayResource.contentType}</div>
-      </div>
-      <div className="detail-section">
-        <p className="detail-label">File size</p>
-        <div className="detail-value">{fileSize} ({displayResource.sizeInBytes} bytes)</div>
-      </div>
-      <div className="detail-section">
-        <p className="detail-label">Hash</p>
-        <div className="detail-value">{displayResource.partialHash || "-"}</div>
       </div>
       <div className="detail-section">
         <p className="detail-label">Dimensions</p>
@@ -86,34 +108,7 @@ const ResourceDetailsDialog = ({resource, visible, onHide}: ResourceDetailsDialo
           <div className="detail-value">{meta.codec}</div>
         </div>
       )}
-      <div className="detail-section">
-        <p className="detail-label">Date added</p>
-        <div className="detail-value">{dateAdded}</div>
-      </div>
-      {dateModified && (
-        <div className="detail-section">
-          <p className="detail-label">Last modified</p>
-          <div className="detail-value">{dateModified}</div>
-        </div>
-      )}
-      <div className="detail-section">
-        <p className="detail-label">Bucket ID</p>
-        <div className="detail-value">{displayResource.bucketId}</div>
-      </div>
-      <div className="detail-section">
-        <p className="detail-label">Resource ID</p>
-        <div className="detail-value">{displayResource.resourceId}</div>
-      </div>
-      <div className="detail-section">
-        <p className="detail-label">User ID</p>
-        <div className="detail-value">{displayResource.userId}</div>
-      </div>
-      {displayResource.clips.length > 0 && (
-        <div className="detail-section">
-          <p className="detail-label">Clips</p>
-          <div className="detail-value">{displayResource.clips.length} clip(s)</div>
-        </div>
-      )}
+
     </div>
   )
 
