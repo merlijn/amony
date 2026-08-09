@@ -33,7 +33,7 @@ const ConfigMenu = () => {
   const aspectRatioOptions: Array<{value: GridAspectRatio, label: string}> = [
     { value: '2/1', label: '2 / 1' },
     { value: '16/9', label: '16 / 9' },
-    { value: '15/10', label: '15 / 10' },
+    { value: '3/2', label: '3 / 2' },
     { value: '5/4', label: '5 / 4' },
     { value: '1/1', label: '1 / 1' },
   ]
