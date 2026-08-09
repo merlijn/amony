@@ -242,7 +242,7 @@ const ListView = (props: ListProps) => {
                   />
                 </td>
 
-                <TitleCell mediaResource={resource} onClick={() => { toggle(index) }}/>
+                <TitleCell mediaResource={resource} />
 
                 <TagsCell resource={resource}/>
 

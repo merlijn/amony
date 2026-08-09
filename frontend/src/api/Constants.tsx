@@ -9,9 +9,9 @@ const resolutions: Array<Resolution> =
     { value: 2160, label: "4K"}]
 
 const sortingOptions: Array<{value: RegularSort, label: string}> = [
-  { value: { field: "date_added", direction: "desc" }, label: "By date" },
-  { value: { field: "title", direction: "asc" },       label: "By title" },
-  { value: { field: "duration", direction: "asc" },    label: "By duration" }];
+  { value: { field: "date_added", direction: "desc" }, label: "Date" },
+  { value: { field: "title", direction: "asc" },       label: "Title" },
+  { value: { field: "duration", direction: "asc" },    label: "Duration" }];
 
 export const generateRandomSeed = (): number => {
   return Math.floor(10000 + Math.random() * 90000);

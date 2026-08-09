@@ -2,7 +2,7 @@ import {useUrlParam} from "../../api/ReactUtils";
 import {Constants, rangeAsParameter, parseDurationParam, useSortParam, generateRandomSeed} from "../../api/Constants";
 import * as Popover from "@radix-ui/react-popover";
 import './FilterDropdown.scss';
-import {MdTune, MdRefresh} from "react-icons/md";
+import {MdTune, MdRefresh, MdArrowUpward, MdArrowDownward} from "react-icons/md";
 import _ from "lodash";
 import React, { useEffect, useRef, useState } from "react";
 import {Sort} from "../../api/Model";
@@ -78,21 +78,41 @@ const SortSection = ({ selectedValue, onChange }: SortSectionProps) => {
     onChange({ field: "random", seed: generateRandomSeed() });
   };
 
+  const toggleDirection = () => {
+    if (selectedValue.field === "random") return
+    const newDir = selectedValue.direction === "asc" ? "desc" : "asc"
+    onChange({ ...selectedValue, direction: newDir })
+  }
+
   return (
     <div className="filter-section">
-      <div className="section-header">Sort</div>
-      {Constants.sortOptions.map((option, index) => (
-        <div key={`sort-${index}`} className="filter-option" onClick={() => onChange(option.value)}>
-          <input
-            type="radio"
-            name="Sort"
-            value={option.label}
-            checked={!isRandom && _.isEqual(selectedValue, option.value)}
-            onChange={() => onChange(option.value)}
-          />
-          {option.label}
-        </div>
-      ))}
+      <div className="section-header">Sort by</div>
+      {Constants.sortOptions.map((option, index) => {
+        const isSelected = !isRandom && selectedValue.field === option.value.field
+        const onClick = () => isSelected ? toggleDirection() : onChange(option.value)
+        const dirIcon = selectedValue.field !== "random" && isSelected ? (
+          selectedValue.direction === "asc" ? <MdArrowUpward /> : <MdArrowDownward />
+        ) : undefined
+        return (
+          <div key={`sort-${index}`} className="filter-option" onClick={onClick}>
+            <input
+              type="radio"
+              name="Sort"
+              value={option.label}
+              checked={isSelected}
+              onChange={onClick}
+            />
+            {option.label}
+            <span
+              className={`sort-direction-icon${isSelected ? "" : " sort-icon-hidden"}`}
+              onClick={(e) => { if (isSelected) { e.stopPropagation(); toggleDirection() } }}
+              title={isSelected ? `Sort ${selectedValue.direction === "asc" ? "descending" : "ascending"}` : ""}
+            >
+              {dirIcon}
+            </span>
+          </div>
+        )
+      })}
       <div className="filter-option" onClick={selectRandom}>
         <input
           type="radio"
@@ -102,16 +122,14 @@ const SortSection = ({ selectedValue, onChange }: SortSectionProps) => {
           onChange={selectRandom}
         />
         Random
-        {isRandom && (
-          <MdRefresh
-            className="random-refresh-icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              refreshRandom();
-            }}
-            title="New random order"
-          />
-        )}
+        <MdRefresh
+          className={`sort-action-icon${isRandom ? "" : " sort-icon-hidden"}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isRandom) refreshRandom();
+          }}
+          title={isRandom ? "New random order" : ""}
+        />
       </div>
     </div>
   );
