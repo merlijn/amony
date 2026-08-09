@@ -91,8 +91,8 @@ const Preview = (props: PreviewProps) => {
            style        = { mediaContainerStyle }
            onMouseEnter = { () => props.options.showPreviewOnHover && setIsHovering(true) }
            onMouseLeave = { () => setIsHovering(false) }>
-        { isVideo && isHovering && videoPreview }
         { primaryThumbnail }
+        { isVideo && isHovering && videoPreview }
         { overlay }
       </div>
     </ErrorBoundary>
