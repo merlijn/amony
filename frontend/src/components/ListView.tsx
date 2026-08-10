@@ -194,7 +194,7 @@ const ListView = (props: ListProps) => {
   const colGroup =
     <colgroup key="row-column-width-spacer" style ={ {height: 0 } }>
       { session.isAdmin() && <col style = { {width: 36 } }></col> }
-      <col style={{width: 72}}></col>
+      <col style={{width: 62}}></col>
       <col style={{width: "60%"}}></col>
       <col style={{width: "30%"}}></col>
       <col style={{width: 110}}></col>
