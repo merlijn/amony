@@ -1,4 +1,4 @@
-import Dialog from '../common/Dialog';
+import DialogWindow from '../common/DialogWindow';
 import {authLogout} from "../../api/generated";
 
 const Profile = (props: {onLogout: () => void }) => {
@@ -8,9 +8,9 @@ const Profile = (props: {onLogout: () => void }) => {
   }
 
   return (
-    <Dialog title="Profile">
+    <DialogWindow title="Profile">
       <button type="submit" value="submit" className="abs-bottom-right button-primary" tabIndex={1} onClick = {doLogout} >Logout</button>
-    </Dialog>
+    </DialogWindow>
   );
 }
 

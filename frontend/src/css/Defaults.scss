@@ -1,5 +1,3 @@
-@use './Constants.scss' as constants;
-
 *,
 *::before,
 *::after {
@@ -15,7 +13,7 @@ body {
 
 .text-input {
   outline: none;
-  border-radius: constants.$spacing-xs;
+  border-radius: var(--spacing-xs);
   border: 1px solid var(--border-primary);
   background-color: var(--bg-primary);
   color: var(--text-primary);

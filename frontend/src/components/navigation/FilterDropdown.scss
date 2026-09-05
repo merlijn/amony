@@ -1,0 +1,73 @@
+@use 'src/App.scss' as *;
+
+.filter-dropdown-content {
+  display: flex;
+  flex-direction: column;
+  z-index: 250;
+  border-radius: 3px;
+  margin-left: -10px;
+  border: 1px solid var(--border-secondary);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+
+  .filter-container {
+    padding: 15px;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    gap: 20px;
+
+    .filter-section {
+      display: flex;
+      flex-direction: column;
+
+      .section-header {
+        font-size: medium;
+        font-weight: 500;
+        padding-bottom: 8px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid var(--border-secondary);
+      }
+
+      .filter-option {
+        @extend .hover-pointer;
+        padding: 3px 4px;
+        border-radius: 3px;
+        display: inline-block;
+        white-space: nowrap;
+
+        input {
+          margin-right: 8px;
+        }
+
+        label {
+          margin-left: var(--spacing-m);
+        }
+
+        &:hover {
+          background-color: var(--bg-tertiary);
+        }
+
+        .sort-action-icon,
+        .sort-direction-icon {
+          margin-left: 6px;
+          cursor: pointer;
+          vertical-align: middle;
+          width: 18px;
+          height: 18px;
+          display: inline-block;
+          color: var(--highlight-a);
+
+          &:hover {
+            color: var(--text-primary);
+          }
+        }
+
+        .sort-icon-hidden {
+          visibility: hidden;
+        }
+      }
+    }
+  }
+}

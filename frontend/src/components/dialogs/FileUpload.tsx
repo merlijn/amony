@@ -1,7 +1,7 @@
 import React, { ChangeEvent, useState } from 'react';
 import { dateMillisToString } from '../../api/Util';
 import { uploadResource } from '../../api/generated';
-import Dialog from '../common/Dialog';
+import DialogWindow from '../common/DialogWindow';
 import './FileUpload.scss';
 
 const DEFAULT_BUCKET_ID = 'media';
@@ -56,7 +56,7 @@ const FileUpload = () => {
     };
     
     return (
-      <Dialog title="Upload media">
+      <DialogWindow title="Upload media">
         <div className="file-upload-content">
           <div className="file-input-container">
             <input 
@@ -99,7 +99,7 @@ const FileUpload = () => {
             {status === 'uploading' ? 'Uploading...' : 'Upload'}
           </button>
         </div>
-      </Dialog>
+      </DialogWindow>
     );
   }
  

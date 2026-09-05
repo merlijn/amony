@@ -16,7 +16,7 @@ $row-height: 36px;
 
     thead {
       position: sticky;
-      top: $page-header-height;
+      top: 47px;
       background: var(--bg-primary);
       z-index: 10;
     }
@@ -186,7 +186,7 @@ $row-height: 36px;
           @extend .hover-pointer;
           align-items: center;
           vertical-align: middle;
-          width: 64px;
+          width: 54px;
           height: 36px;
         }
       }
@@ -235,7 +235,7 @@ $row-height: 36px;
           right: 4px;
           display: flex;
           justify-content: flex-end;
-          gap: $spacing-s;
+          gap: var(--spacing-s);
           padding-left: 0px;
           background-color: var(--bg-secondary);
           height: 100%;

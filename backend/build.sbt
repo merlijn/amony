@@ -27,14 +27,14 @@ def isMainBranch: Boolean = {
 def hasNoLocalChanges: Boolean = "git status --porcelain".!!.isEmpty
 
 //fork in Global := true
-cancelable in Global := true
+Global / cancelable := true
 
 // -- Custom tasks
 
 lazy val buildSolrTarGz = taskKey[Seq[File]]("Creates the solr.tar.gz file")
 lazy val jibWriteDockerTagsFile = taskKey[File]("Creates the version.txt file")
 
-addCommandAlias("format", "; scalafmt; test:scalafmt")
+addCommandAlias("format", "; scalafmt; Test/scalafmt")
 addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
 
 inThisBuild(
@@ -66,18 +66,19 @@ commands += Command.command("dev") { state =>
 }
 
 val javaDevOpts = Seq(
-  "-DAMONY_SECURE_COOKIES=false",
-  "-DAMONY_OTEL_ENABLED=false",
   // OTEL
+  "-DAMONY_OTEL_ENABLED=false",
   "-Dotel.sdk.disabled=true",
   "-Dotel.service.name=amony-app",
 //  "-Dotel.exporter.otlp.endpoint=http://localhost:5080/api/default",
 //  "-Dotel.exporter.otlp.headers=Authorization=Basic <key>",
 //  "-Dotel.exporter.otlp.protocol=http/protobuf",
-  "-DAMONY_MEDIA_PATH=../media",
+  "-DAMONY_MEDIA_PATH=../data/media",
   "-DAMONY_SOLR_PATH=../data/solr",
   "-DAMONY_WEB_CLIENT_PATH=../frontend/dist",
-//  "-DAMONY_AUTH_ENABLED=false",
+  // Auth
+  "-DAMONY_AUTH_ENABLED=false",
+  "-DAMONY_SECURE_COOKIES=false",
   "-DAMONY_OAUTH_AUTHORIZE_URL=http://localhost:5556/dex/auth",
   "-DAMONY_OAUTH_TOKEN_URL=http://localhost:5556/dex/token",
   "-DAMONY_OAUTH_USERINFO_URL=http://localhost:5556/dex/userinfo",
@@ -86,10 +87,10 @@ val javaDevOpts = Seq(
 
 // --- Main project
 
-val circeVersion    = "0.14.15"
-val http4sVersion   = "0.23.34"
-val tapirVersion    = "1.13.18"
-val sttpVersion     = "4.0.23"
+val circeVersion    = "0.14.16"
+val http4sVersion   = "0.23.36"
+val tapirVersion    = "1.13.31"
+val sttpVersion     = "4.0.26"
 val otel4sVersion   = "0.16.0"
 
 lazy val amony = project
@@ -101,9 +102,10 @@ lazy val amony = project
     scalacOptions := devScalacOptions,
     Global / cancelable   := true,
     Test / fork := true,
-    reStart / javaOptions ++= javaDevOpts,
+//    reStart / javaOptions ++= javaDevOpts,
     run / fork             := true,
     run / javaOptions     ++= javaDevOpts,
+    test / javaOptions    ++= javaDevOpts,
     outputStrategy         := Some(StdoutOutput),
 
     Compile / run / mainClass := Some("nl.amony.App"),
@@ -118,7 +120,7 @@ lazy val amony = project
     jibPlatforms            := Set({if (System.getProperty("os.arch") == "aarch64") JibPlatforms.arm64 else JibPlatforms.amd64}),
     jibImageFormat          := JibImageFormat.OCI,
     jibTags                 := { if (isMainBranch && hasNoLocalChanges) List("latest") else List("dev") },
-    jibExtraMappings   ++= {
+    jibExtraMappings   ++= Def.uncached {
       // this adds the frontend assets to the docker image
       val webClientDir = (Compile / baseDirectory).value / ".." / "frontend" / "dist"
       val target = "/app/assets"
@@ -137,19 +139,16 @@ lazy val amony = project
     jibUseCurrentTimestamp := true,
 
     // Solr tar.gz generation
-    buildSolrTarGz / fileInputs += (Compile / resourceDirectory).value.toGlob / "solr" / "**",
-    buildSolrTarGz := {
+    buildSolrTarGz := Def.uncached {
       import scala.sys.process._
 
       val log = streams.value.log
       val sourceDir = (Compile / resourceDirectory).value / "solr"
       val targetFile = (Compile / resourceManaged).value / "solr.tar.gz"
-      val hasChanges = buildSolrTarGz.inputFileChanges.hasChanges
-
       if (!sourceDir.exists) {
         log.error(s"Source directory does not exist: ${sourceDir.getAbsolutePath}")
         Seq.empty
-      } else if (hasChanges || !targetFile.exists) {
+      } else {
         log.info(s"Generating solr tar at: ${targetFile.getAbsolutePath}")
         // Ensure parent directory exists
         IO.createDirectory(targetFile.getParentFile)
@@ -158,15 +157,12 @@ lazy val amony = project
         val tarCmd = s"tar -czf ${targetFile.getAbsolutePath} -C ${sourceDir.getAbsolutePath} ."
         tarCmd.!
         Seq(targetFile)
-      } else {
-        log.debug(s"Skipped generating solr tar")
-        Seq(targetFile)
       }
     },
     Compile / resourceGenerators += buildSolrTarGz.taskValue,
 
     // This is a hack to make to create a file with the same docker tags from the jib build to be able to push them
-    jibWriteDockerTagsFile := {
+    jibWriteDockerTagsFile := Def.uncached {
       val versionFile = (Compile / baseDirectory).value / ".docker-tags.txt"
       val tags = jibTags.value :+ jibVersion.value
       IO.write(versionFile, tags.mkString("\n"))
@@ -177,13 +173,11 @@ lazy val amony = project
     libraryDependencies ++= Seq(
 
       // general
-      "org.sqids"                   %% "sqids"                                       % "0.6.0",
       "com.github.jwt-scala"        %% "jwt-circe"                                   % "11.0.4",
       "org.apache.tika"              % "tika-core"                                   % "3.3.1",
-      "org.typelevel"               %% "cats-effect"                                 % "3.7.0",
+      "org.typelevel"               %% "cats-effect"                                 % "3.7.1",
       "co.fs2"                      %% "fs2-core"                                    % "3.13.0",
       "co.fs2"                      %% "fs2-io"                                      % "3.13.0",
-//      "org.apache.directory.studio"  % "org.bouncycastle.bcprov.jdk15"               % "140",
 
       // config
       "com.github.pureconfig"        %% "pureconfig-core"                            % "0.17.10",
@@ -194,7 +188,7 @@ lazy val amony = project
       "org.tpolecat"                 %% "skunk-core"                                 % "1.0.0",
       "org.tpolecat"                 %% "skunk-circe"                                % "1.0.0",
       "org.postgresql"                % "postgresql"                                 % "42.7.13",
-      "org.liquibase"                 % "liquibase-core"                             % "5.0.3",
+      "org.liquibase"                 % "liquibase-core"                             % "5.0.4",
 
       // json
       "io.circe"                     %% "circe-core"                                 % circeVersion,
@@ -214,7 +208,7 @@ lazy val amony = project
       "com.softwaremill.sttp.tapir"   %% "tapir-otel4s-tracing"                      % tapirVersion,
       "io.opentelemetry"               % "opentelemetry-exporter-otlp"               % "1.61.0" % Runtime,
       "io.opentelemetry"               % "opentelemetry-sdk-extension-autoconfigure" % "1.61.0" % Runtime,
-      "org.slf4j"                      % "slf4j-api"                                 % "2.0.17",
+      "org.slf4j"                      % "slf4j-api"                                 % "2.0.19",
 
       // http client
       "com.softwaremill.sttp.client4" %% "core"                                      % sttpVersion,
@@ -232,28 +226,28 @@ lazy val amony = project
       "org.http4s"                    %% "http4s-ember-server"                       % http4sVersion,
       "org.http4s"                    %% "http4s-dsl"                                % http4sVersion,
       "org.http4s"                    %% "http4s-circe"                              % http4sVersion,
-      "org.jsoup"                      % "jsoup"                                     % "1.22.2",
+      "org.jsoup"                      % "jsoup"                                     % "1.23.2",
 
       // solr search
       "org.apache.solr"                % "solr-core"                                 % "9.10.1",
       "org.apache.commons"             % "commons-compress"                          % "1.28.0",
-      "org.bouncycastle"               % "bcprov-jdk18on"                            % "1.84",
+      "org.bouncycastle"               % "bcprov-jdk18on"                            % "1.85.2",
 
       // Test dependencies
       "org.scalatest"                 %% "scalatest"                                 % "3.2.20"   % Test,
       "org.scalatestplus"             %% "scalacheck-1-15"                           % "3.2.11.0" % Test,
       "com.dimafeng"                  %% "testcontainers-scala-scalatest"            % "0.44.1"   % Test,
-      "commons-codec"                  % "commons-codec"                             % "1.22.0"   % Test,
-      "org.scalacheck"                %% "scalacheck"                                % "1.19.0"   % Test
+      "commons-codec"                  % "commons-codec"                             % "1.22.1"   % Test,
+      "org.scalacheck"                %% "scalacheck"                                % "1.20.0"   % Test
     ),
 
     // TODO remove this override once skunk has been updated to use otel4s 0.15.x
     dependencyOverrides ++= Seq(
-      "org.typelevel"               %% "otel4s-core-trace"  % otel4sVersion,
-      "org.typelevel"               %% "otel4s-core-logs"  % otel4sVersion,
+      "org.typelevel"               %% "otel4s-core-trace"   % otel4sVersion,
+      "org.typelevel"               %% "otel4s-core-logs"    % otel4sVersion,
       "org.typelevel"               %% "otel4s-core-common"  % otel4sVersion,
-      "org.typelevel"               %% "otel4s-oteljava"  % otel4sVersion,
-      "org.typelevel"               %% "otel4s-semconv"  % otel4sVersion,
+      "org.typelevel"               %% "otel4s-oteljava"     % otel4sVersion,
+      "org.typelevel"               %% "otel4s-semconv"      % otel4sVersion,
     ),
 
     excludeDependencies ++= List(

@@ -1,6 +1,6 @@
 import { CSSProperties } from "react";
 import {Constants, rangeAsParameter} from "./Constants";
-import {ResourceSelection} from "./Model";
+import {GridAspectRatio, GridOrientation, ResourceSelection} from "./Model";
 import {FindResourcesParams} from "./generated";
 
 export function buildUrl(path: string, urlParams: Map<string, string> | undefined) {
@@ -147,7 +147,24 @@ export function boundedRatioBox(maxWidth: string, maxHeight: string, ratio: numb
   }
 }
 
-export const calculateColumns = () => {
-  const c = Math.max(1, Math.round(window.innerWidth / Constants.gridSize));
-  return c;
+export const maxGridColumns = (width: number = window.innerWidth) => {
+  return Math.max(1, Math.floor(width / Constants.minGridCellWidth))
+}
+
+export const clampGridColumns = (columns: number, width: number = window.innerWidth) => {
+  return Math.min(Math.max(1, Math.round(columns)), maxGridColumns(width))
+}
+
+const aspectRatioValues: Record<GridAspectRatio, number> = {
+  '2/1': 2,
+  '16/9': 16 / 9,
+  '3/2': 1.5,
+  '5/4': 5 / 4,
+  '1/1': 1,
+}
+
+export const cssAspectRatio = (ratio: GridAspectRatio, orientation: GridOrientation): string => {
+  const landscape = aspectRatioValues[ratio] ?? (16 / 9)
+  const value = orientation === 'portrait' ? 1 / landscape : landscape
+  return `${value}`
 }

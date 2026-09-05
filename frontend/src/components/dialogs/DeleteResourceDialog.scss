@@ -3,7 +3,7 @@
 .delete-resource-dialog {
   display: flex;
   flex-direction: column;
-  gap: $spacing-m;
+  gap: var(--spacing-m);
 
   p {
     margin: 0;
@@ -23,7 +23,7 @@
 .delete-resource-actions {
   display: flex;
   justify-content: flex-end;
-  gap: $spacing-m;
+  gap: var(--spacing-m);
 }
 
 .delete-resource-button {

@@ -15,7 +15,7 @@
 .providers-list {
   display: flex;
   flex-direction: column;
-  gap: $spacing-m;
+  gap: var(--spacing-m);
   width: 100%;
 }
 
@@ -24,9 +24,9 @@
   
   display: flex;
   align-items: center;
-  gap: $spacing-m;
-  padding: $spacing-m $spacing-l;
-  border-radius: $spacing-s;
+  gap: var(--spacing-m);
+  padding: var(--spacing-m) var(--spacing-l);
+  border-radius: var(--spacing-s);
   border: 1px solid var(--border-primary);
   background-color: var(--bg-secondary);
   color: var(--text-primary);

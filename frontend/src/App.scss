@@ -5,6 +5,15 @@
 @forward 'src/css/Layout.scss';
 @forward 'src/css/Defaults.scss';
 
+// Shared design tokens (themeable later)
+:root {
+  --spacing-xs: 2px;
+  --spacing-s: 5px;
+  --spacing-m: 12px;
+  --spacing-l: 24px;
+  --spacing-xl: 40px;
+}
+
 // Light theme (default)
 :root,
 [data-theme="light"] {

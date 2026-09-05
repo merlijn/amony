@@ -76,8 +76,12 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       expires  = Some(Instant.now().plus(Duration.ofSeconds(authConfig.jwt.refreshTokenExpiration.toSeconds)))
     )
 
-    val xsrfCookie = CookieValueWithMeta
-      .unsafeApply(value = UUID.randomUUID().toString, path = Some("/"), httpOnly = false, secure = authConfig.secureCookies)
+    val xsrfCookie = CookieValueWithMeta.unsafeApply(
+      value = UUID.randomUUID().toString, 
+      path = Some("/"), 
+      httpOnly = false, 
+      secure = authConfig.secureCookies
+    )
 
     AuthCookies(accessTokenCookie, refreshCookie, xsrfCookie)
   }

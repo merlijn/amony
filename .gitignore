@@ -12,6 +12,8 @@ frontend/src/api/generated
 # backend, java, scala
 *.class
 target/
+/backend/project/.boot/
+/backend/project/.sbtboot/
 .idea/
 .bsp/
 .bloop/
@@ -42,4 +44,3 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 .docker-tags.txt
-

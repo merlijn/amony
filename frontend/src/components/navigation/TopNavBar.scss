@@ -172,102 +172,26 @@
           }
         }
 
-        .filter-dropdown-container {
-          @extend .abs-top-left;
-          width: 100%;
-          height: 100%;
-          
-          .filter-dropdown-icon {
-            @extend .abs-top-right;
-            z-index: 12 !important;
-            margin: 1px;
-            padding: 4px;
-            box-sizing: content-box;
-            border-radius: 2px;
-            width: 25px;
-            height: 25px;
+         .filter-dropdown-icon {
+           @extend .abs-top-right;
+           z-index: 300;
+           margin: 1px;
+           padding: 4px;
+           box-sizing: content-box;
+           border-radius: 2px;
+           width: 25px;
+           height: 25px;
+           background: none;
+           border: none;
+           cursor: pointer;
+           color: var(--text-secondary);
 
-            &:hover {
-              background-color: var(--bg-tertiary);
-            }
-          }
+           &:hover {
+             background-color: var(--bg-tertiary);
+           }
+         }
 
-          .filter-dropdown-content {
-
-            display: flex;
-            flex-direction: column;
-            z-index: 11 !important;
-
-            border-radius: 0px 0px 3px 3px;
-            border: 1px solid var(--border-secondary);
-            border-top: 1px solid var(--bg-tertiary);
-            margin-top: 29px;
-            width: 100%;
-            background-color: var(--bg-secondary);
-
-            .filter-container {
-              padding: 15px;
-              display: flex;
-              flex-direction: row;
-              flex-wrap: wrap;
-              justify-content: space-around;
-              gap: 20px;
-              
-              .filter-section {
-                display: flex;
-                flex-direction: column;
-
-                .section-header {
-                  font-size: medium;
-                  font-weight: 500;
-                  padding-bottom: 8px;
-                  margin-bottom: 12px;
-                  border-bottom: 1px solid var(--border-secondary);
-                }
-
-                .filter-option {
-                  @extend .hover-pointer;
-                  padding: 3px 4px;
-                  border-radius: 3px;
-                  display: inline-block;
-                  white-space: nowrap;
-
-                  input {
-                    margin-right: 8px;
-                  }
-
-                  label {
-                    margin-left: constants.$spacing-m;
-                  }
-
-                  &:hover {
-                    background-color: var(--bg-tertiary);
-                  }
-
-                  .random-refresh-icon {
-                    margin-left: 8px;
-                    cursor: pointer;
-                    vertical-align: top;
-                    width: 20px;
-                    height: 20px;
-                    display: inline-block;
-                    
-                    &:hover {
-                      color: var(--text-primary);
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }    
       }
     }
   }
 }
-
-
-
-
-
-

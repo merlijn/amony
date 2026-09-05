@@ -1,5 +1,4 @@
 @use '../css/Layout.scss' as layout;
-@use '../css/Constants.scss' as constants;
 
 .preview-resource {
 
@@ -13,25 +12,10 @@
     position: relative;
     width: 100%;
     overflow: hidden;
-    // 9 / 16 ratio
-    padding-top: 56.25%; 
-    z-index: 4;
+    aspect-ratio: var(--preview-aspect-ratio, 16 / 9);
   
-    .preview-overlay {
-      z-index: 7;
-    }
-  
-    .preview-thumbnail {
-      z-index: 5;
-    }
-  
-    .preview-video {
-      z-index: 6;
-    }
-
     .preview-unsupported-overlay {
       @extend .abs-top-left;
-      z-index: 8;
       margin: 3px;
       padding: 5px;
       background: rgba(0,0,0,0.5);
@@ -45,7 +29,6 @@
 
       @extend .abs-bottom-left;
       opacity: 0.85;
-      z-index: 8;
       margin: 5px;
       padding: 2px 5px;
       color: #f0f0f0;
@@ -55,24 +38,29 @@
       font-size: 13px;
     }
 
-    .preview-delete-icon-overlay {
+    .preview-icon-stack {
       @extend .abs-top-right;
-      z-index: 8;
       margin: 5px;
-      padding: 5px;
-      cursor: pointer;
       display: flex;
-      align-items: center;
-      justify-content: center;
-      svg {
-        width: 20px;
-        height: 20px;
-        color: #fff;
-        filter: drop-shadow(0 0 4px rgba(0,0,0,0.9));
-      }
-      &:hover {
-        background-color: rgba(0,0,0,0.5);
-        border-radius: 50%;
+      flex-direction: column;
+      gap: 4px;
+
+      .preview-icon-button {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 5px;
+        svg {
+          width: 20px;
+          height: 20px;
+          color: #fff;
+          filter: drop-shadow(0 0 4px rgba(0,0,0,0.9));
+        }
+        &:hover {
+          background-color: rgba(0,0,0,0.5);
+          border-radius: 50%;
+        }
       }
     }
   
@@ -107,7 +95,7 @@
     color: var(--text-primary);
   
     .media-title {
-      padding-left: constants.$spacing-s;
+      padding-left: var(--spacing-s);
       flex-grow: 1;
       float: left;
       

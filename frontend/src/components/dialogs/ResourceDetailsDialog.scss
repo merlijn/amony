@@ -1,0 +1,104 @@
+@use 'src/App.scss' as *;
+
+.resource-details {
+  display: table;
+  table-layout: fixed;
+  width: 100%;
+
+  .detail-section {
+    display: table-row;
+
+    .detail-label {
+      @extend .v-align-center, .pr-3, .pb-3;
+      display: table-cell;
+      width: 140px;
+      color: var(--text-tertiary);
+      font-size: small;
+      white-space: nowrap;
+    }
+
+    .detail-value {
+      @extend .v-align-center, .pb-3;
+      display: table-cell;
+      word-break: break-all;
+      font-size: small;
+    }
+  }
+}
+
+.resource-details-loading {
+  padding: var(--spacing-l);
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+.resource-details-dialog {
+  overflow: hidden;
+
+  .modal-dialog-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+}
+
+.tabs-root {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tabs-list {
+  display: flex;
+  border-bottom: 1px solid var(--border-primary);
+  margin-bottom: var(--spacing-l);
+}
+
+.tab-trigger {
+  @extend .hover-pointer;
+  padding: var(--spacing-s) var(--spacing-m);
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  font-size: medium;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+
+  &[data-state="active"] {
+    color: var(--highlight-a);
+    border-bottom-color: var(--highlight-a);
+  }
+
+  &:hover {
+    color: var(--text-primary);
+  }
+}
+
+.tab-content {
+  outline: none;
+  overflow: hidden;
+}
+
+.resource-details-dialog .tab-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-gutter: stable;
+}
+
+.resource-details-json {
+  margin: 0;
+  padding: var(--spacing-s);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-primary);
+}

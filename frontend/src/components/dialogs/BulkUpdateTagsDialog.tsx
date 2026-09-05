@@ -1,8 +1,9 @@
 import React, {useEffect, useMemo, useRef, useState} from "react"
 import {BulkTagsUpdateDto, modifyResourceTagsBulk, ResourceDto} from "../../api/generated"
-import Modal from "../common/Modal"
+import * as RadixDialog from "@radix-ui/react-dialog"
+import "../common/Dialog.scss"
 import "./BulkUpdateTagsDialog.scss"
-import Dialog from "../common/Dialog";
+import DialogContainer from "../common/DialogWindow";
 
 type BulkUpdateTagsProps = {
   selectedResources: ResourceDto[]
@@ -173,63 +174,68 @@ const BulkUpdateTagsDialog = ({selectedResources, visible, onUpdate, onHide}: Bu
   }
 
   return (
-    <Modal visible = { visible } onHide = { onHide }>
-      <Dialog>
-        <div className="bulk-tag-modal">
-          <h2>Update tags</h2>
-          <p>{`Updating ${selectedResources.length} resource${selectedResources.length === 1 ? "" : "s"}.`}</p>
+    <RadixDialog.Root open={visible} onOpenChange={(open) => { if (!open) onHide() }}>
+      <RadixDialog.Portal>
+        <RadixDialog.Overlay className="dialog-overlay" />
+        <RadixDialog.Content className="dialog-content">
+          <DialogContainer>
+            <div className="bulk-tag-modal">
+              <h2>Update tags</h2>
+              <p>{`Updating ${selectedResources.length} resource${selectedResources.length === 1 ? "" : "s"}.`}</p>
 
-          <div className="bulk-tag-section">
-            <div className="bulk-tag-list">
-              {allTags.length === 0 && <span className="bulk-tag-empty">No tags yet.</span>}
-              {allTags.map(tag => (
-                <TagRow key={tag} tag={tag} />
-              ))}
+              <div className="bulk-tag-section">
+                <div className="bulk-tag-list">
+                  {allTags.length === 0 && <span className="bulk-tag-empty">No tags yet.</span>}
+                  {allTags.map(tag => (
+                    <TagRow key={tag} tag={tag} />
+                  ))}
+                </div>
+
+                <div className="bulk-tag-new">
+                  <input
+                    className="bulk-tag-input"
+                    type="text"
+                    placeholder="Add tag"
+                    value={newTag}
+                    onChange={event => setNewTag(event.target.value)}
+                    onKeyDown={event => {
+                      if (event.key === "Enter") {
+                        event.preventDefault()
+                        submitNewTag()
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="bulk-tag-button secondary"
+                    onClick={submitNewTag}
+                    disabled={!newTag.trim()}
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              {error && <div className="bulk-tag-error">{error}</div>}
+
+              <div className="bulk-tag-actions">
+                <button className="bulk-tag-button" type="button" onClick={onHide} disabled={isSubmitting}>
+                  Cancel
+                </button>
+                <button
+                  className="bulk-tag-button primary"
+                  type="button"
+                  onClick={handleBulkUpdate}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Saving..." : "Apply"}
+                </button>
+              </div>
             </div>
-
-            <div className="bulk-tag-new">
-              <input
-                className="bulk-tag-input"
-                type="text"
-                placeholder="Add tag"
-                value={newTag}
-                onChange={event => setNewTag(event.target.value)}
-                onKeyDown={event => {
-                  if (event.key === "Enter") {
-                    event.preventDefault()
-                    submitNewTag()
-                  }
-                }}
-              />
-              <button
-                type="button"
-                className="bulk-tag-button secondary"
-                onClick={submitNewTag}
-                disabled={!newTag.trim()}
-              >
-                Add
-              </button>
-            </div>
-          </div>
-
-          {error && <div className="bulk-tag-error">{error}</div>}
-
-          <div className="bulk-tag-actions">
-            <button className="bulk-tag-button" type="button" onClick={onHide} disabled={isSubmitting}>
-              Cancel
-            </button>
-            <button
-              className="bulk-tag-button primary"
-              type="button"
-              onClick={handleBulkUpdate}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Saving..." : "Apply"}
-            </button>
-          </div>
-        </div>
-      </Dialog>
-    </Modal>
+          </DialogContainer>
+        </RadixDialog.Content>
+      </RadixDialog.Portal>
+    </RadixDialog.Root>
   )
 }
 

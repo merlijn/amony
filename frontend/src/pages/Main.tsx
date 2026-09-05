@@ -7,10 +7,11 @@ import GridView from "../components/GridView";
 import TopNavBar from "../components/navigation/TopNavBar";
 import ResourceViewModal from "../components/common/ResourceViewModal";
 import {isMobile} from "react-device-detect";
+import '../components/common/Dialog.scss';
 import './Main.scss';
 import ListView from "../components/ListView";
-import {buildUrl, copyParams} from "../api/Util";
-import Modal from "../components/common/Modal";
+import {buildUrl, copyParams, cssAspectRatio} from "../api/Util";
+import * as Dialog from "@radix-ui/react-dialog";
 import ConfigMenu from "../components/dialogs/ConfigMenu";
 import {ResourceDto} from "../api/generated";
 import {useLocalStorage} from "usehooks-ts";
@@ -89,9 +90,14 @@ const Main = () => {
     return (
         <>
           <ResourceViewModal resource= { showResource } onHide = { () => setShowResource(undefined) } />
-          <Modal visible = { showSettings } onHide = { () => setShowSettings(false) }>
-              <ConfigMenu />
-          </Modal>
+          <Dialog.Root open={showSettings} onOpenChange={setShowSettings}>
+            <Dialog.Portal>
+              <Dialog.Overlay className="dialog-overlay" />
+              <Dialog.Content className="dialog-content-window">
+                <ConfigMenu />
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog.Root>
           <div className="main-page">
 
             { showNavigation && 
@@ -113,14 +119,18 @@ const Main = () => {
                   showTagbar = { showNavigation }
                   componentType = 'page'
                   onClick   = { (v: ResourceDto) => setShowResource(v) }
-                  columns   = { prefs.gallery_columns }
+                  columns   = { typeof prefs.gallery_columns === 'number' ? prefs.gallery_columns : Constants.defaultPreferences.gallery_columns }
                   previewOptionsFn = { (v: ResourceDto) => {
                       return {
                         showPreviewOnHover: !isMobile,
                         showInfoBar: prefs.showTitles,
                         showDates: prefs.showDates,
                         showDuration: prefs.showDuration,
-                        showResolution: prefs.showResolution
+                        showResolution: prefs.showResolution,
+                        aspectRatio: cssAspectRatio(
+                          prefs.gridAspectRatio ?? "16/9",
+                          prefs.gridOrientation ?? "landscape"
+                        )
                       }
                     }
                   }/>

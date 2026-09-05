@@ -11,7 +11,8 @@ import {buildUrl, copyParams} from "../../api/Util";
 import './TopNavBar.scss';
 import {AiOutlineSetting} from "react-icons/ai";
 import {CgProfile} from "react-icons/cg";
-import Modal from "../common/Modal";
+import * as Dialog from "@radix-ui/react-dialog";
+import "../common/Dialog.scss";
 import Profile from "../dialogs/Profile";
 import FileUpload from "../dialogs/FileUpload";
 import {BiLogInCircle} from "react-icons/bi";
@@ -90,15 +91,30 @@ function TopNavBar(props: NavBarProps) {
 
   return(
     <>
-    <Modal visible = { showProfile } onHide = { () => setShowProfile(false) }>
-      <Profile onLogout = { () => { window.location.reload(); } } />
-    </Modal>
-    <Modal visible = { showUpload } onHide = { () => setShowUpload(false) }>
-      <FileUpload />
-    </Modal>
-    <Modal visible = { showLogin } onHide = { () => setShowLogin(false) }>
-      <LoginDialog onClose = { () => setShowLogin(false) } providers = { oauthProviders } />
-    </Modal>
+    <Dialog.Root open={showProfile} onOpenChange={(open) => { if (!open) setShowProfile(false) }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="dialog-overlay" />
+        <Dialog.Content className="dialog-content">
+          <Profile onLogout = { () => { window.location.reload(); } } />
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+    <Dialog.Root open={showUpload} onOpenChange={(open) => { if (!open) setShowUpload(false) }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="dialog-overlay" />
+        <Dialog.Content className="dialog-content">
+          <FileUpload />
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+    <Dialog.Root open={showLogin} onOpenChange={(open) => { if (!open) setShowLogin(false) }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="dialog-overlay" />
+        <Dialog.Content className="dialog-content">
+          <LoginDialog onClose = { () => setShowLogin(false) } providers = { oauthProviders } />
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
     <div className = "nav-bar-container">
       <div className = "top-nav-bar">
           <div key = "nav-bar-center" className = "nav-bar-center">
