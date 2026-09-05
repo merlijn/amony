@@ -27,14 +27,14 @@ def isMainBranch: Boolean = {
 def hasNoLocalChanges: Boolean = "git status --porcelain".!!.isEmpty
 
 //fork in Global := true
-cancelable in Global := true
+Global / cancelable := true
 
 // -- Custom tasks
 
 lazy val buildSolrTarGz = taskKey[Seq[File]]("Creates the solr.tar.gz file")
 lazy val jibWriteDockerTagsFile = taskKey[File]("Creates the version.txt file")
 
-addCommandAlias("format", "; scalafmt; test:scalafmt")
+addCommandAlias("format", "; scalafmt; Test/scalafmt")
 addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
 
 inThisBuild(
@@ -120,7 +120,7 @@ lazy val amony = project
     jibPlatforms            := Set({if (System.getProperty("os.arch") == "aarch64") JibPlatforms.arm64 else JibPlatforms.amd64}),
     jibImageFormat          := JibImageFormat.OCI,
     jibTags                 := { if (isMainBranch && hasNoLocalChanges) List("latest") else List("dev") },
-    jibExtraMappings   ++= {
+    jibExtraMappings   ++= Def.uncached {
       // this adds the frontend assets to the docker image
       val webClientDir = (Compile / baseDirectory).value / ".." / "frontend" / "dist"
       val target = "/app/assets"
@@ -139,19 +139,16 @@ lazy val amony = project
     jibUseCurrentTimestamp := true,
 
     // Solr tar.gz generation
-    buildSolrTarGz / fileInputs += (Compile / resourceDirectory).value.toGlob / "solr" / "**",
-    buildSolrTarGz := {
+    buildSolrTarGz := Def.uncached {
       import scala.sys.process._
 
       val log = streams.value.log
       val sourceDir = (Compile / resourceDirectory).value / "solr"
       val targetFile = (Compile / resourceManaged).value / "solr.tar.gz"
-      val hasChanges = buildSolrTarGz.inputFileChanges.hasChanges
-
       if (!sourceDir.exists) {
         log.error(s"Source directory does not exist: ${sourceDir.getAbsolutePath}")
         Seq.empty
-      } else if (hasChanges || !targetFile.exists) {
+      } else {
         log.info(s"Generating solr tar at: ${targetFile.getAbsolutePath}")
         // Ensure parent directory exists
         IO.createDirectory(targetFile.getParentFile)
@@ -160,15 +157,12 @@ lazy val amony = project
         val tarCmd = s"tar -czf ${targetFile.getAbsolutePath} -C ${sourceDir.getAbsolutePath} ."
         tarCmd.!
         Seq(targetFile)
-      } else {
-        log.debug(s"Skipped generating solr tar")
-        Seq(targetFile)
       }
     },
     Compile / resourceGenerators += buildSolrTarGz.taskValue,
 
     // This is a hack to make to create a file with the same docker tags from the jib build to be able to push them
-    jibWriteDockerTagsFile := {
+    jibWriteDockerTagsFile := Def.uncached {
       val versionFile = (Compile / baseDirectory).value / ".docker-tags.txt"
       val tags = jibTags.value :+ jibVersion.value
       IO.write(versionFile, tags.mkString("\n"))
