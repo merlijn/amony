@@ -87,10 +87,10 @@ val javaDevOpts = Seq(
 
 // --- Main project
 
-val circeVersion    = "0.14.15"
+val circeVersion    = "0.14.16"
 val http4sVersion   = "0.23.34"
-val tapirVersion    = "1.13.18"
-val sttpVersion     = "4.0.23"
+val tapirVersion    = "1.13.31"
+val sttpVersion     = "4.0.26"
 val otel4sVersion   = "0.16.0"
 
 lazy val amony = project
@@ -102,7 +102,7 @@ lazy val amony = project
     scalacOptions := devScalacOptions,
     Global / cancelable   := true,
     Test / fork := true,
-    reStart / javaOptions ++= javaDevOpts,
+//    reStart / javaOptions ++= javaDevOpts,
     run / fork             := true,
     run / javaOptions     ++= javaDevOpts,
     test / javaOptions    ++= javaDevOpts,
