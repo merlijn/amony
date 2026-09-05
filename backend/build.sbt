@@ -176,7 +176,7 @@ lazy val amony = project
       "org.sqids"                   %% "sqids"                                       % "0.6.0",
       "com.github.jwt-scala"        %% "jwt-circe"                                   % "11.0.4",
       "org.apache.tika"              % "tika-core"                                   % "3.3.1",
-      "org.typelevel"               %% "cats-effect"                                 % "3.7.0",
+      "org.typelevel"               %% "cats-effect"                                 % "3.7.1",
       "co.fs2"                      %% "fs2-core"                                    % "3.13.0",
       "co.fs2"                      %% "fs2-io"                                      % "3.13.0",
 //      "org.apache.directory.studio"  % "org.bouncycastle.bcprov.jdk15"               % "140",
@@ -190,7 +190,7 @@ lazy val amony = project
       "org.tpolecat"                 %% "skunk-core"                                 % "1.0.0",
       "org.tpolecat"                 %% "skunk-circe"                                % "1.0.0",
       "org.postgresql"                % "postgresql"                                 % "42.7.13",
-      "org.liquibase"                 % "liquibase-core"                             % "5.0.3",
+      "org.liquibase"                 % "liquibase-core"                             % "5.0.4",
 
       // json
       "io.circe"                     %% "circe-core"                                 % circeVersion,
@@ -210,7 +210,7 @@ lazy val amony = project
       "com.softwaremill.sttp.tapir"   %% "tapir-otel4s-tracing"                      % tapirVersion,
       "io.opentelemetry"               % "opentelemetry-exporter-otlp"               % "1.61.0" % Runtime,
       "io.opentelemetry"               % "opentelemetry-sdk-extension-autoconfigure" % "1.61.0" % Runtime,
-      "org.slf4j"                      % "slf4j-api"                                 % "2.0.17",
+      "org.slf4j"                      % "slf4j-api"                                 % "2.0.19",
 
       // http client
       "com.softwaremill.sttp.client4" %% "core"                                      % sttpVersion,
@@ -228,7 +228,7 @@ lazy val amony = project
       "org.http4s"                    %% "http4s-ember-server"                       % http4sVersion,
       "org.http4s"                    %% "http4s-dsl"                                % http4sVersion,
       "org.http4s"                    %% "http4s-circe"                              % http4sVersion,
-      "org.jsoup"                      % "jsoup"                                     % "1.22.2",
+      "org.jsoup"                      % "jsoup"                                     % "1.23.2",
 
       // solr search
       "org.apache.solr"                % "solr-core"                                 % "9.10.1",
@@ -239,8 +239,8 @@ lazy val amony = project
       "org.scalatest"                 %% "scalatest"                                 % "3.2.20"   % Test,
       "org.scalatestplus"             %% "scalacheck-1-15"                           % "3.2.11.0" % Test,
       "com.dimafeng"                  %% "testcontainers-scala-scalatest"            % "0.44.1"   % Test,
-      "commons-codec"                  % "commons-codec"                             % "1.22.0"   % Test,
-      "org.scalacheck"                %% "scalacheck"                                % "1.19.0"   % Test
+      "commons-codec"                  % "commons-codec"                             % "1.22.1"   % Test,
+      "org.scalacheck"                %% "scalacheck"                                % "1.20.0"   % Test
     ),
 
     // TODO remove this override once skunk has been updated to use otel4s 0.15.x
