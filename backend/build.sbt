@@ -88,7 +88,7 @@ val javaDevOpts = Seq(
 // --- Main project
 
 val circeVersion    = "0.14.16"
-val http4sVersion   = "0.23.34"
+val http4sVersion   = "0.23.36"
 val tapirVersion    = "1.13.31"
 val sttpVersion     = "4.0.26"
 val otel4sVersion   = "0.16.0"
@@ -173,13 +173,11 @@ lazy val amony = project
     libraryDependencies ++= Seq(
 
       // general
-      "org.sqids"                   %% "sqids"                                       % "0.6.0",
       "com.github.jwt-scala"        %% "jwt-circe"                                   % "11.0.4",
       "org.apache.tika"              % "tika-core"                                   % "3.3.1",
       "org.typelevel"               %% "cats-effect"                                 % "3.7.1",
       "co.fs2"                      %% "fs2-core"                                    % "3.13.0",
       "co.fs2"                      %% "fs2-io"                                      % "3.13.0",
-//      "org.apache.directory.studio"  % "org.bouncycastle.bcprov.jdk15"               % "140",
 
       // config
       "com.github.pureconfig"        %% "pureconfig-core"                            % "0.17.10",
@@ -233,7 +231,7 @@ lazy val amony = project
       // solr search
       "org.apache.solr"                % "solr-core"                                 % "9.10.1",
       "org.apache.commons"             % "commons-compress"                          % "1.28.0",
-      "org.bouncycastle"               % "bcprov-jdk18on"                            % "1.84",
+      "org.bouncycastle"               % "bcprov-jdk18on"                            % "1.85.2",
 
       // Test dependencies
       "org.scalatest"                 %% "scalatest"                                 % "3.2.20"   % Test,
@@ -245,11 +243,11 @@ lazy val amony = project
 
     // TODO remove this override once skunk has been updated to use otel4s 0.15.x
     dependencyOverrides ++= Seq(
-      "org.typelevel"               %% "otel4s-core-trace"  % otel4sVersion,
-      "org.typelevel"               %% "otel4s-core-logs"  % otel4sVersion,
+      "org.typelevel"               %% "otel4s-core-trace"   % otel4sVersion,
+      "org.typelevel"               %% "otel4s-core-logs"    % otel4sVersion,
       "org.typelevel"               %% "otel4s-core-common"  % otel4sVersion,
-      "org.typelevel"               %% "otel4s-oteljava"  % otel4sVersion,
-      "org.typelevel"               %% "otel4s-semconv"  % otel4sVersion,
+      "org.typelevel"               %% "otel4s-oteljava"     % otel4sVersion,
+      "org.typelevel"               %% "otel4s-semconv"      % otel4sVersion,
     ),
 
     excludeDependencies ++= List(
