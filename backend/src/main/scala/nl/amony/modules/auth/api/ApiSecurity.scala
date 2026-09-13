@@ -3,10 +3,8 @@ package nl.amony.modules.auth.api
 import java.time.{Duration, Instant}
 import java.util.UUID
 
-import cats.effect.IO
-import org.http4s.Request
-import org.typelevel.ci.CIStringSyntax
 import scribe.Logging
+import sttp.model.Method
 import sttp.model.headers.CookieValueWithMeta
 
 import nl.amony.lib.tapir.AuthCookies
@@ -15,21 +13,13 @@ import nl.amony.modules.auth.api.{Authentication, JwtDecoder}
 
 class ApiSecurity(authConfig: AuthConfig) extends Logging:
 
-  private val decoder: JwtDecoder = authConfig.decoder
+  private val decoder: JwtDecoder  = authConfig.decoder
+  private val xsrfProtectedMethods = Set(Method.POST, Method.PUT, Method.PATCH, Method.DELETE)
 
   private val adminToken = AuthToken(
     userId = UserId("admin"),
     roles  = Set(Role.Admin)
   )
-
-  def requireSession(req: Request[IO]): Either[SecurityError, AuthToken] = {
-    val securityInput = SecurityInput(
-      accessToken = req.cookies.find(_.name == "access_token").map(_.content),
-      xsrfCookie  = req.cookies.find(_.name == "XSRF-TOKEN").map(_.content),
-      xXsrfHeader = req.headers.get(ci"X-XSRF-TOKEN").map(_.head.value)
-    )
-    requireSession(securityInput)
-  }
 
   private def requireXsrfProtection(securityInput: SecurityInput): Either[SecurityError, Unit] =
     for
@@ -38,12 +28,14 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       _           <- if xsrfToken == xXsrfHeader then Right(()) else Left(SecurityError.Unauthorized)
     yield ()
 
-  def requireSession(securityInput: SecurityInput, xsrfProtection: Boolean = true): Either[SecurityError, AuthToken] = {
+  def requireSession(securityInput: SecurityInput): Either[SecurityError, AuthToken] = {
     def validateInput =
       for
         accessToken <- securityInput.accessToken.toRight(SecurityError.Unauthorized)
         decoded     <- decoder.decode(accessToken).left.map(_ => SecurityError.Unauthorized)
-        _           <- if xsrfProtection then requireXsrfProtection(securityInput) else Right(())
+        _           <-
+          if xsrfProtectedMethods.contains(securityInput.method) then requireXsrfProtection(securityInput)
+          else Right(())
       yield AuthToken(decoded.userId, decoded.roles)
 
     if authConfig.enabled then validateInput else Right(adminToken)
@@ -52,8 +44,8 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
   def publicEndpoint(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
     requireSession(securityInput).orElse(Right(AuthToken.anonymous))
 
-  def requireRole(requiredRole: Role, xsrfProtection: Boolean = true)(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
-    requireSession(securityInput, xsrfProtection).flatMap(token =>
+  def requireRole(requiredRole: Role)(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
+    requireSession(securityInput).flatMap(token =>
       if token.roles.contains(requiredRole) then Right(token) else Left(SecurityError.Forbidden)
     )
 
@@ -77,10 +69,10 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
     )
 
     val xsrfCookie = CookieValueWithMeta.unsafeApply(
-      value = UUID.randomUUID().toString, 
-      path = Some("/"), 
-      httpOnly = false, 
-      secure = authConfig.secureCookies
+      value    = UUID.randomUUID().toString,
+      path     = Some("/"),
+      httpOnly = false,
+      secure   = authConfig.secureCookies
     )
 
     AuthCookies(accessTokenCookie, refreshCookie, xsrfCookie)

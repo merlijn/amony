@@ -99,8 +99,8 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: Use
       .header("Authorization", s"Bearer $accessToken")
       .response(asJson[UserInfo])
 
-    EitherT(httpClient.send(req).map(_.body.left.map(_.getMessage))).leftMap { error =>
-      logger.error(s"Error fetching user info from OAuth provider $provider: $error")
+    EitherT(httpClient.send(req).map(_.body)).leftMap { error =>
+      logger.error(s"Error fetching user info from OAuth provider $provider", error)
       UnknownError
     }
   }

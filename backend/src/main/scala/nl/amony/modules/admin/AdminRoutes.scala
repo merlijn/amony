@@ -5,15 +5,16 @@ import org.http4s.*
 import scribe.Logging
 import sttp.capabilities.fs2.Fs2Streams
 import sttp.tapir.*
-import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
+import sttp.tapir.server.http4s.Http4sServerOptions
 
+import nl.amony.lib.tapir.dsl.{RoutesModule, routes, serverLogic}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.{ResourceBucket, ResourceInfo}
 import nl.amony.modules.resources.http.{ResourceDto, oneOfList, toDto}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.modules.search.api.SearchService
 
-object AdminRoutes extends Logging:
+object AdminRoutes extends RoutesModule, Logging:
 
   val errorOutput: EndpointOutput[SecurityError] = oneOfList(securityErrors)
 
@@ -21,106 +22,106 @@ object AdminRoutes extends Logging:
     override val mediaType: sttp.model.MediaType = sttp.model.MediaType.unsafeParse("application/x-ndjson")
 
   val reIndex =
-    endpoint.tag("admin").name("adminReindexBucket").description("Re-index all resources in a bucket.")
+    register(endpoint.tag("admin").name("adminReindexBucket").description("Re-index all resources in a bucket.")
       .post.in("api" / "admin" / "reindex")
       .in(query[String]("bucketId").description("The id of the bucket to re-index."))
       .securityIn(securityInput)
-      .errorOut(errorOutput)
+      .errorOut(errorOutput))
 
   val refresh =
-    endpoint.tag("admin").name("adminRefreshBucket").description("Refresh all resources in a bucket")
+    register(endpoint.tag("admin").name("adminRefreshBucket").description("Refresh all resources in a bucket")
       .post.in("api" / "admin" / "refresh")
       .in(query[String]("bucketId").description("The id of the bucket to refresh."))
       .securityIn(securityInput)
-      .errorOut(errorOutput)
+      .errorOut(errorOutput))
 
   val rescanMetaData =
-    endpoint
+    register(endpoint
       .tag("admin").name("adminRescanMetaData").description("Rescan the metadata of all files in a bucket")
       .post.in("api" / "admin" / "re-scan-metadata")
       .in(query[String]("bucketId").description("The id of the bucket to re-scan."))
       .securityIn(securityInput)
-      .errorOut(errorOutput)
+      .errorOut(errorOutput))
 
   val reComputeHashes =
-    endpoint.name("adminReComputeHashes").tag("admin").description("Recompute the hashes of all files in a bucket")
+    register(endpoint.name("adminReComputeHashes").tag("admin").description("Recompute the hashes of all files in a bucket")
       .post.in("api" / "admin" / "re-compute-hashes")
       .in(query[String]("bucketId").description("The id of the bucket to re-compute the hashes for."))
       .securityIn(securityInput)
-      .errorOut(errorOutput)
+      .errorOut(errorOutput))
 
   val exportBucket =
-    endpoint.name("adminExportBucket").tag("admin").description("Export all resources in a bucket")
+    register(endpoint.name("adminExportBucket").tag("admin").description("Export all resources in a bucket")
       .get.in("api" / "admin" / "export" / path[String]("bucketId"))
       .securityIn(securityInput)
       .out(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson))
-      .errorOut(errorOutput)
+      .errorOut(errorOutput))
 
   val importBucket =
-    endpoint.name("adminImportBucket").tag("admin").description("Import all resources in a bucket")
+    register(endpoint.name("adminImportBucket").tag("admin").description("Import all resources in a bucket")
       .post.in("api" / "admin" / "import" / path[String]("bucketId"))
       .in(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson))
       .securityIn(securityInput)
-      .errorOut(errorOutput)
+      .errorOut(errorOutput))
 
-  val endpoints = List(reIndex, refresh, rescanMetaData, reComputeHashes, exportBucket, importBucket)
-
-  def apply(searchService: SearchService, buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity)(
-    using serverOptions: Http4sServerOptions[IO]
+  def apply(searchService: SearchService, buckets: Map[String, ResourceBucket])(
+    using serverOptions: Http4sServerOptions[IO],
+    apiSecurity: ApiSecurity
   ): HttpRoutes[IO] = {
 
-    val reIndexImpl = reIndex.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin))
-      .serverLogicSuccess(_ =>
-        bucketId =>
-          buckets.get(bucketId) match
-            case None         => IO.unit
-            case Some(bucket) =>
-              logger.info(s"Re-indexing all resources in bucket '$bucketId'")
+    routes[IO](serverOptions) {
+      serverLogic(endpoint = reIndex, requiredRole = Role.Admin) { _ => bucketId =>
+        val result = buckets.get(bucketId) match
+          case None         => IO.unit
+          case Some(bucket) =>
+            logger.info(s"Re-indexing all resources in bucket '$bucketId'")
 
-              for
-                _ <- searchService.deleteBucket(bucketId)
-                _ <- searchService.indexAll(bucket.getAllResources)
-                _ <- searchService.forceCommit()
-                _ <- IO(logger.info(s"Re-indexed all resources in bucket '$bucketId'"))
-              yield ()
-      )
+            for
+              _ <- searchService.deleteBucket(bucketId)
+              _ <- searchService.indexAll(bucket.getAllResources)
+              _ <- searchService.forceCommit()
+              _ <- IO(logger.info(s"Re-indexed all resources in bucket '$bucketId'"))
+            yield ()
 
-    val refreshImpl =
-      refresh.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin))
-        .serverLogicSuccess(_ =>
-          bucketId =>
-            buckets.get(bucketId) match
-              case Some(bucket: LocalDirectoryBucket) =>
-                logger.info(s"Refreshing resources in bucket '$bucketId'")
-                bucket.refresh() >> IO(logger.info(s"Finished refreshing resources in bucket '$bucketId'"))
-              case _                                  =>
-                IO(logger.info(s"Cannot refresh bucket '$bucketId'"))
-        )
+        result.map(Right(_))
+      }
 
-    val rescanMetaDataImpl = rescanMetaData.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogicSuccess(_ =>
-      bucketId =>
-        buckets.get(bucketId) match
+      serverLogic(endpoint = refresh, requiredRole = Role.Admin) { _ => bucketId =>
+        val result = buckets.get(bucketId) match
+          case Some(bucket: LocalDirectoryBucket) =>
+            logger.info(s"Refreshing resources in bucket '$bucketId'")
+            bucket.refresh() >> IO(logger.info(s"Finished refreshing resources in bucket '$bucketId'"))
+          case _                                  =>
+            IO(logger.info(s"Cannot refresh bucket '$bucketId'"))
+
+        result.map(Right(_))
+      }
+
+      serverLogic(endpoint = rescanMetaData, requiredRole = Role.Admin) { _ => bucketId =>
+        val result = buckets.get(bucketId) match
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Re-scanning meta data of all resources in bucket '$bucketId'")
             bucket.reScanAllMetadata() >> IO(logger.info(s"Finished re-scanning meta data of all resources in bucket '$bucketId'"))
           case _                                  =>
             logger.info(s"Cannot re-scan meta data of bucket '$bucketId'")
             IO.unit
-    )
 
-    val recomputeHashesImpl = reComputeHashes.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogicSuccess(_ =>
-      bucketId =>
-        buckets.get(bucketId) match
+        result.map(Right(_))
+      }
+
+      serverLogic(endpoint = reComputeHashes, requiredRole = Role.Admin) { _ => bucketId =>
+        val result = buckets.get(bucketId) match
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Re-computing partialHashs of all resources in bucket '$bucketId'")
             bucket.reComputePartialHashs() >> IO(logger.info(s"Finished re-computing partialHashs of all resources in bucket '$bucketId'"))
           case _                                  =>
             logger.info(s"Cannot re-compute partialHashs of bucket '$bucketId'")
             IO.unit
-    )
 
-    val exportBucketImpl = exportBucket.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogic(_ =>
-      bucketId =>
+        result.map(Right(_))
+      }
+
+      serverLogic(endpoint = exportBucket, requiredRole = Role.Admin) { _ => bucketId =>
         buckets.get(bucketId) match
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Exporting resources in bucket '$bucketId'")
@@ -130,26 +131,24 @@ object AdminRoutes extends Logging:
           case _                                  =>
             logger.info(s"Cannot backup bucket '$bucketId'")
             IO(Right(fs2.Stream.empty[IO]))
-    )
+      }
 
-    val importBucketImpl = importBucket.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogic(_ =>
-      (bucketId, stream) =>
-        buckets.get(bucketId) match
-          case Some(bucket: LocalDirectoryBucket) =>
-            logger.info(s"Importing resources into bucket '$bucketId'")
+      serverLogic(endpoint = importBucket, requiredRole = Role.Admin)(_ =>
+        (bucketId, stream) =>
+          buckets.get(bucketId) match
+            case Some(bucket: LocalDirectoryBucket) =>
+              logger.info(s"Importing resources into bucket '$bucketId'")
 
-            val resources: fs2.Stream[IO, ResourceInfo] = stream.through(fs2.text.utf8.decode[IO]).through(fs2.text.lines)
-              .map(line => io.circe.parser.decode[ResourceDto](line).map(_.toDomain())).flatMap {
-                case Right(resource) => fs2.Stream.emit(resource)
-                case Left(error)     => fs2.Stream.raiseError[IO](error)
-              }
+              val resources: fs2.Stream[IO, ResourceInfo] = stream.through(fs2.text.utf8.decode[IO]).through(fs2.text.lines)
+                .map(line => io.circe.parser.decode[ResourceDto](line).map(_.toDomain())).flatMap {
+                  case Right(resource) => fs2.Stream.emit(resource)
+                  case Left(error)     => fs2.Stream.raiseError[IO](error)
+                }
 
-            bucket.importBackup(resources).map(_ => Right(()))
-          case _                                  =>
-            logger.info(s"Cannot import into bucket '$bucketId'")
-            IO(Right(()))
-    )
-
-    Http4sServerInterpreter[IO](serverOptions)
-      .toRoutes(List(reIndexImpl, refreshImpl, rescanMetaDataImpl, recomputeHashesImpl, exportBucketImpl, importBucketImpl))
+              bucket.importBackup(resources).map(_ => Right(()))
+            case _                                  =>
+              logger.info(s"Cannot import into bucket '$bucketId'")
+              IO(Right(()))
+      )
+    }
   }

@@ -37,7 +37,7 @@ object ResourceToolMetaDto {
 
 object ResourceDto:
   given schemaForCirceJsonAny: Schema[Option[Json]] = Schema.any[Option[Json]]
-  given Schema[ResourceDto] = Schema.derived[ResourceDto]
+  given Schema[ResourceDto]                         = Schema.derived[ResourceDto]
 
 case class ResourceDto(
   bucketId: String,
@@ -104,7 +104,8 @@ case class CollectionDto(
 case class CreateCollectionDto(
   name: String,
   parentId: Option[CollectionId],
-  description: Option[String]
+  description: Option[String],
+  tags: List[String]
 ) derives Codec, sttp.tapir.Schema
 
 def toDto(resource: ResourceInfo): ResourceDto = {

@@ -25,6 +25,7 @@ import nl.amony.lib.messagebus.EventTopic
 import nl.amony.lib.observability.Observability
 import nl.amony.modules.admin.AdminRoutes
 import nl.amony.modules.auth.*
+import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.resources.ResourceConfig
 import nl.amony.modules.resources.api.ResourceEvent
 import nl.amony.modules.resources.dal.ResourceDatabase
@@ -109,12 +110,16 @@ object App extends ResourceApp.Forever with Logging {
         resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
         authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
         collectionsDal     = ResourceDatabase(databasePool)
-        apiRoutes          = ResourceContentRoutes.apply(resourceBucketMap, authModule.apiSecurity) <+>
-                               authModule.routes <+>
-                               CollectionRoutes.apply(collectionsDal, authModule.apiSecurity) <+>
-                               AdminRoutes.apply(searchService, resourceBucketMap, authModule.apiSecurity) <+>
-                               SearchRoutes.apply(searchService, appConfig.search, authModule.apiSecurity) <+>
-                               ResourceRoutes.apply(resourceBucketMap, authModule.apiSecurity)
+        apiRoutes          = {
+          given ApiSecurity = authModule.apiSecurity
+
+          ResourceContentRoutes.apply(resourceBucketMap) <+>
+            authModule.routes <+>
+            CollectionRoutes.apply(collectionsDal) <+>
+            AdminRoutes.apply(searchService, resourceBucketMap) <+>
+            SearchRoutes.apply(searchService, appConfig.search) <+>
+            ResourceRoutes.apply(resourceBucketMap)
+        }
         _                 <- WebServer.run(appConfig.api, apiRoutes)
       yield ()
     }
