@@ -4,6 +4,9 @@
 /media/
 /data/
 
+# codegraph
+.codegraph/
+
 backend/.docker-tags.txt
 frontend/src/api/generated
 

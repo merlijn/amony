@@ -5,6 +5,15 @@
       "type": "local",
       "enabled" : true,
       "command": ["npx", "-y", "@playwright/mcp"]
+    },
+    "codegraph": {
+      "type": "local",
+      "command": [
+        "codegraph",
+        "serve",
+        "--mcp"
+      ],
+      "enabled": true
     }
   }
 }
