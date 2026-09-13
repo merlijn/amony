@@ -15,7 +15,7 @@ function App() {
   const sessionPromise = useMemo(() =>
       getSession()
         .then((authToken) => ({
-          isLoggedIn: () => true,
+          isLoggedIn: () => authToken.userId !== "anonymous",
           isAdmin: () => authToken.roles.includes("admin")
         } as SessionInfo))
         .catch((error: AxiosError) => {

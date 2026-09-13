@@ -18,7 +18,7 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
 
   private val adminToken = AuthToken(
     userId = UserId("admin"),
-    roles  = Set(Role.Admin)
+    roles  = Set(Role.Admin, Role.Authenticated)
   )
 
   private def requireXsrfProtection(securityInput: SecurityInput): Either[SecurityError, Unit] =
@@ -28,28 +28,31 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       _           <- if xsrfToken == xXsrfHeader then Right(()) else Left(SecurityError.Unauthorized)
     yield ()
 
-  def requireSession(securityInput: SecurityInput): Either[SecurityError, AuthToken] = {
-    def validateInput =
-      for
-        accessToken <- securityInput.accessToken.toRight(SecurityError.Unauthorized)
-        decoded     <- decoder.decode(accessToken).left.map(_ => SecurityError.Unauthorized)
-        _           <-
-          if xsrfProtectedMethods.contains(securityInput.method) then requireXsrfProtection(securityInput)
-          else Right(())
-      yield AuthToken(decoded.userId, decoded.roles)
+  private def resolveToken(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
+    if !authConfig.enabled then Right(adminToken)
+    else
+      securityInput.accessToken match
+        case None              => Right(AuthToken.anonymous)
+        case Some(accessToken) =>
+          decoder.decode(accessToken) match
+            case Left(_)        => Right(AuthToken.anonymous)
+            case Right(decoded) =>
+              val token = AuthToken(decoded.userId, decoded.roles + Role.Authenticated)
+              if xsrfProtectedMethods.contains(securityInput.method) then
+                requireXsrfProtection(securityInput).map(_ => token)
+              else Right(token)
 
-    if authConfig.enabled then validateInput else Right(adminToken)
-  }
+  def authorize(requiredPermission: Option[Permission] = None)(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
+    resolveToken(securityInput).flatMap { token =>
+      requiredPermission match
+        case None             => Right(token)
+        case Some(permission) =>
+          if userAccess(token).permissions.contains(permission) then Right(token)
+          else if token.roles.contains(Role.Anonymous) then Left(SecurityError.Unauthorized)
+          else Left(SecurityError.Forbidden)
+    }
 
-  def publicEndpoint(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
-    requireSession(securityInput).orElse(Right(AuthToken.anonymous))
-
-  def requireRole(requiredRole: Role)(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
-    requireSession(securityInput).flatMap(token =>
-      if token.roles.contains(requiredRole) then Right(token) else Left(SecurityError.Forbidden)
-    )
-
-  def userAccess(authToken: AuthToken): UserAccessConfig = authConfig.access(authToken.roles)
+  def userAccess(authToken: AuthToken): RoleAccessConfig = authConfig.access(authToken)
 
   def createCookies(apiAuthentication: Authentication): AuthCookies = {
     val accessTokenCookie = CookieValueWithMeta.unsafeApply(

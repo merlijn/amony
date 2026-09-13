@@ -2,8 +2,7 @@ package nl.amony
 
 import java.security.SecureRandom
 import javax.net.ssl.{KeyManagerFactory, SNIHostName, SSLContext}
-import scala.concurrent.duration.DurationInt
-
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import cats.data.Kleisli
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource}
@@ -24,7 +23,6 @@ import org.http4s.{Headers, HttpRoutes, Request, Response, Status}
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.typelevel.otel4s.metrics.MeterProvider
 import scribe.Logging
-
 import nl.amony.modules.auth.crypt.PemReader
 import nl.amony.modules.resources.http.ResourceDirectives
 import nl.amony.{HttpConfig, HttpsConfig, WebServerConfig}

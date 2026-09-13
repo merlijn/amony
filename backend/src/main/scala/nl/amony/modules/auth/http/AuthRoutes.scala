@@ -92,7 +92,7 @@ object AuthRoutes extends RoutesModule, Logging:
           case Right(authentication) => Right(apiSecurity.createCookies(authentication))
       }
 
-      serverLogic(endpoint = sessionEndpoint, authorize = apiSecurity.requireSession)(auth => _ => IO(Right(auth)))
+      serverLogic(endpoint = sessionEndpoint)(auth => _ => IO(Right(auth)))
 
       serverLogic(endpoint = logoutEndpoint)(_ => IO.pure(Right(apiSecurity.createLogoutCookes)))
 

@@ -1,5 +1,6 @@
 import de.gccc.jib.MappingsHelper
 
+import scala.concurrent.duration.*
 import scala.sys.process.*
 import sbt.Keys.{scalaVersion, streams}
 import sbt.Command
@@ -28,6 +29,9 @@ def hasNoLocalChanges: Boolean = "git status --porcelain".!!.isEmpty
 
 //fork in Global := true
 Global / cancelable := true
+
+// Shut down the detached sbt server after 1 hour of inactivity instead of the 7 day default.
+Global / serverIdleTimeout := Some(1.hour)
 
 // -- Custom tasks
 
@@ -88,7 +92,7 @@ val javaDevOpts = Seq(
 // --- Main project
 
 val circeVersion    = "0.14.16"
-val http4sVersion   = "0.23.36"
+val http4sVersion   = "0.23.37"
 val tapirVersion    = "1.13.31"
 val sttpVersion     = "4.0.26"
 val otel4sVersion   = "0.16.0"
@@ -176,8 +180,8 @@ lazy val amony = project
       "com.github.jwt-scala"        %% "jwt-circe"                                   % "11.0.4",
       "org.apache.tika"              % "tika-core"                                   % "3.3.1",
       "org.typelevel"               %% "cats-effect"                                 % "3.7.1",
-      "co.fs2"                      %% "fs2-core"                                    % "3.13.0",
-      "co.fs2"                      %% "fs2-io"                                      % "3.13.0",
+      "co.fs2"                      %% "fs2-core"                                    % "3.14.0",
+      "co.fs2"                      %% "fs2-io"                                      % "3.14.0",
 
       // config
       "com.github.pureconfig"        %% "pureconfig-core"                            % "0.17.10",

@@ -86,18 +86,18 @@ object ResourceRoutes extends RoutesModule:
         case UploadError.StorageError(_)    => ApiError.BadRequest
 
     routes[IO](serverOptions) {
-      serverLogicT(endpoint = getResourceById, authorize = apiSecurity.publicEndpoint) { _ => (bucketId, resourceId) =>
+      serverLogicT(endpoint = getResourceById, requiredPermission = Permission.ViewResource) { _ => (bucketId, resourceId) =>
         getResource(bucketId, resourceId).map((_, resource) => toDto(resource.info))
       }
 
-      serverLogicT(endpoint = deleteResource, requiredRole = Role.Admin) { _ => (bucketId, resourceId) =>
+      serverLogicT(endpoint = deleteResource, requiredPermission = Permission.ManageResources) { _ => (bucketId, resourceId) =>
         for
           bucket <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
           _      <- EitherT.right(bucket.deleteResource(resourceId))
         yield ()
       }
 
-      serverLogicT(endpoint = updateUserMetaData, requiredRole = Role.Admin) { _ => (bucketId, resourceId, userMeta) =>
+      serverLogicT(endpoint = updateUserMetaData, requiredPermission = Permission.ManageResources) { _ => (bucketId, resourceId, userMeta) =>
         for
           sanitizedTitle       <- sanitizeOpt(userMeta.title, 128, _ => true)
           sanitizedDescription <- sanitizeOpt(userMeta.description, 1280, _ => true)
@@ -108,13 +108,13 @@ object ResourceRoutes extends RoutesModule:
         yield ()
       }
 
-      serverLogicT(endpoint = updateThumbnailTimestamp, requiredRole = Role.Admin) { _ => (bucketId, resourceId, dto) =>
+      serverLogicT(endpoint = updateThumbnailTimestamp, requiredPermission = Permission.ManageResources) { _ => (bucketId, resourceId, dto) =>
         getResource(bucketId, resourceId).flatMap((bucket, _) =>
           EitherT.right(bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis))
         )
       }
 
-      serverLogicT(endpoint = modifyTagsBulk, requiredRole = Role.Admin) { _ => (bucketId, dto) =>
+      serverLogicT(endpoint = modifyTagsBulk, requiredPermission = Permission.ManageResources) { _ => (bucketId, dto) =>
         val action =
           for
             _               <- EitherT.cond[IO](dto.ids.nonEmpty, (), ApiError.BadRequest)
@@ -127,14 +127,14 @@ object ResourceRoutes extends RoutesModule:
         action
       }
 
-      serverLogicT(endpoint = uploadResource, requiredRole = Role.Admin) { token => (bucketId, fileName, body) =>
+      serverLogicT(endpoint = uploadResource, requiredPermission = Permission.UploadResource) { token => (bucketId, fileName, body) =>
         for
           bucket   <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound: ApiError | SecurityError)
           resource <- EitherT(bucket.uploadResource(token.userId, fileName, body)).leftMap(mapUploadError)
         yield toDto(resource)
       }
 
-      serverLogic(endpoint = getBuckets, authorize = apiSecurity.publicEndpoint) { _ => _ =>
+      serverLogic(endpoint = getBuckets, requiredPermission = Permission.ViewResource) { _ => _ =>
         IO.pure(Right(buckets.values.map(bucket => BucketDto(bucket.id, "", "")).toList))
       }
     }

@@ -56,11 +56,11 @@ object CollectionRoutes extends RoutesModule:
 
     routes[IO](serverOptions) {
 
-      serverLogic(endpoint = getCollections, authorize = apiSecurity.requireSession) { auth => _ =>
+      serverLogic(endpoint = getCollections, requiredPermission = Permission.ManageCollections) { auth => _ =>
         collectionsDal.getCollectionsForUser(auth.userId).map(_.map(toDto)).map(Right(_))
       }
 
-      serverLogicT(endpoint = createCollection, authorize = apiSecurity.requireSession) { auth => dto =>
+      serverLogicT(endpoint = createCollection, requiredPermission = Permission.ManageCollections) { auth => dto =>
         for
           sanitizedName        <- sanitize(dto.name, 128, _ => true)
           sanitizedDescription <- sanitizeOpt(dto.description, 1280, _ => true)
@@ -77,17 +77,17 @@ object CollectionRoutes extends RoutesModule:
         yield toDto(collection)
       }
 
-      serverLogic(endpoint = addResourceToCollection, authorize = apiSecurity.requireSession) {
+      serverLogic(endpoint = addResourceToCollection, requiredPermission = Permission.ManageCollections) {
         _ => (collectionId, bucketId, resourceId) =>
           collectionsDal.addResourceToCollection(collectionId, bucketId, resourceId).map(Right(_))
       }
 
-      serverLogic(endpoint = removeResourceFromCollection, authorize = apiSecurity.requireSession) {
+      serverLogic(endpoint = removeResourceFromCollection, requiredPermission = Permission.ManageCollections) {
         _ => (collectionId, bucketId, resourceId) =>
           collectionsDal.removeResourceFromCollection(collectionId, bucketId, resourceId).map(Right(_))
       }
 
-      serverLogic(endpoint = getResourcesInCollection, authorize = apiSecurity.requireSession) {
+      serverLogic(endpoint = getResourcesInCollection, requiredPermission = Permission.ManageCollections) {
         token => collectionId =>
           collectionsDal.getCollectionById(collectionId).flatMap {
             case Some(collection) if collection.userId == token.userId =>

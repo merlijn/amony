@@ -70,7 +70,7 @@ object AdminRoutes extends RoutesModule, Logging:
   ): HttpRoutes[IO] = {
 
     routes[IO](serverOptions) {
-      serverLogic(endpoint = reIndex, requiredRole = Role.Admin) { _ => bucketId =>
+      serverLogic(endpoint = reIndex, requiredPermission = Permission.Admin) { _ => bucketId =>
         val result = buckets.get(bucketId) match
           case None         => IO.unit
           case Some(bucket) =>
@@ -86,7 +86,7 @@ object AdminRoutes extends RoutesModule, Logging:
         result.map(Right(_))
       }
 
-      serverLogic(endpoint = refresh, requiredRole = Role.Admin) { _ => bucketId =>
+      serverLogic(endpoint = refresh, requiredPermission = Permission.Admin) { _ => bucketId =>
         val result = buckets.get(bucketId) match
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Refreshing resources in bucket '$bucketId'")
@@ -97,7 +97,7 @@ object AdminRoutes extends RoutesModule, Logging:
         result.map(Right(_))
       }
 
-      serverLogic(endpoint = rescanMetaData, requiredRole = Role.Admin) { _ => bucketId =>
+      serverLogic(endpoint = rescanMetaData, requiredPermission = Permission.Admin) { _ => bucketId =>
         val result = buckets.get(bucketId) match
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Re-scanning meta data of all resources in bucket '$bucketId'")
@@ -109,7 +109,7 @@ object AdminRoutes extends RoutesModule, Logging:
         result.map(Right(_))
       }
 
-      serverLogic(endpoint = reComputeHashes, requiredRole = Role.Admin) { _ => bucketId =>
+      serverLogic(endpoint = reComputeHashes, requiredPermission = Permission.Admin) { _ => bucketId =>
         val result = buckets.get(bucketId) match
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Re-computing partialHashs of all resources in bucket '$bucketId'")
@@ -121,7 +121,7 @@ object AdminRoutes extends RoutesModule, Logging:
         result.map(Right(_))
       }
 
-      serverLogic(endpoint = exportBucket, requiredRole = Role.Admin) { _ => bucketId =>
+      serverLogic(endpoint = exportBucket, requiredPermission = Permission.Admin) { _ => bucketId =>
         buckets.get(bucketId) match
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Exporting resources in bucket '$bucketId'")
@@ -133,7 +133,7 @@ object AdminRoutes extends RoutesModule, Logging:
             IO(Right(fs2.Stream.empty[IO]))
       }
 
-      serverLogic(endpoint = importBucket, requiredRole = Role.Admin)(_ =>
+      serverLogic(endpoint = importBucket, requiredPermission = Permission.Admin)(_ =>
         (bucketId, stream) =>
           buckets.get(bucketId) match
             case Some(bucket: LocalDirectoryBucket) =>

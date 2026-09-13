@@ -88,7 +88,6 @@ object App extends ResourceApp.Forever with Logging {
     def application(
       using meterProvider: MeterProvider[IO],
       meter: Meter[IO],
-      tracerProvider: TracerProvider[IO],
       tracer: Tracer[IO]
     ): Resource[IO, Unit] = {
 
@@ -125,10 +124,10 @@ object App extends ResourceApp.Forever with Logging {
     }
 
     for
-      (meterProvider, tracerProvider, f) <- Observability.resource[IO](appConfig.observability)
+      (meterProvider, tracerProvider, _) <- Observability.resource[IO](appConfig.observability)
       meter                              <- Resource.eval(meterProvider.get("app.amony"))
       tracer                             <- Resource.eval(tracerProvider.get("app.amony"))
-      _                                  <- application(using meterProvider, meter, tracerProvider, tracer)
+      _                                  <- application(using meterProvider, meter, tracer)
     yield ()
   }
 }

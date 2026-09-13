@@ -13,5 +13,5 @@ case class AuthToken(
 ) derives Codec, sttp.tapir.Schema
 
 object AuthToken {
-  val anonymous: AuthToken = AuthToken(userId = UserId.anonymous, roles = Set.empty)
+  val anonymous: AuthToken = AuthToken(userId = UserId.anonymous, roles = Set(Role.Anonymous))
 }
