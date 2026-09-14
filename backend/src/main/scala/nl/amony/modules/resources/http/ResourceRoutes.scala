@@ -9,68 +9,70 @@ import sttp.capabilities.fs2.Fs2Streams
 import sttp.model.{HeaderNames, StatusCode}
 import sttp.tapir.*
 import sttp.tapir.json.circe.*
-import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
+import sttp.tapir.server.http4s.Http4sServerOptions
 
+import nl.amony.lib.tapir.dsl.{RoutesModule, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.{Resource, ResourceBucket, ResourceId, UploadError}
 
 val errorOutput: EndpointOutput[ApiError | SecurityError] = oneOfList(securityErrors ++ apiErrorOutputs)
 
-object ResourceRoutes:
+object ResourceRoutes extends RoutesModule:
 
   val getBuckets =
-    endpoint
+    register(endpoint
       .name("getBuckets").tag("resources").description("Get information about a resource by its id")
       .get.in("api" / "buckets")
       .securityIn(securityInput).errorOut(errorOutput)
-      .out(apiNoCacheHeaders).out(jsonBody[List[BucketDto]])
+      .out(apiNoCacheHeaders).out(jsonBody[List[BucketDto]]))
 
   val getResourceById: Endpoint[SecurityInput, (String, ResourceId), ApiError | SecurityError, ResourceDto, Any] =
-    endpoint
+    register(endpoint
       .name("getResourceById").tag("resources").description("Get information about a resource by its id")
       .get.in("api" / "resources" / path[String]("bucketId") / path[ResourceId]("resourceId"))
       .securityIn(securityInput).errorOut(errorOutput)
-      .out(apiNoCacheHeaders).out(jsonBody[ResourceDto])
+      .out(apiNoCacheHeaders).out(jsonBody[ResourceDto]))
 
   val updateUserMetaData: Endpoint[SecurityInput, (String, ResourceId, UserMetaDto), ApiError | SecurityError, Unit, Any] =
-    endpoint
+    register(endpoint
       .name("updateUserMetaData").tag("resources").description("Update the user metadata of a resource")
       .post.in("api" / "resources" / path[String]("bucketId") / path[ResourceId]("resourceId") / "update_user_meta")
       .securityIn(securityInput)
-      .in(jsonBody[UserMetaDto]).errorOut(errorOutput)
+      .in(jsonBody[UserMetaDto]).errorOut(errorOutput))
 
   val updateThumbnailTimestamp: Endpoint[SecurityInput, (String, ResourceId, ThumbnailTimestampDto), ApiError | SecurityError, Unit, Any] =
-    endpoint
+    register(endpoint
       .name("updateThumbnailTimestamp").tag("resources").description("Update the thumbnail timestamp of a resource")
       .post.in("api" / "resources" / path[String]("bucketId") / path[ResourceId]("resourceId") / "update_thumbnail_timestamp")
       .securityIn(securityInput)
-      .in(jsonBody[ThumbnailTimestampDto]).errorOut(errorOutput)
+      .in(jsonBody[ThumbnailTimestampDto]).errorOut(errorOutput))
 
   val deleteResource: Endpoint[SecurityInput, (String, ResourceId), ApiError | SecurityError, Unit, Any] =
-    endpoint
+    register(endpoint
       .name("deleteResource").tag("resources").description("Delete a resource by its id")
       .delete.in("api" / "resources" / path[String]("bucketId") / path[ResourceId]("resourceId"))
-      .securityIn(securityInput).errorOut(errorOutput)
+      .securityIn(securityInput).errorOut(errorOutput))
 
   val modifyTagsBulk: Endpoint[SecurityInput, (String, BulkTagsUpdateDto), ApiError | SecurityError, Unit, Any] =
-    endpoint
+    register(endpoint
       .name("modifyResourceTagsBulk").tag("resources").description("Add or remove tags for multiple resources")
       .post.in("api" / "resources" / path[String]("bucketId") / "bulk" / "tags").securityIn(securityInput)
       .in(jsonBody[BulkTagsUpdateDto])
-      .errorOut(errorOutput)
+      .errorOut(errorOutput))
 
-  val uploadResource =
-    endpoint
+  val uploadResource: Endpoint[SecurityInput, (String, String, fs2.Stream[IO, Byte]), ApiError | SecurityError, ResourceDto, Fs2Streams[IO]] =
+    register(endpoint
       .name("uploadResource").tag("resources").description("Upload a resource to a bucket")
       .post.in("api" / "resources" / path[String]("bucketId") / "upload")
       .securityIn(securityInput).errorOut(errorOutput)
       .in(header[String]("X-Filename"))
       .in(streamBody(Fs2Streams[IO])(Schema.schemaForByteArray, CodecFormat.OctetStream()))
-      .out(jsonBody[ResourceDto])
+      .out(jsonBody[ResourceDto]))
 
-  val endpoints = List(getBuckets, getResourceById, deleteResource, updateUserMetaData, updateThumbnailTimestamp, modifyTagsBulk, uploadResource)
-
-  def apply(buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity)(using serverOptions: Http4sServerOptions[IO]): HttpRoutes[IO] = {
+  def apply(buckets: Map[String, ResourceBucket])(
+    using serverOptions: Http4sServerOptions[IO],
+    apiSecurity: ApiSecurity
+  ): HttpRoutes[IO] = {
 
     def getResource(bucketId: String, resourceId: ResourceId): EitherT[IO, ApiError, (ResourceBucket, Resource)] =
       for
@@ -78,45 +80,41 @@ object ResourceRoutes:
         resource <- EitherT.fromOptionF(bucket.getResource(resourceId), NotFound)
       yield bucket -> resource
 
-    val getBucketsImpl = getBuckets.serverSecurityLogicPure(apiSecurity.publicEndpoint)
-      .serverLogicSuccess(_ => _ => IO.pure(buckets.values.map(bucket => BucketDto(bucket.id, "", "")).toList))
+    def mapUploadError(uploadError: UploadError): ApiError | SecurityError =
+      uploadError match
+        case UploadError.InvalidFileName(_) => ApiError.BadRequest
+        case UploadError.StorageError(_)    => ApiError.BadRequest
 
-    val getResourceByIdImpl = getResourceById.serverSecurityLogicPure(apiSecurity.publicEndpoint)
-      .serverLogic(_ => (bucketId, resourceId) => getResource(bucketId, resourceId).map((_, resource) => toDto(resource.info)).value)
+    routes[IO](serverOptions) {
+      serverLogicT(endpoint = getResourceById, requiredPermission = Permission.ViewResource) { _ => (bucketId, resourceId) =>
+        getResource(bucketId, resourceId).map((_, resource) => toDto(resource.info))
+      }
 
-    val updateUserMetaDataImpl = updateUserMetaData.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogic {
-      _ => (bucketId, resourceId, userMeta) =>
+      serverLogicT(endpoint = deleteResource, requiredPermission = Permission.ManageResources) { _ => (bucketId, resourceId) =>
+        for
+          bucket <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
+          _      <- EitherT.right(bucket.deleteResource(resourceId))
+        yield ()
+      }
 
-        (for
+      serverLogicT(endpoint = updateUserMetaData, requiredPermission = Permission.ManageResources) { _ => (bucketId, resourceId, userMeta) =>
+        for
           sanitizedTitle       <- sanitizeOpt(userMeta.title, 128, _ => true)
           sanitizedDescription <- sanitizeOpt(userMeta.description, 1280, _ => true)
           sanitizedTags        <- sanitizeTags(userMeta.tags)
           response             <- getResource(bucketId, resourceId)
           (bucket, _)           = response
           _                    <- EitherT.right(bucket.updateUserMeta(resourceId, sanitizedTitle, sanitizedDescription, sanitizedTags))
-        yield ()).value
-    }
+        yield ()
+      }
 
-    val updateThumbnailTimestampImpl =
-      updateThumbnailTimestamp.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin))
-        .serverLogic(_ =>
-          (bucketId, resourceId, dto) =>
-            getResource(bucketId, resourceId).flatMap((bucket, _) =>
-              EitherT.right(bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis))
-            ).value
+      serverLogicT(endpoint = updateThumbnailTimestamp, requiredPermission = Permission.ManageResources) { _ => (bucketId, resourceId, dto) =>
+        getResource(bucketId, resourceId).flatMap((bucket, _) =>
+          EitherT.right(bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis))
         )
+      }
 
-    val deleteResourceImpl = deleteResource.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin))
-      .serverLogic(_ =>
-        (bucketId, resourceId) =>
-          (for
-            bucket <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
-            _      <- EitherT.right(bucket.deleteResource(resourceId))
-          yield ()).value
-      )
-
-    val modifyTagsBulkImpl = modifyTagsBulk.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogic {
-      _ => (bucketId, dto) =>
+      serverLogicT(endpoint = modifyTagsBulk, requiredPermission = Permission.ManageResources) { _ => (bucketId, dto) =>
         val action =
           for
             _               <- EitherT.cond[IO](dto.ids.nonEmpty, (), ApiError.BadRequest)
@@ -126,30 +124,18 @@ object ResourceRoutes:
             bucket          <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound)
             _               <- EitherT.right(bucket.updateResourceTags(sanitizedIds, sanitizedAdd, sanitizedRemove))
           yield ()
-        action.value
-    }
+        action
+      }
 
-    def mapUploadError(uploadError: UploadError): ApiError | SecurityError =
-      uploadError match
-        case UploadError.InvalidFileName(_) => ApiError.BadRequest
-        case UploadError.StorageError(_)    => ApiError.BadRequest
-
-    val uploadResourceImpl = uploadResource.serverSecurityLogicPure(apiSecurity.requireRole(Role.Admin)).serverLogic {
-      token => (bucketId, fileName, body) =>
-        (for
+      serverLogicT(endpoint = uploadResource, requiredPermission = Permission.UploadResource) { token => (bucketId, fileName, body) =>
+        for
           bucket   <- EitherT.fromOption[IO](buckets.get(bucketId), NotFound: ApiError | SecurityError)
           resource <- EitherT(bucket.uploadResource(token.userId, fileName, body)).leftMap(mapUploadError)
-        yield toDto(resource)).value
-    }
+        yield toDto(resource)
+      }
 
-    Http4sServerInterpreter[IO](serverOptions)
-      .toRoutes(List(
-        getResourceByIdImpl,
-        deleteResourceImpl,
-        updateUserMetaDataImpl,
-        updateThumbnailTimestampImpl,
-        modifyTagsBulkImpl,
-        uploadResourceImpl,
-        getBucketsImpl
-      ))
+      serverLogic(endpoint = getBuckets, requiredPermission = Permission.ViewResource) { _ => _ =>
+        IO.pure(Right(buckets.values.map(bucket => BucketDto(bucket.id, "", "")).toList))
+      }
+    }
   }

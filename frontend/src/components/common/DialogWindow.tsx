@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
-import './Dialog.scss';
+import './DialogWindow.scss';
 
-const Dialog = (props: { title?: string, children: ReactNode}) => {
+const DialogWindow = (props: { title?: string, children: ReactNode}) => {
   return(
     <div className="modal-dialog-container">
       { props.title && <div className="modal-dialog-title">{ props.title }</div> }
@@ -11,4 +11,4 @@ const Dialog = (props: { title?: string, children: ReactNode}) => {
     </div>);
 }
 
-export default Dialog
+export default DialogWindow

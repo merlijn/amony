@@ -2,7 +2,8 @@ import React, {CSSProperties, useContext, useEffect, useRef, useState} from "rea
 import {isMobile} from "react-device-detect";
 import {boundedRatioBox} from "../../api/Util";
 import './ResourceViewModal.css';
-import Modal from "./Modal";
+import * as Dialog from "@radix-ui/react-dialog";
+import './Dialog.scss';
 import {MediaPlayer, MediaPlayerInstance, MediaProvider, VideoMimeType,} from "@vidstack/react";
 
 import {defaultLayoutIcons, DefaultVideoLayout,} from '@vidstack/react/player/layouts/default';
@@ -46,42 +47,47 @@ const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }
   }
 
   return (
-      <Modal visible = { resource !== undefined } onHide = { onHide }>
-        <div className="video-modal-content" style = { resource && modalSize(resource)}>
-          <MediaPlayer
-            className = "player"
-            tab-index = '-1'
-            playsInline
-            ref = { player }
-            src = { { src: src, type: contentType  } }
-            title = { resource?.title }
-            style = { !isVideo ? { display: "none" } : {} }
-            controlsDelay = { 2000 }
-            volume = { 0.4 }
-            // keep-alive
-            // logLevel = "debug"
-            autoPlay = { true }
-            onDestroy = { () => console.log('destroyed') }
-            // onCanPlay = { autoPlay }
-            // onProviderChange = { onProviderChange }
-          >
-            <MediaProvider />
-            <DefaultVideoLayout icons = { defaultLayoutIcons } />
-          </MediaPlayer>
-          { isImage &&  <img style = {{ width: "100%", height: "100%", visibility : isImage ? "visible" : "hidden" }} src = { src }/> }
-          { session.isAdmin() && isVideo && resource &&
-            <ThumbnailEditor
-              resource = { resource }
-              player = { player }
-              onResourceUpdated = { (updated) => {
-                  setResource(updated)
-                  eventBus.emit("resource-updated", updated)
-                }
+      <Dialog.Root open={resource !== undefined} onOpenChange={(open) => { if (!open) onHide() }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="dialog-overlay" />
+          <Dialog.Content className="dialog-content">
+            <div className="video-modal-content" style = { resource && modalSize(resource)}>
+              <MediaPlayer
+                className = "player"
+                tab-index = '-1'
+                playsInline
+                ref = { player }
+                src = { { src: src, type: contentType  } }
+                title = { resource?.title }
+                style = { !isVideo ? { display: "none" } : {} }
+                controlsDelay = { 2000 }
+                volume = { 0.4 }
+                // keep-alive
+                // logLevel = "debug"
+                autoPlay = { true }
+                onDestroy = { () => console.log('destroyed') }
+                // onCanPlay = { autoPlay }
+                // onProviderChange = { onProviderChange }
+              >
+                <MediaProvider />
+                <DefaultVideoLayout icons = { defaultLayoutIcons } />
+              </MediaPlayer>
+              { isImage &&  <img style = {{ width: "100%", height: "100%", visibility : isImage ? "visible" : "hidden" }} src = { src }/> }
+              { session.isAdmin() && isVideo && resource &&
+                <ThumbnailEditor
+                  resource = { resource }
+                  player = { player }
+                  onResourceUpdated = { (updated) => {
+                      setResource(updated)
+                      eventBus.emit("resource-updated", updated)
+                    }
+                  }
+                />
               }
-            />
-          }
-        </div>
-      </Modal>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
   );
 }
 

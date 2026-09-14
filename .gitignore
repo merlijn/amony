@@ -4,6 +4,9 @@
 /media/
 /data/
 
+# codegraph
+.codegraph/
+
 backend/.docker-tags.txt
 frontend/src/api/generated
 
@@ -12,6 +15,8 @@ frontend/src/api/generated
 # backend, java, scala
 *.class
 target/
+/backend/project/.boot/
+/backend/project/.sbtboot/
 .idea/
 .bsp/
 .bloop/
@@ -42,4 +47,3 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 .docker-tags.txt
-

@@ -7,8 +7,9 @@ import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.*
 import sttp.tapir.json.circe.jsonBody
-import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
+import sttp.tapir.server.http4s.Http4sServerOptions
 
+import nl.amony.lib.tapir.dsl.{RoutesModule, routes, serverLogic}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.http.{oneOfList, toDto}
 import nl.amony.modules.search.SearchConfig
@@ -16,7 +17,7 @@ import nl.amony.modules.search.api.*
 import nl.amony.modules.search.api.SortDirection.{Asc, Desc}
 import nl.amony.modules.search.api.SortField.*
 
-object SearchRoutes:
+object SearchRoutes extends RoutesModule:
 
   enum ApiError:
     case NotFound, BadRequest
@@ -50,12 +51,12 @@ object SearchRoutes:
   val tag      = query[Option[String]]("tag").description("An optional tag")
   val untagged = query[Option[Boolean]]("untagged").description("Only return resources without tags").example(Some(false))
 
-  val searchResourcesEndpoint: Endpoint[SecurityInput, SearchQueryInput, ApiError | SecurityError, SearchResponseDto, Any] = endpoint
-    .name("findResources").tag("search").description("Find resources using a search query").get
-    .in("api" / "search" / "media" / q and n and d and u and sort and minRes and offset and tag and untagged).mapInTo[SearchQueryInput]
-    .securityIn(securityInput).errorOut(errorOutput).out(jsonBody[SearchResponseDto])
-
-  val endpoints = List(searchResourcesEndpoint)
+  val searchResourcesEndpoint: Endpoint[SecurityInput, SearchQueryInput, ApiError | SecurityError, SearchResponseDto, Any] = register(
+    endpoint
+      .name("findResources").tag("search").description("Find resources using a search query").get
+      .in("api" / "search" / "media" / q and n and d and u and sort and minRes and offset and tag and untagged).mapInTo[SearchQueryInput]
+      .securityIn(securityInput).errorOut(errorOutput).out(jsonBody[SearchResponseDto])
+  )
 
   private def getSortedTags(facetMap: Map[String, Long]): Seq[String] =
     facetMap.toSeq
@@ -66,63 +67,65 @@ object SearchRoutes:
   private val randomPattern   = raw"random-(\d{5})".r
   private val sortPattern     = raw"(\w+)(?:-(asc|desc))?".r
 
-  def apply(searchService: SearchService, config: SearchConfig, apiSecurity: ApiSecurity)(
-    using serverOptions: Http4sServerOptions[IO]
+  def apply(searchService: SearchService, config: SearchConfig)(
+    using serverOptions: Http4sServerOptions[IO],
+    apiSecurity: ApiSecurity
   ): HttpRoutes[IO] = {
 
     def sanitize(s: String, maxLength: Int, isCharAllowed: Char => Boolean): String = s.filter(isCharAllowed).take(maxLength)
 
-    val routeImpl = searchResourcesEndpoint.serverSecurityLogicPure(apiSecurity.publicEndpoint).serverLogic {
-      auth => queryDto =>
+    routes[IO](serverOptions) {
+      serverLogic(endpoint = searchResourcesEndpoint, requiredPermission = Permission.SearchResources) {
+        auth => queryDto =>
 
-        def parseRange(s: Option[String]): (Option[Long], Option[Long]) = s match
-          case Some(durationPattern("", ""))   => (None, None)
-          case Some(durationPattern(min, ""))  => (Try(min.toLong).toOption, None)
-          case Some(durationPattern("", max))  => (None, Try(max.toLong).toOption)
-          case Some(durationPattern(min, max)) => (Try(min.toLong).toOption, Try(max.toLong).toOption)
-          case _                               => (None, None)
+          def parseRange(s: Option[String]): (Option[Long], Option[Long]) = s match
+            case Some(durationPattern("", ""))   => (None, None)
+            case Some(durationPattern(min, ""))  => (Try(min.toLong).toOption, None)
+            case Some(durationPattern("", max))  => (None, Try(max.toLong).toOption)
+            case Some(durationPattern(min, max)) => (Try(min.toLong).toOption, Try(max.toLong).toOption)
+            case _                               => (None, None)
 
-        val (minDuration, maxDuration)     = parseRange(queryDto.d)
-        val (minUploadDate, maxUploadDate) = parseRange(queryDto.u)
+          val (minDuration, maxDuration)     = parseRange(queryDto.d)
+          val (minUploadDate, maxUploadDate) = parseRange(queryDto.u)
 
-        val sortOption: SortOption = queryDto.sort.flatMap {
-          case randomPattern(seedStr)  =>
-            Try(seedStr.toInt).toOption.map(seed => SortOption(SortField.Random(seed), Desc))
-          case sortPattern(field, dir) =>
-            val sortField: SortField = field match
-              case "title"      => Title
-              case "size"       => Size
-              case "duration"   => Duration
-              case "date_added" => DateAdded
-              case _            => Title
-            val sortDir              = if dir == "desc" then Desc else Asc
-            Some(SortOption(sortField, sortDir))
-          case _                       => None
-        }.getOrElse(SortOption(Title, Asc))
+          val sortOption: SortOption = queryDto.sort.flatMap {
+            case randomPattern(seedStr)  =>
+              Try(seedStr.toInt).toOption.map(seed => SortOption(SortField.Random(seed), Desc))
+            case sortPattern(field, dir) =>
+              val sortField: SortField = field match
+                case "title"      => Title
+                case "size"       => Size
+                case "duration"   => Duration
+                case "date_added" => DateAdded
+                case _            => Title
+              val sortDir              = if dir == "desc" then Desc else Asc
+              Some(SortOption(sortField, sortDir))
+            case _                       => None
+          }.getOrElse(SortOption(Title, Asc))
 
-        val query = Query(
-          q               = queryDto.q.map(s => sanitize(s, 64, c => c.isLetterOrDigit || c.isWhitespace)),
-          n               = Math.min(queryDto.n.getOrElse(config.defaultNumberOfResults), config.maximumNumberOfResults),
-          offset          = queryDto.offset.map(n => Math.max(0, n)),
-          includeTags     = if queryDto.untagged.contains(true) then Set.empty else queryDto.tag.map(s => sanitize(s, 32, c => c.isLetterOrDigit)).toSet,
-          excludeTags     = apiSecurity.userAccess(auth).hiddenTags,
-          excludeBuckets  = apiSecurity.userAccess(auth).hiddenBuckets,
-          resolutionRange = ResolutionRange(min = queryDto.minRes, max = None),
-          durationRange   = DurationRange(minDuration, maxDuration),
-          uploadDateRange = UploadDateRange(minUploadDate, maxUploadDate),
-          sort            = Some(sortOption),
-          untagged        = queryDto.untagged.filter(identity)
-        )
+          val query = Query(
+            q               = queryDto.q.map(s => sanitize(s, 64, c => c.isLetterOrDigit || c.isWhitespace)),
+            n               = Math.min(queryDto.n.getOrElse(config.defaultNumberOfResults), config.maximumNumberOfResults),
+            offset          = queryDto.offset.map(n => Math.max(0, n)),
+            includeTags     =
+              if queryDto.untagged.contains(true) then Set.empty else queryDto.tag.map(s => sanitize(s, 32, c => c.isLetterOrDigit)).toSet,
+            excludeTags     = apiSecurity.userAccess(auth).hiddenTags,
+            excludeBuckets  = apiSecurity.userAccess(auth).hiddenBuckets,
+            resolutionRange = ResolutionRange(min = queryDto.minRes, max = None),
+            durationRange   = DurationRange(minDuration, maxDuration),
+            uploadDateRange = UploadDateRange(minUploadDate, maxUploadDate),
+            sort            = Some(sortOption),
+            untagged        = queryDto.untagged.filter(identity)
+          )
 
-        searchService.searchMedia(query).map { response =>
-          Right(SearchResponseDto(
-            offset  = response.offset,
-            total   = response.total,
-            results = response.results.map(toDto),
-            tags    = getSortedTags(response.tags)
-          ))
-        }
+          searchService.searchMedia(query).map { response =>
+            Right(SearchResponseDto(
+              offset  = response.offset,
+              total   = response.total,
+              results = response.results.map(toDto),
+              tags    = getSortedTags(response.tags)
+            ))
+          }
+      }
     }
-
-    Http4sServerInterpreter[IO](serverOptions).toRoutes(List(routeImpl))
   }

@@ -10,7 +10,6 @@ import org.http4s.dsl.io.*
 import org.http4s.headers.`Cache-Control`
 import scribe.Logging
 
-import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.http.ResourceDirectives.resourceContentsResponse
 
@@ -71,7 +70,7 @@ object ResourceContentRoutes extends Logging {
     }
   }
 
-  def apply(buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity): HttpRoutes[IO] = {
+  def apply(buckets: Map[String, ResourceBucket]): HttpRoutes[IO] = {
 
     def getResource(bucketId: String, resourceId: ResourceId): OptionT[IO, (ResourceBucket, Resource)] =
       for

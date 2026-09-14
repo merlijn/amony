@@ -1,4 +1,4 @@
-import React, {useContext, useState} from 'react';
+import React, {CSSProperties, useContext, useState} from 'react';
 import {
   canBrowserPlayType,
   dateMillisToString,
@@ -12,9 +12,10 @@ import {ErrorBoundary} from "react-error-boundary";
 import {SessionContext} from "../api/Constants";
 import {ResourceDto} from "../api/generated";
 import LazyImage from "./common/LazyImage";
-import {FiAlertCircle} from "react-icons/fi";
+import {FiAlertCircle, FiInfo} from "react-icons/fi";
 import {MdDelete} from "react-icons/md";
 import DeleteResourceDialog from "./dialogs/DeleteResourceDialog";
+import ResourceDetailsDialog from "./dialogs/ResourceDetailsDialog";
 
 export type PreviewProps = {
   resource: ResourceDto,
@@ -29,12 +30,14 @@ export type PreviewOptions = {
   showDates: boolean,
   showDuration: boolean,
   showResolution: boolean,
+  aspectRatio?: string,
 }
 
 const Preview = (props: PreviewProps) => {
   const resource = props.resource
   const [isHovering, setIsHovering] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false)
 
   const durationStr = durationInMillisToString(resource.contentMeta.duration)
 
@@ -53,7 +56,10 @@ const Preview = (props: PreviewProps) => {
       <div className="preview-overlay">
         { props.options.showResolution && <div className="preview-quality-overlay">{labelForResolution(resource.contentMeta.height)}</div> }
         { (isVideo && props.options.showDuration) && <div className="duration-overlay">{durationStr}</div> }
-        { isHovering && session.isAdmin() && <div className="preview-delete-icon-overlay" onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true) }}><MdDelete /></div> }
+        { isHovering && session.isAdmin() && <div className="preview-icon-stack">
+          <div className="preview-icon-button" onClick={(e) => { e.stopPropagation(); setShowDetailsDialog(true) }}><FiInfo /></div>
+          <div className="preview-icon-button" onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true) }}><MdDelete /></div>
+        </div> }
         { !isMediaTypeSupported && <div className="preview-unsupported-overlay"><FiAlertCircle color="#fff" /></div> }
       </div>
 
@@ -75,13 +81,18 @@ const Preview = (props: PreviewProps) => {
           onClick   = { () => props.onClick(props.resource) }
           fragments = { props.resource.clips } />
 
+  const mediaContainerStyle = props.options.aspectRatio
+    ? { "--preview-aspect-ratio": props.options.aspectRatio } as CSSProperties
+    : undefined
+
   const preview =
     <ErrorBoundary fallback={ <div /> }>
       <div className    = "preview-media-container"
+           style        = { mediaContainerStyle }
            onMouseEnter = { () => props.options.showPreviewOnHover && setIsHovering(true) }
            onMouseLeave = { () => setIsHovering(false) }>
-        { isVideo && isHovering && videoPreview }
         { primaryThumbnail }
+        { isVideo && isHovering && videoPreview }
         { overlay }
       </div>
     </ErrorBoundary>
@@ -90,6 +101,11 @@ const Preview = (props: PreviewProps) => {
       <div className = "preview-resource">
         { preview }
         { props.options.showInfoBar && titlePanel }
+        <ResourceDetailsDialog
+          resource={props.resource}
+          visible={showDetailsDialog}
+          onHide={() => setShowDetailsDialog(false)}
+        />
         <DeleteResourceDialog
           resource={props.resource}
           visible={showDeleteDialog}
