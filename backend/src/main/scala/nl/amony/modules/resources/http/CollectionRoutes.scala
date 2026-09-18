@@ -54,6 +54,9 @@ object CollectionRoutes extends RoutesModule:
     apiSecurity: ApiSecurity
   ): HttpRoutes[IO] = {
 
+    def isBucketHidden(auth: AuthToken, bucketId: String): Boolean =
+      apiSecurity.userAccess(auth).hiddenBuckets.contains(bucketId)
+
     routes[IO](serverOptions) {
 
       serverLogic(endpoint = getCollections, requiredPermission = Permission.ManageCollections) { auth => _ =>
@@ -77,21 +80,29 @@ object CollectionRoutes extends RoutesModule:
         yield toDto(collection)
       }
 
-      serverLogic(endpoint = addResourceToCollection, requiredPermission = Permission.ManageCollections) {
-        _ => (collectionId, bucketId, resourceId) =>
-          collectionsDal.addResourceToCollection(collectionId, bucketId, resourceId).map(Right(_))
+      serverLogicT(endpoint = addResourceToCollection, requiredPermission = Permission.ManageCollections) {
+        auth => (collectionId, bucketId, resourceId) =>
+          for
+            _ <- EitherT.cond[IO](!isBucketHidden(auth, bucketId), (), ApiError.NotFound)
+            _ <- EitherT.right[ApiError](collectionsDal.addResourceToCollection(collectionId, bucketId, resourceId))
+          yield ()
       }
 
-      serverLogic(endpoint = removeResourceFromCollection, requiredPermission = Permission.ManageCollections) {
-        _ => (collectionId, bucketId, resourceId) =>
-          collectionsDal.removeResourceFromCollection(collectionId, bucketId, resourceId).map(Right(_))
+      serverLogicT(endpoint = removeResourceFromCollection, requiredPermission = Permission.ManageCollections) {
+        auth => (collectionId, bucketId, resourceId) =>
+          for
+            _ <- EitherT.cond[IO](!isBucketHidden(auth, bucketId), (), ApiError.NotFound)
+            _ <- EitherT.right[ApiError](collectionsDal.removeResourceFromCollection(collectionId, bucketId, resourceId))
+          yield ()
       }
 
       serverLogic(endpoint = getResourcesInCollection, requiredPermission = Permission.ManageCollections) {
         token => collectionId =>
           collectionsDal.getCollectionById(collectionId).flatMap {
             case Some(collection) if collection.userId == token.userId =>
-              collectionsDal.getResourcesInCollection(collectionId).map(_.map(toDto)).map(Right(_))
+              val hiddenBuckets = apiSecurity.userAccess(token).hiddenBuckets
+              collectionsDal.getResourcesInCollection(collectionId)
+                .map(_.filterNot(resource => hiddenBuckets.contains(resource.bucketId)).map(toDto)).map(Right(_))
             case _                                                     =>
               IO.pure(Left(ApiError.NotFound))
           }
