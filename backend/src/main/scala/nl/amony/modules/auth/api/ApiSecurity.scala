@@ -28,19 +28,25 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       _           <- if xsrfToken == xXsrfHeader then Right(()) else Left(SecurityError.Unauthorized)
     yield ()
 
-  private def resolveToken(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
-    if !authConfig.enabled then Right(adminToken)
+  /**
+   * Resolves an auth token from a raw access token value, without any XSRF checks.
+   * Intended for non-Tapir (http4s) routes that need to evaluate access control.
+   */
+  def decodeAccessToken(accessToken: Option[String]): AuthToken =
+    if !authConfig.enabled then adminToken
     else
-      securityInput.accessToken match
-        case None              => Right(AuthToken.anonymous)
+      accessToken match
+        case None              => AuthToken.anonymous
         case Some(accessToken) =>
           decoder.decode(accessToken) match
-            case Left(_)        => Right(AuthToken.anonymous)
-            case Right(decoded) =>
-              val token = AuthToken(decoded.userId, decoded.roles + Role.Authenticated)
-              if xsrfProtectedMethods.contains(securityInput.method) then
-                requireXsrfProtection(securityInput).map(_ => token)
-              else Right(token)
+            case Left(_)        => AuthToken.anonymous
+            case Right(decoded) => AuthToken(decoded.userId, decoded.roles + Role.Authenticated)
+
+  private def resolveToken(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
+    val token = decodeAccessToken(securityInput.accessToken)
+    if authConfig.enabled && !token.roles.contains(Role.Anonymous) && xsrfProtectedMethods.contains(securityInput.method) then
+      requireXsrfProtection(securityInput).map(_ => token)
+    else Right(token)
 
   def authorize(requiredPermission: Option[Permission] = None)(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
     resolveToken(securityInput).flatMap { token =>

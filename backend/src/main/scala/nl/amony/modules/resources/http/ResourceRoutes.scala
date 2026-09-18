@@ -121,16 +121,14 @@ object ResourceRoutes extends RoutesModule:
       }
 
       serverLogicT(endpoint = modifyTagsBulk, requiredPermission = Permission.ManageResources) { auth => (bucketId, dto) =>
-        val action =
-          for
-            _               <- EitherT.cond[IO](dto.ids.nonEmpty, (), ApiError.BadRequest)
-            sanitizedIds     = dto.ids.distinct.toSet.map(ResourceId(_))
-            sanitizedAdd    <- sanitizeTags(dto.tagsToAdd).map(_.toSet)
-            sanitizedRemove <- sanitizeTags(dto.tagsToRemove).map(_.toSet)
-            bucket          <- getVisibleBucket(auth, bucketId)
-            _               <- EitherT.right(bucket.updateResourceTags(sanitizedIds, sanitizedAdd, sanitizedRemove))
-          yield ()
-        action
+        for
+          _               <- EitherT.cond[IO](dto.ids.nonEmpty, (), ApiError.BadRequest)
+          sanitizedIds     = dto.ids.distinct.toSet.map(ResourceId(_))
+          sanitizedAdd    <- sanitizeTags(dto.tagsToAdd).map(_.toSet)
+          sanitizedRemove <- sanitizeTags(dto.tagsToRemove).map(_.toSet)
+          bucket          <- getVisibleBucket(auth, bucketId)
+          _               <- EitherT.right(bucket.updateResourceTags(sanitizedIds, sanitizedAdd, sanitizedRemove))
+        yield ()
       }
 
       serverLogicT(endpoint = uploadResource, requiredPermission = Permission.UploadResource) { token => (bucketId, fileName, body) =>
