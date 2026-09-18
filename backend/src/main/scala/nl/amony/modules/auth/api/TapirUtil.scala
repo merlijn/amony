@@ -6,7 +6,7 @@ import sttp.tapir.*
 case class SecurityInput(accessToken: Option[String], xsrfCookie: Option[String], xXsrfHeader: Option[String], method: Method)
 
 val securityInput: EndpointInput[SecurityInput] =
-  cookie[Option[String]]("access_token")
+  cookie[Option[String]](authCookieName)
     .and(cookie[Option[String]]("XSRF-TOKEN"))
     .and(extractFromRequest(_.header("X-XSRF-TOKEN")))
     .and(extractFromRequest(_.method))

@@ -11,6 +11,8 @@ import nl.amony.lib.tapir.AuthCookies
 import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.{Authentication, JwtDecoder}
 
+val authCookieName = "access_token"
+
 class ApiSecurity(authConfig: AuthConfig) extends Logging:
 
   private val decoder: JwtDecoder  = authConfig.decoder

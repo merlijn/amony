@@ -10,7 +10,7 @@ import org.http4s.dsl.io.*
 import org.http4s.headers.`Cache-Control`
 import scribe.Logging
 
-import nl.amony.modules.auth.api.ApiSecurity
+import nl.amony.modules.auth.api.{ApiSecurity, authCookieName}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.http.ResourceDirectives.resourceContentsResponse
 
@@ -75,7 +75,7 @@ object ResourceContentRoutes extends Logging {
 
     // The content routes are not Tapir endpoints, so the access token has to be read from the cookie directly.
     def isBucketHidden(req: Request[IO], bucketId: String): Boolean =
-      val accessToken = req.cookies.find(_.name == "access_token").map(_.content)
+      val accessToken = req.cookies.find(_.name == authCookieName).map(_.content)
       apiSecurity.userAccess(apiSecurity.decodeAccessToken(accessToken)).hiddenBuckets.contains(bucketId)
 
     def getResource(req: Request[IO], bucketId: String, resourceId: ResourceId): OptionT[IO, (ResourceBucket, Resource)] =
