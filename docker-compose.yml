@@ -105,6 +105,11 @@ services:
       - .env
     environment:
       DATABASE_HOST: "postgres"
+      # OAuth provider endpoints. The authorize URL is browser-facing; token/userinfo are internal
+      # to the compose network. The HTTPS overlay overrides the authorize URLs.
+      AMONY_OAUTH_AUTHORIZE_URL: ${AMONY_OAUTH_AUTHORIZE_URL:-http://localhost:5556/dex/auth}
+      AMONY_OAUTH_TOKEN_URL: ${AMONY_OAUTH_TOKEN_URL:-http://auth:5556/dex/token}
+      AMONY_OAUTH_USERINFO_URL: ${AMONY_OAUTH_USERINFO_URL:-http://auth:5556/dex/userinfo}
       # Client secrets are shared with Dex: the single DEX_* values are mapped to the backend's AMONY_* vars.
       AMONY_OAUTH_CLIENT_SECRET: ${DEX_CLIENT_SECRET:-amony-dex-secret}
       AMONY_ADMIN_OAUTH_CLIENT_ID: ${AMONY_ADMIN_OAUTH_CLIENT_ID:-admin-app}

@@ -40,6 +40,12 @@ services:
       ]
     restart: "no"
 
+  amony:
+    # Public authorize endpoints (browser-facing); token/userinfo stay on the internal network.
+    environment:
+      AMONY_OAUTH_AUTHORIZE_URL: https://${DOMAIN_SUB_AUTH}.${DOMAIN_TLD}/dex/auth
+      AMONY_ADMIN_OAUTH_AUTHORIZE_URL: https://${DOMAIN_SUB_AUTH}.${DOMAIN_TLD}/dex/auth
+
   auth:
     # Uses the stock Dex image: docker/dex/config.yaml.tmpl is rendered by the image's
     # built-in gomplate entrypoint. Only the public hostnames differ from the base setup.
