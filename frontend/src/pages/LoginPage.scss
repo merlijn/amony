@@ -1,0 +1,15 @@
+@use 'src/App.scss' as *;
+
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--spacing-l);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.login-page-panel {
+  width: min(420px, 100%);
+}

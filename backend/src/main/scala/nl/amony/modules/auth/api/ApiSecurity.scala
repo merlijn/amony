@@ -50,14 +50,18 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       requireXsrfProtection(securityInput).map(_ => token)
     else Right(token)
 
+  def isLoginRequired: Boolean = authConfig.enabled && authConfig.requireLogin
+
   def authorize(requiredPermission: Option[Permission] = None)(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
     resolveToken(securityInput).flatMap { token =>
-      requiredPermission match
-        case None             => Right(token)
-        case Some(permission) =>
-          if userAccess(token).permissions.contains(permission) then Right(token)
-          else if token.roles.contains(Role.Anonymous) then Left(SecurityError.Unauthorized)
-          else Left(SecurityError.Forbidden)
+      if isLoginRequired && token.isAnonymous then Left(SecurityError.Unauthorized)
+      else
+        requiredPermission match
+          case None             => Right(token)
+          case Some(permission) =>
+            if userAccess(token).permissions.contains(permission) then Right(token)
+            else if token.isAnonymous then Left(SecurityError.Unauthorized)
+            else Left(SecurityError.Forbidden)
     }
 
   def userAccess(authToken: AuthToken): RoleAccessConfig = authConfig.access(authToken)

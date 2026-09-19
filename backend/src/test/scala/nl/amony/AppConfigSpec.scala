@@ -10,7 +10,7 @@ class AppConfigSpec extends AnyWordSpecLike {
     "load config" in {
       val appConfig: AppConfig = ConfigSource.fromConfig(ConfigFactory.load()).at("amony").loadOrThrow[AppConfig]
       println(s"enabled: ${appConfig.auth.enabled}")
-      println(s"require-login: ${appConfig.auth.publicUri}")
+      println(s"require-login: ${appConfig.auth.requireLogin}")
     }
   }
 }

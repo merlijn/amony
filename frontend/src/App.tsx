@@ -6,6 +6,7 @@ import {AxiosError} from "axios";
 import {SessionInfo} from "./api/Model";
 import {ThemeProvider} from "./ThemeContext";
 import {EventBusProvider} from "./components/common/EventBus";
+import LoginPage from "./pages/LoginPage";
 
 const Compilation = lazy(() => import('./pages/Compilation'));
 const Main = lazy(() => import('./pages/Main'));
@@ -20,7 +21,8 @@ function App() {
         } as SessionInfo))
         .catch((error: AxiosError) => {
           if (error.response?.status === 401) {
-            return Constants.anonymousSession;
+            // Login is required and the user is not authenticated.
+            return null;
           }
           console.log("Error getting session", error);
           return Constants.anonymousSession;
@@ -33,14 +35,7 @@ function App() {
         <BrowserRouter>
           <Suspense fallback={<div />}>
             <EventBusProvider>
-              <SessionProvider sessionPromise={sessionPromise}>
-                <Routes>
-                  <Route path="/" element={<Main />} />
-                  <Route path="/search" element={<Main />} />
-                  <Route path="/video-wall" element={<VideoWall />} />
-                  <Route path="/compilation" element={<Compilation />} />
-                </Routes>
-              </SessionProvider>
+              <SessionGate sessionPromise={sessionPromise} />
             </EventBusProvider>
           </Suspense>
         </BrowserRouter>
@@ -49,9 +44,23 @@ function App() {
   );
 }
 
-function SessionProvider({ sessionPromise, children }: { sessionPromise: Promise<SessionInfo>, children: React.ReactNode }) {
+function SessionGate({ sessionPromise }: { sessionPromise: Promise<SessionInfo | null> }) {
   const session = use(sessionPromise);
-  return <SessionContext.Provider value={session}>{children}</SessionContext.Provider>;
+
+  if (session === null) {
+    return <LoginPage />;
+  }
+
+  return (
+    <SessionContext.Provider value={session}>
+      <Routes>
+        <Route path="/" element={<Main />} />
+        <Route path="/search" element={<Main />} />
+        <Route path="/video-wall" element={<VideoWall />} />
+        <Route path="/compilation" element={<Compilation />} />
+      </Routes>
+    </SessionContext.Provider>
+  );
 }
 
 export default App;
