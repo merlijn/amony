@@ -28,6 +28,9 @@ def isReleaseBuild: Boolean =
 def envTags: Option[List[String]] =
   sys.env.get("JIB_TAGS").map(_.split(",").iterator.map(_.trim).filter(_.nonEmpty).toList).filter(_.nonEmpty)
 
+// GHCR namespace (lowercase required by the registry); CI provides GITHUB_REPOSITORY_OWNER.
+val ghcrOwner = sys.env.getOrElse("GITHUB_REPOSITORY_OWNER", "merlijn").toLowerCase
+
 //fork in Global := true
 Global / cancelable := true
 
@@ -117,11 +120,11 @@ lazy val amony = project
     Compile / packageBin / mainClass := Some("nl.amony.App"),
 
     // Jib Docker settings
-    jibBaseImage            := "europe-west4-docker.pkg.dev/amony-04c85b/docker-images/amony/base:latest",
-    jibRegistry             := "europe-west4-docker.pkg.dev",
+    jibBaseImage            := s"ghcr.io/$ghcrOwner/amony-base:latest",
+    jibRegistry             := "ghcr.io",
     jibName                 := "amony-app",
     jibVersion              := version.value.replace('+', '-'), // + sign is not valid in a docker tag
-    jibCustomRepositoryPath := Some("amony-04c85b/docker-images/amony/" + jibName.value),
+    jibCustomRepositoryPath := Some(s"$ghcrOwner/" + jibName.value),
     jibPlatforms            := Set({if (System.getProperty("os.arch") == "aarch64") JibPlatforms.arm64 else JibPlatforms.amd64}),
     jibImageFormat          := JibImageFormat.OCI,
     jibTags                 := envTags.getOrElse(if (isReleaseBuild) List("latest") else List("dev")),
