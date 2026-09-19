@@ -126,9 +126,11 @@ jobs:
             commit_sha="${{ github.event.pull_request.head.sha }}"
           fi
           
-          echo "commit tag: $(git tag --points-at HEAD)"
-          echo "commit_msg=$(git log -1 --pretty=%s $commit_sha)" >> $GITHUB_OUTPUT
-          echo "commit msg: $(git log -1 --pretty=%s $commit_sha)"
+          commit_tag="$(git tag --points-at HEAD)"
+          commit_msg="$(git log -1 --pretty=%s $commit_sha)"
+          echo "commit tag: $commit_tag"
+          echo "commit_msg=$commit_msg" >> $GITHUB_OUTPUT
+          echo "commit msg: $commit_msg"
 
           # Publish dev on main, latest + version on a release tag,
           # or on any build whose commit message contains #publish.
