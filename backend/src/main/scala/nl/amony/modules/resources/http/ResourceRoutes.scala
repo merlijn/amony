@@ -21,7 +21,7 @@ object ResourceRoutes extends RoutesModule:
 
   val getBuckets =
     register(endpoint
-      .name("getBuckets").tag("resources").description("Get information about a resource by its id")
+      .name("getBuckets").tag("resources").description("Get information about the buckets")
       .get.in("api" / "buckets")
       .securityIn(securityInput).errorOut(errorOutput)
       .out(apiNoCacheHeaders).out(jsonBody[List[BucketDto]]))
