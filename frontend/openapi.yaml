@@ -838,12 +838,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponseBody'
-  /api/auth/oauth-providers:
+  /api/auth/identity-providers:
     get:
       tags:
       - auth
-      description: Get the list of available OAuth providers
-      operationId: getOAuthProviders
+      description: Get the list of available identity providers
+      operationId: getIdentityProviders
       responses:
         '200':
           description: ''
@@ -852,7 +852,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/OAuthProviderDto'
+                  $ref: '#/components/schemas/IdentityProviderDto'
   /api/collections:
     get:
       tags:
@@ -1214,8 +1214,8 @@ components:
           type: string
         message:
           type: string
-    OAuthProviderDto:
-      title: OAuthProviderDto
+    IdentityProviderDto:
+      title: IdentityProviderDto
       type: object
       required:
       - name

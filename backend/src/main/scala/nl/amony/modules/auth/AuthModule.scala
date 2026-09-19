@@ -16,7 +16,7 @@ class AuthModule(config: AuthConfig, httpClientBackend: Backend[IO], pool: Resou
   val authService        = new AuthService(config, httpClientBackend, userDatabase, oauthStateDatabase)
   val apiSecurity        = new ApiSecurity(config)
 
-  logger.info("AuthModule initialized, oauth providers: " + authService.oauthProviders.keys.mkString(", "))
+  logger.info("AuthModule initialized, identity providers: " + authService.identityProviders.keys.mkString(", "))
 
   def routes(using serverOptions: Http4sServerOptions[IO], apiSecurity: ApiSecurity) = AuthRoutes.apply(authService, config)
 }

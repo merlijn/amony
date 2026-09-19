@@ -21,7 +21,7 @@ import nl.amony.lib.tapir.dsl.{RoutesModule, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.AuthConfig
 import nl.amony.modules.auth.api.*
 
-case class OAuthProviderDto(name: String, loginUrl: String) derives Codec, Schema
+case class IdentityProviderDto(name: String, loginUrl: String) derives Codec, Schema
 
 object AuthRoutes extends RoutesModule, Logging:
 
@@ -76,11 +76,11 @@ object AuthRoutes extends RoutesModule, Logging:
       .out(AuthCookies.endpointOutput)
       .errorOut(ErrorResponse.endpointOutput))
 
-  val getOAuthProvidersEndpoint: Endpoint[Unit, Unit, Unit, List[OAuthProviderDto], Any] =
+  val getIdentityProvidersEndpoint: Endpoint[Unit, Unit, Unit, List[IdentityProviderDto], Any] =
     register(endpoint
-      .tag("auth").name("getOAuthProviders").description("Get the list of available OAuth providers")
-      .get.in("api" / "auth" / "oauth-providers")
-      .out(jsonBody[List[OAuthProviderDto]]))
+      .tag("auth").name("getIdentityProviders").description("Get the list of available identity providers")
+      .get.in("api" / "auth" / "identity-providers")
+      .out(jsonBody[List[IdentityProviderDto]]))
 
   def apply(authService: AuthService, authConfig: AuthConfig)(
     using serverOptions: Http4sServerOptions[IO],
@@ -88,9 +88,9 @@ object AuthRoutes extends RoutesModule, Logging:
   ): HttpRoutes[IO] = {
 
     def mapAuthenticationErrorToResponse(error: AuthenticationError): ErrorResponse = error match
-      case InvalidCredentials   => ErrorResponse.unauthorized(message = "Invalid credentials")
-      case UnknownOAuthProvider => ErrorResponse.notFound()
-      case UnknownError         => ErrorResponse.internalServerError(message = "An unknown error occurred")
+      case InvalidCredentials      => ErrorResponse.unauthorized(message = "Invalid credentials")
+      case UnknownIdentityProvider => ErrorResponse.notFound()
+      case UnknownError            => ErrorResponse.internalServerError(message = "An unknown error occurred")
 
     routes[IO](serverOptions) {
       serverLogic(endpoint = refreshEndpoint, authorize = apiSecurity.authorizeXsrf) { _ => refreshToken =>
@@ -106,7 +106,7 @@ object AuthRoutes extends RoutesModule, Logging:
       }
 
       serverLogic(endpoint = oauth2loginEndpoint) { (provider, origin) =>
-        authService.oauthProviders.get(provider) match
+        authService.identityProviders.get(provider) match
           case None                 => IO.pure(Left(ErrorResponse.notFound()))
           case Some(providerConfig) =>
             for
@@ -133,16 +133,16 @@ object AuthRoutes extends RoutesModule, Logging:
       serverLogicT(endpoint = oauth2CallbackEndpoint) {
         case (provider, code, state, clientState, origin) =>
           for
-            _              <- EitherT.fromOption[IO](authService.oauthProviders.get(provider), ErrorResponse.notFound())
+            _              <- EitherT.fromOption[IO](authService.identityProviders.get(provider), ErrorResponse.notFound())
             _              <- EitherT.cond[IO](state == clientState, (), ErrorResponse.badRequest(message = "State mismatch"))
             _              <- authService.validateAndConsumeState(provider, clientState).leftMap(mapAuthenticationErrorToResponse)
             authentication <- authService.authenticate(OauthTokenCredentials(provider, code), origin).leftMap(mapAuthenticationErrorToResponse)
           yield RedirectResponse("/") -> apiSecurity.createCookies(authentication)
       }
 
-      serverLogic(endpoint = getOAuthProvidersEndpoint) { _ =>
-        IO.pure(Right(authService.oauthProviders.values.filterNot(_.adminOnly.getOrElse(false)).map { provider =>
-          OAuthProviderDto(
+      serverLogic(endpoint = getIdentityProvidersEndpoint) { _ =>
+        IO.pure(Right(authService.identityProviders.values.filterNot(_.adminOnly.getOrElse(false)).map { provider =>
+          IdentityProviderDto(
             name     = provider.name,
             loginUrl = s"/api/auth/login/${provider.name}"
           )

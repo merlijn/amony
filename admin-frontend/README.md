@@ -22,9 +22,9 @@ The dev server proxies `/api` and `/resources` to the backend on
 
 ### Authentication
 
-The admin frontend logs in with a single OAuth provider, configured at build
-time through `VITE_OAUTH_PROVIDER` (defaults to `admin`). It does not use the
-multi-provider `/api/auth/oauth-providers` endpoint.
+The admin frontend logs in with a single identity provider, configured at build
+time through `VITE_IDENTITY_PROVIDER` (defaults to `admin`). It does not use the
+multi-provider `/api/auth/identity-providers` endpoint.
 
 The backend exposes the admin provider via `AMONY_ADMIN_*` environment variables
 and it is hidden from the main frontend. Locally the provider points at the Dex

@@ -23,16 +23,16 @@ case class RoleAccessConfig(
   permissions: Set[Permission]
 ) derives ConfigReader
 
-case class OauthProvider(
+case class IdentityProvider(
   name: String,
   clientId: String,
   clientSecret: String,
   authorizeUrl: Uri,
   tokenUrl: Uri,
   userInfoUrl: Uri,
-  scopes: List[String]    = List("openid", "profile", "email"),
-  defaultRoles: Set[Role] = Set.empty,
-  // When true the provider is not listed by /api/auth/oauth-providers. Used for internal/admin-only providers.
+  scopes: List[String]       = List("openid", "profile", "email"),
+  defaultRoles: Set[Role]    = Set.empty,
+  // When true the provider is not listed by /api/auth/identity-providers. Used for internal/admin-only providers.
   adminOnly: Option[Boolean] = None
 ) derives ConfigReader
 
@@ -42,7 +42,7 @@ case class AuthConfig(
   jwt: JwtConfig,
   secureCookies: Boolean,
   oauthStateExpiration: FiniteDuration = 300.seconds,
-  oauthProviders: List[OauthProvider],
+  identityProviders: List[IdentityProvider],
   accessControl: Map[String, RoleAccessConfig]
 ) derives ConfigReader {
 

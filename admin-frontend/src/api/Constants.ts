@@ -10,5 +10,5 @@ export const SessionContext = React.createContext<SessionInfo>(anonymousSession)
 
 export const Constants = {
   anonymousSession,
-  oauthProvider: import.meta.env.VITE_OAUTH_PROVIDER || "admin",
+  identityProvider: import.meta.env.VITE_IDENTITY_PROVIDER || "admin",
 }

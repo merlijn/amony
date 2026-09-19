@@ -18,9 +18,9 @@ import nl.amony.modules.auth.dal.{OAuthStateDatabase, OAuthStateRow, UserDatabas
 
 sealed trait AuthenticationError
 
-case object InvalidCredentials   extends AuthenticationError
-case object UnknownOAuthProvider extends AuthenticationError
-case object UnknownError         extends AuthenticationError
+case object InvalidCredentials      extends AuthenticationError
+case object UnknownIdentityProvider extends AuthenticationError
+case object UnknownError            extends AuthenticationError
 
 case class OauthTokenCredentials(provider: String, token: String)
 
@@ -47,7 +47,7 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: Use
 
   private val tokenManager = new TokenManager(config.jwt)
 
-  val oauthProviders: Map[String, OauthProvider] = config.oauthProviders.map(p => p.name -> p).toMap
+  val identityProviders: Map[String, IdentityProvider] = config.identityProviders.map(p => p.name -> p).toMap
 
   private def nowUTC = OffsetDateTime.now(ZoneOffset.UTC)
 
@@ -71,7 +71,7 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: Use
       _        <- EitherT.cond[IO](isValid, (), InvalidCredentials)
     yield ()
 
-  private def getToken(provider: OauthProvider, code: String, origin: RequestOrigin): EitherT[IO, AuthenticationError, OauthTokenResponse] = {
+  private def getToken(provider: IdentityProvider, code: String, origin: RequestOrigin): EitherT[IO, AuthenticationError, OauthTokenResponse] = {
 
     val redirectUri = origin.callbackUri(provider.name)
 
@@ -89,24 +89,24 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: Use
       .response(asJson[OauthTokenResponse])
 
     EitherT(httpClient.send(req).map(_.body.left.map(_.getMessage))).leftMap { error =>
-      logger.error(s"Error fetching token from OAuth provider $provider: $error")
+      logger.error(s"Error fetching token from identity provider $provider: $error")
       UnknownError
     }
   }
 
-  private def getUserInfo(provider: OauthProvider, accessToken: String): EitherT[IO, AuthenticationError, UserInfo] = {
+  private def getUserInfo(provider: IdentityProvider, accessToken: String): EitherT[IO, AuthenticationError, UserInfo] = {
     val req = sttp.client4.basicRequest
       .get(provider.userInfoUrl)
       .header("Authorization", s"Bearer $accessToken")
       .response(asJson[UserInfo])
 
     EitherT(httpClient.send(req).map(_.body)).leftMap { error =>
-      logger.error(s"Error fetching user info from OAuth provider $provider", error)
+      logger.error(s"Error fetching user info from identity provider $provider", error)
       UnknownError
     }
   }
 
-  private def getOrInsertUser(provider: OauthProvider, userInfo: UserInfo, email: String): IO[User] = {
+  private def getOrInsertUser(provider: IdentityProvider, userInfo: UserInfo, email: String): IO[User] = {
     userDatabase.getByEmail(email).flatMap {
       case Some(userRow) => IO.pure(userRow.toUser)
       case None          =>
@@ -124,7 +124,7 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: Use
 
   def authenticate(oauthToken: OauthTokenCredentials, origin: RequestOrigin): EitherT[IO, AuthenticationError, Authentication] =
     for
-      provider      <- EitherT.fromOption[IO](oauthProviders.get(oauthToken.provider), UnknownOAuthProvider: AuthenticationError)
+      provider      <- EitherT.fromOption[IO](identityProviders.get(oauthToken.provider), UnknownIdentityProvider: AuthenticationError)
       tokenResponse <- getToken(provider, oauthToken.token, origin)
       userInfo      <- getUserInfo(provider, tokenResponse.access_token)
       email         <- EitherT.fromOption[IO](userInfo.email, UnknownError: AuthenticationError)

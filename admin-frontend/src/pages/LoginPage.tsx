@@ -3,7 +3,7 @@ import "./LoginPage.scss";
 
 const LoginPage = () => {
   const login = () => {
-    window.location.href = `/api/auth/login/${Constants.oauthProvider}`;
+    window.location.href = `/api/auth/login/${Constants.identityProvider}`;
   };
 
   return (
