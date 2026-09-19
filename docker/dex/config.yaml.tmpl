@@ -1,0 +1,37 @@
+# Dex configuration, rendered by the image's built-in gomplate entrypoint
+# (https://dexidp.io/docs/getting-started/). Only files passed to `dex serve` with a
+# .tpl/.tmpl/.yaml extension are templated.
+#
+# The same file is used for both the local (docker-compose.yml) and the HTTPS
+# (docker-compose-https.yml) setups; the values come from the environment.
+issuer: {{ .Env.DEX_ISSUER }}
+
+storage:
+  type: memory
+
+web:
+  http: 0.0.0.0:5556
+
+oauth2:
+  skipApprovalScreen: true
+
+staticClients:
+  - id: amony-app
+    redirectURIs:
+      - '{{ .Env.AMONY_OAUTH_REDIRECT_URI }}'
+    name: 'Amony App'
+    secret: '{{ .Env.DEX_CLIENT_SECRET }}'
+  - id: admin-app
+    redirectURIs:
+{{- range $uri := (.Env.AMONY_ADMIN_OAUTH_REDIRECT_URIS | strings.Split ",") }}
+      - '{{ $uri }}'
+{{- end }}
+    name: 'Amony Admin'
+    secret: '{{ .Env.DEX_ADMIN_CLIENT_SECRET }}'
+
+enablePasswordDB: true
+staticPasswords:
+  - email: "{{ .Env.DEX_ADMIN_EMAIL }}"
+    hash: "{{ .Env.DEX_ADMIN_PASSWORD_HASH }}"
+    username: "{{ .Env.DEX_ADMIN_USERNAME }}"
+    userID: "admin-user-id"

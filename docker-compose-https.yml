@@ -41,15 +41,12 @@ services:
     restart: "no"
 
   auth:
-    build:
-      context: docker/dex
-      dockerfile: dex.dockerfile
-    image: amony/dex
-    env_file:
-      - .env
-    volumes:
-      - ./docker/dex/config.yaml.template:/etc/dex/config.yaml.template:ro
-    command: []
+    # Uses the stock Dex image: docker/dex/config.yaml.tmpl is rendered by the image's
+    # built-in gomplate entrypoint. Only the public hostnames differ from the base setup.
+    environment:
+      DEX_ISSUER: https://${DOMAIN_SUB_AUTH}.${DOMAIN_TLD}/dex
+      AMONY_OAUTH_REDIRECT_URI: https://${DOMAIN_SUB_AMONY}.${DOMAIN_TLD}/api/auth/callback/dex
+      AMONY_ADMIN_OAUTH_REDIRECT_URIS: https://${DOMAIN_SUB_ADMIN}.${DOMAIN_TLD}/api/auth/callback/admin
 
   certbot:
     container_name: nginx-certbot
