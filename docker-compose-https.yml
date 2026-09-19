@@ -46,7 +46,7 @@ services:
     environment:
       DEX_ISSUER: https://${DOMAIN_SUB_AUTH}.${DOMAIN_TLD}/dex
       AMONY_OAUTH_REDIRECT_URI: https://${DOMAIN_SUB_AMONY}.${DOMAIN_TLD}/api/auth/callback/dex
-      AMONY_ADMIN_OAUTH_REDIRECT_URIS: https://${DOMAIN_SUB_ADMIN}.${DOMAIN_TLD}/api/auth/callback/admin
+      AMONY_ADMIN_OAUTH_REDIRECT_URI: https://${DOMAIN_SUB_ADMIN}.${DOMAIN_TLD}/api/auth/callback/admin
 
   certbot:
     container_name: nginx-certbot

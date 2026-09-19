@@ -142,7 +142,7 @@ services:
       # entrypoint. The HTTPS overlay overrides these with the public domain names.
       DEX_ISSUER: ${DEX_ISSUER:-http://localhost:5556/dex}
       AMONY_OAUTH_REDIRECT_URI: ${AMONY_OAUTH_REDIRECT_URI:-http://localhost:8182/api/auth/callback/dex}
-      AMONY_ADMIN_OAUTH_REDIRECT_URIS: ${AMONY_ADMIN_OAUTH_REDIRECT_URIS:-http://localhost:8183/api/auth/callback/admin,http://localhost:5174/api/auth/callback/admin}
+      AMONY_ADMIN_OAUTH_REDIRECT_URI: ${AMONY_ADMIN_OAUTH_REDIRECT_URI:-http://localhost:8183/api/auth/callback/admin}
       # Dev defaults; override through .env (see .env.example). Note the escaped $$ for the bcrypt hash.
       DEX_CLIENT_SECRET: ${DEX_CLIENT_SECRET:-amony-dex-secret}
       DEX_ADMIN_CLIENT_SECRET: ${DEX_ADMIN_CLIENT_SECRET:-amony-admin-dex-secret}
