@@ -17,7 +17,7 @@ Useful commands:
 
 ### /frontend
 
-The frontend is a TypeScript/React application that interacts with the backend API to browse and view media files and their metadata.
+The frontend is a TypeScript/React application that interacts with the backend API to browse, view media and manage media files.
 
 Useful commands:
 - `pnpm run generate` - Generate API client code from OpenAPI spec
