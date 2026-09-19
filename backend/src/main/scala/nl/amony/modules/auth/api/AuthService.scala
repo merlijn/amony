@@ -71,16 +71,16 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: Use
       _        <- EitherT.cond[IO](isValid, (), InvalidCredentials)
     yield ()
 
-  private def getToken(provider: OauthProvider, code: String): EitherT[IO, AuthenticationError, OauthTokenResponse] = {
+  private def getToken(provider: OauthProvider, code: String, origin: RequestOrigin): EitherT[IO, AuthenticationError, OauthTokenResponse] = {
 
-    val redirectUri = config.publicUri.addPath("api", "auth", "callback", provider.name)
+    val redirectUri = origin.callbackUri(provider.name)
 
     val body = Map(
       "grant_type"    -> "authorization_code",
       "code"          -> code,
       "client_id"     -> provider.clientId,
       "client_secret" -> provider.clientSecret,
-      "redirect_uri"  -> redirectUri.toString
+      "redirect_uri"  -> redirectUri
     )
 
     val req = sttp.client4.basicRequest
@@ -122,10 +122,10 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: Use
     }
   }
 
-  def authenticate(oauthToken: OauthTokenCredentials): EitherT[IO, AuthenticationError, Authentication] =
+  def authenticate(oauthToken: OauthTokenCredentials, origin: RequestOrigin): EitherT[IO, AuthenticationError, Authentication] =
     for
       provider      <- EitherT.fromOption[IO](oauthProviders.get(oauthToken.provider), UnknownOAuthProvider: AuthenticationError)
-      tokenResponse <- getToken(provider, oauthToken.token)
+      tokenResponse <- getToken(provider, oauthToken.token, origin)
       userInfo      <- getUserInfo(provider, tokenResponse.access_token)
       email         <- EitherT.fromOption[IO](userInfo.email, UnknownError: AuthenticationError)
       user          <- EitherT.liftF(getOrInsertUser(provider, userInfo, email))

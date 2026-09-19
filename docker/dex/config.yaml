@@ -16,6 +16,12 @@ staticClients:
       - 'http://localhost:8182/api/auth/callback/dex'
     name: 'Amony App'
     secret: amony-dex-secret
+  - id: admin-app
+    redirectURIs:
+      - 'http://localhost:8183/api/auth/callback/admin'
+      - 'http://localhost:5174/api/auth/callback/admin'
+    name: 'Amony Admin'
+    secret: amony-admin-dex-secret
 
 enablePasswordDB: true
 staticPasswords:

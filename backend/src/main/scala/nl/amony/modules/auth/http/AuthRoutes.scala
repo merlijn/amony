@@ -61,6 +61,7 @@ object AuthRoutes extends RoutesModule, Logging:
   val oauth2loginEndpoint =
     register(endpoint.tag("auth").name("authLogin").description("Redirect to OAuth2 provider for login")
       .get.in("api" / "auth" / "login" / path[String]("provider"))
+      .in(requestOrigin)
       .out(RedirectResponse.endpointOutput and setCookie("oauth_login_state"))
       .errorOut(ErrorResponse.endpointOutput))
 
@@ -70,6 +71,7 @@ object AuthRoutes extends RoutesModule, Logging:
       .in(query[String]("code").description("The authorization code returned by the OAuth2 provider"))
       .in(query[String]("state").description("The state parameter returned by the OAuth2 provider"))
       .in(cookie[String]("oauth_login_state").description("The state cookie to prevent CSRF attacks"))
+      .in(requestOrigin)
       .out(RedirectResponse.endpointOutput)
       .out(AuthCookies.endpointOutput)
       .errorOut(ErrorResponse.endpointOutput))
@@ -103,7 +105,7 @@ object AuthRoutes extends RoutesModule, Logging:
         IO.pure(Right(apiSecurity.createLogoutCookes))
       }
 
-      serverLogic(endpoint = oauth2loginEndpoint) { provider =>
+      serverLogic(endpoint = oauth2loginEndpoint) { (provider, origin) =>
         authService.oauthProviders.get(provider) match
           case None                 => IO.pure(Left(ErrorResponse.notFound()))
           case Some(providerConfig) =>
@@ -112,7 +114,7 @@ object AuthRoutes extends RoutesModule, Logging:
               params      = Map(
                               "client_id"     -> providerConfig.clientId,
                               "response_type" -> "code",
-                              "redirect_uri"  -> authConfig.publicUri.addPath("api", "auth", "callback", providerConfig.name).toString,
+                              "redirect_uri"  -> origin.callbackUri(providerConfig.name),
                               "scope"         -> providerConfig.scopes.mkString(" "),
                               "state"         -> state
                             )
@@ -129,17 +131,17 @@ object AuthRoutes extends RoutesModule, Logging:
       }
 
       serverLogicT(endpoint = oauth2CallbackEndpoint) {
-        case (provider, code, state, clientState) =>
+        case (provider, code, state, clientState, origin) =>
           for
             _              <- EitherT.fromOption[IO](authService.oauthProviders.get(provider), ErrorResponse.notFound())
             _              <- EitherT.cond[IO](state == clientState, (), ErrorResponse.badRequest(message = "State mismatch"))
             _              <- authService.validateAndConsumeState(provider, clientState).leftMap(mapAuthenticationErrorToResponse)
-            authentication <- authService.authenticate(OauthTokenCredentials(provider, code)).leftMap(mapAuthenticationErrorToResponse)
+            authentication <- authService.authenticate(OauthTokenCredentials(provider, code), origin).leftMap(mapAuthenticationErrorToResponse)
           yield RedirectResponse("/") -> apiSecurity.createCookies(authentication)
       }
 
       serverLogic(endpoint = getOAuthProvidersEndpoint) { _ =>
-        IO.pure(Right(authService.oauthProviders.values.map { provider =>
+        IO.pure(Right(authService.oauthProviders.values.filterNot(_.adminOnly.getOrElse(false)).map { provider =>
           OAuthProviderDto(
             name     = provider.name,
             loginUrl = s"/api/auth/login/${provider.name}"

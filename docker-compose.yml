@@ -105,10 +105,29 @@ services:
       - .env
     environment:
       DATABASE_HOST: "postgres"
+      AMONY_ADMIN_OAUTH_CLIENT_ID: ${AMONY_ADMIN_OAUTH_CLIENT_ID:-admin-app}
+      AMONY_ADMIN_OAUTH_CLIENT_SECRET: ${AMONY_ADMIN_OAUTH_CLIENT_SECRET:-amony-admin-dex-secret}
+      AMONY_ADMIN_OAUTH_AUTHORIZE_URL: ${AMONY_OAUTH_AUTHORIZE_URL:-http://localhost:5556/dex/auth}
+      AMONY_ADMIN_OAUTH_TOKEN_URL: ${AMONY_OAUTH_TOKEN_URL:-http://auth:5556/dex/token}
+      AMONY_ADMIN_OAUTH_USERINFO_URL: ${AMONY_OAUTH_USERINFO_URL:-http://auth:5556/dex/userinfo}
     volumes:
       - ${AMONY_HOST_MEDIA_PATH}:/media
       - ${AMONY_DATA:-./data}/solr:/app/data/solr
     restart: "no"
+
+  admin:
+    build:
+      context: ./admin-frontend
+      dockerfile: Dockerfile
+    image: ghcr.io/merlijn/amony-admin:dev
+    container_name: amony-admin
+    depends_on:
+      - amony
+    environment:
+      AMONY_BACKEND: amony-app:8182
+    ports:
+      - "127.0.0.1:8183:80"
+    restart: unless-stopped
 
   auth:
     image: dexidp/dex:latest

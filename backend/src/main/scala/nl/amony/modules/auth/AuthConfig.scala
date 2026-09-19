@@ -31,14 +31,15 @@ case class OauthProvider(
   tokenUrl: Uri,
   userInfoUrl: Uri,
   scopes: List[String]    = List("openid", "profile", "email"),
-  defaultRoles: Set[Role] = Set.empty
+  defaultRoles: Set[Role] = Set.empty,
+  // When true the provider is not listed by /api/auth/oauth-providers. Used for internal/admin-only providers.
+  adminOnly: Option[Boolean] = None
 ) derives ConfigReader
 
 case class AuthConfig(
   enabled: Boolean,
   requireLogin: Boolean,
   jwt: JwtConfig,
-  publicUri: Uri,
   secureCookies: Boolean,
   oauthStateExpiration: FiniteDuration = 300.seconds,
   oauthProviders: List[OauthProvider],

@@ -768,6 +768,12 @@ paths:
                 type: array
                 items:
                   type: string
+        '400':
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
         default:
           description: ''
           content:
@@ -820,7 +826,8 @@ paths:
                   type: string
         '400':
           description: 'Invalid value for: query parameter code, Invalid value for:
-            query parameter state, Invalid value for: cookie oauth_login_state'
+            query parameter state, Invalid value for: cookie oauth_login_state, Invalid
+            value'
           content:
             text/plain:
               schema:

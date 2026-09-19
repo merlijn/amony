@@ -1,0 +1,603 @@
+openapi: 3.1.0
+info:
+  title: Amony Admin API
+  version: '1.0'
+paths:
+  /api/admin/reindex:
+    post:
+      tags:
+      - admin
+      description: Re-index all resources in a bucket.
+      operationId: adminReindexBucket
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: query
+        description: The id of the bucket to re-index.
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: 'Invalid value, Invalid value for: query parameter bucketId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/admin/refresh:
+    post:
+      tags:
+      - admin
+      description: Refresh all resources in a bucket
+      operationId: adminRefreshBucket
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: query
+        description: The id of the bucket to refresh.
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: 'Invalid value, Invalid value for: query parameter bucketId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/admin/re-scan-metadata:
+    post:
+      tags:
+      - admin
+      description: Rescan the metadata of all files in a bucket
+      operationId: adminRescanMetaData
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: query
+        description: The id of the bucket to re-scan.
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: 'Invalid value, Invalid value for: query parameter bucketId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/admin/re-compute-hashes:
+    post:
+      tags:
+      - admin
+      description: Recompute the hashes of all files in a bucket
+      operationId: adminReComputeHashes
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: query
+        description: The id of the bucket to re-compute the hashes for.
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: 'Invalid value, Invalid value for: query parameter bucketId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/admin/export/{bucketId}:
+    get:
+      tags:
+      - admin
+      description: Export all resources in a bucket
+      operationId: adminExportBucket
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/x-ndjson:
+              schema:
+                $ref: '#/components/schemas/ResourceDto'
+        '400':
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/admin/import/{bucketId}:
+    post:
+      tags:
+      - admin
+      description: Import all resources in a bucket
+      operationId: adminImportBucket
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/x-ndjson:
+            schema:
+              $ref: '#/components/schemas/ResourceDto'
+        required: true
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: 'Invalid value, Invalid value for: body'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/auth/session:
+    get:
+      tags:
+      - auth
+      description: Get the current session
+      operationId: getSession
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthToken'
+        '400':
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/auth/refresh:
+    post:
+      tags:
+      - auth
+      description: Refresh the users auth tokens
+      operationId: authRefreshTokens
+      parameters:
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: refresh_token
+        in: cookie
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          headers:
+            Set-Cookie:
+              required: false
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          description: 'Invalid value, Invalid value for: cookie refresh_token'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/auth/logout:
+    post:
+      tags:
+      - auth
+      description: Logout the current user
+      operationId: authLogout
+      parameters:
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          headers:
+            Set-Cookie:
+              required: false
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/auth/login/{provider}:
+    get:
+      tags:
+      - auth
+      description: Redirect to OAuth2 provider for login
+      operationId: authLogin
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '302':
+          description: ''
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+            Set-Cookie:
+              required: false
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
+        default:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseBody'
+  /api/auth/callback/{provider}:
+    get:
+      tags:
+      - auth
+      description: OAuth2 callback endpoint
+      operationId: authCallback
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: code
+        in: query
+        description: The authorization code returned by the OAuth2 provider
+        required: true
+        schema:
+          type: string
+      - name: state
+        in: query
+        description: The state parameter returned by the OAuth2 provider
+        required: true
+        schema:
+          type: string
+      - name: oauth_login_state
+        in: cookie
+        description: The state cookie to prevent CSRF attacks
+        required: true
+        schema:
+          type: string
+      responses:
+        '302':
+          description: ''
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+            Set-Cookie:
+              required: false
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          description: 'Invalid value for: query parameter code, Invalid value for:
+            query parameter state, Invalid value for: cookie oauth_login_state, Invalid
+            value'
+          content:
+            text/plain:
+              schema:
+                type: string
+        default:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseBody'
+  /api/auth/oauth-providers:
+    get:
+      tags:
+      - auth
+      description: Get the list of available OAuth providers
+      operationId: getOAuthProviders
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OAuthProviderDto'
+components:
+  schemas:
+    AuthToken:
+      title: AuthToken
+      type: object
+      required:
+      - userId
+      - roles
+      properties:
+        userId:
+          type: string
+        roles:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+    ClipDto:
+      title: ClipDto
+      type: object
+      required:
+      - resourceId
+      - start
+      - end
+      - urls
+      - tags
+      properties:
+        resourceId:
+          type: string
+        start:
+          type: integer
+          format: int64
+        end:
+          type: integer
+          format: int64
+        urls:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+    ErrorResponseBody:
+      title: ErrorResponseBody
+      type: object
+      required:
+      - code
+      - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+    OAuthProviderDto:
+      title: OAuthProviderDto
+      type: object
+      required:
+      - name
+      - loginUrl
+      properties:
+        name:
+          type: string
+        loginUrl:
+          type: string
+    ResourceDto:
+      title: ResourceDto
+      type: object
+      required:
+      - bucketId
+      - resourceId
+      - sizeInBytes
+      - path
+      - timeAdded
+      - userId
+      - tags
+      - contentType
+      - contentMeta
+      - urls
+      - clips
+      - fullMeta
+      properties:
+        bucketId:
+          type: string
+        resourceId:
+          type: string
+        partialHash:
+          type: string
+        sizeInBytes:
+          type: integer
+          format: int64
+        path:
+          type: string
+        timeAdded:
+          type: integer
+          format: int64
+        timeLastModified:
+          type: integer
+          format: int64
+        userId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        contentType:
+          type: string
+        contentMeta:
+          $ref: '#/components/schemas/ResourceMetaDto'
+        urls:
+          $ref: '#/components/schemas/ResourceUrlsDto'
+        thumbnailTimestamp:
+          type: integer
+          format: int32
+        clips:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClipDto'
+        fullMeta: {}
+    ResourceMetaDto:
+      title: ResourceMetaDto
+      type: object
+      required:
+      - width
+      - height
+      - fps
+      - duration
+      properties:
+        width:
+          type: integer
+          format: int32
+        height:
+          type: integer
+          format: int32
+        fps:
+          type: number
+          format: float
+        duration:
+          type: integer
+          format: int64
+        codec:
+          type: string
+    ResourceUrlsDto:
+      title: ResourceUrlsDto
+      type: object
+      required:
+      - originalResourceUrl
+      - thumbnailUrl
+      properties:
+        originalResourceUrl:
+          type: string
+        thumbnailUrl:
+          type: string
+        previewThumbnailsUrl:
+          type: string
