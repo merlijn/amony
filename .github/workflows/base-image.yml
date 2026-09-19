@@ -1,14 +1,8 @@
 name: Build base image
 
 on:
-  # Rebuild on demand...
+  # Manual trigger only (Actions tab -> "Build base image" -> Run workflow).
   workflow_dispatch:
-  # ...or whenever the base Dockerfile changes on main.
-  push:
-    branches: [ "main" ]
-    paths:
-      - "docker/base/**"
-      - ".github/workflows/base-image.yml"
 
 permissions:
   contents: read

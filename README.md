@@ -134,8 +134,8 @@ live under `ghcr.io/merlijn/`:
 
 The Jib base image (`ghcr.io/merlijn/amony-base:latest`) is built from
 `docker/base/Dockerfile` by the `Build base image` workflow
-(`.github/workflows/base-image.yml`), either on demand or when `docker/base/**`
-changes.
+(`.github/workflows/base-image.yml`), which is triggered manually from the
+Actions tab.
 
 ## Tech stack
 
