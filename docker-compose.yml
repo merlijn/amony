@@ -106,7 +106,6 @@ services:
     environment:
       DATABASE_HOST: "postgres"
       AMONY_ADMIN_OAUTH_CLIENT_ID: ${AMONY_ADMIN_OAUTH_CLIENT_ID:-admin-app}
-      AMONY_ADMIN_OAUTH_CLIENT_SECRET: ${AMONY_ADMIN_OAUTH_CLIENT_SECRET:-amony-admin-dex-secret}
       AMONY_ADMIN_OAUTH_AUTHORIZE_URL: ${AMONY_OAUTH_AUTHORIZE_URL:-http://localhost:5556/dex/auth}
       AMONY_ADMIN_OAUTH_TOKEN_URL: ${AMONY_OAUTH_TOKEN_URL:-http://auth:5556/dex/token}
       AMONY_ADMIN_OAUTH_USERINFO_URL: ${AMONY_OAUTH_USERINFO_URL:-http://auth:5556/dex/userinfo}
