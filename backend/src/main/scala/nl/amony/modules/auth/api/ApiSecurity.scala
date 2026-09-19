@@ -5,6 +5,7 @@ import java.util.UUID
 
 import scribe.Logging
 import sttp.model.Method
+import sttp.model.headers.Cookie.SameSite
 import sttp.model.headers.CookieValueWithMeta
 
 import nl.amony.lib.tapir.AuthCookies
@@ -23,12 +24,20 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
     roles  = Set(Role.Admin, Role.Authenticated)
   )
 
-  private def requireXsrfProtection(securityInput: SecurityInput): Either[SecurityError, Unit] =
+  /** Validates the double-submit token: the XSRF cookie must be present and match the request header. */
+  def requireXsrfToken(xsrfToken: Option[String], xXsrfHeader: Option[String]): Either[SecurityError, Unit] =
     for
-      xsrfToken   <- securityInput.xsrfCookie.toRight(SecurityError.Unauthorized)
-      xXsrfHeader <- securityInput.xXsrfHeader.toRight(SecurityError.Unauthorized)
-      _           <- if xsrfToken == xXsrfHeader then Right(()) else Left(SecurityError.Unauthorized)
+      token  <- xsrfToken.toRight(SecurityError.Unauthorized)
+      header <- xXsrfHeader.toRight(SecurityError.Unauthorized)
+      _      <- if token == header then Right(()) else Left(SecurityError.Unauthorized)
     yield ()
+
+  private def requireXsrfProtection(securityInput: SecurityInput): Either[SecurityError, Unit] =
+    requireXsrfToken(securityInput.xsrfCookie, securityInput.xXsrfHeader)
+
+  /** Authorizes an endpoint that only requires a valid double-submit token, such as refresh/logout. */
+  def authorizeXsrf(xsrfInput: (Option[String], Option[String])): Either[SecurityError, AuthToken] =
+    requireXsrfToken(xsrfInput._1, xsrfInput._2).map(_ => AuthToken.anonymous)
 
   /**
    * Resolves an auth token from a raw access token value, without any XSRF checks.
@@ -72,6 +81,7 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       path     = Some("/"),
       httpOnly = true,
       secure   = authConfig.secureCookies,
+      sameSite = Some(SameSite.Lax),
       expires  = Some(Instant.now().plus(Duration.ofSeconds(authConfig.jwt.accessTokenExpiration.toSeconds)))
     )
 
@@ -80,14 +90,19 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       path     = Some("/"),
       httpOnly = true,
       secure   = authConfig.secureCookies,
+      sameSite = Some(SameSite.Lax),
       expires  = Some(Instant.now().plus(Duration.ofSeconds(authConfig.jwt.refreshTokenExpiration.toSeconds)))
     )
 
+    // The XSRF cookie is a session cookie by nature, but it must outlive browser restarts for as
+    // long as the refresh token is valid, otherwise a valid refresh would be rejected for lack of XSRF.
     val xsrfCookie = CookieValueWithMeta.unsafeApply(
       value    = UUID.randomUUID().toString,
       path     = Some("/"),
       httpOnly = false,
-      secure   = authConfig.secureCookies
+      secure   = authConfig.secureCookies,
+      sameSite = Some(SameSite.Lax),
+      expires  = Some(Instant.now().plus(Duration.ofSeconds(authConfig.jwt.refreshTokenExpiration.toSeconds)))
     )
 
     AuthCookies(accessTokenCookie, refreshCookie, xsrfCookie)
@@ -100,6 +115,7 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
         path     = Some("/"),
         httpOnly = true,
         secure   = authConfig.secureCookies,
+        sameSite = Some(SameSite.Lax),
         expires  = Some(Instant.ofEpochSecond(0L))
       )
 

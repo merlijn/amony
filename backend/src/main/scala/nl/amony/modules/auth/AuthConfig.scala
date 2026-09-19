@@ -2,7 +2,7 @@ package nl.amony.modules.auth
 
 import java.security.KeyFactory
 import java.security.spec.{ECParameterSpec, ECPoint, ECPrivateKeySpec, ECPublicKeySpec}
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.*
 import scala.language.adhocExtensions
 import scala.util.Try
 
@@ -40,13 +40,12 @@ case class AuthConfig(
   jwt: JwtConfig,
   publicUri: Uri,
   secureCookies: Boolean,
+  oauthStateExpiration: FiniteDuration = 300.seconds,
   oauthProviders: List[OauthProvider],
   accessControl: Map[String, RoleAccessConfig]
 ) derives ConfigReader {
 
   val random = new java.security.SecureRandom
-
-  val oauthStateValidityDuration = java.time.Duration.ofMinutes(5)
 
   val anonymousAccess: RoleAccessConfig     = accessControl(Role.Anonymous)
   val authenticatedAccess: RoleAccessConfig = accessControl(Role.Authenticated)

@@ -12,6 +12,11 @@ val securityInput: EndpointInput[SecurityInput] =
     .and(extractFromRequest(_.method))
     .mapTo[SecurityInput]
 
+/** Security input for endpoints that only need the double-submit token (e.g. refresh/logout). */
+val xsrfSecurityInput: EndpointInput[(Option[String], Option[String])] =
+  cookie[Option[String]]("XSRF-TOKEN")
+    .and(extractFromRequest(_.header("X-XSRF-TOKEN")))
+
 val unauthorizedOutput = oneOfVariantSingletonMatcher(statusCode(StatusCode.Unauthorized))(SecurityError.Unauthorized)
 val forbiddenOutput    = oneOfVariantSingletonMatcher(statusCode(StatusCode.Forbidden))(SecurityError.Forbidden)
 

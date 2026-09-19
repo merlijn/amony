@@ -1,6 +1,7 @@
 package nl.amony.modules.auth.http
 
-import java.time.{Duration, Instant}
+import java.time.Instant
+import scala.jdk.DurationConverters.*
 
 import cats.data.EitherT
 import cats.effect.IO
@@ -9,6 +10,7 @@ import io.circe.Codec
 import org.http4s.HttpRoutes
 import scribe.Logging
 import sttp.model.StatusCode
+import sttp.model.headers.Cookie.SameSite
 import sttp.model.headers.CookieValueWithMeta
 import sttp.tapir.*
 import sttp.tapir.json.circe.jsonBody
@@ -38,18 +40,21 @@ object AuthRoutes extends RoutesModule, Logging:
       .out(jsonBody[AuthToken])
       .errorOut(errorOutput))
 
-  val refreshEndpoint =
+  val refreshEndpoint: Endpoint[(Option[String], Option[String]), String, SecurityError, AuthCookies, Any] =
     register(endpoint
       .tag("auth").name("authRefreshTokens").description("Refresh the users auth tokens")
       .post.in("api" / "auth" / "refresh")
+      .securityIn(xsrfSecurityInput)
       .in(cookie[String]("refresh_token"))
       .out(AuthCookies.endpointOutput)
       .errorOut(errorOutput))
 
-  val logoutEndpoint: Endpoint[Unit, Unit, Unit, AuthCookies, Any] =
+  val logoutEndpoint: Endpoint[(Option[String], Option[String]), Unit, SecurityError, AuthCookies, Any] =
     register(endpoint
       .tag("auth").name("authLogout").description("Logout the current user")
       .post.in("api" / "auth" / "logout")
+      .securityIn(xsrfSecurityInput)
+      .errorOut(errorOutput)
       .out(statusCode(StatusCode.Ok))
       .out(AuthCookies.endpointOutput))
 
@@ -86,7 +91,7 @@ object AuthRoutes extends RoutesModule, Logging:
       case UnknownError         => ErrorResponse.internalServerError(message = "An unknown error occurred")
 
     routes[IO](serverOptions) {
-      serverLogic(endpoint = refreshEndpoint) { refreshToken =>
+      serverLogic(endpoint = refreshEndpoint, authorize = apiSecurity.authorizeXsrf) { _ => refreshToken =>
         authService.refresh(refreshToken).map:
           case Left(_)               => Left(SecurityError.Unauthorized)
           case Right(authentication) => Right(apiSecurity.createCookies(authentication))
@@ -94,7 +99,9 @@ object AuthRoutes extends RoutesModule, Logging:
 
       serverLogic(endpoint = sessionEndpoint)(auth => _ => IO(Right(auth)))
 
-      serverLogic(endpoint = logoutEndpoint)(_ => IO.pure(Right(apiSecurity.createLogoutCookes)))
+      serverLogic(endpoint = logoutEndpoint, authorize = apiSecurity.authorizeXsrf) { _ => _ =>
+        IO.pure(Right(apiSecurity.createLogoutCookes))
+      }
 
       serverLogic(endpoint = oauth2loginEndpoint) { provider =>
         authService.oauthProviders.get(provider) match
@@ -114,8 +121,9 @@ object AuthRoutes extends RoutesModule, Logging:
                               value    = state,
                               path     = Some("/"),
                               httpOnly = true,
-                              secure   = false,
-                              expires  = Some(Instant.now().plus(Duration.ofSeconds(900)))
+                              secure   = authConfig.secureCookies,
+                              sameSite = Some(SameSite.Lax),
+                              expires  = Some(Instant.now().plus(authConfig.oauthStateExpiration.toJava))
                             )
             yield Right(RedirectResponse(redirectUri.toString) -> stateCookie)
       }

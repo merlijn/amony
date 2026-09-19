@@ -2,6 +2,7 @@ package nl.amony.modules.auth.api
 
 import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import java.util.UUID
+import scala.jdk.DurationConverters.*
 import scala.util.{Random, Try}
 
 import cats.data.EitherT
@@ -66,7 +67,7 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: Use
       stateId  <- EitherT.fromOption[IO](Try(java.lang.Long.parseUnsignedLong(state, 16)).toOption, InvalidCredentials)
       stateRow <- EitherT.fromOptionF(oauthStateDatabase.getById(stateId), InvalidCredentials)
       _        <- EitherT.liftF(oauthStateDatabase.delete(stateId))
-      isValid   = stateRow.provider == provider && nowUTC.isBefore(stateRow.created_at.plus(config.oauthStateValidityDuration))
+      isValid   = stateRow.provider == provider && nowUTC.isBefore(stateRow.created_at.plus(config.oauthStateExpiration.toJava))
       _        <- EitherT.cond[IO](isValid, (), InvalidCredentials)
     yield ()
 

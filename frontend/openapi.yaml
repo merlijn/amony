@@ -7,7 +7,7 @@ paths:
     get:
       tags:
       - resources
-      description: Get information about a resource by its id
+      description: Get information about the buckets
       operationId: getBuckets
       parameters:
       - name: access_token
@@ -639,38 +639,6 @@ paths:
           description: ''
         '403':
           description: ''
-  /api/auth/refresh:
-    post:
-      tags:
-      - auth
-      description: Refresh the users auth tokens
-      operationId: authRefreshTokens
-      parameters:
-      - name: refresh_token
-        in: cookie
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: ''
-          headers:
-            Set-Cookie:
-              required: false
-              schema:
-                type: array
-                items:
-                  type: string
-        '400':
-          description: 'Invalid value for: cookie refresh_token'
-          content:
-            text/plain:
-              schema:
-                type: string
-        '401':
-          description: ''
-        '403':
-          description: ''
   /api/auth/session:
     get:
       tags:
@@ -705,12 +673,23 @@ paths:
           description: ''
         '403':
           description: ''
-  /api/auth/logout:
+  /api/auth/refresh:
     post:
       tags:
       - auth
-      description: Logout the current user
-      operationId: authLogout
+      description: Refresh the users auth tokens
+      operationId: authRefreshTokens
+      parameters:
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: refresh_token
+        in: cookie
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: ''
@@ -721,6 +700,48 @@ paths:
                 type: array
                 items:
                   type: string
+        '400':
+          description: 'Invalid value, Invalid value for: cookie refresh_token'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
+  /api/auth/logout:
+    post:
+      tags:
+      - auth
+      description: Logout the current user
+      operationId: authLogout
+      parameters:
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          headers:
+            Set-Cookie:
+              required: false
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+        '403':
+          description: ''
   /api/auth/login/{provider}:
     get:
       tags:
@@ -1171,6 +1192,10 @@ components:
           format: uuid
         description:
           type: string
+        tags:
+          type: array
+          items:
+            type: string
     ErrorResponseBody:
       title: ErrorResponseBody
       type: object
