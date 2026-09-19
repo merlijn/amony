@@ -4,7 +4,7 @@ import {buildUrl, copyParams} from "../../api/Util";
 import './TagBar.scss';
 import {SessionContext} from "../../api/Constants";
 
-const NONE_TAG_LABEL = "<>"
+const NONE_TAG_LABEL = "-"
 
 const TagBar = (props: { tags: Array<string>, total: number }) => {
 

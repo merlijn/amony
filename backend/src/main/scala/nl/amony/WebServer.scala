@@ -2,7 +2,7 @@ package nl.amony
 
 import java.security.SecureRandom
 import javax.net.ssl.{KeyManagerFactory, SNIHostName, SSLContext}
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 import cats.data.Kleisli
 import cats.effect.unsafe.IORuntime

@@ -1,33 +1,38 @@
 @use 'src/App.scss' as *;
 
-.modal-dialog-container {
-  min-width: 500px;
-  padding: $spacing-l;
-  border-radius: $spacing-s;
-  background-color: var(--text-inverse);
-  color: var(--text-primary);
-  display: flex;
-  flex-direction: column;
-
-  box-shadow: -20px -20px 40px rgba(0, 0, 0, 0.3),
-              -20px 20px 40px rgba(0, 0, 0, 0.3),
-               20px -20px 40px rgba(0, 0, 0, 0.3),
-               20px 20px 40px rgba(0, 0, 0, 0.3);
+.dialog-overlay {
+  @extend .full-screen, .abs-top-left;
+  position: fixed;
+  overflow: hidden;
+  background-color: rgba(0,0,0,0.4);
+  z-index: 499;
 }
 
-.modal-dialog-title {
+.dialog-content {
+  &:focus {
+    outline: none;
+  }
 
-  @extend .mt-2, .pb-3, .mb-4;
-  position: relative;
-  border-bottom: var(--border-primary) 1px solid;
-  width: 100%;
-  color: var(--highlight-a);
-  font-size: x-large;
-  font-weight: bold;
+  z-index: 500;
+
+  @media (max-width: 768px) {
+    position: fixed;
+    inset: 0;
+  }
+
+  @media (min-width: 769px) {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
 }
 
-.modal-dialog-content {
-
-  position: relative;
-  min-height: 100px;
+.dialog-content-window {
+  @extend .dialog-content;
+  width: 50%;
+  height: 75%;
+  //max-width: 90vw;
+  //max-height: 90vh;
+  overflow-y: auto;
 }

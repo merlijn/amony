@@ -1,7 +1,8 @@
 import React, {useState} from "react"
 import {deleteResource, ResourceDto} from "../../api/generated"
-import Modal from "../common/Modal"
-import Dialog from "../common/Dialog"
+import * as RadixDialog from "@radix-ui/react-dialog"
+import "../common/Dialog.scss"
+import DialogContainer from "../common/DialogWindow"
 import {useEventBus} from "../common/EventBus"
 import "./DeleteResourceDialog.scss"
 
@@ -45,35 +46,40 @@ const DeleteResourceDialog = ({resource, visible, onDeleted, onHide}: DeleteReso
   const title = resource?.title || resource?.path?.split("/").pop() || "this resource"
 
   return (
-    <Modal visible={visible} onHide={handleHide}>
-      <Dialog title="Delete resource">
-        <div className="delete-resource-dialog">
-          <p>Are you sure you want to delete <strong>{title}</strong>?</p>
-          <p className="delete-resource-warning">This action cannot be undone.</p>
+    <RadixDialog.Root open={visible} onOpenChange={(open) => { if (!open) handleHide() }}>
+      <RadixDialog.Portal>
+        <RadixDialog.Overlay className="dialog-overlay" />
+        <RadixDialog.Content className="dialog-content">
+          <DialogContainer title="Delete resource">
+            <div className="delete-resource-dialog">
+              <p>Are you sure you want to delete <strong>{title}</strong>?</p>
+              <p className="delete-resource-warning">This action cannot be undone.</p>
 
-          {error && <div className="delete-resource-error">{error}</div>}
+              {error && <div className="delete-resource-error">{error}</div>}
 
-          <div className="delete-resource-actions">
-            <button
-              className="delete-resource-button"
-              type="button"
-              onClick={handleHide}
-              disabled={isDeleting}
-            >
-              Cancel
-            </button>
-            <button
-              className="delete-resource-button danger"
-              type="button"
-              onClick={handleDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </button>
-          </div>
-        </div>
-      </Dialog>
-    </Modal>
+              <div className="delete-resource-actions">
+                <button
+                  className="delete-resource-button"
+                  type="button"
+                  onClick={handleHide}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="delete-resource-button danger"
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </div>
+          </DialogContainer>
+        </RadixDialog.Content>
+      </RadixDialog.Portal>
+    </RadixDialog.Root>
   )
 }
 

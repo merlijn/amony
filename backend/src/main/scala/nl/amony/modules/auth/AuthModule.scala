@@ -7,7 +7,7 @@ import sttp.client4.Backend
 import sttp.tapir.server.http4s.Http4sServerOptions
 
 import nl.amony.modules.auth.api.{ApiSecurity, AuthService}
-import nl.amony.modules.auth.http.AuthEndpointServerLogic
+import nl.amony.modules.auth.http.AuthRoutes
 
 class AuthModule(config: AuthConfig, httpClientBackend: Backend[IO], pool: Resource[IO, Session[IO]]) extends Logging {
 
@@ -18,5 +18,5 @@ class AuthModule(config: AuthConfig, httpClientBackend: Backend[IO], pool: Resou
 
   logger.info("AuthModule initialized, oauth providers: " + authService.oauthProviders.keys.mkString(", "))
 
-  def routes(using serverOptions: Http4sServerOptions[IO]) = AuthEndpointServerLogic.apply(authService, config, apiSecurity)
+  def routes(using serverOptions: Http4sServerOptions[IO], apiSecurity: ApiSecurity) = AuthRoutes.apply(authService, config)
 }

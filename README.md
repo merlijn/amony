@@ -20,7 +20,7 @@ A live demo is available at [https://demo.amony.app](https://demo.amony.app). It
 - optional: Https with automatic certificate management via Let's Encrypt (when using the provided Docker Compose setup)
 - optional: Automatic database backups using a docker compose profile (with recovery mechanism)
 
-*) These features are locked behind a login. The login itself can be completely disabled by setting `AMONY_AUTH_ENABLED=false` in the environment variables.
+*) These features are locked behind a login. The login itself can be completely disabled by setting `AMONY_AUTH_ENABLED=false` in the environment variables. To require login for all access (no anonymous browsing) set `AMONY_AUTH_REQUIRE_LOGIN=true`.
 
 # How to use
 

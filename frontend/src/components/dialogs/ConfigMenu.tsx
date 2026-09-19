@@ -1,23 +1,28 @@
 import {Constants, SessionContext} from "../../api/Constants";
-import {calculateColumns} from "../../api/Util";
-import Dialog from "../common/Dialog";
+import {clampGridColumns, maxGridColumns} from "../../api/Util";
+import DialogWindow from "../common/DialogWindow";
 import './ConfigMenu.scss';
 import {useContext, useEffect, useState} from "react";
 import {adminReComputeHashes, adminRefreshBucket, adminReindexBucket, adminRescanMetaData, getBuckets} from "../../api/generated";
 import {useLocalStorage} from "usehooks-ts";
 import {useTheme} from "../../ThemeContext";
-import {ThemeSetting} from "../../api/Model";
+import {GridAspectRatio, GridOrientation, ThemeSetting} from "../../api/Model";
 import {BucketDto} from "../../api/generated/model/bucketDto";
+import * as Tabs from "@radix-ui/react-tabs";
 
 const ConfigMenu = () => {
 
   // const [prefs, setPrefs] = useLocalStoragePrefs<Prefs>("prefs-v1", Constants.defaultPreferences)
   const [prefs, setPrefs, removeValue] = useLocalStorage(Constants.preferenceKey, Constants.defaultPreferences)
   const { themeSetting, setTheme } = useTheme();
+  const [maxColumns, setMaxColumns] = useState(() => maxGridColumns())
 
-  const columns = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => {
-    return { value: v, label: v.toString() }
-  })
+  useEffect(() => {
+    const updateMaxColumns = () => setMaxColumns(maxGridColumns())
+    updateMaxColumns()
+    window.addEventListener('resize', updateMaxColumns)
+    return () => window.removeEventListener('resize', updateMaxColumns)
+  }, [])
 
   const themeOptions: Array<{value: ThemeSetting, label: string}> = [
     { value: 'system', label: 'System' },
@@ -25,148 +30,182 @@ const ConfigMenu = () => {
     { value: 'dark', label: 'Dark' },
   ]
 
+  const aspectRatioOptions: Array<{value: GridAspectRatio, label: string}> = [
+    { value: '2/1', label: '2 / 1' },
+    { value: '16/9', label: '16 / 9' },
+    { value: '3/2', label: '3 / 2' },
+    { value: '5/4', label: '5 / 4' },
+    { value: '1/1', label: '1 / 1' },
+  ]
+
+  const orientationOptions: Array<{value: GridOrientation, label: string}> = [
+    { value: 'landscape', label: 'Landscape' },
+    { value: 'portrait', label: 'Portrait' },
+  ]
+
+  const gridAspectRatio = prefs.gridAspectRatio ?? '16/9'
+  const gridOrientation = prefs.gridOrientation ?? 'landscape'
+  const galleryColumns = clampGridColumns(
+    typeof prefs.gallery_columns === 'number' ? prefs.gallery_columns : Constants.defaultPreferences.gallery_columns,
+    window.innerWidth
+  )
+
   const updatePrefs = (values: {}) => { setPrefs({...prefs, ...values} ) }
   const session = useContext(SessionContext)
 
   return(
-      <Dialog title = "Preferences">
-        <div key="config-form" className="config-form">
-          <div key="columns" className="form-section">
-            <p key="header" className="form-label">Number of columns</p>
-            <div key="content" className="form-content">
-              <div className="column-select">
-                <input
-                  key="auto-radio"
-                  style={{float: "left"}}
-                  className="mr-1"
-                  name="ncols-option"
-                  type="radio"
-                  value={0}
-                  checked={prefs.gallery_columns === 'auto'}
-                  onChange={(e) => {
-                    if (prefs.gallery_columns !== 'auto') {
-                      updatePrefs({gallery_columns: 'auto'})
-                    }
-                  }}
-                />
-                <span key="auto-label" style = {{float: "left"}}>auto</span>
+      <DialogWindow>
+        <Tabs.Root defaultValue="gridview">
+          <Tabs.List className="tabs-list">
+            <Tabs.Trigger className="tab-trigger" value="gridview">GridView</Tabs.Trigger>
+            {session.isAdmin() && <Tabs.Trigger className="tab-trigger" value="admin">Admin</Tabs.Trigger>}
+          </Tabs.List>
 
-                {/*<input style = {{float: "left"}} type="range" id="mySlider" min="0" max="100" step="25" value="0"/>*/}
-
-                <input
-                  key="custom-radio"
-                  style = {{float: "left"}}
-                  className="mr-1"
-                  name="ncols-option"
-                  type="radio"
-                  value={0}
-                  checked={prefs.gallery_columns !== 'auto'}
-                  onChange={(e) => {
-                    if (prefs.gallery_columns === 'auto')
-                      updatePrefs({gallery_columns: calculateColumns()})
-                  }}
-                />
-
-                <span key="custom-label" style={{float: "left"}}>custom</span>
-                <select
-                  key="custom-value"
-                  name="ncols"
-                  value={prefs.gallery_columns}
-                  onChange={(e) => {
-                    updatePrefs({gallery_columns: parseInt(e.target.value)})
-                  }}>
-                  {
-                    columns.map((v, index) => {
-                      return <option
-                        key={`value-${index}`}
-                        value={v.value}
-                        label={v.label}
-                      />;
-                    })
-                  }
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div key="theme" className="form-section">
-            <p key="header" className="form-label">Theme</p>
-            <div key="content" className="form-content">
-              <div className="theme-select">
-                {themeOptions.map((option) => (
-                  <label key={option.value} className="theme-option">
+          <Tabs.Content className="tab-content" value="gridview">
+            <div key="config-form" className="config-form">
+              <div key="columns" className="form-section">
+                <p key="header" className="form-label">Grid size</p>
+                <div key="content" className="form-content">
+                  <div className="column-slider">
+                    <span className="column-slider-label">Less</span>
                     <input
-                      type="radio"
-                      name="theme-option"
-                      value={option.value}
-                      checked={themeSetting === option.value}
-                      onChange={() => setTheme(option.value)}
+                      type="range"
+                      min={1}
+                      max={maxColumns}
+                      step={1}
+                      value={galleryColumns}
+                      onChange={(e) => {
+                        updatePrefs({gallery_columns: parseInt(e.target.value, 10)})
+                      }}
                     />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
+                    <span className="column-slider-label">More</span>
+                  </div>
+                </div>
+              </div>
+
+              <div key="aspect-ratio" className="form-section">
+                <p key="header" className="form-label">Grid aspect ratio</p>
+                <div key="content" className="form-content">
+                  <div className="aspect-ratio-select">
+                    <select
+                      name="aspect-ratio"
+                      value={gridAspectRatio}
+                      onChange={(e) => {
+                        updatePrefs({gridAspectRatio: e.target.value as GridAspectRatio})
+                      }}
+                    >
+                      {aspectRatioOptions.map((option) => (
+                        <option key={option.value} value={option.value} label={option.label} />
+                      ))}
+                    </select>
+                    <div className="orientation-select">
+                      {orientationOptions.map((option) => (
+                        <label key={option.value} className="orientation-option">
+                          <input
+                            type="radio"
+                            name="orientation-option"
+                            value={option.value}
+                            checked={gridOrientation === option.value}
+                            onChange={() => updatePrefs({gridOrientation: option.value})}
+                          />
+                          <span>{option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div key="theme" className="form-section">
+                <p key="header" className="form-label">Theme</p>
+                <div key="content" className="form-content">
+                  <div className="theme-select">
+                    {themeOptions.map((option) => (
+                      <label key={option.value} className="theme-option">
+                        <input
+                          type="radio"
+                          name="theme-option"
+                          value={option.value}
+                          checked={themeSetting === option.value}
+                          onChange={() => setTheme(option.value)}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div key="info-bar" className="form-section">
+              <p key="header" className="form-label">Show info bar</p>
+                <div key="content" className="form-content">
+                  <input
+                    type="checkbox"
+                    checked={prefs.showTitles}
+                    onChange={(e) => {
+                      updatePrefs({showTitles: !prefs.showTitles})
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div key="duration" className="form-section">
+                <p key="header" className="form-label">Show video duration</p>
+                <div key="content" className="form-content">
+                  <input
+                      type="checkbox"
+                      checked={prefs.showDuration}
+                      onChange={(e) => {
+                        updatePrefs({showDuration: !prefs.showDuration})
+                      }}
+                  />
+                </div>
+              </div>
+              <div key="dates" className="form-section">
+                <p key="header" className="form-label">Show dates</p>
+                <div key="content" className="form-content">
+                  <input
+                      type="checkbox"
+                      checked = { prefs.showDates }
+                      onChange={(e) => {
+                        updatePrefs({showDates: !prefs.showDates})
+                      }}
+                  />
+                </div>
+              </div>
+              <div key="resolution" className="form-section">
+                <p key="header" className="form-label">Show resolution</p>
+                <div key="content" className="form-content">
+                  <input
+                      type="checkbox"
+                      checked = { prefs.showResolution }
+                      onChange = {(e) => {
+                        updatePrefs({showResolution: !prefs.showResolution})
+                      }}
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          </Tabs.Content>
 
-          <div key="info-bar" className="form-section">
-          <p key="header" className="form-label">Show info bar</p>
-            <div key="content" className="form-content">
-              <input
-                type="checkbox"
-                checked={prefs.showTitles}
-                onChange={(e) => {
-                  updatePrefs({showTitles: !prefs.showTitles})
-                }}
-              />
-            </div>
-          </div>
-
-          <div key="duration" className="form-section">
-            <p key="header" className="form-label">Show video duration</p>
-            <div key="content" className="form-content">
-              <input
-                  type="checkbox"
-                  checked={prefs.showDuration}
-                  onChange={(e) => {
-                    updatePrefs({showDuration: !prefs.showDuration})
-                  }}
-              />
-            </div>
-          </div>
-          <div key="dates" className="form-section">
-            <p key="header" className="form-label">Show dates</p>
-            <div key="content" className="form-content">
-              <input
-                  type="checkbox"
-                  checked = { prefs.showDates }
-                  onChange={(e) => {
-                    updatePrefs({showDates: !prefs.showDates})
-                  }}
-              />
-            </div>
-          </div>
-          <div key="resolution" className="form-section">
-            <p key="header" className="form-label">Show resolution</p>
-            <div key="content" className="form-content">
-              <input
-                  type="checkbox"
-                  checked = { prefs.showResolution }
-                  onChange = {(e) => {
-                    updatePrefs({showResolution: !prefs.showResolution})
-                  }}
-              />
-            </div>
-          </div>
-          { session.isAdmin() && <AdminOptions /> }
-        </div>
-      </Dialog>
+          {session.isAdmin() && (
+            <Tabs.Content className="tab-content" value="admin">
+              <div key="config-form" className="config-form">
+                <AdminOptions />
+              </div>
+            </Tabs.Content>
+          )}
+        </Tabs.Root>
+      </DialogWindow>
   )
 }
+
+type AdminAction = 'refresh' | 'reindex' | 'rescan' | 'recompute'
 
 const AdminOptions = () => {
   const [buckets, setBuckets] = useState<BucketDto[]>([]);
   const [selectedBucket, setSelectedBucket] = useState<string>('');
+  const [activeAction, setActiveAction] = useState<AdminAction | null>(null);
 
   useEffect(() => {
     getBuckets().then((data) => {
@@ -177,6 +216,25 @@ const AdminOptions = () => {
     });
   }, []);
 
+  const runAction = (action: AdminAction, apiCall: () => Promise<unknown>) => {
+    setActiveAction(action)
+    apiCall().finally(() => setActiveAction(null))
+  }
+
+  const isLoading = (action: AdminAction) => activeAction === action
+  const anyLoading = activeAction !== null
+
+  type BtnProps = { action: AdminAction; apiCall: () => Promise<unknown>; label?: string }
+
+  const ActionButton = ({ action, apiCall, label = "Go" }: BtnProps) => (
+    <button
+      disabled={isLoading(action)}
+      onClick={() => runAction(action, apiCall)}
+    >
+      {isLoading(action) ? <span className="admin-spinner" /> : label}
+    </button>
+  )
+
   return(
     <>
       <div key="bucket-select" className="form-section">
@@ -185,6 +243,7 @@ const AdminOptions = () => {
           <select
             value={selectedBucket}
             onChange={(e) => setSelectedBucket(e.target.value)}
+            disabled={anyLoading}
           >
             {buckets?.map((bucket: BucketDto) => (
               <option key={bucket.bucketId} value={bucket.bucketId}>
@@ -197,37 +256,37 @@ const AdminOptions = () => {
       <div key="refresh-bucket" className="form-section">
         <p key="header" className="form-label">Refresh resources</p>
         <div key="content" className="form-content">
-          <button onClick={() => {
-            adminRefreshBucket({'bucketId': selectedBucket})
-          }}>Go
-          </button>
+          <ActionButton
+            action="refresh"
+            apiCall={() => adminRefreshBucket({'bucketId': selectedBucket})}
+          />
         </div>
       </div>
       <div key="reindex-bucket" className="form-section">
         <p key="header" className="form-label">Reindex resources</p>
         <div key="content" className="form-content">
-          <button onClick={() => {
-            adminReindexBucket({'bucketId': selectedBucket})
-          }}>Go
-          </button>
+          <ActionButton
+            action="reindex"
+            apiCall={() => adminReindexBucket({'bucketId': selectedBucket})}
+          />
         </div>
       </div>
       <div key="rescan-meta-bucket" className="form-section">
         <p key="header" className="form-label">Rescan metadata</p>
         <div key="content" className="form-content">
-          <button onClick={() => {
-            adminRescanMetaData({'bucketId': selectedBucket})
-          }}>Go
-          </button>
+          <ActionButton
+            action="rescan"
+            apiCall={() => adminRescanMetaData({'bucketId': selectedBucket})}
+          />
         </div>
       </div>
       <div key="re-compute-hashes-bucket" className="form-section">
         <p key="header" className="form-label">ReCompute hashes</p>
         <div key="content" className="form-content">
-          <button onClick={() => {
-            adminReComputeHashes({'bucketId': selectedBucket})
-          }}>Go
-          </button>
+          <ActionButton
+            action="recompute"
+            apiCall={() => adminReComputeHashes({'bucketId': selectedBucket})}
+          />
         </div>
       </div>
     </>

@@ -10,7 +10,7 @@ import org.http4s.dsl.io.*
 import org.http4s.headers.`Cache-Control`
 import scribe.Logging
 
-import nl.amony.modules.auth.api.ApiSecurity
+import nl.amony.modules.auth.api.{ApiSecurity, authCookieName}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.http.ResourceDirectives.resourceContentsResponse
 
@@ -71,13 +71,26 @@ object ResourceContentRoutes extends Logging {
     }
   }
 
-  def apply(buckets: Map[String, ResourceBucket], apiSecurity: ApiSecurity): HttpRoutes[IO] = {
+  def apply(buckets: Map[String, ResourceBucket])(using apiSecurity: ApiSecurity): HttpRoutes[IO] = {
 
-    def getResource(bucketId: String, resourceId: ResourceId): OptionT[IO, (ResourceBucket, Resource)] =
-      for
-        bucket   <- OptionT.fromOption[IO](buckets.get(bucketId))
-        resource <- OptionT(bucket.getResource(resourceId))
-      yield bucket -> resource
+    // The content routes are not Tapir endpoints, so the access token has to be read from the cookie directly.
+    def authToken(req: Request[IO]) =
+      val accessToken = req.cookies.find(_.name == authCookieName).map(_.content)
+      apiSecurity.decodeAccessToken(accessToken)
+
+    def isAnonymouslyForbidden(req: Request[IO]): Boolean =
+      apiSecurity.isLoginRequired && authToken(req).isAnonymous
+
+    def isBucketHidden(req: Request[IO], bucketId: String): Boolean =
+      apiSecurity.userAccess(authToken(req)).hiddenBuckets.contains(bucketId)
+
+    def getResource(req: Request[IO], bucketId: String, resourceId: ResourceId): OptionT[IO, (ResourceBucket, Resource)] =
+      if isBucketHidden(req, bucketId) then OptionT.none[IO, (ResourceBucket, Resource)]
+      else
+        for
+          bucket   <- OptionT.fromOption[IO](buckets.get(bucketId))
+          resource <- OptionT(bucket.getResource(resourceId))
+        yield bucket -> resource
 
     def maybeResponse(option: OptionT[IO, Response[IO]]): IO[Response[IO]] =
       option.value.map(_.getOrElse(Response(Status.NotFound)))
@@ -85,23 +98,27 @@ object ResourceContentRoutes extends Logging {
     HttpRoutes.of[IO] {
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / "content" =>
-        maybeResponse:
-          getResource(bucketId, ResourceId(resourceId)).semiflatMap((_, resource) => resourceContentsResponse(req, resource.content))
+        if isAnonymouslyForbidden(req) then IO.pure(Response(Status.Unauthorized))
+        else
+          maybeResponse:
+            getResource(req, bucketId, ResourceId(resourceId)).semiflatMap((_, resource) => resourceContentsResponse(req, resource.content))
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern =>
-        maybeResponse(
-          for
-            (bucket, resource) <- getResource(bucketId, ResourceId(resourceId))
-            operation          <- OptionT.fromOption(resourcePattern match {
-                                    case patterns.PublicThumbnailPattern(ts, resKey) => patterns.thumbnailOperation(ts.toLong, resKey, resource.info)
-                                    case patterns.PublicClipPattern(ts, resKey)      => patterns.clipOperation(ts.toLong, resKey, resource.info)
-                                    case _                                           => None
-                                  })
-            derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))
-            response           <- OptionT.liftF(resourceContentsResponse(req, derivedResource)
-                                    .map(r => r.addHeader(`Cache-Control`(`max-age`(365.days)))))
-          yield response
-        )
+        if isAnonymouslyForbidden(req) then IO.pure(Response(Status.Unauthorized))
+        else
+          maybeResponse(
+            for
+              (bucket, resource) <- getResource(req, bucketId, ResourceId(resourceId))
+              operation          <- OptionT.fromOption(resourcePattern match {
+                                      case patterns.PublicThumbnailPattern(ts, resKey) => patterns.thumbnailOperation(ts.toLong, resKey, resource.info)
+                                      case patterns.PublicClipPattern(ts, resKey)      => patterns.clipOperation(ts.toLong, resKey, resource.info)
+                                      case _                                           => None
+                                    })
+              derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))
+              response           <- OptionT.liftF(resourceContentsResponse(req, derivedResource)
+                                      .map(r => r.addHeader(`Cache-Control`(`max-age`(365.days)))))
+            yield response
+          )
     }
   }
 }

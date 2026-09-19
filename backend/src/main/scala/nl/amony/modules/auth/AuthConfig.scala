@@ -2,7 +2,7 @@ package nl.amony.modules.auth
 
 import java.security.KeyFactory
 import java.security.spec.{ECParameterSpec, ECPoint, ECPrivateKeySpec, ECPublicKeySpec}
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.*
 import scala.language.adhocExtensions
 import scala.util.Try
 
@@ -10,25 +10,17 @@ import pdi.jwt.{JwtAlgorithm, JwtCirce, JwtClaim}
 import pureconfig.*
 import pureconfig.error.CannotConvert
 import pureconfig.generic.FieldCoproductHint
-import pureconfig.generic.derivation.EnumConfigReader
 import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
 import sttp.model.Uri
 
-import nl.amony.modules.auth.api.{JwtDecoder, Role}
+import nl.amony.modules.auth.api.{AuthToken, JwtDecoder, Permission, Role}
 
 given ConfigReader[Uri] = ConfigReader.fromString[Uri](str => Uri.parse(str).left.map(err => CannotConvert(str, "Uri", err)))
 
-enum Action derives EnumConfigReader:
-  case Search
-  case Preview
-  case View
-  case Download
-  case Upload
-
-case class UserAccessConfig(
+case class RoleAccessConfig(
   hiddenTags: Set[String],
   hiddenBuckets: Set[String],
-  allowedActions: Set[Action]
+  permissions: Set[Permission]
 ) derives ConfigReader
 
 case class OauthProvider(
@@ -44,43 +36,36 @@ case class OauthProvider(
 
 case class AuthConfig(
   enabled: Boolean,
+  requireLogin: Boolean,
   jwt: JwtConfig,
   publicUri: Uri,
   secureCookies: Boolean,
+  oauthStateExpiration: FiniteDuration = 300.seconds,
   oauthProviders: List[OauthProvider],
-  accessControl: Map[String, UserAccessConfig]
+  accessControl: Map[String, RoleAccessConfig]
 ) derives ConfigReader {
 
   val random = new java.security.SecureRandom
 
-  val oauthStateValidityDuration = java.time.Duration.ofMinutes(5)
-
-  val anonymousAccess: UserAccessConfig     = accessControl("anonymous")
-  val authenticatedAccess: UserAccessConfig = accessControl("authenticated")
-  val adminAccess: UserAccessConfig         = UserAccessConfig(
-    hiddenTags     = Set.empty,
-    hiddenBuckets  = Set.empty,
-    allowedActions = Set(Action.Search, Action.Preview, Action.View, Action.Download, Action.Upload)
+  val anonymousAccess: RoleAccessConfig     = accessControl(Role.Anonymous)
+  val authenticatedAccess: RoleAccessConfig = accessControl(Role.Authenticated)
+  val adminAccess: RoleAccessConfig         = RoleAccessConfig(
+    hiddenTags    = Set.empty,
+    hiddenBuckets = Set.empty,
+    permissions   = Permission.values.toSet
   )
 
-  def access(roles: Set[Role]): UserAccessConfig = {
+  def access(authToken: AuthToken): RoleAccessConfig =
+    if authToken.roles.contains(Role.Anonymous) then anonymousAccess
+    else if authToken.roles.contains(Role.Admin) then adminAccess
+    else authToken.roles.flatMap(accessControl.get).foldLeft(authenticatedAccess)(merge)
 
-    def roleAccess(role: Role): UserAccessConfig =
-      role match
-        case Role.Admin => adminAccess
-        case _          => accessControl.getOrElse(role, authenticatedAccess)
-
-    def merge(configs: Set[UserAccessConfig]): UserAccessConfig =
-      configs.foldLeft(anonymousAccess) { (acc, cfg) =>
-        UserAccessConfig(
-          hiddenTags     = acc.hiddenTags intersect cfg.hiddenTags,
-          hiddenBuckets  = acc.hiddenBuckets intersect cfg.hiddenBuckets,
-          allowedActions = acc.allowedActions ++ cfg.allowedActions
-        )
-      }
-
-    merge(roles.map(roleAccess))
-  }
+  private def merge(acc: RoleAccessConfig, cfg: RoleAccessConfig): RoleAccessConfig =
+    RoleAccessConfig(
+      hiddenTags    = acc.hiddenTags intersect cfg.hiddenTags,
+      hiddenBuckets = acc.hiddenBuckets intersect cfg.hiddenBuckets,
+      permissions   = acc.permissions ++ cfg.permissions
+    )
 
   def decoder = JwtDecoder(jwt.algorithm)
 }
