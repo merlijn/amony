@@ -64,6 +64,7 @@ jobs:
       IMAGE_NAME: amony-app
       REPOSITORY_PATH: docker-images/amony
       JIB_RELEASE_BUILD: ${{ startsWith(github.ref, 'refs/tags/') }}
+      JIB_TAGS: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || '' }}
 
     steps:
       - uses: actions/checkout@v4

@@ -127,8 +127,8 @@ Images are published to Artifact Registry by the `Build and deploy` workflow
 - **`main`** — every push/merge publishes the moving `dev` tag.
 - **Git tags** — pushing a tag (for example `v0.1.7`) publishes `latest` and the
   version tag (for example `0.1.7`).
-- **Other commits** — a build publishes only when its commit message contains
-  `#publish` (used for pull requests).
+- **Pull requests** — publish only when the head commit message contains
+  `#publish`, under a per-PR tag (`pr-<number>`).
 
 ## Tech stack
 
