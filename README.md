@@ -121,14 +121,21 @@ sbt jibDockerBuild
 
 ### 3. Publishing images
 
-Images are published to Artifact Registry by the `Build and deploy` workflow
-(`.github/workflows/build.yml`):
+Images are published to the GitHub Container Registry (GHCR) by the
+`Build and deploy` workflow (`.github/workflows/build.yml`). They are public and
+live under `ghcr.io/merlijn/`:
 
-- **`main`** — every push/merge publishes the moving `dev` tag.
+- **`main`** — every push/merge publishes the moving `dev` tag
+  (`ghcr.io/merlijn/amony-app:dev`).
 - **Git tags** — pushing a tag (for example `v0.1.7`) publishes `latest` and the
   version tag (for example `0.1.7`).
 - **Pull requests** — publish only when the head commit message contains
   `#publish`, under a per-PR tag (`pr-<number>`).
+
+The Jib base image (`ghcr.io/merlijn/amony-base:latest`) is built from
+`docker/base/Dockerfile` by the `Build base image` workflow
+(`.github/workflows/base-image.yml`), which is triggered manually from the
+Actions tab.
 
 ## Tech stack
 
