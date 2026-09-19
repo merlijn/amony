@@ -20,12 +20,9 @@ val prodScalacOptions = Seq(
   "-feature",
   )
 
-def isMainBranch: Boolean = {
-  val currentBranch = "git rev-parse --abbrev-ref HEAD".!!.trim
-  currentBranch == "main"
-}
-
-def hasNoLocalChanges: Boolean = "git status --porcelain".!!.isEmpty
+// CI sets JIB_RELEASE_BUILD=true on tag builds; locally we fall back to whether HEAD is a tag.
+def isReleaseBuild: Boolean =
+  sys.env.get("JIB_RELEASE_BUILD").flatMap(_.toBooleanOption).getOrElse("git tag --points-at HEAD".!!.trim.nonEmpty)
 
 //fork in Global := true
 Global / cancelable := true
@@ -123,7 +120,7 @@ lazy val amony = project
     jibCustomRepositoryPath := Some("amony-04c85b/docker-images/amony/" + jibName.value),
     jibPlatforms            := Set({if (System.getProperty("os.arch") == "aarch64") JibPlatforms.arm64 else JibPlatforms.amd64}),
     jibImageFormat          := JibImageFormat.OCI,
-    jibTags                 := { if (isMainBranch && hasNoLocalChanges) List("latest") else List("dev") },
+    jibTags                 := { if (isReleaseBuild) List("latest") else List("dev") },
     jibExtraMappings   ++= Def.uncached {
       // this adds the frontend assets to the docker image
       val webClientDir = (Compile / baseDirectory).value / ".." / "frontend" / "dist"
@@ -168,7 +165,8 @@ lazy val amony = project
     // This is a hack to make to create a file with the same docker tags from the jib build to be able to push them
     jibWriteDockerTagsFile := Def.uncached {
       val versionFile = (Compile / baseDirectory).value / ".docker-tags.txt"
-      val tags = jibTags.value :+ jibVersion.value
+      // Release builds publish "latest" plus the version tag; all other builds publish only "dev".
+      val tags        = if (isReleaseBuild) jibTags.value :+ jibVersion.value else jibTags.value
       IO.write(versionFile, tags.mkString("\n"))
       versionFile
     },
