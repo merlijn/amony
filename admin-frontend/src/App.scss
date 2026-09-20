@@ -1,41 +1,4 @@
-:root {
-  --spacing-xs: 2px;
-  --spacing-s: 5px;
-  --spacing-m: 12px;
-  --spacing-l: 24px;
-  --spacing-xl: 40px;
-
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8f9fa;
-  --bg-tertiary: #e9ecef;
-  --bg-hover: #dee2e6;
-
-  --text-primary: #000000;
-  --text-secondary: #495057;
-  --text-muted: #adb5bd;
-  --text-inverse: #ffffff;
-
-  --border-primary: #ced4da;
-  --border-secondary: #dee2e6;
-
-  --highlight-a: #286fa8;
-  --secondary-a: #81b2d9;
-}
-
-[data-theme="dark"] {
-  --bg-primary: #1a1a1a;
-  --bg-secondary: #2d2d2d;
-  --bg-tertiary: #3a3a3a;
-  --bg-hover: #4a4a4a;
-
-  --text-primary: #e0e0e0;
-  --text-secondary: #b0b0b0;
-  --text-muted: #707070;
-  --text-inverse: #1a1a1a;
-
-  --border-primary: #4a4a4a;
-  --border-secondary: #3a3a3a;
-}
+@use './styles/tokens';
 
 * {
   box-sizing: border-box;
@@ -59,16 +22,26 @@ body {
   border-radius: 5px;
   cursor: pointer;
   font-size: 0.9rem;
+
+  &:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
 }
 
 .button-primary {
-  color: var(--text-inverse);
-  background-color: var(--highlight-a);
-  border: 1px solid var(--highlight-a);
+  color: var(--text-on-accent);
+  background-color: var(--bg-accent);
+  border: 1px solid var(--bg-accent);
 
-  &:hover {
-    background-color: var(--secondary-a);
-    border-color: var(--secondary-a);
+  &:hover:not(:disabled) {
+    background-color: var(--bg-accent-hover);
+    border-color: var(--bg-accent-hover);
   }
 }
 
@@ -77,7 +50,7 @@ body {
   background-color: transparent;
   border: 1px solid var(--border-primary);
 
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: var(--bg-hover);
   }
 }
