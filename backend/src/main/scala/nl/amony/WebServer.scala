@@ -4,7 +4,7 @@ import java.security.SecureRandom
 import javax.net.ssl.{KeyManagerFactory, SNIHostName, SSLContext}
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
-import cats.data.Kleisli
+import cats.data.{Kleisli, OptionT}
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource}
 import cats.implicits.catsSyntaxFlatMapOps
@@ -21,10 +21,12 @@ import org.http4s.otel4s.middleware.metrics.OtelMetrics
 import org.http4s.server.middleware.{Logger, Metrics}
 import org.http4s.server.{Router, Server}
 import org.http4s.{Headers, HttpRoutes, Request, Response, Status}
+import org.typelevel.ci.{CIString, CIStringSyntax}
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.typelevel.otel4s.metrics.MeterProvider
 import scribe.Logging
 
+import nl.amony.lib.http.HostCheck
 import nl.amony.modules.auth.crypt.PemReader
 import nl.amony.modules.resources.http.ResourceDirectives
 import nl.amony.{HttpConfig, HttpsConfig, WebServerConfig}
@@ -33,7 +35,7 @@ object WebServer extends Logging {
 
   def run(config: WebServerConfig, apiRoutes: HttpRoutes[IO])(using io: IORuntime, meterProvider: MeterProvider[IO]): Resource[IO, Unit] = {
 
-    val routes = apiRoutes <+> webAppRoutes(config)
+    val routes = hostFilter(config.allowedHosts)(apiRoutes <+> webAppRoutes(config))
 
     val httpResource = config.http match {
       case Some(httpConfig) if httpConfig.enabled =>
@@ -60,6 +62,22 @@ object WebServer extends Logging {
   }
 
   private val serverError = Response[IO](Status.InternalServerError).putHeaders(org.http4s.headers.`Content-Length`.zero)
+  private val invalidHostResponse = Response[IO](Status.BadRequest).withEntity("Invalid host")
+
+  private def headerValue(name: CIString, req: Request[IO]): Option[String] =
+    req.headers.headers.find(_.name == name).map(_.value)
+
+  /** Rejects requests whose host is not in the allow-list, so a client cannot make the backend act
+    * on a foreign domain (e.g. derive an OAuth redirect_uri from an attacker-supplied host). */
+  private[amony] def hostFilter(allowedHosts: List[String])(routes: HttpRoutes[IO]): HttpRoutes[IO] =
+    Kleisli { req =>
+      val host = HostCheck.effectiveHost(headerValue(ci"X-Forwarded-Host", req), headerValue(ci"Host", req))
+      if HostCheck.isAllowed(allowedHosts, host) then routes.run(req)
+      else {
+        logger.debug(s"Rejected request with host '$host' (allowed: ${allowedHosts.mkString(", ")})")
+        OptionT.some[IO](invalidHostResponse)
+      }
+    }
 
   def httpsServer(httpsConfig: HttpsConfig, routes: HttpRoutes[IO])(using io: IORuntime): Resource[IO, Server] = {
 

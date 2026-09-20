@@ -3,6 +3,8 @@ package nl.amony.modules.auth.api
 import sttp.model.{Method, StatusCode}
 import sttp.tapir.*
 
+import nl.amony.lib.http.HostCheck
+
 case class SecurityInput(accessToken: Option[String], xsrfCookie: Option[String], xXsrfHeader: Option[String], method: Method)
 
 /**
@@ -20,7 +22,7 @@ val requestOrigin: EndpointInput[RequestOrigin] =
   extractFromRequest { request =>
     def first(value: Option[String]): Option[String] = value.map(_.split(",").head.trim).filter(_.nonEmpty)
 
-    val host   = first(request.header("X-Forwarded-Host")).orElse(first(request.header("Host"))).getOrElse("localhost")
+    val host   = HostCheck.effectiveHost(request.header("X-Forwarded-Host"), request.header("Host"))
     val scheme = first(request.header("X-Forwarded-Proto")).getOrElse("http")
     RequestOrigin(scheme, host)
   }

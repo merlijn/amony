@@ -45,6 +45,9 @@ services:
     environment:
       AMONY_OAUTH_AUTHORIZE_URL: https://${DOMAIN_SUB_AUTH}.${DOMAIN_TLD}/dex/auth
       AMONY_ADMIN_OAUTH_AUTHORIZE_URL: https://${DOMAIN_SUB_AUTH}.${DOMAIN_TLD}/dex/auth
+      # Only the public hosts are accepted (replaces the local defaults in application.conf).
+      AMONY_ALLOWED_HOSTS_0: ${DOMAIN_SUB_AMONY}.${DOMAIN_TLD}
+      AMONY_ALLOWED_HOSTS_1: ${DOMAIN_SUB_ADMIN}.${DOMAIN_TLD}
 
   auth:
     # Uses the stock Dex image: docker/dex/config.yaml.tmpl is rendered by the image's
