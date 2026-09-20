@@ -1,11 +1,12 @@
-import {BrowserRouter, Route, Routes} from 'react-router-dom';
+import {BrowserRouter, Navigate, Route, Routes} from 'react-router-dom';
 import React, {use, useMemo} from 'react';
 import {AxiosError} from 'axios';
 import {getSession} from "./api/generated";
 import {SessionContext} from "./api/Constants";
 import {SessionInfo} from "./api/Model";
 import LoginPage from "./pages/LoginPage";
-import Dashboard from "./pages/Dashboard";
+import UsersPage from "./pages/UsersPage";
+import AdminLayout from "./components/AdminLayout";
 
 function App() {
   const sessionPromise = useMemo(() =>
@@ -50,7 +51,10 @@ function SessionGate({ sessionPromise }: { sessionPromise: Promise<SessionInfo |
   return (
     <SessionContext.Provider value={session}>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
+        <Route element={<AdminLayout />}>
+          <Route index element={<Navigate to="/users" replace />} />
+          <Route path="users" element={<UsersPage />} />
+        </Route>
       </Routes>
     </SessionContext.Provider>
   );
