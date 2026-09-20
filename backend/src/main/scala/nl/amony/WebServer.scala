@@ -62,7 +62,7 @@ object WebServer extends Logging {
   }
 
   private val serverError = Response[IO](Status.InternalServerError).putHeaders(org.http4s.headers.`Content-Length`.zero)
-  private val invalidHostResponse = Response[IO](Status.BadRequest).withEntity("Invalid host")
+  private val invalidHostResponse = Response[IO](Status.MisdirectedRequest).withEntity("Invalid host")
 
   private def headerValue(name: CIString, req: Request[IO]): Option[String] =
     req.headers.headers.find(_.name == name).map(_.value)
