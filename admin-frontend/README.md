@@ -35,10 +35,15 @@ The OAuth redirect URI is derived from the request (the `X-Forwarded-Host` /
 the backend is reached directly), so no public origin needs to be configured.
 
 Because of that, logging in **from the Vite dev server** (`http://localhost:5174`)
-requires that origin to be registered with Dex as well. The Docker setup registers
-it when `DEX_AMONY_ADMIN_DEV_REDIRECT_URI` is set in `.env` (see `.env.example`);
-otherwise Dex rejects the callback with `Unregistered redirect_uri`. The admin
-container origin (`http://localhost:8183`) is registered by default.
+requires that origin to be registered with Dex as well. The dev server forwards the
+browser's origin via `X-Forwarded-Host` (see `vite.config.ts`), so while developing
+just point the redirect URI at the dev origin in `.env`:
+
+```
+DEX_AMONY_ADMIN_REDIRECT_URI=http://localhost:5174/api/auth/callback/admin
+```
+
+The admin container origin (`http://localhost:8183`) is the compose default.
 
 ## OpenAPI spec
 

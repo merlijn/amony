@@ -90,7 +90,7 @@ services:
     entrypoint: ["/scripts/backup-entrypoint.sh"]
 
   amony:
-    image: ghcr.io/merlijn/amony-app:dev
+    image: ghcr.io/merlijn/amony-app:latest
     container_name: amony-app
     depends_on:
       postgres:
@@ -150,10 +150,6 @@ services:
       DEX_ISSUER: ${DEX_ISSUER:-http://localhost:5556/dex}
       DEX_AMONY_REDIRECT_URI: ${DEX_AMONY_REDIRECT_URI:-http://localhost:8182/api/auth/callback/dex}
       DEX_AMONY_ADMIN_REDIRECT_URI: ${DEX_AMONY_ADMIN_REDIRECT_URI:-http://localhost:8183/api/auth/callback/admin}
-      # Optional extra redirect URIs for the Vite dev servers. Empty by default; set them in
-      # .env while developing so login works from the dev server as well as the container.
-      DEX_AMONY_DEV_REDIRECT_URI: ${DEX_AMONY_DEV_REDIRECT_URI:-}
-      DEX_AMONY_ADMIN_DEV_REDIRECT_URI: ${DEX_AMONY_ADMIN_DEV_REDIRECT_URI:-}
       # Dev defaults; override through .env (see .env.example). Note the escaped $$ for the bcrypt hash.
       DEX_CLIENT_SECRET: ${DEX_CLIENT_SECRET:-amony-dex-secret}
       DEX_ADMIN_CLIENT_SECRET: ${DEX_ADMIN_CLIENT_SECRET:-amony-admin-dex-secret}

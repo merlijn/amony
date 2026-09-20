@@ -85,7 +85,7 @@ val javaDevOpts = Seq(
   "-DAMONY_SOLR_PATH=../data/solr",
   "-DAMONY_WEB_CLIENT_PATH=../frontend/dist",
   // Auth
-  "-DAMONY_AUTH_ENABLED=false",
+  "-DAMONY_AUTH_ENABLED=true",
   "-DAMONY_SECURE_COOKIES=false",
   "-DAMONY_OAUTH_AUTHORIZE_URL=http://localhost:5556/dex/auth",
   "-DAMONY_OAUTH_TOKEN_URL=http://localhost:5556/dex/token",

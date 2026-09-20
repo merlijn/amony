@@ -16,7 +16,18 @@ export default defineConfig({
     server: {
         port: 5174,
         proxy: {
-            '/api': backendHost,
+            '/api': {
+                target: backendHost,
+                changeOrigin: true,
+                // Mirror the production reverse proxy: forward the origin the browser actually
+                // used, so the backend derives the right OAuth redirect_uri instead of the proxy target.
+                configure: (proxy) => {
+                    proxy.on('proxyReq', (proxyReq, req) => {
+                        if (req.headers.host) proxyReq.setHeader('X-Forwarded-Host', req.headers.host);
+                        proxyReq.setHeader('X-Forwarded-Proto', 'http');
+                    });
+                }
+            },
             '/resources': backendHost
         }
     }
