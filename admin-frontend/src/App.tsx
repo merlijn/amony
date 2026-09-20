@@ -1,5 +1,5 @@
 import {BrowserRouter, Navigate, Route, Routes} from 'react-router-dom';
-import React, {use, useMemo} from 'react';
+import React, {Suspense, use, useMemo} from 'react';
 import {AxiosError} from 'axios';
 import {getSession} from "./api/generated";
 import {SessionContext} from "./api/Constants";
@@ -27,7 +27,9 @@ function App() {
 
   return (
     <BrowserRouter>
-      <SessionGate sessionPromise={sessionPromise} />
+      <Suspense fallback={<div className="message-page">Loading…</div>}>
+        <SessionGate sessionPromise={sessionPromise} />
+      </Suspense>
     </BrowserRouter>
   );
 }
