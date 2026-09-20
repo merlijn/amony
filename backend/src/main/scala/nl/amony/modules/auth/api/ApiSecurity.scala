@@ -121,3 +121,10 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
 
     AuthCookies(expiredEmptyCookie, expiredEmptyCookie, expiredEmptyCookie)
   }
+
+object ApiSecurity:
+
+  /** Whether `host` is one of the hosts the backend accepts (see `allowed-hosts`). */
+  def isAllowedHost(allowedHosts: List[String], host: String): Boolean =
+    val candidate = host.trim
+    candidate.nonEmpty && allowedHosts.exists(_.trim.equalsIgnoreCase(candidate))

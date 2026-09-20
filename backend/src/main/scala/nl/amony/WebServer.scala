@@ -26,7 +26,7 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.typelevel.otel4s.metrics.MeterProvider
 import scribe.Logging
 
-import nl.amony.lib.http.HostCheck
+import nl.amony.modules.auth.api.{ApiSecurity, effectiveHost}
 import nl.amony.modules.auth.crypt.PemReader
 import nl.amony.modules.resources.http.ResourceDirectives
 import nl.amony.{HttpConfig, HttpsConfig, WebServerConfig}
@@ -71,8 +71,8 @@ object WebServer extends Logging {
     * on a foreign domain (e.g. derive an OAuth redirect_uri from an attacker-supplied host). */
   private[amony] def hostFilter(allowedHosts: List[String])(routes: HttpRoutes[IO]): HttpRoutes[IO] =
     Kleisli { req =>
-      val host = HostCheck.effectiveHost(headerValue(ci"X-Forwarded-Host", req), headerValue(ci"Host", req))
-      if HostCheck.isAllowed(allowedHosts, host) then routes.run(req)
+      val host = effectiveHost(headerValue(ci"X-Forwarded-Host", req), headerValue(ci"Host", req))
+      if ApiSecurity.isAllowedHost(allowedHosts, host) then routes.run(req)
       else {
         logger.debug(s"Rejected request with host '$host' (allowed: ${allowedHosts.mkString(", ")})")
         OptionT.some[IO](invalidHostResponse)
