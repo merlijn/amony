@@ -22,6 +22,7 @@ import nl.amony.modules.auth.AuthConfig
 import nl.amony.modules.auth.api.*
 
 case class IdentityProviderDto(name: String, loginUrl: String) derives Codec, Schema
+case class LogoutResponse(logoutUrl: Option[String]) derives Codec, Schema
 
 object AuthRoutes extends RoutesModule, Logging:
 
@@ -49,12 +50,17 @@ object AuthRoutes extends RoutesModule, Logging:
       .out(AuthCookies.endpointOutput)
       .errorOut(errorOutput))
 
-  val logoutEndpoint: Endpoint[(Option[String], Option[String]), Unit, SecurityError, AuthCookies, Any] =
+  // Clears the local session and, when the provider has an end-session endpoint configured, returns
+  // a URL the frontend navigates to so the upstream session is ended as well.
+  val logoutEndpoint =
     register(endpoint
       .tag("auth").name("authLogout").description("Logout the current user")
       .post.in("api" / "auth" / "logout")
       .securityIn(xsrfSecurityInput)
+      .in(cookie[Option[String]](providerIdTokenCookieName).description("The identity provider ID token, passed on as id_token_hint"))
+      .in(requestOrigin)
       .errorOut(errorOutput)
+      .out(jsonBody[LogoutResponse])
       .out(statusCode(StatusCode.Ok))
       .out(AuthCookies.endpointOutput))
 
@@ -101,8 +107,9 @@ object AuthRoutes extends RoutesModule, Logging:
 
       serverLogic(endpoint = sessionEndpoint)(auth => _ => IO(Right(auth)))
 
-      serverLogic(endpoint = logoutEndpoint, authorize = apiSecurity.authorizeXsrf) { _ => _ =>
-        IO.pure(Right(apiSecurity.createLogoutCookes))
+      serverLogic(endpoint = logoutEndpoint, authorize = apiSecurity.authorizeXsrf) { _ => (providerIdTokenCookie, origin) =>
+        val logoutUrl = providerIdTokenCookie.flatMap(ProviderIdToken.decode).flatMap(loginService.logoutUrl(_, origin))
+        IO.pure(Right((LogoutResponse(logoutUrl), apiSecurity.createLogoutCookes)))
       }
 
       serverLogic(endpoint = oauth2loginEndpoint) { (provider, origin) =>

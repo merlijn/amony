@@ -30,6 +30,9 @@ case class IdentityProvider(
   authorizeUrl: Uri,
   tokenUrl: Uri,
   userInfoUrl: Uri,
+  // Optional OIDC end-session endpoint (RP-Initiated Logout). When set, logout redirects the
+  // browser there so the upstream identity provider session is ended as well.
+  endSessionUrl: Option[Uri] = None,
   scopes: List[String]       = List("openid", "profile", "email"),
   defaultRoles: Set[Role]    = Set.empty,
   // When true the provider is not listed by /api/auth/identity-providers. Used for internal/admin-only providers.

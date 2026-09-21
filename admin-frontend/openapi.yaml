@@ -310,6 +310,12 @@ paths:
         required: false
         schema:
           type: string
+      - name: provider_id_token
+        in: cookie
+        description: The identity provider ID token, passed on as id_token_hint
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: ''
@@ -320,6 +326,10 @@ paths:
                 type: array
                 items:
                   type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResponse'
         '400':
           description: Invalid value
           content:
@@ -506,6 +516,12 @@ components:
         name:
           type: string
         loginUrl:
+          type: string
+    LogoutResponse:
+      title: LogoutResponse
+      type: object
+      properties:
+        logoutUrl:
           type: string
     ResourceDto:
       title: ResourceDto

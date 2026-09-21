@@ -24,6 +24,9 @@ def effectiveHost(xForwardedHost: Option[String], host: Option[String]): String 
 case class RequestOrigin(scheme: String, host: String):
   def callbackUri(provider: String): String = s"$scheme://$host/api/auth/callback/$provider"
 
+  /** The origin the client is on, used as `post_logout_redirect_uri` for federated logout. */
+  def rootUri: String = s"$scheme://$host/"
+
 val requestOrigin: EndpointInput[RequestOrigin] =
   extractFromRequest { request =>
     def first(value: Option[String]): Option[String] = value.map(_.split(",").head.trim).filter(_.nonEmpty)

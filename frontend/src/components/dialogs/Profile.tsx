@@ -1,10 +1,14 @@
 import DialogWindow from '../common/DialogWindow';
-import {authLogout} from "../../api/generated";
+import {authLogout} from '../../api/generated';
 
-const Profile = (props: {onLogout: () => void }) => {
+const Profile = () => {
 
-  const doLogout = () => { 
-    authLogout().then(props.onLogout);
+  const doLogout = async () => {
+    // The backend clears the local session and, when the provider supports it, returns a URL that
+    // ends the upstream identity provider session too.
+    const {logoutUrl} = await authLogout();
+    if (logoutUrl) window.location.href = logoutUrl;
+    else window.location.reload();
   }
 
   return (

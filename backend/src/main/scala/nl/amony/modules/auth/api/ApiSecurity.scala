@@ -14,6 +14,13 @@ import nl.amony.modules.auth.api.{Authentication, JwtDecoder}
 
 val authCookieName = "access_token"
 
+/**
+ * Cookie holding the identity provider's ID token, used as `id_token_hint` on logout. It is scoped
+ * to the logout endpoint so it is not sent on other requests.
+ */
+val providerIdTokenCookieName = "provider_id_token"
+val providerIdTokenCookiePath = "/api/auth/logout"
+
 class ApiSecurity(authConfig: AuthConfig) extends Logging:
 
   private val decoder: JwtDecoder  = authConfig.decoder
@@ -105,21 +112,37 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       expires  = Some(Instant.now().plus(Duration.ofSeconds(authConfig.jwt.refreshTokenExpiration.toSeconds)))
     )
 
-    AuthCookies(accessTokenCookie, refreshCookie, xsrfCookie)
-  }
-
-  def createLogoutCookes = {
-    val expiredEmptyCookie =
+    val providerIdTokenCookie = apiAuthentication.providerIdToken.map { providerIdToken =>
       CookieValueWithMeta.unsafeApply(
-        value    = "",
-        path     = Some("/"),
+        value    = providerIdToken.encode,
+        path     = Some(providerIdTokenCookiePath),
         httpOnly = true,
         secure   = authConfig.secureCookies,
         sameSite = Some(SameSite.Lax),
-        expires  = Some(Instant.ofEpochSecond(0L))
+        expires  = Some(Instant.now().plus(Duration.ofSeconds(authConfig.jwt.refreshTokenExpiration.toSeconds)))
       )
+    }
 
-    AuthCookies(expiredEmptyCookie, expiredEmptyCookie, expiredEmptyCookie)
+    AuthCookies(accessTokenCookie, refreshCookie, xsrfCookie, providerIdTokenCookie)
+  }
+
+  def createLogoutCookes = {
+    def expiredCookie(path: String) = CookieValueWithMeta.unsafeApply(
+      value    = "",
+      path     = Some(path),
+      httpOnly = true,
+      secure   = authConfig.secureCookies,
+      sameSite = Some(SameSite.Lax),
+      expires  = Some(Instant.ofEpochSecond(0L))
+    )
+
+    AuthCookies(
+      accessToken     = expiredCookie("/"),
+      refreshToken    = expiredCookie("/"),
+      xsrfToken       = expiredCookie("/"),
+      // Must repeat the cookie's own path, otherwise the browser keeps the original cookie.
+      providerIdToken = Some(expiredCookie(providerIdTokenCookiePath))
+    )
   }
 
 object ApiSecurity:

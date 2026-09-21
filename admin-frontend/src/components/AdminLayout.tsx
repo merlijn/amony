@@ -6,11 +6,10 @@ import './AdminLayout.scss';
 
 const AdminLayout = () => {
   const logout = async () => {
-    try {
-      await authLogout();
-    } finally {
-      window.location.href = '/';
-    }
+    // The backend clears the local session and, when the provider supports it, returns a URL that
+    // ends the upstream identity provider session too.
+    const {logoutUrl} = await authLogout();
+    window.location.href = logoutUrl ?? '/';
   };
 
   return (

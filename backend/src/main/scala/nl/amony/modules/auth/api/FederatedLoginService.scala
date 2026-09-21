@@ -27,7 +27,8 @@ case class OauthTokenResponse(
   token_type: String,
   expires_in: Int,
   refresh_token: Option[String],
-  scope: Option[String]
+  scope: Option[String],
+  id_token: Option[String] = None
 ) derives io.circe.Codec
 
 case class UserInfo(
@@ -132,7 +133,27 @@ class FederatedLoginService(config: AuthConfig, httpClient: Backend[IO], userDat
       userInfo       <- getUserInfo(providerConfig, tokenResponse.access_token)
       email          <- EitherT.fromOption[IO](userInfo.email, UnknownError: AuthenticationError)
       user           <- EitherT.liftF(getOrInsertUser(providerConfig, userInfo, email))
-    yield tokenManager.createAccessAndRefreshTokens(Some(user.id), roles = user.roles)
+    yield tokenManager
+      .createAccessAndRefreshTokens(Some(user.id), roles = user.roles)
+      .copy(providerIdToken = providerIdTokenFor(providerConfig, tokenResponse))
+
+  /** The provider ID token is only retained when it will be needed as `id_token_hint` at logout. */
+  private def providerIdTokenFor(providerConfig: IdentityProvider, tokenResponse: OauthTokenResponse): Option[ProviderIdToken] =
+    for
+      _       <- providerConfig.endSessionUrl
+      idToken <- tokenResponse.id_token
+    yield ProviderIdToken(providerConfig.name, idToken)
+
+  /** The provider's end-session URL (RP-Initiated Logout) when it has one configured. */
+  def logoutUrl(providerIdToken: ProviderIdToken, origin: RequestOrigin): Option[String] =
+    for
+      provider      <- identityProviders.get(providerIdToken.provider)
+      endSessionUrl <- provider.endSessionUrl
+    yield endSessionUrl.addParams(Map(
+      "id_token_hint"            -> providerIdToken.idToken,
+      "client_id"                -> provider.clientId,
+      "post_logout_redirect_uri" -> origin.rootUri
+    )).toString
 
   def refresh(refreshToken: String): IO[Either[AuthenticationError, Authentication]] =
     tokenManager.refreshAuthentication(refreshToken) match

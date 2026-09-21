@@ -95,7 +95,7 @@ function TopNavBar(props: NavBarProps) {
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content className="dialog-content">
-          <Profile onLogout = { () => { window.location.reload(); } } />
+          <Profile />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
