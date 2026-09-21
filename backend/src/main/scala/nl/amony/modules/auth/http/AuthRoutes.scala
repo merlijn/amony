@@ -82,7 +82,7 @@ object AuthRoutes extends RoutesModule, Logging:
       .get.in("api" / "auth" / "identity-providers")
       .out(jsonBody[List[IdentityProviderDto]]))
 
-  def apply(authService: AuthService, authConfig: AuthConfig)(
+  def apply(loginService: FederatedLoginService, authConfig: AuthConfig)(
     using serverOptions: Http4sServerOptions[IO],
     apiSecurity: ApiSecurity
   ): HttpRoutes[IO] = {
@@ -94,7 +94,7 @@ object AuthRoutes extends RoutesModule, Logging:
 
     routes[IO](serverOptions) {
       serverLogic(endpoint = refreshEndpoint, authorize = apiSecurity.authorizeXsrf) { _ => refreshToken =>
-        authService.refresh(refreshToken).map:
+        loginService.refresh(refreshToken).map:
           case Left(_)               => Left(SecurityError.Unauthorized)
           case Right(authentication) => Right(apiSecurity.createCookies(authentication))
       }
@@ -106,11 +106,11 @@ object AuthRoutes extends RoutesModule, Logging:
       }
 
       serverLogic(endpoint = oauth2loginEndpoint) { (provider, origin) =>
-        authService.identityProviders.get(provider) match
+        loginService.identityProviders.get(provider) match
           case None                 => IO.pure(Left(ErrorResponse.notFound()))
           case Some(providerConfig) =>
             for
-              state      <- authService.createState(provider)
+              state      <- loginService.createState(provider)
               params      = Map(
                               "client_id"     -> providerConfig.clientId,
                               "response_type" -> "code",
@@ -133,15 +133,14 @@ object AuthRoutes extends RoutesModule, Logging:
       serverLogicT(endpoint = oauth2CallbackEndpoint) {
         case (provider, code, state, clientState, origin) =>
           for
-            _              <- EitherT.fromOption[IO](authService.identityProviders.get(provider), ErrorResponse.notFound())
+            _              <- EitherT.fromOption[IO](loginService.identityProviders.get(provider), ErrorResponse.notFound())
             _              <- EitherT.cond[IO](state == clientState, (), ErrorResponse.badRequest(message = "State mismatch"))
-            _              <- authService.validateAndConsumeState(provider, clientState).leftMap(mapAuthenticationErrorToResponse)
-            authentication <- authService.authenticate(OauthTokenCredentials(provider, code), origin).leftMap(mapAuthenticationErrorToResponse)
+            authentication <- loginService.login(provider, code, clientState, origin).leftMap(mapAuthenticationErrorToResponse)
           yield RedirectResponse("/") -> apiSecurity.createCookies(authentication)
       }
 
       serverLogic(endpoint = getIdentityProvidersEndpoint) { _ =>
-        IO.pure(Right(authService.identityProviders.values.filterNot(_.adminOnly.getOrElse(false)).map { provider =>
+        IO.pure(Right(loginService.identityProviders.values.filterNot(_.adminOnly.getOrElse(false)).map { provider =>
           IdentityProviderDto(
             name     = provider.name,
             loginUrl = s"/api/auth/login/${provider.name}"

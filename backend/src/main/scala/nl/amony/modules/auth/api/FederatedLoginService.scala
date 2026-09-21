@@ -22,8 +22,6 @@ case object InvalidCredentials      extends AuthenticationError
 case object UnknownIdentityProvider extends AuthenticationError
 case object UnknownError            extends AuthenticationError
 
-case class OauthTokenCredentials(provider: String, token: String)
-
 case class OauthTokenResponse(
   access_token: String,
   token_type: String,
@@ -43,7 +41,7 @@ case class UserInfo(
   locale: Option[String]
 ) derives io.circe.Codec
 
-class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: UserDatabase, oauthStateDatabase: OAuthStateDatabase) extends Logging {
+class FederatedLoginService(config: AuthConfig, httpClient: Backend[IO], userDatabase: UserDatabase, oauthStateDatabase: OAuthStateDatabase) extends Logging {
 
   private val tokenManager = new TokenManager(config.jwt)
 
@@ -62,7 +60,7 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: Use
     oauthStateDatabase.insert(stateRow).map(_ => java.lang.Long.toUnsignedString(stateId, 16))
   }
 
-  def validateAndConsumeState(provider: String, state: String): EitherT[IO, AuthenticationError, Unit] =
+  private def validateAndConsumeState(provider: String, state: String): EitherT[IO, AuthenticationError, Unit] =
     for
       stateId  <- EitherT.fromOption[IO](Try(java.lang.Long.parseUnsignedLong(state, 16)).toOption, InvalidCredentials)
       stateRow <- EitherT.fromOptionF(oauthStateDatabase.getById(stateId), InvalidCredentials)
@@ -122,13 +120,18 @@ class AuthService(config: AuthConfig, httpClient: Backend[IO], userDatabase: Use
     }
   }
 
-  def authenticate(oauthToken: OauthTokenCredentials, origin: RequestOrigin): EitherT[IO, AuthenticationError, Authentication] =
+  /**
+   * Completes the OAuth2 callback: validates and consumes the login state, exchanges the
+   * authorization code for a token, resolves the user and issues a local session.
+   */
+  def login(provider: String, code: String, state: String, origin: RequestOrigin): EitherT[IO, AuthenticationError, Authentication] =
     for
-      provider      <- EitherT.fromOption[IO](identityProviders.get(oauthToken.provider), UnknownIdentityProvider: AuthenticationError)
-      tokenResponse <- getToken(provider, oauthToken.token, origin)
-      userInfo      <- getUserInfo(provider, tokenResponse.access_token)
-      email         <- EitherT.fromOption[IO](userInfo.email, UnknownError: AuthenticationError)
-      user          <- EitherT.liftF(getOrInsertUser(provider, userInfo, email))
+      _              <- validateAndConsumeState(provider, state)
+      providerConfig <- EitherT.fromOption[IO](identityProviders.get(provider), UnknownIdentityProvider: AuthenticationError)
+      tokenResponse  <- getToken(providerConfig, code, origin)
+      userInfo       <- getUserInfo(providerConfig, tokenResponse.access_token)
+      email          <- EitherT.fromOption[IO](userInfo.email, UnknownError: AuthenticationError)
+      user           <- EitherT.liftF(getOrInsertUser(providerConfig, userInfo, email))
     yield tokenManager.createAccessAndRefreshTokens(Some(user.id), roles = user.roles)
 
   def refresh(refreshToken: String): IO[Either[AuthenticationError, Authentication]] =

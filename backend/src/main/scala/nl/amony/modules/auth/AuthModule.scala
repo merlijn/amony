@@ -6,17 +6,17 @@ import skunk.Session
 import sttp.client4.Backend
 import sttp.tapir.server.http4s.Http4sServerOptions
 
-import nl.amony.modules.auth.api.{ApiSecurity, AuthService}
+import nl.amony.modules.auth.api.{ApiSecurity, FederatedLoginService}
 import nl.amony.modules.auth.http.AuthRoutes
 
 class AuthModule(config: AuthConfig, httpClientBackend: Backend[IO], pool: Resource[IO, Session[IO]]) extends Logging {
 
   val userDatabase       = new dal.UserDatabase(pool)
   val oauthStateDatabase = new dal.OAuthStateDatabase(pool)
-  val authService        = new AuthService(config, httpClientBackend, userDatabase, oauthStateDatabase)
+  val loginService       = new FederatedLoginService(config, httpClientBackend, userDatabase, oauthStateDatabase)
   val apiSecurity        = new ApiSecurity(config)
 
-  logger.info("AuthModule initialized, identity providers: " + authService.identityProviders.keys.mkString(", "))
+  logger.info("AuthModule initialized, identity providers: " + loginService.identityProviders.keys.mkString(", "))
 
-  def routes(using serverOptions: Http4sServerOptions[IO], apiSecurity: ApiSecurity) = AuthRoutes.apply(authService, config)
+  def routes(using serverOptions: Http4sServerOptions[IO], apiSecurity: ApiSecurity) = AuthRoutes.apply(loginService, config)
 }
