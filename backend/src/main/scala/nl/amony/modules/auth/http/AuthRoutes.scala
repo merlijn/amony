@@ -64,18 +64,18 @@ object AuthRoutes extends RoutesModule, Logging:
       .out(statusCode(StatusCode.Ok))
       .out(AuthCookies.endpointOutput))
 
-  val oauth2loginEndpoint =
-    register(endpoint.tag("auth").name("authLogin").description("Redirect to OAuth2 provider for login")
+  val loginEndpoint =
+    register(endpoint.tag("auth").name("authLogin").description("Redirect to the identity provider for login")
       .get.in("api" / "auth" / "login" / path[String]("provider"))
       .in(requestOrigin)
       .out(RedirectResponse.endpointOutput and setCookie("oauth_login_state"))
       .errorOut(ErrorResponse.endpointOutput))
 
-  val oauth2CallbackEndpoint =
-    register(endpoint.tag("auth").name("authCallback").description("OAuth2 callback endpoint")
+  val callbackEndpoint =
+    register(endpoint.tag("auth").name("authCallback").description("Identity provider callback endpoint")
       .get.in("api" / "auth" / "callback" / path[String]("provider"))
-      .in(query[String]("code").description("The authorization code returned by the OAuth2 provider"))
-      .in(query[String]("state").description("The state parameter returned by the OAuth2 provider"))
+      .in(query[String]("code").description("The OAuth 2.0 authorization code returned by the identity provider"))
+      .in(query[String]("state").description("The OAuth 2.0 state parameter returned by the identity provider"))
       .in(cookie[String]("oauth_login_state").description("The state cookie to prevent CSRF attacks"))
       .in(requestOrigin)
       .out(RedirectResponse.endpointOutput)
@@ -112,7 +112,7 @@ object AuthRoutes extends RoutesModule, Logging:
         IO.pure(Right((LogoutResponse(logoutUrl), apiSecurity.createLogoutCookes)))
       }
 
-      serverLogic(endpoint = oauth2loginEndpoint) { (provider, origin) =>
+      serverLogic(endpoint = loginEndpoint) { (provider, origin) =>
         loginService.identityProviders.get(provider) match
           case None                 => IO.pure(Left(ErrorResponse.notFound()))
           case Some(providerConfig) =>
@@ -137,7 +137,7 @@ object AuthRoutes extends RoutesModule, Logging:
             yield Right(RedirectResponse(redirectUri.toString) -> stateCookie)
       }
 
-      serverLogicT(endpoint = oauth2CallbackEndpoint) {
+      serverLogicT(endpoint = callbackEndpoint) {
         case (provider, code, state, clientState, origin) =>
           for
             _              <- EitherT.fromOption[IO](loginService.identityProviders.get(provider), ErrorResponse.notFound())

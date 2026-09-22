@@ -163,7 +163,7 @@ The login flow in `AuthRoutes` / `FederatedLoginService` is:
 | State cookie | cross-site POST → `SameSite=Lax` cookie is not sent | `SameSite=Lax` cookie is required | use `SameSite=None; Secure`, or rely on DB state only |
 | Client secret | ES256 JWT from `.p8` key | static string | add a client-secret strategy for JWT generation |
 | Token auth method | `client_secret_post` only | sends secret in body | already compatible |
-| Token response | includes `id_token` | `OauthTokenResponse` has no `id_token` | add `id_token: Option[String]` |
+| Token response | includes `id_token` | `OauthTokenResponse` has `id_token: Option[String]` | already supported |
 | Identity source | `id_token` via JWKS verification | `GET userInfoUrl` with Bearer token | add id_token verification path |
 | Name | only in `user` on first login | not modelled | persist name on first authorization |
 | Email | in `id_token`; may be private relay | read from userinfo | handle relay email / use `sub` as key |

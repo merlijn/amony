@@ -344,7 +344,7 @@ paths:
     get:
       tags:
       - auth
-      description: Redirect to OAuth2 provider for login
+      description: Redirect to the identity provider for login
       operationId: authLogin
       parameters:
       - name: provider
@@ -382,7 +382,7 @@ paths:
     get:
       tags:
       - auth
-      description: OAuth2 callback endpoint
+      description: Identity provider callback endpoint
       operationId: authCallback
       parameters:
       - name: provider
@@ -392,13 +392,13 @@ paths:
           type: string
       - name: code
         in: query
-        description: The authorization code returned by the OAuth2 provider
+        description: The OAuth 2.0 authorization code returned by the identity provider
         required: true
         schema:
           type: string
       - name: state
         in: query
-        description: The state parameter returned by the OAuth2 provider
+        description: The OAuth 2.0 state parameter returned by the identity provider
         required: true
         schema:
           type: string

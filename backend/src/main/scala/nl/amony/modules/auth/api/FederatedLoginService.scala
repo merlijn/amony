@@ -122,7 +122,7 @@ class FederatedLoginService(config: AuthConfig, httpClient: Backend[IO], userDat
   }
 
   /**
-   * Completes the OAuth2 callback: validates and consumes the login state, exchanges the
+   * Completes the identity provider callback: validates and consumes the login state, exchanges the
    * authorization code for a token, resolves the user and issues a local session.
    */
   def login(provider: String, code: String, state: String, origin: RequestOrigin): EitherT[IO, AuthenticationError, Authentication] =
