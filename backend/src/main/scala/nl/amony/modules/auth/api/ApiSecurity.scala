@@ -2,6 +2,7 @@ package nl.amony.modules.auth.api
 
 import java.time.{Duration, Instant}
 import java.util.UUID
+import scala.jdk.DurationConverters.*
 
 import scribe.Logging
 import sttp.model.Method
@@ -89,7 +90,7 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       httpOnly = true,
       secure   = authConfig.secureCookies,
       sameSite = Some(SameSite.Lax),
-      expires  = Some(Instant.now().plus(Duration.ofSeconds(authConfig.jwt.accessTokenExpiration.toSeconds)))
+      expires  = Some(Instant.now().plus(authConfig.jwt.accessTokenExpiration.toJava))
     )
 
     val refreshCookie = CookieValueWithMeta.unsafeApply(
@@ -98,7 +99,7 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       httpOnly = true,
       secure   = authConfig.secureCookies,
       sameSite = Some(SameSite.Lax),
-      expires  = Some(Instant.now().plus(Duration.ofSeconds(authConfig.jwt.refreshTokenExpiration.toSeconds)))
+      expires  = Some(Instant.now().plus(authConfig.jwt.refreshTokenExpiration.toJava))
     )
 
     // The XSRF cookie is a session cookie by nature, but it must outlive browser restarts for as
@@ -109,7 +110,7 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       httpOnly = false,
       secure   = authConfig.secureCookies,
       sameSite = Some(SameSite.Lax),
-      expires  = Some(Instant.now().plus(Duration.ofSeconds(authConfig.jwt.refreshTokenExpiration.toSeconds)))
+      expires  = Some(Instant.now().plus(authConfig.jwt.refreshTokenExpiration.toJava))
     )
 
     val providerIdTokenCookie = apiAuthentication.providerIdToken.map { providerIdToken =>
@@ -119,7 +120,7 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
         httpOnly = true,
         secure   = authConfig.secureCookies,
         sameSite = Some(SameSite.Lax),
-        expires  = Some(Instant.now().plus(Duration.ofSeconds(authConfig.jwt.refreshTokenExpiration.toSeconds)))
+        expires  = Some(Instant.now().plus(authConfig.jwt.refreshTokenExpiration.toJava))
       )
     }
 
