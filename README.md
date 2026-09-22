@@ -55,7 +55,7 @@ You can mount a local directory containing your media files by editing the `dock
 ## Development mode
 
 ### Prerequisites
-- [Node.js & npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+- [Node.js & pnpm](https://pnpm.io/installation)
 - [Scala 3](https://scala-lang.org/) & [sbt](https://www.scala-sbt.org/)
 - [FFmpeg](https://ffmpeg.org/) and [ImageMagick](https://imagemagick.org/) (for media processing)
 
@@ -82,10 +82,10 @@ After compiling, the backend will be running on port `8182`. It will start scann
 ### 4. Start the frontend
 ```bash
 cd frontend
-nvm use # or fnm use
-npm install
-npm run generate # generate API client from OpenAPI spec
-npm run dev
+fnm use # or nvm use
+pnpm install
+pnpm run generate # generate API client from OpenAPI spec
+pnpm run dev
 ```
 
 The frontend will be running on port `5173`. It will proxy all API requests to the backend on port `8182`.
@@ -98,7 +98,7 @@ Navigate to `http://localhost:5173`
 
 ### Prerequisites
 
-- [Node.js & npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+- [Node.js & pnpm](https://pnpm.io/installation)
 - [Scala 3](https://scala-lang.org/) & [sbt](https://www.scala-sbt.org/)
 - [Docker](https://www.docker.com/get-started)
 
@@ -106,10 +106,10 @@ Navigate to `http://localhost:5173`
 
 ```bash
 cd frontend
-nvm use # or fnm use
-npm install
-npm run generate
-npm run build
+fnm use # or nvm use
+pnpm install
+pnpm run generate
+pnpm run build
 ```
 
 ### 2. Build the docker image
