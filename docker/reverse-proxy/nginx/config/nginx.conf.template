@@ -59,6 +59,12 @@ http {
 		server auth:5556 resolve;
 	}
 
+	# Upstream for admin frontend
+	upstream admin_frontend {
+		zone admin_frontend 64k;
+		server amony-admin:80 resolve;
+	}
+
 	# Default SSL server - close unknown connections
 	server {
 		listen 443 ssl default_server;
@@ -122,6 +128,27 @@ http {
 			limit_req_status 429;
 
 			return 429 '{"error": "too many requests"}';
+		}
+	}
+
+	# Admin frontend
+	server {
+		listen 443 ssl;
+		server_name ${DOMAIN_SUB_ADMIN}.${DOMAIN_TLD};
+
+		include ssl-certificate.conf;
+		include shared-proxy-settings.conf;
+
+		proxy_connect_timeout 60s;
+		proxy_send_timeout    1200s;
+		proxy_read_timeout    1200s;
+
+		client_max_body_size 15g;
+
+		location / {
+			# Do not buffer responses so log/SSE streams are forwarded immediately.
+			proxy_buffering off;
+			proxy_pass http://admin_frontend;
 		}
 	}
 }

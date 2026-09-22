@@ -90,7 +90,7 @@ services:
     entrypoint: ["/scripts/backup-entrypoint.sh"]
 
   amony:
-    image: ghcr.io/merlijn/amony-app:dev
+    image: ghcr.io/merlijn/amony-app:latest
     container_name: amony-app
     depends_on:
       postgres:
@@ -105,10 +105,36 @@ services:
       - .env
     environment:
       DATABASE_HOST: "postgres"
+      # OAuth provider endpoints. The authorize URL is browser-facing; token/userinfo are internal
+      # to the compose network. The HTTPS overlay overrides the authorize URLs.
+      AMONY_OAUTH_AUTHORIZE_URL: ${AMONY_OAUTH_AUTHORIZE_URL:-http://localhost:5556/dex/auth}
+      AMONY_OAUTH_TOKEN_URL: ${AMONY_OAUTH_TOKEN_URL:-http://auth:5556/dex/token}
+      AMONY_OAUTH_USERINFO_URL: ${AMONY_OAUTH_USERINFO_URL:-http://auth:5556/dex/userinfo}
+      # Client secrets are shared with Dex: the single DEX_* values are mapped to the backend's AMONY_* vars.
+      AMONY_OAUTH_CLIENT_SECRET: ${DEX_CLIENT_SECRET:-amony-dex-secret}
+      AMONY_ADMIN_OAUTH_CLIENT_ID: ${AMONY_ADMIN_OAUTH_CLIENT_ID:-admin-app}
+      AMONY_ADMIN_OAUTH_CLIENT_SECRET: ${DEX_ADMIN_CLIENT_SECRET:-amony-admin-dex-secret}
+      AMONY_ADMIN_OAUTH_AUTHORIZE_URL: ${AMONY_OAUTH_AUTHORIZE_URL:-http://localhost:5556/dex/auth}
+      AMONY_ADMIN_OAUTH_TOKEN_URL: ${AMONY_OAUTH_TOKEN_URL:-http://auth:5556/dex/token}
+      AMONY_ADMIN_OAUTH_USERINFO_URL: ${AMONY_OAUTH_USERINFO_URL:-http://auth:5556/dex/userinfo}
     volumes:
       - ${AMONY_HOST_MEDIA_PATH}:/media
       - ${AMONY_DATA:-./data}/solr:/app/data/solr
     restart: "no"
+
+  admin:
+    build:
+      context: ./admin-frontend
+      dockerfile: Dockerfile
+    image: ghcr.io/merlijn/amony-admin:dev
+    container_name: amony-admin
+    depends_on:
+      - amony
+    environment:
+      AMONY_BACKEND: amony-app:8182
+    ports:
+      - "127.0.0.1:8183:80"
+    restart: unless-stopped
 
   auth:
     image: dexidp/dex:latest
@@ -118,6 +144,18 @@ services:
       - "127.0.0.1:5556:5556"
     env_file:
       - .env
+    environment:
+      # Values rendered into docker/dex/config.yaml.tmpl by the image's built-in gomplate
+      # entrypoint. The HTTPS overlay overrides these with the public domain names.
+      DEX_ISSUER: ${DEX_ISSUER:-http://localhost:5556/dex}
+      DEX_AMONY_REDIRECT_URI: ${DEX_AMONY_REDIRECT_URI:-http://localhost:8182/api/auth/callback/dex}
+      DEX_AMONY_ADMIN_REDIRECT_URI: ${DEX_AMONY_ADMIN_REDIRECT_URI:-http://localhost:5174/api/auth/callback/admin}
+      # Dev defaults; override through .env (see .env.example). Note the escaped $$ for the bcrypt hash.
+      DEX_CLIENT_SECRET: ${DEX_CLIENT_SECRET:-amony-dex-secret}
+      DEX_ADMIN_CLIENT_SECRET: ${DEX_ADMIN_CLIENT_SECRET:-amony-admin-dex-secret}
+      DEX_ADMIN_EMAIL: ${DEX_ADMIN_EMAIL:-admin@amony.example}
+      DEX_ADMIN_USERNAME: ${DEX_ADMIN_USERNAME:-admin}
+      DEX_ADMIN_PASSWORD_HASH: ${DEX_ADMIN_PASSWORD_HASH:-$$2a$$10$$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W}
     volumes:
-      - ./docker/dex/config.yaml:/etc/dex/config.yaml
-    command: ["dex", "serve", "/etc/dex/config.yaml"]
+      - ./docker/dex/config.yaml.tmpl:/etc/dex/config.yaml.tmpl:ro
+    command: ["dex", "serve", "/etc/dex/config.yaml.tmpl"]

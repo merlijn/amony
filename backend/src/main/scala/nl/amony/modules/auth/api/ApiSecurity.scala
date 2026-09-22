@@ -2,6 +2,7 @@ package nl.amony.modules.auth.api
 
 import java.time.{Duration, Instant}
 import java.util.UUID
+import scala.jdk.DurationConverters.*
 
 import scribe.Logging
 import sttp.model.Method
@@ -13,6 +14,13 @@ import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.{Authentication, JwtDecoder}
 
 val authCookieName = "access_token"
+
+/**
+ * Cookie holding the identity provider's ID token, used as `id_token_hint` on logout. It is scoped
+ * to the logout endpoint so it is not sent on other requests.
+ */
+val providerIdTokenCookieName = "provider_id_token"
+val providerIdTokenCookiePath = "/api/auth/logout"
 
 class ApiSecurity(authConfig: AuthConfig) extends Logging:
 
@@ -82,7 +90,7 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       httpOnly = true,
       secure   = authConfig.secureCookies,
       sameSite = Some(SameSite.Lax),
-      expires  = Some(Instant.now().plus(Duration.ofSeconds(authConfig.jwt.accessTokenExpiration.toSeconds)))
+      expires  = Some(Instant.now().plus(authConfig.jwt.accessTokenExpiration.toJava))
     )
 
     val refreshCookie = CookieValueWithMeta.unsafeApply(
@@ -91,7 +99,7 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       httpOnly = true,
       secure   = authConfig.secureCookies,
       sameSite = Some(SameSite.Lax),
-      expires  = Some(Instant.now().plus(Duration.ofSeconds(authConfig.jwt.refreshTokenExpiration.toSeconds)))
+      expires  = Some(Instant.now().plus(authConfig.jwt.refreshTokenExpiration.toJava))
     )
 
     // The XSRF cookie is a session cookie by nature, but it must outlive browser restarts for as
@@ -102,22 +110,45 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       httpOnly = false,
       secure   = authConfig.secureCookies,
       sameSite = Some(SameSite.Lax),
-      expires  = Some(Instant.now().plus(Duration.ofSeconds(authConfig.jwt.refreshTokenExpiration.toSeconds)))
+      expires  = Some(Instant.now().plus(authConfig.jwt.refreshTokenExpiration.toJava))
     )
 
-    AuthCookies(accessTokenCookie, refreshCookie, xsrfCookie)
-  }
-
-  def createLogoutCookes = {
-    val expiredEmptyCookie =
+    val providerIdTokenCookie = apiAuthentication.providerIdToken.map { providerIdToken =>
       CookieValueWithMeta.unsafeApply(
-        value    = "",
-        path     = Some("/"),
+        value    = providerIdToken.encode,
+        path     = Some(providerIdTokenCookiePath),
         httpOnly = true,
         secure   = authConfig.secureCookies,
         sameSite = Some(SameSite.Lax),
-        expires  = Some(Instant.ofEpochSecond(0L))
+        expires  = Some(Instant.now().plus(authConfig.jwt.refreshTokenExpiration.toJava))
       )
+    }
 
-    AuthCookies(expiredEmptyCookie, expiredEmptyCookie, expiredEmptyCookie)
+    AuthCookies(accessTokenCookie, refreshCookie, xsrfCookie, providerIdTokenCookie)
   }
+
+  def createLogoutCookes = {
+    def expiredCookie(path: String) = CookieValueWithMeta.unsafeApply(
+      value    = "",
+      path     = Some(path),
+      httpOnly = true,
+      secure   = authConfig.secureCookies,
+      sameSite = Some(SameSite.Lax),
+      expires  = Some(Instant.ofEpochSecond(0L))
+    )
+
+    AuthCookies(
+      accessToken     = expiredCookie("/"),
+      refreshToken    = expiredCookie("/"),
+      xsrfToken       = expiredCookie("/"),
+      // Must repeat the cookie's own path, otherwise the browser keeps the original cookie.
+      providerIdToken = Some(expiredCookie(providerIdTokenCookiePath))
+    )
+  }
+
+object ApiSecurity:
+
+  /** Whether `host` is one of the hosts the backend accepts (see `allowed-hosts`). */
+  def isAllowedHost(allowedHosts: List[String], host: String): Boolean =
+    val candidate = host.trim
+    candidate.nonEmpty && allowedHosts.exists(_.trim.equalsIgnoreCase(candidate))

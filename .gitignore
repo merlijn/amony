@@ -9,6 +9,7 @@
 
 backend/.docker-tags.txt
 frontend/src/api/generated
+admin-frontend/src/api/generated
 
 .env
 

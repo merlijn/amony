@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import DialogWindow from '../common/DialogWindow';
-import { getOAuthProviders } from '../../api/generated';
-import { OAuthProviderDto } from '../../api/generated/model';
+import { getIdentityProviders } from '../../api/generated';
+import { IdentityProviderDto } from '../../api/generated/model';
 import './LoginDialog.scss';
 
 type LoginDialogProps = {
   onClose: () => void;
-  providers?: OAuthProviderDto[] | null;
+  providers?: IdentityProviderDto[] | null;
 };
 
 const LoginDialog = (props: LoginDialogProps) => {
-  const [providers, setProviders] = useState<OAuthProviderDto[]>(props.providers || []);
+  const [providers, setProviders] = useState<IdentityProviderDto[]>(props.providers || []);
   const [loading, setLoading] = useState(!props.providers);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,7 +20,7 @@ const LoginDialog = (props: LoginDialogProps) => {
       return;
     }
     
-    getOAuthProviders()
+    getIdentityProviders()
       .then((data) => {
         setProviders(data);
         setLoading(false);
@@ -31,7 +31,7 @@ const LoginDialog = (props: LoginDialogProps) => {
       });
   }, [props.providers]);
 
-  const handleProviderClick = (provider: OAuthProviderDto) => {
+  const handleProviderClick = (provider: IdentityProviderDto) => {
     window.location.href = provider.loginUrl;
   };
 

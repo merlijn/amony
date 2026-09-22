@@ -9,6 +9,7 @@ case class WebServerConfig(
   webClientPath: Path,
   requestTimeout: FiniteDuration,
   uploadSizeLimit: Long,
+  allowedHosts: List[String],
   http: Option[HttpConfig],
   https: Option[HttpsConfig]
 ) derives ConfigReader
