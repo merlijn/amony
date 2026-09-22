@@ -6,6 +6,7 @@ export default defineConfig({
         input: './openapi.yaml',
         output: {
             client: 'react-query',
+            httpClient: 'axios',
             target: 'test.ts',
             workspace: 'src/api/generated',
             mode: 'tags-split',
