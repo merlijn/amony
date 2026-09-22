@@ -69,7 +69,7 @@
     "@types/react-dom": "19.2.3",
     "@types/react-router-dom": "5.3.3",
     "@vitejs/plugin-react": "5.1.4",
-    "orval": "8.36.0",
+    "orval": "8.35.0",
     "sass": "1.97.3",
     "vite": "7.3.6",
     "vite-plugin-compression": "0.5.1"
