@@ -30,16 +30,19 @@ jobs:
 
     steps:
     - uses: actions/checkout@v5
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 11.12.0
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v5
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-        cache-dependency-path: frontend
+        cache: 'pnpm'
+        cache-dependency-path: frontend/pnpm-lock.yaml
 
-    - run: npm install --save
-    - run: npm run generate
-    - run: npm run build --if-present
+    - run: pnpm install --frozen-lockfile
+    - run: pnpm run generate
+    - run: pnpm run build
 
     - name: Upload frontend build artifacts
       uses: actions/upload-artifact@v6

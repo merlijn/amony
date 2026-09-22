@@ -1,3 +1,11 @@
+overrides:
+  baseline-browser-mapping: 2.11.25
+  browserslist: 4.29.0
+  esbuild: 0.28.2
+  fast-uri: 3.1.8
+  js-yaml: 4.3.2
+  postcss: 8.5.28
+  undici: 7.29.1
 allowBuilds:
   '@parcel/watcher': true
   '@scarf/scarf': false
