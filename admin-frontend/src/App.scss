@@ -1,0 +1,67 @@
+@use './styles/tokens';
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.button-primary,
+.button-secondary {
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+
+  &:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+.button-primary {
+  color: var(--text-on-accent);
+  background-color: var(--bg-accent);
+  border: 1px solid var(--bg-accent);
+
+  &:hover:not(:disabled) {
+    background-color: var(--bg-accent-hover);
+    border-color: var(--bg-accent-hover);
+  }
+}
+
+.button-secondary {
+  color: var(--text-primary);
+  background-color: transparent;
+  border: 1px solid var(--border-primary);
+
+  &:hover:not(:disabled) {
+    background-color: var(--bg-hover);
+  }
+}
+
+.message-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--spacing-l);
+  text-align: center;
+  color: var(--text-secondary);
+}

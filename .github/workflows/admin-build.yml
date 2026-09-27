@@ -1,0 +1,91 @@
+name: Build admin frontend
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ '*' ]
+    paths:
+      - 'admin-frontend/**'
+      - '.github/workflows/admin-build.yml'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'admin-frontend/**'
+      - '.github/workflows/admin-build.yml'
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_NAME: amony-admin
+
+concurrency:
+  group: admin-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tags
+        id: meta
+        run: |
+          # GHCR requires lowercase names, so normalize the owner.
+          OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          IMAGE=$DOCKER_REGISTRY/$OWNER/$IMAGE_NAME
+
+          TAGS=""
+          if [ "${{ github.event_name }}" == "push" ]; then
+            if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+              TAGS="dev"
+            elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+              VERSION="${GITHUB_REF_NAME#v}"
+              TAGS="latest,${VERSION}"
+            fi
+          else
+            commit_msg="$(git log -1 --pretty=%s ${{ github.event.pull_request.head.sha }})"
+            if [[ "$commit_msg" == *"#publish"* ]]; then
+              TAGS="pr-${{ github.event.number }}"
+            fi
+          fi
+
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          {
+            echo "tags<<EOF"
+            for tag in $(echo "$TAGS" | tr ',' ' '); do
+              echo "$IMAGE:$tag"
+            done
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: Build and push
+        if: steps.meta.outputs.tags != ''
+        uses: docker/build-push-action@v6
+        with:
+          context: admin-frontend
+          file: admin-frontend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
