@@ -66,6 +66,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/resources/{bucketId}/{resourceId}:
     get:
       tags:
@@ -137,6 +143,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
     delete:
       tags:
       - resources
@@ -186,6 +198,12 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -250,6 +268,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/resources/{bucketId}/{resourceId}/update_thumbnail_timestamp:
     post:
       tags:
@@ -310,6 +334,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/resources/{bucketId}/bulk/tags:
     post:
       tags:
@@ -361,6 +391,12 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -426,6 +462,12 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -543,6 +585,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/admin/reindex:
     post:
       tags:
@@ -583,6 +631,12 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -631,6 +685,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/admin/re-scan-metadata:
     post:
       tags:
@@ -671,6 +731,12 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -719,6 +785,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/admin/export/{bucketId}:
     get:
       tags:
@@ -762,6 +834,12 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -815,6 +893,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/auth/session:
     get:
       tags:
@@ -853,6 +937,12 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -903,6 +993,12 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -962,6 +1058,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/auth/login/{provider}:
     get:
       tags:
@@ -996,6 +1098,12 @@ paths:
                 type: string
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -1089,6 +1197,12 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/IdentityProviderDto'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/collections:
     get:
       tags:
@@ -1148,6 +1262,12 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -1218,6 +1338,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/collections/{collectionId}/resources/{bucketId}/{resourceId}:
     post:
       tags:
@@ -1278,6 +1404,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
     delete:
       tags:
       - collections
@@ -1333,6 +1465,12 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -1402,6 +1540,12 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
           content:
             application/json:
               schema:

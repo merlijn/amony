@@ -13,6 +13,7 @@ import com.comcast.ip4s.{Host, Port}
 import fs2.io.file.{Files, Path}
 import fs2.io.net.tls.{TLSContext, TLSParameters}
 import org.http4s.CacheDirective.`max-age`
+import org.http4s.circe.CirceEntityEncoder.circeEntityEncoder
 import org.http4s.dsl.io.*
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.headers.`Cache-Control`
@@ -26,6 +27,7 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.typelevel.otel4s.metrics.MeterProvider
 import scribe.Logging
 
+import nl.amony.lib.tapir.dsl.error.ErrorBody
 import nl.amony.modules.auth.api.{ApiSecurity, effectiveHost}
 import nl.amony.modules.auth.crypt.PemReader
 import nl.amony.modules.resources.http.ResourceDirectives
@@ -61,8 +63,9 @@ object WebServer extends Logging {
     httpResource >> httpsResource
   }
 
-  private val serverError = Response[IO](Status.InternalServerError).putHeaders(org.http4s.headers.`Content-Length`.zero)
-  private val invalidHostResponse = Response[IO](Status.MisdirectedRequest).withEntity("Invalid host")
+  private val serverError: Response[IO] =
+    Response[IO](Status.InternalServerError).withEntity(ErrorBody("internal_server_error", "Internal server error"))
+  private val invalidHostResponse       = Response[IO](Status.MisdirectedRequest).withEntity("Invalid host")
 
   private def headerValue(name: CIString, req: Request[IO]): Option[String] =
     req.headers.headers.find(_.name == name).map(_.value)
