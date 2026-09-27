@@ -680,6 +680,11 @@ paths:
       description: Refresh the users auth tokens
       operationId: authRefreshTokens
       parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
       - name: XSRF-TOKEN
         in: cookie
         required: false
@@ -717,8 +722,19 @@ paths:
       description: Logout the current user
       operationId: authLogout
       parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
       - name: XSRF-TOKEN
         in: cookie
+        required: false
+        schema:
+          type: string
+      - name: provider_id_token
+        in: cookie
+        description: The identity provider ID token, passed on as id_token_hint
         required: false
         schema:
           type: string
@@ -732,6 +748,10 @@ paths:
                 type: array
                 items:
                   type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResponse'
         '400':
           description: Invalid value
           content:
@@ -746,7 +766,7 @@ paths:
     get:
       tags:
       - auth
-      description: Redirect to OAuth2 provider for login
+      description: Redirect to the identity provider for login
       operationId: authLogin
       parameters:
       - name: provider
@@ -768,6 +788,12 @@ paths:
                 type: array
                 items:
                   type: string
+        '400':
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
         default:
           description: ''
           content:
@@ -778,7 +804,7 @@ paths:
     get:
       tags:
       - auth
-      description: OAuth2 callback endpoint
+      description: Identity provider callback endpoint
       operationId: authCallback
       parameters:
       - name: provider
@@ -788,13 +814,13 @@ paths:
           type: string
       - name: code
         in: query
-        description: The authorization code returned by the OAuth2 provider
+        description: The OAuth 2.0 authorization code returned by the identity provider
         required: true
         schema:
           type: string
       - name: state
         in: query
-        description: The state parameter returned by the OAuth2 provider
+        description: The OAuth 2.0 state parameter returned by the identity provider
         required: true
         schema:
           type: string
@@ -820,7 +846,8 @@ paths:
                   type: string
         '400':
           description: 'Invalid value for: query parameter code, Invalid value for:
-            query parameter state, Invalid value for: cookie oauth_login_state'
+            query parameter state, Invalid value for: cookie oauth_login_state, Invalid
+            value'
           content:
             text/plain:
               schema:
@@ -831,12 +858,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponseBody'
-  /api/auth/oauth-providers:
+  /api/auth/identity-providers:
     get:
       tags:
       - auth
-      description: Get the list of available OAuth providers
-      operationId: getOAuthProviders
+      description: Get the list of available identity providers
+      operationId: getIdentityProviders
       responses:
         '200':
           description: ''
@@ -845,7 +872,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/OAuthProviderDto'
+                  $ref: '#/components/schemas/IdentityProviderDto'
   /api/collections:
     get:
       tags:
@@ -1207,8 +1234,8 @@ components:
           type: string
         message:
           type: string
-    OAuthProviderDto:
-      title: OAuthProviderDto
+    IdentityProviderDto:
+      title: IdentityProviderDto
       type: object
       required:
       - name
@@ -1217,6 +1244,12 @@ components:
         name:
           type: string
         loginUrl:
+          type: string
+    LogoutResponse:
+      title: LogoutResponse
+      type: object
+      properties:
+        logoutUrl:
           type: string
     ResourceDto:
       title: ResourceDto

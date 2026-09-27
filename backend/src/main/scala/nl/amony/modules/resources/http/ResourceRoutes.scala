@@ -4,14 +4,12 @@ import ApiError.NotFound
 import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.*
-import org.http4s.HttpRoutes
 import sttp.capabilities.fs2.Fs2Streams
 import sttp.model.{HeaderNames, StatusCode}
 import sttp.tapir.*
 import sttp.tapir.json.circe.*
-import sttp.tapir.server.http4s.Http4sServerOptions
 
-import nl.amony.lib.tapir.dsl.{RoutesModule, routes, serverLogic, serverLogicT}
+import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.{Resource, ResourceBucket, ResourceId, UploadError}
 
@@ -70,9 +68,8 @@ object ResourceRoutes extends RoutesModule:
       .out(jsonBody[ResourceDto]))
 
   def apply(buckets: Map[String, ResourceBucket])(
-    using serverOptions: Http4sServerOptions[IO],
-    apiSecurity: ApiSecurity
-  ): HttpRoutes[IO] = {
+    using apiSecurity: ApiSecurity
+  ): ServerEndpoints[IO] = {
 
     def getVisibleBucket(auth: AuthToken, bucketId: String): EitherT[IO, ApiError, ResourceBucket] =
       EitherT.fromOption[IO](
@@ -91,7 +88,7 @@ object ResourceRoutes extends RoutesModule:
         case UploadError.InvalidFileName(_) => ApiError.BadRequest
         case UploadError.StorageError(_)    => ApiError.BadRequest
 
-    routes[IO](serverOptions) {
+    routes[IO] {
       serverLogicT(endpoint = getResourceById, requiredPermission = Permission.ViewResource) { auth => (bucketId, resourceId) =>
         getResource(auth, bucketId, resourceId).map((_, resource) => toDto(resource.info))
       }

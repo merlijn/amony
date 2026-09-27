@@ -16,7 +16,7 @@ A live demo is available at [https://demo.amony.app](https://demo.amony.app). It
 - Organize media with tags *
 - Upload media files through the web interface *
 - Delete media files (with confirmation) *
-- optional: Oauth2/OIDC authentication with [Dex](https://github.com/dexidp/dex) (or an oauth provider of your choice)
+- optional: Oauth2/OIDC authentication with [Dex](https://github.com/dexidp/dex) (or an identity provider of your choice)
 - optional: Https with automatic certificate management via Let's Encrypt (when using the provided Docker Compose setup)
 - optional: Automatic database backups using a docker compose profile (with recovery mechanism)
 

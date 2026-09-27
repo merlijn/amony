@@ -1,13 +1,11 @@
 package nl.amony.modules.admin
 
 import cats.effect.IO
-import org.http4s.*
 import scribe.Logging
 import sttp.capabilities.fs2.Fs2Streams
 import sttp.tapir.*
-import sttp.tapir.server.http4s.Http4sServerOptions
 
-import nl.amony.lib.tapir.dsl.{RoutesModule, routes, serverLogic}
+import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.{ResourceBucket, ResourceInfo}
 import nl.amony.modules.resources.http.{ResourceDto, oneOfList, toDto}
@@ -65,11 +63,10 @@ object AdminRoutes extends RoutesModule, Logging:
       .errorOut(errorOutput))
 
   def apply(searchService: SearchService, buckets: Map[String, ResourceBucket])(
-    using serverOptions: Http4sServerOptions[IO],
-    apiSecurity: ApiSecurity
-  ): HttpRoutes[IO] = {
+    using apiSecurity: ApiSecurity
+  ): ServerEndpoints[IO] = {
 
-    routes[IO](serverOptions) {
+    routes[IO] {
       serverLogic(endpoint = reIndex, requiredPermission = Permission.Admin) { _ => bucketId =>
         val result = buckets.get(bucketId) match
           case None         => IO.unit

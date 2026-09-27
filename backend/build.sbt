@@ -85,7 +85,7 @@ val javaDevOpts = Seq(
   "-DAMONY_SOLR_PATH=../data/solr",
   "-DAMONY_WEB_CLIENT_PATH=../frontend/dist",
   // Auth
-  "-DAMONY_AUTH_ENABLED=false",
+  "-DAMONY_AUTH_ENABLED=true",
   "-DAMONY_SECURE_COOKIES=false",
   "-DAMONY_OAUTH_AUTHORIZE_URL=http://localhost:5556/dex/auth",
   "-DAMONY_OAUTH_TOKEN_URL=http://localhost:5556/dex/token",
@@ -248,7 +248,9 @@ lazy val amony = project
       "org.scalatestplus"             %% "scalacheck-1-15"                           % "3.2.11.0" % Test,
       "com.dimafeng"                  %% "testcontainers-scala-scalatest"            % "0.44.1"   % Test,
       "commons-codec"                  % "commons-codec"                             % "1.22.1"   % Test,
-      "org.scalacheck"                %% "scalacheck"                                % "1.20.0"   % Test
+      "org.scalacheck"                %% "scalacheck"                                % "1.20.0"   % Test,
+      "com.softwaremill.sttp.tapir"   %% "tapir-sttp-stub-server"                    % tapirVersion % Test,
+      "org.mockito"                   %% "mockito-scala-scalatest"                   % "2.2.3"    % Test
     ),
 
     // TODO remove this override once skunk has been updated to use otel4s 0.15.x

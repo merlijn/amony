@@ -40,16 +40,22 @@ services:
       ]
     restart: "no"
 
+  amony:
+    # Public authorize endpoints (browser-facing); token/userinfo stay on the internal network.
+    environment:
+      AMONY_OAUTH_AUTHORIZE_URL: https://${DOMAIN_SUB_AUTH}.${DOMAIN_TLD}/dex/auth
+      AMONY_ADMIN_OAUTH_AUTHORIZE_URL: https://${DOMAIN_SUB_AUTH}.${DOMAIN_TLD}/dex/auth
+      # Only the public hosts are accepted (replaces the local defaults in application.conf).
+      AMONY_ALLOWED_HOSTS_0: ${DOMAIN_SUB_AMONY}.${DOMAIN_TLD}
+      AMONY_ALLOWED_HOSTS_1: ${DOMAIN_SUB_ADMIN}.${DOMAIN_TLD}
+
   auth:
-    build:
-      context: docker/dex
-      dockerfile: dex.dockerfile
-    image: amony/dex
-    env_file:
-      - .env
-    volumes:
-      - ./docker/dex/config.yaml.template:/etc/dex/config.yaml.template:ro
-    command: []
+    # Uses the stock Dex image: docker/dex/config.yaml.tmpl is rendered by the image's
+    # built-in gomplate entrypoint. Only the public hostnames differ from the base setup.
+    environment:
+      DEX_ISSUER: https://${DOMAIN_SUB_AUTH}.${DOMAIN_TLD}/dex
+      DEX_AMONY_REDIRECT_URI: https://${DOMAIN_SUB_AMONY}.${DOMAIN_TLD}/api/auth/callback/dex
+      DEX_AMONY_ADMIN_REDIRECT_URI: https://${DOMAIN_SUB_ADMIN}.${DOMAIN_TLD}/api/auth/callback/admin
 
   certbot:
     container_name: nginx-certbot

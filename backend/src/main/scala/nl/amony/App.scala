@@ -18,11 +18,12 @@ import pureconfig.ConfigSource
 import scribe.{Logger, Logging}
 import skunk.Session
 import sttp.client4.httpclient.cats.HttpClientCatsBackend
-import sttp.tapir.server.http4s.Http4sServerOptions
+import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 import sttp.tapir.server.tracing.otel4s.Otel4sTracing
 
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.lib.observability.Observability
+import nl.amony.lib.tapir.dsl.ServerEndpoints
 import nl.amony.modules.admin.AdminRoutes
 import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.ApiSecurity
@@ -112,12 +113,15 @@ object App extends ResourceApp.Forever with Logging {
         apiRoutes          = {
           given ApiSecurity = authModule.apiSecurity
 
+          val tapirEndpoints: ServerEndpoints[IO] =
+            authModule.routes ++
+              CollectionRoutes.apply(collectionsDal) ++
+              AdminRoutes.apply(searchService, resourceBucketMap) ++
+              SearchRoutes.apply(searchService, appConfig.search) ++
+              ResourceRoutes.apply(resourceBucketMap)
+
           ResourceContentRoutes.apply(resourceBucketMap) <+>
-            authModule.routes <+>
-            CollectionRoutes.apply(collectionsDal) <+>
-            AdminRoutes.apply(searchService, resourceBucketMap) <+>
-            SearchRoutes.apply(searchService, appConfig.search) <+>
-            ResourceRoutes.apply(resourceBucketMap)
+            Http4sServerInterpreter[IO](serverOptions).toRoutes(tapirEndpoints)
         }
         _                 <- WebServer.run(appConfig.api, apiRoutes)
       yield ()

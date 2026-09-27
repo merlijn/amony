@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import DialogWindow from '../components/common/DialogWindow';
 import LoginDialog from '../components/dialogs/LoginDialog';
-import { getOAuthProviders } from '../api/generated';
-import { OAuthProviderDto } from '../api/generated/model';
+import { getIdentityProviders } from '../api/generated';
+import { IdentityProviderDto } from '../api/generated/model';
 import './LoginPage.scss';
 
 const LoginPage = () => {
-  const [providers, setProviders] = useState<OAuthProviderDto[] | null>(null);
+  const [providers, setProviders] = useState<IdentityProviderDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getOAuthProviders()
+    getIdentityProviders()
       .then((data) => {
         if (data.length === 1) {
           // Single provider: redirect immediately, no need to show a choice.

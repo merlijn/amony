@@ -19,8 +19,8 @@ import {BiLogInCircle} from "react-icons/bi";
 import {FiUpload} from "react-icons/fi";
 import FilterDropDown from "./FilterDropdown";
 import LoginDialog from "../dialogs/LoginDialog";
-import { getOAuthProviders } from "../../api/generated";
-import { OAuthProviderDto } from "../../api/generated/model";
+import { getIdentityProviders } from "../../api/generated";
+import { IdentityProviderDto } from "../../api/generated/model";
 
 export type NavBarProps = {
   onClickMenu: () => void, 
@@ -38,20 +38,20 @@ function TopNavBar(props: NavBarProps) {
   const [showProfile, setShowProfile] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
   const [showLogin, setShowLogin] = useState(false)
-  const [oauthProviders, setOauthProviders] = useState<OAuthProviderDto[] | null>(null)
+  const [identityProviders, setIdentityProviders] = useState<IdentityProviderDto[] | null>(null)
   const session = useContext(SessionContext)
 
   const handleLoginClick = () => {
     // If we already fetched providers and there are multiple, show dialog
-    if (oauthProviders && oauthProviders.length > 1) {
+    if (identityProviders && identityProviders.length > 1) {
       setShowLogin(true);
       return;
     }
     
     // Otherwise fetch providers first
-    getOAuthProviders()
+    getIdentityProviders()
       .then((data) => {
-        setOauthProviders(data);
+        setIdentityProviders(data);
         if (data.length === 1) {
           // Single provider - redirect directly
           window.location.href = data[0].loginUrl;
@@ -61,7 +61,7 @@ function TopNavBar(props: NavBarProps) {
         }
       })
       .catch((err) => {
-        console.error('Failed to load OAuth providers', err);
+        console.error('Failed to load identity providers', err);
         // Show dialog anyway to display error
         setShowLogin(true);
       });
@@ -95,7 +95,7 @@ function TopNavBar(props: NavBarProps) {
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content className="dialog-content">
-          <Profile onLogout = { () => { window.location.reload(); } } />
+          <Profile />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -111,7 +111,7 @@ function TopNavBar(props: NavBarProps) {
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content className="dialog-content">
-          <LoginDialog onClose = { () => setShowLogin(false) } providers = { oauthProviders } />
+          <LoginDialog onClose = { () => setShowLogin(false) } providers = { identityProviders } />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
