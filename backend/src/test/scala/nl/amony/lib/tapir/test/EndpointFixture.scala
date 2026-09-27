@@ -22,7 +22,7 @@ import nl.amony.lib.tapir.dsl.ServerEndpoints
  * Usage:
  * {{{
  *   "..." in new EndpointFixture(authRoutes, AuthRoutes.loginEndpoint) {
- *     val response = request("provider" -> "dex").sendUnsafeSync()
+ *     val response = request(path = "/api/auth/login/dex").sendUnsafeSync()
  *   }
  * }}}
  */
@@ -46,18 +46,17 @@ trait EndpointFixture(
       .backend()
 
   /**
-   * A request for this endpoint, with the HTTP method and path taken from the definition. Path
-   * parameters can be filled in by name, e.g. `request("provider" -> "dex")`.
+   * A request for this endpoint, with the HTTP method taken from the definition. `path` is the full
+   * request path, starting with `/` (e.g. `request(path = "/api/auth/login/dex")`); `queryParams` are
+   * appended to the query string.
    *
    * The forwarded host/scheme headers are set so `requestOrigin` resolves deterministically.
    */
-  def request(pathParams: (String, String)*) =
+  def request(path: String, queryParams: Map[String, String] = Map.empty) =
     val method = definition.method.getOrElse(Method.GET)
-    val path   = pathParams.foldLeft(definition.showPathTemplate(showQueryParam = None)) { case (path, (key, value)) =>
-      path.replace(s"{$key}", value)
-    }
+    val uri    = Uri.unsafeParse(s"http://localhost$path").addParams(queryParams)
 
-    basicRequest.method(method, Uri.unsafeParse(s"http://localhost$path"))
+    basicRequest.method(method, uri)
       .header("X-Forwarded-Host", host)
       .header("X-Forwarded-Proto", scheme)
 

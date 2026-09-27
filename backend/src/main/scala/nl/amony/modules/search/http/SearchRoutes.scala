@@ -3,13 +3,13 @@ package nl.amony.modules.search.http
 import scala.util.Try
 
 import cats.effect.IO
-import sttp.model.StatusCode
 import sttp.tapir.*
 import sttp.tapir.json.circe.jsonBody
 
+import nl.amony.lib.tapir.dsl.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic}
 import nl.amony.modules.auth.api.*
-import nl.amony.modules.resources.http.{oneOfList, toDto}
+import nl.amony.modules.resources.http.toDto
 import nl.amony.modules.search.SearchConfig
 import nl.amony.modules.search.api.*
 import nl.amony.modules.search.api.SortDirection.{Asc, Desc}
@@ -17,15 +17,7 @@ import nl.amony.modules.search.api.SortField.*
 
 object SearchRoutes extends RoutesModule:
 
-  enum ApiError:
-    case NotFound, BadRequest
-
-  val apiErrorOutputs = List(
-    oneOfVariantSingletonMatcher(statusCode(StatusCode.NotFound))(ApiError.NotFound),
-    oneOfVariantSingletonMatcher(statusCode(StatusCode.BadRequest))(ApiError.BadRequest)
-  )
-
-  val errorOutput: EndpointOutput[ApiError | SecurityError] = oneOfList(securityErrors ++ apiErrorOutputs)
+  val errorOutput = ErrorResponse.standardErrorOutput
 
   case class SearchQueryInput(
     q: Option[String],
@@ -49,12 +41,13 @@ object SearchRoutes extends RoutesModule:
   val tag      = query[Option[String]]("tag").description("An optional tag")
   val untagged = query[Option[Boolean]]("untagged").description("Only return resources without tags").example(Some(false))
 
-  val searchResourcesEndpoint: Endpoint[SecurityInput, SearchQueryInput, ApiError | SecurityError, SearchResponseDto, Any] = register(
-    endpoint
-      .name("findResources").tag("search").description("Find resources using a search query").get
-      .in("api" / "search" / "media" / q and n and d and u and sort and minRes and offset and tag and untagged).mapInTo[SearchQueryInput]
-      .securityIn(securityInput).errorOut(errorOutput).out(jsonBody[SearchResponseDto])
-  )
+  val searchResourcesEndpoint: Endpoint[SecurityInput, SearchQueryInput, SecurityError | NotFoundError | BadRequestError, SearchResponseDto, Any] =
+    register(
+      endpoint
+        .name("findResources").tag("search").description("Find resources using a search query").get
+        .in("api" / "search" / "media" / q and n and d and u and sort and minRes and offset and tag and untagged).mapInTo[SearchQueryInput]
+        .securityIn(securityInput).errorOut(errorOutput).out(jsonBody[SearchResponseDto])
+    )
 
   private def getSortedTags(facetMap: Map[String, Long]): Seq[String] =
     facetMap.toSeq

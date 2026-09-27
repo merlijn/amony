@@ -8,7 +8,8 @@ import sttp.capabilities.fs2.Fs2Streams
 import sttp.tapir.Endpoint
 import sttp.tapir.server.ServerEndpoint
 
-import nl.amony.modules.auth.api.{ApiSecurity, AuthToken, Permission, SecurityError, SecurityInput}
+import nl.amony.lib.tapir.dsl.error.SecurityError
+import nl.amony.modules.auth.api.{ApiSecurity, AuthToken, Permission, SecurityInput}
 
 /** A module's routes as a framework-independent list of tapir server endpoints. */
 type ServerEndpoints[F[_]] = List[ServerEndpoint[Fs2Streams[F], F]]

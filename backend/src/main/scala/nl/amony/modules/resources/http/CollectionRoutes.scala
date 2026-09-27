@@ -6,6 +6,7 @@ import cats.implicits.*
 import sttp.tapir.*
 import sttp.tapir.json.circe.*
 
+import nl.amony.lib.tapir.dsl.error.{BadRequestError, NotFoundError, SecurityError}
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.{Collection, CollectionId, ResourceId}
@@ -13,14 +14,14 @@ import nl.amony.modules.resources.dal.CollectionsDal
 
 object CollectionRoutes extends RoutesModule:
 
-  val getCollections: Endpoint[SecurityInput, Unit, ApiError | SecurityError, List[CollectionDto], Any] =
+  val getCollections: Endpoint[SecurityInput, Unit, SecurityError | NotFoundError | BadRequestError, List[CollectionDto], Any] =
     register(endpoint
       .name("getCollections").tag("collections").description("Get all collections for the current user")
       .get.in("api" / "collections")
       .securityIn(securityInput).errorOut(errorOutput)
       .out(apiNoCacheHeaders).out(jsonBody[List[CollectionDto]]))
 
-  val createCollection: Endpoint[SecurityInput, CreateCollectionDto, ApiError | SecurityError, CollectionDto, Any] =
+  val createCollection: Endpoint[SecurityInput, CreateCollectionDto, SecurityError | NotFoundError | BadRequestError, CollectionDto, Any] =
     register(endpoint
       .name("createCollection").tag("collections").description("Create a new collection")
       .post.in("api" / "collections")
@@ -28,19 +29,21 @@ object CollectionRoutes extends RoutesModule:
       .in(jsonBody[CreateCollectionDto])
       .out(apiNoCacheHeaders).out(jsonBody[CollectionDto]))
 
-  val addResourceToCollection: Endpoint[SecurityInput, (CollectionId, String, ResourceId), ApiError | SecurityError, Unit, Any] =
+  val addResourceToCollection
+    : Endpoint[SecurityInput, (CollectionId, String, ResourceId), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
     register(endpoint
       .name("addResourceToCollection").tag("collections").description("Add a resource to a collection")
       .post.in("api" / "collections" / path[CollectionId]("collectionId") / "resources" / path[String]("bucketId") / path[ResourceId]("resourceId"))
       .securityIn(securityInput).errorOut(errorOutput))
 
-  val removeResourceFromCollection: Endpoint[SecurityInput, (CollectionId, String, ResourceId), ApiError | SecurityError, Unit, Any] =
+  val removeResourceFromCollection
+    : Endpoint[SecurityInput, (CollectionId, String, ResourceId), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
     register(endpoint
       .name("removeResourceFromCollection").tag("collections").description("Remove a resource from a collection")
       .delete.in("api" / "collections" / path[CollectionId]("collectionId") / "resources" / path[String]("bucketId") / path[ResourceId]("resourceId"))
       .securityIn(securityInput).errorOut(errorOutput))
 
-  val getResourcesInCollection: Endpoint[SecurityInput, CollectionId, ApiError | SecurityError, List[ResourceDto], Any] =
+  val getResourcesInCollection: Endpoint[SecurityInput, CollectionId, SecurityError | NotFoundError | BadRequestError, List[ResourceDto], Any] =
     register(endpoint
       .name("getResourcesInCollection").tag("collections").description("Get all resources in a collection")
       .get.in("api" / "collections" / path[CollectionId]("collectionId") / "resources")
@@ -73,23 +76,23 @@ object CollectionRoutes extends RoutesModule:
                                     description = sanitizedDescription,
                                     tags        = sanitizedTags.toSet
                                   )
-          _                    <- EitherT.right[ApiError](collectionsDal.insertCollection(collection))
+          _                    <- EitherT.right[BadRequestError | NotFoundError](collectionsDal.insertCollection(collection))
         yield toDto(collection)
       }
 
       serverLogicT(endpoint = addResourceToCollection, requiredPermission = Permission.ManageCollections) {
         auth => (collectionId, bucketId, resourceId) =>
           for
-            _ <- EitherT.cond[IO](!isBucketHidden(auth, bucketId), (), ApiError.NotFound)
-            _ <- EitherT.right[ApiError](collectionsDal.addResourceToCollection(collectionId, bucketId, resourceId))
+            _ <- EitherT.cond[IO](!isBucketHidden(auth, bucketId), (), NotFoundError("not_found", "Resource not found"))
+            _ <- EitherT.right[BadRequestError | NotFoundError](collectionsDal.addResourceToCollection(collectionId, bucketId, resourceId))
           yield ()
       }
 
       serverLogicT(endpoint = removeResourceFromCollection, requiredPermission = Permission.ManageCollections) {
         auth => (collectionId, bucketId, resourceId) =>
           for
-            _ <- EitherT.cond[IO](!isBucketHidden(auth, bucketId), (), ApiError.NotFound)
-            _ <- EitherT.right[ApiError](collectionsDal.removeResourceFromCollection(collectionId, bucketId, resourceId))
+            _ <- EitherT.cond[IO](!isBucketHidden(auth, bucketId), (), NotFoundError("not_found", "Resource not found"))
+            _ <- EitherT.right[BadRequestError | NotFoundError](collectionsDal.removeResourceFromCollection(collectionId, bucketId, resourceId))
           yield ()
       }
 
@@ -101,7 +104,7 @@ object CollectionRoutes extends RoutesModule:
               collectionsDal.getResourcesInCollection(collectionId)
                 .map(_.filterNot(resource => hiddenBuckets.contains(resource.bucketId)).map(toDto)).map(Right(_))
             case _                                                     =>
-              IO.pure(Left(ApiError.NotFound))
+              IO.pure(Left(NotFoundError("not_found", "Collection not found")))
           }
       }
     }

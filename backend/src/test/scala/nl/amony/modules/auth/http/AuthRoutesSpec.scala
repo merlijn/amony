@@ -2,6 +2,7 @@ package nl.amony.modules.auth.http
 
 import scala.concurrent.duration.*
 
+import cats.data.EitherT
 import cats.effect.IO
 import io.circe.parser.decode
 import org.mockito.IdiomaticMockito.returns
@@ -11,6 +12,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import sttp.model.{StatusCode, Uri}
 
+import nl.amony.lib.tapir.dsl.error.ErrorBody
 import nl.amony.lib.tapir.test.EndpointFixture
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.auth.{AuthConfig, HS256Config, IdentityProvider, JwtConfig, RoleAccessConfig}
@@ -41,26 +43,26 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
   private val loginServiceMock = mock[FederatedLoginService](RETURNS_DEFAULTS)
   private val authRoutes       = AuthRoutes.apply(loginServiceMock, authConfig)
 
+  private val testState = "test-state-123"
+
+  private val provider = IdentityProvider(
+    name         = "test-provider",
+    clientId     = "test-client-id",
+    clientSecret = "test-secret",
+    authorizeUrl = Uri.unsafeParse("https://idp.example.com/authorize"),
+    tokenUrl     = Uri.unsafeParse("https://idp.example.com/token"),
+    userInfoUrl  = Uri.unsafeParse("https://idp.example.com/userinfo")
+  )
+
+  loginServiceMock.identityProviders returns Map(provider.name -> provider)
+  loginServiceMock.createState(any[String]) returns IO.pure(testState)
+
   "AuthRoutes" when {
 
     "processing login requests" should {
 
-      val testState = "test-state-123"
-
-      val provider = IdentityProvider(
-        name         = "test-provider",
-        clientId     = "test-client-id",
-        clientSecret = "test-secret",
-        authorizeUrl = Uri.unsafeParse("https://idp.example.com/authorize"),
-        tokenUrl     = Uri.unsafeParse("https://idp.example.com/token"),
-        userInfoUrl  = Uri.unsafeParse("https://idp.example.com/userinfo")
-      )
-
-      loginServiceMock.identityProviders returns Map(provider.name -> provider)
-      loginServiceMock.createState(any[String]) returns IO.pure(testState)
-
       "redirect to the identity provider with the expected parameters" in new EndpointFixture(authRoutes, AuthRoutes.loginEndpoint) {
-        val response = request("provider" -> "test-provider").sendUnsafeSync()
+        val response = request(path = "/api/auth/login/test-provider").sendUnsafeSync()
 
         response.code shouldBe StatusCode.Found
 
@@ -75,14 +77,47 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
       }
 
       "set the oauth_login_state cookie" in new EndpointFixture(authRoutes, AuthRoutes.loginEndpoint) {
-        val response  = request("provider" -> "test-provider").sendUnsafeSync()
+        val response  = request(path = "/api/auth/login/test-provider").sendUnsafeSync()
         val setCookie = response.header("Set-Cookie").getOrElse(fail("missing Set-Cookie header"))
 
         setCookie should include(s"oauth_login_state=$testState")
       }
 
-      "return 404 for an unknown identity provider" in new EndpointFixture(authRoutes, AuthRoutes.loginEndpoint) {
-        request("provider" -> "does-not-exist").sendUnsafeSync().code shouldBe StatusCode.NotFound
+      "return 404 with an error body for an unknown identity provider" in new EndpointFixture(authRoutes, AuthRoutes.loginEndpoint) {
+        val response = request(path = "/api/auth/login/does-not-exist").sendUnsafeSync()
+
+        response.code shouldBe StatusCode.NotFound
+        decode[ErrorBody](response.body.merge) shouldBe Right(ErrorBody("not_found", "Resource not found"))
+      }
+    }
+
+    "processing callback requests" should {
+
+      "return 403 with an error body when the identity provider shares no email" in new EndpointFixture(authRoutes, AuthRoutes.callbackEndpoint) {
+        loginServiceMock.login(any[String], any[String], any[String], any[RequestOrigin]) returns
+          EitherT(IO.pure(Left(MissingEmail): Either[AuthenticationError, Authentication]))
+
+        val response = request(path = "/api/auth/callback/test-provider", queryParams = Map("code" -> "the-code", "state" -> testState))
+          .cookie("oauth_login_state", testState)
+          .sendUnsafeSync()
+
+        response.code shouldBe StatusCode.Forbidden
+        decode[ErrorBody](response.body.merge) shouldBe Right(ErrorBody("forbidden", "You do not have permission to perform this action"))
+      }
+
+      "return 502 with an error body when the identity provider returns an unusable response" in new EndpointFixture(
+        authRoutes,
+        AuthRoutes.callbackEndpoint
+      ) {
+        loginServiceMock.login(any[String], any[String], any[String], any[RequestOrigin]) returns
+          EitherT(IO.pure(Left(IdentityProviderFailure): Either[AuthenticationError, Authentication]))
+
+        val response = request(path = "/api/auth/callback/test-provider", queryParams = Map("code" -> "the-code", "state" -> testState))
+          .cookie("oauth_login_state", testState)
+          .sendUnsafeSync()
+
+        response.code shouldBe StatusCode.BadGateway
+        decode[ErrorBody](response.body.merge) shouldBe Right(ErrorBody("bad_gateway", "The identity provider returned an invalid response"))
       }
     }
 
@@ -92,7 +127,7 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
         new TokenManager(authConfig.jwt).createAccessAndRefreshTokens(Some("user-1"), Set(Role.Authenticated)).accessToken
 
       "return the current session for a valid access token" in new EndpointFixture(authRoutes, AuthRoutes.sessionEndpoint) {
-        val response = request().cookie("access_token", userToken).sendUnsafeSync()
+        val response = request(path = "/api/auth/session").cookie("access_token", userToken).sendUnsafeSync()
 
         response.code shouldBe StatusCode.Ok
         decode[AuthToken](response.body.getOrElse(fail("expected a response body"))) shouldBe
@@ -100,7 +135,10 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
       }
 
       "reject requests without an access token" in new EndpointFixture(authRoutes, AuthRoutes.sessionEndpoint) {
-        request().sendUnsafeSync().code shouldBe StatusCode.Unauthorized
+        val response = request(path = "/api/auth/session").sendUnsafeSync()
+
+        response.code shouldBe StatusCode.Unauthorized
+        decode[ErrorBody](response.body.merge) shouldBe Right(ErrorBody("unauthorized", "Authentication is required"))
       }
     }
   }
