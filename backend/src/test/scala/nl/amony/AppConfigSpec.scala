@@ -7,7 +7,7 @@ import pureconfig.ConfigSource
 class AppConfigSpec extends AnyWordSpecLike {
 
   "AppConfig" should {
-    "load config" in {
+    "successfully load config" in {
       val appConfig: AppConfig = ConfigSource.fromConfig(ConfigFactory.load()).at("amony").loadOrThrow[AppConfig]
       println(s"enabled: ${appConfig.auth.enabled}")
       println(s"require-login: ${appConfig.auth.requireLogin}")

@@ -8,7 +8,7 @@ import org.http4s.implicits.*
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.typelevel.ci.CIStringSyntax
 
-class WebServerHostFilterSpec extends AnyWordSpecLike {
+class WebServerSpec extends AnyWordSpecLike {
 
   private val inner: HttpRoutes[IO] = HttpRoutes.of[IO] { case GET -> Root / "ping" => Ok("pong") }
 
