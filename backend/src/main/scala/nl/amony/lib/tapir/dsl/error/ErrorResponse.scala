@@ -1,0 +1,83 @@
+package nl.amony.lib.tapir.dsl.error
+
+import scala.reflect.ClassTag
+
+import io.circe.Codec
+import sttp.model.StatusCode
+import sttp.tapir.EndpointOutput.OneOfVariant
+import sttp.tapir.json.circe.*
+import sttp.tapir.{EndpointOutput, Schema, oneOf, oneOfVariantClassMatcher, oneOfVariantValueMatcher, statusCode}
+
+/**
+ * Consolidated error DSL: gives every error a JSON body with a stable technical `code` and a human
+ * `message`, while keeping each error variant as its own status code in the OpenAPI spec.
+ *
+ * Two implementation notes:
+ *   - `oneOfVariantSingletonMatcher` cannot carry a body (its `output` must be `EndpointOutput[Unit]`),
+ *     so each variant uses [[oneOfVariantValueMatcher]] / [[oneOfVariantClassMatcher]] over an output
+ *     that turns the error value into its body. The OpenAPI result is the same: a distinct status code
+ *     per variant, now with a JSON body.
+ *   - Scala 3 cannot resolve a generic `given [A, B](using ...): ErrorVariants[A | B]` from a union type
+ *     (the two components stay inference variables, so both base instances match ambiguously). Union
+ *     instances are therefore composed explicitly with [[ErrorVariants.or]]. A macro could automate it.
+ */
+
+/** Body sent with every error response. `code` is machine-readable and stable, `message` is for humans. */
+case class ErrorBody(code: String, message: String) derives Schema, Codec
+
+/** Contract every API error implements so it can describe its own HTTP representation. */
+trait ApiErrorLike:
+  def statusCode: StatusCode
+  def code: String
+  def message: String
+
+/** Reconstructs a class-based error from its JSON body; only used for client-side decoding and docs. */
+trait FromBody[E]:
+  def fromBody(body: ErrorBody): E
+
+/** Gathers the `oneOf` variants for a (possibly union) error set `E`. */
+trait ErrorVariants[E]:
+  def variants: List[OneOfVariant[? <: E]]
+
+object ErrorVariants:
+
+  def apply[E](using ev: ErrorVariants[E]): ErrorVariants[E] = ev
+
+  /** One variant per enum value; each value's fixed status/code/message becomes a variant. */
+  def fromValues[E <: ApiErrorLike](values: List[E]): ErrorVariants[E] =
+    new ErrorVariants[E]:
+      def variants: List[OneOfVariant[? <: E]] = values.map(errorVariant)
+
+  /**
+   * One variant for a whole error class, matched by runtime class. Unlike [[fromValues]] the body is
+   * encoded per instance, so the server logic can pick `code`/`message` at runtime. Use one class per
+   * status code where the body varies.
+   */
+  def single[E <: ApiErrorLike](status: StatusCode)(using ct: ClassTag[E], from: FromBody[E]): ErrorVariants[E] =
+    new ErrorVariants[E]:
+      def variants: List[OneOfVariant[? <: E]] = List(bodyVariant[E](status))
+
+  /** Combine two error sets into their union. */
+  extension [A](a: ErrorVariants[A])
+    def or[B](b: ErrorVariants[B]): ErrorVariants[A | B] =
+      new ErrorVariants[A | B]:
+        def variants: List[OneOfVariant[? <: A | B]] =
+          (a.variants ++ b.variants).asInstanceOf[List[OneOfVariant[? <: A | B]]]
+
+  private def errorVariant[E <: ApiErrorLike](error: E): OneOfVariant[E] =
+    val body: ErrorBody           = ErrorBody(error.code, error.message)
+    val output: EndpointOutput[E] =
+      statusCode(error.statusCode).and(jsonBody[ErrorBody]).map[E](_ => error)(_ => body)
+    oneOfVariantValueMatcher(output)(_ == error)
+
+  private def bodyVariant[E <: ApiErrorLike](status: StatusCode)(using ct: ClassTag[E], from: FromBody[E]): OneOfVariant[E] =
+    val output: EndpointOutput[E] =
+      statusCode(status).and(jsonBody[ErrorBody]).map[E](from.fromBody)(error => ErrorBody(error.code, error.message))
+    oneOfVariantClassMatcher(output, ct.runtimeClass)
+
+/** An error response definition for the error set `S`, e.g. `ErrorResponse[SecurityError | ApiError]`. */
+final case class ErrorResponse[S](variants: List[OneOfVariant[? <: S]]):
+  def output: EndpointOutput[S] = oneOf(variants.head, variants.tail*)
+
+object ErrorResponse:
+  def of[S](using ev: ErrorVariants[S]): ErrorResponse[S] = ErrorResponse(ev.variants)
