@@ -62,7 +62,7 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
     "processing login requests" should {
 
       "redirect to the identity provider with the expected parameters" in new EndpointFixture(authRoutes, AuthRoutes.loginEndpoint) {
-        val response = request("provider" -> "test-provider").sendUnsafeSync()
+        val response = request(path = "/api/auth/login/test-provider").sendUnsafeSync()
 
         response.code shouldBe StatusCode.Found
 
@@ -77,14 +77,14 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
       }
 
       "set the oauth_login_state cookie" in new EndpointFixture(authRoutes, AuthRoutes.loginEndpoint) {
-        val response  = request("provider" -> "test-provider").sendUnsafeSync()
+        val response  = request(path = "/api/auth/login/test-provider").sendUnsafeSync()
         val setCookie = response.header("Set-Cookie").getOrElse(fail("missing Set-Cookie header"))
 
         setCookie should include(s"oauth_login_state=$testState")
       }
 
       "return 404 with an error body for an unknown identity provider" in new EndpointFixture(authRoutes, AuthRoutes.loginEndpoint) {
-        val response = request("provider" -> "does-not-exist").sendUnsafeSync()
+        val response = request(path = "/api/auth/login/does-not-exist").sendUnsafeSync()
 
         response.code shouldBe StatusCode.NotFound
         decode[ErrorBody](response.body.merge) shouldBe Right(ErrorBody("not_found", "Resource not found"))
@@ -97,7 +97,7 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
         loginServiceMock.login(any[String], any[String], any[String], any[RequestOrigin]) returns
           EitherT(IO.pure(Left(MissingEmail): Either[AuthenticationError, Authentication]))
 
-        val response = request("provider" -> "test-provider", "code" -> "the-code", "state" -> testState)
+        val response = request(path = "/api/auth/callback/test-provider", queryParams = Map("code" -> "the-code", "state" -> testState))
           .cookie("oauth_login_state", testState)
           .sendUnsafeSync()
 
@@ -112,7 +112,7 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
         loginServiceMock.login(any[String], any[String], any[String], any[RequestOrigin]) returns
           EitherT(IO.pure(Left(IdentityProviderFailure): Either[AuthenticationError, Authentication]))
 
-        val response = request("provider" -> "test-provider", "code" -> "the-code", "state" -> testState)
+        val response = request(path = "/api/auth/callback/test-provider", queryParams = Map("code" -> "the-code", "state" -> testState))
           .cookie("oauth_login_state", testState)
           .sendUnsafeSync()
 
@@ -127,7 +127,7 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
         new TokenManager(authConfig.jwt).createAccessAndRefreshTokens(Some("user-1"), Set(Role.Authenticated)).accessToken
 
       "return the current session for a valid access token" in new EndpointFixture(authRoutes, AuthRoutes.sessionEndpoint) {
-        val response = request().cookie("access_token", userToken).sendUnsafeSync()
+        val response = request(path = "/api/auth/session").cookie("access_token", userToken).sendUnsafeSync()
 
         response.code shouldBe StatusCode.Ok
         decode[AuthToken](response.body.getOrElse(fail("expected a response body"))) shouldBe
@@ -135,7 +135,7 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
       }
 
       "reject requests without an access token" in new EndpointFixture(authRoutes, AuthRoutes.sessionEndpoint) {
-        val response = request().sendUnsafeSync()
+        val response = request(path = "/api/auth/session").sendUnsafeSync()
 
         response.code shouldBe StatusCode.Unauthorized
         decode[ErrorBody](response.body.merge) shouldBe Right(ErrorBody("unauthorized", "Authentication is required"))

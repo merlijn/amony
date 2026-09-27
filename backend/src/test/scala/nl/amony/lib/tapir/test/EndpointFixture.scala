@@ -22,7 +22,7 @@ import nl.amony.lib.tapir.dsl.ServerEndpoints
  * Usage:
  * {{{
  *   "..." in new EndpointFixture(authRoutes, AuthRoutes.loginEndpoint) {
- *     val response = request("provider" -> "dex").sendUnsafeSync()
+ *     val response = request(path = "/api/auth/login/dex").sendUnsafeSync()
  *   }
  * }}}
  */
@@ -46,21 +46,17 @@ trait EndpointFixture(
       .backend()
 
   /**
-   * A request for this endpoint, with the HTTP method and path taken from the definition. Parameters
-   * whose name matches a path placeholder (e.g. `request("provider" -> "dex")`) fill that placeholder
-   * in; any other name/value pairs are appended as query parameters.
+   * A request for this endpoint, with the HTTP method taken from the definition. `path` is the full
+   * request path, starting with `/` (e.g. `request(path = "/api/auth/login/dex")`); `queryParams` are
+   * appended to the query string.
    *
    * The forwarded host/scheme headers are set so `requestOrigin` resolves deterministically.
    */
-  def request(params: (String, String)*) =
-    val method   = definition.method.getOrElse(Method.GET)
-    val template = definition.showPathTemplate(showQueryParam = None)
+  def request(path: String, queryParams: Map[String, String] = Map.empty) =
+    val method = definition.method.getOrElse(Method.GET)
+    val uri    = Uri.unsafeParse(s"http://localhost$path").addParams(queryParams)
 
-    val (pathParams, queryParams) = params.partition { case (key, _) => template.contains(s"{$key}") }
-    val path                      = pathParams.foldLeft(template) { case (path, (key, value)) => path.replace(s"{$key}", value) }
-    val query                     = if queryParams.isEmpty then "" else queryParams.map((key, value) => s"$key=$value").mkString("?", "&", "")
-
-    basicRequest.method(method, Uri.unsafeParse(s"http://localhost$path$query"))
+    basicRequest.method(method, uri)
       .header("X-Forwarded-Host", host)
       .header("X-Forwarded-Proto", scheme)
 

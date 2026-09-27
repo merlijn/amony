@@ -109,7 +109,7 @@ class ErrorDslSketchSpec extends AnyWordSpecLike with Matchers:
   "the consolidated error DSL" should {
 
     "return the happy path unchanged" in new EndpointFixture(serverEndpoints, getThing) {
-      val response = request("id" -> "abc").sendUnsafeSync()
+      val response = request(path = "/sketch/things/abc").sendUnsafeSync()
 
       response.code shouldBe StatusCode.Ok
       decode[ThingDto](response.body.getOrElse(fail("expected a response body"))) shouldBe
@@ -117,35 +117,35 @@ class ErrorDslSketchSpec extends AnyWordSpecLike with Matchers:
     }
 
     "return 404 with a not_found body for a missing resource" in new EndpointFixture(serverEndpoints, getThing) {
-      val response = request("id" -> "missing").sendUnsafeSync()
+      val response = request(path = "/sketch/things/missing").sendUnsafeSync()
 
       response.code shouldBe StatusCode.NotFound
       errorBody(response.body.merge) shouldBe ErrorBody("not_found", "Resource not found")
     }
 
     "return 403 with a forbidden body when the caller lacks permission" in new EndpointFixture(serverEndpoints, getThing) {
-      val response = request("id" -> "forbidden").sendUnsafeSync()
+      val response = request(path = "/sketch/things/forbidden").sendUnsafeSync()
 
       response.code shouldBe StatusCode.Forbidden
       errorBody(response.body.merge) shouldBe ErrorBody("forbidden", "You do not have permission to perform this action")
     }
 
     "return 401 with an unauthorized body when authentication is missing" in new EndpointFixture(serverEndpoints, getThing) {
-      val response = request("id" -> "secret").sendUnsafeSync()
+      val response = request(path = "/sketch/things/secret").sendUnsafeSync()
 
       response.code shouldBe StatusCode.Unauthorized
       errorBody(response.body.merge) shouldBe ErrorBody("unauthorized", "Authentication is required")
     }
 
     "return 500 with a generic body when the server fails" in new EndpointFixture(serverEndpoints, getThing) {
-      val response = request("id" -> "boom").sendUnsafeSync()
+      val response = request(path = "/sketch/things/boom").sendUnsafeSync()
 
       response.code shouldBe StatusCode.InternalServerError
       errorBody(response.body.merge) shouldBe ErrorBody("internal_server_error", "Internal server error")
     }
 
     "let a JSON-body endpoint return a dynamic 400" in new EndpointFixture(serverEndpoints, createThing) {
-      val response = request()
+      val response = request(path = "/sketch/things")
         .contentType("application/json")
         .body(CreateThingDto(name = "  ").asJson.noSpaces)
         .sendUnsafeSync()
@@ -155,7 +155,7 @@ class ErrorDslSketchSpec extends AnyWordSpecLike with Matchers:
     }
 
     "let the server logic pick the code and message for a 400" in new EndpointFixture(serverEndpoints, renameThing) {
-      val response = request("id" -> "abc")
+      val response = request(path = "/sketch/things/abc")
         .contentType("application/json")
         .body(CreateThingDto(name = "x").asJson.noSpaces)
         .sendUnsafeSync()
@@ -165,7 +165,7 @@ class ErrorDslSketchSpec extends AnyWordSpecLike with Matchers:
     }
 
     "use a different dynamic code for a different validation failure" in new EndpointFixture(serverEndpoints, renameThing) {
-      val response = request("id" -> "abc")
+      val response = request(path = "/sketch/things/abc")
         .contentType("application/json")
         .body(CreateThingDto(name = "a/b").asJson.noSpaces)
         .sendUnsafeSync()
