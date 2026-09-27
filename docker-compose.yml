@@ -126,6 +126,8 @@ services:
     build:
       context: ./admin-frontend
       dockerfile: Dockerfile
+    profiles:
+      - admin
     image: ghcr.io/merlijn/amony-admin:dev
     container_name: amony-admin
     depends_on:
