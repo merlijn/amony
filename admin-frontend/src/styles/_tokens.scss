@@ -1,0 +1,50 @@
+// Design tokens, in two tiers.
+//
+// Tier 1 - primitives: the Radix Colors scales (`--gray-1..12`, `--blue-1..12`),
+// imported in src/index.tsx. Components never use these directly. Every step has
+// a fixed meaning worth knowing:
+// https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale
+//
+// Tier 2 - semantics: the role-based aliases below. Components only use these.
+// Because they point at primitive steps, the theme swaps by toggling the Radix
+// light/dark scales (via the `.dark` class); these declarations are identical
+// for both themes.
+
+:root {
+  // Spacing
+  --spacing-xs: 2px;
+  --spacing-s: 5px;
+  --spacing-m: 12px;
+  --spacing-l: 24px;
+  --spacing-xl: 40px;
+
+  // Surfaces: 1 = app canvas, 2 = subtle surface, 3 = raised, 4 = hover
+  --bg-primary: var(--gray-1);
+  --bg-secondary: var(--gray-2);
+  --bg-tertiary: var(--gray-3);
+  --bg-hover: var(--gray-4);
+
+  // Text: 12 = high contrast, 11 = low contrast, 9 = muted
+  --text-primary: var(--gray-12);
+  --text-secondary: var(--gray-11);
+  --text-muted: var(--gray-9);
+
+  // Borders: 7 = UI element border, 6 = subtle separator, 8 = focus ring
+  --border-primary: var(--gray-7);
+  --border-secondary: var(--gray-6);
+  --border-focus: var(--blue-8);
+
+  // Accent: 9 = solid, 10 = solid hover (darker in light, lighter in dark).
+  // Radix recommends white text on its solid step 9.
+  --bg-accent: var(--blue-9);
+  --bg-accent-hover: var(--blue-10);
+  --text-on-accent: #ffffff;
+
+  color-scheme: light;
+}
+
+// Keep native form controls and scrollbars in sync with the active theme.
+.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+}

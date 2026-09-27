@@ -1,0 +1,125 @@
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.admin-sidebar {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 240px;
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--border-primary);
+  transition: width 150ms ease;
+
+  &[data-state="closed"] {
+    width: 56px;
+  }
+}
+
+.admin-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-m);
+  padding: var(--spacing-m);
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.admin-sidebar-title {
+  font-weight: 600;
+  white-space: nowrap;
+
+  .admin-sidebar[data-state="closed"] & {
+    display: none;
+  }
+}
+
+.admin-sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+  }
+
+  .admin-sidebar[data-state="closed"] & svg {
+    transform: rotate(180deg);
+  }
+}
+
+.admin-sidebar-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.admin-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--spacing-m);
+}
+
+.admin-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-m);
+  padding: 8px 10px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+  border-radius: 5px;
+
+  &:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+  }
+}
+
+.admin-nav-item-active {
+  color: var(--text-primary);
+  font-weight: 500;
+  background-color: var(--bg-hover);
+}
+
+.admin-sidebar-footer {
+  margin-top: auto;
+  padding: var(--spacing-m);
+}
+
+.admin-sidebar-signout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-m);
+  width: 100%;
+}
+
+.admin-content {
+  flex: 1;
+  min-width: 0;
+  padding: var(--spacing-l);
+}

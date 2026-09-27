@@ -122,6 +122,22 @@ services:
       - ${AMONY_DATA:-./data}/solr:/app/data/solr
     restart: "no"
 
+  admin:
+    build:
+      context: ./admin-frontend
+      dockerfile: Dockerfile
+    profiles:
+      - admin
+    image: ghcr.io/merlijn/amony-admin:dev
+    container_name: amony-admin
+    depends_on:
+      - amony
+    environment:
+      AMONY_BACKEND: amony-app:8182
+    ports:
+      - "127.0.0.1:8183:80"
+    restart: unless-stopped
+
   auth:
     image: dexidp/dex:latest
     container_name: auth
