@@ -3,15 +3,13 @@ package nl.amony.lib.tapir.dsl.error
 import sttp.model.StatusCode
 
 /**
- * Standard 500 error, deliberately carrying no detail: `code` and `message` are fixed and generic so
- * that a failure's internals are never leaked to the caller. The real cause should be logged instead.
+ * Standard 500 error. Like [[BadRequestError]] the `code` and `message` are chosen by the server logic,
+ * so every internal failure shares one variant (and the [[ErrorBody]] JSON shape). Prefer the generic
+ * defaults: a 500 body should not leak internals to the caller — log the real cause instead.
  */
-enum InternalServerError extends ApiErrorLike:
-  case Unexpected
-
+final case class InternalServerError(code: String = "internal_server_error", message: String = "Internal server error") extends ApiErrorLike:
   def statusCode: StatusCode = StatusCode.InternalServerError
-  def code: String           = "internal_server_error"
-  def message: String        = "Internal server error"
 
 object InternalServerError:
-  given ErrorVariants[InternalServerError] = ErrorVariants.fromValues(InternalServerError.values.toList)
+  given FromBody[InternalServerError]      = body => InternalServerError(body.code, body.message)
+  given ErrorVariants[InternalServerError] = ErrorVariants.single[InternalServerError](StatusCode.InternalServerError)

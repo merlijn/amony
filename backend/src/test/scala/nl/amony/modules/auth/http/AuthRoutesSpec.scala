@@ -11,6 +11,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import sttp.model.{StatusCode, Uri}
 
+import nl.amony.lib.tapir.dsl.error.ErrorBody
 import nl.amony.lib.tapir.test.EndpointFixture
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.auth.{AuthConfig, HS256Config, IdentityProvider, JwtConfig, RoleAccessConfig}
@@ -81,8 +82,11 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
         setCookie should include(s"oauth_login_state=$testState")
       }
 
-      "return 404 for an unknown identity provider" in new EndpointFixture(authRoutes, AuthRoutes.loginEndpoint) {
-        request("provider" -> "does-not-exist").sendUnsafeSync().code shouldBe StatusCode.NotFound
+      "return 404 with an error body for an unknown identity provider" in new EndpointFixture(authRoutes, AuthRoutes.loginEndpoint) {
+        val response = request("provider" -> "does-not-exist").sendUnsafeSync()
+
+        response.code shouldBe StatusCode.NotFound
+        decode[ErrorBody](response.body.merge) shouldBe Right(ErrorBody("not_found", "Resource not found"))
       }
     }
 
@@ -100,7 +104,10 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
       }
 
       "reject requests without an access token" in new EndpointFixture(authRoutes, AuthRoutes.sessionEndpoint) {
-        request().sendUnsafeSync().code shouldBe StatusCode.Unauthorized
+        val response = request().sendUnsafeSync()
+
+        response.code shouldBe StatusCode.Unauthorized
+        decode[ErrorBody](response.body.merge) shouldBe Right(ErrorBody("unauthorized", "Authentication is required"))
       }
     }
   }

@@ -8,13 +8,13 @@ import sttp.tapir.*
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.{ResourceBucket, ResourceInfo}
-import nl.amony.modules.resources.http.{ResourceDto, oneOfList, toDto}
+import nl.amony.modules.resources.http.{ResourceDto, toDto}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.modules.search.api.SearchService
 
 object AdminRoutes extends RoutesModule, Logging:
 
-  val errorOutput: EndpointOutput[SecurityError] = oneOfList(securityErrors)
+  val errorOutput = securityErrors
 
   case object NdJson extends CodecFormat:
     override val mediaType: sttp.model.MediaType = sttp.model.MediaType.unsafeParse("application/x-ndjson")

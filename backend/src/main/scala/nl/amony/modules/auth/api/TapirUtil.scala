@@ -1,7 +1,10 @@
 package nl.amony.modules.auth.api
 
-import sttp.model.{Method, StatusCode}
+import sttp.model.Method
 import sttp.tapir.*
+
+import nl.amony.lib.tapir.dsl.error.ErrorVariants.*
+import nl.amony.lib.tapir.dsl.error.{BadRequestError, ErrorResponse, ErrorVariants, InternalServerError, NotFoundError, SecurityError}
 
 case class SecurityInput(accessToken: Option[String], xsrfCookie: Option[String], xXsrfHeader: Option[String], method: Method)
 
@@ -43,10 +46,19 @@ val securityInput: EndpointInput[SecurityInput] =
     .and(extractFromRequest(_.method))
     .mapTo[SecurityInput]
 
-val unauthorizedOutput = oneOfVariantSingletonMatcher(statusCode(StatusCode.Unauthorized))(SecurityError.Unauthorized)
-val forbiddenOutput    = oneOfVariantSingletonMatcher(statusCode(StatusCode.Forbidden))(SecurityError.Forbidden)
+/** 401/403 for endpoints secured with [[ApiSecurity]]. */
+val securityErrors: EndpointOutput[SecurityError] = ErrorResponse.of[SecurityError].output
 
-val securityErrors = List(
-  oneOfVariantSingletonMatcher(statusCode(StatusCode.Unauthorized))(SecurityError.Unauthorized),
-  oneOfVariantSingletonMatcher(statusCode(StatusCode.Forbidden))(SecurityError.Forbidden)
-)
+/** Error set shared by the resource, collection and search endpoints (401/403, 404, 400). */
+given standardErrorVariants: ErrorVariants[SecurityError | NotFoundError | BadRequestError] =
+  summon[ErrorVariants[SecurityError]].or(summon[ErrorVariants[NotFoundError]]).or(summon[ErrorVariants[BadRequestError]])
+
+val standardErrorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError] =
+  ErrorResponse.of[SecurityError | NotFoundError | BadRequestError].output
+
+/** Error set for the auth callback (401/403, 404, 400, 500). */
+given callbackErrorVariants: ErrorVariants[SecurityError | NotFoundError | BadRequestError | InternalServerError] =
+  summon[ErrorVariants[SecurityError | NotFoundError | BadRequestError]].or(summon[ErrorVariants[InternalServerError]])
+
+val callbackErrorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError | InternalServerError] =
+  ErrorResponse.of[SecurityError | NotFoundError | BadRequestError | InternalServerError].output

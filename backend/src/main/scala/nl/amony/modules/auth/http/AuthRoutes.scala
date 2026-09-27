@@ -15,6 +15,7 @@ import sttp.tapir.*
 import sttp.tapir.json.circe.jsonBody
 
 import nl.amony.lib.tapir.*
+import nl.amony.lib.tapir.dsl.error.{BadRequestError, ErrorResponse, InternalServerError, NotFoundError, SecurityError}
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.AuthConfig
 import nl.amony.modules.auth.api.*
@@ -24,12 +25,10 @@ case class LogoutResponse(logoutUrl: Option[String]) derives Codec, Schema
 
 object AuthRoutes extends RoutesModule, Logging:
 
-  val errorOutput = {
-    val unauthorizedOutput = oneOfVariantSingletonMatcher(statusCode(StatusCode.Unauthorized))(SecurityError.Unauthorized)
-    val forbiddenOutput    = oneOfVariantSingletonMatcher(statusCode(StatusCode.Forbidden))(SecurityError.Forbidden)
+  val errorOutput: EndpointOutput[SecurityError] = securityErrors
 
-    oneOf[SecurityError](unauthorizedOutput, forbiddenOutput)
-  }
+  // Login can only 404 (unknown provider); the callback additionally carries 400/401/500.
+  val loginErrorOutput: EndpointOutput[NotFoundError] = ErrorResponse.of[NotFoundError].output
 
   val sessionEndpoint: Endpoint[SecurityInput, Unit, SecurityError, AuthToken, Any] =
     register(endpoint
@@ -67,7 +66,7 @@ object AuthRoutes extends RoutesModule, Logging:
       .get.in("api" / "auth" / "login" / path[String]("provider"))
       .in(requestOrigin)
       .out(RedirectResponse.endpointOutput and setCookie("oauth_login_state"))
-      .errorOut(ErrorResponse.endpointOutput))
+      .errorOut(loginErrorOutput))
 
   val callbackEndpoint =
     register(endpoint.tag("auth").name("authCallback").description("Identity provider callback endpoint")
@@ -78,7 +77,7 @@ object AuthRoutes extends RoutesModule, Logging:
       .in(requestOrigin)
       .out(RedirectResponse.endpointOutput)
       .out(AuthCookies.endpointOutput)
-      .errorOut(ErrorResponse.endpointOutput))
+      .errorOut(callbackErrorOutput))
 
   val getIdentityProvidersEndpoint: Endpoint[Unit, Unit, Unit, List[IdentityProviderDto], Any] =
     register(endpoint
@@ -90,10 +89,10 @@ object AuthRoutes extends RoutesModule, Logging:
     using apiSecurity: ApiSecurity
   ): ServerEndpoints[IO] = {
 
-    def mapAuthenticationErrorToResponse(error: AuthenticationError): ErrorResponse = error match
-      case InvalidCredentials      => ErrorResponse.unauthorized(message = "Invalid credentials")
-      case UnknownIdentityProvider => ErrorResponse.notFound()
-      case UnknownError            => ErrorResponse.internalServerError(message = "An unknown error occurred")
+    def mapAuthenticationErrorToResponse(error: AuthenticationError): SecurityError | NotFoundError | InternalServerError = error match
+      case InvalidCredentials      => SecurityError.Unauthorized
+      case UnknownIdentityProvider => NotFoundError("not_found", "Resource not found")
+      case UnknownError            => InternalServerError()
 
     routes[IO] {
       serverLogic(endpoint = refreshEndpoint, authorize = apiSecurity.authorizeXsrf) { _ => refreshToken =>
@@ -111,7 +110,7 @@ object AuthRoutes extends RoutesModule, Logging:
 
       serverLogic(endpoint = loginEndpoint) { (provider, origin) =>
         loginService.identityProviders.get(provider) match
-          case None                 => IO.pure(Left(ErrorResponse.notFound()))
+          case None                 => IO.pure(Left(NotFoundError("not_found", "Resource not found")))
           case Some(providerConfig) =>
             for
               state      <- loginService.createState(provider)
@@ -137,8 +136,8 @@ object AuthRoutes extends RoutesModule, Logging:
       serverLogicT(endpoint = callbackEndpoint) {
         case (provider, code, state, clientState, origin) =>
           for
-            _              <- EitherT.fromOption[IO](loginService.identityProviders.get(provider), ErrorResponse.notFound())
-            _              <- EitherT.cond[IO](state == clientState, (), ErrorResponse.badRequest(message = "State mismatch"))
+            _              <- EitherT.fromOption[IO](loginService.identityProviders.get(provider), NotFoundError("not_found", "Resource not found"))
+            _              <- EitherT.cond[IO](state == clientState, (), BadRequestError("state_mismatch", "State mismatch"))
             authentication <- loginService.login(provider, code, clientState, origin).leftMap(mapAuthenticationErrorToResponse)
           yield RedirectResponse("/") -> apiSecurity.createCookies(authentication)
       }

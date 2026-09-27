@@ -44,12 +44,28 @@ paths:
                   $ref: '#/components/schemas/BucketDto'
         '400':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/resources/{bucketId}/{resourceId}:
     get:
       tags:
@@ -99,12 +115,28 @@ paths:
                 $ref: '#/components/schemas/ResourceDto'
         '400':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
     delete:
       tags:
       - resources
@@ -136,12 +168,28 @@ paths:
           description: ''
         '400':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/resources/{bucketId}/{resourceId}/update_user_meta:
     post:
       tags:
@@ -180,12 +228,28 @@ paths:
           description: ''
         '400':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/resources/{bucketId}/{resourceId}/update_thumbnail_timestamp:
     post:
       tags:
@@ -224,12 +288,28 @@ paths:
           description: ''
         '400':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/resources/{bucketId}/bulk/tags:
     post:
       tags:
@@ -263,12 +343,28 @@ paths:
           description: ''
         '400':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/resources/{bucketId}/upload:
     post:
       tags:
@@ -312,12 +408,28 @@ paths:
                 $ref: '#/components/schemas/ResourceDto'
         '400':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/search/media:
     get:
       tags:
@@ -409,12 +521,28 @@ paths:
                 $ref: '#/components/schemas/SearchResponseDto'
         '400':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/admin/reindex:
     post:
       tags:
@@ -449,8 +577,16 @@ paths:
                 type: string
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/admin/refresh:
     post:
       tags:
@@ -485,8 +621,16 @@ paths:
                 type: string
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/admin/re-scan-metadata:
     post:
       tags:
@@ -521,8 +665,16 @@ paths:
                 type: string
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/admin/re-compute-hashes:
     post:
       tags:
@@ -557,8 +709,16 @@ paths:
                 type: string
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/admin/export/{bucketId}:
     get:
       tags:
@@ -596,8 +756,16 @@ paths:
                 type: string
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/admin/import/{bucketId}:
     post:
       tags:
@@ -637,8 +805,16 @@ paths:
                 type: string
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/auth/session:
     get:
       tags:
@@ -671,8 +847,16 @@ paths:
                 type: string
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/auth/refresh:
     post:
       tags:
@@ -713,8 +897,16 @@ paths:
                 type: string
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/auth/logout:
     post:
       tags:
@@ -760,8 +952,16 @@ paths:
                 type: string
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/auth/login/{provider}:
     get:
       tags:
@@ -794,12 +994,12 @@ paths:
             text/plain:
               schema:
                 type: string
-        default:
+        '404':
           description: ''
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponseBody'
+                $ref: '#/components/schemas/ErrorBody'
   /api/auth/callback/{provider}:
     get:
       tags:
@@ -845,19 +1045,35 @@ paths:
                 items:
                   type: string
         '400':
-          description: 'Invalid value for: query parameter code, Invalid value for:
-            query parameter state, Invalid value for: cookie oauth_login_state, Invalid
-            value'
-          content:
-            text/plain:
-              schema:
-                type: string
-        default:
           description: ''
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponseBody'
+                $ref: '#/components/schemas/ErrorBody'
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/auth/identity-providers:
     get:
       tags:
@@ -914,12 +1130,28 @@ paths:
                   $ref: '#/components/schemas/CollectionDto'
         '400':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
     post:
       tags:
       - collections
@@ -964,12 +1196,28 @@ paths:
                 $ref: '#/components/schemas/CollectionDto'
         '400':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/collections/{collectionId}/resources/{bucketId}/{resourceId}:
     post:
       tags:
@@ -1008,12 +1256,28 @@ paths:
           description: ''
         '400':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
     delete:
       tags:
       - collections
@@ -1051,12 +1315,28 @@ paths:
           description: ''
         '400':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/collections/{collectionId}/resources:
     get:
       tags:
@@ -1104,12 +1384,28 @@ paths:
                   $ref: '#/components/schemas/ResourceDto'
         '400':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '401':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '403':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '404':
           description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
 components:
   schemas:
     AuthToken:
@@ -1223,8 +1519,8 @@ components:
           type: array
           items:
             type: string
-    ErrorResponseBody:
-      title: ErrorResponseBody
+    ErrorBody:
+      title: ErrorBody
       type: object
       required:
       - code

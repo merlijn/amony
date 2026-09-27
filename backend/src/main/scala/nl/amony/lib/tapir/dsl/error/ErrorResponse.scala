@@ -75,7 +75,7 @@ object ErrorVariants:
       statusCode(status).and(jsonBody[ErrorBody]).map[E](from.fromBody)(error => ErrorBody(error.code, error.message))
     oneOfVariantClassMatcher(output, ct.runtimeClass)
 
-/** An error response definition for the error set `S`, e.g. `ErrorResponse[SecurityError | ApiError]`. */
+/** An error response definition for the error set `S`, e.g. `ErrorResponse[SecurityError | BadRequestError]`. */
 final case class ErrorResponse[S](variants: List[OneOfVariant[? <: S]]):
   def output: EndpointOutput[S] = oneOf(variants.head, variants.tail*)
 

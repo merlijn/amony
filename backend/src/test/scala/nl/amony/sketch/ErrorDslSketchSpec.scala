@@ -78,7 +78,7 @@ object ErrorDslSketchRoutes:
           case "missing"   => Left(NotFoundError("not_found", "Resource not found"))
           case "forbidden" => Left(SecurityError.Forbidden)
           case "secret"    => Left(SecurityError.Unauthorized)
-          case "boom"      => Left(InternalServerError.Unexpected)
+          case "boom"      => Left(InternalServerError())
           case other       => Right(ThingDto(other, s"Thing $other"))
       IO.pure(result)
     }
