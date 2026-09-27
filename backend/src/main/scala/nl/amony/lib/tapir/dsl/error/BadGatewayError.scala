@@ -10,5 +10,4 @@ final case class BadGatewayError(code: String, message: String) extends ApiError
   def statusCode: StatusCode = StatusCode.BadGateway
 
 object BadGatewayError:
-  given FromBody[BadGatewayError]      = body => BadGatewayError(body.code, body.message)
   given ErrorVariants[BadGatewayError] = ErrorVariants.single[BadGatewayError](StatusCode.BadGateway)

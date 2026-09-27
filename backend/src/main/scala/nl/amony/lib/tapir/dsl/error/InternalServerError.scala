@@ -11,5 +11,4 @@ final case class InternalServerError(code: String = "internal_server_error", mes
   def statusCode: StatusCode = StatusCode.InternalServerError
 
 object InternalServerError:
-  given FromBody[InternalServerError]      = body => InternalServerError(body.code, body.message)
   given ErrorVariants[InternalServerError] = ErrorVariants.single[InternalServerError](StatusCode.InternalServerError)

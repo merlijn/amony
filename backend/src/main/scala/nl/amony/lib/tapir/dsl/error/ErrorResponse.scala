@@ -11,16 +11,6 @@ import sttp.tapir.{EndpointOutput, Schema, oneOf, oneOfVariantClassMatcher, oneO
 /**
  * Consolidated error DSL: gives every error a JSON body with a stable technical `code` and a human
  * `message`, while keeping each error variant as its own status code in the OpenAPI spec.
- *
- * Two implementation notes:
- *   - `oneOfVariantSingletonMatcher` cannot carry a body (its `output` must be `EndpointOutput[Unit]`),
- *     so each variant uses [[oneOfVariantValueMatcher]] / [[oneOfVariantClassMatcher]] over an output
- *     that turns the error value into its body. The OpenAPI result is the same: a distinct status code
- *     per variant, now with a JSON body.
- *   - Scala 3 cannot resolve a generic `given [A, B](using ...): ErrorVariants[A | B]` from a union type
- *     (the two components stay inference variables, so both base instances match ambiguously). Endpoints
- *     therefore list their errors with the multi-argument `ErrorResponse.of[A, B, ...]`, which composes
- *     the per-error [[ErrorVariants]] on the spot; a union instance never has to be declared by hand.
  */
 
 /** Body sent with every error response. `code` is machine-readable and stable, `message` is for humans. */
@@ -31,10 +21,6 @@ trait ApiErrorLike:
   def statusCode: StatusCode
   def code: String
   def message: String
-
-/** Reconstructs a class-based error from its JSON body; only used for client-side decoding and docs. */
-trait FromBody[E]:
-  def fromBody(body: ErrorBody): E
 
 /** Gathers the `oneOf` variants for a (possibly union) error set `E`. */
 trait ErrorVariants[E]:
@@ -54,7 +40,7 @@ object ErrorVariants:
    * encoded per instance, so the server logic can pick `code`/`message` at runtime. Use one class per
    * status code where the body varies.
    */
-  def single[E <: ApiErrorLike](status: StatusCode)(using ct: ClassTag[E], from: FromBody[E]): ErrorVariants[E] =
+  def single[E <: ApiErrorLike](status: StatusCode)(using ct: ClassTag[E]): ErrorVariants[E] =
     new ErrorVariants[E]:
       def variants: List[OneOfVariant[? <: E]] = List(bodyVariant[E](status))
 
@@ -71,9 +57,13 @@ object ErrorVariants:
       statusCode(error.statusCode).and(jsonBody[ErrorBody]).map[E](_ => error)(_ => body)
     oneOfVariantValueMatcher(output)(_ == error)
 
-  private def bodyVariant[E <: ApiErrorLike](status: StatusCode)(using ct: ClassTag[E], from: FromBody[E]): OneOfVariant[E] =
+  /** Error responses are only ever encoded by the server; the inverse direction has no consumer. */
+  private def notDecodable[E]: ErrorBody => E =
+    _ => throw new UnsupportedOperationException("Cannot decode an error response: these endpoints are only used server-side")
+
+  private def bodyVariant[E <: ApiErrorLike](status: StatusCode)(using ct: ClassTag[E]): OneOfVariant[E] =
     val output: EndpointOutput[E] =
-      statusCode(status).and(jsonBody[ErrorBody]).map[E](from.fromBody)(error => ErrorBody(error.code, error.message))
+      statusCode(status).and(jsonBody[ErrorBody]).map[E](notDecodable[E])(error => ErrorBody(error.code, error.message))
     oneOfVariantClassMatcher(output, ct.runtimeClass)
 
 /** An error response definition for the error set `S`, e.g. `ErrorResponse[SecurityError | BadRequestError]`. */

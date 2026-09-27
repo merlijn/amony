@@ -11,6 +11,4 @@ final case class BadRequestError(code: String, message: String) extends ApiError
   def statusCode: StatusCode = StatusCode.BadRequest
 
 object BadRequestError:
-  given FromBody[BadRequestError] = body => BadRequestError(body.code, body.message)
-
   given ErrorVariants[BadRequestError] = ErrorVariants.single[BadRequestError](StatusCode.BadRequest)

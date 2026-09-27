@@ -11,5 +11,4 @@ final case class NotFoundError(code: String, message: String) extends ApiErrorLi
   def statusCode: StatusCode = StatusCode.NotFound
 
 object NotFoundError:
-  given FromBody[NotFoundError]      = body => NotFoundError(body.code, body.message)
   given ErrorVariants[NotFoundError] = ErrorVariants.single[NotFoundError](StatusCode.NotFound)
