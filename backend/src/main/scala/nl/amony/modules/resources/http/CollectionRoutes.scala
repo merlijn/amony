@@ -3,12 +3,10 @@ package nl.amony.modules.resources.http
 import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.*
-import org.http4s.HttpRoutes
 import sttp.tapir.*
 import sttp.tapir.json.circe.*
-import sttp.tapir.server.http4s.Http4sServerOptions
 
-import nl.amony.lib.tapir.dsl.{RoutesModule, routes, serverLogic, serverLogicT}
+import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.{Collection, CollectionId, ResourceId}
 import nl.amony.modules.resources.dal.CollectionsDal
@@ -50,14 +48,13 @@ object CollectionRoutes extends RoutesModule:
       .out(apiNoCacheHeaders).out(jsonBody[List[ResourceDto]]))
 
   def apply(collectionsDal: CollectionsDal)(
-    using serverOptions: Http4sServerOptions[IO],
-    apiSecurity: ApiSecurity
-  ): HttpRoutes[IO] = {
+    using apiSecurity: ApiSecurity
+  ): ServerEndpoints[IO] = {
 
     def isBucketHidden(auth: AuthToken, bucketId: String): Boolean =
       apiSecurity.userAccess(auth).hiddenBuckets.contains(bucketId)
 
-    routes[IO](serverOptions) {
+    routes[IO] {
 
       serverLogic(endpoint = getCollections, requiredPermission = Permission.ManageCollections) { auth => _ =>
         collectionsDal.getCollectionsForUser(auth.userId).map(_.map(toDto)).map(Right(_))

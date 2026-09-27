@@ -3,13 +3,11 @@ package nl.amony.modules.search.http
 import scala.util.Try
 
 import cats.effect.IO
-import org.http4s.HttpRoutes
 import sttp.model.StatusCode
 import sttp.tapir.*
 import sttp.tapir.json.circe.jsonBody
-import sttp.tapir.server.http4s.Http4sServerOptions
 
-import nl.amony.lib.tapir.dsl.{RoutesModule, routes, serverLogic}
+import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.http.{oneOfList, toDto}
 import nl.amony.modules.search.SearchConfig
@@ -68,13 +66,12 @@ object SearchRoutes extends RoutesModule:
   private val sortPattern     = raw"(\w+)(?:-(asc|desc))?".r
 
   def apply(searchService: SearchService, config: SearchConfig)(
-    using serverOptions: Http4sServerOptions[IO],
-    apiSecurity: ApiSecurity
-  ): HttpRoutes[IO] = {
+    using apiSecurity: ApiSecurity
+  ): ServerEndpoints[IO] = {
 
     def sanitize(s: String, maxLength: Int, isCharAllowed: Char => Boolean): String = s.filter(isCharAllowed).take(maxLength)
 
-    routes[IO](serverOptions) {
+    routes[IO] {
       serverLogic(endpoint = searchResourcesEndpoint, requiredPermission = Permission.SearchResources) {
         auth => queryDto =>
 

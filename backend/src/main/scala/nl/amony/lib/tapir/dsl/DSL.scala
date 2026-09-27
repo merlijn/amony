@@ -4,26 +4,26 @@ import scala.collection.mutable.ArrayBuffer
 
 import cats.Functor
 import cats.data.EitherT
-import cats.effect.kernel.Async
-import org.http4s.HttpRoutes
 import sttp.capabilities.fs2.Fs2Streams
 import sttp.tapir.Endpoint
 import sttp.tapir.server.ServerEndpoint
-import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 
 import nl.amony.modules.auth.api.{ApiSecurity, AuthToken, Permission, SecurityError, SecurityInput}
+
+/** A module's routes as a framework-independent list of tapir server endpoints. */
+type ServerEndpoints[F[_]] = List[ServerEndpoint[Fs2Streams[F], F]]
 
 class Routes[F[_]]:
   private val endpoints = new ArrayBuffer[ServerEndpoint[Fs2Streams[F], F]]
 
   def add(endpoint: ServerEndpoint[Fs2Streams[F], F]): Unit = endpoints += endpoint
 
-  def toList: List[ServerEndpoint[Fs2Streams[F], F]] = endpoints.toList
+  def toList: ServerEndpoints[F] = endpoints.toList
 
-def routes[F[_]: Async](serverOptions: Http4sServerOptions[F])(init: Routes[F] ?=> Unit): HttpRoutes[F] =
+def routes[F[_]](init: Routes[F] ?=> Unit): ServerEndpoints[F] =
   given registry: Routes[F] = Routes[F]()
   init
-  Http4sServerInterpreter[F](serverOptions).toRoutes(registry.toList)
+  registry.toList
 
 def serverLogic[F[_], E, I, O](
   endpoint: Endpoint[Unit, I, E, O, Fs2Streams[F]]

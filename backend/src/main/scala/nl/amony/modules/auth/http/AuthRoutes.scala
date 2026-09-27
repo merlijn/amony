@@ -7,17 +7,15 @@ import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.*
 import io.circe.Codec
-import org.http4s.HttpRoutes
 import scribe.Logging
 import sttp.model.StatusCode
 import sttp.model.headers.Cookie.SameSite
 import sttp.model.headers.CookieValueWithMeta
 import sttp.tapir.*
 import sttp.tapir.json.circe.jsonBody
-import sttp.tapir.server.http4s.Http4sServerOptions
 
 import nl.amony.lib.tapir.*
-import nl.amony.lib.tapir.dsl.{RoutesModule, routes, serverLogic, serverLogicT}
+import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.AuthConfig
 import nl.amony.modules.auth.api.*
 
@@ -89,16 +87,15 @@ object AuthRoutes extends RoutesModule, Logging:
       .out(jsonBody[List[IdentityProviderDto]]))
 
   def apply(loginService: FederatedLoginService, authConfig: AuthConfig)(
-    using serverOptions: Http4sServerOptions[IO],
-    apiSecurity: ApiSecurity
-  ): HttpRoutes[IO] = {
+    using apiSecurity: ApiSecurity
+  ): ServerEndpoints[IO] = {
 
     def mapAuthenticationErrorToResponse(error: AuthenticationError): ErrorResponse = error match
       case InvalidCredentials      => ErrorResponse.unauthorized(message = "Invalid credentials")
       case UnknownIdentityProvider => ErrorResponse.notFound()
       case UnknownError            => ErrorResponse.internalServerError(message = "An unknown error occurred")
 
-    routes[IO](serverOptions) {
+    routes[IO] {
       serverLogic(endpoint = refreshEndpoint, authorize = apiSecurity.authorizeXsrf) { _ => refreshToken =>
         loginService.refresh(refreshToken).map:
           case Left(_)               => Left(SecurityError.Unauthorized)
