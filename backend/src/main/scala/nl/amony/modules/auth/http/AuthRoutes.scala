@@ -15,7 +15,7 @@ import sttp.tapir.*
 import sttp.tapir.json.circe.jsonBody
 
 import nl.amony.lib.tapir.*
-import nl.amony.lib.tapir.dsl.error.{BadRequestError, ErrorResponse, InternalServerError, NotFoundError, SecurityError}
+import nl.amony.lib.tapir.dsl.error.{BadGatewayError, BadRequestError, ErrorResponse, NotFoundError, SecurityError}
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.AuthConfig
 import nl.amony.modules.auth.api.*
@@ -27,11 +27,11 @@ object AuthRoutes extends RoutesModule, Logging:
 
   val errorOutput: EndpointOutput[SecurityError] = ErrorResponse.securityErrors
 
-  // Login can only 404 (unknown provider); the callback additionally carries 400/401/500.
+  // Login can only 404 (unknown provider); the callback additionally carries 400/401/403/502.
   val loginErrorOutput: EndpointOutput[NotFoundError] = ErrorResponse.of[NotFoundError].output
 
-  val callbackErrorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError | InternalServerError] =
-    ErrorResponse.of[SecurityError, NotFoundError, BadRequestError, InternalServerError].output
+  val callbackErrorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError | BadGatewayError] =
+    ErrorResponse.of[SecurityError, NotFoundError, BadRequestError, BadGatewayError].output
 
   val sessionEndpoint: Endpoint[SecurityInput, Unit, SecurityError, AuthToken, Any] =
     register(endpoint
@@ -88,14 +88,16 @@ object AuthRoutes extends RoutesModule, Logging:
       .get.in("api" / "auth" / "identity-providers")
       .out(jsonBody[List[IdentityProviderDto]]))
 
+  /** Translates a domain authentication error into the HTTP error the callback responds with. */
+  private[http] def mapAuthenticationErrorToResponse(error: AuthenticationError): SecurityError | NotFoundError | BadGatewayError = error match
+    case InvalidCredentials      => SecurityError.Unauthorized
+    case UnknownIdentityProvider => NotFoundError("not_found", "Resource not found")
+    case MissingEmail            => SecurityError.Forbidden
+    case IdentityProviderFailure => BadGatewayError("bad_gateway", "The identity provider returned an invalid response")
+
   def apply(loginService: FederatedLoginService, authConfig: AuthConfig)(
     using apiSecurity: ApiSecurity
   ): ServerEndpoints[IO] = {
-
-    def mapAuthenticationErrorToResponse(error: AuthenticationError): SecurityError | NotFoundError | InternalServerError = error match
-      case InvalidCredentials      => SecurityError.Unauthorized
-      case UnknownIdentityProvider => NotFoundError("not_found", "Resource not found")
-      case UnknownError            => InternalServerError()
 
     routes[IO] {
       serverLogic(endpoint = refreshEndpoint, authorize = apiSecurity.authorizeXsrf) { _ => refreshToken =>

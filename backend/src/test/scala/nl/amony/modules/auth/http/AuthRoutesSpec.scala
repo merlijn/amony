@@ -2,6 +2,7 @@ package nl.amony.modules.auth.http
 
 import scala.concurrent.duration.*
 
+import cats.data.EitherT
 import cats.effect.IO
 import io.circe.parser.decode
 import org.mockito.IdiomaticMockito.returns
@@ -42,23 +43,23 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
   private val loginServiceMock = mock[FederatedLoginService](RETURNS_DEFAULTS)
   private val authRoutes       = AuthRoutes.apply(loginServiceMock, authConfig)
 
+  private val testState = "test-state-123"
+
+  private val provider = IdentityProvider(
+    name         = "test-provider",
+    clientId     = "test-client-id",
+    clientSecret = "test-secret",
+    authorizeUrl = Uri.unsafeParse("https://idp.example.com/authorize"),
+    tokenUrl     = Uri.unsafeParse("https://idp.example.com/token"),
+    userInfoUrl  = Uri.unsafeParse("https://idp.example.com/userinfo")
+  )
+
+  loginServiceMock.identityProviders returns Map(provider.name -> provider)
+  loginServiceMock.createState(any[String]) returns IO.pure(testState)
+
   "AuthRoutes" when {
 
     "processing login requests" should {
-
-      val testState = "test-state-123"
-
-      val provider = IdentityProvider(
-        name         = "test-provider",
-        clientId     = "test-client-id",
-        clientSecret = "test-secret",
-        authorizeUrl = Uri.unsafeParse("https://idp.example.com/authorize"),
-        tokenUrl     = Uri.unsafeParse("https://idp.example.com/token"),
-        userInfoUrl  = Uri.unsafeParse("https://idp.example.com/userinfo")
-      )
-
-      loginServiceMock.identityProviders returns Map(provider.name -> provider)
-      loginServiceMock.createState(any[String]) returns IO.pure(testState)
 
       "redirect to the identity provider with the expected parameters" in new EndpointFixture(authRoutes, AuthRoutes.loginEndpoint) {
         val response = request("provider" -> "test-provider").sendUnsafeSync()
@@ -87,6 +88,36 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
 
         response.code shouldBe StatusCode.NotFound
         decode[ErrorBody](response.body.merge) shouldBe Right(ErrorBody("not_found", "Resource not found"))
+      }
+    }
+
+    "processing callback requests" should {
+
+      "return 403 with an error body when the identity provider shares no email" in new EndpointFixture(authRoutes, AuthRoutes.callbackEndpoint) {
+        loginServiceMock.login(any[String], any[String], any[String], any[RequestOrigin]) returns
+          EitherT(IO.pure(Left(MissingEmail): Either[AuthenticationError, Authentication]))
+
+        val response = request("provider" -> "test-provider", "code" -> "the-code", "state" -> testState)
+          .cookie("oauth_login_state", testState)
+          .sendUnsafeSync()
+
+        response.code shouldBe StatusCode.Forbidden
+        decode[ErrorBody](response.body.merge) shouldBe Right(ErrorBody("forbidden", "You do not have permission to perform this action"))
+      }
+
+      "return 502 with an error body when the identity provider returns an unusable response" in new EndpointFixture(
+        authRoutes,
+        AuthRoutes.callbackEndpoint
+      ) {
+        loginServiceMock.login(any[String], any[String], any[String], any[RequestOrigin]) returns
+          EitherT(IO.pure(Left(IdentityProviderFailure): Either[AuthenticationError, Authentication]))
+
+        val response = request("provider" -> "test-provider", "code" -> "the-code", "state" -> testState)
+          .cookie("oauth_login_state", testState)
+          .sendUnsafeSync()
+
+        response.code shouldBe StatusCode.BadGateway
+        decode[ErrorBody](response.body.merge) shouldBe Right(ErrorBody("bad_gateway", "The identity provider returned an invalid response"))
       }
     }
 

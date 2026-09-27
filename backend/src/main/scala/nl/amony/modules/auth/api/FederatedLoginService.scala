@@ -20,7 +20,12 @@ sealed trait AuthenticationError
 
 case object InvalidCredentials      extends AuthenticationError
 case object UnknownIdentityProvider extends AuthenticationError
-case object UnknownError            extends AuthenticationError
+
+/** The identity provider authenticated the user but did not provide the email we key accounts on. */
+case object MissingEmail extends AuthenticationError
+
+/** The identity provider returned an unusable response (non-2xx or malformed body). */
+case object IdentityProviderFailure extends AuthenticationError
 
 case class OauthTokenResponse(
   access_token: String,
@@ -42,7 +47,8 @@ case class UserInfo(
   locale: Option[String]
 ) derives io.circe.Codec
 
-class FederatedLoginService(config: AuthConfig, httpClient: Backend[IO], userDatabase: UserDatabase, oauthStateDatabase: OAuthStateDatabase) extends Logging {
+class FederatedLoginService(config: AuthConfig, httpClient: Backend[IO], userDatabase: UserDatabase, oauthStateDatabase: OAuthStateDatabase)
+    extends Logging {
 
   private val tokenManager = new TokenManager(config.jwt)
 
@@ -89,7 +95,7 @@ class FederatedLoginService(config: AuthConfig, httpClient: Backend[IO], userDat
 
     EitherT(httpClient.send(req).map(_.body.left.map(_.getMessage))).leftMap { error =>
       logger.error(s"Error fetching token from identity provider $provider: $error")
-      UnknownError
+      IdentityProviderFailure
     }
   }
 
@@ -101,7 +107,7 @@ class FederatedLoginService(config: AuthConfig, httpClient: Backend[IO], userDat
 
     EitherT(httpClient.send(req).map(_.body)).leftMap { error =>
       logger.error(s"Error fetching user info from identity provider $provider", error)
-      UnknownError
+      IdentityProviderFailure
     }
   }
 
@@ -131,7 +137,7 @@ class FederatedLoginService(config: AuthConfig, httpClient: Backend[IO], userDat
       providerConfig <- EitherT.fromOption[IO](identityProviders.get(provider), UnknownIdentityProvider: AuthenticationError)
       tokenResponse  <- getToken(providerConfig, code, origin)
       userInfo       <- getUserInfo(providerConfig, tokenResponse.access_token)
-      email          <- EitherT.fromOption[IO](userInfo.email, UnknownError: AuthenticationError)
+      email          <- EitherT.fromOption[IO](userInfo.email, MissingEmail: AuthenticationError)
       user           <- EitherT.liftF(getOrInsertUser(providerConfig, userInfo, email))
     yield tokenManager
       .createAccessAndRefreshTokens(Some(user.id), roles = user.roles)

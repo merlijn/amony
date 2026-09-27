@@ -46,18 +46,21 @@ trait EndpointFixture(
       .backend()
 
   /**
-   * A request for this endpoint, with the HTTP method and path taken from the definition. Path
-   * parameters can be filled in by name, e.g. `request("provider" -> "dex")`.
+   * A request for this endpoint, with the HTTP method and path taken from the definition. Parameters
+   * whose name matches a path placeholder (e.g. `request("provider" -> "dex")`) fill that placeholder
+   * in; any other name/value pairs are appended as query parameters.
    *
    * The forwarded host/scheme headers are set so `requestOrigin` resolves deterministically.
    */
-  def request(pathParams: (String, String)*) =
-    val method = definition.method.getOrElse(Method.GET)
-    val path   = pathParams.foldLeft(definition.showPathTemplate(showQueryParam = None)) { case (path, (key, value)) =>
-      path.replace(s"{$key}", value)
-    }
+  def request(params: (String, String)*) =
+    val method   = definition.method.getOrElse(Method.GET)
+    val template = definition.showPathTemplate(showQueryParam = None)
 
-    basicRequest.method(method, Uri.unsafeParse(s"http://localhost$path"))
+    val (pathParams, queryParams) = params.partition { case (key, _) => template.contains(s"{$key}") }
+    val path                      = pathParams.foldLeft(template) { case (path, (key, value)) => path.replace(s"{$key}", value) }
+    val query                     = if queryParams.isEmpty then "" else queryParams.map((key, value) => s"$key=$value").mkString("?", "&", "")
+
+    basicRequest.method(method, Uri.unsafeParse(s"http://localhost$path$query"))
       .header("X-Forwarded-Host", host)
       .header("X-Forwarded-Proto", scheme)
 
