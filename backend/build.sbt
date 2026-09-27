@@ -248,7 +248,9 @@ lazy val amony = project
       "org.scalatestplus"             %% "scalacheck-1-15"                           % "3.2.11.0" % Test,
       "com.dimafeng"                  %% "testcontainers-scala-scalatest"            % "0.44.1"   % Test,
       "commons-codec"                  % "commons-codec"                             % "1.22.1"   % Test,
-      "org.scalacheck"                %% "scalacheck"                                % "1.20.0"   % Test
+      "org.scalacheck"                %% "scalacheck"                                % "1.20.0"   % Test,
+      "com.softwaremill.sttp.tapir"   %% "tapir-sttp-stub-server"                    % tapirVersion % Test,
+      "org.mockito"                   %% "mockito-scala-scalatest"                   % "2.2.3"    % Test
     ),
 
     // TODO remove this override once skunk has been updated to use otel4s 0.15.x
