@@ -11,8 +11,7 @@ import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 import sttp.tapir.json.circe.*
 import sttp.tapir.{Schema, *}
 
-import nl.amony.lib.tapir.dsl.error.ErrorVariants.*
-import nl.amony.lib.tapir.dsl.error.{BadRequestError, ErrorBody, ErrorResponse, ErrorVariants, InternalServerError, NotFoundError, SecurityError}
+import nl.amony.lib.tapir.dsl.error.{BadRequestError, ErrorBody, ErrorResponse, InternalServerError, NotFoundError, SecurityError}
 import nl.amony.lib.tapir.dsl.{ServerEndpoints, routes, serverLogic}
 import nl.amony.lib.tapir.test.EndpointFixture
 
@@ -22,19 +21,11 @@ import nl.amony.lib.tapir.test.EndpointFixture
  *   - `SecurityError` (401/403) is value-based with fixed, opaque messages;
  *   - `NotFoundError` (404) and `BadRequestError` (400) are class-based: one variant per status code,
  *     with the `code`/`message` decided by the server logic at runtime;
- *   - `InternalServerError` (500) is a fixed standard error with a generic, non-leaking message.
+ *   - `InternalServerError` (500) is class-based with generic defaults, so its body does not leak internals.
  *
  * The `ErrorResponse[...]` type parameter constrains exactly which errors an endpoint may return, so e.g.
  * `getThing` advertises 404/500 but `createThing` only 400.
  */
-
-given securityAndBadRequest: ErrorVariants[SecurityError | BadRequestError] =
-  summon[ErrorVariants[SecurityError]].or(summon[ErrorVariants[BadRequestError]])
-
-given securityNotFoundAndInternal: ErrorVariants[SecurityError | NotFoundError | InternalServerError] =
-  summon[ErrorVariants[SecurityError]]
-    .or(summon[ErrorVariants[NotFoundError]])
-    .or(summon[ErrorVariants[InternalServerError]])
 
 // -------------------------------------------------------------------------------------------------
 // A few endpoints using the DSL
@@ -46,10 +37,10 @@ case class ThingDto(id: String, name: String) derives Schema, io.circe.Codec
 object ErrorDslSketchRoutes:
 
   val errorOutput: EndpointOutput[SecurityError | NotFoundError | InternalServerError] =
-    ErrorResponse.of[SecurityError | NotFoundError | InternalServerError].output
+    ErrorResponse.of[SecurityError, NotFoundError, InternalServerError].output
 
   val badRequestErrorOutput: EndpointOutput[SecurityError | BadRequestError] =
-    ErrorResponse.of[SecurityError | BadRequestError].output
+    ErrorResponse.of[SecurityError, BadRequestError].output
 
   val getThing: Endpoint[Unit, String, SecurityError | NotFoundError | InternalServerError, ThingDto, Any] =
     endpoint.name("sketchGetThing").tag("sketch").description("Get a thing by id")

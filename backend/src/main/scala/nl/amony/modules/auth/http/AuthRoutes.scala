@@ -25,10 +25,13 @@ case class LogoutResponse(logoutUrl: Option[String]) derives Codec, Schema
 
 object AuthRoutes extends RoutesModule, Logging:
 
-  val errorOutput: EndpointOutput[SecurityError] = securityErrors
+  val errorOutput: EndpointOutput[SecurityError] = ErrorResponse.securityErrors
 
   // Login can only 404 (unknown provider); the callback additionally carries 400/401/500.
   val loginErrorOutput: EndpointOutput[NotFoundError] = ErrorResponse.of[NotFoundError].output
+
+  val callbackErrorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError | InternalServerError] =
+    ErrorResponse.of[SecurityError, NotFoundError, BadRequestError, InternalServerError].output
 
   val sessionEndpoint: Endpoint[SecurityInput, Unit, SecurityError, AuthToken, Any] =
     register(endpoint

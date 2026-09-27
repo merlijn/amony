@@ -18,8 +18,9 @@ import sttp.tapir.{EndpointOutput, Schema, oneOf, oneOfVariantClassMatcher, oneO
  *     that turns the error value into its body. The OpenAPI result is the same: a distinct status code
  *     per variant, now with a JSON body.
  *   - Scala 3 cannot resolve a generic `given [A, B](using ...): ErrorVariants[A | B]` from a union type
- *     (the two components stay inference variables, so both base instances match ambiguously). Union
- *     instances are therefore composed explicitly with [[ErrorVariants.or]]. A macro could automate it.
+ *     (the two components stay inference variables, so both base instances match ambiguously). Endpoints
+ *     therefore list their errors with the multi-argument `ErrorResponse.of[A, B, ...]`, which composes
+ *     the per-error [[ErrorVariants]] on the spot; a union instance never has to be declared by hand.
  */
 
 /** Body sent with every error response. `code` is machine-readable and stable, `message` is for humans. */
@@ -80,4 +81,28 @@ final case class ErrorResponse[S](variants: List[OneOfVariant[? <: S]]):
   def output: EndpointOutput[S] = oneOf(variants.head, variants.tail*)
 
 object ErrorResponse:
+
+  import ErrorVariants.*
+
+  /** The errors of a single set `S`, using its given [[ErrorVariants]] instance. */
   def of[S](using ev: ErrorVariants[S]): ErrorResponse[S] = ErrorResponse(ev.variants)
+
+  /**
+   * The union of two to four error sets, composed on the spot from their [[ErrorVariants]] instances so
+   * that no union instance has to be declared by hand. E.g. `ErrorResponse.of[SecurityError, NotFoundError, BadRequestError]`.
+   */
+  def of[A, B](using ea: ErrorVariants[A], eb: ErrorVariants[B]): ErrorResponse[A | B] =
+    ErrorResponse(ea.or(eb).variants)
+
+  def of[A, B, C](using ea: ErrorVariants[A], eb: ErrorVariants[B], ec: ErrorVariants[C]): ErrorResponse[A | B | C] =
+    ErrorResponse(ea.or(eb).or(ec).variants)
+
+  def of[A, B, C, D](using ea: ErrorVariants[A], eb: ErrorVariants[B], ec: ErrorVariants[C], ed: ErrorVariants[D]): ErrorResponse[A | B | C | D] =
+    ErrorResponse(ea.or(eb).or(ec).or(ed).variants)
+
+  /** The 401/403 set for an endpoint secured with [[SecurityError]]. */
+  val securityErrors: EndpointOutput[SecurityError] = ErrorResponse.of[SecurityError].output
+
+  /** The 401/403, 404 and 400 set shared by the resource, collection and search endpoints. */
+  val standardErrorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError] =
+    ErrorResponse.of[SecurityError, NotFoundError, BadRequestError].output

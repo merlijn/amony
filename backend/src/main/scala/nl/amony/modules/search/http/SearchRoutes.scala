@@ -6,7 +6,7 @@ import cats.effect.IO
 import sttp.tapir.*
 import sttp.tapir.json.circe.jsonBody
 
-import nl.amony.lib.tapir.dsl.error.{BadRequestError, NotFoundError, SecurityError}
+import nl.amony.lib.tapir.dsl.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.http.toDto
@@ -17,7 +17,7 @@ import nl.amony.modules.search.api.SortField.*
 
 object SearchRoutes extends RoutesModule:
 
-  val errorOutput = standardErrorOutput
+  val errorOutput = ErrorResponse.standardErrorOutput
 
   case class SearchQueryInput(
     q: Option[String],

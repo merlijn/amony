@@ -8,12 +8,12 @@ import sttp.model.HeaderNames
 import sttp.tapir.*
 import sttp.tapir.json.circe.*
 
-import nl.amony.lib.tapir.dsl.error.{BadRequestError, NotFoundError, SecurityError}
+import nl.amony.lib.tapir.dsl.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.{Resource, ResourceBucket, ResourceId, UploadError}
 
-val errorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError] = standardErrorOutput
+val errorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError] = ErrorResponse.standardErrorOutput
 
 object ResourceRoutes extends RoutesModule:
 
