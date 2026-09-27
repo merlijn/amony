@@ -44,8 +44,8 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
     requireXsrfToken(securityInput.xsrfCookie, securityInput.xXsrfHeader)
 
   /** Authorizes an endpoint that only requires a valid double-submit token, such as refresh/logout. */
-  def authorizeXsrf(xsrfInput: (Option[String], Option[String])): Either[SecurityError, AuthToken] =
-    requireXsrfToken(xsrfInput._1, xsrfInput._2).map(_ => AuthToken.anonymous)
+  def authorizeXsrf(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
+    requireXsrfProtection(securityInput).map(_ => AuthToken.anonymous)
 
   /**
    * Resolves an auth token from a raw access token value, without any XSRF checks.

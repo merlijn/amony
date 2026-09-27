@@ -680,6 +680,11 @@ paths:
       description: Refresh the users auth tokens
       operationId: authRefreshTokens
       parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
       - name: XSRF-TOKEN
         in: cookie
         required: false
@@ -717,6 +722,11 @@ paths:
       description: Logout the current user
       operationId: authLogout
       parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
       - name: XSRF-TOKEN
         in: cookie
         required: false

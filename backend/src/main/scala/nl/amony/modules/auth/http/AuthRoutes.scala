@@ -41,11 +41,11 @@ object AuthRoutes extends RoutesModule, Logging:
       .out(jsonBody[AuthToken])
       .errorOut(errorOutput))
 
-  val refreshEndpoint: Endpoint[(Option[String], Option[String]), String, SecurityError, AuthCookies, Any] =
+  val refreshEndpoint: Endpoint[SecurityInput, String, SecurityError, AuthCookies, Any] =
     register(endpoint
       .tag("auth").name("authRefreshTokens").description("Refresh the users auth tokens")
       .post.in("api" / "auth" / "refresh")
-      .securityIn(xsrfSecurityInput)
+      .securityIn(securityInput)
       .in(cookie[String]("refresh_token"))
       .out(AuthCookies.endpointOutput)
       .errorOut(errorOutput))
@@ -56,7 +56,7 @@ object AuthRoutes extends RoutesModule, Logging:
     register(endpoint
       .tag("auth").name("authLogout").description("Logout the current user")
       .post.in("api" / "auth" / "logout")
-      .securityIn(xsrfSecurityInput)
+      .securityIn(securityInput)
       .in(cookie[Option[String]](providerIdTokenCookieName).description("The identity provider ID token, passed on as id_token_hint"))
       .in(requestOrigin)
       .errorOut(errorOutput)
