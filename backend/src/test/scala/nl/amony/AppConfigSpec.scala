@@ -12,10 +12,10 @@ class AppConfigSpec extends AnyWordSpecLike {
       println(s"enabled: ${appConfig.auth.enabled}")
       println(s"require-login: ${appConfig.auth.requireLogin}")
       println(s"allowed-hosts: ${appConfig.api.allowedHosts}")
-      println(s"allowed-resolutions: ${appConfig.api.allowedResolutions}")
+      println(s"allowed-resolutions: ${appConfig.resources.thumbnails.allowedResolutions}")
       assert(appConfig.api.allowedHosts.nonEmpty)
-      assert(appConfig.api.allowedResolutions.nonEmpty)
-      assert(appConfig.api.allowedResolutions.contains(appConfig.api.defaultResolution))
+      assert(appConfig.resources.thumbnails.allowedResolutions.nonEmpty)
+      assert(appConfig.resources.thumbnails.allowedResolutions.contains(appConfig.resources.thumbnails.defaultResolution))
     }
   }
 }

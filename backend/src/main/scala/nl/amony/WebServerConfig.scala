@@ -10,8 +10,6 @@ case class WebServerConfig(
   requestTimeout: FiniteDuration,
   uploadSizeLimit: Long,
   allowedHosts: List[String],
-  allowedResolutions: Map[String, Int],
-  defaultResolution: String,
   http: Option[HttpConfig],
   https: Option[HttpsConfig]
 ) derives ConfigReader

@@ -15,7 +15,9 @@ import nl.amony.lib.hash.PartialHash.partialHash
 import nl.amony.modules.resources.ResourceConfig.ResourceBucketConfig
 import nl.amony.modules.resources.api.ResourceId
 
-case class ResourceConfig(buckets: List[ResourceBucketConfig]) derives ConfigReader
+case class ThumbnailConfig(allowedResolutions: Map[String, Int], defaultResolution: String) derives ConfigReader
+
+case class ResourceConfig(thumbnails: ThumbnailConfig, buckets: List[ResourceBucketConfig]) derives ConfigReader
 
 object ResourceConfig {
 
