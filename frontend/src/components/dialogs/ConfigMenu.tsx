@@ -62,7 +62,6 @@ const ConfigMenu = () => {
                       type="range"
                       min={Constants.minGridCellWidth}
                       max={Constants.maxGridCellWidth}
-                      step={20}
                       value={gridCellWidth}
                       onChange={(e) => {
                         updatePrefs({gridCellWidth: parseInt(e.target.value, 10)})
