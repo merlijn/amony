@@ -82,7 +82,7 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
 
     "cap a clip at the source dimensions" in {
       val op = ResourceContentRoutes.patterns.clipOperation(1000, "w", "4320", resolutions, videoInfo(1920, 1080))
-      assert(op == Some(VideoFragment(width = Some(1920), height = None, start = 1000, end = 4000, quality = 23)))
+      assert(op == Some(VideoFragment(width = Some(1920), height = None, start = 1000, end = 4000)))
     }
   }
 

@@ -82,7 +82,7 @@ object ResourceContentRoutes extends Logging {
           if urlTimestamp == start then
             val end             = Math.min(video.durationInMillis.toLong, start + 3000L)
             val (width, height) = scaledDimensions(pixels, dimension, source, even = true)
-            Some(VideoFragment(width = width, height = height, start = start, end = end, quality = 23))
+            Some(VideoFragment(width = width, height = height, start = start, end = end))
           else None
         case _                            =>
           None

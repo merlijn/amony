@@ -22,7 +22,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
         width.map(w => s"w$w").orElse(height.map(h => s"h$h")).getOrElse("orig")
 
       val fileName = operation match
-        case VideoFragment(width, height, start, end, quality) => s"${resourceId}_$start-${end}_${scaleSuffix(width, height)}.mp4"
+        case VideoFragment(width, height, start, end) => s"${resourceId}_$start-${end}_${scaleSuffix(width, height)}.mp4"
         case VideoThumbnail(width, height, timestamp, format)  => s"${resourceId}_${timestamp}_${scaleSuffix(width, height)}.${format.extension}"
         case ImageThumbnail(width, height, format)             => s"${resourceId}_${scaleSuffix(width, height)}.${format.extension}"
 
@@ -65,7 +65,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
       case Right(_)    => run(info, inputFile, operation.outputFile(info.resourceId), operation).memoize.flatten
 
   private def run(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: ResourceOperation): IO[Path] = operation match
-    case VideoFragment(width, height, start, end, quality) =>
+    case VideoFragment(width, height, start, end) =>
       logger.debug(s"Creating video fragment for $inputFile with range $start-$end")
       ffmpeg.transcodeToMp4(inputFile = inputFile, range = (start, end), scaleWidth = width, scaleHeight = height, outputFile = Some(outputFile)).map(_ =>
         outputFile

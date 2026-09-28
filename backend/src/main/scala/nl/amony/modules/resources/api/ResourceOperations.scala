@@ -24,7 +24,7 @@ object VideoFragment {
   val maxLengthInMillis = 60000
 }
 
-case class VideoFragment(width: Option[Int] = None, height: Option[Int] = None, start: Long, end: Long, quality: Int) extends ResourceOperation {
+case class VideoFragment(width: Option[Int] = None, height: Option[Int] = None, start: Long, end: Long) extends ResourceOperation {
 
   import VideoFragment.*
 
