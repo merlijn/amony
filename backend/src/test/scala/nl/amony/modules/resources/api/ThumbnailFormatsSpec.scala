@@ -34,5 +34,10 @@ class ThumbnailFormatsSpec extends AnyWordSpecLike {
       assert(ImageFormat.Avif.mimeType == "image/avif" && ImageFormat.Avif.extension == "avif")
       assert(ImageFormat.Jpeg.mimeType == "image/jpeg" && ImageFormat.Jpeg.extension == "jpeg")
     }
+
+    "hardcode a fast AV1 encoder for AVIF (see #51)" in {
+      assert(ImageFormat.Avif.ffmpegEncoderArgs.contains("libsvtav1"))
+      assert(ImageFormat.Webp.ffmpegEncoderArgs.isEmpty)
+    }
   }
 }

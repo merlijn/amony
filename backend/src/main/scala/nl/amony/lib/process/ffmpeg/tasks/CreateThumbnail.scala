@@ -13,7 +13,7 @@ trait CreateThumbnail:
 
   self: ProcessRunner =>
 
-  def createThumbnail(inputFile: Path, timestamp: Long, outputFile: Option[Path], scaleWidth: Option[Int] = None, scaleHeight: Option[Int] = None): IO[Int] =
+  def createThumbnail(inputFile: Path, timestamp: Long, outputFile: Option[Path], scaleWidth: Option[Int] = None, scaleHeight: Option[Int] = None, codecArgs: List[String] = Nil): IO[Int] =
 
     val input  = inputFile.absoluteFileName()
     val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.webp")
@@ -22,7 +22,7 @@ trait CreateThumbnail:
     val args = List(
       "-ss",      formatTime(timestamp),
       "-i",       input
-    ) ++ scaleFilter(scaleWidth, scaleHeight).toList.flatMap(filter => List("-vf", filter)) ++
+    ) ++ scaleFilter(scaleWidth, scaleHeight).toList.flatMap(filter => List("-vf", filter)) ++ codecArgs ++
       List(
         "-vframes", "1",
         "-v",       "quiet",
@@ -33,13 +33,13 @@ trait CreateThumbnail:
     runIgnoreOutput("ffmpeg-create-video-thumbnail", Command("ffmpeg", args))
 
   /** Encodes a still image at the given pinned dimension; the output format follows the output extension. */
-  def resizeImage(inputFile: Path, outputFile: Option[Path], width: Option[Int] = None, height: Option[Int] = None): IO[Int] = {
+  def resizeImage(inputFile: Path, outputFile: Option[Path], width: Option[Int] = None, height: Option[Int] = None, codecArgs: List[String] = Nil): IO[Int] = {
     val input  = inputFile.absoluteFileName()
     val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.webp")
 
     // format: off
     val args = List("-i", input) ++
-      scaleFilter(width, height).toList.flatMap(filter => List("-vf", filter)) ++
+      scaleFilter(width, height).toList.flatMap(filter => List("-vf", filter)) ++ codecArgs ++
       List(
         "-vframes", "1",
         "-v",       "quiet",

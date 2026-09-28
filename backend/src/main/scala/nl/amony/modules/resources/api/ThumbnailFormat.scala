@@ -7,6 +7,15 @@ enum ImageFormat(val configName: String, val extension: String, val mimeType: St
   case Webp extends ImageFormat("webp", "webp", "image/webp")
   case Jpeg extends ImageFormat("jpeg", "jpeg", "image/jpeg")
 
+  /**
+   * ffmpeg encoder options for this format. AVIF must not use ffmpeg's default AV1 encoder (libaom),
+   * which is ~30x slower at its default settings; SVT-AV1 preset 8 / crf 34 encodes in ~100 ms.
+   * TODO(#51): make these configurable per format.
+   */
+  def ffmpegEncoderArgs: List[String] = this match
+    case Avif => List("-c:v", "libsvtav1", "-preset", "8", "-crf", "34", "-pix_fmt", "yuv420p")
+    case _    => Nil
+
 object ImageFormat:
   def fromName(name: String): Option[ImageFormat] = values.find(_.configName == name)
 
