@@ -27,7 +27,7 @@ const canDecode = (dataUrl: string): Promise<boolean> =>
  * Returns the first of `supportedFormats` (in the server's preference order) that this browser can
  * decode, falling back to the first entry when none of the probes succeed.
  */
-export const pickSupportedFormat = async (supportedFormats: string[], fallback = "webp"): Promise<string> => {
+export const pickSupportedImageFormat = async (supportedFormats: string[], fallback = "webp"): Promise<string> => {
   for (const format of supportedFormats) {
     const sample = FORMAT_SAMPLES[format];
     if (sample && await canDecode(sample))
@@ -35,3 +35,19 @@ export const pickSupportedFormat = async (supportedFormats: string[], fallback =
   }
   return supportedFormats[0] ?? fallback;
 };
+
+const canPlayTypeCache: Record<string, boolean> = {};
+
+/** Returns whether the browser reports support for playing the given video MIME type. */
+export function canBrowserPlayVideoType(contentType: string): boolean {
+  if (canPlayTypeCache.hasOwnProperty(contentType)) {
+    return canPlayTypeCache[contentType];
+  }
+  let result = false;
+  if (contentType.startsWith('video/')) {
+    const video = document.createElement('video');
+    result = video.canPlayType(contentType) !== '';
+  }
+  canPlayTypeCache[contentType] = result;
+  return result;
+}

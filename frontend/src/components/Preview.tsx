@@ -1,11 +1,11 @@
 import React, {CSSProperties, useContext, useState} from 'react';
 import {
-  canBrowserPlayType,
   dateMillisToString,
   durationInMillisToString,
   labelForResolution,
   titleFromPath
 } from "../api/Util";
+import {canBrowserPlayVideoType} from "../api/MediaFormat";
 import FragmentsPlayer from "./common/FragmentsPlayer";
 import './Preview.scss';
 import {ErrorBoundary} from "react-error-boundary";
@@ -49,7 +49,7 @@ const Preview = (props: PreviewProps) => {
   const isVideo   = resource.contentType.startsWith("video")
   const session = useContext(SessionContext)
   const config  = useAppConfig()
-  const isMediaTypeSupported = canBrowserPlayType(resource.contentType)
+  const isUnsupportedVideo = isVideo && !canBrowserPlayVideoType(resource.contentType)
 
   const titlePanel =
       <div className = "preview-info-bar">
@@ -65,7 +65,7 @@ const Preview = (props: PreviewProps) => {
           <div className="preview-icon-button" onClick={(e) => { e.stopPropagation(); setShowDetailsDialog(true) }}><FiInfo /></div>
           <div className="preview-icon-button" onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true) }}><MdDelete /></div>
         </div> }
-        { !isMediaTypeSupported && <div className="preview-unsupported-overlay"><FiAlertCircle color="#fff" /></div> }
+        { isUnsupportedVideo && <div className="preview-unsupported-overlay"><FiAlertCircle color="#fff" /></div> }
       </div>
 
   const thumbnailSrc = thumbnailUrl(resource, config, props.mediaWidthPx ?? 400)
