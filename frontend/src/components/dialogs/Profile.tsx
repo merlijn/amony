@@ -4,7 +4,6 @@ import DialogWindow from '../common/DialogWindow';
 import InfoTable, {InfoRow} from '../common/InfoTable';
 import {authLogout} from '../../api/generated';
 import {SessionContext} from '../../api/Constants';
-import './ConfigMenu.scss';
 
 const Profile = () => {
 

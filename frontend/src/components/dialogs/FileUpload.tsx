@@ -4,7 +4,6 @@ import { dateMillisToString } from '../../api/Util';
 import { uploadResource } from '../../api/generated';
 import DialogWindow from '../common/DialogWindow';
 import InfoTable, { InfoRow } from '../common/InfoTable';
-import './ConfigMenu.scss';
 import './FileUpload.scss';
 
 const DEFAULT_BUCKET_ID = 'media';

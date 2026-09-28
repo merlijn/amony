@@ -1,0 +1,41 @@
+// Shared styling for the Radix Tabs used across dialogs. Loaded globally via App.scss.
+
+.tabs-list {
+  display: flex;
+  border-bottom: 1px solid var(--border-primary);
+  margin-bottom: var(--spacing-l);
+}
+
+.tab-trigger {
+  padding: var(--spacing-s) var(--spacing-m);
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  font-size: medium;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+
+  // Don't show the browser focus ring when the dialog opens and auto-focuses the
+  // first (active) trigger; the active tab styling is already the visible cue.
+  &:focus {
+    outline: none;
+  }
+
+  &[data-state="active"] {
+    color: var(--highlight-a);
+    border-bottom-color: var(--highlight-a);
+  }
+
+  &:hover {
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+}
+
+.tab-content {
+  outline: none;
+  // Default dialog tab height; contexts that scroll override this.
+  min-height: 340px;
+}
