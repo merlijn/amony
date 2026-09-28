@@ -7,11 +7,10 @@ import sttp.tapir.Schema.SName
 import sttp.tapir.Schema.annotations.customise
 import sttp.tapir.{FieldName, Schema, SchemaType}
 
+import nl.amony.lib.tapir.required
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.api.{ImageProperties, ResourceInfo, VideoProperties}
-
-def required[T](s: Schema[T]) = s.copy(isOptional = false)
 
 case class BucketDto(bucketId: String, name: String, `type`: String) derives Codec, sttp.tapir.Schema
 
