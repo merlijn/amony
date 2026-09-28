@@ -8,7 +8,7 @@ import sttp.tapir.json.circe.jsonBody
 
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic}
 import nl.amony.modules.resources.ResolutionPickingStrategy
-import nl.amony.modules.resources.api.{ThumbnailDimension, ThumbnailResolutions}
+import nl.amony.modules.resources.api.{ThumbnailDimension, ThumbnailFormats, ThumbnailResolutions}
 import nl.amony.modules.resources.http.required
 
 /** A concrete thumbnail choice: a dimension ("width" or "height") plus a size in pixels. */
@@ -20,6 +20,8 @@ case class AppConfigDto(
   thumbnailSizes: List[Int],
   @customise(required)
   thumbnailDimensions: List[String],
+  @customise(required)
+  supportedFormats: List[String],
   defaultThumbnailResolution: ThumbnailResolutionDto,
   resolutionPickingStrategy: String
 ) derives Codec, Schema
@@ -32,12 +34,13 @@ object ConfigRoutes extends RoutesModule:
       .get.in("api" / "config")
       .out(jsonBody[AppConfigDto]))
 
-  def apply(resolutions: ThumbnailResolutions, pickingStrategy: ResolutionPickingStrategy): ServerEndpoints[IO] =
+  def apply(resolutions: ThumbnailResolutions, formats: ThumbnailFormats, pickingStrategy: ResolutionPickingStrategy): ServerEndpoints[IO] =
     routes[IO] {
       serverLogic(endpoint = getConfig) { _ =>
         IO.pure(Right(AppConfigDto(
           thumbnailSizes      = resolutions.sizes,
           thumbnailDimensions = resolutions.dimensions.map(_.name),
+          supportedFormats    = formats.formats.map(_.configName),
           // Thumbnails are displayed in fixed-aspect boxes, so width is the operative dimension by default.
           defaultThumbnailResolution = ThumbnailResolutionDto(ThumbnailDimension.Width.name, resolutions.default),
           resolutionPickingStrategy  = pickingStrategy.configName

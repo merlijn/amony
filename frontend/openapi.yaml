@@ -1583,6 +1583,7 @@ components:
       required:
       - thumbnailSizes
       - thumbnailDimensions
+      - supportedFormats
       - defaultThumbnailResolution
       - resolutionPickingStrategy
       properties:
@@ -1592,6 +1593,10 @@ components:
             type: integer
             format: int32
         thumbnailDimensions:
+          type: array
+          items:
+            type: string
+        supportedFormats:
           type: array
           items:
             type: string

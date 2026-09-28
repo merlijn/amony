@@ -1,7 +1,8 @@
 import {BrowserRouter, Route, Routes, useParams} from 'react-router-dom';
 import React, {lazy, Suspense, useMemo, use} from 'react';
 import {Constants, SessionContext} from "./api/Constants";
-import {ConfigContext} from "./api/ConfigContext";
+import {ConfigContext, AppConfig} from "./api/ConfigContext";
+import {pickSupportedFormat} from "./api/ImageFormat";
 import {getConfig, getSession} from "./api/generated";
 import {AxiosError} from "axios";
 import {SessionInfo} from "./api/Model";
@@ -32,8 +33,13 @@ function App() {
 
   const configPromise = useMemo(() =>
       getConfig()
+        .then(async (config): Promise<AppConfig> => ({
+          ...config,
+          // The most preferred format this browser can actually decode; resolved once at startup.
+          imageFormat: await pickSupportedFormat(config.supportedFormats),
+        }))
         .catch((error: AxiosError) => {
-          // Without config the frontend still works, it just falls back to the default thumbnail resolution.
+          // Without config the frontend still works, it just falls back to the default thumbnail resolution and format.
           console.log("Error getting app config", error);
           return undefined;
         }),
@@ -56,7 +62,7 @@ function App() {
 
 function SessionGate({ sessionPromise, configPromise }: {
   sessionPromise: Promise<SessionInfo | null>,
-  configPromise: Promise<Awaited<ReturnType<typeof getConfig>> | undefined>
+  configPromise: Promise<AppConfig | undefined>
 }) {
   const session = use(sessionPromise);
   const config  = use(configPromise);

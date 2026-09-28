@@ -5,8 +5,8 @@ sealed trait ResourceOperation {
   def validate(info: ResourceInfo): Either[String, Unit]
 }
 
-case class VideoThumbnail(width: Option[Int] = None, height: Option[Int] = None, quality: Int, timestamp: Long) extends ResourceOperation {
-  override def contentType: String = "image/webp"
+case class VideoThumbnail(width: Option[Int] = None, height: Option[Int] = None, quality: Int, timestamp: Long, format: ImageFormat) extends ResourceOperation {
+  override def contentType: String = format.mimeType
 
   override def validate(info: ResourceInfo): Either[String, Unit] = info.basicContentProperties match {
     case Some(video: VideoProperties) =>
@@ -54,11 +54,11 @@ object ImageThumbnail {
   val maxWidth  = 8192
 }
 
-case class ImageThumbnail(width: Option[Int] = None, height: Option[Int] = None, quality: Int) extends ResourceOperation {
+case class ImageThumbnail(width: Option[Int] = None, height: Option[Int] = None, quality: Int, format: ImageFormat) extends ResourceOperation {
 
   import ImageThumbnail.*
 
-  override def contentType: String = "image/webp"
+  override def contentType: String = format.mimeType
 
   override def validate(info: ResourceInfo): Either[String, Unit] =
     for

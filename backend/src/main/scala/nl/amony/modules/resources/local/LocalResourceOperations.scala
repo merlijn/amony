@@ -22,9 +22,9 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
         width.map(w => s"w$w").orElse(height.map(h => s"h$h")).getOrElse("orig")
 
       val fileName = operation match
-        case VideoFragment(width, height, start, end, quality) => s"${resourceId}_$start-${end}_${scaleSuffix(width, height)}.mp4"
-        case VideoThumbnail(width, height, quality, timestamp) => s"${resourceId}_${timestamp}_${scaleSuffix(width, height)}.webp"
-        case ImageThumbnail(width, height, quality)            => s"${resourceId}_${scaleSuffix(width, height)}.webp"
+        case VideoFragment(width, height, start, end, quality)         => s"${resourceId}_$start-${end}_${scaleSuffix(width, height)}.mp4"
+        case VideoThumbnail(width, height, quality, timestamp, format) => s"${resourceId}_${timestamp}_${scaleSuffix(width, height)}.${format.extension}"
+        case ImageThumbnail(width, height, quality, format)            => s"${resourceId}_${scaleSuffix(width, height)}.${format.extension}"
 
       config.cachePath.resolve(fileName)
     }
@@ -71,12 +71,12 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
         outputFile
       )
 
-    case VideoThumbnail(width, height, quality, timestamp) =>
-      logger.debug(s"Creating thumbnail for $inputFile at timestamp $timestamp")
+    case VideoThumbnail(width, height, quality, timestamp, format) =>
+      logger.debug(s"Creating thumbnail for $inputFile at timestamp $timestamp as ${format.configName}")
       ffmpeg.createThumbnail(inputFile = inputFile, timestamp = timestamp, outputFile = Some(outputFile), scaleWidth = width, scaleHeight = height).map(_ =>
         outputFile
       )
-    case ImageThumbnail(width, height, quality)            =>
-      logger.debug(s"Creating image thumbnail for $inputFile")
-      imageMagick.resizeImage(inputFile = inputFile, outputFile = Some(outputFile), width = width, height = height).map(_ => outputFile)
+    case ImageThumbnail(width, height, quality, format)            =>
+      logger.debug(s"Creating image thumbnail for $inputFile as ${format.configName}")
+      ffmpeg.resizeImage(inputFile = inputFile, outputFile = Some(outputFile), width = width, height = height).map(_ => outputFile)
 }

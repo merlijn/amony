@@ -1,4 +1,5 @@
-import {AppConfigDto, ResourceDto} from "./generated";
+import {AppConfig} from "./ConfigContext";
+import {ResourceDto} from "./generated";
 
 /** URL of the original (full-size) resource content. */
 export const resourceContentUrl = (resource: ResourceDto): string =>
@@ -6,9 +7,9 @@ export const resourceContentUrl = (resource: ResourceDto): string =>
 
 const dimensionToken = (dimension: string): string => dimension === "height" ? "h" : "w";
 
-/** URL of a derived thumbnail pinning a dimension ("width" | "height") and a size in pixels. */
-export const resourceThumbnailUrl = (resource: ResourceDto, dimension: string, size: number): string =>
-  `/api/resources/${resource.bucketId}/${resource.resourceId}/thumb_${resource.thumbnailTimestamp ?? 0}_${dimensionToken(dimension)}_${size}.webp`;
+/** URL of a derived thumbnail pinning a dimension ("width" | "height"), a size in pixels and a format. */
+export const resourceThumbnailUrl = (resource: ResourceDto, dimension: string, size: number, format: string): string =>
+  `/api/resources/${resource.bucketId}/${resource.resourceId}/thumb_${resource.thumbnailTimestamp ?? 0}_${dimensionToken(dimension)}_${size}.${format}`;
 
 type PickingStrategy = "round-up" | "round-down" | "round-nearest";
 
@@ -32,23 +33,24 @@ const pickThumbnailSize = (sizes: number[], needed: number, strategy: string): n
 };
 
 /**
- * Chooses a thumbnail URL for a resource based on the CSS width of the box it fills and the
- * server-configured resolution-picking strategy.
+ * Chooses a thumbnail URL for a resource based on the CSS width of the box it fills, the
+ * server-configured resolution-picking strategy and the format this browser can decode.
  *
- * Selection happens here rather than through `<img srcset>` because the browser's native srcset
+ * Size selection happens here rather than through `<img srcset>` because the browser's native srcset
  * algorithm always rounds up; doing it explicitly lets the server trade quality for bandwidth.
  */
-export const thumbnailUrl = (resource: ResourceDto, config: AppConfigDto | undefined, boxWidthCss: number): string => {
+export const thumbnailUrl = (resource: ResourceDto, config: AppConfig | undefined, boxWidthCss: number): string => {
   const sizes       = config?.thumbnailSizes;
   const dimension   = config?.defaultThumbnailResolution?.dimension ?? "width";
   const defaultSize = config?.defaultThumbnailResolution?.pixels ?? 512;
+  const format      = config?.imageFormat ?? config?.supportedFormats?.[0] ?? "webp";
 
   if (!sizes || sizes.length === 0)
-    return resourceThumbnailUrl(resource, dimension, defaultSize);
+    return resourceThumbnailUrl(resource, dimension, defaultSize, format);
 
   const devicePixelRatio = window.devicePixelRatio || 1;
   const needed           = Math.max(1, boxWidthCss * devicePixelRatio);
   const size             = pickThumbnailSize(sizes, needed, config?.resolutionPickingStrategy ?? "round-up");
 
-  return resourceThumbnailUrl(resource, "width", size);
+  return resourceThumbnailUrl(resource, "width", size, format);
 };

@@ -18,10 +18,11 @@ object ResourceContentRoutes extends Logging {
 
   object patterns {
 
-    // Public URL patterns: timestamp for cache-busting + pinned dimension + resolution size in pixels.
-    // thumb_{timestamp}_{dim}_{size}.webp  e.g. thumb_2863_w_768.webp  (videos and images)
-    // clip_{timestamp}_{dim}_{size}.mp4    e.g. clip_2863_h_512.mp4    (videos only)
-    val PublicThumbnailPattern = raw"thumb_(\d+)_([wh])_(\d+)\.webp".r
+    // Public URL patterns: timestamp for cache-busting + pinned dimension + resolution size in pixels
+    // + image format extension.
+    // thumb_{timestamp}_{dim}_{size}.{format}  e.g. thumb_2863_w_768.avif  (videos and images)
+    // clip_{timestamp}_{dim}_{size}.mp4        e.g. clip_2863_h_512.mp4    (videos only)
+    val PublicThumbnailPattern = raw"thumb_(\d+)_([wh])_(\d+)\.([a-z0-9]+)".r
     val PublicClipPattern      = raw"clip_(\d+)_([wh])_(\d+)\.mp4".r
 
     /** The resource's native pixel dimensions (0, 0 when unknown). */
@@ -48,20 +49,21 @@ object ResourceContentRoutes extends Logging {
      * Builds a thumbnail operation only when the URL timestamp matches the resource's
      * canonical timestamp, preventing arbitrary timestamp injection.
      */
-    def thumbnailOperation(urlTimestamp: Long, dimensionToken: String, resolutionKey: String, resolutions: ThumbnailResolutions, resource: ResourceInfo): Option[ResourceOperation] = {
-      val requestedSize          = resolutionKey.toIntOption.getOrElse(resolutions.default)
-      val (dimension, pixels)    = resolutions.resolve(dimensionToken, requestedSize)
-      val source                 = sourceDimensions(resource)
+    def thumbnailOperation(urlTimestamp: Long, dimensionToken: String, resolutionKey: String, formatName: String, resolutions: ThumbnailResolutions, formats: ThumbnailFormats, resource: ResourceInfo): Option[ResourceOperation] = {
+      val requestedSize       = resolutionKey.toIntOption.getOrElse(resolutions.default)
+      val (dimension, pixels) = resolutions.resolve(dimensionToken, requestedSize)
+      val format              = formats.resolve(formatName)
+      val source              = sourceDimensions(resource)
       resource.basicContentProperties match {
         case Some(video: VideoProperties) =>
           val ts = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
           if urlTimestamp == ts then
             val (width, height) = scaledDimensions(pixels, dimension, source, even = true)
-            Some(VideoThumbnail(width = width, height = height, quality = 23, timestamp = ts))
+            Some(VideoThumbnail(width = width, height = height, quality = 23, timestamp = ts, format = format))
           else None
         case Some(_: ImageProperties)     =>
           val (width, height) = scaledDimensions(pixels, dimension, source, even = false)
-          Some(ImageThumbnail(width = width, height = height, quality = 0))
+          Some(ImageThumbnail(width = width, height = height, quality = 0, format = format))
         case _                            => None
       }
     }
@@ -88,7 +90,7 @@ object ResourceContentRoutes extends Logging {
     }
   }
 
-  def apply(buckets: Map[BucketId, ResourceBucket], resolutions: ThumbnailResolutions)(using apiSecurity: ApiSecurity): HttpRoutes[IO] = {
+  def apply(buckets: Map[BucketId, ResourceBucket], resolutions: ThumbnailResolutions, formats: ThumbnailFormats)(using apiSecurity: ApiSecurity): HttpRoutes[IO] = {
 
     // The content routes are not Tapir endpoints, so the access token has to be read from the cookie directly.
     def authToken(req: Request[IO]) =
@@ -127,8 +129,8 @@ object ResourceContentRoutes extends Logging {
             for
               (bucket, resource) <- getResource(req, BucketId(bucketId), ResourceId(resourceId))
               operation          <- OptionT.fromOption(resourcePattern match {
-                                      case patterns.PublicThumbnailPattern(ts, dim, resKey) => patterns.thumbnailOperation(ts.toLong, dim, resKey, resolutions, resource.info)
-                                      case patterns.PublicClipPattern(ts, dim, resKey)      => patterns.clipOperation(ts.toLong, dim, resKey, resolutions, resource.info)
+                                      case patterns.PublicThumbnailPattern(ts, dim, resKey, format) => patterns.thumbnailOperation(ts.toLong, dim, resKey, format, resolutions, formats, resource.info)
+                                      case patterns.PublicClipPattern(ts, dim, resKey)              => patterns.clipOperation(ts.toLong, dim, resKey, resolutions, resource.info)
                                       case _                                                => None
                                     })
               derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))

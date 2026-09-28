@@ -1,7 +1,12 @@
 import React, {useContext} from "react";
 import {AppConfigDto} from "./generated";
 
-/** Server-provided client configuration (e.g. the available thumbnail resolutions). */
-export const ConfigContext = React.createContext<AppConfigDto | undefined>(undefined);
+/**
+ * Server-provided client configuration, plus `imageFormat`: the image format this browser will
+ * actually be served (the first server-supported format it can decode).
+ */
+export type AppConfig = AppConfigDto & { imageFormat: string };
 
-export const useAppConfig = (): AppConfigDto | undefined => useContext(ConfigContext);
+export const ConfigContext = React.createContext<AppConfig | undefined>(undefined);
+
+export const useAppConfig = (): AppConfig | undefined => useContext(ConfigContext);

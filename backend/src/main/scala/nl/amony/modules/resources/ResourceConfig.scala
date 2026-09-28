@@ -14,7 +14,7 @@ import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
 import nl.amony.lib.hash.Base32
 import nl.amony.lib.hash.PartialHash.partialHash
 import nl.amony.modules.resources.ResourceConfig.ResourceBucketConfig
-import nl.amony.modules.resources.api.ResourceId
+import nl.amony.modules.resources.api.{ImageFormat, ResourceId}
 
 enum ResolutionPickingStrategy(val configName: String):
   case RoundUp      extends ResolutionPickingStrategy("round-up")
@@ -29,9 +29,17 @@ object ResolutionPickingStrategy:
       )
     }
 
+given ConfigReader[ImageFormat] =
+  ConfigReader[String].emap { name =>
+    ImageFormat.fromName(name).toRight(
+      CannotConvert(name, "ImageFormat", s"Expected one of: ${ImageFormat.values.map(_.configName).mkString(", ")}")
+    )
+  }
+
 case class ThumbnailConfig(
   allowedResolutions: List[Int],
   defaultResolution: Int,
+  supportedFormats: List[ImageFormat],
   resolutionStepDown: Int,
   resolutionPickingStrategy: ResolutionPickingStrategy
 ) derives ConfigReader

@@ -5,6 +5,6 @@ import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 
 import nl.amony.lib.process.ProcessRunner
-import nl.amony.lib.process.magick.tasks.{CreateThumbnail, GetImageMetaData}
+import nl.amony.lib.process.magick.tasks.GetImageMetaData
 
-class ImageMagick(using meter: Meter[IO], tracer: Tracer[IO]) extends ProcessRunner with GetImageMetaData with CreateThumbnail {}
+class ImageMagick(using meter: Meter[IO], tracer: Tracer[IO]) extends ProcessRunner with GetImageMetaData {}

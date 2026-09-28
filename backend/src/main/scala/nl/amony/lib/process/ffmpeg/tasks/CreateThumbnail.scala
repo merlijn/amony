@@ -33,6 +33,25 @@ trait CreateThumbnail:
 
     runIgnoreOutput("ffmpeg-create-video-thumbnail", Command("ffmpeg", args))
 
+  /** Encodes a still image at the given pinned dimension; the output format follows the output extension. */
+  def resizeImage(inputFile: Path, outputFile: Option[Path], width: Option[Int] = None, height: Option[Int] = None): IO[Int] = {
+    val input  = inputFile.absoluteFileName()
+    val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.webp")
+
+    // format: off
+    val args = List("-i", input) ++
+      scaleFilter(width, height).toList.flatMap(filter => List("-vf", filter)) ++
+      List(
+        "-quality", "80", // 1 - 31 (best-worst) for jpeg, 1-100 (worst-best) for webp
+        "-vframes", "1",
+        "-v",       "quiet",
+        "-y",       output
+      )
+    // format: on
+
+    runIgnoreOutput("ffmpeg-create-image-thumbnail", Command("ffmpeg", args))
+  }
+
   def streamThumbnail(inputFile: Path, timestamp: Long, scaleHeight: Int): fs2.Stream[IO, Byte] = {
   
     // format: off
