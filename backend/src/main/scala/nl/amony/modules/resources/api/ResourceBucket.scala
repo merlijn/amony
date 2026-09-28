@@ -10,7 +10,7 @@ enum UploadError:
 
 trait ResourceBucket {
 
-  def id: String
+  def id: BucketId
 
   /**
    * Returns the content of a resource

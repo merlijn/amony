@@ -45,9 +45,9 @@ class LocalDirectoryBucket(
 )(using runtime: IORuntime, meter: Meter[IO], tracer: Tracer[IO])
     extends LocalDirectoryBase(config, db, topic), LocalResourceOperations, ResourceBucket, LocalResourceSyncer, UploadResource, Logging {
 
-  private def getResourceInfo(resourceId: ResourceId): IO[Option[ResourceInfo]] = db.getResourceById(config.id, resourceId)
+  private def getResourceInfo(resourceId: ResourceId): IO[Option[ResourceInfo]] = db.getResourceById(id, resourceId)
 
-  override def id: String = config.id
+  override def id: BucketId = BucketId(config.id)
 
   def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap {
     resource =>
@@ -85,8 +85,10 @@ class LocalDirectoryBucket(
       val updated       = resource.copy(partialHash = Some(partialHash))
       if oldResourceId != partialHash then
         logger.info(s"Updating partialHash for $file from $oldResourceId to $partialHash")
-        db.deleteResource(config.id, resource.resourceId) >> topic.publish(ResourceDeleted(oldResourceId)) >> db.insertResource(updated) >>
-          topic.publish(ResourceUpdated(updated))
+        db.deleteResource(id, resource.resourceId)
+          >> topic.publish(ResourceDeleted(oldResourceId))
+          >> db.insertResource(updated)
+          >> topic.publish(ResourceUpdated(updated))
       else IO.unit
   }.compile.drain
 
@@ -110,15 +112,15 @@ class LocalDirectoryBucket(
       case None       => IO.pure(())
       case Some(info) =>
         val path = config.resourcePath.resolve(info.path)
-        db.deleteResource(config.id, resourceId) >> IO(path.deleteIfExists()) >> topic.publish(ResourceDeleted(resourceId))
+        db.deleteResource(id, resourceId) >> IO(path.deleteIfExists()) >> topic.publish(ResourceDeleted(resourceId))
 
   override def updateUserMeta(resourceId: ResourceId, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] =
-    db.updateUserMeta(config.id, resourceId, title, description, tags)
+    db.updateUserMeta(id, resourceId, title, description, tags)
       .flatMap(_.map(updated => topic.publish(ResourceUpdated(updated))).getOrElse(IO.unit))
 
   override def updateResourceTags(resourceIds: Set[ResourceId], tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] = {
     def updateTagsSingle(resourceId: ResourceId, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] =
-      db.updateResourceTags(config.id, resourceId, tagsToAdd, tagsToRemove).flatMap:
+      db.updateResourceTags(id, resourceId, tagsToAdd, tagsToRemove).flatMap:
         case None          => IO.unit
         case Some(updated) => topic.publish(ResourceUpdated(updated))
 
@@ -126,7 +128,7 @@ class LocalDirectoryBucket(
   }
 
   override def updateThumbnailTimestamp(resourceId: ResourceId, timestamp: Int): IO[Unit] =
-    db.updateThumbnailTimestamp(config.id, resourceId, timestamp)
+    db.updateThumbnailTimestamp(id, resourceId, timestamp)
       .flatMap(_.map(updated => topic.publish(ResourceUpdated(updated))).getOrElse(IO.unit))
 
   def importBackup(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] =
@@ -134,5 +136,5 @@ class LocalDirectoryBucket(
       .evalMap(resource => IO(logger.info(s"Inserting resource: ${resource.resourceId}")) >> db.insertResource(resource)).compile.drain
 
   override def getAllResources: fs2.Stream[IO, ResourceInfo] =
-    db.getStream(config.id)
+    db.getStream(id)
 }

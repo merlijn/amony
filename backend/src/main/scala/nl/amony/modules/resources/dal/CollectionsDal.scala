@@ -7,7 +7,7 @@ import skunk.*
 import skunk.data.{Arr, Completion}
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{Collection, CollectionId, ResourceId, ResourceInfo}
+import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo}
 
 trait CollectionsDal(pool: Resource[IO, Session[IO]]) extends Logging:
 
@@ -43,10 +43,10 @@ trait CollectionsDal(pool: Resource[IO, Session[IO]]) extends Logging:
     }
 
     object collection_resources {
-      def insert(s: Session[IO], collectionId: CollectionId, bucketId: String, resourceId: String): IO[Completion] =
+      def insert(s: Session[IO], collectionId: CollectionId, bucketId: BucketId, resourceId: ResourceId): IO[Completion] =
         s.prepare(Queries.collection_resources.insert).flatMap(_.execute(CollectionResourcesRow(collectionId.value, bucketId, resourceId)))
 
-      def delete(s: Session[IO], collectionId: CollectionId, bucketId: String, resourceId: String): IO[Completion] =
+      def delete(s: Session[IO], collectionId: CollectionId, bucketId: BucketId, resourceId: ResourceId): IO[Completion] =
         s.prepare(Queries.collection_resources.delete).flatMap(_.execute((collectionId.value, bucketId, resourceId)))
     }
 
@@ -88,7 +88,7 @@ trait CollectionsDal(pool: Resource[IO, Session[IO]]) extends Logging:
         defaultChunkSize
       ).map(toCollection).compile.toList)
 
-  def getCollectionsForResource(bucketId: String, resourceId: ResourceId): IO[List[Collection]] =
+  def getCollectionsForResource(bucketId: BucketId, resourceId: ResourceId): IO[List[Collection]] =
     useSession: s =>
       s.prepare(Queries.collections.getByResourceIdJoined).flatMap(_.stream(
         (bucketId, resourceId),
@@ -114,10 +114,10 @@ trait CollectionsDal(pool: Resource[IO, Session[IO]]) extends Logging:
     useSession: s =>
       collectionTables.collections.delete(s, collectionId).void
 
-  def addResourceToCollection(collectionId: CollectionId, bucketId: String, resourceId: ResourceId): IO[Unit] =
+  def addResourceToCollection(collectionId: CollectionId, bucketId: BucketId, resourceId: ResourceId): IO[Unit] =
     useSession: s =>
       collectionTables.collection_resources.insert(s, collectionId, bucketId, resourceId).void
 
-  def removeResourceFromCollection(collectionId: CollectionId, bucketId: String, resourceId: ResourceId): IO[Unit] =
+  def removeResourceFromCollection(collectionId: CollectionId, bucketId: BucketId, resourceId: ResourceId): IO[Unit] =
     useSession: s =>
       collectionTables.collection_resources.delete(s, collectionId, bucketId, resourceId).void

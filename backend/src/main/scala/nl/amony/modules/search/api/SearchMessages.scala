@@ -1,6 +1,6 @@
 package nl.amony.modules.search.api
 
-import nl.amony.modules.resources.api.ResourceInfo
+import nl.amony.modules.resources.api.{BucketId, ResourceInfo}
 
 enum SortField:
   case Title, DateAdded, Duration, Size
@@ -21,7 +21,7 @@ case class Query(
   offset: Option[Int]              = None,
   includeTags: Set[String]         = Set.empty,
   excludeTags: Set[String]         = Set.empty,
-  excludeBuckets: Set[String]      = Set.empty,
+  excludeBuckets: Set[BucketId]    = Set.empty,
   resolutionRange: ResolutionRange = ResolutionRange(None, None),
   durationRange: DurationRange     = DurationRange(None, None),
   uploadDateRange: UploadDateRange = UploadDateRange(None, None),

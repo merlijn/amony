@@ -7,7 +7,7 @@ import scribe.Logging
 import skunk.*
 import skunk.data.{Arr, Completion}
 
-import nl.amony.modules.resources.api.{ResourceId, ResourceInfo}
+import nl.amony.modules.resources.api.{BucketId, ResourceId, ResourceInfo}
 
 class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(pool) with Logging:
 
@@ -21,28 +21,28 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
         s.prepare(Queries.resources.upsert).flatMap(_.execute(row.asJson))
           .recoverWith { case SqlState.UniqueViolation(_) => IO.raiseError(new Exception(s"Resource with path ${row.fs_path} already exists")) }
 
-      def getById(s: Session[IO], bucketId: String, resourceId: String): IO[Option[ResourceRow]] =
+      def getById(s: Session[IO], bucketId: BucketId, resourceId: ResourceId): IO[Option[ResourceRow]] =
         s.prepare(Queries.resources.getById).flatMap(_.option(bucketId, resourceId))
 
-      def delete(s: Session[IO], bucketId: String, resourceId: String) =
+      def delete(s: Session[IO], bucketId: BucketId, resourceId: ResourceId) =
         s.prepare(Queries.resources.deleteBucket).flatMap(_.execute(bucketId, resourceId))
     }
 
     object resource_tags {
-      def getById(s: Session[IO], bucketId: String, resourceId: String): IO[List[ResourceTagsRow]] =
+      def getById(s: Session[IO], bucketId: BucketId, resourceId: ResourceId): IO[List[ResourceTagsRow]] =
         s.prepare(Queries.resource_tags.getById).flatMap(_.stream((bucketId, resourceId), defaultChunkSize).compile.toList)
 
-      def replaceAll(s: Session[IO], bucketId: String, resourceId: String, tagIds: List[Int]): IO[Unit] =
+      def replaceAll(s: Session[IO], bucketId: BucketId, resourceId: ResourceId, tagIds: List[Int]): IO[Unit] =
         for
           _   <- s.prepare(Queries.resource_tags.delete).flatMap(_.execute(bucketId, resourceId))
           rows = tagIds.map(tagId => ResourceTagsRow(bucketId, resourceId, tagId))
           _   <- if tagIds.nonEmpty then s.prepare(Queries.resource_tags.upsert(rows.size)).flatMap(_.execute(rows)) else IO.unit
         yield ()
 
-      def delete(s: Session[IO], bucketId: String, resourceId: String): IO[Completion] =
+      def delete(s: Session[IO], bucketId: BucketId, resourceId: ResourceId): IO[Completion] =
         s.prepare(Queries.resource_tags.delete).flatMap(_.execute(bucketId, resourceId))
 
-      def upsert(s: Session[IO], bucketId: String, resourceId: String, tagIds: List[Int]) =
+      def upsert(s: Session[IO], bucketId: BucketId, resourceId: ResourceId, tagIds: List[Int]) =
         val rows = tagIds.map(tagId => ResourceTagsRow(bucketId, resourceId, tagId))
         s.prepare(Queries.resource_tags.upsert(rows.size)).flatMap(_.execute(rows))
     }
@@ -70,7 +70,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
   override protected def toResource(resourceRow: ResourceRow, tagLabels: Option[Arr[String]]): ResourceInfo =
     resourceRow.toResource(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty))
 
-  private def updateTagsForResource(s: Session[IO], bucketId: String, resourceId: String, tagLabels: List[String]) =
+  private def updateTagsForResource(s: Session[IO], bucketId: BucketId, resourceId: ResourceId, tagLabels: List[String]) =
     for
       tags <- if tagLabels.nonEmpty then tables.tags.upsert(s, tagLabels) >> tables.tags.getByLabels(s, tagLabels) else IO.pure(List.empty)
       _    <- tables.resource_tags.replaceAll(s, bucketId, resourceId, tags.map(_.id))
@@ -93,7 +93,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
         _ <- s.execute(Queries.resources.truncateCascade)
       yield ()
 
-  def getAll(bucketId: String): IO[List[ResourceInfo]] = getStream(bucketId).compile.toList
+  def getAll(bucketId: BucketId): IO[List[ResourceInfo]] = getStream(bucketId).compile.toList
 
   def insertResource(resource: ResourceInfo): IO[Unit] =
     useTransaction: (s, _) =>
@@ -106,22 +106,22 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
     useTransaction: (s, _) =>
       updateResourceWithTags(s, resource)
 
-  def getStream(bucketId: String): fs2.Stream[IO, ResourceInfo] =
+  def getStream(bucketId: BucketId): fs2.Stream[IO, ResourceInfo] =
     fs2.Stream.force(
       useSession: s =>
         s.prepare(Queries.resources.allJoined).map(_.stream(bucketId, defaultChunkSize).map(toResource))
     )
 
-  def getResourceById(bucketId: String, resourceId: ResourceId): IO[Option[ResourceInfo]] =
+  def getResourceById(bucketId: BucketId, resourceId: ResourceId): IO[Option[ResourceInfo]] =
     useSession: s =>
       s.prepare(Queries.resources.getByIdJoined)
         .flatMap(_.stream((bucketId, resourceId), defaultChunkSize).map(toResource).compile.toList.map(_.headOption))
 
-  def getResourceByPartialHash(bucketId: String, partialHash: String): IO[List[ResourceInfo]] =
+  def getResourceByPartialHash(bucketId: BucketId, partialHash: String): IO[List[ResourceInfo]] =
     useSession: s =>
       s.prepare(Queries.resources.getByPartialHashJoined).flatMap(_.stream((bucketId, partialHash), defaultChunkSize).map(toResource).compile.toList)
 
-  def updateThumbnailTimestamp(bucketId: String, resourceId: ResourceId, timestamp: Int): IO[Option[ResourceInfo]] = useSession: s =>
+  def updateThumbnailTimestamp(bucketId: BucketId, resourceId: ResourceId, timestamp: Int): IO[Option[ResourceInfo]] = useSession: s =>
     (for
       resource <- OptionT(getResourceById(bucketId, resourceId))
       updated   = resource.copy(thumbnailTimestamp = Some(timestamp))
@@ -129,7 +129,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
     yield updated).value
 
   def updateUserMeta(
-    bucketId: String,
+    bucketId: BucketId,
     resourceId: ResourceId,
     title: Option[String],
     description: Option[String],
@@ -142,7 +142,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
           val updatedResource = resource.copy(title = title, description = description, tags = tagLabels.toSet)
           updateResourceWithTags(s, updatedResource) >> IO.pure(Some(updatedResource))
 
-  def updateResourceTags(bucketId: String, resourceId: ResourceId, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Option[ResourceInfo]] =
+  def updateResourceTags(bucketId: BucketId, resourceId: ResourceId, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Option[ResourceInfo]] =
     useTransaction: (s, _) =>
       getResourceById(bucketId, resourceId).flatMap:
         case None           => IO.pure(None)
@@ -151,17 +151,17 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
           val updatedResource = resource.copy(tags = updatedTags.toSet)
           updateResourceWithTags(s, updatedResource) >> IO.pure(Some(updatedResource))
 
-  def move(bucketId: String, resourceId: String, newPath: String): IO[Unit] =
+  def move(bucketId: BucketId, resourceId: ResourceId, newPath: String): IO[Unit] =
     useSession: s =>
       tables.resources.getById(s, bucketId, resourceId).flatMap:
         case Some(old) => tables.resources.upsert(s, old.copy(fs_path = newPath)) >> IO.unit
         case None      => IO.unit
 
-  def bucketSize(bucketId: String): IO[Int] =
+  def bucketSize(bucketId: BucketId): IO[Int] =
     useSession: s =>
       s.prepare(Queries.resources.bucketCount).flatMap(_.option(bucketId)).map(_.getOrElse(0))
 
-  def deleteResource(bucketId: String, resourceId: String): IO[Unit] =
+  def deleteResource(bucketId: BucketId, resourceId: ResourceId): IO[Unit] =
     useTransaction: (s, _) =>
       for
         _ <- tables.resource_tags.delete(s, bucketId, resourceId)

@@ -134,7 +134,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
     }
 
     ResourceInfo(
-      bucketId           = bucketId,
+      bucketId           = BucketId(bucketId),
       resourceId         = ResourceId(resourceId),
       userId             = UserId(userId),
       path               = path,
@@ -216,7 +216,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
     solrParams
   }
 
-  def totalDocuments(bucketId: String): Long = solr.query(collectionName, new SolrQuery(s"bucket_id_s:$bucketId")).getResults.getNumFound
+  def totalDocuments(bucketId: BucketId): Long = solr.query(collectionName, new SolrQuery(s"bucket_id_s:$bucketId")).getResults.getNumFound
 
   private def insert(resource: ResourceInfo, commitWithinMs: Int = config.commitWithinMillis) =
     try {
@@ -304,7 +304,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
       solr.commit(collectionName)
     }
 
-  override def deleteBucket(bucketId: String): IO[Unit] =
+  override def deleteBucket(bucketId: BucketId): IO[Unit] =
     loggingFailureIO {
       logger.info(s"Deleting bucket: $bucketId")
       solr.deleteByQuery(collectionName, s"${FieldNames.bucketId}:${ClientUtils.escapeQueryChars(bucketId)}", config.commitWithinMillis)
