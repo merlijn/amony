@@ -27,8 +27,9 @@ import nl.amony.lib.tapir.dsl.ServerEndpoints
 import nl.amony.modules.admin.AdminRoutes
 import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.ApiSecurity
+import nl.amony.modules.config.ConfigRoutes
 import nl.amony.modules.resources.ResourceConfig
-import nl.amony.modules.resources.api.ResourceEvent
+import nl.amony.modules.resources.api.{ResourceEvent, ThumbnailFormats, ThumbnailResolutions}
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.modules.resources.http.{CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
@@ -110,6 +111,12 @@ object App extends ResourceApp.Forever with Logging {
         resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
         authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
         collectionsDal     = ResourceDatabase(databasePool)
+        thumbResolutions   = ThumbnailResolutions(
+                               appConfig.resources.thumbnails.allowedResolutions,
+                               appConfig.resources.thumbnails.defaultResolution,
+                               appConfig.resources.thumbnails.resolutionStepDown
+                             )
+        thumbFormats       = ThumbnailFormats(appConfig.resources.thumbnails.supportedFormats)
         apiRoutes          = {
           given ApiSecurity = authModule.apiSecurity
 
@@ -118,9 +125,10 @@ object App extends ResourceApp.Forever with Logging {
               CollectionRoutes.apply(collectionsDal) ++
               AdminRoutes.apply(searchService, resourceBucketMap) ++
               SearchRoutes.apply(searchService, appConfig.search) ++
-              ResourceRoutes.apply(resourceBucketMap)
+              ResourceRoutes.apply(resourceBucketMap) ++
+              ConfigRoutes.apply(thumbResolutions, thumbFormats, appConfig.resources.thumbnails.resolutionPickingStrategy)
 
-          ResourceContentRoutes.apply(resourceBucketMap) <+>
+          ResourceContentRoutes.apply(resourceBucketMap, thumbResolutions, thumbFormats) <+>
             Http4sServerInterpreter[IO](serverOptions).toRoutes(tapirEndpoints)
         }
         _                 <- WebServer.run(appConfig.api, apiRoutes)

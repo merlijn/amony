@@ -40,7 +40,8 @@ export type Prefs = {
   showDuration: boolean
   showDates: boolean
   showResolution: boolean
-  gallery_columns: number
+  /** Target width (px) of a single grid cell; the column count is derived from the available width. */
+  gridCellWidth: number
   theme: ThemeSetting
   gridAspectRatio: GridAspectRatio
   gridOrientation: GridOrientation

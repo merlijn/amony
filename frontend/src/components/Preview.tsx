@@ -1,15 +1,17 @@
 import React, {CSSProperties, useContext, useState} from 'react';
 import {
-  canBrowserPlayType,
   dateMillisToString,
   durationInMillisToString,
   labelForResolution,
   titleFromPath
 } from "../api/Util";
+import {canBrowserPlayVideoType} from "../api/MediaFormat";
 import FragmentsPlayer from "./common/FragmentsPlayer";
 import './Preview.scss';
 import {ErrorBoundary} from "react-error-boundary";
 import {SessionContext} from "../api/Constants";
+import {useAppConfig} from "../api/ConfigContext";
+import {thumbnailUrl} from "../api/ResourceUrls";
 import {ResourceDto} from "../api/generated";
 import LazyImage from "./common/LazyImage";
 import {FiAlertCircle, FiInfo} from "react-icons/fi";
@@ -20,6 +22,8 @@ import ResourceDetailsDialog from "./dialogs/ResourceDetailsDialog";
 export type PreviewProps = {
   resource: ResourceDto,
   options: PreviewOptions,
+  /** CSS width of the media slot, used to pick an appropriately sized thumbnail. */
+  mediaWidthPx?: number,
   onClick: (v: ResourceDto) => any,
 }
 
@@ -44,7 +48,8 @@ const Preview = (props: PreviewProps) => {
   const mediaTitle  = resource.title || titleFromPath(resource.path)
   const isVideo   = resource.contentType.startsWith("video")
   const session = useContext(SessionContext)
-  const isMediaTypeSupported = canBrowserPlayType(resource.contentType)
+  const config  = useAppConfig()
+  const isUnsupportedVideo = isVideo && !canBrowserPlayVideoType(resource.contentType)
 
   const titlePanel =
       <div className = "preview-info-bar">
@@ -60,14 +65,17 @@ const Preview = (props: PreviewProps) => {
           <div className="preview-icon-button" onClick={(e) => { e.stopPropagation(); setShowDetailsDialog(true) }}><FiInfo /></div>
           <div className="preview-icon-button" onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true) }}><MdDelete /></div>
         </div> }
-        { !isMediaTypeSupported && <div className="preview-unsupported-overlay"><FiAlertCircle color="#fff" /></div> }
+        { isUnsupportedVideo && <div className="preview-unsupported-overlay"><FiAlertCircle color="#fff" /></div> }
       </div>
+
+  const thumbnailSrc = thumbnailUrl(resource, config, props.mediaWidthPx ?? 400)
 
   const primaryThumbnail =
       <LazyImage
         loadImage = { () =>
           <img
-              src       = { resource.urls.thumbnailUrl } alt="an image"
+              src       = { thumbnailSrc }
+              alt       = "an image"
               onClick   = { () => props.onClick(props.resource) }
               className = { `preview-thumbnail preview-media` }
           />

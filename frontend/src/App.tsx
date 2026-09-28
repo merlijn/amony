@@ -1,7 +1,9 @@
 import {BrowserRouter, Route, Routes, useParams} from 'react-router-dom';
 import React, {lazy, Suspense, useMemo, use} from 'react';
 import {Constants, SessionContext} from "./api/Constants";
-import {getSession} from "./api/generated";
+import {ConfigContext, AppConfig} from "./api/ConfigContext";
+import {pickSupportedImageFormat} from "./api/MediaFormat";
+import {getConfig, getSession} from "./api/generated";
 import {AxiosError} from "axios";
 import {SessionInfo} from "./api/Model";
 import {ThemeProvider} from "./ThemeContext";
@@ -29,13 +31,27 @@ function App() {
         }),
     []);
 
+  const configPromise = useMemo(() =>
+      getConfig()
+        .then(async (config): Promise<AppConfig> => ({
+          ...config,
+          // The most preferred format this browser can actually decode; resolved once at startup.
+          imageFormat: await pickSupportedImageFormat(config.supportedFormats),
+        }))
+        .catch((error: AxiosError) => {
+          // Without config the frontend still works, it just falls back to the default thumbnail resolution and format.
+          console.log("Error getting app config", error);
+          return undefined;
+        }),
+    []);
+
   return (
     <ThemeProvider>
       <div className="app-root">
         <BrowserRouter>
           <Suspense fallback={<div />}>
             <EventBusProvider>
-              <SessionGate sessionPromise={sessionPromise} />
+              <SessionGate sessionPromise={sessionPromise} configPromise={configPromise} />
             </EventBusProvider>
           </Suspense>
         </BrowserRouter>
@@ -44,22 +60,28 @@ function App() {
   );
 }
 
-function SessionGate({ sessionPromise }: { sessionPromise: Promise<SessionInfo | null> }) {
+function SessionGate({ sessionPromise, configPromise }: {
+  sessionPromise: Promise<SessionInfo | null>,
+  configPromise: Promise<AppConfig | undefined>
+}) {
   const session = use(sessionPromise);
+  const config  = use(configPromise);
 
   if (session === null) {
     return <LoginPage />;
   }
 
   return (
-    <SessionContext.Provider value={session}>
-      <Routes>
-        <Route path="/" element={<Main />} />
-        <Route path="/search" element={<Main />} />
-        <Route path="/video-wall" element={<VideoWall />} />
-        <Route path="/compilation" element={<Compilation />} />
-      </Routes>
-    </SessionContext.Provider>
+    <ConfigContext.Provider value={config}>
+      <SessionContext.Provider value={session}>
+        <Routes>
+          <Route path="/" element={<Main />} />
+          <Route path="/search" element={<Main />} />
+          <Route path="/video-wall" element={<VideoWall />} />
+          <Route path="/compilation" element={<Compilation />} />
+        </Routes>
+      </SessionContext.Provider>
+    </ConfigContext.Provider>
   );
 }
 

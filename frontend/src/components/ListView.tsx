@@ -19,6 +19,8 @@ import {
   UserMetaDto
 } from "../api/generated";
 import LazyImage from "./common/LazyImage";
+import {useAppConfig} from "../api/ConfigContext";
+import {thumbnailUrl} from "../api/ResourceUrls";
 import BulkUpdateTagsDialog from "./dialogs/BulkUpdateTagsDialog";
 import DeleteResourceDialog from "./dialogs/DeleteResourceDialog";
 import {useEventListener} from "./common/EventBus";
@@ -30,6 +32,25 @@ type ListProps = {
 
 const initialSearchResult: SearchResponseDto = { offset: 0, total: 0, results: [], tags: [] }
 const rowHeight = 36
+
+/** Small fixed-size thumbnail used in the list rows (54x36 CSS px). */
+const ListThumbnail = ({resource, onClick}: {resource: ResourceDto, onClick: (v: ResourceDto) => any}) => {
+  const config = useAppConfig()
+  const thumbnail = thumbnailUrl(resource, config, 54)
+
+  return (
+    <LazyImage
+      loadImage = { () =>
+        <img
+          src       = { thumbnail }
+          alt       = "an image"
+          onClick   = { () => onClick(resource) }
+          className = "list-thumbnail-img"
+        />
+      }
+    />
+  )
+}
 
 const ListView = (props: ListProps) => {
 
@@ -231,15 +252,7 @@ const ListView = (props: ListProps) => {
                 }
                 <td key="thumbnail" className="list-thumbnail" style = { { paddingLeft: session.isAdmin() ? 0 : 2}}>
 
-                  <LazyImage
-                    loadImage = { () =>
-                      <img
-                        src       = { resource.urls.thumbnailUrl } alt="an image"
-                        onClick   = { () => props.onClick(resource) }
-                        className = "list-thumbnail-img"
-                      />
-                    }
-                  />
+                  <ListThumbnail resource={resource} onClick={props.onClick} />
                 </td>
 
                 <TitleCell mediaResource={resource} />

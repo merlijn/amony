@@ -5,7 +5,7 @@ import TagBar from './navigation/TagBar';
 import Preview, {PreviewOptions} from './Preview';
 import InfiniteScroll from './common/InfiniteScroll';
 import {findResources, FindResourcesParams, ResourceDto, SearchResponseDto} from "../api/generated";
-import {clampGridColumns, resourceSelectionToParams} from "../api/Util";
+import {gridColumnsForWidth, resourceSelectionToParams} from "../api/Util";
 import {useResizeObserver} from "../api/ReactUtils";
 import {useEventListener} from "./common/EventBus";
 
@@ -14,7 +14,8 @@ export type GalleryProps = {
   className?: string,
   style?: CSSProperties,
   componentType: 'page' | 'element'
-  columns: number,
+  /** Target width (px) of a single cell; the column count is derived from the available width. */
+  cellWidth: number,
   showTagbar: boolean,
   previewOptionsFn: (v: ResourceDto) => PreviewOptions,
   onClick: (v: ResourceDto) => void
@@ -25,17 +26,19 @@ const initialSearchResult: SearchResponseDto = { offset: 0, total: 0, results: [
 type GridCellProps = {
   resource: ResourceDto,
   columns: number,
+  cellWidthPx: number,
   previewOptions: PreviewOptions,
   onClick: (v: ResourceDto) => void,
 }
 
-const GridCell = React.memo(({ resource, columns, previewOptions, onClick }: GridCellProps) => {
+const GridCell = React.memo(({ resource, columns, cellWidthPx, previewOptions, onClick }: GridCellProps) => {
   const style = { "--ncols": `${columns}` } as CSSProperties
 
   return (
     <div className="grid-cell" style={style}>
       <Preview
         resource={resource}
+        mediaWidthPx={cellWidthPx}
         onClick={onClick}
         options={previewOptions}
       />
@@ -49,7 +52,7 @@ const GridView = (props: GalleryProps) => {
   const [isFetching, setIsFetching]     = useState(false)
   const [isEndReached, setIsEndReached] = useState(false)
   const { ref, width }                  = useResizeObserver<HTMLDivElement>();
-  const [columns, setColumns]           = useState<number>(clampGridColumns(props.columns))
+  const [columns, setColumns]           = useState<number>(gridColumnsForWidth(props.cellWidth))
 
   function handleUpdate(resource: ResourceDto) {
     console.log(`Updating resource ${resource.resourceId} in grid view`)
@@ -100,13 +103,13 @@ const GridView = (props: GalleryProps) => {
     if (componentWidth === undefined)
       return
 
-    const c = clampGridColumns(props.columns, componentWidth)
+    const c = gridColumnsForWidth(props.cellWidth, componentWidth)
     if (c !== columns) {
       if (c > columns)
         setIsFetching(true)
       setColumns(c)
     }
-  }, [width, props.columns, props.componentType])
+  }, [width, props.cellWidth, props.componentType])
 
   useEffect(() => {
     setSearchResult(initialSearchResult)
@@ -116,6 +119,9 @@ const GridView = (props: GalleryProps) => {
 
   useEffect(() => { if (isFetching && !isEndReached) fetchData(); }, [isFetching, isEndReached]);
 
+  // The configured cell width is a stable, accurate basis for choosing a thumbnail size.
+  const cellWidthPx = props.cellWidth
+
   // Memoize previews to prevent unnecessary re-creation of the array
   const previews = useMemo(() =>
     searchResult.results.map((vid) => (
@@ -123,10 +129,11 @@ const GridView = (props: GalleryProps) => {
         key={`preview-${vid.resourceId}`}
         resource={vid}
         columns={columns}
+        cellWidthPx={cellWidthPx}
         previewOptions={props.previewOptionsFn(vid)}
         onClick={props.onClick}
       />
-    )), [searchResult.results, columns, props.previewOptionsFn, props.onClick]
+    )), [searchResult.results, columns, cellWidthPx, props.previewOptionsFn, props.onClick]
   )
 
   let style = { "--grid-spacing" : `${gridSpacing}px` } as CSSProperties

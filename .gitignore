@@ -7,6 +7,9 @@
 # codegraph
 .codegraph/
 
+# openchamber
+.openchamber/
+
 backend/.docker-tags.txt
 frontend/src/api/generated
 
@@ -47,3 +50,4 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 .docker-tags.txt
+.playwright-mcp/

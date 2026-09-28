@@ -119,7 +119,7 @@ const Main = () => {
                   showTagbar = { showNavigation }
                   componentType = 'page'
                   onClick   = { (v: ResourceDto) => setShowResource(v) }
-                  columns   = { typeof prefs.gallery_columns === 'number' ? prefs.gallery_columns : Constants.defaultPreferences.gallery_columns }
+                  cellWidth = { typeof prefs.gridCellWidth === 'number' ? prefs.gridCellWidth : Constants.defaultPreferences.gridCellWidth }
                   previewOptionsFn = { (v: ResourceDto) => {
                       return {
                         showPreviewOnHover: !isMobile,

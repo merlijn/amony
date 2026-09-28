@@ -6,7 +6,7 @@ import cats.effect.IO
 import scribe.Logging
 
 import nl.amony.lib.files.*
-import nl.amony.lib.process.ffmpeg.FFMpeg.formatTime
+import nl.amony.lib.process.ffmpeg.FFMpeg.{formatTime, scaleFilter}
 import nl.amony.lib.process.{Command, ProcessRunner}
 
 case class TranscodeProfile(ext: String, args: List[String])
@@ -24,6 +24,7 @@ trait Transcode extends Logging {
     range: (Long, Long),
     includeAudio: Boolean     = true,
     profile: TranscodeProfile = TranscodeProfile.default,
+    scaleWidth: Option[Int]   = None,
     scaleHeight: Option[Int]  = None,
     outputFile: Option[Path]  = None
   ): IO[Path] = {
@@ -33,7 +34,8 @@ trait Transcode extends Logging {
     val output   = outputFile.map(_.absoluteFileName()).getOrElse(s"${inputFile.stripExtension().absoluteFileName()}.${profile.ext}")
 
     val args: List[String] = List("-ss", formatTime(ss), "-to", formatTime(to), "-i", input) ++
-      scaleHeight.toList.flatMap(height => List("-vf", s"scale=-2:$height")) ++ profile.args ++ Option.when(!includeAudio)("-an") ++
+      scaleFilter(scaleWidth, scaleHeight).toList.flatMap(filter => List("-vf", filter)) ++
+      profile.args ++ Option.when(!includeAudio)("-an") ++
       List("-v", "quiet", "-y", output)
 
     runIgnoreOutput("ffmpeg-transcode", Command("ffmpeg", args)).map(_ => Path.of(output))

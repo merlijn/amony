@@ -16,10 +16,15 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
   extension (operation: ResourceOperation)
     def outputFile(resourceId: ResourceId): Path = {
+
+      // Encode the pinned dimension so width- and height-based outputs never collide in the cache.
+      def scaleSuffix(width: Option[Int], height: Option[Int]): String =
+        width.map(w => s"w$w").orElse(height.map(h => s"h$h")).getOrElse("orig")
+
       val fileName = operation match
-        case VideoFragment(width, height, start, end, quality) => s"${resourceId}_$start-${end}_${height.get}p.mp4"
-        case VideoThumbnail(width, height, quality, timestamp) => s"${resourceId}_${timestamp}_${height.get}p.webp"
-        case ImageThumbnail(width, height, quality)            => s"${resourceId}_${height.get}.webp"
+        case VideoFragment(width, height, start, end) => s"${resourceId}_$start-${end}_${scaleSuffix(width, height)}.mp4"
+        case VideoThumbnail(width, height, timestamp, format)  => s"${resourceId}_${timestamp}_${scaleSuffix(width, height)}.${format.extension}"
+        case ImageThumbnail(width, height, format)             => s"${resourceId}_${scaleSuffix(width, height)}.${format.extension}"
 
       config.cachePath.resolve(fileName)
     }
@@ -60,18 +65,18 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
       case Right(_)    => run(info, inputFile, operation.outputFile(info.resourceId), operation).memoize.flatten
 
   private def run(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: ResourceOperation): IO[Path] = operation match
-    case VideoFragment(width, height, start, end, quality) =>
+    case VideoFragment(width, height, start, end) =>
       logger.debug(s"Creating video fragment for $inputFile with range $start-$end")
-      ffmpeg.transcodeToMp4(inputFile = inputFile, range = (start, end), scaleHeight = height, outputFile = Some(outputFile)).map(_ =>
+      ffmpeg.transcodeToMp4(inputFile = inputFile, range = (start, end), scaleWidth = width, scaleHeight = height, outputFile = Some(outputFile)).map(_ =>
         outputFile
       )
 
-    case VideoThumbnail(width, height, quality, timestamp) =>
-      logger.debug(s"Creating thumbnail for $inputFile at timestamp $timestamp")
-      ffmpeg.createThumbnail(inputFile = inputFile, timestamp = timestamp, outputFile = Some(outputFile), scaleHeight = height).map(_ =>
+    case VideoThumbnail(width, height, timestamp, format) =>
+      logger.debug(s"Creating thumbnail for $inputFile at timestamp $timestamp as ${format.configName}")
+      ffmpeg.createThumbnail(inputFile = inputFile, timestamp = timestamp, outputFile = Some(outputFile), scaleWidth = width, scaleHeight = height, codecArgs = format.ffmpegEncoderArgs).map(_ =>
         outputFile
       )
-    case ImageThumbnail(width, height, quality)            =>
-      logger.debug(s"Creating image thumbnail for $inputFile")
-      imageMagick.resizeImage(inputFile = inputFile, outputFile = Some(outputFile), width = width, height = height).map(_ => outputFile)
+    case ImageThumbnail(width, height, format)            =>
+      logger.debug(s"Creating image thumbnail for $inputFile as ${format.configName}")
+      ffmpeg.resizeImage(inputFile = inputFile, outputFile = Some(outputFile), width = width, height = height, codecArgs = format.ffmpegEncoderArgs).map(_ => outputFile)
 }
