@@ -1,7 +1,9 @@
 import React, { ChangeEvent, useState } from 'react';
+import * as Tabs from '@radix-ui/react-tabs';
 import { dateMillisToString } from '../../api/Util';
 import { uploadResource } from '../../api/generated';
 import DialogWindow from '../common/DialogWindow';
+import './ConfigMenu.scss';
 import './FileUpload.scss';
 
 const DEFAULT_BUCKET_ID = 'media';
@@ -56,49 +58,83 @@ const FileUpload = () => {
     };
     
     return (
-      <DialogWindow title="Upload media">
-        <div className="file-upload-content">
-          <div className="file-input-container">
-            <input 
-              type="file" 
-              accept=".mp4,video/*,image/*"
-              onChange={onFileChange}
-              disabled={status === 'uploading'}
-            />
-          </div>
-          
-          {file && (
-            <div className="file-info">
-              <p><strong>File:</strong> {file.name}</p>
-              <p><strong>Type:</strong> {file.type}</p>
-              <p><strong>Size:</strong> {(file.size / (1024 * 1024)).toFixed(2)} MB</p>
-              <p><strong>Last Modified:</strong> {dateMillisToString(file.lastModified)}</p>
-            </div>
-          )}
+      <DialogWindow>
+        <Tabs.Root defaultValue="upload">
+          <Tabs.List className="tabs-list">
+            <Tabs.Trigger className="tab-trigger" value="upload">Upload</Tabs.Trigger>
+          </Tabs.List>
 
-          {status === 'uploading' && (
-            <div className="progress-container">
-              <div className="progress-bar">
-                <div className="progress-fill" style={{ width: `${progress}%` }} />
+          <Tabs.Content className="tab-content file-upload-tab-content" value="upload">
+            <div className="config-form">
+              <div className="form-section">
+                <p className="form-label">File</p>
+                <div className="form-content">
+                  <input
+                    type="file"
+                    className="file-upload-input"
+                    accept=".mp4,video/*,image/*"
+                    onChange={onFileChange}
+                    disabled={status === 'uploading'}
+                  />
+                </div>
               </div>
-              <span className="progress-text">{progress}%</span>
-            </div>
-          )}
 
-          {feedback && (
-            <div className={`feedback ${status === 'error' ? 'feedback-error' : 'feedback-success'}`}>
-              {feedback}
-            </div>
-          )}
+              {file && (
+                <>
+                  <div className="form-section">
+                    <p className="form-label">Name</p>
+                    <div className="form-content">{file.name}</div>
+                  </div>
+                  <div className="form-section">
+                    <p className="form-label">Type</p>
+                    <div className="form-content">{file.type || "-"}</div>
+                  </div>
+                  <div className="form-section">
+                    <p className="form-label">Size</p>
+                    <div className="form-content">{(file.size / (1024 * 1024)).toFixed(2)} MB</div>
+                  </div>
+                  <div className="form-section">
+                    <p className="form-label">Last modified</p>
+                    <div className="form-content">{dateMillisToString(file.lastModified)}</div>
+                  </div>
+                </>
+              )}
 
-          <button 
-            className="abs-bottom-right button-primary" 
-            onClick={onFileUpload}
-            disabled={!file || status === 'uploading'}
-          >
-            {status === 'uploading' ? 'Uploading...' : 'Upload'}
-          </button>
-        </div>
+              {status === 'uploading' && (
+                <div className="form-section">
+                  <p className="form-label">Progress</p>
+                  <div className="form-content">
+                    <div className="progress-container">
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${progress}%` }} />
+                      </div>
+                      <span className="progress-text">{progress}%</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {feedback && (
+                <div className="form-section">
+                  <p className="form-label">Status</p>
+                  <div className="form-content">
+                    <span className={`feedback ${status === 'error' ? 'feedback-error' : 'feedback-success'}`}>
+                      {feedback}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Tabs.Content>
+        </Tabs.Root>
+
+        <button
+          className="abs-bottom-right button-primary"
+          onClick={onFileUpload}
+          disabled={!file || status === 'uploading'}
+        >
+          {status === 'uploading' ? 'Uploading...' : 'Upload'}
+        </button>
       </DialogWindow>
     );
   }

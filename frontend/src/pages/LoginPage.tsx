@@ -28,16 +28,16 @@ const LoginPage = () => {
     <div className="login-page">
       <div className="login-page-panel">
         {error && (
-          <DialogWindow title="Login">
+          <DialogWindow title="Login" showClose={false}>
             <p className="login-error">{error}</p>
           </DialogWindow>
         )}
         {!error && !providers && (
-          <DialogWindow title="Login">
+          <DialogWindow title="Login" showClose={false}>
             <p>Loading...</p>
           </DialogWindow>
         )}
-        {providers && <LoginDialog onClose={() => {}} providers={providers} />}
+        {providers && <LoginDialog onClose={() => {}} providers={providers} showClose={false} />}
       </div>
     </div>
   );

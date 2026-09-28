@@ -18,6 +18,12 @@
   margin-bottom: -1px;
   transition: color 0.15s, border-color 0.15s;
 
+  // Don't show the browser focus ring when the dialog opens and auto-focuses the
+  // first (active) trigger; the active tab styling is already the visible cue.
+  &:focus {
+    outline: none;
+  }
+
   &[data-state="active"] {
     color: var(--highlight-a);
     border-bottom-color: var(--highlight-a);
