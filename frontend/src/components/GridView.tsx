@@ -5,7 +5,7 @@ import TagBar from './navigation/TagBar';
 import Preview, {PreviewOptions} from './Preview';
 import InfiniteScroll from './common/InfiniteScroll';
 import {findResources, FindResourcesParams, ResourceDto, SearchResponseDto} from "../api/generated";
-import {clampGridColumns, resourceSelectionToParams} from "../api/Util";
+import {gridColumnsForWidth, resourceSelectionToParams} from "../api/Util";
 import {useResizeObserver} from "../api/ReactUtils";
 import {useEventListener} from "./common/EventBus";
 
@@ -14,7 +14,8 @@ export type GalleryProps = {
   className?: string,
   style?: CSSProperties,
   componentType: 'page' | 'element'
-  columns: number,
+  /** Target width (px) of a single cell; the column count is derived from the available width. */
+  cellWidth: number,
   showTagbar: boolean,
   previewOptionsFn: (v: ResourceDto) => PreviewOptions,
   onClick: (v: ResourceDto) => void
@@ -49,7 +50,7 @@ const GridView = (props: GalleryProps) => {
   const [isFetching, setIsFetching]     = useState(false)
   const [isEndReached, setIsEndReached] = useState(false)
   const { ref, width }                  = useResizeObserver<HTMLDivElement>();
-  const [columns, setColumns]           = useState<number>(clampGridColumns(props.columns))
+  const [columns, setColumns]           = useState<number>(gridColumnsForWidth(props.cellWidth))
 
   function handleUpdate(resource: ResourceDto) {
     console.log(`Updating resource ${resource.resourceId} in grid view`)
@@ -100,13 +101,13 @@ const GridView = (props: GalleryProps) => {
     if (componentWidth === undefined)
       return
 
-    const c = clampGridColumns(props.columns, componentWidth)
+    const c = gridColumnsForWidth(props.cellWidth, componentWidth)
     if (c !== columns) {
       if (c > columns)
         setIsFetching(true)
       setColumns(c)
     }
-  }, [width, props.columns, props.componentType])
+  }, [width, props.cellWidth, props.componentType])
 
   useEffect(() => {
     setSearchResult(initialSearchResult)

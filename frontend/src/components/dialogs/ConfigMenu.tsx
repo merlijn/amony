@@ -1,5 +1,4 @@
 import {Constants, SessionContext} from "../../api/Constants";
-import {clampGridColumns, maxGridColumns} from "../../api/Util";
 import DialogWindow from "../common/DialogWindow";
 import './ConfigMenu.scss';
 import {useContext, useEffect, useState} from "react";
@@ -15,14 +14,6 @@ const ConfigMenu = () => {
   // const [prefs, setPrefs] = useLocalStoragePrefs<Prefs>("prefs-v1", Constants.defaultPreferences)
   const [prefs, setPrefs, removeValue] = useLocalStorage(Constants.preferenceKey, Constants.defaultPreferences)
   const { themeSetting, setTheme } = useTheme();
-  const [maxColumns, setMaxColumns] = useState(() => maxGridColumns())
-
-  useEffect(() => {
-    const updateMaxColumns = () => setMaxColumns(maxGridColumns())
-    updateMaxColumns()
-    window.addEventListener('resize', updateMaxColumns)
-    return () => window.removeEventListener('resize', updateMaxColumns)
-  }, [])
 
   const themeOptions: Array<{value: ThemeSetting, label: string}> = [
     { value: 'system', label: 'System' },
@@ -45,10 +36,9 @@ const ConfigMenu = () => {
 
   const gridAspectRatio = prefs.gridAspectRatio ?? '16/9'
   const gridOrientation = prefs.gridOrientation ?? 'landscape'
-  const galleryColumns = clampGridColumns(
-    typeof prefs.gallery_columns === 'number' ? prefs.gallery_columns : Constants.defaultPreferences.gallery_columns,
-    window.innerWidth
-  )
+  const gridCellWidth = typeof prefs.gridCellWidth === 'number'
+    ? prefs.gridCellWidth
+    : Constants.defaultPreferences.gridCellWidth
 
   const updatePrefs = (values: {}) => { setPrefs({...prefs, ...values} ) }
   const session = useContext(SessionContext)
@@ -67,18 +57,18 @@ const ConfigMenu = () => {
                 <p key="header" className="form-label">Grid size</p>
                 <div key="content" className="form-content">
                   <div className="column-slider">
-                    <span className="column-slider-label">Less</span>
+                    <span className="column-slider-label">Small</span>
                     <input
                       type="range"
-                      min={1}
-                      max={maxColumns}
-                      step={1}
-                      value={galleryColumns}
+                      min={Constants.minGridCellWidth}
+                      max={Constants.maxGridCellWidth}
+                      step={20}
+                      value={gridCellWidth}
                       onChange={(e) => {
-                        updatePrefs({gallery_columns: parseInt(e.target.value, 10)})
+                        updatePrefs({gridCellWidth: parseInt(e.target.value, 10)})
                       }}
                     />
-                    <span className="column-slider-label">More</span>
+                    <span className="column-slider-label">Large</span>
                   </div>
                 </div>
               </div>

@@ -147,12 +147,9 @@ export function boundedRatioBox(maxWidth: string, maxHeight: string, ratio: numb
   }
 }
 
-export const maxGridColumns = (width: number = window.innerWidth) => {
-  return Math.max(1, Math.floor(width / Constants.minGridCellWidth))
-}
-
-export const clampGridColumns = (columns: number, width: number = window.innerWidth) => {
-  return Math.min(Math.max(1, Math.round(columns)), maxGridColumns(width))
+/** Number of columns that fit when every grid cell targets the given width. */
+export const gridColumnsForWidth = (cellWidth: number, width: number = window.innerWidth) => {
+  return Math.max(1, Math.round(width / Math.max(1, cellWidth)))
 }
 
 const aspectRatioValues: Record<GridAspectRatio, number> = {
