@@ -24,7 +24,6 @@ trait CreateThumbnail:
       "-i",       input
     ) ++ scaleFilter(scaleWidth, scaleHeight).toList.flatMap(filter => List("-vf", filter)) ++
       List(
-        "-quality", "80", // 1 - 31 (best-worst) for jpeg, 1-100 (worst-best) for webp
         "-vframes", "1",
         "-v",       "quiet",
         "-y",       output
@@ -42,7 +41,6 @@ trait CreateThumbnail:
     val args = List("-i", input) ++
       scaleFilter(width, height).toList.flatMap(filter => List("-vf", filter)) ++
       List(
-        "-quality", "80", // 1 - 31 (best-worst) for jpeg, 1-100 (worst-best) for webp
         "-vframes", "1",
         "-v",       "quiet",
         "-y",       output

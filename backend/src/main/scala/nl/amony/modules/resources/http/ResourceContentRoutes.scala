@@ -59,11 +59,11 @@ object ResourceContentRoutes extends Logging {
           val ts = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
           if urlTimestamp == ts then
             val (width, height) = scaledDimensions(pixels, dimension, source, even = true)
-            Some(VideoThumbnail(width = width, height = height, quality = 23, timestamp = ts, format = format))
+            Some(VideoThumbnail(width = width, height = height, timestamp = ts, format = format))
           else None
         case Some(_: ImageProperties)     =>
           val (width, height) = scaledDimensions(pixels, dimension, source, even = false)
-          Some(ImageThumbnail(width = width, height = height, quality = 0, format = format))
+          Some(ImageThumbnail(width = width, height = height, format = format))
         case _                            => None
       }
     }

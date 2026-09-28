@@ -33,43 +33,43 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
 
     "cap a width request at the source width instead of upscaling" in {
       val op = ResourceContentRoutes.patterns.thumbnailOperation(1000, "w", "4320", "webp", resolutions, formats, videoInfo(1920, 1080))
-      assert(op == Some(VideoThumbnail(width = Some(1920), height = None, quality = 23, timestamp = 1000, format = ImageFormat.Webp)))
+      assert(op == Some(VideoThumbnail(width = Some(1920), height = None, timestamp = 1000, format = ImageFormat.Webp)))
     }
 
     "cap a height request at the source height instead of upscaling" in {
       val op = ResourceContentRoutes.patterns.thumbnailOperation(1000, "h", "4320", "webp", resolutions, formats, videoInfo(1920, 1080))
-      assert(op == Some(VideoThumbnail(width = None, height = Some(1080), quality = 23, timestamp = 1000, format = ImageFormat.Webp)))
+      assert(op == Some(VideoThumbnail(width = None, height = Some(1080), timestamp = 1000, format = ImageFormat.Webp)))
     }
 
     "round video dimensions down to an even number" in {
       val op = ResourceContentRoutes.patterns.thumbnailOperation(1000, "w", "4320", "webp", resolutions, formats, videoInfo(1921, 1081))
-      assert(op == Some(VideoThumbnail(width = Some(1920), height = None, quality = 23, timestamp = 1000, format = ImageFormat.Webp)))
+      assert(op == Some(VideoThumbnail(width = Some(1920), height = None, timestamp = 1000, format = ImageFormat.Webp)))
     }
 
     "not cap a request smaller than the source" in {
       val op = ResourceContentRoutes.patterns.thumbnailOperation(1000, "w", "352", "webp", resolutions, formats, videoInfo(1920, 1080))
-      assert(op == Some(VideoThumbnail(width = Some(352), height = None, quality = 23, timestamp = 1000, format = ImageFormat.Webp)))
+      assert(op == Some(VideoThumbnail(width = Some(352), height = None, timestamp = 1000, format = ImageFormat.Webp)))
     }
 
     "serve a lower rung when resolution-step-down is configured" in {
       val stepped = ThumbnailResolutions(List(352, 4320), 352, stepDown = 1)
       val op      = ResourceContentRoutes.patterns.thumbnailOperation(1000, "w", "4320", "webp", stepped, formats, videoInfo(1920, 1080))
-      assert(op == Some(VideoThumbnail(width = Some(352), height = None, quality = 23, timestamp = 1000, format = ImageFormat.Webp)))
+      assert(op == Some(VideoThumbnail(width = Some(352), height = None, timestamp = 1000, format = ImageFormat.Webp)))
     }
 
     "use the requested image format" in {
       val op = ResourceContentRoutes.patterns.thumbnailOperation(0, "w", "352", "avif", resolutions, formats, imageInfo(1600, 1063))
-      assert(op == Some(ImageThumbnail(width = Some(352), height = None, quality = 0, format = ImageFormat.Avif)))
+      assert(op == Some(ImageThumbnail(width = Some(352), height = None, format = ImageFormat.Avif)))
     }
 
     "fall back to the most preferred format for an unsupported one" in {
       val op = ResourceContentRoutes.patterns.thumbnailOperation(0, "w", "352", "bmp", resolutions, formats, imageInfo(1600, 1063))
-      assert(op == Some(ImageThumbnail(width = Some(352), height = None, quality = 0, format = ImageFormat.Avif)))
+      assert(op == Some(ImageThumbnail(width = Some(352), height = None, format = ImageFormat.Avif)))
     }
 
     "cap image thumbnails without rounding to even" in {
       val op = ResourceContentRoutes.patterns.thumbnailOperation(0, "h", "4320", "webp", resolutions, formats, imageInfo(1600, 1063))
-      assert(op == Some(ImageThumbnail(width = None, height = Some(1063), quality = 0, format = ImageFormat.Webp)))
+      assert(op == Some(ImageThumbnail(width = None, height = Some(1063), format = ImageFormat.Webp)))
     }
 
     "reject a video thumbnail when the timestamp does not match" in {
