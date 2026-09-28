@@ -10,13 +10,6 @@ enum ImageFormat(val configName: String, val extension: String, val mimeType: St
 object ImageFormat:
   def fromName(name: String): Option[ImageFormat] = values.find(_.configName == name)
 
-/**
- * The closed, ordered set of image formats the server can encode into.
- *
- * The order is the client's preference order (best compression first): the frontend picks the first
- * format its browser can decode. The first entry is also the server-side fallback for unknown or
- * unsupported format names in a URL, so clients cannot request arbitrary formats.
- */
 final class ThumbnailFormats(supported: List[ImageFormat]):
 
   require(supported.nonEmpty, "At least one thumbnail image format must be configured")
