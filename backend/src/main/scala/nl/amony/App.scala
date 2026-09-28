@@ -111,7 +111,11 @@ object App extends ResourceApp.Forever with Logging {
         resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
         authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
         collectionsDal     = ResourceDatabase(databasePool)
-        thumbResolutions   = ThumbnailResolutions(appConfig.resources.thumbnails.allowedResolutions, appConfig.resources.thumbnails.defaultResolution)
+        thumbResolutions   = ThumbnailResolutions(
+                               appConfig.resources.thumbnails.allowedResolutions,
+                               appConfig.resources.thumbnails.defaultResolution,
+                               appConfig.resources.thumbnails.resolutionStepDown
+                             )
         apiRoutes          = {
           given ApiSecurity = authModule.apiSecurity
 

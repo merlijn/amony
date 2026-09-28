@@ -4,13 +4,12 @@ import org.scalatest.wordspec.AnyWordSpecLike
 
 class ThumbnailResolutionsSpec extends AnyWordSpecLike {
 
-  private val resolutions = ThumbnailResolutions(Map("xxs" -> 144, "s" -> 352, "l" -> 1080), "s")
+  private val resolutions = ThumbnailResolutions(List(128, 256, 512, 1024), 512, stepDown = 0)
 
   "ThumbnailResolutions" should {
 
     "order sizes from smallest to largest" in {
-      assert(resolutions.sizes.map(_.key) == List("xxs", "s", "l"))
-      assert(resolutions.sizes.map(_.pixels) == List(144, 352, 1080))
+      assert(resolutions.sizes == List(128, 256, 512, 1024))
     }
 
     "expose both dimensions" in {
@@ -19,20 +18,36 @@ class ThumbnailResolutionsSpec extends AnyWordSpecLike {
       assert(resolutions.dimensions.map(_.token) == List("w", "h"))
     }
 
-    "fall back to the default size for unknown keys" in {
-      assert(resolutions.pixelsFor("does-not-exist") == 352)
-      assert(resolutions.default.key == "s")
-      assert(resolutions.default.pixels == 352)
+    "serve the requested size when no step-down is configured" in {
+      assert(resolutions.default == 512)
+      assert(resolutions.effectiveSize(512) == 512)
     }
 
-    "resolve a dimension token and key" in {
-      assert(resolutions.resolve("w", "l") == (ThumbnailDimension.Width, 1080))
-      assert(resolutions.resolve("h", "xxs") == (ThumbnailDimension.Height, 144))
+    "fall back to the default for unknown sizes" in {
+      assert(resolutions.effectiveSize(999) == 512)
     }
 
-    "reject an empty configuration or an unknown default key" in {
-      assertThrows[IllegalArgumentException](ThumbnailResolutions(Map.empty, "s"))
-      assertThrows[IllegalArgumentException](ThumbnailResolutions(Map("a" -> 100), "missing"))
+    "step down the requested size by the configured number of rungs" in {
+      val stepped = ThumbnailResolutions(List(128, 256, 512, 1024), 512, stepDown = 1)
+      assert(stepped.effectiveSize(512) == 256)
+      assert(stepped.effectiveSize(1024) == 512)
+    }
+
+    "not step below the smallest configured size" in {
+      val stepped = ThumbnailResolutions(List(128, 256, 512, 1024), 512, stepDown = 5)
+      assert(stepped.effectiveSize(512) == 128)
+    }
+
+    "resolve a dimension token and apply the step-down" in {
+      val stepped = ThumbnailResolutions(List(128, 256, 512), 256, stepDown = 1)
+      assert(stepped.resolve("w", 512) == (ThumbnailDimension.Width, 256))
+      assert(stepped.resolve("h", 512) == (ThumbnailDimension.Height, 256))
+    }
+
+    "reject an empty configuration, an unknown default or a negative step-down" in {
+      assertThrows[IllegalArgumentException](ThumbnailResolutions(Nil, 512, 0))
+      assertThrows[IllegalArgumentException](ThumbnailResolutions(List(128, 256), 512, 0))
+      assertThrows[IllegalArgumentException](ThumbnailResolutions(List(128, 256), 256, -1))
     }
   }
 }

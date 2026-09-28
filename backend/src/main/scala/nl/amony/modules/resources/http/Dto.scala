@@ -131,7 +131,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     case Some(_: VideoProperties) =>
       val start    = thumbnailTimestamp.toLong
       val end      = Math.min(contentMeta.duration, start + 3000L)
-      val clipUrls = List(s"/api/resources/${resource.bucketId}/${resource.resourceId}/clip_${thumbnailTimestamp}_${ThumbnailDimension.Height.token}_${ThumbnailResolutions.DefaultKey}.mp4")
+      val clipUrls = List(s"/api/resources/${resource.bucketId}/${resource.resourceId}/clip_${thumbnailTimestamp}_${ThumbnailDimension.Height.token}_${ThumbnailResolutions.DefaultClipSize}.mp4")
       Some(ClipDto(resourceId = resource.resourceId, start = start, end = end, urls = clipUrls, description = None, tags = List.empty))
     case _                        =>
       None

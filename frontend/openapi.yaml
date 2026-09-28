@@ -1589,7 +1589,8 @@ components:
         thumbnailSizes:
           type: array
           items:
-            $ref: '#/components/schemas/ThumbnailSizeDto'
+            type: integer
+            format: int32
         thumbnailDimensions:
           type: array
           items:
@@ -1843,20 +1844,9 @@ components:
       type: object
       required:
       - dimension
-      - key
-      properties:
-        dimension:
-          type: string
-        key:
-          type: string
-    ThumbnailSizeDto:
-      title: ThumbnailSizeDto
-      type: object
-      required:
-      - key
       - pixels
       properties:
-        key:
+        dimension:
           type: string
         pixels:
           type: integer

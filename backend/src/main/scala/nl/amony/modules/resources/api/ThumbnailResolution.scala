@@ -8,36 +8,42 @@ enum ThumbnailDimension(val token: String, val name: String):
 object ThumbnailDimension:
   def fromToken(token: String): Option[ThumbnailDimension] = values.find(_.token == token)
 
-/** A resolution key and the pixel size it pins for the chosen [[ThumbnailDimension]]. */
-case class ThumbnailSize(key: String, pixels: Int)
-
 /**
- * The fixed, configurable set of thumbnail resolutions.
+ * The fixed, configurable set of thumbnail resolutions (pixel sizes), ordered smallest to largest.
  *
- * Keys are deliberately a small, closed set: clients pick a key and a dimension, never a pixel size,
- * so a client cannot make the server generate (and cache) arbitrary thumbnail sizes. Unknown keys
- * fall back to the default.
+ * Clients request one of the configured sizes by number; `stepDown` lets the server serve an even
+ * smaller size (e.g. to trade quality for bandwidth). Unknown sizes fall back to the default. Keeping
+ * the set closed prevents a client from requesting arbitrary sizes and polluting the thumbnail cache.
  */
-final class ThumbnailResolutions(allowed: Map[String, Int], defaultKey: String):
+final class ThumbnailResolutions(allowed: List[Int], defaultSize: Int, stepDown: Int):
 
   require(allowed.nonEmpty, "At least one thumbnail resolution must be configured")
-  require(allowed.contains(defaultKey), s"Default thumbnail resolution '$defaultKey' is not in the configured resolutions: ${allowed.keys.mkString(", ")}")
+  require(allowed.contains(defaultSize), s"Default thumbnail resolution $defaultSize is not in the configured resolutions: ${allowed.mkString(", ")}")
+  require(stepDown >= 0, s"resolution-step-down must be >= 0, got $stepDown")
 
-  /** Resolutions ordered from smallest to largest. */
-  val sizes: List[ThumbnailSize] = allowed.toList.sortBy(_._2).map((key, pixels) => ThumbnailSize(key, pixels))
+  /** Configured sizes, smallest to largest. */
+  val sizes: List[Int] = allowed.distinct.sorted
 
   val dimensions: List[ThumbnailDimension] = ThumbnailDimension.values.toList
 
-  val default: ThumbnailSize = sizes.find(_.key == defaultKey).getOrElse(sizes(sizes.size / 2))
+  val default: Int = defaultSize
 
-  /** Pixel size for a key, falling back to the default for unknown keys. */
-  def pixelsFor(key: String): Int = allowed.getOrElse(key, default.pixels)
+  /**
+   * The size actually served for a requested size: unknown sizes fall back to the default, then the
+   * configured number of ladder steps is subtracted (clamped to the smallest configured size).
+   */
+  def effectiveSize(requested: Int): Int = {
+    val index = sizes.indexOf(requested) match
+      case -1 => sizes.indexOf(default)
+      case i  => i
+    sizes(math.max(0, index - stepDown))
+  }
 
-  /** Resolves a `(dimension token, key)` pair from a public URL to a dimension and pixel size. */
-  def resolve(dimensionToken: String, key: String): (ThumbnailDimension, Int) =
-    (ThumbnailDimension.fromToken(dimensionToken).getOrElse(ThumbnailDimension.Width), pixelsFor(key))
+  /** Resolves a `(dimension token, requested size)` pair from a public URL to a dimension and size. */
+  def resolve(dimensionToken: String, requested: Int): (ThumbnailDimension, Int) =
+    (ThumbnailDimension.fromToken(dimensionToken).getOrElse(ThumbnailDimension.Width), effectiveSize(requested))
 
 object ThumbnailResolutions:
 
-  /** Temporary default used by server-built clip URLs until clips support dimensions. */
-  val DefaultKey = "s"
+  /** Fixed size used for server-built clip previews until clips support dimensions/resolutions. */
+  val DefaultClipSize = 512

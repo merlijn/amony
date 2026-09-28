@@ -30,8 +30,9 @@ object ResolutionPickingStrategy:
     }
 
 case class ThumbnailConfig(
-  allowedResolutions: Map[String, Int],
-  defaultResolution: String,
+  allowedResolutions: List[Int],
+  defaultResolution: Int,
+  resolutionStepDown: Int,
   resolutionPickingStrategy: ResolutionPickingStrategy
 ) derives ConfigReader
 

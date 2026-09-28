@@ -18,11 +18,11 @@ object ResourceContentRoutes extends Logging {
 
   object patterns {
 
-    // Public URL patterns: timestamp for cache-busting + pinned dimension + resolution key.
-    // thumb_{timestamp}_{dim}_{resKey}.webp  e.g. thumb_2863_w_m.webp  (videos and images)
-    // clip_{timestamp}_{dim}_{resKey}.mp4    e.g. clip_2863_h_s.mp4    (videos only)
-    val PublicThumbnailPattern = raw"thumb_(\d+)_([wh])_([a-z]+)\.webp".r
-    val PublicClipPattern      = raw"clip_(\d+)_([wh])_([a-z]+)\.mp4".r
+    // Public URL patterns: timestamp for cache-busting + pinned dimension + resolution size in pixels.
+    // thumb_{timestamp}_{dim}_{size}.webp  e.g. thumb_2863_w_768.webp  (videos and images)
+    // clip_{timestamp}_{dim}_{size}.mp4    e.g. clip_2863_h_512.mp4    (videos only)
+    val PublicThumbnailPattern = raw"thumb_(\d+)_([wh])_(\d+)\.webp".r
+    val PublicClipPattern      = raw"clip_(\d+)_([wh])_(\d+)\.mp4".r
 
     /** The resource's native pixel dimensions (0, 0 when unknown). */
     private def sourceDimensions(resource: ResourceInfo): (Int, Int) = resource.basicContentProperties match {
@@ -49,17 +49,18 @@ object ResourceContentRoutes extends Logging {
      * canonical timestamp, preventing arbitrary timestamp injection.
      */
     def thumbnailOperation(urlTimestamp: Long, dimensionToken: String, resolutionKey: String, resolutions: ThumbnailResolutions, resource: ResourceInfo): Option[ResourceOperation] = {
-      val (dimension, requested) = resolutions.resolve(dimensionToken, resolutionKey)
+      val requestedSize          = resolutionKey.toIntOption.getOrElse(resolutions.default)
+      val (dimension, pixels)    = resolutions.resolve(dimensionToken, requestedSize)
       val source                 = sourceDimensions(resource)
       resource.basicContentProperties match {
         case Some(video: VideoProperties) =>
           val ts = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
           if urlTimestamp == ts then
-            val (width, height) = scaledDimensions(requested, dimension, source, even = true)
+            val (width, height) = scaledDimensions(pixels, dimension, source, even = true)
             Some(VideoThumbnail(width = width, height = height, quality = 23, timestamp = ts))
           else None
         case Some(_: ImageProperties)     =>
-          val (width, height) = scaledDimensions(requested, dimension, source, even = false)
+          val (width, height) = scaledDimensions(pixels, dimension, source, even = false)
           Some(ImageThumbnail(width = width, height = height, quality = 0))
         case _                            => None
       }
@@ -70,14 +71,15 @@ object ResourceContentRoutes extends Logging {
      * canonical timestamp, preventing arbitrary start/end injection.
      */
     def clipOperation(urlTimestamp: Long, dimensionToken: String, resolutionKey: String, resolutions: ThumbnailResolutions, resource: ResourceInfo): Option[ResourceOperation] = {
-      val (dimension, requested) = resolutions.resolve(dimensionToken, resolutionKey)
-      val source                 = sourceDimensions(resource)
+      val requestedSize       = resolutionKey.toIntOption.getOrElse(resolutions.default)
+      val (dimension, pixels) = resolutions.resolve(dimensionToken, requestedSize)
+      val source              = sourceDimensions(resource)
       resource.basicContentProperties match {
         case Some(video: VideoProperties) =>
           val start = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
           if urlTimestamp == start then
             val end             = Math.min(video.durationInMillis.toLong, start + 3000L)
-            val (width, height) = scaledDimensions(requested, dimension, source, even = true)
+            val (width, height) = scaledDimensions(pixels, dimension, source, even = true)
             Some(VideoFragment(width = width, height = height, start = start, end = end, quality = 23))
           else None
         case _                            =>
