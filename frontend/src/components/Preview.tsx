@@ -10,6 +10,8 @@ import FragmentsPlayer from "./common/FragmentsPlayer";
 import './Preview.scss';
 import {ErrorBoundary} from "react-error-boundary";
 import {SessionContext} from "../api/Constants";
+import {useAppConfig} from "../api/ConfigContext";
+import {thumbnailSources} from "../api/ResourceUrls";
 import {ResourceDto} from "../api/generated";
 import LazyImage from "./common/LazyImage";
 import {FiAlertCircle, FiInfo} from "react-icons/fi";
@@ -20,6 +22,8 @@ import ResourceDetailsDialog from "./dialogs/ResourceDetailsDialog";
 export type PreviewProps = {
   resource: ResourceDto,
   options: PreviewOptions,
+  /** CSS width of the media slot, used to pick an appropriately sized thumbnail. */
+  mediaWidthPx?: number,
   onClick: (v: ResourceDto) => any,
 }
 
@@ -33,6 +37,14 @@ export type PreviewOptions = {
   aspectRatio?: string,
 }
 
+const defaultAspectRatio = 16 / 9;
+
+const parseAspectRatio = (value?: string): number => {
+  if (!value) return defaultAspectRatio;
+  const [width, height] = value.split("/").map((part) => Number(part.trim()));
+  return width > 0 && height > 0 ? width / height : defaultAspectRatio;
+}
+
 const Preview = (props: PreviewProps) => {
   const resource = props.resource
   const [isHovering, setIsHovering] = useState(false)
@@ -44,6 +56,7 @@ const Preview = (props: PreviewProps) => {
   const mediaTitle  = resource.title || titleFromPath(resource.path)
   const isVideo   = resource.contentType.startsWith("video")
   const session = useContext(SessionContext)
+  const config  = useAppConfig()
   const isMediaTypeSupported = canBrowserPlayType(resource.contentType)
 
   const titlePanel =
@@ -63,11 +76,16 @@ const Preview = (props: PreviewProps) => {
         { !isMediaTypeSupported && <div className="preview-unsupported-overlay"><FiAlertCircle color="#fff" /></div> }
       </div>
 
+  const thumbnail = thumbnailSources(resource, config, props.mediaWidthPx ?? 400, parseAspectRatio(props.options.aspectRatio))
+
   const primaryThumbnail =
       <LazyImage
         loadImage = { () =>
           <img
-              src       = { resource.urls.thumbnailUrl } alt="an image"
+              src       = { thumbnail.src }
+              srcSet    = { thumbnail.srcSet }
+              sizes     = { thumbnail.sizes }
+              alt       = "an image"
               onClick   = { () => props.onClick(props.resource) }
               className = { `preview-thumbnail preview-media` }
           />

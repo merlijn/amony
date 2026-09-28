@@ -1,7 +1,8 @@
 import {BrowserRouter, Route, Routes, useParams} from 'react-router-dom';
 import React, {lazy, Suspense, useMemo, use} from 'react';
 import {Constants, SessionContext} from "./api/Constants";
-import {getSession} from "./api/generated";
+import {ConfigContext} from "./api/ConfigContext";
+import {getConfig, getSession} from "./api/generated";
 import {AxiosError} from "axios";
 import {SessionInfo} from "./api/Model";
 import {ThemeProvider} from "./ThemeContext";
@@ -29,13 +30,22 @@ function App() {
         }),
     []);
 
+  const configPromise = useMemo(() =>
+      getConfig()
+        .catch((error: AxiosError) => {
+          // Without config the frontend still works, it just falls back to the default thumbnail resolution.
+          console.log("Error getting app config", error);
+          return undefined;
+        }),
+    []);
+
   return (
     <ThemeProvider>
       <div className="app-root">
         <BrowserRouter>
           <Suspense fallback={<div />}>
             <EventBusProvider>
-              <SessionGate sessionPromise={sessionPromise} />
+              <SessionGate sessionPromise={sessionPromise} configPromise={configPromise} />
             </EventBusProvider>
           </Suspense>
         </BrowserRouter>
@@ -44,22 +54,28 @@ function App() {
   );
 }
 
-function SessionGate({ sessionPromise }: { sessionPromise: Promise<SessionInfo | null> }) {
+function SessionGate({ sessionPromise, configPromise }: {
+  sessionPromise: Promise<SessionInfo | null>,
+  configPromise: Promise<Awaited<ReturnType<typeof getConfig>> | undefined>
+}) {
   const session = use(sessionPromise);
+  const config  = use(configPromise);
 
   if (session === null) {
     return <LoginPage />;
   }
 
   return (
-    <SessionContext.Provider value={session}>
-      <Routes>
-        <Route path="/" element={<Main />} />
-        <Route path="/search" element={<Main />} />
-        <Route path="/video-wall" element={<VideoWall />} />
-        <Route path="/compilation" element={<Compilation />} />
-      </Routes>
-    </SessionContext.Provider>
+    <ConfigContext.Provider value={config}>
+      <SessionContext.Provider value={session}>
+        <Routes>
+          <Route path="/" element={<Main />} />
+          <Route path="/search" element={<Main />} />
+          <Route path="/video-wall" element={<VideoWall />} />
+          <Route path="/compilation" element={<Compilation />} />
+        </Routes>
+      </SessionContext.Provider>
+    </ConfigContext.Provider>
   );
 }
 

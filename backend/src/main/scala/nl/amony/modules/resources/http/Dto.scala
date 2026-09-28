@@ -28,8 +28,6 @@ case class BulkTagsUpdateDto(ids: List[String], tagsToRemove: List[String], tags
 
 case class ResourceMetaDto(width: Int, height: Int, fps: Float, duration: Long, codec: Option[String]) derives Codec, sttp.tapir.Schema
 
-case class ResourceUrlsDto(originalResourceUrl: String, thumbnailUrl: String, previewThumbnailsUrl: Option[String]) derives Codec, sttp.tapir.Schema
-
 case class ResourceToolMetaDto(toolName: String, toolData: Json) derives Codec
 
 object ResourceToolMetaDto {
@@ -56,7 +54,6 @@ case class ResourceDto(
   tags: List[String],
   contentType: String,
   contentMeta: ResourceMetaDto,
-  urls: ResourceUrlsDto,
   thumbnailTimestamp: Option[Int],
   @customise(required)
   clips: List[ClipDto],
@@ -112,9 +109,6 @@ case class CreateCollectionDto(
 
 def toDto(resource: ResourceInfo): ResourceDto = {
 
-  // Default resolution key used in public URLs
-  val defaultResolutionKey = "s"
-
   val durationInMillis = resource.basicContentProperties match {
     case Some(m: VideoProperties) => m.durationInMillis
     case _                        => 0
@@ -132,20 +126,12 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     case None => ResourceMetaDto(width = 0, height = 0, duration = 0, fps = 0, codec = None)
   }
 
-  // Timestamp is embedded in URLs for browser cache-busting: when the thumbnail
-  // timestamp changes the URL changes, forcing a fresh fetch.
-  val urls = ResourceUrlsDto(
-    originalResourceUrl  = s"/api/resources/${resource.bucketId}/${resource.resourceId}/content",
-    thumbnailUrl         = s"/api/resources/${resource.bucketId}/${resource.resourceId}/thumb_${thumbnailTimestamp}_$defaultResolutionKey.webp",
-    previewThumbnailsUrl = Some(s"/api/resources/${resource.bucketId}/${resource.resourceId}/timeline.vtt")
-  )
-
   // A preview clip starting at the thumbnail timestamp, capped at 3 seconds and the video length
   val thumbnailClip = resource.basicContentProperties match {
     case Some(_: VideoProperties) =>
       val start    = thumbnailTimestamp.toLong
       val end      = Math.min(contentMeta.duration, start + 3000L)
-      val clipUrls = List(s"/api/resources/${resource.bucketId}/${resource.resourceId}/clip_${thumbnailTimestamp}_$defaultResolutionKey.mp4")
+      val clipUrls = List(s"/api/resources/${resource.bucketId}/${resource.resourceId}/clip_${thumbnailTimestamp}_${ThumbnailResolution.defaultKey}.mp4")
       Some(ClipDto(resourceId = resource.resourceId, start = start, end = end, urls = clipUrls, description = None, tags = List.empty))
     case _                        =>
       None
@@ -170,7 +156,6 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     tags               = resource.tags.toList,
     contentType        = resource.contentType.getOrElse("application/octet-stream"),
     contentMeta        = contentMeta,
-    urls               = urls,
     thumbnailTimestamp = Some(thumbnailTimestamp),
     clips              = thumbnailClip.toList,
     fullMeta           = fullMeta

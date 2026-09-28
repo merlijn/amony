@@ -18,18 +18,6 @@ object ResourceContentRoutes extends Logging {
 
   object patterns {
 
-    val resolutionsMap = Map(
-      "xxs" -> 144,
-      "xs"  -> 240,
-      "s"   -> 352,
-      "m"   -> 512,
-      "l"   -> 1080, // FHD
-      "xl"  -> 2160, // 4k
-      "xxl" -> 4320  // 8k
-    )
-
-    val defaultResolution = "s"
-
     // Public patterns: timestamp for cache-busting + resolution key (e.g. "s", "m")
     // thumb_{timestamp}_{resKey}.webp  — videos and images
     // clip_{timestamp}_{resKey}.mp4    — videos only
@@ -41,7 +29,7 @@ object ResourceContentRoutes extends Logging {
      * canonical timestamp, preventing arbitrary timestamp injection.
      */
     def thumbnailOperation(urlTimestamp: Long, resolutionKey: String, resource: ResourceInfo): Option[ResourceOperation] = {
-      val height = resolutionsMap.getOrElse(resolutionKey, resolutionsMap(defaultResolution))
+      val height = ThumbnailResolution.heightFor(resolutionKey)
       resource.basicContentProperties match {
         case Some(video: VideoProperties) =>
           val ts = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
@@ -57,7 +45,7 @@ object ResourceContentRoutes extends Logging {
      * canonical timestamp, preventing arbitrary start/end injection.
      */
     def clipOperation(urlTimestamp: Long, resolutionKey: String, resource: ResourceInfo): Option[ResourceOperation] = {
-      val height = resolutionsMap.getOrElse(resolutionKey, resolutionsMap(defaultResolution))
+      val height = ThumbnailResolution.heightFor(resolutionKey)
       resource.basicContentProperties match {
         case Some(video: VideoProperties) =>
           val start = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong

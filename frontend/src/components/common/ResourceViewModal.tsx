@@ -8,6 +8,7 @@ import {MediaPlayer, MediaPlayerInstance, MediaProvider, VideoMimeType,} from "@
 
 import {defaultLayoutIcons, DefaultVideoLayout,} from '@vidstack/react/player/layouts/default';
 import {ResourceDto} from "../../api/generated";
+import {resourceContentUrl} from "../../api/ResourceUrls";
 import ThumbnailEditor from "./ThumbnailEditor";
 import {useEventBus} from "./EventBus";
 import {SessionContext} from "../../api/Constants";
@@ -23,7 +24,7 @@ const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }
   // show modal video player
   useEffect(() => {
     setResource(props.resource);
-    setSrc(props.resource?.urls.originalResourceUrl || '')
+    setSrc(props.resource ? resourceContentUrl(props.resource) : '')
   }, [props.resource]);
 
   const modalSize = (v: ResourceDto): CSSProperties => {

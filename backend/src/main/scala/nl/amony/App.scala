@@ -27,6 +27,7 @@ import nl.amony.lib.tapir.dsl.ServerEndpoints
 import nl.amony.modules.admin.AdminRoutes
 import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.ApiSecurity
+import nl.amony.modules.config.ConfigRoutes
 import nl.amony.modules.resources.ResourceConfig
 import nl.amony.modules.resources.api.ResourceEvent
 import nl.amony.modules.resources.dal.ResourceDatabase
@@ -118,7 +119,8 @@ object App extends ResourceApp.Forever with Logging {
               CollectionRoutes.apply(collectionsDal) ++
               AdminRoutes.apply(searchService, resourceBucketMap) ++
               SearchRoutes.apply(searchService, appConfig.search) ++
-              ResourceRoutes.apply(resourceBucketMap)
+              ResourceRoutes.apply(resourceBucketMap) ++
+              ConfigRoutes.apply()
 
           ResourceContentRoutes.apply(resourceBucketMap) <+>
             Http4sServerInterpreter[IO](serverOptions).toRoutes(tapirEndpoints)

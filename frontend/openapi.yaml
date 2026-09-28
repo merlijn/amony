@@ -1556,8 +1556,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/config:
+    get:
+      tags:
+      - config
+      description: Get client configuration
+      operationId: getConfig
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppConfigDto'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
 components:
   schemas:
+    AppConfigDto:
+      title: AppConfigDto
+      type: object
+      required:
+      - thumbnailResolutions
+      - defaultThumbnailResolution
+      properties:
+        thumbnailResolutions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ThumbnailResolutionDto'
+        defaultThumbnailResolution:
+          type: string
     AuthToken:
       title: AuthToken
       type: object
@@ -1710,7 +1742,6 @@ components:
       - tags
       - contentType
       - contentMeta
-      - urls
       - clips
       - fullMeta
       properties:
@@ -1745,8 +1776,6 @@ components:
           type: string
         contentMeta:
           $ref: '#/components/schemas/ResourceMetaDto'
-        urls:
-          $ref: '#/components/schemas/ResourceUrlsDto'
         thumbnailTimestamp:
           type: integer
           format: int32
@@ -1778,19 +1807,6 @@ components:
           format: int64
         codec:
           type: string
-    ResourceUrlsDto:
-      title: ResourceUrlsDto
-      type: object
-      required:
-      - originalResourceUrl
-      - thumbnailUrl
-      properties:
-        originalResourceUrl:
-          type: string
-        thumbnailUrl:
-          type: string
-        previewThumbnailsUrl:
-          type: string
     SearchResponseDto:
       title: SearchResponseDto
       type: object
@@ -1814,6 +1830,18 @@ components:
           type: array
           items:
             type: string
+    ThumbnailResolutionDto:
+      title: ThumbnailResolutionDto
+      type: object
+      required:
+      - key
+      - height
+      properties:
+        key:
+          type: string
+        height:
+          type: integer
+          format: int32
     ThumbnailTimestampDto:
       title: ThumbnailTimestampDto
       type: object

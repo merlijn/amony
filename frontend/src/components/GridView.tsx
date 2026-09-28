@@ -26,17 +26,19 @@ const initialSearchResult: SearchResponseDto = { offset: 0, total: 0, results: [
 type GridCellProps = {
   resource: ResourceDto,
   columns: number,
+  cellWidthPx: number,
   previewOptions: PreviewOptions,
   onClick: (v: ResourceDto) => void,
 }
 
-const GridCell = React.memo(({ resource, columns, previewOptions, onClick }: GridCellProps) => {
+const GridCell = React.memo(({ resource, columns, cellWidthPx, previewOptions, onClick }: GridCellProps) => {
   const style = { "--ncols": `${columns}` } as CSSProperties
 
   return (
     <div className="grid-cell" style={style}>
       <Preview
         resource={resource}
+        mediaWidthPx={cellWidthPx}
         onClick={onClick}
         options={previewOptions}
       />
@@ -117,6 +119,9 @@ const GridView = (props: GalleryProps) => {
 
   useEffect(() => { if (isFetching && !isEndReached) fetchData(); }, [isFetching, isEndReached]);
 
+  // The configured cell width is a stable, accurate basis for choosing a thumbnail size.
+  const cellWidthPx = props.cellWidth
+
   // Memoize previews to prevent unnecessary re-creation of the array
   const previews = useMemo(() =>
     searchResult.results.map((vid) => (
@@ -124,10 +129,11 @@ const GridView = (props: GalleryProps) => {
         key={`preview-${vid.resourceId}`}
         resource={vid}
         columns={columns}
+        cellWidthPx={cellWidthPx}
         previewOptions={props.previewOptionsFn(vid)}
         onClick={props.onClick}
       />
-    )), [searchResult.results, columns, props.previewOptionsFn, props.onClick]
+    )), [searchResult.results, columns, cellWidthPx, props.previewOptionsFn, props.onClick]
   )
 
   let style = { "--grid-spacing" : `${gridSpacing}px` } as CSSProperties
