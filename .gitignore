@@ -7,6 +7,9 @@
 # codegraph
 .codegraph/
 
+# openchamber
+.openchamber/
+
 backend/.docker-tags.txt
 frontend/src/api/generated
 
