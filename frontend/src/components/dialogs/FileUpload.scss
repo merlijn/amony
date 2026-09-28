@@ -1,7 +1,6 @@
 @use 'src/App.scss' as *;
 
 .file-upload-tab-content {
-  // Keep the upload dialog roughly the same footprint as the profile popup.
   min-width: 340px;
   padding-bottom: 50px;
 }
