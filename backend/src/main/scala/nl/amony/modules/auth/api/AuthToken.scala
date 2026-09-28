@@ -1,10 +1,9 @@
 package nl.amony.modules.auth.api
 
 import io.circe.Codec
-import sttp.tapir.Schema
 import sttp.tapir.Schema.annotations.customise
 
-def required[T](s: Schema[T]) = s.copy(isOptional = false)
+import nl.amony.lib.tapir.required
 
 case class AuthToken(
   userId: UserId,
