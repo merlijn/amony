@@ -16,8 +16,10 @@ case class VideoThumbnail(width: Option[Int] = None, height: Option[Int] = None,
 }
 
 object VideoFragment {
+  val minWidth          = 120
   val minHeight         = 120
-  val maxHeight         = 4096
+  val maxWidth          = 8192
+  val maxHeight         = 8192
   val minLengthInMillis = 1000
   val maxLengthInMillis = 60000
 }
@@ -33,7 +35,8 @@ case class VideoFragment(width: Option[Int] = None, height: Option[Int] = None, 
       case Some(_: VideoProperties) =>
         val duration = end - start
         for
-          _ <- Either.cond(height.exists(_ > minHeight) || height.exists(_ < maxHeight), (), "Height out of bounds")
+          _ <- Either.cond(width.forall(_ >= minWidth) && height.forall(_ >= minHeight), (), "Size too small")
+          _ <- Either.cond(width.forall(_ <= maxWidth) && height.forall(_ <= maxHeight), (), "Size too large")
           _ <- Either.cond(start >= 0, (), "Start time is negative")
           _ <- Either.cond(end > start, (), "End time is before start time")
           _ <- Either.cond(duration > minLengthInMillis, (), "Duration too short")
@@ -47,8 +50,8 @@ case class VideoFragment(width: Option[Int] = None, height: Option[Int] = None, 
 object ImageThumbnail {
   val minHeight = 64
   val minWidth  = 64
-  val maxHeight = 4096
-  val maxWidth  = 4096
+  val maxHeight = 8192
+  val maxWidth  = 8192
 }
 
 case class ImageThumbnail(width: Option[Int] = None, height: Option[Int] = None, quality: Int) extends ResourceOperation {
@@ -59,9 +62,7 @@ case class ImageThumbnail(width: Option[Int] = None, height: Option[Int] = None,
 
   override def validate(info: ResourceInfo): Either[String, Unit] =
     for
-      _ <- Either.cond(height.getOrElse(Int.MaxValue) > minHeight, (), "Height too small")
-      _ <- Either.cond(width.getOrElse(Int.MaxValue) > minWidth, (), "Width too small")
-      _ <- Either.cond(height.getOrElse(0) < maxHeight, (), "Height too large")
-      _ <- Either.cond(width.getOrElse(0) < maxWidth, (), "Width too large")
+      _ <- Either.cond(width.forall(_ >= minWidth) && height.forall(_ >= minHeight), (), "Size too small")
+      _ <- Either.cond(width.forall(_ <= maxWidth) && height.forall(_ <= maxHeight), (), "Size too large")
     yield ()
 }

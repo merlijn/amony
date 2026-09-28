@@ -37,14 +37,6 @@ export type PreviewOptions = {
   aspectRatio?: string,
 }
 
-const defaultAspectRatio = 16 / 9;
-
-const parseAspectRatio = (value?: string): number => {
-  if (!value) return defaultAspectRatio;
-  const [width, height] = value.split("/").map((part) => Number(part.trim()));
-  return width > 0 && height > 0 ? width / height : defaultAspectRatio;
-}
-
 const Preview = (props: PreviewProps) => {
   const resource = props.resource
   const [isHovering, setIsHovering] = useState(false)
@@ -76,7 +68,7 @@ const Preview = (props: PreviewProps) => {
         { !isMediaTypeSupported && <div className="preview-unsupported-overlay"><FiAlertCircle color="#fff" /></div> }
       </div>
 
-  const thumbnail = thumbnailSources(resource, config, props.mediaWidthPx ?? 400, parseAspectRatio(props.options.aspectRatio))
+  const thumbnail = thumbnailSources(resource, config, props.mediaWidthPx ?? 400)
 
   const primaryThumbnail =
       <LazyImage

@@ -36,7 +36,7 @@ const rowHeight = 36
 /** Small fixed-size thumbnail used in the list rows (54x36 CSS px). */
 const ListThumbnail = ({resource, onClick}: {resource: ResourceDto, onClick: (v: ResourceDto) => any}) => {
   const config = useAppConfig()
-  const thumbnail = thumbnailSources(resource, config, 54, 54 / 36)
+  const thumbnail = thumbnailSources(resource, config, 54)
 
   return (
     <LazyImage

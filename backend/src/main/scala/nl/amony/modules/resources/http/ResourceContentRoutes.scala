@@ -18,24 +18,26 @@ object ResourceContentRoutes extends Logging {
 
   object patterns {
 
-    // Public patterns: timestamp for cache-busting + resolution key (e.g. "s", "m")
-    // thumb_{timestamp}_{resKey}.webp  — videos and images
-    // clip_{timestamp}_{resKey}.mp4    — videos only
-    val PublicThumbnailPattern = raw"thumb_(\d+)_([a-z]+)\.webp".r
-    val PublicClipPattern      = raw"clip_(\d+)_([a-z]+)\.mp4".r
+    // Public URL patterns: timestamp for cache-busting + pinned dimension + resolution key.
+    // thumb_{timestamp}_{dim}_{resKey}.webp  e.g. thumb_2863_w_m.webp  (videos and images)
+    // clip_{timestamp}_{dim}_{resKey}.mp4    e.g. clip_2863_h_s.mp4    (videos only)
+    val PublicThumbnailPattern = raw"thumb_(\d+)_([wh])_([a-z]+)\.webp".r
+    val PublicClipPattern      = raw"clip_(\d+)_([wh])_([a-z]+)\.mp4".r
 
     /**
      * Builds a thumbnail operation only when the URL timestamp matches the resource's
      * canonical timestamp, preventing arbitrary timestamp injection.
      */
-    def thumbnailOperation(urlTimestamp: Long, resolutionKey: String, resource: ResourceInfo): Option[ResourceOperation] = {
-      val height = ThumbnailResolution.heightFor(resolutionKey)
+    def thumbnailOperation(urlTimestamp: Long, dimensionToken: String, resolutionKey: String, resolutions: ThumbnailResolutions, resource: ResourceInfo): Option[ResourceOperation] = {
+      val (dimension, pixels) = resolutions.resolve(dimensionToken, resolutionKey)
+      val width               = Option.when(dimension == ThumbnailDimension.Width)(pixels)
+      val height              = Option.when(dimension == ThumbnailDimension.Height)(pixels)
       resource.basicContentProperties match {
         case Some(video: VideoProperties) =>
           val ts = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
-          if urlTimestamp == ts then Some(VideoThumbnail(width = None, height = Some(height), quality = 23, timestamp = ts))
+          if urlTimestamp == ts then Some(VideoThumbnail(width = width, height = height, quality = 23, timestamp = ts))
           else None
-        case Some(_: ImageProperties)     => Some(ImageThumbnail(width = None, height = Some(height), quality = 0))
+        case Some(_: ImageProperties)     => Some(ImageThumbnail(width = width, height = height, quality = 0))
         case _                            => None
       }
     }
@@ -44,14 +46,16 @@ object ResourceContentRoutes extends Logging {
      * Builds a clip operation only when the URL timestamp matches the resource's
      * canonical timestamp, preventing arbitrary start/end injection.
      */
-    def clipOperation(urlTimestamp: Long, resolutionKey: String, resource: ResourceInfo): Option[ResourceOperation] = {
-      val height = ThumbnailResolution.heightFor(resolutionKey)
+    def clipOperation(urlTimestamp: Long, dimensionToken: String, resolutionKey: String, resolutions: ThumbnailResolutions, resource: ResourceInfo): Option[ResourceOperation] = {
+      val (dimension, pixels) = resolutions.resolve(dimensionToken, resolutionKey)
+      val width               = Option.when(dimension == ThumbnailDimension.Width)(pixels)
+      val height              = Option.when(dimension == ThumbnailDimension.Height)(pixels)
       resource.basicContentProperties match {
         case Some(video: VideoProperties) =>
           val start = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
           if urlTimestamp == start then
             val end = Math.min(video.durationInMillis.toLong, start + 3000L)
-            Some(VideoFragment(width = None, height = Some(height), start = start, end = end, quality = 23))
+            Some(VideoFragment(width = width, height = height, start = start, end = end, quality = 23))
           else None
         case _                            =>
           None
@@ -59,7 +63,7 @@ object ResourceContentRoutes extends Logging {
     }
   }
 
-  def apply(buckets: Map[BucketId, ResourceBucket])(using apiSecurity: ApiSecurity): HttpRoutes[IO] = {
+  def apply(buckets: Map[BucketId, ResourceBucket], resolutions: ThumbnailResolutions)(using apiSecurity: ApiSecurity): HttpRoutes[IO] = {
 
     // The content routes are not Tapir endpoints, so the access token has to be read from the cookie directly.
     def authToken(req: Request[IO]) =
@@ -98,9 +102,9 @@ object ResourceContentRoutes extends Logging {
             for
               (bucket, resource) <- getResource(req, BucketId(bucketId), ResourceId(resourceId))
               operation          <- OptionT.fromOption(resourcePattern match {
-                                      case patterns.PublicThumbnailPattern(ts, resKey) => patterns.thumbnailOperation(ts.toLong, resKey, resource.info)
-                                      case patterns.PublicClipPattern(ts, resKey)      => patterns.clipOperation(ts.toLong, resKey, resource.info)
-                                      case _                                           => None
+                                      case patterns.PublicThumbnailPattern(ts, dim, resKey) => patterns.thumbnailOperation(ts.toLong, dim, resKey, resolutions, resource.info)
+                                      case patterns.PublicClipPattern(ts, dim, resKey)      => patterns.clipOperation(ts.toLong, dim, resKey, resolutions, resource.info)
+                                      case _                                                => None
                                     })
               derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))
               response           <- OptionT.liftF(resourceContentsResponse(req, derivedResource)

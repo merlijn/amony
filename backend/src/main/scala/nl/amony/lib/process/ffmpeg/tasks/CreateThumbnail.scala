@@ -6,14 +6,14 @@ import cats.effect.IO
 
 import nl.amony.lib.files.*
 import nl.amony.lib.files.FileUtil.stripExtension
-import nl.amony.lib.process.ffmpeg.FFMpeg.formatTime
+import nl.amony.lib.process.ffmpeg.FFMpeg.{formatTime, scaleFilter}
 import nl.amony.lib.process.{Command, ProcessRunner}
 
 trait CreateThumbnail:
 
   self: ProcessRunner =>
 
-  def createThumbnail(inputFile: Path, timestamp: Long, outputFile: Option[Path], scaleHeight: Option[Int]): IO[Int] =
+  def createThumbnail(inputFile: Path, timestamp: Long, outputFile: Option[Path], scaleWidth: Option[Int] = None, scaleHeight: Option[Int] = None): IO[Int] =
 
     val input  = inputFile.absoluteFileName()
     val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.webp")
@@ -22,7 +22,7 @@ trait CreateThumbnail:
     val args = List(
       "-ss",      formatTime(timestamp),
       "-i",       input
-    ) ++ scaleHeight.toList.flatMap(height => List("-vf",  s"scale=-2:$height")) ++
+    ) ++ scaleFilter(scaleWidth, scaleHeight).toList.flatMap(filter => List("-vf", filter)) ++
       List(
         "-quality", "80", // 1 - 31 (best-worst) for jpeg, 1-100 (worst-best) for webp
         "-vframes", "1",

@@ -1581,15 +1581,20 @@ components:
       title: AppConfigDto
       type: object
       required:
-      - thumbnailResolutions
+      - thumbnailSizes
+      - thumbnailDimensions
       - defaultThumbnailResolution
       properties:
-        thumbnailResolutions:
+        thumbnailSizes:
           type: array
           items:
-            $ref: '#/components/schemas/ThumbnailResolutionDto'
+            $ref: '#/components/schemas/ThumbnailSizeDto'
+        thumbnailDimensions:
+          type: array
+          items:
+            type: string
         defaultThumbnailResolution:
-          type: string
+          $ref: '#/components/schemas/ThumbnailResolutionDto'
     AuthToken:
       title: AuthToken
       type: object
@@ -1834,12 +1839,23 @@ components:
       title: ThumbnailResolutionDto
       type: object
       required:
+      - dimension
       - key
-      - height
+      properties:
+        dimension:
+          type: string
+        key:
+          type: string
+    ThumbnailSizeDto:
+      title: ThumbnailSizeDto
+      type: object
+      required:
+      - key
+      - pixels
       properties:
         key:
           type: string
-        height:
+        pixels:
           type: integer
           format: int32
     ThumbnailTimestampDto:

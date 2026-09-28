@@ -12,6 +12,10 @@ import nl.amony.lib.process.ffmpeg.tasks.*
 
 object FFMpeg {
 
+  /** Builds a scale filter pinning the given width or height (the other dimension follows the source aspect ratio). */
+  def scaleFilter(width: Option[Int], height: Option[Int]): Option[String] =
+    width.map(w => s"scale=$w:-2").orElse(height.map(h => s"scale=-2:$h"))
+
   def formatTime(timestamp: Long): String = {
 
     val duration = Duration.ofMillis(timestamp)

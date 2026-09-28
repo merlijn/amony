@@ -1,29 +1,43 @@
 package nl.amony.modules.resources.api
 
-/** The fixed set of public thumbnail resolutions.
-  *
-  * Keys are deliberately a small, closed set: clients pick a key, never a pixel size, so a client
-  * cannot make the server generate (and cache) arbitrary thumbnail sizes. Unknown keys fall back to
-  * [[defaultKey]].
-  */
-object ThumbnailResolution:
+/** Which side of a thumbnail is pinned to a resolution; the other follows the source aspect ratio. */
+enum ThumbnailDimension(val token: String, val name: String):
+  case Width  extends ThumbnailDimension("w", "width")
+  case Height extends ThumbnailDimension("h", "height")
 
-  /** Resolution key to vertical pixel height, ordered from smallest to largest. */
-  val resolutions: List[(String, Int)] = List(
-    "xxs" -> 144,
-    "xs"  -> 240,
-    "s"   -> 352,
-    "m"   -> 512,
-    "l"   -> 1080, // FHD
-    "xl"  -> 2160, // 4k
-    "xxl" -> 4320  // 8k
-  )
+object ThumbnailDimension:
+  def fromToken(token: String): Option[ThumbnailDimension] = values.find(_.token == token)
 
-  val heights: Map[String, Int] = resolutions.toMap
+/** A resolution key and the pixel size it pins for the chosen [[ThumbnailDimension]]. */
+case class ThumbnailSize(key: String, pixels: Int)
 
-  val defaultKey: String = "s"
+/**
+ * The fixed, configurable set of thumbnail resolutions.
+ *
+ * Keys are deliberately a small, closed set: clients pick a key and a dimension, never a pixel size,
+ * so a client cannot make the server generate (and cache) arbitrary thumbnail sizes. Unknown keys
+ * fall back to the default.
+ */
+final class ThumbnailResolutions(allowed: Map[String, Int], defaultKey: String):
 
-  val defaultHeight: Int = heights(defaultKey)
+  require(allowed.nonEmpty, "At least one thumbnail resolution must be configured")
+  require(allowed.contains(defaultKey), s"Default thumbnail resolution '$defaultKey' is not in the configured resolutions: ${allowed.keys.mkString(", ")}")
 
-  /** Pixel height for a resolution key, falling back to the default for unknown keys. */
-  def heightFor(key: String): Int = heights.getOrElse(key, defaultHeight)
+  /** Resolutions ordered from smallest to largest. */
+  val sizes: List[ThumbnailSize] = allowed.toList.sortBy(_._2).map((key, pixels) => ThumbnailSize(key, pixels))
+
+  val dimensions: List[ThumbnailDimension] = ThumbnailDimension.values.toList
+
+  val default: ThumbnailSize = sizes.find(_.key == defaultKey).getOrElse(sizes(sizes.size / 2))
+
+  /** Pixel size for a key, falling back to the default for unknown keys. */
+  def pixelsFor(key: String): Int = allowed.getOrElse(key, default.pixels)
+
+  /** Resolves a `(dimension token, key)` pair from a public URL to a dimension and pixel size. */
+  def resolve(dimensionToken: String, key: String): (ThumbnailDimension, Int) =
+    (ThumbnailDimension.fromToken(dimensionToken).getOrElse(ThumbnailDimension.Width), pixelsFor(key))
+
+object ThumbnailResolutions:
+
+  /** Temporary default used by server-built clip URLs until clips support dimensions. */
+  val DefaultKey = "s"

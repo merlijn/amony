@@ -1,20 +1,14 @@
 import {AppConfigDto, ResourceDto} from "./generated";
 
-const defaultAspectRatio = 16 / 9;
-
 /** URL of the original (full-size) resource content. */
 export const resourceContentUrl = (resource: ResourceDto): string =>
   `/api/resources/${resource.bucketId}/${resource.resourceId}/content`;
 
-/** URL of a derived thumbnail at a given resolution key (e.g. "s", "m"). */
-export const resourceThumbnailUrl = (resource: ResourceDto, resolutionKey: string): string =>
-  `/api/resources/${resource.bucketId}/${resource.resourceId}/thumb_${resource.thumbnailTimestamp ?? 0}_${resolutionKey}.webp`;
+const dimensionToken = (dimension: string): string => dimension === "height" ? "h" : "w";
 
-/** The aspect ratio (width / height) of the resource's own media, with a sane fallback. */
-export const sourceAspectRatio = (resource: ResourceDto): number => {
-  const {width, height} = resource.contentMeta;
-  return width > 0 && height > 0 ? width / height : defaultAspectRatio;
-};
+/** URL of a derived thumbnail pinning a dimension ("width" | "height") and a resolution key (e.g. "s", "m"). */
+export const resourceThumbnailUrl = (resource: ResourceDto, dimension: string, resolutionKey: string): string =>
+  `/api/resources/${resource.bucketId}/${resource.resourceId}/thumb_${resource.thumbnailTimestamp ?? 0}_${dimensionToken(dimension)}_${resolutionKey}.webp`;
 
 export type ThumbnailSources = {
   src: string;
@@ -23,36 +17,30 @@ export type ThumbnailSources = {
 };
 
 /**
- * Builds an `<img>` source set for a resource from the server-provided thumbnail resolutions.
+ * Builds an `<img>` source set for a resource from the server-provided thumbnail sizes.
  *
- * `boxWidthCss` is the CSS width of the slot the image fills. Because images are displayed with
- * `object-fit: cover`, a slot whose aspect ratio differs from the source needs a wider image; that is
- * reflected in `sizes` so the browser picks a large enough candidate.
- *
- * When no config is available, falls back to a single default-resolution URL.
+ * Grid/list thumbnails are cropped to fill a fixed-aspect box with `object-fit: cover`, so the
+ * image is scaled to the box width and the width is the operative dimension. The `w` descriptors
+ * therefore equal the configured pixel sizes directly, and `sizes` is simply the box width.
  */
 export const thumbnailSources = (
   resource: ResourceDto,
   config: AppConfigDto | undefined,
-  boxWidthCss: number,
-  boxAspectRatio: number = defaultAspectRatio
+  boxWidthCss: number
 ): ThumbnailSources => {
-  const defaultKey = config?.defaultThumbnailResolution ?? "s";
-  const src        = resourceThumbnailUrl(resource, defaultKey);
-  const resolutions = config?.thumbnailResolutions;
+  const defaultSelection = config?.defaultThumbnailResolution;
+  const src = defaultSelection
+    ? resourceThumbnailUrl(resource, defaultSelection.dimension, defaultSelection.key)
+    : resourceThumbnailUrl(resource, "width", "s");
 
-  if (!resolutions || resolutions.length === 0)
+  const sizes = config?.thumbnailSizes;
+  if (!sizes || sizes.length === 0)
     return { src };
 
-  const aspectRatio = sourceAspectRatio(resource);
-
-  // With object-fit: cover the image has to be at least this wide once scaled to fill the slot.
-  const effectiveWidth = Math.max(1, Math.round(boxWidthCss * Math.max(1, aspectRatio / boxAspectRatio)));
-
-  const srcSet = [...resolutions]
-    .sort((a, b) => a.height - b.height)
-    .map(({key, height}) => `${resourceThumbnailUrl(resource, key)} ${Math.round(height * aspectRatio)}w`)
+  const srcSet = [...sizes]
+    .sort((a, b) => a.pixels - b.pixels)
+    .map(({key, pixels}) => `${resourceThumbnailUrl(resource, "width", key)} ${pixels}w`)
     .join(", ");
 
-  return { src, srcSet, sizes: `${effectiveWidth}px` };
+  return { src, srcSet, sizes: `${Math.max(1, Math.round(boxWidthCss))}px` };
 };

@@ -29,7 +29,7 @@ import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.config.ConfigRoutes
 import nl.amony.modules.resources.ResourceConfig
-import nl.amony.modules.resources.api.ResourceEvent
+import nl.amony.modules.resources.api.{ResourceEvent, ThumbnailResolutions}
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.modules.resources.http.{CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
@@ -111,6 +111,7 @@ object App extends ResourceApp.Forever with Logging {
         resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
         authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
         collectionsDal     = ResourceDatabase(databasePool)
+        thumbResolutions   = ThumbnailResolutions(appConfig.api.allowedResolutions, appConfig.api.defaultResolution)
         apiRoutes          = {
           given ApiSecurity = authModule.apiSecurity
 
@@ -120,9 +121,9 @@ object App extends ResourceApp.Forever with Logging {
               AdminRoutes.apply(searchService, resourceBucketMap) ++
               SearchRoutes.apply(searchService, appConfig.search) ++
               ResourceRoutes.apply(resourceBucketMap) ++
-              ConfigRoutes.apply()
+              ConfigRoutes.apply(thumbResolutions)
 
-          ResourceContentRoutes.apply(resourceBucketMap) <+>
+          ResourceContentRoutes.apply(resourceBucketMap, thumbResolutions) <+>
             Http4sServerInterpreter[IO](serverOptions).toRoutes(tapirEndpoints)
         }
         _                 <- WebServer.run(appConfig.api, apiRoutes)
