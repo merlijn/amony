@@ -34,3 +34,24 @@ input[type="password"] {
 textarea {
   @extend .text-input;
 }
+
+.info-table {
+  border-collapse: collapse;
+
+  .info-label {
+    width: 170px;
+    padding-right: var(--spacing-m);
+    padding-bottom: var(--spacing-m);
+    vertical-align: middle;
+    text-align: left;
+    white-space: nowrap;
+    color: var(--text-tertiary);
+    font-size: small;
+    font-weight: 400;
+  }
+
+  .info-value {
+    padding-bottom: var(--spacing-m);
+    vertical-align: middle;
+  }
+}

@@ -1,28 +1,11 @@
 @use 'src/App.scss' as *;
 
 .resource-details {
-  display: table;
-  table-layout: fixed;
   width: 100%;
+  table-layout: fixed;
 
-  .detail-section {
-    display: table-row;
-
-    .detail-label {
-      @extend .v-align-center, .pr-3, .pb-3;
-      display: table-cell;
-      width: 140px;
-      color: var(--text-tertiary);
-      font-size: small;
-      white-space: nowrap;
-    }
-
-    .detail-value {
-      @extend .v-align-center, .pb-3;
-      display: table-cell;
-      word-break: break-all;
-      font-size: small;
-    }
+  .info-value {
+    word-break: break-all;
   }
 }
 

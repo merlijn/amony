@@ -3,6 +3,7 @@ import * as Tabs from '@radix-ui/react-tabs';
 import { dateMillisToString } from '../../api/Util';
 import { uploadResource } from '../../api/generated';
 import DialogWindow from '../common/DialogWindow';
+import InfoTable, { InfoRow } from '../common/InfoTable';
 import './ConfigMenu.scss';
 import './FileUpload.scss';
 
@@ -65,66 +66,45 @@ const FileUpload = () => {
           </Tabs.List>
 
           <Tabs.Content className="tab-content file-upload-tab-content" value="upload">
-            <div className="config-form">
-              <div className="form-section">
-                <p className="form-label">File</p>
-                <div className="form-content">
-                  <input
-                    type="file"
-                    className="file-upload-input"
-                    accept=".mp4,video/*,image/*"
-                    onChange={onFileChange}
-                    disabled={status === 'uploading'}
-                  />
-                </div>
-              </div>
+            <InfoTable>
+              <InfoRow label="File">
+                <input
+                  type="file"
+                  className="file-upload-input"
+                  accept=".mp4,video/*,image/*"
+                  onChange={onFileChange}
+                  disabled={status === 'uploading'}
+                />
+              </InfoRow>
 
               {file && (
                 <>
-                  <div className="form-section">
-                    <p className="form-label">Name</p>
-                    <div className="form-content">{file.name}</div>
-                  </div>
-                  <div className="form-section">
-                    <p className="form-label">Type</p>
-                    <div className="form-content">{file.type || "-"}</div>
-                  </div>
-                  <div className="form-section">
-                    <p className="form-label">Size</p>
-                    <div className="form-content">{(file.size / (1024 * 1024)).toFixed(2)} MB</div>
-                  </div>
-                  <div className="form-section">
-                    <p className="form-label">Last modified</p>
-                    <div className="form-content">{dateMillisToString(file.lastModified)}</div>
-                  </div>
+                  <InfoRow label="Name">{file.name}</InfoRow>
+                  <InfoRow label="Type">{file.type || "-"}</InfoRow>
+                  <InfoRow label="Size">{(file.size / (1024 * 1024)).toFixed(2)} MB</InfoRow>
+                  <InfoRow label="Last modified">{dateMillisToString(file.lastModified)}</InfoRow>
                 </>
               )}
 
               {status === 'uploading' && (
-                <div className="form-section">
-                  <p className="form-label">Progress</p>
-                  <div className="form-content">
-                    <div className="progress-container">
-                      <div className="progress-bar">
-                        <div className="progress-fill" style={{ width: `${progress}%` }} />
-                      </div>
-                      <span className="progress-text">{progress}%</span>
+                <InfoRow label="Progress">
+                  <div className="progress-container">
+                    <div className="progress-bar">
+                      <div className="progress-fill" style={{ width: `${progress}%` }} />
                     </div>
+                    <span className="progress-text">{progress}%</span>
                   </div>
-                </div>
+                </InfoRow>
               )}
 
               {feedback && (
-                <div className="form-section">
-                  <p className="form-label">Status</p>
-                  <div className="form-content">
-                    <span className={`feedback ${status === 'error' ? 'feedback-error' : 'feedback-success'}`}>
-                      {feedback}
-                    </span>
-                  </div>
-                </div>
+                <InfoRow label="Status">
+                  <span className={`feedback ${status === 'error' ? 'feedback-error' : 'feedback-success'}`}>
+                    {feedback}
+                  </span>
+                </InfoRow>
               )}
-            </div>
+            </InfoTable>
           </Tabs.Content>
         </Tabs.Root>
 

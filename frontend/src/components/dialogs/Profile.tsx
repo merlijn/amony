@@ -1,6 +1,7 @@
 import {useContext} from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import DialogWindow from '../common/DialogWindow';
+import InfoTable, {InfoRow} from '../common/InfoTable';
 import {authLogout} from '../../api/generated';
 import {SessionContext} from '../../api/Constants';
 import './ConfigMenu.scss';
@@ -25,16 +26,10 @@ const Profile = () => {
         </Tabs.List>
 
         <Tabs.Content className="tab-content" value="user">
-          <div className="config-form">
-            <div className="form-section">
-              <p className="form-label">User ID</p>
-              <div className="form-content">{session.userId}</div>
-            </div>
-            <div className="form-section">
-              <p className="form-label">Roles</p>
-              <div className="form-content">{session.roles.length > 0 ? session.roles.join(", ") : "-"}</div>
-            </div>
-          </div>
+          <InfoTable>
+            <InfoRow label="User ID">{session.userId}</InfoRow>
+            <InfoRow label="Roles">{session.roles.length > 0 ? session.roles.join(", ") : "-"}</InfoRow>
+          </InfoTable>
         </Tabs.Content>
       </Tabs.Root>
 

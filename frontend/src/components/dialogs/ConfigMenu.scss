@@ -41,91 +41,68 @@
 
 .config-form {
 
-  display: table;
-  table-layout: fixed;
+  button {
+    @extend .hover-pointer;
+  }
 
-  .form-section {
+  input {
+    @extend .hover-pointer;
+  }
 
-    display: table-row;
+  .column-slider {
+    @extend .v-align-center;
+    display: flex;
+    gap: var(--spacing-s);
+    min-width: 220px;
 
-    .form-label {
-      
-      @extend .v-align-center, .pr-3, .pb-3;
-
-      display: table-cell;
-      width: 170px;
+    input[type="range"] {
+      flex: 1;
+      min-width: 120px;
     }
 
-    .form-content {
-      
-      @extend .v-align-center, .pb-3;
-      
-      display: table-cell;
+    .column-slider-label {
+      color: var(--text-tertiary);
+      font-size: small;
+      white-space: nowrap;
+    }
+  }
 
-      button {
-        @extend .hover-pointer;
-      }
+  .theme-select {
+    @extend .v-align-center;
+    display: flex;
+
+    .theme-option {
+      @extend .mr-3, .hover-pointer;
+      display: flex;
+      align-items: center;
 
       input {
-        @extend .hover-pointer;
+        @extend .mr-1;
       }
+    }
+  }
 
-      .column-slider {
-        @extend .v-align-center;
+  .aspect-ratio-select {
+    @extend .v-align-center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-s);
+
+    select {
+      @extend .mr-2;
+    }
+
+    .orientation-select {
+      @extend .v-align-center;
+      display: flex;
+
+      .orientation-option {
+        @extend .mr-3, .hover-pointer;
         display: flex;
-        gap: var(--spacing-s);
-        min-width: 220px;
+        align-items: center;
 
-        input[type="range"] {
-          flex: 1;
-          min-width: 120px;
-        }
-
-        .column-slider-label {
-          color: var(--text-tertiary);
-          font-size: small;
-          white-space: nowrap;
-        }
-      }
-
-      .theme-select {
-        @extend .v-align-center;
-        display: flex;
-
-        .theme-option {
-          @extend .mr-3, .hover-pointer;
-          display: flex;
-          align-items: center;
-
-          input {
-            @extend .mr-1;
-          }
-        }
-      }
-
-      .aspect-ratio-select {
-        @extend .v-align-center;
-        display: flex;
-        flex-wrap: wrap;
-        gap: var(--spacing-s);
-
-        select {
-          @extend .mr-2;
-        }
-
-        .orientation-select {
-          @extend .v-align-center;
-          display: flex;
-
-          .orientation-option {
-            @extend .mr-3, .hover-pointer;
-            display: flex;
-            align-items: center;
-
-            input {
-              @extend .mr-1;
-            }
-          }
+        input {
+          @extend .mr-1;
         }
       }
     }
@@ -145,4 +122,3 @@
 @keyframes admin-spin {
   to { transform: rotate(360deg); }
 }
-
