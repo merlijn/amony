@@ -9,6 +9,6 @@ object ProviderIdToken:
   def decode(value: String): Option[ProviderIdToken] =
     value.split("\\|", 2) match
       case Array(provider, idToken) if provider.nonEmpty && idToken.nonEmpty => Some(ProviderIdToken(provider, idToken))
-      case _                                                                => None
+      case _                                                                 => None
 
 case class Authentication(accessToken: String, refreshToken: String, providerIdToken: Option[ProviderIdToken] = None)

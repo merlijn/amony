@@ -6,10 +6,11 @@ import cats.implicits.*
 import sttp.tapir.*
 import sttp.tapir.json.circe.*
 
+import nl.amony.lib.tapir.apiNoCacheHeaders
 import nl.amony.lib.tapir.dsl.error.{BadRequestError, NotFoundError, SecurityError}
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.api.*
-import nl.amony.modules.resources.api.{Collection, CollectionId, ResourceId}
+import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId}
 import nl.amony.modules.resources.dal.CollectionsDal
 
 object CollectionRoutes extends RoutesModule:
@@ -30,17 +31,19 @@ object CollectionRoutes extends RoutesModule:
       .out(apiNoCacheHeaders).out(jsonBody[CollectionDto]))
 
   val addResourceToCollection
-    : Endpoint[SecurityInput, (CollectionId, String, ResourceId), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
+    : Endpoint[SecurityInput, (CollectionId, BucketId, ResourceId), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
     register(endpoint
       .name("addResourceToCollection").tag("collections").description("Add a resource to a collection")
-      .post.in("api" / "collections" / path[CollectionId]("collectionId") / "resources" / path[String]("bucketId") / path[ResourceId]("resourceId"))
+      .post.in("api" / "collections" / path[CollectionId]("collectionId") / "resources" / path[BucketId]("bucketId") / path[ResourceId]("resourceId"))
       .securityIn(securityInput).errorOut(errorOutput))
 
   val removeResourceFromCollection
-    : Endpoint[SecurityInput, (CollectionId, String, ResourceId), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
+    : Endpoint[SecurityInput, (CollectionId, BucketId, ResourceId), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
     register(endpoint
       .name("removeResourceFromCollection").tag("collections").description("Remove a resource from a collection")
-      .delete.in("api" / "collections" / path[CollectionId]("collectionId") / "resources" / path[String]("bucketId") / path[ResourceId]("resourceId"))
+      .delete.in("api" / "collections" / path[CollectionId]("collectionId") / "resources" / path[BucketId]("bucketId") / path[ResourceId](
+        "resourceId"
+      ))
       .securityIn(securityInput).errorOut(errorOutput))
 
   val getResourcesInCollection: Endpoint[SecurityInput, CollectionId, SecurityError | NotFoundError | BadRequestError, List[ResourceDto], Any] =
@@ -54,7 +57,7 @@ object CollectionRoutes extends RoutesModule:
     using apiSecurity: ApiSecurity
   ): ServerEndpoints[IO] = {
 
-    def isBucketHidden(auth: AuthToken, bucketId: String): Boolean =
+    def isBucketHidden(auth: AuthToken, bucketId: BucketId): Boolean =
       apiSecurity.userAccess(auth).hiddenBuckets.contains(bucketId)
 
     routes[IO] {
@@ -70,7 +73,7 @@ object CollectionRoutes extends RoutesModule:
           sanitizedTags        <- sanitizeTags(dto.tags)
           collection            = Collection(
                                     id          = CollectionId(java.util.UUID.randomUUID()),
-                                    parentId    = dto.parentId,
+                                    parentId    = dto.parentId.map(CollectionId(_)),
                                     userId      = auth.userId,
                                     name        = sanitizedName,
                                     description = sanitizedDescription,

@@ -71,7 +71,7 @@ object ResourceContentRoutes extends Logging {
     }
   }
 
-  def apply(buckets: Map[String, ResourceBucket])(using apiSecurity: ApiSecurity): HttpRoutes[IO] = {
+  def apply(buckets: Map[BucketId, ResourceBucket])(using apiSecurity: ApiSecurity): HttpRoutes[IO] = {
 
     // The content routes are not Tapir endpoints, so the access token has to be read from the cookie directly.
     def authToken(req: Request[IO]) =
@@ -81,10 +81,10 @@ object ResourceContentRoutes extends Logging {
     def isAnonymouslyForbidden(req: Request[IO]): Boolean =
       apiSecurity.isLoginRequired && authToken(req).isAnonymous
 
-    def isBucketHidden(req: Request[IO], bucketId: String): Boolean =
+    def isBucketHidden(req: Request[IO], bucketId: BucketId): Boolean =
       apiSecurity.userAccess(authToken(req)).hiddenBuckets.contains(bucketId)
 
-    def getResource(req: Request[IO], bucketId: String, resourceId: ResourceId): OptionT[IO, (ResourceBucket, Resource)] =
+    def getResource(req: Request[IO], bucketId: BucketId, resourceId: ResourceId): OptionT[IO, (ResourceBucket, Resource)] =
       if isBucketHidden(req, bucketId) then OptionT.none[IO, (ResourceBucket, Resource)]
       else
         for
@@ -101,14 +101,14 @@ object ResourceContentRoutes extends Logging {
         if isAnonymouslyForbidden(req) then IO.pure(Response(Status.Unauthorized))
         else
           maybeResponse:
-            getResource(req, bucketId, ResourceId(resourceId)).semiflatMap((_, resource) => resourceContentsResponse(req, resource.content))
+            getResource(req, BucketId(bucketId), ResourceId(resourceId)).semiflatMap((_, resource) => resourceContentsResponse(req, resource.content))
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern =>
         if isAnonymouslyForbidden(req) then IO.pure(Response(Status.Unauthorized))
         else
           maybeResponse(
             for
-              (bucket, resource) <- getResource(req, bucketId, ResourceId(resourceId))
+              (bucket, resource) <- getResource(req, BucketId(bucketId), ResourceId(resourceId))
               operation          <- OptionT.fromOption(resourcePattern match {
                                       case patterns.PublicThumbnailPattern(ts, resKey) => patterns.thumbnailOperation(ts.toLong, resKey, resource.info)
                                       case patterns.PublicClipPattern(ts, resKey)      => patterns.clipOperation(ts.toLong, resKey, resource.info)

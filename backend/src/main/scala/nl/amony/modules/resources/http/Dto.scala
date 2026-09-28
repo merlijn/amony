@@ -1,5 +1,7 @@
 package nl.amony.modules.resources.http
 
+import java.util.UUID
+
 import io.circe.*
 import sttp.tapir.Schema.SName
 import sttp.tapir.Schema.annotations.customise
@@ -64,7 +66,7 @@ case class ResourceDto(
   def toDomain(): ResourceInfo = {
 
     ResourceInfo(
-      bucketId           = bucketId,
+      bucketId           = BucketId(bucketId),
       resourceId         = ResourceId(resourceId),
       userId             = UserId(userId),
       path               = path,
@@ -93,8 +95,8 @@ case class ClipDto(
 ) derives Codec, sttp.tapir.Schema
 
 case class CollectionDto(
-  id: CollectionId,
-  parentId: Option[CollectionId],
+  id: UUID,
+  parentId: Option[UUID],
   name: String,
   description: Option[String],
   @customise(required)
@@ -103,7 +105,7 @@ case class CollectionDto(
 
 case class CreateCollectionDto(
   name: String,
-  parentId: Option[CollectionId],
+  parentId: Option[UUID],
   description: Option[String],
   tags: List[String]
 ) derives Codec, sttp.tapir.Schema
@@ -177,8 +179,8 @@ def toDto(resource: ResourceInfo): ResourceDto = {
 
 def toDto(collection: Collection): CollectionDto =
   CollectionDto(
-    id          = collection.id,
-    parentId    = collection.parentId,
+    id          = collection.id.value,
+    parentId    = collection.parentId.map(_.value),
     name        = collection.name,
     description = collection.description,
     tags        = collection.tags.toList

@@ -9,6 +9,7 @@ import sttp.tapir.json.circe.jsonBody
 import nl.amony.lib.tapir.dsl.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic}
 import nl.amony.modules.auth.api.*
+import nl.amony.modules.resources.api.BucketId
 import nl.amony.modules.resources.http.toDto
 import nl.amony.modules.search.SearchConfig
 import nl.amony.modules.search.api.*
@@ -100,7 +101,7 @@ object SearchRoutes extends RoutesModule:
             includeTags     =
               if queryDto.untagged.contains(true) then Set.empty else queryDto.tag.map(s => sanitize(s, 32, c => c.isLetterOrDigit)).toSet,
             excludeTags     = apiSecurity.userAccess(auth).hiddenTags,
-            excludeBuckets  = apiSecurity.userAccess(auth).hiddenBuckets,
+            excludeBuckets  = apiSecurity.userAccess(auth).hiddenBuckets.map(BucketId(_)),
             resolutionRange = ResolutionRange(min = queryDto.minRes, max = None),
             durationRange   = DurationRange(minDuration, maxDuration),
             uploadDateRange = UploadDateRange(minUploadDate, maxUploadDate),

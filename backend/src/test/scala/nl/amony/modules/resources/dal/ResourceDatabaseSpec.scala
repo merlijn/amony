@@ -16,7 +16,7 @@ import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{Collection, CollectionId, ResourceId, ResourceInfo}
+import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo}
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.{App, DatabaseConfig}
 
@@ -44,7 +44,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
   def genResource(): ResourceInfo =
     ResourceInfo(
-      bucketId           = UUID.randomUUID().toString,
+      bucketId           = BucketId(UUID.randomUUID().toString),
       resourceId         = ResourceId(UUID.randomUUID().toString),
       userId             = UserId(UUID.randomUUID().toString),
       path               = randomString,
@@ -251,13 +251,13 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       yield result shouldBe None
 
     def validateAll(expected: List[ResourceInfo]) =
-      db.getAll("test").map {
+      db.getAll(BucketId("test")).map {
         inserted =>
           logger.info(s"validated: ${inserted.size}")
           inserted should contain theSameElementsAs expected
       }
 
-    val inserted  = List.fill(32)(genResource().copy(bucketId = "test"))
+    val inserted  = List.fill(32)(genResource().copy(bucketId = BucketId("test")))
     val updated   = inserted.map(orig => genResource().copy(bucketId = orig.bucketId, resourceId = orig.resourceId))
     val shuffled  = scala.util.Random.shuffle(updated)
     val toDelete  = shuffled.take(16)
@@ -295,7 +295,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
   }
 
   def collectionResourcesTest(db: ResourceDatabase): IO[Unit] = {
-    val resource   = genResource().copy(bucketId = "test")
+    val resource   = genResource().copy(bucketId = BucketId("test"))
     val collection = genCollection()
 
     for

@@ -8,10 +8,11 @@ import sttp.model.HeaderNames
 import sttp.tapir.*
 import sttp.tapir.json.circe.*
 
+import nl.amony.lib.tapir.apiNoCacheHeaders
 import nl.amony.lib.tapir.dsl.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.api.*
-import nl.amony.modules.resources.api.{Resource, ResourceBucket, ResourceId, UploadError}
+import nl.amony.modules.resources.api.{BucketId, Resource, ResourceBucket, ResourceId, UploadError}
 
 val errorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError] = ErrorResponse.standardErrorOutput
 
@@ -24,62 +25,68 @@ object ResourceRoutes extends RoutesModule:
       .securityIn(securityInput).errorOut(errorOutput)
       .out(apiNoCacheHeaders).out(jsonBody[List[BucketDto]]))
 
-  val getResourceById: Endpoint[SecurityInput, (String, ResourceId), SecurityError | NotFoundError | BadRequestError, ResourceDto, Any] =
+  val getResourceById: Endpoint[SecurityInput, (BucketId, ResourceId), SecurityError | NotFoundError | BadRequestError, ResourceDto, Any] =
     register(endpoint
       .name("getResourceById").tag("resources").description("Get information about a resource by its id")
-      .get.in("api" / "resources" / path[String]("bucketId") / path[ResourceId]("resourceId"))
+      .get.in("api" / "resources" / path[BucketId]("bucketId") / path[ResourceId]("resourceId"))
       .securityIn(securityInput).errorOut(errorOutput)
       .out(apiNoCacheHeaders).out(jsonBody[ResourceDto]))
 
-  val updateUserMetaData: Endpoint[SecurityInput, (String, ResourceId, UserMetaDto), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
+  val updateUserMetaData: Endpoint[SecurityInput, (BucketId, ResourceId, UserMetaDto), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
     register(endpoint
       .name("updateUserMetaData").tag("resources").description("Update the user metadata of a resource")
-      .post.in("api" / "resources" / path[String]("bucketId") / path[ResourceId]("resourceId") / "update_user_meta")
+      .post.in("api" / "resources" / path[BucketId]("bucketId") / path[ResourceId]("resourceId") / "update_user_meta")
       .securityIn(securityInput)
       .in(jsonBody[UserMetaDto]).errorOut(errorOutput))
 
   val updateThumbnailTimestamp
-    : Endpoint[SecurityInput, (String, ResourceId, ThumbnailTimestampDto), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
+    : Endpoint[SecurityInput, (BucketId, ResourceId, ThumbnailTimestampDto), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
     register(endpoint
       .name("updateThumbnailTimestamp").tag("resources").description("Update the thumbnail timestamp of a resource")
-      .post.in("api" / "resources" / path[String]("bucketId") / path[ResourceId]("resourceId") / "update_thumbnail_timestamp")
+      .post.in("api" / "resources" / path[BucketId]("bucketId") / path[ResourceId]("resourceId") / "update_thumbnail_timestamp")
       .securityIn(securityInput)
       .in(jsonBody[ThumbnailTimestampDto]).errorOut(errorOutput))
 
-  val deleteResource: Endpoint[SecurityInput, (String, ResourceId), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
+  val deleteResource: Endpoint[SecurityInput, (BucketId, ResourceId), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
     register(endpoint
       .name("deleteResource").tag("resources").description("Delete a resource by its id")
-      .delete.in("api" / "resources" / path[String]("bucketId") / path[ResourceId]("resourceId"))
+      .delete.in("api" / "resources" / path[BucketId]("bucketId") / path[ResourceId]("resourceId"))
       .securityIn(securityInput).errorOut(errorOutput))
 
-  val modifyTagsBulk: Endpoint[SecurityInput, (String, BulkTagsUpdateDto), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
+  val modifyTagsBulk: Endpoint[SecurityInput, (BucketId, BulkTagsUpdateDto), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
     register(endpoint
       .name("modifyResourceTagsBulk").tag("resources").description("Add or remove tags for multiple resources")
-      .post.in("api" / "resources" / path[String]("bucketId") / "bulk" / "tags").securityIn(securityInput)
+      .post.in("api" / "resources" / path[BucketId]("bucketId") / "bulk" / "tags").securityIn(securityInput)
       .in(jsonBody[BulkTagsUpdateDto])
       .errorOut(errorOutput))
 
   val uploadResource
-    : Endpoint[SecurityInput, (String, String, fs2.Stream[IO, Byte]), SecurityError | NotFoundError | BadRequestError, ResourceDto, Fs2Streams[IO]] =
+    : Endpoint[
+      SecurityInput,
+      (BucketId, String, fs2.Stream[IO, Byte]),
+      SecurityError | NotFoundError | BadRequestError,
+      ResourceDto,
+      Fs2Streams[IO]
+    ] =
     register(endpoint
       .name("uploadResource").tag("resources").description("Upload a resource to a bucket")
-      .post.in("api" / "resources" / path[String]("bucketId") / "upload")
+      .post.in("api" / "resources" / path[BucketId]("bucketId") / "upload")
       .securityIn(securityInput).errorOut(errorOutput)
       .in(header[String]("X-Filename"))
       .in(streamBody(Fs2Streams[IO])(Schema.schemaForByteArray, CodecFormat.OctetStream()))
       .out(jsonBody[ResourceDto]))
 
-  def apply(buckets: Map[String, ResourceBucket])(
+  def apply(buckets: Map[BucketId, ResourceBucket])(
     using apiSecurity: ApiSecurity
   ): ServerEndpoints[IO] = {
 
-    def getVisibleBucket(auth: AuthToken, bucketId: String): EitherT[IO, NotFoundError, ResourceBucket] =
+    def getVisibleBucket(auth: AuthToken, bucketId: BucketId): EitherT[IO, NotFoundError, ResourceBucket] =
       EitherT.fromOption[IO](
         buckets.get(bucketId).filter(_ => !apiSecurity.userAccess(auth).hiddenBuckets.contains(bucketId)),
         NotFoundError("not_found", "Resource not found")
       )
 
-    def getResource(auth: AuthToken, bucketId: String, resourceId: ResourceId): EitherT[IO, NotFoundError, (ResourceBucket, Resource)] =
+    def getResource(auth: AuthToken, bucketId: BucketId, resourceId: ResourceId): EitherT[IO, NotFoundError, (ResourceBucket, Resource)] =
       for
         bucket   <- getVisibleBucket(auth, bucketId)
         resource <- EitherT.fromOptionF(bucket.getResource(resourceId), NotFoundError("not_found", "Resource not found"))

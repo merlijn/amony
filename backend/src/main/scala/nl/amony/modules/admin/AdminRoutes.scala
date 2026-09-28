@@ -8,7 +8,7 @@ import sttp.tapir.*
 import nl.amony.lib.tapir.dsl.error.ErrorResponse
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic}
 import nl.amony.modules.auth.api.*
-import nl.amony.modules.resources.api.{ResourceBucket, ResourceInfo}
+import nl.amony.modules.resources.api.{BucketId, ResourceBucket, ResourceInfo}
 import nl.amony.modules.resources.http.{ResourceDto, toDto}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.modules.search.api.SearchService
@@ -23,14 +23,14 @@ object AdminRoutes extends RoutesModule, Logging:
   val reIndex =
     register(endpoint.tag("admin").name("adminReindexBucket").description("Re-index all resources in a bucket.")
       .post.in("api" / "admin" / "reindex")
-      .in(query[String]("bucketId").description("The id of the bucket to re-index."))
+      .in(query[BucketId]("bucketId").description("The id of the bucket to re-index."))
       .securityIn(securityInput)
       .errorOut(errorOutput))
 
   val refresh =
     register(endpoint.tag("admin").name("adminRefreshBucket").description("Refresh all resources in a bucket")
       .post.in("api" / "admin" / "refresh")
-      .in(query[String]("bucketId").description("The id of the bucket to refresh."))
+      .in(query[BucketId]("bucketId").description("The id of the bucket to refresh."))
       .securityIn(securityInput)
       .errorOut(errorOutput))
 
@@ -38,32 +38,32 @@ object AdminRoutes extends RoutesModule, Logging:
     register(endpoint
       .tag("admin").name("adminRescanMetaData").description("Rescan the metadata of all files in a bucket")
       .post.in("api" / "admin" / "re-scan-metadata")
-      .in(query[String]("bucketId").description("The id of the bucket to re-scan."))
+      .in(query[BucketId]("bucketId").description("The id of the bucket to re-scan."))
       .securityIn(securityInput)
       .errorOut(errorOutput))
 
   val reComputeHashes =
     register(endpoint.name("adminReComputeHashes").tag("admin").description("Recompute the hashes of all files in a bucket")
       .post.in("api" / "admin" / "re-compute-hashes")
-      .in(query[String]("bucketId").description("The id of the bucket to re-compute the hashes for."))
+      .in(query[BucketId]("bucketId").description("The id of the bucket to re-compute the hashes for."))
       .securityIn(securityInput)
       .errorOut(errorOutput))
 
   val exportBucket =
     register(endpoint.name("adminExportBucket").tag("admin").description("Export all resources in a bucket")
-      .get.in("api" / "admin" / "export" / path[String]("bucketId"))
+      .get.in("api" / "admin" / "export" / path[BucketId]("bucketId"))
       .securityIn(securityInput)
       .out(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson))
       .errorOut(errorOutput))
 
   val importBucket =
     register(endpoint.name("adminImportBucket").tag("admin").description("Import all resources in a bucket")
-      .post.in("api" / "admin" / "import" / path[String]("bucketId"))
+      .post.in("api" / "admin" / "import" / path[BucketId]("bucketId"))
       .in(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson))
       .securityIn(securityInput)
       .errorOut(errorOutput))
 
-  def apply(searchService: SearchService, buckets: Map[String, ResourceBucket])(
+  def apply(searchService: SearchService, buckets: Map[BucketId, ResourceBucket])(
     using apiSecurity: ApiSecurity
   ): ServerEndpoints[IO] = {
 
