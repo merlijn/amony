@@ -1584,6 +1584,7 @@ components:
       - thumbnailSizes
       - thumbnailDimensions
       - defaultThumbnailResolution
+      - resolutionPickingStrategy
       properties:
         thumbnailSizes:
           type: array
@@ -1595,6 +1596,8 @@ components:
             type: string
         defaultThumbnailResolution:
           $ref: '#/components/schemas/ThumbnailResolutionDto'
+        resolutionPickingStrategy:
+          type: string
     AuthToken:
       title: AuthToken
       type: object

@@ -1,4 +1,4 @@
-import {AppConfigDto, ResourceDto} from "./generated";
+import {AppConfigDto, ResourceDto, ThumbnailSizeDto} from "./generated";
 
 /** URL of the original (full-size) resource content. */
 export const resourceContentUrl = (resource: ResourceDto): string =>
@@ -10,37 +10,45 @@ const dimensionToken = (dimension: string): string => dimension === "height" ? "
 export const resourceThumbnailUrl = (resource: ResourceDto, dimension: string, resolutionKey: string): string =>
   `/api/resources/${resource.bucketId}/${resource.resourceId}/thumb_${resource.thumbnailTimestamp ?? 0}_${dimensionToken(dimension)}_${resolutionKey}.webp`;
 
-export type ThumbnailSources = {
-  src: string;
-  srcSet?: string;
-  sizes?: string;
+type PickingStrategy = "round-up" | "round-down" | "round-nearest";
+
+/**
+ * Picks the configured thumbnail size closest to `needed` (device pixels) according to the strategy.
+ * Ties for "round-nearest" favour the smaller size.
+ */
+const pickThumbnailSize = (sizes: ThumbnailSizeDto[], needed: number, strategy: string): ThumbnailSizeDto => {
+  const sorted = [...sizes].sort((a, b) => a.pixels - b.pixels);
+
+  switch (strategy as PickingStrategy) {
+    case "round-down":
+      return [...sorted].reverse().find((size) => size.pixels <= needed) ?? sorted[0];
+    case "round-nearest":
+      return sorted.reduce((best, size) =>
+        Math.abs(size.pixels - needed) < Math.abs(best.pixels - needed) ? size : best
+      );
+    default: // "round-up"
+      return sorted.find((size) => size.pixels >= needed) ?? sorted[sorted.length - 1];
+  }
 };
 
 /**
- * Builds an `<img>` source set for a resource from the server-provided thumbnail sizes.
+ * Chooses a thumbnail URL for a resource based on the CSS width of the box it fills and the
+ * server-configured resolution-picking strategy.
  *
- * Grid/list thumbnails are cropped to fill a fixed-aspect box with `object-fit: cover`, so the
- * image is scaled to the box width and the width is the operative dimension. The `w` descriptors
- * therefore equal the configured pixel sizes directly, and `sizes` is simply the box width.
+ * Selection happens here rather than through `<img srcset>` because the browser's native srcset
+ * algorithm always rounds up; doing it explicitly lets the server trade quality for bandwidth.
  */
-export const thumbnailSources = (
-  resource: ResourceDto,
-  config: AppConfigDto | undefined,
-  boxWidthCss: number
-): ThumbnailSources => {
-  const defaultSelection = config?.defaultThumbnailResolution;
-  const src = defaultSelection
-    ? resourceThumbnailUrl(resource, defaultSelection.dimension, defaultSelection.key)
-    : resourceThumbnailUrl(resource, "width", "s");
+export const thumbnailUrl = (resource: ResourceDto, config: AppConfigDto | undefined, boxWidthCss: number): string => {
+  const sizes      = config?.thumbnailSizes;
+  const dimension  = config?.defaultThumbnailResolution?.dimension ?? "width";
+  const defaultKey = config?.defaultThumbnailResolution?.key ?? "s";
 
-  const sizes = config?.thumbnailSizes;
   if (!sizes || sizes.length === 0)
-    return { src };
+    return resourceThumbnailUrl(resource, dimension, defaultKey);
 
-  const srcSet = [...sizes]
-    .sort((a, b) => a.pixels - b.pixels)
-    .map(({key, pixels}) => `${resourceThumbnailUrl(resource, "width", key)} ${pixels}w`)
-    .join(", ");
+  const devicePixelRatio = window.devicePixelRatio || 1;
+  const needed           = Math.max(1, boxWidthCss * devicePixelRatio);
+  const chosen           = pickThumbnailSize(sizes, needed, config?.resolutionPickingStrategy ?? "round-up");
 
-  return { src, srcSet, sizes: `${Math.max(1, Math.round(boxWidthCss))}px` };
+  return resourceThumbnailUrl(resource, "width", chosen.key);
 };

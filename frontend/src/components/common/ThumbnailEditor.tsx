@@ -2,7 +2,7 @@ import React, {useEffect, useRef, useState} from "react";
 import {MediaPlayerInstance} from "@vidstack/react";
 import {getResourceById, ResourceDto, updateThumbnailTimestamp} from "../../api/generated";
 import {useAppConfig} from "../../api/ConfigContext";
-import {thumbnailSources} from "../../api/ResourceUrls";
+import {thumbnailUrl} from "../../api/ResourceUrls";
 import FragmentsPlayer from "./FragmentsPlayer";
 import './ThumbnailEditor.scss';
 
@@ -19,7 +19,7 @@ const ThumbnailEditor = ({resource, player, onResourceUpdated}: ThumbnailEditorP
   const [isHovering, setIsHovering] = useState(false);
   const expandedRef = useRef(false);
   const config = useAppConfig();
-  const thumbnail = thumbnailSources(resource, config, 400);
+  const thumbnail = thumbnailUrl(resource, config, 400);
 
   // Keep controls pinned while the thumbnail editor is expanded.
   // Vidstack's own button handlers resume idle tracking, so we listen
@@ -110,9 +110,7 @@ const ThumbnailEditor = ({resource, player, onResourceUpdated}: ThumbnailEditorP
       >
         <div style = { aspectRatioCss } className= { `thumbnail-editor-preview ${expanded ? "expanded" : "collapsed"}` } onClick={onThumbnailClick}>
           <img
-            src={thumbnail.src}
-            srcSet={thumbnail.srcSet}
-            sizes={thumbnail.sizes}
+            src={thumbnail}
             alt="thumbnail"
             className={`thumbnail-editor-img`}
           />

@@ -20,7 +20,7 @@ import {
 } from "../api/generated";
 import LazyImage from "./common/LazyImage";
 import {useAppConfig} from "../api/ConfigContext";
-import {thumbnailSources} from "../api/ResourceUrls";
+import {thumbnailUrl} from "../api/ResourceUrls";
 import BulkUpdateTagsDialog from "./dialogs/BulkUpdateTagsDialog";
 import DeleteResourceDialog from "./dialogs/DeleteResourceDialog";
 import {useEventListener} from "./common/EventBus";
@@ -36,15 +36,13 @@ const rowHeight = 36
 /** Small fixed-size thumbnail used in the list rows (54x36 CSS px). */
 const ListThumbnail = ({resource, onClick}: {resource: ResourceDto, onClick: (v: ResourceDto) => any}) => {
   const config = useAppConfig()
-  const thumbnail = thumbnailSources(resource, config, 54)
+  const thumbnail = thumbnailUrl(resource, config, 54)
 
   return (
     <LazyImage
       loadImage = { () =>
         <img
-          src       = { thumbnail.src }
-          srcSet    = { thumbnail.srcSet }
-          sizes     = { thumbnail.sizes }
+          src       = { thumbnail }
           alt       = "an image"
           onClick   = { () => onClick(resource) }
           className = "list-thumbnail-img"

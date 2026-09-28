@@ -121,7 +121,7 @@ object App extends ResourceApp.Forever with Logging {
               AdminRoutes.apply(searchService, resourceBucketMap) ++
               SearchRoutes.apply(searchService, appConfig.search) ++
               ResourceRoutes.apply(resourceBucketMap) ++
-              ConfigRoutes.apply(thumbResolutions)
+              ConfigRoutes.apply(thumbResolutions, appConfig.resources.thumbnails.resolutionPickingStrategy)
 
           ResourceContentRoutes.apply(resourceBucketMap, thumbResolutions) <+>
             Http4sServerInterpreter[IO](serverOptions).toRoutes(tapirEndpoints)

@@ -11,7 +11,7 @@ import './Preview.scss';
 import {ErrorBoundary} from "react-error-boundary";
 import {SessionContext} from "../api/Constants";
 import {useAppConfig} from "../api/ConfigContext";
-import {thumbnailSources} from "../api/ResourceUrls";
+import {thumbnailUrl} from "../api/ResourceUrls";
 import {ResourceDto} from "../api/generated";
 import LazyImage from "./common/LazyImage";
 import {FiAlertCircle, FiInfo} from "react-icons/fi";
@@ -68,15 +68,13 @@ const Preview = (props: PreviewProps) => {
         { !isMediaTypeSupported && <div className="preview-unsupported-overlay"><FiAlertCircle color="#fff" /></div> }
       </div>
 
-  const thumbnail = thumbnailSources(resource, config, props.mediaWidthPx ?? 400)
+  const thumbnailSrc = thumbnailUrl(resource, config, props.mediaWidthPx ?? 400)
 
   const primaryThumbnail =
       <LazyImage
         loadImage = { () =>
           <img
-              src       = { thumbnail.src }
-              srcSet    = { thumbnail.srcSet }
-              sizes     = { thumbnail.sizes }
+              src       = { thumbnailSrc }
               alt       = "an image"
               onClick   = { () => props.onClick(props.resource) }
               className = { `preview-thumbnail preview-media` }
