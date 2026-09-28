@@ -14,4 +14,6 @@ case class AuthCookies(
 
 object AuthCookies:
   val endpointOutput: EndpointIO[AuthCookies] =
-    (setCookie(authCookieName) and setCookie("refresh_token") and setCookie("XSRF-TOKEN") and setCookieOpt(providerIdTokenCookieName)).mapTo[AuthCookies]
+    (setCookie(authCookieName) and setCookie("refresh_token") and setCookie("XSRF-TOKEN") and setCookieOpt(
+      providerIdTokenCookieName
+    )).mapTo[AuthCookies]

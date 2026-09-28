@@ -20,17 +20,13 @@ class WebServerSpec extends AnyWordSpecLike {
     WebServer.hostFilter(allowedHosts)(inner).run(req).value.unsafeRunSync().map(_.status)
 
   "WebServer.hostFilter" should {
-    "allow a request whose host is listed" in {
+    "allow a request whose host is listed" in
       assert(status(List("good.example.com"), request("good.example.com")).contains(Status.Ok))
-    }
-    "reject a request whose host is not listed" in {
+    "reject a request whose host is not listed" in
       assert(status(List("good.example.com"), request("evil.example.com")).contains(Status.MisdirectedRequest))
-    }
-    "prefer X-Forwarded-Host over Host" in {
+    "prefer X-Forwarded-Host over Host" in
       assert(status(List("admin.example.com"), request("backend:8182", Some("admin.example.com"))).contains(Status.Ok))
-    }
-    "reject when the forwarded host is not listed even if Host is" in {
+    "reject when the forwarded host is not listed even if Host is" in
       assert(status(List("backend:8182"), request("backend:8182", Some("evil.example.com"))).contains(Status.MisdirectedRequest))
-    }
   }
 }

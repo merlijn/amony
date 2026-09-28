@@ -3,9 +3,10 @@ package nl.amony.modules.resources.http
 import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.*
-import nl.amony.lib.tapir.apiNoCacheHeaders
 import sttp.tapir.*
 import sttp.tapir.json.circe.*
+
+import nl.amony.lib.tapir.apiNoCacheHeaders
 import nl.amony.lib.tapir.dsl.error.{BadRequestError, NotFoundError, SecurityError}
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.api.*

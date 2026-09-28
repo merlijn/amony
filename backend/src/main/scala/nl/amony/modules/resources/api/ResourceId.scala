@@ -9,4 +9,3 @@ object ResourceId:
   def apply(id: String): ResourceId = id
 
   given Codec[String, ResourceId, TextPlain] = Codec.string.mapDecode(s => DecodeResult.Value(ResourceId.apply(s)))(identity)
-
