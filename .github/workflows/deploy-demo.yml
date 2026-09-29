@@ -66,6 +66,8 @@ jobs:
         env:
           DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
           AMONY_JWT_SECRET_KEY: ${{ secrets.AMONY_JWT_SECRET_KEY }}
+          DEX_ADMIN_EMAIL: ${{ secrets.DEX_ADMIN_EMAIL }}
+          DEX_ADMIN_USERNAME: ${{ secrets.DEX_ADMIN_USERNAME }}
           DEX_ADMIN_PASSWORD_HASH: ${{ secrets.DEX_ADMIN_PASSWORD_HASH }}
           DEX_CLIENT_SECRET: ${{ secrets.DEX_CLIENT_SECRET }}
           DEX_ADMIN_CLIENT_SECRET: ${{ secrets.DEX_ADMIN_CLIENT_SECRET }}
@@ -77,6 +79,8 @@ jobs:
           {
             printf 'DATABASE_PASSWORD=%s\n' "$DATABASE_PASSWORD"
             printf 'AMONY_JWT_SECRET_KEY=%s\n' "$AMONY_JWT_SECRET_KEY"
+            printf 'DEX_ADMIN_EMAIL=%s\n' "$DEX_ADMIN_EMAIL"
+            printf 'DEX_ADMIN_USERNAME=%s\n' "$DEX_ADMIN_USERNAME"
             printf 'DEX_ADMIN_PASSWORD_HASH=%s\n' "$DEX_ADMIN_PASSWORD_HASH"
             printf 'DEX_CLIENT_SECRET=%s\n' "$DEX_CLIENT_SECRET"
             printf 'DEX_ADMIN_CLIENT_SECRET=%s\n' "$DEX_ADMIN_CLIENT_SECRET"
