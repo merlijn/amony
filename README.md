@@ -52,68 +52,9 @@ You can mount a local directory containing your media files by editing the `dock
 - It might take some time to process the videos on first startup. Check progress with `docker compose logs amony`
 - For HTTPS with automatic certificate management, see `docker-compose-https.yml`
 
-## Development mode
+## Development
 
-See [docs/development.md](docs/development.md) for running the backend and frontend locally from source.
-
-## Build a docker image
-
-### Prerequisites
-
-- [Node.js & pnpm](https://pnpm.io/installation)
-- [Scala 3](https://scala-lang.org/) & [sbt](https://www.scala-sbt.org/)
-- [Docker](https://www.docker.com/get-started)
-
-### 1. Build the web client
-
-```bash
-cd frontend
-fnm use # or nvm use
-pnpm install
-pnpm run generate
-pnpm run build
-```
-
-### 2. Build the docker image
-
-```bash
-cd backend
-sbt jibDockerBuild
-```
-
-### 3. Publishing images
-
-Images are published to the GitHub Container Registry (GHCR) by the
-`Build and deploy` workflow (`.github/workflows/build.yml`). They are public and
-live under `ghcr.io/merlijn/`:
-
-- **`main`** — every push/merge publishes the moving `dev` tag
-  (`ghcr.io/merlijn/amony-app:dev`).
-- **Git tags** — pushing a tag (for example `v0.1.7`) publishes `latest` and the
-  version tag (for example `0.1.7`).
-- **Pull requests** — publish only when the head commit message contains
-  `#publish`, under a per-PR tag (`pr-<number>`).
-
-The Jib base image (`ghcr.io/merlijn/amony-base:latest`) is built from
-`docker/base/Dockerfile` by the `Build base image` workflow
-(`.github/workflows/base-image.yml`), which is triggered manually from the
-Actions tab.
-
-### 4. Deploying the demo
-
-The public demo is redeployed by the `Deploy demo` workflow
-(`.github/workflows/deploy-demo.yml`). It runs automatically once the
-`Build and deploy` workflow finishes successfully on `main`, and can also be
-triggered manually from the Actions tab.
-
-It connects to the server as `docker-user`, updates the checkout, pulls the new
-`dev` image and recreates the containers with
-`docker compose -f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml`.
-
-Non-secret configuration lives in `deployment/demo.env`. The sensitive values
-(database password, JWT secret, Dex client secrets / admin password hash,
-Porkbun credentials) plus the SSH deploy key and host details are stored in the
-repository's `demo` GitHub Environment.
+See [docs/development.md](docs/development.md) for running from source, building and publishing the Docker image, and deploying the demo.
 
 ## Tech stack
 
