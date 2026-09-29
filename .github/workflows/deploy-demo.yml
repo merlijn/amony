@@ -1,0 +1,138 @@
+name: Deploy demo
+
+# Re-deploys the demo server (https://demo.amony.app) once the "Build and deploy" workflow has
+# published a new "dev" image for main, or on demand from the Actions tab.
+on:
+  workflow_run:
+    workflows: ["Build and deploy"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to deploy (defaults to main)"
+        required: false
+        default: main
+
+permissions:
+  contents: read
+
+# Never run two deploys at the same time; let an in-flight deploy finish.
+concurrency:
+  group: deploy-demo
+  cancel-in-progress: false
+
+env:
+  # workflow_run has no inputs, so this is always main for automatic deploys; manual runs can
+  # point at another ref to validate changes before merging.
+  DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || 'main' }}
+  DEPLOY_DIR: /home/docker-user/amony
+  COMPOSE_FILES: "-f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml"
+
+jobs:
+  deploy:
+    name: Deploy to demo
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: demo
+    # Only deploy successful, push-triggered main builds (never PR/fork builds).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    steps:
+      - name: Checkout deployment config
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || 'main' }}
+
+      - name: Configure SSH
+        env:
+          DEMO_SSH_KEY: ${{ secrets.DEMO_SSH_KEY }}
+          DEMO_KNOWN_HOSTS: ${{ secrets.DEMO_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEMO_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEMO_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Assemble .env
+        env:
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          AMONY_JWT_SECRET_KEY: ${{ secrets.AMONY_JWT_SECRET_KEY }}
+          DEX_ADMIN_EMAIL: ${{ secrets.DEX_ADMIN_EMAIL }}
+          DEX_ADMIN_USERNAME: ${{ secrets.DEX_ADMIN_USERNAME }}
+          DEX_ADMIN_PASSWORD_HASH: ${{ secrets.DEX_ADMIN_PASSWORD_HASH }}
+          DEX_CLIENT_SECRET: ${{ secrets.DEX_CLIENT_SECRET }}
+          DEX_ADMIN_CLIENT_SECRET: ${{ secrets.DEX_ADMIN_CLIENT_SECRET }}
+          PORKBUN_API_KEY: ${{ secrets.PORKBUN_API_KEY }}
+          PORKBUN_SECRET_KEY: ${{ secrets.PORKBUN_SECRET_KEY }}
+        run: |
+          set -euo pipefail
+          cp deployment/demo.env .env.runtime
+          {
+            printf 'DATABASE_PASSWORD=%s\n' "$DATABASE_PASSWORD"
+            printf 'AMONY_JWT_SECRET_KEY=%s\n' "$AMONY_JWT_SECRET_KEY"
+            printf 'DEX_ADMIN_EMAIL=%s\n' "$DEX_ADMIN_EMAIL"
+            printf 'DEX_ADMIN_USERNAME=%s\n' "$DEX_ADMIN_USERNAME"
+            printf 'DEX_ADMIN_PASSWORD_HASH=%s\n' "$DEX_ADMIN_PASSWORD_HASH"
+            printf 'DEX_CLIENT_SECRET=%s\n' "$DEX_CLIENT_SECRET"
+            printf 'DEX_ADMIN_CLIENT_SECRET=%s\n' "$DEX_ADMIN_CLIENT_SECRET"
+            printf 'PORKBUN_API_KEY=%s\n' "$PORKBUN_API_KEY"
+            printf 'PORKBUN_SECRET_KEY=%s\n' "$PORKBUN_SECRET_KEY"
+          } >> .env.runtime
+          chmod 600 .env.runtime
+          echo "Assembled .env.runtime with $(wc -l < .env.runtime) lines"
+
+      - name: Upload .env
+        env:
+          SSH_HOST: ${{ vars.DEMO_HOST }}
+          SSH_USER: ${{ vars.DEMO_USER }}
+        run: |
+          # shellcheck disable=SC2029
+          set -euo pipefail
+          ssh -o BatchMode=yes -o IdentitiesOnly=yes "$SSH_USER@$SSH_HOST" \
+            "umask 077 && cat > '$DEPLOY_DIR/.env.new' && mv -f '$DEPLOY_DIR/.env.new' '$DEPLOY_DIR/.env'" \
+            < .env.runtime
+
+      - name: Deploy
+        env:
+          SSH_HOST: ${{ vars.DEMO_HOST }}
+          SSH_USER: ${{ vars.DEMO_USER }}
+        run: |
+          # shellcheck disable=SC2029
+          set -euo pipefail
+          ssh -o BatchMode=yes -o IdentitiesOnly=yes "$SSH_USER@$SSH_HOST" \
+            "DEPLOY_DIR='$DEPLOY_DIR' DEPLOY_REF='$DEPLOY_REF' COMPOSE_FILES='$COMPOSE_FILES' bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd "$DEPLOY_DIR"
+          git fetch --prune origin
+          git checkout "$DEPLOY_REF"
+          git pull --ff-only
+          docker compose $COMPOSE_FILES pull amony
+          docker compose $COMPOSE_FILES up -d
+          docker image prune -f
+          REMOTE
+
+      - name: Health check
+        env:
+          SSH_HOST: ${{ vars.DEMO_HOST }}
+          SSH_USER: ${{ vars.DEMO_USER }}
+        run: |
+          set -euo pipefail
+          ssh -o BatchMode=yes -o IdentitiesOnly=yes "$SSH_USER@$SSH_HOST" bash -s <<'REMOTE'
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://demo.amony.app/ || true)
+            if [ "$code" = "200" ]; then
+              echo "demo is healthy (HTTP $code)"
+              exit 0
+            fi
+            echo "waiting for demo (HTTP $code) - attempt $attempt/30"
+            sleep 5
+          done
+          echo "health check failed: last HTTP status $code" >&2
+          exit 1
+          REMOTE
