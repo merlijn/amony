@@ -2,10 +2,6 @@ name: Deploy demo
 
 # Re-deploys the demo server (https://demo.amony.app) once the "Build and deploy" workflow has
 # published a new "dev" image for main, or on demand from the Actions tab.
-#
-# Uses the "demo" GitHub Environment for its secrets and variables. Non-secret .env config lives
-# in deployment/demo.env; the sensitive values are environment secrets with the same name as the
-# .env key and get appended when the workflow assembles the server's .env.
 on:
   workflow_run:
     workflows: ["Build and deploy"]
