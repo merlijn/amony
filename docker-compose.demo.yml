@@ -1,0 +1,10 @@
+# Compose overlay for the public demo deployment.
+#
+# Pins the app image to the moving "dev" tag published by the "Build and deploy" workflow on every
+# main-branch push. The base docker-compose.yml defaults to ":latest", which only advances on
+# tagged releases, so this overlay must be passed alongside the base and HTTPS files:
+#
+#   docker compose -f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml up -d
+services:
+  amony:
+    image: ghcr.io/merlijn/amony-app:dev

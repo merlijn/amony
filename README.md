@@ -137,6 +137,22 @@ The Jib base image (`ghcr.io/merlijn/amony-base:latest`) is built from
 (`.github/workflows/base-image.yml`), which is triggered manually from the
 Actions tab.
 
+### 4. Deploying the demo
+
+The public demo is redeployed by the `Deploy demo` workflow
+(`.github/workflows/deploy-demo.yml`). It runs automatically once the
+`Build and deploy` workflow finishes successfully on `main`, and can also be
+triggered manually from the Actions tab.
+
+It connects to the server as `docker-user`, updates the checkout, pulls the new
+`dev` image and recreates the containers with
+`docker compose -f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml`.
+
+Non-secret configuration lives in `deployment/demo.env`. The sensitive values
+(database password, JWT secret, Dex client secrets / admin password hash,
+Porkbun credentials) plus the SSH deploy key and host details are stored in the
+repository's `demo` GitHub Environment.
+
 ## Tech stack
 
 | Layer | Technology |
