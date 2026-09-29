@@ -121,9 +121,9 @@ export const Constants = {
 
   defaultPreferences: defaultPrefs,
 
-  minGridCellWidth: 100,
+  minGridCellWidth: 96,
 
-  maxGridCellWidth: 600,
+  maxGridCellWidth: 768,
 
   sideBarWidth: 150,
 }
