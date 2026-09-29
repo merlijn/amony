@@ -1,7 +1,9 @@
 import React, { ChangeEvent, useState } from 'react';
+import * as Tabs from '@radix-ui/react-tabs';
 import { dateMillisToString } from '../../api/Util';
 import { uploadResource } from '../../api/generated';
 import DialogWindow from '../common/DialogWindow';
+import InfoTable, { InfoRow } from '../common/InfoTable';
 import './FileUpload.scss';
 
 const DEFAULT_BUCKET_ID = 'media';
@@ -56,49 +58,62 @@ const FileUpload = () => {
     };
     
     return (
-      <DialogWindow title="Upload media">
-        <div className="file-upload-content">
-          <div className="file-input-container">
-            <input 
-              type="file" 
-              accept=".mp4,video/*,image/*"
-              onChange={onFileChange}
-              disabled={status === 'uploading'}
-            />
-          </div>
-          
-          {file && (
-            <div className="file-info">
-              <p><strong>File:</strong> {file.name}</p>
-              <p><strong>Type:</strong> {file.type}</p>
-              <p><strong>Size:</strong> {(file.size / (1024 * 1024)).toFixed(2)} MB</p>
-              <p><strong>Last Modified:</strong> {dateMillisToString(file.lastModified)}</p>
-            </div>
-          )}
+      <DialogWindow>
+        <Tabs.Root defaultValue="upload">
+          <Tabs.List className="tabs-list">
+            <Tabs.Trigger className="tab-trigger" value="upload">Upload</Tabs.Trigger>
+          </Tabs.List>
 
-          {status === 'uploading' && (
-            <div className="progress-container">
-              <div className="progress-bar">
-                <div className="progress-fill" style={{ width: `${progress}%` }} />
-              </div>
-              <span className="progress-text">{progress}%</span>
-            </div>
-          )}
+          <Tabs.Content className="tab-content file-upload-tab-content" value="upload">
+            <InfoTable>
+              <InfoRow label="File">
+                <input
+                  type="file"
+                  className="file-upload-input"
+                  accept=".mp4,video/*,image/*"
+                  onChange={onFileChange}
+                  disabled={status === 'uploading'}
+                />
+              </InfoRow>
 
-          {feedback && (
-            <div className={`feedback ${status === 'error' ? 'feedback-error' : 'feedback-success'}`}>
-              {feedback}
-            </div>
-          )}
+              {file && (
+                <>
+                  <InfoRow label="Name">{file.name}</InfoRow>
+                  <InfoRow label="Type">{file.type || "-"}</InfoRow>
+                  <InfoRow label="Size">{(file.size / (1024 * 1024)).toFixed(2)} MB</InfoRow>
+                  <InfoRow label="Last modified">{dateMillisToString(file.lastModified)}</InfoRow>
+                </>
+              )}
 
-          <button 
-            className="abs-bottom-right button-primary" 
-            onClick={onFileUpload}
-            disabled={!file || status === 'uploading'}
-          >
-            {status === 'uploading' ? 'Uploading...' : 'Upload'}
-          </button>
-        </div>
+              {status === 'uploading' && (
+                <InfoRow label="Progress">
+                  <div className="progress-container">
+                    <div className="progress-bar">
+                      <div className="progress-fill" style={{ width: `${progress}%` }} />
+                    </div>
+                    <span className="progress-text">{progress}%</span>
+                  </div>
+                </InfoRow>
+              )}
+
+              {feedback && (
+                <InfoRow label="Status">
+                  <span className={`feedback ${status === 'error' ? 'feedback-error' : 'feedback-success'}`}>
+                    {feedback}
+                  </span>
+                </InfoRow>
+              )}
+            </InfoTable>
+          </Tabs.Content>
+        </Tabs.Root>
+
+        <button
+          className="abs-bottom-right button-primary"
+          onClick={onFileUpload}
+          disabled={!file || status === 'uploading'}
+        >
+          {status === 'uploading' ? 'Uploading...' : 'Upload'}
+        </button>
       </DialogWindow>
     );
   }

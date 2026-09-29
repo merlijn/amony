@@ -18,6 +18,8 @@ function App() {
   const sessionPromise = useMemo(() =>
       getSession()
         .then((authToken) => ({
+          userId: authToken.userId,
+          roles: authToken.roles,
           isLoggedIn: () => authToken.userId !== "anonymous",
           isAdmin: () => authToken.roles.includes("admin")
         } as SessionInfo))

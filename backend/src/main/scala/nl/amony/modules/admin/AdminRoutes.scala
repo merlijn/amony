@@ -123,7 +123,7 @@ object AdminRoutes extends RoutesModule, Logging:
         buckets.get(bucketId) match
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Exporting resources in bucket '$bucketId'")
-            val stream = bucket.getAllResources.map(resource => ResourceDto.derived$Codec.apply(toDto(resource)).noSpaces).intersperse("\n")
+            val stream = bucket.getAllResources.map(resource => summon[io.circe.Codec[ResourceDto]].apply(toDto(resource)).noSpaces).intersperse("\n")
               .through(fs2.text.utf8.encode[IO])
             IO(Right(stream))
           case _                                  =>

@@ -7,6 +7,7 @@ import './LoginDialog.scss';
 type LoginDialogProps = {
   onClose: () => void;
   providers?: IdentityProviderDto[] | null;
+  showClose?: boolean;
 };
 
 const LoginDialog = (props: LoginDialogProps) => {
@@ -52,7 +53,7 @@ const LoginDialog = (props: LoginDialogProps) => {
 
   if (loading) {
     return (
-      <DialogWindow title="Login">
+      <DialogWindow title="Login" showClose={props.showClose}>
         <div className="login-dialog-content">
           <p>Loading...</p>
         </div>
@@ -62,7 +63,7 @@ const LoginDialog = (props: LoginDialogProps) => {
 
   if (error) {
     return (
-      <DialogWindow title="Login">
+      <DialogWindow title="Login" showClose={props.showClose}>
         <div className="login-dialog-content">
           <p className="login-error">{error}</p>
         </div>
@@ -71,7 +72,7 @@ const LoginDialog = (props: LoginDialogProps) => {
   }
 
   return (
-    <DialogWindow title="Login">
+    <DialogWindow title="Login" showClose={props.showClose}>
       <div className="login-dialog-content">
         <div className="providers-list">
           {providers.map((provider) => (

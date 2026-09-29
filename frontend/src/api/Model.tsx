@@ -48,6 +48,8 @@ export type Prefs = {
 }
 
 export type SessionInfo = {
+  userId: string
+  roles: string[]
   isLoggedIn: () => boolean
   isAdmin: () => boolean
 }

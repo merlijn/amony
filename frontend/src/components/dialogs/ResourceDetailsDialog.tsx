@@ -4,6 +4,7 @@ import * as RadixDialog from "@radix-ui/react-dialog"
 import * as Tabs from "@radix-ui/react-tabs"
 import "../common/Dialog.scss"
 import DialogWindow from "../common/DialogWindow"
+import InfoTable, {InfoRow} from "../common/InfoTable"
 import {dateMillisToString, durationInMillisToString, formatByteSize} from "../../api/Util"
 import "./ResourceDetailsDialog.scss"
 
@@ -37,79 +38,24 @@ const ResourceDetailsDialog = ({resource, visible, onHide}: ResourceDetailsDialo
   const fileSize = formatByteSize(displayResource.sizeInBytes)
 
   const detailsContent = (
-    <div className="resource-details">
-      <div className="detail-section">
-        <p className="detail-label">Resource ID</p>
-        <div className="detail-value">{displayResource.resourceId}</div>
-      </div>
-      <div className="detail-section">
-        <p className="detail-label">Hash</p>
-        <div className="detail-value">{displayResource.partialHash || "-"}</div>
-      </div>
-      <div className="detail-section">
-        <p className="detail-label">Bucket ID</p>
-        <div className="detail-value">{displayResource.bucketId}</div>
-      </div>
-      <div className="detail-section">
-        <p className="detail-label">Owner</p>
-        <div className="detail-value">{displayResource.userId}</div>
-      </div>
-      <div className="detail-section">
-        <p className="detail-label">Path</p>
-        <div className="detail-value">{displayResource.path}</div>
-      </div>
-      <div className="detail-section">
-        <p className="detail-label">File size</p>
-        <div className="detail-value">{fileSize} ({displayResource.sizeInBytes} bytes)</div>
-      </div>
-      <div className="detail-section">
-        <p className="detail-label">Title</p>
-        <div className="detail-value">{displayResource.title || "-"}</div>
-      </div>
-      <div className="detail-section">
-        <p className="detail-label">Description</p>
-        <div className="detail-value">{displayResource.description || "-"}</div>
-      </div>
-      <div className="detail-section">
-        <p className="detail-label">Tags</p>
-        <div className="detail-value">{displayResource.tags.length > 0 ? displayResource.tags.join(", ") : "-"}</div>
-      </div>
-      <div className="detail-section">
-        <p className="detail-label">Date added</p>
-        <div className="detail-value">{dateAdded}</div>
-      </div>
-      {dateModified && (
-        <div className="detail-section">
-          <p className="detail-label">Last modified</p>
-          <div className="detail-value">{dateModified}</div>
-        </div>
-      )}
-      <div className="detail-section">
-        <p className="detail-label">Content type</p>
-        <div className="detail-value">{displayResource.contentType}</div>
-      </div>
-      <div className="detail-section">
-        <p className="detail-label">Dimensions</p>
-        <div className="detail-value">{meta.width} × {meta.height}</div>
-      </div>
-      {meta.fps > 0 && (
-        <div className="detail-section">
-          <p className="detail-label">FPS</p>
-          <div className="detail-value">{meta.fps}</div>
-        </div>
-      )}
-      <div className="detail-section">
-        <p className="detail-label">Duration</p>
-        <div className="detail-value">{durationStr}</div>
-      </div>
-      {meta.codec && (
-        <div className="detail-section">
-          <p className="detail-label">Codec</p>
-          <div className="detail-value">{meta.codec}</div>
-        </div>
-      )}
-
-    </div>
+    <InfoTable className="resource-details">
+      <InfoRow label="Resource ID">{displayResource.resourceId}</InfoRow>
+      <InfoRow label="Hash">{displayResource.partialHash || "-"}</InfoRow>
+      <InfoRow label="Bucket ID">{displayResource.bucketId}</InfoRow>
+      <InfoRow label="Owner">{displayResource.userId}</InfoRow>
+      <InfoRow label="Path">{displayResource.path}</InfoRow>
+      <InfoRow label="File size">{fileSize} ({displayResource.sizeInBytes} bytes)</InfoRow>
+      <InfoRow label="Title">{displayResource.title || "-"}</InfoRow>
+      <InfoRow label="Description">{displayResource.description || "-"}</InfoRow>
+      <InfoRow label="Tags">{displayResource.tags.length > 0 ? displayResource.tags.join(", ") : "-"}</InfoRow>
+      <InfoRow label="Date added">{dateAdded}</InfoRow>
+      {dateModified && <InfoRow label="Last modified">{dateModified}</InfoRow>}
+      <InfoRow label="Content type">{displayResource.contentType}</InfoRow>
+      <InfoRow label="Dimensions">{meta.width} × {meta.height}</InfoRow>
+      {meta.fps > 0 && <InfoRow label="FPS">{meta.fps}</InfoRow>}
+      <InfoRow label="Duration">{durationStr}</InfoRow>
+      {meta.codec && <InfoRow label="Codec">{meta.codec}</InfoRow>}
+    </InfoTable>
   )
 
   const fullMeta = fullResource?.fullMeta as Record<string, unknown> | undefined

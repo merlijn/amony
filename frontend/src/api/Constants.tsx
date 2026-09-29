@@ -95,6 +95,8 @@ const defaultPrefs: Prefs = {
 }
 
 const anonymousSession: SessionInfo = {
+  userId: "anonymous",
+  roles: [],
   isLoggedIn: () => false,
   isAdmin: () => false,
 }

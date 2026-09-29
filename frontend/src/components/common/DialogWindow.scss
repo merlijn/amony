@@ -2,6 +2,7 @@
 
 .modal-dialog-container {
   //min-width: 500px;
+  position: relative;
   height: 100%;
   width: 100%;
   padding: var(--spacing-l);
@@ -32,4 +33,30 @@
 
   position: relative;
   min-height: 100px;
+}
+
+.modal-dialog-close {
+
+  @extend .hover-pointer;
+
+  position: absolute;
+  top: var(--spacing-m);
+  right: var(--spacing-m);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--spacing-xs);
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 20px;
+  line-height: 1;
+
+  &:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-hover);
+  }
 }
