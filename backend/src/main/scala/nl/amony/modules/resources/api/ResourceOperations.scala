@@ -16,8 +16,8 @@ case class VideoThumbnail(width: Option[Int] = None, height: Option[Int] = None,
 }
 
 object VideoFragment {
-  val minWidth          = 120
-  val minHeight         = 120
+  val minWidth          = 64
+  val minHeight         = 64
   val maxWidth          = 8192
   val maxHeight         = 8192
   val minLengthInMillis = 1000

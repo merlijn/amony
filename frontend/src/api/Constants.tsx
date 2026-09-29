@@ -88,7 +88,7 @@ const defaultPrefs: Prefs = {
   showDuration:    true,
   showDates:       true,
   showResolution:  true,
-  gridCellWidth:   400,
+  gridCellWidth:   320,
   theme:           "system",
   gridAspectRatio: "16/9",
   gridOrientation: "landscape",
@@ -121,9 +121,9 @@ export const Constants = {
 
   defaultPreferences: defaultPrefs,
 
-  minGridCellWidth: 100,
+  minGridCellWidth: 96,
 
-  maxGridCellWidth: 600,
+  maxGridCellWidth: 768,
 
   sideBarWidth: 150,
 }
