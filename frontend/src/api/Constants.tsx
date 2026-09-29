@@ -88,7 +88,7 @@ const defaultPrefs: Prefs = {
   showDuration:    true,
   showDates:       true,
   showResolution:  true,
-  gridCellWidth:   400,
+  gridCellWidth:   320,
   theme:           "system",
   gridAspectRatio: "16/9",
   gridOrientation: "landscape",
