@@ -39,5 +39,10 @@ class ThumbnailFormatsSpec extends AnyWordSpecLike {
       assert(ImageFormat.Avif.ffmpegEncoderArgs.contains("libsvtav1"))
       assert(ImageFormat.Webp.ffmpegEncoderArgs.isEmpty)
     }
+
+    "only declare a minimum side for AVIF (SVT-AV1 rejects sides below 64px)" in {
+      assert(ImageFormat.Avif.minimumDimension.contains(64))
+      assert(ImageFormat.Jxl.minimumDimension.isEmpty && ImageFormat.Webp.minimumDimension.isEmpty && ImageFormat.Jpeg.minimumDimension.isEmpty)
+    }
   }
 }

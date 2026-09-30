@@ -7,8 +7,9 @@ import nl.amony.modules.resources.api.*
 
 class ResourceContentRoutesSpec extends AnyWordSpecLike {
 
-  private val resolutions = ThumbnailResolutions(List(352, 4320), 352, stepDown = 0)
-  private val formats     = ThumbnailFormats(List(ImageFormat.Avif, ImageFormat.Webp, ImageFormat.Jpeg))
+  private val resolutions      = ThumbnailResolutions(List(352, 4320), 352, stepDown = 0)
+  private val smallResolutions = ThumbnailResolutions(List(96, 192, 384, 768, 1536), 384, stepDown = 0)
+  private val formats          = ThumbnailFormats(List(ImageFormat.Avif, ImageFormat.Webp, ImageFormat.Jpeg))
 
   private def videoInfo(width: Int, height: Int) = ResourceInfo(
     bucketId           = BucketId("test"),
@@ -75,6 +76,39 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
     "reject a video thumbnail when the timestamp does not match" in {
       val op = ResourceContentRoutes.patterns.thumbnailOperation(999, "w", "352", "webp", resolutions, formats, videoInfo(1920, 1080))
       assert(op.isEmpty)
+    }
+  }
+
+  "ResourceContentRoutes.thumbnailOperation for AVIF" should {
+
+    "grow the pinned width so the derived side stays >= 64 on a 16:9 source" in {
+      val op = ResourceContentRoutes.patterns.thumbnailOperation(1000, "w", "96", "avif", smallResolutions, formats, videoInfo(1920, 1080))
+      assert(op == Some(VideoThumbnail(width = Some(114), height = None, timestamp = 1000, format = ImageFormat.Avif)))
+    }
+
+    "leave the pinned width alone when the derived side already reaches 64 (3:2 source)" in {
+      val op = ResourceContentRoutes.patterns.thumbnailOperation(1000, "w", "96", "avif", smallResolutions, formats, videoInfo(1920, 1280))
+      assert(op == Some(VideoThumbnail(width = Some(96), height = None, timestamp = 1000, format = ImageFormat.Avif)))
+    }
+
+    "leave a height-pinned AVIF thumbnail alone when the derived width reaches 64" in {
+      val op = ResourceContentRoutes.patterns.thumbnailOperation(1000, "h", "96", "avif", smallResolutions, formats, videoInfo(1920, 1080))
+      assert(op == Some(VideoThumbnail(width = None, height = Some(96), timestamp = 1000, format = ImageFormat.Avif)))
+    }
+
+    "round the grown pinned width up to even when rounding down would break the minimum" in {
+      val op = ResourceContentRoutes.patterns.thumbnailOperation(1000, "w", "96", "avif", smallResolutions, formats, videoInfo(1000, 600))
+      assert(op == Some(VideoThumbnail(width = Some(108), height = None, timestamp = 1000, format = ImageFormat.Avif)))
+    }
+
+    "not grow thumbnails for formats without a minimum side" in {
+      val op = ResourceContentRoutes.patterns.thumbnailOperation(1000, "w", "96", "webp", smallResolutions, formats, videoInfo(1920, 1080))
+      assert(op == Some(VideoThumbnail(width = Some(96), height = None, timestamp = 1000, format = ImageFormat.Webp)))
+    }
+
+    "grow a width-pinned AVIF image thumbnail the same way" in {
+      val op = ResourceContentRoutes.patterns.thumbnailOperation(0, "w", "96", "avif", smallResolutions, formats, imageInfo(1600, 900))
+      assert(op == Some(ImageThumbnail(width = Some(114), height = None, format = ImageFormat.Avif)))
     }
   }
 

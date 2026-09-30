@@ -11,6 +11,14 @@ enum ImageFormat(val configName: String, val extension: String, val mimeType: St
     case Avif => List("-c:v", "libsvtav1", "-preset", "8", "-crf", "34", "-pix_fmt", "yuv420p")
     case _    => Nil
 
+  /**
+   * Hard minimum the encoder enforces on each side of the encoded image, if any. SVT-AV1 rejects any
+   * side below 64px, so an AVIF thumbnail whose derived side would be smaller has to be grown.
+   */
+  def minimumDimension: Option[Int] = this match
+    case Avif => Some(64)
+    case _    => None
+
 object ImageFormat:
   def fromName(name: String): Option[ImageFormat] = values.find(_.configName == name)
 
