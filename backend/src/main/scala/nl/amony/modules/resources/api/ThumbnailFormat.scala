@@ -7,10 +7,6 @@ enum ImageFormat(val configName: String, val extension: String, val mimeType: St
   case Webp extends ImageFormat("webp", "webp", "image/webp")
   case Jpeg extends ImageFormat("jpeg", "jpeg", "image/jpeg")
 
-  def ffmpegEncoderArgs: List[String] = this match
-    case Avif => List("-c:v", "libsvtav1", "-preset", "8", "-crf", "34", "-pix_fmt", "yuv420p")
-    case _    => Nil
-
   /**
    * Hard minimum the encoder enforces on each side of the encoded image, if any. SVT-AV1 rejects any
    * side below 64px, so an AVIF thumbnail whose derived side would be smaller has to be grown.
@@ -22,7 +18,7 @@ enum ImageFormat(val configName: String, val extension: String, val mimeType: St
 object ImageFormat:
   def fromName(name: String): Option[ImageFormat] = values.find(_.configName == name)
 
-final class ThumbnailFormats(supported: List[ImageFormat]):
+final class ThumbnailFormats(supported: List[ImageFormat], encoderOptions: Map[ImageFormat, List[String]] = Map.empty):
 
   require(supported.nonEmpty, "At least one thumbnail image format must be configured")
   require(supported.distinct.size == supported.size, s"Duplicate thumbnail image formats: ${supported.map(_.configName).mkString(", ")}")
@@ -35,3 +31,6 @@ final class ThumbnailFormats(supported: List[ImageFormat]):
   /** Resolves a format name from a public URL, falling back to the most preferred format. */
   def resolve(name: String): ImageFormat =
     ImageFormat.fromName(name).filter(formats.contains).getOrElse(default)
+
+  /** Extra ffmpeg encoder arguments configured for the given format (empty when none are configured). */
+  def encoderArgs(format: ImageFormat): List[String] = encoderOptions.getOrElse(format, Nil)

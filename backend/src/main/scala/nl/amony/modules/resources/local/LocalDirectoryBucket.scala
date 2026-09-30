@@ -23,7 +23,8 @@ object LocalDirectoryBucket:
   def resource(
     config: LocalDirectoryConfig,
     pool: cats.effect.Resource[IO, Session[IO]],
-    topic: EventTopic[ResourceEvent]
+    topic: EventTopic[ResourceEvent],
+    formats: ThumbnailFormats
   )(
     using runtime: IORuntime,
     meter: Meter[IO],
@@ -31,7 +32,7 @@ object LocalDirectoryBucket:
   ): cats.effect.Resource[IO, LocalDirectoryBucket] = {
     cats.effect.Resource.make {
       IO {
-        val bucket = LocalDirectoryBucket(config, ResourceDatabase(pool), topic)
+        val bucket = LocalDirectoryBucket(config, ResourceDatabase(pool), topic, formats)
         bucket.sync().unsafeRunAsync(_ => ())
         bucket
       }
@@ -41,9 +42,10 @@ object LocalDirectoryBucket:
 class LocalDirectoryBucket(
   config: LocalDirectoryConfig,
   db: ResourceDatabase,
-  topic: EventTopic[ResourceEvent]
+  topic: EventTopic[ResourceEvent],
+  formats: ThumbnailFormats
 )(using runtime: IORuntime, meter: Meter[IO], tracer: Tracer[IO])
-    extends LocalDirectoryBase(config, db, topic), LocalResourceOperations, ResourceBucket, LocalResourceSyncer, UploadResource, Logging {
+    extends LocalDirectoryBase(config, db, topic, formats), LocalResourceOperations, ResourceBucket, LocalResourceSyncer, UploadResource, Logging {
 
   private def getResourceInfo(resourceId: ResourceId): IO[Option[ResourceInfo]] = db.getResourceById(id, resourceId)
 

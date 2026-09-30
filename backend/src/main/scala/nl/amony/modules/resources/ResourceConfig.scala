@@ -36,12 +36,39 @@ given ConfigReader[ImageFormat] =
     )
   }
 
+/**
+ * Extra ffmpeg encoder arguments per image format, keyed in config by the format's config name:
+ * `format-options { avif = [ "-c:v", "libsvtav1" ] }`.
+ */
+case class FormatOptions(options: Map[ImageFormat, List[String]]):
+
+  /** Extra encoder arguments for the given format (empty when none are configured). */
+  def forFormat(format: ImageFormat): List[String] = options.getOrElse(format, Nil)
+
+object FormatOptions:
+
+  val empty: FormatOptions = FormatOptions(Map.empty)
+
+  given ConfigReader[FormatOptions] =
+    ConfigReader[Map[String, List[String]]].emap { raw =>
+      raw.foldLeft[Either[CannotConvert, Map[ImageFormat, List[String]]]](Right(Map.empty)) {
+        case (result, (name, args)) =>
+          for
+            options <- result
+            format  <- ImageFormat.fromName(name).toRight(
+                         CannotConvert(name, "ImageFormat", s"Expected one of: ${ImageFormat.values.map(_.configName).mkString(", ")}")
+                       )
+          yield options.updated(format, args)
+      }.map(FormatOptions(_))
+    }
+
 case class ThumbnailConfig(
   allowedResolutions: List[Int],
   defaultResolution: Int,
   supportedFormats: List[ImageFormat],
   resolutionStepDown: Int,
-  resolutionPickingStrategy: ResolutionPickingStrategy
+  resolutionPickingStrategy: ResolutionPickingStrategy,
+  formatOptions: FormatOptions = FormatOptions.empty
 ) derives ConfigReader
 
 case class ResourceConfig(thumbnails: ThumbnailConfig, buckets: List[ResourceBucketConfig]) derives ConfigReader

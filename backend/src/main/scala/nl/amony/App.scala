@@ -104,19 +104,19 @@ object App extends ResourceApp.Forever with Logging {
         resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
         searchService     <- SolrSearchService.resource(appConfig.search.solr)
         _                  = resourceEventTopic.followTail(searchService.processEvent)
-        resourceBuckets   <- appConfig.resources.buckets.map {
-                               case localConfig: ResourceConfig.LocalDirectoryConfig =>
-                                 LocalDirectoryBucket.resource(localConfig, databasePool, resourceEventTopic)
-                             }.sequence
-        resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
-        authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
-        collectionsDal     = ResourceDatabase(databasePool)
         thumbResolutions   = ThumbnailResolutions(
                                appConfig.resources.thumbnails.allowedResolutions,
                                appConfig.resources.thumbnails.defaultResolution,
                                appConfig.resources.thumbnails.resolutionStepDown
                              )
-        thumbFormats       = ThumbnailFormats(appConfig.resources.thumbnails.supportedFormats)
+        thumbFormats       = ThumbnailFormats(appConfig.resources.thumbnails.supportedFormats, appConfig.resources.thumbnails.formatOptions.options)
+        resourceBuckets   <- appConfig.resources.buckets.map {
+                               case localConfig: ResourceConfig.LocalDirectoryConfig =>
+                                 LocalDirectoryBucket.resource(localConfig, databasePool, resourceEventTopic, thumbFormats)
+                             }.sequence
+        resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
+        authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
+        collectionsDal     = ResourceDatabase(databasePool)
         apiRoutes          = {
           given ApiSecurity = authModule.apiSecurity
 

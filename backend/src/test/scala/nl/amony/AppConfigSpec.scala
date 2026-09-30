@@ -17,12 +17,15 @@ class AppConfigSpec extends AnyWordSpecLike {
       println(s"allowed-resolutions: ${appConfig.resources.thumbnails.allowedResolutions}")
       println(s"supported-formats: ${appConfig.resources.thumbnails.supportedFormats}")
       println(s"resolution-picking-strategy: ${appConfig.resources.thumbnails.resolutionPickingStrategy}")
+      println(s"format-options: ${appConfig.resources.thumbnails.formatOptions}")
       assert(appConfig.api.allowedHosts.nonEmpty)
       assert(appConfig.resources.thumbnails.allowedResolutions.nonEmpty)
       assert(appConfig.resources.thumbnails.allowedResolutions.contains(appConfig.resources.thumbnails.defaultResolution))
       assert(appConfig.resources.thumbnails.supportedFormats.nonEmpty)
       // AVIF is dropped by default: the bundled SVT-AV1 encoder cannot encode sides below 64px.
       assert(!appConfig.resources.thumbnails.supportedFormats.contains(ImageFormat.Avif))
+      // Encoder arguments are configured per format rather than hardcoded in ImageFormat.
+      assert(appConfig.resources.thumbnails.formatOptions.forFormat(ImageFormat.Avif).contains("libsvtav1"))
     }
   }
 }

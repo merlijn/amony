@@ -27,17 +27,24 @@ class ThumbnailFormatsSpec extends AnyWordSpecLike {
       assertThrows[IllegalArgumentException](ThumbnailFormats(Nil))
       assertThrows[IllegalArgumentException](ThumbnailFormats(List(ImageFormat.Webp, ImageFormat.Webp)))
     }
+
+    "expose the encoder arguments configured per format" in {
+      val configured = ThumbnailFormats(
+        List(ImageFormat.Avif, ImageFormat.Webp),
+        Map(ImageFormat.Avif -> List("-c:v", "libsvtav1", "-preset", "8"))
+      )
+      assert(configured.encoderArgs(ImageFormat.Avif) == List("-c:v", "libsvtav1", "-preset", "8"))
+      assert(configured.encoderArgs(ImageFormat.Webp).isEmpty)
+    }
+
+    "return no encoder arguments when none are configured" in
+      assert(formats.encoderArgs(ImageFormat.Avif).isEmpty && formats.encoderArgs(ImageFormat.Jpeg).isEmpty)
   }
 
   "ImageFormat" should {
     "expose the mime type and extension per format" in {
       assert(ImageFormat.Avif.mimeType == "image/avif" && ImageFormat.Avif.extension == "avif")
       assert(ImageFormat.Jpeg.mimeType == "image/jpeg" && ImageFormat.Jpeg.extension == "jpeg")
-    }
-
-    "hardcode a fast AV1 encoder for AVIF (see #51)" in {
-      assert(ImageFormat.Avif.ffmpegEncoderArgs.contains("libsvtav1"))
-      assert(ImageFormat.Webp.ffmpegEncoderArgs.isEmpty)
     }
 
     "only declare a minimum side for AVIF (SVT-AV1 rejects sides below 64px)" in {
