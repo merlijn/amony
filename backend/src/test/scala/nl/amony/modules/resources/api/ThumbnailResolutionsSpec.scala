@@ -8,9 +8,8 @@ class ThumbnailResolutionsSpec extends AnyWordSpecLike {
 
   "ThumbnailResolutions" should {
 
-    "order sizes from smallest to largest" in {
+    "order sizes from smallest to largest" in
       assert(resolutions.sizes == List(128, 256, 512, 1024))
-    }
 
     "expose both dimensions" in {
       assert(resolutions.dimensions == List(ThumbnailDimension.Width, ThumbnailDimension.Height))
@@ -23,9 +22,8 @@ class ThumbnailResolutionsSpec extends AnyWordSpecLike {
       assert(resolutions.effectiveSize(512) == 512)
     }
 
-    "fall back to the default for unknown sizes" in {
+    "fall back to the default for unknown sizes" in
       assert(resolutions.effectiveSize(999) == 512)
-    }
 
     "step down the requested size by the configured number of rungs" in {
       val stepped = ThumbnailResolutions(List(128, 256, 512, 1024), 512, stepDown = 1)
