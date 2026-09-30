@@ -22,8 +22,8 @@ import ResourceDetailsDialog from "./dialogs/ResourceDetailsDialog";
 export type PreviewProps = {
   resource: ResourceDto,
   options: PreviewOptions,
-  /** CSS width of the media slot, used to pick an appropriately sized thumbnail. */
-  mediaWidthPx?: number,
+  /** CSS width of the media slot, used to pick an appropriately sized thumbnail and preview clip. */
+  mediaWidthPx: number,
   onClick: (v: ResourceDto) => any,
 }
 
@@ -68,7 +68,7 @@ const Preview = (props: PreviewProps) => {
         { isUnsupportedVideo && <div className="preview-unsupported-overlay"><FiAlertCircle color="#fff" /></div> }
       </div>
 
-  const thumbnailSrc = thumbnailUrl(resource, config, props.mediaWidthPx ?? 400)
+  const thumbnailSrc = thumbnailUrl(resource, config, props.mediaWidthPx)
 
   const primaryThumbnail =
       <LazyImage
@@ -84,10 +84,11 @@ const Preview = (props: PreviewProps) => {
 
   const videoPreview =
       <FragmentsPlayer
-          key       = { `video-preview-${props.resource.resourceId}` }
-          className = { `preview-video preview-media` }
-          onClick   = { () => props.onClick(props.resource) }
-          fragments = { props.resource.clips } />
+          key        = { `video-preview-${props.resource.resourceId}` }
+          className  = { `preview-video preview-media` }
+          onClick    = { () => props.onClick(props.resource) }
+          fragments  = { props.resource.clips }
+          boxWidthPx = { props.mediaWidthPx } />
 
   const mediaContainerStyle = props.options.aspectRatio
     ? { "--preview-aspect-ratio": props.options.aspectRatio } as CSSProperties

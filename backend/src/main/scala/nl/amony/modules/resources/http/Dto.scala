@@ -80,15 +80,27 @@ case class ResourceDto(
 }
 
 case class ClipDto(
+  bucketId: String,
   resourceId: String,
   start: Long,
   end: Long,
-  @customise(required)
-  urls: List[String],
   description: Option[String],
   @customise(required)
   tags: List[String]
 ) derives Codec, sttp.tapir.Schema
+
+object ClipDto:
+
+  /** Fixed length of the generated hover-preview clip, in milliseconds. */
+  val PreviewLengthMillis = 3000L
+
+  /**
+   * The `(start, end)` range of a resource's preview clip: it starts at the resource's thumbnail
+   * timestamp (or a third of the video) and runs for [[PreviewLengthMillis]], capped at the video length.
+   */
+  def previewRange(thumbnailTimestamp: Option[Int], durationInMillis: Int): (Long, Long) =
+    val start = thumbnailTimestamp.getOrElse(durationInMillis / 3).toLong
+    (start, math.min(durationInMillis.toLong, start + PreviewLengthMillis))
 
 case class CollectionDto(
   id: UUID,
@@ -125,13 +137,18 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     case None => ResourceMetaDto(width = 0, height = 0, duration = 0, fps = 0, codec = None)
   }
 
-  // A preview clip starting at the thumbnail timestamp, capped at 3 seconds and the video length
+  // A preview clip spanning the resource's preview range; the client builds the clip URL from these timestamps.
   val thumbnailClip = resource.basicContentProperties match {
     case Some(_: VideoProperties) =>
-      val start    = thumbnailTimestamp.toLong
-      val end      = Math.min(contentMeta.duration, start + 3000L)
-      val clipUrls = List(s"/api/resources/${resource.bucketId}/${resource.resourceId}/clip_${thumbnailTimestamp}_${ThumbnailDimension.Height.token}_${ThumbnailResolutions.DefaultClipSize}.mp4")
-      Some(ClipDto(resourceId = resource.resourceId, start = start, end = end, urls = clipUrls, description = None, tags = List.empty))
+      val (start, end) = ClipDto.previewRange(resource.thumbnailTimestamp, durationInMillis)
+      Some(ClipDto(
+        bucketId    = resource.bucketId,
+        resourceId  = resource.resourceId,
+        start       = start,
+        end         = end,
+        description = None,
+        tags        = List.empty
+      ))
     case _                        =>
       None
   }

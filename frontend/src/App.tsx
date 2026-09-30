@@ -1,7 +1,7 @@
 import {BrowserRouter, Route, Routes, useParams} from 'react-router-dom';
 import React, {lazy, Suspense, useMemo, use} from 'react';
 import {Constants, SessionContext} from "./api/Constants";
-import {ConfigContext, AppConfig} from "./api/ConfigContext";
+import {ConfigContext, AppConfig, defaultAppConfig} from "./api/ConfigContext";
 import {pickSupportedImageFormat} from "./api/MediaFormat";
 import {getConfig, getSession} from "./api/generated";
 import {AxiosError} from "axios";
@@ -43,7 +43,7 @@ function App() {
         .catch((error: AxiosError) => {
           // Without config the frontend still works, it just falls back to the default thumbnail resolution and format.
           console.log("Error getting app config", error);
-          return undefined;
+          return defaultAppConfig;
         }),
     []);
 
@@ -64,7 +64,7 @@ function App() {
 
 function SessionGate({ sessionPromise, configPromise }: {
   sessionPromise: Promise<SessionInfo | null>,
-  configPromise: Promise<AppConfig | undefined>
+  configPromise: Promise<AppConfig>
 }) {
   const session = use(sessionPromise);
   const config  = use(configPromise);

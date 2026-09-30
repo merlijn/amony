@@ -1582,7 +1582,6 @@ components:
       type: object
       required:
       - thumbnailSizes
-      - thumbnailDimensions
       - supportedFormats
       - defaultThumbnailResolution
       - resolutionPickingStrategy
@@ -1592,10 +1591,6 @@ components:
           items:
             type: integer
             format: int32
-        thumbnailDimensions:
-          type: array
-          items:
-            type: string
         supportedFormats:
           type: array
           items:
@@ -1652,12 +1647,14 @@ components:
       title: ClipDto
       type: object
       required:
+      - bucketId
       - resourceId
       - start
       - end
-      - urls
       - tags
       properties:
+        bucketId:
+          type: string
         resourceId:
           type: string
         start:
@@ -1666,10 +1663,6 @@ components:
         end:
           type: integer
           format: int64
-        urls:
-          type: array
-          items:
-            type: string
         description:
           type: string
         tags:

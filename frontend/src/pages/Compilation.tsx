@@ -2,6 +2,9 @@ import {useEffect, useState} from "react";
 import FragmentsPlayer from "../components/common/FragmentsPlayer";
 import {ClipDto} from "../api/generated";
 
+const previewWidthPx  = 800
+const previewHeightPx = 500
+
 const Compilation = () => {
 
     const [fragments, setFragments] = useState<Array<ClipDto>>([])
@@ -18,9 +21,10 @@ const Compilation = () => {
   
     if (fragments.length > 0) {
       return <FragmentsPlayer 
-                style = { { width: 800, height: 500 } }
-                className = "abs-center"
-                fragments = { fragments } 
+                style      = { { width: previewWidthPx, height: previewHeightPx } }
+                className  = "abs-center"
+                fragments  = { fragments } 
+                boxWidthPx = { previewWidthPx }
               />
     } else
       return <div />
