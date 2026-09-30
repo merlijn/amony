@@ -62,13 +62,13 @@ export const thumbnailUrl = (resource: ResourceDto, config: AppConfig, boxWidthC
   resourceThumbnailUrl(resource, operativeDimension(config), resolutionFor(config, boxWidthCss), config.imageFormat);
 
 /**
- * URL of a hover-preview clip, built from the clip's timestamp and pinned to the same operative
- * dimension and resolution ladder as thumbnails, so a preview is sized for the box it fills rather
- * than always at a fixed height.
+ * URL of a hover-preview clip, built from the clip's start and end timestamps and pinned to the same
+ * operative dimension and resolution ladder as thumbnails, so a preview is sized for the box it fills
+ * rather than always at a fixed height.
  */
 export const clipUrl = (clip: ClipDto, config: AppConfig, boxWidthCss: number): string => {
   const dimension = dimensionToken(operativeDimension(config));
   const size      = resolutionFor(config, boxWidthCss);
 
-  return `/api/resources/${clip.bucketId}/${clip.resourceId}/clip_${clip.start}_${dimension}_${size}.mp4`;
+  return `/api/resources/${clip.bucketId}/${clip.resourceId}/clip_${clip.start}_${clip.end}_${dimension}_${size}.mp4`;
 };
