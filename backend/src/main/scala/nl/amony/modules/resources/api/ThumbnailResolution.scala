@@ -42,8 +42,3 @@ final class ThumbnailResolutions(allowed: List[Int], defaultSize: Int, stepDown:
   /** Resolves a `(dimension token, requested size)` pair from a public URL to a dimension and size. */
   def resolve(dimensionToken: String, requested: Int): (ThumbnailDimension, Int) =
     (ThumbnailDimension.fromToken(dimensionToken).getOrElse(ThumbnailDimension.Width), effectiveSize(requested))
-
-object ThumbnailResolutions:
-
-  /** Fixed size used for server-built clip previews until clips support dimensions/resolutions. */
-  val DefaultClipSize = 512

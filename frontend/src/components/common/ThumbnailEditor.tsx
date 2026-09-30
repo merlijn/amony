@@ -116,8 +116,9 @@ const ThumbnailEditor = ({resource, player, onResourceUpdated}: ThumbnailEditorP
           />
           { expanded && isHovering && (
             <FragmentsPlayer
-              className = "thumbnail-editor-video"
-              fragments = { resource.clips }
+              className  = "thumbnail-editor-video"
+              fragments  = { resource.clips }
+              boxWidthPx = { 400 }
             />
           )}
         </div>

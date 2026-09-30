@@ -1,10 +1,14 @@
 import React, { CSSProperties, useEffect, useRef, useState } from "react";
 import {ClipDto} from "../../api/generated";
+import {useAppConfig} from "../../api/ConfigContext";
+import {clipUrl} from "../../api/ResourceUrls";
 
 type FragmentsPlayerProps = {
   className?: string,
   style?: CSSProperties,
   fragments: Array<ClipDto>
+  /** CSS width of the media slot, used to pick an appropriately sized clip. */
+  boxWidthPx?: number
   onClick?: () => void
 }
 
@@ -13,6 +17,7 @@ const FragmentsPlayer = (props: FragmentsPlayerProps) => {
   const [currentPreviewIdx, setCurrentPreviewIdx] = useState(0)
   // const [playPromise, setPlayPromise] = useState<Promise<void>>(Promise.resolve())
   const videoRef = useRef<HTMLVideoElement>(null)
+  const config   = useAppConfig()
 
   // sort the fragments by start time
   props.fragments.sort((a, b) => a.start > b.start ? 1 : -1)
@@ -53,6 +58,8 @@ const FragmentsPlayer = (props: FragmentsPlayerProps) => {
       playCurrent(v)
   }
 
+  const currentFragment = props.fragments[currentPreviewIdx]
+
   return(
     <video ref = { videoRef }
            style = {props.style ? props.style : {} }
@@ -62,7 +69,8 @@ const FragmentsPlayer = (props: FragmentsPlayerProps) => {
            onEnded = { (e) => playNext(e.currentTarget) }
            preload = 'none' >
 
-      <source src = { props.fragments[currentPreviewIdx].urls[0] } type="video/mp4"/>
+      { currentFragment &&
+        <source src = { clipUrl(currentFragment, config, props.boxWidthPx ?? 400) } type="video/mp4"/> }
     </video>
   );
 }

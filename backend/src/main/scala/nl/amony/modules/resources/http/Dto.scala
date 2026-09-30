@@ -80,11 +80,10 @@ case class ResourceDto(
 }
 
 case class ClipDto(
+  bucketId: String,
   resourceId: String,
   start: Long,
   end: Long,
-  @customise(required)
-  urls: List[String],
   description: Option[String],
   @customise(required)
   tags: List[String]
@@ -125,13 +124,20 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     case None => ResourceMetaDto(width = 0, height = 0, duration = 0, fps = 0, codec = None)
   }
 
-  // A preview clip starting at the thumbnail timestamp, capped at 3 seconds and the video length
+  // A preview clip starting at the thumbnail timestamp, capped at 3 seconds and the video length.
+  // The client builds the clip URL from these timestamps and the pinned thumbnail resolution.
   val thumbnailClip = resource.basicContentProperties match {
     case Some(_: VideoProperties) =>
-      val start    = thumbnailTimestamp.toLong
-      val end      = Math.min(contentMeta.duration, start + 3000L)
-      val clipUrls = List(s"/api/resources/${resource.bucketId}/${resource.resourceId}/clip_${thumbnailTimestamp}_${ThumbnailDimension.Height.token}_${ThumbnailResolutions.DefaultClipSize}.mp4")
-      Some(ClipDto(resourceId = resource.resourceId, start = start, end = end, urls = clipUrls, description = None, tags = List.empty))
+      val start = thumbnailTimestamp.toLong
+      val end   = Math.min(contentMeta.duration, start + 3000L)
+      Some(ClipDto(
+        bucketId    = resource.bucketId,
+        resourceId  = resource.resourceId,
+        start       = start,
+        end         = end,
+        description = None,
+        tags        = List.empty
+      ))
     case _                        =>
       None
   }

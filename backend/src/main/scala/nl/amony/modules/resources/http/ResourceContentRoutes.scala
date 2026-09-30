@@ -21,7 +21,7 @@ object ResourceContentRoutes extends Logging {
     // Public URL patterns: timestamp for cache-busting + pinned dimension + resolution size in pixels
     // + image format extension.
     // thumb_{timestamp}_{dim}_{size}.{format}  e.g. thumb_2863_w_768.avif  (videos and images)
-    // clip_{timestamp}_{dim}_{size}.mp4        e.g. clip_2863_h_512.mp4    (videos only)
+    // clip_{timestamp}_{dim}_{size}.mp4        e.g. clip_2863_w_512.mp4    (videos only)
     val PublicThumbnailPattern = raw"thumb_(\d+)_([wh])_(\d+)\.([a-z0-9]+)".r
     val PublicClipPattern      = raw"clip_(\d+)_([wh])_(\d+)\.mp4".r
 

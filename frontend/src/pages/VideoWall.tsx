@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import './VideoWall.scss';
 import {ClipDto} from "../api/generated";
+import {clipUrl} from "../api/ResourceUrls";
 
 const VideoWall = () => {
 
@@ -18,7 +19,7 @@ const VideoWall = () => {
 
   const getUrl = (idx: number): string => {
     const f = fragments[idx]
-    return f.urls[f.urls.length-1]
+    return clipUrl(f, undefined, 512)
   }
 
   // TODO FIX

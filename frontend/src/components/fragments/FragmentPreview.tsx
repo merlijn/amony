@@ -4,6 +4,8 @@ import './FragmentPreview.scss';
 import ImgWithAlt from "../common/ImgWithAlt";
 import TagEditor from "../common/TagEditor";
 import {ClipDto, ResourceDto} from "../../api/generated";
+import {useAppConfig} from "../../api/ConfigContext";
+import {clipUrl} from "../../api/ResourceUrls";
 
 interface Props {
   style: CSSProperties,
@@ -22,6 +24,7 @@ const FragmentPreview = (props: Props) => {
   const durationInSeconds = Math.round((props.fragment.end - props.fragment.start) / 1000)
   const [showMetaPanel, setShowMetaPanel] = useState(false)
   const [tags, setTags] = useState<Array<string>>(props.fragment.tags || [])
+  const config = useAppConfig()
 
   const deleteFragmentFn = () => {
 
@@ -59,7 +62,7 @@ const FragmentPreview = (props: Props) => {
              onMouseEnter={(e) => e.currentTarget.play() }
              onMouseLeave={(e) => e.currentTarget.pause() }
              onClick={(e) => {  props.onClick && props.onClick() } }>
-        <source src={props.fragment.urls[0]} type="video/mp4"/>
+        <source src={clipUrl(props.fragment, config, 512)} type="video/mp4"/>
       </video>
       <div className="abs-bottom-left duration-overlay">{`${durationInSeconds}s @ ${durationInMillisToString(props.fragment.end)}`}</div>
       {

@@ -84,10 +84,11 @@ const Preview = (props: PreviewProps) => {
 
   const videoPreview =
       <FragmentsPlayer
-          key       = { `video-preview-${props.resource.resourceId}` }
-          className = { `preview-video preview-media` }
-          onClick   = { () => props.onClick(props.resource) }
-          fragments = { props.resource.clips } />
+          key        = { `video-preview-${props.resource.resourceId}` }
+          className  = { `preview-video preview-media` }
+          onClick    = { () => props.onClick(props.resource) }
+          fragments  = { props.resource.clips }
+          boxWidthPx = { props.mediaWidthPx ?? 400 } />
 
   const mediaContainerStyle = props.options.aspectRatio
     ? { "--preview-aspect-ratio": props.options.aspectRatio } as CSSProperties

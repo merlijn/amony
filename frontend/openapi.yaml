@@ -1652,12 +1652,14 @@ components:
       title: ClipDto
       type: object
       required:
+      - bucketId
       - resourceId
       - start
       - end
-      - urls
       - tags
       properties:
+        bucketId:
+          type: string
         resourceId:
           type: string
         start:
@@ -1666,10 +1668,6 @@ components:
         end:
           type: integer
           format: int64
-        urls:
-          type: array
-          items:
-            type: string
         description:
           type: string
         tags:
