@@ -4,6 +4,8 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.wordspec.AnyWordSpecLike
 import pureconfig.ConfigSource
 
+import nl.amony.modules.resources.api.ImageFormat
+
 class AppConfigSpec extends AnyWordSpecLike {
 
   "AppConfig" should {
@@ -19,6 +21,8 @@ class AppConfigSpec extends AnyWordSpecLike {
       assert(appConfig.resources.thumbnails.allowedResolutions.nonEmpty)
       assert(appConfig.resources.thumbnails.allowedResolutions.contains(appConfig.resources.thumbnails.defaultResolution))
       assert(appConfig.resources.thumbnails.supportedFormats.nonEmpty)
+      // AVIF is dropped by default: the bundled SVT-AV1 encoder cannot encode sides below 64px.
+      assert(!appConfig.resources.thumbnails.supportedFormats.contains(ImageFormat.Avif))
     }
   }
 }
