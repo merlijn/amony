@@ -33,15 +33,48 @@ object ResourceContentRoutes extends Logging {
     }
 
     /**
+     * The dimension ffmpeg derives for the unpinned side via `scale=w:-2` / `scale=-2:h`, using floor
+     * division: requiring `>= min` on this value is safe even though ffmpeg rounds to the nearest even
+     * number, since the real result is never below the floor.
+     */
+    private def derivedFloor(pinned: Int, pinnedSource: Int, otherSource: Int): Int =
+      if pinnedSource <= 0 then 0 else ((pinned.toLong * otherSource) / pinnedSource).toInt
+
+    /**
      * Resolves the requested size for a pinned dimension, capped at the source's native size so a
      * thumbnail is never upscaled. For video the size is also rounded down to an even number, since
      * the h264 encoder requires even dimensions.
+     *
+     * When the target format has a hard minimum on both sides (`minimumDimension`, e.g. AVIF), the
+     * pinned size grows so the derived side stays at or above that minimum; the even rounding flips
+     * upwards in that case if rounding down would drop the derived side below the minimum.
      */
-    private def scaledDimensions(requested: Int, dimension: ThumbnailDimension, source: (Int, Int), even: Boolean): (Option[Int], Option[Int]) = {
+    private def scaledDimensions(
+      requested: Int,
+      dimension: ThumbnailDimension,
+      source: (Int, Int),
+      even: Boolean,
+      minimumDimension: Int = 0
+    ): (Option[Int], Option[Int]) = {
       val (sourceWidth, sourceHeight) = source
       val native                      = if dimension == ThumbnailDimension.Width then sourceWidth else sourceHeight
-      val capped                      = if native > 0 then math.min(requested, native) else requested
-      val sized                       = if even then capped - (capped % 2) else capped
+      val pinnedSource                = if dimension == ThumbnailDimension.Width then sourceWidth else sourceHeight
+      val otherSource                 = if dimension == ThumbnailDimension.Width then sourceHeight else sourceWidth
+
+      // Smallest pinned size whose derived side reaches the encoder minimum (0 when unbounded or unknown).
+      val requiredForMinimum =
+        if minimumDimension <= 0 || pinnedSource <= 0 || otherSource <= 0 then 0
+        else ((minimumDimension.toLong * pinnedSource + otherSource - 1) / otherSource).toInt
+
+      val target = math.max(requested, requiredForMinimum)
+      val capped = if native > 0 then math.min(target, native) else target
+      val sized  =
+        if !even then capped
+        else
+          val roundedDown = capped - (capped % 2)
+          if minimumDimension > 0 && derivedFloor(roundedDown, pinnedSource, otherSource) < minimumDimension then roundedDown + 2
+          else roundedDown
+
       (Option.when(dimension == ThumbnailDimension.Width)(sized), Option.when(dimension == ThumbnailDimension.Height)(sized))
     }
 
@@ -49,7 +82,15 @@ object ResourceContentRoutes extends Logging {
      * Builds a thumbnail operation only when the URL timestamp matches the resource's
      * canonical timestamp, preventing arbitrary timestamp injection.
      */
-    def thumbnailOperation(urlTimestamp: Long, dimensionToken: String, resolutionKey: String, formatName: String, resolutions: ThumbnailResolutions, formats: ThumbnailFormats, resource: ResourceInfo): Option[ResourceOperation] = {
+    def thumbnailOperation(
+      urlTimestamp: Long,
+      dimensionToken: String,
+      resolutionKey: String,
+      formatName: String,
+      resolutions: ThumbnailResolutions,
+      formats: ThumbnailFormats,
+      resource: ResourceInfo
+    ): Option[ResourceOperation] = {
       val requestedSize       = resolutionKey.toIntOption.getOrElse(resolutions.default)
       val (dimension, pixels) = resolutions.resolve(dimensionToken, requestedSize)
       val format              = formats.resolve(formatName)
@@ -58,11 +99,11 @@ object ResourceContentRoutes extends Logging {
         case Some(video: VideoProperties) =>
           val ts = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
           if urlTimestamp == ts then
-            val (width, height) = scaledDimensions(pixels, dimension, source, even = true)
+            val (width, height) = scaledDimensions(pixels, dimension, source, even = true, minimumDimension = format.minimumDimension.getOrElse(0))
             Some(VideoThumbnail(width = width, height = height, timestamp = ts, format = format))
           else None
         case Some(_: ImageProperties)     =>
-          val (width, height) = scaledDimensions(pixels, dimension, source, even = false)
+          val (width, height) = scaledDimensions(pixels, dimension, source, even = false, minimumDimension = format.minimumDimension.getOrElse(0))
           Some(ImageThumbnail(width = width, height = height, format = format))
         case _                            => None
       }
@@ -72,7 +113,13 @@ object ResourceContentRoutes extends Logging {
      * Builds a clip operation only when the URL timestamp matches the resource's
      * canonical timestamp, preventing arbitrary start/end injection.
      */
-    def clipOperation(urlTimestamp: Long, dimensionToken: String, resolutionKey: String, resolutions: ThumbnailResolutions, resource: ResourceInfo): Option[ResourceOperation] = {
+    def clipOperation(
+      urlTimestamp: Long,
+      dimensionToken: String,
+      resolutionKey: String,
+      resolutions: ThumbnailResolutions,
+      resource: ResourceInfo
+    ): Option[ResourceOperation] = {
       val requestedSize       = resolutionKey.toIntOption.getOrElse(resolutions.default)
       val (dimension, pixels) = resolutions.resolve(dimensionToken, requestedSize)
       val source              = sourceDimensions(resource)
@@ -90,7 +137,8 @@ object ResourceContentRoutes extends Logging {
     }
   }
 
-  def apply(buckets: Map[BucketId, ResourceBucket], resolutions: ThumbnailResolutions, formats: ThumbnailFormats)(using apiSecurity: ApiSecurity): HttpRoutes[IO] = {
+  def apply(buckets: Map[BucketId, ResourceBucket], resolutions: ThumbnailResolutions, formats: ThumbnailFormats)(using
+    apiSecurity: ApiSecurity): HttpRoutes[IO] = {
 
     // The content routes are not Tapir endpoints, so the access token has to be read from the cookie directly.
     def authToken(req: Request[IO]) =
@@ -129,9 +177,11 @@ object ResourceContentRoutes extends Logging {
             for
               (bucket, resource) <- getResource(req, BucketId(bucketId), ResourceId(resourceId))
               operation          <- OptionT.fromOption(resourcePattern match {
-                                      case patterns.PublicThumbnailPattern(ts, dim, resKey, format) => patterns.thumbnailOperation(ts.toLong, dim, resKey, format, resolutions, formats, resource.info)
-                                      case patterns.PublicClipPattern(ts, dim, resKey)              => patterns.clipOperation(ts.toLong, dim, resKey, resolutions, resource.info)
-                                      case _                                                => None
+                                      case patterns.PublicThumbnailPattern(ts, dim, resKey, format) =>
+                                        patterns.thumbnailOperation(ts.toLong, dim, resKey, format, resolutions, formats, resource.info)
+                                      case patterns.PublicClipPattern(ts, dim, resKey)              =>
+                                        patterns.clipOperation(ts.toLong, dim, resKey, resolutions, resource.info)
+                                      case _                                                        => None
                                     })
               derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))
               response           <- OptionT.liftF(resourceContentsResponse(req, derivedResource)

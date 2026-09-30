@@ -36,12 +36,30 @@ given ConfigReader[ImageFormat] =
     )
   }
 
+/**
+ * Pureconfig only ships a `Map[String, A]` reader, so this adapts the `format-options` map to
+ * `ImageFormat` keys, failing fast on an unknown format name.
+ */
+given ConfigReader[Map[ImageFormat, List[String]]] =
+  ConfigReader[Map[String, List[String]]].emap { raw =>
+    raw.foldLeft[Either[CannotConvert, Map[ImageFormat, List[String]]]](Right(Map.empty)) {
+      case (result, (name, args)) =>
+        for
+          options <- result
+          format  <- ImageFormat.fromName(name).toRight(
+                       CannotConvert(name, "ImageFormat", s"Expected one of: ${ImageFormat.values.map(_.configName).mkString(", ")}")
+                     )
+        yield options.updated(format, args)
+    }
+  }
+
 case class ThumbnailConfig(
   allowedResolutions: List[Int],
   defaultResolution: Int,
   supportedFormats: List[ImageFormat],
   resolutionStepDown: Int,
-  resolutionPickingStrategy: ResolutionPickingStrategy
+  resolutionPickingStrategy: ResolutionPickingStrategy,
+  formatOptions: Map[ImageFormat, List[String]] = Map.empty
 ) derives ConfigReader
 
 case class ResourceConfig(thumbnails: ThumbnailConfig, buckets: List[ResourceBucketConfig]) derives ConfigReader
