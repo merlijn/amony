@@ -54,26 +54,26 @@ object ResourceContentRoutes extends Logging {
       dimension: ThumbnailDimension,
       source: (Int, Int),
       even: Boolean,
-      minimumDimension: Int = 0
+      minimumDimension: Option[Int] = None
     ): (Option[Int], Option[Int]) = {
       val (sourceWidth, sourceHeight) = source
-      val native                      = if dimension == ThumbnailDimension.Width then sourceWidth else sourceHeight
       val pinnedSource                = if dimension == ThumbnailDimension.Width then sourceWidth else sourceHeight
       val otherSource                 = if dimension == ThumbnailDimension.Width then sourceHeight else sourceWidth
+      val minimum                     = minimumDimension.filter(_ > 0)
 
       // Smallest pinned size whose derived side reaches the encoder minimum (0 when unbounded or unknown).
-      val requiredForMinimum =
-        if minimumDimension <= 0 || pinnedSource <= 0 || otherSource <= 0 then 0
-        else ((minimumDimension.toLong * pinnedSource + otherSource - 1) / otherSource).toInt
+      val requiredForMinimum = minimum match
+        case Some(min) if pinnedSource > 0 && otherSource > 0 => ((min.toLong * pinnedSource + otherSource - 1) / otherSource).toInt
+        case _                                                => 0
 
       val target = math.max(requested, requiredForMinimum)
-      val capped = if native > 0 then math.min(target, native) else target
+      val capped = if pinnedSource > 0 then math.min(target, pinnedSource) else target
       val sized  =
         if !even then capped
         else
-          val roundedDown = capped - (capped % 2)
-          if minimumDimension > 0 && derivedFloor(roundedDown, pinnedSource, otherSource) < minimumDimension then roundedDown + 2
-          else roundedDown
+          val roundedDown  = capped - (capped % 2)
+          val belowMinimum = minimum.exists(min => derivedFloor(roundedDown, pinnedSource, otherSource) < min)
+          if belowMinimum then roundedDown + 2 else roundedDown
 
       (Option.when(dimension == ThumbnailDimension.Width)(sized), Option.when(dimension == ThumbnailDimension.Height)(sized))
     }
@@ -99,11 +99,11 @@ object ResourceContentRoutes extends Logging {
         case Some(video: VideoProperties) =>
           val ts = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
           if urlTimestamp == ts then
-            val (width, height) = scaledDimensions(pixels, dimension, source, even = true, minimumDimension = format.minimumDimension.getOrElse(0))
+            val (width, height) = scaledDimensions(pixels, dimension, source, even = true, minimumDimension = format.minimumDimension)
             Some(VideoThumbnail(width = width, height = height, timestamp = ts, format = format))
           else None
         case Some(_: ImageProperties)     =>
-          val (width, height) = scaledDimensions(pixels, dimension, source, even = false, minimumDimension = format.minimumDimension.getOrElse(0))
+          val (width, height) = scaledDimensions(pixels, dimension, source, even = false, minimumDimension = format.minimumDimension)
           Some(ImageThumbnail(width = width, height = height, format = format))
         case _                            => None
       }
