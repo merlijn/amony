@@ -1,18 +1,13 @@
 package nl.amony.modules.resources.api
 
-/** An image format a thumbnail can be encoded in. */
 enum ImageFormat(val configName: String, val extension: String, val mimeType: String):
   case Avif extends ImageFormat("avif", "avif", "image/avif")
   case Jxl  extends ImageFormat("jxl", "jxl", "image/jxl")
   case Webp extends ImageFormat("webp", "webp", "image/webp")
   case Jpeg extends ImageFormat("jpeg", "jpeg", "image/jpeg")
 
-  /**
-   * Hard minimum the encoder enforces on each side of the encoded image, if any. SVT-AV1 rejects any
-   * side below 64px, so an AVIF thumbnail whose derived side would be smaller has to be grown.
-   */
   def minimumDimension: Option[Int] = this match
-    case Avif => Some(64)
+    case Avif => Some(64) // SVT-AV1 rejects any side below 64px
     case _    => None
 
 object ImageFormat:
