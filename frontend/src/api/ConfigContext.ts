@@ -13,7 +13,6 @@ export type AppConfig = AppConfigDto & { imageFormat: string };
  */
 export const defaultAppConfig: AppConfig = {
   thumbnailSizes: [96, 192, 384, 768, 1536],
-  thumbnailDimensions: ["width", "height"],
   supportedFormats: ["webp", "jpeg"],
   defaultThumbnailResolution: { dimension: "width", pixels: 384 },
   resolutionPickingStrategy: "round-down",

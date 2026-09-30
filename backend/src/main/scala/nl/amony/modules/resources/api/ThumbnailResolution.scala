@@ -24,8 +24,6 @@ final class ThumbnailResolutions(allowed: List[Int], defaultSize: Int, stepDown:
   /** Configured sizes, smallest to largest. */
   val sizes: List[Int] = allowed.distinct.sorted
 
-  val dimensions: List[ThumbnailDimension] = ThumbnailDimension.values.toList
-
   val default: Int = defaultSize
 
   /**
