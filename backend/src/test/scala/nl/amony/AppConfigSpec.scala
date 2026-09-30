@@ -25,7 +25,7 @@ class AppConfigSpec extends AnyWordSpecLike {
       // AVIF is dropped by default: the bundled SVT-AV1 encoder cannot encode sides below 64px.
       assert(!appConfig.resources.thumbnails.supportedFormats.contains(ImageFormat.Avif))
       // Encoder arguments are configured per format rather than hardcoded in ImageFormat.
-      assert(appConfig.resources.thumbnails.formatOptions.forFormat(ImageFormat.Avif).contains("libsvtav1"))
+      assert(appConfig.resources.thumbnails.formatOptions.get(ImageFormat.Avif).exists(_.contains("libsvtav1")))
     }
   }
 }

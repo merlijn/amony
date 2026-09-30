@@ -109,7 +109,7 @@ object App extends ResourceApp.Forever with Logging {
                                appConfig.resources.thumbnails.defaultResolution,
                                appConfig.resources.thumbnails.resolutionStepDown
                              )
-        thumbFormats       = ThumbnailFormats(appConfig.resources.thumbnails.supportedFormats, appConfig.resources.thumbnails.formatOptions.options)
+        thumbFormats       = ThumbnailFormats(appConfig.resources.thumbnails.supportedFormats, appConfig.resources.thumbnails.formatOptions)
         resourceBuckets   <- appConfig.resources.buckets.map {
                                case localConfig: ResourceConfig.LocalDirectoryConfig =>
                                  LocalDirectoryBucket.resource(localConfig, databasePool, resourceEventTopic, thumbFormats)
