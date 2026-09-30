@@ -34,24 +34,22 @@ const pickThumbnailSize = (sizes: number[], needed: number, strategy: string): n
 
 /**
  * Picks the configured resolution (device pixels) for a box of the given CSS width, honouring the
- * server-configured picking strategy. Falls back to the default resolution when none are configured.
+ * server-configured picking strategy. Uses the configured default resolution when no ladder is set.
  */
-const resolutionFor = (config: AppConfig | undefined, boxWidthCss: number): number => {
-  const sizes       = config?.thumbnailSizes;
-  const defaultSize = config?.defaultThumbnailResolution?.pixels ?? 512;
+const resolutionFor = (config: AppConfig, boxWidthCss: number): number => {
+  const sizes = config.thumbnailSizes;
 
-  if (!sizes || sizes.length === 0)
-    return defaultSize;
+  if (sizes.length === 0)
+    return config.defaultThumbnailResolution.pixels;
 
   const devicePixelRatio = window.devicePixelRatio || 1;
   const needed           = Math.max(1, boxWidthCss * devicePixelRatio);
 
-  return pickThumbnailSize(sizes, needed, config?.resolutionPickingStrategy ?? "round-up");
+  return pickThumbnailSize(sizes, needed, config.resolutionPickingStrategy);
 };
 
 /** The dimension thumbnails (and clips) are pinned to; width by default, since the grid is width-driven. */
-const operativeDimension = (config: AppConfig | undefined): string =>
-  config?.defaultThumbnailResolution?.dimension ?? "width";
+const operativeDimension = (config: AppConfig): string => config.defaultThumbnailResolution.dimension;
 
 /**
  * Chooses a thumbnail URL for a resource based on the CSS width of the box it fills, the
@@ -60,18 +58,15 @@ const operativeDimension = (config: AppConfig | undefined): string =>
  * Size selection happens here rather than through `<img srcset>` because the browser's native srcset
  * algorithm always rounds up; doing it explicitly lets the server trade quality for bandwidth.
  */
-export const thumbnailUrl = (resource: ResourceDto, config: AppConfig | undefined, boxWidthCss: number): string => {
-  const format = config?.imageFormat ?? config?.supportedFormats?.[0] ?? "webp";
-
-  return resourceThumbnailUrl(resource, operativeDimension(config), resolutionFor(config, boxWidthCss), format);
-};
+export const thumbnailUrl = (resource: ResourceDto, config: AppConfig, boxWidthCss: number): string =>
+  resourceThumbnailUrl(resource, operativeDimension(config), resolutionFor(config, boxWidthCss), config.imageFormat);
 
 /**
  * URL of a hover-preview clip, built from the clip's timestamp and pinned to the same operative
  * dimension and resolution ladder as thumbnails, so a preview is sized for the box it fills rather
  * than always at a fixed height.
  */
-export const clipUrl = (clip: ClipDto, config: AppConfig | undefined, boxWidthCss: number): string => {
+export const clipUrl = (clip: ClipDto, config: AppConfig, boxWidthCss: number): string => {
   const dimension = dimensionToken(operativeDimension(config));
   const size      = resolutionFor(config, boxWidthCss);
 

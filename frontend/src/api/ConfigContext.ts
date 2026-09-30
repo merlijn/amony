@@ -7,6 +7,19 @@ import {AppConfigDto} from "./generated";
  */
 export type AppConfig = AppConfigDto & { imageFormat: string };
 
-export const ConfigContext = React.createContext<AppConfig | undefined>(undefined);
+/**
+ * Last-resort configuration used when the server config cannot be loaded. Mirrors the backend
+ * defaults in resources.conf so thumbnail and clip URLs stay valid without any inline fallbacks.
+ */
+export const defaultAppConfig: AppConfig = {
+  thumbnailSizes: [96, 192, 384, 768, 1536],
+  thumbnailDimensions: ["width", "height"],
+  supportedFormats: ["webp", "jpeg"],
+  defaultThumbnailResolution: { dimension: "width", pixels: 384 },
+  resolutionPickingStrategy: "round-down",
+  imageFormat: "webp",
+};
 
-export const useAppConfig = (): AppConfig | undefined => useContext(ConfigContext);
+export const ConfigContext = React.createContext<AppConfig>(defaultAppConfig);
+
+export const useAppConfig = (): AppConfig => useContext(ConfigContext);

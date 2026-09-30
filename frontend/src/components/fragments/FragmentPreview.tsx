@@ -13,6 +13,8 @@ interface Props {
   mediaId: string,
   fragment: ClipDto,
   index: number,
+  /** CSS width of the media slot, used to pick an appropriately sized clip. */
+  boxWidthPx: number,
   showDeleteButton: boolean,
   showDuration?: boolean,
   onDelete?: (vid: ResourceDto) => any,
@@ -62,7 +64,7 @@ const FragmentPreview = (props: Props) => {
              onMouseEnter={(e) => e.currentTarget.play() }
              onMouseLeave={(e) => e.currentTarget.pause() }
              onClick={(e) => {  props.onClick && props.onClick() } }>
-        <source src={clipUrl(props.fragment, config, 512)} type="video/mp4"/>
+        <source src={clipUrl(props.fragment, config, props.boxWidthPx)} type="video/mp4"/>
       </video>
       <div className="abs-bottom-left duration-overlay">{`${durationInSeconds}s @ ${durationInMillisToString(props.fragment.end)}`}</div>
       {

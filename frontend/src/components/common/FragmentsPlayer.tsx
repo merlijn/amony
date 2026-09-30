@@ -8,7 +8,7 @@ type FragmentsPlayerProps = {
   style?: CSSProperties,
   fragments: Array<ClipDto>
   /** CSS width of the media slot, used to pick an appropriately sized clip. */
-  boxWidthPx?: number
+  boxWidthPx: number
   onClick?: () => void
 }
 
@@ -70,7 +70,7 @@ const FragmentsPlayer = (props: FragmentsPlayerProps) => {
            preload = 'none' >
 
       { currentFragment &&
-        <source src = { clipUrl(currentFragment, config, props.boxWidthPx ?? 400) } type="video/mp4"/> }
+        <source src = { clipUrl(currentFragment, config, props.boxWidthPx) } type="video/mp4"/> }
     </video>
   );
 }
