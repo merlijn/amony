@@ -13,7 +13,7 @@
   .column-slider {
     @extend .v-align-center;
     display: flex;
-    gap: var(--spacing-s);
+    gap: var(--space-2);
     min-width: 220px;
 
     input[type="range"] {
@@ -31,14 +31,14 @@
   .theme-select {
     @extend .v-align-center;
     display: flex;
-    gap: var(--spacing-xs);
+    gap: var(--space-1);
   }
 
   .aspect-ratio-select {
     @extend .v-align-center;
     display: flex;
     flex-wrap: wrap;
-    gap: var(--spacing-s);
+    gap: var(--space-2);
 
     select {
       @extend .mr-2;
@@ -47,7 +47,7 @@
     .orientation-select {
       @extend .v-align-center;
       display: flex;
-      gap: var(--spacing-xs);
+      gap: var(--space-1);
     }
   }
 }

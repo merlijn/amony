@@ -13,7 +13,7 @@ body {
 
 .text-input {
   outline: none;
-  border-radius: var(--spacing-xs);
+  border-radius: var(--space-1);
   border: 1px solid var(--border-primary);
   background-color: var(--bg-primary);
   color: var(--text-primary);
@@ -40,8 +40,8 @@ textarea {
 
   .info-label {
     width: 170px;
-    padding-right: var(--spacing-m);
-    padding-bottom: var(--spacing-m);
+    padding-right: var(--space-6);
+    padding-bottom: var(--space-6);
     vertical-align: middle;
     text-align: left;
     white-space: nowrap;
@@ -50,7 +50,7 @@ textarea {
   }
 
   .info-value {
-    padding-bottom: var(--spacing-m);
+    padding-bottom: var(--space-6);
     vertical-align: middle;
   }
 }

@@ -13,7 +13,7 @@
   width: 100%;
   position: relative;
   //margin-top: 37px;
-  margin-bottom: 2px;
+  margin-bottom: var(--space-1);
   border: none;
 
   //@media only screen and (min-width: map.get($container-max-widths, md)) {

@@ -5,8 +5,8 @@
   @extend .abs-bottom-right;
   opacity: 0.9;
   z-index: 8;
-  margin: 5px;
-  padding: 2px 5px;
+  margin: var(--space-2);
+  padding: var(--space-1) var(--space-2);
   color: var(--media-overlay-fg);
   background-color: var(--media-overlay-bg);
   font-size: small;
@@ -28,8 +28,8 @@
   
     .preview-unsupported-overlay {
       @extend .abs-top-left;
-      margin: 3px;
-      padding: 5px;
+      margin: var(--space-1);
+      padding: var(--space-2);
       background: var(--media-overlay-scrim);
       border-radius: 50%;
       align-items: center;
@@ -45,8 +45,8 @@
 
       @extend .abs-bottom-left;
       opacity: 0.85;
-      margin: 5px;
-      padding: 2px 5px;
+      margin: var(--space-2);
+      padding: var(--space-1) var(--space-2);
       color: var(--media-overlay-fg-muted);
       -webkit-text-stroke: 4px var(--media-overlay-outline);
       paint-order: stroke fill;
@@ -56,17 +56,17 @@
 
     .preview-icon-stack {
       @extend .abs-top-right;
-      margin: 5px;
+      margin: var(--space-2);
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: var(--space-2);
 
       .preview-icon-button {
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 5px;
+        padding: var(--space-2);
         svg {
           width: 20px;
           height: 20px;
@@ -111,7 +111,7 @@
     color: var(--text-primary);
   
     .media-title {
-      padding-left: var(--spacing-s);
+      padding-left: var(--space-2);
       flex-grow: 1;
       float: left;
       

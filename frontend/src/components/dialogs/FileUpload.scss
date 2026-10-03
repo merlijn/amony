@@ -9,7 +9,7 @@
   @extend .hover-pointer;
 
   width: 100%;
-  padding: 8px;
+  padding: var(--space-4);
   border: 1px dashed var(--border-secondary);
   border-radius: 4px;
   background-color: var(--bg-primary);
@@ -24,7 +24,7 @@
 .progress-container {
   display: flex;
   align-items: center;
-  gap: var(--spacing-m);
+  gap: var(--space-6);
 
   .progress-bar {
     flex: 1;
@@ -48,7 +48,7 @@
 }
 
 .feedback {
-  padding: 4px 8px;
+  padding: var(--space-2) var(--space-4);
   border-radius: 4px;
   font-size: 0.9em;
 

@@ -15,7 +15,7 @@
 
     position: relative;
     width: 100%;
-    margin: 8px;
+    margin: var(--space-4);
 
     cursor: pointer;
     border: 2px solid var(--media-overlay-border-strong);
@@ -59,12 +59,12 @@
 .thumbnail-editor-controls {
 
   @extend .abs-top-left;
-  margin: 8px;
+  margin: var(--space-4);
   display: flex;
-  gap: 3px;
+  gap: var(--space-1);
   background: var(--media-overlay-bg-strong);
   border-radius: 4px;
-  padding: 5px;
+  padding: var(--space-2);
   pointer-events: auto;
   opacity: 0;
   visibility: hidden;
@@ -77,7 +77,7 @@
 
   .te-btn {
     font-size: 13px;
-    padding: 5px 10px;
+    padding: var(--space-2) var(--space-5);
     border: 1px solid var(--media-overlay-border);
     background: var(--media-overlay-control);
     color: var(--media-overlay-fg-muted);

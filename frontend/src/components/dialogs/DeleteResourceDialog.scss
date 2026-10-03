@@ -3,7 +3,7 @@
 .delete-resource-dialog {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-m);
+  gap: var(--space-6);
 
   p {
     margin: 0;
@@ -23,7 +23,7 @@
 .delete-resource-actions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--spacing-m);
+  gap: var(--space-6);
 }
 
 // Button styling comes from the shared .button-secondary / .button-danger

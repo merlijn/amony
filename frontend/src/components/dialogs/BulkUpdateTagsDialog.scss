@@ -3,7 +3,7 @@
 .bulk-tag-modal {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-m);
+  gap: var(--space-6);
   min-width: 360px;
 
   h2 {
@@ -24,12 +24,12 @@
 .bulk-tag-section {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-s);
+  gap: var(--space-2);
 
   .bulk-tag-list {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-s);
+    gap: var(--space-2);
     max-height: 220px;
     overflow-y: auto;
   }
@@ -37,7 +37,7 @@
   .bulk-tag-item {
     display: flex;
     align-items: center;
-    gap: var(--spacing-s);
+    gap: var(--space-2);
 
     input[type="checkbox"] {
       width: 16px;
@@ -61,12 +61,12 @@
 
   .bulk-tag-new {
     display: flex;
-    gap: var(--spacing-s);
-    margin-top: var(--spacing-s);
+    gap: var(--space-2);
+    margin-top: var(--space-2);
 
     .bulk-tag-input {
       flex: 1;
-      padding: 6px 10px;
+      padding: var(--space-3) var(--space-5);
       border-radius: 4px;
       border: 1px solid var(--border-primary);
       background-color: var(--bg-primary);
@@ -83,7 +83,7 @@
 .bulk-tag-actions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--spacing-m);
+  gap: var(--space-6);
 }
 
 // Button styling comes from the shared .button-primary / .button-secondary

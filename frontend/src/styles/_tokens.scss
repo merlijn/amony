@@ -14,12 +14,18 @@
 // for both themes.
 
 :root {
-  // Spacing
-  --spacing-xs: 2px;
-  --spacing-s: 5px;
-  --spacing-m: 12px;
-  --spacing-l: 24px;
-  --spacing-xl: 40px;
+  // Spacing scale: 2px increments at the compact end, 4px steps above.
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;
+  --space-7: 16px;
+  --space-8: 20px;
+  --space-9: 24px;
+  --space-10: 32px;
+  --space-11: 40px;
 
   // Surfaces: 1 = app canvas, 2 = subtle surface, 3 = raised, 4 = hover, 5 = active/selected.
   // The nav sits on --bg-secondary; two adjacent Radix steps are too close to
