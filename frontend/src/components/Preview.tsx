@@ -65,7 +65,7 @@ const Preview = (props: PreviewProps) => {
           <div className="preview-icon-button" onClick={(e) => { e.stopPropagation(); setShowDetailsDialog(true) }}><FiInfo /></div>
           <div className="preview-icon-button" onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true) }}><MdDelete /></div>
         </div> }
-        { isUnsupportedVideo && <div className="preview-unsupported-overlay"><FiAlertCircle color="#fff" /></div> }
+        { isUnsupportedVideo && <div className="preview-unsupported-overlay"><FiAlertCircle /></div> }
       </div>
 
   const thumbnailSrc = thumbnailUrl(resource, config, props.mediaWidthPx)

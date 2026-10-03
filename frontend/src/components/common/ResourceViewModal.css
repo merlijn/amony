@@ -18,7 +18,7 @@
   }
 
   .player {
-    --brand-color: #f5f5f5;
+    --brand-color: var(--accent);
     --focus-color: var(--accent);
 
     --audio-brand: var(--brand-color);
@@ -47,9 +47,6 @@
   z-index: 502;
   margin: 0; /* 15% from the top and centered */
   padding: 0;
-  box-shadow: -20px -20px 40px rgba(0, 0, 0, 0.3),
-  -20px 20px 40px rgba(0, 0, 0, 0.3),
-  20px -20px 40px rgba(0, 0, 0, 0.3),
-  20px 20px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-overlay);
 }
 

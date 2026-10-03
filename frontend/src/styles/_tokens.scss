@@ -72,6 +72,33 @@
   --tag-green: var(--green-9);
   --tag-green-border: var(--green-7);
 
+  // Overlays
+  --scrim: rgba(0, 0, 0, 0.4);
+  --shadow-overlay:
+    -20px -20px 40px rgba(0, 0, 0, 0.3),
+    -20px 20px 40px rgba(0, 0, 0, 0.3),
+    20px -20px 40px rgba(0, 0, 0, 0.3),
+    20px 20px 40px rgba(0, 0, 0, 0.3);
+
+  // Media overlays: chrome drawn over arbitrary photos and video (badges,
+  // thumbnail controls, preview icons). Deliberately a fixed dark palette with
+  // light text rather than theme surfaces, so it stays legible on any image.
+  --media-overlay-fg: #ffffff;
+  --media-overlay-fg-muted: #e0e0e0;
+  --media-overlay-outline: #111111;
+  --media-overlay-scrim: rgba(0, 0, 0, 0.5);
+  --media-overlay-bg: rgba(0, 0, 0, 0.6);
+  --media-overlay-bg-strong: rgba(0, 0, 0, 0.75);
+  --media-overlay-border-subtle: rgba(255, 255, 255, 0.2);
+  --media-overlay-border: rgba(255, 255, 255, 0.3);
+  --media-overlay-border-strong: rgba(255, 255, 255, 0.5);
+  --media-overlay-border-intense: rgba(255, 255, 255, 0.75);
+  --media-overlay-control: rgba(60, 60, 60, 0.9);
+  --media-overlay-control-hover: rgba(100, 100, 100, 0.9);
+  --media-overlay-control-close: rgba(80, 80, 80, 0.9);
+  --media-overlay-danger: rgba(120, 40, 40, 0.9);
+  --media-overlay-icon-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+
   color-scheme: light;
 }
 
