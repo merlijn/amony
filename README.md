@@ -1,14 +1,19 @@
 # Amony
 
-A self-hosted media server application with a simple web UI. It scans a local directory for media files and lets you browse, organize and view them in a web browser.
+A self-hosted media server application with a simple web UI. It scans a local directory for media files and lets you
+browse, organize and view them in a web browser.
 
-The server should work well for personal use up to 100k media files, depending on your hardware. Beyond that is untested.
+The server should work well for personal use up to 100k media files, depending on your hardware. Beyond that is
+untested.
 
 ![](docs/app-screenshot.png)
 
-A live demo is available at [https://demo.amony.app](https://demo.amony.app). It is running on a single [Hetzner](https://www.hetzner.com/) Cost-Optimized server (~$4/month).
+A live demo is available at [https://demo.amony.app](https://demo.amony.app). It is running on a single
+[Hetzner](https://www.hetzner.com/) Cost-Optimized server (~$4/month).
 
-**Note:** All videos on the demo site are free (public domain) and sourced from [Pexels](https://www.pexels.com/license/)
+**Note:** All videos on the demo site are free (public domain) and sourced from
+[Pexels](https://www.pexels.com/license/)
+
 ## Features
 
 - Scans local directory for media files (video, audio, images, etc...)
@@ -16,25 +21,32 @@ A live demo is available at [https://demo.amony.app](https://demo.amony.app). It
 - Organize media with tags *
 - Upload media files through the web interface *
 - Delete media files (with confirmation) *
-- optional: Oauth2/OIDC authentication with [Dex](https://github.com/dexidp/dex) (or an identity provider of your choice)
+- optional: Oauth2/OIDC authentication with [Dex](https://github.com/dexidp/dex) (or an identity provider of your
+  choice)
 - optional: Https with automatic certificate management via Let's Encrypt (when using the provided Docker Compose setup)
 - optional: Automatic database backups using a docker compose profile (with recovery mechanism)
 
-*) These features are locked behind a login. The login itself can be completely disabled by setting `AMONY_AUTH_ENABLED=false` in the environment variables. To require login for all access (no anonymous browsing) set `AMONY_AUTH_REQUIRE_LOGIN=true`.
+*) These features are locked behind a login. The login itself can be completely disabled by setting
+`AMONY_AUTH_ENABLED=false` in the environment variables. To require login for all access (no anonymous browsing) set
+`AMONY_AUTH_REQUIRE_LOGIN=true`.
 
 # How to use
 
 ## Docker Compose
 
 ### Prerequisites
+
 - [Docker](https://www.docker.com/get-started) and [Docker Compose](https://docs.docker.com/compose/)
 
 ### 1. Prepare your environment
 
-Copy the `.env.example` file to `.env` and edit the environment variables as needed. At a minimum, you should set `AMONY_HOST_MEDIA_PATH` to the path of your media files on the host machine. 
-It is recommended to change all credentials (like `DATABASE_PASSWORD`) to secure random values.
+Copy the `.env.example` file to `.env` and edit the environment variables as needed. At a minimum, you should set
+`AMONY_HOST_MEDIA_PATH` to the path of your media files on the host machine. It is recommended to change all credentials
+(like `DATABASE_PASSWORD`) to secure random values.
 
-As mentioned before, you can disable authentication completely by setting `AMONY_AUTH_ENABLED=false`. Otherwise, the default credentials for the Dex oauth server are:
+As mentioned before, you can disable authentication completely by setting `AMONY_AUTH_ENABLED=false`. Otherwise, the
+default credentials for the Dex oauth server are:
+
 - Username: `admin@amony.example`
 - Password: `password`
 
@@ -44,26 +56,30 @@ As mentioned before, you can disable authentication completely by setting `AMONY
 docker compose up -d
 ```
 
-This starts the application along with a PostgreSQL database and a [Dex](https://github.com/dexidp/dex) oauth server. The app will be available at http://localhost:8182.
+This starts the application along with a PostgreSQL database and a [Dex](https://github.com/dexidp/dex) oauth server.
+The app will be available at http://localhost:8182.
 
-You can mount a local directory containing your media files by editing the `docker-compose.yml` volumes for the `amony` service.
+You can mount a local directory containing your media files by editing the `docker-compose.yml` volumes for the `amony`
+service.
 
 **Notes:**
+
 - It might take some time to process the videos on first startup. Check progress with `docker compose logs amony`
 - For HTTPS with automatic certificate management, see `docker-compose-https.yml`
 
 ## Development
 
-See [docs/development.md](docs/development.md) for running from source, building and publishing the Docker image, and deploying the demo.
+See [docs/development.md](docs/development.md) for running from source, building and publishing the Docker image, and
+deploying the demo.
 
 ## Tech stack
 
-| Layer | Technology |
-|---|---|
-| Backend | Scala 3, Cats Effect, http4s, Tapir, Skunk |
-| Frontend | TypeScript, React, Vite |
-| Database | PostgreSQL |
-| Search | Embedded Apache Solr |
-| Auth | JWT + OAuth2/OIDC (Dex) |
-| Media processing | FFmpeg, ImageMagick |
-| Infrastructure | Docker Compose, Nginx, Let's Encrypt |
+| Layer            | Technology                                 |
+| ---------------- | ------------------------------------------ |
+| Backend          | Scala 3, Cats Effect, http4s, Tapir, Skunk |
+| Frontend         | TypeScript, React, Vite                    |
+| Database         | PostgreSQL                                 |
+| Search           | Embedded Apache Solr                       |
+| Auth             | JWT + OAuth2/OIDC (Dex)                    |
+| Media processing | FFmpeg, ImageMagick                        |
+| Infrastructure   | Docker Compose, Nginx, Let's Encrypt       |
