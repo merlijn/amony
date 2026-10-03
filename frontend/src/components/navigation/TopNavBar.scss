@@ -77,20 +77,24 @@
       vertical-align: middle;
       margin-left: 5px;
 
-      .view-selected {
-        background-color: var(--bg-active) !important;
-        color: var(--text-primary);
-      }
-
       .view-button {
         @extend .hover-pointer;
-        background-color: var(--bg-hover);
+        background-color: var(--bg-tertiary);
+        color: var(--text-secondary);
         border: none;
         height: 35px;
     
         &:hover {
-          background-color: var(--bg-active);
+          background-color: var(--bg-hover);
         }
+      }
+
+      // The selected view reads as the active one: a stronger surface fill and a
+      // full-strength icon, while the unselected buttons stay muted and subtle.
+      .view-selected,
+      .view-selected:hover {
+        background-color: var(--bg-active);
+        color: var(--text-primary);
       }
 
       .button-list-view {
