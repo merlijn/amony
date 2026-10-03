@@ -41,6 +41,7 @@ Global / serverIdleTimeout := Some(1.hour)
 
 lazy val buildSolrTarGz = taskKey[Seq[File]]("Creates the solr.tar.gz file")
 lazy val jibWriteDockerTagsFile = taskKey[File]("Creates the version.txt file")
+lazy val exportDatabaseSchema = taskKey[Unit]("Applies every migration to a throwaway PostgreSQL container and dumps the schema to target/amony-schema.sql")
 
 addCommandAlias("format", "; scalafmt; Test/scalafmt")
 addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
@@ -168,6 +169,11 @@ lazy val amony = project
       }
     },
     Compile / resourceGenerators += buildSolrTarGz.taskValue,
+
+    // Dump the migrated database schema, grounded in the real Liquibase migrations.
+    exportDatabaseSchema := Def.uncached {
+      (Test / runMain).toTask(" nl.amony.ExportDatabaseSchema").value
+    },
 
     // This is a hack to make to create a file with the same docker tags from the jib build to be able to push them
     jibWriteDockerTagsFile := Def.uncached {

@@ -18,7 +18,7 @@ import scribe.Logging
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo}
 import nl.amony.modules.resources.dal.ResourceDatabase
-import nl.amony.{App, DatabaseConfig}
+import nl.amony.{App, DatabaseConfig, ExportDatabaseSchema}
 
 class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with Logging with Matchers {
 
@@ -105,83 +105,13 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
     "export DDL schema after migrations" in {
       withContainers {
         container =>
-
-          logger.info(s"Container IP: ${container.containerIpAddress}")
-          logger.info(s"Container Port: ${container.mappedPort(5432)}")
-
-          val dbConfig = DatabaseConfig(
-            host     = container.containerIpAddress,
-            port     = container.mappedPort(5432),
-            database = "test",
-            username = "test",
-            password = "test",
-            poolSize = 3
-          )
-
-          // Run migrations explicitly
-          App.runDatabaseMigrations(dbConfig).unsafeRunSync()
-
-          // Export schema using pg_dump
-          val rawOutputFile = java.nio.file.Paths.get("target", "test-schema-raw.sql")
-          val outputFile    = java.nio.file.Paths.get("target", "test-schema.sql")
-
-          val pgDumpCommand = List(
-            "docker",
-            "exec",
-            "-i",
+          val outputFile = ExportDatabaseSchema.dumpSchema(
+            configForContainer(container),
             container.containerId,
-            "pg_dump",
-            "-U",
-            "test",
-            "-d",
-            "test",
-            "--schema-only",
-            "--no-owner",
-            "--no-acl",
-            "--exclude-table=databasechangelog",
-            "--exclude-table=databasechangeloglock"
+            java.nio.file.Paths.get("target", "test-schema.sql")
           )
 
-          import scala.sys.process.*
-          val exitCode = pgDumpCommand.#>(rawOutputFile.toFile).!
-
-          exitCode shouldBe 0
-
-          // Filter out SET statements, comments, and normalize empty lines
-          val rawContent    = scala.io.Source.fromFile(rawOutputFile.toFile).getLines()
-          val filteredLines = rawContent
-            .filterNot(line =>
-              line.trim.startsWith("SET ") ||
-                line.trim.startsWith("SELECT pg_catalog.set_config") ||
-                line.trim.startsWith("--")
-            )
-            .toList
-
-          // Normalize empty lines: keep only single empty line between constructs
-          val normalizedLines = filteredLines
-            .foldLeft(List.empty[String]) {
-              (acc, line) =>
-                if line.trim.isEmpty then {
-                  // Only add empty line if the previous line was not empty
-                  acc.lastOption match {
-                    case Some(last) if last.trim.nonEmpty => acc :+ ""
-                    case _                                => acc
-                  }
-                } else {
-                  acc :+ line
-                }
-            }
-
-          val filteredContent = normalizedLines.mkString("\n").trim
-
-          // Write filtered content to final output file
-          val writer = new java.io.PrintWriter(outputFile.toFile)
-          try
-            writer.write(filteredContent)
-          finally
-            writer.close()
-
-          logger.info(s"Schema DDL exported to: ${outputFile.toAbsolutePath}")
+          java.nio.file.Files.readString(outputFile) should include("CREATE TABLE")
       }
     }
   }

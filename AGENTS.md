@@ -8,19 +8,26 @@ This is a media management server project. It can be used to view and organize m
 
 The backend is written in Scala 3 using the Cats Effect ecosystem.
 
-The purpose of the backend is to host media files from a directory and provide an API for the frontend to interact with. 
-It uses a PostgreSQL database to store metadata about the media files. 
+The purpose of the backend is to host media files from a directory and provide an API for the frontend to interact with.
+It uses a PostgreSQL database to store metadata about the media files. Database evolutions are managed with Liquibase
+from the `backend/src/main/resources/db` directory.
+
 It uses Tapir to define the API endpoints and generate an OpenAPI specification.
-Database evolutions are managed with Liquibase from the `backend/src/main/resources/db` directory.
 
 Useful commands:
+
+- `sbt format` - Formats the code using scalafmt, should be done before committing code changes.
 - `sbt generateSpec` - Generates the OpenAPI specification and places it in the frontend folder.
+- `sbt exportDatabaseSchema` - Applies the database evolutions and exports the full schema at
+  `backend/target/amony-schema.sql`
 
 ### /frontend
 
-The frontend is a TypeScript/React application that interacts with the backend API to browse, view media and manage media files.
+The frontend is a TypeScript/React application that interacts with the backend API to browse, view media and manage
+media files.
 
 Useful commands:
+
 - `pnpm run generate` - Generate API client code from OpenAPI spec
 - `pnpm run dev` - Start the development server
 - `pnpm run build` - Build the production version of the frontend
@@ -31,9 +38,17 @@ This directory contains various Dockerfiles and scripts and settings for the doc
 
 # Way of working
 
+## Markdown
+
+Reformat Markdown after changes with Prettier at 120 columns:
+
+```sh
+npx prettier --write --prose-wrap always --print-width 120 "**/*.md"
+```
+
 ## Git
 
-- Commit messages should be a single sentence of 72 characters maximum, followed by the trailer below (separated by a blank line):
+- Commit messages should be a single sentence of 72 characters maximum, followed by a blank line and this trailer:
   Co-authored-by: opencode-agent[bot] <219766164+opencode-agent[bot]@users.noreply.github.com>
 - Use conventional commit style
 - Do NOT push on the main branch, unless explicitly asked
@@ -44,15 +59,20 @@ This directory contains various Dockerfiles and scripts and settings for the doc
 ## Tools
 
 <!-- CODEGRAPH_START -->
+
 ### CodeGraph
 
 This repository should have CodeGraph enabled, reach for it when you need to understand or locate code:
 
-- **MCP tool** (when available): `codegraph_explore` answers most code questions in one call — the relevant symbols' verbatim source plus the call paths between them, including dynamic-dispatch hops grep can't follow. Name a file or symbol in the query to read its current line-numbered source. If it's listed but deferred, load it by name via tool search.
+- **MCP tool** (when available): `codegraph_explore` answers most code questions in one call — the relevant symbols'
+  verbatim source plus the call paths between them, including dynamic-dispatch hops grep can't follow. Name a file or
+  symbol in the query to read its current line-numbered source. If it's listed but deferred, load it by name via tool
+  search.
 - **Shell** (always works): `codegraph explore "<symbol names or question>"` prints the same output.
 
-Caveats: the MCP instructions overstate completeness — results are capped and can trim or omit files, and common names (`refresh`, `apply`, `get`) may match unrelated files. 
-Treat a result as a strong lead, not a guarantee: follow up with a targeted Read/Grep when a symbol is missing or a match looks unrelated.
+Caveats: the MCP instructions overstate completeness — results are capped and can trim or omit files, and common names
+(`refresh`, `apply`, `get`) may match unrelated files. Treat a result as a strong lead, not a guarantee: follow up with
+a targeted Read/Grep when a symbol is missing or a match looks unrelated.
 
 If there is no `.codegraph/` directory, skip CodeGraph entirely — indexing is the user's decision.
 <!-- CODEGRAPH_END -->
