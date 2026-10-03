@@ -14,7 +14,9 @@ It uses a PostgreSQL database to store metadata about the media files. Database 
 It uses Tapir to define the API endpoints and generate an OpenAPI specification.
 
 Useful commands:
+- `sbt format` - Formats the code using scalafmt, should be done before committing code changes.
 - `sbt generateSpec` - Generates the OpenAPI specification and places it in the frontend folder.
+- `sbt exportDatabaseSchema` - Applies the database evolutions and exports the full schema at `backend/target/amony-schema.sql`
 
 ### /frontend
 
@@ -30,10 +32,6 @@ Useful commands:
 This directory contains various Dockerfiles and scripts and settings for the docker compose setup.
 
 # Way of working
-
-## Code formatting
-
-Use `sbt format` to format the backend code after code changes.
 
 ## Git
 
