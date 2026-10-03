@@ -52,18 +52,62 @@
   height: 24px;
 }
 
-.button-primary {
+// Buttons. The variant is the button's role in its context, not a colour:
+//   primary   - the emphasized affirmative action (submit / apply / upload)
+//   secondary - a neutral action (cancel / add / dismiss)
+//   danger    - a destructive action (delete)
+// The three share a base and differ only in colour.
+.button-primary,
+.button-secondary,
+.button-danger {
 
-  @extend .hover-pointer;
-
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 8px 12px;
   border-radius: 5px;
+  font-size: 0.9rem;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.button-primary {
   color: var(--text-on-accent);
   background-color: var(--accent);
   border: 1px solid var(--accent);
 
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: var(--accent-hover);
     border-color: var(--accent-hover);
+  }
+}
+
+.button-secondary {
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+
+  &:hover:not(:disabled) {
+    background-color: var(--bg-hover);
+  }
+}
+
+.button-danger {
+  color: var(--text-on-accent);
+  background-color: var(--danger);
+  border: 1px solid var(--danger);
+
+  &:hover:not(:disabled) {
+    background-color: var(--danger-hover);
+    border-color: var(--danger-hover);
   }
 }

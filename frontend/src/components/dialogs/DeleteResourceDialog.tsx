@@ -59,7 +59,7 @@ const DeleteResourceDialog = ({resource, visible, onDeleted, onHide}: DeleteReso
 
               <div className="delete-resource-actions">
                 <button
-                  className="delete-resource-button"
+                  className="button-secondary"
                   type="button"
                   onClick={handleHide}
                   disabled={isDeleting}
@@ -67,7 +67,7 @@ const DeleteResourceDialog = ({resource, visible, onDeleted, onHide}: DeleteReso
                   Cancel
                 </button>
                 <button
-                  className="delete-resource-button danger"
+                  className="button-danger"
                   type="button"
                   onClick={handleDelete}
                   disabled={isDeleting}

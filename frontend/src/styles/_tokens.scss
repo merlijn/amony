@@ -26,10 +26,10 @@
   --bg-hover: var(--gray-4);
   --bg-active: var(--gray-5);
 
-  // Text: 12 = high contrast, 11 = low contrast, 9 = muted
+  // Text: 12 = high contrast, 11 = low contrast, 10 = muted
   --text-primary: var(--gray-12);
   --text-secondary: var(--gray-11);
-  --text-muted: var(--gray-9);
+  --text-muted: var(--gray-10);
 
   // Borders: 7 = UI element border, 6 = subtle separator, 8 = focus ring
   --border-primary: var(--gray-7);
@@ -69,5 +69,9 @@
 // Keep native form controls and scrollbars in sync with the active theme.
 .dark,
 [data-theme="dark"] {
+  // Radix gray-12 is a touch bright for primary text on its very dark canvas;
+  // pull it slightly toward the background so it is easier on the eyes.
+  --text-primary: color-mix(in srgb, var(--gray-12) 92%, var(--bg-primary) 8%);
+
   color-scheme: dark;
 }

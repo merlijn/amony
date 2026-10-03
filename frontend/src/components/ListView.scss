@@ -170,7 +170,7 @@ $row-height: 36px;
         text-align: center;
         vertical-align: middle;
         &:hover {
-          background-color: var(--bg-hover);
+          background-color: var(--bg-active);
           border-radius: 50%;
         }
         input {
