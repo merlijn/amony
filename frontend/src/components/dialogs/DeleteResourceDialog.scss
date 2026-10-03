@@ -10,13 +10,13 @@
   }
 
   .delete-resource-warning {
-    color: var(--text-tertiary);
+    color: var(--text-muted);
     font-size: 14px;
   }
 }
 
 .delete-resource-error {
-  color: var(--highlight-b);
+  color: var(--danger-text);
   font-size: 14px;
 }
 
@@ -35,13 +35,13 @@
   color: var(--text-secondary);
 
   &.danger {
-    background-color: #d32f2f;
-    border-color: #d32f2f;
-    color: #fff;
+    background-color: var(--danger);
+    border-color: var(--danger);
+    color: var(--text-on-accent);
 
     &:hover {
-      background-color: #b71c1c;
-      border-color: #b71c1c;
+      background-color: var(--danger-hover);
+      border-color: var(--danger-hover);
     }
   }
 

@@ -1,0 +1,73 @@
+// Design tokens, in two tiers.
+//
+// Tier 1 - primitives: the Radix Colors scales (`--gray-1..12`, `--blue-1..12`,
+// `--red-1..12`, `--green-1..12`, `--amber-1..12`), imported in src/index.tsx.
+// Every step has a fixed meaning worth knowing:
+// https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale
+// Components never use these directly.
+//
+// Tier 2 - semantics: the role-based aliases below. Components only use these.
+// Because they point at primitive steps, the theme swaps by toggling the Radix
+// light/dark scales (via the `.dark` class); these declarations are identical
+// for both themes.
+
+:root {
+  // Spacing
+  --spacing-xs: 2px;
+  --spacing-s: 5px;
+  --spacing-m: 12px;
+  --spacing-l: 24px;
+  --spacing-xl: 40px;
+
+  // Surfaces: 1 = app canvas, 2 = subtle surface, 3 = raised, 4 = hover, 5 = active/selected
+  --bg-primary: var(--gray-1);
+  --bg-secondary: var(--gray-2);
+  --bg-tertiary: var(--gray-3);
+  --bg-hover: var(--gray-4);
+  --bg-active: var(--gray-5);
+
+  // Text: 12 = high contrast, 11 = low contrast, 9 = muted
+  --text-primary: var(--gray-12);
+  --text-secondary: var(--gray-11);
+  --text-muted: var(--gray-9);
+
+  // Borders: 7 = UI element border, 6 = subtle separator, 8 = focus ring
+  --border-primary: var(--gray-7);
+  --border-secondary: var(--gray-6);
+  --border-focus: var(--blue-8);
+  --focus-ring: color-mix(in srgb, var(--blue-8) 40%, transparent);
+
+  // Accent: 9 = solid, 10 = solid hover, 11 = accent-coloured text
+  --accent: var(--blue-9);
+  --accent-hover: var(--blue-10);
+  --accent-text: var(--blue-11);
+  --text-on-accent: #ffffff;
+
+  // Status
+  --danger: var(--red-9);
+  --danger-hover: var(--red-10);
+  --danger-text: var(--red-11);
+  --danger-surface: var(--red-3);
+  --danger-border: var(--red-7);
+
+  --success: var(--green-9);
+  --success-hover: var(--green-10);
+  --success-text: var(--green-11);
+  --success-surface: var(--green-3);
+  --success-border: var(--green-7);
+
+  --warning: var(--amber-9);
+  --warning-text: var(--amber-11);
+
+  // Categorical tag colours (identity, not status)
+  --tag-green: var(--green-9);
+  --tag-green-border: var(--green-7);
+
+  color-scheme: light;
+}
+
+// Keep native form controls and scrollbars in sync with the active theme.
+.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+}

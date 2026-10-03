@@ -53,12 +53,12 @@
   font-size: 0.9em;
 
   &.feedback-success {
-    background-color: rgba(76, 175, 80, 0.2);
-    color: #4caf50;
+    background-color: var(--success-surface);
+    color: var(--success-text);
   }
 
   &.feedback-error {
-    background-color: rgba(244, 67, 54, 0.2);
-    color: #f44336;
+    background-color: var(--danger-surface);
+    color: var(--danger-text);
   }
 }

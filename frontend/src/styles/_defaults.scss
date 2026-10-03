@@ -19,7 +19,7 @@ body {
   color: var(--text-primary);
   &:focus {
     border-color: var(--border-focus);
-    outline: solid rgba(128, 189, 255, 0.4);
+    outline: solid var(--focus-ring);
   }
 }
 
@@ -45,7 +45,7 @@ textarea {
     vertical-align: middle;
     text-align: left;
     white-space: nowrap;
-    color: var(--text-tertiary);
+    color: var(--text-muted);
     font-weight: 400;
   }
 

@@ -7,7 +7,7 @@
   width: 100%;
   padding: var(--spacing-l);
   border-radius: var(--spacing-s);
-  background-color: var(--text-inverse);
+  background-color: var(--bg-primary);
   color: var(--text-primary);
   display: flex;
   flex-direction: column;
@@ -24,7 +24,7 @@
   position: relative;
   border-bottom: var(--border-primary) 1px solid;
   width: 100%;
-  color: var(--highlight-a);
+  color: var(--accent-text);
   font-size: x-large;
   font-weight: bold;
 }
@@ -51,7 +51,7 @@
   border: none;
   border-radius: var(--spacing-xs);
   background: none;
-  color: var(--text-tertiary);
+  color: var(--text-muted);
   font-size: 20px;
   line-height: 1;
 

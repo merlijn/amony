@@ -93,14 +93,14 @@
   }
 
   .te-btn-save {
-    background: #45C53F;
-    color: white;
-    border-color: #3aad35;
+    background: var(--success);
+    color: var(--text-on-accent);
+    border-color: var(--success-hover);
     font-weight: bold;
   }
 
   .te-btn-save:hover {
-    background: #3aad35;
+    background: var(--success-hover);
   }
 
   .te-btn-save:disabled {

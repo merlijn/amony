@@ -17,7 +17,7 @@
 
   p {
     margin: 0;
-    color: var(--text-tertiary);
+    color: var(--text-muted);
   }
 }
 
@@ -55,7 +55,7 @@
   }
 
   .bulk-tag-empty {
-    color: var(--text-tertiary);
+    color: var(--text-muted);
     font-style: italic;
   }
 
@@ -76,7 +76,7 @@
 }
 
 .bulk-tag-error {
-  color: var(--highlight-b);
+  color: var(--danger-text);
   font-size: 14px;
 }
 
@@ -100,13 +100,13 @@
   }
 
   &.primary {
-    background-color: var(--highlight-a);
-    border-color: var(--highlight-a);
-    color: var(--text-inverse);
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: var(--text-on-accent);
 
     &:hover {
-      background-color: var(--secondary-a);
-      border-color: var(--secondary-a);
+      background-color: var(--accent-hover);
+      border-color: var(--accent-hover);
     }
   }
 

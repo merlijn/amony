@@ -19,7 +19,7 @@
 
   .player {
     --brand-color: #f5f5f5;
-    --focus-color: #4e9cf6;
+    --focus-color: var(--accent);
 
     --audio-brand: var(--brand-color);
     --audio-focus-ring-color: var(--focus-color);

@@ -1,4 +1,4 @@
-@use 'src/css/Constants.scss' as constants;
+@use 'src/styles/constants' as constants;
 @use 'src/App.scss' as *;
 @use 'sass:map';
 
@@ -79,7 +79,7 @@
 
       .view-selected {
         background-color: var(--bg-active) !important;
-        color: white;
+        color: var(--text-primary);
       }
 
       .view-button {
@@ -165,7 +165,7 @@
           height: 24px;
           right: 32px;
           top: 6px;
-          color: var(--text-tertiary);
+          color: var(--text-muted);
 
           &:hover {
             color: var(--text-primary);

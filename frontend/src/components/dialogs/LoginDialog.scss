@@ -9,7 +9,7 @@
 }
 
 .login-error {
-  color: var(--highlight-b);
+  color: var(--danger-text);
 }
 
 .providers-list {
@@ -36,7 +36,7 @@
 
   &:hover {
     background-color: var(--bg-hover);
-    border-color: var(--highlight-a);
+    border-color: var(--accent);
   }
 
   &:active {

@@ -14,9 +14,9 @@
 
     span {
       @extend .v-align-center;
-      color: var(--text-inverse);
-      background-color: var(--highlight-e);
-      border: 1px solid var(--secondary-e);
+      color: var(--text-on-accent);
+      background-color: var(--tag-green);
+      border: 1px solid var(--tag-green-border);
       min-width: 50px;
 
 

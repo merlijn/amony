@@ -1,4 +1,4 @@
-@use '../css/Layout.scss' as layout;
+@use '../styles/layout' as layout;
 
 .preview-resource {
 
@@ -112,7 +112,7 @@
       float: right;
       font-size: small;
       font-weight: 400;
-      color: var(--text-tertiary);
+      color: var(--text-muted);
     }
   }
 }
