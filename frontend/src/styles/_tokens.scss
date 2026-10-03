@@ -21,13 +21,15 @@
 
   // Surfaces: 1 = app canvas, 2 = subtle surface, 3 = raised, 4 = hover, 5 = active/selected
   --bg-primary: var(--gray-1);
-  --bg-secondary: var(--gray-2);
-  --bg-tertiary: var(--gray-3);
-  --bg-hover: var(--gray-4);
-  --bg-active: var(--gray-5);
+  --bg-secondary: var(--gray-3);
+  --bg-tertiary: var(--gray-4);
+  --bg-hover: var(--gray-5);
+  --bg-active: var(--gray-6);
 
   // Hover tint for small controls and list options; subtler than --bg-hover.
-  --bg-hover-subtle: var(--gray-3);
+  // A translucent overlay so it darkens relative to whatever surface it sits
+  // on (dialog canvas and dropdown panel are different steps).
+  --bg-hover-subtle: color-mix(in srgb, var(--gray-12) 6%, transparent);
 
   // Text: 12 = high contrast, 11 = low contrast, 10 = muted
   --text-primary: var(--gray-12);
@@ -76,8 +78,8 @@
   // pull it slightly toward the background so it is easier on the eyes.
   --text-primary: color-mix(in srgb, var(--gray-12) 92%, var(--bg-primary) 8%);
 
-  // gray-3 is imperceptible on the dark canvas, so step it up.
-  --bg-hover-subtle: var(--gray-5);
+  // Dark surfaces need a stronger lightening for the overlay to be visible.
+  --bg-hover-subtle: color-mix(in srgb, var(--gray-12) 15%, transparent);
 
   color-scheme: dark;
 }
