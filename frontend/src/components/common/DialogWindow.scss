@@ -5,17 +5,14 @@
   position: relative;
   height: 100%;
   width: 100%;
-  padding: var(--spacing-l);
-  border-radius: var(--spacing-s);
-  background-color: var(--text-inverse);
+  padding: var(--space-9);
+  border-radius: var(--space-2);
+  background-color: var(--bg-primary);
   color: var(--text-primary);
   display: flex;
   flex-direction: column;
 
-  box-shadow: -20px -20px 40px rgba(0, 0, 0, 0.3),
-              -20px 20px 40px rgba(0, 0, 0, 0.3),
-               20px -20px 40px rgba(0, 0, 0, 0.3),
-               20px 20px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-overlay);
 }
 
 .modal-dialog-title {
@@ -24,7 +21,7 @@
   position: relative;
   border-bottom: var(--border-primary) 1px solid;
   width: 100%;
-  color: var(--highlight-a);
+  color: var(--accent-text);
   font-size: x-large;
   font-weight: bold;
 }
@@ -40,8 +37,8 @@
   @extend .hover-pointer;
 
   position: absolute;
-  top: var(--spacing-m);
-  right: var(--spacing-m);
+  top: var(--space-6);
+  right: var(--space-6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -49,14 +46,14 @@
   height: 28px;
   padding: 0;
   border: none;
-  border-radius: var(--spacing-xs);
+  border-radius: var(--space-1);
   background: none;
-  color: var(--text-tertiary);
+  color: var(--text-muted);
   font-size: 20px;
   line-height: 1;
 
   &:hover {
     color: var(--text-primary);
-    background-color: var(--bg-hover);
+    background-color: var(--bg-hover-subtle);
   }
 }

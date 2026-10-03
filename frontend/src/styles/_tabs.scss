@@ -3,14 +3,14 @@
 .tabs-list {
   display: flex;
   border-bottom: 1px solid var(--border-primary);
-  margin-bottom: var(--spacing-l);
+  margin-bottom: var(--space-9);
 }
 
 .tab-trigger {
-  padding: var(--spacing-s) var(--spacing-m);
+  padding: var(--space-2) var(--space-6);
   border: none;
   background: none;
-  color: var(--text-tertiary);
+  color: var(--text-muted);
   font-size: medium;
   font-weight: 500;
   border-bottom: 2px solid transparent;
@@ -24,8 +24,8 @@
   }
 
   &[data-state="active"] {
-    color: var(--highlight-a);
-    border-bottom-color: var(--highlight-a);
+    color: var(--accent-text);
+    border-bottom-color: var(--accent-text);
   }
 
   &:hover {

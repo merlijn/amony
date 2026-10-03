@@ -10,17 +10,17 @@
     // margin: 2px;
     // float: left;
     @extend .v-align-center;
-    margin-top: 3px;
+    margin-top: var(--space-1);
 
     span {
       @extend .v-align-center;
-      color: var(--text-inverse);
-      background-color: var(--highlight-e);
-      border: 1px solid var(--secondary-e);
+      color: var(--text-on-accent);
+      background-color: var(--tag-green);
+      border: 1px solid var(--tag-green-border);
       min-width: 50px;
 
 
-      padding: 6px 10px;
+      padding: var(--space-3) var(--space-5);
       border-radius: 25px;
       font-size: small;
       text-align: center;
@@ -37,13 +37,13 @@
     display: flex;
     position: relative;
     text-align: center;
-    margin-right: 4px;
+    margin-right: var(--space-2);
     float: left;
     color: var(--text-primary);
     background-color: var(--bg-hover);
-    border: 2px solid var(--border-primary);
+    border: 2px solid var(--bg-hover);
     font-size: small;
-    padding: 6px 12px;
+    padding: var(--space-3) var(--space-6);
     border-radius: 25px;
 
     &:hover {
@@ -61,7 +61,7 @@
       visibility: hidden;
       vertical-align: middle;
       border: 1px solid var(--text-primary);
-      margin: 0px;
+      margin: 0;
       // margin-top: 1px;
       padding-top: 1px;
       height: 22px;

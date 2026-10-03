@@ -3,50 +3,28 @@
 .delete-resource-dialog {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-m);
+  gap: var(--space-6);
 
   p {
     margin: 0;
   }
 
   .delete-resource-warning {
-    color: var(--text-tertiary);
+    color: var(--text-muted);
     font-size: 14px;
   }
 }
 
 .delete-resource-error {
-  color: var(--highlight-b);
+  color: var(--danger-text);
   font-size: 14px;
 }
 
 .delete-resource-actions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--spacing-m);
+  gap: var(--space-6);
 }
 
-.delete-resource-button {
-  @extend .hover-pointer;
-  padding: 6px 12px;
-  border-radius: 4px;
-  border: 1px solid var(--border-primary);
-  background-color: var(--bg-primary);
-  color: var(--text-secondary);
-
-  &.danger {
-    background-color: #d32f2f;
-    border-color: #d32f2f;
-    color: #fff;
-
-    &:hover {
-      background-color: #b71c1c;
-      border-color: #b71c1c;
-    }
-  }
-
-  &:disabled {
-    cursor: default;
-    opacity: 0.6;
-  }
-}
+// Button styling comes from the shared .button-secondary / .button-danger
+// classes in App.scss.

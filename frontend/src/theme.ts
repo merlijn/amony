@@ -19,9 +19,13 @@ export const resolveTheme = (setting: ThemeSetting): Theme => {
   return setting;
 };
 
-// Apply the theme to the document
+// Apply the theme to the document. The app keys its own CSS off `data-theme`,
+// while Radix Colors keys its dark scale off the `.dark` class, so we keep both
+// in sync.
 export const applyTheme = (theme: Theme) => {
-  document.documentElement.setAttribute('data-theme', theme);
+  const root = document.documentElement;
+  root.setAttribute('data-theme', theme);
+  root.classList.toggle('dark', theme === 'dark');
 };
 
 // Listen for system theme changes (returns cleanup function)

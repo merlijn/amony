@@ -1,4 +1,16 @@
-@use '../css/Layout.scss' as layout;
+@use '../styles/layout' as layout;
+
+.duration-overlay {
+
+  @extend .abs-bottom-right;
+  opacity: 0.9;
+  z-index: 8;
+  margin: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  color: var(--media-overlay-fg);
+  background-color: var(--media-overlay-bg);
+  font-size: small;
+}
 
 .preview-resource {
 
@@ -16,23 +28,27 @@
   
     .preview-unsupported-overlay {
       @extend .abs-top-left;
-      margin: 3px;
-      padding: 5px;
-      background: rgba(0,0,0,0.5);
+      margin: var(--space-1);
+      padding: var(--space-2);
+      background: var(--media-overlay-scrim);
       border-radius: 50%;
       align-items: center;
       justify-content: center;
       display: flex;
+
+      svg {
+        color: var(--media-overlay-fg);
+      }
     }
 
     .preview-quality-overlay {
 
       @extend .abs-bottom-left;
       opacity: 0.85;
-      margin: 5px;
-      padding: 2px 5px;
-      color: #f0f0f0;
-      -webkit-text-stroke: 4px #111;
+      margin: var(--space-2);
+      padding: var(--space-1) var(--space-2);
+      color: var(--media-overlay-fg-muted);
+      -webkit-text-stroke: 4px var(--media-overlay-outline);
       paint-order: stroke fill;
       font-weight: 500;
       font-size: 13px;
@@ -40,25 +56,25 @@
 
     .preview-icon-stack {
       @extend .abs-top-right;
-      margin: 5px;
+      margin: var(--space-2);
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: var(--space-2);
 
       .preview-icon-button {
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 5px;
+        padding: var(--space-2);
         svg {
           width: 20px;
           height: 20px;
-          color: #fff;
-          filter: drop-shadow(0 0 4px rgba(0,0,0,0.9));
+          color: var(--media-overlay-fg);
+          filter: drop-shadow(var(--media-overlay-icon-shadow));
         }
         &:hover {
-          background-color: rgba(0,0,0,0.5);
+          background-color: var(--media-overlay-scrim);
           border-radius: 50%;
         }
       }
@@ -95,7 +111,7 @@
     color: var(--text-primary);
   
     .media-title {
-      padding-left: var(--spacing-s);
+      padding-left: var(--space-2);
       flex-grow: 1;
       float: left;
       
@@ -112,7 +128,7 @@
       float: right;
       font-size: small;
       font-weight: 400;
-      color: var(--text-tertiary);
+      color: var(--text-muted);
     }
   }
 }

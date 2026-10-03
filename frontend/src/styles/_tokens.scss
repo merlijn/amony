@@ -1,0 +1,122 @@
+// Design tokens, in two tiers.
+//
+// Tier 1 - primitives: the Radix Colors scales (`--slate-1..12`, `--blue-1..12`,
+// `--red-1..12`, `--green-1..12`, `--amber-1..12`), imported in src/index.tsx.
+// The neutral scale is Radix `slate` - a cool, slightly blue-tinted grey - which
+// matches the product's original palette.
+// Every step has a fixed meaning worth knowing:
+// https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale
+// Components never use these directly.
+//
+// Tier 2 - semantics: the role-based aliases below. Components only use these.
+// Because they point at primitive steps, the theme swaps by toggling the Radix
+// light/dark scales (via the `.dark` class); these declarations are identical
+// for both themes.
+
+:root {
+  // Spacing scale: 2px increments at the compact end, 4px steps above.
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;
+  --space-7: 16px;
+  --space-8: 20px;
+  --space-9: 24px;
+  --space-10: 32px;
+  --space-11: 40px;
+
+  // Surfaces: 1 = app canvas, 2 = subtle surface, 3 = raised, 4 = hover, 5 = active/selected.
+  // The nav sits on --bg-secondary; two adjacent Radix steps are too close to
+  // read as a distinct surface, so it sits between steps 2 and 3.
+  --bg-primary: var(--slate-1);
+  --bg-secondary: color-mix(in srgb, var(--slate-2) 45%, var(--slate-3) 55%);
+  --bg-tertiary: var(--slate-3);
+  --bg-hover: var(--slate-4);
+  --bg-active: var(--slate-5);
+
+  // Hover tint for small controls and list options; subtler than --bg-hover.
+  // A translucent overlay so it darkens relative to whatever surface it sits
+  // on (dialog canvas and dropdown panel are different steps).
+  --bg-hover-subtle: color-mix(in srgb, var(--slate-12) 6%, transparent);
+
+  // Text: 12 = high contrast, 11 = low contrast, 10 = muted
+  --text-primary: var(--slate-12);
+  --text-secondary: var(--slate-11);
+  --text-muted: var(--slate-10);
+
+  // Borders: 7 = UI element border, 6 = subtle separator, 8 = focus ring
+  --border-primary: var(--slate-7);
+  --border-secondary: var(--slate-6);
+  --border-focus: var(--blue-8);
+  --focus-ring: color-mix(in srgb, var(--blue-8) 40%, transparent);
+
+  // Accent: 9 = solid, 10 = solid hover, 11 = accent-coloured text
+  --accent: var(--blue-9);
+  --accent-hover: var(--blue-10);
+  --accent-text: var(--blue-11);
+  --text-on-accent: #ffffff;
+
+  // Status
+  --danger: var(--red-9);
+  --danger-hover: var(--red-10);
+  --danger-text: var(--red-11);
+  --danger-surface: var(--red-3);
+  --danger-border: var(--red-7);
+
+  --success: var(--green-9);
+  --success-hover: var(--green-10);
+  --success-text: var(--green-11);
+  --success-surface: var(--green-3);
+  --success-border: var(--green-7);
+
+  --warning: var(--amber-9);
+  --warning-text: var(--amber-11);
+
+  // Categorical tag colours (identity, not status)
+  --tag-green: var(--green-9);
+  --tag-green-border: var(--green-7);
+
+  // Overlays
+  --scrim: rgba(0, 0, 0, 0.4);
+  --shadow-overlay:
+    -20px -20px 40px rgba(0, 0, 0, 0.3),
+    -20px 20px 40px rgba(0, 0, 0, 0.3),
+    20px -20px 40px rgba(0, 0, 0, 0.3),
+    20px 20px 40px rgba(0, 0, 0, 0.3);
+
+  // Media overlays: chrome drawn over arbitrary photos and video (badges,
+  // thumbnail controls, preview icons). Deliberately a fixed dark palette with
+  // light text rather than theme surfaces, so it stays legible on any image.
+  --media-overlay-fg: #ffffff;
+  --media-overlay-fg-muted: #e0e0e0;
+  --media-overlay-outline: #111111;
+  --media-overlay-scrim: rgba(0, 0, 0, 0.5);
+  --media-overlay-bg: rgba(0, 0, 0, 0.6);
+  --media-overlay-bg-strong: rgba(0, 0, 0, 0.75);
+  --media-overlay-border-subtle: rgba(255, 255, 255, 0.2);
+  --media-overlay-border: rgba(255, 255, 255, 0.3);
+  --media-overlay-border-strong: rgba(255, 255, 255, 0.5);
+  --media-overlay-border-intense: rgba(255, 255, 255, 0.75);
+  --media-overlay-control: rgba(60, 60, 60, 0.9);
+  --media-overlay-control-hover: rgba(100, 100, 100, 0.9);
+  --media-overlay-control-close: rgba(80, 80, 80, 0.9);
+  --media-overlay-danger: rgba(120, 40, 40, 0.9);
+  --media-overlay-icon-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+
+  color-scheme: light;
+}
+
+// Keep native form controls and scrollbars in sync with the active theme.
+.dark,
+[data-theme="dark"] {
+  // Radix slate-12 is a touch bright for primary text on its very dark canvas;
+  // pull it slightly toward the background so it is easier on the eyes.
+  --text-primary: color-mix(in srgb, var(--slate-12) 92%, var(--bg-primary) 8%);
+
+  // Dark surfaces need a stronger lightening for the overlay to be visible.
+  //--bg-hover-subtle: color-mix(in srgb, var(--slate-12) 15%, transparent);
+
+  color-scheme: dark;
+}

@@ -31,6 +31,7 @@ $row-height: 36px;
       @extend .hover-pointer;
       width: 20px;
       height: 20px;
+      @include hover-highlight(var(--bg-active));
     }
 
     .list-cell {
@@ -43,7 +44,7 @@ $row-height: 36px;
       overflow: hidden;
 
       border-bottom: 1px solid var(--border-secondary);
-      padding: 0px 8px;
+      padding: 0 var(--space-4);
       height: $row-height;
     }
 
@@ -54,7 +55,7 @@ $row-height: 36px;
       text-align: left;
       vertical-align: middle;
 
-      padding: 0px;
+      padding: 0;
       font-size: 15px;
       font-weight: 500;
       height: 44px;
@@ -62,7 +63,7 @@ $row-height: 36px;
       background-color: var(--bg-primary);
 
       span {
-        padding-left: 8px;
+        padding-left: var(--space-4);
       }
 
       .column-sort-icon {
@@ -82,7 +83,7 @@ $row-height: 36px;
         @extend .hover-pointer;
         width: 18px;
         height: 18px;
-        margin-right: 8px;
+        margin-right: var(--space-4);
       }
     }
 
@@ -134,8 +135,8 @@ $row-height: 36px;
         background-color: var(--bg-secondary);
         width: 30px;
         right: -8px;
-        padding-left: 6px;
-        padding-right: 4px;
+        padding-left: var(--space-3);
+        padding-right: var(--space-2);
       }
 
       &:hover {
@@ -170,7 +171,7 @@ $row-height: 36px;
         text-align: center;
         vertical-align: middle;
         &:hover {
-          background-color: var(--bg-hover);
+          background-color: var(--bg-active);
           border-radius: 50%;
         }
         input {
@@ -181,7 +182,7 @@ $row-height: 36px;
 
       .list-thumbnail {
         @extend .list-cell;
-        padding-right: 0px;
+        padding-right: 0;
         .list-thumbnail-img {
           @extend .hover-pointer;
           align-items: center;
@@ -194,7 +195,7 @@ $row-height: 36px;
       .list-title {
         .edit-title-input {
           width: calc(100% - 28px);
-          padding: 4px;
+          padding: var(--space-2);
         }
       }
 
@@ -210,9 +211,9 @@ $row-height: 36px;
           right: 5px;
           min-width: 25px;
 
-          padding: 6px 10px;
+          padding: var(--space-3) var(--space-5);
           border-radius: 25px;
-          border: 1px solid var(--highlight-e);
+          border: 1px solid var(--tag-green);
         }
       }
 
@@ -235,8 +236,8 @@ $row-height: 36px;
           right: 4px;
           display: flex;
           justify-content: flex-end;
-          gap: var(--spacing-s);
-          padding-left: 0px;
+          gap: var(--space-2);
+          padding-left: 0;
           background-color: var(--bg-secondary);
           height: 100%;
 
@@ -244,12 +245,14 @@ $row-height: 36px;
             @extend .hover-pointer;
             width: 24px;
             height: 24px;
+            @include hover-highlight(var(--bg-active));
           }
 
           .delete-action {
             @extend .hover-pointer;
             width: 24px;
             height: 24px;
+            @include hover-highlight(var(--bg-active));
           }
         }
       }

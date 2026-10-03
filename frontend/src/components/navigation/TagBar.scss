@@ -23,8 +23,8 @@
     right: 0px;
     bottom: 0px;
     color: var(--text-secondary);
-    margin-right: 10px;
-    margin-bottom: 4px;
+    margin-right: var(--space-5);
+    margin-bottom: var(--space-2);
   }
 
   .tags {
@@ -38,26 +38,29 @@
     @extend .hover-pointer;
     display: flex;
     text-align: center;
-    margin: 0px 4px;
+    margin: 0 var(--space-2);
     color: var(--text-primary);
     background-color: var(--bg-hover);
-    border: 2px solid var(--border-primary);
+    border: 2px solid var(--bg-hover);
     font-size: small;
-    padding: 6px 12px;
+    padding: var(--space-3) var(--space-6);
     border-radius: 25px;
 
     &:hover {
       background-color: var(--bg-active);
+      border-color: var(--bg-active);
       color: var(--text-primary);
     }
   }
 
   .selected-tag {
-    color: var(--text-inverse);
-    border-color: var(--bg-active);
+    color: var(--text-primary);
     background-color: var(--bg-active) !important;
+    border-color: var(--border-primary);
+
     &:hover {
-      color: var(--text-inverse);
+      color: var(--text-primary);
+      border-color: var(--border-primary);
     }
   }
 
@@ -66,9 +69,9 @@
     background-color: var(--bg-active) !important;
     border-color: var(--bg-active) !important;
     font-size: small !important;
-    color: var(--text-inverse);
-    padding: 3px 10px;
-    margin: 0px 4px;
+    color: var(--text-primary);
+    padding: var(--space-1) var(--space-5);
+    margin: 0 var(--space-2);
     display: flex;
     vertical-align: middle;
     justify-content: center;

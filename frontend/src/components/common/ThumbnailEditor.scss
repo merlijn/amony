@@ -15,10 +15,10 @@
 
     position: relative;
     width: 100%;
-    margin: 8px;
+    margin: var(--space-4);
 
     cursor: pointer;
-    border: 2px solid rgba(255, 255, 255, 0.5);
+    border: 2px solid var(--media-overlay-border-strong);
     border-radius: 3px;
 
     .thumbnail-editor-media {
@@ -45,7 +45,7 @@
     }
 
     &:hover {
-      border-color: rgba(255, 255, 255, 0.75);
+      border-color: var(--media-overlay-border-intense);
     }
 
     &.collapsed {
@@ -59,12 +59,12 @@
 .thumbnail-editor-controls {
 
   @extend .abs-top-left;
-  margin: 8px;
+  margin: var(--space-4);
   display: flex;
-  gap: 3px;
-  background: rgba(0, 0, 0, 0.75);
+  gap: var(--space-1);
+  background: var(--media-overlay-bg-strong);
   border-radius: 4px;
-  padding: 5px;
+  padding: var(--space-2);
   pointer-events: auto;
   opacity: 0;
   visibility: hidden;
@@ -77,10 +77,10 @@
 
   .te-btn {
     font-size: 13px;
-    padding: 5px 10px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    background: rgba(60, 60, 60, 0.9);
-    color: #e0e0e0;
+    padding: var(--space-2) var(--space-5);
+    border: 1px solid var(--media-overlay-border);
+    background: var(--media-overlay-control);
+    color: var(--media-overlay-fg-muted);
     cursor: pointer;
     border-radius: 3px;
     white-space: nowrap;
@@ -88,19 +88,19 @@
   }
 
   .te-btn:hover {
-    background: rgba(100, 100, 100, 0.9);
-    color: #fff;
+    background: var(--media-overlay-control-hover);
+    color: var(--media-overlay-fg);
   }
 
   .te-btn-save {
-    background: #45C53F;
-    color: white;
-    border-color: #3aad35;
+    background: var(--success);
+    color: var(--text-on-accent);
+    border-color: var(--success-hover);
     font-weight: bold;
   }
 
   .te-btn-save:hover {
-    background: #3aad35;
+    background: var(--success-hover);
   }
 
   .te-btn-save:disabled {
@@ -109,13 +109,13 @@
   }
 
   .te-btn-close {
-    background: rgba(80, 80, 80, 0.9);
-    color: #ccc;
-    border-color: rgba(255, 255, 255, 0.2);
+    background: var(--media-overlay-control-close);
+    color: var(--media-overlay-fg-muted);
+    border-color: var(--media-overlay-border-subtle);
   }
 
   .te-btn-close:hover {
-    background: rgba(120, 40, 40, 0.9);
-    color: #fff;
+    background: var(--media-overlay-danger);
+    color: var(--media-overlay-fg);
   }
 }

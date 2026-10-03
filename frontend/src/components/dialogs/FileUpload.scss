@@ -9,7 +9,7 @@
   @extend .hover-pointer;
 
   width: 100%;
-  padding: 8px;
+  padding: var(--space-4);
   border: 1px dashed var(--border-secondary);
   border-radius: 4px;
   background-color: var(--bg-primary);
@@ -24,7 +24,7 @@
 .progress-container {
   display: flex;
   align-items: center;
-  gap: var(--spacing-m);
+  gap: var(--space-6);
 
   .progress-bar {
     flex: 1;
@@ -48,17 +48,17 @@
 }
 
 .feedback {
-  padding: 4px 8px;
+  padding: var(--space-2) var(--space-4);
   border-radius: 4px;
   font-size: 0.9em;
 
   &.feedback-success {
-    background-color: rgba(76, 175, 80, 0.2);
-    color: #4caf50;
+    background-color: var(--success-surface);
+    color: var(--success-text);
   }
 
   &.feedback-error {
-    background-color: rgba(244, 67, 54, 0.2);
-    color: #f44336;
+    background-color: var(--danger-surface);
+    color: var(--danger-text);
   }
 }

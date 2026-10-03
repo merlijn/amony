@@ -13,13 +13,13 @@ body {
 
 .text-input {
   outline: none;
-  border-radius: var(--spacing-xs);
+  border-radius: var(--space-1);
   border: 1px solid var(--border-primary);
   background-color: var(--bg-primary);
   color: var(--text-primary);
   &:focus {
     border-color: var(--border-focus);
-    outline: solid rgba(128, 189, 255, 0.4);
+    outline: solid var(--focus-ring);
   }
 }
 
@@ -40,17 +40,26 @@ textarea {
 
   .info-label {
     width: 170px;
-    padding-right: var(--spacing-m);
-    padding-bottom: var(--spacing-m);
+    padding-right: var(--space-6);
+    padding-bottom: var(--space-6);
     vertical-align: middle;
     text-align: left;
     white-space: nowrap;
-    color: var(--text-tertiary);
+    color: var(--text-muted);
     font-weight: 400;
   }
 
   .info-value {
-    padding-bottom: var(--spacing-m);
+    padding-bottom: var(--space-6);
     vertical-align: middle;
+  }
+}
+
+// Hover highlight for small interactive controls
+@mixin hover-highlight($color: var(--bg-hover), $radius: 3px, $spread: 2px) {
+  &:hover {
+    background-color: $color;
+    border-radius: $radius;
+    box-shadow: 0 0 0 $spread $color;
   }
 }

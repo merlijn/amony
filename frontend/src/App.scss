@@ -1,92 +1,11 @@
-@use 'src/css/Layout.scss' as layout;
-@use 'src/css/Defaults.scss';
+@use './styles/tokens';
+@use './styles/layout' as layout;
+@use './styles/defaults';
 
-@forward 'src/css/Constants.scss';
-@forward 'src/css/Layout.scss';
-@forward 'src/css/Defaults.scss';
-@forward 'src/css/Tabs.scss';
-
-// Shared design tokens (themeable later)
-:root {
-  --spacing-xs: 2px;
-  --spacing-s: 5px;
-  --spacing-m: 12px;
-  --spacing-l: 24px;
-  --spacing-xl: 40px;
-}
-
-// Light theme (default)
-:root,
-[data-theme="light"] {
-  // Background colors
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8f9fa;
-  --bg-tertiary: #e9ecef;
-  --bg-hover: #dee2e6;
-  --bg-active: #ced4da;
-  
-  // Text colors
-  --text-primary: #000000;
-  --text-secondary: #495057;
-  --text-tertiary: #6c757d;
-  --text-muted: #adb5bd;
-  --text-inverse: #ffffff;
-  
-  // Border colors
-  --border-primary: #ced4da;
-  --border-secondary: #dee2e6;
-  --border-focus: rgb(128, 189, 255);
-  
-  // Highlight colors
-  --highlight-a: #286fa8;
-  --highlight-b: #DD4242;
-  --highlight-c: #FFBA08;
-  --highlight-d: #053E61;
-  --highlight-e: #45c53f;
-  
-  --secondary-a: #81B2D9;
-  --secondary-b: #096FAE;
-  --secondary-c: #FFD15C;
-  --secondary-d: #EA8686;
-  --secondary-e: #9AC1AC;
-}
-
-// Dark theme
-[data-theme="dark"] {
-  // Background colors - inverted grays
-  --bg-primary: #1a1a1a;
-  --bg-secondary: #2d2d2d;
-  --bg-tertiary: #3a3a3a;
-  --bg-hover: #4a4a4a;
-  --bg-active: #5a5a5a;
-  
-  // Text colors - lighter for dark backgrounds
-  --text-primary: #e0e0e0;
-  --text-secondary: #b0b0b0;
-  --text-tertiary: #909090;
-  --text-muted: #707070;
-  --text-inverse: #1a1a1a;
-  
-  // Border colors
-  --border-primary: #4a4a4a;
-  --border-secondary: #3a3a3a;
-  --border-focus: rgb(100, 160, 230);
-  
-  // Highlight colors - same as light theme
-  --highlighted-text: #ffffff;
-
-  --highlight-a: #6293bc;
-  --highlight-b: #DD4242;
-  --highlight-c: #FFBA08;
-  --highlight-d: #0a6ca0;
-  --highlight-e: #45c53f;
-  
-  --secondary-a: #81B2D9;
-  --secondary-b: #096FAE;
-  --secondary-c: #FFD15C;
-  --secondary-d: #EA8686;
-  --secondary-e: #9AC1AC;
-}
+@forward './styles/constants';
+@forward './styles/layout';
+@forward './styles/defaults';
+@forward './styles/tabs';
 
 .root {
   background-color: var(--bg-primary);
@@ -104,48 +23,62 @@
   }
 }
 
-.duration-overlay {
+// Buttons. The variant is the button's role in its context, not a colour:
+//   primary   - the emphasized affirmative action (submit / apply / upload)
+//   secondary - a neutral action (cancel / add / dismiss)
+//   danger    - a destructive action (delete)
+// The three share a base and differ only in colour.
+.button-primary,
+.button-secondary,
+.button-danger {
 
-  @extend .abs-bottom-right;
-  opacity: 0.9;
-  z-index: 8;
-  margin: 5px;
-  padding: 2px 5px;
-  color: white;
-  background-color: rgba(0, 0, 0, 0.6);
-  font-size: small;
-}
-
-.action-icon-small {
-
-  @extend .hover-pointer;
-
-  z-index: 3;
-  width: 20px;
-  height: 20px;
-}
-
-.action-icon-medium {
-
-  @extend .hover-pointer;
-
-  width: 24px;
-  height: 24px;
-}
-
-.button-primary {
-
-  @extend .hover-pointer;
-
-  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4) var(--space-6);
   border-radius: 5px;
-  color: var(--text-inverse);
-  background-color: var(--highlight-a);
-  border: 1px solid var(--highlight-a);
+  font-size: 0.9rem;
+  cursor: pointer;
 
-  &:hover {
-    background-color: var(--secondary-a);
-    border-color: var(--secondary-a);
+  &:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
   }
 }
 
+.button-primary {
+  color: var(--text-on-accent);
+  background-color: var(--accent);
+  border: 1px solid var(--accent);
+
+  &:hover:not(:disabled) {
+    background-color: var(--accent-hover);
+    border-color: var(--accent-hover);
+  }
+}
+
+.button-secondary {
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+
+  &:hover:not(:disabled) {
+    background-color: var(--bg-hover);
+  }
+}
+
+.button-danger {
+  color: var(--text-on-accent);
+  background-color: var(--danger);
+  border: 1px solid var(--danger);
+
+  &:hover:not(:disabled) {
+    background-color: var(--danger-hover);
+    border-color: var(--danger-hover);
+  }
+}

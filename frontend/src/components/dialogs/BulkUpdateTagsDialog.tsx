@@ -207,7 +207,7 @@ const BulkUpdateTagsDialog = ({selectedResources, visible, onUpdate, onHide}: Bu
                   />
                   <button
                     type="button"
-                    className="bulk-tag-button secondary"
+                    className="button-secondary"
                     onClick={submitNewTag}
                     disabled={!newTag.trim()}
                   >
@@ -219,11 +219,11 @@ const BulkUpdateTagsDialog = ({selectedResources, visible, onUpdate, onHide}: Bu
               {error && <div className="bulk-tag-error">{error}</div>}
 
               <div className="bulk-tag-actions">
-                <button className="bulk-tag-button" type="button" onClick={onHide} disabled={isSubmitting}>
+                <button className="button-secondary" type="button" onClick={onHide} disabled={isSubmitting}>
                   Cancel
                 </button>
                 <button
-                  className="bulk-tag-button primary"
+                  className="button-primary"
                   type="button"
                   onClick={handleBulkUpdate}
                   disabled={isSubmitting}

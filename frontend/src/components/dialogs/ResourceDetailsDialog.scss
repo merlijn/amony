@@ -10,9 +10,9 @@
 }
 
 .resource-details-loading {
-  padding: var(--spacing-l);
+  padding: var(--space-9);
   text-align: center;
-  color: var(--text-tertiary);
+  color: var(--text-muted);
 }
 
 .resource-details-dialog {
@@ -46,7 +46,7 @@
 
 .resource-details-json {
   margin: 0;
-  padding: var(--spacing-s);
+  padding: var(--space-2);
   background: var(--bg-secondary);
   border: 1px solid var(--border-primary);
   border-radius: 4px;

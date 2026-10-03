@@ -5,18 +5,18 @@
   flex-direction: column;
   z-index: 250;
   border-radius: 3px;
-  margin-left: -10px;
+  margin-left: calc(-1 * var(--space-5));
   border: 1px solid var(--border-secondary);
   background-color: var(--bg-secondary);
   color: var(--text-primary);
 
   .filter-container {
-    padding: 15px;
+    padding: var(--space-7);
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: space-around;
-    gap: 20px;
+    gap: var(--space-8);
 
     .filter-section {
       display: flex;
@@ -25,39 +25,39 @@
       .section-header {
         font-size: medium;
         font-weight: 500;
-        padding-bottom: 8px;
-        margin-bottom: 12px;
+        padding-bottom: var(--space-4);
+        margin-bottom: var(--space-6);
         border-bottom: 1px solid var(--border-secondary);
       }
 
       .filter-option {
         @extend .hover-pointer;
-        padding: 3px 4px;
+        padding: var(--space-1) var(--space-2);
         border-radius: 3px;
         display: inline-block;
         white-space: nowrap;
 
         input {
-          margin-right: 8px;
+          margin-right: var(--space-4);
         }
 
         label {
-          margin-left: var(--spacing-m);
+          margin-left: var(--space-6);
         }
 
         &:hover {
-          background-color: var(--bg-tertiary);
+          background-color: var(--bg-hover-subtle);
         }
 
         .sort-action-icon,
         .sort-direction-icon {
-          margin-left: 6px;
+          margin-left: var(--space-3);
           cursor: pointer;
           vertical-align: middle;
           width: 18px;
           height: 18px;
           display: inline-block;
-          color: var(--highlight-a);
+          color: var(--accent);
 
           &:hover {
             color: var(--text-primary);
