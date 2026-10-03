@@ -123,10 +123,6 @@ const GridView = (props: GalleryProps) => {
     }
   }, [width, props.cellWidth, props.componentType])
 
-  // A new selection keeps the current results on screen and fetches its first
-  // page in the background, replacing them once it arrives. Clearing the results
-  // here would briefly unmount the whole grid and blank the tag bar, which is fed
-  // by the same response.
   useEffect(() => {
     resetRef.current = true
     setIsFetching(true)
