@@ -23,35 +23,6 @@
   }
 }
 
-.duration-overlay {
-
-  @extend .abs-bottom-right;
-  opacity: 0.9;
-  z-index: 8;
-  margin: 5px;
-  padding: 2px 5px;
-  color: white;
-  background-color: rgba(0, 0, 0, 0.6);
-  font-size: small;
-}
-
-.action-icon-small {
-
-  @extend .hover-pointer;
-
-  z-index: 3;
-  width: 20px;
-  height: 20px;
-}
-
-.action-icon-medium {
-
-  @extend .hover-pointer;
-
-  width: 24px;
-  height: 24px;
-}
-
 // Buttons. The variant is the button's role in its context, not a colour:
 //   primary   - the emphasized affirmative action (submit / apply / upload)
 //   secondary - a neutral action (cancel / add / dismiss)
