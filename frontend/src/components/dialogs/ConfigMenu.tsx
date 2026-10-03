@@ -9,6 +9,7 @@ import {useTheme} from "../../ThemeContext";
 import {GridAspectRatio, GridOrientation, ThemeSetting} from "../../api/Model";
 import {BucketDto} from "../../api/generated/model/bucketDto";
 import * as Tabs from "@radix-ui/react-tabs";
+import ChoiceOption from "../common/ChoiceOption";
 
 const ConfigMenu = () => {
 
@@ -85,16 +86,15 @@ const ConfigMenu = () => {
                   </select>
                   <div className="orientation-select">
                     {orientationOptions.map((option) => (
-                      <label key={option.value} className="orientation-option">
-                        <input
-                          type="radio"
-                          name="orientation-option"
-                          value={option.value}
-                          checked={gridOrientation === option.value}
-                          onChange={() => updatePrefs({gridOrientation: option.value})}
-                        />
-                        <span>{option.label}</span>
-                      </label>
+                      <ChoiceOption
+                        key={option.value}
+                        type="radio"
+                        name="orientation-option"
+                        value={option.value}
+                        checked={gridOrientation === option.value}
+                        onChange={() => updatePrefs({gridOrientation: option.value})}
+                        label={option.label}
+                      />
                     ))}
                   </div>
                 </div>
@@ -103,57 +103,48 @@ const ConfigMenu = () => {
               <InfoRow label="Theme">
                 <div className="theme-select">
                   {themeOptions.map((option) => (
-                    <label key={option.value} className="theme-option">
-                      <input
-                        type="radio"
-                        name="theme-option"
-                        value={option.value}
-                        checked={themeSetting === option.value}
-                        onChange={() => setTheme(option.value)}
-                      />
-                      <span>{option.label}</span>
-                    </label>
+                    <ChoiceOption
+                      key={option.value}
+                      type="radio"
+                      name="theme-option"
+                      value={option.value}
+                      checked={themeSetting === option.value}
+                      onChange={() => setTheme(option.value)}
+                      label={option.label}
+                    />
                   ))}
                 </div>
               </InfoRow>
 
               <InfoRow label="Show info bar">
-                <input
+                <ChoiceOption
                   type="checkbox"
                   checked={prefs.showTitles}
-                  onChange={(e) => {
-                    updatePrefs({showTitles: !prefs.showTitles})
-                  }}
+                  onChange={() => updatePrefs({showTitles: !prefs.showTitles})}
                 />
               </InfoRow>
 
               <InfoRow label="Show video duration">
-                <input
-                    type="checkbox"
-                    checked={prefs.showDuration}
-                    onChange={(e) => {
-                      updatePrefs({showDuration: !prefs.showDuration})
-                    }}
+                <ChoiceOption
+                  type="checkbox"
+                  checked={prefs.showDuration}
+                  onChange={() => updatePrefs({showDuration: !prefs.showDuration})}
                 />
               </InfoRow>
 
               <InfoRow label="Show dates">
-                <input
-                    type="checkbox"
-                    checked = { prefs.showDates }
-                    onChange={(e) => {
-                      updatePrefs({showDates: !prefs.showDates})
-                    }}
+                <ChoiceOption
+                  type="checkbox"
+                  checked={prefs.showDates}
+                  onChange={() => updatePrefs({showDates: !prefs.showDates})}
                 />
               </InfoRow>
 
               <InfoRow label="Show resolution">
-                <input
-                    type="checkbox"
-                    checked = { prefs.showResolution }
-                    onChange = {(e) => {
-                      updatePrefs({showResolution: !prefs.showResolution})
-                    }}
+                <ChoiceOption
+                  type="checkbox"
+                  checked={prefs.showResolution}
+                  onChange={() => updatePrefs({showResolution: !prefs.showResolution})}
                 />
               </InfoRow>
             </InfoTable>

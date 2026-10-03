@@ -54,3 +54,15 @@ textarea {
     vertical-align: middle;
   }
 }
+
+// Hover highlight for small interactive controls: a soft background fill, like
+// the dialog close button and the list-view select cell. Painted with
+// `background-color` plus a same-coloured `box-shadow` spread so it pads the
+// control without affecting layout — it never changes a row's height.
+@mixin hover-highlight($color: var(--bg-hover), $radius: 3px, $spread: 2px) {
+  &:hover {
+    background-color: $color;
+    border-radius: $radius;
+    box-shadow: 0 0 0 $spread $color;
+  }
+}

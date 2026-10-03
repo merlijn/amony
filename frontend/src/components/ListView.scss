@@ -31,6 +31,7 @@ $row-height: 36px;
       @extend .hover-pointer;
       width: 20px;
       height: 20px;
+      @include hover-highlight(var(--bg-active));
     }
 
     .list-cell {
@@ -244,12 +245,14 @@ $row-height: 36px;
             @extend .hover-pointer;
             width: 24px;
             height: 24px;
+            @include hover-highlight(var(--bg-active));
           }
 
           .delete-action {
             @extend .hover-pointer;
             width: 24px;
             height: 24px;
+            @include hover-highlight(var(--bg-active));
           }
         }
       }
