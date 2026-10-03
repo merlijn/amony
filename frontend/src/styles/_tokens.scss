@@ -76,8 +76,8 @@
   // pull it slightly toward the background so it is easier on the eyes.
   --text-primary: color-mix(in srgb, var(--gray-12) 92%, var(--bg-primary) 8%);
 
-  // gray-3 is imperceptible on the dark canvas, so step it up once.
-  --bg-hover-subtle: var(--gray-4);
+  // gray-3 is imperceptible on the dark canvas, so step it up.
+  --bg-hover-subtle: var(--gray-5);
 
   color-scheme: dark;
 }
