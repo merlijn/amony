@@ -41,23 +41,26 @@
     margin: 0px 4px;
     color: var(--text-primary);
     background-color: var(--bg-hover);
-    border: 2px solid var(--border-primary);
+    border: 2px solid var(--bg-hover);
     font-size: small;
     padding: 6px 12px;
     border-radius: 25px;
 
     &:hover {
       background-color: var(--bg-active);
+      border-color: var(--bg-active);
       color: var(--text-primary);
     }
   }
 
   .selected-tag {
     color: var(--text-primary);
-    border-color: var(--bg-active);
     background-color: var(--bg-active) !important;
+    border-color: var(--border-primary);
+
     &:hover {
       color: var(--text-primary);
+      border-color: var(--border-primary);
     }
   }
 
