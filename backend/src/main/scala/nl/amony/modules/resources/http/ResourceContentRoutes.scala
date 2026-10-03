@@ -20,10 +20,10 @@ object ResourceContentRoutes extends Logging {
 
     // Public URL patterns: timestamp for cache-busting + pinned dimension + resolution size in pixels
     // + image format extension.
-    // thumb_{timestamp}_{dim}_{size}.{format}  e.g. thumb_2863_w_768.avif  (videos and images)
-    // clip_{timestamp}_{dim}_{size}.mp4        e.g. clip_2863_h_512.mp4    (videos only)
+    // thumb_{timestamp}_{dim}_{size}.{format}  e.g. thumb_2863_w_768.avif       (videos and images)
+    // clip_{start}_{end}_{dim}_{size}.mp4      e.g. clip_2863_5863_w_512.mp4    (videos only)
     val PublicThumbnailPattern = raw"thumb_(\d+)_([wh])_(\d+)\.([a-z0-9]+)".r
-    val PublicClipPattern      = raw"clip_(\d+)_([wh])_(\d+)\.mp4".r
+    val PublicClipPattern      = raw"clip_(\d+)_(\d+)_([wh])_(\d+)\.mp4".r
 
     /** The resource's native pixel dimensions (0, 0 when unknown). */
     private def sourceDimensions(resource: ResourceInfo): (Int, Int) = resource.basicContentProperties match {
@@ -54,26 +54,26 @@ object ResourceContentRoutes extends Logging {
       dimension: ThumbnailDimension,
       source: (Int, Int),
       even: Boolean,
-      minimumDimension: Int = 0
+      minimumDimension: Option[Int] = None
     ): (Option[Int], Option[Int]) = {
       val (sourceWidth, sourceHeight) = source
-      val native                      = if dimension == ThumbnailDimension.Width then sourceWidth else sourceHeight
       val pinnedSource                = if dimension == ThumbnailDimension.Width then sourceWidth else sourceHeight
       val otherSource                 = if dimension == ThumbnailDimension.Width then sourceHeight else sourceWidth
+      val minimum                     = minimumDimension.filter(_ > 0)
 
       // Smallest pinned size whose derived side reaches the encoder minimum (0 when unbounded or unknown).
-      val requiredForMinimum =
-        if minimumDimension <= 0 || pinnedSource <= 0 || otherSource <= 0 then 0
-        else ((minimumDimension.toLong * pinnedSource + otherSource - 1) / otherSource).toInt
+      val requiredForMinimum = minimum match
+        case Some(min) if pinnedSource > 0 && otherSource > 0 => ((min.toLong * pinnedSource + otherSource - 1) / otherSource).toInt
+        case _                                                => 0
 
       val target = math.max(requested, requiredForMinimum)
-      val capped = if native > 0 then math.min(target, native) else target
+      val capped = if pinnedSource > 0 then math.min(target, pinnedSource) else target
       val sized  =
         if !even then capped
         else
-          val roundedDown = capped - (capped % 2)
-          if minimumDimension > 0 && derivedFloor(roundedDown, pinnedSource, otherSource) < minimumDimension then roundedDown + 2
-          else roundedDown
+          val roundedDown  = capped - (capped % 2)
+          val belowMinimum = minimum.exists(min => derivedFloor(roundedDown, pinnedSource, otherSource) < min)
+          if belowMinimum then roundedDown + 2 else roundedDown
 
       (Option.when(dimension == ThumbnailDimension.Width)(sized), Option.when(dimension == ThumbnailDimension.Height)(sized))
     }
@@ -99,22 +99,23 @@ object ResourceContentRoutes extends Logging {
         case Some(video: VideoProperties) =>
           val ts = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
           if urlTimestamp == ts then
-            val (width, height) = scaledDimensions(pixels, dimension, source, even = true, minimumDimension = format.minimumDimension.getOrElse(0))
+            val (width, height) = scaledDimensions(pixels, dimension, source, even = true, minimumDimension = format.minimumDimension)
             Some(VideoThumbnail(width = width, height = height, timestamp = ts, format = format))
           else None
         case Some(_: ImageProperties)     =>
-          val (width, height) = scaledDimensions(pixels, dimension, source, even = false, minimumDimension = format.minimumDimension.getOrElse(0))
+          val (width, height) = scaledDimensions(pixels, dimension, source, even = false, minimumDimension = format.minimumDimension)
           Some(ImageThumbnail(width = width, height = height, format = format))
         case _                            => None
       }
     }
 
     /**
-     * Builds a clip operation only when the URL timestamp matches the resource's
-     * canonical timestamp, preventing arbitrary start/end injection.
+     * Builds a clip operation only when the URL start and end match the resource's canonical preview
+     * range, preventing arbitrary range injection.
      */
     def clipOperation(
-      urlTimestamp: Long,
+      urlStart: Long,
+      urlEnd: Long,
       dimensionToken: String,
       resolutionKey: String,
       resolutions: ThumbnailResolutions,
@@ -125,9 +126,8 @@ object ResourceContentRoutes extends Logging {
       val source              = sourceDimensions(resource)
       resource.basicContentProperties match {
         case Some(video: VideoProperties) =>
-          val start = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
-          if urlTimestamp == start then
-            val end             = Math.min(video.durationInMillis.toLong, start + 3000L)
+          val (start, end) = ClipDto.previewRange(resource.thumbnailTimestamp, video.durationInMillis)
+          if urlStart == start && urlEnd == end then
             val (width, height) = scaledDimensions(pixels, dimension, source, even = true)
             Some(VideoFragment(width = width, height = height, start = start, end = end))
           else None
@@ -179,8 +179,8 @@ object ResourceContentRoutes extends Logging {
               operation          <- OptionT.fromOption(resourcePattern match {
                                       case patterns.PublicThumbnailPattern(ts, dim, resKey, format) =>
                                         patterns.thumbnailOperation(ts.toLong, dim, resKey, format, resolutions, formats, resource.info)
-                                      case patterns.PublicClipPattern(ts, dim, resKey)              =>
-                                        patterns.clipOperation(ts.toLong, dim, resKey, resolutions, resource.info)
+                                      case patterns.PublicClipPattern(start, end, dim, resKey)      =>
+                                        patterns.clipOperation(start.toLong, end.toLong, dim, resKey, resolutions, resource.info)
                                       case _                                                        => None
                                     })
               derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))

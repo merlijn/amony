@@ -19,8 +19,6 @@ case class AppConfigDto(
   @customise(required)
   thumbnailSizes: List[Int],
   @customise(required)
-  thumbnailDimensions: List[String],
-  @customise(required)
   supportedFormats: List[String],
   defaultThumbnailResolution: ThumbnailResolutionDto,
   resolutionPickingStrategy: String
@@ -39,7 +37,6 @@ object ConfigRoutes extends RoutesModule:
       serverLogic(endpoint = getConfig) { _ =>
         IO.pure(Right(AppConfigDto(
           thumbnailSizes             = resolutions.sizes,
-          thumbnailDimensions        = resolutions.dimensions.map(_.name),
           supportedFormats           = formats.formats.map(_.configName),
           // Thumbnails are displayed in fixed-aspect boxes, so width is the operative dimension by default.
           defaultThumbnailResolution = ThumbnailResolutionDto(ThumbnailDimension.Width.name, resolutions.default),

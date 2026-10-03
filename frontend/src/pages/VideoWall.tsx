@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import './VideoWall.scss';
 import {ClipDto} from "../api/generated";
+import {useAppConfig} from "../api/ConfigContext";
+import {clipUrl} from "../api/ResourceUrls";
 
 const VideoWall = () => {
 
   const [fragments, setFragments] = useState<Array<ClipDto>>([])
+  const config = useAppConfig()
 
   const [topLeft, setTopLeft] = useState(0)
   const [topRight, setTopRight] = useState(1)
@@ -18,7 +21,8 @@ const VideoWall = () => {
 
   const getUrl = (idx: number): string => {
     const f = fragments[idx]
-    return f.urls[f.urls.length-1]
+    // Each wall cell is 50vw wide (see VideoWall.scss).
+    return clipUrl(f, config, window.innerWidth / 2)
   }
 
   // TODO FIX

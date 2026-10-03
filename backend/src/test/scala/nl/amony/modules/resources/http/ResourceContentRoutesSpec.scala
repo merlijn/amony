@@ -11,14 +11,14 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
   private val smallResolutions = ThumbnailResolutions(List(96, 192, 384, 768, 1536), 384, stepDown = 0)
   private val formats          = ThumbnailFormats(List(ImageFormat.Avif, ImageFormat.Webp, ImageFormat.Jpeg))
 
-  private def videoInfo(width: Int, height: Int) = ResourceInfo(
+  private def videoInfo(width: Int, height: Int, durationInMillis: Int = 10000, thumbnailTimestamp: Int = 1000) = ResourceInfo(
     bucketId           = BucketId("test"),
     resourceId         = ResourceId("resource"),
     userId             = UserId("user"),
     path               = "video.mp4",
     size               = 1L,
-    contentMeta        = Some(ResourceMeta("ffprobe/test", "{}", VideoProperties(width, height, 30f, 10000))),
-    thumbnailTimestamp = Some(1000)
+    contentMeta        = Some(ResourceMeta("ffprobe/test", "{}", VideoProperties(width, height, 30f, durationInMillis))),
+    thumbnailTimestamp = Some(thumbnailTimestamp)
   )
 
   private def imageInfo(width: Int, height: Int) = ResourceInfo(
@@ -114,9 +114,24 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
 
   "ResourceContentRoutes.clipOperation" should {
 
-    "cap a clip at the source dimensions" in {
-      val op = ResourceContentRoutes.patterns.clipOperation(1000, "w", "4320", resolutions, videoInfo(1920, 1080))
+    "build a clip for the canonical range and cap it at the source dimensions" in {
+      val op = ResourceContentRoutes.patterns.clipOperation(1000, 4000, "w", "4320", resolutions, videoInfo(1920, 1080))
       assert(op == Some(VideoFragment(width = Some(1920), height = None, start = 1000, end = 4000)))
+    }
+
+    "cap the clip end at the video length" in {
+      val op = ResourceContentRoutes.patterns.clipOperation(1000, 2000, "w", "352", resolutions, videoInfo(1920, 1080, durationInMillis = 2000))
+      assert(op == Some(VideoFragment(width = Some(352), height = None, start = 1000, end = 2000)))
+    }
+
+    "reject a clip when the start does not match the canonical range" in {
+      val op = ResourceContentRoutes.patterns.clipOperation(999, 4000, "w", "352", resolutions, videoInfo(1920, 1080))
+      assert(op.isEmpty)
+    }
+
+    "reject a clip when the end does not match the canonical range" in {
+      val op = ResourceContentRoutes.patterns.clipOperation(1000, 3999, "w", "352", resolutions, videoInfo(1920, 1080))
+      assert(op.isEmpty)
     }
   }
 
@@ -126,8 +141,8 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
       val thumbnail = ResourceContentRoutes.patterns.PublicThumbnailPattern.findFirstMatchIn("thumb_2863_w_768.avif")
       assert(thumbnail.map(m => (m.group(1), m.group(2), m.group(3), m.group(4))) == Some(("2863", "w", "768", "avif")))
 
-      val clip = ResourceContentRoutes.patterns.PublicClipPattern.findFirstMatchIn("clip_2863_h_512.mp4")
-      assert(clip.map(m => (m.group(1), m.group(2), m.group(3))) == Some(("2863", "h", "512")))
+      val clip = ResourceContentRoutes.patterns.PublicClipPattern.findFirstMatchIn("clip_2863_5863_h_512.mp4")
+      assert(clip.map(m => (m.group(1), m.group(2), m.group(3), m.group(4))) == Some(("2863", "5863", "h", "512")))
 
       assert(ResourceContentRoutes.patterns.PublicThumbnailPattern.findFirstMatchIn("thumb_2863_w_s.webp").isEmpty)
     }

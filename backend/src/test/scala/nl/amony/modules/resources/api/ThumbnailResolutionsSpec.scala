@@ -11,12 +11,6 @@ class ThumbnailResolutionsSpec extends AnyWordSpecLike {
     "order sizes from smallest to largest" in
       assert(resolutions.sizes == List(128, 256, 512, 1024))
 
-    "expose both dimensions" in {
-      assert(resolutions.dimensions == List(ThumbnailDimension.Width, ThumbnailDimension.Height))
-      assert(resolutions.dimensions.map(_.name) == List("width", "height"))
-      assert(resolutions.dimensions.map(_.token) == List("w", "h"))
-    }
-
     "serve the requested size when no step-down is configured" in {
       assert(resolutions.default == 512)
       assert(resolutions.effectiveSize(512) == 512)
