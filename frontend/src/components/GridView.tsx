@@ -1,4 +1,4 @@
-import React, {CSSProperties, useEffect, useState, useMemo} from 'react';
+import React, {CSSProperties, useEffect, useMemo, useRef, useState} from 'react';
 import {ResourceSelection} from '../api/Model';
 import './GridView.scss';
 import TagBar from './navigation/TagBar';
@@ -54,6 +54,11 @@ const GridView = (props: GalleryProps) => {
   const { ref, width }                  = useResizeObserver<HTMLDivElement>();
   const [columns, setColumns]           = useState<number>(gridColumnsForWidth(props.cellWidth))
 
+  // Tracks whether the next fetch restarts the list (selection changed) or
+  // appends the next page, and lets responses from superseded requests be ignored.
+  const resetRef     = useRef(false)
+  const requestIdRef = useRef(0)
+
   function handleUpdate(resource: ResourceDto) {
     console.log(`Updating resource ${resource.resourceId} in grid view`)
     setSearchResult(prev => ({
@@ -77,15 +82,22 @@ const GridView = (props: GalleryProps) => {
 
   const fetchData = () => {
 
-    const previous = searchResult.results
-    const offset = previous.length
-    const n      = columns * 8
+    const reset    = resetRef.current
+    resetRef.current = false
+    const previous = reset ? [] : searchResult.results
+    const offset   = previous.length
+    const n        = columns * 8
 
     if (n > 0 && !isEndReached) {
 
+      const requestId = ++requestIdRef.current
       const params: FindResourcesParams = resourceSelectionToParams(props.selection, offset, n)
 
       findResources(params).then(response => {
+
+          // A newer request (e.g. the selection changed again) superseded this one.
+          if (requestId !== requestIdRef.current)
+            return
 
           const videos = [...previous, ...response.results]
 
@@ -111,13 +123,20 @@ const GridView = (props: GalleryProps) => {
     }
   }, [width, props.cellWidth, props.componentType])
 
+  // A new selection keeps the current results on screen and fetches its first
+  // page in the background, replacing them once it arrives. Clearing the results
+  // here would briefly unmount the whole grid and blank the tag bar, which is fed
+  // by the same response.
   useEffect(() => {
-    setSearchResult(initialSearchResult)
+    resetRef.current = true
     setIsFetching(true)
     setIsEndReached(false)
   }, [props.selection])
 
-  useEffect(() => { if (isFetching && !isEndReached) fetchData(); }, [isFetching, isEndReached]);
+  useEffect(() => {
+    if (isFetching && !isEndReached)
+      fetchData()
+  }, [isFetching, isEndReached, props.selection]);
 
   // The configured cell width is a stable, accurate basis for choosing a thumbnail size.
   const cellWidthPx = props.cellWidth
