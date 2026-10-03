@@ -9,7 +9,8 @@ This is a media management server project. It can be used to view and organize m
 The backend is written in Scala 3 using the Cats Effect ecosystem.
 
 The purpose of the backend is to host media files from a directory and provide an API for the frontend to interact with. 
-It uses a PostgreSQL database to store metadata about the media files. 
+It uses a PostgreSQL database to store metadata about the media files. Database evolutions are managed with Liquibase from the `backend/src/main/resources/db` directory. 
+
 It uses Tapir to define the API endpoints and generate an OpenAPI specification.
 
 Useful commands:
@@ -30,6 +31,10 @@ This directory contains various Dockerfiles and scripts and settings for the doc
 
 # Way of working
 
+## Code formatting
+
+Use `sbt format` to format the backend code after code changes.
+
 ## Git
 
 - Commit messages should be a single sentence of 72 characters maximum, followed by the trailer below (separated by a blank line):
@@ -45,7 +50,7 @@ This directory contains various Dockerfiles and scripts and settings for the doc
 <!-- CODEGRAPH_START -->
 ### CodeGraph
 
-This repository should have CodeGraph enabled, reach for it BEFORE grep/find or reading files when you need to understand or locate code:
+This repository should have CodeGraph enabled, reach for it when you need to understand or locate code:
 
 - **MCP tool** (when available): `codegraph_explore` answers most code questions in one call — the relevant symbols' verbatim source plus the call paths between them, including dynamic-dispatch hops grep can't follow. Name a file or symbol in the query to read its current line-numbered source. If it's listed but deferred, load it by name via tool search.
 - **Shell** (always works): `codegraph explore "<symbol names or question>"` prints the same output.

@@ -17,8 +17,7 @@ class ResolutionPickingStrategySpec extends AnyWordSpecLike {
       assert(read("round-nearest") == Right(ResolutionPickingStrategy.RoundNearest))
     }
 
-    "reject an unknown strategy" in {
+    "reject an unknown strategy" in
       assert(read("sideways").isLeft)
-    }
   }
 }
