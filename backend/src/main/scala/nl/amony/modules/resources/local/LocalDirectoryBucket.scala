@@ -102,10 +102,6 @@ class LocalDirectoryBucket(
       case None       => IO.pure(None)
       case Some(info) => derivedResource(info, operation)
 
-  /**
-   * Materializes every configured preview (all thumbnail formats and resolutions plus the preview
-   * clip) for every resource in the bucket, discarding the produced content.
-   */
   def generateAllPreviews(): IO[Unit] =
     getAllResources
       .flatMap(info => fs2.Stream.emits(previewOperations(info).map(info -> _)))

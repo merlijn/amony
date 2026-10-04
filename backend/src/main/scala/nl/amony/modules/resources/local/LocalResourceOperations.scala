@@ -96,21 +96,15 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
         codecArgs  = formats.encoderArgs(format)
       ).map(_ => outputFile)
 
-  /** Every configured preview operation that validates against the given resource. */
   private[local] def previewOperations(info: ResourceInfo): List[ResourceOperation] =
     ResourceOperations.all(info, resolutions, formats).filter(_.validate(info).isRight)
 
-  /**
-   * Materializes one preview operation through the normal [[getOrCreate]] path, discarding the
-   * result. Failures are logged so a single failing operation does not abort the rest.
-   */
   private[local] def runPreviewOperation(info: ResourceInfo, operation: ResourceOperation): IO[Unit] =
     getOrCreate(info.resourceId, operation).attempt.flatMap {
       case Left(error) => IO(logger.error(s"Failed to generate preview $operation for '${info.path}'", error))
       case Right(_)    => IO.unit
     }
 
-  /** Materializes every configured preview for a single resource. */
   private[local] def generatePreviews(info: ResourceInfo): IO[Unit] =
     fs2.Stream.emits(previewOperations(info))
       .parEvalMap(config.sync.scanParallelFactor)(runPreviewOperation(info, _))

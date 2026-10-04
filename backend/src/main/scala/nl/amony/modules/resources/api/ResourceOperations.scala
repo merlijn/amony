@@ -132,14 +132,7 @@ object ResourceOperations:
     (Option.when(dimension == ThumbnailDimension.Width)(sized), Option.when(dimension == ThumbnailDimension.Height)(sized))
   }
 
-  /**
-   * Every preview operation to materialize for a resource: each supported thumbnail format at every
-   * configured resolution, plus the preview clip for videos. The frontend pins the configured
-   * operative dimension (width), so only width-pinned operations are generated here.
-   *
-   * The caller is expected to discard operations that do not [[ResourceOperation.validate]] against
-   * the resource (e.g. a video too short for a preview clip).
-   */
+  /** Every thumbnail and preview-clip operation configured for a resource. */
   def all(info: ResourceInfo, resolutions: ThumbnailResolutions, formats: ThumbnailFormats): List[ResourceOperation] = {
     val sizes = resolutions.sizes
     info.basicContentProperties match
