@@ -4,15 +4,18 @@ import org.scalatest.wordspec.AnyWordSpecLike
 
 class ApiSecuritySpec extends AnyWordSpecLike {
 
+  private val noLogin       = TestApiSecurity()
+  private val loginRequired = TestApiSecurity(requireLogin = true)
+
   "ApiSecurity.isAllowedHost" should {
     "accept a listed host" in
-      assert(ApiSecurity.isAllowedHost(List("localhost:8182"), "localhost:8182"))
+      assert(noLogin.isAllowedHost(List("localhost:8182"), "localhost:8182"))
     "match case-insensitively" in
-      assert(ApiSecurity.isAllowedHost(List("Demo.Amony.App"), "demo.amony.app"))
+      assert(noLogin.isAllowedHost(List("Demo.Amony.App"), "demo.amony.app"))
     "reject an unlisted host" in
-      assert(!ApiSecurity.isAllowedHost(List("demo.amony.app"), "evil.example.com"))
+      assert(!noLogin.isAllowedHost(List("demo.amony.app"), "evil.example.com"))
     "reject an empty host" in
-      assert(!ApiSecurity.isAllowedHost(List("demo.amony.app"), ""))
+      assert(!noLogin.isAllowedHost(List("demo.amony.app"), ""))
   }
 
   "ApiSecurity.canAccessBucket" should {
@@ -22,20 +25,20 @@ class ApiSecuritySpec extends AnyWordSpecLike {
     val admin         = AuthToken(UserId("admin"), Set(Role.Admin, Role.Authenticated))
 
     "allow any token when the bucket requires no role" in {
-      assert(ApiSecurity.canAccessBucket(anonymous, None, loginRequired = false))
-      assert(ApiSecurity.canAccessBucket(authenticated, None, loginRequired = false))
+      assert(noLogin.canAccessBucket(anonymous, None))
+      assert(noLogin.canAccessBucket(authenticated, None))
     }
 
     "allow a token that holds the required role" in
-      assert(ApiSecurity.canAccessBucket(authenticated, Some(Role.Authenticated), loginRequired = false))
+      assert(noLogin.canAccessBucket(authenticated, Some(Role.Authenticated)))
 
     "deny a token that does not hold the required role" in
-      assert(!ApiSecurity.canAccessBucket(anonymous, Some(Role.Authenticated), loginRequired = false))
+      assert(!noLogin.canAccessBucket(anonymous, Some(Role.Authenticated)))
 
     "deny anonymous access when login is required" in
-      assert(!ApiSecurity.canAccessBucket(anonymous, None, loginRequired = true))
+      assert(!loginRequired.canAccessBucket(anonymous, None))
 
     "let admins bypass the required role" in
-      assert(ApiSecurity.canAccessBucket(admin, Some(Role("private")), loginRequired = false))
+      assert(noLogin.canAccessBucket(admin, Some(Role("private"))))
   }
 }

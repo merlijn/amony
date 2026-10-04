@@ -136,7 +136,7 @@ object App extends ResourceApp.Forever with Logging {
           ResourceContentRoutes.apply(resourceBucketMap, thumbResolutions, thumbFormats) <+>
             Http4sServerInterpreter[IO](serverOptions).toRoutes(tapirEndpoints)
         }
-        _                 <- WebServer.run(appConfig.api, apiRoutes)
+        _                 <- WebServer.run(appConfig.api, apiRoutes, authModule.apiSecurity)
       yield ()
     }
 
