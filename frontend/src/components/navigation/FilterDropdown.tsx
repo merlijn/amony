@@ -13,6 +13,7 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
   const [sortParam, setSortParam]         = useSortParam()
   const [durationParam, setDurationParam] = useUrlParam("d", "-")
   const [uploadParam, setUploadParam]     = useUrlParam("u", "-")
+  const [streamableParam, setStreamableParam] = useUrlParam("streamable", "")
   const triggerRef = useRef<HTMLButtonElement>(null)
   const [contentWidth, setContentWidth] = useState(0)
 
@@ -55,6 +56,16 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
               options       = { Constants.uploadOptions }
               selectedValue = { parseDurationParam(uploadParam)}
               onChange      = { value => setUploadParam(rangeAsParameter(value)) }
+            />
+            <RadioSelectGroup
+              header        = "Streaming"
+              options       = { [
+                { label: "All",            value: "" },
+                { label: "Streamable",     value: "true" },
+                { label: "Not streamable", value: "false" },
+              ] }
+              selectedValue = { streamableParam }
+              onChange      = { value => setStreamableParam(value) }
             />
           </div>
         </Popover.Content>

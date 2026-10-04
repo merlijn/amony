@@ -37,6 +37,7 @@ const Main = () => {
         playlist: urlParams.get("playlist") || undefined,
         tag: untagged ? undefined : urlParams.get("tag") || undefined,
         untagged: untagged || undefined,
+        streamable: urlParams.has("streamable") ? urlParams.get("streamable")!.toLowerCase() === "true" : undefined,
         sort: parseSortParam(urlParams.get("s") || "date_added;desc"),
         duration: urlParams.has("d") ? parseDurationParam(urlParams.get("d") || "-") : undefined,
         uploadAge: urlParams.has("u") ? parseDurationParam(urlParams.get("u") || "-") : undefined,

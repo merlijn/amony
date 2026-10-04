@@ -14,7 +14,7 @@ import {useAppConfig} from "../api/ConfigContext";
 import {thumbnailUrl} from "../api/ResourceUrls";
 import {ResourceDto} from "../api/generated";
 import LazyImage from "./common/LazyImage";
-import {FiAlertCircle, FiInfo} from "react-icons/fi";
+import {FiAlertCircle, FiAlertTriangle, FiInfo} from "react-icons/fi";
 import {MdDelete} from "react-icons/md";
 import DeleteResourceDialog from "./dialogs/DeleteResourceDialog";
 import ResourceDetailsDialog from "./dialogs/ResourceDetailsDialog";
@@ -50,6 +50,7 @@ const Preview = (props: PreviewProps) => {
   const session = useContext(SessionContext)
   const config  = useAppConfig()
   const isUnsupportedVideo = isVideo && !canBrowserPlayVideoType(resource.contentType)
+  const isUnstreamable     = isVideo && resource.contentMeta.streamable === false
 
   const titlePanel =
       <div className = "preview-info-bar">
@@ -65,7 +66,11 @@ const Preview = (props: PreviewProps) => {
           <div className="preview-icon-button" onClick={(e) => { e.stopPropagation(); setShowDetailsDialog(true) }}><FiInfo /></div>
           <div className="preview-icon-button" onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true) }}><MdDelete /></div>
         </div> }
-        { isUnsupportedVideo && <div className="preview-unsupported-overlay"><FiAlertCircle /></div> }
+        { (isUnsupportedVideo || isUnstreamable) &&
+          <div className="preview-warning-badges">
+            { isUnsupportedVideo && <div className="preview-unsupported-overlay" title="Your browser cannot play this format"><FiAlertCircle /></div> }
+            { isUnstreamable && <div className="preview-unstreamable-overlay" title="Not optimized for streaming"><FiAlertTriangle /></div> }
+          </div> }
       </div>
 
   const thumbnailSrc = thumbnailUrl(resource, config, props.mediaWidthPx)

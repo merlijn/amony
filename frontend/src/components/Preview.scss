@@ -26,9 +26,15 @@
     overflow: hidden;
     aspect-ratio: var(--preview-aspect-ratio, 16 / 9);
   
-    .preview-unsupported-overlay {
+    .preview-warning-badges {
       @extend .abs-top-left;
+      display: flex;
+      gap: var(--space-1);
       margin: var(--space-1);
+    }
+
+    .preview-unsupported-overlay,
+    .preview-unstreamable-overlay {
       padding: var(--space-2);
       background: var(--media-overlay-scrim);
       border-radius: 50%;

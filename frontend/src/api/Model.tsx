@@ -3,6 +3,7 @@ export type ResourceSelection = {
   playlist?: string
   tag?: string
   untagged?: boolean
+  streamable?: boolean
   duration?: [number?, number?]
   uploadAge?: [number?, number?]
   minimumQuality: number
