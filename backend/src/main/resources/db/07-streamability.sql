@@ -1,2 +1,2 @@
 ALTER TABLE resources
-    ADD COLUMN streamability VARCHAR(16);
+    ADD COLUMN streamable BOOLEAN;

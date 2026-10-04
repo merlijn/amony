@@ -52,7 +52,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None
     }.flatMap { maybeMeta =>
       val contentType = maybeMeta.map(_.contentType)
-      streamabilityOf(f.path, contentType).map { streamability =>
+      streamableOf(f.path, contentType).map { streamable =>
         ResourceInfo(
           bucketId           = bucketId,
           resourceId         = config.generateId(),
@@ -65,7 +65,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
           timeAdded          = Some(Instant.now().toEpochMilli),
           timeLastModified   = Some(f.modifiedTime),
           thumbnailTimestamp = None,
-          streamability      = streamability
+          streamable         = streamable
         )
       }
     }

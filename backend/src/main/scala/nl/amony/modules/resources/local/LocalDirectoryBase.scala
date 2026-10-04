@@ -27,8 +27,13 @@ trait LocalDirectoryBase(
 
   val meta = LocalResourceMetaDataScanner(new Tika(), ffmpeg, imageMagick)
 
-  /** The container's streamability, or `None` for non-video content. */
-  protected def streamabilityOf(path: Path, contentType: Option[String]): IO[Option[Streamability]] =
-    if contentType.exists(_.startsWith("video/")) then Streamability.detect(path).map(Some(_))
+  /** Whether the container can be streamed progressively, or `None` when unknown or not a video. */
+  protected def streamableOf(path: Path, contentType: Option[String]): IO[Option[Boolean]] =
+    if contentType.exists(_.startsWith("video/")) then
+      Streamability.detect(path).map {
+        case Streamability.Streamable    => Some(true)
+        case Streamability.NotStreamable => Some(false)
+        case Streamability.Unknown       => None
+      }
     else IO.pure(None)
 }

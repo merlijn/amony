@@ -83,11 +83,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
     resource.timeAdded.foreach(created => solrInputDocument.addField(FieldNames.timeAdded, created))
     resource.timeLastModified.foreach(lastModified => solrInputDocument.addField(FieldNames.lastModified, lastModified))
     resource.contentType.foreach(contentType => solrInputDocument.addField(FieldNames.contentType, contentType))
-    resource.streamability.foreach {
-      case Streamability.Streamable    => solrInputDocument.addField(FieldNames.streamable, "true")
-      case Streamability.NotStreamable => solrInputDocument.addField(FieldNames.streamable, "false")
-      case Streamability.Unknown       => ()
-    }
+    resource.streamable.foreach(streamable => solrInputDocument.addField(FieldNames.streamable, if streamable then "true" else "false"))
 
     resource.contentMeta.foreach(meta => solrInputDocument.addField(FieldNames.metaToolName, meta.toolName))
 
@@ -130,11 +126,11 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
     val metaToolName       = Option(document.getFieldValue(FieldNames.metaToolName)).map(_.asInstanceOf[String])
     val tags               = Option(document.getFieldValues(FieldNames.tags)).map(_.asInstanceOf[java.util.List[String]].asScala).getOrElse(List.empty).toSet
     val userId             = document.getFieldValue(FieldNames.userId).asInstanceOf[String]
-    val streamability      = Option(document.getFieldValue(FieldNames.streamable))
+    val streamable         = Option(document.getFieldValue(FieldNames.streamable))
       .map(_.asInstanceOf[String])
       .flatMap {
-        case "true"  => Some(Streamability.Streamable)
-        case "false" => Some(Streamability.NotStreamable)
+        case "true"  => Some(true)
+        case "false" => Some(false)
         case _       => None
       }
 
@@ -164,7 +160,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
       description        = description,
       tags               = tags,
       thumbnailTimestamp = thumbnailTimestamp,
-      streamability      = streamability
+      streamable         = streamable
     )
   }
 

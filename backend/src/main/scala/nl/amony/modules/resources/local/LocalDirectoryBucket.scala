@@ -66,11 +66,11 @@ class LocalDirectoryBucket(
           IO.unit
         case Some((contentType, meta)) =>
           logger.info(s"Updating metadata for $resourcePath")
-          streamabilityOf(resourcePath, Some(contentType)).flatMap { streamability =>
+          streamableOf(resourcePath, Some(contentType)).flatMap { streamable =>
             val updated = resource.copy(
-              contentType   = Some(contentType),
-              contentMeta   = Some(meta),
-              streamability = streamability
+              contentType = Some(contentType),
+              contentMeta = Some(meta),
+              streamable  = streamable
             )
 
             db.upsertResource(updated) >> topic.publish(ResourceUpdated(updated))
@@ -80,33 +80,37 @@ class LocalDirectoryBucket(
   /** Remuxes a non-streamable resource in place so it can be streamed progressively, then persists the new state. */
   def fixStreamability(resourceId: ResourceId): IO[Unit] =
     getResourceInfo(resourceId).flatMap {
-      case Some(info) if info.streamability.contains(Streamability.NotStreamable) =>
+      case Some(info) if info.streamable.contains(false) =>
         val source = config.resourcePath.resolve(info.path)
         VideoContainer.fromContentType(info.contentType.getOrElse("")) match
           case Some(container) =>
             logger.info(s"Normalizing '${info.path}' for streaming")
             val temp = config.cachePath.resolve(s"${info.resourceId}-normalize.${container.extension}")
             (for
-              _      <- IO(Files.createDirectories(config.cachePath))
-              out    <- ffmpeg.addFastStart(source, container, Some(temp))
-              _      <- IO(Files.move(out, source, StandardCopyOption.REPLACE_EXISTING))
-              attrs  <- IO(Files.readAttributes(source, classOf[BasicFileAttributes]))
-              hash   <- config.hashingAlgorithm.createHash(source)
-              stream <- Streamability.detect(source)
-              updated = info.copy(
-                          size             = attrs.size(),
-                          partialHash      = Some(hash),
-                          timeLastModified = Some(attrs.lastModifiedTime().toMillis),
-                          streamability    = Some(stream)
-                        )
-              _      <- db.upsertResource(updated)
-              _      <- topic.publish(ResourceUpdated(updated))
+              _          <- IO(Files.createDirectories(config.cachePath))
+              out        <- ffmpeg.addFastStart(source, container, Some(temp))
+              _          <- IO(Files.move(out, source, StandardCopyOption.REPLACE_EXISTING))
+              attrs      <- IO(Files.readAttributes(source, classOf[BasicFileAttributes]))
+              hash       <- config.hashingAlgorithm.createHash(source)
+              streamable <- Streamability.detect(source).map {
+                              case Streamability.Streamable    => Some(true)
+                              case Streamability.NotStreamable => Some(false)
+                              case Streamability.Unknown       => None
+                            }
+              updated     = info.copy(
+                              size             = attrs.size(),
+                              partialHash      = Some(hash),
+                              timeLastModified = Some(attrs.lastModifiedTime().toMillis),
+                              streamable       = streamable
+                            )
+              _          <- db.upsertResource(updated)
+              _          <- topic.publish(ResourceUpdated(updated))
             yield ())
               .handleErrorWith(error => IO(logger.error(s"Failed to normalize '${info.path}'", error)))
               .guarantee(IO.blocking(Files.deleteIfExists(temp)).void)
           case None            =>
             IO(logger.warn(s"Cannot normalize '${info.path}': unsupported container '${info.contentType.getOrElse("unknown")}'"))
-      case _                                                                      => IO.unit
+      case _                                             => IO.unit
     }
 
   def updateFileSystemMetaData(): IO[Unit] = getAllResources.evalMap {
