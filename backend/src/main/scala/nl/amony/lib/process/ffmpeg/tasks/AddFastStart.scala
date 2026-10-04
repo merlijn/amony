@@ -22,6 +22,10 @@ trait AddFastStart:
       case VideoContainer.Webm     => List("-f", "webm", "-cues_to_front", "1")
       case VideoContainer.Matroska => List("-f", "matroska", "-cues_to_front", "1")
 
-    val args = List("-v", "error", "-i", video.absoluteFileName(), "-c", "copy", "-map", "0") ++ containerArgs ++ List("-y", out.absoluteFileName())
+    // Data streams (for example QuickTime timecode tracks) have no codec a target muxer can copy, so drop them.
+    val args = List("-v", "error", "-i", video.absoluteFileName(), "-c", "copy", "-map", "0", "-map", "-0:d") ++ containerArgs ++ List(
+      "-y",
+      out.absoluteFileName()
+    )
 
     runIgnoreOutput("ffmpeg-add-faststart", Command("ffmpeg", args)).map(_ => out)
