@@ -177,15 +177,9 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
 
       sb.append(s"${FieldNames.path}:*${if q.trim.isEmpty then "" else s"$q*"}")
 
-      val includeTags = query.includeTags -- query.excludeTags
-
-      if includeTags.nonEmpty then
-        val escapedTags = includeTags.map(ClientUtils.escapeQueryChars)
+      if query.includeTags.nonEmpty then
+        val escapedTags = query.includeTags.map(ClientUtils.escapeQueryChars)
         sb.append(s" AND ${FieldNames.tags}:(${escapedTags.mkString(" OR ")})")
-
-      if query.excludeTags.nonEmpty then
-        val escapedTags = query.excludeTags.map(ClientUtils.escapeQueryChars)
-        sb.append(s" AND -${FieldNames.tags}:(${escapedTags.mkString(" OR ")})")
 
       if query.excludeBuckets.nonEmpty then
         val escapedBuckets = query.excludeBuckets.map(ClientUtils.escapeQueryChars)

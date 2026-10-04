@@ -34,7 +34,7 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
   )
 
   /** Validates the double-submit token: the XSRF cookie must be present and match the request header. */
-  def requireXsrfToken(xsrfToken: Option[String], xXsrfHeader: Option[String]): Either[SecurityError, Unit] =
+  private def requireXsrfToken(xsrfToken: Option[String], xXsrfHeader: Option[String]): Either[SecurityError, Unit] =
     for
       token  <- xsrfToken.toRight(SecurityError.Unauthorized)
       header <- xXsrfHeader.toRight(SecurityError.Unauthorized)
@@ -70,6 +70,11 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
 
   def isLoginRequired: Boolean = authConfig.enabled && authConfig.requireLogin
 
+  /** Whether `host` is one of the hosts the backend accepts (see `allowed-hosts`). */
+  def isAllowedHost(allowedHosts: List[String], host: String): Boolean =
+    val candidate = host.trim
+    candidate.nonEmpty && allowedHosts.exists(_.trim.equalsIgnoreCase(candidate))
+
   def authorize(requiredPermission: Option[Permission] = None)(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
     resolveToken(securityInput).flatMap { token =>
       if isLoginRequired && token.isAnonymous then Left(SecurityError.Unauthorized)
@@ -83,6 +88,9 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
     }
 
   def userAccess(authToken: AuthToken): RoleAccessConfig = authConfig.access(authToken)
+
+  def canAccessBucket(authToken: AuthToken, requiredRole: Option[Role]): Boolean =
+    !(isLoginRequired && authToken.isAnonymous) && (authToken.roles.contains(Role.Admin) || requiredRole.forall(authToken.roles.contains))
 
   def createCookies(apiAuthentication: Authentication): AuthCookies = {
     val accessTokenCookie = CookieValueWithMeta.unsafeApply(
@@ -147,9 +155,4 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
     )
   }
 
-object ApiSecurity:
-
-  /** Whether `host` is one of the hosts the backend accepts (see `allowed-hosts`). */
-  def isAllowedHost(allowedHosts: List[String], host: String): Boolean =
-    val candidate = host.trim
-    candidate.nonEmpty && allowedHosts.exists(_.trim.equalsIgnoreCase(candidate))
+object ApiSecurity

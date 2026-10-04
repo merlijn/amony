@@ -122,9 +122,9 @@ object App extends ResourceApp.Forever with Logging {
 
           val tapirEndpoints: ServerEndpoints[IO] =
             authModule.routes ++
-              CollectionRoutes.apply(collectionsDal) ++
+              CollectionRoutes.apply(collectionsDal, resourceBucketMap) ++
               AdminRoutes.apply(searchService, resourceBucketMap) ++
-              SearchRoutes.apply(searchService, appConfig.search) ++
+              SearchRoutes.apply(searchService, appConfig.search, resourceBucketMap) ++
               ResourceRoutes.apply(resourceBucketMap) ++
               ConfigRoutes.apply(
                 thumbResolutions,
@@ -136,7 +136,7 @@ object App extends ResourceApp.Forever with Logging {
           ResourceContentRoutes.apply(resourceBucketMap, thumbResolutions, thumbFormats) <+>
             Http4sServerInterpreter[IO](serverOptions).toRoutes(tapirEndpoints)
         }
-        _                 <- WebServer.run(appConfig.api, apiRoutes)
+        _                 <- WebServer.run(appConfig.api, apiRoutes, authModule.apiSecurity)
       yield ()
     }
 

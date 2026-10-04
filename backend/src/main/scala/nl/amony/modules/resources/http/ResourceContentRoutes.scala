@@ -94,19 +94,10 @@ object ResourceContentRoutes extends Logging {
       val accessToken = req.cookies.find(_.name == authCookieName).map(_.content)
       apiSecurity.decodeAccessToken(accessToken)
 
-    def isAnonymouslyForbidden(req: Request[IO]): Boolean =
-      apiSecurity.isLoginRequired && authToken(req).isAnonymous
-
-    def isBucketHidden(req: Request[IO], bucketId: BucketId): Boolean =
-      apiSecurity.userAccess(authToken(req)).hiddenBuckets.contains(bucketId)
-
     def getResource(req: Request[IO], bucketId: BucketId, resourceId: ResourceId): OptionT[IO, (ResourceBucket, Resource)] =
-      if isBucketHidden(req, bucketId) then OptionT.none[IO, (ResourceBucket, Resource)]
-      else
-        for
-          bucket   <- OptionT.fromOption[IO](buckets.get(bucketId))
-          resource <- OptionT(bucket.getResource(resourceId))
-        yield bucket -> resource
+      OptionT.fromOption[IO](buckets.get(bucketId))
+        .filter(bucket => apiSecurity.canAccessBucket(authToken(req), bucket.requiredRole))
+        .flatMap(bucket => OptionT(bucket.getResource(resourceId)).map(resource => bucket -> resource))
 
     def maybeResponse(option: OptionT[IO, Response[IO]]): IO[Response[IO]] =
       option.value.map(_.getOrElse(Response(Status.NotFound)))
@@ -114,29 +105,25 @@ object ResourceContentRoutes extends Logging {
     HttpRoutes.of[IO] {
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / "content" =>
-        if isAnonymouslyForbidden(req) then IO.pure(Response(Status.Unauthorized))
-        else
-          maybeResponse:
-            getResource(req, BucketId(bucketId), ResourceId(resourceId)).semiflatMap((_, resource) => resourceContentsResponse(req, resource.content))
+        maybeResponse:
+          getResource(req, BucketId(bucketId), ResourceId(resourceId)).semiflatMap((_, resource) => resourceContentsResponse(req, resource.content))
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern =>
-        if isAnonymouslyForbidden(req) then IO.pure(Response(Status.Unauthorized))
-        else
-          maybeResponse(
-            for
-              (bucket, resource) <- getResource(req, BucketId(bucketId), ResourceId(resourceId))
-              operation          <- OptionT.fromOption(resourcePattern match {
-                                      case patterns.PublicThumbnailPattern(ts, dim, resKey, format) =>
-                                        patterns.thumbnailOperation(ts.toLong, dim, resKey, format, resolutions, formats, resource.info)
-                                      case patterns.PublicClipPattern(start, end, dim, resKey)      =>
-                                        patterns.clipOperation(start.toLong, end.toLong, dim, resKey, resolutions, resource.info)
-                                      case _                                                        => None
-                                    })
-              derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))
-              response           <- OptionT.liftF(resourceContentsResponse(req, derivedResource)
-                                      .map(r => r.addHeader(`Cache-Control`(`max-age`(365.days)))))
-            yield response
-          )
+        maybeResponse(
+          for
+            (bucket, resource) <- getResource(req, BucketId(bucketId), ResourceId(resourceId))
+            operation          <- OptionT.fromOption(resourcePattern match {
+                                    case patterns.PublicThumbnailPattern(ts, dim, resKey, format) =>
+                                      patterns.thumbnailOperation(ts.toLong, dim, resKey, format, resolutions, formats, resource.info)
+                                    case patterns.PublicClipPattern(start, end, dim, resKey)      =>
+                                      patterns.clipOperation(start.toLong, end.toLong, dim, resKey, resolutions, resource.info)
+                                    case _                                                        => None
+                                  })
+            derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))
+            response           <- OptionT.liftF(resourceContentsResponse(req, derivedResource)
+                                    .map(r => r.addHeader(`Cache-Control`(`max-age`(365.days)))))
+          yield response
+        )
     }
   }
 }

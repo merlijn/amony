@@ -2,7 +2,7 @@ package nl.amony.modules.resources.api
 
 import cats.effect.IO
 
-import nl.amony.modules.auth.api.UserId
+import nl.amony.modules.auth.api.{Role, UserId}
 
 enum UploadError:
   case InvalidFileName(message: String)
@@ -11,6 +11,9 @@ enum UploadError:
 trait ResourceBucket {
 
   def id: BucketId
+
+  /** When set, only users holding this role (admins always) can access the bucket. */
+  def requiredRole: Option[Role]
 
   /**
    * Returns the content of a resource

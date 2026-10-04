@@ -31,8 +31,8 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
     secureCookies     = false,
     identityProviders = Nil,
     accessControl     = Map(
-      Role.Anonymous     -> RoleAccessConfig(Set.empty, Set.empty, Set.empty),
-      Role.Authenticated -> RoleAccessConfig(Set.empty, Set.empty, Set.empty)
+      Role.Anonymous     -> RoleAccessConfig(Set.empty),
+      Role.Authenticated -> RoleAccessConfig(Set.empty)
     )
   )
 

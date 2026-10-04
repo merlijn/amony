@@ -35,9 +35,12 @@ import nl.amony.{HttpConfig, HttpsConfig, WebServerConfig}
 
 object WebServer extends Logging {
 
-  def run(config: WebServerConfig, apiRoutes: HttpRoutes[IO])(using io: IORuntime, meterProvider: MeterProvider[IO]): Resource[IO, Unit] = {
+  def run(config: WebServerConfig, apiRoutes: HttpRoutes[IO], apiSecurity: ApiSecurity)(
+    using io: IORuntime,
+    meterProvider: MeterProvider[IO]
+  ): Resource[IO, Unit] = {
 
-    val routes = hostFilter(config.allowedHosts)(apiRoutes <+> webAppRoutes(config))
+    val routes = hostFilter(config.allowedHosts, apiSecurity)(apiRoutes <+> webAppRoutes(config))
 
     val httpResource = config.http match {
       case Some(httpConfig) if httpConfig.enabled =>
@@ -72,10 +75,10 @@ object WebServer extends Logging {
 
   /** Rejects requests whose host is not in the allow-list, so a client cannot make the backend act
     * on a foreign domain (e.g. derive an OAuth redirect_uri from an attacker-supplied host). */
-  private[amony] def hostFilter(allowedHosts: List[String])(routes: HttpRoutes[IO]): HttpRoutes[IO] =
+  private[amony] def hostFilter(allowedHosts: List[String], apiSecurity: ApiSecurity)(routes: HttpRoutes[IO]): HttpRoutes[IO] =
     Kleisli { req =>
       val host = effectiveHost(headerValue(ci"X-Forwarded-Host", req), headerValue(ci"Host", req))
-      if ApiSecurity.isAllowedHost(allowedHosts, host) then routes.run(req)
+      if apiSecurity.isAllowedHost(allowedHosts, host) then routes.run(req)
       else {
         logger.debug(s"Rejected request with host '$host' (allowed: ${allowedHosts.mkString(", ")})")
         OptionT.some[IO](invalidHostResponse)
