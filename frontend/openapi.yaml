@@ -1633,7 +1633,8 @@ components:
       type: object
       required:
       - thumbnailSizes
-      - supportedFormats
+      - supportedImageFormats
+      - supportedVideoFormats
       - defaultThumbnailResolution
       - resolutionPickingStrategy
       properties:
@@ -1642,7 +1643,11 @@ components:
           items:
             type: integer
             format: int32
-        supportedFormats:
+        supportedImageFormats:
+          type: array
+          items:
+            type: string
+        supportedVideoFormats:
           type: array
           items:
             type: string

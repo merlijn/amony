@@ -51,3 +51,7 @@ export function canBrowserPlayVideoType(contentType: string): boolean {
   canPlayTypeCache[contentType] = result;
   return result;
 }
+
+/** Returns the first server-supported video format this browser can play, if any. */
+export const pickSupportedVideoFormat = (supportedFormats: string[], fallback = "mp4"): string =>
+  supportedFormats.find((format) => canBrowserPlayVideoType(`video/${format}`)) ?? supportedFormats[0] ?? fallback;

@@ -19,7 +19,9 @@ case class AppConfigDto(
   @customise(required)
   thumbnailSizes: List[Int],
   @customise(required)
-  supportedFormats: List[String],
+  supportedImageFormats: List[String],
+  @customise(required)
+  supportedVideoFormats: List[String],
   defaultThumbnailResolution: ThumbnailResolutionDto,
   resolutionPickingStrategy: String
 ) derives Codec, Schema
@@ -32,12 +34,18 @@ object ConfigRoutes extends RoutesModule:
       .get.in("api" / "config")
       .out(jsonBody[AppConfigDto]))
 
-  def apply(resolutions: ThumbnailResolutions, formats: ThumbnailFormats, pickingStrategy: ResolutionPickingStrategy): ServerEndpoints[IO] =
+  def apply(
+    resolutions: ThumbnailResolutions,
+    formats: ThumbnailFormats,
+    videoFormats: List[String],
+    pickingStrategy: ResolutionPickingStrategy
+  ): ServerEndpoints[IO] =
     routes[IO] {
       serverLogic(endpoint = getConfig) { _ =>
         IO.pure(Right(AppConfigDto(
           thumbnailSizes             = resolutions.sizes,
-          supportedFormats           = formats.formats.map(_.configName),
+          supportedImageFormats      = formats.formats.map(_.configName),
+          supportedVideoFormats      = videoFormats,
           // Thumbnails are displayed in fixed-aspect boxes, so width is the operative dimension by default.
           defaultThumbnailResolution = ThumbnailResolutionDto(ThumbnailDimension.Width.name, resolutions.default),
           resolutionPickingStrategy  = pickingStrategy.configName
