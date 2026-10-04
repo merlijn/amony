@@ -21,6 +21,7 @@ case class Query(
   offset: Option[Int]              = None,
   includeTags: Set[String]         = Set.empty,
   excludeBuckets: Set[BucketId]    = Set.empty,
+  includeBuckets: Set[BucketId]    = Set.empty,
   resolutionRange: ResolutionRange = ResolutionRange(None, None),
   durationRange: DurationRange     = DurationRange(None, None),
   uploadDateRange: UploadDateRange = UploadDateRange(None, None),

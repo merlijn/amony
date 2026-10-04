@@ -202,6 +202,10 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
         val escapedBuckets = query.excludeBuckets.map(ClientUtils.escapeQueryChars)
         sb.append(s" AND -${FieldNames.bucketId}:(${escapedBuckets.mkString(" OR ")})")
 
+      if query.includeBuckets.nonEmpty then
+        val escapedBuckets = query.includeBuckets.map(ClientUtils.escapeQueryChars)
+        sb.append(s" AND ${FieldNames.bucketId}:(${escapedBuckets.mkString(" OR ")})")
+
       if query.untagged.contains(true) then sb.append(s" AND -${FieldNames.tags}:[* TO *]")
 
       query.streamable.foreach(streamable => sb.append(s" AND ${FieldNames.streamable}:$streamable"))
@@ -316,6 +320,19 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
       logger.info("Forcing commit")
       solr.commit(collectionName)
     }
+
+  override def searchAll(query: Query): fs2.Stream[IO, ResourceInfo] = {
+    val pageSize = math.max(1, query.n)
+
+    def page(offset: Int): fs2.Stream[IO, ResourceInfo] =
+      fs2.Stream.eval(searchMedia(query.copy(offset = Some(offset)))).flatMap { result =>
+        val results = fs2.Stream.emits(result.results)
+        if result.results.isEmpty || offset + result.results.size >= result.total then results
+        else results ++ page(offset + pageSize)
+      }
+
+    page(query.offset.getOrElse(0))
+  }
 
   override def deleteBucket(bucketId: BucketId): IO[Unit] =
     loggingFailureIO {

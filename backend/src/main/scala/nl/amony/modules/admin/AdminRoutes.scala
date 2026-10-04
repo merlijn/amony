@@ -11,7 +11,7 @@ import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.{BucketId, ResourceBucket, ResourceInfo}
 import nl.amony.modules.resources.http.{ResourceDto, toDto}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
-import nl.amony.modules.search.api.SearchService
+import nl.amony.modules.search.api.{Query, SearchService}
 
 object AdminRoutes extends RoutesModule, Logging:
 
@@ -54,6 +54,14 @@ object AdminRoutes extends RoutesModule, Logging:
       .description("Generate all configured thumbnails and preview clips for all resources in a bucket")
       .post.in("api" / "admin" / "generate-previews")
       .in(query[BucketId]("bucketId").description("The id of the bucket to generate previews for."))
+      .securityIn(securityInput)
+      .errorOut(errorOutput))
+
+  val fixNonStreamable =
+    register(endpoint.name("adminFixNonStreamable").tag("admin")
+      .description("Remux all non-streamable resources in a bucket so they can be streamed progressively")
+      .post.in("api" / "admin" / "fix-non-streamable")
+      .in(query[BucketId]("bucketId").description("The id of the bucket to fix."))
       .securityIn(securityInput)
       .errorOut(errorOutput))
 
@@ -135,6 +143,19 @@ object AdminRoutes extends RoutesModule, Logging:
           case _                                  =>
             logger.info(s"Cannot generate previews for bucket '$bucketId'")
             IO.unit
+
+        result.map(Right(_))
+      }
+
+      serverLogic(endpoint = fixNonStreamable, requiredPermission = Permission.Admin) { _ => bucketId =>
+        val result = buckets.get(bucketId) match
+          case Some(bucket: LocalDirectoryBucket) =>
+            logger.info(s"Normalizing non-streamable resources in bucket '$bucketId'")
+            searchService.searchAll(Query(n = 100, streamable = Some(false), includeBuckets = Set(bucketId)))
+              .evalMap(resource => bucket.fixStreamability(resource.resourceId))
+              .compile.drain >> IO(logger.info(s"Finished normalizing non-streamable resources in bucket '$bucketId'"))
+          case _                                  =>
+            IO(logger.info(s"Cannot normalize non-streamable resources in bucket '$bucketId'"))
 
         result.map(Right(_))
       }
