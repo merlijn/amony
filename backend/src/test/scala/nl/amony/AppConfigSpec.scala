@@ -3,22 +3,16 @@ package nl.amony
 import com.typesafe.config.ConfigFactory
 import org.scalatest.wordspec.AnyWordSpecLike
 import pureconfig.ConfigSource
+import scribe.Logging
 
 import nl.amony.modules.resources.api.ImageFormat
 
-class AppConfigSpec extends AnyWordSpecLike {
+class AppConfigSpec extends AnyWordSpecLike with Logging {
 
   "AppConfig" should {
     "successfully load config" in {
       val appConfig: AppConfig = ConfigSource.fromConfig(ConfigFactory.load()).at("amony").loadOrThrow[AppConfig]
-      println(s"enabled: ${appConfig.auth.enabled}")
-      println(s"require-login: ${appConfig.auth.requireLogin}")
-      println(s"allowed-hosts: ${appConfig.api.allowedHosts}")
-      println(s"allowed-resolutions: ${appConfig.resources.previews.allowedResolutions}")
-      println(s"supported-image-formats: ${appConfig.resources.previews.supportedImageFormats}")
-      println(s"supported-video-formats: ${appConfig.resources.previews.supportedVideoFormats}")
-      println(s"resolution-picking-strategy: ${appConfig.resources.previews.resolutionPickingStrategy}")
-      println(s"format-options: ${appConfig.resources.previews.formatOptions}")
+      logger.info(s"Parsed config: $appConfig")
       assert(appConfig.api.allowedHosts.nonEmpty)
       assert(appConfig.resources.previews.allowedResolutions.nonEmpty)
       assert(appConfig.resources.previews.allowedResolutions.contains(appConfig.resources.previews.defaultResolution))
