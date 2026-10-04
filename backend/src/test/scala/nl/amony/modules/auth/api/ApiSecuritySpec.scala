@@ -4,8 +4,8 @@ import org.scalatest.wordspec.AnyWordSpecLike
 
 class ApiSecuritySpec extends AnyWordSpecLike {
 
-  private val noLogin       = TestApiSecurity.apply()
-  private val loginRequired = TestApiSecurity.apply(requireLogin = true)
+  private val noLogin       = ApiSecurity.testInstance()
+  private val loginRequired = ApiSecurity.testInstance(requireLogin = true)
 
   "ApiSecurity" when {
 

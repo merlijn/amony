@@ -154,3 +154,5 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       providerIdToken = Some(expiredCookie(providerIdTokenCookiePath))
     )
   }
+
+object ApiSecurity

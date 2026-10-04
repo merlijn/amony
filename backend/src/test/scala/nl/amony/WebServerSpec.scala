@@ -8,13 +8,13 @@ import org.http4s.implicits.*
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.typelevel.ci.CIStringSyntax
 
-import nl.amony.modules.auth.api.TestApiSecurity
+import nl.amony.modules.auth.api.{ApiSecurity, testInstance}
 
 class WebServerSpec extends AnyWordSpecLike {
 
   private val inner: HttpRoutes[IO] = HttpRoutes.of[IO] { case GET -> Root / "ping" => Ok("pong") }
 
-  private val apiSecurity = TestApiSecurity()
+  private val apiSecurity = ApiSecurity.testInstance()
 
   private def request(host: String, forwardedHost: Option[String] = None): Request[IO] =
     val headers = Headers(Header.Raw(ci"Host", host)) ++ forwardedHost.map(h => Headers(Header.Raw(ci"X-Forwarded-Host", h))).getOrElse(Headers.empty)

@@ -4,10 +4,9 @@ import scala.concurrent.duration.*
 
 import nl.amony.modules.auth.{AuthConfig, HS256Config, JwtConfig, RoleAccessConfig}
 
-/** Minimal `ApiSecurity` instance for tests that need one but do not exercise a specific access policy. */
-object TestApiSecurity:
-
-  def apply(requireLogin: Boolean = false): ApiSecurity =
+/** Adds a test-only factory to the `ApiSecurity` companion, callable as `ApiSecurity.testInstance()`. */
+extension (companion: ApiSecurity.type)
+  def testInstance(requireLogin: Boolean = false): ApiSecurity =
     new ApiSecurity(AuthConfig(
       enabled           = true,
       requireLogin      = requireLogin,
