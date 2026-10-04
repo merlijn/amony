@@ -70,5 +70,5 @@ export const clipUrl = (clip: ClipDto, config: AppConfig, boxWidthCss: number): 
   const dimension = dimensionToken(operativeDimension(config));
   const size      = resolutionFor(config, boxWidthCss);
 
-  return `/api/resources/${clip.bucketId}/${clip.resourceId}/clip_${clip.start}_${clip.end}_${dimension}_${size}.mp4`;
+  return `/api/resources/${clip.bucketId}/${clip.resourceId}/clip_${clip.start}_${clip.end}_${dimension}_${size}.${config.videoFormat}`;
 };

@@ -17,6 +17,8 @@ import nl.amony.modules.resources.api.{BucketId, ResourceAdded, ResourceDeleted,
  */
 trait LocalResourceSyncer extends LocalDirectoryBase {
 
+  self: LocalResourceOperations =>
+
   private val logger             = scribe.Logger("LocalResourceSyncer")
   private val bucketId: BucketId = BucketId(config.id)
 
@@ -144,7 +146,12 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
     case _                                             => IO.unit
   }
 
-  private[local] def processEvent(event: ResourceEvent) = applyEventToDb(event) >> topic.publish(event) >> IO(logger.info(s"[${config.id}] $event"))
+  private[local] def processEvent(event: ResourceEvent) =
+    applyEventToDb(event) >> topic.publish(event) >> IO(logger.info(s"[${config.id}] $event")) >> generatePreviewsOnAdd(event)
+
+  private def generatePreviewsOnAdd(event: ResourceEvent): IO[Unit] = event match
+    case ResourceAdded(resource) if config.generatePreviewsOnAdd => generatePreviews(resource)
+    case _                                                       => IO.unit
 
   private def startSync(interrupter: SignallingRef[IO, Boolean]): IO[Unit] = {
     def pollWithRetryOnException(): fs2.Stream[IO, ResourceEvent] =

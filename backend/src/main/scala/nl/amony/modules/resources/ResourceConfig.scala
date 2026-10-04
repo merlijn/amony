@@ -56,13 +56,14 @@ given ConfigReader[Map[ImageFormat, List[String]]] =
 case class ThumbnailConfig(
   allowedResolutions: List[Int],
   defaultResolution: Int,
-  supportedFormats: List[ImageFormat],
+  supportedImageFormats: List[ImageFormat],
+  supportedVideoFormats: List[String]           = List("mp4"),
   resolutionStepDown: Int,
   resolutionPickingStrategy: ResolutionPickingStrategy,
   formatOptions: Map[ImageFormat, List[String]] = Map.empty
 ) derives ConfigReader
 
-case class ResourceConfig(thumbnails: ThumbnailConfig, buckets: List[ResourceBucketConfig]) derives ConfigReader
+case class ResourceConfig(previews: ThumbnailConfig, buckets: List[ResourceBucketConfig]) derives ConfigReader
 
 object ResourceConfig {
 
@@ -90,7 +91,8 @@ object ResourceConfig {
     private val path: Path,
     sync: ScanConfig,
     hashingAlgorithm: HashingAlgorithm,
-    relativeUploadPath: Path
+    relativeUploadPath: Path,
+    generatePreviewsOnAdd: Boolean = false
   ) extends ResourceBucketConfig {
 
     val random                  = new scala.util.Random()

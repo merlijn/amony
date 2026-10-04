@@ -2,6 +2,10 @@
 
 .config-form {
 
+  .info-value > * {
+    min-height: var(--space-10);
+  }
+
   button {
     @extend .hover-pointer;
   }

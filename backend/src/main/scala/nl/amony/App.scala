@@ -105,14 +105,14 @@ object App extends ResourceApp.Forever with Logging {
         searchService     <- SolrSearchService.resource(appConfig.search.solr)
         _                  = resourceEventTopic.followTail(searchService.processEvent)
         thumbResolutions   = ThumbnailResolutions(
-                               appConfig.resources.thumbnails.allowedResolutions,
-                               appConfig.resources.thumbnails.defaultResolution,
-                               appConfig.resources.thumbnails.resolutionStepDown
+                               appConfig.resources.previews.allowedResolutions,
+                               appConfig.resources.previews.defaultResolution,
+                               appConfig.resources.previews.resolutionStepDown
                              )
-        thumbFormats       = ThumbnailFormats(appConfig.resources.thumbnails.supportedFormats, appConfig.resources.thumbnails.formatOptions)
+        thumbFormats       = ThumbnailFormats(appConfig.resources.previews.supportedImageFormats, appConfig.resources.previews.formatOptions)
         resourceBuckets   <- appConfig.resources.buckets.map {
                                case localConfig: ResourceConfig.LocalDirectoryConfig =>
-                                 LocalDirectoryBucket.resource(localConfig, databasePool, resourceEventTopic, thumbFormats)
+                                 LocalDirectoryBucket.resource(localConfig, databasePool, resourceEventTopic, thumbFormats, thumbResolutions)
                              }.sequence
         resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
         authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
@@ -126,7 +126,12 @@ object App extends ResourceApp.Forever with Logging {
               AdminRoutes.apply(searchService, resourceBucketMap) ++
               SearchRoutes.apply(searchService, appConfig.search) ++
               ResourceRoutes.apply(resourceBucketMap) ++
-              ConfigRoutes.apply(thumbResolutions, thumbFormats, appConfig.resources.thumbnails.resolutionPickingStrategy)
+              ConfigRoutes.apply(
+                thumbResolutions,
+                thumbFormats,
+                appConfig.resources.previews.supportedVideoFormats,
+                appConfig.resources.previews.resolutionPickingStrategy
+              )
 
           ResourceContentRoutes.apply(resourceBucketMap, thumbResolutions, thumbFormats) <+>
             Http4sServerInterpreter[IO](serverOptions).toRoutes(tapirEndpoints)

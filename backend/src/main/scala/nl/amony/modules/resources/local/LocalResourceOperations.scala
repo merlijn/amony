@@ -12,6 +12,8 @@ import nl.amony.modules.resources.api.*
 
 trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
+  self: ResourceBucket =>
+
   type OperationKey = (resourceId: ResourceId, operation: ResourceOperation)
 
   extension (operation: ResourceOperation)
@@ -93,4 +95,18 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
         height     = height,
         codecArgs  = formats.encoderArgs(format)
       ).map(_ => outputFile)
+
+  private[local] def previewOperations(info: ResourceInfo): List[ResourceOperation] =
+    ResourceOperations.all(info, resolutions, formats).filter(_.validate(info).isRight)
+
+  private[local] def runPreviewOperation(info: ResourceInfo, operation: ResourceOperation): IO[Unit] =
+    getOrCreate(info.resourceId, operation).attempt.flatMap {
+      case Left(error) => IO(logger.error(s"Failed to generate preview $operation for '${info.path}'", error))
+      case Right(_)    => IO.unit
+    }
+
+  private[local] def generatePreviews(info: ResourceInfo): IO[Unit] =
+    fs2.Stream.emits(previewOperations(info))
+      .parEvalMap(config.sync.scanParallelFactor)(runPreviewOperation(info, _))
+      .compile.drain
 }

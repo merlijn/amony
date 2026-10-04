@@ -15,6 +15,8 @@ import nl.amony.modules.resources.api.{ResourceAdded, ResourceBucket, ResourceIn
 
 trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
 
+  self: LocalResourceOperations =>
+
   private val invalidSequences = List("/", "\\", "..")
 
   private def resolveTargetPath(path: JPath, maxAttempt: Int): Either[UploadError, JPath] = {

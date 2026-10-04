@@ -2,7 +2,7 @@ import {BrowserRouter, Route, Routes, useParams} from 'react-router-dom';
 import React, {lazy, Suspense, useMemo, use} from 'react';
 import {Constants, SessionContext} from "./api/Constants";
 import {ConfigContext, AppConfig, defaultAppConfig} from "./api/ConfigContext";
-import {pickSupportedImageFormat} from "./api/MediaFormat";
+import {pickSupportedImageFormat, pickSupportedVideoFormat} from "./api/MediaFormat";
 import {getConfig, getSession} from "./api/generated";
 import {AxiosError} from "axios";
 import {SessionInfo} from "./api/Model";
@@ -37,8 +37,9 @@ function App() {
       getConfig()
         .then(async (config): Promise<AppConfig> => ({
           ...config,
-          // The most preferred format this browser can actually decode; resolved once at startup.
-          imageFormat: await pickSupportedImageFormat(config.supportedFormats),
+          // The most preferred formats this browser can actually decode/play; resolved once at startup.
+          imageFormat: await pickSupportedImageFormat(config.supportedImageFormats),
+          videoFormat: pickSupportedVideoFormat(config.supportedVideoFormats),
         }))
         .catch((error: AxiosError) => {
           // Without config the frontend still works, it just falls back to the default thumbnail resolution and format.
