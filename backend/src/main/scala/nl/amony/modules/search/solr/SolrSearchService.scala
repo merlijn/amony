@@ -45,8 +45,11 @@ object SolrSearchService {
     val duration           = "duration_i"
     val fps                = "fps_f"
     val resourceType       = "resource_type_s"
-    val streamable         = "streamable_s"
-    val userId             = "user_id_s"
+
+    // TODO: the Solr schema has no boolean dynamic field, so streamability is stored as a string
+    //  ("true"/"false") and an absent field means unknown. Revisit if a *_b dynamic field is added.
+    val streamable = "streamable_s"
+    val userId     = "user_id_s"
   }
 
   def resource(config: SolrConfig): Resource[IO, SolrSearchService] =
@@ -80,7 +83,11 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
     resource.timeAdded.foreach(created => solrInputDocument.addField(FieldNames.timeAdded, created))
     resource.timeLastModified.foreach(lastModified => solrInputDocument.addField(FieldNames.lastModified, lastModified))
     resource.contentType.foreach(contentType => solrInputDocument.addField(FieldNames.contentType, contentType))
-    resource.streamability.foreach(streamability => solrInputDocument.addField(FieldNames.streamable, streamability.configName))
+    resource.streamability.foreach {
+      case Streamability.Streamable    => solrInputDocument.addField(FieldNames.streamable, "true")
+      case Streamability.NotStreamable => solrInputDocument.addField(FieldNames.streamable, "false")
+      case Streamability.Unknown       => ()
+    }
 
     resource.contentMeta.foreach(meta => solrInputDocument.addField(FieldNames.metaToolName, meta.toolName))
 
@@ -125,7 +132,11 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
     val userId             = document.getFieldValue(FieldNames.userId).asInstanceOf[String]
     val streamability      = Option(document.getFieldValue(FieldNames.streamable))
       .map(_.asInstanceOf[String])
-      .flatMap(name => Streamability.values.find(_.configName == name))
+      .flatMap {
+        case "true"  => Some(Streamability.Streamable)
+        case "false" => Some(Streamability.NotStreamable)
+        case _       => None
+      }
 
     val contentProperties: Option[ContentProperties] = resourceType match {
 
@@ -193,10 +204,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
 
       if query.untagged.contains(true) then sb.append(s" AND -${FieldNames.tags}:[* TO *]")
 
-      query.streamable.foreach { streamable =>
-        val name = if streamable then Streamability.Streamable.configName else Streamability.NotStreamable.configName
-        sb.append(s" AND ${FieldNames.streamable}:$name")
-      }
+      query.streamable.foreach(streamable => sb.append(s" AND ${FieldNames.streamable}:$streamable"))
 
       if query.resolutionRange.min.isDefined || query.resolutionRange.max.isDefined then
         sb.append(s" AND ${FieldNames.width}:[${query.resolutionRange.min.getOrElse(0)} TO ${query.resolutionRange.max.getOrElse("*")}]")
