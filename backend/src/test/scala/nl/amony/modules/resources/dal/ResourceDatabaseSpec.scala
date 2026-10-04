@@ -1,6 +1,7 @@
 package nl.amony.modules.resources.dal
 
 import java.util.UUID
+import scala.concurrent.duration.*
 import scala.util.Random
 
 import cats.effect.IO
@@ -99,6 +100,20 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
               duplicatePartialHashsTest(db) >> db.truncateTables() >>
               collectionsTest(db) >> db.truncateTables() >>
               collectionResourcesTest(db) >> db.truncateTables()
+          ).unsafeRunSync()
+      }
+    }
+
+    "stream resources while writing to the database" in {
+      withContainers {
+        container =>
+
+          val dbConfig             = configForContainer(container)
+          given tracer: Tracer[IO] = Tracer.noop[IO]
+          given meter: Meter[IO]   = Meter.noop[IO]
+
+          App.makeDatabasePool(dbConfig).map(ResourceDatabase(_)).use(db =>
+            db.truncateTables() >> streamWithNestedWritesTest(db)
           ).unsafeRunSync()
       }
     }
@@ -223,6 +238,16 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       fetchedUp shouldBe Some(updated)
       childAfter shouldBe None
     }
+  }
+
+  def streamWithNestedWritesTest(db: ResourceDatabase): IO[Unit] = {
+    val bucket    = BucketId("stream-test")
+    val resources = List.fill(200)(genResource().copy(bucketId = bucket))
+    for
+      _   <- resources.traverse_(db.insertResource)
+      _   <- db.getStream(bucket).evalMap(resource => db.upsertResource(resource.copy(title = Some("updated")))).compile.drain.timeout(30.seconds)
+      all <- db.getAll(bucket)
+    yield all.size shouldBe 200
   }
 
   def collectionResourcesTest(db: ResourceDatabase): IO[Unit] = {

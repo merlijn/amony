@@ -107,10 +107,8 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
       updateResourceWithTags(s, resource)
 
   def getStream(bucketId: BucketId): fs2.Stream[IO, ResourceInfo] =
-    fs2.Stream.force(
-      useSession: s =>
-        s.prepare(Queries.resources.allJoined).map(_.stream(bucketId, defaultChunkSize).map(toResource))
-    )
+    fs2.Stream.resource(pool).flatMap: s =>
+      fs2.Stream.eval(s.prepare(Queries.resources.allJoined)).flatMap(_.stream(bucketId, defaultChunkSize)).map(toResource)
 
   def getResourceById(bucketId: BucketId, resourceId: ResourceId): IO[Option[ResourceInfo]] =
     useSession: s =>
