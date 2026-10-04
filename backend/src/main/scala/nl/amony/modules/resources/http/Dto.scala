@@ -89,19 +89,6 @@ case class ClipDto(
   tags: List[String]
 ) derives Codec, sttp.tapir.Schema
 
-object ClipDto:
-
-  /** Fixed length of the generated hover-preview clip, in milliseconds. */
-  val PreviewLengthMillis = 3000L
-
-  /**
-   * The `(start, end)` range of a resource's preview clip: it starts at the resource's thumbnail
-   * timestamp (or a third of the video) and runs for [[PreviewLengthMillis]], capped at the video length.
-   */
-  def previewRange(thumbnailTimestamp: Option[Int], durationInMillis: Int): (Long, Long) =
-    val start = thumbnailTimestamp.getOrElse(durationInMillis / 3).toLong
-    (start, math.min(durationInMillis.toLong, start + PreviewLengthMillis))
-
 case class CollectionDto(
   id: UUID,
   parentId: Option[UUID],
@@ -140,7 +127,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
   // A preview clip spanning the resource's preview range; the client builds the clip URL from these timestamps.
   val thumbnailClip = resource.basicContentProperties match {
     case Some(_: VideoProperties) =>
-      val (start, end) = ClipDto.previewRange(resource.thumbnailTimestamp, durationInMillis)
+      val (start, end) = VideoFragment.previewRange(resource.thumbnailTimestamp, durationInMillis)
       Some(ClipDto(
         bucketId    = resource.bucketId,
         resourceId  = resource.resourceId,

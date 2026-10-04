@@ -24,7 +24,8 @@ object LocalDirectoryBucket:
     config: LocalDirectoryConfig,
     pool: cats.effect.Resource[IO, Session[IO]],
     topic: EventTopic[ResourceEvent],
-    formats: ThumbnailFormats
+    formats: ThumbnailFormats,
+    resolutions: ThumbnailResolutions
   )(
     using runtime: IORuntime,
     meter: Meter[IO],
@@ -32,7 +33,7 @@ object LocalDirectoryBucket:
   ): cats.effect.Resource[IO, LocalDirectoryBucket] = {
     cats.effect.Resource.make {
       IO {
-        val bucket = LocalDirectoryBucket(config, ResourceDatabase(pool), topic, formats)
+        val bucket = LocalDirectoryBucket(config, ResourceDatabase(pool), topic, formats, resolutions)
         bucket.sync().unsafeRunAsync(_ => ())
         bucket
       }
@@ -43,9 +44,11 @@ class LocalDirectoryBucket(
   config: LocalDirectoryConfig,
   db: ResourceDatabase,
   topic: EventTopic[ResourceEvent],
-  formats: ThumbnailFormats
+  formats: ThumbnailFormats,
+  resolutions: ThumbnailResolutions
 )(using runtime: IORuntime, meter: Meter[IO], tracer: Tracer[IO])
-    extends LocalDirectoryBase(config, db, topic, formats), LocalResourceOperations, ResourceBucket, LocalResourceSyncer, UploadResource, Logging {
+    extends LocalDirectoryBase(config, db, topic, formats, resolutions), LocalResourceOperations, ResourceBucket, LocalResourceSyncer,
+      UploadResource, Logging {
 
   private def getResourceInfo(resourceId: ResourceId): IO[Option[ResourceInfo]] = db.getResourceById(id, resourceId)
 
@@ -98,6 +101,16 @@ class LocalDirectoryBucket(
     getResourceInfo(resourceId).flatMap:
       case None       => IO.pure(None)
       case Some(info) => derivedResource(info, operation)
+
+  /**
+   * Materializes every configured derived resource (all thumbnail formats and resolutions plus the
+   * preview clip) for every resource in the bucket, discarding the produced content.
+   */
+  def generateAllDerivedResources(): IO[Unit] =
+    getAllResources
+      .flatMap(info => fs2.Stream.emits(derivedOperations(info).map(info -> _)))
+      .parEvalMap(config.sync.scanParallelFactor) { case (info, operation) => runDerivedOperation(info, operation) }
+      .compile.drain
 
   override def getResource(resourceId: ResourceId): IO[Option[Resource]] =
     getResourceInfo(resourceId).map:

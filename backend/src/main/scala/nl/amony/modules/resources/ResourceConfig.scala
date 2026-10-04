@@ -90,7 +90,8 @@ object ResourceConfig {
     private val path: Path,
     sync: ScanConfig,
     hashingAlgorithm: HashingAlgorithm,
-    relativeUploadPath: Path
+    relativeUploadPath: Path,
+    generateDerivedOnAdd: Boolean = false
   ) extends ResourceBucketConfig {
 
     val random                  = new scala.util.Random()

@@ -12,6 +12,8 @@ import nl.amony.modules.resources.api.*
 
 trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
+  self: ResourceBucket =>
+
   type OperationKey = (resourceId: ResourceId, operation: ResourceOperation)
 
   extension (operation: ResourceOperation)
@@ -93,4 +95,24 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
         height     = height,
         codecArgs  = formats.encoderArgs(format)
       ).map(_ => outputFile)
+
+  /** Every configured derived operation that validates against the given resource. */
+  private[local] def derivedOperations(info: ResourceInfo): List[ResourceOperation] =
+    ResourceOperations.all(info, resolutions, formats).filter(_.validate(info).isRight)
+
+  /**
+   * Materializes one derived operation through the normal [[getOrCreate]] path, discarding the
+   * result. Failures are logged so a single failing operation does not abort the rest.
+   */
+  private[local] def runDerivedOperation(info: ResourceInfo, operation: ResourceOperation): IO[Unit] =
+    getOrCreate(info.resourceId, operation).attempt.flatMap {
+      case Left(error) => IO(logger.error(s"Failed to generate derived resource $operation for '${info.path}'", error))
+      case Right(_)    => IO.unit
+    }
+
+  /** Materializes every configured derived resource for a single resource. */
+  private[local] def generateDerivedResources(info: ResourceInfo): IO[Unit] =
+    fs2.Stream.emits(derivedOperations(info))
+      .parEvalMap(config.sync.scanParallelFactor)(runDerivedOperation(info, _))
+      .compile.drain
 }

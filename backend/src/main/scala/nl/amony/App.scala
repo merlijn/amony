@@ -112,7 +112,7 @@ object App extends ResourceApp.Forever with Logging {
         thumbFormats       = ThumbnailFormats(appConfig.resources.thumbnails.supportedFormats, appConfig.resources.thumbnails.formatOptions)
         resourceBuckets   <- appConfig.resources.buckets.map {
                                case localConfig: ResourceConfig.LocalDirectoryConfig =>
-                                 LocalDirectoryBucket.resource(localConfig, databasePool, resourceEventTopic, thumbFormats)
+                                 LocalDirectoryBucket.resource(localConfig, databasePool, resourceEventTopic, thumbFormats, thumbResolutions)
                              }.sequence
         resourceBucketMap  = resourceBuckets.map(b => b.id -> b).toMap
         authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)

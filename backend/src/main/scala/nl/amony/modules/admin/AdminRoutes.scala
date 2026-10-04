@@ -49,6 +49,14 @@ object AdminRoutes extends RoutesModule, Logging:
       .securityIn(securityInput)
       .errorOut(errorOutput))
 
+  val generateDerivedResources =
+    register(endpoint.name("adminGenerateDerivedResources").tag("admin")
+      .description("Generate all configured thumbnails and preview clips for all resources in a bucket")
+      .post.in("api" / "admin" / "generate-derived-resources")
+      .in(query[BucketId]("bucketId").description("The id of the bucket to generate derived resources for."))
+      .securityIn(securityInput)
+      .errorOut(errorOutput))
+
   val exportBucket =
     register(endpoint.name("adminExportBucket").tag("admin").description("Export all resources in a bucket")
       .get.in("api" / "admin" / "export" / path[BucketId]("bucketId"))
@@ -114,6 +122,18 @@ object AdminRoutes extends RoutesModule, Logging:
             bucket.reComputePartialHashs() >> IO(logger.info(s"Finished re-computing partialHashs of all resources in bucket '$bucketId'"))
           case _                                  =>
             logger.info(s"Cannot re-compute partialHashs of bucket '$bucketId'")
+            IO.unit
+
+        result.map(Right(_))
+      }
+
+      serverLogic(endpoint = generateDerivedResources, requiredPermission = Permission.Admin) { _ => bucketId =>
+        val result = buckets.get(bucketId) match
+          case Some(bucket: LocalDirectoryBucket) =>
+            logger.info(s"Generating derived resources for all resources in bucket '$bucketId'")
+            bucket.generateAllDerivedResources() >> IO(logger.info(s"Finished generating derived resources for bucket '$bucketId'"))
+          case _                                  =>
+            logger.info(s"Cannot generate derived resources for bucket '$bucketId'")
             IO.unit
 
         result.map(Right(_))
