@@ -62,7 +62,7 @@ case class ThumbnailConfig(
   formatOptions: Map[ImageFormat, List[String]] = Map.empty
 ) derives ConfigReader
 
-case class ResourceConfig(thumbnails: ThumbnailConfig, buckets: List[ResourceBucketConfig]) derives ConfigReader
+case class ResourceConfig(previews: ThumbnailConfig, buckets: List[ResourceBucketConfig]) derives ConfigReader
 
 object ResourceConfig {
 

@@ -14,18 +14,18 @@ class AppConfigSpec extends AnyWordSpecLike {
       println(s"enabled: ${appConfig.auth.enabled}")
       println(s"require-login: ${appConfig.auth.requireLogin}")
       println(s"allowed-hosts: ${appConfig.api.allowedHosts}")
-      println(s"allowed-resolutions: ${appConfig.resources.thumbnails.allowedResolutions}")
-      println(s"supported-formats: ${appConfig.resources.thumbnails.supportedFormats}")
-      println(s"resolution-picking-strategy: ${appConfig.resources.thumbnails.resolutionPickingStrategy}")
-      println(s"format-options: ${appConfig.resources.thumbnails.formatOptions}")
+      println(s"allowed-resolutions: ${appConfig.resources.previews.allowedResolutions}")
+      println(s"supported-formats: ${appConfig.resources.previews.supportedFormats}")
+      println(s"resolution-picking-strategy: ${appConfig.resources.previews.resolutionPickingStrategy}")
+      println(s"format-options: ${appConfig.resources.previews.formatOptions}")
       assert(appConfig.api.allowedHosts.nonEmpty)
-      assert(appConfig.resources.thumbnails.allowedResolutions.nonEmpty)
-      assert(appConfig.resources.thumbnails.allowedResolutions.contains(appConfig.resources.thumbnails.defaultResolution))
-      assert(appConfig.resources.thumbnails.supportedFormats.nonEmpty)
+      assert(appConfig.resources.previews.allowedResolutions.nonEmpty)
+      assert(appConfig.resources.previews.allowedResolutions.contains(appConfig.resources.previews.defaultResolution))
+      assert(appConfig.resources.previews.supportedFormats.nonEmpty)
       // AVIF is dropped by default: the bundled SVT-AV1 encoder cannot encode sides below 64px.
-      assert(!appConfig.resources.thumbnails.supportedFormats.contains(ImageFormat.Avif))
+      assert(!appConfig.resources.previews.supportedFormats.contains(ImageFormat.Avif))
       // Encoder arguments are configured per format rather than hardcoded in ImageFormat.
-      assert(appConfig.resources.thumbnails.formatOptions.get(ImageFormat.Avif).exists(_.contains("libsvtav1")))
+      assert(appConfig.resources.previews.formatOptions.get(ImageFormat.Avif).exists(_.contains("libsvtav1")))
     }
   }
 }
