@@ -20,7 +20,6 @@ case class Query(
   n: Int,
   offset: Option[Int]              = None,
   includeTags: Set[String]         = Set.empty,
-  excludeTags: Set[String]         = Set.empty,
   excludeBuckets: Set[BucketId]    = Set.empty,
   resolutionRange: ResolutionRange = ResolutionRange(None, None),
   durationRange: DurationRange     = DurationRange(None, None),

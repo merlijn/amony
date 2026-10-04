@@ -82,7 +82,7 @@ object ResourceRoutes extends RoutesModule:
 
     def getVisibleBucket(auth: AuthToken, bucketId: BucketId): EitherT[IO, NotFoundError, ResourceBucket] =
       EitherT.fromOption[IO](
-        buckets.get(bucketId).filter(_ => !apiSecurity.userAccess(auth).hiddenBuckets.contains(bucketId)),
+        buckets.get(bucketId).filter(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole)),
         NotFoundError("not_found", "Resource not found")
       )
 
@@ -145,8 +145,9 @@ object ResourceRoutes extends RoutesModule:
       }
 
       serverLogic(endpoint = getBuckets, requiredPermission = Permission.ViewResource) { auth => _ =>
-        val hiddenBuckets = apiSecurity.userAccess(auth).hiddenBuckets
-        IO.pure(Right(buckets.values.filterNot(bucket => hiddenBuckets.contains(bucket.id)).map(bucket => BucketDto(bucket.id, "", "")).toList))
+        IO.pure(Right(buckets.values.filter(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole)).map(bucket =>
+          BucketDto(bucket.id, "", "")
+        ).toList))
       }
     }
   }

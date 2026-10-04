@@ -97,16 +97,10 @@ object ResourceContentRoutes extends Logging {
     def isAnonymouslyForbidden(req: Request[IO]): Boolean =
       apiSecurity.isLoginRequired && authToken(req).isAnonymous
 
-    def isBucketHidden(req: Request[IO], bucketId: BucketId): Boolean =
-      apiSecurity.userAccess(authToken(req)).hiddenBuckets.contains(bucketId)
-
     def getResource(req: Request[IO], bucketId: BucketId, resourceId: ResourceId): OptionT[IO, (ResourceBucket, Resource)] =
-      if isBucketHidden(req, bucketId) then OptionT.none[IO, (ResourceBucket, Resource)]
-      else
-        for
-          bucket   <- OptionT.fromOption[IO](buckets.get(bucketId))
-          resource <- OptionT(bucket.getResource(resourceId))
-        yield bucket -> resource
+      OptionT.fromOption[IO](buckets.get(bucketId))
+        .filter(bucket => apiSecurity.canAccessBucket(authToken(req), bucket.requiredRole))
+        .flatMap(bucket => OptionT(bucket.getResource(resourceId)).map(resource => bucket -> resource))
 
     def maybeResponse(option: OptionT[IO, Response[IO]]): IO[Response[IO]] =
       option.value.map(_.getOrElse(Response(Status.NotFound)))

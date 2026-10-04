@@ -18,8 +18,6 @@ import nl.amony.modules.auth.api.{AuthToken, JwtDecoder, Permission, Role}
 given ConfigReader[Uri] = ConfigReader.fromString[Uri](str => Uri.parse(str).left.map(err => CannotConvert(str, "Uri", err)))
 
 case class RoleAccessConfig(
-  hiddenTags: Set[String],
-  hiddenBuckets: Set[String],
   permissions: Set[Permission]
 ) derives ConfigReader
 
@@ -54,9 +52,7 @@ case class AuthConfig(
   val anonymousAccess: RoleAccessConfig     = accessControl(Role.Anonymous)
   val authenticatedAccess: RoleAccessConfig = accessControl(Role.Authenticated)
   val adminAccess: RoleAccessConfig         = RoleAccessConfig(
-    hiddenTags    = Set.empty,
-    hiddenBuckets = Set.empty,
-    permissions   = Permission.values.toSet
+    permissions = Permission.values.toSet
   )
 
   def access(authToken: AuthToken): RoleAccessConfig =
@@ -66,9 +62,7 @@ case class AuthConfig(
 
   private def merge(acc: RoleAccessConfig, cfg: RoleAccessConfig): RoleAccessConfig =
     RoleAccessConfig(
-      hiddenTags    = acc.hiddenTags intersect cfg.hiddenTags,
-      hiddenBuckets = acc.hiddenBuckets intersect cfg.hiddenBuckets,
-      permissions   = acc.permissions ++ cfg.permissions
+      permissions = acc.permissions ++ cfg.permissions
     )
 
   def decoder = JwtDecoder(jwt.algorithm)

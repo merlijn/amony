@@ -122,9 +122,9 @@ object App extends ResourceApp.Forever with Logging {
 
           val tapirEndpoints: ServerEndpoints[IO] =
             authModule.routes ++
-              CollectionRoutes.apply(collectionsDal) ++
+              CollectionRoutes.apply(collectionsDal, resourceBucketMap) ++
               AdminRoutes.apply(searchService, resourceBucketMap) ++
-              SearchRoutes.apply(searchService, appConfig.search) ++
+              SearchRoutes.apply(searchService, appConfig.search, resourceBucketMap) ++
               ResourceRoutes.apply(resourceBucketMap) ++
               ConfigRoutes.apply(
                 thumbResolutions,

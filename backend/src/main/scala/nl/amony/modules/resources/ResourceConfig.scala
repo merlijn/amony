@@ -13,6 +13,7 @@ import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
 
 import nl.amony.lib.hash.Base32
 import nl.amony.lib.hash.PartialHash.partialHash
+import nl.amony.modules.auth.api.Role
 import nl.amony.modules.resources.ResourceConfig.ResourceBucketConfig
 import nl.amony.modules.resources.api.{ImageFormat, ResourceId}
 
@@ -67,7 +68,9 @@ case class ResourceConfig(previews: ThumbnailConfig, buckets: List[ResourceBucke
 
 object ResourceConfig {
 
-  sealed trait ResourceBucketConfig
+  sealed trait ResourceBucketConfig:
+    /** When set, only users holding this role (admins always) can see the bucket. */
+    def requiredRole: Option[Role]
 
   object ResourceBucketConfig:
     given FieldCoproductHint[ResourceBucketConfig] =
@@ -88,11 +91,12 @@ object ResourceConfig {
 
   case class LocalDirectoryConfig(
     id: String,
+    override val requiredRole: Option[Role] = None,
     private val path: Path,
     sync: ScanConfig,
     hashingAlgorithm: HashingAlgorithm,
     relativeUploadPath: Path,
-    generatePreviewsOnAdd: Boolean = false
+    generatePreviewsOnAdd: Boolean          = false
   ) extends ResourceBucketConfig {
 
     val random                  = new scala.util.Random()

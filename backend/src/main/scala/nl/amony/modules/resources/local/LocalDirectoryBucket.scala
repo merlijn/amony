@@ -13,6 +13,7 @@ import skunk.Session
 
 import nl.amony.lib.files.*
 import nl.amony.lib.messagebus.EventTopic
+import nl.amony.modules.auth.api.Role
 import nl.amony.modules.resources.*
 import nl.amony.modules.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.modules.resources.api.*
@@ -53,6 +54,8 @@ class LocalDirectoryBucket(
   private def getResourceInfo(resourceId: ResourceId): IO[Option[ResourceInfo]] = db.getResourceById(id, resourceId)
 
   override def id: BucketId = BucketId(config.id)
+
+  override def requiredRole: Option[Role] = config.requiredRole
 
   def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap {
     resource =>
