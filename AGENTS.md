@@ -38,13 +38,18 @@ This directory contains various Dockerfiles and scripts and settings for the doc
 
 # Way of working
 
-## Markdown
+## Markdown docs
 
 Reformat Markdown after changes with Prettier at 120 columns:
 
 ```sh
 npx prettier --write --prose-wrap always --print-width 120 "**/*.md"
 ```
+
+## Code Style
+
+- Refrain from adding comments unless they are really necessary to explain the code. Code should be self-explanatory.
+- Be even more hesitant with adding multi-line comments
 
 ## Git
 
