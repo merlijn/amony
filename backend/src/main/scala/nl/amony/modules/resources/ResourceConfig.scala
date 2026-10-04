@@ -56,7 +56,8 @@ given ConfigReader[Map[ImageFormat, List[String]]] =
 case class ThumbnailConfig(
   allowedResolutions: List[Int],
   defaultResolution: Int,
-  supportedFormats: List[ImageFormat],
+  supportedImageFormats: List[ImageFormat],
+  supportedVideoFormats: List[String]           = List("mp4"),
   resolutionStepDown: Int,
   resolutionPickingStrategy: ResolutionPickingStrategy,
   formatOptions: Map[ImageFormat, List[String]] = Map.empty
