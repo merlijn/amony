@@ -18,6 +18,7 @@ import {FiAlertCircle, FiAlertTriangle, FiInfo} from "react-icons/fi";
 import {MdDelete} from "react-icons/md";
 import DeleteResourceDialog from "./dialogs/DeleteResourceDialog";
 import ResourceDetailsDialog from "./dialogs/ResourceDetailsDialog";
+import FixStreamabilityDialog from "./dialogs/FixStreamabilityDialog";
 
 export type PreviewProps = {
   resource: ResourceDto,
@@ -42,6 +43,8 @@ const Preview = (props: PreviewProps) => {
   const [isHovering, setIsHovering] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
+  const [showFixDialog, setShowFixDialog] = useState(false)
+  const [isFixed, setIsFixed] = useState(false)
 
   const durationStr = durationInMillisToString(resource.contentMeta.duration)
 
@@ -50,7 +53,7 @@ const Preview = (props: PreviewProps) => {
   const session = useContext(SessionContext)
   const config  = useAppConfig()
   const isUnsupportedVideo = isVideo && !canBrowserPlayVideoType(resource.contentType)
-  const isUnstreamable     = isVideo && resource.contentMeta.streamable === false
+  const isUnstreamable     = isVideo && resource.contentMeta.streamable === false && !isFixed
 
   const titlePanel =
       <div className = "preview-info-bar">
@@ -69,7 +72,14 @@ const Preview = (props: PreviewProps) => {
         { (isUnsupportedVideo || isUnstreamable) &&
           <div className="preview-warning-badges">
             { isUnsupportedVideo && <div className="preview-unsupported-overlay" title="Your browser cannot play this format"><FiAlertCircle /></div> }
-            { isUnstreamable && <div className="preview-unstreamable-overlay" title="Not optimized for streaming"><FiAlertTriangle /></div> }
+            { isUnstreamable &&
+              <div
+                className = "preview-unstreamable-overlay"
+                title     = { session.isAdmin() ? "Not optimized for streaming - click to fix" : "Not optimized for streaming" }
+                style     = { session.isAdmin() ? { cursor: "pointer" } : undefined }
+                onClick   = { session.isAdmin() ? (e) => { e.stopPropagation(); setShowFixDialog(true) } : undefined }>
+                <FiAlertTriangle />
+              </div> }
           </div> }
       </div>
 
@@ -125,6 +135,12 @@ const Preview = (props: PreviewProps) => {
           visible={showDeleteDialog}
           onDeleted={() => setShowDeleteDialog(false)}
           onHide={() => setShowDeleteDialog(false)}
+        />
+        <FixStreamabilityDialog
+          resource={props.resource}
+          visible={showFixDialog}
+          onFixed={() => { setIsFixed(true); setShowFixDialog(false) }}
+          onHide={() => setShowFixDialog(false)}
         />
       </div>
   )
