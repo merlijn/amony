@@ -13,7 +13,7 @@ import nl.amony.modules.resources.api.{ContentProperties, ImageProperties, Resou
 
 class LocalResourceMetaDataScanner(tika: Tika, ffmpeg: FFMpeg, imageMagick: ImageMagick) extends Logging {
 
-  private def contentTypeForPath(path: java.nio.file.Path): IO[Option[String]] =
+  def contentTypeForPath(path: java.nio.file.Path): IO[Option[String]] =
     IO.blocking {
       Try(tika.detect(path)) match
         case Success(contentType) =>

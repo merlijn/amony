@@ -1,6 +1,6 @@
 package nl.amony.modules.resources.local
 
-import java.nio.file.{Files as JFiles, Path as JPath}
+import java.nio.file.{Files as JFiles, Path as JPath, StandardCopyOption}
 import java.security.MessageDigest
 
 import cats.data.EitherT
@@ -11,7 +11,7 @@ import scribe.Logging
 
 import nl.amony.lib.files.watcher.FileInfo
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{ResourceAdded, ResourceBucket, ResourceInfo, UploadError}
+import nl.amony.modules.resources.api.{ResourceAdded, ResourceBucket, ResourceInfo, UploadError, VideoContainer}
 
 trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
 
@@ -52,7 +52,7 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
 
       val uploadPath                                   = config.uploadPath.resolve(temporaryFileName)
       val writeToFile: Pipe[IO, Byte, Nothing]         = Files[IO].writeAll(Path.fromNioPath(uploadPath))
-      val calculateHash: Pipe[IO, Byte, MessageDigest] = {
+      def calculateHash: Pipe[IO, Byte, MessageDigest] = {
 
         val initialDigest = config.hashingAlgorithm.newDigest()
 
@@ -80,7 +80,32 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
         yield resourceInfo
       }
 
+      def hashUploadedFile(): IO[Array[Byte]] =
+        Files[IO].readAll(Path.fromNioPath(uploadPath)).through(calculateHash).compile.last
+          .map(_.getOrElse(throw new RuntimeException(s"Failed to compute partialHash for uploaded file: $fileName")).digest())
+
+      /** Remuxes the stored upload into a streamable layout when its container supports it, returning the new hash. */
+      def remuxUploadedFile(): IO[Option[Array[Byte]]] =
+        meta.contentTypeForPath(uploadPath).flatMap {
+          case Some(contentType) =>
+            VideoContainer.fromContentType(contentType) match
+              case Some(container) =>
+                ffmpeg.addFastStart(uploadPath, container).attempt.flatMap {
+                  case Left(error)       =>
+                    logger.warn(s"Failed to remux uploaded file '$fileName', storing the original file", error)
+                    IO.pure(None)
+                  case Right(normalized) =>
+                    IO(JFiles.move(normalized, uploadPath, StandardCopyOption.REPLACE_EXISTING)) >> hashUploadedFile().map(Some(_))
+                }
+              case None            => IO.pure(None)
+          case None              => IO.pure(None)
+        }
+
       source.observe(writeToFile).through(calculateHash).compile.last.flatMap {
-        case Some(digest) => insertResource(digest.digest()).value
-        case None         => IO.raiseError(new RuntimeException("Failed to compute partialHash for uploaded file"))
+        case Some(streamDigest) =>
+          remuxUploadedFile().flatMap {
+            case Some(remuxedDigest) => insertResource(remuxedDigest).value
+            case None                => insertResource(streamDigest.digest()).value
+          }
+        case None               => IO.raiseError(new RuntimeException("Failed to compute partialHash for uploaded file"))
       }.recoverWith(e => fs2.io.file.Files[IO].delete(uploadPath) >> IO.raiseError(new RuntimeException(s"Failed to upload resource: $fileName", e)))
