@@ -3,7 +3,7 @@ import DialogWindow from "../common/DialogWindow";
 import InfoTable, {InfoRow} from "../common/InfoTable";
 import './ConfigMenu.scss';
 import {useContext, useEffect, useState} from "react";
-import {adminGenerateDerivedResources, adminReComputeHashes, adminRefreshBucket, adminReindexBucket, adminRescanMetaData, getBuckets} from "../../api/generated";
+import {adminGeneratePreviews, adminReComputeHashes, adminRefreshBucket, adminReindexBucket, adminRescanMetaData, getBuckets} from "../../api/generated";
 import {useLocalStorage} from "usehooks-ts";
 import {useTheme} from "../../ThemeContext";
 import {GridAspectRatio, GridOrientation, ThemeSetting} from "../../api/Model";
@@ -162,7 +162,7 @@ const ConfigMenu = () => {
   )
 }
 
-type AdminAction = 'refresh' | 'reindex' | 'rescan' | 'recompute' | 'generate-derived'
+type AdminAction = 'refresh' | 'reindex' | 'rescan' | 'recompute' | 'generate-previews'
 
 const AdminOptions = () => {
   const [buckets, setBuckets] = useState<BucketDto[]>([]);
@@ -238,8 +238,8 @@ const AdminOptions = () => {
       </InfoRow>
       <InfoRow label="Generate thumbnails and clips">
         <ActionButton
-          action="generate-derived"
-          apiCall={() => adminGenerateDerivedResources({'bucketId': selectedBucket})}
+          action="generate-previews"
+          apiCall={() => adminGeneratePreviews({'bucketId': selectedBucket})}
         />
       </InfoRow>
     </>

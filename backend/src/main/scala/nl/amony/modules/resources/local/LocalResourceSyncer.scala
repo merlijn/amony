@@ -147,12 +147,12 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
   }
 
   private[local] def processEvent(event: ResourceEvent) =
-    applyEventToDb(event) >> topic.publish(event) >> IO(logger.info(s"[${config.id}] $event")) >> generateDerivedOnAdd(event)
+    applyEventToDb(event) >> topic.publish(event) >> IO(logger.info(s"[${config.id}] $event")) >> generatePreviewsOnAdd(event)
 
   /** When configured, eagerly materializes a newly added resource's thumbnails and preview clips. */
-  private def generateDerivedOnAdd(event: ResourceEvent): IO[Unit] = event match
-    case ResourceAdded(resource) if config.generateDerivedOnAdd => generateDerivedResources(resource)
-    case _                                                      => IO.unit
+  private def generatePreviewsOnAdd(event: ResourceEvent): IO[Unit] = event match
+    case ResourceAdded(resource) if config.generatePreviewsOnAdd => generatePreviews(resource)
+    case _                                                       => IO.unit
 
   private def startSync(interrupter: SignallingRef[IO, Boolean]): IO[Unit] = {
     def pollWithRetryOnException(): fs2.Stream[IO, ResourceEvent] =

@@ -791,13 +791,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-  /api/admin/generate-derived-resources:
+  /api/admin/generate-previews:
     post:
       tags:
       - admin
       description: Generate all configured thumbnails and preview clips for all resources
         in a bucket
-      operationId: adminGenerateDerivedResources
+      operationId: adminGeneratePreviews
       parameters:
       - name: access_token
         in: cookie
@@ -811,7 +811,7 @@ paths:
           type: string
       - name: bucketId
         in: query
-        description: The id of the bucket to generate derived resources for.
+        description: The id of the bucket to generate previews for.
         required: true
         schema:
           type: string

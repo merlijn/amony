@@ -91,7 +91,7 @@ object ResourceConfig {
     sync: ScanConfig,
     hashingAlgorithm: HashingAlgorithm,
     relativeUploadPath: Path,
-    generateDerivedOnAdd: Boolean = false
+    generatePreviewsOnAdd: Boolean = false
   ) extends ResourceBucketConfig {
 
     val random                  = new scala.util.Random()

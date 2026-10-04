@@ -103,13 +103,13 @@ class LocalDirectoryBucket(
       case Some(info) => derivedResource(info, operation)
 
   /**
-   * Materializes every configured derived resource (all thumbnail formats and resolutions plus the
-   * preview clip) for every resource in the bucket, discarding the produced content.
+   * Materializes every configured preview (all thumbnail formats and resolutions plus the preview
+   * clip) for every resource in the bucket, discarding the produced content.
    */
-  def generateAllDerivedResources(): IO[Unit] =
+  def generateAllPreviews(): IO[Unit] =
     getAllResources
-      .flatMap(info => fs2.Stream.emits(derivedOperations(info).map(info -> _)))
-      .parEvalMap(config.sync.scanParallelFactor) { case (info, operation) => runDerivedOperation(info, operation) }
+      .flatMap(info => fs2.Stream.emits(previewOperations(info).map(info -> _)))
+      .parEvalMap(config.sync.scanParallelFactor) { case (info, operation) => runPreviewOperation(info, operation) }
       .compile.drain
 
   override def getResource(resourceId: ResourceId): IO[Option[Resource]] =

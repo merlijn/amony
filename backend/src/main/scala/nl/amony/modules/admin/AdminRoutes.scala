@@ -49,11 +49,11 @@ object AdminRoutes extends RoutesModule, Logging:
       .securityIn(securityInput)
       .errorOut(errorOutput))
 
-  val generateDerivedResources =
-    register(endpoint.name("adminGenerateDerivedResources").tag("admin")
+  val generatePreviews =
+    register(endpoint.name("adminGeneratePreviews").tag("admin")
       .description("Generate all configured thumbnails and preview clips for all resources in a bucket")
-      .post.in("api" / "admin" / "generate-derived-resources")
-      .in(query[BucketId]("bucketId").description("The id of the bucket to generate derived resources for."))
+      .post.in("api" / "admin" / "generate-previews")
+      .in(query[BucketId]("bucketId").description("The id of the bucket to generate previews for."))
       .securityIn(securityInput)
       .errorOut(errorOutput))
 
@@ -127,13 +127,13 @@ object AdminRoutes extends RoutesModule, Logging:
         result.map(Right(_))
       }
 
-      serverLogic(endpoint = generateDerivedResources, requiredPermission = Permission.Admin) { _ => bucketId =>
+      serverLogic(endpoint = generatePreviews, requiredPermission = Permission.Admin) { _ => bucketId =>
         val result = buckets.get(bucketId) match
           case Some(bucket: LocalDirectoryBucket) =>
-            logger.info(s"Generating derived resources for all resources in bucket '$bucketId'")
-            bucket.generateAllDerivedResources() >> IO(logger.info(s"Finished generating derived resources for bucket '$bucketId'"))
+            logger.info(s"Generating previews for all resources in bucket '$bucketId'")
+            bucket.generateAllPreviews() >> IO(logger.info(s"Finished generating previews for bucket '$bucketId'"))
           case _                                  =>
-            logger.info(s"Cannot generate derived resources for bucket '$bucketId'")
+            logger.info(s"Cannot generate previews for bucket '$bucketId'")
             IO.unit
 
         result.map(Right(_))

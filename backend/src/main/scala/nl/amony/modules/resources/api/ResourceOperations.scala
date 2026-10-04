@@ -133,7 +133,7 @@ object ResourceOperations:
   }
 
   /**
-   * Every derived operation to materialize for a resource: each supported thumbnail format at every
+   * Every preview operation to materialize for a resource: each supported thumbnail format at every
    * configured resolution, plus the preview clip for videos. The frontend pins the configured
    * operative dimension (width), so only width-pinned operations are generated here.
    *
