@@ -25,7 +25,8 @@ case class UserMetaDto(
 
 case class BulkTagsUpdateDto(ids: List[String], tagsToRemove: List[String], tagsToAdd: List[String]) derives Codec, sttp.tapir.Schema
 
-case class ResourceMetaDto(width: Int, height: Int, fps: Float, duration: Long, codec: Option[String]) derives Codec, sttp.tapir.Schema
+case class ResourceMetaDto(width: Int, height: Int, fps: Float, duration: Long, codec: Option[String], streamable: Option[Boolean] = None)
+    derives Codec, sttp.tapir.Schema
 
 case class ResourceToolMetaDto(toolName: String, toolData: Json) derives Codec
 
@@ -115,11 +116,17 @@ def toDto(resource: ResourceInfo): ResourceDto = {
   // Thumbnail timestamp: use saved value, fall back to 1/3 of duration
   val thumbnailTimestamp: Int = resource.thumbnailTimestamp.getOrElse(durationInMillis / 3)
 
+  // `Unknown` is reported as `None` so clients only flag a container when we are sure it is not streamable.
+  val streamable: Option[Boolean] = resource.streamability.collect {
+    case Streamability.Streamable    => true
+    case Streamability.NotStreamable => false
+  }
+
   val contentMeta: ResourceMetaDto = resource.basicContentProperties match {
     case Some(ImageProperties(width, height, _)) => ResourceMetaDto(width = width, height = height, duration = 0, fps = 0, codec = None)
 
     case Some(VideoProperties(width, height, fps, duration, codec)) =>
-      ResourceMetaDto(width = width, height = height, duration = duration, fps = fps, codec = codec)
+      ResourceMetaDto(width = width, height = height, duration = duration, fps = fps, codec = codec, streamable = streamable)
 
     case None => ResourceMetaDto(width = 0, height = 0, duration = 0, fps = 0, codec = None)
   }
