@@ -34,7 +34,7 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
   )
 
   /** Validates the double-submit token: the XSRF cookie must be present and match the request header. */
-  def requireXsrfToken(xsrfToken: Option[String], xXsrfHeader: Option[String]): Either[SecurityError, Unit] =
+  private def requireXsrfToken(xsrfToken: Option[String], xXsrfHeader: Option[String]): Either[SecurityError, Unit] =
     for
       token  <- xsrfToken.toRight(SecurityError.Unauthorized)
       header <- xXsrfHeader.toRight(SecurityError.Unauthorized)
@@ -89,10 +89,8 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
 
   def userAccess(authToken: AuthToken): RoleAccessConfig = authConfig.access(authToken)
 
-  /** Whether `authToken` may access a bucket that requires `requiredRole`. Admins bypass the check. */
   def canAccessBucket(authToken: AuthToken, requiredRole: Option[Role]): Boolean =
-    !(isLoginRequired && authToken.isAnonymous) &&
-      (authToken.roles.contains(Role.Admin) || requiredRole.forall(authToken.roles.contains))
+    !(isLoginRequired && authToken.isAnonymous) && (authToken.roles.contains(Role.Admin) || requiredRole.forall(authToken.roles.contains))
 
   def createCookies(apiAuthentication: Authentication): AuthCookies = {
     val accessTokenCookie = CookieValueWithMeta.unsafeApply(
