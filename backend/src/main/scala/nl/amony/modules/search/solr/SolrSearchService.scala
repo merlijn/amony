@@ -45,8 +45,11 @@ object SolrSearchService {
     val duration           = "duration_i"
     val fps                = "fps_f"
     val resourceType       = "resource_type_s"
-    val streamable         = "streamable_s"
-    val userId             = "user_id_s"
+
+    // TODO: the Solr schema has no boolean dynamic field, so streamability is stored as a string
+    //  ("true"/"false") and an absent field means unknown. Revisit if a *_b dynamic field is added.
+    val streamable = "streamable_s"
+    val userId     = "user_id_s"
   }
 
   def resource(config: SolrConfig): Resource[IO, SolrSearchService] =
@@ -80,7 +83,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
     resource.timeAdded.foreach(created => solrInputDocument.addField(FieldNames.timeAdded, created))
     resource.timeLastModified.foreach(lastModified => solrInputDocument.addField(FieldNames.lastModified, lastModified))
     resource.contentType.foreach(contentType => solrInputDocument.addField(FieldNames.contentType, contentType))
-    resource.streamability.foreach(streamability => solrInputDocument.addField(FieldNames.streamable, streamability.configName))
+    resource.streamable.foreach(streamable => solrInputDocument.addField(FieldNames.streamable, if streamable then "true" else "false"))
 
     resource.contentMeta.foreach(meta => solrInputDocument.addField(FieldNames.metaToolName, meta.toolName))
 
@@ -123,9 +126,13 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
     val metaToolName       = Option(document.getFieldValue(FieldNames.metaToolName)).map(_.asInstanceOf[String])
     val tags               = Option(document.getFieldValues(FieldNames.tags)).map(_.asInstanceOf[java.util.List[String]].asScala).getOrElse(List.empty).toSet
     val userId             = document.getFieldValue(FieldNames.userId).asInstanceOf[String]
-    val streamability      = Option(document.getFieldValue(FieldNames.streamable))
+    val streamable         = Option(document.getFieldValue(FieldNames.streamable))
       .map(_.asInstanceOf[String])
-      .flatMap(name => Streamability.values.find(_.configName == name))
+      .flatMap {
+        case "true"  => Some(true)
+        case "false" => Some(false)
+        case _       => None
+      }
 
     val contentProperties: Option[ContentProperties] = resourceType match {
 
@@ -153,7 +160,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
       description        = description,
       tags               = tags,
       thumbnailTimestamp = thumbnailTimestamp,
-      streamability      = streamability
+      streamable         = streamable
     )
   }
 
@@ -191,12 +198,13 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
         val escapedBuckets = query.excludeBuckets.map(ClientUtils.escapeQueryChars)
         sb.append(s" AND -${FieldNames.bucketId}:(${escapedBuckets.mkString(" OR ")})")
 
+      if query.includeBuckets.nonEmpty then
+        val escapedBuckets = query.includeBuckets.map(ClientUtils.escapeQueryChars)
+        sb.append(s" AND ${FieldNames.bucketId}:(${escapedBuckets.mkString(" OR ")})")
+
       if query.untagged.contains(true) then sb.append(s" AND -${FieldNames.tags}:[* TO *]")
 
-      query.streamable.foreach { streamable =>
-        val name = if streamable then Streamability.Streamable.configName else Streamability.NotStreamable.configName
-        sb.append(s" AND ${FieldNames.streamable}:$name")
-      }
+      query.streamable.foreach(streamable => sb.append(s" AND ${FieldNames.streamable}:$streamable"))
 
       if query.resolutionRange.min.isDefined || query.resolutionRange.max.isDefined then
         sb.append(s" AND ${FieldNames.width}:[${query.resolutionRange.min.getOrElse(0)} TO ${query.resolutionRange.max.getOrElse("*")}]")
@@ -308,6 +316,19 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
       logger.info("Forcing commit")
       solr.commit(collectionName)
     }
+
+  override def searchAll(query: Query): fs2.Stream[IO, ResourceInfo] = {
+    val pageSize = math.max(1, query.n)
+
+    def page(offset: Int): fs2.Stream[IO, ResourceInfo] =
+      fs2.Stream.eval(searchMedia(query.copy(offset = Some(offset)))).flatMap { result =>
+        val results = fs2.Stream.emits(result.results)
+        if result.results.isEmpty || offset + result.results.size >= result.total then results
+        else results ++ page(offset + pageSize)
+      }
+
+    page(query.offset.getOrElse(0))
+  }
 
   override def deleteBucket(bucketId: BucketId): IO[Unit] =
     loggingFailureIO {

@@ -8,16 +8,16 @@ case class ResourceInfo(
   userId: UserId,
   path: String,
   size: Long,
-  partialHash: Option[String]          = None,
-  contentType: Option[String]          = None,
-  contentMeta: Option[ResourceMeta]    = None,
-  timeAdded: Option[Long]              = None,
-  timeLastModified: Option[Long]       = None,
-  title: Option[String]                = None,
-  description: Option[String]          = None,
-  tags: Set[String]                    = Set.empty,
-  thumbnailTimestamp: Option[Int]      = None,
-  streamability: Option[Streamability] = None
+  partialHash: Option[String]       = None,
+  contentType: Option[String]       = None,
+  contentMeta: Option[ResourceMeta] = None,
+  timeAdded: Option[Long]           = None,
+  timeLastModified: Option[Long]    = None,
+  title: Option[String]             = None,
+  description: Option[String]       = None,
+  tags: Set[String]                 = Set.empty,
+  thumbnailTimestamp: Option[Int]   = None,
+  streamable: Option[Boolean]       = None
 ) {
 
   def basicContentProperties: Option[ContentProperties] = contentMeta.map(_.properties)

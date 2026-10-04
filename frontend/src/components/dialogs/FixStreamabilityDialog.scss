@@ -1,0 +1,27 @@
+@use '../../App' as *;
+
+.fix-streamability-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+
+  p {
+    margin: 0;
+  }
+
+  .fix-streamability-note {
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+}
+
+.fix-streamability-error {
+  color: var(--danger-text);
+  font-size: 14px;
+}
+
+.fix-streamability-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-6);
+}

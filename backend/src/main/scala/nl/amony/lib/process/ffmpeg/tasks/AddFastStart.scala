@@ -12,9 +12,9 @@ trait AddFastStart:
 
   self: ProcessRunner =>
 
-  def addFastStart(video: Path, container: VideoContainer): IO[Path] =
+  def addFastStart(video: Path, container: VideoContainer, outputFile: Option[Path] = None): IO[Path] =
 
-    val out = s"${video.stripExtension()}-faststart.${container.extension}"
+    val out = outputFile.getOrElse(Path.of(s"${video.stripExtension()}-faststart.${container.extension}"))
 
     // MP4 faststart moves the moov atom to the front, Matroska/WebM moves the Cues (its index) to the front.
     val containerArgs = container match
@@ -22,6 +22,6 @@ trait AddFastStart:
       case VideoContainer.Webm     => List("-f", "webm", "-cues_to_front", "1")
       case VideoContainer.Matroska => List("-f", "matroska", "-cues_to_front", "1")
 
-    val args = List("-v", "error", "-i", video.absoluteFileName(), "-c", "copy", "-map", "0") ++ containerArgs ++ List("-y", out)
+    val args = List("-v", "error", "-i", video.absoluteFileName(), "-c", "copy", "-map", "0") ++ containerArgs ++ List("-y", out.absoluteFileName())
 
-    runIgnoreOutput("ffmpeg-add-faststart", Command("ffmpeg", args)).map(_ => Path.of(out))
+    runIgnoreOutput("ffmpeg-add-faststart", Command("ffmpeg", args)).map(_ => out)

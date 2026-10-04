@@ -5,7 +5,6 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
 import cats.effect.IO
-import io.circe.{Codec, Decoder, Encoder}
 
 /**
  * Whether a video's container is laid out so a browser can start playing it without first reading the end of the
@@ -13,17 +12,10 @@ import io.circe.{Codec, Decoder, Encoder}
  *
  * `Unknown` means the layout could not be determined (unsupported, truncated or corrupt file).
  */
-enum Streamability(val configName: String):
-  case Streamable    extends Streamability("streamable")
-  case NotStreamable extends Streamability("not_streamable")
-  case Unknown       extends Streamability("unknown")
+enum Streamability:
+  case Streamable, NotStreamable, Unknown
 
 object Streamability:
-
-  given Codec[Streamability] = Codec.from(
-    Decoder.decodeString.emap(name => values.find(_.configName == name).toRight(s"Unknown streamability: $name")),
-    Encoder.encodeString.contramap(_.configName)
-  )
 
   private val Mp4BoxTypes = Set("ftyp", "moov", "mdat", "moof", "free", "skip", "wide", "styp", "sidx", "pnot", "uuid")
 

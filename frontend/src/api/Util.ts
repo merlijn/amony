@@ -113,6 +113,7 @@ export function resourceSelectionToParams(selection: ResourceSelection, offset: 
     q: selection.query,
     tag: selection.untagged ? undefined : selection.tag,
     untagged: selection.untagged || undefined,
+    streamable: selection.streamable,
     sort: sort,
     min_res: selection.minimumQuality,
     d: duration ? rangeAsParameter([duration[0] ? duration[0] * 1000 : duration[0], duration[1] ? duration[1] * 1000 : duration[1]]) : undefined,
