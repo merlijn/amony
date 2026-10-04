@@ -33,6 +33,16 @@ trait FFProbe extends Logging:
     }.timeout(defaultProbeTimeout).memoize.flatten
 
   def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration = defaultProbeTimeout): IO[(FFProbeOutput, Json)] =
+    runFFProbe(file, debug, timeout).recoverWith {
+      case error if debug =>
+        logger.warn(
+          s"ffprobe with debug output failed for '${file.toAbsolutePath.normalize()}', retrying without debug output (faststart info will be missing)",
+          error
+        )
+        runFFProbe(file, debug = false, timeout)
+    }
+
+  private def runFFProbe(file: Path, debug: Boolean, timeout: FiniteDuration): IO[(FFProbeOutput, Json)] =
     ffprobeVersion.flatMap { version =>
       val fileName = file.toAbsolutePath.normalize().toString
       val v        = if debug then "debug" else "quiet"
