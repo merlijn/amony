@@ -1,27 +1,11 @@
 package nl.amony.modules.auth.api
 
-import scala.concurrent.duration.DurationInt
-
 import org.scalatest.wordspec.AnyWordSpecLike
-
-import nl.amony.modules.auth.{AuthConfig, HS256Config, JwtConfig, RoleAccessConfig}
 
 class ApiSecuritySpec extends AnyWordSpecLike {
 
-  private def authConfig(requireLogin: Boolean = false) = AuthConfig(
-    enabled           = true,
-    requireLogin      = requireLogin,
-    jwt               = JwtConfig(15.minutes, 7.days, HS256Config("test-secret-key")),
-    secureCookies     = false,
-    identityProviders = Nil,
-    accessControl     = Map(
-      Role.Anonymous     -> RoleAccessConfig(Set.empty),
-      Role.Authenticated -> RoleAccessConfig(Set.empty)
-    )
-  )
-
-  private val noLogin       = new ApiSecurity(authConfig())
-  private val loginRequired = new ApiSecurity(authConfig(requireLogin = true))
+  private val noLogin       = TestApiSecurity.apply()
+  private val loginRequired = TestApiSecurity.apply(requireLogin = true)
 
   "ApiSecurity" when {
 
