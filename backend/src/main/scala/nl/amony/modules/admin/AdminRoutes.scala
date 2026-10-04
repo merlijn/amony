@@ -8,7 +8,7 @@ import sttp.tapir.*
 import nl.amony.lib.tapir.dsl.error.ErrorResponse
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic}
 import nl.amony.modules.auth.api.*
-import nl.amony.modules.resources.api.{BucketId, ResourceBucket, ResourceId, ResourceInfo}
+import nl.amony.modules.resources.api.{BucketId, ResourceBucket, ResourceInfo}
 import nl.amony.modules.resources.http.{ResourceDto, toDto}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.modules.search.api.{Query, SearchService}
@@ -62,13 +62,6 @@ object AdminRoutes extends RoutesModule, Logging:
       .description("Remux all non-streamable resources in a bucket so they can be streamed progressively")
       .post.in("api" / "admin" / "fix-non-streamable")
       .in(query[BucketId]("bucketId").description("The id of the bucket to fix."))
-      .securityIn(securityInput)
-      .errorOut(errorOutput))
-
-  val fixResourceStreamable =
-    register(endpoint.name("adminFixResourceStreamable").tag("admin")
-      .description("Remux a single non-streamable resource so it can be streamed progressively")
-      .post.in("api" / "admin" / "fix-streamability" / path[BucketId]("bucketId") / path[ResourceId]("resourceId"))
       .securityIn(securityInput)
       .errorOut(errorOutput))
 
@@ -165,16 +158,6 @@ object AdminRoutes extends RoutesModule, Logging:
             IO(logger.info(s"Cannot normalize non-streamable resources in bucket '$bucketId'"))
 
         result.map(Right(_))
-      }
-
-      serverLogic(endpoint = fixResourceStreamable, requiredPermission = Permission.Admin) { _ => (bucketId, resourceId) =>
-        buckets.get(bucketId) match
-          case Some(bucket: LocalDirectoryBucket) =>
-            logger.info(s"Normalizing resource '$resourceId' in bucket '$bucketId'")
-            bucket.fixStreamability(resourceId).as(Right(()))
-          case _                                  =>
-            logger.info(s"Cannot normalize resource '$resourceId' in bucket '$bucketId'")
-            IO.pure(Right(()))
       }
 
       serverLogic(endpoint = exportBucket, requiredPermission = Permission.Admin) { _ => bucketId =>

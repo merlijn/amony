@@ -3,6 +3,7 @@ package nl.amony.modules.resources.http
 import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.*
+import scribe.Logging
 import sttp.capabilities.fs2.Fs2Streams
 import sttp.model.HeaderNames
 import sttp.tapir.*
@@ -13,10 +14,11 @@ import nl.amony.lib.tapir.dsl.error.{BadRequestError, ErrorResponse, NotFoundErr
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.{BucketId, Resource, ResourceBucket, ResourceId, UploadError}
+import nl.amony.modules.resources.local.LocalDirectoryBucket
 
 val errorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError] = ErrorResponse.standardErrorOutput
 
-object ResourceRoutes extends RoutesModule:
+object ResourceRoutes extends RoutesModule, Logging:
 
   val getBuckets =
     register(endpoint
@@ -51,6 +53,12 @@ object ResourceRoutes extends RoutesModule:
     register(endpoint
       .name("deleteResource").tag("resources").description("Delete a resource by its id")
       .delete.in("api" / "resources" / path[BucketId]("bucketId") / path[ResourceId]("resourceId"))
+      .securityIn(securityInput).errorOut(errorOutput))
+
+  val fixResourceStreamable: Endpoint[SecurityInput, (BucketId, ResourceId), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
+    register(endpoint
+      .name("fixResourceStreamable").tag("resources").description("Remux a non-streamable resource so it can be streamed progressively")
+      .post.in("api" / "resources" / path[BucketId]("bucketId") / path[ResourceId]("resourceId") / "fix-streamability")
       .securityIn(securityInput).errorOut(errorOutput))
 
   val modifyTagsBulk: Endpoint[SecurityInput, (BucketId, BulkTagsUpdateDto), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
@@ -107,6 +115,16 @@ object ResourceRoutes extends RoutesModule:
           bucket <- getVisibleBucket(auth, bucketId)
           _      <- EitherT.right(bucket.deleteResource(resourceId))
         yield ()
+      }
+
+      serverLogic(endpoint = fixResourceStreamable, requiredPermission = Permission.Admin) { _ => (bucketId, resourceId) =>
+        buckets.get(bucketId) match
+          case Some(bucket: LocalDirectoryBucket) =>
+            logger.info(s"Normalizing resource '$resourceId' in bucket '$bucketId'")
+            bucket.fixStreamability(resourceId).as(Right(()))
+          case _                                  =>
+            logger.info(s"Cannot normalize resource '$resourceId' in bucket '$bucketId'")
+            IO.pure(Right(()))
       }
 
       serverLogicT(endpoint = updateUserMetaData, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId, userMeta) =>

@@ -1,5 +1,5 @@
-import {useState} from "react"
-import {adminFixResourceStreamable, ResourceDto} from "../../api/generated"
+import {useState, useTransition} from "react"
+import {fixResourceStreamable, ResourceDto} from "../../api/generated"
 import * as RadixDialog from "@radix-ui/react-dialog"
 import "../common/Dialog.scss"
 import DialogContainer from "../common/DialogWindow"
@@ -14,26 +14,24 @@ type FixStreamabilityDialogProps = {
 }
 
 const FixStreamabilityDialog = ({resource, visible, onFixed, onHide}: FixStreamabilityDialogProps) => {
-  const [isFixing, setIsFixing] = useState(false)
+  const [isFixing, startFixing] = useTransition()
   const [error, setError] = useState<string | undefined>(undefined)
   const emitter = useEventBus()
 
   const handleFix = () => {
     if (!resource) return
 
-    setIsFixing(true)
     setError(undefined)
 
-    adminFixResourceStreamable(resource.bucketId, resource.resourceId)
-      .then(() => {
-        setIsFixing(false)
+    startFixing(async () => {
+      try {
+        await fixResourceStreamable(resource.bucketId, resource.resourceId)
         emitter.emit('resource-updated', resource)
         onFixed(resource)
-      })
-      .catch(() => {
+      } catch {
         setError("Failed to fix this resource. It may use an unsupported container or codec.")
-        setIsFixing(false)
-      })
+      }
+    })
   }
 
   const handleHide = () => {

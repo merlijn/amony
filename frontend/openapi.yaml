@@ -340,6 +340,66 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/resources/{bucketId}/{resourceId}/fix-streamability:
+    post:
+      tags:
+      - resources
+      description: Remux a non-streamable resource so it can be streamed progressively
+      operationId: fixResourceStreamable
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/resources/{bucketId}/bulk/tags:
     post:
       tags:
@@ -879,60 +939,6 @@ paths:
           description: ''
         '400':
           description: 'Invalid value, Invalid value for: query parameter bucketId'
-          content:
-            text/plain:
-              schema:
-                type: string
-        '401':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '403':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-  /api/admin/fix-streamability/{bucketId}/{resourceId}:
-    post:
-      tags:
-      - admin
-      description: Remux a single non-streamable resource so it can be streamed progressively
-      operationId: adminFixResourceStreamable
-      parameters:
-      - name: access_token
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: XSRF-TOKEN
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: bucketId
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: resourceId
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: ''
-        '400':
-          description: Invalid value
           content:
             text/plain:
               schema:
