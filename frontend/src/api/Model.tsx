@@ -14,7 +14,8 @@ export type MediaView = 'grid' | 'list'
 
 export type Resolution = {
   value: number,
-  label: string
+  label: string,
+  qualityLabel?: string
 }
 
 export type SortField = 'title' | 'date_added' | 'duration' | 'size'
