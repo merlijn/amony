@@ -86,7 +86,7 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
 
   /** Whether `authToken` may access a bucket that requires `requiredRole`. Admins bypass the check. */
   def canAccessBucket(authToken: AuthToken, requiredRole: Option[Role]): Boolean =
-    ApiSecurity.canAccessBucket(authToken, requiredRole)
+    ApiSecurity.canAccessBucket(authToken, requiredRole, isLoginRequired)
 
   def createCookies(apiAuthentication: Authentication): AuthCookies = {
     val accessTokenCookie = CookieValueWithMeta.unsafeApply(
@@ -154,8 +154,9 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
 object ApiSecurity:
 
   /** Whether `authToken` may access a bucket that requires `requiredRole`. Admins bypass the check. */
-  def canAccessBucket(authToken: AuthToken, requiredRole: Option[Role]): Boolean =
-    authToken.roles.contains(Role.Admin) || requiredRole.forall(authToken.roles.contains)
+  def canAccessBucket(authToken: AuthToken, requiredRole: Option[Role], loginRequired: Boolean): Boolean =
+    !(loginRequired && authToken.isAnonymous) &&
+      (authToken.roles.contains(Role.Admin) || requiredRole.forall(authToken.roles.contains))
 
   /** Whether `host` is one of the hosts the backend accepts (see `allowed-hosts`). */
   def isAllowedHost(allowedHosts: List[String], host: String): Boolean =
