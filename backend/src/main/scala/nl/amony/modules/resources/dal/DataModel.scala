@@ -8,7 +8,7 @@ import skunk.codec.all.{int4, timestamptz, uuid, varchar}
 import skunk.implicits.sql
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, ResourceMeta}
+import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, ResourceMeta, Streamability}
 
 val instantCodec: Codec[Instant] = timestamptz.imap(_.toInstant)(_.atOffset(ZoneOffset.UTC))
 
@@ -27,7 +27,8 @@ case class ResourceRow(
   time_last_modified: Option[Instant],
   title: Option[String],
   description: Option[String],
-  thumbnail_timestamp: Option[Int] = None
+  thumbnail_timestamp: Option[Int]     = None,
+  streamability: Option[Streamability] = None
 ) derives io.circe.Codec {
 
   def toResource(tagLabels: Set[String]): ResourceInfo = {
@@ -45,7 +46,8 @@ case class ResourceRow(
       timeLastModified   = time_last_modified.map(_.toEpochMilli),
       title              = title,
       description        = description,
-      thumbnailTimestamp = thumbnail_timestamp
+      thumbnailTimestamp = thumbnail_timestamp,
+      streamability      = streamability
     )
   }
 }
@@ -53,7 +55,7 @@ case class ResourceRow(
 object ResourceRow {
 
   val columns =
-    sql"r.bucket_id, r.resource_id, r.user_id, r.partial_hash, r.size, r.content_type, r.content_meta_tool_name, r.content_meta_tool_data, r.fs_path, r.time_added, r.time_last_modified, r.title, r.description, r.thumbnail_timestamp"
+    sql"r.bucket_id, r.resource_id, r.user_id, r.partial_hash, r.size, r.content_type, r.content_meta_tool_name, r.content_meta_tool_data, r.fs_path, r.time_added, r.time_last_modified, r.title, r.description, r.thumbnail_timestamp, r.streamability"
 
   def fromResource(resource: ResourceInfo): ResourceRow = ResourceRow(
     bucket_id              = resource.bucketId,
@@ -70,7 +72,8 @@ object ResourceRow {
     time_last_modified     = resource.timeLastModified.map(Instant.ofEpochMilli),
     title                  = resource.title,
     description            = resource.description,
-    thumbnail_timestamp    = resource.thumbnailTimestamp
+    thumbnail_timestamp    = resource.thumbnailTimestamp,
+    streamability          = resource.streamability
   )
 }
 

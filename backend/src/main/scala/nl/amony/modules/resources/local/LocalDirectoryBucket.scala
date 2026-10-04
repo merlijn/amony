@@ -66,12 +66,15 @@ class LocalDirectoryBucket(
           IO.unit
         case Some((contentType, meta)) =>
           logger.info(s"Updating metadata for $resourcePath")
-          val updated = resource.copy(
-            contentType = Some(contentType),
-            contentMeta = Some(meta)
-          )
+          streamabilityOf(resourcePath, Some(contentType)).flatMap { streamability =>
+            val updated = resource.copy(
+              contentType   = Some(contentType),
+              contentMeta   = Some(meta),
+              streamability = streamability
+            )
 
-          db.upsertResource(updated) >> topic.publish(ResourceUpdated(updated))
+            db.upsertResource(updated) >> topic.publish(ResourceUpdated(updated))
+          }
   }.compile.drain
 
   def updateFileSystemMetaData(): IO[Unit] = getAllResources.evalMap {

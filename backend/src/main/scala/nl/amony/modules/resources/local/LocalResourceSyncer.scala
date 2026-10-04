@@ -50,20 +50,24 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
   private[local] def newResource(f: FileInfo, userId: UserId): IO[ResourceInfo] =
     meta.apply(f.path).recover {
       case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None
-    }.map { meta =>
-      ResourceInfo(
-        bucketId           = bucketId,
-        resourceId         = config.generateId(),
-        userId             = userId,
-        path               = relativizePath(f.path),
-        partialHash        = Some(f.partialHash),
-        size               = f.size,
-        contentType        = meta.map(_.contentType),
-        contentMeta        = meta.map(_.meta),
-        timeAdded          = Some(Instant.now().toEpochMilli),
-        timeLastModified   = Some(f.modifiedTime),
-        thumbnailTimestamp = None
-      )
+    }.flatMap { maybeMeta =>
+      val contentType = maybeMeta.map(_.contentType)
+      streamabilityOf(f.path, contentType).map { streamability =>
+        ResourceInfo(
+          bucketId           = bucketId,
+          resourceId         = config.generateId(),
+          userId             = userId,
+          path               = relativizePath(f.path),
+          partialHash        = Some(f.partialHash),
+          size               = f.size,
+          contentType        = contentType,
+          contentMeta        = maybeMeta.map(_.meta),
+          timeAdded          = Some(Instant.now().toEpochMilli),
+          timeLastModified   = Some(f.modifiedTime),
+          thumbnailTimestamp = None,
+          streamability      = streamability
+        )
+      }
     }
 
   private def toFileStore(): IO[FileStore] =

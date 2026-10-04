@@ -214,8 +214,8 @@ object Queries extends Logging {
     val upsert: Command[Json] = sql"""
         INSERT INTO resources SELECT * FROM json_populate_record(NULL::resources, $json)
         ON CONFLICT (bucket_id, resource_id) DO UPDATE
-        SET(user_id, partial_hash, size, content_type, content_meta_tool_name, content_meta_tool_data, fs_path, time_added, time_created, time_last_modified, title, description, thumbnail_timestamp) =
-        (EXCLUDED.user_id, EXCLUDED.partial_hash, EXCLUDED.size, EXCLUDED.content_type, EXCLUDED.content_meta_tool_name, EXCLUDED.content_meta_tool_data, EXCLUDED.fs_path, EXCLUDED.time_added, EXCLUDED.time_created, EXCLUDED.time_last_modified, EXCLUDED.title, EXCLUDED.description, EXCLUDED.thumbnail_timestamp)
+        SET(user_id, partial_hash, size, content_type, content_meta_tool_name, content_meta_tool_data, fs_path, time_added, time_created, time_last_modified, title, description, thumbnail_timestamp, streamability) =
+        (EXCLUDED.user_id, EXCLUDED.partial_hash, EXCLUDED.size, EXCLUDED.content_type, EXCLUDED.content_meta_tool_name, EXCLUDED.content_meta_tool_data, EXCLUDED.fs_path, EXCLUDED.time_added, EXCLUDED.time_created, EXCLUDED.time_last_modified, EXCLUDED.title, EXCLUDED.description, EXCLUDED.thumbnail_timestamp, EXCLUDED.streamability)
       """.command
 
     val bucketCount: Query[String, Int] = sql"select count(*) from resources where bucket_id = $varchar".query(int4)
