@@ -56,6 +56,7 @@ npx prettier --write --prose-wrap always --print-width 120 "**/*.md"
 - Commit messages should be a single sentence of 72 characters maximum, followed by a blank line and this trailer:
   Co-authored-by: opencode-agent[bot] <219766164+opencode-agent[bot]@users.noreply.github.com>
 - Use conventional commit style
+- PR titles should also follow conventional commit style, single sentence, max 72 characters
 - Do NOT push on the main branch, unless explicitly asked
 - Do NOT force push on ANY branch, unless explicitly asked
 - Do NOT amend commits, unless explicitly asked
