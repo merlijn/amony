@@ -45,8 +45,9 @@ export function formatByteSize(bytes: number, decimals: number = 2) {
 
 export function labelForResolution(height: number) {
   const matches = Constants.resolutions.filter((e) => height >= e.value)
+  const match = matches[matches.length-1]
 
-  return matches[matches.length-1].label
+  return match.qualityLabel ?? match.label
 }
 
 export function durationInMillisToString(duration: number) {
