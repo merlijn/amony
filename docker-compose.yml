@@ -150,27 +150,31 @@ services:
     command: ["dex", "serve", "/etc/dex/config.yaml.tmpl"]
 
   # Trial identity provider (Zitadel). Enable with: docker compose --profile zitadel up -d
-  # First run initializes the schema, which takes a while; later starts are fast. The console is at
+  # It reuses the shared Postgres server, in its own "zitadel" database. The first run initializes
+  # the schema, which takes a while; later starts are fast. The console is at
   # http://localhost:8080/ui/console (login: zitadel-admin / ZITADEL_ADMIN_PASSWORD).
   # Point the app at it by setting the AMONY_OAUTH_* / AMONY_OAUTH_PROVIDER_TYPE variables in .env
   # (see .env.example) and register the redirect URI http://localhost:8182/api/auth/callback/<name>.
-  zitadel-db:
+  #
+  # Creates the "zitadel" database on the shared server if it is missing. Postgres has no
+  # CREATE DATABASE IF NOT EXISTS, and init scripts only run for a fresh data directory.
+  zitadel-db-init:
     image: postgres:17.2
-    container_name: zitadel-postgres
+    container_name: zitadel-db-init
     profiles:
       - zitadel
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
-      POSTGRES_DB: "zitadel"
-      POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: ${ZITADEL_DB_PASSWORD:-postgres}
-    volumes:
-      - ${AMONY_DATA:-./data}/zitadel-postgres:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "zitadel"]
-      interval: 3s
-      timeout: 3s
-      retries: 5
-    restart: unless-stopped
+      PGHOST: postgres
+      PGUSER: ${DATABASE_USERNAME:-postgres}
+      PGPASSWORD: ${DATABASE_PASSWORD:-changeme}
+      PGDATABASE: postgres
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - psql -tAc "SELECT 1 FROM pg_database WHERE datname='zitadel'" | grep -q 1 || psql -v ON_ERROR_STOP=1 -c "CREATE DATABASE zitadel"
+    restart: "no"
 
   zitadel:
     image: ghcr.io/zitadel/zitadel:${ZITADEL_VERSION:-v4.15.3}
@@ -180,8 +184,10 @@ services:
     # Zitadel writes its data into the container filesystem; the upstream compose also runs it as root.
     user: "0"
     depends_on:
-      zitadel-db:
+      postgres:
         condition: service_healthy
+      zitadel-db-init:
+        condition: service_completed_successfully
     ports:
       - "127.0.0.1:8080:8080"
     environment:
@@ -190,7 +196,7 @@ services:
       ZITADEL_EXTERNALPORT: ${ZITADEL_EXTERNAL_PORT:-8080}
       ZITADEL_EXTERNALSECURE: "false"
       ZITADEL_TLS_ENABLED: "false"
-      ZITADEL_DATABASE_POSTGRES_DSN: "postgresql://postgres:${ZITADEL_DB_PASSWORD:-postgres}@zitadel-db:5432/zitadel?sslmode=disable"
+      ZITADEL_DATABASE_POSTGRES_DSN: "postgresql://${DATABASE_USERNAME:-postgres}:${DATABASE_PASSWORD:-changeme}@postgres:5432/zitadel?sslmode=disable"
       # Login V2 needs a separate container; the bundled legacy login keeps the trial single-container.
       ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "false"
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: ${ZITADEL_ADMIN_PASSWORD:-Password1!}
