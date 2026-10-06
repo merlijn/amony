@@ -111,8 +111,8 @@ jobs:
           git fetch --prune origin
           git checkout "$DEPLOY_REF"
           git pull --ff-only
-          docker compose $COMPOSE_FILES pull amony
-          docker compose $COMPOSE_FILES up -d
+          docker compose $COMPOSE_FILES --profile dex pull amony
+          docker compose $COMPOSE_FILES --profile dex up -d
           docker image prune -f
           REMOTE
 

@@ -67,3 +67,12 @@ databaseChangeLog:
             path: db/07-streamability.sql
             splitStatements: true
             endDelimiter: ";"
+  - changeSet:
+      id: 8
+      author: merlijn
+      context: auth
+      changes:
+        - sqlFile:
+            path: db/08-drop-user-roles.sql
+            splitStatements: true
+            endDelimiter: ";"

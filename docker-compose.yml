@@ -122,9 +122,12 @@ services:
       - ${AMONY_DATA:-./data}/solr:/app/data/solr
     restart: "no"
 
+  # Local/demo identity provider (Dex). Enable with: docker compose --profile dex up -d
   auth:
     image: dexidp/dex:latest
     container_name: auth
+    profiles:
+      - dex
     restart: unless-stopped
     ports:
       - "127.0.0.1:5556:5556"
@@ -145,3 +148,57 @@ services:
     volumes:
       - ./docker/dex/config.yaml.tmpl:/etc/dex/config.yaml.tmpl:ro
     command: ["dex", "serve", "/etc/dex/config.yaml.tmpl"]
+
+  # Trial identity provider (Zitadel). Enable with: docker compose --profile zitadel up -d
+  # First run initializes the schema, which takes a while; later starts are fast. The console is at
+  # http://localhost:8080/ui/console (login: zitadel-admin / ZITADEL_ADMIN_PASSWORD).
+  # Point the app at it by setting the AMONY_OAUTH_* / AMONY_OAUTH_PROVIDER_TYPE variables in .env
+  # (see .env.example) and register the redirect URI http://localhost:8182/api/auth/callback/<name>.
+  zitadel-db:
+    image: postgres:17.2
+    container_name: zitadel-postgres
+    profiles:
+      - zitadel
+    environment:
+      POSTGRES_DB: "zitadel"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: ${ZITADEL_DB_PASSWORD:-postgres}
+    volumes:
+      - ${AMONY_DATA:-./data}/zitadel-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "zitadel"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:${ZITADEL_VERSION:-v4.15.3}
+    container_name: zitadel
+    profiles:
+      - zitadel
+    # Zitadel writes its data into the container filesystem; the upstream compose also runs it as root.
+    user: "0"
+    depends_on:
+      zitadel-db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      ZITADEL_PORT: "8080"
+      ZITADEL_EXTERNALDOMAIN: ${ZITADEL_EXTERNAL_DOMAIN:-localhost}
+      ZITADEL_EXTERNALPORT: ${ZITADEL_EXTERNAL_PORT:-8080}
+      ZITADEL_EXTERNALSECURE: "false"
+      ZITADEL_TLS_ENABLED: "false"
+      ZITADEL_DATABASE_POSTGRES_DSN: "postgresql://postgres:${ZITADEL_DB_PASSWORD:-postgres}@zitadel-db:5432/zitadel?sslmode=disable"
+      # Login V2 needs a separate container; the bundled legacy login keeps the trial single-container.
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "false"
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: ${ZITADEL_ADMIN_PASSWORD:-Password1!}
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED: "false"
+    command:
+      - start-from-init
+      - --masterkey
+      - ${ZITADEL_MASTERKEY:-MasterkeyNeedsToHave32Characters}
+      - --tlsMode
+      - disabled
+    restart: unless-stopped

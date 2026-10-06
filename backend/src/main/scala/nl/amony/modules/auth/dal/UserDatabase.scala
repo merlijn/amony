@@ -17,8 +17,8 @@ class UserDatabase(pool: Resource[IO, Session[IO]]) extends Logging:
 
   private val insertQuery: skunk.Command[UserRow] =
     sql"""
-      INSERT INTO users (id, email, auth_provider, auth_subject, time_registered, roles)
-      VALUES (${varchar(64)}, ${varchar(64)}, ${varchar(64)}, ${varchar(64)}, $timestamptz, $_varchar)
+      INSERT INTO users (id, email, auth_provider, auth_subject, time_registered)
+      VALUES (${varchar(64)}, ${varchar(64)}, ${varchar(64)}, ${varchar(64)}, $timestamptz)
     """.command.to[UserRow]
 
   def getById(userId: String): IO[Option[UserRow]] =

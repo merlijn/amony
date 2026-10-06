@@ -10,16 +10,37 @@ import pdi.jwt.{JwtAlgorithm, JwtCirce, JwtClaim}
 import pureconfig.*
 import pureconfig.error.CannotConvert
 import pureconfig.generic.FieldCoproductHint
+import pureconfig.generic.derivation.EnumConfigReader
 import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
 import sttp.model.Uri
 
-import nl.amony.modules.auth.api.{AuthToken, JwtDecoder, Permission, Role}
+import nl.amony.modules.auth.api.{AuthToken, JwtDecoder, Permission, Role, RolesFrom}
 
 given ConfigReader[Uri] = ConfigReader.fromString[Uri](str => Uri.parse(str).left.map(err => CannotConvert(str, "Uri", err)))
 
 case class RoleAccessConfig(
   permissions: Set[Permission]
 ) derives ConfigReader
+
+/**
+ * A named identity provider preset. It only supplies defaults for how the roles claim is read from
+ * the userinfo response; `roles-claim` and `roles-from` on the provider override them.
+ */
+enum ProviderType derives EnumConfigReader:
+  case Generic, Dex, Keycloak, Zitadel, Casdoor
+
+object ProviderType:
+
+  def defaultRolesClaim(providerType: ProviderType): Option[String] = providerType match
+    case ProviderType.Generic  => None
+    case ProviderType.Dex      => Some("groups")
+    case ProviderType.Keycloak => Some("realm_access.roles")
+    case ProviderType.Zitadel  => Some("urn:zitadel:iam:org:project:roles")
+    case ProviderType.Casdoor  => Some("roles")
+
+  def defaultRolesFrom(providerType: ProviderType): RolesFrom = providerType match
+    case ProviderType.Zitadel => RolesFrom.ObjectKeys
+    case _                    => RolesFrom.Array
 
 case class IdentityProvider(
   name: String,
@@ -30,12 +51,24 @@ case class IdentityProvider(
   userInfoUrl: Uri,
   // Optional OIDC end-session endpoint (RP-Initiated Logout). When set, logout redirects the
   // browser there so the upstream identity provider session is ended as well.
-  endSessionUrl: Option[Uri] = None,
-  scopes: List[String]       = List("openid", "profile", "email"),
-  defaultRoles: Set[Role]    = Set.empty,
+  endSessionUrl: Option[Uri]   = None,
+  scopes: List[String]         = List("openid", "profile", "email"),
+  // Roles assigned when the provider supplies none through a roles claim. Keep this empty (or a
+  // low-privilege role) in production: with a claim configured, absent roles fall back to these.
+  defaultRoles: Set[Role]      = Set.empty,
   // When true the provider is not listed by /api/auth/identity-providers. Used for internal/admin-only providers.
-  adminOnly: Option[Boolean] = None
-) derives ConfigReader
+  adminOnly: Option[Boolean]   = None,
+  // Preset supplying defaults for the two fields below; see ProviderType.
+  providerType: ProviderType   = ProviderType.Generic,
+  // Dot-path to the roles claim in the userinfo response, e.g. "realm_access.roles" or "groups".
+  rolesClaim: Option[String]   = None,
+  // How to interpret the roles claim value.
+  rolesFrom: Option[RolesFrom] = None
+) derives ConfigReader:
+
+  def effectiveRolesClaim: Option[String] = rolesClaim.orElse(ProviderType.defaultRolesClaim(providerType))
+
+  def effectiveRolesFrom: RolesFrom = rolesFrom.getOrElse(ProviderType.defaultRolesFrom(providerType))
 
 case class AuthConfig(
   enabled: Boolean,
