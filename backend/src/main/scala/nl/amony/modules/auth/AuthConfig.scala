@@ -63,7 +63,11 @@ case class IdentityProvider(
   // Dot-path to the roles claim in the userinfo response, e.g. "realm_access.roles" or "groups".
   rolesClaim: Option[String]   = None,
   // How to interpret the roles claim value.
-  rolesFrom: Option[RolesFrom] = None
+  rolesFrom: Option[RolesFrom] = None,
+  // Extra headers sent on the server-side token and userinfo requests (not the browser redirect).
+  // Needed when the app reaches the provider under a host that differs from its public domain, e.g.
+  // Zitadel's `X-Zitadel-Instance-Host: <public-host>`.
+  headers: Map[String, String] = Map.empty
 ) derives ConfigReader:
 
   def effectiveRolesClaim: Option[String] = rolesClaim.orElse(ProviderType.defaultRolesClaim(providerType))

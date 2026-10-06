@@ -90,7 +90,7 @@ services:
     entrypoint: ["/scripts/backup-entrypoint.sh"]
 
   amony:
-    image: ghcr.io/merlijn/amony-app:latest
+    image: ghcr.io/merlijn/amony-app:dev
     container_name: amony-app
     depends_on:
       postgres:
