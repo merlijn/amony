@@ -24,8 +24,11 @@ def effectiveHost(xForwardedHost: Option[String], host: Option[String]): String 
 case class RequestOrigin(scheme: String, host: String):
   def callbackUri(provider: String): String = s"$scheme://$host/api/auth/callback/$provider"
 
-  /** The origin the client is on, used as `post_logout_redirect_uri` for federated logout. */
-  def rootUri: String = s"$scheme://$host/"
+  /**
+   * The client's origin, used as `post_logout_redirect_uri` for federated logout. It must match a
+   * registered post-logout redirect URI exactly, so it deliberately carries no trailing slash.
+   */
+  def rootUri: String = s"$scheme://$host"
 
 val requestOrigin: EndpointInput[RequestOrigin] =
   extractFromRequest { request =>
