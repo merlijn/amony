@@ -72,7 +72,6 @@ jobs:
           DEX_ADMIN_USERNAME: ${{ secrets.DEX_ADMIN_USERNAME }}
           DEX_ADMIN_PASSWORD_HASH: ${{ secrets.DEX_ADMIN_PASSWORD_HASH }}
           DEX_CLIENT_SECRET: ${{ secrets.DEX_CLIENT_SECRET }}
-          ZITADEL_ORG_NAME: ${{ secrets.ZITADEL_ORG_NAME }}
           ZITADEL_ADMIN_USERNAME: ${{ secrets.ZITADEL_ADMIN_USERNAME }}
           ZITADEL_ADMIN_EMAIL: ${{ secrets.ZITADEL_ADMIN_EMAIL }}
           ZITADEL_MASTERKEY: ${{ secrets.ZITADEL_MASTERKEY }}
@@ -91,7 +90,6 @@ jobs:
             printf 'DEX_ADMIN_USERNAME=%s\n' "$DEX_ADMIN_USERNAME"
             printf 'DEX_ADMIN_PASSWORD_HASH=%s\n' "$DEX_ADMIN_PASSWORD_HASH"
             printf 'DEX_CLIENT_SECRET=%s\n' "$DEX_CLIENT_SECRET"
-            printf 'ZITADEL_ORG_NAME=%s\n' "$ZITADEL_ORG_NAME"
             printf 'ZITADEL_ADMIN_USERNAME=%s\n' "$ZITADEL_ADMIN_USERNAME"
             printf 'ZITADEL_ADMIN_EMAIL=%s\n' "$ZITADEL_ADMIN_EMAIL"
             printf 'ZITADEL_MASTERKEY=%s\n' "$ZITADEL_MASTERKEY"
