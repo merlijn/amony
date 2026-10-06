@@ -110,6 +110,10 @@ services:
       AMONY_IDP_AUTHORIZE_URL: ${AMONY_IDP_AUTHORIZE_URL:-http://localhost:5556/dex/auth}
       AMONY_IDP_TOKEN_URL: ${AMONY_IDP_TOKEN_URL:-http://auth:5556/dex/token}
       AMONY_IDP_USERINFO_URL: ${AMONY_IDP_USERINFO_URL:-http://auth:5556/dex/userinfo}
+      # Dex (local development) emits no roles claim, so default a local login to admin. A real
+      # provider supplies roles through the claim and sets this to empty to disable the fallback;
+      # the `-` (not `:-`) form keeps an explicitly empty value.
+      AMONY_IDP_DEFAULT_ROLES: ${AMONY_IDP_DEFAULT_ROLES-admin}
       # Client secrets: an explicit AMONY_* value (e.g. for Zitadel) takes precedence; otherwise the
       # value is shared with Dex so the demo keeps working from a single DEX_* entry in .env.
       AMONY_IDP_CLIENT_SECRET: ${AMONY_IDP_CLIENT_SECRET:-${DEX_CLIENT_SECRET:-amony-dex-secret}}
