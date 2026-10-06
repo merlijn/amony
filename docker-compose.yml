@@ -206,6 +206,8 @@ services:
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_EMAIL_VERIFIED: "true"
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: ${ZITADEL_ADMIN_PASSWORD:-Password1!}
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED: "false"
+      # Self-registration, applied only on first initialisation (like the admin above).
+      ZITADEL_DEFAULTINSTANCE_LOGINPOLICY_ALLOWREGISTER: ${ZITADEL_ALLOW_REGISTER:-false}
     command:
       - start-from-init
       - --masterkey
