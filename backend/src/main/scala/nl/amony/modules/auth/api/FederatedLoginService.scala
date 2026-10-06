@@ -91,7 +91,7 @@ class FederatedLoginService(config: AuthConfig, httpClient: Backend[IO], userDat
 
     val req = sttp.client4.basicRequest
       .post(provider.tokenUrl)
-      .headers(provider.headers)
+      .headers(provider.extraHeaders.values)
       .body(body)
       .response(asJson[OauthTokenResponse])
 
@@ -104,7 +104,7 @@ class FederatedLoginService(config: AuthConfig, httpClient: Backend[IO], userDat
   private def getUserInfo(provider: IdentityProvider, accessToken: String): EitherT[IO, AuthenticationError, Json] = {
     val req = sttp.client4.basicRequest
       .get(provider.userInfoUrl)
-      .headers(provider.headers)
+      .headers(provider.extraHeaders.values)
       .header("Authorization", s"Bearer $accessToken")
       .response(asJson[Json])
 

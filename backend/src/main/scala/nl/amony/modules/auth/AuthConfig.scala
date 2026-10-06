@@ -21,6 +21,39 @@ case class RoleAccessConfig(
   permissions: Set[Permission]
 ) derives ConfigReader
 
+/**
+ * Additional headers sent on the server-side token and userinfo requests (not the browser redirect),
+ * given as a comma-separated list of `Name: Value` pairs. Needed when the app reaches the provider
+ * under a host that differs from its public domain, e.g. Zitadel's
+ * `X-Zitadel-Instance-Host: <public-host>`.
+ */
+case class ExtraHeaders(values: Map[String, String])
+
+object ExtraHeaders:
+
+  val empty: ExtraHeaders = ExtraHeaders(Map.empty)
+
+  /** Parses a comma-separated `Name: Value` list; a value may itself contain colons. */
+  def parse(raw: String): Either[String, ExtraHeaders] =
+    raw
+      .split(",")
+      .iterator
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .map(entry =>
+        entry.split(":", 2) match
+          case Array(name, value) if name.trim.nonEmpty => Right(name.trim -> value.trim)
+          case _                                        => Left(s"'$entry' is not a 'Name: Value' pair")
+      )
+      .foldLeft[Either[String, Map[String, String]]](Right(Map.empty)):
+        case (Right(acc), Right(pair)) => Right(acc + pair)
+        case (Left(err), _)            => Left(err)
+        case (_, Left(err))            => Left(err)
+      .map(ExtraHeaders.apply)
+
+  given ConfigReader[ExtraHeaders] =
+    ConfigReader.fromString[ExtraHeaders](raw => parse(raw).left.map(reason => CannotConvert(raw, "ExtraHeaders", reason)))
+
 case class IdentityProvider(
   name: String,
   clientId: String,
@@ -30,21 +63,21 @@ case class IdentityProvider(
   userInfoUrl: Uri,
   // Optional OIDC end-session endpoint (RP-Initiated Logout). When set, logout redirects the
   // browser there so the upstream identity provider session is ended as well.
-  endSessionUrl: Option[Uri]   = None,
-  scopes: List[String]         = List("openid", "profile", "email"),
+  endSessionUrl: Option[Uri] = None,
+  scopes: List[String]       = List("openid", "profile", "email"),
   // Roles assigned when the provider supplies none through a roles claim. Keep this empty (or a
   // low-privilege role) in production: with a claim configured, absent roles fall back to these.
-  defaultRoles: Set[Role]      = Set.empty,
+  defaultRoles: Set[Role]    = Set.empty,
   // Dot-path to the roles claim in the userinfo response, e.g. "groups" (Dex), "realm_access.roles"
   // (Keycloak) or "urn:zitadel:iam:org:project:roles" (Zitadel). When absent, or missing from the
   // response, `defaultRoles` is used.
-  rolesClaim: Option[String]   = None,
+  rolesClaim: Option[String] = None,
   // Shape of the roles claim value: an array of role names, or an object whose keys are the roles.
-  rolesFrom: RolesFrom         = RolesFrom.Array,
-  // Extra headers sent on the server-side token and userinfo requests (not the browser redirect).
-  // Needed when the app reaches the provider under a host that differs from its public domain, e.g.
-  // Zitadel's `X-Zitadel-Instance-Host: <public-host>`.
-  headers: Map[String, String] = Map.empty
+  rolesFrom: RolesFrom       = RolesFrom.Array,
+  // Additional headers sent on the server-side token and userinfo requests (not the browser
+  // redirect). Needed when the app reaches the provider under a host that differs from its public
+  // domain, e.g. Zitadel's `X-Zitadel-Instance-Host: <public-host>`.
+  extraHeaders: ExtraHeaders = ExtraHeaders.empty
 ) derives ConfigReader
 
 case class AuthConfig(
