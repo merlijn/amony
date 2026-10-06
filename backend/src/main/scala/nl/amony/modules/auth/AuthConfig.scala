@@ -54,6 +54,20 @@ object ExtraHeaders:
   given ConfigReader[ExtraHeaders] =
     ConfigReader.fromString[ExtraHeaders](raw => parse(raw).left.map(reason => CannotConvert(raw, "ExtraHeaders", reason)))
 
+/**
+ * Roles given as a comma-separated list (e.g. `admin,user`), so a provider's default roles can be
+ * set from a single environment variable. Empty by default: roles are only granted when the provider
+ * actually supplies them.
+ */
+case class DefaultRoles(values: Set[Role])
+
+object DefaultRoles:
+
+  val empty: DefaultRoles = DefaultRoles(Set.empty)
+
+  given ConfigReader[DefaultRoles] =
+    ConfigReader.fromString[DefaultRoles](raw => Right(DefaultRoles(raw.split(",").iterator.map(_.trim).filter(_.nonEmpty).map(Role.apply).toSet)))
+
 case class IdentityProvider(
   name: String,
   clientId: String,
@@ -65,9 +79,9 @@ case class IdentityProvider(
   // browser there so the upstream identity provider session is ended as well.
   endSessionUrl: Option[Uri] = None,
   scopes: List[String]       = List("openid", "profile", "email"),
-  // Roles assigned when the provider supplies none through a roles claim. Keep this empty (or a
-  // low-privilege role) in production: with a claim configured, absent roles fall back to these.
-  defaultRoles: Set[Role]    = Set.empty,
+  // Roles granted when the provider supplies none through a roles claim. Empty by default, so a
+  // config mistake cannot silently grant a role (e.g. admin) to every user who logs in.
+  defaultRoles: DefaultRoles = DefaultRoles.empty,
   // Dot-path to the roles claim in the userinfo response, e.g. "groups" (Dex), "realm_access.roles"
   // (Keycloak) or "urn:zitadel:iam:org:project:roles" (Zitadel). When absent, or missing from the
   // response, `defaultRoles` is used.

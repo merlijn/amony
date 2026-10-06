@@ -125,7 +125,7 @@ class FederatedLoginService(config: AuthConfig, httpClient: Backend[IO], userDat
     provider.rolesClaim
       .map(RolesExtractor.extract(userInfo, _, provider.rolesFrom))
       .filter(_.nonEmpty)
-      .getOrElse(provider.defaultRoles)
+      .getOrElse(provider.defaultRoles.values)
 
   private def getOrInsertUser(provider: IdentityProvider, userInfo: UserInfo, email: String): IO[User] = {
     userDatabase.getByEmail(email).flatMap {
