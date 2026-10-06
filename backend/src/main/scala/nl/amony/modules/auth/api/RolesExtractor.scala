@@ -9,12 +9,7 @@ enum RolesFrom derives EnumConfigReader:
 
 object RolesExtractor:
 
-  /**
-   * Reads the roles from the userinfo response. The claim is a dot-path (e.g. `realm_access.roles`).
-   * With [[RolesFrom.Array]] the value is expected to be an array of strings; with
-   * [[RolesFrom.ObjectKeys]] it is an object whose keys are the roles (e.g. Zitadel's
-   * `urn:zitadel:iam:org:project:roles`). Anything absent or of an unexpected shape yields no roles.
-   */
+  /** Reads roles from the userinfo response: a dot-path claim, read as an array of names or as an object's keys. */
   def extract(userInfo: Json, claim: String, rolesFrom: RolesFrom): Set[Role] =
     val value = claim.split("\\.").foldLeft(Option(userInfo)) { (current, key) =>
       current.flatMap(_.asObject).flatMap(_(key))

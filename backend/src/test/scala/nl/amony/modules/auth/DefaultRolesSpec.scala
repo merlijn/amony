@@ -16,23 +16,29 @@ class DefaultRolesSpec extends AnyWordSpecLike with Matchers {
       .load[DefaultRoles]
       .getOrElse(fail(s"could not load '$raw'"))
 
-  "DefaultRoles" should {
+  "DefaultRoles" when {
 
-    "be empty by default" in {
-      DefaultRoles.empty.values shouldBe empty
+    "empty" should {
+
+      "be empty by default" in {
+        DefaultRoles.empty.values shouldBe empty
+      }
     }
 
-    "read an empty string as no roles" in {
-      loadDefaultRoles("").values shouldBe empty
-    }
+    "ConfigReader" should {
 
-    "read a comma-separated list" in {
-      loadDefaultRoles("admin").values shouldBe Set(Role.Admin)
-      loadDefaultRoles("admin,user").values shouldBe Set(Role("admin"), Role("user"))
-    }
+      "read an empty string as no roles" in {
+        loadDefaultRoles("").values shouldBe empty
+      }
 
-    "trim whitespace and ignore blank entries" in {
-      loadDefaultRoles(" admin , user , , moderator ").values shouldBe Set(Role("admin"), Role("user"), Role("moderator"))
+      "read a comma-separated list" in {
+        loadDefaultRoles("admin").values shouldBe Set(Role.Admin)
+        loadDefaultRoles("admin,user").values shouldBe Set(Role("admin"), Role("user"))
+      }
+
+      "trim whitespace and ignore blank entries" in {
+        loadDefaultRoles(" admin , user , , moderator ").values shouldBe Set(Role("admin"), Role("user"), Role("moderator"))
+      }
     }
   }
 }

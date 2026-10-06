@@ -21,12 +21,7 @@ case class RoleAccessConfig(
   permissions: Set[Permission]
 ) derives ConfigReader
 
-/**
- * Additional headers sent on the server-side token and userinfo requests (not the browser redirect),
- * given as a comma-separated list of `Name: Value` pairs. Needed when the app reaches the provider
- * under a host that differs from its public domain, e.g. Zitadel's
- * `X-Zitadel-Instance-Host: <public-host>`.
- */
+/** Additional headers sent on the server-side token/userinfo requests, e.g. Zitadel's `X-Zitadel-Instance-Host: <public-host>`. */
 case class ExtraHeaders(values: Map[String, String])
 
 object ExtraHeaders:
@@ -54,11 +49,7 @@ object ExtraHeaders:
   given ConfigReader[ExtraHeaders] =
     ConfigReader.fromString[ExtraHeaders](raw => parse(raw).left.map(reason => CannotConvert(raw, "ExtraHeaders", reason)))
 
-/**
- * Roles given as a comma-separated list (e.g. `admin,user`), so a provider's default roles can be
- * set from a single environment variable. Empty by default: roles are only granted when the provider
- * actually supplies them.
- */
+/** Roles given as a comma-separated list (e.g. `admin,user`); empty by default so a login only gets roles the provider supplies. */
 case class DefaultRoles(values: Set[Role])
 
 object DefaultRoles:
@@ -79,18 +70,13 @@ case class IdentityProvider(
   // browser there so the upstream identity provider session is ended as well.
   endSessionUrl: Option[Uri] = None,
   scopes: List[String]       = List("openid", "profile", "email"),
-  // Roles granted when the provider supplies none through a roles claim. Empty by default, so a
-  // config mistake cannot silently grant a role (e.g. admin) to every user who logs in.
+  // Roles granted when the provider supplies none through its roles claim; empty by default so a config mistake cannot grant admin.
   defaultRoles: DefaultRoles = DefaultRoles.empty,
-  // Dot-path to the roles claim in the userinfo response, e.g. "groups" (Dex), "realm_access.roles"
-  // (Keycloak) or "urn:zitadel:iam:org:project:roles" (Zitadel). When absent, or missing from the
-  // response, `defaultRoles` is used.
+  // Dot-path to the roles claim in the userinfo response, e.g. "groups" (Dex) or "urn:zitadel:iam:org:project:roles" (Zitadel).
   rolesClaim: Option[String] = None,
   // Shape of the roles claim value: an array of role names, or an object whose keys are the roles.
   rolesFrom: RolesFrom       = RolesFrom.Array,
-  // Additional headers sent on the server-side token and userinfo requests (not the browser
-  // redirect). Needed when the app reaches the provider under a host that differs from its public
-  // domain, e.g. Zitadel's `X-Zitadel-Instance-Host: <public-host>`.
+  // Extra headers for the server-side token/userinfo requests, e.g. Zitadel's `X-Zitadel-Instance-Host: <public-host>`.
   extraHeaders: ExtraHeaders = ExtraHeaders.empty
 ) derives ConfigReader
 

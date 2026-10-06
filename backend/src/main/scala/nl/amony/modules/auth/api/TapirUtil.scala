@@ -13,9 +13,7 @@ def effectiveHost(xForwardedHost: Option[String], host: Option[String]): String 
   def first(value: Option[String]) = value.map(_.split(",").head.trim).filter(_.nonEmpty)
   first(xForwardedHost).orElse(first(host)).getOrElse("")
 
-/**
- * The origin the client used to reach the backend, derived from the request.
- */
+/** The origin the client used to reach the backend, derived from the request. */
 case class RequestOrigin(scheme: String, host: String):
   def callbackUri(provider: String): String = s"$scheme://$host/api/auth/callback/$provider"
 
