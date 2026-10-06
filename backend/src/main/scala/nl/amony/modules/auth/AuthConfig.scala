@@ -56,8 +56,6 @@ case class IdentityProvider(
   // Roles assigned when the provider supplies none through a roles claim. Keep this empty (or a
   // low-privilege role) in production: with a claim configured, absent roles fall back to these.
   defaultRoles: Set[Role]      = Set.empty,
-  // When true the provider is not listed by /api/auth/identity-providers. Used for internal/admin-only providers.
-  adminOnly: Option[Boolean]   = None,
   // Preset supplying defaults for the two fields below; see ProviderType.
   providerType: ProviderType   = ProviderType.Generic,
   // Dot-path to the roles claim in the userinfo response, e.g. "realm_access.roles" or "groups".

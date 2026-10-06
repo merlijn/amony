@@ -148,7 +148,7 @@ object AuthRoutes extends RoutesModule, Logging:
       }
 
       serverLogic(endpoint = getIdentityProvidersEndpoint) { _ =>
-        IO.pure(Right(loginService.identityProviders.values.filterNot(_.adminOnly.getOrElse(false)).map { provider =>
+        IO.pure(Right(loginService.identityProviders.values.map { provider =>
           IdentityProviderDto(
             name     = provider.name,
             loginUrl = s"/api/auth/login/${provider.name}"

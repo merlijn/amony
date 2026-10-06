@@ -66,7 +66,6 @@ jobs:
           DEX_ADMIN_USERNAME: ${{ secrets.DEX_ADMIN_USERNAME }}
           DEX_ADMIN_PASSWORD_HASH: ${{ secrets.DEX_ADMIN_PASSWORD_HASH }}
           DEX_CLIENT_SECRET: ${{ secrets.DEX_CLIENT_SECRET }}
-          DEX_ADMIN_CLIENT_SECRET: ${{ secrets.DEX_ADMIN_CLIENT_SECRET }}
           PORKBUN_API_KEY: ${{ secrets.PORKBUN_API_KEY }}
           PORKBUN_SECRET_KEY: ${{ secrets.PORKBUN_SECRET_KEY }}
         run: |
@@ -79,7 +78,6 @@ jobs:
             printf 'DEX_ADMIN_USERNAME=%s\n' "$DEX_ADMIN_USERNAME"
             printf 'DEX_ADMIN_PASSWORD_HASH=%s\n' "$DEX_ADMIN_PASSWORD_HASH"
             printf 'DEX_CLIENT_SECRET=%s\n' "$DEX_CLIENT_SECRET"
-            printf 'DEX_ADMIN_CLIENT_SECRET=%s\n' "$DEX_ADMIN_CLIENT_SECRET"
             printf 'PORKBUN_API_KEY=%s\n' "$PORKBUN_API_KEY"
             printf 'PORKBUN_SECRET_KEY=%s\n' "$PORKBUN_SECRET_KEY"
           } >> .env.runtime

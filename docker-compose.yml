@@ -113,11 +113,6 @@ services:
       # Client secrets: an explicit AMONY_* value (e.g. for Zitadel) takes precedence; otherwise the
       # value is shared with Dex so the demo keeps working from a single DEX_* entry in .env.
       AMONY_OAUTH_CLIENT_SECRET: ${AMONY_OAUTH_CLIENT_SECRET:-${DEX_CLIENT_SECRET:-amony-dex-secret}}
-      AMONY_ADMIN_OAUTH_CLIENT_ID: ${AMONY_ADMIN_OAUTH_CLIENT_ID:-admin-app}
-      AMONY_ADMIN_OAUTH_CLIENT_SECRET: ${AMONY_ADMIN_OAUTH_CLIENT_SECRET:-${DEX_ADMIN_CLIENT_SECRET:-amony-admin-dex-secret}}
-      AMONY_ADMIN_OAUTH_AUTHORIZE_URL: ${AMONY_OAUTH_AUTHORIZE_URL:-http://localhost:5556/dex/auth}
-      AMONY_ADMIN_OAUTH_TOKEN_URL: ${AMONY_OAUTH_TOKEN_URL:-http://auth:5556/dex/token}
-      AMONY_ADMIN_OAUTH_USERINFO_URL: ${AMONY_OAUTH_USERINFO_URL:-http://auth:5556/dex/userinfo}
     volumes:
       - ${AMONY_HOST_MEDIA_PATH}:/media
       - ${AMONY_DATA:-./data}/solr:/app/data/solr
@@ -139,10 +134,8 @@ services:
       # entrypoint. The HTTPS overlay overrides these with the public domain names.
       DEX_ISSUER: ${DEX_ISSUER:-http://localhost:5556/dex}
       DEX_AMONY_REDIRECT_URI: ${DEX_AMONY_REDIRECT_URI:-http://localhost:8182/api/auth/callback/dex,http://localhost:5173/api/auth/callback/dex}
-      DEX_AMONY_ADMIN_REDIRECT_URI: ${DEX_AMONY_ADMIN_REDIRECT_URI:-http://localhost:5174/api/auth/callback/admin}
       # Dev defaults; override through .env (see .env.example). Note the escaped $$ for the bcrypt hash.
       DEX_CLIENT_SECRET: ${DEX_CLIENT_SECRET:-amony-dex-secret}
-      DEX_ADMIN_CLIENT_SECRET: ${DEX_ADMIN_CLIENT_SECRET:-amony-admin-dex-secret}
       DEX_ADMIN_EMAIL: ${DEX_ADMIN_EMAIL:-admin@amony.example}
       DEX_ADMIN_USERNAME: ${DEX_ADMIN_USERNAME:-admin}
       DEX_ADMIN_PASSWORD_HASH: ${DEX_ADMIN_PASSWORD_HASH:-$$2a$$10$$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W}
