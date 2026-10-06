@@ -13,6 +13,9 @@ services:
       - certbot-data:/etc/letsencrypt
     env_file:
       - .env
+    environment:
+      # Auth provider upstream behind the proxy: Dex (auth:5556) or Zitadel (zitadel:8080).
+      AUTH_UPSTREAM: ${AUTH_UPSTREAM:-auth:5556}
     restart: unless-stopped
 
   init-certificate:
@@ -41,9 +44,9 @@ services:
     restart: "no"
 
   amony:
-    # Public authorize endpoints (browser-facing); token/userinfo stay on the internal network.
+    # Public authorize endpoint (browser-facing); .env overrides the Dex default (Zitadel in the demo).
     environment:
-      AMONY_IDP_AUTHORIZE_URL: https://${DOMAIN_SUB_AUTH}.${DOMAIN_TLD}/dex/auth
+      AMONY_IDP_AUTHORIZE_URL: ${AMONY_IDP_AUTHORIZE_URL:-https://${DOMAIN_SUB_AUTH}.${DOMAIN_TLD}/dex/auth}
       # Only the public hosts are accepted (replaces the local defaults in application.conf).
       AMONY_ALLOWED_HOSTS_0: ${DOMAIN_SUB_AMONY}.${DOMAIN_TLD}
 

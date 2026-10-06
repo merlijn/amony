@@ -56,7 +56,7 @@ http {
 	# Upstream for auth provider
 	upstream auth_backend {
 		zone auth_backend 64k;
-		server auth:5556 resolve;
+		server ${AUTH_UPSTREAM} resolve;
 	}
 
 	# Default SSL server - close unknown connections

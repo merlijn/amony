@@ -13,6 +13,10 @@ on:
         description: "Git ref to deploy (defaults to main)"
         required: false
         default: main
+      image_tag:
+        description: "App image tag to deploy (defaults to dev)"
+        required: false
+        default: dev
 
 permissions:
   contents: read
@@ -26,6 +30,8 @@ env:
   # workflow_run has no inputs, so this is always main for automatic deploys; manual runs can
   # point at another ref to validate changes before merging.
   DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || 'main' }}
+  # Manual runs can deploy a specific image tag (e.g. a PR build); automatic deploys use "dev".
+  AMONY_IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || 'dev' }}
   DEPLOY_DIR: /home/docker-user/amony
   COMPOSE_FILES: "-f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml"
 
@@ -69,6 +75,10 @@ jobs:
           ZITADEL_ORG_NAME: ${{ secrets.ZITADEL_ORG_NAME }}
           ZITADEL_ADMIN_USERNAME: ${{ secrets.ZITADEL_ADMIN_USERNAME }}
           ZITADEL_ADMIN_EMAIL: ${{ secrets.ZITADEL_ADMIN_EMAIL }}
+          ZITADEL_MASTERKEY: ${{ secrets.ZITADEL_MASTERKEY }}
+          ZITADEL_ADMIN_PASSWORD: ${{ secrets.ZITADEL_ADMIN_PASSWORD }}
+          AMONY_IDP_CLIENT_ID: ${{ secrets.AMONY_IDP_CLIENT_ID }}
+          AMONY_IDP_CLIENT_SECRET: ${{ secrets.AMONY_IDP_CLIENT_SECRET }}
           PORKBUN_API_KEY: ${{ secrets.PORKBUN_API_KEY }}
           PORKBUN_SECRET_KEY: ${{ secrets.PORKBUN_SECRET_KEY }}
         run: |
@@ -84,6 +94,11 @@ jobs:
             printf 'ZITADEL_ORG_NAME=%s\n' "$ZITADEL_ORG_NAME"
             printf 'ZITADEL_ADMIN_USERNAME=%s\n' "$ZITADEL_ADMIN_USERNAME"
             printf 'ZITADEL_ADMIN_EMAIL=%s\n' "$ZITADEL_ADMIN_EMAIL"
+            printf 'ZITADEL_MASTERKEY=%s\n' "$ZITADEL_MASTERKEY"
+            printf 'ZITADEL_ADMIN_PASSWORD=%s\n' "$ZITADEL_ADMIN_PASSWORD"
+            printf 'AMONY_IDP_CLIENT_ID=%s\n' "$AMONY_IDP_CLIENT_ID"
+            printf 'AMONY_IDP_CLIENT_SECRET=%s\n' "$AMONY_IDP_CLIENT_SECRET"
+            printf 'AMONY_IMAGE_TAG=%s\n' "$AMONY_IMAGE_TAG"
             printf 'PORKBUN_API_KEY=%s\n' "$PORKBUN_API_KEY"
             printf 'PORKBUN_SECRET_KEY=%s\n' "$PORKBUN_SECRET_KEY"
           } >> .env.runtime
@@ -115,8 +130,8 @@ jobs:
           git fetch --prune origin
           git checkout "$DEPLOY_REF"
           git pull --ff-only
-          docker compose $COMPOSE_FILES --profile dex pull amony
-          docker compose $COMPOSE_FILES --profile dex up -d
+          docker compose $COMPOSE_FILES --profile zitadel pull amony
+          docker compose $COMPOSE_FILES --profile zitadel up -d
           docker image prune -f
           REMOTE
 

@@ -193,7 +193,7 @@ services:
       ZITADEL_PORT: "8080"
       ZITADEL_EXTERNALDOMAIN: ${ZITADEL_EXTERNAL_DOMAIN:-localhost}
       ZITADEL_EXTERNALPORT: ${ZITADEL_EXTERNAL_PORT:-8080}
-      ZITADEL_EXTERNALSECURE: "false"
+      ZITADEL_EXTERNALSECURE: ${ZITADEL_EXTERNALSECURE:-false}
       ZITADEL_TLS_ENABLED: "false"
       ZITADEL_DATABASE_POSTGRES_DSN: "postgresql://${DATABASE_USERNAME:-postgres}:${DATABASE_PASSWORD:-changeme}@postgres:5432/zitadel?sslmode=disable"
       # Login V2 needs a separate container; the bundled legacy login keeps the trial single-container.
