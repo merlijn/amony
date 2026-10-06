@@ -43,7 +43,7 @@ services:
   amony:
     # Public authorize endpoints (browser-facing); token/userinfo stay on the internal network.
     environment:
-      AMONY_OAUTH_AUTHORIZE_URL: https://${DOMAIN_SUB_AUTH}.${DOMAIN_TLD}/dex/auth
+      AMONY_IDP_AUTHORIZE_URL: https://${DOMAIN_SUB_AUTH}.${DOMAIN_TLD}/dex/auth
       # Only the public hosts are accepted (replaces the local defaults in application.conf).
       AMONY_ALLOWED_HOSTS_0: ${DOMAIN_SUB_AMONY}.${DOMAIN_TLD}
 

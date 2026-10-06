@@ -88,9 +88,9 @@ val javaDevOpts = Seq(
   // Auth
   "-DAMONY_AUTH_ENABLED=true",
   "-DAMONY_SECURE_COOKIES=false",
-  "-DAMONY_OAUTH_AUTHORIZE_URL=http://localhost:5556/dex/auth",
-  "-DAMONY_OAUTH_TOKEN_URL=http://localhost:5556/dex/token",
-  "-DAMONY_OAUTH_USERINFO_URL=http://localhost:5556/dex/userinfo",
+  "-DAMONY_IDP_AUTHORIZE_URL=http://localhost:5556/dex/auth",
+  "-DAMONY_IDP_TOKEN_URL=http://localhost:5556/dex/token",
+  "-DAMONY_IDP_USERINFO_URL=http://localhost:5556/dex/userinfo",
   "-DAMONY_JWT_SECRET_KEY=development-key"
 )
 

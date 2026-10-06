@@ -107,12 +107,12 @@ services:
       DATABASE_HOST: "postgres"
       # OAuth provider endpoints. The authorize URL is browser-facing; token/userinfo are internal
       # to the compose network. The HTTPS overlay overrides the authorize URLs.
-      AMONY_OAUTH_AUTHORIZE_URL: ${AMONY_OAUTH_AUTHORIZE_URL:-http://localhost:5556/dex/auth}
-      AMONY_OAUTH_TOKEN_URL: ${AMONY_OAUTH_TOKEN_URL:-http://auth:5556/dex/token}
-      AMONY_OAUTH_USERINFO_URL: ${AMONY_OAUTH_USERINFO_URL:-http://auth:5556/dex/userinfo}
+      AMONY_IDP_AUTHORIZE_URL: ${AMONY_IDP_AUTHORIZE_URL:-http://localhost:5556/dex/auth}
+      AMONY_IDP_TOKEN_URL: ${AMONY_IDP_TOKEN_URL:-http://auth:5556/dex/token}
+      AMONY_IDP_USERINFO_URL: ${AMONY_IDP_USERINFO_URL:-http://auth:5556/dex/userinfo}
       # Client secrets: an explicit AMONY_* value (e.g. for Zitadel) takes precedence; otherwise the
       # value is shared with Dex so the demo keeps working from a single DEX_* entry in .env.
-      AMONY_OAUTH_CLIENT_SECRET: ${AMONY_OAUTH_CLIENT_SECRET:-${DEX_CLIENT_SECRET:-amony-dex-secret}}
+      AMONY_IDP_CLIENT_SECRET: ${AMONY_IDP_CLIENT_SECRET:-${DEX_CLIENT_SECRET:-amony-dex-secret}}
     volumes:
       - ${AMONY_HOST_MEDIA_PATH}:/media
       - ${AMONY_DATA:-./data}/solr:/app/data/solr
@@ -147,7 +147,7 @@ services:
   # It reuses the shared Postgres server, in its own "zitadel" database. The first run initializes
   # the schema, which takes a while; later starts are fast. The console is at
   # http://localhost:8080/ui/console (login: zitadel-admin / ZITADEL_ADMIN_PASSWORD).
-  # Point the app at it by setting the AMONY_OAUTH_* variables in .env
+  # Point the app at it by setting the AMONY_IDP_* variables in .env
   # (see .env.example) and register the redirect URI http://localhost:8182/api/auth/callback/<name>.
   #
   # Creates the "zitadel" database on the shared server if it is missing. Postgres has no
