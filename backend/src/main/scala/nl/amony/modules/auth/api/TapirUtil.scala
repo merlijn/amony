@@ -15,19 +15,10 @@ def effectiveHost(xForwardedHost: Option[String], host: Option[String]): String 
 
 /**
  * The origin the client used to reach the backend, derived from the request.
- *
- * Behind the reverse proxy X-Forwarded-Host/X-Forwarded-Proto are set; when the backend is
- * reached directly the Host header is used instead. This is used to build the OAuth
- * redirect_uri so it always matches the origin the browser is actually on, no matter which
- * frontend host (or hostname) the request came in through.
  */
 case class RequestOrigin(scheme: String, host: String):
   def callbackUri(provider: String): String = s"$scheme://$host/api/auth/callback/$provider"
 
-  /**
-   * The client's origin, used as `post_logout_redirect_uri` for federated logout. It must match a
-   * registered post-logout redirect URI exactly, so it deliberately carries no trailing slash.
-   */
   def rootUri: String = s"$scheme://$host"
 
 val requestOrigin: EndpointInput[RequestOrigin] =
