@@ -147,7 +147,7 @@ services:
   # It reuses the shared Postgres server, in its own "zitadel" database. The first run initializes
   # the schema, which takes a while; later starts are fast. The console is at
   # http://localhost:8080/ui/console (login: zitadel-admin / ZITADEL_ADMIN_PASSWORD).
-  # Point the app at it by setting the AMONY_OAUTH_* / AMONY_OAUTH_PROVIDER_TYPE variables in .env
+  # Point the app at it by setting the AMONY_OAUTH_* variables in .env
   # (see .env.example) and register the redirect URI http://localhost:8182/api/auth/callback/<name>.
   #
   # Creates the "zitadel" database on the shared server if it is missing. Postgres has no

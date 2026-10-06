@@ -6,16 +6,15 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import sttp.model.Uri
 
-import nl.amony.modules.auth.{IdentityProvider, ProviderType}
+import nl.amony.modules.auth.IdentityProvider
 
 class RolesExtractorSpec extends AnyWordSpecLike with Matchers {
 
   private def json(input: String): Json = parse(input).getOrElse(fail("invalid test json"))
 
   private def provider(
-    providerType: ProviderType           = ProviderType.Generic,
-    rolesClaim: Option[String]           = None,
-    rolesFrom: Option[RolesFrom]         = None
+    rolesClaim: Option[String]         = None,
+    rolesFrom: RolesFrom               = RolesFrom.Array
   ): IdentityProvider = IdentityProvider(
     name         = "idp",
     clientId     = "client",
@@ -23,7 +22,6 @@ class RolesExtractorSpec extends AnyWordSpecLike with Matchers {
     authorizeUrl = Uri.unsafeParse("https://idp.example.com/authorize"),
     tokenUrl     = Uri.unsafeParse("https://idp.example.com/token"),
     userInfoUrl  = Uri.unsafeParse("https://idp.example.com/userinfo"),
-    providerType = providerType,
     rolesClaim   = rolesClaim,
     rolesFrom    = rolesFrom
   )
@@ -61,21 +59,16 @@ class RolesExtractorSpec extends AnyWordSpecLike with Matchers {
 
   "IdentityProvider" should {
 
-    "default to no roles claim for a generic provider" in {
-      provider().effectiveRolesClaim shouldBe None
-      provider().effectiveRolesFrom shouldBe RolesFrom.Array
+    "default to no roles claim and the array shape" in {
+      val defaults = provider()
+      defaults.rolesClaim shouldBe None
+      defaults.rolesFrom shouldBe RolesFrom.Array
     }
 
-    "use the provider type preset for the roles claim" in {
-      val zitadel = provider(providerType = ProviderType.Zitadel)
-      zitadel.effectiveRolesClaim shouldBe Some("urn:zitadel:iam:org:project:roles")
-      zitadel.effectiveRolesFrom shouldBe RolesFrom.ObjectKeys
-    }
-
-    "let explicit config override the provider type preset" in {
-      val overridden = provider(providerType = ProviderType.Zitadel, rolesClaim = Some("groups"), rolesFrom = Some(RolesFrom.Array))
-      overridden.effectiveRolesClaim shouldBe Some("groups")
-      overridden.effectiveRolesFrom shouldBe RolesFrom.Array
+    "keep a configured roles claim and shape" in {
+      val zitadel = provider(rolesClaim = Some("urn:zitadel:iam:org:project:roles"), rolesFrom = RolesFrom.ObjectKeys)
+      zitadel.rolesClaim shouldBe Some("urn:zitadel:iam:org:project:roles")
+      zitadel.rolesFrom shouldBe RolesFrom.ObjectKeys
     }
   }
 }

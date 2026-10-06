@@ -10,7 +10,6 @@ import pdi.jwt.{JwtAlgorithm, JwtCirce, JwtClaim}
 import pureconfig.*
 import pureconfig.error.CannotConvert
 import pureconfig.generic.FieldCoproductHint
-import pureconfig.generic.derivation.EnumConfigReader
 import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
 import sttp.model.Uri
 
@@ -21,26 +20,6 @@ given ConfigReader[Uri] = ConfigReader.fromString[Uri](str => Uri.parse(str).lef
 case class RoleAccessConfig(
   permissions: Set[Permission]
 ) derives ConfigReader
-
-/**
- * A named identity provider preset. It only supplies defaults for how the roles claim is read from
- * the userinfo response; `roles-claim` and `roles-from` on the provider override them.
- */
-enum ProviderType derives EnumConfigReader:
-  case Generic, Dex, Keycloak, Zitadel, Casdoor
-
-object ProviderType:
-
-  def defaultRolesClaim(providerType: ProviderType): Option[String] = providerType match
-    case ProviderType.Generic  => None
-    case ProviderType.Dex      => Some("groups")
-    case ProviderType.Keycloak => Some("realm_access.roles")
-    case ProviderType.Zitadel  => Some("urn:zitadel:iam:org:project:roles")
-    case ProviderType.Casdoor  => Some("roles")
-
-  def defaultRolesFrom(providerType: ProviderType): RolesFrom = providerType match
-    case ProviderType.Zitadel => RolesFrom.ObjectKeys
-    case _                    => RolesFrom.Array
 
 case class IdentityProvider(
   name: String,
@@ -56,21 +35,17 @@ case class IdentityProvider(
   // Roles assigned when the provider supplies none through a roles claim. Keep this empty (or a
   // low-privilege role) in production: with a claim configured, absent roles fall back to these.
   defaultRoles: Set[Role]      = Set.empty,
-  // Preset supplying defaults for the two fields below; see ProviderType.
-  providerType: ProviderType   = ProviderType.Generic,
-  // Dot-path to the roles claim in the userinfo response, e.g. "realm_access.roles" or "groups".
+  // Dot-path to the roles claim in the userinfo response, e.g. "groups" (Dex), "realm_access.roles"
+  // (Keycloak) or "urn:zitadel:iam:org:project:roles" (Zitadel). When absent, or missing from the
+  // response, `defaultRoles` is used.
   rolesClaim: Option[String]   = None,
-  // How to interpret the roles claim value.
-  rolesFrom: Option[RolesFrom] = None,
+  // Shape of the roles claim value: an array of role names, or an object whose keys are the roles.
+  rolesFrom: RolesFrom         = RolesFrom.Array,
   // Extra headers sent on the server-side token and userinfo requests (not the browser redirect).
   // Needed when the app reaches the provider under a host that differs from its public domain, e.g.
   // Zitadel's `X-Zitadel-Instance-Host: <public-host>`.
   headers: Map[String, String] = Map.empty
-) derives ConfigReader:
-
-  def effectiveRolesClaim: Option[String] = rolesClaim.orElse(ProviderType.defaultRolesClaim(providerType))
-
-  def effectiveRolesFrom: RolesFrom = rolesFrom.getOrElse(ProviderType.defaultRolesFrom(providerType))
+) derives ConfigReader
 
 case class AuthConfig(
   enabled: Boolean,

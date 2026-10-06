@@ -122,8 +122,8 @@ class FederatedLoginService(config: AuthConfig, httpClient: Backend[IO], userDat
 
   /** Roles from the provider's userinfo response, falling back to the provider's default roles. */
   private def resolveRoles(provider: IdentityProvider, userInfo: Json): Set[Role] =
-    provider.effectiveRolesClaim
-      .map(RolesExtractor.extract(userInfo, _, provider.effectiveRolesFrom))
+    provider.rolesClaim
+      .map(RolesExtractor.extract(userInfo, _, provider.rolesFrom))
       .filter(_.nonEmpty)
       .getOrElse(provider.defaultRoles)
 
