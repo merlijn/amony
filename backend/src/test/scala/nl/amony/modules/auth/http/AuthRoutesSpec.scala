@@ -43,8 +43,6 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
   private val loginServiceMock = mock[FederatedLoginService](RETURNS_DEFAULTS)
   private val authRoutes       = AuthRoutes.apply(loginServiceMock, authConfig)
 
-  // Login is optional here: an anonymous visitor is a valid session, so only a client that still holds
-  // a refresh token should be asked to refresh.
   private val optionalLoginConfig = authConfig.copy(requireLogin = false)
   private val optionalLoginRoutes = AuthRoutes.apply(loginServiceMock, optionalLoginConfig)(using new ApiSecurity(optionalLoginConfig))
 

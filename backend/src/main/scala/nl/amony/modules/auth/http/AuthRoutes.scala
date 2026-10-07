@@ -108,8 +108,6 @@ object AuthRoutes extends RoutesModule, Logging:
           case Right(authentication) => Right(apiSecurity.createCookies(authentication))
       }
 
-      // Reads the access token without rejecting anonymous callers: the handler decides whether to
-      // transparently refresh an expired access token, or to require a login.
       serverLogic(endpoint = sessionEndpoint, authorize = input => Right(apiSecurity.decodeAccessToken(input.accessToken))) { auth => refreshToken =>
         if auth.isAnonymous && refreshToken.isDefined then
           loginService.refresh(refreshToken.get).map:
