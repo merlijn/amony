@@ -127,7 +127,8 @@ jobs:
           git checkout "$DEPLOY_REF"
           git pull --ff-only
           docker compose $COMPOSE_FILES --profile zitadel pull amony
-          docker compose $COMPOSE_FILES --profile zitadel up -d
+          # --build refreshes the locally built proxy/certbot images from the checkout.
+          docker compose $COMPOSE_FILES --profile zitadel up -d --build
           docker image prune -f
           REMOTE
 
