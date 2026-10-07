@@ -1,9 +1,16 @@
 package nl.amony.modules.auth.api
 
-import sttp.model.Method
+import sttp.model.headers.Cookie
+import sttp.model.{HeaderNames, Method}
 import sttp.tapir.*
 
-case class SecurityInput(accessToken: Option[String], xsrfCookie: Option[String], xXsrfHeader: Option[String], method: Method)
+case class SecurityInput(
+  accessToken: Option[String],
+  xsrfCookie: Option[String],
+  xXsrfHeader: Option[String],
+  method: Method,
+  refreshToken: Option[String]
+)
 
 /**
  * The host the request was made with: X-Forwarded-Host (set by the reverse proxy) wins over Host.
@@ -33,4 +40,13 @@ val securityInput: EndpointInput[SecurityInput] =
     .and(cookie[Option[String]]("XSRF-TOKEN"))
     .and(extractFromRequest(_.header("X-XSRF-TOKEN")))
     .and(extractFromRequest(_.method))
+    // Read server-side (not as a documented security scheme): the refresh token is an httpOnly cookie
+    // whose only purpose here is to tell an expired access token apart from a genuinely anonymous client.
+    .and(extractFromRequest { request =>
+      request.headers
+        .filter(_.name.equalsIgnoreCase(HeaderNames.Cookie))
+        .flatMap(header => Cookie.parse(header.value).getOrElse(Nil))
+        .find(_.name == refreshTokenCookieName)
+        .map(_.value)
+    })
     .mapTo[SecurityInput]

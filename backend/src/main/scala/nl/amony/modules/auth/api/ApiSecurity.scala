@@ -14,7 +14,8 @@ import nl.amony.lib.tapir.dsl.error.SecurityError
 import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.{Authentication, JwtDecoder}
 
-val authCookieName = "access_token"
+val authCookieName         = "access_token"
+val refreshTokenCookieName = "refresh_token"
 
 /**
  * Cookie holding the identity provider's ID token, used as `id_token_hint` on logout. It is scoped
@@ -77,7 +78,9 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
 
   def authorize(requiredPermission: Option[Permission] = None)(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
     resolveToken(securityInput).flatMap { token =>
-      if isLoginRequired && token.isAnonymous then Left(SecurityError.Unauthorized)
+      // A client that presents a refresh token is not anonymous even when its access token is gone:
+      // reply Unauthorized so it can refresh instead of silently degrading to anonymous access.
+      if token.isAnonymous && (isLoginRequired || securityInput.refreshToken.isDefined) then Left(SecurityError.Unauthorized)
       else
         requiredPermission match
           case None             => Right(token)

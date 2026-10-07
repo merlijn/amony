@@ -46,7 +46,7 @@ object AuthRoutes extends RoutesModule, Logging:
       .tag("auth").name("authRefreshTokens").description("Refresh the users auth tokens")
       .post.in("api" / "auth" / "refresh")
       .securityIn(securityInput)
-      .in(cookie[String]("refresh_token"))
+      .in(cookie[String](refreshTokenCookieName))
       .out(AuthCookies.endpointOutput)
       .errorOut(errorOutput))
 
