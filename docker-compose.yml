@@ -183,8 +183,6 @@ services:
       ZITADEL_PORT: "8080"
       ZITADEL_EXTERNALDOMAIN: ${ZITADEL_EXTERNAL_DOMAIN:-localhost}
       ZITADEL_EXTERNALPORT: ${ZITADEL_EXTERNAL_PORT:-8080}
-      ZITADEL_EXTERNALSECURE: ${ZITADEL_EXTERNALSECURE:-false}
-      ZITADEL_TLS_ENABLED: "false"
       ZITADEL_DATABASE_POSTGRES_DSN: "postgresql://${DATABASE_USERNAME:-postgres}:${DATABASE_PASSWORD:-changeme}@postgres:5432/zitadel?sslmode=disable"
       # Login V2 needs a separate container; the bundled legacy login keeps the trial single-container.
       ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "false"
@@ -200,6 +198,8 @@ services:
       - start-from-init
       - --masterkey
       - ${ZITADEL_MASTERKEY:-MasterkeyNeedsToHave32Characters}
+      # "external" when TLS is terminated by a reverse proxy (the demo), "disabled" for plain HTTP.
+      # This flag overwrites externalSecure and tls.enabled, so it is the single source of truth.
       - --tlsMode
-      - disabled
+      - ${ZITADEL_TLS_MODE:-disabled}
     restart: unless-stopped
