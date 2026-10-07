@@ -28,11 +28,9 @@ http {
       default $remote_addr;
   }
 
-  # Rate limit zones for the auth provider
-  #   - Baseline: generous limit applied to all auth requests
-  #   - Throttle: strict limit applied only after 40x error responses
-  limit_req_zone $rate_limit_key zone=auth_baseline:10m rate=10r/s;
-  limit_req_zone $rate_limit_key zone=auth_throttle:10m rate=6r/m;
+  # Flood limit for the auth provider. Zitadel's console loads many assets at once and its APIs
+  # return 4xx normally, so the limit is generous and upstream responses are not intercepted.
+  limit_req_zone $rate_limit_key zone=auth_baseline:10m rate=50r/s;
 
   proxy_headers_hash_max_size 1024;
   proxy_headers_hash_bucket_size 128;
@@ -103,25 +101,11 @@ http {
 		proxy_read_timeout    60s;
 
 		location / {
-			# Baseline rate limit: 10 req/s with burst of 20
-			limit_req zone=auth_baseline burst=20 nodelay;
+			# A large burst covers the console's parallel asset loads; upstream 4xx pass through untouched.
+			limit_req zone=auth_baseline burst=200 nodelay;
 			limit_req_status 429;
-
-			# Intercept 40x errors from upstream and route them through
-			# the throttled error handler to penalize repeat offenders
-			proxy_intercept_errors on;
-			error_page 400 401 403 404 405 408 429 = @auth_error;
 
 			proxy_pass http://auth_backend;
-		}
-
-		# Error handler for 40x responses — applies a strict rate limit
-		# so that clients producing many errors get throttled to 1 req/10s
-		location @auth_error {
-			limit_req zone=auth_throttle burst=10 nodelay;
-			limit_req_status 429;
-
-			return 429 '{"error": "too many requests"}';
 		}
 	}
 }
