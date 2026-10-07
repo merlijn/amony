@@ -90,7 +90,7 @@ services:
     entrypoint: ["/scripts/backup-entrypoint.sh"]
 
   amony:
-    image: ghcr.io/merlijn/amony-app:latest
+    image: ghcr.io/merlijn/amony-app:dev
     container_name: amony-app
     depends_on:
       postgres:
@@ -107,24 +107,24 @@ services:
       DATABASE_HOST: "postgres"
       # OAuth provider endpoints. The authorize URL is browser-facing; token/userinfo are internal
       # to the compose network. The HTTPS overlay overrides the authorize URLs.
-      AMONY_OAUTH_AUTHORIZE_URL: ${AMONY_OAUTH_AUTHORIZE_URL:-http://localhost:5556/dex/auth}
-      AMONY_OAUTH_TOKEN_URL: ${AMONY_OAUTH_TOKEN_URL:-http://auth:5556/dex/token}
-      AMONY_OAUTH_USERINFO_URL: ${AMONY_OAUTH_USERINFO_URL:-http://auth:5556/dex/userinfo}
-      # Client secrets are shared with Dex: the single DEX_* values are mapped to the backend's AMONY_* vars.
-      AMONY_OAUTH_CLIENT_SECRET: ${DEX_CLIENT_SECRET:-amony-dex-secret}
-      AMONY_ADMIN_OAUTH_CLIENT_ID: ${AMONY_ADMIN_OAUTH_CLIENT_ID:-admin-app}
-      AMONY_ADMIN_OAUTH_CLIENT_SECRET: ${DEX_ADMIN_CLIENT_SECRET:-amony-admin-dex-secret}
-      AMONY_ADMIN_OAUTH_AUTHORIZE_URL: ${AMONY_OAUTH_AUTHORIZE_URL:-http://localhost:5556/dex/auth}
-      AMONY_ADMIN_OAUTH_TOKEN_URL: ${AMONY_OAUTH_TOKEN_URL:-http://auth:5556/dex/token}
-      AMONY_ADMIN_OAUTH_USERINFO_URL: ${AMONY_OAUTH_USERINFO_URL:-http://auth:5556/dex/userinfo}
+      AMONY_IDP_AUTHORIZE_URL: ${AMONY_IDP_AUTHORIZE_URL:-http://localhost:5556/dex/auth}
+      AMONY_IDP_TOKEN_URL: ${AMONY_IDP_TOKEN_URL:-http://auth:5556/dex/token}
+      AMONY_IDP_USERINFO_URL: ${AMONY_IDP_USERINFO_URL:-http://auth:5556/dex/userinfo}
+      # Dex emits no roles claim, so default local logins to admin; the `-` form keeps an explicit empty value.
+      AMONY_IDP_DEFAULT_ROLES: ${AMONY_IDP_DEFAULT_ROLES-admin}
+      # An explicit AMONY_IDP_CLIENT_SECRET (e.g. Zitadel) wins; otherwise share the Dex secret.
+      AMONY_IDP_CLIENT_SECRET: ${AMONY_IDP_CLIENT_SECRET:-${DEX_CLIENT_SECRET:-amony-dex-secret}}
     volumes:
       - ${AMONY_HOST_MEDIA_PATH}:/media
       - ${AMONY_DATA:-./data}/solr:/app/data/solr
     restart: "no"
 
+  # Local/demo identity provider (Dex). Enable with: docker compose --profile dex up -d
   auth:
     image: dexidp/dex:latest
     container_name: auth
+    profiles:
+      - dex
     restart: unless-stopped
     ports:
       - "127.0.0.1:5556:5556"
@@ -135,13 +135,71 @@ services:
       # entrypoint. The HTTPS overlay overrides these with the public domain names.
       DEX_ISSUER: ${DEX_ISSUER:-http://localhost:5556/dex}
       DEX_AMONY_REDIRECT_URI: ${DEX_AMONY_REDIRECT_URI:-http://localhost:8182/api/auth/callback/dex,http://localhost:5173/api/auth/callback/dex}
-      DEX_AMONY_ADMIN_REDIRECT_URI: ${DEX_AMONY_ADMIN_REDIRECT_URI:-http://localhost:5174/api/auth/callback/admin}
       # Dev defaults; override through .env (see .env.example). Note the escaped $$ for the bcrypt hash.
       DEX_CLIENT_SECRET: ${DEX_CLIENT_SECRET:-amony-dex-secret}
-      DEX_ADMIN_CLIENT_SECRET: ${DEX_ADMIN_CLIENT_SECRET:-amony-admin-dex-secret}
       DEX_ADMIN_EMAIL: ${DEX_ADMIN_EMAIL:-admin@amony.example}
       DEX_ADMIN_USERNAME: ${DEX_ADMIN_USERNAME:-admin}
       DEX_ADMIN_PASSWORD_HASH: ${DEX_ADMIN_PASSWORD_HASH:-$$2a$$10$$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W}
     volumes:
       - ./docker/dex/config.yaml.tmpl:/etc/dex/config.yaml.tmpl:ro
     command: ["dex", "serve", "/etc/dex/config.yaml.tmpl"]
+
+  # Trial identity provider (Zitadel). Enable with: docker compose --profile zitadel up -d. Reuses the
+  # shared Postgres (first init is slow); console at http://localhost:8080/ui/console, app via AMONY_IDP_*.
+  zitadel-db-init:
+    # Creates the "zitadel" database if missing; Postgres has no CREATE DATABASE IF NOT EXISTS.
+    image: postgres:17.2
+    container_name: zitadel-db-init
+    profiles:
+      - zitadel
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: ${DATABASE_USERNAME:-postgres}
+      PGPASSWORD: ${DATABASE_PASSWORD:-changeme}
+      PGDATABASE: postgres
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - psql -tAc "SELECT 1 FROM pg_database WHERE datname='zitadel'" | grep -q 1 || psql -v ON_ERROR_STOP=1 -c "CREATE DATABASE zitadel"
+    restart: "no"
+
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:${ZITADEL_VERSION:-v4.15.3}
+    container_name: zitadel
+    profiles:
+      - zitadel
+    # Zitadel writes its data into the container filesystem; the upstream compose also runs it as root.
+    user: "0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      zitadel-db-init:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      ZITADEL_PORT: "8080"
+      ZITADEL_EXTERNALDOMAIN: ${ZITADEL_EXTERNAL_DOMAIN:-localhost}
+      ZITADEL_EXTERNALPORT: ${ZITADEL_EXTERNAL_PORT:-8080}
+      ZITADEL_DATABASE_POSTGRES_DSN: "postgresql://${DATABASE_USERNAME:-postgres}:${DATABASE_PASSWORD:-changeme}@postgres:5432/zitadel?sslmode=disable"
+      # Login V2 needs a separate container; the bundled legacy login keeps the trial single-container.
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "false"
+      # Initial admin (first init only); login name is <username>@<org-name>.<external-domain>, email defaults to it.
+      ZITADEL_FIRSTINSTANCE_ORG_NAME: ${ZITADEL_ORG_NAME:-ZITADEL}
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: ${ZITADEL_ADMIN_USERNAME:-zitadel-admin}
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_EMAIL_VERIFIED: "true"
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: ${ZITADEL_ADMIN_PASSWORD:-Password1!}
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED: "false"
+      # Self-registration (first init only, like the admin above).
+      ZITADEL_DEFAULTINSTANCE_LOGINPOLICY_ALLOWREGISTER: ${ZITADEL_ALLOW_REGISTER:-false}
+    command:
+      - start-from-init
+      - --masterkey
+      - ${ZITADEL_MASTERKEY:-MasterkeyNeedsToHave32Characters}
+      # "external" when TLS is terminated by a reverse proxy (the demo), "disabled" for plain HTTP.
+      # This flag overwrites externalSecure and tls.enabled, so it is the single source of truth.
+      - --tlsMode
+      - ${ZITADEL_TLS_MODE:-disabled}
+    restart: unless-stopped

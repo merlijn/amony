@@ -13,13 +13,51 @@ import pureconfig.generic.FieldCoproductHint
 import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
 import sttp.model.Uri
 
-import nl.amony.modules.auth.api.{AuthToken, JwtDecoder, Permission, Role}
+import nl.amony.modules.auth.api.{AuthToken, JwtDecoder, Permission, Role, RolesFrom}
 
 given ConfigReader[Uri] = ConfigReader.fromString[Uri](str => Uri.parse(str).left.map(err => CannotConvert(str, "Uri", err)))
 
 case class RoleAccessConfig(
   permissions: Set[Permission]
 ) derives ConfigReader
+
+/** Additional headers sent on the server-side token/userinfo requests, e.g. Zitadel's `X-Zitadel-Instance-Host: <public-host>`. */
+case class ExtraHeaders(values: Map[String, String])
+
+object ExtraHeaders:
+
+  val empty: ExtraHeaders = ExtraHeaders(Map.empty)
+
+  /** Parses a comma-separated `Name: Value` list; a value may itself contain colons. */
+  def parse(raw: String): Either[String, ExtraHeaders] =
+    raw
+      .split(",")
+      .iterator
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .map(entry =>
+        entry.split(":", 2) match
+          case Array(name, value) if name.trim.nonEmpty => Right(name.trim -> value.trim)
+          case _                                        => Left(s"'$entry' is not a 'Name: Value' pair")
+      )
+      .foldLeft[Either[String, Map[String, String]]](Right(Map.empty)):
+        case (Right(acc), Right(pair)) => Right(acc + pair)
+        case (Left(err), _)            => Left(err)
+        case (_, Left(err))            => Left(err)
+      .map(ExtraHeaders.apply)
+
+  given ConfigReader[ExtraHeaders] =
+    ConfigReader.fromString[ExtraHeaders](raw => parse(raw).left.map(reason => CannotConvert(raw, "ExtraHeaders", reason)))
+
+/** Roles given as a comma-separated list (e.g. `admin,user`); empty by default so a login only gets roles the provider supplies. */
+case class DefaultRoles(values: Set[Role])
+
+object DefaultRoles:
+
+  val empty: DefaultRoles = DefaultRoles(Set.empty)
+
+  given ConfigReader[DefaultRoles] =
+    ConfigReader.fromString[DefaultRoles](raw => Right(DefaultRoles(raw.split(",").iterator.map(_.trim).filter(_.nonEmpty).map(Role.apply).toSet)))
 
 case class IdentityProvider(
   name: String,
@@ -32,9 +70,14 @@ case class IdentityProvider(
   // browser there so the upstream identity provider session is ended as well.
   endSessionUrl: Option[Uri] = None,
   scopes: List[String]       = List("openid", "profile", "email"),
-  defaultRoles: Set[Role]    = Set.empty,
-  // When true the provider is not listed by /api/auth/identity-providers. Used for internal/admin-only providers.
-  adminOnly: Option[Boolean] = None
+  // Roles granted when the provider supplies none through its roles claim; empty by default so a config mistake cannot grant admin.
+  defaultRoles: DefaultRoles = DefaultRoles.empty,
+  // Dot-path to the roles claim in the userinfo response, e.g. "groups" (Dex) or "urn:zitadel:iam:org:project:roles" (Zitadel).
+  rolesClaim: Option[String] = None,
+  // Shape of the roles claim value: an array of role names, or an object whose keys are the roles.
+  rolesFrom: RolesFrom       = RolesFrom.Array,
+  // Extra headers for the server-side token/userinfo requests, e.g. Zitadel's `X-Zitadel-Instance-Host: <public-host>`.
+  extraHeaders: ExtraHeaders = ExtraHeaders.empty
 ) derives ConfigReader
 
 case class AuthConfig(

@@ -21,8 +21,8 @@ A live demo is available at [https://demo.amony.app](https://demo.amony.app). It
 - Organize media with tags *
 - Upload media files through the web interface *
 - Delete media files (with confirmation) *
-- optional: Oauth2/OIDC authentication with [Dex](https://github.com/dexidp/dex) (or an identity provider of your
-  choice)
+- optional: Oauth2/OIDC authentication with [Dex](https://github.com/dexidp/dex) or [Zitadel](https://zitadel.com) (or
+  an identity provider of your choice), including roles read from a configurable OIDC claim
 - optional: Https with automatic certificate management via Let's Encrypt (when using the provided Docker Compose setup)
 - optional: Automatic database backups using a docker compose profile (with recovery mechanism)
 
@@ -53,11 +53,14 @@ default credentials for the Dex oauth server are:
 ### 2. Run with Docker Compose
 
 ```bash
-docker compose up -d
+docker compose --profile dex up -d
 ```
 
-This starts the application along with a PostgreSQL database and a [Dex](https://github.com/dexidp/dex) oauth server.
-The app will be available at http://localhost:8182.
+This starts the application along with a PostgreSQL database and the bundled [Dex](https://github.com/dexidp/dex) oauth
+server. The app will be available at http://localhost:8182.
+
+An optional `zitadel` profile runs [Zitadel](https://zitadel.com) instead, for trialling a full identity provider
+(self-registration, MFA, roles). See the Zitadel section in `.env.example`.
 
 You can mount a local directory containing your media files by editing the `docker-compose.yml` volumes for the `amony`
 service.

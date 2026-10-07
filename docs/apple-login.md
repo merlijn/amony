@@ -142,7 +142,7 @@ The login flow in `AuthRoutes` / `FederatedLoginService` is:
 5. A local user is looked up/created by email and a local JWT session is issued.
 
 `IdentityProvider` config models a provider as: `name`, `clientId`, `clientSecret`, `authorizeUrl`, `tokenUrl`,
-`userInfoUrl`, `scopes`, `defaultRoles`, `adminOnly`.
+`userInfoUrl`, `scopes`, `defaultRoles`.
 
 ## 4. Differences
 

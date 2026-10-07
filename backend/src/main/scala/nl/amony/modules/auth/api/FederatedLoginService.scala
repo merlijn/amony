@@ -7,6 +7,7 @@ import scala.util.{Random, Try}
 
 import cats.data.EitherT
 import cats.effect.IO
+import io.circe.Json
 import scribe.Logging
 import sttp.client4.Backend
 import sttp.client4.circe.asJson
@@ -90,6 +91,7 @@ class FederatedLoginService(config: AuthConfig, httpClient: Backend[IO], userDat
 
     val req = sttp.client4.basicRequest
       .post(provider.tokenUrl)
+      .headers(provider.extraHeaders.values)
       .body(body)
       .response(asJson[OauthTokenResponse])
 
@@ -99,17 +101,31 @@ class FederatedLoginService(config: AuthConfig, httpClient: Backend[IO], userDat
     }
   }
 
-  private def getUserInfo(provider: IdentityProvider, accessToken: String): EitherT[IO, AuthenticationError, UserInfo] = {
+  private def getUserInfo(provider: IdentityProvider, accessToken: String): EitherT[IO, AuthenticationError, Json] = {
     val req = sttp.client4.basicRequest
       .get(provider.userInfoUrl)
+      .headers(provider.extraHeaders.values)
       .header("Authorization", s"Bearer $accessToken")
-      .response(asJson[UserInfo])
+      .response(asJson[Json])
 
     EitherT(httpClient.send(req).map(_.body)).leftMap { error =>
       logger.error(s"Error fetching user info from identity provider $provider", error)
       IdentityProviderFailure
     }
   }
+
+  private def decodeUserInfo(userInfo: Json): EitherT[IO, AuthenticationError, UserInfo] =
+    EitherT.fromEither[IO](userInfo.as[UserInfo]).leftMap { error =>
+      logger.error("The identity provider returned an unparsable userinfo response", error)
+      IdentityProviderFailure
+    }
+
+  /** Roles from the provider's userinfo response, falling back to the provider's default roles. */
+  private def resolveRoles(provider: IdentityProvider, userInfo: Json): Set[Role] =
+    provider.rolesClaim
+      .map(RolesExtractor.extract(userInfo, _, provider.rolesFrom))
+      .filter(_.nonEmpty)
+      .getOrElse(provider.defaultRoles.values)
 
   private def getOrInsertUser(provider: IdentityProvider, userInfo: UserInfo, email: String): IO[User] = {
     userDatabase.getByEmail(email).flatMap {
@@ -120,8 +136,7 @@ class FederatedLoginService(config: AuthConfig, httpClient: Backend[IO], userDat
           email          = email,
           authProvider   = provider.name,
           authSubject    = userInfo.sub,
-          timeRegistered = Instant.now,
-          roles          = provider.defaultRoles
+          timeRegistered = Instant.now
         )
         userDatabase.insert(UserRow.fromUser(newUser)).map(_ => newUser)
     }
@@ -136,11 +151,13 @@ class FederatedLoginService(config: AuthConfig, httpClient: Backend[IO], userDat
       _              <- validateAndConsumeState(provider, state)
       providerConfig <- EitherT.fromOption[IO](identityProviders.get(provider), UnknownIdentityProvider: AuthenticationError)
       tokenResponse  <- getToken(providerConfig, code, origin)
-      userInfo       <- getUserInfo(providerConfig, tokenResponse.access_token)
+      userInfoJson   <- getUserInfo(providerConfig, tokenResponse.access_token)
+      userInfo       <- decodeUserInfo(userInfoJson)
       email          <- EitherT.fromOption[IO](userInfo.email, MissingEmail: AuthenticationError)
       user           <- EitherT.liftF(getOrInsertUser(providerConfig, userInfo, email))
+      roles           = resolveRoles(providerConfig, userInfoJson)
     yield tokenManager
-      .createAccessAndRefreshTokens(Some(user.id), roles = user.roles)
+      .createAccessAndRefreshTokens(Some(user.id), roles = roles)
       .copy(providerIdToken = providerIdTokenFor(providerConfig, tokenResponse))
 
   /** The provider ID token is only retained when it will be needed as `id_token_hint` at logout. */
