@@ -78,9 +78,7 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
 
   def authorize(requiredPermission: Option[Permission] = None)(securityInput: SecurityInput): Either[SecurityError, AuthToken] =
     resolveToken(securityInput).flatMap { token =>
-      // A client that presents a refresh token is not anonymous even when its access token is gone:
-      // reply Unauthorized so it can refresh instead of silently degrading to anonymous access.
-      if token.isAnonymous && (isLoginRequired || securityInput.refreshToken.isDefined) then Left(SecurityError.Unauthorized)
+      if isLoginRequired && token.isAnonymous then Left(SecurityError.Unauthorized)
       else
         requiredPermission match
           case None             => Right(token)
@@ -136,7 +134,7 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       )
     }
 
-    AuthCookies(accessTokenCookie, refreshCookie, xsrfCookie, providerIdTokenCookie)
+    AuthCookies(Some(accessTokenCookie), Some(refreshCookie), Some(xsrfCookie), providerIdTokenCookie)
   }
 
   def createLogoutCookes = {
@@ -150,9 +148,9 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
     )
 
     AuthCookies(
-      accessToken     = expiredCookie("/"),
-      refreshToken    = expiredCookie("/"),
-      xsrfToken       = expiredCookie("/"),
+      accessToken     = Some(expiredCookie("/")),
+      refreshToken    = Some(expiredCookie("/")),
+      xsrfToken       = Some(expiredCookie("/")),
       // Must repeat the cookie's own path, otherwise the browser keeps the original cookie.
       providerIdToken = Some(expiredCookie(providerIdTokenCookiePath))
     )

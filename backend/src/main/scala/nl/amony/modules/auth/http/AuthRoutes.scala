@@ -33,12 +33,14 @@ object AuthRoutes extends RoutesModule, Logging:
   val callbackErrorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError | BadGatewayError] =
     ErrorResponse.of[SecurityError, NotFoundError, BadRequestError, BadGatewayError].output
 
-  val sessionEndpoint: Endpoint[SecurityInput, Unit, SecurityError, AuthToken, Any] =
+  val sessionEndpoint: Endpoint[SecurityInput, Option[String], SecurityError, (AuthToken, AuthCookies), Any] =
     register(endpoint
       .tag("auth").name("getSession").description("Get the current session")
       .get.in("api" / "auth" / "session")
       .securityIn(securityInput)
+      .in(refreshTokenCookie)
       .out(jsonBody[AuthToken])
+      .out(AuthCookies.endpointOutput)
       .errorOut(errorOutput))
 
   val refreshEndpoint: Endpoint[SecurityInput, String, SecurityError, AuthCookies, Any] =
@@ -106,7 +108,22 @@ object AuthRoutes extends RoutesModule, Logging:
           case Right(authentication) => Right(apiSecurity.createCookies(authentication))
       }
 
-      serverLogic(endpoint = sessionEndpoint)(auth => _ => IO(Right(auth)))
+      // Reads the access token without rejecting anonymous callers: the handler decides whether to
+      // transparently refresh an expired access token, or to require a login.
+      serverLogic(endpoint = sessionEndpoint, authorize = input => Right(apiSecurity.decodeAccessToken(input.accessToken))) { auth => refreshToken =>
+        if auth.isAnonymous && refreshToken.isDefined then
+          loginService.refresh(refreshToken.get).map:
+            case Right(authentication)                  =>
+              Right(apiSecurity.decodeAccessToken(Some(authentication.accessToken)) -> apiSecurity.createCookies(authentication))
+            case Left(_) if apiSecurity.isLoginRequired =>
+              Left(SecurityError.Unauthorized)
+            case Left(_)                                =>
+              Right(auth -> AuthCookies.empty)
+        else if auth.isAnonymous && apiSecurity.isLoginRequired then
+          IO.pure(Left(SecurityError.Unauthorized))
+        else
+          IO.pure(Right(auth -> AuthCookies.empty))
+      }
 
       serverLogic(endpoint = logoutEndpoint, authorize = apiSecurity.authorizeXsrf) { _ => (providerIdTokenCookie, origin) =>
         val logoutUrl = providerIdTokenCookie.flatMap(ProviderIdToken.decode).flatMap(loginService.logoutUrl(_, origin))
