@@ -43,6 +43,9 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
   private val loginServiceMock = mock[FederatedLoginService](RETURNS_DEFAULTS)
   private val authRoutes       = AuthRoutes.apply(loginServiceMock, authConfig)
 
+  private val optionalLoginConfig = authConfig.copy(requireLogin = false)
+  private val optionalLoginRoutes = AuthRoutes.apply(loginServiceMock, optionalLoginConfig)(using new ApiSecurity(optionalLoginConfig))
+
   private val testState = "test-state-123"
 
   private val provider = IdentityProvider(
@@ -54,8 +57,12 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
     userInfoUrl  = Uri.unsafeParse("https://idp.example.com/userinfo")
   )
 
+  private val refreshedAuthentication =
+    new TokenManager(authConfig.jwt).createAccessAndRefreshTokens(Some("user-1"), Set(Role.Authenticated))
+
   loginServiceMock.identityProviders returns Map(provider.name -> provider)
   loginServiceMock.createState(any[String]) returns IO.pure(testState)
+  loginServiceMock.refresh(any[String]) returns IO.pure(Right(refreshedAuthentication))
 
   "AuthRoutes" when {
 
@@ -139,6 +146,41 @@ class AuthRoutesSpec extends AnyWordSpecLike with Matchers with MockitoSugar {
 
         response.code shouldBe StatusCode.Unauthorized
         decode[ErrorBody](response.body.merge) shouldBe Right(ErrorBody("unauthorized", "Authentication is required"))
+      }
+    }
+
+    "processing session requests with optional login" should {
+
+      "return an anonymous session without setting cookies when the client has no tokens" in new EndpointFixture(
+        optionalLoginRoutes,
+        AuthRoutes.sessionEndpoint
+      ) {
+        val response = request(path = "/api/auth/session").sendUnsafeSync()
+
+        response.code shouldBe StatusCode.Ok
+        decode[AuthToken](response.body.getOrElse(fail("expected a response body"))) shouldBe Right(AuthToken.anonymous)
+        response.header("Set-Cookie") shouldBe None
+      }
+
+      "refresh the tokens and return the session when a refresh token is presented" in new EndpointFixture(
+        optionalLoginRoutes,
+        AuthRoutes.sessionEndpoint
+      ) {
+        val response = request(path = "/api/auth/session").cookie(refreshTokenCookieName, refreshedAuthentication.refreshToken).sendUnsafeSync()
+
+        response.code shouldBe StatusCode.Ok
+        decode[AuthToken](response.body.getOrElse(fail("expected a response body"))) shouldBe
+          Right(AuthToken(UserId("user-1"), Set(Role.Authenticated)))
+        response.header("Set-Cookie").isDefined shouldBe true
+      }
+
+      "return the current session for a valid access token" in new EndpointFixture(optionalLoginRoutes, AuthRoutes.sessionEndpoint) {
+        val userToken = new TokenManager(optionalLoginConfig.jwt).createAccessAndRefreshTokens(Some("user-1"), Set(Role.Authenticated)).accessToken
+        val response  = request(path = "/api/auth/session").cookie("access_token", userToken).sendUnsafeSync()
+
+        response.code shouldBe StatusCode.Ok
+        decode[AuthToken](response.body.getOrElse(fail("expected a response body"))) shouldBe
+          Right(AuthToken(UserId("user-1"), Set(Role.Authenticated)))
       }
     }
   }

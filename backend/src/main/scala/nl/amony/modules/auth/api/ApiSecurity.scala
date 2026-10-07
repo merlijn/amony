@@ -14,7 +14,8 @@ import nl.amony.lib.tapir.dsl.error.SecurityError
 import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.{Authentication, JwtDecoder}
 
-val authCookieName = "access_token"
+val authCookieName         = "access_token"
+val refreshTokenCookieName = "refresh_token"
 
 /**
  * Cookie holding the identity provider's ID token, used as `id_token_hint` on logout. It is scoped
@@ -133,7 +134,7 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
       )
     }
 
-    AuthCookies(accessTokenCookie, refreshCookie, xsrfCookie, providerIdTokenCookie)
+    AuthCookies(Some(accessTokenCookie), Some(refreshCookie), Some(xsrfCookie), providerIdTokenCookie)
   }
 
   def createLogoutCookes = {
@@ -147,9 +148,9 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
     )
 
     AuthCookies(
-      accessToken     = expiredCookie("/"),
-      refreshToken    = expiredCookie("/"),
-      xsrfToken       = expiredCookie("/"),
+      accessToken     = Some(expiredCookie("/")),
+      refreshToken    = Some(expiredCookie("/")),
+      xsrfToken       = Some(expiredCookie("/")),
       // Must repeat the cookie's own path, otherwise the browser keeps the original cookie.
       providerIdToken = Some(expiredCookie(providerIdTokenCookiePath))
     )

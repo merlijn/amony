@@ -1,6 +1,7 @@
 package nl.amony.modules.auth.api
 
-import sttp.model.Method
+import sttp.model.headers.Cookie
+import sttp.model.{HeaderNames, Method}
 import sttp.tapir.*
 
 case class SecurityInput(accessToken: Option[String], xsrfCookie: Option[String], xXsrfHeader: Option[String], method: Method)
@@ -34,3 +35,13 @@ val securityInput: EndpointInput[SecurityInput] =
     .and(extractFromRequest(_.header("X-XSRF-TOKEN")))
     .and(extractFromRequest(_.method))
     .mapTo[SecurityInput]
+
+/** The refresh token cookie, read server-side so it does not become a documented client parameter. */
+val refreshTokenCookie: EndpointInput[Option[String]] =
+  extractFromRequest { request =>
+    request.headers
+      .filter(_.name.equalsIgnoreCase(HeaderNames.Cookie))
+      .flatMap(header => Cookie.parse(header.value).getOrElse(Nil))
+      .find(_.name == refreshTokenCookieName)
+      .map(_.value)
+  }
