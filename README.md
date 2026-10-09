@@ -58,14 +58,14 @@ default credentials for the Dex oauth server are:
 ### 2. Run with Docker Compose
 
 ```bash
-docker compose --profile dex up -d
+docker compose up -d
 ```
 
 This starts the application along with a PostgreSQL database and the bundled [Dex](https://github.com/dexidp/dex) oauth
 server. The app will be available at http://localhost:8182.
 
-An optional `zitadel` profile runs [Zitadel](https://zitadel.com) instead, for trialling a full identity provider
-(self-registration, MFA, roles). See the Zitadel section in `.env.example`.
+[Zitadel](https://zitadel.com) is only used by the public demo deployment, provided by the `docker-compose.demo.yml`
+overlay and enabled with its `zitadel` profile.
 
 You can mount a local directory containing your media files by editing the `docker-compose.yml` volumes for the `amony`
 service.
