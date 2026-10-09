@@ -64,7 +64,9 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
   private def createResource(inputFile: Path, info: ResourceInfo, operation: ResourceOperation): IO[Path] =
     operation.validate(info) match
       case Left(error) => IO.raiseError(new Exception(error))
-      case Right(_)    => run(info, inputFile, operation.outputFile(info.resourceId), operation).memoize.flatten
+      case Right(_)    =>
+        val outputFile = operation.outputFile(info.resourceId)
+        IO.blocking(Files.createDirectories(outputFile.getParent)) >> run(info, inputFile, outputFile, operation).memoize.flatten
 
   private def run(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: ResourceOperation): IO[Path] = operation match
     case VideoFragment(width, height, start, end) =>
