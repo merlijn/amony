@@ -1,5 +1,7 @@
 package nl.amony.modules.resources
 
+import java.nio.file.Files
+
 import cats.data.EitherT
 import cats.effect.std.{Mutex, Supervisor}
 import cats.effect.{Fiber, IO, Ref, Resource}
@@ -42,6 +44,25 @@ object BucketRegistry extends Logging:
     if absolute == config then IO.pure(config)
     else bucketsDal.update(absolute) >> IO(logger.info(s"Stored absolute path for bucket '${config.id}'")).as(absolute)
 
+  /** Inserts the default bucket when no buckets exist yet, unless its directory does not exist. */
+  private def seedDefaultBucket(defaultBucket: ResourceBucketConfig, bucketsDal: BucketsDal): IO[Unit] =
+    withAbsolutePaths(defaultBucket) match
+      case config: LocalDirectoryConfig =>
+        bucketsDal.anyExist().flatMap {
+          case true  => IO.unit
+          case false =>
+            IO.blocking(Files.isDirectory(config.resourcePath)).flatMap {
+              case false =>
+                IO(logger.error(
+                  s"No buckets found, but the directory '${config.resourcePath}' of the default bucket '${config.id}' does not exist. Not inserting it."
+                ))
+              case true  =>
+                bucketsDal.insertIfNoneExist(config).flatMap(inserted =>
+                  IO.whenA(inserted)(IO(logger.info(s"No buckets found, inserted default bucket '${config.id}'")))
+                )
+            }
+        }
+
   private case class RunningBucket(config: ResourceBucketConfig, bucket: ResourceBucket, fiber: Fiber[IO, Throwable, Unit])
 
   /**
@@ -59,13 +80,12 @@ object BucketRegistry extends Logging:
       supervisor <- Supervisor[IO]
       registry   <- Resource.eval {
                       for
-                        inserted <- bucketsDal.insertIfNoneExist(withAbsolutePaths(defaultBucket))
-                        _        <- IO.whenA(inserted)(IO(logger.info(s"No buckets found, inserted default bucket '${defaultBucket.id}'")))
-                        mutex    <- Mutex[IO]
-                        state    <- Ref.of[IO, Map[BucketId, RunningBucket]](Map.empty)
-                        registry  = Impl(bucketsDal, resourceDb, searchService, factory, supervisor, state, mutex)
-                        configs  <- bucketsDal.getAll().flatMap(_.traverse(storeAbsolutePaths(bucketsDal)))
-                        _        <- configs.traverse_(registry.startBucket)
+                        _       <- seedDefaultBucket(defaultBucket, bucketsDal)
+                        mutex   <- Mutex[IO]
+                        state   <- Ref.of[IO, Map[BucketId, RunningBucket]](Map.empty)
+                        registry = Impl(bucketsDal, resourceDb, searchService, factory, supervisor, state, mutex)
+                        configs <- bucketsDal.getAll().flatMap(_.traverse(storeAbsolutePaths(bucketsDal)))
+                        _       <- configs.traverse_(registry.startBucket)
                       yield registry
                     }
     yield registry

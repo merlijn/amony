@@ -79,6 +79,31 @@ class BucketRegistrySpec extends AnyWordSpecLike with TestContainerForAll with M
     ResourceInfo(bucketId = bucketId, resourceId = ResourceId(UUID.randomUUID().toString), userId = UserId("admin"), path = "file.mp4", size = 1L)
 
   "The bucket registry" should {
+    "not insert the default bucket when its directory does not exist" in {
+      withContainers { container =>
+        val dbConfig    = DatabaseConfig(container.containerIpAddress, container.mappedPort(5432), "test", "test", 3, "test")
+        val missingPath = tempDir().resolve("missing")
+
+        val test =
+          App.makeDatabasePool(dbConfig).use { pool =>
+            val bucketsDal = BucketsDal(pool)
+            val factory    = (config: ResourceConfig.ResourceBucketConfig) => IO.pure((FakeBucket(BucketId(config.id), None), IO.unit))
+
+            for
+              deleted <- Ref.of[IO, List[BucketId]](Nil)
+              configs <- BucketRegistry
+                           .resource(bucketConfig("media", missingPath), bucketsDal, ResourceDatabase(pool), FakeSearchService(deleted), factory)
+                           .use(_.allConfigs)
+              _        = configs shouldBe empty
+              stored  <- bucketsDal.anyExist()
+              _        = stored shouldBe false
+            yield ()
+          }
+
+        test.unsafeRunSync()
+      }
+    }
+
     "seed, create, update and delete buckets" in {
       withContainers { container =>
         val dbConfig = DatabaseConfig(container.containerIpAddress, container.mappedPort(5432), "test", "test", 3, "test")

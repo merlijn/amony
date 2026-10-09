@@ -87,6 +87,8 @@ object BucketRow:
 class BucketsDal(pool: Resource[IO, Session[IO]]) extends scribe.Logging:
 
   private object queries:
+    val anyExist: Query[Void, Boolean] = sql"select exists (select 1 from buckets)".query(bool)
+
     val all: Query[Void, BucketRow] =
       sql"select bucket_id, bucket_type, required_role, settings from buckets order by bucket_id".query(BucketRow.codec)
 
@@ -117,6 +119,8 @@ class BucketsDal(pool: Resource[IO, Session[IO]]) extends scribe.Logging:
       case Left(error)   =>
         logger.error(s"Ignoring invalid bucket configuration for '${row.bucket_id}': $error")
         None
+
+  def anyExist(): IO[Boolean] = pool.use(_.unique(queries.anyExist))
 
   def getAll(): IO[List[ResourceBucketConfig]] =
     pool.use(_.execute(queries.all)).map(_.flatMap(toConfig))
