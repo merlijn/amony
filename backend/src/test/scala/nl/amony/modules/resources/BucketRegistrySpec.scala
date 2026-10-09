@@ -92,7 +92,7 @@ class BucketRegistrySpec extends AnyWordSpecLike with TestContainerForAll with M
             for
               deleted <- Ref.of[IO, List[BucketId]](Nil)
               configs <- BucketRegistry
-                           .resource(bucketConfig("media", missingPath), bucketsDal, ResourceDatabase(pool), FakeSearchService(deleted), factory)
+                           .resource(bucketConfig("media", missingPath), bucketsDal, FakeSearchService(deleted), factory)
                            .use(_.allConfigs)
               _        = configs shouldBe empty
               stored  <- bucketsDal.anyExist()
@@ -119,14 +119,19 @@ class BucketRegistrySpec extends AnyWordSpecLike with TestContainerForAll with M
 
             for
               started  <- Ref.of[IO, List[String]](Nil)
+              active   <- Ref.of[IO, Map[String, Int]](Map.empty)
+              maxSyncs <- Ref.of[IO, Int](0)
               deleted  <- Ref.of[IO, List[BucketId]](Nil)
-              factory   = (config: ResourceConfig.ResourceBucketConfig) =>
-                            IO.pure((FakeBucket(BucketId(config.id), None), started.update(config.id :: _) >> IO.never))
-              registry  = BucketRegistry.resource(bucketConfig("media", defaultPath), bucketsDal, resourceDb, FakeSearchService(deleted), factory)
+              sync      = (id: String) =>
+                            (started.update(id :: _) >>
+                              active.updateAndGet(m => m.updated(id, m.getOrElse(id, 0) + 1)).flatMap(m => maxSyncs.update(_ max m(id))) >>
+                              IO.never[Unit]).onCancel(active.update(m => m.updated(id, m(id) - 1)))
+              factory   = (config: ResourceConfig.ResourceBucketConfig) => IO.pure((FakeBucket(BucketId(config.id), None), sync(config.id)))
+              registry  = BucketRegistry.resource(bucketConfig("media", defaultPath), bucketsDal, FakeSearchService(deleted), factory)
               _        <- registry.use { r =>
                             for
                               seeded      <- r.allConfigs
-                              _            = seeded shouldBe List(bucketConfig("media", defaultPath))
+                              _            = seeded.map(_.config) shouldBe List(bucketConfig("media", defaultPath))
                               overlapping <- r.create(bucketConfig("other", defaultPath.resolve("sub")))
                               _            = overlapping shouldBe a[Left[BucketError.Invalid, ?]]
                               invalidId   <- r.create(bucketConfig("Not Valid", otherPath))
@@ -137,11 +142,18 @@ class BucketRegistrySpec extends AnyWordSpecLike with TestContainerForAll with M
                               _            = created shouldBe Right(())
                               duplicate   <- r.create(bucketConfig("other", otherPath))
                               _            = duplicate shouldBe Left(BucketError.AlreadyExists(BucketId("other")))
+                              original    <- r.getConfig(BucketId("other")).map(_.get)
                               relativePath = Path.of("").toAbsolutePath.relativize(otherPath)
-                              updated     <- r.update(bucketConfig("other", relativePath).copy(generatePreviewsOnAdd = true, requiredRole = None))
+                              changed      = bucketConfig("other", relativePath).copy(generatePreviewsOnAdd = true, requiredRole = None)
+                              updated     <- r.update(changed, original.updatedAt)
                               _            = updated shouldBe Right(())
                               stored      <- bucketsDal.getById(BucketId("other"))
-                              _            = stored shouldBe Some(bucketConfig("other", otherPath).copy(generatePreviewsOnAdd = true, requiredRole = None))
+                              _            = stored.map(_.config) shouldBe Some(changed.copy(path = otherPath))
+                              _            = stored.get.updatedAt.isAfter(original.updatedAt) shouldBe true
+                              stale       <- r.update(changed.copy(generatePreviewsOnAdd = false), original.updatedAt)
+                              _            = stale shouldBe Left(BucketError.Modified(BucketId("other")))
+                              missingUpd  <- r.update(bucketConfig("unknown", otherPath), original.updatedAt)
+                              _            = missingUpd shouldBe Left(BucketError.NotFound(BucketId("unknown")))
                               _           <- resourceDb.insertResource(resource(BucketId("other")).copy(tags = Set("a")))
                               notEmpty    <- r.delete(BucketId("other"), force = false)
                               _            = notEmpty shouldBe Left(BucketError.NotEmpty(BucketId("other"), 1))
@@ -156,13 +168,17 @@ class BucketRegistrySpec extends AnyWordSpecLike with TestContainerForAll with M
                               _           <- IO.sleep(100.millis)
                               startedIds  <- started.get
                               _            = startedIds.sorted shouldBe List("media", "other", "other")
+                              activeSyncs <- active.get
+                              _            = activeSyncs shouldBe Map("media" -> 1, "other" -> 0)
+                              maxActive   <- maxSyncs.get
+                              _            = maxActive shouldBe 1
                             yield ()
                           }
               // the default bucket is not inserted again on a restart
               reseeded <- bucketsDal.insertIfNoneExist(bucketConfig("ignored", otherPath))
               _         = reseeded shouldBe false
               all      <- bucketsDal.getAll()
-              _         = all.map(_.id) shouldBe List("media")
+              _         = all.map(_.config.id) shouldBe List("media")
             yield ()
           }
 

@@ -122,7 +122,6 @@ object App extends ResourceApp.Forever with Logging {
         bucketRegistry    <- BucketRegistry.resource(
                                appConfig.resources.defaultBucket,
                                BucketsDal(databasePool),
-                               resourceDatabase,
                                searchService,
                                bucketFactory
                              )

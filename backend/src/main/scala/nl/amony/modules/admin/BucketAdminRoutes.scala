@@ -1,6 +1,7 @@
 package nl.amony.modules.admin
 
 import java.nio.file.{InvalidPathException, Path}
+import java.time.Instant
 import scala.concurrent.duration.DurationLong
 
 import cats.data.EitherT
@@ -16,6 +17,7 @@ import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogi
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.ResourceConfig.{HashingAlgorithm, LocalDirectoryConfig, PartialHash, ResourceBucketConfig, ScanConfig}
 import nl.amony.modules.resources.api.BucketId
+import nl.amony.modules.resources.dal.StoredBucket
 import nl.amony.modules.resources.{BucketError, BucketRegistry}
 
 case class ScanSettingsDto(
@@ -36,14 +38,15 @@ case class BucketConfigDto(
   relativeUploadPath: String,
   generatePreviewsOnAdd: Boolean,
   hashingAlgorithm: Option[String],
-  sync: ScanSettingsDto
+  sync: ScanSettingsDto,
+  updatedAt: Option[Instant]
 ) derives Codec, Schema
 
 object BucketConfigDto:
 
   val localDirectoryType = "LocalDirectory"
 
-  def fromConfig(config: ResourceBucketConfig): BucketConfigDto = config match
+  def fromStored(stored: StoredBucket): BucketConfigDto = stored.config match
     case c: LocalDirectoryConfig =>
       BucketConfigDto(
         id                    = c.id,
@@ -61,7 +64,8 @@ object BucketConfigDto:
           pollIntervalSeconds = c.sync.pollInterval.toSeconds,
           includePatterns     = c.sync.includePatterns,
           excludePatterns     = c.sync.excludePatterns
-        )
+        ),
+        updatedAt             = Some(stored.updatedAt)
       )
 
   private def parsePath(field: String, value: String): Either[String, Path] =
@@ -146,25 +150,30 @@ object BucketAdminRoutes extends RoutesModule, Logging:
   private def toApiError(error: BucketError): BucketAdminError = error match
     case BucketError.NotFound(id)        => NotFoundError("bucket_not_found", s"Bucket '$id' not found")
     case BucketError.AlreadyExists(id)   => ConflictError("bucket_exists", s"Bucket '$id' already exists")
+    case BucketError.Modified(id)        =>
+      ConflictError("bucket_modified", s"Bucket '$id' was changed by someone else in the meantime, reload it and try again")
     case BucketError.Invalid(message)    => BadRequestError("invalid_bucket", message)
     case BucketError.NotEmpty(id, count) =>
       ConflictError("bucket_not_empty", s"Bucket '$id' contains $count resources, use force to delete it anyway")
+
+  private def requireUpdatedAt(dto: BucketConfigDto): EitherT[IO, BucketAdminError, Instant] =
+    EitherT.fromOption[IO](dto.updatedAt, BadRequestError("invalid_bucket", "The updatedAt of the bucket is required for an update"))
 
   private def parseDto(dto: BucketConfigDto): EitherT[IO, BucketAdminError, ResourceBucketConfig] =
     EitherT.fromEither[IO](BucketConfigDto.toConfig(dto)).leftMap(BadRequestError("invalid_bucket", _))
 
   def apply(registry: BucketRegistry)(using apiSecurity: ApiSecurity): ServerEndpoints[IO] =
 
-    def requireConfig(bucketId: BucketId): EitherT[IO, BucketAdminError, ResourceBucketConfig] =
+    def requireConfig(bucketId: BucketId): EitherT[IO, BucketAdminError, StoredBucket] =
       EitherT.fromOptionF(registry.getConfig(bucketId), toApiError(BucketError.NotFound(bucketId)))
 
     routes[IO] {
       serverLogic(endpoint = listBuckets, requiredPermission = Permission.Admin) { _ => _ =>
-        registry.allConfigs.map(configs => Right(configs.map(BucketConfigDto.fromConfig)))
+        registry.allConfigs.map(configs => Right(configs.map(BucketConfigDto.fromStored)))
       }
 
       serverLogicT(endpoint = getBucket, requiredPermission = Permission.Admin) { _ => bucketId =>
-        requireConfig(bucketId).map(BucketConfigDto.fromConfig)
+        requireConfig(bucketId).map(BucketConfigDto.fromStored)
       }
 
       serverLogicT(endpoint = createBucket, requiredPermission = Permission.Admin) { _ => dto =>
@@ -172,16 +181,17 @@ object BucketAdminRoutes extends RoutesModule, Logging:
           config <- parseDto(dto)
           _      <- EitherT(registry.create(config)).leftMap(toApiError)
           stored <- requireConfig(BucketId(config.id))
-        yield BucketConfigDto.fromConfig(stored)
+        yield BucketConfigDto.fromStored(stored)
       }
 
       serverLogicT(endpoint = updateBucket, requiredPermission = Permission.Admin) { _ => (bucketId, dto) =>
         for
-          config <- parseDto(dto)
-          _      <- EitherT.cond[IO](config.id == bucketId, (), BadRequestError("invalid_bucket", "The bucket id cannot be changed"))
-          _      <- EitherT(registry.update(config)).leftMap(toApiError)
-          stored <- requireConfig(bucketId)
-        yield BucketConfigDto.fromConfig(stored)
+          config    <- parseDto(dto)
+          updatedAt <- requireUpdatedAt(dto)
+          _         <- EitherT.cond[IO](config.id == bucketId, (), BadRequestError("invalid_bucket", "The bucket id cannot be changed"))
+          _         <- EitherT(registry.update(config, updatedAt)).leftMap(toApiError)
+          stored    <- requireConfig(bucketId)
+        yield BucketConfigDto.fromStored(stored)
       }
 
       serverLogicT(endpoint = deleteBucket, requiredPermission = Permission.Admin) { _ => (bucketId, force) =>

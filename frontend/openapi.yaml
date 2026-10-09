@@ -2182,6 +2182,9 @@ components:
           type: string
         sync:
           $ref: '#/components/schemas/ScanSettingsDto'
+        updatedAt:
+          type: string
+          format: date-time
     BucketDto:
       title: BucketDto
       type: object

@@ -3,19 +3,20 @@ package nl.amony.modules.resources
 import java.nio.file.Files
 
 import cats.data.EitherT
-import cats.effect.std.{Mutex, Supervisor}
-import cats.effect.{Fiber, IO, Ref, Resource}
+import cats.effect.std.Supervisor
+import cats.effect.{Deferred, Fiber, IO, Ref, Resource}
 import cats.implicits.*
 import scribe.Logging
 
 import nl.amony.modules.resources.ResourceConfig.{LocalDirectoryConfig, ResourceBucketConfig}
 import nl.amony.modules.resources.api.{BucketId, ResourceBucket}
-import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
+import nl.amony.modules.resources.dal.{BucketsDal, StoredBucket}
 import nl.amony.modules.search.api.SearchService
 
 enum BucketError:
   case NotFound(bucketId: BucketId)
   case AlreadyExists(bucketId: BucketId)
+  case Modified(bucketId: BucketId)
   case Invalid(message: String)
   case NotEmpty(bucketId: BucketId, resourceCount: Long)
 
@@ -25,10 +26,12 @@ type BucketFactory = ResourceBucketConfig => IO[(ResourceBucket, IO[Unit])]
 trait BucketRegistry:
   def get(bucketId: BucketId): IO[Option[ResourceBucket]]
   def all: IO[List[ResourceBucket]]
-  def getConfig(bucketId: BucketId): IO[Option[ResourceBucketConfig]]
-  def allConfigs: IO[List[ResourceBucketConfig]]
+  def getConfig(bucketId: BucketId): IO[Option[StoredBucket]]
+  def allConfigs: IO[List[StoredBucket]]
   def create(config: ResourceBucketConfig): IO[Either[BucketError, Unit]]
-  def update(config: ResourceBucketConfig): IO[Either[BucketError, Unit]]
+
+  /** Updates a bucket, unless it was changed since `expectedUpdatedAt`. */
+  def update(config: ResourceBucketConfig, expectedUpdatedAt: java.time.Instant): IO[Either[BucketError, Unit]]
 
   /** Deletes a bucket from the database and search index. Media files are never deleted. */
   def delete(bucketId: BucketId, force: Boolean): IO[Either[BucketError, Unit]]
@@ -39,10 +42,14 @@ object BucketRegistry extends Logging:
   private def withAbsolutePaths(config: ResourceBucketConfig): ResourceBucketConfig = config match
     case c: LocalDirectoryConfig => c.copy(path = c.path.toAbsolutePath.normalize())
 
-  private def storeAbsolutePaths(bucketsDal: BucketsDal)(config: ResourceBucketConfig): IO[ResourceBucketConfig] =
-    val absolute = withAbsolutePaths(config)
-    if absolute == config then IO.pure(config)
-    else bucketsDal.update(absolute) >> IO(logger.info(s"Stored absolute path for bucket '${config.id}'")).as(absolute)
+  private def storeAbsolutePaths(bucketsDal: BucketsDal)(stored: StoredBucket): IO[StoredBucket] =
+    val absolute = withAbsolutePaths(stored.config)
+    if absolute == stored.config then IO.pure(stored)
+    else
+      bucketsDal.update(absolute, stored.updatedAt).flatMap {
+        case Right(updated) => IO(logger.info(s"Stored absolute path for bucket '${absolute.id}'")).as(updated)
+        case Left(error)    => IO(logger.warn(s"Could not store absolute path for bucket '${absolute.id}': $error")).as(stored)
+      }
 
   /** Inserts the default bucket when no buckets exist yet, unless its directory does not exist. */
   private def seedDefaultBucket(defaultBucket: ResourceBucketConfig, bucketsDal: BucketsDal): IO[Unit] =
@@ -63,7 +70,7 @@ object BucketRegistry extends Logging:
             }
         }
 
-  private case class RunningBucket(config: ResourceBucketConfig, bucket: ResourceBucket, fiber: Fiber[IO, Throwable, Unit])
+  private case class RunningBucket(stored: StoredBucket, bucket: ResourceBucket, fiber: Fiber[IO, Throwable, Unit])
 
   /**
    * Loads the buckets from the database and starts them. When no buckets exist yet, the default bucket is inserted
@@ -72,7 +79,6 @@ object BucketRegistry extends Logging:
   def resource(
     defaultBucket: ResourceBucketConfig,
     bucketsDal: BucketsDal,
-    resourceDb: ResourceDatabase,
     searchService: SearchService,
     factory: BucketFactory
   ): Resource[IO, BucketRegistry] =
@@ -81,43 +87,73 @@ object BucketRegistry extends Logging:
       registry   <- Resource.eval {
                       for
                         _       <- seedDefaultBucket(defaultBucket, bucketsDal)
-                        mutex   <- Mutex[IO]
-                        state   <- Ref.of[IO, Map[BucketId, RunningBucket]](Map.empty)
-                        registry = Impl(bucketsDal, resourceDb, searchService, factory, supervisor, state, mutex)
-                        configs <- bucketsDal.getAll().flatMap(_.traverse(storeAbsolutePaths(bucketsDal)))
-                        _       <- configs.traverse_(registry.startBucket)
+                        running <- Ref.of[IO, Map[BucketId, RunningBucket]](Map.empty)
+                        registry = Impl(bucketsDal, searchService, factory, supervisor, running)
+                        stored  <- bucketsDal.getAll().flatMap(_.traverse(storeAbsolutePaths(bucketsDal)))
+                        _       <- stored.traverse_(registry.install)
                       yield registry
                     }
     yield registry
 
+  /**
+   * The database is the source of truth for the bucket configuration. `running` only holds the buckets this instance
+   * runs, which is needed to stop or restart their background sync process when a bucket changes.
+   */
   private class Impl(
     bucketsDal: BucketsDal,
-    resourceDb: ResourceDatabase,
     searchService: SearchService,
     factory: BucketFactory,
     supervisor: Supervisor[IO],
-    state: Ref[IO, Map[BucketId, RunningBucket]],
-    mutex: Mutex[IO]
+    running: Ref[IO, Map[BucketId, RunningBucket]]
   ) extends BucketRegistry:
 
-    private[BucketRegistry] def startBucket(config: ResourceBucketConfig): IO[Unit] =
+    /**
+     * Starts the bucket and replaces the running instance, unless that one has a more recent configuration. The
+     * background process of the new instance only starts after the replaced one has stopped, so that a bucket never
+     * syncs twice at the same time.
+     */
+    private[BucketRegistry] def install(stored: StoredBucket): IO[Unit] =
+      val bucketId = BucketId(stored.config.id)
       for
-        (bucket, background) <- factory(config)
+        started              <- Deferred[IO, Unit]
+        (bucket, background) <- factory(stored.config)
         fiber                <- supervisor.supervise(
-                                  background.handleErrorWith(e => IO(logger.error(s"Background process of bucket '${config.id}' failed", e)))
+                                  started.get >> background.handleErrorWith(e =>
+                                    IO(logger.error(s"Background process of bucket '$bucketId' failed", e))
+                                  )
                                 )
-        _                    <- state.update(_.updated(bucket.id, RunningBucket(config, bucket, fiber)))
+        replaced             <- running.modify { buckets =>
+                                  buckets.get(bucketId) match
+                                    case Some(current) if current.stored.updatedAt.isAfter(stored.updatedAt) => (buckets, None)
+                                    case current                                                             =>
+                                      (buckets.updated(bucketId, RunningBucket(stored, bucket, fiber)), Some(current))
+                                }
+        _                    <- replaced match
+                                  case None           => fiber.cancel
+                                  case Some(previous) => previous.traverse_(_.fiber.cancel) >> started.complete(()).void
       yield ()
 
-    private def requireRunning(bucketId: BucketId): EitherT[IO, BucketError, RunningBucket] =
-      EitherT.fromOptionF(state.get.map(_.get(bucketId)), BucketError.NotFound(bucketId))
+    private def uninstall(bucketId: BucketId): IO[Unit] =
+      running.modify(buckets => (buckets - bucketId, buckets.get(bucketId))).flatMap(_.traverse_(_.fiber.cancel))
 
-    private def otherConfigs(bucketId: BucketId): IO[List[ResourceBucketConfig]] =
-      state.get.map(_.values.map(_.config).filterNot(_.id == bucketId).toList)
+    /** Brings the running instance in line with the configuration in the database. */
+    private def reload(bucketId: BucketId): IO[Unit] =
+      bucketsDal.getById(bucketId).flatMap {
+        case Some(stored) => install(stored)
+        case None         => uninstall(bucketId)
+      }
 
+    /**
+     * Note: the overlap check against the other buckets is not atomic with the insert or update. Two admins saving
+     * buckets with overlapping paths at exactly the same time could both pass it. This is an accepted edge case.
+     */
     private def validate(config: ResourceBucketConfig): EitherT[IO, BucketError, ResourceBucketConfig] =
-      EitherT(otherConfigs(BucketId(config.id)).flatMap(others => BucketValidation.validate(withAbsolutePaths(config), others)))
-        .leftMap(BucketError.Invalid(_))
+      EitherT(
+        bucketsDal.getAll().flatMap { all =>
+          val others = all.map(_.config).filterNot(_.id == config.id)
+          BucketValidation.validate(withAbsolutePaths(config), others)
+        }
+      ).leftMap(BucketError.Invalid(_))
 
     private def checkUpdateAllowed(existing: ResourceBucketConfig, updated: ResourceBucketConfig): Either[BucketError, Unit] =
       (existing, updated) match
@@ -128,53 +164,40 @@ object BucketRegistry extends Logging:
             BucketError.Invalid("The hashing algorithm of an existing bucket cannot be changed")
           )
 
-    override def get(bucketId: BucketId): IO[Option[ResourceBucket]] = state.get.map(_.get(bucketId).map(_.bucket))
+    override def get(bucketId: BucketId): IO[Option[ResourceBucket]] = running.get.map(_.get(bucketId).map(_.bucket))
 
-    override def all: IO[List[ResourceBucket]] = state.get.map(_.values.map(_.bucket).toList.sortBy(_.id))
+    override def all: IO[List[ResourceBucket]] = running.get.map(_.values.map(_.bucket).toList.sortBy(_.id))
 
-    override def getConfig(bucketId: BucketId): IO[Option[ResourceBucketConfig]] = state.get.map(_.get(bucketId).map(_.config))
+    override def getConfig(bucketId: BucketId): IO[Option[StoredBucket]] = bucketsDal.getById(bucketId)
 
-    override def allConfigs: IO[List[ResourceBucketConfig]] = state.get.map(_.values.map(_.config).toList.sortBy(_.id))
+    override def allConfigs: IO[List[StoredBucket]] = bucketsDal.getAll()
 
     override def create(config: ResourceBucketConfig): IO[Either[BucketError, Unit]] =
       val bucketId = BucketId(config.id)
-      mutex.lock.surround {
-        (for
-          exists    <- EitherT.liftF(state.get.map(_.contains(bucketId)))
-          _         <- EitherT.cond[IO](!exists, (), BucketError.AlreadyExists(bucketId))
-          validated <- validate(config)
-          inserted  <- EitherT.liftF(bucketsDal.insert(validated))
-          _         <- EitherT.cond[IO](inserted, (), BucketError.AlreadyExists(bucketId))
-          _         <- EitherT.liftF(startBucket(validated))
-          _         <- EitherT.liftF(IO(logger.info(s"Created bucket '$bucketId'")))
-        yield ()).value
-      }
+      (for
+        validated <- validate(config)
+        _         <- EitherT(bucketsDal.insert(validated))
+        _         <- EitherT.liftF(reload(bucketId))
+        _         <- EitherT.liftF(IO(logger.info(s"Created bucket '$bucketId'")))
+      yield ()).value
 
-    override def update(config: ResourceBucketConfig): IO[Either[BucketError, Unit]] =
+    override def update(config: ResourceBucketConfig, expectedUpdatedAt: java.time.Instant): IO[Either[BucketError, Unit]] =
       val bucketId = BucketId(config.id)
-      mutex.lock.surround {
-        (for
-          existing  <- requireRunning(bucketId)
-          _         <- EitherT.fromEither[IO](checkUpdateAllowed(existing.config, config))
-          validated <- validate(config)
-          updated   <- EitherT.liftF(bucketsDal.update(validated))
-          _         <- EitherT.cond[IO](updated, (), BucketError.NotFound(bucketId))
-          _         <- EitherT.liftF(existing.fiber.cancel)
-          _         <- EitherT.liftF(startBucket(validated))
-          _         <- EitherT.liftF(IO(logger.info(s"Updated bucket '$bucketId'")))
-        yield ()).value
-      }
+      (for
+        existing  <- EitherT.fromOptionF(bucketsDal.getById(bucketId), BucketError.NotFound(bucketId))
+        _         <- EitherT.fromEither[IO](checkUpdateAllowed(existing.config, config))
+        validated <- validate(config)
+        _         <- EitherT(bucketsDal.update(validated, expectedUpdatedAt))
+        _         <- EitherT.liftF(reload(bucketId))
+        _         <- EitherT.liftF(IO(logger.info(s"Updated bucket '$bucketId'")))
+      yield ()).value
 
     override def delete(bucketId: BucketId, force: Boolean): IO[Either[BucketError, Unit]] =
-      mutex.lock.surround {
-        (for
-          existing      <- requireRunning(bucketId)
-          resourceCount <- EitherT.liftF(resourceDb.bucketSize(bucketId))
-          _             <- EitherT.cond[IO](force || resourceCount == 0, (), BucketError.NotEmpty(bucketId, resourceCount))
-          _             <- EitherT.liftF(existing.fiber.cancel)
-          _             <- EitherT.liftF(bucketsDal.deleteWithResources(bucketId))
-          _             <- EitherT.liftF(state.update(_ - bucketId))
-          _             <- EitherT.liftF(searchService.deleteBucket(bucketId))
-          _             <- EitherT.liftF(IO(logger.info(s"Deleted bucket '$bucketId' ($resourceCount resources)")))
-        yield ()).value
-      }
+      (for
+        resourceCount <- EitherT(bucketsDal.delete(bucketId, force))
+        _             <- EitherT.liftF(uninstall(bucketId))
+        // a sync that was still running may have added resources after the delete
+        _             <- EitherT.liftF(bucketsDal.deleteResources(bucketId))
+        _             <- EitherT.liftF(searchService.deleteBucket(bucketId))
+        _             <- EitherT.liftF(IO(logger.info(s"Deleted bucket '$bucketId' ($resourceCount resources)")))
+      yield ()).value

@@ -60,7 +60,7 @@ const BucketsConfig = () => {
       <BucketForm
         mode={editing.mode}
         initial={editing.bucket}
-        onCancel={() => setEditing(undefined)}
+        onCancel={() => { setEditing(undefined); load() }}
         onSaved={() => { setEditing(undefined); load() }}
       />
     )
