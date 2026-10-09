@@ -69,6 +69,7 @@ class LocalDirectoryConfigSpec extends AnyWordSpecLike with Matchers {
 
       error(config(dir.resolve("missing"))) should include("does not exist")
       error(c.copy(relativeUploadPath = dir.resolve("upload"))) shouldBe "Upload path must be relative to the bucket path"
+      error(c.copy(relativeUploadPath = Path.of("../outside"))) shouldBe "Upload path must be a sub directory of the bucket path"
       error(c.copy(sync = c.sync.copy(includePatterns = Nil))) shouldBe "At least one include pattern is required"
       error(c.copy(sync = c.sync.copy(excludePatterns = List("{x")))) shouldBe "Invalid pattern: '{x'"
       error(c.copy(sync = c.sync.copy(pollInterval = 0.seconds))) shouldBe "Poll interval must be at least 1 second"

@@ -63,7 +63,7 @@ case class LocalDirectoryConfig(
   lazy val bucketIdPath: Path = amonyPath.resolve("bucketId")
   lazy val cachePath: Path    = amonyPath.resolve("cache")
   lazy val resourcePath: Path = path.toAbsolutePath.normalize()
-  lazy val uploadPath: Path   = path.toAbsolutePath.normalize().resolve(relativeUploadPath)
+  lazy val uploadPath: Path   = path.toAbsolutePath.normalize().resolve(relativeUploadPath).normalize()
 
   private lazy val includes = GlobPatterns.unsafeParse(sync.includePatterns)
   private lazy val excludes = GlobPatterns.unsafeParse(sync.excludePatterns)
