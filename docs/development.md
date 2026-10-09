@@ -18,7 +18,7 @@ create a symbolic link.
 ### 2. Start the database
 
 ```bash
-docker compose -f docker-compose.yml --profile dex up -d postgres auth
+docker compose -f docker-compose.yml up -d postgres auth
 ```
 
 `auth` (Dex) is optional: skip it if you run with `AMONY_AUTH_ENABLED=false`.
@@ -95,7 +95,7 @@ once the `Build and deploy` workflow finishes successfully on `main`, and can al
 Actions tab.
 
 It connects to the server as `docker-user`, updates the checkout, pulls the new `dev` image and recreates the containers
-with `docker compose -f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml --profile dex`.
+with `docker compose -f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml --profile zitadel`.
 
 Non-secret configuration lives in `deployment/demo.env`. The sensitive values (database password, JWT secret, Dex client
 secrets / admin password hash, Porkbun credentials) plus the SSH deploy key and host details are stored in the
