@@ -13,6 +13,7 @@ import nl.amony.lib.tapir.apiNoCacheHeaders
 import nl.amony.lib.tapir.dsl.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.api.*
+import nl.amony.modules.resources.api.BucketRegistry
 import nl.amony.modules.resources.api.{BucketId, Resource, ResourceBucket, ResourceId, UploadError}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 
@@ -84,13 +85,13 @@ object ResourceRoutes extends RoutesModule, Logging:
       .in(streamBody(Fs2Streams[IO])(Schema.schemaForByteArray, CodecFormat.OctetStream()))
       .out(jsonBody[ResourceDto]))
 
-  def apply(buckets: Map[BucketId, ResourceBucket])(
+  def apply(buckets: BucketRegistry)(
     using apiSecurity: ApiSecurity
   ): ServerEndpoints[IO] = {
 
     def getVisibleBucket(auth: AuthToken, bucketId: BucketId): EitherT[IO, NotFoundError, ResourceBucket] =
-      EitherT.fromOption[IO](
-        buckets.get(bucketId).filter(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole)),
+      EitherT.fromOptionF(
+        buckets.get(bucketId).map(_.filter(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole))),
         NotFoundError("not_found", "Resource not found")
       )
 
@@ -118,7 +119,7 @@ object ResourceRoutes extends RoutesModule, Logging:
       }
 
       serverLogic(endpoint = fixResourceStreamable, requiredPermission = Permission.Admin) { _ => (bucketId, resourceId) =>
-        buckets.get(bucketId) match
+        buckets.get(bucketId).flatMap:
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Normalizing resource '$resourceId' in bucket '$bucketId'")
             bucket.fixStreamability(resourceId).as(Right(()))
@@ -163,9 +164,9 @@ object ResourceRoutes extends RoutesModule, Logging:
       }
 
       serverLogic(endpoint = getBuckets, requiredPermission = Permission.ViewResource) { auth => _ =>
-        IO.pure(Right(buckets.values.filter(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole)).map(bucket =>
-          BucketDto(bucket.id, "", "")
-        ).toList))
+        buckets.all.map(all =>
+          Right(all.filter(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole)).map(bucket => BucketDto(bucket.id, "", "")))
+        )
       }
     }
   }

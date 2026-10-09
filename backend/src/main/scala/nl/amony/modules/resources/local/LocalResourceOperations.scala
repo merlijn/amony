@@ -64,7 +64,9 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
   private def createResource(inputFile: Path, info: ResourceInfo, operation: ResourceOperation): IO[Path] =
     operation.validate(info) match
       case Left(error) => IO.raiseError(new Exception(error))
-      case Right(_)    => run(info, inputFile, operation.outputFile(info.resourceId), operation).memoize.flatten
+      case Right(_)    =>
+        val outputFile = operation.outputFile(info.resourceId)
+        IO.blocking(Files.createDirectories(outputFile.getParent)) >> run(info, inputFile, outputFile, operation).memoize.flatten
 
   private def run(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: ResourceOperation): IO[Path] = operation match
     case VideoFragment(width, height, start, end) =>
@@ -107,6 +109,6 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
   private[local] def generatePreviews(info: ResourceInfo): IO[Unit] =
     fs2.Stream.emits(previewOperations(info))
-      .parEvalMap(config.sync.scanParallelFactor)(runPreviewOperation(info, _))
+      .parEvalMap(parallelFactor)(runPreviewOperation(info, _))
       .compile.drain
 }

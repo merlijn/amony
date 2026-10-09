@@ -4,51 +4,28 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, StandardCopyOption}
 
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import cats.implicits.*
 import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
-import skunk.Session
 
 import nl.amony.lib.files.*
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.modules.auth.api.Role
 import nl.amony.modules.resources.*
-import nl.amony.modules.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.ResourceDatabase
 
-object LocalDirectoryBucket:
-
-  def resource(
-    config: LocalDirectoryConfig,
-    pool: cats.effect.Resource[IO, Session[IO]],
-    topic: EventTopic[ResourceEvent],
-    formats: ThumbnailFormats,
-    resolutions: ThumbnailResolutions
-  )(
-    using runtime: IORuntime,
-    meter: Meter[IO],
-    tracer: Tracer[IO]
-  ): cats.effect.Resource[IO, LocalDirectoryBucket] = {
-    cats.effect.Resource.make {
-      IO {
-        val bucket = LocalDirectoryBucket(config, ResourceDatabase(pool), topic, formats, resolutions)
-        bucket.sync().unsafeRunAsync(_ => ())
-        bucket
-      }
-    }(_ => IO.unit)
-  }
-
 class LocalDirectoryBucket(
   config: LocalDirectoryConfig,
+  parallelFactor: Int,
   db: ResourceDatabase,
   topic: EventTopic[ResourceEvent],
   formats: ThumbnailFormats,
   resolutions: ThumbnailResolutions
-)(using runtime: IORuntime, meter: Meter[IO], tracer: Tracer[IO])
-    extends LocalDirectoryBase(config, db, topic, formats, resolutions), LocalResourceOperations, ResourceBucket, LocalResourceSyncer,
+)(using meter: Meter[IO], tracer: Tracer[IO])
+    extends LocalDirectoryBase(config, parallelFactor, db, topic, formats, resolutions), LocalResourceOperations, ResourceBucket,
+      LocalResourceSyncer,
       UploadResource, Logging {
 
   private def getResourceInfo(resourceId: ResourceId): IO[Option[ResourceInfo]] = db.getResourceById(id, resourceId)
@@ -147,7 +124,7 @@ class LocalDirectoryBucket(
   def generateAllPreviews(): IO[Unit] =
     getAllResources
       .flatMap(info => fs2.Stream.emits(previewOperations(info).map(info -> _)))
-      .parEvalMap(config.sync.scanParallelFactor) { case (info, operation) => runPreviewOperation(info, operation) }
+      .parEvalMap(parallelFactor) { case (info, operation) => runPreviewOperation(info, operation) }
       .compile.drain
 
   override def getResource(resourceId: ResourceId): IO[Option[Resource]] =

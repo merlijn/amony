@@ -10,7 +10,8 @@ import nl.amony.lib.tapir.apiNoCacheHeaders
 import nl.amony.lib.tapir.dsl.error.{BadRequestError, NotFoundError, SecurityError}
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.api.*
-import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceBucket, ResourceId}
+import nl.amony.modules.resources.api.BucketRegistry
+import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId}
 import nl.amony.modules.resources.dal.CollectionsDal
 
 object CollectionRoutes extends RoutesModule:
@@ -53,12 +54,12 @@ object CollectionRoutes extends RoutesModule:
       .securityIn(securityInput).errorOut(errorOutput)
       .out(apiNoCacheHeaders).out(jsonBody[List[ResourceDto]]))
 
-  def apply(collectionsDal: CollectionsDal, buckets: Map[BucketId, ResourceBucket])(
+  def apply(collectionsDal: CollectionsDal, buckets: BucketRegistry)(
     using apiSecurity: ApiSecurity
   ): ServerEndpoints[IO] = {
 
-    def canAccessBucket(auth: AuthToken, bucketId: BucketId): Boolean =
-      buckets.get(bucketId).exists(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole))
+    def canAccessBucket(auth: AuthToken, bucketId: BucketId): IO[Boolean] =
+      buckets.get(bucketId).map(_.exists(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole)))
 
     routes[IO] {
 
@@ -86,7 +87,7 @@ object CollectionRoutes extends RoutesModule:
       serverLogicT(endpoint = addResourceToCollection, requiredPermission = Permission.ManageCollections) {
         auth => (collectionId, bucketId, resourceId) =>
           for
-            _ <- EitherT.cond[IO](canAccessBucket(auth, bucketId), (), NotFoundError("not_found", "Resource not found"))
+            _ <- EitherT(canAccessBucket(auth, bucketId).map(Either.cond(_, (), NotFoundError("not_found", "Resource not found"))))
             _ <- EitherT.right[BadRequestError | NotFoundError](collectionsDal.addResourceToCollection(collectionId, bucketId, resourceId))
           yield ()
       }
@@ -94,7 +95,7 @@ object CollectionRoutes extends RoutesModule:
       serverLogicT(endpoint = removeResourceFromCollection, requiredPermission = Permission.ManageCollections) {
         auth => (collectionId, bucketId, resourceId) =>
           for
-            _ <- EitherT.cond[IO](canAccessBucket(auth, bucketId), (), NotFoundError("not_found", "Resource not found"))
+            _ <- EitherT(canAccessBucket(auth, bucketId).map(Either.cond(_, (), NotFoundError("not_found", "Resource not found"))))
             _ <- EitherT.right[BadRequestError | NotFoundError](collectionsDal.removeResourceFromCollection(collectionId, bucketId, resourceId))
           yield ()
       }
@@ -103,9 +104,11 @@ object CollectionRoutes extends RoutesModule:
         token => collectionId =>
           collectionsDal.getCollectionById(collectionId).flatMap {
             case Some(collection) if collection.userId == token.userId =>
-              val inaccessibleBuckets = buckets.values.filterNot(bucket => apiSecurity.canAccessBucket(token, bucket.requiredRole)).map(_.id).toSet
-              collectionsDal.getResourcesInCollection(collectionId)
-                .map(_.filterNot(resource => inaccessibleBuckets.contains(resource.bucketId)).map(toDto)).map(Right(_))
+              for
+                all       <- buckets.all
+                accessible = all.filter(bucket => apiSecurity.canAccessBucket(token, bucket.requiredRole)).map(_.id).toSet
+                resources <- collectionsDal.getResourcesInCollection(collectionId)
+              yield Right(resources.filter(resource => accessible.contains(resource.bucketId)).map(toDto))
             case _                                                     =>
               IO.pure(Left(NotFoundError("not_found", "Collection not found")))
           }

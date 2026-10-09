@@ -1069,6 +1069,366 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/admin/buckets:
+    get:
+      tags:
+      - admin
+      description: Get the configuration of all buckets
+      operationId: adminListBuckets
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+            Pragma:
+              required: true
+              schema:
+                type: string
+            Expires:
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BucketConfigDto'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+    post:
+      tags:
+      - admin
+      description: Create a new bucket
+      operationId: adminCreateBucket
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BucketConfigDto'
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BucketConfigDto'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/admin/buckets/{bucketId}:
+    get:
+      tags:
+      - admin
+      description: Get the configuration of a bucket
+      operationId: adminGetBucket
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+            Pragma:
+              required: true
+              schema:
+                type: string
+            Expires:
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BucketConfigDto'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+    put:
+      tags:
+      - admin
+      description: Update the configuration of a bucket. The id, type and hashing
+        algorithm cannot be changed. The bucket is restarted. Files that no longer
+        match the include/exclude patterns are removed from the index, including their
+        tags and metadata.
+      operationId: adminUpdateBucket
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BucketConfigDto'
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BucketConfigDto'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+    delete:
+      tags:
+      - admin
+      description: Delete a bucket. Refused when the bucket still contains resources,
+        unless forced. Forcing removes the resources from the database and search
+        index, media files are never deleted.
+      operationId: adminDeleteBucket
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: force
+        in: query
+        description: Also delete the resources of the bucket from the database and
+          search index.
+        required: false
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/auth/session:
     get:
       tags:
@@ -1795,6 +2155,36 @@ components:
           uniqueItems: true
           items:
             type: string
+    BucketConfigDto:
+      title: BucketConfigDto
+      type: object
+      required:
+      - id
+      - type
+      - path
+      - relativeUploadPath
+      - generatePreviewsOnAdd
+      - sync
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        requiredRole:
+          type: string
+        path:
+          type: string
+        relativeUploadPath:
+          type: string
+        generatePreviewsOnAdd:
+          type: boolean
+        hashingAlgorithm:
+          type: string
+        sync:
+          $ref: '#/components/schemas/ScanSettingsDto'
+        updatedAt:
+          type: string
+          format: date-time
     BucketDto:
       title: BucketDto
       type: object
@@ -1998,6 +2388,32 @@ components:
           type: string
         streamable:
           type: boolean
+    ScanSettingsDto:
+      title: ScanSettingsDto
+      type: object
+      required:
+      - enabled
+      - syncOnStartup
+      - newFilesOwner
+      - pollIntervalSeconds
+      properties:
+        enabled:
+          type: boolean
+        syncOnStartup:
+          type: boolean
+        newFilesOwner:
+          type: string
+        pollIntervalSeconds:
+          type: integer
+          format: int64
+        includePatterns:
+          type: array
+          items:
+            type: string
+        excludePatterns:
+          type: array
+          items:
+            type: string
     SearchResponseDto:
       title: SearchResponseDto
       type: object

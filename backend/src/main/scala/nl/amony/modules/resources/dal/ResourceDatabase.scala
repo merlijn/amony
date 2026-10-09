@@ -155,7 +155,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
         case Some(old) => tables.resources.upsert(s, old.copy(fs_path = newPath)) >> IO.unit
         case None      => IO.unit
 
-  def bucketSize(bucketId: BucketId): IO[Int] =
+  def bucketSize(bucketId: BucketId): IO[Long] =
     useSession: s =>
       s.prepare(Queries.resources.bucketCount).flatMap(_.option(bucketId)).map(_.getOrElse(0))
 

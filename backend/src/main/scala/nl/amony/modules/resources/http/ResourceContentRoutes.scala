@@ -12,6 +12,7 @@ import scribe.Logging
 
 import nl.amony.modules.auth.api.{ApiSecurity, authCookieName}
 import nl.amony.modules.resources.api.*
+import nl.amony.modules.resources.api.BucketRegistry
 import nl.amony.modules.resources.http.ResourceDirectives.resourceContentsResponse
 
 object ResourceContentRoutes extends Logging {
@@ -86,8 +87,7 @@ object ResourceContentRoutes extends Logging {
     }
   }
 
-  def apply(buckets: Map[BucketId, ResourceBucket], resolutions: ThumbnailResolutions, formats: ThumbnailFormats)(using
-    apiSecurity: ApiSecurity): HttpRoutes[IO] = {
+  def apply(buckets: BucketRegistry, resolutions: ThumbnailResolutions, formats: ThumbnailFormats)(using apiSecurity: ApiSecurity): HttpRoutes[IO] = {
 
     // The content routes are not Tapir endpoints, so the access token has to be read from the cookie directly.
     def authToken(req: Request[IO]) =
@@ -95,7 +95,7 @@ object ResourceContentRoutes extends Logging {
       apiSecurity.decodeAccessToken(accessToken)
 
     def getResource(req: Request[IO], bucketId: BucketId, resourceId: ResourceId): OptionT[IO, (ResourceBucket, Resource)] =
-      OptionT.fromOption[IO](buckets.get(bucketId))
+      OptionT(buckets.get(bucketId))
         .filter(bucket => apiSecurity.canAccessBucket(authToken(req), bucket.requiredRole))
         .flatMap(bucket => OptionT(bucket.getResource(resourceId)).map(resource => bucket -> resource))
 

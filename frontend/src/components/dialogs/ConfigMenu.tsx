@@ -10,6 +10,7 @@ import {GridAspectRatio, GridOrientation, ThemeSetting} from "../../api/Model";
 import {BucketDto} from "../../api/generated/model/bucketDto";
 import * as Tabs from "@radix-ui/react-tabs";
 import ChoiceOption from "../common/ChoiceOption";
+import BucketsConfig from "./BucketsConfig";
 
 const ConfigMenu = () => {
 
@@ -50,6 +51,7 @@ const ConfigMenu = () => {
         <Tabs.Root defaultValue="gridview">
           <Tabs.List className="tabs-list">
             <Tabs.Trigger className="tab-trigger" value="gridview">GridView</Tabs.Trigger>
+            {session.isAdmin() && <Tabs.Trigger className="tab-trigger" value="buckets">Buckets</Tabs.Trigger>}
             {session.isAdmin() && <Tabs.Trigger className="tab-trigger" value="admin">Admin</Tabs.Trigger>}
           </Tabs.List>
 
@@ -149,6 +151,12 @@ const ConfigMenu = () => {
               </InfoRow>
             </InfoTable>
           </Tabs.Content>
+
+          {session.isAdmin() && (
+            <Tabs.Content className="tab-content" value="buckets">
+              <BucketsConfig />
+            </Tabs.Content>
+          )}
 
           {session.isAdmin() && (
             <Tabs.Content className="tab-content" value="admin">

@@ -82,11 +82,11 @@ val javaDevOpts = Seq(
 //  "-Dotel.exporter.otlp.endpoint=http://localhost:5080/api/default",
 //  "-Dotel.exporter.otlp.headers=Authorization=Basic <key>",
 //  "-Dotel.exporter.otlp.protocol=http/protobuf",
-  "-DAMONY_MEDIA_PATH=../data/media",
+  "-DAMONY_DEFAULT_MEDIA_PATH=../data/media",
   "-DAMONY_SOLR_PATH=../data/solr",
   "-DAMONY_WEB_CLIENT_PATH=../frontend/dist",
   // Auth
-  "-DAMONY_AUTH_ENABLED=true",
+  "-DAMONY_AUTH_ENABLED=false",
   "-DAMONY_SECURE_COOKIES=false",
   "-DAMONY_IDP_AUTHORIZE_URL=http://localhost:5556/dex/auth",
   "-DAMONY_IDP_TOKEN_URL=http://localhost:5556/dex/token",
@@ -96,10 +96,10 @@ val javaDevOpts = Seq(
 
 // --- Main project
 
-val circeVersion    = "0.14.16"
-val http4sVersion   = "0.23.37"
-val tapirVersion    = "1.13.31"
-val sttpVersion     = "4.0.26"
+val circeVersion    = "0.14.17"
+val http4sVersion   = "0.23.38"
+val tapirVersion    = "1.13.33"
+val sttpVersion     = "4.0.27"
 val otel4sVersion   = "0.16.0"
 
 lazy val amony = project
@@ -139,11 +139,11 @@ lazy val amony = project
       contents
     },
     jibEnvironment := Map(
-      "JAVA_TOOL_OPTIONS"     -> "-Dconfig.file=/app/resources/application.conf",
-      "AMONY_WEB_CLIENT_PATH" -> "/app/assets",
-      "AMONY_SOLR_PATH"       -> "/app/data/solr",
-      "AMONY_MEDIA_PATH"      -> "/media",
-      "OTEL_SERVICE_NAME"     -> "amony-app"
+      "JAVA_TOOL_OPTIONS"        -> "-Dconfig.file=/app/resources/application.conf",
+      "AMONY_WEB_CLIENT_PATH"    -> "/app/assets",
+      "AMONY_SOLR_PATH"          -> "/app/data/solr",
+      "AMONY_DEFAULT_MEDIA_PATH" -> "/media",
+      "OTEL_SERVICE_NAME"        -> "amony-app"
     ),
     jibUseCurrentTimestamp := true,
 
@@ -203,7 +203,7 @@ lazy val amony = project
       // database
       "org.tpolecat"                 %% "skunk-core"                                 % "1.0.0",
       "org.tpolecat"                 %% "skunk-circe"                                % "1.0.0",
-      "org.postgresql"                % "postgresql"                                 % "42.7.13",
+      "org.postgresql"                % "postgresql"                                 % "42.7.14",
       "org.liquibase"                 % "liquibase-core"                             % "5.0.4",
 
       // json
@@ -250,13 +250,13 @@ lazy val amony = project
       "org.bouncycastle"               % "bcprov-jdk18on"                            % "1.85.2",
 
       // Test dependencies
-      "org.scalatest"                 %% "scalatest"                                 % "3.2.20"   % Test,
-      "org.scalatestplus"             %% "scalacheck-1-15"                           % "3.2.11.0" % Test,
-      "com.dimafeng"                  %% "testcontainers-scala-scalatest"            % "0.44.1"   % Test,
-      "commons-codec"                  % "commons-codec"                             % "1.22.1"   % Test,
-      "org.scalacheck"                %% "scalacheck"                                % "1.20.0"   % Test,
+      "org.scalatest"                 %% "scalatest"                                 % "3.2.20"     % Test,
+      "org.scalatestplus"             %% "scalacheck-1-15"                           % "3.2.11.0"   % Test,
+      "com.dimafeng"                  %% "testcontainers-scala-scalatest"            % "0.44.1"     % Test,
+      "commons-codec"                  % "commons-codec"                             % "1.22.1"     % Test,
+      "org.scalacheck"                %% "scalacheck"                                % "1.20.0"     % Test,
       "com.softwaremill.sttp.tapir"   %% "tapir-sttp-stub-server"                    % tapirVersion % Test,
-      "org.mockito"                   %% "mockito-scala-scalatest"                   % "2.2.3"    % Test
+      "org.mockito"                   %% "mockito-scala-scalatest"                   % "2.2.3"      % Test
     ),
 
     // TODO remove this override once skunk has been updated to use otel4s 0.15.x
