@@ -8,7 +8,8 @@ import sttp.tapir.*
 import nl.amony.lib.tapir.dsl.error.ErrorResponse
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic}
 import nl.amony.modules.auth.api.*
-import nl.amony.modules.resources.api.{BucketId, ResourceBucket, ResourceInfo}
+import nl.amony.modules.resources.BucketRegistry
+import nl.amony.modules.resources.api.{BucketId, ResourceInfo}
 import nl.amony.modules.resources.http.{ResourceDto, toDto}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.modules.search.api.{Query, SearchService}
@@ -79,13 +80,13 @@ object AdminRoutes extends RoutesModule, Logging:
       .securityIn(securityInput)
       .errorOut(errorOutput))
 
-  def apply(searchService: SearchService, buckets: Map[BucketId, ResourceBucket])(
+  def apply(searchService: SearchService, buckets: BucketRegistry)(
     using apiSecurity: ApiSecurity
   ): ServerEndpoints[IO] = {
 
     routes[IO] {
       serverLogic(endpoint = reIndex, requiredPermission = Permission.Admin) { _ => bucketId =>
-        val result = buckets.get(bucketId) match
+        val result = buckets.get(bucketId).flatMap:
           case None         => IO.unit
           case Some(bucket) =>
             logger.info(s"Re-indexing all resources in bucket '$bucketId'")
@@ -101,7 +102,7 @@ object AdminRoutes extends RoutesModule, Logging:
       }
 
       serverLogic(endpoint = refresh, requiredPermission = Permission.Admin) { _ => bucketId =>
-        val result = buckets.get(bucketId) match
+        val result = buckets.get(bucketId).flatMap:
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Refreshing resources in bucket '$bucketId'")
             bucket.refresh() >> IO(logger.info(s"Finished refreshing resources in bucket '$bucketId'"))
@@ -112,7 +113,7 @@ object AdminRoutes extends RoutesModule, Logging:
       }
 
       serverLogic(endpoint = rescanMetaData, requiredPermission = Permission.Admin) { _ => bucketId =>
-        val result = buckets.get(bucketId) match
+        val result = buckets.get(bucketId).flatMap:
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Re-scanning meta data of all resources in bucket '$bucketId'")
             bucket.reScanAllMetadata() >> IO(logger.info(s"Finished re-scanning meta data of all resources in bucket '$bucketId'"))
@@ -124,7 +125,7 @@ object AdminRoutes extends RoutesModule, Logging:
       }
 
       serverLogic(endpoint = reComputeHashes, requiredPermission = Permission.Admin) { _ => bucketId =>
-        val result = buckets.get(bucketId) match
+        val result = buckets.get(bucketId).flatMap:
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Re-computing partialHashs of all resources in bucket '$bucketId'")
             bucket.reComputePartialHashs() >> IO(logger.info(s"Finished re-computing partialHashs of all resources in bucket '$bucketId'"))
@@ -136,7 +137,7 @@ object AdminRoutes extends RoutesModule, Logging:
       }
 
       serverLogic(endpoint = generatePreviews, requiredPermission = Permission.Admin) { _ => bucketId =>
-        val result = buckets.get(bucketId) match
+        val result = buckets.get(bucketId).flatMap:
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Generating previews for all resources in bucket '$bucketId'")
             bucket.generateAllPreviews() >> IO(logger.info(s"Finished generating previews for bucket '$bucketId'"))
@@ -148,7 +149,7 @@ object AdminRoutes extends RoutesModule, Logging:
       }
 
       serverLogic(endpoint = fixNonStreamable, requiredPermission = Permission.Admin) { _ => bucketId =>
-        val result = buckets.get(bucketId) match
+        val result = buckets.get(bucketId).flatMap:
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Normalizing non-streamable resources in bucket '$bucketId'")
             searchService.searchAll(Query(n = 100, streamable = Some(false), includeBuckets = Set(bucketId)))
@@ -161,7 +162,7 @@ object AdminRoutes extends RoutesModule, Logging:
       }
 
       serverLogic(endpoint = exportBucket, requiredPermission = Permission.Admin) { _ => bucketId =>
-        buckets.get(bucketId) match
+        buckets.get(bucketId).flatMap:
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Exporting resources in bucket '$bucketId'")
             val stream = bucket.getAllResources.map(resource => summon[io.circe.Codec[ResourceDto]].apply(toDto(resource)).noSpaces).intersperse("\n")
@@ -174,7 +175,7 @@ object AdminRoutes extends RoutesModule, Logging:
 
       serverLogic(endpoint = importBucket, requiredPermission = Permission.Admin)(_ =>
         (bucketId, stream) =>
-          buckets.get(bucketId) match
+          buckets.get(bucketId).flatMap:
             case Some(bucket: LocalDirectoryBucket) =>
               logger.info(s"Importing resources into bucket '$bucketId'")
 

@@ -82,7 +82,7 @@ val javaDevOpts = Seq(
 //  "-Dotel.exporter.otlp.endpoint=http://localhost:5080/api/default",
 //  "-Dotel.exporter.otlp.headers=Authorization=Basic <key>",
 //  "-Dotel.exporter.otlp.protocol=http/protobuf",
-  "-DAMONY_MEDIA_PATH=../data/media",
+  "-DAMONY_DEFAULT_MEDIA_PATH=../data/media",
   "-DAMONY_SOLR_PATH=../data/solr",
   "-DAMONY_WEB_CLIENT_PATH=../frontend/dist",
   // Auth
@@ -139,11 +139,11 @@ lazy val amony = project
       contents
     },
     jibEnvironment := Map(
-      "JAVA_TOOL_OPTIONS"     -> "-Dconfig.file=/app/resources/application.conf",
-      "AMONY_WEB_CLIENT_PATH" -> "/app/assets",
-      "AMONY_SOLR_PATH"       -> "/app/data/solr",
-      "AMONY_MEDIA_PATH"      -> "/media",
-      "OTEL_SERVICE_NAME"     -> "amony-app"
+      "JAVA_TOOL_OPTIONS"        -> "-Dconfig.file=/app/resources/application.conf",
+      "AMONY_WEB_CLIENT_PATH"    -> "/app/assets",
+      "AMONY_SOLR_PATH"          -> "/app/data/solr",
+      "AMONY_DEFAULT_MEDIA_PATH" -> "/media",
+      "OTEL_SERVICE_NAME"        -> "amony-app"
     ),
     jibUseCurrentTimestamp := true,
 

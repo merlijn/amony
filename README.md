@@ -44,6 +44,11 @@ Copy the `.env.example` file to `.env` and edit the environment variables as nee
 `AMONY_HOST_MEDIA_PATH` to the path of your media files on the host machine. It is recommended to change all credentials
 (like `DATABASE_PASSWORD`) to secure random values.
 
+On first startup a default media source (bucket) pointing at the mounted media directory is stored in the database. It
+can be tuned with the `AMONY_DEFAULT_MEDIA_PATH`, `AMONY_DEFAULT_MEDIA_GENERATE_PREVIEWS_ON_ADD`,
+`AMONY_DEFAULT_MEDIA_SYNC_ON_STARTUP` and `AMONY_DEFAULT_MEDIA_SCAN_ENABLED` variables. After that, these variables are
+ignored and buckets are managed by an admin through the API (`/api/admin/buckets`).
+
 As mentioned before, you can disable authentication completely by setting `AMONY_AUTH_ENABLED=false`. Otherwise, the
 default credentials for the Dex oauth server are:
 

@@ -11,6 +11,7 @@ import pureconfig.error.CannotConvert
 import pureconfig.generic.FieldCoproductHint
 import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
 
+import nl.amony.lib.files.GlobPatterns
 import nl.amony.lib.hash.Base32
 import nl.amony.lib.hash.PartialHash.partialHash
 import nl.amony.modules.auth.api.Role
@@ -64,11 +65,13 @@ case class ThumbnailConfig(
   formatOptions: Map[ImageFormat, List[String]] = Map.empty
 ) derives ConfigReader
 
-case class ResourceConfig(previews: ThumbnailConfig, buckets: List[ResourceBucketConfig]) derives ConfigReader
+case class ResourceConfig(previews: ThumbnailConfig, defaultBucket: ResourceBucketConfig) derives ConfigReader
 
 object ResourceConfig {
 
   sealed trait ResourceBucketConfig:
+    def id: String
+
     /** When set, only users holding this role (admins always) can see the bucket. */
     def requiredRole: Option[Role]
 
@@ -85,14 +88,14 @@ object ResourceConfig {
     newFilesOwner: String,
     scanParallelFactor: Int,
     pollInterval: FiniteDuration,
-    verifyExistingHashes: Boolean,
-    extensions: List[String]
+    includePatterns: List[String],
+    excludePatterns: List[String]
   ) derives ConfigReader
 
   case class LocalDirectoryConfig(
     id: String,
     override val requiredRole: Option[Role] = None,
-    private val path: Path,
+    path: Path,
     sync: ScanConfig,
     hashingAlgorithm: HashingAlgorithm,
     relativeUploadPath: Path,
@@ -106,15 +109,18 @@ object ResourceConfig {
     lazy val resourcePath: Path = path.toAbsolutePath.normalize()
     lazy val uploadPath: Path   = path.toAbsolutePath.normalize().resolve(relativeUploadPath)
 
-    def filterFiles(path: Path) = {
-      val fileName = path.getFileName.toString
-      sync.extensions.exists(ext => fileName.endsWith(s".$ext")) && !fileName.startsWith(".")
+    private lazy val includes = GlobPatterns.unsafeParse(sync.includePatterns)
+    private lazy val excludes = GlobPatterns.unsafeParse(sync.excludePatterns)
+
+    private def relativePath(path: Path): String = resourcePath.relativize(path).toString
+
+    def filterFiles(path: Path): Boolean = {
+      val relative = relativePath(path)
+      includes.matches(relative) && !excludes.matches(relative)
     }
 
-    def filterDirectory(path: Path) = {
-      val fileName = path.getFileName.toString
-      !fileName.startsWith(".") && path != uploadPath
-    }
+    def filterDirectory(path: Path): Boolean =
+      path == resourcePath || (path != uploadPath && path != amonyPath && !excludes.matches(relativePath(path)))
 
     def generateId(): ResourceId = ResourceId(Base32.encode(random.nextBytes(15)).substring(0, 24))
   }
@@ -122,13 +128,20 @@ object ResourceConfig {
   case class TranscodeSettings(format: String, scaleHeight: Int, crf: Int) derives ConfigReader
 
   sealed trait HashingAlgorithm derives ConfigReader {
+    def name: String
     def algorithm: String
     def newDigest(): MessageDigest = MessageDigest.getInstance(algorithm)
     def createHash(path: Path): IO[String]
     def encodeHash(bytes: Array[Byte]): String
   }
 
+  object HashingAlgorithm {
+    val all: List[HashingAlgorithm]                      = List(PartialHash)
+    def fromName(name: String): Option[HashingAlgorithm] = all.find(_.name == name)
+  }
+
   case object PartialHash extends HashingAlgorithm {
+    override val name                               = "partial-hash"
     override val algorithm                          = "SHA-1"
     override def createHash(path: Path): IO[String] =
       partialHash(file = path, nChunks = 32, chunkSize = 32, digestFn = () => newDigest(), encoder = encodeHash)

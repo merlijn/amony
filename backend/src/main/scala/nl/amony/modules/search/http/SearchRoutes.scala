@@ -9,7 +9,8 @@ import sttp.tapir.json.circe.jsonBody
 import nl.amony.lib.tapir.dsl.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic}
 import nl.amony.modules.auth.api.*
-import nl.amony.modules.resources.api.{BucketId, ResourceBucket}
+import nl.amony.modules.resources.BucketRegistry
+import nl.amony.modules.resources.api.BucketId
 import nl.amony.modules.resources.http.toDto
 import nl.amony.modules.search.SearchConfig
 import nl.amony.modules.search.api.*
@@ -65,7 +66,7 @@ object SearchRoutes extends RoutesModule:
   private val randomPattern   = raw"random-(\d{5})".r
   private val sortPattern     = raw"(\w+)(?:-(asc|desc))?".r
 
-  def apply(searchService: SearchService, config: SearchConfig, buckets: Map[BucketId, ResourceBucket])(
+  def apply(searchService: SearchService, config: SearchConfig, buckets: BucketRegistry)(
     using apiSecurity: ApiSecurity
   ): ServerEndpoints[IO] = {
 
@@ -100,13 +101,13 @@ object SearchRoutes extends RoutesModule:
             case _                       => None
           }.getOrElse(SortOption(Title, Asc))
 
-          val query = Query(
+          def query(excludeBuckets: Set[BucketId]) = Query(
             q               = queryDto.q.map(s => sanitize(s, 64, c => c.isLetterOrDigit || c.isWhitespace)),
             n               = Math.min(queryDto.n.getOrElse(config.defaultNumberOfResults), config.maximumNumberOfResults),
             offset          = queryDto.offset.map(n => Math.max(0, n)),
             includeTags     =
               if queryDto.untagged.contains(true) then Set.empty else queryDto.tag.map(s => sanitize(s, 32, c => c.isLetterOrDigit)).toSet,
-            excludeBuckets  = buckets.values.filterNot(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole)).map(_.id).toSet,
+            excludeBuckets  = excludeBuckets,
             resolutionRange = ResolutionRange(min = queryDto.minRes, max = None),
             durationRange   = DurationRange(minDuration, maxDuration),
             uploadDateRange = UploadDateRange(minUploadDate, maxUploadDate),
@@ -115,14 +116,16 @@ object SearchRoutes extends RoutesModule:
             streamable      = queryDto.streamable
           )
 
-          searchService.searchMedia(query).map { response =>
-            Right(SearchResponseDto(
-              offset  = response.offset,
-              total   = response.total,
-              results = response.results.map(toDto),
-              tags    = getSortedTags(response.tags)
-            ))
-          }
+          for
+            allBuckets <- buckets.all
+            excluded    = allBuckets.filterNot(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole)).map(_.id).toSet
+            response   <- searchService.searchMedia(query(excluded))
+          yield Right(SearchResponseDto(
+            offset  = response.offset,
+            total   = response.total,
+            results = response.results.map(toDto),
+            tags    = getSortedTags(response.tags)
+          ))
       }
     }
   }
