@@ -22,7 +22,7 @@ object DatabaseBucketRegistry extends Logging:
   /** Inserts the default bucket when no buckets exist yet, unless its configuration is invalid. */
   private def seedDefaultBucket(defaultBucket: ResourceBucketConfig, bucketsDal: BucketsDal): IO[Unit] =
     bucketsDal.anyExist().flatMap {
-      case true  => IO.unit
+      case true  => IO(logger.info("Skipped seeding default bucket since buckets already exist in the database"))
       case false =>
         defaultBucket.validate().flatMap {
           case Left(error)   =>
