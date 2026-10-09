@@ -28,12 +28,11 @@ import nl.amony.modules.admin.{AdminRoutes, BucketAdminRoutes}
 import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.config.ConfigRoutes
-import nl.amony.modules.resources.ResourceConfig.ResourceBucketConfig
-import nl.amony.modules.resources.api.{ResourceEvent, ThumbnailFormats, ThumbnailResolutions}
+import nl.amony.modules.resources.api.{LocalDirectoryConfig, ResourceBucketConfig, ResourceEvent, ThumbnailFormats, ThumbnailResolutions}
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
 import nl.amony.modules.resources.http.{CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
-import nl.amony.modules.resources.{BucketRegistry, ResourceConfig}
+import nl.amony.modules.resources.{DatabaseBucketRegistry, ResourceConfig}
 import nl.amony.modules.search.http.SearchRoutes
 import nl.amony.modules.search.solr.SolrSearchService
 
@@ -114,12 +113,12 @@ object App extends ResourceApp.Forever with Logging {
         resourceDatabase   = ResourceDatabase(databasePool)
         bucketFactory      = (config: ResourceBucketConfig) =>
                                config match
-                                 case localConfig: ResourceConfig.LocalDirectoryConfig =>
+                                 case localConfig: LocalDirectoryConfig =>
                                    IO {
                                      val bucket = LocalDirectoryBucket(localConfig, resourceDatabase, resourceEventTopic, thumbFormats, thumbResolutions)
                                      (bucket, bucket.sync())
                                    }
-        bucketRegistry    <- BucketRegistry.resource(
+        bucketRegistry    <- DatabaseBucketRegistry.resource(
                                appConfig.resources.defaultBucket,
                                BucketsDal(databasePool),
                                searchService,

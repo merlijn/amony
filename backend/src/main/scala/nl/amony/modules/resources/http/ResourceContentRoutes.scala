@@ -11,8 +11,8 @@ import org.http4s.headers.`Cache-Control`
 import scribe.Logging
 
 import nl.amony.modules.auth.api.{ApiSecurity, authCookieName}
-import nl.amony.modules.resources.BucketRegistry
 import nl.amony.modules.resources.api.*
+import nl.amony.modules.resources.api.BucketRegistry
 import nl.amony.modules.resources.http.ResourceDirectives.resourceContentsResponse
 
 object ResourceContentRoutes extends Logging {

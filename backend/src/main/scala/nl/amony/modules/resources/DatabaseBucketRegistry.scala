@@ -1,6 +1,6 @@
 package nl.amony.modules.resources
 
-import java.nio.file.Files
+import java.time.Instant
 
 import cats.data.EitherT
 import cats.effect.std.Supervisor
@@ -8,67 +8,31 @@ import cats.effect.{Deferred, Fiber, IO, Ref, Resource}
 import cats.implicits.*
 import scribe.Logging
 
-import nl.amony.modules.resources.ResourceConfig.{LocalDirectoryConfig, ResourceBucketConfig}
-import nl.amony.modules.resources.api.{BucketId, ResourceBucket}
-import nl.amony.modules.resources.dal.{BucketsDal, StoredBucket}
+import nl.amony.modules.resources.api.*
+import nl.amony.modules.resources.dal.BucketsDal
 import nl.amony.modules.search.api.SearchService
-
-enum BucketError:
-  case NotFound(bucketId: BucketId)
-  case AlreadyExists(bucketId: BucketId)
-  case Modified(bucketId: BucketId)
-  case Invalid(message: String)
-  case NotEmpty(bucketId: BucketId, resourceCount: Long)
 
 /** Creates a bucket from its configuration, together with its background (sync) process. */
 type BucketFactory = ResourceBucketConfig => IO[(ResourceBucket, IO[Unit])]
 
-trait BucketRegistry:
-  def get(bucketId: BucketId): IO[Option[ResourceBucket]]
-  def all: IO[List[ResourceBucket]]
-  def getConfig(bucketId: BucketId): IO[Option[StoredBucket]]
-  def allConfigs: IO[List[StoredBucket]]
-  def create(config: ResourceBucketConfig): IO[Either[BucketError, Unit]]
+object DatabaseBucketRegistry extends Logging:
 
-  /** Updates a bucket, unless it was changed since `expectedUpdatedAt`. */
-  def update(config: ResourceBucketConfig, expectedUpdatedAt: java.time.Instant): IO[Either[BucketError, Unit]]
+  private val idPattern = "[a-z0-9_-]{1,64}".r
 
-  /** Deletes a bucket from the database and search index. Media files are never deleted. */
-  def delete(bucketId: BucketId, force: Boolean): IO[Either[BucketError, Unit]]
-
-object BucketRegistry extends Logging:
-
-  /** Resolves relative paths against the working directory, so the stored configuration does not depend on it. */
-  private def withAbsolutePaths(config: ResourceBucketConfig): ResourceBucketConfig = config match
-    case c: LocalDirectoryConfig => c.copy(path = c.path.toAbsolutePath.normalize())
-
-  private def storeAbsolutePaths(bucketsDal: BucketsDal)(stored: StoredBucket): IO[StoredBucket] =
-    val absolute = withAbsolutePaths(stored.config)
-    if absolute == stored.config then IO.pure(stored)
-    else
-      bucketsDal.update(absolute, stored.updatedAt).flatMap {
-        case Right(updated) => IO(logger.info(s"Stored absolute path for bucket '${absolute.id}'")).as(updated)
-        case Left(error)    => IO(logger.warn(s"Could not store absolute path for bucket '${absolute.id}': $error")).as(stored)
-      }
-
-  /** Inserts the default bucket when no buckets exist yet, unless its directory does not exist. */
+  /** Inserts the default bucket when no buckets exist yet, unless its configuration is invalid. */
   private def seedDefaultBucket(defaultBucket: ResourceBucketConfig, bucketsDal: BucketsDal): IO[Unit] =
-    withAbsolutePaths(defaultBucket) match
-      case config: LocalDirectoryConfig =>
-        bucketsDal.anyExist().flatMap {
-          case true  => IO.unit
-          case false =>
-            IO.blocking(Files.isDirectory(config.resourcePath)).flatMap {
-              case false =>
-                IO(logger.error(
-                  s"No buckets found, but the directory '${config.resourcePath}' of the default bucket '${config.id}' does not exist. Not inserting it."
-                ))
-              case true  =>
-                bucketsDal.insertIfNoneExist(config).flatMap(inserted =>
-                  IO.whenA(inserted)(IO(logger.info(s"No buckets found, inserted default bucket '${config.id}'")))
-                )
-            }
+    bucketsDal.anyExist().flatMap {
+      case true  => IO.unit
+      case false =>
+        defaultBucket.validate().flatMap {
+          case Left(error)   =>
+            IO(logger.error(s"No buckets found, but the default bucket '${defaultBucket.id}' is invalid and is not inserted: $error"))
+          case Right(config) =>
+            bucketsDal.insertIfNoneExist(config).flatMap(inserted =>
+              IO.whenA(inserted)(IO(logger.info(s"No buckets found, inserted default bucket '${config.id}'")))
+            )
         }
+    }
 
   private case class RunningBucket(stored: StoredBucket, bucket: ResourceBucket, fiber: Fiber[IO, Throwable, Unit])
 
@@ -89,7 +53,7 @@ object BucketRegistry extends Logging:
                         _       <- seedDefaultBucket(defaultBucket, bucketsDal)
                         running <- Ref.of[IO, Map[BucketId, RunningBucket]](Map.empty)
                         registry = Impl(bucketsDal, searchService, factory, supervisor, running)
-                        stored  <- bucketsDal.getAll().flatMap(_.traverse(storeAbsolutePaths(bucketsDal)))
+                        stored  <- bucketsDal.getAll()
                         _       <- stored.traverse_(registry.install)
                       yield registry
                     }
@@ -112,7 +76,7 @@ object BucketRegistry extends Logging:
      * background process of the new instance only starts after the replaced one has stopped, so that a bucket never
      * syncs twice at the same time.
      */
-    private[BucketRegistry] def install(stored: StoredBucket): IO[Unit] =
+    private[DatabaseBucketRegistry] def install(stored: StoredBucket): IO[Unit] =
       val bucketId = BucketId(stored.config.id)
       for
         started              <- Deferred[IO, Unit]
@@ -144,25 +108,27 @@ object BucketRegistry extends Logging:
       }
 
     /**
-     * Note: the overlap check against the other buckets is not atomic with the insert or update. Two admins saving
-     * buckets with overlapping paths at exactly the same time could both pass it. This is an accepted edge case.
+     * Validates the configuration and checks it does not overlap with any other bucket.
+     *
+     * Note: the overlap check is not atomic with the insert or update. Two admins saving buckets with overlapping paths
+     * at exactly the same time could both pass it. This is an accepted edge case.
      */
     private def validate(config: ResourceBucketConfig): EitherT[IO, BucketError, ResourceBucketConfig] =
-      EitherT(
-        bucketsDal.getAll().flatMap { all =>
-          val others = all.map(_.config).filterNot(_.id == config.id)
-          BucketValidation.validate(withAbsolutePaths(config), others)
-        }
-      ).leftMap(BucketError.Invalid(_))
-
-    private def checkUpdateAllowed(existing: ResourceBucketConfig, updated: ResourceBucketConfig): Either[BucketError, Unit] =
-      (existing, updated) match
-        case (e: LocalDirectoryConfig, u: LocalDirectoryConfig) =>
-          Either.cond(
-            e.hashingAlgorithm == u.hashingAlgorithm,
-            (),
-            BucketError.Invalid("The hashing algorithm of an existing bucket cannot be changed")
-          )
+      for
+        _          <- EitherT.cond[IO](
+                        idPattern.matches(config.id),
+                        (),
+                        BucketError.Invalid("Bucket id must be 1-64 characters of lowercase letters, digits, '-' or '_'")
+                      )
+        validated  <- EitherT(config.validate()).leftMap(BucketError.Invalid(_))
+        others     <- EitherT.liftF(bucketsDal.getAll().map(_.map(_.config).filterNot(_.id == config.id)))
+        overlapping = others.find(validated.overlaps)
+        _          <- EitherT.cond[IO](
+                        overlapping.isEmpty,
+                        (),
+                        BucketError.Invalid(s"Path overlaps with the path of bucket '${overlapping.map(_.id).getOrElse("")}'")
+                      )
+      yield validated
 
     override def get(bucketId: BucketId): IO[Option[ResourceBucket]] = running.get.map(_.get(bucketId).map(_.bucket))
 
@@ -181,11 +147,11 @@ object BucketRegistry extends Logging:
         _         <- EitherT.liftF(IO(logger.info(s"Created bucket '$bucketId'")))
       yield ()).value
 
-    override def update(config: ResourceBucketConfig, expectedUpdatedAt: java.time.Instant): IO[Either[BucketError, Unit]] =
+    override def update(config: ResourceBucketConfig, expectedUpdatedAt: Instant): IO[Either[BucketError, Unit]] =
       val bucketId = BucketId(config.id)
       (for
         existing  <- EitherT.fromOptionF(bucketsDal.getById(bucketId), BucketError.NotFound(bucketId))
-        _         <- EitherT.fromEither[IO](checkUpdateAllowed(existing.config, config))
+        _         <- EitherT.fromEither[IO](existing.config.checkUpdateAllowed(config)).leftMap(BucketError.Invalid(_))
         validated <- validate(config)
         _         <- EitherT(bucketsDal.update(validated, expectedUpdatedAt))
         _         <- EitherT.liftF(reload(bucketId))

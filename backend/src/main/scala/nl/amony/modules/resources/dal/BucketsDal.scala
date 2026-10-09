@@ -13,12 +13,7 @@ import skunk.codec.all.*
 import skunk.implicits.*
 
 import nl.amony.modules.auth.api.Role
-import nl.amony.modules.resources.BucketError
-import nl.amony.modules.resources.ResourceConfig.{HashingAlgorithm, LocalDirectoryConfig, ResourceBucketConfig, ScanConfig}
-import nl.amony.modules.resources.api.BucketId
-
-/** A bucket configuration as stored, with the time of its last change (used for optimistic locking). */
-case class StoredBucket(config: ResourceBucketConfig, updatedAt: Instant)
+import nl.amony.modules.resources.api.{BucketError, BucketId, HashingAlgorithm, LocalDirectoryConfig, ResourceBucketConfig, ScanConfig, StoredBucket}
 
 case class BucketRow(bucket_id: String, bucket_type: String, required_role: Option[String], settings: Json)
 

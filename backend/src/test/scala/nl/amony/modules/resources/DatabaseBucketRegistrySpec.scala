@@ -15,13 +15,12 @@ import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 
 import nl.amony.modules.auth.api.{Role, UserId}
-import nl.amony.modules.resources.ResourceConfig.{LocalDirectoryConfig, PartialHash, ScanConfig}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
 import nl.amony.modules.search.api.{Query, SearchResult, SearchService}
 import nl.amony.{App, DatabaseConfig}
 
-class BucketRegistrySpec extends AnyWordSpecLike with TestContainerForAll with Matchers {
+class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAll with Matchers {
 
   override val containerDef: GenericContainer.Def[GenericContainer] =
     GenericContainer.Def(
@@ -87,11 +86,11 @@ class BucketRegistrySpec extends AnyWordSpecLike with TestContainerForAll with M
         val test =
           App.makeDatabasePool(dbConfig).use { pool =>
             val bucketsDal = BucketsDal(pool)
-            val factory    = (config: ResourceConfig.ResourceBucketConfig) => IO.pure((FakeBucket(BucketId(config.id), None), IO.unit))
+            val factory    = (config: ResourceBucketConfig) => IO.pure((FakeBucket(BucketId(config.id), None), IO.unit))
 
             for
               deleted <- Ref.of[IO, List[BucketId]](Nil)
-              configs <- BucketRegistry
+              configs <- DatabaseBucketRegistry
                            .resource(bucketConfig("media", missingPath), bucketsDal, FakeSearchService(deleted), factory)
                            .use(_.allConfigs)
               _        = configs shouldBe empty
@@ -126,8 +125,8 @@ class BucketRegistrySpec extends AnyWordSpecLike with TestContainerForAll with M
                             (started.update(id :: _) >>
                               active.updateAndGet(m => m.updated(id, m.getOrElse(id, 0) + 1)).flatMap(m => maxSyncs.update(_ max m(id))) >>
                               IO.never[Unit]).onCancel(active.update(m => m.updated(id, m(id) - 1)))
-              factory   = (config: ResourceConfig.ResourceBucketConfig) => IO.pure((FakeBucket(BucketId(config.id), None), sync(config.id)))
-              registry  = BucketRegistry.resource(bucketConfig("media", defaultPath), bucketsDal, FakeSearchService(deleted), factory)
+              factory   = (config: ResourceBucketConfig) => IO.pure((FakeBucket(BucketId(config.id), None), sync(config.id)))
+              registry  = DatabaseBucketRegistry.resource(bucketConfig("media", defaultPath), bucketsDal, FakeSearchService(deleted), factory)
               _        <- registry.use { r =>
                             for
                               seeded      <- r.allConfigs

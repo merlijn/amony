@@ -13,7 +13,6 @@ import nl.amony.lib.files.*
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.modules.auth.api.Role
 import nl.amony.modules.resources.*
-import nl.amony.modules.resources.ResourceConfig.LocalDirectoryConfig
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.ResourceDatabase
 

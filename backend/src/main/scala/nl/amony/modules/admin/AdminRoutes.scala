@@ -8,7 +8,7 @@ import sttp.tapir.*
 import nl.amony.lib.tapir.dsl.error.ErrorResponse
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic}
 import nl.amony.modules.auth.api.*
-import nl.amony.modules.resources.BucketRegistry
+import nl.amony.modules.resources.api.BucketRegistry
 import nl.amony.modules.resources.api.{BucketId, ResourceInfo}
 import nl.amony.modules.resources.http.{ResourceDto, toDto}
 import nl.amony.modules.resources.local.LocalDirectoryBucket

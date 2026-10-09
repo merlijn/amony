@@ -10,8 +10,7 @@ import org.typelevel.otel4s.trace.Tracer
 import nl.amony.lib.messagebus.EventTopic
 import nl.amony.lib.process.ffmpeg.FFMpeg
 import nl.amony.lib.process.magick.ImageMagick
-import nl.amony.modules.resources.ResourceConfig.LocalDirectoryConfig
-import nl.amony.modules.resources.api.{ResourceEvent, Streamability, ThumbnailFormats, ThumbnailResolutions}
+import nl.amony.modules.resources.api.{LocalDirectoryConfig, ResourceEvent, Streamability, ThumbnailFormats, ThumbnailResolutions}
 import nl.amony.modules.resources.dal.ResourceDatabase
 
 trait LocalDirectoryBase(

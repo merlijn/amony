@@ -13,7 +13,7 @@ import nl.amony.lib.tapir.apiNoCacheHeaders
 import nl.amony.lib.tapir.dsl.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.api.*
-import nl.amony.modules.resources.BucketRegistry
+import nl.amony.modules.resources.api.BucketRegistry
 import nl.amony.modules.resources.api.{BucketId, Resource, ResourceBucket, ResourceId, UploadError}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 

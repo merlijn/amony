@@ -15,10 +15,7 @@ import nl.amony.lib.tapir.apiNoCacheHeaders
 import nl.amony.lib.tapir.dsl.error.{BadRequestError, ConflictError, ErrorResponse, NotFoundError, SecurityError}
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.api.*
-import nl.amony.modules.resources.ResourceConfig.{HashingAlgorithm, LocalDirectoryConfig, PartialHash, ResourceBucketConfig, ScanConfig}
-import nl.amony.modules.resources.api.BucketId
-import nl.amony.modules.resources.dal.StoredBucket
-import nl.amony.modules.resources.{BucketError, BucketRegistry}
+import nl.amony.modules.resources.api.*
 
 case class ScanSettingsDto(
   enabled: Boolean,
