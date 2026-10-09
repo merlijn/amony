@@ -33,6 +33,15 @@ trait BucketRegistry:
 
 object BucketRegistry extends Logging:
 
+  /** Resolves relative paths against the working directory, so the stored configuration does not depend on it. */
+  private def withAbsolutePaths(config: ResourceBucketConfig): ResourceBucketConfig = config match
+    case c: LocalDirectoryConfig => c.copy(path = c.path.toAbsolutePath.normalize())
+
+  private def storeAbsolutePaths(bucketsDal: BucketsDal)(config: ResourceBucketConfig): IO[ResourceBucketConfig] =
+    val absolute = withAbsolutePaths(config)
+    if absolute == config then IO.pure(config)
+    else bucketsDal.update(absolute) >> IO(logger.info(s"Stored absolute path for bucket '${config.id}'")).as(absolute)
+
   private case class RunningBucket(config: ResourceBucketConfig, bucket: ResourceBucket, fiber: Fiber[IO, Throwable, Unit])
 
   /**
@@ -50,12 +59,12 @@ object BucketRegistry extends Logging:
       supervisor <- Supervisor[IO]
       registry   <- Resource.eval {
                       for
-                        inserted <- bucketsDal.insertIfNoneExist(defaultBucket)
+                        inserted <- bucketsDal.insertIfNoneExist(withAbsolutePaths(defaultBucket))
                         _        <- IO.whenA(inserted)(IO(logger.info(s"No buckets found, inserted default bucket '${defaultBucket.id}'")))
                         mutex    <- Mutex[IO]
                         state    <- Ref.of[IO, Map[BucketId, RunningBucket]](Map.empty)
                         registry  = Impl(bucketsDal, resourceDb, searchService, factory, supervisor, state, mutex)
-                        configs  <- bucketsDal.getAll()
+                        configs  <- bucketsDal.getAll().flatMap(_.traverse(storeAbsolutePaths(bucketsDal)))
                         _        <- configs.traverse_(registry.startBucket)
                       yield registry
                     }
@@ -87,7 +96,8 @@ object BucketRegistry extends Logging:
       state.get.map(_.values.map(_.config).filterNot(_.id == bucketId).toList)
 
     private def validate(config: ResourceBucketConfig): EitherT[IO, BucketError, ResourceBucketConfig] =
-      EitherT(otherConfigs(BucketId(config.id)).flatMap(others => BucketValidation.validate(config, others))).leftMap(BucketError.Invalid(_))
+      EitherT(otherConfigs(BucketId(config.id)).flatMap(others => BucketValidation.validate(withAbsolutePaths(config), others)))
+        .leftMap(BucketError.Invalid(_))
 
     private def checkUpdateAllowed(existing: ResourceBucketConfig, updated: ResourceBucketConfig): Either[BucketError, Unit] =
       (existing, updated) match
