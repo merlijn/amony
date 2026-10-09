@@ -8,6 +8,9 @@ import cats.effect.unsafe.implicits.global
 import cats.effect.{IO, Ref}
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
+import org.mockito.IdiomaticMockito.returns
+import org.mockito.Mockito.RETURNS_DEFAULTS
+import org.mockito.scalatest.MockitoSugar
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
@@ -17,10 +20,10 @@ import org.typelevel.otel4s.trace.Tracer
 import nl.amony.modules.auth.api.{Role, UserId}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
-import nl.amony.modules.search.api.{Query, SearchResult, SearchService}
+import nl.amony.modules.search.api.SearchService
 import nl.amony.{App, DatabaseConfig}
 
-class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAll with Matchers {
+class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAll with Matchers with MockitoSugar {
 
   override val containerDef: GenericContainer.Def[GenericContainer] =
     GenericContainer.Def(
@@ -56,23 +59,11 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
   private def withExcludes(config: LocalDirectoryConfig, excludes: List[String]): LocalDirectoryConfig =
     config.copy(sync = config.sync.copy(excludePatterns = excludes))
 
-  private class FakeBucket(val id: BucketId, val requiredRole: Option[Role]) extends ResourceBucket:
-    def getResource(resourceId: ResourceId)                                                                            = ???
-    def updateUserMeta(resourceId: ResourceId, title: Option[String], description: Option[String], tags: List[String]) = ???
-    def updateResourceTags(resourceIds: Set[ResourceId], tagsToAdd: Set[String], tagsToRemove: Set[String])            = ???
-    def updateThumbnailTimestamp(resourceId: ResourceId, timestamp: Int)                                               = ???
-    def deleteResource(resourceId: ResourceId)                                                                         = ???
-    def getOrCreate(resourceId: ResourceId, operation: ResourceOperation)                                              = ???
-    def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte])                                 = ???
-    def getAllResources                                                                                                = ???
-
-  private class FakeSearchService(deleted: Ref[IO, List[BucketId]]) extends SearchService:
-    def deleteBucket(bucketId: BucketId): IO[Unit]                  = deleted.update(bucketId :: _)
-    def searchMedia(query: Query): IO[SearchResult]                 = ???
-    def searchAll(query: Query): fs2.Stream[IO, ResourceInfo]       = ???
-    def indexAll(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] = ???
-    def index(resource: ResourceInfo): IO[Unit]                     = ???
-    def forceCommit(): IO[Unit]                                     = ???
+  private def mockBucket(config: ResourceBucketConfig): ResourceBucket =
+    val bucket = mock[ResourceBucket](RETURNS_DEFAULTS)
+    bucket.id returns BucketId(config.id)
+    bucket.requiredRole returns None
+    bucket
 
   private def resource(bucketId: BucketId): ResourceInfo =
     ResourceInfo(bucketId = bucketId, resourceId = ResourceId(UUID.randomUUID().toString), userId = UserId("admin"), path = "file.mp4", size = 1L)
@@ -85,13 +76,13 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
 
         val test =
           App.makeDatabasePool(dbConfig).use { pool =>
-            val bucketsDal = BucketsDal(pool)
-            val factory    = (config: ResourceBucketConfig) => IO.pure((FakeBucket(BucketId(config.id), None), IO.unit))
+            val bucketsDal    = BucketsDal(pool)
+            val searchService = mock[SearchService](RETURNS_DEFAULTS)
+            val factory       = (config: ResourceBucketConfig) => IO.pure((mockBucket(config), IO.unit))
 
             for
-              deleted <- Ref.of[IO, List[BucketId]](Nil)
               configs <- DatabaseBucketRegistry
-                           .resource(bucketConfig("media", missingPath), bucketsDal, FakeSearchService(deleted), factory)
+                           .resource(bucketConfig("media", missingPath), bucketsDal, searchService, factory)
                            .use(_.allConfigs)
               _        = configs shouldBe empty
               stored  <- bucketsDal.anyExist()
@@ -113,20 +104,21 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
 
         val test =
           App.makeDatabasePool(dbConfig).use { pool =>
-            val bucketsDal = BucketsDal(pool)
-            val resourceDb = ResourceDatabase(pool)
+            val bucketsDal    = BucketsDal(pool)
+            val resourceDb    = ResourceDatabase(pool)
+            val searchService = mock[SearchService](RETURNS_DEFAULTS)
+            searchService.deleteBucket(any[BucketId]) returns IO.unit
 
             for
               started  <- Ref.of[IO, List[String]](Nil)
               active   <- Ref.of[IO, Map[String, Int]](Map.empty)
               maxSyncs <- Ref.of[IO, Int](0)
-              deleted  <- Ref.of[IO, List[BucketId]](Nil)
               sync      = (id: String) =>
                             (started.update(id :: _) >>
                               active.updateAndGet(m => m.updated(id, m.getOrElse(id, 0) + 1)).flatMap(m => maxSyncs.update(_ max m(id))) >>
                               IO.never[Unit]).onCancel(active.update(m => m.updated(id, m(id) - 1)))
-              factory   = (config: ResourceBucketConfig) => IO.pure((FakeBucket(BucketId(config.id), None), sync(config.id)))
-              registry  = DatabaseBucketRegistry.resource(bucketConfig("media", defaultPath), bucketsDal, FakeSearchService(deleted), factory)
+              factory   = (config: ResourceBucketConfig) => IO.pure((mockBucket(config), sync(config.id)))
+              registry  = DatabaseBucketRegistry.resource(bucketConfig("media", defaultPath), bucketsDal, searchService, factory)
               _        <- registry.use { r =>
                             for
                               seeded      <- r.allConfigs
@@ -160,8 +152,7 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
                               _            = forced shouldBe Right(())
                               remaining   <- resourceDb.getAll(BucketId("other"))
                               _            = remaining shouldBe empty
-                              deletedIds  <- deleted.get
-                              _            = deletedIds shouldBe List(BucketId("other"))
+                              _            = verify(searchService).deleteBucket(BucketId("other"))
                               missing     <- r.delete(BucketId("other"), force = true)
                               _            = missing shouldBe Left(BucketError.NotFound(BucketId("other")))
                               _           <- IO.sleep(100.millis)
