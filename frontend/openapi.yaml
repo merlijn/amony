@@ -2395,7 +2395,6 @@ components:
       - enabled
       - syncOnStartup
       - newFilesOwner
-      - scanParallelFactor
       - pollIntervalSeconds
       properties:
         enabled:
@@ -2404,9 +2403,6 @@ components:
           type: boolean
         newFilesOwner:
           type: string
-        scanParallelFactor:
-          type: integer
-          format: int32
         pollIntervalSeconds:
           type: integer
           format: int64

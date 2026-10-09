@@ -21,7 +21,6 @@ case class ScanSettingsDto(
   enabled: Boolean,
   syncOnStartup: Boolean,
   newFilesOwner: String,
-  scanParallelFactor: Int,
   pollIntervalSeconds: Long,
   includePatterns: List[String],
   excludePatterns: List[String]
@@ -57,7 +56,6 @@ object BucketConfigDto:
           enabled             = c.sync.enabled,
           syncOnStartup       = c.sync.syncOnStartup,
           newFilesOwner       = c.sync.newFilesOwner,
-          scanParallelFactor  = c.sync.scanParallelFactor,
           pollIntervalSeconds = c.sync.pollInterval.toSeconds,
           includePatterns     = c.sync.includePatterns,
           excludePatterns     = c.sync.excludePatterns
@@ -83,13 +81,12 @@ object BucketConfigDto:
           requiredRole          = dto.requiredRole.map(_.strip()).filter(_.nonEmpty).map(Role(_)),
           path                  = path,
           sync                  = ScanConfig(
-            enabled            = dto.sync.enabled,
-            syncOnStartup      = dto.sync.syncOnStartup,
-            newFilesOwner      = dto.sync.newFilesOwner.strip(),
-            scanParallelFactor = dto.sync.scanParallelFactor,
-            pollInterval       = dto.sync.pollIntervalSeconds.seconds,
-            includePatterns    = dto.sync.includePatterns.map(_.strip()).filter(_.nonEmpty),
-            excludePatterns    = dto.sync.excludePatterns.map(_.strip()).filter(_.nonEmpty)
+            enabled         = dto.sync.enabled,
+            syncOnStartup   = dto.sync.syncOnStartup,
+            newFilesOwner   = dto.sync.newFilesOwner.strip(),
+            pollInterval    = dto.sync.pollIntervalSeconds.seconds,
+            includePatterns = dto.sync.includePatterns.map(_.strip()).filter(_.nonEmpty),
+            excludePatterns = dto.sync.excludePatterns.map(_.strip()).filter(_.nonEmpty)
           ),
           hashingAlgorithm      = algorithm,
           relativeUploadPath    = uploadPath,

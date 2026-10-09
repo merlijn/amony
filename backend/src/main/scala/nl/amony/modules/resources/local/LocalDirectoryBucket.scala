@@ -18,12 +18,14 @@ import nl.amony.modules.resources.dal.ResourceDatabase
 
 class LocalDirectoryBucket(
   config: LocalDirectoryConfig,
+  parallelFactor: Int,
   db: ResourceDatabase,
   topic: EventTopic[ResourceEvent],
   formats: ThumbnailFormats,
   resolutions: ThumbnailResolutions
 )(using meter: Meter[IO], tracer: Tracer[IO])
-    extends LocalDirectoryBase(config, db, topic, formats, resolutions), LocalResourceOperations, ResourceBucket, LocalResourceSyncer,
+    extends LocalDirectoryBase(config, parallelFactor, db, topic, formats, resolutions), LocalResourceOperations, ResourceBucket,
+      LocalResourceSyncer,
       UploadResource, Logging {
 
   private def getResourceInfo(resourceId: ResourceId): IO[Option[ResourceInfo]] = db.getResourceById(id, resourceId)
@@ -122,7 +124,7 @@ class LocalDirectoryBucket(
   def generateAllPreviews(): IO[Unit] =
     getAllResources
       .flatMap(info => fs2.Stream.emits(previewOperations(info).map(info -> _)))
-      .parEvalMap(config.sync.scanParallelFactor) { case (info, operation) => runPreviewOperation(info, operation) }
+      .parEvalMap(parallelFactor) { case (info, operation) => runPreviewOperation(info, operation) }
       .compile.drain
 
   override def getResource(resourceId: ResourceId): IO[Option[Resource]] =

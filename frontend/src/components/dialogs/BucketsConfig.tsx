@@ -23,7 +23,6 @@ const newBucket: BucketConfigDto = {
     enabled: false,
     syncOnStartup: true,
     newFilesOwner: "admin",
-    scanParallelFactor: 4,
     pollIntervalSeconds: 300,
     includePatterns: defaultIncludePatterns,
     excludePatterns: defaultExcludePatterns,
@@ -127,7 +126,6 @@ const BucketForm = ({mode, initial, onCancel, onSaved}: BucketFormProps) => {
   const [includePatterns, setIncludePatterns] = useState((initial.sync.includePatterns ?? []).join("\n"))
   const [excludePatterns, setExcludePatterns] = useState((initial.sync.excludePatterns ?? []).join("\n"))
   const [pollInterval, setPollInterval] = useState(String(initial.sync.pollIntervalSeconds))
-  const [parallelism, setParallelism] = useState(String(initial.sync.scanParallelFactor))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | undefined>(undefined)
 
@@ -146,7 +144,6 @@ const BucketForm = ({mode, initial, onCancel, onSaved}: BucketFormProps) => {
       sync: {
         ...bucket.sync,
         pollIntervalSeconds: Number(pollInterval),
-        scanParallelFactor: Number(parallelism),
         includePatterns: linesToList(includePatterns),
         excludePatterns: linesToList(excludePatterns),
       }
@@ -214,9 +211,6 @@ const BucketForm = ({mode, initial, onCancel, onSaved}: BucketFormProps) => {
         </InfoRow>
         <InfoRow label="Owner of new files">
           <input type="text" value={bucket.sync.newFilesOwner} onChange={(e) => updateSync({newFilesOwner: e.target.value})} />
-        </InfoRow>
-        <InfoRow label="Scan parallelism">
-          <input type="number" min={1} value={parallelism} onChange={(e) => setParallelism(e.target.value)} />
         </InfoRow>
       </InfoTable>
 

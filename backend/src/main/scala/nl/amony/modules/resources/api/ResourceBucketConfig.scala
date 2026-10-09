@@ -42,7 +42,6 @@ case class ScanConfig(
   enabled: Boolean,
   syncOnStartup: Boolean,
   newFilesOwner: String,
-  scanParallelFactor: Int,
   pollInterval: FiniteDuration,
   includePatterns: List[String],
   excludePatterns: List[String]
@@ -92,7 +91,6 @@ case class LocalDirectoryConfig(
     else if sync.includePatterns.isEmpty then Left("At least one include pattern is required")
     else if invalidPatterns.isDefined then Left(invalidPatterns.get)
     else if sync.pollInterval.toSeconds < 1 then Left("Poll interval must be at least 1 second")
-    else if sync.scanParallelFactor < 1 then Left("Scan parallel factor must be at least 1")
     else if sync.newFilesOwner.isBlank then Left("New files owner is required")
     else Right(copy(path = resourcePath))
   }

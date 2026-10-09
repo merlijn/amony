@@ -21,7 +21,6 @@ case class ScanSettings(
   enabled: Boolean,
   syncOnStartup: Boolean,
   newFilesOwner: String,
-  scanParallelFactor: Int,
   pollIntervalSeconds: Long,
   includePatterns: List[String],
   excludePatterns: List[String]
@@ -52,7 +51,6 @@ object BucketRow:
           enabled             = c.sync.enabled,
           syncOnStartup       = c.sync.syncOnStartup,
           newFilesOwner       = c.sync.newFilesOwner,
-          scanParallelFactor  = c.sync.scanParallelFactor,
           pollIntervalSeconds = c.sync.pollInterval.toSeconds,
           includePatterns     = c.sync.includePatterns,
           excludePatterns     = c.sync.excludePatterns
@@ -70,13 +68,12 @@ object BucketRow:
         requiredRole          = row.required_role.map(Role(_)),
         path                  = Path.of(settings.path),
         sync                  = ScanConfig(
-          enabled            = settings.sync.enabled,
-          syncOnStartup      = settings.sync.syncOnStartup,
-          newFilesOwner      = settings.sync.newFilesOwner,
-          scanParallelFactor = settings.sync.scanParallelFactor,
-          pollInterval       = settings.sync.pollIntervalSeconds.seconds,
-          includePatterns    = settings.sync.includePatterns,
-          excludePatterns    = settings.sync.excludePatterns
+          enabled         = settings.sync.enabled,
+          syncOnStartup   = settings.sync.syncOnStartup,
+          newFilesOwner   = settings.sync.newFilesOwner,
+          pollInterval    = settings.sync.pollIntervalSeconds.seconds,
+          includePatterns = settings.sync.includePatterns,
+          excludePatterns = settings.sync.excludePatterns
         ),
         hashingAlgorithm      = algorithm,
         relativeUploadPath    = Path.of(settings.relativeUploadPath),

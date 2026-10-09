@@ -109,6 +109,6 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
   private[local] def generatePreviews(info: ResourceInfo): IO[Unit] =
     fs2.Stream.emits(previewOperations(info))
-      .parEvalMap(config.sync.scanParallelFactor)(runPreviewOperation(info, _))
+      .parEvalMap(parallelFactor)(runPreviewOperation(info, _))
       .compile.drain
 }

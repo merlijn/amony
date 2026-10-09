@@ -15,6 +15,7 @@ import nl.amony.modules.resources.dal.ResourceDatabase
 
 trait LocalDirectoryBase(
   val config: LocalDirectoryConfig,
+  val parallelFactor: Int,
   val db: ResourceDatabase,
   val topic: EventTopic[ResourceEvent],
   val formats: ThumbnailFormats,

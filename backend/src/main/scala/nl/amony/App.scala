@@ -111,11 +111,19 @@ object App extends ResourceApp.Forever with Logging {
                              )
         thumbFormats       = ThumbnailFormats(appConfig.resources.previews.supportedImageFormats, appConfig.resources.previews.formatOptions)
         resourceDatabase   = ResourceDatabase(databasePool)
+        parallelFactor     = appConfig.resources.parallelFactor
         bucketFactory      = (config: ResourceBucketConfig) =>
                                config match
                                  case localConfig: LocalDirectoryConfig =>
                                    IO {
-                                     val bucket = LocalDirectoryBucket(localConfig, resourceDatabase, resourceEventTopic, thumbFormats, thumbResolutions)
+                                     val bucket = LocalDirectoryBucket(
+                                       localConfig,
+                                       parallelFactor,
+                                       resourceDatabase,
+                                       resourceEventTopic,
+                                       thumbFormats,
+                                       thumbResolutions
+                                     )
                                      (bucket, bucket.sync())
                                    }
         bucketRegistry    <- DatabaseBucketRegistry.resource(

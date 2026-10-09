@@ -118,7 +118,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
         logger.info(s"Scanning directory: ${config.resourcePath}")
         LocalDirectoryScanner
           .scanDirectory(config.resourcePath, fileStore, config.filterDirectory, config.filterFiles, config.hashingAlgorithm.createHash)
-          .parEvalMap(config.sync.scanParallelFactor)(mapFileEvent)
+          .parEvalMap(parallelFactor)(mapFileEvent)
       } else {
         Stream.empty
       }
@@ -137,7 +137,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       config.filterDirectory,
       config.filterFiles,
       config.hashingAlgorithm.createHash
-    ).parEvalMap(config.sync.scanParallelFactor)(mapFileEvent)
+    ).parEvalMap(parallelFactor)(mapFileEvent)
 
   private def applyEventToDb(event: ResourceEvent): IO[Unit] = event match {
     case ResourceAdded(resource)                       => db.insertResource(resource)

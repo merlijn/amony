@@ -14,13 +14,12 @@ class LocalDirectoryConfigSpec extends AnyWordSpecLike with Matchers {
       id                 = "media",
       path               = path,
       sync               = ScanConfig(
-        enabled            = false,
-        syncOnStartup      = false,
-        newFilesOwner      = "admin",
-        scanParallelFactor = 1,
-        pollInterval       = 1.minute,
-        includePatterns    = List("**/*.{mp4,jpg}"),
-        excludePatterns    = List("**/.*", "**/@eaDir", "samples/**")
+        enabled         = false,
+        syncOnStartup   = false,
+        newFilesOwner   = "admin",
+        pollInterval    = 1.minute,
+        includePatterns = List("**/*.{mp4,jpg}"),
+        excludePatterns = List("**/.*", "**/@eaDir", "samples/**")
       ),
       hashingAlgorithm   = PartialHash,
       relativeUploadPath = Path.of("_upload")
@@ -73,7 +72,6 @@ class LocalDirectoryConfigSpec extends AnyWordSpecLike with Matchers {
       error(c.copy(sync = c.sync.copy(includePatterns = Nil))) shouldBe "At least one include pattern is required"
       error(c.copy(sync = c.sync.copy(excludePatterns = List("{x")))) shouldBe "Invalid pattern: '{x'"
       error(c.copy(sync = c.sync.copy(pollInterval = 0.seconds))) shouldBe "Poll interval must be at least 1 second"
-      error(c.copy(sync = c.sync.copy(scanParallelFactor = 0))) shouldBe "Scan parallel factor must be at least 1"
       error(c.copy(sync = c.sync.copy(newFilesOwner = " "))) shouldBe "New files owner is required"
     }
   }

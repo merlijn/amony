@@ -42,13 +42,12 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
       requiredRole       = Some(Role.Authenticated),
       path               = path,
       sync               = ScanConfig(
-        enabled            = false,
-        syncOnStartup      = false,
-        newFilesOwner      = "admin",
-        scanParallelFactor = 2,
-        pollInterval       = 60.seconds,
-        includePatterns    = List("**/*.{mp4,jpg}"),
-        excludePatterns    = List("**/.*")
+        enabled         = false,
+        syncOnStartup   = false,
+        newFilesOwner   = "admin",
+        pollInterval    = 60.seconds,
+        includePatterns = List("**/*.{mp4,jpg}"),
+        excludePatterns = List("**/.*")
       ),
       hashingAlgorithm   = PartialHash,
       relativeUploadPath = Path.of("_upload")
