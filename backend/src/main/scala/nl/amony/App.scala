@@ -101,7 +101,7 @@ object App extends ResourceApp.Forever with Logging {
         eventTopic         = {
           given PersistenceCodec[ResourceEvent] = PersistenceCodec.fromCirce
           given MessageTopicKey[ResourceEvent]  = MessageTopicKey("resource-events")
-          PersistentMessageBus.postgres(databasePool).getTopic[ResourceEvent]
+          PersistentMessageBus.postgres(databasePool, appConfig.messageBus).getTopic[ResourceEvent]
         }
         _                 <- eventTopic.processAtLeastOnce("solr-indexer")(searchModule.indexer.processEvent).compile.drain.background
         resourceModule    <- ResourceModule.resource(appConfig.resources, databasePool, eventTopic)

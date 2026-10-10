@@ -4,6 +4,7 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.duration.*
 
 import cats.effect.{IO, Resource}
+import pureconfig.ConfigReader
 import skunk.Session
 
 trait PersistentMessageBus:
@@ -32,5 +33,5 @@ final case class MessageBusConfig(
   purgeInterval: FiniteDuration = 1.hour,
   retention: FiniteDuration     = 7.days,
   notificationQueueSize: Int    = 10000
-):
+) derives ConfigReader:
   def retentionDuration: java.time.Duration = java.time.Duration.ofMillis(retention.toMillis)

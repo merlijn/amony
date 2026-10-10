@@ -5,6 +5,7 @@ import java.sql.{Connection, DriverManager}
 import cats.effect.IO
 import pureconfig.*
 
+import nl.amony.lib.messagebus.MessageBusConfig
 import nl.amony.lib.observability.ObservabilityConfig
 import nl.amony.modules.auth.AuthConfig
 import nl.amony.modules.resources.ResourceConfig
@@ -26,5 +27,6 @@ case class AppConfig(
   api: WebServerConfig,
   search: SearchConfig,
   database: DatabaseConfig,
+  messageBus: MessageBusConfig,
   observability: ObservabilityConfig
 ) derives ConfigReader
