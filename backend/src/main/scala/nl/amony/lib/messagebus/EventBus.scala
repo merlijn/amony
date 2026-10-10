@@ -17,11 +17,11 @@ object PersistentEventBus:
   def postgres(pool: Resource[IO, Session[IO]], config: EventBusConfig = EventBusConfig()): PersistentEventBus =
     new PersistentEventBus:
 
-      private val outbox = EventOutbox(pool)
+      private val queue  = EventQueue(pool)
       private val topics = ConcurrentHashMap[String, EventTopic[?]]()
 
       override def getTopicForKey[E](key: EventTopicKey[E]): EventTopic[E] =
-        topics.computeIfAbsent(key.name, _ => PostgresEventTopic(key, outbox, pool, config)).asInstanceOf[EventTopic[E]]
+        topics.computeIfAbsent(key.name, _ => PostgresEventTopic(key, queue, pool, config)).asInstanceOf[EventTopic[E]]
 
 final case class EventBusConfig(
   // Fallback poll for notifications that were lost or whose consumer crashed. Aligned with the Solr

@@ -91,6 +91,6 @@ databaseChangeLog:
       context: eventbus
       changes:
         - sqlFile:
-            path: db/10-event-outbox.sql
+            path: db/10-event-queue.sql
             splitStatements: true
             endDelimiter: ";"

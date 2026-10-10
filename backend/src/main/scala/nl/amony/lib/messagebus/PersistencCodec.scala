@@ -2,7 +2,7 @@ package nl.amony.lib.messagebus
 
 import io.circe.{Decoder, Encoder, Json}
 
-/** Encodes a domain event to, and decodes it from, the JSON payload persisted in the outbox. */
+/** Encodes a domain event to, and decodes it from, the JSON payload persisted in the event queue. */
 trait PersistenceCodec[E]:
 
   def encode(event: E): Json

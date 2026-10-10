@@ -54,7 +54,7 @@ class ResourceEventPublishingSpec extends AnyWordSpecLike with TestContainerForA
     PersistentEventBus.postgres(pool).getTopic[ResourceEvent]
 
   private def eventCount(pool: Resource[IO, Session[IO]], name: String): IO[Long] =
-    pool.use(_.prepare(sql"select count(*) from event_outbox where topic = $varchar".query(int8)).flatMap(_.unique(name)))
+    pool.use(_.prepare(sql"select count(*) from event_queue where topic = $varchar".query(int8)).flatMap(_.unique(name)))
 
   private def resource(bucketId: BucketId): ResourceInfo =
     ResourceInfo(bucketId = bucketId, resourceId = ResourceId(UUID.randomUUID().toString), userId = UserId("admin"), path = "file.mp4", size = 1L)

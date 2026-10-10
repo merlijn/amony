@@ -20,7 +20,7 @@ import skunk.{Session, *}
 
 import nl.amony.{App, DatabaseConfig}
 
-class OutboxSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
+class EventQueueSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 
   override val containerDef: GenericContainer.Def[GenericContainer] =
     GenericContainer.Def(
@@ -48,30 +48,30 @@ class OutboxSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
       poolSize = 4
     )
 
-  private def withOutbox[A](container: GenericContainer)(f: (Resource[IO, Session[IO]], EventOutbox) => IO[A]): A =
-    App.makeDatabasePool(configForContainer(container)).use(pool => f(pool, EventOutbox(pool))).unsafeRunSync()
+  private def withQueue[A](container: GenericContainer)(f: (Resource[IO, Session[IO]], EventQueue) => IO[A]): A =
+    App.makeDatabasePool(configForContainer(container)).use(pool => f(pool, EventQueue(pool))).unsafeRunSync()
 
   private def newTopic: String = s"test-${UUID.randomUUID()}"
 
   private def payload(n: Int): Json = Json.obj("n" -> Json.fromInt(n))
 
-  private def publish(pool: Resource[IO, Session[IO]], outbox: EventOutbox, topic: String, n: Int): IO[Unit] =
-    pool.use(session => outbox.enqueue(session, topic, payload(n)))
+  private def publish(pool: Resource[IO, Session[IO]], queue: EventQueue, topic: String, n: Int): IO[Unit] =
+    pool.use(session => queue.enqueue(session, topic, payload(n)))
 
   private def countRows(pool: Resource[IO, Session[IO]], topic: String): IO[Long] =
-    pool.use(session => session.prepare(sql"select count(*) from event_outbox where topic = $varchar".query(int8)).flatMap(_.unique(topic)))
+    pool.use(session => session.prepare(sql"select count(*) from event_queue where topic = $varchar".query(int8)).flatMap(_.unique(topic)))
 
-  "EventOutbox" should {
+  "EventQueue" should {
 
     "claim pending events one at a time in insertion order" in withContainers { container =>
-      withOutbox(container) { (pool, outbox) =>
+      withQueue(container) { (pool, queue) =>
         val topic = newTopic
         for
-          _ <- (1 to 3).toList.traverse_(n => publish(pool, outbox, topic, n))
-          a <- outbox.claimOldest(topic)
-          b <- outbox.claimOldest(topic)
-          c <- outbox.claimOldest(topic)
-          d <- outbox.claimOldest(topic)
+          _ <- (1 to 3).toList.traverse_(n => publish(pool, queue, topic, n))
+          a <- queue.claimOldest(topic)
+          b <- queue.claimOldest(topic)
+          c <- queue.claimOldest(topic)
+          d <- queue.claimOldest(topic)
         yield
           a.map(_.payload) shouldBe Some(payload(1))
           b.map(_.payload) shouldBe Some(payload(2))
@@ -82,16 +82,16 @@ class OutboxSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
     }
 
     "not claim events that are already processed or failed" in withContainers { container =>
-      withOutbox(container) { (pool, outbox) =>
+      withQueue(container) { (pool, queue) =>
         val topic = newTopic
         for
-          _      <- publish(pool, outbox, topic, 1)
-          _      <- publish(pool, outbox, topic, 2)
-          first  <- outbox.claimOldest(topic)
-          _      <- outbox.markProcessed(first.get.id)
-          second <- outbox.claimOldest(topic)
-          _      <- outbox.markFailed(second.get.id, "boom")
-          again  <- outbox.claimOldest(topic)
+          _      <- publish(pool, queue, topic, 1)
+          _      <- publish(pool, queue, topic, 2)
+          first  <- queue.claimOldest(topic)
+          _      <- queue.markProcessed(first.get.id)
+          second <- queue.claimOldest(topic)
+          _      <- queue.markFailed(second.get.id, "boom")
+          again  <- queue.claimOldest(topic)
         yield
           first.map(_.payload) shouldBe Some(payload(1))
           second.map(_.payload) shouldBe Some(payload(2))
@@ -100,14 +100,14 @@ class OutboxSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
     }
 
     "recover events left claimed by a stopped consumer" in withContainers { container =>
-      withOutbox(container) { (pool, outbox) =>
+      withQueue(container) { (pool, queue) =>
         val topic = newTopic
         for
-          _      <- publish(pool, outbox, topic, 1)
-          first  <- outbox.claimOldest(topic)
-          held   <- outbox.claimOldest(topic)
-          _      <- outbox.resetClaimed(topic)
-          second <- outbox.claimOldest(topic)
+          _      <- publish(pool, queue, topic, 1)
+          first  <- queue.claimOldest(topic)
+          held   <- queue.claimOldest(topic)
+          _      <- queue.resetClaimed(topic)
+          second <- queue.claimOldest(topic)
         yield
           first.map(_.attempts) shouldBe Some(1)
           held shouldBe None
@@ -116,44 +116,44 @@ class OutboxSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
     }
 
     "return a failing event to pending with its error recorded" in withContainers { container =>
-      withOutbox(container) { (pool, outbox) =>
+      withQueue(container) { (pool, queue) =>
         val topic = newTopic
         for
-          _       <- publish(pool, outbox, topic, 1)
-          first   <- outbox.claimOldest(topic)
-          _       <- outbox.releaseForRetry(first.get.id, "boom")
-          retried <- outbox.claimOldest(topic)
+          _       <- publish(pool, queue, topic, 1)
+          first   <- queue.claimOldest(topic)
+          _       <- queue.releaseForRetry(first.get.id, "boom")
+          retried <- queue.claimOldest(topic)
         yield
-          retried.map(_.status) shouldBe Some(OutboxStatus.Claimed)
+          retried.map(_.status) shouldBe Some(EventQueueStatus.Claimed)
           retried.map(_.attempts) shouldBe Some(2)
           retried.map(_.lastError) shouldBe Some(Some("boom"))
       }
     }
 
     "let competing consumers claim different events" in withContainers { container =>
-      withOutbox(container) { (pool, outbox) =>
+      withQueue(container) { (pool, queue) =>
         val topic = newTopic
         for
-          _      <- (1 to 2).toList.traverse_(n => publish(pool, outbox, topic, n))
-          claims <- (outbox.claimOldest(topic), outbox.claimOldest(topic)).parTupled
+          _      <- (1 to 2).toList.traverse_(n => publish(pool, queue, topic, n))
+          claims <- (queue.claimOldest(topic), queue.claimOldest(topic)).parTupled
           (a, b)  = claims
         yield
           a.map(_.id) should not be b.map(_.id)
-          List(a, b).flatten.map(_.status) shouldBe List(OutboxStatus.Claimed, OutboxStatus.Claimed)
+          List(a, b).flatten.map(_.status) shouldBe List(EventQueueStatus.Claimed, EventQueueStatus.Claimed)
       }
     }
 
     "purge processed and failed events past retention without touching pending ones" in withContainers { container =>
-      withOutbox(container) { (pool, outbox) =>
+      withQueue(container) { (pool, queue) =>
         val topic = newTopic
         for
-          _      <- (1 to 3).toList.traverse_(n => publish(pool, outbox, topic, n))
-          first  <- outbox.claimOldest(topic)
-          second <- outbox.claimOldest(topic)
-          _      <- outbox.markProcessed(first.get.id)
-          _      <- outbox.markFailed(second.get.id, "boom")
+          _      <- (1 to 3).toList.traverse_(n => publish(pool, queue, topic, n))
+          first  <- queue.claimOldest(topic)
+          second <- queue.claimOldest(topic)
+          _      <- queue.markProcessed(first.get.id)
+          _      <- queue.markFailed(second.get.id, "boom")
           _      <- IO.sleep(50.millis)
-          _      <- outbox.purge(java.time.Duration.ZERO)
+          _      <- queue.purge(java.time.Duration.ZERO)
           left   <- countRows(pool, topic)
         yield left shouldBe 1
       }
