@@ -82,7 +82,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       poolSize = 3
     )
 
-  "The Database" should {
+  "ResourceDatabase" should {
     "insert a resource row and retrieve it" in {
       withContainers {
         container =>

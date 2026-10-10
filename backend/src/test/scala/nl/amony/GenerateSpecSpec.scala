@@ -4,7 +4,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import sttp.apispec.openapi.{Operation, ResponsesCodeKey}
 
-class GenerateSpecSpec extends AnyWordSpec with Matchers:
+class GenerateSpecSpec extends AnyWordSpec with Matchers {
 
   private def operations: List[Operation] =
     GenerateSpec.documentation.paths.pathItems.values
@@ -12,19 +12,23 @@ class GenerateSpecSpec extends AnyWordSpec with Matchers:
       .flatten
       .toList
 
-  "GenerateSpec.documentation" should {
+  "GenerateSpec" when {
 
-    "document an implicit 500 on every operation" in {
-      operations should not be empty
+    "documentation" should {
 
-      operations.foreach { operation =>
-        withClue(s"operation '${operation.operationId.getOrElse("<unnamed>")}' ") {
-          operation.responses.responses.keySet should contain(ResponsesCodeKey(500))
+      "document an implicit 500 on every operation" in {
+        operations should not be empty
+
+        operations.foreach { operation =>
+          withClue(s"operation '${operation.operationId.getOrElse("<unnamed>")}' ") {
+            operation.responses.responses.keySet should contain(ResponsesCodeKey(500))
+          }
         }
       }
-    }
 
-    "reference the shared ErrorBody schema" in {
-      GenerateSpec.documentation.components.flatMap(_.schemas.get("ErrorBody")) shouldBe defined
+      "reference the shared ErrorBody schema" in {
+        GenerateSpec.documentation.components.flatMap(_.schemas.get("ErrorBody")) shouldBe defined
+      }
     }
   }
+}
