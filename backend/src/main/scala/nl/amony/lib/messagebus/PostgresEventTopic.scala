@@ -1,5 +1,6 @@
 package nl.amony.lib.messagebus
 
+import cats.effect.std.Mutex
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
@@ -7,10 +8,10 @@ import skunk.Session
 import skunk.data.Identifier
 
 /**
- * A [[EventTopic]] backed by the durable outbox table. Producers append a row and send a `NOTIFY` on the topic
- * channel in the same transaction; consumers wake on `NOTIFY`, claim batches with `FOR UPDATE SKIP LOCKED`, and
- * mark them processed. A periodic poll drains anything whose notification was lost and requeues work abandoned by
- * a crashed consumer once its claim TTL has elapsed.
+ * An [[EventTopic]] backed by the durable outbox table. Producers append a row and send a `NOTIFY` on the topic
+ * channel in the same transaction; the consumer wakes on `NOTIFY` (with a periodic poll as a fallback), claims the
+ * oldest event with `FOR UPDATE SKIP LOCKED`, and processes it before the next, so events are applied in order.
+ * Events left claimed by a stopped consumer are requeued on startup.
  */
 final private[messagebus] class PostgresEventTopic[E](
   key: EventTopicKey[E],
@@ -28,27 +29,36 @@ final private[messagebus] class PostgresEventTopic[E](
   override def publish(session: Session[IO], event: E): IO[Unit] =
     outbox.enqueue(session, key.name, codec.encode(event)) >> session.channel(identifier).notify(key.name)
 
-  override def processAtLeastOnce(processorId: String, batchSize: Int)(processor: E => IO[Unit]): Stream[IO, Int] =
-    val realtime = notifications.evalMap(_ => drain(batchSize)(processor))
-    val polling  = Stream.fixedRateStartImmediately[IO](config.pollInterval).evalMap(_ => drain(batchSize)(processor))
-    val purging  = Stream.fixedRateStartImmediately[IO](config.purgeInterval).evalMap(_ => outbox.purge(config.retentionDuration).as(0))
-    realtime.merge(polling).merge(purging)
+  override def processAtLeastOnce(processorId: String)(processor: E => IO[Unit]): Stream[IO, Unit] =
+    Stream.eval(Mutex[IO]).flatMap { mutex =>
+      // Any claimed event at startup was abandoned by a previous consumer (single-node assumption), so requeue it.
+      val recover  = Stream.eval(outbox.resetClaimed(key.name))
+      val realtime = notifications.evalMap(_ => mutex.lock.use(_ => drain(processor)))
+      val polling  = Stream.fixedRateStartImmediately[IO](config.pollInterval).evalMap(_ => mutex.lock.use(_ => drain(processor)))
+      val purging  = Stream.fixedRateStartImmediately[IO](config.purgeInterval).evalMap(_ => outbox.purge(config.retentionDuration))
+      recover ++ realtime.merge(polling).merge(purging)
+    }
 
   private def notifications: Stream[IO, Unit] =
     Stream.resource(pool).flatMap(session => session.channel(identifier).listen(config.notificationQueueSize)).void
 
-  private def drain(batchSize: Int)(processor: E => IO[Unit]): IO[Int] =
-    outbox.claim(key.name, config.claimTtlDuration, batchSize).flatMap:
-      case Nil  => IO.pure(0)
-      case rows => rows.parTraverse_(process(processor)) >> drain(batchSize)(processor).map(rows.size + _)
+  /** Drain the topic in order, stopping at the first event that fails so it is retried before anything newer. */
+  private def drain(processor: E => IO[Unit]): IO[Unit] =
+    outbox.claimOldest(key.name).flatMap {
+      case None      => IO.unit
+      case Some(row) => process(processor)(row).flatMap(advance => if advance then drain(processor) else IO.unit)
+    }
 
-  private def process(processor: E => IO[Unit])(row: OutboxRow): IO[Unit] =
-    IO(codec.decode(row.payload)).flatMap(processor).attempt.flatMap:
-      case Right(_) => outbox.markProcessed(row.id)
-      case Left(e)  =>
-        val error = Option(e.getMessage).getOrElse(e.getClass.getName)
-        if row.attempts >= config.maxAttempts then outbox.markFailed(row.id, error)
-        else outbox.releaseForRetry(row.id, error)
+  /** @return whether to advance to the next event (processed, or parked as failed) or to retry this one later. */
+  private def process(processor: E => IO[Unit])(row: OutboxRow): IO[Boolean] =
+    IO(codec.decode(row.payload)).attempt.flatMap:
+      // An undecodable payload is a permanent error; park it so it does not block the topic forever.
+      case Left(e)      => outbox.markFailed(row.id, Option(e.getMessage).getOrElse(e.getClass.getName)).as(true)
+      // A processor failure (e.g. Solr unavailable) is transient; retry in place so nothing is skipped.
+      case Right(event) =>
+        processor(event).attempt.flatMap:
+          case Right(_) => outbox.markProcessed(row.id).as(true)
+          case Left(e)  => outbox.releaseForRetry(row.id, Option(e.getMessage).getOrElse(e.getClass.getName)).as(false)
 
 private[messagebus] object PostgresEventTopic:
 

@@ -7,6 +7,7 @@ import java.time.Instant
 import cats.effect.IO
 import fs2.Stream
 import fs2.concurrent.SignallingRef
+import skunk.Session
 
 import nl.amony.lib.files.watcher.*
 import nl.amony.modules.auth.api.UserId
@@ -139,19 +140,21 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       config.hashingAlgorithm.createHash
     ).parEvalMap(parallelFactor)(mapFileEvent)
 
-  private def applyEventToDb(event: ResourceEvent): IO[Unit] = event match {
-    case ResourceAdded(resource)                       => db.insertResource(resource)
-    case ResourceDeleted(resourceId)                   => db.deleteResource(bucketId, resourceId)
-    case ResourceMoved(id, _, newPath)                 => db.move(bucketId, id, newPath)
-    case ResourceFileMetaChanged(id, lastModifiedTime) => db.getResourceById(bucketId, id).flatMap {
-        case Some(resource) => db.upsertResource(resource.copy(timeLastModified = Some(lastModifiedTime)))
+  private def applyEventToDb(s: Session[IO], event: ResourceEvent): IO[Unit] = event match {
+    case ResourceAdded(resource)                       => db.insertResourceWith(s, resource)
+    case ResourceDeleted(resourceId)                   => db.deleteResourceWith(s, bucketId, resourceId)
+    case ResourceMoved(id, _, newPath)                 => db.moveWith(s, bucketId, id, newPath)
+    case ResourceFileMetaChanged(id, lastModifiedTime) => db.getResourceByIdWith(s, bucketId, id).flatMap {
+        case Some(resource) => db.upsertResourceWith(s, resource.copy(timeLastModified = Some(lastModifiedTime)))
         case None           => IO.unit
       }
     case _                                             => IO.unit
   }
 
   private[local] def processEvent(event: ResourceEvent) =
-    applyEventToDb(event) >> topic.publish(event) >> IO(logger.info(s"[${config.id}] $event")) >> generatePreviewsOnAdd(event)
+    db.transact(s => applyEventToDb(s, event) >> topic.publish(s, event)) >>
+      IO(logger.info(s"[${config.id}] $event")) >>
+      generatePreviewsOnAdd(event)
 
   private def generatePreviewsOnAdd(event: ResourceEvent): IO[Unit] = event match
     case ResourceAdded(resource) if config.generatePreviewsOnAdd => generatePreviews(resource)

@@ -50,7 +50,7 @@ class LocalDirectoryBucket(
               streamable  = streamable
             )
 
-            db.upsertResource(updated) >> topic.publish(ResourceUpdated(updated))
+            db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceUpdated(updated)))
           }
   }.compile.drain
 
@@ -80,8 +80,7 @@ class LocalDirectoryBucket(
                               timeLastModified = Some(attrs.lastModifiedTime().toMillis),
                               streamable       = streamable
                             )
-              _          <- db.upsertResource(updated)
-              _          <- topic.publish(ResourceUpdated(updated))
+              _          <- db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceUpdated(updated)))
             yield ())
               .handleErrorWith(error => IO(logger.error(s"Failed to normalize '${info.path}'", error)))
               .guarantee(IO.blocking(Files.deleteIfExists(temp)).void)
@@ -98,7 +97,7 @@ class LocalDirectoryBucket(
 
       if updated.size != resource.size || updated.timeLastModified != resource.timeLastModified then
         logger.info(s"File system metadata changed for $resourcePath")
-        db.upsertResource(updated) >> topic.publish(ResourceUpdated(updated))
+        db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceUpdated(updated)))
       else IO.unit
   }.compile.drain
 
@@ -109,7 +108,7 @@ class LocalDirectoryBucket(
       if resource.partialHash.contains(partialHash) then IO.unit
       else
         logger.info(s"Updating partialHash for $file to $partialHash")
-        db.upsertResource(updated) >> topic.publish(ResourceUpdated(updated))
+        db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceUpdated(updated)))
   }.compile.drain
 
   override def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]] =
@@ -138,24 +137,27 @@ class LocalDirectoryBucket(
       case None       => IO.pure(())
       case Some(info) =>
         val path = config.resourcePath.resolve(info.path)
-        db.deleteResource(id, resourceId) >> IO(path.deleteIfExists()) >> topic.publish(ResourceDeleted(resourceId))
+        db.transact(s => db.deleteResourceWith(s, id, resourceId) >> topic.publish(s, ResourceDeleted(resourceId))) >> IO(path.deleteIfExists())
 
   override def updateUserMeta(resourceId: ResourceId, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] =
-    db.updateUserMeta(id, resourceId, title, description, tags)
-      .flatMap(_.map(updated => topic.publish(ResourceUpdated(updated))).getOrElse(IO.unit))
+    db.transact: s =>
+      db.updateUserMetaWith(s, id, resourceId, title, description, tags)
+        .flatMap(_.map(updated => topic.publish(s, ResourceUpdated(updated))).getOrElse(IO.unit))
 
   override def updateResourceTags(resourceIds: Set[ResourceId], tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] = {
     def updateTagsSingle(resourceId: ResourceId, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] =
-      db.updateResourceTags(id, resourceId, tagsToAdd, tagsToRemove).flatMap:
-        case None          => IO.unit
-        case Some(updated) => topic.publish(ResourceUpdated(updated))
+      db.transact: s =>
+        db.updateResourceTagsWith(s, id, resourceId, tagsToAdd, tagsToRemove).flatMap:
+          case None          => IO.unit
+          case Some(updated) => topic.publish(s, ResourceUpdated(updated))
 
     resourceIds.map(id => updateTagsSingle(id, tagsToAdd, tagsToRemove)).toList.sequence.as(())
   }
 
   override def updateThumbnailTimestamp(resourceId: ResourceId, timestamp: Int): IO[Unit] =
-    db.updateThumbnailTimestamp(id, resourceId, timestamp)
-      .flatMap(_.map(updated => topic.publish(ResourceUpdated(updated))).getOrElse(IO.unit))
+    db.transact: s =>
+      db.updateThumbnailTimestampWith(s, id, resourceId, timestamp)
+        .flatMap(_.map(updated => topic.publish(s, ResourceUpdated(updated))).getOrElse(IO.unit))
 
   def importBackup(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] =
     db.truncateTables() >> resources.map(r => r.copy(resourceId = config.generateId(), title = None))

@@ -45,23 +45,26 @@ private[messagebus] object OutboxQueries:
   val insert: Query[(String, Json), Long] =
     sql"insert into event_outbox (topic, payload) values ($varchar, $jsonb) returning id".query(int8)
 
-  // Claim a batch of pending events, plus any events left claimed for longer than the TTL (a crashed consumer).
-  // FOR UPDATE SKIP LOCKED lets competing consumers claim disjoint batches without blocking on each other.
-  val claim: Query[(String, Duration, Int), OutboxRow] =
+  // Claim the single oldest pending event for a topic, so the consumer processes events in insertion order.
+  // FOR UPDATE SKIP LOCKED lets a competing consumer claim the next one without blocking.
+  val claimOldest: Query[String, OutboxRow] =
     sql"""
       update event_outbox
       set status = 'claimed', claimed_at = now(), attempts = attempts + 1
-      where id in (
+      where id = (
         select id
         from event_outbox
-        where topic = $varchar
-          and (status = 'pending' or (status = 'claimed' and claimed_at < now() - $interval))
-        order by created_at, id
-        limit $int4
+        where topic = $varchar and status = 'pending'
+        order by id
+        limit 1
         for update skip locked
       )
       returning id, topic, payload, status, attempts, last_error, created_at, claimed_at, processed_at
     """.query(OutboxRow.codec)
+
+  // Return events left claimed by a consumer that stopped, so they are processed again in order.
+  val resetClaimed: Command[String] =
+    sql"update event_outbox set status = 'pending', claimed_at = null where topic = $varchar and status = 'claimed'".command
 
   val markProcessed: Command[Long] =
     sql"update event_outbox set status = 'processed', processed_at = now(), last_error = null where id = $int8".command
@@ -79,13 +82,14 @@ private[messagebus] object OutboxQueries:
 /** Persistence for the transactional outbox that backs the event bus. */
 final private[messagebus] class EventOutbox(pool: Resource[IO, Session[IO]]):
 
-  private val chunkSize = 64
-
   def enqueue(session: Session[IO], topic: String, payload: Json): IO[Unit] =
     session.prepare(OutboxQueries.insert).flatMap(_.unique((topic, payload))).void
 
-  def claim(topic: String, ttl: Duration, batchSize: Int): IO[List[OutboxRow]] =
-    pool.use(session => session.prepare(OutboxQueries.claim).flatMap(_.stream((topic, ttl, batchSize), chunkSize).compile.toList))
+  def claimOldest(topic: String): IO[Option[OutboxRow]] =
+    pool.use(session => session.prepare(OutboxQueries.claimOldest).flatMap(_.option(topic)))
+
+  def resetClaimed(topic: String): IO[Unit] =
+    pool.use(session => session.prepare(OutboxQueries.resetClaimed).flatMap(_.execute(topic)).void)
 
   def markProcessed(id: Long): IO[Unit] =
     pool.use(session => session.prepare(OutboxQueries.markProcessed).flatMap(_.execute(id)).void)

@@ -245,35 +245,36 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
       solr.add(collectionName, solrInputDocuments, commitWithinMs).getStatus
     } catch { case e: Exception => logger.error("Exception while trying to index documents to solr", e) }
 
-  override def processEvent(event: ResourceEvent): Unit = {
+  override def processEvent(event: ResourceEvent): IO[Unit] =
+    IO.blocking {
+      logger.debug(s"Processing event: $event")
 
-    logger.debug(s"Processing event: $event")
+      event match {
 
-    event match {
+        case ResourceAdded(resource)   => insertDocument(resource)
+        case ResourceUpdated(resource) => insertDocument(resource)
 
-      case ResourceAdded(resource) => insert(resource)
+        case ResourceMoved(resourceId, _, newPath) =>
+          atomicUpdate(resourceId, FieldNames.path, newPath)
 
-      case ResourceUpdated(resource) => insert(resource)
+        case ResourceFileMetaChanged(id, lastModifiedTime) =>
+          atomicUpdate(id, FieldNames.lastModified, lastModifiedTime)
 
-      case ResourceMoved(resourceId, oldPath, newPath) =>
-        val solrDocument = new SolrInputDocument()
-        solrDocument.addField(FieldNames.id, resourceId)
-        solrDocument.addField(FieldNames.path, Map("set" -> newPath).asJava)
-        solr.add(collectionName, solrDocument, config.commitWithinMillis).getStatus
-
-      case ResourceFileMetaChanged(id, lastModifiedTime) =>
-        val solrDocument = new SolrInputDocument()
-        solrDocument.addField(FieldNames.id, id)
-        solrDocument.addField(FieldNames.lastModified, Map("set" -> lastModifiedTime).asJava)
-        solr.add(collectionName, solrDocument, config.commitWithinMillis).getStatus
-
-      case ResourceDeleted(resourceId) =>
-        try {
+        case ResourceDeleted(resourceId) =>
           logger.debug(s"Deleting document from index: $resourceId")
           solr.deleteById(collectionName, resourceId, config.commitWithinMillis).getStatus
-        } catch { case e: Exception => logger.error("Exception while trying to delete document from solr", e) }
-    }
-  }
+      }
+    }.void
+
+  private def insertDocument(resource: ResourceInfo): Unit =
+    logger.debug(s"Indexing media: ${resource.path}")
+    solr.add(collectionName, toSolrDocument(resource), config.commitWithinMillis).getStatus
+
+  private def atomicUpdate(resourceId: ResourceId, field: String, value: Any): Unit =
+    val solrDocument = new SolrInputDocument()
+    solrDocument.addField(FieldNames.id, resourceId)
+    solrDocument.addField(field, Map("set" -> value).asJava)
+    solr.add(collectionName, solrDocument, config.commitWithinMillis).getStatus
 
   override def indexAll(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] =
     resources

@@ -6,7 +6,7 @@ import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import skunk.Session
 
-import nl.amony.lib.messagebus.EventTopic
+import nl.amony.lib.messagebus.{EventTopic, EventTopicKey, PersistenceCodec, PersistentEventBus}
 import nl.amony.lib.tapir.dsl.ServerEndpoints
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.resources.api.{BucketRegistry, LocalDirectoryConfig, ResourceEvent, ThumbnailFormats, ThumbnailResolutions}
@@ -49,9 +49,11 @@ object ResourceModule:
     )
     val thumbFormats     = ThumbnailFormats(config.previews.supportedImageFormats, config.previews.formatOptions)
     val resourceDatabase = ResourceDatabase(databasePool)
-    val eventTopic       = EventTopic.transientEventTopic[ResourceEvent]()
 
-    eventTopic.followTail(searchService.processEvent)
+    given PersistenceCodec[ResourceEvent] = PersistenceCodec.fromCirce
+    given EventTopicKey[ResourceEvent]    = EventTopicKey("resource-events")
+
+    val eventTopic: EventTopic[ResourceEvent] = PersistentEventBus.postgres(databasePool).getTopic[ResourceEvent]
 
     val bucketFactory: BucketFactory = {
       case localConfig: LocalDirectoryConfig =>
@@ -63,4 +65,5 @@ object ResourceModule:
 
     for
       bucketRegistry <- DatabaseBucketRegistry.resource(config.defaultBucket, BucketsDal(databasePool), searchService, bucketFactory)
+      _              <- eventTopic.processAtLeastOnce("solr-indexer")(searchService.processEvent).compile.drain.background
     yield new ResourceModule(resourceDatabase, bucketRegistry, thumbResolutions, thumbFormats)

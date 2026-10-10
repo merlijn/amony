@@ -1,7 +1,5 @@
 package nl.amony.lib.messagebus
 
-import java.util.concurrent.ConcurrentHashMap
-
 import cats.effect.IO
 import fs2.Stream
 import skunk.Session
@@ -21,23 +19,8 @@ trait EventTopic[E]:
   def publish(session: Session[IO], event: E): IO[Unit]
 
   /**
-   * An at-least-once consumer. Claims pending events (and events left claimed by a crashed consumer), runs the
-   * processor for each, then marks the event as processed. A failing event is retried up to a configured maximum,
-   * after which it is parked as failed without affecting any other event.
+   * An at-least-once consumer that processes a topic's events strictly in insertion order, one at a time, so that
+   * events for the same resource are never applied out of order. A processor failure is retried in place, blocking the
+   * topic until it succeeds, so no event is skipped; only an undecodable payload is parked as failed.
    */
-  def processAtLeastOnce(processorId: String, batchSize: Int)(processor: E => IO[Unit]): Stream[IO, Int]
-
-object EventTopic:
-
-  final class TransientEventTopic[E] extends EventTopic[E]:
-    val processors = new ConcurrentHashMap[String, E => Unit]
-
-    override def publish(event: E): IO[Unit] = IO(processors.values().forEach(processor => processor(event)))
-
-    override def publish(session: Session[IO], event: E): IO[Unit] = publish(event)
-
-    def followTail(listener: E => Unit): Unit = processors.putIfAbsent("", listener)
-
-    override def processAtLeastOnce(processorId: String, batchSize: Int)(processor: E => IO[Unit]): Stream[IO, Int] = ???
-
-  def transientEventTopic[E](): TransientEventTopic[E] = new TransientEventTopic[E]
+  def processAtLeastOnce(processorId: String)(processor: E => IO[Unit]): Stream[IO, Unit]

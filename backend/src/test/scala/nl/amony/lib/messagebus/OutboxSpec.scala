@@ -35,9 +35,6 @@ class OutboxSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
       )
     )
 
-  private val longTtl = java.time.Duration.ofMinutes(5)
-  private val noTtl   = java.time.Duration.ZERO
-
   given meter: Meter[IO]   = Meter.noop[IO]
   given tracer: Tracer[IO] = Tracer.noop[IO]
 
@@ -96,22 +93,21 @@ class OutboxSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 
   "EventOutbox" should {
 
-    "claim pending events in batches, oldest first" in withContainers { container =>
+    "claim pending events one at a time in insertion order" in withContainers { container =>
       withOutbox(container) { (pool, outbox) =>
         val topic = newTopic
         for
-          _  <- (1 to 5).toList.traverse_(n => publish(pool, outbox, topic, n))
-          b1 <- outbox.claim(topic, longTtl, 2)
-          b2 <- outbox.claim(topic, longTtl, 2)
-          b3 <- outbox.claim(topic, longTtl, 2)
-          b4 <- outbox.claim(topic, longTtl, 2)
+          _ <- (1 to 3).toList.traverse_(n => publish(pool, outbox, topic, n))
+          a <- outbox.claimOldest(topic)
+          b <- outbox.claimOldest(topic)
+          c <- outbox.claimOldest(topic)
+          d <- outbox.claimOldest(topic)
         yield
-          b1.map(_.payload).toSet shouldBe Set(payload(1), payload(2))
-          b1.map(_.status) shouldBe List(OutboxStatus.Claimed, OutboxStatus.Claimed)
-          b1.map(_.attempts) shouldBe List(1, 1)
-          b2.map(_.payload).toSet shouldBe Set(payload(3), payload(4))
-          b3.map(_.payload) shouldBe List(payload(5))
-          b4 shouldBe Nil
+          a.map(_.payload) shouldBe Some(payload(1))
+          b.map(_.payload) shouldBe Some(payload(2))
+          c.map(_.payload) shouldBe Some(payload(3))
+          a.map(_.attempts) shouldBe Some(1)
+          d shouldBe None
       }
     }
 
@@ -119,31 +115,33 @@ class OutboxSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
       withOutbox(container) { (pool, outbox) =>
         val topic = newTopic
         for
-          _     <- publish(pool, outbox, topic, 1)
-          _     <- publish(pool, outbox, topic, 2)
-          rows  <- outbox.claim(topic, longTtl, 10)
-          _     <- outbox.markProcessed(rows.head.id)
-          _     <- outbox.markFailed(rows(1).id, "boom")
-          again <- outbox.claim(topic, longTtl, 10)
+          _      <- publish(pool, outbox, topic, 1)
+          _      <- publish(pool, outbox, topic, 2)
+          first  <- outbox.claimOldest(topic)
+          _      <- outbox.markProcessed(first.get.id)
+          second <- outbox.claimOldest(topic)
+          _      <- outbox.markFailed(second.get.id, "boom")
+          again  <- outbox.claimOldest(topic)
         yield
-          rows.map(_.id).distinct.size shouldBe 2
-          again shouldBe Nil
+          first.map(_.payload) shouldBe Some(payload(1))
+          second.map(_.payload) shouldBe Some(payload(2))
+          again shouldBe None
       }
     }
 
-    "reclaim an event abandoned by a crashed consumer once its claim TTL has elapsed" in withContainers { container =>
+    "recover events left claimed by a stopped consumer" in withContainers { container =>
       withOutbox(container) { (pool, outbox) =>
         val topic = newTopic
         for
           _      <- publish(pool, outbox, topic, 1)
-          first  <- outbox.claim(topic, longTtl, 10)
-          held   <- outbox.claim(topic, longTtl, 10)
-          _      <- IO.sleep(50.millis)
-          second <- outbox.claim(topic, noTtl, 10)
+          first  <- outbox.claimOldest(topic)
+          held   <- outbox.claimOldest(topic)
+          _      <- outbox.resetClaimed(topic)
+          second <- outbox.claimOldest(topic)
         yield
-          first.map(_.attempts) shouldBe List(1)
-          held shouldBe Nil
-          second.map(_.attempts) shouldBe List(2)
+          first.map(_.attempts) shouldBe Some(1)
+          held shouldBe None
+          second.map(_.attempts) shouldBe Some(2)
       }
     }
 
@@ -152,26 +150,26 @@ class OutboxSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
         val topic = newTopic
         for
           _       <- publish(pool, outbox, topic, 1)
-          rows    <- outbox.claim(topic, longTtl, 10)
-          _       <- outbox.releaseForRetry(rows.head.id, "boom")
-          retried <- outbox.claim(topic, longTtl, 10)
+          first   <- outbox.claimOldest(topic)
+          _       <- outbox.releaseForRetry(first.get.id, "boom")
+          retried <- outbox.claimOldest(topic)
         yield
-          retried.map(_.status) shouldBe List(OutboxStatus.Claimed)
-          retried.map(_.attempts) shouldBe List(2)
-          retried.map(_.lastError) shouldBe List(Some("boom"))
+          retried.map(_.status) shouldBe Some(OutboxStatus.Claimed)
+          retried.map(_.attempts) shouldBe Some(2)
+          retried.map(_.lastError) shouldBe Some(Some("boom"))
       }
     }
 
-    "let competing consumers claim disjoint batches without blocking" in withContainers { container =>
+    "let competing consumers claim different events" in withContainers { container =>
       withOutbox(container) { (pool, outbox) =>
         val topic = newTopic
         for
-          _      <- (1 to 10).toList.traverse_(n => publish(pool, outbox, topic, n))
-          claims <- (outbox.claim(topic, longTtl, 10), outbox.claim(topic, longTtl, 10)).parTupled
+          _      <- (1 to 2).toList.traverse_(n => publish(pool, outbox, topic, n))
+          claims <- (outbox.claimOldest(topic), outbox.claimOldest(topic)).parTupled
           (a, b)  = claims
         yield
-          (a.map(_.id) ++ b.map(_.id)).distinct.size shouldBe 10
-          a.map(_.status).distinct shouldBe List(OutboxStatus.Claimed)
+          a.map(_.id) should not be b.map(_.id)
+          List(a, b).flatten.map(_.status) shouldBe List(OutboxStatus.Claimed, OutboxStatus.Claimed)
       }
     }
 
@@ -179,13 +177,14 @@ class OutboxSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
       withOutbox(container) { (pool, outbox) =>
         val topic = newTopic
         for
-          _    <- (1 to 3).toList.traverse_(n => publish(pool, outbox, topic, n))
-          rows <- outbox.claim(topic, longTtl, 2)
-          _    <- outbox.markProcessed(rows.head.id)
-          _    <- outbox.markFailed(rows(1).id, "boom")
-          _    <- IO.sleep(50.millis)
-          _    <- outbox.purge(noTtl)
-          left <- countRows(pool, topic)
+          _      <- (1 to 3).toList.traverse_(n => publish(pool, outbox, topic, n))
+          first  <- outbox.claimOldest(topic)
+          second <- outbox.claimOldest(topic)
+          _      <- outbox.markProcessed(first.get.id)
+          _      <- outbox.markFailed(second.get.id, "boom")
+          _      <- IO.sleep(50.millis)
+          _      <- outbox.purge(java.time.Duration.ZERO)
+          left   <- countRows(pool, topic)
         yield left shouldBe 1
       }
     }
