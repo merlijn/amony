@@ -28,8 +28,7 @@ import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.config.ConfigRoutes
 import nl.amony.modules.resources.ResourceModule
-import nl.amony.modules.search.http.SearchRoutes
-import nl.amony.modules.search.solr.SolrSearchService
+import nl.amony.modules.search.SearchModule
 
 object App extends ResourceApp.Forever with Logging {
 
@@ -96,8 +95,8 @@ object App extends ResourceApp.Forever with Logging {
       for
         databasePool      <- makeDatabasePool(appConfig.database)
         httpClientBackend <- HttpClientCatsBackend.resource[IO]()
-        searchService     <- SolrSearchService.resource(appConfig.search.solr)
-        resourceModule    <- ResourceModule.resource(appConfig.resources, databasePool, searchService)
+        searchModule      <- SearchModule.resource(appConfig.search)
+        resourceModule    <- ResourceModule.resource(appConfig.resources, databasePool, searchModule.searchService)
         authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
         apiRoutes          = {
           given ApiSecurity = authModule.apiSecurity
@@ -105,9 +104,9 @@ object App extends ResourceApp.Forever with Logging {
           val tapirEndpoints: ServerEndpoints[IO] =
             authModule.routes ++
               resourceModule.routes ++
-              AdminRoutes.apply(searchService, resourceModule.bucketRegistry) ++
+              AdminRoutes.apply(searchModule.searchService, resourceModule.bucketRegistry) ++
               BucketAdminRoutes.apply(resourceModule.bucketRegistry) ++
-              SearchRoutes.apply(searchService, appConfig.search, resourceModule.bucketRegistry) ++
+              searchModule.routes(resourceModule.bucketRegistry) ++
               ConfigRoutes.apply(
                 resourceModule.thumbResolutions,
                 resourceModule.thumbFormats,
