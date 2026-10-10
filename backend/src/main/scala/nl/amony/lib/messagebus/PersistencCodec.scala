@@ -1,37 +1,17 @@
 package nl.amony.lib.messagebus
 
-//import scalapb.TypeMapper
+import io.circe.{Decoder, Encoder, Json}
 
-trait PersistenceCodec[E] {
+/** Encodes a domain event to, and decodes it from, the JSON payload persisted in the outbox. */
+trait PersistenceCodec[E]:
 
-  /**
-   * Encodes the given object to a (typeHint, bytes) tuple
-   *
-   * @param e The object to serialize
-   * @return
-   */
-  def encode(e: E): Array[Byte]
+  def encode(event: E): Json
 
-  /**
-   * Decodes a message
-   *
-   * @param bytes the data
-   * @return
-   */
-  def decode(bytes: Array[Byte]): E
-}
+  def decode(json: Json): E
 
-//object PersistenceCodec:
+object PersistenceCodec:
 
-//  import scalapb.{GeneratedMessage, GeneratedMessageCompanion}
-//
-//  def scalaPBPersistenceCodec[T <: GeneratedMessage](using cmp: GeneratedMessageCompanion[T]): PersistenceCodec[T] =
-//    new PersistenceCodec[T]:
-//      override def encode(e: T) = cmp.toByteArray(e)
-//      override def decode(bytes: Array[Byte]): T = cmp.parseFrom(bytes)
-//
-//  def scalaPBMappedPersistenceCodec[A <: GeneratedMessage, B](using tm: TypeMapper[A, B], cmp: GeneratedMessageCompanion[A]): PersistenceCodec[B] =
-//    val codec = scalaPBPersistenceCodec[A]
-//    new PersistenceCodec[B]:
-//      override def encode(msg: B) = codec.encode(tm.toBase(msg))
-//      override def decode(bytes: Array[Byte]): B = tm.toCustom(codec.decode(bytes))
+  def fromCirce[E](using encoder: Encoder[E], decoder: Decoder[E]): PersistenceCodec[E] =
+    new PersistenceCodec[E]:
+      override def encode(event: E): Json = encoder(event)
+      override def decode(json: Json): E  = decoder.decodeJson(json).fold(throw _, identity)
