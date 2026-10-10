@@ -24,7 +24,7 @@ class ImplementationFileNameSpec extends AnyWordSpecLike {
         // test code here
       }
     }
-    "context/function/endpoint B" should {
+    "context/function/endpoint" should {
       // setup context here
       // etc...
     }
