@@ -85,3 +85,12 @@ databaseChangeLog:
             path: db/09-buckets.sql
             splitStatements: true
             endDelimiter: ";"
+  - changeSet:
+      id: 10
+      author: merlijn
+      context: message-queue
+      changes:
+        - sqlFile:
+            path: db/10-message-queue.sql
+            splitStatements: true
+            endDelimiter: ";"

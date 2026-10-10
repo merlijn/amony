@@ -18,7 +18,7 @@ case class ResourceInfo(
   tags: Set[String]                 = Set.empty,
   thumbnailTimestamp: Option[Int]   = None,
   streamable: Option[Boolean]       = None
-) {
+) derives io.circe.Codec {
 
   def basicContentProperties: Option[ContentProperties] = contentMeta.map(_.properties)
 }

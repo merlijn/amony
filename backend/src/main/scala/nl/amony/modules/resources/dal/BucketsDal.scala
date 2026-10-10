@@ -173,21 +173,25 @@ class BucketsDal(pool: Resource[IO, Session[IO]]) extends scribe.Logging:
    * Deletes the bucket together with all its resources (and their tags and collection memberships) from the database.
    * Unless forced, a bucket that still contains resources is not deleted. Returns the number of deleted resources.
    */
-  def delete(bucketId: BucketId, force: Boolean): IO[Either[BucketError, Long]] =
-    pool.use: s =>
-      s.transaction.use: _ =>
-        s.prepare(queries.lockForDelete).flatMap(_.option(bucketId)).flatMap {
-          case None    => IO.pure(Left(BucketError.NotFound(bucketId)))
-          case Some(_) =>
-            s.prepare(queries.resourceCount).flatMap(_.unique(bucketId)).flatMap {
-              case count if count > 0 && !force => IO.pure(Left(BucketError.NotEmpty(bucketId, count)))
-              case count                        =>
-                for
-                  _ <- deleteResources(s, bucketId)
-                  _ <- s.prepare(queries.delete).flatMap(_.execute(bucketId))
-                yield Right(count)
-            }
+  def transact[A](f: Session[IO] => IO[A]): IO[A] = pool.use(s => s.transaction.use(_ => f(s)))
+
+  /** The delete body, run on the caller's session so it can be composed with other work in a single transaction. */
+  def deleteWith(s: Session[IO], bucketId: BucketId, force: Boolean): IO[Either[BucketError, Long]] =
+    s.prepare(queries.lockForDelete).flatMap(_.option(bucketId)).flatMap {
+      case None    => IO.pure(Left(BucketError.NotFound(bucketId)))
+      case Some(_) =>
+        s.prepare(queries.resourceCount).flatMap(_.unique(bucketId)).flatMap {
+          case count if count > 0 && !force => IO.pure(Left(BucketError.NotEmpty(bucketId, count)))
+          case count                        =>
+            for
+              _ <- deleteResources(s, bucketId)
+              _ <- s.prepare(queries.delete).flatMap(_.execute(bucketId))
+            yield Right(count)
         }
+    }
+
+  def delete(bucketId: BucketId, force: Boolean): IO[Either[BucketError, Long]] =
+    transact(s => deleteWith(s, bucketId, force))
 
   /** Deletes all resources of a bucket, e.g. those added by a sync that was still running while the bucket was deleted. */
   def deleteResources(bucketId: BucketId): IO[Unit] =

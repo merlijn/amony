@@ -5,13 +5,13 @@ import scala.util.{Failure, Try}
 import nl.amony.lib.process.ffmpeg.tasks.FFProbeModel.{FFProbeOutput, given}
 import nl.amony.lib.process.magick.MagickImageMeta
 
-case class ResourceMeta(toolName: String, toolData: String, properties: ContentProperties)
+case class ResourceMeta(toolName: String, toolData: String, properties: ContentProperties) derives io.circe.Codec
 
 object ResourceMeta:
   def recover(toolName: String, toolData: String): Option[ResourceMeta] =
     ContentProperties(toolName, toolData).toOption.map(p => ResourceMeta(toolName, toolData, p))
 
-sealed trait ContentProperties
+sealed trait ContentProperties derives io.circe.Codec
 
 case class VideoProperties(
   width: Int,
@@ -19,9 +19,10 @@ case class VideoProperties(
   fps: Float,
   durationInMillis: Int,
   codec: Option[String] = None
-) extends ContentProperties
+) extends ContentProperties derives io.circe.Codec
 
 case class ImageProperties(width: Int, height: Int, metaData: Map[String, String] = Map.empty) extends ContentProperties
+    derives io.circe.Codec
 
 object ContentProperties:
 

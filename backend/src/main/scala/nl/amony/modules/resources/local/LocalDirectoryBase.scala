@@ -7,7 +7,7 @@ import org.apache.tika.Tika
 import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 
-import nl.amony.lib.messagebus.EventTopic
+import nl.amony.lib.messagebus.MessageTopic
 import nl.amony.lib.process.ffmpeg.FFMpeg
 import nl.amony.lib.process.magick.ImageMagick
 import nl.amony.modules.resources.api.{LocalDirectoryConfig, ResourceEvent, Streamability, ThumbnailFormats, ThumbnailResolutions}
@@ -17,7 +17,7 @@ trait LocalDirectoryBase(
   val config: LocalDirectoryConfig,
   val parallelFactor: Int,
   val db: ResourceDatabase,
-  val topic: EventTopic[ResourceEvent],
+  val topic: MessageTopic[ResourceEvent],
   val formats: ThumbnailFormats,
   val resolutions: ThumbnailResolutions
 )(using meter: Meter[IO], tracer: Tracer[IO]) {

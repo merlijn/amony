@@ -10,11 +10,12 @@ import org.apache.solr.core.CoreContainer
 import scribe.Logging
 
 import nl.amony.modules.search.solr.SolrResource.logger
-import nl.amony.modules.search.solr.SolrSearchService.solrTarGzResource
 
 object SolrResource extends Logging {
 
-  val collections = Seq("resources")
+  val solrTarGzResource = "/solr.tar.gz"
+
+  val collections = Seq(SolrSchema.collectionName)
 
   def make(config: SolrConfig): Resource[IO, SolrClient] = {
 
