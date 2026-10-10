@@ -160,10 +160,14 @@ object DatabaseBucketRegistry extends Logging:
 
     override def delete(bucketId: BucketId, force: Boolean): IO[Either[BucketError, Unit]] =
       (for
-        resourceCount <- EitherT(bucketsDal.delete(bucketId, force))
+        resourceCount <- EitherT(bucketsDal.transact { s =>
+                           bucketsDal.deleteWith(s, bucketId, force).flatMap {
+                             case Right(count) => eventTopic.publish(s, BucketDeleted(bucketId)).as(Right(count))
+                             case left         => IO.pure(left)
+                           }
+                         })
         _             <- EitherT.liftF(uninstall(bucketId))
         // a sync that was still running may have added resources after the delete
         _             <- EitherT.liftF(bucketsDal.deleteResources(bucketId))
-        _             <- EitherT.liftF(eventTopic.publish(BucketDeleted(bucketId)))
         _             <- EitherT.liftF(IO(logger.info(s"Deleted bucket '$bucketId' ($resourceCount resources)")))
       yield ()).value
