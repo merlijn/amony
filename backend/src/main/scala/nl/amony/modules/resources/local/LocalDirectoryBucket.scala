@@ -10,7 +10,7 @@ import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 import nl.amony.lib.files.*
-import nl.amony.lib.messagebus.EventTopic
+import nl.amony.lib.messagebus.MessageTopic
 import nl.amony.modules.auth.api.Role
 import nl.amony.modules.resources.*
 import nl.amony.modules.resources.api.*
@@ -20,7 +20,7 @@ class LocalDirectoryBucket(
   config: LocalDirectoryConfig,
   parallelFactor: Int,
   db: ResourceDatabase,
-  topic: EventTopic[ResourceEvent],
+  topic: MessageTopic[ResourceEvent],
   formats: ThumbnailFormats,
   resolutions: ThumbnailResolutions
 )(using meter: Meter[IO], tracer: Tracer[IO])

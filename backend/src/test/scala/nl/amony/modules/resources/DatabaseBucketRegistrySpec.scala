@@ -20,7 +20,7 @@ import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import skunk.Session
 
-import nl.amony.lib.messagebus.EventTopic
+import nl.amony.lib.messagebus.MessageTopic
 import nl.amony.modules.auth.api.{Role, UserId}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
@@ -70,8 +70,8 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
   private def resource(bucketId: BucketId): ResourceInfo =
     ResourceInfo(bucketId = bucketId, resourceId = ResourceId(UUID.randomUUID().toString), userId = UserId("admin"), path = "file.mp4", size = 1L)
 
-  private def recordingTopic(published: AtomicReference[List[ResourceEvent]]): EventTopic[ResourceEvent] =
-    new EventTopic[ResourceEvent]:
+  private def recordingTopic(published: AtomicReference[List[ResourceEvent]]): MessageTopic[ResourceEvent] =
+    new MessageTopic[ResourceEvent]:
       override def publish(event: ResourceEvent): IO[Unit]                                                         = IO {
         published.updateAndGet(_ :+ event)
         ()

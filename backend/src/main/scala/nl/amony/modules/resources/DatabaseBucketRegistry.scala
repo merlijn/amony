@@ -8,7 +8,7 @@ import cats.effect.{Deferred, Fiber, IO, Ref, Resource}
 import cats.implicits.*
 import scribe.Logging
 
-import nl.amony.lib.messagebus.EventTopic
+import nl.amony.lib.messagebus.MessageTopic
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.BucketsDal
 
@@ -43,7 +43,7 @@ object DatabaseBucketRegistry extends Logging:
   def resource(
     defaultBucket: ResourceBucketConfig,
     bucketsDal: BucketsDal,
-    eventTopic: EventTopic[ResourceEvent],
+    eventTopic: MessageTopic[ResourceEvent],
     factory: BucketFactory
   ): Resource[IO, BucketRegistry] =
     for
@@ -65,7 +65,7 @@ object DatabaseBucketRegistry extends Logging:
    */
   private class Impl(
     bucketsDal: BucketsDal,
-    eventTopic: EventTopic[ResourceEvent],
+    eventTopic: MessageTopic[ResourceEvent],
     factory: BucketFactory,
     supervisor: Supervisor[IO],
     running: Ref[IO, Map[BucketId, RunningBucket]]

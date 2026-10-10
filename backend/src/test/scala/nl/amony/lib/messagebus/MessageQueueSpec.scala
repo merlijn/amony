@@ -20,7 +20,7 @@ import skunk.{Session, *}
 
 import nl.amony.{App, DatabaseConfig}
 
-class EventQueueSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
+class MessageQueueSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 
   override val containerDef: GenericContainer.Def[GenericContainer] =
     GenericContainer.Def(
@@ -48,22 +48,22 @@ class EventQueueSpec extends AnyWordSpecLike with TestContainerForAll with Match
       poolSize = 4
     )
 
-  private def withQueue[A](container: GenericContainer)(f: (Resource[IO, Session[IO]], EventQueue) => IO[A]): A =
-    App.makeDatabasePool(configForContainer(container)).use(pool => f(pool, EventQueue(pool))).unsafeRunSync()
+  private def withQueue[A](container: GenericContainer)(f: (Resource[IO, Session[IO]], MessageQueue) => IO[A]): A =
+    App.makeDatabasePool(configForContainer(container)).use(pool => f(pool, MessageQueue(pool))).unsafeRunSync()
 
   private def newTopic: String = s"test-${UUID.randomUUID()}"
 
   private def payload(n: Int): Json = Json.obj("n" -> Json.fromInt(n))
 
-  private def publish(pool: Resource[IO, Session[IO]], queue: EventQueue, topic: String, n: Int): IO[Unit] =
+  private def publish(pool: Resource[IO, Session[IO]], queue: MessageQueue, topic: String, n: Int): IO[Unit] =
     pool.use(session => queue.enqueue(session, topic, payload(n)))
 
   private def countRows(pool: Resource[IO, Session[IO]], topic: String): IO[Long] =
-    pool.use(session => session.prepare(sql"select count(*) from event_queue where topic = $varchar".query(int8)).flatMap(_.unique(topic)))
+    pool.use(session => session.prepare(sql"select count(*) from message_queue where topic = $varchar".query(int8)).flatMap(_.unique(topic)))
 
-  "EventQueue" should {
+  "MessageQueue" should {
 
-    "claim pending events one at a time in insertion order" in withContainers { container =>
+    "claim pending messages one at a time in insertion order" in withContainers { container =>
       withQueue(container) { (pool, queue) =>
         val topic = newTopic
         for
@@ -81,7 +81,7 @@ class EventQueueSpec extends AnyWordSpecLike with TestContainerForAll with Match
       }
     }
 
-    "not claim events that are already processed or failed" in withContainers { container =>
+    "not claim messages that are already processed or failed" in withContainers { container =>
       withQueue(container) { (pool, queue) =>
         val topic = newTopic
         for
@@ -99,7 +99,7 @@ class EventQueueSpec extends AnyWordSpecLike with TestContainerForAll with Match
       }
     }
 
-    "recover events left claimed by a stopped consumer" in withContainers { container =>
+    "recover messages left claimed by a stopped consumer" in withContainers { container =>
       withQueue(container) { (pool, queue) =>
         val topic = newTopic
         for
@@ -115,7 +115,7 @@ class EventQueueSpec extends AnyWordSpecLike with TestContainerForAll with Match
       }
     }
 
-    "return a failing event to pending with its error recorded" in withContainers { container =>
+    "return a failing message to pending with its error recorded" in withContainers { container =>
       withQueue(container) { (pool, queue) =>
         val topic = newTopic
         for
@@ -124,13 +124,13 @@ class EventQueueSpec extends AnyWordSpecLike with TestContainerForAll with Match
           _       <- queue.releaseForRetry(first.get.id, "boom")
           retried <- queue.claimOldest(topic)
         yield
-          retried.map(_.status) shouldBe Some(EventQueueStatus.Claimed)
+          retried.map(_.status) shouldBe Some(MessageQueueStatus.Claimed)
           retried.map(_.attempts) shouldBe Some(2)
           retried.map(_.lastError) shouldBe Some(Some("boom"))
       }
     }
 
-    "let competing consumers claim different events" in withContainers { container =>
+    "let competing consumers claim different messages" in withContainers { container =>
       withQueue(container) { (pool, queue) =>
         val topic = newTopic
         for
@@ -139,11 +139,11 @@ class EventQueueSpec extends AnyWordSpecLike with TestContainerForAll with Match
           (a, b)  = claims
         yield
           a.map(_.id) should not be b.map(_.id)
-          List(a, b).flatten.map(_.status) shouldBe List(EventQueueStatus.Claimed, EventQueueStatus.Claimed)
+          List(a, b).flatten.map(_.status) shouldBe List(MessageQueueStatus.Claimed, MessageQueueStatus.Claimed)
       }
     }
 
-    "purge processed and failed events past retention without touching pending ones" in withContainers { container =>
+    "purge processed and failed messages past retention without touching pending ones" in withContainers { container =>
       withQueue(container) { (pool, queue) =>
         val topic = newTopic
         for

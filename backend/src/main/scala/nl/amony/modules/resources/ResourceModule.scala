@@ -6,7 +6,7 @@ import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import skunk.Session
 
-import nl.amony.lib.messagebus.EventTopic
+import nl.amony.lib.messagebus.MessageTopic
 import nl.amony.lib.tapir.dsl.ServerEndpoints
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.resources.api.{BucketRegistry, LocalDirectoryConfig, ResourceEvent, ThumbnailFormats, ThumbnailResolutions}
@@ -39,7 +39,7 @@ object ResourceModule:
   def resource(
     config: ResourceConfig,
     databasePool: Resource[IO, Session[IO]],
-    eventTopic: EventTopic[ResourceEvent]
+    eventTopic: MessageTopic[ResourceEvent]
   )(using Meter[IO], Tracer[IO]): Resource[IO, ResourceModule] =
     val thumbResolutions = ThumbnailResolutions(
       config.previews.allowedResolutions,

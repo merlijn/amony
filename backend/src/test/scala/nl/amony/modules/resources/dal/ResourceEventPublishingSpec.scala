@@ -15,7 +15,7 @@ import skunk.codec.all.*
 import skunk.implicits.*
 import skunk.{Session, *}
 
-import nl.amony.lib.messagebus.{EventTopic, EventTopicKey, PersistenceCodec, PersistentEventBus}
+import nl.amony.lib.messagebus.{MessageTopic, MessageTopicKey, PersistenceCodec, PersistentMessageBus}
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
 import nl.amony.{App, DatabaseConfig}
@@ -48,13 +48,13 @@ class ResourceEventPublishingSpec extends AnyWordSpecLike with TestContainerForA
       poolSize = 4
     )
 
-  private def topicFor(pool: Resource[IO, Session[IO]], name: String): EventTopic[ResourceEvent] =
+  private def topicFor(pool: Resource[IO, Session[IO]], name: String): MessageTopic[ResourceEvent] =
     given PersistenceCodec[ResourceEvent] = PersistenceCodec.fromCirce
-    given EventTopicKey[ResourceEvent]    = EventTopicKey(name)
-    PersistentEventBus.postgres(pool).getTopic[ResourceEvent]
+    given MessageTopicKey[ResourceEvent]    = MessageTopicKey(name)
+    PersistentMessageBus.postgres(pool).getTopic[ResourceEvent]
 
   private def eventCount(pool: Resource[IO, Session[IO]], name: String): IO[Long] =
-    pool.use(_.prepare(sql"select count(*) from event_queue where topic = $varchar".query(int8)).flatMap(_.unique(name)))
+    pool.use(_.prepare(sql"select count(*) from message_queue where topic = $varchar".query(int8)).flatMap(_.unique(name)))
 
   private def resource(bucketId: BucketId): ResourceInfo =
     ResourceInfo(bucketId = bucketId, resourceId = ResourceId(UUID.randomUUID().toString), userId = UserId("admin"), path = "file.mp4", size = 1L)

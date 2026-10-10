@@ -88,9 +88,9 @@ databaseChangeLog:
   - changeSet:
       id: 10
       author: merlijn
-      context: event-queue
+      context: message-queue
       changes:
         - sqlFile:
-            path: db/10-event-queue.sql
+            path: db/10-message-queue.sql
             splitStatements: true
             endDelimiter: ";"
