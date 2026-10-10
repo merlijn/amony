@@ -90,7 +90,7 @@ const defaultPrefs: Prefs = {
   showResolution:  true,
   gridCellWidth:   320,
   theme:           "system",
-  gridAspectRatio: "16/9",
+  gridAspectRatio: "golden",
   gridOrientation: "landscape",
 }
 
