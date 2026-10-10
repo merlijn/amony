@@ -27,6 +27,8 @@ final case class EventBusConfig(
   // Fallback poll for notifications that were lost or whose consumer crashed. Aligned with the Solr
   // `commit-within-millis` so a missed notification is picked up within the window Solr would have committed in anyway.
   pollInterval: FiniteDuration  = 500.millis,
+  // Wait before retrying a failed event, so a failing processor (e.g. Solr down) is not hammered.
+  retryBackoff: FiniteDuration  = 3.seconds,
   purgeInterval: FiniteDuration = 1.hour,
   retention: FiniteDuration     = 7.days,
   notificationQueueSize: Int    = 10000

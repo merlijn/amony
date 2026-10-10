@@ -54,11 +54,13 @@ final private[messagebus] class PostgresEventTopic[E](
     IO(codec.decode(row.payload)).attempt.flatMap:
       // An undecodable payload is a permanent error; park it so it does not block the topic forever.
       case Left(e)      => outbox.markFailed(row.id, Option(e.getMessage).getOrElse(e.getClass.getName)).as(true)
-      // A processor failure (e.g. Solr unavailable) is transient; retry in place so nothing is skipped.
+      // A processor failure (e.g. Solr unavailable) is transient; retry in place so nothing is skipped. The backoff
+      // is applied while holding the consumer's mutex, so poll/notify triggers are delayed by it too.
       case Right(event) =>
         processor(event).attempt.flatMap:
           case Right(_) => outbox.markProcessed(row.id).as(true)
-          case Left(e)  => outbox.releaseForRetry(row.id, Option(e.getMessage).getOrElse(e.getClass.getName)).as(false)
+          case Left(e)  =>
+            outbox.releaseForRetry(row.id, Option(e.getMessage).getOrElse(e.getClass.getName)) >> IO.sleep(config.retryBackoff).as(false)
 
 private[messagebus] object PostgresEventTopic:
 

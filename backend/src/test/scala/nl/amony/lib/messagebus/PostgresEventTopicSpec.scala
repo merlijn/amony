@@ -48,7 +48,7 @@ class PostgresEventTopicSpec extends AnyWordSpecLike with TestContainerForAll wi
   private def topicFor(pool: Resource[IO, Session[IO]]): EventTopic[Int] =
     given PersistenceCodec[Int] = PersistenceCodec.fromCirce
     given EventTopicKey[Int]    = EventTopicKey(s"topic-${UUID.randomUUID()}")
-    PersistentEventBus.postgres(pool).getTopic[Int]
+    PersistentEventBus.postgres(pool, EventBusConfig(retryBackoff = 100.millis)).getTopic[Int]
 
   private def await(ref: Ref[IO, List[Int]], size: Int): IO[List[Int]] =
     ref.get.flatMap(xs => if xs.size >= size then IO.pure(xs) else IO.sleep(50.millis) *> await(ref, size)).timeout(15.seconds)
