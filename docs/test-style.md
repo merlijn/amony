@@ -13,8 +13,8 @@ Prefer the following test style. `ImplementationFileName` refers to the name of 
 ```scala
 class ImplementationFileNameSpec extends AnyWordSpecLike {
 
-  "classname/utility" when {
-    "context/function/endpoint A" should {
+  "classname/utility A" when {
+    "context/function/endpoint" should {
       // setup context here
       
       "specific test 1" in {
@@ -28,6 +28,11 @@ class ImplementationFileNameSpec extends AnyWordSpecLike {
       // setup context here
       // etc...
     }
+  }
+  
+  // Implementation files may contain multiple classes or utilities
+  "classname/utility B" when {
+    // ...
   }
 }
 ```
