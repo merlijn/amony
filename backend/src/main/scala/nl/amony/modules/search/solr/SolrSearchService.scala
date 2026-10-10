@@ -59,10 +59,9 @@ object SolrSearchService {
 class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchService with Logging {
 
   def loggingFailureIO[T](f: => T): IO[T] =
-    IO.blocking(f)
-      .handleErrorWith {
-        case e: Exception => IO(logger.error("Error while executing solr query", e)) >> IO.raiseError(e)
-      }
+    IO.blocking(f).handleErrorWith {
+      case e: Exception => IO(logger.error("Error while executing solr query", e)) >> IO.raiseError(e)
+    }
 
   private def toSolrDocument(resource: ResourceInfo): SolrInputDocument = {
 
@@ -245,33 +244,26 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
       solr.add(collectionName, solrInputDocuments, commitWithinMs).getStatus
     } catch { case e: Exception => logger.error("Exception while trying to index documents to solr", e) }
 
-  override def processEvent(event: ResourceEvent): IO[Unit] = event match
-    case BucketDeleted(bucketId) => deleteBucket(bucketId)
-    case resourceEvent           => IO.blocking(applyResourceEvent(resourceEvent)).void
-
-  private def applyResourceEvent(event: ResourceEvent): Unit =
+  override def processEvent(event: ResourceEvent): IO[Unit] =
     logger.debug(s"Processing event: $event")
 
-    event match {
-      case ResourceAdded(resource)                       => insertDocument(resource)
-      case ResourceUpdated(resource)                     => insertDocument(resource)
-      case ResourceMoved(resourceId, _, newPath)         => atomicUpdate(resourceId, FieldNames.path, newPath)
-      case ResourceFileMetaChanged(id, lastModifiedTime) => atomicUpdate(id, FieldNames.lastModified, lastModifiedTime)
-      case ResourceDeleted(resourceId)                   =>
-        logger.debug(s"Deleting document from index: $resourceId")
-        solr.deleteById(collectionName, resourceId, config.commitWithinMillis).getStatus
-      case BucketDeleted(_)                              => ()
-    }
+    def atomicUpdate(resourceId: ResourceId, field: String, value: Any): Unit =
+      val solrDocument = new SolrInputDocument()
+      solrDocument.addField(FieldNames.id, resourceId)
+      solrDocument.addField(field, Map("set" -> value).asJava)
+      solr.add(collectionName, solrDocument, config.commitWithinMillis).getStatus
 
-  private def insertDocument(resource: ResourceInfo): Unit =
-    logger.debug(s"Indexing media: ${resource.path}")
-    solr.add(collectionName, toSolrDocument(resource), config.commitWithinMillis).getStatus
+    def insertDocument(resource: ResourceInfo): Unit =
+      logger.debug(s"Indexing media: ${resource.path}")
+      solr.add(collectionName, toSolrDocument(resource), config.commitWithinMillis).getStatus
 
-  private def atomicUpdate(resourceId: ResourceId, field: String, value: Any): Unit =
-    val solrDocument = new SolrInputDocument()
-    solrDocument.addField(FieldNames.id, resourceId)
-    solrDocument.addField(field, Map("set" -> value).asJava)
-    solr.add(collectionName, solrDocument, config.commitWithinMillis).getStatus
+    event match
+      case ResourceAdded(resource)                       => loggingFailureIO(insertDocument(resource))
+      case ResourceUpdated(resource)                     => loggingFailureIO(insertDocument(resource))
+      case ResourceMoved(resourceId, _, newPath)         => loggingFailureIO(atomicUpdate(resourceId, FieldNames.path, newPath))
+      case ResourceFileMetaChanged(id, lastModifiedTime) => loggingFailureIO(atomicUpdate(id, FieldNames.lastModified, lastModifiedTime))
+      case ResourceDeleted(resourceId)                   => loggingFailureIO(solr.deleteById(collectionName, resourceId, config.commitWithinMillis).getStatus)
+      case BucketDeleted(bucketId)                       => deleteBucket(bucketId)
 
   override def indexAll(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] =
     resources
