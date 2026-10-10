@@ -10,10 +10,10 @@ import nl.amony.modules.auth.http.AuthRoutes
 
 class AuthModule(config: AuthConfig, httpClientBackend: Backend[IO], pool: Resource[IO, Session[IO]]) extends Logging {
 
-  val userDatabase       = new dal.UserDatabase(pool)
-  val oauthStateDatabase = new dal.OAuthStateDatabase(pool)
-  val loginService       = new FederatedLoginService(config, httpClientBackend, userDatabase, oauthStateDatabase)
-  val apiSecurity        = new ApiSecurity(config)
+  private val userDatabase       = new dal.UserDatabase(pool)
+  private val oauthStateDatabase = new dal.OAuthStateDatabase(pool)
+  private val loginService       = new FederatedLoginService(config, httpClientBackend, userDatabase, oauthStateDatabase)
+  val apiSecurity                = new ApiSecurity(config)
 
   logger.info("AuthModule initialized, identity providers: " + loginService.identityProviders.keys.mkString(", "))
 
