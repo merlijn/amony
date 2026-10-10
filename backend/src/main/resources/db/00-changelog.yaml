@@ -88,7 +88,7 @@ databaseChangeLog:
   - changeSet:
       id: 10
       author: merlijn
-      context: resources
+      context: eventbus
       changes:
         - sqlFile:
             path: db/10-event-outbox.sql

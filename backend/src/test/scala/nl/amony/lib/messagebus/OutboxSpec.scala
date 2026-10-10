@@ -18,7 +18,7 @@ import skunk.codec.all.*
 import skunk.implicits.*
 import skunk.{Session, *}
 
-import nl.amony.DatabaseConfig
+import nl.amony.{App, DatabaseConfig}
 
 class OutboxSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 
@@ -38,9 +38,6 @@ class OutboxSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
   given meter: Meter[IO]   = Meter.noop[IO]
   given tracer: Tracer[IO] = Tracer.noop[IO]
 
-  override def afterContainersStart(container: GenericContainer): Unit =
-    applyMigration(configForContainer(container), "db/10-event-outbox.sql").unsafeRunSync()
-
   private def configForContainer(container: GenericContainer): DatabaseConfig =
     DatabaseConfig(
       host     = container.containerIpAddress,
@@ -51,16 +48,8 @@ class OutboxSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
       poolSize = 4
     )
 
-  private def makePool(config: DatabaseConfig): Resource[IO, Resource[IO, Session[IO]]] =
-    Session.Builder[IO]
-      .withHost(config.host)
-      .withPort(config.port)
-      .withUserAndPassword(config.username, config.password)
-      .withDatabase(config.database)
-      .pooled(config.poolSize)
-
   private def withOutbox[A](container: GenericContainer)(f: (Resource[IO, Session[IO]], EventOutbox) => IO[A]): A =
-    makePool(configForContainer(container)).use(pool => f(pool, EventOutbox(pool))).unsafeRunSync()
+    App.makeDatabasePool(configForContainer(container)).use(pool => f(pool, EventOutbox(pool))).unsafeRunSync()
 
   private def newTopic: String = s"test-${UUID.randomUUID()}"
 
@@ -71,25 +60,6 @@ class OutboxSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 
   private def countRows(pool: Resource[IO, Session[IO]], topic: String): IO[Long] =
     pool.use(session => session.prepare(sql"select count(*) from event_outbox where topic = $varchar".query(int8)).flatMap(_.unique(topic)))
-
-  private def applyMigration(config: DatabaseConfig, resource: String): IO[Unit] =
-    IO.blocking {
-      val stream     = Option(getClass.getClassLoader.getResourceAsStream(resource)).getOrElse(sys.error(s"Missing resource: $resource"))
-      val text       = scala.io.Source.fromInputStream(stream, "UTF-8").mkString
-      val statements = text.linesIterator.filterNot(_.trim.startsWith("--")).mkString("\n").split(";").map(_.trim).filter(_.nonEmpty)
-      stream.close()
-      statements.toList
-    }.flatMap { statements =>
-      config.getJdbcConnection.flatMap { connection =>
-        IO.blocking {
-          val statement = connection.createStatement()
-          try statements.foreach(statement.execute)
-          finally
-            statement.close()
-            connection.close()
-        }
-      }
-    }
 
   "EventOutbox" should {
 

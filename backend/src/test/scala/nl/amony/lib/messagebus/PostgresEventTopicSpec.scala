@@ -4,7 +4,7 @@ import java.util.UUID
 import scala.concurrent.duration.*
 
 import cats.effect.unsafe.implicits.global
-import cats.effect.{IO, Ref, Resource}
+import cats.effect.{IO, Ref}
 import cats.syntax.all.*
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
@@ -13,9 +13,8 @@ import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
 import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
-import skunk.Session
 
-import nl.amony.DatabaseConfig
+import nl.amony.{App, DatabaseConfig}
 
 class PostgresEventTopicSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 
@@ -37,9 +36,6 @@ class PostgresEventTopicSpec extends AnyWordSpecLike with TestContainerForAll wi
   given PersistenceCodec[Int] = PersistenceCodec.fromCirce
   given EventTopicKey[Int]    = EventTopicKey(s"topic-${UUID.randomUUID()}")
 
-  override def afterContainersStart(container: GenericContainer): Unit =
-    applyMigration(configForContainer(container), "db/10-event-outbox.sql").unsafeRunSync()
-
   private def configForContainer(container: GenericContainer): DatabaseConfig =
     DatabaseConfig(
       host     = container.containerIpAddress,
@@ -50,40 +46,13 @@ class PostgresEventTopicSpec extends AnyWordSpecLike with TestContainerForAll wi
       poolSize = 4
     )
 
-  private def makePool(config: DatabaseConfig): Resource[IO, Resource[IO, Session[IO]]] =
-    Session.Builder[IO]
-      .withHost(config.host)
-      .withPort(config.port)
-      .withUserAndPassword(config.username, config.password)
-      .withDatabase(config.database)
-      .pooled(config.poolSize)
-
   private def await(ref: Ref[IO, List[Int]], size: Int): IO[List[Int]] =
     ref.get.flatMap(xs => if xs.size >= size then IO.pure(xs) else IO.sleep(50.millis) *> await(ref, size)).timeout(15.seconds)
-
-  private def applyMigration(config: DatabaseConfig, resource: String): IO[Unit] =
-    IO.blocking {
-      val stream     = Option(getClass.getClassLoader.getResourceAsStream(resource)).getOrElse(sys.error(s"Missing resource: $resource"))
-      val text       = scala.io.Source.fromInputStream(stream, "UTF-8").mkString
-      val statements = text.linesIterator.filterNot(_.trim.startsWith("--")).mkString("\n").split(";").map(_.trim).filter(_.nonEmpty)
-      stream.close()
-      statements.toList
-    }.flatMap { statements =>
-      config.getJdbcConnection.flatMap { connection =>
-        IO.blocking {
-          val statement = connection.createStatement()
-          try statements.foreach(statement.execute)
-          finally
-            statement.close()
-            connection.close()
-        }
-      }
-    }
 
   "PostgresEventTopic" should {
 
     "process published events in order" in withContainers { container =>
-      makePool(configForContainer(container)).use { pool =>
+      App.makeDatabasePool(configForContainer(container)).use { pool =>
         val topic = PersistentEventBus.postgres(pool).getTopic[Int]
 
         Ref.of[IO, List[Int]](Nil).flatMap { processed =>
@@ -95,7 +64,7 @@ class PostgresEventTopicSpec extends AnyWordSpecLike with TestContainerForAll wi
     }
 
     "retry a failing event in place rather than skipping it" in withContainers { container =>
-      makePool(configForContainer(container)).use { pool =>
+      App.makeDatabasePool(configForContainer(container)).use { pool =>
         val topic = PersistentEventBus.postgres(pool).getTopic[Int]
 
         for
