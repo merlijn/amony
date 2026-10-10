@@ -21,6 +21,7 @@ import sttp.client4.httpclient.cats.HttpClientCatsBackend
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 import sttp.tapir.server.tracing.otel4s.Otel4sTracing
 
+import nl.amony.lib.messagebus.{EventTopic, EventTopicKey, PersistenceCodec, PersistentEventBus}
 import nl.amony.lib.observability.Observability
 import nl.amony.lib.tapir.dsl.ServerEndpoints
 import nl.amony.modules.admin.{AdminRoutes, BucketAdminRoutes}
@@ -28,6 +29,7 @@ import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.config.ConfigRoutes
 import nl.amony.modules.resources.ResourceModule
+import nl.amony.modules.resources.api.ResourceEvent
 import nl.amony.modules.search.SearchModule
 
 object App extends ResourceApp.Forever with Logging {
@@ -96,7 +98,13 @@ object App extends ResourceApp.Forever with Logging {
         databasePool      <- makeDatabasePool(appConfig.database)
         httpClientBackend <- HttpClientCatsBackend.resource[IO]()
         searchModule      <- SearchModule.resource(appConfig.search)
-        resourceModule    <- ResourceModule.resource(appConfig.resources, databasePool, searchModule.searchService)
+        eventTopic         = {
+          given PersistenceCodec[ResourceEvent] = PersistenceCodec.fromCirce
+          given EventTopicKey[ResourceEvent]    = EventTopicKey("resource-events")
+          PersistentEventBus.postgres(databasePool).getTopic[ResourceEvent]
+        }
+        _                 <- eventTopic.processAtLeastOnce("solr-indexer")(searchModule.searchService.processEvent).compile.drain.background
+        resourceModule    <- ResourceModule.resource(appConfig.resources, databasePool, eventTopic)
         authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
         apiRoutes          = {
           given ApiSecurity = authModule.apiSecurity

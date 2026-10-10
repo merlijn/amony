@@ -2,12 +2,14 @@ package nl.amony.modules.resources
 
 import java.nio.file.{Files, Path}
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.duration.*
 
 import cats.effect.unsafe.implicits.global
 import cats.effect.{IO, Ref}
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
+import fs2.Stream
 import org.mockito.IdiomaticMockito.returns
 import org.mockito.Mockito.RETURNS_DEFAULTS
 import org.mockito.scalatest.MockitoSugar
@@ -16,11 +18,12 @@ import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
 import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
+import skunk.Session
 
+import nl.amony.lib.messagebus.EventTopic
 import nl.amony.modules.auth.api.{Role, UserId}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
-import nl.amony.modules.search.api.SearchService
 import nl.amony.{App, DatabaseConfig}
 
 class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAll with Matchers with MockitoSugar {
@@ -67,6 +70,18 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
   private def resource(bucketId: BucketId): ResourceInfo =
     ResourceInfo(bucketId = bucketId, resourceId = ResourceId(UUID.randomUUID().toString), userId = UserId("admin"), path = "file.mp4", size = 1L)
 
+  private def recordingTopic(published: AtomicReference[List[ResourceEvent]]): EventTopic[ResourceEvent] =
+    new EventTopic[ResourceEvent]:
+      override def publish(event: ResourceEvent): IO[Unit]                                                         = IO {
+        published.updateAndGet(_ :+ event)
+        ()
+      }
+      override def publish(session: Session[IO], event: ResourceEvent): IO[Unit]                                   = IO {
+        published.updateAndGet(_ :+ event)
+        ()
+      }
+      override def processAtLeastOnce(processorId: String)(processor: ResourceEvent => IO[Unit]): Stream[IO, Unit] = Stream.empty
+
   "DatabaseBucketRegistry" should {
     "not insert the default bucket when its directory does not exist" in {
       withContainers { container =>
@@ -75,13 +90,12 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
 
         val test =
           App.makeDatabasePool(dbConfig).use { pool =>
-            val bucketsDal    = BucketsDal(pool)
-            val searchService = mock[SearchService](RETURNS_DEFAULTS)
-            val factory       = (config: ResourceBucketConfig) => IO.pure((mockBucket(config), IO.unit))
+            val bucketsDal = BucketsDal(pool)
+            val factory    = (config: ResourceBucketConfig) => IO.pure((mockBucket(config), IO.unit))
 
             for
               configs <- DatabaseBucketRegistry
-                           .resource(bucketConfig("media", missingPath), bucketsDal, searchService, factory)
+                           .resource(bucketConfig("media", missingPath), bucketsDal, recordingTopic(new AtomicReference(List.empty)), factory)
                            .use(_.allConfigs)
               _        = configs shouldBe empty
               stored  <- bucketsDal.anyExist()
@@ -103,10 +117,9 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
 
         val test =
           App.makeDatabasePool(dbConfig).use { pool =>
-            val bucketsDal    = BucketsDal(pool)
-            val resourceDb    = ResourceDatabase(pool)
-            val searchService = mock[SearchService](RETURNS_DEFAULTS)
-            searchService.deleteBucket(any[BucketId]) returns IO.unit
+            val bucketsDal = BucketsDal(pool)
+            val resourceDb = ResourceDatabase(pool)
+            val published  = new AtomicReference(List.empty[ResourceEvent])
 
             for
               started  <- Ref.of[IO, List[String]](Nil)
@@ -117,7 +130,7 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
                               active.updateAndGet(m => m.updated(id, m.getOrElse(id, 0) + 1)).flatMap(m => maxSyncs.update(_ max m(id))) >>
                               IO.never[Unit]).onCancel(active.update(m => m.updated(id, m(id) - 1)))
               factory   = (config: ResourceBucketConfig) => IO.pure((mockBucket(config), sync(config.id)))
-              registry  = DatabaseBucketRegistry.resource(bucketConfig("media", defaultPath), bucketsDal, searchService, factory)
+              registry  = DatabaseBucketRegistry.resource(bucketConfig("media", defaultPath), bucketsDal, recordingTopic(published), factory)
               _        <- registry.use { r =>
                             for
                               seeded      <- r.allConfigs
@@ -151,7 +164,7 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
                               _            = forced shouldBe Right(())
                               remaining   <- resourceDb.getAll(BucketId("other"))
                               _            = remaining shouldBe empty
-                              _            = verify(searchService).deleteBucket(BucketId("other"))
+                              _            = published.get() should contain(BucketDeleted(BucketId("other")))
                               missing     <- r.delete(BucketId("other"), force = true)
                               _            = missing shouldBe Left(BucketError.NotFound(BucketId("other")))
                               _           <- IO.sleep(100.millis)

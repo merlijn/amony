@@ -245,26 +245,23 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
       solr.add(collectionName, solrInputDocuments, commitWithinMs).getStatus
     } catch { case e: Exception => logger.error("Exception while trying to index documents to solr", e) }
 
-  override def processEvent(event: ResourceEvent): IO[Unit] =
-    IO.blocking {
-      logger.debug(s"Processing event: $event")
+  override def processEvent(event: ResourceEvent): IO[Unit] = event match
+    case BucketDeleted(bucketId) => deleteBucket(bucketId)
+    case resourceEvent           => IO.blocking(applyResourceEvent(resourceEvent)).void
 
-      event match {
+  private def applyResourceEvent(event: ResourceEvent): Unit =
+    logger.debug(s"Processing event: $event")
 
-        case ResourceAdded(resource)   => insertDocument(resource)
-        case ResourceUpdated(resource) => insertDocument(resource)
-
-        case ResourceMoved(resourceId, _, newPath) =>
-          atomicUpdate(resourceId, FieldNames.path, newPath)
-
-        case ResourceFileMetaChanged(id, lastModifiedTime) =>
-          atomicUpdate(id, FieldNames.lastModified, lastModifiedTime)
-
-        case ResourceDeleted(resourceId) =>
-          logger.debug(s"Deleting document from index: $resourceId")
-          solr.deleteById(collectionName, resourceId, config.commitWithinMillis).getStatus
-      }
-    }.void
+    event match {
+      case ResourceAdded(resource)                       => insertDocument(resource)
+      case ResourceUpdated(resource)                     => insertDocument(resource)
+      case ResourceMoved(resourceId, _, newPath)         => atomicUpdate(resourceId, FieldNames.path, newPath)
+      case ResourceFileMetaChanged(id, lastModifiedTime) => atomicUpdate(id, FieldNames.lastModified, lastModifiedTime)
+      case ResourceDeleted(resourceId)                   =>
+        logger.debug(s"Deleting document from index: $resourceId")
+        solr.deleteById(collectionName, resourceId, config.commitWithinMillis).getStatus
+      case BucketDeleted(_)                              => ()
+    }
 
   private def insertDocument(resource: ResourceInfo): Unit =
     logger.debug(s"Indexing media: ${resource.path}")

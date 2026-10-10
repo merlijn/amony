@@ -8,9 +8,9 @@ import cats.effect.{Deferred, Fiber, IO, Ref, Resource}
 import cats.implicits.*
 import scribe.Logging
 
+import nl.amony.lib.messagebus.EventTopic
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.BucketsDal
-import nl.amony.modules.search.api.SearchService
 
 /** Creates a bucket from its configuration, together with its background (sync) process. */
 type BucketFactory = ResourceBucketConfig => IO[(ResourceBucket, IO[Unit])]
@@ -43,7 +43,7 @@ object DatabaseBucketRegistry extends Logging:
   def resource(
     defaultBucket: ResourceBucketConfig,
     bucketsDal: BucketsDal,
-    searchService: SearchService,
+    eventTopic: EventTopic[ResourceEvent],
     factory: BucketFactory
   ): Resource[IO, BucketRegistry] =
     for
@@ -52,7 +52,7 @@ object DatabaseBucketRegistry extends Logging:
                       for
                         _       <- seedDefaultBucket(defaultBucket, bucketsDal)
                         running <- Ref.of[IO, Map[BucketId, RunningBucket]](Map.empty)
-                        registry = Impl(bucketsDal, searchService, factory, supervisor, running)
+                        registry = Impl(bucketsDal, eventTopic, factory, supervisor, running)
                         stored  <- bucketsDal.getAll()
                         _       <- stored.traverse_(registry.install)
                       yield registry
@@ -65,7 +65,7 @@ object DatabaseBucketRegistry extends Logging:
    */
   private class Impl(
     bucketsDal: BucketsDal,
-    searchService: SearchService,
+    eventTopic: EventTopic[ResourceEvent],
     factory: BucketFactory,
     supervisor: Supervisor[IO],
     running: Ref[IO, Map[BucketId, RunningBucket]]
@@ -164,6 +164,6 @@ object DatabaseBucketRegistry extends Logging:
         _             <- EitherT.liftF(uninstall(bucketId))
         // a sync that was still running may have added resources after the delete
         _             <- EitherT.liftF(bucketsDal.deleteResources(bucketId))
-        _             <- EitherT.liftF(searchService.deleteBucket(bucketId))
+        _             <- EitherT.liftF(eventTopic.publish(BucketDeleted(bucketId)))
         _             <- EitherT.liftF(IO(logger.info(s"Deleted bucket '$bucketId' ($resourceCount resources)")))
       yield ()).value
