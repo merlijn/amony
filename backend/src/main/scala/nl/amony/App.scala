@@ -114,8 +114,7 @@ object App extends ResourceApp.Forever with Logging {
                 appConfig.resources.previews.resolutionPickingStrategy
               )
 
-          resourceModule.contentRoutes <+>
-            Http4sServerInterpreter[IO](serverOptions).toRoutes(tapirEndpoints)
+          resourceModule.contentRoutes <+> Http4sServerInterpreter[IO](serverOptions).toRoutes(tapirEndpoints)
         }
         _                 <- WebServer.run(appConfig.api, apiRoutes, authModule.apiSecurity)
       yield ()
