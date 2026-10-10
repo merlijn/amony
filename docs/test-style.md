@@ -8,23 +8,26 @@ Each test file should have a similarly named implementation file, with the excep
 
 ### Test style
 
-Prefer the following test style.
+Prefer the following test style. `ImplementationFileName` refers to the name of the implementation file being tested.
 
 ```scala
-"classname/container" when {
-  "context/function/endpoint A" should {
-    // setup context here
-    
-    "specific test 1" in {
-      // test code here
+class ImplementationFileNameSpec extends AnyWordSpecLike {
+
+  "classname/utility" when {
+    "context/function/endpoint A" should {
+      // setup context here
+      
+      "specific test 1" in {
+        // test code here
+      }
+      "specific test 2" in {
+        // test code here
+      }
     }
-    "specific test 2" in {
-      // test code here
+    "context/function/endpoint B" should {
+      // setup context here
+      // etc...
     }
-  }
-  "context/function/endpoint B" should {
-    // setup context here
-    // etc...
   }
 }
 ```
@@ -32,12 +35,15 @@ Prefer the following test style.
 If there are really no multiple contexts, you can also use a single `should` block:
 
 ```scala
-"classname/container" should {
-  "specific test 1" in {
-    // test code here
-  }
-  "specific test 2" in {
-    // test code here
+class ImplementationFileNameSpec extends AnyWordSpecLike {
+
+  "classname/utility" should {
+    "specific test 1" in {
+      // test code here
+    }
+    "specific test 2" in {
+      // test code here
+    }
   }
 }
 ```
