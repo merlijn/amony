@@ -102,18 +102,14 @@ class LocalDirectoryBucket(
       else IO.unit
   }.compile.drain
 
-  def reComputePartialHashs(): IO[Unit] = getAllResources.evalMap { resource =>
+  def reComputePartialHashes(): IO[Unit] = getAllResources.evalMap { resource =>
     val file = config.resourcePath.resolve(resource.path)
     config.hashingAlgorithm.createHash(file).flatMap: partialHash =>
-      val oldResourceId = resource.resourceId
-      val updated       = resource.copy(partialHash = Some(partialHash))
-      if oldResourceId != partialHash then
-        logger.info(s"Updating partialHash for $file from $oldResourceId to $partialHash")
-        db.deleteResource(id, resource.resourceId)
-          >> topic.publish(ResourceDeleted(oldResourceId))
-          >> db.insertResource(updated)
-          >> topic.publish(ResourceUpdated(updated))
-      else IO.unit
+      val updated = resource.copy(partialHash = Some(partialHash))
+      if resource.partialHash.contains(partialHash) then IO.unit
+      else
+        logger.info(s"Updating partialHash for $file to $partialHash")
+        db.upsertResource(updated) >> topic.publish(ResourceUpdated(updated))
   }.compile.drain
 
   override def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]] =

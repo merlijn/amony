@@ -128,7 +128,7 @@ object AdminRoutes extends RoutesModule, Logging:
         val result = buckets.get(bucketId).flatMap:
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Re-computing partialHashs of all resources in bucket '$bucketId'")
-            bucket.reComputePartialHashs() >> IO(logger.info(s"Finished re-computing partialHashs of all resources in bucket '$bucketId'"))
+            bucket.reComputePartialHashes() >> IO(logger.info(s"Finished re-computing partialHashs of all resources in bucket '$bucketId'"))
           case _                                  =>
             logger.info(s"Cannot re-compute partialHashs of bucket '$bucketId'")
             IO.unit
