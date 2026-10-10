@@ -20,6 +20,9 @@ Useful commands:
 - `sbt generateSpec` - Generates the OpenAPI specification and places it in the frontend folder.
 - `sbt exportDatabaseSchema` - Applies the database evolutions and exports the full schema at
   `backend/target/amony-schema.sql`
+- If you need to fetch the source code of a dependency, use the `fetchSource` sbt command.
+  Example: `sbt fetchSource org.typelevel:cats-core | grep sourceFetcher`
+  The command will output the location of the jar.
 
 ### /frontend
 
