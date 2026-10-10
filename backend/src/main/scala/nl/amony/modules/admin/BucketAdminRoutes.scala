@@ -99,7 +99,7 @@ object BucketAdminRoutes extends RoutesModule, Logging:
   type BucketAdminError = SecurityError | NotFoundError | BadRequestError | ConflictError
 
   private val errorOutput: EndpointOutput[BucketAdminError] =
-    ErrorResponse.of[SecurityError, NotFoundError, BadRequestError, ConflictError].output
+    ErrorResponse.of[SecurityError, NotFoundError, BadRequestError, ConflictError]
 
   val listBuckets =
     register(endpoint.name("adminListBuckets").tag("admin").description("Get the configuration of all buckets")
