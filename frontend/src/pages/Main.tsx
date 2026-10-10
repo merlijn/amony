@@ -129,7 +129,7 @@ const Main = () => {
                         showDuration: prefs.showDuration,
                         showResolution: prefs.showResolution,
                         aspectRatio: cssAspectRatio(
-                          prefs.gridAspectRatio ?? "16/9",
+                          prefs.gridAspectRatio ?? Constants.defaultPreferences.gridAspectRatio,
                           prefs.gridOrientation ?? "landscape"
                         )
                       }

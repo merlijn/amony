@@ -30,6 +30,7 @@ const ConfigMenu = () => {
     { value: '3/2', label: '3 / 2' },
     { value: '5/4', label: '5 / 4' },
     { value: '1/1', label: '1 / 1' },
+    { value: 'golden', label: 'Golden ratio' },
   ]
 
   const orientationOptions: Array<{value: GridOrientation, label: string}> = [
@@ -37,7 +38,7 @@ const ConfigMenu = () => {
     { value: 'portrait', label: 'Portrait' },
   ]
 
-  const gridAspectRatio = prefs.gridAspectRatio ?? '16/9'
+  const gridAspectRatio = prefs.gridAspectRatio ?? Constants.defaultPreferences.gridAspectRatio
   const gridOrientation = prefs.gridOrientation ?? 'landscape'
   const gridCellWidth = typeof prefs.gridCellWidth === 'number'
     ? prefs.gridCellWidth

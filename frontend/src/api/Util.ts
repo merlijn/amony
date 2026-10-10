@@ -140,6 +140,7 @@ const aspectRatioValues: Record<GridAspectRatio, number> = {
   '3/2': 1.5,
   '5/4': 5 / 4,
   '1/1': 1,
+  'golden': 1.61803,
 }
 
 export const cssAspectRatio = (ratio: GridAspectRatio, orientation: GridOrientation): string => {
