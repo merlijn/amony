@@ -4,7 +4,7 @@ import java.util.UUID
 import scala.concurrent.duration.*
 
 import cats.effect.unsafe.implicits.global
-import cats.effect.{IO, Ref}
+import cats.effect.{Deferred, IO, Ref, Resource}
 import cats.syntax.all.*
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
@@ -13,6 +13,7 @@ import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
 import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
+import skunk.Session
 
 import nl.amony.{App, DatabaseConfig}
 
@@ -31,10 +32,8 @@ class PostgresEventTopicSpec extends AnyWordSpecLike with TestContainerForAll wi
       )
     )
 
-  given meter: Meter[IO]      = Meter.noop[IO]
-  given tracer: Tracer[IO]    = Tracer.noop[IO]
-  given PersistenceCodec[Int] = PersistenceCodec.fromCirce
-  given EventTopicKey[Int]    = EventTopicKey(s"topic-${UUID.randomUUID()}")
+  given meter: Meter[IO]   = Meter.noop[IO]
+  given tracer: Tracer[IO] = Tracer.noop[IO]
 
   private def configForContainer(container: GenericContainer): DatabaseConfig =
     DatabaseConfig(
@@ -46,6 +45,11 @@ class PostgresEventTopicSpec extends AnyWordSpecLike with TestContainerForAll wi
       poolSize = 4
     )
 
+  private def topicFor(pool: Resource[IO, Session[IO]]): EventTopic[Int] =
+    given PersistenceCodec[Int] = PersistenceCodec.fromCirce
+    given EventTopicKey[Int]    = EventTopicKey(s"topic-${UUID.randomUUID()}")
+    PersistentEventBus.postgres(pool).getTopic[Int]
+
   private def await(ref: Ref[IO, List[Int]], size: Int): IO[List[Int]] =
     ref.get.flatMap(xs => if xs.size >= size then IO.pure(xs) else IO.sleep(50.millis) *> await(ref, size)).timeout(15.seconds)
 
@@ -53,7 +57,7 @@ class PostgresEventTopicSpec extends AnyWordSpecLike with TestContainerForAll wi
 
     "process published events in order" in withContainers { container =>
       App.makeDatabasePool(configForContainer(container)).use { pool =>
-        val topic = PersistentEventBus.postgres(pool).getTopic[Int]
+        val topic = topicFor(pool)
 
         Ref.of[IO, List[Int]](Nil).flatMap { processed =>
           topic.processAtLeastOnce("test")(n => processed.update(_ :+ n)).compile.drain.background.use { _ =>
@@ -65,7 +69,7 @@ class PostgresEventTopicSpec extends AnyWordSpecLike with TestContainerForAll wi
 
     "retry a failing event in place rather than skipping it" in withContainers { container =>
       App.makeDatabasePool(configForContainer(container)).use { pool =>
-        val topic = PersistentEventBus.postgres(pool).getTopic[Int]
+        val topic = topicFor(pool)
 
         for
           processed <- Ref.of[IO, List[Int]](Nil)
@@ -78,7 +82,27 @@ class PostgresEventTopicSpec extends AnyWordSpecLike with TestContainerForAll wi
                          List(1, 2).traverse_(topic.publish) >> await(processed, 2)
                        }
           result    <- processed.get
-        yield result
-      }.map(_ shouldBe List(1, 2)).unsafeRunSync()
+        yield result shouldBe List(1, 2)
+      }.unsafeRunSync()
+    }
+
+    "reprocess an event left unprocessed when the consumer stopped" in withContainers { container =>
+      App.makeDatabasePool(configForContainer(container)).use { pool =>
+        val topic = topicFor(pool)
+
+        for
+          claimed   <- Deferred[IO, Unit]
+          processed <- Ref.of[IO, List[Int]](Nil)
+          // The first consumer claims the event, then blocks forever, so it never marks it processed.
+          _         <- topic.processAtLeastOnce("first")(_ => claimed.complete(()) >> IO.never).compile.drain.background.use { _ =>
+                         topic.publish(1) >> claimed.get.timeout(15.seconds)
+                       }
+          // The second consumer requeues the abandoned event on startup and processes it.
+          _         <- topic.processAtLeastOnce("second")(n => processed.update(_ :+ n)).compile.drain.background.use { _ =>
+                         await(processed, 1)
+                       }
+          result    <- processed.get
+        yield result shouldBe List(1)
+      }.unsafeRunSync()
     }
   }
