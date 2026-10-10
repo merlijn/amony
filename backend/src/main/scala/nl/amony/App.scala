@@ -21,20 +21,14 @@ import sttp.client4.httpclient.cats.HttpClientCatsBackend
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 import sttp.tapir.server.tracing.otel4s.Otel4sTracing
 
-import nl.amony.lib.messagebus.EventTopic
 import nl.amony.lib.observability.Observability
 import nl.amony.lib.tapir.dsl.ServerEndpoints
 import nl.amony.modules.admin.{AdminRoutes, BucketAdminRoutes}
 import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.config.ConfigRoutes
-import nl.amony.modules.resources.api.{LocalDirectoryConfig, ResourceBucketConfig, ResourceEvent, ThumbnailFormats, ThumbnailResolutions}
-import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
-import nl.amony.modules.resources.http.{CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
-import nl.amony.modules.resources.local.LocalDirectoryBucket
-import nl.amony.modules.resources.{DatabaseBucketRegistry, ResourceConfig}
-import nl.amony.modules.search.http.SearchRoutes
-import nl.amony.modules.search.solr.SolrSearchService
+import nl.amony.modules.resources.ResourceModule
+import nl.amony.modules.search.SearchModule
 
 object App extends ResourceApp.Forever with Logging {
 
@@ -101,57 +95,26 @@ object App extends ResourceApp.Forever with Logging {
       for
         databasePool      <- makeDatabasePool(appConfig.database)
         httpClientBackend <- HttpClientCatsBackend.resource[IO]()
-        resourceEventTopic = EventTopic.transientEventTopic[ResourceEvent]()
-        searchService     <- SolrSearchService.resource(appConfig.search.solr)
-        _                  = resourceEventTopic.followTail(searchService.processEvent)
-        thumbResolutions   = ThumbnailResolutions(
-                               appConfig.resources.previews.allowedResolutions,
-                               appConfig.resources.previews.defaultResolution,
-                               appConfig.resources.previews.resolutionStepDown
-                             )
-        thumbFormats       = ThumbnailFormats(appConfig.resources.previews.supportedImageFormats, appConfig.resources.previews.formatOptions)
-        resourceDatabase   = ResourceDatabase(databasePool)
-        parallelFactor     = appConfig.resources.parallelFactor
-        bucketFactory      = (config: ResourceBucketConfig) =>
-                               config match
-                                 case localConfig: LocalDirectoryConfig =>
-                                   IO {
-                                     val bucket = LocalDirectoryBucket(
-                                       localConfig,
-                                       parallelFactor,
-                                       resourceDatabase,
-                                       resourceEventTopic,
-                                       thumbFormats,
-                                       thumbResolutions
-                                     )
-                                     (bucket, bucket.sync())
-                                   }
-        bucketRegistry    <- DatabaseBucketRegistry.resource(
-                               appConfig.resources.defaultBucket,
-                               BucketsDal(databasePool),
-                               searchService,
-                               bucketFactory
-                             )
+        searchModule      <- SearchModule.resource(appConfig.search)
+        resourceModule    <- ResourceModule.resource(appConfig.resources, databasePool, searchModule.searchService)
         authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
         apiRoutes          = {
           given ApiSecurity = authModule.apiSecurity
 
           val tapirEndpoints: ServerEndpoints[IO] =
             authModule.routes ++
-              CollectionRoutes.apply(resourceDatabase, bucketRegistry) ++
-              AdminRoutes.apply(searchService, bucketRegistry) ++
-              BucketAdminRoutes.apply(bucketRegistry) ++
-              SearchRoutes.apply(searchService, appConfig.search, bucketRegistry) ++
-              ResourceRoutes.apply(bucketRegistry) ++
+              resourceModule.routes ++
+              AdminRoutes.apply(searchModule.searchService, resourceModule.bucketRegistry) ++
+              BucketAdminRoutes.apply(resourceModule.bucketRegistry) ++
+              searchModule.routes(resourceModule.bucketRegistry) ++
               ConfigRoutes.apply(
-                thumbResolutions,
-                thumbFormats,
+                resourceModule.thumbResolutions,
+                resourceModule.thumbFormats,
                 appConfig.resources.previews.supportedVideoFormats,
                 appConfig.resources.previews.resolutionPickingStrategy
               )
 
-          ResourceContentRoutes.apply(bucketRegistry, thumbResolutions, thumbFormats) <+>
-            Http4sServerInterpreter[IO](serverOptions).toRoutes(tapirEndpoints)
+          resourceModule.contentRoutes <+> Http4sServerInterpreter[IO](serverOptions).toRoutes(tapirEndpoints)
         }
         _                 <- WebServer.run(appConfig.api, apiRoutes, authModule.apiSecurity)
       yield ()

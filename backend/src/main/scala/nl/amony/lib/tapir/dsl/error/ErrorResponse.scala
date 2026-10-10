@@ -75,24 +75,24 @@ object ErrorResponse:
   import ErrorVariants.*
 
   /** The errors of a single set `S`, using its given [[ErrorVariants]] instance. */
-  def of[S](using ev: ErrorVariants[S]): ErrorResponse[S] = ErrorResponse(ev.variants)
+  def of[S](using ev: ErrorVariants[S]): EndpointOutput[S] = ErrorResponse(ev.variants).output
 
   /**
    * The union of two to four error sets, composed on the spot from their [[ErrorVariants]] instances so
    * that no union instance has to be declared by hand. E.g. `ErrorResponse.of[SecurityError, NotFoundError, BadRequestError]`.
    */
-  def of[A, B](using ea: ErrorVariants[A], eb: ErrorVariants[B]): ErrorResponse[A | B] =
-    ErrorResponse(ea.or(eb).variants)
+  def of[A, B](using ea: ErrorVariants[A], eb: ErrorVariants[B]): EndpointOutput[A | B] =
+    ErrorResponse(ea.or(eb).variants).output
 
-  def of[A, B, C](using ea: ErrorVariants[A], eb: ErrorVariants[B], ec: ErrorVariants[C]): ErrorResponse[A | B | C] =
-    ErrorResponse(ea.or(eb).or(ec).variants)
+  def of[A, B, C](using ea: ErrorVariants[A], eb: ErrorVariants[B], ec: ErrorVariants[C]): EndpointOutput[A | B | C] =
+    ErrorResponse(ea.or(eb).or(ec).variants).output
 
-  def of[A, B, C, D](using ea: ErrorVariants[A], eb: ErrorVariants[B], ec: ErrorVariants[C], ed: ErrorVariants[D]): ErrorResponse[A | B | C | D] =
-    ErrorResponse(ea.or(eb).or(ec).or(ed).variants)
+  def of[A, B, C, D](using ea: ErrorVariants[A], eb: ErrorVariants[B], ec: ErrorVariants[C], ed: ErrorVariants[D]): EndpointOutput[A | B | C | D] =
+    ErrorResponse(ea.or(eb).or(ec).or(ed).variants).output
 
   /** The 401/403 set for an endpoint secured with [[SecurityError]]. */
-  val securityErrors: EndpointOutput[SecurityError] = ErrorResponse.of[SecurityError].output
+  val securityErrors: EndpointOutput[SecurityError] = ErrorResponse.of[SecurityError]
 
   /** The 401/403, 404 and 400 set shared by the resource, collection and search endpoints. */
   val standardErrorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError] =
-    ErrorResponse.of[SecurityError, NotFoundError, BadRequestError].output
+    ErrorResponse.of[SecurityError, NotFoundError, BadRequestError]

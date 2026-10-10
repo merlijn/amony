@@ -2,10 +2,13 @@ package nl.amony.modules.search.api
 
 import cats.effect.IO
 
-import nl.amony.modules.resources.api.{BucketId, ResourceInfo}
+import nl.amony.modules.resources.api.{BucketId, ResourceEvent, ResourceInfo}
 
 trait SearchService:
   def deleteBucket(bucketId: BucketId): IO[Unit]
+
+  /** Applies a resource event to the index; used by the message bus listener. */
+  def processEvent(event: ResourceEvent): Unit
   def searchMedia(query: Query): IO[SearchResult]
 
   /** All resources matching `query`, transparently paging through the result set. */

@@ -28,10 +28,10 @@ object AuthRoutes extends RoutesModule, Logging:
   val errorOutput: EndpointOutput[SecurityError] = ErrorResponse.securityErrors
 
   // Login can only 404 (unknown provider); the callback additionally carries 400/401/403/502.
-  val loginErrorOutput: EndpointOutput[NotFoundError] = ErrorResponse.of[NotFoundError].output
+  val loginErrorOutput: EndpointOutput[NotFoundError] = ErrorResponse.of[NotFoundError]
 
   val callbackErrorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError | BadGatewayError] =
-    ErrorResponse.of[SecurityError, NotFoundError, BadRequestError, BadGatewayError].output
+    ErrorResponse.of[SecurityError, NotFoundError, BadRequestError, BadGatewayError]
 
   val sessionEndpoint: Endpoint[SecurityInput, Option[String], SecurityError, (AuthToken, AuthCookies), Any] =
     register(endpoint

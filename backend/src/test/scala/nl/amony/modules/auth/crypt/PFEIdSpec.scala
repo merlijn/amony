@@ -9,7 +9,7 @@ class PFEIdSpec extends AnyWordSpecLike {
   val key   = Random.nextBytes(32)
   val tweak = "tweak".getBytes("UTF-8")
 
-  "FPE" should {
+  "FPEId" should {
     "encrypt and decrypt values correctly" in {
       val fpe = new FPEId(key, tweak, 32)
 

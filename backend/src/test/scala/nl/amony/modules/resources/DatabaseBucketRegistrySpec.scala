@@ -67,7 +67,7 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
   private def resource(bucketId: BucketId): ResourceInfo =
     ResourceInfo(bucketId = bucketId, resourceId = ResourceId(UUID.randomUUID().toString), userId = UserId("admin"), path = "file.mp4", size = 1L)
 
-  "The bucket registry" should {
+  "DatabaseBucketRegistry" should {
     "not insert the default bucket when its directory does not exist" in {
       withContainers { container =>
         val dbConfig    = DatabaseConfig(container.containerIpAddress, container.mappedPort(5432), "test", "test", 3, "test")

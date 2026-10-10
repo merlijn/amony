@@ -245,7 +245,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
       solr.add(collectionName, solrInputDocuments, commitWithinMs).getStatus
     } catch { case e: Exception => logger.error("Exception while trying to index documents to solr", e) }
 
-  def processEvent(event: ResourceEvent): Unit = {
+  override def processEvent(event: ResourceEvent): Unit = {
 
     logger.debug(s"Processing event: $event")
 

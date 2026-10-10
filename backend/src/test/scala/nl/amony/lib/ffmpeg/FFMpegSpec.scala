@@ -1,14 +1,14 @@
 package nl.amony.lib.ffmpeg
 
 import cats.effect.IO
-import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.wordspec.AnyWordSpecLike
 import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 import nl.amony.lib.process.ffmpeg.FFMpeg
 
-class FFMpegSpec extends AnyFlatSpecLike with Logging {
+class FFMpegSpec extends AnyWordSpecLike with Logging {
 
   val testStreams = List(
     "Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709), 1920x1080, 5594 kb/s, 29.97 fps, 29.97 tbr, 30k tbn, 60k tbc (default)",
@@ -31,23 +31,24 @@ class FFMpegSpec extends AnyFlatSpecLike with Logging {
 
   val ffmpeg = new FFMpeg(using Meter.noop[IO], Tracer.noop[IO])
 
-  it should "create a sprite" in {
+  "FFMpeg" should {
 
-    val times = Seq(
-      10 * 1000,
-      60 * 1000,
-      10 * 60 * 1000,
-      30 * 60 * 1000,
-      60 * 60 * 1000,
-      120 * 60 * 1000
-    )
+    "create a sprite" in {
+      val times = Seq(
+        10 * 1000,
+        60 * 1000,
+        10 * 60 * 1000,
+        30 * 60 * 1000,
+        60 * 60 * 1000,
+        120 * 60 * 1000
+      )
 
-    times.foreach {
-      t =>
+      times.foreach {
+        t =>
+          val frames = ffmpeg.calculateNrOfFrames(t)
 
-        val frames = ffmpeg.calculateNrOfFrames(t)
-
-        println(s"${t / 1000} -> $frames")
+          println(s"${t / 1000} -> $frames")
+      }
     }
   }
 }
