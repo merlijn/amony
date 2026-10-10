@@ -12,7 +12,7 @@ import nl.amony.modules.resources.api.BucketRegistry
 import nl.amony.modules.resources.api.{BucketId, ResourceInfo}
 import nl.amony.modules.resources.http.{ResourceDto, toDto}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
-import nl.amony.modules.search.api.{Query, SearchService}
+import nl.amony.modules.search.api.{Query, SearchIndexer, SearchService}
 
 object AdminRoutes extends RoutesModule, Logging:
 
@@ -80,7 +80,7 @@ object AdminRoutes extends RoutesModule, Logging:
       .securityIn(securityInput)
       .errorOut(errorOutput))
 
-  def apply(searchService: SearchService, buckets: BucketRegistry)(
+  def apply(searchService: SearchService, indexer: SearchIndexer, buckets: BucketRegistry)(
     using apiSecurity: ApiSecurity
   ): ServerEndpoints[IO] = {
 
@@ -92,9 +92,9 @@ object AdminRoutes extends RoutesModule, Logging:
             logger.info(s"Re-indexing all resources in bucket '$bucketId'")
 
             for
-              _ <- searchService.deleteBucket(bucketId)
-              _ <- searchService.indexAll(bucket.getAllResources)
-              _ <- searchService.forceCommit()
+              _ <- indexer.deleteBucket(bucketId)
+              _ <- indexer.indexAll(bucket.getAllResources)
+              _ <- indexer.forceCommit()
               _ <- IO(logger.info(s"Re-indexed all resources in bucket '$bucketId'"))
             yield ()
 

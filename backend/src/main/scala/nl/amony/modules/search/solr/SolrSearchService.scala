@@ -3,108 +3,27 @@ package nl.amony.modules.search.solr
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
-import cats.effect.{IO, Resource}
-import fs2.Chunk
+import cats.effect.IO
 import org.apache.solr.client.solrj.util.ClientUtils
 import org.apache.solr.client.solrj.{SolrClient, SolrQuery}
+import org.apache.solr.common.SolrDocument
 import org.apache.solr.common.params.{CommonParams, FacetParams, ModifiableSolrParams}
-import org.apache.solr.common.{SolrDocument, SolrInputDocument}
-import scribe.Logging
 
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.search.api.SortDirection.Desc
 import nl.amony.modules.search.api.SortField.*
 import nl.amony.modules.search.api.{Query, SearchResult, SearchService, SortOption}
+import nl.amony.modules.search.solr.SolrSchema.*
 import nl.amony.modules.search.solr.SolrSearchService.*
 
 object SolrSearchService {
-
-  val collectionName    = "resources"
-  val defaultSort       = SortOption(DateAdded, Desc)
-  val tagsLimit         = 12.toString
-  val solrTarGzResource = "/solr.tar.gz"
-
-  object FieldNames {
-    val id                 = "id"
-    val bucketId           = "bucket_id_s"
-    val partialHash        = "partial_hash_s"
-    val path               = "path_text_ci"
-    val filesize           = "filesize_l"
-    val tags               = "tags_ss"
-    val thumbnailTimestamp = "thumbnailtimestamp_i"
-    val title              = "title_s"
-    val videoCodec         = "video_codec_s"
-    val description        = "description_s"
-    val metaToolName       = "meta_tool_name_s"
-    val timeAdded          = "time_added_l"
-    val lastModified       = "time_last_modified_l"
-    val contentType        = "content_type_s"
-    val width              = "width_i"
-    val height             = "height_i"
-    val duration           = "duration_i"
-    val fps                = "fps_f"
-    val resourceType       = "resource_type_s"
-
-    // TODO: the Solr schema has no boolean dynamic field, so streamability is stored as a string
-    //  ("true"/"false") and an absent field means unknown. Revisit if a *_b dynamic field is added.
-    val streamable = "streamable_s"
-    val userId     = "user_id_s"
-  }
-
-  def resource(config: SolrConfig): Resource[IO, SolrSearchService] =
-    SolrResource.make(config).map(solr => new SolrSearchService(config, solr))
+  val defaultSort = SortOption(DateAdded, Desc)
+  val tagsLimit   = 12.toString
 }
 
-class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchService with Logging {
-
-  def loggingFailureIO[T](f: => T): IO[T] =
-    IO.blocking(f).handleErrorWith {
-      case e: Exception => IO(logger.error("Error while executing solr query", e)) >> IO.raiseError(e)
-    }
-
-  private def toSolrDocument(resource: ResourceInfo): SolrInputDocument = {
-
-    val solrInputDocument: SolrInputDocument = new SolrInputDocument()
-
-    solrInputDocument.addField(FieldNames.id, resource.resourceId)
-    solrInputDocument.addField(FieldNames.bucketId, resource.bucketId)
-    solrInputDocument.addField(FieldNames.userId, resource.userId)
-    solrInputDocument.addField(FieldNames.path, resource.path)
-    solrInputDocument.addField(FieldNames.filesize, resource.size)
-
-    val maybeTags = Option.when(resource.tags.nonEmpty)(resource.tags)
-    maybeTags.foreach(tags => solrInputDocument.addField(FieldNames.tags, tags.toList.asJava))
-
-    resource.thumbnailTimestamp.foreach(timestamp => solrInputDocument.addField(FieldNames.thumbnailTimestamp, timestamp))
-    resource.title.foreach(title => solrInputDocument.addField(FieldNames.title, title))
-    resource.description.foreach(description => solrInputDocument.addField(FieldNames.description, description))
-    resource.timeAdded.foreach(created => solrInputDocument.addField(FieldNames.timeAdded, created))
-    resource.timeLastModified.foreach(lastModified => solrInputDocument.addField(FieldNames.lastModified, lastModified))
-    resource.contentType.foreach(contentType => solrInputDocument.addField(FieldNames.contentType, contentType))
-    resource.streamable.foreach(streamable => solrInputDocument.addField(FieldNames.streamable, if streamable then "true" else "false"))
-
-    resource.contentMeta.foreach(meta => solrInputDocument.addField(FieldNames.metaToolName, meta.toolName))
-
-    resource.basicContentProperties match {
-      case Some(ImageProperties(w, h, _))                    =>
-        solrInputDocument.addField(FieldNames.width, w)
-        solrInputDocument.addField(FieldNames.height, h)
-        solrInputDocument.addField(FieldNames.resourceType, "image")
-      case Some(VideoProperties(w, h, fps, duration, codec)) =>
-        solrInputDocument.addField(FieldNames.width, w)
-        solrInputDocument.addField(FieldNames.height, h)
-        solrInputDocument.addField(FieldNames.duration, duration)
-        codec.foreach(codec => solrInputDocument.addField(FieldNames.videoCodec, codec))
-        solrInputDocument.addField(FieldNames.fps, fps)
-        solrInputDocument.addField(FieldNames.resourceType, "video")
-      case _                                                 =>
-    }
-
-    logger.debug(s"Indexing document: $solrInputDocument")
-
-    solrInputDocument
-  }
+/** Queries the Solr collection. */
+class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchService with SolrLogging {
 
   private def toResource(document: SolrDocument): ResourceInfo = {
 
@@ -230,50 +149,6 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
 
   def totalDocuments(bucketId: BucketId): Long = solr.query(collectionName, new SolrQuery(s"bucket_id_s:$bucketId")).getResults.getNumFound
 
-  private def insert(resource: ResourceInfo, commitWithinMs: Int = config.commitWithinMillis) =
-    try {
-      logger.debug(s"Indexing media: ${resource.path}")
-      val solrInputDocument = toSolrDocument(resource)
-      solr.add(collectionName, solrInputDocument, commitWithinMs).getStatus
-    } catch { case e: Exception => logger.error("Exception while trying to index document to solr", e) }
-
-  private def insertAll(resources: Chunk[ResourceInfo], commitWithinMs: Int = config.commitWithinMillis) =
-    try {
-      logger.debug(s"Indexing batch of media, size: ${resources.size}")
-      val solrInputDocuments = resources.map(toSolrDocument).asJava
-      solr.add(collectionName, solrInputDocuments, commitWithinMs).getStatus
-    } catch { case e: Exception => logger.error("Exception while trying to index documents to solr", e) }
-
-  override def processEvent(event: ResourceEvent): IO[Unit] =
-    logger.debug(s"Processing event: $event")
-
-    def atomicUpdate(resourceId: ResourceId, field: String, value: Any): Unit =
-      val solrDocument = new SolrInputDocument()
-      solrDocument.addField(FieldNames.id, resourceId)
-      solrDocument.addField(field, Map("set" -> value).asJava)
-      solr.add(collectionName, solrDocument, config.commitWithinMillis).getStatus
-
-    def insertDocument(resource: ResourceInfo): Unit =
-      logger.debug(s"Indexing media: ${resource.path}")
-      solr.add(collectionName, toSolrDocument(resource), config.commitWithinMillis).getStatus
-
-    event match
-      case ResourceAdded(resource)                       => loggingFailureIO(insertDocument(resource))
-      case ResourceUpdated(resource)                     => loggingFailureIO(insertDocument(resource))
-      case ResourceMoved(resourceId, _, newPath)         => loggingFailureIO(atomicUpdate(resourceId, FieldNames.path, newPath))
-      case ResourceFileMetaChanged(id, lastModifiedTime) => loggingFailureIO(atomicUpdate(id, FieldNames.lastModified, lastModifiedTime))
-      case ResourceDeleted(resourceId)                   => loggingFailureIO(solr.deleteById(collectionName, resourceId, config.commitWithinMillis).getStatus)
-      case BucketDeleted(bucketId)                       => deleteBucket(bucketId)
-
-  override def indexAll(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] =
-    resources
-      .chunkN(100)
-      .evalMap(resources => IO.blocking(insertAll(resources, commitWithinMs = 60000)))
-      .compile.drain
-      .handleErrorWith(t => IO(logger.error("Error while re-indexing", t)) >> IO.raiseError(t))
-
-  override def index(resource: ResourceInfo): IO[Unit] = IO(insert(resource))
-
   override def searchMedia(query: Query): IO[SearchResult] =
 
     loggingFailureIO {
@@ -301,12 +176,6 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
       SearchResult(offset = offset.toInt, total = total.toInt, results = results.asScala.map(toResource).toList, tags = tagsWithFrequency)
     }
 
-  override def forceCommit(): IO[Unit] =
-    loggingFailureIO {
-      logger.info("Forcing commit")
-      solr.commit(collectionName)
-    }
-
   override def searchAll(query: Query): fs2.Stream[IO, ResourceInfo] = {
     val pageSize = math.max(1, query.n)
 
@@ -319,11 +188,4 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
 
     page(query.offset.getOrElse(0))
   }
-
-  override def deleteBucket(bucketId: BucketId): IO[Unit] =
-    loggingFailureIO {
-      logger.info(s"Deleting bucket: $bucketId")
-      solr.deleteByQuery(collectionName, s"${FieldNames.bucketId}:${ClientUtils.escapeQueryChars(bucketId)}", config.commitWithinMillis)
-      solr.commit(collectionName)
-    }
 }

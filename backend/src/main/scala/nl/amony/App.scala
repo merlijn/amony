@@ -103,7 +103,7 @@ object App extends ResourceApp.Forever with Logging {
           given EventTopicKey[ResourceEvent]    = EventTopicKey("resource-events")
           PersistentEventBus.postgres(databasePool).getTopic[ResourceEvent]
         }
-        _                 <- eventTopic.processAtLeastOnce("solr-indexer")(searchModule.searchService.processEvent).compile.drain.background
+        _                 <- eventTopic.processAtLeastOnce("solr-indexer")(searchModule.indexer.processEvent).compile.drain.background
         resourceModule    <- ResourceModule.resource(appConfig.resources, databasePool, eventTopic)
         authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
         apiRoutes          = {
@@ -112,7 +112,7 @@ object App extends ResourceApp.Forever with Logging {
           val tapirEndpoints: ServerEndpoints[IO] =
             authModule.routes ++
               resourceModule.routes ++
-              AdminRoutes.apply(searchModule.searchService, resourceModule.bucketRegistry) ++
+              AdminRoutes.apply(searchModule.searchService, searchModule.indexer, resourceModule.bucketRegistry) ++
               BucketAdminRoutes.apply(resourceModule.bucketRegistry) ++
               searchModule.routes(resourceModule.bucketRegistry) ++
               ConfigRoutes.apply(
