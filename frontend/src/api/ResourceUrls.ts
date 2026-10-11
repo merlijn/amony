@@ -9,7 +9,7 @@ const dimensionToken = (dimension: string): string => dimension === "height" ? "
 
 /** URL of a derived thumbnail pinning a dimension ("width" | "height"), a size in pixels and a format. */
 export const resourceThumbnailUrl = (resource: ResourceDto, dimension: string, size: number, format: string): string =>
-  `/api/resources/${resource.bucketId}/${resource.resourceId}/thumb_${resource.thumbnailTimestamp ?? 0}_${dimensionToken(dimension)}_${size}.${format}`;
+  `/api/resources/${resource.bucketId}/${resource.resourceId}/thumb_${resource.contentVersion}_${resource.thumbnailTimestamp ?? 0}_${dimensionToken(dimension)}_${size}.${format}`;
 
 type PickingStrategy = "round-up" | "round-down" | "round-nearest";
 
@@ -70,5 +70,5 @@ export const clipUrl = (clip: ClipDto, config: AppConfig, boxWidthCss: number): 
   const dimension = dimensionToken(operativeDimension(config));
   const size      = resolutionFor(config, boxWidthCss);
 
-  return `/api/resources/${clip.bucketId}/${clip.resourceId}/clip_${clip.start}_${clip.end}_${dimension}_${size}.${config.videoFormat}`;
+  return `/api/resources/${clip.bucketId}/${clip.resourceId}/clip_${clip.contentVersion}_${clip.start}_${clip.end}_${dimension}_${size}.${config.videoFormat}`;
 };

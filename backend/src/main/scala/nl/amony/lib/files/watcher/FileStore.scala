@@ -89,13 +89,16 @@ class InMemoryFileStore extends FileStore:
 
   def insertAllSync(files: Iterable[FileInfo]): Unit = files.foreach(insertSync)
 
+  private def updateForMetaChange(fileInfo: FileInfo): Unit = {
+    byPath.put(fileInfo.path, fileInfo)
+    val updatedPartialHashBucket = getPartialHashBucket(fileInfo.partialHash).filterNot(_.path == fileInfo.path) + fileInfo
+    byPartialHashIndex.put(fileInfo.partialHash, updatedPartialHashBucket)
+    addToFileKeyIndex(fileInfo, fileInfo.path)
+  }
+
   def applyEventSync(e: FileEvent): Unit = e match
-    case FileMetaChanged(fileInfo) => synchronized {
-        byPath.put(fileInfo.path, fileInfo)
-        val updatedPartialHashBucket = getPartialHashBucket(fileInfo.partialHash).filterNot(_.path == fileInfo.path) + fileInfo
-        byPartialHashIndex.put(fileInfo.partialHash, updatedPartialHashBucket)
-        addToFileKeyIndex(fileInfo, fileInfo.path)
-      }
+    case FileMetaChanged(fileInfo)    => synchronized(updateForMetaChange(fileInfo))
+    case FileContentChanged(fileInfo) => synchronized(updateForMetaChange(fileInfo))
 
     case FileAdded(fileInfo)          => synchronized {
         byPath.put(fileInfo.path, fileInfo)

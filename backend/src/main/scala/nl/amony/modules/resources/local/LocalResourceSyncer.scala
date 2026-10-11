@@ -3,6 +3,8 @@ package nl.amony.modules.resources.local
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
+import scala.jdk.CollectionConverters.*
+import scala.util.Using
 
 import cats.effect.IO
 import fs2.Stream
@@ -11,7 +13,18 @@ import skunk.Session
 
 import nl.amony.lib.files.watcher.*
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{BucketId, ResourceAdded, ResourceDeleted, ResourceEvent, ResourceFileMetaChanged, ResourceInfo, ResourceMoved}
+import nl.amony.modules.resources.api.{
+  BucketId,
+  ResourceAdded,
+  ResourceDeleted,
+  ResourceEvent,
+  ResourceFileMetaChanged,
+  ResourceId,
+  ResourceInfo,
+  ResourceMoved,
+  ResourceUpdated,
+  VideoProperties
+}
 
 /**
  * Functionality to synchronize a local directory with the database state.
@@ -29,13 +42,14 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
     def withRequireResource(partialHash: String, path: Path)(fn: ResourceInfo => ResourceEvent): IO[Option[ResourceEvent]] =
       db.getResourceByPartialHash(bucketId, partialHash)
         .map(_.find(_.path == relativizePath(path))).flatMap:
-          case None    =>
-            IO(logger.warn(s"Dropping file event, no such file in database: $path ($partialHash)")).as(None)
+          case None    => IO(logger.warn(s"Dropping file event, no such file in database: $path ($partialHash)")).as(None)
           case Some(r) => IO.pure(Some(fn(r)))
 
     fileEvent match {
 
       case FileMetaChanged(f) => withRequireResource(f.partialHash, f.path)(r => ResourceFileMetaChanged(r.resourceId, f.modifiedTime, f.fileKey))
+
+      case FileContentChanged(f) => refreshResource(f).map(_.map(ResourceUpdated(_)))
 
       case FileDeleted(f) => withRequireResource(f.partialHash, f.path)(r => ResourceDeleted(r.resourceId))
 
@@ -72,6 +86,55 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
         )
       }
     }
+
+  /**
+   * Refreshes the stored resource for an in-place content change, keeping its identity (and user metadata).
+   * Returns None when the database row is gone, in which case the event is dropped.
+   */
+  private def refreshResource(f: FileInfo): IO[Option[ResourceInfo]] =
+    db.getResourceByPath(bucketId, relativizePath(f.path)).flatMap {
+      case None           =>
+        IO(logger.warn(s"Dropping content-changed event, no such file in database: ${f.path}")).as(None)
+      case Some(existing) =>
+        meta.apply(f.path).recover {
+          case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None
+        }.flatMap { maybeMeta =>
+          val contentType = maybeMeta.map(_.contentType).orElse(existing.contentType)
+          streamableOf(f.path, contentType).map { streamable =>
+            val durationInMillis   = maybeMeta.flatMap { case (_, meta) =>
+              meta.properties match
+                case video: VideoProperties => Some(video.durationInMillis)
+                case _                      => None
+            }
+            // a pinned thumbnail timestamp beyond the new duration would yield broken previews
+            val thumbnailTimestamp = existing.thumbnailTimestamp.filter(ts => durationInMillis.forall(ts <= _))
+
+            Some(existing.copy(
+              partialHash        = Some(f.partialHash),
+              fileKey            = f.fileKey.orElse(existing.fileKey),
+              size               = f.size,
+              contentType        = contentType,
+              contentMeta        = maybeMeta.map(_.meta).orElse(existing.contentMeta),
+              timeLastModified   = Some(f.modifiedTime),
+              thumbnailTimestamp = thumbnailTimestamp,
+              streamable         = streamable.orElse(existing.streamable)
+            ))
+          }
+        }
+    }
+
+  /** Deletes cached previews derived from a resource, so changed content is never served stale. */
+  private def deleteDerivedFiles(resourceId: ResourceId): IO[Unit] = IO.blocking {
+    if Files.isDirectory(config.cachePath) then
+      Using(Files.list(config.cachePath)) { stream =>
+        stream.iterator().asScala
+          .filter { path =>
+            val name = path.getFileName.toString
+            name.startsWith(resourceId.toString + "_") || name.startsWith(resourceId.toString + "-")
+          }
+          .foreach(path => Files.deleteIfExists(path))
+      }
+  }.void.handleErrorWith(e => IO(logger.warn(s"Failed to delete derived files for $resourceId", e)))
 
   private def toFileStore(): IO[FileStore] =
     db.getAll(bucketId).map { resources =>
@@ -159,6 +222,8 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
           db.upsertResourceWith(s, resource.copy(timeLastModified = Some(lastModifiedTime), fileKey = fileKey.orElse(resource.fileKey)))
         case None           => IO.unit
       }
+    case ResourceUpdated(resource)                              =>
+      deleteDerivedFiles(resource.resourceId) >> db.upsertResourceWith(s, resource)
     case _                                                      => IO.unit
   }
 
@@ -168,8 +233,10 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       generatePreviewsOnAdd(event)
 
   private def generatePreviewsOnAdd(event: ResourceEvent): IO[Unit] = event match
-    case ResourceAdded(resource) if config.generatePreviewsOnAdd => generatePreviews(resource)
-    case _                                                       => IO.unit
+    case ResourceAdded(resource) if config.generatePreviewsOnAdd   => generatePreviews(resource)
+    // content changes delete their previews first, so warming only regenerates what is actually missing
+    case ResourceUpdated(resource) if config.generatePreviewsOnAdd => generatePreviews(resource)
+    case _                                                         => IO.unit
 
   private def startSync(interrupter: SignallingRef[IO, Boolean]): IO[Unit] = {
     def pollWithRetryOnException(): fs2.Stream[IO, ResourceEvent] =

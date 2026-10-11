@@ -20,16 +20,17 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
   type OperationKey = (resourceId: ResourceId, operation: ResourceOperation)
 
   extension (operation: ResourceOperation)
-    def outputFile(resourceId: ResourceId): Path = {
+    def outputFile(resourceId: ResourceId, contentVersion: String): Path = {
 
       // Encode the pinned dimension so width- and height-based outputs never collide in the cache.
       def scaleSuffix(width: Option[Int], height: Option[Int]): String =
         width.map(w => s"w$w").orElse(height.map(h => s"h$h")).getOrElse("orig")
 
       val fileName = operation match
-        case VideoFragment(width, height, start, end)         => s"${resourceId}_$start-${end}_${scaleSuffix(width, height)}.mp4"
-        case VideoThumbnail(width, height, timestamp, format) => s"${resourceId}_${timestamp}_${scaleSuffix(width, height)}.${format.extension}"
-        case ImageThumbnail(width, height, format)            => s"${resourceId}_${scaleSuffix(width, height)}.${format.extension}"
+        case VideoFragment(width, height, start, end)         => s"${resourceId}_${contentVersion}_$start-${end}_${scaleSuffix(width, height)}.mp4"
+        case VideoThumbnail(width, height, timestamp, format) =>
+          s"${resourceId}_${contentVersion}_${timestamp}_${scaleSuffix(width, height)}.${format.extension}"
+        case ImageThumbnail(width, height, format)            => s"${resourceId}_${contentVersion}_${scaleSuffix(width, height)}.${format.extension}"
 
       config.cachePath.resolve(fileName)
     }
@@ -61,7 +62,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
   private[local] def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]] = {
 
-    val outputFile = operation.outputFile(info.resourceId)
+    val outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
     val eTag       = previewETag(info, outputFile)
     val key        = (resourceId = info.resourceId, operation = operation)
 
@@ -89,7 +90,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
     operation.validate(info) match
       case Left(error) => IO.raiseError(new Exception(error))
       case Right(_)    =>
-        val outputFile = operation.outputFile(info.resourceId)
+        val outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
         IO.blocking(Files.createDirectories(outputFile.getParent)) >> run(info, inputFile, outputFile, operation).memoize.flatten
 
   private def run(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: ResourceOperation): IO[Path] = operation match

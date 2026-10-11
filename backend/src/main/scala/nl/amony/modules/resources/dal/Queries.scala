@@ -154,6 +154,13 @@ object Queries extends Logging {
         GROUP BY (${ResourceRow.columns})
       """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
 
+    val getByPathJoined: Query[(String, String), (ResourceRow, Option[Arr[String]])] =
+      sql"""
+        $joinTables
+        WHERE r.bucket_id = $varchar AND r.fs_path = $varchar
+        GROUP BY (${ResourceRow.columns})
+      """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
+
     val allJoined: Query[String, (ResourceRow, Option[Arr[String]])] =
       sql"""
        $joinTables

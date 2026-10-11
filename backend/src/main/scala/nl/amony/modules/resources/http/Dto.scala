@@ -55,6 +55,7 @@ case class ResourceDto(
   contentType: String,
   contentMeta: ResourceMetaDto,
   thumbnailTimestamp: Option[Int],
+  contentVersion: String,
   @customise(required)
   clips: List[ClipDto],
   fullMeta: Option[Json] = None
@@ -83,6 +84,7 @@ case class ResourceDto(
 case class ClipDto(
   bucketId: String,
   resourceId: String,
+  contentVersion: String,
   start: Long,
   end: Long,
   description: Option[String],
@@ -133,12 +135,13 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     case Some(_: VideoProperties) =>
       val (start, end) = VideoFragment.previewRange(resource.thumbnailTimestamp, durationInMillis)
       Some(ClipDto(
-        bucketId    = resource.bucketId,
-        resourceId  = resource.resourceId,
-        start       = start,
-        end         = end,
-        description = None,
-        tags        = List.empty
+        bucketId       = resource.bucketId,
+        resourceId     = resource.resourceId,
+        contentVersion = ResourceOperations.contentVersion(resource),
+        start          = start,
+        end            = end,
+        description    = None,
+        tags           = List.empty
       ))
     case _                        =>
       None
@@ -164,6 +167,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     contentType        = resource.contentType.getOrElse("application/octet-stream"),
     contentMeta        = contentMeta,
     thumbnailTimestamp = Some(thumbnailTimestamp),
+    contentVersion     = ResourceOperations.contentVersion(resource),
     clips              = thumbnailClip.toList,
     fullMeta           = fullMeta
   )

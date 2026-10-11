@@ -1,5 +1,10 @@
 package nl.amony.modules.resources.api
 
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+
+import nl.amony.lib.hash.Base32
+
 sealed trait ResourceOperation {
   def contentType: String
   def validate(info: ResourceInfo): Either[String, Unit]
@@ -85,6 +90,26 @@ object ResourceOperations:
    * and browser validators are invalidated.
    */
   val PreviewRecipeVersion = 1
+
+  /**
+   * Version token for a resource's content, derived from the fields that change when the bytes change.
+   * Used in thumbnail/clip URLs and derived file names so any content change yields fresh URLs instead of
+   * stale cached responses. Pure renames keep the same version.
+   */
+  def contentVersion(info: ResourceInfo): String = {
+    val digest                    = MessageDigest.getInstance("SHA-1")
+    def feed(value: String): Unit = {
+      digest.update(value.getBytes(StandardCharsets.UTF_8))
+      digest.update(0.toByte)
+    }
+
+    feed(info.partialHash.getOrElse(""))
+    feed(info.timeLastModified.map(_.toString).getOrElse(""))
+    feed(info.fileKey.getOrElse(""))
+    feed(info.size.toString)
+
+    Base32.encode(digest.digest()).substring(0, 24)
+  }
 
   /** The resource's native pixel dimensions (0, 0 when unknown). */
   def sourceDimensions(resource: ResourceInfo): (Int, Int) = resource.basicContentProperties match

@@ -67,8 +67,14 @@ object LocalDirectoryScanner extends Logging {
       val modifiedTime = attrs.lastModifiedTime().toMillis
       val fileKey      = Option(attrs.fileKey()).map(_.toString)
 
+      // same path with same size and modifiedTime normally means unchanged content,
+      // but a changed fileKey (e.g. replaced via cp -p) proves otherwise and forces a rehash
+      def keysCompatible(cached: FileInfo): Boolean = (cached.fileKey, fileKey) match
+        case (Some(previousKey), Some(currentKey)) => previousKey == currentKey
+        case _                                     => true
+
       def cachedByPath: IO[Option[String]] =
-        previous.getByPath(path).map(_.filter(f => f.size == size && f.modifiedTime == modifiedTime).map(_.partialHash))
+        previous.getByPath(path).map(_.filter(f => f.size == size && f.modifiedTime == modifiedTime && keysCompatible(f)).map(_.partialHash))
 
       // renames keep size, modifiedTime and fileKey, so a previous entry with the same triple lets us skip hashing
       def cachedByFileKey: IO[Option[String]] = fileKey match
@@ -87,32 +93,52 @@ object LocalDirectoryScanner extends Logging {
   }
 
   /**
-   * Compares two file stores and emits events for added, deleted and moved files.
-   * 
+   * Compares two file stores and emits events for added, deleted, moved and content-changed files.
+   *
    * Delete events are guaranteed to be emitted before move or added events.
-   * 
+   *
+   * Content changes are detected first by path: a same-path pair with equal fileKeys but different
+   * content fields means the file was edited in place. Anything else falls through to the
+   * hash-bucket matching below.
+   *
    * @param previous
    * @param current
    * @return
    */
   def compareFileStores(previous: FileStore, current: FileStore): Stream[IO, FileEvent] = {
 
+    def sameFileKey(a: FileInfo, b: FileInfo): Boolean = (a.fileKey, b.fileKey) match
+      case (Some(x), Some(y)) => x == y
+      case _                  => false
+
     def maybeMetaChanged(file: FileInfo, previous: FileInfo): Option[FileEvent] = if file == previous then None else Some(FileMetaChanged(file))
 
-    val removed: Stream[IO, FileEvent] = previous.getAll().flatMap { file =>
-      Stream.force(current.getByPartialHash(file.partialHash).map {
-        case Nil => Stream.emit(FileDeleted(file))
-        case _   => Stream.empty
-      })
-    }
+    def samePathPass(): IO[(Set[Path], List[FileEvent])] =
+      current.getAll().evalMap { file =>
+        previous.getByPath(file.path).map {
+          case Some(prev) if file == prev            => (Some(file.path), None)
+          case Some(prev) if sameFileKey(file, prev) => (Some(file.path), Some(FileContentChanged(file)))
+          case _                                     => (None, None)
+        }
+      }.compile.toList.map { list =>
+        (list.collect { case (Some(path), _) => path }.toSet, list.collect { case (_, Some(event)) => event })
+      }
 
-    val movedOrAdded: Stream[IO, FileEvent] = current.getAllByPartialHash().foldFlatMap(Seq.empty[FileEvent]) {
+    def removed(consumed: Set[Path]): Stream[IO, FileEvent] =
+      previous.getAll().filter(file => !consumed(file.path)).flatMap { file =>
+        Stream.force(current.getByPartialHash(file.partialHash).map {
+          case Nil => Stream.emit(FileDeleted(file))
+          case _   => Stream.empty
+        })
+      }
+
+    def movedOrAdded(consumed: Set[Path]): Stream[IO, FileEvent] = current.getAllByPartialHash().foldFlatMap(Seq.empty[FileEvent]) {
       case (carriedEvents, (partialHash, files)) =>
 
         val events: IO[Stream[IO, FileEvent]] = previous.getByPartialHash(partialHash).map { prev =>
 
-          val filesA = prev.toSeq
-          val filesB = files.toSeq
+          val filesA = prev.filterNot(f => consumed(f.path)).toSeq
+          val filesB = files.filterNot(f => consumed(f.path)).toSeq
 
           val notMoved = Stream.emits(filesB.flatMap(b => filesA.find(_.path == b.path).map(_ -> b)).flatMap((a, b) => maybeMetaChanged(b, a)))
 
@@ -132,7 +158,9 @@ object LocalDirectoryScanner extends Logging {
         (carriedEvents, Stream.force(events))
     }
 
-    removed ++ movedOrAdded
+    Stream.eval(samePathPass()).flatMap { (consumed, contentChanged) =>
+      Stream.emits(contentChanged) ++ removed(consumed) ++ movedOrAdded(consumed)
+    }
   }
 
   /**

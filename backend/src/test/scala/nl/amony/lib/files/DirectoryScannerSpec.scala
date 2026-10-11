@@ -294,5 +294,60 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
       fs.getByFileKey("(dev=1,ino=1)").unsafeRunSync() shouldBe Seq(current)
       compare(fs, InMemoryFileStore(Set(current))) shouldBe empty
     }
+
+    "report content change for same path and fileKey with new hash" in {
+      val previous = fileA.copy(fileKey = Some("(dev=1,ino=1)"))
+      val edited   = fileA.copy(partialHash = "new", size = 101, modifiedTime = 2, fileKey = Some("(dev=1,ino=1)"))
+
+      compare(Set(previous), Set(edited)) shouldBe Set(FileContentChanged(edited))
+    }
+
+    "fall through to delete and add for same path with different fileKey" in {
+      val previous = fileA.copy(partialHash = "old", fileKey = Some("(dev=1,ino=1)"))
+      val replaced = fileA.copy(partialHash = "new", fileKey = Some("(dev=1,ino=2)"))
+
+      compare(Set(previous), Set(replaced)) shouldBe Set(FileDeleted(previous), FileAdded(replaced))
+    }
+
+    "rehash when the fileKey changed but size and modifiedTime did not" in {
+      // same path, size and modifiedTime would take the shortcut, but a different key (e.g. replaced via cp -p) must force a rehash
+      val dir = Files.createTempDirectory("scanner-key-mismatch-test")
+      try {
+        val file         = Files.write(dir.resolve("file.bin"), Array.fill(2000)(7.toByte))
+        val size         = Files.size(file)
+        val modifiedTime = Files.getLastModifiedTime(file).toMillis
+        val previous     = InMemoryFileStore(Seq(FileInfo(file, "cached-hash", size, modifiedTime, Some("(dev=9,ino=9)"))))
+
+        var hashed                                             = false
+        def countingHash(path: java.nio.file.Path): IO[String] = IO { hashed = true } >> hashFile(path)
+
+        LocalDirectoryScanner.scanDirectory(dir, previous, _ => true, _ => true, countingHash, parallelism = 4).compile.drain
+          .unsafeRunSync()
+
+        hashed shouldBe true
+      } finally Files.walk(dir).sorted(Comparator.reverseOrder()).forEach(p => Files.deleteIfExists(p))
+    }
+
+    "take the shortcut when the stored entry has no fileKey" in {
+      // legacy rows (fileKey = None) must not force a rehash; the key is backfilled via FileMetaChanged instead
+      val dir = Files.createTempDirectory("scanner-no-key-test")
+      try {
+        val file         = Files.write(dir.resolve("file.bin"), Array.fill(2000)(7.toByte))
+        val size         = Files.size(file)
+        val modifiedTime = Files.getLastModifiedTime(file).toMillis
+        val hash         = hashFile(file).unsafeRunSync()
+        val previous     = InMemoryFileStore(Seq(FileInfo(file, hash, size, modifiedTime, None)))
+
+        def explodingHash(path: java.nio.file.Path): IO[String] =
+          IO.raiseError(new RuntimeException(s"hash must be skipped for unchanged file: $path"))
+
+        val events =
+          LocalDirectoryScanner.scanDirectory(dir, previous, _ => true, _ => true, explodingHash, parallelism = 4).compile.toList
+            .unsafeRunSync()
+
+        events should have size 1
+        events.head.asInstanceOf[FileMetaChanged].fileInfo.fileKey shouldBe defined
+      } finally Files.walk(dir).sorted(Comparator.reverseOrder()).forEach(p => Files.deleteIfExists(p))
+    }
   }
 }

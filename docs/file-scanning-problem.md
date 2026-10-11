@@ -48,7 +48,8 @@ Remaining flaws and inefficiencies in directory scanning (fixed items excluded).
 17. ~~No hash reuse on rename (`DirectoryScanner.scala:63`, `getByPath(newPath)` only) — renamed dir forces N full
     rehashes.~~ Fixed: `InMemoryFileStore` keeps a `fileKey` index; `populateStore` falls back to it when the path
     lookup misses, reusing the hash on `(fileKey, size, modifiedTime)` match. Files without a key (Windows, some network
-    FS) hash as before.
+    FS) hash as before. The path shortcut additionally requires compatible keys: mismatch with both keys present forces
+    a rehash, while a missing key on either side still takes the shortcut.
 18. No stable-file detection — in-progress upload/copy observed mid-write becomes `Added` with wrong hash/size, then
     churns.
 19. Filter/config change causes mass `Delete` — newly excluded files vanish from `current` and read as deleted; no

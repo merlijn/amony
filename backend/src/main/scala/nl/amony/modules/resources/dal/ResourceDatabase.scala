@@ -130,6 +130,13 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
     useSession: s =>
       s.prepare(Queries.resources.getByPartialHashJoined).flatMap(_.stream((bucketId, partialHash), defaultChunkSize).map(toResource).compile.toList)
 
+  def getResourceByPath(bucketId: BucketId, path: String): IO[Option[ResourceInfo]] =
+    useSession: s =>
+      s.prepare(Queries.resources.getByPathJoined).flatMap(_.stream(
+        (bucketId, path),
+        defaultChunkSize
+      ).map(toResource).compile.toList.map(_.headOption))
+
   def updateThumbnailTimestamp(bucketId: BucketId, resourceId: ResourceId, timestamp: Int): IO[Option[ResourceInfo]] =
     useSession(s => updateThumbnailTimestampWith(s, bucketId, resourceId, timestamp))
 

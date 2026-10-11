@@ -6,6 +6,8 @@ sealed trait FileEvent
 
 case class FileMetaChanged(fileInfo: FileInfo) extends FileEvent
 
+case class FileContentChanged(fileInfo: FileInfo) extends FileEvent
+
 case class FileAdded(fileInfo: FileInfo) extends FileEvent
 
 case class FileDeleted(fileInfo: FileInfo) extends FileEvent
