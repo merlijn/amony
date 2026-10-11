@@ -20,8 +20,9 @@ trait MessageTopic[E]:
   def publish(session: Session[IO], message: E): IO[Unit]
 
   /**
-   * An at-least-once consumer that processes a topic's messages strictly in insertion order, one at a time, so that
-   * messages for the same resource are never applied out of order. Any failure is retried in place, blocking the
-   * topic until it succeeds, so no message is ever skipped.
+   * An at-least-once consumer group that processes a topic's messages strictly in insertion order, one at a time,
+   * from its own committed offset, so each group reads the whole log independently and messages for the same
+   * resource are never applied out of order. Any failure is retried in place, blocking the group until it succeeds,
+   * so no message is ever skipped.
    */
-  def processAtLeastOnce(processorId: String)(processor: E => IO[Unit]): Stream[IO, Unit]
+  def processAtLeastOnce(consumerId: String)(processor: E => IO[Unit]): Stream[IO, Unit]

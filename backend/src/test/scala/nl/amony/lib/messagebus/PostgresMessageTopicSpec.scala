@@ -46,10 +46,14 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
       poolSize = 4
     )
 
-  private def topicFor(pool: Resource[IO, Session[IO]]): MessageTopic[Int] =
+  private def topicFor(pool: Resource[IO, Session[IO]], name: String): MessageTopic[Int] =
     given Codec[Int]           = Codec.implied[Int]
-    given MessageTopicKey[Int] = MessageTopicKey(s"topic-${UUID.randomUUID()}")
+    given MessageTopicKey[Int] = MessageTopicKey(name)
     PersistentMessageBus.postgres(pool, MessageBusConfig(retryBackoff = 100.millis)).getTopic[Int]
+
+  /** Registers a consumer group from the start of the log, so a test can publish before the consumer starts. */
+  private def registerFromStart(pool: Resource[IO, Session[IO]], name: String, consumerId: String): IO[Unit] =
+    MessageQueue(pool).ensureConsumer(name, consumerId, 0)
 
   private def await(ref: Ref[IO, List[Int]], size: Int): IO[List[Int]] =
     ref.get.flatMap(xs => if xs.size >= size then IO.pure(xs) else IO.sleep(50.millis) *> await(ref, size)).timeout(15.seconds)
@@ -58,28 +62,34 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
 
     "process published messages in order" in withContainers { container =>
       App.makeDatabasePool(configForContainer(container)).use { pool =>
-        val topic = topicFor(pool)
+        val name  = s"topic-${UUID.randomUUID()}"
+        val topic = topicFor(pool, name)
 
-        Ref.of[IO, List[Int]](Nil).flatMap { processed =>
-          topic.processAtLeastOnce("test")(n => processed.update(_ :+ n)).compile.drain.background.use { _ =>
-            List(1, 2, 3, 4, 5).traverse_(topic.publish) >> await(processed, 5)
-          }
-        }
-      }.map(_ shouldBe List(1, 2, 3, 4, 5)).unsafeRunSync()
+        for
+          _         <- registerFromStart(pool, name, "consumer")
+          processed <- Ref.of[IO, List[Int]](Nil)
+          _         <- topic.processAtLeastOnce("consumer")(n => processed.update(_ :+ n)).compile.drain.background.use { _ =>
+                         List(1, 2, 3, 4, 5).traverse_(topic.publish) >> await(processed, 5)
+                       }
+          result    <- processed.get
+        yield result shouldBe List(1, 2, 3, 4, 5)
+      }.unsafeRunSync()
     }
 
     "retry a failing message in place rather than skipping it" in withContainers { container =>
       App.makeDatabasePool(configForContainer(container)).use { pool =>
-        val topic = topicFor(pool)
+        val name  = s"topic-${UUID.randomUUID()}"
+        val topic = topicFor(pool, name)
 
         for
+          _         <- registerFromStart(pool, name, "consumer")
           processed <- Ref.of[IO, List[Int]](Nil)
           attempts  <- Ref.of[IO, Int](0)
           processor  = (n: Int) =>
                          attempts.modify(a => (a + 1, a)).flatMap { attempt =>
                            if attempt < 2 then IO.raiseError[Unit](new RuntimeException("transient")) else processed.update(_ :+ n)
                          }
-          _         <- topic.processAtLeastOnce("test")(processor).compile.drain.background.use { _ =>
+          _         <- topic.processAtLeastOnce("consumer")(processor).compile.drain.background.use { _ =>
                          List(1, 2).traverse_(topic.publish) >> await(processed, 2)
                        }
           result    <- processed.get
@@ -87,19 +97,21 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
       }.unsafeRunSync()
     }
 
-    "reprocess a message left unprocessed when the consumer stopped" in withContainers { container =>
+    "reprocess a message that was not committed before the consumer stopped" in withContainers { container =>
       App.makeDatabasePool(configForContainer(container)).use { pool =>
-        val topic = topicFor(pool)
+        val name  = s"topic-${UUID.randomUUID()}"
+        val topic = topicFor(pool, name)
 
         for
-          claimed   <- Deferred[IO, Unit]
+          _         <- registerFromStart(pool, name, "consumer")
+          read      <- Deferred[IO, Unit]
           processed <- Ref.of[IO, List[Int]](Nil)
-          // The first consumer claims the message, then blocks forever, so it never marks it processed.
-          _         <- topic.processAtLeastOnce("first")(_ => claimed.complete(()) >> IO.never).compile.drain.background.use { _ =>
-                         topic.publish(1) >> claimed.get.timeout(15.seconds)
+          // The first run reads the message, then blocks forever without committing its offset.
+          _         <- topic.processAtLeastOnce("consumer")(_ => read.complete(()) >> IO.never).compile.drain.background.use { _ =>
+                         topic.publish(1) >> read.get.timeout(15.seconds)
                        }
-          // The second consumer requeues the abandoned message on startup and processes it.
-          _         <- topic.processAtLeastOnce("second")(n => processed.update(_ :+ n)).compile.drain.background.use { _ =>
+          // A second run of the same consumer resumes from the uncommitted offset and processes it.
+          _         <- topic.processAtLeastOnce("consumer")(n => processed.update(_ :+ n)).compile.drain.background.use { _ =>
                          await(processed, 1)
                        }
           result    <- processed.get

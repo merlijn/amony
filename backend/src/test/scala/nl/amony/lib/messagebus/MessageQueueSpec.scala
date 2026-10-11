@@ -55,105 +55,112 @@ class MessageQueueSpec extends AnyWordSpecLike with TestContainerForAll with Mat
 
   private def payload(n: Int): Json = Json.obj("n" -> Json.fromInt(n))
 
+  private def nOf(json: Json): Int = json.hcursor.get[Int]("n").getOrElse(throw new RuntimeException(s"missing 'n' in $json"))
+
   private def publish(pool: Resource[IO, Session[IO]], queue: MessageQueue, topic: String, n: Int): IO[Unit] =
     pool.use(session => queue.enqueue(session, topic, payload(n)))
 
   private def countRows(pool: Resource[IO, Session[IO]], topic: String): IO[Long] =
     pool.use(session => session.prepare(sql"select count(*) from message_queue where topic = $varchar".query(int8)).flatMap(_.unique(topic)))
 
+  private def consumerState(pool: Resource[IO, Session[IO]], topic: String, consumerId: String): IO[(Int, Option[String])] =
+    pool.use(
+      _.prepare(sql"select attempts, last_error from message_consumer where topic = $varchar and consumer_id = $varchar".query(int4 *: text.opt))
+        .flatMap(_.unique((topic, consumerId)))
+    )
+
+  private def readAll(queue: MessageQueue, topic: String, consumerId: String): IO[List[Int]] =
+    queue.nextUnprocessed(topic, consumerId).flatMap {
+      case None      => IO.pure(Nil)
+      case Some(row) => queue.commitOffset(topic, consumerId, row.id).as(nOf(row.payload)).flatMap(n => readAll(queue, topic, consumerId).map(n :: _))
+    }
+
   "MessageQueue" should {
 
-    "claim pending messages one at a time in insertion order" in withContainers { container =>
+    "read messages in insertion order for a consumer" in withContainers { container =>
       withQueue(container) { (pool, queue) =>
         val topic = newTopic
         for
+          _  <- queue.ensureConsumer(topic, "consumer", 0)
+          _  <- (1 to 3).toList.traverse_(n => publish(pool, queue, topic, n))
+          xs <- readAll(queue, topic, "consumer")
+        yield xs shouldBe List(1, 2, 3)
+      }
+    }
+
+    "start a new consumer at the latest message" in withContainers { container =>
+      withQueue(container) { (pool, queue) =>
+        val topic = newTopic
+        for
+          _    <- (1 to 2).toList.traverse_(n => publish(pool, queue, topic, n))
+          max  <- queue.latestId(topic)
+          _    <- queue.ensureConsumer(topic, "consumer", max)
+          none <- queue.nextUnprocessed(topic, "consumer")
+          _    <- publish(pool, queue, topic, 3)
+          next <- queue.nextUnprocessed(topic, "consumer")
+        yield
+          none shouldBe None
+          next.map(row => nOf(row.payload)) shouldBe Some(3)
+      }
+    }
+
+    "record a failure without advancing the offset" in withContainers { container =>
+      withQueue(container) { (pool, queue) =>
+        val topic = newTopic
+        for
+          _     <- queue.ensureConsumer(topic, "consumer", 0)
+          _     <- publish(pool, queue, topic, 1)
+          first <- queue.nextUnprocessed(topic, "consumer")
+          _     <- queue.recordFailure(topic, "consumer", "boom")
+          again <- queue.nextUnprocessed(topic, "consumer")
+          state <- consumerState(pool, topic, "consumer")
+        yield
+          again.map(_.id) shouldBe first.map(_.id)
+          state shouldBe (1, Some("boom"))
+      }
+    }
+
+    "let independent consumers each read the whole log" in withContainers { container =>
+      withQueue(container) { (pool, queue) =>
+        val topic = newTopic
+        for
+          _ <- queue.ensureConsumer(topic, "a", 0)
+          _ <- queue.ensureConsumer(topic, "b", 0)
           _ <- (1 to 3).toList.traverse_(n => publish(pool, queue, topic, n))
-          a <- queue.claimOldest(topic)
-          b <- queue.claimOldest(topic)
-          c <- queue.claimOldest(topic)
-          d <- queue.claimOldest(topic)
+          a <- readAll(queue, topic, "a")
+          b <- readAll(queue, topic, "b")
         yield
-          a.map(_.payload) shouldBe Some(payload(1))
-          b.map(_.payload) shouldBe Some(payload(2))
-          c.map(_.payload) shouldBe Some(payload(3))
-          a.map(_.attempts) shouldBe Some(1)
-          d shouldBe None
+          a shouldBe List(1, 2, 3)
+          b shouldBe List(1, 2, 3)
       }
     }
 
-    "not claim messages that are already processed" in withContainers { container =>
+    "purge messages every consumer has processed" in withContainers { container =>
       withQueue(container) { (pool, queue) =>
         val topic = newTopic
         for
-          _      <- publish(pool, queue, topic, 1)
-          _      <- publish(pool, queue, topic, 2)
-          first  <- queue.claimOldest(topic)
-          _      <- queue.markProcessed(first.get.id)
-          second <- queue.claimOldest(topic)
-          _      <- queue.markProcessed(second.get.id)
-          again  <- queue.claimOldest(topic)
-        yield
-          first.map(_.payload) shouldBe Some(payload(1))
-          second.map(_.payload) shouldBe Some(payload(2))
-          again shouldBe None
-      }
-    }
-
-    "recover messages left claimed by a stopped consumer" in withContainers { container =>
-      withQueue(container) { (pool, queue) =>
-        val topic = newTopic
-        for
-          _      <- publish(pool, queue, topic, 1)
-          first  <- queue.claimOldest(topic)
-          held   <- queue.claimOldest(topic)
-          _      <- queue.resetClaimed(topic)
-          second <- queue.claimOldest(topic)
-        yield
-          first.map(_.attempts) shouldBe Some(1)
-          held shouldBe None
-          second.map(_.attempts) shouldBe Some(2)
-      }
-    }
-
-    "return a failing message to pending with its error recorded" in withContainers { container =>
-      withQueue(container) { (pool, queue) =>
-        val topic = newTopic
-        for
-          _       <- publish(pool, queue, topic, 1)
-          first   <- queue.claimOldest(topic)
-          _       <- queue.releaseForRetry(first.get.id, "boom")
-          retried <- queue.claimOldest(topic)
-        yield
-          retried.map(_.status) shouldBe Some(MessageQueueStatus.Claimed)
-          retried.map(_.attempts) shouldBe Some(2)
-          retried.map(_.lastError) shouldBe Some(Some("boom"))
-      }
-    }
-
-    "let competing consumers claim different messages" in withContainers { container =>
-      withQueue(container) { (pool, queue) =>
-        val topic = newTopic
-        for
-          _      <- (1 to 2).toList.traverse_(n => publish(pool, queue, topic, n))
-          claims <- (queue.claimOldest(topic), queue.claimOldest(topic)).parTupled
-          (a, b)  = claims
-        yield
-          a.map(_.id) should not be b.map(_.id)
-          List(a, b).flatten.map(_.status) shouldBe List(MessageQueueStatus.Claimed, MessageQueueStatus.Claimed)
-      }
-    }
-
-    "purge processed messages past retention without touching pending ones" in withContainers { container =>
-      withQueue(container) { (pool, queue) =>
-        val topic = newTopic
-        for
-          _     <- (1 to 2).toList.traverse_(n => publish(pool, queue, topic, n))
-          first <- queue.claimOldest(topic)
-          _     <- queue.markProcessed(first.get.id)
-          _     <- IO.sleep(50.millis)
-          _     <- queue.purge(java.time.Duration.ZERO)
-          left  <- countRows(pool, topic)
+          _    <- queue.ensureConsumer(topic, "consumer", 0)
+          _    <- (1 to 2).toList.traverse_(n => publish(pool, queue, topic, n))
+          row  <- queue.nextUnprocessed(topic, "consumer")
+          _    <- queue.commitOffset(topic, "consumer", row.get.id)
+          _    <- queue.purge(topic, java.time.Duration.ZERO)
+          left <- countRows(pool, topic)
         yield left shouldBe 1
+      }
+    }
+
+    "not purge messages a consumer has not processed" in withContainers { container =>
+      withQueue(container) { (pool, queue) =>
+        val topic = newTopic
+        for
+          _    <- queue.ensureConsumer(topic, "a", 0)
+          _    <- queue.ensureConsumer(topic, "b", 0)
+          _    <- (1 to 2).toList.traverse_(n => publish(pool, queue, topic, n))
+          row  <- queue.nextUnprocessed(topic, "a")
+          _    <- queue.commitOffset(topic, "a", row.get.id)
+          _    <- queue.purge(topic, java.time.Duration.ZERO)
+          left <- countRows(pool, topic)
+        yield left shouldBe 2
       }
     }
   }
