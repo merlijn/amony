@@ -11,12 +11,10 @@ CREATE TABLE message_consumer (
     CONSTRAINT message_consumer_pk PRIMARY KEY (topic, consumer_id)
 );
 
--- The existing solr-indexer consumer resumes from the last message it processed; anything left pending or
--- claimed is picked up again through its offset.
-INSERT INTO message_consumer (topic, consumer_id, last_offset)
-SELECT topic, 'solr-indexer', COALESCE(MAX(id) FILTER (WHERE status = 'processed'), 0)
-FROM message_queue
-GROUP BY topic;
+-- Discard the queue contents instead of migrating the current consumer position. Safe here because the queue is
+-- idle at deploy time (all writes are admin-gated and the demo is static), so there is nothing unprocessed to
+-- lose. Consumer groups register lazily at the latest offset on startup.
+TRUNCATE message_queue;
 
 ALTER TABLE message_queue RENAME TO message_log;
 ALTER TABLE message_log RENAME CONSTRAINT message_queue_pk TO message_log_pk;
