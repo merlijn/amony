@@ -9,6 +9,7 @@ import cats.syntax.all.*
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
 import io.circe.Codec
+import liquibase.Contexts
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
@@ -46,10 +47,18 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
       poolSize = 4
     )
 
-  private def topicFor(pool: Resource[IO, Session[IO]], name: String): MessageTopic[Int] =
+  /** Only the message-log changesets are needed here, so the other contexts are skipped. */
+  private def pool(container: GenericContainer): Resource[IO, Resource[IO, Session[IO]]] =
+    App.makeDatabasePool(configForContainer(container), new Contexts("message-log"))
+
+  private def topicFor(
+    pool: Resource[IO, Session[IO]],
+    name: String,
+    config: MessageBusConfig = MessageBusConfig(retryBackoff = 100.millis)
+  ): MessageTopic[Int] =
     given Codec[Int]           = Codec.implied[Int]
     given MessageTopicKey[Int] = MessageTopicKey(name)
-    PersistentMessageBus.postgres(pool, MessageBusConfig(retryBackoff = 100.millis)).getTopic[Int]
+    PersistentMessageBus.postgres(pool, config).getTopic[Int]
 
   /** Registers a consumer group from the start of the log, so a test can publish before the consumer starts. */
   private def registerFromStart(pool: Resource[IO, Session[IO]], name: String, consumerId: String): IO[Unit] =
@@ -61,7 +70,7 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
   "PostgresMessageTopic" should {
 
     "process published messages in order" in withContainers { container =>
-      App.makeDatabasePool(configForContainer(container)).use { pool =>
+      pool(container).use { pool =>
         val name  = s"topic-${UUID.randomUUID()}"
         val topic = topicFor(pool, name)
 
@@ -76,8 +85,26 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
       }.unsafeRunSync()
     }
 
+    "deliver via NOTIFY without waiting for the poll" in withContainers { container =>
+      pool(container).use { pool =>
+        val name  = s"topic-${UUID.randomUUID()}"
+        // A one-hour poll interval, so only the NOTIFY path can deliver the message in time.
+        val topic = topicFor(pool, name, MessageBusConfig(pollInterval = 1.hour, retryBackoff = 100.millis))
+
+        for
+          _         <- registerFromStart(pool, name, "consumer")
+          processed <- Ref.of[IO, List[Int]](Nil)
+          _         <- topic.processAtLeastOnce("consumer")(n => processed.update(_ :+ n)).compile.drain.background.use { _ =>
+                         // Let the initial poll and the LISTEN subscription settle before publishing.
+                         IO.sleep(500.millis) >> topic.publish(1) >> await(processed, 1)
+                       }
+          result    <- processed.get
+        yield result shouldBe List(1)
+      }.unsafeRunSync()
+    }
+
     "consume the whole log independently per consumer group" in withContainers { container =>
-      App.makeDatabasePool(configForContainer(container)).use { pool =>
+      pool(container).use { pool =>
         val name  = s"topic-${UUID.randomUUID()}"
         val topic = topicFor(pool, name)
 
@@ -102,7 +129,7 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
     }
 
     "retry a failing message in place rather than skipping it" in withContainers { container =>
-      App.makeDatabasePool(configForContainer(container)).use { pool =>
+      pool(container).use { pool =>
         val name  = s"topic-${UUID.randomUUID()}"
         val topic = topicFor(pool, name)
 
@@ -123,7 +150,7 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
     }
 
     "reprocess a message that was not committed before the consumer stopped" in withContainers { container =>
-      App.makeDatabasePool(configForContainer(container)).use { pool =>
+      pool(container).use { pool =>
         val name  = s"topic-${UUID.randomUUID()}"
         val topic = topicFor(pool, name)
 

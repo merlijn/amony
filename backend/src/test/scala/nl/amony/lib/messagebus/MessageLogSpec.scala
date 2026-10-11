@@ -9,6 +9,7 @@ import cats.syntax.all.*
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
 import io.circe.Json
+import liquibase.Contexts
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
@@ -49,7 +50,7 @@ class MessageLogSpec extends AnyWordSpecLike with TestContainerForAll with Match
     )
 
   private def withLog[A](container: GenericContainer)(f: (Resource[IO, Session[IO]], MessageLog) => IO[A]): A =
-    App.makeDatabasePool(configForContainer(container)).use(pool => f(pool, MessageLog(pool))).unsafeRunSync()
+    App.makeDatabasePool(configForContainer(container), new Contexts("message-log")).use(pool => f(pool, MessageLog(pool))).unsafeRunSync()
 
   private def newTopic: String = s"test-${UUID.randomUUID()}"
 
