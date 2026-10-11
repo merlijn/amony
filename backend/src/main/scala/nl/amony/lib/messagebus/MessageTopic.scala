@@ -20,7 +20,7 @@ trait MessageTopic[E]:
 
   /**
    * An at-least-once consumer that processes a topic's messages strictly in insertion order, one at a time, so that
-   * messages for the same resource are never applied out of order. A processor failure is retried in place, blocking the
-   * topic until it succeeds, so no message is skipped; only an undecodable payload is parked as failed.
+   * messages for the same resource are never applied out of order. Any failure is retried in place, blocking the
+   * topic until it succeeds, so no message is ever skipped.
    */
   def processAtLeastOnce(processorId: String)(processor: E => IO[Unit]): Stream[IO, Unit]

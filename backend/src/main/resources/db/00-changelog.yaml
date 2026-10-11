@@ -94,3 +94,12 @@ databaseChangeLog:
             path: db/10-message-queue.sql
             splitStatements: true
             endDelimiter: ";"
+  - changeSet:
+      id: 11
+      author: merlijn
+      context: message-queue
+      changes:
+        - sqlFile:
+            path: db/11-remove-failed-status.sql
+            splitStatements: true
+            endDelimiter: ";"

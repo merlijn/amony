@@ -4,6 +4,7 @@ import cats.effect.std.Mutex
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
+import scribe.Logging
 import skunk.Session
 import skunk.data.Identifier
 
@@ -18,7 +19,7 @@ final private[messagebus] class PostgresMessageTopic[E](
   queue: MessageQueue,
   pool: Resource[IO, Session[IO]],
   config: MessageBusConfig
-) extends MessageTopic[E]:
+) extends MessageTopic[E] with Logging:
 
   private val codec      = key.persistenceCodec
   private val identifier = PostgresMessageTopic.channelIdentifier(key.name)
@@ -49,17 +50,16 @@ final private[messagebus] class PostgresMessageTopic[E](
       case Some(row) => process(processor)(row).flatMap(advance => if advance then drain(processor) else IO.unit)
     }
 
-  /** @return whether to advance to the next message (processed, or parked as failed) or to retry this one later. */
+  /** @return whether to advance to the next message (processed) or to retry this one later. */
   private def process(processor: E => IO[Unit])(row: MessageQueueRow): IO[Boolean] =
-    IO(codec.decode(row.payload)).attempt.flatMap:
-      // An undecodable payload is a permanent error; park it so it does not block the topic forever.
-      case Left(e)        => queue.markFailed(row.id, Option(e.getMessage).getOrElse(e.getClass.getName)).as(true)
-      // A processor failure (e.g. Solr unavailable) is transient; retry in place so nothing is skipped. The backoff
-      // is applied while holding the consumer's mutex, so poll/notify triggers are delayed by it too.
-      case Right(message) =>
-        processor(message).attempt.flatMap:
-          case Right(_) => queue.markProcessed(row.id).as(true)
-          case Left(e)  => queue.releaseForRetry(row.id, Option(e.getMessage).getOrElse(e.getClass.getName)) >> IO.sleep(config.retryBackoff).as(false)
+    IO(codec.decode(row.payload)).flatMap(processor).attempt.flatMap:
+      case Right(_) => queue.markProcessed(row.id).as(true)
+      // Any failure (a processor error, or a payload that cannot be decoded) is retried in place, so nothing is ever
+      // skipped. The backoff is applied while holding the consumer's mutex, so poll/notify triggers are delayed too.
+      case Left(e)  =>
+        val error = Option(e.getMessage).getOrElse(e.getClass.getName)
+        IO(logger.error(s"Failed to process message ${row.id} on topic '${key.name}' (attempt ${row.attempts}): $error")) >>
+          queue.releaseForRetry(row.id, error) >> IO.sleep(config.retryBackoff).as(false)
 
 private[messagebus] object PostgresMessageTopic:
 

@@ -81,7 +81,7 @@ class MessageQueueSpec extends AnyWordSpecLike with TestContainerForAll with Mat
       }
     }
 
-    "not claim messages that are already processed or failed" in withContainers { container =>
+    "not claim messages that are already processed" in withContainers { container =>
       withQueue(container) { (pool, queue) =>
         val topic = newTopic
         for
@@ -90,7 +90,7 @@ class MessageQueueSpec extends AnyWordSpecLike with TestContainerForAll with Mat
           first  <- queue.claimOldest(topic)
           _      <- queue.markProcessed(first.get.id)
           second <- queue.claimOldest(topic)
-          _      <- queue.markFailed(second.get.id, "boom")
+          _      <- queue.markProcessed(second.get.id)
           again  <- queue.claimOldest(topic)
         yield
           first.map(_.payload) shouldBe Some(payload(1))
@@ -143,18 +143,16 @@ class MessageQueueSpec extends AnyWordSpecLike with TestContainerForAll with Mat
       }
     }
 
-    "purge processed and failed messages past retention without touching pending ones" in withContainers { container =>
+    "purge processed messages past retention without touching pending ones" in withContainers { container =>
       withQueue(container) { (pool, queue) =>
         val topic = newTopic
         for
-          _      <- (1 to 3).toList.traverse_(n => publish(pool, queue, topic, n))
-          first  <- queue.claimOldest(topic)
-          second <- queue.claimOldest(topic)
-          _      <- queue.markProcessed(first.get.id)
-          _      <- queue.markFailed(second.get.id, "boom")
-          _      <- IO.sleep(50.millis)
-          _      <- queue.purge(java.time.Duration.ZERO)
-          left   <- countRows(pool, topic)
+          _     <- (1 to 2).toList.traverse_(n => publish(pool, queue, topic, n))
+          first <- queue.claimOldest(topic)
+          _     <- queue.markProcessed(first.get.id)
+          _     <- IO.sleep(50.millis)
+          _     <- queue.purge(java.time.Duration.ZERO)
+          left  <- countRows(pool, topic)
         yield left shouldBe 1
       }
     }

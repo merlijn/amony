@@ -11,7 +11,7 @@ import skunk.codec.all.*
 import skunk.implicits.*
 
 enum MessageQueueStatus:
-  case Pending, Claimed, Processed, Failed
+  case Pending, Claimed, Processed
 
 object MessageQueueStatus:
 
@@ -19,7 +19,6 @@ object MessageQueueStatus:
     case "pending"   => MessageQueueStatus.Pending
     case "claimed"   => MessageQueueStatus.Claimed
     case "processed" => MessageQueueStatus.Processed
-    case "failed"    => MessageQueueStatus.Failed
     case other       => throw new IllegalArgumentException(s"Unknown message queue status: $other")
   }(_.toString.toLowerCase)
 
@@ -71,15 +70,12 @@ private[messagebus] object MessageQueueQueries:
   val markProcessed: Command[Long] =
     sql"update message_queue set status = 'processed', processed_at = now(), last_error = null where id = $int8".command
 
-  val markFailed: Command[(String, Long)] =
-    sql"update message_queue set status = 'failed', processed_at = now(), last_error = $text where id = $int8".command
-
   // Return a message to the pending state so it can be claimed again, without losing the recorded error.
   val releaseForRetry: Command[(String, Long)] =
     sql"update message_queue set status = 'pending', claimed_at = null, last_error = $text where id = $int8".command
 
   val purge: Command[Duration] =
-    sql"delete from message_queue where status in ('processed', 'failed') and processed_at < now() - $interval".command
+    sql"delete from message_queue where status = 'processed' and processed_at < now() - $interval".command
 
 /** Persistence for the durable message queue that backs the message bus. */
 final private[messagebus] class MessageQueue(pool: Resource[IO, Session[IO]]):
@@ -95,9 +91,6 @@ final private[messagebus] class MessageQueue(pool: Resource[IO, Session[IO]]):
 
   def markProcessed(id: Long): IO[Unit] =
     pool.use(session => session.prepare(MessageQueueQueries.markProcessed).flatMap(_.execute(id)).void)
-
-  def markFailed(id: Long, error: String): IO[Unit] =
-    pool.use(session => session.prepare(MessageQueueQueries.markFailed).flatMap(_.execute((error, id))).void)
 
   def releaseForRetry(id: Long, error: String): IO[Unit] =
     pool.use(session => session.prepare(MessageQueueQueries.releaseForRetry).flatMap(_.execute((error, id))).void)
