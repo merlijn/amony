@@ -25,9 +25,9 @@ object PersistentMessageBus:
         topics.computeIfAbsent(key.name, _ => PostgresMessageTopic(key, queue, pool, config)).asInstanceOf[MessageTopic[E]]
 
 final case class MessageBusConfig(
-  // Fallback poll for notifications that were lost or whose consumer crashed. Aligned with the Solr
-  // `commit-within-millis` so a missed notification is picked up within the window Solr would have committed in anyway.
-  pollInterval: FiniteDuration  = 500.millis,
+  // Fallback poll for notifications that were lost or whose consumer crashed. The NOTIFY path handles the
+  // common case; this bounds how long a missed notification, or a message awaiting a retry, can sit.
+  pollInterval: FiniteDuration  = 3.seconds,
   // Wait before retrying a failed message, so a failing processor (e.g. Solr down) is not hammered.
   retryBackoff: FiniteDuration  = 3.seconds,
   purgeInterval: FiniteDuration = 1.hour,
