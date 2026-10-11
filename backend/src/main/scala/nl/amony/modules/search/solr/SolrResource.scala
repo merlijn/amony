@@ -2,6 +2,7 @@ package nl.amony.modules.search.solr
 
 import java.nio.file.{Files, Path}
 import java.util.Properties
+import java.util.concurrent.atomic.AtomicBoolean
 
 import cats.effect.{IO, Resource}
 import org.apache.solr.client.solrj.SolrClient
@@ -19,14 +20,17 @@ object SolrResource extends Logging {
 
   def make(config: SolrConfig): Resource[IO, SolrClient] = {
 
+    val closing = new AtomicBoolean(false)
+
     def close(solr: SolrClient): Unit =
-      try {
-        logger.warn("Shutting down solr")
-        collections.foreach(collectionName => solr.commit(collectionName))
-        solr.close()
-      } catch {
-        case e: Exception => logger.error("Error while closing solr", e)
-      }
+      if closing.compareAndSet(false, true) then
+        try {
+          logger.warn("Shutting down solr")
+          collections.foreach(collectionName => solr.commit(collectionName))
+          solr.close()
+        } catch {
+          case e: Exception => logger.error("Error while closing solr", e)
+        }
 
     Resource.make[IO, SolrClient](IO.blocking {
 
@@ -48,11 +52,7 @@ object SolrResource extends Logging {
       container.load()
       val solr: SolrClient = new EmbeddedSolrServer(container, null)
 
-      sys.addShutdownHook {
-        close(solr)
-      }
-
       solr
-    })(solr => IO(close(solr)))
+    })(solr => IO.blocking(close(solr)))
   }
 }
