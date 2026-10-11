@@ -88,7 +88,7 @@ databaseChangeLog:
   - changeSet:
       id: 10
       author: merlijn
-      context: message-queue
+      context: message-log
       changes:
         - sqlFile:
             path: db/10-message-queue.sql
@@ -97,7 +97,7 @@ databaseChangeLog:
   - changeSet:
       id: 11
       author: merlijn
-      context: message-queue
+      context: message-log
       changes:
         - sqlFile:
             path: db/11-consumer-offsets.sql
