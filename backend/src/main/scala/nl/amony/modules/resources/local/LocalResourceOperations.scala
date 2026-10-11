@@ -1,6 +1,8 @@
 package nl.amony.modules.resources.local
 
+import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
+import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 
 import cats.effect.std.MapRef
@@ -8,6 +10,7 @@ import cats.effect.{Deferred, IO}
 import cats.implicits.*
 import scribe.Logging
 
+import nl.amony.lib.hash.Base32
 import nl.amony.modules.resources.api.*
 
 trait LocalResourceOperations extends LocalDirectoryBase with Logging {
@@ -36,12 +39,33 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
       new ConcurrentHashMap[OperationKey, Deferred[IO, Either[Throwable, Path]]]()
     )
 
+  /**
+   * Validator for a derived preview. It is derived from the source's partial hash, the operation (encoded in the output
+   * file name) and the configured encoder options, so it never requires reading or hashing the produced bytes.
+   *
+   * Known gap: because it describes the recipe rather than the produced bytes, it does not change when the same recipe
+   * starts yielding different output (for example after a toolchain upgrade). Bump [[ResourceOperations.PreviewRecipeVersion]]
+   * to invalidate in that case.
+   */
+  private def previewETag(info: ResourceInfo, outputFile: Path): Option[String] =
+    info.partialHash.map(sourceHash =>
+      eTagOf(sourceHash, outputFile.getFileName.toString, formats.settingsFingerprint, ResourceOperations.PreviewRecipeVersion.toString)
+    )
+
+  /** Validator for a resource's original content, derived from its partial hash and last modified time. */
+  private[local] def originalETag(info: ResourceInfo): Option[String] =
+    info.partialHash.map(sourceHash => eTagOf(sourceHash, info.timeLastModified.getOrElse(0L).toString))
+
+  private def eTagOf(parts: String*): String =
+    Base32.encode(MessageDigest.getInstance("SHA-1").digest(parts.mkString("\u0000").getBytes(StandardCharsets.UTF_8)))
+
   private[local] def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]] = {
 
     val outputFile = operation.outputFile(info.resourceId)
+    val eTag       = previewETag(info, outputFile)
     val key        = (resourceId = info.resourceId, operation = operation)
 
-    if Files.exists(outputFile) then IO.pure(ResourceContent.fromPath(outputFile, Some(key.operation.contentType)).some)
+    if Files.exists(outputFile) then IO.pure(ResourceContent.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
     else {
 
       def runOperation(deferred: Deferred[IO, Either[Throwable, Path]]): IO[Path] =
@@ -57,7 +81,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
             case Some(existing) => (Some(existing), existing.get.rethrow)
             case None           => (Some(newDeferred), runOperation(newDeferred))
           }
-      }.flatten.map(_ => ResourceContent.fromPath(outputFile, Some(key.operation.contentType)).some)
+      }.flatten.map(_ => ResourceContent.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
     }
   }
 

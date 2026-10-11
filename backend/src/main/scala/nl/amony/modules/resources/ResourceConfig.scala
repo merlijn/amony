@@ -1,5 +1,7 @@
 package nl.amony.modules.resources
 
+import scala.concurrent.duration.*
+
 import pureconfig.*
 import pureconfig.error.CannotConvert
 
@@ -49,7 +51,8 @@ case class ThumbnailConfig(
   supportedVideoFormats: List[String]           = List("mp4"),
   resolutionStepDown: Int,
   resolutionPickingStrategy: ResolutionPickingStrategy,
-  formatOptions: Map[ImageFormat, List[String]] = Map.empty
+  formatOptions: Map[ImageFormat, List[String]] = Map.empty,
+  cacheMaxAge: FiniteDuration                   = 365.days
 ) derives ConfigReader
 
 case class ResourceConfig(previews: ThumbnailConfig, defaultBucket: ResourceBucketConfig, parallelFactor: Int = 4) derives ConfigReader

@@ -1,6 +1,6 @@
 package nl.amony.modules.resources.http
 
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.FiniteDuration
 
 import cats.data.OptionT
 import cats.effect.IO
@@ -87,7 +87,8 @@ object ResourceContentRoutes extends Logging {
     }
   }
 
-  def apply(buckets: BucketRegistry, resolutions: ThumbnailResolutions, formats: ThumbnailFormats)(using apiSecurity: ApiSecurity): HttpRoutes[IO] = {
+  def apply(buckets: BucketRegistry, resolutions: ThumbnailResolutions, formats: ThumbnailFormats, cacheMaxAge: FiniteDuration)(using
+    apiSecurity: ApiSecurity): HttpRoutes[IO] = {
 
     // The content routes are not Tapir endpoints, so the access token has to be read from the cookie directly.
     def authToken(req: Request[IO]) =
@@ -121,7 +122,7 @@ object ResourceContentRoutes extends Logging {
                                   })
             derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))
             response           <- OptionT.liftF(resourceContentsResponse(req, derivedResource)
-                                    .map(r => r.addHeader(`Cache-Control`(`max-age`(365.days)))))
+                                    .map(r => r.addHeader(`Cache-Control`(`max-age`(cacheMaxAge)))))
           yield response
         )
     }

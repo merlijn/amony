@@ -130,7 +130,7 @@ class LocalDirectoryBucket(
         if !path.exists() then {
           logger.warn(s"Resource '$resourceId' was found in the database but no file exists: $path")
           None
-        } else { Some(Resource(info, ResourceContent.fromPath(path, info.contentType))) }
+        } else { Some(Resource(info, ResourceContent.fromPath(path, info.contentType, originalETag(info)))) }
 
   override def deleteResource(resourceId: ResourceId): IO[Unit] =
     getResourceInfo(resourceId).flatMap:

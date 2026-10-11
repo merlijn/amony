@@ -1,5 +1,7 @@
 package nl.amony.modules.resources
 
+import scala.concurrent.duration.FiniteDuration
+
 import cats.effect.{IO, Resource}
 import org.http4s.HttpRoutes
 import org.typelevel.otel4s.metrics.Meter
@@ -23,7 +25,8 @@ class ResourceModule(
   private val resourceDatabase: ResourceDatabase,
   val bucketRegistry: BucketRegistry,
   val thumbResolutions: ThumbnailResolutions,
-  val thumbFormats: ThumbnailFormats
+  val thumbFormats: ThumbnailFormats,
+  val contentCacheMaxAge: FiniteDuration
 ):
 
   /** The Tapir endpoints of the module. */
@@ -32,7 +35,7 @@ class ResourceModule(
 
   /** The non-Tapir content routes (downloads, thumbnails and clips), served as plain HttpRoutes. */
   def contentRoutes(using apiSecurity: ApiSecurity): HttpRoutes[IO] =
-    ResourceContentRoutes.apply(bucketRegistry, thumbResolutions, thumbFormats)
+    ResourceContentRoutes.apply(bucketRegistry, thumbResolutions, thumbFormats, contentCacheMaxAge)
 
 object ResourceModule:
 
@@ -59,4 +62,4 @@ object ResourceModule:
 
     for
       bucketRegistry <- DatabaseBucketRegistry.resource(config.defaultBucket, BucketsDal(databasePool), eventTopic, bucketFactory)
-    yield new ResourceModule(resourceDatabase, bucketRegistry, thumbResolutions, thumbFormats)
+    yield new ResourceModule(resourceDatabase, bucketRegistry, thumbResolutions, thumbFormats, config.previews.cacheMaxAge)
