@@ -15,7 +15,7 @@ import skunk.codec.all.*
 import skunk.implicits.*
 import skunk.{Session, *}
 
-import nl.amony.lib.messagebus.{MessageTopic, MessageTopicKey, PersistenceCodec, PersistentMessageBus}
+import nl.amony.lib.messagebus.{MessageTopic, MessageTopicKey, PersistentMessageBus}
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
 import nl.amony.{App, DatabaseConfig}
@@ -49,8 +49,7 @@ class ResourceEventPublishingSpec extends AnyWordSpecLike with TestContainerForA
     )
 
   private def topicFor(pool: Resource[IO, Session[IO]], name: String): MessageTopic[ResourceEvent] =
-    given PersistenceCodec[ResourceEvent] = PersistenceCodec.fromCirce
-    given MessageTopicKey[ResourceEvent]  = MessageTopicKey(name)
+    given MessageTopicKey[ResourceEvent] = MessageTopicKey(name)
     PersistentMessageBus.postgres(pool).getTopic[ResourceEvent]
 
   private def eventCount(pool: Resource[IO, Session[IO]], name: String): IO[Long] =

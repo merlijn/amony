@@ -8,6 +8,7 @@ import cats.effect.{Deferred, IO, Ref, Resource}
 import cats.syntax.all.*
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
+import io.circe.Codec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
@@ -46,8 +47,8 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
     )
 
   private def topicFor(pool: Resource[IO, Session[IO]]): MessageTopic[Int] =
-    given PersistenceCodec[Int] = PersistenceCodec.fromCirce
-    given MessageTopicKey[Int]  = MessageTopicKey(s"topic-${UUID.randomUUID()}")
+    given Codec[Int]           = Codec.implied[Int]
+    given MessageTopicKey[Int] = MessageTopicKey(s"topic-${UUID.randomUUID()}")
     PersistentMessageBus.postgres(pool, MessageBusConfig(retryBackoff = 100.millis)).getTopic[Int]
 
   private def await(ref: Ref[IO, List[Int]], size: Int): IO[List[Int]] =

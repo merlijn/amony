@@ -2,10 +2,11 @@ package nl.amony.lib.messagebus
 
 import cats.effect.IO
 import fs2.Stream
+import io.circe.Codec
 import skunk.Session
 
-case class MessageTopicKey[E: PersistenceCodec](name: String):
-  val persistenceCodec: PersistenceCodec[E] = summon[PersistenceCodec[E]]
+case class MessageTopicKey[E: Codec](name: String):
+  val codec: Codec[E] = summon[Codec[E]]
 
 trait MessageTopic[E]:
 

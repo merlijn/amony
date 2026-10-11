@@ -21,14 +21,14 @@ final private[messagebus] class PostgresMessageTopic[E](
   config: MessageBusConfig
 ) extends MessageTopic[E] with Logging:
 
-  private val codec      = key.persistenceCodec
+  private val codec      = key.codec
   private val identifier = PostgresMessageTopic.channelIdentifier(key.name)
 
   override def publish(message: E): IO[Unit] =
     pool.use(session => session.transaction.use(_ => publish(session, message)))
 
   override def publish(session: Session[IO], message: E): IO[Unit] =
-    queue.enqueue(session, key.name, codec.encode(message)) >> session.channel(identifier).notify(key.name)
+    queue.enqueue(session, key.name, codec(message)) >> session.channel(identifier).notify(key.name)
 
   override def processAtLeastOnce(processorId: String)(processor: E => IO[Unit]): Stream[IO, Unit] =
     Stream.eval(Mutex[IO]).flatMap { mutex =>
@@ -52,7 +52,7 @@ final private[messagebus] class PostgresMessageTopic[E](
 
   /** @return whether to advance to the next message (processed) or to retry this one later. */
   private def process(processor: E => IO[Unit])(row: MessageQueueRow): IO[Boolean] =
-    IO(codec.decode(row.payload)).flatMap(processor).attempt.flatMap:
+    codec.decodeJson(row.payload).fold(e => IO.raiseError(e), e => IO.pure(e)).flatMap(processor).attempt.flatMap:
       case Right(_) => queue.markProcessed(row.id).as(true)
       // Any failure (a processor error, or a payload that cannot be decoded) is retried in place, so nothing is ever
       // skipped. The backoff is applied while holding the consumer's mutex, so poll/notify triggers are delayed too.
