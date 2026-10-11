@@ -29,3 +29,13 @@ final class ThumbnailFormats(supported: List[ImageFormat], encoderOptions: Map[I
 
   /** Extra ffmpeg encoder arguments configured for the given format (empty when none are configured). */
   def encoderArgs(format: ImageFormat): List[String] = encoderOptions.getOrElse(format, Nil)
+
+  /**
+   * A stable fingerprint of the configured encoder options. It is folded into preview cache validators so that changing
+   * the encoder arguments invalidates previously cached previews and browser validators.
+   */
+  lazy val settingsFingerprint: String =
+    encoderOptions.toList
+      .sortBy(_._1.configName)
+      .map { case (format, args) => s"${format.configName}=${args.mkString(",")}" }
+      .mkString(";")

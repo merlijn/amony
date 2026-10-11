@@ -39,6 +39,21 @@ class ThumbnailFormatsSpec extends AnyWordSpecLike {
 
     "return no encoder arguments when none are configured" in
       assert(formats.encoderArgs(ImageFormat.Avif).isEmpty && formats.encoderArgs(ImageFormat.Jpeg).isEmpty)
+
+    "expose a settings fingerprint that changes when the encoder options change" in {
+      val base     = ThumbnailFormats(List(ImageFormat.Avif, ImageFormat.Webp))
+      val withArgs = ThumbnailFormats(List(ImageFormat.Avif, ImageFormat.Webp), Map(ImageFormat.Avif -> List("-c:v", "libsvtav1")))
+
+      assert(base.settingsFingerprint == ThumbnailFormats(List(ImageFormat.Avif, ImageFormat.Webp)).settingsFingerprint)
+      assert(base.settingsFingerprint != withArgs.settingsFingerprint)
+    }
+
+    "keep the settings fingerprint independent of the format preference order" in {
+      val a = ThumbnailFormats(List(ImageFormat.Avif, ImageFormat.Webp), Map(ImageFormat.Avif -> List("-q", "1")))
+      val b = ThumbnailFormats(List(ImageFormat.Webp, ImageFormat.Avif), Map(ImageFormat.Avif -> List("-q", "1")))
+
+      assert(a.settingsFingerprint == b.settingsFingerprint)
+    }
   }
 
   "ImageFormat" should {

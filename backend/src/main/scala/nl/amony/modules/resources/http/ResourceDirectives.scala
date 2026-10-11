@@ -7,7 +7,17 @@ import fs2.Stream
 import fs2.io.file.{Files, Path}
 import org.http4s.*
 import org.http4s.headers.Range.SubRange
-import org.http4s.headers.{Range, `Accept-Encoding`, `Accept-Ranges`, `Content-Encoding`, `Content-Length`, `Content-Range`, `Content-Type`}
+import org.http4s.headers.{
+  ETag,
+  Range,
+  `Accept-Encoding`,
+  `Accept-Ranges`,
+  `Content-Encoding`,
+  `Content-Length`,
+  `Content-Range`,
+  `Content-Type`,
+  `If-None-Match`
+}
 import org.typelevel.ci.CIStringSyntax
 import scribe.Logging
 
@@ -19,21 +29,36 @@ object ResourceDirectives extends Logging {
 
   def resourceContentsResponse(req: Request[IO], resource: ResourceContent): IO[Response[IO]] = {
 
-    val maybeMediaType    = MediaType.parse(resource.contentType).toOption
-    val additionalHeaders = Headers(maybeMediaType.map(mediaType => `Content-Type`(mediaType)).toList)
+    val maybeMediaType = MediaType.parse(resource.contentType).toOption
+    val eTagHeaders    = resource.eTag.map(tag => `ETag`(EntityTag(tag))).toList
 
-    resource match {
-      case resource: ResourceContentWithRangeSupport if resource.size > rangedResponseCutoff =>
-        ResourceDirectives.responseWithRangeSupport[IO](
-          request           = req,
-          size              = resource.size,
-          additionalHeaders = additionalHeaders,
-          rangeResponseFn   = resource.streamRange
-        )
-      case _                                                                                 =>
-        IO.pure(Response(status = Status.Ok, headers = additionalHeaders, body = resource.stream))
+    // If-None-Match takes precedence over Range, so a matching validator short-circuits to 304 before any body is read.
+    if isNotModified(req, resource.eTag) then IO.pure(Response(status = Status.NotModified, headers = Headers(eTagHeaders)))
+    else {
+      val additionalHeaders = Headers(maybeMediaType.map(mediaType => `Content-Type`(mediaType)).toList) ++ Headers(eTagHeaders)
+
+      resource match {
+        case resource: ResourceContentWithRangeSupport if resource.size > rangedResponseCutoff =>
+          ResourceDirectives.responseWithRangeSupport[IO](
+            request           = req,
+            size              = resource.size,
+            additionalHeaders = additionalHeaders,
+            rangeResponseFn   = resource.streamRange
+          )
+        case _                                                                                 =>
+          IO.pure(Response(status = Status.Ok, headers = additionalHeaders, body = resource.stream))
+      }
     }
   }
+
+  /** Whether the request carries an `If-None-Match` that matches the resource's validator (weak comparison, per RFC 7232). */
+  private def isNotModified(req: Request[IO], eTag: Option[String]): Boolean =
+    eTag.exists(tag =>
+      req.headers.get[`If-None-Match`].exists {
+        case `If-None-Match`(None)       => true // "*" matches any existing representation
+        case `If-None-Match`(Some(tags)) => tags.exists(_.tag == tag)
+      }
+    )
 
   def responseFromFile[F[_]](
     req: Request[F],

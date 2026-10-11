@@ -80,6 +80,12 @@ case class ImageThumbnail(width: Option[Int] = None, height: Option[Int] = None,
 
 object ResourceOperations:
 
+  /**
+   * Bump this when the preview generation logic or the ffmpeg/ImageMagick toolchain changes, so that cached previews
+   * and browser validators are invalidated.
+   */
+  val PreviewRecipeVersion = 1
+
   /** The resource's native pixel dimensions (0, 0 when unknown). */
   def sourceDimensions(resource: ResourceInfo): (Int, Int) = resource.basicContentProperties match
     case Some(video: VideoProperties) => (video.width, video.height)

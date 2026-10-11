@@ -1,9 +1,11 @@
 package nl.amony.modules.resources
 
+import scala.concurrent.duration.*
+
 import pureconfig.*
 import pureconfig.error.CannotConvert
 
-import nl.amony.modules.resources.api.{ImageFormat, ResourceBucketConfig}
+import nl.amony.modules.resources.api.{CacheScope, ImageFormat, ResourceBucketConfig}
 
 enum ResolutionPickingStrategy(val configName: String):
   case RoundUp      extends ResolutionPickingStrategy("round-up")
@@ -22,6 +24,13 @@ given ConfigReader[ImageFormat] =
   ConfigReader[String].emap { name =>
     ImageFormat.fromName(name).toRight(
       CannotConvert(name, "ImageFormat", s"Expected one of: ${ImageFormat.values.map(_.configName).mkString(", ")}")
+    )
+  }
+
+given ConfigReader[CacheScope] =
+  ConfigReader[String].emap { name =>
+    CacheScope.values.find(_.configName == name).toRight(
+      CannotConvert(name, "CacheScope", s"Expected one of: ${CacheScope.values.map(_.configName).mkString(", ")}")
     )
   }
 
@@ -49,7 +58,9 @@ case class ThumbnailConfig(
   supportedVideoFormats: List[String]           = List("mp4"),
   resolutionStepDown: Int,
   resolutionPickingStrategy: ResolutionPickingStrategy,
-  formatOptions: Map[ImageFormat, List[String]] = Map.empty
+  formatOptions: Map[ImageFormat, List[String]] = Map.empty,
+  cacheMaxAge: FiniteDuration                   = 7.days,
+  cacheScope: CacheScope                        = CacheScope.Public
 ) derives ConfigReader
 
 case class ResourceConfig(previews: ThumbnailConfig, defaultBucket: ResourceBucketConfig, parallelFactor: Int = 4) derives ConfigReader
