@@ -7,6 +7,7 @@ import scala.util.Using
 import cats.effect.{IO, Resource, ResourceApp}
 import cats.implicits.*
 import com.typesafe.config.{Config, ConfigFactory}
+import liquibase.Contexts
 import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
@@ -21,7 +22,7 @@ import sttp.client4.httpclient.cats.HttpClientCatsBackend
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 import sttp.tapir.server.tracing.otel4s.Otel4sTracing
 
-import nl.amony.lib.messagebus.{MessageTopic, MessageTopicKey, PersistenceCodec, PersistentMessageBus}
+import nl.amony.lib.messagebus.{MessageTopic, MessageTopicKey, PersistentMessageBus}
 import nl.amony.lib.observability.Observability
 import nl.amony.lib.tapir.dsl.ServerEndpoints
 import nl.amony.modules.admin.{AdminRoutes, BucketAdminRoutes}
@@ -41,16 +42,19 @@ object App extends ResourceApp.Forever with Logging {
         ConfigFactory.parseFile(Path.of(fileName).toFile)
       case None           => ConfigFactory.load()
 
-  def runDatabaseMigrations(config: DatabaseConfig): IO[Unit] =
+  def runDatabaseMigrations(config: DatabaseConfig, contexts: Contexts = new Contexts()): IO[Unit] =
     config.getJdbcConnection.flatMap: connection =>
       IO.fromTry(Using(connection) { conn =>
         logger.info("Running database migrations...")
         val liquibaseDatabase = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(conn));
         val liquibase         = new Liquibase("db/00-changelog.yaml", new ClassLoaderResourceAccessor(), liquibaseDatabase)
-        liquibase.update()
+        liquibase.update(contexts)
       })
 
-  def makeDatabasePool(config: DatabaseConfig)(using tracer: Tracer[IO], meter: Meter[IO]): Resource[IO, Resource[IO, Session[IO]]] = {
+  def makeDatabasePool(
+    config: DatabaseConfig,
+    contexts: Contexts = new Contexts()
+  )(using tracer: Tracer[IO], meter: Meter[IO]): Resource[IO, Resource[IO, Session[IO]]] = {
     for
       pool <- Session.Builder[IO]
                 .withHost(config.host)
@@ -58,7 +62,7 @@ object App extends ResourceApp.Forever with Logging {
                 .withUserAndPassword(config.username, config.password)
                 .withDatabase(config.database)
                 .pooled(config.poolSize)
-      _    <- Resource.eval(runDatabaseMigrations(config))
+      _    <- Resource.eval(runDatabaseMigrations(config, contexts))
     yield pool
   }
 
@@ -99,8 +103,7 @@ object App extends ResourceApp.Forever with Logging {
         httpClientBackend <- HttpClientCatsBackend.resource[IO]()
         searchModule      <- SearchModule.resource(appConfig.search)
         eventTopic         = {
-          given PersistenceCodec[ResourceEvent] = PersistenceCodec.fromCirce
-          given MessageTopicKey[ResourceEvent]  = MessageTopicKey("resource-events")
+          given MessageTopicKey[ResourceEvent] = MessageTopicKey("resource-events")
           PersistentMessageBus.postgres(databasePool, appConfig.messageBus).getTopic[ResourceEvent]
         }
         _                 <- eventTopic.processAtLeastOnce("solr-indexer")(searchModule.indexer.processEvent).compile.drain.background

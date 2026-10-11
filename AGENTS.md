@@ -17,6 +17,8 @@ It uses Tapir to define the API endpoints and generate an OpenAPI specification.
 Useful commands:
 
 - `sbt format` - Formats the code using scalafmt, should be done before committing code changes.
+- `sbt test` - Runs only tests that are affected by changes compared to the previous run.
+- `sbt testFull` - Runs all tests.
 - `sbt generateSpec` - Generates the OpenAPI specification and places it in the frontend folder.
 - `sbt exportDatabaseSchema` - Applies the database evolutions and exports the full schema at
   `backend/target/amony-schema.sql`

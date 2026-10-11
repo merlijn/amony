@@ -2,10 +2,11 @@ package nl.amony.lib.messagebus
 
 import cats.effect.IO
 import fs2.Stream
+import io.circe.Codec
 import skunk.Session
 
-case class MessageTopicKey[E: PersistenceCodec](name: String):
-  val persistenceCodec: PersistenceCodec[E] = summon[PersistenceCodec[E]]
+case class MessageTopicKey[E: Codec](name: String):
+  val codec: Codec[E] = summon[Codec[E]]
 
 trait MessageTopic[E]:
 
@@ -19,8 +20,9 @@ trait MessageTopic[E]:
   def publish(session: Session[IO], message: E): IO[Unit]
 
   /**
-   * An at-least-once consumer that processes a topic's messages strictly in insertion order, one at a time, so that
-   * messages for the same resource are never applied out of order. A processor failure is retried in place, blocking the
-   * topic until it succeeds, so no message is skipped; only an undecodable payload is parked as failed.
+   * An at-least-once consumer group that processes a topic's messages strictly in insertion order, one at a time,
+   * from its own committed offset, so each group reads the whole log independently and messages for the same
+   * resource are never applied out of order. Any failure is retried in place, blocking the group until it succeeds,
+   * so no message is ever skipped.
    */
-  def processAtLeastOnce(processorId: String)(processor: E => IO[Unit]): Stream[IO, Unit]
+  def processAtLeastOnce(consumerId: String)(processor: E => IO[Unit]): Stream[IO, Unit]

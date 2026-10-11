@@ -4,62 +4,62 @@ import cats.effect.std.Mutex
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
+import scribe.Logging
 import skunk.Session
 import skunk.data.Identifier
 
 /**
- * A [[MessageTopic]] backed by the durable message queue. Producers append a row and send a `NOTIFY` on the topic
- * channel in the same transaction; the consumer wakes on `NOTIFY` (with a periodic poll as a fallback), claims the
- * oldest message with `FOR UPDATE SKIP LOCKED`, and processes it before the next, so messages are applied in order.
- * Messages left claimed by a stopped consumer are requeued on startup.
+ * A [[MessageTopic]] backed by the durable message log. Producers append a row and send a `NOTIFY` on the topic
+ * channel in the same transaction; each consumer group wakes on `NOTIFY` (with a periodic poll as a fallback) and
+ * reads the log from its own committed offset, in order, so one topic can be consumed independently by several
+ * processors. A message is only deleted once every consumer group has processed it.
  */
 final private[messagebus] class PostgresMessageTopic[E](
   key: MessageTopicKey[E],
-  queue: MessageQueue,
+  log: MessageLog,
   pool: Resource[IO, Session[IO]],
   config: MessageBusConfig
-) extends MessageTopic[E]:
+) extends MessageTopic[E] with Logging:
 
-  private val codec      = key.persistenceCodec
+  private val codec      = key.codec
   private val identifier = PostgresMessageTopic.channelIdentifier(key.name)
 
   override def publish(message: E): IO[Unit] =
     pool.use(session => session.transaction.use(_ => publish(session, message)))
 
   override def publish(session: Session[IO], message: E): IO[Unit] =
-    queue.enqueue(session, key.name, codec.encode(message)) >> session.channel(identifier).notify(key.name)
+    log.enqueue(session, key.name, codec(message)) >> session.channel(identifier).notify(key.name)
 
-  override def processAtLeastOnce(processorId: String)(processor: E => IO[Unit]): Stream[IO, Unit] =
+  override def processAtLeastOnce(consumerId: String)(processor: E => IO[Unit]): Stream[IO, Unit] =
     Stream.eval(Mutex[IO]).flatMap { mutex =>
-      // Any claimed message at startup was abandoned by a previous consumer (single-node assumption), so requeue it.
-      val recover  = Stream.eval(queue.resetClaimed(key.name))
-      val realtime = notifications.evalMap(_ => mutex.lock.use(_ => drain(processor)))
-      val polling  = Stream.fixedRateStartImmediately[IO](config.pollInterval).evalMap(_ => mutex.lock.use(_ => drain(processor)))
-      val purging  = Stream.fixedRateStartImmediately[IO](config.purgeInterval).evalMap(_ => queue.purge(config.retentionDuration))
-      recover ++ realtime.merge(polling).merge(purging)
+      // A new consumer group starts at the latest message, like Kafka's `auto.offset.reset=latest`.
+      val register = Stream.eval(log.latestId(key.name).flatMap(offset => log.ensureConsumer(key.name, consumerId, offset)))
+      val realtime = notifications.evalMap(_ => mutex.lock.use(_ => drain(consumerId, processor)))
+      val polling  = Stream.fixedRateStartImmediately[IO](config.pollInterval).evalMap(_ => mutex.lock.use(_ => drain(consumerId, processor)))
+      val purging  = Stream.fixedRateStartImmediately[IO](config.purgeInterval).evalMap(_ => log.purge(key.name, config.retentionDuration))
+      register ++ realtime.merge(polling).merge(purging)
     }
 
   private def notifications: Stream[IO, Unit] =
     Stream.resource(pool).flatMap(session => session.channel(identifier).listen(config.notificationQueueSize)).void
 
-  /** Drain the topic in order, stopping at the first message that fails so it is retried before anything newer. */
-  private def drain(processor: E => IO[Unit]): IO[Unit] =
-    queue.claimOldest(key.name).flatMap {
+  /** Drain the log in order, stopping at the first message that fails so it is retried before anything newer. */
+  private def drain(consumerId: String, processor: E => IO[Unit]): IO[Unit] =
+    log.nextUnprocessed(key.name, consumerId).flatMap {
       case None      => IO.unit
-      case Some(row) => process(processor)(row).flatMap(advance => if advance then drain(processor) else IO.unit)
+      case Some(row) => process(consumerId, processor)(row).flatMap(advance => if advance then drain(consumerId, processor) else IO.unit)
     }
 
-  /** @return whether to advance to the next message (processed, or parked as failed) or to retry this one later. */
-  private def process(processor: E => IO[Unit])(row: MessageQueueRow): IO[Boolean] =
-    IO(codec.decode(row.payload)).attempt.flatMap:
-      // An undecodable payload is a permanent error; park it so it does not block the topic forever.
-      case Left(e)        => queue.markFailed(row.id, Option(e.getMessage).getOrElse(e.getClass.getName)).as(true)
-      // A processor failure (e.g. Solr unavailable) is transient; retry in place so nothing is skipped. The backoff
-      // is applied while holding the consumer's mutex, so poll/notify triggers are delayed by it too.
-      case Right(message) =>
-        processor(message).attempt.flatMap:
-          case Right(_) => queue.markProcessed(row.id).as(true)
-          case Left(e)  => queue.releaseForRetry(row.id, Option(e.getMessage).getOrElse(e.getClass.getName)) >> IO.sleep(config.retryBackoff).as(false)
+  /** @return whether to advance to the next message (committed) or to retry this one later. */
+  private def process(consumerId: String, processor: E => IO[Unit])(row: MessageLogRow): IO[Boolean] =
+    codec.decodeJson(row.payload).fold(e => IO.raiseError(e), e => IO.pure(e)).flatMap(processor).attempt.flatMap:
+      case Right(_) => log.commitOffset(key.name, consumerId, row.id).as(true)
+      // Any failure (a processor error, or a payload that cannot be decoded) is retried in place, so nothing is ever
+      // skipped. The backoff is applied while holding the consumer's mutex, so poll/notify triggers are delayed too.
+      case Left(e)  =>
+        val error = Option(e.getMessage).getOrElse(e.getClass.getName)
+        IO(logger.error(s"Failed to process message ${row.id} on topic '${key.name}' for consumer '$consumerId': $error")) >>
+          log.recordFailure(key.name, consumerId, error) >> IO.sleep(config.retryBackoff).as(false)
 
 private[messagebus] object PostgresMessageTopic:
 
