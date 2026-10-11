@@ -52,7 +52,7 @@ case class ThumbnailConfig(
   resolutionStepDown: Int,
   resolutionPickingStrategy: ResolutionPickingStrategy,
   formatOptions: Map[ImageFormat, List[String]] = Map.empty,
-  cacheMaxAge: FiniteDuration                   = 365.days
+  cacheMaxAge: FiniteDuration                   = 7.days
 ) derives ConfigReader
 
 case class ResourceConfig(previews: ThumbnailConfig, defaultBucket: ResourceBucketConfig, parallelFactor: Int = 4) derives ConfigReader

@@ -5,7 +5,7 @@ import scala.concurrent.duration.FiniteDuration
 import cats.data.OptionT
 import cats.effect.IO
 import org.http4s.*
-import org.http4s.CacheDirective.`max-age`
+import org.http4s.CacheDirective.{`max-age`, `must-revalidate`}
 import org.http4s.dsl.io.*
 import org.http4s.headers.`Cache-Control`
 import scribe.Logging
@@ -122,7 +122,7 @@ object ResourceContentRoutes extends Logging {
                                   })
             derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))
             response           <- OptionT.liftF(resourceContentsResponse(req, derivedResource)
-                                    .map(r => r.addHeader(`Cache-Control`(`max-age`(cacheMaxAge)))))
+                                    .map(r => r.addHeader(`Cache-Control`(`max-age`(cacheMaxAge), `must-revalidate`))))
           yield response
         )
     }
