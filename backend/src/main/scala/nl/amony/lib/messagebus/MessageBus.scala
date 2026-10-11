@@ -18,11 +18,11 @@ object PersistentMessageBus:
   def postgres(pool: Resource[IO, Session[IO]], config: MessageBusConfig = MessageBusConfig()): PersistentMessageBus =
     new PersistentMessageBus:
 
-      private val queue  = MessageQueue(pool)
+      private val log    = MessageLog(pool)
       private val topics = ConcurrentHashMap[String, MessageTopic[?]]()
 
       override def getTopicForKey[E](key: MessageTopicKey[E]): MessageTopic[E] =
-        topics.computeIfAbsent(key.name, _ => PostgresMessageTopic(key, queue, pool, config)).asInstanceOf[MessageTopic[E]]
+        topics.computeIfAbsent(key.name, _ => PostgresMessageTopic(key, log, pool, config)).asInstanceOf[MessageTopic[E]]
 
 final case class MessageBusConfig(
   // Fallback poll for notifications that were lost or whose consumer crashed. The NOTIFY path handles the

@@ -53,7 +53,7 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
 
   /** Registers a consumer group from the start of the log, so a test can publish before the consumer starts. */
   private def registerFromStart(pool: Resource[IO, Session[IO]], name: String, consumerId: String): IO[Unit] =
-    MessageQueue(pool).ensureConsumer(name, consumerId, 0)
+    MessageLog(pool).ensureConsumer(name, consumerId, 0)
 
   private def await(ref: Ref[IO, List[Int]], size: Int): IO[List[Int]] =
     ref.get.flatMap(xs => if xs.size >= size then IO.pure(xs) else IO.sleep(50.millis) *> await(ref, size)).timeout(15.seconds)
@@ -73,6 +73,31 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
                        }
           result    <- processed.get
         yield result shouldBe List(1, 2, 3, 4, 5)
+      }.unsafeRunSync()
+    }
+
+    "consume the whole log independently per consumer group" in withContainers { container =>
+      App.makeDatabasePool(configForContainer(container)).use { pool =>
+        val name  = s"topic-${UUID.randomUUID()}"
+        val topic = topicFor(pool, name)
+
+        for
+          _        <- registerFromStart(pool, name, "a")
+          _        <- registerFromStart(pool, name, "b")
+          seenA    <- Ref.of[IO, List[Int]](Nil)
+          seenB    <- Ref.of[IO, List[Int]](Nil)
+          consumers = (
+                        topic.processAtLeastOnce("a")(n => seenA.update(_ :+ n)).compile.drain,
+                        topic.processAtLeastOnce("b")(n => seenB.update(_ :+ n)).compile.drain
+                      )
+          _        <- consumers.parTupled.background.use { _ =>
+                        List(1, 2, 3).traverse_(topic.publish) >> (await(seenA, 3), await(seenB, 3)).parTupled.void
+                      }
+          a        <- seenA.get
+          b        <- seenB.get
+        yield
+          a shouldBe List(1, 2, 3)
+          b shouldBe List(1, 2, 3)
       }.unsafeRunSync()
     }
 

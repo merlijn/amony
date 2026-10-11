@@ -11,31 +11,31 @@ import skunk.codec.all.*
 import skunk.implicits.*
 
 /** A message in the durable, append-only log that backs the message bus. */
-final case class MessageQueueRow(id: Long, topic: String, payload: Json, createdAt: OffsetDateTime)
+final case class MessageLogRow(id: Long, topic: String, payload: Json, createdAt: OffsetDateTime)
 
-object MessageQueueRow:
+object MessageLogRow:
 
-  val codec: Codec[MessageQueueRow] =
-    (int8 *: varchar(128) *: jsonb *: timestamptz).to[MessageQueueRow]
+  val codec: Codec[MessageLogRow] =
+    (int8 *: varchar(128) *: jsonb *: timestamptz).to[MessageLogRow]
 
-private[messagebus] object MessageQueueQueries:
+private[messagebus] object MessageLogQueries:
 
   val insert: Query[(String, Json), Long] =
-    sql"insert into message_queue (topic, payload) values ($varchar, $jsonb) returning id".query(int8)
+    sql"insert into message_log (topic, payload) values ($varchar, $jsonb) returning id".query(int8)
 
   val latestId: Query[String, Long] =
-    sql"select coalesce(max(id), 0) from message_queue where topic = $varchar".query(int8)
+    sql"select coalesce(max(id), 0) from message_log where topic = $varchar".query(int8)
 
   // The next message after a consumer group's committed offset, so each group reads the log independently.
-  val nextUnprocessed: Query[(String, String), MessageQueueRow] =
+  val nextUnprocessed: Query[(String, String), MessageLogRow] =
     sql"""
       select mq.id, mq.topic, mq.payload, mq.created_at
       from message_consumer mc
-      join message_queue mq on mq.topic = mc.topic and mq.id > mc.last_offset
+      join message_log mq on mq.topic = mc.topic and mq.id > mc.last_offset
       where mc.topic = $varchar and mc.consumer_id = $varchar
       order by mq.id
       limit 1
-    """.query(MessageQueueRow.codec)
+    """.query(MessageLogRow.codec)
 
   val ensureConsumer: Command[(String, String, Long)] =
     sql"insert into message_consumer (topic, consumer_id, last_offset) values ($varchar, $varchar, $int8) on conflict (topic, consumer_id) do nothing".command
@@ -57,32 +57,32 @@ private[messagebus] object MessageQueueQueries:
   // Delete only messages every consumer group has already processed, so nothing unread is ever lost.
   val purge: Command[(String, Duration)] =
     sql"""
-      delete from message_queue mq
+      delete from message_log mq
       where mq.topic = $varchar
         and mq.id <= (select min(last_offset) from message_consumer mc where mc.topic = mq.topic)
         and mq.created_at < now() - $interval
     """.command
 
 /** Persistence for the durable log and the per-consumer offsets that back the message bus. */
-final private[messagebus] class MessageQueue(pool: Resource[IO, Session[IO]]):
+final private[messagebus] class MessageLog(pool: Resource[IO, Session[IO]]):
 
   def enqueue(session: Session[IO], topic: String, payload: Json): IO[Unit] =
-    session.prepare(MessageQueueQueries.insert).flatMap(_.unique((topic, payload))).void
+    session.prepare(MessageLogQueries.insert).flatMap(_.unique((topic, payload))).void
 
   def latestId(topic: String): IO[Long] =
-    pool.use(session => session.prepare(MessageQueueQueries.latestId).flatMap(_.unique(topic)))
+    pool.use(session => session.prepare(MessageLogQueries.latestId).flatMap(_.unique(topic)))
 
   def ensureConsumer(topic: String, consumerId: String, initialOffset: Long): IO[Unit] =
-    pool.use(session => session.prepare(MessageQueueQueries.ensureConsumer).flatMap(_.execute((topic, consumerId, initialOffset))).void)
+    pool.use(session => session.prepare(MessageLogQueries.ensureConsumer).flatMap(_.execute((topic, consumerId, initialOffset))).void)
 
-  def nextUnprocessed(topic: String, consumerId: String): IO[Option[MessageQueueRow]] =
-    pool.use(session => session.prepare(MessageQueueQueries.nextUnprocessed).flatMap(_.option((topic, consumerId))))
+  def nextUnprocessed(topic: String, consumerId: String): IO[Option[MessageLogRow]] =
+    pool.use(session => session.prepare(MessageLogQueries.nextUnprocessed).flatMap(_.option((topic, consumerId))))
 
   def commitOffset(topic: String, consumerId: String, offset: Long): IO[Unit] =
-    pool.use(session => session.prepare(MessageQueueQueries.commitOffset).flatMap(_.execute((offset, topic, consumerId))).void)
+    pool.use(session => session.prepare(MessageLogQueries.commitOffset).flatMap(_.execute((offset, topic, consumerId))).void)
 
   def recordFailure(topic: String, consumerId: String, error: String): IO[Unit] =
-    pool.use(session => session.prepare(MessageQueueQueries.recordFailure).flatMap(_.execute((error, topic, consumerId))).void)
+    pool.use(session => session.prepare(MessageLogQueries.recordFailure).flatMap(_.execute((error, topic, consumerId))).void)
 
   def purge(topic: String, olderThan: Duration): IO[Unit] =
-    pool.use(session => session.prepare(MessageQueueQueries.purge).flatMap(_.execute((topic, olderThan))).void)
+    pool.use(session => session.prepare(MessageLogQueries.purge).flatMap(_.execute((topic, olderThan))).void)

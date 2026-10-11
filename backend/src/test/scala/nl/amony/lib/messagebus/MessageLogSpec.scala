@@ -20,7 +20,7 @@ import skunk.{Session, *}
 
 import nl.amony.{App, DatabaseConfig}
 
-class MessageQueueSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
+class MessageLogSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 
   override val containerDef: GenericContainer.Def[GenericContainer] =
     GenericContainer.Def(
@@ -48,8 +48,8 @@ class MessageQueueSpec extends AnyWordSpecLike with TestContainerForAll with Mat
       poolSize = 4
     )
 
-  private def withQueue[A](container: GenericContainer)(f: (Resource[IO, Session[IO]], MessageQueue) => IO[A]): A =
-    App.makeDatabasePool(configForContainer(container)).use(pool => f(pool, MessageQueue(pool))).unsafeRunSync()
+  private def withLog[A](container: GenericContainer)(f: (Resource[IO, Session[IO]], MessageLog) => IO[A]): A =
+    App.makeDatabasePool(configForContainer(container)).use(pool => f(pool, MessageLog(pool))).unsafeRunSync()
 
   private def newTopic: String = s"test-${UUID.randomUUID()}"
 
@@ -57,11 +57,11 @@ class MessageQueueSpec extends AnyWordSpecLike with TestContainerForAll with Mat
 
   private def nOf(json: Json): Int = json.hcursor.get[Int]("n").getOrElse(throw new RuntimeException(s"missing 'n' in $json"))
 
-  private def publish(pool: Resource[IO, Session[IO]], queue: MessageQueue, topic: String, n: Int): IO[Unit] =
-    pool.use(session => queue.enqueue(session, topic, payload(n)))
+  private def publish(pool: Resource[IO, Session[IO]], log: MessageLog, topic: String, n: Int): IO[Unit] =
+    pool.use(session => log.enqueue(session, topic, payload(n)))
 
   private def countRows(pool: Resource[IO, Session[IO]], topic: String): IO[Long] =
-    pool.use(session => session.prepare(sql"select count(*) from message_queue where topic = $varchar".query(int8)).flatMap(_.unique(topic)))
+    pool.use(session => session.prepare(sql"select count(*) from message_log where topic = $varchar".query(int8)).flatMap(_.unique(topic)))
 
   private def consumerState(pool: Resource[IO, Session[IO]], topic: String, consumerId: String): IO[(Int, Option[String])] =
     pool.use(
@@ -69,35 +69,35 @@ class MessageQueueSpec extends AnyWordSpecLike with TestContainerForAll with Mat
         .flatMap(_.unique((topic, consumerId)))
     )
 
-  private def readAll(queue: MessageQueue, topic: String, consumerId: String): IO[List[Int]] =
-    queue.nextUnprocessed(topic, consumerId).flatMap {
+  private def readAll(log: MessageLog, topic: String, consumerId: String): IO[List[Int]] =
+    log.nextUnprocessed(topic, consumerId).flatMap {
       case None      => IO.pure(Nil)
-      case Some(row) => queue.commitOffset(topic, consumerId, row.id).as(nOf(row.payload)).flatMap(n => readAll(queue, topic, consumerId).map(n :: _))
+      case Some(row) => log.commitOffset(topic, consumerId, row.id).as(nOf(row.payload)).flatMap(n => readAll(log, topic, consumerId).map(n :: _))
     }
 
-  "MessageQueue" should {
+  "MessageLog" should {
 
     "read messages in insertion order for a consumer" in withContainers { container =>
-      withQueue(container) { (pool, queue) =>
+      withLog(container) { (pool, log) =>
         val topic = newTopic
         for
-          _  <- queue.ensureConsumer(topic, "consumer", 0)
-          _  <- (1 to 3).toList.traverse_(n => publish(pool, queue, topic, n))
-          xs <- readAll(queue, topic, "consumer")
+          _  <- log.ensureConsumer(topic, "consumer", 0)
+          _  <- (1 to 3).toList.traverse_(n => publish(pool, log, topic, n))
+          xs <- readAll(log, topic, "consumer")
         yield xs shouldBe List(1, 2, 3)
       }
     }
 
     "start a new consumer at the latest message" in withContainers { container =>
-      withQueue(container) { (pool, queue) =>
+      withLog(container) { (pool, log) =>
         val topic = newTopic
         for
-          _    <- (1 to 2).toList.traverse_(n => publish(pool, queue, topic, n))
-          max  <- queue.latestId(topic)
-          _    <- queue.ensureConsumer(topic, "consumer", max)
-          none <- queue.nextUnprocessed(topic, "consumer")
-          _    <- publish(pool, queue, topic, 3)
-          next <- queue.nextUnprocessed(topic, "consumer")
+          _    <- (1 to 2).toList.traverse_(n => publish(pool, log, topic, n))
+          max  <- log.latestId(topic)
+          _    <- log.ensureConsumer(topic, "consumer", max)
+          none <- log.nextUnprocessed(topic, "consumer")
+          _    <- publish(pool, log, topic, 3)
+          next <- log.nextUnprocessed(topic, "consumer")
         yield
           none shouldBe None
           next.map(row => nOf(row.payload)) shouldBe Some(3)
@@ -105,14 +105,14 @@ class MessageQueueSpec extends AnyWordSpecLike with TestContainerForAll with Mat
     }
 
     "record a failure without advancing the offset" in withContainers { container =>
-      withQueue(container) { (pool, queue) =>
+      withLog(container) { (pool, log) =>
         val topic = newTopic
         for
-          _     <- queue.ensureConsumer(topic, "consumer", 0)
-          _     <- publish(pool, queue, topic, 1)
-          first <- queue.nextUnprocessed(topic, "consumer")
-          _     <- queue.recordFailure(topic, "consumer", "boom")
-          again <- queue.nextUnprocessed(topic, "consumer")
+          _     <- log.ensureConsumer(topic, "consumer", 0)
+          _     <- publish(pool, log, topic, 1)
+          first <- log.nextUnprocessed(topic, "consumer")
+          _     <- log.recordFailure(topic, "consumer", "boom")
+          again <- log.nextUnprocessed(topic, "consumer")
           state <- consumerState(pool, topic, "consumer")
         yield
           again.map(_.id) shouldBe first.map(_.id)
@@ -121,14 +121,14 @@ class MessageQueueSpec extends AnyWordSpecLike with TestContainerForAll with Mat
     }
 
     "let independent consumers each read the whole log" in withContainers { container =>
-      withQueue(container) { (pool, queue) =>
+      withLog(container) { (pool, log) =>
         val topic = newTopic
         for
-          _ <- queue.ensureConsumer(topic, "a", 0)
-          _ <- queue.ensureConsumer(topic, "b", 0)
-          _ <- (1 to 3).toList.traverse_(n => publish(pool, queue, topic, n))
-          a <- readAll(queue, topic, "a")
-          b <- readAll(queue, topic, "b")
+          _ <- log.ensureConsumer(topic, "a", 0)
+          _ <- log.ensureConsumer(topic, "b", 0)
+          _ <- (1 to 3).toList.traverse_(n => publish(pool, log, topic, n))
+          a <- readAll(log, topic, "a")
+          b <- readAll(log, topic, "b")
         yield
           a shouldBe List(1, 2, 3)
           b shouldBe List(1, 2, 3)
@@ -136,29 +136,29 @@ class MessageQueueSpec extends AnyWordSpecLike with TestContainerForAll with Mat
     }
 
     "purge messages every consumer has processed" in withContainers { container =>
-      withQueue(container) { (pool, queue) =>
+      withLog(container) { (pool, log) =>
         val topic = newTopic
         for
-          _    <- queue.ensureConsumer(topic, "consumer", 0)
-          _    <- (1 to 2).toList.traverse_(n => publish(pool, queue, topic, n))
-          row  <- queue.nextUnprocessed(topic, "consumer")
-          _    <- queue.commitOffset(topic, "consumer", row.get.id)
-          _    <- queue.purge(topic, java.time.Duration.ZERO)
+          _    <- log.ensureConsumer(topic, "consumer", 0)
+          _    <- (1 to 2).toList.traverse_(n => publish(pool, log, topic, n))
+          row  <- log.nextUnprocessed(topic, "consumer")
+          _    <- log.commitOffset(topic, "consumer", row.get.id)
+          _    <- log.purge(topic, java.time.Duration.ZERO)
           left <- countRows(pool, topic)
         yield left shouldBe 1
       }
     }
 
     "not purge messages a consumer has not processed" in withContainers { container =>
-      withQueue(container) { (pool, queue) =>
+      withLog(container) { (pool, log) =>
         val topic = newTopic
         for
-          _    <- queue.ensureConsumer(topic, "a", 0)
-          _    <- queue.ensureConsumer(topic, "b", 0)
-          _    <- (1 to 2).toList.traverse_(n => publish(pool, queue, topic, n))
-          row  <- queue.nextUnprocessed(topic, "a")
-          _    <- queue.commitOffset(topic, "a", row.get.id)
-          _    <- queue.purge(topic, java.time.Duration.ZERO)
+          _    <- log.ensureConsumer(topic, "a", 0)
+          _    <- log.ensureConsumer(topic, "b", 0)
+          _    <- (1 to 2).toList.traverse_(n => publish(pool, log, topic, n))
+          row  <- log.nextUnprocessed(topic, "a")
+          _    <- log.commitOffset(topic, "a", row.get.id)
+          _    <- log.purge(topic, java.time.Duration.ZERO)
           left <- countRows(pool, topic)
         yield left shouldBe 2
       }
