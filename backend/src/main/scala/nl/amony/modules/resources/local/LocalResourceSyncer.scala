@@ -22,6 +22,7 @@ import nl.amony.modules.resources.api.{
   ResourceId,
   ResourceInfo,
   ResourceMoved,
+  ResourceMovedAndModified,
   ResourceUpdated,
   VideoProperties
 }
@@ -49,7 +50,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
 
       case FileMetaChanged(f) => withRequireResource(f.partialHash, f.path)(r => ResourceFileMetaChanged(r.resourceId, f.modifiedTime, f.fileKey))
 
-      case FileContentChanged(f) => refreshResource(f).map(_.map(ResourceUpdated(_)))
+      case FileModified(f) => refreshResource(f, relativizePath(f.path)).map(_.map(ResourceUpdated(_)))
 
       case FileDeleted(f) => withRequireResource(f.partialHash, f.path)(r => ResourceDeleted(r.resourceId))
 
@@ -60,6 +61,12 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
         val oldPath = relativizePath(oldFilePath)
 
         withRequireResource(file.partialHash, oldFilePath)(r => ResourceMoved(r.resourceId, oldPath, newPath))
+
+      case FileMovedAndModified(file, oldFilePath) =>
+        val newPath = relativizePath(file.path)
+        val oldPath = relativizePath(oldFilePath)
+
+        refreshResource(file, oldPath).map(_.map(r => ResourceMovedAndModified(r.resourceId, oldPath, newPath, r.copy(path = newPath))))
     }
   }
 
@@ -91,8 +98,8 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
    * Refreshes the stored resource for an in-place content change, keeping its identity (and user metadata).
    * Returns None when the database row is gone, in which case the event is dropped.
    */
-  private def refreshResource(f: FileInfo): IO[Option[ResourceInfo]] =
-    db.getResourceByPath(bucketId, relativizePath(f.path)).flatMap {
+  private def refreshResource(f: FileInfo, lookupPath: String): IO[Option[ResourceInfo]] =
+    db.getResourceByPath(bucketId, lookupPath).flatMap {
       case None           =>
         IO(logger.warn(s"Dropping content-changed event, no such file in database: ${f.path}")).as(None)
       case Some(existing) =>
@@ -218,12 +225,10 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
     case ResourceDeleted(resourceId)                            => db.deleteResourceWith(s, bucketId, resourceId)
     case ResourceMoved(id, _, newPath)                          => db.moveWith(s, bucketId, id, newPath)
     case ResourceFileMetaChanged(id, lastModifiedTime, fileKey) => db.getResourceByIdWith(s, bucketId, id).flatMap {
-        case Some(resource) =>
-          db.upsertResourceWith(s, resource.copy(timeLastModified = Some(lastModifiedTime), fileKey = fileKey.orElse(resource.fileKey)))
+        case Some(resource) => db.upsertResourceWith(s, resource.copy(timeLastModified = Some(lastModifiedTime), fileKey = fileKey.orElse(resource.fileKey)))
         case None           => IO.unit
       }
-    case ResourceUpdated(resource)                              =>
-      deleteDerivedFiles(resource.resourceId) >> db.upsertResourceWith(s, resource)
+    case ResourceUpdated(resource)                              => deleteDerivedFiles(resource.resourceId) >> db.upsertResourceWith(s, resource)
     case _                                                      => IO.unit
   }
 
@@ -233,10 +238,10 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       generatePreviewsOnAdd(event)
 
   private def generatePreviewsOnAdd(event: ResourceEvent): IO[Unit] = event match
-    case ResourceAdded(resource) if config.generatePreviewsOnAdd   => generatePreviews(resource)
-    // content changes delete their previews first, so warming only regenerates what is actually missing
-    case ResourceUpdated(resource) if config.generatePreviewsOnAdd => generatePreviews(resource)
-    case _                                                         => IO.unit
+    case ResourceAdded(resource) if config.generatePreviewsOnAdd                     => generatePreviews(resource)
+    case ResourceUpdated(resource) if config.generatePreviewsOnAdd                   => generatePreviews(resource)
+    case ResourceMovedAndModified(_, _, _, resource) if config.generatePreviewsOnAdd => generatePreviews(resource)
+    case _                                                                           => IO.unit
 
   private def startSync(interrupter: SignallingRef[IO, Boolean]): IO[Unit] = {
     def pollWithRetryOnException(): fs2.Stream[IO, ResourceEvent] =

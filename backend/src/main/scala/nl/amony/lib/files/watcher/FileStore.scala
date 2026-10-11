@@ -98,21 +98,40 @@ class InMemoryFileStore extends FileStore:
 
   def applyEventSync(e: FileEvent): Unit = e match
     case FileMetaChanged(fileInfo)    => synchronized(updateForMetaChange(fileInfo))
-    case FileContentChanged(fileInfo) => synchronized(updateForMetaChange(fileInfo))
+    case FileModified(fileInfo) => synchronized(updateForMetaChange(fileInfo))
 
-    case FileAdded(fileInfo)          => synchronized {
+    case FileAdded(fileInfo)                     => synchronized {
         byPath.put(fileInfo.path, fileInfo)
         byPartialHashIndex.put(fileInfo.partialHash, getPartialHashBucket(fileInfo.partialHash) + fileInfo)
         addToFileKeyIndex(fileInfo, fileInfo.path)
       }
-    case FileDeleted(fileInfo)        => synchronized {
+    case FileDeleted(fileInfo)                   => synchronized {
         byPath.remove(fileInfo.path)
         val updatedPartialHashBucket = getPartialHashBucket(fileInfo.partialHash).filterNot(_ == fileInfo)
         if updatedPartialHashBucket.isEmpty then byPartialHashIndex.remove(fileInfo.partialHash)
         else byPartialHashIndex.put(fileInfo.partialHash, updatedPartialHashBucket)
         removeFromFileKeyIndex(fileInfo)
       }
-    case FileMoved(fileInfo, oldPath) => synchronized {
+    case FileMovedAndModified(fileInfo, oldPath) => synchronized {
+        val resident     = Option(byPath.get(oldPath))
+        // same object moved: pure moves match by hash, modified moves by fileKey
+        val sameIdentity = resident.exists(r =>
+          r.partialHash == fileInfo.partialHash || (r.fileKey.isDefined && r.fileKey == fileInfo.fileKey)
+        )
+        if sameIdentity then {
+          byPath.remove(oldPath)
+          resident.foreach { r =>
+            val updated = getPartialHashBucket(r.partialHash).filterNot(_ == r)
+            if updated.isEmpty then byPartialHashIndex.remove(r.partialHash)
+            else byPartialHashIndex.put(r.partialHash, updated)
+          }
+        }
+
+        byPath.put(fileInfo.path, fileInfo)
+        byPartialHashIndex.put(fileInfo.partialHash, getPartialHashBucket(fileInfo.partialHash).filterNot(_.path == oldPath) + fileInfo)
+        addToFileKeyIndex(fileInfo, oldPath)
+      }
+    case FileMoved(fileInfo, oldPath)            => synchronized {
         // this check is done to allow circular renames (e.g. a.txt -> b.txt -> a.txt)
         if Option(byPath.get(oldPath)).exists(_.partialHash == fileInfo.partialHash) then byPath.remove(oldPath)
 

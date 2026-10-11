@@ -93,13 +93,15 @@ object LocalDirectoryScanner extends Logging {
   }
 
   /**
-   * Compares two file stores and emits events for added, deleted, moved and content-changed files.
+   * Compares two file stores and emits events for added, deleted, moved, content-changed and
+   * moved-and-modified files.
    *
    * Delete events are guaranteed to be emitted before move or added events.
    *
    * Content changes are detected first by path: a same-path pair with equal fileKeys but different
    * content fields means the file was edited in place. Anything else falls through to the
-   * hash-bucket matching below.
+   * hash-bucket matching below. Unmatched deletes and adds sharing a fileKey are paired into
+   * moves with modification, but only for unambiguous 1-1 key matches.
    *
    * @param previous
    * @param current
@@ -117,50 +119,66 @@ object LocalDirectoryScanner extends Logging {
       current.getAll().evalMap { file =>
         previous.getByPath(file.path).map {
           case Some(prev) if file == prev            => (Some(file.path), None)
-          case Some(prev) if sameFileKey(file, prev) => (Some(file.path), Some(FileContentChanged(file)))
+          case Some(prev) if sameFileKey(file, prev) => (Some(file.path), Some(FileModified(file)))
           case _                                     => (None, None)
         }
       }.compile.toList.map { list =>
         (list.collect { case (Some(path), _) => path }.toSet, list.collect { case (_, Some(event)) => event })
       }
 
-    def removed(consumed: Set[Path]): Stream[IO, FileEvent] =
-      previous.getAll().filter(file => !consumed(file.path)).flatMap { file =>
-        Stream.force(current.getByPartialHash(file.partialHash).map {
-          case Nil => Stream.emit(FileDeleted(file))
-          case _   => Stream.empty
-        })
+    def hashBucketPass(consumed: Set[Path]): IO[(List[FileEvent], List[FileInfo], List[FileInfo])] =
+      for
+        prevGroups <- previous.getAll().filterNot(file => consumed(file.path)).compile.toList.map(_.groupBy(_.partialHash))
+        currGroups <- current.getAllByPartialHash().compile.toList.map(
+                        _.map((hash, files) => (hash, files.filterNot(file => consumed(file.path)).toList)).filter(_._2.nonEmpty).toMap
+                      )
+      yield (prevGroups.keySet ++ currGroups.keySet).toList.map { hash =>
+        val (prev, curr): (List[FileInfo], List[FileInfo]) = (prevGroups.getOrElse(hash, Nil), currGroups.getOrElse(hash, Nil))
+        (prev, curr) match {
+          case (Nil, added)   => (List.empty[FileEvent], List.empty[FileInfo], added)
+          case (deleted, Nil) => (List.empty[FileEvent], deleted, List.empty[FileInfo])
+          case _              =>
+            val notMoved     = curr.flatMap(b => prev.find(_.path == b.path).map(_ -> b)).flatMap((a, b) => maybeMetaChanged(b, a))
+            val maybeDeleted = prev.filterNot(f => curr.exists(_.path == f.path))
+            val maybeAdded   = curr.filterNot(f => prev.exists(_.path == f.path))
+
+            (maybeDeleted, maybeAdded) match {
+              // file moved scenario
+              case (a :: Nil, b :: Nil) => (notMoved :+ FileMoved(b, a.path), List.empty[FileInfo], List.empty[FileInfo])
+              // in other cases, we cannot determine if a file was moved, so we emit delete and add events
+              case (deleted, added)     => (notMoved, deleted, added)
+            }
+        }: (List[FileEvent], List[FileInfo], List[FileInfo])
+      }.foldLeft((List.empty[FileEvent], List.empty[FileInfo], List.empty[FileInfo])) {
+        case ((events, deleted, added), (e, d, a)) => (events ++ e, deleted ++ d, added ++ a)
       }
 
-    def movedOrAdded(consumed: Set[Path]): Stream[IO, FileEvent] = current.getAllByPartialHash().foldFlatMap(Seq.empty[FileEvent]) {
-      case (carriedEvents, (partialHash, files)) =>
+    // pairs unmatched deletes and adds sharing a fileKey (a move with modification),
+    // but only for unambiguous 1-1 key matches
+    def pairByKey(
+      deleted: List[FileInfo],
+      added: List[FileInfo]
+    ): (List[FileEvent], List[FileInfo], List[FileInfo]) = {
+      val deletedByKey = deleted.filter(_.fileKey.isDefined).groupBy(_.fileKey)
+      val addedByKey   = added.filter(_.fileKey.isDefined).groupBy(_.fileKey)
 
-        val events: IO[Stream[IO, FileEvent]] = previous.getByPartialHash(partialHash).map { prev =>
+      val pairedKeys = (deletedByKey.keySet intersect addedByKey.keySet).filter { key =>
+        deletedByKey(key).size == 1 && addedByKey(key).size == 1
+      }
 
-          val filesA = prev.filterNot(f => consumed(f.path)).toSeq
-          val filesB = files.filterNot(f => consumed(f.path)).toSeq
+      val paired      = pairedKeys.toList.map(key => FileMovedAndModified(addedByKey(key).head, deletedByKey(key).head.path))
+      val pairedPaths = pairedKeys.flatMap(key => List(deletedByKey(key).head.path, addedByKey(key).head.path)).toSet
 
-          val notMoved = Stream.emits(filesB.flatMap(b => filesA.find(_.path == b.path).map(_ -> b)).flatMap((a, b) => maybeMetaChanged(b, a)))
-
-          val maybeDeleted = filesA.filterNot(f => filesB.exists(_.path == f.path))
-          val maybeAdded   = filesB.filterNot(f => filesA.exists(_.path == f.path))
-
-          val other = (maybeDeleted, maybeAdded) match {
-            // file moved scenario
-            case (a :: Nil, b :: Nil) => Stream.emit(FileMoved(b, a.path))
-            // in other cases, we cannot determine if a file was moved, so we emit delete and add events
-            case (a, b)               => Stream.emits(a.map(FileDeleted(_)) ++ b.map(FileAdded(_)))
-          }
-
-          notMoved ++ other
-        }
-
-        (carriedEvents, Stream.force(events))
+      (paired, deleted.filterNot(f => pairedPaths(f.path)), added.filterNot(f => pairedPaths(f.path)))
     }
 
-    Stream.eval(samePathPass()).flatMap { (consumed, contentChanged) =>
-      Stream.emits(contentChanged) ++ removed(consumed) ++ movedOrAdded(consumed)
-    }
+    Stream.eval {
+      for
+        (consumed, contentChanged)        <- samePathPass()
+        (pure, deleted, added)            <- hashBucketPass(consumed)
+        (paired, finalDeleted, finalAdded) = pairByKey(deleted, added)
+      yield contentChanged ++ finalDeleted.map(FileDeleted(_)) ++ pure ++ paired ++ finalAdded.map(FileAdded(_))
+    }.flatMap(Stream.emits)
   }
 
   /**

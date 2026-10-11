@@ -89,6 +89,7 @@ class SolrIndexer(config: SolrConfig, solr: SolrClient) extends SearchIndexer wi
       case ResourceAdded(resource)                          => loggingFailureIO(insertDocument(resource))
       case ResourceUpdated(resource)                        => loggingFailureIO(insertDocument(resource))
       case ResourceMoved(resourceId, _, newPath)            => loggingFailureIO(atomicUpdate(resourceId, FieldNames.path, newPath))
+      case ResourceMovedAndModified(_, _, _, resource)      => loggingFailureIO(insertDocument(resource))
       case ResourceFileMetaChanged(id, lastModifiedTime, _) => loggingFailureIO(atomicUpdate(id, FieldNames.lastModified, lastModifiedTime))
       case ResourceDeleted(resourceId)                      => loggingFailureIO(solr.deleteById(collectionName, resourceId, config.commitWithinMillis).getStatus)
       case BucketDeleted(bucketId)                          => deleteBucket(bucketId)

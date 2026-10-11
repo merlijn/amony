@@ -1,6 +1,6 @@
 package nl.amony.lib.files
 
-import java.nio.file.{Files, Paths}
+import java.nio.file.{Files, Paths, StandardOpenOption}
 import java.security.MessageDigest
 import java.util.Comparator
 
@@ -299,7 +299,7 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
       val previous = fileA.copy(fileKey = Some("(dev=1,ino=1)"))
       val edited   = fileA.copy(partialHash = "new", size = 101, modifiedTime = 2, fileKey = Some("(dev=1,ino=1)"))
 
-      compare(Set(previous), Set(edited)) shouldBe Set(FileContentChanged(edited))
+      compare(Set(previous), Set(edited)) shouldBe Set(FileModified(edited))
     }
 
     "fall through to delete and add for same path with different fileKey" in {
@@ -307,6 +307,75 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
       val replaced = fileA.copy(partialHash = "new", fileKey = Some("(dev=1,ino=2)"))
 
       compare(Set(previous), Set(replaced)) shouldBe Set(FileDeleted(previous), FileAdded(replaced))
+    }
+
+    "report move with modification for different path with same fileKey" in {
+      val previous = fileA.copy(partialHash = "old", size = 100, modifiedTime = 1, fileKey = Some("(dev=1,ino=1)"))
+      val current  = fileA.copy(path = Paths.get("b"), partialHash = "new", size = 200, modifiedTime = 2, fileKey = Some("(dev=1,ino=1)"))
+
+      compare(Set(previous), Set(current)) shouldBe Set(FileMovedAndModified(current, Paths.get("a")))
+    }
+
+    "not pair moves with modification for ambiguous key matches" in {
+      val f = randomFile()
+
+      val previous = Set(f.renameTo("a"), f.copy(path = Paths.get("b"), size = 2, modifiedTime = 2))
+      val current  = Set(f.renameTo("c").copy(partialHash = "new", size = 3, modifiedTime = 3))
+
+      val events = compare(previous, current)
+
+      events shouldBe Set(
+        FileDeleted(f.renameTo("a")),
+        FileDeleted(f.copy(path = Paths.get("b"), size = 2, modifiedTime = 2)),
+        FileAdded(f.renameTo("c").copy(partialHash = "new", size = 3, modifiedTime = 3))
+      )
+    }
+
+    "fall through to delete and add for moved and modified files without fileKeys" in {
+      val previous = FileInfo(Paths.get("a"), partialHash = "old", size = 100, modifiedTime = 1)
+      val current  = FileInfo(Paths.get("b"), partialHash = "new", size = 200, modifiedTime = 2)
+
+      compare(Set(previous), Set(current)) shouldBe Set(FileDeleted(previous), FileAdded(current))
+    }
+
+    "apply move with modification to the file store" in {
+      val previous = fileA.copy(partialHash = "old", size = 100, modifiedTime = 1, fileKey = Some("(dev=1,ino=1)"))
+      val current  = fileA.copy(path = Paths.get("b"), partialHash = "new", size = 200, modifiedTime = 2, fileKey = Some("(dev=1,ino=1)"))
+
+      val fs = InMemoryFileStore(Set(previous))
+      fs.applyEventSync(FileMovedAndModified(current, Paths.get("a")))
+
+      fs.getAllSync().toSet shouldBe Set(current)
+      fs.getByFileKey("(dev=1,ino=1)").unsafeRunSync() shouldBe Seq(current)
+      fs.getByPartialHash("old").unsafeRunSync() shouldBe empty
+      compare(fs, InMemoryFileStore(Set(current))) shouldBe empty
+    }
+
+    "detect move with modification of a real file" in {
+      val dir = Files.createTempDirectory("scanner-move-modify-test")
+      try {
+        val original = Files.write(dir.resolve("original.bin"), Array.fill(2000)(7.toByte))
+        val previous = InMemoryFileStore.empty
+
+        val added =
+          LocalDirectoryScanner.scanDirectory(dir, previous, _ => true, _ => true, hashFile, parallelism = 4).compile.toList
+            .unsafeRunSync()
+        added should have size 1
+        added.foreach(previous.applyEventSync)
+
+        val renamed = dir.resolve("renamed.bin")
+        Files.move(original, renamed)
+        Files.write(renamed, Array.fill(500)(8.toByte), StandardOpenOption.APPEND)
+
+        val events =
+          LocalDirectoryScanner.scanDirectory(dir, previous, _ => true, _ => true, hashFile, parallelism = 4).compile.toList
+            .unsafeRunSync()
+
+        events should have size 1
+        val FileMovedAndModified(moved, oldPath) = events.head: @unchecked
+        moved.path shouldBe renamed
+        oldPath shouldBe original
+      } finally Files.walk(dir).sorted(Comparator.reverseOrder()).forEach(p => Files.deleteIfExists(p))
     }
 
     "rehash when the fileKey changed but size and modifiedTime did not" in {
