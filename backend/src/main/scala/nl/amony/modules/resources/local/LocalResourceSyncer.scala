@@ -23,22 +23,23 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
   private val logger             = scribe.Logger("LocalResourceSyncer")
   private val bucketId: BucketId = BucketId(config.id)
 
-  private def relativizePath(path: Path): String                    = config.resourcePath.relativize(path).toString
-  private def mapFileEvent(fileEvent: FileEvent): IO[ResourceEvent] = {
+  private def relativizePath(path: Path): String                            = config.resourcePath.relativize(path).toString
+  private def mapFileEvent(fileEvent: FileEvent): IO[Option[ResourceEvent]] = {
 
-    def withRequireResource(partialHash: String, path: Path)(fn: ResourceInfo => ResourceEvent): IO[ResourceEvent] =
+    def withRequireResource(partialHash: String, path: Path)(fn: ResourceInfo => ResourceEvent): IO[Option[ResourceEvent]] =
       db.getResourceByPartialHash(bucketId, partialHash)
         .map(_.find(_.path == relativizePath(path))).flatMap:
-          case None    => IO.raiseError(new IllegalStateException("No such file in database"))
-          case Some(r) => IO.pure(fn(r))
+          case None    =>
+            IO(logger.warn(s"Dropping file event, no such file in database: $path ($partialHash)")).as(None)
+          case Some(r) => IO.pure(Some(fn(r)))
 
     fileEvent match {
 
-      case FileMetaChanged(f) => withRequireResource(f.partialHash, f.path)(r => ResourceFileMetaChanged(r.resourceId, f.modifiedTime))
+      case FileMetaChanged(f) => withRequireResource(f.partialHash, f.path)(r => ResourceFileMetaChanged(r.resourceId, f.modifiedTime, f.fileKey))
 
       case FileDeleted(f) => withRequireResource(f.partialHash, f.path)(r => ResourceDeleted(r.resourceId))
 
-      case FileAdded(f) => newResource(f, UserId(config.sync.newFilesOwner)).map(ResourceAdded(_))
+      case FileAdded(f) => newResource(f, UserId(config.sync.newFilesOwner)).map(r => Some(ResourceAdded(r)))
 
       case FileMoved(file, oldFilePath) =>
         val newPath = relativizePath(file.path)
@@ -60,6 +61,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
           userId             = userId,
           path               = relativizePath(f.path),
           partialHash        = Some(f.partialHash),
+          fileKey            = f.fileKey,
           size               = f.size,
           contentType        = contentType,
           contentMeta        = maybeMeta.map(_.meta),
@@ -74,7 +76,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
   private def toFileStore(): IO[FileStore] =
     db.getAll(bucketId).map { resources =>
       val initialFiles: Seq[FileInfo] = resources
-        .map(r => FileInfo(config.resourcePath.resolve(Path.of(r.path)), r.partialHash.get, r.size, r.timeLastModified.getOrElse(0)))
+        .map(r => FileInfo(config.resourcePath.resolve(Path.of(r.path)), r.partialHash.get, r.size, r.timeLastModified.getOrElse(0), r.fileKey))
       InMemoryFileStore(initialFiles)
     }
 
@@ -118,8 +120,15 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       if verifyBucketIdentity(dbIsEmpty = fileStore.size() == 0) then {
         logger.info(s"Scanning directory: ${config.resourcePath}")
         LocalDirectoryScanner
-          .scanDirectory(config.resourcePath, fileStore, config.filterDirectory, config.filterFiles, config.hashingAlgorithm.createHash)
-          .parEvalMap(parallelFactor)(mapFileEvent)
+          .scanDirectory(
+            config.resourcePath,
+            fileStore,
+            config.filterDirectory,
+            config.filterFiles,
+            config.hashingAlgorithm.createHash,
+            parallelFactor
+          )
+          .parEvalMap(parallelFactor)(mapFileEvent).unNone
       } else {
         Stream.empty
       }
@@ -137,18 +146,20 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       config.sync.pollInterval,
       config.filterDirectory,
       config.filterFiles,
-      config.hashingAlgorithm.createHash
-    ).parEvalMap(parallelFactor)(mapFileEvent)
+      config.hashingAlgorithm.createHash,
+      parallelFactor
+    ).parEvalMap(parallelFactor)(mapFileEvent).unNone
 
   private def applyEventToDb(s: Session[IO], event: ResourceEvent): IO[Unit] = event match {
-    case ResourceAdded(resource)                       => db.insertResourceWith(s, resource)
-    case ResourceDeleted(resourceId)                   => db.deleteResourceWith(s, bucketId, resourceId)
-    case ResourceMoved(id, _, newPath)                 => db.moveWith(s, bucketId, id, newPath)
-    case ResourceFileMetaChanged(id, lastModifiedTime) => db.getResourceByIdWith(s, bucketId, id).flatMap {
-        case Some(resource) => db.upsertResourceWith(s, resource.copy(timeLastModified = Some(lastModifiedTime)))
+    case ResourceAdded(resource)                                => db.insertResourceWith(s, resource)
+    case ResourceDeleted(resourceId)                            => db.deleteResourceWith(s, bucketId, resourceId)
+    case ResourceMoved(id, _, newPath)                          => db.moveWith(s, bucketId, id, newPath)
+    case ResourceFileMetaChanged(id, lastModifiedTime, fileKey) => db.getResourceByIdWith(s, bucketId, id).flatMap {
+        case Some(resource) =>
+          db.upsertResourceWith(s, resource.copy(timeLastModified = Some(lastModifiedTime), fileKey = fileKey.orElse(resource.fileKey)))
         case None           => IO.unit
       }
-    case _                                             => IO.unit
+    case _                                                      => IO.unit
   }
 
   private[local] def processEvent(event: ResourceEvent) =

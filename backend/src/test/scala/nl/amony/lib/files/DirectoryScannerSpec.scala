@@ -1,6 +1,8 @@
 package nl.amony.lib.files
 
-import java.nio.file.Paths
+import java.nio.file.{Files, Paths}
+import java.security.MessageDigest
+import java.util.Comparator
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
@@ -8,6 +10,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import nl.amony.lib.files.watcher.*
+import nl.amony.lib.hash.{Base32, PartialHash}
 
 class DirectoryScannerSpec extends AnyWordSpec with Matchers {
 
@@ -42,6 +45,9 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
 
     events
   }
+
+  def hashFile(path: java.nio.file.Path): IO[String] =
+    PartialHash.partialHash(path, nChunks = 32, chunkSize = 32, () => MessageDigest.getInstance("SHA-1"), Base32.encode)
 
   "DirectoryScanner" should {
     "detected added files" in {
@@ -226,6 +232,67 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
       events.foreach(fs.applyEventSync)
 
       fs.getAllSync().toSet shouldBe currentFiles
+    }
+
+    "scan a real directory with parallel hashing" in {
+      val dir = Files.createTempDirectory("scanner-test")
+      try {
+        val paths = (1 to 10).map(i => Files.write(dir.resolve(s"file-$i.bin"), Array.fill(i * 100)(i.toByte)))
+
+        val events =
+          LocalDirectoryScanner.scanDirectory(dir, InMemoryFileStore.empty, _ => true, _ => true, hashFile, parallelism = 4).compile.toList
+            .unsafeRunSync()
+
+        events.collect { case FileAdded(f) => f.path }.toSet shouldBe paths.toSet
+        events.foreach(_.asInstanceOf[FileAdded].fileInfo.fileKey shouldBe defined)
+      } finally Files.walk(dir).sorted(Comparator.reverseOrder()).forEach(p => Files.deleteIfExists(p))
+    }
+
+    "reuse hash on rename via fileKey without rehashing" in {
+      val dir = Files.createTempDirectory("scanner-rename-test")
+      try {
+        val original = Files.write(dir.resolve("original.bin"), Array.fill(2000)(7.toByte))
+        val previous = InMemoryFileStore.empty
+
+        val added =
+          LocalDirectoryScanner.scanDirectory(dir, previous, _ => true, _ => true, hashFile, parallelism = 4).compile.toList
+            .unsafeRunSync()
+        added should have size 1
+        added.foreach(previous.applyEventSync)
+
+        val renamed = dir.resolve("renamed.bin")
+        Files.move(original, renamed)
+
+        def explodingHash(path: java.nio.file.Path): IO[String] =
+          IO.raiseError(new RuntimeException(s"hash must be skipped for renamed file: $path"))
+
+        val events =
+          LocalDirectoryScanner.scanDirectory(dir, previous, _ => true, _ => true, explodingHash, parallelism = 4).compile.toList
+            .unsafeRunSync()
+
+        events should have size 1
+        val FileMoved(moved, oldPath) = events.head: @unchecked
+        moved.path shouldBe renamed
+        oldPath shouldBe original
+      } finally Files.walk(dir).sorted(Comparator.reverseOrder()).forEach(p => Files.deleteIfExists(p))
+    }
+
+    "backfill fileKey for legacy entries via FileMetaChanged" in {
+
+      /**
+       * Rows written before the file_key column existed load with fileKey = None (see toFileStore),
+       * while the scan observes a key. The first scan must report the difference once, then converge.
+       */
+      val legacy  = fileA
+      val current = fileA.copy(fileKey = Some("(dev=1,ino=1)"))
+
+      compare(Set(legacy), Set(current)) shouldBe Set(FileMetaChanged(current))
+
+      val fs = InMemoryFileStore(Set(legacy))
+      compare(Set(legacy), Set(current)).foreach(fs.applyEventSync)
+
+      fs.getByFileKey("(dev=1,ino=1)").unsafeRunSync() shouldBe Seq(current)
+      compare(fs, InMemoryFileStore(Set(current))) shouldBe empty
     }
   }
 }

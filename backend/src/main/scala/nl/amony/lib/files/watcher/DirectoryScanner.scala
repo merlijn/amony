@@ -26,7 +26,8 @@ object LocalDirectoryScanner extends Logging {
     previous: FileStore,
     directoryFilter: Path => Boolean,
     fileFilter: Path => Boolean,
-    partialHashFunction: Path => IO[String]
+    partialHashFunction: Path => IO[String],
+    parallelism: Int
   ): Stream[IO, FileEvent] = {
 
     scanDirectory(
@@ -34,7 +35,8 @@ object LocalDirectoryScanner extends Logging {
       previous,
       directoryFilter,
       fileFilter,
-      partialHashFunction
+      partialHashFunction,
+      parallelism
     )
   }
 
@@ -43,10 +45,11 @@ object LocalDirectoryScanner extends Logging {
     previous: FileStore,
     directoryFilter: Path => Boolean,
     fileFilter: Path => Boolean,
-    partialHashFunction: Path => IO[String]
+    partialHashFunction: Path => IO[String],
+    parallelism: Int
   ): Stream[IO, FileEvent] = {
 
-    val current = populateStore(currentFiles, previous, new InMemoryFileStore(), partialHashFunction)
+    val current = populateStore(currentFiles, previous, new InMemoryFileStore(), partialHashFunction, parallelism)
 
     Stream.eval(current).flatMap(c => compareFileStores(previous, c))
   }
@@ -55,15 +58,30 @@ object LocalDirectoryScanner extends Logging {
     currentFiles: Stream[IO, (Path, BasicFileAttributes)],
     previous: FileStore,
     current: FileStore,
-    partialHashFunction: Path => IO[String]
+    partialHashFunction: Path => IO[String],
+    parallelism: Int
   ): IO[FileStore] = {
 
-    currentFiles.evalMap { (path, attrs) =>
+    currentFiles.parEvalMapUnordered(parallelism) { (path, attrs) =>
+      val size         = attrs.size()
+      val modifiedTime = attrs.lastModifiedTime().toMillis
+      val fileKey      = Option(attrs.fileKey()).map(_.toString)
+
+      def cachedByPath: IO[Option[String]] =
+        previous.getByPath(path).map(_.filter(f => f.size == size && f.modifiedTime == modifiedTime).map(_.partialHash))
+
+      // renames keep size, modifiedTime and fileKey, so a previous entry with the same triple lets us skip hashing
+      def cachedByFileKey: IO[Option[String]] = fileKey match
+        case None      => IO.pure(None)
+        case Some(key) =>
+          previous.getByFileKey(key).map(_.find(f => f.size == size && f.modifiedTime == modifiedTime).map(_.partialHash))
+
       for
-        previousByPath <- previous.getByPath(path)
-        partialHash    <- previousByPath
-                            .filter(f => f.size == attrs.size && f.modifiedTime == attrs.lastModifiedTime().toMillis)
-                            .map(i => IO.pure(i.partialHash)).getOrElse(partialHashFunction(path))
+        byPath      <- cachedByPath
+        byFileKey   <- byPath match
+                         case Some(_) => IO.pure(None)
+                         case None    => cachedByFileKey
+        partialHash <- (byPath orElse byFileKey).map(IO.pure).getOrElse(partialHashFunction(path))
       yield FileInfo(path, attrs, partialHash)
     }.foreach(e => current.insert(e)).compile.drain >> IO.pure(current)
   }
@@ -128,14 +146,16 @@ object LocalDirectoryScanner extends Logging {
     pollInterval: FiniteDuration,
     directoryFilter: Path => Boolean,
     fileFilter: Path => Boolean,
-    partialHashFn: Path => IO[String]
+    partialHashFn: Path => IO[String],
+    parallelism: Int
   ): Stream[IO, FileEvent] = pollingStream(
     () => RecursiveFileVisitor.streamFilesInDirectoryRecursive(directory, directoryFilter, fileFilter),
     fileStore,
     pollInterval,
     directoryFilter,
     fileFilter,
-    partialHashFn
+    partialHashFn,
+    parallelism
   )
 
   /**
@@ -149,7 +169,8 @@ object LocalDirectoryScanner extends Logging {
     pollInterval: FiniteDuration,
     directoryFilter: Path => Boolean,
     fileFilter: Path => Boolean,
-    partialHashFn: Path => IO[String]
+    partialHashFn: Path => IO[String],
+    parallelism: Int
   ): Stream[IO, FileEvent] = {
 
     def pollRecursive(fs: FileStore): Stream[IO, FileEvent] = {
@@ -160,7 +181,9 @@ object LocalDirectoryScanner extends Logging {
 
       def sleep = Stream.sleep[IO](pollInterval)
 
-      scanDirectory(scanFn(), fileStore, directoryFilter, fileFilter, partialHashFn).evalMap(e => fs.applyEvent(e).map(_ => e)) >> logTime >> sleep >>
+      scanDirectory(scanFn(), fileStore, directoryFilter, fileFilter, partialHashFn, parallelism).evalMap(e =>
+        fs.applyEvent(e).map(_ => e)
+      ) >> logTime >> sleep >>
         pollRecursive(fs)
     }
 

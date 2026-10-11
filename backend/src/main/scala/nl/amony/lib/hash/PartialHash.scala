@@ -2,7 +2,7 @@ package nl.amony.lib.hash
 
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
-import java.nio.file.{Path, StandardOpenOption}
+import java.nio.file.{Files, Path, StandardOpenOption}
 import java.security.MessageDigest
 import scala.util.{Random, Using}
 
@@ -21,7 +21,11 @@ object PartialHash extends Logging {
    * @return
    */
   def sampleBytesFromFile(file: Path, nChunks: Int, chunkSize: Int = 1): Array[Byte] = {
-    val size   = file.size()
+    val size = file.size()
+
+    // small files are hashed in full, this also avoids invalid random offsets when size <= chunkSize
+    if size <= nChunks.toLong * chunkSize then return Files.readAllBytes(file)
+
     val result = new Array[Byte](nChunks * chunkSize)
 
     // we pass the length/size of the file as seed
@@ -52,7 +56,7 @@ object PartialHash extends Logging {
 
   // samples a file randomly and creates a hash from that
   def partialHash(file: Path, nChunks: Int = 32, chunkSize: Int = 32, digestFn: () => MessageDigest, encoder: Array[Byte] => String): IO[String] =
-    IO {
+    IO.blocking {
 
       val bytes = sampleBytesFromFile(file, nChunks, chunkSize)
 
