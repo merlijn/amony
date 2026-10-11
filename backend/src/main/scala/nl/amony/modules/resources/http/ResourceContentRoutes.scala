@@ -5,6 +5,7 @@ import scala.concurrent.duration.FiniteDuration
 import cats.data.OptionT
 import cats.effect.IO
 import org.http4s.*
+import org.http4s.CacheDirective
 import org.http4s.CacheDirective.{`max-age`, `must-revalidate`}
 import org.http4s.dsl.io.*
 import org.http4s.headers.`Cache-Control`
@@ -87,8 +88,17 @@ object ResourceContentRoutes extends Logging {
     }
   }
 
-  def apply(buckets: BucketRegistry, resolutions: ThumbnailResolutions, formats: ThumbnailFormats, cacheMaxAge: FiniteDuration)(using
-    apiSecurity: ApiSecurity): HttpRoutes[IO] = {
+  private def scopeDirective(scope: CacheScope): CacheDirective = scope match
+    case CacheScope.Public  => CacheDirective.public
+    case CacheScope.Private => CacheDirective.`private`()
+
+  def apply(
+    buckets: BucketRegistry,
+    resolutions: ThumbnailResolutions,
+    formats: ThumbnailFormats,
+    cacheMaxAge: FiniteDuration,
+    cacheScope: CacheScope
+  )(using apiSecurity: ApiSecurity): HttpRoutes[IO] = {
 
     // The content routes are not Tapir endpoints, so the access token has to be read from the cookie directly.
     def authToken(req: Request[IO]) =
@@ -122,7 +132,7 @@ object ResourceContentRoutes extends Logging {
                                   })
             derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))
             response           <- OptionT.liftF(resourceContentsResponse(req, derivedResource)
-                                    .map(r => r.addHeader(`Cache-Control`(`max-age`(cacheMaxAge), `must-revalidate`))))
+                                    .map(r => r.addHeader(`Cache-Control`(`max-age`(cacheMaxAge), `must-revalidate`, scopeDirective(cacheScope)))))
           yield response
         )
     }

@@ -11,7 +11,7 @@ import skunk.Session
 import nl.amony.lib.messagebus.MessageTopic
 import nl.amony.lib.tapir.dsl.ServerEndpoints
 import nl.amony.modules.auth.api.ApiSecurity
-import nl.amony.modules.resources.api.{BucketRegistry, LocalDirectoryConfig, ResourceEvent, ThumbnailFormats, ThumbnailResolutions}
+import nl.amony.modules.resources.api.{BucketRegistry, CacheScope, LocalDirectoryConfig, ResourceEvent, ThumbnailFormats, ThumbnailResolutions}
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
 import nl.amony.modules.resources.http.{CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
@@ -26,7 +26,8 @@ class ResourceModule(
   val bucketRegistry: BucketRegistry,
   val thumbResolutions: ThumbnailResolutions,
   val thumbFormats: ThumbnailFormats,
-  val contentCacheMaxAge: FiniteDuration
+  val contentCacheMaxAge: FiniteDuration,
+  val contentCacheScope: CacheScope
 ):
 
   /** The Tapir endpoints of the module. */
@@ -35,7 +36,7 @@ class ResourceModule(
 
   /** The non-Tapir content routes (downloads, thumbnails and clips), served as plain HttpRoutes. */
   def contentRoutes(using apiSecurity: ApiSecurity): HttpRoutes[IO] =
-    ResourceContentRoutes.apply(bucketRegistry, thumbResolutions, thumbFormats, contentCacheMaxAge)
+    ResourceContentRoutes.apply(bucketRegistry, thumbResolutions, thumbFormats, contentCacheMaxAge, contentCacheScope)
 
 object ResourceModule:
 
@@ -62,4 +63,11 @@ object ResourceModule:
 
     for
       bucketRegistry <- DatabaseBucketRegistry.resource(config.defaultBucket, BucketsDal(databasePool), eventTopic, bucketFactory)
-    yield new ResourceModule(resourceDatabase, bucketRegistry, thumbResolutions, thumbFormats, config.previews.cacheMaxAge)
+    yield new ResourceModule(
+      resourceDatabase,
+      bucketRegistry,
+      thumbResolutions,
+      thumbFormats,
+      config.previews.cacheMaxAge,
+      config.previews.cacheScope
+    )
