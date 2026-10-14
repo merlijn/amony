@@ -60,3 +60,26 @@ Remaining flaws and inefficiencies in directory scanning (fixed items excluded).
     next poll.
 22. `DirectoryWatcher.scala:16` dead code, not swappable as-is — `path.toString` as hash, `ENTRY_MODIFY` ignored, 100 ms
     delete heuristic, no `OVERFLOW` handling, raw `Thread` + no cancellation.
+
+## Convergence / eventual consistency
+
+Snapshot diffing converges by construction on quiescence: every scan rebuilds `current` fresh from disk, so detection
+never accumulates error (a pure event stream could not heal a missed event). Eventual consistency holds iff scans
+complete, writes eventually succeed, and identity evidence is unambiguous. Four holes remain:
+
+23. Mid-scan IO failure aborts the whole scan — `populateStore` has no per-file error handling, so one file deleted
+    between walk and hash fails the entire stream. Hot directories may never complete a scan and hence never converge
+    while churning. Needs per-file `attempt` (treat vanished as absent).
+24. Swallowed outcomes plus long-lived memory diverge silently until restart — a dropped event applies to the in-memory
+    store but never reaches the DB, and later scans go quiet. Heals via fresh snapshots (each manual scan rebuilds state
+    from the DB, re-emitting the event), so this only bites long-lived poller state.
+25. Ambiguous identity merges converge to a consistent-but-wrong linkage, silently forever — disk, memory and DB agree,
+    so nothing re-fires. Bytes and paths always converge; only the linkage is best-effort. Needs stronger identity
+    (full-hash verification) to close.
+26. Non-atomic multi-event batches (dir rename = N transactions, memory updated ahead of the DB) heal through fresh
+    snapshots, since unchanged hashes re-emit the pending moves. The structural fix is batch application: compute the
+    full event set, apply it to a clone of the store, swap the reference, commit one DB transaction — which would also
+    remove the need for the circular-rename special-casing in `InMemoryFileStore`.
+
+Convergent by design and worth keeping: files changing between scans collapse to their latest state (history loss, not
+divergence), and API-side deletes reconcile through the drop path (memory and DB both end up without the file).
