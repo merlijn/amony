@@ -93,15 +93,20 @@ object LocalDirectoryScanner extends Logging {
   }
 
   /**
-   * Compares two file stores and emits events for added, deleted, moved, content-changed and
+   * Compares two file stores and emits events for added, deleted, moved, modified and
    * moved-and-modified files.
    *
-   * Delete events are guaranteed to be emitted before move or added events.
+   * The comparison streams through the stores and never holds more than one hash bucket plus a
+   * bounded pairing set in memory, so FileStore implementations backed by a database stay viable:
+   * beyond the streams themselves only indexed point lookups are used, and only in rare branches
+   * (vanished hashes, 1-1 moves, key pairing).
    *
    * Content changes are detected first by path: a same-path pair with equal fileKeys but different
-   * content fields means the file was edited in place. Anything else falls through to the
-   * hash-bucket matching below. Unmatched deletes and adds sharing a fileKey are paired into
-   * moves with modification, but only for unambiguous 1-1 key matches.
+   * content fields means the file was edited in place. Unmatched deletes and adds sharing a fileKey
+   * are then paired into moves with modification, but only for unambiguous 1-1 key matches.
+   *
+   * Modified events come first, then deletes intermixed with paired moves, then the remaining
+   * resource events.
    *
    * @param previous
    * @param current
@@ -115,70 +120,101 @@ object LocalDirectoryScanner extends Logging {
 
     def maybeMetaChanged(file: FileInfo, previous: FileInfo): Option[FileEvent] = if file == previous then None else Some(FileMetaChanged(file))
 
-    def samePathPass(): IO[(Set[Path], List[FileEvent])] =
+    def samePathPass(): IO[List[FileEvent]] =
       current.getAll().evalMap { file =>
         previous.getByPath(file.path).map {
-          case Some(prev) if file == prev            => (Some(file.path), None)
-          case Some(prev) if sameFileKey(file, prev) => (Some(file.path), Some(FileModified(file)))
-          case _                                     => (None, None)
+          case Some(prev) if file != prev && sameFileKey(file, prev) => Some(FileModified(file))
+          case _                                                     => None
         }
-      }.compile.toList.map { list =>
-        (list.collect { case (Some(path), _) => path }.toSet, list.collect { case (_, Some(event)) => event })
+      }.collect { case Some(event) => event }.compile.toList
+
+    // True when the same-path pair was already reported by the same-path pass (silent when
+    // equal, FileModified otherwise), so the passes below must stay silent for it.
+    def handledBySamePathPass(file: FileInfo, counterpart: Option[FileInfo]): Boolean =
+      counterpart.exists(other => file == other || sameFileKey(file, other))
+
+    // Deletes, pairing same-key additions on the fly (a move with modification). Returns the
+    // paired paths alongside the events: the set is bounded by the number of paired moves and
+    // is complete before movedOrAdded runs below, which skips those paths.
+    def removed(): IO[(Set[Path], List[FileEvent])] =
+      previous.getAll().evalMap { file =>
+        current.getByPartialHash(file.partialHash).flatMap {
+          case Nil => deletedOrPaired(file)
+          case _   => IO.pure((Set.empty[Path], List.empty[FileEvent]))
+        }
+      }.compile.toList.map(_.foldLeft((Set.empty[Path], List.empty[FileEvent])) {
+        case ((paths, events), (p, e)) => (paths ++ p, events ++ e)
+      })
+
+    def deletedOrPaired(file: FileInfo): IO[(Set[Path], List[FileEvent])] =
+      current.getByPath(file.path).flatMap { counterpart =>
+        if handledBySamePathPass(file, counterpart) then IO.pure((Set.empty[Path], List.empty[FileEvent]))
+        else
+          file.fileKey match
+            case None      => IO.pure((Set.empty[Path], List(FileDeleted(file))))
+            case Some(key) =>
+              for
+                previousKeyCount <- previous.getByFileKey(key).map(_.size)
+                partner          <- current.getByFileKey(key).map(_.filter(_.path != file.path))
+                result           <- (previousKeyCount, partner) match {
+                                      case (1, next :: Nil) => IO.pure((Set(file.path, next.path), List(FileMovedAndModified(next, file.path))))
+                                      case _                => IO.pure((Set.empty[Path], List(FileDeleted(file))))
+                                    }
+              yield result
       }
 
-    def hashBucketPass(consumed: Set[Path]): IO[(List[FileEvent], List[FileInfo], List[FileInfo])] =
-      for
-        prevGroups <- previous.getAll().filterNot(file => consumed(file.path)).compile.toList.map(_.groupBy(_.partialHash))
-        currGroups <- current.getAllByPartialHash().compile.toList.map(
-                        _.map((hash, files) => (hash, files.filterNot(file => consumed(file.path)).toList)).filter(_._2.nonEmpty).toMap
-                      )
-      yield (prevGroups.keySet ++ currGroups.keySet).toList.map { hash =>
-        val (prev, curr): (List[FileInfo], List[FileInfo]) = (prevGroups.getOrElse(hash, Nil), currGroups.getOrElse(hash, Nil))
-        (prev, curr) match {
-          case (Nil, added)   => (List.empty[FileEvent], List.empty[FileInfo], added)
-          case (deleted, Nil) => (List.empty[FileEvent], deleted, List.empty[FileInfo])
-          case _              =>
-            val notMoved     = curr.flatMap(b => prev.find(_.path == b.path).map(_ -> b)).flatMap((a, b) => maybeMetaChanged(b, a))
-            val maybeDeleted = prev.filterNot(f => curr.exists(_.path == f.path))
-            val maybeAdded   = curr.filterNot(f => prev.exists(_.path == f.path))
+    def movedOrAdded(paired: Set[Path]): Stream[IO, FileEvent] = current.getAllByPartialHash().foldFlatMap(Seq.empty[FileEvent]) {
+      case (carriedEvents, (partialHash, files)) =>
 
-            (maybeDeleted, maybeAdded) match {
-              // file moved scenario
-              case (a :: Nil, b :: Nil) => (notMoved :+ FileMoved(b, a.path), List.empty[FileInfo], List.empty[FileInfo])
-              // in other cases, we cannot determine if a file was moved, so we emit delete and add events
-              case (deleted, added)     => (notMoved, deleted, added)
-            }
-        }: (List[FileEvent], List[FileInfo], List[FileInfo])
-      }.foldLeft((List.empty[FileEvent], List.empty[FileInfo], List.empty[FileInfo])) {
-        case ((events, deleted, added), (e, d, a)) => (events ++ e, deleted ++ d, added ++ a)
-      }
+        val events: IO[Stream[IO, FileEvent]] = previous.getByPartialHash(partialHash).flatMap { prev0 =>
 
-    // pairs unmatched deletes and adds sharing a fileKey (a move with modification),
-    // but only for unambiguous 1-1 key matches
-    def pairByKey(
-      deleted: List[FileInfo],
-      added: List[FileInfo]
-    ): (List[FileEvent], List[FileInfo], List[FileInfo]) = {
-      val deletedByKey = deleted.filter(_.fileKey.isDefined).groupBy(_.fileKey)
-      val addedByKey   = added.filter(_.fileKey.isDefined).groupBy(_.fileKey)
+          val prev = prev0.filterNot(f => paired(f.path))
+          val curr = files.filterNot(f => paired(f.path)).toSeq
 
-      val pairedKeys = (deletedByKey.keySet intersect addedByKey.keySet).filter { key =>
-        deletedByKey(key).size == 1 && addedByKey(key).size == 1
-      }
+          val notMoved = Stream.emits(
+            curr.flatMap(b => prev.find(_.path == b.path).map(a => (a, b))).flatMap((a, b) =>
+              if handledBySamePathPass(b, Some(a)) then None else maybeMetaChanged(b, a)
+            )
+          )
 
-      val paired      = pairedKeys.toList.map(key => FileMovedAndModified(addedByKey(key).head, deletedByKey(key).head.path))
-      val pairedPaths = pairedKeys.flatMap(key => List(deletedByKey(key).head.path, addedByKey(key).head.path)).toSet
+          def dropConsumed(files: List[FileInfo], counterpartOf: Path => IO[Option[FileInfo]]): IO[List[FileInfo]] =
+            Stream.emits(files).evalFilter(f => counterpartOf(f.path).map(c => !handledBySamePathPass(f, c))).compile.toList
 
-      (paired, deleted.filterNot(f => pairedPaths(f.path)), added.filterNot(f => pairedPaths(f.path)))
+          val maybeDeleted = prev.filterNot(f => curr.exists(_.path == f.path)).toList
+          val maybeAdded   = curr.filterNot(f => prev.exists(_.path == f.path)).toList
+
+          val other: IO[Stream[IO, FileEvent]] = (maybeDeleted, maybeAdded) match {
+            // file moved scenario, unless either side was already reported by the same-path pass
+            case (a :: Nil, b :: Nil) =>
+              for
+                aConsumed <- current.getByPath(a.path).map(handledBySamePathPass(a, _))
+                bConsumed <- previous.getByPath(b.path).map(handledBySamePathPass(b, _))
+              yield (aConsumed, bConsumed) match {
+                case (true, true)   => Stream.empty
+                case (true, false)  => Stream.emit(FileAdded(b))
+                case (false, true)  => Stream.emit(FileDeleted(a))
+                case (false, false) => Stream.emit(FileMoved(b, a.path))
+              }
+            // in other cases, we cannot determine if a file was moved, so we emit delete and add events
+            case (deleted, added)     =>
+              for
+                keptDeleted <- dropConsumed(deleted, current.getByPath)
+                keptAdded   <- dropConsumed(added, previous.getByPath)
+              yield Stream.emits(keptDeleted.map(FileDeleted(_)) ++ keptAdded.map(FileAdded(_)))
+          }
+
+          other.map(notMoved ++ _)
+        }
+
+        (carriedEvents, Stream.force(events))
     }
 
-    Stream.eval {
-      for
-        (consumed, contentChanged)        <- samePathPass()
-        (pure, deleted, added)            <- hashBucketPass(consumed)
-        (paired, finalDeleted, finalAdded) = pairByKey(deleted, added)
-      yield contentChanged ++ finalDeleted.map(FileDeleted(_)) ++ pure ++ paired ++ finalAdded.map(FileAdded(_))
-    }.flatMap(Stream.emits)
+    Stream.eval(samePathPass()).flatMap { modified =>
+      Stream.emits(modified) ++
+        Stream.eval(removed()).flatMap { (paired, deleted) =>
+          Stream.emits(deleted) ++ movedOrAdded(paired)
+        }
+    }
   }
 
   /**
