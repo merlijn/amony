@@ -45,12 +45,12 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
    * file name) and the configured encoder options, so it never requires reading or hashing the produced bytes.
    *
    * Known gap: because it describes the recipe rather than the produced bytes, it does not change when the same recipe
-   * starts yielding different output (for example after a toolchain upgrade). Bump [[ResourceOperations.PreviewRecipeVersion]]
+   * starts yielding different output (for example after a toolchain upgrade). Bump [[ResourceOperations.previewRecipeVersion]]
    * to invalidate in that case.
    */
   private def previewETag(info: ResourceInfo, outputFile: Path): Option[String] =
     info.partialHash.map(sourceHash =>
-      eTagOf(sourceHash, outputFile.getFileName.toString, formats.settingsFingerprint, ResourceOperations.PreviewRecipeVersion.toString)
+      eTagOf(sourceHash, outputFile.getFileName.toString, formats.settingsFingerprint, ResourceOperations.previewRecipeVersion.toString)
     )
 
   /** Validator for a resource's original content, derived from its partial hash and last modified time. */

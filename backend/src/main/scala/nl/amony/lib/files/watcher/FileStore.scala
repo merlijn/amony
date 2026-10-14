@@ -97,8 +97,8 @@ class InMemoryFileStore extends FileStore:
   }
 
   def applyEventSync(e: FileEvent): Unit = e match
-    case FileMetaChanged(fileInfo)    => synchronized(updateForMetaChange(fileInfo))
-    case FileModified(fileInfo) => synchronized(updateForMetaChange(fileInfo))
+    case FileMetaChanged(fileInfo) => synchronized(updateForMetaChange(fileInfo))
+    case FileModified(fileInfo)    => synchronized(updateForMetaChange(fileInfo))
 
     case FileAdded(fileInfo)                     => synchronized {
         byPath.put(fileInfo.path, fileInfo)

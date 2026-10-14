@@ -29,15 +29,15 @@ object VideoFragment {
   val maxLengthInMillis = 60000
 
   /** Fixed length of a generated hover-preview clip, in milliseconds. */
-  val PreviewLengthMillis = 3000L
+  val previewLengthMillis = 3000L
 
   /**
    * The `(start, end)` range of a resource's preview clip: it starts at the resource's thumbnail
-   * timestamp (or a third of the video) and runs for [[PreviewLengthMillis]], capped at the video length.
+   * timestamp (or a third of the video) and runs for [[previewLengthMillis]], capped at the video length.
    */
   def previewRange(thumbnailTimestamp: Option[Int], durationInMillis: Int): (Long, Long) =
     val start = thumbnailTimestamp.getOrElse(durationInMillis / 3).toLong
-    (start, math.min(durationInMillis.toLong, start + PreviewLengthMillis))
+    (start, math.min(durationInMillis.toLong, start + previewLengthMillis))
 }
 
 case class VideoFragment(width: Option[Int] = None, height: Option[Int] = None, start: Long, end: Long) extends ResourceOperation {
@@ -89,7 +89,14 @@ object ResourceOperations:
    * Bump this when the preview generation logic or the ffmpeg/ImageMagick toolchain changes, so that cached previews
    * and browser validators are invalidated.
    */
-  val PreviewRecipeVersion = 1
+  val previewRecipeVersion = 1
+
+  /**
+   * Length of the content version token in Base32 characters (8 chars = 40 bits). Deliberately short:
+   * versions are only ever compared pairwise (URL token vs. current), where 40 bits gives a ~1e-12
+   * collision chance per comparison, unlike content hashes which match library-wide.
+   */
+  val contentVersionLength = 8
 
   /**
    * Version token for a resource's content, derived from the fields that change when the bytes change.
@@ -108,7 +115,7 @@ object ResourceOperations:
     feed(info.fileKey.getOrElse(""))
     feed(info.size.toString)
 
-    Base32.encode(digest.digest()).substring(0, 24)
+    Base32.encode(digest.digest()).substring(0, contentVersionLength)
   }
 
   /** The resource's native pixel dimensions (0, 0 when unknown). */

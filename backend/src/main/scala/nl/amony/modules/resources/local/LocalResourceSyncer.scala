@@ -225,7 +225,8 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
     case ResourceDeleted(resourceId)                            => db.deleteResourceWith(s, bucketId, resourceId)
     case ResourceMoved(id, _, newPath)                          => db.moveWith(s, bucketId, id, newPath)
     case ResourceFileMetaChanged(id, lastModifiedTime, fileKey) => db.getResourceByIdWith(s, bucketId, id).flatMap {
-        case Some(resource) => db.upsertResourceWith(s, resource.copy(timeLastModified = Some(lastModifiedTime), fileKey = fileKey.orElse(resource.fileKey)))
+        case Some(resource) =>
+          db.upsertResourceWith(s, resource.copy(timeLastModified = Some(lastModifiedTime), fileKey = fileKey.orElse(resource.fileKey)))
         case None           => IO.unit
       }
     case ResourceUpdated(resource)                              => deleteDerivedFiles(resource.resourceId) >> db.upsertResourceWith(s, resource)
