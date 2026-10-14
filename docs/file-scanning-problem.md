@@ -83,3 +83,21 @@ complete, writes eventually succeed, and identity evidence is unambiguous. Four 
 
 Convergent by design and worth keeping: files changing between scans collapse to their latest state (history loss, not
 divergence), and API-side deletes reconcile through the drop path (memory and DB both end up without the file).
+
+## Windows: fileKey support
+
+`BasicFileAttributes.fileKey()` is unconditionally `null` on Windows, so all key-driven behaviour degrades there:
+in-place edits and moves-with-modification report as delete+add, and renames are still detected via partial hash but
+always rehashed. This is pinned by tests (key-less fallback cases in `DirectoryScannerSpec`). macOS and Linux are
+unaffected, including temp dirs and APFS.
+
+This is a JVM gap, not a filesystem one: NTFS/ReFS provide stable identity (64-bit file index + volume serial via
+`GetFileInformationByHandle`, 128-bit persistent ID via `GetFileInformationByHandleEx` + `FileIdInfo`; FAT/exFAT
+genuinely have none). The JDK reads these values internally for `Files.isSameFile` but its `fileKey()` override returns
+`null` on every version to date.
+
+No dedicated library packages this for Java (OSHI reports on file stores, not per-file IDs). The recipe if Windows ever
+becomes a target: add `net.java.dev.jna:jna-platform` (JNA core likely already present via the watcher) and wrap
+open/query/close in ~30 lines — `CreateFile` with `FILE_FLAG_BACKUP_SEMANTICS` (required for directories), prefer
+`FileIdInfo` over the 64-bit index (documented as stable only while open), format as `(volSerial, indexHigh, indexLow)`.
+No action while Windows is not targeted.
