@@ -267,6 +267,14 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
         compare(Set(previous), Set(replaced)) shouldBe Set(FileDeleted(previous), FileAdded(replaced))
       }
 
+      "fall back to delete and add for content change without fileKeys" in {
+        // without fileKeys (e.g. Windows) an in-place edit is indistinguishable from a replacement
+        val previous = FileInfo(Paths.get("a"), partialHash = "old", size = 100, modifiedTime = 1)
+        val edited   = FileInfo(Paths.get("a"), partialHash = "new", size = 200, modifiedTime = 2)
+
+        compare(Set(previous), Set(edited)) shouldBe Set(FileDeleted(previous), FileAdded(edited))
+      }
+
       "report move with modification for different path with same fileKey" in {
         val previous = fileA.copy(partialHash = "old", size = 100, modifiedTime = 1, fileKey = Some("(dev=1,ino=1)"))
         val current  = fileA.copy(path = Paths.get("b"), partialHash = "new", size = 200, modifiedTime = 2, fileKey = Some("(dev=1,ino=1)"))
