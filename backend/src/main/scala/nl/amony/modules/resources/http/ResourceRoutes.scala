@@ -21,13 +21,6 @@ val errorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError]
 
 object ResourceRoutes extends RoutesModule, Logging:
 
-  val getBuckets =
-    register(endpoint
-      .name("getBuckets").tag("resources").description("Get information about the buckets")
-      .get.in("api" / "buckets")
-      .securityIn(securityInput).errorOut(errorOutput)
-      .out(apiNoCacheHeaders).out(jsonBody[List[BucketDto]]))
-
   val getResourceById: Endpoint[SecurityInput, (BucketId, ResourceId), SecurityError | NotFoundError | BadRequestError, ResourceDto, Any] =
     register(endpoint
       .name("getResourceById").tag("resources").description("Get information about a resource by its id")
@@ -161,12 +154,6 @@ object ResourceRoutes extends RoutesModule, Logging:
           bucket   <- getVisibleBucket(token, bucketId)
           resource <- EitherT(bucket.uploadResource(token.userId, fileName, body)).leftMap(mapUploadError)
         yield toDto(resource)
-      }
-
-      serverLogic(endpoint = getBuckets, requiredPermission = Permission.ViewResource) { auth => _ =>
-        buckets.all.map(all =>
-          Right(all.filter(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole)).map(bucket => BucketDto(bucket.id, "", "")))
-        )
       }
     }
   }

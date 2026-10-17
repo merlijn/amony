@@ -3,75 +3,6 @@ info:
   title: Amony API
   version: '1.0'
 paths:
-  /api/buckets:
-    get:
-      tags:
-      - resources
-      description: Get information about the buckets
-      operationId: getBuckets
-      parameters:
-      - name: access_token
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: XSRF-TOKEN
-        in: cookie
-        required: false
-        schema:
-          type: string
-      responses:
-        '200':
-          description: ''
-          headers:
-            Cache-Control:
-              required: true
-              schema:
-                type: string
-            Pragma:
-              required: true
-              schema:
-                type: string
-            Expires:
-              required: true
-              schema:
-                type: string
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/BucketDto'
-        '400':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '401':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '403':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '404':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
   /api/resources/{bucketId}/{resourceId}:
     get:
       tags:
@@ -659,12 +590,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-  /api/admin/buckets:
+  /api/buckets:
     get:
       tags:
-      - admin
-      description: Get the configuration of all buckets
-      operationId: adminListBuckets
+      - resources
+      description: Get the buckets the current user can see. The configuration of
+        each bucket is only included for users allowed to manage buckets.
+      operationId: getBuckets
       parameters:
       - name: access_token
         in: cookie
@@ -697,7 +629,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/BucketConfigDto'
+                  $ref: '#/components/schemas/BucketDto'
         '400':
           description: ''
           content:
@@ -717,12 +649,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
         '404':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '409':
           description: ''
           content:
             application/json:
@@ -799,7 +725,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-  /api/admin/buckets/{bucketId}:
+  /api/buckets/{bucketId}:
     get:
       tags:
       - admin
@@ -1019,7 +945,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-  /api/admin/buckets/{bucketId}/refresh:
+  /api/buckets/{bucketId}/refresh:
     post:
       tags:
       - admin
@@ -1068,7 +994,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-  /api/admin/buckets/{bucketId}/reindex:
+  /api/buckets/{bucketId}/reindex:
     post:
       tags:
       - admin
@@ -1117,7 +1043,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-  /api/admin/buckets/{bucketId}/rescan-metadata:
+  /api/buckets/{bucketId}/rescan-metadata:
     post:
       tags:
       - admin
@@ -1166,7 +1092,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-  /api/admin/buckets/{bucketId}/recompute-hashes:
+  /api/buckets/{bucketId}/recompute-hashes:
     post:
       tags:
       - admin
@@ -1215,7 +1141,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-  /api/admin/buckets/{bucketId}/generate-previews:
+  /api/buckets/{bucketId}/generate-previews:
     post:
       tags:
       - admin
@@ -1265,7 +1191,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-  /api/admin/buckets/{bucketId}/fix-non-streamable:
+  /api/buckets/{bucketId}/fix-non-streamable:
     post:
       tags:
       - admin
@@ -1315,7 +1241,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-  /api/admin/buckets/{bucketId}/export:
+  /api/buckets/{bucketId}/export:
     get:
       tags:
       - admin
@@ -1368,7 +1294,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-  /api/admin/buckets/{bucketId}/import:
+  /api/buckets/{bucketId}/import:
     post:
       tags:
       - admin
@@ -2184,15 +2110,11 @@ components:
       type: object
       required:
       - bucketId
-      - name
-      - type
       properties:
         bucketId:
           type: string
-        name:
-          type: string
-        type:
-          type: string
+        config:
+          $ref: '#/components/schemas/BucketConfigDto'
     BulkTagsUpdateDto:
       title: BulkTagsUpdateDto
       type: object

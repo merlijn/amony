@@ -83,12 +83,14 @@ class ApiSecurity(authConfig: AuthConfig) extends Logging:
         requiredPermission match
           case None             => Right(token)
           case Some(permission) =>
-            if userAccess(token).permissions.contains(permission) then Right(token)
+            if hasPermission(token, permission) then Right(token)
             else if token.isAnonymous then Left(SecurityError.Unauthorized)
             else Left(SecurityError.Forbidden)
     }
 
   def userAccess(authToken: AuthToken): RoleAccessConfig = authConfig.access(authToken)
+
+  def hasPermission(authToken: AuthToken, permission: Permission): Boolean = userAccess(authToken).permissions.contains(permission)
 
   def canAccessBucket(authToken: AuthToken, requiredRole: Option[Role]): Boolean =
     !(isLoginRequired && authToken.isAnonymous) && (authToken.roles.contains(Role.Admin) || requiredRole.forall(authToken.roles.contains))

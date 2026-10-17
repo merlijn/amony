@@ -1,4 +1,4 @@
-package nl.amony.modules.admin
+package nl.amony.modules.resources.http
 
 import java.nio.file.{InvalidPathException, Path}
 import java.time.Instant
@@ -17,7 +17,6 @@ import nl.amony.lib.tapir.dsl.error.{BadRequestError, ConflictError, ErrorRespon
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.*
-import nl.amony.modules.resources.http.{ResourceDto, toDto}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.modules.search.api.{Query, SearchIndexer, SearchService}
 
@@ -98,7 +97,7 @@ object BucketConfigDto:
         )
       case other                => Left(s"Unknown bucket type: $other")
 
-object BucketAdminRoutes extends RoutesModule, Logging:
+object BucketRoutes extends RoutesModule, Logging:
 
   case object NdJson extends CodecFormat:
     override val mediaType: sttp.model.MediaType = sttp.model.MediaType.unsafeParse("application/x-ndjson")
@@ -110,21 +109,24 @@ object BucketAdminRoutes extends RoutesModule, Logging:
 
   private val actionErrorOutput: EndpointOutput[SecurityError] = ErrorResponse.securityErrors
 
-  val listBuckets =
-    register(endpoint.name("adminListBuckets").tag("admin").description("Get the configuration of all buckets")
-      .get.in("api" / "admin" / "buckets")
-      .securityIn(securityInput).errorOut(errorOutput)
-      .out(apiNoCacheHeaders).out(jsonBody[List[BucketConfigDto]]))
+  val getBuckets =
+    register(endpoint.name("getBuckets").tag("resources")
+      .description(
+        "Get the buckets the current user can see. The configuration of each bucket is only included for users allowed to manage buckets."
+      )
+      .get.in("api" / "buckets")
+      .securityIn(securityInput).errorOut(ErrorResponse.standardErrorOutput)
+      .out(apiNoCacheHeaders).out(jsonBody[List[BucketDto]]))
 
   val getBucket =
     register(endpoint.name("adminGetBucket").tag("admin").description("Get the configuration of a bucket")
-      .get.in("api" / "admin" / "buckets" / path[BucketId]("bucketId"))
+      .get.in("api" / "buckets" / path[BucketId]("bucketId"))
       .securityIn(securityInput).errorOut(errorOutput)
       .out(apiNoCacheHeaders).out(jsonBody[BucketConfigDto]))
 
   val createBucket =
     register(endpoint.name("adminCreateBucket").tag("admin").description("Create a new bucket")
-      .post.in("api" / "admin" / "buckets")
+      .post.in("api" / "buckets")
       .in(jsonBody[BucketConfigDto])
       .securityIn(securityInput).errorOut(errorOutput)
       .out(jsonBody[BucketConfigDto]))
@@ -135,7 +137,7 @@ object BucketAdminRoutes extends RoutesModule, Logging:
         "Update the configuration of a bucket. The id, type and hashing algorithm cannot be changed. The bucket is restarted. " +
           "Files that no longer match the include/exclude patterns are removed from the index, including their tags and metadata."
       )
-      .put.in("api" / "admin" / "buckets" / path[BucketId]("bucketId"))
+      .put.in("api" / "buckets" / path[BucketId]("bucketId"))
       .in(jsonBody[BucketConfigDto])
       .securityIn(securityInput).errorOut(errorOutput)
       .out(jsonBody[BucketConfigDto]))
@@ -146,59 +148,59 @@ object BucketAdminRoutes extends RoutesModule, Logging:
         "Delete a bucket. Refused when the bucket still contains resources, unless forced. " +
           "Forcing removes the resources from the database and search index, media files are never deleted."
       )
-      .delete.in("api" / "admin" / "buckets" / path[BucketId]("bucketId"))
+      .delete.in("api" / "buckets" / path[BucketId]("bucketId"))
       .in(query[Option[Boolean]]("force").description("Also delete the resources of the bucket from the database and search index."))
       .securityIn(securityInput).errorOut(errorOutput))
 
   val refresh =
     register(endpoint.tag("admin").name("adminRefreshBucket").description("Refresh all resources in a bucket")
-      .post.in("api" / "admin" / "buckets" / path[BucketId]("bucketId") / "refresh")
+      .post.in("api" / "buckets" / path[BucketId]("bucketId") / "refresh")
       .securityIn(securityInput)
       .errorOut(actionErrorOutput))
 
   val reIndex =
     register(endpoint.tag("admin").name("adminReindexBucket").description("Re-index all resources in a bucket.")
-      .post.in("api" / "admin" / "buckets" / path[BucketId]("bucketId") / "reindex")
+      .post.in("api" / "buckets" / path[BucketId]("bucketId") / "reindex")
       .securityIn(securityInput)
       .errorOut(actionErrorOutput))
 
   val rescanMetaData =
     register(endpoint
       .tag("admin").name("adminRescanMetaData").description("Rescan the metadata of all files in a bucket")
-      .post.in("api" / "admin" / "buckets" / path[BucketId]("bucketId") / "rescan-metadata")
+      .post.in("api" / "buckets" / path[BucketId]("bucketId") / "rescan-metadata")
       .securityIn(securityInput)
       .errorOut(actionErrorOutput))
 
   val reComputeHashes =
     register(endpoint.name("adminReComputeHashes").tag("admin").description("Recompute the hashes of all files in a bucket")
-      .post.in("api" / "admin" / "buckets" / path[BucketId]("bucketId") / "recompute-hashes")
+      .post.in("api" / "buckets" / path[BucketId]("bucketId") / "recompute-hashes")
       .securityIn(securityInput)
       .errorOut(actionErrorOutput))
 
   val generatePreviews =
     register(endpoint.name("adminGeneratePreviews").tag("admin")
       .description("Generate all configured thumbnails and preview clips for all resources in a bucket")
-      .post.in("api" / "admin" / "buckets" / path[BucketId]("bucketId") / "generate-previews")
+      .post.in("api" / "buckets" / path[BucketId]("bucketId") / "generate-previews")
       .securityIn(securityInput)
       .errorOut(actionErrorOutput))
 
   val fixNonStreamable =
     register(endpoint.name("adminFixNonStreamable").tag("admin")
       .description("Remux all non-streamable resources in a bucket so they can be streamed progressively")
-      .post.in("api" / "admin" / "buckets" / path[BucketId]("bucketId") / "fix-non-streamable")
+      .post.in("api" / "buckets" / path[BucketId]("bucketId") / "fix-non-streamable")
       .securityIn(securityInput)
       .errorOut(actionErrorOutput))
 
   val exportBucket =
     register(endpoint.name("adminExportBucket").tag("admin").description("Export all resources in a bucket")
-      .get.in("api" / "admin" / "buckets" / path[BucketId]("bucketId") / "export")
+      .get.in("api" / "buckets" / path[BucketId]("bucketId") / "export")
       .securityIn(securityInput)
       .out(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson))
       .errorOut(actionErrorOutput))
 
   val importBucket =
     register(endpoint.name("adminImportBucket").tag("admin").description("Import all resources in a bucket")
-      .post.in("api" / "admin" / "buckets" / path[BucketId]("bucketId") / "import")
+      .post.in("api" / "buckets" / path[BucketId]("bucketId") / "import")
       .in(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson))
       .securityIn(securityInput)
       .errorOut(actionErrorOutput))
@@ -224,8 +226,15 @@ object BucketAdminRoutes extends RoutesModule, Logging:
       EitherT.fromOptionF(registry.getConfig(bucketId), toApiError(BucketError.NotFound(bucketId)))
 
     routes[IO] {
-      serverLogic(endpoint = listBuckets, requiredPermission = Permission.ManageBuckets) { _ => _ =>
-        registry.allConfigs.map(configs => Right(configs.map(BucketConfigDto.fromStored)))
+      serverLogic(endpoint = getBuckets, requiredPermission = Permission.ViewResource) { auth => _ =>
+        if apiSecurity.hasPermission(auth, Permission.ManageBuckets) then
+          registry.allConfigs.map(configs =>
+            Right(configs.map(stored => BucketDto(stored.config.id, Some(BucketConfigDto.fromStored(stored)))))
+          )
+        else
+          registry.all.map(buckets =>
+            Right(buckets.filter(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole)).map(bucket => BucketDto(bucket.id)))
+          )
       }
 
       serverLogicT(endpoint = getBucket, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
