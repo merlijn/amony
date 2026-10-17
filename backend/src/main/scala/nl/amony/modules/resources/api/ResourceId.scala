@@ -9,6 +9,5 @@ opaque type ResourceId <: String = String
 object ResourceId:
   def apply(id: String): ResourceId = id
 
-  given circeCodec: CirceCodec[ResourceId] = CirceCodec.implied[String]
-
+  given circeCodec: CirceCodec[ResourceId]   = CirceCodec.implied[String]
   given Codec[String, ResourceId, TextPlain] = Codec.string.mapDecode(s => DecodeResult.Value(ResourceId.apply(s)))(identity)

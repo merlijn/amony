@@ -78,7 +78,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
       timeLastModified   = lastModified,
       title              = title,
       description        = description,
-      tags               = tags,
+      tags               = tags.map(Tag.user),
       thumbnailTimestamp = thumbnailTimestamp,
       streamable         = streamable
     )

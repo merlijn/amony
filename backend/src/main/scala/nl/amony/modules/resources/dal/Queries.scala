@@ -5,28 +5,44 @@ import scribe.Logging
 import skunk.*
 import skunk.circe.codec.all.*
 import skunk.codec.all.*
-import skunk.data.Arr
 import skunk.implicits.*
+
+import nl.amony.modules.resources.api.Tag
 
 object Queries extends Logging {
 
+  /** Decodes the aggregated tag objects; owners are never filtered here so new owners survive reads. */
+  private def decodeTags(tags: Option[Json]): Set[Tag] =
+    tags match
+      case None       => Set.empty
+      case Some(json) =>
+        json.as[List[Tag]] match
+          case Right(tagList) => tagList.toSet
+          case Left(error)    =>
+            logger.warn(s"Failed to decode tags: $error")
+            Set.empty
+
   object tags {
-    val all: Query[Void, TagRow] = sql"select id, label from tags".query(TagRow.codec)
+    private val ownerLabel: Codec[(String, String)] = varchar *: varchar
+
+    val all: Query[Void, TagRow] = sql"select id, owner, label from tags".query(TagRow.codec)
 
     def truncateCascade: Command[Void] = sql"truncate table tags cascade".command
 
-    def getByLabels(n: Int): Query[List[String], TagRow] = sql"select id,label from tags where label in (${varchar.list(n)})".query(TagRow.codec)
+    def getByLabels(n: Int): Query[(String, List[String]), TagRow] =
+      sql"select id, owner, label from tags where owner = $varchar and label in (${varchar.list(n)})".query(TagRow.codec)
 
-    def getByIds(n: Int): Query[List[Int], TagRow] = sql"select id,label from tags where id in (${int4.list(n)})".query(TagRow.codec)
+    def getByIds(n: Int): Query[List[Int], TagRow] = sql"select id, owner, label from tags where id in (${int4.list(n)})".query(TagRow.codec)
 
-    def insert(n: Int): Command[List[String]] = sql"insert into tags (label) values ${varchar.values.list(n)}".command
+    def insert(n: Int): Command[List[(String, String)]] =
+      sql"insert into tags (owner, label) values ${ownerLabel.values.list(n)}".command
 
-    def upsert(n: Int): Command[List[String]] = sql"""
-          WITH new_tags (label) AS (VALUES ${varchar.values.list(n)})
-          INSERT INTO tags (label)
-          SELECT label
+    def upsert(n: Int): Command[List[(String, String)]] = sql"""
+          WITH new_tags (owner, label) AS (VALUES ${ownerLabel.values.list(n)})
+          INSERT INTO tags (owner, label)
+          SELECT owner, label
           FROM new_tags
-          WHERE NOT EXISTS (SELECT 1 FROM tags WHERE tags.label = new_tags.label)
+          WHERE NOT EXISTS (SELECT 1 FROM tags WHERE tags.owner = new_tags.owner AND tags.label = new_tags.label)
         """.command
   }
 
@@ -43,6 +59,9 @@ object Queries extends Logging {
         .query(ResourceTagsRow.codec)
 
     def delete: Command[(String, String)] = sql"delete from resource_tags where bucket_id = $varchar and resource_id = $varchar".command
+
+    def deleteByOwner: Command[(String, String, String)] =
+      sql"delete from resource_tags where bucket_id = $varchar and resource_id = $varchar and tag_id in (select id from tags where owner = $varchar)".command
   }
 
   object collection_tags {
@@ -73,46 +92,46 @@ object Queries extends Logging {
 
     private val joinTables =
       sql"""
-         SELECT to_json(c.*), array_agg(t.label) FILTER (WHERE t.label IS NOT NULL) as tags
+         SELECT to_json(c.*), json_agg(json_build_object('owner', t.owner, 'label', t.label)) FILTER (WHERE t.id IS NOT NULL) as tags
          FROM collections c
          LEFT JOIN collection_tags ct ON c.id = ct.collection_id
          LEFT JOIN tags t ON ct.tag_id = t.id
        """
 
-    val allJoined: Query[Void, (CollectionRow, Option[Arr[String]])] =
+    val allJoined: Query[Void, (CollectionRow, Set[Tag])] =
       sql"""
         $joinTables
         GROUP BY (${CollectionRow.columns})
-      """.query(json *: _varchar.opt).map((collection, tagLabels) => (collection.as[CollectionRow].toOption.get, tagLabels))
+      """.query(json *: json.opt).map((collection, tags) => (collection.as[CollectionRow].toOption.get, decodeTags(tags)))
 
-    val getByIdJoined: Query[java.util.UUID, (CollectionRow, Option[Arr[String]])] =
+    val getByIdJoined: Query[java.util.UUID, (CollectionRow, Set[Tag])] =
       sql"""
         $joinTables
         WHERE c.id = $uuid
         GROUP BY (${CollectionRow.columns})
-      """.query(json *: _varchar.opt).map((collection, tagLabels) => (collection.as[CollectionRow].toOption.get, tagLabels))
+      """.query(json *: json.opt).map((collection, tags) => (collection.as[CollectionRow].toOption.get, decodeTags(tags)))
 
-    val getByParentIdJoined: Query[Option[java.util.UUID], (CollectionRow, Option[Arr[String]])] =
+    val getByParentIdJoined: Query[Option[java.util.UUID], (CollectionRow, Set[Tag])] =
       sql"""
         $joinTables
         WHERE c.parent_id IS NOT DISTINCT FROM ${uuid.opt}
         GROUP BY (${CollectionRow.columns})
-      """.query(json *: _varchar.opt).map((collection, tagLabels) => (collection.as[CollectionRow].toOption.get, tagLabels))
+      """.query(json *: json.opt).map((collection, tags) => (collection.as[CollectionRow].toOption.get, decodeTags(tags)))
 
-    val getByResourceIdJoined: Query[(String, String), (CollectionRow, Option[Arr[String]])] =
+    val getByResourceIdJoined: Query[(String, String), (CollectionRow, Set[Tag])] =
       sql"""
         $joinTables
         INNER JOIN collection_resources cr ON c.id = cr.collection_id
         WHERE cr.bucket_id = ${varchar(64)} AND cr.resource_id = ${varchar(64)}
         GROUP BY (${CollectionRow.columns})
-      """.query(json *: _varchar.opt).map((collection, tagLabels) => (collection.as[CollectionRow].toOption.get, tagLabels))
+      """.query(json *: json.opt).map((collection, tags) => (collection.as[CollectionRow].toOption.get, decodeTags(tags)))
 
-    val getByUserIdJoined: Query[(String, Option[java.util.UUID]), (CollectionRow, Option[Arr[String]])] =
+    val getByUserIdJoined: Query[(String, Option[java.util.UUID]), (CollectionRow, Set[Tag])] =
       sql"""
         $joinTables
         WHERE c.user_id = ${varchar(64)} AND c.parent_id IS NOT DISTINCT FROM ${uuid.opt}
         GROUP BY (${CollectionRow.columns})
-      """.query(json *: _varchar.opt).map((collection, tagLabels) => (collection.as[CollectionRow].toOption.get, tagLabels))
+      """.query(json *: json.opt).map((collection, tags) => (collection.as[CollectionRow].toOption.get, decodeTags(tags)))
 
     val insert: Command[Json] = sql"insert into collections SELECT * FROM json_populate_record(NULL::collections, $json)".command
 
@@ -133,44 +152,44 @@ object Queries extends Logging {
 
     private val joinTables =
       sql"""
-         SELECT to_json(r.*), array_agg(t.label) FILTER (WHERE t.label IS NOT NULL) as tags
+         SELECT to_json(r.*), json_agg(json_build_object('owner', t.owner, 'label', t.label)) FILTER (WHERE t.id IS NOT NULL) as tags
          FROM resources r
          LEFT JOIN resource_tags rt
            ON r.bucket_id = rt.bucket_id AND r.resource_id = rt.resource_id
          LEFT JOIN tags t ON rt.tag_id = t.id
        """
 
-    val getByPartialHashJoined: Query[(String, String), (ResourceRow, Option[Arr[String]])] =
+    val getByPartialHashJoined: Query[(String, String), (ResourceRow, Set[Tag])] =
       sql"""
         $joinTables
         WHERE r.bucket_id = $varchar AND r.partial_hash = $varchar
         GROUP BY (${ResourceRow.columns})
-      """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
+      """.query(json *: json.opt).map((resource, tags) => (resource.as[ResourceRow].toOption.get, decodeTags(tags)))
 
-    val getByIdJoined: Query[(String, String), (ResourceRow, Option[Arr[String]])] =
+    val getByIdJoined: Query[(String, String), (ResourceRow, Set[Tag])] =
       sql"""
         $joinTables
         WHERE r.bucket_id = $varchar AND r.resource_id = $varchar
         GROUP BY (${ResourceRow.columns})
-      """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
+      """.query(json *: json.opt).map((resource, tags) => (resource.as[ResourceRow].toOption.get, decodeTags(tags)))
 
-    val getByPathJoined: Query[(String, String), (ResourceRow, Option[Arr[String]])] =
+    val getByPathJoined: Query[(String, String), (ResourceRow, Set[Tag])] =
       sql"""
         $joinTables
         WHERE r.bucket_id = $varchar AND r.fs_path = $varchar
         GROUP BY (${ResourceRow.columns})
-      """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
+      """.query(json *: json.opt).map((resource, tags) => (resource.as[ResourceRow].toOption.get, decodeTags(tags)))
 
-    val allJoined: Query[String, (ResourceRow, Option[Arr[String]])] =
+    val allJoined: Query[String, (ResourceRow, Set[Tag])] =
       sql"""
        $joinTables
        WHERE r.bucket_id = $varchar
        GROUP BY (${ResourceRow.columns})
-      """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
+      """.query(json *: json.opt).map((resource, tags) => (resource.as[ResourceRow].toOption.get, decodeTags(tags)))
 
-    val getByCollectionIdJoined: Query[java.util.UUID, (ResourceRow, Option[Arr[String]])] =
+    val getByCollectionIdJoined: Query[java.util.UUID, (ResourceRow, Set[Tag])] =
       sql"""
-       SELECT to_json(r.*), array_agg(t.label) FILTER (WHERE t.label IS NOT NULL) as tags
+       SELECT to_json(r.*), json_agg(json_build_object('owner', t.owner, 'label', t.label)) FILTER (WHERE t.id IS NOT NULL) as tags
        FROM resources r
        INNER JOIN collection_resources cr
          ON r.bucket_id = cr.bucket_id AND r.resource_id = cr.resource_id
@@ -179,7 +198,7 @@ object Queries extends Logging {
        LEFT JOIN tags t ON rt.tag_id = t.id
        WHERE cr.collection_id = $uuid
        GROUP BY (${ResourceRow.columns})
-      """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
+      """.query(json *: json.opt).map((resource, tags) => (resource.as[ResourceRow].toOption.get, decodeTags(tags)))
 
     val getById: Query[(String, String), ResourceRow] =
       sql"select to_json(r.*) from resources r where bucket_id = $varchar and resource_id = $varchar".query(json)

@@ -5,9 +5,9 @@ import cats.effect.{IO, Resource}
 import io.circe.syntax.*
 import scribe.Logging
 import skunk.*
-import skunk.data.{Arr, Completion}
+import skunk.data.Completion
 
-import nl.amony.modules.resources.api.{BucketId, ResourceId, ResourceInfo}
+import nl.amony.modules.resources.api.{BucketId, ResourceId, ResourceInfo, Tag}
 
 class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(pool) with Logging:
 
@@ -39,6 +39,13 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
           _   <- if tagIds.nonEmpty then s.prepare(Queries.resource_tags.upsert(rows.size)).flatMap(_.execute(rows)) else IO.unit
         yield ()
 
+      def replaceAllForOwner(s: Session[IO], bucketId: BucketId, resourceId: ResourceId, owner: String, tagIds: List[Int]): IO[Unit] =
+        for
+          _   <- s.prepare(Queries.resource_tags.deleteByOwner).flatMap(_.execute(bucketId, resourceId, owner))
+          rows = tagIds.map(tagId => ResourceTagsRow(bucketId, resourceId, tagId))
+          _   <- if tagIds.nonEmpty then s.prepare(Queries.resource_tags.upsert(rows.size)).flatMap(_.execute(rows)) else IO.unit
+        yield ()
+
       def delete(s: Session[IO], bucketId: BucketId, resourceId: ResourceId): IO[Completion] =
         s.prepare(Queries.resource_tags.delete).flatMap(_.execute(bucketId, resourceId))
 
@@ -50,37 +57,73 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
     object tags {
       def all(s: Session[IO]) = s.prepare(Queries.tags.all).flatMap(_.stream(Void, defaultChunkSize).compile.toList)
 
-      def upsert(s: Session[IO], tagLabels: List[String]): IO[Completion] =
-        s.prepare(Queries.tags.upsert(tagLabels.size)).flatMap(_.execute(tagLabels))
+      def upsert(s: Session[IO], tags: List[Tag]): IO[Completion] =
+        s.prepare(Queries.tags.upsert(tags.size)).flatMap(_.execute(tags.map(tag => tag.owner -> tag.label)))
 
-      def getByLabels(s: Session[IO], labels: List[String]): IO[List[TagRow]] =
-        s.prepare(Queries.tags.getByLabels(labels.size)).flatMap(_.stream(labels, defaultChunkSize).compile.toList)
+      def getByLabels(s: Session[IO], tags: List[Tag]): IO[List[TagRow]] =
+        tags.groupBy(_.owner).toList.foldLeft(IO.pure(List.empty[TagRow])) { case (acc, (owner, ownerTags)) =>
+          val labels = ownerTags.map(_.label)
+          acc.flatMap(done =>
+            s.prepare(Queries.tags.getByLabels(labels.size)).flatMap(_.stream((owner, labels), defaultChunkSize).compile.toList).map(done ++ _)
+          )
+        }
 
       def getByIds(s: Session[IO], ids: List[Int]): IO[List[TagRow]] =
         s.prepare(Queries.tags.getByIds(ids.size)).flatMap(_.stream(ids, defaultChunkSize).compile.toList)
     }
   }
 
-  override protected def upsertTags(s: Session[IO], tagLabels: List[String]): IO[Completion] =
-    tables.tags.upsert(s, tagLabels)
+  override protected def upsertTags(s: Session[IO], tags: List[Tag]): IO[Completion] =
+    tables.tags.upsert(s, tags)
 
-  override protected def getTagsByLabels(s: Session[IO], labels: List[String]): IO[List[TagRow]] =
-    tables.tags.getByLabels(s, labels)
+  override protected def getTagsByLabels(s: Session[IO], tags: List[Tag]): IO[List[TagRow]] =
+    tables.tags.getByLabels(s, tags)
 
-  override protected def toResource(resourceRow: ResourceRow, tagLabels: Option[Arr[String]]): ResourceInfo =
-    resourceRow.toResource(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty))
+  override protected def toResource(resourceRow: ResourceRow, tags: Set[Tag]): ResourceInfo =
+    resourceRow.toResource(tags)
 
-  private def updateTagsForResource(s: Session[IO], bucketId: BucketId, resourceId: ResourceId, tagLabels: List[String]) =
+  /** Replaces the tag links for a single owner, leaving all other owners untouched. Owners are opaque here. */
+  private def updateTagsForOwner(s: Session[IO], bucketId: BucketId, resourceId: ResourceId, owner: String, tagLabels: List[String]) =
     for
-      tags <- if tagLabels.nonEmpty then tables.tags.upsert(s, tagLabels) >> tables.tags.getByLabels(s, tagLabels) else IO.pure(List.empty)
-      _    <- tables.resource_tags.replaceAll(s, bucketId, resourceId, tags.map(_.id))
+      tags <- if tagLabels.nonEmpty then
+        tables.tags.upsert(s, tagLabels.map(Tag(owner, _))) >> tables.tags.getByLabels(
+          s,
+          tagLabels.map(Tag(owner, _))
+        )
+      else IO.pure(List.empty)
+      _    <- tables.resource_tags.replaceAllForOwner(s, bucketId, resourceId, owner, tags.map(_.id))
+    yield ()
+
+  /** Replaces all tag links from the complete tag state of a resource, clearing stale owners. */
+  private def replaceAllTags(s: Session[IO], resource: ResourceInfo) =
+    for
+      tags <- if resource.tags.nonEmpty then tables.tags.upsert(s, resource.tags.toList) >> tables.tags.getByLabels(s, resource.tags.toList)
+      else IO.pure(List.empty)
+      _    <- tables.resource_tags.replaceAll(s, resource.bucketId, resource.resourceId, tags.map(_.id))
     yield ()
 
   private def updateResourceWithTags(s: Session[IO], resource: ResourceInfo): IO[Unit] =
     for
       _ <- tables.resources.upsert(s, ResourceRow.fromResource(resource))
-      _ <- updateTagsForResource(s, resource.bucketId, resource.resourceId, resource.tags.toList)
+      _ <- replaceAllTags(s, resource)
     yield ()
+
+  /** Replaces the tags of a single owner, preserving all other owners. Reserved for internal callers. */
+  def setTagsForOwner(bucketId: BucketId, resourceId: ResourceId, owner: String, tagLabels: List[String]): IO[Option[ResourceInfo]] =
+    useTransaction((s, _) => setTagsForOwnerWith(s, bucketId, resourceId, owner, tagLabels))
+
+  def setTagsForOwnerWith(
+    s: Session[IO],
+    bucketId: BucketId,
+    resourceId: ResourceId,
+    owner: String,
+    tagLabels: List[String]
+  ): IO[Option[ResourceInfo]] =
+    getResourceByIdWith(s, bucketId, resourceId).flatMap:
+      case None           => IO.pure(None)
+      case Some(resource) =>
+        val updated = resource.withTagsForOwner(owner, tagLabels.toSet)
+        updateTagsForOwner(s, bucketId, resourceId, owner, tagLabels) >> IO.pure(Some(updated))
 
   private[resources] def truncateTables(): IO[Unit] =
     useTransaction: (s, _) =>
@@ -105,7 +148,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
   def insertResourceWith(s: Session[IO], resource: ResourceInfo): IO[Unit] =
     for
       _ <- tables.resources.insert(s, ResourceRow.fromResource(resource))
-      _ <- updateTagsForResource(s, resource.bucketId, resource.resourceId, resource.tags.toList)
+      _ <- replaceAllTags(s, resource)
     yield ()
 
   def upsertResource(resource: ResourceInfo): IO[Unit] =
@@ -152,9 +195,10 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
     resourceId: ResourceId,
     title: Option[String],
     description: Option[String],
+    owner: String,
     tagLabels: List[String]
   ): IO[Option[ResourceInfo]] =
-    useTransaction((s, _) => updateUserMetaWith(s, bucketId, resourceId, title, description, tagLabels))
+    useTransaction((s, _) => updateUserMetaWith(s, bucketId, resourceId, title, description, owner, tagLabels))
 
   def updateUserMetaWith(
     s: Session[IO],
@@ -162,30 +206,46 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
     resourceId: ResourceId,
     title: Option[String],
     description: Option[String],
+    owner: String,
     tagLabels: List[String]
   ): IO[Option[ResourceInfo]] =
     getResourceByIdWith(s, bucketId, resourceId).flatMap:
       case None           => IO.pure(None)
       case Some(resource) =>
-        val updatedResource = resource.copy(title = title, description = description, tags = tagLabels.toSet)
-        updateResourceWithTags(s, updatedResource) >> IO.pure(Some(updatedResource))
+        val updatedResource = resource.copy(title = title, description = description).withTagsForOwner(owner, tagLabels.toSet)
+        tables.resources.upsert(s, ResourceRow.fromResource(updatedResource)) >>
+          updateTagsForOwner(s, bucketId, resourceId, owner, tagLabels) >> IO.pure(Some(updatedResource))
 
-  def updateResourceTags(bucketId: BucketId, resourceId: ResourceId, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Option[ResourceInfo]] =
+  def updateResourceTags(
+    bucketId: BucketId,
+    resourceId: ResourceId,
+    tagsToAdd: Set[Tag],
+    tagsToRemove: Set[Tag]
+  ): IO[Option[ResourceInfo]] =
     useTransaction((s, _) => updateResourceTagsWith(s, bucketId, resourceId, tagsToAdd, tagsToRemove))
 
   def updateResourceTagsWith(
     s: Session[IO],
     bucketId: BucketId,
     resourceId: ResourceId,
-    tagsToAdd: Set[String],
-    tagsToRemove: Set[String]
+    tagsToAdd: Set[Tag],
+    tagsToRemove: Set[Tag]
   ): IO[Option[ResourceInfo]] =
     getResourceByIdWith(s, bucketId, resourceId).flatMap:
       case None           => IO.pure(None)
       case Some(resource) =>
-        val updatedTags     = ((resource.tags ++ tagsToAdd) -- tagsToRemove).toList
-        val updatedResource = resource.copy(tags = updatedTags.toSet)
-        updateResourceWithTags(s, updatedResource) >> IO.pure(Some(updatedResource))
+        val addByOwner    = tagsToAdd.groupBy(_.owner).view.mapValues(_.map(_.label).toSet).toMap
+        val removeByOwner = tagsToRemove.groupBy(_.owner).view.mapValues(_.map(_.label).toSet).toMap
+        val owners        = (addByOwner.keySet ++ removeByOwner.keySet).toList.sorted
+        owners.foldLeft(IO.pure(resource)) { (acc, owner) =>
+          acc.flatMap(current =>
+            val updatedLabels   = ((current.labelsByOwner.getOrElse(owner, Set.empty) ++ addByOwner
+              .getOrElse(owner, Set.empty)) -- removeByOwner.getOrElse(owner, Set.empty)).toList
+            val updatedResource = current.withTagsForOwner(owner, updatedLabels.toSet)
+            tables.resources.upsert(s, ResourceRow.fromResource(updatedResource)) >>
+              updateTagsForOwner(s, bucketId, resourceId, owner, updatedLabels).as(updatedResource)
+          )
+        }.map(Some(_))
 
   def move(bucketId: BucketId, resourceId: ResourceId, newPath: String): IO[Unit] =
     useSession(s => moveWith(s, bucketId, resourceId, newPath))

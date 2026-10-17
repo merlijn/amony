@@ -11,7 +11,7 @@ import nl.amony.lib.tapir.dsl.error.{BadRequestError, NotFoundError, SecurityErr
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.BucketRegistry
-import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId}
+import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, Tag}
 import nl.amony.modules.resources.dal.CollectionsDal
 
 object CollectionRoutes extends RoutesModule:
@@ -78,7 +78,7 @@ object CollectionRoutes extends RoutesModule:
                                     userId      = auth.userId,
                                     name        = sanitizedName,
                                     description = sanitizedDescription,
-                                    tags        = sanitizedTags.toSet
+                                    tags        = sanitizedTags.toSet.map(Tag.user)
                                   )
           _                    <- EitherT.right[BadRequestError | NotFoundError](collectionsDal.insertCollection(collection))
         yield toDto(collection)

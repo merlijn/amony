@@ -27,7 +27,10 @@ class SolrIndexer(config: SolrConfig, solr: SolrClient) extends SearchIndexer wi
     resource.partialHash.foreach(partialHash => solrInputDocument.addField(FieldNames.partialHash, partialHash))
     resource.fileKey.foreach(fileKey => solrInputDocument.addField(FieldNames.fileKey, fileKey))
 
-    val maybeTags = Option.when(resource.tags.nonEmpty)(resource.tags)
+    // Only user-owned tags are indexed and faceted. System tags stay out of SearchResult for now;
+    // URL-passed tags are therefore assumed to have owner=user.
+    val userLabels = resource.userLabels
+    val maybeTags  = Option.when(userLabels.nonEmpty)(userLabels)
     maybeTags.foreach(tags => solrInputDocument.addField(FieldNames.tags, tags.toList.asJava))
 
     resource.thumbnailTimestamp.foreach(timestamp => solrInputDocument.addField(FieldNames.thumbnailTimestamp, timestamp))

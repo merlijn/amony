@@ -8,7 +8,7 @@ import skunk.codec.all.{int4, timestamptz, uuid, varchar}
 import skunk.implicits.sql
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, ResourceMeta}
+import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, ResourceMeta, Tag}
 
 val instantCodec: Codec[Instant] = timestamptz.imap(_.toInstant)(_.atOffset(ZoneOffset.UTC))
 
@@ -32,7 +32,7 @@ case class ResourceRow(
   streamable: Option[Boolean]      = None
 ) derives io.circe.Codec {
 
-  def toResource(tagLabels: Set[String]): ResourceInfo = {
+  def toResource(tags: Set[Tag]): ResourceInfo = {
     ResourceInfo(
       bucketId           = BucketId(bucket_id),
       resourceId         = ResourceId(resource_id),
@@ -43,7 +43,7 @@ case class ResourceRow(
       size               = size,
       contentType        = content_type,
       contentMeta        = content_meta_tool_name.flatMap(name => ResourceMeta.recover(name, content_meta_tool_data.getOrElse(""))),
-      tags               = tagLabels,
+      tags               = tags,
       timeAdded          = Some(time_added.toEpochMilli),
       timeLastModified   = time_last_modified.map(_.toEpochMilli),
       title              = title,
@@ -88,14 +88,14 @@ case class CollectionRow(
   description: Option[String]
 ) derives io.circe.Codec {
 
-  def toCollection(tagLabels: Set[String]): Collection =
+  def toCollection(tags: Set[Tag]): Collection =
     Collection(
       id          = CollectionId(id),
       parentId    = parent_id.map(CollectionId(_)),
       userId      = UserId(user_id),
       name        = name,
       description = description,
-      tags        = tagLabels
+      tags        = tags
     )
 }
 
@@ -130,7 +130,7 @@ case class CollectionResourcesRow(collection_id: UUID, bucket_id: String, resour
 object CollectionResourcesRow:
   val codec: Codec[CollectionResourcesRow] = (uuid *: varchar(64) *: varchar(64)).to[CollectionResourcesRow]
 
-case class TagRow(id: Int, label: String)
+case class TagRow(id: Int, owner: String, label: String)
 
 object TagRow:
-  val codec: Codec[TagRow] = (int4 *: varchar(64)).imap(TagRow.apply.tupled)(tag => (tag.id, tag.label))
+  val codec: Codec[TagRow] = (int4 *: varchar(64) *: varchar(64)).imap(TagRow.apply.tupled)(tag => (tag.id, tag.owner, tag.label))

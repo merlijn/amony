@@ -16,10 +16,17 @@ case class ResourceInfo(
   timeLastModified: Option[Long]    = None,
   title: Option[String]             = None,
   description: Option[String]       = None,
-  tags: Set[String]                 = Set.empty,
+  tags: Set[Tag]                    = Set.empty,
   thumbnailTimestamp: Option[Int]   = None,
   streamable: Option[Boolean]       = None
 ) derives io.circe.Codec {
 
   def basicContentProperties: Option[ContentProperties] = contentMeta.map(_.properties)
+
+  def userLabels: Set[String] = tags.collect { case Tag(owner, label) if owner == TagOwner.User => label }
+
+  def labelsByOwner: Map[String, Set[String]] = tags.groupBy(_.owner).view.mapValues(_.map(_.label).toSet).toMap
+
+  def withTagsForOwner(owner: String, labels: Set[String]): ResourceInfo =
+    copy(tags = tags.filterNot(_.owner == owner) ++ labels.map(Tag(owner, _)))
 }

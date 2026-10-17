@@ -157,7 +157,7 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
                               _            = stale shouldBe Left(BucketError.Modified(BucketId("other")))
                               missingUpd  <- r.update(bucketConfig("unknown", otherPath), original.updatedAt)
                               _            = missingUpd shouldBe Left(BucketError.NotFound(BucketId("unknown")))
-                              _           <- resourceDb.insertResource(resource(BucketId("other")).copy(tags = Set("a")))
+                              _           <- resourceDb.insertResource(resource(BucketId("other")).copy(tags = Set(Tag.user("a"))))
                               notEmpty    <- r.delete(BucketId("other"), force = false)
                               _            = notEmpty shouldBe Left(BucketError.NotEmpty(BucketId("other"), 1))
                               forced      <- r.delete(BucketId("other"), force = true)

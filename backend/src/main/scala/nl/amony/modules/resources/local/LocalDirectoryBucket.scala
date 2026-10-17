@@ -150,18 +150,20 @@ class LocalDirectoryBucket(
 
   override def updateUserMeta(resourceId: ResourceId, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] =
     db.transact: s =>
-      db.updateUserMetaWith(s, id, resourceId, title, description, tags)
+      // User-supplied labels always carry the user owner; other owners are preserved.
+      db.updateUserMetaWith(s, id, resourceId, title, description, TagOwner.User, tags)
         .flatMap(_.map(updated => topic.publish(s, ResourceUpdated(updated))).getOrElse(IO.unit))
 
-  override def updateResourceTags(resourceIds: Set[ResourceId], tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] = {
-    def updateTagsSingle(resourceId: ResourceId, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] =
-      db.transact: s =>
-        db.updateResourceTagsWith(s, id, resourceId, tagsToAdd, tagsToRemove).flatMap:
-          case None          => IO.unit
-          case Some(updated) => topic.publish(s, ResourceUpdated(updated))
+  /** Maximum resources updated in a single transaction: atomic per batch without holding locks for the whole selection. */
+  private val tagBulkBatchSize = 100
 
-    resourceIds.map(id => updateTagsSingle(id, tagsToAdd, tagsToRemove)).toList.sequence.as(())
-  }
+  override def updateResourceTags(resourceIds: Set[ResourceId], tagsToAdd: Set[Tag], tagsToRemove: Set[Tag]): IO[Unit] =
+    resourceIds.toList.grouped(tagBulkBatchSize).toList.traverse_ : batch =>
+      db.transact: s =>
+        batch.traverse_ : resourceId =>
+          db.updateResourceTagsWith(s, id, resourceId, tagsToAdd, tagsToRemove).flatMap:
+            case None          => IO.unit
+            case Some(updated) => topic.publish(s, ResourceUpdated(updated))
 
   override def updateThumbnailTimestamp(resourceId: ResourceId, timestamp: Int): IO[Unit] =
     db.transact: s =>

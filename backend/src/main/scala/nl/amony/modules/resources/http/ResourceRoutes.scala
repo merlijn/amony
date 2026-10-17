@@ -14,7 +14,7 @@ import nl.amony.lib.tapir.dsl.error.{BadRequestError, ErrorResponse, NotFoundErr
 import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.BucketRegistry
-import nl.amony.modules.resources.api.{BucketId, Resource, ResourceBucket, ResourceId, UploadError}
+import nl.amony.modules.resources.api.{BucketId, Resource, ResourceBucket, ResourceId, Tag, UploadError}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 
 val errorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError] = ErrorResponse.standardErrorOutput
@@ -149,8 +149,8 @@ object ResourceRoutes extends RoutesModule, Logging:
         for
           _               <- EitherT.cond[IO](dto.ids.nonEmpty, (), BadRequestError("no_resources", "At least one resource id is required"))
           sanitizedIds     = dto.ids.distinct.toSet.map(ResourceId(_))
-          sanitizedAdd    <- sanitizeTags(dto.tagsToAdd).map(_.toSet)
-          sanitizedRemove <- sanitizeTags(dto.tagsToRemove).map(_.toSet)
+          sanitizedAdd    <- sanitizeTags(dto.tagsToAdd).map(_.toSet.map(Tag.user))
+          sanitizedRemove <- sanitizeTags(dto.tagsToRemove).map(_.toSet.map(Tag.user))
           bucket          <- getVisibleBucket(auth, bucketId)
           _               <- EitherT.right(bucket.updateResourceTags(sanitizedIds, sanitizedAdd, sanitizedRemove))
         yield ()

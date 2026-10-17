@@ -17,7 +17,7 @@ import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo}
+import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, Tag, TagOwner}
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.{App, DatabaseConfig, ExportDatabaseSchema}
 
@@ -54,7 +54,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       size               = Random.nextLong(),
       contentType        = None,
       contentMeta        = None, // this field is not stored
-      tags               = Set.fill(Random.nextInt(5))(randomTag),
+      tags               = Set.fill(Random.nextInt(5))(Tag.user(randomTag)),
       timeAdded          = Some(nextTimestamp),
       timeLastModified   = Some(nextTimestamp),
       title              = Some(randomString),
@@ -70,7 +70,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       userId      = userId,
       name        = randomString,
       description = Some(randomString),
-      tags        = Set.fill(Random.nextInt(5))(randomTag)
+      tags        = Set.fill(Random.nextInt(5))(randomTag).map(Tag.user)
     )
 
   def configForContainer(container: GenericContainer) =
@@ -83,41 +83,39 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       poolSize = 3
     )
 
+  private def withDatabase(test: ResourceDatabase => IO[Unit]): Unit =
+    withContainers { container =>
+      val dbConfig             = configForContainer(container)
+      given tracer: Tracer[IO] = Tracer.noop[IO]
+      given meter: Meter[IO]   = Meter.noop[IO]
+
+      App.makeDatabasePool(dbConfig).map(ResourceDatabase(_)).use(test).unsafeRunSync()
+    }
+
   "ResourceDatabase" should {
-    "insert a resource row and retrieve it" in {
-      withContainers {
-        container =>
+    "insert a resource row and retrieve it" in
+      withDatabase(insertResourcesTest)
 
-          logger.info(s"Container IP: ${container.containerIpAddress}")
-          logger.info(s"Container Port: ${container.mappedPort(5432)}")
+    "update user meta" in
+      withDatabase(updateUserMetaTest)
 
-          val dbConfig             = configForContainer(container)
-          given tracer: Tracer[IO] = Tracer.noop[IO]
-          given meter: Meter[IO]   = Meter.noop[IO]
+    "bulk update tags" in
+      withDatabase(updateResourceTagsTest)
 
-          App.makeDatabasePool(dbConfig).map(ResourceDatabase(_)).use(db =>
-            insertResourcesTest(db) >> db.truncateTables() >>
-              updateUserMetaTest(db) >> db.truncateTables() >>
-              duplicatePartialHashsTest(db) >> db.truncateTables() >>
-              collectionsTest(db) >> db.truncateTables() >>
-              collectionResourcesTest(db) >> db.truncateTables()
-          ).unsafeRunSync()
-      }
-    }
+    "preserve other owners' tags on user updates" in
+      withDatabase(preserveOtherOwnersTest)
 
-    "stream resources while writing to the database" in {
-      withContainers {
-        container =>
+    "allow duplicate partial hashes" in
+      withDatabase(duplicatePartialHashsTest)
 
-          val dbConfig             = configForContainer(container)
-          given tracer: Tracer[IO] = Tracer.noop[IO]
-          given meter: Meter[IO]   = Meter.noop[IO]
+    "manage collections" in
+      withDatabase(collectionsTest)
 
-          App.makeDatabasePool(dbConfig).map(ResourceDatabase(_)).use(db =>
-            db.truncateTables() >> streamWithNestedWritesTest(db)
-          ).unsafeRunSync()
-      }
-    }
+    "manage collection resources" in
+      withDatabase(collectionResourcesTest)
+
+    "stream resources while writing to the database" in
+      withDatabase(streamWithNestedWritesTest)
 
     "export DDL schema after migrations" in {
       withContainers {
@@ -148,17 +146,59 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
     val updated  = resource.copy(
       title       = Some("new title"),
       description = Some("new description"),
-      tags        = Set("update-a", "update-b", "update-c")
+      tags        = Set("update-a", "update-b", "update-c").map(Tag.user)
     )
 
     for
       _      <- db.insertResource(resource)
-      _      <- db.updateUserMeta(resource.bucketId, resource.resourceId, updated.title, updated.description, updated.tags.toList)
+      _      <- db.updateUserMeta(resource.bucketId, resource.resourceId, updated.title, updated.description, TagOwner.User, updated.userLabels.toList)
       result <- db.getResourceById(resource.bucketId, resource.resourceId)
     yield {
       result.flatMap(_.title) shouldBe updated.title
       result.flatMap(_.description) shouldBe updated.description
       result.map(_.tags) shouldBe Some(updated.tags)
+    }
+  }
+
+  def updateResourceTagsTest(db: ResourceDatabase): IO[Unit] = {
+    val resource = genResource().copy(tags = Set("keep", "drop").map(Tag.user))
+
+    for
+      _       <- db.insertResource(resource)
+      updated <- db.updateResourceTags(resource.bucketId, resource.resourceId, Set(Tag.user("add")), Set(Tag.user("drop")))
+      result  <- db.getResourceById(resource.bucketId, resource.resourceId)
+      missing <- db.updateResourceTags(resource.bucketId, ResourceId(UUID.randomUUID().toString), Set(Tag.user("add")), Set.empty)
+    yield {
+      updated.map(_.userLabels) shouldBe Some(Set("keep", "add"))
+      result.map(_.userLabels) shouldBe Some(Set("keep", "add"))
+      missing shouldBe None
+    }
+  }
+
+  def preserveOtherOwnersTest(db: ResourceDatabase): IO[Unit] = {
+    val resource = genResource().copy(tags = Set("user-a", "user-b").map(Tag.user) + Tag.system("sys-a"))
+
+    for
+      _        <- db.insertResource(resource)
+      stored   <- db.getResourceById(resource.bucketId, resource.resourceId)
+      _        <- db.updateUserMeta(resource.bucketId, resource.resourceId, None, None, TagOwner.User, List("user-c"))
+      replaced <- db.getResourceById(resource.bucketId, resource.resourceId)
+      _        <- db.updateResourceTags(resource.bucketId, resource.resourceId, Set(Tag.user("user-d")), Set(Tag.user("user-c")))
+      merged   <- db.getResourceById(resource.bucketId, resource.resourceId)
+      _        <- db.setTagsForOwner(resource.bucketId, resource.resourceId, TagOwner.System, List("sys-b"))
+      retagged <- db.getResourceById(resource.bucketId, resource.resourceId)
+      _        <- db.updateUserMeta(resource.bucketId, resource.resourceId, None, None, TagOwner.User, List.empty)
+      cleared  <- db.getResourceById(resource.bucketId, resource.resourceId)
+    yield {
+      stored.map(_.tags) shouldBe Some(resource.tags)
+      replaced.map(_.userLabels) shouldBe Some(Set("user-c"))
+      replaced.flatMap(_.labelsByOwner.get(TagOwner.System)) shouldBe Some(Set("sys-a"))
+      merged.map(_.userLabels) shouldBe Some(Set("user-d"))
+      merged.flatMap(_.labelsByOwner.get(TagOwner.System)) shouldBe Some(Set("sys-a"))
+      retagged.map(_.userLabels) shouldBe Some(Set("user-d"))
+      retagged.flatMap(_.labelsByOwner.get(TagOwner.System)) shouldBe Some(Set("sys-b"))
+      cleared.map(_.userLabels) shouldBe Some(Set.empty)
+      cleared.flatMap(_.labelsByOwner.get(TagOwner.System)) shouldBe Some(Set("sys-b"))
     }
   }
 
@@ -220,7 +260,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
   def collectionsTest(db: ResourceDatabase): IO[Unit] = {
     val root    = genCollection()
     val child   = genCollection(parentId = Some(root.id))
-    val updated = root.copy(description = Some("updated description"), tags = Set("root-a", "root-b"))
+    val updated = root.copy(description = Some("updated description"), tags = Set("root-a", "root-b").map(Tag.user))
 
     for
       _           <- db.insertCollection(root)

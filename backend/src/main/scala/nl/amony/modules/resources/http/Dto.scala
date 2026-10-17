@@ -72,7 +72,7 @@ case class ResourceDto(
       size               = sizeInBytes,
       contentType        = Some(contentType),
       contentMeta        = None,
-      tags               = tags.toSet,
+      tags               = tags.toSet.map(Tag.user),
       timeAdded          = Some(timeAdded),
       title              = title,
       description        = description,
@@ -163,7 +163,8 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     userId             = resource.userId,
     title              = resource.title,
     description        = resource.description,
-    tags               = resource.tags.toList,
+    // Only user-owned tags are exposed for now; system tags stay hidden.
+    tags               = resource.userLabels.toList,
     contentType        = resource.contentType.getOrElse("application/octet-stream"),
     contentMeta        = contentMeta,
     thumbnailTimestamp = Some(thumbnailTimestamp),
@@ -179,5 +180,5 @@ def toDto(collection: Collection): CollectionDto =
     parentId    = collection.parentId.map(_.value),
     name        = collection.name,
     description = collection.description,
-    tags        = collection.tags.toList
+    tags        = collection.userLabels.toList
   )

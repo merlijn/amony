@@ -8,5 +8,6 @@ case class Collection(
   userId: UserId,
   name: String,
   description: Option[String]    = None,
-  tags: Set[String]              = Set.empty
-)
+  tags: Set[Tag]                 = Set.empty
+):
+  def userLabels: Set[String] = tags.collect { case Tag(owner, label) if owner == TagOwner.User => label }

@@ -4,10 +4,10 @@ import cats.effect.{IO, Resource}
 import io.circe.syntax.*
 import scribe.Logging
 import skunk.*
-import skunk.data.{Arr, Completion}
+import skunk.data.Completion
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo}
+import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, Tag}
 
 trait CollectionsDal(pool: Resource[IO, Session[IO]]) extends Logging:
 
@@ -16,10 +16,11 @@ trait CollectionsDal(pool: Resource[IO, Session[IO]]) extends Logging:
   protected def useSession[A](s: Session[IO] => IO[A]): IO[A]                        = pool.use(s)
   protected def useTransaction[A](f: (Session[IO], Transaction[IO]) => IO[A]): IO[A] = pool.use(s => s.transaction.use(tx => f(s, tx)))
 
-  // Abstract helpers that ResourceDatabase must provide
-  protected def upsertTags(s: Session[IO], tagLabels: List[String]): IO[Completion]
-  protected def getTagsByLabels(s: Session[IO], labels: List[String]): IO[List[TagRow]]
-  protected def toResource(resourceRow: ResourceRow, tagLabels: Option[Arr[String]]): ResourceInfo
+  // Abstract helpers that ResourceDatabase must provide. Owners are opaque strings here;
+  // the domain model (api.Tag) owns the meaning of specific owners.
+  protected def upsertTags(s: Session[IO], tags: List[Tag]): IO[Completion]
+  protected def getTagsByLabels(s: Session[IO], tags: List[Tag]): IO[List[TagRow]]
+  protected def toResource(resourceRow: ResourceRow, tags: Set[Tag]): ResourceInfo
 
   private[dal] object collectionTables:
     object collections {
@@ -50,14 +51,16 @@ trait CollectionsDal(pool: Resource[IO, Session[IO]]) extends Logging:
         s.prepare(Queries.collection_resources.delete).flatMap(_.execute((collectionId.value, bucketId, resourceId)))
     }
 
-  private def toCollection(collectionRow: CollectionRow, tagLabels: Option[Arr[String]]): Collection =
-    collectionRow.toCollection(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty))
+  private def toCollection(collectionRow: CollectionRow, tags: Set[Tag]): Collection =
+    collectionRow.toCollection(tags)
 
   private def updateTagsForCollection(s: Session[IO], collection: Collection): IO[Unit] =
+    val tags = collection.tags.toList
     for
-      tags <-
-        if collection.tags.nonEmpty then upsertTags(s, collection.tags.toList) >> getTagsByLabels(s, collection.tags.toList) else IO.pure(List.empty)
-      _    <- collectionTables.collection_tags.replaceAll(s, collection.id, tags.map(_.id))
+      rows <-
+        if tags.nonEmpty then upsertTags(s, tags) >> getTagsByLabels(s, tags)
+        else IO.pure(List.empty)
+      _    <- collectionTables.collection_tags.replaceAll(s, collection.id, rows.map(_.id))
     yield ()
 
   private def updateCollectionWithTags(s: Session[IO], collection: Collection): IO[Unit] =
