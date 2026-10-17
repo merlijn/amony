@@ -110,7 +110,7 @@ object BucketRoutes extends RoutesModule, Logging:
   private val actionErrorOutput: EndpointOutput[SecurityError] = ErrorResponse.securityErrors
 
   val getBuckets =
-    register(endpoint.name("getBuckets").tag("resources")
+    register(endpoint.name("getBuckets").tag("buckets")
       .description(
         "Get the buckets the current user can see. The configuration of each bucket is only included for users allowed to manage buckets."
       )
@@ -119,20 +119,20 @@ object BucketRoutes extends RoutesModule, Logging:
       .out(apiNoCacheHeaders).out(jsonBody[List[BucketDto]]))
 
   val getBucket =
-    register(endpoint.name("adminGetBucket").tag("admin").description("Get the configuration of a bucket")
+    register(endpoint.name("adminGetBucket").tag("buckets").description("Get the configuration of a bucket")
       .get.in("api" / "buckets" / path[BucketId]("bucketId"))
       .securityIn(securityInput).errorOut(errorOutput)
       .out(apiNoCacheHeaders).out(jsonBody[BucketConfigDto]))
 
   val createBucket =
-    register(endpoint.name("adminCreateBucket").tag("admin").description("Create a new bucket")
+    register(endpoint.name("adminCreateBucket").tag("buckets").description("Create a new bucket")
       .post.in("api" / "buckets")
       .in(jsonBody[BucketConfigDto])
       .securityIn(securityInput).errorOut(errorOutput)
       .out(jsonBody[BucketConfigDto]))
 
   val updateBucket =
-    register(endpoint.name("adminUpdateBucket").tag("admin")
+    register(endpoint.name("adminUpdateBucket").tag("buckets")
       .description(
         "Update the configuration of a bucket. The id, type and hashing algorithm cannot be changed. The bucket is restarted. " +
           "Files that no longer match the include/exclude patterns are removed from the index, including their tags and metadata."
@@ -143,7 +143,7 @@ object BucketRoutes extends RoutesModule, Logging:
       .out(jsonBody[BucketConfigDto]))
 
   val deleteBucket =
-    register(endpoint.name("adminDeleteBucket").tag("admin")
+    register(endpoint.name("adminDeleteBucket").tag("buckets")
       .description(
         "Delete a bucket. Refused when the bucket still contains resources, unless forced. " +
           "Forcing removes the resources from the database and search index, media files are never deleted."
@@ -153,53 +153,53 @@ object BucketRoutes extends RoutesModule, Logging:
       .securityIn(securityInput).errorOut(errorOutput))
 
   val refresh =
-    register(endpoint.tag("admin").name("adminRefreshBucket").description("Refresh all resources in a bucket")
+    register(endpoint.tag("buckets").name("adminRefreshBucket").description("Refresh all resources in a bucket")
       .post.in("api" / "buckets" / path[BucketId]("bucketId") / "refresh")
       .securityIn(securityInput)
       .errorOut(actionErrorOutput))
 
   val reIndex =
-    register(endpoint.tag("admin").name("adminReindexBucket").description("Re-index all resources in a bucket.")
+    register(endpoint.tag("buckets").name("adminReindexBucket").description("Re-index all resources in a bucket.")
       .post.in("api" / "buckets" / path[BucketId]("bucketId") / "reindex")
       .securityIn(securityInput)
       .errorOut(actionErrorOutput))
 
   val rescanMetaData =
     register(endpoint
-      .tag("admin").name("adminRescanMetaData").description("Rescan the metadata of all files in a bucket")
+      .tag("buckets").name("adminRescanMetaData").description("Rescan the metadata of all files in a bucket")
       .post.in("api" / "buckets" / path[BucketId]("bucketId") / "rescan-metadata")
       .securityIn(securityInput)
       .errorOut(actionErrorOutput))
 
   val reComputeHashes =
-    register(endpoint.name("adminReComputeHashes").tag("admin").description("Recompute the hashes of all files in a bucket")
+    register(endpoint.name("adminReComputeHashes").tag("buckets").description("Recompute the hashes of all files in a bucket")
       .post.in("api" / "buckets" / path[BucketId]("bucketId") / "recompute-hashes")
       .securityIn(securityInput)
       .errorOut(actionErrorOutput))
 
   val generatePreviews =
-    register(endpoint.name("adminGeneratePreviews").tag("admin")
+    register(endpoint.name("adminGeneratePreviews").tag("buckets")
       .description("Generate all configured thumbnails and preview clips for all resources in a bucket")
       .post.in("api" / "buckets" / path[BucketId]("bucketId") / "generate-previews")
       .securityIn(securityInput)
       .errorOut(actionErrorOutput))
 
   val fixNonStreamable =
-    register(endpoint.name("adminFixNonStreamable").tag("admin")
+    register(endpoint.name("adminFixNonStreamable").tag("buckets")
       .description("Remux all non-streamable resources in a bucket so they can be streamed progressively")
       .post.in("api" / "buckets" / path[BucketId]("bucketId") / "fix-non-streamable")
       .securityIn(securityInput)
       .errorOut(actionErrorOutput))
 
   val exportBucket =
-    register(endpoint.name("adminExportBucket").tag("admin").description("Export all resources in a bucket")
+    register(endpoint.name("adminExportBucket").tag("buckets").description("Export all resources in a bucket")
       .get.in("api" / "buckets" / path[BucketId]("bucketId") / "export")
       .securityIn(securityInput)
       .out(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson))
       .errorOut(actionErrorOutput))
 
   val importBucket =
-    register(endpoint.name("adminImportBucket").tag("admin").description("Import all resources in a bucket")
+    register(endpoint.name("adminImportBucket").tag("buckets").description("Import all resources in a bucket")
       .post.in("api" / "buckets" / path[BucketId]("bucketId") / "import")
       .in(streamBody(Fs2Streams[IO])(summon[Schema[ResourceDto]], NdJson))
       .securityIn(securityInput)
