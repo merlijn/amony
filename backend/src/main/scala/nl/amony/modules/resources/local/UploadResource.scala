@@ -101,11 +101,13 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
           case None              => IO.pure(None)
         }
 
-      source.observe(writeToFile).through(calculateHash).compile.last.flatMap {
+      (IO(JFiles.createDirectories(config.uploadPath)) >> source.observe(writeToFile).through(calculateHash).compile.last).flatMap {
         case Some(streamDigest) =>
           remuxUploadedFile().flatMap {
             case Some(remuxedDigest) => insertResource(remuxedDigest).value
             case None                => insertResource(streamDigest.digest()).value
           }
         case None               => IO.raiseError(new RuntimeException("Failed to compute partialHash for uploaded file"))
-      }.recoverWith(e => fs2.io.file.Files[IO].delete(uploadPath) >> IO.raiseError(new RuntimeException(s"Failed to upload resource: $fileName", e)))
+      }.recoverWith(e =>
+        IO(JFiles.deleteIfExists(uploadPath)).void >> IO.raiseError(new RuntimeException(s"Failed to upload resource: $fileName", e))
+      )
