@@ -236,14 +236,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
 
   private[local] def processEvent(event: ResourceEvent) =
     db.transact(s => applyEventToDb(s, event) >> topic.publish(s, event)) >>
-      IO(logger.info(s"[${config.id}] $event")) >>
-      generatePreviewsOnAdd(event)
-
-  private def generatePreviewsOnAdd(event: ResourceEvent): IO[Unit] = event match
-    case ResourceAdded(resource) if config.generatePreviewsOnAdd                     => generatePreviews(resource)
-    case ResourceUpdated(resource) if config.generatePreviewsOnAdd                   => generatePreviews(resource)
-    case ResourceMovedAndModified(_, _, _, resource) if config.generatePreviewsOnAdd => generatePreviews(resource)
-    case _                                                                           => IO.unit
+      IO(logger.info(s"[${config.id}] $event"))
 
   private def startSync(interrupter: SignallingRef[IO, Boolean]): IO[Unit] = {
     def pollWithRetryOnException(): fs2.Stream[IO, ResourceEvent] =
