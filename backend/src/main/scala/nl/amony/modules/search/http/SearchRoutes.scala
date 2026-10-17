@@ -119,7 +119,7 @@ object SearchRoutes extends RoutesModule:
 
           for
             allBuckets <- buckets.all
-            excluded    = allBuckets.filterNot(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole)).map(_.id).toSet
+            excluded    = allBuckets.filterNot(bucket => auth.canAccessBucket(bucket.requiredRole)).map(_.id).toSet
             response   <- searchService.searchMedia(query(excluded))
           yield Right(SearchResponseDto(
             offset  = response.offset,

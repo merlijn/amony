@@ -115,7 +115,7 @@ object ResourceContentRoutes extends Logging {
 
     def getResource(req: Request[IO], bucketId: BucketId, resourceId: ResourceId): OptionT[IO, (ResourceBucket, Resource)] =
       OptionT(buckets.get(bucketId))
-        .filter(bucket => apiSecurity.canAccessBucket(authToken(req), bucket.requiredRole))
+        .filter(bucket => authToken(req).canAccessBucket(bucket.requiredRole))
         .flatMap(bucket => OptionT(bucket.getResource(resourceId)).map(resource => bucket -> resource))
 
     def maybeResponse(option: OptionT[IO, Response[IO]]): IO[Response[IO]] =

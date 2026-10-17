@@ -84,7 +84,7 @@ object ResourceRoutes extends RoutesModule, Logging:
 
     def getVisibleBucket(auth: AuthToken, bucketId: BucketId): EitherT[IO, NotFoundError, ResourceBucket] =
       EitherT.fromOptionF(
-        buckets.get(bucketId).map(_.filter(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole))),
+        buckets.get(bucketId).map(_.filter(bucket => auth.canAccessBucket(bucket.requiredRole))),
         NotFoundError("not_found", "Resource not found")
       )
 

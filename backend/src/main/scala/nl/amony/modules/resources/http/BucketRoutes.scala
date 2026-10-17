@@ -227,13 +227,13 @@ object BucketRoutes extends RoutesModule, Logging:
 
     routes[IO] {
       serverLogic(endpoint = getBuckets, requiredPermission = Permission.ViewResource) { auth => _ =>
-        if apiSecurity.hasPermission(auth, Permission.ManageBuckets) then
+        if auth.hasPermission(Permission.ManageBuckets) then
           registry.allConfigs.map(configs =>
             Right(configs.map(stored => BucketDto(stored.config.id, Some(BucketConfigDto.fromStored(stored)))))
           )
         else
           registry.all.map(buckets =>
-            Right(buckets.filter(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole)).map(bucket => BucketDto(bucket.id)))
+            Right(buckets.filter(bucket => auth.canAccessBucket(bucket.requiredRole)).map(bucket => BucketDto(bucket.id)))
           )
       }
 
