@@ -1,7 +1,20 @@
 import {useEffect, useState} from "react";
 import axios from "axios";
 import * as RadixDialog from "@radix-ui/react-dialog";
-import {adminCreateBucket, adminDeleteBucket, adminListBuckets, adminUpdateBucket, BucketConfigDto} from "../../api/generated";
+import * as RadixPopover from "@radix-ui/react-popover";
+import {
+  adminCreateBucket,
+  adminDeleteBucket,
+  adminFixNonStreamable,
+  adminGeneratePreviews,
+  adminListBuckets,
+  adminReComputeHashes,
+  adminRefreshBucket,
+  adminReindexBucket,
+  adminRescanMetaData,
+  adminUpdateBucket,
+  BucketConfigDto,
+} from "../../api/generated";
 import InfoTable, {InfoRow} from "../common/InfoTable";
 import ChoiceOption from "../common/ChoiceOption";
 import DialogWindow from "../common/DialogWindow";
@@ -92,6 +105,7 @@ const BucketsConfig = () => {
               <td>{bucket.requiredRole ? `Role: ${bucket.requiredRole}` : "Public"}</td>
               <td>{syncDescription(bucket)}</td>
               <td className="buckets-row-actions">
+                <BucketActionsMenu bucket={bucket} />
                 <button className="button-secondary" type="button" onClick={() => setEditing({mode: "edit", bucket})}>Edit</button>
                 <button className="button-danger" type="button" onClick={() => setDeleting(bucket)}>Delete</button>
               </td>
@@ -109,6 +123,55 @@ const BucketsConfig = () => {
         onDeleted={() => { setDeleting(undefined); load() }}
       />
     </div>
+  )
+}
+
+type AdminAction = 'refresh' | 'reindex' | 'rescan' | 'recompute' | 'generate-previews' | 'fix-non-streamable'
+
+const BucketActionsMenu = ({bucket}: {bucket: BucketConfigDto}) => {
+  const [activeAction, setActiveAction] = useState<AdminAction | null>(null)
+  const [error, setError] = useState<string | undefined>(undefined)
+
+  const runAction = (action: AdminAction, apiCall: () => Promise<unknown>) => {
+    setActiveAction(action)
+    setError(undefined)
+    apiCall()
+      .catch((e) => setError(errorMessage(e, "Failed to run the action")))
+      .finally(() => setActiveAction(null))
+  }
+
+  const anyLoading = activeAction !== null
+
+  const actions: Array<{action: AdminAction, label: string, apiCall: () => Promise<unknown>}> = [
+    {action: 'refresh', label: 'Refresh resources', apiCall: () => adminRefreshBucket({bucketId: bucket.id})},
+    {action: 'reindex', label: 'Reindex resources', apiCall: () => adminReindexBucket({bucketId: bucket.id})},
+    {action: 'rescan', label: 'Rescan metadata', apiCall: () => adminRescanMetaData({bucketId: bucket.id})},
+    {action: 'recompute', label: 'Recompute hashes', apiCall: () => adminReComputeHashes({bucketId: bucket.id})},
+    {action: 'generate-previews', label: 'Generate thumbnails and clips', apiCall: () => adminGeneratePreviews({bucketId: bucket.id})},
+    {action: 'fix-non-streamable', label: 'Fix non streamable videos', apiCall: () => adminFixNonStreamable({bucketId: bucket.id})},
+  ]
+
+  return (
+    <RadixPopover.Root>
+      <RadixPopover.Trigger className="button-secondary">Actions</RadixPopover.Trigger>
+      <RadixPopover.Portal>
+        <RadixPopover.Content className="bucket-actions-content" side="bottom" align="end" sideOffset={4}>
+          {actions.map(({action, label, apiCall}) => (
+            <button
+              key={action}
+              className="bucket-action"
+              type="button"
+              disabled={anyLoading}
+              onClick={() => runAction(action, apiCall)}
+            >
+              <span>{label}</span>
+              {activeAction === action && <span className="admin-spinner" />}
+            </button>
+          ))}
+          {error && <div className="buckets-error">{error}</div>}
+        </RadixPopover.Content>
+      </RadixPopover.Portal>
+    </RadixPopover.Root>
   )
 }
 
