@@ -111,14 +111,15 @@ object ResourceRoutes extends RoutesModule, Logging:
         yield ()
       }
 
-      serverLogic(endpoint = fixResourceStreamable, requiredPermission = Permission.Admin) { _ => (bucketId, resourceId) =>
-        buckets.get(bucketId).flatMap:
-          case Some(bucket: LocalDirectoryBucket) =>
-            logger.info(s"Normalizing resource '$resourceId' in bucket '$bucketId'")
-            bucket.fixStreamability(resourceId).as(Right(()))
-          case _                                  =>
-            logger.info(s"Cannot normalize resource '$resourceId' in bucket '$bucketId'")
-            IO.pure(Right(()))
+      serverLogicT(endpoint = fixResourceStreamable, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId) =>
+        for
+          bucket <- getVisibleBucket(auth, bucketId)
+          _      <- bucket match
+                      case local: LocalDirectoryBucket =>
+                        EitherT.right(IO(logger.info(s"Normalizing resource '$resourceId' in bucket '$bucketId'")) *> local.fixStreamability(resourceId))
+                      case _                           =>
+                        EitherT.right(IO(logger.info(s"Cannot normalize resource '$resourceId' in bucket '$bucketId'")))
+        yield ()
       }
 
       serverLogicT(endpoint = updateUserMetaData, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId, userMeta) =>
