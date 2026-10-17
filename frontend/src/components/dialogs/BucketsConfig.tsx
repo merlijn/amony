@@ -1,7 +1,6 @@
 import {useEffect, useState} from "react";
 import axios from "axios";
 import * as RadixDialog from "@radix-ui/react-dialog";
-import * as RadixPopover from "@radix-ui/react-popover";
 import {
   adminCreateBucket,
   adminDeleteBucket,
@@ -58,6 +57,7 @@ const BucketsConfig = () => {
   const [loadError, setLoadError] = useState<string | undefined>(undefined)
   const [editing, setEditing] = useState<EditState | undefined>(undefined)
   const [deleting, setDeleting] = useState<BucketConfigDto | undefined>(undefined)
+  const [actions, setActions] = useState<BucketConfigDto | undefined>(undefined)
 
   const load = () => {
     adminListBuckets()
@@ -105,7 +105,7 @@ const BucketsConfig = () => {
               <td>{bucket.requiredRole ? `Role: ${bucket.requiredRole}` : "Public"}</td>
               <td>{syncDescription(bucket)}</td>
               <td className="buckets-row-actions">
-                <BucketActionsMenu bucket={bucket} />
+                <button className="button-secondary" type="button" onClick={() => setActions(bucket)}>Actions</button>
                 <button className="button-secondary" type="button" onClick={() => setEditing({mode: "edit", bucket})}>Edit</button>
                 <button className="button-danger" type="button" onClick={() => setDeleting(bucket)}>Delete</button>
               </td>
@@ -116,6 +116,11 @@ const BucketsConfig = () => {
           )}
         </tbody>
       </table>
+
+      <BucketActionsDialog
+        bucket={actions}
+        onHide={() => setActions(undefined)}
+      />
 
       <DeleteBucketDialog
         bucket={deleting}
@@ -128,9 +133,16 @@ const BucketsConfig = () => {
 
 type AdminAction = 'refresh' | 'reindex' | 'rescan' | 'recompute' | 'generate-previews' | 'fix-non-streamable'
 
-const BucketActionsMenu = ({bucket}: {bucket: BucketConfigDto}) => {
+type BucketActionsDialogProps = {
+  bucket: BucketConfigDto | undefined
+  onHide: () => void
+}
+
+const BucketActionsDialog = ({bucket, onHide}: BucketActionsDialogProps) => {
   const [activeAction, setActiveAction] = useState<AdminAction | null>(null)
   const [error, setError] = useState<string | undefined>(undefined)
+
+  useEffect(() => { setActiveAction(null); setError(undefined) }, [bucket])
 
   const runAction = (action: AdminAction, apiCall: () => Promise<unknown>) => {
     setActiveAction(action)
@@ -141,37 +153,46 @@ const BucketActionsMenu = ({bucket}: {bucket: BucketConfigDto}) => {
   }
 
   const anyLoading = activeAction !== null
+  const bucketId = bucket?.id ?? ""
 
   const actions: Array<{action: AdminAction, label: string, apiCall: () => Promise<unknown>}> = [
-    {action: 'refresh', label: 'Refresh resources', apiCall: () => adminRefreshBucket({bucketId: bucket.id})},
-    {action: 'reindex', label: 'Reindex resources', apiCall: () => adminReindexBucket({bucketId: bucket.id})},
-    {action: 'rescan', label: 'Rescan metadata', apiCall: () => adminRescanMetaData({bucketId: bucket.id})},
-    {action: 'recompute', label: 'Recompute hashes', apiCall: () => adminReComputeHashes({bucketId: bucket.id})},
-    {action: 'generate-previews', label: 'Generate thumbnails and clips', apiCall: () => adminGeneratePreviews({bucketId: bucket.id})},
-    {action: 'fix-non-streamable', label: 'Fix non streamable videos', apiCall: () => adminFixNonStreamable({bucketId: bucket.id})},
+    {action: 'refresh', label: 'Refresh resources', apiCall: () => adminRefreshBucket({bucketId})},
+    {action: 'reindex', label: 'Reindex resources', apiCall: () => adminReindexBucket({bucketId})},
+    {action: 'rescan', label: 'Rescan metadata', apiCall: () => adminRescanMetaData({bucketId})},
+    {action: 'recompute', label: 'Recompute hashes', apiCall: () => adminReComputeHashes({bucketId})},
+    {action: 'generate-previews', label: 'Generate thumbnails and clips', apiCall: () => adminGeneratePreviews({bucketId})},
+    {action: 'fix-non-streamable', label: 'Fix non streamable videos', apiCall: () => adminFixNonStreamable({bucketId})},
   ]
 
   return (
-    <RadixPopover.Root>
-      <RadixPopover.Trigger className="button-secondary">Actions</RadixPopover.Trigger>
-      <RadixPopover.Portal>
-        <RadixPopover.Content className="bucket-actions-content" side="bottom" align="end" sideOffset={4}>
-          {actions.map(({action, label, apiCall}) => (
-            <button
-              key={action}
-              className="bucket-action"
-              type="button"
-              disabled={anyLoading}
-              onClick={() => runAction(action, apiCall)}
-            >
-              <span>{label}</span>
-              {activeAction === action && <span className="admin-spinner" />}
-            </button>
-          ))}
-          {error && <div className="buckets-error">{error}</div>}
-        </RadixPopover.Content>
-      </RadixPopover.Portal>
-    </RadixPopover.Root>
+    <RadixDialog.Root open={bucket !== undefined} onOpenChange={(open) => { if (!open && !anyLoading) onHide() }}>
+      <RadixDialog.Portal>
+        <RadixDialog.Overlay className="dialog-overlay" />
+        <RadixDialog.Content className="dialog-content">
+          <DialogWindow title="Actions">
+            <div className="bucket-actions-dialog">
+              <p className="bucket-actions-bucket">Bucket <strong>{bucket?.id}</strong></p>
+
+              <InfoTable className="config-form">
+                {actions.map(({action, label, apiCall}) => (
+                  <InfoRow key={action} label={label}>
+                    <button type="button" disabled={anyLoading} onClick={() => runAction(action, apiCall)}>
+                      {activeAction === action ? <span className="admin-spinner" /> : "Go"}
+                    </button>
+                  </InfoRow>
+                ))}
+              </InfoTable>
+
+              {error && <div className="buckets-error">{error}</div>}
+
+              <div className="bucket-form-actions">
+                <button className="button-secondary" type="button" onClick={onHide} disabled={anyLoading}>Close</button>
+              </div>
+            </div>
+          </DialogWindow>
+        </RadixDialog.Content>
+      </RadixDialog.Portal>
+    </RadixDialog.Root>
   )
 }
 
