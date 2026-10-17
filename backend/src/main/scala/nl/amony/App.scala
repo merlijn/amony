@@ -31,6 +31,7 @@ import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.config.ConfigRoutes
 import nl.amony.modules.resources.ResourceModule
 import nl.amony.modules.resources.api.ResourceEvent
+import nl.amony.modules.resources.local.PreviewGenerator
 import nl.amony.modules.search.SearchModule
 
 object App extends ResourceApp.Forever with Logging {
@@ -108,6 +109,8 @@ object App extends ResourceApp.Forever with Logging {
         }
         _                 <- eventTopic.processAtLeastOnce("solr-indexer")(searchModule.indexer.processEvent).compile.drain.background
         resourceModule    <- ResourceModule.resource(appConfig.resources, databasePool, eventTopic)
+        previewGenerator   = PreviewGenerator(resourceModule.bucketRegistry)
+        _                 <- eventTopic.processAtLeastOnce("preview-generator")(previewGenerator.processEvent).compile.drain.background
         authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
         apiRoutes          = {
           given ApiSecurity = authModule.apiSecurity

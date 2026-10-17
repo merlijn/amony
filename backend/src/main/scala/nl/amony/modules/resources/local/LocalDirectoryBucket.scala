@@ -127,6 +127,10 @@ class LocalDirectoryBucket(
       .parEvalMap(parallelFactor) { case (info, operation) => runPreviewOperation(info, operation) }
       .compile.drain
 
+  def generatePreviewsIfEnabled(info: ResourceInfo): IO[Unit] =
+    if config.generatePreviewsOnAdd then generatePreviews(info)
+    else IO.unit
+
   override def getResource(resourceId: ResourceId): IO[Option[Resource]] =
     getResourceInfo(resourceId).map:
       case None       => None
