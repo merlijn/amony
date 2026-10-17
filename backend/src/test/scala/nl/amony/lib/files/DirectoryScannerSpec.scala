@@ -9,7 +9,7 @@ import cats.effect.unsafe.implicits.global
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-import nl.amony.lib.files.watcher.*
+import nl.amony.lib.files.sync.*
 import nl.amony.lib.hash.{Base32, PartialHash}
 
 class DirectoryScannerSpec extends AnyWordSpec with Matchers {

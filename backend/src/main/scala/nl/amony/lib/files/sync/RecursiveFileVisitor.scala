@@ -1,4 +1,4 @@
-package nl.amony.lib.files.watcher
+package nl.amony.lib.files.sync
 
 import java.io.IOException
 import java.nio.file.attribute.BasicFileAttributes

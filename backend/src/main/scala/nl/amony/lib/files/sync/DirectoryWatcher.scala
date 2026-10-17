@@ -1,4 +1,4 @@
-package nl.amony.lib.files.watcher
+package nl.amony.lib.files.sync
 
 import java.nio.file.*
 import java.util.concurrent.*
@@ -6,6 +6,8 @@ import scala.jdk.CollectionConverters.*
 import scala.util.Using
 
 import cats.effect.IO
+
+import nl.amony.lib.files.FileInfo
 
 /**
  * OpenJDK does not support efficient directory watching on MacOS

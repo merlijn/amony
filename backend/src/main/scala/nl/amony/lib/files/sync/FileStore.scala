@@ -1,10 +1,12 @@
-package nl.amony.lib.files.watcher
+package nl.amony.lib.files.sync
 
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters.*
 
 import cats.effect.IO
+
+import nl.amony.lib.files.FileInfo
 
 trait FileStore:
 

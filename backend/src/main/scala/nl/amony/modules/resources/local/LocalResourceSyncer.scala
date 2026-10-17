@@ -11,7 +11,8 @@ import fs2.Stream
 import fs2.concurrent.SignallingRef
 import skunk.Session
 
-import nl.amony.lib.files.watcher.*
+import nl.amony.lib.files.FileInfo
+import nl.amony.lib.files.sync.*
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.{
   BucketId,

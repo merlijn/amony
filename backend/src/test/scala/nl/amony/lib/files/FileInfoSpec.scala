@@ -5,8 +5,6 @@ import java.nio.file.Files
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-import nl.amony.lib.files.watcher.FileInfo
-
 class FileInfoSpec extends AnyWordSpec with Matchers {
 
   "FileInfo" should {

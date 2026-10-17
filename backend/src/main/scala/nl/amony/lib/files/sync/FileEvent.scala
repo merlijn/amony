@@ -1,6 +1,8 @@
-package nl.amony.lib.files.watcher
+package nl.amony.lib.files.sync
 
 import java.nio.file.Path
+
+import nl.amony.lib.files.FileInfo
 
 sealed trait FileEvent
 

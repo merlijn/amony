@@ -1,4 +1,4 @@
-package nl.amony.lib.files.watcher
+package nl.amony.lib.files
 
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}

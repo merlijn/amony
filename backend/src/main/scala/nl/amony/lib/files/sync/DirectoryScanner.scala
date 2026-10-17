@@ -1,4 +1,4 @@
-package nl.amony.lib.files.watcher
+package nl.amony.lib.files.sync
 
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
@@ -7,6 +7,8 @@ import scala.concurrent.duration.FiniteDuration
 import cats.effect.IO
 import fs2.Stream
 import scribe.Logging
+
+import nl.amony.lib.files.FileInfo
 
 object LocalDirectoryScanner extends Logging {
 
