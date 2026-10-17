@@ -17,7 +17,7 @@ import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, TagOwner}
+import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, Tag, TagOwner}
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.{App, DatabaseConfig, ExportDatabaseSchema}
 
@@ -54,7 +54,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       size               = Random.nextLong(),
       contentType        = None,
       contentMeta        = None, // this field is not stored
-      tags               = Set.fill(Random.nextInt(5))(randomTag),
+      tags               = Set.fill(Random.nextInt(5))(Tag.user(randomTag)),
       timeAdded          = Some(nextTimestamp),
       timeLastModified   = Some(nextTimestamp),
       title              = Some(randomString),
@@ -148,12 +148,12 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
     val updated  = resource.copy(
       title       = Some("new title"),
       description = Some("new description"),
-      tags        = Set("update-a", "update-b", "update-c")
+      tags        = Set("update-a", "update-b", "update-c").map(Tag.user)
     )
 
     for
       _      <- db.insertResource(resource)
-      _      <- db.updateUserMeta(resource.bucketId, resource.resourceId, updated.title, updated.description, TagOwner.User, updated.tags.toList)
+      _      <- db.updateUserMeta(resource.bucketId, resource.resourceId, updated.title, updated.description, TagOwner.User, updated.userLabels.toList)
       result <- db.getResourceById(resource.bucketId, resource.resourceId)
     yield {
       result.flatMap(_.title) shouldBe updated.title

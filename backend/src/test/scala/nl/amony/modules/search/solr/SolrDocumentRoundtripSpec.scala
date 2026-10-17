@@ -42,7 +42,7 @@ class SolrDocumentRoundtripSpec extends AnyWordSpecLike with Matchers {
         title              = Some("Clip"),
         thumbnailTimestamp = Some(3000),
         streamable         = Some(true),
-        tags               = Set("tag-a", "tag-b")
+        tags               = Set("tag-a", "tag-b").map(Tag.user)
       )
 
       val roundtripped = search.toResource(toSolrDocument(indexer.toSolrDocument(resource)))

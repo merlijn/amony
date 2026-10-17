@@ -1,6 +1,6 @@
 package nl.amony.modules.resources.api
 
-case class Tag(owner: String, label: String)
+case class Tag(owner: String, label: String) derives io.circe.Codec
 
 object Tag:
   def user(label: String): Tag   = Tag(TagOwner.User, label)

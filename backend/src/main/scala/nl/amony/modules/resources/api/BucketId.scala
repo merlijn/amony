@@ -9,7 +9,5 @@ opaque type BucketId <: String = String
 object BucketId:
   def apply(id: String): BucketId = id
 
-  given circeCodec: CirceCodec[BucketId] = CirceCodec.implied[String]
-
-  given codec: Codec[String, BucketId, TextPlain] =
-    Codec.string.mapDecode(s => DecodeResult.Value(BucketId(s)))(identity)
+  given circeCodec: CirceCodec[BucketId]          = CirceCodec.implied[String]
+  given codec: Codec[String, BucketId, TextPlain] = Codec.string.mapDecode(s => DecodeResult.Value(BucketId(s)))(identity)

@@ -101,11 +101,13 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
       _    <- tables.resource_tags.replaceAllForOwner(s, bucketId, resourceId, owner, tags.map(_.id))
     yield ()
 
-  /** Replaces all tag links from the complete tag state of a resource, clearing owners with no labels. */
+  /** Replaces all tag links from the complete tag state of a resource, clearing stale owners. */
   private def replaceAllTags(s: Session[IO], resource: ResourceInfo) =
-    resource.tagsByOwner.toList.foldLeft(IO.unit) { case (acc, (owner, labels)) =>
-      acc >> updateTagsForOwner(s, resource.bucketId, resource.resourceId, owner, labels.toList)
-    }
+    for
+      tags <- if resource.tags.nonEmpty then tables.tags.upsert(s, resource.tags.toList) >> tables.tags.getByLabels(s, resource.tags.toList)
+      else IO.pure(List.empty)
+      _    <- tables.resource_tags.replaceAll(s, resource.bucketId, resource.resourceId, tags.map(_.id))
+    yield ()
 
   private def updateResourceWithTags(s: Session[IO], resource: ResourceInfo): IO[Unit] =
     for
@@ -244,7 +246,7 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
         val owners        = (addByOwner.keySet ++ removeByOwner.keySet).toList.sorted
         owners.foldLeft(IO.pure(resource)) { (acc, owner) =>
           acc.flatMap(current =>
-            val updatedLabels   = ((current.tagsByOwner.getOrElse(owner, Set.empty) ++ addByOwner
+            val updatedLabels   = ((current.labelsByOwner.getOrElse(owner, Set.empty) ++ addByOwner
               .getOrElse(owner, Set.empty)) -- removeByOwner.getOrElse(owner, Set.empty)).toList
             val updatedResource = current.withTagsForOwner(owner, updatedLabels.toSet)
             tables.resources.upsert(s, ResourceRow.fromResource(updatedResource)) >>
