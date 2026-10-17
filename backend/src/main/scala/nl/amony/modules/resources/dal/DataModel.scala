@@ -32,7 +32,7 @@ case class ResourceRow(
   streamable: Option[Boolean]      = None
 ) derives io.circe.Codec {
 
-  def toResource(tagLabels: Set[String], systemTagLabels: Set[String] = Set.empty): ResourceInfo = {
+  def toResource(tags: Set[Tag]): ResourceInfo = {
     ResourceInfo(
       bucketId           = BucketId(bucket_id),
       resourceId         = ResourceId(resource_id),
@@ -43,7 +43,7 @@ case class ResourceRow(
       size               = size,
       contentType        = content_type,
       contentMeta        = content_meta_tool_name.flatMap(name => ResourceMeta.recover(name, content_meta_tool_data.getOrElse(""))),
-      tags               = tagLabels.map(Tag.user) ++ systemTagLabels.map(Tag.system),
+      tags               = tags,
       timeAdded          = Some(time_added.toEpochMilli),
       timeLastModified   = time_last_modified.map(_.toEpochMilli),
       title              = title,
@@ -88,14 +88,14 @@ case class CollectionRow(
   description: Option[String]
 ) derives io.circe.Codec {
 
-  def toCollection(tagLabels: Set[String]): Collection =
+  def toCollection(tags: Set[Tag]): Collection =
     Collection(
       id          = CollectionId(id),
       parentId    = parent_id.map(CollectionId(_)),
       userId      = UserId(user_id),
       name        = name,
       description = description,
-      tags        = tagLabels
+      tags        = tags
     )
 }
 

@@ -5,7 +5,7 @@ import cats.effect.{IO, Resource}
 import io.circe.syntax.*
 import scribe.Logging
 import skunk.*
-import skunk.data.{Arr, Completion}
+import skunk.data.Completion
 
 import nl.amony.modules.resources.api.{BucketId, ResourceId, ResourceInfo, Tag}
 
@@ -79,15 +79,8 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
   override protected def getTagsByLabels(s: Session[IO], tags: List[Tag]): IO[List[TagRow]] =
     tables.tags.getByLabels(s, tags)
 
-  override protected def toResource(
-    resourceRow: ResourceRow,
-    tagLabels: Option[Arr[String]],
-    systemTagLabels: Option[Arr[String]]
-  ): ResourceInfo =
-    resourceRow.toResource(
-      tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty),
-      systemTagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty)
-    )
+  override protected def toResource(resourceRow: ResourceRow, tags: Set[Tag]): ResourceInfo =
+    resourceRow.toResource(tags)
 
   /** Replaces the tag links for a single owner, leaving all other owners untouched. Owners are opaque here. */
   private def updateTagsForOwner(s: Session[IO], bucketId: BucketId, resourceId: ResourceId, owner: String, tagLabels: List[String]) =

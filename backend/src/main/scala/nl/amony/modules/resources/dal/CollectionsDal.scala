@@ -4,7 +4,7 @@ import cats.effect.{IO, Resource}
 import io.circe.syntax.*
 import scribe.Logging
 import skunk.*
-import skunk.data.{Arr, Completion}
+import skunk.data.Completion
 
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, Tag}
@@ -20,11 +20,7 @@ trait CollectionsDal(pool: Resource[IO, Session[IO]]) extends Logging:
   // the domain model (api.Tag) owns the meaning of specific owners.
   protected def upsertTags(s: Session[IO], tags: List[Tag]): IO[Completion]
   protected def getTagsByLabels(s: Session[IO], tags: List[Tag]): IO[List[TagRow]]
-  protected def toResource(
-    resourceRow: ResourceRow,
-    tagLabels: Option[Arr[String]],
-    systemTagLabels: Option[Arr[String]]
-  ): ResourceInfo
+  protected def toResource(resourceRow: ResourceRow, tags: Set[Tag]): ResourceInfo
 
   private[dal] object collectionTables:
     object collections {
@@ -55,16 +51,16 @@ trait CollectionsDal(pool: Resource[IO, Session[IO]]) extends Logging:
         s.prepare(Queries.collection_resources.delete).flatMap(_.execute((collectionId.value, bucketId, resourceId)))
     }
 
-  private def toCollection(collectionRow: CollectionRow, tagLabels: Option[Arr[String]]): Collection =
-    collectionRow.toCollection(tagLabels.map(_.flattenTo(Set)).getOrElse(Set.empty))
+  private def toCollection(collectionRow: CollectionRow, tags: Set[Tag]): Collection =
+    collectionRow.toCollection(tags)
 
   private def updateTagsForCollection(s: Session[IO], collection: Collection): IO[Unit] =
-    val tagObjects = collection.tagObjects
+    val tags = collection.tags.toList
     for
-      tags <-
-        if tagObjects.nonEmpty then upsertTags(s, tagObjects) >> getTagsByLabels(s, tagObjects)
+      rows <-
+        if tags.nonEmpty then upsertTags(s, tags) >> getTagsByLabels(s, tags)
         else IO.pure(List.empty)
-      _    <- collectionTables.collection_tags.replaceAll(s, collection.id, tags.map(_.id))
+      _    <- collectionTables.collection_tags.replaceAll(s, collection.id, rows.map(_.id))
     yield ()
 
   private def updateCollectionWithTags(s: Session[IO], collection: Collection): IO[Unit] =

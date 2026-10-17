@@ -180,5 +180,5 @@ def toDto(collection: Collection): CollectionDto =
     parentId    = collection.parentId.map(_.value),
     name        = collection.name,
     description = collection.description,
-    tags        = collection.tags.toList
+    tags        = collection.userLabels.toList
   )

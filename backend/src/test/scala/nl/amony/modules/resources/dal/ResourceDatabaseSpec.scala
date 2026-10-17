@@ -70,7 +70,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       userId      = userId,
       name        = randomString,
       description = Some(randomString),
-      tags        = Set.fill(Random.nextInt(5))(randomTag)
+      tags        = Set.fill(Random.nextInt(5))(randomTag).map(Tag.user)
     )
 
   def configForContainer(container: GenericContainer) =
@@ -220,7 +220,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
   def collectionsTest(db: ResourceDatabase): IO[Unit] = {
     val root    = genCollection()
     val child   = genCollection(parentId = Some(root.id))
-    val updated = root.copy(description = Some("updated description"), tags = Set("root-a", "root-b"))
+    val updated = root.copy(description = Some("updated description"), tags = Set("root-a", "root-b").map(Tag.user))
 
     for
       _           <- db.insertCollection(root)
