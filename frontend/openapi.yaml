@@ -3,75 +3,6 @@ info:
   title: Amony API
   version: '1.0'
 paths:
-  /api/buckets:
-    get:
-      tags:
-      - resources
-      description: Get information about the buckets
-      operationId: getBuckets
-      parameters:
-      - name: access_token
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: XSRF-TOKEN
-        in: cookie
-        required: false
-        schema:
-          type: string
-      responses:
-        '200':
-          description: ''
-          headers:
-            Cache-Control:
-              required: true
-              schema:
-                type: string
-            Pragma:
-              required: true
-              schema:
-                type: string
-            Expires:
-              required: true
-              schema:
-                type: string
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/BucketDto'
-        '400':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '401':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '403':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '404':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
   /api/resources/{bucketId}/{resourceId}:
     get:
       tags:
@@ -659,422 +590,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-  /api/admin/reindex:
-    post:
-      tags:
-      - admin
-      description: Re-index all resources in a bucket.
-      operationId: adminReindexBucket
-      parameters:
-      - name: access_token
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: XSRF-TOKEN
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: bucketId
-        in: query
-        description: The id of the bucket to re-index.
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: ''
-        '400':
-          description: 'Invalid value, Invalid value for: query parameter bucketId'
-          content:
-            text/plain:
-              schema:
-                type: string
-        '401':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '403':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-  /api/admin/refresh:
-    post:
-      tags:
-      - admin
-      description: Refresh all resources in a bucket
-      operationId: adminRefreshBucket
-      parameters:
-      - name: access_token
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: XSRF-TOKEN
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: bucketId
-        in: query
-        description: The id of the bucket to refresh.
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: ''
-        '400':
-          description: 'Invalid value, Invalid value for: query parameter bucketId'
-          content:
-            text/plain:
-              schema:
-                type: string
-        '401':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '403':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-  /api/admin/re-scan-metadata:
-    post:
-      tags:
-      - admin
-      description: Rescan the metadata of all files in a bucket
-      operationId: adminRescanMetaData
-      parameters:
-      - name: access_token
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: XSRF-TOKEN
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: bucketId
-        in: query
-        description: The id of the bucket to re-scan.
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: ''
-        '400':
-          description: 'Invalid value, Invalid value for: query parameter bucketId'
-          content:
-            text/plain:
-              schema:
-                type: string
-        '401':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '403':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-  /api/admin/re-compute-hashes:
-    post:
-      tags:
-      - admin
-      description: Recompute the hashes of all files in a bucket
-      operationId: adminReComputeHashes
-      parameters:
-      - name: access_token
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: XSRF-TOKEN
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: bucketId
-        in: query
-        description: The id of the bucket to re-compute the hashes for.
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: ''
-        '400':
-          description: 'Invalid value, Invalid value for: query parameter bucketId'
-          content:
-            text/plain:
-              schema:
-                type: string
-        '401':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '403':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-  /api/admin/generate-previews:
-    post:
-      tags:
-      - admin
-      description: Generate all configured thumbnails and preview clips for all resources
-        in a bucket
-      operationId: adminGeneratePreviews
-      parameters:
-      - name: access_token
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: XSRF-TOKEN
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: bucketId
-        in: query
-        description: The id of the bucket to generate previews for.
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: ''
-        '400':
-          description: 'Invalid value, Invalid value for: query parameter bucketId'
-          content:
-            text/plain:
-              schema:
-                type: string
-        '401':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '403':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-  /api/admin/fix-non-streamable:
-    post:
-      tags:
-      - admin
-      description: Remux all non-streamable resources in a bucket so they can be streamed
-        progressively
-      operationId: adminFixNonStreamable
-      parameters:
-      - name: access_token
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: XSRF-TOKEN
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: bucketId
-        in: query
-        description: The id of the bucket to fix.
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: ''
-        '400':
-          description: 'Invalid value, Invalid value for: query parameter bucketId'
-          content:
-            text/plain:
-              schema:
-                type: string
-        '401':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '403':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-  /api/admin/export/{bucketId}:
+  /api/buckets:
     get:
       tags:
-      - admin
-      description: Export all resources in a bucket
-      operationId: adminExportBucket
-      parameters:
-      - name: access_token
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: XSRF-TOKEN
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: bucketId
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/x-ndjson:
-              schema:
-                $ref: '#/components/schemas/ResourceDto'
-        '400':
-          description: Invalid value
-          content:
-            text/plain:
-              schema:
-                type: string
-        '401':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '403':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-  /api/admin/import/{bucketId}:
-    post:
-      tags:
-      - admin
-      description: Import all resources in a bucket
-      operationId: adminImportBucket
-      parameters:
-      - name: access_token
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: XSRF-TOKEN
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: bucketId
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/x-ndjson:
-            schema:
-              $ref: '#/components/schemas/ResourceDto'
-        required: true
-      responses:
-        '200':
-          description: ''
-        '400':
-          description: 'Invalid value, Invalid value for: body'
-          content:
-            text/plain:
-              schema:
-                type: string
-        '401':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '403':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-  /api/admin/buckets:
-    get:
-      tags:
-      - admin
-      description: Get the configuration of all buckets
-      operationId: adminListBuckets
+      - buckets
+      description: Get the buckets the current user can see. The configuration of
+        each bucket is only included for users allowed to manage buckets.
+      operationId: getBuckets
       parameters:
       - name: access_token
         in: cookie
@@ -1107,7 +629,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/BucketConfigDto'
+                  $ref: '#/components/schemas/BucketDto'
         '400':
           description: ''
           content:
@@ -1132,12 +654,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-        '409':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
         '500':
           description: Internal server error
           content:
@@ -1146,7 +662,7 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
     post:
       tags:
-      - admin
+      - buckets
       description: Create a new bucket
       operationId: adminCreateBucket
       parameters:
@@ -1209,10 +725,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-  /api/admin/buckets/{bucketId}:
+  /api/buckets/{bucketId}:
     get:
       tags:
-      - admin
+      - buckets
       description: Get the configuration of a bucket
       operationId: adminGetBucket
       parameters:
@@ -1289,7 +805,7 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
     put:
       tags:
-      - admin
+      - buckets
       description: Update the configuration of a bucket. The id, type and hashing
         algorithm cannot be changed. The bucket is restarted. Files that no longer
         match the include/exclude patterns are removed from the index, including their
@@ -1362,7 +878,7 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
     delete:
       tags:
-      - admin
+      - buckets
       description: Delete a bucket. Refused when the bucket still contains resources,
         unless forced. Forcing removes the resources from the database and search
         index, media files are never deleted.
@@ -1418,6 +934,410 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
         '409':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/buckets/{bucketId}/refresh:
+    post:
+      tags:
+      - buckets
+      description: Refresh all resources in a bucket
+      operationId: adminRefreshBucket
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/buckets/{bucketId}/reindex:
+    post:
+      tags:
+      - buckets
+      description: Re-index all resources in a bucket.
+      operationId: adminReindexBucket
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/buckets/{bucketId}/rescan-metadata:
+    post:
+      tags:
+      - buckets
+      description: Rescan the metadata of all files in a bucket
+      operationId: adminRescanMetaData
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/buckets/{bucketId}/recompute-hashes:
+    post:
+      tags:
+      - buckets
+      description: Recompute the hashes of all files in a bucket
+      operationId: adminReComputeHashes
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/buckets/{bucketId}/generate-previews:
+    post:
+      tags:
+      - buckets
+      description: Generate all configured thumbnails and preview clips for all resources
+        in a bucket
+      operationId: adminGeneratePreviews
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/buckets/{bucketId}/fix-non-streamable:
+    post:
+      tags:
+      - buckets
+      description: Remux all non-streamable resources in a bucket so they can be streamed
+        progressively
+      operationId: adminFixNonStreamable
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/buckets/{bucketId}/export:
+    get:
+      tags:
+      - buckets
+      description: Export all resources in a bucket
+      operationId: adminExportBucket
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/x-ndjson:
+              schema:
+                $ref: '#/components/schemas/ResourceDto'
+        '400':
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/buckets/{bucketId}/import:
+    post:
+      tags:
+      - buckets
+      description: Import all resources in a bucket
+      operationId: adminImportBucket
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: bucketId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/x-ndjson:
+            schema:
+              $ref: '#/components/schemas/ResourceDto'
+        required: true
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: 'Invalid value, Invalid value for: body'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
           description: ''
           content:
             application/json:
@@ -2190,15 +2110,11 @@ components:
       type: object
       required:
       - bucketId
-      - name
-      - type
       properties:
         bucketId:
           type: string
-        name:
-          type: string
-        type:
-          type: string
+        config:
+          $ref: '#/components/schemas/BucketConfigDto'
     BulkTagsUpdateDto:
       title: BulkTagsUpdateDto
       type: object

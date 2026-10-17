@@ -59,7 +59,7 @@ object CollectionRoutes extends RoutesModule:
   ): ServerEndpoints[IO] = {
 
     def canAccessBucket(auth: AuthToken, bucketId: BucketId): IO[Boolean] =
-      buckets.get(bucketId).map(_.exists(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole)))
+      buckets.get(bucketId).map(_.exists(bucket => auth.canAccessBucket(bucket.requiredRole)))
 
     routes[IO] {
 
@@ -106,7 +106,7 @@ object CollectionRoutes extends RoutesModule:
             case Some(collection) if collection.userId == token.userId =>
               for
                 all       <- buckets.all
-                accessible = all.filter(bucket => apiSecurity.canAccessBucket(token, bucket.requiredRole)).map(_.id).toSet
+                accessible = all.filter(bucket => token.canAccessBucket(bucket.requiredRole)).map(_.id).toSet
                 resources <- collectionsDal.getResourcesInCollection(collectionId)
               yield Right(resources.filter(resource => accessible.contains(resource.bucketId)).map(toDto))
             case _                                                     =>

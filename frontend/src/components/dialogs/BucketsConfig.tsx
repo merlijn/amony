@@ -1,7 +1,19 @@
 import {useEffect, useState} from "react";
 import axios from "axios";
 import * as RadixDialog from "@radix-ui/react-dialog";
-import {adminCreateBucket, adminDeleteBucket, adminListBuckets, adminUpdateBucket, BucketConfigDto} from "../../api/generated";
+import {
+  adminCreateBucket,
+  adminDeleteBucket,
+  adminFixNonStreamable,
+  adminGeneratePreviews,
+  adminReComputeHashes,
+  adminRefreshBucket,
+  adminReindexBucket,
+  adminRescanMetaData,
+  adminUpdateBucket,
+  BucketConfigDto,
+  getBuckets,
+} from "../../api/generated";
 import InfoTable, {InfoRow} from "../common/InfoTable";
 import ChoiceOption from "../common/ChoiceOption";
 import DialogWindow from "../common/DialogWindow";
@@ -45,10 +57,11 @@ const BucketsConfig = () => {
   const [loadError, setLoadError] = useState<string | undefined>(undefined)
   const [editing, setEditing] = useState<EditState | undefined>(undefined)
   const [deleting, setDeleting] = useState<BucketConfigDto | undefined>(undefined)
+  const [actions, setActions] = useState<BucketConfigDto | undefined>(undefined)
 
   const load = () => {
-    adminListBuckets()
-      .then((data) => { setBuckets(data); setLoadError(undefined) })
+    getBuckets()
+      .then((data) => { setBuckets(data.flatMap((bucket) => bucket.config ?? [])); setLoadError(undefined) })
       .catch((e) => setLoadError(errorMessage(e, "Failed to load buckets")))
   }
 
@@ -63,6 +76,9 @@ const BucketsConfig = () => {
         onSaved={() => { setEditing(undefined); load() }}
       />
     )
+
+  if (actions)
+    return <BucketActions bucket={actions} onBack={() => setActions(undefined)} />
 
   return (
     <div className="buckets-config">
@@ -92,6 +108,7 @@ const BucketsConfig = () => {
               <td>{bucket.requiredRole ? `Role: ${bucket.requiredRole}` : "Public"}</td>
               <td>{syncDescription(bucket)}</td>
               <td className="buckets-row-actions">
+                <button className="button-secondary" type="button" onClick={() => setActions(bucket)}>Actions</button>
                 <button className="button-secondary" type="button" onClick={() => setEditing({mode: "edit", bucket})}>Edit</button>
                 <button className="button-danger" type="button" onClick={() => setDeleting(bucket)}>Delete</button>
               </td>
@@ -108,6 +125,60 @@ const BucketsConfig = () => {
         onHide={() => setDeleting(undefined)}
         onDeleted={() => { setDeleting(undefined); load() }}
       />
+    </div>
+  )
+}
+
+type AdminAction = 'refresh' | 'reindex' | 'rescan' | 'recompute' | 'generate-previews' | 'fix-non-streamable'
+
+type BucketActionsProps = {
+  bucket: BucketConfigDto
+  onBack: () => void
+}
+
+const BucketActions = ({bucket, onBack}: BucketActionsProps) => {
+  const [activeAction, setActiveAction] = useState<AdminAction | null>(null)
+  const [error, setError] = useState<string | undefined>(undefined)
+
+  const runAction = (action: AdminAction, apiCall: () => Promise<unknown>) => {
+    setActiveAction(action)
+    setError(undefined)
+    apiCall()
+      .catch((e) => setError(errorMessage(e, "Failed to run the action")))
+      .finally(() => setActiveAction(null))
+  }
+
+  const anyLoading = activeAction !== null
+  const bucketId = bucket.id
+
+  const actions: Array<{action: AdminAction, label: string, apiCall: () => Promise<unknown>}> = [
+    {action: 'refresh', label: 'Refresh resources', apiCall: () => adminRefreshBucket(bucketId)},
+    {action: 'reindex', label: 'Reindex resources', apiCall: () => adminReindexBucket(bucketId)},
+    {action: 'rescan', label: 'Rescan metadata', apiCall: () => adminRescanMetaData(bucketId)},
+    {action: 'recompute', label: 'Recompute hashes', apiCall: () => adminReComputeHashes(bucketId)},
+    {action: 'generate-previews', label: 'Generate thumbnails and clips', apiCall: () => adminGeneratePreviews(bucketId)},
+    {action: 'fix-non-streamable', label: 'Fix non streamable videos', apiCall: () => adminFixNonStreamable(bucketId)},
+  ]
+
+  return (
+    <div className="bucket-form">
+      <div className="bucket-form-title">Actions for bucket '{bucket.id}'</div>
+
+      <InfoTable className="config-form">
+        {actions.map(({action, label, apiCall}) => (
+          <InfoRow key={action} label={label}>
+            <button type="button" disabled={anyLoading} onClick={() => runAction(action, apiCall)}>
+              {activeAction === action ? <span className="admin-spinner" /> : "Go"}
+            </button>
+          </InfoRow>
+        ))}
+      </InfoTable>
+
+      {error && <div className="buckets-error">{error}</div>}
+
+      <div className="bucket-form-actions">
+        <button className="button-secondary" type="button" onClick={onBack} disabled={anyLoading}>Back</button>
+      </div>
     </div>
   )
 }

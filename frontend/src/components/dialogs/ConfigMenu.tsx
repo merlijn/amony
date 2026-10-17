@@ -2,12 +2,10 @@ import {Constants, SessionContext} from "../../api/Constants";
 import DialogWindow from "../common/DialogWindow";
 import InfoTable, {InfoRow} from "../common/InfoTable";
 import './ConfigMenu.scss';
-import {useContext, useEffect, useState} from "react";
-import {adminFixNonStreamable, adminGeneratePreviews, adminReComputeHashes, adminRefreshBucket, adminReindexBucket, adminRescanMetaData, getBuckets} from "../../api/generated";
+import {useContext} from "react";
 import {useLocalStorage} from "usehooks-ts";
 import {useTheme} from "../../ThemeContext";
 import {GridAspectRatio, GridOrientation, ThemeSetting} from "../../api/Model";
-import {BucketDto} from "../../api/generated/model/bucketDto";
 import * as Tabs from "@radix-ui/react-tabs";
 import ChoiceOption from "../common/ChoiceOption";
 import BucketsConfig from "./BucketsConfig";
@@ -53,7 +51,6 @@ const ConfigMenu = () => {
           <Tabs.List className="tabs-list">
             <Tabs.Trigger className="tab-trigger" value="gridview">GridView</Tabs.Trigger>
             {session.isAdmin() && <Tabs.Trigger className="tab-trigger" value="buckets">Buckets</Tabs.Trigger>}
-            {session.isAdmin() && <Tabs.Trigger className="tab-trigger" value="admin">Admin</Tabs.Trigger>}
           </Tabs.List>
 
           <Tabs.Content className="tab-content" value="gridview">
@@ -158,106 +155,8 @@ const ConfigMenu = () => {
               <BucketsConfig />
             </Tabs.Content>
           )}
-
-          {session.isAdmin() && (
-            <Tabs.Content className="tab-content" value="admin">
-              <InfoTable className="config-form">
-                <AdminOptions />
-              </InfoTable>
-            </Tabs.Content>
-          )}
         </Tabs.Root>
       </DialogWindow>
-  )
-}
-
-type AdminAction = 'refresh' | 'reindex' | 'rescan' | 'recompute' | 'generate-previews' | 'fix-non-streamable'
-
-const AdminOptions = () => {
-  const [buckets, setBuckets] = useState<BucketDto[]>([]);
-  const [selectedBucket, setSelectedBucket] = useState<string>('');
-  const [activeAction, setActiveAction] = useState<AdminAction | null>(null);
-
-  useEffect(() => {
-    getBuckets().then((data) => {
-      setBuckets(data);
-      if (data.length > 0) {
-        setSelectedBucket(data[0].bucketId);
-      }
-    });
-  }, []);
-
-  const runAction = (action: AdminAction, apiCall: () => Promise<unknown>) => {
-    setActiveAction(action)
-    apiCall().finally(() => setActiveAction(null))
-  }
-
-  const isLoading = (action: AdminAction) => activeAction === action
-  const anyLoading = activeAction !== null
-
-  type BtnProps = { action: AdminAction; apiCall: () => Promise<unknown>; label?: string }
-
-  const ActionButton = ({ action, apiCall, label = "Go" }: BtnProps) => (
-    <button
-      disabled={isLoading(action)}
-      onClick={() => runAction(action, apiCall)}
-    >
-      {isLoading(action) ? <span className="admin-spinner" /> : label}
-    </button>
-  )
-
-  return(
-    <>
-      <InfoRow label="Bucket">
-        <select
-          value={selectedBucket}
-          onChange={(e) => setSelectedBucket(e.target.value)}
-          disabled={anyLoading}
-        >
-          {buckets?.map((bucket: BucketDto) => (
-            <option key={bucket.bucketId} value={bucket.bucketId}>
-              {bucket.bucketId}
-            </option>
-          ))}
-        </select>
-      </InfoRow>
-      <InfoRow label="Refresh resources">
-        <ActionButton
-          action="refresh"
-          apiCall={() => adminRefreshBucket({'bucketId': selectedBucket})}
-        />
-      </InfoRow>
-      <InfoRow label="Reindex resources">
-        <ActionButton
-          action="reindex"
-          apiCall={() => adminReindexBucket({'bucketId': selectedBucket})}
-        />
-      </InfoRow>
-      <InfoRow label="Rescan metadata">
-        <ActionButton
-          action="rescan"
-          apiCall={() => adminRescanMetaData({'bucketId': selectedBucket})}
-        />
-      </InfoRow>
-      <InfoRow label="ReCompute hashes">
-        <ActionButton
-          action="recompute"
-          apiCall={() => adminReComputeHashes({'bucketId': selectedBucket})}
-        />
-      </InfoRow>
-      <InfoRow label="Generate thumbnails and clips">
-        <ActionButton
-          action="generate-previews"
-          apiCall={() => adminGeneratePreviews({'bucketId': selectedBucket})}
-        />
-      </InfoRow>
-      <InfoRow label="Fix non streamable videos">
-        <ActionButton
-          action="fix-non-streamable"
-          apiCall={() => adminFixNonStreamable({'bucketId': selectedBucket})}
-        />
-      </InfoRow>
-    </>
   )
 }
 

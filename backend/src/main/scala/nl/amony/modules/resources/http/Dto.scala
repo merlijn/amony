@@ -12,7 +12,7 @@ import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.api.{ImageProperties, ResourceInfo, VideoProperties}
 
-case class BucketDto(bucketId: String, name: String, `type`: String) derives Codec, sttp.tapir.Schema
+case class BucketDto(bucketId: String, config: Option[BucketConfigDto] = None) derives Codec, sttp.tapir.Schema
 
 case class ThumbnailTimestampDto(timestampInMillis: Int) derives Codec, sttp.tapir.Schema
 

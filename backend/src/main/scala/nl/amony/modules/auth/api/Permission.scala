@@ -10,4 +10,4 @@ enum Permission derives EnumConfigReader:
   case Download
   case UploadResource
   case ManageCollections
-  case Admin
+  case ManageBuckets

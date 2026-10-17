@@ -21,13 +21,6 @@ val errorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError]
 
 object ResourceRoutes extends RoutesModule, Logging:
 
-  val getBuckets =
-    register(endpoint
-      .name("getBuckets").tag("resources").description("Get information about the buckets")
-      .get.in("api" / "buckets")
-      .securityIn(securityInput).errorOut(errorOutput)
-      .out(apiNoCacheHeaders).out(jsonBody[List[BucketDto]]))
-
   val getResourceById: Endpoint[SecurityInput, (BucketId, ResourceId), SecurityError | NotFoundError | BadRequestError, ResourceDto, Any] =
     register(endpoint
       .name("getResourceById").tag("resources").description("Get information about a resource by its id")
@@ -91,7 +84,7 @@ object ResourceRoutes extends RoutesModule, Logging:
 
     def getVisibleBucket(auth: AuthToken, bucketId: BucketId): EitherT[IO, NotFoundError, ResourceBucket] =
       EitherT.fromOptionF(
-        buckets.get(bucketId).map(_.filter(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole))),
+        buckets.get(bucketId).map(_.filter(bucket => auth.canAccessBucket(bucket.requiredRole))),
         NotFoundError("not_found", "Resource not found")
       )
 
@@ -118,14 +111,15 @@ object ResourceRoutes extends RoutesModule, Logging:
         yield ()
       }
 
-      serverLogic(endpoint = fixResourceStreamable, requiredPermission = Permission.Admin) { _ => (bucketId, resourceId) =>
-        buckets.get(bucketId).flatMap:
-          case Some(bucket: LocalDirectoryBucket) =>
-            logger.info(s"Normalizing resource '$resourceId' in bucket '$bucketId'")
-            bucket.fixStreamability(resourceId).as(Right(()))
-          case _                                  =>
-            logger.info(s"Cannot normalize resource '$resourceId' in bucket '$bucketId'")
-            IO.pure(Right(()))
+      serverLogicT(endpoint = fixResourceStreamable, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId) =>
+        for
+          bucket <- getVisibleBucket(auth, bucketId)
+          _      <- bucket match
+                      case local: LocalDirectoryBucket =>
+                        EitherT.right(IO(logger.info(s"Normalizing resource '$resourceId' in bucket '$bucketId'")) *> local.fixStreamability(resourceId))
+                      case _                           =>
+                        EitherT.right(IO(logger.info(s"Cannot normalize resource '$resourceId' in bucket '$bucketId'")))
+        yield ()
       }
 
       serverLogicT(endpoint = updateUserMetaData, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId, userMeta) =>
@@ -161,12 +155,6 @@ object ResourceRoutes extends RoutesModule, Logging:
           bucket   <- getVisibleBucket(token, bucketId)
           resource <- EitherT(bucket.uploadResource(token.userId, fileName, body)).leftMap(mapUploadError)
         yield toDto(resource)
-      }
-
-      serverLogic(endpoint = getBuckets, requiredPermission = Permission.ViewResource) { auth => _ =>
-        buckets.all.map(all =>
-          Right(all.filter(bucket => apiSecurity.canAccessBucket(auth, bucket.requiredRole)).map(bucket => BucketDto(bucket.id, "", "")))
-        )
       }
     }
   }
