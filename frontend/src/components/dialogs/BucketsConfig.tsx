@@ -6,13 +6,13 @@ import {
   adminDeleteBucket,
   adminFixNonStreamable,
   adminGeneratePreviews,
-  adminListBuckets,
   adminReComputeHashes,
   adminRefreshBucket,
   adminReindexBucket,
   adminRescanMetaData,
   adminUpdateBucket,
   BucketConfigDto,
+  getBuckets,
 } from "../../api/generated";
 import InfoTable, {InfoRow} from "../common/InfoTable";
 import ChoiceOption from "../common/ChoiceOption";
@@ -60,8 +60,8 @@ const BucketsConfig = () => {
   const [actions, setActions] = useState<BucketConfigDto | undefined>(undefined)
 
   const load = () => {
-    adminListBuckets()
-      .then((data) => { setBuckets(data); setLoadError(undefined) })
+    getBuckets()
+      .then((data) => { setBuckets(data.flatMap((bucket) => bucket.config ?? [])); setLoadError(undefined) })
       .catch((e) => setLoadError(errorMessage(e, "Failed to load buckets")))
   }
 
