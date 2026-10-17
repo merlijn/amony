@@ -1,4 +1,4 @@
-package nl.amony.lib.files
+package nl.amony.lib.files.sync
 
 import java.nio.file.{Files, Paths, StandardOpenOption}
 import java.security.MessageDigest
@@ -9,7 +9,7 @@ import cats.effect.unsafe.implicits.global
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-import nl.amony.lib.files.sync.*
+import nl.amony.lib.files.FileInfo
 import nl.amony.lib.hash.{Base32, PartialHash}
 
 class DirectoryScannerSpec extends AnyWordSpec with Matchers {
