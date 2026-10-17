@@ -79,6 +79,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
       title              = title,
       description        = description,
       tags               = tags,
+      systemTags         = Set.empty,
       thumbnailTimestamp = thumbnailTimestamp,
       streamable         = streamable
     )

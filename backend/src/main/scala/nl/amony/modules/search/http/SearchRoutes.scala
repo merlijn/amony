@@ -105,6 +105,7 @@ object SearchRoutes extends RoutesModule:
             q               = queryDto.q.map(s => sanitize(s, 64, c => c.isLetterOrDigit || c.isWhitespace)),
             n               = Math.min(queryDto.n.getOrElse(config.defaultNumberOfResults), config.maximumNumberOfResults),
             offset          = queryDto.offset.map(n => Math.max(0, n)),
+            // URL-passed tags are assumed to have owner=user for now.
             includeTags     =
               if queryDto.untagged.contains(true) then Set.empty else queryDto.tag.map(s => sanitize(s, 32, c => c.isLetterOrDigit)).toSet,
             excludeBuckets  = excludeBuckets,

@@ -163,6 +163,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     userId             = resource.userId,
     title              = resource.title,
     description        = resource.description,
+    // Only user-owned tags are exposed for now; system tags stay hidden.
     tags               = resource.tags.toList,
     contentType        = resource.contentType.getOrElse("application/octet-stream"),
     contentMeta        = contentMeta,

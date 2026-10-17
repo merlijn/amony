@@ -17,6 +17,7 @@ case class ResourceInfo(
   title: Option[String]             = None,
   description: Option[String]       = None,
   tags: Set[String]                 = Set.empty,
+  systemTags: Set[String]           = Set.empty,
   thumbnailTimestamp: Option[Int]   = None,
   streamable: Option[Boolean]       = None
 ) derives io.circe.Codec {

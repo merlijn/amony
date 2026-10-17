@@ -11,22 +11,26 @@ import skunk.implicits.*
 object Queries extends Logging {
 
   object tags {
-    val all: Query[Void, TagRow] = sql"select id, label from tags".query(TagRow.codec)
+    private val ownerLabel: Codec[(String, String)] = varchar *: varchar
+
+    val all: Query[Void, TagRow] = sql"select id, owner, label from tags".query(TagRow.codec)
 
     def truncateCascade: Command[Void] = sql"truncate table tags cascade".command
 
-    def getByLabels(n: Int): Query[List[String], TagRow] = sql"select id,label from tags where label in (${varchar.list(n)})".query(TagRow.codec)
+    def getByLabels(n: Int): Query[(String, List[String]), TagRow] =
+      sql"select id, owner, label from tags where owner = $varchar and label in (${varchar.list(n)})".query(TagRow.codec)
 
-    def getByIds(n: Int): Query[List[Int], TagRow] = sql"select id,label from tags where id in (${int4.list(n)})".query(TagRow.codec)
+    def getByIds(n: Int): Query[List[Int], TagRow] = sql"select id, owner, label from tags where id in (${int4.list(n)})".query(TagRow.codec)
 
-    def insert(n: Int): Command[List[String]] = sql"insert into tags (label) values ${varchar.values.list(n)}".command
+    def insert(n: Int): Command[List[(String, String)]] =
+      sql"insert into tags (owner, label) values ${ownerLabel.values.list(n)}".command
 
-    def upsert(n: Int): Command[List[String]] = sql"""
-          WITH new_tags (label) AS (VALUES ${varchar.values.list(n)})
-          INSERT INTO tags (label)
-          SELECT label
+    def upsert(n: Int): Command[List[(String, String)]] = sql"""
+          WITH new_tags (owner, label) AS (VALUES ${ownerLabel.values.list(n)})
+          INSERT INTO tags (owner, label)
+          SELECT owner, label
           FROM new_tags
-          WHERE NOT EXISTS (SELECT 1 FROM tags WHERE tags.label = new_tags.label)
+          WHERE NOT EXISTS (SELECT 1 FROM tags WHERE tags.owner = new_tags.owner AND tags.label = new_tags.label)
         """.command
   }
 
@@ -43,6 +47,9 @@ object Queries extends Logging {
         .query(ResourceTagsRow.codec)
 
     def delete: Command[(String, String)] = sql"delete from resource_tags where bucket_id = $varchar and resource_id = $varchar".command
+
+    def deleteByOwner: Command[(String, String, String)] =
+      sql"delete from resource_tags where bucket_id = $varchar and resource_id = $varchar and tag_id in (select id from tags where owner = $varchar)".command
   }
 
   object collection_tags {
@@ -73,7 +80,7 @@ object Queries extends Logging {
 
     private val joinTables =
       sql"""
-         SELECT to_json(c.*), array_agg(t.label) FILTER (WHERE t.label IS NOT NULL) as tags
+         SELECT to_json(c.*), array_agg(t.label) FILTER (WHERE t.owner = 'user' AND t.label IS NOT NULL) as tags
          FROM collections c
          LEFT JOIN collection_tags ct ON c.id = ct.collection_id
          LEFT JOIN tags t ON ct.tag_id = t.id
@@ -133,44 +140,54 @@ object Queries extends Logging {
 
     private val joinTables =
       sql"""
-         SELECT to_json(r.*), array_agg(t.label) FILTER (WHERE t.label IS NOT NULL) as tags
+         SELECT to_json(r.*), array_agg(t.label) FILTER (WHERE t.owner = 'user' AND t.label IS NOT NULL) as tags,
+           array_agg(t.label) FILTER (WHERE t.owner = 'system' AND t.label IS NOT NULL) as system_tags
          FROM resources r
          LEFT JOIN resource_tags rt
            ON r.bucket_id = rt.bucket_id AND r.resource_id = rt.resource_id
          LEFT JOIN tags t ON rt.tag_id = t.id
        """
 
-    val getByPartialHashJoined: Query[(String, String), (ResourceRow, Option[Arr[String]])] =
+    val getByPartialHashJoined: Query[(String, String), (ResourceRow, Option[Arr[String]], Option[Arr[String]])] =
       sql"""
         $joinTables
         WHERE r.bucket_id = $varchar AND r.partial_hash = $varchar
         GROUP BY (${ResourceRow.columns})
-      """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
+      """.query(json *: _varchar.opt *: _varchar.opt).map((resource, tagLabels, systemTagLabels) =>
+        (resource.as[ResourceRow].toOption.get, tagLabels, systemTagLabels)
+      )
 
-    val getByIdJoined: Query[(String, String), (ResourceRow, Option[Arr[String]])] =
+    val getByIdJoined: Query[(String, String), (ResourceRow, Option[Arr[String]], Option[Arr[String]])] =
       sql"""
         $joinTables
         WHERE r.bucket_id = $varchar AND r.resource_id = $varchar
         GROUP BY (${ResourceRow.columns})
-      """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
+      """.query(json *: _varchar.opt *: _varchar.opt).map((resource, tagLabels, systemTagLabels) =>
+        (resource.as[ResourceRow].toOption.get, tagLabels, systemTagLabels)
+      )
 
-    val getByPathJoined: Query[(String, String), (ResourceRow, Option[Arr[String]])] =
+    val getByPathJoined: Query[(String, String), (ResourceRow, Option[Arr[String]], Option[Arr[String]])] =
       sql"""
         $joinTables
         WHERE r.bucket_id = $varchar AND r.fs_path = $varchar
         GROUP BY (${ResourceRow.columns})
-      """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
+      """.query(json *: _varchar.opt *: _varchar.opt).map((resource, tagLabels, systemTagLabels) =>
+        (resource.as[ResourceRow].toOption.get, tagLabels, systemTagLabels)
+      )
 
-    val allJoined: Query[String, (ResourceRow, Option[Arr[String]])] =
+    val allJoined: Query[String, (ResourceRow, Option[Arr[String]], Option[Arr[String]])] =
       sql"""
        $joinTables
        WHERE r.bucket_id = $varchar
        GROUP BY (${ResourceRow.columns})
-      """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
+      """.query(json *: _varchar.opt *: _varchar.opt).map((resource, tagLabels, systemTagLabels) =>
+        (resource.as[ResourceRow].toOption.get, tagLabels, systemTagLabels)
+      )
 
-    val getByCollectionIdJoined: Query[java.util.UUID, (ResourceRow, Option[Arr[String]])] =
+    val getByCollectionIdJoined: Query[java.util.UUID, (ResourceRow, Option[Arr[String]], Option[Arr[String]])] =
       sql"""
-       SELECT to_json(r.*), array_agg(t.label) FILTER (WHERE t.label IS NOT NULL) as tags
+       SELECT to_json(r.*), array_agg(t.label) FILTER (WHERE t.owner = 'user' AND t.label IS NOT NULL) as tags,
+         array_agg(t.label) FILTER (WHERE t.owner = 'system' AND t.label IS NOT NULL) as system_tags
        FROM resources r
        INNER JOIN collection_resources cr
          ON r.bucket_id = cr.bucket_id AND r.resource_id = cr.resource_id
@@ -179,7 +196,9 @@ object Queries extends Logging {
        LEFT JOIN tags t ON rt.tag_id = t.id
        WHERE cr.collection_id = $uuid
        GROUP BY (${ResourceRow.columns})
-      """.query(json *: _varchar.opt).map((resource, tagLabels) => (resource.as[ResourceRow].toOption.get, tagLabels))
+      """.query(json *: _varchar.opt *: _varchar.opt).map((resource, tagLabels, systemTagLabels) =>
+        (resource.as[ResourceRow].toOption.get, tagLabels, systemTagLabels)
+      )
 
     val getById: Query[(String, String), ResourceRow] =
       sql"select to_json(r.*) from resources r where bucket_id = $varchar and resource_id = $varchar".query(json)

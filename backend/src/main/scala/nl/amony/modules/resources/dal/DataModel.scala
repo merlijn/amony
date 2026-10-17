@@ -32,7 +32,7 @@ case class ResourceRow(
   streamable: Option[Boolean]      = None
 ) derives io.circe.Codec {
 
-  def toResource(tagLabels: Set[String]): ResourceInfo = {
+  def toResource(tagLabels: Set[String], systemTagLabels: Set[String] = Set.empty): ResourceInfo = {
     ResourceInfo(
       bucketId           = BucketId(bucket_id),
       resourceId         = ResourceId(resource_id),
@@ -44,6 +44,7 @@ case class ResourceRow(
       contentType        = content_type,
       contentMeta        = content_meta_tool_name.flatMap(name => ResourceMeta.recover(name, content_meta_tool_data.getOrElse(""))),
       tags               = tagLabels,
+      systemTags         = systemTagLabels,
       timeAdded          = Some(time_added.toEpochMilli),
       timeLastModified   = time_last_modified.map(_.toEpochMilli),
       title              = title,
@@ -130,7 +131,12 @@ case class CollectionResourcesRow(collection_id: UUID, bucket_id: String, resour
 object CollectionResourcesRow:
   val codec: Codec[CollectionResourcesRow] = (uuid *: varchar(64) *: varchar(64)).to[CollectionResourcesRow]
 
-case class TagRow(id: Int, label: String)
+case class TagRow(id: Int, owner: String, label: String)
 
 object TagRow:
-  val codec: Codec[TagRow] = (int4 *: varchar(64)).imap(TagRow.apply.tupled)(tag => (tag.id, tag.label))
+  val codec: Codec[TagRow] = (int4 *: varchar(64) *: varchar(64)).imap(TagRow.apply.tupled)(tag => (tag.id, tag.owner, tag.label))
+
+object TagOwner:
+  val User: String              = "user"
+  val System: String            = "system"
+  def app(name: String): String = s"app:$name"

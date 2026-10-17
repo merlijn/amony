@@ -16,10 +16,15 @@ trait CollectionsDal(pool: Resource[IO, Session[IO]]) extends Logging:
   protected def useSession[A](s: Session[IO] => IO[A]): IO[A]                        = pool.use(s)
   protected def useTransaction[A](f: (Session[IO], Transaction[IO]) => IO[A]): IO[A] = pool.use(s => s.transaction.use(tx => f(s, tx)))
 
-  // Abstract helpers that ResourceDatabase must provide
-  protected def upsertTags(s: Session[IO], tagLabels: List[String]): IO[Completion]
-  protected def getTagsByLabels(s: Session[IO], labels: List[String]): IO[List[TagRow]]
-  protected def toResource(resourceRow: ResourceRow, tagLabels: Option[Arr[String]]): ResourceInfo
+  // Abstract helpers that ResourceDatabase must provide.
+  // Tags are partitioned by owner; public write paths use the user owner, other owners are preserved.
+  protected def upsertTags(s: Session[IO], owner: String, tagLabels: List[String]): IO[Completion]
+  protected def getTagsByLabels(s: Session[IO], owner: String, labels: List[String]): IO[List[TagRow]]
+  protected def toResource(
+    resourceRow: ResourceRow,
+    tagLabels: Option[Arr[String]],
+    systemTagLabels: Option[Arr[String]]
+  ): ResourceInfo
 
   private[dal] object collectionTables:
     object collections {
@@ -56,7 +61,13 @@ trait CollectionsDal(pool: Resource[IO, Session[IO]]) extends Logging:
   private def updateTagsForCollection(s: Session[IO], collection: Collection): IO[Unit] =
     for
       tags <-
-        if collection.tags.nonEmpty then upsertTags(s, collection.tags.toList) >> getTagsByLabels(s, collection.tags.toList) else IO.pure(List.empty)
+        if collection.tags.nonEmpty then
+          upsertTags(s, TagOwner.User, collection.tags.toList) >> getTagsByLabels(
+            s,
+            TagOwner.User,
+            collection.tags.toList
+          )
+        else IO.pure(List.empty)
       _    <- collectionTables.collection_tags.replaceAll(s, collection.id, tags.map(_.id))
     yield ()
 
