@@ -9,7 +9,3 @@ ALTER TABLE tags ADD CONSTRAINT tags_owner_label_unq UNIQUE (owner, label);
 DROP INDEX IF EXISTS tags_label_idx;
 
 CREATE INDEX IF NOT EXISTS tags_owner_label_idx ON tags (owner, label);
-
-CREATE INDEX IF NOT EXISTS resource_tags_tag_id_idx ON resource_tags (tag_id);
-
-CREATE INDEX IF NOT EXISTS collection_tags_tag_id_idx ON collection_tags (tag_id);
