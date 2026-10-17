@@ -5,7 +5,7 @@ import java.nio.file.{Files, Path as NioPath}
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import org.http4s.*
-import org.http4s.headers.{ETag, `If-None-Match`}
+import org.http4s.headers.{ETag, `Content-Length`, `If-None-Match`}
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.typelevel.ci.CIStringSyntax
 
@@ -78,6 +78,16 @@ class ResourceDirectivesSpec extends AnyWordSpecLike {
 
       assert(response.status == Status.PartialContent)
       assert(response.headers.get[ETag].map(_.tag.tag) == Some("v1"))
+    }
+
+    "report the length of the served range, not the full resource, on a partial response" in {
+      val large    = tempFile(2 * 1024 * 1024)
+      val response = ResourceDirectives
+        .resourceContentsResponse(request(Header.Raw(ci"Range", "bytes=1000-1999")), localFile(large, Some("v1")))
+        .unsafeRunSync()
+
+      assert(response.status == Status.PartialContent)
+      assert(response.headers.get[`Content-Length`].map(_.length) == Some(1000L))
     }
 
     "prefer 304 over a range response when the validator matches" in {

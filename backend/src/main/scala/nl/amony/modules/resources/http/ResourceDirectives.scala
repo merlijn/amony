@@ -123,7 +123,8 @@ object ResourceDirectives extends Logging {
 
     def createResponse(start: Long, end: Long, partial: Boolean) = {
       F.pure(rangeResponseFn(start, end + 1)).map { byteStream =>
-        val rangeHeaders = Headers(`Accept-Ranges`(RangeUnit.Bytes), `Content-Range`(SubRange(start, end), Some(size)), `Content-Length`(size))
+        val rangeHeaders =
+          Headers(`Accept-Ranges`(RangeUnit.Bytes), `Content-Range`(SubRange(start, end), Some(size)), `Content-Length`(end - start + 1))
         Response(status = if partial then Status.PartialContent else Status.Ok, headers = additionalHeaders ++ rangeHeaders, body = byteStream)
       }
     }
