@@ -9,6 +9,7 @@ private[solr] object SolrSchema:
     val id                 = "id"
     val bucketId           = "bucket_id_s"
     val partialHash        = "partial_hash_s"
+    val fileKey            = "file_key_s"
     val path               = "path_text_ci"
     val filesize           = "filesize_l"
     val tags               = "tags_ss"

@@ -25,10 +25,11 @@ object SolrSearchService {
 /** Queries the Solr collection. */
 class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchService with SolrLogging {
 
-  private def toResource(document: SolrDocument): ResourceInfo = {
+  private[solr] def toResource(document: SolrDocument): ResourceInfo = {
 
     val resourceId         = document.getFieldValue(FieldNames.id).asInstanceOf[String]
     val partialHash        = Option(document.getFieldValue(FieldNames.partialHash)).map(_.asInstanceOf[String])
+    val fileKey            = Option(document.getFieldValue(FieldNames.fileKey)).map(_.asInstanceOf[String])
     val bucketId           = document.getFieldValue(FieldNames.bucketId).asInstanceOf[String]
     val title              = Option(document.getFieldValue(FieldNames.title)).map(_.asInstanceOf[String])
     val path               = document.getFieldValue(FieldNames.path).asInstanceOf[String]
@@ -70,6 +71,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
       path               = path,
       size               = size,
       partialHash        = partialHash,
+      fileKey            = fileKey,
       contentType        = contentType,
       contentMeta        = contentProperties.map(props => ResourceMeta(metaToolName.getOrElse("unknown"), "", props)),
       timeAdded          = timeAdded,
