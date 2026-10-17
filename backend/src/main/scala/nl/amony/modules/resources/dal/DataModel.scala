@@ -135,8 +135,3 @@ case class TagRow(id: Int, owner: String, label: String)
 
 object TagRow:
   val codec: Codec[TagRow] = (int4 *: varchar(64) *: varchar(64)).imap(TagRow.apply.tupled)(tag => (tag.id, tag.owner, tag.label))
-
-object TagOwner:
-  val User: String              = "user"
-  val System: String            = "system"
-  def app(name: String): String = s"app:$name"

@@ -17,7 +17,7 @@ import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo}
+import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, TagOwner}
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.{App, DatabaseConfig, ExportDatabaseSchema}
 
@@ -153,7 +153,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
     for
       _      <- db.insertResource(resource)
-      _      <- db.updateUserMeta(resource.bucketId, resource.resourceId, updated.title, updated.description, updated.tags.toList)
+      _      <- db.updateUserMeta(resource.bucketId, resource.resourceId, updated.title, updated.description, TagOwner.User, updated.tags.toList)
       result <- db.getResourceById(resource.bucketId, resource.resourceId)
     yield {
       result.flatMap(_.title) shouldBe updated.title

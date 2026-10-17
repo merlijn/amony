@@ -9,4 +9,5 @@ case class Collection(
   name: String,
   description: Option[String]    = None,
   tags: Set[String]              = Set.empty
-)
+):
+  def tagObjects: List[Tag] = tags.map(Tag.user).toList

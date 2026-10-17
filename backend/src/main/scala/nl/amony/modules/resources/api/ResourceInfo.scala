@@ -23,4 +23,9 @@ case class ResourceInfo(
 ) derives io.circe.Codec {
 
   def basicContentProperties: Option[ContentProperties] = contentMeta.map(_.properties)
+
+  def tagsByOwner: Map[String, Set[String]] = Map(TagOwner.User -> tags, TagOwner.System -> systemTags)
+
+  def withTagsForOwner(owner: String, labels: Set[String]): ResourceInfo =
+    if owner == TagOwner.System then copy(systemTags = labels) else copy(tags = labels)
 }
