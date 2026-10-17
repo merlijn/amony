@@ -25,7 +25,7 @@ trait ResourceBucket {
   /**
    * Adds and removes tags for a given resource. Returns the updated resource info when the resource exists.
    */
-  def updateResourceTags(resourceIds: Set[ResourceId], tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit]
+  def updateResourceTags(resourceIds: Set[ResourceId], tagsToAdd: Set[Tag], tagsToRemove: Set[Tag]): IO[Unit]
 
   def updateThumbnailTimestamp(resourceId: ResourceId, timestamp: Int): IO[Unit]
 

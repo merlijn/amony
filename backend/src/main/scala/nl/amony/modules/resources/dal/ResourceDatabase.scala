@@ -224,27 +224,33 @@ class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(p
   def updateResourceTags(
     bucketId: BucketId,
     resourceId: ResourceId,
-    owner: String,
-    tagsToAdd: Set[String],
-    tagsToRemove: Set[String]
+    tagsToAdd: Set[Tag],
+    tagsToRemove: Set[Tag]
   ): IO[Option[ResourceInfo]] =
-    useTransaction((s, _) => updateResourceTagsWith(s, bucketId, resourceId, owner, tagsToAdd, tagsToRemove))
+    useTransaction((s, _) => updateResourceTagsWith(s, bucketId, resourceId, tagsToAdd, tagsToRemove))
 
   def updateResourceTagsWith(
     s: Session[IO],
     bucketId: BucketId,
     resourceId: ResourceId,
-    owner: String,
-    tagsToAdd: Set[String],
-    tagsToRemove: Set[String]
+    tagsToAdd: Set[Tag],
+    tagsToRemove: Set[Tag]
   ): IO[Option[ResourceInfo]] =
     getResourceByIdWith(s, bucketId, resourceId).flatMap:
       case None           => IO.pure(None)
       case Some(resource) =>
-        val updatedLabels   = ((resource.tagsByOwner.getOrElse(owner, Set.empty) ++ tagsToAdd) -- tagsToRemove).toList
-        val updatedResource = resource.withTagsForOwner(owner, updatedLabels.toSet)
-        tables.resources.upsert(s, ResourceRow.fromResource(updatedResource)) >>
-          updateTagsForOwner(s, bucketId, resourceId, owner, updatedLabels) >> IO.pure(Some(updatedResource))
+        val addByOwner    = tagsToAdd.groupBy(_.owner).view.mapValues(_.map(_.label).toSet).toMap
+        val removeByOwner = tagsToRemove.groupBy(_.owner).view.mapValues(_.map(_.label).toSet).toMap
+        val owners        = (addByOwner.keySet ++ removeByOwner.keySet).toList.sorted
+        owners.foldLeft(IO.pure(resource)) { (acc, owner) =>
+          acc.flatMap(current =>
+            val updatedLabels   = ((current.tagsByOwner.getOrElse(owner, Set.empty) ++ addByOwner
+              .getOrElse(owner, Set.empty)) -- removeByOwner.getOrElse(owner, Set.empty)).toList
+            val updatedResource = current.withTagsForOwner(owner, updatedLabels.toSet)
+            tables.resources.upsert(s, ResourceRow.fromResource(updatedResource)) >>
+              updateTagsForOwner(s, bucketId, resourceId, owner, updatedLabels).as(updatedResource)
+          )
+        }.map(Some(_))
 
   def move(bucketId: BucketId, resourceId: ResourceId, newPath: String): IO[Unit] =
     useSession(s => moveWith(s, bucketId, resourceId, newPath))

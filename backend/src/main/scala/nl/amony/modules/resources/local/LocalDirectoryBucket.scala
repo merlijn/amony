@@ -154,10 +154,10 @@ class LocalDirectoryBucket(
       db.updateUserMetaWith(s, id, resourceId, title, description, TagOwner.User, tags)
         .flatMap(_.map(updated => topic.publish(s, ResourceUpdated(updated))).getOrElse(IO.unit))
 
-  override def updateResourceTags(resourceIds: Set[ResourceId], tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] = {
-    def updateTagsSingle(resourceId: ResourceId, tagsToAdd: Set[String], tagsToRemove: Set[String]): IO[Unit] =
+  override def updateResourceTags(resourceIds: Set[ResourceId], tagsToAdd: Set[Tag], tagsToRemove: Set[Tag]): IO[Unit] = {
+    def updateTagsSingle(resourceId: ResourceId, tagsToAdd: Set[Tag], tagsToRemove: Set[Tag]): IO[Unit] =
       db.transact: s =>
-        db.updateResourceTagsWith(s, id, resourceId, TagOwner.User, tagsToAdd, tagsToRemove).flatMap:
+        db.updateResourceTagsWith(s, id, resourceId, tagsToAdd, tagsToRemove).flatMap:
           case None          => IO.unit
           case Some(updated) => topic.publish(s, ResourceUpdated(updated))
 
