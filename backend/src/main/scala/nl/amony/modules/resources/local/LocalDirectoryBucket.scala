@@ -154,15 +154,16 @@ class LocalDirectoryBucket(
       db.updateUserMetaWith(s, id, resourceId, title, description, TagOwner.User, tags)
         .flatMap(_.map(updated => topic.publish(s, ResourceUpdated(updated))).getOrElse(IO.unit))
 
-  override def updateResourceTags(resourceIds: Set[ResourceId], tagsToAdd: Set[Tag], tagsToRemove: Set[Tag]): IO[Unit] = {
-    def updateTagsSingle(resourceId: ResourceId, tagsToAdd: Set[Tag], tagsToRemove: Set[Tag]): IO[Unit] =
-      db.transact: s =>
-        db.updateResourceTagsWith(s, id, resourceId, tagsToAdd, tagsToRemove).flatMap:
-          case None          => IO.unit
-          case Some(updated) => topic.publish(s, ResourceUpdated(updated))
+  /** Maximum resources updated in a single transaction: atomic per batch without holding locks for the whole selection. */
+  private val tagBulkBatchSize = 100
 
-    resourceIds.map(id => updateTagsSingle(id, tagsToAdd, tagsToRemove)).toList.sequence.as(())
-  }
+  override def updateResourceTags(resourceIds: Set[ResourceId], tagsToAdd: Set[Tag], tagsToRemove: Set[Tag]): IO[Unit] =
+    resourceIds.toList.grouped(tagBulkBatchSize).toList.traverse_ : batch =>
+      db.transact: s =>
+        batch.traverse_ : resourceId =>
+          db.updateResourceTagsWith(s, id, resourceId, tagsToAdd, tagsToRemove).flatMap:
+            case None          => IO.unit
+            case Some(updated) => topic.publish(s, ResourceUpdated(updated))
 
   override def updateThumbnailTimestamp(resourceId: ResourceId, timestamp: Int): IO[Unit] =
     db.transact: s =>
