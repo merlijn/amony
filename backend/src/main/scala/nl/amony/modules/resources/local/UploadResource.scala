@@ -9,7 +9,7 @@ import fs2.io.file.{Files, Path}
 import fs2.{Chunk, Pipe}
 import scribe.Logging
 
-import nl.amony.lib.files.watcher.FileInfo
+import nl.amony.lib.files.FileInfo
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.{ResourceAdded, ResourceBucket, ResourceInfo, UploadError, VideoContainer}
 

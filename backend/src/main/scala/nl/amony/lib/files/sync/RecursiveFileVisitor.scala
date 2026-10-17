@@ -1,4 +1,4 @@
-package nl.amony.lib.files.watcher
+package nl.amony.lib.files.sync
 
 import java.io.IOException
 import java.nio.file.attribute.BasicFileAttributes
@@ -37,4 +37,6 @@ object RecursiveFileVisitor extends Logging:
     dir: Path,
     directoryFilter: Path => Boolean,
     fileFilter: Path => Boolean
-  ): Stream[IO, (Path, BasicFileAttributes)] = fs2.Stream.emits(listFilesInDirectoryRecursive(dir, directoryFilter, fileFilter))
+  ): Stream[IO, (Path, BasicFileAttributes)] =
+    // still collects all files in memory, but at least runs on the blocking pool
+    Stream.eval(IO.blocking(listFilesInDirectoryRecursive(dir, directoryFilter, fileFilter))).flatMap(Stream.emits)

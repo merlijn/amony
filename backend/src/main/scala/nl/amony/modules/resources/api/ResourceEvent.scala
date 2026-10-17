@@ -8,8 +8,12 @@ case class ResourceDeleted(resourceId: ResourceId) extends ResourceEvent derives
 
 case class ResourceUpdated(resource: ResourceInfo) extends ResourceEvent derives io.circe.Codec
 
-case class ResourceFileMetaChanged(resourceId: ResourceId, lastModifiedTime: Long) extends ResourceEvent derives io.circe.Codec
+case class ResourceFileMetaChanged(resourceId: ResourceId, lastModifiedTime: Long, fileKey: Option[String] = None) extends ResourceEvent
+    derives io.circe.Codec
 
 case class ResourceMoved(resourceId: ResourceId, oldPath: String, newPath: String) extends ResourceEvent derives io.circe.Codec
+
+case class ResourceMovedAndModified(resourceId: ResourceId, oldPath: String, newPath: String, resource: ResourceInfo)
+    extends ResourceEvent derives io.circe.Codec
 
 case class BucketDeleted(bucketId: BucketId) extends ResourceEvent derives io.circe.Codec

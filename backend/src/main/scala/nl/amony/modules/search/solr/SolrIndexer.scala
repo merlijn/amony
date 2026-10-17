@@ -15,7 +15,7 @@ import nl.amony.modules.search.solr.SolrSchema.*
 /** Writes resource changes to the Solr collection. */
 class SolrIndexer(config: SolrConfig, solr: SolrClient) extends SearchIndexer with SolrLogging {
 
-  private def toSolrDocument(resource: ResourceInfo): SolrInputDocument = {
+  private[solr] def toSolrDocument(resource: ResourceInfo): SolrInputDocument = {
 
     val solrInputDocument: SolrInputDocument = new SolrInputDocument()
 
@@ -24,6 +24,8 @@ class SolrIndexer(config: SolrConfig, solr: SolrClient) extends SearchIndexer wi
     solrInputDocument.addField(FieldNames.userId, resource.userId)
     solrInputDocument.addField(FieldNames.path, resource.path)
     solrInputDocument.addField(FieldNames.filesize, resource.size)
+    resource.partialHash.foreach(partialHash => solrInputDocument.addField(FieldNames.partialHash, partialHash))
+    resource.fileKey.foreach(fileKey => solrInputDocument.addField(FieldNames.fileKey, fileKey))
 
     val maybeTags = Option.when(resource.tags.nonEmpty)(resource.tags)
     maybeTags.foreach(tags => solrInputDocument.addField(FieldNames.tags, tags.toList.asJava))
@@ -86,12 +88,17 @@ class SolrIndexer(config: SolrConfig, solr: SolrClient) extends SearchIndexer wi
       solr.add(collectionName, toSolrDocument(resource), config.commitWithinMillis).getStatus
 
     event match
-      case ResourceAdded(resource)                       => loggingFailureIO(insertDocument(resource))
-      case ResourceUpdated(resource)                     => loggingFailureIO(insertDocument(resource))
-      case ResourceMoved(resourceId, _, newPath)         => loggingFailureIO(atomicUpdate(resourceId, FieldNames.path, newPath))
-      case ResourceFileMetaChanged(id, lastModifiedTime) => loggingFailureIO(atomicUpdate(id, FieldNames.lastModified, lastModifiedTime))
-      case ResourceDeleted(resourceId)                   => loggingFailureIO(solr.deleteById(collectionName, resourceId, config.commitWithinMillis).getStatus)
-      case BucketDeleted(bucketId)                       => deleteBucket(bucketId)
+      case ResourceAdded(resource)                                => loggingFailureIO(insertDocument(resource))
+      case ResourceUpdated(resource)                              => loggingFailureIO(insertDocument(resource))
+      case ResourceMoved(resourceId, _, newPath)                  => loggingFailureIO(atomicUpdate(resourceId, FieldNames.path, newPath))
+      case ResourceMovedAndModified(_, _, _, resource)            => loggingFailureIO(insertDocument(resource))
+      case ResourceFileMetaChanged(id, lastModifiedTime, fileKey) =>
+        loggingFailureIO {
+          atomicUpdate(id, FieldNames.lastModified, lastModifiedTime)
+          fileKey.foreach(key => atomicUpdate(id, FieldNames.fileKey, key))
+        }
+      case ResourceDeleted(resourceId)                            => loggingFailureIO(solr.deleteById(collectionName, resourceId, config.commitWithinMillis).getStatus)
+      case BucketDeleted(bucketId)                                => deleteBucket(bucketId)
 
   override def indexAll(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] =
     resources

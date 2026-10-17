@@ -2221,6 +2221,7 @@ components:
       required:
       - bucketId
       - resourceId
+      - contentVersion
       - start
       - end
       - tags
@@ -2228,6 +2229,8 @@ components:
         bucketId:
           type: string
         resourceId:
+          type: string
+        contentVersion:
           type: string
         start:
           type: integer
@@ -2321,6 +2324,7 @@ components:
       - tags
       - contentType
       - contentMeta
+      - contentVersion
       - clips
       - fullMeta
       properties:
@@ -2358,6 +2362,8 @@ components:
         thumbnailTimestamp:
           type: integer
           format: int32
+        contentVersion:
+          type: string
         clips:
           type: array
           items:

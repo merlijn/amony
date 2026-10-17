@@ -77,6 +77,7 @@ class LocalDirectoryBucket(
               updated     = info.copy(
                               size             = attrs.size(),
                               partialHash      = Some(hash),
+                              fileKey          = Option(attrs.fileKey()).map(_.toString),
                               timeLastModified = Some(attrs.lastModifiedTime().toMillis),
                               streamable       = streamable
                             )
@@ -93,9 +94,13 @@ class LocalDirectoryBucket(
     resource =>
       val resourcePath = config.resourcePath.resolve(resource.path)
       val attrs        = Files.readAttributes(resourcePath, classOf[BasicFileAttributes])
-      val updated      = resource.copy(size = attrs.size(), timeLastModified = Some(attrs.lastModifiedTime().toMillis))
+      val updated      = resource.copy(
+        size             = attrs.size(),
+        fileKey          = Option(attrs.fileKey()).map(_.toString),
+        timeLastModified = Some(attrs.lastModifiedTime().toMillis)
+      )
 
-      if updated.size != resource.size || updated.timeLastModified != resource.timeLastModified then
+      if updated.size != resource.size || updated.timeLastModified != resource.timeLastModified || updated.fileKey != resource.fileKey then
         logger.info(s"File system metadata changed for $resourcePath")
         db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceUpdated(updated)))
       else IO.unit
