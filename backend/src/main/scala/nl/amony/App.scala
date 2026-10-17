@@ -25,7 +25,7 @@ import sttp.tapir.server.tracing.otel4s.Otel4sTracing
 import nl.amony.lib.messagebus.{MessageTopic, MessageTopicKey, PersistentMessageBus}
 import nl.amony.lib.observability.Observability
 import nl.amony.lib.tapir.dsl.ServerEndpoints
-import nl.amony.modules.admin.{AdminRoutes, BucketAdminRoutes}
+import nl.amony.modules.admin.BucketAdminRoutes
 import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.config.ConfigRoutes
@@ -118,8 +118,7 @@ object App extends ResourceApp.Forever with Logging {
           val tapirEndpoints: ServerEndpoints[IO] =
             authModule.routes ++
               resourceModule.routes ++
-              AdminRoutes.apply(searchModule.searchService, searchModule.indexer, resourceModule.bucketRegistry) ++
-              BucketAdminRoutes.apply(resourceModule.bucketRegistry) ++
+              BucketAdminRoutes.apply(searchModule.searchService, searchModule.indexer, resourceModule.bucketRegistry) ++
               searchModule.routes(resourceModule.bucketRegistry) ++
               ConfigRoutes.apply(
                 resourceModule.thumbResolutions,
