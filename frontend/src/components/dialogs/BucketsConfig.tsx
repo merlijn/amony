@@ -77,6 +77,9 @@ const BucketsConfig = () => {
       />
     )
 
+  if (actions)
+    return <BucketActions bucket={actions} onBack={() => setActions(undefined)} />
+
   return (
     <div className="buckets-config">
       <div className="buckets-toolbar">
@@ -117,11 +120,6 @@ const BucketsConfig = () => {
         </tbody>
       </table>
 
-      <BucketActionsDialog
-        bucket={actions}
-        onHide={() => setActions(undefined)}
-      />
-
       <DeleteBucketDialog
         bucket={deleting}
         onHide={() => setDeleting(undefined)}
@@ -133,16 +131,14 @@ const BucketsConfig = () => {
 
 type AdminAction = 'refresh' | 'reindex' | 'rescan' | 'recompute' | 'generate-previews' | 'fix-non-streamable'
 
-type BucketActionsDialogProps = {
-  bucket: BucketConfigDto | undefined
-  onHide: () => void
+type BucketActionsProps = {
+  bucket: BucketConfigDto
+  onBack: () => void
 }
 
-const BucketActionsDialog = ({bucket, onHide}: BucketActionsDialogProps) => {
+const BucketActions = ({bucket, onBack}: BucketActionsProps) => {
   const [activeAction, setActiveAction] = useState<AdminAction | null>(null)
   const [error, setError] = useState<string | undefined>(undefined)
-
-  useEffect(() => { setActiveAction(null); setError(undefined) }, [bucket])
 
   const runAction = (action: AdminAction, apiCall: () => Promise<unknown>) => {
     setActiveAction(action)
@@ -153,7 +149,7 @@ const BucketActionsDialog = ({bucket, onHide}: BucketActionsDialogProps) => {
   }
 
   const anyLoading = activeAction !== null
-  const bucketId = bucket?.id ?? ""
+  const bucketId = bucket.id
 
   const actions: Array<{action: AdminAction, label: string, apiCall: () => Promise<unknown>}> = [
     {action: 'refresh', label: 'Refresh resources', apiCall: () => adminRefreshBucket({bucketId})},
@@ -165,34 +161,25 @@ const BucketActionsDialog = ({bucket, onHide}: BucketActionsDialogProps) => {
   ]
 
   return (
-    <RadixDialog.Root open={bucket !== undefined} onOpenChange={(open) => { if (!open && !anyLoading) onHide() }}>
-      <RadixDialog.Portal>
-        <RadixDialog.Overlay className="dialog-overlay" />
-        <RadixDialog.Content className="dialog-content">
-          <DialogWindow title="Actions">
-            <div className="bucket-actions-dialog">
-              <p className="bucket-actions-bucket">Bucket <strong>{bucket?.id}</strong></p>
+    <div className="bucket-form">
+      <div className="bucket-form-title">Actions for bucket '{bucket.id}'</div>
 
-              <InfoTable className="config-form">
-                {actions.map(({action, label, apiCall}) => (
-                  <InfoRow key={action} label={label}>
-                    <button type="button" disabled={anyLoading} onClick={() => runAction(action, apiCall)}>
-                      {activeAction === action ? <span className="admin-spinner" /> : "Go"}
-                    </button>
-                  </InfoRow>
-                ))}
-              </InfoTable>
+      <InfoTable className="config-form">
+        {actions.map(({action, label, apiCall}) => (
+          <InfoRow key={action} label={label}>
+            <button type="button" disabled={anyLoading} onClick={() => runAction(action, apiCall)}>
+              {activeAction === action ? <span className="admin-spinner" /> : "Go"}
+            </button>
+          </InfoRow>
+        ))}
+      </InfoTable>
 
-              {error && <div className="buckets-error">{error}</div>}
+      {error && <div className="buckets-error">{error}</div>}
 
-              <div className="bucket-form-actions">
-                <button className="button-secondary" type="button" onClick={onHide} disabled={anyLoading}>Close</button>
-              </div>
-            </div>
-          </DialogWindow>
-        </RadixDialog.Content>
-      </RadixDialog.Portal>
-    </RadixDialog.Root>
+      <div className="bucket-form-actions">
+        <button className="button-secondary" type="button" onClick={onBack} disabled={anyLoading}>Back</button>
+      </div>
+    </div>
   )
 }
 
