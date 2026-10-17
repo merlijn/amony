@@ -152,12 +152,12 @@ const BucketActions = ({bucket, onBack}: BucketActionsProps) => {
   const bucketId = bucket.id
 
   const actions: Array<{action: AdminAction, label: string, apiCall: () => Promise<unknown>}> = [
-    {action: 'refresh', label: 'Refresh resources', apiCall: () => adminRefreshBucket({bucketId})},
-    {action: 'reindex', label: 'Reindex resources', apiCall: () => adminReindexBucket({bucketId})},
-    {action: 'rescan', label: 'Rescan metadata', apiCall: () => adminRescanMetaData({bucketId})},
-    {action: 'recompute', label: 'Recompute hashes', apiCall: () => adminReComputeHashes({bucketId})},
-    {action: 'generate-previews', label: 'Generate thumbnails and clips', apiCall: () => adminGeneratePreviews({bucketId})},
-    {action: 'fix-non-streamable', label: 'Fix non streamable videos', apiCall: () => adminFixNonStreamable({bucketId})},
+    {action: 'refresh', label: 'Refresh resources', apiCall: () => adminRefreshBucket(bucketId)},
+    {action: 'reindex', label: 'Reindex resources', apiCall: () => adminReindexBucket(bucketId)},
+    {action: 'rescan', label: 'Rescan metadata', apiCall: () => adminRescanMetaData(bucketId)},
+    {action: 'recompute', label: 'Recompute hashes', apiCall: () => adminReComputeHashes(bucketId)},
+    {action: 'generate-previews', label: 'Generate thumbnails and clips', apiCall: () => adminGeneratePreviews(bucketId)},
+    {action: 'fix-non-streamable', label: 'Fix non streamable videos', apiCall: () => adminFixNonStreamable(bucketId)},
   ]
 
   return (
