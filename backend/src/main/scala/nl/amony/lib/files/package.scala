@@ -13,8 +13,8 @@ package object files {
     def stripExtension(): Path = {
       val fileName = path.getFileName.toString
       val dotIdx   = fileName.lastIndexOf('.')
-      val last     = if dotIdx >= 0 then dotIdx else fileName.length
-      path / fileName.substring(0, last)
+      val stripped = if dotIdx >= 0 then fileName.substring(0, dotIdx) else fileName
+      Option(path.getParent).map(_.resolve(stripped)).getOrElse(Path.of(stripped))
     }
 
     def fileExtension(): Option[String] = {
