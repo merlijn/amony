@@ -31,13 +31,14 @@ const TagsBar = (props: TagsBarProps) => {
           showDeleteButton = { props.showDeleteButton }
           tags             = { props.tags } 
           callBack         = { (newTags) => { props.onTagsUpdated(newTags) } } />
-        { (!showNewTag && props.showAddTagButton) && <MdOutlineAddCircleOutline onClick = { (e) => setShowNewTag(true) } className="add-tag-button" /> }
+        { (!showNewTag && props.showAddTagButton) && <MdOutlineAddCircleOutline onClick = { (e) => { e.stopPropagation(); setShowNewTag(true) } } className="add-tag-button" /> }
         <span 
           contentEditable
           key        = "new-tag"
           className  = "new-tag"
           ref        = { inputRef } 
           style      = { { visibility: showNewTag ? "visible" : "hidden" } }
+          onClick    = { (e) => e.stopPropagation() }
           onBlur     = { (e) => { 
             e.currentTarget.innerText = ""
             setShowNewTag(false) } 

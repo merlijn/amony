@@ -44,7 +44,8 @@ const TagEditor = (props: TagEditorProps) => {
         <div key={`tag-${tag}`} className="tag">{tag}
           { props.showDeleteButton && <MdClose
             className = "delete-tag"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation()
               const newTags = [...tags.slice(0, idx), ...tags.slice(idx + 1, tags.length) ]
               setTags(newTags)
               props.callBack(newTags)

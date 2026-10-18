@@ -32,22 +32,6 @@ export type RandomSort = {
 }
 
 export type Sort = RegularSort | RandomSort
-export type ThemeSetting = 'light' | 'dark' | 'system'
-export type GridAspectRatio = '2/1' | '16/9' | '3/2' | '5/4' | '1/1' | 'golden'
-export type GridOrientation = 'landscape' | 'portrait'
-
-export type Prefs = {
-  showSidebar: boolean
-  showTitles: boolean
-  showDuration: boolean
-  showDates: boolean
-  showResolution: boolean
-  /** Target width (px) of a single grid cell; the column count is derived from the available width. */
-  gridCellWidth: number
-  theme: ThemeSetting
-  gridAspectRatio: GridAspectRatio
-  gridOrientation: GridOrientation
-}
 
 export type SessionInfo = {
   userId: string

@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useEffect, ReactNode } from 'react';
-import { useLocalStorage } from 'usehooks-ts';
-import { Constants } from './api/Constants';
-import { ThemeSetting } from './api/Model';
+import { ThemeSetting, usePrefs } from './api/Prefs';
 import { resolveTheme, applyTheme, onSystemThemeChange } from './theme';
 
 type ThemeContextType = {
@@ -12,7 +10,7 @@ type ThemeContextType = {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [prefs, setPrefs] = useLocalStorage(Constants.preferenceKey, Constants.defaultPreferences);
+  const [prefs, updatePrefs] = usePrefs();
   const themeSetting = prefs.theme;
 
   // Apply theme whenever the setting changes
@@ -30,7 +28,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   }, [themeSetting]);
 
   const setTheme = (setting: ThemeSetting) => {
-    setPrefs({ ...prefs, theme: setting });
+    updatePrefs({ theme: setting });
   };
 
   return (

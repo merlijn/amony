@@ -1,6 +1,7 @@
 import { CSSProperties } from "react";
 import {Constants, rangeAsParameter} from "./Constants";
-import {GridAspectRatio, GridOrientation, ResourceSelection} from "./Model";
+import {GridAspectRatio, GridOrientation} from "./Prefs";
+import {ResourceSelection} from "./Model";
 import {FindResourcesParams} from "./generated";
 
 export function buildUrl(path: string, urlParams: Map<string, string> | undefined) {

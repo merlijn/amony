@@ -23,7 +23,8 @@ import {useAppConfig} from "../api/ConfigContext";
 import {thumbnailUrl} from "../api/ResourceUrls";
 import BulkUpdateTagsDialog from "./dialogs/BulkUpdateTagsDialog";
 import DeleteResourceDialog from "./dialogs/DeleteResourceDialog";
-import {useEventListener} from "./common/EventBus";
+import ResourceDetailsDialog from "./dialogs/ResourceDetailsDialog";
+import {usePrefs} from "../api/Prefs";
 
 type ListProps = {
   selection: ResourceSelection
@@ -34,7 +35,7 @@ const initialSearchResult: SearchResponseDto = { offset: 0, total: 0, results: [
 const rowHeight = 36
 
 /** Small fixed-size thumbnail used in the list rows (54x36 CSS px). */
-const ListThumbnail = ({resource, onClick}: {resource: ResourceDto, onClick: (v: ResourceDto) => any}) => {
+const ListThumbnail = ({resource}: {resource: ResourceDto}) => {
   const config = useAppConfig()
   const thumbnail = thumbnailUrl(resource, config, 54)
 
@@ -44,7 +45,6 @@ const ListThumbnail = ({resource, onClick}: {resource: ResourceDto, onClick: (v:
         <img
           src       = { thumbnail }
           alt       = "an image"
-          onClick   = { () => onClick(resource) }
           className = "list-thumbnail-img"
         />
       }
@@ -61,9 +61,19 @@ const ListView = (props: ListProps) => {
 
   const [showBulkTagModal, setShowBulkTagModal] = useState(false)
   const [resourceToDelete, setResourceToDelete] = useState<ResourceDto | undefined>(undefined)
+  const [resourceDetails, setResourceDetails] = useState<ResourceDto | undefined>(undefined)
 
   const navigate = useNavigate();
   const session = useContext(SessionContext)
+  const [prefs] = usePrefs()
+  const defaultAction = prefs.listView.defaultAction
+
+  const handleDefaultAction = (resource: ResourceDto) => {
+    if (defaultAction === 'show-info')
+      setResourceDetails(resource)
+    else
+      props.onClick(resource)
+  }
 
   const selectedResources = useMemo(
     () => selectedItems
@@ -243,16 +253,16 @@ const ListView = (props: ListProps) => {
         {
           searchResult.results.map((resource, index) => {
             return (
-              <tr key={`row-${resource.resourceId}`} className="list-row">
+              <tr key={`row-${resource.resourceId}`} className="list-row" onClick={() => handleDefaultAction(resource)}>
                 {
                   session.isAdmin() &&
-                    <td key="select" className="list-select" onClick={() => { toggle(index) }}>
+                    <td key="select" className="list-select" onClick={(e) => { e.stopPropagation(); toggle(index) }}>
                         <input type="checkbox" checked={selectedItems.indexOf(index) > -1}/>
                     </td>
                 }
                 <td key="thumbnail" className="list-thumbnail" style = { { paddingLeft: session.isAdmin() ? 0 : 2}}>
 
-                  <ListThumbnail resource={resource} onClick={props.onClick} />
+                  <ListThumbnail resource={resource} />
                 </td>
 
                 <TitleCell mediaResource={resource} />
@@ -272,7 +282,7 @@ const ListView = (props: ListProps) => {
                     {
                       session.isAdmin() &&
                         <div className="media-actions">
-                            <MdDelete className="delete-action" onClick={() => setResourceToDelete(resource)}/>
+                            <MdDelete className="delete-action" onClick={(e) => { e.stopPropagation(); setResourceToDelete(resource) }}/>
                         </div>
                     }
                     {`${resource.contentMeta.height}p`}
@@ -299,6 +309,12 @@ const ListView = (props: ListProps) => {
         visible   = { resourceToDelete !== undefined }
         onDeleted = { handleResourceDeleted }
         onHide    = { () => setResourceToDelete(undefined) }
+      />
+
+      <ResourceDetailsDialog
+        resource = { resourceDetails }
+        visible  = { resourceDetails !== undefined }
+        onHide   = { () => setResourceDetails(undefined) }
       />
     </>
   );
@@ -356,13 +372,14 @@ const TitleCell = ({ mediaResource, ...elementProps }: TitleCellProps ) => {
       <div className="cell-wrapper">
         { !editTitle && title }
         { (!editTitle && session.isAdmin()) &&
-            <FiEdit onClick = { () => { setEditTitle(true); } } className="edit-title" /> }
+            <FiEdit onClick = { (e) => { e.stopPropagation(); setEditTitle(true); } } className="edit-title" /> }
         { editTitle && 
           <input 
             ref        = { inputRef } 
             className  = "edit-title-input"
             type       = "text" 
             value      = { title } 
+            onClick    = { (e) => e.stopPropagation() }
             onBlur     = { () => { setEditTitle(false) } }
             onChange   = { (e) => { setTitle(e.target.value ) } }
             onKeyPress = { (e) => {

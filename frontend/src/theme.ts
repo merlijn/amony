@@ -1,4 +1,4 @@
-import { ThemeSetting } from "./api/Model";
+import { ThemeSetting } from "./api/Prefs";
 
 // Theme configuration
 export type Theme = 'light' | 'dark';
