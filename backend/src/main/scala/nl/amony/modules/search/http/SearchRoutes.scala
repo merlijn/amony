@@ -28,6 +28,7 @@ object SearchRoutes extends RoutesModule:
     u: Option[String],
     sort: Option[String],
     minRes: Option[Int],
+    maxRes: Option[Int],
     offset: Option[Int],
     tag: Option[String],
     untagged: Option[Boolean],
@@ -40,6 +41,7 @@ object SearchRoutes extends RoutesModule:
   val u          = query[Option[String]]("u").description("The upload date range (milliseconds since UTC)").example(Some("1771751993045-"))
   val sort       = query[Option[String]]("sort").description("Sort field and direction (e.g., title-asc, random-12345)").example(Some("title-asc"))
   val minRes     = query[Option[Int]]("min_res").description("The minimum (vertical) resolution").example(Some(720))
+  val maxRes     = query[Option[Int]]("max_res").description("The maximum (vertical) resolution").example(Some(1080))
   val offset     = query[Option[Int]]("offset").description("The offset for the search results").example(Some(12))
   val tag        = query[Option[String]]("tag").description("An optional tag")
   val untagged   = query[Option[Boolean]]("untagged").description("Only return resources without tags").example(Some(false))
@@ -52,7 +54,7 @@ object SearchRoutes extends RoutesModule:
       endpoint
         .name("findResources").tag("search").description("Find resources using a search query").get
         .in(
-          "api" / "search" / "media" / q and n and d and u and sort and minRes and offset and tag and untagged and streamable
+          "api" / "search" / "media" / q and n and d and u and sort and minRes and maxRes and offset and tag and untagged and streamable
         ).mapInTo[SearchQueryInput]
         .securityIn(securityInput).errorOut(errorOutput).out(jsonBody[SearchResponseDto])
     )
@@ -109,7 +111,7 @@ object SearchRoutes extends RoutesModule:
             includeTags     =
               if queryDto.untagged.contains(true) then Set.empty else queryDto.tag.map(s => sanitize(s, 32, c => c.isLetterOrDigit)).toSet,
             excludeBuckets  = excludeBuckets,
-            resolutionRange = ResolutionRange(min = queryDto.minRes, max = None),
+            resolutionRange = ResolutionRange(min = queryDto.minRes, max = queryDto.maxRes),
             durationRange   = DurationRange(minDuration, maxDuration),
             uploadDateRange = UploadDateRange(minUploadDate, maxUploadDate),
             sort            = Some(sortOption),

@@ -127,7 +127,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
       query.streamable.foreach(streamable => sb.append(s" AND ${FieldNames.streamable}:$streamable"))
 
       if query.resolutionRange.min.isDefined || query.resolutionRange.max.isDefined then
-        sb.append(s" AND ${FieldNames.width}:[${query.resolutionRange.min.getOrElse(0)} TO ${query.resolutionRange.max.getOrElse("*")}]")
+        sb.append(s" AND ${FieldNames.height}:[${query.resolutionRange.min.getOrElse(0)} TO ${query.resolutionRange.max.getOrElse("*")}]")
 
       if query.durationRange.min.isDefined || query.durationRange.max.isDefined then
         sb.append(s" AND ${FieldNames.duration}:[${query.durationRange.min.getOrElse(0)} TO ${query.durationRange.max.getOrElse("*")}]")
