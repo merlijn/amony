@@ -524,6 +524,14 @@ paths:
           type: integer
           format: int32
         example: 720
+      - name: max_res
+        in: query
+        description: The maximum (vertical) resolution
+        required: false
+        schema:
+          type: integer
+          format: int32
+        example: 1080
       - name: offset
         in: query
         description: The offset for the search results

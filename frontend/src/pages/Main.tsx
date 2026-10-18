@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {useLocation, useNavigate} from "react-router-dom";
-import {parseDurationParam, parseSortParam} from "../api/Constants";
+import {parseResolutionParam, parseSortParam, parseThresholdRangeParam} from "../api/Constants";
 import {MediaView, ResourceSelection} from "../api/Model";
 import {useListener, useStateNeq} from "../api/ReactUtils";
 import GridView from "../components/GridView";
@@ -36,11 +36,11 @@ const Main = () => {
         playlist: urlParams.get("playlist") || undefined,
         tag: untagged ? undefined : urlParams.get("tag") || undefined,
         untagged: untagged || undefined,
-        streamable: urlParams.has("streamable") ? urlParams.get("streamable")!.toLowerCase() === "true" : undefined,
+        streamable: urlParams.get("streamable")?.toLowerCase() === "false" ? false : undefined,
         sort: parseSortParam(urlParams.get("s") || "date_added;desc"),
-        duration: urlParams.has("d") ? parseDurationParam(urlParams.get("d") || "-") : undefined,
-        uploadAge: urlParams.has("u") ? parseDurationParam(urlParams.get("u") || "-") : undefined,
-        minimumQuality: parseInt(urlParams.get("vq") || "0")
+        duration: parseThresholdRangeParam(urlParams.get("d") || "-"),
+        uploadAge: parseThresholdRangeParam(urlParams.get("u") || "-"),
+        resolution: parseResolutionParam(urlParams.get("vq") || "0"),
       }
     }
 

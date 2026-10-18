@@ -1,29 +1,18 @@
-import {useContext, useEffect, useMemo, useState} from "react";
+import {useEffect, useState} from "react";
 import {useLocation, useNavigate} from "react-router-dom";
 import {buildUrl, copyParams} from "../../api/Util";
 import './TagBar.scss';
-import {SessionContext} from "../../api/Constants";
-
-const NONE_TAG_LABEL = "-"
 
 const TagBar = (props: { tags: Array<string>, total: number }) => {
 
   const location = useLocation();
   const navigate = useNavigate();
-  const session = useContext(SessionContext)
 
   const [selectedTag, setSelectedTag] = useState<string | undefined>(undefined)
-  const [untaggedSelected, setUntaggedSelected] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
-    const untaggedParam = (params.get("untagged") || "").toLowerCase() === "true"
-    setUntaggedSelected(untaggedParam)
-
-    if (untaggedParam)
-      setSelectedTag(undefined)
-    else
-      setSelectedTag(params.get("tag") || undefined)
+    setSelectedTag(params.get("tag") || undefined)
   }, [location]);
 
   const toggleTag = (tag: string) => {
@@ -39,37 +28,15 @@ const TagBar = (props: { tags: Array<string>, total: number }) => {
     navigate(buildUrl("/search", newParams));
   };
 
-  const toggleUntagged = () => {
-    const params = new URLSearchParams(location.search)
-    const newParams = copyParams(params)
-
-    if (untaggedSelected)
-      newParams.delete("untagged")
-    else {
-      newParams.set("untagged", "true")
-      newParams.delete("tag")
-    }
-
-    navigate(buildUrl("/search", newParams));
-  }
-
-  const tags = useMemo(
-    () => session.isAdmin()
-      ? [NONE_TAG_LABEL, ...props.tags.filter(tag => tag !== NONE_TAG_LABEL)]
-      : props.tags.filter(tag => tag !== NONE_TAG_LABEL), [props.tags]
-  )
-
   return (
     <div className="tag-bar">
       <div key="tags" className="tags">
         {
-          tags.map(tag => {
-            const isSelected = tag === NONE_TAG_LABEL ? untaggedSelected : tag === selectedTag
-            const className = isSelected ? "tag selected-tag" : "tag"
-            const onClick = tag === NONE_TAG_LABEL ? toggleUntagged : () => toggleTag(tag)
+          props.tags.map(tag => {
+            const className = tag === selectedTag ? "tag selected-tag" : "tag"
 
             return (
-              <div key={`tag-${tag}`} className={className} onClick={onClick}>
+              <div key={`tag-${tag}`} className={className} onClick={() => toggleTag(tag)}>
                 {tag}
               </div>
             )
