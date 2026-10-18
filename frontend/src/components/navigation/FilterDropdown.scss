@@ -49,7 +49,6 @@
           background-color: var(--bg-hover-subtle);
         }
 
-        .sort-action-icon,
         .direction-icon {
           cursor: pointer;
           vertical-align: middle;
@@ -58,13 +57,16 @@
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          margin-left: var(--space-3);
           font-weight: 600;
           color: var(--accent);
 
           &:hover {
             color: var(--text-primary);
           }
+        }
+
+        .direction-icon.leading {
+          margin-right: var(--space-3);
         }
 
         .threshold-sign {
@@ -75,10 +77,6 @@
           font-weight: 600;
           color: var(--accent);
           transform: translateY(-0.075em);
-        }
-
-        .icon-hidden {
-          visibility: hidden;
         }
       }
     }

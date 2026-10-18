@@ -107,10 +107,6 @@ const SortSection = ({ selectedValue, onChange }: SortSectionProps) => {
     onChange({ field: "random", seed: generateRandomSeed() });
   };
 
-  const refreshRandom = () => {
-    onChange({ field: "random", seed: generateRandomSeed() });
-  };
-
   const toggleDirection = () => {
     if (selectedValue.field === "random") return
     const newDir = selectedValue.direction === "asc" ? "desc" : "asc"
@@ -123,9 +119,7 @@ const SortSection = ({ selectedValue, onChange }: SortSectionProps) => {
       {Constants.sortOptions.map((option, index) => {
         const isSelected = !isRandom && selectedValue.field === option.value.field
         const onClick = () => isSelected ? toggleDirection() : onChange(option.value)
-        const dirIcon = selectedValue.field !== "random" && isSelected ? (
-          selectedValue.direction === "asc" ? <MdArrowUpward /> : <MdArrowDownward />
-        ) : undefined
+        const direction = isSelected ? selectedValue.direction : option.value.direction
         return (
           <div key={`sort-${index}`} className="filter-option" onClick={onClick}>
             <input
@@ -136,14 +130,10 @@ const SortSection = ({ selectedValue, onChange }: SortSectionProps) => {
               onChange={onClick}
               onClick={(e) => e.stopPropagation()}
             />
-            {option.label}
-            <span
-              className={`direction-icon${isSelected ? "" : " icon-hidden"}`}
-              onClick={(e) => { if (isSelected) { e.stopPropagation(); toggleDirection() } }}
-              title={isSelected ? `Sort ${selectedValue.direction === "asc" ? "descending" : "ascending"}` : ""}
-            >
-              {dirIcon}
+            <span className="direction-icon leading">
+              {direction === "asc" ? <MdArrowUpward /> : <MdArrowDownward />}
             </span>
+            {option.label}
           </div>
         )
       })}
@@ -156,15 +146,8 @@ const SortSection = ({ selectedValue, onChange }: SortSectionProps) => {
           onChange={selectRandom}
           onClick={(e) => e.stopPropagation()}
         />
+        <span className="direction-icon leading"><MdRefresh /></span>
         Random
-        <MdRefresh
-          className={`sort-action-icon${isRandom ? "" : " icon-hidden"}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (isRandom) refreshRandom();
-          }}
-          title={isRandom ? "New random order" : ""}
-        />
       </div>
     </div>
   );
