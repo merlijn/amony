@@ -1,4 +1,5 @@
-import {Prefs, Resolution, SessionInfo, Sort, SortDirection, RegularSort} from "./Model";
+import {Prefs} from "./Prefs";
+import {Resolution, SessionInfo, Sort, SortDirection, RegularSort} from "./Model";
 import { useUrlParam } from "./ReactUtils";
 import React from "react";
 
@@ -83,15 +84,20 @@ const uploadOptions: Array<{value: [number?, number?], label: string}> = [
   { value: [365*24 * secondsPerHour, undefined], label: "> 1 year ago" }];
 
 const defaultPrefs: Prefs = {
-  showSidebar:     false,
-  showTitles:      true,
-  showDuration:    true,
-  showDates:       true,
-  showResolution:  true,
-  gridCellWidth:   320,
-  theme:           "system",
-  gridAspectRatio: "golden",
-  gridOrientation: "landscape",
+  showSidebar: false,
+  theme:       "system",
+  grid: {
+    cellWidth:      320,
+    aspectRatio:    "golden",
+    orientation:    "landscape",
+    showTitles:     true,
+    showDuration:   true,
+    showDates:      true,
+    showResolution: true,
+  },
+  listView: {
+    defaultAction: "view",
+  },
 }
 
 const anonymousSession: SessionInfo = {

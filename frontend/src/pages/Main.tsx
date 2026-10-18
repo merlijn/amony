@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {useLocation, useNavigate} from "react-router-dom";
-import {Constants, parseDurationParam, parseSortParam} from "../api/Constants";
+import {parseDurationParam, parseSortParam} from "../api/Constants";
 import {MediaView, ResourceSelection} from "../api/Model";
 import {useListener, useStateNeq} from "../api/ReactUtils";
 import GridView from "../components/GridView";
@@ -14,7 +14,7 @@ import {buildUrl, copyParams, cssAspectRatio} from "../api/Util";
 import * as Dialog from "@radix-ui/react-dialog";
 import ConfigMenu from "../components/dialogs/ConfigMenu";
 import {ResourceDto} from "../api/generated";
-import {useLocalStorage} from "usehooks-ts";
+import {usePrefs} from "../api/Prefs";
 
 const Main = () => {
   
@@ -24,8 +24,7 @@ const Main = () => {
     const [showNavigation, setShowNavigation] = useState(true)
     const [view, setView] = useState<MediaView>('grid')
     const [showSettings,   setShowSettings]   = useState(false)
-    // const [prefs, updatePrefs] = useLocalStoragePrefs<Prefs>(Constants.preferenceKey, Constants.defaultPreferences)
-    const [prefs, updatePrefs, removeValue] = useLocalStorage(Constants.preferenceKey, Constants.defaultPreferences)
+    const [prefs, updatePrefs] = usePrefs()
 
     const getSelection = (): ResourceSelection => {
       const urlParams = new URLSearchParams(location.search)
@@ -85,7 +84,7 @@ const Main = () => {
     }
 
     const setShowSidebar = (value: boolean) => {
-      updatePrefs({...prefs, showSidebar: !prefs.showSidebar})
+      updatePrefs({showSidebar: !prefs.showSidebar})
     }
 
     return (
@@ -120,17 +119,17 @@ const Main = () => {
                   showTagbar = { showNavigation }
                   componentType = 'page'
                   onClick   = { (v: ResourceDto) => setShowResource(v) }
-                  cellWidth = { typeof prefs.gridCellWidth === 'number' ? prefs.gridCellWidth : Constants.defaultPreferences.gridCellWidth }
+                  cellWidth = { prefs.grid.cellWidth }
                   previewOptionsFn = { (v: ResourceDto) => {
                       return {
                         showPreviewOnHover: !isMobile,
-                        showInfoBar: prefs.showTitles,
-                        showDates: prefs.showDates,
-                        showDuration: prefs.showDuration,
-                        showResolution: prefs.showResolution,
+                        showInfoBar: prefs.grid.showTitles,
+                        showDates: prefs.grid.showDates,
+                        showDuration: prefs.grid.showDuration,
+                        showResolution: prefs.grid.showResolution,
                         aspectRatio: cssAspectRatio(
-                          prefs.gridAspectRatio ?? Constants.defaultPreferences.gridAspectRatio,
-                          prefs.gridOrientation ?? "landscape"
+                          prefs.grid.aspectRatio,
+                          prefs.grid.orientation
                         )
                       }
                     }

@@ -257,5 +257,9 @@ $row-height: 36px;
         }
       }
     }
+
+    tbody .list-row {
+      @extend .hover-pointer;
+    }
   }
 }
