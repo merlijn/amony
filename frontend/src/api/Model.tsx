@@ -1,12 +1,19 @@
+export type ThresholdDirection = 'min' | 'max'
+
+export type ThresholdFilter = {
+  value: number
+  direction: ThresholdDirection
+}
+
 export type ResourceSelection = {
   query?: string
   playlist?: string
   tag?: string
   untagged?: boolean
   streamable?: boolean
-  duration?: [number?, number?]
-  uploadAge?: [number?, number?]
-  minimumQuality: number
+  duration?: ThresholdFilter
+  uploadAge?: ThresholdFilter
+  resolution?: ThresholdFilter
   sort: Sort
 }
 

@@ -1,5 +1,5 @@
 import {Prefs} from "./Prefs";
-import {Resolution, SessionInfo, Sort, SortDirection, RegularSort} from "./Model";
+import {Resolution, SessionInfo, Sort, SortDirection, RegularSort, ThresholdFilter} from "./Model";
 import { useUrlParam } from "./ReactUtils";
 import React from "react";
 
@@ -65,23 +65,49 @@ export const rangeAsParameter = (v: [number?, number?]) => {
   return `${v[0] !== undefined ? v[0] : ""}-${v[1] !== undefined ? v[1] : ""}`;
 }
 
-const durationOptions: Array<{value: [number?, number?], label: string}> = [
-  { value: [undefined, undefined], label: "any" },
-  { value: [undefined, 60], label: "< 1 minute" },
-  { value: [60, 600], label: "1-10 minutes" },
-  { value: [600, 1800], label: "10-30 minutes" },
-  { value: [1800, 3600], label: "30-60 minutes" },
-  { value: [3600, undefined], label: "> 60 minutes" }];
+export const parseResolutionParam = (param: string): ThresholdFilter | undefined => {
+  const [value, direction] = param.split("-", 2)
+  const resolved = parseInt(value, 10)
 
-const secondsPerHour = 3600;
+  if (!resolved)
+    return undefined
 
-const uploadOptions: Array<{value: [number?, number?], label: string}> = [
-  { value: [undefined, undefined], label: "any" },
-  { value: [undefined, 24 * secondsPerHour], label: "last 24 hours" },
-  { value: [undefined, 7*24 * secondsPerHour], label: "last 7 days" },
-  { value: [undefined, 30*24 * secondsPerHour], label: "last 30 days" },
-  { value: [undefined, 365*24 * secondsPerHour], label: "last year" },
-  { value: [365*24 * secondsPerHour, undefined], label: "> 1 year ago" }];
+  return { value: resolved, direction: direction === "max" ? "max" : "min" }
+}
+
+export const resolutionAsParameter = (filter: ThresholdFilter | undefined) =>
+  filter ? `${filter.value}-${filter.direction}` : "0"
+
+export const parseThresholdRangeParam = (param: string): ThresholdFilter | undefined => {
+  const [min, max] = parseDurationParam(param)
+
+  if (min !== undefined)
+    return { value: min, direction: "min" }
+  if (max !== undefined)
+    return { value: max, direction: "max" }
+
+  return undefined
+}
+
+export const thresholdRangeAsParameter = (filter: ThresholdFilter | undefined) =>
+  rangeAsParameter(filter
+    ? [filter.direction === "min" ? filter.value : undefined, filter.direction === "max" ? filter.value : undefined]
+    : [undefined, undefined])
+
+const durationOptions: Array<{value: number, label: string}> = [
+  { value: 0,    label: "Any" },
+  { value: 60,   label: "1 minute" },
+  { value: 600,  label: "10 minutes" },
+  { value: 1800, label: "30 minutes" },
+  { value: 3600, label: "60 minutes" }];
+
+const uploadOptions: Array<{value: number, label: string}> = [
+  { value: 0,         label: "Any" },
+  { value: 3600,      label: "1 hour" },
+  { value: 24 * 3600, label: "24 hours" },
+  { value: 7 * 24 * 3600,  label: "7 days" },
+  { value: 30 * 24 * 3600, label: "30 days" },
+  { value: 365 * 24 * 3600, label: "1 year" }];
 
 const defaultPrefs: Prefs = {
   showSidebar: false,

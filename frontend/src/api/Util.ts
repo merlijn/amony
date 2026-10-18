@@ -103,6 +103,7 @@ export function zeroPad(n: number, d: number) {
 export function resourceSelectionToParams(selection: ResourceSelection, offset: number, n: number): FindResourcesParams {
   const duration= selection.duration
   const uploadAge = selection.uploadAge
+  const resolution = selection.resolution
   const nowMillis = Date.now()
 
   const sort = selection.sort.field === "random"
@@ -117,9 +118,10 @@ export function resourceSelectionToParams(selection: ResourceSelection, offset: 
     untagged: selection.untagged || undefined,
     streamable: selection.streamable,
     sort: sort,
-    min_res: selection.minimumQuality,
-    d: duration ? rangeAsParameter([duration[0] ? duration[0] * 1000 : duration[0], duration[1] ? duration[1] * 1000 : duration[1]]) : undefined,
-    u: uploadAge ? rangeAsParameter([uploadAge[1] ? nowMillis - uploadAge[1] * 1000 : uploadAge[1], uploadAge[0] ? nowMillis - uploadAge[0] * 1000 : uploadAge[0]]) : undefined
+    min_res: resolution?.direction === "min" ? resolution.value : undefined,
+    max_res: resolution?.direction === "max" ? resolution.value : undefined,
+    d: duration ? rangeAsParameter([duration.direction === "min" ? duration.value * 1000 : undefined, duration.direction === "max" ? duration.value * 1000 : undefined]) : undefined,
+    u: uploadAge ? rangeAsParameter([uploadAge.direction === "max" ? nowMillis - uploadAge.value * 1000 : undefined, uploadAge.direction === "min" ? nowMillis - uploadAge.value * 1000 : undefined]) : undefined
   }
 }
 

@@ -1,11 +1,12 @@
 import {useUrlParam} from "../../api/ReactUtils";
-import {Constants, rangeAsParameter, parseDurationParam, useSortParam, generateRandomSeed} from "../../api/Constants";
+import {Constants, generateRandomSeed, parseResolutionParam, parseThresholdRangeParam, resolutionAsParameter, thresholdRangeAsParameter, useSortParam} from "../../api/Constants";
 import * as Popover from "@radix-ui/react-popover";
 import './FilterDropdown.scss';
 import {MdTune, MdRefresh, MdArrowUpward, MdArrowDownward} from "react-icons/md";
-import _ from "lodash";
 import React, { useEffect, useRef, useState } from "react";
-import {Sort} from "../../api/Model";
+import {Sort, ThresholdDirection, ThresholdFilter} from "../../api/Model";
+import {useLocation, useNavigate} from "react-router-dom";
+import {buildUrl, copyParams} from "../../api/Util";
 
 const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
 
@@ -16,6 +17,29 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
   const [streamableParam, setStreamableParam] = useUrlParam("streamable", "")
   const triggerRef = useRef<HTMLButtonElement>(null)
   const [contentWidth, setContentWidth] = useState(0)
+
+  const navigate = useNavigate()
+  const location = useLocation()
+  const untaggedSelected      = (new URLSearchParams(location.search).get("untagged") || "").toLowerCase() === "true"
+  const nonStreamableSelected = streamableParam.toLowerCase() === "false"
+
+  const toggleUntagged = () => {
+    const params = new URLSearchParams(location.search)
+    const newParams = copyParams(params)
+
+    if (untaggedSelected)
+      newParams.delete("untagged")
+    else {
+      newParams.set("untagged", "true")
+      newParams.delete("tag")
+    }
+
+    navigate(buildUrl("/search", newParams));
+  }
+
+  const toggleNonStreamable = () => {
+    setStreamableParam(nonStreamableSelected ? "" : "false")
+  }
 
   useEffect(() => {
     const parent = triggerRef.current?.parentElement
@@ -39,33 +63,31 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
               selectedValue = { sortParam }
               onChange      = { setSortParam }
             />
-            <RadioSelectGroup
+            <ThresholdSelectGroup
               header        = "Resolution"
-              options       = { Constants.resolutions.map(option => ({ label: option.label, value: option.value.toString() })) }
-              selectedValue = { vqParam }
-              onChange      = { value => setVqParam(value) }
+              options       = { Constants.resolutions.map(option => ({ value: option.value, label: option.label })) }
+              selectedValue = { parseResolutionParam(vqParam) }
+              onChange      = { value => setVqParam(resolutionAsParameter(value)) }
             />
-            <RadioSelectGroup
+            <ThresholdSelectGroup
               header        = "Duration"
               options       = { Constants.durationOptions }
-              selectedValue = { parseDurationParam(durationParam) }
-              onChange      = { value => setDurationParam(rangeAsParameter(value)) }
+              selectedValue = { parseThresholdRangeParam(durationParam) }
+              onChange      = { value => setDurationParam(thresholdRangeAsParameter(value)) }
             />
-            <RadioSelectGroup
-              header        = "Upload date"
-              options       = { Constants.uploadOptions }
-              selectedValue = { parseDurationParam(uploadParam)}
-              onChange      = { value => setUploadParam(rangeAsParameter(value)) }
+            <ThresholdSelectGroup
+              header           = "Upload date"
+              options          = { Constants.uploadOptions }
+              selectedValue    = { parseThresholdRangeParam(uploadParam) }
+              onChange         = { value => setUploadParam(thresholdRangeAsParameter(value)) }
+              defaultDirection = "max"
             />
-            <RadioSelectGroup
-              header        = "Streaming"
-              options       = { [
-                { label: "All",            value: "" },
-                { label: "Streamable",     value: "true" },
-                { label: "Not streamable", value: "false" },
+            <CheckboxSelectGroup
+              header  = "Other"
+              options = { [
+                { label: "Untagged",       checked: untaggedSelected,      onChange: toggleUntagged },
+                { label: "Non Streamable", checked: nonStreamableSelected, onChange: toggleNonStreamable },
               ] }
-              selectedValue = { streamableParam }
-              onChange      = { value => setStreamableParam(value) }
             />
           </div>
         </Popover.Content>
@@ -112,10 +134,11 @@ const SortSection = ({ selectedValue, onChange }: SortSectionProps) => {
               value={option.label}
               checked={isSelected}
               onChange={onClick}
+              onClick={(e) => e.stopPropagation()}
             />
             {option.label}
             <span
-              className={`sort-direction-icon${isSelected ? "" : " sort-icon-hidden"}`}
+              className={`direction-icon${isSelected ? "" : " icon-hidden"}`}
               onClick={(e) => { if (isSelected) { e.stopPropagation(); toggleDirection() } }}
               title={isSelected ? `Sort ${selectedValue.direction === "asc" ? "descending" : "ascending"}` : ""}
             >
@@ -131,10 +154,11 @@ const SortSection = ({ selectedValue, onChange }: SortSectionProps) => {
           value="Random"
           checked={isRandom}
           onChange={selectRandom}
+          onClick={(e) => e.stopPropagation()}
         />
         Random
         <MdRefresh
-          className={`sort-action-icon${isRandom ? "" : " sort-icon-hidden"}`}
+          className={`sort-action-icon${isRandom ? "" : " icon-hidden"}`}
           onClick={(e) => {
             e.stopPropagation();
             if (isRandom) refreshRandom();
@@ -146,25 +170,74 @@ const SortSection = ({ selectedValue, onChange }: SortSectionProps) => {
   );
 };
 
-type RadioSelectProps<T> = {
+type ThresholdSelectProps = {
   header: string;
-  options: Array<{ label: string, value: T }>;
-  selectedValue: T;
-  onChange: (value: T) => void;
+  options: Array<{ label: string, value: number }>;
+  selectedValue: ThresholdFilter | undefined;
+  onChange: (value: ThresholdFilter | undefined) => void;
+  defaultDirection?: ThresholdDirection;
 };
 
-const RadioSelectGroup = <T,>({ header, options, selectedValue, onChange }: RadioSelectProps<T>) => {
+const ThresholdSelectGroup = ({ header, options, selectedValue, onChange, defaultDirection = "min" }: ThresholdSelectProps) => {
+
+  const select = (value: number) => {
+    if (value === 0)
+      onChange(undefined)
+    else if (value === selectedValue?.value)
+      onChange({ value, direction: selectedValue.direction === "min" ? "max" : "min" })
+    else
+      onChange({ value, direction: defaultDirection })
+  }
+
+  return (
+    <div className="filter-section">
+      <div className="section-header">{header}</div>
+      {options.map(option => {
+        const isSelected = option.value === (selectedValue?.value ?? 0)
+        const direction = isSelected ? selectedValue?.direction ?? defaultDirection : defaultDirection
+        return (
+          <div key={`${header}-${option.value}`} className="filter-option" onClick={() => select(option.value)}>
+            <input
+              type="radio"
+              name={header}
+              value={option.label}
+              checked={isSelected}
+              onChange={() => select(option.value)}
+              onClick={(e) => e.stopPropagation()}
+            />
+            {option.value !== 0 && (
+              <span className="threshold-sign">{direction === "min" ? ">" : "<"}</span>
+            )}
+            {option.label}
+          </div>
+        )
+      })}
+    </div>
+  );
+};
+
+type CheckboxOption = {
+  label: string;
+  checked: boolean;
+  onChange: () => void;
+};
+
+type CheckboxSelectProps = {
+  header: string;
+  options: Array<CheckboxOption>;
+};
+
+const CheckboxSelectGroup = ({ header, options }: CheckboxSelectProps) => {
   return (
     <div className="filter-section">
       <div className="section-header">{header}</div>
       {options.map((option, index) => (
-        <div key={`${header}-${index}`} className="filter-option" onClick={() => onChange(option.value)}>
+        <div key={`${header}-${index}`} className="filter-option" onClick={option.onChange}>
           <input
-            type="radio"
-            name={header}
-            value={option.label}
-            checked={_.isEqual(selectedValue, option.value)}
-            onChange={() => onChange(option.value)}
+            type="checkbox"
+            checked={option.checked}
+            onChange={option.onChange}
+            onClick={(e) => e.stopPropagation()}
           />
           {option.label}
         </div>

@@ -50,13 +50,16 @@
         }
 
         .sort-action-icon,
-        .sort-direction-icon {
-          margin-left: var(--space-3);
+        .direction-icon {
           cursor: pointer;
           vertical-align: middle;
           width: 18px;
           height: 18px;
-          display: inline-block;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          margin-left: var(--space-3);
+          font-weight: 600;
           color: var(--accent);
 
           &:hover {
@@ -64,7 +67,17 @@
           }
         }
 
-        .sort-icon-hidden {
+        .threshold-sign {
+          display: inline-block;
+          width: 18px;
+          margin-right: var(--space-3);
+          text-align: center;
+          font-weight: 600;
+          color: var(--accent);
+          transform: translateY(-0.075em);
+        }
+
+        .icon-hidden {
           visibility: hidden;
         }
       }
