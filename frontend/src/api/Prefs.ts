@@ -1,16 +1,15 @@
 import {useLocalStorage} from "usehooks-ts"
+import * as v from "valibot"
 import {Constants} from "./Constants"
 
 export const themeSettings = ['system', 'light', 'dark'] as const
-export type ThemeSetting = typeof themeSettings[number]
-
 export const gridAspectRatios = ['2/1', '16/9', '3/2', '5/4', '1/1', 'golden'] as const
-export type GridAspectRatio = typeof gridAspectRatios[number]
-
 export const gridOrientations = ['landscape', 'portrait'] as const
-export type GridOrientation = typeof gridOrientations[number]
-
 export const listViewDefaultActions = ['view', 'show-info'] as const
+
+export type ThemeSetting = typeof themeSettings[number]
+export type GridAspectRatio = typeof gridAspectRatios[number]
+export type GridOrientation = typeof gridOrientations[number]
 export type ListViewDefaultAction = typeof listViewDefaultActions[number]
 
 export type GridPrefs = {
@@ -35,53 +34,36 @@ export type Prefs = {
   listView: ListViewPrefs
 }
 
-type RecordValue = Record<string, unknown>
+const defaults = Constants.defaultPreferences
 
-const asRecord = (value: unknown): RecordValue =>
-  typeof value === "object" && value !== null && !Array.isArray(value) ? value as RecordValue : {}
+// Every field falls back to its default, so a partially written or outdated
+// config is repaired instead of rejected. The group and root schemas fall back
+// too, to tolerate configs that predate a group entirely.
+const GridPrefsSchema = v.object({
+  cellWidth:      v.fallback(v.pipe(v.number(), v.finite()), defaults.grid.cellWidth),
+  aspectRatio:    v.fallback(v.picklist(gridAspectRatios), defaults.grid.aspectRatio),
+  orientation:    v.fallback(v.picklist(gridOrientations), defaults.grid.orientation),
+  showTitles:     v.fallback(v.boolean(), defaults.grid.showTitles),
+  showDuration:   v.fallback(v.boolean(), defaults.grid.showDuration),
+  showDates:      v.fallback(v.boolean(), defaults.grid.showDates),
+  showResolution: v.fallback(v.boolean(), defaults.grid.showResolution),
+})
 
-const asBoolean = (value: unknown, fallback: boolean): boolean =>
-  typeof value === "boolean" ? value : fallback
+const ListViewPrefsSchema = v.object({
+  defaultAction: v.fallback(v.picklist(listViewDefaultActions), defaults.listView.defaultAction),
+})
 
-const asNumber = (value: unknown, fallback: number): number =>
-  typeof value === "number" && Number.isFinite(value) ? value : fallback
-
-const asOption = <T extends string>(value: unknown, options: readonly T[], fallback: T): T =>
-  options.includes(value as T) ? value as T : fallback
-
-const parseGridPrefs = (value: unknown): GridPrefs => {
-  const stored   = asRecord(value)
-  const defaults = Constants.defaultPreferences.grid
-
-  return {
-    cellWidth:      asNumber(stored.cellWidth, defaults.cellWidth),
-    aspectRatio:    asOption(stored.aspectRatio, gridAspectRatios, defaults.aspectRatio),
-    orientation:    asOption(stored.orientation, gridOrientations, defaults.orientation),
-    showTitles:     asBoolean(stored.showTitles, defaults.showTitles),
-    showDuration:   asBoolean(stored.showDuration, defaults.showDuration),
-    showDates:      asBoolean(stored.showDates, defaults.showDates),
-    showResolution: asBoolean(stored.showResolution, defaults.showResolution),
-  }
-}
-
-const parseListViewPrefs = (value: unknown): ListViewPrefs => {
-  const defaults = Constants.defaultPreferences.listView
-
-  return {
-    defaultAction: asOption(asRecord(value).defaultAction, listViewDefaultActions, defaults.defaultAction),
-  }
-}
+const PrefsSchema = v.object({
+  showSidebar: v.fallback(v.boolean(), defaults.showSidebar),
+  theme:       v.fallback(v.picklist(themeSettings), defaults.theme),
+  grid:        v.fallback(GridPrefsSchema, defaults.grid),
+  listView:    v.fallback(ListViewPrefsSchema, defaults.listView),
+})
 
 export const deserializePrefs = (raw: string): Prefs => {
   try {
-    const value = asRecord(JSON.parse(raw))
-
-    return {
-      showSidebar: asBoolean(value.showSidebar, Constants.defaultPreferences.showSidebar),
-      theme:       asOption(value.theme, themeSettings, Constants.defaultPreferences.theme),
-      grid:        parseGridPrefs(value.grid),
-      listView:    parseListViewPrefs(value.listView),
-    }
+    const result = v.safeParse(PrefsSchema, JSON.parse(raw))
+    return result.success ? result.output : Constants.defaultPreferences
   } catch {
     return Constants.defaultPreferences
   }
