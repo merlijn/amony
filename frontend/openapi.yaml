@@ -561,6 +561,13 @@ paths:
         schema:
           type: boolean
         example: false
+      - name: no_thumbnail
+        in: query
+        description: Only return videos without a custom thumbnail timestamp
+        required: false
+        schema:
+          type: boolean
+        example: false
       responses:
         '200':
           description: ''

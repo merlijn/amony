@@ -84,7 +84,7 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
     )
   }
 
-  private def toSolrQuery(query: Query) = {
+  private[solr] def toSolrQuery(query: Query) = {
 
     val sort = query.sort.getOrElse(defaultSort)
 
@@ -125,6 +125,9 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
       if query.untagged.contains(true) then sb.append(s" AND -${FieldNames.tags}:[* TO *]")
 
       query.streamable.foreach(streamable => sb.append(s" AND ${FieldNames.streamable}:$streamable"))
+
+      if query.noThumbnail.contains(true) then
+        sb.append(s" AND ${FieldNames.resourceType}:video AND -${FieldNames.thumbnailTimestamp}:[* TO *]")
 
       if query.resolutionRange.min.isDefined || query.resolutionRange.max.isDefined then
         sb.append(s" AND ${FieldNames.height}:[${query.resolutionRange.min.getOrElse(0)} TO ${query.resolutionRange.max.getOrElse("*")}]")

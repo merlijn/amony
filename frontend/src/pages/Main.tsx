@@ -37,6 +37,7 @@ const Main = () => {
         tag: untagged ? undefined : urlParams.get("tag") || undefined,
         untagged: untagged || undefined,
         streamable: urlParams.get("streamable")?.toLowerCase() === "false" ? false : undefined,
+        noThumbnail: urlParams.get("no_thumbnail")?.toLowerCase() === "true" || undefined,
         sort: parseSortParam(urlParams.get("s") || "date_added;desc"),
         duration: parseThresholdRangeParam(urlParams.get("d") || "-"),
         uploadAge: parseThresholdRangeParam(urlParams.get("u") || "-"),

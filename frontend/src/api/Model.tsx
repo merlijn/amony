@@ -11,6 +11,7 @@ export type ResourceSelection = {
   tag?: string
   untagged?: boolean
   streamable?: boolean
+  noThumbnail?: boolean
   duration?: ThresholdFilter
   uploadAge?: ThresholdFilter
   resolution?: ThresholdFilter

@@ -32,21 +32,25 @@ object SearchRoutes extends RoutesModule:
     offset: Option[Int],
     tag: Option[String],
     untagged: Option[Boolean],
-    streamable: Option[Boolean]
+    streamable: Option[Boolean],
+    noThumbnail: Option[Boolean]
   )
 
-  val q          = query[Option[String]]("q").description("The search query").example(Some("cats"))
-  val n          = query[Option[Int]]("n").description("The number of results to return").example(Some(10))
-  val d          = query[Option[String]]("d").description("The duration range in minutes").example(Some("10-30"))
-  val u          = query[Option[String]]("u").description("The upload date range (milliseconds since UTC)").example(Some("1771751993045-"))
-  val sort       = query[Option[String]]("sort").description("Sort field and direction (e.g., title-asc, random-12345)").example(Some("title-asc"))
-  val minRes     = query[Option[Int]]("min_res").description("The minimum (vertical) resolution").example(Some(720))
-  val maxRes     = query[Option[Int]]("max_res").description("The maximum (vertical) resolution").example(Some(1080))
-  val offset     = query[Option[Int]]("offset").description("The offset for the search results").example(Some(12))
-  val tag        = query[Option[String]]("tag").description("An optional tag")
-  val untagged   = query[Option[Boolean]]("untagged").description("Only return resources without tags").example(Some(false))
-  val streamable = query[Option[Boolean]]("streamable")
+  val q           = query[Option[String]]("q").description("The search query").example(Some("cats"))
+  val n           = query[Option[Int]]("n").description("The number of results to return").example(Some(10))
+  val d           = query[Option[String]]("d").description("The duration range in minutes").example(Some("10-30"))
+  val u           = query[Option[String]]("u").description("The upload date range (milliseconds since UTC)").example(Some("1771751993045-"))
+  val sort        = query[Option[String]]("sort").description("Sort field and direction (e.g., title-asc, random-12345)").example(Some("title-asc"))
+  val minRes      = query[Option[Int]]("min_res").description("The minimum (vertical) resolution").example(Some(720))
+  val maxRes      = query[Option[Int]]("max_res").description("The maximum (vertical) resolution").example(Some(1080))
+  val offset      = query[Option[Int]]("offset").description("The offset for the search results").example(Some(12))
+  val tag         = query[Option[String]]("tag").description("An optional tag")
+  val untagged    = query[Option[Boolean]]("untagged").description("Only return resources without tags").example(Some(false))
+  val streamable  = query[Option[Boolean]]("streamable")
     .description("Only return resources whose container is streamable (true) or not (false)")
+    .example(Some(false))
+  val noThumbnail = query[Option[Boolean]]("no_thumbnail")
+    .description("Only return videos without a custom thumbnail timestamp")
     .example(Some(false))
 
   val searchResourcesEndpoint: Endpoint[SecurityInput, SearchQueryInput, SecurityError | NotFoundError | BadRequestError, SearchResponseDto, Any] =
@@ -54,7 +58,7 @@ object SearchRoutes extends RoutesModule:
       endpoint
         .name("findResources").tag("search").description("Find resources using a search query").get
         .in(
-          "api" / "search" / "media" / q and n and d and u and sort and minRes and maxRes and offset and tag and untagged and streamable
+          "api" / "search" / "media" / q and n and d and u and sort and minRes and maxRes and offset and tag and untagged and streamable and noThumbnail
         ).mapInTo[SearchQueryInput]
         .securityIn(securityInput).errorOut(errorOutput).out(jsonBody[SearchResponseDto])
     )
@@ -116,7 +120,8 @@ object SearchRoutes extends RoutesModule:
             uploadDateRange = UploadDateRange(minUploadDate, maxUploadDate),
             sort            = Some(sortOption),
             untagged        = queryDto.untagged.filter(identity),
-            streamable      = queryDto.streamable
+            streamable      = queryDto.streamable,
+            noThumbnail     = queryDto.noThumbnail.filter(identity)
           )
 
           for

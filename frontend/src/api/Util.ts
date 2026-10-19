@@ -117,6 +117,7 @@ export function resourceSelectionToParams(selection: ResourceSelection, offset: 
     tag: selection.untagged ? undefined : selection.tag,
     untagged: selection.untagged || undefined,
     streamable: selection.streamable,
+    no_thumbnail: selection.noThumbnail || undefined,
     sort: sort,
     min_res: resolution?.direction === "min" ? resolution.value : undefined,
     max_res: resolution?.direction === "max" ? resolution.value : undefined,
