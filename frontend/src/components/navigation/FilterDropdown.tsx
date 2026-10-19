@@ -15,6 +15,7 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
   const [durationParam, setDurationParam] = useUrlParam("d", "-")
   const [uploadParam, setUploadParam]     = useUrlParam("u", "-")
   const [streamableParam, setStreamableParam] = useUrlParam("streamable", "")
+  const [noThumbnailParam, setNoThumbnailParam] = useUrlParam("no_thumbnail", "")
   const triggerRef = useRef<HTMLButtonElement>(null)
   const [contentWidth, setContentWidth] = useState(0)
 
@@ -22,6 +23,7 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
   const location = useLocation()
   const untaggedSelected      = (new URLSearchParams(location.search).get("untagged") || "").toLowerCase() === "true"
   const nonStreamableSelected = streamableParam.toLowerCase() === "false"
+  const noThumbnailSelected   = noThumbnailParam.toLowerCase() === "true"
 
   const toggleUntagged = () => {
     const params = new URLSearchParams(location.search)
@@ -39,6 +41,10 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
 
   const toggleNonStreamable = () => {
     setStreamableParam(nonStreamableSelected ? "" : "false")
+  }
+
+  const toggleNoThumbnail = () => {
+    setNoThumbnailParam(noThumbnailSelected ? "" : "true")
   }
 
   useEffect(() => {
@@ -87,6 +93,7 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
               options = { [
                 { label: "Untagged",       checked: untaggedSelected,      onChange: toggleUntagged },
                 { label: "Non Streamable", checked: nonStreamableSelected, onChange: toggleNonStreamable },
+                { label: "No thumbnail",   checked: noThumbnailSelected,   onChange: toggleNoThumbnail },
               ] }
             />
           </div>

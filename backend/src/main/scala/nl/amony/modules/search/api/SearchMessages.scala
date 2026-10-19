@@ -27,7 +27,8 @@ case class Query(
   uploadDateRange: UploadDateRange = UploadDateRange(None, None),
   sort: Option[SortOption]         = None,
   untagged: Option[Boolean]        = None,
-  streamable: Option[Boolean]      = None
+  streamable: Option[Boolean]      = None,
+  noThumbnail: Option[Boolean]     = None
 )
 
 case class SearchResult(offset: Int, total: Int, results: List[ResourceInfo], tags: Map[String, Long])
