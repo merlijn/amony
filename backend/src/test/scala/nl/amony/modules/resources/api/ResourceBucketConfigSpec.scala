@@ -7,7 +7,7 @@ import cats.effect.unsafe.implicits.global
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
-class LocalDirectoryConfigSpec extends AnyWordSpecLike with Matchers {
+class ResourceBucketConfigSpec extends AnyWordSpecLike with Matchers {
 
   private def config(path: Path): LocalDirectoryConfig =
     LocalDirectoryConfig(

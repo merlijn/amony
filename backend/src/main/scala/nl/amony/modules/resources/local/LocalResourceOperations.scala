@@ -93,7 +93,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
         val outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
         IO.blocking(Files.createDirectories(outputFile.getParent)) >> run(info, inputFile, outputFile, operation).memoize.flatten
 
-  private def run(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: ResourceOperation): IO[Path] = operation match
+  protected def run(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: ResourceOperation): IO[Path] = operation match
     case VideoFragment(width, height, start, end) =>
       logger.debug(s"Creating video fragment for $inputFile with range $start-$end")
       ffmpeg.transcodeToMp4(inputFile = inputFile, range = (start, end), scaleWidth = width, scaleHeight = height, outputFile = Some(outputFile)).map(

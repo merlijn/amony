@@ -92,41 +92,54 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       App.makeDatabasePool(dbConfig).map(ResourceDatabase(_)).use(test).unsafeRunSync()
     }
 
-  "ResourceDatabase" should {
-    "insert a resource row and retrieve it" in
-      withDatabase(insertResourcesTest)
+  "ResourceDatabase" when {
 
-    "update user meta" in
-      withDatabase(updateUserMetaTest)
+    "storing resources" should {
 
-    "bulk update tags" in
-      withDatabase(updateResourceTagsTest)
+      "insert a resource row and retrieve it" in
+        withDatabase(insertResourcesTest)
 
-    "preserve other owners' tags on user updates" in
-      withDatabase(preserveOtherOwnersTest)
+      "allow duplicate partial hashes" in
+        withDatabase(duplicatePartialHashsTest)
 
-    "allow duplicate partial hashes" in
-      withDatabase(duplicatePartialHashsTest)
+      "stream resources while writing to the database" in
+        withDatabase(streamWithNestedWritesTest)
+    }
 
-    "manage collections" in
-      withDatabase(collectionsTest)
+    "updating user metadata" should {
 
-    "manage collection resources" in
-      withDatabase(collectionResourcesTest)
+      "update user meta" in
+        withDatabase(updateUserMetaTest)
 
-    "stream resources while writing to the database" in
-      withDatabase(streamWithNestedWritesTest)
+      "bulk update tags" in
+        withDatabase(updateResourceTagsTest)
 
-    "export DDL schema after migrations" in {
-      withContainers {
-        container =>
-          val outputFile = ExportDatabaseSchema.dumpSchema(
-            configForContainer(container),
-            container.containerId,
-            java.nio.file.Paths.get("target", "test-schema.sql")
-          )
+      "preserve other owners' tags on user updates" in
+        withDatabase(preserveOtherOwnersTest)
+    }
 
-          java.nio.file.Files.readString(outputFile) should include("CREATE TABLE")
+    "managing collections" should {
+
+      "manage collections" in
+        withDatabase(collectionsTest)
+
+      "manage collection resources" in
+        withDatabase(collectionResourcesTest)
+    }
+
+    "exporting the schema" should {
+
+      "export DDL schema after migrations" in {
+        withContainers {
+          container =>
+            val outputFile = ExportDatabaseSchema.dumpSchema(
+              configForContainer(container),
+              container.containerId,
+              java.nio.file.Paths.get("target", "test-schema.sql")
+            )
+
+            java.nio.file.Files.readString(outputFile) should include("CREATE TABLE")
+        }
       }
     }
   }
