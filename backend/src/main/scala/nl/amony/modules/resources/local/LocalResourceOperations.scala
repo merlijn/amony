@@ -3,13 +3,12 @@ package nl.amony.modules.resources.local
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.security.MessageDigest
-import java.util.concurrent.ConcurrentHashMap
 
-import cats.effect.std.MapRef
-import cats.effect.{Deferred, IO}
+import cats.effect.IO
 import cats.implicits.*
 import scribe.Logging
 
+import nl.amony.lib.concurrent.SingleFlight
 import nl.amony.lib.hash.Base32
 import nl.amony.modules.resources.api.*
 
@@ -35,10 +34,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
       config.cachePath.resolve(fileName)
     }
 
-  private val mapRefOps: MapRef[IO, OperationKey, Option[Deferred[IO, Either[Throwable, Path]]]] =
-    MapRef.fromConcurrentHashMap[IO, OperationKey, Deferred[IO, Either[Throwable, Path]]](
-      new ConcurrentHashMap[OperationKey, Deferred[IO, Either[Throwable, Path]]]()
-    )
+  private val inFlight = SingleFlight[OperationKey, Path]
 
   /**
    * Validator for a derived preview. It is derived from the source's partial hash, the operation (encoded in the output
@@ -67,23 +63,10 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
     val key        = (resourceId = info.resourceId, operation = operation)
 
     if Files.exists(outputFile) then IO.pure(ResourceContent.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
-    else {
-
-      def runOperation(deferred: Deferred[IO, Either[Throwable, Path]]): IO[Path] =
-        createResource(config.resourcePath.resolve(info.path), info, key.operation)
-          .attempt
-          .flatTap(result => deferred.complete(result))
-          .flatTap(_ => mapRefOps(key).set(None))
-          .rethrow
-
-      Deferred[IO, Either[Throwable, Path]].flatMap {
-        newDeferred =>
-          mapRefOps(key).modify {
-            case Some(existing) => (Some(existing), existing.get.rethrow)
-            case None           => (Some(newDeferred), runOperation(newDeferred))
-          }
-      }.flatten.map(_ => ResourceContent.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
-    }
+    else
+      inFlight
+        .run(key)(createResource(config.resourcePath.resolve(info.path), info, key.operation))
+        .map(_ => ResourceContent.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
   }
 
   private def createResource(inputFile: Path, info: ResourceInfo, operation: ResourceOperation): IO[Path] =
@@ -93,7 +76,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
         val outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
         IO.blocking(Files.createDirectories(outputFile.getParent)) >> run(info, inputFile, outputFile, operation).memoize.flatten
 
-  protected def run(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: ResourceOperation): IO[Path] = operation match
+  private def run(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: ResourceOperation): IO[Path] = operation match
     case VideoFragment(width, height, start, end) =>
       logger.debug(s"Creating video fragment for $inputFile with range $start-$end")
       ffmpeg.transcodeToMp4(inputFile = inputFile, range = (start, end), scaleWidth = width, scaleHeight = height, outputFile = Some(outputFile)).map(
