@@ -4,7 +4,7 @@ import org.apache.solr.common.params.CommonParams
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
-import nl.amony.modules.search.api.Query
+import nl.amony.modules.search.api.{ContentTypeGroup, Query}
 
 class SolrSearchQuerySpec extends AnyWordSpecLike with Matchers {
 
@@ -21,6 +21,29 @@ class SolrSearchQuerySpec extends AnyWordSpecLike with Matchers {
 
     "not filter on thumbnail timestamps by default" in {
       search.toSolrQuery(Query(n = 1)).get(CommonParams.Q) should not include "thumbnailtimestamp_i"
+    }
+
+    "filter on a content type prefix when a content type group is selected" in {
+      val query = search.toSolrQuery(Query(n = 1, contentTypes = Set(ContentTypeGroup.Image))).get(CommonParams.Q)
+
+      query should include("content_type_s:image*")
+      query should not include "content_type_s:video*"
+    }
+
+    "combine selected content type groups with an OR" in {
+      val query = search.toSolrQuery(Query(n = 1, contentTypes = Set(ContentTypeGroup.Image, ContentTypeGroup.Video))).get(CommonParams.Q)
+
+      query should include("(content_type_s:image* OR content_type_s:video*)")
+    }
+
+    "treat other as everything that is neither image nor video" in {
+      val query = search.toSolrQuery(Query(n = 1, contentTypes = Set(ContentTypeGroup.Other))).get(CommonParams.Q)
+
+      query should include("(-content_type_s:image* AND -content_type_s:video*)")
+    }
+
+    "not filter on content type when all groups are selected" in {
+      search.toSolrQuery(Query(n = 1, contentTypes = ContentTypeGroup.values.toSet)).get(CommonParams.Q) should not include "content_type_s"
     }
   }
 }

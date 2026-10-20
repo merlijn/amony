@@ -568,6 +568,14 @@ paths:
         schema:
           type: boolean
         example: false
+      - name: content_type
+        in: query
+        description: The content type groups to include, comma-separated (image, video,
+          other)
+        required: false
+        schema:
+          type: string
+        example: image,video
       responses:
         '200':
           description: ''

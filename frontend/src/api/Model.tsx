@@ -5,6 +5,8 @@ export type ThresholdFilter = {
   direction: ThresholdDirection
 }
 
+export type ContentTypeGroup = 'image' | 'video' | 'other'
+
 export type ResourceSelection = {
   query?: string
   playlist?: string
@@ -12,6 +14,7 @@ export type ResourceSelection = {
   untagged?: boolean
   streamable?: boolean
   noThumbnail?: boolean
+  contentTypes?: ContentTypeGroup[]
   duration?: ThresholdFilter
   uploadAge?: ThresholdFilter
   resolution?: ThresholdFilter

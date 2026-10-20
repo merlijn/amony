@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {useLocation, useNavigate} from "react-router-dom";
-import {parseResolutionParam, parseSortParam, parseThresholdRangeParam} from "../api/Constants";
+import {parseContentTypeParam, parseResolutionParam, parseSortParam, parseThresholdRangeParam} from "../api/Constants";
 import {MediaView, ResourceSelection} from "../api/Model";
 import {useListener, useStateNeq} from "../api/ReactUtils";
 import GridView from "../components/GridView";
@@ -38,6 +38,7 @@ const Main = () => {
         untagged: untagged || undefined,
         streamable: urlParams.get("streamable")?.toLowerCase() === "false" ? false : undefined,
         noThumbnail: urlParams.get("no_thumbnail")?.toLowerCase() === "true" || undefined,
+        contentTypes: parseContentTypeParam(urlParams.get("content_type") || ""),
         sort: parseSortParam(urlParams.get("s") || "date_added;desc"),
         duration: parseThresholdRangeParam(urlParams.get("d") || "-"),
         uploadAge: parseThresholdRangeParam(urlParams.get("u") || "-"),
