@@ -72,7 +72,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
   }
 
   private[local] def newResource(f: FileInfo, userId: UserId): IO[ResourceInfo] =
-    meta.apply(f.path).recover {
+    contentTypeAndMetaForPath(f.path).recover {
       case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None
     }.flatMap { maybeMeta =>
       val contentType = maybeMeta.map(_.contentType)
@@ -104,7 +104,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       case None           =>
         IO(logger.warn(s"Dropping content-changed event, no such file in database: ${f.path}")).as(None)
       case Some(existing) =>
-        meta.apply(f.path).recover {
+        contentTypeAndMetaForPath(f.path).recover {
           case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None
         }.flatMap { maybeMeta =>
           val contentType = maybeMeta.map(_.contentType).orElse(existing.contentType)
