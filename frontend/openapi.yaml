@@ -568,6 +568,17 @@ paths:
         schema:
           type: boolean
         example: false
+      - name: content_type
+        in: query
+        description: The content type groups to include (image, video, other)
+        required: false
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentTypeGroup'
+        example:
+        - image
+        - video
       responses:
         '200':
           description: ''
@@ -2197,6 +2208,13 @@ components:
           type: array
           items:
             type: string
+    ContentTypeGroup:
+      title: ContentTypeGroup
+      type: string
+      enum:
+      - image
+      - other
+      - video
     CreateCollectionDto:
       title: CreateCollectionDto
       type: object

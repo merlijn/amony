@@ -33,7 +33,8 @@ object SearchRoutes extends RoutesModule:
     tag: Option[String],
     untagged: Option[Boolean],
     streamable: Option[Boolean],
-    noThumbnail: Option[Boolean]
+    noThumbnail: Option[Boolean],
+    contentType: List[ContentTypeGroup]
   )
 
   val q           = query[Option[String]]("q").description("The search query").example(Some("cats"))
@@ -52,13 +53,16 @@ object SearchRoutes extends RoutesModule:
   val noThumbnail = query[Option[Boolean]]("no_thumbnail")
     .description("Only return videos without a custom thumbnail timestamp")
     .example(Some(false))
+  val contentType = query[List[ContentTypeGroup]]("content_type")
+    .description("The content type groups to include (image, video, other)")
+    .example(List(ContentTypeGroup.Image, ContentTypeGroup.Video))
 
   val searchResourcesEndpoint: Endpoint[SecurityInput, SearchQueryInput, SecurityError | NotFoundError | BadRequestError, SearchResponseDto, Any] =
     register(
       endpoint
         .name("findResources").tag("search").description("Find resources using a search query").get
         .in(
-          "api" / "search" / "media" / q and n and d and u and sort and minRes and maxRes and offset and tag and untagged and streamable and noThumbnail
+          "api" / "search" / "media" / q and n and d and u and sort and minRes and maxRes and offset and tag and untagged and streamable and noThumbnail and contentType
         ).mapInTo[SearchQueryInput]
         .securityIn(securityInput).errorOut(errorOutput).out(jsonBody[SearchResponseDto])
     )
@@ -121,7 +125,8 @@ object SearchRoutes extends RoutesModule:
             sort            = Some(sortOption),
             untagged        = queryDto.untagged.filter(identity),
             streamable      = queryDto.streamable,
-            noThumbnail     = queryDto.noThumbnail.filter(identity)
+            noThumbnail     = queryDto.noThumbnail.filter(identity),
+            contentTypes    = queryDto.contentType.toSet
           )
 
           for

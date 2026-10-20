@@ -1,10 +1,10 @@
 import {useUrlParam} from "../../api/ReactUtils";
-import {Constants, generateRandomSeed, parseResolutionParam, parseThresholdRangeParam, resolutionAsParameter, thresholdRangeAsParameter, useSortParam} from "../../api/Constants";
+import {Constants, generateRandomSeed, parseContentTypeParam, parseResolutionParam, parseThresholdRangeParam, resolutionAsParameter, thresholdRangeAsParameter, useSortParam} from "../../api/Constants";
 import * as Popover from "@radix-ui/react-popover";
 import './FilterDropdown.scss';
 import {MdTune, MdRefresh, MdArrowUpward, MdArrowDownward} from "react-icons/md";
 import React, { useEffect, useRef, useState } from "react";
-import {Sort, ThresholdDirection, ThresholdFilter} from "../../api/Model";
+import {ContentTypeGroup, Sort, ThresholdDirection, ThresholdFilter} from "../../api/Model";
 import {useLocation, useNavigate} from "react-router-dom";
 import {buildUrl, copyParams} from "../../api/Util";
 
@@ -16,6 +16,7 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
   const [uploadParam, setUploadParam]     = useUrlParam("u", "-")
   const [streamableParam, setStreamableParam] = useUrlParam("streamable", "")
   const [noThumbnailParam, setNoThumbnailParam] = useUrlParam("no_thumbnail", "")
+  const [contentTypeParam, setContentTypeParam] = useUrlParam("content_type", "")
   const triggerRef = useRef<HTMLButtonElement>(null)
   const [contentWidth, setContentWidth] = useState(0)
 
@@ -24,6 +25,7 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
   const untaggedSelected      = (new URLSearchParams(location.search).get("untagged") || "").toLowerCase() === "true"
   const nonStreamableSelected = streamableParam.toLowerCase() === "false"
   const noThumbnailSelected   = noThumbnailParam.toLowerCase() === "true"
+  const selectedContentTypes  = parseContentTypeParam(contentTypeParam)
 
   const toggleUntagged = () => {
     const params = new URLSearchParams(location.search)
@@ -45,6 +47,14 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
 
   const toggleNoThumbnail = () => {
     setNoThumbnailParam(noThumbnailSelected ? "" : "true")
+  }
+
+  const toggleContentType = (group: ContentTypeGroup) => {
+    const updated = selectedContentTypes.includes(group)
+      ? selectedContentTypes.filter(value => value !== group)
+      : [...selectedContentTypes, group]
+
+    setContentTypeParam(updated.join(","))
   }
 
   useEffect(() => {
@@ -87,6 +97,14 @@ const FilterDropDown = (props: { onToggleFilter: (v: boolean) => any}) => {
               selectedValue    = { parseThresholdRangeParam(uploadParam) }
               onChange         = { value => setUploadParam(thresholdRangeAsParameter(value)) }
               defaultDirection = "max"
+            />
+            <CheckboxSelectGroup
+              header  = "Content type"
+              options = { Constants.contentTypeOptions.map(option => ({
+                label:    option.label,
+                checked:  selectedContentTypes.includes(option.value),
+                onChange: () => toggleContentType(option.value),
+              })) }
             />
             <CheckboxSelectGroup
               header  = "Other"

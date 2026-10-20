@@ -1,5 +1,5 @@
 import {Prefs} from "./Prefs";
-import {Resolution, SessionInfo, Sort, SortDirection, RegularSort, ThresholdFilter} from "./Model";
+import {ContentTypeGroup, Resolution, SessionInfo, Sort, SortDirection, RegularSort, ThresholdFilter} from "./Model";
 import { useUrlParam } from "./ReactUtils";
 import React from "react";
 
@@ -109,6 +109,14 @@ const uploadOptions: Array<{value: number, label: string}> = [
   { value: 30 * 24 * 3600, label: "30 days" },
   { value: 365 * 24 * 3600, label: "1 year" }];
 
+const contentTypeOptions: Array<{value: ContentTypeGroup, label: string}> = [
+  { value: "image", label: "Images" },
+  { value: "video", label: "Videos" },
+  { value: "other", label: "Other" }];
+
+export const parseContentTypeParam = (param: string): ContentTypeGroup[] =>
+  param.split(",").filter((value): value is ContentTypeGroup => contentTypeOptions.some(option => option.value === value))
+
 const defaultPrefs: Prefs = {
   showSidebar: false,
   theme:       "system",
@@ -146,6 +154,8 @@ export const Constants = {
   durationOptions: durationOptions,
 
   uploadOptions: uploadOptions,
+
+  contentTypeOptions: contentTypeOptions,
 
   resolutions: resolutions,
 

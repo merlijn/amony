@@ -13,7 +13,7 @@ import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.search.api.SortDirection.Desc
 import nl.amony.modules.search.api.SortField.*
-import nl.amony.modules.search.api.{Query, SearchResult, SearchService, SortOption}
+import nl.amony.modules.search.api.{ContentTypeGroup, Query, SearchResult, SearchService, SortOption}
 import nl.amony.modules.search.solr.SolrSchema.*
 import nl.amony.modules.search.solr.SolrSearchService.*
 
@@ -128,6 +128,14 @@ class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchServ
 
       if query.noThumbnail.contains(true) then
         sb.append(s" AND ${FieldNames.resourceType}:video AND -${FieldNames.thumbnailTimestamp}:[* TO *]")
+
+      if query.contentTypes.nonEmpty && query.contentTypes.size < ContentTypeGroup.values.length then
+        val clauses = query.contentTypes.toSeq.map {
+          case ContentTypeGroup.Image => s"${FieldNames.contentType}:image*"
+          case ContentTypeGroup.Video => s"${FieldNames.contentType}:video*"
+          case ContentTypeGroup.Other => s"(-${FieldNames.contentType}:image* AND -${FieldNames.contentType}:video*)"
+        }
+        sb.append(s" AND (${clauses.mkString(" OR ")})")
 
       if query.resolutionRange.min.isDefined || query.resolutionRange.max.isDefined then
         sb.append(s" AND ${FieldNames.height}:[${query.resolutionRange.min.getOrElse(0)} TO ${query.resolutionRange.max.getOrElse("*")}]")
