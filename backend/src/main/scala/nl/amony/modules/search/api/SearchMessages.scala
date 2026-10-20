@@ -1,5 +1,7 @@
 package nl.amony.modules.search.api
 
+import sttp.tapir.{Codec, CodecFormat}
+
 import nl.amony.modules.resources.api.{BucketId, ResourceInfo}
 
 enum SortField:
@@ -13,11 +15,13 @@ enum ContentTypeGroup:
   case Image, Video, Other
 
 object ContentTypeGroup:
-  def fromString(value: String): Option[ContentTypeGroup] = value.trim.toLowerCase match
-    case "image" => Some(Image)
-    case "video" => Some(Video)
-    case "other" => Some(Other)
-    case _       => None
+  private def encode(group: ContentTypeGroup): String = group.toString.toLowerCase
+
+  given codec: Codec[String, ContentTypeGroup, CodecFormat.TextPlain] =
+    Codec.derivedEnumeration[String, ContentTypeGroup].apply(
+      value => ContentTypeGroup.values.find(group => encode(group) == value.toLowerCase),
+      encode
+    )
 
 case class SortOption(field: SortField, direction: SortDirection)
 case class DurationRange(min: Option[Long], max: Option[Long])

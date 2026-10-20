@@ -34,7 +34,7 @@ object SearchRoutes extends RoutesModule:
     untagged: Option[Boolean],
     streamable: Option[Boolean],
     noThumbnail: Option[Boolean],
-    contentType: Option[String]
+    contentType: List[ContentTypeGroup]
   )
 
   val q           = query[Option[String]]("q").description("The search query").example(Some("cats"))
@@ -53,9 +53,9 @@ object SearchRoutes extends RoutesModule:
   val noThumbnail = query[Option[Boolean]]("no_thumbnail")
     .description("Only return videos without a custom thumbnail timestamp")
     .example(Some(false))
-  val contentType = query[Option[String]]("content_type")
-    .description("The content type groups to include, comma-separated (image, video, other)")
-    .example(Some("image,video"))
+  val contentType = query[List[ContentTypeGroup]]("content_type")
+    .description("The content type groups to include (image, video, other)")
+    .example(List(ContentTypeGroup.Image, ContentTypeGroup.Video))
 
   val searchResourcesEndpoint: Endpoint[SecurityInput, SearchQueryInput, SecurityError | NotFoundError | BadRequestError, SearchResponseDto, Any] =
     register(
@@ -127,8 +127,6 @@ object SearchRoutes extends RoutesModule:
             streamable      = queryDto.streamable,
             noThumbnail     = queryDto.noThumbnail.filter(identity),
             contentTypes    = queryDto.contentType.toSet
-              .flatMap(value => value.split(",").toSet)
-              .flatMap(ContentTypeGroup.fromString)
           )
 
           for
