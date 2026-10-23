@@ -8,6 +8,8 @@ import com.dimafeng.testcontainers.GenericContainer
 import org.testcontainers.containers.wait.strategy.Wait
 import scribe.Logging
 
+import nl.amony.lib.database.{Database, DatabaseConfig}
+
 /**
  * Dumps the PostgreSQL schema that results from applying every Liquibase migration.
  *
@@ -39,7 +41,7 @@ object ExportDatabaseSchema extends Logging:
 
   /** Migrates `database` and dumps its schema with `pg_dump` running inside `containerId`. */
   def dumpSchema(database: DatabaseConfig, containerId: String, output: Path): Path =
-    App.runDatabaseMigrations(database).unsafeRunSync()
+    Database.runMigrations(database).unsafeRunSync()
 
     val rawOutput = Files.createTempFile("amony-schema-raw", ".sql")
     try

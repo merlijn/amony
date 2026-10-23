@@ -9,7 +9,6 @@ import cats.syntax.all.*
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
 import io.circe.Json
-import liquibase.Contexts
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
@@ -18,8 +17,6 @@ import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import skunk.codec.all.*
 import skunk.implicits.*
 import skunk.{Session, *}
-
-import nl.amony.{App, DatabaseConfig}
 
 class MessageLogSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 
@@ -41,18 +38,8 @@ class MessageLogSpec extends AnyWordSpecLike with TestContainerForAll with Match
   given MeterProvider[IO]  = MeterProvider.noop[IO]
   given TracerProvider[IO] = TracerProvider.noop[IO]
 
-  private def configForContainer(container: GenericContainer): DatabaseConfig =
-    DatabaseConfig(
-      host     = container.containerIpAddress,
-      port     = container.mappedPort(5432),
-      database = "test",
-      username = "test",
-      password = "test",
-      poolSize = 4
-    )
-
   private def withLog[A](container: GenericContainer)(f: (Resource[IO, Session[IO]], MessageLog) => IO[A]): A =
-    App.makeDatabasePool(configForContainer(container), new Contexts("message-log")).use(pool => f(pool, MessageLog(pool))).unsafeRunSync()
+    MessageBusTestSupport.makeDatabasePool(container).use(pool => f(pool, MessageLog(pool))).unsafeRunSync()
 
   private def newTopic: String = s"test-${UUID.randomUUID()}"
 

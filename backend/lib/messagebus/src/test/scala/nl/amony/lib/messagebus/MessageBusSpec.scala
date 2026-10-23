@@ -8,15 +8,12 @@ import cats.effect.{IO, Ref, Resource}
 import cats.syntax.all.*
 import com.dimafeng.testcontainers.GenericContainer
 import io.circe.Codec
-import liquibase.Contexts
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
 import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
 import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import skunk.Session
-
-import nl.amony.{App, DatabaseConfig}
 
 /**
  * A rough throughput indication for a single producer / single consumer on one node. Disabled by default; enable it
@@ -60,22 +57,12 @@ class MessageBusSpec extends AnyWordSpecLike with Matchers:
 
       container.start()
       try
-        App.makeDatabasePool(configForContainer(container), new Contexts("message-log")).use { pool =>
+        MessageBusTestSupport.makeDatabasePool(container).use { pool =>
           (1 to runs).toList.traverse_(run(pool, _, messages, runs))
         }.unsafeRunSync()
       finally container.stop()
     }
   }
-
-  private def configForContainer(container: GenericContainer): DatabaseConfig =
-    DatabaseConfig(
-      host     = container.containerIpAddress,
-      port     = container.mappedPort(5432),
-      database = "test",
-      username = "test",
-      password = "test",
-      poolSize = 4
-    )
 
   private def run(pool: Resource[IO, Session[IO]], runNumber: Int, messages: Int, runs: Int): IO[Unit] =
     val name                   = s"perf-${UUID.randomUUID()}"

@@ -388,14 +388,16 @@ The biggest win is not a new module name. It is making `*.http` depend on `*.api
 
 The first steps are implemented on `chore/introduce-modules`:
 
-| sbt module  | Directory           | Contents                                                 |
-| ----------- | ------------------- | -------------------------------------------------------- |
-| `app`       | `.`                 | `nl.amony` app sources, `nl.amony.modules.config`, tests |
-| `auth`      | `modules/auth`      | `nl.amony.modules.auth.*`                                |
-| `resources` | `modules/resources` | `nl.amony.modules.resources.*`                           |
-| `search`    | `modules/search`    | `nl.amony.modules.search.*`                              |
-| `process`   | `lib/process`       | `nl.amony.lib.process.*` (the logical `media` module)    |
-| `lib`       | `lib`               | remaining `nl.amony.lib.*`                               |
+| sbt module   | Directory           | Contents                                                 |
+| ------------ | ------------------- | -------------------------------------------------------- |
+| `app`        | `.`                 | `nl.amony` app sources, `nl.amony.modules.config`, tests |
+| `auth`       | `modules/auth`      | `nl.amony.modules.auth.*`                                |
+| `resources`  | `modules/resources` | `nl.amony.modules.resources.*`                           |
+| `search`     | `modules/search`    | `nl.amony.modules.search.*`                              |
+| `process`    | `lib/process`       | `nl.amony.lib.process.*` (the logical `media` module)    |
+| `database`   | `lib/database`      | Liquibase evolutions, `DatabaseConfig`, pool/migrations  |
+| `messagebus` | `lib/messagebus`    | `nl.amony.lib.messagebus.*` and its specs                |
+| `lib`        | `lib`               | remaining `nl.amony.lib.*`                               |
 
 All modules publish under the `nl.amony` group.
 
@@ -408,5 +410,8 @@ Package names are unchanged. Class-level moves required to keep the module graph
 - The search-backed bucket endpoints (`adminReindexBucket`, `adminFixNonStreamable`) moved from
   `resources.http.BucketRoutes` to `search.http.SearchBucketRoutes`, so `search` can depend on `resources` instead of
   the two forming a cycle.
+- The database evolutions moved to `lib/database`, but the classpath path stays `db/00-changelog.yaml` and all changeSet
+  ids and authors are unchanged. Existing `databasechangelog` rows therefore remain valid.
 
-Tests remain in the app module. The remaining package-level cycles are unrelated to the module split.
+Most tests remain in the app module; the messagebus specs live in the `messagebus` module. The remaining package-level
+cycles are unrelated to the module split.

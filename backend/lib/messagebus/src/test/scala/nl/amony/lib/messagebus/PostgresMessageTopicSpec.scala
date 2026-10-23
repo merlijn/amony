@@ -9,15 +9,12 @@ import cats.syntax.all.*
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
 import io.circe.Codec
-import liquibase.Contexts
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
 import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
 import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import skunk.Session
-
-import nl.amony.{App, DatabaseConfig}
 
 class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 
@@ -39,19 +36,8 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
   given MeterProvider[IO]  = MeterProvider.noop[IO]
   given TracerProvider[IO] = TracerProvider.noop[IO]
 
-  private def configForContainer(container: GenericContainer): DatabaseConfig =
-    DatabaseConfig(
-      host     = container.containerIpAddress,
-      port     = container.mappedPort(5432),
-      database = "test",
-      username = "test",
-      password = "test",
-      poolSize = 4
-    )
-
-  /** Only the message-log changesets are needed here, so the other contexts are skipped. */
   private def pool(container: GenericContainer): Resource[IO, Resource[IO, Session[IO]]] =
-    App.makeDatabasePool(configForContainer(container), new Contexts("message-log"))
+    MessageBusTestSupport.makeDatabasePool(container)
 
   private def topicFor(
     pool: Resource[IO, Session[IO]],

@@ -54,7 +54,7 @@ ThisBuild / prodBuild := false
 
 addCommandAlias(
   "format",
-  "; lib/scalafmt; lib/Test/scalafmt; process/scalafmt; process/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; resources/scalafmt; resources/Test/scalafmt; search/scalafmt; search/Test/scalafmt; scalafmt; Test/scalafmt"
+  "; lib/scalafmt; lib/Test/scalafmt; process/scalafmt; process/Test/scalafmt; database/scalafmt; database/Test/scalafmt; messagebus/scalafmt; messagebus/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; resources/scalafmt; resources/Test/scalafmt; search/scalafmt; search/Test/scalafmt; scalafmt; Test/scalafmt"
 )
 addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
 
@@ -165,6 +165,42 @@ val processDependencies = Seq(
   "org.typelevel" %% "otel4s-core-trace" % otel4sVersion
 )
 
+val databaseDependencies = Seq(
+  "org.typelevel"         %% "cats-effect"               % "3.7.1",
+  "com.outr"              %% "scribe"                    % "3.19.0",
+  "org.tpolecat"          %% "skunk-core"                % "2.0.0-RC3",
+  "com.github.pureconfig" %% "pureconfig-core"           % "0.17.11",
+  "com.github.pureconfig" %% "pureconfig-generic-scala3" % "0.17.11",
+  "org.liquibase"          % "liquibase-core"            % "5.0.4",
+  "org.postgresql"         % "postgresql"                % "42.7.14",
+  "org.typelevel"         %% "otel4s-core"               % otel4sVersion,
+  "org.typelevel"         %% "otel4s-core-trace"         % otel4sVersion
+)
+
+val databaseTestDependencies = Seq(
+  "org.scalatest" %% "scalatest" % "3.2.20" % Test
+)
+
+val messageBusDependencies = Seq(
+  "org.typelevel"         %% "cats-effect"               % "3.7.1",
+  "co.fs2"                %% "fs2-core"                  % "3.14.0",
+  "io.circe"              %% "circe-core"                % circeVersion,
+  "com.outr"              %% "scribe"                    % "3.19.0",
+  "org.tpolecat"          %% "skunk-core"                % "2.0.0-RC3",
+  "org.tpolecat"          %% "skunk-circe"               % "2.0.0-RC3",
+  "com.github.pureconfig" %% "pureconfig-core"           % "0.17.11",
+  "com.github.pureconfig" %% "pureconfig-generic-scala3" % "0.17.11"
+)
+
+val messageBusTestDependencies = Seq(
+  "org.scalatest" %% "scalatest"                      % "3.2.20"      % Test,
+  "com.dimafeng"  %% "testcontainers-scala-scalatest" % "0.44.1"      % Test,
+  "org.liquibase"  % "liquibase-core"                 % "5.0.4"       % Test,
+  "org.postgresql" % "postgresql"                     % "42.7.14"     % Test,
+  "org.typelevel" %% "otel4s-core"                    % otel4sVersion % Test,
+  "org.typelevel" %% "otel4s-core-trace"              % otel4sVersion % Test
+)
+
 val authDependencies = Seq(
   "org.typelevel"                 %% "cats-effect"               % "3.7.1",
   "co.fs2"                        %% "fs2-core"                  % "3.14.0",
@@ -218,18 +254,18 @@ val resourcesDependencies = Seq(
 )
 
 val searchDependencies = Seq(
-  "org.typelevel"                 %% "cats-effect"               % "3.7.1",
-  "co.fs2"                        %% "fs2-core"                  % "3.14.0",
-  "io.circe"                      %% "circe-core"                % circeVersion,
-  "io.circe"                      %% "circe-generic"             % circeVersion,
-  "io.circe"                      %% "circe-parser"              % circeVersion,
-  "com.outr"                      %% "scribe"                    % "3.19.0",
-  "com.softwaremill.sttp.tapir"   %% "tapir-core"                % tapirVersion,
-  "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"          % tapirVersion,
-  "com.github.pureconfig"         %% "pureconfig-core"           % "0.17.11",
-  "com.github.pureconfig"         %% "pureconfig-generic-scala3" % "0.17.11",
-  "org.apache.solr"                % "solr-core"                 % "9.10.1",
-  "org.apache.commons"             % "commons-compress"          % "1.28.0"
+  "org.typelevel"               %% "cats-effect"               % "3.7.1",
+  "co.fs2"                      %% "fs2-core"                  % "3.14.0",
+  "io.circe"                    %% "circe-core"                % circeVersion,
+  "io.circe"                    %% "circe-generic"             % circeVersion,
+  "io.circe"                    %% "circe-parser"              % circeVersion,
+  "com.outr"                    %% "scribe"                    % "3.19.0",
+  "com.softwaremill.sttp.tapir" %% "tapir-core"                % tapirVersion,
+  "com.softwaremill.sttp.tapir" %% "tapir-json-circe"          % tapirVersion,
+  "com.github.pureconfig"       %% "pureconfig-core"           % "0.17.11",
+  "com.github.pureconfig"       %% "pureconfig-generic-scala3" % "0.17.11",
+  "org.apache.solr"              % "solr-core"                 % "9.10.1",
+  "org.apache.commons"           % "commons-compress"          % "1.28.0"
 )
 
 val appDependencies = Seq(
@@ -239,8 +275,6 @@ val appDependencies = Seq(
   "com.typesafe"                   % "config"                                    % "1.4.9",
   "com.github.pureconfig"         %% "pureconfig-core"                           % "0.17.11",
   "com.github.pureconfig"         %% "pureconfig-generic-scala3"                 % "0.17.11",
-  "org.liquibase"                  % "liquibase-core"                            % "5.0.4",
-  "org.postgresql"                 % "postgresql"                                % "42.7.14",
   "org.tpolecat"                  %% "skunk-core"                                % "2.0.0-RC3",
   "org.http4s"                    %% "http4s-ember-server"                       % http4sVersion,
   "org.http4s"                    %% "http4s-dsl"                                % http4sVersion,
@@ -298,6 +332,23 @@ lazy val process = project
     libraryDependencies ++= processDependencies
   )
 
+lazy val database = project
+  .in(file("lib/database"))
+  .settings(commonSettings)
+  .settings(
+    name := "database",
+    libraryDependencies ++= databaseDependencies ++ databaseTestDependencies
+  )
+
+lazy val messagebus = project
+  .in(file("lib/messagebus"))
+  .dependsOn(database % "test->compile")
+  .settings(commonSettings)
+  .settings(
+    name := "messagebus",
+    libraryDependencies ++= messageBusDependencies ++ messageBusTestDependencies
+  )
+
 lazy val auth = project
   .in(file("modules/auth"))
   .dependsOn(lib)
@@ -309,7 +360,7 @@ lazy val auth = project
 
 lazy val resources = project
   .in(file("modules/resources"))
-  .dependsOn(lib, process, auth)
+  .dependsOn(lib, process, messagebus, auth)
   .settings(commonSettings)
   .settings(
     name := "resources",
@@ -327,16 +378,22 @@ lazy val search = project
 
 lazy val amony = project
   .in(file("."))
-  .dependsOn(lib, process, auth, resources, search)
+  .aggregate(lib, process, database, messagebus, auth, resources, search)
+  .dependsOn(lib, process, database, messagebus, auth, resources, search)
   .settings(commonSettings)
   .settings(
-    name                             := "app",
-    Global / cancelable              := true,
-    run / fork                       := true,
+    name                               := "app",
+    Global / cancelable                := true,
+    run / fork                         := true,
     run / javaOptions ++= javaDevOpts,
-    outputStrategy                   := Some(StdoutOutput),
-    Compile / run / mainClass        := Some("nl.amony.App"),
-    Compile / packageBin / mainClass := Some("nl.amony.App"),
+    outputStrategy                     := Some(StdoutOutput),
+    Compile / run / mainClass          := Some("nl.amony.App"),
+    Compile / packageBin / mainClass   := Some("nl.amony.App"),
+    run / aggregate                    := false,
+    runMain / aggregate                := false,
+    jibDockerBuild / aggregate         := false,
+    jibWriteDockerTagsFile / aggregate := false,
+    exportDatabaseSchema / aggregate   := false,
 
     // Jib Docker settings
     jibBaseImage            := s"ghcr.io/$ghcrOwner/amony-base:latest",

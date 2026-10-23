@@ -20,11 +20,11 @@ import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
 import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import skunk.Session
 
+import nl.amony.lib.database.{Database, DatabaseConfig}
 import nl.amony.lib.messagebus.MessageTopic
 import nl.amony.modules.auth.api.{Role, UserId}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
-import nl.amony.{App, DatabaseConfig}
 
 class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAll with Matchers with MockitoSugar {
 
@@ -94,7 +94,7 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
           val missingPath = tempDir().resolve("missing")
 
           val test =
-            App.makeDatabasePool(dbConfig).use { pool =>
+            Database.makePool(dbConfig).use { pool =>
               val bucketsDal = BucketsDal(pool)
               val factory    = (config: ResourceBucketConfig) => IO.pure((mockBucket(config), IO.unit))
 
@@ -124,7 +124,7 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
           Files.createDirectories(defaultPath.resolve("sub"))
 
           val test =
-            App.makeDatabasePool(dbConfig).use { pool =>
+            Database.makePool(dbConfig).use { pool =>
               val bucketsDal = BucketsDal(pool)
               val resourceDb = ResourceDatabase(pool)
               val published  = new AtomicReference(List.empty[ResourceEvent])

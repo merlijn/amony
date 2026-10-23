@@ -15,10 +15,10 @@ import skunk.codec.all.*
 import skunk.implicits.*
 import skunk.{Session, *}
 
+import nl.amony.lib.database.{Database, DatabaseConfig}
 import nl.amony.lib.messagebus.{MessageTopic, MessageTopicKey, PersistentMessageBus}
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
-import nl.amony.{App, DatabaseConfig}
 
 class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 
@@ -63,7 +63,7 @@ class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestConta
   "ResourceDatabase" should {
 
     "commit the resource write and its event together" in withContainers { container =>
-      App.makeDatabasePool(configForContainer(container)).use { pool =>
+      Database.makePool(configForContainer(container)).use { pool =>
         val db    = ResourceDatabase(pool)
         val name  = s"topic-${UUID.randomUUID()}"
         val topic = topicFor(pool, name)
@@ -80,7 +80,7 @@ class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestConta
     }
 
     "roll back the resource write and its event together" in withContainers { container =>
-      App.makeDatabasePool(configForContainer(container)).use { pool =>
+      Database.makePool(configForContainer(container)).use { pool =>
         val db    = ResourceDatabase(pool)
         val name  = s"topic-${UUID.randomUUID()}"
         val topic = topicFor(pool, name)

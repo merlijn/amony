@@ -16,10 +16,11 @@ import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
 import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import scribe.Logging
 
+import nl.amony.ExportDatabaseSchema
+import nl.amony.lib.database.{Database, DatabaseConfig}
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, Tag, TagOwner}
 import nl.amony.modules.resources.dal.ResourceDatabase
-import nl.amony.{App, DatabaseConfig, ExportDatabaseSchema}
 
 class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with Logging with Matchers {
 
@@ -91,7 +92,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       given MeterProvider[IO]  = MeterProvider.noop[IO]
       given TracerProvider[IO] = TracerProvider.noop[IO]
 
-      App.makeDatabasePool(dbConfig).map(ResourceDatabase(_)).use(test).unsafeRunSync()
+      Database.makePool(dbConfig).map(ResourceDatabase(_)).use(test).unsafeRunSync()
     }
 
   "ResourceDatabase" when {
