@@ -54,7 +54,7 @@ ThisBuild / prodBuild := false
 
 addCommandAlias(
   "format",
-  "; shared/scalafmt; shared/Test/scalafmt; process/scalafmt; process/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; resources/scalafmt; resources/Test/scalafmt; search/scalafmt; search/Test/scalafmt; scalafmt; Test/scalafmt"
+  "; lib/scalafmt; lib/Test/scalafmt; process/scalafmt; process/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; resources/scalafmt; resources/Test/scalafmt; search/scalafmt; search/Test/scalafmt; scalafmt; Test/scalafmt"
 )
 addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
 
@@ -128,7 +128,7 @@ lazy val commonSettings = Seq(
   excludeDependencies ++= commonExclusions
 )
 
-val sharedDependencies = Seq(
+val libDependencies = Seq(
   "org.typelevel"                 %% "cats-effect"               % "3.7.1",
   "org.typelevel"                 %% "cats-mtl"                  % "1.7.0",
   "co.fs2"                        %% "fs2-core"                  % "3.14.0",
@@ -281,17 +281,17 @@ val testDependencies = Seq(
   "org.mockito"                 %% "mockito-scala-scalatest"        % "2.2.3"      % Test
 )
 
-lazy val shared = project
-  .in(file("shared"))
+lazy val lib = project
+  .in(file("lib"))
   .settings(commonSettings)
   .settings(
-    name := "shared",
-    libraryDependencies ++= sharedDependencies
+    name := "lib",
+    libraryDependencies ++= libDependencies
   )
 
 lazy val process = project
-  .in(file("process"))
-  .dependsOn(shared)
+  .in(file("lib/process"))
+  .dependsOn(lib)
   .settings(commonSettings)
   .settings(
     name := "process",
@@ -299,8 +299,8 @@ lazy val process = project
   )
 
 lazy val auth = project
-  .in(file("auth"))
-  .dependsOn(shared)
+  .in(file("modules/auth"))
+  .dependsOn(lib)
   .settings(commonSettings)
   .settings(
     name := "auth",
@@ -308,8 +308,8 @@ lazy val auth = project
   )
 
 lazy val resources = project
-  .in(file("resources"))
-  .dependsOn(shared, process, auth)
+  .in(file("modules/resources"))
+  .dependsOn(lib, process, auth)
   .settings(commonSettings)
   .settings(
     name := "resources",
@@ -317,7 +317,7 @@ lazy val resources = project
   )
 
 lazy val search = project
-  .in(file("search"))
+  .in(file("modules/search"))
   .dependsOn(resources, auth)
   .settings(commonSettings)
   .settings(
@@ -327,7 +327,7 @@ lazy val search = project
 
 lazy val amony = project
   .in(file("."))
-  .dependsOn(shared, process, auth, resources, search)
+  .dependsOn(lib, process, auth, resources, search)
   .settings(commonSettings)
   .settings(
     name                             := "app",

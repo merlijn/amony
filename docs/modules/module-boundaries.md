@@ -388,14 +388,14 @@ The biggest win is not a new module name. It is making `*.http` depend on `*.api
 
 The first steps are implemented on `chore/introduce-modules`:
 
-| sbt module  | Contents                                                 |
-| ----------- | -------------------------------------------------------- |
-| `app`       | `nl.amony` app sources, `nl.amony.modules.config`, tests |
-| `auth`      | `nl.amony.modules.auth.*`                                |
-| `resources` | `nl.amony.modules.resources.*`                           |
-| `search`    | `nl.amony.modules.search.*`                              |
-| `process`   | `nl.amony.lib.process.*` (the logical `media` module)    |
-| `shared`    | remaining `nl.amony.lib.*`                               |
+| sbt module  | Directory           | Contents                                                 |
+| ----------- | ------------------- | -------------------------------------------------------- |
+| `app`       | `.`                 | `nl.amony` app sources, `nl.amony.modules.config`, tests |
+| `auth`      | `modules/auth`      | `nl.amony.modules.auth.*`                                |
+| `resources` | `modules/resources` | `nl.amony.modules.resources.*`                           |
+| `search`    | `modules/search`    | `nl.amony.modules.search.*`                              |
+| `process`   | `lib/process`       | `nl.amony.lib.process.*` (the logical `media` module)    |
+| `lib`       | `lib`               | remaining `nl.amony.lib.*`                               |
 
 All modules publish under the `nl.amony` group.
 
