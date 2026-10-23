@@ -90,55 +90,53 @@ object App extends ResourceApp.Forever with Logging {
 
     def application(
       using meterProvider: MeterProvider[IO],
-      tracerProvider: TracerProvider[IO]
+      tracerProvider: TracerProvider[IO],
+      meter: Meter[IO],
+      tracer: Tracer[IO]
     ): Resource[IO, Unit] =
-      Resource.eval(meterProvider.get("app.amony")).flatMap { meter =>
-        Resource.eval(tracerProvider.get("app.amony")).flatMap { tracer =>
-          given Meter[IO]  = meter
-          given Tracer[IO] = tracer
 
-          val serverOptions = Http4sServerOptions.customiseInterceptors[IO]
-            .prependInterceptor(Otel4sTracing(tracer))
-            .serverLog(serverLog).options
+      val serverOptions = Http4sServerOptions.customiseInterceptors[IO]
+        .prependInterceptor(Otel4sTracing(tracer))
+        .serverLog(serverLog).options
 
-          for
-            databasePool      <- makeDatabasePool(appConfig.database)
-            httpClientBackend <- HttpClientCatsBackend.resource[IO]()
-            searchModule      <- SearchModule.resource(appConfig.search)
-            eventTopic         = {
-              given MessageTopicKey[ResourceEvent] = MessageTopicKey("resource-events")
-              PersistentMessageBus.postgres(databasePool, appConfig.messageBus).getTopic[ResourceEvent]
-            }
-            _                 <- eventTopic.processAtLeastOnce("solr-indexer")(searchModule.indexer.processEvent).compile.drain.background
-            resourceModule    <- ResourceModule.resource(appConfig.resources, databasePool, eventTopic)
-            previewGenerator   = PreviewGenerator(resourceModule.bucketRegistry)
-            _                 <- eventTopic.processAtLeastOnce("preview-generator")(previewGenerator.processEvent).compile.drain.background
-            authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
-            apiRoutes          = {
-              given ApiSecurity = authModule.apiSecurity
-
-              val tapirEndpoints: ServerEndpoints[IO] =
-                authModule.routes ++
-                  resourceModule.routes ++
-                  BucketRoutes.apply(searchModule.searchService, searchModule.indexer, resourceModule.bucketRegistry) ++
-                  searchModule.routes(resourceModule.bucketRegistry) ++
-                  ConfigRoutes.apply(
-                    resourceModule.thumbResolutions,
-                    resourceModule.thumbFormats,
-                    appConfig.resources.previews.supportedVideoFormats,
-                    appConfig.resources.previews.resolutionPickingStrategy
-                  )
-
-              resourceModule.contentRoutes <+> Http4sServerInterpreter[IO](serverOptions).toRoutes(tapirEndpoints)
-            }
-            _                 <- WebServer.run(appConfig.api, apiRoutes, authModule.apiSecurity)
-          yield ()
+      for
+        databasePool      <- makeDatabasePool(appConfig.database)
+        httpClientBackend <- HttpClientCatsBackend.resource[IO]()
+        searchModule      <- SearchModule.resource(appConfig.search)
+        eventTopic         = {
+          given MessageTopicKey[ResourceEvent] = MessageTopicKey("resource-events")
+          PersistentMessageBus.postgres(databasePool, appConfig.messageBus).getTopic[ResourceEvent]
         }
-      }
+        _                 <- eventTopic.processAtLeastOnce("solr-indexer")(searchModule.indexer.processEvent).compile.drain.background
+        resourceModule    <- ResourceModule.resource(appConfig.resources, databasePool, eventTopic)
+        previewGenerator   = PreviewGenerator(resourceModule.bucketRegistry)
+        _                 <- eventTopic.processAtLeastOnce("preview-generator")(previewGenerator.processEvent).compile.drain.background
+        authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
+        apiRoutes          = {
+          given ApiSecurity = authModule.apiSecurity
+
+          val tapirEndpoints: ServerEndpoints[IO] =
+            authModule.routes ++
+              resourceModule.routes ++
+              BucketRoutes.apply(searchModule.searchService, searchModule.indexer, resourceModule.bucketRegistry) ++
+              searchModule.routes(resourceModule.bucketRegistry) ++
+              ConfigRoutes.apply(
+                resourceModule.thumbResolutions,
+                resourceModule.thumbFormats,
+                appConfig.resources.previews.supportedVideoFormats,
+                appConfig.resources.previews.resolutionPickingStrategy
+              )
+
+          resourceModule.contentRoutes <+> Http4sServerInterpreter[IO](serverOptions).toRoutes(tapirEndpoints)
+        }
+        _                 <- WebServer.run(appConfig.api, apiRoutes, authModule.apiSecurity)
+      yield ()
 
     for
       (meterProvider, tracerProvider, _) <- Observability.resource[IO](appConfig.observability)
-      _                                  <- application(using meterProvider, tracerProvider)
+      meter                              <- Resource.eval(meterProvider.get("app.amony"))
+      tracer                             <- Resource.eval(tracerProvider.get("app.amony"))
+      _                                  <- application(using meterProvider, tracerProvider, meter, tracer)
     yield ()
   }
 }
