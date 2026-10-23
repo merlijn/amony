@@ -6,7 +6,7 @@ import nl.amony.lib.tapir.dsl.ServerEndpoints
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.resources.api.BucketRegistry
 import nl.amony.modules.search.api.{SearchIndexer, SearchService}
-import nl.amony.modules.search.http.SearchRoutes
+import nl.amony.modules.search.http.{SearchBucketRoutes, SearchRoutes}
 import nl.amony.modules.search.solr.{SolrIndexer, SolrResource, SolrSearchService}
 
 /**
@@ -17,7 +17,7 @@ import nl.amony.modules.search.solr.{SolrIndexer, SolrResource, SolrSearchServic
 class SearchModule(config: SearchConfig, val searchService: SearchService, val indexer: SearchIndexer):
 
   def routes(buckets: BucketRegistry)(using apiSecurity: ApiSecurity): ServerEndpoints[IO] =
-    SearchRoutes.apply(searchService, config, buckets)
+    SearchRoutes.apply(searchService, config, buckets) ++ SearchBucketRoutes.apply(searchService, indexer, buckets)
 
 object SearchModule:
 

@@ -54,7 +54,7 @@ ThisBuild / prodBuild := false
 
 addCommandAlias(
   "format",
-  "; shared/scalafmt; shared/Test/scalafmt; media/scalafmt; media/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; features/scalafmt; features/Test/scalafmt; scalafmt; Test/scalafmt"
+  "; shared/scalafmt; shared/Test/scalafmt; media/scalafmt; media/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; resources/scalafmt; resources/Test/scalafmt; search/scalafmt; search/Test/scalafmt; scalafmt; Test/scalafmt"
 )
 addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
 
@@ -185,7 +185,7 @@ val authDependencies = Seq(
   "org.bouncycastle"               % "bcprov-jdk18on"            % "1.85.2"
 )
 
-val featureDependencies = Seq(
+val resourcesDependencies = Seq(
   "org.typelevel"                 %% "cats-effect"               % "3.7.1",
   "co.fs2"                        %% "fs2-core"                  % "3.14.0",
   "co.fs2"                        %% "fs2-io"                    % "3.14.0",
@@ -214,9 +214,22 @@ val featureDependencies = Seq(
   "com.softwaremill.sttp.client4" %% "cats"                      % sttpVersion,
   "org.apache.tika"                % "tika-core"                 % "3.3.1",
   "org.jsoup"                      % "jsoup"                     % "1.23.2",
-  "org.apache.solr"                % "solr-core"                 % "9.10.1",
-  "org.apache.commons"             % "commons-compress"          % "1.28.0",
   "com.softwaremill.sttp.shared"  %% "fs2"                       % "1.6.0"
+)
+
+val searchDependencies = Seq(
+  "org.typelevel"                 %% "cats-effect"               % "3.7.1",
+  "co.fs2"                        %% "fs2-core"                  % "3.14.0",
+  "io.circe"                      %% "circe-core"                % circeVersion,
+  "io.circe"                      %% "circe-generic"             % circeVersion,
+  "io.circe"                      %% "circe-parser"              % circeVersion,
+  "com.outr"                      %% "scribe"                    % "3.19.0",
+  "com.softwaremill.sttp.tapir"   %% "tapir-core"                % tapirVersion,
+  "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"          % tapirVersion,
+  "com.github.pureconfig"         %% "pureconfig-core"           % "0.17.11",
+  "com.github.pureconfig"         %% "pureconfig-generic-scala3" % "0.17.11",
+  "org.apache.solr"                % "solr-core"                 % "9.10.1",
+  "org.apache.commons"             % "commons-compress"          % "1.28.0"
 )
 
 val appDependencies = Seq(
@@ -294,18 +307,27 @@ lazy val auth = project
     libraryDependencies ++= authDependencies
   )
 
-lazy val features = project
-  .in(file("features"))
+lazy val resources = project
+  .in(file("resources"))
   .dependsOn(shared, media, auth)
   .settings(commonSettings)
   .settings(
-    name := "amony-features",
-    libraryDependencies ++= featureDependencies
+    name := "amony-resources",
+    libraryDependencies ++= resourcesDependencies
+  )
+
+lazy val search = project
+  .in(file("search"))
+  .dependsOn(resources, auth)
+  .settings(commonSettings)
+  .settings(
+    name := "amony-search",
+    libraryDependencies ++= searchDependencies
   )
 
 lazy val amony = project
   .in(file("."))
-  .dependsOn(shared, media, auth, features)
+  .dependsOn(shared, media, auth, resources, search)
   .settings(commonSettings)
   .settings(
     name                             := "amony-app",
