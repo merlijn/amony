@@ -55,7 +55,7 @@ object App extends ResourceApp.Forever with Logging {
   def makeDatabasePool(
     config: DatabaseConfig,
     contexts: Contexts = new Contexts()
-  )(using tracer: Tracer[IO], meter: Meter[IO]): Resource[IO, Resource[IO, Session[IO]]] = {
+  )(using TracerProvider[IO], MeterProvider[IO]): Resource[IO, Resource[IO, Session[IO]]] = {
     for
       pool <- Session.Builder[IO]
                 .withHost(config.host)
@@ -90,54 +90,55 @@ object App extends ResourceApp.Forever with Logging {
 
     def application(
       using meterProvider: MeterProvider[IO],
-      meter: Meter[IO],
-      tracer: Tracer[IO]
-    ): Resource[IO, Unit] = {
+      tracerProvider: TracerProvider[IO]
+    ): Resource[IO, Unit] =
+      Resource.eval(meterProvider.get("app.amony")).flatMap { meter =>
+        Resource.eval(tracerProvider.get("app.amony")).flatMap { tracer =>
+          given Meter[IO]  = meter
+          given Tracer[IO] = tracer
 
-      given serverOptions: Http4sServerOptions[IO] =
-        Http4sServerOptions.customiseInterceptors[IO]
-          .prependInterceptor(Otel4sTracing(tracer))
-          .serverLog(serverLog).options
+          val serverOptions = Http4sServerOptions.customiseInterceptors[IO]
+            .prependInterceptor(Otel4sTracing(tracer))
+            .serverLog(serverLog).options
 
-      for
-        databasePool      <- makeDatabasePool(appConfig.database)
-        httpClientBackend <- HttpClientCatsBackend.resource[IO]()
-        searchModule      <- SearchModule.resource(appConfig.search)
-        eventTopic         = {
-          given MessageTopicKey[ResourceEvent] = MessageTopicKey("resource-events")
-          PersistentMessageBus.postgres(databasePool, appConfig.messageBus).getTopic[ResourceEvent]
+          for
+            databasePool      <- makeDatabasePool(appConfig.database)
+            httpClientBackend <- HttpClientCatsBackend.resource[IO]()
+            searchModule      <- SearchModule.resource(appConfig.search)
+            eventTopic         = {
+              given MessageTopicKey[ResourceEvent] = MessageTopicKey("resource-events")
+              PersistentMessageBus.postgres(databasePool, appConfig.messageBus).getTopic[ResourceEvent]
+            }
+            _                 <- eventTopic.processAtLeastOnce("solr-indexer")(searchModule.indexer.processEvent).compile.drain.background
+            resourceModule    <- ResourceModule.resource(appConfig.resources, databasePool, eventTopic)
+            previewGenerator   = PreviewGenerator(resourceModule.bucketRegistry)
+            _                 <- eventTopic.processAtLeastOnce("preview-generator")(previewGenerator.processEvent).compile.drain.background
+            authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
+            apiRoutes          = {
+              given ApiSecurity = authModule.apiSecurity
+
+              val tapirEndpoints: ServerEndpoints[IO] =
+                authModule.routes ++
+                  resourceModule.routes ++
+                  BucketRoutes.apply(searchModule.searchService, searchModule.indexer, resourceModule.bucketRegistry) ++
+                  searchModule.routes(resourceModule.bucketRegistry) ++
+                  ConfigRoutes.apply(
+                    resourceModule.thumbResolutions,
+                    resourceModule.thumbFormats,
+                    appConfig.resources.previews.supportedVideoFormats,
+                    appConfig.resources.previews.resolutionPickingStrategy
+                  )
+
+              resourceModule.contentRoutes <+> Http4sServerInterpreter[IO](serverOptions).toRoutes(tapirEndpoints)
+            }
+            _                 <- WebServer.run(appConfig.api, apiRoutes, authModule.apiSecurity)
+          yield ()
         }
-        _                 <- eventTopic.processAtLeastOnce("solr-indexer")(searchModule.indexer.processEvent).compile.drain.background
-        resourceModule    <- ResourceModule.resource(appConfig.resources, databasePool, eventTopic)
-        previewGenerator   = PreviewGenerator(resourceModule.bucketRegistry)
-        _                 <- eventTopic.processAtLeastOnce("preview-generator")(previewGenerator.processEvent).compile.drain.background
-        authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
-        apiRoutes          = {
-          given ApiSecurity = authModule.apiSecurity
-
-          val tapirEndpoints: ServerEndpoints[IO] =
-            authModule.routes ++
-              resourceModule.routes ++
-              BucketRoutes.apply(searchModule.searchService, searchModule.indexer, resourceModule.bucketRegistry) ++
-              searchModule.routes(resourceModule.bucketRegistry) ++
-              ConfigRoutes.apply(
-                resourceModule.thumbResolutions,
-                resourceModule.thumbFormats,
-                appConfig.resources.previews.supportedVideoFormats,
-                appConfig.resources.previews.resolutionPickingStrategy
-              )
-
-          resourceModule.contentRoutes <+> Http4sServerInterpreter[IO](serverOptions).toRoutes(tapirEndpoints)
-        }
-        _                 <- WebServer.run(appConfig.api, apiRoutes, authModule.apiSecurity)
-      yield ()
-    }
+      }
 
     for
       (meterProvider, tracerProvider, _) <- Observability.resource[IO](appConfig.observability)
-      meter                              <- Resource.eval(meterProvider.get("app.amony"))
-      tracer                             <- Resource.eval(tracerProvider.get("app.amony"))
-      _                                  <- application(using meterProvider, meter, tracer)
+      _                                  <- application(using meterProvider, tracerProvider)
     yield ()
   }
 }

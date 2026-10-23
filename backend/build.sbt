@@ -100,7 +100,7 @@ val circeVersion    = "0.14.17"
 val http4sVersion   = "0.23.38"
 val tapirVersion    = "1.14.0"
 val sttpVersion     = "4.1.0"
-val otel4sVersion   = "0.16.0"
+val otel4sVersion   = "1.1.0"
 
 lazy val amony = project
   .in(file("."))
@@ -201,8 +201,8 @@ lazy val amony = project
       "com.typesafe"                  % "config"                                     % "1.4.9",
 
       // database
-      "org.tpolecat"                 %% "skunk-core"                                 % "1.0.0",
-      "org.tpolecat"                 %% "skunk-circe"                                % "1.0.0",
+      "org.tpolecat"                 %% "skunk-core"                                 % "2.0.0-RC3",
+      "org.tpolecat"                 %% "skunk-circe"                                % "2.0.0-RC3",
       "org.postgresql"                % "postgresql"                                 % "42.7.14",
       "org.liquibase"                 % "liquibase-core"                             % "5.0.4",
 
@@ -218,8 +218,8 @@ lazy val amony = project
       "org.typelevel"                 %% "otel4s-core-trace"                         % otel4sVersion,
       "org.typelevel"                 %% "otel4s-oteljava"                           % otel4sVersion,
       "org.typelevel"                 %% "otel4s-semconv"                            % otel4sVersion,
-      "org.http4s"                    %% "http4s-otel4s-middleware-core"             % "0.17.0",
-      "org.http4s"                    %% "http4s-otel4s-middleware-metrics"          % "0.17.0",
+      "org.http4s"                    %% "http4s-otel4s-middleware-core"             % "0.19.0",
+      "org.http4s"                    %% "http4s-otel4s-middleware-metrics"          % "0.19.0",
       "org.typelevel"                 %% "log4cats-slf4j"                            % "2.8.0",
       "com.softwaremill.sttp.tapir"   %% "tapir-otel4s-tracing"                      % tapirVersion,
       "io.opentelemetry"               % "opentelemetry-exporter-otlp"               % "1.61.0" % Runtime,
@@ -257,15 +257,6 @@ lazy val amony = project
       "org.scalacheck"                %% "scalacheck"                                % "1.20.0"     % Test,
       "com.softwaremill.sttp.tapir"   %% "tapir-sttp-stub4-server"                   % tapirVersion % Test,
       "org.mockito"                   %% "mockito-scala-scalatest"                   % "2.2.3"      % Test
-    ),
-
-    // TODO remove this override once skunk has been updated to use otel4s 0.15.x
-    dependencyOverrides ++= Seq(
-      "org.typelevel"               %% "otel4s-core-trace"   % otel4sVersion,
-      "org.typelevel"               %% "otel4s-core-logs"    % otel4sVersion,
-      "org.typelevel"               %% "otel4s-core-common"  % otel4sVersion,
-      "org.typelevel"               %% "otel4s-oteljava"     % otel4sVersion,
-      "org.typelevel"               %% "otel4s-semconv"      % otel4sVersion,
     ),
 
     excludeDependencies ++= List(
