@@ -3,6 +3,8 @@ package nl.amony.modules.resources.api
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
+import nl.amony.lib.process.VideoContainer
+
 class VideoContainerSpec extends AnyWordSpecLike with Matchers {
 
   "VideoContainer" when {

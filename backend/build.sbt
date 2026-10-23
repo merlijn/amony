@@ -1,24 +1,29 @@
-import de.gccc.jib.MappingsHelper
-
 import scala.concurrent.duration.*
 import scala.sys.process.*
-import sbt.Keys.{scalaVersion, streams}
+
+import de.gccc.jib.MappingsHelper
 import sbt.Command
+import sbt.Keys.{scalaVersion, streams}
 
 val devScalacOptions = Seq(
   "-rewrite",
-  "-source", "future",
-  "-encoding", "utf-8")
+  "-source",
+  "future",
+  "-encoding",
+  "utf-8"
+)
 
 val prodScalacOptions = Seq(
   "-rewrite",
-  "-source", "future",
-  "-encoding", "utf-8",
+  "-source",
+  "future",
+  "-encoding",
+  "utf-8",
 //  "-Wunused:all",
 //  "-Xfatal-warnings"
 //  "-deprecation",
-  "-feature",
-  )
+  "-feature"
+)
 
 // CI sets JIB_RELEASE_BUILD=true on tag builds; locally we fall back to whether HEAD is a tag.
 def isReleaseBuild: Boolean =
@@ -39,16 +44,24 @@ Global / serverIdleTimeout := Some(1.hour)
 
 // -- Custom tasks
 
-lazy val buildSolrTarGz = taskKey[Seq[File]]("Creates the solr.tar.gz file")
+lazy val buildSolrTarGz         = taskKey[Seq[File]]("Creates the solr.tar.gz file")
 lazy val jibWriteDockerTagsFile = taskKey[File]("Creates the version.txt file")
-lazy val exportDatabaseSchema = taskKey[Unit]("Applies every migration to a throwaway PostgreSQL container and dumps the schema to target/amony-schema.sql")
+lazy val exportDatabaseSchema   =
+  taskKey[Unit]("Applies every migration to a throwaway PostgreSQL container and dumps the schema to target/amony-schema.sql")
+lazy val prodBuild              = settingKey[Boolean]("Whether to compile with production scalac options")
 
-addCommandAlias("format", "; scalafmt; Test/scalafmt")
+ThisBuild / prodBuild := false
+
+addCommandAlias(
+  "format",
+  "; shared/scalafmt; shared/Test/scalafmt; media/scalafmt; media/Test/scalafmt; features/scalafmt; features/Test/scalafmt; scalafmt; Test/scalafmt"
+)
 addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
 
 inThisBuild(
   List(
-    scalaVersion := "3.9.0",
+    organization      := "nl.amony",
+    scalaVersion      := "3.9.0",
     semanticdbEnabled := true,
     semanticdbVersion := scalafixSemanticdb.revision
   )
@@ -56,20 +69,18 @@ inThisBuild(
 
 commands += Command.command("prod") { state =>
   val settings = Seq(
-    Compile / scalacOptions := prodScalacOptions,
-    scalaVersion := "3.9.0",
-    semanticdbEnabled := true,
-    semanticdbVersion := scalafixSemanticdb.revision
+    ThisBuild / prodBuild := true,
+    scalaVersion          := "3.9.0",
+    semanticdbEnabled     := true,
+    semanticdbVersion     := scalafixSemanticdb.revision
   )
 
   Project.extract(state).appendWithSession(settings, state)
 }
 
 commands += Command.command("dev") { state =>
-  val extracted = Project.extract(state)
-
-  extracted.appendWithSession(
-    Seq(Compile / scalacOptions := devScalacOptions),
+  Project.extract(state).appendWithSession(
+    Seq(ThisBuild / prodBuild := false),
     state
   )
 }
@@ -96,28 +107,186 @@ val javaDevOpts = Seq(
 
 // --- Main project
 
-val circeVersion    = "0.14.17"
-val http4sVersion   = "0.23.38"
-val tapirVersion    = "1.14.0"
-val sttpVersion     = "4.1.0"
-val otel4sVersion   = "1.1.0"
+val circeVersion  = "0.14.17"
+val http4sVersion = "0.23.38"
+val tapirVersion  = "1.14.0"
+val sttpVersion   = "4.1.0"
+val otel4sVersion = "1.1.0"
+
+val commonExclusions = List(
+  ExclusionRule("org.scala-lang", "scala3-library_sjs"),
+  ExclusionRule("org.scala-lang", "scala3-library_sjs1_3"),
+  ExclusionRule("org.scala-js", "scalajs-library_2.13"),
+  ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl"),
+  ExclusionRule("javax.xml.bind", "jaxb-api")
+)
+
+lazy val commonSettings = Seq(
+  scalacOptions := (if (prodBuild.value) prodScalacOptions else devScalacOptions),
+  Test / fork   := true,
+  test / javaOptions ++= javaDevOpts,
+  excludeDependencies ++= commonExclusions
+)
+
+val sharedDependencies = Seq(
+  "org.typelevel"                 %% "cats-effect"               % "3.7.1",
+  "org.typelevel"                 %% "cats-mtl"                  % "1.7.0",
+  "co.fs2"                        %% "fs2-core"                  % "3.14.0",
+  "co.fs2"                        %% "fs2-io"                    % "3.14.0",
+  "io.circe"                      %% "circe-core"                % circeVersion,
+  "io.circe"                      %% "circe-parser"              % circeVersion,
+  "com.outr"                      %% "scribe"                    % "3.19.0",
+  "com.outr"                      %% "scribe-slf4j"              % "3.19.0",
+  "org.typelevel"                 %% "otel4s-core"               % otel4sVersion,
+  "org.typelevel"                 %% "otel4s-core-trace"         % otel4sVersion,
+  "org.typelevel"                 %% "otel4s-oteljava"           % otel4sVersion,
+  "org.typelevel"                 %% "otel4s-semconv"            % otel4sVersion,
+  "com.softwaremill.sttp.tapir"   %% "tapir-core"                % tapirVersion,
+  "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"          % tapirVersion,
+  "com.softwaremill.sttp.shared"  %% "fs2"                       % "1.6.0",
+  "com.softwaremill.sttp.client4" %% "core"                      % sttpVersion,
+  "com.softwaremill.sttp.client4" %% "circe"                     % sttpVersion,
+  "com.softwaremill.sttp.client4" %% "cats"                      % sttpVersion,
+  "org.tpolecat"                  %% "skunk-core"                % "2.0.0-RC3",
+  "org.tpolecat"                  %% "skunk-circe"               % "2.0.0-RC3",
+  "com.github.pureconfig"         %% "pureconfig-core"           % "0.17.11",
+  "com.github.pureconfig"         %% "pureconfig-generic-scala3" % "0.17.11"
+)
+
+val mediaDependencies = Seq(
+  "org.typelevel" %% "cats-effect"       % "3.7.1",
+  "co.fs2"        %% "fs2-core"          % "3.14.0",
+  "co.fs2"        %% "fs2-io"            % "3.14.0",
+  "io.circe"      %% "circe-core"        % circeVersion,
+  "io.circe"      %% "circe-generic"     % circeVersion,
+  "io.circe"      %% "circe-parser"      % circeVersion,
+  "com.outr"      %% "scribe"            % "3.19.0",
+  "org.typelevel" %% "otel4s-core"       % otel4sVersion,
+  "org.typelevel" %% "otel4s-core-trace" % otel4sVersion
+)
+
+val featureDependencies = Seq(
+  "org.typelevel"                 %% "cats-effect"               % "3.7.1",
+  "co.fs2"                        %% "fs2-core"                  % "3.14.0",
+  "co.fs2"                        %% "fs2-io"                    % "3.14.0",
+  "io.circe"                      %% "circe-core"                % circeVersion,
+  "io.circe"                      %% "circe-generic"             % circeVersion,
+  "io.circe"                      %% "circe-parser"              % circeVersion,
+  "com.outr"                      %% "scribe"                    % "3.19.0",
+  "com.outr"                      %% "scribe-slf4j"              % "3.19.0",
+  "org.typelevel"                 %% "otel4s-core"               % otel4sVersion,
+  "org.typelevel"                 %% "otel4s-core-trace"         % otel4sVersion,
+  "org.typelevel"                 %% "otel4s-oteljava"           % otel4sVersion,
+  "org.typelevel"                 %% "otel4s-semconv"            % otel4sVersion,
+  "com.softwaremill.sttp.tapir"   %% "tapir-core"                % tapirVersion,
+  "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"       % tapirVersion,
+  "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"         % tapirVersion,
+  "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"          % tapirVersion,
+  "org.http4s"                    %% "http4s-ember-server"       % http4sVersion,
+  "org.http4s"                    %% "http4s-dsl"                % http4sVersion,
+  "org.http4s"                    %% "http4s-circe"              % http4sVersion,
+  "org.tpolecat"                  %% "skunk-core"                % "2.0.0-RC3",
+  "org.tpolecat"                  %% "skunk-circe"               % "2.0.0-RC3",
+  "com.github.pureconfig"         %% "pureconfig-core"           % "0.17.11",
+  "com.github.pureconfig"         %% "pureconfig-generic-scala3" % "0.17.11",
+  "com.softwaremill.sttp.client4" %% "core"                      % sttpVersion,
+  "com.softwaremill.sttp.client4" %% "circe"                     % sttpVersion,
+  "com.softwaremill.sttp.client4" %% "cats"                      % sttpVersion,
+  "com.github.jwt-scala"          %% "jwt-circe"                 % "11.0.4",
+  "org.apache.tika"                % "tika-core"                 % "3.3.1",
+  "org.jsoup"                      % "jsoup"                     % "1.23.2",
+  "org.apache.solr"                % "solr-core"                 % "9.10.1",
+  "org.apache.commons"             % "commons-compress"          % "1.28.0",
+  "org.bouncycastle"               % "bcprov-jdk18on"            % "1.85.2",
+  "com.softwaremill.sttp.shared"  %% "fs2"                       % "1.6.0"
+)
+
+val appDependencies = Seq(
+  "org.typelevel"                 %% "cats-effect"                               % "3.7.1",
+  "co.fs2"                        %% "fs2-core"                                  % "3.14.0",
+  "co.fs2"                        %% "fs2-io"                                    % "3.14.0",
+  "com.typesafe"                   % "config"                                    % "1.4.9",
+  "com.github.pureconfig"         %% "pureconfig-core"                           % "0.17.11",
+  "com.github.pureconfig"         %% "pureconfig-generic-scala3"                 % "0.17.11",
+  "org.liquibase"                  % "liquibase-core"                            % "5.0.4",
+  "org.postgresql"                 % "postgresql"                                % "42.7.14",
+  "org.tpolecat"                  %% "skunk-core"                                % "2.0.0-RC3",
+  "org.http4s"                    %% "http4s-ember-server"                       % http4sVersion,
+  "org.http4s"                    %% "http4s-dsl"                                % http4sVersion,
+  "org.http4s"                    %% "http4s-circe"                              % http4sVersion,
+  "org.http4s"                    %% "http4s-otel4s-middleware-core"             % "0.19.0",
+  "org.http4s"                    %% "http4s-otel4s-middleware-metrics"          % "0.19.0",
+  "io.opentelemetry"               % "opentelemetry-exporter-otlp"               % "1.61.0" % Runtime,
+  "io.opentelemetry"               % "opentelemetry-sdk-extension-autoconfigure" % "1.61.0" % Runtime,
+  "org.typelevel"                 %% "otel4s-core"                               % otel4sVersion,
+  "org.typelevel"                 %% "otel4s-core-trace"                         % otel4sVersion,
+  "org.typelevel"                 %% "otel4s-oteljava"                           % otel4sVersion,
+  "org.typelevel"                 %% "otel4s-semconv"                            % otel4sVersion,
+  "org.typelevel"                 %% "log4cats-slf4j"                            % "2.8.0",
+  "com.outr"                      %% "scribe"                                    % "3.19.0",
+  "com.outr"                      %% "scribe-slf4j"                              % "3.19.0",
+  "com.softwaremill.sttp.tapir"   %% "tapir-core"                                % tapirVersion,
+  "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"                       % tapirVersion,
+  "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"                         % tapirVersion,
+  "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle"                   % tapirVersion,
+  "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"                          % tapirVersion,
+  "com.softwaremill.sttp.tapir"   %% "tapir-otel4s-tracing"                      % tapirVersion,
+  "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"                        % "0.12.0",
+  "com.softwaremill.sttp.shared"  %% "fs2"                                       % "1.6.0",
+  "com.softwaremill.sttp.client4" %% "core"                                      % sttpVersion,
+  "com.softwaremill.sttp.client4" %% "circe"                                     % sttpVersion,
+  "com.softwaremill.sttp.client4" %% "cats"                                      % sttpVersion,
+  "com.comcast"                   %% "ip4s-core"                                 % "3.7.0",
+  "org.slf4j"                      % "slf4j-api"                                 % "2.0.20"
+)
+
+val testDependencies = Seq(
+  "org.scalatest"               %% "scalatest"                      % "3.2.20"     % Test,
+  "org.scalatestplus"           %% "scalacheck-1-15"                % "3.2.11.0"   % Test,
+  "com.dimafeng"                %% "testcontainers-scala-scalatest" % "0.44.1"     % Test,
+  "commons-codec"                % "commons-codec"                  % "1.23.0"     % Test,
+  "org.scalacheck"              %% "scalacheck"                     % "1.20.0"     % Test,
+  "com.softwaremill.sttp.tapir" %% "tapir-sttp-stub4-server"        % tapirVersion % Test,
+  "org.mockito"                 %% "mockito-scala-scalatest"        % "2.2.3"      % Test
+)
+
+lazy val shared = project
+  .in(file("shared"))
+  .settings(commonSettings)
+  .settings(
+    name := "amony-shared",
+    libraryDependencies ++= sharedDependencies
+  )
+
+lazy val media = project
+  .in(file("media"))
+  .dependsOn(shared)
+  .settings(commonSettings)
+  .settings(
+    name := "amony-media",
+    libraryDependencies ++= mediaDependencies
+  )
+
+lazy val features = project
+  .in(file("features"))
+  .dependsOn(shared, media)
+  .settings(commonSettings)
+  .settings(
+    name := "amony-features",
+    libraryDependencies ++= featureDependencies
+  )
 
 lazy val amony = project
   .in(file("."))
+  .dependsOn(shared, media, features)
+  .settings(commonSettings)
   .settings(
-    organization := "nl.amony",
-    name := "amony-app",
-    scalaVersion := "3.9.0",
-    scalacOptions := devScalacOptions,
-    Global / cancelable   := true,
-    Test / fork := true,
-//    reStart / javaOptions ++= javaDevOpts,
-    run / fork             := true,
-    run / javaOptions     ++= javaDevOpts,
-    test / javaOptions    ++= javaDevOpts,
-    outputStrategy         := Some(StdoutOutput),
-
-    Compile / run / mainClass := Some("nl.amony.App"),
+    name                             := "amony-app",
+    Global / cancelable              := true,
+    run / fork                       := true,
+    run / javaOptions ++= javaDevOpts,
+    outputStrategy                   := Some(StdoutOutput),
+    Compile / run / mainClass        := Some("nl.amony.App"),
     Compile / packageBin / mainClass := Some("nl.amony.App"),
 
     // Jib Docker settings
@@ -126,33 +295,33 @@ lazy val amony = project
     jibName                 := "amony-app",
     jibVersion              := version.value.replace('+', '-'), // + sign is not valid in a docker tag
     jibCustomRepositoryPath := Some(s"$ghcrOwner/" + jibName.value),
-    jibPlatforms            := Set({if (System.getProperty("os.arch") == "aarch64") JibPlatforms.arm64 else JibPlatforms.amd64}),
+    jibPlatforms            := Set(if (System.getProperty("os.arch") == "aarch64") JibPlatforms.arm64 else JibPlatforms.amd64),
     jibImageFormat          := JibImageFormat.OCI,
     jibTags                 := envTags.getOrElse(if (isReleaseBuild) List("latest") else List("dev")),
-    jibExtraMappings   ++= Def.uncached {
+    jibExtraMappings ++= Def.uncached {
       // this adds the frontend assets to the docker image
       val webClientDir = (Compile / baseDirectory).value / ".." / "frontend" / "dist"
-      val target = "/app/assets"
-      val contents = MappingsHelper.contentOf(webClientDir, target)
-      val log = streams.value.log
+      val target       = "/app/assets"
+      val contents     = MappingsHelper.contentOf(webClientDir, target)
+      val log          = streams.value.log
       log.info(s"frontend assets file count: ${contents.size}")
       contents
     },
-    jibEnvironment := Map(
+    jibEnvironment          := Map(
       "JAVA_TOOL_OPTIONS"        -> "-Dconfig.file=/app/resources/application.conf",
       "AMONY_WEB_CLIENT_PATH"    -> "/app/assets",
       "AMONY_SOLR_PATH"          -> "/app/data/solr",
       "AMONY_DEFAULT_MEDIA_PATH" -> "/media",
       "OTEL_SERVICE_NAME"        -> "amony-app"
     ),
-    jibUseCurrentTimestamp := true,
+    jibUseCurrentTimestamp  := true,
 
     // Solr tar.gz generation
     buildSolrTarGz := Def.uncached {
       import scala.sys.process._
 
-      val log = streams.value.log
-      val sourceDir = (Compile / resourceDirectory).value / "solr"
+      val log        = streams.value.log
+      val sourceDir  = (Compile / resourceDirectory).value / "solr"
       val targetFile = (Compile / resourceManaged).value / "solr.tar.gz"
       if (!sourceDir.exists) {
         log.error(s"Source directory does not exist: ${sourceDir.getAbsolutePath}")
@@ -184,86 +353,5 @@ lazy val amony = project
       IO.write(versionFile, tags.mkString("\n"))
       versionFile
     },
-
-    // All dependencies from all modules combined
-    libraryDependencies ++= Seq(
-
-      // general
-      "com.github.jwt-scala"        %% "jwt-circe"                                   % "11.0.4",
-      "org.apache.tika"              % "tika-core"                                   % "3.3.1",
-      "org.typelevel"               %% "cats-effect"                                 % "3.7.1",
-      "co.fs2"                      %% "fs2-core"                                    % "3.14.0",
-      "co.fs2"                      %% "fs2-io"                                      % "3.14.0",
-
-      // config
-      "com.github.pureconfig"        %% "pureconfig-core"                            % "0.17.11",
-      "com.github.pureconfig"        %% "pureconfig-generic-scala3"                  % "0.17.11",
-      "com.typesafe"                  % "config"                                     % "1.4.9",
-
-      // database
-      "org.tpolecat"                 %% "skunk-core"                                 % "2.0.0-RC3",
-      "org.tpolecat"                 %% "skunk-circe"                                % "2.0.0-RC3",
-      "org.postgresql"                % "postgresql"                                 % "42.7.14",
-      "org.liquibase"                 % "liquibase-core"                             % "5.0.4",
-
-      // json
-      "io.circe"                     %% "circe-core"                                 % circeVersion,
-      "io.circe"                     %% "circe-generic"                              % circeVersion,
-      "io.circe"                     %% "circe-parser"                               % circeVersion,
-
-      // observability
-      "com.outr"                      %% "scribe"                                    % "3.19.0",
-      "com.outr"                      %% "scribe-slf4j"                              % "3.19.0",
-      "org.typelevel"                 %% "otel4s-core"                               % otel4sVersion,
-      "org.typelevel"                 %% "otel4s-core-trace"                         % otel4sVersion,
-      "org.typelevel"                 %% "otel4s-oteljava"                           % otel4sVersion,
-      "org.typelevel"                 %% "otel4s-semconv"                            % otel4sVersion,
-      "org.http4s"                    %% "http4s-otel4s-middleware-core"             % "0.19.0",
-      "org.http4s"                    %% "http4s-otel4s-middleware-metrics"          % "0.19.0",
-      "org.typelevel"                 %% "log4cats-slf4j"                            % "2.8.0",
-      "com.softwaremill.sttp.tapir"   %% "tapir-otel4s-tracing"                      % tapirVersion,
-      "io.opentelemetry"               % "opentelemetry-exporter-otlp"               % "1.61.0" % Runtime,
-      "io.opentelemetry"               % "opentelemetry-sdk-extension-autoconfigure" % "1.61.0" % Runtime,
-      "org.slf4j"                      % "slf4j-api"                                 % "2.0.20",
-
-      // http client
-      "com.softwaremill.sttp.client4" %% "core"                                      % sttpVersion,
-      "com.softwaremill.sttp.client4" %% "circe"                                     % sttpVersion,
-      "com.softwaremill.sttp.client4" %% "cats"                                      % sttpVersion,
-
-      // http server
-      "com.softwaremill.sttp.tapir"   %% "tapir-core"                                % tapirVersion,
-      "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"                       % tapirVersion,
-      "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"                         % tapirVersion,
-      "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle"                   % tapirVersion,
-      "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"                          % tapirVersion,
-      "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"                        % "0.12.0",
-      "com.softwaremill.sttp.shared"  %% "fs2"                                       % "1.6.0",
-      "org.http4s"                    %% "http4s-ember-server"                       % http4sVersion,
-      "org.http4s"                    %% "http4s-dsl"                                % http4sVersion,
-      "org.http4s"                    %% "http4s-circe"                              % http4sVersion,
-      "org.jsoup"                      % "jsoup"                                     % "1.23.2",
-
-      // solr search
-      "org.apache.solr"                % "solr-core"                                 % "9.10.1",
-      "org.apache.commons"             % "commons-compress"                          % "1.28.0",
-      "org.bouncycastle"               % "bcprov-jdk18on"                            % "1.85.2",
-
-      // Test dependencies
-      "org.scalatest"                 %% "scalatest"                                 % "3.2.20"     % Test,
-      "org.scalatestplus"             %% "scalacheck-1-15"                           % "3.2.11.0"   % Test,
-      "com.dimafeng"                  %% "testcontainers-scala-scalatest"            % "0.44.1"     % Test,
-      "commons-codec"                  % "commons-codec"                             % "1.23.0"     % Test,
-      "org.scalacheck"                %% "scalacheck"                                % "1.20.0"     % Test,
-      "com.softwaremill.sttp.tapir"   %% "tapir-sttp-stub4-server"                   % tapirVersion % Test,
-      "org.mockito"                   %% "mockito-scala-scalatest"                   % "2.2.3"      % Test
-    ),
-
-    excludeDependencies ++= List(
-      ExclusionRule("org.scala-lang", "scala3-library_sjs"),
-      ExclusionRule("org.scala-lang", "scala3-library_sjs1_3"),
-      ExclusionRule("org.scala-js", "scalajs-library_2.13"),
-      ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl"),
-      ExclusionRule("javax.xml.bind", "jaxb-api")
-    )
+    libraryDependencies ++= appDependencies ++ testDependencies
   )
