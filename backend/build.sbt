@@ -54,13 +54,12 @@ ThisBuild / prodBuild := false
 
 addCommandAlias(
   "format",
-  "; shared/scalafmt; shared/Test/scalafmt; media/scalafmt; media/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; resources/scalafmt; resources/Test/scalafmt; search/scalafmt; search/Test/scalafmt; scalafmt; Test/scalafmt"
+  "; shared/scalafmt; shared/Test/scalafmt; process/scalafmt; process/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; resources/scalafmt; resources/Test/scalafmt; search/scalafmt; search/Test/scalafmt; scalafmt; Test/scalafmt"
 )
 addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
 
 inThisBuild(
   List(
-    organization      := "nl.amony",
     scalaVersion      := "3.9.0",
     semanticdbEnabled := true,
     semanticdbVersion := scalafixSemanticdb.revision
@@ -122,6 +121,7 @@ val commonExclusions = List(
 )
 
 lazy val commonSettings = Seq(
+  organization  := "nl.amony",
   scalacOptions := (if (prodBuild.value) prodScalacOptions else devScalacOptions),
   Test / fork   := true,
   test / javaOptions ++= javaDevOpts,
@@ -153,7 +153,7 @@ val sharedDependencies = Seq(
   "com.github.pureconfig"         %% "pureconfig-generic-scala3" % "0.17.11"
 )
 
-val mediaDependencies = Seq(
+val processDependencies = Seq(
   "org.typelevel" %% "cats-effect"       % "3.7.1",
   "co.fs2"        %% "fs2-core"          % "3.14.0",
   "co.fs2"        %% "fs2-io"            % "3.14.0",
@@ -285,17 +285,17 @@ lazy val shared = project
   .in(file("shared"))
   .settings(commonSettings)
   .settings(
-    name := "amony-shared",
+    name := "shared",
     libraryDependencies ++= sharedDependencies
   )
 
-lazy val media = project
-  .in(file("media"))
+lazy val process = project
+  .in(file("process"))
   .dependsOn(shared)
   .settings(commonSettings)
   .settings(
-    name := "amony-media",
-    libraryDependencies ++= mediaDependencies
+    name := "process",
+    libraryDependencies ++= processDependencies
   )
 
 lazy val auth = project
@@ -303,16 +303,16 @@ lazy val auth = project
   .dependsOn(shared)
   .settings(commonSettings)
   .settings(
-    name := "amony-auth",
+    name := "auth",
     libraryDependencies ++= authDependencies
   )
 
 lazy val resources = project
   .in(file("resources"))
-  .dependsOn(shared, media, auth)
+  .dependsOn(shared, process, auth)
   .settings(commonSettings)
   .settings(
-    name := "amony-resources",
+    name := "resources",
     libraryDependencies ++= resourcesDependencies
   )
 
@@ -321,16 +321,16 @@ lazy val search = project
   .dependsOn(resources, auth)
   .settings(commonSettings)
   .settings(
-    name := "amony-search",
+    name := "search",
     libraryDependencies ++= searchDependencies
   )
 
 lazy val amony = project
   .in(file("."))
-  .dependsOn(shared, media, auth, resources, search)
+  .dependsOn(shared, process, auth, resources, search)
   .settings(commonSettings)
   .settings(
-    name                             := "amony-app",
+    name                             := "app",
     Global / cancelable              := true,
     run / fork                       := true,
     run / javaOptions ++= javaDevOpts,
