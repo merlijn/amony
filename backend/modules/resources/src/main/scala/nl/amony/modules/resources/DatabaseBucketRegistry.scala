@@ -8,9 +8,9 @@ import cats.effect.{Deferred, Fiber, IO, Ref, Resource}
 import cats.implicits.*
 import scribe.Logging
 
-import nl.amony.lib.messagebus.MessageTopic
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.BucketsDal
+import nl.amony.platform.messagebus.MessageTopic
 
 /** Creates a bucket from its configuration, together with its background (sync) process. */
 type BucketFactory = ResourceBucketConfig => IO[(ResourceBucket, IO[Unit])]

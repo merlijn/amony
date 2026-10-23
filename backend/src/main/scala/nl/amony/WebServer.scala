@@ -27,10 +27,10 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.typelevel.otel4s.metrics.MeterProvider
 import scribe.Logging
 
-import nl.amony.lib.tapir.dsl.error.ErrorBody
 import nl.amony.modules.auth.api.{ApiSecurity, effectiveHost}
 import nl.amony.modules.auth.crypt.PemReader
 import nl.amony.modules.resources.http.ResourceDirectives
+import nl.amony.platform.tapir.dsl.error.ErrorBody
 import nl.amony.{HttpConfig, HttpsConfig, WebServerConfig}
 
 object WebServer extends Logging {

@@ -12,10 +12,10 @@ import scribe.Logging
 import sttp.client4.Backend
 import sttp.client4.circe.asJson
 
-import nl.amony.lib.hash.Base32
 import nl.amony.modules.*
 import nl.amony.modules.auth.*
 import nl.amony.modules.auth.dal.{OAuthStateDatabase, OAuthStateRow, UserDatabase, UserRow}
+import nl.amony.platform.hash.Base32
 
 sealed trait AuthenticationError
 

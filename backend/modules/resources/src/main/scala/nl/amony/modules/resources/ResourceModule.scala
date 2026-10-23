@@ -8,13 +8,13 @@ import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import skunk.Session
 
-import nl.amony.lib.messagebus.MessageTopic
-import nl.amony.lib.tapir.dsl.ServerEndpoints
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.resources.api.{BucketRegistry, CacheScope, LocalDirectoryConfig, ResourceEvent, ThumbnailFormats, ThumbnailResolutions}
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
 import nl.amony.modules.resources.http.{CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
+import nl.amony.platform.messagebus.MessageTopic
+import nl.amony.platform.tapir.dsl.ServerEndpoints
 
 /**
  * Wires the resources module: the resource database, the thumbnail configuration, the event bus the

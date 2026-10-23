@@ -54,7 +54,7 @@ ThisBuild / prodBuild := false
 
 addCommandAlias(
   "format",
-  "; lib/scalafmt; lib/Test/scalafmt; process/scalafmt; process/Test/scalafmt; database/scalafmt; database/Test/scalafmt; messagebus/scalafmt; messagebus/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; resources/scalafmt; resources/Test/scalafmt; search/scalafmt; search/Test/scalafmt; scalafmt; Test/scalafmt"
+  "; platform/scalafmt; platform/Test/scalafmt; process/scalafmt; process/Test/scalafmt; database/scalafmt; database/Test/scalafmt; messagebus/scalafmt; messagebus/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; resources/scalafmt; resources/Test/scalafmt; search/scalafmt; search/Test/scalafmt; scalafmt; Test/scalafmt"
 )
 addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
 
@@ -128,7 +128,7 @@ lazy val commonSettings = Seq(
   excludeDependencies ++= commonExclusions
 )
 
-val libDependencies = Seq(
+val platformDependencies = Seq(
   "org.typelevel"                 %% "cats-effect"               % "3.7.1",
   "org.typelevel"                 %% "cats-mtl"                  % "1.7.0",
   "co.fs2"                        %% "fs2-core"                  % "3.14.0",
@@ -315,17 +315,17 @@ val testDependencies = Seq(
   "org.mockito"                 %% "mockito-scala-scalatest"        % "2.2.3"      % Test
 )
 
-lazy val lib = project
-  .in(file("lib"))
+lazy val platform = project
+  .in(file("platform"))
   .settings(commonSettings)
   .settings(
-    name := "lib",
-    libraryDependencies ++= libDependencies
+    name := "platform",
+    libraryDependencies ++= platformDependencies
   )
 
 lazy val process = project
-  .in(file("lib/process"))
-  .dependsOn(lib)
+  .in(file("platform/process"))
+  .dependsOn(platform)
   .settings(commonSettings)
   .settings(
     name := "process",
@@ -333,7 +333,7 @@ lazy val process = project
   )
 
 lazy val database = project
-  .in(file("lib/database"))
+  .in(file("platform/database"))
   .settings(commonSettings)
   .settings(
     name := "database",
@@ -341,7 +341,7 @@ lazy val database = project
   )
 
 lazy val messagebus = project
-  .in(file("lib/messagebus"))
+  .in(file("platform/messagebus"))
   .dependsOn(database % "test->compile")
   .settings(commonSettings)
   .settings(
@@ -351,7 +351,7 @@ lazy val messagebus = project
 
 lazy val auth = project
   .in(file("modules/auth"))
-  .dependsOn(lib)
+  .dependsOn(platform)
   .settings(commonSettings)
   .settings(
     name := "auth",
@@ -360,7 +360,7 @@ lazy val auth = project
 
 lazy val resources = project
   .in(file("modules/resources"))
-  .dependsOn(lib, process, messagebus, auth)
+  .dependsOn(platform, process, messagebus, auth)
   .settings(commonSettings)
   .settings(
     name := "resources",
@@ -378,8 +378,8 @@ lazy val search = project
 
 lazy val amony = project
   .in(file("."))
-  .aggregate(lib, process, database, messagebus, auth, resources, search)
-  .dependsOn(lib, process, database, messagebus, auth, resources, search)
+  .aggregate(platform, process, database, messagebus, auth, resources, search)
+  .dependsOn(platform, process, database, messagebus, auth, resources, search)
   .settings(commonSettings)
   .settings(
     name                               := "app",

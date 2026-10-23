@@ -20,11 +20,11 @@ import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
 import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import skunk.Session
 
-import nl.amony.lib.database.{Database, DatabaseConfig}
-import nl.amony.lib.messagebus.MessageTopic
 import nl.amony.modules.auth.api.{Role, UserId}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
+import nl.amony.platform.database.{Database, DatabaseConfig}
+import nl.amony.platform.messagebus.MessageTopic
 
 class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAll with Matchers with MockitoSugar {
 

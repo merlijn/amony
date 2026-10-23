@@ -2,12 +2,12 @@ package nl.amony.modules.search
 
 import cats.effect.{IO, Resource}
 
-import nl.amony.lib.tapir.dsl.ServerEndpoints
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.resources.api.BucketRegistry
 import nl.amony.modules.search.api.{SearchIndexer, SearchService}
 import nl.amony.modules.search.http.{SearchBucketRoutes, SearchRoutes}
 import nl.amony.modules.search.solr.{SolrIndexer, SolrResource, SolrSearchService}
+import nl.amony.platform.tapir.dsl.ServerEndpoints
 
 /**
  * Wires the search module: the Solr-backed search service and indexer, and the search endpoints. Both services

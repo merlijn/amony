@@ -8,7 +8,7 @@ import com.dimafeng.testcontainers.GenericContainer
 import org.testcontainers.containers.wait.strategy.Wait
 import scribe.Logging
 
-import nl.amony.lib.database.{Database, DatabaseConfig}
+import nl.amony.platform.database.{Database, DatabaseConfig}
 
 /**
  * Dumps the PostgreSQL schema that results from applying every Liquibase migration.

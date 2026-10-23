@@ -3,7 +3,7 @@ package nl.amony.modules.auth.api
 import io.circe.Codec
 import sttp.tapir.Schema.annotations.customise
 
-import nl.amony.lib.tapir.required
+import nl.amony.platform.tapir.required
 
 case class AuthToken(
   userId: UserId,

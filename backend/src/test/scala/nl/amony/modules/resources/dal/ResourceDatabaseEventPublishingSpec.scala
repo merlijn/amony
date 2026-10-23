@@ -15,10 +15,10 @@ import skunk.codec.all.*
 import skunk.implicits.*
 import skunk.{Session, *}
 
-import nl.amony.lib.database.{Database, DatabaseConfig}
-import nl.amony.lib.messagebus.{MessageTopic, MessageTopicKey, PersistentMessageBus}
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
+import nl.amony.platform.database.{Database, DatabaseConfig}
+import nl.amony.platform.messagebus.{MessageTopic, MessageTopicKey, PersistentMessageBus}
 
 class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 

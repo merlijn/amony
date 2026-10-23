@@ -10,9 +10,9 @@ The analysis parsed all 128 main source files under `backend/src/main/scala` and
 packages and roughly 100 package-to-package import edges. Fully-qualified references outside imports were checked as
 well; there were none outside comments and strings, so imports are a good approximation for this codebase.
 
-For readability, the graph below collapses `lib.process.*`, `lib.tapir.*`, and `lib.files.*` into single nodes. The
-business modules are shown at package granularity. Red nodes participate in a cycle at package level, or in the
-`resources`/`search` cycle at logical-module level.
+For readability, the graph below collapses `platform.process.*`, `platform.tapir.*`, and `platform.files.*` into single
+nodes. The business modules are shown at package granularity. Red nodes participate in a cycle at package level, or in
+the `resources`/`search` cycle at logical-module level.
 
 ## Current package graph
 
@@ -20,15 +20,15 @@ business modules are shown at package granularity. Red nodes participate in a cy
 flowchart LR
   app["app<br/>(App, WebServer, config)"]
 
-  subgraph platform_group["platform / lib"]
-    lib_http["lib.http<br/>(tapir, dsl, errors)"]
-    lib_process["lib.process<br/>(ffmpeg, magick)"]
-    lib_files["lib.files<br/>(+ sync)"]
-    lib_hash["lib.hash"]
-    lib_msg["lib.messagebus"]
-    lib_obs["lib.observability"]
-    lib_conc["lib.concurrent"]
-    lib_email["lib.email<br/>(unused)"]
+  subgraph platform_group["platform"]
+    platform_http["platform.http<br/>(tapir, dsl, errors)"]
+    platform_process["platform.process<br/>(ffmpeg, magick)"]
+    platform_files["platform.files<br/>(+ sync)"]
+    platform_hash["platform.hash"]
+    platform_msg["platform.messagebus"]
+    platform_obs["platform.observability"]
+    platform_conc["platform.concurrent"]
+    platform_email["platform.email<br/>(unused)"]
   end
 
   subgraph auth_group["auth"]
@@ -68,19 +68,19 @@ flowchart LR
   app --> search_solr
   app --> search_http
   app --> config
-  app --> lib_http
-  app --> lib_msg
-  app --> lib_obs
+  app --> platform_http
+  app --> platform_msg
+  app --> platform_obs
 
   auth --> auth_api
   auth --> auth_http
   auth_api --> auth
   auth_api --> auth_dal
-  auth_api --> lib_http
-  auth_api --> lib_hash
+  auth_api --> platform_http
+  auth_api --> platform_hash
   auth_http --> auth
   auth_http --> auth_api
-  auth_http --> lib_http
+  auth_http --> platform_http
   auth_dal --> auth_api
 
   res --> res_api
@@ -88,67 +88,67 @@ flowchart LR
   res --> res_http
   res --> res_local
   res --> auth_api
-  res --> lib_http
-  res --> lib_msg
+  res --> platform_http
+  res --> platform_msg
   res_api --> auth_api
-  res_api --> lib_files
-  res_api --> lib_hash
-  res_api --> lib_process
+  res_api --> platform_files
+  res_api --> platform_hash
+  res_api --> platform_process
   res_dal --> res_api
   res_dal --> auth_api
   res_local --> res_api
   res_local --> res_dal
   res_local --> auth_api
-  res_local --> lib_files
-  res_local --> lib_hash
-  res_local --> lib_msg
-  res_local --> lib_conc
-  res_local --> lib_process
+  res_local --> platform_files
+  res_local --> platform_hash
+  res_local --> platform_msg
+  res_local --> platform_conc
+  res_local --> platform_process
   res_http --> res_api
   res_http --> res_dal
   res_http --> res_local
   res_http --> auth_api
   res_http --> search_api
-  res_http --> lib_http
+  res_http --> platform_http
 
   search --> search_api
   search --> search_http
   search --> search_solr
   search --> auth_api
   search --> res_api
-  search --> lib_http
+  search --> platform_http
   search_api --> res_api
   search_http --> search_api
   search_http --> search
   search_http --> auth_api
   search_http --> res_api
   search_http --> res_http
-  search_http --> lib_http
+  search_http --> platform_http
   search_solr --> search_api
   search_solr --> auth_api
   search_solr --> res_api
 
-  lib_http --> auth_api
-  lib_process --> res_api
-  lib_process --> lib_files
-  lib_hash --> lib_files
+  platform_http --> auth_api
+  platform_process --> res_api
+  platform_process --> platform_files
+  platform_hash --> platform_files
 
   classDef cycle fill:#ffe5e5,stroke:#c53030,stroke-width:2px;
-  class lib_http,auth,auth_api,auth_dal,auth_http,lib_process,res_api,res_http,search_api,search,search_http cycle;
+  class platform_http,auth,auth_api,auth_dal,auth_http,platform_process,res_api,res_http,search_api,search,search_http cycle;
 ```
 
 ## Findings
 
 ### The `auth` module and the HTTP DSL form a six-package cycle
 
-`lib.tapir`, `lib.tapir.dsl`, `auth`, `auth.api`, `auth.dal`, and `auth.http` are in one strongly connected component.
-The cycle runs roughly like this:
+`platform.tapir`, `platform.tapir.dsl`, `auth`, `auth.api`, `auth.dal`, and `auth.http` are in one strongly connected
+component. The cycle runs roughly like this:
 
 ```text
 auth.api → auth (AuthConfig)
 auth → auth.http (AuthModule builds AuthRoutes)
-auth.http → lib.tapir.dsl
-lib.tapir.dsl → auth.api (ApiSecurity, AuthToken, Permission)
+auth.http → platform.tapir.dsl
+platform.tapir.dsl → auth.api (ApiSecurity, AuthToken, Permission)
 ```
 
 In addition, `auth.api → auth` because `ApiSecurity` and `TokenManager` use `AuthConfig`, and `auth.api → auth.dal`
@@ -156,17 +156,17 @@ because `FederatedLoginService` uses the databases. `auth.dal` also needs `User`
 
 The cycle is not fundamental. It has three causes:
 
-- `AuthCookies` lives in `lib.tapir` but depends on auth cookie names.
+- `AuthCookies` lives in `platform.tapir` but depends on auth cookie names.
 - Auth-aware `serverLogic` overloads live in the generic Tapir DSL.
 - Config and service implementations live in `auth.api` instead of a `core` package.
 
 ### The media library and the resource domain form a second cycle
 
-- `lib.process.ffmpeg.tasks.AddFastStart` imports `resources.api.VideoContainer`.
+- `platform.process.ffmpeg.tasks.AddFastStart` imports `resources.api.VideoContainer`.
 - `resources.api.ResourceMeta` imports `FFProbeModel.FFProbeOutput` and `MagickImageMeta`.
 
 The media-processing library and the resource domain therefore depend on each other. The same area also has a small
-`lib.process.magick ↔ lib.process.magick.tasks` cycle.
+`platform.process.magick ↔ platform.process.magick.tasks` cycle.
 
 ### `resources` and `search` are cyclic as logical modules
 
@@ -207,7 +207,7 @@ core.
 
 ### Smaller issues
 
-- `lib.email` is currently unreferenced.
+- `platform.email` is currently unreferenced.
 - `modules.config` is one route and depends on `resources` core.
 - `GenerateSpec` makes the `app` package depend on every HTTP adapter. It is a build tool, not runtime wiring.
 - `app` knows more than a composition root should: `WebServer` imports auth crypto and resources HTTP utilities.
@@ -338,13 +338,13 @@ Allowed dependency rules:
 
 ## Suggested order of work
 
-1. **Break `lib.http ↔ auth`**
+1. **Break `platform.http ↔ auth`**
    - Move `AuthCookies` to `auth.http` or `auth.api`.
-   - Move the auth-aware `serverLogic` overloads out of `lib.tapir.dsl` into `auth.http` or `auth.tapir`.
+   - Move the auth-aware `serverLogic` overloads out of `platform.tapir.dsl` into `auth.http` or `auth.tapir`.
    - Move `PemReader` to `platform.crypto`.
    - Move `responseFromFile` to `platform.http` so `WebServer` stops depending on `resources.http`.
 
-2. **Break `lib.process ↔ resources.api`**
+2. **Break `platform.process ↔ resources.api`**
    - Move `VideoContainer`, `ContentProperties`, `VideoProperties`, and `ImageProperties` to `media.api`.
    - Move ffprobe and magick JSON parsing to `media.ffmpeg` and `media.magick`.
    - `AddFastStart` can then use `media.api.VideoContainer`, and `resources.api` only depends on `media.api`.
@@ -373,7 +373,7 @@ Allowed dependency rules:
    - `ResourceConfig` to `resources.api` or `resources.config`.
    - This alone removes several `module ↔ http` cycles.
 
-7. **Delete or annotate `lib.email`** if it is not planned for near-term use.
+7. **Delete or annotate `platform.email`** if it is not planned for near-term use.
 
 8. **Enforce the result with ArchUnit**
    - `slices().matching("nl.amony.modules.(*)..").should().beFreeOfCycles()`.
@@ -388,30 +388,30 @@ The biggest win is not a new module name. It is making `*.http` depend on `*.api
 
 The first steps are implemented on `chore/introduce-modules`:
 
-| sbt module   | Directory           | Contents                                                 |
-| ------------ | ------------------- | -------------------------------------------------------- |
-| `app`        | `.`                 | `nl.amony` app sources, `nl.amony.modules.config`, tests |
-| `auth`       | `modules/auth`      | `nl.amony.modules.auth.*`                                |
-| `resources`  | `modules/resources` | `nl.amony.modules.resources.*`                           |
-| `search`     | `modules/search`    | `nl.amony.modules.search.*`                              |
-| `process`    | `lib/process`       | `nl.amony.lib.process.*` (the logical `media` module)    |
-| `database`   | `lib/database`      | Liquibase evolutions, `DatabaseConfig`, pool/migrations  |
-| `messagebus` | `lib/messagebus`    | `nl.amony.lib.messagebus.*` and its specs                |
-| `lib`        | `lib`               | remaining `nl.amony.lib.*`                               |
+| sbt module   | Directory             | Contents                                                   |
+| ------------ | --------------------- | ---------------------------------------------------------- |
+| `app`        | `.`                   | `nl.amony` app sources, `nl.amony.modules.config`, tests   |
+| `auth`       | `modules/auth`        | `nl.amony.modules.auth.*`                                  |
+| `resources`  | `modules/resources`   | `nl.amony.modules.resources.*`                             |
+| `search`     | `modules/search`      | `nl.amony.modules.search.*`                                |
+| `process`    | `platform/process`    | `nl.amony.platform.process.*` (the logical `media` module) |
+| `database`   | `platform/database`   | Liquibase evolutions, `DatabaseConfig`, pool/migrations    |
+| `messagebus` | `platform/messagebus` | `nl.amony.platform.messagebus.*` and its specs             |
+| `platform`   | `platform`            | remaining `nl.amony.platform.*`                            |
 
 All modules publish under the `nl.amony` group.
 
 Package names are unchanged. Class-level moves required to keep the module graph acyclic:
 
 - `VideoContainer` stays in `nl.amony.modules.resources.api`; ffmpeg has its own `ContainerFormat` in
-  `nl.amony.lib.process.ffmpeg`.
-- `AuthCookies` and the auth-aware `serverLogic`/`serverLogicT` helpers moved from `nl.amony.lib.tapir` and
-  `nl.amony.lib.tapir.dsl` to `nl.amony.modules.auth.api`.
+  `nl.amony.platform.process.ffmpeg`.
+- `AuthCookies` and the auth-aware `serverLogic`/`serverLogicT` helpers moved from `nl.amony.platform.tapir` and
+  `nl.amony.platform.tapir.dsl` to `nl.amony.modules.auth.api`.
 - The search-backed bucket endpoints (`adminReindexBucket`, `adminFixNonStreamable`) moved from
   `resources.http.BucketRoutes` to `search.http.SearchBucketRoutes`, so `search` can depend on `resources` instead of
   the two forming a cycle.
-- The database evolutions moved to `lib/database`, but the classpath path stays `db/00-changelog.yaml` and all changeSet
-  ids and authors are unchanged. Existing `databasechangelog` rows therefore remain valid.
+- The database evolutions moved to `platform/database`, but the classpath path stays `db/00-changelog.yaml` and all
+  changeSet ids and authors are unchanged. Existing `databasechangelog` rows therefore remain valid.
 
 Most tests remain in the app module; the messagebus specs live in the `messagebus` module. The remaining package-level
 cycles are unrelated to the module split.

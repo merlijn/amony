@@ -17,10 +17,10 @@ import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import scribe.Logging
 
 import nl.amony.ExportDatabaseSchema
-import nl.amony.lib.database.{Database, DatabaseConfig}
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, Tag, TagOwner}
 import nl.amony.modules.resources.dal.ResourceDatabase
+import nl.amony.platform.database.{Database, DatabaseConfig}
 
 class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with Logging with Matchers {
 

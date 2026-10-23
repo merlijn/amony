@@ -4,12 +4,12 @@ import cats.effect.IO
 import scribe.Logging
 import sttp.tapir.*
 
-import nl.amony.lib.tapir.dsl.error.{ErrorResponse, SecurityError}
-import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.{BucketId, BucketRegistry}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.modules.search.api.{Query, SearchIndexer, SearchService}
+import nl.amony.platform.tapir.dsl.error.{ErrorResponse, SecurityError}
+import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes}
 
 /** Bucket operations that drive the search index and therefore live with the search module. */
 object SearchBucketRoutes extends RoutesModule, Logging:

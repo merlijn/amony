@@ -4,9 +4,9 @@ import cats.effect.IO
 import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 
-import nl.amony.lib.messagebus.MessageTopic
 import nl.amony.modules.resources.api.{LocalDirectoryConfig, ResourceEvent, ThumbnailFormats, ThumbnailResolutions}
 import nl.amony.modules.resources.dal.ResourceDatabase
+import nl.amony.platform.messagebus.MessageTopic
 
 trait LocalDirectoryBase(
   val config: LocalDirectoryConfig,

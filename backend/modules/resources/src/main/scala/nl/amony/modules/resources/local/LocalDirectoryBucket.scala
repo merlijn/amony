@@ -9,11 +9,11 @@ import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
-import nl.amony.lib.files.*
-import nl.amony.lib.messagebus.MessageTopic
 import nl.amony.modules.auth.api.Role
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.ResourceDatabase
+import nl.amony.platform.files.*
+import nl.amony.platform.messagebus.MessageTopic
 
 class LocalDirectoryBucket(
   config: LocalDirectoryConfig,

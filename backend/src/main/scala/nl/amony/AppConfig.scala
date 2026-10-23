@@ -2,13 +2,13 @@ package nl.amony
 
 import pureconfig.*
 
-import nl.amony.lib.database.DatabaseConfig
-import nl.amony.lib.messagebus.MessageBusConfig
-import nl.amony.lib.observability.ObservabilityConfig
 import nl.amony.modules.auth.AuthConfig
 import nl.amony.modules.resources.ResourceConfig
 import nl.amony.modules.search.SearchConfig
 import nl.amony.modules.search.solr.SolrConfig
+import nl.amony.platform.database.DatabaseConfig
+import nl.amony.platform.messagebus.MessageBusConfig
+import nl.amony.platform.observability.ObservabilityConfig
 
 case class AppConfig(
   resources: ResourceConfig,

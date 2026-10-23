@@ -14,11 +14,11 @@ import sttp.model.headers.CookieValueWithMeta
 import sttp.tapir.*
 import sttp.tapir.json.circe.jsonBody
 
-import nl.amony.lib.tapir.*
-import nl.amony.lib.tapir.dsl.error.{BadGatewayError, BadRequestError, ErrorResponse, NotFoundError, SecurityError}
-import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes}
 import nl.amony.modules.auth.AuthConfig
 import nl.amony.modules.auth.api.*
+import nl.amony.platform.tapir.*
+import nl.amony.platform.tapir.dsl.error.{BadGatewayError, BadRequestError, ErrorResponse, NotFoundError, SecurityError}
+import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes}
 
 case class IdentityProviderDto(name: String, loginUrl: String) derives Codec, Schema
 case class LogoutResponse(logoutUrl: Option[String]) derives Codec, Schema
@@ -128,7 +128,7 @@ object AuthRoutes extends RoutesModule, Logging:
         IO.pure(Right((LogoutResponse(logoutUrl), apiSecurity.createLogoutCookes)))
       }
 
-      nl.amony.lib.tapir.dsl.serverLogic(endpoint = loginEndpoint) { (provider, origin) =>
+      nl.amony.platform.tapir.dsl.serverLogic(endpoint = loginEndpoint) { (provider, origin) =>
         loginService.identityProviders.get(provider) match
           case None                 => IO.pure(Left(NotFoundError("not_found", "Resource not found")))
           case Some(providerConfig) =>
@@ -153,7 +153,7 @@ object AuthRoutes extends RoutesModule, Logging:
             yield Right(RedirectResponse(redirectUri.toString) -> stateCookie)
       }
 
-      nl.amony.lib.tapir.dsl.serverLogicT(endpoint = callbackEndpoint) {
+      nl.amony.platform.tapir.dsl.serverLogicT(endpoint = callbackEndpoint) {
         case (provider, code, state, clientState, origin) =>
           for
             _              <- EitherT.fromOption[IO](loginService.identityProviders.get(provider), NotFoundError("not_found", "Resource not found"))
@@ -162,7 +162,7 @@ object AuthRoutes extends RoutesModule, Logging:
           yield RedirectResponse("/") -> apiSecurity.createCookies(authentication)
       }
 
-      nl.amony.lib.tapir.dsl.serverLogic(endpoint = getIdentityProvidersEndpoint) { _ =>
+      nl.amony.platform.tapir.dsl.serverLogic(endpoint = getIdentityProvidersEndpoint) { _ =>
         IO.pure(Right(loginService.identityProviders.values.map { provider =>
           IdentityProviderDto(
             name     = provider.name,

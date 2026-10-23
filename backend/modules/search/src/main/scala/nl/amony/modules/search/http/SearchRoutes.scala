@@ -6,8 +6,6 @@ import cats.effect.IO
 import sttp.tapir.*
 import sttp.tapir.json.circe.jsonBody
 
-import nl.amony.lib.tapir.dsl.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
-import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes}
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.BucketId
 import nl.amony.modules.resources.api.BucketRegistry
@@ -16,6 +14,8 @@ import nl.amony.modules.search.SearchConfig
 import nl.amony.modules.search.api.*
 import nl.amony.modules.search.api.SortDirection.{Asc, Desc}
 import nl.amony.modules.search.api.SortField.*
+import nl.amony.platform.tapir.dsl.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
+import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes}
 
 object SearchRoutes extends RoutesModule:
 

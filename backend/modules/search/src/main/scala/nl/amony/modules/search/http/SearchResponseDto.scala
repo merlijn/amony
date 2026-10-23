@@ -4,8 +4,8 @@ import io.circe.Codec
 import sttp.tapir.Schema
 import sttp.tapir.Schema.annotations.customise
 
-import nl.amony.lib.tapir.required
 import nl.amony.modules.resources.http.ResourceDto
+import nl.amony.platform.tapir.required
 
 case class SearchResponseDto(
   offset: Long,

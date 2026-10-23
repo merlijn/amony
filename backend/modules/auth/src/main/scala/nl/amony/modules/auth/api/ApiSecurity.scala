@@ -9,9 +9,9 @@ import sttp.model.Method
 import sttp.model.headers.Cookie.SameSite
 import sttp.model.headers.CookieValueWithMeta
 
-import nl.amony.lib.tapir.dsl.error.SecurityError
 import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.{Authentication, JwtDecoder}
+import nl.amony.platform.tapir.dsl.error.SecurityError
 
 val authCookieName         = "access_token"
 val refreshTokenCookieName = "refresh_token"

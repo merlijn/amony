@@ -11,10 +11,10 @@ import pureconfig.*
 import pureconfig.generic.FieldCoproductHint
 import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
 
-import nl.amony.lib.files.GlobPatterns
-import nl.amony.lib.hash.Base32
-import nl.amony.lib.hash.PartialHash.partialHash
 import nl.amony.modules.auth.api.Role
+import nl.amony.platform.files.GlobPatterns
+import nl.amony.platform.hash.Base32
+import nl.amony.platform.hash.PartialHash.partialHash
 
 sealed trait ResourceBucketConfig:
   def id: String

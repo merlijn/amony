@@ -2,8 +2,8 @@ package nl.amony.modules.resources.api
 
 import scala.util.{Failure, Try}
 
-import nl.amony.lib.process.ffmpeg.tasks.FFProbeModel.{FFProbeOutput, given}
-import nl.amony.lib.process.magick.MagickImageMeta
+import nl.amony.platform.process.ffmpeg.tasks.FFProbeModel.{FFProbeOutput, given}
+import nl.amony.platform.process.magick.MagickImageMeta
 
 case class ResourceMeta(toolName: String, toolData: String, properties: ContentProperties) derives io.circe.Codec
 

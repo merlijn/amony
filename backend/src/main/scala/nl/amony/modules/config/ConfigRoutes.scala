@@ -6,10 +6,10 @@ import sttp.tapir.*
 import sttp.tapir.Schema.annotations.customise
 import sttp.tapir.json.circe.jsonBody
 
-import nl.amony.lib.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic}
-import nl.amony.lib.tapir.required
 import nl.amony.modules.resources.ResolutionPickingStrategy
 import nl.amony.modules.resources.api.{ThumbnailDimension, ThumbnailFormats, ThumbnailResolutions}
+import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic}
+import nl.amony.platform.tapir.required
 
 /** A concrete thumbnail choice: a dimension ("width" or "height") plus a size in pixels. */
 case class ThumbnailResolutionDto(dimension: String, pixels: Int) derives Codec, Schema

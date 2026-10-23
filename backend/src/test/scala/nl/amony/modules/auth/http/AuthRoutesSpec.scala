@@ -12,10 +12,10 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import sttp.model.{StatusCode, Uri}
 
-import nl.amony.lib.tapir.dsl.error.ErrorBody
-import nl.amony.lib.tapir.test.EndpointFixture
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.auth.{AuthConfig, HS256Config, IdentityProvider, JwtConfig, RoleAccessConfig}
+import nl.amony.platform.tapir.dsl.error.ErrorBody
+import nl.amony.platform.tapir.test.EndpointFixture
 
 /**
  * Tapir-layer tests for the auth endpoints: the domain service is mocked so each test only verifies

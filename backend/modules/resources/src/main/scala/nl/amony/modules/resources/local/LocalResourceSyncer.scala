@@ -11,8 +11,6 @@ import fs2.Stream
 import fs2.concurrent.SignallingRef
 import skunk.Session
 
-import nl.amony.lib.files.FileInfo
-import nl.amony.lib.files.sync.*
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.{
   BucketId,
@@ -27,6 +25,8 @@ import nl.amony.modules.resources.api.{
   ResourceUpdated,
   VideoProperties
 }
+import nl.amony.platform.files.FileInfo
+import nl.amony.platform.files.sync.*
 
 /**
  * Functionality to synchronize a local directory with the database state.

@@ -3,7 +3,7 @@ package nl.amony.modules.resources.api
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
-import nl.amony.lib.hash.Base32
+import nl.amony.platform.hash.Base32
 
 sealed trait ResourceOperation {
   def contentType: String
