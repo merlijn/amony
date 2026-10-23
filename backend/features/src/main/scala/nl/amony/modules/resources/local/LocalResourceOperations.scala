@@ -12,7 +12,7 @@ import scribe.Logging
 
 import nl.amony.lib.concurrent.SingleFlight
 import nl.amony.lib.hash.Base32
-import nl.amony.lib.process.VideoContainer
+import nl.amony.lib.process.ffmpeg.ContainerFormat
 import nl.amony.lib.process.ffmpeg.FFMpeg
 import nl.amony.lib.process.magick.ImageMagick
 import nl.amony.modules.resources.api.*
@@ -87,7 +87,12 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
     }
 
   private[local] def addFastStart(video: Path, container: VideoContainer, outputFile: Option[Path] = None): IO[Path] =
-    ffmpeg.addFastStart(video, container, outputFile)
+    ffmpeg.addFastStart(video, containerFormat(container), outputFile)
+
+  private def containerFormat(container: VideoContainer): ContainerFormat = container match
+    case VideoContainer.Mp4      => ContainerFormat.Mp4
+    case VideoContainer.Webm     => ContainerFormat.Webm
+    case VideoContainer.Matroska => ContainerFormat.Matroska
 
   private[local] def streamableOf(path: Path, contentType: Option[String]): IO[Option[Boolean]] =
     if contentType.exists(_.startsWith("video/")) then

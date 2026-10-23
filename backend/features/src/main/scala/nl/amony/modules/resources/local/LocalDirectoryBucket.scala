@@ -11,7 +11,6 @@ import scribe.Logging
 
 import nl.amony.lib.files.*
 import nl.amony.lib.messagebus.MessageTopic
-import nl.amony.lib.process.VideoContainer
 import nl.amony.modules.auth.api.Role
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.ResourceDatabase

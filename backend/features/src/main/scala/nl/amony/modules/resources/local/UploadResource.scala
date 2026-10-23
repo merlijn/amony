@@ -10,9 +10,8 @@ import fs2.{Chunk, Pipe}
 import scribe.Logging
 
 import nl.amony.lib.files.FileInfo
-import nl.amony.lib.process.VideoContainer
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{ResourceAdded, ResourceBucket, ResourceInfo, UploadError}
+import nl.amony.modules.resources.api.{ResourceAdded, ResourceBucket, ResourceInfo, UploadError, VideoContainer}
 
 trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
 

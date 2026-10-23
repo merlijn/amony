@@ -1,4 +1,4 @@
-package nl.amony.lib.process
+package nl.amony.modules.resources.api
 
 /** Video container formats amony knows how to lay out for progressive HTTP playback. */
 enum VideoContainer(val extension: String):
