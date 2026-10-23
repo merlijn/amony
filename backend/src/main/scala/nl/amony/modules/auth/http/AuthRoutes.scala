@@ -70,7 +70,7 @@ object AuthRoutes extends RoutesModule, Logging:
     register(endpoint.tag("auth").name("authLogin").description("Redirect to the identity provider for login")
       .get.in("api" / "auth" / "login" / path[String]("provider"))
       .in(requestOrigin)
-      .out(RedirectResponse.endpointOutput and setCookie("oauth_login_state"))
+      .out(RedirectResponse.endpointOutput.and(setCookie("oauth_login_state")))
       .errorOut(loginErrorOutput))
 
   val callbackEndpoint =

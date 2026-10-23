@@ -12,8 +12,8 @@ import com.dimafeng.testcontainers.scalatest.TestContainerForAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
-import org.typelevel.otel4s.metrics.Meter
-import org.typelevel.otel4s.trace.Tracer
+import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
+import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import scribe.Logging
 
 import nl.amony.modules.auth.api.UserId
@@ -88,6 +88,8 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       val dbConfig             = configForContainer(container)
       given tracer: Tracer[IO] = Tracer.noop[IO]
       given meter: Meter[IO]   = Meter.noop[IO]
+      given MeterProvider[IO]  = MeterProvider.noop[IO]
+      given TracerProvider[IO] = TracerProvider.noop[IO]
 
       App.makeDatabasePool(dbConfig).map(ResourceDatabase(_)).use(test).unsafeRunSync()
     }

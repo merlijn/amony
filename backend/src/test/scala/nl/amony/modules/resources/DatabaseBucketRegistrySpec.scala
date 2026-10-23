@@ -16,8 +16,8 @@ import org.mockito.scalatest.MockitoSugar
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
-import org.typelevel.otel4s.metrics.Meter
-import org.typelevel.otel4s.trace.Tracer
+import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
+import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import skunk.Session
 
 import nl.amony.lib.messagebus.MessageTopic
@@ -36,8 +36,10 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
       env          = Map("POSTGRES_USER" -> "test", "PGUSER" -> "test", "POSTGRES_PASSWORD" -> "test", "POSTGRES_DB" -> "test")
     )
 
-  given Tracer[IO] = Tracer.noop[IO]
-  given Meter[IO]  = Meter.noop[IO]
+  given Tracer[IO]         = Tracer.noop[IO]
+  given Meter[IO]          = Meter.noop[IO]
+  given MeterProvider[IO]  = MeterProvider.noop[IO]
+  given TracerProvider[IO] = TracerProvider.noop[IO]
 
   private def bucketConfig(id: String, path: Path): LocalDirectoryConfig =
     LocalDirectoryConfig(

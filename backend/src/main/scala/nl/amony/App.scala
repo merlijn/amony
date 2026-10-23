@@ -55,7 +55,7 @@ object App extends ResourceApp.Forever with Logging {
   def makeDatabasePool(
     config: DatabaseConfig,
     contexts: Contexts = new Contexts()
-  )(using tracer: Tracer[IO], meter: Meter[IO]): Resource[IO, Resource[IO, Session[IO]]] = {
+  )(using TracerProvider[IO], MeterProvider[IO]): Resource[IO, Resource[IO, Session[IO]]] = {
     for
       pool <- Session.Builder[IO]
                 .withHost(config.host)
@@ -90,14 +90,14 @@ object App extends ResourceApp.Forever with Logging {
 
     def application(
       using meterProvider: MeterProvider[IO],
+      tracerProvider: TracerProvider[IO],
       meter: Meter[IO],
       tracer: Tracer[IO]
-    ): Resource[IO, Unit] = {
+    ): Resource[IO, Unit] =
 
-      given serverOptions: Http4sServerOptions[IO] =
-        Http4sServerOptions.customiseInterceptors[IO]
-          .prependInterceptor(Otel4sTracing(tracer))
-          .serverLog(serverLog).options
+      val serverOptions = Http4sServerOptions.customiseInterceptors[IO]
+        .prependInterceptor(Otel4sTracing(tracer))
+        .serverLog(serverLog).options
 
       for
         databasePool      <- makeDatabasePool(appConfig.database)
@@ -131,13 +131,12 @@ object App extends ResourceApp.Forever with Logging {
         }
         _                 <- WebServer.run(appConfig.api, apiRoutes, authModule.apiSecurity)
       yield ()
-    }
 
     for
       (meterProvider, tracerProvider, _) <- Observability.resource[IO](appConfig.observability)
       meter                              <- Resource.eval(meterProvider.get("app.amony"))
       tracer                             <- Resource.eval(tracerProvider.get("app.amony"))
-      _                                  <- application(using meterProvider, meter, tracer)
+      _                                  <- application(using meterProvider, tracerProvider, meter, tracer)
     yield ()
   }
 }

@@ -12,8 +12,8 @@ import liquibase.Contexts
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
-import org.typelevel.otel4s.metrics.Meter
-import org.typelevel.otel4s.trace.Tracer
+import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
+import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import skunk.Session
 
 import nl.amony.{App, DatabaseConfig}
@@ -30,6 +30,8 @@ class MessageBusSpec extends AnyWordSpecLike with Matchers:
 
   given meter: Meter[IO]   = Meter.noop[IO]
   given tracer: Tracer[IO] = Tracer.noop[IO]
+  given MeterProvider[IO]  = MeterProvider.noop[IO]
+  given TracerProvider[IO] = TracerProvider.noop[IO]
   given Codec[Int]         = Codec.implied[Int]
 
   private def setting(prop: String, env: String): Option[String] = sys.props.get(prop).orElse(sys.env.get(env))

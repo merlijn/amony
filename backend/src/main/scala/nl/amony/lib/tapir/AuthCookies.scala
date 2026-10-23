@@ -18,6 +18,8 @@ object AuthCookies:
   val empty: AuthCookies = AuthCookies(None, None, None, None)
 
   val endpointOutput: EndpointIO[AuthCookies] =
-    (setCookieOpt(authCookieName) and setCookieOpt(refreshTokenCookieName) and setCookieOpt("XSRF-TOKEN") and setCookieOpt(
-      providerIdTokenCookieName
-    )).mapTo[AuthCookies]
+    setCookieOpt(authCookieName)
+      .and(setCookieOpt(refreshTokenCookieName))
+      .and(setCookieOpt("XSRF-TOKEN"))
+      .and(setCookieOpt(providerIdTokenCookieName))
+      .mapTo[AuthCookies]
