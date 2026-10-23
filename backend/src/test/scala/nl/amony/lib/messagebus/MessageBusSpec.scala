@@ -26,7 +26,7 @@ import nl.amony.{App, DatabaseConfig}
  * the handler. With a persistent sbt server, pass the system properties through the forked JVM, e.g.
  * `sbt 'set Test/javaOptions += "-Damony.perf=true"; testOnly nl.amony.lib.messagebus.MessageBusPerformanceSpec'`.
  */
-class MessageBusPerformanceSpec extends AnyWordSpecLike with Matchers:
+class MessageBusSpec extends AnyWordSpecLike with Matchers:
 
   given meter: Meter[IO]   = Meter.noop[IO]
   given tracer: Tracer[IO] = Tracer.noop[IO]
@@ -36,7 +36,7 @@ class MessageBusPerformanceSpec extends AnyWordSpecLike with Matchers:
 
   private val enabled = setting("amony.perf", "AMONY_PERF").contains("true")
 
-  "The message bus" should {
+  "PersistentMessageBus" should {
 
     "report single producer / single consumer throughput" in {
       assume(enabled, "performance test disabled; see the class comment for how to run it")

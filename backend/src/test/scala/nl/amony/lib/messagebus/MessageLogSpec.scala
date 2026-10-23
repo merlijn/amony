@@ -76,92 +76,104 @@ class MessageLogSpec extends AnyWordSpecLike with TestContainerForAll with Match
       case Some(row) => log.commitOffset(topic, consumerId, row.id).as(nOf(row.payload)).flatMap(n => readAll(log, topic, consumerId).map(n :: _))
     }
 
-  "MessageLog" should {
+  "MessageLog" when {
 
-    "read messages in insertion order for a consumer" in withContainers { container =>
-      withLog(container) { (pool, log) =>
-        val topic = newTopic
-        for
-          _  <- log.ensureConsumer(topic, "consumer", 0)
-          _  <- (1 to 3).toList.traverse_(n => publish(pool, log, topic, n))
-          xs <- readAll(log, topic, "consumer")
-        yield xs shouldBe List(1, 2, 3)
+    "reading messages" should {
+
+      "return them in insertion order for a consumer" in withContainers { container =>
+        withLog(container) { (pool, log) =>
+          val topic = newTopic
+          for
+            _  <- log.ensureConsumer(topic, "consumer", 0)
+            _  <- (1 to 3).toList.traverse_(n => publish(pool, log, topic, n))
+            xs <- readAll(log, topic, "consumer")
+          yield xs shouldBe List(1, 2, 3)
+        }
+      }
+
+      "let independent consumers each read the whole log" in withContainers { container =>
+        withLog(container) { (pool, log) =>
+          val topic = newTopic
+          for
+            _ <- log.ensureConsumer(topic, "a", 0)
+            _ <- log.ensureConsumer(topic, "b", 0)
+            _ <- (1 to 3).toList.traverse_(n => publish(pool, log, topic, n))
+            a <- readAll(log, topic, "a")
+            b <- readAll(log, topic, "b")
+          yield
+            a shouldBe List(1, 2, 3)
+            b shouldBe List(1, 2, 3)
+        }
       }
     }
 
-    "start a new consumer at the latest message" in withContainers { container =>
-      withLog(container) { (pool, log) =>
-        val topic = newTopic
-        for
-          _    <- (1 to 2).toList.traverse_(n => publish(pool, log, topic, n))
-          max  <- log.latestId(topic)
-          _    <- log.ensureConsumer(topic, "consumer", max)
-          none <- log.nextUnprocessed(topic, "consumer")
-          _    <- publish(pool, log, topic, 3)
-          next <- log.nextUnprocessed(topic, "consumer")
-        yield
-          none shouldBe None
-          next.map(row => nOf(row.payload)) shouldBe Some(3)
+    "starting a consumer" should {
+
+      "start a new consumer at the latest message" in withContainers { container =>
+        withLog(container) { (pool, log) =>
+          val topic = newTopic
+          for
+            _    <- (1 to 2).toList.traverse_(n => publish(pool, log, topic, n))
+            max  <- log.latestId(topic)
+            _    <- log.ensureConsumer(topic, "consumer", max)
+            none <- log.nextUnprocessed(topic, "consumer")
+            _    <- publish(pool, log, topic, 3)
+            next <- log.nextUnprocessed(topic, "consumer")
+          yield
+            none shouldBe None
+            next.map(row => nOf(row.payload)) shouldBe Some(3)
+        }
       }
     }
 
-    "record a failure without advancing the offset" in withContainers { container =>
-      withLog(container) { (pool, log) =>
-        val topic = newTopic
-        for
-          _     <- log.ensureConsumer(topic, "consumer", 0)
-          _     <- publish(pool, log, topic, 1)
-          first <- log.nextUnprocessed(topic, "consumer")
-          _     <- log.recordFailure(topic, "consumer", "boom")
-          again <- log.nextUnprocessed(topic, "consumer")
-          state <- consumerState(pool, topic, "consumer")
-        yield
-          again.map(_.id) shouldBe first.map(_.id)
-          state shouldBe (1, Some("boom"))
+    "recording failures" should {
+
+      "record a failure without advancing the offset" in withContainers { container =>
+        withLog(container) { (pool, log) =>
+          val topic = newTopic
+          for
+            _     <- log.ensureConsumer(topic, "consumer", 0)
+            _     <- publish(pool, log, topic, 1)
+            first <- log.nextUnprocessed(topic, "consumer")
+            _     <- log.recordFailure(topic, "consumer", "boom")
+            again <- log.nextUnprocessed(topic, "consumer")
+            state <- consumerState(pool, topic, "consumer")
+          yield
+            again.map(_.id) shouldBe first.map(_.id)
+            state shouldBe (1, Some("boom"))
+        }
       }
     }
 
-    "let independent consumers each read the whole log" in withContainers { container =>
-      withLog(container) { (pool, log) =>
-        val topic = newTopic
-        for
-          _ <- log.ensureConsumer(topic, "a", 0)
-          _ <- log.ensureConsumer(topic, "b", 0)
-          _ <- (1 to 3).toList.traverse_(n => publish(pool, log, topic, n))
-          a <- readAll(log, topic, "a")
-          b <- readAll(log, topic, "b")
-        yield
-          a shouldBe List(1, 2, 3)
-          b shouldBe List(1, 2, 3)
-      }
-    }
+    "purging messages" should {
 
-    "purge messages every consumer has processed" in withContainers { container =>
-      withLog(container) { (pool, log) =>
-        val topic = newTopic
-        for
-          _    <- log.ensureConsumer(topic, "consumer", 0)
-          _    <- (1 to 2).toList.traverse_(n => publish(pool, log, topic, n))
-          row  <- log.nextUnprocessed(topic, "consumer")
-          _    <- log.commitOffset(topic, "consumer", row.get.id)
-          _    <- log.purge(topic, java.time.Duration.ZERO)
-          left <- countRows(pool, topic)
-        yield left shouldBe 1
+      "purge messages every consumer has processed" in withContainers { container =>
+        withLog(container) { (pool, log) =>
+          val topic = newTopic
+          for
+            _    <- log.ensureConsumer(topic, "consumer", 0)
+            _    <- (1 to 2).toList.traverse_(n => publish(pool, log, topic, n))
+            row  <- log.nextUnprocessed(topic, "consumer")
+            _    <- log.commitOffset(topic, "consumer", row.get.id)
+            _    <- log.purge(topic, java.time.Duration.ZERO)
+            left <- countRows(pool, topic)
+          yield left shouldBe 1
+        }
       }
-    }
 
-    "not purge messages a consumer has not processed" in withContainers { container =>
-      withLog(container) { (pool, log) =>
-        val topic = newTopic
-        for
-          _    <- log.ensureConsumer(topic, "a", 0)
-          _    <- log.ensureConsumer(topic, "b", 0)
-          _    <- (1 to 2).toList.traverse_(n => publish(pool, log, topic, n))
-          row  <- log.nextUnprocessed(topic, "a")
-          _    <- log.commitOffset(topic, "a", row.get.id)
-          _    <- log.purge(topic, java.time.Duration.ZERO)
-          left <- countRows(pool, topic)
-        yield left shouldBe 2
+      "not purge messages a consumer has not processed" in withContainers { container =>
+        withLog(container) { (pool, log) =>
+          val topic = newTopic
+          for
+            _    <- log.ensureConsumer(topic, "a", 0)
+            _    <- log.ensureConsumer(topic, "b", 0)
+            _    <- (1 to 2).toList.traverse_(n => publish(pool, log, topic, n))
+            row  <- log.nextUnprocessed(topic, "a")
+            _    <- log.commitOffset(topic, "a", row.get.id)
+            _    <- log.purge(topic, java.time.Duration.ZERO)
+            left <- countRows(pool, topic)
+          yield left shouldBe 2
+        }
       }
     }
   }

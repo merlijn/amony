@@ -86,11 +86,11 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
 
       /** Remuxes the stored upload into a streamable layout when its container supports it, returning the new hash. */
       def remuxUploadedFile(): IO[Option[Array[Byte]]] =
-        meta.contentTypeForPath(uploadPath).flatMap {
+        contentTypeForPath(uploadPath).flatMap {
           case Some(contentType) =>
             VideoContainer.fromContentType(contentType) match
               case Some(container) =>
-                ffmpeg.addFastStart(uploadPath, container).attempt.flatMap {
+                addFastStart(uploadPath, container).attempt.flatMap {
                   case Left(error)       =>
                     logger.warn(s"Failed to remux uploaded file '$fileName', storing the original file", error)
                     IO.pure(None)

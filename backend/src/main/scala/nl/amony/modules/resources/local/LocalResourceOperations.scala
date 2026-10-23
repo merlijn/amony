@@ -3,19 +3,26 @@ package nl.amony.modules.resources.local
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.security.MessageDigest
-import java.util.concurrent.ConcurrentHashMap
+import scala.util.{Failure, Success, Try}
 
-import cats.effect.std.MapRef
-import cats.effect.{Deferred, IO}
+import cats.effect.IO
 import cats.implicits.*
+import org.apache.tika.Tika
 import scribe.Logging
 
+import nl.amony.lib.concurrent.SingleFlight
 import nl.amony.lib.hash.Base32
+import nl.amony.lib.process.ffmpeg.FFMpeg
+import nl.amony.lib.process.magick.ImageMagick
 import nl.amony.modules.resources.api.*
 
 trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
   self: ResourceBucket =>
+
+  private val ffmpeg      = new FFMpeg
+  private val imageMagick = new ImageMagick
+  private val tika        = new Tika()
 
   type OperationKey = (resourceId: ResourceId, operation: ResourceOperation)
 
@@ -35,10 +42,60 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
       config.cachePath.resolve(fileName)
     }
 
-  private val mapRefOps: MapRef[IO, OperationKey, Option[Deferred[IO, Either[Throwable, Path]]]] =
-    MapRef.fromConcurrentHashMap[IO, OperationKey, Deferred[IO, Either[Throwable, Path]]](
-      new ConcurrentHashMap[OperationKey, Deferred[IO, Either[Throwable, Path]]]()
-    )
+  private val inFlight = SingleFlight[OperationKey, Path]
+
+  private[local] def contentTypeForPath(path: Path): IO[Option[String]] =
+    IO.blocking {
+      Try(tika.detect(path)) match
+        case Success(contentType) =>
+          Some(contentType)
+        case Failure(exception)   =>
+          logger.warn(s"Error detecting content type for path: $path", exception)
+          None
+    }
+
+  private[local] def contentTypeAndMetaForPath(path: Path): IO[Option[(contentType: String, meta: ResourceMeta)]] =
+    contentTypeForPath(path).flatMap {
+      case None =>
+        IO.pure(None)
+
+      case Some(contentType) if contentType.startsWith("video/") =>
+        ffmpeg.ffprobe(path, false).map {
+          (ffprobeResult, json) =>
+            ContentProperties.ffprobeOutputToContentMeta(ffprobeResult).toOption.map {
+              properties =>
+                val version = ffprobeResult.program_version.map(_.version).getOrElse("unknown")
+                (contentType, ResourceMeta(s"ffprobe/$version", json.noSpaces, properties))
+            }
+        }.recover { case e: Throwable => logger.error(s"Failed to get video meta data for $path", e); None }
+
+      case Some(contentType) if contentType.startsWith("image/") =>
+        imageMagick.getImageMeta(path).map:
+          case Failure(e)      =>
+            logger.error(s"Failed to get image meta data for $path", e)
+            None
+          case Success(result) =>
+            result.output.headOption.map {
+              magick =>
+                val properties =
+                  ImageProperties(width = magick.image.geometry.width, height = magick.image.geometry.height, metaData = magick.image.properties)
+                (contentType, ResourceMeta("magick/1", result.rawJson.noSpaces, properties))
+            }
+
+      case _ => IO.pure(None)
+    }
+
+  private[local] def addFastStart(video: Path, container: VideoContainer, outputFile: Option[Path] = None): IO[Path] =
+    ffmpeg.addFastStart(video, container, outputFile)
+
+  private[local] def streamableOf(path: Path, contentType: Option[String]): IO[Option[Boolean]] =
+    if contentType.exists(_.startsWith("video/")) then
+      Streamability.detect(path).map {
+        case Streamability.Streamable    => Some(true)
+        case Streamability.NotStreamable => Some(false)
+        case Streamability.Unknown       => None
+      }
+    else IO.pure(None)
 
   /**
    * Validator for a derived preview. It is derived from the source's partial hash, the operation (encoded in the output
@@ -67,23 +124,10 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
     val key        = (resourceId = info.resourceId, operation = operation)
 
     if Files.exists(outputFile) then IO.pure(ResourceContent.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
-    else {
-
-      def runOperation(deferred: Deferred[IO, Either[Throwable, Path]]): IO[Path] =
-        createResource(config.resourcePath.resolve(info.path), info, key.operation)
-          .attempt
-          .flatTap(result => deferred.complete(result))
-          .flatTap(_ => mapRefOps(key).set(None))
-          .rethrow
-
-      Deferred[IO, Either[Throwable, Path]].flatMap {
-        newDeferred =>
-          mapRefOps(key).modify {
-            case Some(existing) => (Some(existing), existing.get.rethrow)
-            case None           => (Some(newDeferred), runOperation(newDeferred))
-          }
-      }.flatten.map(_ => ResourceContent.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
-    }
+    else
+      inFlight
+        .run(key)(createResource(config.resourcePath.resolve(info.path), info, key.operation))
+        .map(_ => ResourceContent.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
   }
 
   private def createResource(inputFile: Path, info: ResourceInfo, operation: ResourceOperation): IO[Path] =

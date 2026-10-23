@@ -67,107 +67,116 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
   private def await(ref: Ref[IO, List[Int]], size: Int): IO[List[Int]] =
     ref.get.flatMap(xs => if xs.size >= size then IO.pure(xs) else IO.sleep(50.millis) *> await(ref, size)).timeout(15.seconds)
 
-  "PostgresMessageTopic" should {
+  "PostgresMessageTopic" when {
 
-    "process published messages in order" in withContainers { container =>
-      pool(container).use { pool =>
-        val name  = s"topic-${UUID.randomUUID()}"
-        val topic = topicFor(pool, name)
+    "delivering messages" should {
 
-        for
-          _         <- registerFromStart(pool, name, "consumer")
-          processed <- Ref.of[IO, List[Int]](Nil)
-          _         <- topic.processAtLeastOnce("consumer")(n => processed.update(_ :+ n)).compile.drain.background.use { _ =>
-                         List(1, 2, 3, 4, 5).traverse_(topic.publish) >> await(processed, 5)
-                       }
-          result    <- processed.get
-        yield result shouldBe List(1, 2, 3, 4, 5)
-      }.unsafeRunSync()
-    }
+      "process published messages in order" in withContainers { container =>
+        pool(container).use { pool =>
+          val name  = s"topic-${UUID.randomUUID()}"
+          val topic = topicFor(pool, name)
 
-    "deliver via NOTIFY without waiting for the poll" in withContainers { container =>
-      pool(container).use { pool =>
-        val name  = s"topic-${UUID.randomUUID()}"
-        // A one-hour poll interval, so only the NOTIFY path can deliver the message in time.
-        val topic = topicFor(pool, name, MessageBusConfig(pollInterval = 1.hour, retryBackoff = 100.millis))
-
-        for
-          _         <- registerFromStart(pool, name, "consumer")
-          processed <- Ref.of[IO, List[Int]](Nil)
-          _         <- topic.processAtLeastOnce("consumer")(n => processed.update(_ :+ n)).compile.drain.background.use { _ =>
-                         // Let the initial poll and the LISTEN subscription settle before publishing.
-                         IO.sleep(500.millis) >> topic.publish(1) >> await(processed, 1)
-                       }
-          result    <- processed.get
-        yield result shouldBe List(1)
-      }.unsafeRunSync()
-    }
-
-    "consume the whole log independently per consumer group" in withContainers { container =>
-      pool(container).use { pool =>
-        val name  = s"topic-${UUID.randomUUID()}"
-        val topic = topicFor(pool, name)
-
-        for
-          _        <- registerFromStart(pool, name, "a")
-          _        <- registerFromStart(pool, name, "b")
-          seenA    <- Ref.of[IO, List[Int]](Nil)
-          seenB    <- Ref.of[IO, List[Int]](Nil)
-          consumers = (
-                        topic.processAtLeastOnce("a")(n => seenA.update(_ :+ n)).compile.drain,
-                        topic.processAtLeastOnce("b")(n => seenB.update(_ :+ n)).compile.drain
-                      )
-          _        <- consumers.parTupled.background.use { _ =>
-                        List(1, 2, 3).traverse_(topic.publish) >> (await(seenA, 3), await(seenB, 3)).parTupled.void
-                      }
-          a        <- seenA.get
-          b        <- seenB.get
-        yield
-          a shouldBe List(1, 2, 3)
-          b shouldBe List(1, 2, 3)
-      }.unsafeRunSync()
-    }
-
-    "retry a failing message in place rather than skipping it" in withContainers { container =>
-      pool(container).use { pool =>
-        val name  = s"topic-${UUID.randomUUID()}"
-        val topic = topicFor(pool, name)
-
-        for
-          _         <- registerFromStart(pool, name, "consumer")
-          processed <- Ref.of[IO, List[Int]](Nil)
-          attempts  <- Ref.of[IO, Int](0)
-          processor  = (n: Int) =>
-                         attempts.modify(a => (a + 1, a)).flatMap { attempt =>
-                           if attempt < 2 then IO.raiseError[Unit](new RuntimeException("transient")) else processed.update(_ :+ n)
+          for
+            _         <- registerFromStart(pool, name, "consumer")
+            processed <- Ref.of[IO, List[Int]](Nil)
+            _         <- topic.processAtLeastOnce("consumer")(n => processed.update(_ :+ n)).compile.drain.background.use { _ =>
+                           List(1, 2, 3, 4, 5).traverse_(topic.publish) >> await(processed, 5)
                          }
-          _         <- topic.processAtLeastOnce("consumer")(processor).compile.drain.background.use { _ =>
-                         List(1, 2).traverse_(topic.publish) >> await(processed, 2)
-                       }
-          result    <- processed.get
-        yield result shouldBe List(1, 2)
-      }.unsafeRunSync()
+            result    <- processed.get
+          yield result shouldBe List(1, 2, 3, 4, 5)
+        }.unsafeRunSync()
+      }
+
+      "deliver via NOTIFY without waiting for the poll" in withContainers { container =>
+        pool(container).use { pool =>
+          val name  = s"topic-${UUID.randomUUID()}"
+          // A one-hour poll interval, so only the NOTIFY path can deliver the message in time.
+          val topic = topicFor(pool, name, MessageBusConfig(pollInterval = 1.hour, retryBackoff = 100.millis))
+
+          for
+            _         <- registerFromStart(pool, name, "consumer")
+            processed <- Ref.of[IO, List[Int]](Nil)
+            _         <- topic.processAtLeastOnce("consumer")(n => processed.update(_ :+ n)).compile.drain.background.use { _ =>
+                           // Let the initial poll and the LISTEN subscription settle before publishing.
+                           IO.sleep(500.millis) >> topic.publish(1) >> await(processed, 1)
+                         }
+            result    <- processed.get
+          yield result shouldBe List(1)
+        }.unsafeRunSync()
+      }
     }
 
-    "reprocess a message that was not committed before the consumer stopped" in withContainers { container =>
-      pool(container).use { pool =>
-        val name  = s"topic-${UUID.randomUUID()}"
-        val topic = topicFor(pool, name)
+    "using consumer groups" should {
 
-        for
-          _         <- registerFromStart(pool, name, "consumer")
-          read      <- Deferred[IO, Unit]
-          processed <- Ref.of[IO, List[Int]](Nil)
-          // The first run reads the message, then blocks forever without committing its offset.
-          _         <- topic.processAtLeastOnce("consumer")(_ => read.complete(()) >> IO.never).compile.drain.background.use { _ =>
-                         topic.publish(1) >> read.get.timeout(15.seconds)
-                       }
-          // A second run of the same consumer resumes from the uncommitted offset and processes it.
-          _         <- topic.processAtLeastOnce("consumer")(n => processed.update(_ :+ n)).compile.drain.background.use { _ =>
-                         await(processed, 1)
-                       }
-          result    <- processed.get
-        yield result shouldBe List(1)
-      }.unsafeRunSync()
+      "consume the whole log independently per consumer group" in withContainers { container =>
+        pool(container).use { pool =>
+          val name  = s"topic-${UUID.randomUUID()}"
+          val topic = topicFor(pool, name)
+
+          for
+            _        <- registerFromStart(pool, name, "a")
+            _        <- registerFromStart(pool, name, "b")
+            seenA    <- Ref.of[IO, List[Int]](Nil)
+            seenB    <- Ref.of[IO, List[Int]](Nil)
+            consumers = (
+                          topic.processAtLeastOnce("a")(n => seenA.update(_ :+ n)).compile.drain,
+                          topic.processAtLeastOnce("b")(n => seenB.update(_ :+ n)).compile.drain
+                        )
+            _        <- consumers.parTupled.background.use { _ =>
+                          List(1, 2, 3).traverse_(topic.publish) >> (await(seenA, 3), await(seenB, 3)).parTupled.void
+                        }
+            a        <- seenA.get
+            b        <- seenB.get
+          yield
+            a shouldBe List(1, 2, 3)
+            b shouldBe List(1, 2, 3)
+        }.unsafeRunSync()
+      }
+    }
+
+    "handling failures" should {
+
+      "retry a failing message in place rather than skipping it" in withContainers { container =>
+        pool(container).use { pool =>
+          val name  = s"topic-${UUID.randomUUID()}"
+          val topic = topicFor(pool, name)
+
+          for
+            _         <- registerFromStart(pool, name, "consumer")
+            processed <- Ref.of[IO, List[Int]](Nil)
+            attempts  <- Ref.of[IO, Int](0)
+            processor  = (n: Int) =>
+                           attempts.modify(a => (a + 1, a)).flatMap { attempt =>
+                             if attempt < 2 then IO.raiseError[Unit](new RuntimeException("transient")) else processed.update(_ :+ n)
+                           }
+            _         <- topic.processAtLeastOnce("consumer")(processor).compile.drain.background.use { _ =>
+                           List(1, 2).traverse_(topic.publish) >> await(processed, 2)
+                         }
+            result    <- processed.get
+          yield result shouldBe List(1, 2)
+        }.unsafeRunSync()
+      }
+
+      "reprocess a message that was not committed before the consumer stopped" in withContainers { container =>
+        pool(container).use { pool =>
+          val name  = s"topic-${UUID.randomUUID()}"
+          val topic = topicFor(pool, name)
+
+          for
+            _         <- registerFromStart(pool, name, "consumer")
+            read      <- Deferred[IO, Unit]
+            processed <- Ref.of[IO, List[Int]](Nil)
+            // The first run reads the message, then blocks forever without committing its offset.
+            _         <- topic.processAtLeastOnce("consumer")(_ => read.complete(()) >> IO.never).compile.drain.background.use { _ =>
+                           topic.publish(1) >> read.get.timeout(15.seconds)
+                         }
+            // A second run of the same consumer resumes from the uncommitted offset and processes it.
+            _         <- topic.processAtLeastOnce("consumer")(n => processed.update(_ :+ n)).compile.drain.background.use { _ =>
+                           await(processed, 1)
+                         }
+            result    <- processed.get
+          yield result shouldBe List(1)
+        }.unsafeRunSync()
+      }
     }
   }

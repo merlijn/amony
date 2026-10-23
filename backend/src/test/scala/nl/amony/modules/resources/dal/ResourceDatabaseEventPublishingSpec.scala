@@ -20,7 +20,7 @@ import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
 import nl.amony.{App, DatabaseConfig}
 
-class ResourceEventPublishingSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
+class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 
   override val containerDef: GenericContainer.Def[GenericContainer] =
     GenericContainer.Def(

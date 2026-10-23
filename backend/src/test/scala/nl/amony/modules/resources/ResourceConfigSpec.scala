@@ -4,7 +4,7 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.wordspec.AnyWordSpecLike
 import pureconfig.ConfigSource
 
-class ResolutionPickingStrategySpec extends AnyWordSpecLike {
+class ResourceConfigSpec extends AnyWordSpecLike {
 
   private def read(value: String) =
     ConfigSource.fromConfig(ConfigFactory.parseString(s"""strategy = "$value"""")).at("strategy").load[ResolutionPickingStrategy]

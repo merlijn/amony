@@ -12,7 +12,6 @@ import scribe.Logging
 import nl.amony.lib.files.*
 import nl.amony.lib.messagebus.MessageTopic
 import nl.amony.modules.auth.api.Role
-import nl.amony.modules.resources.*
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.ResourceDatabase
 
@@ -37,7 +36,7 @@ class LocalDirectoryBucket(
   def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap {
     resource =>
       val resourcePath = config.resourcePath.resolve(resource.path)
-      meta.apply(resourcePath).flatMap:
+      contentTypeAndMetaForPath(resourcePath).flatMap:
         case None                      =>
           logger.warn(s"Failed to scan metadata for $resourcePath")
           IO.unit
@@ -65,15 +64,11 @@ class LocalDirectoryBucket(
             val temp = config.cachePath.resolve(s"${info.resourceId}-normalize.${container.extension}")
             (for
               _          <- IO(Files.createDirectories(config.cachePath))
-              out        <- ffmpeg.addFastStart(source, container, Some(temp))
+              out        <- addFastStart(source, container, Some(temp))
               _          <- IO(Files.move(out, source, StandardCopyOption.REPLACE_EXISTING))
               attrs      <- IO(Files.readAttributes(source, classOf[BasicFileAttributes]))
               hash       <- config.hashingAlgorithm.createHash(source)
-              streamable <- Streamability.detect(source).map {
-                              case Streamability.Streamable    => Some(true)
-                              case Streamability.NotStreamable => Some(false)
-                              case Streamability.Unknown       => None
-                            }
+              streamable <- streamableOf(source, info.contentType)
               updated     = info.copy(
                               size             = attrs.size(),
                               partialHash      = Some(hash),

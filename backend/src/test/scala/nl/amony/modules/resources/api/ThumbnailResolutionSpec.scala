@@ -2,7 +2,7 @@ package nl.amony.modules.resources.api
 
 import org.scalatest.wordspec.AnyWordSpecLike
 
-class ThumbnailResolutionsSpec extends AnyWordSpecLike {
+class ThumbnailResolutionSpec extends AnyWordSpecLike {
 
   private val resolutions = ThumbnailResolutions(List(128, 256, 512, 1024), 512, stepDown = 0)
 
