@@ -62,7 +62,19 @@ object SearchRoutes extends RoutesModule:
       endpoint
         .name("findResources").tag("search").description("Find resources using a search query").get
         .in(
-          "api" / "search" / "media" / q and n and d and u and sort and minRes and maxRes and offset and tag and untagged and streamable and noThumbnail and contentType
+          ("api" / "search" / "media" / q)
+            .and(n)
+            .and(d)
+            .and(u)
+            .and(sort)
+            .and(minRes)
+            .and(maxRes)
+            .and(offset)
+            .and(tag)
+            .and(untagged)
+            .and(streamable)
+            .and(noThumbnail)
+            .and(contentType)
         ).mapInTo[SearchQueryInput]
         .securityIn(securityInput).errorOut(errorOutput).out(jsonBody[SearchResponseDto])
     )

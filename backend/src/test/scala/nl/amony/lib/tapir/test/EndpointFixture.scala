@@ -3,14 +3,14 @@ package nl.amony.lib.tapir.test
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import sttp.capabilities.fs2.Fs2Streams
-import sttp.client3.testing.SttpBackendStub
-import sttp.client3.{Identity, RequestT, Response, SttpBackend, basicRequest}
 import sttp.client4.impl.cats.CatsMonadError
+import sttp.client4.testing.StreamBackendStub
+import sttp.client4.{Request, Response, StreamBackend, basicRequest}
 import sttp.model.{Method, Uri}
 import sttp.monad.MonadError
 import sttp.tapir.AnyEndpoint
 import sttp.tapir.server.ServerEndpoint
-import sttp.tapir.server.stub.TapirStubInterpreter
+import sttp.tapir.server.stub4.TapirStreamStubInterpreter
 
 import nl.amony.lib.tapir.dsl.ServerEndpoints
 
@@ -40,8 +40,8 @@ trait EndpointFixture(
   private val serverEndpoint: ServerEndpoint[Fs2Streams[IO], IO] =
     endpoints.find(_.endpoint.info.name.contains(name)).getOrElse(throw new IllegalArgumentException(s"$name endpoint not found"))
 
-  private val stubBackend: SttpBackend[IO, Fs2Streams[IO]] =
-    TapirStubInterpreter(SttpBackendStub[IO, Fs2Streams[IO]](summon[MonadError[IO]]))
+  private val stubBackend: StreamBackend[IO, Fs2Streams[IO]] =
+    TapirStreamStubInterpreter(StreamBackendStub[IO, Fs2Streams[IO]](summon[MonadError[IO]]))
       .whenServerEndpointRunLogic(serverEndpoint)
       .backend()
 
@@ -62,9 +62,9 @@ trait EndpointFixture(
 
   /**
    * Sends a request built via [[request]] against this fixture's stub backend and blocks for the
-   * response. Named `sendUnsafeSync` rather than `send` because sttp's `RequestT.send()` overload
+   * response. Named `sendUnsafeSync` rather than `send` because sttp's `Request.send()` overload
    * (implicit backend) is deprecated and a member method shadows any same-named extension.
    */
-  extension [T](request: RequestT[Identity, T, Any])
+  extension [T](request: Request[T])
     def sendUnsafeSync(): Response[T] = request.send(stubBackend).unsafeRunSync()
 }

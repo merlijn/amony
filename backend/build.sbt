@@ -48,7 +48,7 @@ addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
 
 inThisBuild(
   List(
-    scalaVersion := "3.8.3",
+    scalaVersion := "3.9.0",
     semanticdbEnabled := true,
     semanticdbVersion := scalafixSemanticdb.revision
   )
@@ -57,7 +57,7 @@ inThisBuild(
 commands += Command.command("prod") { state =>
   val settings = Seq(
     Compile / scalacOptions := prodScalacOptions,
-    scalaVersion := "3.8.3",
+    scalaVersion := "3.9.0",
     semanticdbEnabled := true,
     semanticdbVersion := scalafixSemanticdb.revision
   )
@@ -98,8 +98,8 @@ val javaDevOpts = Seq(
 
 val circeVersion    = "0.14.17"
 val http4sVersion   = "0.23.38"
-val tapirVersion    = "1.13.33"
-val sttpVersion     = "4.0.27"
+val tapirVersion    = "1.14.0"
+val sttpVersion     = "4.1.0"
 val otel4sVersion   = "0.16.0"
 
 lazy val amony = project
@@ -107,7 +107,7 @@ lazy val amony = project
   .settings(
     organization := "nl.amony",
     name := "amony-app",
-    scalaVersion := "3.8.3",
+    scalaVersion := "3.9.0",
     scalacOptions := devScalacOptions,
     Global / cancelable   := true,
     Test / fork := true,
@@ -237,8 +237,8 @@ lazy val amony = project
       "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"                         % tapirVersion,
       "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle"                   % tapirVersion,
       "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"                          % tapirVersion,
-      "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"                        % "0.11.10",
-      "com.softwaremill.sttp.shared"  %% "fs2"                                       % "1.5.2",
+      "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"                        % "0.12.0",
+      "com.softwaremill.sttp.shared"  %% "fs2"                                       % "1.6.0",
       "org.http4s"                    %% "http4s-ember-server"                       % http4sVersion,
       "org.http4s"                    %% "http4s-dsl"                                % http4sVersion,
       "org.http4s"                    %% "http4s-circe"                              % http4sVersion,
@@ -255,7 +255,7 @@ lazy val amony = project
       "com.dimafeng"                  %% "testcontainers-scala-scalatest"            % "0.44.1"     % Test,
       "commons-codec"                  % "commons-codec"                             % "1.22.1"     % Test,
       "org.scalacheck"                %% "scalacheck"                                % "1.20.0"     % Test,
-      "com.softwaremill.sttp.tapir"   %% "tapir-sttp-stub-server"                    % tapirVersion % Test,
+      "com.softwaremill.sttp.tapir"   %% "tapir-sttp-stub4-server"                   % tapirVersion % Test,
       "org.mockito"                   %% "mockito-scala-scalatest"                   % "2.2.3"      % Test
     ),
 
