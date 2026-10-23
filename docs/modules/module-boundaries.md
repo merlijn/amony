@@ -214,8 +214,8 @@ core.
 
 ## Proposed logical modules
 
-These are logical modules. Phase 1 implements them as four coarse sbt modules; later phases split the feature module
-into `auth`, `resources`, `search`, and `clientconfig`.
+These are logical modules. Phase 1 implements them as coarse sbt modules; `auth` is now its own module, while
+`resources`, `search`, and `clientconfig` still live in the feature module.
 
 | Module         | Contents                                                                                | Public surface  | May depend on                              |
 | -------------- | --------------------------------------------------------------------------------------- | --------------- | ------------------------------------------ |
@@ -386,21 +386,22 @@ The biggest win is not a new module name. It is making `*.http` depend on `*.api
 
 ## Phase 1 implementation
 
-The first step is implemented on `chore/introduce-modules`:
+The first steps are implemented on `chore/introduce-modules`:
 
-| sbt module       | Contents                         |
-| ---------------- | -------------------------------- |
-| `amony-app`      | `nl.amony` app sources and tests |
-| `amony-features` | `nl.amony.modules.*`             |
-| `amony-media`    | `nl.amony.lib.process.*`         |
-| `amony-shared`   | remaining `nl.amony.lib.*`       |
+| sbt module       | Contents                                     |
+| ---------------- | -------------------------------------------- |
+| `amony-app`      | `nl.amony` app sources and tests             |
+| `amony-auth`     | `nl.amony.modules.auth.*`                    |
+| `amony-features` | `nl.amony.modules.{resources,search,config}` |
+| `amony-media`    | `nl.amony.lib.process.*`                     |
+| `amony-shared`   | remaining `nl.amony.lib.*`                   |
 
 Package names are unchanged. Two class-level moves were required to keep the module graph acyclic:
 
-- `VideoContainer` moved from `nl.amony.modules.resources.api` to `nl.amony.lib.process`.
+- `VideoContainer` stays in `nl.amony.modules.resources.api`; ffmpeg has its own `ContainerFormat` in
+  `nl.amony.lib.process.ffmpeg`.
 - `AuthCookies` and the auth-aware `serverLogic`/`serverLogicT` helpers moved from `nl.amony.lib.tapir` and
   `nl.amony.lib.tapir.dsl` to `nl.amony.modules.auth.api`.
 
 Tests remain in the app module. The logical target remains the seven modules above; the next step is splitting
-`amony-features` into `auth`, `resources`, `search`, and `clientconfig`, and removing the remaining package-level
-cycles.
+`amony-features` into `resources`, `search`, and `clientconfig`, and removing the remaining package-level cycles.

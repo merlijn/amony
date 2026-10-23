@@ -54,7 +54,7 @@ ThisBuild / prodBuild := false
 
 addCommandAlias(
   "format",
-  "; shared/scalafmt; shared/Test/scalafmt; media/scalafmt; media/Test/scalafmt; features/scalafmt; features/Test/scalafmt; scalafmt; Test/scalafmt"
+  "; shared/scalafmt; shared/Test/scalafmt; media/scalafmt; media/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; features/scalafmt; features/Test/scalafmt; scalafmt; Test/scalafmt"
 )
 addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
 
@@ -165,6 +165,26 @@ val mediaDependencies = Seq(
   "org.typelevel" %% "otel4s-core-trace" % otel4sVersion
 )
 
+val authDependencies = Seq(
+  "org.typelevel"                 %% "cats-effect"               % "3.7.1",
+  "co.fs2"                        %% "fs2-core"                  % "3.14.0",
+  "io.circe"                      %% "circe-core"                % circeVersion,
+  "io.circe"                      %% "circe-parser"              % circeVersion,
+  "com.outr"                      %% "scribe"                    % "3.19.0",
+  "com.softwaremill.sttp.tapir"   %% "tapir-core"                % tapirVersion,
+  "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"          % tapirVersion,
+  "com.softwaremill.sttp.shared"  %% "fs2"                       % "1.6.0",
+  "com.softwaremill.sttp.client4" %% "core"                      % sttpVersion,
+  "com.softwaremill.sttp.client4" %% "circe"                     % sttpVersion,
+  "com.softwaremill.sttp.client4" %% "cats"                      % sttpVersion,
+  "org.tpolecat"                  %% "skunk-core"                % "2.0.0-RC3",
+  "org.tpolecat"                  %% "skunk-circe"               % "2.0.0-RC3",
+  "com.github.pureconfig"         %% "pureconfig-core"           % "0.17.11",
+  "com.github.pureconfig"         %% "pureconfig-generic-scala3" % "0.17.11",
+  "com.github.jwt-scala"          %% "jwt-circe"                 % "11.0.4",
+  "org.bouncycastle"               % "bcprov-jdk18on"            % "1.85.2"
+)
+
 val featureDependencies = Seq(
   "org.typelevel"                 %% "cats-effect"               % "3.7.1",
   "co.fs2"                        %% "fs2-core"                  % "3.14.0",
@@ -192,12 +212,10 @@ val featureDependencies = Seq(
   "com.softwaremill.sttp.client4" %% "core"                      % sttpVersion,
   "com.softwaremill.sttp.client4" %% "circe"                     % sttpVersion,
   "com.softwaremill.sttp.client4" %% "cats"                      % sttpVersion,
-  "com.github.jwt-scala"          %% "jwt-circe"                 % "11.0.4",
   "org.apache.tika"                % "tika-core"                 % "3.3.1",
   "org.jsoup"                      % "jsoup"                     % "1.23.2",
   "org.apache.solr"                % "solr-core"                 % "9.10.1",
   "org.apache.commons"             % "commons-compress"          % "1.28.0",
-  "org.bouncycastle"               % "bcprov-jdk18on"            % "1.85.2",
   "com.softwaremill.sttp.shared"  %% "fs2"                       % "1.6.0"
 )
 
@@ -267,9 +285,18 @@ lazy val media = project
     libraryDependencies ++= mediaDependencies
   )
 
+lazy val auth = project
+  .in(file("auth"))
+  .dependsOn(shared)
+  .settings(commonSettings)
+  .settings(
+    name := "amony-auth",
+    libraryDependencies ++= authDependencies
+  )
+
 lazy val features = project
   .in(file("features"))
-  .dependsOn(shared, media)
+  .dependsOn(shared, media, auth)
   .settings(commonSettings)
   .settings(
     name := "amony-features",
@@ -278,7 +305,7 @@ lazy val features = project
 
 lazy val amony = project
   .in(file("."))
-  .dependsOn(shared, media, features)
+  .dependsOn(shared, media, auth, features)
   .settings(commonSettings)
   .settings(
     name                             := "amony-app",
