@@ -196,8 +196,8 @@ lazy val amony = project
       "co.fs2"                      %% "fs2-io"                                      % "3.14.0",
 
       // config
-      "com.github.pureconfig"        %% "pureconfig-core"                            % "0.17.10",
-      "com.github.pureconfig"        %% "pureconfig-generic-scala3"                  % "0.17.10",
+      "com.github.pureconfig"        %% "pureconfig-core"                            % "0.17.11",
+      "com.github.pureconfig"        %% "pureconfig-generic-scala3"                  % "0.17.11",
       "com.typesafe"                  % "config"                                     % "1.4.9",
 
       // database
@@ -224,7 +224,7 @@ lazy val amony = project
       "com.softwaremill.sttp.tapir"   %% "tapir-otel4s-tracing"                      % tapirVersion,
       "io.opentelemetry"               % "opentelemetry-exporter-otlp"               % "1.61.0" % Runtime,
       "io.opentelemetry"               % "opentelemetry-sdk-extension-autoconfigure" % "1.61.0" % Runtime,
-      "org.slf4j"                      % "slf4j-api"                                 % "2.0.19",
+      "org.slf4j"                      % "slf4j-api"                                 % "2.0.20",
 
       // http client
       "com.softwaremill.sttp.client4" %% "core"                                      % sttpVersion,
@@ -253,7 +253,7 @@ lazy val amony = project
       "org.scalatest"                 %% "scalatest"                                 % "3.2.20"     % Test,
       "org.scalatestplus"             %% "scalacheck-1-15"                           % "3.2.11.0"   % Test,
       "com.dimafeng"                  %% "testcontainers-scala-scalatest"            % "0.44.1"     % Test,
-      "commons-codec"                  % "commons-codec"                             % "1.22.1"     % Test,
+      "commons-codec"                  % "commons-codec"                             % "1.23.0"     % Test,
       "org.scalacheck"                %% "scalacheck"                                % "1.20.0"     % Test,
       "com.softwaremill.sttp.tapir"   %% "tapir-sttp-stub4-server"                   % tapirVersion % Test,
       "org.mockito"                   %% "mockito-scala-scalatest"                   % "2.2.3"      % Test
