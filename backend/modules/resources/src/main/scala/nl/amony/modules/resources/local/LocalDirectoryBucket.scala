@@ -35,11 +35,10 @@ class LocalDirectoryBucket(
 
   def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap { resource =>
     val resourcePath = config.resourcePath.resolve(resource.path)
-    contentMetaForPath(resourcePath).flatMap {
-      case None       =>
-        logger.warn(s"Failed to scan metadata for $resourcePath")
-        IO.unit
-      case Some(meta) =>
+    contentMetaForPath(resourcePath).attempt.flatMap {
+      case Left(e: ContentUnreadable) => IO(logger.error(s"Skipping metadata rescan for $resourcePath", e))
+      case Left(e)                    => IO.raiseError(e)
+      case Right(meta)                =>
         logger.info(s"Updating metadata for $resourcePath")
         val updated = resource.copy(contentMeta = resource.contentMeta.updatedWith(meta))
         db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceUpdated(updated)))

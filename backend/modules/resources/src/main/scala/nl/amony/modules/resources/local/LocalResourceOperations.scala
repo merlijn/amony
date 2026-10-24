@@ -3,7 +3,7 @@ package nl.amony.modules.resources.local
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.security.MessageDigest
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 import cats.effect.IO
 import cats.implicits.*
@@ -16,6 +16,8 @@ import nl.amony.platform.hash.Base32
 import nl.amony.platform.subprocess.ffmpeg.ContainerFormat
 import nl.amony.platform.subprocess.ffmpeg.FFMpeg
 import nl.amony.platform.subprocess.magick.ImageMagick
+
+final class ContentUnreadable(val path: Path, cause: Throwable) extends Exception(s"Failed to read content of $path", cause)
 
 trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
@@ -45,27 +47,16 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
   private val inFlight = SingleFlight[OperationKey, Path]
 
-  private def contentTypeForPath(path: Path): IO[Option[String]] =
-    IO.blocking {
-      Try(tika.detect(path)) match
-        case Success(contentType) =>
-          Some(contentType)
-        case Failure(exception)   =>
-          logger.warn(s"Error detecting content type for path: $path", exception)
-          None
-    }
+  private def contentTypeForPath(path: Path): IO[String] =
+    IO.blocking(tika.detect(path)).adaptError { case cause => ContentUnreadable(path, cause) }
 
-  private[local] def contentMetaForPath(path: Path): IO[Option[ContentMeta]] =
-    contentTypeForPath(path).flatMap {
-      case None              => IO.pure(None)
-      case Some(contentType) =>
-        for
-          scan       <- toolScanForPath(path, contentType)
-          streamable <- streamableOf(path, Some(contentType))
-        yield Some(
-          scan.map(ContentMeta.scanned).getOrElse(ContentMeta.empty)
-            .copy(contentType = Some(contentType), streamable = streamable)
-        )
+  private[local] def contentMetaForPath(path: Path): IO[ContentMeta] =
+    contentTypeForPath(path).flatMap { contentType =>
+      for
+        scan       <- toolScanForPath(path, contentType)
+        streamable <- streamableOf(path, Some(contentType))
+      yield scan.map(ContentMeta.scanned).getOrElse(ContentMeta.empty)
+        .copy(contentType = Some(contentType), streamable = streamable)
     }
 
   private def toolScanForPath(path: Path, contentType: String): IO[Option[ToolScan]] =

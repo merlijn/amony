@@ -14,7 +14,6 @@ import skunk.Session
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.{
   BucketId,
-  ContentMeta,
   ResourceAdded,
   ResourceDeleted,
   ResourceEvent,
@@ -56,7 +55,12 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
 
       case FileDeleted(f) => withRequireResource(f.partialHash, f.path)(r => ResourceDeleted(r.resourceId))
 
-      case FileAdded(f) => newResource(f, UserId(config.sync.newFilesOwner)).map(r => Some(ResourceAdded(r)))
+      case FileAdded(f) =>
+        newResource(f, UserId(config.sync.newFilesOwner)).attempt.flatMap {
+          case Left(e: ContentUnreadable) => IO(logger.error(s"Skipping unreadable file: ${f.path}", e)).as(None)
+          case Left(e)                    => IO.raiseError(e)
+          case Right(r)                   => IO.pure(Some(ResourceAdded(r)))
+        }
 
       case FileMoved(file, oldFilePath) =>
         val newPath = relativizePath(file.path)
@@ -73,9 +77,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
   }
 
   private[local] def newResource(f: FileInfo, userId: UserId): IO[ResourceInfo] =
-    contentMetaForPath(f.path).recover {
-      case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None
-    }.map { maybeMeta =>
+    contentMetaForPath(f.path).map { contentMeta =>
       ResourceInfo(
         bucketId           = bucketId,
         resourceId         = config.generateId(),
@@ -84,7 +86,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
         partialHash        = Some(f.partialHash),
         fileKey            = f.fileKey,
         size               = f.size,
-        contentMeta        = maybeMeta.getOrElse(ContentMeta.empty),
+        contentMeta        = contentMeta,
         timeAdded          = Some(Instant.now().toEpochMilli),
         timeLastModified   = Some(f.modifiedTime),
         thumbnailTimestamp = None
@@ -100,23 +102,24 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       case None           =>
         IO(logger.warn(s"Dropping content-changed event, no such file in database: ${f.path}")).as(None)
       case Some(existing) =>
-        contentMetaForPath(f.path).recover {
-          case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None
-        }.map { maybeMeta =>
-          val fresh              = maybeMeta.getOrElse(ContentMeta.empty)
-          val durationInMillis   = fresh.properties.collect { case video: VideoProperties => video.durationInMillis }
-          // a pinned thumbnail timestamp beyond the new duration would yield broken previews
-          val thumbnailTimestamp = existing.thumbnailTimestamp.filter(ts => durationInMillis.forall(ts <= _))
-          val contentMeta        = maybeMeta.fold(existing.contentMeta)(existing.contentMeta.updatedWith)
+        contentMetaForPath(f.path).attempt.flatMap {
+          case Left(e: ContentUnreadable) =>
+            IO(logger.error(s"Skipping content-changed event, failed to read ${f.path}", e)).as(None)
+          case Left(e)                    => IO.raiseError(e)
+          case Right(fresh)               =>
+            val durationInMillis   = fresh.properties.collect { case video: VideoProperties => video.durationInMillis }
+            // a pinned thumbnail timestamp beyond the new duration would yield broken previews
+            val thumbnailTimestamp = existing.thumbnailTimestamp.filter(ts => durationInMillis.forall(ts <= _))
+            val contentMeta        = existing.contentMeta.updatedWith(fresh)
 
-          Some(existing.copy(
-            partialHash        = Some(f.partialHash),
-            fileKey            = f.fileKey.orElse(existing.fileKey),
-            size               = f.size,
-            contentMeta        = contentMeta,
-            timeLastModified   = Some(f.modifiedTime),
-            thumbnailTimestamp = thumbnailTimestamp
-          ))
+            IO.pure(Some(existing.copy(
+              partialHash        = Some(f.partialHash),
+              fileKey            = f.fileKey.orElse(existing.fileKey),
+              size               = f.size,
+              contentMeta        = contentMeta,
+              timeLastModified   = Some(f.modifiedTime),
+              thumbnailTimestamp = thumbnailTimestamp
+            )))
         }
     }
 
