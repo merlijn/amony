@@ -2,14 +2,45 @@ package nl.amony.modules.resources.api
 
 import scala.util.{Failure, Try}
 
+import io.circe.Json
+
 import nl.amony.platform.subprocess.ffmpeg.tasks.FFProbeModel.{FFProbeOutput, given}
 import nl.amony.platform.subprocess.magick.MagickImageMeta
 
-case class ResourceMeta(toolName: String, toolData: String, properties: ContentProperties) derives io.circe.Codec
+case class ToolScan(toolName: String, toolData: Json) derives io.circe.Codec
 
-object ResourceMeta:
-  def recover(toolName: String, toolData: String): Option[ResourceMeta] =
-    ContentProperties(toolName, toolData).toOption.map(p => ResourceMeta(toolName, toolData, p))
+case class ContentMeta(
+  contentType: Option[String]           = None,
+  streamable: Option[Boolean]           = None,
+  properties: Option[ContentProperties] = None,
+  toolScan: Option[ToolScan]            = None
+) derives io.circe.Codec {
+
+  /** A changed content type replaces the old scan; otherwise a failed scan keeps the properties already known. */
+  def updatedWith(fresh: ContentMeta): ContentMeta =
+    if fresh.contentType != contentType then fresh
+    else
+      copy(
+        streamable = fresh.streamable.orElse(streamable),
+        properties = if fresh.toolScan.isDefined then fresh.properties else properties,
+        toolScan   = if fresh.toolScan.isDefined then fresh.toolScan else toolScan
+      )
+}
+
+object ContentMeta:
+
+  val empty: ContentMeta = ContentMeta()
+
+  /** Metadata from a fresh scan of the resource, keeping the raw tool output even when its properties cannot be parsed. */
+  def scanned(toolScan: ToolScan): ContentMeta =
+    ContentMeta(properties = ContentProperties.from(toolScan).toOption, toolScan = Some(toolScan))
+
+  /** Metadata projected from the search index, which does not store the raw tool output. */
+  def indexed(
+    properties: Option[ContentProperties],
+    contentType: Option[String] = None,
+    streamable: Option[Boolean] = None
+  ): ContentMeta = ContentMeta(contentType = contentType, streamable = streamable, properties = properties)
 
 sealed trait ContentProperties derives io.circe.Codec
 
@@ -26,18 +57,16 @@ case class ImageProperties(width: Int, height: Int, metaData: Map[String, String
 
 object ContentProperties:
 
-  def apply(toolName: String, toolData: String): Try[ContentProperties] = toolName match {
+  def from(toolScan: ToolScan): Try[ContentProperties] = toolScan.toolName match {
     case s if s.startsWith("ffprobe/") =>
       for
-        json    <- io.circe.parser.parse(toolData).toTry
-        decoded <- json.as[FFProbeOutput].toTry
+        decoded <- toolScan.toolData.as[FFProbeOutput].toTry
         result  <- ffprobeOutputToContentMeta(decoded)
       yield result
 
     case s if s.startsWith("magick/") =>
       for
-        json    <- io.circe.parser.parse(toolData).toTry
-        decoded <- json.as[List[MagickImageMeta]].toTry
+        decoded <- toolScan.toolData.as[List[MagickImageMeta]].toTry
         result  <- magickOutputToContentMeta(decoded)
       yield result
 

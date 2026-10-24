@@ -17,7 +17,6 @@ private[search] object SolrSchema:
     val title              = "title_s"
     val videoCodec         = "video_codec_s"
     val description        = "description_s"
-    val metaToolName       = "meta_tool_name_s"
     val timeAdded          = "time_added_l"
     val lastModified       = "time_last_modified_l"
     val contentType        = "content_type_s"

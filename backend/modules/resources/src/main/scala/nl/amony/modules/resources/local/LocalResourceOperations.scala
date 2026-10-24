@@ -3,7 +3,7 @@ package nl.amony.modules.resources.local
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.security.MessageDigest
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 import cats.effect.IO
 import cats.implicits.*
@@ -17,9 +17,9 @@ import nl.amony.platform.subprocess.ffmpeg.ContainerFormat
 import nl.amony.platform.subprocess.ffmpeg.FFMpeg
 import nl.amony.platform.subprocess.magick.ImageMagick
 
-trait LocalResourceOperations extends LocalDirectoryBase with Logging {
+final class ContentUnreadable(val path: Path, cause: Throwable) extends Exception(s"Failed to read content of $path", cause)
 
-  self: ResourceBucket =>
+trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
   private val ffmpeg      = new FFMpeg
   private val imageMagick = new ImageMagick
@@ -45,46 +45,33 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
   private val inFlight = SingleFlight[OperationKey, Path]
 
-  private[local] def contentTypeForPath(path: Path): IO[Option[String]] =
-    IO.blocking {
-      Try(tika.detect(path)) match
-        case Success(contentType) =>
-          Some(contentType)
-        case Failure(exception)   =>
-          logger.warn(s"Error detecting content type for path: $path", exception)
+  private def contentTypeForPath(path: Path): IO[String] =
+    IO.blocking(tika.detect(path)).adaptError { case cause => ContentUnreadable(path, cause) }
+
+  private[local] def contentMetaForPath(path: Path): IO[ContentMeta] =
+    contentTypeForPath(path).flatMap { contentType =>
+      for
+        scan       <- toolScanForPath(path, contentType)
+        streamable <- streamableOf(path, Some(contentType))
+      yield scan.map(ContentMeta.scanned).getOrElse(ContentMeta.empty)
+        .copy(contentType = Some(contentType), streamable = streamable)
+    }
+
+  private def toolScanForPath(path: Path, contentType: String): IO[Option[ToolScan]] =
+    if contentType.startsWith("video/") then
+      ffmpeg.ffprobe(path, false).map {
+        (ffprobeResult, json) =>
+          val version = ffprobeResult.program_version.map(_.version).getOrElse("unknown")
+          Some(ToolScan(s"ffprobe/$version", json))
+      }.recover { case e: Throwable => logger.error(s"Failed to get video meta data for $path", e); None }
+    else if contentType.startsWith("image/") then
+      imageMagick.getImageMeta(path).map:
+        case Failure(e)      =>
+          logger.error(s"Failed to get image meta data for $path", e)
           None
-    }
-
-  private[local] def contentTypeAndMetaForPath(path: Path): IO[Option[(contentType: String, meta: ResourceMeta)]] =
-    contentTypeForPath(path).flatMap {
-      case None =>
-        IO.pure(None)
-
-      case Some(contentType) if contentType.startsWith("video/") =>
-        ffmpeg.ffprobe(path, false).map {
-          (ffprobeResult, json) =>
-            ContentProperties.ffprobeOutputToContentMeta(ffprobeResult).toOption.map {
-              properties =>
-                val version = ffprobeResult.program_version.map(_.version).getOrElse("unknown")
-                (contentType, ResourceMeta(s"ffprobe/$version", json.noSpaces, properties))
-            }
-        }.recover { case e: Throwable => logger.error(s"Failed to get video meta data for $path", e); None }
-
-      case Some(contentType) if contentType.startsWith("image/") =>
-        imageMagick.getImageMeta(path).map:
-          case Failure(e)      =>
-            logger.error(s"Failed to get image meta data for $path", e)
-            None
-          case Success(result) =>
-            result.output.headOption.map {
-              magick =>
-                val properties =
-                  ImageProperties(width = magick.image.geometry.width, height = magick.image.geometry.height, metaData = magick.image.properties)
-                (contentType, ResourceMeta("magick/1", result.rawJson.noSpaces, properties))
-            }
-
-      case _ => IO.pure(None)
-    }
+        case Success(result) =>
+          Some(ToolScan("magick/1", result.rawJson))
+    else IO.pure(None)
 
   private[local] def addFastStart(video: Path, container: VideoContainer, outputFile: Option[Path] = None): IO[Path] =
     ffmpeg.addFastStart(video, containerFormat(container), outputFile)
@@ -177,7 +164,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
     ResourceOperations.all(info, resolutions, formats).filter(_.validate(info).isRight)
 
   private[local] def runPreviewOperation(info: ResourceInfo, operation: ResourceOperation): IO[Unit] =
-    getOrCreate(info.resourceId, operation).attempt.flatMap {
+    derivedResource(info, operation).attempt.flatMap {
       case Left(error) => IO(logger.error(s"Failed to generate preview $operation for '${info.path}'", error))
       case Right(_)    => IO.unit
     }

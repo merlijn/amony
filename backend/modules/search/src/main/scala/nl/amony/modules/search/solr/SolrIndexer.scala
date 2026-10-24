@@ -42,8 +42,6 @@ private[search] class SolrIndexer(config: SolrConfig, solr: SolrClient) extends 
     resource.contentType.foreach(contentType => solrInputDocument.addField(FieldNames.contentType, contentType))
     resource.streamable.foreach(streamable => solrInputDocument.addField(FieldNames.streamable, if streamable then "true" else "false"))
 
-    resource.contentMeta.foreach(meta => solrInputDocument.addField(FieldNames.metaToolName, meta.toolName))
-
     resource.basicContentProperties match {
       case Some(ImageProperties(w, h, _))                    =>
         solrInputDocument.addField(FieldNames.width, w)

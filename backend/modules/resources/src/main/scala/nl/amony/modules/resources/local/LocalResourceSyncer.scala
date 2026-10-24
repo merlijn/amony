@@ -55,7 +55,12 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
 
       case FileDeleted(f) => withRequireResource(f.partialHash, f.path)(r => ResourceDeleted(r.resourceId))
 
-      case FileAdded(f) => newResource(f, UserId(config.sync.newFilesOwner)).map(r => Some(ResourceAdded(r)))
+      case FileAdded(f) =>
+        newResource(f, UserId(config.sync.newFilesOwner)).attempt.flatMap {
+          case Left(e: ContentUnreadable) => IO(logger.error(s"Skipping unreadable file: ${f.path}", e)).as(None)
+          case Left(e)                    => IO.raiseError(e)
+          case Right(r)                   => IO.pure(Some(ResourceAdded(r)))
+        }
 
       case FileMoved(file, oldFilePath) =>
         val newPath = relativizePath(file.path)
@@ -72,27 +77,20 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
   }
 
   private[local] def newResource(f: FileInfo, userId: UserId): IO[ResourceInfo] =
-    contentTypeAndMetaForPath(f.path).recover {
-      case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None
-    }.flatMap { maybeMeta =>
-      val contentType = maybeMeta.map(_.contentType)
-      streamableOf(f.path, contentType).map { streamable =>
-        ResourceInfo(
-          bucketId           = bucketId,
-          resourceId         = config.generateId(),
-          userId             = userId,
-          path               = relativizePath(f.path),
-          partialHash        = Some(f.partialHash),
-          fileKey            = f.fileKey,
-          size               = f.size,
-          contentType        = contentType,
-          contentMeta        = maybeMeta.map(_.meta),
-          timeAdded          = Some(Instant.now().toEpochMilli),
-          timeLastModified   = Some(f.modifiedTime),
-          thumbnailTimestamp = None,
-          streamable         = streamable
-        )
-      }
+    contentMetaForPath(f.path).map { contentMeta =>
+      ResourceInfo(
+        bucketId           = bucketId,
+        resourceId         = config.generateId(),
+        userId             = userId,
+        path               = relativizePath(f.path),
+        partialHash        = Some(f.partialHash),
+        fileKey            = f.fileKey,
+        size               = f.size,
+        contentMeta        = contentMeta,
+        timeAdded          = Some(Instant.now().toEpochMilli),
+        timeLastModified   = Some(f.modifiedTime),
+        thumbnailTimestamp = None
+      )
     }
 
   /**
@@ -104,30 +102,24 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       case None           =>
         IO(logger.warn(s"Dropping content-changed event, no such file in database: ${f.path}")).as(None)
       case Some(existing) =>
-        contentTypeAndMetaForPath(f.path).recover {
-          case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None
-        }.flatMap { maybeMeta =>
-          val contentType = maybeMeta.map(_.contentType).orElse(existing.contentType)
-          streamableOf(f.path, contentType).map { streamable =>
-            val durationInMillis   = maybeMeta.flatMap { case (_, meta) =>
-              meta.properties match
-                case video: VideoProperties => Some(video.durationInMillis)
-                case _                      => None
-            }
+        contentMetaForPath(f.path).attempt.flatMap {
+          case Left(e: ContentUnreadable) =>
+            IO(logger.error(s"Skipping content-changed event, failed to read ${f.path}", e)).as(None)
+          case Left(e)                    => IO.raiseError(e)
+          case Right(fresh)               =>
+            val durationInMillis   = fresh.properties.collect { case video: VideoProperties => video.durationInMillis }
             // a pinned thumbnail timestamp beyond the new duration would yield broken previews
             val thumbnailTimestamp = existing.thumbnailTimestamp.filter(ts => durationInMillis.forall(ts <= _))
+            val contentMeta        = existing.contentMeta.updatedWith(fresh)
 
-            Some(existing.copy(
+            IO.pure(Some(existing.copy(
               partialHash        = Some(f.partialHash),
               fileKey            = f.fileKey.orElse(existing.fileKey),
               size               = f.size,
-              contentType        = contentType,
-              contentMeta        = maybeMeta.map(_.meta).orElse(existing.contentMeta),
+              contentMeta        = contentMeta,
               timeLastModified   = Some(f.modifiedTime),
-              thumbnailTimestamp = thumbnailTimestamp,
-              streamable         = streamable.orElse(existing.streamable)
-            ))
-          }
+              thumbnailTimestamp = thumbnailTimestamp
+            )))
         }
     }
 

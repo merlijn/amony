@@ -9,6 +9,7 @@ import cats.effect.unsafe.implicits.global
 import cats.implicits.*
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
+import io.circe.Json
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
@@ -18,7 +19,7 @@ import scribe.Logging
 
 import nl.amony.ExportDatabaseSchema
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, Tag, TagOwner}
+import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ContentMeta, ResourceId, ResourceInfo, Tag, TagOwner, ToolScan}
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.platform.database.{Database, DatabaseConfig}
 
@@ -53,15 +54,13 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       partialHash        = Some(randomString),
       fileKey            = Some(randomString),
       size               = Random.nextLong(),
-      contentType        = None,
-      contentMeta        = None, // this field is not stored
+      contentMeta        = ContentMeta(streamable = List[Option[Boolean]](Some(true), Some(false), None)(Random.nextInt(3))),
       tags               = Set.fill(Random.nextInt(5))(Tag.user(randomTag)),
       timeAdded          = Some(nextTimestamp),
       timeLastModified   = Some(nextTimestamp),
       title              = Some(randomString),
       description        = Some(randomString),
-      thumbnailTimestamp = Some(nextTimestamp),
-      streamable         = List[Option[Boolean]](Some(true), Some(false), None)(Random.nextInt(3))
+      thumbnailTimestamp = Some(nextTimestamp)
     )
 
   def genCollection(parentId: Option[CollectionId] = None, userId: UserId = UserId(UUID.randomUUID().toString)): Collection =
@@ -119,6 +118,9 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
       "preserve other owners' tags on user updates" in
         withDatabase(preserveOtherOwnersTest)
+
+      "preserve raw tool metadata when its properties cannot be parsed" in
+        withDatabase(unparsableContentMetaTest)
     }
 
     "managing collections" should {
@@ -215,6 +217,24 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       retagged.flatMap(_.labelsByOwner.get(TagOwner.System)) shouldBe Some(Set("sys-b"))
       cleared.map(_.userLabels) shouldBe Some(Set.empty)
       cleared.flatMap(_.labelsByOwner.get(TagOwner.System)) shouldBe Some(Set("sys-b"))
+    }
+  }
+
+  def unparsableContentMetaTest(db: ResourceDatabase): IO[Unit] = {
+    val scan     = ToolScan("unknown-tool/1", Json.obj("output" -> Json.fromString("raw")))
+    val resource = genResource().copy(contentMeta = ContentMeta.scanned(scan).copy(contentType = Some("video/mp4"), streamable = Some(true)))
+
+    for
+      _      <- db.insertResource(resource)
+      stored <- db.getResourceById(resource.bucketId, resource.resourceId)
+      _      <- db.updateUserMeta(resource.bucketId, resource.resourceId, Some("new title"), None, TagOwner.User, List.empty)
+      after  <- db.getResourceById(resource.bucketId, resource.resourceId)
+    yield {
+      stored.flatMap(_.basicContentProperties) shouldBe None
+      stored.flatMap(_.contentMeta.toolScan) shouldBe Some(scan)
+      stored.flatMap(_.contentType) shouldBe Some("video/mp4")
+      stored.flatMap(_.contentMeta.streamable) shouldBe Some(true)
+      after.flatMap(_.contentMeta.toolScan) shouldBe Some(scan)
     }
   }
 

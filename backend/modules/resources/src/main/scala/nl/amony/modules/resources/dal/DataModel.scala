@@ -3,12 +3,13 @@ package nl.amony.modules.resources.dal
 import java.time.{Instant, ZoneOffset}
 import java.util.UUID
 
+import io.circe.{Json, parser}
 import skunk.Codec
 import skunk.codec.all.{int4, timestamptz, uuid, varchar}
 import skunk.implicits.sql
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, ResourceMeta, Tag}
+import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ContentMeta, ResourceId, ResourceInfo, Tag, ToolScan}
 
 val instantCodec: Codec[Instant] = timestamptz.imap(_.toInstant)(_.atOffset(ZoneOffset.UTC))
 
@@ -33,6 +34,15 @@ case class ResourceRow(
 ) derives io.circe.Codec {
 
   def toResource(tags: Set[Tag]): ResourceInfo = {
+    val contentMeta =
+      (for
+        toolName <- content_meta_tool_name
+        text     <- content_meta_tool_data
+        toolData <- parser.parse(text).toOption.orElse(Some(Json.fromString(text)))
+      yield ContentMeta.scanned(ToolScan(toolName, toolData)))
+        .getOrElse(ContentMeta.empty)
+        .copy(contentType = content_type, streamable = streamable)
+
     ResourceInfo(
       bucketId           = BucketId(bucket_id),
       resourceId         = ResourceId(resource_id),
@@ -41,15 +51,13 @@ case class ResourceRow(
       partialHash        = partial_hash,
       fileKey            = file_key,
       size               = size,
-      contentType        = content_type,
-      contentMeta        = content_meta_tool_name.flatMap(name => ResourceMeta.recover(name, content_meta_tool_data.getOrElse(""))),
+      contentMeta        = contentMeta,
       tags               = tags,
       timeAdded          = Some(time_added.toEpochMilli),
       timeLastModified   = time_last_modified.map(_.toEpochMilli),
       title              = title,
       description        = description,
-      thumbnailTimestamp = thumbnail_timestamp,
-      streamable         = streamable
+      thumbnailTimestamp = thumbnail_timestamp
     )
   }
 }
@@ -66,9 +74,9 @@ object ResourceRow {
     partial_hash           = resource.partialHash,
     file_key               = resource.fileKey,
     size                   = resource.size,
-    content_type           = resource.contentType,
-    content_meta_tool_name = resource.contentMeta.map(_.toolName),
-    content_meta_tool_data = resource.contentMeta.map(_.toolData),
+    content_type           = resource.contentMeta.contentType,
+    content_meta_tool_name = resource.contentMeta.toolScan.map(_.toolName),
+    content_meta_tool_data = resource.contentMeta.toolScan.map(_.toolData.noSpaces),
     fs_path                = resource.path,
     time_added             = Instant.ofEpochMilli(resource.timeAdded.getOrElse(0L)),
     time_created           = None,
@@ -76,7 +84,7 @@ object ResourceRow {
     title                  = resource.title,
     description            = resource.description,
     thumbnail_timestamp    = resource.thumbnailTimestamp,
-    streamable             = resource.streamable
+    streamable             = resource.contentMeta.streamable
   )
 }
 

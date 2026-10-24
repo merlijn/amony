@@ -33,24 +33,16 @@ class LocalDirectoryBucket(
 
   override def requiredRole: Option[Role] = config.requiredRole
 
-  def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap {
-    resource =>
-      val resourcePath = config.resourcePath.resolve(resource.path)
-      contentTypeAndMetaForPath(resourcePath).flatMap:
-        case None                      =>
-          logger.warn(s"Failed to scan metadata for $resourcePath")
-          IO.unit
-        case Some((contentType, meta)) =>
-          logger.info(s"Updating metadata for $resourcePath")
-          streamableOf(resourcePath, Some(contentType)).flatMap { streamable =>
-            val updated = resource.copy(
-              contentType = Some(contentType),
-              contentMeta = Some(meta),
-              streamable  = streamable
-            )
-
-            db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceUpdated(updated)))
-          }
+  def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap { resource =>
+    val resourcePath = config.resourcePath.resolve(resource.path)
+    contentMetaForPath(resourcePath).attempt.flatMap {
+      case Left(e: ContentUnreadable) => IO(logger.error(s"Skipping metadata rescan for $resourcePath", e))
+      case Left(e)                    => IO.raiseError(e)
+      case Right(meta)                =>
+        logger.info(s"Updating metadata for $resourcePath")
+        val updated = resource.copy(contentMeta = resource.contentMeta.updatedWith(meta))
+        db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceUpdated(updated)))
+    }
   }.compile.drain
 
   /** Remuxes a non-streamable resource in place so it can be streamed progressively, then persists the new state. */
@@ -74,7 +66,7 @@ class LocalDirectoryBucket(
                               partialHash      = Some(hash),
                               fileKey          = Option(attrs.fileKey()).map(_.toString),
                               timeLastModified = Some(attrs.lastModifiedTime().toMillis),
-                              streamable       = streamable
+                              contentMeta      = info.contentMeta.copy(streamable = streamable)
                             )
               _          <- db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceUpdated(updated)))
             yield ())

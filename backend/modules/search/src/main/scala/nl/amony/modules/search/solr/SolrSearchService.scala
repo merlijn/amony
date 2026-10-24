@@ -43,7 +43,6 @@ private[search] class SolrSearchService(config: SolrConfig, solr: SolrClient) ex
     val description        = Option(document.getFieldValue(FieldNames.description)).map(_.asInstanceOf[String])
     val resourceType       = document.getFieldValue(FieldNames.resourceType).asInstanceOf[String]
     val thumbnailTimestamp = Option(document.getFieldValue(FieldNames.thumbnailTimestamp)).map(_.asInstanceOf[Int])
-    val metaToolName       = Option(document.getFieldValue(FieldNames.metaToolName)).map(_.asInstanceOf[String])
     val tags               = Option(document.getFieldValues(FieldNames.tags)).map(_.asInstanceOf[java.util.List[String]].asScala).getOrElse(List.empty).toSet
     val userId             = document.getFieldValue(FieldNames.userId).asInstanceOf[String]
     val streamable         = Option(document.getFieldValue(FieldNames.streamable))
@@ -73,15 +72,13 @@ private[search] class SolrSearchService(config: SolrConfig, solr: SolrClient) ex
       size               = size,
       partialHash        = partialHash,
       fileKey            = fileKey,
-      contentType        = contentType,
-      contentMeta        = contentProperties.map(props => ResourceMeta(metaToolName.getOrElse("unknown"), "", props)),
+      contentMeta        = ContentMeta.indexed(contentProperties, contentType, streamable),
       timeAdded          = timeAdded,
       timeLastModified   = lastModified,
       title              = title,
       description        = description,
       tags               = tags.map(Tag.user),
-      thumbnailTimestamp = thumbnailTimestamp,
-      streamable         = streamable
+      thumbnailTimestamp = thumbnailTimestamp
     )
   }
 
