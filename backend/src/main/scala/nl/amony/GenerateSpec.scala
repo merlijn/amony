@@ -11,13 +11,13 @@ import sttp.tapir.*
 import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 
 import nl.amony.modules.auth.AuthModule
-import nl.amony.modules.resources.http.{BucketRoutes, CollectionRoutes, ResourceRoutes}
+import nl.amony.modules.resources.ResourceModule
 import nl.amony.modules.search.SearchModule
 
 object GenerateSpec:
 
   private val endpoints: List[AnyEndpoint] =
-    ResourceRoutes.endpoints ++ SearchModule.endpoints ++ BucketRoutes.endpoints ++ AuthModule.endpoints ++ CollectionRoutes.endpoints ++ ConfigRoutes.endpoints
+    ResourceModule.endpoints ++ SearchModule.endpoints ++ AuthModule.endpoints ++ ConfigRoutes.endpoints
 
   private val docsInterpreter = OpenAPIDocsInterpreter()
 
