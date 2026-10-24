@@ -1,4 +1,4 @@
-package nl.amony.platform.process
+package nl.amony.platform.subprocess
 
 import cats.effect.IO
 import org.typelevel.otel4s.metrics.Meter

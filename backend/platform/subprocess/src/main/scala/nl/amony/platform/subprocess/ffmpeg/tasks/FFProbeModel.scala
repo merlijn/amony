@@ -1,4 +1,4 @@
-package nl.amony.platform.process.ffmpeg.tasks
+package nl.amony.platform.subprocess.ffmpeg.tasks
 
 import scala.util.matching.UnanchoredRegex
 

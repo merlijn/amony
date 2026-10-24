@@ -1,12 +1,12 @@
-package nl.amony.platform.process.magick.tasks
+package nl.amony.platform.subprocess.magick.tasks
 
 import java.nio.file.Path
 import scala.util.Try
 
 import cats.effect.IO
 
-import nl.amony.platform.process.magick.{MagickImageMeta, MagickResult}
-import nl.amony.platform.process.{Command, ProcessRunner}
+import nl.amony.platform.subprocess.magick.{MagickImageMeta, MagickResult}
+import nl.amony.platform.subprocess.{Command, ProcessRunner}
 
 trait GetImageMetaData {
 

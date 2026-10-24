@@ -1,12 +1,12 @@
-package nl.amony.platform.process.ffmpeg.tasks
+package nl.amony.platform.subprocess.ffmpeg.tasks
 
 import java.nio.file.Path
 
 import cats.effect.IO
 
 import nl.amony.platform.files.*
-import nl.amony.platform.process.ffmpeg.ContainerFormat
-import nl.amony.platform.process.{Command, ProcessRunner}
+import nl.amony.platform.subprocess.ffmpeg.ContainerFormat
+import nl.amony.platform.subprocess.{Command, ProcessRunner}
 
 trait AddFastStart:
 

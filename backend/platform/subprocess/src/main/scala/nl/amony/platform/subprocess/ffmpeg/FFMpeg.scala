@@ -1,4 +1,4 @@
-package nl.amony.platform.process.ffmpeg
+package nl.amony.platform.subprocess.ffmpeg
 
 import java.time.Duration
 
@@ -7,8 +7,8 @@ import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
-import nl.amony.platform.process.ProcessRunner
-import nl.amony.platform.process.ffmpeg.tasks.*
+import nl.amony.platform.subprocess.ProcessRunner
+import nl.amony.platform.subprocess.ffmpeg.tasks.*
 
 object FFMpeg {
 

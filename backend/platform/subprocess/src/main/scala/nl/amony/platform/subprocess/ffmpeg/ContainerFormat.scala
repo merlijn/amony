@@ -1,4 +1,4 @@
-package nl.amony.platform.process.ffmpeg
+package nl.amony.platform.subprocess.ffmpeg
 
 /** The value for ffmpeg's `-f fmt` option, which forces the input or output file format. */
 enum ContainerFormat(val fmt: String, val extension: String):

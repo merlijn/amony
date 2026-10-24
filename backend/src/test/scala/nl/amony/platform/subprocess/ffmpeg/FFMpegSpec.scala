@@ -1,4 +1,4 @@
-package nl.amony.platform.process.ffmpeg
+package nl.amony.platform.subprocess.ffmpeg
 
 import cats.effect.IO
 import org.scalatest.wordspec.AnyWordSpecLike
@@ -6,7 +6,7 @@ import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
-import nl.amony.platform.process.ffmpeg.FFMpeg
+import nl.amony.platform.subprocess.ffmpeg.FFMpeg
 
 class FFMpegSpec extends AnyWordSpecLike with Logging {
 

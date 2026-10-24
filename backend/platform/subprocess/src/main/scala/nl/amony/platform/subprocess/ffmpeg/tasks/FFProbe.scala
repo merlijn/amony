@@ -1,4 +1,4 @@
-package nl.amony.platform.process.ffmpeg.tasks
+package nl.amony.platform.subprocess.ffmpeg.tasks
 
 import java.nio.file.Path
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
@@ -7,8 +7,8 @@ import cats.effect.IO
 import io.circe.{Decoder, Json}
 import scribe.Logging
 
-import nl.amony.platform.process.ffmpeg.tasks.FFProbeModel.{*, given}
-import nl.amony.platform.process.{Command, ProcessRunner}
+import nl.amony.platform.subprocess.ffmpeg.tasks.FFProbeModel.{*, given}
+import nl.amony.platform.subprocess.{Command, ProcessRunner}
 
 trait FFProbe extends Logging:
 

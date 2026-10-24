@@ -1,4 +1,4 @@
-package nl.amony.platform.process.ffmpeg.tasks
+package nl.amony.platform.subprocess.ffmpeg.tasks
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
@@ -8,8 +8,8 @@ import cats.effect.IO
 import scribe.Logging
 
 import nl.amony.platform.files.*
-import nl.amony.platform.process.ffmpeg.FFMpeg.formatTime
-import nl.amony.platform.process.{Command, ProcessRunner}
+import nl.amony.platform.subprocess.ffmpeg.FFMpeg.formatTime
+import nl.amony.platform.subprocess.{Command, ProcessRunner}
 
 trait CreateThumbnailTile extends Logging {
 

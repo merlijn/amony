@@ -1,4 +1,4 @@
-package nl.amony.platform.process.ffmpeg.tasks
+package nl.amony.platform.subprocess.ffmpeg.tasks
 
 import java.nio.file.Path
 
@@ -6,8 +6,8 @@ import cats.effect.IO
 
 import nl.amony.platform.files.*
 import nl.amony.platform.files.FileUtil.stripExtension
-import nl.amony.platform.process.ffmpeg.FFMpeg.{formatTime, scaleFilter}
-import nl.amony.platform.process.{Command, ProcessRunner}
+import nl.amony.platform.subprocess.ffmpeg.FFMpeg.{formatTime, scaleFilter}
+import nl.amony.platform.subprocess.{Command, ProcessRunner}
 
 trait CreateThumbnail:
 

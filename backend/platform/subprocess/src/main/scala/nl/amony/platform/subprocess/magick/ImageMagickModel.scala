@@ -1,4 +1,4 @@
-package nl.amony.platform.process.magick
+package nl.amony.platform.subprocess.magick
 
 import io.circe.*
 
