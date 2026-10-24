@@ -45,7 +45,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
   private val inFlight = SingleFlight[OperationKey, Path]
 
-  private[local] def contentTypeForPath(path: Path): IO[Option[String]] =
+  private def contentTypeForPath(path: Path): IO[Option[String]] =
     IO.blocking {
       Try(tika.detect(path)) match
         case Success(contentType) =>

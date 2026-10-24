@@ -84,21 +84,25 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
         Files[IO].readAll(Path.fromNioPath(uploadPath)).through(calculateHash).compile.last
           .map(_.getOrElse(throw new RuntimeException(s"Failed to compute partialHash for uploaded file: $fileName")).digest())
 
-      /** Remuxes the stored upload into a streamable layout when its container supports it, returning the new hash. */
+      /** Remuxes the stored upload into a streamable layout when its container supports it and it is not streamable yet. */
       def remuxUploadedFile(): IO[Option[Array[Byte]]] =
-        contentTypeForPath(uploadPath).flatMap {
-          case Some(contentType) =>
-            VideoContainer.fromContentType(contentType) match
-              case Some(container) =>
-                addFastStart(uploadPath, container).attempt.flatMap {
-                  case Left(error)       =>
-                    logger.warn(s"Failed to remux uploaded file '$fileName', storing the original file", error)
-                    IO.pure(None)
-                  case Right(normalized) =>
-                    IO(JFiles.move(normalized, uploadPath, StandardCopyOption.REPLACE_EXISTING)) >> hashUploadedFile().map(Some(_))
-                }
-              case None            => IO.pure(None)
-          case None              => IO.pure(None)
+        // TODO reuse this metadata in newResource to avoid scanning the upload twice.
+        resourceMetaForPath(uploadPath).flatMap { maybeMeta =>
+          val container = maybeMeta
+            .filter(_.streamable.contains(false))
+            .flatMap(_.contentType)
+            .flatMap(VideoContainer.fromContentType)
+
+          container match
+            case Some(container) =>
+              addFastStart(uploadPath, container).attempt.flatMap {
+                case Left(error)       =>
+                  logger.warn(s"Failed to remux uploaded file '$fileName', storing the original file", error)
+                  IO.pure(None)
+                case Right(normalized) =>
+                  IO(JFiles.move(normalized, uploadPath, StandardCopyOption.REPLACE_EXISTING)) >> hashUploadedFile().map(Some(_))
+              }
+            case None            => IO.pure(None)
         }
 
       (IO(JFiles.createDirectories(config.uploadPath)) >> source.observe(writeToFile).through(calculateHash).compile.last).flatMap {
