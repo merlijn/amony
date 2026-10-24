@@ -20,6 +20,7 @@ import nl.amony.modules.resources.api.{
   ResourceFileMetaChanged,
   ResourceId,
   ResourceInfo,
+  ResourceMeta,
   ResourceMoved,
   ResourceMovedAndModified,
   ResourceUpdated,
@@ -72,27 +73,22 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
   }
 
   private[local] def newResource(f: FileInfo, userId: UserId): IO[ResourceInfo] =
-    contentTypeAndMetaForPath(f.path).recover {
+    resourceMetaForPath(f.path).recover {
       case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None
-    }.flatMap { maybeMeta =>
-      val contentType = maybeMeta.map(_.contentType)
-      streamableOf(f.path, contentType).map { streamable =>
-        ResourceInfo(
-          bucketId           = bucketId,
-          resourceId         = config.generateId(),
-          userId             = userId,
-          path               = relativizePath(f.path),
-          partialHash        = Some(f.partialHash),
-          fileKey            = f.fileKey,
-          size               = f.size,
-          contentType        = contentType,
-          contentMeta        = maybeMeta.map(_.meta),
-          timeAdded          = Some(Instant.now().toEpochMilli),
-          timeLastModified   = Some(f.modifiedTime),
-          thumbnailTimestamp = None,
-          streamable         = streamable
-        )
-      }
+    }.map { maybeMeta =>
+      ResourceInfo(
+        bucketId           = bucketId,
+        resourceId         = config.generateId(),
+        userId             = userId,
+        path               = relativizePath(f.path),
+        partialHash        = Some(f.partialHash),
+        fileKey            = f.fileKey,
+        size               = f.size,
+        contentMeta        = maybeMeta.getOrElse(ResourceMeta.empty),
+        timeAdded          = Some(Instant.now().toEpochMilli),
+        timeLastModified   = Some(f.modifiedTime),
+        thumbnailTimestamp = None
+      )
     }
 
   /**
@@ -104,28 +100,23 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       case None           =>
         IO(logger.warn(s"Dropping content-changed event, no such file in database: ${f.path}")).as(None)
       case Some(existing) =>
-        contentTypeAndMetaForPath(f.path).recover {
+        resourceMetaForPath(f.path).recover {
           case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None
-        }.flatMap { maybeMeta =>
-          val contentType = maybeMeta.map(_.contentType).orElse(existing.contentType)
-          streamableOf(f.path, contentType).map { streamable =>
-            val durationInMillis   = maybeMeta.flatMap { case (_, meta) =>
-              meta.properties.collect { case video: VideoProperties => video.durationInMillis }
-            }
-            // a pinned thumbnail timestamp beyond the new duration would yield broken previews
-            val thumbnailTimestamp = existing.thumbnailTimestamp.filter(ts => durationInMillis.forall(ts <= _))
+        }.map { maybeMeta =>
+          val fresh              = maybeMeta.getOrElse(ResourceMeta.empty)
+          val durationInMillis   = fresh.properties.collect { case video: VideoProperties => video.durationInMillis }
+          // a pinned thumbnail timestamp beyond the new duration would yield broken previews
+          val thumbnailTimestamp = existing.thumbnailTimestamp.filter(ts => durationInMillis.forall(ts <= _))
+          val contentMeta        = maybeMeta.fold(existing.contentMeta)(existing.contentMeta.updatedWith)
 
-            Some(existing.copy(
-              partialHash        = Some(f.partialHash),
-              fileKey            = f.fileKey.orElse(existing.fileKey),
-              size               = f.size,
-              contentType        = contentType,
-              contentMeta        = maybeMeta.map(_.meta).orElse(existing.contentMeta),
-              timeLastModified   = Some(f.modifiedTime),
-              thumbnailTimestamp = thumbnailTimestamp,
-              streamable         = streamable.orElse(existing.streamable)
-            ))
-          }
+          Some(existing.copy(
+            partialHash        = Some(f.partialHash),
+            fileKey            = f.fileKey.orElse(existing.fileKey),
+            size               = f.size,
+            contentMeta        = contentMeta,
+            timeLastModified   = Some(f.modifiedTime),
+            thumbnailTimestamp = thumbnailTimestamp
+          ))
         }
     }
 

@@ -70,8 +70,7 @@ case class ResourceDto(
       path               = path,
       partialHash        = partialHash,
       size               = sizeInBytes,
-      contentType        = Some(contentType),
-      contentMeta        = None,
+      contentMeta        = ResourceMeta(contentType = Some(contentType), streamable = contentMeta.streamable),
       tags               = tags.toSet.map(Tag.user),
       timeAdded          = Some(timeAdded),
       title              = title,
@@ -147,7 +146,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
       None
   }
 
-  val fullMeta: Option[Json] = resource.contentMeta.flatMap(_.toolScan.map(_.toolData))
+  val fullMeta: Option[Json] = resource.contentMeta.toolScan.map(_.toolData)
 
   ResourceDto(
     bucketId           = resource.bucketId,

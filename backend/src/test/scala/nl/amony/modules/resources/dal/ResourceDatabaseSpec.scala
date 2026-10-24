@@ -54,15 +54,13 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       partialHash        = Some(randomString),
       fileKey            = Some(randomString),
       size               = Random.nextLong(),
-      contentType        = None,
-      contentMeta        = None,
+      contentMeta        = ResourceMeta(streamable = List[Option[Boolean]](Some(true), Some(false), None)(Random.nextInt(3))),
       tags               = Set.fill(Random.nextInt(5))(Tag.user(randomTag)),
       timeAdded          = Some(nextTimestamp),
       timeLastModified   = Some(nextTimestamp),
       title              = Some(randomString),
       description        = Some(randomString),
-      thumbnailTimestamp = Some(nextTimestamp),
-      streamable         = List[Option[Boolean]](Some(true), Some(false), None)(Random.nextInt(3))
+      thumbnailTimestamp = Some(nextTimestamp)
     )
 
   def genCollection(parentId: Option[CollectionId] = None, userId: UserId = UserId(UUID.randomUUID().toString)): Collection =
@@ -224,7 +222,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
   def unparsableContentMetaTest(db: ResourceDatabase): IO[Unit] = {
     val scan     = ToolScan("unknown-tool/1", Json.obj("output" -> Json.fromString("raw")))
-    val resource = genResource().copy(contentMeta = Some(ResourceMeta.scanned(scan)))
+    val resource = genResource().copy(contentMeta = ResourceMeta.scanned(scan).copy(contentType = Some("video/mp4"), streamable = Some(true)))
 
     for
       _      <- db.insertResource(resource)
@@ -233,8 +231,10 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       after  <- db.getResourceById(resource.bucketId, resource.resourceId)
     yield {
       stored.flatMap(_.basicContentProperties) shouldBe None
-      stored.flatMap(_.contentMeta).flatMap(_.toolScan) shouldBe Some(scan)
-      after.flatMap(_.contentMeta).flatMap(_.toolScan) shouldBe Some(scan)
+      stored.flatMap(_.contentMeta.toolScan) shouldBe Some(scan)
+      stored.flatMap(_.contentType) shouldBe Some("video/mp4")
+      stored.flatMap(_.contentMeta.streamable) shouldBe Some(true)
+      after.flatMap(_.contentMeta.toolScan) shouldBe Some(scan)
     }
   }
 

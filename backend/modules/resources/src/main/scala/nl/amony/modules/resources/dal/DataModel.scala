@@ -34,6 +34,15 @@ case class ResourceRow(
 ) derives io.circe.Codec {
 
   def toResource(tags: Set[Tag]): ResourceInfo = {
+    val contentMeta =
+      (for
+        toolName <- content_meta_tool_name
+        text     <- content_meta_tool_data
+        toolData <- parser.parse(text).toOption.orElse(Some(Json.fromString(text)))
+      yield ResourceMeta.scanned(ToolScan(toolName, toolData)))
+        .getOrElse(ResourceMeta.empty)
+        .copy(contentType = content_type, streamable = streamable)
+
     ResourceInfo(
       bucketId           = BucketId(bucket_id),
       resourceId         = ResourceId(resource_id),
@@ -42,20 +51,13 @@ case class ResourceRow(
       partialHash        = partial_hash,
       fileKey            = file_key,
       size               = size,
-      contentType        = content_type,
-      contentMeta        =
-        for
-          toolName <- content_meta_tool_name
-          text     <- content_meta_tool_data
-          toolData <- parser.parse(text).toOption.orElse(Some(Json.fromString(text)))
-        yield ResourceMeta.scanned(ToolScan(toolName, toolData)),
+      contentMeta        = contentMeta,
       tags               = tags,
       timeAdded          = Some(time_added.toEpochMilli),
       timeLastModified   = time_last_modified.map(_.toEpochMilli),
       title              = title,
       description        = description,
-      thumbnailTimestamp = thumbnail_timestamp,
-      streamable         = streamable
+      thumbnailTimestamp = thumbnail_timestamp
     )
   }
 }
@@ -72,9 +74,9 @@ object ResourceRow {
     partial_hash           = resource.partialHash,
     file_key               = resource.fileKey,
     size                   = resource.size,
-    content_type           = resource.contentType,
-    content_meta_tool_name = resource.contentMeta.flatMap(_.toolScan.map(_.toolName)),
-    content_meta_tool_data = resource.contentMeta.flatMap(_.toolScan.map(_.toolData.noSpaces)),
+    content_type           = resource.contentMeta.contentType,
+    content_meta_tool_name = resource.contentMeta.toolScan.map(_.toolName),
+    content_meta_tool_data = resource.contentMeta.toolScan.map(_.toolData.noSpaces),
     fs_path                = resource.path,
     time_added             = Instant.ofEpochMilli(resource.timeAdded.getOrElse(0L)),
     time_created           = None,
@@ -82,7 +84,7 @@ object ResourceRow {
     title                  = resource.title,
     description            = resource.description,
     thumbnail_timestamp    = resource.thumbnailTimestamp,
-    streamable             = resource.streamable
+    streamable             = resource.contentMeta.streamable
   )
 }
 

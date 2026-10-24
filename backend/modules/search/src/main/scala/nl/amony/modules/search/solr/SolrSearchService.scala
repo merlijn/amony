@@ -72,15 +72,13 @@ private[search] class SolrSearchService(config: SolrConfig, solr: SolrClient) ex
       size               = size,
       partialHash        = partialHash,
       fileKey            = fileKey,
-      contentType        = contentType,
-      contentMeta        = contentProperties.map(ResourceMeta.indexed),
+      contentMeta        = ResourceMeta.indexed(contentProperties, contentType, streamable),
       timeAdded          = timeAdded,
       timeLastModified   = lastModified,
       title              = title,
       description        = description,
       tags               = tags.map(Tag.user),
-      thumbnailTimestamp = thumbnailTimestamp,
-      streamable         = streamable
+      thumbnailTimestamp = thumbnailTimestamp
     )
   }
 

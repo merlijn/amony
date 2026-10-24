@@ -55,28 +55,34 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
           None
     }
 
-  private[local] def contentTypeAndMetaForPath(path: Path): IO[Option[(contentType: String, meta: ResourceMeta)]] =
+  private[local] def resourceMetaForPath(path: Path): IO[Option[ResourceMeta]] =
     contentTypeForPath(path).flatMap {
-      case None =>
-        IO.pure(None)
-
-      case Some(contentType) if contentType.startsWith("video/") =>
-        ffmpeg.ffprobe(path, false).map {
-          (ffprobeResult, json) =>
-            val version = ffprobeResult.program_version.map(_.version).getOrElse("unknown")
-            Some((contentType, ResourceMeta.scanned(ToolScan(s"ffprobe/$version", json))))
-        }.recover { case e: Throwable => logger.error(s"Failed to get video meta data for $path", e); None }
-
-      case Some(contentType) if contentType.startsWith("image/") =>
-        imageMagick.getImageMeta(path).map:
-          case Failure(e)      =>
-            logger.error(s"Failed to get image meta data for $path", e)
-            None
-          case Success(result) =>
-            Some((contentType, ResourceMeta.scanned(ToolScan("magick/1", result.rawJson))))
-
-      case _ => IO.pure(None)
+      case None              => IO.pure(None)
+      case Some(contentType) =>
+        for
+          scan       <- toolScanForPath(path, contentType)
+          streamable <- streamableOf(path, Some(contentType))
+        yield Some(
+          scan.map(ResourceMeta.scanned).getOrElse(ResourceMeta.empty)
+            .copy(contentType = Some(contentType), streamable = streamable)
+        )
     }
+
+  private def toolScanForPath(path: Path, contentType: String): IO[Option[ToolScan]] =
+    if contentType.startsWith("video/") then
+      ffmpeg.ffprobe(path, false).map {
+        (ffprobeResult, json) =>
+          val version = ffprobeResult.program_version.map(_.version).getOrElse("unknown")
+          Some(ToolScan(s"ffprobe/$version", json))
+      }.recover { case e: Throwable => logger.error(s"Failed to get video meta data for $path", e); None }
+    else if contentType.startsWith("image/") then
+      imageMagick.getImageMeta(path).map:
+        case Failure(e)      =>
+          logger.error(s"Failed to get image meta data for $path", e)
+          None
+        case Success(result) =>
+          Some(ToolScan("magick/1", result.rawJson))
+    else IO.pure(None)
 
   private[local] def addFastStart(video: Path, container: VideoContainer, outputFile: Option[Path] = None): IO[Path] =
     ffmpeg.addFastStart(video, containerFormat(container), outputFile)

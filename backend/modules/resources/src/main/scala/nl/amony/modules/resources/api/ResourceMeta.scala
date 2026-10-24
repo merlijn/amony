@@ -9,15 +9,38 @@ import nl.amony.platform.subprocess.magick.MagickImageMeta
 
 case class ToolScan(toolName: String, toolData: Json) derives io.circe.Codec
 
-case class ResourceMeta(properties: Option[ContentProperties], toolScan: Option[ToolScan]) derives io.circe.Codec
+case class ResourceMeta(
+  contentType: Option[String]           = None,
+  streamable: Option[Boolean]           = None,
+  properties: Option[ContentProperties] = None,
+  toolScan: Option[ToolScan]            = None
+) derives io.circe.Codec {
+
+  /** A changed content type replaces the old scan; otherwise a failed scan keeps the properties already known. */
+  def updatedWith(fresh: ResourceMeta): ResourceMeta =
+    if fresh.contentType != contentType then fresh
+    else
+      copy(
+        streamable = fresh.streamable.orElse(streamable),
+        properties = if fresh.toolScan.isDefined then fresh.properties else properties,
+        toolScan   = if fresh.toolScan.isDefined then fresh.toolScan else toolScan
+      )
+}
 
 object ResourceMeta:
 
+  val empty: ResourceMeta = ResourceMeta()
+
   /** Metadata from a fresh scan of the resource, keeping the raw tool output even when its properties cannot be parsed. */
-  def scanned(toolScan: ToolScan): ResourceMeta = ResourceMeta(ContentProperties.from(toolScan).toOption, Some(toolScan))
+  def scanned(toolScan: ToolScan): ResourceMeta =
+    ResourceMeta(properties = ContentProperties.from(toolScan).toOption, toolScan = Some(toolScan))
 
   /** Metadata projected from the search index, which does not store the raw tool output. */
-  def indexed(properties: ContentProperties): ResourceMeta = ResourceMeta(Some(properties), None)
+  def indexed(
+    properties: Option[ContentProperties],
+    contentType: Option[String] = None,
+    streamable: Option[Boolean] = None
+  ): ResourceMeta = ResourceMeta(contentType = contentType, streamable = streamable, properties = properties)
 
 sealed trait ContentProperties derives io.circe.Codec
 

@@ -17,7 +17,7 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
     userId             = UserId("user"),
     path               = "video.mp4",
     size               = 1L,
-    contentMeta        = Some(ResourceMeta.indexed(VideoProperties(width, height, 30f, durationInMillis))),
+    contentMeta        = ResourceMeta.indexed(Some(VideoProperties(width, height, 30f, durationInMillis))),
     thumbnailTimestamp = Some(thumbnailTimestamp)
   )
 
@@ -27,7 +27,7 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
     userId      = UserId("user"),
     path        = "image.jpg",
     size        = 1L,
-    contentMeta = Some(ResourceMeta.indexed(ImageProperties(width, height)))
+    contentMeta = ResourceMeta.indexed(Some(ImageProperties(width, height)))
   )
 
   private def thumbOp(
