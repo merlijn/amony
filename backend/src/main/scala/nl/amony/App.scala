@@ -2,29 +2,19 @@ package nl.amony
 
 import java.nio.file.Path
 import scala.reflect.ClassTag
-import scala.util.Using
 
 import cats.effect.{IO, Resource, ResourceApp}
 import cats.implicits.*
 import com.typesafe.config.{Config, ConfigFactory}
-import liquibase.Contexts
-import liquibase.Liquibase
-import liquibase.database.DatabaseFactory
-import liquibase.database.jvm.JdbcConnection
-import liquibase.resource.ClassLoaderResourceAccessor
 import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
 import org.typelevel.otel4s.oteljava.context.Context
 import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import pureconfig.ConfigSource
 import scribe.{Logger, Logging}
-import skunk.Session
 import sttp.client4.httpclient.cats.HttpClientCatsBackend
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 import sttp.tapir.server.tracing.otel4s.Otel4sTracing
 
-import nl.amony.lib.messagebus.{MessageTopic, MessageTopicKey, PersistentMessageBus}
-import nl.amony.lib.observability.Observability
-import nl.amony.lib.tapir.dsl.ServerEndpoints
 import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.config.ConfigRoutes
@@ -33,6 +23,10 @@ import nl.amony.modules.resources.api.ResourceEvent
 import nl.amony.modules.resources.http.BucketRoutes
 import nl.amony.modules.resources.local.PreviewGenerator
 import nl.amony.modules.search.SearchModule
+import nl.amony.platform.database.Database
+import nl.amony.platform.messagebus.{MessageTopic, MessageTopicKey, PersistentMessageBus}
+import nl.amony.platform.observability.Observability
+import nl.amony.platform.tapir.dsl.ServerEndpoints
 
 object App extends ResourceApp.Forever with Logging {
 
@@ -42,30 +36,6 @@ object App extends ResourceApp.Forever with Logging {
         logger.info(s"Loading configuration from file: $fileName")
         ConfigFactory.parseFile(Path.of(fileName).toFile)
       case None           => ConfigFactory.load()
-
-  def runDatabaseMigrations(config: DatabaseConfig, contexts: Contexts = new Contexts()): IO[Unit] =
-    config.getJdbcConnection.flatMap: connection =>
-      IO.fromTry(Using(connection) { conn =>
-        logger.info("Running database migrations...")
-        val liquibaseDatabase = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(conn));
-        val liquibase         = new Liquibase("db/00-changelog.yaml", new ClassLoaderResourceAccessor(), liquibaseDatabase)
-        liquibase.update(contexts)
-      })
-
-  def makeDatabasePool(
-    config: DatabaseConfig,
-    contexts: Contexts = new Contexts()
-  )(using TracerProvider[IO], MeterProvider[IO]): Resource[IO, Resource[IO, Session[IO]]] = {
-    for
-      pool <- Session.Builder[IO]
-                .withHost(config.host)
-                .withPort(config.port)
-                .withUserAndPassword(config.username, config.password)
-                .withDatabase(config.database)
-                .pooled(config.poolSize)
-      _    <- Resource.eval(runDatabaseMigrations(config, contexts))
-    yield pool
-  }
 
   override def run(args: List[String]): Resource[IO, Unit] = {
 
@@ -100,7 +70,7 @@ object App extends ResourceApp.Forever with Logging {
         .serverLog(serverLog).options
 
       for
-        databasePool      <- makeDatabasePool(appConfig.database)
+        databasePool      <- Database.makePool(appConfig.database)
         httpClientBackend <- HttpClientCatsBackend.resource[IO]()
         searchModule      <- SearchModule.resource(appConfig.search)
         eventTopic         = {
@@ -118,7 +88,7 @@ object App extends ResourceApp.Forever with Logging {
           val tapirEndpoints: ServerEndpoints[IO] =
             authModule.routes ++
               resourceModule.routes ++
-              BucketRoutes.apply(searchModule.searchService, searchModule.indexer, resourceModule.bucketRegistry) ++
+              BucketRoutes.apply(resourceModule.bucketRegistry) ++
               searchModule.routes(resourceModule.bucketRegistry) ++
               ConfigRoutes.apply(
                 resourceModule.thumbResolutions,
