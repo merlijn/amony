@@ -1,6 +1,7 @@
 package nl.amony.modules.search
 
 import cats.effect.{IO, Resource}
+import sttp.tapir.AnyEndpoint
 
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.resources.api.{BucketRegistry, ResourceIndex}
@@ -21,6 +22,8 @@ class SearchModule(config: SearchConfig, val searchService: SearchService, val i
     SearchRoutes.apply(searchService, config, buckets)
 
 object SearchModule:
+
+  def endpoints: List[AnyEndpoint] = SearchRoutes.endpoints
 
   def resource(config: SearchConfig): Resource[IO, SearchModule] =
     SolrResource.make(config.solr).map { solr =>

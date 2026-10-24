@@ -9,11 +9,12 @@ import org.apache.solr.client.solrj.util.ClientUtils
 import org.apache.solr.common.SolrInputDocument
 
 import nl.amony.modules.resources.api.*
+import nl.amony.modules.search.SolrConfig
 import nl.amony.modules.search.api.SearchIndexer
 import nl.amony.modules.search.solr.SolrSchema.*
 
 /** Writes resource changes to the Solr collection. */
-class SolrIndexer(config: SolrConfig, solr: SolrClient) extends SearchIndexer with SolrLogging {
+private[search] class SolrIndexer(config: SolrConfig, solr: SolrClient) extends SearchIndexer with SolrLogging {
 
   private[solr] def toSolrDocument(resource: ResourceInfo): SolrInputDocument = {
 

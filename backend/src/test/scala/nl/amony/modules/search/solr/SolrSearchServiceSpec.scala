@@ -4,6 +4,7 @@ import org.apache.solr.common.params.CommonParams
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
+import nl.amony.modules.search.SolrConfig
 import nl.amony.modules.search.api.{ContentTypeGroup, Query}
 
 class SolrSearchServiceSpec extends AnyWordSpecLike with Matchers {

@@ -17,7 +17,7 @@ import nl.amony.modules.search.api.SortField.*
 import nl.amony.platform.tapir.dsl.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
 import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes}
 
-object SearchRoutes extends RoutesModule:
+private[search] object SearchRoutes extends RoutesModule:
 
   val errorOutput = ErrorResponse.standardErrorOutput
 
