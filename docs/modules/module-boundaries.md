@@ -407,9 +407,9 @@ Package names are unchanged. Class-level moves required to keep the module graph
   `nl.amony.platform.process.ffmpeg`.
 - `AuthCookies` and the auth-aware `serverLogic`/`serverLogicT` helpers moved from `nl.amony.platform.tapir` and
   `nl.amony.platform.tapir.dsl` to `nl.amony.modules.auth.api`.
-- The search-backed bucket endpoints (`adminReindexBucket`, `adminFixNonStreamable`) moved from
-  `resources.http.BucketRoutes` to `search.http.SearchBucketRoutes`, so `search` can depend on `resources` instead of
-  the two forming a cycle.
+- The search-backed bucket endpoints (`adminReindexBucket`, `adminFixNonStreamable`) stay in
+  `resources.http.BucketRoutes` behind the consumer-owned `resources.api.ResourceIndex` port. `search` implements the
+  port, so the modules stay acyclic without the endpoints moving into the search module.
 - The database evolutions moved to `platform/database`, but the classpath path stays `db/00-changelog.yaml` and all
   changeSet ids and authors are unchanged. Existing `databasechangelog` rows therefore remain valid.
 

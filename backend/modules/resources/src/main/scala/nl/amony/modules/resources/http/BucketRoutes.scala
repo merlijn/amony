@@ -157,6 +157,12 @@ object BucketRoutes extends RoutesModule, Logging:
       .securityIn(securityInput)
       .errorOut(actionErrorOutput))
 
+  val reIndex =
+    register(endpoint.tag("buckets").name("adminReindexBucket").description("Re-index all resources in a bucket.")
+      .post.in("api" / "buckets" / path[BucketId]("bucketId") / "reindex")
+      .securityIn(securityInput)
+      .errorOut(actionErrorOutput))
+
   val rescanMetaData =
     register(endpoint
       .tag("buckets").name("adminRescanMetaData").description("Rescan the metadata of all files in a bucket")
@@ -174,6 +180,13 @@ object BucketRoutes extends RoutesModule, Logging:
     register(endpoint.name("adminGeneratePreviews").tag("buckets")
       .description("Generate all configured thumbnails and preview clips for all resources in a bucket")
       .post.in("api" / "buckets" / path[BucketId]("bucketId") / "generate-previews")
+      .securityIn(securityInput)
+      .errorOut(actionErrorOutput))
+
+  val fixNonStreamable =
+    register(endpoint.name("adminFixNonStreamable").tag("buckets")
+      .description("Remux all non-streamable resources in a bucket so they can be streamed progressively")
+      .post.in("api" / "buckets" / path[BucketId]("bucketId") / "fix-non-streamable")
       .securityIn(securityInput)
       .errorOut(actionErrorOutput))
 
@@ -206,7 +219,7 @@ object BucketRoutes extends RoutesModule, Logging:
   private def parseDto(dto: BucketConfigDto): EitherT[IO, BucketAdminError, ResourceBucketConfig] =
     EitherT.fromEither[IO](BucketConfigDto.toConfig(dto)).leftMap(BadRequestError("invalid_bucket", _))
 
-  def apply(registry: BucketRegistry)(using apiSecurity: ApiSecurity): ServerEndpoints[IO] =
+  def apply(registry: BucketRegistry, resourceIndex: ResourceIndex)(using apiSecurity: ApiSecurity): ServerEndpoints[IO] =
 
     def requireConfig(bucketId: BucketId): EitherT[IO, BucketAdminError, StoredBucket] =
       EitherT.fromOptionF(registry.getConfig(bucketId), toApiError(BucketError.NotFound(bucketId)))
@@ -260,6 +273,16 @@ object BucketRoutes extends RoutesModule, Logging:
         result.map(Right(_))
       }
 
+      serverLogic(endpoint = reIndex, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
+        val result = registry.get(bucketId).flatMap:
+          case None         => IO.unit
+          case Some(bucket) =>
+            logger.info(s"Re-indexing all resources in bucket '$bucketId'")
+            resourceIndex.reindex(bucket) >> IO(logger.info(s"Re-indexed all resources in bucket '$bucketId'"))
+
+        result.map(Right(_))
+      }
+
       serverLogic(endpoint = rescanMetaData, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
         val result = registry.get(bucketId).flatMap:
           case Some(bucket: LocalDirectoryBucket) =>
@@ -292,6 +315,19 @@ object BucketRoutes extends RoutesModule, Logging:
           case _                                  =>
             logger.info(s"Cannot generate previews for bucket '$bucketId'")
             IO.unit
+
+        result.map(Right(_))
+      }
+
+      serverLogic(endpoint = fixNonStreamable, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
+        val result = registry.get(bucketId).flatMap:
+          case Some(bucket: LocalDirectoryBucket) =>
+            logger.info(s"Normalizing non-streamable resources in bucket '$bucketId'")
+            resourceIndex.nonStreamable(bucketId)
+              .evalMap(bucket.fixStreamability)
+              .compile.drain >> IO(logger.info(s"Finished normalizing non-streamable resources in bucket '$bucketId'"))
+          case _                                  =>
+            IO(logger.info(s"Cannot normalize non-streamable resources in bucket '$bucketId'"))
 
         result.map(Right(_))
       }
