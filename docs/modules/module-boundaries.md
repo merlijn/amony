@@ -394,6 +394,7 @@ The first steps are implemented on `chore/introduce-modules`:
 | `auth`       | `modules/auth`        | `nl.amony.modules.auth.*`                                     |
 | `resources`  | `modules/resources`   | `nl.amony.modules.resources.*`                                |
 | `search`     | `modules/search`      | `nl.amony.modules.search.*`                                   |
+| `files`      | `platform/files`      | `nl.amony.platform.files.*` and its specs                     |
 | `subprocess` | `platform/subprocess` | `nl.amony.platform.subprocess.*` (the logical `media` module) |
 | `database`   | `platform/database`   | Liquibase evolutions, `DatabaseConfig`, pool/migrations       |
 | `messagebus` | `platform/messagebus` | `nl.amony.platform.messagebus.*` and its specs                |
