@@ -87,7 +87,7 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
       /** Remuxes the stored upload into a streamable layout when its container supports it and it is not streamable yet. */
       def remuxUploadedFile(): IO[Option[Array[Byte]]] =
         // TODO reuse this metadata in newResource to avoid scanning the upload twice.
-        resourceMetaForPath(uploadPath).flatMap { maybeMeta =>
+        contentMetaForPath(uploadPath).flatMap { maybeMeta =>
           val container = maybeMeta
             .filter(_.streamable.contains(false))
             .flatMap(_.contentType)

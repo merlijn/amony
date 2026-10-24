@@ -19,7 +19,7 @@ import scribe.Logging
 
 import nl.amony.ExportDatabaseSchema
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, ResourceMeta, Tag, TagOwner, ToolScan}
+import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ContentMeta, ResourceId, ResourceInfo, Tag, TagOwner, ToolScan}
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.platform.database.{Database, DatabaseConfig}
 
@@ -54,7 +54,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       partialHash        = Some(randomString),
       fileKey            = Some(randomString),
       size               = Random.nextLong(),
-      contentMeta        = ResourceMeta(streamable = List[Option[Boolean]](Some(true), Some(false), None)(Random.nextInt(3))),
+      contentMeta        = ContentMeta(streamable = List[Option[Boolean]](Some(true), Some(false), None)(Random.nextInt(3))),
       tags               = Set.fill(Random.nextInt(5))(Tag.user(randomTag)),
       timeAdded          = Some(nextTimestamp),
       timeLastModified   = Some(nextTimestamp),
@@ -222,7 +222,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
   def unparsableContentMetaTest(db: ResourceDatabase): IO[Unit] = {
     val scan     = ToolScan("unknown-tool/1", Json.obj("output" -> Json.fromString("raw")))
-    val resource = genResource().copy(contentMeta = ResourceMeta.scanned(scan).copy(contentType = Some("video/mp4"), streamable = Some(true)))
+    val resource = genResource().copy(contentMeta = ContentMeta.scanned(scan).copy(contentType = Some("video/mp4"), streamable = Some(true)))
 
     for
       _      <- db.insertResource(resource)

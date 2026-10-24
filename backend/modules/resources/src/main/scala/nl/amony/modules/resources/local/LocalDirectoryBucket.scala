@@ -35,7 +35,7 @@ class LocalDirectoryBucket(
 
   def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap { resource =>
     val resourcePath = config.resourcePath.resolve(resource.path)
-    resourceMetaForPath(resourcePath).flatMap {
+    contentMetaForPath(resourcePath).flatMap {
       case None       =>
         logger.warn(s"Failed to scan metadata for $resourcePath")
         IO.unit

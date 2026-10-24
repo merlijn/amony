@@ -72,7 +72,7 @@ private[search] class SolrSearchService(config: SolrConfig, solr: SolrClient) ex
       size               = size,
       partialHash        = partialHash,
       fileKey            = fileKey,
-      contentMeta        = ResourceMeta.indexed(contentProperties, contentType, streamable),
+      contentMeta        = ContentMeta.indexed(contentProperties, contentType, streamable),
       timeAdded          = timeAdded,
       timeLastModified   = lastModified,
       title              = title,

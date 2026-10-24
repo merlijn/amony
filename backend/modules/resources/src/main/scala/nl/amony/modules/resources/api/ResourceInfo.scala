@@ -10,7 +10,7 @@ case class ResourceInfo(
   size: Long,
   partialHash: Option[String]     = None,
   fileKey: Option[String]         = None,
-  contentMeta: ResourceMeta       = ResourceMeta.empty,
+  contentMeta: ContentMeta        = ContentMeta.empty,
   timeAdded: Option[Long]         = None,
   timeLastModified: Option[Long]  = None,
   title: Option[String]           = None,

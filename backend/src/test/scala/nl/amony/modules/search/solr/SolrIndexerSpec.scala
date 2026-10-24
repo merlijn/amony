@@ -38,7 +38,7 @@ class SolrIndexerSpec extends AnyWordSpecLike with Matchers {
           size               = 123456L,
           partialHash        = Some("partial-hash"),
           fileKey            = Some("(dev=1,ino=2)"),
-          contentMeta        = ResourceMeta.indexed(
+          contentMeta        = ContentMeta.indexed(
             properties  = Some(VideoProperties(1920, 1080, 30.0f, 9000, Some("h264"))),
             contentType = Some("video/mp4"),
             streamable  = Some(true)

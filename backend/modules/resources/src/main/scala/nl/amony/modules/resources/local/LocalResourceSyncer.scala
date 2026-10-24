@@ -14,13 +14,13 @@ import skunk.Session
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.{
   BucketId,
+  ContentMeta,
   ResourceAdded,
   ResourceDeleted,
   ResourceEvent,
   ResourceFileMetaChanged,
   ResourceId,
   ResourceInfo,
-  ResourceMeta,
   ResourceMoved,
   ResourceMovedAndModified,
   ResourceUpdated,
@@ -73,7 +73,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
   }
 
   private[local] def newResource(f: FileInfo, userId: UserId): IO[ResourceInfo] =
-    resourceMetaForPath(f.path).recover {
+    contentMetaForPath(f.path).recover {
       case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None
     }.map { maybeMeta =>
       ResourceInfo(
@@ -84,7 +84,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
         partialHash        = Some(f.partialHash),
         fileKey            = f.fileKey,
         size               = f.size,
-        contentMeta        = maybeMeta.getOrElse(ResourceMeta.empty),
+        contentMeta        = maybeMeta.getOrElse(ContentMeta.empty),
         timeAdded          = Some(Instant.now().toEpochMilli),
         timeLastModified   = Some(f.modifiedTime),
         thumbnailTimestamp = None
@@ -100,10 +100,10 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       case None           =>
         IO(logger.warn(s"Dropping content-changed event, no such file in database: ${f.path}")).as(None)
       case Some(existing) =>
-        resourceMetaForPath(f.path).recover {
+        contentMetaForPath(f.path).recover {
           case e => logger.error(s"Failed to resolve meta for ${f.path}", e); None
         }.map { maybeMeta =>
-          val fresh              = maybeMeta.getOrElse(ResourceMeta.empty)
+          val fresh              = maybeMeta.getOrElse(ContentMeta.empty)
           val durationInMillis   = fresh.properties.collect { case video: VideoProperties => video.durationInMillis }
           // a pinned thumbnail timestamp beyond the new duration would yield broken previews
           val thumbnailTimestamp = existing.thumbnailTimestamp.filter(ts => durationInMillis.forall(ts <= _))

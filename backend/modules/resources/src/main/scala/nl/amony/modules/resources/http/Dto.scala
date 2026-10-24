@@ -70,7 +70,7 @@ case class ResourceDto(
       path               = path,
       partialHash        = partialHash,
       size               = sizeInBytes,
-      contentMeta        = ResourceMeta(contentType = Some(contentType), streamable = contentMeta.streamable),
+      contentMeta        = ContentMeta(contentType = Some(contentType), streamable = contentMeta.streamable),
       tags               = tags.toSet.map(Tag.user),
       timeAdded          = Some(timeAdded),
       title              = title,

@@ -55,7 +55,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
           None
     }
 
-  private[local] def resourceMetaForPath(path: Path): IO[Option[ResourceMeta]] =
+  private[local] def contentMetaForPath(path: Path): IO[Option[ContentMeta]] =
     contentTypeForPath(path).flatMap {
       case None              => IO.pure(None)
       case Some(contentType) =>
@@ -63,7 +63,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
           scan       <- toolScanForPath(path, contentType)
           streamable <- streamableOf(path, Some(contentType))
         yield Some(
-          scan.map(ResourceMeta.scanned).getOrElse(ResourceMeta.empty)
+          scan.map(ContentMeta.scanned).getOrElse(ContentMeta.empty)
             .copy(contentType = Some(contentType), streamable = streamable)
         )
     }

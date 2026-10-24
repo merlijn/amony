@@ -9,7 +9,7 @@ import skunk.codec.all.{int4, timestamptz, uuid, varchar}
 import skunk.implicits.sql
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, ResourceMeta, Tag, ToolScan}
+import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ContentMeta, ResourceId, ResourceInfo, Tag, ToolScan}
 
 val instantCodec: Codec[Instant] = timestamptz.imap(_.toInstant)(_.atOffset(ZoneOffset.UTC))
 
@@ -39,8 +39,8 @@ case class ResourceRow(
         toolName <- content_meta_tool_name
         text     <- content_meta_tool_data
         toolData <- parser.parse(text).toOption.orElse(Some(Json.fromString(text)))
-      yield ResourceMeta.scanned(ToolScan(toolName, toolData)))
-        .getOrElse(ResourceMeta.empty)
+      yield ContentMeta.scanned(ToolScan(toolName, toolData)))
+        .getOrElse(ContentMeta.empty)
         .copy(contentType = content_type, streamable = streamable)
 
     ResourceInfo(

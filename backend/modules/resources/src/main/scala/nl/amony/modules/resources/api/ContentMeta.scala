@@ -9,7 +9,7 @@ import nl.amony.platform.subprocess.magick.MagickImageMeta
 
 case class ToolScan(toolName: String, toolData: Json) derives io.circe.Codec
 
-case class ResourceMeta(
+case class ContentMeta(
   contentType: Option[String]           = None,
   streamable: Option[Boolean]           = None,
   properties: Option[ContentProperties] = None,
@@ -17,7 +17,7 @@ case class ResourceMeta(
 ) derives io.circe.Codec {
 
   /** A changed content type replaces the old scan; otherwise a failed scan keeps the properties already known. */
-  def updatedWith(fresh: ResourceMeta): ResourceMeta =
+  def updatedWith(fresh: ContentMeta): ContentMeta =
     if fresh.contentType != contentType then fresh
     else
       copy(
@@ -27,20 +27,20 @@ case class ResourceMeta(
       )
 }
 
-object ResourceMeta:
+object ContentMeta:
 
-  val empty: ResourceMeta = ResourceMeta()
+  val empty: ContentMeta = ContentMeta()
 
   /** Metadata from a fresh scan of the resource, keeping the raw tool output even when its properties cannot be parsed. */
-  def scanned(toolScan: ToolScan): ResourceMeta =
-    ResourceMeta(properties = ContentProperties.from(toolScan).toOption, toolScan = Some(toolScan))
+  def scanned(toolScan: ToolScan): ContentMeta =
+    ContentMeta(properties = ContentProperties.from(toolScan).toOption, toolScan = Some(toolScan))
 
   /** Metadata projected from the search index, which does not store the raw tool output. */
   def indexed(
     properties: Option[ContentProperties],
     contentType: Option[String] = None,
     streamable: Option[Boolean] = None
-  ): ResourceMeta = ResourceMeta(contentType = contentType, streamable = streamable, properties = properties)
+  ): ContentMeta = ContentMeta(contentType = contentType, streamable = streamable, properties = properties)
 
 sealed trait ContentProperties derives io.circe.Codec
 
