@@ -28,7 +28,7 @@ flowchart LR
     platform_msg["platform.messagebus"]
     platform_obs["platform.observability"]
     platform_conc["platform.concurrent"]
-    platform_email["platform.email<br/>(unused)"]
+    platform_email["platform.email"]
   end
 
   subgraph auth_group["auth"]
@@ -207,7 +207,7 @@ core.
 
 ### Smaller issues
 
-- `platform.email` is currently unreferenced.
+- `platform.email` is currently unreferenced by the application but kept as its own module.
 - `modules.config` is one route and depends on `resources` core.
 - `GenerateSpec` makes the `app` package depend on every HTTP adapter. It is a build tool, not runtime wiring.
 - `app` knows more than a composition root should: `WebServer` imports auth crypto and resources HTTP utilities.
@@ -373,7 +373,7 @@ Allowed dependency rules:
    - `ResourceConfig` to `resources.api` or `resources.config`.
    - This alone removes several `module ↔ http` cycles.
 
-7. **Delete or annotate `platform.email`** if it is not planned for near-term use.
+7. **Keep `platform.email` isolated** in its own module until it is wired into an application flow.
 
 8. **Enforce the result with ArchUnit**
    - `slices().matching("nl.amony.modules.(*)..").should().beFreeOfCycles()`.
@@ -394,6 +394,7 @@ The first steps are implemented on `chore/introduce-modules`:
 | `auth`       | `modules/auth`        | `nl.amony.modules.auth.*`                                     |
 | `resources`  | `modules/resources`   | `nl.amony.modules.resources.*`                                |
 | `search`     | `modules/search`      | `nl.amony.modules.search.*`                                   |
+| `email`      | `platform/email`      | `nl.amony.platform.email.*` and its specs                     |
 | `files`      | `platform/files`      | `nl.amony.platform.files.*` and its specs                     |
 | `subprocess` | `platform/subprocess` | `nl.amony.platform.subprocess.*` (the logical `media` module) |
 | `database`   | `platform/database`   | Liquibase evolutions, `DatabaseConfig`, pool/migrations       |

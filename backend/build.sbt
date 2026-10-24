@@ -54,7 +54,7 @@ ThisBuild / prodBuild := false
 
 addCommandAlias(
   "format",
-  "; platform/scalafmt; platform/Test/scalafmt; files/scalafmt; files/Test/scalafmt; subprocess/scalafmt; subprocess/Test/scalafmt; database/scalafmt; database/Test/scalafmt; messagebus/scalafmt; messagebus/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; resources/scalafmt; resources/Test/scalafmt; search/scalafmt; search/Test/scalafmt; scalafmt; Test/scalafmt"
+  "; platform/scalafmt; platform/Test/scalafmt; email/scalafmt; email/Test/scalafmt; files/scalafmt; files/Test/scalafmt; subprocess/scalafmt; subprocess/Test/scalafmt; database/scalafmt; database/Test/scalafmt; messagebus/scalafmt; messagebus/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; resources/scalafmt; resources/Test/scalafmt; search/scalafmt; search/Test/scalafmt; scalafmt; Test/scalafmt"
 )
 addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
 
@@ -151,6 +151,17 @@ val platformDependencies = Seq(
   "org.tpolecat"                  %% "skunk-circe"               % "2.0.0-RC3",
   "com.github.pureconfig"         %% "pureconfig-core"           % "0.17.11",
   "com.github.pureconfig"         %% "pureconfig-generic-scala3" % "0.17.11"
+)
+
+val emailDependencies = Seq(
+  "org.typelevel"                 %% "cats-core"  % "2.13.0",
+  "io.circe"                      %% "circe-core" % circeVersion,
+  "com.outr"                      %% "scribe"     % "3.19.0",
+  "com.softwaremill.sttp.client4" %% "core"       % sttpVersion
+)
+
+val emailTestDependencies = Seq(
+  "org.scalatest" %% "scalatest" % "3.2.20" % Test
 )
 
 val filesDependencies = Seq(
@@ -333,6 +344,14 @@ lazy val platform = project
     libraryDependencies ++= platformDependencies
   )
 
+lazy val email = project
+  .in(file("platform/email"))
+  .settings(commonSettings)
+  .settings(
+    name := "email",
+    libraryDependencies ++= emailDependencies ++ emailTestDependencies
+  )
+
 lazy val files = project
   .in(file("platform/files"))
   .dependsOn(platform % "test->compile")
@@ -397,7 +416,7 @@ lazy val search = project
 
 lazy val amony = project
   .in(file("."))
-  .aggregate(platform, files, subprocess, database, messagebus, auth, resources, search)
+  .aggregate(platform, email, files, subprocess, database, messagebus, auth, resources, search)
   .dependsOn(platform, files, subprocess, database, messagebus, auth, resources, search)
   .settings(commonSettings)
   .settings(
