@@ -51,7 +51,7 @@ class ResourceModule(
 
 object ResourceModule:
 
-  val endpoints: List[AnyEndpoint] = ResourceRoutes.endpoints ++ BucketRoutes.endpoints ++ CollectionRoutes.endpoints
+  def endpoints: List[AnyEndpoint] = ResourceRoutes.endpoints ++ BucketRoutes.endpoints ++ CollectionRoutes.endpoints
 
   def resource(
     config: ResourceConfig,
