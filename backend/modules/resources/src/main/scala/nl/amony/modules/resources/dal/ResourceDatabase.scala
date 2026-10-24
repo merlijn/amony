@@ -9,7 +9,7 @@ import skunk.data.Completion
 
 import nl.amony.modules.resources.api.{BucketId, ResourceId, ResourceInfo, Tag}
 
-class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(pool) with Logging:
+private[resources] class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(pool) with Logging:
 
   private[dal] object tables {
     object resources {

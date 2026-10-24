@@ -9,7 +9,7 @@ import skunk.implicits.*
 
 import nl.amony.modules.resources.api.Tag
 
-object Queries extends Logging {
+private[dal] object Queries extends Logging {
 
   /** Decodes the aggregated tag objects; owners are never filtered here so new owners survive reads. */
   private def decodeTags(tags: Option[Json]): Set[Tag] =
