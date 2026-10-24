@@ -415,3 +415,6 @@ Package names are unchanged. Class-level moves required to keep the module graph
 
 Most tests remain in the app module; the messagebus specs live in the `messagebus` module. The remaining package-level
 cycles are unrelated to the module split.
+
+See [module-systems-and-architecture.md](module-systems-and-architecture.md) for JPMS/OSGi options, ArchUnit
+enforcement, and the ports-and-adapters direction.
