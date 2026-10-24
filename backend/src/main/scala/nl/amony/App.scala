@@ -17,7 +17,6 @@ import sttp.tapir.server.tracing.otel4s.Otel4sTracing
 
 import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.ApiSecurity
-import nl.amony.modules.config.ConfigRoutes
 import nl.amony.modules.resources.ResourceModule
 import nl.amony.modules.resources.api.ResourceEvent
 import nl.amony.modules.resources.http.BucketRoutes

@@ -1,15 +1,14 @@
-package nl.amony.modules.config
+package nl.amony
 
 import cats.effect.IO
 import io.circe.Codec
-import sttp.tapir.*
-import sttp.tapir.Schema.annotations.customise
-import sttp.tapir.json.circe.jsonBody
-
 import nl.amony.modules.resources.ResolutionPickingStrategy
 import nl.amony.modules.resources.api.{ThumbnailDimension, ThumbnailFormats, ThumbnailResolutions}
 import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic}
 import nl.amony.platform.tapir.required
+import sttp.tapir.*
+import sttp.tapir.Schema.annotations.customise
+import sttp.tapir.json.circe.jsonBody
 
 /** A concrete thumbnail choice: a dimension ("width" or "height") plus a size in pixels. */
 case class ThumbnailResolutionDto(dimension: String, pixels: Int) derives Codec, Schema
