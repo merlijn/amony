@@ -8,7 +8,7 @@ committed refactor.
 The build now has coarse sbt modules:
 
 - `app` — composition root and tests
-- `platform` — shared infrastructure (`platform`, `process`, `messagebus`, `database`)
+- `platform` — shared infrastructure (`platform`, `subprocess`, `messagebus`, `database`)
 - `modules` — `auth`, `resources`, `search`
 
 The package names match the module paths (`nl.amony.platform.*`, `nl.amony.modules.*`). `dependsOn` gives compile-time
@@ -105,23 +105,23 @@ There are two valid shapes:
 
 ```text
 app
- ├── process ──→ media-api (ports)
+ ├── subprocess ──→ media-api (ports)
  └── resources ─→ media-api
 ```
 
-`process` depends on `media-api`, not on `resources`. This keeps the ffmpeg adapter reusable and keeps the resources
+`subprocess` depends on `media-api`, not on `resources`. This keeps the ffmpeg adapter reusable and keeps the resources
 feature out of it.
 
 **B. A thin adapter inside the feature**
 
 ```text
-resources.api      # MediaOperations port, in domain terms
-resources.local    # FfmpegMediaOperations adapter, uses process
-process            # low-level ffmpeg/ImageMagick wrappers, no domain knowledge
+resources.api       # MediaOperations port, in domain terms
+resources.local     # FfmpegMediaOperations adapter, uses subprocess
+subprocess          # low-level ffmpeg/ImageMagick wrappers, no domain knowledge
 ```
 
-Here `resources.local` implements the port using `process`; `process` stays a generic toolchain. For Amony this is
-probably the cleaner option, because `process` really is a technical library rather than a resource-specific adapter.
+Here `resources.local` implements the port using `subprocess`; `subprocess` stays a generic toolchain. For Amony this is
+probably the cleaner option, because `subprocess` really is a technical library rather than a resource-specific adapter.
 
 The important rule in both cases: the port uses domain language, not ffmpeg language. `ContainerFormat` is an adapter
 detail and should not leak into `resources.api`.
@@ -160,6 +160,6 @@ that depends on everything.
 ## Suggested sequence
 
 1. Add ArchUnit rules for the boundaries that already exist.
-2. Introduce a media port at the `resources`/`process` seam.
+2. Introduce a media port at the `resources`/`subprocess` seam.
 3. Review search, storage, and persistence for the same pattern where the coupling is real.
 4. Keep delivery concerns (HTTP DTOs, serialization, OpenAPI schemas) out of `api` and `core`.
