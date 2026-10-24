@@ -21,8 +21,6 @@ final class ContentUnreadable(val path: Path, cause: Throwable) extends Exceptio
 
 trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
-  self: ResourceBucket =>
-
   private val ffmpeg      = new FFMpeg
   private val imageMagick = new ImageMagick
   private val tika        = new Tika()
@@ -166,7 +164,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
     ResourceOperations.all(info, resolutions, formats).filter(_.validate(info).isRight)
 
   private[local] def runPreviewOperation(info: ResourceInfo, operation: ResourceOperation): IO[Unit] =
-    getOrCreate(info.resourceId, operation).attempt.flatMap {
+    derivedResource(info, operation).attempt.flatMap {
       case Left(error) => IO(logger.error(s"Failed to generate preview $operation for '${info.path}'", error))
       case Right(_)    => IO.unit
     }
