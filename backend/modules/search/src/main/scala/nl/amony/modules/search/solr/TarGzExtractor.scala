@@ -7,7 +7,7 @@ import scala.util.Using
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 
-object TarGzExtractor {
+private[search] object TarGzExtractor {
   def extractResourceTarGz(resourcePath: String, targetDirectory: Path): Unit = {
     // Get the resource as a stream
     val resourceStream = getClass.getResourceAsStream(resourcePath)

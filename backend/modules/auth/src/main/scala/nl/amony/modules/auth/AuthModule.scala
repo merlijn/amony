@@ -4,6 +4,7 @@ import cats.effect.{IO, Resource}
 import scribe.Logging
 import skunk.Session
 import sttp.client4.Backend
+import sttp.tapir.AnyEndpoint
 
 import nl.amony.modules.auth.api.{ApiSecurity, FederatedLoginService}
 import nl.amony.modules.auth.http.AuthRoutes
@@ -19,3 +20,7 @@ class AuthModule(config: AuthConfig, httpClientBackend: Backend[IO], pool: Resou
 
   def routes(using apiSecurity: ApiSecurity) = AuthRoutes.apply(loginService, config)
 }
+
+object AuthModule:
+
+  def endpoints: List[AnyEndpoint] = AuthRoutes.endpoints

@@ -3,7 +3,7 @@ package nl.amony.modules.auth.crypt
 import java.security.spec.ECGenParameterSpec
 import java.security.{KeyPairGenerator, SecureRandom}
 
-object GenerateECKeyPair:
+private[auth] object GenerateECKeyPair:
 
   @main
   def run(): Unit =

@@ -1,7 +1,7 @@
 package nl.amony.modules.search.solr
 
 /** Schema shared by the Solr indexer and the search service: the collection name and the document field names. */
-private[solr] object SolrSchema:
+private[search] object SolrSchema:
 
   val collectionName = "resources"
 

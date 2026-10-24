@@ -10,9 +10,10 @@ import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer
 import org.apache.solr.core.CoreContainer
 import scribe.Logging
 
+import nl.amony.modules.search.SolrConfig
 import nl.amony.modules.search.solr.SolrResource.logger
 
-object SolrResource extends Logging {
+private[search] object SolrResource extends Logging {
 
   val solrTarGzResource = "/solr.tar.gz"
 

@@ -11,19 +11,20 @@ import org.apache.solr.common.params.{CommonParams, FacetParams, ModifiableSolrP
 
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
+import nl.amony.modules.search.SolrConfig
 import nl.amony.modules.search.api.SortDirection.Desc
 import nl.amony.modules.search.api.SortField.*
 import nl.amony.modules.search.api.{ContentTypeGroup, Query, SearchResult, SearchService, SortOption}
 import nl.amony.modules.search.solr.SolrSchema.*
 import nl.amony.modules.search.solr.SolrSearchService.*
 
-object SolrSearchService {
+private[search] object SolrSearchService {
   val defaultSort = SortOption(DateAdded, Desc)
   val tagsLimit   = 12.toString
 }
 
 /** Queries the Solr collection. */
-class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchService with SolrLogging {
+private[search] class SolrSearchService(config: SolrConfig, solr: SolrClient) extends SearchService with SolrLogging {
 
   private[solr] def toResource(document: SolrDocument): ResourceInfo = {
 

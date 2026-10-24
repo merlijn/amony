@@ -13,9 +13,9 @@ import scribe.Logging
 import nl.amony.modules.resources.api.*
 import nl.amony.platform.concurrent.SingleFlight
 import nl.amony.platform.hash.Base32
-import nl.amony.platform.process.ffmpeg.ContainerFormat
-import nl.amony.platform.process.ffmpeg.FFMpeg
-import nl.amony.platform.process.magick.ImageMagick
+import nl.amony.platform.subprocess.ffmpeg.ContainerFormat
+import nl.amony.platform.subprocess.ffmpeg.FFMpeg
+import nl.amony.platform.subprocess.magick.ImageMagick
 
 trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 

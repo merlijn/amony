@@ -1,6 +1,6 @@
 package nl.amony.modules.search
 
-import nl.amony.modules.search.solr.SolrConfig
+case class SolrConfig(path: String, commitWithinMillis: Int)
 
 case class SearchConfig(
   defaultNumberOfResults: Int,

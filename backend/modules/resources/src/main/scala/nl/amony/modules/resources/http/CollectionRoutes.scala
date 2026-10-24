@@ -14,7 +14,7 @@ import nl.amony.platform.tapir.apiNoCacheHeaders
 import nl.amony.platform.tapir.dsl.error.{BadRequestError, NotFoundError, SecurityError}
 import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes}
 
-object CollectionRoutes extends RoutesModule:
+private[resources] object CollectionRoutes extends RoutesModule:
 
   val getCollections: Endpoint[SecurityInput, Unit, SecurityError | NotFoundError | BadRequestError, List[CollectionDto], Any] =
     register(endpoint

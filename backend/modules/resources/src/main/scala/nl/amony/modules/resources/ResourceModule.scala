@@ -7,11 +7,20 @@ import org.http4s.HttpRoutes
 import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import skunk.Session
+import sttp.tapir.AnyEndpoint
 
 import nl.amony.modules.auth.api.ApiSecurity
-import nl.amony.modules.resources.api.{BucketRegistry, CacheScope, LocalDirectoryConfig, ResourceEvent, ThumbnailFormats, ThumbnailResolutions}
+import nl.amony.modules.resources.api.{
+  BucketRegistry,
+  CacheScope,
+  LocalDirectoryConfig,
+  ResourceEvent,
+  ResourceIndex,
+  ThumbnailFormats,
+  ThumbnailResolutions
+}
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
-import nl.amony.modules.resources.http.{CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
+import nl.amony.modules.resources.http.{BucketRoutes, CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.platform.messagebus.MessageTopic
 import nl.amony.platform.tapir.dsl.ServerEndpoints
@@ -31,14 +40,18 @@ class ResourceModule(
 ):
 
   /** The Tapir endpoints of the module. */
-  def routes(using apiSecurity: ApiSecurity): ServerEndpoints[IO] =
-    CollectionRoutes.apply(resourceDatabase, bucketRegistry) ++ ResourceRoutes.apply(bucketRegistry)
+  def routes(resourceIndex: ResourceIndex)(using apiSecurity: ApiSecurity): ServerEndpoints[IO] =
+    BucketRoutes.apply(bucketRegistry, resourceIndex) ++
+      CollectionRoutes.apply(resourceDatabase, bucketRegistry) ++
+      ResourceRoutes.apply(bucketRegistry)
 
   /** The non-Tapir content routes (downloads, thumbnails and clips), served as plain HttpRoutes. */
   def contentRoutes(using apiSecurity: ApiSecurity): HttpRoutes[IO] =
     ResourceContentRoutes.apply(bucketRegistry, thumbResolutions, thumbFormats, contentCacheMaxAge, contentCacheScope)
 
 object ResourceModule:
+
+  def endpoints: List[AnyEndpoint] = ResourceRoutes.endpoints ++ BucketRoutes.endpoints ++ CollectionRoutes.endpoints
 
   def resource(
     config: ResourceConfig,

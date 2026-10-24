@@ -19,23 +19,24 @@ import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes}
 
 val errorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError] = ErrorResponse.standardErrorOutput
 
-object ResourceRoutes extends RoutesModule, Logging:
+private[resources] object ResourceRoutes extends RoutesModule, Logging:
 
-  val getResourceById: Endpoint[SecurityInput, (BucketId, ResourceId), SecurityError | NotFoundError | BadRequestError, ResourceDto, Any] =
+  private val getResourceById: Endpoint[SecurityInput, (BucketId, ResourceId), SecurityError | NotFoundError | BadRequestError, ResourceDto, Any] =
     register(endpoint
       .name("getResourceById").tag("resources").description("Get information about a resource by its id")
       .get.in("api" / "resources" / path[BucketId]("bucketId") / path[ResourceId]("resourceId"))
       .securityIn(securityInput).errorOut(errorOutput)
       .out(apiNoCacheHeaders).out(jsonBody[ResourceDto]))
 
-  val updateUserMetaData: Endpoint[SecurityInput, (BucketId, ResourceId, UserMetaDto), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
+  private val updateUserMetaData
+    : Endpoint[SecurityInput, (BucketId, ResourceId, UserMetaDto), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
     register(endpoint
       .name("updateUserMetaData").tag("resources").description("Update the user metadata of a resource")
       .post.in("api" / "resources" / path[BucketId]("bucketId") / path[ResourceId]("resourceId") / "update_user_meta")
       .securityIn(securityInput)
       .in(jsonBody[UserMetaDto]).errorOut(errorOutput))
 
-  val updateThumbnailTimestamp
+  private val updateThumbnailTimestamp
     : Endpoint[SecurityInput, (BucketId, ResourceId, ThumbnailTimestampDto), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
     register(endpoint
       .name("updateThumbnailTimestamp").tag("resources").description("Update the thumbnail timestamp of a resource")
@@ -43,26 +44,26 @@ object ResourceRoutes extends RoutesModule, Logging:
       .securityIn(securityInput)
       .in(jsonBody[ThumbnailTimestampDto]).errorOut(errorOutput))
 
-  val deleteResource: Endpoint[SecurityInput, (BucketId, ResourceId), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
+  private val deleteResource: Endpoint[SecurityInput, (BucketId, ResourceId), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
     register(endpoint
       .name("deleteResource").tag("resources").description("Delete a resource by its id")
       .delete.in("api" / "resources" / path[BucketId]("bucketId") / path[ResourceId]("resourceId"))
       .securityIn(securityInput).errorOut(errorOutput))
 
-  val fixResourceStreamable: Endpoint[SecurityInput, (BucketId, ResourceId), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
+  private val fixResourceStreamable: Endpoint[SecurityInput, (BucketId, ResourceId), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
     register(endpoint
       .name("fixResourceStreamable").tag("resources").description("Remux a non-streamable resource so it can be streamed progressively")
       .post.in("api" / "resources" / path[BucketId]("bucketId") / path[ResourceId]("resourceId") / "fix-streamability")
       .securityIn(securityInput).errorOut(errorOutput))
 
-  val modifyTagsBulk: Endpoint[SecurityInput, (BucketId, BulkTagsUpdateDto), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
+  private val modifyTagsBulk: Endpoint[SecurityInput, (BucketId, BulkTagsUpdateDto), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
     register(endpoint
       .name("modifyResourceTagsBulk").tag("resources").description("Add or remove tags for multiple resources")
       .post.in("api" / "resources" / path[BucketId]("bucketId") / "bulk" / "tags").securityIn(securityInput)
       .in(jsonBody[BulkTagsUpdateDto])
       .errorOut(errorOutput))
 
-  val uploadResource
+  private val uploadResource
     : Endpoint[
       SecurityInput,
       (BucketId, String, fs2.Stream[IO, Byte]),

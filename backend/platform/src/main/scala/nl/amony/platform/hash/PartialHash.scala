@@ -9,8 +9,6 @@ import scala.util.{Random, Using}
 import cats.effect.IO
 import scribe.Logging
 
-import nl.amony.platform.files.*
-
 object PartialHash extends Logging {
 
   /**
@@ -21,7 +19,7 @@ object PartialHash extends Logging {
    * @return
    */
   def sampleBytesFromFile(file: Path, nChunks: Int, chunkSize: Int = 1): Array[Byte] = {
-    val size = file.size()
+    val size = Files.size(file)
 
     // small files are hashed in full, this also avoids invalid random offsets when size <= chunkSize
     if size <= nChunks.toLong * chunkSize then return Files.readAllBytes(file)

@@ -10,9 +10,9 @@ The analysis parsed all 128 main source files under `backend/src/main/scala` and
 packages and roughly 100 package-to-package import edges. Fully-qualified references outside imports were checked as
 well; there were none outside comments and strings, so imports are a good approximation for this codebase.
 
-For readability, the graph below collapses `platform.process.*`, `platform.tapir.*`, and `platform.files.*` into single
-nodes. The business modules are shown at package granularity. Red nodes participate in a cycle at package level, or in
-the `resources`/`search` cycle at logical-module level.
+For readability, the graph below collapses `platform.subprocess.*`, `platform.tapir.*`, and `platform.files.*` into
+single nodes. The business modules are shown at package granularity. Red nodes participate in a cycle at package level,
+or in the `resources`/`search` cycle at logical-module level.
 
 ## Current package graph
 
@@ -22,13 +22,13 @@ flowchart LR
 
   subgraph platform_group["platform"]
     platform_http["platform.http<br/>(tapir, dsl, errors)"]
-    platform_process["platform.process<br/>(ffmpeg, magick)"]
+    platform_subprocess["platform.subprocess<br/>(ffmpeg, magick)"]
     platform_files["platform.files<br/>(+ sync)"]
     platform_hash["platform.hash"]
     platform_msg["platform.messagebus"]
     platform_obs["platform.observability"]
     platform_conc["platform.concurrent"]
-    platform_email["platform.email<br/>(unused)"]
+    platform_email["platform.email"]
   end
 
   subgraph auth_group["auth"]
@@ -93,7 +93,7 @@ flowchart LR
   res_api --> auth_api
   res_api --> platform_files
   res_api --> platform_hash
-  res_api --> platform_process
+  res_api --> platform_subprocess
   res_dal --> res_api
   res_dal --> auth_api
   res_local --> res_api
@@ -103,7 +103,7 @@ flowchart LR
   res_local --> platform_hash
   res_local --> platform_msg
   res_local --> platform_conc
-  res_local --> platform_process
+  res_local --> platform_subprocess
   res_http --> res_api
   res_http --> res_dal
   res_http --> res_local
@@ -129,12 +129,12 @@ flowchart LR
   search_solr --> res_api
 
   platform_http --> auth_api
-  platform_process --> res_api
-  platform_process --> platform_files
+  platform_subprocess --> res_api
+  platform_subprocess --> platform_files
   platform_hash --> platform_files
 
   classDef cycle fill:#ffe5e5,stroke:#c53030,stroke-width:2px;
-  class platform_http,auth,auth_api,auth_dal,auth_http,platform_process,res_api,res_http,search_api,search,search_http cycle;
+  class platform_http,auth,auth_api,auth_dal,auth_http,platform_subprocess,res_api,res_http,search_api,search,search_http cycle;
 ```
 
 ## Findings
@@ -162,11 +162,11 @@ The cycle is not fundamental. It has three causes:
 
 ### The media library and the resource domain form a second cycle
 
-- `platform.process.ffmpeg.tasks.AddFastStart` imports `resources.api.VideoContainer`.
+- `platform.subprocess.ffmpeg.tasks.AddFastStart` imports `resources.api.VideoContainer`.
 - `resources.api.ResourceMeta` imports `FFProbeModel.FFProbeOutput` and `MagickImageMeta`.
 
 The media-processing library and the resource domain therefore depend on each other. The same area also has a small
-`platform.process.magick ↔ platform.process.magick.tasks` cycle.
+`platform.subprocess.magick ↔ platform.subprocess.magick.tasks` cycle.
 
 ### `resources` and `search` are cyclic as logical modules
 
@@ -207,7 +207,7 @@ core.
 
 ### Smaller issues
 
-- `platform.email` is currently unreferenced.
+- `platform.email` is currently unreferenced by the application but kept as its own module.
 - `modules.config` is one route and depends on `resources` core.
 - `GenerateSpec` makes the `app` package depend on every HTTP adapter. It is a build tool, not runtime wiring.
 - `app` knows more than a composition root should: `WebServer` imports auth crypto and resources HTTP utilities.
@@ -344,7 +344,7 @@ Allowed dependency rules:
    - Move `PemReader` to `platform.crypto`.
    - Move `responseFromFile` to `platform.http` so `WebServer` stops depending on `resources.http`.
 
-2. **Break `platform.process ↔ resources.api`**
+2. **Break `platform.subprocess ↔ resources.api`**
    - Move `VideoContainer`, `ContentProperties`, `VideoProperties`, and `ImageProperties` to `media.api`.
    - Move ffprobe and magick JSON parsing to `media.ffmpeg` and `media.magick`.
    - `AddFastStart` can then use `media.api.VideoContainer`, and `resources.api` only depends on `media.api`.
@@ -373,7 +373,7 @@ Allowed dependency rules:
    - `ResourceConfig` to `resources.api` or `resources.config`.
    - This alone removes several `module ↔ http` cycles.
 
-7. **Delete or annotate `platform.email`** if it is not planned for near-term use.
+7. **Keep `platform.email` isolated** in its own module until it is wired into an application flow.
 
 8. **Enforce the result with ArchUnit**
    - `slices().matching("nl.amony.modules.(*)..").should().beFreeOfCycles()`.
@@ -388,30 +388,35 @@ The biggest win is not a new module name. It is making `*.http` depend on `*.api
 
 The first steps are implemented on `chore/introduce-modules`:
 
-| sbt module   | Directory             | Contents                                                   |
-| ------------ | --------------------- | ---------------------------------------------------------- |
-| `app`        | `.`                   | `nl.amony` app sources, `nl.amony.modules.config`, tests   |
-| `auth`       | `modules/auth`        | `nl.amony.modules.auth.*`                                  |
-| `resources`  | `modules/resources`   | `nl.amony.modules.resources.*`                             |
-| `search`     | `modules/search`      | `nl.amony.modules.search.*`                                |
-| `process`    | `platform/process`    | `nl.amony.platform.process.*` (the logical `media` module) |
-| `database`   | `platform/database`   | Liquibase evolutions, `DatabaseConfig`, pool/migrations    |
-| `messagebus` | `platform/messagebus` | `nl.amony.platform.messagebus.*` and its specs             |
-| `platform`   | `platform`            | remaining `nl.amony.platform.*`                            |
+| sbt module   | Directory             | Contents                                                      |
+| ------------ | --------------------- | ------------------------------------------------------------- |
+| `app`        | `.`                   | `nl.amony` app sources, `nl.amony.modules.config`, tests      |
+| `auth`       | `modules/auth`        | `nl.amony.modules.auth.*`                                     |
+| `resources`  | `modules/resources`   | `nl.amony.modules.resources.*`                                |
+| `search`     | `modules/search`      | `nl.amony.modules.search.*`                                   |
+| `email`      | `platform/email`      | `nl.amony.platform.email.*` and its specs                     |
+| `files`      | `platform/files`      | `nl.amony.platform.files.*` and its specs                     |
+| `subprocess` | `platform/subprocess` | `nl.amony.platform.subprocess.*` (the logical `media` module) |
+| `database`   | `platform/database`   | Liquibase evolutions, `DatabaseConfig`, pool/migrations       |
+| `messagebus` | `platform/messagebus` | `nl.amony.platform.messagebus.*` and its specs                |
+| `platform`   | `platform`            | remaining `nl.amony.platform.*`                               |
 
 All modules publish under the `nl.amony` group.
 
 Package names are unchanged. Class-level moves required to keep the module graph acyclic:
 
 - `VideoContainer` stays in `nl.amony.modules.resources.api`; ffmpeg has its own `ContainerFormat` in
-  `nl.amony.platform.process.ffmpeg`.
+  `nl.amony.platform.subprocess.ffmpeg`.
 - `AuthCookies` and the auth-aware `serverLogic`/`serverLogicT` helpers moved from `nl.amony.platform.tapir` and
   `nl.amony.platform.tapir.dsl` to `nl.amony.modules.auth.api`.
-- The search-backed bucket endpoints (`adminReindexBucket`, `adminFixNonStreamable`) moved from
-  `resources.http.BucketRoutes` to `search.http.SearchBucketRoutes`, so `search` can depend on `resources` instead of
-  the two forming a cycle.
+- The search-backed bucket endpoints (`adminReindexBucket`, `adminFixNonStreamable`) stay in
+  `resources.http.BucketRoutes` behind the consumer-owned `resources.api.ResourceIndex` port. `search` implements the
+  port, so the modules stay acyclic without the endpoints moving into the search module.
 - The database evolutions moved to `platform/database`, but the classpath path stays `db/00-changelog.yaml` and all
   changeSet ids and authors are unchanged. Existing `databasechangelog` rows therefore remain valid.
 
 Most tests remain in the app module; the messagebus specs live in the `messagebus` module. The remaining package-level
 cycles are unrelated to the module split.
+
+See [module-systems-and-architecture.md](module-systems-and-architecture.md) for JPMS/OSGi options, ArchUnit
+enforcement, and the ports-and-adapters direction.

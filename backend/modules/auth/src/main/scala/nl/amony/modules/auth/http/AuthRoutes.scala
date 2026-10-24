@@ -20,10 +20,10 @@ import nl.amony.platform.tapir.*
 import nl.amony.platform.tapir.dsl.error.{BadGatewayError, BadRequestError, ErrorResponse, NotFoundError, SecurityError}
 import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes}
 
-case class IdentityProviderDto(name: String, loginUrl: String) derives Codec, Schema
-case class LogoutResponse(logoutUrl: Option[String]) derives Codec, Schema
+private[auth] case class IdentityProviderDto(name: String, loginUrl: String) derives Codec, Schema
+private[auth] case class LogoutResponse(logoutUrl: Option[String]) derives Codec, Schema
 
-object AuthRoutes extends RoutesModule, Logging:
+private[auth] object AuthRoutes extends RoutesModule, Logging:
 
   val errorOutput: EndpointOutput[SecurityError] = ErrorResponse.securityErrors
 

@@ -8,6 +8,7 @@ import org.scalatest.wordspec.AnyWordSpecLike
 
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
+import nl.amony.modules.search.SolrConfig
 
 class SolrIndexerSpec extends AnyWordSpecLike with Matchers {
 

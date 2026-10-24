@@ -54,7 +54,7 @@ ThisBuild / prodBuild := false
 
 addCommandAlias(
   "format",
-  "; platform/scalafmt; platform/Test/scalafmt; process/scalafmt; process/Test/scalafmt; database/scalafmt; database/Test/scalafmt; messagebus/scalafmt; messagebus/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; resources/scalafmt; resources/Test/scalafmt; search/scalafmt; search/Test/scalafmt; scalafmt; Test/scalafmt"
+  "; platform/scalafmt; platform/Test/scalafmt; email/scalafmt; email/Test/scalafmt; files/scalafmt; files/Test/scalafmt; subprocess/scalafmt; subprocess/Test/scalafmt; database/scalafmt; database/Test/scalafmt; messagebus/scalafmt; messagebus/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; resources/scalafmt; resources/Test/scalafmt; search/scalafmt; search/Test/scalafmt; scalafmt; Test/scalafmt"
 )
 addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
 
@@ -153,7 +153,28 @@ val platformDependencies = Seq(
   "com.github.pureconfig"         %% "pureconfig-generic-scala3" % "0.17.11"
 )
 
-val processDependencies = Seq(
+val emailDependencies = Seq(
+  "org.typelevel"                 %% "cats-core"  % "2.13.0",
+  "io.circe"                      %% "circe-core" % circeVersion,
+  "com.outr"                      %% "scribe"     % "3.19.0",
+  "com.softwaremill.sttp.client4" %% "core"       % sttpVersion
+)
+
+val emailTestDependencies = Seq(
+  "org.scalatest" %% "scalatest" % "3.2.20" % Test
+)
+
+val filesDependencies = Seq(
+  "org.typelevel" %% "cats-effect" % "3.7.1",
+  "co.fs2"        %% "fs2-core"    % "3.14.0",
+  "com.outr"      %% "scribe"      % "3.19.0"
+)
+
+val filesTestDependencies = Seq(
+  "org.scalatest" %% "scalatest" % "3.2.20" % Test
+)
+
+val subprocessDependencies = Seq(
   "org.typelevel" %% "cats-effect"       % "3.7.1",
   "co.fs2"        %% "fs2-core"          % "3.14.0",
   "co.fs2"        %% "fs2-io"            % "3.14.0",
@@ -323,13 +344,30 @@ lazy val platform = project
     libraryDependencies ++= platformDependencies
   )
 
-lazy val process = project
-  .in(file("platform/process"))
-  .dependsOn(platform)
+lazy val email = project
+  .in(file("platform/email"))
   .settings(commonSettings)
   .settings(
-    name := "process",
-    libraryDependencies ++= processDependencies
+    name := "email",
+    libraryDependencies ++= emailDependencies ++ emailTestDependencies
+  )
+
+lazy val files = project
+  .in(file("platform/files"))
+  .dependsOn(platform % "test->compile")
+  .settings(commonSettings)
+  .settings(
+    name := "files",
+    libraryDependencies ++= filesDependencies ++ filesTestDependencies
+  )
+
+lazy val subprocess = project
+  .in(file("platform/subprocess"))
+  .dependsOn(platform, files)
+  .settings(commonSettings)
+  .settings(
+    name := "subprocess",
+    libraryDependencies ++= subprocessDependencies
   )
 
 lazy val database = project
@@ -360,7 +398,7 @@ lazy val auth = project
 
 lazy val resources = project
   .in(file("modules/resources"))
-  .dependsOn(platform, process, messagebus, auth)
+  .dependsOn(platform, files, subprocess, messagebus, auth)
   .settings(commonSettings)
   .settings(
     name := "resources",
@@ -378,8 +416,8 @@ lazy val search = project
 
 lazy val amony = project
   .in(file("."))
-  .aggregate(platform, process, database, messagebus, auth, resources, search)
-  .dependsOn(platform, process, database, messagebus, auth, resources, search)
+  .aggregate(platform, email, files, subprocess, database, messagebus, auth, resources, search)
+  .dependsOn(platform, files, subprocess, database, messagebus, auth, resources, search)
   .settings(commonSettings)
   .settings(
     name                               := "app",
