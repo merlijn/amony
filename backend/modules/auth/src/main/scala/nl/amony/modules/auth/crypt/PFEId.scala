@@ -5,7 +5,7 @@ import org.bouncycastle.crypto.params.{FPEParameters, KeyParameter}
 
 import nl.amony.modules.auth.crypt.FPEId.*
 
-object FPEId:
+private[auth] object FPEId:
   private val radix            = 16
   private val versionHexDigits = 2
 
@@ -20,7 +20,7 @@ object FPEId:
     val obfuscatedVersion = Integer.parseInt(versionPart, radix).toByte
     (obfuscatedVersion ^ obfuscationByte(encryptedValue)).toByte
 
-class FPEId(key: Array[Byte], tweak: Array[Byte], bitSize: Int = 32):
+private[auth] class FPEId(key: Array[Byte], tweak: Array[Byte], bitSize: Int = 32):
 
   require(bitSize % 4 == 0, "bitSize must be a multiple of 4 for hex encoding")
   require(bitSize > 0 && bitSize <= 64, "bitSize must be between 4 and 64")

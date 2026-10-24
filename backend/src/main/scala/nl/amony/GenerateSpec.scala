@@ -10,7 +10,7 @@ import sttp.apispec.openapi.{MediaType, OpenAPI, Operation, PathItem, Response, 
 import sttp.tapir.*
 import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 
-import nl.amony.modules.auth.http.AuthRoutes
+import nl.amony.modules.auth.AuthModule
 import nl.amony.modules.config.ConfigRoutes
 import nl.amony.modules.resources.http.{BucketRoutes, CollectionRoutes, ResourceRoutes}
 import nl.amony.modules.search.SearchModule
@@ -18,7 +18,7 @@ import nl.amony.modules.search.SearchModule
 object GenerateSpec:
 
   private val endpoints: List[AnyEndpoint] =
-    ResourceRoutes.endpoints ++ SearchModule.endpoints ++ BucketRoutes.endpoints ++ AuthRoutes.endpoints ++ CollectionRoutes.endpoints ++ ConfigRoutes.endpoints
+    ResourceRoutes.endpoints ++ SearchModule.endpoints ++ BucketRoutes.endpoints ++ AuthModule.endpoints ++ CollectionRoutes.endpoints ++ ConfigRoutes.endpoints
 
   private val docsInterpreter = OpenAPIDocsInterpreter()
 

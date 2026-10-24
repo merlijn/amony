@@ -1,4 +1,4 @@
-package nl.amony.modules.auth.crypt
+package nl.amony.platform.crypto
 
 import java.io.{ByteArrayInputStream, IOException}
 import java.nio.charset.StandardCharsets.US_ASCII

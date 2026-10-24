@@ -9,7 +9,7 @@ import skunk.Session
 import skunk.codec.all.*
 import skunk.implicits.*
 
-class OAuthStateDatabase(pool: Resource[IO, Session[IO]]):
+private[auth] class OAuthStateDatabase(pool: Resource[IO, Session[IO]]):
 
   private val insertQuery: skunk.Command[OAuthStateRow] =
     sql"""
