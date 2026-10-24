@@ -39,7 +39,7 @@ class SolrIndexerSpec extends AnyWordSpecLike with Matchers {
           partialHash        = Some("partial-hash"),
           fileKey            = Some("(dev=1,ino=2)"),
           contentType        = Some("video/mp4"),
-          contentMeta        = Some(ResourceMeta("ffmpeg", "{}", VideoProperties(1920, 1080, 30.0f, 9000, Some("h264")))),
+          contentMeta        = Some(ResourceMeta.indexed(VideoProperties(1920, 1080, 30.0f, 9000, Some("h264")))),
           timeAdded          = Some(1000L),
           timeLastModified   = Some(2000L),
           title              = Some("Clip"),
@@ -54,6 +54,8 @@ class SolrIndexerSpec extends AnyWordSpecLike with Matchers {
         roundtripped.fileKey shouldBe resource.fileKey
         roundtripped.size shouldBe resource.size
         roundtripped.timeLastModified shouldBe resource.timeLastModified
+        roundtripped.basicContentProperties shouldBe resource.basicContentProperties
+        roundtripped.contentMeta.flatMap(_.toolScan) shouldBe None
         ResourceOperations.contentVersion(roundtripped) shouldBe ResourceOperations.contentVersion(resource)
       }
     }

@@ -21,7 +21,7 @@ case class ResourceInfo(
   streamable: Option[Boolean]       = None
 ) derives io.circe.Codec {
 
-  def basicContentProperties: Option[ContentProperties] = contentMeta.map(_.properties)
+  def basicContentProperties: Option[ContentProperties] = contentMeta.flatMap(_.properties)
 
   def userLabels: Set[String] = tags.collect { case Tag(owner, label) if owner == TagOwner.User => label }
 

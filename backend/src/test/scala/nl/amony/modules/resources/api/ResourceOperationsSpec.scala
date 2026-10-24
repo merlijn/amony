@@ -15,7 +15,7 @@ class ResourceOperationsSpec extends AnyWordSpecLike {
     userId             = UserId("user"),
     path               = "video.mp4",
     size               = 1L,
-    contentMeta        = Some(ResourceMeta("ffprobe/test", "{}", VideoProperties(width, height, 30f, durationInMillis))),
+    contentMeta        = Some(ResourceMeta.indexed(VideoProperties(width, height, 30f, durationInMillis))),
     thumbnailTimestamp = Some(thumbnailTimestamp)
   )
 
@@ -25,7 +25,7 @@ class ResourceOperationsSpec extends AnyWordSpecLike {
     userId      = UserId("user"),
     path        = "image.jpg",
     size        = 1L,
-    contentMeta = Some(ResourceMeta("magick/test", "{}", ImageProperties(width, height)))
+    contentMeta = Some(ResourceMeta.indexed(ImageProperties(width, height)))
   )
 
   "ResourceOperations" when {

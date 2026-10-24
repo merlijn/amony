@@ -147,10 +147,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
       None
   }
 
-  val fullMeta: Option[Json] =
-    resource.contentMeta.flatMap { meta =>
-      io.circe.parser.parse(meta.toolData).toOption
-    }
+  val fullMeta: Option[Json] = resource.contentMeta.flatMap(_.toolScan.map(_.toolData))
 
   ResourceDto(
     bucketId           = resource.bucketId,

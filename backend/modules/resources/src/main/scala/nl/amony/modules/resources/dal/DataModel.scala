@@ -3,12 +3,13 @@ package nl.amony.modules.resources.dal
 import java.time.{Instant, ZoneOffset}
 import java.util.UUID
 
+import io.circe.{Json, parser}
 import skunk.Codec
 import skunk.codec.all.{int4, timestamptz, uuid, varchar}
 import skunk.implicits.sql
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, ResourceMeta, Tag}
+import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, ResourceInfo, ResourceMeta, Tag, ToolScan}
 
 val instantCodec: Codec[Instant] = timestamptz.imap(_.toInstant)(_.atOffset(ZoneOffset.UTC))
 
@@ -42,7 +43,12 @@ case class ResourceRow(
       fileKey            = file_key,
       size               = size,
       contentType        = content_type,
-      contentMeta        = content_meta_tool_name.flatMap(name => ResourceMeta.recover(name, content_meta_tool_data.getOrElse(""))),
+      contentMeta        =
+        for
+          toolName <- content_meta_tool_name
+          text     <- content_meta_tool_data
+          toolData <- parser.parse(text).toOption.orElse(Some(Json.fromString(text)))
+        yield ResourceMeta.scanned(ToolScan(toolName, toolData)),
       tags               = tags,
       timeAdded          = Some(time_added.toEpochMilli),
       timeLastModified   = time_last_modified.map(_.toEpochMilli),
@@ -67,8 +73,8 @@ object ResourceRow {
     file_key               = resource.fileKey,
     size                   = resource.size,
     content_type           = resource.contentType,
-    content_meta_tool_name = resource.contentMeta.map(_.toolName),
-    content_meta_tool_data = resource.contentMeta.map(_.toolData),
+    content_meta_tool_name = resource.contentMeta.flatMap(_.toolScan.map(_.toolName)),
+    content_meta_tool_data = resource.contentMeta.flatMap(_.toolScan.map(_.toolData.noSpaces)),
     fs_path                = resource.path,
     time_added             = Instant.ofEpochMilli(resource.timeAdded.getOrElse(0L)),
     time_created           = None,

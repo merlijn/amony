@@ -110,9 +110,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
           val contentType = maybeMeta.map(_.contentType).orElse(existing.contentType)
           streamableOf(f.path, contentType).map { streamable =>
             val durationInMillis   = maybeMeta.flatMap { case (_, meta) =>
-              meta.properties match
-                case video: VideoProperties => Some(video.durationInMillis)
-                case _                      => None
+              meta.properties.collect { case video: VideoProperties => video.durationInMillis }
             }
             // a pinned thumbnail timestamp beyond the new duration would yield broken previews
             val thumbnailTimestamp = existing.thumbnailTimestamp.filter(ts => durationInMillis.forall(ts <= _))

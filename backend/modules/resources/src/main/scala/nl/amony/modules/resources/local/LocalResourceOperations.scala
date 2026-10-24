@@ -63,11 +63,8 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
       case Some(contentType) if contentType.startsWith("video/") =>
         ffmpeg.ffprobe(path, false).map {
           (ffprobeResult, json) =>
-            ContentProperties.ffprobeOutputToContentMeta(ffprobeResult).toOption.map {
-              properties =>
-                val version = ffprobeResult.program_version.map(_.version).getOrElse("unknown")
-                (contentType, ResourceMeta(s"ffprobe/$version", json.noSpaces, properties))
-            }
+            val version = ffprobeResult.program_version.map(_.version).getOrElse("unknown")
+            Some((contentType, ResourceMeta.scanned(ToolScan(s"ffprobe/$version", json))))
         }.recover { case e: Throwable => logger.error(s"Failed to get video meta data for $path", e); None }
 
       case Some(contentType) if contentType.startsWith("image/") =>
@@ -76,12 +73,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
             logger.error(s"Failed to get image meta data for $path", e)
             None
           case Success(result) =>
-            result.output.headOption.map {
-              magick =>
-                val properties =
-                  ImageProperties(width = magick.image.geometry.width, height = magick.image.geometry.height, metaData = magick.image.properties)
-                (contentType, ResourceMeta("magick/1", result.rawJson.noSpaces, properties))
-            }
+            Some((contentType, ResourceMeta.scanned(ToolScan("magick/1", result.rawJson))))
 
       case _ => IO.pure(None)
     }
