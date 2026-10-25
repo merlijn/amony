@@ -15,6 +15,7 @@ import sttp.client4.httpclient.cats.HttpClientCatsBackend
 import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 import sttp.tapir.server.tracing.otel4s.Otel4sTracing
 
+import nl.amony.app.observability.Observability
 import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.resources.ResourceModule
@@ -23,7 +24,6 @@ import nl.amony.modules.resources.local.PreviewGenerator
 import nl.amony.modules.search.SearchModule
 import nl.amony.platform.database.Database
 import nl.amony.platform.messagebus.{MessageTopic, MessageTopicKey, PersistentMessageBus}
-import nl.amony.platform.observability.Observability
 import nl.amony.platform.tapir.dsl.ServerEndpoints
 
 object App extends ResourceApp.Forever with Logging {

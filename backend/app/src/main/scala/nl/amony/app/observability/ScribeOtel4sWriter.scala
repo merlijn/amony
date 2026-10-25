@@ -1,4 +1,4 @@
-package nl.amony.platform.observability
+package nl.amony.app.observability
 
 import cats.Monad
 import cats.effect.kernel.{Async, Sync}

@@ -130,17 +130,12 @@ lazy val commonSettings = Seq(
 
 val platformDependencies = Seq(
   "org.typelevel"                 %% "cats-effect"               % "3.7.1",
-  "org.typelevel"                 %% "cats-mtl"                  % "1.7.0",
   "co.fs2"                        %% "fs2-core"                  % "3.14.0",
   "co.fs2"                        %% "fs2-io"                    % "3.14.0",
   "io.circe"                      %% "circe-core"                % circeVersion,
   "io.circe"                      %% "circe-parser"              % circeVersion,
   "com.outr"                      %% "scribe"                    % "3.19.0",
   "com.outr"                      %% "scribe-slf4j"              % "3.19.0",
-  "org.typelevel"                 %% "otel4s-core"               % otel4sVersion,
-  "org.typelevel"                 %% "otel4s-core-trace"         % otel4sVersion,
-  "org.typelevel"                 %% "otel4s-oteljava"           % otel4sVersion,
-  "org.typelevel"                 %% "otel4s-semconv"            % otel4sVersion,
   "com.softwaremill.sttp.tapir"   %% "tapir-core"                % tapirVersion,
   "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"          % tapirVersion,
   "com.softwaremill.sttp.shared"  %% "fs2"                       % "1.6.0",
@@ -291,6 +286,7 @@ val searchDependencies = Seq(
 
 val appDependencies = Seq(
   "org.typelevel"                 %% "cats-effect"                               % "3.7.1",
+  "org.typelevel"                 %% "cats-mtl"                                  % "1.7.0",
   "co.fs2"                        %% "fs2-core"                                  % "3.14.0",
   "co.fs2"                        %% "fs2-io"                                    % "3.14.0",
   "com.typesafe"                   % "config"                                    % "1.4.9",
