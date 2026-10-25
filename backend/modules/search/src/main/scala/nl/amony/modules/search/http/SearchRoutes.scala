@@ -95,7 +95,7 @@ private[search] object SearchRoutes extends RoutesModule:
     def sanitize(s: String, maxLength: Int, isCharAllowed: Char => Boolean): String = s.filter(isCharAllowed).take(maxLength)
 
     routes[IO] {
-      serverLogic(endpoint = searchResourcesEndpoint, requiredPermission = Permission.SearchResources) {
+      securedServerLogic(endpoint = searchResourcesEndpoint, requiredPermission = Permission.SearchResources) {
         auth => queryDto =>
 
           def parseRange(s: Option[String]): (Option[Long], Option[Long]) = s match

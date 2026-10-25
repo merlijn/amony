@@ -18,7 +18,7 @@ import nl.amony.modules.auth.AuthConfig
 import nl.amony.modules.auth.api.*
 import nl.amony.platform.tapir.*
 import nl.amony.platform.tapir.dsl.error.{BadGatewayError, BadRequestError, ErrorResponse, NotFoundError, SecurityError}
-import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes}
+import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
 
 private[auth] case class IdentityProviderDto(name: String, loginUrl: String) derives Codec, Schema
 private[auth] case class LogoutResponse(logoutUrl: Option[String]) derives Codec, Schema
@@ -102,33 +102,34 @@ private[auth] object AuthRoutes extends RoutesModule, Logging:
   ): ServerEndpoints[IO] = {
 
     routes[IO] {
-      serverLogic(endpoint = refreshEndpoint, authorize = apiSecurity.authorizeXsrf) { _ => refreshToken =>
+      securedServerLogic(endpoint = refreshEndpoint, authorize = apiSecurity.authorizeXsrf) { _ => refreshToken =>
         loginService.refresh(refreshToken).map:
           case Left(_)               => Left(SecurityError.Unauthorized)
           case Right(authentication) => Right(apiSecurity.createCookies(authentication))
       }
 
-      serverLogic(endpoint = sessionEndpoint, authorize = input => Right(apiSecurity.decodeAccessToken(input.accessToken))) { auth => refreshToken =>
-        if auth.isAnonymous && refreshToken.isDefined then
-          loginService.refresh(refreshToken.get).map:
-            case Right(authentication)                  =>
-              Right(apiSecurity.decodeAccessToken(Some(authentication.accessToken)) -> apiSecurity.createCookies(authentication))
-            case Left(_) if apiSecurity.isLoginRequired =>
-              Left(SecurityError.Unauthorized)
-            case Left(_)                                =>
-              Right(auth -> AuthCookies.empty)
-        else if auth.isAnonymous && apiSecurity.isLoginRequired then
-          IO.pure(Left(SecurityError.Unauthorized))
-        else
-          IO.pure(Right(auth -> AuthCookies.empty))
+      securedServerLogic(endpoint = sessionEndpoint, authorize = input => Right(apiSecurity.decodeAccessToken(input.accessToken))) {
+        auth => refreshToken =>
+          if auth.isAnonymous && refreshToken.isDefined then
+            loginService.refresh(refreshToken.get).map:
+              case Right(authentication)                  =>
+                Right(apiSecurity.decodeAccessToken(Some(authentication.accessToken)) -> apiSecurity.createCookies(authentication))
+              case Left(_) if apiSecurity.isLoginRequired =>
+                Left(SecurityError.Unauthorized)
+              case Left(_)                                =>
+                Right(auth -> AuthCookies.empty)
+          else if auth.isAnonymous && apiSecurity.isLoginRequired then
+            IO.pure(Left(SecurityError.Unauthorized))
+          else
+            IO.pure(Right(auth -> AuthCookies.empty))
       }
 
-      serverLogic(endpoint = logoutEndpoint, authorize = apiSecurity.authorizeXsrf) { _ => (providerIdTokenCookie, origin) =>
+      securedServerLogic(endpoint = logoutEndpoint, authorize = apiSecurity.authorizeXsrf) { _ => (providerIdTokenCookie, origin) =>
         val logoutUrl = providerIdTokenCookie.flatMap(ProviderIdToken.decode).flatMap(loginService.logoutUrl(_, origin))
         IO.pure(Right((LogoutResponse(logoutUrl), apiSecurity.createLogoutCookes)))
       }
 
-      nl.amony.platform.tapir.dsl.serverLogic(endpoint = loginEndpoint) { (provider, origin) =>
+      serverLogic(endpoint = loginEndpoint) { (provider, origin) =>
         loginService.identityProviders.get(provider) match
           case None                 => IO.pure(Left(NotFoundError("not_found", "Resource not found")))
           case Some(providerConfig) =>
@@ -153,7 +154,7 @@ private[auth] object AuthRoutes extends RoutesModule, Logging:
             yield Right(RedirectResponse(redirectUri.toString) -> stateCookie)
       }
 
-      nl.amony.platform.tapir.dsl.serverLogicT(endpoint = callbackEndpoint) {
+      serverLogicT(endpoint = callbackEndpoint) {
         case (provider, code, state, clientState, origin) =>
           for
             _              <- EitherT.fromOption[IO](loginService.identityProviders.get(provider), NotFoundError("not_found", "Resource not found"))
@@ -162,7 +163,7 @@ private[auth] object AuthRoutes extends RoutesModule, Logging:
           yield RedirectResponse("/") -> apiSecurity.createCookies(authentication)
       }
 
-      nl.amony.platform.tapir.dsl.serverLogic(endpoint = getIdentityProvidersEndpoint) { _ =>
+      serverLogic(endpoint = getIdentityProvidersEndpoint) { _ =>
         IO.pure(Right(loginService.identityProviders.values.map { provider =>
           IdentityProviderDto(
             name     = provider.name,

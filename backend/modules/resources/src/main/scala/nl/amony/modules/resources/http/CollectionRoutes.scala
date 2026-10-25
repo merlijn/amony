@@ -63,11 +63,11 @@ private[resources] object CollectionRoutes extends RoutesModule:
 
     routes[IO] {
 
-      serverLogic(endpoint = getCollections, requiredPermission = Permission.ManageCollections) { auth => _ =>
+      securedServerLogic(endpoint = getCollections, requiredPermission = Permission.ManageCollections) { auth => _ =>
         collectionsDal.getCollectionsForUser(auth.userId).map(_.map(toDto)).map(Right(_))
       }
 
-      serverLogicT(endpoint = createCollection, requiredPermission = Permission.ManageCollections) { auth => dto =>
+      securedServerLogicT(endpoint = createCollection, requiredPermission = Permission.ManageCollections) { auth => dto =>
         for
           sanitizedName        <- sanitize(dto.name, 128, _ => true)
           sanitizedDescription <- sanitizeOpt(dto.description, 1280, _ => true)
@@ -84,7 +84,7 @@ private[resources] object CollectionRoutes extends RoutesModule:
         yield toDto(collection)
       }
 
-      serverLogicT(endpoint = addResourceToCollection, requiredPermission = Permission.ManageCollections) {
+      securedServerLogicT(endpoint = addResourceToCollection, requiredPermission = Permission.ManageCollections) {
         auth => (collectionId, bucketId, resourceId) =>
           for
             _ <- EitherT(canAccessBucket(auth, bucketId).map(Either.cond(_, (), NotFoundError("not_found", "Resource not found"))))
@@ -92,7 +92,7 @@ private[resources] object CollectionRoutes extends RoutesModule:
           yield ()
       }
 
-      serverLogicT(endpoint = removeResourceFromCollection, requiredPermission = Permission.ManageCollections) {
+      securedServerLogicT(endpoint = removeResourceFromCollection, requiredPermission = Permission.ManageCollections) {
         auth => (collectionId, bucketId, resourceId) =>
           for
             _ <- EitherT(canAccessBucket(auth, bucketId).map(Either.cond(_, (), NotFoundError("not_found", "Resource not found"))))
@@ -100,7 +100,7 @@ private[resources] object CollectionRoutes extends RoutesModule:
           yield ()
       }
 
-      serverLogic(endpoint = getResourcesInCollection, requiredPermission = Permission.ManageCollections) {
+      securedServerLogic(endpoint = getResourcesInCollection, requiredPermission = Permission.ManageCollections) {
         token => collectionId =>
           collectionsDal.getCollectionById(collectionId).flatMap {
             case Some(collection) if collection.userId == token.userId =>
