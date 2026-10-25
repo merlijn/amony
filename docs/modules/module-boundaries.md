@@ -28,8 +28,6 @@ flowchart TB
   app --> resources
   app --> search
   app --> tapir
-  app --> files
-  app --> subprocess
   app --> database
   app --> messagebus
 

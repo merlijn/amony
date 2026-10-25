@@ -166,6 +166,10 @@ val subprocessDependencies = Seq(
   "org.typelevel" %% "otel4s-core-trace" % otel4sVersion
 )
 
+val subprocessTestDependencies = Seq(
+  "org.scalatest" %% "scalatest" % "3.2.20" % Test
+)
+
 val databaseDependencies = Seq(
   "org.typelevel"         %% "cats-effect"               % "3.7.1",
   "com.outr"              %% "scribe"                    % "3.19.0",
@@ -346,7 +350,7 @@ lazy val subprocess = project
   .settings(commonSettings)
   .settings(
     name := "subprocess",
-    libraryDependencies ++= subprocessDependencies
+    libraryDependencies ++= subprocessDependencies ++ subprocessTestDependencies
   )
 
 lazy val database = project
@@ -395,7 +399,7 @@ lazy val search = project
 
 lazy val app = project
   .in(file("app"))
-  .dependsOn(tapir, files, subprocess, database, messagebus, auth, resources, search)
+  .dependsOn(tapir, database, messagebus, auth, resources, search)
   .settings(commonSettings)
   .settings(
     name                               := "app",
