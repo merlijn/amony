@@ -356,7 +356,7 @@ lazy val files = project
 
 lazy val subprocess = project
   .in(file("platform/subprocess"))
-  .dependsOn(platform, files)
+  .dependsOn(platform)
   .settings(commonSettings)
   .settings(
     name := "subprocess",
