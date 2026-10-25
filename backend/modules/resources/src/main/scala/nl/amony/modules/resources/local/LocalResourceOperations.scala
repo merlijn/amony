@@ -11,7 +11,7 @@ import org.apache.tika.Tika
 import scribe.Logging
 
 import nl.amony.modules.resources.api.*
-import nl.amony.platform.concurrent.SingleFlight
+import nl.amony.modules.resources.util.SingleFlight
 import nl.amony.platform.hash.Base32
 import nl.amony.platform.subprocess.ffmpeg.ContainerFormat
 import nl.amony.platform.subprocess.ffmpeg.FFMpeg

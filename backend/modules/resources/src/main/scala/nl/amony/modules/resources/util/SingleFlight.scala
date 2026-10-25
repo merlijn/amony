@@ -1,4 +1,4 @@
-package nl.amony.platform.concurrent
+package nl.amony.modules.resources.util
 
 import java.util.concurrent.ConcurrentHashMap
 
