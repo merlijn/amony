@@ -5,8 +5,8 @@ import cats.data.EitherT
 import sttp.capabilities.fs2.Fs2Streams
 import sttp.tapir.Endpoint
 
-import nl.amony.platform.tapir.dsl.Routes
-import nl.amony.platform.tapir.dsl.error.SecurityError
+import nl.amony.platform.tapir.Routes
+import nl.amony.platform.tapir.error.SecurityError
 
 def securedServerLogic[F[_], E >: SecurityError, I, O](
   endpoint: Endpoint[SecurityInput, I, E, O, Fs2Streams[F]],

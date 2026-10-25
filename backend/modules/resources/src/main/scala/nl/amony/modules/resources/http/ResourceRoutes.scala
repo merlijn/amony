@@ -14,8 +14,8 @@ import nl.amony.modules.resources.api.BucketRegistry
 import nl.amony.modules.resources.api.{BucketId, Resource, ResourceBucket, ResourceId, Tag, UploadError}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.platform.tapir.apiNoCacheHeaders
-import nl.amony.platform.tapir.dsl.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
-import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes}
+import nl.amony.platform.tapir.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
+import nl.amony.platform.tapir.{RoutesModule, ServerEndpoints, routes}
 
 val errorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError] = ErrorResponse.standardErrorOutput
 

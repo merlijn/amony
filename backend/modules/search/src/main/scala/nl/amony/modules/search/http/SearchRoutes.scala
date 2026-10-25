@@ -14,8 +14,8 @@ import nl.amony.modules.search.SearchConfig
 import nl.amony.modules.search.api.*
 import nl.amony.modules.search.api.SortDirection.{Asc, Desc}
 import nl.amony.modules.search.api.SortField.*
-import nl.amony.platform.tapir.dsl.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
-import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes}
+import nl.amony.platform.tapir.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
+import nl.amony.platform.tapir.{RoutesModule, ServerEndpoints, routes}
 
 private[search] object SearchRoutes extends RoutesModule:
 

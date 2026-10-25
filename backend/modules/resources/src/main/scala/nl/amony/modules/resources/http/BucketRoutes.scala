@@ -16,8 +16,8 @@ import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.platform.tapir.apiNoCacheHeaders
-import nl.amony.platform.tapir.dsl.error.{BadRequestError, ConflictError, ErrorResponse, NotFoundError, SecurityError}
-import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes}
+import nl.amony.platform.tapir.error.{BadRequestError, ConflictError, ErrorResponse, NotFoundError, SecurityError}
+import nl.amony.platform.tapir.{RoutesModule, ServerEndpoints, routes}
 
 case class ScanSettingsDto(
   enabled: Boolean,

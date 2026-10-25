@@ -11,8 +11,8 @@ import nl.amony.modules.resources.api.BucketRegistry
 import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ResourceId, Tag}
 import nl.amony.modules.resources.dal.CollectionsDal
 import nl.amony.platform.tapir.apiNoCacheHeaders
-import nl.amony.platform.tapir.dsl.error.{BadRequestError, NotFoundError, SecurityError}
-import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes}
+import nl.amony.platform.tapir.error.{BadRequestError, NotFoundError, SecurityError}
+import nl.amony.platform.tapir.{RoutesModule, ServerEndpoints, routes}
 
 private[resources] object CollectionRoutes extends RoutesModule:
 

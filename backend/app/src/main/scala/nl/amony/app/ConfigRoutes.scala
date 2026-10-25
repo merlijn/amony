@@ -8,8 +8,8 @@ import sttp.tapir.json.circe.jsonBody
 
 import nl.amony.modules.resources.ResolutionPickingStrategy
 import nl.amony.modules.resources.api.{ThumbnailDimension, ThumbnailFormats, ThumbnailResolutions}
-import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic}
 import nl.amony.platform.tapir.required
+import nl.amony.platform.tapir.{RoutesModule, ServerEndpoints, routes, serverLogic}
 
 /** A concrete thumbnail choice: a dimension ("width" or "height") plus a size in pixels. */
 case class ThumbnailResolutionDto(dimension: String, pixels: Int) derives Codec, Schema

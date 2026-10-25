@@ -14,7 +14,7 @@ import sttp.model.{StatusCode, Uri}
 
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.auth.{AuthConfig, HS256Config, IdentityProvider, JwtConfig, RoleAccessConfig}
-import nl.amony.platform.tapir.dsl.error.ErrorBody
+import nl.amony.platform.tapir.error.ErrorBody
 import nl.amony.platform.tapir.test.EndpointFixture
 
 /**

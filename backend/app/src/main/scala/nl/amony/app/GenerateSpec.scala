@@ -23,7 +23,7 @@ object GenerateSpec:
 
   /**
    * Any endpoint can fail with an unhandled exception, which [[WebServer]] reports as a 500 carrying the
-   * shared [[nl.amony.platform.tapir.dsl.error.ErrorBody]]. Document that on every operation so the spec
+   * shared [[nl.amony.platform.tapir.error.ErrorBody]]. Document that on every operation so the spec
    * matches what the server can actually return, without widening each endpoint's typed error set.
    */
   private val internalServerError: Response =

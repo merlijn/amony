@@ -1,4 +1,4 @@
-package nl.amony.platform.tapir.dsl
+package nl.amony.platform.tapir
 
 import scala.collection.mutable.ArrayBuffer
 

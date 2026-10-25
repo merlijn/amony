@@ -17,8 +17,7 @@ import sttp.tapir.json.circe.jsonBody
 import nl.amony.modules.auth.AuthConfig
 import nl.amony.modules.auth.api.*
 import nl.amony.platform.tapir.*
-import nl.amony.platform.tapir.dsl.error.{BadGatewayError, BadRequestError, ErrorResponse, NotFoundError, SecurityError}
-import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes, serverLogic, serverLogicT}
+import nl.amony.platform.tapir.error.{BadGatewayError, BadRequestError, ErrorResponse, NotFoundError, SecurityError}
 
 private[auth] case class IdentityProviderDto(name: String, loginUrl: String) derives Codec, Schema
 private[auth] case class LogoutResponse(logoutUrl: Option[String]) derives Codec, Schema

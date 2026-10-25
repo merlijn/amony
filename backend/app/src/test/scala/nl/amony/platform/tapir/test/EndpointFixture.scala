@@ -12,7 +12,7 @@ import sttp.tapir.AnyEndpoint
 import sttp.tapir.server.ServerEndpoint
 import sttp.tapir.server.stub4.TapirStreamStubInterpreter
 
-import nl.amony.platform.tapir.dsl.ServerEndpoints
+import nl.amony.platform.tapir.ServerEndpoints
 
 /**
  * Test fixture that wires an [[AnyEndpoint]] definition to the [[ServerEndpoint]] implementing it and

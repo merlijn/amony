@@ -23,7 +23,7 @@ import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
 import nl.amony.modules.resources.http.{BucketRoutes, CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.platform.messagebus.MessageTopic
-import nl.amony.platform.tapir.dsl.ServerEndpoints
+import nl.amony.platform.tapir.ServerEndpoints
 
 /**
  * Wires the resources module: the resource database, the thumbnail configuration, the event bus the

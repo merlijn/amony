@@ -30,7 +30,7 @@ import scribe.Logging
 import nl.amony.modules.auth.api.{ApiSecurity, effectiveHost}
 import nl.amony.modules.auth.crypt.PemReader
 import nl.amony.modules.resources.http.ResourceDirectives
-import nl.amony.platform.tapir.dsl.error.ErrorBody
+import nl.amony.platform.tapir.error.ErrorBody
 
 object WebServer extends Logging {
 

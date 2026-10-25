@@ -1,4 +1,4 @@
-package nl.amony.platform.tapir.dsl.error
+package nl.amony.platform.tapir.error
 
 import scala.reflect.ClassTag
 
