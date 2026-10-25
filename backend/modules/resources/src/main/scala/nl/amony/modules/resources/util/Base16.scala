@@ -1,4 +1,4 @@
-package nl.amony.platform.hash
+package nl.amony.modules.resources.util
 
 object Base16 {
   private val alphabet: Array[Char]      = "0123456789abcdef".toCharArray

@@ -15,7 +15,6 @@ import sttp.client4.circe.asJson
 import nl.amony.modules.*
 import nl.amony.modules.auth.*
 import nl.amony.modules.auth.dal.{OAuthStateDatabase, OAuthStateRow, UserDatabase, UserRow}
-import nl.amony.platform.hash.Base32
 
 sealed trait AuthenticationError
 

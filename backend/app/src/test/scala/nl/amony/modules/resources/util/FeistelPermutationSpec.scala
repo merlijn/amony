@@ -1,4 +1,4 @@
-package nl.amony.platform.hash
+package nl.amony.modules.resources.util
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike

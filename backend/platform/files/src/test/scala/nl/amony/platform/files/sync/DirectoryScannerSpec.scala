@@ -2,7 +2,7 @@ package nl.amony.platform.files.sync
 
 import java.nio.file.{Files, Paths, StandardOpenOption}
 import java.security.MessageDigest
-import java.util.Comparator
+import java.util.{Comparator, HexFormat}
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
@@ -10,7 +10,6 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import nl.amony.platform.files.FileInfo
-import nl.amony.platform.hash.{Base32, PartialHash}
 
 class DirectoryScannerSpec extends AnyWordSpec with Matchers {
 
@@ -47,7 +46,7 @@ class DirectoryScannerSpec extends AnyWordSpec with Matchers {
   }
 
   def hashFile(path: java.nio.file.Path): IO[String] =
-    PartialHash.partialHash(path, nChunks = 32, chunkSize = 32, () => MessageDigest.getInstance("SHA-1"), Base32.encode)
+    IO.blocking(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-1").digest(Files.readAllBytes(path))))
 
   "DirectoryScanner" when {
     "comparing file stores" should {
