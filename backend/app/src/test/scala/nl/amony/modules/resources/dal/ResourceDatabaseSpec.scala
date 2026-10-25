@@ -17,7 +17,7 @@ import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
 import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import scribe.Logging
 
-import nl.amony.ExportDatabaseSchema
+import nl.amony.app.ExportDatabaseSchema
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ContentMeta, ResourceId, ResourceInfo, Tag, TagOwner, ToolScan}
 import nl.amony.modules.resources.dal.ResourceDatabase

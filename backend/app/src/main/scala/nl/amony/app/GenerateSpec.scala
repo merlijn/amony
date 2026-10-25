@@ -1,4 +1,4 @@
-package nl.amony
+package nl.amony.app
 
 import java.nio.file.{Files, Path, Paths}
 import scala.collection.immutable.ListMap

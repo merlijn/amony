@@ -54,9 +54,9 @@ ThisBuild / prodBuild := false
 
 addCommandAlias(
   "format",
-  "; platform/scalafmt; platform/Test/scalafmt; email/scalafmt; email/Test/scalafmt; files/scalafmt; files/Test/scalafmt; subprocess/scalafmt; subprocess/Test/scalafmt; database/scalafmt; database/Test/scalafmt; messagebus/scalafmt; messagebus/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; resources/scalafmt; resources/Test/scalafmt; search/scalafmt; search/Test/scalafmt; scalafmt; Test/scalafmt"
+  "; platform/scalafmt; platform/Test/scalafmt; email/scalafmt; email/Test/scalafmt; files/scalafmt; files/Test/scalafmt; subprocess/scalafmt; subprocess/Test/scalafmt; database/scalafmt; database/Test/scalafmt; messagebus/scalafmt; messagebus/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; resources/scalafmt; resources/Test/scalafmt; search/scalafmt; search/Test/scalafmt; app/scalafmt; app/Test/scalafmt; root/scalafmt; root/Test/scalafmt"
 )
-addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
+addCommandAlias("generateSpec", "app/runMain nl.amony.app.GenerateSpec")
 
 inThisBuild(
   List(
@@ -414,9 +414,8 @@ lazy val search = project
     libraryDependencies ++= searchDependencies
   )
 
-lazy val amony = project
-  .in(file("."))
-  .aggregate(platform, email, files, subprocess, database, messagebus, auth, resources, search)
+lazy val app = project
+  .in(file("app"))
   .dependsOn(platform, files, subprocess, database, messagebus, auth, resources, search)
   .settings(commonSettings)
   .settings(
@@ -425,8 +424,8 @@ lazy val amony = project
     run / fork                         := true,
     run / javaOptions ++= javaDevOpts,
     outputStrategy                     := Some(StdoutOutput),
-    Compile / run / mainClass          := Some("nl.amony.App"),
-    Compile / packageBin / mainClass   := Some("nl.amony.App"),
+    Compile / run / mainClass          := Some("nl.amony.app.App"),
+    Compile / packageBin / mainClass   := Some("nl.amony.app.App"),
     run / aggregate                    := false,
     runMain / aggregate                := false,
     jibDockerBuild / aggregate         := false,
@@ -444,7 +443,7 @@ lazy val amony = project
     jibTags                 := envTags.getOrElse(if (isReleaseBuild) List("latest") else List("dev")),
     jibExtraMappings ++= Def.uncached {
       // this adds the frontend assets to the docker image
-      val webClientDir = (Compile / baseDirectory).value / ".." / "frontend" / "dist"
+      val webClientDir = (ThisBuild / baseDirectory).value / ".." / "frontend" / "dist"
       val target       = "/app/assets"
       val contents     = MappingsHelper.contentOf(webClientDir, target)
       val log          = streams.value.log
@@ -485,12 +484,12 @@ lazy val amony = project
 
     // Dump the migrated database schema, grounded in the real Liquibase migrations.
     exportDatabaseSchema := Def.uncached {
-      (Test / runMain).toTask(" nl.amony.ExportDatabaseSchema").value
+      (Test / runMain).toTask(" nl.amony.app.ExportDatabaseSchema").value
     },
 
     // This is a hack to make to create a file with the same docker tags from the jib build to be able to push them
     jibWriteDockerTagsFile := Def.uncached {
-      val versionFile = (Compile / baseDirectory).value / ".docker-tags.txt"
+      val versionFile = (ThisBuild / baseDirectory).value / ".docker-tags.txt"
       // CI-pinned tags win (e.g. "pr-123"); otherwise release builds publish "latest" plus the
       // version tag, and all other builds publish only "dev".
       val tags        = envTags.getOrElse(if (isReleaseBuild) jibTags.value :+ jibVersion.value else jibTags.value)
@@ -498,4 +497,22 @@ lazy val amony = project
       versionFile
     },
     libraryDependencies ++= appDependencies ++ testDependencies
+  )
+
+lazy val root = project
+  .in(file("."))
+  .aggregate(platform, email, files, subprocess, database, messagebus, auth, resources, search, app)
+  .settings(commonSettings)
+  .settings(
+    name                               := "amony",
+    run / aggregate                    := false,
+    runMain / aggregate                := false,
+    jibDockerBuild / aggregate         := false,
+    jibWriteDockerTagsFile / aggregate := false,
+    exportDatabaseSchema / aggregate   := false,
+    Compile / run                      := (app / Compile / run).evaluated,
+    Compile / runMain                  := (app / Compile / runMain).evaluated,
+    jibDockerBuild                     := Def.uncached((app / jibDockerBuild).value),
+    jibWriteDockerTagsFile             := Def.uncached((app / jibWriteDockerTagsFile).value),
+    exportDatabaseSchema               := Def.uncached((app / exportDatabaseSchema).value)
   )

@@ -5,10 +5,10 @@
 This report analyses the current package structure of the Amony backend and proposes logical module boundaries that can
 be enforced without splitting the sbt build into subprojects.
 
-The analysis parsed all 128 main source files under `backend/src/main/scala` and resolved every internal
-`import nl.amony...` to the package that declares the imported symbol. Tests were excluded. The raw result is 32
-packages and roughly 100 package-to-package import edges. Fully-qualified references outside imports were checked as
-well; there were none outside comments and strings, so imports are a good approximation for this codebase.
+The analysis parsed all 128 main source files under `backend` and resolved every internal `import nl.amony...` to the
+package that declares the imported symbol. Tests were excluded. The raw result is 32 packages and roughly 100
+package-to-package import edges. Fully-qualified references outside imports were checked as well; there were none
+outside comments and strings, so imports are a good approximation for this codebase.
 
 For readability, the graph below collapses `platform.subprocess.*`, `platform.tapir.*`, and `platform.files.*` into
 single nodes. The business modules are shown at package granularity. Red nodes participate in a cycle at package level,
@@ -390,7 +390,7 @@ The first steps are implemented on `chore/introduce-modules`:
 
 | sbt module   | Directory             | Contents                                                      |
 | ------------ | --------------------- | ------------------------------------------------------------- |
-| `app`        | `.`                   | `nl.amony` app sources, `nl.amony.modules.config`, tests      |
+| `app`        | `app`                 | `nl.amony.app` app sources and tests                          |
 | `auth`       | `modules/auth`        | `nl.amony.modules.auth.*`                                     |
 | `resources`  | `modules/resources`   | `nl.amony.modules.resources.*`                                |
 | `search`     | `modules/search`      | `nl.amony.modules.search.*`                                   |

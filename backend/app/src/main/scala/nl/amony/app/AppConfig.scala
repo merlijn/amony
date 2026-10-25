@@ -1,4 +1,4 @@
-package nl.amony
+package nl.amony.app
 
 import pureconfig.*
 

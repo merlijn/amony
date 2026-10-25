@@ -1,4 +1,4 @@
-package nl.amony
+package nl.amony.app
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
