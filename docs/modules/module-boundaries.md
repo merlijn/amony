@@ -399,7 +399,7 @@ The first steps are implemented on `chore/introduce-modules`:
 | `subprocess` | `platform/subprocess` | `nl.amony.platform.subprocess.*` (the logical `media` module) |
 | `database`   | `platform/database`   | Liquibase evolutions, `DatabaseConfig`, pool/migrations       |
 | `messagebus` | `platform/messagebus` | `nl.amony.platform.messagebus.*` and its specs                |
-| `platform`   | `platform`            | remaining `nl.amony.platform.*`                               |
+| `tapir`      | `platform/tapir`      | `nl.amony.platform.tapir.*` tapir DSL and error types         |
 
 All modules publish under the `nl.amony` group.
 

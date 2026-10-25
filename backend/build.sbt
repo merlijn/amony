@@ -125,24 +125,12 @@ lazy val commonSettings = Seq(
   excludeDependencies ++= commonExclusions
 )
 
-val platformDependencies = Seq(
-  "org.typelevel"                 %% "cats-effect"               % "3.7.1",
-  "co.fs2"                        %% "fs2-core"                  % "3.14.0",
-  "co.fs2"                        %% "fs2-io"                    % "3.14.0",
-  "io.circe"                      %% "circe-core"                % circeVersion,
-  "io.circe"                      %% "circe-parser"              % circeVersion,
-  "com.outr"                      %% "scribe"                    % "3.19.0",
-  "com.outr"                      %% "scribe-slf4j"              % "3.19.0",
-  "com.softwaremill.sttp.tapir"   %% "tapir-core"                % tapirVersion,
-  "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"          % tapirVersion,
-  "com.softwaremill.sttp.shared"  %% "fs2"                       % "1.6.0",
-  "com.softwaremill.sttp.client4" %% "core"                      % sttpVersion,
-  "com.softwaremill.sttp.client4" %% "circe"                     % sttpVersion,
-  "com.softwaremill.sttp.client4" %% "cats"                      % sttpVersion,
-  "org.tpolecat"                  %% "skunk-core"                % "2.0.0-RC3",
-  "org.tpolecat"                  %% "skunk-circe"               % "2.0.0-RC3",
-  "com.github.pureconfig"         %% "pureconfig-core"           % "0.17.11",
-  "com.github.pureconfig"         %% "pureconfig-generic-scala3" % "0.17.11"
+val tapirDependencies = Seq(
+  "org.typelevel"                %% "cats-core"        % "2.13.0",
+  "io.circe"                     %% "circe-core"       % circeVersion,
+  "com.softwaremill.sttp.tapir"  %% "tapir-core"       % tapirVersion,
+  "com.softwaremill.sttp.tapir"  %% "tapir-json-circe" % tapirVersion,
+  "com.softwaremill.sttp.shared" %% "fs2"              % "1.6.0"
 )
 
 val emailDependencies = Seq(
@@ -329,12 +317,12 @@ val testDependencies = Seq(
   "org.mockito"                 %% "mockito-scala-scalatest"        % "2.2.3"      % Test
 )
 
-lazy val platform = project
-  .in(file("platform"))
+lazy val tapir = project
+  .in(file("platform/tapir"))
   .settings(commonSettings)
   .settings(
-    name := "platform",
-    libraryDependencies ++= platformDependencies
+    name := "tapir",
+    libraryDependencies ++= tapirDependencies
   )
 
 lazy val email = project
@@ -347,7 +335,6 @@ lazy val email = project
 
 lazy val files = project
   .in(file("platform/files"))
-  .dependsOn(platform % "test->compile")
   .settings(commonSettings)
   .settings(
     name := "files",
@@ -356,7 +343,6 @@ lazy val files = project
 
 lazy val subprocess = project
   .in(file("platform/subprocess"))
-  .dependsOn(platform)
   .settings(commonSettings)
   .settings(
     name := "subprocess",
@@ -382,7 +368,7 @@ lazy val messagebus = project
 
 lazy val auth = project
   .in(file("modules/auth"))
-  .dependsOn(platform)
+  .dependsOn(tapir)
   .settings(commonSettings)
   .settings(
     name := "auth",
@@ -391,7 +377,7 @@ lazy val auth = project
 
 lazy val resources = project
   .in(file("modules/resources"))
-  .dependsOn(platform, files, subprocess, messagebus, auth)
+  .dependsOn(tapir, files, subprocess, messagebus, auth)
   .settings(commonSettings)
   .settings(
     name := "resources",
@@ -409,7 +395,7 @@ lazy val search = project
 
 lazy val app = project
   .in(file("app"))
-  .dependsOn(platform, files, subprocess, database, messagebus, auth, resources, search)
+  .dependsOn(tapir, files, subprocess, database, messagebus, auth, resources, search)
   .settings(commonSettings)
   .settings(
     name                               := "app",
@@ -494,7 +480,7 @@ lazy val app = project
 
 lazy val root = project
   .in(file("."))
-  .aggregate(platform, email, files, subprocess, database, messagebus, auth, resources, search, app)
+  .aggregate(tapir, email, files, subprocess, database, messagebus, auth, resources, search, app)
   .settings(commonSettings)
   .settings(
     name                               := "amony",
