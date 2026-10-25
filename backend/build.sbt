@@ -52,10 +52,7 @@ lazy val prodBuild              = settingKey[Boolean]("Whether to compile with p
 
 ThisBuild / prodBuild := false
 
-addCommandAlias(
-  "format",
-  "; platform/scalafmt; platform/Test/scalafmt; email/scalafmt; email/Test/scalafmt; files/scalafmt; files/Test/scalafmt; subprocess/scalafmt; subprocess/Test/scalafmt; database/scalafmt; database/Test/scalafmt; messagebus/scalafmt; messagebus/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; resources/scalafmt; resources/Test/scalafmt; search/scalafmt; search/Test/scalafmt; app/scalafmt; app/Test/scalafmt; root/scalafmt; root/Test/scalafmt"
-)
+addCommandAlias("format", "root/scalafmtAll")
 addCommandAlias("generateSpec", "app/runMain nl.amony.app.GenerateSpec")
 
 inThisBuild(
