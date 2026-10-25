@@ -52,11 +52,8 @@ lazy val prodBuild              = settingKey[Boolean]("Whether to compile with p
 
 ThisBuild / prodBuild := false
 
-addCommandAlias(
-  "format",
-  "; platform/scalafmt; platform/Test/scalafmt; email/scalafmt; email/Test/scalafmt; files/scalafmt; files/Test/scalafmt; subprocess/scalafmt; subprocess/Test/scalafmt; database/scalafmt; database/Test/scalafmt; messagebus/scalafmt; messagebus/Test/scalafmt; auth/scalafmt; auth/Test/scalafmt; resources/scalafmt; resources/Test/scalafmt; search/scalafmt; search/Test/scalafmt; scalafmt; Test/scalafmt"
-)
-addCommandAlias("generateSpec", "runMain nl.amony.GenerateSpec")
+addCommandAlias("format", "root/scalafmtAll")
+addCommandAlias("generateSpec", "app/runMain nl.amony.app.GenerateSpec")
 
 inThisBuild(
   List(
@@ -128,29 +125,12 @@ lazy val commonSettings = Seq(
   excludeDependencies ++= commonExclusions
 )
 
-val platformDependencies = Seq(
-  "org.typelevel"                 %% "cats-effect"               % "3.7.1",
-  "org.typelevel"                 %% "cats-mtl"                  % "1.7.0",
-  "co.fs2"                        %% "fs2-core"                  % "3.14.0",
-  "co.fs2"                        %% "fs2-io"                    % "3.14.0",
-  "io.circe"                      %% "circe-core"                % circeVersion,
-  "io.circe"                      %% "circe-parser"              % circeVersion,
-  "com.outr"                      %% "scribe"                    % "3.19.0",
-  "com.outr"                      %% "scribe-slf4j"              % "3.19.0",
-  "org.typelevel"                 %% "otel4s-core"               % otel4sVersion,
-  "org.typelevel"                 %% "otel4s-core-trace"         % otel4sVersion,
-  "org.typelevel"                 %% "otel4s-oteljava"           % otel4sVersion,
-  "org.typelevel"                 %% "otel4s-semconv"            % otel4sVersion,
-  "com.softwaremill.sttp.tapir"   %% "tapir-core"                % tapirVersion,
-  "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"          % tapirVersion,
-  "com.softwaremill.sttp.shared"  %% "fs2"                       % "1.6.0",
-  "com.softwaremill.sttp.client4" %% "core"                      % sttpVersion,
-  "com.softwaremill.sttp.client4" %% "circe"                     % sttpVersion,
-  "com.softwaremill.sttp.client4" %% "cats"                      % sttpVersion,
-  "org.tpolecat"                  %% "skunk-core"                % "2.0.0-RC3",
-  "org.tpolecat"                  %% "skunk-circe"               % "2.0.0-RC3",
-  "com.github.pureconfig"         %% "pureconfig-core"           % "0.17.11",
-  "com.github.pureconfig"         %% "pureconfig-generic-scala3" % "0.17.11"
+val tapirDependencies = Seq(
+  "org.typelevel"                %% "cats-core"        % "2.13.0",
+  "io.circe"                     %% "circe-core"       % circeVersion,
+  "com.softwaremill.sttp.tapir"  %% "tapir-core"       % tapirVersion,
+  "com.softwaremill.sttp.tapir"  %% "tapir-json-circe" % tapirVersion,
+  "com.softwaremill.sttp.shared" %% "fs2"              % "1.6.0"
 )
 
 val emailDependencies = Seq(
@@ -184,6 +164,10 @@ val subprocessDependencies = Seq(
   "com.outr"      %% "scribe"            % "3.19.0",
   "org.typelevel" %% "otel4s-core"       % otel4sVersion,
   "org.typelevel" %% "otel4s-core-trace" % otel4sVersion
+)
+
+val subprocessTestDependencies = Seq(
+  "org.scalatest" %% "scalatest" % "3.2.20" % Test
 )
 
 val databaseDependencies = Seq(
@@ -291,6 +275,7 @@ val searchDependencies = Seq(
 
 val appDependencies = Seq(
   "org.typelevel"                 %% "cats-effect"                               % "3.7.1",
+  "org.typelevel"                 %% "cats-mtl"                                  % "1.7.0",
   "co.fs2"                        %% "fs2-core"                                  % "3.14.0",
   "co.fs2"                        %% "fs2-io"                                    % "3.14.0",
   "com.typesafe"                   % "config"                                    % "1.4.9",
@@ -336,12 +321,12 @@ val testDependencies = Seq(
   "org.mockito"                 %% "mockito-scala-scalatest"        % "2.2.3"      % Test
 )
 
-lazy val platform = project
-  .in(file("platform"))
+lazy val tapir = project
+  .in(file("platform/tapir"))
   .settings(commonSettings)
   .settings(
-    name := "platform",
-    libraryDependencies ++= platformDependencies
+    name := "tapir",
+    libraryDependencies ++= tapirDependencies
   )
 
 lazy val email = project
@@ -354,7 +339,6 @@ lazy val email = project
 
 lazy val files = project
   .in(file("platform/files"))
-  .dependsOn(platform % "test->compile")
   .settings(commonSettings)
   .settings(
     name := "files",
@@ -363,11 +347,10 @@ lazy val files = project
 
 lazy val subprocess = project
   .in(file("platform/subprocess"))
-  .dependsOn(platform, files)
   .settings(commonSettings)
   .settings(
     name := "subprocess",
-    libraryDependencies ++= subprocessDependencies
+    libraryDependencies ++= subprocessDependencies ++ subprocessTestDependencies
   )
 
 lazy val database = project
@@ -389,7 +372,7 @@ lazy val messagebus = project
 
 lazy val auth = project
   .in(file("modules/auth"))
-  .dependsOn(platform)
+  .dependsOn(tapir)
   .settings(commonSettings)
   .settings(
     name := "auth",
@@ -398,7 +381,7 @@ lazy val auth = project
 
 lazy val resources = project
   .in(file("modules/resources"))
-  .dependsOn(platform, files, subprocess, messagebus, auth)
+  .dependsOn(tapir, files, subprocess, messagebus, auth)
   .settings(commonSettings)
   .settings(
     name := "resources",
@@ -414,10 +397,9 @@ lazy val search = project
     libraryDependencies ++= searchDependencies
   )
 
-lazy val amony = project
-  .in(file("."))
-  .aggregate(platform, email, files, subprocess, database, messagebus, auth, resources, search)
-  .dependsOn(platform, files, subprocess, database, messagebus, auth, resources, search)
+lazy val app = project
+  .in(file("app"))
+  .dependsOn(tapir, database, messagebus, auth, resources, search)
   .settings(commonSettings)
   .settings(
     name                               := "app",
@@ -425,8 +407,8 @@ lazy val amony = project
     run / fork                         := true,
     run / javaOptions ++= javaDevOpts,
     outputStrategy                     := Some(StdoutOutput),
-    Compile / run / mainClass          := Some("nl.amony.App"),
-    Compile / packageBin / mainClass   := Some("nl.amony.App"),
+    Compile / run / mainClass          := Some("nl.amony.app.App"),
+    Compile / packageBin / mainClass   := Some("nl.amony.app.App"),
     run / aggregate                    := false,
     runMain / aggregate                := false,
     jibDockerBuild / aggregate         := false,
@@ -444,7 +426,7 @@ lazy val amony = project
     jibTags                 := envTags.getOrElse(if (isReleaseBuild) List("latest") else List("dev")),
     jibExtraMappings ++= Def.uncached {
       // this adds the frontend assets to the docker image
-      val webClientDir = (Compile / baseDirectory).value / ".." / "frontend" / "dist"
+      val webClientDir = (ThisBuild / baseDirectory).value / ".." / "frontend" / "dist"
       val target       = "/app/assets"
       val contents     = MappingsHelper.contentOf(webClientDir, target)
       val log          = streams.value.log
@@ -485,12 +467,12 @@ lazy val amony = project
 
     // Dump the migrated database schema, grounded in the real Liquibase migrations.
     exportDatabaseSchema := Def.uncached {
-      (Test / runMain).toTask(" nl.amony.ExportDatabaseSchema").value
+      (Test / runMain).toTask(" nl.amony.app.ExportDatabaseSchema").value
     },
 
     // This is a hack to make to create a file with the same docker tags from the jib build to be able to push them
     jibWriteDockerTagsFile := Def.uncached {
-      val versionFile = (Compile / baseDirectory).value / ".docker-tags.txt"
+      val versionFile = (ThisBuild / baseDirectory).value / ".docker-tags.txt"
       // CI-pinned tags win (e.g. "pr-123"); otherwise release builds publish "latest" plus the
       // version tag, and all other builds publish only "dev".
       val tags        = envTags.getOrElse(if (isReleaseBuild) jibTags.value :+ jibVersion.value else jibTags.value)
@@ -498,4 +480,22 @@ lazy val amony = project
       versionFile
     },
     libraryDependencies ++= appDependencies ++ testDependencies
+  )
+
+lazy val root = project
+  .in(file("."))
+  .aggregate(tapir, email, files, subprocess, database, messagebus, auth, resources, search, app)
+  .settings(commonSettings)
+  .settings(
+    name                               := "amony",
+    run / aggregate                    := false,
+    runMain / aggregate                := false,
+    jibDockerBuild / aggregate         := false,
+    jibWriteDockerTagsFile / aggregate := false,
+    exportDatabaseSchema / aggregate   := false,
+    Compile / run                      := (app / Compile / run).evaluated,
+    Compile / runMain                  := (app / Compile / runMain).evaluated,
+    jibDockerBuild                     := Def.uncached((app / jibDockerBuild).value),
+    jibWriteDockerTagsFile             := Def.uncached((app / jibWriteDockerTagsFile).value),
+    exportDatabaseSchema               := Def.uncached((app / exportDatabaseSchema).value)
   )

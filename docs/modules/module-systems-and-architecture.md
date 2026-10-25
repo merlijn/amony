@@ -8,7 +8,7 @@ committed refactor.
 The build now has coarse sbt modules:
 
 - `app` — composition root and tests
-- `platform` — shared infrastructure (`platform`, `subprocess`, `messagebus`, `database`)
+- `platform/*` — shared infrastructure modules (`tapir`, `subprocess`, `messagebus`, `database`)
 - `modules` — `auth`, `resources`, `search`
 
 The package names match the module paths (`nl.amony.platform.*`, `nl.amony.modules.*`). `dependsOn` gives compile-time

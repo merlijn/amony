@@ -8,7 +8,7 @@ import nl.amony.modules.resources.api.{BucketRegistry, ResourceIndex}
 import nl.amony.modules.search.api.{SearchIndexer, SearchService}
 import nl.amony.modules.search.http.SearchRoutes
 import nl.amony.modules.search.solr.{SolrIndexer, SolrResource, SolrSearchService}
-import nl.amony.platform.tapir.dsl.ServerEndpoints
+import nl.amony.platform.tapir.ServerEndpoints
 
 /**
  * Wires the search module: the Solr-backed search service and indexer, the search endpoints, and the [[ResourceIndex]]

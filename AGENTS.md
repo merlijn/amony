@@ -10,7 +10,7 @@ The backend is written in Scala 3 using the Cats Effect ecosystem.
 
 The purpose of the backend is to host media files from a directory and provide an API for the frontend to interact with.
 It uses a PostgreSQL database to store metadata about the media files. Database evolutions are managed with Liquibase
-from the `backend/src/main/resources/db` directory.
+from the `backend/platform/database/src/main/resources/db` directory.
 
 It uses Tapir to define the API endpoints and generate an OpenAPI specification.
 
@@ -22,9 +22,8 @@ Useful commands:
 - `sbt generateSpec` - Generates the OpenAPI specification and places it in the frontend folder.
 - `sbt exportDatabaseSchema` - Applies the database evolutions and exports the full schema at
   `backend/target/amony-schema.sql`
-- If you need to fetch the source code of a dependency, use the `fetchSource` sbt command.
-  Example: `sbt fetchSource org.typelevel:cats-core | grep sourceFetcher`
-  The command will output the location of the jar.
+- If you need to fetch the source code of a dependency, use the `fetchSource` sbt command. Example:
+  `sbt fetchSource org.typelevel:cats-core | grep sourceFetcher` The command will output the location of the jar.
 
 ### /frontend
 

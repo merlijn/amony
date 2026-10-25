@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-OUT="$(cd "$(dirname "$0")/.." && pwd)/backend/src/test/resources/video"
+OUT="$(cd "$(dirname "$0")/.." && pwd)/backend/app/src/test/resources/video"
 mkdir -p "$OUT"
 cd "$OUT"
 

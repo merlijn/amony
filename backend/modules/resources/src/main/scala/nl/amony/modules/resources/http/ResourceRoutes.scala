@@ -14,8 +14,8 @@ import nl.amony.modules.resources.api.BucketRegistry
 import nl.amony.modules.resources.api.{BucketId, Resource, ResourceBucket, ResourceId, Tag, UploadError}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.platform.tapir.apiNoCacheHeaders
-import nl.amony.platform.tapir.dsl.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
-import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes}
+import nl.amony.platform.tapir.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
+import nl.amony.platform.tapir.{RoutesModule, ServerEndpoints, routes}
 
 val errorOutput: EndpointOutput[SecurityError | NotFoundError | BadRequestError] = ErrorResponse.standardErrorOutput
 
@@ -101,18 +101,18 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
         case UploadError.StorageError(_)          => BadRequestError("upload_failed", "Failed to store the uploaded resource")
 
     routes[IO] {
-      serverLogicT(endpoint = getResourceById, requiredPermission = Permission.ViewResource) { auth => (bucketId, resourceId) =>
+      securedServerLogicT(endpoint = getResourceById, requiredPermission = Permission.ViewResource) { auth => (bucketId, resourceId) =>
         getResource(auth, bucketId, resourceId).map((_, resource) => toDto(resource.info))
       }
 
-      serverLogicT(endpoint = deleteResource, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId) =>
+      securedServerLogicT(endpoint = deleteResource, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId) =>
         for
           bucket <- getVisibleBucket(auth, bucketId)
           _      <- EitherT.right(bucket.deleteResource(resourceId))
         yield ()
       }
 
-      serverLogicT(endpoint = fixResourceStreamable, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId) =>
+      securedServerLogicT(endpoint = fixResourceStreamable, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId) =>
         for
           bucket <- getVisibleBucket(auth, bucketId)
           _      <- bucket match
@@ -123,7 +123,7 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
         yield ()
       }
 
-      serverLogicT(endpoint = updateUserMetaData, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId, userMeta) =>
+      securedServerLogicT(endpoint = updateUserMetaData, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId, userMeta) =>
         for
           sanitizedTitle       <- sanitizeOpt(userMeta.title, 128, _ => true)
           sanitizedDescription <- sanitizeOpt(userMeta.description, 1280, _ => true)
@@ -134,13 +134,13 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
         yield ()
       }
 
-      serverLogicT(endpoint = updateThumbnailTimestamp, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId, dto) =>
+      securedServerLogicT(endpoint = updateThumbnailTimestamp, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId, dto) =>
         getResource(auth, bucketId, resourceId).flatMap((bucket, _) =>
           EitherT.right(bucket.updateThumbnailTimestamp(resourceId, dto.timestampInMillis))
         )
       }
 
-      serverLogicT(endpoint = modifyTagsBulk, requiredPermission = Permission.ManageResources) { auth => (bucketId, dto) =>
+      securedServerLogicT(endpoint = modifyTagsBulk, requiredPermission = Permission.ManageResources) { auth => (bucketId, dto) =>
         for
           _               <- EitherT.cond[IO](dto.ids.nonEmpty, (), BadRequestError("no_resources", "At least one resource id is required"))
           sanitizedIds     = dto.ids.distinct.toSet.map(ResourceId(_))
@@ -151,7 +151,7 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
         yield ()
       }
 
-      serverLogicT(endpoint = uploadResource, requiredPermission = Permission.UploadResource) { token => (bucketId, fileName, body) =>
+      securedServerLogicT(endpoint = uploadResource, requiredPermission = Permission.UploadResource) { token => (bucketId, fileName, body) =>
         for
           bucket   <- getVisibleBucket(token, bucketId)
           resource <- EitherT(bucket.uploadResource(token.userId, fileName, body)).leftMap(mapUploadError)

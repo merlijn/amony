@@ -6,7 +6,7 @@ import cats.syntax.all.toTraverseOps
 import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist
 
-import nl.amony.platform.tapir.dsl.error.BadRequestError
+import nl.amony.platform.tapir.error.BadRequestError
 
 def sanitize(input: String, maxLength: Int, characterAllowFn: Char => Boolean): EitherT[IO, BadRequestError, String] =
   for

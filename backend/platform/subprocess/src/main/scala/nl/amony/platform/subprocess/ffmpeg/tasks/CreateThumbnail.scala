@@ -4,9 +4,7 @@ import java.nio.file.Path
 
 import cats.effect.IO
 
-import nl.amony.platform.files.*
-import nl.amony.platform.files.FileUtil.stripExtension
-import nl.amony.platform.subprocess.ffmpeg.FFMpeg.{formatTime, scaleFilter}
+import nl.amony.platform.subprocess.ffmpeg.FFMpeg.{formatTime, scaleFilter, stripExtension}
 import nl.amony.platform.subprocess.{Command, ProcessRunner}
 
 trait CreateThumbnail:
@@ -22,8 +20,8 @@ trait CreateThumbnail:
     codecArgs: List[String]  = Nil
   ): IO[Int] =
 
-    val input  = inputFile.absoluteFileName()
-    val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.webp")
+    val input  = inputFile.toAbsolutePath.normalize.toString
+    val output = outputFile.map(_.toAbsolutePath.normalize.toString).getOrElse(s"${stripExtension(input)}.webp")
 
     // format: off
     val args = List(
@@ -47,8 +45,8 @@ trait CreateThumbnail:
     height: Option[Int]     = None,
     codecArgs: List[String] = Nil
   ): IO[Int] = {
-    val input  = inputFile.absoluteFileName()
-    val output = outputFile.map(_.absoluteFileName()).getOrElse(s"${stripExtension(input)}.webp")
+    val input  = inputFile.toAbsolutePath.normalize.toString
+    val output = outputFile.map(_.toAbsolutePath.normalize.toString).getOrElse(s"${stripExtension(input)}.webp")
 
     // format: off
     val args = List("-i", input) ++

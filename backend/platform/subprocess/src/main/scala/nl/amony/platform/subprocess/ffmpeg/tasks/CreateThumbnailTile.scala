@@ -7,8 +7,7 @@ import scala.concurrent.duration.DurationInt
 import cats.effect.IO
 import scribe.Logging
 
-import nl.amony.platform.files.*
-import nl.amony.platform.subprocess.ffmpeg.FFMpeg.formatTime
+import nl.amony.platform.subprocess.ffmpeg.FFMpeg.{formatTime, stripExtension}
 import nl.amony.platform.subprocess.{Command, ProcessRunner}
 
 trait CreateThumbnailTile extends Logging {
@@ -53,7 +52,7 @@ trait CreateThumbnailTile extends Logging {
     overwrite: Boolean             = false
   ): IO[Unit] = {
 
-    val fileBaseName = outputBaseName.getOrElse(inputFile.getFileName.stripExtension().toString)
+    val fileBaseName = outputBaseName.getOrElse(stripExtension(inputFile.getFileName).toString)
     val vttFilename  = s"$fileBaseName.vtt"
     val webpFilename = s"$fileBaseName.webp"
 
@@ -72,7 +71,7 @@ trait CreateThumbnailTile extends Logging {
 
           val args = List(
             "-i",
-            inputFile.absoluteFileName(),
+            inputFile.toAbsolutePath.normalize.toString,
             "-filter_complex",
             s"select='not(mod(n,$mod))',scale=$width:$height,tile=${tileSize}x$tileSize",
             "-vframes",

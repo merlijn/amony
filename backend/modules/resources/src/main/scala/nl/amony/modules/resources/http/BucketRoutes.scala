@@ -16,8 +16,8 @@ import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.platform.tapir.apiNoCacheHeaders
-import nl.amony.platform.tapir.dsl.error.{BadRequestError, ConflictError, ErrorResponse, NotFoundError, SecurityError}
-import nl.amony.platform.tapir.dsl.{RoutesModule, ServerEndpoints, routes}
+import nl.amony.platform.tapir.error.{BadRequestError, ConflictError, ErrorResponse, NotFoundError, SecurityError}
+import nl.amony.platform.tapir.{RoutesModule, ServerEndpoints, routes}
 
 case class ScanSettingsDto(
   enabled: Boolean,
@@ -225,7 +225,7 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
       EitherT.fromOptionF(registry.getConfig(bucketId), toApiError(BucketError.NotFound(bucketId)))
 
     routes[IO] {
-      serverLogic(endpoint = getBuckets, requiredPermission = Permission.ViewResource) { auth => _ =>
+      securedServerLogic(endpoint = getBuckets, requiredPermission = Permission.ViewResource) { auth => _ =>
         if auth.hasPermission(Permission.ManageBuckets) then
           registry.allConfigs.map(configs =>
             Right(configs.map(stored => BucketDto(stored.config.id, Some(BucketConfigDto.fromStored(stored)))))
@@ -236,11 +236,11 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
           )
       }
 
-      serverLogicT(endpoint = getBucket, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
+      securedServerLogicT(endpoint = getBucket, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
         requireConfig(bucketId).map(BucketConfigDto.fromStored)
       }
 
-      serverLogicT(endpoint = createBucket, requiredPermission = Permission.ManageBuckets) { _ => dto =>
+      securedServerLogicT(endpoint = createBucket, requiredPermission = Permission.ManageBuckets) { _ => dto =>
         for
           config <- parseDto(dto)
           _      <- EitherT(registry.create(config)).leftMap(toApiError)
@@ -248,7 +248,7 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
         yield BucketConfigDto.fromStored(stored)
       }
 
-      serverLogicT(endpoint = updateBucket, requiredPermission = Permission.ManageBuckets) { _ => (bucketId, dto) =>
+      securedServerLogicT(endpoint = updateBucket, requiredPermission = Permission.ManageBuckets) { _ => (bucketId, dto) =>
         for
           config    <- parseDto(dto)
           updatedAt <- requireUpdatedAt(dto)
@@ -258,11 +258,11 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
         yield BucketConfigDto.fromStored(stored)
       }
 
-      serverLogicT(endpoint = deleteBucket, requiredPermission = Permission.ManageBuckets) { _ => (bucketId, force) =>
+      securedServerLogicT(endpoint = deleteBucket, requiredPermission = Permission.ManageBuckets) { _ => (bucketId, force) =>
         EitherT(registry.delete(bucketId, force.getOrElse(false))).leftMap(toApiError)
       }
 
-      serverLogic(endpoint = refresh, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
+      securedServerLogic(endpoint = refresh, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
         val result = registry.get(bucketId).flatMap:
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Refreshing resources in bucket '$bucketId'")
@@ -273,7 +273,7 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
         result.map(Right(_))
       }
 
-      serverLogic(endpoint = reIndex, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
+      securedServerLogic(endpoint = reIndex, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
         val result = registry.get(bucketId).flatMap:
           case None         => IO.unit
           case Some(bucket) =>
@@ -283,7 +283,7 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
         result.map(Right(_))
       }
 
-      serverLogic(endpoint = rescanMetaData, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
+      securedServerLogic(endpoint = rescanMetaData, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
         val result = registry.get(bucketId).flatMap:
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Re-scanning meta data of all resources in bucket '$bucketId'")
@@ -295,7 +295,7 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
         result.map(Right(_))
       }
 
-      serverLogic(endpoint = reComputeHashes, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
+      securedServerLogic(endpoint = reComputeHashes, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
         val result = registry.get(bucketId).flatMap:
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Re-computing partialHashs of all resources in bucket '$bucketId'")
@@ -307,7 +307,7 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
         result.map(Right(_))
       }
 
-      serverLogic(endpoint = generatePreviews, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
+      securedServerLogic(endpoint = generatePreviews, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
         val result = registry.get(bucketId).flatMap:
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Generating previews for all resources in bucket '$bucketId'")
@@ -319,7 +319,7 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
         result.map(Right(_))
       }
 
-      serverLogic(endpoint = fixNonStreamable, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
+      securedServerLogic(endpoint = fixNonStreamable, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
         val result = registry.get(bucketId).flatMap:
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Normalizing non-streamable resources in bucket '$bucketId'")
@@ -332,7 +332,7 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
         result.map(Right(_))
       }
 
-      serverLogic(endpoint = exportBucket, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
+      securedServerLogic(endpoint = exportBucket, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
         registry.get(bucketId).flatMap:
           case Some(bucket: LocalDirectoryBucket) =>
             logger.info(s"Exporting resources in bucket '$bucketId'")
@@ -344,7 +344,7 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
             IO(Right(fs2.Stream.empty[IO]))
       }
 
-      serverLogic(endpoint = importBucket, requiredPermission = Permission.ManageBuckets)(_ =>
+      securedServerLogic(endpoint = importBucket, requiredPermission = Permission.ManageBuckets)(_ =>
         (bucketId, stream) =>
           registry.get(bucketId).flatMap:
             case Some(bucket: LocalDirectoryBucket) =>

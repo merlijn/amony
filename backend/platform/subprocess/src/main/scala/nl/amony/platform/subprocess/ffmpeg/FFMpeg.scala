@@ -1,5 +1,6 @@
 package nl.amony.platform.subprocess.ffmpeg
 
+import java.nio.file.Path
 import java.time.Duration
 
 import cats.effect.IO
@@ -27,6 +28,15 @@ object FFMpeg {
 
     s"$hours:$minutes:$seconds.$millis"
   }
+
+  def stripExtension(path: Path): Path =
+    val fileName = path.getFileName.toString
+    val dotIdx   = fileName.lastIndexOf('.')
+    if dotIdx >= 0 then path.resolveSibling(fileName.substring(0, dotIdx)) else path
+
+  def stripExtension(fileName: String): String =
+    val dotIdx = fileName.lastIndexOf('.')
+    if dotIdx >= 0 then fileName.substring(0, dotIdx) else fileName
 }
 
 class FFMpeg(using meter: Meter[IO], tracer: Tracer[IO]) extends Logging with ProcessRunner

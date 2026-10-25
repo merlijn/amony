@@ -5,8 +5,7 @@ import java.nio.file.Path
 import cats.effect.IO
 import scribe.Logging
 
-import nl.amony.platform.files.*
-import nl.amony.platform.subprocess.ffmpeg.FFMpeg.{formatTime, scaleFilter}
+import nl.amony.platform.subprocess.ffmpeg.FFMpeg.{formatTime, scaleFilter, stripExtension}
 import nl.amony.platform.subprocess.{Command, ProcessRunner}
 
 case class TranscodeProfile(ext: String, args: List[String])
@@ -30,8 +29,9 @@ trait Transcode extends Logging {
   ): IO[Path] = {
 
     val (ss, to) = range
-    val input    = inputFile.absoluteFileName()
-    val output   = outputFile.map(_.absoluteFileName()).getOrElse(s"${inputFile.stripExtension().absoluteFileName()}.${profile.ext}")
+    val input    = inputFile.toAbsolutePath.normalize.toString
+    val output   =
+      outputFile.map(_.toAbsolutePath.normalize.toString).getOrElse(s"${stripExtension(inputFile).toAbsolutePath.normalize}.${profile.ext}")
 
     val args: List[String] = List("-ss", formatTime(ss), "-to", formatTime(to), "-i", input) ++
       scaleFilter(scaleWidth, scaleHeight).toList.flatMap(filter => List("-vf", filter)) ++
@@ -45,7 +45,7 @@ trait Transcode extends Logging {
 
     // format: off
     val args: List[String] =
-      List("-i", inputFile.absoluteFileName()) ++
+      List("-i", inputFile.toAbsolutePath.normalize.toString) ++
         scaleHeight.toList.flatMap(height => List("-vf", s"scale=-2:$height")) ++
         List(
           "-c:v", "libx264",
