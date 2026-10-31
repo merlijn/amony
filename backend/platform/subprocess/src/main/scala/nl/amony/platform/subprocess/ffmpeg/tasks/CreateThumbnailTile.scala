@@ -1,7 +1,6 @@
 package nl.amony.platform.subprocess.ffmpeg.tasks
 
 import java.net.URI
-import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.DurationInt
 
@@ -12,109 +11,98 @@ import nl.amony.platform.subprocess.ffmpeg.FFMpeg
 import nl.amony.platform.subprocess.ffmpeg.FFMpeg.formatTime
 import nl.amony.platform.subprocess.{Command, ProcessRunner}
 
+/** Metadata of a generated storyboard sprite: its layout, the sampled interval and the source duration. */
+case class ThumbnailTile(
+  width: Int,
+  height: Int,
+  tileSize: Int,
+  frameCount: Int,
+  intervalInMillis: Long,
+  durationInMillis: Long
+)
+
+object ThumbnailTile:
+
+  def frameCount(durationInMillis: Long, intervalInMillis: Long): Int = {
+    require(intervalInMillis > 0, "interval must be positive")
+    math.max(1, math.ceil(durationInMillis.toDouble / intervalInMillis).toInt)
+  }
+
+  def tileSize(frameCount: Int): Int =
+    math.max(1, math.ceil(math.sqrt(frameCount.toDouble)).toInt)
+
+  /** Height for a width-pinned frame, rounded up to an even number so h264/webp encoders accept it. */
+  def heightFor(width: Int, sourceWidth: Int, sourceHeight: Int): Int =
+    if sourceWidth <= 0 || sourceHeight <= 0 then width
+    else
+      val scaled = math.round(width.toDouble * sourceHeight / sourceWidth).toInt
+      math.max(2, if scaled % 2 == 0 then scaled else scaled + 1)
+
+  /** Renders a WebVTT manifest that points at the sprite URL and addresses each frame via `#xywh`. */
+  def renderWebVtt(tile: ThumbnailTile, spriteUrl: String): String = {
+    val builder = new StringBuilder("WEBVTT\n")
+
+    (0 until tile.frameCount).foreach { n =>
+      val start = n.toLong * tile.intervalInMillis
+      val end   = math.max(start + 1, math.min(tile.durationInMillis, start + tile.intervalInMillis))
+      val x     = (n % tile.tileSize) * tile.width
+      val y     = (n / tile.tileSize) * tile.height
+
+      builder.append("\n")
+      builder.append(s"${formatTime(start)} --> ${formatTime(end)}\n")
+      builder.append(s"$spriteUrl#xywh=$x,$y,${tile.width},${tile.height}\n")
+    }
+
+    builder.toString
+  }
+
 trait CreateThumbnailTile extends Logging {
 
   self: ProcessRunner & FFProbe =>
 
-  def calculateNrOfFrames(length: Long): (Int, Int) = {
-
-    // 2, 3,  4,  5,  6,  7,  8,  9,  10,  11,  12
-    // 4, 9, 16, 25, 36, 49, 64, 81, 100, 121, 144
-
-    // nr of frames should be at least 16 (4x4)
-    val minFrameCount = 16
-
-    // interval between frames should be at least 1 second
-    val minInterval = 1000
-
-    // nr of frames should be at most 121 (11x11)
-    val maxFrameCount = 144
-
-    // interval between frames should be at most 10 seconds
-    val maxInterval = 10 * 1000
-
-    val minByInterval: Long = length / minInterval
-    val maxByInterval: Long = length / maxInterval
-
-    val lowerBound = Math.min(minFrameCount, minByInterval)
-    val upperBound = Math.min(maxFrameCount, maxByInterval)
-
-    val frames = Math.max(lowerBound, upperBound)
-
-    val tileSize = Math.ceil(Math.sqrt(frames.toDouble)).toInt
-
-    (tileSize * tileSize) -> tileSize
-  }
-
+  /**
+   * Generates a single storyboard sprite holding one frame every `intervalInMillis`, scaled to `width`.
+   * The sprite is created lazily when it does not exist yet and the returned metadata is used to write
+   * the accompanying WebVTT manifest.
+   */
   def createThumbnailTile(
     input: URI,
-    outputDir: Path,
-    outputBaseName: Option[String] = None,
-    height: Int                    = 90, // since 16:9 is most common aspect ratio
-    overwrite: Boolean             = false
-  ): IO[Unit] = {
+    outputFile: Path,
+    width: Int             = 96,
+    intervalInMillis: Long = 10000L,
+    overwrite: Boolean     = false
+  ): IO[ThumbnailTile] = {
 
-    val fileBaseName = outputBaseName.getOrElse(FFMpeg.stripExtension(FFMpeg.fileNameOf(input)))
-    val vttFilename  = s"$fileBaseName.vtt"
-    val webpFilename = s"$fileBaseName.webp"
+    ffprobe(input, false, 5.seconds).flatMap { (ffProbeOutput, _) =>
+      val stream       = ffProbeOutput.firstVideoStream.getOrElse(throw new IllegalStateException("no video stream found"))
+      val duration     = stream.durationMillis.toLong
+      val frames       = ThumbnailTile.frameCount(duration, intervalInMillis)
+      val tileSize     = ThumbnailTile.tileSize(frames)
+      val height       = ThumbnailTile.heightFor(width, stream.width, stream.height)
+      val tile         = ThumbnailTile(width, height, tileSize, frames, intervalInMillis, duration)
+      val intervalSecs = intervalInMillis.toDouble / 1000.0
+      val output       = outputFile.toAbsolutePath.normalize.toString
 
-    if Files.exists(outputDir.resolve(webpFilename)) && Files.exists(outputDir.resolve(vttFilename)) && !overwrite then {
-      logger.info(s"Skipping $input ($webpFilename)")
-      IO.unit
-    } else {
+      if Files.exists(outputFile) && !overwrite then IO.pure(tile)
+      else {
+        // Select the first frame and one frame every interval, then tile them into a single sprite.
+        val filter = s"select='isnan(prev_selected_t)+gte(t-prev_selected_t\\,$intervalSecs)',scale=$width:$height,tile=${tileSize}x$tileSize"
 
-      ffprobe(input, false, 5.seconds).flatMap {
-        (ffProbeOutput, _) =>
+        val args = List(
+          "-i",
+          FFMpeg.inputArg(input),
+          "-vf",
+          filter,
+          "-frames:v",
+          "1",
+          "-quality",
+          "80",
+          "-y",
+          "-an",
+          output
+        )
 
-          val stream             = ffProbeOutput.firstVideoStream.getOrElse(throw new IllegalStateException("no video stream found"))
-          val (frames, tileSize) = calculateNrOfFrames(stream.durationMillis)
-          val mod                = ((stream.fps * (stream.durationMillis / 1000)) / frames).toInt
-          val width: Int         = ((stream.width.toDouble / stream.height) * height).toInt
-
-          val args = List(
-            "-i",
-            FFMpeg.inputArg(input),
-            "-filter_complex",
-            s"select='not(mod(n,$mod))',scale=$width:$height,tile=${tileSize}x$tileSize",
-            "-vframes",
-            "1",
-            "-quality",
-            "80",
-            "-y",
-            "-an",
-            s"$outputDir/$webpFilename"
-          )
-
-          useProcessOutput[Unit]("ffmpeg-create-thumbnail-tile", Command("ffmpeg", args), useErrorStream = true) {
-            _ =>
-              def createWebVtt() = {
-
-                val thumbLength: Int = (stream.durationMillis / frames).toInt
-                val builder          = new StringBuilder()
-
-                builder.append("WEBVTT\n")
-
-                (0 until frames).foreach {
-                  n =>
-                    val start  = formatTime(thumbLength * n)
-                    val end    = formatTime(thumbLength * (n + 1))
-                    val x: Int = n % tileSize
-                    val y: Int = Math.floor(n / tileSize).toInt
-
-                    builder.append(s"""
-                       |${n + 1}
-                       |$start --> $end
-                       |$webpFilename#xywh=${x * width},${y * height},$width,$height
-                       |""".stripMargin)
-                }
-
-                val content = builder.toString()
-
-                Files.write(outputDir.resolve(vttFilename), content.getBytes(StandardCharsets.UTF_8))
-              }
-
-              IO(createWebVtt())
-          }
+        runIgnoreOutput("ffmpeg-create-thumbnail-tile", Command("ffmpeg", args)).as(tile)
       }
     }
   }

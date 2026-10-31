@@ -15,6 +15,7 @@ import nl.amony.modules.resources.util.Base32
 import nl.amony.modules.resources.util.SingleFlight
 import nl.amony.platform.subprocess.ffmpeg.ContainerFormat
 import nl.amony.platform.subprocess.ffmpeg.FFMpeg
+import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
 import nl.amony.platform.subprocess.magick.ImageMagick
 
 final class ContentUnreadable(val path: Path, cause: Throwable) extends Exception(s"Failed to read content of $path", cause)
@@ -39,6 +40,8 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
         case VideoThumbnail(width, height, timestamp, format) =>
           s"${resourceId}_${contentVersion}_${timestamp}_${scaleSuffix(width, height)}.${format.extension}"
         case ImageThumbnail(width, height, format)            => s"${resourceId}_${contentVersion}_${scaleSuffix(width, height)}.${format.extension}"
+        case VideoThumbnailTile(width, intervalInMillis)      => VideoThumbnailTile.fileName(resourceId, contentVersion, width, intervalInMillis, "webp")
+        case VideoThumbnailTileVtt(width, intervalInMillis)   => VideoThumbnailTile.fileName(resourceId, contentVersion, width, intervalInMillis, "vtt")
 
       config.cachePath.resolve(fileName)
     }
@@ -161,6 +164,25 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
         height     = height,
         codecArgs  = formats.encoderArgs(format)
       ).map(_ => outputFile)
+
+    case tile: VideoThumbnailTile =>
+      createThumbnailTile(info, inputFile, tile.width, tile.intervalInMillis).map(_ => outputFile)
+
+    case tile: VideoThumbnailTileVtt =>
+      createThumbnailTile(info, inputFile, tile.width, tile.intervalInMillis).map(_ => outputFile)
+
+  private def createThumbnailTile(info: ResourceInfo, inputFile: Path, width: Int, intervalInMillis: Long): IO[Unit] = {
+    val contentVersion = ResourceOperations.contentVersion(info)
+    val spriteFile     = config.cachePath.resolve(VideoThumbnailTile.fileName(info.resourceId, contentVersion, width, intervalInMillis, "webp"))
+    val vttFile        = config.cachePath.resolve(VideoThumbnailTile.fileName(info.resourceId, contentVersion, width, intervalInMillis, "vtt"))
+    val spriteUrl      = s"/api/resources/${info.bucketId}/${info.resourceId}/thumbtile_$contentVersion.webp"
+
+    logger.debug(s"Creating thumbnail tile for $inputFile at an interval of ${intervalInMillis}ms")
+    ffmpeg.createThumbnailTile(inputFile.toUri, spriteFile, width, intervalInMillis).flatMap { tile =>
+      val webVtt = ThumbnailTile.renderWebVtt(tile, spriteUrl)
+      IO.blocking(Files.write(vttFile, webVtt.getBytes(StandardCharsets.UTF_8))).void
+    }
+  }
 
   private[local] def previewOperations(info: ResourceInfo): List[ResourceOperation] =
     ResourceOperations.all(info, resolutions, formats).filter(_.validate(info).isRight)

@@ -8,7 +8,7 @@ import {MediaPlayer, MediaPlayerInstance, MediaProvider, VideoMimeType,} from "@
 
 import {defaultLayoutIcons, DefaultVideoLayout,} from '@vidstack/react/player/layouts/default';
 import {ResourceDto} from "../../api/generated";
-import {resourceContentUrl} from "../../api/ResourceUrls";
+import {resourceContentUrl, timelineThumbnailsUrl} from "../../api/ResourceUrls";
 import ThumbnailEditor from "./ThumbnailEditor";
 import {useEventBus} from "./EventBus";
 import {SessionContext} from "../../api/Constants";
@@ -71,7 +71,10 @@ const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }
                 // onProviderChange = { onProviderChange }
               >
                 <MediaProvider />
-                <DefaultVideoLayout icons = { defaultLayoutIcons } />
+                <DefaultVideoLayout
+                  icons = { defaultLayoutIcons }
+                  thumbnails = { isVideo && resource ? timelineThumbnailsUrl(resource) : undefined }
+                />
               </MediaPlayer>
               { isImage &&  <img style = {{ width: "100%", height: "100%", visibility : isImage ? "visible" : "hidden" }} src = { src }/> }
               { session.isAdmin() && isVideo && resource &&

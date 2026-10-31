@@ -20,6 +20,40 @@ case class VideoThumbnail(width: Option[Int] = None, height: Option[Int] = None,
   }
 }
 
+object VideoThumbnailTile:
+  val defaultWidth            = 96
+  val defaultIntervalInMillis = 10000L
+
+  private[api] def validate(info: ResourceInfo, width: Int, intervalInMillis: Long): Either[String, Unit] =
+    info.basicContentProperties match
+      case Some(_: VideoProperties) =>
+        for
+          _ <- Either.cond(width > 0, (), "Width must be positive")
+          _ <- Either.cond(intervalInMillis > 0, (), "Interval must be positive")
+        yield ()
+      case other                    => Left("Wrong content type, expected video, got: " + other)
+
+  def fileName(resourceId: ResourceId, contentVersion: String, width: Int, intervalInMillis: Long, extension: String): String =
+    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_w$width.$extension"
+
+/** A storyboard sprite containing one small frame every `intervalInMillis` of the video. */
+case class VideoThumbnailTile(width: Int = VideoThumbnailTile.defaultWidth, intervalInMillis: Long = VideoThumbnailTile.defaultIntervalInMillis)
+    extends ResourceOperation {
+  override def contentType: String = "image/webp"
+
+  override def validate(info: ResourceInfo): Either[String, Unit] =
+    VideoThumbnailTile.validate(info, width, intervalInMillis)
+}
+
+/** The WebVTT manifest describing the frames in a [[VideoThumbnailTile]] sprite. */
+case class VideoThumbnailTileVtt(width: Int = VideoThumbnailTile.defaultWidth, intervalInMillis: Long = VideoThumbnailTile.defaultIntervalInMillis)
+    extends ResourceOperation {
+  override def contentType: String = "text/vtt"
+
+  override def validate(info: ResourceInfo): Either[String, Unit] =
+    VideoThumbnailTile.validate(info, width, intervalInMillis)
+}
+
 object VideoFragment {
   val minWidth          = 64
   val minHeight         = 64

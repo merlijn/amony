@@ -45,6 +45,10 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
     ResourceContentRoutes.patterns
       .clipOperation(ResourceOperations.contentVersion(info), start, end, dim, resKey, resolutions, info)
 
+  private def tileOp(extension: String, info: ResourceInfo) =
+    ResourceContentRoutes.patterns
+      .thumbnailTileOperation(ResourceOperations.contentVersion(info), extension, info)
+
   "ResourceContentRoutes" when {
 
     "building a thumbnail operation" should {
@@ -164,6 +168,24 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
       }
     }
 
+    "building a thumbnail tile operation" should {
+
+      "build the sprite operation for a webp request" in
+        assert(tileOp("webp", videoInfo(1920, 1080)) == Some(VideoThumbnailTile()))
+
+      "build the manifest operation for a vtt request" in
+        assert(tileOp("vtt", videoInfo(1920, 1080)) == Some(VideoThumbnailTileVtt()))
+
+      "reject a tile when the content version does not match" in {
+        val info = videoInfo(1920, 1080)
+        val op   = ResourceContentRoutes.patterns.thumbnailTileOperation("staleversion", "vtt", info)
+        assert(op.isEmpty)
+      }
+
+      "reject a tile for a non-video resource" in
+        assert(tileOp("vtt", imageInfo(1600, 1063)).isEmpty)
+    }
+
     "computing a content version" should {
 
       "be stable for identical resources" in
@@ -193,6 +215,15 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
         assert(clip.map(m => (m.group(1), m.group(2), m.group(3), m.group(4), m.group(5))) == Some(("abc123", "2863", "5863", "h", "512")))
 
         assert(ResourceContentRoutes.patterns.PublicThumbnailPattern.findFirstMatchIn("thumb_abc123_2863_w_s.webp").isEmpty)
+      }
+
+      "match thumbnail tile URLs with a version and a vtt or webp extension" in {
+        val vtt    = ResourceContentRoutes.patterns.PublicThumbnailTilePattern.findFirstMatchIn("thumbtile_abc123.vtt")
+        val sprite = ResourceContentRoutes.patterns.PublicThumbnailTilePattern.findFirstMatchIn("thumbtile_abc123.webp")
+
+        assert(vtt.map(m => (m.group(1), m.group(2))) == Some(("abc123", "vtt")))
+        assert(sprite.map(m => (m.group(1), m.group(2))) == Some(("abc123", "webp")))
+        assert(ResourceContentRoutes.patterns.PublicThumbnailTilePattern.findFirstMatchIn("thumbtile_abc123.png").isEmpty)
       }
     }
   }

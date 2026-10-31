@@ -20,6 +20,8 @@ import sttp.client4.basicRequest
 import sttp.client4.httpclient.HttpClientSyncBackend
 import sttp.model.StatusCode
 
+import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
+
 /** Serves the faststart mp4 fixture over plain http with byte-range support, mimicking an S3 presigned URL. */
 class FFMpegSpec extends AnyWordSpecLike with Matchers with BeforeAndAfterAll {
 
@@ -131,6 +133,16 @@ class FFMpegSpec extends AnyWordSpecLike with Matchers with BeforeAndAfterAll {
         new String(header.drop(8), StandardCharsets.US_ASCII) shouldBe "WEBP"
       }
 
+      "create a thumbnail tile from a video over http" ignore {
+        val out = workDir.resolve("tile.webp")
+
+        val tile = ffmpeg.createThumbnailTile(videoUri, out, width = 96, intervalInMillis = 10000).unsafeRunSync()
+
+        Files.size(out) should be > 0L
+        tile.width shouldBe 96
+        tile.frameCount shouldBe 1
+      }
+
       "extract a clip from a video over http" ignore {
         val out = workDir.resolve("clip.mp4")
 
@@ -141,6 +153,46 @@ class FFMpegSpec extends AnyWordSpecLike with Matchers with BeforeAndAfterAll {
         val video       = output.firstVideoStream.getOrElse(fail("expected a video stream in the clip"))
         video.codec_name shouldBe "h264"
         video.durationMillis should be > 0
+      }
+    }
+  }
+
+  "ThumbnailTile" when {
+    "planning a sprite" should {
+
+      "always contain at least one frame" in {
+        ThumbnailTile.frameCount(0, 10000) shouldBe 1
+        ThumbnailTile.frameCount(1000, 10000) shouldBe 1
+      }
+
+      "contain one frame per interval, rounded up" in {
+        ThumbnailTile.frameCount(10000, 10000) shouldBe 1
+        ThumbnailTile.frameCount(10001, 10000) shouldBe 2
+        ThumbnailTile.frameCount(35000, 10000) shouldBe 4
+      }
+
+      "use a square grid that fits all frames" in {
+        ThumbnailTile.tileSize(1) shouldBe 1
+        ThumbnailTile.tileSize(4) shouldBe 2
+        ThumbnailTile.tileSize(5) shouldBe 3
+      }
+
+      "round the derived height up to an even number" in {
+        ThumbnailTile.heightFor(96, 1920, 1080) shouldBe 54
+        ThumbnailTile.heightFor(96, 1000, 601) shouldBe 58
+      }
+    }
+
+    "rendering a manifest" should {
+
+      "address each frame in the sprite via xywh" in {
+        val tile = ThumbnailTile(width = 96, height = 54, tileSize = 2, frameCount = 4, intervalInMillis = 10000, durationInMillis = 35000)
+        val vtt  = ThumbnailTile.renderWebVtt(tile, "/api/resources/b/r/thumbtile_v.webp")
+
+        vtt should startWith("WEBVTT\n\n00:00:00.000 --> 00:00:10.000\n/api/resources/b/r/thumbtile_v.webp#xywh=0,0,96,54\n")
+        vtt should include("00:00:10.000 --> 00:00:20.000\n/api/resources/b/r/thumbtile_v.webp#xywh=96,0,96,54")
+        vtt should include("00:00:20.000 --> 00:00:30.000\n/api/resources/b/r/thumbtile_v.webp#xywh=0,54,96,54")
+        vtt should include("00:00:30.000 --> 00:00:35.000\n/api/resources/b/r/thumbtile_v.webp#xywh=96,54,96,54")
       }
     }
   }
