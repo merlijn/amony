@@ -1,12 +1,13 @@
 package nl.amony.platform.subprocess.ffmpeg.tasks
 
-import java.nio.file.Path
+import java.net.URI
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 import cats.effect.IO
 import io.circe.{Decoder, Json}
 import scribe.Logging
 
+import nl.amony.platform.subprocess.ffmpeg.FFMpeg
 import nl.amony.platform.subprocess.ffmpeg.tasks.FFProbeModel.{*, given}
 import nl.amony.platform.subprocess.{Command, ProcessRunner}
 
@@ -32,19 +33,19 @@ trait FFProbe extends Logging:
         IO.pure(result.toTry.get)
     }.timeout(defaultProbeTimeout).memoize.flatten
 
-  def ffprobe(file: Path, debug: Boolean, timeout: FiniteDuration = defaultProbeTimeout): IO[(FFProbeOutput, Json)] =
-    runFFProbe(file, debug, timeout).recoverWith {
+  def ffprobe(input: URI, debug: Boolean, timeout: FiniteDuration = defaultProbeTimeout): IO[(FFProbeOutput, Json)] =
+    runFFProbe(input, debug, timeout).recoverWith {
       case error if debug =>
         logger.warn(
-          s"ffprobe with debug output failed for '${file.toAbsolutePath.normalize()}', retrying without debug output (faststart info will be missing)",
+          s"ffprobe with debug output failed for '$input', retrying without debug output (faststart info will be missing)",
           error
         )
-        runFFProbe(file, debug = false, timeout)
+        runFFProbe(input, debug = false, timeout)
     }
 
-  private def runFFProbe(file: Path, debug: Boolean, timeout: FiniteDuration): IO[(FFProbeOutput, Json)] =
+  private def runFFProbe(input: URI, debug: Boolean, timeout: FiniteDuration): IO[(FFProbeOutput, Json)] =
     ffprobeVersion.flatMap { version =>
-      val fileName = file.toAbsolutePath.normalize().toString
+      val fileName = FFMpeg.inputArg(input)
       val v        = if debug then "debug" else "quiet"
       val args     = List("-print_format", "json", "-show_streams", "-show_format", "-loglevel", v, fileName)
 

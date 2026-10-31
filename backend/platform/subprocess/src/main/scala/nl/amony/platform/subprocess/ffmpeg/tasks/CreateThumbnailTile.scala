@@ -1,5 +1,6 @@
 package nl.amony.platform.subprocess.ffmpeg.tasks
 
+import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.DurationInt
@@ -7,7 +8,8 @@ import scala.concurrent.duration.DurationInt
 import cats.effect.IO
 import scribe.Logging
 
-import nl.amony.platform.subprocess.ffmpeg.FFMpeg.{formatTime, stripExtension}
+import nl.amony.platform.subprocess.ffmpeg.FFMpeg
+import nl.amony.platform.subprocess.ffmpeg.FFMpeg.formatTime
 import nl.amony.platform.subprocess.{Command, ProcessRunner}
 
 trait CreateThumbnailTile extends Logging {
@@ -45,23 +47,23 @@ trait CreateThumbnailTile extends Logging {
   }
 
   def createThumbnailTile(
-    inputFile: Path,
+    input: URI,
     outputDir: Path,
     outputBaseName: Option[String] = None,
     height: Int                    = 90, // since 16:9 is most common aspect ratio
     overwrite: Boolean             = false
   ): IO[Unit] = {
 
-    val fileBaseName = outputBaseName.getOrElse(stripExtension(inputFile.getFileName).toString)
+    val fileBaseName = outputBaseName.getOrElse(FFMpeg.stripExtension(FFMpeg.fileNameOf(input)))
     val vttFilename  = s"$fileBaseName.vtt"
     val webpFilename = s"$fileBaseName.webp"
 
     if Files.exists(outputDir.resolve(webpFilename)) && Files.exists(outputDir.resolve(vttFilename)) && !overwrite then {
-      logger.info(s"Skipping $inputFile ($webpFilename)")
+      logger.info(s"Skipping $input ($webpFilename)")
       IO.unit
     } else {
 
-      ffprobe(inputFile, false, 5.seconds).flatMap {
+      ffprobe(input, false, 5.seconds).flatMap {
         (ffProbeOutput, _) =>
 
           val stream             = ffProbeOutput.firstVideoStream.getOrElse(throw new IllegalStateException("no video stream found"))
@@ -71,7 +73,7 @@ trait CreateThumbnailTile extends Logging {
 
           val args = List(
             "-i",
-            inputFile.toAbsolutePath.normalize.toString,
+            FFMpeg.inputArg(input),
             "-filter_complex",
             s"select='not(mod(n,$mod))',scale=$width:$height,tile=${tileSize}x$tileSize",
             "-vframes",

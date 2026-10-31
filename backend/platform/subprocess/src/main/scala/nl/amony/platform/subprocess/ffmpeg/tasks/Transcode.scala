@@ -1,11 +1,13 @@
 package nl.amony.platform.subprocess.ffmpeg.tasks
 
+import java.net.URI
 import java.nio.file.Path
 
 import cats.effect.IO
 import scribe.Logging
 
-import nl.amony.platform.subprocess.ffmpeg.FFMpeg.{formatTime, scaleFilter, stripExtension}
+import nl.amony.platform.subprocess.ffmpeg.FFMpeg
+import nl.amony.platform.subprocess.ffmpeg.FFMpeg.{formatTime, scaleFilter}
 import nl.amony.platform.subprocess.{Command, ProcessRunner}
 
 case class TranscodeProfile(ext: String, args: List[String])
@@ -19,21 +21,19 @@ trait Transcode extends Logging {
   self: ProcessRunner =>
 
   def transcodeToMp4(
-    inputFile: Path,
+    input: URI,
     range: (Long, Long),
     includeAudio: Boolean     = true,
     profile: TranscodeProfile = TranscodeProfile.default,
     scaleWidth: Option[Int]   = None,
     scaleHeight: Option[Int]  = None,
-    outputFile: Option[Path]  = None
+    outputFile: Path
   ): IO[Path] = {
 
     val (ss, to) = range
-    val input    = inputFile.toAbsolutePath.normalize.toString
-    val output   =
-      outputFile.map(_.toAbsolutePath.normalize.toString).getOrElse(s"${stripExtension(inputFile).toAbsolutePath.normalize}.${profile.ext}")
+    val output   = outputFile.toAbsolutePath.normalize.toString
 
-    val args: List[String] = List("-ss", formatTime(ss), "-to", formatTime(to), "-i", input) ++
+    val args: List[String] = List("-ss", formatTime(ss), "-to", formatTime(to), "-i", FFMpeg.inputArg(input)) ++
       scaleFilter(scaleWidth, scaleHeight).toList.flatMap(filter => List("-vf", filter)) ++
       profile.args ++ Option.when(!includeAudio)("-an") ++
       List("-v", "quiet", "-y", output)
@@ -41,11 +41,11 @@ trait Transcode extends Logging {
     runIgnoreOutput("ffmpeg-transcode", Command("ffmpeg", args)).map(_ => Path.of(output))
   }
 
-  def streamStranscodeMp4(inputFile: Path, scaleHeight: Option[Int] = None): fs2.Stream[IO, Byte] = {
+  def streamStranscodeMp4(input: URI, scaleHeight: Option[Int] = None): fs2.Stream[IO, Byte] = {
 
     // format: off
     val args: List[String] =
-      List("-i", inputFile.toAbsolutePath.normalize.toString) ++
+      List("-i", FFMpeg.inputArg(input)) ++
         scaleHeight.toList.flatMap(height => List("-vf", s"scale=-2:$height")) ++
         List(
           "-c:v", "libx264",
