@@ -167,7 +167,8 @@ val subprocessDependencies = Seq(
 )
 
 val subprocessTestDependencies = Seq(
-  "org.scalatest" %% "scalatest" % "3.2.20" % Test
+  "org.scalatest"                 %% "scalatest" % "3.2.20"   % Test,
+  "com.softwaremill.sttp.client4" %% "core"      % sttpVersion % Test
 )
 
 val databaseDependencies = Seq(

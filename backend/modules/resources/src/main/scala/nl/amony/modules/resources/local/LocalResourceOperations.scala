@@ -59,7 +59,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
   private def toolScanForPath(path: Path, contentType: String): IO[Option[ToolScan]] =
     if contentType.startsWith("video/") then
-      ffmpeg.ffprobe(path, false).map {
+      ffmpeg.ffprobe(path.toUri, false).map {
         (ffprobeResult, json) =>
           val version = ffprobeResult.program_version.map(_.version).getOrElse("unknown")
           Some(ToolScan(s"ffprobe/$version", json))
@@ -73,8 +73,11 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
           Some(ToolScan("magick/1", result.rawJson))
     else IO.pure(None)
 
-  private[local] def addFastStart(video: Path, container: VideoContainer, outputFile: Option[Path] = None): IO[Path] =
-    ffmpeg.addFastStart(video, containerFormat(container), outputFile)
+  private[local] def addFastStart(video: Path, container: VideoContainer, outputFile: Option[Path] = None): IO[Path] = {
+    // Local files have a well-defined sibling directory, so a default still makes sense here; remote callers must pass an explicit output.
+    val out = outputFile.getOrElse(Path.of(s"${FFMpeg.stripExtension(video)}-faststart.${containerFormat(container).extension}"))
+    ffmpeg.addFastStart(video.toUri, containerFormat(container), out)
+  }
 
   private def containerFormat(container: VideoContainer): ContainerFormat = container match
     case VideoContainer.Mp4      => ContainerFormat.Mp4
@@ -133,17 +136,16 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
   private def run(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: ResourceOperation): IO[Path] = operation match
     case VideoFragment(width, height, start, end) =>
       logger.debug(s"Creating video fragment for $inputFile with range $start-$end")
-      ffmpeg.transcodeToMp4(inputFile = inputFile, range = (start, end), scaleWidth = width, scaleHeight = height, outputFile = Some(outputFile)).map(
-        _ =>
-          outputFile
+      ffmpeg.transcodeToMp4(inputFile.toUri, range = (start, end), scaleWidth = width, scaleHeight = height, outputFile = outputFile).map(_ =>
+        outputFile
       )
 
     case VideoThumbnail(width, height, timestamp, format) =>
       logger.debug(s"Creating thumbnail for $inputFile at timestamp $timestamp as ${format.configName}")
       ffmpeg.createThumbnail(
-        inputFile   = inputFile,
+        inputFile.toUri,
         timestamp   = timestamp,
-        outputFile  = Some(outputFile),
+        outputFile  = outputFile,
         scaleWidth  = width,
         scaleHeight = height,
         codecArgs   = formats.encoderArgs(format)
@@ -153,8 +155,8 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
     case ImageThumbnail(width, height, format)            =>
       logger.debug(s"Creating image thumbnail for $inputFile as ${format.configName}")
       ffmpeg.resizeImage(
-        inputFile  = inputFile,
-        outputFile = Some(outputFile),
+        inputFile.toUri,
+        outputFile = outputFile,
         width      = width,
         height     = height,
         codecArgs  = formats.encoderArgs(format)
