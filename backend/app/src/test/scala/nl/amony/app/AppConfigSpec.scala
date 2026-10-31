@@ -22,6 +22,8 @@ class AppConfigSpec extends AnyWordSpecLike with Logging {
       assert(!appConfig.resources.previews.supportedImageFormats.contains(ImageFormat.Avif))
       // Encoder arguments are configured per format rather than hardcoded in ImageFormat.
       assert(appConfig.resources.previews.formatOptions.get(ImageFormat.Avif).exists(_.contains("libsvtav1")))
+      assert(appConfig.resources.previews.tiles.intervalLadder.map(_.toMillis) == List(250L, 500L, 1000L, 2000L, 5000L, 10000L))
+      assert(appConfig.resources.previews.tiles.targetFrames == 200)
     }
   }
 }

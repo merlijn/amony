@@ -51,6 +51,11 @@ given ConfigReader[Map[ImageFormat, List[String]]] =
     }
   }
 
+case class ThumbnailTileConfig(
+  intervalLadder: List[FiniteDuration] = List(250.millis, 500.millis, 1.second, 2.seconds, 5.seconds, 10.seconds),
+  targetFrames: Int                    = 200
+) derives ConfigReader
+
 case class ThumbnailConfig(
   allowedResolutions: List[Int],
   defaultResolution: Int,
@@ -59,6 +64,7 @@ case class ThumbnailConfig(
   resolutionStepDown: Int,
   resolutionPickingStrategy: ResolutionPickingStrategy,
   formatOptions: Map[ImageFormat, List[String]] = Map.empty,
+  tiles: ThumbnailTileConfig                    = ThumbnailTileConfig(),
   cacheMaxAge: FiniteDuration                   = 7.days,
   cacheScope: CacheScope                        = CacheScope.Public
 ) derives ConfigReader

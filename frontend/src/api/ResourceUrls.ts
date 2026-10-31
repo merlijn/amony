@@ -11,6 +11,10 @@ const dimensionToken = (dimension: string): string => dimension === "height" ? "
 export const resourceThumbnailUrl = (resource: ResourceDto, dimension: string, size: number, format: string): string =>
   `/api/resources/${resource.bucketId}/${resource.resourceId}/thumb_${resource.contentVersion}_${resource.thumbnailTimestamp ?? 0}_${dimensionToken(dimension)}_${size}.${format}`;
 
+/** URL of the WebVTT storyboard used for the player's timeline hover previews. */
+export const timelineThumbnailsUrl = (resource: ResourceDto): string =>
+  `/api/resources/${resource.bucketId}/${resource.resourceId}/thumbtile_${resource.contentVersion}.vtt`;
+
 type PickingStrategy = "round-up" | "round-down" | "round-nearest";
 
 /**

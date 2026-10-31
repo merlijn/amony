@@ -20,6 +20,8 @@ import sttp.client4.basicRequest
 import sttp.client4.httpclient.HttpClientSyncBackend
 import sttp.model.StatusCode
 
+import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
+
 /** Serves the faststart mp4 fixture over plain http with byte-range support, mimicking an S3 presigned URL. */
 class FFMpegSpec extends AnyWordSpecLike with Matchers with BeforeAndAfterAll {
 
@@ -131,6 +133,15 @@ class FFMpegSpec extends AnyWordSpecLike with Matchers with BeforeAndAfterAll {
         new String(header.drop(8), StandardCharsets.US_ASCII) shouldBe "WEBP"
       }
 
+      "create a thumbnail tile from a video over http" ignore {
+        val out  = workDir.resolve("tile.webp")
+        val tile = ThumbnailTile(width = 96, height = 72, gridSize = 8, frameCount = 1, intervalInMillis = 10000, startInMillis = 0)
+
+        ffmpeg.createThumbnailTile(videoUri, out, tile).unsafeRunSync()
+
+        Files.size(out) should be > 0L
+      }
+
       "extract a clip from a video over http" ignore {
         val out = workDir.resolve("clip.mp4")
 
@@ -144,4 +155,5 @@ class FFMpegSpec extends AnyWordSpecLike with Matchers with BeforeAndAfterAll {
       }
     }
   }
+
 }

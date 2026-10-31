@@ -1,11 +1,14 @@
 package nl.amony.modules.resources.http
 
+import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path as NioPath}
+import java.util.zip.GZIPInputStream
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import org.http4s.*
-import org.http4s.headers.{ETag, `Content-Length`, `If-None-Match`}
+import org.http4s.headers.{ETag, `Content-Encoding`, `Content-Length`, `If-None-Match`}
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.typelevel.ci.CIStringSyntax
 
@@ -19,8 +22,32 @@ class ResourceDirectivesSpec extends AnyWordSpecLike {
     path
   }
 
+  private def tempTextFile(content: String): NioPath = {
+    val path = Files.createTempFile("resource-directives", ".vtt")
+    Files.writeString(path, content)
+    path
+  }
+
   private def localFile(path: NioPath, eTag: Option[String]): ResourceContent =
     LocalFile(fs2.io.file.Path.fromNioPath(path), "image/webp", eTag)
+
+  private def localTextFile(path: NioPath, eTag: Option[String]): ResourceContent =
+    LocalFile(fs2.io.file.Path.fromNioPath(path), "text/vtt", eTag)
+
+  private def bodyText(response: Response[IO]): String =
+    response.body.through(fs2.text.utf8.decode).compile.string.unsafeRunSync()
+
+  private def gunzipText(bytes: Array[Byte]): String = {
+    val input = new GZIPInputStream(new ByteArrayInputStream(bytes))
+    try new String(input.readAllBytes(), StandardCharsets.UTF_8)
+    finally input.close()
+  }
+
+  private class StreamOnlyTextContent(content: String) extends ResourceContent {
+    override val contentType: String          = "text/vtt"
+    override val eTag: Option[String]         = Some("v1")
+    override val stream: fs2.Stream[IO, Byte] = fs2.Stream.emits(content.getBytes(StandardCharsets.UTF_8)).covary[IO]
+  }
 
   private def request(headers: Header.ToRaw*): Request[IO] =
     Request[IO](Method.GET, Uri.unsafeFromString("/api/resources/media/resource/thumb.webp")).putHeaders(headers*)
@@ -79,6 +106,101 @@ class ResourceDirectivesSpec extends AnyWordSpecLike {
           .unsafeRunSync()
 
         assert(response.status == Status.NotModified)
+      }
+    }
+
+    "compressing text responses" should {
+
+      "gzip a VTT response when the client accepts gzip" in {
+        val content  = "WEBVTT\n\n00:00:00.000 --> 00:00:10.000\nsprite.webp#xywh=0,0,96,54\n"
+        val response = ResourceDirectives
+          .resourceContentsResponse(request(Header.Raw(ci"Accept-Encoding", "gzip")), localTextFile(tempTextFile(content), Some("v1")))
+          .unsafeRunSync()
+
+        assert(response.status == Status.Ok)
+        assert(response.headers.get[`Content-Encoding`].map(_.contentCoding) == Some(ContentCoding.gzip))
+        assert(response.headers.get[ETag].map(_.tag.tag) == Some("v1-gzip"))
+        assert(response.headers.get(ci"Vary").map(_.head.value) == Some("Accept-Encoding"))
+        assert(gunzipText(response.body.compile.to(Array).unsafeRunSync()) == content)
+      }
+
+      "use a separate validator for the gzip representation" in {
+        val content  = "WEBVTT\n"
+        val response = ResourceDirectives
+          .resourceContentsResponse(
+            request(Header.Raw(ci"Accept-Encoding", "gzip"), `If-None-Match`(EntityTag("v1-gzip"))),
+            localTextFile(tempTextFile(content), Some("v1"))
+          )
+          .unsafeRunSync()
+
+        assert(response.status == Status.NotModified)
+        assert(response.headers.get[ETag].map(_.tag.tag) == Some("v1-gzip"))
+        assert(response.headers.get[`Content-Encoding`].map(_.contentCoding) == Some(ContentCoding.gzip))
+      }
+
+      "serve uncompressed text when gzip is not accepted" in {
+        val content  = "WEBVTT\n"
+        val response = ResourceDirectives
+          .resourceContentsResponse(request(), localTextFile(tempTextFile(content), Some("v1")))
+          .unsafeRunSync()
+
+        assert(response.status == Status.Ok)
+        assert(response.headers.get[`Content-Encoding`].isEmpty)
+        assert(response.headers.get[ETag].map(_.tag.tag) == Some("v1"))
+        assert(response.headers.get(ci"Vary").map(_.head.value) == Some("Accept-Encoding"))
+        assert(bodyText(response) == content)
+      }
+
+      "not gzip binary content" in {
+        val response = ResourceDirectives
+          .resourceContentsResponse(request(Header.Raw(ci"Accept-Encoding", "gzip")), localFile(small, Some("v1")))
+          .unsafeRunSync()
+
+        assert(response.headers.get[`Content-Encoding`].isEmpty)
+        assert(response.headers.get(ci"Vary").isEmpty)
+      }
+
+      "gzip a multi-megabyte text response below the compression limit" in {
+        val content  = "x" * (2 * 1024 * 1024)
+        val response = ResourceDirectives
+          .resourceContentsResponse(request(Header.Raw(ci"Accept-Encoding", "gzip")), localTextFile(tempTextFile(content), Some("v1")))
+          .unsafeRunSync()
+
+        assert(response.headers.get[`Content-Encoding`].map(_.contentCoding) == Some(ContentCoding.gzip))
+        assert(gunzipText(response.body.compile.to(Array).unsafeRunSync()) == content)
+      }
+
+      "not gzip text above the compression limit" in {
+        val content  = "x" * (9 * 1024 * 1024)
+        val response = ResourceDirectives
+          .resourceContentsResponse(request(Header.Raw(ci"Accept-Encoding", "gzip")), localTextFile(tempTextFile(content), Some("v1")))
+          .unsafeRunSync()
+
+        assert(response.headers.get[`Content-Encoding`].isEmpty)
+        assert(response.headers.get(ci"Vary").isEmpty)
+      }
+
+      "not gzip text when the content size is unknown" in {
+        val response = ResourceDirectives
+          .resourceContentsResponse(request(Header.Raw(ci"Accept-Encoding", "gzip")), StreamOnlyTextContent("WEBVTT\n"))
+          .unsafeRunSync()
+
+        assert(response.headers.get[`Content-Encoding`].isEmpty)
+        assert(response.headers.get(ci"Vary").isEmpty)
+      }
+
+      "not gzip a ranged text response" in {
+        val large    = tempTextFile("x" * (2 * 1024 * 1024))
+        val response = ResourceDirectives
+          .resourceContentsResponse(
+            request(Header.Raw(ci"Accept-Encoding", "gzip"), Header.Raw(ci"Range", "bytes=0-99")),
+            localTextFile(large, Some("v1"))
+          )
+          .unsafeRunSync()
+
+        assert(response.status == Status.PartialContent)
+        assert(response.headers.get[`Content-Encoding`].isEmpty)
+        assert(response.headers.get[`Content-Length`].map(_.length) == Some(100L))
       }
     }
 

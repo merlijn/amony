@@ -1,9 +1,7 @@
 package nl.amony.platform.subprocess.ffmpeg.tasks
 
 import java.net.URI
-import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
-import scala.concurrent.duration.DurationInt
 
 import cats.effect.IO
 import scribe.Logging
@@ -12,110 +10,68 @@ import nl.amony.platform.subprocess.ffmpeg.FFMpeg
 import nl.amony.platform.subprocess.ffmpeg.FFMpeg.formatTime
 import nl.amony.platform.subprocess.{Command, ProcessRunner}
 
+/** The part of a storyboard that a single sprite covers. */
+case class ThumbnailTile(
+  width: Int,
+  height: Int,
+  gridSize: Int,
+  frameCount: Int,
+  intervalInMillis: Long,
+  startInMillis: Long
+)
+
 trait CreateThumbnailTile extends Logging {
 
-  self: ProcessRunner & FFProbe =>
+  self: ProcessRunner =>
 
-  def calculateNrOfFrames(length: Long): (Int, Int) = {
-
-    // 2, 3,  4,  5,  6,  7,  8,  9,  10,  11,  12
-    // 4, 9, 16, 25, 36, 49, 64, 81, 100, 121, 144
-
-    // nr of frames should be at least 16 (4x4)
-    val minFrameCount = 16
-
-    // interval between frames should be at least 1 second
-    val minInterval = 1000
-
-    // nr of frames should be at most 121 (11x11)
-    val maxFrameCount = 144
-
-    // interval between frames should be at most 10 seconds
-    val maxInterval = 10 * 1000
-
-    val minByInterval: Long = length / minInterval
-    val maxByInterval: Long = length / maxInterval
-
-    val lowerBound = Math.min(minFrameCount, minByInterval)
-    val upperBound = Math.min(maxFrameCount, maxByInterval)
-
-    val frames = Math.max(lowerBound, upperBound)
-
-    val tileSize = Math.ceil(Math.sqrt(frames.toDouble)).toInt
-
-    (tileSize * tileSize) -> tileSize
-  }
-
+  /**
+   * Generates one storyboard sprite for the given window, holding a frame every `intervalInMillis`
+   * and tiled into a `gridSize x gridSize` square. The window is seeked to directly, so a sprite for
+   * a later part of a long video does not require decoding everything before it.
+   */
   def createThumbnailTile(
     input: URI,
-    outputDir: Path,
-    outputBaseName: Option[String] = None,
-    height: Int                    = 90, // since 16:9 is most common aspect ratio
-    overwrite: Boolean             = false
+    outputFile: Path,
+    tile: ThumbnailTile,
+    overwrite: Boolean = false
   ): IO[Unit] = {
 
-    val fileBaseName = outputBaseName.getOrElse(FFMpeg.stripExtension(FFMpeg.fileNameOf(input)))
-    val vttFilename  = s"$fileBaseName.vtt"
-    val webpFilename = s"$fileBaseName.webp"
+    require(tile.width > 0, "width must be positive")
+    require(tile.height > 0, "height must be positive")
+    require(tile.gridSize > 0, "grid size must be positive")
+    require(tile.frameCount > 0, "frame count must be positive")
+    require(tile.intervalInMillis > 0, "interval must be positive")
+    require(tile.startInMillis >= 0, "start must not be negative")
 
-    if Files.exists(outputDir.resolve(webpFilename)) && Files.exists(outputDir.resolve(vttFilename)) && !overwrite then {
-      logger.info(s"Skipping $input ($webpFilename)")
-      IO.unit
-    } else {
+    if Files.exists(outputFile) && !overwrite then IO.unit
+    else {
+      val intervalSecs = tile.intervalInMillis.toDouble / 1000.0
+      val window       = tile.frameCount.toLong * tile.intervalInMillis
+      val output       = outputFile.toAbsolutePath.normalize.toString
 
-      ffprobe(input, false, 5.seconds).flatMap {
-        (ffProbeOutput, _) =>
+      // Select the first frame and one frame every interval, then tile them into a single sprite.
+      val filter =
+        s"select='isnan(prev_selected_t)+gte(t-prev_selected_t\\,$intervalSecs)',scale=${tile.width}:${tile.height},tile=${tile.gridSize}x${tile.gridSize}"
 
-          val stream             = ffProbeOutput.firstVideoStream.getOrElse(throw new IllegalStateException("no video stream found"))
-          val (frames, tileSize) = calculateNrOfFrames(stream.durationMillis)
-          val mod                = ((stream.fps * (stream.durationMillis / 1000)) / frames).toInt
-          val width: Int         = ((stream.width.toDouble / stream.height) * height).toInt
+      val args = List(
+        "-ss",
+        formatTime(tile.startInMillis),
+        "-t",
+        formatTime(window),
+        "-i",
+        FFMpeg.inputArg(input),
+        "-vf",
+        filter,
+        "-frames:v",
+        "1",
+        "-quality",
+        "80",
+        "-y",
+        "-an",
+        output
+      )
 
-          val args = List(
-            "-i",
-            FFMpeg.inputArg(input),
-            "-filter_complex",
-            s"select='not(mod(n,$mod))',scale=$width:$height,tile=${tileSize}x$tileSize",
-            "-vframes",
-            "1",
-            "-quality",
-            "80",
-            "-y",
-            "-an",
-            s"$outputDir/$webpFilename"
-          )
-
-          useProcessOutput[Unit]("ffmpeg-create-thumbnail-tile", Command("ffmpeg", args), useErrorStream = true) {
-            _ =>
-              def createWebVtt() = {
-
-                val thumbLength: Int = (stream.durationMillis / frames).toInt
-                val builder          = new StringBuilder()
-
-                builder.append("WEBVTT\n")
-
-                (0 until frames).foreach {
-                  n =>
-                    val start  = formatTime(thumbLength * n)
-                    val end    = formatTime(thumbLength * (n + 1))
-                    val x: Int = n % tileSize
-                    val y: Int = Math.floor(n / tileSize).toInt
-
-                    builder.append(s"""
-                       |${n + 1}
-                       |$start --> $end
-                       |$webpFilename#xywh=${x * width},${y * height},$width,$height
-                       |""".stripMargin)
-                }
-
-                val content = builder.toString()
-
-                Files.write(outputDir.resolve(vttFilename), content.getBytes(StandardCharsets.UTF_8))
-              }
-
-              IO(createWebVtt())
-          }
-      }
+      runIgnoreOutput("ffmpeg-create-thumbnail-tile", Command("ffmpeg", args)).void
     }
   }
 }

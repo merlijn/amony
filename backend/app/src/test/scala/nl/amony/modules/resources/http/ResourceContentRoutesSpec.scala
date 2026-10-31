@@ -1,5 +1,7 @@
 package nl.amony.modules.resources.http
 
+import scala.concurrent.duration.*
+
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import nl.amony.modules.auth.api.UserId
@@ -10,6 +12,7 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
   private val resolutions      = ThumbnailResolutions(List(352, 4320), 352, stepDown = 0)
   private val smallResolutions = ThumbnailResolutions(List(96, 192, 384, 768, 1536), 384, stepDown = 0)
   private val formats          = ThumbnailFormats(List(ImageFormat.Avif, ImageFormat.Webp, ImageFormat.Jpeg))
+  private val tiles            = ThumbnailTiles(List(250.millis, 500.millis, 1.second, 2.seconds, 5.seconds, 10.seconds), 200)
 
   private def videoInfo(width: Int, height: Int, durationInMillis: Int = 10000, thumbnailTimestamp: Int = 1000) = ResourceInfo(
     bucketId           = BucketId("test"),
@@ -44,6 +47,14 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
   private def clipOp(start: Long, end: Long, dim: String, resKey: String, info: ResourceInfo) =
     ResourceContentRoutes.patterns
       .clipOperation(ResourceOperations.contentVersion(info), start, end, dim, resKey, resolutions, info)
+
+  private def tileManifestOp(info: ResourceInfo) =
+    ResourceContentRoutes.patterns
+      .thumbnailTileManifestOperation(ResourceOperations.contentVersion(info), info, tiles)
+
+  private def tileSpriteOp(index: Int, info: ResourceInfo) =
+    ResourceContentRoutes.patterns
+      .thumbnailTileSpriteOperation(ResourceOperations.contentVersion(info), index.toString, info, tiles)
 
   "ResourceContentRoutes" when {
 
@@ -164,6 +175,33 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
       }
     }
 
+    "building a thumbnail tile operation" should {
+
+      "build the manifest operation for a video" in
+        assert(tileManifestOp(videoInfo(1920, 1080)) == Some(VideoThumbnailTileVtt(intervalInMillis = 250)))
+
+      "build the first sprite operation" in
+        assert(tileSpriteOp(1, videoInfo(1920, 1080)) == Some(VideoThumbnailTile(intervalInMillis = 250, index = 1)))
+
+      "allow a sprite index covered by the video duration" in
+        assert(tileSpriteOp(2, videoInfo(1920, 1080, durationInMillis = 650000)) == Some(VideoThumbnailTile(intervalInMillis = 5000, index = 2)))
+
+      "reject a sprite index before the first sprite" in
+        assert(tileSpriteOp(0, videoInfo(1920, 1080)).isEmpty)
+
+      "reject a sprite index beyond the video duration" in
+        assert(tileSpriteOp(2, videoInfo(1920, 1080)).isEmpty)
+
+      "reject a tile when the content version does not match" in {
+        val info = videoInfo(1920, 1080)
+        val op   = ResourceContentRoutes.patterns.thumbnailTileManifestOperation("staleversion", info, tiles)
+        assert(op.isEmpty)
+      }
+
+      "reject a tile for a non-video resource" in
+        assert(tileManifestOp(imageInfo(1600, 1063)).isEmpty)
+    }
+
     "computing a content version" should {
 
       "be stable for identical resources" in
@@ -193,6 +231,16 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
         assert(clip.map(m => (m.group(1), m.group(2), m.group(3), m.group(4), m.group(5))) == Some(("abc123", "2863", "5863", "h", "512")))
 
         assert(ResourceContentRoutes.patterns.PublicThumbnailPattern.findFirstMatchIn("thumb_abc123_2863_w_s.webp").isEmpty)
+      }
+
+      "match thumbnail tile manifest and sprite URLs" in {
+        val manifest = ResourceContentRoutes.patterns.PublicThumbnailTileManifestPattern.findFirstMatchIn("thumbtile_abc123.vtt")
+        val sprite   = ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123_2.webp")
+
+        assert(manifest.map(_.group(1)) == Some("abc123"))
+        assert(sprite.map(m => (m.group(1), m.group(2))) == Some(("abc123", "2")))
+        assert(ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123.webp").isEmpty)
+        assert(ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123_2.png").isEmpty)
       }
     }
   }
