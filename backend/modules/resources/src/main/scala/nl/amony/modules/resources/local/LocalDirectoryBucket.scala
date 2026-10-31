@@ -14,6 +14,7 @@ import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.platform.files.*
 import nl.amony.platform.messagebus.MessageTopic
+import nl.amony.platform.subprocess.{ProcessLimiter, ProcessSettings}
 
 class LocalDirectoryBucket(
   config: LocalDirectoryConfig,
@@ -21,11 +22,16 @@ class LocalDirectoryBucket(
   db: ResourceDatabase,
   topic: MessageTopic[ResourceEvent],
   formats: ThumbnailFormats,
-  resolutions: ThumbnailResolutions
+  resolutions: ThumbnailResolutions,
+  processSettings: ProcessSettings,
+  processLimiter: ProcessLimiter
 )(using meter: Meter[IO], tracer: Tracer[IO])
-    extends LocalDirectoryBase(config, parallelFactor, db, topic, formats, resolutions), LocalResourceOperations, ResourceBucket,
+    extends LocalDirectoryBase(config, parallelFactor, db, topic, formats, resolutions, processSettings, processLimiter),
+      LocalResourceOperations,
+      ResourceBucket,
       LocalResourceSyncer,
-      UploadResource, Logging {
+      UploadResource,
+      Logging {
 
   private def getResourceInfo(resourceId: ResourceId): IO[Option[ResourceInfo]] = db.getResourceById(id, resourceId)
 

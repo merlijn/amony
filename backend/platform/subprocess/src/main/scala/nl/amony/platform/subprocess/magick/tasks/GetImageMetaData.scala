@@ -16,7 +16,7 @@ trait GetImageMetaData {
 
     val fileName = path.toAbsolutePath.normalize().toString
 
-    useProcessOutput("get-image-metadata", Command("convert", List(fileName, "json:")), false) {
+    useProcessOutput("get-image-metadata", Command("convert", List(fileName, "json:")), useErrorStream = false, settings.imageMetadataTimeout) {
       processOutput =>
         IO {
           (for

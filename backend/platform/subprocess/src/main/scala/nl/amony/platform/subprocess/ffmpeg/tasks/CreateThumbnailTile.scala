@@ -71,7 +71,7 @@ trait CreateThumbnailTile extends Logging {
         output
       )
 
-      runIgnoreOutput("ffmpeg-create-thumbnail-tile", Command("ffmpeg", args)).void
+      runIgnoreOutput("ffmpeg-create-thumbnail-tile", Command("ffmpeg", args), settings.tileTimeout).void
     }
   }
 }

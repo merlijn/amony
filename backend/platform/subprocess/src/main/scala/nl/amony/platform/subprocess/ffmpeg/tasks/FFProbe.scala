@@ -1,7 +1,7 @@
 package nl.amony.platform.subprocess.ffmpeg.tasks
 
 import java.net.URI
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 
 import cats.effect.IO
 import io.circe.{Decoder, Json}
@@ -19,21 +19,23 @@ trait FFProbe extends Logging:
   // Before avformat_find_stream_info() pos: 3193581 bytes read:3217069 seeks:0 nb_streams:2
   val fastStartPattern = raw"""Before\savformat_find_stream_info\(\)\spos:\s\d+\sbytes\sread:\d+\sseeks:0""".r.unanchored
 
-  val defaultProbeTimeout = 5.seconds
+  lazy val ffprobeVersion: IO[FFProbeVersion] =
+    useProcessOutput(
+      "ffprobe-version",
+      Command("ffprobe", List("-print_format", "json", "-show_program_version", "-loglevel", "quiet")),
+      useErrorStream = false,
+      settings.ffprobeTimeout
+    ) { stdout =>
+      val result =
+        for
+          json    <- io.circe.parser.parse(stdout)
+          version <- json.asObject.flatMap(_.apply("program_version")).toRight(new Exception("No program_version found"))
+          decoded <- version.as[FFProbeVersion]
+        yield decoded
+      IO.pure(result.toTry.get)
+    }.memoize.flatten
 
-  val ffprobeVersion: IO[FFProbeVersion] =
-    useProcessOutput("ffprobe-version", Command("ffprobe", List("-print_format", "json", "-show_program_version", "-loglevel", "quiet")), false) {
-      stdout =>
-        val result =
-          for
-            json    <- io.circe.parser.parse(stdout)
-            version <- json.asObject.flatMap(_.apply("program_version")).toRight(new Exception("No program_version found"))
-            decoded <- version.as[FFProbeVersion]
-          yield decoded
-        IO.pure(result.toTry.get)
-    }.timeout(defaultProbeTimeout).memoize.flatten
-
-  def ffprobe(input: URI, debug: Boolean, timeout: FiniteDuration = defaultProbeTimeout): IO[(FFProbeOutput, Json)] =
+  def ffprobe(input: URI, debug: Boolean, timeout: FiniteDuration = settings.ffprobeTimeout): IO[(FFProbeOutput, Json)] =
     runFFProbe(input, debug, timeout).recoverWith {
       case error if debug =>
         logger.warn(
@@ -49,7 +51,7 @@ trait FFProbe extends Logging:
       val v        = if debug then "debug" else "quiet"
       val args     = List("-print_format", "json", "-show_streams", "-show_format", "-loglevel", v, fileName)
 
-      useProcess("ffprobe-show", Command("ffprobe", args)) { process =>
+      useProcess("ffprobe-show", Command("ffprobe", args), timeout) { process =>
         for
           jsonOutput  <- compileToString(process.stdout)
           debugOutput <-
@@ -63,5 +65,5 @@ trait FFProbe extends Logging:
             decoded <- streams.as[List[Stream]]
           yield FFProbeOutput(Some(version), Some(decoded), debugOutput) -> json).toTry.get
         }
-      }.timeout(timeout)
+      }
     }

@@ -36,7 +36,7 @@ trait CreateThumbnail:
       )
     // format: on
 
-    runIgnoreOutput("ffmpeg-create-video-thumbnail", Command("ffmpeg", args))
+    runIgnoreOutput("ffmpeg-create-video-thumbnail", Command("ffmpeg", args), settings.thumbnailTimeout)
 
   /** Encodes a still image at the given pinned dimension; the output format follows the output extension. */
   def resizeImage(
@@ -58,7 +58,7 @@ trait CreateThumbnail:
       )
     // format: on
 
-    runIgnoreOutput("ffmpeg-create-image-thumbnail", Command("ffmpeg", args))
+    runIgnoreOutput("ffmpeg-create-image-thumbnail", Command("ffmpeg", args), settings.thumbnailTimeout)
   }
 
   def streamThumbnail(input: URI, timestamp: Long, scaleHeight: Int): fs2.Stream[IO, Byte] = {
@@ -75,5 +75,5 @@ trait CreateThumbnail:
     )
     // format: on
 
-    fs2.Stream.force(useProcess("ffmpeg-stream-video-thumbnail", Command("ffmpeg", args))(p => IO(p.stdout)))
+    streamProcess("ffmpeg-stream-video-thumbnail", Command("ffmpeg", args), settings.thumbnailTimeout)(_.stdout)
   }

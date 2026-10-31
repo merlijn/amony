@@ -21,11 +21,12 @@ import sttp.client4.httpclient.HttpClientSyncBackend
 import sttp.model.StatusCode
 
 import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
+import nl.amony.platform.subprocess.{ProcessLimiter, ProcessSettings}
 
 /** Serves the faststart mp4 fixture over plain http with byte-range support, mimicking an S3 presigned URL. */
 class FFMpegSpec extends AnyWordSpecLike with Matchers with BeforeAndAfterAll {
 
-  private val ffmpeg = new FFMpeg(using Meter.noop[IO], Tracer.noop[IO])
+  private val ffmpeg = new FFMpeg(ProcessSettings(), ProcessLimiter.unlimited)(using Meter.noop[IO], Tracer.noop[IO])
 
   private var fixtureBytes: Array[Byte] = Array.empty
   private var server: HttpServer        = uninitialized

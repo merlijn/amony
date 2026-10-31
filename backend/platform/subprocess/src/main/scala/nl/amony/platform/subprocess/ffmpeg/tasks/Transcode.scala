@@ -38,7 +38,7 @@ trait Transcode extends Logging {
       profile.args ++ Option.when(!includeAudio)("-an") ++
       List("-v", "quiet", "-y", output)
 
-    runIgnoreOutput("ffmpeg-transcode", Command("ffmpeg", args)).map(_ => Path.of(output))
+    runIgnoreOutput("ffmpeg-transcode", Command("ffmpeg", args), settings.clipTimeout).map(_ => Path.of(output))
   }
 
   def streamStranscodeMp4(input: URI, scaleHeight: Option[Int] = None): fs2.Stream[IO, Byte] = {
@@ -57,6 +57,6 @@ trait Transcode extends Logging {
         )
     // format: on
 
-    fs2.Stream.force(useProcess("ffmpeg-stream-transcode", Command("ffmpeg", args))(p => IO(p.stdout)))
+    streamProcess("ffmpeg-stream-transcode", Command("ffmpeg", args), settings.clipTimeout)(_.stdout)
   }
 }
