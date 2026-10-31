@@ -43,6 +43,12 @@ class ResourceDirectivesSpec extends AnyWordSpecLike {
     finally input.close()
   }
 
+  private class StreamOnlyTextContent(content: String) extends ResourceContent {
+    override val contentType: String          = "text/vtt"
+    override val eTag: Option[String]         = Some("v1")
+    override val stream: fs2.Stream[IO, Byte] = fs2.Stream.emits(content.getBytes(StandardCharsets.UTF_8)).covary[IO]
+  }
+
   private def request(headers: Header.ToRaw*): Request[IO] =
     Request[IO](Method.GET, Uri.unsafeFromString("/api/resources/media/resource/thumb.webp")).putHeaders(headers*)
 
@@ -148,6 +154,35 @@ class ResourceDirectivesSpec extends AnyWordSpecLike {
       "not gzip binary content" in {
         val response = ResourceDirectives
           .resourceContentsResponse(request(Header.Raw(ci"Accept-Encoding", "gzip")), localFile(small, Some("v1")))
+          .unsafeRunSync()
+
+        assert(response.headers.get[`Content-Encoding`].isEmpty)
+        assert(response.headers.get(ci"Vary").isEmpty)
+      }
+
+      "gzip a multi-megabyte text response below the compression limit" in {
+        val content  = "x" * (2 * 1024 * 1024)
+        val response = ResourceDirectives
+          .resourceContentsResponse(request(Header.Raw(ci"Accept-Encoding", "gzip")), localTextFile(tempTextFile(content), Some("v1")))
+          .unsafeRunSync()
+
+        assert(response.headers.get[`Content-Encoding`].map(_.contentCoding) == Some(ContentCoding.gzip))
+        assert(gunzipText(response.body.compile.to(Array).unsafeRunSync()) == content)
+      }
+
+      "not gzip text above the compression limit" in {
+        val content  = "x" * (9 * 1024 * 1024)
+        val response = ResourceDirectives
+          .resourceContentsResponse(request(Header.Raw(ci"Accept-Encoding", "gzip")), localTextFile(tempTextFile(content), Some("v1")))
+          .unsafeRunSync()
+
+        assert(response.headers.get[`Content-Encoding`].isEmpty)
+        assert(response.headers.get(ci"Vary").isEmpty)
+      }
+
+      "not gzip text when the content size is unknown" in {
+        val response = ResourceDirectives
+          .resourceContentsResponse(request(Header.Raw(ci"Accept-Encoding", "gzip")), StreamOnlyTextContent("WEBVTT\n"))
           .unsafeRunSync()
 
         assert(response.headers.get[`Content-Encoding`].isEmpty)

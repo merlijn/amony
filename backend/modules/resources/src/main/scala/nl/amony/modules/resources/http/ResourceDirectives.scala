@@ -26,19 +26,24 @@ import nl.amony.modules.resources.api.{ResourceContent, ResourceContentWithRange
 
 object ResourceDirectives extends Logging {
 
-  private val rangedResponseCutoff: Long = 1024 * 1024 // 1 MB
+  private val rangedResponseCutoff: Long       = 1024 * 1024     // 1 MB
+  private val compressibleResponseCutoff: Long = 8 * 1024 * 1024 // 8 MB
 
   def resourceContentsResponse(req: Request[IO], resource: ResourceContent): IO[Response[IO]] = {
 
     val maybeMediaType = MediaType.parse(resource.contentType).toOption
-    val supportsRange  = resource match
-      case content: ResourceContentWithRangeSupport => content.size > rangedResponseCutoff
-      case _                                        => false
+    val contentSize    = resource match
+      case content: ResourceContentWithRangeSupport => Some(content.size)
+      case _                                        => None
 
-    // Text responses are cheap to compress and often highly repetitive. Ranged content is left untouched,
-    // since compressing ranges would invalidate the byte offsets.
-    val canCompress     = !supportsRange && maybeMediaType.exists(_.mainType == "text")
+    // Text responses are cheap to compress and often highly repetitive. Only compress when the size
+    // is known and small enough, and never for a ranged request since that would invalidate the byte
+    // offsets. Resources without known size are served as-is.
+    val canCompress     = contentSize.exists(_ <= compressibleResponseCutoff) &&
+      maybeMediaType.exists(_.mainType == "text") &&
+      req.headers.get[Range].isEmpty
     val useGzip         = canCompress && acceptsGzip(req)
+    val supportsRange   = contentSize.exists(_ > rangedResponseCutoff) && !canCompress
     val eTagValue       = resource.eTag.map(tag => if useGzip then s"$tag-gzip" else tag)
     val eTagHeaders     = eTagValue.map(tag => `ETag`(EntityTag(tag))).toList
     val varyHeaders     = if canCompress then Headers(Header.Raw(ci"Vary", "Accept-Encoding")) else Headers.empty
