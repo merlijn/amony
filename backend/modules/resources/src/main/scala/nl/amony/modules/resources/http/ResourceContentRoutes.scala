@@ -24,9 +24,10 @@ object ResourceContentRoutes extends Logging {
     // + image format extension.
     // thumb_{version}_{timestamp}_{dim}_{size}.{format}  e.g. thumb_abc123_2863_w_768.avif       (videos and images)
     // clip_{version}_{start}_{end}_{dim}_{size}.mp4      e.g. clip_abc123_2863_5863_w_512.mp4    (videos only)
-    val PublicThumbnailPattern     = raw"thumb_([a-z0-9]+)_(\d+)_([wh])_(\d+)\.([a-z0-9]+)".r
-    val PublicClipPattern          = raw"clip_([a-z0-9]+)_(\d+)_(\d+)_([wh])_(\d+)\.mp4".r
-    val PublicThumbnailTilePattern = raw"thumbtile_([a-z0-9]+)\.(vtt|webp)".r
+    val PublicThumbnailPattern             = raw"thumb_([a-z0-9]+)_(\d+)_([wh])_(\d+)\.([a-z0-9]+)".r
+    val PublicClipPattern                  = raw"clip_([a-z0-9]+)_(\d+)_(\d+)_([wh])_(\d+)\.mp4".r
+    val PublicThumbnailTileManifestPattern = raw"thumbtile_([a-z0-9]+)\.vtt".r
+    val PublicThumbnailTileSpritePattern   = raw"thumbtile_([a-z0-9]+)_(\d+)\.webp".r
 
     /**
      * Builds a thumbnail operation only when the URL version matches the resource's
@@ -65,23 +66,28 @@ object ResourceContentRoutes extends Logging {
         }
     }
 
+    /** Builds the manifest operation when the URL version matches the resource's current content version. */
+    def thumbnailTileManifestOperation(urlVersion: String, resource: ResourceInfo): Option[VideoThumbnailTileVtt] =
+      if urlVersion != ResourceOperations.contentVersion(resource) then None
+      else
+        resource.basicContentProperties match {
+          case Some(_: VideoProperties) => Some(VideoThumbnailTileVtt())
+          case _                        => None
+        }
+
     /**
-     * Builds a thumbnail-tile operation only when the URL version matches the resource's current
-     * content version. The `vtt` and `webp` extensions select the manifest or the sprite itself.
+     * Builds one sprite operation when the URL version matches and the sprite index exists for the
+     * resource's duration, rejecting arbitrary index injection.
      */
-    def thumbnailTileOperation(
-      urlVersion: String,
-      extension: String,
-      resource: ResourceInfo
-    ): Option[ResourceOperation] =
+    def thumbnailTileSpriteOperation(urlVersion: String, index: String, resource: ResourceInfo): Option[VideoThumbnailTile] =
       if urlVersion != ResourceOperations.contentVersion(resource) then None
       else
         resource.basicContentProperties match {
           case Some(_: VideoProperties) =>
-            extension match
-              case "webp" => Some(VideoThumbnailTile())
-              case "vtt"  => Some(VideoThumbnailTileVtt())
-              case _      => None
+            index.toIntOption.flatMap { parsed =>
+              val operation = VideoThumbnailTile(index = parsed)
+              Option.when(operation.validate(resource).isRight)(operation)
+            }
           case _                        => None
         }
 
@@ -157,8 +163,10 @@ object ResourceContentRoutes extends Logging {
                                       patterns.thumbnailOperation(version, ts.toLong, dim, resKey, format, resolutions, formats, resource.info)
                                     case patterns.PublicClipPattern(version, start, end, dim, resKey)      =>
                                       patterns.clipOperation(version, start.toLong, end.toLong, dim, resKey, resolutions, resource.info)
-                                    case patterns.PublicThumbnailTilePattern(version, extension)           =>
-                                      patterns.thumbnailTileOperation(version, extension, resource.info)
+                                    case patterns.PublicThumbnailTileManifestPattern(version)              =>
+                                      patterns.thumbnailTileManifestOperation(version, resource.info)
+                                    case patterns.PublicThumbnailTileSpritePattern(version, index)         =>
+                                      patterns.thumbnailTileSpriteOperation(version, index, resource.info)
                                     case _                                                                 => None
                                   })
             derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))

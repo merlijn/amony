@@ -2,6 +2,7 @@ package nl.amony.modules.resources.api
 
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.time.Duration
 
 import nl.amony.modules.resources.util.Base32
 
@@ -23,29 +24,115 @@ case class VideoThumbnail(width: Option[Int] = None, height: Option[Int] = None,
 object VideoThumbnailTile:
   val defaultWidth            = 96
   val defaultIntervalInMillis = 10000L
+  val gridSize                = 8
+  val framesPerSprite         = gridSize * gridSize
 
-  private[api] def validate(info: ResourceInfo, width: Int, intervalInMillis: Long): Either[String, Unit] =
+  /** Bump when the manifest layout changes, so an already generated manifest is not reused. */
+  val manifestVersion = 2
+
+  private[api] def validate(info: ResourceInfo, width: Int, intervalInMillis: Long, index: Option[Int] = None): Either[String, Unit] =
     info.basicContentProperties match
-      case Some(_: VideoProperties) =>
+      case Some(video: VideoProperties) =>
         for
           _ <- Either.cond(width > 0, (), "Width must be positive")
           _ <- Either.cond(intervalInMillis > 0, (), "Interval must be positive")
+          _ <- index match
+                 case Some(value) =>
+                   val count = spriteCount(video.durationInMillis.toLong, intervalInMillis)
+                   Either.cond(value >= 1 && value <= count, (), s"Sprite index $value is out of bounds (1..$count)")
+                 case None        => Right(())
         yield ()
-      case other                    => Left("Wrong content type, expected video, got: " + other)
+      case other                        => Left("Wrong content type, expected video, got: " + other)
 
-  def fileName(resourceId: ResourceId, contentVersion: String, width: Int, intervalInMillis: Long, extension: String): String =
-    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_w$width.$extension"
+  def totalFrames(durationInMillis: Long, intervalInMillis: Long): Int =
+    math.max(1, math.ceil(durationInMillis.toDouble / intervalInMillis).toInt)
 
-/** A storyboard sprite containing one small frame every `intervalInMillis` of the video. */
-case class VideoThumbnailTile(width: Int = VideoThumbnailTile.defaultWidth, intervalInMillis: Long = VideoThumbnailTile.defaultIntervalInMillis)
-    extends ResourceOperation {
+  def spriteCount(durationInMillis: Long, intervalInMillis: Long): Int =
+    val frames = totalFrames(durationInMillis, intervalInMillis)
+    math.max(1, (frames + framesPerSprite - 1) / framesPerSprite)
+
+  /** 0-based frame where the given 1-based sprite starts. */
+  def startFrame(index: Int): Long =
+    (index - 1).toLong * framesPerSprite
+
+  def startInMillis(index: Int, intervalInMillis: Long): Long =
+    startFrame(index) * intervalInMillis
+
+  def frameCountInSprite(index: Int, durationInMillis: Long, intervalInMillis: Long): Int =
+    val remaining = totalFrames(durationInMillis, intervalInMillis) - startFrame(index)
+    math.max(0, math.min(framesPerSprite.toLong, remaining).toInt)
+
+  /** Height for a width-pinned frame, rounded up to an even number so the encoders accept it. */
+  def heightFor(width: Int, sourceWidth: Int, sourceHeight: Int): Int =
+    if sourceWidth <= 0 || sourceHeight <= 0 then width
+    else
+      val scaled = math.round(width.toDouble * sourceHeight / sourceWidth).toInt
+      math.max(2, if scaled % 2 == 0 then scaled else scaled + 1)
+
+  def manifestFileName(resourceId: ResourceId, contentVersion: String, width: Int, intervalInMillis: Long): String =
+    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_w${width}_v$manifestVersion.vtt"
+
+  def spriteFileName(
+    resourceId: ResourceId,
+    contentVersion: String,
+    width: Int,
+    intervalInMillis: Long,
+    index: Int,
+    extension: String = "webp"
+  ): String =
+    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_w${width}_$index.$extension"
+
+  /** Renders the complete WebVTT manifest, referencing one sprite file per group of [[framesPerSprite]] frames. */
+  def renderWebVtt(
+    durationInMillis: Long,
+    intervalInMillis: Long,
+    width: Int,
+    height: Int,
+    spriteUrl: Int => String
+  ): String = {
+    val frames  = totalFrames(durationInMillis, intervalInMillis)
+    val builder = new StringBuilder("WEBVTT\n")
+
+    (0 until frames).foreach { n =>
+      val spriteIndex   = n / framesPerSprite + 1
+      val frameInSprite = n              % framesPerSprite
+      val x             = (frameInSprite % gridSize) * width
+      val y             = (frameInSprite / gridSize) * height
+      val start         = n.toLong * intervalInMillis
+      val end           = math.max(start + 1, math.min(durationInMillis, start + intervalInMillis))
+
+      builder.append("\n")
+      builder.append(s"${formatTime(start)} --> ${formatTime(end)}\n")
+      builder.append(s"${spriteUrl(spriteIndex)}#xywh=$x,$y,$width,$height\n")
+    }
+
+    builder.toString
+  }
+
+  private def formatTime(timestamp: Long): String = {
+    val duration = Duration.ofMillis(timestamp)
+
+    val hours   = "%02d".format(duration.toHoursPart)
+    val minutes = "%02d".format(duration.toMinutesPart)
+    val seconds = "%02d".format(duration.toSecondsPart)
+    val millis  = "%03d".format(duration.toMillisPart)
+
+    s"$hours:$minutes:$seconds.$millis"
+  }
+
+/** One storyboard sprite containing a group of up to [[VideoThumbnailTile.framesPerSprite]] frames. */
+case class VideoThumbnailTile(
+  width: Int             = VideoThumbnailTile.defaultWidth,
+  intervalInMillis: Long = VideoThumbnailTile.defaultIntervalInMillis,
+  index: Int             = 1
+) extends ResourceOperation {
   override def contentType: String = "image/webp"
 
   override def validate(info: ResourceInfo): Either[String, Unit] =
-    VideoThumbnailTile.validate(info, width, intervalInMillis)
+    VideoThumbnailTile.validate(info, width, intervalInMillis, Some(index))
 }
 
-/** The WebVTT manifest describing the frames in a [[VideoThumbnailTile]] sprite. */
+/** The WebVTT manifest describing all frames and their sprite files. */
 case class VideoThumbnailTileVtt(width: Int = VideoThumbnailTile.defaultWidth, intervalInMillis: Long = VideoThumbnailTile.defaultIntervalInMillis)
     extends ResourceOperation {
   override def contentType: String = "text/vtt"

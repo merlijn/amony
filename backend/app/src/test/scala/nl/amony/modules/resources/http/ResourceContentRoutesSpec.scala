@@ -45,9 +45,13 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
     ResourceContentRoutes.patterns
       .clipOperation(ResourceOperations.contentVersion(info), start, end, dim, resKey, resolutions, info)
 
-  private def tileOp(extension: String, info: ResourceInfo) =
+  private def tileManifestOp(info: ResourceInfo) =
     ResourceContentRoutes.patterns
-      .thumbnailTileOperation(ResourceOperations.contentVersion(info), extension, info)
+      .thumbnailTileManifestOperation(ResourceOperations.contentVersion(info), info)
+
+  private def tileSpriteOp(index: Int, info: ResourceInfo) =
+    ResourceContentRoutes.patterns
+      .thumbnailTileSpriteOperation(ResourceOperations.contentVersion(info), index.toString, info)
 
   "ResourceContentRoutes" when {
 
@@ -170,20 +174,29 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
 
     "building a thumbnail tile operation" should {
 
-      "build the sprite operation for a webp request" in
-        assert(tileOp("webp", videoInfo(1920, 1080)) == Some(VideoThumbnailTile()))
+      "build the manifest operation for a video" in
+        assert(tileManifestOp(videoInfo(1920, 1080)) == Some(VideoThumbnailTileVtt()))
 
-      "build the manifest operation for a vtt request" in
-        assert(tileOp("vtt", videoInfo(1920, 1080)) == Some(VideoThumbnailTileVtt()))
+      "build the first sprite operation" in
+        assert(tileSpriteOp(1, videoInfo(1920, 1080)) == Some(VideoThumbnailTile(index = 1)))
+
+      "allow a sprite index covered by the video duration" in
+        assert(tileSpriteOp(2, videoInfo(1920, 1080, durationInMillis = 650000)) == Some(VideoThumbnailTile(index = 2)))
+
+      "reject a sprite index before the first sprite" in
+        assert(tileSpriteOp(0, videoInfo(1920, 1080)).isEmpty)
+
+      "reject a sprite index beyond the video duration" in
+        assert(tileSpriteOp(2, videoInfo(1920, 1080)).isEmpty)
 
       "reject a tile when the content version does not match" in {
         val info = videoInfo(1920, 1080)
-        val op   = ResourceContentRoutes.patterns.thumbnailTileOperation("staleversion", "vtt", info)
+        val op   = ResourceContentRoutes.patterns.thumbnailTileManifestOperation("staleversion", info)
         assert(op.isEmpty)
       }
 
       "reject a tile for a non-video resource" in
-        assert(tileOp("vtt", imageInfo(1600, 1063)).isEmpty)
+        assert(tileManifestOp(imageInfo(1600, 1063)).isEmpty)
     }
 
     "computing a content version" should {
@@ -217,13 +230,14 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
         assert(ResourceContentRoutes.patterns.PublicThumbnailPattern.findFirstMatchIn("thumb_abc123_2863_w_s.webp").isEmpty)
       }
 
-      "match thumbnail tile URLs with a version and a vtt or webp extension" in {
-        val vtt    = ResourceContentRoutes.patterns.PublicThumbnailTilePattern.findFirstMatchIn("thumbtile_abc123.vtt")
-        val sprite = ResourceContentRoutes.patterns.PublicThumbnailTilePattern.findFirstMatchIn("thumbtile_abc123.webp")
+      "match thumbnail tile manifest and sprite URLs" in {
+        val manifest = ResourceContentRoutes.patterns.PublicThumbnailTileManifestPattern.findFirstMatchIn("thumbtile_abc123.vtt")
+        val sprite   = ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123_2.webp")
 
-        assert(vtt.map(m => (m.group(1), m.group(2))) == Some(("abc123", "vtt")))
-        assert(sprite.map(m => (m.group(1), m.group(2))) == Some(("abc123", "webp")))
-        assert(ResourceContentRoutes.patterns.PublicThumbnailTilePattern.findFirstMatchIn("thumbtile_abc123.png").isEmpty)
+        assert(manifest.map(_.group(1)) == Some("abc123"))
+        assert(sprite.map(m => (m.group(1), m.group(2))) == Some(("abc123", "2")))
+        assert(ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123.webp").isEmpty)
+        assert(ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123_2.png").isEmpty)
       }
     }
   }

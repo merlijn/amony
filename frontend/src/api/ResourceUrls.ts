@@ -11,9 +11,12 @@ const dimensionToken = (dimension: string): string => dimension === "height" ? "
 export const resourceThumbnailUrl = (resource: ResourceDto, dimension: string, size: number, format: string): string =>
   `/api/resources/${resource.bucketId}/${resource.resourceId}/thumb_${resource.contentVersion}_${resource.thumbnailTimestamp ?? 0}_${dimensionToken(dimension)}_${size}.${format}`;
 
+/** Bump when the tile layout changes, so browsers do not keep a manifest that references the old sprites. */
+const timelineThumbnailsVersion = 2;
+
 /** URL of the WebVTT storyboard used for the player's timeline hover previews. */
 export const timelineThumbnailsUrl = (resource: ResourceDto): string =>
-  `/api/resources/${resource.bucketId}/${resource.resourceId}/thumbtile_${resource.contentVersion}.vtt`;
+  `/api/resources/${resource.bucketId}/${resource.resourceId}/thumbtile_${resource.contentVersion}.vtt?v=${timelineThumbnailsVersion}`;
 
 type PickingStrategy = "round-up" | "round-down" | "round-nearest";
 
