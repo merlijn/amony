@@ -14,7 +14,7 @@ import nl.amony.modules.auth.AuthModule
 import nl.amony.modules.resources.ResourceModule
 import nl.amony.modules.search.SearchModule
 
-object GenerateSpec:
+object ExportOpenApiSpec:
 
   private val endpoints: List[AnyEndpoint] =
     ResourceModule.endpoints ++ SearchModule.endpoints ++ AuthModule.endpoints ++ ConfigRoutes.endpoints

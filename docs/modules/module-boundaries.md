@@ -6,7 +6,7 @@ test-only.
 ```mermaid
 flowchart TB
   subgraph app_group["app"]
-    app["app<br/>nl.amony.app<br/>App · WebServer · ConfigRoutes · GenerateSpec"]
+    app["app<br/>nl.amony.app<br/>App · WebServer · ConfigRoutes · ExportOpenApiSpec"]
   end
 
   subgraph feature_group["feature modules"]

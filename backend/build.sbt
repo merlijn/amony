@@ -53,7 +53,7 @@ lazy val prodBuild              = settingKey[Boolean]("Whether to compile with p
 ThisBuild / prodBuild := false
 
 addCommandAlias("format", "root/scalafmtAll")
-addCommandAlias("generateSpec", "app/runMain nl.amony.app.GenerateSpec")
+addCommandAlias("exportOpenApiSpec", "app/runMain nl.amony.app.ExportOpenApiSpec")
 
 inThisBuild(
   List(

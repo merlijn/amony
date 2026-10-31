@@ -19,7 +19,7 @@ Useful commands:
 - `sbt format` - Formats the code using scalafmt, should be done before committing code changes.
 - `sbt test` - Runs only tests that are affected by changes compared to the previous run.
 - `sbt testFull` - Runs all tests.
-- `sbt generateSpec` - Generates the OpenAPI specification and places it in the frontend folder.
+- `sbt exportOpenApiSpec` - Generates the OpenAPI specification and places it in the frontend folder.
 - `sbt exportDatabaseSchema` - Applies the database evolutions and exports the full schema at
   `backend/target/amony-schema.sql`
 - If you need to fetch the source code of a dependency, use the `fetchSource` sbt command. Example:
