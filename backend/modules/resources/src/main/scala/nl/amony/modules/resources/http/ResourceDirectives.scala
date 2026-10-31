@@ -4,6 +4,7 @@ import cats.data.NonEmptyList
 import cats.effect.{Async, IO}
 import cats.implicits.{toFlatMapOps, toFunctorOps}
 import fs2.Stream
+import fs2.compression.Compression
 import fs2.io.file.{Files, Path}
 import org.http4s.*
 import org.http4s.headers.Range.SubRange
@@ -30,26 +31,43 @@ object ResourceDirectives extends Logging {
   def resourceContentsResponse(req: Request[IO], resource: ResourceContent): IO[Response[IO]] = {
 
     val maybeMediaType = MediaType.parse(resource.contentType).toOption
-    val eTagHeaders    = resource.eTag.map(tag => `ETag`(EntityTag(tag))).toList
+    val supportsRange  = resource match
+      case content: ResourceContentWithRangeSupport => content.size > rangedResponseCutoff
+      case _                                        => false
+
+    // Text responses are cheap to compress and often highly repetitive. Ranged content is left untouched,
+    // since compressing ranges would invalidate the byte offsets.
+    val canCompress     = !supportsRange && maybeMediaType.exists(_.mainType == "text")
+    val useGzip         = canCompress && acceptsGzip(req)
+    val eTagValue       = resource.eTag.map(tag => if useGzip then s"$tag-gzip" else tag)
+    val eTagHeaders     = eTagValue.map(tag => `ETag`(EntityTag(tag))).toList
+    val varyHeaders     = if canCompress then Headers(Header.Raw(ci"Vary", "Accept-Encoding")) else Headers.empty
+    val encodingHeaders = if useGzip then Headers(`Content-Encoding`(ContentCoding.gzip)) else Headers.empty
 
     // If-None-Match takes precedence over Range, so a matching validator short-circuits to 304 before any body is read.
-    if isNotModified(req, resource.eTag) then IO.pure(Response(status = Status.NotModified, headers = Headers(eTagHeaders)))
+    if isNotModified(req, eTagValue) then
+      IO.pure(Response(status = Status.NotModified, headers = Headers(eTagHeaders) ++ varyHeaders ++ encodingHeaders))
     else {
-      val additionalHeaders = Headers(maybeMediaType.map(mediaType => `Content-Type`(mediaType)).toList) ++ Headers(eTagHeaders)
+      val additionalHeaders =
+        Headers(maybeMediaType.map(mediaType => `Content-Type`(mediaType)).toList) ++ Headers(eTagHeaders) ++ varyHeaders ++ encodingHeaders
 
       resource match {
-        case resource: ResourceContentWithRangeSupport if resource.size > rangedResponseCutoff =>
+        case content: ResourceContentWithRangeSupport if supportsRange =>
           ResourceDirectives.responseWithRangeSupport[IO](
             request           = req,
-            size              = resource.size,
+            size              = content.size,
             additionalHeaders = additionalHeaders,
-            rangeResponseFn   = resource.streamRange
+            rangeResponseFn   = content.streamRange
           )
-        case _                                                                                 =>
-          IO.pure(Response(status = Status.Ok, headers = additionalHeaders, body = resource.stream))
+        case _                                                         =>
+          val body = if useGzip then resource.stream.through(Compression.forIO.gzip()) else resource.stream
+          IO.pure(Response(status = Status.Ok, headers = additionalHeaders, body = body))
       }
     }
   }
+
+  private def acceptsGzip(req: Request[IO]): Boolean =
+    req.headers.get[`Accept-Encoding`].exists(_.satisfiedBy(ContentCoding.gzip))
 
   /** Whether the request carries an `If-None-Match` that matches the resource's validator (weak comparison, per RFC 7232). */
   private def isNotModified(req: Request[IO], eTag: Option[String]): Boolean =
