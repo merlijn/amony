@@ -51,6 +51,7 @@ trait Transcode extends Logging {
           "-c:v", "libx264",
           "-movflags", "+faststart+frag_keyframe+empty_moov",
           "-crf", "23",
+          "-v", "error",
           "-f", "mp4",
           "-an", // no audio
           "pipe:1"

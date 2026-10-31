@@ -70,6 +70,7 @@ trait CreateThumbnail:
       "-vcodec", "webp",
       "-vf", s"scale=-2:$scaleHeight",
       "-vframes", "1",
+      "-v", "error",
       "-f", "image2pipe",
       "-"
     )

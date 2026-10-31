@@ -66,6 +66,8 @@ trait CreateThumbnailTile extends Logging {
         "1",
         "-quality",
         "80",
+        "-v",
+        "error",
         "-y",
         "-an",
         output
