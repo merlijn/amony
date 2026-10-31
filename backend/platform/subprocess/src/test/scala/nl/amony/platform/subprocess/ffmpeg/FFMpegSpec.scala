@@ -116,7 +116,7 @@ class FFMpegSpec extends AnyWordSpecLike with Matchers with BeforeAndAfterAll {
       // The tests below shell out to the ffmpeg/ffprobe binaries, which are not installed on the CI runners
       // (see .github/workflows/build.yml). They are ignored by default; run them explicitly where ffmpeg is available.
       "probe a video over http" ignore {
-        val (output, _) = ffmpeg.ffprobe(videoUri, debug = false).unsafeRunSync()
+        val (output, _) = ffmpeg.ffprobe(videoUri).unsafeRunSync()
 
         val video = output.firstVideoStream.getOrElse(fail("expected a video stream"))
         video.codec_name shouldBe "h264"
@@ -149,7 +149,7 @@ class FFMpegSpec extends AnyWordSpecLike with Matchers with BeforeAndAfterAll {
         ffmpeg.transcodeToMp4(videoUri, range = (0L, 1000L), outputFile = out).unsafeRunSync()
 
         Files.size(out) should be > 0L
-        val (output, _) = ffmpeg.ffprobe(out.toUri, debug = false).unsafeRunSync()
+        val (output, _) = ffmpeg.ffprobe(out.toUri).unsafeRunSync()
         val video       = output.firstVideoStream.getOrElse(fail("expected a video stream in the clip"))
         video.codec_name shouldBe "h264"
         video.durationMillis should be > 0

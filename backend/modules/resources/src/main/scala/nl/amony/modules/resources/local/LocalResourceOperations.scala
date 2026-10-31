@@ -65,7 +65,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
   private def toolScanForPath(path: Path, contentType: String): IO[Option[ToolScan]] =
     if contentType.startsWith("video/") then
-      ffmpeg.ffprobe(path.toUri, false, processSettings.ffprobeTimeout).map {
+      ffmpeg.ffprobe(path.toUri, processSettings.ffprobeTimeout).map {
         (ffprobeResult, json) =>
           val version = ffprobeResult.program_version.map(_.version).getOrElse("unknown")
           Some(ToolScan(s"ffprobe/$version", json))
