@@ -4,6 +4,7 @@ import java.util.concurrent.TimeoutException
 import scala.concurrent.duration.FiniteDuration
 
 import cats.effect.IO
+import cats.syntax.all.*
 import fs2.Stream
 import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
@@ -36,22 +37,25 @@ trait ProcessRunner(using meter: Meter[IO], tracer: Tracer[IO]) extends Logging 
       .map(_.getOrElse(""))
 
   private def failOnNonZeroExit(command: Command)(process: fs2.io.process.Process[IO]): IO[Int] =
-    process.exitValue.flatMap { exitCode =>
-      if exitCode != 0 then {
-        tail(process.stderr, 10).flatMap { errOutput =>
+    (process.exitValue, process.stdout.compile.drain, tail(process.stderr, 10)).parTupled.flatMap {
+      case (exitCode, _, errOutput) =>
+        if exitCode != 0 then {
           val msg = s"""Non zero exit code for command: $command \nLast 10 lines of error output:\n$errOutput"""
           IO(logger.error(msg)) >> IO.raiseError(new IllegalStateException(msg))
-        }
-      } else
-        IO.pure(exitCode)
+        } else
+          IO.pure(exitCode)
     }
 
-  private def getOutputAsString(process: fs2.io.process.Process[IO], useErrorStream: Boolean, command: Command): IO[String] =
-    val is = if useErrorStream then process.stderr else process.stdout
-    process.exitValue.flatMap { exitCode =>
-      if exitCode != 0 then logger.warn(s"""Non zero exit code for command: $command\n""")
-      compileToString(is)
+  private def getOutputAsString(process: fs2.io.process.Process[IO], useErrorStream: Boolean, command: Command): IO[String] = {
+    val selected = if useErrorStream then process.stderr else process.stdout
+    val unused   = if useErrorStream then process.stdout else process.stderr
+
+    (process.exitValue, compileToString(selected), unused.compile.drain).parTupled.flatMap {
+      case (exitCode, output, _) =>
+        if exitCode != 0 then logger.warn(s"""Non zero exit code for command: $command\n""")
+        IO.pure(output)
     }
+  }
 
   def runIgnoreOutput(name: String, command: Command, timeout: FiniteDuration): IO[Int] =
     useProcess(name, command, timeout)(failOnNonZeroExit(command))
