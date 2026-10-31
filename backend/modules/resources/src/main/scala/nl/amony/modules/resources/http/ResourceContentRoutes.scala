@@ -67,28 +67,35 @@ object ResourceContentRoutes extends Logging {
     }
 
     /** Builds the manifest operation when the URL version matches the resource's current content version. */
-    def thumbnailTileManifestOperation(urlVersion: String, resource: ResourceInfo): Option[VideoThumbnailTileVtt] =
+    def thumbnailTileManifestOperation(urlVersion: String, resource: ResourceInfo, tiles: ThumbnailTiles): Option[VideoThumbnailTileVtt] =
       if urlVersion != ResourceOperations.contentVersion(resource) then None
       else
         resource.basicContentProperties match {
-          case Some(_: VideoProperties) => Some(VideoThumbnailTileVtt())
-          case _                        => None
+          case Some(video: VideoProperties) =>
+            Some(VideoThumbnailTileVtt(intervalInMillis = tiles.intervalInMillis(video.durationInMillis.toLong)))
+          case _                            => None
         }
 
     /**
      * Builds one sprite operation when the URL version matches and the sprite index exists for the
      * resource's duration, rejecting arbitrary index injection.
      */
-    def thumbnailTileSpriteOperation(urlVersion: String, index: String, resource: ResourceInfo): Option[VideoThumbnailTile] =
+    def thumbnailTileSpriteOperation(
+      urlVersion: String,
+      index: String,
+      resource: ResourceInfo,
+      tiles: ThumbnailTiles
+    ): Option[VideoThumbnailTile] =
       if urlVersion != ResourceOperations.contentVersion(resource) then None
       else
         resource.basicContentProperties match {
-          case Some(_: VideoProperties) =>
+          case Some(video: VideoProperties) =>
+            val interval = tiles.intervalInMillis(video.durationInMillis.toLong)
             index.toIntOption.flatMap { parsed =>
-              val operation = VideoThumbnailTile(index = parsed)
+              val operation = VideoThumbnailTile(intervalInMillis = interval, index = parsed)
               Option.when(operation.validate(resource).isRight)(operation)
             }
-          case _                        => None
+          case _                            => None
         }
 
     /**
@@ -131,6 +138,7 @@ object ResourceContentRoutes extends Logging {
     buckets: BucketRegistry,
     resolutions: ThumbnailResolutions,
     formats: ThumbnailFormats,
+    tiles: ThumbnailTiles,
     cacheMaxAge: FiniteDuration,
     cacheScope: CacheScope
   )(using apiSecurity: ApiSecurity): HttpRoutes[IO] = {
@@ -164,9 +172,9 @@ object ResourceContentRoutes extends Logging {
                                     case patterns.PublicClipPattern(version, start, end, dim, resKey)      =>
                                       patterns.clipOperation(version, start.toLong, end.toLong, dim, resKey, resolutions, resource.info)
                                     case patterns.PublicThumbnailTileManifestPattern(version)              =>
-                                      patterns.thumbnailTileManifestOperation(version, resource.info)
+                                      patterns.thumbnailTileManifestOperation(version, resource.info, tiles)
                                     case patterns.PublicThumbnailTileSpritePattern(version, index)         =>
-                                      patterns.thumbnailTileSpriteOperation(version, index, resource.info)
+                                      patterns.thumbnailTileSpriteOperation(version, index, resource.info, tiles)
                                     case _                                                                 => None
                                   })
             derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))

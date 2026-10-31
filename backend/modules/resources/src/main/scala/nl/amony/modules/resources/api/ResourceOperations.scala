@@ -22,13 +22,12 @@ case class VideoThumbnail(width: Option[Int] = None, height: Option[Int] = None,
 }
 
 object VideoThumbnailTile:
-  val defaultWidth            = 96
-  val defaultIntervalInMillis = 10000L
-  val gridSize                = 8
-  val framesPerSprite         = gridSize * gridSize
+  val defaultWidth    = 96
+  val gridSize        = 8
+  val framesPerSprite = gridSize * gridSize
 
   /** Bump when the manifest layout changes, so an already generated manifest is not reused. */
-  val manifestVersion = 2
+  val manifestVersion = 1
 
   private[api] def validate(info: ResourceInfo, width: Int, intervalInMillis: Long, index: Option[Int] = None): Either[String, Unit] =
     info.basicContentProperties match
@@ -122,9 +121,9 @@ object VideoThumbnailTile:
 
 /** One storyboard sprite containing a group of up to [[VideoThumbnailTile.framesPerSprite]] frames. */
 case class VideoThumbnailTile(
-  width: Int             = VideoThumbnailTile.defaultWidth,
-  intervalInMillis: Long = VideoThumbnailTile.defaultIntervalInMillis,
-  index: Int             = 1
+  width: Int = VideoThumbnailTile.defaultWidth,
+  intervalInMillis: Long,
+  index: Int = 1
 ) extends ResourceOperation {
   override def contentType: String = "image/webp"
 
@@ -133,8 +132,7 @@ case class VideoThumbnailTile(
 }
 
 /** The WebVTT manifest describing all frames and their sprite files. */
-case class VideoThumbnailTileVtt(width: Int = VideoThumbnailTile.defaultWidth, intervalInMillis: Long = VideoThumbnailTile.defaultIntervalInMillis)
-    extends ResourceOperation {
+case class VideoThumbnailTileVtt(width: Int = VideoThumbnailTile.defaultWidth, intervalInMillis: Long) extends ResourceOperation {
   override def contentType: String = "text/vtt"
 
   override def validate(info: ResourceInfo): Either[String, Unit] =

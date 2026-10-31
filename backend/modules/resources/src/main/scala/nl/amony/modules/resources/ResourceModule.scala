@@ -17,7 +17,8 @@ import nl.amony.modules.resources.api.{
   ResourceEvent,
   ResourceIndex,
   ThumbnailFormats,
-  ThumbnailResolutions
+  ThumbnailResolutions,
+  ThumbnailTiles
 }
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
 import nl.amony.modules.resources.http.{BucketRoutes, CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
@@ -35,6 +36,7 @@ class ResourceModule(
   val bucketRegistry: BucketRegistry,
   val thumbResolutions: ThumbnailResolutions,
   val thumbFormats: ThumbnailFormats,
+  val thumbTiles: ThumbnailTiles,
   val contentCacheMaxAge: FiniteDuration,
   val contentCacheScope: CacheScope
 ):
@@ -47,7 +49,7 @@ class ResourceModule(
 
   /** The non-Tapir content routes (downloads, thumbnails and clips), served as plain HttpRoutes. */
   def contentRoutes(using apiSecurity: ApiSecurity): HttpRoutes[IO] =
-    ResourceContentRoutes.apply(bucketRegistry, thumbResolutions, thumbFormats, contentCacheMaxAge, contentCacheScope)
+    ResourceContentRoutes.apply(bucketRegistry, thumbResolutions, thumbFormats, thumbTiles, contentCacheMaxAge, contentCacheScope)
 
 object ResourceModule:
 
@@ -64,6 +66,7 @@ object ResourceModule:
       config.previews.resolutionStepDown
     )
     val thumbFormats     = ThumbnailFormats(config.previews.supportedImageFormats, config.previews.formatOptions)
+    val thumbTiles       = ThumbnailTiles(config.previews.tiles.intervalLadder, config.previews.tiles.targetFrames)
     val resourceDatabase = ResourceDatabase(databasePool)
 
     val bucketFactory: BucketFactory = {
@@ -81,6 +84,7 @@ object ResourceModule:
       bucketRegistry,
       thumbResolutions,
       thumbFormats,
+      thumbTiles,
       config.previews.cacheMaxAge,
       config.previews.cacheScope
     )
