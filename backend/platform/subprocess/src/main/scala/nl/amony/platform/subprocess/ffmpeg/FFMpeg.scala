@@ -9,8 +9,8 @@ import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
-import nl.amony.platform.subprocess.ProcessRunner
 import nl.amony.platform.subprocess.ffmpeg.tasks.*
+import nl.amony.platform.subprocess.{ProcessLimiter, ProcessRunner, ProcessSettings}
 
 object FFMpeg {
 
@@ -53,6 +53,9 @@ object FFMpeg {
     Option(input.getPath).flatMap(_.split("/").lastOption).filter(_.nonEmpty).getOrElse("input")
 }
 
-class FFMpeg(using meter: Meter[IO], tracer: Tracer[IO]) extends Logging with ProcessRunner
+class FFMpeg(override protected val settings: ProcessSettings, override protected val limiter: ProcessLimiter)(
+  using meter: Meter[IO],
+  tracer: Tracer[IO]
+) extends Logging with ProcessRunner
     with CreateThumbnail with CreateThumbnailTile
     with FFProbe with AddFastStart with Transcode

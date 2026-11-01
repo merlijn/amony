@@ -8,12 +8,9 @@ import scribe.Logging
 
 object FFProbeModel extends Logging {
 
-  case class ProbeDebugOutput(isFastStart: Boolean)
-
   case class FFProbeVersion(version: String, copyright: String, compiler_ident: String, configuration: String) derives Decoder
 
-  case class FFProbeOutput(program_version: Option[FFProbeVersion], streams: Option[List[Stream]], debugOutput: Option[ProbeDebugOutput])
-      derives Decoder {
+  case class FFProbeOutput(program_version: Option[FFProbeVersion], streams: Option[List[Stream]]) derives Decoder {
     def firstVideoStream: Option[VideoStream] = streams.flatMap(_.sortBy(_.index).collectFirst { case v: VideoStream => v })
   }
 
@@ -65,8 +62,6 @@ object FFProbeModel extends Logging {
   given videoStreamDecoder: Decoder[VideoStream] = deriveDecoder[VideoStream]
 
   given audioStreamDecoder: Decoder[AudioStream] = deriveDecoder[AudioStream]
-
-  given debugDecoder: Decoder[ProbeDebugOutput] = deriveDecoder[ProbeDebugOutput]
 
   given streamDecoder: Decoder[Stream] = (c: HCursor) => {
     c.downField("codec_type").as[String].flatMap {

@@ -79,11 +79,13 @@ trait CreateThumbnailTile extends Logging {
         "1",
         "-quality",
         "80",
+        "-v",
+        "error",
         "-y",
         "-an",
         output
       )
 
-      runIgnoreOutput("ffmpeg-create-thumbnail-tile", Command("ffmpeg", args)).void
+      runIgnoreOutput("ffmpeg-create-thumbnail-tile", Command("ffmpeg", args), settings.tileTimeout).void
     }
 }
