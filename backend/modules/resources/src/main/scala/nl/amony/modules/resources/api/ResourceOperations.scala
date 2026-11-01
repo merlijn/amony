@@ -211,7 +211,7 @@ object ResourceOperations:
    * Bump this when the preview generation logic or the ffmpeg/ImageMagick toolchain changes, so that cached previews
    * and browser validators are invalidated.
    */
-  val previewRecipeVersion = 2
+  val previewRecipeVersion = 1
 
   /**
    * Length of the content version token in Base32 characters (8 chars = 40 bits). Deliberately short:
