@@ -22,12 +22,13 @@ case class VideoThumbnail(width: Option[Int] = None, height: Option[Int] = None,
 }
 
 object VideoThumbnailTile:
-  val defaultWidth    = 96
-  val gridSize        = 8
-  val framesPerSprite = gridSize * gridSize
+  val defaultWidth     = 160
+  val columnsPerSprite = 8
+  val rowsPerSprite    = 8
+  val framesPerSprite  = columnsPerSprite * rowsPerSprite
 
-  /** Bump when the manifest layout changes, so an already generated manifest is not reused. */
-  val manifestVersion = 1
+  /** Bump when the manifest layout or sprite generation changes, so cached manifests are not reused. */
+  val manifestVersion = 2
 
   private[api] def validate(info: ResourceInfo, width: Int, intervalInMillis: Long, index: Option[Int] = None): Either[String, Unit] =
     info.basicContentProperties match
@@ -68,8 +69,8 @@ object VideoThumbnailTile:
       val scaled = math.round(width.toDouble * sourceHeight / sourceWidth).toInt
       math.max(2, if scaled % 2 == 0 then scaled else scaled + 1)
 
-  def manifestFileName(resourceId: ResourceId, contentVersion: String, width: Int, intervalInMillis: Long): String =
-    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_w${width}_v$manifestVersion.vtt"
+  def manifestFileName(resourceId: ResourceId, contentVersion: String, width: Int, intervalInMillis: Long, token: String): String =
+    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_w${width}_${token}_v$manifestVersion.vtt"
 
   def spriteFileName(
     resourceId: ResourceId,
@@ -77,9 +78,10 @@ object VideoThumbnailTile:
     width: Int,
     intervalInMillis: Long,
     index: Int,
+    token: String,
     extension: String = "webp"
   ): String =
-    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_w${width}_$index.$extension"
+    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_w${width}_${token}_$index.$extension"
 
   /** Renders the complete WebVTT manifest, referencing one sprite file per group of [[framesPerSprite]] frames. */
   def renderWebVtt(
@@ -95,8 +97,8 @@ object VideoThumbnailTile:
     (0 until frames).foreach { n =>
       val spriteIndex   = n / framesPerSprite + 1
       val frameInSprite = n              % framesPerSprite
-      val x             = (frameInSprite % gridSize) * width
-      val y             = (frameInSprite / gridSize) * height
+      val x             = (frameInSprite % columnsPerSprite) * width
+      val y             = (frameInSprite / columnsPerSprite) * height
       val start         = n.toLong * intervalInMillis
       val end           = math.max(start + 1, math.min(durationInMillis, start + intervalInMillis))
 
@@ -123,7 +125,8 @@ object VideoThumbnailTile:
 case class VideoThumbnailTile(
   width: Int = VideoThumbnailTile.defaultWidth,
   intervalInMillis: Long,
-  index: Int = 1
+  index: Int = 1,
+  token: String
 ) extends ResourceOperation {
   override def contentType: String = "image/webp"
 
@@ -132,7 +135,7 @@ case class VideoThumbnailTile(
 }
 
 /** The WebVTT manifest describing all frames and their sprite files. */
-case class VideoThumbnailTileVtt(width: Int = VideoThumbnailTile.defaultWidth, intervalInMillis: Long) extends ResourceOperation {
+case class VideoThumbnailTileVtt(width: Int = VideoThumbnailTile.defaultWidth, intervalInMillis: Long, token: String) extends ResourceOperation {
   override def contentType: String = "text/vtt"
 
   override def validate(info: ResourceInfo): Either[String, Unit] =
@@ -208,7 +211,7 @@ object ResourceOperations:
    * Bump this when the preview generation logic or the ffmpeg/ImageMagick toolchain changes, so that cached previews
    * and browser validators are invalidated.
    */
-  val previewRecipeVersion = 1
+  val previewRecipeVersion = 2
 
   /**
    * Length of the content version token in Base32 characters (8 chars = 40 bits). Deliberately short:

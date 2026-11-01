@@ -135,7 +135,7 @@ class FFMpegSpec extends AnyWordSpecLike with Matchers with BeforeAndAfterAll {
 
       "create a thumbnail tile from a video over http" ignore {
         val out  = workDir.resolve("tile.webp")
-        val tile = ThumbnailTile(width = 96, height = 72, gridSize = 8, frameCount = 1, intervalInMillis = 10000, startInMillis = 0)
+        val tile = ThumbnailTile(width = 160, height = 90, columns = 8, frameCount = 1, intervalInMillis = 10000, startInMillis = 0)
 
         ffmpeg.createThumbnailTile(videoUri, out, tile).unsafeRunSync()
 

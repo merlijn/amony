@@ -90,6 +90,7 @@ object App extends ResourceApp.Forever with Logging {
               ConfigRoutes.apply(
                 resourceModule.thumbResolutions,
                 resourceModule.thumbFormats,
+                resourceModule.thumbTiles,
                 appConfig.resources.previews.supportedVideoFormats,
                 appConfig.resources.previews.resolutionPickingStrategy
               )

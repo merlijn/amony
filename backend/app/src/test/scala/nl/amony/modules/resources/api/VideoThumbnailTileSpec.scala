@@ -33,8 +33,8 @@ class VideoThumbnailTileSpec extends AnyWordSpecLike {
       }
 
       "round the derived height up to an even number" in {
-        assert(VideoThumbnailTile.heightFor(96, 1920, 1080) == 54)
-        assert(VideoThumbnailTile.heightFor(96, 1000, 601) == 58)
+        assert(VideoThumbnailTile.heightFor(160, 1920, 1080) == 90)
+        assert(VideoThumbnailTile.heightFor(160, 1000, 601) == 96)
       }
     }
 
@@ -44,16 +44,16 @@ class VideoThumbnailTileSpec extends AnyWordSpecLike {
         val vtt = VideoThumbnailTile.renderWebVtt(
           durationInMillis = 650000,
           intervalInMillis = 10000,
-          width            = 96,
-          height           = 54,
+          width            = 160,
+          height           = 90,
           spriteUrl        = index => s"/sprite_$index.webp"
         )
 
-        assert(vtt.startsWith("WEBVTT\n\n00:00:00.000 --> 00:00:10.000\n/sprite_1.webp#xywh=0,0,96,54\n"))
-        assert(vtt.contains("00:01:10.000 --> 00:01:20.000\n/sprite_1.webp#xywh=672,0,96,54"))
-        assert(vtt.contains("00:01:20.000 --> 00:01:30.000\n/sprite_1.webp#xywh=0,54,96,54"))
-        assert(vtt.contains("00:10:30.000 --> 00:10:40.000\n/sprite_1.webp#xywh=672,378,96,54"))
-        assert(vtt.contains("00:10:40.000 --> 00:10:50.000\n/sprite_2.webp#xywh=0,0,96,54"))
+        assert(vtt.startsWith("WEBVTT\n\n00:00:00.000 --> 00:00:10.000\n/sprite_1.webp#xywh=0,0,160,90\n"))
+        assert(vtt.contains("00:01:10.000 --> 00:01:20.000\n/sprite_1.webp#xywh=1120,0,160,90"))
+        assert(vtt.contains("00:01:20.000 --> 00:01:30.000\n/sprite_1.webp#xywh=0,90,160,90"))
+        assert(vtt.contains("00:10:30.000 --> 00:10:40.000\n/sprite_1.webp#xywh=1120,630,160,90"))
+        assert(vtt.contains("00:10:40.000 --> 00:10:50.000\n/sprite_2.webp#xywh=0,0,160,90"))
         assert(vtt.linesIterator.count(_.contains("-->")) == 65)
       }
     }

@@ -14,11 +14,35 @@ import nl.amony.platform.subprocess.{Command, ProcessRunner}
 case class ThumbnailTile(
   width: Int,
   height: Int,
-  gridSize: Int,
+  columns: Int,
   frameCount: Int,
   intervalInMillis: Long,
   startInMillis: Long
-)
+) {
+  require(width > 0, "width must be positive")
+  require(height > 0, "height must be positive")
+  require(columns > 0, "columns must be positive")
+  require(frameCount > 0, "frame count must be positive")
+  require(frameCount <= columns * columns, s"frame count must fit in the $columns x $columns sprite grid")
+  require(intervalInMillis > 0, "interval must be positive")
+  require(startInMillis >= 0, "start must not be negative")
+
+  /** Rows actually needed for this sprite, so a partially filled last sprite does not carry empty rows. */
+  val rows: Int = (frameCount + columns - 1) / columns
+}
+
+object ThumbnailTile {
+
+  /**
+   * Resamples the window at exactly one frame per interval and tiles the result. `fps` keeps the
+   * output timestamps aligned with the manifest's cue times, unlike selecting the first frame after
+   * each interval, which drifts and can leave cells empty at the end of a sprite when the interval
+   * is not a multiple of the source frame duration. `nb_frames` stops the tile at the planned frame
+   * count instead of waiting for the end of the window.
+   */
+  def filter(tile: ThumbnailTile): String =
+    s"fps=1000/${tile.intervalInMillis},scale=${tile.width}:${tile.height},tile=${tile.columns}x${tile.rows}:nb_frames=${tile.frameCount}"
+}
 
 trait CreateThumbnailTile extends Logging {
 
@@ -26,32 +50,21 @@ trait CreateThumbnailTile extends Logging {
 
   /**
    * Generates one storyboard sprite for the given window, holding a frame every `intervalInMillis`
-   * and tiled into a `gridSize x gridSize` square. The window is seeked to directly, so a sprite for
-   * a later part of a long video does not require decoding everything before it.
+   * and tiled into `columns` columns with as many rows as the frame count needs. The window is
+   * seeked to directly, so a sprite for a later part of a long video does not require decoding
+   * everything before it.
    */
   def createThumbnailTile(
     input: URI,
     outputFile: Path,
     tile: ThumbnailTile,
     overwrite: Boolean = false
-  ): IO[Unit] = {
-
-    require(tile.width > 0, "width must be positive")
-    require(tile.height > 0, "height must be positive")
-    require(tile.gridSize > 0, "grid size must be positive")
-    require(tile.frameCount > 0, "frame count must be positive")
-    require(tile.intervalInMillis > 0, "interval must be positive")
-    require(tile.startInMillis >= 0, "start must not be negative")
+  ): IO[Unit] =
 
     if Files.exists(outputFile) && !overwrite then IO.unit
     else {
-      val intervalSecs = tile.intervalInMillis.toDouble / 1000.0
-      val window       = tile.frameCount.toLong * tile.intervalInMillis
-      val output       = outputFile.toAbsolutePath.normalize.toString
-
-      // Select the first frame and one frame every interval, then tile them into a single sprite.
-      val filter =
-        s"select='isnan(prev_selected_t)+gte(t-prev_selected_t\\,$intervalSecs)',scale=${tile.width}:${tile.height},tile=${tile.gridSize}x${tile.gridSize}"
+      val window = tile.frameCount.toLong * tile.intervalInMillis
+      val output = outputFile.toAbsolutePath.normalize.toString
 
       val args = List(
         "-ss",
@@ -61,7 +74,7 @@ trait CreateThumbnailTile extends Logging {
         "-i",
         FFMpeg.inputArg(input),
         "-vf",
-        filter,
+        ThumbnailTile.filter(tile),
         "-frames:v",
         "1",
         "-quality",
@@ -73,5 +86,4 @@ trait CreateThumbnailTile extends Logging {
 
       runIgnoreOutput("ffmpeg-create-thumbnail-tile", Command("ffmpeg", args)).void
     }
-  }
 }

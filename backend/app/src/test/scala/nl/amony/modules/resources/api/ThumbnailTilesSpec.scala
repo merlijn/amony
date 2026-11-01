@@ -32,6 +32,23 @@ class ThumbnailTilesSpec extends AnyWordSpecLike {
       assertThrows[IllegalArgumentException](ThumbnailTiles(Nil, targetFrames = 200))
       assertThrows[IllegalArgumentException](ThumbnailTiles(List(0.seconds), targetFrames = 200))
       assertThrows[IllegalArgumentException](ThumbnailTiles(List(1.second), targetFrames = 0))
+      assertThrows[IllegalArgumentException](ThumbnailTiles(List(1.second), targetFrames = 200, spriteWidth = 0))
+    }
+
+    "produce a stable, URL-safe recipe token for identical settings" in {
+      val other = ThumbnailTiles(List(250.millis, 500.millis, 1.second, 2.seconds, 5.seconds, 10.seconds), targetFrames = 200)
+      assert(tiles.recipeToken == other.recipeToken)
+      assert(tiles.recipeToken.matches("[a-z2-7]{8}"))
+    }
+
+    "change the recipe token when the sprite geometry or sampling changes" in {
+      val larger  = ThumbnailTiles(List(250.millis, 500.millis, 1.second, 2.seconds, 5.seconds, 10.seconds), targetFrames = 200, spriteWidth = 320)
+      val coarser = ThumbnailTiles(List(250.millis, 500.millis, 1.second, 2.seconds, 5.seconds, 10.seconds), targetFrames = 100)
+      val finer   = ThumbnailTiles(List(250.millis, 500.millis, 1.second, 2.seconds, 5.seconds), targetFrames = 200)
+
+      assert(tiles.recipeToken != larger.recipeToken)
+      assert(tiles.recipeToken != coarser.recipeToken)
+      assert(tiles.recipeToken != finer.recipeToken)
     }
   }
 }

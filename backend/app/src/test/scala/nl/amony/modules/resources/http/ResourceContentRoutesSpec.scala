@@ -50,11 +50,11 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
 
   private def tileManifestOp(info: ResourceInfo) =
     ResourceContentRoutes.patterns
-      .thumbnailTileManifestOperation(ResourceOperations.contentVersion(info), info, tiles)
+      .thumbnailTileManifestOperation(ResourceOperations.contentVersion(info), tiles.recipeToken, info, tiles)
 
   private def tileSpriteOp(index: Int, info: ResourceInfo) =
     ResourceContentRoutes.patterns
-      .thumbnailTileSpriteOperation(ResourceOperations.contentVersion(info), index.toString, info, tiles)
+      .thumbnailTileSpriteOperation(ResourceOperations.contentVersion(info), tiles.recipeToken, index.toString, info, tiles)
 
   "ResourceContentRoutes" when {
 
@@ -178,13 +178,21 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
     "building a thumbnail tile operation" should {
 
       "build the manifest operation for a video" in
-        assert(tileManifestOp(videoInfo(1920, 1080)) == Some(VideoThumbnailTileVtt(intervalInMillis = 250)))
+        assert(tileManifestOp(videoInfo(1920, 1080)) == Some(VideoThumbnailTileVtt(width = 160, intervalInMillis = 250, token = tiles.recipeToken)))
 
       "build the first sprite operation" in
-        assert(tileSpriteOp(1, videoInfo(1920, 1080)) == Some(VideoThumbnailTile(intervalInMillis = 250, index = 1)))
+        assert(
+          tileSpriteOp(1, videoInfo(1920, 1080)) == Some(
+            VideoThumbnailTile(width = 160, intervalInMillis = 250, index = 1, token = tiles.recipeToken)
+          )
+        )
 
       "allow a sprite index covered by the video duration" in
-        assert(tileSpriteOp(2, videoInfo(1920, 1080, durationInMillis = 650000)) == Some(VideoThumbnailTile(intervalInMillis = 5000, index = 2)))
+        assert(
+          tileSpriteOp(2, videoInfo(1920, 1080, durationInMillis = 650000)) == Some(
+            VideoThumbnailTile(width = 160, intervalInMillis = 5000, index = 2, token = tiles.recipeToken)
+          )
+        )
 
       "reject a sprite index before the first sprite" in
         assert(tileSpriteOp(0, videoInfo(1920, 1080)).isEmpty)
@@ -194,7 +202,30 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
 
       "reject a tile when the content version does not match" in {
         val info = videoInfo(1920, 1080)
-        val op   = ResourceContentRoutes.patterns.thumbnailTileManifestOperation("staleversion", info, tiles)
+        val op   = ResourceContentRoutes.patterns.thumbnailTileManifestOperation("staleversion", tiles.recipeToken, info, tiles)
+        assert(op.isEmpty)
+      }
+
+      "reject a tile when the recipe token does not match" in {
+        val info = videoInfo(1920, 1080)
+        val op   = ResourceContentRoutes.patterns.thumbnailTileManifestOperation(
+          ResourceOperations.contentVersion(info),
+          "staletoken",
+          info,
+          tiles
+        )
+        assert(op.isEmpty)
+      }
+
+      "reject a sprite when the recipe token does not match" in {
+        val info = videoInfo(1920, 1080)
+        val op   = ResourceContentRoutes.patterns.thumbnailTileSpriteOperation(
+          ResourceOperations.contentVersion(info),
+          "staletoken",
+          "1",
+          info,
+          tiles
+        )
         assert(op.isEmpty)
       }
 
@@ -234,13 +265,13 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
       }
 
       "match thumbnail tile manifest and sprite URLs" in {
-        val manifest = ResourceContentRoutes.patterns.PublicThumbnailTileManifestPattern.findFirstMatchIn("thumbtile_abc123.vtt")
-        val sprite   = ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123_2.webp")
+        val manifest = ResourceContentRoutes.patterns.PublicThumbnailTileManifestPattern.findFirstMatchIn("thumbtile_abc123_def456.vtt")
+        val sprite   = ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123_def456_2.webp")
 
-        assert(manifest.map(_.group(1)) == Some("abc123"))
-        assert(sprite.map(m => (m.group(1), m.group(2))) == Some(("abc123", "2")))
+        assert(manifest.map(m => (m.group(1), m.group(2))) == Some(("abc123", "def456")))
+        assert(sprite.map(m => (m.group(1), m.group(2), m.group(3))) == Some(("abc123", "def456", "2")))
         assert(ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123.webp").isEmpty)
-        assert(ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123_2.png").isEmpty)
+        assert(ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123_def456_2.png").isEmpty)
       }
     }
   }

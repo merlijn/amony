@@ -17,6 +17,7 @@ export const defaultAppConfig: AppConfig = {
   supportedVideoFormats: ["mp4"],
   defaultThumbnailResolution: { dimension: "width", pixels: 256 },
   resolutionPickingStrategy: "round-nearest",
+  timelinePreviewToken: "",
   imageFormat: "webp",
   videoFormat: "mp4",
 };

@@ -7,7 +7,7 @@ import sttp.tapir.Schema.annotations.customise
 import sttp.tapir.json.circe.jsonBody
 
 import nl.amony.modules.resources.ResolutionPickingStrategy
-import nl.amony.modules.resources.api.{ThumbnailDimension, ThumbnailFormats, ThumbnailResolutions}
+import nl.amony.modules.resources.api.{ThumbnailDimension, ThumbnailFormats, ThumbnailResolutions, ThumbnailTiles}
 import nl.amony.platform.tapir.required
 import nl.amony.platform.tapir.{RoutesModule, ServerEndpoints, routes, serverLogic}
 
@@ -23,7 +23,9 @@ case class AppConfigDto(
   @customise(required)
   supportedVideoFormats: List[String],
   defaultThumbnailResolution: ThumbnailResolutionDto,
-  resolutionPickingStrategy: String
+  resolutionPickingStrategy: String,
+  @customise(required)
+  timelinePreviewToken: String
 ) derives Codec, Schema
 
 object ConfigRoutes extends RoutesModule:
@@ -37,6 +39,7 @@ object ConfigRoutes extends RoutesModule:
   def apply(
     resolutions: ThumbnailResolutions,
     formats: ThumbnailFormats,
+    tiles: ThumbnailTiles,
     videoFormats: List[String],
     pickingStrategy: ResolutionPickingStrategy
   ): ServerEndpoints[IO] =
@@ -48,7 +51,8 @@ object ConfigRoutes extends RoutesModule:
           supportedVideoFormats      = videoFormats,
           // Thumbnails are displayed in fixed-aspect boxes, so width is the operative dimension by default.
           defaultThumbnailResolution = ThumbnailResolutionDto(ThumbnailDimension.Width.name, resolutions.default),
-          resolutionPickingStrategy  = pickingStrategy.configName
+          resolutionPickingStrategy  = pickingStrategy.configName,
+          timelinePreviewToken       = tiles.recipeToken
         )))
       }
     }
