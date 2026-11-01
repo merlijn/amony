@@ -6,8 +6,8 @@ import java.nio.file.{Files, Path}
 import cats.effect.IO
 import scribe.Logging
 
-import nl.amony.platform.subprocess.ffmpeg.FFMpeg
 import nl.amony.platform.subprocess.ffmpeg.FFMpeg.formatTime
+import nl.amony.platform.subprocess.ffmpeg.{FFMpeg, HardwareDecoding}
 import nl.amony.platform.subprocess.{Command, ProcessRunner}
 
 /** The part of a storyboard that a single sprite covers. */
@@ -41,9 +41,19 @@ object ThumbnailTile {
    * each interval, which drifts and can leave cells empty at the end of a sprite when the interval
    * is not a multiple of the source frame duration. `nb_frames` stops the tile at the planned frame
    * count instead of waiting for the end of the window.
+   *
+   * With hardware decoding the scale happens on the GPU and must therefore come before `fps`, so only
+   * the small preview frames are copied back and resampled; in software the order is reversed so the
+   * frames that `fps` drops are never scaled.
    */
-  def filter(tile: ThumbnailTile): String =
-    s"fps=1000/${tile.intervalInMillis},scale=${tile.width}:${tile.height},tile=${tile.columns}x${tile.rows}:nb_frames=${tile.frameCount}"
+  def filter(tile: ThumbnailTile, hardware: Option[HardwareDecoding] = None): String = {
+    val tiling = s"tile=${tile.columns}x${tile.rows}:nb_frames=${tile.frameCount}"
+    val fps    = s"fps=1000/${tile.intervalInMillis}"
+
+    hardware match
+      case Some(value) => List(value.scaleFilter(tile.width, tile.height), fps, tiling).mkString(",")
+      case None        => List(fps, s"scale=${tile.width}:${tile.height}", tiling).mkString(",")
+  }
 }
 
 trait CreateThumbnailTile extends Logging {
@@ -55,6 +65,10 @@ trait CreateThumbnailTile extends Logging {
    * and tiled into `columns` columns with as many rows as the frame count needs. The window is
    * seeked to directly, so a sprite for a later part of a long video does not require decoding
    * everything before it.
+   *
+   * When hardware decoding is available it is tried first and the job falls back to software for a
+   * codec or device the GPU cannot handle, so an unsupported input costs a failed process start
+   * rather than a missing preview.
    */
   def createThumbnailTile(
     input: URI,
@@ -68,26 +82,42 @@ trait CreateThumbnailTile extends Logging {
       val window = tile.frameCount.toLong * tile.intervalInMillis
       val output = outputFile.toAbsolutePath.normalize.toString
 
-      val args = List(
-        "-ss",
-        formatTime(tile.startInMillis),
-        "-t",
-        formatTime(window),
-        "-i",
-        FFMpeg.inputArg(input),
-        "-vf",
-        ThumbnailTile.filter(tile),
-        "-frames:v",
-        "1",
-        "-quality",
-        tile.quality.toString,
-        "-v",
-        "error",
-        "-y",
-        "-an",
-        output
+      def command(hardware: Option[HardwareDecoding]): Command = Command(
+        "ffmpeg",
+        hardware.toList.flatMap(_.inputArgs) ++ List(
+          "-ss",
+          formatTime(tile.startInMillis),
+          "-t",
+          formatTime(window),
+          "-i",
+          FFMpeg.inputArg(input),
+          "-vf",
+          ThumbnailTile.filter(tile, hardware),
+          "-frames:v",
+          "1",
+          "-quality",
+          tile.quality.toString,
+          "-v",
+          "error",
+          "-y",
+          "-an",
+          output
+        )
       )
 
-      runIgnoreOutput("ffmpeg-create-thumbnail-tile", Command("ffmpeg", args), settings.tileTimeout).void
+      /** Runs one ffmpeg attempt and rejects one that reports success without writing a sprite. */
+      def attempt(name: String, hardware: Option[HardwareDecoding]): IO[Unit] =
+        runIgnoreOutput(name, command(hardware), settings.tileTimeout).void >>
+          IO.blocking(Files.size(outputFile)).flatMap { size =>
+            IO.raiseWhen(size <= 0)(new IllegalStateException(s"ffmpeg produced an empty sprite: $output"))
+          }
+
+      hardwareDecoding match
+        case None         => attempt("ffmpeg-create-thumbnail-tile", None)
+        case Some(config) =>
+          attempt("ffmpeg-create-thumbnail-tile-hw", Some(config)).handleErrorWith { error =>
+            logger.warn(s"Hardware decoding failed for '$input', falling back to software: ${error.getMessage}")
+            attempt("ffmpeg-create-thumbnail-tile", None)
+          }
     }
 }

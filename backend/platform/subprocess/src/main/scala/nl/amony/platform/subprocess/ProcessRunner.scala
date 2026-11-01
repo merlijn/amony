@@ -10,6 +10,8 @@ import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
+import nl.amony.platform.subprocess.ffmpeg.HardwareDecoding
+
 case class Command(cmd: String, args: Seq[String]) {
   override def toString: String = s"$cmd ${args.mkString(" ")}"
 }
@@ -21,6 +23,17 @@ trait ProcessRunner(using meter: Meter[IO], tracer: Tracer[IO]) extends Logging 
 
   protected def settings: ProcessSettings
   protected def limiter: ProcessLimiter
+
+  /** Hardware decoding for ffmpeg, resolved once from the configured mode and the available render node. */
+  protected lazy val hardwareDecoding: Option[HardwareDecoding] = {
+    val resolved = HardwareDecoding.resolve(settings.hardwareDecode, settings.vaapiDevice)
+    resolved match
+      case Some(_) => logger.info(s"Decoding video with VAAPI on ${settings.vaapiDevice}")
+      case None    =>
+        if settings.hardwareDecode != HardwareDecode.Disabled then
+          logger.info(s"No readable VAAPI device at ${settings.vaapiDevice}, decoding video in software")
+    resolved
+  }
 
   def compileToString(is: fs2.Stream[IO, Byte]): IO[String] = is.compile.toVector.map(_.toArray).map(new String(_))
 

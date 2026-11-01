@@ -1,0 +1,15 @@
+# Gives the app container access to the host GPU so ffmpeg can decode previews with VAAPI instead of
+# burning CPU. Use on a Linux host that has a /dev/dri render node:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.vaapi.yml up -d
+#
+# The container needs the GID of the host's `render` group to open the render node. Set AMONY_RENDER_GID
+# in .env to the output of `getent group render | cut -d: -f3` when it is not the default 993.
+#
+# Verify inside the container with: docker compose exec amony vainfo
+services:
+  amony:
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "${AMONY_RENDER_GID:-993}"

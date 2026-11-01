@@ -74,6 +74,9 @@ service.
 
 - It might take some time to process the videos on first startup. Check progress with `docker compose logs amony`
 - For HTTPS with automatic certificate management, see `docker-compose-https.yml`
+- Preview generation is CPU bound. On a Linux host with an Intel or AMD GPU, `docker-compose.vaapi.yml` passes the
+  render node into the container so ffmpeg decodes with the GPU's media block (VAAPI) instead of the CPU. Set
+  `AMONY_RENDER_GID` to the GID of the host's `render` group and check it with `docker compose exec amony vainfo`.
 
 ## Development
 
