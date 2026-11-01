@@ -9,13 +9,19 @@ class ResourceOperationsSpec extends AnyWordSpecLike {
   private val resolutions = ThumbnailResolutions(List(128, 256, 512), 256, stepDown = 0)
   private val formats     = ThumbnailFormats(List(ImageFormat.Webp, ImageFormat.Jpeg))
 
-  private def videoInfo(width: Int, height: Int, durationInMillis: Int = 10000, thumbnailTimestamp: Int = 1000) = ResourceInfo(
+  private def videoInfo(
+    width: Int,
+    height: Int,
+    durationInMillis: Int                     = 10000,
+    thumbnailTimestamp: Int                   = 1000,
+    pixelAspectRatio: Option[Float]           = None
+  ) = ResourceInfo(
     bucketId           = BucketId("test"),
     resourceId         = ResourceId("resource"),
     userId             = UserId("user"),
     path               = "video.mp4",
     size               = 1L,
-    contentMeta        = ContentMeta.indexed(Some(VideoProperties(width, height, 30f, durationInMillis))),
+    contentMeta        = ContentMeta.indexed(Some(VideoProperties(width, height, 30f, durationInMillis, pixelAspectRatio = pixelAspectRatio))),
     thumbnailTimestamp = Some(thumbnailTimestamp)
   )
 
@@ -46,6 +52,22 @@ class ResourceOperationsSpec extends AnyWordSpecLike {
         assert(clips.map(_.width) == List(Some(128), Some(256), Some(512)))
         assert(clips.forall(_.start == 1000L))
         assert(clips.forall(_.end == 4000L))
+      }
+
+      "pin both dimensions for anamorphic videos" in {
+        val operations = ResourceOperations.all(videoInfo(853, 480, pixelAspectRatio = Some(32f / 27f)), resolutions, formats)
+        val thumbnails = operations.collect { case t: VideoThumbnail => t }
+        val clips      = operations.collect { case f: VideoFragment => f }
+
+        assert(thumbnails.forall(_.height.isDefined))
+        assert(
+          thumbnails.map(t => (t.width, t.height)).distinct == List(
+            (Some(128), Some(72)),
+            (Some(256), Some(144)),
+            (Some(512), Some(288))
+          )
+        )
+        assert(clips.map(c => (c.width, c.height)) == List((Some(128), Some(72)), (Some(256), Some(144)), (Some(512), Some(288))))
       }
 
       "build only image thumbnails for images" in {

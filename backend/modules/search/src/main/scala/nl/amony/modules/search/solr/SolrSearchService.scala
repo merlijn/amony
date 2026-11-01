@@ -60,7 +60,7 @@ private[search] class SolrSearchService(config: SolrConfig, solr: SolrClient) ex
         val duration = document.getFieldValue(FieldNames.duration).asInstanceOf[Int]
         val fps      = document.getFieldValue(FieldNames.fps).asInstanceOf[Float]
         val codec    = Option(document.getFieldValue(FieldNames.videoCodec)).map(_.asInstanceOf[String])
-        Some(VideoProperties(width, height, fps, duration, codec))
+        Some(VideoProperties(width, height, fps, duration, codec, None))
       case _       => None
     }
 

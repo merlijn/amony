@@ -29,7 +29,7 @@ object VideoThumbnailTile:
   val spriteQuality    = 70
 
   /** Bump when the manifest layout or sprite generation changes, so cached manifests are not reused. */
-  val manifestVersion = 2
+  val manifestVersion = 3
 
   private[api] def validate(info: ResourceInfo, width: Int, intervalInMillis: Long, index: Option[Int] = None): Either[String, Unit] =
     info.basicContentProperties match
@@ -281,7 +281,8 @@ object ResourceOperations:
     dimension: ThumbnailDimension,
     source: (Int, Int),
     even: Boolean,
-    minimumDimension: Option[Int] = None
+    minimumDimension: Option[Int] = None,
+    squarePixels: Boolean         = false
   ): (Option[Int], Option[Int]) = {
     val (sourceWidth, sourceHeight) = source
     val pinnedSource                = if dimension == ThumbnailDimension.Width then sourceWidth else sourceHeight
@@ -302,7 +303,15 @@ object ResourceOperations:
         val belowMinimum = minimum.exists(min => derivedFloor(roundedDown, pinnedSource, otherSource) < min)
         if belowMinimum then roundedDown + 2 else roundedDown
 
-    (Option.when(dimension == ThumbnailDimension.Width)(sized), Option.when(dimension == ThumbnailDimension.Height)(sized))
+    // Anamorphic sources must pin both sides: otherwise ffmpeg derives the other side from the
+    // coded dimensions and the output keeps a non-square pixel aspect ratio.
+    val derived =
+      if !squarePixels || pinnedSource <= 0 then None
+      else
+        val scaled = math.max(1, math.round(sized.toDouble * otherSource / pinnedSource).toInt)
+        Some(if even then math.max(2, if scaled % 2 == 0 then scaled else scaled + 1) else scaled)
+
+    if dimension == ThumbnailDimension.Width then (Some(sized), derived) else (derived, Some(sized))
   }
 
   /** Every thumbnail and preview-clip operation configured for a resource. */
@@ -318,11 +327,24 @@ object ResourceOperations:
             format <- formats.formats
             size   <- sizes
           yield
-            val (width, height) = scaledDimensions(size, ThumbnailDimension.Width, source, even = true, minimumDimension = format.minimumDimension)
+            val (width, height) = scaledDimensions(
+              size,
+              ThumbnailDimension.Width,
+              source,
+              even             = true,
+              minimumDimension = format.minimumDimension,
+              squarePixels     = video.pixelAspectRatio.isDefined
+            )
             VideoThumbnail(width, height, timestamp, format)
 
         val clips: List[ResourceOperation] = sizes.map { size =>
-          val (width, height) = scaledDimensions(size, ThumbnailDimension.Width, source, even = true)
+          val (width, height) = scaledDimensions(
+            size,
+            ThumbnailDimension.Width,
+            source,
+            even         = true,
+            squarePixels = video.pixelAspectRatio.isDefined
+          )
           VideoFragment(width, height, start, end)
         }
 

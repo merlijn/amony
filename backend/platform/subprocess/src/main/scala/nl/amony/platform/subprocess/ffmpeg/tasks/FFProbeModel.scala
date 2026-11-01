@@ -37,6 +37,7 @@ object FFProbeModel extends Logging {
     codec_name: String,
     width: Int,
     height: Int,
+    sample_aspect_ratio: Option[String],
     duration: Option[String],
     bit_rate: Option[String],
     avg_frame_rate: String,
@@ -73,11 +74,28 @@ object FFProbeModel extends Logging {
       ((rotation % 360) + 360) % 360
     }
 
-    /** Width after applying display rotation, as ffmpeg autorotates while decoding. */
-    def displayWidth: Int = if rotationDegrees % 180 == 90 then height else width
+    /** Non-square pixel ratio, e.g. 32:27 for anamorphic DVD video. None when the pixels are square. */
+    def pixelAspectRatio: Option[Double] =
+      sample_aspect_ratio
+        .flatMap { value =>
+          value.split(':') match
+            case Array(widthPart, heightPart) =>
+              for
+                sarWidth  <- widthPart.trim.toDoubleOption
+                sarHeight <- heightPart.trim.toDoubleOption
+                if sarWidth > 0 && sarHeight > 0
+              yield sarWidth / sarHeight
+            case _                            => None
+        }
+        .filter(ratio => math.abs(ratio - 1.0) > 0.001)
 
-    /** Height after applying display rotation, as ffmpeg autorotates while decoding. */
-    def displayHeight: Int = if rotationDegrees % 180 == 90 then width else height
+    private def scaledWidth: Int = math.max(1, math.round(width * pixelAspectRatio.getOrElse(1.0)).toInt)
+
+    /** Width after applying pixel aspect ratio and display rotation, as ffmpeg autorotates while decoding. */
+    def displayWidth: Int = if rotationDegrees % 180 == 90 then height else scaledWidth
+
+    /** Height after applying pixel aspect ratio and display rotation, as ffmpeg autorotates while decoding. */
+    def displayHeight: Int = if rotationDegrees % 180 == 90 then scaledWidth else height
   }
 
   given unkownStreamDecoder: Decoder[UnkownStream] = deriveDecoder[UnkownStream]

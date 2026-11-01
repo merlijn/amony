@@ -14,13 +14,19 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
   private val formats          = ThumbnailFormats(List(ImageFormat.Avif, ImageFormat.Webp, ImageFormat.Jpeg))
   private val tiles            = ThumbnailTiles(List(250.millis, 500.millis, 1.second, 2.seconds, 5.seconds, 10.seconds), 200)
 
-  private def videoInfo(width: Int, height: Int, durationInMillis: Int = 10000, thumbnailTimestamp: Int = 1000) = ResourceInfo(
+  private def videoInfo(
+    width: Int,
+    height: Int,
+    durationInMillis: Int                     = 10000,
+    thumbnailTimestamp: Int                   = 1000,
+    pixelAspectRatio: Option[Float]           = None
+  ) = ResourceInfo(
     bucketId           = BucketId("test"),
     resourceId         = ResourceId("resource"),
     userId             = UserId("user"),
     path               = "video.mp4",
     size               = 1L,
-    contentMeta        = ContentMeta.indexed(Some(VideoProperties(width, height, 30f, durationInMillis))),
+    contentMeta        = ContentMeta.indexed(Some(VideoProperties(width, height, 30f, durationInMillis, pixelAspectRatio = pixelAspectRatio))),
     thumbnailTimestamp = Some(thumbnailTimestamp)
   )
 
@@ -78,6 +84,11 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
       "not cap a request smaller than the source" in {
         val op = thumbOp(1000, "w", "352", "webp", videoInfo(1920, 1080))
         assert(op == Some(VideoThumbnail(width = Some(352), height = None, timestamp = 1000, format = ImageFormat.Webp)))
+      }
+
+      "pin both dimensions for anamorphic video" in {
+        val op = thumbOp(1000, "w", "352", "webp", videoInfo(853, 480, pixelAspectRatio = Some(32f / 27f)))
+        assert(op == Some(VideoThumbnail(width = Some(352), height = Some(198), timestamp = 1000, format = ImageFormat.Webp)))
       }
 
       "serve a lower rung when resolution-step-down is configured" in {
@@ -156,6 +167,11 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
       "cap the clip end at the video length" in {
         val op = clipOp(1000, 2000, "w", "352", videoInfo(1920, 1080, durationInMillis = 2000))
         assert(op == Some(VideoFragment(width = Some(352), height = None, start = 1000, end = 2000)))
+      }
+
+      "pin both dimensions for an anamorphic clip" in {
+        val op = clipOp(1000, 4000, "w", "352", videoInfo(853, 480, pixelAspectRatio = Some(32f / 27f)))
+        assert(op == Some(VideoFragment(width = Some(352), height = Some(198), start = 1000, end = 4000)))
       }
 
       "reject a clip when the start does not match the canonical range" in {

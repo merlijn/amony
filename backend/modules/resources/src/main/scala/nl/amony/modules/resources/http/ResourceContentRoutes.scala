@@ -55,8 +55,14 @@ object ResourceContentRoutes extends Logging {
           case Some(video: VideoProperties) =>
             val ts = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
             if urlTimestamp == ts then
-              val (width, height) =
-                ResourceOperations.scaledDimensions(pixels, dimension, source, even = true, minimumDimension = format.minimumDimension)
+              val (width, height) = ResourceOperations.scaledDimensions(
+                pixels,
+                dimension,
+                source,
+                even             = true,
+                minimumDimension = format.minimumDimension,
+                squarePixels     = video.pixelAspectRatio.isDefined
+              )
               Some(VideoThumbnail(width = width, height = height, timestamp = ts, format = format))
             else None
           case Some(_: ImageProperties)     =>
@@ -142,7 +148,13 @@ object ResourceContentRoutes extends Logging {
           case Some(video: VideoProperties) =>
             val (start, end) = VideoFragment.previewRange(resource.thumbnailTimestamp, video.durationInMillis)
             if urlStart == start && urlEnd == end then
-              val (width, height) = ResourceOperations.scaledDimensions(pixels, dimension, source, even = true)
+              val (width, height) = ResourceOperations.scaledDimensions(
+                pixels,
+                dimension,
+                source,
+                even         = true,
+                squarePixels = video.pixelAspectRatio.isDefined
+              )
               Some(VideoFragment(width = width, height = height, start = start, end = end))
             else None
           case _                            =>

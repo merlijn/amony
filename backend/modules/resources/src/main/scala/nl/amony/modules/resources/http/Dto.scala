@@ -123,7 +123,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
   val contentMeta: ResourceMetaDto = resource.basicContentProperties match {
     case Some(ImageProperties(width, height, _)) => ResourceMetaDto(width = width, height = height, duration = 0, fps = 0, codec = None)
 
-    case Some(VideoProperties(width, height, fps, duration, codec)) =>
+    case Some(VideoProperties(width, height, fps, duration, codec, _)) =>
       ResourceMetaDto(width = width, height = height, duration = duration, fps = fps, codec = codec, streamable = streamable)
 
     case None => ResourceMetaDto(width = 0, height = 0, duration = 0, fps = 0, codec = None)

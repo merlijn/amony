@@ -49,7 +49,9 @@ case class VideoProperties(
   height: Int,
   fps: Float,
   durationInMillis: Int,
-  codec: Option[String] = None
+  codec: Option[String]           = None,
+  /** Set when the video uses non-square pixels, so output must be scaled to an explicit size. */
+  pixelAspectRatio: Option[Float] = None
 ) extends ContentProperties derives io.circe.Codec
 
 case class ImageProperties(width: Int, height: Int, metaData: Map[String, String] = Map.empty) extends ContentProperties
@@ -86,6 +88,7 @@ object ContentProperties:
         height           = stream.displayHeight,
         durationInMillis = stream.durationMillis,
         fps              = stream.fps.toFloat,
-        codec            = Some(stream.codec_name)
+        codec            = Some(stream.codec_name),
+        pixelAspectRatio = stream.pixelAspectRatio.map(_.toFloat)
       )
   }.toRight(new Exception("No video stream found")).toTry
