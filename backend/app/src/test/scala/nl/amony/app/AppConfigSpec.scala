@@ -6,6 +6,7 @@ import pureconfig.ConfigSource
 import scribe.Logging
 
 import nl.amony.modules.resources.api.ImageFormat
+import nl.amony.platform.subprocess.HardwareDecodeMode
 
 class AppConfigSpec extends AnyWordSpecLike with Logging {
 
@@ -28,6 +29,9 @@ class AppConfigSpec extends AnyWordSpecLike with Logging {
       assert(appConfig.database.poolSize == 10)
       assert(appConfig.mediaProcessing.maxConcurrent > 0)
       assert(appConfig.mediaProcessing.maxQueued > 0)
+      assert(appConfig.mediaProcessing.hardwareDecode.enabled == false)
+      assert(appConfig.mediaProcessing.hardwareDecode.mode == HardwareDecodeMode.Vaapi)
+      assert(appConfig.mediaProcessing.hardwareDecode.vaapiDevice == "/dev/dri/renderD128")
     }
   }
 }
