@@ -14,13 +14,13 @@ import nl.amony.modules.resources.util.Base32
 final class ThumbnailTiles(
   intervalLadder: List[FiniteDuration],
   targetFrames: Int,
-  val spriteWidth: Int = VideoThumbnailTile.defaultWidth
+  val spritePixels: Int = VideoThumbnailTile.defaultPixels
 ):
 
   require(intervalLadder.nonEmpty, "At least one thumbnail tile interval must be configured")
   require(intervalLadder.forall(_.toMillis > 0), "Thumbnail tile intervals must be positive")
   require(targetFrames > 0, s"Thumbnail tile target frame count must be > 0, got $targetFrames")
-  require(spriteWidth > 0, s"Thumbnail tile sprite width must be > 0, got $spriteWidth")
+  require(spritePixels > 0, s"Thumbnail tile sprite pixel count must be > 0, got $spritePixels")
 
   /** Configured intervals in milliseconds, smallest to largest. */
   val intervals: List[Long] = intervalLadder.map(_.toMillis).distinct.sorted
@@ -38,7 +38,7 @@ final class ThumbnailTiles(
    */
   lazy val recipeToken: String = {
     val parts  = List(
-      spriteWidth.toString,
+      spritePixels.toString,
       VideoThumbnailTile.columnsPerSprite.toString,
       VideoThumbnailTile.framesPerSprite.toString,
       VideoThumbnailTile.spriteQuality.toString,

@@ -71,7 +71,7 @@ object ResourceModule:
     val thumbTiles       = ThumbnailTiles(
       config.previews.tiles.intervalLadder,
       config.previews.tiles.targetFrames,
-      config.previews.tiles.spriteWidth
+      config.previews.tiles.spritePixels
     )
     val resourceDatabase = ResourceDatabase(databasePool)
 

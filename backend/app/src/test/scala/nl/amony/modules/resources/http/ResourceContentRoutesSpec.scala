@@ -180,6 +180,9 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
       "build the manifest operation for a video" in
         assert(tileManifestOp(videoInfo(1920, 1080)) == Some(VideoThumbnailTileVtt(width = 192, intervalInMillis = 250, token = tiles.recipeToken)))
 
+      "use the target pixel area for portrait videos" in
+        assert(tileManifestOp(videoInfo(1080, 1920)).map(_.width) == Some(108))
+
       "build the first sprite operation" in
         assert(
           tileSpriteOp(1, videoInfo(1920, 1080)) == Some(

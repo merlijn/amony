@@ -22,7 +22,7 @@ case class VideoThumbnail(width: Option[Int] = None, height: Option[Int] = None,
 }
 
 object VideoThumbnailTile:
-  val defaultWidth     = 192
+  val defaultPixels    = 20736
   val columnsPerSprite = 5
   val rowsPerSprite    = 5
   val framesPerSprite  = columnsPerSprite * rowsPerSprite
@@ -63,12 +63,24 @@ object VideoThumbnailTile:
     val remaining = totalFrames(durationInMillis, intervalInMillis) - startFrame(index)
     math.max(0, math.min(framesPerSprite.toLong, remaining).toInt)
 
+  /** Rounds up to an even number of pixels, since some encoders reject odd dimensions. */
+  private def even(value: Int): Int = math.max(2, if value % 2 == 0 then value else value + 1)
+
+  /**
+   * Width for a frame of roughly `targetPixels` area at the source aspect ratio. Using the area
+   * instead of a fixed width keeps landscape and portrait sprites the same size. The height follows
+   * from [[heightFor]]; both sides are kept even for the encoders.
+   */
+  def widthFor(targetPixels: Int, sourceWidth: Int, sourceHeight: Int): Int =
+    if sourceWidth <= 0 || sourceHeight <= 0 then even(math.sqrt(targetPixels.toDouble).round.toInt)
+    else
+      val aspect = sourceWidth.toDouble / sourceHeight
+      even(math.sqrt(targetPixels.toDouble * aspect).round.toInt)
+
   /** Height for a width-pinned frame, rounded up to an even number so the encoders accept it. */
   def heightFor(width: Int, sourceWidth: Int, sourceHeight: Int): Int =
-    if sourceWidth <= 0 || sourceHeight <= 0 then width
-    else
-      val scaled = math.round(width.toDouble * sourceHeight / sourceWidth).toInt
-      math.max(2, if scaled % 2 == 0 then scaled else scaled + 1)
+    if sourceWidth <= 0 || sourceHeight <= 0 then even(width)
+    else even(math.round(width.toDouble * sourceHeight / sourceWidth).toInt)
 
   def manifestFileName(resourceId: ResourceId, contentVersion: String, width: Int, intervalInMillis: Long, token: String): String =
     s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_w${width}_$token.vtt"
@@ -124,7 +136,7 @@ object VideoThumbnailTile:
 
 /** One storyboard sprite containing a group of up to [[VideoThumbnailTile.framesPerSprite]] frames. */
 case class VideoThumbnailTile(
-  width: Int = VideoThumbnailTile.defaultWidth,
+  width: Int,
   intervalInMillis: Long,
   index: Int = 1,
   token: String
@@ -136,7 +148,7 @@ case class VideoThumbnailTile(
 }
 
 /** The WebVTT manifest describing all frames and their sprite files. */
-case class VideoThumbnailTileVtt(width: Int = VideoThumbnailTile.defaultWidth, intervalInMillis: Long, token: String) extends ResourceOperation {
+case class VideoThumbnailTileVtt(width: Int, intervalInMillis: Long, token: String) extends ResourceOperation {
   override def contentType: String = "text/vtt"
 
   override def validate(info: ResourceInfo): Either[String, Unit] =
