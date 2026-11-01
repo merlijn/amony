@@ -33,19 +33,19 @@ class VideoThumbnailTileSpec extends AnyWordSpecLike {
       }
 
       "derive the same target pixel area for landscape, portrait and square sources" in {
-        assert(VideoThumbnailTile.widthFor(20736, 1920, 1080) == 192)
+        assert(VideoThumbnailTile.widthFor(20480, 1920, 1080) == 192)
         assert(VideoThumbnailTile.heightFor(192, 1920, 1080) == 108)
 
-        assert(VideoThumbnailTile.widthFor(20736, 1080, 1920) == 108)
+        assert(VideoThumbnailTile.widthFor(20480, 1080, 1920) == 108)
         assert(VideoThumbnailTile.heightFor(108, 1080, 1920) == 192)
 
-        assert(VideoThumbnailTile.widthFor(20736, 1000, 1000) == 144)
+        assert(VideoThumbnailTile.widthFor(20480, 1000, 1000) == 144)
         assert(VideoThumbnailTile.heightFor(144, 1000, 1000) == 144)
       }
 
       "keep both dimensions even for odd source aspect ratios" in {
         val dimensions = List((1920, 1080), (1080, 1920), (1000, 601), (1920, 817), (817, 1920)).map { case (sourceWidth, sourceHeight) =>
-          val width = VideoThumbnailTile.widthFor(20736, sourceWidth, sourceHeight)
+          val width = VideoThumbnailTile.widthFor(20480, sourceWidth, sourceHeight)
           (width, VideoThumbnailTile.heightFor(width, sourceWidth, sourceHeight))
         }
 

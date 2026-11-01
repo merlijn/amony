@@ -22,7 +22,7 @@ case class VideoThumbnail(width: Option[Int] = None, height: Option[Int] = None,
 }
 
 object VideoThumbnailTile:
-  val defaultPixels    = 20736
+  val defaultPixels    = 20480
   val columnsPerSprite = 5
   val rowsPerSprite    = 5
   val framesPerSprite  = columnsPerSprite * rowsPerSprite
