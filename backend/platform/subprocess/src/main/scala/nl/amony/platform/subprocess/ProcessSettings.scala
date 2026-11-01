@@ -12,7 +12,8 @@ final case class ProcessSettings(
   thumbnailTimeout: FiniteDuration     = 30.seconds,
   clipTimeout: FiniteDuration          = 2.minutes,
   tileTimeout: FiniteDuration          = 3.minutes,
-  remuxTimeout: FiniteDuration         = 10.minutes
+  remuxTimeout: FiniteDuration         = 10.minutes,
+  hardwareDecode: HardwareDecodeConfig = HardwareDecodeConfig()
 ):
 
   require(maxConcurrent > 0, s"maxConcurrent must be > 0, got $maxConcurrent")

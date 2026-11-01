@@ -42,6 +42,12 @@ class ThumbnailTileSpec extends AnyWordSpecLike {
     "express every configured interval as an exact fps ratio" in
       assert(ThumbnailTile.filter(tile(25, intervalInMillis = 10000)) == "fps=1000/10000,scale=192:108,tile=5x5:nb_frames=25")
 
+    "scale on the GPU before downloading frames when hardware decoding is on" in
+      assert(
+        ThumbnailTile.filter(tile(10), Some(HardwareDecoding("/dev/dri/renderD128"))) ==
+          "scale_vaapi=w=192:h=108,hwdownload,format=nv12,fps=1000/250,tile=5x2:nb_frames=10"
+      )
+
     "decode only keyframes from the ten second step upwards" in {
       assert(!ThumbnailTile.skipToKeyframes(250))
       assert(!ThumbnailTile.skipToKeyframes(2000))
@@ -53,6 +59,10 @@ class ThumbnailTileSpec extends AnyWordSpecLike {
     "pass the keyframe skip to ffmpeg as a decoder option before the input" in {
       assert(ThumbnailTile.decodeArgs(tile(25, intervalInMillis = 5000)).isEmpty)
       assert(ThumbnailTile.decodeArgs(tile(25, intervalInMillis = 10000)) == List("-skip_frame", "nokey"))
+      assert(
+        ThumbnailTile.decodeArgs(tile(25, intervalInMillis = 10000), Some(HardwareDecoding("/dev/dri/renderD128"))).takeRight(2) ==
+          List("-skip_frame", "nokey")
+      )
     }
   }
 }
