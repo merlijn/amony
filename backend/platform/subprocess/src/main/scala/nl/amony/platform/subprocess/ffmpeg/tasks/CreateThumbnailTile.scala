@@ -42,18 +42,12 @@ object ThumbnailTile {
    * is not a multiple of the source frame duration. `nb_frames` stops the tile at the planned frame
    * count instead of waiting for the end of the window.
    *
-   * With hardware decoding the scale happens on the GPU and must therefore come before `fps`, so only
-   * the small preview frames are copied back and resampled; in software the order is reversed so the
-   * frames that `fps` drops are never scaled.
+   * Decoding is the only difference between the hardware and software paths, so the filter chain is
+   * the same for both: `fps` drops the frames that are not sampled before they are scaled, and `tile`
+   * packs what is left.
    */
-  def filter(tile: ThumbnailTile, hardware: Option[HardwareDecoding] = None): String = {
-    val tiling = s"tile=${tile.columns}x${tile.rows}:nb_frames=${tile.frameCount}"
-    val fps    = s"fps=1000/${tile.intervalInMillis}"
-
-    hardware match
-      case Some(value) => List(value.scaleFilter(tile.width, tile.height), fps, tiling).mkString(",")
-      case None        => List(fps, s"scale=${tile.width}:${tile.height}", tiling).mkString(",")
-  }
+  def filter(tile: ThumbnailTile): String =
+    s"fps=1000/${tile.intervalInMillis},scale=${tile.width}:${tile.height},tile=${tile.columns}x${tile.rows}:nb_frames=${tile.frameCount}"
 
   /**
    * Shortest interval at which a sprite samples frames far enough apart that the decoder can skip
@@ -114,7 +108,7 @@ trait CreateThumbnailTile extends Logging {
           "-i",
           FFMpeg.inputArg(input),
           "-vf",
-          ThumbnailTile.filter(tile, hardware),
+          ThumbnailTile.filter(tile),
           "-frames:v",
           "1",
           "-quality",
