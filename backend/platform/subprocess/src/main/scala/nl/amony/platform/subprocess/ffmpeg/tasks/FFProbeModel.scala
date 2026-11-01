@@ -29,6 +29,9 @@ object FFProbeModel extends Logging {
 
   case class AudioStream(override val index: Int, codec_name: String) extends Stream
 
+  /** An entry of ffprobe's `side_data_list`, of which the display matrix carries the rotation. */
+  case class SideData(rotation: Option[Int]) derives Decoder
+
   case class VideoStream(
     override val index: Int,
     codec_name: String,
@@ -37,7 +40,8 @@ object FFProbeModel extends Logging {
     duration: Option[String],
     bit_rate: Option[String],
     avg_frame_rate: String,
-    tags: Option[Map[String, String]]
+    tags: Option[Map[String, String]],
+    side_data_list: Option[List[SideData]]
   ) extends Stream {
 
     def durationFromField: Option[Int]  = duration.map(d => (d.toDouble * 1000).toInt)
@@ -55,6 +59,25 @@ object FFProbeModel extends Logging {
 
       divident / divisor
     }
+
+    /** Clockwise display rotation, read from the display matrix or the legacy `rotate` tag. */
+    def rotationDegrees: Int = {
+      val rotation = side_data_list
+        .toList
+        .flatten
+        .flatMap(_.rotation)
+        .headOption
+        .orElse(tags.flatMap(_.get("rotate")).flatMap(_.trim.toDoubleOption.map(_.round.toInt)))
+        .getOrElse(0)
+
+      ((rotation % 360) + 360) % 360
+    }
+
+    /** Width after applying display rotation, as ffmpeg autorotates while decoding. */
+    def displayWidth: Int = if rotationDegrees % 180 == 90 then height else width
+
+    /** Height after applying display rotation, as ffmpeg autorotates while decoding. */
+    def displayHeight: Int = if rotationDegrees % 180 == 90 then width else height
   }
 
   given unkownStreamDecoder: Decoder[UnkownStream] = deriveDecoder[UnkownStream]

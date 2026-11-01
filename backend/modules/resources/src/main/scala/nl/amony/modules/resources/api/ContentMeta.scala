@@ -79,9 +79,11 @@ object ContentProperties:
 
   def ffprobeOutputToContentMeta(FFProbeOutput: FFProbeOutput): Try[VideoProperties] = FFProbeOutput.firstVideoStream.map {
     stream =>
+      // ffmpeg autorotates while decoding, so previews must be planned from the displayed
+      // dimensions rather than the coded ones.
       VideoProperties(
-        width            = stream.width,
-        height           = stream.height,
+        width            = stream.displayWidth,
+        height           = stream.displayHeight,
         durationInMillis = stream.durationMillis,
         fps              = stream.fps.toFloat,
         codec            = Some(stream.codec_name)
