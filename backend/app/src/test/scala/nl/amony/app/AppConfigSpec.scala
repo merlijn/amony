@@ -25,6 +25,7 @@ class AppConfigSpec extends AnyWordSpecLike with Logging {
       assert(appConfig.resources.previews.tiles.intervalLadder.map(_.toMillis) == List(250L, 500L, 1000L, 2000L, 5000L, 10000L))
       assert(appConfig.resources.previews.tiles.targetFrames == 200)
       assert(appConfig.resources.previews.tiles.spritePixels == 20736)
+      assert(appConfig.database.poolSize == 10)
       assert(appConfig.mediaProcessing.maxConcurrent > 0)
       assert(appConfig.mediaProcessing.maxQueued > 0)
     }
