@@ -44,6 +44,20 @@ object ThumbnailTile {
    */
   def filter(tile: ThumbnailTile): String =
     s"fps=1000/${tile.intervalInMillis},scale=${tile.width}:${tile.height},tile=${tile.columns}x${tile.rows}:nb_frames=${tile.frameCount}"
+
+  /**
+   * Interval above which a sprite samples frames far enough apart that the decoder can skip
+   * everything but keyframes. Cell contents then follow the nearest preceding keyframe instead of the
+   * exact cue time: invisible at a five or ten second step, but it would visibly shift the contents
+   * at the finer steps, which need the frames in between.
+   */
+  val keyframeOnlyAboveMillis = 2000L
+
+  def skipToKeyframes(intervalInMillis: Long): Boolean = intervalInMillis > keyframeOnlyAboveMillis
+
+  /** Decoder arguments for a sprite. These are per-input options, so they must precede the `-i` argument. */
+  def decodeArgs(tile: ThumbnailTile): List[String] =
+    Option.when(skipToKeyframes(tile.intervalInMillis))(List("-skip_frame", "nokey")).getOrElse(Nil)
 }
 
 trait CreateThumbnailTile extends Logging {
@@ -55,6 +69,9 @@ trait CreateThumbnailTile extends Logging {
    * and tiled into `columns` columns with as many rows as the frame count needs. The window is
    * seeked to directly, so a sprite for a later part of a long video does not require decoding
    * everything before it.
+   *
+   * Coarse intervals additionally decode only keyframes, which is where most of the work goes for
+   * long videos.
    */
   def createThumbnailTile(
     input: URI,
@@ -68,7 +85,7 @@ trait CreateThumbnailTile extends Logging {
       val window = tile.frameCount.toLong * tile.intervalInMillis
       val output = outputFile.toAbsolutePath.normalize.toString
 
-      val args = List(
+      val args = ThumbnailTile.decodeArgs(tile) ++ List(
         "-ss",
         formatTime(tile.startInMillis),
         "-t",

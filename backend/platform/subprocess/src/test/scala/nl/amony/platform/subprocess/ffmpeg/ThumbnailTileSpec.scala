@@ -41,5 +41,18 @@ class ThumbnailTileSpec extends AnyWordSpecLike {
 
     "express every configured interval as an exact fps ratio" in
       assert(ThumbnailTile.filter(tile(25, intervalInMillis = 10000)) == "fps=1000/10000,scale=192:108,tile=5x5:nb_frames=25")
+
+    "decode only keyframes once the interval is coarser than two seconds" in {
+      assert(!ThumbnailTile.skipToKeyframes(250))
+      assert(!ThumbnailTile.skipToKeyframes(2000))
+      assert(ThumbnailTile.skipToKeyframes(5000))
+      assert(ThumbnailTile.skipToKeyframes(10000))
+    }
+
+    "pass the keyframe skip to ffmpeg as a decoder option before the input" in {
+      assert(ThumbnailTile.decodeArgs(tile(25, intervalInMillis = 2000)).isEmpty)
+      assert(ThumbnailTile.decodeArgs(tile(25, intervalInMillis = 5000)) == List("-skip_frame", "nokey"))
+      assert(ThumbnailTile.decodeArgs(tile(25, intervalInMillis = 10000)) == List("-skip_frame", "nokey"))
+    }
   }
 }
