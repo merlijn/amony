@@ -4,26 +4,26 @@ import java.nio.file.Files
 
 import org.scalatest.wordspec.AnyWordSpecLike
 
-import nl.amony.platform.subprocess.HardwareDecode
+import nl.amony.platform.subprocess.HardwareDecodeConfig
 
 class HardwareDecodingSpec extends AnyWordSpecLike {
 
   "HardwareDecoding.resolve" should {
 
-    "never use hardware when it is disabled" in
-      assert(HardwareDecoding.resolve(HardwareDecode.Disabled, "/dev/dri/renderD128").isEmpty)
-
-    "always use hardware when it is forced" in
-      assert(HardwareDecoding.resolve(HardwareDecode.Vaapi, "/dev/dri/renderD128").contains(HardwareDecoding("/dev/dri/renderD128")))
-
-    "use hardware for auto when the device is readable" in {
+    "use the configured device when it is readable" in {
       val device = Files.createTempFile("render-node", "")
-      try assert(HardwareDecoding.resolve(HardwareDecode.Auto, device.toString).isDefined)
-      finally Files.deleteIfExists(device)
+      try {
+        val resolved = HardwareDecoding.resolve(HardwareDecodeConfig(enabled = true, vaapiDevice = device.toString))
+
+        assert(resolved == Right(HardwareDecoding(device.toString)))
+      } finally Files.deleteIfExists(device)
     }
 
-    "fall back to software for auto when the device does not exist" in
-      assert(HardwareDecoding.resolve(HardwareDecode.Auto, "/nonexistent/dri/renderD128").isEmpty)
+    "report a reason instead of a device when it is not readable" in
+      assert(
+        HardwareDecoding.resolve(HardwareDecodeConfig(enabled = true, vaapiDevice = "/nonexistent/dri/renderD128")) ==
+          Left("no readable VAAPI device at /nonexistent/dri/renderD128")
+      )
   }
 
   "HardwareDecoding" should {

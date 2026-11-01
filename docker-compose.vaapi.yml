@@ -13,3 +13,5 @@ services:
       - /dev/dri:/dev/dri
     group_add:
       - "${AMONY_RENDER_GID:-993}"
+    environment:
+      AMONY_HARDWARE_DECODE_ENABLED: "true"

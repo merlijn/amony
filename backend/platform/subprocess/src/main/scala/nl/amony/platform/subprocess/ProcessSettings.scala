@@ -2,8 +2,6 @@ package nl.amony.platform.subprocess
 
 import scala.concurrent.duration.*
 
-import nl.amony.platform.subprocess.ffmpeg.HardwareDecoding
-
 /** Limits and timeouts for external media processes (ffmpeg, ffprobe and ImageMagick). */
 final case class ProcessSettings(
   maxConcurrent: Int                   = 6,
@@ -15,8 +13,7 @@ final case class ProcessSettings(
   clipTimeout: FiniteDuration          = 2.minutes,
   tileTimeout: FiniteDuration          = 3.minutes,
   remuxTimeout: FiniteDuration         = 10.minutes,
-  hardwareDecode: HardwareDecode       = HardwareDecode.Auto,
-  vaapiDevice: String                  = HardwareDecoding.defaultDevice
+  hardwareDecode: HardwareDecodeConfig = HardwareDecodeConfig()
 ):
 
   require(maxConcurrent > 0, s"maxConcurrent must be > 0, got $maxConcurrent")

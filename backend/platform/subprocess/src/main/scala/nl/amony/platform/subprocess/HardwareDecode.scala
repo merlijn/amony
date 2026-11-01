@@ -1,17 +1,27 @@
 package nl.amony.platform.subprocess
 
+import nl.amony.platform.subprocess.ffmpeg.HardwareDecoding
+
 /**
- * How ffmpeg decodes video frames for derived previews. Generating a storyboard sprite is almost
- * entirely video decoding, so handing that to the GPU's fixed-function media block (VAAPI on Linux,
- * which also backs Intel Quick Sync) is the largest speed-up available on a CPU-limited machine.
+ * How ffmpeg decodes video frames for derived previews.
+ *
+ * Generating a preview is almost entirely video decoding, so a GPU's fixed-function media block can be
+ * much faster than the CPU. Only VAAPI (Intel Quick Sync and AMD on Linux) is supported for now.
  */
-enum HardwareDecode(val configName: String):
+enum HardwareDecodeMode(val configName: String):
 
-  /** Use VAAPI when a GPU render node is readable, otherwise decode in software. */
-  case Auto extends HardwareDecode("auto")
+  /** VAAPI, which drives the media block of Intel and AMD GPUs on Linux. */
+  case Vaapi extends HardwareDecodeMode("vaapi")
 
-  /** Use VAAPI, falling back to software for jobs the device or codec cannot handle. */
-  case Vaapi extends HardwareDecode("vaapi")
+object HardwareDecodeMode:
+  def fromConfigName(name: String): Option[HardwareDecodeMode] = values.find(_.configName == name)
 
-  /** Always decode in software. */
-  case Disabled extends HardwareDecode("none")
+/**
+ * Hardware decoding settings for the media processes. Off by default: it needs a GPU device passed into
+ * the container and a working driver, so enabling it is an explicit opt-in.
+ */
+final case class HardwareDecodeConfig(
+  enabled: Boolean         = false,
+  mode: HardwareDecodeMode = HardwareDecodeMode.Vaapi,
+  vaapiDevice: String      = HardwareDecoding.defaultDevice
+)

@@ -9,14 +9,16 @@ import nl.amony.modules.resources.ResourceConfig
 import nl.amony.modules.search.SearchConfig
 import nl.amony.platform.database.DatabaseConfig
 import nl.amony.platform.messagebus.MessageBusConfig
-import nl.amony.platform.subprocess.{HardwareDecode, ProcessSettings}
+import nl.amony.platform.subprocess.{HardwareDecodeConfig, HardwareDecodeMode, ProcessSettings}
 
-given ConfigReader[HardwareDecode] =
+given ConfigReader[HardwareDecodeMode] =
   ConfigReader[String].emap { name =>
-    HardwareDecode.values.find(_.configName == name).toRight(
-      CannotConvert(name, "HardwareDecode", s"Expected one of: ${HardwareDecode.values.map(_.configName).mkString(", ")}")
+    HardwareDecodeMode.fromConfigName(name).toRight(
+      CannotConvert(name, "HardwareDecodeMode", s"Expected one of: ${HardwareDecodeMode.values.map(_.configName).mkString(", ")}")
     )
   }
+
+given ConfigReader[HardwareDecodeConfig] = ConfigReader.derived
 
 given ConfigReader[ProcessSettings] = ConfigReader.derived
 

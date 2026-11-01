@@ -2,7 +2,7 @@ package nl.amony.platform.subprocess.ffmpeg
 
 import java.nio.file.{Files, Path}
 
-import nl.amony.platform.subprocess.HardwareDecode
+import nl.amony.platform.subprocess.{HardwareDecodeConfig, HardwareDecodeMode}
 
 /**
  * VAAPI decoding for a single ffmpeg invocation.
@@ -35,11 +35,14 @@ object HardwareDecoding:
   val defaultDevice = "/dev/dri/renderD128"
 
   /**
-   * Resolves the configured mode against the machine. `auto` quietly decodes in software where no
-   * readable render node exists, so a host without a GPU does not fail every preview.
+   * Resolves the configured backend, or a description of why the device cannot be used. The reason is
+   * reported as-is, so a configured but unusable GPU ends up as a warning instead of a failure.
    */
-  def resolve(mode: HardwareDecode, device: String): Option[HardwareDecoding] =
-    mode match
-      case HardwareDecode.Disabled => None
-      case HardwareDecode.Vaapi    => Some(HardwareDecoding(device))
-      case HardwareDecode.Auto     => Option.when(Files.isReadable(Path.of(device)))(HardwareDecoding(device))
+  def resolve(config: HardwareDecodeConfig): Either[String, HardwareDecoding] =
+    config.mode match
+      case HardwareDecodeMode.Vaapi =>
+        Either.cond(
+          Files.isReadable(Path.of(config.vaapiDevice)),
+          HardwareDecoding(config.vaapiDevice),
+          s"no readable VAAPI device at ${config.vaapiDevice}"
+        )
