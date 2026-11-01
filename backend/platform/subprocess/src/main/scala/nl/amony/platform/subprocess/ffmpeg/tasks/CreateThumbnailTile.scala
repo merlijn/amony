@@ -48,6 +48,27 @@ object ThumbnailTile {
    */
   def filter(tile: ThumbnailTile): String =
     s"fps=1000/${tile.intervalInMillis},scale=${tile.width}:${tile.height},tile=${tile.columns}x${tile.rows}:nb_frames=${tile.frameCount}"
+
+  /**
+   * Shortest interval at which a sprite samples frames far enough apart that the decoder can skip
+   * everything but keyframes. Cell contents then follow the nearest preceding keyframe instead of the
+   * exact cue time: invisible at a ten second step, but it would visibly shift the contents at the
+   * finer steps, which need the frames in between.
+   *
+   * Ten seconds rather than five because keyframes are commonly one per 250 frames — 8.3s at 30fps,
+   * 10s at 25fps — which is longer than a five second step and would make consecutive cells repeat.
+   */
+  val keyframeOnlyFromMillis = 10000L
+
+  def skipToKeyframes(intervalInMillis: Long): Boolean = intervalInMillis >= keyframeOnlyFromMillis
+
+  /**
+   * Decoder arguments for a sprite. Both hardware decoding and skipping non-key frames are per-input
+   * options, so they must precede the `-i` argument.
+   */
+  def decodeArgs(tile: ThumbnailTile, hardware: Option[HardwareDecoding] = None): List[String] =
+    hardware.toList.flatMap(_.inputArgs) ++
+      Option.when(skipToKeyframes(tile.intervalInMillis))(List("-skip_frame", "nokey")).getOrElse(Nil)
 }
 
 trait CreateThumbnailTile extends Logging {
@@ -62,7 +83,8 @@ trait CreateThumbnailTile extends Logging {
    *
    * When hardware decoding is available it is tried first and the job falls back to software for a
    * codec or device the GPU cannot handle, so an unsupported input costs a failed process start
-   * rather than a missing preview.
+   * rather than a missing preview. Coarse intervals additionally decode only keyframes, which is
+   * where most of the work goes for long videos.
    */
   def createThumbnailTile(
     input: URI,
@@ -78,7 +100,7 @@ trait CreateThumbnailTile extends Logging {
 
       def command(hardware: Option[HardwareDecoding]): Command = Command(
         "ffmpeg",
-        hardware.toList.flatMap(_.inputArgs) ++ List(
+        ThumbnailTile.decodeArgs(tile, hardware) ++ List(
           "-ss",
           formatTime(tile.startInMillis),
           "-t",
