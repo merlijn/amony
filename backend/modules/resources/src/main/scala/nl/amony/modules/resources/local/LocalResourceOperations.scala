@@ -1,8 +1,9 @@
 package nl.amony.modules.resources.local
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path}
+import java.nio.file.{AtomicMoveNotSupportedException, Files, Path, StandardCopyOption}
 import java.security.MessageDigest
+import java.util.UUID
 import scala.util.{Failure, Success}
 
 import cats.effect.IO
@@ -22,9 +23,9 @@ final class ContentUnreadable(val path: Path, cause: Throwable) extends Exceptio
 
 trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
-  private val ffmpeg      = new FFMpeg
-  private val imageMagick = new ImageMagick
-  private val tika        = new Tika()
+  private lazy val ffmpeg      = new FFMpeg(processSettings, processLimiter)
+  private lazy val imageMagick = new ImageMagick(processSettings, processLimiter)
+  private val tika             = new Tika()
 
   type OperationKey = (resourceId: ResourceId, operation: ResourceOperation)
 
@@ -64,7 +65,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
   private def toolScanForPath(path: Path, contentType: String): IO[Option[ToolScan]] =
     if contentType.startsWith("video/") then
-      ffmpeg.ffprobe(path.toUri, false).map {
+      ffmpeg.ffprobe(path.toUri, processSettings.ffprobeTimeout).map {
         (ffprobeResult, json) =>
           val version = ffprobeResult.program_version.map(_.version).getOrElse("unknown")
           Some(ToolScan(s"ffprobe/$version", json))
@@ -136,7 +137,32 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
       case Left(error) => IO.raiseError(new Exception(error))
       case Right(_)    =>
         val outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
-        IO.blocking(Files.createDirectories(outputFile.getParent)) >> run(info, inputFile, outputFile, operation).memoize.flatten
+        val tempFile   = temporaryOutputFile(outputFile)
+
+        val create = IO.blocking(Files.createDirectories(outputFile.getParent)) >>
+          run(info, inputFile, tempFile, operation) >>
+          moveIntoPlace(tempFile, outputFile)
+
+        create
+          .onError(_ => IO.blocking(Files.deleteIfExists(tempFile)).void)
+          .onCancel(IO.blocking(Files.deleteIfExists(tempFile)).void)
+          .memoize
+          .flatten
+
+  private def temporaryOutputFile(outputFile: Path): Path = {
+    val fileName              = outputFile.getFileName.toString
+    val extensionStart        = fileName.lastIndexOf('.')
+    val (baseName, extension) = if extensionStart >= 0 then fileName.splitAt(extensionStart) else (fileName, "")
+    outputFile.resolveSibling(s".$baseName.${UUID.randomUUID()}$extension")
+  }
+
+  private def moveIntoPlace(tempFile: Path, outputFile: Path): IO[Path] =
+    IO.blocking(Files.move(tempFile, outputFile, StandardCopyOption.ATOMIC_MOVE))
+      .recoverWith {
+        case _: AtomicMoveNotSupportedException =>
+          IO.blocking(Files.move(tempFile, outputFile, StandardCopyOption.REPLACE_EXISTING))
+      }
+      .as(outputFile)
 
   private def run(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: ResourceOperation): IO[Path] = operation match
     case VideoFragment(width, height, start, end) =>

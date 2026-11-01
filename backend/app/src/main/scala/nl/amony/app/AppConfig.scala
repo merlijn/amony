@@ -8,6 +8,9 @@ import nl.amony.modules.resources.ResourceConfig
 import nl.amony.modules.search.SearchConfig
 import nl.amony.platform.database.DatabaseConfig
 import nl.amony.platform.messagebus.MessageBusConfig
+import nl.amony.platform.subprocess.ProcessSettings
+
+given ConfigReader[ProcessSettings] = ConfigReader.derived
 
 case class AppConfig(
   resources: ResourceConfig,
@@ -16,5 +19,6 @@ case class AppConfig(
   search: SearchConfig,
   database: DatabaseConfig,
   messageBus: MessageBusConfig,
+  mediaProcessing: ProcessSettings,
   observability: ObservabilityConfig
 ) derives ConfigReader

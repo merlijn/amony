@@ -8,13 +8,14 @@ import org.http4s.*
 import org.http4s.CacheDirective
 import org.http4s.CacheDirective.{`max-age`, `must-revalidate`}
 import org.http4s.dsl.io.*
-import org.http4s.headers.`Cache-Control`
+import org.http4s.headers.{`Cache-Control`, `Retry-After`}
 import scribe.Logging
 
 import nl.amony.modules.auth.api.{ApiSecurity, authCookieName}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.api.BucketRegistry
 import nl.amony.modules.resources.http.ResourceDirectives.resourceContentsResponse
+import nl.amony.platform.subprocess.{ProcessBusy, ProcessTimedOut}
 
 object ResourceContentRoutes extends Logging {
 
@@ -154,7 +155,17 @@ object ResourceContentRoutes extends Logging {
         .flatMap(bucket => OptionT(bucket.getResource(resourceId)).map(resource => bucket -> resource))
 
     def maybeResponse(option: OptionT[IO, Response[IO]]): IO[Response[IO]] =
-      option.value.map(_.getOrElse(Response(Status.NotFound)))
+      option.value.attempt.map {
+        case Right(Some(response))          => response
+        case Right(None)                    => Response(Status.NotFound)
+        case Left(busy: ProcessBusy)        =>
+          logger.debug(s"Rejecting content request: ${busy.getMessage}")
+          Response(Status.ServiceUnavailable, headers = Headers(`Retry-After`.unsafeFromLong(5)))
+        case Left(timeout: ProcessTimedOut) =>
+          logger.warn(s"Content generation timed out: ${timeout.getMessage}")
+          Response(Status.GatewayTimeout)
+        case Left(error)                    => throw error
+      }
 
     HttpRoutes.of[IO] {
 

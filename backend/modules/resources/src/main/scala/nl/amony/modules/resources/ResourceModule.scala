@@ -24,6 +24,7 @@ import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
 import nl.amony.modules.resources.http.{BucketRoutes, CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
 import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.platform.messagebus.MessageTopic
+import nl.amony.platform.subprocess.{ProcessLimiter, ProcessSettings}
 import nl.amony.platform.tapir.ServerEndpoints
 
 /**
@@ -57,6 +58,7 @@ object ResourceModule:
 
   def resource(
     config: ResourceConfig,
+    processSettings: ProcessSettings,
     databasePool: Resource[IO, Session[IO]],
     eventTopic: MessageTopic[ResourceEvent]
   )(using Meter[IO], Tracer[IO]): Resource[IO, ResourceModule] =
@@ -69,16 +71,26 @@ object ResourceModule:
     val thumbTiles       = ThumbnailTiles(config.previews.tiles.intervalLadder, config.previews.tiles.targetFrames)
     val resourceDatabase = ResourceDatabase(databasePool)
 
-    val bucketFactory: BucketFactory = {
+    def bucketFactory(processLimiter: ProcessLimiter): BucketFactory = {
       case localConfig: LocalDirectoryConfig =>
         IO {
-          val bucket = LocalDirectoryBucket(localConfig, config.parallelFactor, resourceDatabase, eventTopic, thumbFormats, thumbResolutions)
+          val bucket = LocalDirectoryBucket(
+            localConfig,
+            config.parallelFactor,
+            resourceDatabase,
+            eventTopic,
+            thumbFormats,
+            thumbResolutions,
+            processSettings,
+            processLimiter
+          )
           (bucket, bucket.sync())
         }
     }
 
     for
-      bucketRegistry <- DatabaseBucketRegistry.resource(config.defaultBucket, BucketsDal(databasePool), eventTopic, bucketFactory)
+      processLimiter <- ProcessLimiter.resource(processSettings)
+      bucketRegistry <- DatabaseBucketRegistry.resource(config.defaultBucket, BucketsDal(databasePool), eventTopic, bucketFactory(processLimiter))
     yield new ResourceModule(
       resourceDatabase,
       bucketRegistry,

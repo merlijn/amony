@@ -76,7 +76,7 @@ object App extends ResourceApp.Forever with Logging {
           PersistentMessageBus.postgres(databasePool, appConfig.messageBus).getTopic[ResourceEvent]
         }
         _                 <- eventTopic.processAtLeastOnce("solr-indexer")(searchModule.indexer.processEvent).compile.drain.background
-        resourceModule    <- ResourceModule.resource(appConfig.resources, databasePool, eventTopic)
+        resourceModule    <- ResourceModule.resource(appConfig.resources, appConfig.mediaProcessing, databasePool, eventTopic)
         previewGenerator   = PreviewGenerator(resourceModule.bucketRegistry)
         _                 <- eventTopic.processAtLeastOnce("preview-generator")(previewGenerator.processEvent).compile.drain.background
         authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)

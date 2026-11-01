@@ -27,4 +27,4 @@ trait AddFastStart:
       outputFile.toAbsolutePath.normalize.toString
     )
 
-    runIgnoreOutput("ffmpeg-add-faststart", Command("ffmpeg", args)).map(_ => outputFile)
+    runIgnoreOutput("ffmpeg-add-faststart", Command("ffmpeg", args), settings.remuxTimeout).map(_ => outputFile)
