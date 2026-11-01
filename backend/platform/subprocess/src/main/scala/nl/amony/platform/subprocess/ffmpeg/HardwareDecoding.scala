@@ -7,13 +7,19 @@ import nl.amony.platform.subprocess.{HardwareDecodeConfig, HardwareDecodeMode}
 /**
  * VAAPI decoding for a single ffmpeg invocation.
  *
- * Frames stay on the GPU until they have been scaled down to the preview size, so the expensive full
- * resolution work happens on the fixed-function media block and only tiny frames are copied back to
- * system memory for the software filters that tile them.
+ * Only the decoding happens on the GPU. Frames are downloaded at full resolution and scaled in
+ * software, because the GPU-side scaler (`scale_vaapi`) needs the VPP pipeline, which drivers do not
+ * always expose — Intel's iHD on Gen9 for one. With keyframe-only decoding only a few dozen small
+ * frames are involved, so the download is cheap; without it the copy dominates and the GPU decode is
+ * still faster than decoding on the CPU.
  */
 final case class HardwareDecoding(device: String):
 
-  /** Global and input options that move the decoder to VAAPI; these must precede the `-i` argument. */
+  /**
+   * Global and input options that move the decoder to VAAPI; these must precede the `-i` argument.
+   * No `-hwaccel_output_format` is set on purpose: frames then come back in their native format, so a
+   * 10-bit source is not forced through an 8-bit download.
+   */
   def inputArgs: List[String] =
     List(
       "-init_hw_device",
@@ -21,14 +27,8 @@ final case class HardwareDecoding(device: String):
       "-hwaccel",
       "vaapi",
       "-hwaccel_device",
-      "va",
-      "-hwaccel_output_format",
-      "vaapi"
+      "va"
     )
-
-  /** Scales on the GPU, then downloads frames of the target size so `fps` and `tile` can run in software. */
-  def scaleFilter(width: Int, height: Int): String =
-    s"scale_vaapi=w=$width:h=$height,hwdownload,format=nv12"
 
 object HardwareDecoding:
 
