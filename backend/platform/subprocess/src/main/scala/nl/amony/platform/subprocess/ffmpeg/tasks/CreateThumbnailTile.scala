@@ -46,14 +46,17 @@ object ThumbnailTile {
     s"fps=1000/${tile.intervalInMillis},scale=${tile.width}:${tile.height},tile=${tile.columns}x${tile.rows}:nb_frames=${tile.frameCount}"
 
   /**
-   * Interval above which a sprite samples frames far enough apart that the decoder can skip
+   * Shortest interval at which a sprite samples frames far enough apart that the decoder can skip
    * everything but keyframes. Cell contents then follow the nearest preceding keyframe instead of the
-   * exact cue time: invisible at a five or ten second step, but it would visibly shift the contents
-   * at the finer steps, which need the frames in between.
+   * exact cue time: invisible at a ten second step, but it would visibly shift the contents at the
+   * finer steps, which need the frames in between.
+   *
+   * Ten seconds rather than five because keyframes are commonly one per 250 frames — 8.3s at 30fps,
+   * 10s at 25fps — which is longer than a five second step and would make consecutive cells repeat.
    */
-  val keyframeOnlyAboveMillis = 2000L
+  val keyframeOnlyFromMillis = 10000L
 
-  def skipToKeyframes(intervalInMillis: Long): Boolean = intervalInMillis > keyframeOnlyAboveMillis
+  def skipToKeyframes(intervalInMillis: Long): Boolean = intervalInMillis >= keyframeOnlyFromMillis
 
   /** Decoder arguments for a sprite. These are per-input options, so they must precede the `-i` argument. */
   def decodeArgs(tile: ThumbnailTile): List[String] =
