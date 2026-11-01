@@ -17,7 +17,8 @@ case class ThumbnailTile(
   columns: Int,
   frameCount: Int,
   intervalInMillis: Long,
-  startInMillis: Long
+  startInMillis: Long,
+  quality: Int
 ) {
   require(width > 0, "width must be positive")
   require(height > 0, "height must be positive")
@@ -26,6 +27,7 @@ case class ThumbnailTile(
   require(frameCount <= columns * columns, s"frame count must fit in the $columns x $columns sprite grid")
   require(intervalInMillis > 0, "interval must be positive")
   require(startInMillis >= 0, "start must not be negative")
+  require(quality >= 0 && quality <= 100, "quality must be between 0 and 100")
 
   /** Rows actually needed for this sprite, so a partially filled last sprite does not carry empty rows. */
   val rows: Int = (frameCount + columns - 1) / columns
@@ -78,7 +80,7 @@ trait CreateThumbnailTile extends Logging {
         "-frames:v",
         "1",
         "-quality",
-        "80",
+        tile.quality.toString,
         "-v",
         "error",
         "-y",

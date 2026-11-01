@@ -210,7 +210,15 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
     val height     = VideoThumbnailTile.heightFor(operation.width, video.width, video.height)
     val frameCount = VideoThumbnailTile.frameCountInSprite(operation.index, duration, operation.intervalInMillis)
     val start      = VideoThumbnailTile.startInMillis(operation.index, operation.intervalInMillis)
-    val plan       = ThumbnailTile(operation.width, height, VideoThumbnailTile.columnsPerSprite, frameCount, operation.intervalInMillis, start)
+    val plan       = ThumbnailTile(
+      operation.width,
+      height,
+      VideoThumbnailTile.columnsPerSprite,
+      frameCount,
+      operation.intervalInMillis,
+      start,
+      VideoThumbnailTile.spriteQuality
+    )
 
     logger.debug(s"Creating thumbnail tile ${operation.index} for $inputFile at ${operation.intervalInMillis}ms interval")
     ffmpeg.createThumbnailTile(inputFile.toUri, outputFile, plan)

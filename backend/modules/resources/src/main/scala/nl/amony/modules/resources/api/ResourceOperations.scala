@@ -22,10 +22,11 @@ case class VideoThumbnail(width: Option[Int] = None, height: Option[Int] = None,
 }
 
 object VideoThumbnailTile:
-  val defaultWidth     = 160
-  val columnsPerSprite = 8
-  val rowsPerSprite    = 8
+  val defaultWidth     = 192
+  val columnsPerSprite = 5
+  val rowsPerSprite    = 5
   val framesPerSprite  = columnsPerSprite * rowsPerSprite
+  val spriteQuality    = 70
 
   /** Bump when the manifest layout or sprite generation changes, so cached manifests are not reused. */
   val manifestVersion = 2

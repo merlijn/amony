@@ -41,6 +41,7 @@ final class ThumbnailTiles(
       spriteWidth.toString,
       VideoThumbnailTile.columnsPerSprite.toString,
       VideoThumbnailTile.framesPerSprite.toString,
+      VideoThumbnailTile.spriteQuality.toString,
       intervals.mkString(","),
       targetFrames.toString,
       VideoThumbnailTile.manifestVersion.toString,
