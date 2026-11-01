@@ -70,7 +70,7 @@ object VideoThumbnailTile:
       math.max(2, if scaled % 2 == 0 then scaled else scaled + 1)
 
   def manifestFileName(resourceId: ResourceId, contentVersion: String, width: Int, intervalInMillis: Long, token: String): String =
-    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_w${width}_${token}_v$manifestVersion.vtt"
+    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_w${width}_$token.vtt"
 
   def spriteFileName(
     resourceId: ResourceId,
