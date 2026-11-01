@@ -22,12 +22,14 @@ case class VideoThumbnail(width: Option[Int] = None, height: Option[Int] = None,
 }
 
 object VideoThumbnailTile:
-  val defaultWidth    = 96
-  val gridSize        = 8
-  val framesPerSprite = gridSize * gridSize
+  val defaultPixels    = 20480
+  val columnsPerSprite = 5
+  val rowsPerSprite    = 5
+  val framesPerSprite  = columnsPerSprite * rowsPerSprite
+  val spriteQuality    = 70
 
-  /** Bump when the manifest layout changes, so an already generated manifest is not reused. */
-  val manifestVersion = 1
+  /** Bump when the manifest layout or sprite generation changes, so cached manifests are not reused. */
+  val manifestVersion = 3
 
   private[api] def validate(info: ResourceInfo, width: Int, intervalInMillis: Long, index: Option[Int] = None): Either[String, Unit] =
     info.basicContentProperties match
@@ -61,15 +63,27 @@ object VideoThumbnailTile:
     val remaining = totalFrames(durationInMillis, intervalInMillis) - startFrame(index)
     math.max(0, math.min(framesPerSprite.toLong, remaining).toInt)
 
+  /** Rounds up to an even number of pixels, since some encoders reject odd dimensions. */
+  private def even(value: Int): Int = math.max(2, if value % 2 == 0 then value else value + 1)
+
+  /**
+   * Width for a frame of roughly `targetPixels` area at the source aspect ratio. Using the area
+   * instead of a fixed width keeps landscape and portrait sprites the same size. The height follows
+   * from [[heightFor]]; both sides are kept even for the encoders.
+   */
+  def widthFor(targetPixels: Int, sourceWidth: Int, sourceHeight: Int): Int =
+    if sourceWidth <= 0 || sourceHeight <= 0 then even(math.sqrt(targetPixels.toDouble).round.toInt)
+    else
+      val aspect = sourceWidth.toDouble / sourceHeight
+      even(math.sqrt(targetPixels.toDouble * aspect).round.toInt)
+
   /** Height for a width-pinned frame, rounded up to an even number so the encoders accept it. */
   def heightFor(width: Int, sourceWidth: Int, sourceHeight: Int): Int =
-    if sourceWidth <= 0 || sourceHeight <= 0 then width
-    else
-      val scaled = math.round(width.toDouble * sourceHeight / sourceWidth).toInt
-      math.max(2, if scaled % 2 == 0 then scaled else scaled + 1)
+    if sourceWidth <= 0 || sourceHeight <= 0 then even(width)
+    else even(math.round(width.toDouble * sourceHeight / sourceWidth).toInt)
 
-  def manifestFileName(resourceId: ResourceId, contentVersion: String, width: Int, intervalInMillis: Long): String =
-    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_w${width}_v$manifestVersion.vtt"
+  def manifestFileName(resourceId: ResourceId, contentVersion: String, width: Int, intervalInMillis: Long, token: String): String =
+    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_w${width}_$token.vtt"
 
   def spriteFileName(
     resourceId: ResourceId,
@@ -77,9 +91,10 @@ object VideoThumbnailTile:
     width: Int,
     intervalInMillis: Long,
     index: Int,
+    token: String,
     extension: String = "webp"
   ): String =
-    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_w${width}_$index.$extension"
+    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_w${width}_${token}_$index.$extension"
 
   /** Renders the complete WebVTT manifest, referencing one sprite file per group of [[framesPerSprite]] frames. */
   def renderWebVtt(
@@ -95,8 +110,8 @@ object VideoThumbnailTile:
     (0 until frames).foreach { n =>
       val spriteIndex   = n / framesPerSprite + 1
       val frameInSprite = n              % framesPerSprite
-      val x             = (frameInSprite % gridSize) * width
-      val y             = (frameInSprite / gridSize) * height
+      val x             = (frameInSprite % columnsPerSprite) * width
+      val y             = (frameInSprite / columnsPerSprite) * height
       val start         = n.toLong * intervalInMillis
       val end           = math.max(start + 1, math.min(durationInMillis, start + intervalInMillis))
 
@@ -121,9 +136,10 @@ object VideoThumbnailTile:
 
 /** One storyboard sprite containing a group of up to [[VideoThumbnailTile.framesPerSprite]] frames. */
 case class VideoThumbnailTile(
-  width: Int = VideoThumbnailTile.defaultWidth,
+  width: Int,
   intervalInMillis: Long,
-  index: Int = 1
+  index: Int = 1,
+  token: String
 ) extends ResourceOperation {
   override def contentType: String = "image/webp"
 
@@ -132,7 +148,7 @@ case class VideoThumbnailTile(
 }
 
 /** The WebVTT manifest describing all frames and their sprite files. */
-case class VideoThumbnailTileVtt(width: Int = VideoThumbnailTile.defaultWidth, intervalInMillis: Long) extends ResourceOperation {
+case class VideoThumbnailTileVtt(width: Int, intervalInMillis: Long, token: String) extends ResourceOperation {
   override def contentType: String = "text/vtt"
 
   override def validate(info: ResourceInfo): Either[String, Unit] =
@@ -265,7 +281,8 @@ object ResourceOperations:
     dimension: ThumbnailDimension,
     source: (Int, Int),
     even: Boolean,
-    minimumDimension: Option[Int] = None
+    minimumDimension: Option[Int] = None,
+    squarePixels: Boolean         = false
   ): (Option[Int], Option[Int]) = {
     val (sourceWidth, sourceHeight) = source
     val pinnedSource                = if dimension == ThumbnailDimension.Width then sourceWidth else sourceHeight
@@ -286,7 +303,15 @@ object ResourceOperations:
         val belowMinimum = minimum.exists(min => derivedFloor(roundedDown, pinnedSource, otherSource) < min)
         if belowMinimum then roundedDown + 2 else roundedDown
 
-    (Option.when(dimension == ThumbnailDimension.Width)(sized), Option.when(dimension == ThumbnailDimension.Height)(sized))
+    // Anamorphic sources must pin both sides: otherwise ffmpeg derives the other side from the
+    // coded dimensions and the output keeps a non-square pixel aspect ratio.
+    val derived =
+      if !squarePixels || pinnedSource <= 0 then None
+      else
+        val scaled = math.max(1, math.round(sized.toDouble * otherSource / pinnedSource).toInt)
+        Some(if even then math.max(2, if scaled % 2 == 0 then scaled else scaled + 1) else scaled)
+
+    if dimension == ThumbnailDimension.Width then (Some(sized), derived) else (derived, Some(sized))
   }
 
   /** Every thumbnail and preview-clip operation configured for a resource. */
@@ -302,11 +327,24 @@ object ResourceOperations:
             format <- formats.formats
             size   <- sizes
           yield
-            val (width, height) = scaledDimensions(size, ThumbnailDimension.Width, source, even = true, minimumDimension = format.minimumDimension)
+            val (width, height) = scaledDimensions(
+              size,
+              ThumbnailDimension.Width,
+              source,
+              even             = true,
+              minimumDimension = format.minimumDimension,
+              squarePixels     = video.pixelAspectRatio.isDefined
+            )
             VideoThumbnail(width, height, timestamp, format)
 
         val clips: List[ResourceOperation] = sizes.map { size =>
-          val (width, height) = scaledDimensions(size, ThumbnailDimension.Width, source, even = true)
+          val (width, height) = scaledDimensions(
+            size,
+            ThumbnailDimension.Width,
+            source,
+            even         = true,
+            squarePixels = video.pixelAspectRatio.isDefined
+          )
           VideoFragment(width, height, start, end)
         }
 

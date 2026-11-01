@@ -11,9 +11,15 @@ const dimensionToken = (dimension: string): string => dimension === "height" ? "
 export const resourceThumbnailUrl = (resource: ResourceDto, dimension: string, size: number, format: string): string =>
   `/api/resources/${resource.bucketId}/${resource.resourceId}/thumb_${resource.contentVersion}_${resource.thumbnailTimestamp ?? 0}_${dimensionToken(dimension)}_${size}.${format}`;
 
-/** URL of the WebVTT storyboard used for the player's timeline hover previews. */
-export const timelineThumbnailsUrl = (resource: ResourceDto): string =>
-  `/api/resources/${resource.bucketId}/${resource.resourceId}/thumbtile_${resource.contentVersion}.vtt`;
+/**
+ * URL of the WebVTT storyboard used for the player's timeline hover previews. The recipe token is
+ * supplied by the server config and changes whenever the sprite geometry changes, so a cached
+ * manifest can never reference sprites with a different layout.
+ */
+export const timelineThumbnailsUrl = (resource: ResourceDto, config: AppConfig): string | undefined =>
+  config.timelinePreviewToken
+    ? `/api/resources/${resource.bucketId}/${resource.resourceId}/thumbtile_${resource.contentVersion}_${config.timelinePreviewToken}.vtt`
+    : undefined;
 
 type PickingStrategy = "round-up" | "round-down" | "round-nearest";
 

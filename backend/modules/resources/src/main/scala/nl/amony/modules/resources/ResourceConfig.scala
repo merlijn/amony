@@ -53,7 +53,8 @@ given ConfigReader[Map[ImageFormat, List[String]]] =
 
 case class ThumbnailTileConfig(
   intervalLadder: List[FiniteDuration] = List(250.millis, 500.millis, 1.second, 2.seconds, 5.seconds, 10.seconds),
-  targetFrames: Int                    = 200
+  targetFrames: Int                    = 200,
+  spritePixels: Int                    = 20480
 ) derives ConfigReader
 
 case class ThumbnailConfig(

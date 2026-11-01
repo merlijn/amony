@@ -68,7 +68,11 @@ object ResourceModule:
       config.previews.resolutionStepDown
     )
     val thumbFormats     = ThumbnailFormats(config.previews.supportedImageFormats, config.previews.formatOptions)
-    val thumbTiles       = ThumbnailTiles(config.previews.tiles.intervalLadder, config.previews.tiles.targetFrames)
+    val thumbTiles       = ThumbnailTiles(
+      config.previews.tiles.intervalLadder,
+      config.previews.tiles.targetFrames,
+      config.previews.tiles.spritePixels
+    )
     val resourceDatabase = ResourceDatabase(databasePool)
 
     def bucketFactory(processLimiter: ProcessLimiter): BucketFactory = {

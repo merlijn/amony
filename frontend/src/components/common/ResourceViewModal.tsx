@@ -12,6 +12,7 @@ import {resourceContentUrl, timelineThumbnailsUrl} from "../../api/ResourceUrls"
 import ThumbnailEditor from "./ThumbnailEditor";
 import {useEventBus} from "./EventBus";
 import {SessionContext} from "../../api/Constants";
+import {useAppConfig} from "../../api/ConfigContext";
 
 const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }) => {
 
@@ -20,6 +21,7 @@ const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }
   let [resource, setResource] = useState<ResourceDto | undefined>(props.resource);
   let eventBus = useEventBus()
   const session = useContext(SessionContext)
+  const config = useAppConfig()
 
   // show modal video player
   useEffect(() => {
@@ -73,7 +75,7 @@ const ResourceViewModal = (props: { resource?: ResourceDto, onHide: () => void }
                 <MediaProvider />
                 <DefaultVideoLayout
                   icons = { defaultLayoutIcons }
-                  thumbnails = { isVideo && resource ? timelineThumbnailsUrl(resource) : undefined }
+                  thumbnails = { isVideo && resource ? timelineThumbnailsUrl(resource, config) : undefined }
                 />
               </MediaPlayer>
               { isImage &&  <img style = {{ width: "100%", height: "100%", visibility : isImage ? "visible" : "hidden" }} src = { src }/> }

@@ -27,8 +27,8 @@ object ResourceContentRoutes extends Logging {
     // clip_{version}_{start}_{end}_{dim}_{size}.mp4      e.g. clip_abc123_2863_5863_w_512.mp4    (videos only)
     val PublicThumbnailPattern             = raw"thumb_([a-z0-9]+)_(\d+)_([wh])_(\d+)\.([a-z0-9]+)".r
     val PublicClipPattern                  = raw"clip_([a-z0-9]+)_(\d+)_(\d+)_([wh])_(\d+)\.mp4".r
-    val PublicThumbnailTileManifestPattern = raw"thumbtile_([a-z0-9]+)\.vtt".r
-    val PublicThumbnailTileSpritePattern   = raw"thumbtile_([a-z0-9]+)_(\d+)\.webp".r
+    val PublicThumbnailTileManifestPattern = raw"thumbtile_([a-z0-9]+)_([a-z0-9]+)\.vtt".r
+    val PublicThumbnailTileSpritePattern   = raw"thumbtile_([a-z0-9]+)_([a-z0-9]+)_(\d+)\.webp".r
 
     /**
      * Builds a thumbnail operation only when the URL version matches the resource's
@@ -55,8 +55,14 @@ object ResourceContentRoutes extends Logging {
           case Some(video: VideoProperties) =>
             val ts = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
             if urlTimestamp == ts then
-              val (width, height) =
-                ResourceOperations.scaledDimensions(pixels, dimension, source, even = true, minimumDimension = format.minimumDimension)
+              val (width, height) = ResourceOperations.scaledDimensions(
+                pixels,
+                dimension,
+                source,
+                even             = true,
+                minimumDimension = format.minimumDimension,
+                squarePixels     = video.pixelAspectRatio.isDefined
+              )
               Some(VideoThumbnail(width = width, height = height, timestamp = ts, format = format))
             else None
           case Some(_: ImageProperties)     =>
@@ -67,33 +73,53 @@ object ResourceContentRoutes extends Logging {
         }
     }
 
-    /** Builds the manifest operation when the URL version matches the resource's current content version. */
-    def thumbnailTileManifestOperation(urlVersion: String, resource: ResourceInfo, tiles: ThumbnailTiles): Option[VideoThumbnailTileVtt] =
-      if urlVersion != ResourceOperations.contentVersion(resource) then None
+    /**
+     * Builds the manifest operation when the URL version and tile recipe token match the resource
+     * and current configuration, so a cached manifest cannot describe a different sprite layout.
+     */
+    def thumbnailTileManifestOperation(
+      urlVersion: String,
+      urlToken: String,
+      resource: ResourceInfo,
+      tiles: ThumbnailTiles
+    ): Option[VideoThumbnailTileVtt] =
+      if urlVersion != ResourceOperations.contentVersion(resource) || urlToken != tiles.recipeToken then None
       else
         resource.basicContentProperties match {
           case Some(video: VideoProperties) =>
-            Some(VideoThumbnailTileVtt(intervalInMillis = tiles.intervalInMillis(video.durationInMillis.toLong)))
+            Some(
+              VideoThumbnailTileVtt(
+                width            = VideoThumbnailTile.widthFor(tiles.spritePixels, video.width, video.height),
+                intervalInMillis = tiles.intervalInMillis(video.durationInMillis.toLong),
+                token            = tiles.recipeToken
+              )
+            )
           case _                            => None
         }
 
     /**
-     * Builds one sprite operation when the URL version matches and the sprite index exists for the
-     * resource's duration, rejecting arbitrary index injection.
+     * Builds one sprite operation when the URL version and tile recipe token match and the sprite
+     * index exists for the resource's duration, rejecting arbitrary index injection.
      */
     def thumbnailTileSpriteOperation(
       urlVersion: String,
+      urlToken: String,
       index: String,
       resource: ResourceInfo,
       tiles: ThumbnailTiles
     ): Option[VideoThumbnailTile] =
-      if urlVersion != ResourceOperations.contentVersion(resource) then None
+      if urlVersion != ResourceOperations.contentVersion(resource) || urlToken != tiles.recipeToken then None
       else
         resource.basicContentProperties match {
           case Some(video: VideoProperties) =>
             val interval = tiles.intervalInMillis(video.durationInMillis.toLong)
             index.toIntOption.flatMap { parsed =>
-              val operation = VideoThumbnailTile(intervalInMillis = interval, index = parsed)
+              val operation = VideoThumbnailTile(
+                width            = VideoThumbnailTile.widthFor(tiles.spritePixels, video.width, video.height),
+                intervalInMillis = interval,
+                index            = parsed,
+                token            = tiles.recipeToken
+              )
               Option.when(operation.validate(resource).isRight)(operation)
             }
           case _                            => None
@@ -122,7 +148,13 @@ object ResourceContentRoutes extends Logging {
           case Some(video: VideoProperties) =>
             val (start, end) = VideoFragment.previewRange(resource.thumbnailTimestamp, video.durationInMillis)
             if urlStart == start && urlEnd == end then
-              val (width, height) = ResourceOperations.scaledDimensions(pixels, dimension, source, even = true)
+              val (width, height) = ResourceOperations.scaledDimensions(
+                pixels,
+                dimension,
+                source,
+                even         = true,
+                squarePixels = video.pixelAspectRatio.isDefined
+              )
               Some(VideoFragment(width = width, height = height, start = start, end = end))
             else None
           case _                            =>
@@ -182,10 +214,10 @@ object ResourceContentRoutes extends Logging {
                                       patterns.thumbnailOperation(version, ts.toLong, dim, resKey, format, resolutions, formats, resource.info)
                                     case patterns.PublicClipPattern(version, start, end, dim, resKey)      =>
                                       patterns.clipOperation(version, start.toLong, end.toLong, dim, resKey, resolutions, resource.info)
-                                    case patterns.PublicThumbnailTileManifestPattern(version)              =>
-                                      patterns.thumbnailTileManifestOperation(version, resource.info, tiles)
-                                    case patterns.PublicThumbnailTileSpritePattern(version, index)         =>
-                                      patterns.thumbnailTileSpriteOperation(version, index, resource.info, tiles)
+                                    case patterns.PublicThumbnailTileManifestPattern(version, token)       =>
+                                      patterns.thumbnailTileManifestOperation(version, token, resource.info, tiles)
+                                    case patterns.PublicThumbnailTileSpritePattern(version, token, index)  =>
+                                      patterns.thumbnailTileSpriteOperation(version, token, index, resource.info, tiles)
                                     case _                                                                 => None
                                   })
             derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))

@@ -463,159 +463,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-  /api/search/media:
-    get:
-      tags:
-      - search
-      description: Find resources using a search query
-      operationId: findResources
-      parameters:
-      - name: access_token
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: XSRF-TOKEN
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: q
-        in: query
-        description: The search query
-        required: false
-        schema:
-          type: string
-        example: cats
-      - name: n
-        in: query
-        description: The number of results to return
-        required: false
-        schema:
-          type: integer
-          format: int32
-        example: 10
-      - name: d
-        in: query
-        description: The duration range in minutes
-        required: false
-        schema:
-          type: string
-        example: 10-30
-      - name: u
-        in: query
-        description: The upload date range (milliseconds since UTC)
-        required: false
-        schema:
-          type: string
-        example: 1771751993045-
-      - name: sort
-        in: query
-        description: Sort field and direction (e.g., title-asc, random-12345)
-        required: false
-        schema:
-          type: string
-        example: title-asc
-      - name: min_res
-        in: query
-        description: The minimum (vertical) resolution
-        required: false
-        schema:
-          type: integer
-          format: int32
-        example: 720
-      - name: max_res
-        in: query
-        description: The maximum (vertical) resolution
-        required: false
-        schema:
-          type: integer
-          format: int32
-        example: 1080
-      - name: offset
-        in: query
-        description: The offset for the search results
-        required: false
-        schema:
-          type: integer
-          format: int32
-        example: 12
-      - name: tag
-        in: query
-        description: An optional tag
-        required: false
-        schema:
-          type: string
-      - name: untagged
-        in: query
-        description: Only return resources without tags
-        required: false
-        schema:
-          type: boolean
-        example: false
-      - name: streamable
-        in: query
-        description: Only return resources whose container is streamable (true) or
-          not (false)
-        required: false
-        schema:
-          type: boolean
-        example: false
-      - name: no_thumbnail
-        in: query
-        description: Only return videos without a custom thumbnail timestamp
-        required: false
-        schema:
-          type: boolean
-        example: false
-      - name: content_type
-        in: query
-        description: The content type groups to include (image, video, other)
-        required: false
-        schema:
-          type: array
-          items:
-            $ref: '#/components/schemas/ContentTypeGroup'
-        example:
-        - image
-        - video
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SearchResponseDto'
-        '400':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '401':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '403':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '404':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
   /api/buckets:
     get:
       tags:
@@ -1375,323 +1222,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-  /api/auth/session:
-    get:
-      tags:
-      - auth
-      description: Get the current session
-      operationId: getSession
-      parameters:
-      - name: access_token
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: XSRF-TOKEN
-        in: cookie
-        required: false
-        schema:
-          type: string
-      responses:
-        '200':
-          description: ''
-          headers:
-            Set-Cookie:
-              required: false
-              schema:
-                type: array
-                items:
-                  type: string
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthToken'
-        '400':
-          description: Invalid value
-          content:
-            text/plain:
-              schema:
-                type: string
-        '401':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '403':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-  /api/auth/refresh:
-    post:
-      tags:
-      - auth
-      description: Refresh the users auth tokens
-      operationId: authRefreshTokens
-      parameters:
-      - name: access_token
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: XSRF-TOKEN
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: refresh_token
-        in: cookie
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: ''
-          headers:
-            Set-Cookie:
-              required: false
-              schema:
-                type: array
-                items:
-                  type: string
-        '400':
-          description: 'Invalid value, Invalid value for: cookie refresh_token'
-          content:
-            text/plain:
-              schema:
-                type: string
-        '401':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '403':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-  /api/auth/logout:
-    post:
-      tags:
-      - auth
-      description: Logout the current user
-      operationId: authLogout
-      parameters:
-      - name: access_token
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: XSRF-TOKEN
-        in: cookie
-        required: false
-        schema:
-          type: string
-      - name: provider_id_token
-        in: cookie
-        description: The identity provider ID token, passed on as id_token_hint
-        required: false
-        schema:
-          type: string
-      responses:
-        '200':
-          description: ''
-          headers:
-            Set-Cookie:
-              required: false
-              schema:
-                type: array
-                items:
-                  type: string
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LogoutResponse'
-        '400':
-          description: Invalid value
-          content:
-            text/plain:
-              schema:
-                type: string
-        '401':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '403':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-  /api/auth/login/{provider}:
-    get:
-      tags:
-      - auth
-      description: Redirect to the identity provider for login
-      operationId: authLogin
-      parameters:
-      - name: provider
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '302':
-          description: ''
-          headers:
-            Location:
-              required: true
-              schema:
-                type: string
-            Set-Cookie:
-              required: false
-              schema:
-                type: array
-                items:
-                  type: string
-        '400':
-          description: Invalid value
-          content:
-            text/plain:
-              schema:
-                type: string
-        '404':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-  /api/auth/callback/{provider}:
-    get:
-      tags:
-      - auth
-      description: Identity provider callback endpoint
-      operationId: authCallback
-      parameters:
-      - name: provider
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: code
-        in: query
-        description: The OAuth 2.0 authorization code returned by the identity provider
-        required: true
-        schema:
-          type: string
-      - name: state
-        in: query
-        description: The OAuth 2.0 state parameter returned by the identity provider
-        required: true
-        schema:
-          type: string
-      - name: oauth_login_state
-        in: cookie
-        description: The state cookie to prevent CSRF attacks
-        required: true
-        schema:
-          type: string
-      responses:
-        '302':
-          description: ''
-          headers:
-            Location:
-              required: true
-              schema:
-                type: string
-            Set-Cookie:
-              required: false
-              schema:
-                type: array
-                items:
-                  type: string
-        '400':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '401':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '403':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '404':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '502':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
-  /api/auth/identity-providers:
-    get:
-      tags:
-      - auth
-      description: Get the list of available identity providers
-      operationId: getIdentityProviders
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/IdentityProviderDto'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
   /api/collections:
     get:
       tags:
@@ -2039,6 +1569,476 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/search/media:
+    get:
+      tags:
+      - search
+      description: Find resources using a search query
+      operationId: findResources
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: q
+        in: query
+        description: The search query
+        required: false
+        schema:
+          type: string
+        example: cats
+      - name: n
+        in: query
+        description: The number of results to return
+        required: false
+        schema:
+          type: integer
+          format: int32
+        example: 10
+      - name: d
+        in: query
+        description: The duration range in minutes
+        required: false
+        schema:
+          type: string
+        example: 10-30
+      - name: u
+        in: query
+        description: The upload date range (milliseconds since UTC)
+        required: false
+        schema:
+          type: string
+        example: 1771751993045-
+      - name: sort
+        in: query
+        description: Sort field and direction (e.g., title-asc, random-12345)
+        required: false
+        schema:
+          type: string
+        example: title-asc
+      - name: min_res
+        in: query
+        description: The minimum (vertical) resolution
+        required: false
+        schema:
+          type: integer
+          format: int32
+        example: 720
+      - name: max_res
+        in: query
+        description: The maximum (vertical) resolution
+        required: false
+        schema:
+          type: integer
+          format: int32
+        example: 1080
+      - name: offset
+        in: query
+        description: The offset for the search results
+        required: false
+        schema:
+          type: integer
+          format: int32
+        example: 12
+      - name: tag
+        in: query
+        description: An optional tag
+        required: false
+        schema:
+          type: string
+      - name: untagged
+        in: query
+        description: Only return resources without tags
+        required: false
+        schema:
+          type: boolean
+        example: false
+      - name: streamable
+        in: query
+        description: Only return resources whose container is streamable (true) or
+          not (false)
+        required: false
+        schema:
+          type: boolean
+        example: false
+      - name: no_thumbnail
+        in: query
+        description: Only return videos without a custom thumbnail timestamp
+        required: false
+        schema:
+          type: boolean
+        example: false
+      - name: content_type
+        in: query
+        description: The content type groups to include (image, video, other)
+        required: false
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentTypeGroup'
+        example:
+        - image
+        - video
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponseDto'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/auth/session:
+    get:
+      tags:
+      - auth
+      description: Get the current session
+      operationId: getSession
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          headers:
+            Set-Cookie:
+              required: false
+              schema:
+                type: array
+                items:
+                  type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthToken'
+        '400':
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/auth/refresh:
+    post:
+      tags:
+      - auth
+      description: Refresh the users auth tokens
+      operationId: authRefreshTokens
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: refresh_token
+        in: cookie
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          headers:
+            Set-Cookie:
+              required: false
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          description: 'Invalid value, Invalid value for: cookie refresh_token'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/auth/logout:
+    post:
+      tags:
+      - auth
+      description: Logout the current user
+      operationId: authLogout
+      parameters:
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: XSRF-TOKEN
+        in: cookie
+        required: false
+        schema:
+          type: string
+      - name: provider_id_token
+        in: cookie
+        description: The identity provider ID token, passed on as id_token_hint
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          headers:
+            Set-Cookie:
+              required: false
+              schema:
+                type: array
+                items:
+                  type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResponse'
+        '400':
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/auth/login/{provider}:
+    get:
+      tags:
+      - auth
+      description: Redirect to the identity provider for login
+      operationId: authLogin
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '302':
+          description: ''
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+            Set-Cookie:
+              required: false
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          description: Invalid value
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/auth/callback/{provider}:
+    get:
+      tags:
+      - auth
+      description: Identity provider callback endpoint
+      operationId: authCallback
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: code
+        in: query
+        description: The OAuth 2.0 authorization code returned by the identity provider
+        required: true
+        schema:
+          type: string
+      - name: state
+        in: query
+        description: The OAuth 2.0 state parameter returned by the identity provider
+        required: true
+        schema:
+          type: string
+      - name: oauth_login_state
+        in: cookie
+        description: The state cookie to prevent CSRF attacks
+        required: true
+        schema:
+          type: string
+      responses:
+        '302':
+          description: ''
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+            Set-Cookie:
+              required: false
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '502':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/auth/identity-providers:
+    get:
+      tags:
+      - auth
+      description: Get the list of available identity providers
+      operationId: getIdentityProviders
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IdentityProviderDto'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/config:
     get:
       tags:
@@ -2069,6 +2069,7 @@ components:
       - supportedVideoFormats
       - defaultThumbnailResolution
       - resolutionPickingStrategy
+      - timelinePreviewToken
       properties:
         thumbnailSizes:
           type: array
@@ -2086,6 +2087,8 @@ components:
         defaultThumbnailResolution:
           $ref: '#/components/schemas/ThumbnailResolutionDto'
         resolutionPickingStrategy:
+          type: string
+        timelinePreviewToken:
           type: string
     AuthToken:
       title: AuthToken

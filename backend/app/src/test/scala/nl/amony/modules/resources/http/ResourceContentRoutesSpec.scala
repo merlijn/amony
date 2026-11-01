@@ -14,13 +14,19 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
   private val formats          = ThumbnailFormats(List(ImageFormat.Avif, ImageFormat.Webp, ImageFormat.Jpeg))
   private val tiles            = ThumbnailTiles(List(250.millis, 500.millis, 1.second, 2.seconds, 5.seconds, 10.seconds), 200)
 
-  private def videoInfo(width: Int, height: Int, durationInMillis: Int = 10000, thumbnailTimestamp: Int = 1000) = ResourceInfo(
+  private def videoInfo(
+    width: Int,
+    height: Int,
+    durationInMillis: Int                     = 10000,
+    thumbnailTimestamp: Int                   = 1000,
+    pixelAspectRatio: Option[Float]           = None
+  ) = ResourceInfo(
     bucketId           = BucketId("test"),
     resourceId         = ResourceId("resource"),
     userId             = UserId("user"),
     path               = "video.mp4",
     size               = 1L,
-    contentMeta        = ContentMeta.indexed(Some(VideoProperties(width, height, 30f, durationInMillis))),
+    contentMeta        = ContentMeta.indexed(Some(VideoProperties(width, height, 30f, durationInMillis, pixelAspectRatio = pixelAspectRatio))),
     thumbnailTimestamp = Some(thumbnailTimestamp)
   )
 
@@ -50,11 +56,11 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
 
   private def tileManifestOp(info: ResourceInfo) =
     ResourceContentRoutes.patterns
-      .thumbnailTileManifestOperation(ResourceOperations.contentVersion(info), info, tiles)
+      .thumbnailTileManifestOperation(ResourceOperations.contentVersion(info), tiles.recipeToken, info, tiles)
 
   private def tileSpriteOp(index: Int, info: ResourceInfo) =
     ResourceContentRoutes.patterns
-      .thumbnailTileSpriteOperation(ResourceOperations.contentVersion(info), index.toString, info, tiles)
+      .thumbnailTileSpriteOperation(ResourceOperations.contentVersion(info), tiles.recipeToken, index.toString, info, tiles)
 
   "ResourceContentRoutes" when {
 
@@ -78,6 +84,11 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
       "not cap a request smaller than the source" in {
         val op = thumbOp(1000, "w", "352", "webp", videoInfo(1920, 1080))
         assert(op == Some(VideoThumbnail(width = Some(352), height = None, timestamp = 1000, format = ImageFormat.Webp)))
+      }
+
+      "pin both dimensions for anamorphic video" in {
+        val op = thumbOp(1000, "w", "352", "webp", videoInfo(853, 480, pixelAspectRatio = Some(32f / 27f)))
+        assert(op == Some(VideoThumbnail(width = Some(352), height = Some(198), timestamp = 1000, format = ImageFormat.Webp)))
       }
 
       "serve a lower rung when resolution-step-down is configured" in {
@@ -158,6 +169,11 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
         assert(op == Some(VideoFragment(width = Some(352), height = None, start = 1000, end = 2000)))
       }
 
+      "pin both dimensions for an anamorphic clip" in {
+        val op = clipOp(1000, 4000, "w", "352", videoInfo(853, 480, pixelAspectRatio = Some(32f / 27f)))
+        assert(op == Some(VideoFragment(width = Some(352), height = Some(198), start = 1000, end = 4000)))
+      }
+
       "reject a clip when the start does not match the canonical range" in {
         val op = clipOp(999, 4000, "w", "352", videoInfo(1920, 1080))
         assert(op.isEmpty)
@@ -178,23 +194,57 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
     "building a thumbnail tile operation" should {
 
       "build the manifest operation for a video" in
-        assert(tileManifestOp(videoInfo(1920, 1080)) == Some(VideoThumbnailTileVtt(intervalInMillis = 250)))
+        assert(tileManifestOp(videoInfo(1920, 1080)) == Some(VideoThumbnailTileVtt(width = 192, intervalInMillis = 250, token = tiles.recipeToken)))
+
+      "use the target pixel area for portrait videos" in
+        assert(tileManifestOp(videoInfo(1080, 1920)).map(_.width) == Some(108))
 
       "build the first sprite operation" in
-        assert(tileSpriteOp(1, videoInfo(1920, 1080)) == Some(VideoThumbnailTile(intervalInMillis = 250, index = 1)))
+        assert(
+          tileSpriteOp(1, videoInfo(1920, 1080)) == Some(
+            VideoThumbnailTile(width = 192, intervalInMillis = 250, index = 1, token = tiles.recipeToken)
+          )
+        )
 
       "allow a sprite index covered by the video duration" in
-        assert(tileSpriteOp(2, videoInfo(1920, 1080, durationInMillis = 650000)) == Some(VideoThumbnailTile(intervalInMillis = 5000, index = 2)))
+        assert(
+          tileSpriteOp(2, videoInfo(1920, 1080, durationInMillis = 650000)) == Some(
+            VideoThumbnailTile(width = 192, intervalInMillis = 5000, index = 2, token = tiles.recipeToken)
+          )
+        )
 
       "reject a sprite index before the first sprite" in
         assert(tileSpriteOp(0, videoInfo(1920, 1080)).isEmpty)
 
       "reject a sprite index beyond the video duration" in
-        assert(tileSpriteOp(2, videoInfo(1920, 1080)).isEmpty)
+        assert(tileSpriteOp(3, videoInfo(1920, 1080)).isEmpty)
 
       "reject a tile when the content version does not match" in {
         val info = videoInfo(1920, 1080)
-        val op   = ResourceContentRoutes.patterns.thumbnailTileManifestOperation("staleversion", info, tiles)
+        val op   = ResourceContentRoutes.patterns.thumbnailTileManifestOperation("staleversion", tiles.recipeToken, info, tiles)
+        assert(op.isEmpty)
+      }
+
+      "reject a tile when the recipe token does not match" in {
+        val info = videoInfo(1920, 1080)
+        val op   = ResourceContentRoutes.patterns.thumbnailTileManifestOperation(
+          ResourceOperations.contentVersion(info),
+          "staletoken",
+          info,
+          tiles
+        )
+        assert(op.isEmpty)
+      }
+
+      "reject a sprite when the recipe token does not match" in {
+        val info = videoInfo(1920, 1080)
+        val op   = ResourceContentRoutes.patterns.thumbnailTileSpriteOperation(
+          ResourceOperations.contentVersion(info),
+          "staletoken",
+          "1",
+          info,
+          tiles
+        )
         assert(op.isEmpty)
       }
 
@@ -234,13 +284,13 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
       }
 
       "match thumbnail tile manifest and sprite URLs" in {
-        val manifest = ResourceContentRoutes.patterns.PublicThumbnailTileManifestPattern.findFirstMatchIn("thumbtile_abc123.vtt")
-        val sprite   = ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123_2.webp")
+        val manifest = ResourceContentRoutes.patterns.PublicThumbnailTileManifestPattern.findFirstMatchIn("thumbtile_abc123_def456.vtt")
+        val sprite   = ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123_def456_2.webp")
 
-        assert(manifest.map(_.group(1)) == Some("abc123"))
-        assert(sprite.map(m => (m.group(1), m.group(2))) == Some(("abc123", "2")))
+        assert(manifest.map(m => (m.group(1), m.group(2))) == Some(("abc123", "def456")))
+        assert(sprite.map(m => (m.group(1), m.group(2), m.group(3))) == Some(("abc123", "def456", "2")))
         assert(ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123.webp").isEmpty)
-        assert(ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123_2.png").isEmpty)
+        assert(ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123_def456_2.png").isEmpty)
       }
     }
   }

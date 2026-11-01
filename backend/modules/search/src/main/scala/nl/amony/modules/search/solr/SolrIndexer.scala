@@ -43,18 +43,18 @@ private[search] class SolrIndexer(config: SolrConfig, solr: SolrClient) extends 
     resource.streamable.foreach(streamable => solrInputDocument.addField(FieldNames.streamable, if streamable then "true" else "false"))
 
     resource.basicContentProperties match {
-      case Some(ImageProperties(w, h, _))                    =>
+      case Some(ImageProperties(w, h, _))                       =>
         solrInputDocument.addField(FieldNames.width, w)
         solrInputDocument.addField(FieldNames.height, h)
         solrInputDocument.addField(FieldNames.resourceType, "image")
-      case Some(VideoProperties(w, h, fps, duration, codec)) =>
+      case Some(VideoProperties(w, h, fps, duration, codec, _)) =>
         solrInputDocument.addField(FieldNames.width, w)
         solrInputDocument.addField(FieldNames.height, h)
         solrInputDocument.addField(FieldNames.duration, duration)
         codec.foreach(codec => solrInputDocument.addField(FieldNames.videoCodec, codec))
         solrInputDocument.addField(FieldNames.fps, fps)
         solrInputDocument.addField(FieldNames.resourceType, "video")
-      case _                                                 =>
+      case _                                                    =>
     }
 
     logger.debug(s"Indexing document: $solrInputDocument")
