@@ -2,13 +2,14 @@ package nl.amony.platform.subprocess.ffmpeg.tasks
 
 import java.net.URI
 import java.nio.file.{Files, Path}
+import java.util.concurrent.ConcurrentHashMap
 
 import cats.effect.IO
 import scribe.Logging
 
 import nl.amony.platform.subprocess.ffmpeg.FFMpeg.formatTime
 import nl.amony.platform.subprocess.ffmpeg.{FFMpeg, HardwareDecoding}
-import nl.amony.platform.subprocess.{Command, ProcessRunner}
+import nl.amony.platform.subprocess.{Command, ProcessBusy, ProcessRunner, ProcessTimedOut}
 
 /** The part of a storyboard that a single sprite covers. */
 case class ThumbnailTile(
@@ -59,6 +60,19 @@ object ThumbnailTile {
 trait CreateThumbnailTile extends Logging {
 
   self: ProcessRunner =>
+
+  /**
+   * Resources the hardware decoder rejected, so a codec the GPU cannot handle costs one failed attempt
+   * instead of one per sprite. Which codecs work is a property of the device and the ffmpeg build, so it
+   * is learned from the attempt rather than assumed from a list. A restart retries, in case a driver was
+   * installed since.
+   */
+  private val hardwareUnsupported = ConcurrentHashMap.newKeySet[String]()
+
+  /** Queue pressure and timeouts say nothing about the codec, so they must not disable hardware for a file. */
+  private def isTransient(error: Throwable): Boolean = error match
+    case _: ProcessBusy | _: ProcessTimedOut => true
+    case _                                   => false
 
   /**
    * Generates one storyboard sprite for the given window, holding a frame every `intervalInMillis`
@@ -112,11 +126,15 @@ trait CreateThumbnailTile extends Logging {
             IO.raiseWhen(size <= 0)(new IllegalStateException(s"ffmpeg produced an empty sprite: $output"))
           }
 
-      hardwareDecoding match
+      hardwareDecoding.filterNot(_ => hardwareUnsupported.contains(input.toString)) match
         case None         => attempt("ffmpeg-create-thumbnail-tile", None)
         case Some(config) =>
           attempt("ffmpeg-create-thumbnail-tile-hw", Some(config)).handleErrorWith { error =>
-            logger.warn(s"Hardware decoding failed for '$input', falling back to software: ${error.getMessage}")
+            if !isTransient(error) then hardwareUnsupported.add(input.toString)
+
+            logger.warn(
+              s"Hardware decoding failed for '$input', falling back to software: ${error.getMessage}"
+            )
             attempt("ffmpeg-create-thumbnail-tile", None)
           }
     }
