@@ -38,6 +38,7 @@ trait MessageTopic[E]:
   /**
    * An at-least-once consumer group that processes each partition's messages strictly in insertion order, one at a
    * time, from its own committed offset, so messages with the same key are never applied out of order or concurrently
-   * across nodes. Any failure is retried in place on that partition before advancing, so no message is ever skipped.
+   * across nodes. Up to `parallelism` partitions (defaulting to the bus configuration) are drained concurrently on this
+   * node. Any failure is retried in place on that partition before advancing, so no message is ever skipped.
    */
-  def processAtLeastOnce(consumerId: String)(processor: E => IO[Unit]): Stream[IO, Unit]
+  def processAtLeastOnce(consumerId: String, parallelism: Int = 0)(processor: E => IO[Unit]): Stream[IO, Unit]

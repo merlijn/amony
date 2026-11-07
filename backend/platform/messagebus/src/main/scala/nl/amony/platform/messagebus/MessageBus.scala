@@ -33,10 +33,13 @@ final case class MessageBusConfig(
   // How long a consumer holds a partition lease before another node can take over if the consumer crashes.
   // Renewed periodically while a message is actively being processed.
   leaseDuration: FiniteDuration = 30.seconds,
+  // Default number of partitions a single consumer group instance can drain concurrently on one node.
+  parallelism: Int              = 4,
   purgeInterval: FiniteDuration = 1.hour,
   retention: FiniteDuration     = 7.days,
   notificationQueueSize: Int    = 10000
 ) derives ConfigReader:
+  require(parallelism >= 1, s"parallelism must be >= 1, got $parallelism")
   def retryBackoffDuration: java.time.Duration = java.time.Duration.ofMillis(retryBackoff.toMillis)
   def leaseJavaDuration: java.time.Duration    = java.time.Duration.ofMillis(leaseDuration.toMillis)
   def retentionDuration: java.time.Duration    = java.time.Duration.ofMillis(retention.toMillis)

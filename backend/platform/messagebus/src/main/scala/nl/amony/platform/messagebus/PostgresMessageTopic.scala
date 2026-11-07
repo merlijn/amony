@@ -2,7 +2,7 @@ package nl.amony.platform.messagebus
 
 import scala.concurrent.duration.*
 
-import cats.effect.std.Mutex
+import cats.effect.std.Semaphore
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
@@ -14,8 +14,9 @@ import skunk.data.Identifier
  * A [[MessageTopic]] backed by the durable message log. Producers append a row to a key-derived partition and send a
  * `NOTIFY` on the topic channel in the same transaction; each consumer group wakes on `NOTIFY` (with a periodic poll
  * as a fallback) and claims partitions via database leases (`FOR UPDATE SKIP LOCKED`), reading each partition from its
- * own committed offset in order. Multiple nodes can run the same consumer group concurrently without processing the
- * same partition at the same time. A message is only deleted once every consumer group has processed it.
+ * own committed offset in order. Multiple workers (within a node via `Semaphore` and across nodes) can run the same
+ * consumer group concurrently without processing the same partition at the same time. A message is only deleted once
+ * every consumer group has processed it.
  */
 final private[messagebus] class PostgresMessageTopic[E](
   key: MessageTopicKey[E],
@@ -34,12 +35,21 @@ final private[messagebus] class PostgresMessageTopic[E](
     val (messageKey, partition) = key.partitionFor(message)
     log.enqueue(session, key.name, partition, messageKey, codec(message)) >> session.channel(identifier).notify(key.name)
 
-  override def processAtLeastOnce(consumerId: String)(processor: E => IO[Unit]): Stream[IO, Unit] =
-    Stream.eval(Mutex[IO]).flatMap { mutex =>
+  override def processAtLeastOnce(consumerId: String, parallelism: Int = 0)(processor: E => IO[Unit]): Stream[IO, Unit] =
+    val maxWorkers = (if parallelism > 0 then parallelism else config.parallelism).min(key.partitions).max(1)
+    Stream.eval(Semaphore[IO](maxWorkers.toLong)).flatMap { semaphore =>
+      val trigger: IO[Unit] =
+        semaphore.tryAcquire.flatMap {
+          case false => IO.unit
+          case true  => drain(consumerId, processor).guarantee(semaphore.release)
+        }
+
       // A new consumer group starts at the latest message, like Kafka's `auto.offset.reset=latest`.
       val register = Stream.eval(log.latestId(key.name).flatMap(offset => log.ensureConsumer(key.name, consumerId, key.partitions, offset)))
-      val realtime = notifications.evalMap(_ => mutex.lock.use(_ => drain(consumerId, processor)))
-      val polling  = Stream.fixedRateStartImmediately[IO](config.pollInterval).evalMap(_ => mutex.lock.use(_ => drain(consumerId, processor)))
+      val realtime = notifications.parEvalMapUnbounded(_ => trigger)
+      val polling  = Stream
+        .fixedRateStartImmediately[IO](config.pollInterval)
+        .parEvalMapUnbounded(_ => List.fill(maxWorkers)(trigger).parSequence_)
       val purging  = Stream.fixedRateStartImmediately[IO](config.purgeInterval).evalMap(_ => log.purge(key.name, config.retentionDuration))
       register ++ realtime.merge(polling).merge(purging)
     }
