@@ -51,7 +51,7 @@ class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestConta
     )
 
   private def topicFor(pool: Resource[IO, Session[IO]], name: String): MessageTopic[ResourceEvent] =
-    given MessageTopicKey[ResourceEvent] = MessageTopicKey(name)
+    given MessageTopicKey[ResourceEvent] = MessageTopicKey(name, _.messageKey)
     PersistentMessageBus.postgres(pool).getTopic[ResourceEvent]
 
   private def eventCount(pool: Resource[IO, Session[IO]], name: String): IO[Long] =

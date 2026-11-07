@@ -40,8 +40,8 @@ class MessageBusSpec extends AnyWordSpecLike with Matchers:
     "report single producer / single consumer throughput" in {
       assume(enabled, "performance test disabled; see the class comment for how to run it")
 
-      val runs     = setting("amony.perf.runs", "AMONY_PERF_RUNS").flatMap(_.toIntOption).getOrElse(10)
-      val messages = setting("amony.perf.messages", "AMONY_PERF_MESSAGES").flatMap(_.toIntOption).getOrElse(10000)
+      val runs     = setting("amony.perf.runs", "AMONY_PERF_RUNS").flatMap(_.toIntOption).getOrElse(3)
+      val messages = setting("amony.perf.messages", "AMONY_PERF_MESSAGES").flatMap(_.toIntOption).getOrElse(2000)
 
       val container = GenericContainer(
         "postgres:17.2",
@@ -66,11 +66,11 @@ class MessageBusSpec extends AnyWordSpecLike with Matchers:
 
   private def run(pool: Resource[IO, Session[IO]], runNumber: Int, messages: Int, runs: Int): IO[Unit] =
     val name                   = s"perf-${UUID.randomUUID()}"
-    given MessageTopicKey[Int] = MessageTopicKey(name)
+    given MessageTopicKey[Int] = MessageTopicKey(name, _.toString)
     val topic                  = PersistentMessageBus.postgres(pool).getTopic[Int]
 
     for
-      _            <- MessageLog(pool).ensureConsumer(name, "consumer", 0)
+      _            <- MessageLog(pool).ensureConsumer(name, "consumer", MessageTopicKey.DefaultPartitions, 0)
       produceStart <- IO.monotonic
       _            <- (1 to messages).toList.traverse_(topic.publish)
       produceEnd   <- IO.monotonic

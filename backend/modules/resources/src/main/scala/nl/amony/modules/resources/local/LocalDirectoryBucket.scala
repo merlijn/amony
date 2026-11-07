@@ -95,7 +95,7 @@ class LocalDirectoryBucket(
       case None       => IO.pure(())
       case Some(info) =>
         val path = config.resourcePath.resolve(info.path)
-        db.transact(s => db.deleteResourceWith(s, id, resourceId) >> topic.publish(s, ResourceDeleted(resourceId))) >> IO(path.deleteIfExists())
+        db.transact(s => db.deleteResourceWith(s, id, resourceId) >> topic.publish(s, ResourceDeleted(id, resourceId))) >> IO(path.deleteIfExists())
 
   override def updateUserMeta(resourceId: ResourceId, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] =
     db.transact: s =>

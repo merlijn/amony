@@ -121,3 +121,13 @@ databaseChangeLog:
             path: db/13-tag-owners.sql
             splitStatements: true
             endDelimiter: ";"
+  - changeSet:
+      id: 14
+      author: merlijn
+      context: message-log
+      changes:
+        - sqlFile:
+            path: db/14-partitioned-message-log.sql
+            splitStatements: true
+            endDelimiter: ";"
+

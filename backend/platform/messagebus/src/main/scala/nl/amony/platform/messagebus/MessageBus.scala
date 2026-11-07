@@ -30,8 +30,13 @@ final case class MessageBusConfig(
   pollInterval: FiniteDuration  = 3.seconds,
   // Wait before retrying a failed message, so a failing processor (e.g. Solr down) is not hammered.
   retryBackoff: FiniteDuration  = 3.seconds,
+  // How long a consumer holds a partition lease before another node can take over if the consumer crashes.
+  // Renewed periodically while a message is actively being processed.
+  leaseDuration: FiniteDuration = 30.seconds,
   purgeInterval: FiniteDuration = 1.hour,
   retention: FiniteDuration     = 7.days,
   notificationQueueSize: Int    = 10000
 ) derives ConfigReader:
-  def retentionDuration: java.time.Duration = java.time.Duration.ofMillis(retention.toMillis)
+  def retryBackoffDuration: java.time.Duration = java.time.Duration.ofMillis(retryBackoff.toMillis)
+  def leaseJavaDuration: java.time.Duration    = java.time.Duration.ofMillis(leaseDuration.toMillis)
+  def retentionDuration: java.time.Duration    = java.time.Duration.ofMillis(retention.toMillis)
