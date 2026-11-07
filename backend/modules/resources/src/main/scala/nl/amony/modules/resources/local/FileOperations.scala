@@ -95,9 +95,14 @@ final class FileOperations(
           Some(ToolScan("magick/1", result.rawJson))
     else IO.pure(None)
 
+  private def stripExtension(path: Path): Path =
+    val fileName = path.getFileName.toString
+    val dotIdx   = fileName.lastIndexOf('.')
+    if dotIdx >= 0 then path.resolveSibling(fileName.substring(0, dotIdx)) else path
+
   private[local] def addFastStart(video: Path, container: VideoContainer, outputFile: Option[Path] = None): IO[Path] = {
     // Local files have a well-defined sibling directory, so a default still makes sense here; remote callers must pass an explicit output.
-    val out = outputFile.getOrElse(Path.of(s"${FFMpeg.stripExtension(video)}-faststart.${containerFormat(container).extension}"))
+    val out = outputFile.getOrElse(Path.of(s"${stripExtension(video)}-faststart.${containerFormat(container).extension}"))
     FFMpeg.addFastStart(video.toUri, containerFormat(container), out)
   }
 
