@@ -89,7 +89,7 @@ object ResourceContentRoutes extends Logging {
           case Some(video: VideoProperties) =>
             Some(
               VideoThumbnailTileVtt(
-                width            = VideoThumbnailTile.widthFor(tiles.spritePixels, video.width, video.height),
+                spritePixels     = tiles.spritePixels,
                 intervalInMillis = tiles.intervalInMillis(video.durationInMillis.toLong),
                 token            = tiles.recipeToken
               )
@@ -115,7 +115,7 @@ object ResourceContentRoutes extends Logging {
             val interval = tiles.intervalInMillis(video.durationInMillis.toLong)
             index.toIntOption.flatMap { parsed =>
               val operation = VideoThumbnailTile(
-                width            = VideoThumbnailTile.widthFor(tiles.spritePixels, video.width, video.height),
+                spritePixels     = tiles.spritePixels,
                 intervalInMillis = interval,
                 index            = parsed,
                 token            = tiles.recipeToken

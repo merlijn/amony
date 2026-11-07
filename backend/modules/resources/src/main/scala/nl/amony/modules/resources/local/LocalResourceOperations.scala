@@ -37,14 +37,14 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
         width.map(w => s"w$w").orElse(height.map(h => s"h$h")).getOrElse("orig")
 
       val fileName = operation match
-        case VideoFragment(width, height, start, end)                  => s"${resourceId}_${contentVersion}_$start-${end}_${scaleSuffix(width, height)}.mp4"
-        case VideoThumbnail(width, height, timestamp, format)          =>
+        case VideoFragment(width, height, start, end)                         => s"${resourceId}_${contentVersion}_$start-${end}_${scaleSuffix(width, height)}.mp4"
+        case VideoThumbnail(width, height, timestamp, format)                 =>
           s"${resourceId}_${contentVersion}_${timestamp}_${scaleSuffix(width, height)}.${format.extension}"
-        case ImageThumbnail(width, height, format)                     => s"${resourceId}_${contentVersion}_${scaleSuffix(width, height)}.${format.extension}"
-        case VideoThumbnailTile(width, intervalInMillis, index, token) =>
-          VideoThumbnailTile.spriteFileName(resourceId, contentVersion, width, intervalInMillis, index, token)
-        case VideoThumbnailTileVtt(width, intervalInMillis, token)     =>
-          VideoThumbnailTile.manifestFileName(resourceId, contentVersion, width, intervalInMillis, token)
+        case ImageThumbnail(width, height, format)                            => s"${resourceId}_${contentVersion}_${scaleSuffix(width, height)}.${format.extension}"
+        case VideoThumbnailTile(spritePixels, intervalInMillis, index, token) =>
+          VideoThumbnailTile.spriteFileName(resourceId, contentVersion, spritePixels, intervalInMillis, index, token)
+        case VideoThumbnailTileVtt(spritePixels, intervalInMillis, token)     =>
+          VideoThumbnailTile.manifestFileName(resourceId, contentVersion, spritePixels, intervalInMillis, token)
 
       config.cachePath.resolve(fileName)
     }
@@ -205,13 +205,13 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
       .getOrElse(throw new IllegalStateException(s"Resource '${info.resourceId}' has no video properties"))
 
   private def createThumbnailTileSprite(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: VideoThumbnailTile): IO[Unit] = {
-    val video      = videoProperties(info)
-    val duration   = video.durationInMillis.toLong
-    val height     = VideoThumbnailTile.heightFor(operation.width, video.width, video.height)
-    val frameCount = VideoThumbnailTile.frameCountInSprite(operation.index, duration, operation.intervalInMillis)
-    val start      = VideoThumbnailTile.startInMillis(operation.index, operation.intervalInMillis)
-    val plan       = ThumbnailTile(
-      operation.width,
+    val video           = videoProperties(info)
+    val duration        = video.durationInMillis.toLong
+    val (width, height) = VideoThumbnailTile.resolutionFor(operation.spritePixels, video.width, video.height)
+    val frameCount      = VideoThumbnailTile.frameCountInSprite(operation.index, duration, operation.intervalInMillis)
+    val start           = VideoThumbnailTile.startInMillis(operation.index, operation.intervalInMillis)
+    val plan            = ThumbnailTile(
+      width,
       height,
       VideoThumbnailTile.columnsPerSprite,
       frameCount,
@@ -225,16 +225,16 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
   }
 
   private def createThumbnailTileManifest(info: ResourceInfo, outputFile: Path, operation: VideoThumbnailTileVtt): IO[Unit] = {
-    val video          = videoProperties(info)
-    val contentVersion = ResourceOperations.contentVersion(info)
-    val height         = VideoThumbnailTile.heightFor(operation.width, video.width, video.height)
-    val spriteUrl      = (index: Int) => s"/api/resources/${info.bucketId}/${info.resourceId}/thumbtile_${contentVersion}_${operation.token}_$index.webp"
+    val video           = videoProperties(info)
+    val contentVersion  = ResourceOperations.contentVersion(info)
+    val (width, height) = VideoThumbnailTile.resolutionFor(operation.spritePixels, video.width, video.height)
+    val spriteUrl       = (index: Int) => s"/api/resources/${info.bucketId}/${info.resourceId}/thumbtile_${contentVersion}_${operation.token}_$index.webp"
 
     logger.debug(s"Creating thumbnail tile manifest for '${info.path}' at ${operation.intervalInMillis}ms interval")
     val webVtt = VideoThumbnailTile.renderWebVtt(
       durationInMillis = video.durationInMillis.toLong,
       intervalInMillis = operation.intervalInMillis,
-      width            = operation.width,
+      width            = width,
       height           = height,
       spriteUrl        = spriteUrl
     )

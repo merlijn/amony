@@ -194,22 +194,23 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
     "building a thumbnail tile operation" should {
 
       "build the manifest operation for a video" in
-        assert(tileManifestOp(videoInfo(1920, 1080)) == Some(VideoThumbnailTileVtt(width = 192, intervalInMillis = 250, token = tiles.recipeToken)))
-
-      "use the target pixel area for portrait videos" in
-        assert(tileManifestOp(videoInfo(1080, 1920)).map(_.width) == Some(108))
+        assert(
+          tileManifestOp(videoInfo(1920, 1080)) == Some(
+            VideoThumbnailTileVtt(spritePixels = tiles.spritePixels, intervalInMillis = 250, token = tiles.recipeToken)
+          )
+        )
 
       "build the first sprite operation" in
         assert(
           tileSpriteOp(1, videoInfo(1920, 1080)) == Some(
-            VideoThumbnailTile(width = 192, intervalInMillis = 250, index = 1, token = tiles.recipeToken)
+            VideoThumbnailTile(spritePixels = tiles.spritePixels, intervalInMillis = 250, index = 1, token = tiles.recipeToken)
           )
         )
 
       "allow a sprite index covered by the video duration" in
         assert(
           tileSpriteOp(2, videoInfo(1920, 1080, durationInMillis = 650000)) == Some(
-            VideoThumbnailTile(width = 192, intervalInMillis = 5000, index = 2, token = tiles.recipeToken)
+            VideoThumbnailTile(spritePixels = tiles.spritePixels, intervalInMillis = 5000, index = 2, token = tiles.recipeToken)
           )
         )
 
