@@ -62,7 +62,7 @@ object FFMpeg extends Logging {
   def ffprobeVersion(using runner: ProcessRunner): IO[FFProbeVersion] =
     runner.useProcessOutput(
       "ffprobe-version",
-      Command("ffprobe", List("-print_format", "json", "-show_program_version", "-loglevel", "quiet")),
+      Command.of("ffprobe", "-print_format" -> "json", "-show_program_version", "-loglevel" -> "quiet"),
       useErrorStream = false,
       runner.settings.ffprobeTimeout
     ) { stdout =>
@@ -78,9 +78,12 @@ object FFMpeg extends Logging {
   def ffprobe(input: URI, timeout: FiniteDuration)(using runner: ProcessRunner): IO[(FFProbeOutput, Json)] =
     ffprobeVersion.flatMap { version =>
       val fileName = inputArg(input)
-      val args     = List("-print_format", "json", "-show_streams", "-show_format", "-loglevel", "quiet", fileName)
 
-      runner.useProcess("ffprobe-show", Command("ffprobe", args), timeout) { process =>
+      runner.useProcess(
+        "ffprobe-show",
+        Command.of("ffprobe", "-print_format" -> "json", "-show_streams", "-show_format", "-loglevel" -> "quiet", fileName),
+        timeout
+      ) { process =>
         runner.compileToString(process.stdout).map { jsonOutput =>
           (for
             json    <- io.circe.parser.parse(jsonOutput)
@@ -103,12 +106,19 @@ object FFMpeg extends Logging {
       case ContainerFormat.Matroska => List("-f", format.fmt, "-cues_to_front", "1")
 
     // Data streams (for example QuickTime timecode tracks) have no codec a target muxer can copy, so drop them.
-    val args = List("-v", "error", "-i", inputArg(video), "-c", "copy", "-map", "0", "-map", "-0:d") ++ containerArgs ++ List(
+    val command = Command.of(
+      "ffmpeg",
+      "-v"   -> "error",
+      "-i"   -> inputArg(video),
+      "-c"   -> "copy",
+      "-map" -> "0",
+      "-map" -> "-0:d",
+      containerArgs,
       "-y",
       outputFile.toAbsolutePath.normalize.toString
     )
 
-    runner.runIgnoreOutput("ffmpeg-add-faststart", Command("ffmpeg", args), runner.settings.remuxTimeout).map(_ => outputFile)
+    runner.runIgnoreOutput("ffmpeg-add-faststart", command, runner.settings.remuxTimeout).map(_ => outputFile)
 
   def createThumbnail(
     input: URI,
@@ -121,19 +131,19 @@ object FFMpeg extends Logging {
 
     val output = outputFile.toAbsolutePath.normalize.toString
 
-    // format: off
-    val args = List(
-      "-ss",      formatTime(timestamp),
-      "-i",       inputArg(input)
-    ) ++ scaleFilter(scaleWidth, scaleHeight).toList.flatMap(filter => List("-vf", filter)) ++ codecArgs ++
-      List(
-        "-vframes", "1",
-        "-v",       "quiet",
-        "-y",       output
-      )
-    // format: on
+    val command = Command.of(
+      "ffmpeg",
+      "-ss"      -> formatTime(timestamp),
+      "-i"       -> inputArg(input),
+      scaleFilter(scaleWidth, scaleHeight).map("-vf" -> _),
+      codecArgs,
+      "-vframes" -> "1",
+      "-v"       -> "quiet",
+      "-y",
+      output
+    )
 
-    runner.runIgnoreOutput("ffmpeg-create-video-thumbnail", Command("ffmpeg", args), runner.settings.thumbnailTimeout)
+    runner.runIgnoreOutput("ffmpeg-create-video-thumbnail", command, runner.settings.thumbnailTimeout)
 
   /** Encodes a still image at the given pinned dimension; the output format follows the output extension. */
   def resizeImage(
@@ -145,35 +155,35 @@ object FFMpeg extends Logging {
   )(using runner: ProcessRunner): IO[Int] = {
     val output = outputFile.toAbsolutePath.normalize.toString
 
-    // format: off
-    val args = List("-i", inputArg(input)) ++
-      scaleFilter(width, height).toList.flatMap(filter => List("-vf", filter)) ++ codecArgs ++
-      List(
-        "-vframes", "1",
-        "-v",       "quiet",
-        "-y",       output
-      )
-    // format: on
+    val command = Command.of(
+      "ffmpeg",
+      "-i"       -> inputArg(input),
+      scaleFilter(width, height).map("-vf" -> _),
+      codecArgs,
+      "-vframes" -> "1",
+      "-v"       -> "quiet",
+      "-y",
+      output
+    )
 
-    runner.runIgnoreOutput("ffmpeg-create-image-thumbnail", Command("ffmpeg", args), runner.settings.thumbnailTimeout)
+    runner.runIgnoreOutput("ffmpeg-create-image-thumbnail", command, runner.settings.thumbnailTimeout)
   }
 
   def streamThumbnail(input: URI, timestamp: Long, scaleHeight: Int)(using runner: ProcessRunner): fs2.Stream[IO, Byte] = {
 
-    // format: off
-    val args = List(
-      "-ss", formatTime(timestamp),
-      "-i", inputArg(input),
-      "-vcodec", "webp",
-      "-vf", s"scale=-2:$scaleHeight",
-      "-vframes", "1",
-      "-v", "error",
-      "-f", "image2pipe",
+    val command = Command.of(
+      "ffmpeg",
+      "-ss"      -> formatTime(timestamp),
+      "-i"       -> inputArg(input),
+      "-vcodec"  -> "webp",
+      "-vf"      -> s"scale=-2:$scaleHeight",
+      "-vframes" -> "1",
+      "-v"       -> "error",
+      "-f"       -> "image2pipe",
       "-"
     )
-    // format: on
 
-    runner.streamProcess("ffmpeg-stream-video-thumbnail", Command("ffmpeg", args), runner.settings.thumbnailTimeout)(_.stdout)
+    runner.streamProcess("ffmpeg-stream-video-thumbnail", command, runner.settings.thumbnailTimeout)(_.stdout)
   }
 
   /**
@@ -199,27 +209,19 @@ object FFMpeg extends Logging {
       val window = tile.frameCount.toLong * tile.intervalInMillis
       val output = outputFile.toAbsolutePath.normalize.toString
 
-      def command(hardware: Option[HardwareDecoding]): Command = Command(
+      def command(hardware: Option[HardwareDecoding]): Command = Command.of(
         "ffmpeg",
-        ThumbnailTile.decodeArgs(tile, hardware) ++ List(
-          "-ss",
-          formatTime(tile.startInMillis),
-          "-t",
-          formatTime(window),
-          "-i",
-          inputArg(input),
-          "-vf",
-          ThumbnailTile.filter(tile),
-          "-frames:v",
-          "1",
-          "-quality",
-          tile.quality.toString,
-          "-v",
-          "error",
-          "-y",
-          "-an",
-          output
-        )
+        ThumbnailTile.decodeArgs(tile, hardware),
+        "-ss"       -> formatTime(tile.startInMillis),
+        "-t"        -> formatTime(window),
+        "-i"        -> inputArg(input),
+        "-vf"       -> ThumbnailTile.filter(tile),
+        "-frames:v" -> "1",
+        "-quality"  -> tile.quality.toString,
+        "-v"        -> "error",
+        "-y",
+        "-an",
+        output
       )
 
       /** Runs one ffmpeg attempt and rejects one that reports success without writing a sprite. */
@@ -251,31 +253,37 @@ object FFMpeg extends Logging {
     val (ss, to) = range
     val output   = outputFile.toAbsolutePath.normalize.toString
 
-    val args: List[String] = List("-ss", formatTime(ss), "-to", formatTime(to), "-i", inputArg(input)) ++
-      scaleFilter(scaleWidth, scaleHeight).toList.flatMap(filter => List("-vf", filter)) ++
-      profile.args ++ Option.when(!includeAudio)("-an") ++
-      List("-v", "quiet", "-y", output)
+    val command = Command.of(
+      "ffmpeg",
+      "-ss" -> formatTime(ss),
+      "-to" -> formatTime(to),
+      "-i"  -> inputArg(input),
+      scaleFilter(scaleWidth, scaleHeight).map("-vf" -> _),
+      profile.args,
+      Option.when(!includeAudio)("-an"),
+      "-v"  -> "quiet",
+      "-y",
+      output
+    )
 
-    runner.runIgnoreOutput("ffmpeg-transcode", Command("ffmpeg", args), runner.settings.clipTimeout).map(_ => Path.of(output))
+    runner.runIgnoreOutput("ffmpeg-transcode", command, runner.settings.clipTimeout).map(_ => Path.of(output))
   }
 
   def streamStranscodeMp4(input: URI, scaleHeight: Option[Int] = None)(using runner: ProcessRunner): fs2.Stream[IO, Byte] = {
 
-    // format: off
-    val args: List[String] =
-      List("-i", inputArg(input)) ++
-        scaleHeight.toList.flatMap(height => List("-vf", s"scale=-2:$height")) ++
-        List(
-          "-c:v", "libx264",
-          "-movflags", "+faststart+frag_keyframe+empty_moov",
-          "-crf", "23",
-          "-v", "error",
-          "-f", "mp4",
-          "-an", // no audio
-          "pipe:1"
-        )
-    // format: on
+    val command = Command.of(
+      "ffmpeg",
+      "-i"        -> inputArg(input),
+      scaleHeight.map(height => "-vf" -> s"scale=-2:$height"),
+      "-c:v"      -> "libx264",
+      "-movflags" -> "+faststart+frag_keyframe+empty_moov",
+      "-crf"      -> "23",
+      "-v"        -> "error",
+      "-f"        -> "mp4",
+      "-an", // no audio
+      "pipe:1"
+    )
 
-    runner.streamProcess("ffmpeg-stream-transcode", Command("ffmpeg", args), runner.settings.clipTimeout)(_.stdout)
+    runner.streamProcess("ffmpeg-stream-transcode", command, runner.settings.clipTimeout)(_.stdout)
   }
 }

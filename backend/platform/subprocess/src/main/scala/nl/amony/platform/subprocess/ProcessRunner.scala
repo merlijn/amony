@@ -16,6 +16,11 @@ case class Command(cmd: String, args: Seq[String]) {
   override def toString: String = s"$cmd ${args.mkString(" ")}"
 }
 
+object Command {
+  def of(cmd: String, parts: Arg*): Command =
+    Command(cmd, parts.toList.flatMap(_.toArgs))
+}
+
 final case class ProcessTimedOut(command: Command, timeout: FiniteDuration)
     extends Exception(s"Process timed out after $timeout: $command")
 

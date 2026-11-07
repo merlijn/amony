@@ -15,7 +15,7 @@ object ImageMagick {
 
     runner.useProcessOutput(
       "get-image-metadata",
-      Command("convert", List(fileName, "json:")),
+      Command.of("convert", fileName, "json:"),
       useErrorStream = false,
       runner.settings.imageMetadataTimeout
     ) {
