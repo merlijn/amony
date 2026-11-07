@@ -47,11 +47,12 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
 
     fileEvent match {
 
-      case FileMetaChanged(f) => withRequireResource(f.partialHash, f.path)(r => ResourceFileMetaChanged(r.resourceId, f.modifiedTime, f.fileKey))
+      case FileMetaChanged(f) =>
+        withRequireResource(f.partialHash, f.path)(r => ResourceFileMetaChanged(bucketId, r.resourceId, f.modifiedTime, f.fileKey))
 
       case FileModified(f) => refreshResource(f, relativizePath(f.path)).map(_.map(ResourceUpdated(_)))
 
-      case FileDeleted(f) => withRequireResource(f.partialHash, f.path)(r => ResourceDeleted(r.resourceId))
+      case FileDeleted(f) => withRequireResource(f.partialHash, f.path)(r => ResourceDeleted(bucketId, r.resourceId))
 
       case FileAdded(f) =>
         newResource(f, UserId(config.sync.newFilesOwner)).attempt.flatMap {
@@ -64,7 +65,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
         val newPath = relativizePath(file.path)
         val oldPath = relativizePath(oldFilePath)
 
-        withRequireResource(file.partialHash, oldFilePath)(r => ResourceMoved(r.resourceId, oldPath, newPath))
+        withRequireResource(file.partialHash, oldFilePath)(r => ResourceMoved(bucketId, r.resourceId, oldPath, newPath))
 
       case FileMovedAndModified(file, oldFilePath) =>
         val newPath = relativizePath(file.path)
@@ -212,16 +213,16 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
     ).parEvalMap(parallelFactor)(mapFileEvent).unNone
 
   private def applyEventToDb(s: Session[IO], event: ResourceEvent): IO[Unit] = event match {
-    case ResourceAdded(resource)                                => db.insertResourceWith(s, resource)
-    case ResourceDeleted(resourceId)                            => db.deleteResourceWith(s, bucketId, resourceId)
-    case ResourceMoved(id, _, newPath)                          => db.moveWith(s, bucketId, id, newPath)
-    case ResourceFileMetaChanged(id, lastModifiedTime, fileKey) => db.getResourceByIdWith(s, bucketId, id).flatMap {
+    case ResourceAdded(resource)                                   => db.insertResourceWith(s, resource)
+    case ResourceDeleted(_, resourceId)                            => db.deleteResourceWith(s, bucketId, resourceId)
+    case ResourceMoved(_, id, _, newPath)                          => db.moveWith(s, bucketId, id, newPath)
+    case ResourceFileMetaChanged(_, id, lastModifiedTime, fileKey) => db.getResourceByIdWith(s, bucketId, id).flatMap {
         case Some(resource) =>
           db.upsertResourceWith(s, resource.copy(timeLastModified = Some(lastModifiedTime), fileKey = fileKey.orElse(resource.fileKey)))
         case None           => IO.unit
       }
-    case ResourceUpdated(resource)                              => deleteDerivedFiles(resource.resourceId) >> db.upsertResourceWith(s, resource)
-    case _                                                      => IO.unit
+    case ResourceUpdated(resource)                                 => deleteDerivedFiles(resource.resourceId) >> db.upsertResourceWith(s, resource)
+    case _                                                         => IO.unit
   }
 
   private[local] def processEvent(event: ResourceEvent) =

@@ -36,23 +36,35 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
   given MeterProvider[IO]  = MeterProvider.noop[IO]
   given TracerProvider[IO] = TracerProvider.noop[IO]
 
+  final case class KeyedMessage(key: String, seq: Int) derives Codec.AsObject
+
   private def pool(container: GenericContainer): Resource[IO, Resource[IO, Session[IO]]] =
     MessageBusTestSupport.makeDatabasePool(container)
 
   private def topicFor(
     pool: Resource[IO, Session[IO]],
     name: String,
-    config: MessageBusConfig = MessageBusConfig(retryBackoff = 100.millis)
+    partitions: Int          = 1,
+    config: MessageBusConfig = MessageBusConfig(pollInterval = 200.millis, retryBackoff = 100.millis, leaseDuration = 5.seconds)
   ): MessageTopic[Int] =
     given Codec[Int]           = Codec.implied[Int]
-    given MessageTopicKey[Int] = MessageTopicKey(name)
+    given MessageTopicKey[Int] = MessageTopicKey(name, _.toString, partitions)
     PersistentMessageBus.postgres(pool, config).getTopic[Int]
 
-  /** Registers a consumer group from the start of the log, so a test can publish before the consumer starts. */
-  private def registerFromStart(pool: Resource[IO, Session[IO]], name: String, consumerId: String): IO[Unit] =
-    MessageLog(pool).ensureConsumer(name, consumerId, 0)
+  private def keyedTopicFor(
+    pool: Resource[IO, Session[IO]],
+    name: String,
+    partitions: Int          = 8,
+    config: MessageBusConfig = MessageBusConfig(pollInterval = 100.millis, retryBackoff = 100.millis, leaseDuration = 5.seconds)
+  ): MessageTopic[KeyedMessage] =
+    given MessageTopicKey[KeyedMessage] = MessageTopicKey(name, _.key, partitions)
+    PersistentMessageBus.postgres(pool, config).getTopic[KeyedMessage]
 
-  private def await(ref: Ref[IO, List[Int]], size: Int): IO[List[Int]] =
+  /** Registers a consumer group from the start of the log across all partitions, so a test can publish before the consumer starts. */
+  private def registerFromStart(pool: Resource[IO, Session[IO]], name: String, consumerId: String, partitions: Int = 1): IO[Unit] =
+    MessageLog(pool).ensureConsumer(name, consumerId, partitions, 0)
+
+  private def await[A](ref: Ref[IO, List[A]], size: Int): IO[List[A]] =
     ref.get.flatMap(xs => if xs.size >= size then IO.pure(xs) else IO.sleep(50.millis) *> await(ref, size)).timeout(15.seconds)
 
   "PostgresMessageTopic" when {
@@ -79,7 +91,7 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
         pool(container).use { pool =>
           val name  = s"topic-${UUID.randomUUID()}"
           // A one-hour poll interval, so only the NOTIFY path can deliver the message in time.
-          val topic = topicFor(pool, name, MessageBusConfig(pollInterval = 1.hour, retryBackoff = 100.millis))
+          val topic = topicFor(pool, name, config = MessageBusConfig(pollInterval = 1.hour, retryBackoff = 100.millis))
 
           for
             _         <- registerFromStart(pool, name, "consumer")
@@ -122,6 +134,48 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
       }
     }
 
+    "running multiple nodes in the same consumer group" should {
+
+      "process each message once while preserving per-key ordering across concurrent nodes" in withContainers { container =>
+        MessageBusTestSupport.makeDatabasePool(container, poolSize = 12).use { pool =>
+          val name       = s"topic-${UUID.randomUUID()}"
+          val partitions = 8
+          val topic      = keyedTopicFor(pool, name, partitions)
+
+          val keys     = (1 to 10).map(k => s"resource-$k").toList
+          val messages = (1 to 5).toList.flatMap(seq => keys.map(k => KeyedMessage(k, seq)))
+
+          for
+            _          <- registerFromStart(pool, name, "cluster-group", partitions)
+            processed  <- Ref.of[IO, List[KeyedMessage]](Nil)
+            inFlight   <- Ref.of[IO, Set[String]](Set.empty)
+            overlap    <- Ref.of[IO, Boolean](false)
+            processor   = (msg: KeyedMessage) =>
+                            for
+                              alreadyInFlight <- inFlight.modify(active => (active + msg.key, active.contains(msg.key)))
+                              _               <- IO.whenA(alreadyInFlight)(overlap.set(true))
+                              _               <- IO.sleep(5.millis)
+                              _               <- processed.update(_ :+ msg)
+                              _               <- inFlight.update(_ - msg.key)
+                            yield ()
+            // Run 4 concurrent consumer instances with the SAME consumerId ("cluster-group"), simulating 4 backend nodes.
+            nodes       = List.fill(4)(topic.processAtLeastOnce("cluster-group")(processor).compile.drain).parSequence_
+            _          <- nodes.background.use { _ =>
+                            messages.traverse_(topic.publish) >> await(processed, messages.size)
+                          }
+            result     <- processed.get
+            overlapped <- overlap.get
+          yield
+            overlapped shouldBe false
+            result.size shouldBe messages.size
+            // Every key's messages must have been processed strictly in sequence 1..5.
+            keys.foreach { key =>
+              result.filter(_.key == key).map(_.seq) shouldBe List(1, 2, 3, 4, 5)
+            }
+        }.unsafeRunSync()
+      }
+    }
+
     "handling failures" should {
 
       "retry a failing message in place rather than skipping it" in withContainers { container =>
@@ -145,20 +199,56 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
         }.unsafeRunSync()
       }
 
-      "reprocess a message that was not committed before the consumer stopped" in withContainers { container =>
+      "not block other partitions when one partition is backing off on failure" in withContainers { container =>
         pool(container).use { pool =>
           val name  = s"topic-${UUID.randomUUID()}"
-          val topic = topicFor(pool, name)
+          // Long retryBackoff (10s) on the failing partition so it cannot recover during the test window.
+          val topic = keyedTopicFor(
+            pool,
+            name,
+            partitions = 8,
+            config     = MessageBusConfig(pollInterval = 100.millis, retryBackoff = 10.seconds, leaseDuration = 5.seconds)
+          )
+
+          val keyA = "key-a"
+          // Pick a second key guaranteed to land on a different partition than keyA.
+          val keyB = Iterator.from(1).map(i => s"key-b-$i").find { candidate =>
+            val key = MessageTopicKey[KeyedMessage](name, _.key, 8)
+            key.partitionFor(KeyedMessage(candidate, 1))._2 != key.partitionFor(KeyedMessage(keyA, 1))._2
+          }.get
+
+          for
+            _         <- registerFromStart(pool, name, "consumer", partitions = 8)
+            processed <- Ref.of[IO, List[KeyedMessage]](Nil)
+            processor  = (msg: KeyedMessage) =>
+                           if msg.key == keyA then IO.raiseError(new RuntimeException("broken key A"))
+                           else processed.update(_ :+ msg)
+            _         <- topic.processAtLeastOnce("consumer")(processor).compile.drain.background.use { _ =>
+                           topic.publish(KeyedMessage(keyA, 1)) >>
+                             topic.publish(KeyedMessage(keyB, 1)) >>
+                             await(processed, 1)
+                         }
+            result    <- processed.get
+          yield result shouldBe List(KeyedMessage(keyB, 1))
+        }.unsafeRunSync()
+      }
+
+      "reprocess a message after lease expiry when a consumer node stops before committing" in withContainers { container =>
+        pool(container).use { pool =>
+          val name   = s"topic-${UUID.randomUUID()}"
+          // Short lease so the second node can take over quickly after the first node cancels.
+          val config = MessageBusConfig(pollInterval = 100.millis, retryBackoff = 100.millis, leaseDuration = 300.millis)
+          val topic  = topicFor(pool, name, config = config)
 
           for
             _         <- registerFromStart(pool, name, "consumer")
             read      <- Deferred[IO, Unit]
             processed <- Ref.of[IO, List[Int]](Nil)
-            // The first run reads the message, then blocks forever without committing its offset.
+            // The first node claims the message, then blocks forever without committing its offset.
             _         <- topic.processAtLeastOnce("consumer")(_ => read.complete(()) >> IO.never).compile.drain.background.use { _ =>
                            topic.publish(1) >> read.get.timeout(15.seconds)
                          }
-            // A second run of the same consumer resumes from the uncommitted offset and processes it.
+            // A second node of the same consumer resumes once the short lease expires and processes it.
             _         <- topic.processAtLeastOnce("consumer")(n => processed.update(_ :+ n)).compile.drain.background.use { _ =>
                            await(processed, 1)
                          }

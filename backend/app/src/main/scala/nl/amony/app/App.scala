@@ -72,7 +72,7 @@ object App extends ResourceApp.Forever with Logging {
         httpClientBackend <- HttpClientCatsBackend.resource[IO]()
         searchModule      <- SearchModule.resource(appConfig.search)
         eventTopic         = {
-          given MessageTopicKey[ResourceEvent] = MessageTopicKey("resource-events")
+          given MessageTopicKey[ResourceEvent] = MessageTopicKey("resource-events", _.messageKey)
           PersistentMessageBus.postgres(databasePool, appConfig.messageBus).getTopic[ResourceEvent]
         }
         _                 <- eventTopic.processAtLeastOnce("solr-indexer")(searchModule.indexer.processEvent).compile.drain.background

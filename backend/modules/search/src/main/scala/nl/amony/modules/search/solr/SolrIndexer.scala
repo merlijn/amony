@@ -90,17 +90,17 @@ private[search] class SolrIndexer(config: SolrConfig, solr: SolrClient) extends 
       solr.add(collectionName, toSolrDocument(resource), config.commitWithinMillis).getStatus
 
     event match
-      case ResourceAdded(resource)                                => loggingFailureIO(insertDocument(resource))
-      case ResourceUpdated(resource)                              => loggingFailureIO(insertDocument(resource))
-      case ResourceMoved(resourceId, _, newPath)                  => loggingFailureIO(atomicUpdate(resourceId, FieldNames.path, newPath))
-      case ResourceMovedAndModified(_, _, _, resource)            => loggingFailureIO(insertDocument(resource))
-      case ResourceFileMetaChanged(id, lastModifiedTime, fileKey) =>
+      case ResourceAdded(resource)                                   => loggingFailureIO(insertDocument(resource))
+      case ResourceUpdated(resource)                                 => loggingFailureIO(insertDocument(resource))
+      case ResourceMoved(_, resourceId, _, newPath)                  => loggingFailureIO(atomicUpdate(resourceId, FieldNames.path, newPath))
+      case ResourceMovedAndModified(_, _, _, resource)               => loggingFailureIO(insertDocument(resource))
+      case ResourceFileMetaChanged(_, id, lastModifiedTime, fileKey) =>
         loggingFailureIO {
           atomicUpdate(id, FieldNames.lastModified, lastModifiedTime)
           fileKey.foreach(key => atomicUpdate(id, FieldNames.fileKey, key))
         }
-      case ResourceDeleted(resourceId)                            => loggingFailureIO(solr.deleteById(collectionName, resourceId, config.commitWithinMillis).getStatus)
-      case BucketDeleted(bucketId)                                => deleteBucket(bucketId)
+      case ResourceDeleted(_, resourceId)                            => loggingFailureIO(solr.deleteById(collectionName, resourceId, config.commitWithinMillis).getStatus)
+      case BucketDeleted(bucketId)                                   => deleteBucket(bucketId)
 
   override def indexAll(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] =
     resources

@@ -11,7 +11,7 @@ import nl.amony.platform.database.{Database, DatabaseConfig}
 
 private[messagebus] object MessageBusTestSupport:
 
-  def makeDatabasePool(container: GenericContainer)(
+  def makeDatabasePool(container: GenericContainer, poolSize: Int = 8)(
     using TracerProvider[IO],
     MeterProvider[IO]
   ): Resource[IO, Resource[IO, Session[IO]]] =
@@ -22,7 +22,7 @@ private[messagebus] object MessageBusTestSupport:
         database = "test",
         username = "test",
         password = "test",
-        poolSize = 4
+        poolSize = poolSize
       ),
       new Contexts("message-log")
     )
