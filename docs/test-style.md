@@ -2,9 +2,12 @@
 
 ## Backend (Scala)
 
-Tests should be written in Scala using the [ScalaTest](https://www.scalatest.org/) framework.
-
-Each test file should have a similarly named implementation file, with the exception of shared test utilities.
+- Tests should be written in Scala using the [ScalaTest](https://www.scalatest.org/) framework.
+- Each test file should have a similarly named implementation file, except shared test utilities or integration tests that
+  cover multiple aspects of the application.
+- A file can contain multiple classes or objects. In that case the test for the specific class should also be in a shared spec. 
+  So for example, if `ExampleFile.scala` contains classes `Foo` and `Bar`, both classes should be tested in `ExampleFileSpec.scala`
+- A spec must be places in the same module and package as its implementation file.
 
 ### Test style
 
