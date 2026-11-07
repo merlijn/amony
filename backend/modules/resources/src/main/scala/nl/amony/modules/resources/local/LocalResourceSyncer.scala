@@ -33,8 +33,6 @@ import nl.amony.platform.files.sync.*
  */
 trait LocalResourceSyncer extends LocalDirectoryBase {
 
-  self: LocalResourceOperations =>
-
   private val logger             = scribe.Logger("LocalResourceSyncer")
   private val bucketId: BucketId = BucketId(config.id)
 
@@ -77,7 +75,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
   }
 
   private[local] def newResource(f: FileInfo, userId: UserId): IO[ResourceInfo] =
-    contentMetaForPath(f.path).map { contentMeta =>
+    ops.contentMetaForPath(f.path).map { contentMeta =>
       ResourceInfo(
         bucketId           = bucketId,
         resourceId         = config.generateId(),
@@ -102,7 +100,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       case None           =>
         IO(logger.warn(s"Dropping content-changed event, no such file in database: ${f.path}")).as(None)
       case Some(existing) =>
-        contentMetaForPath(f.path).attempt.flatMap {
+        ops.contentMetaForPath(f.path).attempt.flatMap {
           case Left(e: ContentUnreadable) =>
             IO(logger.error(s"Skipping content-changed event, failed to read ${f.path}", e)).as(None)
           case Left(e)                    => IO.raiseError(e)

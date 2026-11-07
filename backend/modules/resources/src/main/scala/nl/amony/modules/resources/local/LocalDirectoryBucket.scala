@@ -14,20 +14,15 @@ import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.platform.files.*
 import nl.amony.platform.messagebus.MessageTopic
-import nl.amony.platform.subprocess.{ProcessLimiter, ProcessSettings}
 
 class LocalDirectoryBucket(
   config: LocalDirectoryConfig,
   parallelFactor: Int,
   db: ResourceDatabase,
   topic: MessageTopic[ResourceEvent],
-  formats: ThumbnailFormats,
-  resolutions: ThumbnailResolutions,
-  processSettings: ProcessSettings,
-  processLimiter: ProcessLimiter
+  ops: FileOperations
 )(using meter: Meter[IO], tracer: Tracer[IO])
-    extends LocalDirectoryBase(config, parallelFactor, db, topic, formats, resolutions, processSettings, processLimiter),
-      LocalResourceOperations,
+    extends LocalDirectoryBase(config, parallelFactor, db, topic, ops),
       ResourceBucket,
       LocalResourceSyncer,
       UploadResource,
@@ -41,7 +36,7 @@ class LocalDirectoryBucket(
 
   def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap { resource =>
     val resourcePath = config.resourcePath.resolve(resource.path)
-    contentMetaForPath(resourcePath).attempt.flatMap {
+    ops.contentMetaForPath(resourcePath).attempt.flatMap {
       case Left(e: ContentUnreadable) => IO(logger.error(s"Skipping metadata rescan for $resourcePath", e))
       case Left(e)                    => IO.raiseError(e)
       case Right(meta)                =>
@@ -55,10 +50,10 @@ class LocalDirectoryBucket(
   def fixStreamability(resourceId: ResourceId): IO[Unit] =
     getResourceInfo(resourceId).flatMap:
       case Some(info) if info.streamable.contains(false) =>
-        normalizeStreamability(info).flatMap:
+        ops.normalizeStreamability(info).flatMap:
           case Some(updated) => db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceUpdated(updated)))
           case None          => IO.unit
-      case _  => IO.unit
+      case _                                             => IO.unit
 
   def updateFileSystemMetaData(): IO[Unit] = getAllResources.evalMap {
     resource =>
@@ -89,16 +84,16 @@ class LocalDirectoryBucket(
   override def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]] =
     getResourceInfo(resourceId).flatMap:
       case None       => IO.pure(None)
-      case Some(info) => derivedResource(info, operation)
+      case Some(info) => ops.derivedResource(info, operation)
 
   def generateAllPreviews(): IO[Unit] =
     getAllResources
-      .flatMap(info => fs2.Stream.emits(previewOperations(info).map(info -> _)))
-      .parEvalMap(parallelFactor) { case (info, operation) => runPreviewOperation(info, operation) }
+      .flatMap(info => fs2.Stream.emits(ops.previewOperations(info).map(info -> _)))
+      .parEvalMap(parallelFactor) { case (info, operation) => ops.runPreviewOperation(info, operation) }
       .compile.drain
 
   def generatePreviewsIfEnabled(info: ResourceInfo): IO[Unit] =
-    if config.generatePreviewsOnAdd then generatePreviews(info)
+    if config.generatePreviewsOnAdd then ops.generatePreviews(info)
     else IO.unit
 
   override def getResource(resourceId: ResourceId): IO[Option[Resource]] =
@@ -109,7 +104,7 @@ class LocalDirectoryBucket(
         if !path.exists() then {
           logger.warn(s"Resource '$resourceId' was found in the database but no file exists: $path")
           None
-        } else { Some(Resource(info, ResourceContent.fromPath(path, info.contentType, originalETag(info)))) }
+        } else { Some(Resource(info, ResourceContent.fromPath(path, info.contentType, ops.originalETag(info)))) }
 
   override def deleteResource(resourceId: ResourceId): IO[Unit] =
     getResourceInfo(resourceId).flatMap:

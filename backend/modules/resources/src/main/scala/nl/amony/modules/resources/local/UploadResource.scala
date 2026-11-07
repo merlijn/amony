@@ -15,8 +15,6 @@ import nl.amony.platform.files.FileInfo
 
 trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
 
-  self: LocalResourceOperations =>
-
   private val invalidSequences = List("/", "\\", "..")
 
   private def resolveTargetPath(path: JPath, maxAttempt: Int): Either[UploadError, JPath] = {
@@ -87,14 +85,14 @@ trait UploadResource extends LocalResourceSyncer, ResourceBucket, Logging:
       /** Remuxes the stored upload into a streamable layout when its container supports it and it is not streamable yet. */
       def remuxUploadedFile(): IO[Option[Array[Byte]]] =
         // TODO reuse this metadata in newResource to avoid scanning the upload twice.
-        contentMetaForPath(uploadPath).flatMap { meta =>
+        ops.contentMetaForPath(uploadPath).flatMap { meta =>
           val container = meta.contentType
             .filter(_ => meta.streamable.contains(false))
             .flatMap(VideoContainer.fromContentType)
 
           container match
             case Some(container) =>
-              addFastStart(uploadPath, container).attempt.flatMap {
+              ops.addFastStart(uploadPath, container).attempt.flatMap {
                 case Left(error)       =>
                   logger.warn(s"Failed to remux uploaded file '$fileName', storing the original file", error)
                   IO.pure(None)

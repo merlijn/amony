@@ -83,8 +83,8 @@ interface it needs; `search` implements it. `resources` does not import the sear
 
 ### The media example
 
-`LocalResourceOperations` currently constructs `FFMpeg` and `ImageMagick` directly and maps domain `VideoContainer` to
-the ffmpeg-specific `ContainerFormat`. The domain therefore knows about an adapter detail.
+`FileOperations` currently constructs `FFMpeg` and `ImageMagick` directly and maps domain `VideoContainer` to the
+ffmpeg-specific `ContainerFormat`. The domain therefore knows about an adapter detail.
 
 A port can invert that:
 

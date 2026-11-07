@@ -10,6 +10,8 @@ import scala.util.{Failure, Success}
 import cats.effect.IO
 import cats.implicits.*
 import org.apache.tika.Tika
+import org.typelevel.otel4s.metrics.Meter
+import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 import nl.amony.modules.resources.api.*
@@ -19,10 +21,18 @@ import nl.amony.platform.subprocess.ffmpeg.ContainerFormat
 import nl.amony.platform.subprocess.ffmpeg.FFMpeg
 import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
 import nl.amony.platform.subprocess.magick.ImageMagick
+import nl.amony.platform.subprocess.{ProcessLimiter, ProcessSettings}
 
 final class ContentUnreadable(val path: Path, cause: Throwable) extends Exception(s"Failed to read content of $path", cause)
 
-trait LocalResourceOperations extends LocalDirectoryBase with Logging {
+final class FileOperations(
+  config: LocalDirectoryConfig,
+  parallelFactor: Int,
+  formats: ThumbnailFormats,
+  resolutions: ThumbnailResolutions,
+  processSettings: ProcessSettings,
+  processLimiter: ProcessLimiter
+)(using meter: Meter[IO], tracer: Tracer[IO]) extends Logging {
 
   private lazy val ffmpeg      = new FFMpeg(processSettings, processLimiter)
   private lazy val imageMagick = new ImageMagick(processSettings, processLimiter)
