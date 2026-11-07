@@ -1,4 +1,4 @@
-package nl.amony.platform.subprocess.ffmpeg
+package nl.amony.platform.subprocess.magick
 
 import java.nio.file.Path
 
@@ -8,7 +8,6 @@ import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
-import nl.amony.platform.subprocess.magick.ImageMagick
 import nl.amony.platform.subprocess.{ProcessLimiter, ProcessRunner, ProcessSettings}
 
 class ImageMagickSpec extends AnyWordSpecLike with Logging {
