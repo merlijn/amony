@@ -13,10 +13,10 @@ import nl.amony.platform.subprocess.ffmpeg.tasks.FFProbeModel.{*, given}
 import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
 import nl.amony.platform.subprocess.{Command, ProcessRunner}
 
-case class TranscodeProfile(ext: String, args: List[String])
+case class TranscodeProfile(args: List[String])
 
 object TranscodeProfile {
-  val default = TranscodeProfile(ext = "mp4", args = "-c:v libx264 -crf 23 -movflags +faststart".split(' ').toList)
+  val default = TranscodeProfile(args = "-c:v libx264 -crf 23 -movflags +faststart".split(' ').toList)
 }
 
 object FFMpeg extends Logging {
@@ -46,11 +46,7 @@ object FFMpeg extends Logging {
     if input.getScheme == "file" then Paths.get(input).toAbsolutePath.normalize.toString
     else input.toString
 
-  /** Last segment of the URI path, e.g. the file name of a local path or the object key of a presigned URL. */
-  def fileNameOf(input: URI): String =
-    Option(input.getPath).flatMap(_.split("/").lastOption).filter(_.nonEmpty).getOrElse("input")
-
-  def ffprobeVersion(using runner: ProcessRunner): IO[FFProbeVersion] =
+  private def ffprobeVersion(using runner: ProcessRunner): IO[FFProbeVersion] =
     runner.useProcessOutput(
       "ffprobe-version",
       Command.of("ffprobe", "-print_format" -> "json", "-show_program_version", "-loglevel" -> "quiet"),
@@ -160,23 +156,6 @@ object FFMpeg extends Logging {
     runner.runIgnoreOutput("ffmpeg-create-image-thumbnail", command, runner.settings.thumbnailTimeout)
   }
 
-  def streamThumbnail(input: URI, timestamp: Long, scaleHeight: Int)(using runner: ProcessRunner): fs2.Stream[IO, Byte] = {
-
-    val command = Command.of(
-      "ffmpeg",
-      "-ss"      -> formatTime(timestamp),
-      "-i"       -> inputArg(input),
-      "-vcodec"  -> "webp",
-      "-vf"      -> s"scale=-2:$scaleHeight",
-      "-vframes" -> "1",
-      "-v"       -> "error",
-      "-f"       -> "image2pipe",
-      "-"
-    )
-
-    runner.streamProcess("ffmpeg-stream-video-thumbnail", command, runner.settings.thumbnailTimeout)(_.stdout)
-  }
-
   /**
    * Generates one storyboard sprite for the given window, holding a frame every `intervalInMillis`
    * and tiled into `columns` columns with as many rows as the frame count needs. The window is
@@ -258,23 +237,5 @@ object FFMpeg extends Logging {
     )
 
     runner.runIgnoreOutput("ffmpeg-transcode", command, runner.settings.clipTimeout).map(_ => Path.of(output))
-  }
-
-  def streamStranscodeMp4(input: URI, scaleHeight: Option[Int] = None)(using runner: ProcessRunner): fs2.Stream[IO, Byte] = {
-
-    val command = Command.of(
-      "ffmpeg",
-      "-i"        -> inputArg(input),
-      scaleHeight.map(height => "-vf" -> s"scale=-2:$height"),
-      "-c:v"      -> "libx264",
-      "-movflags" -> "+faststart+frag_keyframe+empty_moov",
-      "-crf"      -> "23",
-      "-v"        -> "error",
-      "-f"        -> "mp4",
-      "-an", // no audio
-      "pipe:1"
-    )
-
-    runner.streamProcess("ffmpeg-stream-transcode", command, runner.settings.clipTimeout)(_.stdout)
   }
 }

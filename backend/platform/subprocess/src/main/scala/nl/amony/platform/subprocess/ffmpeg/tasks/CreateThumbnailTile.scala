@@ -22,7 +22,7 @@ case class ThumbnailTile(
   require(quality >= 0 && quality <= 100, "quality must be between 0 and 100")
 
   /** Rows actually needed for this sprite, so a partially filled last sprite does not carry empty rows. */
-  val rows: Int = (frameCount + columns - 1) / columns
+  private[ffmpeg] val rows: Int = (frameCount + columns - 1) / columns
 }
 
 object ThumbnailTile {
@@ -38,7 +38,7 @@ object ThumbnailTile {
    * the same for both: `fps` drops the frames that are not sampled before they are scaled, and `tile`
    * packs what is left.
    */
-  def filter(tile: ThumbnailTile): String =
+  private[ffmpeg] def filter(tile: ThumbnailTile): String =
     s"fps=1000/${tile.intervalInMillis},scale=${tile.width}:${tile.height},tile=${tile.columns}x${tile.rows}:nb_frames=${tile.frameCount}"
 
   /**
@@ -50,15 +50,15 @@ object ThumbnailTile {
    * Ten seconds rather than five because keyframes are commonly one per 250 frames — 8.3s at 30fps,
    * 10s at 25fps — which is longer than a five second step and would make consecutive cells repeat.
    */
-  val keyframeOnlyFromMillis = 10000L
+  private val keyframeOnlyFromMillis = 10000L
 
-  def skipToKeyframes(intervalInMillis: Long): Boolean = intervalInMillis >= keyframeOnlyFromMillis
+  private[ffmpeg] def skipToKeyframes(intervalInMillis: Long): Boolean = intervalInMillis >= keyframeOnlyFromMillis
 
   /**
    * Decoder arguments for a sprite. Both hardware decoding and skipping non-key frames are per-input
    * options, so they must precede the `-i` argument.
    */
-  def decodeArgs(tile: ThumbnailTile, hardware: Option[HardwareDecoding] = None): List[String] =
+  private[ffmpeg] def decodeArgs(tile: ThumbnailTile, hardware: Option[HardwareDecoding] = None): List[String] =
     hardware.toList.flatMap(_.inputArgs) ++
       Option.when(skipToKeyframes(tile.intervalInMillis))(List("-skip_frame", "nokey")).getOrElse(Nil)
 }

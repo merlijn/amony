@@ -14,7 +14,7 @@ object FFProbeModel extends Logging {
     def firstVideoStream: Option[VideoStream] = streams.flatMap(_.sortBy(_.index).collectFirst { case v: VideoStream => v })
   }
 
-  val durationPattern: UnanchoredRegex = raw"(\d{2}):(\d{2}):(\d{2})\.(\d*)".r.unanchored
+  private val durationPattern: UnanchoredRegex = raw"(\d{2}):(\d{2}):(\d{2})\.(\d*)".r.unanchored
 
   sealed trait Stream {
     val index: Int
@@ -45,8 +45,8 @@ object FFProbeModel extends Logging {
     side_data_list: Option[List[SideData]]
   ) extends Stream {
 
-    def durationFromField: Option[Int]  = duration.map(d => (d.toDouble * 1000).toInt)
-    def durationFromMkvTag: Option[Int] = tags.flatMap(_.get("DURATION")).flatMap {
+    private def durationFromField: Option[Int]  = duration.map(d => (d.toDouble * 1000).toInt)
+    private def durationFromMkvTag: Option[Int] = tags.flatMap(_.get("DURATION")).flatMap {
       case durationPattern(hours, minutes, seconds, subseconds) =>
         Some(hours.toInt * 60 * 60 * 1000 + minutes.toInt * 60 * 1000 + seconds.toInt * 1000 + (s"0.$subseconds".toDouble * 1000).toInt)
       case _                                                    => None
@@ -62,7 +62,7 @@ object FFProbeModel extends Logging {
     }
 
     /** Clockwise display rotation, read from the display matrix or the legacy `rotate` tag. */
-    def rotationDegrees: Int = {
+    private def rotationDegrees: Int = {
       val rotation = side_data_list
         .toList
         .flatten

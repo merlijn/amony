@@ -20,7 +20,7 @@ final case class HardwareDecoding(device: String):
    * No `-hwaccel_output_format` is set on purpose: frames then come back in their native format, so a
    * 10-bit source is not forced through an 8-bit download.
    */
-  def inputArgs: List[String] =
+  private[ffmpeg] def inputArgs: List[String] =
     List(
       "-init_hw_device",
       s"vaapi=va:$device",
