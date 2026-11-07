@@ -74,15 +74,18 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
 
   private def recordingTopic(published: AtomicReference[List[ResourceEvent]]): MessageTopic[ResourceEvent] =
     new MessageTopic[ResourceEvent]:
-      override def publish(event: ResourceEvent): IO[Unit]                                                         = IO {
+      override def publish(event: ResourceEvent): IO[Unit]                       = IO {
         published.updateAndGet(_ :+ event)
         ()
       }
-      override def publish(session: Session[IO], event: ResourceEvent): IO[Unit]                                   = IO {
+      override def publish(session: Session[IO], event: ResourceEvent): IO[Unit] = IO {
         published.updateAndGet(_ :+ event)
         ()
       }
-      override def processAtLeastOnce(processorId: String)(processor: ResourceEvent => IO[Unit]): Stream[IO, Unit] = Stream.empty
+      override def processAtLeastOnce(processorId: String, parallelism: Option[Int] = None)(
+        processor: ResourceEvent => IO[Unit]
+      ): Stream[IO, Unit]                                                        =
+        Stream.empty
 
   "DatabaseBucketRegistry" when {
 

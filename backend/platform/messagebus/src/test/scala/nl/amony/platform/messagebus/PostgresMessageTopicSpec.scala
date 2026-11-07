@@ -174,6 +174,47 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
             }
         }.unsafeRunSync()
       }
+
+      "drain multiple partitions concurrently on a single node when parallelism > 1" in withContainers { container =>
+        MessageBusTestSupport.makeDatabasePool(container, poolSize = 10).use { pool =>
+          val name       = s"topic-${UUID.randomUUID()}"
+          val partitions = 8
+          val topic      = keyedTopicFor(pool, name, partitions)
+
+          // Pick 4 keys that each hash to a distinct partition.
+          val topicKey     = MessageTopicKey[KeyedMessage](name, _.key, partitions)
+          val distinctKeys = Iterator
+            .from(1)
+            .map(i => s"k-$i")
+            .scanLeft(List.empty[(String, Int)]) { (acc, candidate) =>
+              val p = topicKey.partitionFor(KeyedMessage(candidate, 1))._2
+              if acc.exists(_._2 == p) then acc else acc :+ (candidate -> p)
+            }
+            .find(_.size == 4)
+            .get
+            .map(_._1)
+
+          for
+            _         <- registerFromStart(pool, name, "single-node-parallel", partitions)
+            active    <- Ref.of[IO, Int](0)
+            maxActive <- Ref.of[IO, Int](0)
+            allActive <- Deferred[IO, Unit]
+            processed <- Ref.of[IO, List[KeyedMessage]](Nil)
+            processor  = (msg: KeyedMessage) =>
+                           active.updateAndGet(_ + 1).flatMap { current =>
+                             maxActive.update(_ max current) >>
+                               IO.whenA(current >= 4)(allActive.complete(()).void) >>
+                               allActive.get.timeout(5.seconds) >>
+                               processed.update(_ :+ msg) >>
+                               active.update(_ - 1)
+                           }
+            _         <- topic.processAtLeastOnce("single-node-parallel", parallelism = Some(4))(processor).compile.drain.background.use { _ =>
+                           distinctKeys.traverse_(k => topic.publish(KeyedMessage(k, 1))) >> await(processed, 4)
+                         }
+            peak      <- maxActive.get
+          yield peak shouldBe 4
+        }.unsafeRunSync()
+      }
     }
 
     "handling failures" should {

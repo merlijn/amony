@@ -3,8 +3,11 @@
 ## Baseline Performance
 
 Using `MessageBusSpec` on an Apple M2 MacBook Pro against a Testcontainers PostgreSQL 17.2 instance (16 partitions, 1
-producer fiber, 1 consumer fiber), baseline throughput is roughly **440–460 msg/s** for both producing and consuming
-(~2.2 ms per message).
+producer fiber, 1 consumer group):
+
+- **Producing (1 fiber, 1 transaction per message):** ~**480–550 msg/s** (~2.0 ms per message).
+- **Consuming (`parallelism = 1`):** ~**440–450 msg/s** (~2.2 ms per message).
+- **Consuming (`parallelism = 4`, default):** ~**1,360–1,380 msg/s** (~0.7 ms per message).
 
 At this level, PostgreSQL CPU and disk are largely idle. The primary bottleneck is **sequential TCP round-trips**
 between the JVM and the PostgreSQL container (~0.4–0.5 ms per round-trip over the Docker VM bridge):
@@ -33,11 +36,11 @@ This reduces database round-trips from 4 per message to `4 / N` per message.
 
 ### 2. Concurrent Partition Workers per Node (Linear Multi-Core Scaling)
 
-Currently, `processAtLeastOnce` uses a single `Mutex[IO]` per stream, draining one partition at a time on a given node.
+`processAtLeastOnce` uses a `Semaphore[IO](parallelism)` (defaulting to `message-bus.parallelism = 4`), allowing a
+single node to drain up to `parallelism` partitions concurrently via `FOR UPDATE OF mc2 SKIP LOCKED`.
 
-Because partitions are leased independently in the database via `FOR UPDATE OF mc2 SKIP LOCKED`, a single node can run
-`W` concurrent drain fibers (up to the number of partitions and sized appropriately for the database connection pool) to
-process multiple partitions in parallel.
+Increasing `parallelism` (up to the topic's `partitions` count and sized appropriately for the database connection pool)
+scales single-node consumer throughput across cores.
 
 ### 3. Batch Publishing and Coalesced `NOTIFY` (5x–20x Producer Speedup for Bulk Operations)
 
