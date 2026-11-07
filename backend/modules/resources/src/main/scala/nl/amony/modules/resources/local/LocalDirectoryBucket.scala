@@ -1,7 +1,7 @@
 package nl.amony.modules.resources.local
 
+import java.nio.file.Files
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{Files, StandardCopyOption}
 
 import cats.effect.IO
 import cats.implicits.*
@@ -53,35 +53,12 @@ class LocalDirectoryBucket(
 
   /** Remuxes a non-streamable resource in place so it can be streamed progressively, then persists the new state. */
   def fixStreamability(resourceId: ResourceId): IO[Unit] =
-    getResourceInfo(resourceId).flatMap {
+    getResourceInfo(resourceId).flatMap:
       case Some(info) if info.streamable.contains(false) =>
-        val source = config.resourcePath.resolve(info.path)
-        VideoContainer.fromContentType(info.contentType.getOrElse("")) match
-          case Some(container) =>
-            logger.info(s"Normalizing '${info.path}' for streaming")
-            val temp = config.cachePath.resolve(s"${info.resourceId}-normalize.${container.extension}")
-            (for
-              _          <- IO(Files.createDirectories(config.cachePath))
-              out        <- addFastStart(source, container, Some(temp))
-              _          <- IO(Files.move(out, source, StandardCopyOption.REPLACE_EXISTING))
-              attrs      <- IO(Files.readAttributes(source, classOf[BasicFileAttributes]))
-              hash       <- config.hashingAlgorithm.createHash(source)
-              streamable <- streamableOf(source, info.contentType)
-              updated     = info.copy(
-                              size             = attrs.size(),
-                              partialHash      = Some(hash),
-                              fileKey          = Option(attrs.fileKey()).map(_.toString),
-                              timeLastModified = Some(attrs.lastModifiedTime().toMillis),
-                              contentMeta      = info.contentMeta.copy(streamable = streamable)
-                            )
-              _          <- db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceUpdated(updated)))
-            yield ())
-              .handleErrorWith(error => IO(logger.error(s"Failed to normalize '${info.path}'", error)))
-              .guarantee(IO.blocking(Files.deleteIfExists(temp)).void)
-          case None            =>
-            IO(logger.warn(s"Cannot normalize '${info.path}': unsupported container '${info.contentType.getOrElse("unknown")}'"))
-      case _                                             => IO.unit
-    }
+        normalizeStreamability(info).flatMap:
+          case Some(updated) => db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceUpdated(updated)))
+          case None          => IO.unit
+      case _  => IO.unit
 
   def updateFileSystemMetaData(): IO[Unit] = getAllResources.evalMap {
     resource =>

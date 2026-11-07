@@ -1,6 +1,7 @@
 package nl.amony.modules.resources.local
 
 import java.nio.charset.StandardCharsets
+import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{AtomicMoveNotSupportedException, Files, Path, StandardCopyOption}
 import java.security.MessageDigest
 import java.util.UUID
@@ -98,6 +99,38 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
         case Streamability.Unknown       => None
       }
     else IO.pure(None)
+
+  /**
+   * Remuxes a resource in place so it can be streamed progressively and refreshes the metadata that
+   * depends on the file. Returns None when the container is unsupported or normalization fails.
+   */
+  private[local] def normalizeStreamability(info: ResourceInfo): IO[Option[ResourceInfo]] =
+    VideoContainer.fromContentType(info.contentType.getOrElse("")) match
+      case None            =>
+        logger.warn(s"Cannot normalize '${info.path}': unsupported container '${info.contentType.getOrElse("unknown")}'")
+        IO.pure(None)
+      case Some(container) =>
+        val source = config.resourcePath.resolve(info.path)
+        val temp   = config.cachePath.resolve(s"${info.resourceId}-normalize.${container.extension}")
+        logger.info(s"Normalizing '${info.path}' for streaming")
+        (for
+          _          <- IO(Files.createDirectories(config.cachePath))
+          out        <- addFastStart(source, container, Some(temp))
+          _          <- IO(Files.move(out, source, StandardCopyOption.REPLACE_EXISTING))
+          attrs      <- IO(Files.readAttributes(source, classOf[BasicFileAttributes]))
+          hash       <- config.hashingAlgorithm.createHash(source)
+          streamable <- streamableOf(source, info.contentType)
+        yield Some(
+          info.copy(
+            size             = attrs.size(),
+            partialHash      = Some(hash),
+            fileKey          = Option(attrs.fileKey()).map(_.toString),
+            timeLastModified = Some(attrs.lastModifiedTime().toMillis),
+            contentMeta      = info.contentMeta.copy(streamable = streamable)
+          )
+        ))
+          .handleErrorWith(error => IO(logger.error(s"Failed to normalize '${info.path}'", error)) *> IO.pure(Option.empty[ResourceInfo]))
+          .guarantee(IO.blocking(Files.deleteIfExists(temp)).void)
 
   /**
    * Validator for a derived preview. It is derived from the source's partial hash, the operation (encoded in the output
