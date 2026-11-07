@@ -11,10 +11,7 @@ import org.typelevel.otel4s.trace.Tracer
 class ProcessRunnerSpec extends AnyWordSpecLike {
 
   private def runner(processSettings: ProcessSettings): ProcessRunner =
-    new ProcessRunner(using Meter.noop[IO], Tracer.noop[IO]) {
-      override protected val settings: ProcessSettings = processSettings
-      override protected val limiter: ProcessLimiter   = ProcessLimiter.unlimited
-    }
+    new ProcessRunner(processSettings, ProcessLimiter.unlimited)(using Meter.noop[IO], Tracer.noop[IO])
 
   private val noisyScript =
     """i=0

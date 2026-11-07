@@ -21,7 +21,7 @@ import nl.amony.platform.subprocess.ffmpeg.ContainerFormat
 import nl.amony.platform.subprocess.ffmpeg.FFMpeg
 import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
 import nl.amony.platform.subprocess.magick.ImageMagick
-import nl.amony.platform.subprocess.{ProcessLimiter, ProcessSettings}
+import nl.amony.platform.subprocess.{ProcessLimiter, ProcessRunner, ProcessSettings}
 
 final class ContentUnreadable(val path: Path, cause: Throwable) extends Exception(s"Failed to read content of $path", cause)
 
@@ -34,9 +34,8 @@ final class FileOperations(
   processLimiter: ProcessLimiter
 )(using meter: Meter[IO], tracer: Tracer[IO]) extends Logging {
 
-  private lazy val ffmpeg      = new FFMpeg(processSettings, processLimiter)
-  private lazy val imageMagick = new ImageMagick(processSettings, processLimiter)
-  private val tika             = new Tika()
+  private given runner: ProcessRunner = new ProcessRunner(processSettings, processLimiter)
+  private val tika                    = new Tika()
 
   type OperationKey = (resourceId: ResourceId, operation: ResourceOperation)
 
@@ -82,13 +81,13 @@ final class FileOperations(
 
   private def toolScanForPath(path: Path, contentType: String): IO[Option[ToolScan]] =
     if contentType.startsWith("video/") then
-      ffmpeg.ffprobe(path.toUri, processSettings.ffprobeTimeout).map {
+      FFMpeg.ffprobe(path.toUri, processSettings.ffprobeTimeout).map {
         (ffprobeResult, json) =>
           val version = ffprobeResult.program_version.map(_.version).getOrElse("unknown")
           Some(ToolScan(s"ffprobe/$version", json))
       }.recover { case e: Throwable => logger.error(s"Failed to get video meta data for $path", e); None }
     else if contentType.startsWith("image/") then
-      imageMagick.getImageMeta(path).map:
+      ImageMagick.getImageMeta(path).map:
         case Failure(e)      =>
           logger.error(s"Failed to get image meta data for $path", e)
           None
@@ -99,7 +98,7 @@ final class FileOperations(
   private[local] def addFastStart(video: Path, container: VideoContainer, outputFile: Option[Path] = None): IO[Path] = {
     // Local files have a well-defined sibling directory, so a default still makes sense here; remote callers must pass an explicit output.
     val out = outputFile.getOrElse(Path.of(s"${FFMpeg.stripExtension(video)}-faststart.${containerFormat(container).extension}"))
-    ffmpeg.addFastStart(video.toUri, containerFormat(container), out)
+    FFMpeg.addFastStart(video.toUri, containerFormat(container), out)
   }
 
   private def containerFormat(container: VideoContainer): ContainerFormat = container match
@@ -234,13 +233,13 @@ final class FileOperations(
   private def run(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: ResourceOperation): IO[Path] = operation match
     case VideoFragment(width, height, start, end) =>
       logger.debug(s"Creating video fragment for $inputFile with range $start-$end")
-      ffmpeg.transcodeToMp4(inputFile.toUri, range = (start, end), scaleWidth = width, scaleHeight = height, outputFile = outputFile).map(_ =>
+      FFMpeg.transcodeToMp4(inputFile.toUri, range = (start, end), scaleWidth = width, scaleHeight = height, outputFile = outputFile).map(_ =>
         outputFile
       )
 
     case VideoThumbnail(width, height, timestamp, format) =>
       logger.debug(s"Creating thumbnail for $inputFile at timestamp $timestamp as ${format.configName}")
-      ffmpeg.createThumbnail(
+      FFMpeg.createThumbnail(
         inputFile.toUri,
         timestamp   = timestamp,
         outputFile  = outputFile,
@@ -252,7 +251,7 @@ final class FileOperations(
       )
     case ImageThumbnail(width, height, format)            =>
       logger.debug(s"Creating image thumbnail for $inputFile as ${format.configName}")
-      ffmpeg.resizeImage(
+      FFMpeg.resizeImage(
         inputFile.toUri,
         outputFile = outputFile,
         width      = width,
@@ -291,7 +290,7 @@ final class FileOperations(
     )
 
     logger.debug(s"Creating thumbnail tile ${operation.index} for $inputFile at ${operation.intervalInMillis}ms interval")
-    ffmpeg.createThumbnailTile(inputFile.toUri, outputFile, plan)
+    FFMpeg.createThumbnailTile(inputFile.toUri, outputFile, plan)
   }
 
   private def createThumbnailTileManifest(info: ResourceInfo, outputFile: Path, operation: VideoThumbnailTileVtt): IO[Unit] = {

@@ -1,13 +1,31 @@
 package nl.amony.platform.subprocess.magick
 
+import java.nio.file.Path
+import scala.util.Try
+
 import cats.effect.IO
-import org.typelevel.otel4s.metrics.Meter
-import org.typelevel.otel4s.trace.Tracer
 
-import nl.amony.platform.subprocess.magick.tasks.GetImageMetaData
-import nl.amony.platform.subprocess.{ProcessLimiter, ProcessRunner, ProcessSettings}
+import nl.amony.platform.subprocess.{Command, ProcessRunner}
 
-class ImageMagick(override protected val settings: ProcessSettings, override protected val limiter: ProcessLimiter)(
-  using meter: Meter[IO],
-  tracer: Tracer[IO]
-) extends ProcessRunner with GetImageMetaData {}
+object ImageMagick {
+
+  def getImageMeta(path: Path)(using runner: ProcessRunner): IO[Try[MagickResult]] = {
+
+    val fileName = path.toAbsolutePath.normalize().toString
+
+    runner.useProcessOutput(
+      "get-image-metadata",
+      Command("convert", List(fileName, "json:")),
+      useErrorStream = false,
+      runner.settings.imageMetadataTimeout
+    ) {
+      processOutput =>
+        IO {
+          (for
+            json <- io.circe.parser.parse(processOutput)
+            out  <- json.as[List[MagickImageMeta]]
+          yield MagickResult(out, json)).toTry
+        }
+    }
+  }
+}

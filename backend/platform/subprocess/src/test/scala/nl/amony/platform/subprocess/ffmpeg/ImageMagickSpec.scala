@@ -9,7 +9,7 @@ import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 import nl.amony.platform.subprocess.magick.ImageMagick
-import nl.amony.platform.subprocess.{ProcessLimiter, ProcessSettings}
+import nl.amony.platform.subprocess.{ProcessLimiter, ProcessRunner, ProcessSettings}
 
 class ImageMagickSpec extends AnyWordSpecLike with Logging {
 
@@ -18,9 +18,10 @@ class ImageMagickSpec extends AnyWordSpecLike with Logging {
     "get the meta data of an image" ignore {
       val path = Path.of("/Users/merlijn/dev/stable-diffusion-webui/outputs/txt2img-images/2023-03-19/00006-3780544666.png")
 
-      val imageMagick = new ImageMagick(ProcessSettings(), ProcessLimiter.unlimited)(using Meter.noop[IO], Tracer.noop[IO])
+      given ProcessRunner =
+        new ProcessRunner(ProcessSettings(), ProcessLimiter.unlimited)(using Meter.noop[IO], Tracer.noop[IO])
 
-      imageMagick.getImageMeta(path)
+      ImageMagick.getImageMeta(path)
 
       // logger.info(metas.unsafeRunSync().mkString(","))
     }

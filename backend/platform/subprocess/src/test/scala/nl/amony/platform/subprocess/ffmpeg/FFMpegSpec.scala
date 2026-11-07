@@ -21,12 +21,13 @@ import sttp.client4.httpclient.HttpClientSyncBackend
 import sttp.model.StatusCode
 
 import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
-import nl.amony.platform.subprocess.{ProcessLimiter, ProcessSettings}
+import nl.amony.platform.subprocess.{ProcessLimiter, ProcessRunner, ProcessSettings}
 
 /** Serves the faststart mp4 fixture over plain http with byte-range support, mimicking an S3 presigned URL. */
 class FFMpegSpec extends AnyWordSpecLike with Matchers with BeforeAndAfterAll {
 
-  private val ffmpeg = new FFMpeg(ProcessSettings(), ProcessLimiter.unlimited)(using Meter.noop[IO], Tracer.noop[IO])
+  private given runner: ProcessRunner =
+    new ProcessRunner(ProcessSettings(), ProcessLimiter.unlimited)(using Meter.noop[IO], Tracer.noop[IO])
 
   private var fixtureBytes: Array[Byte] = Array.empty
   private var server: HttpServer        = uninitialized
@@ -116,7 +117,7 @@ class FFMpegSpec extends AnyWordSpecLike with Matchers with BeforeAndAfterAll {
       // The tests below shell out to the ffmpeg/ffprobe binaries, which are not installed on the CI runners
       // (see .github/workflows/build.yml). They are ignored by default; run them explicitly where ffmpeg is available.
       "probe a video over http" ignore {
-        val (output, _) = ffmpeg.ffprobe(videoUri).unsafeRunSync()
+        val (output, _) = FFMpeg.ffprobe(videoUri).unsafeRunSync()
 
         val video = output.firstVideoStream.getOrElse(fail("expected a video stream"))
         video.codec_name shouldBe "h264"
@@ -126,7 +127,7 @@ class FFMpegSpec extends AnyWordSpecLike with Matchers with BeforeAndAfterAll {
       "create a thumbnail from a video over http" ignore {
         val out = workDir.resolve("thumb.webp")
 
-        ffmpeg.createThumbnail(videoUri, timestamp = 500, outputFile = out).unsafeRunSync()
+        FFMpeg.createThumbnail(videoUri, timestamp = 500, outputFile = out).unsafeRunSync()
 
         Files.size(out) should be > 0L
         val header = Files.readAllBytes(out).take(12)
@@ -146,7 +147,7 @@ class FFMpegSpec extends AnyWordSpecLike with Matchers with BeforeAndAfterAll {
           quality          = 70
         )
 
-        ffmpeg.createThumbnailTile(videoUri, out, tile).unsafeRunSync()
+        FFMpeg.createThumbnailTile(videoUri, out, tile).unsafeRunSync()
 
         Files.size(out) should be > 0L
       }
@@ -154,10 +155,10 @@ class FFMpegSpec extends AnyWordSpecLike with Matchers with BeforeAndAfterAll {
       "extract a clip from a video over http" ignore {
         val out = workDir.resolve("clip.mp4")
 
-        ffmpeg.transcodeToMp4(videoUri, range = (0L, 1000L), outputFile = out).unsafeRunSync()
+        FFMpeg.transcodeToMp4(videoUri, range = (0L, 1000L), outputFile = out).unsafeRunSync()
 
         Files.size(out) should be > 0L
-        val (output, _) = ffmpeg.ffprobe(out.toUri).unsafeRunSync()
+        val (output, _) = FFMpeg.ffprobe(out.toUri).unsafeRunSync()
         val video       = output.firstVideoStream.getOrElse(fail("expected a video stream in the clip"))
         video.codec_name shouldBe "h264"
         video.durationMillis should be > 0

@@ -1,14 +1,6 @@
 package nl.amony.platform.subprocess.ffmpeg.tasks
 
-import java.net.URI
-import java.nio.file.{Files, Path}
-
-import cats.effect.IO
-import scribe.Logging
-
-import nl.amony.platform.subprocess.ffmpeg.FFMpeg.formatTime
-import nl.amony.platform.subprocess.ffmpeg.{FFMpeg, HardwareDecoding}
-import nl.amony.platform.subprocess.{Command, ProcessRunner}
+import nl.amony.platform.subprocess.ffmpeg.HardwareDecoding
 
 /** The part of a storyboard that a single sprite covers. */
 case class ThumbnailTile(
@@ -69,71 +61,4 @@ object ThumbnailTile {
   def decodeArgs(tile: ThumbnailTile, hardware: Option[HardwareDecoding] = None): List[String] =
     hardware.toList.flatMap(_.inputArgs) ++
       Option.when(skipToKeyframes(tile.intervalInMillis))(List("-skip_frame", "nokey")).getOrElse(Nil)
-}
-
-trait CreateThumbnailTile extends Logging {
-
-  self: ProcessRunner =>
-
-  /**
-   * Generates one storyboard sprite for the given window, holding a frame every `intervalInMillis`
-   * and tiled into `columns` columns with as many rows as the frame count needs. The window is
-   * seeked to directly, so a sprite for a later part of a long video does not require decoding
-   * everything before it.
-   *
-   * When hardware decoding is available it is tried first and the job falls back to software for a
-   * codec or device the GPU cannot handle, so an unsupported input costs a failed process start
-   * rather than a missing preview. Coarse intervals additionally decode only keyframes, which is
-   * where most of the work goes for long videos.
-   */
-  def createThumbnailTile(
-    input: URI,
-    outputFile: Path,
-    tile: ThumbnailTile,
-    overwrite: Boolean = false
-  ): IO[Unit] =
-
-    if Files.exists(outputFile) && !overwrite then IO.unit
-    else {
-      val window = tile.frameCount.toLong * tile.intervalInMillis
-      val output = outputFile.toAbsolutePath.normalize.toString
-
-      def command(hardware: Option[HardwareDecoding]): Command = Command(
-        "ffmpeg",
-        ThumbnailTile.decodeArgs(tile, hardware) ++ List(
-          "-ss",
-          formatTime(tile.startInMillis),
-          "-t",
-          formatTime(window),
-          "-i",
-          FFMpeg.inputArg(input),
-          "-vf",
-          ThumbnailTile.filter(tile),
-          "-frames:v",
-          "1",
-          "-quality",
-          tile.quality.toString,
-          "-v",
-          "error",
-          "-y",
-          "-an",
-          output
-        )
-      )
-
-      /** Runs one ffmpeg attempt and rejects one that reports success without writing a sprite. */
-      def attempt(name: String, hardware: Option[HardwareDecoding]): IO[Unit] =
-        runIgnoreOutput(name, command(hardware), settings.tileTimeout).void >>
-          IO.blocking(Files.size(outputFile)).flatMap { size =>
-            IO.raiseWhen(size <= 0)(new IllegalStateException(s"ffmpeg produced an empty sprite: $output"))
-          }
-
-      hardwareDecoding match
-        case None         => attempt("ffmpeg-create-thumbnail-tile", None)
-        case Some(config) =>
-          attempt("ffmpeg-create-thumbnail-tile-hw", Some(config)).handleErrorWith { error =>
-            logger.warn(s"Hardware decoding failed for '$input', falling back to software: ${error.getMessage}")
-            attempt("ffmpeg-create-thumbnail-tile", None)
-          }
-    }
 }
