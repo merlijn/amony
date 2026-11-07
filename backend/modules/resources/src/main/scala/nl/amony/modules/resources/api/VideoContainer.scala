@@ -1,10 +1,10 @@
 package nl.amony.modules.resources.api
 
 /** Video container formats amony knows how to lay out for progressive HTTP playback. */
-enum VideoContainer(val extension: String):
-  case Mp4      extends VideoContainer("mp4")
-  case Webm     extends VideoContainer("webm")
-  case Matroska extends VideoContainer("mkv")
+enum VideoContainer(val extension: String, val mimeType: String):
+  case Mp4      extends VideoContainer("mp4", "video/mp4")
+  case Webm     extends VideoContainer("webm", "video/webm")
+  case Matroska extends VideoContainer("mkv", "video/x-matroska")
 
 object VideoContainer:
 

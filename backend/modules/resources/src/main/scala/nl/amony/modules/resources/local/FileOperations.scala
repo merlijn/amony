@@ -56,11 +56,17 @@ final class FileOperations(
           VideoThumbnailTile.spriteFileName(resourceId, contentVersion, spritePixels, intervalInMillis, index, token)
         case VideoThumbnailTileVtt(spritePixels, intervalInMillis, token)     =>
           VideoThumbnailTile.manifestFileName(resourceId, contentVersion, spritePixels, intervalInMillis, token)
+        case AddFastStart(_)                                                  =>
+          throw new IllegalArgumentException("AddFastStart does not produce a derived output file")
 
       config.cachePath.resolve(fileName)
     }
 
-  private val inFlight = SingleFlight[OperationKey, Path]
+  /**
+   * Tracks running operations per resource and operation. Derived operations return None because
+   * their output is read from the cache file; in-place operations return the refreshed resource.
+   */
+  private val inFlight = SingleFlight[OperationKey, Option[ResourceInfo]]
 
   private def contentTypeForPath(path: Path): IO[String] =
     IO.blocking(tika.detect(path)).adaptError { case cause => ContentUnreadable(path, cause) }
@@ -111,36 +117,54 @@ final class FileOperations(
     else IO.pure(None)
 
   /**
+   * Applies an operation that mutates the resource's file in place. Concurrent applications of the
+   * same operation for the same resource share a single execution.
+   */
+  private[local] def applyInPlace(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceInfo]] =
+    inFlight.run((info.resourceId, operation))(runInPlace(info, operation))
+
+  private def runInPlace(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceInfo]] =
+    operation.validate(info) match
+      case Left(error) => IO(logger.warn(s"Cannot apply $operation to '${info.path}': $error")).as(None)
+      case Right(_)    =>
+        operation match
+          case AddFastStart(container) => remuxInPlace(info, container)
+          case other                   => IO.raiseError(new IllegalArgumentException(s"Operation $other does not update a file in place"))
+
+  /** Remuxes the resource's file in place and returns the resource with its refreshed metadata. */
+  private def remuxInPlace(info: ResourceInfo, container: VideoContainer): IO[Option[ResourceInfo]] =
+    val source = config.resourcePath.resolve(info.path)
+    val temp   = config.cachePath.resolve(s"${info.resourceId}-normalize.${container.extension}")
+    logger.info(s"Normalizing '${info.path}' for streaming")
+    (for
+      _          <- IO(Files.createDirectories(config.cachePath))
+      out        <- addFastStart(source, container, Some(temp))
+      _          <- IO(Files.move(out, source, StandardCopyOption.REPLACE_EXISTING))
+      attrs      <- IO(Files.readAttributes(source, classOf[BasicFileAttributes]))
+      hash       <- config.hashingAlgorithm.createHash(source)
+      streamable <- streamableOf(source, info.contentType)
+    yield Some(
+      info.copy(
+        size             = attrs.size(),
+        partialHash      = Some(hash),
+        fileKey          = Option(attrs.fileKey()).map(_.toString),
+        timeLastModified = Some(attrs.lastModifiedTime().toMillis),
+        contentMeta      = info.contentMeta.copy(streamable = streamable)
+      )
+    ))
+      .handleErrorWith(error => IO(logger.error(s"Failed to normalize '${info.path}'", error)) *> IO.pure(Option.empty[ResourceInfo]))
+      .guarantee(IO.blocking(Files.deleteIfExists(temp)).void)
+
+  /**
    * Remuxes a resource in place so it can be streamed progressively and refreshes the metadata that
    * depends on the file. Returns None when the container is unsupported or normalization fails.
    */
   private[local] def normalizeStreamability(info: ResourceInfo): IO[Option[ResourceInfo]] =
-    VideoContainer.fromContentType(info.contentType.getOrElse("")) match
+    AddFastStart.forResource(info) match
+      case Some(operation) => applyInPlace(info, operation)
       case None            =>
         logger.warn(s"Cannot normalize '${info.path}': unsupported container '${info.contentType.getOrElse("unknown")}'")
         IO.pure(None)
-      case Some(container) =>
-        val source = config.resourcePath.resolve(info.path)
-        val temp   = config.cachePath.resolve(s"${info.resourceId}-normalize.${container.extension}")
-        logger.info(s"Normalizing '${info.path}' for streaming")
-        (for
-          _          <- IO(Files.createDirectories(config.cachePath))
-          out        <- addFastStart(source, container, Some(temp))
-          _          <- IO(Files.move(out, source, StandardCopyOption.REPLACE_EXISTING))
-          attrs      <- IO(Files.readAttributes(source, classOf[BasicFileAttributes]))
-          hash       <- config.hashingAlgorithm.createHash(source)
-          streamable <- streamableOf(source, info.contentType)
-        yield Some(
-          info.copy(
-            size             = attrs.size(),
-            partialHash      = Some(hash),
-            fileKey          = Option(attrs.fileKey()).map(_.toString),
-            timeLastModified = Some(attrs.lastModifiedTime().toMillis),
-            contentMeta      = info.contentMeta.copy(streamable = streamable)
-          )
-        ))
-          .handleErrorWith(error => IO(logger.error(s"Failed to normalize '${info.path}'", error)) *> IO.pure(Option.empty[ResourceInfo]))
-          .guarantee(IO.blocking(Files.deleteIfExists(temp)).void)
 
   /**
    * Validator for a derived preview. It is derived from the source's partial hash, the operation (encoded in the output
@@ -171,7 +195,7 @@ final class FileOperations(
     if Files.exists(outputFile) then IO.pure(ResourceContent.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
     else
       inFlight
-        .run(key)(createResource(config.resourcePath.resolve(info.path), info, key.operation))
+        .run(key)(createResource(config.resourcePath.resolve(info.path), info, key.operation).as(Option.empty[ResourceInfo]))
         .map(_ => ResourceContent.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
   }
 
@@ -241,6 +265,9 @@ final class FileOperations(
 
     case tile: VideoThumbnailTileVtt =>
       createThumbnailTileManifest(info, outputFile, tile).map(_ => outputFile)
+
+    case AddFastStart(_) =>
+      IO.raiseError(new IllegalArgumentException("AddFastStart updates a file in place and produces no derived output"))
 
   private def videoProperties(info: ResourceInfo): VideoProperties =
     info.basicContentProperties

@@ -153,6 +153,20 @@ case class VideoThumbnailTileVtt(spritePixels: Int, intervalInMillis: Long, toke
     VideoThumbnailTile.validate(info, spritePixels, intervalInMillis)
 }
 
+/** Remuxes a resource's file in place so it can be streamed progressively. */
+case class AddFastStart(container: VideoContainer) extends ResourceOperation {
+  override def contentType: String = container.mimeType
+
+  override def validate(info: ResourceInfo): Either[String, Unit] = info.basicContentProperties match
+    case Some(_: VideoProperties) => Right(())
+    case other                    => Left("Wrong content type, expected video, got: " + other)
+}
+
+object AddFastStart:
+  /** The operation for a resource whose content type maps to a supported container. */
+  def forResource(info: ResourceInfo): Option[AddFastStart] =
+    VideoContainer.fromContentType(info.contentType.getOrElse("")).map(AddFastStart.apply)
+
 object VideoFragment {
   val minWidth          = 64
   val minHeight         = 64
