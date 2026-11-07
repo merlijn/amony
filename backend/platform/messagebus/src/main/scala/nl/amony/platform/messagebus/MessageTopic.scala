@@ -41,4 +41,4 @@ trait MessageTopic[E]:
    * across nodes. Up to `parallelism` partitions (defaulting to the bus configuration) are drained concurrently on this
    * node. Any failure is retried in place on that partition before advancing, so no message is ever skipped.
    */
-  def processAtLeastOnce(consumerId: String, parallelism: Int = 0)(processor: E => IO[Unit]): Stream[IO, Unit]
+  def processAtLeastOnce(consumerId: String, parallelism: Option[Int] = None)(processor: E => IO[Unit]): Stream[IO, Unit]

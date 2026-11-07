@@ -208,7 +208,7 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
                                processed.update(_ :+ msg) >>
                                active.update(_ - 1)
                            }
-            _         <- topic.processAtLeastOnce("single-node-parallel", parallelism = 4)(processor).compile.drain.background.use { _ =>
+            _         <- topic.processAtLeastOnce("single-node-parallel", parallelism = Some(4))(processor).compile.drain.background.use { _ =>
                            distinctKeys.traverse_(k => topic.publish(KeyedMessage(k, 1))) >> await(processed, 4)
                          }
             peak      <- maxActive.get

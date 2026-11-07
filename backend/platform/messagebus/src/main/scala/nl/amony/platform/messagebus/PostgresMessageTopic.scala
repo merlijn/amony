@@ -35,8 +35,8 @@ final private[messagebus] class PostgresMessageTopic[E](
     val (messageKey, partition) = key.partitionFor(message)
     log.enqueue(session, key.name, partition, messageKey, codec(message)) >> session.channel(identifier).notify(key.name)
 
-  override def processAtLeastOnce(consumerId: String, parallelism: Int = 0)(processor: E => IO[Unit]): Stream[IO, Unit] =
-    val maxWorkers = (if parallelism > 0 then parallelism else config.parallelism).min(key.partitions).max(1)
+  override def processAtLeastOnce(consumerId: String, parallelism: Option[Int] = None)(processor: E => IO[Unit]): Stream[IO, Unit] =
+    val maxWorkers = parallelism.getOrElse(config.parallelism).min(key.partitions).max(1)
     Stream.eval(Semaphore[IO](maxWorkers.toLong)).flatMap { semaphore =>
       val trigger: IO[Unit] =
         semaphore.tryAcquire.flatMap {
