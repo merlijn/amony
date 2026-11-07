@@ -1,6 +1,7 @@
 package nl.amony.modules.resources.local
 
 import java.nio.charset.StandardCharsets
+import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{AtomicMoveNotSupportedException, Files, Path, StandardCopyOption}
 import java.security.MessageDigest
 import java.util.UUID
@@ -9,6 +10,8 @@ import scala.util.{Failure, Success}
 import cats.effect.IO
 import cats.implicits.*
 import org.apache.tika.Tika
+import org.typelevel.otel4s.metrics.Meter
+import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 import nl.amony.modules.resources.api.*
@@ -18,14 +21,21 @@ import nl.amony.platform.subprocess.ffmpeg.ContainerFormat
 import nl.amony.platform.subprocess.ffmpeg.FFMpeg
 import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
 import nl.amony.platform.subprocess.magick.ImageMagick
+import nl.amony.platform.subprocess.{ProcessLimiter, ProcessRunner, ProcessSettings}
 
 final class ContentUnreadable(val path: Path, cause: Throwable) extends Exception(s"Failed to read content of $path", cause)
 
-trait LocalResourceOperations extends LocalDirectoryBase with Logging {
+final class FileOperations(
+  config: LocalDirectoryConfig,
+  parallelFactor: Int,
+  formats: ThumbnailFormats,
+  resolutions: ThumbnailResolutions,
+  processSettings: ProcessSettings,
+  processLimiter: ProcessLimiter
+)(using meter: Meter[IO], tracer: Tracer[IO]) extends Logging {
 
-  private lazy val ffmpeg      = new FFMpeg(processSettings, processLimiter)
-  private lazy val imageMagick = new ImageMagick(processSettings, processLimiter)
-  private val tika             = new Tika()
+  private given runner: ProcessRunner = new ProcessRunner(processSettings, processLimiter)
+  private val tika                    = new Tika()
 
   type OperationKey = (resourceId: ResourceId, operation: ResourceOperation)
 
@@ -37,19 +47,25 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
         width.map(w => s"w$w").orElse(height.map(h => s"h$h")).getOrElse("orig")
 
       val fileName = operation match
-        case VideoFragment(width, height, start, end)                  => s"${resourceId}_${contentVersion}_$start-${end}_${scaleSuffix(width, height)}.mp4"
-        case VideoThumbnail(width, height, timestamp, format)          =>
+        case VideoFragment(width, height, start, end)                         => s"${resourceId}_${contentVersion}_$start-${end}_${scaleSuffix(width, height)}.mp4"
+        case VideoThumbnail(width, height, timestamp, format)                 =>
           s"${resourceId}_${contentVersion}_${timestamp}_${scaleSuffix(width, height)}.${format.extension}"
-        case ImageThumbnail(width, height, format)                     => s"${resourceId}_${contentVersion}_${scaleSuffix(width, height)}.${format.extension}"
-        case VideoThumbnailTile(width, intervalInMillis, index, token) =>
-          VideoThumbnailTile.spriteFileName(resourceId, contentVersion, width, intervalInMillis, index, token)
-        case VideoThumbnailTileVtt(width, intervalInMillis, token)     =>
-          VideoThumbnailTile.manifestFileName(resourceId, contentVersion, width, intervalInMillis, token)
+        case ImageThumbnail(width, height, format)                            => s"${resourceId}_${contentVersion}_${scaleSuffix(width, height)}.${format.extension}"
+        case VideoThumbnailTile(spritePixels, intervalInMillis, index, token) =>
+          VideoThumbnailTile.spriteFileName(resourceId, contentVersion, spritePixels, intervalInMillis, index, token)
+        case VideoThumbnailTileVtt(spritePixels, intervalInMillis, token)     =>
+          VideoThumbnailTile.manifestFileName(resourceId, contentVersion, spritePixels, intervalInMillis, token)
+        case AddFastStart(_)                                                  =>
+          throw new IllegalArgumentException("AddFastStart does not produce a derived output file")
 
       config.cachePath.resolve(fileName)
     }
 
-  private val inFlight = SingleFlight[OperationKey, Path]
+  /**
+   * Tracks running operations per resource and operation. Derived operations return None because
+   * their output is read from the cache file; in-place operations return the refreshed resource.
+   */
+  private val inFlight = SingleFlight[OperationKey, Option[ResourceInfo]]
 
   private def contentTypeForPath(path: Path): IO[String] =
     IO.blocking(tika.detect(path)).adaptError { case cause => ContentUnreadable(path, cause) }
@@ -65,13 +81,13 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
 
   private def toolScanForPath(path: Path, contentType: String): IO[Option[ToolScan]] =
     if contentType.startsWith("video/") then
-      ffmpeg.ffprobe(path.toUri, processSettings.ffprobeTimeout).map {
+      FFMpeg.ffprobe(path.toUri, processSettings.ffprobeTimeout).map {
         (ffprobeResult, json) =>
           val version = ffprobeResult.program_version.map(_.version).getOrElse("unknown")
           Some(ToolScan(s"ffprobe/$version", json))
       }.recover { case e: Throwable => logger.error(s"Failed to get video meta data for $path", e); None }
     else if contentType.startsWith("image/") then
-      imageMagick.getImageMeta(path).map:
+      ImageMagick.getImageMeta(path).map:
         case Failure(e)      =>
           logger.error(s"Failed to get image meta data for $path", e)
           None
@@ -79,10 +95,15 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
           Some(ToolScan("magick/1", result.rawJson))
     else IO.pure(None)
 
+  private def stripExtension(path: Path): Path =
+    val fileName = path.getFileName.toString
+    val dotIdx   = fileName.lastIndexOf('.')
+    if dotIdx >= 0 then path.resolveSibling(fileName.substring(0, dotIdx)) else path
+
   private[local] def addFastStart(video: Path, container: VideoContainer, outputFile: Option[Path] = None): IO[Path] = {
     // Local files have a well-defined sibling directory, so a default still makes sense here; remote callers must pass an explicit output.
-    val out = outputFile.getOrElse(Path.of(s"${FFMpeg.stripExtension(video)}-faststart.${containerFormat(container).extension}"))
-    ffmpeg.addFastStart(video.toUri, containerFormat(container), out)
+    val out = outputFile.getOrElse(Path.of(s"${stripExtension(video)}-faststart.${containerFormat(container).extension}"))
+    FFMpeg.addFastStart(video.toUri, containerFormat(container), out)
   }
 
   private def containerFormat(container: VideoContainer): ContainerFormat = container match
@@ -98,6 +119,56 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
         case Streamability.Unknown       => None
       }
     else IO.pure(None)
+
+  /**
+   * Applies an operation that mutates the resource's file in place. Concurrent applications of the
+   * same operation for the same resource share a single execution.
+   */
+  private[local] def applyInPlace(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceInfo]] =
+    inFlight.run((info.resourceId, operation))(runInPlace(info, operation))
+
+  private def runInPlace(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceInfo]] =
+    operation.validate(info) match
+      case Left(error) => IO(logger.warn(s"Cannot apply $operation to '${info.path}': $error")).as(None)
+      case Right(_)    =>
+        operation match
+          case AddFastStart(container) => remuxInPlace(info, container)
+          case other                   => IO.raiseError(new IllegalArgumentException(s"Operation $other does not update a file in place"))
+
+  /** Remuxes the resource's file in place and returns the resource with its refreshed metadata. */
+  private def remuxInPlace(info: ResourceInfo, container: VideoContainer): IO[Option[ResourceInfo]] =
+    val source = config.resourcePath.resolve(info.path)
+    val temp   = config.cachePath.resolve(s"${info.resourceId}-normalize.${container.extension}")
+    logger.info(s"Normalizing '${info.path}' for streaming")
+    (for
+      _          <- IO(Files.createDirectories(config.cachePath))
+      out        <- addFastStart(source, container, Some(temp))
+      _          <- IO(Files.move(out, source, StandardCopyOption.REPLACE_EXISTING))
+      attrs      <- IO(Files.readAttributes(source, classOf[BasicFileAttributes]))
+      hash       <- config.hashingAlgorithm.createHash(source)
+      streamable <- streamableOf(source, info.contentType)
+    yield Some(
+      info.copy(
+        size             = attrs.size(),
+        partialHash      = Some(hash),
+        fileKey          = Option(attrs.fileKey()).map(_.toString),
+        timeLastModified = Some(attrs.lastModifiedTime().toMillis),
+        contentMeta      = info.contentMeta.copy(streamable = streamable)
+      )
+    ))
+      .handleErrorWith(error => IO(logger.error(s"Failed to normalize '${info.path}'", error)) *> IO.pure(Option.empty[ResourceInfo]))
+      .guarantee(IO.blocking(Files.deleteIfExists(temp)).void)
+
+  /**
+   * Remuxes a resource in place so it can be streamed progressively and refreshes the metadata that
+   * depends on the file. Returns None when the container is unsupported or normalization fails.
+   */
+  private[local] def normalizeStreamability(info: ResourceInfo): IO[Option[ResourceInfo]] =
+    AddFastStart.forResource(info) match
+      case Some(operation) => applyInPlace(info, operation)
+      case None            =>
+        logger.warn(s"Cannot normalize '${info.path}': unsupported container '${info.contentType.getOrElse("unknown")}'")
+        IO.pure(None)
 
   /**
    * Validator for a derived preview. It is derived from the source's partial hash, the operation (encoded in the output
@@ -128,7 +199,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
     if Files.exists(outputFile) then IO.pure(ResourceContent.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
     else
       inFlight
-        .run(key)(createResource(config.resourcePath.resolve(info.path), info, key.operation))
+        .run(key)(createResource(config.resourcePath.resolve(info.path), info, key.operation).as(Option.empty[ResourceInfo]))
         .map(_ => ResourceContent.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
   }
 
@@ -167,13 +238,13 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
   private def run(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: ResourceOperation): IO[Path] = operation match
     case VideoFragment(width, height, start, end) =>
       logger.debug(s"Creating video fragment for $inputFile with range $start-$end")
-      ffmpeg.transcodeToMp4(inputFile.toUri, range = (start, end), scaleWidth = width, scaleHeight = height, outputFile = outputFile).map(_ =>
+      FFMpeg.transcodeToMp4(inputFile.toUri, range = (start, end), scaleWidth = width, scaleHeight = height, outputFile = outputFile).map(_ =>
         outputFile
       )
 
     case VideoThumbnail(width, height, timestamp, format) =>
       logger.debug(s"Creating thumbnail for $inputFile at timestamp $timestamp as ${format.configName}")
-      ffmpeg.createThumbnail(
+      FFMpeg.createThumbnail(
         inputFile.toUri,
         timestamp   = timestamp,
         outputFile  = outputFile,
@@ -185,7 +256,7 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
       )
     case ImageThumbnail(width, height, format)            =>
       logger.debug(s"Creating image thumbnail for $inputFile as ${format.configName}")
-      ffmpeg.resizeImage(
+      FFMpeg.resizeImage(
         inputFile.toUri,
         outputFile = outputFile,
         width      = width,
@@ -199,19 +270,22 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
     case tile: VideoThumbnailTileVtt =>
       createThumbnailTileManifest(info, outputFile, tile).map(_ => outputFile)
 
+    case AddFastStart(_) =>
+      IO.raiseError(new IllegalArgumentException("AddFastStart updates a file in place and produces no derived output"))
+
   private def videoProperties(info: ResourceInfo): VideoProperties =
     info.basicContentProperties
       .collect { case video: VideoProperties => video }
       .getOrElse(throw new IllegalStateException(s"Resource '${info.resourceId}' has no video properties"))
 
   private def createThumbnailTileSprite(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: VideoThumbnailTile): IO[Unit] = {
-    val video      = videoProperties(info)
-    val duration   = video.durationInMillis.toLong
-    val height     = VideoThumbnailTile.heightFor(operation.width, video.width, video.height)
-    val frameCount = VideoThumbnailTile.frameCountInSprite(operation.index, duration, operation.intervalInMillis)
-    val start      = VideoThumbnailTile.startInMillis(operation.index, operation.intervalInMillis)
-    val plan       = ThumbnailTile(
-      operation.width,
+    val video           = videoProperties(info)
+    val duration        = video.durationInMillis.toLong
+    val (width, height) = VideoThumbnailTile.resolutionFor(operation.spritePixels, video.width, video.height)
+    val frameCount      = VideoThumbnailTile.frameCountInSprite(operation.index, duration, operation.intervalInMillis)
+    val start           = VideoThumbnailTile.startInMillis(operation.index, operation.intervalInMillis)
+    val plan            = ThumbnailTile(
+      width,
       height,
       VideoThumbnailTile.columnsPerSprite,
       frameCount,
@@ -221,20 +295,20 @@ trait LocalResourceOperations extends LocalDirectoryBase with Logging {
     )
 
     logger.debug(s"Creating thumbnail tile ${operation.index} for $inputFile at ${operation.intervalInMillis}ms interval")
-    ffmpeg.createThumbnailTile(inputFile.toUri, outputFile, plan)
+    FFMpeg.createThumbnailTile(inputFile.toUri, outputFile, plan)
   }
 
   private def createThumbnailTileManifest(info: ResourceInfo, outputFile: Path, operation: VideoThumbnailTileVtt): IO[Unit] = {
-    val video          = videoProperties(info)
-    val contentVersion = ResourceOperations.contentVersion(info)
-    val height         = VideoThumbnailTile.heightFor(operation.width, video.width, video.height)
-    val spriteUrl      = (index: Int) => s"/api/resources/${info.bucketId}/${info.resourceId}/thumbtile_${contentVersion}_${operation.token}_$index.webp"
+    val video           = videoProperties(info)
+    val contentVersion  = ResourceOperations.contentVersion(info)
+    val (width, height) = VideoThumbnailTile.resolutionFor(operation.spritePixels, video.width, video.height)
+    val spriteUrl       = (index: Int) => s"/api/resources/${info.bucketId}/${info.resourceId}/thumbtile_${contentVersion}_${operation.token}_$index.webp"
 
     logger.debug(s"Creating thumbnail tile manifest for '${info.path}' at ${operation.intervalInMillis}ms interval")
     val webVtt = VideoThumbnailTile.renderWebVtt(
       durationInMillis = video.durationInMillis.toLong,
       intervalInMillis = operation.intervalInMillis,
-      width            = operation.width,
+      width            = width,
       height           = height,
       spriteUrl        = spriteUrl
     )

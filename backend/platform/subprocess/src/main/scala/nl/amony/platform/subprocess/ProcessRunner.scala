@@ -16,20 +16,25 @@ case class Command(cmd: String, args: Seq[String]) {
   override def toString: String = s"$cmd ${args.mkString(" ")}"
 }
 
+object Command {
+  def of(cmd: String, parts: Arg*): Command =
+    Command(cmd, parts.toList.flatMap(_.toArgs))
+}
+
 final case class ProcessTimedOut(command: Command, timeout: FiniteDuration)
     extends Exception(s"Process timed out after $timeout: $command")
 
-trait ProcessRunner(using meter: Meter[IO], tracer: Tracer[IO]) extends Logging {
-
-  protected def settings: ProcessSettings
-  protected def limiter: ProcessLimiter
+final class ProcessRunner(val settings: ProcessSettings, val limiter: ProcessLimiter)(
+  using meter: Meter[IO],
+  tracer: Tracer[IO]
+) extends Logging {
 
   /**
    * Hardware decoding for ffmpeg, resolved once from the configuration and the available device. A
    * configured but unusable device only costs a warning, so a wrong container setup degrades to software
    * decoding instead of failing every preview.
    */
-  protected lazy val hardwareDecoding: Option[HardwareDecoding] =
+  lazy val hardwareDecoding: Option[HardwareDecoding] =
     if !settings.hardwareDecode.enabled then None
     else
       HardwareDecoding.resolve(settings.hardwareDecode) match

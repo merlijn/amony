@@ -1,0 +1,64 @@
+package nl.amony.platform.subprocess.ffmpeg.tasks
+
+import nl.amony.platform.subprocess.ffmpeg.HardwareDecoding
+
+/** The part of a storyboard that a single sprite covers. */
+case class ThumbnailTile(
+  width: Int,
+  height: Int,
+  columns: Int,
+  frameCount: Int,
+  intervalInMillis: Long,
+  startInMillis: Long,
+  quality: Int
+) {
+  require(width > 0, "width must be positive")
+  require(height > 0, "height must be positive")
+  require(columns > 0, "columns must be positive")
+  require(frameCount > 0, "frame count must be positive")
+  require(frameCount <= columns * columns, s"frame count must fit in the $columns x $columns sprite grid")
+  require(intervalInMillis > 0, "interval must be positive")
+  require(startInMillis >= 0, "start must not be negative")
+  require(quality >= 0 && quality <= 100, "quality must be between 0 and 100")
+
+  /** Rows actually needed for this sprite, so a partially filled last sprite does not carry empty rows. */
+  private[ffmpeg] val rows: Int = (frameCount + columns - 1) / columns
+}
+
+object ThumbnailTile {
+
+  /**
+   * Resamples the window at exactly one frame per interval and tiles the result. `fps` keeps the
+   * output timestamps aligned with the manifest's cue times, unlike selecting the first frame after
+   * each interval, which drifts and can leave cells empty at the end of a sprite when the interval
+   * is not a multiple of the source frame duration. `nb_frames` stops the tile at the planned frame
+   * count instead of waiting for the end of the window.
+   *
+   * Decoding is the only difference between the hardware and software paths, so the filter chain is
+   * the same for both: `fps` drops the frames that are not sampled before they are scaled, and `tile`
+   * packs what is left.
+   */
+  private[ffmpeg] def filter(tile: ThumbnailTile): String =
+    s"fps=1000/${tile.intervalInMillis},scale=${tile.width}:${tile.height},tile=${tile.columns}x${tile.rows}:nb_frames=${tile.frameCount}"
+
+  /**
+   * Shortest interval at which a sprite samples frames far enough apart that the decoder can skip
+   * everything but keyframes. Cell contents then follow the nearest preceding keyframe instead of the
+   * exact cue time: invisible at a ten second step, but it would visibly shift the contents at the
+   * finer steps, which need the frames in between.
+   *
+   * Ten seconds rather than five because keyframes are commonly one per 250 frames — 8.3s at 30fps,
+   * 10s at 25fps — which is longer than a five second step and would make consecutive cells repeat.
+   */
+  private val keyframeOnlyFromMillis = 10000L
+
+  private[ffmpeg] def skipToKeyframes(intervalInMillis: Long): Boolean = intervalInMillis >= keyframeOnlyFromMillis
+
+  /**
+   * Decoder arguments for a sprite. Both hardware decoding and skipping non-key frames are per-input
+   * options, so they must precede the `-i` argument.
+   */
+  private[ffmpeg] def decodeArgs(tile: ThumbnailTile, hardware: Option[HardwareDecoding] = None): List[String] =
+    hardware.toList.flatMap(_.inputArgs) ++
+      Option.when(skipToKeyframes(tile.intervalInMillis))(List("-skip_frame", "nokey")).getOrElse(Nil)
+}

@@ -1,7 +1,7 @@
 package nl.amony.modules.resources.local
 
+import java.nio.file.Files
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{Files, StandardCopyOption}
 
 import cats.effect.IO
 import cats.implicits.*
@@ -14,20 +14,15 @@ import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.platform.files.*
 import nl.amony.platform.messagebus.MessageTopic
-import nl.amony.platform.subprocess.{ProcessLimiter, ProcessSettings}
 
 class LocalDirectoryBucket(
   config: LocalDirectoryConfig,
   parallelFactor: Int,
   db: ResourceDatabase,
   topic: MessageTopic[ResourceEvent],
-  formats: ThumbnailFormats,
-  resolutions: ThumbnailResolutions,
-  processSettings: ProcessSettings,
-  processLimiter: ProcessLimiter
+  ops: FileOperations
 )(using meter: Meter[IO], tracer: Tracer[IO])
-    extends LocalDirectoryBase(config, parallelFactor, db, topic, formats, resolutions, processSettings, processLimiter),
-      LocalResourceOperations,
+    extends LocalDirectoryBase(config, parallelFactor, db, topic, ops),
       ResourceBucket,
       LocalResourceSyncer,
       UploadResource,
@@ -41,7 +36,7 @@ class LocalDirectoryBucket(
 
   def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap { resource =>
     val resourcePath = config.resourcePath.resolve(resource.path)
-    contentMetaForPath(resourcePath).attempt.flatMap {
+    ops.contentMetaForPath(resourcePath).attempt.flatMap {
       case Left(e: ContentUnreadable) => IO(logger.error(s"Skipping metadata rescan for $resourcePath", e))
       case Left(e)                    => IO.raiseError(e)
       case Right(meta)                =>
@@ -53,51 +48,12 @@ class LocalDirectoryBucket(
 
   /** Remuxes a non-streamable resource in place so it can be streamed progressively, then persists the new state. */
   def fixStreamability(resourceId: ResourceId): IO[Unit] =
-    getResourceInfo(resourceId).flatMap {
+    getResourceInfo(resourceId).flatMap:
       case Some(info) if info.streamable.contains(false) =>
-        val source = config.resourcePath.resolve(info.path)
-        VideoContainer.fromContentType(info.contentType.getOrElse("")) match
-          case Some(container) =>
-            logger.info(s"Normalizing '${info.path}' for streaming")
-            val temp = config.cachePath.resolve(s"${info.resourceId}-normalize.${container.extension}")
-            (for
-              _          <- IO(Files.createDirectories(config.cachePath))
-              out        <- addFastStart(source, container, Some(temp))
-              _          <- IO(Files.move(out, source, StandardCopyOption.REPLACE_EXISTING))
-              attrs      <- IO(Files.readAttributes(source, classOf[BasicFileAttributes]))
-              hash       <- config.hashingAlgorithm.createHash(source)
-              streamable <- streamableOf(source, info.contentType)
-              updated     = info.copy(
-                              size             = attrs.size(),
-                              partialHash      = Some(hash),
-                              fileKey          = Option(attrs.fileKey()).map(_.toString),
-                              timeLastModified = Some(attrs.lastModifiedTime().toMillis),
-                              contentMeta      = info.contentMeta.copy(streamable = streamable)
-                            )
-              _          <- db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceUpdated(updated)))
-            yield ())
-              .handleErrorWith(error => IO(logger.error(s"Failed to normalize '${info.path}'", error)))
-              .guarantee(IO.blocking(Files.deleteIfExists(temp)).void)
-          case None            =>
-            IO(logger.warn(s"Cannot normalize '${info.path}': unsupported container '${info.contentType.getOrElse("unknown")}'"))
+        ops.normalizeStreamability(info).flatMap:
+          case Some(updated) => db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceUpdated(updated)))
+          case None          => IO.unit
       case _                                             => IO.unit
-    }
-
-  def updateFileSystemMetaData(): IO[Unit] = getAllResources.evalMap {
-    resource =>
-      val resourcePath = config.resourcePath.resolve(resource.path)
-      val attrs        = Files.readAttributes(resourcePath, classOf[BasicFileAttributes])
-      val updated      = resource.copy(
-        size             = attrs.size(),
-        fileKey          = Option(attrs.fileKey()).map(_.toString),
-        timeLastModified = Some(attrs.lastModifiedTime().toMillis)
-      )
-
-      if updated.size != resource.size || updated.timeLastModified != resource.timeLastModified || updated.fileKey != resource.fileKey then
-        logger.info(s"File system metadata changed for $resourcePath")
-        db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceUpdated(updated)))
-      else IO.unit
-  }.compile.drain
 
   def reComputePartialHashes(): IO[Unit] = getAllResources.evalMap { resource =>
     val file = config.resourcePath.resolve(resource.path)
@@ -112,16 +68,16 @@ class LocalDirectoryBucket(
   override def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]] =
     getResourceInfo(resourceId).flatMap:
       case None       => IO.pure(None)
-      case Some(info) => derivedResource(info, operation)
+      case Some(info) => ops.derivedResource(info, operation)
 
   def generateAllPreviews(): IO[Unit] =
     getAllResources
-      .flatMap(info => fs2.Stream.emits(previewOperations(info).map(info -> _)))
-      .parEvalMap(parallelFactor) { case (info, operation) => runPreviewOperation(info, operation) }
+      .flatMap(info => fs2.Stream.emits(ops.previewOperations(info).map(info -> _)))
+      .parEvalMap(parallelFactor) { case (info, operation) => ops.runPreviewOperation(info, operation) }
       .compile.drain
 
   def generatePreviewsIfEnabled(info: ResourceInfo): IO[Unit] =
-    if config.generatePreviewsOnAdd then generatePreviews(info)
+    if config.generatePreviewsOnAdd then ops.generatePreviews(info)
     else IO.unit
 
   override def getResource(resourceId: ResourceId): IO[Option[Resource]] =
@@ -132,7 +88,7 @@ class LocalDirectoryBucket(
         if !path.exists() then {
           logger.warn(s"Resource '$resourceId' was found in the database but no file exists: $path")
           None
-        } else { Some(Resource(info, ResourceContent.fromPath(path, info.contentType, originalETag(info)))) }
+        } else { Some(Resource(info, ResourceContent.fromPath(path, info.contentType, ops.originalETag(info)))) }
 
   override def deleteResource(resourceId: ResourceId): IO[Unit] =
     getResourceInfo(resourceId).flatMap:

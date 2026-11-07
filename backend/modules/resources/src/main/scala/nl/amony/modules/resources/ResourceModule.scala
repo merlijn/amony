@@ -22,7 +22,7 @@ import nl.amony.modules.resources.api.{
 }
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
 import nl.amony.modules.resources.http.{BucketRoutes, CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
-import nl.amony.modules.resources.local.LocalDirectoryBucket
+import nl.amony.modules.resources.local.{FileOperations, LocalDirectoryBucket}
 import nl.amony.platform.messagebus.MessageTopic
 import nl.amony.platform.subprocess.{ProcessLimiter, ProcessSettings}
 import nl.amony.platform.tapir.ServerEndpoints
@@ -78,15 +78,20 @@ object ResourceModule:
     def bucketFactory(processLimiter: ProcessLimiter): BucketFactory = {
       case localConfig: LocalDirectoryConfig =>
         IO {
+          val ops    = new FileOperations(
+            localConfig,
+            config.parallelFactor,
+            thumbFormats,
+            thumbResolutions,
+            processSettings,
+            processLimiter
+          )
           val bucket = LocalDirectoryBucket(
             localConfig,
             config.parallelFactor,
             resourceDatabase,
             eventTopic,
-            thumbFormats,
-            thumbResolutions,
-            processSettings,
-            processLimiter
+            ops
           )
           (bucket, bucket.sync())
         }

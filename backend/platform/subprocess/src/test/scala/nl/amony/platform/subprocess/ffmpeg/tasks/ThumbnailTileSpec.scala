@@ -1,8 +1,8 @@
-package nl.amony.platform.subprocess.ffmpeg
+package nl.amony.platform.subprocess.ffmpeg.tasks
 
 import org.scalatest.wordspec.AnyWordSpecLike
 
-import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
+import nl.amony.platform.subprocess.ffmpeg.HardwareDecoding
 
 class ThumbnailTileSpec extends AnyWordSpecLike {
 

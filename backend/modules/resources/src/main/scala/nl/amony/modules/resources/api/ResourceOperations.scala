@@ -31,11 +31,11 @@ object VideoThumbnailTile:
   /** Bump when the manifest layout or sprite generation changes, so cached manifests are not reused. */
   val manifestVersion = 3
 
-  private[api] def validate(info: ResourceInfo, width: Int, intervalInMillis: Long, index: Option[Int] = None): Either[String, Unit] =
+  private[api] def validate(info: ResourceInfo, spritePixels: Int, intervalInMillis: Long, index: Option[Int] = None): Either[String, Unit] =
     info.basicContentProperties match
       case Some(video: VideoProperties) =>
         for
-          _ <- Either.cond(width > 0, (), "Width must be positive")
+          _ <- Either.cond(spritePixels > 0, (), "Sprite pixels must be positive")
           _ <- Either.cond(intervalInMillis > 0, (), "Interval must be positive")
           _ <- index match
                  case Some(value) =>
@@ -53,7 +53,7 @@ object VideoThumbnailTile:
     math.max(1, (frames + framesPerSprite - 1) / framesPerSprite)
 
   /** 0-based frame where the given 1-based sprite starts. */
-  def startFrame(index: Int): Long =
+  private def startFrame(index: Int): Long =
     (index - 1).toLong * framesPerSprite
 
   def startInMillis(index: Int, intervalInMillis: Long): Long =
@@ -67,34 +67,32 @@ object VideoThumbnailTile:
   private def even(value: Int): Int = math.max(2, if value % 2 == 0 then value else value + 1)
 
   /**
-   * Width for a frame of roughly `targetPixels` area at the source aspect ratio. Using the area
-   * instead of a fixed width keeps landscape and portrait sprites the same size. The height follows
-   * from [[heightFor]]; both sides are kept even for the encoders.
+   * Width and height for a frame of roughly `targetPixels` area at the source aspect ratio. Using the
+   * area instead of a fixed width keeps landscape and portrait sprites the same size. Both sides are
+   * kept even for the encoders.
    */
-  def widthFor(targetPixels: Int, sourceWidth: Int, sourceHeight: Int): Int =
-    if sourceWidth <= 0 || sourceHeight <= 0 then even(math.sqrt(targetPixels.toDouble).round.toInt)
+  def resolutionFor(targetPixels: Int, sourceWidth: Int, sourceHeight: Int): (Int, Int) =
+    if sourceWidth <= 0 || sourceHeight <= 0 then
+      val side = even(math.sqrt(targetPixels.toDouble).round.toInt)
+      (side, side)
     else
       val aspect = sourceWidth.toDouble / sourceHeight
-      even(math.sqrt(targetPixels.toDouble * aspect).round.toInt)
+      val width  = even(math.sqrt(targetPixels.toDouble * aspect).round.toInt)
+      (width, even(math.round(width.toDouble * sourceHeight / sourceWidth).toInt))
 
-  /** Height for a width-pinned frame, rounded up to an even number so the encoders accept it. */
-  def heightFor(width: Int, sourceWidth: Int, sourceHeight: Int): Int =
-    if sourceWidth <= 0 || sourceHeight <= 0 then even(width)
-    else even(math.round(width.toDouble * sourceHeight / sourceWidth).toInt)
-
-  def manifestFileName(resourceId: ResourceId, contentVersion: String, width: Int, intervalInMillis: Long, token: String): String =
-    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_w${width}_$token.vtt"
+  def manifestFileName(resourceId: ResourceId, contentVersion: String, spritePixels: Int, intervalInMillis: Long, token: String): String =
+    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_p${spritePixels}_$token.vtt"
 
   def spriteFileName(
     resourceId: ResourceId,
     contentVersion: String,
-    width: Int,
+    spritePixels: Int,
     intervalInMillis: Long,
     index: Int,
     token: String,
     extension: String = "webp"
   ): String =
-    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_w${width}_${token}_$index.$extension"
+    s"${resourceId}_${contentVersion}_tile_${intervalInMillis}ms_p${spritePixels}_${token}_$index.$extension"
 
   /** Renders the complete WebVTT manifest, referencing one sprite file per group of [[framesPerSprite]] frames. */
   def renderWebVtt(
@@ -136,7 +134,7 @@ object VideoThumbnailTile:
 
 /** One storyboard sprite containing a group of up to [[VideoThumbnailTile.framesPerSprite]] frames. */
 case class VideoThumbnailTile(
-  width: Int,
+  spritePixels: Int,
   intervalInMillis: Long,
   index: Int = 1,
   token: String
@@ -144,16 +142,30 @@ case class VideoThumbnailTile(
   override def contentType: String = "image/webp"
 
   override def validate(info: ResourceInfo): Either[String, Unit] =
-    VideoThumbnailTile.validate(info, width, intervalInMillis, Some(index))
+    VideoThumbnailTile.validate(info, spritePixels, intervalInMillis, Some(index))
 }
 
 /** The WebVTT manifest describing all frames and their sprite files. */
-case class VideoThumbnailTileVtt(width: Int, intervalInMillis: Long, token: String) extends ResourceOperation {
+case class VideoThumbnailTileVtt(spritePixels: Int, intervalInMillis: Long, token: String) extends ResourceOperation {
   override def contentType: String = "text/vtt"
 
   override def validate(info: ResourceInfo): Either[String, Unit] =
-    VideoThumbnailTile.validate(info, width, intervalInMillis)
+    VideoThumbnailTile.validate(info, spritePixels, intervalInMillis)
 }
+
+/** Remuxes a resource's file in place so it can be streamed progressively. */
+case class AddFastStart(container: VideoContainer) extends ResourceOperation {
+  override def contentType: String = container.mimeType
+
+  override def validate(info: ResourceInfo): Either[String, Unit] = info.basicContentProperties match
+    case Some(_: VideoProperties) => Right(())
+    case other                    => Left("Wrong content type, expected video, got: " + other)
+}
+
+object AddFastStart:
+  /** The operation for a resource whose content type maps to a supported container. */
+  def forResource(info: ResourceInfo): Option[AddFastStart] =
+    VideoContainer.fromContentType(info.contentType.getOrElse("")).map(AddFastStart.apply)
 
 object VideoFragment {
   val minWidth          = 64
