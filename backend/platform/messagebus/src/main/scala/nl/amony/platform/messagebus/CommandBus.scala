@@ -68,12 +68,10 @@ final class PermanentCommandFailure(message: String, cause: Throwable) extends E
  */
 final case class CommandTopicKey[P: CirceCodec](
   name: String,
-  partitions: Int            = 8,
-  maxAttempts: Int           = 5,
-  // A `running` command older than this is assumed abandoned by a crashed consumer and may be re-claimed.
-  staleAfter: FiniteDuration = 1.minute,
+  partitions: Int           = 8,
+  maxAttempts: Int          = 5,
   // How long a terminal command stays observable after completion.
-  retention: FiniteDuration  = 7.days
+  retention: FiniteDuration = 7.days
 ):
   require(partitions >= 1, s"partitions must be >= 1, got $partitions")
   require(maxAttempts >= 1, s"maxAttempts must be >= 1, got $maxAttempts")
@@ -85,8 +83,7 @@ final case class CommandTopicKey[P: CirceCodec](
 
   val topicKey: MessageTopicKey[Command[P]] = MessageTopicKey[Command[P]](name, _.key, partitions)(using commandCodec)
 
-  def staleAfterDuration: java.time.Duration = java.time.Duration.ofMillis(staleAfter.toMillis)
-  def retentionDuration: java.time.Duration  = java.time.Duration.ofMillis(retention.toMillis)
+  def retentionDuration: java.time.Duration = java.time.Duration.ofMillis(retention.toMillis)
 
 /**
  * A durable command queue on top of a [[MessageTopic]]: commands are executed at least once, and their progress is
@@ -113,18 +110,18 @@ trait CommandBus[P]:
   def awaitCompletion(id: CommandId, timeout: FiniteDuration): IO[CommandStatus]
 
   /**
-   * At-least-once consumer. The handler must be idempotent: it can re-run after a crash, after a stale takeover, or
-   * when the terminal write committed but the consumer offset did not. Returning normally asserts the command's
-   * postcondition; any other outcome must raise, so it is retried and eventually recorded as failed.
+   * At-least-once consumer. The handler must be idempotent: it can re-run after a crash or when the terminal write
+   * committed but the consumer offset did not. Returning normally asserts the command's postcondition; any other
+   * outcome must raise, so it is retried and eventually recorded as failed.
    *
    * The handler receives the session of a transaction that also records the terminal state, so its domain writes and
    * the command's success commit together.
    */
-  def processAtLeastOnce(consumerId: String)(handler: (Session[IO], P) => IO[Unit]): Stream[IO, Unit]
+  def processAtLeastOnce(handler: (Session[IO], P) => IO[Unit]): Stream[IO, Unit]
 
   /**
    * At-least-once consumer with a split between slow, non-transactional work and a fast transactional commit. `work`
    * may run for a long time and is retried on failure; `commit` runs in the same transaction as the terminal state, so
    * its writes are atomic with the command's success.
    */
-  def processAtLeastOnce[A](consumerId: String)(work: P => IO[A])(commit: (Session[IO], P, A) => IO[Unit]): Stream[IO, Unit]
+  def processAtLeastOnce[A](work: P => IO[A])(commit: (Session[IO], P, A) => IO[Unit]): Stream[IO, Unit]

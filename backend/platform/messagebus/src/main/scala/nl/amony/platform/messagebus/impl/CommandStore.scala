@@ -12,7 +12,6 @@ import nl.amony.platform.messagebus.{CommandId, CommandState, CommandStatus}
 private[messagebus] enum Claim:
   case Acquired(attempts: Int)
   case Done
-  case Busy
   case Missing
 
 final private[messagebus] case class CommandRow(
@@ -38,15 +37,14 @@ private[messagebus] object CommandStoreQueries:
     sql"""select command_id, message_key, state, attempts, last_error, updated_at
           from command_status where topic = $varchar and command_id = $varchar""".query(CommandRow.codec)
 
-  /** Claims a queued command, or one whose runner went silent. Returns the new attempt number. */
-  val claim: Query[(String, String, Duration), Int] =
+  /** Claims a non-terminal command. Returns the new attempt number. */
+  val claim: Query[(String, String), Int] =
     sql"""update command_status
           set state = 'running', attempts = attempts + 1, updated_at = now()
           where topic = $varchar and command_id = $varchar
-            and (state = 'queued' or (state = 'running' and updated_at < now() - $interval))
+            and state in ('queued', 'running')
           returning attempts""".query(int4)
 
-  /** A handled failure goes back to queued, so the next retry is immediate instead of waiting for a stale takeover. */
   val requeue: SkunkCommand[(String, String, String)] =
     sql"""update command_status set state = 'queued', last_error = $text, updated_at = now()
           where topic = $varchar and command_id = $varchar""".command
@@ -72,15 +70,14 @@ final private[messagebus] class CommandStore(pool: Resource[IO, Session[IO]]):
   def get(topic: String, id: CommandId): IO[Option[CommandStatus]] =
     pool.use(session => session.prepare(CommandStoreQueries.get).flatMap(_.option((topic, id.value))).map(_.map(_.toStatus)))
 
-  def claim(topic: String, id: CommandId, staleAfter: Duration): IO[Claim] =
+  def claim(topic: String, id: CommandId): IO[Claim] =
     pool.use { session =>
-      session.prepare(CommandStoreQueries.claim).flatMap(_.option((topic, id.value, staleAfter))).flatMap {
+      session.prepare(CommandStoreQueries.claim).flatMap(_.option((topic, id.value))).flatMap {
         case Some(attempts) => IO.pure(Claim.Acquired(attempts))
         case None           =>
           session.prepare(CommandStoreQueries.get).flatMap(_.option((topic, id.value))).map {
-            case None                                 => Claim.Missing
-            case Some(row) if row.toStatus.isTerminal => Claim.Done
-            case Some(_)                              => Claim.Busy
+            case None    => Claim.Missing
+            case Some(_) => Claim.Done
           }
       }
     }

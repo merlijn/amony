@@ -53,8 +53,8 @@ final class ResourceCommands(registry: BucketRegistry, bus: CommandBus[ResourceC
 
   def status(id: CommandId): IO[Option[CommandStatus]] = bus.status(id)
 
-  def processAtLeastOnce(consumerId: String): Stream[IO, Unit] =
-    bus.processAtLeastOnce(consumerId)(work)(commit)
+  def processAtLeastOnce: Stream[IO, Unit] =
+    bus.processAtLeastOnce(work)(commit)
 
   /** Slow and non-transactional: remuxes streamability or prepares an upload, all inside the bucket's temp directory. */
   private def work(command: ResourceCommand): IO[Prepared] =

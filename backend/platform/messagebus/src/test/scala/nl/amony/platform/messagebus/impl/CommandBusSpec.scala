@@ -64,7 +64,7 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
               id        <- bus.submit("key", TestCommand(1))
               queued    <- bus.status(id)
               _          = queued.map(_.state) shouldBe Some(CommandState.Queued)
-              consumer  <- bus.processAtLeastOnce("consumer")((_, command) => executed.update(_ :+ command.value)).compile.drain.start
+              consumer  <- bus.processAtLeastOnce((_, command) => executed.update(_ :+ command.value)).compile.drain.start
               completed <- bus.awaitCompletion(id, 20.seconds)
               _          = completed.state shouldBe CommandState.Succeeded
               _          = completed.attempts shouldBe 1
@@ -113,7 +113,7 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
               attempts  <- Ref.of[IO, Int](0)
               id        <- bus.submit("key", TestCommand(1))
               failing   <- bus
-                             .processAtLeastOnce("consumer")((_, _) => attempts.update(_ + 1) >> IO.raiseError(new RuntimeException("boom")))
+                             .processAtLeastOnce((_, _) => attempts.update(_ + 1) >> IO.raiseError(new RuntimeException("boom")))
                              .compile
                              .drain
                              .start
@@ -128,7 +128,7 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
               next      <- bus.submit("key", TestCommand(2))
               processed <- Ref.of[IO, Boolean](false)
               _         <- bus
-                             .processAtLeastOnce("consumer")((_, _) => processed.set(true))
+                             .processAtLeastOnce((_, _) => processed.set(true))
                              .compile
                              .drain
                              .start
@@ -151,7 +151,7 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
               attempts  <- Ref.of[IO, Int](0)
               id        <- bus.submit("key", TestCommand(1))
               consumer  <- bus
-                             .processAtLeastOnce("consumer")((_, _) => attempts.update(_ + 1) >> IO.raiseError(new PermanentCommandFailure("nope")))
+                             .processAtLeastOnce((_, _) => attempts.update(_ + 1) >> IO.raiseError(new PermanentCommandFailure("nope")))
                              .compile
                              .drain
                              .start
@@ -179,7 +179,7 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
               committed <- Ref.of[IO, Boolean](false)
               id        <- bus.submit("key", TestCommand(7))
               consumer  <- bus
-                             .processAtLeastOnce("consumer")((command: TestCommand) => worked.set(true).as(command.value * 2)) {
+                             .processAtLeastOnce((command: TestCommand) => worked.set(true).as(command.value * 2)) {
                                (_, command, result) =>
                                  committed.set(true) >> IO.raiseUnless(result == command.value * 2)(new RuntimeException("unexpected result"))
                              }
@@ -208,13 +208,13 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
           val test =
             for
               _      <- pool.use(session => session.transaction.use(_ => store.insert(session, name, id, "key")))
-              first  <- store.claim(name, id, java.time.Duration.ofMinutes(1))
+              first  <- store.claim(name, id)
               _       = first shouldBe Claim.Acquired(1)
               _      <- store.requeue(name, id, "boom")
-              second <- store.claim(name, id, java.time.Duration.ofMinutes(1))
+              second <- store.claim(name, id)
               _       = second shouldBe Claim.Acquired(2)
               _      <- pool.use(session => session.transaction.use(_ => store.succeed(session, name, id)))
-              again  <- store.claim(name, id, java.time.Duration.ofMinutes(1))
+              again  <- store.claim(name, id)
               _       = again shouldBe Claim.Done
               _      <- store.purge(name, java.time.Duration.ZERO)
               gone   <- store.get(name, id)

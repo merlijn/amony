@@ -10,9 +10,6 @@ import skunk.Session
 
 import nl.amony.platform.messagebus.*
 
-final private[messagebus] class CommandBusy(id: CommandId)
-    extends Exception(s"Command ${id.value} is being processed by another consumer")
-
 /**
  * Adds a producer-visible status sidecar to a [[MessageTopic]]. Execution (log, partitions, leases, notifications,
  * retry backoff) is entirely delegated to the topic; this class only records the per-command lifecycle and turns a
@@ -49,8 +46,8 @@ final private[messagebus] class PostgresCommandBus[P](
   override def awaitCompletion(id: CommandId, timeout: FiniteDuration): IO[CommandStatus] =
     subscribe(id).compile.lastOrError.timeout(timeout)
 
-  override def processAtLeastOnce(consumerId: String)(handler: (Session[IO], P) => IO[Unit]): Stream[IO, Unit] =
-    processCommands(consumerId) { command =>
+  override def processAtLeastOnce(handler: (Session[IO], P) => IO[Unit]): Stream[IO, Unit] =
+    processCommands { command =>
       // The handler's domain writes and the command's success commit together, so `succeeded` always means the domain
       // write is visible.
       pool.use { session =>
@@ -58,8 +55,8 @@ final private[messagebus] class PostgresCommandBus[P](
       }
     }
 
-  override def processAtLeastOnce[A](consumerId: String)(work: P => IO[A])(commit: (Session[IO], P, A) => IO[Unit]): Stream[IO, Unit] =
-    processCommands(consumerId) { command =>
+  override def processAtLeastOnce[A](work: P => IO[A])(commit: (Session[IO], P, A) => IO[Unit]): Stream[IO, Unit] =
+    processCommands { command =>
       work(command.payload).flatMap { result =>
         pool.use { session =>
           session.transaction.use(_ => commit(session, command.payload, result) >> store.succeed(session, key.name, command.id))
@@ -67,16 +64,16 @@ final private[messagebus] class PostgresCommandBus[P](
       }
     }
 
-  private def processCommands(consumerId: String)(run: Command[P] => IO[Unit]): Stream[IO, Unit] =
-    // Unlike an event topic, a command topic must never skip commands that were submitted before its consumer group
-    // first registered. `ensureConsumer` is a no-op once the group exists, so this only affects the first start.
-    Stream.eval(log.ensureConsumer(key.name, consumerId, key.partitions, 0)) ++
-      topic.processAtLeastOnce(consumerId) { command =>
-        store.claim(key.name, command.id, key.staleAfterDuration).flatMap {
+  private def processCommands(run: Command[P] => IO[Unit]): Stream[IO, Unit] =
+    // Unlike an event topic, a command topic has a single logical consumer group (keyed by the command topic name) and
+    // must never skip commands that were submitted before that consumer group first registered. `ensureConsumer` is a
+    // no-op once the group exists, so this only affects the first start.
+    Stream.eval(log.ensureConsumer(key.name, key.name, key.partitions, 0)) ++
+      topic.processAtLeastOnce(key.name) { command =>
+        store.claim(key.name, command.id).flatMap {
           case Claim.Done                                             => IO.unit
           case Claim.Missing                                          =>
             IO(logger.error(s"Command ${command.id.value} has no status row on topic '${key.name}', skipping"))
-          case Claim.Busy                                             => IO.raiseError(CommandBusy(command.id))
           case Claim.Acquired(attempts) if attempts > key.maxAttempts =>
             store.fail(key.name, command.id, s"Gave up after ${key.maxAttempts} attempts")
           case Claim.Acquired(attempts)                               =>
