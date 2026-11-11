@@ -14,6 +14,7 @@ import nl.amony.modules.resources.api.{
   BucketRegistry,
   CacheScope,
   LocalDirectoryConfig,
+  ResourceCommand,
   ResourceEvent,
   ResourceIndex,
   ThumbnailFormats,
@@ -22,8 +23,8 @@ import nl.amony.modules.resources.api.{
 }
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
 import nl.amony.modules.resources.http.{BucketRoutes, CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
-import nl.amony.modules.resources.local.{FileOperations, LocalDirectoryBucket}
-import nl.amony.platform.messagebus.MessageTopic
+import nl.amony.modules.resources.local.{FileOperations, LocalDirectoryBucket, ResourceCommands}
+import nl.amony.platform.messagebus.{CommandBus, MessageTopic}
 import nl.amony.platform.subprocess.{ProcessLimiter, ProcessSettings}
 import nl.amony.platform.tapir.ServerEndpoints
 
@@ -35,6 +36,7 @@ import nl.amony.platform.tapir.ServerEndpoints
 class ResourceModule(
   private val resourceDatabase: ResourceDatabase,
   val bucketRegistry: BucketRegistry,
+  val commands: ResourceCommands,
   val thumbResolutions: ThumbnailResolutions,
   val thumbFormats: ThumbnailFormats,
   val thumbTiles: ThumbnailTiles,
@@ -44,9 +46,9 @@ class ResourceModule(
 
   /** The Tapir endpoints of the module. */
   def routes(resourceIndex: ResourceIndex)(using apiSecurity: ApiSecurity): ServerEndpoints[IO] =
-    BucketRoutes.apply(bucketRegistry, resourceIndex) ++
+    BucketRoutes.apply(bucketRegistry, resourceIndex, commands) ++
       CollectionRoutes.apply(resourceDatabase, bucketRegistry) ++
-      ResourceRoutes.apply(bucketRegistry)
+      ResourceRoutes.apply(bucketRegistry, commands)
 
   /** The non-Tapir content routes (downloads, thumbnails and clips), served as plain HttpRoutes. */
   def contentRoutes(using apiSecurity: ApiSecurity): HttpRoutes[IO] =
@@ -60,7 +62,8 @@ object ResourceModule:
     config: ResourceConfig,
     processSettings: ProcessSettings,
     databasePool: Resource[IO, Session[IO]],
-    eventTopic: MessageTopic[ResourceEvent]
+    eventTopic: MessageTopic[ResourceEvent],
+    commandBus: CommandBus[ResourceCommand]
   )(using Meter[IO], Tracer[IO]): Resource[IO, ResourceModule] =
     val thumbResolutions = ThumbnailResolutions(
       config.previews.allowedResolutions,
@@ -99,10 +102,17 @@ object ResourceModule:
 
     for
       processLimiter <- ProcessLimiter.resource(processSettings)
-      bucketRegistry <- DatabaseBucketRegistry.resource(config.defaultBucket, BucketsDal(databasePool), eventTopic, bucketFactory(processLimiter))
+      bucketRegistry <- DatabaseBucketRegistry.resource(
+                          config.defaultBucket,
+                          BucketsDal(databasePool),
+                          eventTopic,
+                          bucketFactory(processLimiter)
+                        )
+      commands        = ResourceCommands(bucketRegistry, commandBus)
     yield new ResourceModule(
       resourceDatabase,
       bucketRegistry,
+      commands,
       thumbResolutions,
       thumbFormats,
       thumbTiles,

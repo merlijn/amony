@@ -13,16 +13,31 @@ trait PersistentMessageBus:
 
   def getTopicForKey[E](key: MessageTopicKey[E]): MessageTopic[E]
 
+  /**
+   * A durable command queue with a producer-visible status sidecar. Unlike [[getTopic]] it writes one extra row per
+   * submitted command, so it is opt-in: only construct it for command topics.
+   */
+  def getCommandBus[P](using key: CommandTopicKey[P]): CommandBus[P]
+
 object PersistentMessageBus:
 
   def postgres(pool: Resource[IO, Session[IO]], config: MessageBusConfig = MessageBusConfig()): PersistentMessageBus =
     new PersistentMessageBus:
 
-      private val log    = MessageLog(pool)
-      private val topics = ConcurrentHashMap[String, MessageTopic[?]]()
+      private val log      = MessageLog(pool)
+      private val topics   = ConcurrentHashMap[String, MessageTopic[?]]()
+      private val commands = ConcurrentHashMap[String, CommandBus[?]]()
 
       override def getTopicForKey[E](key: MessageTopicKey[E]): MessageTopic[E] =
         topics.computeIfAbsent(key.name, _ => PostgresMessageTopic(key, log, pool, config)).asInstanceOf[MessageTopic[E]]
+
+      override def getCommandBus[P](using key: CommandTopicKey[P]): CommandBus[P] =
+        commands
+          .computeIfAbsent(
+            key.name,
+            _ => PostgresCommandBus(key, getTopicForKey(key.topicKey), log, CommandStore(pool), pool, config)
+          )
+          .asInstanceOf[CommandBus[P]]
 
 final case class MessageBusConfig(
   // Fallback poll for notifications that were lost or whose consumer crashed. The NOTIFY path handles the

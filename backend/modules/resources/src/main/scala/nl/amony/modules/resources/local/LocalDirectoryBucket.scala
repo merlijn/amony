@@ -8,6 +8,7 @@ import cats.implicits.*
 import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
+import skunk.Session
 
 import nl.amony.modules.auth.api.Role
 import nl.amony.modules.resources.api.*
@@ -46,14 +47,24 @@ class LocalDirectoryBucket(
     }
   }.compile.drain
 
-  /** Remuxes a non-streamable resource in place so it can be streamed progressively, then persists the new state. */
-  def fixStreamability(resourceId: ResourceId): IO[Unit] =
+  /** Remuxes a non-streamable resource to a temporary file, without touching the live file. */
+  private[local] def prepareStreamabilityFix(resourceId: ResourceId): IO[StreamabilityFixPreparation] =
     getResourceInfo(resourceId).flatMap:
-      case Some(info) if info.streamable.contains(false) =>
-        ops.normalizeStreamability(info).flatMap:
-          case Some(updated) => db.transact(s => db.upsertResource(updated) >> topic.publish(s, ResourceModified(updated)))
-          case None          => IO.unit
-      case _                                             => IO.unit
+      case None                                          => IO.pure(StreamabilityFixPreparation.Missing)
+      case Some(info) if info.streamable.contains(false) => ops.prepareStreamability(info).map(StreamabilityFixPreparation.Prepared.apply)
+      case Some(_)                                       => IO.pure(StreamabilityFixPreparation.NotApplicable)
+
+  /**
+   * Commits a prepared remux: replaces the live file, refreshes its metadata and publishes ResourceModified, all in the
+   * caller's transaction. That way the command's success and the resource update commit together.
+   */
+  private[local] def commitStreamabilityFix(session: Session[IO], resourceId: ResourceId, tempFile: Option[String]): IO[Unit] =
+    db.getResourceById(id, resourceId)(using Some(session)).flatMap:
+      case None       => IO.raiseError(new IllegalStateException(s"Resource '$resourceId' no longer exists in bucket '$id'"))
+      case Some(info) =>
+        ops.commitStreamability(info, tempFile).flatMap { updated =>
+          db.upsertResource(updated)(using Some(session)) >> topic.publish(session, ResourceModified(updated))
+        }
 
   def reComputePartialHashes(): IO[Unit] = getAllResources.evalMap { resource =>
     val file = config.resourcePath.resolve(resource.path)

@@ -25,6 +25,10 @@ import nl.amony.platform.subprocess.{ProcessLimiter, ProcessRunner, ProcessSetti
 
 final class ContentUnreadable(val path: Path, cause: Throwable) extends Exception(s"Failed to read content of $path", cause)
 
+final class UnsupportedStreamability(contentType: String) extends Exception(s"Cannot remux content type '$contentType' for streaming")
+
+final class StreamabilityFixFailed(val path: String, reason: String) extends Exception(s"Failed to make '$path' streamable: $reason")
+
 final class FileOperations(
   config: LocalDirectoryConfig,
   parallelFactor: Int,
@@ -121,54 +125,58 @@ final class FileOperations(
     else IO.pure(None)
 
   /**
-   * Applies an operation that mutates the resource's file in place. Concurrent applications of the
-   * same operation for the same resource share a single execution.
+   * Remuxes the resource into a deterministic cache file without touching the live file, so a failed or abandoned
+   * preparation never leaves the resource inconsistent. Returns the temp file name. Concurrent preparations of the same
+   * resource share a single execution, which also prevents two writers targeting the same temp file.
    */
-  private[local] def applyInPlace(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceInfo]] =
-    inFlight.run((info.resourceId, operation))(runInPlace(info, operation))
+  private val preparing = SingleFlight[(resourceId: ResourceId, operation: AddFastStart), String]
 
-  private def runInPlace(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceInfo]] =
-    operation.validate(info) match
-      case Left(error) => IO(logger.warn(s"Cannot apply $operation to '${info.path}': $error")).as(None)
-      case Right(_)    =>
-        operation match
-          case AddFastStart(container) => remuxInPlace(info, container)
-          case other                   => IO.raiseError(new IllegalArgumentException(s"Operation $other does not update a file in place"))
+  private[local] def prepareStreamability(info: ResourceInfo): IO[String] =
+    AddFastStart.forResource(info) match
+      case None            => IO.raiseError(new UnsupportedStreamability(info.contentType.getOrElse("unknown")))
+      case Some(operation) => preparing.run((info.resourceId, operation))(prepareStreamabilityUncached(info, operation))
 
-  /** Remuxes the resource's file in place and returns the resource with its refreshed metadata. */
-  private def remuxInPlace(info: ResourceInfo, container: VideoContainer): IO[Option[ResourceInfo]] =
-    val source = config.resourcePath.resolve(info.path)
-    val temp   = config.cachePath.resolve(s"${info.resourceId}-normalize.${container.extension}")
-    logger.info(s"Normalizing '${info.path}' for streaming")
-    (for
-      _          <- IO(Files.createDirectories(config.cachePath))
-      out        <- addFastStart(source, container, Some(temp))
-      _          <- IO(Files.move(out, source, StandardCopyOption.REPLACE_EXISTING))
-      attrs      <- IO(Files.readAttributes(source, classOf[BasicFileAttributes]))
-      hash       <- config.hashingAlgorithm.createHash(source)
-      streamable <- streamableOf(source, info.contentType)
-    yield Some(
-      info.copy(
-        size             = attrs.size(),
-        partialHash      = Some(hash),
-        fileKey          = Option(attrs.fileKey()).map(_.toString),
-        timeLastModified = Some(attrs.lastModifiedTime().toMillis),
-        contentMeta      = info.contentMeta.copy(streamable = streamable)
-      )
-    ))
-      .handleErrorWith(error => IO(logger.error(s"Failed to normalize '${info.path}'", error)) *> IO.pure(Option.empty[ResourceInfo]))
-      .guarantee(IO.blocking(Files.deleteIfExists(temp)).void)
+  private def prepareStreamabilityUncached(info: ResourceInfo, operation: AddFastStart): IO[String] =
+    val container = operation.container
+    val source    = config.resourcePath.resolve(info.path)
+    // A unique name keeps concurrent preparations (including across nodes sharing the cache) from writing the same file.
+    val fileName  = s"${info.resourceId}-normalize-${UUID.randomUUID()}.${container.extension}"
+    val temp      = config.cachePath.resolve(fileName)
+    val prepare   =
+      for
+        _          <- IO.blocking(Files.createDirectories(config.cachePath))
+        out        <- addFastStart(source, container, Some(temp))
+        streamable <- streamableOf(out, info.contentType)
+        _          <- IO.raiseUnless(streamable.contains(true))(
+                        new StreamabilityFixFailed(info.path, "the remux did not produce a streamable file")
+                      )
+      yield fileName
+    prepare.handleErrorWith(error => IO.blocking(Files.deleteIfExists(temp)).void >> IO.raiseError(error))
 
   /**
-   * Remuxes a resource in place so it can be streamed progressively and refreshes the metadata that
-   * depends on the file. Returns None when the container is unsupported or normalization fails.
+   * Replaces the live file with the prepared remux (when one is still present) and refreshes the metadata that depends
+   * on the file. Idempotent: a retry after the move finds no temp file and re-derives the metadata instead.
    */
-  private[local] def normalizeStreamability(info: ResourceInfo): IO[Option[ResourceInfo]] =
-    AddFastStart.forResource(info) match
-      case Some(operation) => applyInPlace(info, operation)
-      case None            =>
-        logger.warn(s"Cannot normalize '${info.path}': unsupported container '${info.contentType.getOrElse("unknown")}'")
-        IO.pure(None)
+  private[local] def commitStreamability(info: ResourceInfo, tempFile: Option[String]): IO[ResourceInfo] =
+    val source = config.resourcePath.resolve(info.path)
+    val move   = tempFile match
+      case Some(file) =>
+        val temp = config.cachePath.resolve(file)
+        IO.blocking(Files.exists(temp)).flatMap(exists => if exists then moveIntoPlace(temp, source).void else IO.unit)
+      case None       => IO.unit
+    for
+      _          <- move
+      attrs      <- IO.blocking(Files.readAttributes(source, classOf[BasicFileAttributes]))
+      hash       <- config.hashingAlgorithm.createHash(source)
+      streamable <- streamableOf(source, info.contentType)
+      _          <- IO.raiseUnless(streamable.contains(true))(new StreamabilityFixFailed(info.path, "the file is not streamable after the remux"))
+    yield info.copy(
+      size             = attrs.size(),
+      partialHash      = Some(hash),
+      fileKey          = Option(attrs.fileKey()).map(_.toString),
+      timeLastModified = Some(attrs.lastModifiedTime().toMillis),
+      contentMeta      = info.contentMeta.copy(streamable = streamable)
+    )
 
   /**
    * Validator for a derived preview. It is derived from the source's partial hash, the operation (encoded in the output

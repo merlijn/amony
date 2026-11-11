@@ -19,7 +19,7 @@ import nl.amony.app.observability.Observability
 import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.resources.ResourceModule
-import nl.amony.modules.resources.api.ResourceEvent
+import nl.amony.modules.resources.api.{ResourceCommand, ResourceEvent}
 import nl.amony.modules.resources.local.ResourceProcessor
 import nl.amony.modules.search.SearchModule
 import nl.amony.platform.database.Database
@@ -71,14 +71,22 @@ object App extends ResourceApp.Forever with Logging {
         databasePool      <- Database.makePool(appConfig.database)
         httpClientBackend <- HttpClientCatsBackend.resource[IO]()
         searchModule      <- SearchModule.resource(appConfig.search)
+        messageBus         = PersistentMessageBus.postgres(databasePool, appConfig.messageBus)
         eventTopic         = {
           given MessageTopicKey[ResourceEvent] = MessageTopicKey("resource-events", _.messageKey)
-          PersistentMessageBus.postgres(databasePool, appConfig.messageBus).getTopic[ResourceEvent]
+          messageBus.getTopic[ResourceEvent]
         }
         _                 <- eventTopic.processAtLeastOnce("solr-indexer")(searchModule.indexer.processEvent).compile.drain.background
-        resourceModule    <- ResourceModule.resource(appConfig.resources, appConfig.mediaProcessing, databasePool, eventTopic)
+        resourceModule    <- ResourceModule.resource(
+                               appConfig.resources,
+                               appConfig.mediaProcessing,
+                               databasePool,
+                               eventTopic,
+                               messageBus.getCommandBus[ResourceCommand]
+                             )
         resourceProcessor  = ResourceProcessor(resourceModule.bucketRegistry)
         _                 <- eventTopic.processAtLeastOnce("resource-processor")(resourceProcessor.processEvent).compile.drain.background
+        _                 <- resourceModule.commands.processAtLeastOnce("resource-command-processor").compile.drain.background
         authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
         apiRoutes          = {
           given ApiSecurity = authModule.apiSecurity
