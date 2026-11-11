@@ -55,10 +55,9 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       case FileDeleted(f) => withRequireResource(f.partialHash, f.path)(r => ResourceDeleted(r))
 
       case FileAdded(f) =>
-        newResource(f, UserId(config.sync.newFilesOwner)).attempt.flatMap {
-          case Left(e: ContentUnreadable) => IO(logger.error(s"Skipping unreadable file: ${f.path}", e)).as(None)
-          case Left(e)                    => IO.raiseError(e)
-          case Right(r)                   => IO.pure(Some(ResourceAdded(r)))
+        newResource(f, UserId(config.sync.newFilesOwner)).flatMap {
+          case Left(e)  => IO(logger.error(s"Skipping unreadable file: ${f.path}", e.cause)).as(None)
+          case Right(r) => IO.pure(Some(ResourceAdded(r)))
         }
 
       case FileMoved(file, oldFilePath) =>
@@ -75,8 +74,8 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
     }
   }
 
-  private[local] def newResource(f: FileInfo, userId: UserId): IO[ResourceInfo] =
-    ops.contentMetaForPath(f.path).map { contentMeta =>
+  private[local] def newResource(f: FileInfo, userId: UserId): IO[Either[ContentUnreadable, ResourceInfo]] =
+    ops.contentMetaForPath(f.path).map(_.map { contentMeta =>
       ResourceInfo(
         bucketId           = bucketId,
         resourceId         = config.generateId(),
@@ -90,7 +89,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
         timeLastModified   = Some(f.modifiedTime),
         thumbnailTimestamp = None
       )
-    }
+    })
 
   /**
    * Refreshes the stored resource for an in-place content change, keeping its identity (and user metadata).
@@ -101,11 +100,10 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       case None           =>
         IO(logger.warn(s"Dropping content-changed event, no such file in database: ${f.path}")).as(None)
       case Some(existing) =>
-        ops.contentMetaForPath(f.path).attempt.flatMap {
-          case Left(e: ContentUnreadable) =>
-            IO(logger.error(s"Skipping content-changed event, failed to read ${f.path}", e)).as(None)
-          case Left(e)                    => IO.raiseError(e)
-          case Right(fresh)               =>
+        ops.contentMetaForPath(f.path).flatMap {
+          case Left(e)      =>
+            IO(logger.error(s"Skipping content-changed event, failed to read ${f.path}", e.cause)).as(None)
+          case Right(fresh) =>
             val durationInMillis   = fresh.properties.collect { case video: VideoProperties => video.durationInMillis }
             // a pinned thumbnail timestamp beyond the new duration would yield broken previews
             val thumbnailTimestamp = existing.thumbnailTimestamp.filter(ts => durationInMillis.forall(ts <= _))

@@ -64,7 +64,7 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
               id        <- bus.submit("key", TestCommand(1))
               queued    <- bus.status(id)
               _          = queued.map(_.state) shouldBe Some(CommandState.Queued)
-              consumer  <- bus.processAtLeastOnce((_, command) => executed.update(_ :+ command.value)).compile.drain.start
+              consumer  <- bus.processAtLeastOnce((_, command) => executed.update(_ :+ command.value).as(Right(()))).compile.drain.start
               completed <- bus.awaitCompletion(id, 20.seconds)
               _          = completed.state shouldBe CommandState.Succeeded
               _          = completed.attempts shouldBe 1
@@ -128,7 +128,7 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
               next      <- bus.submit("key", TestCommand(2))
               processed <- Ref.of[IO, Boolean](false)
               _         <- bus
-                             .processAtLeastOnce((_, _) => processed.set(true))
+                             .processAtLeastOnce((_, _) => processed.set(true).as(Right(())))
                              .compile
                              .drain
                              .start
@@ -151,7 +151,7 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
               attempts  <- Ref.of[IO, Int](0)
               id        <- bus.submit("key", TestCommand(1))
               consumer  <- bus
-                             .processAtLeastOnce((_, _) => attempts.update(_ + 1) >> IO.raiseError(new PermanentCommandFailure("nope")))
+                             .processAtLeastOnce((_, _) => attempts.update(_ + 1).as(Left("nope")))
                              .compile
                              .drain
                              .start
@@ -179,9 +179,9 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
               committed <- Ref.of[IO, Boolean](false)
               id        <- bus.submit("key", TestCommand(7))
               consumer  <- bus
-                             .processAtLeastOnce((command: TestCommand) => worked.set(true).as(command.value * 2)) {
+                             .processAtLeastOnce((command: TestCommand) => worked.set(true).as(Right(command.value * 2))) {
                                (_, command, result) =>
-                                 committed.set(true) >> IO.raiseUnless(result == command.value * 2)(new RuntimeException("unexpected result"))
+                                 committed.set(true).as(Either.cond(result == command.value * 2, (), "unexpected result"))
                              }
                              .compile
                              .drain

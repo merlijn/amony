@@ -46,25 +46,39 @@ final private[messagebus] class PostgresCommandBus[P](
   override def awaitCompletion(id: CommandId, timeout: FiniteDuration): IO[CommandStatus] =
     subscribe(id).compile.lastOrError.timeout(timeout)
 
-  override def processAtLeastOnce(handler: (Session[IO], P) => IO[Unit]): Stream[IO, Unit] =
+  override def processAtLeastOnce[E](handler: (Session[IO], P) => IO[Either[E, Unit]]): Stream[IO, Unit] =
     processCommands { command =>
       // The handler's domain writes and the command's success commit together, so `succeeded` always means the domain
       // write is visible.
       pool.use { session =>
-        session.transaction.use(_ => handler(session, command.payload) >> store.succeed(session, key.name, command.id))
-      }
-    }
-
-  override def processAtLeastOnce[A](work: P => IO[A])(commit: (Session[IO], P, A) => IO[Unit]): Stream[IO, Unit] =
-    processCommands { command =>
-      work(command.payload).flatMap { result =>
-        pool.use { session =>
-          session.transaction.use(_ => commit(session, command.payload, result) >> store.succeed(session, key.name, command.id))
+        session.transaction.use { _ =>
+          handler(session, command.payload).flatMap {
+            case Left(error) => IO.pure(Left(error))
+            case Right(())   => store.succeed(session, key.name, command.id).as(Right(()))
+          }
         }
       }
     }
 
-  private def processCommands(run: Command[P] => IO[Unit]): Stream[IO, Unit] =
+  override def processAtLeastOnce[E, A](work: P => IO[Either[E, A]])(
+    commit: (Session[IO], P, A) => IO[Either[E, Unit]]
+  ): Stream[IO, Unit] =
+    processCommands { command =>
+      work(command.payload).flatMap {
+        case Left(error)   => IO.pure(Left(error))
+        case Right(result) =>
+          pool.use { session =>
+            session.transaction.use { _ =>
+              commit(session, command.payload, result).flatMap {
+                case Left(error) => IO.pure(Left(error))
+                case Right(())   => store.succeed(session, key.name, command.id).as(Right(()))
+              }
+            }
+          }
+      }
+    }
+
+  private def processCommands[E](run: Command[P] => IO[Either[E, Unit]]): Stream[IO, Unit] =
     // Unlike an event topic, a command topic has a single logical consumer group (keyed by the command topic name) and
     // must never skip commands that were submitted before that consumer group first registered. `ensureConsumer` is a
     // no-op once the group exists, so this only affects the first start.
@@ -77,19 +91,21 @@ final private[messagebus] class PostgresCommandBus[P](
           case Claim.Acquired(attempts) if attempts > key.maxAttempts =>
             store.fail(key.name, command.id, s"Gave up after ${key.maxAttempts} attempts")
           case Claim.Acquired(attempts)                               =>
-            run(command).handleErrorWith { error =>
+            run(command).flatMap {
+              case Right(())   => IO.unit
+              case Left(error) =>
+                val message = error.toString
+                IO(logger.warn(s"Command ${command.id.value} failed on topic '${key.name}': $message")) >>
+                  store.fail(key.name, command.id, message)
+            }.handleErrorWith { error =>
               val message = Option(error.getMessage).getOrElse(error.getClass.getName)
-              error match
-                case _: PermanentCommandFailure       =>
-                  IO(logger.warn(s"Command ${command.id.value} failed on topic '${key.name}': $message")) >>
-                    store.fail(key.name, command.id, message)
-                case _ if attempts >= key.maxAttempts =>
-                  // Terminal failure: swallow, so the consumer offset advances and the partition keeps moving.
-                  IO(logger.error(s"Command ${command.id.value} failed permanently on topic '${key.name}': $message")) >>
-                    store.fail(key.name, command.id, message)
-                case _                                =>
-                  // Handled failure: requeue and rethrow, so the message bus applies its retry backoff.
-                  store.requeue(key.name, command.id, message) >> IO.raiseError(error)
+              if attempts >= key.maxAttempts then
+                // Terminal failure: swallow, so the consumer offset advances and the partition keeps moving.
+                IO(logger.error(s"Command ${command.id.value} failed permanently on topic '${key.name}': $message")) >>
+                  store.fail(key.name, command.id, message)
+              else
+                // Retryable failure: requeue and rethrow, so the message bus applies its retry backoff.
+                store.requeue(key.name, command.id, message) >> IO.raiseError(error)
             }
         }
       }.merge(

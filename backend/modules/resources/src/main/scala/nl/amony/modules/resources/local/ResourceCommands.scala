@@ -1,5 +1,6 @@
 package nl.amony.modules.resources.local
 
+import cats.data.EitherT
 import cats.effect.IO
 import cats.syntax.all.*
 import fs2.Stream
@@ -7,13 +8,7 @@ import skunk.Session
 
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
-import nl.amony.platform.messagebus.{CommandBus, CommandId, CommandStatus, PermanentCommandFailure}
-
-/** Result of the cheap pre-check done by the request, before any remux work is queued. */
-enum StreamabilityFixCheck:
-  case Fixable
-  case Missing
-  case Rejected(message: String)
+import nl.amony.platform.messagebus.{CommandBus, CommandId, CommandStatus}
 
 enum ResourceCommandError:
   case NotFound
@@ -30,9 +25,8 @@ final class ResourceCommands(registry: BucketRegistry, bus: CommandBus[ResourceC
     registry.get(bucketId).flatMap:
       case Some(bucket: LocalDirectoryBucket) =>
         bucket.checkStreamabilityFix(resourceId).flatMap:
-          case StreamabilityFixCheck.Missing           => IO.pure(Left(ResourceCommandError.NotFound))
-          case StreamabilityFixCheck.Rejected(message) => IO.pure(Left(ResourceCommandError.Rejected(message)))
-          case StreamabilityFixCheck.Fixable           =>
+          case Left(error) => IO.pure(Left(error))
+          case Right(())   =>
             val command = FixStreamability(bucketId, resourceId)
             bus.submit(command.key, command).map(Right(_))
       case _                                  => IO.pure(Left(ResourceCommandError.NotFound))
@@ -57,37 +51,36 @@ final class ResourceCommands(registry: BucketRegistry, bus: CommandBus[ResourceC
     bus.processAtLeastOnce(work)(commit)
 
   /** Slow and non-transactional: remuxes streamability or prepares an upload, all inside the bucket's temp directory. */
-  private def work(command: ResourceCommand): IO[Prepared] =
+  private def work(command: ResourceCommand): IO[Either[String, Prepared]] =
     command match
       case FixStreamability(bucketId, resourceId) =>
-        localBucket(bucketId)
-          .flatMap(_.remuxForStreaming(resourceId))
-          .map(tempFile => Prepared.Streamability(tempFile))
-          .adaptError {
-            case error: UnsupportedStreamability => new PermanentCommandFailure(error.getMessage, error)
-            case error: StreamabilityFixFailed   => new PermanentCommandFailure(error.getMessage, error)
-          }
+        (for
+          bucket   <- EitherT(localBucket(bucketId))
+          tempFile <- EitherT(bucket.remuxForStreaming(resourceId)).leftMap(_.message)
+        yield Prepared.Streamability(tempFile)).value
       case upload: UploadResource                 =>
-        localBucket(upload.bucketId)
-          .flatMap(_.prepareUpload(upload))
-          .map(value => Prepared.Upload(value))
-          .adaptError { case error: UploadProcessingFailed => new PermanentCommandFailure(error.getMessage, error) }
+        (for
+          bucket <- EitherT(localBucket(upload.bucketId))
+          value  <- EitherT(bucket.prepareUpload(upload)).leftMap(_.message)
+        yield Prepared.Upload(value)).value
 
   /** Fast and transactional: persists the result together with the command's success. */
-  private def commit(session: Session[IO], command: ResourceCommand, prepared: Prepared): IO[Unit] =
+  private def commit(session: Session[IO], command: ResourceCommand, prepared: Prepared): IO[Either[String, Unit]] =
     (command, prepared) match
       case (FixStreamability(bucketId, resourceId), Prepared.Streamability(tempFile)) =>
-        localBucket(bucketId)
-          .flatMap(_.commitStreamabilityFix(session, resourceId, tempFile))
-          .adaptError { case error: StreamabilityFixFailed => new PermanentCommandFailure(error.getMessage, error) }
+        (for
+          bucket <- EitherT(localBucket(bucketId))
+          _      <- EitherT(bucket.commitStreamabilityFix(session, resourceId, tempFile)).leftMap(_.message)
+        yield ()).value
       case (upload: UploadResource, Prepared.Upload(value))                           =>
-        localBucket(upload.bucketId)
-          .flatMap(_.commitUpload(session, upload, value))
-          .adaptError { case error: UploadProcessingFailed => new PermanentCommandFailure(error.getMessage, error) }
+        (for
+          bucket <- EitherT(localBucket(upload.bucketId))
+          _      <- EitherT(bucket.commitUpload(session, upload, value)).leftMap(_.message)
+        yield ()).value
       case _                                                                          =>
-        IO.raiseError(new PermanentCommandFailure("Unexpected resource command preparation"))
+        IO.pure(Left("Unexpected resource command preparation"))
 
-  private def localBucket(bucketId: BucketId): IO[LocalDirectoryBucket] =
-    registry.get(bucketId).flatMap:
-      case Some(bucket: LocalDirectoryBucket) => IO.pure(bucket)
-      case _                                  => IO.raiseError(new PermanentCommandFailure(s"No local bucket '$bucketId'"))
+  private def localBucket(bucketId: BucketId): IO[Either[String, LocalDirectoryBucket]] =
+    registry.get(bucketId).map:
+      case Some(bucket: LocalDirectoryBucket) => Right(bucket)
+      case _                                  => Left(s"No local bucket '$bucketId'")

@@ -7,6 +7,7 @@ import java.nio.file.{Files as JFiles, Path as JPath, StandardCopyOption}
 import java.security.MessageDigest
 import java.time.Instant
 
+import cats.data.EitherT
 import cats.effect.IO
 import fs2.io.file.{Files, Path}
 import fs2.{Chunk, Pipe}
@@ -21,8 +22,7 @@ final case class StagedUpload(resourceId: ResourceId, fileName: String, tempFile
 /** An upload that has been validated, optionally remuxed and scanned, ready to be moved into the resource directory. */
 final case class PreparedUpload(tempFile: String, partialHash: String, contentMeta: ContentMeta)
 
-final class UploadProcessingFailed(val tempFile: String, message: String, cause: Throwable = null)
-    extends Exception(message, cause)
+final case class UploadProcessingError(tempFile: String, message: String)
 
 trait UploadOperations extends LocalResourceSyncer, Logging:
 
@@ -65,10 +65,10 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
     _.chunks.fold(initialDigest)(updateDigest)
   }
 
-  private def hashFile(path: JPath): IO[String] =
-    Files[IO].readAll(Path.fromNioPath(path)).through(calculateHash).compile.last.flatMap {
-      case Some(digest) => IO.pure(config.hashingAlgorithm.encodeHash(digest.digest()))
-      case None         => IO.raiseError(new UploadProcessingFailed(path.getFileName.toString, "the uploaded file is empty"))
+  private def hashFile(path: JPath): IO[Either[UploadProcessingError, String]] =
+    Files[IO].readAll(Path.fromNioPath(path)).through(calculateHash).compile.last.map {
+      case Some(digest) => Right(config.hashingAlgorithm.encodeHash(digest.digest()))
+      case None         => Left(UploadProcessingError(path.getFileName.toString, "the uploaded file is empty"))
     }
 
   /** Streams the request body into the bucket's temp directory. Nothing outside the temp directory is touched. */
@@ -86,11 +86,13 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
             _    <- IO.blocking(JFiles.createDirectories(config.tempPath))
             _    <- source.through(Files[IO].writeAll(Path.fromNioPath(target))).compile.drain
             size <- IO.blocking(JFiles.size(target))
-            _    <- IO.raiseWhen(size == 0)(new RuntimeException("Uploaded file is empty"))
-          yield StagedUpload(resourceId, decoded, tempFile)
+          yield
+            if size == 0 then Left(UploadError.StorageError(s"Failed to store upload '$decoded': Uploaded file is empty"))
+            else Right(StagedUpload(resourceId, decoded, tempFile))
         stage.attempt.flatMap:
-          case Right(staged) => IO.pure(Right(staged))
-          case Left(error)   =>
+          case Right(Right(staged)) => IO.pure(Right(staged))
+          case Right(Left(error))   => discardUpload(tempFile).as(Left(error))
+          case Left(error)          =>
             discardUpload(tempFile).as(Left(UploadError.StorageError(s"Failed to store upload '$decoded': ${error.getMessage}")))
 
   private[local] def discardUpload(tempFile: String): IO[Unit] =
@@ -100,48 +102,51 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
    * Slow, non-transactional part of an upload: scans the staged file and remuxes it when that makes it streamable. The
    * result lives entirely in the temp directory, so a failure leaves nothing observable behind.
    */
-  private[local] def prepareUpload(upload: UploadResource): IO[PreparedUpload] =
+  private[local] def prepareUpload(upload: UploadResource): IO[Either[UploadProcessingError, PreparedUpload]] =
     val tempPath = config.tempPath.resolve(upload.tempFile)
     IO.blocking(JFiles.exists(tempPath)).flatMap:
-      case false => IO.raiseError(new UploadProcessingFailed(upload.tempFile, "the staged upload is no longer available"))
+      case false => IO.pure(Left(UploadProcessingError(upload.tempFile, "the staged upload is no longer available")))
       case true  =>
-        ops.contentMetaForPath(tempPath).adaptError {
-          case error: ContentUnreadable =>
-            new UploadProcessingFailed(upload.tempFile, s"the uploaded file could not be read: ${error.getMessage}", error)
-        }.flatMap { meta =>
-          val container = meta.contentType
-            .filter(_ => meta.streamable.contains(false))
-            .flatMap(VideoContainer.fromContentType)
-
-          val remux = container match
-            case None            => IO.pure(false)
-            case Some(container) =>
-              ops.addFastStart(tempPath, container).attempt.flatMap {
-                case Left(error)       =>
-                  logger.warn(s"Failed to remux uploaded file '${upload.fileName}', storing the original file", error)
-                  IO.pure(false)
-                case Right(normalized) =>
-                  IO.blocking(JFiles.move(normalized, tempPath, StandardCopyOption.REPLACE_EXISTING)).as(true)
-              }
-
-          for
-            remuxed   <- remux
-            hash      <- hashFile(tempPath)
-            finalMeta <- if remuxed then ops.contentMetaForPath(tempPath) else IO.pure(meta)
-          yield PreparedUpload(upload.tempFile, hash, finalMeta)
-        }
+        (for
+          meta      <- EitherT(ops.contentMetaForPath(tempPath)).leftMap(error =>
+                         UploadProcessingError(upload.tempFile, s"the uploaded file could not be read: ${error.message}")
+                       )
+          container  = meta.contentType
+                         .filter(_ => meta.streamable.contains(false))
+                         .flatMap(VideoContainer.fromContentType)
+          remuxed   <- EitherT.right[UploadProcessingError](container match
+                         case None            => IO.pure(false)
+                         case Some(container) =>
+                           ops.addFastStart(tempPath, container).attempt.flatMap {
+                             case Left(error)       =>
+                               logger.warn(s"Failed to remux uploaded file '${upload.fileName}', storing the original file", error)
+                               IO.pure(false)
+                             case Right(normalized) =>
+                               IO.blocking(JFiles.move(normalized, tempPath, StandardCopyOption.REPLACE_EXISTING)).as(true)
+                           })
+          hash      <- EitherT(hashFile(tempPath))
+          finalMeta <- if remuxed then
+            EitherT(ops.contentMetaForPath(tempPath)).leftMap(error =>
+              UploadProcessingError(upload.tempFile, s"the uploaded file could not be read: ${error.message}")
+            )
+          else EitherT.pure[IO, UploadProcessingError](meta)
+        yield PreparedUpload(upload.tempFile, hash, finalMeta)).value
 
   /** Fast, transactional part of an upload: moves the prepared file into place and inserts the resource. */
-  private[local] def commitUpload(session: Session[IO], upload: UploadResource, prepared: PreparedUpload): IO[Unit] =
+  private[local] def commitUpload(
+    session: Session[IO],
+    upload: UploadResource,
+    prepared: PreparedUpload
+  ): IO[Either[UploadProcessingError, Unit]] =
     db.getResourceById(upload.bucketId, upload.resourceId)(using Some(session)).flatMap:
-      case Some(_) => discardUpload(prepared.tempFile)
+      case Some(_) => discardUpload(prepared.tempFile).as(Right(()))
       case None    =>
         resolveTargetPath(config.resourcePath.resolve(upload.fileName), 100) match
           case Left(error)       =>
             val message = error match
               case UploadError.InvalidFileName(message) => message
               case UploadError.StorageError(message)    => message
-            IO.raiseError(new UploadProcessingFailed(prepared.tempFile, message))
+            IO.pure(Left(UploadProcessingError(prepared.tempFile, message)))
           case Right(targetPath) =>
             for
               _     <- IO.blocking(JFiles.createDirectories(targetPath.getParent))
@@ -161,4 +166,4 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
                          thumbnailTimestamp = None
                        )
               _     <- processEvent(session, ResourceAdded(info))
-            yield ()
+            yield Right(())

@@ -23,11 +23,18 @@ import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
 import nl.amony.platform.subprocess.magick.ImageMagick
 import nl.amony.platform.subprocess.{ProcessLimiter, ProcessRunner, ProcessSettings}
 
-final class ContentUnreadable(val path: Path, cause: Throwable) extends Exception(s"Failed to read content of $path", cause)
+final case class ContentUnreadable(path: Path, cause: Throwable):
+  def message: String = s"Failed to read content of $path: ${Option(cause.getMessage).getOrElse(cause.getClass.getName)}"
 
-final class UnsupportedStreamability(contentType: String) extends Exception(s"Cannot remux content type '$contentType' for streaming")
+enum StreamabilityError:
+  case ResourceNotFound(resourceId: ResourceId)
+  case UnsupportedContainer(contentType: String)
+  case FixFailed(path: String, reason: String)
 
-final class StreamabilityFixFailed(val path: String, reason: String) extends Exception(s"Failed to make '$path' streamable: $reason")
+  def message: String = this match
+    case ResourceNotFound(resourceId)      => s"Failed to make '$resourceId' streamable: resource no longer exists"
+    case UnsupportedContainer(contentType) => s"Cannot remux content type '$contentType' for streaming"
+    case FixFailed(path, reason)           => s"Failed to make '$path' streamable: $reason"
 
 final class FileOperations(
   config: LocalDirectoryConfig,
@@ -71,16 +78,20 @@ final class FileOperations(
    */
   private val inFlight = SingleFlight[OperationKey, Option[ResourceInfo]]
 
-  private def contentTypeForPath(path: Path): IO[String] =
-    IO.blocking(tika.detect(path)).adaptError { case cause => ContentUnreadable(path, cause) }
+  private def contentTypeForPath(path: Path): IO[Either[ContentUnreadable, String]] =
+    IO.blocking(tika.detect(path)).attempt.map(_.left.map(ContentUnreadable(path, _)))
 
-  private[local] def contentMetaForPath(path: Path): IO[ContentMeta] =
-    contentTypeForPath(path).flatMap { contentType =>
-      for
-        scan       <- toolScanForPath(path, contentType)
-        streamable <- streamableOf(path, Some(contentType))
-      yield scan.map(ContentMeta.scanned).getOrElse(ContentMeta.empty)
-        .copy(contentType = Some(contentType), streamable = streamable)
+  private[local] def contentMetaForPath(path: Path): IO[Either[ContentUnreadable, ContentMeta]] =
+    contentTypeForPath(path).flatMap {
+      case Left(error)        => IO.pure(Left(error))
+      case Right(contentType) =>
+        for
+          scan       <- toolScanForPath(path, contentType)
+          streamable <- streamableOf(path, Some(contentType))
+        yield Right(
+          scan.map(ContentMeta.scanned).getOrElse(ContentMeta.empty)
+            .copy(contentType = Some(contentType), streamable = streamable)
+        )
     }
 
   private def toolScanForPath(path: Path, contentType: String): IO[Option[ToolScan]] =
@@ -129,9 +140,9 @@ final class FileOperations(
    * attempt never leaves the resource inconsistent. Returns the temp file name. Runs in the command consumer, where the
    * resource's commands are serialized.
    */
-  private[local] def remuxForStreaming(info: ResourceInfo): IO[String] =
+  private[local] def remuxForStreaming(info: ResourceInfo): IO[Either[StreamabilityError, String]] =
     AddFastStart.forResource(info) match
-      case None            => IO.raiseError(new UnsupportedStreamability(info.contentType.getOrElse("unknown")))
+      case None            => IO.pure(Left(StreamabilityError.UnsupportedContainer(info.contentType.getOrElse("unknown"))))
       case Some(operation) =>
         val container = operation.container
         val source    = config.resourcePath.resolve(info.path)
@@ -143,17 +154,19 @@ final class FileOperations(
             _          <- IO.blocking(Files.createDirectories(config.tempPath))
             out        <- addFastStart(source, container, Some(temp))
             streamable <- streamableOf(out, info.contentType)
-            _          <- IO.raiseUnless(streamable.contains(true))(
-                            new StreamabilityFixFailed(info.path, "the remux did not produce a streamable file")
-                          )
-          yield fileName
-        remux.handleErrorWith(error => IO.blocking(Files.deleteIfExists(temp)).void >> IO.raiseError(error))
+            result     <- if streamable.contains(true) then IO.pure(Right(fileName))
+            else
+              IO.blocking(Files.deleteIfExists(temp)).void.as(
+                Left(StreamabilityError.FixFailed(info.path, "the remux did not produce a streamable file"))
+              )
+          yield result
+        remux.onError(_ => IO.blocking(Files.deleteIfExists(temp)).void)
 
   /**
    * Replaces the live file with the remux produced by [[remuxForStreaming]] (when one is still present) and refreshes the
    * metadata that depends on the file. Idempotent: a retry after the move finds no temp file and re-derives the metadata.
    */
-  private[local] def commitStreamability(info: ResourceInfo, tempFile: Option[String]): IO[ResourceInfo] =
+  private[local] def commitStreamability(info: ResourceInfo, tempFile: Option[String]): IO[Either[StreamabilityError, ResourceInfo]] =
     val source = config.resourcePath.resolve(info.path)
     val move   = tempFile match
       case Some(file) =>
@@ -165,14 +178,18 @@ final class FileOperations(
       attrs      <- IO.blocking(Files.readAttributes(source, classOf[BasicFileAttributes]))
       hash       <- config.hashingAlgorithm.createHash(source)
       streamable <- streamableOf(source, info.contentType)
-      _          <- IO.raiseUnless(streamable.contains(true))(new StreamabilityFixFailed(info.path, "the file is not streamable after the remux"))
-    yield info.copy(
-      size             = attrs.size(),
-      partialHash      = Some(hash),
-      fileKey          = Option(attrs.fileKey()).map(_.toString),
-      timeLastModified = Some(attrs.lastModifiedTime().toMillis),
-      contentMeta      = info.contentMeta.copy(streamable = streamable)
-    )
+    yield
+      if streamable.contains(true) then
+        Right(
+          info.copy(
+            size             = attrs.size(),
+            partialHash      = Some(hash),
+            fileKey          = Option(attrs.fileKey()).map(_.toString),
+            timeLastModified = Some(attrs.lastModifiedTime().toMillis),
+            contentMeta      = info.contentMeta.copy(streamable = streamable)
+          )
+        )
+      else Left(StreamabilityError.FixFailed(info.path, "the file is not streamable after the remux"))
 
   /**
    * Validator for a derived preview. It is derived from the source's partial hash, the operation (encoded in the output

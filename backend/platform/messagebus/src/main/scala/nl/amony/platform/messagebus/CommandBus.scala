@@ -56,13 +56,6 @@ object CommandStatus:
   given Eq[CommandStatus] = Eq.fromUniversalEquals
 
 /**
- * Thrown by a command handler when retrying cannot succeed, for example because the input is unsupported. The command is
- * recorded as failed immediately instead of consuming its remaining attempts.
- */
-final class PermanentCommandFailure(message: String, cause: Throwable) extends Exception(message, cause):
-  def this(message: String) = this(message, null)
-
-/**
  * Static description of one command topic. One instance per command family, created at startup, so command topics are
  * long-lived and never leak per request.
  */
@@ -111,17 +104,19 @@ trait CommandBus[P]:
 
   /**
    * At-least-once consumer. The handler must be idempotent: it can re-run after a crash or when the terminal write
-   * committed but the consumer offset did not. Returning normally asserts the command's postcondition; any other
-   * outcome must raise, so it is retried and eventually recorded as failed.
+   * committed but the consumer offset did not. Returning `Right(())` asserts the command's postcondition; returning
+   * `Left(error)` records an immediate terminal failure without retrying; any uncaught exception in `IO` is retried up
+   * to `maxAttempts`.
    *
    * The handler receives the session of a transaction that also records the terminal state, so its domain writes and
    * the command's success commit together.
    */
-  def processAtLeastOnce(handler: (Session[IO], P) => IO[Unit]): Stream[IO, Unit]
+  def processAtLeastOnce[E](handler: (Session[IO], P) => IO[Either[E, Unit]]): Stream[IO, Unit]
 
   /**
    * At-least-once consumer with a split between slow, non-transactional work and a fast transactional commit. `work`
-   * may run for a long time and is retried on failure; `commit` runs in the same transaction as the terminal state, so
-   * its writes are atomic with the command's success.
+   * may run for a long time and is retried on uncaught `IO` failure; `Left(error)` from either `work` or `commit` fails
+   * the command immediately without retrying; `commit` runs in the same transaction as the terminal state, so its
+   * writes are atomic with the command's success.
    */
-  def processAtLeastOnce[A](work: P => IO[A])(commit: (Session[IO], P, A) => IO[Unit]): Stream[IO, Unit]
+  def processAtLeastOnce[E, A](work: P => IO[Either[E, A]])(commit: (Session[IO], P, A) => IO[Either[E, Unit]]): Stream[IO, Unit]
