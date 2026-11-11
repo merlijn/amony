@@ -109,24 +109,21 @@ private[resources] class ResourceDatabase(pool: Resource[IO, Session[IO]]) exten
     yield ()
 
   /** Replaces the tags of a single owner, preserving all other owners. Reserved for internal callers. */
-  def setTagsForOwner(bucketId: BucketId, resourceId: ResourceId, owner: String, tagLabels: List[String]): IO[Option[ResourceInfo]] =
-    useTransaction((s, _) => setTagsForOwnerWith(s, bucketId, resourceId, owner, tagLabels))
-
-  def setTagsForOwnerWith(
-    s: Session[IO],
+  def setTagsForOwner(
     bucketId: BucketId,
     resourceId: ResourceId,
     owner: String,
     tagLabels: List[String]
-  ): IO[Option[ResourceInfo]] =
-    getResourceByIdWith(s, bucketId, resourceId).flatMap:
-      case None           => IO.pure(None)
-      case Some(resource) =>
-        val updated = resource.withTagsForOwner(owner, tagLabels.toSet)
-        updateTagsForOwner(s, bucketId, resourceId, owner, tagLabels) >> IO.pure(Some(updated))
+  )(using maybeSession: Option[Session[IO]] = None): IO[Option[ResourceInfo]] =
+    useTransaction: s =>
+      getResourceById(bucketId, resourceId).flatMap:
+        case None           => IO.pure(None)
+        case Some(resource) =>
+          val updated = resource.withTagsForOwner(owner, tagLabels.toSet)
+          updateTagsForOwner(s, bucketId, resourceId, owner, tagLabels) >> IO.pure(Some(updated))
 
   private[resources] def truncateTables(): IO[Unit] =
-    useTransaction: (s, _) =>
+    useTransaction: s =>
       for
         _ <- s.execute(Queries.collection_resources.truncateCascade)
         _ <- s.execute(Queries.collection_tags.truncateCascade)
@@ -139,60 +136,53 @@ private[resources] class ResourceDatabase(pool: Resource[IO, Session[IO]]) exten
   def getAll(bucketId: BucketId): IO[List[ResourceInfo]] = getStream(bucketId).compile.toList
 
   /** Runs `f` in a transaction, so a domain write can be composed atomically with an event publish. */
-  def transact[A](f: Session[IO] => IO[A]): IO[A] = useTransaction((s, _) => f(s))
+  def transact[A](f: Session[IO] => Option[Session[IO]] ?=> IO[A]): IO[A] = useTransaction(f)
 
-  def insertResource(resource: ResourceInfo): IO[Unit] =
-    useTransaction: (s, _) =>
-      insertResourceWith(s, resource)
+  def insertResource(resource: ResourceInfo)(using maybeSession: Option[Session[IO]] = None): IO[Unit] =
+    useTransaction: s =>
+      for
+        _ <- tables.resources.insert(s, ResourceRow.fromResource(resource))
+        _ <- replaceAllTags(s, resource)
+      yield ()
 
-  def insertResourceWith(s: Session[IO], resource: ResourceInfo): IO[Unit] =
-    for
-      _ <- tables.resources.insert(s, ResourceRow.fromResource(resource))
-      _ <- replaceAllTags(s, resource)
-    yield ()
-
-  def upsertResource(resource: ResourceInfo): IO[Unit] =
-    useTransaction: (s, _) =>
+  def upsertResource(resource: ResourceInfo)(using maybeSession: Option[Session[IO]] = None): IO[Unit] =
+    useTransaction: s =>
       updateResourceWithTags(s, resource)
-
-  def upsertResourceWith(s: Session[IO], resource: ResourceInfo): IO[Unit] =
-    updateResourceWithTags(s, resource)
 
   def getStream(bucketId: BucketId): fs2.Stream[IO, ResourceInfo] =
     fs2.Stream.resource(pool).flatMap: s =>
       fs2.Stream.eval(s.prepare(Queries.resources.allJoined)).flatMap(_.stream(bucketId, defaultChunkSize)).map(toResource)
 
-  def getResourceById(bucketId: BucketId, resourceId: ResourceId): IO[Option[ResourceInfo]] =
-    useSession(s => getResourceByIdWith(s, bucketId, resourceId))
+  def getResourceById(bucketId: BucketId, resourceId: ResourceId)(using maybeSession: Option[Session[IO]] = None): IO[Option[ResourceInfo]] =
+    useSession: s =>
+      s.prepare(Queries.resources.getByIdJoined)
+        .flatMap(_.stream((bucketId, resourceId), defaultChunkSize).map(toResource).compile.toList.map(_.headOption))
 
-  def getResourceByIdWith(s: Session[IO], bucketId: BucketId, resourceId: ResourceId): IO[Option[ResourceInfo]] =
-    s.prepare(Queries.resources.getByIdJoined)
-      .flatMap(_.stream((bucketId, resourceId), defaultChunkSize).map(toResource).compile.toList.map(_.headOption))
+  def getResourceByIdForUpdate(bucketId: BucketId, resourceId: ResourceId)(using maybeSession: Option[Session[IO]] = None): IO[Option[ResourceInfo]] =
+    useSession: s =>
+      s.prepare(Queries.resources.getByIdForUpdate)
+        .flatMap(_.stream((bucketId, resourceId), defaultChunkSize).map(toResource).compile.toList.map(_.headOption))
 
-  def getResourceByIdForUpdateWith(s: Session[IO], bucketId: BucketId, resourceId: ResourceId): IO[Option[ResourceInfo]] =
-    s.prepare(Queries.resources.getByIdForUpdate)
-      .flatMap(_.stream((bucketId, resourceId), defaultChunkSize).map(toResource).compile.toList.map(_.headOption))
-
-  def getResourceByPartialHash(bucketId: BucketId, partialHash: String): IO[List[ResourceInfo]] =
+  def getResourceByPartialHash(bucketId: BucketId, partialHash: String)(using maybeSession: Option[Session[IO]] = None): IO[List[ResourceInfo]] =
     useSession: s =>
       s.prepare(Queries.resources.getByPartialHashJoined).flatMap(_.stream((bucketId, partialHash), defaultChunkSize).map(toResource).compile.toList)
 
-  def getResourceByPath(bucketId: BucketId, path: String): IO[Option[ResourceInfo]] =
+  def getResourceByPath(bucketId: BucketId, path: String)(using maybeSession: Option[Session[IO]] = None): IO[Option[ResourceInfo]] =
     useSession: s =>
       s.prepare(Queries.resources.getByPathJoined).flatMap(_.stream(
         (bucketId, path),
         defaultChunkSize
       ).map(toResource).compile.toList.map(_.headOption))
 
-  def updateThumbnailTimestamp(bucketId: BucketId, resourceId: ResourceId, timestamp: Int): IO[Option[ResourceInfo]] =
-    useSession(s => updateThumbnailTimestampWith(s, bucketId, resourceId, timestamp))
-
-  def updateThumbnailTimestampWith(s: Session[IO], bucketId: BucketId, resourceId: ResourceId, timestamp: Int): IO[Option[ResourceInfo]] =
-    (for
-      resource <- OptionT(getResourceByIdWith(s, bucketId, resourceId))
-      updated   = resource.copy(thumbnailTimestamp = Some(timestamp))
-      _        <- OptionT.liftF(tables.resources.upsert(s, ResourceRow.fromResource(updated)))
-    yield updated).value
+  def updateThumbnailTimestamp(bucketId: BucketId, resourceId: ResourceId, timestamp: Int)(
+    using maybeSession: Option[Session[IO]] = None
+  ): IO[Option[ResourceInfo]] =
+    useTransaction: s =>
+      (for
+        resource <- OptionT(getResourceById(bucketId, resourceId))
+        updated   = resource.copy(thumbnailTimestamp = Some(timestamp))
+        _        <- OptionT.liftF(tables.resources.upsert(s, ResourceRow.fromResource(updated)))
+      yield updated).value
 
   def updateUserMeta(
     bucketId: BucketId,
@@ -201,73 +191,51 @@ private[resources] class ResourceDatabase(pool: Resource[IO, Session[IO]]) exten
     description: Option[String],
     owner: String,
     tagLabels: List[String]
-  ): IO[Option[ResourceInfo]] =
-    useTransaction((s, _) => updateUserMetaWith(s, bucketId, resourceId, title, description, owner, tagLabels))
-
-  def updateUserMetaWith(
-    s: Session[IO],
-    bucketId: BucketId,
-    resourceId: ResourceId,
-    title: Option[String],
-    description: Option[String],
-    owner: String,
-    tagLabels: List[String]
-  ): IO[Option[ResourceInfo]] =
-    getResourceByIdWith(s, bucketId, resourceId).flatMap:
-      case None           => IO.pure(None)
-      case Some(resource) =>
-        val updatedResource = resource.copy(title = title, description = description).withTagsForOwner(owner, tagLabels.toSet)
-        tables.resources.upsert(s, ResourceRow.fromResource(updatedResource)) >>
-          updateTagsForOwner(s, bucketId, resourceId, owner, tagLabels) >> IO.pure(Some(updatedResource))
+  )(using maybeSession: Option[Session[IO]] = None): IO[Option[ResourceInfo]] =
+    useTransaction: s =>
+      getResourceById(bucketId, resourceId).flatMap:
+        case None           => IO.pure(None)
+        case Some(resource) =>
+          val updatedResource = resource.copy(title = title, description = description).withTagsForOwner(owner, tagLabels.toSet)
+          tables.resources.upsert(s, ResourceRow.fromResource(updatedResource)) >>
+            updateTagsForOwner(s, bucketId, resourceId, owner, tagLabels) >> IO.pure(Some(updatedResource))
 
   def updateResourceTags(
     bucketId: BucketId,
     resourceId: ResourceId,
     tagsToAdd: Set[Tag],
     tagsToRemove: Set[Tag]
-  ): IO[Option[ResourceInfo]] =
-    useTransaction((s, _) => updateResourceTagsWith(s, bucketId, resourceId, tagsToAdd, tagsToRemove))
+  )(using maybeSession: Option[Session[IO]] = None): IO[Option[ResourceInfo]] =
+    useTransaction: s =>
+      getResourceById(bucketId, resourceId).flatMap:
+        case None           => IO.pure(None)
+        case Some(resource) =>
+          val addByOwner    = tagsToAdd.groupBy(_.owner).view.mapValues(_.map(_.label).toSet).toMap
+          val removeByOwner = tagsToRemove.groupBy(_.owner).view.mapValues(_.map(_.label).toSet).toMap
+          val owners        = (addByOwner.keySet ++ removeByOwner.keySet).toList.sorted
+          owners.foldLeft(IO.pure(resource)) { (acc, owner) =>
+            acc.flatMap(current =>
+              val updatedLabels   = ((current.labelsByOwner.getOrElse(owner, Set.empty) ++ addByOwner
+                .getOrElse(owner, Set.empty)) -- removeByOwner.getOrElse(owner, Set.empty)).toList
+              val updatedResource = current.withTagsForOwner(owner, updatedLabels.toSet)
+              tables.resources.upsert(s, ResourceRow.fromResource(updatedResource)) >>
+                updateTagsForOwner(s, bucketId, resourceId, owner, updatedLabels).as(updatedResource)
+            )
+          }.map(Some(_))
 
-  def updateResourceTagsWith(
-    s: Session[IO],
-    bucketId: BucketId,
-    resourceId: ResourceId,
-    tagsToAdd: Set[Tag],
-    tagsToRemove: Set[Tag]
-  ): IO[Option[ResourceInfo]] =
-    getResourceByIdWith(s, bucketId, resourceId).flatMap:
-      case None           => IO.pure(None)
-      case Some(resource) =>
-        val addByOwner    = tagsToAdd.groupBy(_.owner).view.mapValues(_.map(_.label).toSet).toMap
-        val removeByOwner = tagsToRemove.groupBy(_.owner).view.mapValues(_.map(_.label).toSet).toMap
-        val owners        = (addByOwner.keySet ++ removeByOwner.keySet).toList.sorted
-        owners.foldLeft(IO.pure(resource)) { (acc, owner) =>
-          acc.flatMap(current =>
-            val updatedLabels   = ((current.labelsByOwner.getOrElse(owner, Set.empty) ++ addByOwner
-              .getOrElse(owner, Set.empty)) -- removeByOwner.getOrElse(owner, Set.empty)).toList
-            val updatedResource = current.withTagsForOwner(owner, updatedLabels.toSet)
-            tables.resources.upsert(s, ResourceRow.fromResource(updatedResource)) >>
-              updateTagsForOwner(s, bucketId, resourceId, owner, updatedLabels).as(updatedResource)
-          )
-        }.map(Some(_))
+  def move(bucketId: BucketId, resourceId: ResourceId, newPath: String)(using maybeSession: Option[Session[IO]] = None): IO[Unit] =
+    useSession: s =>
+      tables.resources.getById(s, bucketId, resourceId).flatMap:
+        case Some(old) => tables.resources.upsert(s, old.copy(fs_path = newPath)) >> IO.unit
+        case None      => IO.unit
 
-  def move(bucketId: BucketId, resourceId: ResourceId, newPath: String): IO[Unit] =
-    useSession(s => moveWith(s, bucketId, resourceId, newPath))
-
-  def moveWith(s: Session[IO], bucketId: BucketId, resourceId: ResourceId, newPath: String): IO[Unit] =
-    tables.resources.getById(s, bucketId, resourceId).flatMap:
-      case Some(old) => tables.resources.upsert(s, old.copy(fs_path = newPath)) >> IO.unit
-      case None      => IO.unit
-
-  def bucketSize(bucketId: BucketId): IO[Long] =
+  def bucketSize(bucketId: BucketId)(using maybeSession: Option[Session[IO]] = None): IO[Long] =
     useSession: s =>
       s.prepare(Queries.resources.bucketCount).flatMap(_.option(bucketId)).map(_.getOrElse(0))
 
-  def deleteResource(bucketId: BucketId, resourceId: ResourceId): IO[Unit] =
-    useTransaction((s, _) => deleteResourceWith(s, bucketId, resourceId))
-
-  def deleteResourceWith(s: Session[IO], bucketId: BucketId, resourceId: ResourceId): IO[Unit] =
-    for
-      _ <- tables.resource_tags.delete(s, bucketId, resourceId)
-      _ <- tables.resources.delete(s, bucketId, resourceId)
-    yield ()
+  def deleteResource(bucketId: BucketId, resourceId: ResourceId)(using maybeSession: Option[Session[IO]] = None): IO[Unit] =
+    useTransaction: s =>
+      for
+        _ <- tables.resource_tags.delete(s, bucketId, resourceId)
+        _ <- tables.resources.delete(s, bucketId, resourceId)
+      yield ()

@@ -212,21 +212,21 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       parallelFactor
     ).parEvalMap(parallelFactor)(mapFileEvent).unNone
 
-  private def applyEventToDb(s: Session[IO], event: ResourceEvent): IO[Unit] = event match {
-    case ResourceAdded(resource)                                   => db.insertResourceWith(s, resource)
-    case ResourceDeleted(resource)                                 => db.deleteResourceWith(s, bucketId, resource.resourceId)
-    case ResourceMoved(_, id, _, newPath)                          => db.moveWith(s, bucketId, id, newPath)
-    case ResourceFileMetaChanged(_, id, lastModifiedTime, fileKey) => db.getResourceByIdWith(s, bucketId, id).flatMap {
+  private def applyEventToDb(event: ResourceEvent)(using Option[Session[IO]]): IO[Unit] = event match {
+    case ResourceAdded(resource)                                   => db.insertResource(resource)
+    case ResourceDeleted(resource)                                 => db.deleteResource(bucketId, resource.resourceId)
+    case ResourceMoved(_, id, _, newPath)                          => db.move(bucketId, id, newPath)
+    case ResourceFileMetaChanged(_, id, lastModifiedTime, fileKey) => db.getResourceById(bucketId, id).flatMap {
         case Some(resource) =>
-          db.upsertResourceWith(s, resource.copy(timeLastModified = Some(lastModifiedTime), fileKey = fileKey.orElse(resource.fileKey)))
+          db.upsertResource(resource.copy(timeLastModified = Some(lastModifiedTime), fileKey = fileKey.orElse(resource.fileKey)))
         case None           => IO.unit
       }
-    case ResourceModified(resource)                                => deleteDerivedFiles(resource.resourceId) >> db.upsertResourceWith(s, resource)
+    case ResourceModified(resource)                                => deleteDerivedFiles(resource.resourceId) >> db.upsertResource(resource)
     case _                                                         => IO.unit
   }
 
   private[local] def processEvent(event: ResourceEvent) =
-    db.transact(s => applyEventToDb(s, event) >> topic.publish(s, event)) >>
+    db.transact(s => applyEventToDb(event) >> topic.publish(s, event)) >>
       IO(logger.info(s"[${config.id}] $event"))
 
   private def startSync(interrupter: SignallingRef[IO, Boolean]): IO[Unit] = {

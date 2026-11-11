@@ -1,6 +1,7 @@
 package nl.amony.modules.resources.dal
 
 import java.util.UUID
+import scala.concurrent.duration.*
 
 import cats.effect.unsafe.implicits.global
 import cats.effect.{IO, Resource}
@@ -40,14 +41,14 @@ class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestConta
   given MeterProvider[IO]  = MeterProvider.noop[IO]
   given TracerProvider[IO] = TracerProvider.noop[IO]
 
-  private def configForContainer(container: GenericContainer): DatabaseConfig =
+  private def configForContainer(container: GenericContainer, poolSize: Int = 4): DatabaseConfig =
     DatabaseConfig(
       host     = container.containerIpAddress,
       port     = container.mappedPort(5432),
       database = "test",
       username = "test",
       password = "test",
-      poolSize = 4
+      poolSize = poolSize
     )
 
   private def topicFor(pool: Resource[IO, Session[IO]], name: String): MessageTopic[ResourceEvent] =
@@ -70,7 +71,7 @@ class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestConta
         val res   = resource(BucketId("bucket"))
 
         for
-          _     <- db.transact(s => db.upsertResourceWith(s, res) >> topic.publish(s, ResourceModified(res)))
+          _     <- db.transact(s => db.upsertResource(res) >> topic.publish(s, ResourceModified(res)))
           found <- db.getResourceById(res.bucketId, res.resourceId)
           count <- eventCount(pool, name)
         yield
@@ -89,7 +90,7 @@ class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestConta
         for
           _     <-
             db
-              .transact(s => db.upsertResourceWith(s, res) >> topic.publish(s, ResourceModified(res)) >> IO.raiseError(new RuntimeException("boom")))
+              .transact(s => db.upsertResource(res) >> topic.publish(s, ResourceModified(res)) >> IO.raiseError(new RuntimeException("boom")))
               .attempt
           found <- db.getResourceById(res.bucketId, res.resourceId)
           count <- eventCount(pool, name)
@@ -97,5 +98,46 @@ class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestConta
           found shouldBe None
           count shouldBe 0
       }.unsafeRunSync()
+    }
+
+    "reuse the active session across all database operations inside transact without acquiring extra pool connections" in withContainers {
+      container =>
+        Database.makePool(configForContainer(container, poolSize = 1)).use { pool =>
+          val db     = ResourceDatabase(pool)
+          val bucket = BucketId(s"bucket-${UUID.randomUUID()}")
+          val res    = resource(bucket).copy(partialHash = Some("hash-1"), tags = Set(Tag.user("initial")))
+
+          val tx = db.transact { _ =>
+            for
+              _          <- db.insertResource(res)
+              byId       <- db.getResourceById(bucket, res.resourceId)
+              forUpdate  <- db.getResourceByIdForUpdate(bucket, res.resourceId)
+              byHash     <- db.getResourceByPartialHash(bucket, "hash-1")
+              byPath     <- db.getResourceByPath(bucket, res.path)
+              afterMeta  <- db.updateUserMeta(bucket, res.resourceId, Some("title"), Some("desc"), TagOwner.User, List("a", "b"))
+              afterTags  <- db.updateResourceTags(bucket, res.resourceId, Set(Tag.user("c")), Set(Tag.user("a")))
+              afterThumb <- db.updateThumbnailTimestamp(bucket, res.resourceId, 1234)
+              afterOwner <- db.setTagsForOwner(bucket, res.resourceId, TagOwner.System, List("sys"))
+              _          <- db.move(bucket, res.resourceId, "moved.mp4")
+              moved      <- db.getResourceByPath(bucket, "moved.mp4")
+              size       <- db.bucketSize(bucket)
+              _          <- db.deleteResource(bucket, res.resourceId)
+              afterDel   <- db.getResourceById(bucket, res.resourceId)
+            yield
+              byId.map(_.resourceId) shouldBe Some(res.resourceId)
+              forUpdate.map(_.resourceId) shouldBe Some(res.resourceId)
+              byHash.map(_.resourceId) shouldBe List(res.resourceId)
+              byPath.map(_.resourceId) shouldBe Some(res.resourceId)
+              afterMeta.flatMap(_.title) shouldBe Some("title")
+              afterTags.map(_.userLabels) shouldBe Some(Set("b", "c"))
+              afterThumb.flatMap(_.thumbnailTimestamp) shouldBe Some(1234)
+              afterOwner.flatMap(_.labelsByOwner.get(TagOwner.System)) shouldBe Some(Set("sys"))
+              moved.map(_.path) shouldBe Some("moved.mp4")
+              size shouldBe 1L
+              afterDel shouldBe None
+          }
+
+          tx.timeout(5.seconds)
+        }.unsafeRunSync()
     }
   }

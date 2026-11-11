@@ -13,8 +13,11 @@ trait CollectionsDal(pool: Resource[IO, Session[IO]]) extends Logging:
 
   protected val defaultChunkSize: Int = 128
 
-  protected def useSession[A](s: Session[IO] => IO[A]): IO[A]                        = pool.use(s)
-  protected def useTransaction[A](f: (Session[IO], Transaction[IO]) => IO[A]): IO[A] = pool.use(s => s.transaction.use(tx => f(s, tx)))
+  protected def useSession[A](f: Session[IO] => Option[Session[IO]] ?=> IO[A])(using maybeSession: Option[Session[IO]] = None): IO[A] =
+    maybeSession.fold(pool.use(s => f(s)(using Some(s))))(s => f(s)(using Some(s)))
+
+  protected def useTransaction[A](f: Session[IO] => Option[Session[IO]] ?=> IO[A])(using maybeSession: Option[Session[IO]] = None): IO[A] =
+    maybeSession.fold(pool.use(s => s.transaction.use(_ => f(s)(using Some(s)))))(s => f(s)(using Some(s)))
 
   // Abstract helpers that ResourceDatabase must provide. Owners are opaque strings here;
   // the domain model (api.Tag) owns the meaning of specific owners.
@@ -69,16 +72,14 @@ trait CollectionsDal(pool: Resource[IO, Session[IO]]) extends Logging:
       _ <- updateTagsForCollection(s, collection)
     yield ()
 
-  private def getCollectionByIdWithSession(s: Session[IO], collectionId: CollectionId): IO[Option[Collection]] =
-    s.prepare(Queries.collections.getByIdJoined)
-      .flatMap(_.stream(collectionId.value, defaultChunkSize).map(toCollection).compile.toList.map(_.headOption))
-
   def getAllCollections(): IO[List[Collection]] =
     useSession: s =>
       s.prepare(Queries.collections.allJoined).flatMap(_.stream(Void, defaultChunkSize).map(toCollection).compile.toList)
 
   def getCollectionById(collectionId: CollectionId): IO[Option[Collection]] =
-    useSession(s => getCollectionByIdWithSession(s, collectionId))
+    useSession: s =>
+      s.prepare(Queries.collections.getByIdJoined)
+        .flatMap(_.stream(collectionId.value, defaultChunkSize).map(toCollection).compile.toList.map(_.headOption))
 
   def getCollectionsByParentId(parentId: Option[CollectionId]): IO[List[Collection]] =
     useSession: s =>
@@ -103,14 +104,14 @@ trait CollectionsDal(pool: Resource[IO, Session[IO]]) extends Logging:
       s.prepare(Queries.resources.getByCollectionIdJoined).flatMap(_.stream(collectionId.value, defaultChunkSize).map(toResource).compile.toList)
 
   def insertCollection(collection: Collection): IO[Unit] =
-    useTransaction: (s, _) =>
+    useTransaction: s =>
       for
         _ <- collectionTables.collections.insert(s, CollectionRow.fromCollection(collection))
         _ <- updateTagsForCollection(s, collection)
       yield ()
 
   def upsertCollection(collection: Collection): IO[Unit] =
-    useTransaction: (s, _) =>
+    useTransaction: s =>
       updateCollectionWithTags(s, collection)
 
   def deleteCollection(collectionId: CollectionId): IO[Unit] =

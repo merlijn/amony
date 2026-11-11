@@ -42,7 +42,7 @@ class LocalDirectoryBucket(
       case Right(meta)                =>
         logger.info(s"Updating metadata for $resourcePath")
         val updated = resource.copy(contentMeta = resource.contentMeta.updatedWith(meta))
-        db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceModified(updated)))
+        db.transact(s => db.upsertResource(updated) >> topic.publish(s, ResourceModified(updated)))
     }
   }.compile.drain
 
@@ -51,7 +51,7 @@ class LocalDirectoryBucket(
     getResourceInfo(resourceId).flatMap:
       case Some(info) if info.streamable.contains(false) =>
         ops.normalizeStreamability(info).flatMap:
-          case Some(updated) => db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceModified(updated)))
+          case Some(updated) => db.transact(s => db.upsertResource(updated) >> topic.publish(s, ResourceModified(updated)))
           case None          => IO.unit
       case _                                             => IO.unit
 
@@ -62,7 +62,7 @@ class LocalDirectoryBucket(
       if resource.partialHash.contains(partialHash) then IO.unit
       else
         logger.info(s"Updating partialHash for $file to $partialHash")
-        db.transact(s => db.upsertResourceWith(s, updated) >> topic.publish(s, ResourceModified(updated)))
+        db.transact(s => db.upsertResource(updated) >> topic.publish(s, ResourceModified(updated)))
   }.compile.drain
 
   override def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]] =
@@ -98,11 +98,11 @@ class LocalDirectoryBucket(
     getResourceInfo(resourceId).flatMap:
       case None       => IO.pure(())
       case Some(info) =>
-        db.transact(s => db.deleteResourceWith(s, id, resourceId) >> topic.publish(s, ResourceDeleted(info)))
+        db.transact(s => db.deleteResource(id, resourceId) >> topic.publish(s, ResourceDeleted(info)))
 
   override def updateUserMeta(resourceId: ResourceId, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] =
     db.transact: s =>
-      db.getResourceByIdForUpdateWith(s, id, resourceId).flatMap:
+      db.getResourceByIdForUpdate(id, resourceId).flatMap:
         case None           => IO.unit
         case Some(existing) =>
           val existingUserTags = existing.tags.filter(_.owner == TagOwner.User)
@@ -110,7 +110,7 @@ class LocalDirectoryBucket(
           val tagsAdded        = newUserTags -- existingUserTags
           val tagsRemoved      = existingUserTags -- newUserTags
           // User-supplied labels always carry the user owner; other owners are preserved.
-          db.updateUserMetaWith(s, id, resourceId, title, description, TagOwner.User, tags)
+          db.updateUserMeta(id, resourceId, title, description, TagOwner.User, tags)
             .flatMap(
               _.map(updated =>
                 topic.publish(
@@ -133,7 +133,7 @@ class LocalDirectoryBucket(
     resourceIds.toList.grouped(tagBulkBatchSize).toList.traverse_ : batch =>
       db.transact: s =>
         batch.traverse_ : resourceId =>
-          db.updateResourceTagsWith(s, id, resourceId, tagsToAdd, tagsToRemove).flatMap:
+          db.updateResourceTags(id, resourceId, tagsToAdd, tagsToRemove).flatMap:
             case None          => IO.unit
             case Some(updated) =>
               topic.publish(
@@ -149,7 +149,7 @@ class LocalDirectoryBucket(
 
   override def updateThumbnailTimestamp(resourceId: ResourceId, timestamp: Int): IO[Unit] =
     db.transact: s =>
-      db.updateThumbnailTimestampWith(s, id, resourceId, timestamp)
+      db.updateThumbnailTimestamp(id, resourceId, timestamp)
         .flatMap(_.map(updated => topic.publish(s, ResourceThumbnailUpdated(timestamp, updated))).getOrElse(IO.unit))
 
   def importBackup(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] =
