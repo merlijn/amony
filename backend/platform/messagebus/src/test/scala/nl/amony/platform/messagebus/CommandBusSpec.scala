@@ -139,6 +139,64 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
         }.unsafeRunSync()
       }
 
+      "fail immediately without retrying on a permanent failure" in withContainers { container =>
+        pool(container).use { pool =>
+          val name = s"commands-${UUID.randomUUID()}"
+          val bus  = busFor(pool, name, maxAttempts = 5)
+
+          val test =
+            for
+              attempts  <- Ref.of[IO, Int](0)
+              id        <- bus.submit("key", TestCommand(1))
+              consumer  <- bus
+                             .processAtLeastOnce("consumer")((_, _) => attempts.update(_ + 1) >> IO.raiseError(new PermanentCommandFailure("nope")))
+                             .compile
+                             .drain
+                             .start
+              completed <- bus.awaitCompletion(id, 20.seconds)
+              _          = completed.state shouldBe CommandState.Failed
+              _          = completed.attempts shouldBe 1
+              _          = completed.lastError shouldBe Some("nope")
+              tries     <- attempts.get
+              _          = tries shouldBe 1
+              _         <- consumer.cancel
+            yield ()
+
+          test.timeout(40.seconds)
+        }.unsafeRunSync()
+      }
+
+      "run slow work outside the transaction and commit it atomically" in withContainers { container =>
+        pool(container).use { pool =>
+          val name = s"commands-${UUID.randomUUID()}"
+          val bus  = busFor(pool, name)
+
+          val test =
+            for
+              worked    <- Ref.of[IO, Boolean](false)
+              committed <- Ref.of[IO, Boolean](false)
+              id        <- bus.submit("key", TestCommand(7))
+              consumer  <- bus
+                             .processAtLeastOnce("consumer")((command: TestCommand) => worked.set(true).as(command.value * 2)) {
+                               (_, command, result) =>
+                                 committed.set(true) >> IO.raiseUnless(result == command.value * 2)(new RuntimeException("unexpected result"))
+                             }
+                             .compile
+                             .drain
+                             .start
+              completed <- bus.awaitCompletion(id, 20.seconds)
+              _          = completed.state shouldBe CommandState.Succeeded
+              didWork   <- worked.get
+              didCommit <- committed.get
+              _          = didWork shouldBe true
+              _          = didCommit shouldBe true
+              _         <- consumer.cancel
+            yield ()
+
+          test.timeout(40.seconds)
+        }.unsafeRunSync()
+      }
+
       "dedupe terminal commands and requeue handled failures" in withContainers { container =>
         pool(container).use { pool =>
           val name  = s"commands-${UUID.randomUUID()}"

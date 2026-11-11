@@ -56,6 +56,13 @@ object CommandStatus:
   given Eq[CommandStatus] = Eq.fromUniversalEquals
 
 /**
+ * Thrown by a command handler when retrying cannot succeed, for example because the input is unsupported. The command is
+ * recorded as failed immediately instead of consuming its remaining attempts.
+ */
+final class PermanentCommandFailure(message: String, cause: Throwable) extends Exception(message, cause):
+  def this(message: String) = this(message, null)
+
+/**
  * Static description of one command topic. One instance per command family, created at startup, so command topics are
  * long-lived and never leak per request.
  */
@@ -114,3 +121,10 @@ trait CommandBus[P]:
    * the command's success commit together.
    */
   def processAtLeastOnce(consumerId: String)(handler: (Session[IO], P) => IO[Unit]): Stream[IO, Unit]
+
+  /**
+   * At-least-once consumer with a split between slow, non-transactional work and a fast transactional commit. `work`
+   * may run for a long time and is retried on failure; `commit` runs in the same transaction as the terminal state, so
+   * its writes are atomic with the command's success.
+   */
+  def processAtLeastOnce[A](consumerId: String)(work: P => IO[A])(commit: (Session[IO], P, A) => IO[Unit]): Stream[IO, Unit]

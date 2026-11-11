@@ -13,8 +13,8 @@ sealed trait ResourceCommand derives Codec:
   /** Commands for the same resource share a partition, so they never run concurrently or out of order. */
   final def key: String = s"$bucketId:$resourceId"
 
-/** Replaces a non-streamable file with a prepared remux, then refreshes the resource metadata. */
-final case class FixStreamability(bucketId: BucketId, resourceId: ResourceId, tempFile: Option[String]) extends ResourceCommand derives Codec
+/** Replaces a non-streamable file with a remux and refreshes the resource metadata. */
+final case class FixStreamability(bucketId: BucketId, resourceId: ResourceId) extends ResourceCommand derives Codec
 
 object ResourceCommand:
 

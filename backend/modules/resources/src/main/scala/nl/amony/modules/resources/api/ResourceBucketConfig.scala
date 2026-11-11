@@ -61,6 +61,7 @@ case class LocalDirectoryConfig(
   lazy val amonyPath: Path    = path.toAbsolutePath.normalize().resolve(".amony")
   lazy val bucketIdPath: Path = amonyPath.resolve("bucketId")
   lazy val cachePath: Path    = amonyPath.resolve("cache")
+  lazy val tempPath: Path     = amonyPath.resolve("temp")
   lazy val resourcePath: Path = path.toAbsolutePath.normalize()
   lazy val uploadPath: Path   = path.toAbsolutePath.normalize().resolve(relativeUploadPath).normalize()
 

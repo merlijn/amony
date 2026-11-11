@@ -125,43 +125,39 @@ final class FileOperations(
     else IO.pure(None)
 
   /**
-   * Remuxes the resource into a deterministic cache file without touching the live file, so a failed or abandoned
-   * preparation never leaves the resource inconsistent. Returns the temp file name. Concurrent preparations of the same
-   * resource share a single execution, which also prevents two writers targeting the same temp file.
+   * Remuxes the resource into the bucket's temp directory without touching the live file, so a failed or abandoned
+   * attempt never leaves the resource inconsistent. Returns the temp file name. Runs in the command consumer, where the
+   * resource's commands are serialized.
    */
-  private val preparing = SingleFlight[(resourceId: ResourceId, operation: AddFastStart), String]
-
-  private[local] def prepareStreamability(info: ResourceInfo): IO[String] =
+  private[local] def remuxForStreaming(info: ResourceInfo): IO[String] =
     AddFastStart.forResource(info) match
       case None            => IO.raiseError(new UnsupportedStreamability(info.contentType.getOrElse("unknown")))
-      case Some(operation) => preparing.run((info.resourceId, operation))(prepareStreamabilityUncached(info, operation))
-
-  private def prepareStreamabilityUncached(info: ResourceInfo, operation: AddFastStart): IO[String] =
-    val container = operation.container
-    val source    = config.resourcePath.resolve(info.path)
-    // A unique name keeps concurrent preparations (including across nodes sharing the cache) from writing the same file.
-    val fileName  = s"${info.resourceId}-normalize-${UUID.randomUUID()}.${container.extension}"
-    val temp      = config.cachePath.resolve(fileName)
-    val prepare   =
-      for
-        _          <- IO.blocking(Files.createDirectories(config.cachePath))
-        out        <- addFastStart(source, container, Some(temp))
-        streamable <- streamableOf(out, info.contentType)
-        _          <- IO.raiseUnless(streamable.contains(true))(
-                        new StreamabilityFixFailed(info.path, "the remux did not produce a streamable file")
-                      )
-      yield fileName
-    prepare.handleErrorWith(error => IO.blocking(Files.deleteIfExists(temp)).void >> IO.raiseError(error))
+      case Some(operation) =>
+        val container = operation.container
+        val source    = config.resourcePath.resolve(info.path)
+        // A unique name keeps a lease-stolen attempt from writing the same file as the original one.
+        val fileName  = s"${info.resourceId}-normalize-${UUID.randomUUID()}.${container.extension}"
+        val temp      = config.tempPath.resolve(fileName)
+        val remux     =
+          for
+            _          <- IO.blocking(Files.createDirectories(config.tempPath))
+            out        <- addFastStart(source, container, Some(temp))
+            streamable <- streamableOf(out, info.contentType)
+            _          <- IO.raiseUnless(streamable.contains(true))(
+                            new StreamabilityFixFailed(info.path, "the remux did not produce a streamable file")
+                          )
+          yield fileName
+        remux.handleErrorWith(error => IO.blocking(Files.deleteIfExists(temp)).void >> IO.raiseError(error))
 
   /**
-   * Replaces the live file with the prepared remux (when one is still present) and refreshes the metadata that depends
-   * on the file. Idempotent: a retry after the move finds no temp file and re-derives the metadata instead.
+   * Replaces the live file with the remux produced by [[remuxForStreaming]] (when one is still present) and refreshes the
+   * metadata that depends on the file. Idempotent: a retry after the move finds no temp file and re-derives the metadata.
    */
   private[local] def commitStreamability(info: ResourceInfo, tempFile: Option[String]): IO[ResourceInfo] =
     val source = config.resourcePath.resolve(info.path)
     val move   = tempFile match
       case Some(file) =>
-        val temp = config.cachePath.resolve(file)
+        val temp = config.tempPath.resolve(file)
         IO.blocking(Files.exists(temp)).flatMap(exists => if exists then moveIntoPlace(temp, source).void else IO.unit)
       case None       => IO.unit
     for

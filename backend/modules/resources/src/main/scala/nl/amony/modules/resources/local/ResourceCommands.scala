@@ -6,12 +6,13 @@ import fs2.Stream
 import skunk.Session
 
 import nl.amony.modules.resources.api.*
-import nl.amony.platform.messagebus.{CommandBus, CommandId, CommandStatus}
+import nl.amony.platform.messagebus.{CommandBus, CommandId, CommandStatus, PermanentCommandFailure}
 
-enum StreamabilityFixPreparation:
-  case Prepared(tempFile: String)
-  case NotApplicable
+/** Result of the cheap pre-check done by the request, before any remux work is queued. */
+enum StreamabilityFixCheck:
+  case Fixable
   case Missing
+  case Rejected(message: String)
 
 enum ResourceCommandError:
   case NotFound
@@ -23,29 +24,39 @@ final class ResourceCommands(registry: BucketRegistry, bus: CommandBus[ResourceC
   def submitFixStreamability(bucketId: BucketId, resourceId: ResourceId): IO[Either[ResourceCommandError, CommandId]] =
     registry.get(bucketId).flatMap:
       case Some(bucket: LocalDirectoryBucket) =>
-        bucket.prepareStreamabilityFix(resourceId).attempt.flatMap:
-          case Left(_: UnsupportedStreamability)                     => rejected("The container format cannot be remuxed for streaming")
-          case Left(error: StreamabilityFixFailed)                   => rejected(error.getMessage)
-          case Left(error)                                           => IO.raiseError(error)
-          case Right(StreamabilityFixPreparation.Missing)            => IO.pure(Left(ResourceCommandError.NotFound))
-          case Right(StreamabilityFixPreparation.NotApplicable)      => rejected("Resource is already streamable or its streamability is unknown")
-          case Right(StreamabilityFixPreparation.Prepared(tempFile)) =>
-            val command = FixStreamability(bucketId, resourceId, Some(tempFile))
+        bucket.checkStreamabilityFix(resourceId).flatMap:
+          case StreamabilityFixCheck.Missing           => IO.pure(Left(ResourceCommandError.NotFound))
+          case StreamabilityFixCheck.Rejected(message) => IO.pure(Left(ResourceCommandError.Rejected(message)))
+          case StreamabilityFixCheck.Fixable           =>
+            val command = FixStreamability(bucketId, resourceId)
             bus.submit(command.key, command).map(Right(_))
       case _                                  => IO.pure(Left(ResourceCommandError.NotFound))
-
-  private def rejected(message: String): IO[Either[ResourceCommandError, CommandId]] =
-    IO.pure(Left(ResourceCommandError.Rejected(message)))
 
   def status(id: CommandId): IO[Option[CommandStatus]] = bus.status(id)
 
   def processAtLeastOnce(consumerId: String): Stream[IO, Unit] =
-    bus.processAtLeastOnce(consumerId)(handle)
+    bus.processAtLeastOnce(consumerId)(work)(commit)
 
-  private def handle(session: Session[IO], command: ResourceCommand): IO[Unit] =
-    registry.get(command.bucketId).flatMap:
-      case Some(bucket: LocalDirectoryBucket) =>
-        command match
-          case FixStreamability(_, resourceId, tempFile) => bucket.commitStreamabilityFix(session, resourceId, tempFile)
-      case _                                  =>
-        IO.raiseError(new IllegalStateException(s"No local bucket '${command.bucketId}' for command '${command.key}'"))
+  /** Slow and non-transactional: remuxes to the bucket's temp directory. Retried by the command bus on transient errors. */
+  private def work(command: ResourceCommand): IO[Option[String]] =
+    command match
+      case FixStreamability(bucketId, resourceId) =>
+        localBucket(bucketId)
+          .flatMap(_.remuxForStreaming(resourceId))
+          .adaptError {
+            case error: UnsupportedStreamability => new PermanentCommandFailure(error.getMessage, error)
+            case error: StreamabilityFixFailed   => new PermanentCommandFailure(error.getMessage, error)
+          }
+
+  /** Fast and transactional: replaces the live file and persists the result together with the command's success. */
+  private def commit(session: Session[IO], command: ResourceCommand, tempFile: Option[String]): IO[Unit] =
+    command match
+      case FixStreamability(bucketId, resourceId) =>
+        localBucket(bucketId)
+          .flatMap(_.commitStreamabilityFix(session, resourceId, tempFile))
+          .adaptError { case error: StreamabilityFixFailed => new PermanentCommandFailure(error.getMessage, error) }
+
+  private def localBucket(bucketId: BucketId): IO[LocalDirectoryBucket] =
+    registry.get(bucketId).flatMap:
+      case Some(bucket: LocalDirectoryBucket) => IO.pure(bucket)
+      case _                                  => IO.raiseError(new PermanentCommandFailure(s"No local bucket '$bucketId'"))

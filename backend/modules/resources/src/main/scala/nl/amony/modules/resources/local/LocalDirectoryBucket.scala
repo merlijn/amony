@@ -47,20 +47,33 @@ class LocalDirectoryBucket(
     }
   }.compile.drain
 
-  /** Remuxes a non-streamable resource to a temporary file, without touching the live file. */
-  private[local] def prepareStreamabilityFix(resourceId: ResourceId): IO[StreamabilityFixPreparation] =
+  /**
+   * Cheap validation for the request: reports whether a remux makes sense without touching the file. The remux itself
+   * runs in the command consumer.
+   */
+  private[local] def checkStreamabilityFix(resourceId: ResourceId): IO[StreamabilityFixCheck] =
+    getResourceInfo(resourceId).map:
+      case None                                                 => StreamabilityFixCheck.Missing
+      case Some(info) if !info.streamable.contains(false)       =>
+        StreamabilityFixCheck.Rejected("Resource is already streamable or its streamability is unknown")
+      case Some(info) if AddFastStart.forResource(info).isEmpty =>
+        StreamabilityFixCheck.Rejected("The container format cannot be remuxed for streaming")
+      case Some(_)                                              => StreamabilityFixCheck.Fixable
+
+  /** Remuxes to the bucket's temp directory without touching the live file. Returns None when nothing is needed. */
+  private[local] def remuxForStreaming(resourceId: ResourceId): IO[Option[String]] =
     getResourceInfo(resourceId).flatMap:
-      case None                                          => IO.pure(StreamabilityFixPreparation.Missing)
-      case Some(info) if info.streamable.contains(false) => ops.prepareStreamability(info).map(StreamabilityFixPreparation.Prepared.apply)
-      case Some(_)                                       => IO.pure(StreamabilityFixPreparation.NotApplicable)
+      case None                                           => IO.raiseError(new StreamabilityFixFailed(s"$resourceId", "resource no longer exists"))
+      case Some(info) if !info.streamable.contains(false) => IO.pure(None)
+      case Some(info)                                     => ops.remuxForStreaming(info).map(Some(_))
 
   /**
-   * Commits a prepared remux: replaces the live file, refreshes its metadata and publishes ResourceModified, all in the
-   * caller's transaction. That way the command's success and the resource update commit together.
+   * Commits a remux: replaces the live file, refreshes its metadata and publishes ResourceModified, all in the caller's
+   * transaction. That way the command's success and the resource update commit together.
    */
   private[local] def commitStreamabilityFix(session: Session[IO], resourceId: ResourceId, tempFile: Option[String]): IO[Unit] =
     db.getResourceById(id, resourceId)(using Some(session)).flatMap:
-      case None       => IO.raiseError(new IllegalStateException(s"Resource '$resourceId' no longer exists in bucket '$id'"))
+      case None       => IO.raiseError(new StreamabilityFixFailed(s"$resourceId", "resource no longer exists"))
       case Some(info) =>
         ops.commitStreamability(info, tempFile).flatMap { updated =>
           db.upsertResource(updated)(using Some(session)) >> topic.publish(session, ResourceModified(updated))

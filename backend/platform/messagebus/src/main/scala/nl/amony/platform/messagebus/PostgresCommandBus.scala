@@ -48,30 +48,49 @@ final private[messagebus] class PostgresCommandBus[P](
     subscribe(id).compile.lastOrError.timeout(timeout)
 
   override def processAtLeastOnce(consumerId: String)(handler: (Session[IO], P) => IO[Unit]): Stream[IO, Unit] =
+    processCommands(consumerId) { command =>
+      // The handler's domain writes and the command's success commit together, so `succeeded` always means the domain
+      // write is visible.
+      pool.use { session =>
+        session.transaction.use(_ => handler(session, command.payload) >> store.succeed(session, key.name, command.id))
+      }
+    }
+
+  override def processAtLeastOnce[A](consumerId: String)(work: P => IO[A])(commit: (Session[IO], P, A) => IO[Unit]): Stream[IO, Unit] =
+    processCommands(consumerId) { command =>
+      work(command.payload).flatMap { result =>
+        pool.use { session =>
+          session.transaction.use(_ => commit(session, command.payload, result) >> store.succeed(session, key.name, command.id))
+        }
+      }
+    }
+
+  private def processCommands(consumerId: String)(run: Command[P] => IO[Unit]): Stream[IO, Unit] =
     // Unlike an event topic, a command topic must never skip commands that were submitted before its consumer group
     // first registered. `ensureConsumer` is a no-op once the group exists, so this only affects the first start.
     Stream.eval(log.ensureConsumer(key.name, consumerId, key.partitions, 0)) ++
       topic.processAtLeastOnce(consumerId) { command =>
         store.claim(key.name, command.id, key.staleAfterDuration).flatMap {
           case Claim.Done                                             => IO.unit
-          case Claim.Missing                                          => IO(logger.error(s"Command ${command.id.value} has no status row on topic '${key.name}', skipping"))
+          case Claim.Missing                                          =>
+            IO(logger.error(s"Command ${command.id.value} has no status row on topic '${key.name}', skipping"))
           case Claim.Busy                                             => IO.raiseError(CommandBusy(command.id))
           case Claim.Acquired(attempts) if attempts > key.maxAttempts =>
             store.fail(key.name, command.id, s"Gave up after ${key.maxAttempts} attempts")
           case Claim.Acquired(attempts)                               =>
-            pool.use { session =>
-              // The handler's domain writes and the command's success commit together, so `succeeded` always means the
-              // domain write is visible.
-              session.transaction.use(_ => handler(session, command.payload) >> store.succeed(session, key.name, command.id))
-            }.handleErrorWith { error =>
+            run(command).handleErrorWith { error =>
               val message = Option(error.getMessage).getOrElse(error.getClass.getName)
-              if attempts >= key.maxAttempts then
-                // Terminal failure: swallow, so the consumer offset advances and the partition keeps moving.
-                IO(logger.error(s"Command ${command.id.value} failed permanently on topic '${key.name}': $message")) >>
-                  store.fail(key.name, command.id, message)
-              else
-                // Handled failure: requeue and rethrow, so the message bus applies its retry backoff.
-                store.requeue(key.name, command.id, message) >> IO.raiseError(error)
+              error match
+                case _: PermanentCommandFailure       =>
+                  IO(logger.warn(s"Command ${command.id.value} failed on topic '${key.name}': $message")) >>
+                    store.fail(key.name, command.id, message)
+                case _ if attempts >= key.maxAttempts =>
+                  // Terminal failure: swallow, so the consumer offset advances and the partition keeps moving.
+                  IO(logger.error(s"Command ${command.id.value} failed permanently on topic '${key.name}': $message")) >>
+                    store.fail(key.name, command.id, message)
+                case _                                =>
+                  // Handled failure: requeue and rethrow, so the message bus applies its retry backoff.
+                  store.requeue(key.name, command.id, message) >> IO.raiseError(error)
             }
         }
       }.merge(
