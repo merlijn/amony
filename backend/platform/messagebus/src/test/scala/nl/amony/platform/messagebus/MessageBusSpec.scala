@@ -37,7 +37,7 @@ class MessageBusSpec extends AnyWordSpecLike with Matchers:
 
   private val enabled = setting("amony.perf", "AMONY_PERF").contains("true")
 
-  "PersistentMessageBus" should {
+  "MessageBus" should {
 
     "report single producer / single consumer throughput" in {
       assume(enabled, "performance test disabled; see the class comment for how to run it")
@@ -69,7 +69,7 @@ class MessageBusSpec extends AnyWordSpecLike with Matchers:
   private def run(pool: Resource[IO, Session[IO]], runNumber: Int, messages: Int, runs: Int): IO[Unit] =
     val name                   = s"perf-${UUID.randomUUID()}"
     given MessageTopicKey[Int] = MessageTopicKey(name, _.toString)
-    val topic                  = PersistentMessageBus.postgres(pool).getTopic[Int]
+    val topic                  = MessageBus.postgres(pool).getTopic[Int]
 
     for
       _            <- MessageLog(pool).ensureConsumer(name, "consumer", MessageTopicKey.DefaultPartitions, 0)

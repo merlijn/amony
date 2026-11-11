@@ -47,7 +47,7 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
 
   private def busFor(pool: Resource[IO, Session[IO]], name: String, maxAttempts: Int = 3): CommandBus[TestCommand] =
     given CommandTopicKey[TestCommand] = CommandTopicKey(name, partitions = 2, maxAttempts = maxAttempts)
-    PersistentMessageBus.postgres(pool, config).getCommandBus[TestCommand]
+    MessageBus.postgres(pool, config).getCommandBus[TestCommand]
 
   "CommandBus" when {
 

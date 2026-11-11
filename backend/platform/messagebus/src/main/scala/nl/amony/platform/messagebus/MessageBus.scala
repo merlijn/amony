@@ -9,7 +9,7 @@ import skunk.Session
 
 import nl.amony.platform.messagebus.impl.{CommandStore, MessageLog, PostgresCommandBus, PostgresMessageTopic}
 
-trait PersistentMessageBus:
+trait MessageBus:
 
   def getTopic[E](using key: MessageTopicKey[E]): MessageTopic[E] = getTopicForKey[E](key)
 
@@ -21,10 +21,10 @@ trait PersistentMessageBus:
    */
   def getCommandBus[P](using key: CommandTopicKey[P]): CommandBus[P]
 
-object PersistentMessageBus:
+object MessageBus:
 
-  def postgres(pool: Resource[IO, Session[IO]], config: MessageBusConfig = MessageBusConfig()): PersistentMessageBus =
-    new PersistentMessageBus:
+  def postgres(pool: Resource[IO, Session[IO]], config: MessageBusConfig = MessageBusConfig()): MessageBus =
+    new MessageBus:
 
       private val log      = MessageLog(pool)
       private val topics   = ConcurrentHashMap[String, MessageTopic[?]]()

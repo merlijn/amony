@@ -23,7 +23,7 @@ import nl.amony.modules.resources.api.{ResourceCommand, ResourceEvent}
 import nl.amony.modules.resources.local.ResourceProcessor
 import nl.amony.modules.search.SearchModule
 import nl.amony.platform.database.Database
-import nl.amony.platform.messagebus.{MessageTopic, MessageTopicKey, PersistentMessageBus}
+import nl.amony.platform.messagebus.{MessageBus, MessageTopic, MessageTopicKey}
 import nl.amony.platform.tapir.ServerEndpoints
 
 object App extends ResourceApp.Forever with Logging {
@@ -71,7 +71,7 @@ object App extends ResourceApp.Forever with Logging {
         databasePool      <- Database.makePool(appConfig.database)
         httpClientBackend <- HttpClientCatsBackend.resource[IO]()
         searchModule      <- SearchModule.resource(appConfig.search)
-        messageBus         = PersistentMessageBus.postgres(databasePool, appConfig.messageBus)
+        messageBus         = MessageBus.postgres(databasePool, appConfig.messageBus)
         eventTopic         = {
           given MessageTopicKey[ResourceEvent] = MessageTopicKey("resource-events", _.messageKey)
           messageBus.getTopic[ResourceEvent]

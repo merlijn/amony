@@ -51,7 +51,7 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
   ): MessageTopic[Int] =
     given Codec[Int]           = Codec.implied[Int]
     given MessageTopicKey[Int] = MessageTopicKey(name, _.toString, partitions)
-    PersistentMessageBus.postgres(pool, config).getTopic[Int]
+    MessageBus.postgres(pool, config).getTopic[Int]
 
   private def keyedTopicFor(
     pool: Resource[IO, Session[IO]],
@@ -60,7 +60,7 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
     config: MessageBusConfig = MessageBusConfig(pollInterval = 100.millis, retryBackoff = 100.millis, leaseDuration = 5.seconds)
   ): MessageTopic[KeyedMessage] =
     given MessageTopicKey[KeyedMessage] = MessageTopicKey(name, _.key, partitions)
-    PersistentMessageBus.postgres(pool, config).getTopic[KeyedMessage]
+    MessageBus.postgres(pool, config).getTopic[KeyedMessage]
 
   /** Registers a consumer group from the start of the log across all partitions, so a test can publish before the consumer starts. */
   private def registerFromStart(pool: Resource[IO, Session[IO]], name: String, consumerId: String, partitions: Int = 1): IO[Unit] =
