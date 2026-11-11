@@ -11,7 +11,7 @@ import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
 import fs2.Stream
 import org.mockito.IdiomaticMockito.returns
-import org.mockito.Mockito.RETURNS_DEFAULTS
+import org.mockito.Mockito.{RETURNS_DEFAULTS, times, verify, verifyNoMoreInteractions}
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
@@ -224,16 +224,11 @@ class LocalDirectoryBucketSpec extends AnyWordSpecLike with TestContainerForAll 
     }
 
     "only generate previews for content and thumbnail events in ResourceProcessor" in {
-      val generated = new AtomicReference(List.empty[ResourceId])
-      val bucketId  = BucketId("media")
-      val res       = newResource(bucketId)
+      val bucketId = BucketId("media")
+      val res      = newResource(bucketId)
 
-      val bucket = new LocalDirectoryBucket(localConfig("media", Files.createTempDirectory("amony-preview-spec")), 1, null, null, null):
-        override def generatePreviewsIfEnabled(info: ResourceInfo): IO[Unit] =
-          IO {
-            generated.updateAndGet(_ :+ info.resourceId)
-            ()
-          }
+      val bucket = mock[LocalDirectoryBucket](RETURNS_DEFAULTS)
+      bucket.generatePreviewsIfEnabled(res) returns IO.unit
 
       val registry  = mock[BucketRegistry](RETURNS_DEFAULTS)
       registry.get(bucketId) returns IO.pure(Some(bucket))
@@ -249,7 +244,10 @@ class LocalDirectoryBucketSpec extends AnyWordSpecLike with TestContainerForAll 
           _ <- processor.processEvent(ResourceMoved(bucketId, res.resourceId, "old.mp4", "new.mp4"))
           _ <- processor.processEvent(ResourceFileMetaChanged(bucketId, res.resourceId, 123L, None))
           _ <- processor.processEvent(BucketDeleted(bucketId))
-        yield generated.get().size shouldBe 4
+        yield {
+          verify(bucket, times(4)).generatePreviewsIfEnabled(res)
+          verifyNoMoreInteractions(bucket)
+        }
 
       test.unsafeRunSync()
     }
