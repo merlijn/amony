@@ -7,7 +7,7 @@ import cats.effect.{IO, Resource}
 import pureconfig.ConfigReader
 import skunk.Session
 
-import nl.amony.platform.messagebus.impl.{PostgresCommandBus, PostgresMessageTopic}
+import nl.amony.platform.messagebus.impl.{CommandStore, MessageLog, PostgresCommandBus, PostgresMessageTopic}
 
 trait PersistentMessageBus:
 

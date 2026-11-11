@@ -1,4 +1,4 @@
-package nl.amony.platform.messagebus
+package nl.amony.platform.messagebus.impl
 
 import java.time.{Duration, OffsetDateTime}
 
@@ -6,6 +6,8 @@ import cats.effect.{IO, Resource}
 import skunk.codec.all.*
 import skunk.implicits.*
 import skunk.{Codec, Command as SkunkCommand, Query, Session}
+
+import nl.amony.platform.messagebus.{CommandId, CommandState, CommandStatus}
 
 private[messagebus] enum Claim:
   case Acquired(attempts: Int)

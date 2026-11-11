@@ -15,6 +15,8 @@ import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
 import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import skunk.Session
 
+import nl.amony.platform.messagebus.impl.MessageLog
+
 /**
  * A rough throughput indication for a single producer / single consumer on one node. Disabled by default; enable it
  * with `AMONY_PERF=true` (optionally `AMONY_PERF_RUNS` and `AMONY_PERF_MESSAGES`), or the equivalent `amony.perf`,

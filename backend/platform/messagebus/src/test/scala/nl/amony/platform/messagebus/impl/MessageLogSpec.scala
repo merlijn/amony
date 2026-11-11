@@ -1,4 +1,4 @@
-package nl.amony.platform.messagebus
+package nl.amony.platform.messagebus.impl
 
 import java.time.Duration
 import java.util.UUID
@@ -17,6 +17,8 @@ import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import skunk.codec.all.*
 import skunk.implicits.*
 import skunk.{Session, *}
+
+import nl.amony.platform.messagebus.MessageBusTestSupport
 
 class MessageLogSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 
