@@ -26,7 +26,7 @@ class LocalDirectoryBucket(
     extends LocalDirectoryBase(config, parallelFactor, db, topic, ops),
       ResourceBucket,
       LocalResourceSyncer,
-      UploadResource,
+      UploadOperations,
       Logging {
 
   private def getResourceInfo(resourceId: ResourceId): IO[Option[ResourceInfo]] = db.getResourceById(id, resourceId)

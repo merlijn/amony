@@ -78,7 +78,7 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
       SecurityInput,
       (BucketId, String, fs2.Stream[IO, Byte]),
       SecurityError | NotFoundError | BadRequestError,
-      ResourceDto,
+      CommandDto,
       Fs2Streams[IO]
     ] =
     register(endpoint
@@ -87,7 +87,7 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
       .securityIn(securityInput).errorOut(errorOutput)
       .in(header[String]("X-Filename"))
       .in(streamBody(Fs2Streams[IO])(Schema.schemaForByteArray, CodecFormat.OctetStream()))
-      .out(jsonBody[ResourceDto]))
+      .out(jsonBody[CommandDto]))
 
   def apply(buckets: BucketRegistry, commands: ResourceCommands)(
     using apiSecurity: ApiSecurity
@@ -178,9 +178,9 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
 
       securedServerLogicT(endpoint = uploadResource, requiredPermission = Permission.UploadResource) { token => (bucketId, fileName, body) =>
         for
-          bucket   <- getVisibleBucket(token, bucketId)
-          resource <- EitherT(bucket.uploadResource(token.userId, fileName, body)).leftMap(mapUploadError)
-        yield toDto(resource)
+          _      <- getVisibleBucket(token, bucketId)
+          result <- EitherT(commands.submitUpload(bucketId, token.userId, fileName, body)).leftMap(mapUploadError)
+        yield CommandDto(result.value)
       }
     }
   }

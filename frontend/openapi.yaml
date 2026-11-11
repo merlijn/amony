@@ -495,7 +495,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResourceDto'
+                $ref: '#/components/schemas/CommandDto'
         '400':
           description: ''
           content:

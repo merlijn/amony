@@ -2,6 +2,7 @@ package nl.amony.modules.resources.api
 
 import io.circe.Codec
 
+import nl.amony.modules.auth.api.UserId
 import nl.amony.platform.messagebus.CommandTopicKey
 
 /** A durable, at-least-once operation on a resource. Handlers must be idempotent. */
@@ -15,6 +16,15 @@ sealed trait ResourceCommand derives Codec:
 
 /** Replaces a non-streamable file with a remux and refreshes the resource metadata. */
 final case class FixStreamability(bucketId: BucketId, resourceId: ResourceId) extends ResourceCommand derives Codec
+
+/** Finishes an upload that was already staged in the bucket's temp directory. */
+final case class UploadResource(
+  bucketId: BucketId,
+  resourceId: ResourceId,
+  userId: UserId,
+  fileName: String,
+  tempFile: String
+) extends ResourceCommand derives Codec
 
 object ResourceCommand:
 

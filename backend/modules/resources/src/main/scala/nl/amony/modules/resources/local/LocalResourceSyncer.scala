@@ -229,6 +229,10 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
     db.transact(s => applyEventToDb(event) >> topic.publish(s, event)) >>
       IO(logger.info(s"[${config.id}] $event"))
 
+  /** Applies and publishes an event in the caller's transaction, so the domain write and the event commit together. */
+  private[local] def processEvent(session: Session[IO], event: ResourceEvent): IO[Unit] =
+    applyEventToDb(event)(using Some(session)) >> topic.publish(session, event)
+
   private def startSync(interrupter: SignallingRef[IO, Boolean]): IO[Unit] = {
     def pollWithRetryOnException(): fs2.Stream[IO, ResourceEvent] =
       pollingResourceEventStream()

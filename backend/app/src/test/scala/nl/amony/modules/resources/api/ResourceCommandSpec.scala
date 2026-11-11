@@ -4,6 +4,7 @@ import io.circe.syntax.*
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
+import nl.amony.modules.auth.api.UserId
 import nl.amony.platform.messagebus.{Command, CommandId, CommandTopicKey}
 
 class ResourceCommandSpec extends AnyWordSpecLike with Matchers:
@@ -19,6 +20,17 @@ class ResourceCommandSpec extends AnyWordSpecLike with Matchers:
       val codec                             = summon[CommandTopicKey[ResourceCommand]].topicKey.codec
       val command: Command[ResourceCommand] = Command(CommandId("1"), "media:abc123", FixStreamability(BucketId("media"), ResourceId("abc123")))
       codec.decodeJson(command.asJson(using codec)).shouldBe(Right(command))
+    }
+
+    "round-trip an upload command through its codec" in {
+      val command: ResourceCommand = UploadResource(
+        bucketId   = BucketId("media"),
+        resourceId = ResourceId("abc123"),
+        userId     = UserId("admin"),
+        fileName   = "video.mp4",
+        tempFile   = "abc123-upload"
+      )
+      io.circe.parser.decode[ResourceCommand](command.asJson.noSpaces) shouldBe Right(command)
     }
 
     "derive the owning bucket from the message key" in {
