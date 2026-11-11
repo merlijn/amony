@@ -25,6 +25,9 @@ Useful commands:
 - If you need to fetch the source code of a dependency, use the `fetchSource` sbt command. Example:
   `sbt fetchSource org.typelevel:cats-core | grep sourceFetcher` The command will output the location of the jar.
 
+Notes:
+- It is a known issue that the sbt server can get wedged sometimes, see docs/sbt-wedged-daemon-issue.md
+
 ### /frontend
 
 The frontend is a TypeScript/React application that interacts with the backend API to browse, view media and manage

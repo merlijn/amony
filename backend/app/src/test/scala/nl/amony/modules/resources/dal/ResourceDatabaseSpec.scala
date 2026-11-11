@@ -169,9 +169,11 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
 
     for
       _      <- db.insertResource(resource)
+      locked <- db.transact(_ => db.getResourceByIdForUpdate(resource.bucketId, resource.resourceId))
       _      <- db.updateUserMeta(resource.bucketId, resource.resourceId, updated.title, updated.description, TagOwner.User, updated.userLabels.toList)
       result <- db.getResourceById(resource.bucketId, resource.resourceId)
     yield {
+      locked shouldBe Some(resource)
       result.flatMap(_.title) shouldBe updated.title
       result.flatMap(_.description) shouldBe updated.description
       result.map(_.tags) shouldBe Some(updated.tags)

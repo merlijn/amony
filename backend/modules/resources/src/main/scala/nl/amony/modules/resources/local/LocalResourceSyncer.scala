@@ -20,9 +20,9 @@ import nl.amony.modules.resources.api.{
   ResourceFileMetaChanged,
   ResourceId,
   ResourceInfo,
+  ResourceModified,
   ResourceMoved,
   ResourceMovedAndModified,
-  ResourceUpdated,
   VideoProperties
 }
 import nl.amony.platform.files.FileInfo
@@ -50,9 +50,9 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       case FileMetaChanged(f) =>
         withRequireResource(f.partialHash, f.path)(r => ResourceFileMetaChanged(bucketId, r.resourceId, f.modifiedTime, f.fileKey))
 
-      case FileModified(f) => refreshResource(f, relativizePath(f.path)).map(_.map(ResourceUpdated(_)))
+      case FileModified(f) => refreshResource(f, relativizePath(f.path)).map(_.map(ResourceModified(_)))
 
-      case FileDeleted(f) => withRequireResource(f.partialHash, f.path)(r => ResourceDeleted(bucketId, r.resourceId))
+      case FileDeleted(f) => withRequireResource(f.partialHash, f.path)(r => ResourceDeleted(r))
 
       case FileAdded(f) =>
         newResource(f, UserId(config.sync.newFilesOwner)).attempt.flatMap {
@@ -212,21 +212,21 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       parallelFactor
     ).parEvalMap(parallelFactor)(mapFileEvent).unNone
 
-  private def applyEventToDb(s: Session[IO], event: ResourceEvent): IO[Unit] = event match {
-    case ResourceAdded(resource)                                   => db.insertResourceWith(s, resource)
-    case ResourceDeleted(_, resourceId)                            => db.deleteResourceWith(s, bucketId, resourceId)
-    case ResourceMoved(_, id, _, newPath)                          => db.moveWith(s, bucketId, id, newPath)
-    case ResourceFileMetaChanged(_, id, lastModifiedTime, fileKey) => db.getResourceByIdWith(s, bucketId, id).flatMap {
+  private def applyEventToDb(event: ResourceEvent)(using Option[Session[IO]]): IO[Unit] = event match {
+    case ResourceAdded(resource)                                   => db.insertResource(resource)
+    case ResourceDeleted(resource)                                 => db.deleteResource(bucketId, resource.resourceId)
+    case ResourceMoved(_, id, _, newPath)                          => db.move(bucketId, id, newPath)
+    case ResourceFileMetaChanged(_, id, lastModifiedTime, fileKey) => db.getResourceById(bucketId, id).flatMap {
         case Some(resource) =>
-          db.upsertResourceWith(s, resource.copy(timeLastModified = Some(lastModifiedTime), fileKey = fileKey.orElse(resource.fileKey)))
+          db.upsertResource(resource.copy(timeLastModified = Some(lastModifiedTime), fileKey = fileKey.orElse(resource.fileKey)))
         case None           => IO.unit
       }
-    case ResourceUpdated(resource)                                 => deleteDerivedFiles(resource.resourceId) >> db.upsertResourceWith(s, resource)
+    case ResourceModified(resource)                                => deleteDerivedFiles(resource.resourceId) >> db.upsertResource(resource)
     case _                                                         => IO.unit
   }
 
   private[local] def processEvent(event: ResourceEvent) =
-    db.transact(s => applyEventToDb(s, event) >> topic.publish(s, event)) >>
+    db.transact(s => applyEventToDb(event) >> topic.publish(s, event)) >>
       IO(logger.info(s"[${config.id}] $event"))
 
   private def startSync(interrupter: SignallingRef[IO, Boolean]): IO[Unit] = {

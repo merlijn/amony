@@ -173,6 +173,19 @@ private[dal] object Queries extends Logging {
         GROUP BY (${ResourceRow.columns})
       """.query(json *: json.opt).map((resource, tags) => (resource.as[ResourceRow].toOption.get, decodeTags(tags)))
 
+    val getByIdForUpdate: Query[(String, String), (ResourceRow, Set[Tag])] =
+      sql"""
+        SELECT to_json(r.*), (
+          SELECT json_agg(json_build_object('owner', t.owner, 'label', t.label))
+          FROM resource_tags rt
+          INNER JOIN tags t ON rt.tag_id = t.id
+          WHERE rt.bucket_id = r.bucket_id AND rt.resource_id = r.resource_id
+        ) as tags
+        FROM resources r
+        WHERE r.bucket_id = $varchar AND r.resource_id = $varchar
+        FOR UPDATE
+      """.query(json *: json.opt).map((resource, tags) => (resource.as[ResourceRow].toOption.get, decodeTags(tags)))
+
     val getByPathJoined: Query[(String, String), (ResourceRow, Set[Tag])] =
       sql"""
         $joinTables
