@@ -70,7 +70,7 @@ class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestConta
         val res   = resource(BucketId("bucket"))
 
         for
-          _     <- db.transact(s => db.upsertResourceWith(s, res) >> topic.publish(s, ResourceUpdated(res)))
+          _     <- db.transact(s => db.upsertResourceWith(s, res) >> topic.publish(s, ResourceModified(res)))
           found <- db.getResourceById(res.bucketId, res.resourceId)
           count <- eventCount(pool, name)
         yield
@@ -89,7 +89,7 @@ class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestConta
         for
           _     <-
             db
-              .transact(s => db.upsertResourceWith(s, res) >> topic.publish(s, ResourceUpdated(res)) >> IO.raiseError(new RuntimeException("boom")))
+              .transact(s => db.upsertResourceWith(s, res) >> topic.publish(s, ResourceModified(res)) >> IO.raiseError(new RuntimeException("boom")))
               .attempt
           found <- db.getResourceById(res.bucketId, res.resourceId)
           count <- eventCount(pool, name)

@@ -20,9 +20,9 @@ import nl.amony.modules.resources.api.{
   ResourceFileMetaChanged,
   ResourceId,
   ResourceInfo,
+  ResourceModified,
   ResourceMoved,
   ResourceMovedAndModified,
-  ResourceUpdated,
   VideoProperties
 }
 import nl.amony.platform.files.FileInfo
@@ -50,9 +50,9 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
       case FileMetaChanged(f) =>
         withRequireResource(f.partialHash, f.path)(r => ResourceFileMetaChanged(bucketId, r.resourceId, f.modifiedTime, f.fileKey))
 
-      case FileModified(f) => refreshResource(f, relativizePath(f.path)).map(_.map(ResourceUpdated(_)))
+      case FileModified(f) => refreshResource(f, relativizePath(f.path)).map(_.map(ResourceModified(_)))
 
-      case FileDeleted(f) => withRequireResource(f.partialHash, f.path)(r => ResourceDeleted(bucketId, r.resourceId))
+      case FileDeleted(f) => withRequireResource(f.partialHash, f.path)(r => ResourceDeleted(r))
 
       case FileAdded(f) =>
         newResource(f, UserId(config.sync.newFilesOwner)).attempt.flatMap {
@@ -214,14 +214,14 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
 
   private def applyEventToDb(s: Session[IO], event: ResourceEvent): IO[Unit] = event match {
     case ResourceAdded(resource)                                   => db.insertResourceWith(s, resource)
-    case ResourceDeleted(_, resourceId)                            => db.deleteResourceWith(s, bucketId, resourceId)
+    case ResourceDeleted(resource)                                 => db.deleteResourceWith(s, bucketId, resource.resourceId)
     case ResourceMoved(_, id, _, newPath)                          => db.moveWith(s, bucketId, id, newPath)
     case ResourceFileMetaChanged(_, id, lastModifiedTime, fileKey) => db.getResourceByIdWith(s, bucketId, id).flatMap {
         case Some(resource) =>
           db.upsertResourceWith(s, resource.copy(timeLastModified = Some(lastModifiedTime), fileKey = fileKey.orElse(resource.fileKey)))
         case None           => IO.unit
       }
-    case ResourceUpdated(resource)                                 => deleteDerivedFiles(resource.resourceId) >> db.upsertResourceWith(s, resource)
+    case ResourceModified(resource)                                => deleteDerivedFiles(resource.resourceId) >> db.upsertResourceWith(s, resource)
     case _                                                         => IO.unit
   }
 

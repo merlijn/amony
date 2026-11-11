@@ -20,7 +20,7 @@ import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.resources.ResourceModule
 import nl.amony.modules.resources.api.ResourceEvent
-import nl.amony.modules.resources.local.PreviewGenerator
+import nl.amony.modules.resources.local.ResourceProcessor
 import nl.amony.modules.search.SearchModule
 import nl.amony.platform.database.Database
 import nl.amony.platform.messagebus.{MessageTopic, MessageTopicKey, PersistentMessageBus}
@@ -77,8 +77,8 @@ object App extends ResourceApp.Forever with Logging {
         }
         _                 <- eventTopic.processAtLeastOnce("solr-indexer")(searchModule.indexer.processEvent).compile.drain.background
         resourceModule    <- ResourceModule.resource(appConfig.resources, appConfig.mediaProcessing, databasePool, eventTopic)
-        previewGenerator   = PreviewGenerator(resourceModule.bucketRegistry)
-        _                 <- eventTopic.processAtLeastOnce("preview-generator")(previewGenerator.processEvent).compile.drain.background
+        resourceProcessor  = ResourceProcessor(resourceModule.bucketRegistry)
+        _                 <- eventTopic.processAtLeastOnce("resource-processor")(resourceProcessor.processEvent).compile.drain.background
         authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
         apiRoutes          = {
           given ApiSecurity = authModule.apiSecurity

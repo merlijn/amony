@@ -6,10 +6,22 @@ sealed trait ResourceEvent derives io.circe.Codec:
 case class ResourceAdded(resource: ResourceInfo) extends ResourceEvent derives io.circe.Codec:
   override def messageKey: String = s"${resource.bucketId}:${resource.resourceId}"
 
-case class ResourceDeleted(bucketId: BucketId, resourceId: ResourceId) extends ResourceEvent derives io.circe.Codec:
-  override def messageKey: String = s"$bucketId:$resourceId"
+case class ResourceDeleted(resource: ResourceInfo) extends ResourceEvent derives io.circe.Codec:
+  override def messageKey: String = s"${resource.bucketId}:${resource.resourceId}"
 
-case class ResourceUpdated(resource: ResourceInfo) extends ResourceEvent derives io.circe.Codec:
+case class ResourceModified(resource: ResourceInfo) extends ResourceEvent derives io.circe.Codec:
+  override def messageKey: String = s"${resource.bucketId}:${resource.resourceId}"
+
+case class ResourceThumbnailUpdated(timestamp: Int, resource: ResourceInfo) extends ResourceEvent derives io.circe.Codec:
+  override def messageKey: String = s"${resource.bucketId}:${resource.resourceId}"
+
+case class ResourceUserMetaUpdated(
+  resource: ResourceInfo,
+  updatedDescription: Option[String],
+  updatedTitle: Option[String],
+  tagsAdded: Set[Tag],
+  tagsRemoved: Set[Tag]
+) extends ResourceEvent derives io.circe.Codec:
   override def messageKey: String = s"${resource.bucketId}:${resource.resourceId}"
 
 case class ResourceFileMetaChanged(

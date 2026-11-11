@@ -91,7 +91,9 @@ private[search] class SolrIndexer(config: SolrConfig, solr: SolrClient) extends 
 
     event match
       case ResourceAdded(resource)                                   => loggingFailureIO(insertDocument(resource))
-      case ResourceUpdated(resource)                                 => loggingFailureIO(insertDocument(resource))
+      case ResourceModified(resource)                                => loggingFailureIO(insertDocument(resource))
+      case ResourceThumbnailUpdated(_, resource)                     => loggingFailureIO(insertDocument(resource))
+      case ResourceUserMetaUpdated(resource, _, _, _, _)             => loggingFailureIO(insertDocument(resource))
       case ResourceMoved(_, resourceId, _, newPath)                  => loggingFailureIO(atomicUpdate(resourceId, FieldNames.path, newPath))
       case ResourceMovedAndModified(_, _, _, resource)               => loggingFailureIO(insertDocument(resource))
       case ResourceFileMetaChanged(_, id, lastModifiedTime, fileKey) =>
@@ -99,7 +101,7 @@ private[search] class SolrIndexer(config: SolrConfig, solr: SolrClient) extends 
           atomicUpdate(id, FieldNames.lastModified, lastModifiedTime)
           fileKey.foreach(key => atomicUpdate(id, FieldNames.fileKey, key))
         }
-      case ResourceDeleted(_, resourceId)                            => loggingFailureIO(solr.deleteById(collectionName, resourceId, config.commitWithinMillis).getStatus)
+      case ResourceDeleted(resource)                                 => loggingFailureIO(solr.deleteById(collectionName, resource.resourceId, config.commitWithinMillis).getStatus)
       case BucketDeleted(bucketId)                                   => deleteBucket(bucketId)
 
   override def indexAll(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] =

@@ -169,6 +169,10 @@ private[resources] class ResourceDatabase(pool: Resource[IO, Session[IO]]) exten
     s.prepare(Queries.resources.getByIdJoined)
       .flatMap(_.stream((bucketId, resourceId), defaultChunkSize).map(toResource).compile.toList.map(_.headOption))
 
+  def getResourceByIdForUpdateWith(s: Session[IO], bucketId: BucketId, resourceId: ResourceId): IO[Option[ResourceInfo]] =
+    s.prepare(Queries.resources.getByIdForUpdate)
+      .flatMap(_.stream((bucketId, resourceId), defaultChunkSize).map(toResource).compile.toList.map(_.headOption))
+
   def getResourceByPartialHash(bucketId: BucketId, partialHash: String): IO[List[ResourceInfo]] =
     useSession: s =>
       s.prepare(Queries.resources.getByPartialHashJoined).flatMap(_.stream((bucketId, partialHash), defaultChunkSize).map(toResource).compile.toList)
