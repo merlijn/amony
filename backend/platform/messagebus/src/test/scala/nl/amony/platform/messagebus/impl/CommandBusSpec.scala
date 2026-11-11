@@ -1,4 +1,4 @@
-package nl.amony.platform.messagebus
+package nl.amony.platform.messagebus.impl
 
 import java.util.UUID
 import scala.concurrent.duration.*
@@ -15,6 +15,8 @@ import org.testcontainers.containers.wait.strategy.Wait
 import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
 import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import skunk.Session
+
+import nl.amony.platform.messagebus.*
 
 class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 

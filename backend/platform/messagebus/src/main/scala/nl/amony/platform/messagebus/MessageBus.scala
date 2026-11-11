@@ -7,6 +7,8 @@ import cats.effect.{IO, Resource}
 import pureconfig.ConfigReader
 import skunk.Session
 
+import nl.amony.platform.messagebus.impl.{PostgresCommandBus, PostgresMessageTopic}
+
 trait PersistentMessageBus:
 
   def getTopic[E](using key: MessageTopicKey[E]): MessageTopic[E] = getTopicForKey[E](key)

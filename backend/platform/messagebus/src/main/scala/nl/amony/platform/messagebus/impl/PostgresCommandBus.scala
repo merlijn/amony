@@ -1,4 +1,4 @@
-package nl.amony.platform.messagebus
+package nl.amony.platform.messagebus.impl
 
 import scala.concurrent.duration.*
 
@@ -7,6 +7,8 @@ import cats.syntax.all.*
 import fs2.Stream
 import scribe.Logging
 import skunk.Session
+
+import nl.amony.platform.messagebus.*
 
 final private[messagebus] class CommandBusy(id: CommandId)
     extends Exception(s"Command ${id.value} is being processed by another consumer")
