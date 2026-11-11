@@ -11,8 +11,9 @@ import sttp.tapir.json.circe.*
 
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.BucketRegistry
-import nl.amony.modules.resources.api.{BucketId, Resource, ResourceBucket, ResourceId, Tag, UploadError}
-import nl.amony.modules.resources.local.LocalDirectoryBucket
+import nl.amony.modules.resources.api.{BucketId, Resource, ResourceBucket, ResourceCommand, ResourceId, Tag, UploadError}
+import nl.amony.modules.resources.local.{ResourceCommandError, ResourceCommands}
+import nl.amony.platform.messagebus.CommandId
 import nl.amony.platform.tapir.apiNoCacheHeaders
 import nl.amony.platform.tapir.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
 import nl.amony.platform.tapir.{RoutesModule, ServerEndpoints, routes}
@@ -50,11 +51,20 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
       .delete.in("api" / "resources" / path[BucketId]("bucketId") / path[ResourceId]("resourceId"))
       .securityIn(securityInput).errorOut(errorOutput))
 
-  private val fixResourceStreamable: Endpoint[SecurityInput, (BucketId, ResourceId), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
+  private val fixResourceStreamable
+    : Endpoint[SecurityInput, (BucketId, ResourceId), SecurityError | NotFoundError | BadRequestError, CommandDto, Any] =
     register(endpoint
       .name("fixResourceStreamable").tag("resources").description("Remux a non-streamable resource so it can be streamed progressively")
       .post.in("api" / "resources" / path[BucketId]("bucketId") / path[ResourceId]("resourceId") / "fix-streamability")
-      .securityIn(securityInput).errorOut(errorOutput))
+      .securityIn(securityInput).errorOut(errorOutput)
+      .out(jsonBody[CommandDto]))
+
+  private val getCommandStatus: Endpoint[SecurityInput, String, SecurityError | NotFoundError | BadRequestError, CommandStatusDto, Any] =
+    register(endpoint
+      .name("getCommandStatus").tag("commands").description("Get the status of a submitted command")
+      .get.in("api" / "commands" / path[String]("commandId"))
+      .securityIn(securityInput).errorOut(errorOutput)
+      .out(jsonBody[CommandStatusDto]))
 
   private val modifyTagsBulk: Endpoint[SecurityInput, (BucketId, BulkTagsUpdateDto), SecurityError | NotFoundError | BadRequestError, Unit, Any] =
     register(endpoint
@@ -68,7 +78,7 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
       SecurityInput,
       (BucketId, String, fs2.Stream[IO, Byte]),
       SecurityError | NotFoundError | BadRequestError,
-      ResourceDto,
+      CommandDto,
       Fs2Streams[IO]
     ] =
     register(endpoint
@@ -77,9 +87,9 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
       .securityIn(securityInput).errorOut(errorOutput)
       .in(header[String]("X-Filename"))
       .in(streamBody(Fs2Streams[IO])(Schema.schemaForByteArray, CodecFormat.OctetStream()))
-      .out(jsonBody[ResourceDto]))
+      .out(jsonBody[CommandDto]))
 
-  def apply(buckets: BucketRegistry)(
+  def apply(buckets: BucketRegistry, commands: ResourceCommands)(
     using apiSecurity: ApiSecurity
   ): ServerEndpoints[IO] = {
 
@@ -88,6 +98,19 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
         buckets.get(bucketId).map(_.filter(bucket => auth.canAccessBucket(bucket.requiredRole))),
         NotFoundError("not_found", "Resource not found")
       )
+
+    def authorizeCommand(auth: AuthToken, messageKey: String): EitherT[IO, NotFoundError, Unit] =
+      ResourceCommand.bucketOf(messageKey) match
+        case None           => EitherT.leftT(NotFoundError("not_found", "Command not found"))
+        case Some(bucketId) =>
+          EitherT.fromOptionF(
+            buckets.get(bucketId).map(_.filter(bucket => auth.canAccessBucket(bucket.requiredRole))),
+            NotFoundError("not_found", "Command not found")
+          ).void
+
+    def mapCommandError(error: ResourceCommandError): NotFoundError | BadRequestError = error match
+      case ResourceCommandError.NotFound          => NotFoundError("not_found", "Resource not found")
+      case ResourceCommandError.Rejected(message) => BadRequestError("command_rejected", message)
 
     def getResource(auth: AuthToken, bucketId: BucketId, resourceId: ResourceId): EitherT[IO, NotFoundError, (ResourceBucket, Resource)] =
       for
@@ -114,13 +137,15 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
 
       securedServerLogicT(endpoint = fixResourceStreamable, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId) =>
         for
-          bucket <- getVisibleBucket(auth, bucketId)
-          _      <- bucket match
-                      case local: LocalDirectoryBucket =>
-                        EitherT.right(IO(logger.info(s"Normalizing resource '$resourceId' in bucket '$bucketId'")) *> local.fixStreamability(resourceId))
-                      case _                           =>
-                        EitherT.right(IO(logger.info(s"Cannot normalize resource '$resourceId' in bucket '$bucketId'")))
-        yield ()
+          _      <- getVisibleBucket(auth, bucketId)
+          result <- EitherT(commands.submitFixStreamability(bucketId, resourceId)).leftMap(mapCommandError)
+        yield CommandDto(result.value)
+      }
+
+      securedServerLogicT(endpoint = getCommandStatus, requiredPermission = Permission.ViewResource) { auth => commandId =>
+        EitherT
+          .fromOptionF(commands.status(CommandId(commandId)), NotFoundError("not_found", "Command not found"))
+          .flatMap(status => authorizeCommand(auth, status.key).map(_ => toDto(status)))
       }
 
       securedServerLogicT(endpoint = updateUserMetaData, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId, userMeta) =>
@@ -153,9 +178,9 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
 
       securedServerLogicT(endpoint = uploadResource, requiredPermission = Permission.UploadResource) { token => (bucketId, fileName, body) =>
         for
-          bucket   <- getVisibleBucket(token, bucketId)
-          resource <- EitherT(bucket.uploadResource(token.userId, fileName, body)).leftMap(mapUploadError)
-        yield toDto(resource)
+          _      <- getVisibleBucket(token, bucketId)
+          result <- EitherT(commands.submitUpload(bucketId, token.userId, fileName, body)).leftMap(mapUploadError)
+        yield CommandDto(result.value)
       }
     }
   }

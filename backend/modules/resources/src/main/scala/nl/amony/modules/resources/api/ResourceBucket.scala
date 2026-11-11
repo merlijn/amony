@@ -2,7 +2,7 @@ package nl.amony.modules.resources.api
 
 import cats.effect.IO
 
-import nl.amony.modules.auth.api.{Role, UserId}
+import nl.amony.modules.auth.api.Role
 
 enum UploadError:
   case InvalidFileName(message: String)
@@ -35,16 +35,6 @@ trait ResourceBucket {
    * Performs an operation on a resource and returns the resulting content
    */
   def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]]
-
-  /**
-   * Uploads a resource to the bucket
-   * 
-   * @param userId
-   * @param fileName
-   * @param source
-   * @return
-   */
-  def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, ResourceInfo]]
 
   def getAllResources: fs2.Stream[IO, ResourceInfo]
 }

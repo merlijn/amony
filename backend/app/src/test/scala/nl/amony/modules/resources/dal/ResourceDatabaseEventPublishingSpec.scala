@@ -19,7 +19,7 @@ import skunk.{Session, *}
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
 import nl.amony.platform.database.{Database, DatabaseConfig}
-import nl.amony.platform.messagebus.{MessageTopic, MessageTopicKey, PersistentMessageBus}
+import nl.amony.platform.messagebus.{MessageBus, MessageTopic, MessageTopicKey}
 
 class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 
@@ -53,7 +53,7 @@ class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestConta
 
   private def topicFor(pool: Resource[IO, Session[IO]], name: String): MessageTopic[ResourceEvent] =
     given MessageTopicKey[ResourceEvent] = MessageTopicKey(name, _.messageKey)
-    PersistentMessageBus.postgres(pool).getTopic[ResourceEvent]
+    MessageBus.postgres(pool).getTopic[ResourceEvent]
 
   private def eventCount(pool: Resource[IO, Session[IO]], name: String): IO[Long] =
     pool.use(_.prepare(sql"select count(*) from message_log where topic = $varchar".query(int8)).flatMap(_.unique(name)))

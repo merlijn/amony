@@ -130,4 +130,13 @@ databaseChangeLog:
             path: db/14-partitioned-message-log.sql
             splitStatements: true
             endDelimiter: ";"
+  - changeSet:
+      id: 15
+      author: merlijn
+      context: message-log
+      changes:
+        - sqlFile:
+            path: db/15-command-status.sql
+            splitStatements: true
+            endDelimiter: ";"
 

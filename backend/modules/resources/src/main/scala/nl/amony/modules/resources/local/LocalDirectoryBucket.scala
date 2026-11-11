@@ -8,6 +8,7 @@ import cats.implicits.*
 import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
+import skunk.Session
 
 import nl.amony.modules.auth.api.Role
 import nl.amony.modules.resources.api.*
@@ -25,7 +26,7 @@ class LocalDirectoryBucket(
     extends LocalDirectoryBase(config, parallelFactor, db, topic, ops),
       ResourceBucket,
       LocalResourceSyncer,
-      UploadResource,
+      UploadOperations,
       Logging {
 
   private def getResourceInfo(resourceId: ResourceId): IO[Option[ResourceInfo]] = db.getResourceById(id, resourceId)
@@ -36,24 +37,51 @@ class LocalDirectoryBucket(
 
   def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap { resource =>
     val resourcePath = config.resourcePath.resolve(resource.path)
-    ops.contentMetaForPath(resourcePath).attempt.flatMap {
-      case Left(e: ContentUnreadable) => IO(logger.error(s"Skipping metadata rescan for $resourcePath", e))
-      case Left(e)                    => IO.raiseError(e)
-      case Right(meta)                =>
+    ops.contentMetaForPath(resourcePath).flatMap {
+      case Left(e)     => IO(logger.error(s"Skipping metadata rescan for $resourcePath", e.cause))
+      case Right(meta) =>
         logger.info(s"Updating metadata for $resourcePath")
         val updated = resource.copy(contentMeta = resource.contentMeta.updatedWith(meta))
         db.transact(s => db.upsertResource(updated) >> topic.publish(s, ResourceModified(updated)))
     }
   }.compile.drain
 
-  /** Remuxes a non-streamable resource in place so it can be streamed progressively, then persists the new state. */
-  def fixStreamability(resourceId: ResourceId): IO[Unit] =
+  /**
+   * Cheap validation for the request: reports whether a remux makes sense without touching the file. The remux itself
+   * runs in the command consumer.
+   */
+  private[local] def checkStreamabilityFix(resourceId: ResourceId): IO[Either[ResourceCommandError, Unit]] =
+    getResourceInfo(resourceId).map:
+      case None                                                 => Left(ResourceCommandError.NotFound)
+      case Some(info) if !info.streamable.contains(false)       =>
+        Left(ResourceCommandError.Rejected("Resource is already streamable or its streamability is unknown"))
+      case Some(info) if AddFastStart.forResource(info).isEmpty =>
+        Left(ResourceCommandError.Rejected("The container format cannot be remuxed for streaming"))
+      case Some(_)                                              => Right(())
+
+  /** Remuxes to the bucket's temp directory without touching the live file. Returns None when nothing is needed. */
+  private[local] def remuxForStreaming(resourceId: ResourceId): IO[Either[StreamabilityError, Option[String]]] =
     getResourceInfo(resourceId).flatMap:
-      case Some(info) if info.streamable.contains(false) =>
-        ops.normalizeStreamability(info).flatMap:
-          case Some(updated) => db.transact(s => db.upsertResource(updated) >> topic.publish(s, ResourceModified(updated)))
-          case None          => IO.unit
-      case _                                             => IO.unit
+      case None                                           => IO.pure(Left(StreamabilityError.ResourceNotFound(resourceId)))
+      case Some(info) if !info.streamable.contains(false) => IO.pure(Right(None))
+      case Some(info)                                     => ops.remuxForStreaming(info).map(_.map(Some(_)))
+
+  /**
+   * Commits a remux: replaces the live file, refreshes its metadata and publishes ResourceModified, all in the caller's
+   * transaction. That way the command's success and the resource update commit together.
+   */
+  private[local] def commitStreamabilityFix(
+    session: Session[IO],
+    resourceId: ResourceId,
+    tempFile: Option[String]
+  ): IO[Either[StreamabilityError, Unit]] =
+    db.getResourceById(id, resourceId)(using Some(session)).flatMap:
+      case None       => IO.pure(Left(StreamabilityError.ResourceNotFound(resourceId)))
+      case Some(info) =>
+        ops.commitStreamability(info, tempFile).flatMap:
+          case Left(error)    => IO.pure(Left(error))
+          case Right(updated) =>
+            (db.upsertResource(updated)(using Some(session)) >> topic.publish(session, ResourceModified(updated))).as(Right(()))
 
   def reComputePartialHashes(): IO[Unit] = getAllResources.evalMap { resource =>
     val file = config.resourcePath.resolve(resource.path)

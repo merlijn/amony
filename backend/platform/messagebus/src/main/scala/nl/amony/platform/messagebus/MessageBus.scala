@@ -7,22 +7,39 @@ import cats.effect.{IO, Resource}
 import pureconfig.ConfigReader
 import skunk.Session
 
-trait PersistentMessageBus:
+import nl.amony.platform.messagebus.impl.{CommandStore, MessageLog, PostgresCommandBus, PostgresMessageTopic}
+
+trait MessageBus:
 
   def getTopic[E](using key: MessageTopicKey[E]): MessageTopic[E] = getTopicForKey[E](key)
 
   def getTopicForKey[E](key: MessageTopicKey[E]): MessageTopic[E]
 
-object PersistentMessageBus:
+  /**
+   * A durable command queue with a producer-visible status sidecar. Unlike [[getTopic]] it writes one extra row per
+   * submitted command, so it is opt-in: only construct it for command topics.
+   */
+  def getCommandBus[P](using key: CommandTopicKey[P]): CommandBus[P]
 
-  def postgres(pool: Resource[IO, Session[IO]], config: MessageBusConfig = MessageBusConfig()): PersistentMessageBus =
-    new PersistentMessageBus:
+object MessageBus:
 
-      private val log    = MessageLog(pool)
-      private val topics = ConcurrentHashMap[String, MessageTopic[?]]()
+  def postgres(pool: Resource[IO, Session[IO]], config: MessageBusConfig = MessageBusConfig()): MessageBus =
+    new MessageBus:
+
+      private val log      = MessageLog(pool)
+      private val topics   = ConcurrentHashMap[String, MessageTopic[?]]()
+      private val commands = ConcurrentHashMap[String, CommandBus[?]]()
 
       override def getTopicForKey[E](key: MessageTopicKey[E]): MessageTopic[E] =
         topics.computeIfAbsent(key.name, _ => PostgresMessageTopic(key, log, pool, config)).asInstanceOf[MessageTopic[E]]
+
+      override def getCommandBus[P](using key: CommandTopicKey[P]): CommandBus[P] =
+        commands
+          .computeIfAbsent(
+            key.name,
+            _ => PostgresCommandBus(key, getTopicForKey(key.topicKey), log, CommandStore(pool), pool, config)
+          )
+          .asInstanceOf[CommandBus[P]]
 
 final case class MessageBusConfig(
   // Fallback poll for notifications that were lost or whose consumer crashed. The NOTIFY path handles the
