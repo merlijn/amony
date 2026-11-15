@@ -8,7 +8,7 @@ services:
       timeout: 3s
       retries: 5
     container_name: amony-postgres
-    image: postgres:17.2
+    image: postgres:17@sha256:0d938e975177bef9f1f61f3f9dbcf2e0aa0a139568f66d3415ed8892eb97f6ac
     ports:
       - "127.0.0.1:5432:5432"
     env_file:
@@ -22,7 +22,7 @@ services:
       - ${AMONY_DATA:-./data}/postgres:/var/lib/postgresql/data
 
   otel-collector:
-    image: otel/opentelemetry-collector:latest
+    image: otel/opentelemetry-collector:0.165.0@sha256:34b24b740c3c88d3467740e8642a397c13898ef76d7295c5425164c482ed1b73
     command: ["--config=/etc/otel-collector-config.yaml"]
     profiles:
       - otel
@@ -46,7 +46,7 @@ services:
 #      - ${AMONY_DATA:-./data}/open-observe:/data
 
   postgres-restore:
-    image: postgres:17.2
+    image: postgres:17@sha256:0d938e975177bef9f1f61f3f9dbcf2e0aa0a139568f66d3415ed8892eb97f6ac
     container_name: amony-postgres-restore
     profiles:
       - restore
@@ -66,7 +66,7 @@ services:
     entrypoint: ["/scripts/pg-restore.sh"]
 
   postgres-backup:
-    image: postgres:17.2
+    image: postgres:17@sha256:0d938e975177bef9f1f61f3f9dbcf2e0aa0a139568f66d3415ed8892eb97f6ac
     container_name: amony-postgres-backup
     profiles:
       - backup
@@ -121,7 +121,7 @@ services:
 
   # Local identity provider (Dex), started by default.
   auth:
-    image: dexidp/dex:latest
+    image: dexidp/dex:v2.46.1@sha256:65b72ca0f4b0bf6d4ada84ec21da8851782563404ac7b8f926923d27ceced9ab
     container_name: auth
     restart: unless-stopped
     ports:

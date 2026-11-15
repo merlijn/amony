@@ -15,7 +15,7 @@ services:
   # http://localhost:8080/ui/console, app via AMONY_IDP_*. Enabled with the `zitadel` profile.
   zitadel-db-init:
     # Creates the "zitadel" database if missing; Postgres has no CREATE DATABASE IF NOT EXISTS.
-    image: postgres:17.2
+    image: postgres:17@sha256:0d938e975177bef9f1f61f3f9dbcf2e0aa0a139568f66d3415ed8892eb97f6ac
     container_name: zitadel-db-init
     profiles:
       - zitadel
@@ -33,7 +33,7 @@ services:
     restart: "no"
 
   zitadel:
-    image: ghcr.io/zitadel/zitadel:${ZITADEL_VERSION:-v4.15.3}
+    image: ghcr.io/zitadel/zitadel:v4.15.3@sha256:2356d646340724b3d843c024d589314adb9b54dbd6452ebc34008b011e023eff
     container_name: zitadel
     profiles:
       - zitadel

@@ -1,4 +1,4 @@
-FROM eclipse-temurin:25-jre-noble
+FROM eclipse-temurin:25-jre-noble@sha256:e3b6f7887a50f20d8f07abf279d8a81a5953fb398a9555bd9edd56b9bd15968c
 
 # Ubuntu 24.04 ships ffmpeg 6.x, which bundles the encoders/muxers the thumbnail pipeline relies on:
 # libsvtav1 (AVIF), libjxl (JPEG XL) and the AVIF muxer. Ubuntu 22.04's ffmpeg 4.4 has none of these.
