@@ -24,7 +24,7 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
           filter: tree:0
@@ -50,7 +50,7 @@ jobs:
         node-version: [26.x]
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
     - uses: oras-project/setup-oras@v1
     - uses: docker/login-action@v4
       # Fork PRs get a read-only token, so only push from branches of this repository.
@@ -140,7 +140,7 @@ jobs:
       JIB_TAGS: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || '' }}
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
           filter: tree:0
