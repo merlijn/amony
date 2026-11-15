@@ -11,7 +11,7 @@ export default defineConfig({
         compression({
             include: /\.(js|mjs|json|css|html)$/i,
             threshold: 1025,
-            algorithms: ['brotliCompress', 'gzip'],
+            algorithms: ['gzip'],
         })
     ],
     base: '/',
