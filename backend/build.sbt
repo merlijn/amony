@@ -273,7 +273,7 @@ val searchDependencies = Seq(
   "com.softwaremill.sttp.tapir" %% "tapir-json-circe"          % tapirVersion,
   "com.github.pureconfig"       %% "pureconfig-core"           % "0.17.11",
   "com.github.pureconfig"       %% "pureconfig-generic-scala3" % "0.17.11",
-  "org.apache.solr"              % "solr-core"                 % "9.11.0",
+  "org.apache.solr"              % "solr-core"                 % "10.1.0",
   "org.apache.commons"           % "commons-compress"          % "1.28.0"
 )
 
