@@ -23,9 +23,6 @@ enum StreamabilityError:
     case UnsupportedContainer(contentType) => s"Cannot remux content type '$contentType' for streaming"
     case FixFailed(path, reason)           => s"Failed to make '$path' streamable: $reason"
 
-/** A staged upload: the request body is already in the bucket's temp directory, waiting for the upload command. */
-final case class StagedUpload(resourceId: ResourceId, fileName: String, tempFile: String)
-
 /** An upload that has been validated, optionally remuxed and scanned, ready to be moved into the resource directory. */
 final case class PreparedUpload(tempFile: String, partialHash: String, contentMeta: ContentMeta)
 
@@ -75,17 +72,11 @@ trait ResourceBucket {
 
   def fixStreamability(resourceId: ResourceId): IO[Either[ResourceCommandError, Unit]]
 
-  def checkStreamabilityFix(resourceId: ResourceId): IO[Either[ResourceCommandError, Unit]]
-
   def remuxForStreaming(resourceId: ResourceId): IO[Either[StreamabilityError, Option[String]]]
 
   def commitStreamabilityFix(session: Session[IO], resourceId: ResourceId, tempFile: Option[String]): IO[Either[StreamabilityError, Unit]]
 
   def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, ResourceInfo]]
-
-  def stageUpload(fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, StagedUpload]]
-
-  def discardUpload(tempFile: String): IO[Unit]
 
   def prepareUpload(upload: UploadResource): IO[Either[UploadProcessingError, PreparedUpload]]
 

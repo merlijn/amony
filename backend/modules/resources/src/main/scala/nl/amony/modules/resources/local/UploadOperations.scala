@@ -16,6 +16,9 @@ import skunk.Session
 
 import nl.amony.modules.resources.api.*
 
+/** A staged upload: the request body is already in the bucket's temp directory, waiting for the upload command. */
+final private[local] case class StagedUpload(resourceId: ResourceId, fileName: String, tempFile: String)
+
 trait UploadOperations extends LocalResourceSyncer, Logging:
 
   private val invalidSequences = List("/", "\\", "..")
@@ -64,7 +67,7 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
     }
 
   /** Streams the request body into the bucket's temp directory. Nothing outside the temp directory is touched. */
-  def stageUpload(fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, StagedUpload]] =
+  protected def stageUpload(fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, StagedUpload]] =
     decodeFileName(fileName) match
       case Left(error)                                                 => IO.pure(Left(error))
       case Right(decoded) if invalidSequences.exists(decoded.contains) =>
@@ -87,7 +90,7 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
           case Left(error)          =>
             discardUpload(tempFile).as(Left(UploadError.StorageError(s"Failed to store upload '$decoded': ${error.getMessage}")))
 
-  def discardUpload(tempFile: String): IO[Unit] =
+  protected def discardUpload(tempFile: String): IO[Unit] =
     IO.blocking(JFiles.deleteIfExists(config.tempPath.resolve(tempFile))).void
 
   /**

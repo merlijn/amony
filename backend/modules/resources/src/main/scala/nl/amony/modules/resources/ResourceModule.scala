@@ -96,7 +96,7 @@ object ResourceModule:
             resourceDatabase,
             eventTopic,
             ops,
-            commands
+            commandBus
           )
           (bucket, bucket.sync())
         }

@@ -2,6 +2,7 @@ package nl.amony.modules.resources.local
 
 import java.nio.file.Files
 import java.nio.file.attribute.BasicFileAttributes
+import scala.concurrent.duration.*
 
 import cats.effect.IO
 import cats.implicits.*
@@ -14,7 +15,7 @@ import nl.amony.modules.auth.api.{Role, UserId}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.platform.files.*
-import nl.amony.platform.messagebus.MessageTopic
+import nl.amony.platform.messagebus.{CommandBus, CommandState, MessageTopic}
 
 class LocalDirectoryBucket(
   config: LocalDirectoryConfig,
@@ -22,7 +23,8 @@ class LocalDirectoryBucket(
   db: ResourceDatabase,
   topic: MessageTopic[ResourceEvent],
   ops: FileOperations,
-  commands: ResourceCommands = null
+  commandBus: CommandBus[ResourceCommand] = null,
+  commandTimeout: FiniteDuration          = 30.minutes
 )(using meter: Meter[IO], tracer: Tracer[IO])
     extends LocalDirectoryBase(config, parallelFactor, db, topic, ops),
       ResourceBucket,
@@ -48,16 +50,43 @@ class LocalDirectoryBucket(
   }.compile.drain
 
   override def fixStreamability(resourceId: ResourceId): IO[Either[ResourceCommandError, Unit]] =
-    commands.submitFixStreamability(this, resourceId)
+    checkStreamabilityFix(resourceId).flatMap:
+      case Left(error) => IO.pure(Left(error))
+      case Right(())   =>
+        val command = FixStreamability(id, resourceId)
+        for
+          commandId <- commandBus.submit(command.key, command)
+          status    <- commandBus.awaitCompletion(commandId, commandTimeout)
+        yield status.state match
+          case CommandState.Succeeded => Right(())
+          case _                      => Left(ResourceCommandError.Rejected(status.lastError.getOrElse("Failed to fix streamability")))
 
   override def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, ResourceInfo]] =
-    commands.submitUpload(this, userId, fileName, source)
+    stageUpload(fileName, source).flatMap:
+      case Left(error)   => IO.pure(Left(error))
+      case Right(staged) =>
+        val command = UploadResource(id, staged.resourceId, userId, staged.fileName, staged.tempFile)
+        val submit  = commandBus
+          .submit(command.key, command)
+          .handleErrorWith(error => discardUpload(staged.tempFile) >> IO.raiseError(error))
+        for
+          commandId <- submit
+          status    <- commandBus.awaitCompletion(commandId, commandTimeout)
+          result    <- status.state match
+                         case CommandState.Succeeded =>
+                           getResource(staged.resourceId).map {
+                             case Some(resource) => Right(resource.info)
+                             case None           => Left(UploadError.StorageError("Uploaded resource was not found after completion"))
+                           }
+                         case _                      =>
+                           IO.pure(Left(UploadError.StorageError(status.lastError.getOrElse("Failed to store the uploaded resource"))))
+        yield result
 
   /**
    * Cheap validation for the request: reports whether a remux makes sense without touching the file. The remux itself
    * runs in the command consumer.
    */
-  override def checkStreamabilityFix(resourceId: ResourceId): IO[Either[ResourceCommandError, Unit]] =
+  private def checkStreamabilityFix(resourceId: ResourceId): IO[Either[ResourceCommandError, Unit]] =
     getResourceInfo(resourceId).map:
       case None                                                 => Left(ResourceCommandError.NotFound)
       case Some(info) if !info.streamable.contains(false)       =>
