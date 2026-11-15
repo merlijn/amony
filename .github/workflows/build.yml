@@ -11,6 +11,12 @@ permissions:
   contents: read
   packages: write
 
+# Main merges all publish the shared dev tags, so parallel runs can mix architectures or leave dev
+# on an older commit. Queue them instead; pull requests still cancel their own stale runs.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   DOCKER_REGISTRY: ghcr.io
   IMAGE_NAME: amony-app

@@ -87,6 +87,10 @@ Images are published to the GitHub Container Registry (GHCR) by the `Build and d
 - **Git tags** — pushing a tag (for example `v0.1.7`) publishes `latest` and the version tag (for example `0.1.7`).
 - **Pull requests** — publish only when the head commit message contains `#publish`, under a per-PR tag (`pr-<number>`).
 
+Runs are serialized per ref: `main` builds queue instead of overlapping, so two merges cannot race on the shared `dev`
+tags (which could otherwise mix architectures or leave `dev` on an older commit). A pull request cancels its own stale
+runs.
+
 The Jib base image is built from `docker/base/Dockerfile` by the `Build base image` workflow
 (`.github/workflows/base-image.yml`), which runs when that file changes and can also be started manually. Every build is
 published as a UTC build timestamp tag (for example `2026.11.15.1423`) plus `latest`; pull requests only build the amd64
