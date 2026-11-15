@@ -35,6 +35,10 @@ def envTags: Option[List[String]] =
 // GHCR namespace (lowercase required by the registry); CI provides GITHUB_REPOSITORY_OWNER.
 val ghcrOwner = sys.env.getOrElse("GITHUB_REPOSITORY_OWNER", "merlijn").toLowerCase
 
+// Build timestamp of the base image, published by the "Build base image" workflow and updated here by
+// Renovate.
+val baseImageTag = "2026.11.15.1405"
+
 //fork in Global := true
 Global / cancelable := true
 
@@ -416,7 +420,7 @@ lazy val app = project
     exportDatabaseSchema / aggregate   := false,
 
     // Jib Docker settings
-    jibBaseImage            := s"ghcr.io/$ghcrOwner/amony-base:latest",
+    jibBaseImage            := s"ghcr.io/$ghcrOwner/amony-base:$baseImageTag",
     jibRegistry             := "ghcr.io",
     jibName                 := "amony-app",
     jibVersion              := version.value.replace('+', '-'), // + sign is not valid in a docker tag

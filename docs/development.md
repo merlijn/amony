@@ -81,12 +81,16 @@ sbt jibDockerBuild
 Images are published to the GitHub Container Registry (GHCR) by the `Build and deploy` workflow
 (`.github/workflows/build.yml`). They are public and live under `ghcr.io/merlijn/`:
 
-- **`main`** — every push/merge publishes the moving `dev` tag (`ghcr.io/merlijn/amony-app:dev`).
+- **`main`** — a merge that changes `backend/` or the build workflow publishes the moving `dev` tag
+  (`ghcr.io/merlijn/amony-app:dev`). Frontend-only changes skip the backend build and reuse the existing image. A base
+  image bump counts because the pin lives in `backend/build.sbt`.
 - **Git tags** — pushing a tag (for example `v0.1.7`) publishes `latest` and the version tag (for example `0.1.7`).
 - **Pull requests** — publish only when the head commit message contains `#publish`, under a per-PR tag (`pr-<number>`).
 
-The Jib base image (`ghcr.io/merlijn/amony-base:latest`) is built from `docker/base/Dockerfile` by the
-`Build base image` workflow (`.github/workflows/base-image.yml`), which is triggered manually from the Actions tab.
+The Jib base image is built from `docker/base/Dockerfile` by the `Build base image` workflow
+(`.github/workflows/base-image.yml`), which runs when that file changes and can also be started manually. Every build is
+published as a UTC build timestamp tag (for example `2026.11.15.1423`) plus `latest`; pull requests only build the amd64
+variant. `baseImageTag` in `backend/build.sbt` pins one of those tags, and Renovate opens a PR when a new build appears.
 
 ### 4. Deploying the demo
 

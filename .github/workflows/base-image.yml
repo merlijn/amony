@@ -1,8 +1,13 @@
 name: Build base image
 
 on:
-  # Manual trigger only (Actions tab -> "Build base image" -> Run workflow).
+  # Manual rebuilds, plus every change to the Dockerfile. Pull requests only validate the build.
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['docker/base/**']
+  pull_request:
+    paths: ['docker/base/**']
 
 permissions:
   contents: read
@@ -31,17 +36,24 @@ jobs:
       # GHCR requires lowercase names, so normalize the owner.
       - name: Compute image reference
         id: image
-        run: echo "ref=${DOCKER_REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "ref=${DOCKER_REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
+          # Sortable build timestamp, tracked by Renovate through baseImageTag in backend/build.sbt.
+          echo "tag=$(date -u +%Y.%m.%d.%H%M)" >> "$GITHUB_OUTPUT"
 
       - name: Build and push base image
         uses: docker/build-push-action@v7
         with:
           context: docker/base
           file: docker/base/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.image.outputs.ref }}:latest
+          # Pull requests validate the Dockerfile on one platform; published builds cover both.
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ steps.image.outputs.ref }}:${{ steps.image.outputs.tag }}
+            ${{ steps.image.outputs.ref }}:latest
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.description=Amony base image (Eclipse Temurin 25 JRE + ffmpeg + imagemagick)
             org.opencontainers.image.licenses=MIT

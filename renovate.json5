@@ -20,6 +20,20 @@
     },
   ],
 
+  // The Jib base image reference lives in build.sbt; the "Build base image" workflow publishes a new
+  // timestamp tag per build and this manager keeps the reference in step.
+  customManagers: [
+    {
+      customType: "regex",
+      fileMatch: ["^backend/build\\.sbt$"],
+      matchStrings: ["val baseImageTag = \"(?<currentValue>[^\"]+)\""],
+      depNameTemplate: "merlijn/amony-base",
+      datasourceTemplate: "docker",
+      registryUrlTemplate: "https://ghcr.io",
+      versioningTemplate: "docker",
+    },
+  ],
+
   packageRules: [
     // Day-to-day updates are rolled up per stack: one PR for the frontend, one for the backend.
     {
@@ -39,6 +53,12 @@
     {
       matchDatasources: ["maven", "sbt-package"],
       registryUrls: ["https://maven-central.storage-download.googleapis.com/maven2"],
+    },
+
+    // Base image builds always get their own PR, never folded into the backend group.
+    {
+      matchPackageNames: ["merlijn/amony-base"],
+      groupName: "base image",
     },
 
     // Majors are always a separate PR, whichever stack they come from.
