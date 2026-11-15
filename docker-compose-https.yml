@@ -1,21 +1,26 @@
 services:
   nginx:
     container_name: nginx-reverse-proxy
-    build:
-      context: docker/reverse-proxy/nginx
-      dockerfile: nginx.dockerfile
-    image: amony/nginx
+    # Stock image: it renders /etc/nginx/templates itself (20-envsubst-on-templates.sh) and the
+    # certificate watcher is mounted as an additional entrypoint script.
+    image: nginx:1.30.6-alpine@sha256:901e593c95dc85f5a729f5765516321366ef4ac401821431d408897e95287d0a
     ports:
       - "443:443"
     volumes:
       - ./docker/reverse-proxy/nginx/config:/etc/nginx/templates:ro
       - ./docker/reverse-proxy/nginx/config/shared-proxy-settings.conf:/etc/nginx/shared-proxy-settings.conf:ro
+      - ./docker/reverse-proxy/nginx/reload-on-certificate-change.sh:/docker-entrypoint.d/40-reload-on-certificate-change.sh:ro
       - certbot-data:/etc/letsencrypt
-    env_file:
-      - .env
     environment:
       # Auth provider upstream behind the proxy: Dex (auth:5556) or Zitadel (zitadel:8080).
       AUTH_UPSTREAM: ${AUTH_UPSTREAM:-auth:5556}
+      DOMAIN_TLD: ${DOMAIN_TLD}
+      DOMAIN_SUB_AUTH: ${DOMAIN_SUB_AUTH}
+      DOMAIN_SUB_AMONY: ${DOMAIN_SUB_AMONY}
+      # Render the templates into /etc/nginx (where the includes expect them) and substitute only
+      # the variables the templates actually use.
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx
+      NGINX_ENVSUBST_FILTER: ^(DOMAIN_TLD|DOMAIN_SUB_AUTH|DOMAIN_SUB_AMONY|AUTH_UPSTREAM)$
     restart: unless-stopped
 
   init-certificate:

@@ -1,23 +1,19 @@
 #!/bin/sh
+# Mounted into /docker-entrypoint.d of the stock nginx image. The loop is backgrounded so it
+# does not block the image entrypoint, which starts nginx once all scripts have returned.
 
-while true; do
-    echo "Watching /etc/letsencrypt for changes..."
-    # Wait for any file changes in /etc/letsencrypt
-    inotifywait -e create,modify,moved_to /etc/letsencrypt/ -r 2>/dev/null
+(
+    cert="/etc/letsencrypt/live/${DOMAIN_TLD}/fullchain.pem"
+    last=""
 
-    echo "Certificate change detected, reloading Nginx in 3 seconds..."
-    sleep 3
-
-    # Test config before reloading
-    if nginx -t 2>/dev/null; then
-        echo "Configuration valid, reloading..."
-        nginx -s reload
-        echo "Nginx reloaded successfully"
-    else
-        echo "Configuration test failed, skipping reload"
-    fi
-
-    # Prevent rapid reloads
-    echo "Waiting 10s before next check..."
-    sleep 10
-done
+    while :; do
+        now=$(stat -c %Y "$cert" 2>/dev/null || echo "")
+        if [ -n "$now" ] && [ "$now" != "$last" ]; then
+            if [ -n "$last" ] && nginx -t; then
+                nginx -s reload
+            fi
+            last="$now"
+        fi
+        sleep 300
+    done
+) &
