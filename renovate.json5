@@ -2,6 +2,10 @@
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["config:recommended"],
 
+  // config:recommended groups dependencies of the same monorepo into their own PRs; we want one
+  // minor/patch PR per stack instead.
+  ignorePresets: ["group:monorepos", "group:recommended"],
+
   // Keep the digest next to every image tag, so a tag that moves (postgres:17) shows up as an
   // explicit PR instead of silently changing on the next pull.
   pinDigests: true,
