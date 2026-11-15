@@ -87,9 +87,9 @@ Images are published to the GitHub Container Registry (GHCR) by the `Build and d
 - **Pull requests** — publish only when the head commit message contains `#publish`, under a per-PR tag (`pr-<number>`).
 
 The Jib base image is built from `docker/base/Dockerfile` by the `Build base image` workflow
-(`.github/workflows/base-image.yml`), which is triggered manually from the Actions tab. It is published as
-`sha-<first 12 characters of the Dockerfile hash>` and as `latest`; `baseImageTag` in `backend/build.sbt` derives the
-same tag, so a Dockerfile change needs that workflow to run before the application build can pass.
+(`.github/workflows/base-image.yml`), which runs when that file changes and can also be started manually. Every build is
+published as a UTC build timestamp tag (for example `2026.11.15.1423`) plus `latest`; pull requests only build the amd64
+variant. `baseImageTag` in `backend/build.sbt` pins one of those tags, and Renovate opens a PR when a new build appears.
 
 ### 4. Deploying the demo
 

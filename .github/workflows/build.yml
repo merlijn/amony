@@ -173,11 +173,11 @@ jobs:
         env:
           BASE_IMAGE: ghcr.io/${{ github.repository_owner }}/amony-base
         run: |
-          tag="sha-$(sha256sum docker/base/Dockerfile | cut -c1-12)"
+          tag=$(sed -n 's/^val baseImageTag *= *"\([^"]*\)".*/\1/p' backend/build.sbt | head -1)
           ref="${BASE_IMAGE,,}:$tag"
           echo "Base image: $ref"
           if ! docker manifest inspect "$ref" >/dev/null 2>&1; then
-            echo "::error::Base image $ref is not published. Run the 'Build base image' workflow for this branch, then retry."
+            echo "::error::Base image $ref is not published. Run the 'Build base image' workflow, then retry."
             exit 1
           fi
 

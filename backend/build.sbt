@@ -35,13 +35,9 @@ def envTags: Option[List[String]] =
 // GHCR namespace (lowercase required by the registry); CI provides GITHUB_REPOSITORY_OWNER.
 val ghcrOwner = sys.env.getOrElse("GITHUB_REPOSITORY_OWNER", "merlijn").toLowerCase
 
-// The base image workflow tags the image with a hash of its Dockerfile, so this reference follows the
-// recipe instead of a moving :latest tag.
-val baseImageTag = {
-  val dockerfile = file("../docker/base/Dockerfile").getAbsoluteFile
-  val digest     = java.security.MessageDigest.getInstance("SHA-256").digest(java.nio.file.Files.readAllBytes(dockerfile.toPath))
-  "sha-" + digest.take(6).map(byte => "%02x".format(byte & 0xff)).mkString
-}
+// Build timestamp of the base image, published by the "Build base image" workflow and updated here by
+// Renovate.
+val baseImageTag = "2026.11.15.0000"
 
 //fork in Global := true
 Global / cancelable := true
