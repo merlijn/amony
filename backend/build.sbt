@@ -226,7 +226,7 @@ val authDependencies = Seq(
   "org.tpolecat"                  %% "skunk-circe"               % "2.0.0-RC3",
   "com.github.pureconfig"         %% "pureconfig-core"           % "0.17.11",
   "com.github.pureconfig"         %% "pureconfig-generic-scala3" % "0.17.11",
-  "com.github.jwt-scala"          %% "jwt-circe"                 % "11.0.4",
+  "com.github.jwt-scala"          %% "jwt-circe"                 % "12.0.0",
   "org.bouncycastle"               % "bcprov-jdk18on"            % "1.87"
 )
 
