@@ -31,12 +31,11 @@ jobs:
       - uses: dorny/paths-filter@v4
         id: filter
         with:
-          # On a push, compare against the previous commit of the same branch; on pull requests the
-          # action compares against the base branch through the API.
-          base: ${{ github.ref }}
           filters: |
             backend:
               - 'backend/**'
+              # Exercise the backend job when the workflow itself changes.
+              - '.github/workflows/build.yml'
 
   web-assets:
 
