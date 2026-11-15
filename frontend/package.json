@@ -70,10 +70,10 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@types/react-router-dom": "5.3.3",
-    "@vitejs/plugin-react": "5.2.0",
+    "@vitejs/plugin-react": "6.3.0",
     "orval": "8.48.0",
     "sass": "1.108.2",
-    "vite": "7.3.8",
-    "vite-plugin-compression": "0.5.1"
+    "vite": "8.3.8",
+    "vite-plugin-compression2": "2.5.4"
   }
 }
