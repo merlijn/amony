@@ -10,6 +10,16 @@
   // explicit PR instead of silently changing on the next pull.
   pinDigests: true,
 
+  // Maven Central rate-limits metadata lookups and 429s the hosted app's shared egress. Renovate
+  // defaults to 16 concurrent requests and no throttle, which is what trips the limiter.
+  hostRules: [
+    {
+      matchHost: "repo.maven.apache.org",
+      concurrentRequestLimit: 4,
+      maxRequestsPerSecond: 3,
+    },
+  ],
+
   packageRules: [
     // Day-to-day updates are rolled up per stack: one PR for the frontend, one for the backend.
     {
@@ -21,6 +31,14 @@
       matchManagers: ["sbt"],
       matchUpdateTypes: ["minor", "patch"],
       groupName: "backend minor/patch dependencies",
+    },
+
+    // Maven Central rate-limits metadata lookups; Google's public mirror serves the same artifacts
+    // with its own limits. sbt deps use the sbt-package datasource, plain Java ones maven. The
+    // sbt-plugin datasource is left alone: it needs HTML directory listings, which mirrors don't do.
+    {
+      matchDatasources: ["maven", "sbt-package"],
+      registryUrls: ["https://maven-central.storage-download.googleapis.com/maven2"],
     },
 
     // Majors are always a separate PR, whichever stack they come from.
