@@ -16,7 +16,7 @@ env:
   IMAGE_NAME: amony-app
 
 jobs:
-  build-frontend:
+  web-assets:
 
     runs-on: ubuntu-24.04
 
@@ -30,28 +30,64 @@ jobs:
 
     steps:
     - uses: actions/checkout@v5
+    - uses: oras-project/setup-oras@v1
+    - uses: docker/login-action@v4
+      # Fork PRs get a read-only token, so only push from branches of this repository.
+      if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Compute the artifact reference
+      id: ref
+      working-directory: .
+      run: |
+        # Content-addressed: the tag is the git tree hash of frontend/, so an unchanged frontend
+        # reuses the artifact and a deploy derives the same tag from its own checkout.
+        echo "tag=fe-$(git rev-parse HEAD:frontend)" >> "$GITHUB_OUTPUT"
+        echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/amony-web" >> "$GITHUB_OUTPUT"
+
+    - name: Look for an existing artifact
+      id: existing
+      working-directory: .
+      run: |
+        if oras manifest fetch "${{ steps.ref.outputs.image }}:${{ steps.ref.outputs.tag }}" >/dev/null 2>&1; then
+          echo "This frontend tree was built before, reusing the artifact"
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+        fi
+
     - uses: pnpm/action-setup@v4
+      if: steps.existing.outputs.exists != 'true'
       with:
         version: 11.12.0
     - name: Use Node.js ${{ matrix.node-version }}
+      if: steps.existing.outputs.exists != 'true'
       uses: actions/setup-node@v5
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'pnpm'
         cache-dependency-path: frontend/pnpm-lock.yaml
 
-    - run: pnpm install --frozen-lockfile
-    - run: pnpm run generate
-    - run: pnpm run build
+    - name: Build the web client
+      if: steps.existing.outputs.exists != 'true'
+      run: |
+        pnpm install --frozen-lockfile
+        pnpm run generate
+        pnpm run build
 
-    - name: Upload frontend build artifacts
-      uses: actions/upload-artifact@v6
-      with:
-        name: frontend-dist
-        path: frontend/dist
+    - name: Publish the web client artifact
+      if: steps.existing.outputs.exists != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+      working-directory: .
+      run: |
+        tar -czf frontend-dist.tar.gz -C frontend/dist .
+        oras push "${{ steps.ref.outputs.image }}:${{ steps.ref.outputs.tag }}" \
+          frontend-dist.tar.gz:application/vnd.oci.image.layer.v1.tar+gzip \
+          --annotation "org.opencontainers.image.revision=${{ github.sha }}" \
+          --annotation "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
+          --annotation "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
   build-backend:
-    needs: build-frontend
     runs-on: ${{ matrix.runner }}
     # Both matrix legs compute the same value, so the merged output is stable.
     outputs:
@@ -99,12 +135,6 @@ jobs:
           registry: ${{ env.DOCKER_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download frontend artifacts
-        uses: actions/download-artifact@v6
-        with:
-          name: frontend-dist
-          path: frontend/dist
 
       - name: Build with sbt
         timeout-minutes: 10

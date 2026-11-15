@@ -39,7 +39,16 @@ object WebServer extends Logging {
     meterProvider: MeterProvider[IO]
   ): Resource[IO, Unit] = {
 
-    val routes = hostFilter(config.allowedHosts, apiSecurity)(apiRoutes <+> webAppRoutes(config))
+    val webRoutes = config.webClientPath match
+      case Some(path) =>
+        val webClientPath = Path.fromNioPath(path)
+        logger.info(s"Serving the web client from $webClientPath")
+        webAppRoutes(webClientPath)
+      case None       =>
+        logger.info("Serving the web client is disabled")
+        HttpRoutes.empty[IO]
+
+    val routes = hostFilter(config.allowedHosts, apiSecurity)(apiRoutes <+> webRoutes)
 
     val httpResource = config.http match {
       case Some(httpConfig) if httpConfig.enabled =>
@@ -151,9 +160,10 @@ object WebServer extends Logging {
       }.build
   }
 
-  def webAppRoutes(config: WebServerConfig) = {
+  /** Serves the built web client from the backend. Only wired up when a web client path is configured,
+    * which is local development; in deployments the reverse proxy serves the assets. */
+  def webAppRoutes(basePath: Path) = {
 
-    val basePath          = Path.fromNioPath(config.webClientPath)
     val indexFile         = basePath.resolve("index.html")
     val chunkSize         = 32 * 1024
     val assetsCachePeriod = 365.days

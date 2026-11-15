@@ -10,6 +10,8 @@ services:
       - ./docker/reverse-proxy/nginx/config:/etc/nginx/templates:ro
       - ./docker/reverse-proxy/nginx/config/shared-proxy-settings.conf:/etc/nginx/shared-proxy-settings.conf:ro
       - ./docker/reverse-proxy/nginx/reload-on-certificate-change.sh:/docker-entrypoint.d/40-reload-on-certificate-change.sh:ro
+      # Unpacked frontend artifact; `current` is a symlink to the deployed release.
+      - ./web:/srv/web:ro
       - certbot-data:/etc/letsencrypt
     environment:
       # Auth provider upstream behind the proxy: Dex (auth:5556) or Zitadel (zitadel:8080).

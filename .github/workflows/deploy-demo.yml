@@ -120,12 +120,28 @@ jobs:
           # shellcheck disable=SC2029
           set -euo pipefail
           ssh -o BatchMode=yes -o IdentitiesOnly=yes "$SSH_USER@$SSH_HOST" \
-            "DEPLOY_DIR='$DEPLOY_DIR' DEPLOY_REF='$DEPLOY_REF' COMPOSE_FILES='$COMPOSE_FILES' bash -s" <<'REMOTE'
+            "DEPLOY_DIR='$DEPLOY_DIR' DEPLOY_REF='$DEPLOY_REF' COMPOSE_FILES='$COMPOSE_FILES' WEB_IMAGE='ghcr.io/${{ github.repository_owner }}/amony-web' bash -s" <<'REMOTE'
           set -euo pipefail
           cd "$DEPLOY_DIR"
           git fetch --prune origin
           git checkout "$DEPLOY_REF"
           git pull --ff-only
+
+          # The web client is published per frontend tree, so the tag is derived from this checkout
+          # and the deployed assets always match the deployed commit.
+          WEB_IMAGE="${WEB_IMAGE,,}"
+          FE_TREE=$(git rev-parse HEAD:frontend)
+          WEB_REF="$WEB_IMAGE:fe-$FE_TREE"
+          echo "Deploying web client $WEB_REF"
+          pull_dir=$(mktemp -d)
+          docker run --rm --user "$(id -u):$(id -g)" -v "$pull_dir:/out" \
+            ghcr.io/oras-project/oras:v1.3.0 pull -o /out "$WEB_REF"
+          mkdir -p "web/releases/$FE_TREE"
+          tar -xzf "$pull_dir/frontend-dist.tar.gz" -C "web/releases/$FE_TREE"
+          rm -rf "$pull_dir"
+          ln -sfn "releases/$FE_TREE" web/current
+          ls -1t web/releases | tail -n +4 | xargs -r -I{} rm -rf "web/releases/{}"
+
           docker compose $COMPOSE_FILES --profile zitadel pull amony nginx
           # --build refreshes the locally built certbot image from the checkout.
           docker compose $COMPOSE_FILES --profile zitadel up -d --build

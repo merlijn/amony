@@ -97,6 +97,11 @@ Actions tab.
 It connects to the server as `docker-user`, updates the checkout, pulls the new `dev` image and recreates the containers
 with `docker compose -f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml --profile zitadel`.
 
+The web client is not part of the application image. The `Build and deploy` workflow publishes it to GHCR as an OCI
+artifact (`ghcr.io/<owner>/amony-web:fe-<tree>`), where the tag is the git tree hash of `frontend/`. The deploy pulls
+the artifact that matches its own checkout, unpacks it into `web/releases/<tree>` and repoints the `web/current`
+symlink, which the reverse proxy serves from `/srv/web/current`.
+
 Non-secret configuration lives in `deployment/demo.env`. The sensitive values (database password, JWT secret, Dex client
 secrets / admin password hash, Porkbun credentials) plus the SSH deploy key and host details are stored in the
 repository's `demo` GitHub Environment.
