@@ -10,6 +10,9 @@
   // explicit PR instead of silently changing on the next pull.
   pinDigests: true,
 
+  // Minor/patch updates are batched per stack, so the default of 2 is too low for a first run.
+  prHourlyLimit: 10,
+
   // Maven Central rate-limits metadata lookups and 429s the hosted app's shared egress. Renovate
   // defaults to 16 concurrent requests and no throttle, which is what trips the limiter.
   hostRules: [
@@ -53,6 +56,20 @@
     {
       matchDatasources: ["maven", "sbt-package"],
       registryUrls: ["https://maven-central.storage-download.googleapis.com/maven2"],
+    },
+
+    // Scala and Node are pinned to an LTS line (3.9.x and 26.x) and moved to a new line by hand;
+    // patch releases inside the line still flow.
+    {
+      matchPackageNames: ["org.scala-lang:scala3-library_3"],
+      matchUpdateTypes: ["minor", "major"],
+      enabled: false,
+    },
+    {
+      matchDatasources: ["node-version"],
+      matchPackageNames: ["node"],
+      matchUpdateTypes: ["minor", "major"],
+      enabled: false,
     },
 
     // Base image builds always get their own PR, never folded into the backend group.
