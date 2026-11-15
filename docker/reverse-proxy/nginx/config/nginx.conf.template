@@ -46,6 +46,9 @@ http {
 	access_log /var/log/nginx/access.log;
 
 	gzip on;
+	# Serve the .gz files produced by the frontend build instead of compressing on every request.
+	gzip_static on;
+	gzip_vary on;
 
 	# Upstream for amony backend
 	upstream amony_backend {
