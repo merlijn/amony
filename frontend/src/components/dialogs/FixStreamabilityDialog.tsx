@@ -1,9 +1,9 @@
-import {fixResourceStreamable, getResourceById, ResourceDto} from "../../api/generated"
+import {useState, useTransition} from "react"
+import {fixResourceStreamable, ResourceDto} from "../../api/generated"
 import * as RadixDialog from "@radix-ui/react-dialog"
 import "../common/Dialog.scss"
 import DialogContainer from "../common/DialogWindow"
 import {useEventBus} from "../common/EventBus"
-import {useCommand} from "../common/useCommand"
 import "./FixStreamabilityDialog.scss"
 
 type FixStreamabilityDialogProps = {
@@ -14,24 +14,29 @@ type FixStreamabilityDialogProps = {
 }
 
 const FixStreamabilityDialog = ({resource, visible, onFixed, onHide}: FixStreamabilityDialogProps) => {
-  const {isRunning, error, run} = useCommand()
+  const [isFixing, startFixing] = useTransition()
+  const [error, setError] = useState<string | undefined>(undefined)
   const emitter = useEventBus()
 
   const handleFix = () => {
     if (!resource) return
 
-    void run(
-      fixResourceStreamable(resource.bucketId, resource.resourceId).then(command => command.commandId),
-      async () => {
-        const updated = await getResourceById(resource.bucketId, resource.resourceId)
-        emitter.emit("resource-updated", updated)
-        onFixed(updated)
+    setError(undefined)
+
+    startFixing(async () => {
+      try {
+        await fixResourceStreamable(resource.bucketId, resource.resourceId)
+        emitter.emit('resource-updated', resource)
+        onFixed(resource)
+      } catch {
+        setError("Failed to fix this resource. It may use an unsupported container or codec.")
       }
-    )
+    })
   }
 
   const handleHide = () => {
-    if (!isRunning) {
+    if (!isFixing) {
+      setError(undefined)
       onHide()
     }
   }
@@ -55,7 +60,7 @@ const FixStreamabilityDialog = ({resource, visible, onFixed, onHide}: FixStreama
                   className="button-secondary"
                   type="button"
                   onClick={handleHide}
-                  disabled={isRunning}
+                  disabled={isFixing}
                 >
                   Cancel
                 </button>
@@ -63,9 +68,9 @@ const FixStreamabilityDialog = ({resource, visible, onFixed, onHide}: FixStreama
                   className="button-primary"
                   type="button"
                   onClick={handleFix}
-                  disabled={isRunning}
+                  disabled={isFixing}
                 >
-                  {isRunning ? "Fixing..." : "Fix"}
+                  {isFixing ? "Fixing..." : "Fix"}
                 </button>
               </div>
             </div>

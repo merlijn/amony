@@ -26,16 +26,6 @@ import nl.amony.platform.subprocess.{ProcessLimiter, ProcessRunner, ProcessSetti
 final case class ContentUnreadable(path: Path, cause: Throwable):
   def message: String = s"Failed to read content of $path: ${Option(cause.getMessage).getOrElse(cause.getClass.getName)}"
 
-enum StreamabilityError:
-  case ResourceNotFound(resourceId: ResourceId)
-  case UnsupportedContainer(contentType: String)
-  case FixFailed(path: String, reason: String)
-
-  def message: String = this match
-    case ResourceNotFound(resourceId)      => s"Failed to make '$resourceId' streamable: resource no longer exists"
-    case UnsupportedContainer(contentType) => s"Cannot remux content type '$contentType' for streaming"
-    case FixFailed(path, reason)           => s"Failed to make '$path' streamable: $reason"
-
 final class FileOperations(
   config: LocalDirectoryConfig,
   parallelFactor: Int,

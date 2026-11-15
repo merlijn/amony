@@ -4,42 +4,37 @@ import { dateMillisToString } from '../../api/Util';
 import { uploadResource } from '../../api/generated';
 import DialogWindow from '../common/DialogWindow';
 import InfoTable, { InfoRow } from '../common/InfoTable';
-import { serverErrorMessage, useCommand } from '../common/useCommand';
 import './FileUpload.scss';
 
 const DEFAULT_BUCKET_ID = 'media';
 
-type UploadPhase = 'idle' | 'uploading' | 'processing' | 'success' | 'error';
+type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
 
 const FileUpload = () => {
-
+  
     const [file, setFile] = useState<File | undefined>(undefined);
-    const [phase, setPhase] = useState<UploadPhase>('idle');
+    const [status, setStatus] = useState<UploadStatus>('idle');
     const [progress, setProgress] = useState<number>(0);
     const [feedback, setFeedback] = useState<string | undefined>(undefined);
-    const { run, reset, isRunning } = useCommand();
-
-    const busy = phase === 'uploading' || phase === 'processing' || isRunning;
 
     const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
       if (event.target.files && event.target.files[0]) {
         setFile(event.target.files[0]);
-        setPhase('idle');
+        setStatus('idle');
         setFeedback(undefined);
         setProgress(0);
-      }
+      }    
     };
-
+    
     const onFileUpload = async () => {
       if (!file) return;
 
-      reset();
-      setPhase('uploading');
+      setStatus('uploading');
       setFeedback(undefined);
       setProgress(0);
 
       try {
-        const command = await uploadResource(DEFAULT_BUCKET_ID, file, {
+        await uploadResource(DEFAULT_BUCKET_ID, file, {
           headers: {
             'Content-Type': file.type || 'application/octet-stream',
             'X-Filename': encodeURIComponent(file.name),
@@ -52,26 +47,16 @@ const FileUpload = () => {
           },
         });
 
-        setPhase('processing');
-        await run(
-          command.commandId,
-          () => {
-            setPhase('success');
-            setFeedback('Upload complete!');
-            setFile(undefined);
-            setProgress(0);
-          },
-          (message) => {
-            setPhase('error');
-            setFeedback(message);
-          }
-        );
-      } catch (cause) {
-        setPhase('error');
-        setFeedback(serverErrorMessage(cause) || 'Upload failed');
+        setStatus('success');
+        setFeedback('Upload complete!');
+        setFile(undefined);
+        setProgress(0);
+      } catch {
+        setStatus('error');
+        setFeedback('Upload failed');
       }
     };
-
+    
     return (
       <DialogWindow>
         <Tabs.Root defaultValue="upload">
@@ -87,7 +72,7 @@ const FileUpload = () => {
                   className="file-upload-input"
                   accept=".mp4,video/*,image/*"
                   onChange={onFileChange}
-                  disabled={busy}
+                  disabled={status === 'uploading'}
                 />
               </InfoRow>
 
@@ -100,7 +85,7 @@ const FileUpload = () => {
                 </>
               )}
 
-              {phase === 'uploading' && (
+              {status === 'uploading' && (
                 <InfoRow label="Progress">
                   <div className="progress-container">
                     <div className="progress-bar">
@@ -111,15 +96,9 @@ const FileUpload = () => {
                 </InfoRow>
               )}
 
-              {phase === 'processing' && (
-                <InfoRow label="Status">
-                  <span className="feedback">Processing...</span>
-                </InfoRow>
-              )}
-
               {feedback && (
                 <InfoRow label="Status">
-                  <span className={`feedback ${phase === 'error' ? 'feedback-error' : 'feedback-success'}`}>
+                  <span className={`feedback ${status === 'error' ? 'feedback-error' : 'feedback-success'}`}>
                     {feedback}
                   </span>
                 </InfoRow>
@@ -131,12 +110,12 @@ const FileUpload = () => {
         <button
           className="abs-bottom-right button-primary"
           onClick={onFileUpload}
-          disabled={!file || busy}
+          disabled={!file || status === 'uploading'}
         >
-          {phase === 'uploading' ? 'Uploading...' : phase === 'processing' ? 'Processing...' : 'Upload'}
+          {status === 'uploading' ? 'Uploading...' : 'Upload'}
         </button>
       </DialogWindow>
     );
   }
-
+ 
 export default FileUpload;

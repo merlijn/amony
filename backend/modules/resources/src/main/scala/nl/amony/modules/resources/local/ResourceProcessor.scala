@@ -8,15 +8,15 @@ import nl.amony.modules.resources.api.*
 class ResourceProcessor(registry: BucketRegistry) extends Logging:
 
   def processEvent(event: ResourceEvent): IO[Unit] = event match
-    case ResourceAdded(resource)                                                                       => withLocalBucket(resource)(_.generatePreviewsIfEnabled(resource))
-    case ResourceModified(resource)                                                                    => withLocalBucket(resource)(_.generatePreviewsIfEnabled(resource))
-    case ResourceThumbnailUpdated(_, resource)                                                         => withLocalBucket(resource)(_.generatePreviewsIfEnabled(resource))
-    case ResourceMovedAndModified(_, _, _, resource)                                                   => withLocalBucket(resource)(_.generatePreviewsIfEnabled(resource))
-    case ResourceDeleted(resource)                                                                     => withLocalBucket(resource)(_.deleteFile(resource))
+    case ResourceAdded(resource)                                                                       => withBucket(resource)(_.generatePreviewsIfEnabled(resource))
+    case ResourceModified(resource)                                                                    => withBucket(resource)(_.generatePreviewsIfEnabled(resource))
+    case ResourceThumbnailUpdated(_, resource)                                                         => withBucket(resource)(_.generatePreviewsIfEnabled(resource))
+    case ResourceMovedAndModified(_, _, _, resource)                                                   => withBucket(resource)(_.generatePreviewsIfEnabled(resource))
+    case ResourceDeleted(resource)                                                                     => withBucket(resource)(_.deleteFile(resource))
     case _: ResourceUserMetaUpdated | _: ResourceMoved | _: ResourceFileMetaChanged | _: BucketDeleted => IO.unit
 
-  private def withLocalBucket(resource: ResourceInfo)(f: LocalDirectoryBucket => IO[Unit]): IO[Unit] =
+  private def withBucket(resource: ResourceInfo)(f: ResourceBucket => IO[Unit]): IO[Unit] =
     registry.get(resource.bucketId).flatMap {
-      case Some(bucket: LocalDirectoryBucket) => f(bucket)
-      case _                                  => IO.unit
+      case Some(bucket) => f(bucket)
+      case None         => IO.unit
     }

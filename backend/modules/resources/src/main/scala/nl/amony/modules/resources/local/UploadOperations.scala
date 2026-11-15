@@ -16,14 +16,6 @@ import skunk.Session
 
 import nl.amony.modules.resources.api.*
 
-/** A staged upload: the request body is already in the bucket's temp directory, waiting for the upload command. */
-final case class StagedUpload(resourceId: ResourceId, fileName: String, tempFile: String)
-
-/** An upload that has been validated, optionally remuxed and scanned, ready to be moved into the resource directory. */
-final case class PreparedUpload(tempFile: String, partialHash: String, contentMeta: ContentMeta)
-
-final case class UploadProcessingError(tempFile: String, message: String)
-
 trait UploadOperations extends LocalResourceSyncer, Logging:
 
   private val invalidSequences = List("/", "\\", "..")
@@ -72,7 +64,7 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
     }
 
   /** Streams the request body into the bucket's temp directory. Nothing outside the temp directory is touched. */
-  private[local] def stageUpload(fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, StagedUpload]] =
+  def stageUpload(fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, StagedUpload]] =
     decodeFileName(fileName) match
       case Left(error)                                                 => IO.pure(Left(error))
       case Right(decoded) if invalidSequences.exists(decoded.contains) =>
@@ -95,14 +87,14 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
           case Left(error)          =>
             discardUpload(tempFile).as(Left(UploadError.StorageError(s"Failed to store upload '$decoded': ${error.getMessage}")))
 
-  private[local] def discardUpload(tempFile: String): IO[Unit] =
+  def discardUpload(tempFile: String): IO[Unit] =
     IO.blocking(JFiles.deleteIfExists(config.tempPath.resolve(tempFile))).void
 
   /**
    * Slow, non-transactional part of an upload: scans the staged file and remuxes it when that makes it streamable. The
    * result lives entirely in the temp directory, so a failure leaves nothing observable behind.
    */
-  private[local] def prepareUpload(upload: UploadResource): IO[Either[UploadProcessingError, PreparedUpload]] =
+  def prepareUpload(upload: UploadResource): IO[Either[UploadProcessingError, PreparedUpload]] =
     val tempPath = config.tempPath.resolve(upload.tempFile)
     IO.blocking(JFiles.exists(tempPath)).flatMap:
       case false => IO.pure(Left(UploadProcessingError(upload.tempFile, "the staged upload is no longer available")))
@@ -133,7 +125,7 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
         yield PreparedUpload(upload.tempFile, hash, finalMeta)).value
 
   /** Fast, transactional part of an upload: moves the prepared file into place and inserts the resource. */
-  private[local] def commitUpload(
+  def commitUpload(
     session: Session[IO],
     upload: UploadResource,
     prepared: PreparedUpload

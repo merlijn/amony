@@ -46,9 +46,9 @@ class ResourceModule(
 
   /** The Tapir endpoints of the module. */
   def routes(resourceIndex: ResourceIndex)(using apiSecurity: ApiSecurity): ServerEndpoints[IO] =
-    BucketRoutes.apply(bucketRegistry, resourceIndex, commands) ++
+    BucketRoutes.apply(bucketRegistry, resourceIndex) ++
       CollectionRoutes.apply(resourceDatabase, bucketRegistry) ++
-      ResourceRoutes.apply(bucketRegistry, commands)
+      ResourceRoutes.apply(bucketRegistry)
 
   /** The non-Tapir content routes (downloads, thumbnails and clips), served as plain HttpRoutes. */
   def contentRoutes(using apiSecurity: ApiSecurity): HttpRoutes[IO] =
@@ -77,6 +77,7 @@ object ResourceModule:
       config.previews.tiles.spritePixels
     )
     val resourceDatabase = ResourceDatabase(databasePool)
+    val commands         = ResourceCommands(commandBus)
 
     def bucketFactory(processLimiter: ProcessLimiter): BucketFactory = {
       case localConfig: LocalDirectoryConfig =>
@@ -94,7 +95,8 @@ object ResourceModule:
             config.parallelFactor,
             resourceDatabase,
             eventTopic,
-            ops
+            ops,
+            commands
           )
           (bucket, bucket.sync())
         }
@@ -108,7 +110,6 @@ object ResourceModule:
                           eventTopic,
                           bucketFactory(processLimiter)
                         )
-      commands        = ResourceCommands(bucketRegistry, commandBus)
     yield new ResourceModule(
       resourceDatabase,
       bucketRegistry,

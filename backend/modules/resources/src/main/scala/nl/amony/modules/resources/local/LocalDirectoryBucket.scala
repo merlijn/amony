@@ -10,7 +10,7 @@ import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 import skunk.Session
 
-import nl.amony.modules.auth.api.Role
+import nl.amony.modules.auth.api.{Role, UserId}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.platform.files.*
@@ -21,7 +21,8 @@ class LocalDirectoryBucket(
   parallelFactor: Int,
   db: ResourceDatabase,
   topic: MessageTopic[ResourceEvent],
-  ops: FileOperations
+  ops: FileOperations,
+  commands: ResourceCommands = null
 )(using meter: Meter[IO], tracer: Tracer[IO])
     extends LocalDirectoryBase(config, parallelFactor, db, topic, ops),
       ResourceBucket,
@@ -35,7 +36,7 @@ class LocalDirectoryBucket(
 
   override def requiredRole: Option[Role] = config.requiredRole
 
-  def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap { resource =>
+  override def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap { resource =>
     val resourcePath = config.resourcePath.resolve(resource.path)
     ops.contentMetaForPath(resourcePath).flatMap {
       case Left(e)     => IO(logger.error(s"Skipping metadata rescan for $resourcePath", e.cause))
@@ -46,11 +47,17 @@ class LocalDirectoryBucket(
     }
   }.compile.drain
 
+  override def fixStreamability(resourceId: ResourceId): IO[Either[ResourceCommandError, Unit]] =
+    commands.submitFixStreamability(this, resourceId)
+
+  override def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, ResourceInfo]] =
+    commands.submitUpload(this, userId, fileName, source)
+
   /**
    * Cheap validation for the request: reports whether a remux makes sense without touching the file. The remux itself
    * runs in the command consumer.
    */
-  private[local] def checkStreamabilityFix(resourceId: ResourceId): IO[Either[ResourceCommandError, Unit]] =
+  override def checkStreamabilityFix(resourceId: ResourceId): IO[Either[ResourceCommandError, Unit]] =
     getResourceInfo(resourceId).map:
       case None                                                 => Left(ResourceCommandError.NotFound)
       case Some(info) if !info.streamable.contains(false)       =>
@@ -60,7 +67,7 @@ class LocalDirectoryBucket(
       case Some(_)                                              => Right(())
 
   /** Remuxes to the bucket's temp directory without touching the live file. Returns None when nothing is needed. */
-  private[local] def remuxForStreaming(resourceId: ResourceId): IO[Either[StreamabilityError, Option[String]]] =
+  override def remuxForStreaming(resourceId: ResourceId): IO[Either[StreamabilityError, Option[String]]] =
     getResourceInfo(resourceId).flatMap:
       case None                                           => IO.pure(Left(StreamabilityError.ResourceNotFound(resourceId)))
       case Some(info) if !info.streamable.contains(false) => IO.pure(Right(None))
@@ -70,7 +77,7 @@ class LocalDirectoryBucket(
    * Commits a remux: replaces the live file, refreshes its metadata and publishes ResourceModified, all in the caller's
    * transaction. That way the command's success and the resource update commit together.
    */
-  private[local] def commitStreamabilityFix(
+  override def commitStreamabilityFix(
     session: Session[IO],
     resourceId: ResourceId,
     tempFile: Option[String]
@@ -83,7 +90,7 @@ class LocalDirectoryBucket(
           case Right(updated) =>
             (db.upsertResource(updated)(using Some(session)) >> topic.publish(session, ResourceModified(updated))).as(Right(()))
 
-  def reComputePartialHashes(): IO[Unit] = getAllResources.evalMap { resource =>
+  override def reComputePartialHashes(): IO[Unit] = getAllResources.evalMap { resource =>
     val file = config.resourcePath.resolve(resource.path)
     config.hashingAlgorithm.createHash(file).flatMap: partialHash =>
       val updated = resource.copy(partialHash = Some(partialHash))
@@ -98,17 +105,17 @@ class LocalDirectoryBucket(
       case None       => IO.pure(None)
       case Some(info) => ops.derivedResource(info, operation)
 
-  def generateAllPreviews(): IO[Unit] =
+  override def generateAllPreviews(): IO[Unit] =
     getAllResources
       .flatMap(info => fs2.Stream.emits(ops.previewOperations(info).map(info -> _)))
       .parEvalMap(parallelFactor) { case (info, operation) => ops.runPreviewOperation(info, operation) }
       .compile.drain
 
-  def generatePreviewsIfEnabled(info: ResourceInfo): IO[Unit] =
+  override def generatePreviewsIfEnabled(info: ResourceInfo): IO[Unit] =
     if config.generatePreviewsOnAdd then ops.generatePreviews(info)
     else IO.unit
 
-  def deleteFile(info: ResourceInfo): IO[Unit] =
+  override def deleteFile(info: ResourceInfo): IO[Unit] =
     val path = config.resourcePath.resolve(info.path)
     IO.blocking(path.deleteIfExists()).void
 
@@ -180,7 +187,7 @@ class LocalDirectoryBucket(
       db.updateThumbnailTimestamp(id, resourceId, timestamp)
         .flatMap(_.map(updated => topic.publish(s, ResourceThumbnailUpdated(timestamp, updated))).getOrElse(IO.unit))
 
-  def importBackup(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] =
+  override def importBackup(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] =
     db.truncateTables() >> resources.map(r => r.copy(resourceId = config.generateId(), title = None))
       .evalMap(resource => IO(logger.info(s"Inserting resource: ${resource.resourceId}")) >> db.insertResource(resource)).compile.drain
 

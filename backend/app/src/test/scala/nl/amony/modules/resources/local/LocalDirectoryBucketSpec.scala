@@ -227,7 +227,7 @@ class LocalDirectoryBucketSpec extends AnyWordSpecLike with TestContainerForAll 
       val bucketId = BucketId("media")
       val res      = newResource(bucketId)
 
-      val bucket = mock[LocalDirectoryBucket](RETURNS_DEFAULTS)
+      val bucket = mock[ResourceBucket](RETURNS_DEFAULTS)
       bucket.generatePreviewsIfEnabled(res) returns IO.unit
 
       val registry  = mock[BucketRegistry](RETURNS_DEFAULTS)

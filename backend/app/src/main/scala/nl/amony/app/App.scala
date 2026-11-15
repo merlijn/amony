@@ -86,7 +86,7 @@ object App extends ResourceApp.Forever with Logging {
                              )
         resourceProcessor  = ResourceProcessor(resourceModule.bucketRegistry)
         _                 <- eventTopic.processAtLeastOnce("resource-processor")(resourceProcessor.processEvent).compile.drain.background
-        _                 <- resourceModule.commands.processAtLeastOnce.compile.drain.background
+        _                 <- resourceModule.commands.processAtLeastOnce(resourceModule.bucketRegistry).compile.drain.background
         authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
         apiRoutes          = {
           given ApiSecurity = authModule.apiSecurity

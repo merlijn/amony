@@ -10,7 +10,6 @@ import sttp.tapir.{FieldName, Schema, SchemaType}
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.api.{ImageProperties, ResourceInfo, VideoProperties}
-import nl.amony.platform.messagebus.CommandStatus
 import nl.amony.platform.tapir.required
 
 case class BucketDto(bucketId: String, config: Option[BucketConfigDto] = None) derives Codec, sttp.tapir.Schema
@@ -25,16 +24,6 @@ case class UserMetaDto(
 ) derives Codec, sttp.tapir.Schema
 
 case class BulkTagsUpdateDto(ids: List[String], tagsToRemove: List[String], tagsToAdd: List[String]) derives Codec, sttp.tapir.Schema
-
-case class CommandDto(commandId: String) derives Codec, sttp.tapir.Schema
-
-case class CommandStatusDto(
-  commandId: String,
-  state: String,
-  attempts: Int,
-  error: Option[String],
-  updatedAt: Long
-) derives Codec, sttp.tapir.Schema
 
 case class ResourceMetaDto(width: Int, height: Int, fps: Float, duration: Long, codec: Option[String], streamable: Option[Boolean] = None)
     derives Codec, sttp.tapir.Schema
@@ -188,13 +177,4 @@ def toDto(collection: Collection): CollectionDto =
     name        = collection.name,
     description = collection.description,
     tags        = collection.userLabels.toList
-  )
-
-def toDto(status: CommandStatus): CommandStatusDto =
-  CommandStatusDto(
-    commandId = status.id.value,
-    state     = status.state.tag,
-    attempts  = status.attempts,
-    error     = status.lastError,
-    updatedAt = status.updatedAt.toInstant.toEpochMilli
   )
