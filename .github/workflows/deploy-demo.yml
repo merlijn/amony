@@ -145,6 +145,9 @@ jobs:
           docker compose $COMPOSE_FILES --profile zitadel pull amony nginx
           # --build refreshes the locally built certbot image from the checkout.
           docker compose $COMPOSE_FILES --profile zitadel up -d --build
+          # Bind-mounted nginx config is not part of the container spec, so recreate the proxy to
+          # re-render the templates and pick up config changes.
+          docker compose $COMPOSE_FILES --profile zitadel up -d --no-deps --force-recreate nginx
           docker image prune -f
           REMOTE
 
