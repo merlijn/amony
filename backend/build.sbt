@@ -56,7 +56,7 @@ addCommandAlias("exportOpenApiSpec", "app/runMain nl.amony.app.ExportOpenApiSpec
 
 inThisBuild(
   List(
-    scalaVersion      := "3.9.0",
+    scalaVersion      := "3.10.1",
     semanticdbEnabled := true,
     semanticdbVersion := scalafixSemanticdb.revision
   )
@@ -65,7 +65,7 @@ inThisBuild(
 commands += Command.command("prod") { state =>
   val settings = Seq(
     ThisBuild / prodBuild := true,
-    scalaVersion          := "3.9.0",
+    scalaVersion          := "3.10.1",
     semanticdbEnabled     := true,
     semanticdbVersion     := scalafixSemanticdb.revision
   )
@@ -104,9 +104,9 @@ val javaDevOpts = Seq(
 
 val circeVersion  = "0.14.17"
 val http4sVersion = "0.23.38"
-val tapirVersion  = "1.14.0"
-val sttpVersion   = "4.1.0"
-val otel4sVersion = "1.1.0"
+val tapirVersion  = "1.14.1"
+val sttpVersion   = "4.1.2"
+val otel4sVersion = "1.2.0"
 
 val commonExclusions = List(
   ExclusionRule("org.scala-lang", "scala3-library_sjs"),
@@ -135,7 +135,7 @@ val tapirDependencies = Seq(
 val emailDependencies = Seq(
   "org.typelevel"                 %% "cats-core"  % "2.13.0",
   "io.circe"                      %% "circe-core" % circeVersion,
-  "com.outr"                      %% "scribe"     % "3.19.0",
+  "com.outr"                      %% "scribe"     % "3.19.1",
   "com.softwaremill.sttp.client4" %% "core"       % sttpVersion
 )
 
@@ -146,7 +146,7 @@ val emailTestDependencies = Seq(
 val filesDependencies = Seq(
   "org.typelevel" %% "cats-effect" % "3.7.1",
   "co.fs2"        %% "fs2-core"    % "3.14.0",
-  "com.outr"      %% "scribe"      % "3.19.0"
+  "com.outr"      %% "scribe"      % "3.19.1"
 )
 
 val filesTestDependencies = Seq(
@@ -160,7 +160,7 @@ val subprocessDependencies = Seq(
   "io.circe"      %% "circe-core"        % circeVersion,
   "io.circe"      %% "circe-generic"     % circeVersion,
   "io.circe"      %% "circe-parser"      % circeVersion,
-  "com.outr"      %% "scribe"            % "3.19.0",
+  "com.outr"      %% "scribe"            % "3.19.1",
   "org.typelevel" %% "otel4s-core"       % otel4sVersion,
   "org.typelevel" %% "otel4s-core-trace" % otel4sVersion
 )
@@ -172,7 +172,7 @@ val subprocessTestDependencies = Seq(
 
 val databaseDependencies = Seq(
   "org.typelevel"         %% "cats-effect"               % "3.7.1",
-  "com.outr"              %% "scribe"                    % "3.19.0",
+  "com.outr"              %% "scribe"                    % "3.19.1",
   "org.tpolecat"          %% "skunk-core"                % "2.0.0-RC3",
   "com.github.pureconfig" %% "pureconfig-core"           % "0.17.11",
   "com.github.pureconfig" %% "pureconfig-generic-scala3" % "0.17.11",
@@ -190,7 +190,7 @@ val messageBusDependencies = Seq(
   "org.typelevel"         %% "cats-effect"               % "3.7.1",
   "co.fs2"                %% "fs2-core"                  % "3.14.0",
   "io.circe"              %% "circe-core"                % circeVersion,
-  "com.outr"              %% "scribe"                    % "3.19.0",
+  "com.outr"              %% "scribe"                    % "3.19.1",
   "org.tpolecat"          %% "skunk-core"                % "2.0.0-RC3",
   "org.tpolecat"          %% "skunk-circe"               % "2.0.0-RC3",
   "com.github.pureconfig" %% "pureconfig-core"           % "0.17.11",
@@ -211,7 +211,7 @@ val authDependencies = Seq(
   "co.fs2"                        %% "fs2-core"                  % "3.14.0",
   "io.circe"                      %% "circe-core"                % circeVersion,
   "io.circe"                      %% "circe-parser"              % circeVersion,
-  "com.outr"                      %% "scribe"                    % "3.19.0",
+  "com.outr"                      %% "scribe"                    % "3.19.1",
   "com.softwaremill.sttp.tapir"   %% "tapir-core"                % tapirVersion,
   "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"          % tapirVersion,
   "com.softwaremill.sttp.shared"  %% "fs2"                       % "1.6.0",
@@ -223,7 +223,7 @@ val authDependencies = Seq(
   "com.github.pureconfig"         %% "pureconfig-core"           % "0.17.11",
   "com.github.pureconfig"         %% "pureconfig-generic-scala3" % "0.17.11",
   "com.github.jwt-scala"          %% "jwt-circe"                 % "11.0.4",
-  "org.bouncycastle"               % "bcprov-jdk18on"            % "1.85.2"
+  "org.bouncycastle"               % "bcprov-jdk18on"            % "1.87"
 )
 
 val resourcesDependencies = Seq(
@@ -233,8 +233,8 @@ val resourcesDependencies = Seq(
   "io.circe"                      %% "circe-core"                % circeVersion,
   "io.circe"                      %% "circe-generic"             % circeVersion,
   "io.circe"                      %% "circe-parser"              % circeVersion,
-  "com.outr"                      %% "scribe"                    % "3.19.0",
-  "com.outr"                      %% "scribe-slf4j"              % "3.19.0",
+  "com.outr"                      %% "scribe"                    % "3.19.1",
+  "com.outr"                      %% "scribe-slf4j"              % "3.19.1",
   "org.typelevel"                 %% "otel4s-core"               % otel4sVersion,
   "org.typelevel"                 %% "otel4s-core-trace"         % otel4sVersion,
   "org.typelevel"                 %% "otel4s-oteljava"           % otel4sVersion,
@@ -253,8 +253,8 @@ val resourcesDependencies = Seq(
   "com.softwaremill.sttp.client4" %% "core"                      % sttpVersion,
   "com.softwaremill.sttp.client4" %% "circe"                     % sttpVersion,
   "com.softwaremill.sttp.client4" %% "cats"                      % sttpVersion,
-  "org.apache.tika"                % "tika-core"                 % "3.3.1",
-  "org.jsoup"                      % "jsoup"                     % "1.23.2",
+  "org.apache.tika"                % "tika-core"                 % "3.3.3",
+  "org.jsoup"                      % "jsoup"                     % "1.24.1",
   "com.softwaremill.sttp.shared"  %% "fs2"                       % "1.6.0"
 )
 
@@ -264,12 +264,12 @@ val searchDependencies = Seq(
   "io.circe"                    %% "circe-core"                % circeVersion,
   "io.circe"                    %% "circe-generic"             % circeVersion,
   "io.circe"                    %% "circe-parser"              % circeVersion,
-  "com.outr"                    %% "scribe"                    % "3.19.0",
+  "com.outr"                    %% "scribe"                    % "3.19.1",
   "com.softwaremill.sttp.tapir" %% "tapir-core"                % tapirVersion,
   "com.softwaremill.sttp.tapir" %% "tapir-json-circe"          % tapirVersion,
   "com.github.pureconfig"       %% "pureconfig-core"           % "0.17.11",
   "com.github.pureconfig"       %% "pureconfig-generic-scala3" % "0.17.11",
-  "org.apache.solr"              % "solr-core"                 % "9.10.1",
+  "org.apache.solr"              % "solr-core"                 % "9.11.0",
   "org.apache.commons"           % "commons-compress"          % "1.28.0"
 )
 
@@ -278,36 +278,36 @@ val appDependencies = Seq(
   "org.typelevel"                 %% "cats-mtl"                                  % "1.7.0",
   "co.fs2"                        %% "fs2-core"                                  % "3.14.0",
   "co.fs2"                        %% "fs2-io"                                    % "3.14.0",
-  "com.typesafe"                   % "config"                                    % "1.4.9",
+  "com.typesafe"                   % "config"                                    % "1.4.10",
   "com.github.pureconfig"         %% "pureconfig-core"                           % "0.17.11",
   "com.github.pureconfig"         %% "pureconfig-generic-scala3"                 % "0.17.11",
   "org.tpolecat"                  %% "skunk-core"                                % "2.0.0-RC3",
   "org.http4s"                    %% "http4s-ember-server"                       % http4sVersion,
   "org.http4s"                    %% "http4s-dsl"                                % http4sVersion,
   "org.http4s"                    %% "http4s-circe"                              % http4sVersion,
-  "org.http4s"                    %% "http4s-otel4s-middleware-core"             % "0.19.0",
-  "org.http4s"                    %% "http4s-otel4s-middleware-metrics"          % "0.19.0",
-  "io.opentelemetry"               % "opentelemetry-exporter-otlp"               % "1.61.0" % Runtime,
-  "io.opentelemetry"               % "opentelemetry-sdk-extension-autoconfigure" % "1.61.0" % Runtime,
+  "org.http4s"                    %% "http4s-otel4s-middleware-core"             % "0.20.0",
+  "org.http4s"                    %% "http4s-otel4s-middleware-metrics"          % "0.20.0",
+  "io.opentelemetry"               % "opentelemetry-exporter-otlp"               % "1.68.0" % Runtime,
+  "io.opentelemetry"               % "opentelemetry-sdk-extension-autoconfigure" % "1.68.0" % Runtime,
   "org.typelevel"                 %% "otel4s-core"                               % otel4sVersion,
   "org.typelevel"                 %% "otel4s-core-trace"                         % otel4sVersion,
   "org.typelevel"                 %% "otel4s-oteljava"                           % otel4sVersion,
   "org.typelevel"                 %% "otel4s-semconv"                            % otel4sVersion,
   "org.typelevel"                 %% "log4cats-slf4j"                            % "2.8.0",
-  "com.outr"                      %% "scribe"                                    % "3.19.0",
-  "com.outr"                      %% "scribe-slf4j"                              % "3.19.0",
+  "com.outr"                      %% "scribe"                                    % "3.19.1",
+  "com.outr"                      %% "scribe-slf4j"                              % "3.19.1",
   "com.softwaremill.sttp.tapir"   %% "tapir-core"                                % tapirVersion,
   "com.softwaremill.sttp.tapir"   %% "tapir-http4s-server"                       % tapirVersion,
   "com.softwaremill.sttp.tapir"   %% "tapir-cats-effect"                         % tapirVersion,
   "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle"                   % tapirVersion,
   "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"                          % tapirVersion,
   "com.softwaremill.sttp.tapir"   %% "tapir-otel4s-tracing"                      % tapirVersion,
-  "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"                        % "0.12.0",
+  "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml"                        % "0.12.1",
   "com.softwaremill.sttp.shared"  %% "fs2"                                       % "1.6.0",
   "com.softwaremill.sttp.client4" %% "core"                                      % sttpVersion,
   "com.softwaremill.sttp.client4" %% "circe"                                     % sttpVersion,
   "com.softwaremill.sttp.client4" %% "cats"                                      % sttpVersion,
-  "com.comcast"                   %% "ip4s-core"                                 % "3.7.0",
+  "com.comcast"                   %% "ip4s-core"                                 % "3.8.0",
   "org.slf4j"                      % "slf4j-api"                                 % "2.0.20"
 )
 
