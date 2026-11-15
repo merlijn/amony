@@ -23,7 +23,7 @@ env:
 
 jobs:
   changes:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       pull-requests: read
@@ -45,7 +45,7 @@ jobs:
 
   web-assets:
 
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     defaults:
       run:
@@ -243,7 +243,7 @@ jobs:
 
   create-manifest:
     needs: build-backend
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     if: needs.build-backend.result == 'success' && needs.build-backend.outputs.publish == 'true'
 
     steps:
