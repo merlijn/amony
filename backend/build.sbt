@@ -56,7 +56,7 @@ addCommandAlias("exportOpenApiSpec", "app/runMain nl.amony.app.ExportOpenApiSpec
 
 inThisBuild(
   List(
-    scalaVersion      := "3.10.1",
+    scalaVersion      := "3.9.0",
     semanticdbEnabled := true,
     semanticdbVersion := scalafixSemanticdb.revision
   )
@@ -65,7 +65,7 @@ inThisBuild(
 commands += Command.command("prod") { state =>
   val settings = Seq(
     ThisBuild / prodBuild := true,
-    scalaVersion          := "3.10.1",
+    scalaVersion          := "3.9.0",
     semanticdbEnabled     := true,
     semanticdbVersion     := scalafixSemanticdb.revision
   )
