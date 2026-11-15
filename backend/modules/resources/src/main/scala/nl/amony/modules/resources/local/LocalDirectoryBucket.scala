@@ -37,6 +37,21 @@ class LocalDirectoryBucket(
   override def id: BucketId = BucketId(config.id)
 
   override def requiredRole: Option[Role] = config.requiredRole
+  
+  override def getResource(resourceId: ResourceId): IO[Option[Resource]] =
+    getResourceInfo(resourceId).map:
+      case None => None
+      case Some(info) =>
+        val path = config.resourcePath.resolve(info.path)
+        if !path.exists() then {
+          logger.warn(s"Resource '$resourceId' was found in the database but no file exists: $path")
+          None
+        } else {
+          Some(Resource(info, ResourceContent.fromPath(path, info.contentType, ops.originalETag(info))))
+        }
+  
+  override def getAllResources: fs2.Stream[IO, ResourceInfo] =
+    db.getStream(id)
 
   override def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap { resource =>
     val resourcePath = config.resourcePath.resolve(resource.path)
@@ -146,16 +161,6 @@ class LocalDirectoryBucket(
     val path = config.resourcePath.resolve(info.path)
     IO.blocking(path.deleteIfExists()).void
 
-  override def getResource(resourceId: ResourceId): IO[Option[Resource]] =
-    getResourceInfo(resourceId).map:
-      case None       => None
-      case Some(info) =>
-        val path = config.resourcePath.resolve(info.path)
-        if !path.exists() then {
-          logger.warn(s"Resource '$resourceId' was found in the database but no file exists: $path")
-          None
-        } else { Some(Resource(info, ResourceContent.fromPath(path, info.contentType, ops.originalETag(info)))) }
-
   override def deleteResource(resourceId: ResourceId): IO[Unit] =
     getResourceInfo(resourceId).flatMap:
       case None       => IO.pure(())
@@ -218,6 +223,4 @@ class LocalDirectoryBucket(
     db.truncateTables() >> resources.map(r => r.copy(resourceId = config.generateId(), title = None))
       .evalMap(resource => IO(logger.info(s"Inserting resource: ${resource.resourceId}")) >> db.insertResource(resource)).compile.drain
 
-  override def getAllResources: fs2.Stream[IO, ResourceInfo] =
-    db.getStream(id)
 }
