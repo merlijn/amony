@@ -861,6 +861,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '500':
           description: Internal server error
           content:
@@ -905,6 +911,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
         '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
           description: ''
           content:
             application/json:
@@ -959,6 +971,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '500':
           description: Internal server error
           content:
@@ -1003,6 +1021,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
         '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
           description: ''
           content:
             application/json:
@@ -1058,6 +1082,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '500':
           description: Internal server error
           content:
@@ -1103,6 +1133,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
         '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
           description: ''
           content:
             application/json:
@@ -1161,6 +1197,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '500':
           description: Internal server error
           content:
@@ -1211,6 +1253,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
         '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
           description: ''
           content:
             application/json:

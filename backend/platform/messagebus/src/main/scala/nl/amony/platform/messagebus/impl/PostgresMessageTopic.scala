@@ -1,4 +1,4 @@
-package nl.amony.platform.messagebus
+package nl.amony.platform.messagebus.impl
 
 import scala.concurrent.duration.*
 
@@ -9,6 +9,8 @@ import fs2.Stream
 import scribe.Logging
 import skunk.Session
 import skunk.data.Identifier
+
+import nl.amony.platform.messagebus.*
 
 /**
  * A [[MessageTopic]] backed by the durable message log. Producers append a row to a key-derived partition and send a

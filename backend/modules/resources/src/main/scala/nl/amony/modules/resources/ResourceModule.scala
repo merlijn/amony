@@ -16,14 +16,15 @@ import nl.amony.modules.resources.api.{
   LocalDirectoryConfig,
   ResourceEvent,
   ResourceIndex,
+  ResourceJob,
   ThumbnailFormats,
   ThumbnailResolutions,
   ThumbnailTiles
 }
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
 import nl.amony.modules.resources.http.{BucketRoutes, CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
-import nl.amony.modules.resources.local.{FileOperations, LocalDirectoryBucket}
-import nl.amony.platform.messagebus.MessageTopic
+import nl.amony.modules.resources.local.{FileOperations, LocalDirectoryBucket, ResourceJobs}
+import nl.amony.platform.messagebus.{JobBus, MessageTopic}
 import nl.amony.platform.subprocess.{ProcessLimiter, ProcessSettings}
 import nl.amony.platform.tapir.ServerEndpoints
 
@@ -35,6 +36,7 @@ import nl.amony.platform.tapir.ServerEndpoints
 class ResourceModule(
   private val resourceDatabase: ResourceDatabase,
   val bucketRegistry: BucketRegistry,
+  val jobs: ResourceJobs,
   val thumbResolutions: ThumbnailResolutions,
   val thumbFormats: ThumbnailFormats,
   val thumbTiles: ThumbnailTiles,
@@ -60,7 +62,8 @@ object ResourceModule:
     config: ResourceConfig,
     processSettings: ProcessSettings,
     databasePool: Resource[IO, Session[IO]],
-    eventTopic: MessageTopic[ResourceEvent]
+    eventTopic: MessageTopic[ResourceEvent],
+    jobBus: JobBus[ResourceJob]
   )(using Meter[IO], Tracer[IO]): Resource[IO, ResourceModule] =
     val thumbResolutions = ThumbnailResolutions(
       config.previews.allowedResolutions,
@@ -74,6 +77,7 @@ object ResourceModule:
       config.previews.tiles.spritePixels
     )
     val resourceDatabase = ResourceDatabase(databasePool)
+    val jobs             = ResourceJobs(jobBus)
 
     def bucketFactory(processLimiter: ProcessLimiter): BucketFactory = {
       case localConfig: LocalDirectoryConfig =>
@@ -91,7 +95,8 @@ object ResourceModule:
             config.parallelFactor,
             resourceDatabase,
             eventTopic,
-            ops
+            ops,
+            jobBus
           )
           (bucket, bucket.sync())
         }
@@ -99,10 +104,16 @@ object ResourceModule:
 
     for
       processLimiter <- ProcessLimiter.resource(processSettings)
-      bucketRegistry <- DatabaseBucketRegistry.resource(config.defaultBucket, BucketsDal(databasePool), eventTopic, bucketFactory(processLimiter))
+      bucketRegistry <- DatabaseBucketRegistry.resource(
+                          config.defaultBucket,
+                          BucketsDal(databasePool),
+                          eventTopic,
+                          bucketFactory(processLimiter)
+                        )
     yield new ResourceModule(
       resourceDatabase,
       bucketRegistry,
+      jobs,
       thumbResolutions,
       thumbFormats,
       thumbTiles,

@@ -14,7 +14,6 @@ import sttp.tapir.json.circe.*
 
 import nl.amony.modules.auth.api.*
 import nl.amony.modules.resources.api.*
-import nl.amony.modules.resources.local.LocalDirectoryBucket
 import nl.amony.platform.tapir.apiNoCacheHeaders
 import nl.amony.platform.tapir.error.{BadRequestError, ConflictError, ErrorResponse, NotFoundError, SecurityError}
 import nl.amony.platform.tapir.{RoutesModule, ServerEndpoints, routes}
@@ -101,12 +100,14 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
   case object NdJson extends CodecFormat:
     override val mediaType: sttp.model.MediaType = sttp.model.MediaType.unsafeParse("application/x-ndjson")
 
-  type BucketAdminError = SecurityError | NotFoundError | BadRequestError | ConflictError
+  type BucketAdminError  = SecurityError | NotFoundError | BadRequestError | ConflictError
+  type BucketActionError = SecurityError | NotFoundError
 
   private val errorOutput: EndpointOutput[BucketAdminError] =
     ErrorResponse.of[SecurityError, NotFoundError, BadRequestError, ConflictError]
 
-  private val actionErrorOutput: EndpointOutput[SecurityError] = ErrorResponse.securityErrors
+  private val actionErrorOutput: EndpointOutput[BucketActionError] =
+    ErrorResponse.of[SecurityError, NotFoundError]
 
   private val getBuckets =
     register(endpoint.name("getBuckets").tag("buckets")
@@ -204,8 +205,11 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
       .securityIn(securityInput)
       .errorOut(actionErrorOutput))
 
+  private def notFound(bucketId: BucketId): NotFoundError =
+    NotFoundError("bucket_not_found", s"Bucket '$bucketId' not found")
+
   private def toApiError(error: BucketError): BucketAdminError = error match
-    case BucketError.NotFound(id)        => NotFoundError("bucket_not_found", s"Bucket '$id' not found")
+    case BucketError.NotFound(id)        => notFound(id)
     case BucketError.AlreadyExists(id)   => ConflictError("bucket_exists", s"Bucket '$id' already exists")
     case BucketError.Modified(id)        =>
       ConflictError("bucket_modified", s"Bucket '$id' was changed by someone else in the meantime, reload it and try again")
@@ -219,10 +223,17 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
   private def parseDto(dto: BucketConfigDto): EitherT[IO, BucketAdminError, ResourceBucketConfig] =
     EitherT.fromEither[IO](BucketConfigDto.toConfig(dto)).leftMap(BadRequestError("invalid_bucket", _))
 
-  def apply(registry: BucketRegistry, resourceIndex: ResourceIndex)(using apiSecurity: ApiSecurity): ServerEndpoints[IO] =
+  def apply(registry: BucketRegistry, resourceIndex: ResourceIndex)(
+    using apiSecurity: ApiSecurity
+  ): ServerEndpoints[IO] =
 
     def requireConfig(bucketId: BucketId): EitherT[IO, BucketAdminError, StoredBucket] =
       EitherT.fromOptionF(registry.getConfig(bucketId), toApiError(BucketError.NotFound(bucketId)))
+
+    def withBucket[O](bucketId: BucketId)(
+      fn: ResourceBucket => EitherT[IO, BucketActionError, O]
+    ): EitherT[IO, BucketActionError, O] =
+      EitherT.fromOptionF(registry.get(bucketId), notFound(bucketId)).flatMap(fn)
 
     routes[IO] {
       securedServerLogic(endpoint = getBuckets, requiredPermission = Permission.ViewResource) { auth => _ =>
@@ -262,103 +273,96 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
         EitherT(registry.delete(bucketId, force.getOrElse(false))).leftMap(toApiError)
       }
 
-      securedServerLogic(endpoint = refresh, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
-        val result = registry.get(bucketId).flatMap:
-          case Some(bucket: LocalDirectoryBucket) =>
-            logger.info(s"Refreshing resources in bucket '$bucketId'")
-            bucket.refresh() >> IO(logger.info(s"Finished refreshing resources in bucket '$bucketId'"))
-          case _                                  =>
-            IO(logger.info(s"Cannot refresh bucket '$bucketId'"))
-
-        result.map(Right(_))
+      securedServerLogicT(endpoint = refresh, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
+        withBucket(bucketId) { bucket =>
+          EitherT.liftF(
+            IO(logger.info(s"Refreshing resources in bucket '$bucketId'")) >>
+              bucket.refresh() >>
+              IO(logger.info(s"Finished refreshing resources in bucket '$bucketId'"))
+          )
+        }
       }
 
-      securedServerLogic(endpoint = reIndex, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
-        val result = registry.get(bucketId).flatMap:
-          case None         => IO.unit
-          case Some(bucket) =>
-            logger.info(s"Re-indexing all resources in bucket '$bucketId'")
-            resourceIndex.reindex(bucket) >> IO(logger.info(s"Re-indexed all resources in bucket '$bucketId'"))
-
-        result.map(Right(_))
+      securedServerLogicT(endpoint = reIndex, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
+        withBucket(bucketId) { bucket =>
+          EitherT.liftF(
+            IO(logger.info(s"Re-indexing all resources in bucket '$bucketId'")) >>
+              resourceIndex.reindex(bucket) >>
+              IO(logger.info(s"Re-indexed all resources in bucket '$bucketId'"))
+          )
+        }
       }
 
-      securedServerLogic(endpoint = rescanMetaData, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
-        val result = registry.get(bucketId).flatMap:
-          case Some(bucket: LocalDirectoryBucket) =>
-            logger.info(s"Re-scanning meta data of all resources in bucket '$bucketId'")
-            bucket.reScanAllMetadata() >> IO(logger.info(s"Finished re-scanning meta data of all resources in bucket '$bucketId'"))
-          case _                                  =>
-            logger.info(s"Cannot re-scan meta data of bucket '$bucketId'")
-            IO.unit
-
-        result.map(Right(_))
+      securedServerLogicT(endpoint = rescanMetaData, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
+        withBucket(bucketId) { bucket =>
+          EitherT.liftF(
+            IO(logger.info(s"Re-scanning meta data of all resources in bucket '$bucketId'")) >>
+              bucket.reScanAllMetadata() >>
+              IO(logger.info(s"Finished re-scanning meta data of all resources in bucket '$bucketId'"))
+          )
+        }
       }
 
-      securedServerLogic(endpoint = reComputeHashes, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
-        val result = registry.get(bucketId).flatMap:
-          case Some(bucket: LocalDirectoryBucket) =>
-            logger.info(s"Re-computing partialHashs of all resources in bucket '$bucketId'")
-            bucket.reComputePartialHashes() >> IO(logger.info(s"Finished re-computing partialHashs of all resources in bucket '$bucketId'"))
-          case _                                  =>
-            logger.info(s"Cannot re-compute partialHashs of bucket '$bucketId'")
-            IO.unit
-
-        result.map(Right(_))
+      securedServerLogicT(endpoint = reComputeHashes, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
+        withBucket(bucketId) { bucket =>
+          EitherT.liftF(
+            IO(logger.info(s"Re-computing partialHashs of all resources in bucket '$bucketId'")) >>
+              bucket.reComputePartialHashes() >>
+              IO(logger.info(s"Finished re-computing partialHashs of all resources in bucket '$bucketId'"))
+          )
+        }
       }
 
-      securedServerLogic(endpoint = generatePreviews, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
-        val result = registry.get(bucketId).flatMap:
-          case Some(bucket: LocalDirectoryBucket) =>
-            logger.info(s"Generating previews for all resources in bucket '$bucketId'")
-            bucket.generateAllPreviews() >> IO(logger.info(s"Finished generating previews for bucket '$bucketId'"))
-          case _                                  =>
-            logger.info(s"Cannot generate previews for bucket '$bucketId'")
-            IO.unit
-
-        result.map(Right(_))
+      securedServerLogicT(endpoint = generatePreviews, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
+        withBucket(bucketId) { bucket =>
+          EitherT.liftF(
+            IO(logger.info(s"Generating previews for all resources in bucket '$bucketId'")) >>
+              bucket.generateAllPreviews() >>
+              IO(logger.info(s"Finished generating previews for bucket '$bucketId'"))
+          )
+        }
       }
 
-      securedServerLogic(endpoint = fixNonStreamable, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
-        val result = registry.get(bucketId).flatMap:
-          case Some(bucket: LocalDirectoryBucket) =>
-            logger.info(s"Normalizing non-streamable resources in bucket '$bucketId'")
-            resourceIndex.nonStreamable(bucketId)
-              .evalMap(bucket.fixStreamability)
-              .compile.drain >> IO(logger.info(s"Finished normalizing non-streamable resources in bucket '$bucketId'"))
-          case _                                  =>
-            IO(logger.info(s"Cannot normalize non-streamable resources in bucket '$bucketId'"))
-
-        result.map(Right(_))
-      }
-
-      securedServerLogic(endpoint = exportBucket, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
-        registry.get(bucketId).flatMap:
-          case Some(bucket: LocalDirectoryBucket) =>
-            logger.info(s"Exporting resources in bucket '$bucketId'")
-            val stream = bucket.getAllResources.map(resource => summon[io.circe.Codec[ResourceDto]].apply(toDto(resource)).noSpaces).intersperse("\n")
-              .through(fs2.text.utf8.encode[IO])
-            IO(Right(stream))
-          case _                                  =>
-            logger.info(s"Cannot backup bucket '$bucketId'")
-            IO(Right(fs2.Stream.empty[IO]))
-      }
-
-      securedServerLogic(endpoint = importBucket, requiredPermission = Permission.ManageBuckets)(_ =>
-        (bucketId, stream) =>
-          registry.get(bucketId).flatMap:
-            case Some(bucket: LocalDirectoryBucket) =>
-              logger.info(s"Importing resources into bucket '$bucketId'")
-
-              val resources: fs2.Stream[IO, ResourceInfo] = stream.through(fs2.text.utf8.decode[IO]).through(fs2.text.lines)
-                .map(line => io.circe.parser.decode[ResourceDto](line).map(_.toDomain())).flatMap {
-                  case Right(resource) => fs2.Stream.emit(resource)
-                  case Left(error)     => fs2.Stream.raiseError[IO](error)
+      securedServerLogicT(endpoint = fixNonStreamable, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
+        withBucket(bucketId) { bucket =>
+          EitherT.liftF(
+            IO(logger.info(s"Normalizing non-streamable resources in bucket '$bucketId'")) >>
+              resourceIndex.nonStreamable(bucketId)
+                .evalMap { resourceId =>
+                  bucket.fixStreamability(resourceId).flatMap {
+                    case Right(_)    => IO.unit
+                    case Left(error) => IO(logger.warn(s"Skipping '$resourceId' in bucket '$bucketId': $error"))
+                  }
                 }
+                .compile.drain >>
+              IO(logger.info(s"Finished normalizing non-streamable resources in bucket '$bucketId'"))
+          )
+        }
+      }
 
-              bucket.importBackup(resources).map(_ => Right(()))
-            case _                                  =>
-              logger.info(s"Cannot import into bucket '$bucketId'")
-              IO(Right(()))
+      securedServerLogicT(endpoint = exportBucket, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
+        withBucket(bucketId) { bucket =>
+          EitherT.liftF(IO(logger.info(s"Exporting resources in bucket '$bucketId'"))).map { _ =>
+            bucket.getAllResources
+              .map(resource => summon[io.circe.Codec[ResourceDto]].apply(toDto(resource)).noSpaces).intersperse("\n")
+              .through(fs2.text.utf8.encode[IO])
+          }
+        }
+      }
+
+      securedServerLogicT(endpoint = importBucket, requiredPermission = Permission.ManageBuckets)(_ =>
+        (bucketId, stream) =>
+          withBucket(bucketId) { bucket =>
+            val resources: fs2.Stream[IO, ResourceInfo] = stream.through(fs2.text.utf8.decode[IO]).through(fs2.text.lines)
+              .map(line => io.circe.parser.decode[ResourceDto](line).map(_.toDomain())).flatMap {
+                case Right(resource) => fs2.Stream.emit(resource)
+                case Left(error)     => fs2.Stream.raiseError[IO](error)
+              }
+
+            EitherT.liftF(
+              IO(logger.info(s"Importing resources into bucket '$bucketId'")) >>
+                bucket.importBackup(resources)
+            )
+          }
       )
     }

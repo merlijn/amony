@@ -10,9 +10,7 @@ import sttp.tapir.*
 import sttp.tapir.json.circe.*
 
 import nl.amony.modules.auth.api.*
-import nl.amony.modules.resources.api.BucketRegistry
-import nl.amony.modules.resources.api.{BucketId, Resource, ResourceBucket, ResourceId, Tag, UploadError}
-import nl.amony.modules.resources.local.LocalDirectoryBucket
+import nl.amony.modules.resources.api.{BucketId, BucketRegistry, Resource, ResourceBucket, ResourceId, ResourceJobError, Tag, UploadError}
 import nl.amony.platform.tapir.apiNoCacheHeaders
 import nl.amony.platform.tapir.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
 import nl.amony.platform.tapir.{RoutesModule, ServerEndpoints, routes}
@@ -89,6 +87,10 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
         NotFoundError("not_found", "Resource not found")
       )
 
+    def mapJobError(error: ResourceJobError): NotFoundError | BadRequestError = error match
+      case ResourceJobError.NotFound          => NotFoundError("not_found", "Resource not found")
+      case ResourceJobError.Rejected(message) => BadRequestError("job_rejected", message)
+
     def getResource(auth: AuthToken, bucketId: BucketId, resourceId: ResourceId): EitherT[IO, NotFoundError, (ResourceBucket, Resource)] =
       for
         bucket   <- getVisibleBucket(auth, bucketId)
@@ -115,11 +117,7 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
       securedServerLogicT(endpoint = fixResourceStreamable, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId) =>
         for
           bucket <- getVisibleBucket(auth, bucketId)
-          _      <- bucket match
-                      case local: LocalDirectoryBucket =>
-                        EitherT.right(IO(logger.info(s"Normalizing resource '$resourceId' in bucket '$bucketId'")) *> local.fixStreamability(resourceId))
-                      case _                           =>
-                        EitherT.right(IO(logger.info(s"Cannot normalize resource '$resourceId' in bucket '$bucketId'")))
+          _      <- EitherT(bucket.fixStreamability(resourceId)).leftMap(mapJobError)
         yield ()
       }
 

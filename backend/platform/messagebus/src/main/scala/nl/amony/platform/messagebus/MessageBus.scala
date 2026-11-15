@@ -7,22 +7,39 @@ import cats.effect.{IO, Resource}
 import pureconfig.ConfigReader
 import skunk.Session
 
-trait PersistentMessageBus:
+import nl.amony.platform.messagebus.impl.{JobStore, MessageLog, PostgresJobBus, PostgresMessageTopic}
+
+trait MessageBus:
 
   def getTopic[E](using key: MessageTopicKey[E]): MessageTopic[E] = getTopicForKey[E](key)
 
   def getTopicForKey[E](key: MessageTopicKey[E]): MessageTopic[E]
 
-object PersistentMessageBus:
+  /**
+   * A durable job queue with a producer-visible status sidecar. Unlike [[getTopic]] it writes one extra row per
+   * submitted job, so it is opt-in: only construct it for job topics.
+   */
+  def getJobBus[P](using key: JobTopicKey[P]): JobBus[P]
 
-  def postgres(pool: Resource[IO, Session[IO]], config: MessageBusConfig = MessageBusConfig()): PersistentMessageBus =
-    new PersistentMessageBus:
+object MessageBus:
+
+  def postgres(pool: Resource[IO, Session[IO]], config: MessageBusConfig = MessageBusConfig()): MessageBus =
+    new MessageBus:
 
       private val log    = MessageLog(pool)
       private val topics = ConcurrentHashMap[String, MessageTopic[?]]()
+      private val jobs   = ConcurrentHashMap[String, JobBus[?]]()
 
       override def getTopicForKey[E](key: MessageTopicKey[E]): MessageTopic[E] =
         topics.computeIfAbsent(key.name, _ => PostgresMessageTopic(key, log, pool, config)).asInstanceOf[MessageTopic[E]]
+
+      override def getJobBus[P](using key: JobTopicKey[P]): JobBus[P] =
+        jobs
+          .computeIfAbsent(
+            key.name,
+            _ => PostgresJobBus(key, getTopicForKey(key.topicKey), log, JobStore(pool), pool, config)
+          )
+          .asInstanceOf[JobBus[P]]
 
 final case class MessageBusConfig(
   // Fallback poll for notifications that were lost or whose consumer crashed. The NOTIFY path handles the
