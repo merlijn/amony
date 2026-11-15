@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import viteCompression from 'vite-plugin-compression'
+import { compression } from 'vite-plugin-compression2'
 import path from 'path';
 
 const backendHost  = 'http://127.0.0.1:8182';
@@ -8,9 +8,10 @@ const backendHost  = 'http://127.0.0.1:8182';
 export default defineConfig({
     plugins: [
         react(),
-        viteCompression({
-            algorithm: 'gzip',
-            ext: '.gz',
+        compression({
+            include: /\.(js|mjs|json|css|html)$/i,
+            threshold: 1025,
+            algorithms: ['gzip'],
         })
     ],
     base: '/',
@@ -18,7 +19,7 @@ export default defineConfig({
     environment: 'jsdom',
     resolve: {
         alias: {
-            'src': path.resolve(__dirname, './src')
+            'src': path.resolve(import.meta.dirname, './src')
         }
     },
     css: {

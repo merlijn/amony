@@ -38,7 +38,7 @@ env:
 jobs:
   deploy:
     name: Deploy to demo
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     environment: demo
     # Only deploy successful, push-triggered main builds (never PR/fork builds).
