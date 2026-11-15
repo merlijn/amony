@@ -136,7 +136,7 @@ databaseChangeLog:
       context: message-log
       changes:
         - sqlFile:
-            path: db/15-command-status.sql
+            path: db/15-job-status.sql
             splitStatements: true
             endDelimiter: ";"
 

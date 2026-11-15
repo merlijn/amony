@@ -10,7 +10,7 @@ import sttp.tapir.*
 import sttp.tapir.json.circe.*
 
 import nl.amony.modules.auth.api.*
-import nl.amony.modules.resources.api.{BucketId, BucketRegistry, Resource, ResourceBucket, ResourceCommandError, ResourceId, Tag, UploadError}
+import nl.amony.modules.resources.api.{BucketId, BucketRegistry, Resource, ResourceBucket, ResourceId, ResourceJobError, Tag, UploadError}
 import nl.amony.platform.tapir.apiNoCacheHeaders
 import nl.amony.platform.tapir.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
 import nl.amony.platform.tapir.{RoutesModule, ServerEndpoints, routes}
@@ -87,9 +87,9 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
         NotFoundError("not_found", "Resource not found")
       )
 
-    def mapCommandError(error: ResourceCommandError): NotFoundError | BadRequestError = error match
-      case ResourceCommandError.NotFound          => NotFoundError("not_found", "Resource not found")
-      case ResourceCommandError.Rejected(message) => BadRequestError("command_rejected", message)
+    def mapJobError(error: ResourceJobError): NotFoundError | BadRequestError = error match
+      case ResourceJobError.NotFound          => NotFoundError("not_found", "Resource not found")
+      case ResourceJobError.Rejected(message) => BadRequestError("job_rejected", message)
 
     def getResource(auth: AuthToken, bucketId: BucketId, resourceId: ResourceId): EitherT[IO, NotFoundError, (ResourceBucket, Resource)] =
       for
@@ -117,7 +117,7 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
       securedServerLogicT(endpoint = fixResourceStreamable, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId) =>
         for
           bucket <- getVisibleBucket(auth, bucketId)
-          _      <- EitherT(bucket.fixStreamability(resourceId)).leftMap(mapCommandError)
+          _      <- EitherT(bucket.fixStreamability(resourceId)).leftMap(mapJobError)
         yield ()
       }
 

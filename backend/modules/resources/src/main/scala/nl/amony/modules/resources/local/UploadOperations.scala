@@ -129,11 +129,10 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
 
   /** Fast, transactional part of an upload: moves the prepared file into place and inserts the resource. */
   def commitUpload(
-    session: Session[IO],
     upload: UploadResource,
     prepared: PreparedUpload
   ): IO[Either[UploadProcessingError, Unit]] =
-    db.getResourceById(upload.bucketId, upload.resourceId)(using Some(session)).flatMap:
+    db.getResourceById(upload.bucketId, upload.resourceId).flatMap:
       case Some(_) => discardUpload(prepared.tempFile).as(Right(()))
       case None    =>
         resolveTargetPath(config.resourcePath.resolve(upload.fileName), 100) match
@@ -160,5 +159,5 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
                          timeLastModified   = Some(attrs.lastModifiedTime().toMillis),
                          thumbnailTimestamp = None
                        )
-              _     <- processEvent(session, ResourceAdded(info))
+              _     <- processEvent(ResourceAdded(info))
             yield Right(())

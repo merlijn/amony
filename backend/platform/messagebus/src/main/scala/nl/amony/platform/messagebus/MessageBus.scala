@@ -7,7 +7,7 @@ import cats.effect.{IO, Resource}
 import pureconfig.ConfigReader
 import skunk.Session
 
-import nl.amony.platform.messagebus.impl.{CommandStore, MessageLog, PostgresCommandBus, PostgresMessageTopic}
+import nl.amony.platform.messagebus.impl.{JobStore, MessageLog, PostgresJobBus, PostgresMessageTopic}
 
 trait MessageBus:
 
@@ -16,30 +16,30 @@ trait MessageBus:
   def getTopicForKey[E](key: MessageTopicKey[E]): MessageTopic[E]
 
   /**
-   * A durable command queue with a producer-visible status sidecar. Unlike [[getTopic]] it writes one extra row per
-   * submitted command, so it is opt-in: only construct it for command topics.
+   * A durable job queue with a producer-visible status sidecar. Unlike [[getTopic]] it writes one extra row per
+   * submitted job, so it is opt-in: only construct it for job topics.
    */
-  def getCommandBus[P](using key: CommandTopicKey[P]): CommandBus[P]
+  def getJobBus[P](using key: JobTopicKey[P]): JobBus[P]
 
 object MessageBus:
 
   def postgres(pool: Resource[IO, Session[IO]], config: MessageBusConfig = MessageBusConfig()): MessageBus =
     new MessageBus:
 
-      private val log      = MessageLog(pool)
-      private val topics   = ConcurrentHashMap[String, MessageTopic[?]]()
-      private val commands = ConcurrentHashMap[String, CommandBus[?]]()
+      private val log    = MessageLog(pool)
+      private val topics = ConcurrentHashMap[String, MessageTopic[?]]()
+      private val jobs   = ConcurrentHashMap[String, JobBus[?]]()
 
       override def getTopicForKey[E](key: MessageTopicKey[E]): MessageTopic[E] =
         topics.computeIfAbsent(key.name, _ => PostgresMessageTopic(key, log, pool, config)).asInstanceOf[MessageTopic[E]]
 
-      override def getCommandBus[P](using key: CommandTopicKey[P]): CommandBus[P] =
-        commands
+      override def getJobBus[P](using key: JobTopicKey[P]): JobBus[P] =
+        jobs
           .computeIfAbsent(
             key.name,
-            _ => PostgresCommandBus(key, getTopicForKey(key.topicKey), log, CommandStore(pool), pool, config)
+            _ => PostgresJobBus(key, getTopicForKey(key.topicKey), log, JobStore(pool), pool, config)
           )
-          .asInstanceOf[CommandBus[P]]
+          .asInstanceOf[JobBus[P]]
 
 final case class MessageBusConfig(
   // Fallback poll for notifications that were lost or whose consumer crashed. The NOTIFY path handles the

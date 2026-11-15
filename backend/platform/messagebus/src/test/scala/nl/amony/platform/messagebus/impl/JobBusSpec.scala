@@ -18,7 +18,7 @@ import skunk.Session
 
 import nl.amony.platform.messagebus.*
 
-class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
+class JobBusSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 
   override val containerDef: GenericContainer.Def[GenericContainer] =
     GenericContainer.Def(
@@ -38,40 +38,40 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
   given MeterProvider[IO]  = MeterProvider.noop[IO]
   given TracerProvider[IO] = TracerProvider.noop[IO]
 
-  final case class TestCommand(value: Int) derives Codec.AsObject
+  final case class TestJob(value: Int) derives Codec.AsObject
 
   private val config = MessageBusConfig(pollInterval = 100.millis, retryBackoff = 100.millis, leaseDuration = 5.seconds)
 
   private def pool(container: GenericContainer): Resource[IO, Resource[IO, Session[IO]]] =
     MessageBusTestSupport.makeDatabasePool(container)
 
-  private def busFor(pool: Resource[IO, Session[IO]], name: String, maxAttempts: Int = 3): CommandBus[TestCommand] =
-    given CommandTopicKey[TestCommand] = CommandTopicKey(name, partitions = 2, maxAttempts = maxAttempts)
-    MessageBus.postgres(pool, config).getCommandBus[TestCommand]
+  private def busFor(pool: Resource[IO, Session[IO]], name: String, maxAttempts: Int = 3): JobBus[TestJob] =
+    given JobTopicKey[TestJob] = JobTopicKey(name, partitions = 2, maxAttempts = maxAttempts)
+    MessageBus.postgres(pool, config).getJobBus[TestJob]
 
-  "CommandBus" when {
+  "JobBus" when {
 
-    "submitting commands" should {
+    "submitting jobs" should {
 
-      "make a submitted command observable and run it exactly once" in withContainers { container =>
+      "make a submitted job observable and run it exactly once" in withContainers { container =>
         pool(container).use { pool =>
-          val name = s"commands-${UUID.randomUUID()}"
+          val name = s"jobs-${UUID.randomUUID()}"
           val bus  = busFor(pool, name)
 
           val test =
             for
               executed  <- Ref.of[IO, List[Int]](Nil)
-              id        <- bus.submit("key", TestCommand(1))
+              id        <- bus.submit("key", TestJob(1))
               queued    <- bus.status(id)
-              _          = queued.map(_.state) shouldBe Some(CommandState.Queued)
-              consumer  <- bus.processAtLeastOnce((_, command) => executed.update(_ :+ command.value).as(Right(()))).compile.drain.start
+              _          = queued.map(_.state) shouldBe Some(JobState.Queued)
+              consumer  <- bus.processAtLeastOnce((_, job) => executed.update(_ :+ job.value).as(Right(()))).compile.drain.start
               completed <- bus.awaitCompletion(id, 20.seconds)
-              _          = completed.state shouldBe CommandState.Succeeded
+              _          = completed.state shouldBe JobState.Succeeded
               _          = completed.attempts shouldBe 1
               values    <- executed.get
               _          = values shouldBe List(1)
               statuses  <- bus.subscribe(id).compile.toList
-              _          = statuses.map(_.state) shouldBe List(CommandState.Succeeded)
+              _          = statuses.map(_.state) shouldBe List(JobState.Succeeded)
               _         <- consumer.cancel
             yield ()
 
@@ -79,17 +79,17 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
         }.unsafeRunSync()
       }
 
-      "roll the command back together with the caller's transaction" in withContainers { container =>
+      "roll the job back together with the caller's transaction" in withContainers { container =>
         pool(container).use { pool =>
-          val name = s"commands-${UUID.randomUUID()}"
+          val name = s"jobs-${UUID.randomUUID()}"
           val bus  = busFor(pool, name)
-          val id   = CommandId(UUID.randomUUID().toString)
+          val id   = JobId(UUID.randomUUID().toString)
 
           val test =
             for
               _      <- pool
                           .use(session =>
-                            session.transaction.use(_ => bus.submit(session, id, "key", TestCommand(1)) >> IO.raiseError(new RuntimeException("rollback")))
+                            session.transaction.use(_ => bus.submit(session, id, "key", TestJob(1)) >> IO.raiseError(new RuntimeException("rollback")))
                           )
                           .attempt
               status <- bus.status(id)
@@ -101,31 +101,31 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
       }
     }
 
-    "processing commands" should {
+    "processing jobs" should {
 
-      "fail a command terminally after the attempt limit and keep the partition moving" in withContainers { container =>
+      "fail a job terminally after the attempt limit and keep the partition moving" in withContainers { container =>
         pool(container).use { pool =>
-          val name = s"commands-${UUID.randomUUID()}"
+          val name = s"jobs-${UUID.randomUUID()}"
           val bus  = busFor(pool, name, maxAttempts = 2)
 
           val test =
             for
               attempts  <- Ref.of[IO, Int](0)
-              id        <- bus.submit("key", TestCommand(1))
+              id        <- bus.submit("key", TestJob(1))
               failing   <- bus
                              .processAtLeastOnce((_, _) => attempts.update(_ + 1) >> IO.raiseError(new RuntimeException("boom")))
                              .compile
                              .drain
                              .start
               completed <- bus.awaitCompletion(id, 20.seconds)
-              _          = completed.state shouldBe CommandState.Failed
+              _          = completed.state shouldBe JobState.Failed
               _          = completed.attempts shouldBe 2
               _          = completed.lastError shouldBe Some("boom")
               tries     <- attempts.get
               _          = tries shouldBe 2
               _         <- failing.cancel
 
-              next      <- bus.submit("key", TestCommand(2))
+              next      <- bus.submit("key", TestJob(2))
               processed <- Ref.of[IO, Boolean](false)
               _         <- bus
                              .processAtLeastOnce((_, _) => processed.set(true).as(Right(())))
@@ -143,20 +143,20 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
 
       "fail immediately without retrying on a permanent failure" in withContainers { container =>
         pool(container).use { pool =>
-          val name = s"commands-${UUID.randomUUID()}"
+          val name = s"jobs-${UUID.randomUUID()}"
           val bus  = busFor(pool, name, maxAttempts = 5)
 
           val test =
             for
               attempts  <- Ref.of[IO, Int](0)
-              id        <- bus.submit("key", TestCommand(1))
+              id        <- bus.submit("key", TestJob(1))
               consumer  <- bus
                              .processAtLeastOnce((_, _) => attempts.update(_ + 1).as(Left("nope")))
                              .compile
                              .drain
                              .start
               completed <- bus.awaitCompletion(id, 20.seconds)
-              _          = completed.state shouldBe CommandState.Failed
+              _          = completed.state shouldBe JobState.Failed
               _          = completed.attempts shouldBe 1
               _          = completed.lastError shouldBe Some("nope")
               tries     <- attempts.get
@@ -170,24 +170,26 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
 
       "run slow work outside the transaction and commit it atomically" in withContainers { container =>
         pool(container).use { pool =>
-          val name = s"commands-${UUID.randomUUID()}"
+          val name = s"jobs-${UUID.randomUUID()}"
           val bus  = busFor(pool, name)
 
           val test =
             for
               worked    <- Ref.of[IO, Boolean](false)
               committed <- Ref.of[IO, Boolean](false)
-              id        <- bus.submit("key", TestCommand(7))
+              id        <- bus.submit("key", TestJob(7))
               consumer  <- bus
-                             .processAtLeastOnce((command: TestCommand) => worked.set(true).as(Right(command.value * 2))) {
-                               (_, command, result) =>
-                                 committed.set(true).as(Either.cond(result == command.value * 2, (), "unexpected result"))
-                             }
+                             .processAtLeastOnce((job: TestJob) =>
+                               val result = job.value * 2
+                               worked.set(true).as(
+                                 Right(committed.set(true).as(Either.cond(result == job.value * 2, (), "unexpected result")))
+                               )
+                             )
                              .compile
                              .drain
                              .start
               completed <- bus.awaitCompletion(id, 20.seconds)
-              _          = completed.state shouldBe CommandState.Succeeded
+              _          = completed.state shouldBe JobState.Succeeded
               didWork   <- worked.get
               didCommit <- committed.get
               _          = didWork shouldBe true
@@ -199,11 +201,11 @@ class CommandBusSpec extends AnyWordSpecLike with TestContainerForAll with Match
         }.unsafeRunSync()
       }
 
-      "dedupe terminal commands and requeue handled failures" in withContainers { container =>
+      "dedupe terminal jobs and requeue handled failures" in withContainers { container =>
         pool(container).use { pool =>
-          val name  = s"commands-${UUID.randomUUID()}"
-          val store = CommandStore(pool)
-          val id    = CommandId(UUID.randomUUID().toString)
+          val name  = s"jobs-${UUID.randomUUID()}"
+          val store = JobStore(pool)
+          val id    = JobId(UUID.randomUUID().toString)
 
           val test =
             for

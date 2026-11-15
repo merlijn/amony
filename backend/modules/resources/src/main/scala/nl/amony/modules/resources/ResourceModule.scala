@@ -14,17 +14,17 @@ import nl.amony.modules.resources.api.{
   BucketRegistry,
   CacheScope,
   LocalDirectoryConfig,
-  ResourceCommand,
   ResourceEvent,
   ResourceIndex,
+  ResourceJob,
   ThumbnailFormats,
   ThumbnailResolutions,
   ThumbnailTiles
 }
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
 import nl.amony.modules.resources.http.{BucketRoutes, CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
-import nl.amony.modules.resources.local.{FileOperations, LocalDirectoryBucket, ResourceCommands}
-import nl.amony.platform.messagebus.{CommandBus, MessageTopic}
+import nl.amony.modules.resources.local.{FileOperations, LocalDirectoryBucket, ResourceJobs}
+import nl.amony.platform.messagebus.{JobBus, MessageTopic}
 import nl.amony.platform.subprocess.{ProcessLimiter, ProcessSettings}
 import nl.amony.platform.tapir.ServerEndpoints
 
@@ -36,7 +36,7 @@ import nl.amony.platform.tapir.ServerEndpoints
 class ResourceModule(
   private val resourceDatabase: ResourceDatabase,
   val bucketRegistry: BucketRegistry,
-  val commands: ResourceCommands,
+  val jobs: ResourceJobs,
   val thumbResolutions: ThumbnailResolutions,
   val thumbFormats: ThumbnailFormats,
   val thumbTiles: ThumbnailTiles,
@@ -63,7 +63,7 @@ object ResourceModule:
     processSettings: ProcessSettings,
     databasePool: Resource[IO, Session[IO]],
     eventTopic: MessageTopic[ResourceEvent],
-    commandBus: CommandBus[ResourceCommand]
+    jobBus: JobBus[ResourceJob]
   )(using Meter[IO], Tracer[IO]): Resource[IO, ResourceModule] =
     val thumbResolutions = ThumbnailResolutions(
       config.previews.allowedResolutions,
@@ -77,7 +77,7 @@ object ResourceModule:
       config.previews.tiles.spritePixels
     )
     val resourceDatabase = ResourceDatabase(databasePool)
-    val commands         = ResourceCommands(commandBus)
+    val jobs             = ResourceJobs(jobBus)
 
     def bucketFactory(processLimiter: ProcessLimiter): BucketFactory = {
       case localConfig: LocalDirectoryConfig =>
@@ -96,7 +96,7 @@ object ResourceModule:
             resourceDatabase,
             eventTopic,
             ops,
-            commandBus
+            jobBus
           )
           (bucket, bucket.sync())
         }
@@ -113,7 +113,7 @@ object ResourceModule:
     yield new ResourceModule(
       resourceDatabase,
       bucketRegistry,
-      commands,
+      jobs,
       thumbResolutions,
       thumbFormats,
       thumbTiles,

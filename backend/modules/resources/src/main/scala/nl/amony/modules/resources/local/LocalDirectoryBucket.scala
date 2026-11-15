@@ -15,7 +15,7 @@ import nl.amony.modules.auth.api.{Role, UserId}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.platform.files.*
-import nl.amony.platform.messagebus.{CommandBus, CommandState, MessageTopic}
+import nl.amony.platform.messagebus.{JobBus, JobState, MessageTopic}
 
 class LocalDirectoryBucket(
   config: LocalDirectoryConfig,
@@ -23,8 +23,8 @@ class LocalDirectoryBucket(
   db: ResourceDatabase,
   topic: MessageTopic[ResourceEvent],
   ops: FileOperations,
-  commandBus: CommandBus[ResourceCommand] = null,
-  commandTimeout: FiniteDuration          = 30.minutes
+  jobBus: JobBus[ResourceJob] = null,
+  jobTimeout: FiniteDuration  = 30.minutes
 )(using meter: Meter[IO], tracer: Tracer[IO])
     extends LocalDirectoryBase(config, parallelFactor, db, topic, ops),
       ResourceBucket,
@@ -49,50 +49,50 @@ class LocalDirectoryBucket(
     }
   }.compile.drain
 
-  override def fixStreamability(resourceId: ResourceId): IO[Either[ResourceCommandError, Unit]] =
+  override def fixStreamability(resourceId: ResourceId): IO[Either[ResourceJobError, Unit]] =
     checkStreamabilityFix(resourceId).flatMap:
       case Left(error) => IO.pure(Left(error))
       case Right(())   =>
-        val command = FixStreamability(id, resourceId)
+        val job = FixStreamability(id, resourceId)
         for
-          commandId <- commandBus.submit(command.key, command)
-          status    <- commandBus.awaitCompletion(commandId, commandTimeout)
+          jobId  <- jobBus.submit(job.key, job)
+          status <- jobBus.awaitCompletion(jobId, jobTimeout)
         yield status.state match
-          case CommandState.Succeeded => Right(())
-          case _                      => Left(ResourceCommandError.Rejected(status.lastError.getOrElse("Failed to fix streamability")))
+          case JobState.Succeeded => Right(())
+          case _                  => Left(ResourceJobError.Rejected(status.lastError.getOrElse("Failed to fix streamability")))
 
   override def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, ResourceInfo]] =
     stageUpload(fileName, source).flatMap:
       case Left(error)   => IO.pure(Left(error))
       case Right(staged) =>
-        val command = UploadResource(id, staged.resourceId, userId, staged.fileName, staged.tempFile)
-        val submit  = commandBus
-          .submit(command.key, command)
+        val job    = UploadResource(id, staged.resourceId, userId, staged.fileName, staged.tempFile)
+        val submit = jobBus
+          .submit(job.key, job)
           .handleErrorWith(error => discardUpload(staged.tempFile) >> IO.raiseError(error))
         for
-          commandId <- submit
-          status    <- commandBus.awaitCompletion(commandId, commandTimeout)
-          result    <- status.state match
-                         case CommandState.Succeeded =>
-                           getResource(staged.resourceId).map {
-                             case Some(resource) => Right(resource.info)
-                             case None           => Left(UploadError.StorageError("Uploaded resource was not found after completion"))
-                           }
-                         case _                      =>
-                           IO.pure(Left(UploadError.StorageError(status.lastError.getOrElse("Failed to store the uploaded resource"))))
+          jobId  <- submit
+          status <- jobBus.awaitCompletion(jobId, jobTimeout)
+          result <- status.state match
+                      case JobState.Succeeded =>
+                        getResource(staged.resourceId).map {
+                          case Some(resource) => Right(resource.info)
+                          case None           => Left(UploadError.StorageError("Uploaded resource was not found after completion"))
+                        }
+                      case _                  =>
+                        IO.pure(Left(UploadError.StorageError(status.lastError.getOrElse("Failed to store the uploaded resource"))))
         yield result
 
   /**
    * Cheap validation for the request: reports whether a remux makes sense without touching the file. The remux itself
-   * runs in the command consumer.
+   * runs in the job consumer.
    */
-  private def checkStreamabilityFix(resourceId: ResourceId): IO[Either[ResourceCommandError, Unit]] =
+  private def checkStreamabilityFix(resourceId: ResourceId): IO[Either[ResourceJobError, Unit]] =
     getResourceInfo(resourceId).map:
-      case None                                                 => Left(ResourceCommandError.NotFound)
+      case None                                                 => Left(ResourceJobError.NotFound)
       case Some(info) if !info.streamable.contains(false)       =>
-        Left(ResourceCommandError.Rejected("Resource is already streamable or its streamability is unknown"))
+        Left(ResourceJobError.Rejected("Resource is already streamable or its streamability is unknown"))
       case Some(info) if AddFastStart.forResource(info).isEmpty =>
-        Left(ResourceCommandError.Rejected("The container format cannot be remuxed for streaming"))
+        Left(ResourceJobError.Rejected("The container format cannot be remuxed for streaming"))
       case Some(_)                                              => Right(())
 
   /** Remuxes to the bucket's temp directory without touching the live file. Returns None when nothing is needed. */
@@ -103,21 +103,19 @@ class LocalDirectoryBucket(
       case Some(info)                                     => ops.remuxForStreaming(info).map(_.map(Some(_)))
 
   /**
-   * Commits a remux: replaces the live file, refreshes its metadata and publishes ResourceModified, all in the caller's
-   * transaction. That way the command's success and the resource update commit together.
+   * Commits a remux: replaces the live file, refreshes its metadata and publishes ResourceModified in a transaction.
    */
   override def commitStreamabilityFix(
-    session: Session[IO],
     resourceId: ResourceId,
     tempFile: Option[String]
   ): IO[Either[StreamabilityError, Unit]] =
-    db.getResourceById(id, resourceId)(using Some(session)).flatMap:
+    getResourceInfo(resourceId).flatMap:
       case None       => IO.pure(Left(StreamabilityError.ResourceNotFound(resourceId)))
       case Some(info) =>
         ops.commitStreamability(info, tempFile).flatMap:
           case Left(error)    => IO.pure(Left(error))
           case Right(updated) =>
-            (db.upsertResource(updated)(using Some(session)) >> topic.publish(session, ResourceModified(updated))).as(Right(()))
+            db.transact(s => db.upsertResource(updated) >> topic.publish(s, ResourceModified(updated))).as(Right(()))
 
   override def reComputePartialHashes(): IO[Unit] = getAllResources.evalMap { resource =>
     val file = config.resourcePath.resolve(resource.path)

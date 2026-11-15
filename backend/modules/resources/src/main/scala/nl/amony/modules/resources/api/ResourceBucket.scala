@@ -1,7 +1,6 @@
 package nl.amony.modules.resources.api
 
 import cats.effect.IO
-import skunk.Session
 
 import nl.amony.modules.auth.api.{Role, UserId}
 
@@ -9,7 +8,7 @@ enum UploadError:
   case InvalidFileName(message: String)
   case StorageError(message: String)
 
-enum ResourceCommandError:
+enum ResourceJobError:
   case NotFound
   case Rejected(message: String)
 
@@ -70,17 +69,17 @@ trait ResourceBucket {
 
   def importBackup(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit]
 
-  def fixStreamability(resourceId: ResourceId): IO[Either[ResourceCommandError, Unit]]
+  def fixStreamability(resourceId: ResourceId): IO[Either[ResourceJobError, Unit]]
 
   def remuxForStreaming(resourceId: ResourceId): IO[Either[StreamabilityError, Option[String]]]
 
-  def commitStreamabilityFix(session: Session[IO], resourceId: ResourceId, tempFile: Option[String]): IO[Either[StreamabilityError, Unit]]
+  def commitStreamabilityFix(resourceId: ResourceId, tempFile: Option[String]): IO[Either[StreamabilityError, Unit]]
 
   def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, ResourceInfo]]
 
   def prepareUpload(upload: UploadResource): IO[Either[UploadProcessingError, PreparedUpload]]
 
-  def commitUpload(session: Session[IO], upload: UploadResource, prepared: PreparedUpload): IO[Either[UploadProcessingError, Unit]]
+  def commitUpload(upload: UploadResource, prepared: PreparedUpload): IO[Either[UploadProcessingError, Unit]]
 
   def getAllResources: fs2.Stream[IO, ResourceInfo]
 }
