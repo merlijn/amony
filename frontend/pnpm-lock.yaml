@@ -11,7 +11,7 @@ overrides:
   fast-uri: 3.1.9
   js-yaml: 4.3.2
   postcss: 8.5.33
-  undici: 7.30.2
+  undici: 8.12.4
 
 importers:
 
@@ -1825,9 +1825,9 @@ packages:
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
-  undici@7.30.2:
-    resolution: {integrity: sha512-mLyPQnHwUxaM/rideoK/+KL8DaAJLRl4aBCfmX444aCSLnIaomqPLtNRe2jdCYcsk5wZzXrDIQC8ZeYNRAYyIA==}
-    engines: {node: '>=20.18.1'}
+  undici@8.12.4:
+    resolution: {integrity: sha512-8Mx+uNKKER2bA4AdtedkqRbwUCIJFr2nJckXRe5yrDqzePqwLP7VNcctN8/XdmDSbF7mS+jJKIszlL+vbam1VA==}
+    engines: {node: '>=22.19.0'}
 
   unicorn-magic@0.3.0:
     resolution: {integrity: sha512-+QBBXBCvifc56fsbuxZQ6Sic3wqqc3WWaqxs58gvJrcOuN83HGTCwz3oS5phzU9LthRNE9VrJCFCLUgHeeFnfA==}
@@ -2710,14 +2710,14 @@ snapshots:
     dependencies:
       '@scalar/helpers': 0.16.4
       pathe: 2.0.3
-      undici: 7.30.2
+      undici: 8.12.4
       yaml: 2.9.1
 
   '@scalar/json-magic@0.19.1':
     dependencies:
       '@scalar/helpers': 0.18.0
       pathe: 2.0.3
-      undici: 7.30.2
+      undici: 8.12.4
       yaml: 2.9.1
 
   '@scalar/json-schema-validator@0.1.20':
@@ -3518,7 +3518,7 @@ snapshots:
 
   undici-types@8.9.0: {}
 
-  undici@7.30.2: {}
+  undici@8.12.4: {}
 
   unicorn-magic@0.3.0: {}
 
