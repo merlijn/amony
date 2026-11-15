@@ -110,9 +110,8 @@ artifact (`ghcr.io/<owner>/amony-web:fe-<tree>`), where the tag is the git tree 
 the artifact that matches its own checkout, unpacks it into `web/releases/<tree>` and repoints the `web/current`
 symlink, which the reverse proxy serves from `/srv/web/current`.
 
-The frontend build also emits pre-compressed `.gz` files; the reverse proxy serves those with `gzip_static` when the
-client accepts gzip. Brotli (`.br`) is generated as well but cannot be served by the stock nginx image, which has no
-brotli module.
+The frontend build emits pre-compressed `.gz` files; the reverse proxy serves those with `gzip_static` when the client
+accepts gzip. Brotli is not generated: the stock nginx image has no brotli module, so the files could not be served.
 
 Non-secret configuration lives in `deployment/demo.env`. The sensitive values (database password, JWT secret, Dex client
 secrets / admin password hash, Porkbun credentials) plus the SSH deploy key and host details are stored in the

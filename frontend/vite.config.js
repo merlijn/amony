@@ -9,10 +9,6 @@ export default defineConfig({
     plugins: [
         react(),
         viteCompression({
-            algorithm: 'brotliCompress',
-            ext: '.br',
-        }),
-        viteCompression({
             algorithm: 'gzip',
             ext: '.gz',
         })
