@@ -1,0 +1,56 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["config:recommended"],
+
+  // config:recommended groups dependencies of the same monorepo into their own PRs; we want one
+  // minor/patch PR per stack instead.
+  ignorePresets: ["group:monorepos", "group:recommended"],
+
+  // Keep the digest next to every image tag, so a tag that moves (postgres:17) shows up as an
+  // explicit PR instead of silently changing on the next pull.
+  pinDigests: true,
+
+  packageRules: [
+    // Day-to-day updates are rolled up per stack: one PR for the frontend, one for the backend.
+    {
+      matchManagers: ["npm"],
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "frontend minor/patch dependencies",
+    },
+    {
+      matchManagers: ["sbt"],
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "backend minor/patch dependencies",
+    },
+
+    // Majors are always a separate PR, whichever stack they come from.
+    {
+      matchUpdateTypes: ["major"],
+      labels: ["major-update"],
+    },
+
+    // Docker images are pinned to a moving stream tag plus a digest. Digest PRs keep them patched
+    // within that stream; rewriting the tag to a more specific version is not wanted.
+    {
+      matchManagers: ["docker-compose", "dockerfile"],
+      matchUpdateTypes: ["minor", "patch"],
+      enabled: false,
+    },
+    // These publish no moving stream tag, so version bumps are the only way they get updates.
+    {
+      matchManagers: ["docker-compose", "dockerfile"],
+      matchPackageNames: [
+        "dexidp/dex",
+        "otel/opentelemetry-collector",
+        "ghcr.io/zitadel/zitadel",
+      ],
+      matchUpdateTypes: ["minor", "patch"],
+      enabled: true,
+    },
+    // Built on the host or by CI, not something Renovate can look up.
+    {
+      matchPackageNames: ["amony/certbot", "ghcr.io/merlijn/amony-app"],
+      enabled: false,
+    },
+  ],
+}
