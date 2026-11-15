@@ -97,8 +97,8 @@ importers:
         specifier: 4.17.27
         version: 4.17.27
       '@types/node':
-        specifier: 24.19.2
-        version: 24.19.2
+        specifier: 26.6.6
+        version: 26.6.6
       '@types/qs':
         specifier: 6.15.1
         version: 6.15.1
@@ -113,7 +113,7 @@ importers:
         version: 5.3.3
       '@vitejs/plugin-react':
         specifier: 5.2.0
-        version: 5.2.0(supports-color@7.2.0)(vite@7.3.8(@types/node@24.19.2)(jiti@2.7.0)(sass@1.108.2)(yaml@2.9.1))
+        version: 5.2.0(supports-color@7.2.0)(vite@7.3.8(@types/node@26.6.6)(jiti@2.7.0)(sass@1.108.2)(yaml@2.9.1))
       orval:
         specifier: 8.48.0
         version: 8.48.0(@tanstack/react-query@5.107.1(@types/react@19.3.0)(react@19.3.1))(valibot@1.5.0(typescript@5.9.3))(zod@4.6.7)
@@ -122,10 +122,10 @@ importers:
         version: 1.108.2
       vite:
         specifier: 7.3.8
-        version: 7.3.8(@types/node@24.19.2)(jiti@2.7.0)(sass@1.108.2)(yaml@2.9.1)
+        version: 7.3.8(@types/node@26.6.6)(jiti@2.7.0)(sass@1.108.2)(yaml@2.9.1)
       vite-plugin-compression:
         specifier: 0.5.1
-        version: 0.5.1(supports-color@7.2.0)(vite@7.3.8(@types/node@24.19.2)(jiti@2.7.0)(sass@1.108.2)(yaml@2.9.1))
+        version: 0.5.1(supports-color@7.2.0)(vite@7.3.8(@types/node@26.6.6)(jiti@2.7.0)(sass@1.108.2)(yaml@2.9.1))
 
 packages:
 
@@ -1120,8 +1120,8 @@ packages:
   '@types/lodash@4.17.27':
     resolution: {integrity: sha512-VenMRv/eKNrspX9v3H4dbmjsrnCOYdYBG3kxXKk3dG6X+urBGcj2Prww3xw1U5K4FV/mE4h5GbWd0szEKf+9ew==}
 
-  '@types/node@24.19.2':
-    resolution: {integrity: sha512-93d49wCWJkCyN87MxLpNN6KXPCwFw7bVUg79mGUV1OS40JGWwVCr8n61DXCSqz7CV6/VfPkb7xec7uP2M+QHWQ==}
+  '@types/node@26.6.6':
+    resolution: {integrity: sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog==}
 
   '@types/qs@6.15.1':
     resolution: {integrity: sha512-GZHUBZR9hckSUhrxmp1nG6NwdpM9fCunJwyThLW1X3AyHgd9IlHb6VANpQQqDr2o/qQp6McZ3y/IA2rVzKzSbw==}
@@ -1822,8 +1822,8 @@ packages:
     resolution: {integrity: sha512-LbBDqdIC5s8iROCUjMbW1f5dJQTEFB1+KO9ogbvlb3nm9n4YHa5p4KTvFPWvh2Hs8gZMBuiB1/8+pdfe/tDPug==}
     hasBin: true
 
-  undici-types@7.24.6:
-    resolution: {integrity: sha512-WRNW+sJgj5OBN4/0JpHFqtqzhpbnV0GuB+OozA9gCL7a993SmU+1JBZCzLNxYsbMfIeDL+lTsphD5jN5N+n0zg==}
+  undici-types@8.9.0:
+    resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
   undici@7.30.2:
     resolution: {integrity: sha512-mLyPQnHwUxaM/rideoK/+KL8DaAJLRl4aBCfmX444aCSLnIaomqPLtNRe2jdCYcsk5wZzXrDIQC8ZeYNRAYyIA==}
@@ -2818,9 +2818,9 @@ snapshots:
 
   '@types/lodash@4.17.27': {}
 
-  '@types/node@24.19.2':
+  '@types/node@26.6.6':
     dependencies:
-      undici-types: 7.24.6
+      undici-types: 8.9.0
 
   '@types/qs@6.15.1': {}
 
@@ -2850,7 +2850,7 @@ snapshots:
       media-captions: 1.0.4
       react: 19.3.1
 
-  '@vitejs/plugin-react@5.2.0(supports-color@7.2.0)(vite@7.3.8(@types/node@24.19.2)(jiti@2.7.0)(sass@1.108.2)(yaml@2.9.1))':
+  '@vitejs/plugin-react@5.2.0(supports-color@7.2.0)(vite@7.3.8(@types/node@26.6.6)(jiti@2.7.0)(sass@1.108.2)(yaml@2.9.1))':
     dependencies:
       '@babel/core': 7.29.7(supports-color@7.2.0)
       '@babel/plugin-transform-react-jsx-self': 7.29.7(@babel/core@7.29.7(supports-color@7.2.0))
@@ -2858,7 +2858,7 @@ snapshots:
       '@rolldown/pluginutils': 1.0.0-rc.3
       '@types/babel__core': 7.20.5
       react-refresh: 0.18.0
-      vite: 7.3.8(@types/node@24.19.2)(jiti@2.7.0)(sass@1.108.2)(yaml@2.9.1)
+      vite: 7.3.8(@types/node@26.6.6)(jiti@2.7.0)(sass@1.108.2)(yaml@2.9.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -3516,7 +3516,7 @@ snapshots:
 
   ua-parser-js@1.0.41: {}
 
-  undici-types@7.24.6: {}
+  undici-types@8.9.0: {}
 
   undici@7.30.2: {}
 
@@ -3558,16 +3558,16 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
-  vite-plugin-compression@0.5.1(supports-color@7.2.0)(vite@7.3.8(@types/node@24.19.2)(jiti@2.7.0)(sass@1.108.2)(yaml@2.9.1)):
+  vite-plugin-compression@0.5.1(supports-color@7.2.0)(vite@7.3.8(@types/node@26.6.6)(jiti@2.7.0)(sass@1.108.2)(yaml@2.9.1)):
     dependencies:
       chalk: 4.1.2
       debug: 4.4.3(supports-color@7.2.0)
       fs-extra: 10.1.0
-      vite: 7.3.8(@types/node@24.19.2)(jiti@2.7.0)(sass@1.108.2)(yaml@2.9.1)
+      vite: 7.3.8(@types/node@26.6.6)(jiti@2.7.0)(sass@1.108.2)(yaml@2.9.1)
     transitivePeerDependencies:
       - supports-color
 
-  vite@7.3.8(@types/node@24.19.2)(jiti@2.7.0)(sass@1.108.2)(yaml@2.9.1):
+  vite@7.3.8(@types/node@26.6.6)(jiti@2.7.0)(sass@1.108.2)(yaml@2.9.1):
     dependencies:
       esbuild: 0.28.2
       fdir: 6.5.0(picomatch@4.0.7)
@@ -3576,7 +3576,7 @@ snapshots:
       rollup: 4.63.4
       tinyglobby: 0.2.17
     optionalDependencies:
-      '@types/node': 24.19.2
+      '@types/node': 26.6.6
       fsevents: 2.3.3
       jiti: 2.7.0
       sass: 1.108.2
