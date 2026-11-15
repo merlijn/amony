@@ -113,7 +113,7 @@ importers:
         version: 5.3.3
       '@vitejs/plugin-react':
         specifier: 5.1.4
-        version: 5.1.4(supports-color@7.2.0)(vite@7.3.6(@types/node@24.10.13)(jiti@2.7.0)(sass@1.97.3)(yaml@2.9.1))
+        version: 5.1.4(supports-color@7.2.0)(vite@7.3.7(@types/node@24.10.13)(jiti@2.7.0)(sass@1.97.3)(yaml@2.9.1))
       orval:
         specifier: 8.35.0
         version: 8.35.0(@tanstack/react-query@5.90.21(react@19.2.4))(typescript@5.9.3)(zod@4.6.5)
@@ -121,11 +121,11 @@ importers:
         specifier: 1.97.3
         version: 1.97.3
       vite:
-        specifier: 7.3.6
-        version: 7.3.6(@types/node@24.10.13)(jiti@2.7.0)(sass@1.97.3)(yaml@2.9.1)
+        specifier: 7.3.7
+        version: 7.3.7(@types/node@24.10.13)(jiti@2.7.0)(sass@1.97.3)(yaml@2.9.1)
       vite-plugin-compression:
         specifier: 0.5.1
-        version: 0.5.1(supports-color@7.2.0)(vite@7.3.6(@types/node@24.10.13)(jiti@2.7.0)(sass@1.97.3)(yaml@2.9.1))
+        version: 0.5.1(supports-color@7.2.0)(vite@7.3.7(@types/node@24.10.13)(jiti@2.7.0)(sass@1.97.3)(yaml@2.9.1))
 
 packages:
 
@@ -1886,8 +1886,8 @@ packages:
     peerDependencies:
       vite: '>=2.0.0'
 
-  vite@7.3.6:
-    resolution: {integrity: sha512-4XP60spRGjSZFf1qYH+dJIkK2znL3zQfl9KkOV9MkkRR/3Dls0dxaBsQPTloEc5BLXWPL9vsOxopxyKoMmDueg==}
+  vite@7.3.7:
+    resolution: {integrity: sha512-AHEzTORMbi7/7aXp7w7KZ5+DCUdSeLsJz0grY8xHpc9DHdYb0vQu6DqJfm2tOw3gDExNgPgnJTXxM6syYFHaCA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
     peerDependencies:
@@ -2833,7 +2833,7 @@ snapshots:
       media-captions: 1.0.4
       react: 19.2.4
 
-  '@vitejs/plugin-react@5.1.4(supports-color@7.2.0)(vite@7.3.6(@types/node@24.10.13)(jiti@2.7.0)(sass@1.97.3)(yaml@2.9.1))':
+  '@vitejs/plugin-react@5.1.4(supports-color@7.2.0)(vite@7.3.7(@types/node@24.10.13)(jiti@2.7.0)(sass@1.97.3)(yaml@2.9.1))':
     dependencies:
       '@babel/core': 7.29.7(supports-color@7.2.0)
       '@babel/plugin-transform-react-jsx-self': 7.29.7(@babel/core@7.29.7(supports-color@7.2.0))
@@ -2841,7 +2841,7 @@ snapshots:
       '@rolldown/pluginutils': 1.0.0-rc.3
       '@types/babel__core': 7.20.5
       react-refresh: 0.18.0
-      vite: 7.3.6(@types/node@24.10.13)(jiti@2.7.0)(sass@1.97.3)(yaml@2.9.1)
+      vite: 7.3.7(@types/node@24.10.13)(jiti@2.7.0)(sass@1.97.3)(yaml@2.9.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -3566,16 +3566,16 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
-  vite-plugin-compression@0.5.1(supports-color@7.2.0)(vite@7.3.6(@types/node@24.10.13)(jiti@2.7.0)(sass@1.97.3)(yaml@2.9.1)):
+  vite-plugin-compression@0.5.1(supports-color@7.2.0)(vite@7.3.7(@types/node@24.10.13)(jiti@2.7.0)(sass@1.97.3)(yaml@2.9.1)):
     dependencies:
       chalk: 4.1.2
       debug: 4.4.3(supports-color@7.2.0)
       fs-extra: 10.1.0
-      vite: 7.3.6(@types/node@24.10.13)(jiti@2.7.0)(sass@1.97.3)(yaml@2.9.1)
+      vite: 7.3.7(@types/node@24.10.13)(jiti@2.7.0)(sass@1.97.3)(yaml@2.9.1)
     transitivePeerDependencies:
       - supports-color
 
-  vite@7.3.6(@types/node@24.10.13)(jiti@2.7.0)(sass@1.97.3)(yaml@2.9.1):
+  vite@7.3.7(@types/node@24.10.13)(jiti@2.7.0)(sass@1.97.3)(yaml@2.9.1):
     dependencies:
       esbuild: 0.28.2
       fdir: 6.5.0(picomatch@4.0.7)
