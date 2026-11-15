@@ -257,7 +257,7 @@ val resourcesDependencies = Seq(
   "com.softwaremill.sttp.client4" %% "core"                      % sttpVersion,
   "com.softwaremill.sttp.client4" %% "circe"                     % sttpVersion,
   "com.softwaremill.sttp.client4" %% "cats"                      % sttpVersion,
-  "org.apache.tika"                % "tika-core"                 % "3.3.3",
+  "org.apache.tika"                % "tika-core"                 % "4.2.0",
   "org.jsoup"                      % "jsoup"                     % "1.24.1",
   "com.softwaremill.sttp.shared"  %% "fs2"                       % "1.6.0"
 )
