@@ -1,7 +1,6 @@
 import scala.concurrent.duration.*
 import scala.sys.process.*
 
-import de.gccc.jib.MappingsHelper
 import sbt.Command
 import sbt.Keys.{scalaVersion, streams}
 
@@ -425,18 +424,8 @@ lazy val app = project
     jibPlatforms            := Set(if (System.getProperty("os.arch") == "aarch64") JibPlatforms.arm64 else JibPlatforms.amd64),
     jibImageFormat          := JibImageFormat.OCI,
     jibTags                 := envTags.getOrElse(if (isReleaseBuild) List("latest") else List("dev")),
-    jibExtraMappings ++= Def.uncached {
-      // this adds the frontend assets to the docker image
-      val webClientDir = (ThisBuild / baseDirectory).value / ".." / "frontend" / "dist"
-      val target       = "/app/assets"
-      val contents     = MappingsHelper.contentOf(webClientDir, target)
-      val log          = streams.value.log
-      log.info(s"frontend assets file count: ${contents.size}")
-      contents
-    },
     jibEnvironment          := Map(
       "JAVA_TOOL_OPTIONS"        -> "-Dconfig.file=/app/resources/application.conf",
-      "AMONY_WEB_CLIENT_PATH"    -> "/app/assets",
       "AMONY_SOLR_PATH"          -> "/app/data/solr",
       "AMONY_DEFAULT_MEDIA_PATH" -> "/media",
       "OTEL_SERVICE_NAME"        -> "amony-app"

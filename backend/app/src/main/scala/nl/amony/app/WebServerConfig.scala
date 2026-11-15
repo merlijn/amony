@@ -5,7 +5,7 @@ import java.nio.file.Path
 import pureconfig.*
 
 case class WebServerConfig(
-  webClientPath: Path,
+  webClientPath: Option[Path],
   uploadSizeLimit: Long,
   allowedHosts: List[String],
   http: Option[HttpConfig],

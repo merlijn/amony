@@ -73,10 +73,13 @@ service.
 **Notes:**
 
 - It might take some time to process the videos on first startup. Check progress with `docker compose logs amony`
+- The application image does not contain the web client. The plain compose stack serves the API only; the reverse proxy
+  in `docker-compose-https.yml` serves the UI from `web/current` (see `docs/development.md`). Running from source with
+  `sbt app/run` serves `frontend/dist` directly.
 - For HTTPS with automatic certificate management, see `docker-compose-https.yml`
 - Preview generation is CPU bound. On a Linux host with an Intel or AMD GPU, the `docker-compose.vaapi.yml` overlay
-  passes the render node into the container and enables hardware decoding (VAAPI), so ffmpeg uses the GPU's media
-  block instead of the CPU. Set `AMONY_RENDER_GID` to the GID of the host's `render` group and check it with
+  passes the render node into the container and enables hardware decoding (VAAPI), so ffmpeg uses the GPU's media block
+  instead of the CPU. Set `AMONY_RENDER_GID` to the GID of the host's `render` group and check it with
   `docker compose exec amony vainfo`.
 
 ## Development
