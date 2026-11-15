@@ -37,7 +37,7 @@ val ghcrOwner = sys.env.getOrElse("GITHUB_REPOSITORY_OWNER", "merlijn").toLowerC
 
 // Build timestamp of the base image, published by the "Build base image" workflow and updated here by
 // Renovate.
-val baseImageTag = "2026.11.15.0000"
+val baseImageTag = "2026.11.15.1405"
 
 //fork in Global := true
 Global / cancelable := true
