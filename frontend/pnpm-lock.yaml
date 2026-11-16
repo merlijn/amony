@@ -40,7 +40,7 @@ importers:
         version: 1.15.7(@types/react@19.3.0)(react@19.3.1)
       axios:
         specifier: 1.21.1
-        version: 1.21.1
+        version: 1.21.1(debug@4.4.3)
       js-cookie:
         specifier: 3.0.8
         version: 3.0.8
@@ -72,8 +72,8 @@ importers:
         specifier: 5.7.0
         version: 5.7.0(react@19.3.1)
       react-intersection-observer:
-        specifier: 10.1.0
-        version: 10.1.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 11.0.1
+        version: 11.0.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       react-router:
         specifier: 7.18.5
         version: 7.18.5(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -1536,8 +1536,8 @@ packages:
     peerDependencies:
       react: '*'
 
-  react-intersection-observer@10.1.0:
-    resolution: {integrity: sha512-V8HDu3+Llg6OEhOxx8LnUSS0t4VS+1Xk9ZatkI8Jct/H0CwKnqFTCu8NT3q7ghJTghTdIrEMPSWr2dkKPG+gdQ==}
+  react-intersection-observer@11.0.1:
+    resolution: {integrity: sha512-BIZ1M40GPSKDIT1MJbXK7SB0BwBaTKr84QfZCs5asKer7YMOYLzMi+RI1F4VStbZLGHoosJmd+aOQDDipUV1gA==}
     peerDependencies:
       react: ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -2476,7 +2476,7 @@ snapshots:
       '@scalar/types': 0.28.1
       ajv: 8.20.0
       ajv-draft-04: 1.0.0(ajv@8.20.0)
-      ajv-formats: 3.0.1(ajv@8.20.0)
+      ajv-formats: 3.0.1
       yaml: 2.9.1
 
   '@scalar/openapi-parser@0.29.22':
@@ -2601,8 +2601,8 @@ snapshots:
     optionalDependencies:
       ajv: 8.20.0
 
-  ajv-formats@3.0.1(ajv@8.20.0):
-    optionalDependencies:
+  ajv-formats@3.0.1:
+    dependencies:
       ajv: 8.20.0
 
   ajv@8.20.0:
@@ -2622,9 +2622,9 @@ snapshots:
 
   asynckit@0.4.0: {}
 
-  axios@1.21.1:
+  axios@1.21.1(debug@4.4.3):
     dependencies:
-      follow-redirects: 1.16.3
+      follow-redirects: 1.16.3(debug@4.4.3)
       form-data: 4.0.6
       https-proxy-agent: 5.0.1
       proxy-from-env: 2.1.0
@@ -2759,7 +2759,9 @@ snapshots:
     dependencies:
       is-unicode-supported: 2.1.0
 
-  follow-redirects@1.16.3: {}
+  follow-redirects@1.16.3(debug@4.4.3):
+    optionalDependencies:
+      debug: 4.4.3
 
   form-data@4.0.6:
     dependencies:
@@ -3049,7 +3051,7 @@ snapshots:
     dependencies:
       react: 19.3.1
 
-  react-intersection-observer@10.1.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  react-intersection-observer@11.0.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       react: 19.3.1
     optionalDependencies:
