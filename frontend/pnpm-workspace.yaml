@@ -5,7 +5,7 @@ overrides:
   fast-uri: 4.2.3
   js-yaml: 4.3.2
   postcss: 8.5.33
-  undici: 7.30.2
+  undici: 8.12.4
 allowBuilds:
   '@parcel/watcher': true
   '@scarf/scarf': false
