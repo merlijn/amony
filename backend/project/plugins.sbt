@@ -4,5 +4,5 @@
 addSbtPlugin("org.scalameta"     % "sbt-scalafmt" % "2.6.2")
 addSbtPlugin("ch.epfl.scala"     % "sbt-scalafix" % "0.14.10")
 addSbtPlugin("io.github.sbt-jib" % "sbt-jib"      % "2.0.2")
-addSbtPlugin("com.github.sbt"    % "sbt-dynver"   % "5.1.1")
+addSbtPlugin("com.github.sbt"    % "sbt-dynver"   % "5.2.0")
 libraryDependencies += "com.google.cloud.tools" % "jib-core" % "0.28.2"
