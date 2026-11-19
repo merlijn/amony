@@ -107,9 +107,9 @@ val javaDevOpts = Seq(
 // --- Main project
 
 val circeVersion  = "0.14.17"
-val http4sVersion = "0.23.38"
+val http4sVersion = "0.23.39"
 val tapirVersion  = "1.14.1"
-val sttpVersion   = "4.1.2"
+val sttpVersion   = "4.1.3"
 val otel4sVersion = "1.2.0"
 
 val commonExclusions = List(
@@ -149,7 +149,7 @@ val emailTestDependencies = Seq(
 
 val filesDependencies = Seq(
   "org.typelevel" %% "cats-effect" % "3.7.1",
-  "co.fs2"        %% "fs2-core"    % "3.14.0",
+  "co.fs2"        %% "fs2-core"    % "3.16.0",
   "com.outr"      %% "scribe"      % "3.19.1"
 )
 
@@ -159,8 +159,8 @@ val filesTestDependencies = Seq(
 
 val subprocessDependencies = Seq(
   "org.typelevel" %% "cats-effect"       % "3.7.1",
-  "co.fs2"        %% "fs2-core"          % "3.14.0",
-  "co.fs2"        %% "fs2-io"            % "3.14.0",
+  "co.fs2"        %% "fs2-core"          % "3.16.0",
+  "co.fs2"        %% "fs2-io"            % "3.16.0",
   "io.circe"      %% "circe-core"        % circeVersion,
   "io.circe"      %% "circe-generic"     % circeVersion,
   "io.circe"      %% "circe-parser"      % circeVersion,
@@ -192,7 +192,7 @@ val databaseTestDependencies = Seq(
 
 val messageBusDependencies = Seq(
   "org.typelevel"         %% "cats-effect"               % "3.7.1",
-  "co.fs2"                %% "fs2-core"                  % "3.14.0",
+  "co.fs2"                %% "fs2-core"                  % "3.16.0",
   "io.circe"              %% "circe-core"                % circeVersion,
   "com.outr"              %% "scribe"                    % "3.19.1",
   "org.tpolecat"          %% "skunk-core"                % "2.0.0-RC3",
@@ -212,7 +212,7 @@ val messageBusTestDependencies = Seq(
 
 val authDependencies = Seq(
   "org.typelevel"                 %% "cats-effect"               % "3.7.1",
-  "co.fs2"                        %% "fs2-core"                  % "3.14.0",
+  "co.fs2"                        %% "fs2-core"                  % "3.16.0",
   "io.circe"                      %% "circe-core"                % circeVersion,
   "io.circe"                      %% "circe-parser"              % circeVersion,
   "com.outr"                      %% "scribe"                    % "3.19.1",
@@ -232,8 +232,8 @@ val authDependencies = Seq(
 
 val resourcesDependencies = Seq(
   "org.typelevel"                 %% "cats-effect"               % "3.7.1",
-  "co.fs2"                        %% "fs2-core"                  % "3.14.0",
-  "co.fs2"                        %% "fs2-io"                    % "3.14.0",
+  "co.fs2"                        %% "fs2-core"                  % "3.16.0",
+  "co.fs2"                        %% "fs2-io"                    % "3.16.0",
   "io.circe"                      %% "circe-core"                % circeVersion,
   "io.circe"                      %% "circe-generic"             % circeVersion,
   "io.circe"                      %% "circe-parser"              % circeVersion,
@@ -264,7 +264,7 @@ val resourcesDependencies = Seq(
 
 val searchDependencies = Seq(
   "org.typelevel"               %% "cats-effect"               % "3.7.1",
-  "co.fs2"                      %% "fs2-core"                  % "3.14.0",
+  "co.fs2"                      %% "fs2-core"                  % "3.16.0",
   "io.circe"                    %% "circe-core"                % circeVersion,
   "io.circe"                    %% "circe-generic"             % circeVersion,
   "io.circe"                    %% "circe-parser"              % circeVersion,
@@ -280,8 +280,8 @@ val searchDependencies = Seq(
 val appDependencies = Seq(
   "org.typelevel"                 %% "cats-effect"                               % "3.7.1",
   "org.typelevel"                 %% "cats-mtl"                                  % "1.7.0",
-  "co.fs2"                        %% "fs2-core"                                  % "3.14.0",
-  "co.fs2"                        %% "fs2-io"                                    % "3.14.0",
+  "co.fs2"                        %% "fs2-core"                                  % "3.16.0",
+  "co.fs2"                        %% "fs2-io"                                    % "3.16.0",
   "com.typesafe"                   % "config"                                    % "1.4.10",
   "com.github.pureconfig"         %% "pureconfig-core"                           % "0.17.11",
   "com.github.pureconfig"         %% "pureconfig-generic-scala3"                 % "0.17.11",
