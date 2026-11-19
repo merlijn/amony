@@ -50,6 +50,13 @@
       groupName: "backend minor/patch dependencies",
     },
 
+    // pnpm rejects lockfile entries younger than 24 hours, so proposing a fresh release only
+    // produces a red build; wait until the package has aged past that cutoff.
+    {
+      matchManagers: ["npm"],
+      minimumReleaseAge: "1 day",
+    },
+
     // Maven Central rate-limits metadata lookups; Google's public mirror serves the same artifacts
     // with its own limits. sbt deps use the sbt-package datasource, plain Java ones maven. The
     // sbt-plugin datasource is left alone: it needs HTML directory listings, which mirrors don't do.
