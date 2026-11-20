@@ -3,7 +3,7 @@ services:
     container_name: nginx-reverse-proxy
     # Stock image: it renders /etc/nginx/templates itself (20-envsubst-on-templates.sh) and the
     # certificate watcher is mounted as an additional entrypoint script.
-    image: nginx:1.30.7-alpine@sha256:bef154735288bc38d99fac41ae63730684bcc661503673a04a0f9bc526ba8598
+    image: nginx:1.30.7-alpine@sha256:caf4e1e032a20f9c3c5e28fc7f25ffd768ad8677b4975c54193075997b3a97e3
     ports:
       - "443:443"
     volumes:
