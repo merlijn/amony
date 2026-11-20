@@ -3,7 +3,6 @@ overrides:
   browserslist: 4.29.6
   esbuild: 0.28.2
   fast-uri: 4.2.3
-  js-yaml: 4.3.2
   postcss: 8.5.33
   undici: 8.12.4
 allowBuilds:
