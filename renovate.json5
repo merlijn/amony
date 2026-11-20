@@ -2,6 +2,14 @@
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["config:recommended"],
 
+  // Transitive dependencies are pinned by the lockfile, so they only move when it is regenerated.
+  // Refresh it weekly: that lifts every in-range transitive to the newest allowed version, which a
+  // package update alone does not do (the parent's own pin is what gets resolved otherwise).
+  lockFileMaintenance: {
+    enabled: true,
+    extends: ["schedule:weekly"],
+  },
+
   // config:recommended groups dependencies of the same monorepo into their own PRs; we want one
   // minor/patch PR per stack instead.
   ignorePresets: ["group:monorepos", "group:recommended"],
