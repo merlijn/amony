@@ -33,7 +33,7 @@ services:
     restart: "no"
 
   zitadel:
-    image: ghcr.io/zitadel/zitadel:v4.15.3@sha256:2356d646340724b3d843c024d589314adb9b54dbd6452ebc34008b011e023eff
+    image: ghcr.io/zitadel/zitadel:v4.20.5@sha256:cb21fe73badfe44972bb24a66cf0ebce6a8dc63ab8ed24567af6b731bd8bbf45
     container_name: zitadel
     profiles:
       - zitadel

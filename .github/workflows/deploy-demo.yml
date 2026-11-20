@@ -142,7 +142,7 @@ jobs:
           ln -sfn "releases/$FE_TREE" web/current
           ls -1t web/releases | tail -n +4 | xargs -r -I{} rm -rf "web/releases/{}"
 
-          docker compose $COMPOSE_FILES --profile zitadel pull amony nginx
+          docker compose $COMPOSE_FILES --profile zitadel pull amony nginx zitadel
           # --build refreshes the locally built certbot image from the checkout.
           docker compose $COMPOSE_FILES --profile zitadel up -d --build
           # Bind-mounted nginx config is not part of the container spec, so recreate the proxy to
