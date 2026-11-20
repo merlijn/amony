@@ -109,6 +109,13 @@
       matchUpdateTypes: ["minor", "patch"],
       enabled: true,
     },
+    // A Postgres major means a data directory upgrade, so leaving the 17 line is a decision made by
+    // hand, not by a PR. Digest updates inside the 17 stream are still proposed.
+    {
+      matchDatasources: ["docker"],
+      matchPackageNames: ["postgres"],
+      allowedVersions: "<18",
+    },
     // Built on the host or by CI, not something Renovate can look up.
     {
       matchPackageNames: ["amony/certbot", "ghcr.io/merlijn/amony-app"],
