@@ -15,6 +15,8 @@ import org.testcontainers.containers.wait.strategy.Wait
 import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
 import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import skunk.Session
+import skunk.codec.all.*
+import skunk.implicits.*
 
 import nl.amony.platform.messagebus.*
 
@@ -297,6 +299,29 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
                          }
             result    <- processed.get
           yield result shouldBe List(1)
+        }.unsafeRunSync()
+      }
+
+      "cancel a running processor when a renewal discovers that its claim is no longer valid" in withContainers { container =>
+        pool(container).use { pool =>
+          val name  = s"topic-${UUID.randomUUID()}"
+          val group = "consumer"
+          val topic = topicFor(pool, name)
+          val fence = sql"""
+            update message_consumer set lease_generation = lease_generation + 1, locked_until = clock_timestamp() + interval '1 minute'
+            where topic = $varchar and consumer_id = $varchar
+          """.command
+
+          for
+            _         <- registerFromStart(pool, name, group)
+            started   <- Deferred[IO, Unit]
+            cancelled <- Deferred[IO, Unit]
+            processor  = (_: Int) => (started.complete(()) >> IO.never[Unit]).onCancel(cancelled.complete(()).void)
+            _         <- topic.processAtLeastOnce(group)(processor).compile.drain.background.use { _ =>
+                           (topic.publish(1) >> started.get >>
+                             pool.use(_.prepare(fence).flatMap(_.execute((name, group)))) >> cancelled.get).timeout(15.seconds)
+                         }
+          yield succeed
         }.unsafeRunSync()
       }
     }

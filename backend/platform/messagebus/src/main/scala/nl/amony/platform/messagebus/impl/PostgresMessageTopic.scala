@@ -16,9 +16,9 @@ import nl.amony.platform.messagebus.*
  * A [[MessageTopic]] backed by the durable message log. Producers append a row to a key-derived partition and send a
  * `NOTIFY` on the topic channel in the same transaction; each consumer group wakes on `NOTIFY` (with a periodic poll
  * as a fallback) and claims partitions via database leases (`FOR UPDATE SKIP LOCKED`), reading each partition from its
- * own committed offset in order. Multiple workers (within a node via `Semaphore` and across nodes) can run the same
- * consumer group concurrently without processing the same partition at the same time. A message is only deleted once
- * every consumer group has processed it.
+ * own committed offset in order. Each partition has one valid claim at a time; a worker that loses its lease cannot
+ * change the replacement's lease or advance its offset. A message is only deleted once every registered consumer
+ * group has acknowledged it.
  */
 final private[messagebus] class PostgresMessageTopic[E](
   key: MessageTopicKey[E],
@@ -47,7 +47,7 @@ final private[messagebus] class PostgresMessageTopic[E](
         }
 
       // A new consumer group starts at the latest message, like Kafka's `auto.offset.reset=latest`.
-      val register = Stream.eval(log.latestId(key.name).flatMap(offset => log.ensureConsumer(key.name, consumerId, key.partitions, offset)))
+      val register = Stream.eval(log.ensureConsumerAtLatest(key.name, consumerId, key.partitions))
       val realtime = notifications.parEvalMapUnbounded(_ => trigger)
       val polling  = Stream
         .fixedRateStartImmediately[IO](config.pollInterval)
@@ -70,23 +70,24 @@ final private[messagebus] class PostgresMessageTopic[E](
     }
 
   private def process(consumerId: String, processor: E => IO[Unit])(row: MessageLogRow): IO[Unit] =
+    val context         = s"message ${row.id} (partition ${row.partition}) on topic '${key.name}' for consumer '$consumerId'"
     val renewalInterval = (config.leaseDuration / 3).max(50.millis)
     val heartbeat       = Stream.awakeEvery[IO](renewalInterval)
-      .evalMap(_ => log.renewLease(key.name, consumerId, row.partition, config.leaseJavaDuration))
+      .evalMap(_ => log.renewLease(consumerId, row, config.leaseJavaDuration))
+      .takeWhile(identity)
       .compile
       .drain
+      .handleErrorWith(error => IO(logger.warn(s"Failed to renew lease for $context: $error")))
 
-    val runProcessor = codec.decodeJson(row.payload).fold(e => IO.raiseError(e), e => IO.pure(e)).flatMap(processor)
-
-    heartbeat.background.use(_ => runProcessor).attempt.flatMap:
-      case Right(_) => log.commitOffset(key.name, consumerId, row.partition, row.id)
-      // Any failure (a processor error, or a payload that cannot be decoded) sets the partition's lease to
-      // `retryBackoff` so that partition backs off in place while other partitions remain runnable.
+    val runProcessor = IO.defer(IO.fromEither(codec.decodeJson(row.payload))).flatMap(processor)
+    val finish       = runProcessor.attempt.flatMap {
+      case Right(_) => log.commitOffset(consumerId, row)
       case Left(e)  =>
         val error = Option(e.getMessage).getOrElse(e.getClass.getName)
-        IO(logger.error(
-          s"Failed to process message ${row.id} (partition ${row.partition}) on topic '${key.name}' for consumer '$consumerId': $error"
-        )) >> log.recordFailure(key.name, consumerId, row.partition, error, config.retryBackoffDuration)
+        IO(logger.error(s"Failed to process $context: $error")) >> log.recordFailure(consumerId, row, error, config.retryBackoffDuration)
+    }.flatMap(updated => IO.unlessA(updated)(IO(logger.warn(s"Lost lease before recording outcome for $context"))))
+
+    IO.race(heartbeat, finish).void
 
 private[messagebus] object PostgresMessageTopic:
 
