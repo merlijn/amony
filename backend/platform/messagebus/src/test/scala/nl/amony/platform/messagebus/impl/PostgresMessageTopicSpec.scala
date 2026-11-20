@@ -8,13 +8,15 @@ import cats.effect.{Deferred, IO, Ref, Resource}
 import cats.syntax.all.*
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
-import io.circe.Codec
+import io.circe.{Codec, Json}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
 import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
 import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import skunk.Session
+import skunk.codec.all.*
+import skunk.implicits.*
 
 import nl.amony.platform.messagebus.*
 
@@ -68,6 +70,17 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
 
   private def await[A](ref: Ref[IO, List[A]], size: Int): IO[List[A]] =
     ref.get.flatMap(xs => if xs.size >= size then IO.pure(xs) else IO.sleep(50.millis) *> await(ref, size)).timeout(15.seconds)
+
+  private def awaitListener(pool: Resource[IO, Session[IO]], topic: String, previous: Option[Int] = None): IO[Int] =
+    val listen = s"LISTEN ${PostgresMessageTopic.channelIdentifier(topic).sql}"
+    val find   = sql"select pid from pg_stat_activity where query = $varchar and state = 'idle'".query(int4)
+
+    def waitForListener: IO[Int] = pool.use(_.prepare(find).flatMap(_.option(listen))).flatMap {
+      case Some(pid) if !previous.contains(pid) => IO.pure(pid)
+      case _                                    => IO.sleep(50.millis) >> waitForListener
+    }
+
+    waitForListener.timeout(15.seconds)
 
   "PostgresMessageTopic" when {
 
@@ -221,6 +234,79 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
 
     "handling failures" should {
 
+      "reconnect a terminated notification listener without interrupting processing" in withContainers { container =>
+        pool(container).use { pool =>
+          val name      = s"topic-${UUID.randomUUID()}"
+          val topic     = topicFor(pool, name)
+          val terminate = sql"select pg_terminate_backend($int4)".query(bool)
+
+          for
+            _         <- registerFromStart(pool, name, "consumer")
+            started   <- Deferred[IO, Unit]
+            release   <- Deferred[IO, Unit]
+            cancelled <- Ref.of[IO, Boolean](false)
+            seen      <- Ref.of[IO, List[Int]](Nil)
+            processor  = (n: Int) =>
+                           (IO.whenA(n == 1)(started.complete(()).void >> release.get) >> seen.update(_ :+ n)).onCancel(cancelled.set(true))
+            result    <- topic.processAtLeastOnce("consumer")(processor).compile.drain.background.use { _ =>
+                           for
+                             original    <- awaitListener(pool, name)
+                             _           <- pool.use(session => MessageLog(pool).enqueue(session, name, 0, "key", Json.fromInt(1)))
+                             _           <- started.get.timeout(15.seconds)
+                             terminated  <- pool.use(_.prepare(terminate).flatMap(_.unique(original)))
+                             _           <- IO(terminated shouldBe true)
+                             _           <- awaitListener(pool, name, Some(original))
+                             interrupted <- cancelled.get
+                             _           <- release.complete(())
+                             _           <- topic.publish(2)
+                             values      <- await(seen, 2)
+                           yield (interrupted, values)
+                         }
+          yield result shouldBe (false, List(1, 2))
+        }.unsafeRunSync()
+      }
+
+      "restart the consumer after a database error acknowledging a message" in withContainers { container =>
+        pool(container).use { pool =>
+          val name      = s"topic-${UUID.randomUUID()}"
+          val group     = "restart-test"
+          val config    = MessageBusConfig(pollInterval = 100.millis, leaseDuration = 600.millis)
+          val topic     = topicFor(pool, name, config = config)
+          val install   = pool.use { session =>
+            session.execute(sql"create sequence message_bus_test_ack_failure".command) >>
+              session.execute(sql"""
+                create function message_bus_test_fail_ack() returns trigger language plpgsql as '
+                begin
+                  if new.last_offset > old.last_offset then
+                    if nextval(''message_bus_test_ack_failure'') = 1 then
+                      raise exception ''test acknowledgement failure'';
+                    end if;
+                  end if;
+                  return new;
+                end;
+                '
+              """.command) >>
+              session.execute(sql"""
+                create trigger message_bus_test_ack before update on message_consumer
+                for each row when (old.consumer_id = 'restart-test') execute function message_bus_test_fail_ack()
+              """.command).void
+          }
+          val uninstall = pool.use { session =>
+            session.execute(sql"drop trigger if exists message_bus_test_ack on message_consumer".command) >>
+              session.execute(sql"drop function if exists message_bus_test_fail_ack()".command) >>
+              session.execute(sql"drop sequence if exists message_bus_test_ack_failure".command).void
+          }
+
+          (install >> (for
+            _         <- registerFromStart(pool, name, group)
+            processed <- Ref.of[IO, List[Int]](Nil)
+            result    <- topic.processAtLeastOnce(group)(n => processed.update(_ :+ n)).compile.drain.background.use { _ =>
+                           topic.publish(1) >> topic.publish(2) >> await(processed, 3)
+                         }
+          yield result shouldBe List(1, 1, 2))).guarantee(uninstall)
+        }.unsafeRunSync()
+      }
+
       "retry a failing message in place rather than skipping it" in withContainers { container =>
         pool(container).use { pool =>
           val name  = s"topic-${UUID.randomUUID()}"
@@ -297,6 +383,29 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
                          }
             result    <- processed.get
           yield result shouldBe List(1)
+        }.unsafeRunSync()
+      }
+
+      "cancel a running processor when a renewal discovers that its claim is no longer valid" in withContainers { container =>
+        pool(container).use { pool =>
+          val name  = s"topic-${UUID.randomUUID()}"
+          val group = "consumer"
+          val topic = topicFor(pool, name)
+          val fence = sql"""
+            update message_consumer set lease_generation = lease_generation + 1, locked_until = clock_timestamp() + interval '1 minute'
+            where topic = $varchar and consumer_id = $varchar
+          """.command
+
+          for
+            _         <- registerFromStart(pool, name, group)
+            started   <- Deferred[IO, Unit]
+            cancelled <- Deferred[IO, Unit]
+            processor  = (_: Int) => (started.complete(()) >> IO.never[Unit]).onCancel(cancelled.complete(()).void)
+            _         <- topic.processAtLeastOnce(group)(processor).compile.drain.background.use { _ =>
+                           (topic.publish(1) >> started.get >>
+                             pool.use(_.prepare(fence).flatMap(_.execute((name, group)))) >> cancelled.get).timeout(15.seconds)
+                         }
+          yield succeed
         }.unsafeRunSync()
       }
     }

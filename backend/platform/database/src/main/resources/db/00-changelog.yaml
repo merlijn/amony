@@ -139,4 +139,12 @@ databaseChangeLog:
             path: db/15-job-status.sql
             splitStatements: true
             endDelimiter: ";"
-
+  - changeSet:
+      id: 16
+      author: merlijn
+      context: message-log
+      changes:
+        - sqlFile:
+            path: db/16-message-ordering-and-lease-fencing.sql
+            splitStatements: true
+            endDelimiter: ";"

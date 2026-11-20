@@ -2,7 +2,7 @@ package nl.amony.platform.messagebus.impl
 
 import scala.concurrent.duration.*
 
-import cats.effect.std.Semaphore
+import cats.effect.std.{Queue, Semaphore}
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
@@ -16,9 +16,9 @@ import nl.amony.platform.messagebus.*
  * A [[MessageTopic]] backed by the durable message log. Producers append a row to a key-derived partition and send a
  * `NOTIFY` on the topic channel in the same transaction; each consumer group wakes on `NOTIFY` (with a periodic poll
  * as a fallback) and claims partitions via database leases (`FOR UPDATE SKIP LOCKED`), reading each partition from its
- * own committed offset in order. Multiple workers (within a node via `Semaphore` and across nodes) can run the same
- * consumer group concurrently without processing the same partition at the same time. A message is only deleted once
- * every consumer group has processed it.
+ * own committed offset in order. Each partition has one valid claim at a time; a worker that loses its lease cannot
+ * change the replacement's lease or advance its offset. A message is only deleted once every registered consumer
+ * group has acknowledged it.
  */
 final private[messagebus] class PostgresMessageTopic[E](
   key: MessageTopicKey[E],
@@ -39,25 +39,52 @@ final private[messagebus] class PostgresMessageTopic[E](
 
   override def processAtLeastOnce(consumerId: String, parallelism: Option[Int] = None)(processor: E => IO[Unit]): Stream[IO, Unit] =
     val maxWorkers = parallelism.getOrElse(config.parallelism).min(key.partitions).max(1)
-    Stream.eval(Semaphore[IO](maxWorkers.toLong)).flatMap { semaphore =>
-      val trigger: IO[Unit] =
+    val context    = s"topic '${key.name}', consumer '$consumerId'"
+    Stream.eval((Semaphore[IO](maxWorkers.toLong), Queue.bounded[IO, Unit](1)).tupled).flatMap { (semaphore, wakeups) =>
+      val trigger = IO.uncancelable { poll =>
         semaphore.tryAcquire.flatMap {
           case false => IO.unit
-          case true  => drain(consumerId, processor).guarantee(semaphore.release)
+          case true  => poll(drain(consumerId, processor)).guarantee(semaphore.release)
         }
+      }
 
       // A new consumer group starts at the latest message, like Kafka's `auto.offset.reset=latest`.
-      val register = Stream.eval(log.latestId(key.name).flatMap(offset => log.ensureConsumer(key.name, consumerId, key.partitions, offset)))
-      val realtime = notifications.parEvalMapUnbounded(_ => trigger)
+      val register = restartOnError(s"Registration for $context")(Stream.eval(log.ensureConsumerAtLatest(key.name, consumerId, key.partitions)))
+      val listener = restartOnError(s"Notification listener for $context")(
+        notifications.evalMap(_ => wakeups.tryOffer(()).void) ++ Stream.raiseError[IO](new IllegalStateException("LISTEN stream ended"))
+      )
+      val realtime = Stream.repeatEval(wakeups.take).parEvalMapUnbounded(_ => trigger)
       val polling  = Stream
         .fixedRateStartImmediately[IO](config.pollInterval)
         .parEvalMapUnbounded(_ => List.fill(maxWorkers)(trigger).parSequence_)
-      val purging  = Stream.fixedRateStartImmediately[IO](config.purgeInterval).evalMap(_ => log.purge(key.name, config.retentionDuration))
-      register ++ realtime.merge(polling).merge(purging)
+      val workers  = restartOnError(s"Consumer worker for $context")(realtime.merge(polling))
+      val purging  = restartOnError(s"Purge for $context")(
+        Stream.fixedRateStartImmediately[IO](config.purgeInterval).evalMap(_ => log.purge(key.name, config.retentionDuration))
+      )
+      register ++ workers.merge(listener).merge(purging)
     }
 
+  private def restartOnError(component: String)(stream: Stream[IO, Unit]): Stream[IO, Unit] =
+    val initialDelay = 1.second
+    val maxDelay     = 30.seconds
+
+    def run(backoff: FiniteDuration): Stream[IO, Unit] =
+      Stream.eval(IO.monotonic).flatMap { started =>
+        stream.handleErrorWith { error =>
+          Stream.eval(IO.monotonic).flatMap { now =>
+            val delay = if now - started >= maxDelay then initialDelay else backoff
+            Stream.eval(IO(logger.error(s"$component failed; retrying in $delay", error))) ++
+              Stream.sleep_[IO](delay) ++ run((delay * 2).min(maxDelay))
+          }
+        }
+      }
+
+    run(initialDelay)
+
   private def notifications: Stream[IO, Unit] =
-    Stream.resource(pool).flatMap(session => session.channel(identifier).listen(config.notificationQueueSize)).void
+    Stream.resource(pool).flatMap { session =>
+      Stream.resource(session.channel(identifier).listenR(config.notificationQueueSize)).flatMap(registered => Stream.emit(()) ++ registered.void)
+    }
 
   /**
    * Drain all available unlocked partitions for this consumer group. If a partition fails, its lease is set to
@@ -70,23 +97,24 @@ final private[messagebus] class PostgresMessageTopic[E](
     }
 
   private def process(consumerId: String, processor: E => IO[Unit])(row: MessageLogRow): IO[Unit] =
+    val context         = s"message ${row.id} (partition ${row.partition}) on topic '${key.name}' for consumer '$consumerId'"
     val renewalInterval = (config.leaseDuration / 3).max(50.millis)
     val heartbeat       = Stream.awakeEvery[IO](renewalInterval)
-      .evalMap(_ => log.renewLease(key.name, consumerId, row.partition, config.leaseJavaDuration))
+      .evalMap(_ => log.renewLease(consumerId, row, config.leaseJavaDuration))
+      .takeWhile(identity)
       .compile
       .drain
+      .handleErrorWith(error => IO(logger.warn(s"Failed to renew lease for $context: $error")))
 
-    val runProcessor = codec.decodeJson(row.payload).fold(e => IO.raiseError(e), e => IO.pure(e)).flatMap(processor)
-
-    heartbeat.background.use(_ => runProcessor).attempt.flatMap:
-      case Right(_) => log.commitOffset(key.name, consumerId, row.partition, row.id)
-      // Any failure (a processor error, or a payload that cannot be decoded) sets the partition's lease to
-      // `retryBackoff` so that partition backs off in place while other partitions remain runnable.
+    val runProcessor = IO.defer(IO.fromEither(codec.decodeJson(row.payload))).flatMap(processor)
+    val finish       = runProcessor.attempt.flatMap {
+      case Right(_) => log.commitOffset(consumerId, row)
       case Left(e)  =>
         val error = Option(e.getMessage).getOrElse(e.getClass.getName)
-        IO(logger.error(
-          s"Failed to process message ${row.id} (partition ${row.partition}) on topic '${key.name}' for consumer '$consumerId': $error"
-        )) >> log.recordFailure(key.name, consumerId, row.partition, error, config.retryBackoffDuration)
+        IO(logger.error(s"Failed to process $context: $error")) >> log.recordFailure(consumerId, row, error, config.retryBackoffDuration)
+    }.flatMap(updated => IO.unlessA(updated)(IO(logger.warn(s"Lost lease before recording outcome for $context"))))
+
+    IO.race(heartbeat, finish).void
 
 private[messagebus] object PostgresMessageTopic:
 

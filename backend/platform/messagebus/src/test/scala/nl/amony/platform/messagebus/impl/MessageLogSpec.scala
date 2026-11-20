@@ -2,6 +2,7 @@ package nl.amony.platform.messagebus.impl
 
 import java.time.Duration
 import java.util.UUID
+import scala.concurrent.duration.*
 
 import cats.effect.unsafe.implicits.global
 import cats.effect.{Deferred, IO, Resource}
@@ -52,7 +53,7 @@ class MessageLogSpec extends AnyWordSpecLike with TestContainerForAll with Match
   private def nOf(json: Json): Int = json.hcursor.get[Int]("n").getOrElse(throw new RuntimeException(s"missing 'n' in $json"))
 
   private def publish(pool: Resource[IO, Session[IO]], log: MessageLog, topic: String, n: Int, partition: Int = 0): IO[Unit] =
-    pool.use(session => log.enqueue(session, topic, partition, s"key-$n", payload(n)))
+    pool.use(session => log.enqueue(session, topic, partition, "same-key", payload(n)))
 
   private def countRows(pool: Resource[IO, Session[IO]], topic: String): IO[Long] =
     pool.use(session => session.prepare(sql"select count(*) from message_log where topic = $varchar".query(int8)).flatMap(_.unique(topic)))
@@ -70,8 +71,22 @@ class MessageLogSpec extends AnyWordSpecLike with TestContainerForAll with Match
     log.claimNextUnprocessed(topic, consumerId, lease).flatMap {
       case None      => IO.pure(Nil)
       case Some(row) =>
-        log.commitOffset(topic, consumerId, row.partition, row.id).as(nOf(row.payload)).flatMap(n => readAll(log, topic, consumerId).map(n :: _))
+        log.commitOffset(consumerId, row).flatMap { committed =>
+          IO(committed shouldBe true) >> readAll(log, topic, consumerId).map(nOf(row.payload) :: _)
+        }
     }
+
+  private def waitUntilBlocked(pool: Resource[IO, Session[IO]], pid: Int): IO[Unit] =
+    val blocked         = sql"select cardinality(pg_blocking_pids($int4)) > 0".query(bool)
+    def await: IO[Unit] = pool.use(_.prepare(blocked).flatMap(_.unique(pid))).flatMap {
+      case true  => IO.unit
+      case false => IO.sleep(10.millis) >> await
+    }
+    await.timeout(10.seconds)
+
+  private def expireLease(pool: Resource[IO, Session[IO]], topic: String, consumerId: String): IO[Unit] =
+    val expire = sql"update message_consumer set locked_until = clock_timestamp() where topic = $varchar and consumer_id = $varchar".command
+    pool.use(_.prepare(expire).flatMap(_.execute((topic, consumerId)))).void
 
   "MessageLog" when {
 
@@ -103,33 +118,60 @@ class MessageLogSpec extends AnyWordSpecLike with TestContainerForAll with Match
         }
       }
 
-      "not skip a message whose transaction commits after a later message's transaction" in withContainers { container =>
+      "serialize same-partition publishes regardless of transaction ID order without blocking other partitions" in withContainers { container =>
         withLog(container) { (pool, log) =>
           val topic = newTopic
           for
-            _             <- log.ensureConsumer(topic, "consumer", 1, 0)
-            tx1Inserted   <- Deferred[IO, Unit]
-            tx2Committed  <- Deferred[IO, Unit]
-            // Tx 1 obtains the lower sequence ID first, but stays uncommitted while Tx 2 inserts and commits.
-            tx1            = pool.use { s1 =>
-                               s1.transaction.use { _ =>
-                                 log.enqueue(s1, topic, 0, "k1", payload(1)) >>
-                                   tx1Inserted.complete(()) >>
-                                   tx2Committed.get
-                               }
-                             }
-            tx1Fiber      <- tx1.start
-            _             <- tx1Inserted.get
-            // Tx 2 inserts message 2 (higher ID) and commits immediately.
-            _             <- publish(pool, log, topic, 2)
-            // While Tx 1 is still open, claiming must NOT return message 2 (which would advance last_offset past message 1).
-            whileTx1Open  <- log.claimNextUnprocessed(topic, "consumer", lease)
-            _             <- tx2Committed.complete(())
-            _             <- tx1Fiber.joinWithNever
-            afterTx1Close <- readAll(log, topic, "consumer")
+            _                <- log.ensureConsumer(topic, "consumer", 2, 0)
+            olderPid         <- Deferred[IO, Int]
+            firstSent        <- Deferred[IO, Unit]
+            allowFirstCommit <- Deferred[IO, Unit]
+            older             = pool.use { session =>
+                                  session.transaction.use { _ =>
+                                    session.unique(sql"select pg_backend_pid() where pg_current_xact_id() is not null".query(int4)).flatMap(olderPid.complete) >>
+                                      firstSent.get >> log.enqueue(session, topic, 0, "same-key", payload(2))
+                                  }
+                                }
+            newer             = pool.use { session =>
+                                  session.transaction.use { _ =>
+                                    log.enqueue(session, topic, 0, "same-key", payload(1)) >> firstSent.complete(()) >> allowFirstCommit.get
+                                  }
+                                }
+            seen             <- older.background.use { olderResult =>
+                                  olderPid.get.timeout(10.seconds).flatMap { pid =>
+                                    newer.background.use { newerResult =>
+                                      for
+                                        _      <- waitUntilBlocked(pool, pid)
+                                        _      <- publish(pool, log, topic, 3, partition = 1).timeout(10.seconds)
+                                        during <- readAll(log, topic, "consumer")
+                                        _      <- allowFirstCommit.complete(())
+                                        _      <- newerResult.flatMap(_.embedNever)
+                                        _      <- olderResult.flatMap(_.embedNever)
+                                        after  <- readAll(log, topic, "consumer")
+                                      yield (during, after)
+                                    }
+                                  }
+                                }
           yield
-            whileTx1Open shouldBe None
-            afterTx1Close shouldBe List(1, 2)
+            seen._1 shouldBe List(3)
+            seen._2 shouldBe List(1, 2)
+        }
+      }
+
+      "roll back the allocation and message together when the publishing transaction aborts" in withContainers { container =>
+        withLog(container) { (pool, log) =>
+          val topic = newTopic
+          val error = new RuntimeException("abort publish")
+          for
+            _      <- log.ensureConsumer(topic, "consumer", 1, 0)
+            result <- pool.use(session =>
+                        session.transaction.use(_ => log.enqueue(session, topic, 0, "same-key", payload(1)) >> IO.raiseError(error))
+                      ).attempt
+            _      <- publish(pool, log, topic, 2)
+            next   <- log.claimNextUnprocessed(topic, "consumer", lease)
+          yield
+            result shouldBe Left(error)
+            next.map(row => (row.offset, nOf(row.payload))) shouldBe Some((1L, 2))
         }
       }
 
@@ -142,31 +184,64 @@ class MessageLogSpec extends AnyWordSpecLike with TestContainerForAll with Match
             first  <- log.claimNextUnprocessed(topic, "consumer", lease)
             // A second concurrent worker cannot claim the same partition while the first lease is active.
             second <- log.claimNextUnprocessed(topic, "consumer", lease)
-            _      <- log.commitOffset(topic, "consumer", first.get.partition, first.get.id)
+            ack    <- log.commitOffset("consumer", first.get)
             third  <- log.claimNextUnprocessed(topic, "consumer", lease)
           yield
             first.map(r => nOf(r.payload)) shouldBe Some(1)
             second shouldBe None
+            ack shouldBe true
             third.map(r => nOf(r.payload)) shouldBe Some(2)
+        }
+      }
+
+      "reject expired claims and fence every stale mutation after takeover" in withContainers { container =>
+        withLog(container) { (pool, log) =>
+          val topic = newTopic
+          val group = "consumer"
+          for
+            _           <- log.ensureConsumer(topic, group, 1, 0)
+            _           <- (1 to 2).toList.traverse_(n => publish(pool, log, topic, n))
+            original    <- log.claimNextUnprocessed(topic, group, lease).map(_.get)
+            renewed     <- log.renewLease(group, original, lease)
+            _           <- expireLease(pool, topic, group)
+            expiredAck  <- log.commitOffset(group, original)
+            expiredBeat <- log.renewLease(group, original, lease)
+            replacement <- log.claimNextUnprocessed(topic, group, lease).map(_.get)
+            staleAck    <- log.commitOffset(group, original)
+            staleBeat   <- log.renewLease(group, original, lease)
+            staleFail   <- log.recordFailure(group, original, "stale failure", Duration.ZERO)
+            state       <- consumerState(pool, topic, group)
+            whileOwned  <- log.claimNextUnprocessed(topic, group, lease)
+            ack         <- log.commitOffset(group, replacement)
+            next        <- log.claimNextUnprocessed(topic, group, lease)
+          yield
+            renewed shouldBe true
+            List(expiredAck, expiredBeat, staleAck, staleBeat, staleFail) shouldBe List.fill(5)(false)
+            replacement.offset shouldBe original.offset
+            replacement.leaseGeneration should be > original.leaseGeneration
+            state shouldBe (0, None)
+            whileOwned shouldBe None
+            ack shouldBe true
+            next.map(row => nOf(row.payload)) shouldBe Some(2)
         }
       }
     }
 
     "starting a consumer" should {
 
-      "start a new consumer at the latest message" in withContainers { container =>
+      "start a new consumer at the latest offset of each partition" in withContainers { container =>
         withLog(container) { (pool, log) =>
           val topic = newTopic
           for
             _    <- (1 to 2).toList.traverse_(n => publish(pool, log, topic, n))
-            max  <- log.latestId(topic)
-            _    <- log.ensureConsumer(topic, "consumer", 1, max)
+            _    <- log.ensureConsumerAtLatest(topic, "consumer", 2)
             none <- log.claimNextUnprocessed(topic, "consumer", lease)
             _    <- publish(pool, log, topic, 3)
-            next <- log.claimNextUnprocessed(topic, "consumer", lease)
+            _    <- publish(pool, log, topic, 4, partition = 1)
+            next <- readAll(log, topic, "consumer")
           yield
             none shouldBe None
-            next.map(row => nOf(row.payload)) shouldBe Some(3)
+            next shouldBe List(3, 4)
         }
       }
     }
@@ -177,13 +252,14 @@ class MessageLogSpec extends AnyWordSpecLike with TestContainerForAll with Match
         withLog(container) { (pool, log) =>
           val topic = newTopic
           for
-            _     <- log.ensureConsumer(topic, "consumer", 1, 0)
-            _     <- publish(pool, log, topic, 1)
-            first <- log.claimNextUnprocessed(topic, "consumer", lease)
-            _     <- log.recordFailure(topic, "consumer", 0, "boom", Duration.ZERO)
-            again <- log.claimNextUnprocessed(topic, "consumer", lease)
-            state <- consumerState(pool, topic, "consumer")
+            _      <- log.ensureConsumer(topic, "consumer", 1, 0)
+            _      <- publish(pool, log, topic, 1)
+            first  <- log.claimNextUnprocessed(topic, "consumer", lease)
+            failed <- log.recordFailure("consumer", first.get, "boom", Duration.ZERO)
+            again  <- log.claimNextUnprocessed(topic, "consumer", lease)
+            state  <- consumerState(pool, topic, "consumer")
           yield
+            failed shouldBe true
             again.map(_.id) shouldBe first.map(_.id)
             state shouldBe (1, Some("boom"))
         }
@@ -199,7 +275,7 @@ class MessageLogSpec extends AnyWordSpecLike with TestContainerForAll with Match
             _    <- log.ensureConsumer(topic, "consumer", 1, 0)
             _    <- (1 to 2).toList.traverse_(n => publish(pool, log, topic, n))
             row  <- log.claimNextUnprocessed(topic, "consumer", lease)
-            _    <- log.commitOffset(topic, "consumer", row.get.partition, row.get.id)
+            _    <- log.commitOffset("consumer", row.get)
             _    <- log.purge(topic, Duration.ZERO)
             left <- countRows(pool, topic)
           yield left shouldBe 1
@@ -214,7 +290,7 @@ class MessageLogSpec extends AnyWordSpecLike with TestContainerForAll with Match
             _    <- log.ensureConsumer(topic, "b", 1, 0)
             _    <- (1 to 2).toList.traverse_(n => publish(pool, log, topic, n))
             row  <- log.claimNextUnprocessed(topic, "a", lease)
-            _    <- log.commitOffset(topic, "a", row.get.partition, row.get.id)
+            _    <- log.commitOffset("a", row.get)
             _    <- log.purge(topic, Duration.ZERO)
             left <- countRows(pool, topic)
           yield left shouldBe 2

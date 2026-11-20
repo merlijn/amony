@@ -36,9 +36,11 @@ trait MessageTopic[E]:
   def publish(session: Session[IO], message: E): IO[Unit]
 
   /**
-   * An at-least-once consumer group that processes each partition's messages strictly in insertion order, one at a
-   * time, from its own committed offset, so messages with the same key are never applied out of order or concurrently
-   * across nodes. Up to `parallelism` partitions (defaulting to the bus configuration) are drained concurrently on this
-   * node. Any failure is retried in place on that partition before advancing, so no message is ever skipped.
+   * An at-least-once consumer group that acknowledges each partition's messages in log order, retrying failures in
+   * place before advancing. New groups start at the latest committed offsets. Up to `parallelism` partitions
+   * (defaulting to the bus configuration) are drained concurrently on this node.
+   *
+   * A worker that loses its lease cannot advance the offset, but cancellation cannot undo side effects already in
+   * flight. Processors must tolerate duplicates and protect side effects that cannot be applied out of order.
    */
   def processAtLeastOnce(consumerId: String, parallelism: Option[Int] = None)(processor: E => IO[Unit]): Stream[IO, Unit]
