@@ -44,19 +44,23 @@ object MessageBus:
 final case class MessageBusConfig(
   // Fallback poll for notifications that were lost or whose consumer crashed. The NOTIFY path handles the
   // common case; this bounds how long a missed notification, or a message awaiting a retry, can sit.
-  pollInterval: FiniteDuration  = 3.seconds,
+  pollInterval: FiniteDuration          = 3.seconds,
   // Wait before retrying a failed message, so a failing processor (e.g. Solr down) is not hammered.
-  retryBackoff: FiniteDuration  = 3.seconds,
+  retryBackoff: FiniteDuration          = 3.seconds,
   // How long a consumer holds a partition lease before another node can take over if the consumer crashes.
   // Renewed periodically while a message is actively being processed.
-  leaseDuration: FiniteDuration = 30.seconds,
+  leaseDuration: FiniteDuration         = 30.seconds,
   // Default number of partitions a single consumer group instance can drain concurrently on one node.
-  parallelism: Int              = 4,
-  purgeInterval: FiniteDuration = 1.hour,
-  retention: FiniteDuration     = 7.days,
-  notificationQueueSize: Int    = 10000
+  parallelism: Int                      = 4,
+  purgeInterval: FiniteDuration         = 1.hour,
+  retention: FiniteDuration             = 7.days,
+  notificationQueueSize: Int            = 10000,
+  backlogCheckInterval: FiniteDuration  = 1.minute,
+  backlogErrorThreshold: FiniteDuration = 5.minutes
 ) derives ConfigReader:
   require(parallelism >= 1, s"parallelism must be >= 1, got $parallelism")
+  require(backlogCheckInterval > Duration.Zero, "backlog check interval must be positive")
+  require(backlogErrorThreshold > Duration.Zero, "backlog error threshold must be positive")
   def retryBackoffDuration: java.time.Duration = java.time.Duration.ofMillis(retryBackoff.toMillis)
   def leaseJavaDuration: java.time.Duration    = java.time.Duration.ofMillis(leaseDuration.toMillis)
   def retentionDuration: java.time.Duration    = java.time.Duration.ofMillis(retention.toMillis)

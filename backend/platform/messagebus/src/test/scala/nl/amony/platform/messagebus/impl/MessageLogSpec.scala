@@ -266,6 +266,32 @@ class MessageLogSpec extends AnyWordSpecLike with TestContainerForAll with Match
       }
     }
 
+    "measuring the backlog" should {
+
+      "report the oldest unread age for each consumer even when timestamps are out of offset order" in withContainers { container =>
+        withLog(container) { (pool, log) =>
+          val topic       = newTopic
+          val ageMessages = sql"""
+            update message_log
+            set created_at = clock_timestamp() - case when partition_offset = 1 then interval '1 minute' else interval '10 minutes' end
+            where topic = $varchar
+          """.command
+
+          for
+            _        <- log.ensureConsumer(topic, "a", 1, 0)
+            _        <- log.ensureConsumer(topic, "b", 1, 0)
+            _        <- (1 to 2).toList.traverse_(n => publish(pool, log, topic, n))
+            _        <- pool.use(_.prepare(ageMessages).flatMap(_.execute(topic)))
+            _        <- readAll(log, topic, "a")
+            caughtUp <- log.oldestPendingAge(topic, "a")
+            lagging  <- log.oldestPendingAge(topic, "b")
+          yield
+            caughtUp shouldBe None
+            lagging.map(_.toMinutes) shouldBe Some(10L)
+        }
+      }
+    }
+
     "purging messages" should {
 
       "purge messages every consumer has processed on that partition" in withContainers { container =>

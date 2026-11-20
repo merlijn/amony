@@ -2,7 +2,7 @@ package nl.amony.platform.messagebus.impl
 
 import scala.concurrent.duration.*
 
-import cats.effect.std.Semaphore
+import cats.effect.std.{Queue, Semaphore}
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
@@ -39,25 +39,62 @@ final private[messagebus] class PostgresMessageTopic[E](
 
   override def processAtLeastOnce(consumerId: String, parallelism: Option[Int] = None)(processor: E => IO[Unit]): Stream[IO, Unit] =
     val maxWorkers = parallelism.getOrElse(config.parallelism).min(key.partitions).max(1)
-    Stream.eval(Semaphore[IO](maxWorkers.toLong)).flatMap { semaphore =>
-      val trigger: IO[Unit] =
+    val context    = s"topic '${key.name}', consumer '$consumerId'"
+    val threshold  = java.time.Duration.ofNanos(config.backlogErrorThreshold.toNanos)
+    Stream.eval((Semaphore[IO](maxWorkers.toLong), Queue.bounded[IO, Unit](1)).tupled).flatMap { (semaphore, wakeups) =>
+      val trigger = IO.uncancelable { poll =>
         semaphore.tryAcquire.flatMap {
           case false => IO.unit
-          case true  => drain(consumerId, processor).guarantee(semaphore.release)
+          case true  => poll(drain(consumerId, processor)).guarantee(semaphore.release)
         }
+      }
 
       // A new consumer group starts at the latest message, like Kafka's `auto.offset.reset=latest`.
-      val register = Stream.eval(log.ensureConsumerAtLatest(key.name, consumerId, key.partitions))
-      val realtime = notifications.parEvalMapUnbounded(_ => trigger)
+      val register = restartOnError(s"Registration for $context")(Stream.eval(log.ensureConsumerAtLatest(key.name, consumerId, key.partitions)))
+      val listener = restartOnError(s"Notification listener for $context")(
+        notifications.evalMap(_ => wakeups.tryOffer(()).void) ++ Stream.raiseError[IO](new IllegalStateException("LISTEN stream ended"))
+      )
+      val realtime = Stream.repeatEval(wakeups.take).parEvalMapUnbounded(_ => trigger)
       val polling  = Stream
         .fixedRateStartImmediately[IO](config.pollInterval)
         .parEvalMapUnbounded(_ => List.fill(maxWorkers)(trigger).parSequence_)
-      val purging  = Stream.fixedRateStartImmediately[IO](config.purgeInterval).evalMap(_ => log.purge(key.name, config.retentionDuration))
-      register ++ realtime.merge(polling).merge(purging)
+      val workers  = restartOnError(s"Consumer worker for $context")(realtime.merge(polling))
+      val purging  = restartOnError(s"Purge for $context")(
+        Stream.fixedRateStartImmediately[IO](config.purgeInterval).evalMap(_ => log.purge(key.name, config.retentionDuration))
+      )
+      val backlog  = restartOnError(s"Backlog check for $context")(
+        Stream.fixedRate[IO](config.backlogCheckInterval).evalMap { _ =>
+          log.oldestPendingAge(key.name, consumerId).flatMap(_.traverse_ { age =>
+            IO.whenA(age.compareTo(threshold) >= 0)(IO(logger.error(
+              s"Oldest unprocessed message for $context is ${age.toSeconds}s old (threshold: ${config.backlogErrorThreshold})"
+            )))
+          })
+        }
+      )
+      register ++ workers.merge(listener).merge(purging).merge(backlog)
     }
 
+  private def restartOnError(component: String)(stream: Stream[IO, Unit]): Stream[IO, Unit] =
+    val initialDelay = 1.second
+    val maxDelay     = 30.seconds
+
+    def run(backoff: FiniteDuration): Stream[IO, Unit] =
+      Stream.eval(IO.monotonic).flatMap { started =>
+        stream.handleErrorWith { error =>
+          Stream.eval(IO.monotonic).flatMap { now =>
+            val delay = if now - started >= maxDelay then initialDelay else backoff
+            Stream.eval(IO(logger.error(s"$component failed; retrying in $delay", error))) ++
+              Stream.sleep_[IO](delay) ++ run((delay * 2).min(maxDelay))
+          }
+        }
+      }
+
+    run(initialDelay)
+
   private def notifications: Stream[IO, Unit] =
-    Stream.resource(pool).flatMap(session => session.channel(identifier).listen(config.notificationQueueSize)).void
+    Stream.resource(pool).flatMap { session =>
+      Stream.resource(session.channel(identifier).listenR(config.notificationQueueSize)).flatMap(registered => Stream.emit(()) ++ registered.void)
+    }
 
   /**
    * Drain all available unlocked partitions for this consumer group. If a partition fails, its lease is set to

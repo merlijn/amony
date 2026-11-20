@@ -129,6 +129,14 @@ private[messagebus] object MessageLogQueries:
         and mq.created_at < now() - $interval
     """.command
 
+  val oldestPendingAge: Query[(String, String), Option[Duration]] =
+    sql"""
+      select clock_timestamp() - min(mq.created_at)
+      from message_consumer mc
+      join message_log mq on mq.topic = mc.topic and mq.partition = mc.partition and mq.partition_offset > mc.last_offset
+      where mc.topic = $varchar and mc.consumer_id = $varchar
+    """.query(interval.opt)
+
 /** Persistence for the durable log and the per-consumer-partition offsets that back the message bus. */
 final private[messagebus] class MessageLog(pool: Resource[IO, Session[IO]]):
 
@@ -161,3 +169,6 @@ final private[messagebus] class MessageLog(pool: Resource[IO, Session[IO]]):
 
   def purge(topic: String, olderThan: Duration): IO[Unit] =
     pool.use(session => session.prepare(MessageLogQueries.purge).flatMap(_.execute((topic, olderThan))).void)
+
+  def oldestPendingAge(topic: String, consumerId: String): IO[Option[Duration]] =
+    pool.use(session => session.prepare(MessageLogQueries.oldestPendingAge).flatMap(_.unique((topic, consumerId))))
