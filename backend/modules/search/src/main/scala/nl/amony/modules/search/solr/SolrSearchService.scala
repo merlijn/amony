@@ -4,8 +4,9 @@ import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 import cats.effect.IO
+import org.apache.solr.client.solrj.SolrClient
+import org.apache.solr.client.solrj.request.SolrQuery
 import org.apache.solr.client.solrj.util.ClientUtils
-import org.apache.solr.client.solrj.{SolrClient, SolrQuery}
 import org.apache.solr.common.SolrDocument
 import org.apache.solr.common.params.{CommonParams, FacetParams, ModifiableSolrParams}
 
