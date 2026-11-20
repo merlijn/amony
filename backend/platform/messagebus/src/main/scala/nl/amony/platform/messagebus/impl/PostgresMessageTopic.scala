@@ -40,7 +40,6 @@ final private[messagebus] class PostgresMessageTopic[E](
   override def processAtLeastOnce(consumerId: String, parallelism: Option[Int] = None)(processor: E => IO[Unit]): Stream[IO, Unit] =
     val maxWorkers = parallelism.getOrElse(config.parallelism).min(key.partitions).max(1)
     val context    = s"topic '${key.name}', consumer '$consumerId'"
-    val threshold  = java.time.Duration.ofNanos(config.backlogErrorThreshold.toNanos)
     Stream.eval((Semaphore[IO](maxWorkers.toLong), Queue.bounded[IO, Unit](1)).tupled).flatMap { (semaphore, wakeups) =>
       val trigger = IO.uncancelable { poll =>
         semaphore.tryAcquire.flatMap {
@@ -62,16 +61,7 @@ final private[messagebus] class PostgresMessageTopic[E](
       val purging  = restartOnError(s"Purge for $context")(
         Stream.fixedRateStartImmediately[IO](config.purgeInterval).evalMap(_ => log.purge(key.name, config.retentionDuration))
       )
-      val backlog  = restartOnError(s"Backlog check for $context")(
-        Stream.fixedRate[IO](config.backlogCheckInterval).evalMap { _ =>
-          log.oldestPendingAge(key.name, consumerId).flatMap(_.traverse_ { age =>
-            IO.whenA(age.compareTo(threshold) >= 0)(IO(logger.error(
-              s"Oldest unprocessed message for $context is ${age.toSeconds}s old (threshold: ${config.backlogErrorThreshold})"
-            )))
-          })
-        }
-      )
-      register ++ workers.merge(listener).merge(purging).merge(backlog)
+      register ++ workers.merge(listener).merge(purging)
     }
 
   private def restartOnError(component: String)(stream: Stream[IO, Unit]): Stream[IO, Unit] =
