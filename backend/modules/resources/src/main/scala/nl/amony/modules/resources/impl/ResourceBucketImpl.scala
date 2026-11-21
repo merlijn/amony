@@ -30,7 +30,7 @@ class ResourceBucketImpl(
   store: ResourceStore,
   events: LocalDirectoryEventStore,
   syncer: LocalDirectorySyncer,
-  jobBus: JobBus[ResourceJob] = null,
+  jobBus: JobBus[ResourceJob],
   jobTimeout: FiniteDuration  = 30.minutes
 ) extends ResourceBucketConsumer,
       Logging {
