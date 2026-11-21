@@ -5,6 +5,7 @@ import java.nio.file.{Files, NoSuchFileException, Path}
 import scala.jdk.CollectionConverters.*
 import scala.util.Using
 
+import cats.data.EitherT
 import cats.effect.IO
 import scribe.Logging
 
@@ -28,30 +29,31 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
 
   override def stage(stagingId: StagingId, file: Path): IO[Unit] = IO.unit
 
-  override def commit(stagingId: StagingId, fileName: String): IO[Either[String, StoredResource]] =
-    ResourcePath.fromString(fileName) match
-      case Left(message) => IO.pure(Left(message))
-      case Right(_)      =>
-        IO.blocking {
-          resolveTargetPath(config.resourcePath.resolve(fileName), maxAttempts = 100) match
-            case None         => Left("Failed to resolve unique file name after 100 attempts")
-            case Some(target) =>
-              Files.createDirectories(target.getParent)
-              Files.move(config.tempPath.resolve(stagingId), target)
-              val attributes = Files.readAttributes(target, classOf[BasicFileAttributes])
-              Right(
-                StoredResource(
-                  path             = ResourcePath(config.resourcePath.relativize(target).toString),
-                  size             = attributes.size(),
-                  timeLastModified = attributes.lastModifiedTime().toMillis,
-                  fileKey          = Option(attributes.fileKey()).map(_.toString)
-                )
-              )
-        }.attempt.map {
-          case Right(result)                => result
-          case Left(_: NoSuchFileException) => Left(s"Staged upload '$stagingId' is no longer available")
-          case Left(error)                  => Left(s"Failed to commit staged upload '$stagingId': ${error.getMessage}")
-        }
+  override def commit(stagingId: StagingId, fileName: String): EitherT[IO, String, StoredResource] =
+    for
+      _         <- EitherT.fromEither[IO](ResourcePath.fromString(fileName))
+      targetOpt <- EitherT.liftF(IO.blocking(resolveTargetPath(config.resourcePath.resolve(fileName), maxAttempts = 100)))
+      target    <- EitherT.fromOption[IO](targetOpt, "Failed to resolve unique file name after 100 attempts")
+      stored    <- moveStagedFile(stagingId, target)
+    yield stored
+
+  /** Moves the staged file to its unique target and reads back its metadata. */
+  private def moveStagedFile(stagingId: StagingId, target: Path): EitherT[IO, String, StoredResource] =
+    EitherT(IO.blocking {
+      Files.createDirectories(target.getParent)
+      Files.move(config.tempPath.resolve(stagingId), target)
+      val attributes             = Files.readAttributes(target, classOf[BasicFileAttributes])
+      StoredResource(
+        path             = ResourcePath(config.resourcePath.relativize(target).toString),
+        size             = attributes.size(),
+        timeLastModified = attributes.lastModifiedTime().toMillis,
+        fileKey          = Option(attributes.fileKey()).map(_.toString)
+      )
+    }.attempt.map {
+      case Right(stored)                => Right(stored)
+      case Left(_: NoSuchFileException) => Left(s"Staged upload '$stagingId' is no longer available")
+      case Left(error)                  => Left(s"Failed to commit staged upload '$stagingId': ${error.getMessage}")
+    })
 
   override def discard(stagingId: StagingId): IO[Unit] =
     IO.blocking(Files.deleteIfExists(config.tempPath.resolve(stagingId))).void
