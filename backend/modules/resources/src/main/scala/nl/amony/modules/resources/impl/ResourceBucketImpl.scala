@@ -212,7 +212,7 @@ class ResourceBucketImpl(
                     case Some(_) => EitherT.liftF(store.discard(prepared.stagingId))
                     case None    =>
                       for
-                        stored <- EitherT(store.commit(prepared.stagingId, upload.fileName)).leftMap(message =>
+                        stored <- store.commit(prepared.stagingId, upload.fileName).leftMap(message =>
                                     UploadProcessingError(prepared.stagingId, message)
                                   )
                         info    = ResourceInfo(

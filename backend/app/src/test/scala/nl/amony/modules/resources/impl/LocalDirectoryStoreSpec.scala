@@ -69,7 +69,7 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       Files.createDirectories(cfg.tempPath)
       Files.writeString(staged, "content")
 
-      val stored = store.commit(StagingId("resource-upload"), "video.mp4").unsafeRunSync()
+      val stored = store.commit(StagingId("resource-upload"), "video.mp4").value.unsafeRunSync()
 
       stored.map(_.path) shouldBe Right("video.mp4")
       Files.exists(dir.resolve("video.mp4")) shouldBe true
@@ -120,28 +120,28 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       Files.createDirectories(cfg.tempPath)
       Files.writeString(staged, "content")
 
-      store.commit(StagingId("resource-upload"), "video.mp4").unsafeRunSync().map(_.path) shouldBe Right("video_1.mp4")
+      store.commit(StagingId("resource-upload"), "video.mp4").value.unsafeRunSync().map(_.path) shouldBe Right("video_1.mp4")
       Files.exists(dir.resolve("video_1.mp4")) shouldBe true
     }
 
     "return a failure when the staged file is gone on commit" in {
       val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
 
-      store.commit(StagingId("missing-upload"), "video.mp4").unsafeRunSync() shouldBe
+      store.commit(StagingId("missing-upload"), "video.mp4").value.unsafeRunSync() shouldBe
         Left("Staged upload 'missing-upload' is no longer available")
     }
 
     "reject an absolute file name on commit" in {
       val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
 
-      store.commit(StagingId("staged-upload"), "/abs.mp4").unsafeRunSync() shouldBe
+      store.commit(StagingId("staged-upload"), "/abs.mp4").value.unsafeRunSync() shouldBe
         Left("Resource path must be relative: /abs.mp4")
     }
 
     "reject a bucket-escaping file name on commit" in {
       val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
 
-      store.commit(StagingId("staged-upload"), "../other.mp4").unsafeRunSync() shouldBe
+      store.commit(StagingId("staged-upload"), "../other.mp4").value.unsafeRunSync() shouldBe
         Left("Resource path must not escape the bucket: ../other.mp4")
     }
 
