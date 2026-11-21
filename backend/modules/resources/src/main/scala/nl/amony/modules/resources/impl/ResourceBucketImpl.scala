@@ -23,7 +23,7 @@ import nl.amony.platform.messagebus.{JobBus, JobState, MessageTopic}
 final private[impl] case class StagedUpload(resourceId: ResourceId, fileName: String, stagingId: StagingId)
 
 class ResourceBucketImpl(
-  config: LocalDirectoryConfig,
+  config: ResourceBucketConfig,
   db: ResourceDatabase,
   topic: MessageTopic[ResourceEvent],
   ops: BucketOperations,

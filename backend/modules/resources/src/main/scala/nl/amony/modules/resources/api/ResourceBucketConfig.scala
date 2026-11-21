@@ -22,6 +22,17 @@ sealed trait ResourceBucketConfig:
   /** When set, only users holding this role (admins always) can see the bucket. */
   def requiredRole: Option[Role]
 
+  def hashingAlgorithm: HashingAlgorithm
+
+  def generatePreviewsOnAdd: Boolean
+
+  /** Directory where files are staged before they become part of the bucket. */
+  def tempPath: Path
+
+  private val random = new scala.util.Random()
+
+  def generateId(): ResourceId = ResourceId(Base32.encode(random.nextBytes(15)).substring(0, 24))
+
   /** Validates this configuration on its own and returns it with normalized (absolute) paths. */
   def validate(): IO[Either[String, ResourceBucketConfig]]
 
@@ -57,13 +68,12 @@ case class LocalDirectoryConfig(
   generatePreviewsOnAdd: Boolean          = false
 ) extends ResourceBucketConfig {
 
-  val random                  = new scala.util.Random()
-  lazy val amonyPath: Path    = path.toAbsolutePath.normalize().resolve(".amony")
-  lazy val bucketIdPath: Path = amonyPath.resolve("bucketId")
-  lazy val cachePath: Path    = amonyPath.resolve("cache")
-  lazy val tempPath: Path     = amonyPath.resolve("temp")
-  lazy val resourcePath: Path = path.toAbsolutePath.normalize()
-  lazy val uploadPath: Path   = path.toAbsolutePath.normalize().resolve(relativeUploadPath).normalize()
+  lazy val amonyPath: Path         = path.toAbsolutePath.normalize().resolve(".amony")
+  lazy val bucketIdPath: Path      = amonyPath.resolve("bucketId")
+  lazy val cachePath: Path         = amonyPath.resolve("cache")
+  override lazy val tempPath: Path = amonyPath.resolve("temp")
+  lazy val resourcePath: Path      = path.toAbsolutePath.normalize()
+  lazy val uploadPath: Path        = path.toAbsolutePath.normalize().resolve(relativeUploadPath).normalize()
 
   private lazy val includes = GlobPatterns.unsafeParse(sync.includePatterns)
   private lazy val excludes = GlobPatterns.unsafeParse(sync.excludePatterns)
@@ -77,8 +87,6 @@ case class LocalDirectoryConfig(
 
   def filterDirectory(path: Path): Boolean =
     path == resourcePath || (path != uploadPath && path != amonyPath && !excludes.matches(relativePath(path)))
-
-  def generateId(): ResourceId = ResourceId(Base32.encode(random.nextBytes(15)).substring(0, 24))
 
   private def realPath: Path = if Files.exists(resourcePath) then resourcePath.toRealPath() else resourcePath
 
