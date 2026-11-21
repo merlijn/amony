@@ -147,7 +147,7 @@ class ResourceBucketImpl(
    * Slow, non-transactional part of an upload: scans the staged file and remuxes it when that makes it streamable. The
    * result lives entirely in the temp directory, so a failure leaves nothing observable behind.
    */
-  def prepareUpload(upload: UploadResource): IO[Either[UploadProcessingError, PreparedUpload]] =
+  def processUpload(upload: UploadResource): IO[Either[UploadProcessingError, PreparedUpload]] =
     val location = ContentLocation.Staged(upload.stagingId)
     val tempPath = config.tempPath.resolve(upload.stagingId)
     IO.blocking(JFiles.exists(tempPath)).flatMap:
@@ -226,7 +226,7 @@ class ResourceBucketImpl(
       case Some(_)                                              => Right(())
 
   /** Remuxes to the bucket's temp directory without touching the live file. Returns None when nothing is needed. */
-  override def remuxForStreaming(resourceId: ResourceId): IO[Either[StreamabilityError, Option[StagingId]]] =
+  override def processStreamabilityFix(resourceId: ResourceId): IO[Either[StreamabilityError, Option[StagingId]]] =
     getResourceInfo(resourceId).flatMap:
       case None                                           => IO.pure(Left(StreamabilityError.ResourceNotFound(resourceId)))
       case Some(info) if !info.streamable.contains(false) => IO.pure(Right(None))

@@ -76,13 +76,13 @@ trait ResourceBucket {
 
   def fixStreamability(resourceId: ResourceId): IO[Either[ResourceJobError, Unit]]
 
-  def remuxForStreaming(resourceId: ResourceId): IO[Either[StreamabilityError, Option[StagingId]]]
+  def processStreamabilityFix(resourceId: ResourceId): IO[Either[StreamabilityError, Option[StagingId]]]
 
   def commitStreamabilityFix(resourceId: ResourceId, stagingId: Option[StagingId]): IO[Either[StreamabilityError, Unit]]
 
   def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, ResourceInfo]]
 
-  def prepareUpload(upload: UploadResource): IO[Either[UploadProcessingError, PreparedUpload]]
+  def processUpload(upload: UploadResource): IO[Either[UploadProcessingError, PreparedUpload]]
 
   def commitUpload(upload: UploadResource, prepared: PreparedUpload): IO[Either[UploadProcessingError, Unit]]
 

@@ -22,13 +22,13 @@ final class ResourceJobs(bus: JobBus[ResourceJob]):
       case FixStreamability(bucketId, resourceId) =>
         (for
           bucket    <- EitherT(getBucket(registry, bucketId))
-          stagingId <- EitherT(bucket.remuxForStreaming(resourceId)).leftMap(_.message)
+          stagingId <- EitherT(bucket.processStreamabilityFix(resourceId)).leftMap(_.message)
         yield bucket.commitStreamabilityFix(resourceId, stagingId).map(_.left.map(_.message))).value
 
       case upload: UploadResource =>
         (for
           bucket <- EitherT(getBucket(registry, upload.bucketId))
-          value  <- EitherT(bucket.prepareUpload(upload)).leftMap(_.message)
+          value  <- EitherT(bucket.processUpload(upload)).leftMap(_.message)
         yield bucket.commitUpload(upload, value).map(_.left.map(_.message))).value
 
   private def getBucket(registry: BucketRegistry, bucketId: BucketId): IO[Either[String, ResourceBucket]] =
