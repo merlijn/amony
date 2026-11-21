@@ -8,7 +8,7 @@ services:
       timeout: 3s
       retries: 5
     container_name: amony-postgres
-    image: postgres:17@sha256:b60e90042aa6b8dbecd58e224b3e36114dbf8ad754465264c2476ad58a86e45c
+    image: postgres:17@sha256:223efeb196329b55b3b9a13db144956411dbc18e727e59f681c3e0aede6475cf
     ports:
       - "127.0.0.1:5432:5432"
     env_file:
@@ -46,7 +46,7 @@ services:
 #      - ${AMONY_DATA:-./data}/open-observe:/data
 
   postgres-restore:
-    image: postgres:17@sha256:b60e90042aa6b8dbecd58e224b3e36114dbf8ad754465264c2476ad58a86e45c
+    image: postgres:17@sha256:223efeb196329b55b3b9a13db144956411dbc18e727e59f681c3e0aede6475cf
     container_name: amony-postgres-restore
     profiles:
       - restore
@@ -66,7 +66,7 @@ services:
     entrypoint: ["/scripts/pg-restore.sh"]
 
   postgres-backup:
-    image: postgres:17@sha256:b60e90042aa6b8dbecd58e224b3e36114dbf8ad754465264c2476ad58a86e45c
+    image: postgres:17@sha256:223efeb196329b55b3b9a13db144956411dbc18e727e59f681c3e0aede6475cf
     container_name: amony-postgres-backup
     profiles:
       - backup
