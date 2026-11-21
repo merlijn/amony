@@ -32,7 +32,7 @@ class ResourceBucketImpl(
   syncer: LocalDirectorySyncer,
   jobBus: JobBus[ResourceJob] = null,
   jobTimeout: FiniteDuration  = 30.minutes
-) extends ResourceBucket,
+) extends ResourceBucketConsumer,
       Logging {
 
   override def getResourceInfo(resourceId: ResourceId): IO[Option[ResourceInfo]] = db.getResourceById(id, resourceId)
@@ -51,6 +51,14 @@ class ResourceBucketImpl(
 
   override def refresh(): IO[Unit] = syncer.refresh()
 
+  override def processEvent(event: ResourceEvent): IO[Unit] = event match
+    case ResourceAdded(resource)                     => generatePreviewsIfEnabled(resource)
+    case ResourceModified(resource)                  => generatePreviewsIfEnabled(resource)
+    case ResourceThumbnailUpdated(_, resource)       => generatePreviewsIfEnabled(resource)
+    case ResourceMovedAndModified(_, _, _, resource) => generatePreviewsIfEnabled(resource)
+    case ResourceDeleted(resource)                   => deleteFile(resource)
+    case _                                           => IO.unit
+
   override def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap { resource =>
     ops.contentMeta(ContentLocation.Resource(resource.path)).flatMap {
       case Left(e)     => IO(logger.error(s"Skipping metadata rescan for ${resource.path}", e.cause))
@@ -60,6 +68,18 @@ class ResourceBucketImpl(
         db.transact(s => db.upsertResource(updated) >> topic.publish(s, ResourceModified(updated)))
     }
   }.compile.drain
+
+  override def processJob(job: ResourceJob): IO[Either[String, IO[Either[String, Unit]]]] =
+    job match
+      case FixStreamability(_, resourceId) =>
+        (for
+          stagingId <- EitherT(processStreamabilityFix(resourceId)).leftMap(_.message)
+        yield commitStreamabilityFix(resourceId, stagingId).map(_.left.map(_.message))).value
+
+      case upload: UploadResource =>
+        (for
+          prepared <- EitherT(processUpload(upload)).leftMap(_.message)
+        yield commitUpload(upload, prepared).map(_.left.map(_.message))).value
 
   override def fixStreamability(resourceId: ResourceId): IO[Either[ResourceJobError, Unit]] =
     checkStreamabilityFix(resourceId).flatMap:
@@ -147,7 +167,7 @@ class ResourceBucketImpl(
    * Slow, non-transactional part of an upload: scans the staged file and remuxes it when that makes it streamable. The
    * result lives entirely in the temp directory, so a failure leaves nothing observable behind.
    */
-  def processUpload(upload: UploadResource): IO[Either[UploadProcessingError, PreparedUpload]] =
+  private def processUpload(upload: UploadResource): IO[Either[UploadProcessingError, PreparedUpload]] =
     val location = ContentLocation.Staged(upload.stagingId)
     val tempPath = config.tempPath.resolve(upload.stagingId)
     IO.blocking(JFiles.exists(tempPath)).flatMap:
@@ -187,7 +207,7 @@ class ResourceBucketImpl(
    * consumes the staged file, so when inserting the resource fails the object is already in the store and a retry will
    * not find a staged file. A durable outbox job would be needed to close that window.
    */
-  def commitUpload(
+  private def commitUpload(
     upload: UploadResource,
     prepared: PreparedUpload
   ): IO[Either[UploadProcessingError, Unit]] =
@@ -226,7 +246,7 @@ class ResourceBucketImpl(
       case Some(_)                                              => Right(())
 
   /** Remuxes to the bucket's temp directory without touching the live file. Returns None when nothing is needed. */
-  override def processStreamabilityFix(resourceId: ResourceId): IO[Either[StreamabilityError, Option[StagingId]]] =
+  private def processStreamabilityFix(resourceId: ResourceId): IO[Either[StreamabilityError, Option[StagingId]]] =
     getResourceInfo(resourceId).flatMap:
       case None                                           => IO.pure(Left(StreamabilityError.ResourceNotFound(resourceId)))
       case Some(info) if !info.streamable.contains(false) => IO.pure(Right(None))
@@ -235,7 +255,7 @@ class ResourceBucketImpl(
   /**
    * Commits a remux: replaces the live file, refreshes its metadata and publishes ResourceModified in a transaction.
    */
-  override def commitStreamabilityFix(
+  private def commitStreamabilityFix(
     resourceId: ResourceId,
     stagingId: Option[StagingId]
   ): IO[Either[StreamabilityError, Unit]] =
@@ -265,11 +285,11 @@ class ResourceBucketImpl(
   override def generateAllPreviews(): IO[Unit] =
     getAllResources.evalMap(ops.generatePreviews).compile.drain
 
-  override def generatePreviewsIfEnabled(info: ResourceInfo): IO[Unit] =
+  private def generatePreviewsIfEnabled(info: ResourceInfo): IO[Unit] =
     if config.generatePreviewsOnAdd then ops.generatePreviews(info)
     else IO.unit
 
-  override def deleteFile(info: ResourceInfo): IO[Unit] =
+  private def deleteFile(info: ResourceInfo): IO[Unit] =
     store.delete(info.path)
 
   override def deleteResource(resourceId: ResourceId): IO[Unit] =

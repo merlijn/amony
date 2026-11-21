@@ -10,10 +10,11 @@ import scribe.Logging
 
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.BucketsDal
+import nl.amony.modules.resources.impl.{BucketConsumerRegistry, ResourceBucketConsumer}
 import nl.amony.platform.messagebus.MessageTopic
 
 /** Creates a bucket from its configuration, together with its background (sync) process. */
-type BucketFactory = ResourceBucketConfig => IO[(ResourceBucket, IO[Unit])]
+type BucketFactory = ResourceBucketConfig => IO[(ResourceBucketConsumer, IO[Unit])]
 
 object DatabaseBucketRegistry extends Logging:
 
@@ -34,7 +35,7 @@ object DatabaseBucketRegistry extends Logging:
         }
     }
 
-  private case class RunningBucket(stored: StoredBucket, bucket: ResourceBucket, fiber: Fiber[IO, Throwable, Unit])
+  private case class RunningBucket(stored: StoredBucket, bucket: ResourceBucketConsumer, fiber: Fiber[IO, Throwable, Unit])
 
   /**
    * Loads the buckets from the database and starts them. When no buckets exist yet, the default bucket is inserted
@@ -45,7 +46,7 @@ object DatabaseBucketRegistry extends Logging:
     bucketsDal: BucketsDal,
     eventTopic: MessageTopic[ResourceEvent],
     factory: BucketFactory
-  ): Resource[IO, BucketRegistry] =
+  ): Resource[IO, BucketRegistry & BucketConsumerRegistry] =
     for
       supervisor <- Supervisor[IO]
       registry   <- Resource.eval {
@@ -69,7 +70,8 @@ object DatabaseBucketRegistry extends Logging:
     factory: BucketFactory,
     supervisor: Supervisor[IO],
     running: Ref[IO, Map[BucketId, RunningBucket]]
-  ) extends BucketRegistry:
+  ) extends BucketRegistry,
+        BucketConsumerRegistry:
 
     /**
      * Starts the bucket and replaces the running instance, unless that one has a more recent configuration. The
@@ -131,6 +133,9 @@ object DatabaseBucketRegistry extends Logging:
       yield validated
 
     override def get(bucketId: BucketId): IO[Option[ResourceBucket]] = running.get.map(_.get(bucketId).map(_.bucket))
+
+    override def getConsumer(bucketId: BucketId): IO[Option[ResourceBucketConsumer]] =
+      running.get.map(_.get(bucketId).map(_.bucket))
 
     override def all: IO[List[ResourceBucket]] = running.get.map(_.values.map(_.bucket).toList.sortBy(_.id))
 

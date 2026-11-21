@@ -23,6 +23,7 @@ import skunk.Session
 import nl.amony.modules.auth.api.{Role, UserId}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
+import nl.amony.modules.resources.impl.ResourceBucketConsumer
 import nl.amony.platform.database.{Database, DatabaseConfig}
 import nl.amony.platform.messagebus.MessageTopic
 
@@ -63,8 +64,8 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
   private def withExcludes(config: LocalDirectoryConfig, excludes: List[String]): LocalDirectoryConfig =
     config.copy(sync = config.sync.copy(excludePatterns = excludes))
 
-  private def mockBucket(config: ResourceBucketConfig): ResourceBucket =
-    val bucket = mock[ResourceBucket](RETURNS_DEFAULTS)
+  private def mockBucket(config: ResourceBucketConfig): ResourceBucketConsumer =
+    val bucket = mock[ResourceBucketConsumer](RETURNS_DEFAULTS)
     bucket.id returns BucketId(config.id)
     bucket.requiredRole returns None
     bucket

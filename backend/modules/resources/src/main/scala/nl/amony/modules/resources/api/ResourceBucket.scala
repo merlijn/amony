@@ -55,16 +55,12 @@ trait ResourceBucket {
 
   def deleteResource(resourceId: ResourceId): IO[Unit]
 
-  def deleteFile(info: ResourceInfo): IO[Unit]
-
   /**
    * Performs an operation on a resource and returns the resulting content
    */
   def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]]
 
   def generateAllPreviews(): IO[Unit]
-
-  def generatePreviewsIfEnabled(info: ResourceInfo): IO[Unit]
 
   def refresh(): IO[Unit]
 
@@ -76,15 +72,7 @@ trait ResourceBucket {
 
   def fixStreamability(resourceId: ResourceId): IO[Either[ResourceJobError, Unit]]
 
-  def processStreamabilityFix(resourceId: ResourceId): IO[Either[StreamabilityError, Option[StagingId]]]
-
-  def commitStreamabilityFix(resourceId: ResourceId, stagingId: Option[StagingId]): IO[Either[StreamabilityError, Unit]]
-
   def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, ResourceInfo]]
-
-  def processUpload(upload: UploadResource): IO[Either[UploadProcessingError, PreparedUpload]]
-
-  def commitUpload(upload: UploadResource, prepared: PreparedUpload): IO[Either[UploadProcessingError, Unit]]
 
   def getAllResources: fs2.Stream[IO, ResourceInfo]
 }

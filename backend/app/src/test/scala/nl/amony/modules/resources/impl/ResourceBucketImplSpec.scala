@@ -88,11 +88,16 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
         processor: ResourceEvent => IO[Unit]
       ): Stream[IO, Unit]                                                        = Stream.empty
 
-  private def makeBucket(config: LocalDirectoryConfig, db: ResourceDatabase, published: AtomicReference[List[ResourceEvent]]): ResourceBucketImpl =
+  private def makeBucket(
+    config: LocalDirectoryConfig,
+    db: ResourceDatabase,
+    published: AtomicReference[List[ResourceEvent]],
+    ops: BucketOperations = null
+  ): ResourceBucketImpl =
     val topic  = recordingTopic(published)
     val events = LocalDirectoryEventStore(config, db, topic)
     val syncer = LocalDirectorySyncer(config, 1, db, null, events)
-    ResourceBucketImpl(config, db, topic, null, LocalDirectoryStore(config), events, syncer)
+    ResourceBucketImpl(config, db, topic, ops, LocalDirectoryStore(config), events, syncer)
 
   private def newResource(bucketId: BucketId, path: String = "video.mp4"): ResourceInfo =
     ResourceInfo(
@@ -210,8 +215,8 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
           val bucket    = makeBucket(cfg, db, published)
           val res       = newResource(bucket.id, "video.mp4")
 
-          val registry  = mock[BucketRegistry](RETURNS_DEFAULTS)
-          registry.get(bucket.id) returns IO.pure(Some(bucket))
+          val registry  = mock[BucketConsumerRegistry](RETURNS_DEFAULTS)
+          registry.getConsumer(bucket.id) returns IO.pure(Some(bucket))
           val processor = ResourceProcessor(registry)
 
           val test =
@@ -229,30 +234,29 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
         }.unsafeRunSync()
     }
 
-    "only generate previews for content and thumbnail events in ResourceProcessor" in {
+    "only generate previews for content and thumbnail events" in {
       val bucketId = BucketId("media")
       val res      = newResource(bucketId)
 
-      val bucket = mock[ResourceBucket](RETURNS_DEFAULTS)
-      bucket.generatePreviewsIfEnabled(res) returns IO.unit
+      val ops = mock[BucketOperations](RETURNS_DEFAULTS)
+      ops.generatePreviews(res) returns IO.unit
 
-      val registry  = mock[BucketRegistry](RETURNS_DEFAULTS)
-      registry.get(bucketId) returns IO.pure(Some(bucket))
-      val processor = ResourceProcessor(registry)
+      val config = localConfig(s"bucket-${UUID.randomUUID()}", Files.createTempDirectory("amony-bucket-spec"), generatePreviewsOnAdd = true)
+      val bucket = ResourceBucketImpl(config, null, null, ops, null, null, null)
 
       val test =
         for
-          _ <- processor.processEvent(ResourceAdded(res))
-          _ <- processor.processEvent(ResourceModified(res))
-          _ <- processor.processEvent(ResourceThumbnailUpdated(1000, res))
-          _ <- processor.processEvent(ResourceMovedAndModified(res.resourceId, ResourcePath("old.mp4"), ResourcePath("new.mp4"), res))
-          _ <- processor.processEvent(ResourceUserMetaUpdated(res, Some("desc"), Some("title"), Set.empty, Set.empty))
-          _ <- processor.processEvent(ResourceMoved(bucketId, res.resourceId, ResourcePath("old.mp4"), ResourcePath("new.mp4")))
-          _ <- processor.processEvent(ResourceFileMetaChanged(bucketId, res.resourceId, 123L, None))
-          _ <- processor.processEvent(BucketDeleted(bucketId))
+          _ <- bucket.processEvent(ResourceAdded(res))
+          _ <- bucket.processEvent(ResourceModified(res))
+          _ <- bucket.processEvent(ResourceThumbnailUpdated(1000, res))
+          _ <- bucket.processEvent(ResourceMovedAndModified(res.resourceId, ResourcePath("old.mp4"), ResourcePath("new.mp4"), res))
+          _ <- bucket.processEvent(ResourceUserMetaUpdated(res, Some("desc"), Some("title"), Set.empty, Set.empty))
+          _ <- bucket.processEvent(ResourceMoved(bucketId, res.resourceId, ResourcePath("old.mp4"), ResourcePath("new.mp4")))
+          _ <- bucket.processEvent(ResourceFileMetaChanged(bucketId, res.resourceId, 123L, None))
+          _ <- bucket.processEvent(BucketDeleted(bucketId))
         yield {
-          verify(bucket, times(4)).generatePreviewsIfEnabled(res)
-          verifyNoMoreInteractions(bucket)
+          verify(ops, times(4)).generatePreviews(res)
+          verifyNoMoreInteractions(ops)
         }
 
       test.unsafeRunSync()
