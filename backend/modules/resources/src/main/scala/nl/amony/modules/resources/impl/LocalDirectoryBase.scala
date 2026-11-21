@@ -14,7 +14,7 @@ trait LocalDirectoryBase(
   val parallelFactor: Int,
   val db: ResourceDatabase,
   val topic: MessageTopic[ResourceEvent],
-  val ops: FileOperations
+  val ops: MediaOperations
 )(using meter: Meter[IO], tracer: Tracer[IO]) {
 
   protected given meterInstance: Meter[IO]   = meter

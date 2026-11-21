@@ -20,7 +20,7 @@ class ResourceBucketImpl(
   parallelFactor: Int,
   db: ResourceDatabase,
   topic: MessageTopic[ResourceEvent],
-  ops: FileOperations,
+  ops: MediaOperations,
   store: ResourceStore,
   jobBus: JobBus[ResourceJob] = null,
   jobTimeout: FiniteDuration  = 30.minutes
