@@ -20,7 +20,6 @@ import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.resources.ResourceModule
 import nl.amony.modules.resources.api.{ResourceEvent, ResourceJob}
-import nl.amony.modules.resources.impl.ResourceProcessor
 import nl.amony.modules.search.SearchModule
 import nl.amony.platform.database.Database
 import nl.amony.platform.messagebus.{MessageBus, MessageTopic, MessageTopicKey}
@@ -84,9 +83,6 @@ object App extends ResourceApp.Forever with Logging {
                                eventTopic,
                                messageBus.getJobBus[ResourceJob]
                              )
-        resourceProcessor  = ResourceProcessor(resourceModule.bucketRegistry)
-        _                 <- eventTopic.processAtLeastOnce("resource-processor")(resourceProcessor.processEvent).compile.drain.background
-        _                 <- resourceModule.jobs.processAtLeastOnce(resourceModule.bucketRegistry).compile.drain.background
         authModule         = AuthModule(appConfig.auth, httpClientBackend, databasePool)
         apiRoutes          = {
           given ApiSecurity = authModule.apiSecurity

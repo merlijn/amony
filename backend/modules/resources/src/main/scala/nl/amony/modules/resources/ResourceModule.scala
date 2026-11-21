@@ -29,7 +29,8 @@ import nl.amony.modules.resources.impl.{
   LocalDirectoryStore,
   LocalDirectorySyncer,
   ResourceBucketImpl,
-  ResourceJobs
+  ResourceJobs,
+  ResourceProcessor
 }
 import nl.amony.platform.messagebus.{JobBus, MessageTopic}
 import nl.amony.platform.subprocess.{ProcessLimiter, ProcessSettings}
@@ -118,20 +119,24 @@ object ResourceModule:
     }
 
     for
-      processLimiter <- ProcessLimiter.resource(processSettings)
-      bucketRegistry <- DatabaseBucketRegistry.resource(
-                          config.defaultBucket,
-                          BucketsDal(databasePool),
-                          eventTopic,
-                          bucketFactory(processLimiter)
-                        )
-    yield new ResourceModule(
-      resourceDatabase,
-      bucketRegistry,
-      jobs,
-      thumbResolutions,
-      thumbFormats,
-      thumbTiles,
-      config.previews.cacheMaxAge,
-      config.previews.cacheScope
-    )
+      processLimiter   <- ProcessLimiter.resource(processSettings)
+      bucketRegistry   <- DatabaseBucketRegistry.resource(
+                            config.defaultBucket,
+                            BucketsDal(databasePool),
+                            eventTopic,
+                            bucketFactory(processLimiter)
+                          )
+      module            = new ResourceModule(
+                            resourceDatabase,
+                            bucketRegistry,
+                            jobs,
+                            thumbResolutions,
+                            thumbFormats,
+                            thumbTiles,
+                            config.previews.cacheMaxAge,
+                            config.previews.cacheScope
+                          )
+      resourceProcessor = ResourceProcessor(bucketRegistry)
+      _                <- eventTopic.processAtLeastOnce("resource-processor")(resourceProcessor.processEvent).compile.drain.background
+      _                <- module.jobs.processAtLeastOnce(bucketRegistry).compile.drain.background
+    yield module
