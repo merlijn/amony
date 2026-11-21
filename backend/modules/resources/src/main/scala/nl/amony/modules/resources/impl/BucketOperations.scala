@@ -220,16 +220,16 @@ final class FileOperations(
             IO.blocking(Files.exists(temp)).flatMap(exists => if exists then moveIntoPlace(temp, source).void else IO.unit)
           case None     => IO.unit
         for
-          _          <- move
-          attrs      <- IO.blocking(Files.readAttributes(source, classOf[BasicFileAttributes]))
-          hash       <- config.hashingAlgorithm.createHash(source)
-          streamable <- streamableOf(source, info.contentType)
+          _           <- move
+          attrs       <- IO.blocking(Files.readAttributes(source, classOf[BasicFileAttributes]))
+          partialHash <- config.hashingAlgorithm.createHash(source)
+          streamable  <- streamableOf(source, info.contentType)
         yield
           if streamable.contains(true) then
             Right(
               info.copy(
                 size             = attrs.size(),
-                partialHash      = Some(hash),
+                partialHash      = Some(partialHash),
                 fileKey          = Option(attrs.fileKey()).map(_.toString),
                 timeLastModified = Some(attrs.lastModifiedTime().toMillis),
                 contentMeta      = info.contentMeta.copy(streamable = streamable)
