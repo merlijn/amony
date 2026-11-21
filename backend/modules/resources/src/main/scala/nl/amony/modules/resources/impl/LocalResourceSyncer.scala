@@ -1,4 +1,4 @@
-package nl.amony.modules.resources.local
+package nl.amony.modules.resources.impl
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -74,7 +74,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
     }
   }
 
-  private[local] def newResource(f: FileInfo, userId: UserId): IO[Either[ContentUnreadable, ResourceInfo]] =
+  private[impl] def newResource(f: FileInfo, userId: UserId): IO[Either[ContentUnreadable, ResourceInfo]] =
     ops.contentMetaForPath(f.path).map(_.map { contentMeta =>
       ResourceInfo(
         bucketId           = bucketId,
@@ -223,7 +223,7 @@ trait LocalResourceSyncer extends LocalDirectoryBase {
     case _                                                         => IO.unit
   }
 
-  private[local] def processEvent(event: ResourceEvent) =
+  private[impl] def processEvent(event: ResourceEvent) =
     db.transact(s => applyEventToDb(event) >> topic.publish(s, event)) >>
       IO(logger.info(s"[${config.id}] $event"))
 

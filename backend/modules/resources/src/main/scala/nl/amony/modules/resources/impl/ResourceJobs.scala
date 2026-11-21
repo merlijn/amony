@@ -1,4 +1,4 @@
-package nl.amony.modules.resources.local
+package nl.amony.modules.resources.impl
 
 import cats.data.EitherT
 import cats.effect.IO

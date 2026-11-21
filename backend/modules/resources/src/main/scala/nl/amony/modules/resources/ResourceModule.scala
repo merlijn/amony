@@ -23,7 +23,7 @@ import nl.amony.modules.resources.api.{
 }
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
 import nl.amony.modules.resources.http.{BucketRoutes, CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
-import nl.amony.modules.resources.local.{FileOperations, LocalDirectoryBucket, ResourceJobs}
+import nl.amony.modules.resources.impl.{FileOperations, LocalDirectoryBucket, ResourceJobs}
 import nl.amony.platform.messagebus.{JobBus, MessageTopic}
 import nl.amony.platform.subprocess.{ProcessLimiter, ProcessSettings}
 import nl.amony.platform.tapir.ServerEndpoints

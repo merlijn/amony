@@ -1,4 +1,4 @@
-package nl.amony.modules.resources.local
+package nl.amony.modules.resources.impl
 
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
@@ -17,7 +17,7 @@ import skunk.Session
 import nl.amony.modules.resources.api.*
 
 /** A staged upload: the request body is already in the bucket's temp directory, waiting for the upload command. */
-final private[local] case class StagedUpload(resourceId: ResourceId, fileName: String, tempFile: String)
+final private[impl] case class StagedUpload(resourceId: ResourceId, fileName: String, tempFile: String)
 
 trait UploadOperations extends LocalResourceSyncer, Logging:
 

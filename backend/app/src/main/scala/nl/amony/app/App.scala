@@ -20,7 +20,7 @@ import nl.amony.modules.auth.*
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.resources.ResourceModule
 import nl.amony.modules.resources.api.{ResourceEvent, ResourceJob}
-import nl.amony.modules.resources.local.ResourceProcessor
+import nl.amony.modules.resources.impl.ResourceProcessor
 import nl.amony.modules.search.SearchModule
 import nl.amony.platform.database.Database
 import nl.amony.platform.messagebus.{MessageBus, MessageTopic, MessageTopicKey}

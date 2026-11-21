@@ -1,4 +1,4 @@
-package nl.amony.modules.resources.local
+package nl.amony.modules.resources.impl
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.attribute.BasicFileAttributes
@@ -71,7 +71,7 @@ final class FileOperations(
   private def contentTypeForPath(path: Path): IO[Either[ContentUnreadable, String]] =
     IO.blocking(tika.detect(path)).attempt.map(_.left.map(ContentUnreadable(path, _)))
 
-  private[local] def contentMetaForPath(path: Path): IO[Either[ContentUnreadable, ContentMeta]] =
+  private[impl] def contentMetaForPath(path: Path): IO[Either[ContentUnreadable, ContentMeta]] =
     contentTypeForPath(path).flatMap {
       case Left(error)        => IO.pure(Left(error))
       case Right(contentType) =>
@@ -105,7 +105,7 @@ final class FileOperations(
     val dotIdx   = fileName.lastIndexOf('.')
     if dotIdx >= 0 then path.resolveSibling(fileName.substring(0, dotIdx)) else path
 
-  private[local] def addFastStart(video: Path, container: VideoContainer, outputFile: Option[Path] = None): IO[Path] = {
+  private[impl] def addFastStart(video: Path, container: VideoContainer, outputFile: Option[Path] = None): IO[Path] = {
     // Local files have a well-defined sibling directory, so a default still makes sense here; remote callers must pass an explicit output.
     val out = outputFile.getOrElse(Path.of(s"${stripExtension(video)}-faststart.${containerFormat(container).extension}"))
     FFMpeg.addFastStart(video.toUri, containerFormat(container), out)
@@ -116,7 +116,7 @@ final class FileOperations(
     case VideoContainer.Webm     => ContainerFormat.Webm
     case VideoContainer.Matroska => ContainerFormat.Matroska
 
-  private[local] def streamableOf(path: Path, contentType: Option[String]): IO[Option[Boolean]] =
+  private[impl] def streamableOf(path: Path, contentType: Option[String]): IO[Option[Boolean]] =
     if contentType.exists(_.startsWith("video/")) then
       Streamability.detect(path).map {
         case Streamability.Streamable    => Some(true)
@@ -130,7 +130,7 @@ final class FileOperations(
    * attempt never leaves the resource inconsistent. Returns the temp file name. Runs in the command consumer, where the
    * resource's commands are serialized.
    */
-  private[local] def remuxForStreaming(info: ResourceInfo): IO[Either[StreamabilityError, String]] =
+  private[impl] def remuxForStreaming(info: ResourceInfo): IO[Either[StreamabilityError, String]] =
     AddFastStart.forResource(info) match
       case None            => IO.pure(Left(StreamabilityError.UnsupportedContainer(info.contentType.getOrElse("unknown"))))
       case Some(operation) =>
@@ -156,7 +156,7 @@ final class FileOperations(
    * Replaces the live file with the remux produced by [[remuxForStreaming]] (when one is still present) and refreshes the
    * metadata that depends on the file. Idempotent: a retry after the move finds no temp file and re-derives the metadata.
    */
-  private[local] def commitStreamability(info: ResourceInfo, tempFile: Option[String]): IO[Either[StreamabilityError, ResourceInfo]] =
+  private[impl] def commitStreamability(info: ResourceInfo, tempFile: Option[String]): IO[Either[StreamabilityError, ResourceInfo]] =
     val source = config.resourcePath.resolve(info.path)
     val move   = tempFile match
       case Some(file) =>
@@ -195,13 +195,13 @@ final class FileOperations(
     )
 
   /** Validator for a resource's original content, derived from its partial hash and last modified time. */
-  private[local] def originalETag(info: ResourceInfo): Option[String] =
+  private[impl] def originalETag(info: ResourceInfo): Option[String] =
     info.partialHash.map(sourceHash => eTagOf(sourceHash, info.timeLastModified.getOrElse(0L).toString))
 
   private def eTagOf(parts: String*): String =
     Base32.encode(MessageDigest.getInstance("SHA-1").digest(parts.mkString("\u0000").getBytes(StandardCharsets.UTF_8)))
 
-  private[local] def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[StreamedResource]] = {
+  private[impl] def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[StreamedResource]] = {
 
     val outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
     val eTag       = previewETag(info, outputFile)
@@ -327,16 +327,16 @@ final class FileOperations(
     IO.blocking(Files.write(outputFile, webVtt.getBytes(StandardCharsets.UTF_8))).void
   }
 
-  private[local] def previewOperations(info: ResourceInfo): List[ResourceOperation] =
+  private[impl] def previewOperations(info: ResourceInfo): List[ResourceOperation] =
     ResourceOperations.all(info, resolutions, formats).filter(_.validate(info).isRight)
 
-  private[local] def runPreviewOperation(info: ResourceInfo, operation: ResourceOperation): IO[Unit] =
+  private[impl] def runPreviewOperation(info: ResourceInfo, operation: ResourceOperation): IO[Unit] =
     derivedResource(info, operation).attempt.flatMap {
       case Left(error) => IO(logger.error(s"Failed to generate preview $operation for '${info.path}'", error))
       case Right(_)    => IO.unit
     }
 
-  private[local] def generatePreviews(info: ResourceInfo): IO[Unit] =
+  private[impl] def generatePreviews(info: ResourceInfo): IO[Unit] =
     fs2.Stream.emits(previewOperations(info))
       .parEvalMap(parallelFactor)(runPreviewOperation(info, _))
       .compile.drain

@@ -1,4 +1,4 @@
-package nl.amony.modules.resources.local
+package nl.amony.modules.resources.impl
 
 import cats.effect.IO
 import org.typelevel.otel4s.metrics.Meter

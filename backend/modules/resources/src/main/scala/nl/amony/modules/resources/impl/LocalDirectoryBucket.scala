@@ -1,4 +1,4 @@
-package nl.amony.modules.resources.local
+package nl.amony.modules.resources.impl
 
 import java.nio.file.Files
 import java.nio.file.attribute.BasicFileAttributes

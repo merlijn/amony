@@ -116,11 +116,11 @@ feature out of it.
 
 ```text
 resources.api       # MediaOperations port, in domain terms
-resources.local     # FfmpegMediaOperations adapter, uses subprocess
+resources.impl      # FfmpegMediaOperations adapter, uses subprocess
 subprocess          # low-level ffmpeg/ImageMagick wrappers, no domain knowledge
 ```
 
-Here `resources.local` implements the port using `subprocess`; `subprocess` stays a generic toolchain. For Amony this is
+Here `resources.impl` implements the port using `subprocess`; `subprocess` stays a generic toolchain. For Amony this is
 probably the cleaner option, because `subprocess` really is a technical library rather than a resource-specific adapter.
 
 The important rule in both cases: the port uses domain language, not ffmpeg language. `ContainerFormat` is an adapter
