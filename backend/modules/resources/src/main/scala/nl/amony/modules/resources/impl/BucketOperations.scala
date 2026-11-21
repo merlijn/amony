@@ -44,12 +44,20 @@ trait BucketOperations:
 
   def commitStreamability(info: ResourceInfo, stagingId: Option[StagingId]): EitherT[IO, StreamabilityError, ResourceInfo]
 
-  def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]]
+  def derivedResource(info: ResourceInfo, operation: ResourceOperation): EitherT[IO, DerivedResourceError, ResourceContent]
 
   def generatePreviews(info: ResourceInfo): IO[Unit]
 
 final case class ContentUnreadable(location: ContentLocation, cause: Throwable):
   def message: String = s"Failed to read content of ${location.display}: ${Option(cause.getMessage).getOrElse(cause.getClass.getName)}"
+
+enum DerivedResourceError:
+  case InvalidPath(resourceId: ResourceId, reason: String)
+  case SourceMissing(resourceId: ResourceId, path: String)
+
+  def message: String = this match
+    case InvalidPath(resourceId, reason) => s"Ignoring resource '$resourceId' with invalid path: $reason"
+    case SourceMissing(resourceId, path) => s"Resource '$resourceId' was found in the database but no file exists: $path"
 
 final class FileOperations(
   config: LocalDirectoryConfig,
@@ -249,27 +257,22 @@ final class FileOperations(
       ETag.of(sourceHash, outputFile.getFileName.toString, formats.settingsFingerprint, ResourceOperations.previewRecipeVersion.toString)
     )
 
-  override def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]] = {
-    import cats.data.EitherT
-    EitherT.fromEither[IO](ResourcePath.fromString(info.path)).foldF(
-      message => IO(logger.warn(s"Ignoring resource '${info.resourceId}' with invalid path: $message")).as(None),
-      _ =>
-        val source = config.resourcePath.resolve(info.path)
-        if !Files.exists(source) then
-          IO(logger.warn(s"Resource '${info.resourceId}' was found in the database but no file exists: $source")).as(None)
-        else {
-          val outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
-          val eTag       = previewETag(info, outputFile)
-          val key        = (resourceId = info.resourceId, operation = operation)
-
-          if Files.exists(outputFile) then IO.pure(Streamed(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag)).some)
-          else
-            inFlight
-              .run(key)(createResource(source, info, key.operation).as(Option.empty[ResourceInfo]))
-              .map(_ => Streamed(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag)).some)
-        }
-    )
-  }
+  override def derivedResource(info: ResourceInfo, operation: ResourceOperation): EitherT[IO, DerivedResourceError, ResourceContent] =
+    for
+      _         <- EitherT.fromEither[IO](ResourcePath.fromString(info.path)).leftMap(reason => DerivedResourceError.InvalidPath(info.resourceId, reason))
+      source     = config.resourcePath.resolve(info.path)
+      _         <- EitherT.cond[IO](Files.exists(source), (), DerivedResourceError.SourceMissing(info.resourceId, source.toString))
+      outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
+      eTag       = previewETag(info, outputFile)
+      key        = (resourceId = info.resourceId, operation = operation)
+      content   <- EitherT.liftF(
+                     if Files.exists(outputFile) then IO.pure(Streamed(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag)))
+                     else
+                       inFlight
+                         .run(key)(createResource(source, info, key.operation).as(Option.empty[ResourceInfo]))
+                         .map(_ => Streamed(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag)))
+                   )
+    yield content
 
   private def createResource(inputFile: Path, info: ResourceInfo, operation: ResourceOperation): IO[Path] =
     for
@@ -386,10 +389,16 @@ final class FileOperations(
     ResourceOperations.all(info, resolutions, formats).filter(_.validate(info).isRight)
 
   private def runPreviewOperation(info: ResourceInfo, operation: ResourceOperation): IO[Unit] =
-    derivedResource(info, operation).attempt.flatMap {
-      case Left(error) => IO(logger.error(s"Failed to generate preview $operation for '${info.path}'", error))
-      case Right(_)    => IO.unit
-    }
+    derivedResource(info, operation)
+      .foldF(
+        e => IO(logger.warn(s"Skipping preview $operation for '${info.path}': ${e.message}")),
+        _ => IO.unit
+      )
+      .attempt
+      .flatMap {
+        case Left(error) => IO(logger.error(s"Failed to generate preview $operation for '${info.path}'", error))
+        case Right(_)    => IO.unit
+      }
 
   override def generatePreviews(info: ResourceInfo): IO[Unit] =
     fs2.Stream.emits(previewOperations(info))

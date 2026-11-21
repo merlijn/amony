@@ -56,19 +56,21 @@ class FileOperationsSpec extends AnyWordSpecLike with Matchers:
 
   "FileOperations.derivedResource" should {
 
-    "return no content when the source file is gone" in {
+    "return an error when the source file is gone" in {
       val operations = ops(Files.createTempDirectory("amony-ops-spec"))
 
       operations
         .derivedResource(resource("missing.mp4"), VideoFragment(Some(512), None, 0L, 1000L))
-        .unsafeRunSync() shouldBe None
+        .value
+        .unsafeRunSync() should matchPattern { case Left(DerivedResourceError.SourceMissing(_, _)) => }
     }
 
-    "return no content for an invalid path" in {
+    "return an error for an invalid path" in {
       val operations = ops(Files.createTempDirectory("amony-ops-spec"))
 
       operations
         .derivedResource(resource("/abs.mp4"), VideoFragment(Some(512), None, 0L, 1000L))
-        .unsafeRunSync() shouldBe None
+        .value
+        .unsafeRunSync() should matchPattern { case Left(DerivedResourceError.InvalidPath(_, _)) => }
     }
   }

@@ -283,7 +283,10 @@ class ResourceBucketImpl(
     OptionT(getResourceInfo(resourceId)).flatMapF(getOrCreate(_, operation)).value
 
   override def getOrCreate(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]] =
-    ops.derivedResource(info, operation)
+    ops.derivedResource(info, operation).foldF(
+      e => IO(logger.warn(e.message)).as(None),
+      content => IO.pure(Some(content))
+    )
 
   override def generateAllPreviews(): IO[Unit] =
     getAllResources.parEvalMap(parallelFactor)(ops.generatePreviews).compile.drain
