@@ -93,7 +93,7 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
       bucketId   = bucketId,
       resourceId = ResourceId(UUID.randomUUID().toString),
       userId     = UserId("admin"),
-      path       = path,
+      path       = ResourcePath(path),
       size       = 42L,
       timeAdded  = Some(1000L)
     )
@@ -239,9 +239,9 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
           _ <- processor.processEvent(ResourceAdded(res))
           _ <- processor.processEvent(ResourceModified(res))
           _ <- processor.processEvent(ResourceThumbnailUpdated(1000, res))
-          _ <- processor.processEvent(ResourceMovedAndModified(res.resourceId, "old.mp4", "new.mp4", res))
+          _ <- processor.processEvent(ResourceMovedAndModified(res.resourceId, ResourcePath("old.mp4"), ResourcePath("new.mp4"), res))
           _ <- processor.processEvent(ResourceUserMetaUpdated(res, Some("desc"), Some("title"), Set.empty, Set.empty))
-          _ <- processor.processEvent(ResourceMoved(bucketId, res.resourceId, "old.mp4", "new.mp4"))
+          _ <- processor.processEvent(ResourceMoved(bucketId, res.resourceId, ResourcePath("old.mp4"), ResourcePath("new.mp4")))
           _ <- processor.processEvent(ResourceFileMetaChanged(bucketId, res.resourceId, 123L, None))
           _ <- processor.processEvent(BucketDeleted(bucketId))
         yield {

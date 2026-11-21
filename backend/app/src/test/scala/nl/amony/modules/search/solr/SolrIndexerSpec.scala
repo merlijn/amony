@@ -34,7 +34,7 @@ class SolrIndexerSpec extends AnyWordSpecLike with Matchers {
           bucketId           = BucketId("media"),
           resourceId         = ResourceId("resource-id"),
           userId             = UserId("user-id"),
-          path               = "videos/clip.mp4",
+          path               = ResourcePath("videos/clip.mp4"),
           size               = 123456L,
           partialHash        = Some("partial-hash"),
           fileKey            = Some("(dev=1,ino=2)"),

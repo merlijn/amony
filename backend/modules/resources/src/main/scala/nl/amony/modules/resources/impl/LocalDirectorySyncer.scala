@@ -23,6 +23,7 @@ import nl.amony.modules.resources.api.{
   ResourceModified,
   ResourceMoved,
   ResourceMovedAndModified,
+  ResourcePath,
   VideoProperties
 }
 import nl.amony.platform.files.FileInfo
@@ -36,7 +37,7 @@ trait LocalDirectorySyncer extends LocalDirectoryBase {
   private val logger             = scribe.Logger("LocalResourceSyncer")
   private val bucketId: BucketId = BucketId(config.id)
 
-  private def relativizePath(path: Path): String                            = config.resourcePath.relativize(path).toString
+  private def relativizePath(path: Path): ResourcePath                      = ResourcePath(config.resourcePath.relativize(path).toString)
   private def mapFileEvent(fileEvent: FileEvent): IO[Option[ResourceEvent]] = {
 
     def withRequireResource(partialHash: String, path: Path)(fn: ResourceInfo => ResourceEvent): IO[Option[ResourceEvent]] =
@@ -95,7 +96,7 @@ trait LocalDirectorySyncer extends LocalDirectoryBase {
    * Refreshes the stored resource for an in-place content change, keeping its identity (and user metadata).
    * Returns None when the database row is gone, in which case the event is dropped.
    */
-  private def refreshResource(f: FileInfo, lookupPath: String): IO[Option[ResourceInfo]] =
+  private def refreshResource(f: FileInfo, lookupPath: ResourcePath): IO[Option[ResourceInfo]] =
     db.getResourceByPath(bucketId, lookupPath).flatMap {
       case None           =>
         IO(logger.warn(s"Dropping content-changed event, no such file in database: ${f.path}")).as(None)

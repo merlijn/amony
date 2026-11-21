@@ -19,7 +19,18 @@ import scribe.Logging
 
 import nl.amony.app.ExportDatabaseSchema
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ContentMeta, ResourceId, ResourceInfo, Tag, TagOwner, ToolScan}
+import nl.amony.modules.resources.api.{
+  BucketId,
+  Collection,
+  CollectionId,
+  ContentMeta,
+  ResourceId,
+  ResourceInfo,
+  ResourcePath,
+  Tag,
+  TagOwner,
+  ToolScan
+}
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.platform.database.{Database, DatabaseConfig}
 
@@ -50,7 +61,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       bucketId           = BucketId(UUID.randomUUID().toString),
       resourceId         = ResourceId(UUID.randomUUID().toString),
       userId             = UserId(UUID.randomUUID().toString),
-      path               = randomString,
+      path               = ResourcePath(randomString),
       partialHash        = Some(randomString),
       fileKey            = Some(randomString),
       size               = Random.nextLong(),

@@ -36,7 +36,7 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       bucketId   = BucketId("bucket"),
       resourceId = ResourceId(UUID.randomUUID().toString),
       userId     = UserId("admin"),
-      path       = path,
+      path       = ResourcePath(path),
       size       = 1L
     )
 
@@ -81,7 +81,7 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       val file  = Files.writeString(dir.resolve("video.mp4"), "content")
       val store = LocalDirectoryStore(config(dir))
 
-      store.delete("video.mp4").unsafeRunSync()
+      store.delete(ResourcePath("video.mp4")).unsafeRunSync()
 
       Files.exists(file) shouldBe false
     }
@@ -89,7 +89,7 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
     "ignore a missing resource on delete" in {
       val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
 
-      store.delete("missing.mp4").unsafeRunSync()
+      store.delete(ResourcePath("missing.mp4")).unsafeRunSync()
     }
 
     "resolve a unique name when the target already exists" in {

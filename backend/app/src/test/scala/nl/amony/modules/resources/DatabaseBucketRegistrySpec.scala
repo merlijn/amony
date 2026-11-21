@@ -70,7 +70,13 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
     bucket
 
   private def resource(bucketId: BucketId): ResourceInfo =
-    ResourceInfo(bucketId = bucketId, resourceId = ResourceId(UUID.randomUUID().toString), userId = UserId("admin"), path = "file.mp4", size = 1L)
+    ResourceInfo(
+      bucketId   = bucketId,
+      resourceId = ResourceId(UUID.randomUUID().toString),
+      userId     = UserId("admin"),
+      path       = ResourcePath("file.mp4"),
+      size       = 1L
+    )
 
   private def recordingTopic(published: AtomicReference[List[ResourceEvent]]): MessageTopic[ResourceEvent] =
     new MessageTopic[ResourceEvent]:

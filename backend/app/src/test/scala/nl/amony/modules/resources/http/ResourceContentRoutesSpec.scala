@@ -24,7 +24,7 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
     bucketId           = BucketId("test"),
     resourceId         = ResourceId("resource"),
     userId             = UserId("user"),
-    path               = "video.mp4",
+    path               = ResourcePath("video.mp4"),
     size               = 1L,
     contentMeta        = ContentMeta.indexed(Some(VideoProperties(width, height, 30f, durationInMillis, pixelAspectRatio = pixelAspectRatio))),
     thumbnailTimestamp = Some(thumbnailTimestamp)
@@ -34,7 +34,7 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
     bucketId    = BucketId("test"),
     resourceId  = ResourceId("resource"),
     userId      = UserId("user"),
-    path        = "image.jpg",
+    path        = ResourcePath("image.jpg"),
     size        = 1L,
     contentMeta = ContentMeta.indexed(Some(ImageProperties(width, height)))
   )
@@ -268,7 +268,7 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
 
       "not change on rename" in {
         val base = videoInfo(1920, 1080)
-        assert(ResourceOperations.contentVersion(base) == ResourceOperations.contentVersion(base.copy(path = "renamed.mp4")))
+        assert(ResourceOperations.contentVersion(base) == ResourceOperations.contentVersion(base.copy(path = ResourcePath("renamed.mp4"))))
       }
     }
 

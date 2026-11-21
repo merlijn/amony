@@ -32,10 +32,11 @@ case class ResourceFileMetaChanged(
 ) extends ResourceEvent derives io.circe.Codec:
   override def messageKey: String = s"$bucketId:$resourceId"
 
-case class ResourceMoved(bucketId: BucketId, resourceId: ResourceId, oldPath: String, newPath: String) extends ResourceEvent derives io.circe.Codec:
+case class ResourceMoved(bucketId: BucketId, resourceId: ResourceId, oldPath: ResourcePath, newPath: ResourcePath) extends ResourceEvent
+    derives io.circe.Codec:
   override def messageKey: String = s"$bucketId:$resourceId"
 
-case class ResourceMovedAndModified(resourceId: ResourceId, oldPath: String, newPath: String, resource: ResourceInfo)
+case class ResourceMovedAndModified(resourceId: ResourceId, oldPath: ResourcePath, newPath: ResourcePath, resource: ResourceInfo)
     extends ResourceEvent derives io.circe.Codec:
   override def messageKey: String = s"${resource.bucketId}:$resourceId"
 

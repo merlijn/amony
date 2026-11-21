@@ -67,7 +67,7 @@ case class ResourceDto(
       bucketId           = BucketId(bucketId),
       resourceId         = ResourceId(resourceId),
       userId             = UserId(userId),
-      path               = path,
+      path               = ResourcePath(path),
       partialHash        = partialHash,
       size               = sizeInBytes,
       contentMeta        = ContentMeta(contentType = Some(contentType), streamable = contentMeta.streamable),

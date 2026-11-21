@@ -59,7 +59,13 @@ class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestConta
     pool.use(_.prepare(sql"select count(*) from message_log where topic = $varchar".query(int8)).flatMap(_.unique(name)))
 
   private def resource(bucketId: BucketId): ResourceInfo =
-    ResourceInfo(bucketId = bucketId, resourceId = ResourceId(UUID.randomUUID().toString), userId = UserId("admin"), path = "file.mp4", size = 1L)
+    ResourceInfo(
+      bucketId   = bucketId,
+      resourceId = ResourceId(UUID.randomUUID().toString),
+      userId     = UserId("admin"),
+      path       = ResourcePath("file.mp4"),
+      size       = 1L
+    )
 
   "ResourceDatabase" should {
 
@@ -118,8 +124,8 @@ class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestConta
               afterTags  <- db.updateResourceTags(bucket, res.resourceId, Set(Tag.user("c")), Set(Tag.user("a")))
               afterThumb <- db.updateThumbnailTimestamp(bucket, res.resourceId, 1234)
               afterOwner <- db.setTagsForOwner(bucket, res.resourceId, TagOwner.System, List("sys"))
-              _          <- db.move(bucket, res.resourceId, "moved.mp4")
-              moved      <- db.getResourceByPath(bucket, "moved.mp4")
+              _          <- db.move(bucket, res.resourceId, ResourcePath("moved.mp4"))
+              moved      <- db.getResourceByPath(bucket, ResourcePath("moved.mp4"))
               size       <- db.bucketSize(bucket)
               _          <- db.deleteResource(bucket, res.resourceId)
               afterDel   <- db.getResourceById(bucket, res.resourceId)

@@ -23,7 +23,7 @@ import nl.amony.platform.subprocess.{ProcessLimiter, ProcessRunner, ProcessSetti
 
 /** Where content to operate on lives: a resource in the bucket or a file staged for upload. */
 enum ContentLocation:
-  case Resource(path: String)
+  case Resource(path: ResourcePath)
   case Staged(stagingId: StagingId)
 
   def display: String = this match

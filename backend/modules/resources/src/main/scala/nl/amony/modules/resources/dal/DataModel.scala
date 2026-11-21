@@ -9,7 +9,7 @@ import skunk.codec.all.{int4, timestamptz, uuid, varchar}
 import skunk.implicits.sql
 
 import nl.amony.modules.auth.api.UserId
-import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ContentMeta, ResourceId, ResourceInfo, Tag, ToolScan}
+import nl.amony.modules.resources.api.{BucketId, Collection, CollectionId, ContentMeta, ResourceId, ResourceInfo, ResourcePath, Tag, ToolScan}
 
 val instantCodec: Codec[Instant] = timestamptz.imap(_.toInstant)(_.atOffset(ZoneOffset.UTC))
 
@@ -47,7 +47,7 @@ case class ResourceRow(
       bucketId           = BucketId(bucket_id),
       resourceId         = ResourceId(resource_id),
       userId             = UserId(user_id),
-      path               = fs_path,
+      path               = ResourcePath(fs_path),
       partialHash        = partial_hash,
       fileKey            = file_key,
       size               = size,

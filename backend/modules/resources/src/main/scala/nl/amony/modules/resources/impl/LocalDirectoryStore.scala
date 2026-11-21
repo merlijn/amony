@@ -6,7 +6,7 @@ import java.nio.file.{Files, Path}
 import cats.effect.IO
 import scribe.Logging
 
-import nl.amony.modules.resources.api.{LocalDirectoryConfig, ResourceContent, ResourceInfo, StagingId, StreamedResource}
+import nl.amony.modules.resources.api.{LocalDirectoryConfig, ResourceContent, ResourceInfo, ResourcePath, StagingId, StreamedResource}
 
 /** [[ResourceStore]] backed by a local directory. */
 final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceStore, Logging:
@@ -32,7 +32,7 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
           val attributes = Files.readAttributes(target, classOf[BasicFileAttributes])
           Right(
             StoredResource(
-              path             = config.resourcePath.relativize(target).toString,
+              path             = ResourcePath(config.resourcePath.relativize(target).toString),
               size             = attributes.size(),
               timeLastModified = attributes.lastModifiedTime().toMillis,
               fileKey          = Option(attributes.fileKey()).map(_.toString)
@@ -42,7 +42,7 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
 
   override def discard(stagingId: StagingId): IO[Unit] = IO.unit
 
-  override def delete(path: String): IO[Unit] =
+  override def delete(path: ResourcePath): IO[Unit] =
     IO.blocking(Files.deleteIfExists(config.resourcePath.resolve(path))).void
 
   private def resolveTargetPath(path: Path, maxAttempts: Int): Option[Path] = {

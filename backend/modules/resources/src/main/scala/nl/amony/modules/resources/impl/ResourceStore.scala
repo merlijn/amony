@@ -4,11 +4,11 @@ import java.nio.file.Path
 
 import cats.effect.IO
 
-import nl.amony.modules.resources.api.{ResourceContent, ResourceInfo, StagingId}
+import nl.amony.modules.resources.api.{ResourceContent, ResourceInfo, ResourcePath, StagingId}
 
 /** Metadata of an object stored in a [[ResourceStore]]. */
 final case class StoredResource(
-  path: String,
+  path: ResourcePath,
   size: Long,
   timeLastModified: Long,
   fileKey: Option[String]
@@ -36,4 +36,4 @@ trait ResourceStore:
   def discard(stagingId: StagingId): IO[Unit]
 
   /** Deletes a stored resource. */
-  def delete(path: String): IO[Unit]
+  def delete(path: ResourcePath): IO[Unit]
