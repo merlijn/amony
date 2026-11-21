@@ -35,6 +35,8 @@ trait BucketOperations:
 
   def contentMeta(location: ContentLocation): IO[Either[ContentUnreadable, ContentMeta]]
 
+  def contentPartialHash(location: ContentLocation): IO[Either[ContentUnreadable, String]]
+
   def normalizeUpload(stagingId: StagingId, container: VideoContainer): IO[Either[StreamabilityError, Unit]]
 
   def remuxForStreaming(info: ResourceInfo): IO[Either[StreamabilityError, Option[StagingId]]]
@@ -110,6 +112,9 @@ final class FileOperations(
             .copy(contentType = Some(contentType), streamable = streamable)
         )
     }
+
+  override def contentPartialHash(location: ContentLocation): IO[Either[ContentUnreadable, String]] =
+    config.hashingAlgorithm.createHash(pathOf(location)).attempt.map(_.left.map(ContentUnreadable(location, _)))
 
   private def toolScanForPath(path: Path, contentType: String): IO[Option[ToolScan]] =
     if contentType.startsWith("video/") then

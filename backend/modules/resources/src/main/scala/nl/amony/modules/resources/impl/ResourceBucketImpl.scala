@@ -265,13 +265,15 @@ class ResourceBucketImpl(
             db.transact(s => db.upsertResource(updated) >> topic.publish(s, ResourceModified(updated))).as(Right(()))
 
   override def reComputePartialHashes(): IO[Unit] = getAllResources.evalMap { resource =>
-    val file = config.resourcePath.resolve(resource.path)
-    config.hashingAlgorithm.createHash(file).flatMap: partialHash =>
-      val updated = resource.copy(partialHash = Some(partialHash))
-      if resource.partialHash.contains(partialHash) then IO.unit
-      else
-        logger.info(s"Updating partialHash for $file to $partialHash")
-        db.transact(s => db.upsertResource(updated) >> topic.publish(s, ResourceModified(updated)))
+    ops.contentPartialHash(ContentLocation.Resource(resource.path)).flatMap {
+      case Left(error)        => IO(logger.error(s"Skipping partial hash for ${resource.path}", error.cause))
+      case Right(partialHash) =>
+        val updated = resource.copy(partialHash = Some(partialHash))
+        if resource.partialHash.contains(partialHash) then IO.unit
+        else
+          IO(logger.info(s"Updating partialHash for ${resource.path} to $partialHash")) >>
+            db.transact(s => db.upsertResource(updated) >> topic.publish(s, ResourceModified(updated)))
+    }
   }.compile.drain
 
   override def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]] =
