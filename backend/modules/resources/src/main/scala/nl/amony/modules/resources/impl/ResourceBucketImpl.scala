@@ -7,7 +7,7 @@ import java.security.MessageDigest
 import java.time.Instant
 import scala.concurrent.duration.*
 
-import cats.data.EitherT
+import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.implicits.*
 import fs2.io.file.{Files, Path}
@@ -42,9 +42,10 @@ class ResourceBucketImpl(
   override def requiredRole: Option[Role] = config.requiredRole
 
   override def getResourceContent(resourceId: ResourceId): IO[Option[ResourceContent]] =
-    getResourceInfo(resourceId).flatMap:
-      case None       => IO.pure(None)
-      case Some(info) => store.content(info, ETag.forResource(info))
+    (for
+      info    <- OptionT(getResourceInfo(resourceId))
+      content <- OptionT(store.content(info, ETag.forResource(info)))
+    yield content).value
 
   override def getAllResources: fs2.Stream[IO, ResourceInfo] =
     db.getStream(id)
@@ -82,37 +83,34 @@ class ResourceBucketImpl(
         yield commitUpload(upload, prepared).map(_.left.map(_.message))).value
 
   override def fixStreamability(resourceId: ResourceId): IO[Either[ResourceJobError, Unit]] =
-    checkStreamabilityFix(resourceId).flatMap:
-      case Left(error) => IO.pure(Left(error))
-      case Right(())   =>
-        val job = FixStreamability(id, resourceId)
-        for
-          jobId  <- jobBus.submit(job.key, job)
-          status <- jobBus.awaitCompletion(jobId, jobTimeout)
-        yield status.state match
-          case JobState.Succeeded => Right(())
-          case _                  => Left(ResourceJobError.Rejected(status.lastError.getOrElse("Failed to fix streamability")))
+    (for
+      _      <- EitherT(checkStreamabilityFix(resourceId))
+      job     = FixStreamability(id, resourceId)
+      jobId  <- EitherT.liftF(jobBus.submit(job.key, job))
+      status <- EitherT.liftF(jobBus.awaitCompletion(jobId, jobTimeout))
+      _      <-
+        EitherT.cond[IO](status.state == JobState.Succeeded, (), ResourceJobError.Rejected(status.lastError.getOrElse("Failed to fix streamability")))
+    yield ()).value
 
   override def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, ResourceInfo]] =
-    stageUpload(fileName, source).flatMap:
-      case Left(error)   => IO.pure(Left(error))
-      case Right(staged) =>
-        val job    = UploadResource(id, staged.resourceId, userId, staged.fileName, staged.stagingId)
-        val submit = jobBus
-          .submit(job.key, job)
-          .handleErrorWith(error => store.discard(staged.stagingId) >> IO.raiseError(error))
-        for
-          jobId  <- submit
-          status <- jobBus.awaitCompletion(jobId, jobTimeout)
-          result <- status.state match
-                      case JobState.Succeeded =>
-                        getResourceInfo(staged.resourceId).map {
-                          case Some(info) => Right(info)
-                          case None       => Left(UploadError.StorageError("Uploaded resource was not found after completion"))
-                        }
-                      case _                  =>
-                        IO.pure(Left(UploadError.StorageError(status.lastError.getOrElse("Failed to store the uploaded resource"))))
-        yield result
+    (for
+      staged <- EitherT(stageUpload(fileName, source))
+      job     = UploadResource(id, staged.resourceId, userId, staged.fileName, staged.stagingId)
+      jobId  <- EitherT.liftF(
+                  jobBus.submit(job.key, job)
+                    .handleErrorWith(error => store.discard(staged.stagingId) >> IO.raiseError(error))
+                )
+      status <- EitherT.liftF(jobBus.awaitCompletion(jobId, jobTimeout))
+      _      <- EitherT.cond[IO](
+                  status.state == JobState.Succeeded,
+                  (),
+                  UploadError.StorageError(status.lastError.getOrElse("Failed to store the uploaded resource"))
+                )
+      info   <- EitherT.fromOptionF(
+                  getResourceInfo(staged.resourceId),
+                  UploadError.StorageError("Uploaded resource was not found after completion")
+                )
+    yield info).value
 
   private val invalidSequences = List("/", "\\", "..")
 
@@ -208,26 +206,31 @@ class ResourceBucketImpl(
     upload: UploadResource,
     prepared: PreparedUpload
   ): IO[Either[UploadProcessingError, Unit]] =
-    db.getResourceById(upload.bucketId, upload.resourceId).flatMap:
-      case Some(_) => store.discard(prepared.stagingId).as(Right(()))
-      case None    =>
-        store.commit(prepared.stagingId, upload.fileName).flatMap:
-          case Left(message) => IO.pure(Left(UploadProcessingError(prepared.stagingId, message)))
-          case Right(stored) =>
-            val info = ResourceInfo(
-              bucketId           = upload.bucketId,
-              resourceId         = upload.resourceId,
-              userId             = upload.userId,
-              path               = stored.path,
-              size               = stored.size,
-              partialHash        = Some(prepared.partialHash),
-              fileKey            = stored.fileKey,
-              contentMeta        = prepared.contentMeta,
-              timeAdded          = Some(Instant.now().toEpochMilli),
-              timeLastModified   = Some(stored.timeLastModified),
-              thumbnailTimestamp = None
-            )
-            events.processEvent(ResourceAdded(info)).as(Right(()))
+    (for
+      existing <- EitherT.liftF(db.getResourceById(upload.bucketId, upload.resourceId))
+      _        <- existing match
+                    case Some(_) => EitherT.liftF(store.discard(prepared.stagingId))
+                    case None    =>
+                      for
+                        stored <- EitherT(store.commit(prepared.stagingId, upload.fileName)).leftMap(message =>
+                                    UploadProcessingError(prepared.stagingId, message)
+                                  )
+                        info    = ResourceInfo(
+                                    bucketId           = upload.bucketId,
+                                    resourceId         = upload.resourceId,
+                                    userId             = upload.userId,
+                                    path               = stored.path,
+                                    size               = stored.size,
+                                    partialHash        = Some(prepared.partialHash),
+                                    fileKey            = stored.fileKey,
+                                    contentMeta        = prepared.contentMeta,
+                                    timeAdded          = Some(Instant.now().toEpochMilli),
+                                    timeLastModified   = Some(stored.timeLastModified),
+                                    thumbnailTimestamp = None
+                                  )
+                        _      <- EitherT.liftF(events.processEvent(ResourceAdded(info)))
+                      yield ()
+    yield ()).value
 
   /**
    * Cheap validation for the request: reports whether a remux makes sense without touching the file. The remux itself
@@ -244,10 +247,12 @@ class ResourceBucketImpl(
 
   /** Remuxes to the bucket's temp directory without touching the live file. Returns None when nothing is needed. */
   private def processStreamabilityFix(resourceId: ResourceId): IO[Either[StreamabilityError, Option[StagingId]]] =
-    getResourceInfo(resourceId).flatMap:
-      case None                                           => IO.pure(Left(StreamabilityError.ResourceNotFound(resourceId)))
-      case Some(info) if !info.streamable.contains(false) => IO.pure(Right(None))
-      case Some(info)                                     => ops.remuxForStreaming(info)
+    OptionT(getResourceInfo(resourceId))
+      .semiflatMap((info: ResourceInfo) =>
+        if !info.streamable.contains(false) then IO.pure(Right(None): Either[StreamabilityError, Option[StagingId]])
+        else ops.remuxForStreaming(info)
+      )
+      .getOrElse(Left(StreamabilityError.ResourceNotFound(resourceId)))
 
   /**
    * Commits a remux: replaces the live file, refreshes its metadata and publishes ResourceModified in a transaction.
@@ -256,13 +261,11 @@ class ResourceBucketImpl(
     resourceId: ResourceId,
     stagingId: Option[StagingId]
   ): IO[Either[StreamabilityError, Unit]] =
-    getResourceInfo(resourceId).flatMap:
-      case None       => IO.pure(Left(StreamabilityError.ResourceNotFound(resourceId)))
-      case Some(info) =>
-        ops.commitStreamability(info, stagingId).flatMap:
-          case Left(error)    => IO.pure(Left(error))
-          case Right(updated) =>
-            events.processEvent(ResourceModified(updated)).as(Right(()))
+    (for
+      info    <- EitherT.fromOptionF(getResourceInfo(resourceId), StreamabilityError.ResourceNotFound(resourceId))
+      updated <- EitherT(ops.commitStreamability(info, stagingId))
+      _       <- EitherT.liftF(events.processEvent(ResourceModified(updated)))
+    yield ()).value
 
   override def reComputePartialHashes(): IO[Unit] = getAllResources.evalMap { resource =>
     ops.contentPartialHash(ContentLocation.Resource(resource.path)).flatMap {
@@ -277,7 +280,7 @@ class ResourceBucketImpl(
   }.compile.drain
 
   override def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]] =
-    getResourceInfo(resourceId).flatMap(_.fold(IO.pure(Option.empty[ResourceContent]))(getOrCreate(_, operation)))
+    OptionT(getResourceInfo(resourceId)).flatMapF(getOrCreate(_, operation)).value
 
   override def getOrCreate(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]] =
     ops.derivedResource(info, operation)
@@ -293,36 +296,34 @@ class ResourceBucketImpl(
     store.delete(info.path)
 
   override def deleteResource(resourceId: ResourceId): IO[Unit] =
-    getResourceInfo(resourceId).flatMap:
-      case None       => IO.pure(())
-      case Some(info) =>
-        db.transact(s => db.deleteResource(id, resourceId) >> topic.publish(s, ResourceDeleted(info)))
+    OptionT(getResourceInfo(resourceId))
+      .semiflatMap(info => db.transact(s => db.deleteResource(id, resourceId) >> topic.publish(s, ResourceDeleted(info))))
+      .value.void
 
   override def updateUserMeta(resourceId: ResourceId, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] =
     db.transact: s =>
-      db.getResourceByIdForUpdate(id, resourceId).flatMap:
-        case None           => IO.unit
-        case Some(existing) =>
+      OptionT(db.getResourceByIdForUpdate(id, resourceId))
+        .semiflatMap: existing =>
           val existingUserTags = existing.tags.filter(_.owner == TagOwner.User)
           val newUserTags      = tags.toSet.map(Tag.user)
           val tagsAdded        = newUserTags -- existingUserTags
           val tagsRemoved      = existingUserTags -- newUserTags
           // User-supplied labels always carry the user owner; other owners are preserved.
-          db.updateUserMeta(id, resourceId, title, description, TagOwner.User, tags)
-            .flatMap(
-              _.map(updated =>
-                topic.publish(
-                  s,
-                  ResourceUserMetaUpdated(
-                    resource           = updated,
-                    updatedDescription = description,
-                    updatedTitle       = title,
-                    tagsAdded          = tagsAdded,
-                    tagsRemoved        = tagsRemoved
-                  )
+          OptionT(db.updateUserMeta(id, resourceId, title, description, TagOwner.User, tags))
+            .semiflatMap(updated =>
+              topic.publish(
+                s,
+                ResourceUserMetaUpdated(
+                  resource           = updated,
+                  updatedDescription = description,
+                  updatedTitle       = title,
+                  tagsAdded          = tagsAdded,
+                  tagsRemoved        = tagsRemoved
                 )
-              ).getOrElse(IO.unit)
+              )
             )
+            .value.void
+        .value.void
 
   /** Maximum resources updated in a single transaction: atomic per batch without holding locks for the whole selection. */
   private val tagBulkBatchSize = 100
@@ -331,9 +332,8 @@ class ResourceBucketImpl(
     resourceIds.toList.grouped(tagBulkBatchSize).toList.traverse_ : batch =>
       db.transact: s =>
         batch.traverse_ : resourceId =>
-          db.updateResourceTags(id, resourceId, tagsToAdd, tagsToRemove).flatMap:
-            case None          => IO.unit
-            case Some(updated) =>
+          OptionT(db.updateResourceTags(id, resourceId, tagsToAdd, tagsToRemove))
+            .semiflatMap(updated =>
               topic.publish(
                 s,
                 ResourceUserMetaUpdated(
@@ -344,11 +344,14 @@ class ResourceBucketImpl(
                   tagsRemoved        = tagsToRemove
                 )
               )
+            )
+            .value.void
 
   override def updateThumbnailTimestamp(resourceId: ResourceId, timestamp: Int): IO[Unit] =
     db.transact: s =>
-      db.updateThumbnailTimestamp(id, resourceId, timestamp)
-        .flatMap(_.map(updated => topic.publish(s, ResourceThumbnailUpdated(timestamp, updated))).getOrElse(IO.unit))
+      OptionT(db.updateThumbnailTimestamp(id, resourceId, timestamp))
+        .semiflatMap(updated => topic.publish(s, ResourceThumbnailUpdated(timestamp, updated)))
+        .value.void
 
   override def importBackup(resources: fs2.Stream[IO, ResourceInfo]): IO[Unit] =
     db.truncateTables() >> resources.map(r => r.copy(resourceId = config.generateId(), title = None))

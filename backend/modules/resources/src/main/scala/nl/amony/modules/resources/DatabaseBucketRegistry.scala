@@ -22,18 +22,20 @@ object DatabaseBucketRegistry extends Logging:
 
   /** Inserts the default bucket when no buckets exist yet, unless its configuration is invalid. */
   private def seedDefaultBucket(defaultBucket: ResourceBucketConfig, bucketsDal: BucketsDal): IO[Unit] =
-    bucketsDal.anyExist().flatMap {
-      case true  => IO(logger.info("Skipped seeding default bucket since buckets already exist in the database"))
-      case false =>
-        defaultBucket.validate().flatMap {
-          case Left(error)   =>
-            IO(logger.error(s"No buckets found, but the default bucket '${defaultBucket.id}' is invalid and is not inserted: $error"))
-          case Right(config) =>
-            bucketsDal.insertIfNoneExist(config).flatMap(inserted =>
-              IO.whenA(inserted)(IO(logger.info(s"No buckets found, inserted default bucket '${config.id}'")))
-            )
-        }
-    }
+    for
+      exists <- bucketsDal.anyExist()
+      _      <-
+        if exists then IO(logger.info("Skipped seeding default bucket since buckets already exist in the database"))
+        else
+          (for
+            config   <- EitherT(defaultBucket.validate())
+            inserted <- EitherT.liftF(bucketsDal.insertIfNoneExist(config))
+            _        <- EitherT.liftF(IO.whenA(inserted)(IO(logger.info(s"No buckets found, inserted default bucket '${config.id}'"))))
+          yield ()).foldF(
+            error => IO(logger.error(s"No buckets found, but the default bucket '${defaultBucket.id}' is invalid and is not inserted: $error")),
+            _ => IO.unit
+          )
+    yield ()
 
   private case class RunningBucket(
     stored: StoredBucket,

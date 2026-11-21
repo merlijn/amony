@@ -4,6 +4,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
 
+import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import fs2.Stream
 import fs2.concurrent.SignallingRef
@@ -44,10 +45,12 @@ final class LocalDirectorySyncer(
   private def mapFileEvent(fileEvent: FileEvent): IO[Option[ResourceEvent]] = {
 
     def withRequireResource(partialHash: String, path: Path)(fn: ResourceInfo => ResourceEvent): IO[Option[ResourceEvent]] =
-      db.getResourceByPartialHash(bucketId, partialHash)
-        .map(_.find(_.path == relativizePath(path))).flatMap:
-          case None    => IO(logger.warn(s"Dropping file event, no such file in database: $path ($partialHash)")).as(None)
-          case Some(r) => IO.pure(Some(fn(r)))
+      for
+        resources <- db.getResourceByPartialHash(bucketId, partialHash)
+        result    <- resources.find(_.path == relativizePath(path)) match
+                       case None    => IO(logger.warn(s"Dropping file event, no such file in database: $path ($partialHash)")).as(None)
+                       case Some(r) => IO.pure(Some(fn(r)))
+      yield result
 
     fileEvent match {
 
@@ -59,10 +62,12 @@ final class LocalDirectorySyncer(
       case FileDeleted(f) => withRequireResource(f.partialHash, f.path)(r => ResourceDeleted(r))
 
       case FileAdded(f) =>
-        newResource(f, UserId(config.sync.newFilesOwner)).flatMap {
-          case Left(e)  => IO(logger.error(s"Skipping unreadable file: ${f.path}", e.cause)).as(None)
-          case Right(r) => IO.pure(Some(ResourceAdded(r)))
-        }
+        (for
+          resource <- EitherT(newResource(f, UserId(config.sync.newFilesOwner)))
+        yield ResourceAdded(resource)).foldF(
+          e => IO(logger.error(s"Skipping unreadable file: ${f.path}", e.cause)).as(None),
+          r => IO.pure(Some(r))
+        )
 
       case FileMoved(file, oldFilePath) =>
         val newPath = relativizePath(file.path)
@@ -100,29 +105,27 @@ final class LocalDirectorySyncer(
    * Returns None when the database row is gone, in which case the event is dropped.
    */
   private def refreshResource(f: FileInfo, lookupPath: ResourcePath): IO[Option[ResourceInfo]] =
-    db.getResourceByPath(bucketId, lookupPath).flatMap {
-      case None           =>
-        IO(logger.warn(s"Dropping content-changed event, no such file in database: ${f.path}")).as(None)
-      case Some(existing) =>
-        ops.contentMeta(ContentLocation.Resource(relativizePath(f.path))).flatMap {
-          case Left(e)      =>
-            IO(logger.error(s"Skipping content-changed event, failed to read ${f.path}", e.cause)).as(None)
-          case Right(fresh) =>
-            val durationInMillis   = fresh.properties.collect { case video: VideoProperties => video.durationInMillis }
-            // a pinned thumbnail timestamp beyond the new duration would yield broken previews
-            val thumbnailTimestamp = existing.thumbnailTimestamp.filter(ts => durationInMillis.forall(ts <= _))
-            val contentMeta        = existing.contentMeta.updatedWith(fresh)
+    OptionT(db.getResourceByPath(bucketId, lookupPath)).foldF(
+      IO(logger.warn(s"Dropping content-changed event, no such file in database: ${f.path}")).as(Option.empty[ResourceInfo])
+    )(existing =>
+      EitherT(ops.contentMeta(ContentLocation.Resource(relativizePath(f.path)))).foldF(
+        e => IO(logger.error(s"Skipping content-changed event, failed to read ${f.path}", e.cause)).as(Option.empty[ResourceInfo]),
+        fresh =>
+          val durationInMillis   = fresh.properties.collect { case video: VideoProperties => video.durationInMillis }
+          // a pinned thumbnail timestamp beyond the new duration would yield broken previews
+          val thumbnailTimestamp = existing.thumbnailTimestamp.filter(ts => durationInMillis.forall(ts <= _))
+          val contentMeta        = existing.contentMeta.updatedWith(fresh)
 
-            IO.pure(Some(existing.copy(
-              partialHash        = Some(f.partialHash),
-              fileKey            = f.fileKey.orElse(existing.fileKey),
-              size               = f.size,
-              contentMeta        = contentMeta,
-              timeLastModified   = Some(f.modifiedTime),
-              thumbnailTimestamp = thumbnailTimestamp
-            )))
-        }
-    }
+          IO.pure(Some(existing.copy(
+            partialHash        = Some(f.partialHash),
+            fileKey            = f.fileKey.orElse(existing.fileKey),
+            size               = f.size,
+            contentMeta        = contentMeta,
+            timeLastModified   = Some(f.modifiedTime),
+            thumbnailTimestamp = thumbnailTimestamp
+          )))
+      )
+    )
 
   private def toFileStore(): IO[FileStore] =
     db.getAll(bucketId).map { resources =>
