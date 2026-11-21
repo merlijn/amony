@@ -26,7 +26,7 @@ import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.platform.database.{Database, DatabaseConfig}
 import nl.amony.platform.messagebus.MessageTopic
 
-class DirectoryBucketImplSpec extends AnyWordSpecLike with TestContainerForAll with Matchers with MockitoSugar:
+class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll with Matchers with MockitoSugar:
 
   override val containerDef: GenericContainer.Def[GenericContainer] =
     GenericContainer.Def(
@@ -98,7 +98,7 @@ class DirectoryBucketImplSpec extends AnyWordSpecLike with TestContainerForAll w
       timeAdded  = Some(1000L)
     )
 
-  "DirectoryBucketImpl and ResourceProcessor" should {
+  "ResourceBucketImpl and ResourceProcessor" should {
 
     "publish ResourceUserMetaUpdated with computed tag diffs on updateUserMeta using a single-connection pool" in withContainers { container =>
       Database.makePool(dbConfig(container)).use { pool =>
@@ -106,7 +106,7 @@ class DirectoryBucketImplSpec extends AnyWordSpecLike with TestContainerForAll w
         val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
         val db        = ResourceDatabase(pool)
         val published = new AtomicReference(List.empty[ResourceEvent])
-        val bucket    = DirectoryBucketImpl(cfg, 1, db, recordingTopic(published), null, LocalDirectoryStore(cfg))
+        val bucket    = ResourceBucketImpl(cfg, 1, db, recordingTopic(published), null, LocalDirectoryStore(cfg))
         val initial   = newResource(bucket.id).copy(
           title       = Some("old title"),
           description = Some("old desc"),
@@ -145,7 +145,7 @@ class DirectoryBucketImplSpec extends AnyWordSpecLike with TestContainerForAll w
         val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
         val db        = ResourceDatabase(pool)
         val published = new AtomicReference(List.empty[ResourceEvent])
-        val bucket    = DirectoryBucketImpl(cfg, 1, db, recordingTopic(published), null, LocalDirectoryStore(cfg))
+        val bucket    = ResourceBucketImpl(cfg, 1, db, recordingTopic(published), null, LocalDirectoryStore(cfg))
         val res1      = newResource(bucket.id, "a.mp4").copy(tags = Set(Tag.user("old")))
         val res2      = newResource(bucket.id, "b.mp4").copy(tags = Set(Tag.user("old"), Tag.user("stay")))
 
@@ -178,7 +178,7 @@ class DirectoryBucketImplSpec extends AnyWordSpecLike with TestContainerForAll w
         val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
         val db        = ResourceDatabase(pool)
         val published = new AtomicReference(List.empty[ResourceEvent])
-        val bucket    = DirectoryBucketImpl(cfg, 1, db, recordingTopic(published), null, LocalDirectoryStore(cfg))
+        val bucket    = ResourceBucketImpl(cfg, 1, db, recordingTopic(published), null, LocalDirectoryStore(cfg))
         val res       = newResource(bucket.id)
 
         val test =
@@ -201,7 +201,7 @@ class DirectoryBucketImplSpec extends AnyWordSpecLike with TestContainerForAll w
           val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
           val db        = ResourceDatabase(pool)
           val published = new AtomicReference(List.empty[ResourceEvent])
-          val bucket    = DirectoryBucketImpl(cfg, 1, db, recordingTopic(published), null, LocalDirectoryStore(cfg))
+          val bucket    = ResourceBucketImpl(cfg, 1, db, recordingTopic(published), null, LocalDirectoryStore(cfg))
           val res       = newResource(bucket.id, "video.mp4")
 
           val registry  = mock[BucketRegistry](RETURNS_DEFAULTS)

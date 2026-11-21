@@ -104,7 +104,11 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
           _         <- EitherT.liftF[IO, UploadProcessingError, Unit](store.stage(upload.tempFile, tempPath))
         yield PreparedUpload(upload.tempFile, hash, finalMeta)).value
 
-  /** Fast, transactional part of an upload: moves the prepared file into place and inserts the resource. */
+  /**
+   * Fast, transactional part of an upload: moves the prepared file into place and inserts the resource. Committing
+   * consumes the staged file, so when inserting the resource fails the object is already in the store and a retry will
+   * not find a staged file. A durable outbox job would be needed to close that window.
+   */
   def commitUpload(
     upload: UploadResource,
     prepared: PreparedUpload

@@ -17,7 +17,7 @@ import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.platform.files.*
 import nl.amony.platform.messagebus.{JobBus, JobState, MessageTopic}
 
-class DirectoryBucketImpl(
+class ResourceBucketImpl(
   config: LocalDirectoryConfig,
   parallelFactor: Int,
   db: ResourceDatabase,
