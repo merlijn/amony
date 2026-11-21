@@ -17,16 +17,17 @@ import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.platform.files.*
 import nl.amony.platform.messagebus.{JobBus, JobState, MessageTopic}
 
-class LocalDirectoryBucket(
+class DirectoryBucketImpl(
   config: LocalDirectoryConfig,
   parallelFactor: Int,
   db: ResourceDatabase,
   topic: MessageTopic[ResourceEvent],
   ops: FileOperations,
+  store: ResourceStore,
   jobBus: JobBus[ResourceJob] = null,
   jobTimeout: FiniteDuration  = 30.minutes
 )(using meter: Meter[IO], tracer: Tracer[IO])
-    extends LocalDirectoryBase(config, parallelFactor, db, topic, ops),
+    extends LocalDirectoryBase(config, store, parallelFactor, db, topic, ops),
       ResourceBucket,
       LocalResourceSyncer,
       UploadOperations,
@@ -39,16 +40,9 @@ class LocalDirectoryBucket(
   override def requiredRole: Option[Role] = config.requiredRole
 
   override def getResourceContent(resourceId: ResourceId): IO[Option[ResourceContent]] =
-    getResourceInfo(resourceId).map:
-      case None       => None
-      case Some(info) =>
-        val path = config.resourcePath.resolve(info.path)
-        if !path.exists() then {
-          logger.warn(s"Resource '$resourceId' was found in the database but no file exists: $path")
-          None
-        } else {
-          Some(ResourceContent.Streamed(StreamedResource.fromPath(path, info.contentType, ops.originalETag(info))))
-        }
+    getResourceInfo(resourceId).flatMap:
+      case None       => IO.pure(None)
+      case Some(info) => store.content(info, ops.originalETag(info))
 
   override def getAllResources: fs2.Stream[IO, ResourceInfo] =
     db.getStream(id)

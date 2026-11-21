@@ -2,7 +2,6 @@ package nl.amony.modules.resources.impl
 
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
-import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files as JFiles, Path as JPath, StandardCopyOption}
 import java.security.MessageDigest
 import java.time.Instant
@@ -26,29 +25,6 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
   private def decodeFileName(fileName: String): Either[UploadError, String] =
     try Right(URLDecoder.decode(fileName, StandardCharsets.UTF_8))
     catch case _: IllegalArgumentException => Left(UploadError.InvalidFileName(s"File name '$fileName' is invalid"))
-
-  private def resolveTargetPath(path: JPath, maxAttempt: Int): Either[UploadError, JPath] = {
-
-    var target: JPath = path
-    var counter: Int  = 1
-
-    while JFiles.exists(target) && counter < maxAttempt do
-      val fileNameWithoutExt = target.getFileName.toString.lastIndexOf('.') match
-        case -1  => target.getFileName.toString
-        case idx => target.getFileName.toString.substring(0, idx)
-
-      val extension = target.getFileName.toString.lastIndexOf('.') match
-        case -1  => ""
-        case idx => target.getFileName.toString.substring(idx)
-
-      target = path.getParent.resolve(s"${fileNameWithoutExt}_$counter$extension")
-      counter += 1
-
-    if JFiles.exists(target) then
-      Left(UploadError.StorageError("Failed to resolve unique file name after 100 attempts"))
-    else
-      Right(target)
-  }
 
   private def calculateHash: Pipe[IO, Byte, MessageDigest] = {
     val initialDigest = config.hashingAlgorithm.newDigest()
@@ -91,7 +67,7 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
             discardUpload(tempFile).as(Left(UploadError.StorageError(s"Failed to store upload '$decoded': ${error.getMessage}")))
 
   protected def discardUpload(tempFile: String): IO[Unit] =
-    IO.blocking(JFiles.deleteIfExists(config.tempPath.resolve(tempFile))).void
+    store.discard(tempFile) *> IO.blocking(JFiles.deleteIfExists(config.tempPath.resolve(tempFile))).void
 
   /**
    * Slow, non-transactional part of an upload: scans the staged file and remuxes it when that makes it streamable. The
@@ -125,6 +101,7 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
               UploadProcessingError(upload.tempFile, s"the uploaded file could not be read: ${error.message}")
             )
           else EitherT.pure[IO, UploadProcessingError](meta)
+          _         <- EitherT.liftF[IO, UploadProcessingError, Unit](store.stage(upload.tempFile, tempPath))
         yield PreparedUpload(upload.tempFile, hash, finalMeta)).value
 
   /** Fast, transactional part of an upload: moves the prepared file into place and inserts the resource. */
@@ -135,29 +112,20 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
     db.getResourceById(upload.bucketId, upload.resourceId).flatMap:
       case Some(_) => discardUpload(prepared.tempFile).as(Right(()))
       case None    =>
-        resolveTargetPath(config.resourcePath.resolve(upload.fileName), 100) match
-          case Left(error)       =>
-            val message = error match
-              case UploadError.InvalidFileName(message) => message
-              case UploadError.StorageError(message)    => message
-            IO.pure(Left(UploadProcessingError(prepared.tempFile, message)))
-          case Right(targetPath) =>
-            for
-              _     <- IO.blocking(JFiles.createDirectories(targetPath.getParent))
-              _     <- IO.blocking(JFiles.move(config.tempPath.resolve(prepared.tempFile), targetPath))
-              attrs <- IO.blocking(JFiles.readAttributes(targetPath, classOf[BasicFileAttributes]))
-              info   = ResourceInfo(
-                         bucketId           = upload.bucketId,
-                         resourceId         = upload.resourceId,
-                         userId             = upload.userId,
-                         path               = config.resourcePath.relativize(targetPath).toString,
-                         size               = attrs.size(),
-                         partialHash        = Some(prepared.partialHash),
-                         fileKey            = Option(attrs.fileKey()).map(_.toString),
-                         contentMeta        = prepared.contentMeta,
-                         timeAdded          = Some(Instant.now().toEpochMilli),
-                         timeLastModified   = Some(attrs.lastModifiedTime().toMillis),
-                         thumbnailTimestamp = None
-                       )
-              _     <- processEvent(ResourceAdded(info))
-            yield Right(())
+        store.commit(prepared.tempFile, upload.fileName).flatMap:
+          case Left(message) => IO.pure(Left(UploadProcessingError(prepared.tempFile, message)))
+          case Right(stored) =>
+            val info = ResourceInfo(
+              bucketId           = upload.bucketId,
+              resourceId         = upload.resourceId,
+              userId             = upload.userId,
+              path               = stored.path,
+              size               = stored.size,
+              partialHash        = Some(prepared.partialHash),
+              fileKey            = stored.fileKey,
+              contentMeta        = prepared.contentMeta,
+              timeAdded          = Some(Instant.now().toEpochMilli),
+              timeLastModified   = Some(stored.timeLastModified),
+              thumbnailTimestamp = None
+            )
+            processEvent(ResourceAdded(info)).as(Right(()))

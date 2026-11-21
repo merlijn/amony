@@ -10,6 +10,7 @@ import nl.amony.platform.messagebus.MessageTopic
 
 trait LocalDirectoryBase(
   val config: LocalDirectoryConfig,
+  val store: ResourceStore,
   val parallelFactor: Int,
   val db: ResourceDatabase,
   val topic: MessageTopic[ResourceEvent],
