@@ -84,7 +84,7 @@ final class LocalDirectorySyncer(
   }
 
   private def newResource(f: FileInfo, userId: UserId): IO[Either[ContentUnreadable, ResourceInfo]] =
-    ops.contentMeta(ContentLocation.Resource(relativizePath(f.path))).map(_.map { contentMeta =>
+    ops.contentMeta(ContentLocation.Resource(relativizePath(f.path))).map { contentMeta =>
       ResourceInfo(
         bucketId           = bucketId,
         resourceId         = config.generateId(),
@@ -98,7 +98,7 @@ final class LocalDirectorySyncer(
         timeLastModified   = Some(f.modifiedTime),
         thumbnailTimestamp = None
       )
-    })
+    }.value
 
   /**
    * Refreshes the stored resource for an in-place content change, keeping its identity (and user metadata).
@@ -108,7 +108,7 @@ final class LocalDirectorySyncer(
     OptionT(db.getResourceByPath(bucketId, lookupPath)).foldF(
       IO(logger.warn(s"Dropping content-changed event, no such file in database: ${f.path}")).as(Option.empty[ResourceInfo])
     )(existing =>
-      EitherT(ops.contentMeta(ContentLocation.Resource(relativizePath(f.path)))).foldF(
+      ops.contentMeta(ContentLocation.Resource(relativizePath(f.path))).foldF(
         e => IO(logger.error(s"Skipping content-changed event, failed to read ${f.path}", e.cause)).as(Option.empty[ResourceInfo]),
         fresh =>
           val durationInMillis   = fresh.properties.collect { case video: VideoProperties => video.durationInMillis }

@@ -59,7 +59,7 @@ class ResourceBucketImpl(
     case _                                           => IO.unit
 
   override def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap { resource =>
-    ops.contentMeta(ContentLocation.Resource(resource.path)).flatMap {
+    ops.contentMeta(ContentLocation.Resource(resource.path)).value.flatMap {
       case Left(e)     => IO(logger.error(s"Skipping metadata rescan for ${resource.path}", e.cause))
       case Right(meta) =>
         val updated = resource.copy(contentMeta = resource.contentMeta.updatedWith(meta))
@@ -169,7 +169,7 @@ class ResourceBucketImpl(
       case false => IO.pure(Left(UploadProcessingError(upload.stagingId, "the staged upload is no longer available")))
       case true  =>
         (for
-          meta      <- EitherT(ops.contentMeta(location)).leftMap(error =>
+          meta      <- ops.contentMeta(location).leftMap(error =>
                          UploadProcessingError(upload.stagingId, s"the uploaded file could not be read: ${error.message}")
                        )
           container  = meta.contentType
@@ -178,7 +178,7 @@ class ResourceBucketImpl(
           remuxed   <- EitherT.right[UploadProcessingError](container match
                          case None            => IO.pure(false)
                          case Some(container) =>
-                           ops.normalizeUpload(upload.stagingId, container).attempt.flatMap {
+                           ops.normalizeUpload(upload.stagingId, container).value.attempt.flatMap {
                              case Right(Right(()))   => IO.pure(true)
                              case Right(Left(error)) =>
                                IO(
@@ -190,7 +190,7 @@ class ResourceBucketImpl(
                            })
           hash      <- EitherT(hashFile(tempPath))
           finalMeta <- if remuxed then
-            EitherT(ops.contentMeta(location)).leftMap(error =>
+            ops.contentMeta(location).leftMap(error =>
               UploadProcessingError(upload.stagingId, s"the uploaded file could not be read: ${error.message}")
             )
           else EitherT.pure[IO, UploadProcessingError](meta)
@@ -250,7 +250,7 @@ class ResourceBucketImpl(
     OptionT(getResourceInfo(resourceId))
       .semiflatMap((info: ResourceInfo) =>
         if !info.streamable.contains(false) then IO.pure(Right(None): Either[StreamabilityError, Option[StagingId]])
-        else ops.remuxForStreaming(info)
+        else ops.remuxForStreaming(info).value
       )
       .getOrElse(Left(StreamabilityError.ResourceNotFound(resourceId)))
 
@@ -263,12 +263,12 @@ class ResourceBucketImpl(
   ): IO[Either[StreamabilityError, Unit]] =
     (for
       info    <- EitherT.fromOptionF(getResourceInfo(resourceId), StreamabilityError.ResourceNotFound(resourceId))
-      updated <- EitherT(ops.commitStreamability(info, stagingId))
+      updated <- ops.commitStreamability(info, stagingId)
       _       <- EitherT.liftF(events.processEvent(ResourceModified(updated)))
     yield ()).value
 
   override def reComputePartialHashes(): IO[Unit] = getAllResources.evalMap { resource =>
-    ops.contentPartialHash(ContentLocation.Resource(resource.path)).flatMap {
+    ops.contentPartialHash(ContentLocation.Resource(resource.path)).value.flatMap {
       case Left(error)        => IO(logger.error(s"Skipping partial hash for ${resource.path}", error.cause))
       case Right(partialHash) =>
         val updated = resource.copy(partialHash = Some(partialHash))

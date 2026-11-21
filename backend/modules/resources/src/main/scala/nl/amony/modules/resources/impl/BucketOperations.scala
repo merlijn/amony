@@ -34,15 +34,15 @@ enum ContentLocation:
 /** Operations on the content of a bucket, addressed without exposing local file system paths. */
 trait BucketOperations:
 
-  def contentMeta(location: ContentLocation): IO[Either[ContentUnreadable, ContentMeta]]
+  def contentMeta(location: ContentLocation): EitherT[IO, ContentUnreadable, ContentMeta]
 
-  def contentPartialHash(location: ContentLocation): IO[Either[ContentUnreadable, String]]
+  def contentPartialHash(location: ContentLocation): EitherT[IO, ContentUnreadable, String]
 
-  def normalizeUpload(stagingId: StagingId, container: VideoContainer): IO[Either[StreamabilityError, Unit]]
+  def normalizeUpload(stagingId: StagingId, container: VideoContainer): EitherT[IO, StreamabilityError, Unit]
 
-  def remuxForStreaming(info: ResourceInfo): IO[Either[StreamabilityError, Option[StagingId]]]
+  def remuxForStreaming(info: ResourceInfo): EitherT[IO, StreamabilityError, Option[StagingId]]
 
-  def commitStreamability(info: ResourceInfo, stagingId: Option[StagingId]): IO[Either[StreamabilityError, ResourceInfo]]
+  def commitStreamability(info: ResourceInfo, stagingId: Option[StagingId]): EitherT[IO, StreamabilityError, ResourceInfo]
 
   def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]]
 
@@ -100,23 +100,23 @@ final class FileOperations(
         .map(config.resourcePath.resolve(_))
     case ContentLocation.Staged(stagingId) => Right(config.tempPath.resolve(stagingId))
 
-  private def contentTypeFor(location: ContentLocation, path: Path): IO[Either[ContentUnreadable, String]] =
-    IO.blocking(tika.detect(path)).attempt.map(_.left.map(ContentUnreadable(location, _)))
+  private def contentTypeFor(location: ContentLocation, path: Path): EitherT[IO, ContentUnreadable, String] =
+    EitherT(IO.blocking(tika.detect(path)).attempt.map(_.left.map(ContentUnreadable(location, _))))
 
-  override def contentMeta(location: ContentLocation): IO[Either[ContentUnreadable, ContentMeta]] =
-    (for
+  override def contentMeta(location: ContentLocation): EitherT[IO, ContentUnreadable, ContentMeta] =
+    for
       path        <- EitherT.fromEither[IO](pathOf(location))
-      contentType <- EitherT(contentTypeFor(location, path))
+      contentType <- contentTypeFor(location, path)
       scan        <- EitherT.liftF(toolScanForPath(path, contentType))
       streamable  <- EitherT.liftF(streamableOf(path, Some(contentType)))
     yield scan.map(ContentMeta.scanned).getOrElse(ContentMeta.empty)
-      .copy(contentType = Some(contentType), streamable = streamable)).value
+      .copy(contentType = Some(contentType), streamable = streamable)
 
-  override def contentPartialHash(location: ContentLocation): IO[Either[ContentUnreadable, String]] =
-    (for
+  override def contentPartialHash(location: ContentLocation): EitherT[IO, ContentUnreadable, String] =
+    for
       path <- EitherT.fromEither[IO](pathOf(location))
       hash <- EitherT(config.hashingAlgorithm.createHash(path).attempt.map(_.left.map(ContentUnreadable(location, _))))
-    yield hash).value
+    yield hash
 
   private def toolScanForPath(path: Path, contentType: String): IO[Option[ToolScan]] =
     if contentType.startsWith("video/") then
@@ -137,21 +137,23 @@ final class FileOperations(
   private def addFastStart(video: Path, container: VideoContainer, outputFile: Path): IO[Path] =
     FFMpeg.addFastStart(video.toUri, containerFormat(container), outputFile)
 
-  override def normalizeUpload(stagingId: StagingId, container: VideoContainer): IO[Either[StreamabilityError, Unit]] =
-    val source                                          = config.tempPath.resolve(stagingId)
-    val normalized                                      = config.tempPath.resolve(s"$stagingId-normalized")
-    val normalize: IO[Either[StreamabilityError, Unit]] =
+  override def normalizeUpload(stagingId: StagingId, container: VideoContainer): EitherT[IO, StreamabilityError, Unit] =
+    val source     = config.tempPath.resolve(stagingId)
+    val normalized = config.tempPath.resolve(s"$stagingId-normalized")
+    val normalize  =
       for
         _   <- IO.blocking(Files.createDirectories(config.tempPath))
         out <- addFastStart(source, container, normalized)
         _   <- moveIntoPlace(out, source)
-      yield Right(())
-    normalize
-      .onError(_ => IO.blocking(Files.deleteIfExists(normalized)).void)
-      .attempt
-      .map:
-        case Right(result) => result
-        case Left(error)   => Left(StreamabilityError.FixFailed(stagingId, s"Failed to normalize the staged upload: ${error.getMessage}"))
+      yield Right(()): Either[StreamabilityError, Unit]
+    EitherT(
+      normalize
+        .onError(_ => IO.blocking(Files.deleteIfExists(normalized)).void)
+        .attempt
+        .map:
+          case Right(result) => result
+          case Left(error)   => Left(StreamabilityError.FixFailed(stagingId, s"Failed to normalize the staged upload: ${error.getMessage}"))
+    )
 
   private def containerFormat(container: VideoContainer): ContainerFormat = container match
     case VideoContainer.Mp4      => ContainerFormat.Mp4
@@ -172,8 +174,8 @@ final class FileOperations(
    * attempt never leaves the resource inconsistent. Returns the staging id of the remux. Runs in the command consumer,
    * where the resource's commands are serialized.
    */
-  override def remuxForStreaming(info: ResourceInfo): IO[Either[StreamabilityError, Option[StagingId]]] =
-    (for
+  override def remuxForStreaming(info: ResourceInfo): EitherT[IO, StreamabilityError, Option[StagingId]] =
+    EitherT((for
       _         <- EitherT.fromEither[IO](ResourcePath.fromString(info.path)).leftMap(message => StreamabilityError.FixFailed(info.path, message))
       operation <-
         EitherT.fromOption[IO](AddFastStart.forResource(info), StreamabilityError.UnsupportedContainer(info.contentType.getOrElse("unknown")))
@@ -198,14 +200,14 @@ final class FileOperations(
                   )): Either[StreamabilityError, Option[StagingId]]
                 )
           yield result
-        remux.onError(_ => IO.blocking(Files.deleteIfExists(temp)).void)
+        remux.onError(_ => IO.blocking(Files.deleteIfExists(temp)).void))
 
   /**
    * Replaces the live file with the remux produced by [[remuxForStreaming]] (when one is still present) and refreshes the
    * metadata that depends on the file. Idempotent: a retry after the move finds no staging file and re-derives the metadata.
    */
-  override def commitStreamability(info: ResourceInfo, stagingId: Option[StagingId]): IO[Either[StreamabilityError, ResourceInfo]] =
-    (for
+  override def commitStreamability(info: ResourceInfo, stagingId: Option[StagingId]): EitherT[IO, StreamabilityError, ResourceInfo] =
+    EitherT((for
       _ <- EitherT.fromEither[IO](ResourcePath.fromString(info.path)).leftMap(message => StreamabilityError.FixFailed(info.path, message))
     yield ()).value.flatMap:
       case Left(error) => IO.pure(Left(error))
@@ -234,7 +236,7 @@ final class FileOperations(
                 contentMeta      = info.contentMeta.copy(streamable = streamable)
               )
             )
-          else Left(StreamabilityError.FixFailed(info.path, "the file is not streamable after the remux"))
+          else Left(StreamabilityError.FixFailed(info.path, "the file is not streamable after the remux")))
 
   /**
    * Validator for a derived preview. It is derived from the source's partial hash, the operation (encoded in the output
