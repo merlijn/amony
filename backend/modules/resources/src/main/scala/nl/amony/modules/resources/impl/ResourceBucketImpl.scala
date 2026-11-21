@@ -16,17 +16,17 @@ import nl.amony.platform.messagebus.{JobBus, JobState, MessageTopic}
 
 class ResourceBucketImpl(
   config: LocalDirectoryConfig,
-  parallelFactor: Int,
   db: ResourceDatabase,
   topic: MessageTopic[ResourceEvent],
   ops: BucketOperations,
   store: ResourceStore,
+  events: LocalDirectoryEventStore,
+  syncer: LocalDirectorySyncer,
   jobBus: JobBus[ResourceJob] = null,
   jobTimeout: FiniteDuration  = 30.minutes
 )(using meter: Meter[IO], tracer: Tracer[IO])
-    extends LocalDirectoryBase(config, store, parallelFactor, db, topic, ops),
+    extends LocalDirectoryBase(config, store, events, db, topic, ops),
       ResourceBucket,
-      LocalDirectorySyncer,
       UploadOperations,
       Logging {
 
@@ -43,6 +43,8 @@ class ResourceBucketImpl(
 
   override def getAllResources: fs2.Stream[IO, ResourceInfo] =
     db.getStream(id)
+
+  override def refresh(): IO[Unit] = syncer.refresh()
 
   override def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap { resource =>
     ops.contentMeta(ContentLocation.Resource(resource.path)).flatMap {

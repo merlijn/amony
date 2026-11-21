@@ -23,7 +23,14 @@ import nl.amony.modules.resources.api.{
 }
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
 import nl.amony.modules.resources.http.{BucketRoutes, CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
-import nl.amony.modules.resources.impl.{FileOperations, LocalDirectoryStore, ResourceBucketImpl, ResourceJobs}
+import nl.amony.modules.resources.impl.{
+  FileOperations,
+  LocalDirectoryEventStore,
+  LocalDirectoryStore,
+  LocalDirectorySyncer,
+  ResourceBucketImpl,
+  ResourceJobs
+}
 import nl.amony.platform.messagebus.{JobBus, MessageTopic}
 import nl.amony.platform.subprocess.{ProcessLimiter, ProcessSettings}
 import nl.amony.platform.tapir.ServerEndpoints
@@ -82,7 +89,7 @@ object ResourceModule:
     def bucketFactory(processLimiter: ProcessLimiter): BucketFactory = {
       case localConfig: LocalDirectoryConfig =>
         IO {
-          val ops    = new FileOperations(
+          val ops       = new FileOperations(
             localConfig,
             config.parallelFactor,
             thumbFormats,
@@ -90,16 +97,23 @@ object ResourceModule:
             processSettings,
             processLimiter
           )
-          val bucket = ResourceBucketImpl(
+          val events    = LocalDirectoryEventStore(localConfig, resourceDatabase, eventTopic)
+          val syncer    = LocalDirectorySyncer(localConfig, config.parallelFactor, resourceDatabase, ops, events)
+          val bucket    = ResourceBucketImpl(
             localConfig,
-            config.parallelFactor,
             resourceDatabase,
             eventTopic,
             ops,
             LocalDirectoryStore(localConfig),
+            events,
+            syncer,
             jobBus
           )
-          (bucket, bucket.sync())
+          val startSync =
+            if localConfig.sync.enabled then syncer.sync()
+            else if localConfig.sync.syncOnStartup then syncer.refresh()
+            else IO.unit
+          (bucket, startSync)
         }
     }
 

@@ -11,7 +11,7 @@ import nl.amony.platform.messagebus.MessageTopic
 trait LocalDirectoryBase(
   val config: LocalDirectoryConfig,
   val store: ResourceStore,
-  val parallelFactor: Int,
+  val events: LocalDirectoryEventStore,
   val db: ResourceDatabase,
   val topic: MessageTopic[ResourceEvent],
   val ops: BucketOperations

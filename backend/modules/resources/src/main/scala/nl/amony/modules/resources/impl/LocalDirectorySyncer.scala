@@ -3,22 +3,19 @@ package nl.amony.modules.resources.impl
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
-import scala.jdk.CollectionConverters.*
-import scala.util.Using
 
 import cats.effect.IO
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import skunk.Session
 
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.{
   BucketId,
+  LocalDirectoryConfig,
   ResourceAdded,
   ResourceDeleted,
   ResourceEvent,
   ResourceFileMetaChanged,
-  ResourceId,
   ResourceInfo,
   ResourceModified,
   ResourceMoved,
@@ -26,13 +23,18 @@ import nl.amony.modules.resources.api.{
   ResourcePath,
   VideoProperties
 }
+import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.platform.files.FileInfo
 import nl.amony.platform.files.sync.*
 
-/**
- * Functionality to synchronize a local directory with the database state.
- */
-trait LocalDirectorySyncer extends LocalDirectoryBase {
+/** Synchronizes a local directory with the database state. */
+final class LocalDirectorySyncer(
+  config: LocalDirectoryConfig,
+  parallelFactor: Int,
+  db: ResourceDatabase,
+  ops: BucketOperations,
+  events: LocalDirectoryEventStore
+):
 
   private val logger             = scribe.Logger("LocalResourceSyncer")
   private val bucketId: BucketId = BucketId(config.id)
@@ -75,7 +77,7 @@ trait LocalDirectorySyncer extends LocalDirectoryBase {
     }
   }
 
-  private[impl] def newResource(f: FileInfo, userId: UserId): IO[Either[ContentUnreadable, ResourceInfo]] =
+  private def newResource(f: FileInfo, userId: UserId): IO[Either[ContentUnreadable, ResourceInfo]] =
     ops.contentMeta(ContentLocation.Resource(relativizePath(f.path))).map(_.map { contentMeta =>
       ResourceInfo(
         bucketId           = bucketId,
@@ -120,19 +122,6 @@ trait LocalDirectorySyncer extends LocalDirectoryBase {
             )))
         }
     }
-
-  /** Deletes cached previews derived from a resource, so changed content is never served stale. */
-  private def deleteDerivedFiles(resourceId: ResourceId): IO[Unit] = IO.blocking {
-    if Files.isDirectory(config.cachePath) then
-      Using(Files.list(config.cachePath)) { stream =>
-        stream.iterator().asScala
-          .filter { path =>
-            val name = path.getFileName.toString
-            name.startsWith(resourceId.toString + "_") || name.startsWith(resourceId.toString + "-")
-          }
-          .foreach(path => Files.deleteIfExists(path))
-      }
-  }.void.handleErrorWith(e => IO(logger.warn(s"Failed to delete derived files for $resourceId", e)))
 
   private def toFileStore(): IO[FileStore] =
     db.getAll(bucketId).map { resources =>
@@ -211,27 +200,10 @@ trait LocalDirectorySyncer extends LocalDirectoryBase {
       parallelFactor
     ).parEvalMap(parallelFactor)(mapFileEvent).unNone
 
-  private def applyEventToDb(event: ResourceEvent)(using Option[Session[IO]]): IO[Unit] = event match {
-    case ResourceAdded(resource)                                   => db.insertResource(resource)
-    case ResourceDeleted(resource)                                 => db.deleteResource(bucketId, resource.resourceId)
-    case ResourceMoved(_, id, _, newPath)                          => db.move(bucketId, id, newPath)
-    case ResourceFileMetaChanged(_, id, lastModifiedTime, fileKey) => db.getResourceById(bucketId, id).flatMap {
-        case Some(resource) =>
-          db.upsertResource(resource.copy(timeLastModified = Some(lastModifiedTime), fileKey = fileKey.orElse(resource.fileKey)))
-        case None           => IO.unit
-      }
-    case ResourceModified(resource)                                => deleteDerivedFiles(resource.resourceId) >> db.upsertResource(resource)
-    case _                                                         => IO.unit
-  }
-
-  private[impl] def processEvent(event: ResourceEvent) =
-    db.transact(s => applyEventToDb(event) >> topic.publish(s, event)) >>
-      IO(logger.info(s"[${config.id}] $event"))
-
   private def startSync(interrupter: SignallingRef[IO, Boolean]): IO[Unit] = {
     def pollWithRetryOnException(): fs2.Stream[IO, ResourceEvent] =
       pollingResourceEventStream()
-        .through(_ evalTap processEvent)
+        .through(_ evalTap events.processEvent)
         .interruptWhen(interrupter).handleErrorWith {
           e =>
             logger.error(s"Error while scanning directory ${config.resourcePath.toAbsolutePath}, retrying in ${config.sync.pollInterval}", e)
@@ -243,18 +215,9 @@ trait LocalDirectorySyncer extends LocalDirectoryBase {
     pollWithRetryOnException().compile.drain
   }
 
-  def refresh() = singleScan().through(_ evalTap processEvent).compile.drain
+  def refresh(): IO[Unit] = singleScan().through(_ evalTap events.processEvent).compile.drain
 
-  def sync(): IO[Unit] = {
-    if config.sync.enabled then
-      logger.info(s"Starting sync process using polling for directory: ${config.resourcePath}")
-      SignallingRef[IO, Boolean](false).flatMap(signal => startSync(signal))
-    else if config.sync.syncOnStartup then {
-      logger.info(s"Syncing resources on startup for directory: ${config.resourcePath}")
-      refresh()
-    } else {
-      logger.info(s"Resource sync is disabled for directory: ${config.resourcePath}")
-      IO.unit
-    }
-  }
-}
+  /** Starts polling the directory for changes. */
+  def sync(): IO[Unit] =
+    logger.info(s"Starting sync process using polling for directory: ${config.resourcePath}")
+    SignallingRef[IO, Boolean](false).flatMap(startSync)

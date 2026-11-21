@@ -88,6 +88,12 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
         processor: ResourceEvent => IO[Unit]
       ): Stream[IO, Unit]                                                        = Stream.empty
 
+  private def makeBucket(config: LocalDirectoryConfig, db: ResourceDatabase, published: AtomicReference[List[ResourceEvent]]): ResourceBucketImpl =
+    val topic  = recordingTopic(published)
+    val events = LocalDirectoryEventStore(config, db, topic)
+    val syncer = LocalDirectorySyncer(config, 1, db, null, events)
+    ResourceBucketImpl(config, db, topic, null, LocalDirectoryStore(config), events, syncer)
+
   private def newResource(bucketId: BucketId, path: String = "video.mp4"): ResourceInfo =
     ResourceInfo(
       bucketId   = bucketId,
@@ -106,7 +112,7 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
         val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
         val db        = ResourceDatabase(pool)
         val published = new AtomicReference(List.empty[ResourceEvent])
-        val bucket    = ResourceBucketImpl(cfg, 1, db, recordingTopic(published), null, LocalDirectoryStore(cfg))
+        val bucket    = makeBucket(cfg, db, published)
         val initial   = newResource(bucket.id).copy(
           title       = Some("old title"),
           description = Some("old desc"),
@@ -145,7 +151,7 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
         val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
         val db        = ResourceDatabase(pool)
         val published = new AtomicReference(List.empty[ResourceEvent])
-        val bucket    = ResourceBucketImpl(cfg, 1, db, recordingTopic(published), null, LocalDirectoryStore(cfg))
+        val bucket    = makeBucket(cfg, db, published)
         val res1      = newResource(bucket.id, "a.mp4").copy(tags = Set(Tag.user("old")))
         val res2      = newResource(bucket.id, "b.mp4").copy(tags = Set(Tag.user("old"), Tag.user("stay")))
 
@@ -178,7 +184,7 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
         val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
         val db        = ResourceDatabase(pool)
         val published = new AtomicReference(List.empty[ResourceEvent])
-        val bucket    = ResourceBucketImpl(cfg, 1, db, recordingTopic(published), null, LocalDirectoryStore(cfg))
+        val bucket    = makeBucket(cfg, db, published)
         val res       = newResource(bucket.id)
 
         val test =
@@ -201,7 +207,7 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
           val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
           val db        = ResourceDatabase(pool)
           val published = new AtomicReference(List.empty[ResourceEvent])
-          val bucket    = ResourceBucketImpl(cfg, 1, db, recordingTopic(published), null, LocalDirectoryStore(cfg))
+          val bucket    = makeBucket(cfg, db, published)
           val res       = newResource(bucket.id, "video.mp4")
 
           val registry  = mock[BucketRegistry](RETURNS_DEFAULTS)
