@@ -100,7 +100,7 @@ class ResourceBucketImpl(
         val job    = UploadResource(id, staged.resourceId, userId, staged.fileName, staged.stagingId)
         val submit = jobBus
           .submit(job.key, job)
-          .handleErrorWith(error => discardUpload(staged.stagingId) >> IO.raiseError(error))
+          .handleErrorWith(error => store.discard(staged.stagingId) >> IO.raiseError(error))
         for
           jobId  <- submit
           status <- jobBus.awaitCompletion(jobId, jobTimeout)
@@ -156,12 +156,9 @@ class ResourceBucketImpl(
             else Right(StagedUpload(resourceId, decoded, stagingId))
         stage.attempt.flatMap:
           case Right(Right(staged)) => IO.pure(Right(staged))
-          case Right(Left(error))   => discardUpload(stagingId).as(Left(error))
+          case Right(Left(error))   => store.discard(stagingId).as(Left(error))
           case Left(error)          =>
-            discardUpload(stagingId).as(Left(UploadError.StorageError(s"Failed to store upload '$decoded': ${error.getMessage}")))
-
-  private def discardUpload(stagingId: StagingId): IO[Unit] =
-    store.discard(stagingId) *> IO.blocking(JFiles.deleteIfExists(config.tempPath.resolve(stagingId))).void
+            store.discard(stagingId).as(Left(UploadError.StorageError(s"Failed to store upload '$decoded': ${error.getMessage}")))
 
   /**
    * Slow, non-transactional part of an upload: scans the staged file and remuxes it when that makes it streamable. The
@@ -212,7 +209,7 @@ class ResourceBucketImpl(
     prepared: PreparedUpload
   ): IO[Either[UploadProcessingError, Unit]] =
     db.getResourceById(upload.bucketId, upload.resourceId).flatMap:
-      case Some(_) => discardUpload(prepared.stagingId).as(Right(()))
+      case Some(_) => store.discard(prepared.stagingId).as(Right(()))
       case None    =>
         store.commit(prepared.stagingId, upload.fileName).flatMap:
           case Left(message) => IO.pure(Left(UploadProcessingError(prepared.stagingId, message)))

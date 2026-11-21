@@ -40,7 +40,8 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
           )
     }
 
-  override def discard(stagingId: StagingId): IO[Unit] = IO.unit
+  override def discard(stagingId: StagingId): IO[Unit] =
+    IO.blocking(Files.deleteIfExists(config.tempPath.resolve(stagingId))).void
 
   override def delete(path: ResourcePath): IO[Unit] =
     IO.blocking(Files.deleteIfExists(config.resourcePath.resolve(path))).void
