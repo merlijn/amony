@@ -261,4 +261,59 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
 
       test.unsafeRunSync()
     }
+
+    "update the database row on ResourceMovedAndModified" in withContainers { container =>
+      Database.makePool(dbConfig(container)).use { pool =>
+        val dir         = Files.createTempDirectory("amony-bucket-spec")
+        val cfg         = localConfig(s"bucket-${UUID.randomUUID()}", dir)
+        val db          = ResourceDatabase(pool)
+        val published   = new AtomicReference(List.empty[ResourceEvent])
+        val invalidated = new AtomicReference(List.empty[ResourceId])
+        val events      =
+          DatabaseResourceEventStore(BucketId(cfg.id), db, recordingTopic(published), id => IO { invalidated.updateAndGet(_ :+ id); () })
+        val res         = newResource(BucketId(cfg.id), "old.mp4")
+        val updated     = res.copy(path = ResourcePath("new.mp4"))
+        val event       = ResourceMovedAndModified(res.resourceId, ResourcePath("old.mp4"), ResourcePath("new.mp4"), updated)
+
+        val test =
+          for
+            _      <- db.insertResource(res)
+            _      <- events.processEvent(event)
+            oldRow <- db.getResourceByPath(BucketId(cfg.id), ResourcePath("old.mp4"))
+            newRow <- db.getResourceByPath(BucketId(cfg.id), ResourcePath("new.mp4"))
+          yield
+            oldRow shouldBe None
+            newRow shouldBe Some(updated)
+            published.get() shouldBe List(event)
+            invalidated.get() shouldBe List(res.resourceId)
+
+        test.timeout(5.seconds)
+      }.unsafeRunSync()
+    }
+
+    "only publish ResourceModified when a rescan finds changes" in withContainers { container =>
+      // The rescan streams rows while upserting, so it needs more than one pooled connection.
+      Database.makePool(dbConfig(container).copy(poolSize = 4)).use { pool =>
+        val dir       = Files.createTempDirectory("amony-bucket-spec")
+        val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
+        val db        = ResourceDatabase(pool)
+        val published = new AtomicReference(List.empty[ResourceEvent])
+        val ops       = mock[BucketOperations](RETURNS_DEFAULTS)
+        val meta      = ContentMeta(contentType = Some("text/plain"))
+        val unchanged = newResource(BucketId(cfg.id), "same.txt").copy(contentMeta = meta)
+        val changed   = newResource(BucketId(cfg.id), "changed.txt").copy(contentMeta = ContentMeta.empty)
+        ops.contentMeta(ContentLocation.Resource(ResourcePath("same.txt"))) returns IO.pure(Right(meta))
+        ops.contentMeta(ContentLocation.Resource(ResourcePath("changed.txt"))) returns IO.pure(Right(meta))
+        val bucket    = makeBucket(cfg, db, published, ops)
+
+        val test =
+          for
+            _ <- db.insertResource(unchanged)
+            _ <- db.insertResource(changed)
+            _ <- bucket.reScanAllMetadata()
+          yield published.get() shouldBe List(ResourceModified(changed.copy(contentMeta = meta)))
+
+        test.timeout(5.seconds)
+      }.unsafeRunSync()
+    }
   }

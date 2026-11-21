@@ -130,4 +130,32 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       store.commit(StagingId("missing-upload"), "video.mp4").unsafeRunSync() shouldBe
         Left("Staged upload 'missing-upload' is no longer available")
     }
+
+    "reject an absolute file name on commit" in {
+      val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
+
+      store.commit(StagingId("staged-upload"), "/abs.mp4").unsafeRunSync() shouldBe
+        Left("Resource path must be relative: /abs.mp4")
+    }
+
+    "reject a bucket-escaping file name on commit" in {
+      val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
+
+      store.commit(StagingId("staged-upload"), "../other.mp4").unsafeRunSync() shouldBe
+        Left("Resource path must not escape the bucket: ../other.mp4")
+    }
+
+    "return no content for an invalid path" in {
+      val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
+
+      store.content(resource("/abs.mp4"), None).unsafeRunSync() shouldBe None
+    }
+
+    "refuse to delete an invalid path" in {
+      val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
+
+      intercept[IllegalArgumentException] {
+        store.delete(ResourcePath("../other.mp4")).unsafeRunSync()
+      }
+    }
   }

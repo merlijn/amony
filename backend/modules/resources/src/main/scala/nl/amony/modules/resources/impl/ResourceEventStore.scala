@@ -30,6 +30,7 @@ final class DatabaseResourceEventStore(
         case None           => IO.unit
       }
     case ResourceModified(resource)                                => invalidateDerived(resource.resourceId) >> db.upsertResource(resource)
+    case ResourceMovedAndModified(_, _, _, resource)               => invalidateDerived(resource.resourceId) >> db.upsertResource(resource)
     case _                                                         => IO.unit
   }
 

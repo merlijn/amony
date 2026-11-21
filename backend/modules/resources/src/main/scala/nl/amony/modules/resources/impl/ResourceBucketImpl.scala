@@ -61,9 +61,11 @@ class ResourceBucketImpl(
     ops.contentMeta(ContentLocation.Resource(resource.path)).flatMap {
       case Left(e)     => IO(logger.error(s"Skipping metadata rescan for ${resource.path}", e.cause))
       case Right(meta) =>
-        logger.info(s"Updating metadata for ${resource.path}")
         val updated = resource.copy(contentMeta = resource.contentMeta.updatedWith(meta))
-        db.transact(s => db.upsertResource(updated) >> topic.publish(s, ResourceModified(updated)))
+        if updated == resource then IO.unit
+        else
+          logger.info(s"Updating metadata for ${resource.path}")
+          events.processEvent(ResourceModified(updated))
     }
   }.compile.drain
 
@@ -260,7 +262,7 @@ class ResourceBucketImpl(
         ops.commitStreamability(info, stagingId).flatMap:
           case Left(error)    => IO.pure(Left(error))
           case Right(updated) =>
-            db.transact(s => db.upsertResource(updated) >> topic.publish(s, ResourceModified(updated))).as(Right(()))
+            events.processEvent(ResourceModified(updated)).as(Right(()))
 
   override def reComputePartialHashes(): IO[Unit] = getAllResources.evalMap { resource =>
     ops.contentPartialHash(ContentLocation.Resource(resource.path)).flatMap {
@@ -270,7 +272,7 @@ class ResourceBucketImpl(
         if resource.partialHash.contains(partialHash) then IO.unit
         else
           IO(logger.info(s"Updating partialHash for ${resource.path} to $partialHash")) >>
-            db.transact(s => db.upsertResource(updated) >> topic.publish(s, ResourceModified(updated)))
+            events.processEvent(ResourceModified(updated))
     }
   }.compile.drain
 
