@@ -42,6 +42,9 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
 
   override def discard(stagingId: StagingId): IO[Unit] = IO.unit
 
+  override def delete(path: String): IO[Unit] =
+    IO.blocking(Files.deleteIfExists(config.resourcePath.resolve(path))).void
+
   private def resolveTargetPath(path: Path, maxAttempts: Int): Option[Path] = {
     var target: Path = path
     var counter: Int = 1

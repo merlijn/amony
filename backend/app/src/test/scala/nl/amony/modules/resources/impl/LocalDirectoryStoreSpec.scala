@@ -76,6 +76,22 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       Files.exists(staged) shouldBe false
     }
 
+    "delete a stored resource" in {
+      val dir   = Files.createTempDirectory("amony-store-spec")
+      val file  = Files.writeString(dir.resolve("video.mp4"), "content")
+      val store = LocalDirectoryStore(config(dir))
+
+      store.delete("video.mp4").unsafeRunSync()
+
+      Files.exists(file) shouldBe false
+    }
+
+    "ignore a missing resource on delete" in {
+      val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
+
+      store.delete("missing.mp4").unsafeRunSync()
+    }
+
     "resolve a unique name when the target already exists" in {
       val dir    = Files.createTempDirectory("amony-store-spec")
       val cfg    = config(dir)

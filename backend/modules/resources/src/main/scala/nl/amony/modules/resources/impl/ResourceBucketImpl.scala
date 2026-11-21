@@ -1,7 +1,5 @@
 package nl.amony.modules.resources.impl
 
-import java.nio.file.Files
-import java.nio.file.attribute.BasicFileAttributes
 import scala.concurrent.duration.*
 
 import cats.effect.IO
@@ -152,8 +150,7 @@ class ResourceBucketImpl(
     else IO.unit
 
   override def deleteFile(info: ResourceInfo): IO[Unit] =
-    val path = config.resourcePath.resolve(info.path)
-    IO.blocking(path.deleteIfExists()).void
+    store.delete(info.path)
 
   override def deleteResource(resourceId: ResourceId): IO[Unit] =
     getResourceInfo(resourceId).flatMap:

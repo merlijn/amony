@@ -34,3 +34,6 @@ trait ResourceStore:
 
   /** Discards a staged file. */
   def discard(stagingId: StagingId): IO[Unit]
+
+  /** Deletes a stored resource. */
+  def delete(path: String): IO[Unit]
