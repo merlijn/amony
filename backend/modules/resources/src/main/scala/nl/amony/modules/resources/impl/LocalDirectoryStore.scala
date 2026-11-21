@@ -1,7 +1,7 @@
 package nl.amony.modules.resources.impl
 
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{Files, Path}
+import java.nio.file.{Files, NoSuchFileException, Path}
 import scala.jdk.CollectionConverters.*
 import scala.util.Using
 
@@ -40,6 +40,10 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
               fileKey          = Option(attributes.fileKey()).map(_.toString)
             )
           )
+    }.attempt.map {
+      case Right(result)                => result
+      case Left(_: NoSuchFileException) => Left(s"Staged upload '$stagingId' is no longer available")
+      case Left(error)                  => Left(s"Failed to commit staged upload '$stagingId': ${error.getMessage}")
     }
 
   override def discard(stagingId: StagingId): IO[Unit] =

@@ -123,4 +123,11 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       store.commit(StagingId("resource-upload"), "video.mp4").unsafeRunSync().map(_.path) shouldBe Right("video_1.mp4")
       Files.exists(dir.resolve("video_1.mp4")) shouldBe true
     }
+
+    "return a failure when the staged file is gone on commit" in {
+      val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
+
+      store.commit(StagingId("missing-upload"), "video.mp4").unsafeRunSync() shouldBe
+        Left("Staged upload 'missing-upload' is no longer available")
+    }
   }
