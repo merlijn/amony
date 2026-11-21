@@ -305,28 +305,27 @@ class ResourceBucketImpl(
 
   override def updateUserMeta(resourceId: ResourceId, title: Option[String], description: Option[String], tags: List[String]): IO[Unit] =
     db.transact: s =>
-      OptionT(db.getResourceByIdForUpdate(id, resourceId))
-        .semiflatMap: existing =>
-          val existingUserTags = existing.tags.filter(_.owner == TagOwner.User)
-          val newUserTags      = tags.toSet.map(Tag.user)
-          val tagsAdded        = newUserTags -- existingUserTags
-          val tagsRemoved      = existingUserTags -- newUserTags
-          // User-supplied labels always carry the user owner; other owners are preserved.
-          OptionT(db.updateUserMeta(id, resourceId, title, description, TagOwner.User, tags))
-            .semiflatMap(updated =>
-              topic.publish(
-                s,
-                ResourceUserMetaUpdated(
-                  resource           = updated,
-                  updatedDescription = description,
-                  updatedTitle       = title,
-                  tagsAdded          = tagsAdded,
-                  tagsRemoved        = tagsRemoved
-                )
-              )
-            )
-            .value.void
-        .value.void
+      (for
+        existing        <- OptionT(db.getResourceByIdForUpdate(id, resourceId))
+        existingUserTags = existing.tags.filter(_.owner == TagOwner.User)
+        newUserTags      = tags.toSet.map(Tag.user)
+        tagsAdded        = newUserTags -- existingUserTags
+        tagsRemoved      = existingUserTags -- newUserTags
+        // User-supplied labels always carry the user owner; other owners are preserved.
+        updated         <- OptionT(db.updateUserMeta(id, resourceId, title, description, TagOwner.User, tags))
+        _               <- OptionT.liftF(
+                             topic.publish(
+                               s,
+                               ResourceUserMetaUpdated(
+                                 resource           = updated,
+                                 updatedDescription = description,
+                                 updatedTitle       = title,
+                                 tagsAdded          = tagsAdded,
+                                 tagsRemoved        = tagsRemoved
+                               )
+                             )
+                           )
+      yield ()).value.void
 
   /** Maximum resources updated in a single transaction: atomic per batch without holding locks for the whole selection. */
   private val tagBulkBatchSize = 100
