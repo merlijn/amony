@@ -2,11 +2,13 @@ package nl.amony.modules.resources.impl
 
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
+import scala.jdk.CollectionConverters.*
+import scala.util.Using
 
 import cats.effect.IO
 import scribe.Logging
 
-import nl.amony.modules.resources.api.{LocalDirectoryConfig, ResourceContent, ResourceInfo, ResourcePath, StagingId, StreamedResource}
+import nl.amony.modules.resources.api.{LocalDirectoryConfig, ResourceContent, ResourceId, ResourceInfo, ResourcePath, StagingId, StreamedResource}
 
 /** [[ResourceStore]] backed by a local directory. */
 final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceStore, Logging:
@@ -45,6 +47,19 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
 
   override def delete(path: ResourcePath): IO[Unit] =
     IO.blocking(Files.deleteIfExists(config.resourcePath.resolve(path))).void
+
+  /** Deletes cached previews derived from a resource, so changed content is never served stale. */
+  def deleteDerivedFiles(resourceId: ResourceId): IO[Unit] = IO.blocking {
+    if Files.isDirectory(config.cachePath) then
+      Using(Files.list(config.cachePath)) { stream =>
+        stream.iterator().asScala
+          .filter { path =>
+            val name = path.getFileName.toString
+            name.startsWith(resourceId.toString + "_") || name.startsWith(resourceId.toString + "-")
+          }
+          .foreach(path => Files.deleteIfExists(path))
+      }
+  }.void.handleErrorWith(e => IO(logger.warn(s"Failed to delete derived files for $resourceId", e)))
 
   private def resolveTargetPath(path: Path, maxAttempts: Int): Option[Path] = {
     var target: Path = path

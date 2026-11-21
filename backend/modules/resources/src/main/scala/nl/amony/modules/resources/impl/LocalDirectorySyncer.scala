@@ -14,6 +14,7 @@ import nl.amony.modules.resources.api.{
   LocalDirectoryConfig,
   ResourceAdded,
   ResourceDeleted,
+  ResourceDiscovery,
   ResourceEvent,
   ResourceFileMetaChanged,
   ResourceInfo,
@@ -33,8 +34,8 @@ final class LocalDirectorySyncer(
   parallelFactor: Int,
   db: ResourceDatabase,
   ops: BucketOperations,
-  events: LocalDirectoryEventStore
-):
+  events: ResourceEventStore
+) extends ResourceDiscovery:
 
   private val logger             = scribe.Logger("LocalResourceSyncer")
   private val bucketId: BucketId = BucketId(config.id)
@@ -215,7 +216,7 @@ final class LocalDirectorySyncer(
     pollWithRetryOnException().compile.drain
   }
 
-  def refresh(): IO[Unit] = singleScan().through(_ evalTap events.processEvent).compile.drain
+  override def refresh(): IO[Unit] = singleScan().through(_ evalTap events.processEvent).compile.drain
 
   /** Starts polling the directory for changes. */
   def sync(): IO[Unit] =

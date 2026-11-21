@@ -106,7 +106,7 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
           val test =
             Database.makePool(dbConfig).use { pool =>
               val bucketsDal = BucketsDal(pool)
-              val factory    = (config: ResourceBucketConfig) => IO.pure((mockBucket(config), IO.unit))
+              val factory    = (config: ResourceBucketConfig) => IO.pure((mockBucket(config), mock[ResourceDiscovery], IO.unit))
 
               for
                 configs <- DatabaseBucketRegistry
@@ -147,7 +147,7 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
                               (started.update(id :: _) >>
                                 active.updateAndGet(m => m.updated(id, m.getOrElse(id, 0) + 1)).flatMap(m => maxSyncs.update(_ max m(id))) >>
                                 IO.never[Unit]).onCancel(active.update(m => m.updated(id, m(id) - 1)))
-                factory   = (config: ResourceBucketConfig) => IO.pure((mockBucket(config), sync(config.id)))
+                factory   = (config: ResourceBucketConfig) => IO.pure((mockBucket(config), mock[ResourceDiscovery], sync(config.id)))
                 registry  = DatabaseBucketRegistry.resource(bucketConfig("media", defaultPath), bucketsDal, recordingTopic(published), factory)
                 _        <- registry.use { r =>
                               for

@@ -62,8 +62,6 @@ trait ResourceBucket {
 
   def generateAllPreviews(): IO[Unit]
 
-  def refresh(): IO[Unit]
-
   def reScanAllMetadata(): IO[Unit]
 
   def reComputePartialHashes(): IO[Unit]

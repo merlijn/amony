@@ -28,10 +28,9 @@ class ResourceBucketImpl(
   topic: MessageTopic[ResourceEvent],
   ops: BucketOperations,
   store: ResourceStore,
-  events: LocalDirectoryEventStore,
-  syncer: LocalDirectorySyncer,
+  events: ResourceEventStore,
   jobBus: JobBus[ResourceJob],
-  jobTimeout: FiniteDuration  = 30.minutes
+  jobTimeout: FiniteDuration = 30.minutes
 ) extends ResourceBucketConsumer,
       Logging {
 
@@ -48,8 +47,6 @@ class ResourceBucketImpl(
 
   override def getAllResources: fs2.Stream[IO, ResourceInfo] =
     db.getStream(id)
-
-  override def refresh(): IO[Unit] = syncer.refresh()
 
   override def processEvent(event: ResourceEvent): IO[Unit] = event match
     case ResourceAdded(resource)                     => generatePreviewsIfEnabled(resource)

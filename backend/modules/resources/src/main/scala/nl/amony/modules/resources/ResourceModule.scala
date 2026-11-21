@@ -11,6 +11,8 @@ import sttp.tapir.AnyEndpoint
 
 import nl.amony.modules.auth.api.ApiSecurity
 import nl.amony.modules.resources.api.{
+  BucketDiscoveryRegistry,
+  BucketId,
   BucketRegistry,
   CacheScope,
   LocalDirectoryConfig,
@@ -24,8 +26,8 @@ import nl.amony.modules.resources.api.{
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
 import nl.amony.modules.resources.http.{BucketRoutes, CollectionRoutes, ResourceContentRoutes, ResourceRoutes}
 import nl.amony.modules.resources.impl.{
+  DatabaseResourceEventStore,
   FileOperations,
-  LocalDirectoryEventStore,
   LocalDirectoryStore,
   LocalDirectorySyncer,
   ResourceBucketImpl,
@@ -43,6 +45,7 @@ import nl.amony.platform.tapir.ServerEndpoints
 class ResourceModule(
   private val resourceDatabase: ResourceDatabase,
   val bucketRegistry: BucketRegistry,
+  val bucketDiscovery: BucketDiscoveryRegistry,
   val thumbResolutions: ThumbnailResolutions,
   val thumbFormats: ThumbnailFormats,
   val thumbTiles: ThumbnailTiles,
@@ -52,7 +55,7 @@ class ResourceModule(
 
   /** The Tapir endpoints of the module. */
   def routes(resourceIndex: ResourceIndex)(using apiSecurity: ApiSecurity): ServerEndpoints[IO] =
-    BucketRoutes.apply(bucketRegistry, resourceIndex) ++
+    BucketRoutes.apply(bucketRegistry, bucketDiscovery, resourceIndex) ++
       CollectionRoutes.apply(resourceDatabase, bucketRegistry) ++
       ResourceRoutes.apply(bucketRegistry)
 
@@ -95,23 +98,23 @@ object ResourceModule:
             processSettings,
             processLimiter
           )
-          val events    = LocalDirectoryEventStore(localConfig, resourceDatabase, eventTopic)
+          val store     = LocalDirectoryStore(localConfig)
+          val events    = DatabaseResourceEventStore(BucketId(localConfig.id), resourceDatabase, eventTopic, store.deleteDerivedFiles)
           val syncer    = LocalDirectorySyncer(localConfig, config.parallelFactor, resourceDatabase, ops, events)
           val bucket    = ResourceBucketImpl(
             localConfig,
             resourceDatabase,
             eventTopic,
             ops,
-            LocalDirectoryStore(localConfig),
+            store,
             events,
-            syncer,
             jobBus
           )
           val startSync =
             if localConfig.sync.enabled then syncer.sync()
             else if localConfig.sync.syncOnStartup then syncer.refresh()
             else IO.unit
-          (bucket, startSync)
+          (bucket, syncer, startSync)
         }
     }
 
@@ -125,6 +128,7 @@ object ResourceModule:
                           )
       module            = new ResourceModule(
                             resourceDatabase,
+                            bucketRegistry,
                             bucketRegistry,
                             thumbResolutions,
                             thumbFormats,
