@@ -55,3 +55,24 @@ class ImplementationFileNameSpec extends AnyWordSpecLike {
   }
 }
 ```
+
+### Mocking
+
+We use Mockito, mix in the `MockitoSugar` trait if needed
+
+```
+import org.mockito.scalatest.MockitoSugar
+
+class MySpec extends .... with MockitoSugar { 
+...
+}
+```
+
+Prefer this type of mocking
+```
+mockObject.myFunction(any[String], ....) returns <return value here>
+```
+
+### Other instructions
+
+- Avoid using `null` unless strictly required. Do not use it because it's easy to instantiate classes that way, use mocking instead.

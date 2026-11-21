@@ -6,7 +6,7 @@ case class ResourceInfo(
   bucketId: BucketId,
   resourceId: ResourceId,
   userId: UserId,
-  path: String,
+  path: ResourcePath,
   size: Long,
   partialHash: Option[String]     = None,
   fileKey: Option[String]         = None,

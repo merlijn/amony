@@ -7,7 +7,7 @@ import scribe.Logging
 import skunk.*
 import skunk.data.Completion
 
-import nl.amony.modules.resources.api.{BucketId, ResourceId, ResourceInfo, Tag}
+import nl.amony.modules.resources.api.{BucketId, ResourceId, ResourceInfo, ResourcePath, Tag}
 
 private[resources] class ResourceDatabase(pool: Resource[IO, Session[IO]]) extends CollectionsDal(pool) with Logging:
 
@@ -167,7 +167,7 @@ private[resources] class ResourceDatabase(pool: Resource[IO, Session[IO]]) exten
     useSession: s =>
       s.prepare(Queries.resources.getByPartialHashJoined).flatMap(_.stream((bucketId, partialHash), defaultChunkSize).map(toResource).compile.toList)
 
-  def getResourceByPath(bucketId: BucketId, path: String)(using maybeSession: Option[Session[IO]] = None): IO[Option[ResourceInfo]] =
+  def getResourceByPath(bucketId: BucketId, path: ResourcePath)(using maybeSession: Option[Session[IO]] = None): IO[Option[ResourceInfo]] =
     useSession: s =>
       s.prepare(Queries.resources.getByPathJoined).flatMap(_.stream(
         (bucketId, path),
@@ -223,7 +223,7 @@ private[resources] class ResourceDatabase(pool: Resource[IO, Session[IO]]) exten
             )
           }.map(Some(_))
 
-  def move(bucketId: BucketId, resourceId: ResourceId, newPath: String)(using maybeSession: Option[Session[IO]] = None): IO[Unit] =
+  def move(bucketId: BucketId, resourceId: ResourceId, newPath: ResourcePath)(using maybeSession: Option[Session[IO]] = None): IO[Unit] =
     useSession: s =>
       tables.resources.getById(s, bucketId, resourceId).flatMap:
         case Some(old) => tables.resources.upsert(s, old.copy(fs_path = newPath)) >> IO.unit

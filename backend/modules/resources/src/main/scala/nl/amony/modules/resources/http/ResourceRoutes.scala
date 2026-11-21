@@ -10,7 +10,7 @@ import sttp.tapir.*
 import sttp.tapir.json.circe.*
 
 import nl.amony.modules.auth.api.*
-import nl.amony.modules.resources.api.{BucketId, BucketRegistry, Resource, ResourceBucket, ResourceId, ResourceJobError, Tag, UploadError}
+import nl.amony.modules.resources.api.{BucketId, BucketRegistry, ResourceBucket, ResourceId, ResourceInfo, ResourceJobError, Tag, UploadError}
 import nl.amony.platform.tapir.apiNoCacheHeaders
 import nl.amony.platform.tapir.error.{BadRequestError, ErrorResponse, NotFoundError, SecurityError}
 import nl.amony.platform.tapir.{RoutesModule, ServerEndpoints, routes}
@@ -91,10 +91,10 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
       case ResourceJobError.NotFound          => NotFoundError("not_found", "Resource not found")
       case ResourceJobError.Rejected(message) => BadRequestError("job_rejected", message)
 
-    def getResource(auth: AuthToken, bucketId: BucketId, resourceId: ResourceId): EitherT[IO, NotFoundError, (ResourceBucket, Resource)] =
+    def getResource(auth: AuthToken, bucketId: BucketId, resourceId: ResourceId): EitherT[IO, NotFoundError, (ResourceBucket, ResourceInfo)] =
       for
         bucket   <- getVisibleBucket(auth, bucketId)
-        resource <- EitherT.fromOptionF(bucket.getResource(resourceId), NotFoundError("not_found", "Resource not found"))
+        resource <- EitherT.fromOptionF(bucket.getResourceInfo(resourceId), NotFoundError("not_found", "Resource not found"))
       yield bucket -> resource
 
     def mapUploadError(uploadError: UploadError): BadRequestError =
@@ -104,7 +104,7 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
 
     routes[IO] {
       securedServerLogicT(endpoint = getResourceById, requiredPermission = Permission.ViewResource) { auth => (bucketId, resourceId) =>
-        getResource(auth, bucketId, resourceId).map((_, resource) => toDto(resource.info))
+        getResource(auth, bucketId, resourceId).map((_, resource) => toDto(resource))
       }
 
       securedServerLogicT(endpoint = deleteResource, requiredPermission = Permission.ManageResources) { auth => (bucketId, resourceId) =>

@@ -1,18 +1,23 @@
 package nl.amony.modules.resources.api
 
 sealed trait ResourceEvent derives io.circe.Codec:
+  def bucketId: BucketId
   def messageKey: String
 
 case class ResourceAdded(resource: ResourceInfo) extends ResourceEvent derives io.circe.Codec:
+  override def bucketId: BucketId = resource.bucketId
   override def messageKey: String = s"${resource.bucketId}:${resource.resourceId}"
 
 case class ResourceDeleted(resource: ResourceInfo) extends ResourceEvent derives io.circe.Codec:
+  override def bucketId: BucketId = resource.bucketId
   override def messageKey: String = s"${resource.bucketId}:${resource.resourceId}"
 
 case class ResourceModified(resource: ResourceInfo) extends ResourceEvent derives io.circe.Codec:
+  override def bucketId: BucketId = resource.bucketId
   override def messageKey: String = s"${resource.bucketId}:${resource.resourceId}"
 
 case class ResourceThumbnailUpdated(timestamp: Int, resource: ResourceInfo) extends ResourceEvent derives io.circe.Codec:
+  override def bucketId: BucketId = resource.bucketId
   override def messageKey: String = s"${resource.bucketId}:${resource.resourceId}"
 
 case class ResourceUserMetaUpdated(
@@ -22,6 +27,7 @@ case class ResourceUserMetaUpdated(
   tagsAdded: Set[Tag],
   tagsRemoved: Set[Tag]
 ) extends ResourceEvent derives io.circe.Codec:
+  override def bucketId: BucketId = resource.bucketId
   override def messageKey: String = s"${resource.bucketId}:${resource.resourceId}"
 
 case class ResourceFileMetaChanged(
@@ -32,11 +38,13 @@ case class ResourceFileMetaChanged(
 ) extends ResourceEvent derives io.circe.Codec:
   override def messageKey: String = s"$bucketId:$resourceId"
 
-case class ResourceMoved(bucketId: BucketId, resourceId: ResourceId, oldPath: String, newPath: String) extends ResourceEvent derives io.circe.Codec:
+case class ResourceMoved(bucketId: BucketId, resourceId: ResourceId, oldPath: ResourcePath, newPath: ResourcePath) extends ResourceEvent
+    derives io.circe.Codec:
   override def messageKey: String = s"$bucketId:$resourceId"
 
-case class ResourceMovedAndModified(resourceId: ResourceId, oldPath: String, newPath: String, resource: ResourceInfo)
+case class ResourceMovedAndModified(resourceId: ResourceId, oldPath: ResourcePath, newPath: ResourcePath, resource: ResourceInfo)
     extends ResourceEvent derives io.circe.Codec:
+  override def bucketId: BucketId = resource.bucketId
   override def messageKey: String = s"${resource.bucketId}:$resourceId"
 
 case class BucketDeleted(bucketId: BucketId) extends ResourceEvent derives io.circe.Codec:

@@ -1,4 +1,4 @@
-package nl.amony.modules.resources.local
+package nl.amony.modules.resources.impl
 
 import java.nio.file.{Files, Path}
 import java.util.UUID
@@ -26,7 +26,7 @@ import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.platform.database.{Database, DatabaseConfig}
 import nl.amony.platform.messagebus.MessageTopic
 
-class LocalDirectoryBucketSpec extends AnyWordSpecLike with TestContainerForAll with Matchers with MockitoSugar:
+class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll with Matchers with MockitoSugar:
 
   override val containerDef: GenericContainer.Def[GenericContainer] =
     GenericContainer.Def(
@@ -88,17 +88,28 @@ class LocalDirectoryBucketSpec extends AnyWordSpecLike with TestContainerForAll 
         processor: ResourceEvent => IO[Unit]
       ): Stream[IO, Unit]                                                        = Stream.empty
 
+  private def makeBucket(
+    config: LocalDirectoryConfig,
+    db: ResourceDatabase,
+    published: AtomicReference[List[ResourceEvent]],
+    ops: BucketOperations = null
+  ): ResourceBucketImpl =
+    val topic  = recordingTopic(published)
+    val store  = LocalDirectoryStore(config)
+    val events = DatabaseResourceEventStore(BucketId(config.id), db, topic, store.deleteDerivedFiles)
+    ResourceBucketImpl(config, 2, db, topic, ops, store, events, null)
+
   private def newResource(bucketId: BucketId, path: String = "video.mp4"): ResourceInfo =
     ResourceInfo(
       bucketId   = bucketId,
       resourceId = ResourceId(UUID.randomUUID().toString),
       userId     = UserId("admin"),
-      path       = path,
+      path       = ResourcePath(path),
       size       = 42L,
       timeAdded  = Some(1000L)
     )
 
-  "LocalDirectoryBucket and ResourceProcessor" should {
+  "ResourceBucketImpl and ResourceProcessor" should {
 
     "publish ResourceUserMetaUpdated with computed tag diffs on updateUserMeta using a single-connection pool" in withContainers { container =>
       Database.makePool(dbConfig(container)).use { pool =>
@@ -106,7 +117,7 @@ class LocalDirectoryBucketSpec extends AnyWordSpecLike with TestContainerForAll 
         val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
         val db        = ResourceDatabase(pool)
         val published = new AtomicReference(List.empty[ResourceEvent])
-        val bucket    = LocalDirectoryBucket(cfg, 1, db, recordingTopic(published), null)
+        val bucket    = makeBucket(cfg, db, published)
         val initial   = newResource(bucket.id).copy(
           title       = Some("old title"),
           description = Some("old desc"),
@@ -145,7 +156,7 @@ class LocalDirectoryBucketSpec extends AnyWordSpecLike with TestContainerForAll 
         val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
         val db        = ResourceDatabase(pool)
         val published = new AtomicReference(List.empty[ResourceEvent])
-        val bucket    = LocalDirectoryBucket(cfg, 1, db, recordingTopic(published), null)
+        val bucket    = makeBucket(cfg, db, published)
         val res1      = newResource(bucket.id, "a.mp4").copy(tags = Set(Tag.user("old")))
         val res2      = newResource(bucket.id, "b.mp4").copy(tags = Set(Tag.user("old"), Tag.user("stay")))
 
@@ -178,7 +189,7 @@ class LocalDirectoryBucketSpec extends AnyWordSpecLike with TestContainerForAll 
         val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
         val db        = ResourceDatabase(pool)
         val published = new AtomicReference(List.empty[ResourceEvent])
-        val bucket    = LocalDirectoryBucket(cfg, 1, db, recordingTopic(published), null)
+        val bucket    = makeBucket(cfg, db, published)
         val res       = newResource(bucket.id)
 
         val test =
@@ -201,11 +212,11 @@ class LocalDirectoryBucketSpec extends AnyWordSpecLike with TestContainerForAll 
           val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
           val db        = ResourceDatabase(pool)
           val published = new AtomicReference(List.empty[ResourceEvent])
-          val bucket    = LocalDirectoryBucket(cfg, 1, db, recordingTopic(published), null)
+          val bucket    = makeBucket(cfg, db, published)
           val res       = newResource(bucket.id, "video.mp4")
 
-          val registry  = mock[BucketRegistry](RETURNS_DEFAULTS)
-          registry.get(bucket.id) returns IO.pure(Some(bucket))
+          val registry  = mock[BucketConsumerRegistry](RETURNS_DEFAULTS)
+          registry.getConsumer(bucket.id) returns IO.pure(Some(bucket))
           val processor = ResourceProcessor(registry)
 
           val test =
@@ -223,32 +234,86 @@ class LocalDirectoryBucketSpec extends AnyWordSpecLike with TestContainerForAll 
         }.unsafeRunSync()
     }
 
-    "only generate previews for content and thumbnail events in ResourceProcessor" in {
+    "only generate previews for content and thumbnail events" in {
       val bucketId = BucketId("media")
       val res      = newResource(bucketId)
 
-      val bucket = mock[ResourceBucket](RETURNS_DEFAULTS)
-      bucket.generatePreviewsIfEnabled(res) returns IO.unit
+      val ops = mock[BucketOperations](RETURNS_DEFAULTS)
+      ops.generatePreviews(res) returns IO.unit
 
-      val registry  = mock[BucketRegistry](RETURNS_DEFAULTS)
-      registry.get(bucketId) returns IO.pure(Some(bucket))
-      val processor = ResourceProcessor(registry)
+      val config = localConfig(s"bucket-${UUID.randomUUID()}", Files.createTempDirectory("amony-bucket-spec"), generatePreviewsOnAdd = true)
+      val bucket = ResourceBucketImpl(config, 1, null, null, ops, null, null, null)
 
       val test =
         for
-          _ <- processor.processEvent(ResourceAdded(res))
-          _ <- processor.processEvent(ResourceModified(res))
-          _ <- processor.processEvent(ResourceThumbnailUpdated(1000, res))
-          _ <- processor.processEvent(ResourceMovedAndModified(res.resourceId, "old.mp4", "new.mp4", res))
-          _ <- processor.processEvent(ResourceUserMetaUpdated(res, Some("desc"), Some("title"), Set.empty, Set.empty))
-          _ <- processor.processEvent(ResourceMoved(bucketId, res.resourceId, "old.mp4", "new.mp4"))
-          _ <- processor.processEvent(ResourceFileMetaChanged(bucketId, res.resourceId, 123L, None))
-          _ <- processor.processEvent(BucketDeleted(bucketId))
+          _ <- bucket.processEvent(ResourceAdded(res))
+          _ <- bucket.processEvent(ResourceModified(res))
+          _ <- bucket.processEvent(ResourceThumbnailUpdated(1000, res))
+          _ <- bucket.processEvent(ResourceMovedAndModified(res.resourceId, ResourcePath("old.mp4"), ResourcePath("new.mp4"), res))
+          _ <- bucket.processEvent(ResourceUserMetaUpdated(res, Some("desc"), Some("title"), Set.empty, Set.empty))
+          _ <- bucket.processEvent(ResourceMoved(bucketId, res.resourceId, ResourcePath("old.mp4"), ResourcePath("new.mp4")))
+          _ <- bucket.processEvent(ResourceFileMetaChanged(bucketId, res.resourceId, 123L, None))
+          _ <- bucket.processEvent(BucketDeleted(bucketId))
         yield {
-          verify(bucket, times(4)).generatePreviewsIfEnabled(res)
-          verifyNoMoreInteractions(bucket)
+          verify(ops, times(4)).generatePreviews(res)
+          verifyNoMoreInteractions(ops)
         }
 
       test.unsafeRunSync()
+    }
+
+    "update the database row on ResourceMovedAndModified" in withContainers { container =>
+      Database.makePool(dbConfig(container)).use { pool =>
+        val dir         = Files.createTempDirectory("amony-bucket-spec")
+        val cfg         = localConfig(s"bucket-${UUID.randomUUID()}", dir)
+        val db          = ResourceDatabase(pool)
+        val published   = new AtomicReference(List.empty[ResourceEvent])
+        val invalidated = new AtomicReference(List.empty[ResourceId])
+        val events      =
+          DatabaseResourceEventStore(BucketId(cfg.id), db, recordingTopic(published), id => IO { invalidated.updateAndGet(_ :+ id); () })
+        val res         = newResource(BucketId(cfg.id), "old.mp4")
+        val updated     = res.copy(path = ResourcePath("new.mp4"))
+        val event       = ResourceMovedAndModified(res.resourceId, ResourcePath("old.mp4"), ResourcePath("new.mp4"), updated)
+
+        val test =
+          for
+            _      <- db.insertResource(res)
+            _      <- events.processEvent(event)
+            oldRow <- db.getResourceByPath(BucketId(cfg.id), ResourcePath("old.mp4"))
+            newRow <- db.getResourceByPath(BucketId(cfg.id), ResourcePath("new.mp4"))
+          yield
+            oldRow shouldBe None
+            newRow shouldBe Some(updated)
+            published.get() shouldBe List(event)
+            invalidated.get() shouldBe List(res.resourceId)
+
+        test.timeout(5.seconds)
+      }.unsafeRunSync()
+    }
+
+    "only publish ResourceModified when a rescan finds changes" in withContainers { container =>
+      // The rescan streams rows while upserting, so it needs more than one pooled connection.
+      Database.makePool(dbConfig(container).copy(poolSize = 4)).use { pool =>
+        val dir       = Files.createTempDirectory("amony-bucket-spec")
+        val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
+        val db        = ResourceDatabase(pool)
+        val published = new AtomicReference(List.empty[ResourceEvent])
+        val ops       = mock[BucketOperations](RETURNS_DEFAULTS)
+        val meta      = ContentMeta(contentType = Some("text/plain"))
+        val unchanged = newResource(BucketId(cfg.id), "same.txt").copy(contentMeta = meta)
+        val changed   = newResource(BucketId(cfg.id), "changed.txt").copy(contentMeta = ContentMeta.empty)
+        ops.contentMeta(ContentLocation.Resource(ResourcePath("same.txt"))) returns IO.pure(Right(meta))
+        ops.contentMeta(ContentLocation.Resource(ResourcePath("changed.txt"))) returns IO.pure(Right(meta))
+        val bucket    = makeBucket(cfg, db, published, ops)
+
+        val test =
+          for
+            _ <- db.insertResource(unchanged)
+            _ <- db.insertResource(changed)
+            _ <- bucket.reScanAllMetadata()
+          yield published.get() shouldBe List(ResourceModified(changed.copy(contentMeta = meta)))
+
+        test.timeout(5.seconds)
+      }.unsafeRunSync()
     }
   }

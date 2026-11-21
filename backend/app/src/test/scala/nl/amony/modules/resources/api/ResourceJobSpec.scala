@@ -28,7 +28,7 @@ class ResourceJobSpec extends AnyWordSpecLike with Matchers:
         resourceId = ResourceId("abc123"),
         userId     = UserId("admin"),
         fileName   = "video.mp4",
-        tempFile   = "abc123-upload"
+        stagingId  = StagingId("abc123-upload")
       )
       io.circe.parser.decode[ResourceJob](job.asJson.noSpaces) shouldBe Right(job)
     }

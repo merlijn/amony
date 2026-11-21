@@ -181,10 +181,8 @@ object ResourceContentRoutes extends Logging {
       val accessToken = req.cookies.find(_.name == authCookieName).map(_.content)
       apiSecurity.decodeAccessToken(accessToken)
 
-    def getResource(req: Request[IO], bucketId: BucketId, resourceId: ResourceId): OptionT[IO, (ResourceBucket, Resource)] =
-      OptionT(buckets.get(bucketId))
-        .filter(bucket => authToken(req).canAccessBucket(bucket.requiredRole))
-        .flatMap(bucket => OptionT(bucket.getResource(resourceId)).map(resource => bucket -> resource))
+    def getBucket(req: Request[IO], bucketId: BucketId): OptionT[IO, ResourceBucket] =
+      OptionT(buckets.get(bucketId)).filter(bucket => authToken(req).canAccessBucket(bucket.requiredRole))
 
     def maybeResponse(option: OptionT[IO, Response[IO]]): IO[Response[IO]] =
       option.value.attempt.map {
@@ -203,26 +201,31 @@ object ResourceContentRoutes extends Logging {
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / "content" =>
         maybeResponse:
-          getResource(req, BucketId(bucketId), ResourceId(resourceId)).semiflatMap((_, resource) => resourceContentsResponse(req, resource.content))
+          for
+            bucket   <- getBucket(req, BucketId(bucketId))
+            content  <- OptionT(bucket.getResourceContent(ResourceId(resourceId)))
+            response <- OptionT.liftF(resourceContentsResponse(req, content))
+          yield response
 
       case req @ GET -> Root / "api" / "resources" / bucketId / resourceId / resourcePattern =>
         maybeResponse(
           for
-            (bucket, resource) <- getResource(req, BucketId(bucketId), ResourceId(resourceId))
-            operation          <- OptionT.fromOption(resourcePattern match {
-                                    case patterns.PublicThumbnailPattern(version, ts, dim, resKey, format) =>
-                                      patterns.thumbnailOperation(version, ts.toLong, dim, resKey, format, resolutions, formats, resource.info)
-                                    case patterns.PublicClipPattern(version, start, end, dim, resKey)      =>
-                                      patterns.clipOperation(version, start.toLong, end.toLong, dim, resKey, resolutions, resource.info)
-                                    case patterns.PublicThumbnailTileManifestPattern(version, token)       =>
-                                      patterns.thumbnailTileManifestOperation(version, token, resource.info, tiles)
-                                    case patterns.PublicThumbnailTileSpritePattern(version, token, index)  =>
-                                      patterns.thumbnailTileSpriteOperation(version, token, index, resource.info, tiles)
-                                    case _                                                                 => None
-                                  })
-            derivedResource    <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))
-            response           <- OptionT.liftF(resourceContentsResponse(req, derivedResource)
-                                    .map(r => r.addHeader(`Cache-Control`(`max-age`(cacheMaxAge), `must-revalidate`, scopeDirective(cacheScope)))))
+            bucket         <- getBucket(req, BucketId(bucketId))
+            resource       <- OptionT(bucket.getResourceInfo(ResourceId(resourceId)))
+            operation      <- OptionT.fromOption(resourcePattern match {
+                                case patterns.PublicThumbnailPattern(version, ts, dim, resKey, format) =>
+                                  patterns.thumbnailOperation(version, ts.toLong, dim, resKey, format, resolutions, formats, resource)
+                                case patterns.PublicClipPattern(version, start, end, dim, resKey)      =>
+                                  patterns.clipOperation(version, start.toLong, end.toLong, dim, resKey, resolutions, resource)
+                                case patterns.PublicThumbnailTileManifestPattern(version, token)       =>
+                                  patterns.thumbnailTileManifestOperation(version, token, resource, tiles)
+                                case patterns.PublicThumbnailTileSpritePattern(version, token, index)  =>
+                                  patterns.thumbnailTileSpriteOperation(version, token, index, resource, tiles)
+                                case _                                                                 => None
+                              })
+            derivedContent <- OptionT(bucket.getOrCreate(resource, operation))
+            response       <- OptionT.liftF(resourceContentsResponse(req, derivedContent)
+                                .map(r => r.addHeader(`Cache-Control`(`max-age`(cacheMaxAge), `must-revalidate`, scopeDirective(cacheScope)))))
           yield response
         )
     }

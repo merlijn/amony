@@ -23,6 +23,7 @@ import skunk.Session
 import nl.amony.modules.auth.api.{Role, UserId}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.{BucketsDal, ResourceDatabase}
+import nl.amony.modules.resources.impl.ResourceBucketConsumer
 import nl.amony.platform.database.{Database, DatabaseConfig}
 import nl.amony.platform.messagebus.MessageTopic
 
@@ -63,14 +64,20 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
   private def withExcludes(config: LocalDirectoryConfig, excludes: List[String]): LocalDirectoryConfig =
     config.copy(sync = config.sync.copy(excludePatterns = excludes))
 
-  private def mockBucket(config: ResourceBucketConfig): ResourceBucket =
-    val bucket = mock[ResourceBucket](RETURNS_DEFAULTS)
+  private def mockBucket(config: ResourceBucketConfig): ResourceBucketConsumer =
+    val bucket = mock[ResourceBucketConsumer](RETURNS_DEFAULTS)
     bucket.id returns BucketId(config.id)
     bucket.requiredRole returns None
     bucket
 
   private def resource(bucketId: BucketId): ResourceInfo =
-    ResourceInfo(bucketId = bucketId, resourceId = ResourceId(UUID.randomUUID().toString), userId = UserId("admin"), path = "file.mp4", size = 1L)
+    ResourceInfo(
+      bucketId   = bucketId,
+      resourceId = ResourceId(UUID.randomUUID().toString),
+      userId     = UserId("admin"),
+      path       = ResourcePath("file.mp4"),
+      size       = 1L
+    )
 
   private def recordingTopic(published: AtomicReference[List[ResourceEvent]]): MessageTopic[ResourceEvent] =
     new MessageTopic[ResourceEvent]:
@@ -99,7 +106,7 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
           val test =
             Database.makePool(dbConfig).use { pool =>
               val bucketsDal = BucketsDal(pool)
-              val factory    = (config: ResourceBucketConfig) => IO.pure((mockBucket(config), IO.unit))
+              val factory    = (config: ResourceBucketConfig) => IO.pure((mockBucket(config), mock[ResourceDiscovery], IO.unit))
 
               for
                 configs <- DatabaseBucketRegistry
@@ -140,7 +147,7 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
                               (started.update(id :: _) >>
                                 active.updateAndGet(m => m.updated(id, m.getOrElse(id, 0) + 1)).flatMap(m => maxSyncs.update(_ max m(id))) >>
                                 IO.never[Unit]).onCancel(active.update(m => m.updated(id, m(id) - 1)))
-                factory   = (config: ResourceBucketConfig) => IO.pure((mockBucket(config), sync(config.id)))
+                factory   = (config: ResourceBucketConfig) => IO.pure((mockBucket(config), mock[ResourceDiscovery], sync(config.id)))
                 registry  = DatabaseBucketRegistry.resource(bucketConfig("media", defaultPath), bucketsDal, recordingTopic(published), factory)
                 _        <- registry.use { r =>
                               for

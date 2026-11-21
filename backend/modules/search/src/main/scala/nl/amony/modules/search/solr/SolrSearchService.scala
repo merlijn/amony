@@ -69,7 +69,7 @@ private[search] class SolrSearchService(config: SolrConfig, solr: SolrClient) ex
       bucketId           = BucketId(bucketId),
       resourceId         = ResourceId(resourceId),
       userId             = UserId(userId),
-      path               = path,
+      path               = ResourcePath(path),
       size               = size,
       partialHash        = partialHash,
       fileKey            = fileKey,

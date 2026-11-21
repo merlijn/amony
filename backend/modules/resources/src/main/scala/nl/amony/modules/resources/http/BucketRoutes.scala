@@ -223,7 +223,7 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
   private def parseDto(dto: BucketConfigDto): EitherT[IO, BucketAdminError, ResourceBucketConfig] =
     EitherT.fromEither[IO](BucketConfigDto.toConfig(dto)).leftMap(BadRequestError("invalid_bucket", _))
 
-  def apply(registry: BucketRegistry, resourceIndex: ResourceIndex)(
+  def apply(registry: BucketRegistry, discovery: BucketDiscoveryRegistry, resourceIndex: ResourceIndex)(
     using apiSecurity: ApiSecurity
   ): ServerEndpoints[IO] =
 
@@ -274,10 +274,10 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
       }
 
       securedServerLogicT(endpoint = refresh, requiredPermission = Permission.ManageBuckets) { _ => bucketId =>
-        withBucket(bucketId) { bucket =>
+        EitherT.fromOptionF(discovery.getDiscovery(bucketId), notFound(bucketId)).flatMap { bucketDiscovery =>
           EitherT.liftF(
             IO(logger.info(s"Refreshing resources in bucket '$bucketId'")) >>
-              bucket.refresh() >>
+              bucketDiscovery.refresh() >>
               IO(logger.info(s"Finished refreshing resources in bucket '$bucketId'"))
           )
         }

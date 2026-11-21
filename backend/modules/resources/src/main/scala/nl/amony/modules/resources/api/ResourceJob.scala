@@ -23,7 +23,7 @@ final case class UploadResource(
   resourceId: ResourceId,
   userId: UserId,
   fileName: String,
-  tempFile: String
+  stagingId: StagingId
 ) extends ResourceJob derives Codec
 
 object ResourceJob:
