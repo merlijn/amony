@@ -35,9 +35,14 @@ trait ResourceBucket {
   def requiredRole: Option[Role]
 
   /**
-   * Returns the content of a resource
+   * Returns the metadata of a resource, or `None` when it does not exist in this bucket
    */
-  def getResource(resourceId: ResourceId): IO[Option[Resource]]
+  def getResourceInfo(resourceId: ResourceId): IO[Option[ResourceInfo]]
+
+  /**
+   * Returns where the content of a resource can be obtained, or `None` when it does not exist in this bucket
+   */
+  def getResourceContent(resourceId: ResourceId): IO[Option[ResourceContent]]
 
   def updateUserMeta(resourceId: ResourceId, title: Option[String], description: Option[String], tags: List[String]): IO[Unit]
 

@@ -3,16 +3,17 @@ package nl.amony.modules.resources.http
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path as NioPath}
+import java.time.Instant
 import java.util.zip.GZIPInputStream
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import org.http4s.*
-import org.http4s.headers.{ETag, `Content-Encoding`, `Content-Length`, `If-None-Match`}
+import org.http4s.headers.{ETag, Location, `Cache-Control`, `Content-Encoding`, `Content-Length`, `If-None-Match`}
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.typelevel.ci.CIStringSyntax
 
-import nl.amony.modules.resources.api.{LocalFile, ResourceContent}
+import nl.amony.modules.resources.api.{LocalFile, ResourceContent, StreamedResource}
 
 class ResourceDirectivesSpec extends AnyWordSpecLike {
 
@@ -29,10 +30,10 @@ class ResourceDirectivesSpec extends AnyWordSpecLike {
   }
 
   private def localFile(path: NioPath, eTag: Option[String]): ResourceContent =
-    LocalFile(fs2.io.file.Path.fromNioPath(path), "image/webp", eTag)
+    ResourceContent.Streamed(LocalFile(fs2.io.file.Path.fromNioPath(path), "image/webp", eTag))
 
   private def localTextFile(path: NioPath, eTag: Option[String]): ResourceContent =
-    LocalFile(fs2.io.file.Path.fromNioPath(path), "text/vtt", eTag)
+    ResourceContent.Streamed(LocalFile(fs2.io.file.Path.fromNioPath(path), "text/vtt", eTag))
 
   private def bodyText(response: Response[IO]): String =
     response.body.through(fs2.text.utf8.decode).compile.string.unsafeRunSync()
@@ -43,7 +44,7 @@ class ResourceDirectivesSpec extends AnyWordSpecLike {
     finally input.close()
   }
 
-  private class StreamOnlyTextContent(content: String) extends ResourceContent {
+  private class StreamOnlyTextContent(content: String) extends StreamedResource {
     override val contentType: String          = "text/vtt"
     override val eTag: Option[String]         = Some("v1")
     override val stream: fs2.Stream[IO, Byte] = fs2.Stream.emits(content.getBytes(StandardCharsets.UTF_8)).covary[IO]
@@ -182,7 +183,10 @@ class ResourceDirectivesSpec extends AnyWordSpecLike {
 
       "not gzip text when the content size is unknown" in {
         val response = ResourceDirectives
-          .resourceContentsResponse(request(Header.Raw(ci"Accept-Encoding", "gzip")), StreamOnlyTextContent("WEBVTT\n"))
+          .resourceContentsResponse(
+            request(Header.Raw(ci"Accept-Encoding", "gzip")),
+            ResourceContent.Streamed(StreamOnlyTextContent("WEBVTT\n"))
+          )
           .unsafeRunSync()
 
         assert(response.headers.get[`Content-Encoding`].isEmpty)
@@ -201,6 +205,21 @@ class ResourceDirectivesSpec extends AnyWordSpecLike {
         assert(response.status == Status.PartialContent)
         assert(response.headers.get[`Content-Encoding`].isEmpty)
         assert(response.headers.get[`Content-Length`].map(_.length) == Some(100L))
+      }
+    }
+
+    "redirecting to external content" should {
+
+      "return a temporary redirect that must not be cached or leak the referrer" in {
+        val location = Uri.unsafeFromString("https://bucket.r2.cloudflarestorage.com/media/resource.mp4?X-Amz-Signature=abc")
+        val response = ResourceDirectives
+          .resourceContentsResponse(request(), ResourceContent.Redirect(location, Instant.now().plusSeconds(60)))
+          .unsafeRunSync()
+
+        assert(response.status == Status.TemporaryRedirect)
+        assert(response.headers.get[Location].map(_.uri) == Some(location))
+        assert(response.headers.get[`Cache-Control`].exists(_.values.toList.contains(CacheDirective.`no-store`)))
+        assert(response.headers.get(ci"Referrer-Policy").map(_.head.value) == Some("no-referrer"))
       }
     }
 

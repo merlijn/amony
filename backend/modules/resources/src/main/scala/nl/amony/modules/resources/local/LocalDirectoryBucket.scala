@@ -32,24 +32,24 @@ class LocalDirectoryBucket(
       UploadOperations,
       Logging {
 
-  private def getResourceInfo(resourceId: ResourceId): IO[Option[ResourceInfo]] = db.getResourceById(id, resourceId)
+  override def getResourceInfo(resourceId: ResourceId): IO[Option[ResourceInfo]] = db.getResourceById(id, resourceId)
 
   override def id: BucketId = BucketId(config.id)
 
   override def requiredRole: Option[Role] = config.requiredRole
-  
-  override def getResource(resourceId: ResourceId): IO[Option[Resource]] =
+
+  override def getResourceContent(resourceId: ResourceId): IO[Option[ResourceContent]] =
     getResourceInfo(resourceId).map:
-      case None => None
+      case None       => None
       case Some(info) =>
         val path = config.resourcePath.resolve(info.path)
         if !path.exists() then {
           logger.warn(s"Resource '$resourceId' was found in the database but no file exists: $path")
           None
         } else {
-          Some(Resource(info, ResourceContent.fromPath(path, info.contentType, ops.originalETag(info))))
+          Some(ResourceContent.Streamed(StreamedResource.fromPath(path, info.contentType, ops.originalETag(info))))
         }
-  
+
   override def getAllResources: fs2.Stream[IO, ResourceInfo] =
     db.getStream(id)
 
@@ -89,9 +89,9 @@ class LocalDirectoryBucket(
           status <- jobBus.awaitCompletion(jobId, jobTimeout)
           result <- status.state match
                       case JobState.Succeeded =>
-                        getResource(staged.resourceId).map {
-                          case Some(resource) => Right(resource.info)
-                          case None           => Left(UploadError.StorageError("Uploaded resource was not found after completion"))
+                        getResourceInfo(staged.resourceId).map {
+                          case Some(info) => Right(info)
+                          case None       => Left(UploadError.StorageError("Uploaded resource was not found after completion"))
                         }
                       case _                  =>
                         IO.pure(Left(UploadError.StorageError(status.lastError.getOrElse("Failed to store the uploaded resource"))))
@@ -145,7 +145,7 @@ class LocalDirectoryBucket(
   override def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]] =
     getResourceInfo(resourceId).flatMap:
       case None       => IO.pure(None)
-      case Some(info) => ops.derivedResource(info, operation)
+      case Some(info) => ops.derivedResource(info, operation).map(_.map(ResourceContent.Streamed(_)))
 
   override def generateAllPreviews(): IO[Unit] =
     getAllResources

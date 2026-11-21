@@ -201,17 +201,17 @@ final class FileOperations(
   private def eTagOf(parts: String*): String =
     Base32.encode(MessageDigest.getInstance("SHA-1").digest(parts.mkString("\u0000").getBytes(StandardCharsets.UTF_8)))
 
-  private[local] def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]] = {
+  private[local] def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[StreamedResource]] = {
 
     val outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
     val eTag       = previewETag(info, outputFile)
     val key        = (resourceId = info.resourceId, operation = operation)
 
-    if Files.exists(outputFile) then IO.pure(ResourceContent.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
+    if Files.exists(outputFile) then IO.pure(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
     else
       inFlight
         .run(key)(createResource(config.resourcePath.resolve(info.path), info, key.operation).as(Option.empty[ResourceInfo]))
-        .map(_ => ResourceContent.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
+        .map(_ => StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
   }
 
   private def createResource(inputFile: Path, info: ResourceInfo, operation: ResourceOperation): IO[Path] =

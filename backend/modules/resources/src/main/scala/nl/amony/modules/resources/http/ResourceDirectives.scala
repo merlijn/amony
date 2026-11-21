@@ -7,12 +7,15 @@ import fs2.Stream
 import fs2.compression.Compression
 import fs2.io.file.{Files, Path}
 import org.http4s.*
+import org.http4s.CacheDirective
 import org.http4s.headers.Range.SubRange
 import org.http4s.headers.{
   ETag,
+  Location,
   Range,
   `Accept-Encoding`,
   `Accept-Ranges`,
+  `Cache-Control`,
   `Content-Encoding`,
   `Content-Length`,
   `Content-Range`,
@@ -22,19 +25,36 @@ import org.http4s.headers.{
 import org.typelevel.ci.CIStringSyntax
 import scribe.Logging
 
-import nl.amony.modules.resources.api.{ResourceContent, ResourceContentWithRangeSupport}
+import nl.amony.modules.resources.api.{ResourceContent, StreamedResource, StreamedResourceWithRangeSupport}
 
 object ResourceDirectives extends Logging {
 
   private val rangedResponseCutoff: Long       = 1024 * 1024     // 1 MB
   private val compressibleResponseCutoff: Long = 8 * 1024 * 1024 // 8 MB
 
-  def resourceContentsResponse(req: Request[IO], resource: ResourceContent): IO[Response[IO]] = {
+  def resourceContentsResponse(req: Request[IO], content: ResourceContent): IO[Response[IO]] =
+    content match
+      case ResourceContent.Streamed(streamed)    => streamedResponse(req, streamed)
+      case ResourceContent.Redirect(location, _) => redirectResponse(location)
+
+  private def redirectResponse(location: Uri): IO[Response[IO]] =
+    IO.pure(
+      Response(
+        status  = Status.TemporaryRedirect,
+        headers = Headers(
+          Location(location),
+          `Cache-Control`(CacheDirective.`no-store`),
+          Header.Raw(ci"Referrer-Policy", "no-referrer")
+        )
+      )
+    )
+
+  private def streamedResponse(req: Request[IO], resource: StreamedResource): IO[Response[IO]] = {
 
     val maybeMediaType = MediaType.parse(resource.contentType).toOption
     val contentSize    = resource match
-      case content: ResourceContentWithRangeSupport => Some(content.size)
-      case _                                        => None
+      case content: StreamedResourceWithRangeSupport => Some(content.size)
+      case _                                         => None
 
     // Text responses are cheap to compress and often highly repetitive. Only compress when the size
     // is known and small enough, and never for a ranged request since that would invalidate the byte
@@ -57,14 +77,14 @@ object ResourceDirectives extends Logging {
         Headers(maybeMediaType.map(mediaType => `Content-Type`(mediaType)).toList) ++ Headers(eTagHeaders) ++ varyHeaders ++ encodingHeaders
 
       resource match {
-        case content: ResourceContentWithRangeSupport if supportsRange =>
+        case content: StreamedResourceWithRangeSupport if supportsRange =>
           ResourceDirectives.responseWithRangeSupport[IO](
             request           = req,
             size              = content.size,
             additionalHeaders = additionalHeaders,
             rangeResponseFn   = content.streamRange
           )
-        case _                                                         =>
+        case _                                                          =>
           val body = if useGzip then resource.stream.through(Compression.forIO.gzip()) else resource.stream
           IO.pure(Response(status = Status.Ok, headers = additionalHeaders, body = body))
       }
