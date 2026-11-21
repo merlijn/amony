@@ -1,18 +1,15 @@
 package nl.amony.modules.resources.impl
 
 import scala.concurrent.duration.*
-
 import cats.effect.IO
 import cats.implicits.*
 import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
-import skunk.Session
-
 import nl.amony.modules.auth.api.{Role, UserId}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.ResourceDatabase
-import nl.amony.platform.files.*
+import nl.amony.modules.resources.util.ETag
 import nl.amony.platform.messagebus.{JobBus, JobState, MessageTopic}
 
 class ResourceBucketImpl(
@@ -27,7 +24,7 @@ class ResourceBucketImpl(
 )(using meter: Meter[IO], tracer: Tracer[IO])
     extends LocalDirectoryBase(config, store, parallelFactor, db, topic, ops),
       ResourceBucket,
-      LocalResourceSyncer,
+      LocalDirectorySyncer,
       UploadOperations,
       Logging {
 
@@ -40,7 +37,7 @@ class ResourceBucketImpl(
   override def getResourceContent(resourceId: ResourceId): IO[Option[ResourceContent]] =
     getResourceInfo(resourceId).flatMap:
       case None       => IO.pure(None)
-      case Some(info) => store.content(info, ops.originalETag(info))
+      case Some(info) => store.content(info, info.partialHash.map(sourceHash => ETag.of(sourceHash, info.timeLastModified.getOrElse(0L).toString)))
 
   override def getAllResources: fs2.Stream[IO, ResourceInfo] =
     db.getStream(id)
@@ -137,12 +134,11 @@ class ResourceBucketImpl(
   override def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]] =
     getResourceInfo(resourceId).flatMap:
       case None       => IO.pure(None)
-      case Some(info) => ops.derivedResource(info, operation).map(_.map(ResourceContent.Streamed(_)))
+      case Some(info) => ops.derivedResource(info, operation)
 
   override def generateAllPreviews(): IO[Unit] =
     getAllResources
-      .flatMap(info => fs2.Stream.emits(ops.previewOperations(info).map(info -> _)))
-      .parEvalMap(parallelFactor) { case (info, operation) => ops.runPreviewOperation(info, operation) }
+      .evalMap(info => ops.generatePreviews(info).map(info -> _))
       .compile.drain
 
   override def generatePreviewsIfEnabled(info: ResourceInfo): IO[Unit] =

@@ -18,7 +18,7 @@ import nl.amony.modules.resources.api.*
 /** A staged upload: the request body is already in the bucket's temp directory, waiting for the upload command. */
 final private[impl] case class StagedUpload(resourceId: ResourceId, fileName: String, stagingId: StagingId)
 
-trait UploadOperations extends LocalResourceSyncer, Logging:
+trait UploadOperations extends LocalDirectorySyncer, Logging:
 
   private val invalidSequences = List("/", "\\", "..")
 

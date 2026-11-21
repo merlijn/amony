@@ -1,27 +1,24 @@
 package nl.amony.modules.resources.impl
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{AtomicMoveNotSupportedException, Files, Path, StandardCopyOption}
-import java.security.MessageDigest
-import java.util.UUID
-import scala.util.{Failure, Success}
-
 import cats.effect.IO
 import cats.implicits.*
+import nl.amony.modules.resources.api.*
+import nl.amony.modules.resources.api.ResourceContent.Streamed
+import nl.amony.modules.resources.util.{ETag, SingleFlight}
+import nl.amony.platform.subprocess.ffmpeg.{ContainerFormat, FFMpeg}
+import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
+import nl.amony.platform.subprocess.magick.ImageMagick
+import nl.amony.platform.subprocess.{ProcessLimiter, ProcessRunner, ProcessSettings}
 import org.apache.tika.Tika
 import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
-import nl.amony.modules.resources.api.*
-import nl.amony.modules.resources.util.Base32
-import nl.amony.modules.resources.util.SingleFlight
-import nl.amony.platform.subprocess.ffmpeg.ContainerFormat
-import nl.amony.platform.subprocess.ffmpeg.FFMpeg
-import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
-import nl.amony.platform.subprocess.magick.ImageMagick
-import nl.amony.platform.subprocess.{ProcessLimiter, ProcessRunner, ProcessSettings}
+import java.nio.charset.StandardCharsets
+import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.{AtomicMoveNotSupportedException, Files, Path, StandardCopyOption}
+import java.util.UUID
+import scala.util.{Failure, Success}
 
 /** Operations on the media of a resource, independent of how the bucket stores it. */
 trait MediaOperations:
@@ -34,13 +31,7 @@ trait MediaOperations:
 
   def commitStreamability(info: ResourceInfo, tempFile: Option[String]): IO[Either[StreamabilityError, ResourceInfo]]
 
-  def originalETag(info: ResourceInfo): Option[String]
-
-  def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[StreamedResource]]
-
-  def previewOperations(info: ResourceInfo): List[ResourceOperation]
-
-  def runPreviewOperation(info: ResourceInfo, operation: ResourceOperation): IO[Unit]
+  def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]]
 
   def generatePreviews(info: ResourceInfo): IO[Unit]
 
@@ -212,27 +203,20 @@ final class FileOperations(
    */
   private def previewETag(info: ResourceInfo, outputFile: Path): Option[String] =
     info.partialHash.map(sourceHash =>
-      eTagOf(sourceHash, outputFile.getFileName.toString, formats.settingsFingerprint, ResourceOperations.previewRecipeVersion.toString)
+      ETag.of(sourceHash, outputFile.getFileName.toString, formats.settingsFingerprint, ResourceOperations.previewRecipeVersion.toString)
     )
 
-  /** Validator for a resource's original content, derived from its partial hash and last modified time. */
-  override def originalETag(info: ResourceInfo): Option[String] =
-    info.partialHash.map(sourceHash => eTagOf(sourceHash, info.timeLastModified.getOrElse(0L).toString))
-
-  private def eTagOf(parts: String*): String =
-    Base32.encode(MessageDigest.getInstance("SHA-1").digest(parts.mkString("\u0000").getBytes(StandardCharsets.UTF_8)))
-
-  override def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[StreamedResource]] = {
+  override def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]] = {
 
     val outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
     val eTag       = previewETag(info, outputFile)
     val key        = (resourceId = info.resourceId, operation = operation)
 
-    if Files.exists(outputFile) then IO.pure(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
+    if Files.exists(outputFile) then IO.pure(Streamed(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag)).some)
     else
       inFlight
         .run(key)(createResource(config.resourcePath.resolve(info.path), info, key.operation).as(Option.empty[ResourceInfo]))
-        .map(_ => StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag).some)
+        .map(_ => Streamed(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag)).some)
   }
 
   private def createResource(inputFile: Path, info: ResourceInfo, operation: ResourceOperation): IO[Path] =
@@ -348,10 +332,10 @@ final class FileOperations(
     IO.blocking(Files.write(outputFile, webVtt.getBytes(StandardCharsets.UTF_8))).void
   }
 
-  override def previewOperations(info: ResourceInfo): List[ResourceOperation] =
+  private def previewOperations(info: ResourceInfo): List[ResourceOperation] =
     ResourceOperations.all(info, resolutions, formats).filter(_.validate(info).isRight)
 
-  override def runPreviewOperation(info: ResourceInfo, operation: ResourceOperation): IO[Unit] =
+  private def runPreviewOperation(info: ResourceInfo, operation: ResourceOperation): IO[Unit] =
     derivedResource(info, operation).attempt.flatMap {
       case Left(error) => IO(logger.error(s"Failed to generate preview $operation for '${info.path}'", error))
       case Right(_)    => IO.unit

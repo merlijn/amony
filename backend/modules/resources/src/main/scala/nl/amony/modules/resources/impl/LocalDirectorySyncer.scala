@@ -31,7 +31,7 @@ import nl.amony.platform.files.sync.*
 /**
  * Functionality to synchronize a local directory with the database state.
  */
-trait LocalResourceSyncer extends LocalDirectoryBase {
+trait LocalDirectorySyncer extends LocalDirectoryBase {
 
   private val logger             = scribe.Logger("LocalResourceSyncer")
   private val bucketId: BucketId = BucketId(config.id)
