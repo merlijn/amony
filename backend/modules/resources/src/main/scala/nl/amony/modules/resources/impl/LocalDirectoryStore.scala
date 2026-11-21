@@ -6,7 +6,7 @@ import java.nio.file.{Files, Path}
 import cats.effect.IO
 import scribe.Logging
 
-import nl.amony.modules.resources.api.{LocalDirectoryConfig, ResourceContent, ResourceInfo, StreamedResource}
+import nl.amony.modules.resources.api.{LocalDirectoryConfig, ResourceContent, ResourceInfo, StagingId, StreamedResource}
 
 /** [[ResourceStore]] backed by a local directory. */
 final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceStore, Logging:
@@ -20,15 +20,15 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
       }
     }
 
-  override def stage(stagedFile: String, file: Path): IO[Unit] = IO.unit
+  override def stage(stagingId: StagingId, file: Path): IO[Unit] = IO.unit
 
-  override def commit(stagedFile: String, fileName: String): IO[Either[String, StoredResource]] =
+  override def commit(stagingId: StagingId, fileName: String): IO[Either[String, StoredResource]] =
     IO.blocking {
       resolveTargetPath(config.resourcePath.resolve(fileName), maxAttempts = 100) match
         case None         => Left("Failed to resolve unique file name after 100 attempts")
         case Some(target) =>
           Files.createDirectories(target.getParent)
-          Files.move(config.tempPath.resolve(stagedFile), target)
+          Files.move(config.tempPath.resolve(stagingId), target)
           val attributes = Files.readAttributes(target, classOf[BasicFileAttributes])
           Right(
             StoredResource(
@@ -40,7 +40,7 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
           )
     }
 
-  override def discard(stagedFile: String): IO[Unit] = IO.unit
+  override def discard(stagingId: StagingId): IO[Unit] = IO.unit
 
   private def resolveTargetPath(path: Path, maxAttempts: Int): Option[Path] = {
     var target: Path = path

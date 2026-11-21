@@ -69,7 +69,7 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       Files.createDirectories(cfg.tempPath)
       Files.writeString(staged, "content")
 
-      val stored = store.commit("resource-upload", "video.mp4").unsafeRunSync()
+      val stored = store.commit(StagingId("resource-upload"), "video.mp4").unsafeRunSync()
 
       stored.map(_.path) shouldBe Right("video.mp4")
       Files.exists(dir.resolve("video.mp4")) shouldBe true
@@ -85,7 +85,7 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       Files.createDirectories(cfg.tempPath)
       Files.writeString(staged, "content")
 
-      store.commit("resource-upload", "video.mp4").unsafeRunSync().map(_.path) shouldBe Right("video_1.mp4")
+      store.commit(StagingId("resource-upload"), "video.mp4").unsafeRunSync().map(_.path) shouldBe Right("video_1.mp4")
       Files.exists(dir.resolve("video_1.mp4")) shouldBe true
     }
   }

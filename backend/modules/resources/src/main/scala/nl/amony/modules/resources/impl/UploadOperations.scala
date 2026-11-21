@@ -16,7 +16,7 @@ import skunk.Session
 import nl.amony.modules.resources.api.*
 
 /** A staged upload: the request body is already in the bucket's temp directory, waiting for the upload command. */
-final private[impl] case class StagedUpload(resourceId: ResourceId, fileName: String, tempFile: String)
+final private[impl] case class StagedUpload(resourceId: ResourceId, fileName: String, stagingId: StagingId)
 
 trait UploadOperations extends LocalResourceSyncer, Logging:
 
@@ -50,8 +50,8 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
         IO.pure(Left(UploadError.InvalidFileName(s"File name '$decoded' is invalid")))
       case Right(decoded)                                              =>
         val resourceId = config.generateId()
-        val tempFile   = s"$resourceId-upload"
-        val target     = config.tempPath.resolve(tempFile)
+        val stagingId  = StagingId(s"$resourceId-upload")
+        val target     = config.tempPath.resolve(stagingId)
         val stage      =
           for
             _    <- IO.blocking(JFiles.createDirectories(config.tempPath))
@@ -59,28 +59,28 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
             size <- IO.blocking(JFiles.size(target))
           yield
             if size == 0 then Left(UploadError.StorageError(s"Failed to store upload '$decoded': Uploaded file is empty"))
-            else Right(StagedUpload(resourceId, decoded, tempFile))
+            else Right(StagedUpload(resourceId, decoded, stagingId))
         stage.attempt.flatMap:
           case Right(Right(staged)) => IO.pure(Right(staged))
-          case Right(Left(error))   => discardUpload(tempFile).as(Left(error))
+          case Right(Left(error))   => discardUpload(stagingId).as(Left(error))
           case Left(error)          =>
-            discardUpload(tempFile).as(Left(UploadError.StorageError(s"Failed to store upload '$decoded': ${error.getMessage}")))
+            discardUpload(stagingId).as(Left(UploadError.StorageError(s"Failed to store upload '$decoded': ${error.getMessage}")))
 
-  protected def discardUpload(tempFile: String): IO[Unit] =
-    store.discard(tempFile) *> IO.blocking(JFiles.deleteIfExists(config.tempPath.resolve(tempFile))).void
+  protected def discardUpload(stagingId: StagingId): IO[Unit] =
+    store.discard(stagingId) *> IO.blocking(JFiles.deleteIfExists(config.tempPath.resolve(stagingId))).void
 
   /**
    * Slow, non-transactional part of an upload: scans the staged file and remuxes it when that makes it streamable. The
    * result lives entirely in the temp directory, so a failure leaves nothing observable behind.
    */
   def prepareUpload(upload: UploadResource): IO[Either[UploadProcessingError, PreparedUpload]] =
-    val tempPath = config.tempPath.resolve(upload.tempFile)
+    val tempPath = config.tempPath.resolve(upload.stagingId)
     IO.blocking(JFiles.exists(tempPath)).flatMap:
-      case false => IO.pure(Left(UploadProcessingError(upload.tempFile, "the staged upload is no longer available")))
+      case false => IO.pure(Left(UploadProcessingError(upload.stagingId, "the staged upload is no longer available")))
       case true  =>
         (for
           meta      <- EitherT(ops.contentMetaForPath(tempPath)).leftMap(error =>
-                         UploadProcessingError(upload.tempFile, s"the uploaded file could not be read: ${error.message}")
+                         UploadProcessingError(upload.stagingId, s"the uploaded file could not be read: ${error.message}")
                        )
           container  = meta.contentType
                          .filter(_ => meta.streamable.contains(false))
@@ -98,11 +98,11 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
           hash      <- EitherT(hashFile(tempPath))
           finalMeta <- if remuxed then
             EitherT(ops.contentMetaForPath(tempPath)).leftMap(error =>
-              UploadProcessingError(upload.tempFile, s"the uploaded file could not be read: ${error.message}")
+              UploadProcessingError(upload.stagingId, s"the uploaded file could not be read: ${error.message}")
             )
           else EitherT.pure[IO, UploadProcessingError](meta)
-          _         <- EitherT.liftF[IO, UploadProcessingError, Unit](store.stage(upload.tempFile, tempPath))
-        yield PreparedUpload(upload.tempFile, hash, finalMeta)).value
+          _         <- EitherT.liftF[IO, UploadProcessingError, Unit](store.stage(upload.stagingId, tempPath))
+        yield PreparedUpload(upload.stagingId, hash, finalMeta)).value
 
   /**
    * Fast, transactional part of an upload: moves the prepared file into place and inserts the resource. Committing
@@ -114,10 +114,10 @@ trait UploadOperations extends LocalResourceSyncer, Logging:
     prepared: PreparedUpload
   ): IO[Either[UploadProcessingError, Unit]] =
     db.getResourceById(upload.bucketId, upload.resourceId).flatMap:
-      case Some(_) => discardUpload(prepared.tempFile).as(Right(()))
+      case Some(_) => discardUpload(prepared.stagingId).as(Right(()))
       case None    =>
-        store.commit(prepared.tempFile, upload.fileName).flatMap:
-          case Left(message) => IO.pure(Left(UploadProcessingError(prepared.tempFile, message)))
+        store.commit(prepared.stagingId, upload.fileName).flatMap:
+          case Left(message) => IO.pure(Left(UploadProcessingError(prepared.stagingId, message)))
           case Right(stored) =>
             val info = ResourceInfo(
               bucketId           = upload.bucketId,

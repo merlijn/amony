@@ -74,10 +74,10 @@ class ResourceBucketImpl(
     stageUpload(fileName, source).flatMap:
       case Left(error)   => IO.pure(Left(error))
       case Right(staged) =>
-        val job    = UploadResource(id, staged.resourceId, userId, staged.fileName, staged.tempFile)
+        val job    = UploadResource(id, staged.resourceId, userId, staged.fileName, staged.stagingId)
         val submit = jobBus
           .submit(job.key, job)
-          .handleErrorWith(error => discardUpload(staged.tempFile) >> IO.raiseError(error))
+          .handleErrorWith(error => discardUpload(staged.stagingId) >> IO.raiseError(error))
         for
           jobId  <- submit
           status <- jobBus.awaitCompletion(jobId, jobTimeout)

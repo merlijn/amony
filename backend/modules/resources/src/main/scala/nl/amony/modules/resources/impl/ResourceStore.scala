@@ -4,7 +4,7 @@ import java.nio.file.Path
 
 import cats.effect.IO
 
-import nl.amony.modules.resources.api.{ResourceContent, ResourceInfo}
+import nl.amony.modules.resources.api.{ResourceContent, ResourceInfo, StagingId}
 
 /** Metadata of an object stored in a [[ResourceStore]]. */
 final case class StoredResource(
@@ -27,10 +27,10 @@ trait ResourceStore:
    * Makes a locally staged file available to the store, so that [[commit]] can move it into place. Stores that share a
    * file system with the staging area may leave this a no-op.
    */
-  def stage(stagedFile: String, file: Path): IO[Unit]
+  def stage(stagingId: StagingId, file: Path): IO[Unit]
 
   /** Moves a staged file to its final location, resolving a unique name, and returns its metadata. */
-  def commit(stagedFile: String, fileName: String): IO[Either[String, StoredResource]]
+  def commit(stagingId: StagingId, fileName: String): IO[Either[String, StoredResource]]
 
   /** Discards a staged file. */
-  def discard(stagedFile: String): IO[Unit]
+  def discard(stagingId: StagingId): IO[Unit]
