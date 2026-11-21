@@ -29,7 +29,6 @@ import nl.amony.modules.resources.impl.{
   LocalDirectoryStore,
   LocalDirectorySyncer,
   ResourceBucketImpl,
-  ResourceJobs,
   ResourceProcessor
 }
 import nl.amony.platform.messagebus.{JobBus, MessageTopic}
@@ -44,7 +43,6 @@ import nl.amony.platform.tapir.ServerEndpoints
 class ResourceModule(
   private val resourceDatabase: ResourceDatabase,
   val bucketRegistry: BucketRegistry,
-  val jobs: ResourceJobs,
   val thumbResolutions: ThumbnailResolutions,
   val thumbFormats: ThumbnailFormats,
   val thumbTiles: ThumbnailTiles,
@@ -85,7 +83,6 @@ object ResourceModule:
       config.previews.tiles.spritePixels
     )
     val resourceDatabase = ResourceDatabase(databasePool)
-    val jobs             = ResourceJobs(jobBus)
 
     def bucketFactory(processLimiter: ProcessLimiter): BucketFactory = {
       case localConfig: LocalDirectoryConfig =>
@@ -129,7 +126,6 @@ object ResourceModule:
       module            = new ResourceModule(
                             resourceDatabase,
                             bucketRegistry,
-                            jobs,
                             thumbResolutions,
                             thumbFormats,
                             thumbTiles,
@@ -138,5 +134,5 @@ object ResourceModule:
                           )
       resourceProcessor = ResourceProcessor(bucketRegistry)
       _                <- eventTopic.processAtLeastOnce("resource-processor")(resourceProcessor.processEvent).compile.drain.background
-      _                <- module.jobs.processAtLeastOnce(bucketRegistry).compile.drain.background
+      _                <- jobBus.processAtLeastOnce(resourceProcessor.processJob).compile.drain.background
     yield module
