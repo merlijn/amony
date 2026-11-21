@@ -2,7 +2,7 @@ package nl.amony.modules.resources.impl
 
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files as JFiles, Path as JPath, StandardCopyOption}
+import java.nio.file.{Files as JFiles, Path as JPath}
 import java.security.MessageDigest
 import java.time.Instant
 
@@ -74,12 +74,13 @@ trait UploadOperations extends LocalDirectorySyncer, Logging:
    * result lives entirely in the temp directory, so a failure leaves nothing observable behind.
    */
   def prepareUpload(upload: UploadResource): IO[Either[UploadProcessingError, PreparedUpload]] =
+    val location = ContentLocation.Staged(upload.stagingId)
     val tempPath = config.tempPath.resolve(upload.stagingId)
     IO.blocking(JFiles.exists(tempPath)).flatMap:
       case false => IO.pure(Left(UploadProcessingError(upload.stagingId, "the staged upload is no longer available")))
       case true  =>
         (for
-          meta      <- EitherT(ops.contentMetaForPath(tempPath)).leftMap(error =>
+          meta      <- EitherT(ops.contentMeta(location)).leftMap(error =>
                          UploadProcessingError(upload.stagingId, s"the uploaded file could not be read: ${error.message}")
                        )
           container  = meta.contentType
@@ -88,16 +89,19 @@ trait UploadOperations extends LocalDirectorySyncer, Logging:
           remuxed   <- EitherT.right[UploadProcessingError](container match
                          case None            => IO.pure(false)
                          case Some(container) =>
-                           ops.addFastStart(tempPath, container).attempt.flatMap {
-                             case Left(error)       =>
+                           ops.normalizeUpload(upload.stagingId, container).attempt.flatMap {
+                             case Right(Right(()))   => IO.pure(true)
+                             case Right(Left(error)) =>
+                               IO(
+                                 logger.warn(s"Failed to remux uploaded file '${upload.fileName}': ${error.message}. Storing the original file")
+                               ).as(false)
+                             case Left(error)        =>
                                logger.warn(s"Failed to remux uploaded file '${upload.fileName}', storing the original file", error)
                                IO.pure(false)
-                             case Right(normalized) =>
-                               IO.blocking(JFiles.move(normalized, tempPath, StandardCopyOption.REPLACE_EXISTING)).as(true)
                            })
           hash      <- EitherT(hashFile(tempPath))
           finalMeta <- if remuxed then
-            EitherT(ops.contentMetaForPath(tempPath)).leftMap(error =>
+            EitherT(ops.contentMeta(location)).leftMap(error =>
               UploadProcessingError(upload.stagingId, s"the uploaded file could not be read: ${error.message}")
             )
           else EitherT.pure[IO, UploadProcessingError](meta)

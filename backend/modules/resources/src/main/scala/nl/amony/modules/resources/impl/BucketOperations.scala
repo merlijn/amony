@@ -1,42 +1,52 @@
 package nl.amony.modules.resources.impl
 
-import cats.effect.IO
-import cats.implicits.*
-import nl.amony.modules.resources.api.*
-import nl.amony.modules.resources.api.ResourceContent.Streamed
-import nl.amony.modules.resources.util.{ETag, SingleFlight}
-import nl.amony.platform.subprocess.ffmpeg.{ContainerFormat, FFMpeg}
-import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
-import nl.amony.platform.subprocess.magick.ImageMagick
-import nl.amony.platform.subprocess.{ProcessLimiter, ProcessRunner, ProcessSettings}
-import org.apache.tika.Tika
-import org.typelevel.otel4s.metrics.Meter
-import org.typelevel.otel4s.trace.Tracer
-import scribe.Logging
-
 import java.nio.charset.StandardCharsets
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{AtomicMoveNotSupportedException, Files, Path, StandardCopyOption}
 import java.util.UUID
 import scala.util.{Failure, Success}
 
-/** Operations on the media of a resource, independent of how the bucket stores it. */
-trait MediaOperations:
+import cats.effect.IO
+import cats.implicits.*
+import org.apache.tika.Tika
+import org.typelevel.otel4s.metrics.Meter
+import org.typelevel.otel4s.trace.Tracer
+import scribe.Logging
 
-  def contentMetaForPath(path: Path): IO[Either[ContentUnreadable, ContentMeta]]
+import nl.amony.modules.resources.api.*
+import nl.amony.modules.resources.api.ResourceContent.Streamed
+import nl.amony.modules.resources.util.{ETag, SingleFlight}
+import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
+import nl.amony.platform.subprocess.ffmpeg.{ContainerFormat, FFMpeg}
+import nl.amony.platform.subprocess.magick.ImageMagick
+import nl.amony.platform.subprocess.{ProcessLimiter, ProcessRunner, ProcessSettings}
 
-  def addFastStart(video: Path, container: VideoContainer, outputFile: Option[Path] = None): IO[Path]
+/** Where content to operate on lives: a resource in the bucket or a file staged for upload. */
+enum ContentLocation:
+  case Resource(path: String)
+  case Staged(stagingId: StagingId)
 
-  def remuxForStreaming(info: ResourceInfo): IO[Either[StreamabilityError, String]]
+  def display: String = this match
+    case Resource(path)    => path
+    case Staged(stagingId) => s"staged:$stagingId"
 
-  def commitStreamability(info: ResourceInfo, tempFile: Option[String]): IO[Either[StreamabilityError, ResourceInfo]]
+/** Operations on the content of a bucket, addressed without exposing local file system paths. */
+trait BucketOperations:
+
+  def contentMeta(location: ContentLocation): IO[Either[ContentUnreadable, ContentMeta]]
+
+  def normalizeUpload(stagingId: StagingId, container: VideoContainer): IO[Either[StreamabilityError, Unit]]
+
+  def remuxForStreaming(info: ResourceInfo): IO[Either[StreamabilityError, Option[StagingId]]]
+
+  def commitStreamability(info: ResourceInfo, stagingId: Option[StagingId]): IO[Either[StreamabilityError, ResourceInfo]]
 
   def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]]
 
   def generatePreviews(info: ResourceInfo): IO[Unit]
 
-final case class ContentUnreadable(path: Path, cause: Throwable):
-  def message: String = s"Failed to read content of $path: ${Option(cause.getMessage).getOrElse(cause.getClass.getName)}"
+final case class ContentUnreadable(location: ContentLocation, cause: Throwable):
+  def message: String = s"Failed to read content of ${location.display}: ${Option(cause.getMessage).getOrElse(cause.getClass.getName)}"
 
 final class FileOperations(
   config: LocalDirectoryConfig,
@@ -45,7 +55,7 @@ final class FileOperations(
   resolutions: ThumbnailResolutions,
   processSettings: ProcessSettings,
   processLimiter: ProcessLimiter
-)(using meter: Meter[IO], tracer: Tracer[IO]) extends MediaOperations, Logging {
+)(using meter: Meter[IO], tracer: Tracer[IO]) extends BucketOperations, Logging {
 
   private given runner: ProcessRunner = new ProcessRunner(processSettings, processLimiter)
   private val tika                    = new Tika()
@@ -80,11 +90,16 @@ final class FileOperations(
    */
   private val inFlight = SingleFlight[OperationKey, Option[ResourceInfo]]
 
-  private def contentTypeForPath(path: Path): IO[Either[ContentUnreadable, String]] =
-    IO.blocking(tika.detect(path)).attempt.map(_.left.map(ContentUnreadable(path, _)))
+  private def pathOf(location: ContentLocation): Path = location match
+    case ContentLocation.Resource(path)    => config.resourcePath.resolve(path)
+    case ContentLocation.Staged(stagingId) => config.tempPath.resolve(stagingId)
 
-  override def contentMetaForPath(path: Path): IO[Either[ContentUnreadable, ContentMeta]] =
-    contentTypeForPath(path).flatMap {
+  private def contentTypeFor(location: ContentLocation, path: Path): IO[Either[ContentUnreadable, String]] =
+    IO.blocking(tika.detect(path)).attempt.map(_.left.map(ContentUnreadable(location, _)))
+
+  override def contentMeta(location: ContentLocation): IO[Either[ContentUnreadable, ContentMeta]] =
+    val path = pathOf(location)
+    contentTypeFor(location, path).flatMap {
       case Left(error)        => IO.pure(Left(error))
       case Right(contentType) =>
         for
@@ -112,16 +127,24 @@ final class FileOperations(
           Some(ToolScan("magick/1", result.rawJson))
     else IO.pure(None)
 
-  private def stripExtension(path: Path): Path =
-    val fileName = path.getFileName.toString
-    val dotIdx   = fileName.lastIndexOf('.')
-    if dotIdx >= 0 then path.resolveSibling(fileName.substring(0, dotIdx)) else path
+  private def addFastStart(video: Path, container: VideoContainer, outputFile: Path): IO[Path] =
+    FFMpeg.addFastStart(video.toUri, containerFormat(container), outputFile)
 
-  override def addFastStart(video: Path, container: VideoContainer, outputFile: Option[Path]): IO[Path] = {
-    // Local files have a well-defined sibling directory, so a default still makes sense here; remote callers must pass an explicit output.
-    val out = outputFile.getOrElse(Path.of(s"${stripExtension(video)}-faststart.${containerFormat(container).extension}"))
-    FFMpeg.addFastStart(video.toUri, containerFormat(container), out)
-  }
+  override def normalizeUpload(stagingId: StagingId, container: VideoContainer): IO[Either[StreamabilityError, Unit]] =
+    val source                                          = config.tempPath.resolve(stagingId)
+    val normalized                                      = config.tempPath.resolve(s"$stagingId-normalized")
+    val normalize: IO[Either[StreamabilityError, Unit]] =
+      for
+        _   <- IO.blocking(Files.createDirectories(config.tempPath))
+        out <- addFastStart(source, container, normalized)
+        _   <- moveIntoPlace(out, source)
+      yield Right(())
+    normalize
+      .onError(_ => IO.blocking(Files.deleteIfExists(normalized)).void)
+      .attempt
+      .map:
+        case Right(result) => result
+        case Left(error)   => Left(StreamabilityError.FixFailed(stagingId, s"Failed to normalize the staged upload: ${error.getMessage}"))
 
   private def containerFormat(container: VideoContainer): ContainerFormat = container match
     case VideoContainer.Mp4      => ContainerFormat.Mp4
@@ -139,42 +162,45 @@ final class FileOperations(
 
   /**
    * Remuxes the resource into the bucket's temp directory without touching the live file, so a failed or abandoned
-   * attempt never leaves the resource inconsistent. Returns the temp file name. Runs in the command consumer, where the
-   * resource's commands are serialized.
+   * attempt never leaves the resource inconsistent. Returns the staging id of the remux. Runs in the command consumer,
+   * where the resource's commands are serialized.
    */
-  override def remuxForStreaming(info: ResourceInfo): IO[Either[StreamabilityError, String]] =
+  override def remuxForStreaming(info: ResourceInfo): IO[Either[StreamabilityError, Option[StagingId]]] =
     AddFastStart.forResource(info) match
       case None            => IO.pure(Left(StreamabilityError.UnsupportedContainer(info.contentType.getOrElse("unknown"))))
       case Some(operation) =>
         val container = operation.container
-        val source    = config.resourcePath.resolve(info.path)
         // A unique name keeps a lease-stolen attempt from writing the same file as the original one.
-        val fileName  = s"${info.resourceId}-normalize-${UUID.randomUUID()}.${container.extension}"
-        val temp      = config.tempPath.resolve(fileName)
+        val stagingId = StagingId(s"${info.resourceId}-normalize-${UUID.randomUUID()}.${container.extension}")
+        val temp      = config.tempPath.resolve(stagingId)
         val remux     =
           for
             _          <- IO.blocking(Files.createDirectories(config.tempPath))
-            out        <- addFastStart(source, container, Some(temp))
+            out        <- addFastStart(config.resourcePath.resolve(info.path), container, temp)
             streamable <- streamableOf(out, info.contentType)
-            result     <- if streamable.contains(true) then IO.pure(Right(fileName))
-            else
-              IO.blocking(Files.deleteIfExists(temp)).void.as(
-                Left(StreamabilityError.FixFailed(info.path, "the remux did not produce a streamable file"))
-              )
+            result     <-
+              if streamable.contains(true) then IO.pure(Right(Some(stagingId)): Either[StreamabilityError, Option[StagingId]])
+              else
+                IO.blocking(Files.deleteIfExists(temp)).void.as(
+                  Left(StreamabilityError.FixFailed(
+                    info.path,
+                    "the remux did not produce a streamable file"
+                  )): Either[StreamabilityError, Option[StagingId]]
+                )
           yield result
         remux.onError(_ => IO.blocking(Files.deleteIfExists(temp)).void)
 
   /**
    * Replaces the live file with the remux produced by [[remuxForStreaming]] (when one is still present) and refreshes the
-   * metadata that depends on the file. Idempotent: a retry after the move finds no temp file and re-derives the metadata.
+   * metadata that depends on the file. Idempotent: a retry after the move finds no staging file and re-derives the metadata.
    */
-  override def commitStreamability(info: ResourceInfo, tempFile: Option[String]): IO[Either[StreamabilityError, ResourceInfo]] =
+  override def commitStreamability(info: ResourceInfo, stagingId: Option[StagingId]): IO[Either[StreamabilityError, ResourceInfo]] =
     val source = config.resourcePath.resolve(info.path)
-    val move   = tempFile match
-      case Some(file) =>
-        val temp = config.tempPath.resolve(file)
+    val move   = stagingId match
+      case Some(id) =>
+        val temp = config.tempPath.resolve(id)
         IO.blocking(Files.exists(temp)).flatMap(exists => if exists then moveIntoPlace(temp, source).void else IO.unit)
-      case None       => IO.unit
+      case None     => IO.unit
     for
       _          <- move
       attrs      <- IO.blocking(Files.readAttributes(source, classOf[BasicFileAttributes]))

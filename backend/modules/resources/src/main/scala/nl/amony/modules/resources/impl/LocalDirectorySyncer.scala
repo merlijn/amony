@@ -75,7 +75,7 @@ trait LocalDirectorySyncer extends LocalDirectoryBase {
   }
 
   private[impl] def newResource(f: FileInfo, userId: UserId): IO[Either[ContentUnreadable, ResourceInfo]] =
-    ops.contentMetaForPath(f.path).map(_.map { contentMeta =>
+    ops.contentMeta(ContentLocation.Resource(relativizePath(f.path))).map(_.map { contentMeta =>
       ResourceInfo(
         bucketId           = bucketId,
         resourceId         = config.generateId(),
@@ -100,7 +100,7 @@ trait LocalDirectorySyncer extends LocalDirectoryBase {
       case None           =>
         IO(logger.warn(s"Dropping content-changed event, no such file in database: ${f.path}")).as(None)
       case Some(existing) =>
-        ops.contentMetaForPath(f.path).flatMap {
+        ops.contentMeta(ContentLocation.Resource(relativizePath(f.path))).flatMap {
           case Left(e)      =>
             IO(logger.error(s"Skipping content-changed event, failed to read ${f.path}", e.cause)).as(None)
           case Right(fresh) =>

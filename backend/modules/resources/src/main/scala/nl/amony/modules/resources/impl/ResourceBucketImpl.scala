@@ -1,11 +1,13 @@
 package nl.amony.modules.resources.impl
 
 import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.implicits.*
 import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
+
 import nl.amony.modules.auth.api.{Role, UserId}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.ResourceDatabase
@@ -17,7 +19,7 @@ class ResourceBucketImpl(
   parallelFactor: Int,
   db: ResourceDatabase,
   topic: MessageTopic[ResourceEvent],
-  ops: MediaOperations,
+  ops: BucketOperations,
   store: ResourceStore,
   jobBus: JobBus[ResourceJob] = null,
   jobTimeout: FiniteDuration  = 30.minutes
@@ -37,17 +39,16 @@ class ResourceBucketImpl(
   override def getResourceContent(resourceId: ResourceId): IO[Option[ResourceContent]] =
     getResourceInfo(resourceId).flatMap:
       case None       => IO.pure(None)
-      case Some(info) => store.content(info, info.partialHash.map(sourceHash => ETag.of(sourceHash, info.timeLastModified.getOrElse(0L).toString)))
+      case Some(info) => store.content(info, ETag.forResource(info))
 
   override def getAllResources: fs2.Stream[IO, ResourceInfo] =
     db.getStream(id)
 
   override def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap { resource =>
-    val resourcePath = config.resourcePath.resolve(resource.path)
-    ops.contentMetaForPath(resourcePath).flatMap {
-      case Left(e)     => IO(logger.error(s"Skipping metadata rescan for $resourcePath", e.cause))
+    ops.contentMeta(ContentLocation.Resource(resource.path)).flatMap {
+      case Left(e)     => IO(logger.error(s"Skipping metadata rescan for ${resource.path}", e.cause))
       case Right(meta) =>
-        logger.info(s"Updating metadata for $resourcePath")
+        logger.info(s"Updating metadata for ${resource.path}")
         val updated = resource.copy(contentMeta = resource.contentMeta.updatedWith(meta))
         db.transact(s => db.upsertResource(updated) >> topic.publish(s, ResourceModified(updated)))
     }
@@ -100,23 +101,23 @@ class ResourceBucketImpl(
       case Some(_)                                              => Right(())
 
   /** Remuxes to the bucket's temp directory without touching the live file. Returns None when nothing is needed. */
-  override def remuxForStreaming(resourceId: ResourceId): IO[Either[StreamabilityError, Option[String]]] =
+  override def remuxForStreaming(resourceId: ResourceId): IO[Either[StreamabilityError, Option[StagingId]]] =
     getResourceInfo(resourceId).flatMap:
       case None                                           => IO.pure(Left(StreamabilityError.ResourceNotFound(resourceId)))
       case Some(info) if !info.streamable.contains(false) => IO.pure(Right(None))
-      case Some(info)                                     => ops.remuxForStreaming(info).map(_.map(Some(_)))
+      case Some(info)                                     => ops.remuxForStreaming(info)
 
   /**
    * Commits a remux: replaces the live file, refreshes its metadata and publishes ResourceModified in a transaction.
    */
   override def commitStreamabilityFix(
     resourceId: ResourceId,
-    tempFile: Option[String]
+    stagingId: Option[StagingId]
   ): IO[Either[StreamabilityError, Unit]] =
     getResourceInfo(resourceId).flatMap:
       case None       => IO.pure(Left(StreamabilityError.ResourceNotFound(resourceId)))
       case Some(info) =>
-        ops.commitStreamability(info, tempFile).flatMap:
+        ops.commitStreamability(info, stagingId).flatMap:
           case Left(error)    => IO.pure(Left(error))
           case Right(updated) =>
             db.transact(s => db.upsertResource(updated) >> topic.publish(s, ResourceModified(updated))).as(Right(()))
@@ -137,9 +138,7 @@ class ResourceBucketImpl(
       case Some(info) => ops.derivedResource(info, operation)
 
   override def generateAllPreviews(): IO[Unit] =
-    getAllResources
-      .evalMap(info => ops.generatePreviews(info).map(info -> _))
-      .compile.drain
+    getAllResources.evalMap(ops.generatePreviews).compile.drain
 
   override def generatePreviewsIfEnabled(info: ResourceInfo): IO[Unit] =
     if config.generatePreviewsOnAdd then ops.generatePreviews(info)

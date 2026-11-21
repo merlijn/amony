@@ -76,9 +76,9 @@ trait ResourceBucket {
 
   def fixStreamability(resourceId: ResourceId): IO[Either[ResourceJobError, Unit]]
 
-  def remuxForStreaming(resourceId: ResourceId): IO[Either[StreamabilityError, Option[String]]]
+  def remuxForStreaming(resourceId: ResourceId): IO[Either[StreamabilityError, Option[StagingId]]]
 
-  def commitStreamabilityFix(resourceId: ResourceId, tempFile: Option[String]): IO[Either[StreamabilityError, Unit]]
+  def commitStreamabilityFix(resourceId: ResourceId, stagingId: Option[StagingId]): IO[Either[StreamabilityError, Unit]]
 
   def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, ResourceInfo]]
 

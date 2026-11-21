@@ -21,9 +21,9 @@ final class ResourceJobs(bus: JobBus[ResourceJob]):
     job match
       case FixStreamability(bucketId, resourceId) =>
         (for
-          bucket   <- EitherT(getBucket(registry, bucketId))
-          tempFile <- EitherT(bucket.remuxForStreaming(resourceId)).leftMap(_.message)
-        yield bucket.commitStreamabilityFix(resourceId, tempFile).map(_.left.map(_.message))).value
+          bucket    <- EitherT(getBucket(registry, bucketId))
+          stagingId <- EitherT(bucket.remuxForStreaming(resourceId)).leftMap(_.message)
+        yield bucket.commitStreamabilityFix(resourceId, stagingId).map(_.left.map(_.message))).value
 
       case upload: UploadResource =>
         (for
