@@ -175,68 +175,66 @@ final class FileOperations(
    * where the resource's commands are serialized.
    */
   override def remuxForStreaming(info: ResourceInfo): EitherT[IO, StreamabilityError, Option[StagingId]] =
-    EitherT((for
+    for
       _         <- EitherT.fromEither[IO](ResourcePath.fromString(info.path)).leftMap(message => StreamabilityError.FixFailed(info.path, message))
       operation <-
         EitherT.fromOption[IO](AddFastStart.forResource(info), StreamabilityError.UnsupportedContainer(info.contentType.getOrElse("unknown")))
-    yield operation).value.flatMap:
-      case Left(error)      => IO.pure(Left(error))
-      case Right(operation) =>
-        // A unique name keeps a lease-stolen attempt from writing the same file as the original one.
-        val stagingId = StagingId(s"${info.resourceId}-normalize-${UUID.randomUUID()}.${operation.container.extension}")
-        val temp      = config.tempPath.resolve(stagingId)
-        val remux     =
-          for
-            _          <- IO.blocking(Files.createDirectories(config.tempPath))
-            out        <- addFastStart(config.resourcePath.resolve(info.path), operation.container, temp)
-            streamable <- streamableOf(out, info.contentType)
-            result     <-
-              if streamable.contains(true) then IO.pure(Right(Some(stagingId)): Either[StreamabilityError, Option[StagingId]])
-              else
-                IO.blocking(Files.deleteIfExists(temp)).void.as(
-                  Left(StreamabilityError.FixFailed(
-                    info.path,
-                    "the remux did not produce a streamable file"
-                  )): Either[StreamabilityError, Option[StagingId]]
-                )
-          yield result
-        remux.onError(_ => IO.blocking(Files.deleteIfExists(temp)).void))
+      result    <- EitherT {
+                     // A unique name keeps a lease-stolen attempt from writing the same file as the original one.
+                     val stagingId = StagingId(s"${info.resourceId}-normalize-${UUID.randomUUID()}.${operation.container.extension}")
+                     val temp      = config.tempPath.resolve(stagingId)
+                     val remux     =
+                       for
+                         _          <- IO.blocking(Files.createDirectories(config.tempPath))
+                         out        <- addFastStart(config.resourcePath.resolve(info.path), operation.container, temp)
+                         streamable <- streamableOf(out, info.contentType)
+                         result     <-
+                           if streamable.contains(true) then IO.pure(Right(Some(stagingId)): Either[StreamabilityError, Option[StagingId]])
+                           else
+                             IO.blocking(Files.deleteIfExists(temp)).void.as(
+                               Left(StreamabilityError.FixFailed(
+                                 info.path,
+                                 "the remux did not produce a streamable file"
+                               )): Either[StreamabilityError, Option[StagingId]]
+                             )
+                       yield result
+                     remux.onError(_ => IO.blocking(Files.deleteIfExists(temp)).void)
+                   }
+    yield result
 
   /**
    * Replaces the live file with the remux produced by [[remuxForStreaming]] (when one is still present) and refreshes the
    * metadata that depends on the file. Idempotent: a retry after the move finds no staging file and re-derives the metadata.
    */
   override def commitStreamability(info: ResourceInfo, stagingId: Option[StagingId]): EitherT[IO, StreamabilityError, ResourceInfo] =
-    EitherT((for
-      _ <- EitherT.fromEither[IO](ResourcePath.fromString(info.path)).leftMap(message => StreamabilityError.FixFailed(info.path, message))
-    yield ()).value.flatMap:
-      case Left(error) => IO.pure(Left(error))
-      case Right(())   =>
-        val source = config.resourcePath.resolve(info.path)
-        for
-          _           <- stagingId match
-                           case Some(id) =>
-                             val temp = config.tempPath.resolve(id)
-                             for
-                               exists <- IO.blocking(Files.exists(temp))
-                               _      <- if exists then moveIntoPlace(temp, source).void else IO.unit
-                             yield ()
-                           case None     => IO.unit
-          attrs       <- IO.blocking(Files.readAttributes(source, classOf[BasicFileAttributes]))
-          partialHash <- config.hashingAlgorithm.createHash(source)
-          streamable  <- streamableOf(source, info.contentType)
-        yield
-          if streamable.contains(true) then
-            Right(
-              info.copy(
-                size             = attrs.size(),
-                partialHash      = Some(partialHash),
-                fileKey          = Option(attrs.fileKey()).map(_.toString),
-                timeLastModified = Some(attrs.lastModifiedTime().toMillis),
-                contentMeta      = info.contentMeta.copy(streamable = streamable)
-              )
-            )
-          else Left(StreamabilityError.FixFailed(info.path, "the file is not streamable after the remux")))
+    val source = config.resourcePath.resolve(info.path)
+    for
+      _           <- EitherT.fromEither[IO](ResourcePath.fromString(info.path)).leftMap(message => StreamabilityError.FixFailed(info.path, message))
+      _           <- stagingId match
+                       case Some(id) =>
+                         val temp = config.tempPath.resolve(id)
+                         EitherT.liftF(
+                           for
+                             exists <- IO.blocking(Files.exists(temp))
+                             _      <- if exists then moveIntoPlace(temp, source).void else IO.unit
+                           yield ()
+                         )
+                       case None     => EitherT.pure[IO, StreamabilityError](())
+      attrs       <- EitherT.liftF(IO.blocking(Files.readAttributes(source, classOf[BasicFileAttributes])))
+      partialHash <- EitherT.liftF(config.hashingAlgorithm.createHash(source))
+      streamable  <- EitherT.liftF(streamableOf(source, info.contentType))
+      updated     <- EitherT.cond[IO](
+                       streamable.contains(true),
+                       info.copy(
+                         size             = attrs.size(),
+                         partialHash      = Some(partialHash),
+                         fileKey          = Option(attrs.fileKey()).map(_.toString),
+                         timeLastModified = Some(attrs.lastModifiedTime().toMillis),
+                         contentMeta      = info.contentMeta.copy(streamable = streamable)
+                       ),
+                       StreamabilityError.FixFailed(info.path, "the file is not streamable after the remux")
+                     )
+    yield updated
 
   /**
    * Validator for a derived preview. It is derived from the source's partial hash, the operation (encoded in the output
