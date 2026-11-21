@@ -103,6 +103,7 @@ object ResourceModule:
           val syncer    = LocalDirectorySyncer(localConfig, config.parallelFactor, resourceDatabase, ops, events)
           val bucket    = ResourceBucketImpl(
             localConfig,
+            config.parallelFactor,
             resourceDatabase,
             eventTopic,
             ops,
@@ -110,10 +111,7 @@ object ResourceModule:
             events,
             jobBus
           )
-          val startSync =
-            if localConfig.sync.enabled then syncer.sync()
-            else if localConfig.sync.syncOnStartup then syncer.refresh()
-            else IO.unit
+          val startSync = syncer.sync()
           (bucket, syncer, startSync)
         }
     }

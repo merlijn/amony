@@ -218,7 +218,14 @@ final class LocalDirectorySyncer(
 
   override def refresh(): IO[Unit] = singleScan().through(_ evalTap events.processEvent).compile.drain
 
-  /** Starts polling the directory for changes. */
+  /** Starts polling the directory for changes, unless syncing is disabled. */
   def sync(): IO[Unit] =
-    logger.info(s"Starting sync process using polling for directory: ${config.resourcePath}")
-    SignallingRef[IO, Boolean](false).flatMap(startSync)
+    if config.sync.enabled then
+      logger.info(s"Starting sync process using polling for directory: ${config.resourcePath}")
+      SignallingRef[IO, Boolean](false).flatMap(startSync)
+    else if config.sync.syncOnStartup then
+      logger.info(s"Syncing resources on startup for directory: ${config.resourcePath}")
+      refresh()
+    else
+      logger.info(s"Resource sync is disabled for directory: ${config.resourcePath}")
+      IO.unit

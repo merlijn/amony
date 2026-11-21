@@ -60,6 +60,12 @@ trait ResourceBucket {
    */
   def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]]
 
+  /**
+   * Performs an operation on a resource and returns the resulting content, using already-loaded metadata so no extra
+   * lookup is needed.
+   */
+  def getOrCreate(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]]
+
   def generateAllPreviews(): IO[Unit]
 
   def reScanAllMetadata(): IO[Unit]

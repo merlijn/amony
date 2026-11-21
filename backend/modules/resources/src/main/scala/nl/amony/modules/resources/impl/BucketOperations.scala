@@ -238,16 +238,20 @@ final class FileOperations(
     )
 
   override def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]] = {
+    val source = config.resourcePath.resolve(info.path)
+    if !Files.exists(source) then
+      IO(logger.warn(s"Resource '${info.resourceId}' was found in the database but no file exists: $source")).as(None)
+    else {
+      val outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
+      val eTag       = previewETag(info, outputFile)
+      val key        = (resourceId = info.resourceId, operation = operation)
 
-    val outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
-    val eTag       = previewETag(info, outputFile)
-    val key        = (resourceId = info.resourceId, operation = operation)
-
-    if Files.exists(outputFile) then IO.pure(Streamed(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag)).some)
-    else
-      inFlight
-        .run(key)(createResource(config.resourcePath.resolve(info.path), info, key.operation).as(Option.empty[ResourceInfo]))
-        .map(_ => Streamed(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag)).some)
+      if Files.exists(outputFile) then IO.pure(Streamed(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag)).some)
+      else
+        inFlight
+          .run(key)(createResource(source, info, key.operation).as(Option.empty[ResourceInfo]))
+          .map(_ => Streamed(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag)).some)
+    }
   }
 
   private def createResource(inputFile: Path, info: ResourceInfo, operation: ResourceOperation): IO[Path] =
@@ -275,7 +279,7 @@ final class FileOperations(
   }
 
   private def moveIntoPlace(tempFile: Path, outputFile: Path): IO[Path] =
-    IO.blocking(Files.move(tempFile, outputFile, StandardCopyOption.ATOMIC_MOVE))
+    IO.blocking(Files.move(tempFile, outputFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING))
       .recoverWith {
         case _: AtomicMoveNotSupportedException =>
           IO.blocking(Files.move(tempFile, outputFile, StandardCopyOption.REPLACE_EXISTING))

@@ -223,7 +223,7 @@ object ResourceContentRoutes extends Logging {
                                   patterns.thumbnailTileSpriteOperation(version, token, index, resource, tiles)
                                 case _                                                                 => None
                               })
-            derivedContent <- OptionT(bucket.getOrCreate(ResourceId(resourceId), operation))
+            derivedContent <- OptionT(bucket.getOrCreate(resource, operation))
             response       <- OptionT.liftF(resourceContentsResponse(req, derivedContent)
                                 .map(r => r.addHeader(`Cache-Control`(`max-age`(cacheMaxAge), `must-revalidate`, scopeDirective(cacheScope)))))
           yield response

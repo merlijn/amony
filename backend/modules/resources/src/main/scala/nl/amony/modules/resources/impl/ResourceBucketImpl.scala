@@ -24,6 +24,7 @@ final private[impl] case class StagedUpload(resourceId: ResourceId, fileName: St
 
 class ResourceBucketImpl(
   config: ResourceBucketConfig,
+  parallelFactor: Int,
   db: ResourceDatabase,
   topic: MessageTopic[ResourceEvent],
   ops: BucketOperations,
@@ -274,12 +275,13 @@ class ResourceBucketImpl(
   }.compile.drain
 
   override def getOrCreate(resourceId: ResourceId, operation: ResourceOperation): IO[Option[ResourceContent]] =
-    getResourceInfo(resourceId).flatMap:
-      case None       => IO.pure(None)
-      case Some(info) => ops.derivedResource(info, operation)
+    getResourceInfo(resourceId).flatMap(_.fold(IO.pure(Option.empty[ResourceContent]))(getOrCreate(_, operation)))
+
+  override def getOrCreate(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]] =
+    ops.derivedResource(info, operation)
 
   override def generateAllPreviews(): IO[Unit] =
-    getAllResources.evalMap(ops.generatePreviews).compile.drain
+    getAllResources.parEvalMap(parallelFactor)(ops.generatePreviews).compile.drain
 
   private def generatePreviewsIfEnabled(info: ResourceInfo): IO[Unit] =
     if config.generatePreviewsOnAdd then ops.generatePreviews(info)
