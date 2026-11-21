@@ -2,6 +2,7 @@ package nl.amony.modules.resources.impl
 
 import java.nio.file.Path
 
+import cats.data.EitherT
 import cats.effect.IO
 
 import nl.amony.modules.resources.api.{ResourceContent, ResourceInfo, ResourcePath, StagingId}
@@ -30,7 +31,7 @@ trait ResourceStore:
   def stage(stagingId: StagingId, file: Path): IO[Unit]
 
   /** Moves a staged file to its final location, resolving a unique name, and returns its metadata. */
-  def commit(stagingId: StagingId, fileName: String): IO[Either[String, StoredResource]]
+  def commit(stagingId: StagingId, fileName: String): EitherT[IO, String, StoredResource]
 
   /** Discards a staged file. */
   def discard(stagingId: StagingId): IO[Unit]

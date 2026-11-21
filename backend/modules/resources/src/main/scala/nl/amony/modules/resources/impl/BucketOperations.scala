@@ -6,6 +6,7 @@ import java.nio.file.{AtomicMoveNotSupportedException, Files, Path, StandardCopy
 import java.util.UUID
 import scala.util.{Failure, Success}
 
+import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.*
 import org.apache.tika.Tika
@@ -33,22 +34,30 @@ enum ContentLocation:
 /** Operations on the content of a bucket, addressed without exposing local file system paths. */
 trait BucketOperations:
 
-  def contentMeta(location: ContentLocation): IO[Either[ContentUnreadable, ContentMeta]]
+  def contentMeta(location: ContentLocation): EitherT[IO, ContentUnreadable, ContentMeta]
 
-  def contentPartialHash(location: ContentLocation): IO[Either[ContentUnreadable, String]]
+  def contentPartialHash(location: ContentLocation): EitherT[IO, ContentUnreadable, String]
 
-  def normalizeUpload(stagingId: StagingId, container: VideoContainer): IO[Either[StreamabilityError, Unit]]
+  def normalizeUpload(stagingId: StagingId, container: VideoContainer): EitherT[IO, StreamabilityError, Unit]
 
-  def remuxForStreaming(info: ResourceInfo): IO[Either[StreamabilityError, Option[StagingId]]]
+  def remuxForStreaming(info: ResourceInfo): EitherT[IO, StreamabilityError, Option[StagingId]]
 
-  def commitStreamability(info: ResourceInfo, stagingId: Option[StagingId]): IO[Either[StreamabilityError, ResourceInfo]]
+  def commitStreamability(info: ResourceInfo, stagingId: Option[StagingId]): EitherT[IO, StreamabilityError, ResourceInfo]
 
-  def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]]
+  def derivedResource(info: ResourceInfo, operation: ResourceOperation): EitherT[IO, DerivedResourceError, ResourceContent]
 
   def generatePreviews(info: ResourceInfo): IO[Unit]
 
 final case class ContentUnreadable(location: ContentLocation, cause: Throwable):
   def message: String = s"Failed to read content of ${location.display}: ${Option(cause.getMessage).getOrElse(cause.getClass.getName)}"
+
+enum DerivedResourceError:
+  case InvalidPath(resourceId: ResourceId, reason: String)
+  case SourceMissing(resourceId: ResourceId, path: String)
+
+  def message: String = this match
+    case InvalidPath(resourceId, reason) => s"Ignoring resource '$resourceId' with invalid path: $reason"
+    case SourceMissing(resourceId, path) => s"Resource '$resourceId' was found in the database but no file exists: $path"
 
 final class FileOperations(
   config: LocalDirectoryConfig,
@@ -99,29 +108,23 @@ final class FileOperations(
         .map(config.resourcePath.resolve(_))
     case ContentLocation.Staged(stagingId) => Right(config.tempPath.resolve(stagingId))
 
-  private def contentTypeFor(location: ContentLocation, path: Path): IO[Either[ContentUnreadable, String]] =
-    IO.blocking(tika.detect(path)).attempt.map(_.left.map(ContentUnreadable(location, _)))
+  private def contentTypeFor(location: ContentLocation, path: Path): EitherT[IO, ContentUnreadable, String] =
+    EitherT(IO.blocking(tika.detect(path)).attempt.map(_.left.map(ContentUnreadable(location, _))))
 
-  override def contentMeta(location: ContentLocation): IO[Either[ContentUnreadable, ContentMeta]] =
-    pathOf(location) match
-      case Left(error) => IO.pure(Left(error))
-      case Right(path) =>
-        contentTypeFor(location, path).flatMap {
-          case Left(error)        => IO.pure(Left(error))
-          case Right(contentType) =>
-            for
-              scan       <- toolScanForPath(path, contentType)
-              streamable <- streamableOf(path, Some(contentType))
-            yield Right(
-              scan.map(ContentMeta.scanned).getOrElse(ContentMeta.empty)
-                .copy(contentType = Some(contentType), streamable = streamable)
-            )
-        }
+  override def contentMeta(location: ContentLocation): EitherT[IO, ContentUnreadable, ContentMeta] =
+    for
+      path        <- EitherT.fromEither[IO](pathOf(location))
+      contentType <- contentTypeFor(location, path)
+      scan        <- EitherT.liftF(toolScanForPath(path, contentType))
+      streamable  <- EitherT.liftF(streamableOf(path, Some(contentType)))
+    yield scan.map(ContentMeta.scanned).getOrElse(ContentMeta.empty)
+      .copy(contentType = Some(contentType), streamable = streamable)
 
-  override def contentPartialHash(location: ContentLocation): IO[Either[ContentUnreadable, String]] =
-    pathOf(location) match
-      case Left(error) => IO.pure(Left(error))
-      case Right(path) => config.hashingAlgorithm.createHash(path).attempt.map(_.left.map(ContentUnreadable(location, _)))
+  override def contentPartialHash(location: ContentLocation): EitherT[IO, ContentUnreadable, String] =
+    for
+      path <- EitherT.fromEither[IO](pathOf(location))
+      hash <- EitherT(config.hashingAlgorithm.createHash(path).attempt.map(_.left.map(ContentUnreadable(location, _))))
+    yield hash
 
   private def toolScanForPath(path: Path, contentType: String): IO[Option[ToolScan]] =
     if contentType.startsWith("video/") then
@@ -142,21 +145,23 @@ final class FileOperations(
   private def addFastStart(video: Path, container: VideoContainer, outputFile: Path): IO[Path] =
     FFMpeg.addFastStart(video.toUri, containerFormat(container), outputFile)
 
-  override def normalizeUpload(stagingId: StagingId, container: VideoContainer): IO[Either[StreamabilityError, Unit]] =
-    val source                                          = config.tempPath.resolve(stagingId)
-    val normalized                                      = config.tempPath.resolve(s"$stagingId-normalized")
-    val normalize: IO[Either[StreamabilityError, Unit]] =
+  override def normalizeUpload(stagingId: StagingId, container: VideoContainer): EitherT[IO, StreamabilityError, Unit] =
+    val source     = config.tempPath.resolve(stagingId)
+    val normalized = config.tempPath.resolve(s"$stagingId-normalized")
+    val normalize  =
       for
         _   <- IO.blocking(Files.createDirectories(config.tempPath))
         out <- addFastStart(source, container, normalized)
         _   <- moveIntoPlace(out, source)
-      yield Right(())
-    normalize
-      .onError(_ => IO.blocking(Files.deleteIfExists(normalized)).void)
-      .attempt
-      .map:
-        case Right(result) => result
-        case Left(error)   => Left(StreamabilityError.FixFailed(stagingId, s"Failed to normalize the staged upload: ${error.getMessage}"))
+      yield Right(()): Either[StreamabilityError, Unit]
+    EitherT(
+      normalize
+        .onError(_ => IO.blocking(Files.deleteIfExists(normalized)).void)
+        .attempt
+        .map:
+          case Right(result) => result
+          case Left(error)   => Left(StreamabilityError.FixFailed(stagingId, s"Failed to normalize the staged upload: ${error.getMessage}"))
+    )
 
   private def containerFormat(container: VideoContainer): ContainerFormat = container match
     case VideoContainer.Mp4      => ContainerFormat.Mp4
@@ -177,65 +182,67 @@ final class FileOperations(
    * attempt never leaves the resource inconsistent. Returns the staging id of the remux. Runs in the command consumer,
    * where the resource's commands are serialized.
    */
-  override def remuxForStreaming(info: ResourceInfo): IO[Either[StreamabilityError, Option[StagingId]]] =
-    ResourcePath.fromString(info.path) match
-      case Left(message) => IO.pure(Left(StreamabilityError.FixFailed(info.path, message)))
-      case Right(_)      =>
-        AddFastStart.forResource(info) match
-          case None            => IO.pure(Left(StreamabilityError.UnsupportedContainer(info.contentType.getOrElse("unknown"))))
-          case Some(operation) =>
-            val container = operation.container
-            // A unique name keeps a lease-stolen attempt from writing the same file as the original one.
-            val stagingId = StagingId(s"${info.resourceId}-normalize-${UUID.randomUUID()}.${container.extension}")
-            val temp      = config.tempPath.resolve(stagingId)
-            val remux     =
-              for
-                _          <- IO.blocking(Files.createDirectories(config.tempPath))
-                out        <- addFastStart(config.resourcePath.resolve(info.path), container, temp)
-                streamable <- streamableOf(out, info.contentType)
-                result     <-
-                  if streamable.contains(true) then IO.pure(Right(Some(stagingId)): Either[StreamabilityError, Option[StagingId]])
-                  else
-                    IO.blocking(Files.deleteIfExists(temp)).void.as(
-                      Left(StreamabilityError.FixFailed(
-                        info.path,
-                        "the remux did not produce a streamable file"
-                      )): Either[StreamabilityError, Option[StagingId]]
-                    )
-              yield result
-            remux.onError(_ => IO.blocking(Files.deleteIfExists(temp)).void)
+  override def remuxForStreaming(info: ResourceInfo): EitherT[IO, StreamabilityError, Option[StagingId]] =
+    for
+      _         <- EitherT.fromEither[IO](ResourcePath.fromString(info.path)).leftMap(message => StreamabilityError.FixFailed(info.path, message))
+      operation <-
+        EitherT.fromOption[IO](AddFastStart.forResource(info), StreamabilityError.UnsupportedContainer(info.contentType.getOrElse("unknown")))
+      result    <- EitherT {
+                     // A unique name keeps a lease-stolen attempt from writing the same file as the original one.
+                     val stagingId = StagingId(s"${info.resourceId}-normalize-${UUID.randomUUID()}.${operation.container.extension}")
+                     val temp      = config.tempPath.resolve(stagingId)
+                     val remux     =
+                       for
+                         _          <- IO.blocking(Files.createDirectories(config.tempPath))
+                         out        <- addFastStart(config.resourcePath.resolve(info.path), operation.container, temp)
+                         streamable <- streamableOf(out, info.contentType)
+                         result     <-
+                           if streamable.contains(true) then IO.pure(Right(Some(stagingId)): Either[StreamabilityError, Option[StagingId]])
+                           else
+                             IO.blocking(Files.deleteIfExists(temp)).void.as(
+                               Left(StreamabilityError.FixFailed(
+                                 info.path,
+                                 "the remux did not produce a streamable file"
+                               )): Either[StreamabilityError, Option[StagingId]]
+                             )
+                       yield result
+                     remux.onError(_ => IO.blocking(Files.deleteIfExists(temp)).void)
+                   }
+    yield result
 
   /**
    * Replaces the live file with the remux produced by [[remuxForStreaming]] (when one is still present) and refreshes the
    * metadata that depends on the file. Idempotent: a retry after the move finds no staging file and re-derives the metadata.
    */
-  override def commitStreamability(info: ResourceInfo, stagingId: Option[StagingId]): IO[Either[StreamabilityError, ResourceInfo]] =
-    ResourcePath.fromString(info.path) match
-      case Left(message) => IO.pure(Left(StreamabilityError.FixFailed(info.path, message)))
-      case Right(_)      =>
-        val source = config.resourcePath.resolve(info.path)
-        val move   = stagingId match
-          case Some(id) =>
-            val temp = config.tempPath.resolve(id)
-            IO.blocking(Files.exists(temp)).flatMap(exists => if exists then moveIntoPlace(temp, source).void else IO.unit)
-          case None     => IO.unit
-        for
-          _           <- move
-          attrs       <- IO.blocking(Files.readAttributes(source, classOf[BasicFileAttributes]))
-          partialHash <- config.hashingAlgorithm.createHash(source)
-          streamable  <- streamableOf(source, info.contentType)
-        yield
-          if streamable.contains(true) then
-            Right(
-              info.copy(
-                size             = attrs.size(),
-                partialHash      = Some(partialHash),
-                fileKey          = Option(attrs.fileKey()).map(_.toString),
-                timeLastModified = Some(attrs.lastModifiedTime().toMillis),
-                contentMeta      = info.contentMeta.copy(streamable = streamable)
-              )
-            )
-          else Left(StreamabilityError.FixFailed(info.path, "the file is not streamable after the remux"))
+  override def commitStreamability(info: ResourceInfo, stagingId: Option[StagingId]): EitherT[IO, StreamabilityError, ResourceInfo] =
+    val source = config.resourcePath.resolve(info.path)
+    for
+      _           <- EitherT.fromEither[IO](ResourcePath.fromString(info.path)).leftMap(message => StreamabilityError.FixFailed(info.path, message))
+      _           <- stagingId match
+                       case Some(id) =>
+                         val temp = config.tempPath.resolve(id)
+                         EitherT.liftF(
+                           for
+                             exists <- IO.blocking(Files.exists(temp))
+                             _      <- if exists then moveIntoPlace(temp, source).void else IO.unit
+                           yield ()
+                         )
+                       case None     => EitherT.pure[IO, StreamabilityError](())
+      attrs       <- EitherT.liftF(IO.blocking(Files.readAttributes(source, classOf[BasicFileAttributes])))
+      partialHash <- EitherT.liftF(config.hashingAlgorithm.createHash(source))
+      streamable  <- EitherT.liftF(streamableOf(source, info.contentType))
+      updated     <- EitherT.cond[IO](
+                       streamable.contains(true),
+                       info.copy(
+                         size             = attrs.size(),
+                         partialHash      = Some(partialHash),
+                         fileKey          = Option(attrs.fileKey()).map(_.toString),
+                         timeLastModified = Some(attrs.lastModifiedTime().toMillis),
+                         contentMeta      = info.contentMeta.copy(streamable = streamable)
+                       ),
+                       StreamabilityError.FixFailed(info.path, "the file is not streamable after the remux")
+                     )
+    yield updated
 
   /**
    * Validator for a derived preview. It is derived from the source's partial hash, the operation (encoded in the output
@@ -250,43 +257,37 @@ final class FileOperations(
       ETag.of(sourceHash, outputFile.getFileName.toString, formats.settingsFingerprint, ResourceOperations.previewRecipeVersion.toString)
     )
 
-  override def derivedResource(info: ResourceInfo, operation: ResourceOperation): IO[Option[ResourceContent]] = {
-    ResourcePath.fromString(info.path) match
-      case Left(message) =>
-        IO(logger.warn(s"Ignoring resource '${info.resourceId}' with invalid path: $message")).as(None)
-      case Right(_)      =>
-        val source = config.resourcePath.resolve(info.path)
-        if !Files.exists(source) then
-          IO(logger.warn(s"Resource '${info.resourceId}' was found in the database but no file exists: $source")).as(None)
-        else {
-          val outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
-          val eTag       = previewETag(info, outputFile)
-          val key        = (resourceId = info.resourceId, operation = operation)
-
-          if Files.exists(outputFile) then IO.pure(Streamed(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag)).some)
-          else
-            inFlight
-              .run(key)(createResource(source, info, key.operation).as(Option.empty[ResourceInfo]))
-              .map(_ => Streamed(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag)).some)
-        }
-  }
+  override def derivedResource(info: ResourceInfo, operation: ResourceOperation): EitherT[IO, DerivedResourceError, ResourceContent] =
+    for
+      _         <- EitherT.fromEither[IO](ResourcePath.fromString(info.path)).leftMap(reason => DerivedResourceError.InvalidPath(info.resourceId, reason))
+      source     = config.resourcePath.resolve(info.path)
+      _         <- EitherT.cond[IO](Files.exists(source), (), DerivedResourceError.SourceMissing(info.resourceId, source.toString))
+      outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
+      eTag       = previewETag(info, outputFile)
+      key        = (resourceId = info.resourceId, operation = operation)
+      content   <- EitherT.liftF(
+                     if Files.exists(outputFile) then IO.pure(Streamed(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag)))
+                     else
+                       inFlight
+                         .run(key)(createResource(source, info, key.operation).as(Option.empty[ResourceInfo]))
+                         .map(_ => Streamed(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag)))
+                   )
+    yield content
 
   private def createResource(inputFile: Path, info: ResourceInfo, operation: ResourceOperation): IO[Path] =
-    operation.validate(info) match
-      case Left(error) => IO.raiseError(new Exception(error))
-      case Right(_)    =>
-        val outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
-        val tempFile   = temporaryOutputFile(outputFile)
-
-        val create = IO.blocking(Files.createDirectories(outputFile.getParent)) >>
-          run(info, inputFile, tempFile, operation) >>
-          moveIntoPlace(tempFile, outputFile)
-
-        create
-          .onError(_ => IO.blocking(Files.deleteIfExists(tempFile)).void)
-          .onCancel(IO.blocking(Files.deleteIfExists(tempFile)).void)
-          .memoize
-          .flatten
+    for
+      _         <- IO.fromEither(operation.validate(info).left.map(new Exception(_)))
+      outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
+      tempFile   = temporaryOutputFile(outputFile)
+      create     = IO.blocking(Files.createDirectories(outputFile.getParent)) >>
+                     run(info, inputFile, tempFile, operation) >>
+                     moveIntoPlace(tempFile, outputFile)
+      path      <- create
+                     .onError(_ => IO.blocking(Files.deleteIfExists(tempFile)).void)
+                     .onCancel(IO.blocking(Files.deleteIfExists(tempFile)).void)
+                     .memoize
+                     .flatten
+    yield path
 
   private def temporaryOutputFile(outputFile: Path): Path = {
     val fileName              = outputFile.getFileName.toString
@@ -388,10 +389,16 @@ final class FileOperations(
     ResourceOperations.all(info, resolutions, formats).filter(_.validate(info).isRight)
 
   private def runPreviewOperation(info: ResourceInfo, operation: ResourceOperation): IO[Unit] =
-    derivedResource(info, operation).attempt.flatMap {
-      case Left(error) => IO(logger.error(s"Failed to generate preview $operation for '${info.path}'", error))
-      case Right(_)    => IO.unit
-    }
+    derivedResource(info, operation)
+      .foldF(
+        e => IO(logger.warn(s"Skipping preview $operation for '${info.path}': ${e.message}")),
+        _ => IO.unit
+      )
+      .attempt
+      .flatMap {
+        case Left(error) => IO(logger.error(s"Failed to generate preview $operation for '${info.path}'", error))
+        case Right(_)    => IO.unit
+      }
 
   override def generatePreviews(info: ResourceInfo): IO[Unit] =
     fs2.Stream.emits(previewOperations(info))

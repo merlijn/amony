@@ -2,6 +2,7 @@ package nl.amony.modules.resources.dal
 
 import cats.data.OptionT
 import cats.effect.{IO, Resource}
+import cats.implicits.*
 import io.circe.syntax.*
 import scribe.Logging
 import skunk.*
@@ -116,11 +117,11 @@ private[resources] class ResourceDatabase(pool: Resource[IO, Session[IO]]) exten
     tagLabels: List[String]
   )(using maybeSession: Option[Session[IO]] = None): IO[Option[ResourceInfo]] =
     useTransaction: s =>
-      getResourceById(bucketId, resourceId).flatMap:
-        case None           => IO.pure(None)
-        case Some(resource) =>
-          val updated = resource.withTagsForOwner(owner, tagLabels.toSet)
-          updateTagsForOwner(s, bucketId, resourceId, owner, tagLabels) >> IO.pure(Some(updated))
+      (for
+        resource <- OptionT(getResourceById(bucketId, resourceId))
+        updated   = resource.withTagsForOwner(owner, tagLabels.toSet)
+        _        <- OptionT.liftF(updateTagsForOwner(s, bucketId, resourceId, owner, tagLabels))
+      yield updated).value
 
   private[resources] def truncateTables(): IO[Unit] =
     useTransaction: s =>
@@ -193,12 +194,12 @@ private[resources] class ResourceDatabase(pool: Resource[IO, Session[IO]]) exten
     tagLabels: List[String]
   )(using maybeSession: Option[Session[IO]] = None): IO[Option[ResourceInfo]] =
     useTransaction: s =>
-      getResourceById(bucketId, resourceId).flatMap:
-        case None           => IO.pure(None)
-        case Some(resource) =>
-          val updatedResource = resource.copy(title = title, description = description).withTagsForOwner(owner, tagLabels.toSet)
-          tables.resources.upsert(s, ResourceRow.fromResource(updatedResource)) >>
-            updateTagsForOwner(s, bucketId, resourceId, owner, tagLabels) >> IO.pure(Some(updatedResource))
+      (for
+        resource <- OptionT(getResourceById(bucketId, resourceId))
+        updated   = resource.copy(title = title, description = description).withTagsForOwner(owner, tagLabels.toSet)
+        _        <- OptionT.liftF(tables.resources.upsert(s, ResourceRow.fromResource(updated)))
+        _        <- OptionT.liftF(updateTagsForOwner(s, bucketId, resourceId, owner, tagLabels))
+      yield updated).value
 
   def updateResourceTags(
     bucketId: BucketId,
@@ -207,27 +208,31 @@ private[resources] class ResourceDatabase(pool: Resource[IO, Session[IO]]) exten
     tagsToRemove: Set[Tag]
   )(using maybeSession: Option[Session[IO]] = None): IO[Option[ResourceInfo]] =
     useTransaction: s =>
-      getResourceById(bucketId, resourceId).flatMap:
-        case None           => IO.pure(None)
-        case Some(resource) =>
-          val addByOwner    = tagsToAdd.groupBy(_.owner).view.mapValues(_.map(_.label).toSet).toMap
-          val removeByOwner = tagsToRemove.groupBy(_.owner).view.mapValues(_.map(_.label).toSet).toMap
-          val owners        = (addByOwner.keySet ++ removeByOwner.keySet).toList.sorted
-          owners.foldLeft(IO.pure(resource)) { (acc, owner) =>
-            acc.flatMap(current =>
-              val updatedLabels   = ((current.labelsByOwner.getOrElse(owner, Set.empty) ++ addByOwner
-                .getOrElse(owner, Set.empty)) -- removeByOwner.getOrElse(owner, Set.empty)).toList
-              val updatedResource = current.withTagsForOwner(owner, updatedLabels.toSet)
-              tables.resources.upsert(s, ResourceRow.fromResource(updatedResource)) >>
-                updateTagsForOwner(s, bucketId, resourceId, owner, updatedLabels).as(updatedResource)
-            )
-          }.map(Some(_))
+      (for
+        resource <- OptionT(getResourceById(bucketId, resourceId))
+        updated  <- OptionT.liftF {
+                      val addByOwner    = tagsToAdd.groupBy(_.owner).view.mapValues(_.map(_.label).toSet).toMap
+                      val removeByOwner = tagsToRemove.groupBy(_.owner).view.mapValues(_.map(_.label).toSet).toMap
+                      val owners        = (addByOwner.keySet ++ removeByOwner.keySet).toList.sorted
+                      owners.foldLeft(IO.pure(resource)) { (acc, owner) =>
+                        for
+                          current        <- acc
+                          updatedLabels   = ((current.labelsByOwner.getOrElse(owner, Set.empty) ++ addByOwner
+                                              .getOrElse(owner, Set.empty)) -- removeByOwner.getOrElse(owner, Set.empty)).toList
+                          updatedResource = current.withTagsForOwner(owner, updatedLabels.toSet)
+                          _              <- tables.resources.upsert(s, ResourceRow.fromResource(updatedResource))
+                          _              <- updateTagsForOwner(s, bucketId, resourceId, owner, updatedLabels)
+                        yield updatedResource
+                      }
+                    }
+      yield updated).value
 
   def move(bucketId: BucketId, resourceId: ResourceId, newPath: ResourcePath)(using maybeSession: Option[Session[IO]] = None): IO[Unit] =
     useSession: s =>
-      tables.resources.getById(s, bucketId, resourceId).flatMap:
-        case Some(old) => tables.resources.upsert(s, old.copy(fs_path = newPath)) >> IO.unit
-        case None      => IO.unit
+      for
+        maybeOld <- tables.resources.getById(s, bucketId, resourceId)
+        _        <- maybeOld.traverse_(old => tables.resources.upsert(s, old.copy(fs_path = newPath)))
+      yield ()
 
   def bucketSize(bucketId: BucketId)(using maybeSession: Option[Session[IO]] = None): IO[Long] =
     useSession: s =>

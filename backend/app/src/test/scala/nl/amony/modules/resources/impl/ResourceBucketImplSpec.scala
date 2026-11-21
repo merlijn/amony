@@ -5,6 +5,7 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.duration.*
 
+import cats.data.EitherT
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import com.dimafeng.testcontainers.GenericContainer
@@ -302,8 +303,8 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
         val meta      = ContentMeta(contentType = Some("text/plain"))
         val unchanged = newResource(BucketId(cfg.id), "same.txt").copy(contentMeta = meta)
         val changed   = newResource(BucketId(cfg.id), "changed.txt").copy(contentMeta = ContentMeta.empty)
-        ops.contentMeta(ContentLocation.Resource(ResourcePath("same.txt"))) returns IO.pure(Right(meta))
-        ops.contentMeta(ContentLocation.Resource(ResourcePath("changed.txt"))) returns IO.pure(Right(meta))
+        ops.contentMeta(ContentLocation.Resource(ResourcePath("same.txt"))) returns EitherT.pure[IO, ContentUnreadable](meta)
+        ops.contentMeta(ContentLocation.Resource(ResourcePath("changed.txt"))) returns EitherT.pure[IO, ContentUnreadable](meta)
         val bucket    = makeBucket(cfg, db, published, ops)
 
         val test =

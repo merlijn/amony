@@ -4,6 +4,7 @@ import java.nio.file.Path
 import java.time.Instant
 import scala.concurrent.duration.DurationLong
 
+import cats.data.EitherT
 import cats.effect.{IO, Resource}
 import io.circe.syntax.*
 import io.circe.{Codec, Json}
@@ -161,13 +162,15 @@ class BucketsDal(pool: Resource[IO, Session[IO]]) extends scribe.Logging:
     val bucketId = BucketId(config.id)
     pool.use: s =>
       s.transaction.use: _ =>
-        s.prepare(queries.update).flatMap(_.option((row.required_role, row.settings, row.bucket_id, expectedUpdatedAt))).flatMap {
-          case Some(updatedAt) => IO.pure(Right(StoredBucket(config, updatedAt)))
-          case None            =>
-            s.prepare(queries.exists).flatMap(_.unique(bucketId)).map { exists =>
-              Left(if exists then BucketError.Modified(bucketId) else BucketError.NotFound(bucketId))
-            }
-        }
+        for
+          maybeUpdatedAt <- s.prepare(queries.update).flatMap(_.option((row.required_role, row.settings, row.bucket_id, expectedUpdatedAt)))
+          result         <- maybeUpdatedAt match
+                              case Some(updatedAt) => IO.pure(Right(StoredBucket(config, updatedAt)))
+                              case None            =>
+                                for
+                                  exists <- s.prepare(queries.exists).flatMap(_.unique(bucketId))
+                                yield Left(if exists then BucketError.Modified(bucketId) else BucketError.NotFound(bucketId))
+        yield result
 
   /**
    * Deletes the bucket together with all its resources (and their tags and collection memberships) from the database.
@@ -177,18 +180,13 @@ class BucketsDal(pool: Resource[IO, Session[IO]]) extends scribe.Logging:
 
   /** The delete body, run on the caller's session so it can be composed with other work in a single transaction. */
   def deleteWith(s: Session[IO], bucketId: BucketId, force: Boolean): IO[Either[BucketError, Long]] =
-    s.prepare(queries.lockForDelete).flatMap(_.option(bucketId)).flatMap {
-      case None    => IO.pure(Left(BucketError.NotFound(bucketId)))
-      case Some(_) =>
-        s.prepare(queries.resourceCount).flatMap(_.unique(bucketId)).flatMap {
-          case count if count > 0 && !force => IO.pure(Left(BucketError.NotEmpty(bucketId, count)))
-          case count                        =>
-            for
-              _ <- deleteResources(s, bucketId)
-              _ <- s.prepare(queries.delete).flatMap(_.execute(bucketId))
-            yield Right(count)
-        }
-    }
+    (for
+      _     <- EitherT.fromOptionF(s.prepare(queries.lockForDelete).flatMap(_.option(bucketId)), BucketError.NotFound(bucketId))
+      count <- EitherT.liftF(s.prepare(queries.resourceCount).flatMap(_.unique(bucketId)))
+      _     <- EitherT.cond[IO](force || count == 0, (), BucketError.NotEmpty(bucketId, count))
+      _     <- EitherT.liftF(deleteResources(s, bucketId))
+      _     <- EitherT.liftF(s.prepare(queries.delete).flatMap(_.execute(bucketId)))
+    yield count).value
 
   def delete(bucketId: BucketId, force: Boolean): IO[Either[BucketError, Long]] =
     transact(s => deleteWith(s, bucketId, force))
