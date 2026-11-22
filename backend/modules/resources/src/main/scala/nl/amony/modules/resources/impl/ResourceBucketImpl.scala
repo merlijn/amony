@@ -2,8 +2,7 @@ package nl.amony.modules.resources.impl
 
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files as JFiles, Path as JPath}
-import java.security.MessageDigest
+import java.nio.file.Files as JFiles
 import java.time.Instant
 import scala.concurrent.duration.*
 
@@ -11,7 +10,6 @@ import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.implicits.*
 import fs2.io.file.{Files, Path}
-import fs2.{Chunk, Pipe}
 import scribe.Logging
 
 import nl.amony.modules.auth.api.{Role, UserId}
@@ -44,7 +42,7 @@ class ResourceBucketImpl(
   override def getResourceContent(resourceId: ResourceId): IO[Option[ResourceContent]] =
     (for
       info    <- OptionT(getResourceInfo(resourceId))
-      content <- OptionT(store.content(info, ETag.forResource(info)))
+      content <- OptionT(store.content(info, Some(ETag.forResource(info))))
     yield content).value
 
   override def getAllResources: fs2.Stream[IO, ResourceInfo] =
@@ -118,22 +116,6 @@ class ResourceBucketImpl(
     try Right(URLDecoder.decode(fileName, StandardCharsets.UTF_8))
     catch case _: IllegalArgumentException => Left(UploadError.InvalidFileName(s"File name '$fileName' is invalid"))
 
-  private def calculateHash: Pipe[IO, Byte, MessageDigest] = {
-    val initialDigest = config.hashingAlgorithm.newDigest()
-
-    def updateDigest(digest: MessageDigest, chunk: Chunk[Byte]): MessageDigest = {
-      digest.update(chunk.toArray)
-      digest
-    }
-    _.chunks.fold(initialDigest)(updateDigest)
-  }
-
-  private def hashFile(path: JPath): IO[Either[UploadProcessingError, String]] =
-    Files[IO].readAll(Path.fromNioPath(path)).through(calculateHash).compile.last.map {
-      case Some(digest) => Right(config.hashingAlgorithm.encodeHash(digest.digest()))
-      case None         => Left(UploadProcessingError(path.getFileName.toString, "the uploaded file is empty"))
-    }
-
   /** Streams the request body into the bucket's temp directory. Nothing outside the temp directory is touched. */
   private def stageUpload(fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, StagedUpload]] =
     decodeFileName(fileName) match
@@ -169,6 +151,8 @@ class ResourceBucketImpl(
       case false => IO.pure(Left(UploadProcessingError(upload.stagingId, "the staged upload is no longer available")))
       case true  =>
         (for
+          size      <- EitherT.liftF(IO.blocking(JFiles.size(tempPath)))
+          _         <- EitherT.cond[IO](size > 0, (), UploadProcessingError(upload.stagingId, "the uploaded file is empty"))
           meta      <- ops.contentMeta(location).leftMap(error =>
                          UploadProcessingError(upload.stagingId, s"the uploaded file could not be read: ${error.message}")
                        )
@@ -188,7 +172,9 @@ class ResourceBucketImpl(
                                logger.warn(s"Failed to remux uploaded file '${upload.fileName}', storing the original file", error)
                                IO.pure(false)
                            })
-          hash      <- EitherT(hashFile(tempPath))
+          hash      <- ops.contentPartialHash(location).leftMap(error =>
+                         UploadProcessingError(upload.stagingId, s"the uploaded file could not be hashed: ${error.message}")
+                       )
           finalMeta <- if remuxed then
             ops.contentMeta(location).leftMap(error =>
               UploadProcessingError(upload.stagingId, s"the uploaded file could not be read: ${error.message}")
@@ -221,7 +207,7 @@ class ResourceBucketImpl(
                                     userId             = upload.userId,
                                     path               = stored.path,
                                     size               = stored.size,
-                                    partialHash        = Some(prepared.partialHash),
+                                    partialHash        = prepared.partialHash,
                                     fileKey            = stored.fileKey,
                                     contentMeta        = prepared.contentMeta,
                                     timeAdded          = Some(Instant.now().toEpochMilli),
@@ -271,8 +257,8 @@ class ResourceBucketImpl(
     ops.contentPartialHash(ContentLocation.Resource(resource.path)).value.flatMap {
       case Left(error)        => IO(logger.error(s"Skipping partial hash for ${resource.path}", error.cause))
       case Right(partialHash) =>
-        val updated = resource.copy(partialHash = Some(partialHash))
-        if resource.partialHash.contains(partialHash) then IO.unit
+        val updated = resource.copy(partialHash = partialHash)
+        if resource.partialHash == partialHash then IO.unit
         else
           IO(logger.info(s"Updating partialHash for ${resource.path} to $partialHash")) >>
             events.processEvent(ResourceModified(updated))

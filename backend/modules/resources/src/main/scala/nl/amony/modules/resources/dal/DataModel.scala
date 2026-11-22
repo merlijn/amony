@@ -17,7 +17,8 @@ case class ResourceRow(
   bucket_id: String,
   resource_id: String,
   user_id: String,
-  partial_hash: Option[String],
+  partial_hash: String,
+  full_hash: Option[String]        = None,
   file_key: Option[String]         = None,
   size: Long,
   content_type: Option[String],
@@ -49,6 +50,7 @@ case class ResourceRow(
       userId             = UserId(user_id),
       path               = ResourcePath(fs_path),
       partialHash        = partial_hash,
+      fullHash           = full_hash,
       fileKey            = file_key,
       size               = size,
       contentMeta        = contentMeta,
@@ -65,13 +67,14 @@ case class ResourceRow(
 object ResourceRow {
 
   val columns =
-    sql"r.bucket_id, r.resource_id, r.user_id, r.partial_hash, r.file_key, r.size, r.content_type, r.content_meta_tool_name, r.content_meta_tool_data, r.fs_path, r.time_added, r.time_last_modified, r.title, r.description, r.thumbnail_timestamp, r.streamable"
+    sql"r.bucket_id, r.resource_id, r.user_id, r.partial_hash, r.full_hash, r.file_key, r.size, r.content_type, r.content_meta_tool_name, r.content_meta_tool_data, r.fs_path, r.time_added, r.time_last_modified, r.title, r.description, r.thumbnail_timestamp, r.streamable"
 
   def fromResource(resource: ResourceInfo): ResourceRow = ResourceRow(
     bucket_id              = resource.bucketId,
     resource_id            = resource.resourceId,
     user_id                = resource.userId,
     partial_hash           = resource.partialHash,
+    full_hash              = resource.fullHash,
     file_key               = resource.fileKey,
     size                   = resource.size,
     content_type           = resource.contentMeta.contentType,

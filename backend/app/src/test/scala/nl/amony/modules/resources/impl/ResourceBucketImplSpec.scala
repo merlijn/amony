@@ -102,12 +102,13 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
 
   private def newResource(bucketId: BucketId, path: String = "video.mp4"): ResourceInfo =
     ResourceInfo(
-      bucketId   = bucketId,
-      resourceId = ResourceId(UUID.randomUUID().toString),
-      userId     = UserId("admin"),
-      path       = ResourcePath(path),
-      size       = 42L,
-      timeAdded  = Some(1000L)
+      bucketId    = bucketId,
+      resourceId  = ResourceId(UUID.randomUUID().toString),
+      userId      = UserId("admin"),
+      path        = ResourcePath(path),
+      partialHash = "test-hash",
+      size        = 42L,
+      timeAdded   = Some(1000L)
     )
 
   "ResourceBucketImpl and ResourceProcessor" should {

@@ -20,6 +20,7 @@ class ResourceOperationsSpec extends AnyWordSpecLike {
     resourceId         = ResourceId("resource"),
     userId             = UserId("user"),
     path               = ResourcePath("video.mp4"),
+    partialHash        = "test-hash",
     size               = 1L,
     contentMeta        = ContentMeta.indexed(Some(VideoProperties(width, height, 30f, durationInMillis, pixelAspectRatio = pixelAspectRatio))),
     thumbnailTimestamp = Some(thumbnailTimestamp)
@@ -30,6 +31,7 @@ class ResourceOperationsSpec extends AnyWordSpecLike {
     resourceId  = ResourceId("resource"),
     userId      = UserId("user"),
     path        = ResourcePath("image.jpg"),
+    partialHash = "test-hash",
     size        = 1L,
     contentMeta = ContentMeta.indexed(Some(ImageProperties(width, height)))
   )
@@ -80,11 +82,12 @@ class ResourceOperationsSpec extends AnyWordSpecLike {
 
       "return no operations when the content properties are unknown" in {
         val info = ResourceInfo(
-          bucketId   = BucketId("test"),
-          resourceId = ResourceId("resource"),
-          userId     = UserId("user"),
-          path       = ResourcePath("file"),
-          size       = 1L
+          bucketId    = BucketId("test"),
+          resourceId  = ResourceId("resource"),
+          userId      = UserId("user"),
+          path        = ResourcePath("file"),
+          partialHash = "test-hash",
+          size        = 1L
         )
         assert(ResourceOperations.all(info, resolutions, formats).isEmpty)
       }

@@ -62,7 +62,8 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       resourceId         = ResourceId(UUID.randomUUID().toString),
       userId             = UserId(UUID.randomUUID().toString),
       path               = ResourcePath(randomString),
-      partialHash        = Some(randomString),
+      partialHash        = randomString,
+      fullHash           = Some(randomString),
       fileKey            = Some(randomString),
       size               = Random.nextLong(),
       contentMeta        = ContentMeta(streamable = List[Option[Boolean]](Some(true), Some(false), None)(Random.nextInt(3))),
@@ -258,7 +259,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
     for
       _             <- db.insertResource(resourceA)
       _             <- db.insertResource(resourceB.copy(partialHash = resourceA.partialHash)) // This should not throw an error
-      byPartialHash <- db.getResourceByPartialHash(resourceA.bucketId, resourceA.partialHash.get)
+      byPartialHash <- db.getResourceByPartialHash(resourceA.bucketId, resourceA.partialHash)
     yield byPartialHash should contain theSameElementsAs List(resourceA, resourceB)
   }
 
@@ -274,7 +275,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       for
         _             <- db.upsertResource(resource)
         byId          <- db.getResourceById(resource.bucketId, resource.resourceId)
-        byPartialHash <- db.getResourceByPartialHash(resource.bucketId, resource.partialHash.get)
+        byPartialHash <- db.getResourceByPartialHash(resource.bucketId, resource.partialHash)
       yield {
         byId shouldBe Some(resource)
         byPartialHash shouldBe List(resource)

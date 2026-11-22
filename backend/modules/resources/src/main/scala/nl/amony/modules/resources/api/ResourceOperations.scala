@@ -257,7 +257,7 @@ object ResourceOperations:
       digest.update(0.toByte)
     }
 
-    feed(info.partialHash.getOrElse(""))
+    feed(info.partialHash)
     feed(info.timeLastModified.map(_.toString).getOrElse(""))
     feed(info.fileKey.getOrElse(""))
     feed(info.size.toString)

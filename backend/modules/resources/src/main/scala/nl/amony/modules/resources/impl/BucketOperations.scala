@@ -235,7 +235,7 @@ final class FileOperations(
                        streamable.contains(true),
                        info.copy(
                          size             = attrs.size(),
-                         partialHash      = Some(partialHash),
+                         partialHash      = partialHash,
                          fileKey          = Option(attrs.fileKey()).map(_.toString),
                          timeLastModified = Some(attrs.lastModifiedTime().toMillis),
                          contentMeta      = info.contentMeta.copy(streamable = streamable)
@@ -252,10 +252,8 @@ final class FileOperations(
    * starts yielding different output (for example after a toolchain upgrade). Bump [[ResourceOperations.previewRecipeVersion]]
    * to invalidate in that case.
    */
-  private def previewETag(info: ResourceInfo, outputFile: Path): Option[String] =
-    info.partialHash.map(sourceHash =>
-      ETag.of(sourceHash, outputFile.getFileName.toString, formats.settingsFingerprint, ResourceOperations.previewRecipeVersion.toString)
-    )
+  private def previewETag(info: ResourceInfo, outputFile: Path): String =
+    ETag.of(info.partialHash, outputFile.getFileName.toString, formats.settingsFingerprint, ResourceOperations.previewRecipeVersion.toString)
 
   override def derivedResource(info: ResourceInfo, operation: ResourceOperation): EitherT[IO, DerivedResourceError, ResourceContent] =
     for
@@ -263,7 +261,7 @@ final class FileOperations(
       source     = config.resourcePath.resolve(info.path)
       _         <- EitherT.cond[IO](Files.exists(source), (), DerivedResourceError.SourceMissing(info.resourceId, source.toString))
       outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
-      eTag       = previewETag(info, outputFile)
+      eTag       = Some(previewETag(info, outputFile))
       key        = (resourceId = info.resourceId, operation = operation)
       content   <- EitherT.liftF(
                      if Files.exists(outputFile) then IO.pure(Streamed(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag)))

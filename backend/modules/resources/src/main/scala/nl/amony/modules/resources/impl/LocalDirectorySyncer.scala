@@ -90,7 +90,7 @@ final class LocalDirectorySyncer(
         resourceId         = config.generateId(),
         userId             = userId,
         path               = relativizePath(f.path),
-        partialHash        = Some(f.partialHash),
+        partialHash        = f.partialHash,
         fileKey            = f.fileKey,
         size               = f.size,
         contentMeta        = contentMeta,
@@ -117,7 +117,7 @@ final class LocalDirectorySyncer(
           val contentMeta        = existing.contentMeta.updatedWith(fresh)
 
           IO.pure(Some(existing.copy(
-            partialHash        = Some(f.partialHash),
+            partialHash        = f.partialHash,
             fileKey            = f.fileKey.orElse(existing.fileKey),
             size               = f.size,
             contentMeta        = contentMeta,
@@ -130,7 +130,7 @@ final class LocalDirectorySyncer(
   private def toFileStore(): IO[FileStore] =
     db.getAll(bucketId).map { resources =>
       val initialFiles: Seq[FileInfo] = resources
-        .map(r => FileInfo(config.resourcePath.resolve(Path.of(r.path)), r.partialHash.get, r.size, r.timeLastModified.getOrElse(0), r.fileKey))
+        .map(r => FileInfo(config.resourcePath.resolve(Path.of(r.path)), r.partialHash, r.size, r.timeLastModified.getOrElse(0), r.fileKey))
       InMemoryFileStore(initialFiles)
     }
 

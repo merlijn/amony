@@ -25,6 +25,7 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
     resourceId         = ResourceId("resource"),
     userId             = UserId("user"),
     path               = ResourcePath("video.mp4"),
+    partialHash        = "test-hash",
     size               = 1L,
     contentMeta        = ContentMeta.indexed(Some(VideoProperties(width, height, 30f, durationInMillis, pixelAspectRatio = pixelAspectRatio))),
     thumbnailTimestamp = Some(thumbnailTimestamp)
@@ -35,6 +36,7 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
     resourceId  = ResourceId("resource"),
     userId      = UserId("user"),
     path        = ResourcePath("image.jpg"),
+    partialHash = "test-hash",
     size        = 1L,
     contentMeta = ContentMeta.indexed(Some(ImageProperties(width, height)))
   )
@@ -263,7 +265,7 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
         assert(ResourceOperations.contentVersion(base) != ResourceOperations.contentVersion(base.copy(size = 2L)))
         assert(ResourceOperations.contentVersion(base) != ResourceOperations.contentVersion(base.copy(timeLastModified = Some(2L))))
         assert(ResourceOperations.contentVersion(base) != ResourceOperations.contentVersion(base.copy(fileKey = Some("(dev=1,ino=2)"))))
-        assert(ResourceOperations.contentVersion(base) != ResourceOperations.contentVersion(base.copy(partialHash = Some("other"))))
+        assert(ResourceOperations.contentVersion(base) != ResourceOperations.contentVersion(base.copy(partialHash = "other")))
       }
 
       "not change on rename" in {
