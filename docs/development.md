@@ -102,22 +102,27 @@ The public demo is redeployed by the `Deploy demo` workflow (`.github/workflows/
 once the `Build and deploy` workflow finishes successfully on `main`, and can also be triggered manually from the
 Actions tab.
 
-It connects to the server as `docker-user` and runs `deployment/deploy.sh`, the same script used for other deployments.
-The script updates the checkout, pulls the new `dev` image and recreates the containers with:
+It connects to the server as `docker-user`, updates the checkout, pulls the new images and recreates the containers
+with:
 
 ```bash
+docker compose -f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml \
+  --profile zitadel pull amony web nginx zitadel
 docker compose -f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml \
   --profile zitadel up -d --build
 ```
 
-The web client is not part of the application image. The `Build and deploy` workflow publishes it to GHCR as an OCI
-artifact (`ghcr.io/<owner>/amony-web:fe-<tree>`), where the tag is the git tree hash of `frontend/`. The deploy pulls
-the artifact that matches its own checkout, unpacks it into `data/web-assets/releases/<tree>` and repoints the
-`data/web-assets/current` symlink. The `web` service in `docker-compose.yml` serves that directory, and the reverse
-proxy routes `/` to it.
+The application image and the web client image are published separately. The `Build and deploy` workflow publishes the
+web client as `ghcr.io/<owner>/amony-web`, tagged like the app image: `dev` on `main`, `latest` and the version tag on
+releases, and `pr-<number>` for pull requests with `#publish`. Each build also gets a content-addressed `web-<hash>`
+tag. The deploy pulls both images with the same tag; the `web` service in `docker-compose.yml` serves the UI and the
+reverse proxy routes `/` to it.
 
-The frontend build emits pre-compressed `.gz` files; the `web` service serves those with `gzip_static` when the client
+The frontend build emits pre-compressed `.gz` files; the web image serves those with `gzip_static` when the client
 accepts gzip. Brotli is not generated: the stock nginx image has no brotli module, so the files could not be served.
+
+The previous artifact-based deploy kept files under `web/` or `data/web-assets/`; those directories are unused now and
+can be removed.
 
 Non-secret configuration lives in `deployment/demo.env`. The sensitive values (database password, JWT secret, Dex client
 secrets / admin password hash, Porkbun credentials) plus the SSH deploy key and host details are stored in the
@@ -144,10 +149,11 @@ networks:
     external: true
 ```
 
-Run `deployment/deploy.sh` with the overlays for that host:
+Run the stack with the local override:
 
 ```bash
-./deployment/deploy.sh -f docker-compose.yml -f docker-compose.override.yml
+docker compose -f docker-compose.yml -f docker-compose.override.yml pull amony web
+docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
 ```
 
 The shared proxy should send `/api/` to `amony-app:8182` and everything else to `amony-web:80`. Match its

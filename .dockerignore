@@ -1,0 +1,8 @@
+# The web image only needs the built assets and its server config.
+*
+!frontend
+frontend/*
+!frontend/dist
+!docker
+docker/*
+!docker/web

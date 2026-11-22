@@ -6,6 +6,9 @@ services:
   amony:
     image: ghcr.io/merlijn/amony-app:${AMONY_IMAGE_TAG:-dev}
 
+  web:
+    image: ghcr.io/merlijn/amony-web:${AMONY_IMAGE_TAG:-dev}
+
   # The demo uses Zitadel, not the bundled Dex; re-add the profile so Dex stays out of the demo.
   auth:
     profiles:

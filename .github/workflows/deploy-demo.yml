@@ -14,7 +14,7 @@ on:
         required: false
         default: main
       image_tag:
-        description: "App image tag to deploy (defaults to dev)"
+        description: "App and web image tag to deploy (defaults to dev)"
         required: false
         default: dev
 
@@ -33,7 +33,7 @@ env:
   # Manual runs can deploy a specific image tag (e.g. a PR build); automatic deploys use "dev".
   AMONY_IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || 'dev' }}
   DEPLOY_DIR: /home/docker-user/amony
-  COMPOSE_FILES: "-f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml --profile zitadel"
+  COMPOSE_FILES: "-f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml"
 
 jobs:
   deploy:
@@ -119,11 +119,22 @@ jobs:
         run: |
           # shellcheck disable=SC2029
           set -euo pipefail
-          # deployment/deploy.sh is also used for the nuc deployment; keep the update and
-          # web-client fetch logic in one place.
           ssh -o BatchMode=yes -o IdentitiesOnly=yes "$SSH_USER@$SSH_HOST" \
-            "DEPLOY_DIR='$DEPLOY_DIR' DEPLOY_REF='$DEPLOY_REF' PULL_SERVICES='amony web nginx zitadel' RECREATE_SERVICES='nginx web' WEB_IMAGE='ghcr.io/${{ github.repository_owner }}/amony-web' bash -s -- $COMPOSE_FILES" \
-            < deployment/deploy.sh
+            "DEPLOY_DIR='$DEPLOY_DIR' DEPLOY_REF='$DEPLOY_REF' COMPOSE_FILES='$COMPOSE_FILES' bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd "$DEPLOY_DIR"
+          git fetch --prune origin
+          git checkout "$DEPLOY_REF"
+          git pull --ff-only
+
+          docker compose $COMPOSE_FILES --profile zitadel pull amony web nginx zitadel
+          # --build refreshes the locally built certbot image from the checkout.
+          docker compose $COMPOSE_FILES --profile zitadel up -d --build
+          # Bind-mounted nginx config is not part of the container spec, so recreate the proxy to
+          # re-render the templates and pick up config changes.
+          docker compose $COMPOSE_FILES --profile zitadel up -d --no-deps --force-recreate nginx
+          docker image prune -f
+          REMOTE
 
       - name: Health check
         env:

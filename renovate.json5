@@ -118,7 +118,7 @@
     },
     // Built on the host or by CI, not something Renovate can look up.
     {
-      matchPackageNames: ["amony/certbot", "ghcr.io/merlijn/amony-app"],
+      matchPackageNames: ["amony/certbot", "ghcr.io/merlijn/amony-app", "ghcr.io/merlijn/amony-web"],
       enabled: false,
     },
   ],

@@ -43,13 +43,9 @@ jobs:
               # Exercise the backend job when the workflow itself changes.
               - '.github/workflows/build.yml'
 
-  web-assets:
+  web-image:
 
     runs-on: ubuntu-26.04
-
-    defaults:
-      run:
-        working-directory: frontend
 
     strategy:
       matrix:
@@ -57,7 +53,12 @@ jobs:
 
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-    - uses: oras-project/setup-oras@ac735097e22fe643015b0d19645f7c9a69942128 # v2
+      with:
+        fetch-depth: 0
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
     - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       # Fork PRs get a read-only token, so only push from branches of this repository.
       if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
@@ -66,23 +67,64 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Compute the artifact reference
+    - name: Compute the image reference and tags
       id: ref
-      working-directory: .
+      env:
+        HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        PR_NUMBER: ${{ github.event.number }}
+        COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       run: |
-        # Content-addressed: the tag is the git tree hash of frontend/, so an unchanged frontend
-        # reuses the artifact and a deploy derives the same tag from its own checkout.
-        echo "tag=fe-$(git rev-parse HEAD:frontend)" >> "$GITHUB_OUTPUT"
-        echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/amony-web" >> "$GITHUB_OUTPUT"
+        # Content-addressed: the tag covers the frontend tree and the web image inputs, so an
+        # unchanged web client reuses the image and a deploy can pin the exact build.
+        hash="$(git rev-parse HEAD:frontend HEAD:docker/web HEAD:.dockerignore | git hash-object --stdin)"
+        image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/amony-web"
+        echo "ref=$image:web-$hash" >> "$GITHUB_OUTPUT"
 
-    - name: Look for an existing artifact
+        publish=false
+        moving_tags=()
+        if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]]; then
+          publish=true
+          moving_tags+=("dev")
+        elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == refs/tags/* ]]; then
+          publish=true
+          moving_tags+=("latest" "${GITHUB_REF_NAME#v}")
+        elif [[ "$GITHUB_EVENT_NAME" == "pull_request" && "$HEAD_REPO" == "$GITHUB_REPOSITORY" ]] \
+             && git log -1 --pretty=%s "$COMMIT_SHA" | grep -q '#publish'; then
+          publish=true
+          moving_tags+=("pr-$PR_NUMBER")
+        fi
+
+        echo "publish=$publish" >> "$GITHUB_OUTPUT"
+        {
+          echo "tags<<EOF"
+          echo "$image:web-$hash"
+          for tag in "${moving_tags[@]}"; do echo "$image:$tag"; done
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+        {
+          echo "moving_tags<<EOF"
+          for tag in "${moving_tags[@]}"; do echo "$image:$tag"; done
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Look for an existing image
       id: existing
-      working-directory: .
       run: |
-        if oras manifest fetch "${{ steps.ref.outputs.image }}:${{ steps.ref.outputs.tag }}" >/dev/null 2>&1; then
-          echo "This frontend tree was built before, reusing the artifact"
+        if docker manifest inspect "${{ steps.ref.outputs.ref }}" >/dev/null 2>&1; then
+          echo "This web client was built before, reusing the image"
           echo "exists=true" >> "$GITHUB_OUTPUT"
         fi
+
+    - name: Point the moving tags at the existing image
+      if: steps.existing.outputs.exists == 'true' && steps.ref.outputs.publish == 'true'
+      env:
+        MOVING_TAGS: ${{ steps.ref.outputs.moving_tags }}
+        REF: ${{ steps.ref.outputs.ref }}
+      run: |
+        while IFS= read -r tag; do
+          [ -n "$tag" ] || continue
+          docker buildx imagetools create -t "$tag" "$REF"
+        done <<< "$MOVING_TAGS"
 
     - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6
       if: steps.existing.outputs.exists != 'true'
@@ -98,21 +140,26 @@ jobs:
 
     - name: Build the web client
       if: steps.existing.outputs.exists != 'true'
+      working-directory: frontend
       run: |
         pnpm install --frozen-lockfile
         pnpm run generate
         pnpm run build
 
-    - name: Publish the web client artifact
-      if: steps.existing.outputs.exists != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-      working-directory: .
-      run: |
-        tar -czf frontend-dist.tar.gz -C frontend/dist .
-        oras push "${{ steps.ref.outputs.image }}:${{ steps.ref.outputs.tag }}" \
-          frontend-dist.tar.gz:application/vnd.oci.image.layer.v1.tar+gzip \
-          --annotation "org.opencontainers.image.revision=${{ github.sha }}" \
-          --annotation "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
-          --annotation "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    - name: Build and publish the web image
+      if: steps.existing.outputs.exists != 'true'
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+      with:
+        context: .
+        file: docker/web/Dockerfile
+        # The assets are identical per platform; publish both so the image matches the app.
+        platforms: linux/amd64,linux/arm64
+        push: ${{ steps.ref.outputs.publish == 'true' }}
+        tags: ${{ steps.ref.outputs.tags }}
+        labels: |
+          org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          org.opencontainers.image.revision=${{ github.sha }}
+          org.opencontainers.image.description=Amony web client
 
   build-backend:
     needs: changes
