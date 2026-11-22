@@ -2,66 +2,121 @@ package nl.amony.modules.resources.util
 
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
+import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, StandardOpenOption}
 import java.security.MessageDigest
-import scala.util.{Random, Using}
+import scala.util.Using
 
 import cats.effect.IO
-import scribe.Logging
 
-object PartialHash extends Logging {
+/**
+ * Content hash based on a deterministic sample of a file: two fixed windows at the start and end plus chunks spread
+ * evenly over the middle. The recipe version is mixed into the digest and prefixed to the encoded value, so hashes from
+ * different recipes can never compare equal.
+ */
+object PartialHash {
+
+  /** Hash recipe version, mixed into the digest and used as the encoded prefix. */
+  val Recipe: String = "ph2"
+
+  val Prefix: String = s"${Recipe}_"
+
+  /** Value used for legacy rows until the one-off migration has recomputed their hash. */
+  val Placeholder: String = "ph0_unknown"
+
+  private val HashBytes = 15 // 120 bits = 24 Base32 characters
+
+  val HeadBytes: Int    = 8 * 1024
+  val TailBytes: Int    = 8 * 1024
+  val MiddleBytes: Int  = 16 * 1024
+  val MiddleChunks: Int = 128
+
+  def isCurrent(encoded: String): Boolean = encoded.startsWith(Prefix)
+
+  def encodeHash(bytes: Array[Byte]): String =
+    Prefix + Base32.encode(java.util.Arrays.copyOf(bytes, HashBytes))
 
   /**
-   * Randomly samples given number of bytes from a file.
+   * Hashes a deterministic sample of the file.
    *
-   * @param file   The file in question
-   * @param nChunks The number of bytes to sample
-   * @return
+   * Files no larger than the total sample size are hashed in full. Larger files contribute their head, their tail and
+   * one chunk per middle bucket, so changes anywhere have a reasonable chance of being detected even when the
+   * file has large uniform regions.
    */
-  def sampleBytesFromFile(file: Path, nChunks: Int, chunkSize: Int = 1): Array[Byte] = {
-    val size = Files.size(file)
-
-    // small files are hashed in full, this also avoids invalid random offsets when size <= chunkSize
-    if size <= nChunks.toLong * chunkSize then return Files.readAllBytes(file)
-
-    val result = new Array[Byte](nChunks * chunkSize)
-
-    // we pass the length/size of the file as seed
-    val random = new Random(size)
-
-    Using(FileChannel.open(file, StandardOpenOption.READ)) {
-      channel =>
-        (0 until nChunks).map {
-          i =>
-
-            val pos = random.nextLong(size - chunkSize)
-
-            try {
-              val buffer = ByteBuffer.allocate(chunkSize)
-              channel.position(pos)
-              channel.read(buffer)
-              buffer.array().copyToArray(result, i * chunkSize, chunkSize)
-            } catch {
-              case e: Exception =>
-                logger.warn(s"Failed reading byte at: $file ($size): $i, position: $pos")
-                throw e;
-            }
-        }
-    }
-
-    result
-  }
-
-  // samples a file randomly and creates a hash from that
-  def partialHash(file: Path, nChunks: Int = 32, chunkSize: Int = 32, digestFn: () => MessageDigest, encoder: Array[Byte] => String): IO[String] =
+  def partialHash(
+    file: Path,
+    digestFn: () => MessageDigest,
+    encoder: Array[Byte] => String,
+    headBytes: Int    = HeadBytes,
+    tailBytes: Int    = TailBytes,
+    middleBytes: Int  = MiddleBytes,
+    middleChunks: Int = MiddleChunks
+  ): IO[String] =
     IO.blocking {
+      require(headBytes >= 0, s"headBytes must be >= 0, got $headBytes")
+      require(tailBytes >= 0, s"tailBytes must be >= 0, got $tailBytes")
+      require(middleBytes >= 0, s"middleBytes must be >= 0, got $middleBytes")
+      require(middleChunks > 0, s"middleChunks must be > 0, got $middleChunks")
+      require(middleBytes >= middleChunks, s"middleBytes must be at least middleChunks, got $middleBytes and $middleChunks")
 
-      val bytes = sampleBytesFromFile(file, nChunks, chunkSize)
+      val size   = Files.size(file)
+      val digest = digestFn()
 
-      val digest      = digestFn()
-      val hash        = digest.digest(bytes)
-      val encodedHash = encoder(hash)
+      digest.update(Recipe.getBytes(StandardCharsets.UTF_8))
+      digest.update(ByteBuffer.allocate(java.lang.Long.BYTES).putLong(size).array())
+      sampleIntoDigest(file, size, digest, headBytes, tailBytes, middleBytes, middleChunks)
 
-      encodedHash
+      encoder(digest.digest())
     }
+
+  private def sampleIntoDigest(
+    file: Path,
+    size: Long,
+    digest: MessageDigest,
+    headBytes: Int,
+    tailBytes: Int,
+    middleBytes: Int,
+    middleChunks: Int
+  ): Unit =
+    Using.resource(FileChannel.open(file, StandardOpenOption.READ)) { channel =>
+      if size <= headBytes.toLong + tailBytes.toLong + middleBytes.toLong then {
+        val all = ByteBuffer.allocate(size.toInt)
+        readFully(channel, all, 0L)
+        digest.update(all.array())
+      } else {
+        val head = ByteBuffer.allocate(headBytes)
+        readFully(channel, head, 0L)
+        digest.update(head.array())
+
+        val tail = ByteBuffer.allocate(tailBytes)
+        readFully(channel, tail, size - tailBytes)
+        digest.update(tail.array())
+
+        val middleLength = size - headBytes - tailBytes
+        val chunkSize    = math.max(1, middleBytes / middleChunks)
+        val bucketSize   = middleLength / middleChunks
+        val chunk        = ByteBuffer.allocate(chunkSize)
+
+        var index = 0
+        while index < middleChunks do {
+          val bucketStart = headBytes.toLong + index.toLong * bucketSize
+
+          chunk.clear()
+          readFully(channel, chunk, bucketStart)
+          digest.update(chunk.array())
+          index += 1
+        }
+      }
+    }
+
+  private def readFully(channel: FileChannel, buffer: ByteBuffer, position: Long): Unit = {
+    var pos = position
+    while buffer.hasRemaining do {
+      val read = channel.read(buffer, pos)
+      if read < 0 then throw new java.io.EOFException(s"Unexpected end of file at byte $pos")
+      else if read == 0 then throw new java.io.IOException(s"Read returned no bytes at byte $pos")
+      else pos += read
+    }
+    buffer.flip()
+  }
 }

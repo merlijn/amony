@@ -10,6 +10,7 @@ import sttp.tapir.{FieldName, Schema, SchemaType}
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.api.{ImageProperties, ResourceInfo, VideoProperties}
+import nl.amony.modules.resources.util.PartialHash as PartialHashUtil
 import nl.amony.platform.tapir.required
 
 case class BucketDto(bucketId: String, config: Option[BucketConfigDto] = None) derives Codec, sttp.tapir.Schema
@@ -68,7 +69,7 @@ case class ResourceDto(
       resourceId         = ResourceId(resourceId),
       userId             = UserId(userId),
       path               = ResourcePath(path),
-      partialHash        = partialHash,
+      partialHash        = partialHash.getOrElse(PartialHashUtil.Placeholder),
       size               = sizeInBytes,
       contentMeta        = ContentMeta(contentType = Some(contentType), streamable = contentMeta.streamable),
       tags               = tags.toSet.map(Tag.user),
@@ -151,7 +152,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
   ResourceDto(
     bucketId           = resource.bucketId,
     resourceId         = resource.resourceId,
-    partialHash        = resource.partialHash,
+    partialHash        = Some(resource.partialHash),
     sizeInBytes        = resource.size,
     path               = resource.path,
     timeAdded          = resource.timeAdded.getOrElse(0L),

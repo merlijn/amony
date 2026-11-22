@@ -33,11 +33,12 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
 
   private def resource(path: String): ResourceInfo =
     ResourceInfo(
-      bucketId   = BucketId("bucket"),
-      resourceId = ResourceId(UUID.randomUUID().toString),
-      userId     = UserId("admin"),
-      path       = ResourcePath(path),
-      size       = 1L
+      bucketId    = BucketId("bucket"),
+      resourceId  = ResourceId(UUID.randomUUID().toString),
+      userId      = UserId("admin"),
+      path        = ResourcePath(path),
+      partialHash = "test-hash",
+      size        = 1L
     )
 
   "LocalDirectoryStore" should {

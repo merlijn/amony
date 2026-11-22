@@ -17,7 +17,7 @@ case class ResourceRow(
   bucket_id: String,
   resource_id: String,
   user_id: String,
-  partial_hash: Option[String],
+  partial_hash: String,
   file_key: Option[String]         = None,
   size: Long,
   content_type: Option[String],

@@ -30,6 +30,7 @@ import nl.amony.modules.resources.impl.{
   FileOperations,
   LocalDirectoryStore,
   LocalDirectorySyncer,
+  PartialHashMigration,
   ResourceBucketImpl,
   ResourceProcessor
 }
@@ -66,6 +67,19 @@ class ResourceModule(
 object ResourceModule:
 
   def endpoints: List[AnyEndpoint] = ResourceRoutes.endpoints ++ BucketRoutes.endpoints ++ CollectionRoutes.endpoints
+
+  /** One-off migration to the current partial hash recipe. Remove once every deployment has run it. */
+  def migratePartialHashes(
+    databasePool: Resource[IO, Session[IO]],
+    resourceIndex: ResourceIndex,
+    parallelFactor: Int
+  ): IO[Unit] =
+    PartialHashMigration.run(
+      ResourceDatabase(databasePool),
+      BucketsDal(databasePool),
+      resourceIndex,
+      parallelFactor
+    )
 
   def resource(
     config: ResourceConfig,

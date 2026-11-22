@@ -25,7 +25,7 @@ private[search] class SolrIndexer(config: SolrConfig, solr: SolrClient) extends 
     solrInputDocument.addField(FieldNames.userId, resource.userId)
     solrInputDocument.addField(FieldNames.path, resource.path)
     solrInputDocument.addField(FieldNames.filesize, resource.size)
-    resource.partialHash.foreach(partialHash => solrInputDocument.addField(FieldNames.partialHash, partialHash))
+    solrInputDocument.addField(FieldNames.partialHash, resource.partialHash)
     resource.fileKey.foreach(fileKey => solrInputDocument.addField(FieldNames.fileKey, fileKey))
 
     // Only user-owned tags are indexed and faceted. System tags stay out of SearchResult for now;

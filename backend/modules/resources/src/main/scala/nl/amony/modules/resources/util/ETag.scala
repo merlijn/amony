@@ -11,5 +11,5 @@ object ETag:
     Base32.encode(MessageDigest.getInstance("SHA-1").digest(parts.mkString("\u0000").getBytes(StandardCharsets.UTF_8)))
 
   /** Validator for a resource's original content, derived from its partial hash and last modified time. */
-  def forResource(info: ResourceInfo): Option[String] =
-    info.partialHash.map(sourceHash => of(sourceHash, info.timeLastModified.getOrElse(0L).toString))
+  def forResource(info: ResourceInfo): String =
+    of(info.partialHash, info.timeLastModified.getOrElse(0L).toString)

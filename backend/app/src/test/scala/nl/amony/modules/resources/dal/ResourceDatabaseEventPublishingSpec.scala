@@ -60,11 +60,12 @@ class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestConta
 
   private def resource(bucketId: BucketId): ResourceInfo =
     ResourceInfo(
-      bucketId   = bucketId,
-      resourceId = ResourceId(UUID.randomUUID().toString),
-      userId     = UserId("admin"),
-      path       = ResourcePath("file.mp4"),
-      size       = 1L
+      bucketId    = bucketId,
+      resourceId  = ResourceId(UUID.randomUUID().toString),
+      userId      = UserId("admin"),
+      path        = ResourcePath("file.mp4"),
+      partialHash = "test-hash",
+      size        = 1L
     )
 
   "ResourceDatabase" should {
@@ -111,7 +112,7 @@ class ResourceDatabaseEventPublishingSpec extends AnyWordSpecLike with TestConta
         Database.makePool(configForContainer(container, poolSize = 1)).use { pool =>
           val db     = ResourceDatabase(pool)
           val bucket = BucketId(s"bucket-${UUID.randomUUID()}")
-          val res    = resource(bucket).copy(partialHash = Some("hash-1"), tags = Set(Tag.user("initial")))
+          val res    = resource(bucket).copy(partialHash = "hash-1", tags = Set(Tag.user("initial")))
 
           val tx = db.transact { _ =>
             for

@@ -257,6 +257,9 @@ private[dal] object Queries extends Logging {
         (EXCLUDED.user_id, EXCLUDED.partial_hash, EXCLUDED.file_key, EXCLUDED.size, EXCLUDED.content_type, EXCLUDED.content_meta_tool_name, EXCLUDED.content_meta_tool_data, EXCLUDED.fs_path, EXCLUDED.time_added, EXCLUDED.time_created, EXCLUDED.time_last_modified, EXCLUDED.title, EXCLUDED.description, EXCLUDED.thumbnail_timestamp, EXCLUDED.streamable)
       """.command
 
+    val updatePartialHash: Command[(String, String, String)] =
+      sql"update resources set partial_hash = $varchar where bucket_id = $varchar and resource_id = $varchar".command
+
     val bucketCount: Query[String, Long] = sql"select count(*) from resources where bucket_id = $varchar".query(int8)
   }
 }

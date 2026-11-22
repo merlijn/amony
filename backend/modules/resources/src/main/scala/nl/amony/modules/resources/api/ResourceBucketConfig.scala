@@ -12,8 +12,7 @@ import pureconfig.generic.FieldCoproductHint
 import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
 
 import nl.amony.modules.auth.api.Role
-import nl.amony.modules.resources.util.Base32
-import nl.amony.modules.resources.util.PartialHash.partialHash
+import nl.amony.modules.resources.util.{Base32, PartialHash as PartialHashUtil}
 import nl.amony.platform.files.GlobPatterns
 
 sealed trait ResourceBucketConfig:
@@ -127,9 +126,9 @@ object HashingAlgorithm {
 
 case object PartialHash extends HashingAlgorithm {
   override val name                               = "partial-hash"
-  override val algorithm                          = "SHA-1"
+  override val algorithm                          = "SHA-256"
   override def createHash(path: Path): IO[String] =
-    partialHash(file = path, nChunks = 32, chunkSize = 32, digestFn = () => newDigest(), encoder = encodeHash)
+    PartialHashUtil.partialHash(file = path, digestFn = () => newDigest(), encoder = encodeHash)
 
-  override def encodeHash(bytes: Array[Byte]): String = Base32.encode(bytes).substring(0, 24) // this is a 24 character hash base 32 = 120 bits
+  override def encodeHash(bytes: Array[Byte]): String = PartialHashUtil.encodeHash(bytes)
 }
