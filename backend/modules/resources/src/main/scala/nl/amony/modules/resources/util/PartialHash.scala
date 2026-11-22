@@ -40,8 +40,7 @@ object PartialHash {
    * Hashes a deterministic sample of the file.
    *
    * Files no larger than the total sample size are hashed in full. Larger files contribute their head, their tail and
-   * one chunk per middle bucket, so changes anywhere have a reasonable chance of being detected even when the
-   * file has large uniform regions.
+   * one centered chunk per middle bucket. Bucket boundaries partition the whole middle region.
    */
   def partialHash(
     file: Path,
@@ -95,14 +94,19 @@ object PartialHash {
         val middleLength = size - headBytes - tailBytes
         val chunkSize    = math.max(1, middleBytes / middleChunks)
         val bucketSize   = middleLength / middleChunks
+        val remainder    = middleLength % middleChunks
         val chunk        = ByteBuffer.allocate(chunkSize)
+
+        def bucketBoundary(index: Long): Long = index * bucketSize + index * remainder / middleChunks
 
         var index = 0
         while index < middleChunks do {
-          val bucketStart = headBytes.toLong + index.toLong * bucketSize
+          val start  = bucketBoundary(index.toLong)
+          val end    = bucketBoundary(index.toLong + 1)
+          val offset = headBytes.toLong + start + (end - start - chunkSize) / 2
 
           chunk.clear()
-          readFully(channel, chunk, bucketStart)
+          readFully(channel, chunk, offset)
           digest.update(chunk.array())
           index += 1
         }

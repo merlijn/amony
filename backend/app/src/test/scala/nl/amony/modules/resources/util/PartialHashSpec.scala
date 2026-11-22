@@ -1,7 +1,8 @@
 package nl.amony.modules.resources.util
 
+import java.io.RandomAccessFile
 import java.nio.file.{Files, Path}
-import java.security.MessageDigest
+import scala.util.Using
 
 import cats.effect.unsafe.implicits.global
 import org.scalatest.matchers.should.Matchers
@@ -17,7 +18,7 @@ class PartialHashSpec extends AnyWordSpec with Matchers {
     val path = Files.createTempFile("partial-hash-test", ".bin")
     try
       Files.write(path, bytes)
-      PartialHash.partialHash(path, () => MessageDigest.getInstance("SHA-256"), PartialHash.encodeHash).unsafeRunSync()
+      hashFile(path)
     finally Files.deleteIfExists(path)
 
   private def hashFile(path: Path): String =
@@ -62,7 +63,59 @@ class PartialHashSpec extends AnyWordSpec with Matchers {
     }
 
     "hash larger files by sampling" in {
-      hash(Array.fill(4096)(4.toByte)) should not be empty
+      hash(Array.fill(64 * 1024)(4.toByte)) should not be empty
+    }
+
+    "center the sample within each middle bucket" in {
+      val size       = 64 * 1024
+      val firstStart = 8 * 1024 + 128
+      val lastStart  = size - 8 * 1024 - 256
+      val unchanged  = hash(new Array[Byte](size))
+
+      def hashWithByteChanged(offset: Int): String =
+        val content = new Array[Byte](size)
+        content(offset) = 1
+        hash(content)
+
+      for start <- List(firstStart, lastStart) do
+        hashWithByteChanged(start - 1) shouldBe unchanged
+        hashWithByteChanged(start) should not equal unchanged
+        hashWithByteChanged(start + 127) should not equal unchanged
+        hashWithByteChanged(start + 128) shouldBe unchanged
+    }
+
+    "match the ph1 recipe at the full-read cutoff and with uneven middle buckets" in {
+      val vectors = List(
+        32768 -> "ph1_236gg3luzocicue3kwvlqbl7",
+        32769 -> "ph1_fyr6msdeifvjapwzfccrx3hi",
+        65601 -> "ph1_t56s2k46ognlxr2jiwuaojrt"
+      )
+
+      for (size, expected) <- vectors do
+        val content = Array.tabulate(size)(i => (i ^ (i >>> 7) ^ (i >>> 13)).toByte)
+        withClue(s"File size $size: ")(hash(content) shouldBe expected)
+    }
+
+    "distinguish file sizes even when all sampled bytes are identical" in {
+      val size = 64 * 1024
+      hash(new Array[Byte](size)) should not equal hash(new Array[Byte](size + 1))
+    }
+
+    "sample at offsets beyond 32 bits" in {
+      val file = Files.createTempFile("partial-hash-sparse", ".bin")
+      val size = 5L * 1024 * 1024 * 1024 + 16 * 1024
+      try
+        Using.resource(new RandomAccessFile(file.toFile, "rw"))(_.setLength(size))
+        val unchanged = hashFile(file)
+
+        Using.resource(new RandomAccessFile(file.toFile, "rw")) { sparse =>
+          val lastBucketCenter = size - 8 * 1024 - 20 * 1024 * 1024
+          sparse.seek(lastBucketCenter)
+          sparse.write(1)
+        }
+
+        hashFile(file) should not equal unchanged
+      finally Files.deleteIfExists(file)
     }
 
     "always include the first byte" in {
