@@ -112,8 +112,9 @@ docker compose -f docker-compose.yml -f docker-compose-https.yml -f docker-compo
 
 The web client is not part of the application image. The `Build and deploy` workflow publishes it to GHCR as an OCI
 artifact (`ghcr.io/<owner>/amony-web:fe-<tree>`), where the tag is the git tree hash of `frontend/`. The deploy pulls
-the artifact that matches its own checkout, unpacks it into `web/releases/<tree>` and repoints the `web/current`
-symlink. The `web` service in `docker-compose.yml` serves that directory, and the reverse proxy routes `/` to it.
+the artifact that matches its own checkout, unpacks it into `data/web-assets/releases/<tree>` and repoints the
+`data/web-assets/current` symlink. The `web` service in `docker-compose.yml` serves that directory, and the reverse
+proxy routes `/` to it.
 
 The frontend build emits pre-compressed `.gz` files; the `web` service serves those with `gzip_static` when the client
 accepts gzip. Brotli is not generated: the stock nginx image has no brotli module, so the files could not be served.

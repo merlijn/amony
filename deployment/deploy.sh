@@ -20,6 +20,7 @@ deploy_ref="${DEPLOY_REF:-main}"
 web_image="${WEB_IMAGE:-ghcr.io/merlijn/amony-web}"
 pull_services="${PULL_SERVICES:-amony web}"
 recreate_services="${RECREATE_SERVICES:-web}"
+web_dir="data/web-assets"
 
 cd "$deploy_dir"
 
@@ -40,12 +41,12 @@ pull_dir="$(mktemp -d)"
 trap 'rm -rf "$pull_dir"' EXIT
 docker run --rm --user "$(id -u):$(id -g)" -v "$pull_dir:/out" \
   ghcr.io/oras-project/oras:v1.3.0 pull -o /out "$web_ref"
-mkdir -p "web/releases/$fe_tree"
-tar -xzf "$pull_dir/frontend-dist.tar.gz" -C "web/releases/$fe_tree"
-ln -sfn "releases/$fe_tree" web/current
+mkdir -p "$web_dir/releases/$fe_tree"
+tar -xzf "$pull_dir/frontend-dist.tar.gz" -C "$web_dir/releases/$fe_tree"
+ln -sfn "releases/$fe_tree" "$web_dir/current"
 while IFS= read -r old_release; do
-  rm -rf "web/releases/$old_release"
-done < <(ls -1t web/releases | tail -n +4)
+  rm -rf "$web_dir/releases/$old_release"
+done < <(ls -1t "$web_dir/releases" | tail -n +4)
 
 pull_list=()
 if [[ -n "$pull_services" ]]; then
