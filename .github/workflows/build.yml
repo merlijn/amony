@@ -327,7 +327,11 @@ jobs:
   create-manifest:
     needs: build-backend
     runs-on: ubuntu-26.04
-    if: needs.build-backend.result == 'success' && needs.build-backend.outputs.publish == 'true'
+    # An optional upstream job can be skipped even when the backend builds succeeded.
+    if: >-
+      !cancelled() &&
+      needs.build-backend.result == 'success' &&
+      needs.build-backend.outputs.publish == 'true'
 
     steps:
       - name: Download docker tags
