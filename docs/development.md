@@ -118,6 +118,10 @@ and pulls both images by their SHA tag, so a newer build moving `dev` cannot cha
 default to the SHA tag for the selected ref (default `main`), or you can give an explicit tag that exists on both
 images.
 
+On `main`, CI reuses the backend's multi-architecture image when an `app-<hash>` tag matching the backend tree and build
+workflow already exists. It adds the new commit's SHA tag without rebuilding. If that image is missing, CI builds and
+publishes it.
+
 The web image is published as `ghcr.io/<owner>/amony-web`. It also gets a content-addressed `web-<hash>` tag, `latest`
 and the version tag on releases, and `pr-<number>` for same-repository pull requests with `#publish`. The `web` service
 serves the UI and the reverse proxy routes `/` to it.

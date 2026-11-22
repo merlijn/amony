@@ -23,6 +23,7 @@ env:
 
 jobs:
   changes:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-26.04
     permissions:
       contents: read
@@ -161,14 +162,49 @@ jobs:
           org.opencontainers.image.revision=${{ github.sha }}
           org.opencontainers.image.description=Amony web client
 
+  backend-image:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-26.04
+    outputs:
+      tag: ${{ steps.cache.outputs.tag }}
+      exists: ${{ steps.cache.outputs.exists }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Reuse the backend image if it has already been built
+        id: cache
+        run: |
+          hash="$(git rev-parse HEAD:backend HEAD:.github/workflows/build.yml | git hash-object --stdin)"
+          tag="app-$hash"
+          image="$DOCKER_REGISTRY/${GITHUB_REPOSITORY_OWNER,,}/$IMAGE_NAME"
+          ref="$image:$tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if docker buildx imagetools inspect "$ref" >/dev/null; then
+            docker buildx imagetools create -t "$image:dev" -t "$image:sha-$GITHUB_SHA" "$ref"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No reusable backend image at $ref; building it"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build-backend:
-    needs: changes
-    # Every main commit needs an app image tag for the demo. Only skip unchanged PR builds.
+    needs: [changes, backend-image]
     if: >-
       !cancelled() &&
-      (github.event_name == 'push' ||
-       needs.changes.result != 'success' ||
-       needs.changes.outputs.backend == 'true')
+      (startsWith(github.ref, 'refs/tags/') ||
+       (needs.backend-image.result == 'success' && needs.backend-image.outputs.exists == 'false') ||
+       (github.event_name == 'pull_request' &&
+        (needs.changes.result != 'success' || needs.changes.outputs.backend == 'true')))
     runs-on: ${{ matrix.runner }}
     # Both matrix legs compute the same value, so the merged output is stable.
     outputs:
@@ -190,7 +226,7 @@ jobs:
       JIB_RELEASE_BUILD: ${{ startsWith(github.ref, 'refs/tags/') }}
       JIB_TAGS: >-
         ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) ||
-            github.ref == 'refs/heads/main' && format('dev,sha-{0}', github.sha) || '' }}
+            github.ref == 'refs/heads/main' && format('dev,sha-{0},{1}', github.sha, needs.backend-image.outputs.tag) || '' }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
