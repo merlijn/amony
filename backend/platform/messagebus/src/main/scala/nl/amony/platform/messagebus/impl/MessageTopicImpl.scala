@@ -20,7 +20,7 @@ import nl.amony.platform.messagebus.*
  * change the replacement's lease or advance its offset. A message is only deleted once every registered consumer
  * group has acknowledged it.
  */
-final private[messagebus] class PostgresMessageTopic[E](
+final private[messagebus] class MessageTopicImpl[E](
   key: MessageTopicKey[E],
   log: MessageLog,
   pool: Resource[IO, Session[IO]],
@@ -28,7 +28,7 @@ final private[messagebus] class PostgresMessageTopic[E](
 ) extends MessageTopic[E] with Logging:
 
   private val codec      = key.codec
-  private val identifier = PostgresMessageTopic.channelIdentifier(key.name)
+  private val identifier = MessageTopicImpl.channelIdentifier(key.name)
 
   override def publish(message: E): IO[Unit] =
     pool.use(session => session.transaction.use(_ => publish(session, message)))
@@ -116,7 +116,7 @@ final private[messagebus] class PostgresMessageTopic[E](
 
     IO.race(heartbeat, finish).void
 
-private[messagebus] object PostgresMessageTopic:
+private[messagebus] object MessageTopicImpl:
 
   def channelIdentifier(name: String): Identifier =
     val sanitized = name.map(c => if c.isLetterOrDigit || c == '_' then c else '_')

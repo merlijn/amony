@@ -15,7 +15,7 @@ import nl.amony.platform.messagebus.*
  * retry backoff) is entirely delegated to the topic; this class only records the per-job lifecycle and turns a
  * permanently failing job into a terminal failure so it cannot block its partition forever.
  */
-final private[messagebus] class PostgresJobBus[P](
+final private[messagebus] class JobBusImpl[P](
   key: JobTopicKey[P],
   topic: MessageTopic[Job[P]],
   log: MessageLog,

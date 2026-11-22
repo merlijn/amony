@@ -20,7 +20,7 @@ import skunk.implicits.*
 
 import nl.amony.platform.messagebus.*
 
-class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
+class MessageTopicImplSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 
   override val containerDef: GenericContainer.Def[GenericContainer] =
     GenericContainer.Def(
@@ -72,7 +72,7 @@ class PostgresMessageTopicSpec extends AnyWordSpecLike with TestContainerForAll 
     ref.get.flatMap(xs => if xs.size >= size then IO.pure(xs) else IO.sleep(50.millis) *> await(ref, size)).timeout(15.seconds)
 
   private def awaitListener(pool: Resource[IO, Session[IO]], topic: String, previous: Option[Int] = None): IO[Int] =
-    val listen = s"LISTEN ${PostgresMessageTopic.channelIdentifier(topic).sql}"
+    val listen = s"LISTEN ${MessageTopicImpl.channelIdentifier(topic).sql}"
     val find   = sql"select pid from pg_stat_activity where query = $varchar and state = 'idle'".query(int4)
 
     def waitForListener: IO[Int] = pool.use(_.prepare(find).flatMap(_.option(listen))).flatMap {
