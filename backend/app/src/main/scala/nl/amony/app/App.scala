@@ -70,13 +70,6 @@ object App extends ResourceApp.Forever with Logging {
         databasePool      <- Database.makePool(appConfig.database)
         httpClientBackend <- HttpClientCatsBackend.resource[IO]()
         searchModule      <- SearchModule.resource(appConfig.search)
-        _                 <- Resource.eval(
-                               ResourceModule.migratePartialHashes(
-                                 databasePool,
-                                 searchModule.resourceIndex,
-                                 appConfig.resources.parallelFactor
-                               )
-                             )
         messageBus         = MessageBus.postgres(databasePool, appConfig.messageBus)
         eventTopic         = {
           given MessageTopicKey[ResourceEvent] = MessageTopicKey("resource-events", _.messageKey)

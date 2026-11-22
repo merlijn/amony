@@ -12,7 +12,6 @@ import org.apache.solr.common.params.{CommonParams, FacetParams, ModifiableSolrP
 
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.*
-import nl.amony.modules.resources.util.PartialHash as PartialHashUtil
 import nl.amony.modules.search.SolrConfig
 import nl.amony.modules.search.api.SortDirection.Desc
 import nl.amony.modules.search.api.SortField.*
@@ -31,7 +30,9 @@ private[search] class SolrSearchService(config: SolrConfig, solr: SolrClient) ex
   private[solr] def toResource(document: SolrDocument): ResourceInfo = {
 
     val resourceId         = document.getFieldValue(FieldNames.id).asInstanceOf[String]
-    val partialHash        = Option(document.getFieldValue(FieldNames.partialHash)).map(_.asInstanceOf[String]).getOrElse(PartialHashUtil.Placeholder)
+    val partialHash        = Option(document.getFieldValue(FieldNames.partialHash))
+      .getOrElse(throw new IllegalArgumentException(s"Solr resource '$resourceId' is missing field '${FieldNames.partialHash}'"))
+      .asInstanceOf[String]
     val fileKey            = Option(document.getFieldValue(FieldNames.fileKey)).map(_.asInstanceOf[String])
     val bucketId           = document.getFieldValue(FieldNames.bucketId).asInstanceOf[String]
     val title              = Option(document.getFieldValue(FieldNames.title)).map(_.asInstanceOf[String])
