@@ -27,7 +27,6 @@ final private[messagebus] class MessageTopicImpl[E](
   config: MessageBusConfig
 ) extends MessageTopic[E] with Logging:
 
-  private val codec      = key.codec
   private val identifier = MessageTopicImpl.channelIdentifier(key.name)
 
   override def publish(message: E): IO[Unit] =
@@ -35,7 +34,7 @@ final private[messagebus] class MessageTopicImpl[E](
 
   override def publish(session: Session[IO], message: E): IO[Unit] =
     val (messageKey, partition) = key.partitionFor(message)
-    log.enqueue(session, key.name, partition, messageKey, codec(message)) >> session.channel(identifier).notify(key.name)
+    log.enqueue(session, key.name, partition, messageKey, key.encode(message)) >> session.channel(identifier).notify(key.name)
 
   override def processAtLeastOnce(consumerId: String, parallelism: Option[Int] = None)(processor: E => IO[Unit]): Stream[IO, Unit] =
     val maxWorkers = parallelism.getOrElse(config.parallelism).min(key.partitions).max(1)
@@ -106,7 +105,7 @@ final private[messagebus] class MessageTopicImpl[E](
       .drain
       .handleErrorWith(error => IO(logger.warn(s"Failed to renew lease for $context: $error")))
 
-    val runProcessor = IO.defer(IO.fromEither(codec.decodeJson(row.payload))).flatMap(processor)
+    val runProcessor = IO.defer(IO.fromEither(key.decode(row.payload))).flatMap(processor)
     val finish       = runProcessor.attempt.flatMap {
       case Right(_) => log.commitOffset(consumerId, row)
       case Left(e)  =>

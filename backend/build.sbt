@@ -194,6 +194,7 @@ val messageBusDependencies = Seq(
   "org.typelevel"         %% "cats-effect"               % "3.7.1",
   "co.fs2"                %% "fs2-core"                  % "3.16.0",
   "io.circe"              %% "circe-core"                % circeVersion,
+  "io.circe"              %% "circe-parser"              % circeVersion,
   "com.outr"              %% "scribe"                    % "3.19.1",
   "org.tpolecat"          %% "skunk-core"                % "2.0.0-RC3",
   "org.tpolecat"          %% "skunk-circe"               % "2.0.0-RC3",

@@ -4,9 +4,7 @@ import java.time.{Duration, OffsetDateTime}
 
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
-import io.circe.Json
 import skunk.*
-import skunk.circe.codec.all.jsonb
 import skunk.codec.all.*
 import skunk.data.Completion
 import skunk.implicits.*
@@ -17,7 +15,7 @@ final case class MessageLogRow(
   topic: String,
   partition: Int,
   messageKey: String,
-  payload: Json,
+  payload: Array[Byte],
   createdAt: OffsetDateTime,
   offset: Long,
   leaseGeneration: Long
@@ -26,11 +24,11 @@ final case class MessageLogRow(
 object MessageLogRow:
 
   val codec: Codec[MessageLogRow] =
-    (int8 *: varchar(128) *: int4 *: varchar(256) *: jsonb *: timestamptz *: int8 *: int8).to[MessageLogRow]
+    (int8 *: varchar(128) *: int4 *: varchar(256) *: bytea *: timestamptz *: int8 *: int8).to[MessageLogRow]
 
 private[messagebus] object MessageLogQueries:
 
-  val insert: Command[(String, Int, String, Json)] =
+  val insert: Command[(String, Int, String, Array[Byte])] =
     sql"""
       with allocated as (
         insert into message_partition (topic, partition, last_allocated_offset)
@@ -40,7 +38,7 @@ private[messagebus] object MessageLogQueries:
         returning topic, partition, last_allocated_offset
       )
       insert into message_log (topic, partition, partition_offset, message_key, payload)
-      select topic, partition, last_allocated_offset, $varchar, $jsonb from allocated
+      select topic, partition, last_allocated_offset, $varchar, $bytea from allocated
     """.command
 
   val ensureConsumer: Command[(String, String, Int, Option[Long])] =
@@ -132,7 +130,7 @@ private[messagebus] object MessageLogQueries:
 /** Persistence for the durable log and the per-consumer-partition offsets that back the message bus. */
 final private[messagebus] class MessageLog(pool: Resource[IO, Session[IO]]):
 
-  def enqueue(session: Session[IO], topic: String, partition: Int, messageKey: String, payload: Json): IO[Unit] =
+  def enqueue(session: Session[IO], topic: String, partition: Int, messageKey: String, payload: Array[Byte]): IO[Unit] =
     session.prepare(MessageLogQueries.insert).flatMap(_.execute((topic, partition, messageKey, payload))).void
 
   def ensureConsumerAtLatest(topic: String, consumerId: String, partitions: Int): IO[Unit] =

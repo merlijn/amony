@@ -157,3 +157,12 @@ databaseChangeLog:
             path: db/17-partial-hash-v2.sql
             splitStatements: true
             endDelimiter: ";"
+  - changeSet:
+      id: 18
+      author: merlijn
+      context: message-log
+      changes:
+        - sqlFile:
+            path: db/18-message-payload-bytes.sql
+            splitStatements: true
+            endDelimiter: ";"

@@ -1,5 +1,6 @@
 package nl.amony.platform.messagebus.impl
 
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.UUID
 import scala.concurrent.duration.*
 
@@ -8,7 +9,7 @@ import cats.effect.{Deferred, IO, Ref, Resource}
 import cats.syntax.all.*
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
-import io.circe.{Codec, Json}
+import io.circe.Codec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
@@ -251,7 +252,7 @@ class MessageTopicImplSpec extends AnyWordSpecLike with TestContainerForAll with
             result    <- topic.processAtLeastOnce("consumer")(processor).compile.drain.background.use { _ =>
                            for
                              original    <- awaitListener(pool, name)
-                             _           <- pool.use(session => MessageLog(pool).enqueue(session, name, 0, "key", Json.fromInt(1)))
+                             _           <- pool.use(session => MessageLog(pool).enqueue(session, name, 0, "key", "1".getBytes(UTF_8)))
                              _           <- started.get.timeout(15.seconds)
                              terminated  <- pool.use(_.prepare(terminate).flatMap(_.unique(original)))
                              _           <- IO(terminated shouldBe true)

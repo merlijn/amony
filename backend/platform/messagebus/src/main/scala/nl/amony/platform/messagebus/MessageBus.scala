@@ -1,12 +1,14 @@
 package nl.amony.platform.messagebus
 
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.duration.*
 import scala.util.hashing.MurmurHash3
 
 import cats.effect.{IO, Resource}
 import fs2.Stream
-import io.circe.Codec
+import io.circe.parser.parse
+import io.circe.{Codec, Error}
 import pureconfig.ConfigReader
 import skunk.Session
 
@@ -25,6 +27,11 @@ case class MessageTopicKey[E: Codec](
     val key       = messageKey(message)
     val partition = Math.floorMod(MurmurHash3.stringHash(key), partitions)
     (key, partition)
+
+  def encode(message: E): Array[Byte] = codec(message).noSpaces.getBytes(UTF_8)
+
+  def decode(payload: Array[Byte]): Either[Error, E] =
+    parse(new String(payload, UTF_8)).flatMap(codec.decodeJson)
 
 object MessageTopicKey:
   val DefaultPartitions: Int = 16
