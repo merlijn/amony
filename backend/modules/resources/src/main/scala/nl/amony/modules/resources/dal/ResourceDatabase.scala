@@ -168,10 +168,6 @@ private[resources] class ResourceDatabase(pool: Resource[IO, Session[IO]]) exten
     useSession: s =>
       s.prepare(Queries.resources.getByPartialHashJoined).flatMap(_.stream((bucketId, partialHash), defaultChunkSize).map(toResource).compile.toList)
 
-  def updatePartialHash(bucketId: BucketId, resourceId: ResourceId, partialHash: String)(using maybeSession: Option[Session[IO]] = None): IO[Unit] =
-    useSession: s =>
-      s.prepare(Queries.resources.updatePartialHash).flatMap(_.execute((partialHash, bucketId, resourceId))).void
-
   def getResourceByPath(bucketId: BucketId, path: ResourcePath)(using maybeSession: Option[Session[IO]] = None): IO[Option[ResourceInfo]] =
     useSession: s =>
       s.prepare(Queries.resources.getByPathJoined).flatMap(_.stream(

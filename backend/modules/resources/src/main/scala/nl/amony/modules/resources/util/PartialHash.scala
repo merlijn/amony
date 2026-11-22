@@ -21,7 +21,7 @@ object PartialHash {
 
   val Prefix: String = s"${Recipe}_"
 
-  /** Value used for legacy rows until the one-off migration has recomputed their hash. */
+  /** Value used when a legacy resource has no partial hash. */
   val Placeholder: String = "ph0_unknown"
 
   private val HashBytes = 15 // 120 bits = 24 Base32 characters
@@ -30,8 +30,6 @@ object PartialHash {
   val TailBytes: Int    = 8 * 1024
   val MiddleBytes: Int  = 16 * 1024
   val MiddleChunks: Int = 128
-
-  def isCurrent(encoded: String): Boolean = encoded.startsWith(Prefix)
 
   def encodeHash(bytes: Array[Byte]): String =
     Prefix + Base32.encode(java.util.Arrays.copyOf(bytes, HashBytes))
