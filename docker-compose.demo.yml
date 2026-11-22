@@ -1,6 +1,6 @@
-# Compose overlay for the public demo deployment: overrides the app image tag (default "dev"; set
-# AMONY_IMAGE_TAG to test another tag, e.g. a PR build) and provides the Zitadel identity provider
-# used by the demo. Pass it alongside the base and HTTPS files, enabling Zitadel with
+# Compose overlay for the public demo deployment: overrides the app and web image tags (default
+# "dev"; set AMONY_IMAGE_TAG to test another tag, e.g. a PR build) and provides the Zitadel identity
+# provider used by the demo. Pass it alongside the base and HTTPS files, enabling Zitadel with
 # `--profile zitadel`.
 services:
   amony:
