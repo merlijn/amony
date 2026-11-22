@@ -1,5 +1,6 @@
 package nl.amony.modules.search.solr
 
+import org.apache.solr.common.SolrDocument
 import org.apache.solr.common.params.CommonParams
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
@@ -12,6 +13,16 @@ class SolrSearchServiceSpec extends AnyWordSpecLike with Matchers {
   private val search = SolrSearchService(SolrConfig(path = "", commitWithinMillis = 0), null)
 
   "SolrSearchService" when {
+
+    "reading a resource" should {
+      "reject documents without a partial hash" in {
+        val document = new SolrDocument()
+        document.setField(SolrSchema.FieldNames.id, "resource-id")
+
+        val error = intercept[IllegalArgumentException](search.toResource(document))
+        error.getMessage shouldBe "Solr resource 'resource-id' is missing field 'partial_hash_s'"
+      }
+    }
 
     "filtering on thumbnails" should {
 

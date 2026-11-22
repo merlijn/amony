@@ -2317,6 +2317,7 @@ components:
       required:
       - bucketId
       - resourceId
+      - partialHash
       - sizeInBytes
       - path
       - timeAdded
