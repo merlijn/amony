@@ -12,7 +12,7 @@
 #   RECREATE_SERVICES   Services to force-recreate after `up` (defaults to "web")
 #
 # Example:
-#   ./deployment/deploy.sh -f docker-compose.yml -f docker-compose-web.yml
+#   ./deployment/deploy.sh -f docker-compose.yml
 set -euo pipefail
 
 deploy_dir="${DEPLOY_DIR:-$PWD}"

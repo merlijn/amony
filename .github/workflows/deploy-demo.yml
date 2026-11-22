@@ -33,7 +33,7 @@ env:
   # Manual runs can deploy a specific image tag (e.g. a PR build); automatic deploys use "dev".
   AMONY_IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || 'dev' }}
   DEPLOY_DIR: /home/docker-user/amony
-  COMPOSE_FILES: "-f docker-compose.yml -f docker-compose-web.yml -f docker-compose-https.yml -f docker-compose.demo.yml --profile zitadel"
+  COMPOSE_FILES: "-f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml --profile zitadel"
 
 jobs:
   deploy:

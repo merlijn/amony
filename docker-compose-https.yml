@@ -1,7 +1,7 @@
 services:
   nginx:
     container_name: nginx-reverse-proxy
-    # Serves the UI through the `web` service from docker-compose-web.yml.
+    # Serves the UI through the `web` service from docker-compose.yml.
     # Stock image: it renders /etc/nginx/templates itself (20-envsubst-on-templates.sh) and the
     # certificate watcher is mounted as an additional entrypoint script.
     image: nginx:1.30.7-alpine@sha256:caf4e1e032a20f9c3c5e28fc7f25ffd768ad8677b4975c54193075997b3a97e3
