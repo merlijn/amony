@@ -4,14 +4,14 @@ services:
     # Stock image: it renders /etc/nginx/templates itself (20-envsubst-on-templates.sh) and the
     # certificate watcher is mounted as an additional entrypoint script.
     image: nginx:1.30.7-alpine@sha256:caf4e1e032a20f9c3c5e28fc7f25ffd768ad8677b4975c54193075997b3a97e3
+    depends_on:
+      - web
     ports:
       - "443:443"
     volumes:
       - ./docker/reverse-proxy/nginx/config:/etc/nginx/templates:ro
       - ./docker/reverse-proxy/nginx/config/shared-proxy-settings.conf:/etc/nginx/shared-proxy-settings.conf:ro
       - ./docker/reverse-proxy/nginx/reload-on-certificate-change.sh:/docker-entrypoint.d/40-reload-on-certificate-change.sh:ro
-      # Unpacked frontend artifact; `current` is a symlink to the deployed release.
-      - ./web:/srv/web:ro
       - certbot-data:/etc/letsencrypt
     environment:
       # Auth provider upstream behind the proxy: Dex (auth:5556) or Zitadel (zitadel:8080).

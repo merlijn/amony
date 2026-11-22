@@ -102,19 +102,55 @@ The public demo is redeployed by the `Deploy demo` workflow (`.github/workflows/
 once the `Build and deploy` workflow finishes successfully on `main`, and can also be triggered manually from the
 Actions tab.
 
-It connects to the server as `docker-user`, updates the checkout, pulls the new `dev` image and recreates the containers
-with `docker compose -f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml --profile zitadel`.
+It connects to the server as `docker-user` and runs `deployment/deploy.sh`, the same script used for other deployments.
+The script updates the checkout, pulls the new `dev` image and recreates the containers with:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose-web.yml -f docker-compose-https.yml \
+  -f docker-compose.demo.yml --profile zitadel
+```
 
 The web client is not part of the application image. The `Build and deploy` workflow publishes it to GHCR as an OCI
 artifact (`ghcr.io/<owner>/amony-web:fe-<tree>`), where the tag is the git tree hash of `frontend/`. The deploy pulls
 the artifact that matches its own checkout, unpacks it into `web/releases/<tree>` and repoints the `web/current`
-symlink, which the reverse proxy serves from `/srv/web/current`.
+symlink. The `web` service from `docker-compose-web.yml` serves that directory, and the reverse proxy routes `/` to it.
 
-The frontend build emits pre-compressed `.gz` files; the reverse proxy serves those with `gzip_static` when the client
+The frontend build emits pre-compressed `.gz` files; the `web` service serves those with `gzip_static` when the client
 accepts gzip. Brotli is not generated: the stock nginx image has no brotli module, so the files could not be served.
 
 Non-secret configuration lives in `deployment/demo.env`. The sensitive values (database password, JWT secret, Dex client
 secrets / admin password hash, Porkbun credentials) plus the SSH deploy key and host details are stored in the
 repository's `demo` GitHub Environment.
+
+### 5. Deploying behind an existing reverse proxy
+
+A host that already runs a shared reverse proxy can use the same layout. Include `docker-compose-web.yml` and attach the
+`amony` and `web` services to the proxy's external network in a local override:
+
+```yaml
+services:
+  amony:
+    networks:
+      - default
+      - https-proxy
+  web:
+    networks:
+      - default
+      - https-proxy
+
+networks:
+  https-proxy:
+    external: true
+```
+
+Run `deployment/deploy.sh` with the overlays for that host:
+
+```bash
+./deployment/deploy.sh -f docker-compose.yml -f docker-compose-web.yml -f docker-compose.override.yml
+```
+
+The shared proxy should send `/api/` to `amony-app:8182` and everything else to `amony-web:80`. Match its
+`client_max_body_size` and timeouts to the demo proxy (`15g` and `1200s`) so uploads and long-running requests are not
+cut off.
 
 Back to the [main README](../README.md).
