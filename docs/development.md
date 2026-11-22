@@ -112,11 +112,15 @@ docker compose -f docker-compose.yml -f docker-compose-https.yml -f docker-compo
   --profile zitadel up -d --build
 ```
 
-The application image and the web client image are published separately. The `Build and deploy` workflow publishes the
-web client as `ghcr.io/<owner>/amony-web`, tagged like the app image: `dev` on `main`, `latest` and the version tag on
-releases, and `pr-<number>` for pull requests with `#publish`. Each build also gets a content-addressed `web-<hash>`
-tag. The deploy pulls both images with the same tag; the `web` service in `docker-compose.yml` serves the UI and the
-reverse proxy routes `/` to it.
+The application image and the web client image are published separately. On `main`, `Build and deploy` publishes both
+with `dev` and `sha-<full commit SHA>` tags. The automatic demo deploy checks out the commit from the successful build
+and pulls both images by their SHA tag, so a newer build moving `dev` cannot change what gets deployed. Manual deploys
+default to the SHA tag for the selected ref (default `main`), or you can give an explicit tag that exists on both
+images.
+
+The web image is published as `ghcr.io/<owner>/amony-web`. It also gets a content-addressed `web-<hash>` tag, `latest`
+and the version tag on releases, and `pr-<number>` for same-repository pull requests with `#publish`. The `web` service
+serves the UI and the reverse proxy routes `/` to it.
 
 The frontend build emits pre-compressed `.gz` files; the web image serves those with `gzip_static` when the client
 accepts gzip. Brotli is not generated: the stock nginx image has no brotli module, so the files could not be served.

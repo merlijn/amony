@@ -81,29 +81,29 @@ jobs:
         echo "ref=$image:web-$hash" >> "$GITHUB_OUTPUT"
 
         publish=false
-        moving_tags=()
+        alias_tags=()
         if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]]; then
           publish=true
-          moving_tags+=("dev")
+          alias_tags+=("dev" "sha-$COMMIT_SHA")
         elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == refs/tags/* ]]; then
           publish=true
-          moving_tags+=("latest" "${GITHUB_REF_NAME#v}")
+          alias_tags+=("latest" "${GITHUB_REF_NAME#v}")
         elif [[ "$GITHUB_EVENT_NAME" == "pull_request" && "$HEAD_REPO" == "$GITHUB_REPOSITORY" ]] \
              && git log -1 --pretty=%s "$COMMIT_SHA" | grep -q '#publish'; then
           publish=true
-          moving_tags+=("pr-$PR_NUMBER")
+          alias_tags+=("pr-$PR_NUMBER")
         fi
 
         echo "publish=$publish" >> "$GITHUB_OUTPUT"
         {
           echo "tags<<EOF"
           echo "$image:web-$hash"
-          for tag in "${moving_tags[@]}"; do echo "$image:$tag"; done
+          for tag in "${alias_tags[@]}"; do echo "$image:$tag"; done
           echo "EOF"
         } >> "$GITHUB_OUTPUT"
         {
-          echo "moving_tags<<EOF"
-          for tag in "${moving_tags[@]}"; do echo "$image:$tag"; done
+          echo "alias_tags<<EOF"
+          for tag in "${alias_tags[@]}"; do echo "$image:$tag"; done
           echo "EOF"
         } >> "$GITHUB_OUTPUT"
 
@@ -115,16 +115,16 @@ jobs:
           echo "exists=true" >> "$GITHUB_OUTPUT"
         fi
 
-    - name: Point the moving tags at the existing image
+    - name: Point the aliases at the existing image
       if: steps.existing.outputs.exists == 'true' && steps.ref.outputs.publish == 'true'
       env:
-        MOVING_TAGS: ${{ steps.ref.outputs.moving_tags }}
+        ALIAS_TAGS: ${{ steps.ref.outputs.alias_tags }}
         REF: ${{ steps.ref.outputs.ref }}
       run: |
         while IFS= read -r tag; do
           [ -n "$tag" ] || continue
           docker buildx imagetools create -t "$tag" "$REF"
-        done <<< "$MOVING_TAGS"
+        done <<< "$ALIAS_TAGS"
 
     - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6
       if: steps.existing.outputs.exists != 'true'
@@ -163,12 +163,10 @@ jobs:
 
   build-backend:
     needs: changes
-    # The application image only changes with the backend or its base image, so a frontend-only
-    # change does not need a rebuild. Release tags always build, and so does the build when the
-    # change detector itself failed.
+    # Every main commit needs an app image tag for the demo. Only skip unchanged PR builds.
     if: >-
       !cancelled() &&
-      (startsWith(github.ref, 'refs/tags/') ||
+      (github.event_name == 'push' ||
        needs.changes.result != 'success' ||
        needs.changes.outputs.backend == 'true')
     runs-on: ${{ matrix.runner }}
@@ -190,7 +188,9 @@ jobs:
 
     env:
       JIB_RELEASE_BUILD: ${{ startsWith(github.ref, 'refs/tags/') }}
-      JIB_TAGS: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || '' }}
+      JIB_TAGS: >-
+        ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) ||
+            github.ref == 'refs/heads/main' && format('dev,sha-{0}', github.sha) || '' }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -260,7 +260,7 @@ jobs:
           echo "commit_msg=$commit_msg" >> $GITHUB_OUTPUT
           echo "commit msg: $commit_msg"
 
-          # Publish dev on main, latest + version on a release tag,
+          # Publish dev + the commit tag on main, latest + version on a release tag,
           # or on any build whose commit message contains #publish.
           if [ "${{ github.ref }}" == "refs/heads/main" ] || [[ "${{ github.ref }}" == refs/tags/* ]] || [[ "$commit_msg" == *"#publish"* ]]; then
             echo "publish=true" >> $GITHUB_OUTPUT

@@ -1,7 +1,7 @@
 name: Deploy demo
 
 # Re-deploys the demo server (https://demo.amony.app) once the "Build and deploy" workflow has
-# published a new "dev" image for main, or on demand from the Actions tab.
+# published the images for a main commit, or on demand from the Actions tab.
 on:
   workflow_run:
     workflows: ["Build and deploy"]
@@ -14,9 +14,8 @@ on:
         required: false
         default: main
       image_tag:
-        description: "App and web image tag to deploy (defaults to dev)"
+        description: "App and web image tag to deploy (defaults to sha-<commit> for the selected ref)"
         required: false
-        default: dev
 
 permissions:
   contents: read
@@ -27,11 +26,6 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # workflow_run has no inputs, so this is always main for automatic deploys; manual runs can
-  # point at another ref to validate changes before merging.
-  DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || 'main' }}
-  # Manual runs can deploy a specific image tag (e.g. a PR build); automatic deploys use "dev".
-  AMONY_IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || 'dev' }}
   DEPLOY_DIR: /home/docker-user/amony
   COMPOSE_FILES: "-f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml"
 
@@ -50,7 +44,19 @@ jobs:
       - name: Checkout deployment config
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ inputs.ref || 'main' }}
+          ref: ${{ github.event.workflow_run.head_sha || inputs.ref || 'main' }}
+
+      - name: Resolve deployment revision and image tag
+        id: revision
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          sha=$(git rev-parse HEAD)
+          tag=${IMAGE_TAG:-sha-$sha}
+          echo "Deploying revision $sha with image tag $tag"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Configure SSH
         env:
@@ -66,6 +72,7 @@ jobs:
 
       - name: Assemble .env
         env:
+          AMONY_IMAGE_TAG: ${{ steps.revision.outputs.tag }}
           DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
           AMONY_JWT_SECRET_KEY: ${{ secrets.AMONY_JWT_SECRET_KEY }}
           DEX_ADMIN_EMAIL: ${{ secrets.DEX_ADMIN_EMAIL }}
@@ -114,18 +121,18 @@ jobs:
 
       - name: Deploy
         env:
+          DEPLOY_SHA: ${{ steps.revision.outputs.sha }}
           SSH_HOST: ${{ vars.DEMO_HOST }}
           SSH_USER: ${{ vars.DEMO_USER }}
         run: |
           # shellcheck disable=SC2029
           set -euo pipefail
           ssh -o BatchMode=yes -o IdentitiesOnly=yes "$SSH_USER@$SSH_HOST" \
-            "DEPLOY_DIR='$DEPLOY_DIR' DEPLOY_REF='$DEPLOY_REF' COMPOSE_FILES='$COMPOSE_FILES' bash -s" <<'REMOTE'
+            "DEPLOY_DIR='$DEPLOY_DIR' DEPLOY_SHA='$DEPLOY_SHA' COMPOSE_FILES='$COMPOSE_FILES' bash -s" <<'REMOTE'
           set -euo pipefail
           cd "$DEPLOY_DIR"
-          git fetch --prune origin
-          git checkout "$DEPLOY_REF"
-          git pull --ff-only
+          git fetch --no-tags origin "$DEPLOY_SHA"
+          git checkout --detach "$DEPLOY_SHA"
 
           docker compose $COMPOSE_FILES --profile zitadel pull amony web nginx zitadel
           # --build refreshes the locally built certbot image from the checkout.
