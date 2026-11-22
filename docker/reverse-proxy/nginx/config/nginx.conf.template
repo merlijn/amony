@@ -10,10 +10,6 @@ events {
 
 http {
 
-  # Needed now that the proxy serves the web client itself.
-  include /etc/nginx/mime.types;
-  default_type application/octet-stream;
-
   # Enable DNS resolution for Docker service names
   resolver 127.0.0.11 valid=60s;
 
@@ -46,14 +42,18 @@ http {
 	access_log /var/log/nginx/access.log;
 
 	gzip on;
-	# Serve the .gz files produced by the frontend build instead of compressing on every request.
-	gzip_static on;
 	gzip_vary on;
 
 	# Upstream for amony backend
 	upstream amony_backend {
 		zone amony_backend 64k;
 		server amony-app:8182 resolve;
+	}
+
+	# Upstream for the web client
+	upstream amony_web {
+		zone amony_web 64k;
+		server web:80 resolve;
 	}
 
 	# Upstream for auth provider
@@ -81,10 +81,6 @@ http {
 		include ssl-certificate.conf;
 		include shared-proxy-settings.conf;
 
-		# The built web client, unpacked from the published frontend artifact. `current` is swapped
-		# atomically on deploy, so old releases can keep serving in-flight requests.
-		root /srv/web/current;
-
 		proxy_connect_timeout 60s;
 		proxy_send_timeout    1200s;
 		proxy_read_timeout    1200s;
@@ -96,16 +92,8 @@ http {
 			proxy_pass http://amony_backend;
 		}
 
-		# Build outputs are content-hashed, so they can be cached indefinitely.
-		location /assets/ {
-			add_header Cache-Control "public, max-age=31536000, immutable";
-			try_files $uri =404;
-		}
-
 		location / {
-			# index.html is the only file whose name does not change, so it must not be cached.
-			add_header Cache-Control "no-cache";
-			try_files $uri /index.html;
+			proxy_pass http://amony_web;
 		}
 	}
 

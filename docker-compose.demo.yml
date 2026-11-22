@@ -1,10 +1,13 @@
-# Compose overlay for the public demo deployment: overrides the app image tag (default "dev"; set
-# AMONY_IMAGE_TAG to test another tag, e.g. a PR build) and provides the Zitadel identity provider
-# used by the demo. Pass it alongside the base and HTTPS files, enabling Zitadel with
+# Compose overlay for the public demo deployment: overrides the app and web image tags (default
+# "dev"; set AMONY_IMAGE_TAG to test another tag, e.g. a PR build) and provides the Zitadel identity
+# provider used by the demo. Pass it alongside the base and HTTPS files, enabling Zitadel with
 # `--profile zitadel`.
 services:
   amony:
     image: ghcr.io/merlijn/amony-app:${AMONY_IMAGE_TAG:-dev}
+
+  web:
+    image: ghcr.io/merlijn/amony-web:${AMONY_IMAGE_TAG:-dev}
 
   # The demo uses Zitadel, not the bundled Dex; re-add the profile so Dex stays out of the demo.
   auth:

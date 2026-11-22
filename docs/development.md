@@ -102,19 +102,70 @@ The public demo is redeployed by the `Deploy demo` workflow (`.github/workflows/
 once the `Build and deploy` workflow finishes successfully on `main`, and can also be triggered manually from the
 Actions tab.
 
-It connects to the server as `docker-user`, updates the checkout, pulls the new `dev` image and recreates the containers
-with `docker compose -f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml --profile zitadel`.
+It connects to the server as `docker-user`, updates the checkout, pulls the new images and recreates the containers
+with:
 
-The web client is not part of the application image. The `Build and deploy` workflow publishes it to GHCR as an OCI
-artifact (`ghcr.io/<owner>/amony-web:fe-<tree>`), where the tag is the git tree hash of `frontend/`. The deploy pulls
-the artifact that matches its own checkout, unpacks it into `web/releases/<tree>` and repoints the `web/current`
-symlink, which the reverse proxy serves from `/srv/web/current`.
+```bash
+docker compose -f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml \
+  --profile zitadel pull amony web nginx zitadel
+docker compose -f docker-compose.yml -f docker-compose-https.yml -f docker-compose.demo.yml \
+  --profile zitadel up -d --build
+```
 
-The frontend build emits pre-compressed `.gz` files; the reverse proxy serves those with `gzip_static` when the client
+The application image and the web client image are published separately. On `main`, `Build and deploy` publishes both
+with `dev` and `sha-<full commit SHA>` tags. The automatic demo deploy checks out the commit from the successful build
+and pulls both images by their SHA tag, so a newer build moving `dev` cannot change what gets deployed. Manual deploys
+default to the SHA tag for the selected ref (default `main`), or you can give an explicit tag that exists on both
+images.
+
+On `main`, CI reuses the backend's multi-architecture image when an `app-<hash>` tag matching the backend tree and build
+workflow already exists. It adds the new commit's SHA tag without rebuilding. If that image is missing, CI builds and
+publishes it.
+
+The web image is published as `ghcr.io/<owner>/amony-web`. It also gets a content-addressed `web-<hash>` tag, `latest`
+and the version tag on releases, and `pr-<number>` for same-repository pull requests with `#publish`. The `web` service
+serves the UI and the reverse proxy routes `/` to it.
+
+The frontend build emits pre-compressed `.gz` files; the web image serves those with `gzip_static` when the client
 accepts gzip. Brotli is not generated: the stock nginx image has no brotli module, so the files could not be served.
+
+The previous artifact-based deploy kept files under `web/` or `data/web-assets/`; those directories are unused now and
+can be removed.
 
 Non-secret configuration lives in `deployment/demo.env`. The sensitive values (database password, JWT secret, Dex client
 secrets / admin password hash, Porkbun credentials) plus the SSH deploy key and host details are stored in the
 repository's `demo` GitHub Environment.
+
+### 5. Deploying behind an existing reverse proxy
+
+A host that already runs a shared reverse proxy can use the same layout. Attach the `amony` and `web` services to the
+proxy's external network in a local override:
+
+```yaml
+services:
+  amony:
+    networks:
+      - default
+      - https-proxy
+  web:
+    networks:
+      - default
+      - https-proxy
+
+networks:
+  https-proxy:
+    external: true
+```
+
+Run the stack with the local override:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.override.yml pull amony web
+docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
+```
+
+The shared proxy should send `/api/` to `amony-app:8182` and everything else to `amony-web:80`. Match its
+`client_max_body_size` and timeouts to the demo proxy (`15g` and `1200s`) so uploads and long-running requests are not
+cut off.
 
 Back to the [main README](../README.md).
