@@ -1,5 +1,6 @@
 package nl.amony.platform.messagebus.impl
 
+import java.nio.charset.StandardCharsets.UTF_8
 import java.time.Duration
 import java.util.UUID
 import scala.concurrent.duration.*
@@ -10,6 +11,7 @@ import cats.syntax.all.*
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
 import io.circe.Json
+import io.circe.parser.parse
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
@@ -48,9 +50,11 @@ class MessageLogSpec extends AnyWordSpecLike with TestContainerForAll with Match
 
   private def newTopic: String = s"test-${UUID.randomUUID()}"
 
-  private def payload(n: Int): Json = Json.obj("n" -> Json.fromInt(n))
+  private def payload(n: Int): Array[Byte] = Json.obj("n" -> Json.fromInt(n)).noSpaces.getBytes(UTF_8)
 
-  private def nOf(json: Json): Int = json.hcursor.get[Int]("n").getOrElse(throw new RuntimeException(s"missing 'n' in $json"))
+  private def nOf(payload: Array[Byte]): Int =
+    val json = parse(new String(payload, UTF_8)).fold(throw _, identity)
+    json.hcursor.get[Int]("n").getOrElse(throw new RuntimeException(s"missing 'n' in $json"))
 
   private def publish(pool: Resource[IO, Session[IO]], log: MessageLog, topic: String, n: Int, partition: Int = 0): IO[Unit] =
     pool.use(session => log.enqueue(session, topic, partition, "same-key", payload(n)))
