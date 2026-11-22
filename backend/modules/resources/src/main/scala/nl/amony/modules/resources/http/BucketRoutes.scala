@@ -230,9 +230,7 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
     def requireConfig(bucketId: BucketId): EitherT[IO, BucketAdminError, StoredBucket] =
       EitherT.fromOptionF(registry.getConfig(bucketId), toApiError(BucketError.NotFound(bucketId)))
 
-    def withBucket[O](bucketId: BucketId)(
-      fn: ResourceBucket => EitherT[IO, BucketActionError, O]
-    ): EitherT[IO, BucketActionError, O] =
+    def withBucket[O](bucketId: BucketId)(fn: ResourceBucket => EitherT[IO, BucketActionError, O]): EitherT[IO, BucketActionError, O] =
       EitherT.fromOptionF(registry.get(bucketId), notFound(bucketId)).flatMap(fn)
 
     routes[IO] {
