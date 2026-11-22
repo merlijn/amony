@@ -17,7 +17,7 @@ import cats.effect.IO
 object PartialHash {
 
   /** Hash recipe version, mixed into the digest and used as the encoded prefix. */
-  val Recipe: String = "ph2"
+  val Recipe: String = "ph1"
 
   val Prefix: String = s"${Recipe}_"
 
