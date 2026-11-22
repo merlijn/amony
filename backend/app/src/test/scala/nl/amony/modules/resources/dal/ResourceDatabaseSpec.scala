@@ -63,6 +63,7 @@ class ResourceDatabaseSpec extends AnyWordSpecLike with TestContainerForAll with
       userId             = UserId(UUID.randomUUID().toString),
       path               = ResourcePath(randomString),
       partialHash        = randomString,
+      fullHash           = Some(randomString),
       fileKey            = Some(randomString),
       size               = Random.nextLong(),
       contentMeta        = ContentMeta(streamable = List[Option[Boolean]](Some(true), Some(false), None)(Random.nextInt(3))),

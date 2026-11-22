@@ -9,6 +9,7 @@ case class ResourceInfo(
   path: ResourcePath,
   size: Long,
   partialHash: String,
+  fullHash: Option[String]        = None,
   fileKey: Option[String]         = None,
   contentMeta: ContentMeta        = ContentMeta.empty,
   timeAdded: Option[Long]         = None,
