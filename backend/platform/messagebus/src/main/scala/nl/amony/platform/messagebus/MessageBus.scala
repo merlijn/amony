@@ -103,11 +103,14 @@ final case class MessageBusConfig(
   leaseDuration: FiniteDuration = 30.seconds,
   // Default number of partitions a single consumer group instance can drain concurrently on one node.
   parallelism: Int              = 4,
+  // Dedicated connection pool size for the message bus (LISTEN sessions, polling, heartbeats, and offset commits).
+  poolSize: Int                 = 8,
   purgeInterval: FiniteDuration = 1.hour,
   retention: FiniteDuration     = 7.days,
   notificationQueueSize: Int    = 10000
 ) derives ConfigReader:
   require(parallelism >= 1, s"parallelism must be >= 1, got $parallelism")
+  require(poolSize >= 1, s"poolSize must be >= 1, got $poolSize")
   def retryBackoffDuration: java.time.Duration = java.time.Duration.ofMillis(retryBackoff.toMillis)
   def leaseJavaDuration: java.time.Duration    = java.time.Duration.ofMillis(leaseDuration.toMillis)
   def retentionDuration: java.time.Duration    = java.time.Duration.ofMillis(retention.toMillis)

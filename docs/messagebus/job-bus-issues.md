@@ -63,5 +63,5 @@ Captured in [Realtime Job Status](realtime-job-status.md):
 
 - Register subscribers before reading the initial `job_status` row to avoid missing a terminal notification.
 - Only query `job_status` on `NOTIFY` when the local hub has an active subscriber for that `job_id`.
-- Multiplex all `LISTEN` channels onto one shared session per node so adding a job-status listener does not add further
-  pressure to the 10-connection pool in `database.conf`.
+- Multiplex all `LISTEN` channels onto one shared session per node so adding a job-status listener does not consume an
+  extra connection from the message bus pool (`amony.message-bus.pool-size`).

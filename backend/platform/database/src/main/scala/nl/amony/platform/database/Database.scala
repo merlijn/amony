@@ -30,7 +30,8 @@ object Database extends Logging:
 
   def makePool(
     config: DatabaseConfig,
-    contexts: Contexts = new Contexts()
+    contexts: Contexts = new Contexts(),
+    migrate: Boolean   = true
   )(using TracerProvider[IO], MeterProvider[IO]): Resource[IO, Resource[IO, Session[IO]]] =
     for
       pool <- Session.Builder[IO]
@@ -39,5 +40,5 @@ object Database extends Logging:
                 .withUserAndPassword(config.username, config.password)
                 .withDatabase(config.database)
                 .pooled(config.poolSize)
-      _    <- Resource.eval(runMigrations(config, contexts))
+      _    <- Resource.eval(IO.whenA(migrate)(runMigrations(config, contexts)))
     yield pool

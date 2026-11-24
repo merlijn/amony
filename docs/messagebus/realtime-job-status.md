@@ -94,9 +94,10 @@ Key properties:
 
 A single component per node:
 
-1. Subscribes to `LISTEN amony_job_status`. Because `database.conf` uses `pool-size = 10` and `MessageTopicImpl`
-   currently pins one `LISTEN` connection per consumer group (3/10 already pinned), pair this with multiplexing all
-   `LISTEN` channels (`amony_<topic>` and `amony_job_status`) onto **one shared `LISTEN` session per node**.
+1. Subscribes to `LISTEN amony_job_status`. Because `MessageTopicImpl` currently pins one `LISTEN` connection per
+   consumer group in the message bus pool (`amony.message-bus.pool-size = 8`, 3 already pinned), pair this with
+   multiplexing all `LISTEN` channels (`amony_<topic>` and `amony_job_status`) onto **one shared `LISTEN` session per
+   node**.
 2. Keeps a registry of local subscribers, for example `MapRef[IO, (String, JobId), Set[Queue[IO, JobStatus]]]`.
 3. On a notification, **first checks whether any local subscriber is registered** for `(topic, jobId)`. If none, ignore
    the notification so idle nodes do not perform wasted primary-key lookups. Otherwise, read the `job_status` row by
