@@ -57,16 +57,11 @@ payload on a job topic never reaches `JobBusImpl`'s `maxAttempts` handling and b
 **Fix:** Either handle decode failures in `MessageTopicImpl` (see [Poisoned Messages](poisoned-messages.md)) or surface
 decode errors to the consumer wrapper.
 
-## 5. Notes for `LISTEN`/`NOTIFY` job status (`realtime-command-status.md`)
+## 5. Notes for `LISTEN`/`NOTIFY` job status (`realtime-job-status.md`)
 
-If/when replacing `JobBus.subscribe`'s 200 ms poll with `LISTEN`/`NOTIFY` per
-[Realtime Command Status](realtime-command-status.md):
+Captured in [Realtime Job Status](realtime-job-status.md):
 
-- **Register before reading:** Step 4 in `realtime-command-status.md` reads the row first and then registers the
-  subscriber. That can miss a terminal notification arriving between the read and registration. Register first, then
-  read the row, and deduplicate with `.changes`.
-- **Guard DB lookups on `NOTIFY`:** Only query `job_status` on a notification if the local hub has at least one active
-  subscriber for that `job_id`.
-- **Multiplex `LISTEN` connections:** `database.conf` uses `pool-size = 10` and `MessageTopicImpl` currently pins one
-  `LISTEN` connection per consumer group (3/10 already pinned). Multiplexing all `LISTEN` channels onto one shared
-  session per node avoids further pool pressure when adding a job-status listener.
+- Register subscribers before reading the initial `job_status` row to avoid missing a terminal notification.
+- Only query `job_status` on `NOTIFY` when the local hub has an active subscriber for that `job_id`.
+- Multiplex all `LISTEN` channels onto one shared session per node so adding a job-status listener does not add further
+  pressure to the 10-connection pool in `database.conf`.
