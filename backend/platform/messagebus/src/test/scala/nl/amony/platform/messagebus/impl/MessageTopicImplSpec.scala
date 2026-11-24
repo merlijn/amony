@@ -591,5 +591,35 @@ class MessageTopicImplSpec extends AnyWordSpecLike with TestContainerForAll with
           yield result shouldBe (false, List(KeyedMessage(keyB, 1))))).guarantee(uninstall)
         }.unsafeRunSync()
       }
+
+      "publish a batch atomically while preserving per-key order" in withContainers { container =>
+        pool(container).use { pool =>
+          val name     = s"topic-${UUID.randomUUID()}"
+          val topic    = keyedTopicFor(pool, name, partitions = 8)
+          val messages = List(
+            KeyedMessage("k1", 1),
+            KeyedMessage("k2", 1),
+            KeyedMessage("k1", 2),
+            KeyedMessage("k3", 1),
+            KeyedMessage("k2", 2),
+            KeyedMessage("k1", 3)
+          )
+
+          for
+            _         <- registerFromStart(pool, name, "consumer", partitions = 8)
+            processed <- Ref.of[IO, List[KeyedMessage]](Nil)
+            _         <- topic.processAtLeastOnce("consumer")(m => processed.update(_ :+ m)).compile.drain.background.use { _ =>
+                           topic.publishAll(messages) >> await(processed, messages.size)
+                         }
+            seen      <- processed.get
+          yield
+            seen.size shouldBe messages.size
+            seen.groupBy(_.key).view.mapValues(_.map(_.seq)).toMap shouldBe Map(
+              "k1" -> List(1, 2, 3),
+              "k2" -> List(1, 2),
+              "k3" -> List(1)
+            )
+        }.unsafeRunSync()
+      }
     }
   }

@@ -47,6 +47,17 @@ trait MessageTopic[E]:
    */
   def publish(session: Session[IO], message: E): IO[Unit]
 
+  /** Publish a batch of messages in a single transaction, locking partitions in a canonical order to avoid deadlocks. */
+  def publishAll(messages: Seq[E]): IO[Unit] =
+    messages.foldLeft(IO.unit)((acc, message) => acc >> publish(message))
+
+  /**
+   * Publish a batch of messages using the caller's session, locking partitions in a canonical order to avoid deadlocks
+   * across concurrent multi-partition transactions and sending a single notification for the batch.
+   */
+  def publishAll(session: Session[IO], messages: Seq[E]): IO[Unit] =
+    messages.foldLeft(IO.unit)((acc, message) => acc >> publish(session, message))
+
   /**
    * An at-least-once consumer group that acknowledges each partition's messages in log order, retrying failures in
    * place before advancing. New groups start at the latest committed offsets. Up to `parallelism` partitions

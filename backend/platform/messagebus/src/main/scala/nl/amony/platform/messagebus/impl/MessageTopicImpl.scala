@@ -36,6 +36,19 @@ final private[messagebus] class MessageTopicImpl[E](
     val (messageKey, partition) = key.partitionFor(message)
     log.enqueue(session, key.name, partition, messageKey, key.encode(message)) >> session.channel(identifier).notify(key.name)
 
+  override def publishAll(messages: Seq[E]): IO[Unit] =
+    if messages.isEmpty then IO.unit
+    else pool.use(session => session.transaction.use(_ => publishAll(session, messages)))
+
+  override def publishAll(session: Session[IO], messages: Seq[E]): IO[Unit] =
+    if messages.isEmpty then IO.unit
+    else
+      val entries = messages.map { message =>
+        val (messageKey, partition) = key.partitionFor(message)
+        (partition, messageKey, key.encode(message))
+      }
+      log.enqueueAll(session, key.name, entries) >> session.channel(identifier).notify(key.name)
+
   override def processAtLeastOnce(consumerId: String, parallelism: Option[Int] = None)(processor: E => IO[Unit]): Stream[IO, Unit] =
     val maxWorkers = parallelism.getOrElse(config.parallelism).min(key.partitions).max(1)
     val context    = s"topic '${key.name}', consumer '$consumerId'"

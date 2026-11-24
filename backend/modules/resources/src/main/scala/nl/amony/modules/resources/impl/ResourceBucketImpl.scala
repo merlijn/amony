@@ -319,21 +319,19 @@ class ResourceBucketImpl(
   override def updateResourceTags(resourceIds: Set[ResourceId], tagsToAdd: Set[Tag], tagsToRemove: Set[Tag]): IO[Unit] =
     resourceIds.toList.grouped(tagBulkBatchSize).toList.traverse_ : batch =>
       db.transact: s =>
-        batch.traverse_ : resourceId =>
-          OptionT(db.updateResourceTags(id, resourceId, tagsToAdd, tagsToRemove))
-            .semiflatMap(updated =>
-              topic.publish(
-                s,
-                ResourceUserMetaUpdated(
-                  resource           = updated,
-                  updatedDescription = None,
-                  updatedTitle       = None,
-                  tagsAdded          = tagsToAdd,
-                  tagsRemoved        = tagsToRemove
-                )
-              )
-            )
-            .value.void
+        for
+          updated <- batch.flatTraverse(resourceId => db.updateResourceTags(id, resourceId, tagsToAdd, tagsToRemove).map(_.toList))
+          events   = updated.map { resource =>
+                       ResourceUserMetaUpdated(
+                         resource           = resource,
+                         updatedDescription = None,
+                         updatedTitle       = None,
+                         tagsAdded          = tagsToAdd,
+                         tagsRemoved        = tagsToRemove
+                       )
+                     }
+          _       <- topic.publishAll(s, events)
+        yield ()
 
   override def updateThumbnailTimestamp(resourceId: ResourceId, timestamp: Int): IO[Unit] =
     db.transact: s =>

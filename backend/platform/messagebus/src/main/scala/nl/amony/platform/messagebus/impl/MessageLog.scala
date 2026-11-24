@@ -41,6 +41,37 @@ private[messagebus] object MessageLogQueries:
       select topic, partition, last_allocated_offset, $varchar, $bytea from allocated
     """.command
 
+  private val batchRowCodec: Encoder[(Int, Long, String, Array[Byte])] =
+    int4 *: int8 *: varchar *: bytea
+
+  def insertBatch(size: Int): Command[(List[(Int, Long, String, Array[Byte])], String)] =
+    sql"""
+      with input(partition, seq, message_key, payload) as (
+        values ${batchRowCodec.values.list(size)}
+      ),
+      counts as (
+        select partition, count(*)::bigint as cnt
+        from input
+        group by partition
+        order by partition
+      ),
+      allocated as (
+        insert into message_partition (topic, partition, last_allocated_offset)
+        select $varchar, partition, cnt
+        from counts
+        order by partition
+        on conflict (topic, partition) do update
+        set last_allocated_offset = message_partition.last_allocated_offset + excluded.last_allocated_offset
+        returning topic, partition, last_allocated_offset
+      )
+      insert into message_log (topic, partition, partition_offset, message_key, payload)
+      select a.topic, a.partition, a.last_allocated_offset - c.cnt + i.seq, i.message_key, i.payload
+      from input i
+      join counts c on c.partition = i.partition
+      join allocated a on a.partition = i.partition
+      order by a.partition, i.seq
+    """.command
+
   val ensureConsumer: Command[(String, String, Int, Option[Long])] =
     sql"""
       with settings as (
@@ -130,8 +161,32 @@ private[messagebus] object MessageLogQueries:
 /** Persistence for the durable log and the per-consumer-partition offsets that back the message bus. */
 final private[messagebus] class MessageLog(pool: Resource[IO, Session[IO]]):
 
+  private val maxBatchSize = 1000
+
   def enqueue(session: Session[IO], topic: String, partition: Int, messageKey: String, payload: Array[Byte]): IO[Unit] =
     session.prepare(MessageLogQueries.insert).flatMap(_.execute((topic, partition, messageKey, payload))).void
+
+  def enqueueAll(session: Session[IO], topic: String, entries: Seq[(Int, String, Array[Byte])]): IO[Unit] =
+    if entries.isEmpty then IO.unit
+    else
+      val ordered = entries
+        .groupBy(_._1)
+        .toList
+        .sortBy(_._1)
+        .flatMap(_._2)
+
+      ordered.grouped(maxBatchSize).toList.traverse_ { chunk =>
+        val rows = chunk
+          .groupBy(_._1)
+          .toList
+          .sortBy(_._1)
+          .flatMap { (partition, group) =>
+            group.zipWithIndex.map { case ((_, messageKey, payload), idx) =>
+              (partition, idx.toLong + 1L, messageKey, payload)
+            }
+          }
+        session.prepare(MessageLogQueries.insertBatch(rows.size)).flatMap(_.execute((rows, topic))).void
+      }
 
   def ensureConsumerAtLatest(topic: String, consumerId: String, partitions: Int): IO[Unit] =
     registerConsumer(topic, consumerId, partitions, None)
