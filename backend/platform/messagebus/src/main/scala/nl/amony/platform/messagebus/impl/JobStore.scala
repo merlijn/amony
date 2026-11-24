@@ -4,6 +4,7 @@ import java.time.{Duration, OffsetDateTime}
 
 import cats.effect.{IO, Resource}
 import skunk.codec.all.*
+import skunk.data.Completion
 import skunk.implicits.*
 import skunk.{Codec, Command, Query, Session}
 
@@ -45,17 +46,17 @@ private[messagebus] object JobStoreQueries:
             and state in ('queued', 'running')
           returning attempts""".query(int4)
 
-  val requeue: Command[(String, String, String)] =
+  val requeue: Command[(String, String, String, Int)] =
     sql"""update job_status set state = 'queued', last_error = $text, updated_at = now()
-          where topic = $varchar and job_id = $varchar""".command
+          where topic = $varchar and job_id = $varchar and state = 'running' and attempts = $int4""".command
 
-  val succeed: Command[(String, String)] =
+  val succeed: Command[(String, String, Int)] =
     sql"""update job_status set state = 'succeeded', last_error = null, updated_at = now()
-          where topic = $varchar and job_id = $varchar""".command
+          where topic = $varchar and job_id = $varchar and state = 'running' and attempts = $int4""".command
 
-  val fail: Command[(String, String, String)] =
+  val fail: Command[(String, String, String, Int)] =
     sql"""update job_status set state = 'failed', last_error = $text, updated_at = now()
-          where topic = $varchar and job_id = $varchar""".command
+          where topic = $varchar and job_id = $varchar and state = 'running' and attempts = $int4""".command
 
   val purge: Command[(String, Duration)] =
     sql"""delete from job_status
@@ -82,17 +83,17 @@ final private[messagebus] class JobStore(pool: Resource[IO, Session[IO]]):
       }
     }
 
-  def requeue(topic: String, id: JobId, error: String): IO[Unit] =
-    pool.use(_.prepare(JobStoreQueries.requeue).flatMap(_.execute((error, topic, id.value)))).void
+  def requeue(topic: String, id: JobId, error: String, attempt: Int): IO[Boolean] =
+    pool.use(_.prepare(JobStoreQueries.requeue).flatMap(_.execute((error, topic, id.value, attempt)))).map(_ == Completion.Update(1))
 
-  def succeed(session: Session[IO], topic: String, id: JobId): IO[Unit] =
-    session.prepare(JobStoreQueries.succeed).flatMap(_.execute((topic, id.value))).void
+  def succeed(session: Session[IO], topic: String, id: JobId, attempt: Int): IO[Boolean] =
+    session.prepare(JobStoreQueries.succeed).flatMap(_.execute((topic, id.value, attempt))).map(_ == Completion.Update(1))
 
-  def succeed(topic: String, id: JobId): IO[Unit] =
-    pool.use(session => succeed(session, topic, id))
+  def succeed(topic: String, id: JobId, attempt: Int): IO[Boolean] =
+    pool.use(session => succeed(session, topic, id, attempt))
 
-  def fail(topic: String, id: JobId, error: String): IO[Unit] =
-    pool.use(_.prepare(JobStoreQueries.fail).flatMap(_.execute((error, topic, id.value)))).void
+  def fail(topic: String, id: JobId, error: String, attempt: Int): IO[Boolean] =
+    pool.use(_.prepare(JobStoreQueries.fail).flatMap(_.execute((error, topic, id.value, attempt)))).map(_ == Completion.Update(1))
 
   def purge(topic: String, retention: Duration): IO[Unit] =
     pool.use(_.prepare(JobStoreQueries.purge).flatMap(_.execute((topic, retention)))).void

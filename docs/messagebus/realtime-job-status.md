@@ -183,6 +183,5 @@ Accept: text/event-stream
 
 ## Related
 
-- [Job Bus Follow-up Issues](job-bus-issues.md) tracks correctness fixes to address alongside or before this work.
 - [Message Bus Performance Improvements](messages-bus-performance-improvements.md) covers throughput levers for the
   durable log itself, which is a separate concern from how observers are notified.

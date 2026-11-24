@@ -1,10 +1,11 @@
 package nl.amony.platform.messagebus.impl
 
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.UUID
 import scala.concurrent.duration.*
 
 import cats.effect.unsafe.implicits.global
-import cats.effect.{IO, Ref, Resource}
+import cats.effect.{Deferred, IO, Ref, Resource}
 import cats.syntax.all.*
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
@@ -15,6 +16,8 @@ import org.testcontainers.containers.wait.strategy.Wait
 import org.typelevel.otel4s.metrics.{Meter, MeterProvider}
 import org.typelevel.otel4s.trace.{Tracer, TracerProvider}
 import skunk.Session
+import skunk.codec.all.*
+import skunk.implicits.*
 
 import nl.amony.platform.messagebus.*
 
@@ -201,7 +204,7 @@ class JobBusSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
         }.unsafeRunSync()
       }
 
-      "dedupe terminal jobs and requeue handled failures" in withContainers { container =>
+      "dedupe terminal jobs and fence stale attempt mutations" in withContainers { container =>
         pool(container).use { pool =>
           val name  = s"jobs-${UUID.randomUUID()}"
           val store = JobStore(pool)
@@ -209,21 +212,174 @@ class JobBusSpec extends AnyWordSpecLike with TestContainerForAll with Matchers:
 
           val test =
             for
-              _      <- pool.use(session => session.transaction.use(_ => store.insert(session, name, id, "key")))
-              first  <- store.claim(name, id)
-              _       = first shouldBe Claim.Acquired(1)
-              _      <- store.requeue(name, id, "boom")
-              second <- store.claim(name, id)
-              _       = second shouldBe Claim.Acquired(2)
-              _      <- pool.use(session => session.transaction.use(_ => store.succeed(session, name, id)))
-              again  <- store.claim(name, id)
-              _       = again shouldBe Claim.Done
-              _      <- store.purge(name, java.time.Duration.ZERO)
-              gone   <- store.get(name, id)
-              _       = gone shouldBe None
+              _            <- pool.use(session => session.transaction.use(_ => store.insert(session, name, id, "key")))
+              first        <- store.claim(name, id)
+              _             = first shouldBe Claim.Acquired(1)
+              requeued     <- store.requeue(name, id, "boom", 1)
+              _             = requeued shouldBe true
+              second       <- store.claim(name, id)
+              _             = second shouldBe Claim.Acquired(2)
+              staleRequeue <- store.requeue(name, id, "stale", 1)
+              staleFail    <- store.fail(name, id, "stale", 1)
+              staleSucceed <- store.succeed(name, id, 1)
+              _             = List(staleRequeue, staleFail, staleSucceed) shouldBe List(false, false, false)
+              succeeded    <- pool.use(session => session.transaction.use(_ => store.succeed(session, name, id, 2)))
+              _             = succeeded shouldBe true
+              afterDone    <- store.fail(name, id, "too late", 2)
+              _             = afterDone shouldBe false
+              again        <- store.claim(name, id)
+              _             = again shouldBe Claim.Done
+              _            <- store.purge(name, java.time.Duration.ZERO)
+              gone         <- store.get(name, id)
+              _             = gone shouldBe None
             yield ()
 
           test.timeout(20.seconds)
+        }.unsafeRunSync()
+      }
+
+      "roll back handler writes when a transactional handler returns Left" in withContainers { container =>
+        pool(container).use { pool =>
+          val name      = s"jobs-${UUID.randomUUID()}"
+          val tableName = s"job_rollback_test_${UUID.randomUUID().toString.replace("-", "_")}"
+          val bus       = busFor(pool, name)
+          val setup     = pool.use(_.execute(sql"create table #$tableName (v int not null)".command).void)
+          val teardown  = pool.use(_.execute(sql"drop table if exists #$tableName".command).void)
+
+          val test =
+            (setup >> (for
+              id        <- bus.submit("key", TestJob(1))
+              consumer  <- bus
+                             .processAtLeastOnce { (session, job) =>
+                               session.prepare(sql"insert into #$tableName (v) values ($int4)".command).flatMap(_.execute(job.value)) >>
+                                 IO.pure(Left("rejected"))
+                             }
+                             .compile
+                             .drain
+                             .start
+              completed <- bus.awaitCompletion(id, 20.seconds)
+              _         <- consumer.cancel
+              count     <- pool.use(_.unique(sql"select count(*) from #$tableName".query(int8)))
+            yield
+              completed.state shouldBe JobState.Failed
+              completed.lastError shouldBe Some("rejected")
+              count shouldBe 0L)).guarantee(teardown)
+
+          test.timeout(40.seconds)
+        }.unsafeRunSync()
+      }
+
+      "roll back handler writes when the partition lease is lost before commit" in withContainers { container =>
+        pool(container).use { pool =>
+          val name      = s"jobs-${UUID.randomUUID()}"
+          val tableName = s"job_fence_test_${UUID.randomUUID().toString.replace("-", "_")}"
+          val bus       = busFor(pool, name)
+          val setup     = pool.use(_.execute(sql"create table #$tableName (v int not null)".command).void)
+          val teardown  = pool.use(_.execute(sql"drop table if exists #$tableName".command).void)
+          val steal     = sql"""
+            update message_consumer
+            set lease_generation = lease_generation + 1, locked_until = clock_timestamp() + interval '1 minute'
+            where topic = $varchar and consumer_id = $varchar
+          """.command
+
+          val test =
+            (setup >> (for
+              id       <- bus.submit("key", TestJob(42))
+              written  <- Deferred[IO, Unit]
+              release  <- Deferred[IO, Unit]
+              consumer <- bus
+                            .processAtLeastOnce { (session, job) =>
+                              session.prepare(sql"insert into #$tableName (v) values ($int4)".command).flatMap(_.execute(job.value)) >>
+                                written.complete(()) >> release.get.as(Right(()))
+                            }
+                            .compile
+                            .drain
+                            .start
+              _        <- written.get.timeout(15.seconds)
+              _        <- pool.use(_.prepare(steal).flatMap(_.execute((name, name))))
+              _        <- release.complete(())
+              _        <- IO.sleep(300.millis)
+              _        <- consumer.cancel
+              count    <- pool.use(_.unique(sql"select count(*) from #$tableName".query(int8)))
+              status   <- bus.status(id)
+            yield
+              count shouldBe 0L
+              status.map(_.state) shouldBe Some(JobState.Running))).guarantee(teardown)
+
+          test.timeout(40.seconds)
+        }.unsafeRunSync()
+      }
+
+      "retry startup consumer registration after a transient database error" in withContainers { container =>
+        pool(container).use { pool =>
+          val name      = s"jobs-${UUID.randomUUID()}"
+          val seqName   = s"job_reg_fail_${UUID.randomUUID().toString.replace("-", "_")}"
+          val fnName    = s"${seqName}_fn"
+          val trigName  = s"${seqName}_trig"
+          val bus       = busFor(pool, name)
+          val install   = pool.use { session =>
+            session.execute(sql"create sequence #$seqName".command) >>
+              session.execute(sql"""
+                create function #$fnName() returns trigger language plpgsql as '
+                begin
+                  if nextval(''#$seqName'') = 1 then
+                    raise exception ''transient registration failure'';
+                  end if;
+                  return new;
+                end;
+                '
+              """.command) >>
+              session.execute(sql"""
+                create trigger #$trigName before insert on message_consumer
+                for each row when (new.consumer_id = '#$name') execute function #$fnName()
+              """.command).void
+          }
+          val uninstall = pool.use { session =>
+            session.execute(sql"drop trigger if exists #$trigName on message_consumer".command) >>
+              session.execute(sql"drop function if exists #$fnName()".command) >>
+              session.execute(sql"drop sequence if exists #$seqName".command).void
+          }
+
+          val test =
+            (install >> (for
+              id        <- bus.submit("key", TestJob(1))
+              consumer  <- bus.processAtLeastOnce((_, _) => IO.pure(Right(()))).compile.drain.start
+              completed <- bus.awaitCompletion(id, 20.seconds)
+              _         <- consumer.cancel
+            yield completed.state shouldBe JobState.Succeeded)).guarantee(uninstall)
+
+          test.timeout(40.seconds)
+        }.unsafeRunSync()
+      }
+
+      "skip undecodable job messages and fail identifiable jobs without blocking the partition" in withContainers { container =>
+        pool(container).use { pool =>
+          val name                        = s"jobs-${UUID.randomUUID()}"
+          given key: JobTopicKey[TestJob] = JobTopicKey(name, partitions = 1, maxAttempts = 3)
+          val bus                         = MessageBus.postgres(pool, config).getJobBus[TestJob]
+          val log                         = MessageLog(pool)
+          val store                       = JobStore(pool)
+          val badId                       = JobId(UUID.randomUUID().toString)
+
+          val test =
+            for
+              _          <- pool.use(s => log.enqueue(s, name, 0, "key", "not-json".getBytes(UTF_8)))
+              _          <- pool.use { s =>
+                              s.transaction.use { _ =>
+                                store.insert(s, name, badId, "key") >>
+                                  log.enqueue(s, name, 0, "key", s"""{"id":"${badId.value}","key":"key","payload":{"wrong":true}}""".getBytes(UTF_8))
+                              }
+                            }
+              goodId     <- bus.submit("key", TestJob(99))
+              consumer   <- bus.processAtLeastOnce((_, _) => IO.pure(Right(()))).compile.drain.start
+              goodStatus <- bus.awaitCompletion(goodId, 20.seconds)
+              badStatus  <- bus.status(badId)
+              _          <- consumer.cancel
+            yield
+              goodStatus.state shouldBe JobState.Succeeded
+              badStatus.map(_.state) shouldBe Some(JobState.Failed)
+
+          test.timeout(40.seconds)
         }.unsafeRunSync()
       }
     }

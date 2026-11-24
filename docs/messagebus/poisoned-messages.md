@@ -4,8 +4,8 @@ By design, `MessageTopic.processAtLeastOnce` retries a failing message in place 
 it. That preserves strict per-partition ordering, but a single poisoned message (a bug, bad data, or a corrupt payload)
 blocks every other key hashed to the same partition.
 
-`JobBus` already caps retries with `maxAttempts`, except for deserialization failures: `key.decode(row.payload)` runs in
-`MessageTopicImpl` before `JobBusImpl` is invoked, so corrupt bytes still block a job partition indefinitely.
+`JobBus` already caps retries with `maxAttempts` and skips undecodable job messages (marking identifiable jobs as
+`Failed`), so this primarily applies to raw `MessageTopic` consumers.
 
 If we revisit the block-by-design trade-off, here are the main options in increasing order of complexity.
 

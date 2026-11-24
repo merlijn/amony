@@ -128,6 +128,15 @@ private[messagebus] object MessageLogQueries:
         and lease_generation = $int8 and locked_until > clock_timestamp()
     """.command
 
+  val verifyLease: Query[(String, String, Int, Long), Int] =
+    sql"""
+      select 1
+      from message_consumer
+      where topic = $varchar and consumer_id = $varchar and partition = $int4
+        and lease_generation = $int8 and locked_until > clock_timestamp()
+      for share
+    """.query(int4)
+
   val commitOffset: Command[(Long, String, String, Int, Long, Long)] =
     sql"""
       update message_consumer
@@ -202,6 +211,12 @@ final private[messagebus] class MessageLog(pool: Resource[IO, Session[IO]]):
 
   def renewLease(consumerId: String, row: MessageLogRow, leaseDuration: Duration): IO[Boolean] =
     executeFenced(MessageLogQueries.renewLease, (leaseDuration, row.topic, consumerId, row.partition, row.leaseGeneration))
+
+  def verifyLease(session: Session[IO], consumerId: String, row: MessageLogRow): IO[Boolean] =
+    session
+      .prepare(MessageLogQueries.verifyLease)
+      .flatMap(_.option((row.topic, consumerId, row.partition, row.leaseGeneration)))
+      .map(_.isDefined)
 
   def commitOffset(consumerId: String, row: MessageLogRow): IO[Boolean] =
     executeFenced(MessageLogQueries.commitOffset, (row.offset, row.topic, consumerId, row.partition, row.leaseGeneration, row.offset))

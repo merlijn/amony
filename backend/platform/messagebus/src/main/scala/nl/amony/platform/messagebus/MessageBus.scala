@@ -81,14 +81,17 @@ object MessageBus:
       private val topics = ConcurrentHashMap[String, MessageTopic[?]]()
       private val jobs   = ConcurrentHashMap[String, JobBus[?]]()
 
+      private def topicImplForKey[E](key: MessageTopicKey[E]): MessageTopicImpl[E] =
+        topics.computeIfAbsent(key.name, _ => MessageTopicImpl(key, log, pool, config)).asInstanceOf[MessageTopicImpl[E]]
+
       override def getTopicForKey[E](key: MessageTopicKey[E]): MessageTopic[E] =
-        topics.computeIfAbsent(key.name, _ => MessageTopicImpl(key, log, pool, config)).asInstanceOf[MessageTopic[E]]
+        topicImplForKey(key)
 
       override def getJobBus[P](using key: JobTopicKey[P]): JobBus[P] =
         jobs
           .computeIfAbsent(
             key.name,
-            _ => JobBusImpl(key, getTopicForKey(key.topicKey), log, JobStore(pool), pool, config)
+            _ => JobBusImpl(key, topicImplForKey(key.topicKey), log, JobStore(pool), pool, config)
           )
           .asInstanceOf[JobBus[P]]
 
