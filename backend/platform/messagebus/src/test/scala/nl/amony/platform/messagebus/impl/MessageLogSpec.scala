@@ -229,6 +229,54 @@ class MessageLogSpec extends AnyWordSpecLike with TestContainerForAll with Match
             next.map(row => nOf(row.payload)) shouldBe Some(2)
         }
       }
+
+      "enqueue batches with contiguous per-partition offsets preserving intra-partition order" in withContainers { container =>
+        withLog(container) { (pool, log) =>
+          val topic   = newTopic
+          val entries = List(
+            (2, "k2", payload(10)),
+            (0, "k0", payload(1)),
+            (2, "k2", payload(20)),
+            (1, "k1", payload(5)),
+            (0, "k0", payload(2)),
+            (2, "k2", payload(30))
+          )
+          for
+            _    <- log.ensureConsumer(topic, "consumer", 3, 0)
+            _    <- pool.use(s => s.transaction.use(_ => log.enqueueAll(s, topic, entries)))
+            rows <- pool.use(
+                      _.prepare(
+                        sql"select partition, partition_offset, payload from message_log where topic = $varchar order by partition, partition_offset"
+                          .query(int4 *: int8 *: bytea)
+                      ).flatMap(_.stream(topic, 32).compile.toList)
+                    )
+          yield rows.map((p, o, bytes) => (p, o, nOf(bytes))) shouldBe List(
+            (0, 1L, 1),
+            (0, 2L, 2),
+            (1, 1L, 5),
+            (2, 1L, 10),
+            (2, 2L, 20),
+            (2, 3L, 30)
+          )
+        }
+      }
+
+      "avoid deadlocks when concurrent transactions enqueue overlapping partitions in opposite orders" in withContainers { container =>
+        withLog(container) { (pool, log) =>
+          val topic      = newTopic
+          val partitions = 8
+          val forward    = (0 until partitions).toList.map(p => (p, s"fwd-$p", payload(p)))
+          val reverse    = (0 until partitions).reverse.toList.map(p => (p, s"rev-$p", payload(100 + p)))
+          val workers    = (0 until 16).toList.map { i =>
+            val batch = if i % 2 == 0 then forward else reverse
+            pool.use(s => s.transaction.use(_ => log.enqueueAll(s, topic, batch)))
+          }
+          for
+            _     <- workers.parSequence_
+            count <- countRows(pool, topic)
+          yield count shouldBe (16L * partitions)
+        }
+      }
     }
 
     "starting a consumer" should {
