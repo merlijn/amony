@@ -409,5 +409,187 @@ class MessageTopicImplSpec extends AnyWordSpecLike with TestContainerForAll with
           yield succeed
         }.unsafeRunSync()
       }
+
+      "keep running a processor across a transient database error during lease renewal" in withContainers { container =>
+        pool(container).use { pool =>
+          val name      = s"topic-${UUID.randomUUID()}"
+          val group     = s"renew-transient-${UUID.randomUUID()}"
+          val seqName   = s"msg_bus_test_renew_${UUID.randomUUID().toString.replace("-", "_")}"
+          val fnName    = s"${seqName}_fn"
+          val trigName  = s"${seqName}_trig"
+          val config    = MessageBusConfig(pollInterval = 100.millis, leaseDuration = 1.second)
+          val topic     = topicFor(pool, name, config = config)
+          val install   = pool.use { session =>
+            session.execute(sql"create sequence #$seqName".command) >>
+              session.execute(sql"""
+                create function #$fnName() returns trigger language plpgsql as '
+                begin
+                  if new.lease_generation = old.lease_generation and new.last_offset = old.last_offset then
+                    if nextval(''#$seqName'') = 1 then
+                      raise exception ''transient renewal failure'';
+                    end if;
+                  end if;
+                  return new;
+                end;
+                '
+              """.command) >>
+              session.execute(sql"""
+                create trigger #$trigName before update on message_consumer
+                for each row when (old.consumer_id = '#$group') execute function #$fnName()
+              """.command).void
+          }
+          val uninstall = pool.use { session =>
+            session.execute(sql"drop trigger if exists #$trigName on message_consumer".command) >>
+              session.execute(sql"drop function if exists #$fnName()".command) >>
+              session.execute(sql"drop sequence if exists #$seqName".command).void
+          }
+
+          def awaitRenewals(target: Long): IO[Unit] =
+            pool
+              .use(_.unique(sql"select last_value, is_called from #$seqName".query(int8 *: bool)))
+              .flatMap {
+                case (v, true) if v >= target => IO.unit
+                case _                        => IO.sleep(50.millis) >> awaitRenewals(target)
+              }
+              .timeout(15.seconds)
+
+          (install >> (for
+            _         <- registerFromStart(pool, name, group)
+            started   <- Deferred[IO, Unit]
+            release   <- Deferred[IO, Unit]
+            cancelled <- Ref.of[IO, Boolean](false)
+            processed <- Ref.of[IO, List[Int]](Nil)
+            processor  = (n: Int) =>
+                           (started.complete(()) >> release.get >> processed.update(_ :+ n)).onCancel(cancelled.set(true))
+            result    <- topic.processAtLeastOnce(group)(processor).compile.drain.background.use { _ =>
+                           for
+                             _           <- topic.publish(1)
+                             _           <- started.get.timeout(15.seconds)
+                             _           <- awaitRenewals(2)
+                             interrupted <- cancelled.get
+                             _           <- release.complete(())
+                             values      <- await(processed, 1)
+                           yield (interrupted, values)
+                         }
+          yield result shouldBe (false, List(1)))).guarantee(uninstall)
+        }.unsafeRunSync()
+      }
+
+      "cancel a running processor when lease renewal fails past the lease duration" in withContainers { container =>
+        pool(container).use { pool =>
+          val name      = s"topic-${UUID.randomUUID()}"
+          val group     = s"renew-expired-${UUID.randomUUID()}"
+          val fnName    = s"msg_bus_test_renew_fail_${UUID.randomUUID().toString.replace("-", "_")}"
+          val trigName  = s"${fnName}_trig"
+          val config    = MessageBusConfig(pollInterval = 100.millis, leaseDuration = 400.millis)
+          val topic     = topicFor(pool, name, config = config)
+          val install   = pool.use { session =>
+            session.execute(sql"""
+              create function #$fnName() returns trigger language plpgsql as '
+              begin
+                if new.lease_generation = old.lease_generation and new.last_offset = old.last_offset then
+                  raise exception ''persistent renewal failure'';
+                end if;
+                return new;
+              end;
+              '
+            """.command) >>
+              session.execute(sql"""
+                create trigger #$trigName before update on message_consumer
+                for each row when (old.consumer_id = '#$group') execute function #$fnName()
+              """.command).void
+          }
+          val uninstall = pool.use { session =>
+            session.execute(sql"drop trigger if exists #$trigName on message_consumer".command) >>
+              session.execute(sql"drop function if exists #$fnName()".command).void
+          }
+
+          (install >> (for
+            _         <- registerFromStart(pool, name, group)
+            started   <- Deferred[IO, Unit]
+            cancelled <- Deferred[IO, Unit]
+            processor  = (_: Int) => (started.complete(()) >> IO.never[Unit]).onCancel(cancelled.complete(()).void)
+            _         <- topic.processAtLeastOnce(group)(processor).compile.drain.background.use { _ =>
+                           (topic.publish(1) >> started.get >> cancelled.get).timeout(15.seconds)
+                         }
+          yield succeed)).guarantee(uninstall)
+        }.unsafeRunSync()
+      }
+
+      "not cancel other partition workers when one worker hits a database error" in withContainers { container =>
+        pool(container).use { pool =>
+          val name     = s"topic-${UUID.randomUUID()}"
+          val group    = s"isolated-worker-${UUID.randomUUID()}"
+          val seqName  = s"msg_bus_test_iso_${UUID.randomUUID().toString.replace("-", "_")}"
+          val fnName   = s"${seqName}_fn"
+          val trigName = s"${seqName}_trig"
+          val config   = MessageBusConfig(pollInterval = 100.millis, leaseDuration = 2.seconds)
+          val topic    = keyedTopicFor(pool, name, partitions = 8, config = config)
+
+          val topicKey  = MessageTopicKey[KeyedMessage](name, _.key, 8)
+          val keyA      = "key-a"
+          val partA     = topicKey.partitionFor(KeyedMessage(keyA, 1))._2
+          val keyB      = Iterator.from(1).map(i => s"key-b-$i").find { candidate =>
+            topicKey.partitionFor(KeyedMessage(candidate, 1))._2 != partA
+          }.get
+          val install   = pool.use { session =>
+            session.execute(sql"create sequence #$seqName".command) >>
+              session.execute(sql"""
+                create function #$fnName() returns trigger language plpgsql as '
+                begin
+                  if new.last_offset > old.last_offset and old.partition = #${partA.toString} then
+                    if nextval(''#$seqName'') = 1 then
+                      raise exception ''partition A ack failure'';
+                    end if;
+                  end if;
+                  return new;
+                end;
+                '
+              """.command) >>
+              session.execute(sql"""
+                create trigger #$trigName before update on message_consumer
+                for each row when (old.consumer_id = '#$group') execute function #$fnName()
+              """.command).void
+          }
+          val uninstall = pool.use { session =>
+            session.execute(sql"drop trigger if exists #$trigName on message_consumer".command) >>
+              session.execute(sql"drop function if exists #$fnName()".command) >>
+              session.execute(sql"drop sequence if exists #$seqName".command).void
+          }
+
+          def awaitAckFailure: IO[Unit] =
+            pool
+              .use(_.unique(sql"select last_value, is_called from #$seqName".query(int8 *: bool)))
+              .flatMap {
+                case (v, true) if v >= 1 => IO.unit
+                case _                   => IO.sleep(50.millis) >> awaitAckFailure
+              }
+              .timeout(15.seconds)
+
+          (install >> (for
+            _          <- registerFromStart(pool, name, group, partitions = 8)
+            bStarted   <- Deferred[IO, Unit]
+            releaseB   <- Deferred[IO, Unit]
+            bCancelled <- Ref.of[IO, Boolean](false)
+            processed  <- Ref.of[IO, List[KeyedMessage]](Nil)
+            processor   = (msg: KeyedMessage) =>
+                            if msg.key == keyB then
+                              (bStarted.complete(()) >> releaseB.get >> processed.update(_ :+ msg)).onCancel(bCancelled.set(true))
+                            else bStarted.get
+            result     <- topic.processAtLeastOnce(group, parallelism = Some(2))(processor).compile.drain.background.use { _ =>
+                            for
+                              _           <- topic.publish(KeyedMessage(keyB, 1))
+                              _           <- topic.publish(KeyedMessage(keyA, 1))
+                              _           <- bStarted.get.timeout(15.seconds)
+                              _           <- awaitAckFailure
+                              _           <- IO.sleep(100.millis)
+                              interrupted <- bCancelled.get
+                              _           <- releaseB.complete(())
+                              values      <- await(processed, 1)
+                            yield (interrupted, values)
+                          }
+          yield result shouldBe (false, List(KeyedMessage(keyB, 1))))).guarantee(uninstall)
+        }.unsafeRunSync()
+      }
     }
   }

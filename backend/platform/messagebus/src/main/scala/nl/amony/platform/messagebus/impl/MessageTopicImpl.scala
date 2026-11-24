@@ -43,7 +43,10 @@ final private[messagebus] class MessageTopicImpl[E](
       val trigger = IO.uncancelable { poll =>
         semaphore.tryAcquire.flatMap {
           case false => IO.unit
-          case true  => poll(drain(consumerId, processor)).guarantee(semaphore.release)
+          case true  =>
+            poll(drain(consumerId, processor))
+              .handleErrorWith(error => IO(logger.error(s"Worker error for $context", error)))
+              .guarantee(semaphore.release)
         }
       }
 
@@ -98,12 +101,22 @@ final private[messagebus] class MessageTopicImpl[E](
   private def process(consumerId: String, processor: E => IO[Unit])(row: MessageLogRow): IO[Unit] =
     val context         = s"message ${row.id} (partition ${row.partition}) on topic '${key.name}' for consumer '$consumerId'"
     val renewalInterval = (config.leaseDuration / 3).max(50.millis)
-    val heartbeat       = Stream.awakeEvery[IO](renewalInterval)
-      .evalMap(_ => log.renewLease(consumerId, row, config.leaseJavaDuration))
-      .takeWhile(identity)
-      .compile
-      .drain
-      .handleErrorWith(error => IO(logger.warn(s"Failed to renew lease for $context: $error")))
+    val heartbeat       =
+      def loop(deadline: FiniteDuration): IO[Unit] =
+        for
+          now <- IO.monotonic
+          _   <- IO.sleep(renewalInterval.min((deadline - now).max(Duration.Zero)))
+          at  <- IO.monotonic
+          res <- log.renewLease(consumerId, row, config.leaseJavaDuration).attempt
+          _   <- res match
+                   case Right(true)  => loop(at + config.leaseDuration)
+                   case Right(false) => IO.unit
+                   case Left(error)  =>
+                     IO(logger.warn(s"Failed to renew lease for $context: $error")) >>
+                       IO.monotonic.flatMap(after => IO.whenA(after < deadline)(loop(deadline)))
+        yield ()
+
+      IO.monotonic.flatMap(started => loop(started + config.leaseDuration))
 
     val runProcessor = IO.defer(IO.fromEither(key.decode(row.payload))).flatMap(processor)
     val finish       = runProcessor.attempt.flatMap {
