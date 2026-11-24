@@ -50,6 +50,13 @@ final private[messagebus] class MessageTopicImpl[E](
       log.enqueueAll(session, key.name, entries) >> session.channel(identifier).notify(key.name)
 
   override def processAtLeastOnce(consumerId: String, parallelism: Option[Int] = None)(processor: E => IO[Unit]): Stream[IO, Unit] =
+    processRaw(consumerId, parallelism)((_, decoded) => IO.fromEither(decoded).flatMap(processor))
+
+  private[messagebus] def processRaw(
+    consumerId: String,
+    parallelism: Option[Int]    = None,
+    initialOffset: Option[Long] = None
+  )(processor: (MessageLogRow, Either[io.circe.Error, E]) => IO[Unit]): Stream[IO, Unit] =
     val maxWorkers = parallelism.getOrElse(config.parallelism).min(key.partitions).max(1)
     val context    = s"topic '${key.name}', consumer '$consumerId'"
     Stream.eval((Semaphore[IO](maxWorkers.toLong), Queue.bounded[IO, Unit](1)).tupled).flatMap { (semaphore, wakeups) =>
@@ -63,8 +70,11 @@ final private[messagebus] class MessageTopicImpl[E](
         }
       }
 
-      // A new consumer group starts at the latest message, like Kafka's `auto.offset.reset=latest`.
-      val register = restartOnError(s"Registration for $context")(Stream.eval(log.ensureConsumerAtLatest(key.name, consumerId, key.partitions)))
+      // A new consumer group starts at the latest message, like Kafka's `auto.offset.reset=latest`, unless overridden.
+      val ensure   = initialOffset.fold(log.ensureConsumerAtLatest(key.name, consumerId, key.partitions))(
+        log.ensureConsumer(key.name, consumerId, key.partitions, _)
+      )
+      val register = restartOnError(s"Registration for $context")(Stream.eval(ensure))
       val listener = restartOnError(s"Notification listener for $context")(
         notifications.evalMap(_ => wakeups.tryOffer(()).void) ++ Stream.raiseError[IO](new IllegalStateException("LISTEN stream ended"))
       )
@@ -105,13 +115,13 @@ final private[messagebus] class MessageTopicImpl[E](
    * Drain all available unlocked partitions for this consumer group. If a partition fails, its lease is set to
    * `now() + retryBackoff`, while other partitions with pending messages continue draining immediately.
    */
-  private def drain(consumerId: String, processor: E => IO[Unit]): IO[Unit] =
+  private def drain(consumerId: String, processor: (MessageLogRow, Either[io.circe.Error, E]) => IO[Unit]): IO[Unit] =
     log.claimNextUnprocessed(key.name, consumerId, config.leaseJavaDuration).flatMap {
       case None      => IO.unit
       case Some(row) => process(consumerId, processor)(row) >> drain(consumerId, processor)
     }
 
-  private def process(consumerId: String, processor: E => IO[Unit])(row: MessageLogRow): IO[Unit] =
+  private def process(consumerId: String, processor: (MessageLogRow, Either[io.circe.Error, E]) => IO[Unit])(row: MessageLogRow): IO[Unit] =
     val context         = s"message ${row.id} (partition ${row.partition}) on topic '${key.name}' for consumer '$consumerId'"
     val renewalInterval = (config.leaseDuration / 3).max(50.millis)
     val heartbeat       =
@@ -131,7 +141,7 @@ final private[messagebus] class MessageTopicImpl[E](
 
       IO.monotonic.flatMap(started => loop(started + config.leaseDuration))
 
-    val runProcessor = IO.defer(IO.fromEither(key.decode(row.payload))).flatMap(processor)
+    val runProcessor = IO.defer(processor(row, key.decode(row.payload)))
     val finish       = runProcessor.attempt.flatMap {
       case Right(_) => log.commitOffset(consumerId, row)
       case Left(e)  =>

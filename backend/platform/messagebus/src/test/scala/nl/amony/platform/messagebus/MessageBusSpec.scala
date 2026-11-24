@@ -53,6 +53,13 @@ class MessageBusSpec extends AnyWordSpecLike with Matchers:
 
       withPool(pool => (1 to runs).toList.traverse_(runConcurrentProducers(pool, _)))
     }
+
+    "report single producer / single consumer job throughput" in {
+      assume(enabled, "performance test disabled; see the class comment for how to run it")
+
+      val jobs = setting("amony.perf.messages", "AMONY_PERF_MESSAGES").flatMap(_.toIntOption).getOrElse(2000)
+      withPool(pool => (1 to runs).toList.traverse_(runJobs(pool, _, jobs, runs)))
+    }
   }
 
   private def withPool[A](test: Resource[IO, Session[IO]] => IO[A]): A =
@@ -118,6 +125,29 @@ class MessageBusSpec extends AnyWordSpecLike with Matchers:
       _            <- IO.println(
                         f"run $runNumber%2d/$runs%d | produce ${produceMs / 1000}%7.2fs (${messages * 1000.0 / produceMs}%8.0f msg/s) | " +
                           f"process ${processMs / 1000}%7.2fs (${messages * 1000.0 / processMs}%8.0f msg/s)"
+                      )
+    yield ()
+
+  private def runJobs(pool: Resource[IO, Session[IO]], runNumber: Int, jobs: Int, runs: Int): IO[Unit] =
+    val name               = s"perf-jobs-${UUID.randomUUID()}"
+    given JobTopicKey[Int] = JobTopicKey(name)
+    val bus                = MessageBus.postgres(pool).getJobBus[Int]
+
+    for
+      submitStart  <- IO.monotonic
+      _            <- (1 to jobs).toList.traverse_(n => bus.submit(n.toString, n))
+      submitEnd    <- IO.monotonic
+      processed    <- Ref.of[IO, Int](0)
+      processStart <- IO.monotonic
+      _            <- bus.processAtLeastOnce((_, _) => processed.update(_ + 1).as(Right(()))).compile.drain.background.use { _ =>
+                        await(processed, jobs)
+                      }
+      processEnd   <- IO.monotonic
+      submitMs      = (submitEnd - submitStart).toMillis.toDouble
+      processMs     = (processEnd - processStart).toMillis.toDouble
+      _            <- IO.println(
+                        f"job run $runNumber%2d/$runs%d | submit  ${submitMs / 1000}%7.2fs (${jobs * 1000.0 / submitMs}%8.0f jobs/s) | " +
+                          f"process ${processMs / 1000}%7.2fs (${jobs * 1000.0 / processMs}%8.0f jobs/s)"
                       )
     yield ()
 
