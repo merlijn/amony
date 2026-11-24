@@ -36,48 +36,40 @@ case class MessageTopicKey[E: Codec](
 object MessageTopicKey:
   val DefaultPartitions: Int = 16
 
+/** Durable, partitioned topic supporting atomic publishing and at-least-once consumer groups. */
 trait MessageTopic[E]:
 
   /** Publish a message in its own transaction. */
   def publish(message: E): IO[Unit]
 
-  /**
-   * Publish a message using the caller's session, so that persisting the message is atomic with the caller's own writes
-   * (and the notification is only sent once that transaction commits).
-   */
+  /** Publish a message in the caller's transaction; notifications are delivered on commit. */
   def publish(session: Session[IO], message: E): IO[Unit]
 
-  /** Publish a batch of messages in a single transaction, locking partitions in a canonical order to avoid deadlocks. */
+  /** Publish a batch of messages in one transaction, locking partitions in canonical order to avoid deadlocks. */
   def publishAll(messages: Seq[E]): IO[Unit] =
     messages.foldLeft(IO.unit)((acc, message) => acc >> publish(message))
 
-  /**
-   * Publish a batch of messages using the caller's session, locking partitions in a canonical order to avoid deadlocks
-   * across concurrent multi-partition transactions and sending a single notification for the batch.
-   */
+  /** Publish a batch in the caller's transaction, locking partitions in canonical order with a single notification. */
   def publishAll(session: Session[IO], messages: Seq[E]): IO[Unit] =
     messages.foldLeft(IO.unit)((acc, message) => acc >> publish(session, message))
 
   /**
-   * An at-least-once consumer group that acknowledges each partition's messages in log order, retrying failures in
-   * place before advancing. New groups start at the latest committed offsets. Up to `parallelism` partitions
-   * (defaulting to the bus configuration) are drained concurrently on this node.
-   *
-   * A worker that loses its lease cannot advance the offset, but cancellation cannot undo side effects already in
-   * flight. Processors must tolerate duplicates and protect side effects that cannot be applied out of order.
+   * Consume messages at least once in per-partition order, retrying failures in place. New groups start at the latest
+   * offsets and drain up to `parallelism` partitions concurrently. Processors must tolerate duplicates and protect
+   * external side effects if a lease is lost in flight.
    */
   def processAtLeastOnce(consumerId: String, parallelism: Option[Int] = None)(processor: E => IO[Unit]): Stream[IO, Unit]
 
+/** Entry point for obtaining cached [[MessageTopic]] and [[JobBus]] handles. */
 trait MessageBus:
 
+  /** Return the [[MessageTopic]] for the given implicit key. */
   def getTopic[E](using key: MessageTopicKey[E]): MessageTopic[E] = getTopicForKey[E](key)
 
+  /** Return the [[MessageTopic]] for `key`. */
   def getTopicForKey[E](key: MessageTopicKey[E]): MessageTopic[E]
 
-  /**
-   * A durable job queue with a producer-visible status sidecar. Unlike [[getTopic]] it writes one extra row per
-   * submitted job, so it is opt-in: only construct it for job topics.
-   */
+  /** Return a [[JobBus]] with a status sidecar (opt-in: writes one extra status row per job). */
   def getJobBus[P](using key: JobTopicKey[P]): JobBus[P]
 
 object MessageBus:

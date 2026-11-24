@@ -78,22 +78,16 @@ final case class JobTopicKey[P: CirceCodec](
 
   def retentionDuration: java.time.Duration = java.time.Duration.ofMillis(retention.toMillis)
 
-/**
- * A durable job queue on top of a [[MessageTopic]]: jobs are executed at least once, and their progress is
- * observable through [[status]] and [[subscribe]]. It does not change [[MessageTopic]]; it only adds a status sidecar
- * and wraps the consumer.
- */
+/** Durable, at-least-once job queue on top of a [[MessageTopic]] with a producer-visible status sidecar. */
 trait JobBus[P]:
 
   /** Publish a job in its own transaction and return its id. */
   def submit(key: String, payload: P): IO[JobId]
 
-  /**
-   * Publish a job using the caller's session, so it becomes visible only if the caller's own writes commit. The
-   * caller generates the id, so it can be referenced before the transaction commits.
-   */
+  /** Publish a job in the caller's transaction using a caller-generated id. */
   def submit(session: Session[IO], id: JobId, key: String, payload: P): IO[Unit]
 
+  /** Return the current status of a job, if it exists and has not been purged. */
   def status(id: JobId): IO[Option[JobStatus]]
 
   /** Emits the status each time it changes, ending after the terminal state. */
@@ -103,19 +97,14 @@ trait JobBus[P]:
   def awaitCompletion(id: JobId, timeout: FiniteDuration): IO[JobStatus]
 
   /**
-   * At-least-once consumer. The handler must be idempotent: it can re-run after a crash or when the terminal write
-   * committed but the consumer offset did not. Returning `Right(())` asserts the job's postcondition; returning
-   * `Left(error)` records an immediate terminal failure without retrying; any uncaught exception in `IO` is retried up
-   * to `maxAttempts`.
-   *
-   * The handler receives the session of a transaction that also records the terminal state, so its domain writes and
-   * the job's success commit together.
+   * Consume jobs at least once (handler must be idempotent). Returning `Right(())` commits the handler's session writes
+   * together with `Succeeded`; `Left(error)` records an immediate terminal failure; uncaught exceptions retry up to
+   * `maxAttempts`.
    */
   def processAtLeastOnce[E](handler: (Session[IO], P) => IO[Either[E, Unit]]): Stream[IO, Unit]
 
   /**
-   * At-least-once consumer with a split between slow preparation and a fast commit step. `work` may run for a long time
-   * and returns the commit action (`IO[Either[E, Unit]]`) that finalizes the job before the terminal state is recorded.
-   * `Left(error)` from either phase fails the job immediately without retrying.
+   * Two-phase at-least-once consumer separating slow `work` from a final commit step. `Left(error)` in either phase
+   * fails immediately without retrying; uncaught exceptions retry up to `maxAttempts`.
    */
   def processAtLeastOnce[E](work: P => IO[Either[E, IO[Either[E, Unit]]]]): Stream[IO, Unit]
