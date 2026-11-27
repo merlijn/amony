@@ -2,14 +2,12 @@ package nl.amony.modules.resources.impl
 
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files as JFiles
 import java.time.Instant
 import scala.concurrent.duration.*
 
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.implicits.*
-import fs2.io.file.{Files, Path}
 import scribe.Logging
 
 import nl.amony.modules.auth.api.{Role, UserId}
@@ -27,6 +25,8 @@ class ResourceBucketImpl(
   topic: MessageTopic[ResourceEvent],
   ops: BucketOperations,
   store: ResourceStore,
+  derivedStore: DerivedStore,
+  staging: StagingArea,
   events: ResourceEventStore,
   jobBus: JobBus[ResourceJob],
   jobTimeout: FiniteDuration = 30.minutes
@@ -42,7 +42,7 @@ class ResourceBucketImpl(
   override def getResourceContent(resourceId: ResourceId): IO[Option[ResourceContent]] =
     (for
       info    <- OptionT(getResourceInfo(resourceId))
-      content <- OptionT(store.content(info, Some(ETag.forResource(info))))
+      content <- OptionT(store.content(info.path, info.contentType, Some(ETag.forResource(info))))
     yield content).value
 
   override def getAllResources: fs2.Stream[IO, ResourceInfo] =
@@ -50,10 +50,10 @@ class ResourceBucketImpl(
 
   override def processEvent(event: ResourceEvent): IO[Unit] = event match
     case ResourceAdded(resource)                     => generatePreviewsIfEnabled(resource)
-    case ResourceModified(resource)                  => generatePreviewsIfEnabled(resource)
+    case ResourceModified(resource)                  => derivedStore.deleteForResource(resource.resourceId) >> generatePreviewsIfEnabled(resource)
     case ResourceThumbnailUpdated(_, resource)       => generatePreviewsIfEnabled(resource)
-    case ResourceMovedAndModified(_, _, _, resource) => generatePreviewsIfEnabled(resource)
-    case ResourceDeleted(resource)                   => deleteFile(resource)
+    case ResourceMovedAndModified(_, _, _, resource) => derivedStore.deleteForResource(resource.resourceId) >> generatePreviewsIfEnabled(resource)
+    case ResourceDeleted(resource)                   => deleteFile(resource) >> derivedStore.deleteForResource(resource.resourceId)
     case _                                           => IO.unit
 
   override def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap { resource =>
@@ -96,7 +96,7 @@ class ResourceBucketImpl(
       job     = UploadResource(id, staged.resourceId, userId, staged.fileName, staged.stagingId)
       jobId  <- EitherT.liftF(
                   jobBus.submit(job.key, job)
-                    .handleErrorWith(error => store.discard(staged.stagingId) >> IO.raiseError(error))
+                    .handleErrorWith(error => staging.delete(staged.stagingId) >> IO.raiseError(error))
                 )
       status <- EitherT.liftF(jobBus.awaitCompletion(jobId, jobTimeout))
       _      <- EitherT.cond[IO](
@@ -116,7 +116,6 @@ class ResourceBucketImpl(
     try Right(URLDecoder.decode(fileName, StandardCharsets.UTF_8))
     catch case _: IllegalArgumentException => Left(UploadError.InvalidFileName(s"File name '$fileName' is invalid"))
 
-  /** Streams the request body into the bucket's temp directory. Nothing outside the temp directory is touched. */
   private def stageUpload(fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, StagedUpload]] =
     decodeFileName(fileName) match
       case Left(error)                                                 => IO.pure(Left(error))
@@ -125,34 +124,21 @@ class ResourceBucketImpl(
       case Right(decoded)                                              =>
         val resourceId = config.generateId()
         val stagingId  = StagingId(s"$resourceId-upload")
-        val target     = config.tempPath.resolve(stagingId)
-        val stage      =
-          for
-            _    <- IO.blocking(JFiles.createDirectories(config.tempPath))
-            _    <- source.through(Files[IO].writeAll(Path.fromNioPath(target))).compile.drain
-            size <- IO.blocking(JFiles.size(target))
-          yield
-            if size == 0 then Left(UploadError.StorageError(s"Failed to store upload '$decoded': Uploaded file is empty"))
-            else Right(StagedUpload(resourceId, decoded, stagingId))
-        stage.attempt.flatMap:
-          case Right(Right(staged)) => IO.pure(Right(staged))
-          case Right(Left(error))   => store.discard(stagingId).as(Left(error))
-          case Left(error)          =>
-            store.discard(stagingId).as(Left(UploadError.StorageError(s"Failed to store upload '$decoded': ${error.getMessage}")))
+        staging.write(stagingId, source).attempt.flatMap:
+          case Right(staged) if staged.size == 0 =>
+            staging.delete(stagingId).as(Left(UploadError.StorageError(s"Failed to store upload '$decoded': Uploaded file is empty")))
+          case Right(_)                          =>
+            IO.pure(Right(StagedUpload(resourceId, decoded, stagingId)))
+          case Left(error)                       =>
+            staging.delete(stagingId).as(Left(UploadError.StorageError(s"Failed to store upload '$decoded': ${error.getMessage}")))
 
-  /**
-   * Slow, non-transactional part of an upload: scans the staged file and remuxes it when that makes it streamable. The
-   * result lives entirely in the temp directory, so a failure leaves nothing observable behind.
-   */
   private def processUpload(upload: UploadResource): IO[Either[UploadProcessingError, PreparedUpload]] =
     val location = ContentLocation.Staged(upload.stagingId)
-    val tempPath = config.tempPath.resolve(upload.stagingId)
-    IO.blocking(JFiles.exists(tempPath)).flatMap:
-      case false => IO.pure(Left(UploadProcessingError(upload.stagingId, "the staged upload is no longer available")))
-      case true  =>
+    staging.get(upload.stagingId).flatMap:
+      case None         => IO.pure(Left(UploadProcessingError(upload.stagingId, "the staged upload is no longer available")))
+      case Some(staged) =>
         (for
-          size      <- EitherT.liftF(IO.blocking(JFiles.size(tempPath)))
-          _         <- EitherT.cond[IO](size > 0, (), UploadProcessingError(upload.stagingId, "the uploaded file is empty"))
+          _         <- EitherT.cond[IO](staged.size > 0, (), UploadProcessingError(upload.stagingId, "the uploaded file is empty"))
           meta      <- ops.contentMeta(location).leftMap(error =>
                          UploadProcessingError(upload.stagingId, s"the uploaded file could not be read: ${error.message}")
                        )
@@ -180,14 +166,8 @@ class ResourceBucketImpl(
               UploadProcessingError(upload.stagingId, s"the uploaded file could not be read: ${error.message}")
             )
           else EitherT.pure[IO, UploadProcessingError](meta)
-          _         <- EitherT.liftF[IO, UploadProcessingError, Unit](store.stage(upload.stagingId, tempPath))
         yield PreparedUpload(upload.stagingId, hash, finalMeta)).value
 
-  /**
-   * Fast, transactional part of an upload: moves the prepared file into place and inserts the resource. Committing
-   * consumes the staged file, so when inserting the resource fails the object is already in the store and a retry will
-   * not find a staged file. A durable outbox job would be needed to close that window.
-   */
   private def commitUpload(
     upload: UploadResource,
     prepared: PreparedUpload
@@ -195,12 +175,17 @@ class ResourceBucketImpl(
     (for
       existing <- EitherT.liftF(db.getResourceById(upload.bucketId, upload.resourceId))
       _        <- existing match
-                    case Some(_) => EitherT.liftF(store.discard(prepared.stagingId))
+                    case Some(_) => EitherT.liftF(staging.delete(prepared.stagingId))
                     case None    =>
                       for
-                        stored <- store.commit(prepared.stagingId, upload.fileName).leftMap(message =>
+                        staged <- EitherT.fromOptionF(
+                                    staging.get(prepared.stagingId),
+                                    UploadProcessingError(prepared.stagingId, s"Staged upload '${prepared.stagingId}' is no longer available")
+                                  )
+                        stored <- store.put(upload.fileName, staged.path).leftMap(message =>
                                     UploadProcessingError(prepared.stagingId, message)
                                   )
+                        _      <- EitherT.liftF(staging.delete(prepared.stagingId))
                         info    = ResourceInfo(
                                     bucketId           = upload.bucketId,
                                     resourceId         = upload.resourceId,
@@ -218,10 +203,6 @@ class ResourceBucketImpl(
                       yield ()
     yield ()).value
 
-  /**
-   * Cheap validation for the request: reports whether a remux makes sense without touching the file. The remux itself
-   * runs in the job consumer.
-   */
   private def checkStreamabilityFix(resourceId: ResourceId): IO[Either[ResourceJobError, Unit]] =
     getResourceInfo(resourceId).map:
       case None                                                 => Left(ResourceJobError.NotFound)
@@ -231,7 +212,6 @@ class ResourceBucketImpl(
         Left(ResourceJobError.Rejected("The container format cannot be remuxed for streaming"))
       case Some(_)                                              => Right(())
 
-  /** Remuxes to the bucket's temp directory without touching the live file. Returns None when nothing is needed. */
   private def processStreamabilityFix(resourceId: ResourceId): IO[Either[StreamabilityError, Option[StagingId]]] =
     OptionT(getResourceInfo(resourceId))
       .semiflatMap((info: ResourceInfo) =>
@@ -240,18 +220,52 @@ class ResourceBucketImpl(
       )
       .getOrElse(Left(StreamabilityError.ResourceNotFound(resourceId)))
 
-  /**
-   * Commits a remux: replaces the live file, refreshes its metadata and publishes ResourceModified in a transaction.
-   */
   private def commitStreamabilityFix(
     resourceId: ResourceId,
     stagingId: Option[StagingId]
   ): IO[Either[StreamabilityError, Unit]] =
     (for
-      info    <- EitherT.fromOptionF(getResourceInfo(resourceId), StreamabilityError.ResourceNotFound(resourceId))
-      updated <- ops.commitStreamability(info, stagingId)
-      _       <- EitherT.liftF(events.processEvent(ResourceModified(updated)))
+      info        <- EitherT.fromOptionF(getResourceInfo(resourceId), StreamabilityError.ResourceNotFound(resourceId))
+      stored      <- replaceOrStatForStreamability(info, stagingId)
+      location     = ContentLocation.Resource(info.path)
+      partialHash <- ops.contentPartialHash(location).leftMap(e => StreamabilityError.FixFailed(info.path, e.message))
+      streamable  <- ops.isStreamable(location, info.contentType).leftMap(e => StreamabilityError.FixFailed(info.path, e.message))
+      updated     <- EitherT.cond[IO](
+                       streamable.contains(true),
+                       info.copy(
+                         size             = stored.size,
+                         partialHash      = partialHash,
+                         fileKey          = stored.fileKey,
+                         timeLastModified = Some(stored.timeLastModified),
+                         contentMeta      = info.contentMeta.copy(streamable = streamable)
+                       ),
+                       StreamabilityError.FixFailed(info.path, "the file is not streamable after the remux")
+                     )
+      _           <- EitherT.liftF(events.processEvent(ResourceModified(updated)))
     yield ()).value
+
+  private def replaceOrStatForStreamability(
+    info: ResourceInfo,
+    stagingId: Option[StagingId]
+  ): EitherT[IO, StreamabilityError, StoredResource] =
+    stagingId match
+      case Some(id) =>
+        EitherT.liftF(staging.get(id)).flatMap {
+          case Some(staged) =>
+            store.replace(info.path, staged.path)
+              .leftMap(message => StreamabilityError.FixFailed(info.path, message))
+              .semiflatTap(_ => staging.delete(id))
+          case None         =>
+            EitherT.fromOptionF(
+              store.stat(info.path),
+              StreamabilityError.FixFailed(info.path, "resource file is no longer available")
+            )
+        }
+      case None     =>
+        EitherT.fromOptionF(
+          store.stat(info.path),
+          StreamabilityError.FixFailed(info.path, "resource file is no longer available")
+        )
 
   override def reComputePartialHashes(): IO[Unit] = getAllResources.evalMap { resource =>
     ops.contentPartialHash(ContentLocation.Resource(resource.path)).value.flatMap {

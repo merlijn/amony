@@ -1,11 +1,21 @@
 package nl.amony.modules.resources.impl
 
+import java.net.URI
 import java.nio.file.Path
 
 import cats.data.EitherT
 import cats.effect.IO
 
-import nl.amony.modules.resources.api.{ResourceContent, ResourceInfo, ResourcePath, StagingId}
+import nl.amony.modules.resources.api.{ResourceContent, ResourcePath}
+
+/** Where a stored object can be read by the media compute layer. */
+enum MediaSource:
+  case LocalFile(path: Path)
+  case RemoteUrl(uri: URI)
+
+  def toUri: URI = this match
+    case LocalFile(path) => path.toUri
+    case RemoteUrl(uri)  => uri
 
 /** Metadata of an object stored in a [[ResourceStore]]. */
 final case class StoredResource(
@@ -21,20 +31,20 @@ final case class StoredResource(
  */
 trait ResourceStore:
 
-  /** Returns the content of a resource, or `None` when the object does not exist. */
-  def content(info: ResourceInfo, eTag: Option[String]): IO[Option[ResourceContent]]
+  /** Returns the content of a resource for serving, or `None` when the object does not exist. */
+  def content(path: ResourcePath, contentType: Option[String], eTag: Option[String]): IO[Option[ResourceContent]]
 
-  /**
-   * Makes a locally staged file available to the store, so that [[commit]] can move it into place. Stores that share a
-   * file system with the staging area may leave this a no-op.
-   */
-  def stage(stagingId: StagingId, file: Path): IO[Unit]
+  /** Returns a readable handle for the compute layer, or `None` when the object does not exist. */
+  def openSource(path: ResourcePath): IO[Option[MediaSource]]
 
-  /** Moves a staged file to its final location, resolving a unique name, and returns its metadata. */
-  def commit(stagingId: StagingId, fileName: String): EitherT[IO, String, StoredResource]
+  /** Returns the stored metadata of a resource, or `None` when the object does not exist. */
+  def stat(path: ResourcePath): IO[Option[StoredResource]]
 
-  /** Discards a staged file. */
-  def discard(stagingId: StagingId): IO[Unit]
+  /** Stores a file at a unique path derived from `fileName`, returning its metadata. */
+  def put(fileName: String, source: Path): EitherT[IO, String, StoredResource]
+
+  /** Replaces an existing stored resource with the contents of `source`, returning its updated metadata. */
+  def replace(path: ResourcePath, source: Path): EitherT[IO, String, StoredResource]
 
   /** Deletes a stored resource. */
   def delete(path: ResourcePath): IO[Unit]

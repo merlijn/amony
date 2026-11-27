@@ -1,80 +1,92 @@
 package nl.amony.modules.resources.impl
 
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{Files, NoSuchFileException, Path}
-import scala.jdk.CollectionConverters.*
-import scala.util.Using
+import java.nio.file.{AtomicMoveNotSupportedException, Files, NoSuchFileException, Path, StandardCopyOption}
 
 import cats.data.EitherT
 import cats.effect.IO
 import scribe.Logging
 
-import nl.amony.modules.resources.api.{LocalDirectoryConfig, ResourceContent, ResourceId, ResourceInfo, ResourcePath, StagingId, StreamedResource}
+import nl.amony.modules.resources.api.{LocalDirectoryConfig, ResourceContent, ResourcePath, StreamedResource}
 
 /** [[ResourceStore]] backed by a local directory. */
 final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceStore, Logging:
 
-  override def content(info: ResourceInfo, eTag: Option[String]): IO[Option[ResourceContent]] =
-    ResourcePath.fromString(info.path) match
+  override def content(path: ResourcePath, contentType: Option[String], eTag: Option[String]): IO[Option[ResourceContent]] =
+    ResourcePath.fromString(path) match
       case Left(message) =>
-        IO(logger.warn(s"Ignoring resource '${info.resourceId}' with invalid path: $message")).as(None)
+        IO(logger.warn(s"Ignoring resource with invalid path '$path': $message")).as(None)
       case Right(_)      =>
-        IO.blocking(config.resourcePath.resolve(info.path)).map { path =>
-          if Files.exists(path) then Some(ResourceContent.Streamed(StreamedResource.fromPath(path, info.contentType, eTag)))
+        IO.blocking(config.resourcePath.resolve(path)).map { resolved =>
+          if Files.exists(resolved) then Some(ResourceContent.Streamed(StreamedResource.fromPath(resolved, contentType, eTag)))
           else {
-            logger.warn(s"Resource '${info.resourceId}' was found in the database but no file exists: $path")
+            logger.warn(s"Resource at '$path' was found in the database but no file exists: $resolved")
             None
           }
         }
 
-  override def stage(stagingId: StagingId, file: Path): IO[Unit] = IO.unit
+  override def openSource(path: ResourcePath): IO[Option[MediaSource]] =
+    ResourcePath.fromString(path) match
+      case Left(_)  => IO.pure(None)
+      case Right(_) =>
+        IO.blocking {
+          val resolved = config.resourcePath.resolve(path)
+          Option.when(Files.exists(resolved))(MediaSource.LocalFile(resolved))
+        }
 
-  override def commit(stagingId: StagingId, fileName: String): EitherT[IO, String, StoredResource] =
+  override def stat(path: ResourcePath): IO[Option[StoredResource]] =
+    ResourcePath.fromString(path) match
+      case Left(_)  => IO.pure(None)
+      case Right(_) =>
+        IO.blocking {
+          val resolved = config.resourcePath.resolve(path)
+          Option.when(Files.exists(resolved))(readStoredResource(resolved))
+        }
+
+  override def put(fileName: String, source: Path): EitherT[IO, String, StoredResource] =
     for
       _         <- EitherT.fromEither[IO](ResourcePath.fromString(fileName))
       targetOpt <- EitherT.liftF(IO.blocking(resolveTargetPath(config.resourcePath.resolve(fileName), maxAttempts = 100)))
       target    <- EitherT.fromOption[IO](targetOpt, "Failed to resolve unique file name after 100 attempts")
-      stored    <- moveStagedFile(stagingId, target)
+      stored    <- moveSource(source, target, atomic = false)
     yield stored
 
-  /** Moves the staged file to its unique target and reads back its metadata. */
-  private def moveStagedFile(stagingId: StagingId, target: Path): EitherT[IO, String, StoredResource] =
-    EitherT(IO.blocking {
-      Files.createDirectories(target.getParent)
-      Files.move(config.tempPath.resolve(stagingId), target)
-      val attributes             = Files.readAttributes(target, classOf[BasicFileAttributes])
-      StoredResource(
-        path             = ResourcePath(config.resourcePath.relativize(target).toString),
-        size             = attributes.size(),
-        timeLastModified = attributes.lastModifiedTime().toMillis,
-        fileKey          = Option(attributes.fileKey()).map(_.toString)
-      )
-    }.attempt.map {
-      case Right(stored)                => Right(stored)
-      case Left(_: NoSuchFileException) => Left(s"Staged upload '$stagingId' is no longer available")
-      case Left(error)                  => Left(s"Failed to commit staged upload '$stagingId': ${error.getMessage}")
-    })
-
-  override def discard(stagingId: StagingId): IO[Unit] =
-    IO.blocking(Files.deleteIfExists(config.tempPath.resolve(stagingId))).void
+  override def replace(path: ResourcePath, source: Path): EitherT[IO, String, StoredResource] =
+    for
+      _      <- EitherT.fromEither[IO](ResourcePath.fromString(path))
+      target  = config.resourcePath.resolve(path)
+      stored <- moveSource(source, target, atomic = true)
+    yield stored
 
   override def delete(path: ResourcePath): IO[Unit] =
     ResourcePath.fromString(path) match
       case Left(message) => IO.raiseError(new IllegalArgumentException(message))
       case Right(_)      => IO.blocking(Files.deleteIfExists(config.resourcePath.resolve(path))).void
 
-  /** Deletes cached previews derived from a resource, so changed content is never served stale. */
-  def deleteDerivedFiles(resourceId: ResourceId): IO[Unit] = IO.blocking {
-    if Files.isDirectory(config.cachePath) then
-      Using(Files.list(config.cachePath)) { stream =>
-        stream.iterator().asScala
-          .filter { path =>
-            val name = path.getFileName.toString
-            name.startsWith(resourceId.toString + "_") || name.startsWith(resourceId.toString + "-")
-          }
-          .foreach(path => Files.deleteIfExists(path))
+  private def moveSource(source: Path, target: Path, atomic: Boolean): EitherT[IO, String, StoredResource] =
+    EitherT(
+      IO.blocking {
+        Files.createDirectories(target.getParent)
+        if atomic then
+          try Files.move(source, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+          catch case _: AtomicMoveNotSupportedException => Files.move(source, target, StandardCopyOption.REPLACE_EXISTING)
+        else Files.move(source, target)
+        readStoredResource(target)
+      }.attempt.map {
+        case Right(stored)                => Right(stored)
+        case Left(_: NoSuchFileException) => Left(s"Source file '${source.getFileName}' is no longer available")
+        case Left(error)                  => Left(s"Failed to store file '${source.getFileName}': ${error.getMessage}")
       }
-  }.void.handleErrorWith(e => IO(logger.warn(s"Failed to delete derived files for $resourceId", e)))
+    )
+
+  private def readStoredResource(target: Path): StoredResource =
+    val attributes             = Files.readAttributes(target, classOf[BasicFileAttributes])
+    StoredResource(
+      path             = ResourcePath(config.resourcePath.relativize(target).toString),
+      size             = attributes.size(),
+      timeLastModified = attributes.lastModifiedTime().toMillis,
+      fileKey          = Option(attributes.fileKey()).map(_.toString)
+    )
 
   private def resolveTargetPath(path: Path, maxAttempts: Int): Option[Path] = {
     var target: Path = path

@@ -15,8 +15,7 @@ trait ResourceEventStore:
 final class DatabaseResourceEventStore(
   bucketId: BucketId,
   db: ResourceDatabase,
-  topic: MessageTopic[ResourceEvent],
-  invalidateDerived: ResourceId => IO[Unit]
+  topic: MessageTopic[ResourceEvent]
 ) extends ResourceEventStore,
       Logging:
 
@@ -29,8 +28,8 @@ final class DatabaseResourceEventStore(
           db.upsertResource(resource.copy(timeLastModified = Some(lastModifiedTime), fileKey = fileKey.orElse(resource.fileKey)))
         case None           => IO.unit
       }
-    case ResourceModified(resource)                                => invalidateDerived(resource.resourceId) >> db.upsertResource(resource)
-    case ResourceMovedAndModified(_, _, _, resource)               => invalidateDerived(resource.resourceId) >> db.upsertResource(resource)
+    case ResourceModified(resource)                                => db.upsertResource(resource)
+    case ResourceMovedAndModified(_, _, _, resource)               => db.upsertResource(resource)
     case _                                                         => IO.unit
   }
 

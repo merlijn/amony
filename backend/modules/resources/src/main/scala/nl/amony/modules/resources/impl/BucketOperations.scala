@@ -1,8 +1,7 @@
 package nl.amony.modules.resources.impl
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{AtomicMoveNotSupportedException, Files, Path, StandardCopyOption}
+import java.nio.file.{AtomicMoveNotSupportedException, Files, NoSuchFileException, Path, StandardCopyOption}
 import java.util.UUID
 import scala.util.{Failure, Success}
 
@@ -15,7 +14,6 @@ import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 import nl.amony.modules.resources.api.*
-import nl.amony.modules.resources.api.ResourceContent.Streamed
 import nl.amony.modules.resources.util.{ETag, SingleFlight}
 import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
 import nl.amony.platform.subprocess.ffmpeg.{ContainerFormat, FFMpeg}
@@ -38,11 +36,11 @@ trait BucketOperations:
 
   def contentPartialHash(location: ContentLocation): EitherT[IO, ContentUnreadable, String]
 
+  def isStreamable(location: ContentLocation, contentType: Option[String]): EitherT[IO, ContentUnreadable, Option[Boolean]]
+
   def normalizeUpload(stagingId: StagingId, container: VideoContainer): EitherT[IO, StreamabilityError, Unit]
 
   def remuxForStreaming(info: ResourceInfo): EitherT[IO, StreamabilityError, Option[StagingId]]
-
-  def commitStreamability(info: ResourceInfo, stagingId: Option[StagingId]): EitherT[IO, StreamabilityError, ResourceInfo]
 
   def derivedResource(info: ResourceInfo, operation: ResourceOperation): EitherT[IO, DerivedResourceError, ResourceContent]
 
@@ -60,12 +58,15 @@ enum DerivedResourceError:
     case SourceMissing(resourceId, path) => s"Resource '$resourceId' was found in the database but no file exists: $path"
 
 final class FileOperations(
-  config: LocalDirectoryConfig,
+  hashingAlgorithm: HashingAlgorithm,
   parallelFactor: Int,
   formats: ThumbnailFormats,
   resolutions: ThumbnailResolutions,
   processSettings: ProcessSettings,
-  processLimiter: ProcessLimiter
+  processLimiter: ProcessLimiter,
+  store: ResourceStore,
+  derivedStore: DerivedStore,
+  staging: StagingArea
 )(using meter: Meter[IO], tracer: Tracer[IO]) extends BucketOperations, Logging {
 
   private given runner: ProcessRunner = new ProcessRunner(processSettings, processLimiter)
@@ -73,47 +74,38 @@ final class FileOperations(
 
   type OperationKey = (resourceId: ResourceId, operation: ResourceOperation)
 
-  extension (operation: ResourceOperation)
-    def outputFile(resourceId: ResourceId, contentVersion: String): Path = {
+  private val inFlight = SingleFlight[OperationKey, Unit]
 
-      // Encode the pinned dimension so width- and height-based outputs never collide in the cache.
-      def scaleSuffix(width: Option[Int], height: Option[Int]): String =
-        width.map(w => s"w$w").orElse(height.map(h => s"h$h")).getOrElse("orig")
-
-      val fileName = operation match
-        case VideoFragment(width, height, start, end)                         => s"${resourceId}_${contentVersion}_$start-${end}_${scaleSuffix(width, height)}.mp4"
-        case VideoThumbnail(width, height, timestamp, format)                 =>
-          s"${resourceId}_${contentVersion}_${timestamp}_${scaleSuffix(width, height)}.${format.extension}"
-        case ImageThumbnail(width, height, format)                            => s"${resourceId}_${contentVersion}_${scaleSuffix(width, height)}.${format.extension}"
-        case VideoThumbnailTile(spritePixels, intervalInMillis, index, token) =>
-          VideoThumbnailTile.spriteFileName(resourceId, contentVersion, spritePixels, intervalInMillis, index, token)
-        case VideoThumbnailTileVtt(spritePixels, intervalInMillis, token)     =>
-          VideoThumbnailTile.manifestFileName(resourceId, contentVersion, spritePixels, intervalInMillis, token)
-        case AddFastStart(_)                                                  =>
-          throw new IllegalArgumentException("AddFastStart does not produce a derived output file")
-
-      config.cachePath.resolve(fileName)
-    }
-
-  /**
-   * Tracks running operations per resource and operation. Derived operations return None because
-   * their output is read from the cache file; in-place operations return the refreshed resource.
-   */
-  private val inFlight = SingleFlight[OperationKey, Option[ResourceInfo]]
-
-  private def pathOf(location: ContentLocation): Either[ContentUnreadable, Path] = location match
+  private def localPathOf(location: ContentLocation): EitherT[IO, ContentUnreadable, Path] = location match
     case ContentLocation.Resource(path)    =>
-      ResourcePath.fromString(path)
-        .left.map(message => ContentUnreadable(location, new IllegalArgumentException(message)))
-        .map(config.resourcePath.resolve(_))
-    case ContentLocation.Staged(stagingId) => Right(config.tempPath.resolve(stagingId))
+      for
+        _      <- EitherT.fromEither[IO](
+                    ResourcePath.fromString(path).left.map(message => ContentUnreadable(location, new IllegalArgumentException(message)))
+                  )
+        source <- EitherT.fromOptionF(
+                    store.openSource(path),
+                    ContentUnreadable(location, new NoSuchFileException(path))
+                  )
+        local  <- source match
+                    case MediaSource.LocalFile(p) => EitherT.pure[IO, ContentUnreadable](p)
+                    case MediaSource.RemoteUrl(u) =>
+                      EitherT.leftT[IO, Path](ContentUnreadable(
+                        location,
+                        new UnsupportedOperationException(s"Remote media source is not supported: $u")
+                      ))
+      yield local
+    case ContentLocation.Staged(stagingId) =>
+      EitherT.fromOptionF(
+        staging.get(stagingId).map(_.map(_.path)),
+        ContentUnreadable(location, new NoSuchFileException(stagingId))
+      )
 
   private def contentTypeFor(location: ContentLocation, path: Path): EitherT[IO, ContentUnreadable, String] =
     EitherT(IO.blocking(tika.detect(path)).attempt.map(_.left.map(ContentUnreadable(location, _))))
 
   override def contentMeta(location: ContentLocation): EitherT[IO, ContentUnreadable, ContentMeta] =
     for
-      path        <- EitherT.fromEither[IO](pathOf(location))
+      path        <- localPathOf(location)
       contentType <- contentTypeFor(location, path)
       scan        <- EitherT.liftF(toolScanForPath(path, contentType))
       streamable  <- EitherT.liftF(streamableOf(path, Some(contentType)))
@@ -122,9 +114,15 @@ final class FileOperations(
 
   override def contentPartialHash(location: ContentLocation): EitherT[IO, ContentUnreadable, String] =
     for
-      path <- EitherT.fromEither[IO](pathOf(location))
-      hash <- EitherT(config.hashingAlgorithm.createHash(path).attempt.map(_.left.map(ContentUnreadable(location, _))))
+      path <- localPathOf(location)
+      hash <- EitherT(hashingAlgorithm.createHash(path).attempt.map(_.left.map(ContentUnreadable(location, _))))
     yield hash
+
+  override def isStreamable(location: ContentLocation, contentType: Option[String]): EitherT[IO, ContentUnreadable, Option[Boolean]] =
+    for
+      path       <- localPathOf(location)
+      streamable <- EitherT.liftF(streamableOf(path, contentType))
+    yield streamable
 
   private def toolScanForPath(path: Path, contentType: String): IO[Option[ToolScan]] =
     if contentType.startsWith("video/") then
@@ -142,25 +140,25 @@ final class FileOperations(
           Some(ToolScan("magick/1", result.rawJson))
     else IO.pure(None)
 
-  private def addFastStart(video: Path, container: VideoContainer, outputFile: Path): IO[Path] =
-    FFMpeg.addFastStart(video.toUri, containerFormat(container), outputFile)
+  private def addFastStart(source: MediaSource, container: VideoContainer, outputFile: Path): IO[Path] =
+    FFMpeg.addFastStart(source.toUri, containerFormat(container), outputFile)
 
   override def normalizeUpload(stagingId: StagingId, container: VideoContainer): EitherT[IO, StreamabilityError, Unit] =
-    val source     = config.tempPath.resolve(stagingId)
-    val normalized = config.tempPath.resolve(s"$stagingId-normalized")
-    val normalize  =
-      for
-        _   <- IO.blocking(Files.createDirectories(config.tempPath))
-        out <- addFastStart(source, container, normalized)
-        _   <- moveIntoPlace(out, source)
-      yield Right(()): Either[StreamabilityError, Unit]
     EitherT(
-      normalize
-        .onError(_ => IO.blocking(Files.deleteIfExists(normalized)).void)
-        .attempt
-        .map:
-          case Right(result) => result
-          case Left(error)   => Left(StreamabilityError.FixFailed(stagingId, s"Failed to normalize the staged upload: ${error.getMessage}"))
+      staging.get(stagingId).flatMap {
+        case None         =>
+          IO.pure(Left(StreamabilityError.FixFailed(stagingId, "the staged upload is no longer available")))
+        case Some(staged) =>
+          staging.tempFile(s"$stagingId-normalized").use { normalized =>
+            for
+              out <- addFastStart(MediaSource.LocalFile(staged.path), container, normalized)
+              _   <- moveIntoPlace(out, staged.path)
+            yield ()
+          }.attempt.map {
+            case Right(())   => Right(())
+            case Left(error) => Left(StreamabilityError.FixFailed(stagingId, s"Failed to normalize the staged upload: ${error.getMessage}"))
+          }
+      }
     )
 
   private def containerFormat(container: VideoContainer): ContainerFormat = container match
@@ -177,122 +175,75 @@ final class FileOperations(
       }
     else IO.pure(None)
 
-  /**
-   * Remuxes the resource into the bucket's temp directory without touching the live file, so a failed or abandoned
-   * attempt never leaves the resource inconsistent. Returns the staging id of the remux. Runs in the command consumer,
-   * where the resource's commands are serialized.
-   */
   override def remuxForStreaming(info: ResourceInfo): EitherT[IO, StreamabilityError, Option[StagingId]] =
     for
       _         <- EitherT.fromEither[IO](ResourcePath.fromString(info.path)).leftMap(message => StreamabilityError.FixFailed(info.path, message))
       operation <-
         EitherT.fromOption[IO](AddFastStart.forResource(info), StreamabilityError.UnsupportedContainer(info.contentType.getOrElse("unknown")))
+      source    <- EitherT.fromOptionF(
+                     store.openSource(info.path),
+                     StreamabilityError.FixFailed(info.path, "source file is no longer available")
+                   )
       result    <- EitherT {
-                     // A unique name keeps a lease-stolen attempt from writing the same file as the original one.
                      val stagingId = StagingId(s"${info.resourceId}-normalize-${UUID.randomUUID()}.${operation.container.extension}")
-                     val temp      = config.tempPath.resolve(stagingId)
                      val remux     =
                        for
-                         _          <- IO.blocking(Files.createDirectories(config.tempPath))
-                         out        <- addFastStart(config.resourcePath.resolve(info.path), operation.container, temp)
+                         temp       <- staging.prepare(stagingId)
+                         out        <- addFastStart(source, operation.container, temp)
                          streamable <- streamableOf(out, info.contentType)
                          result     <-
                            if streamable.contains(true) then IO.pure(Right(Some(stagingId)): Either[StreamabilityError, Option[StagingId]])
                            else
-                             IO.blocking(Files.deleteIfExists(temp)).void.as(
+                             staging.delete(stagingId).as(
                                Left(StreamabilityError.FixFailed(
                                  info.path,
                                  "the remux did not produce a streamable file"
                                )): Either[StreamabilityError, Option[StagingId]]
                              )
                        yield result
-                     remux.onError(_ => IO.blocking(Files.deleteIfExists(temp)).void)
+                     remux.onError(_ => staging.delete(stagingId))
                    }
     yield result
 
-  /**
-   * Replaces the live file with the remux produced by [[remuxForStreaming]] (when one is still present) and refreshes the
-   * metadata that depends on the file. Idempotent: a retry after the move finds no staging file and re-derives the metadata.
-   */
-  override def commitStreamability(info: ResourceInfo, stagingId: Option[StagingId]): EitherT[IO, StreamabilityError, ResourceInfo] =
-    val source = config.resourcePath.resolve(info.path)
-    for
-      _           <- EitherT.fromEither[IO](ResourcePath.fromString(info.path)).leftMap(message => StreamabilityError.FixFailed(info.path, message))
-      _           <- stagingId match
-                       case Some(id) =>
-                         val temp = config.tempPath.resolve(id)
-                         EitherT.liftF(
-                           for
-                             exists <- IO.blocking(Files.exists(temp))
-                             _      <- if exists then moveIntoPlace(temp, source).void else IO.unit
-                           yield ()
-                         )
-                       case None     => EitherT.pure[IO, StreamabilityError](())
-      attrs       <- EitherT.liftF(IO.blocking(Files.readAttributes(source, classOf[BasicFileAttributes])))
-      partialHash <- EitherT.liftF(config.hashingAlgorithm.createHash(source))
-      streamable  <- EitherT.liftF(streamableOf(source, info.contentType))
-      updated     <- EitherT.cond[IO](
-                       streamable.contains(true),
-                       info.copy(
-                         size             = attrs.size(),
-                         partialHash      = partialHash,
-                         fileKey          = Option(attrs.fileKey()).map(_.toString),
-                         timeLastModified = Some(attrs.lastModifiedTime().toMillis),
-                         contentMeta      = info.contentMeta.copy(streamable = streamable)
-                       ),
-                       StreamabilityError.FixFailed(info.path, "the file is not streamable after the remux")
-                     )
-    yield updated
-
-  /**
-   * Validator for a derived preview. It is derived from the source's partial hash, the operation (encoded in the output
-   * file name) and the configured encoder options, so it never requires reading or hashing the produced bytes.
-   *
-   * Known gap: because it describes the recipe rather than the produced bytes, it does not change when the same recipe
-   * starts yielding different output (for example after a toolchain upgrade). Bump [[ResourceOperations.previewRecipeVersion]]
-   * to invalidate in that case.
-   */
-  private def previewETag(info: ResourceInfo, outputFile: Path): String =
-    ETag.of(info.partialHash, outputFile.getFileName.toString, formats.settingsFingerprint, ResourceOperations.previewRecipeVersion.toString)
+  private def previewETag(info: ResourceInfo, key: DerivedKey): String =
+    ETag.of(info.partialHash, key.name, formats.settingsFingerprint, ResourceOperations.previewRecipeVersion.toString)
 
   override def derivedResource(info: ResourceInfo, operation: ResourceOperation): EitherT[IO, DerivedResourceError, ResourceContent] =
     for
-      _         <- EitherT.fromEither[IO](ResourcePath.fromString(info.path)).leftMap(reason => DerivedResourceError.InvalidPath(info.resourceId, reason))
-      source     = config.resourcePath.resolve(info.path)
-      _         <- EitherT.cond[IO](Files.exists(source), (), DerivedResourceError.SourceMissing(info.resourceId, source.toString))
-      outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
-      eTag       = Some(previewETag(info, outputFile))
-      key        = (resourceId = info.resourceId, operation = operation)
-      content   <- EitherT.liftF(
-                     if Files.exists(outputFile) then IO.pure(Streamed(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag)))
-                     else
-                       inFlight
-                         .run(key)(createResource(source, info, key.operation).as(Option.empty[ResourceInfo]))
-                         .map(_ => Streamed(StreamedResource.fromPath(outputFile, Some(key.operation.contentType), eTag)))
-                   )
+      _       <- EitherT.fromEither[IO](ResourcePath.fromString(info.path)).leftMap(reason => DerivedResourceError.InvalidPath(info.resourceId, reason))
+      source  <- EitherT.fromOptionF(
+                   store.openSource(info.path),
+                   DerivedResourceError.SourceMissing(info.resourceId, info.path)
+                 )
+      key      = DerivedKey.forOperation(info.resourceId, ResourceOperations.contentVersion(info), operation)
+      eTag     = Some(previewETag(info, key))
+      opKey    = (resourceId = info.resourceId, operation = operation)
+      content <- EitherT.liftF(
+                   derivedStore.get(key, operation.contentType, eTag).flatMap {
+                     case Some(existing) => IO.pure(existing)
+                     case None           =>
+                       inFlight.run(opKey)(createDerived(source, info, key, operation)) >>
+                         derivedStore.get(key, operation.contentType, eTag).flatMap {
+                           case Some(created) => IO.pure(created)
+                           case None          =>
+                             IO.raiseError(new IllegalStateException(s"Derived resource '${key.name}' was not found after creation"))
+                         }
+                   }
+                 )
     yield content
 
-  private def createResource(inputFile: Path, info: ResourceInfo, operation: ResourceOperation): IO[Path] =
-    for
-      _         <- IO.fromEither(operation.validate(info).left.map(new Exception(_)))
-      outputFile = operation.outputFile(info.resourceId, ResourceOperations.contentVersion(info))
-      tempFile   = temporaryOutputFile(outputFile)
-      create     = IO.blocking(Files.createDirectories(outputFile.getParent)) >>
-                     run(info, inputFile, tempFile, operation) >>
-                     moveIntoPlace(tempFile, outputFile)
-      path      <- create
-                     .onError(_ => IO.blocking(Files.deleteIfExists(tempFile)).void)
-                     .onCancel(IO.blocking(Files.deleteIfExists(tempFile)).void)
-                     .memoize
-                     .flatten
-    yield path
+  private def createDerived(source: MediaSource, info: ResourceInfo, key: DerivedKey, operation: ResourceOperation): IO[Unit] =
+    IO.fromEither(operation.validate(info).left.map(new Exception(_))) >> (operation match
+      case tile: VideoThumbnailTileVtt =>
+        val webVtt = renderThumbnailTileManifest(info, tile)
+        derivedStore.putBytes(key, operation.contentType, webVtt.getBytes(StandardCharsets.UTF_8))
 
-  private def temporaryOutputFile(outputFile: Path): Path = {
-    val fileName              = outputFile.getFileName.toString
-    val extensionStart        = fileName.lastIndexOf('.')
-    val (baseName, extension) = if extensionStart >= 0 then fileName.splitAt(extensionStart) else (fileName, "")
-    outputFile.resolveSibling(s".$baseName.${UUID.randomUUID()}$extension")
-  }
+      case other =>
+        val extensionStart = key.name.lastIndexOf('.')
+        val suffix         = if extensionStart >= 0 then key.name.substring(extensionStart) else ""
+        staging.tempFile(key.name, suffix).use { tempFile =>
+          run(info, source, tempFile, other) >> derivedStore.put(key, other.contentType, tempFile)
+        })
 
   private def moveIntoPlace(tempFile: Path, outputFile: Path): IO[Path] =
     IO.blocking(Files.move(tempFile, outputFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING))
@@ -302,40 +253,37 @@ final class FileOperations(
       }
       .as(outputFile)
 
-  private def run(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: ResourceOperation): IO[Path] = operation match
+  private def run(info: ResourceInfo, source: MediaSource, outputFile: Path, operation: ResourceOperation): IO[Unit] = operation match
     case VideoFragment(width, height, start, end) =>
-      logger.debug(s"Creating video fragment for $inputFile with range $start-$end")
-      FFMpeg.transcodeToMp4(inputFile.toUri, range = (start, end), scaleWidth = width, scaleHeight = height, outputFile = outputFile).map(_ =>
-        outputFile
-      )
+      logger.debug(s"Creating video fragment for ${source.toUri} with range $start-$end")
+      FFMpeg.transcodeToMp4(source.toUri, range = (start, end), scaleWidth = width, scaleHeight = height, outputFile = outputFile).void
 
     case VideoThumbnail(width, height, timestamp, format) =>
-      logger.debug(s"Creating thumbnail for $inputFile at timestamp $timestamp as ${format.configName}")
+      logger.debug(s"Creating thumbnail for ${source.toUri} at timestamp $timestamp as ${format.configName}")
       FFMpeg.createThumbnail(
-        inputFile.toUri,
+        source.toUri,
         timestamp   = timestamp,
         outputFile  = outputFile,
         scaleWidth  = width,
         scaleHeight = height,
         codecArgs   = formats.encoderArgs(format)
-      ).map(_ =>
-        outputFile
-      )
-    case ImageThumbnail(width, height, format)            =>
-      logger.debug(s"Creating image thumbnail for $inputFile as ${format.configName}")
+      ).void
+
+    case ImageThumbnail(width, height, format) =>
+      logger.debug(s"Creating image thumbnail for ${source.toUri} as ${format.configName}")
       FFMpeg.resizeImage(
-        inputFile.toUri,
+        source.toUri,
         outputFile = outputFile,
         width      = width,
         height     = height,
         codecArgs  = formats.encoderArgs(format)
-      ).map(_ => outputFile)
+      ).void
 
     case tile: VideoThumbnailTile =>
-      createThumbnailTileSprite(info, inputFile, outputFile, tile).map(_ => outputFile)
+      createThumbnailTileSprite(info, source, outputFile, tile)
 
-    case tile: VideoThumbnailTileVtt =>
-      createThumbnailTileManifest(info, outputFile, tile).map(_ => outputFile)
+    case _: VideoThumbnailTileVtt =>
+      IO.raiseError(new IllegalArgumentException("VideoThumbnailTileVtt is rendered directly without media processing"))
 
     case AddFastStart(_) =>
       IO.raiseError(new IllegalArgumentException("AddFastStart updates a file in place and produces no derived output"))
@@ -345,7 +293,7 @@ final class FileOperations(
       .collect { case video: VideoProperties => video }
       .getOrElse(throw new IllegalStateException(s"Resource '${info.resourceId}' has no video properties"))
 
-  private def createThumbnailTileSprite(info: ResourceInfo, inputFile: Path, outputFile: Path, operation: VideoThumbnailTile): IO[Unit] = {
+  private def createThumbnailTileSprite(info: ResourceInfo, source: MediaSource, outputFile: Path, operation: VideoThumbnailTile): IO[Unit] = {
     val video           = videoProperties(info)
     val duration        = video.durationInMillis.toLong
     val (width, height) = VideoThumbnailTile.resolutionFor(operation.spritePixels, video.width, video.height)
@@ -361,26 +309,24 @@ final class FileOperations(
       VideoThumbnailTile.spriteQuality
     )
 
-    logger.debug(s"Creating thumbnail tile ${operation.index} for $inputFile at ${operation.intervalInMillis}ms interval")
-    FFMpeg.createThumbnailTile(inputFile.toUri, outputFile, plan)
+    logger.debug(s"Creating thumbnail tile ${operation.index} for ${source.toUri} at ${operation.intervalInMillis}ms interval")
+    FFMpeg.createThumbnailTile(source.toUri, outputFile, plan)
   }
 
-  private def createThumbnailTileManifest(info: ResourceInfo, outputFile: Path, operation: VideoThumbnailTileVtt): IO[Unit] = {
+  private def renderThumbnailTileManifest(info: ResourceInfo, operation: VideoThumbnailTileVtt): String = {
     val video           = videoProperties(info)
     val contentVersion  = ResourceOperations.contentVersion(info)
     val (width, height) = VideoThumbnailTile.resolutionFor(operation.spritePixels, video.width, video.height)
     val spriteUrl       = (index: Int) => s"/api/resources/${info.bucketId}/${info.resourceId}/thumbtile_${contentVersion}_${operation.token}_$index.webp"
 
     logger.debug(s"Creating thumbnail tile manifest for '${info.path}' at ${operation.intervalInMillis}ms interval")
-    val webVtt = VideoThumbnailTile.renderWebVtt(
+    VideoThumbnailTile.renderWebVtt(
       durationInMillis = video.durationInMillis.toLong,
       intervalInMillis = operation.intervalInMillis,
       width            = width,
       height           = height,
       spriteUrl        = spriteUrl
     )
-
-    IO.blocking(Files.write(outputFile, webVtt.getBytes(StandardCharsets.UTF_8))).void
   }
 
   private def previewOperations(info: ResourceInfo): List[ResourceOperation] =
