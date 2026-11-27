@@ -77,7 +77,7 @@ class ResourceBucketImpl(
       case upload: UploadResource =>
         (for
           prepared <- EitherT(processUpload(upload)).leftMap(_.message)
-        yield commitUpload(upload, prepared).map(_.left.map(_.message))).value
+        yield commitUpload(upload, prepared).leftMap(_.message).value).value
 
   override def fixStreamability(resourceId: ResourceId): IO[Either[ResourceJobError, Unit]] =
     (for
@@ -170,8 +170,8 @@ class ResourceBucketImpl(
   private def commitUpload(
     upload: UploadResource,
     prepared: PreparedUpload
-  ): IO[Either[UploadProcessingError, Unit]] =
-    (for
+  ): EitherT[IO, UploadProcessingError, Unit] =
+    for
       existing <- EitherT.liftF(db.getResourceById(upload.bucketId, upload.resourceId))
       _        <- existing match
                     case Some(_) => EitherT.liftF(staging.delete(prepared.stagingId))
@@ -200,7 +200,7 @@ class ResourceBucketImpl(
                                   )
                         _      <- EitherT.liftF(events.processEvent(ResourceAdded(info)))
                       yield ()
-    yield ()).value
+    yield ()
 
   private def checkStreamabilityFix(resourceId: ResourceId): IO[Either[ResourceJobError, Unit]] =
     getResourceInfo(resourceId).map:
