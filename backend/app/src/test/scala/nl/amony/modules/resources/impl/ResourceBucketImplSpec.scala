@@ -95,11 +95,10 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
     published: AtomicReference[List[ResourceEvent]],
     ops: BucketOperations = null
   ): ResourceBucketImpl =
-    val topic   = recordingTopic(published)
-    val store   = LocalDirectoryStore(config)
-    val staging = LocalStagingArea(config.tempPath)
-    val events  = DatabaseResourceEventStore(BucketId(config.id), db, topic)
-    ResourceBucketImpl(config, 2, db, topic, ops, store, staging, events, null)
+    val topic  = recordingTopic(published)
+    val store  = LocalDirectoryStore(config)
+    val events = DatabaseResourceEventStore(BucketId(config.id), db, topic)
+    ResourceBucketImpl(config, 2, db, topic, ops, store, events, null)
 
   private def newResource(bucketId: BucketId, path: String = "video.mp4"): ResourceInfo =
     ResourceInfo(
@@ -254,7 +253,7 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
       store.deleteDerived(res.resourceId) returns IO.unit
 
       val config = localConfig(s"bucket-${UUID.randomUUID()}", Files.createTempDirectory("amony-bucket-spec"), generatePreviewsOnAdd = true)
-      val bucket = ResourceBucketImpl(config, 1, null, null, ops, store, null, null, null)
+      val bucket = ResourceBucketImpl(config, 1, null, null, ops, store, null, null)
 
       val test =
         for

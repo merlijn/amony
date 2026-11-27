@@ -6,7 +6,7 @@ import java.util.UUID
 import scala.util.{Failure, Success}
 
 import cats.data.EitherT
-import cats.effect.IO
+import cats.effect.{IO, Resource}
 import cats.implicits.*
 import org.apache.tika.Tika
 import org.typelevel.otel4s.metrics.Meter
@@ -20,16 +20,16 @@ import nl.amony.platform.subprocess.ffmpeg.{ContainerFormat, FFMpeg}
 import nl.amony.platform.subprocess.magick.ImageMagick
 import nl.amony.platform.subprocess.{ProcessLimiter, ProcessRunner, ProcessSettings}
 
-/** Where content to operate on lives: a resource in the bucket or a file staged for upload. */
+/** Where content to operate on lives: a resource in the bucket or a local scratch file. */
 enum ContentLocation:
   case Resource(path: ResourcePath)
-  case Staged(stagingId: StagingId)
+  case LocalFile(path: Path)
 
   def display: String = this match
-    case Resource(path)    => path
-    case Staged(stagingId) => s"staged:$stagingId"
+    case Resource(path)  => path
+    case LocalFile(path) => path.getFileName.toString
 
-/** Operations on the content of a bucket, addressed without exposing local file system paths. */
+/** Operations on the content of a bucket. */
 trait BucketOperations:
 
   def contentMeta(location: ContentLocation): EitherT[IO, ContentUnreadable, ContentMeta]
@@ -38,7 +38,7 @@ trait BucketOperations:
 
   def isStreamable(location: ContentLocation, contentType: Option[String]): EitherT[IO, ContentUnreadable, Option[Boolean]]
 
-  def normalizeUpload(stagingId: StagingId, container: VideoContainer): EitherT[IO, StreamabilityError, Unit]
+  def normalizeUpload(file: Path, container: VideoContainer): EitherT[IO, StreamabilityError, Unit]
 
   def remuxForStreaming(info: ResourceInfo): EitherT[IO, StreamabilityError, Option[StagingId]]
 
@@ -64,8 +64,7 @@ final class FileOperations(
   resolutions: ThumbnailResolutions,
   processSettings: ProcessSettings,
   processLimiter: ProcessLimiter,
-  store: ResourceStore,
-  staging: StagingArea
+  store: ResourceStore
 )(using meter: Meter[IO], tracer: Tracer[IO]) extends BucketOperations, Logging {
 
   private given runner: ProcessRunner = new ProcessRunner(processSettings, processLimiter)
@@ -75,8 +74,11 @@ final class FileOperations(
 
   private val inFlight = SingleFlight[OperationKey, Unit]
 
+  private def tempFile(prefix: String, suffix: String = ""): Resource[IO, Path] =
+    Resource.make(IO.blocking(Files.createTempFile(prefix, suffix)))(path => IO.blocking(Files.deleteIfExists(path)).void)
+
   private def localPathOf(location: ContentLocation): EitherT[IO, ContentUnreadable, Path] = location match
-    case ContentLocation.Resource(path)    =>
+    case ContentLocation.Resource(path)  =>
       for
         _      <- EitherT.fromEither[IO](
                     ResourcePath.fromString(path).left.map(message => ContentUnreadable(location, new IllegalArgumentException(message)))
@@ -88,16 +90,11 @@ final class FileOperations(
         local  <- source match
                     case MediaSource.LocalFile(p) => EitherT.pure[IO, ContentUnreadable](p)
                     case MediaSource.RemoteUrl(u) =>
-                      EitherT.leftT[IO, Path](ContentUnreadable(
-                        location,
-                        new UnsupportedOperationException(s"Remote media source is not supported: $u")
-                      ))
+                      EitherT.leftT[IO, Path](
+                        ContentUnreadable(location, new UnsupportedOperationException(s"Remote media source is not supported: $u"))
+                      )
       yield local
-    case ContentLocation.Staged(stagingId) =>
-      EitherT.fromOptionF(
-        staging.get(stagingId).map(_.map(_.path)),
-        ContentUnreadable(location, new NoSuchFileException(stagingId))
-      )
+    case ContentLocation.LocalFile(path) => EitherT.pure[IO, ContentUnreadable](path)
 
   private def contentTypeFor(location: ContentLocation, path: Path): EitherT[IO, ContentUnreadable, String] =
     EitherT(IO.blocking(tika.detect(path)).attempt.map(_.left.map(ContentUnreadable(location, _))))
@@ -142,21 +139,17 @@ final class FileOperations(
   private def addFastStart(source: MediaSource, container: VideoContainer, outputFile: Path): IO[Path] =
     FFMpeg.addFastStart(source.toUri, containerFormat(container), outputFile)
 
-  override def normalizeUpload(stagingId: StagingId, container: VideoContainer): EitherT[IO, StreamabilityError, Unit] =
+  override def normalizeUpload(file: Path, container: VideoContainer): EitherT[IO, StreamabilityError, Unit] =
     EitherT(
-      staging.get(stagingId).flatMap {
-        case None         =>
-          IO.pure(Left(StreamabilityError.FixFailed(stagingId, "the staged upload is no longer available")))
-        case Some(staged) =>
-          staging.tempFile(s"$stagingId-normalized").use { normalized =>
-            for
-              out <- addFastStart(MediaSource.LocalFile(staged.path), container, normalized)
-              _   <- moveIntoPlace(out, staged.path)
-            yield ()
-          }.attempt.map {
-            case Right(())   => Right(())
-            case Left(error) => Left(StreamabilityError.FixFailed(stagingId, s"Failed to normalize the staged upload: ${error.getMessage}"))
-          }
+      tempFile("amony-normalize-", s".${container.extension}").use { normalized =>
+        for
+          out <- addFastStart(MediaSource.LocalFile(file), container, normalized)
+          _   <- moveIntoPlace(out, file)
+        yield ()
+      }.attempt.map {
+        case Right(())   => Right(())
+        case Left(error) =>
+          Left(StreamabilityError.FixFailed(file.getFileName.toString, s"Failed to normalize the uploaded file: ${error.getMessage}"))
       }
     )
 
@@ -183,24 +176,27 @@ final class FileOperations(
                      store.openSource(info.path),
                      StreamabilityError.FixFailed(info.path, "source file is no longer available")
                    )
+      stagingId  = StagingId(s"${info.resourceId}-normalize-${UUID.randomUUID()}.${operation.container.extension}")
       result    <- EitherT {
-                     val stagingId = StagingId(s"${info.resourceId}-normalize-${UUID.randomUUID()}.${operation.container.extension}")
-                     val remux     =
+                     tempFile("amony-remux-", s".${operation.container.extension}").use { temp =>
                        for
-                         temp       <- staging.prepare(stagingId)
                          out        <- addFastStart(source, operation.container, temp)
                          streamable <- streamableOf(out, info.contentType)
                          result     <-
-                           if streamable.contains(true) then IO.pure(Right(Some(stagingId)): Either[StreamabilityError, Option[StagingId]])
+                           if streamable.contains(true) then
+                             store.put(StoreKey.Staged(stagingId), info.contentType, out)
+                               .leftMap(message => StreamabilityError.FixFailed(info.path, message))
+                               .as(Some(stagingId))
+                               .value
                            else
-                             staging.delete(stagingId).as(
+                             IO.pure(
                                Left(StreamabilityError.FixFailed(
                                  info.path,
                                  "the remux did not produce a streamable file"
                                )): Either[StreamabilityError, Option[StagingId]]
                              )
                        yield result
-                     remux.onError(_ => staging.delete(stagingId))
+                     }.onError(_ => store.delete(StoreKey.Staged(stagingId)))
                    }
     yield result
 
@@ -240,7 +236,7 @@ final class FileOperations(
       case other =>
         val extensionStart = key.name.lastIndexOf('.')
         val suffix         = if extensionStart >= 0 then key.name.substring(extensionStart) else ""
-        staging.tempFile(key.name, suffix).use { tempFile =>
+        tempFile("amony-derived-", suffix).use { tempFile =>
           run(info, source, tempFile, other) >>
             store.put(key, Some(other.contentType), tempFile).value.flatMap(e => IO.fromEither(e.left.map(new RuntimeException(_)))).void
         })

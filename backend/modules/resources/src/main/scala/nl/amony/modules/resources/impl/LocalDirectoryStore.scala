@@ -10,7 +10,7 @@ import cats.data.EitherT
 import cats.effect.IO
 import scribe.Logging
 
-import nl.amony.modules.resources.api.{LocalDirectoryConfig, ResourceContent, ResourceId, ResourcePath, StreamedResource}
+import nl.amony.modules.resources.api.{LocalDirectoryConfig, ResourceContent, ResourceId, ResourcePath, StagingId, StreamedResource}
 
 /** [[ResourceStore]] backed by a local directory. */
 final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceStore, Logging:
@@ -18,6 +18,7 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
   private def resolveKey(key: StoreKey): Either[String, Path] = key match
     case StoreKey.Resource(path)   => ResourcePath.fromString(path).map(config.resourcePath.resolve(_))
     case StoreKey.Derived(_, name) => Right(config.cachePath.resolve(name))
+    case StoreKey.Staged(id)       => Right(config.tempPath.resolve(id))
 
   override def content(key: StoreKey, contentType: Option[String], eTag: Option[String]): IO[Option[ResourceContent]] =
     resolveKey(key) match
@@ -30,10 +31,15 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
             key match
               case StoreKey.Resource(path) =>
                 logger.warn(s"Resource at '$path' was found in the database but no file exists: $resolved")
-              case StoreKey.Derived(_, _)  => ()
+              case _                       => ()
             None
           }
         }
+
+  override def exists(key: StoreKey): IO[Boolean] =
+    resolveKey(key) match
+      case Left(_)         => IO.pure(false)
+      case Right(resolved) => IO.blocking(Files.exists(resolved))
 
   override def put(key: StoreKey, contentType: Option[String], source: Path): EitherT[IO, String, StoredResource] =
     for
@@ -60,12 +66,18 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
       case Left(message)   => IO.raiseError(new IllegalArgumentException(message))
       case Right(resolved) => IO.blocking(Files.deleteIfExists(resolved)).void
 
-  override def putUnique(fileName: String, source: Path): EitherT[IO, String, StoredResource] =
+  override def promote(stagingId: StagingId, fileName: String): EitherT[IO, String, StoredResource] =
     for
       _         <- EitherT.fromEither[IO](ResourcePath.fromString(fileName))
       targetOpt <- EitherT.liftF(IO.blocking(resolveTargetPath(config.resourcePath.resolve(fileName), maxAttempts = 100)))
       target    <- EitherT.fromOption[IO](targetOpt, "Failed to resolve unique file name after 100 attempts")
-      stored    <- moveSource(StoreKey.Resource(ResourcePath(fileName)), source, target, atomic = false)
+      stored    <- moveSource(StoreKey.Resource(ResourcePath(fileName)), config.tempPath.resolve(stagingId), target, atomic = false)
+    yield stored
+
+  override def replace(path: ResourcePath, stagingId: StagingId): EitherT[IO, String, StoredResource] =
+    for
+      target <- EitherT.fromEither[IO](resolveKey(StoreKey.Resource(path)))
+      stored <- moveSource(StoreKey.Resource(path), config.tempPath.resolve(stagingId), target, atomic = true)
     yield stored
 
   override def openSource(path: ResourcePath): IO[Option[MediaSource]] =
@@ -110,7 +122,7 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
         readStoredResource(key, target)
       }.attempt.map {
         case Right(stored)                => Right(stored)
-        case Left(_: NoSuchFileException) => Left(s"Source file '${source.getFileName}' is no longer available")
+        case Left(_: NoSuchFileException) => Left(s"Staged file '${source.getFileName}' is no longer available")
         case Left(error)                  => Left(s"Failed to store file '${source.getFileName}': ${error.getMessage}")
       }
     )
@@ -128,6 +140,7 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
     val storedPath             = key match
       case StoreKey.Resource(_)      => ResourcePath(config.resourcePath.relativize(target).toString)
       case StoreKey.Derived(_, name) => ResourcePath(name)
+      case StoreKey.Staged(id)       => ResourcePath(id)
     StoredResource(
       path             = storedPath,
       size             = attributes.size(),

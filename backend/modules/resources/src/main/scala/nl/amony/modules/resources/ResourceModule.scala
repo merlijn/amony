@@ -30,7 +30,6 @@ import nl.amony.modules.resources.impl.{
   FileOperations,
   LocalDirectoryStore,
   LocalDirectorySyncer,
-  LocalStagingArea,
   ResourceBucketImpl,
   ResourceProcessor
 }
@@ -92,7 +91,6 @@ object ResourceModule:
       case localConfig: LocalDirectoryConfig =>
         IO {
           val store     = LocalDirectoryStore(localConfig)
-          val staging   = LocalStagingArea(localConfig.tempPath)
           val ops       = new FileOperations(
             localConfig.hashingAlgorithm,
             config.parallelFactor,
@@ -100,8 +98,7 @@ object ResourceModule:
             thumbResolutions,
             processSettings,
             processLimiter,
-            store,
-            staging
+            store
           )
           val events    = DatabaseResourceEventStore(BucketId(localConfig.id), resourceDatabase, eventTopic)
           val syncer    = LocalDirectorySyncer(localConfig, config.parallelFactor, resourceDatabase, ops, events)
@@ -112,7 +109,6 @@ object ResourceModule:
             eventTopic,
             ops,
             store,
-            staging,
             events,
             jobBus
           )
