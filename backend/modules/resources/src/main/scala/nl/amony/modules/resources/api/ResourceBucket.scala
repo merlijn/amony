@@ -22,11 +22,6 @@ enum StreamabilityError:
     case UnsupportedContainer(contentType) => s"Cannot remux content type '$contentType' for streaming"
     case FixFailed(path, reason)           => s"Failed to make '$path' streamable: $reason"
 
-/** An upload that has been validated, optionally remuxed and scanned, ready to be moved into the resource directory. */
-final case class PreparedUpload(stagingId: StagingId, partialHash: String, contentMeta: ContentMeta)
-
-final case class UploadProcessingError(tempFile: String, message: String)
-
 trait ResourceBucket {
 
   def id: BucketId

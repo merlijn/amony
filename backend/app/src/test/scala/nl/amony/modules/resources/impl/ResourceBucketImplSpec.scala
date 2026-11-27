@@ -97,7 +97,7 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
   ): ResourceBucketImpl =
     val topic  = recordingTopic(published)
     val store  = LocalDirectoryStore(config)
-    val events = DatabaseResourceEventStore(BucketId(config.id), db, topic, store.deleteDerivedFiles)
+    val events = DatabaseResourceEventStore(BucketId(config.id), db, topic)
     ResourceBucketImpl(config, 2, db, topic, ops, store, events, null)
 
   private def newResource(bucketId: BucketId, path: String = "video.mp4"): ResourceInfo =
@@ -206,7 +206,7 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
       }.unsafeRunSync()
     }
 
-    "delete the database row and publish ResourceDeleted on deleteResource, then delete the file in ResourceProcessor" in withContainers {
+    "delete the database row and publish ResourceDeleted on deleteResource, then delete the file and derived files in ResourceProcessor" in withContainers {
       container =>
         Database.makePool(dbConfig(container)).use { pool =>
           val dir       = Files.createTempDirectory("amony-bucket-spec")
@@ -216,6 +216,9 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
           val published = new AtomicReference(List.empty[ResourceEvent])
           val bucket    = makeBucket(cfg, db, published)
           val res       = newResource(bucket.id, "video.mp4")
+
+          Files.createDirectories(cfg.cachePath)
+          val derived = Files.writeString(cfg.cachePath.resolve(s"${res.resourceId}_v1_w512.webp"), "thumb")
 
           val registry  = mock[BucketConsumerRegistry](RETURNS_DEFAULTS)
           registry.getConsumer(bucket.id) returns IO.pure(Some(bucket))
@@ -229,22 +232,28 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
               _       = stored shouldBe None
               _       = published.get() shouldBe List(ResourceDeleted(res))
               _       = Files.exists(file) shouldBe true
+              _       = Files.exists(derived) shouldBe true
               _      <- processor.processEvent(ResourceDeleted(res))
-            yield Files.exists(file) shouldBe false
+            yield
+              Files.exists(file) shouldBe false
+              Files.exists(derived) shouldBe false
 
           test.timeout(5.seconds)
         }.unsafeRunSync()
     }
 
-    "only generate previews for content and thumbnail events" in {
+    "only generate previews for content and thumbnail events and invalidate derived files on modify or delete" in {
       val bucketId = BucketId("media")
       val res      = newResource(bucketId)
 
-      val ops = mock[BucketOperations](RETURNS_DEFAULTS)
+      val ops   = mock[BucketOperations](RETURNS_DEFAULTS)
+      val store = mock[ResourceStore](RETURNS_DEFAULTS)
       ops.generatePreviews(res) returns IO.unit
+      store.delete(StoreKey.Resource(res.path)) returns IO.unit
+      store.deleteDerived(res.resourceId) returns IO.unit
 
       val config = localConfig(s"bucket-${UUID.randomUUID()}", Files.createTempDirectory("amony-bucket-spec"), generatePreviewsOnAdd = true)
-      val bucket = ResourceBucketImpl(config, 1, null, null, ops, null, null, null)
+      val bucket = ResourceBucketImpl(config, 1, null, null, ops, store, null, null)
 
       val test =
         for
@@ -252,6 +261,7 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
           _ <- bucket.processEvent(ResourceModified(res))
           _ <- bucket.processEvent(ResourceThumbnailUpdated(1000, res))
           _ <- bucket.processEvent(ResourceMovedAndModified(res.resourceId, ResourcePath("old.mp4"), ResourcePath("new.mp4"), res))
+          _ <- bucket.processEvent(ResourceDeleted(res))
           _ <- bucket.processEvent(ResourceUserMetaUpdated(res, Some("desc"), Some("title"), Set.empty, Set.empty))
           _ <- bucket.processEvent(ResourceMoved(bucketId, res.resourceId, ResourcePath("old.mp4"), ResourcePath("new.mp4")))
           _ <- bucket.processEvent(ResourceFileMetaChanged(bucketId, res.resourceId, 123L, None))
@@ -259,6 +269,9 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
         yield {
           verify(ops, times(4)).generatePreviews(res)
           verifyNoMoreInteractions(ops)
+          verify(store, times(3)).deleteDerived(res.resourceId)
+          verify(store, times(1)).delete(StoreKey.Resource(res.path))
+          verifyNoMoreInteractions(store)
         }
 
       test.unsafeRunSync()
@@ -266,16 +279,14 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
 
     "update the database row on ResourceMovedAndModified" in withContainers { container =>
       Database.makePool(dbConfig(container)).use { pool =>
-        val dir         = Files.createTempDirectory("amony-bucket-spec")
-        val cfg         = localConfig(s"bucket-${UUID.randomUUID()}", dir)
-        val db          = ResourceDatabase(pool)
-        val published   = new AtomicReference(List.empty[ResourceEvent])
-        val invalidated = new AtomicReference(List.empty[ResourceId])
-        val events      =
-          DatabaseResourceEventStore(BucketId(cfg.id), db, recordingTopic(published), id => IO { invalidated.updateAndGet(_ :+ id); () })
-        val res         = newResource(BucketId(cfg.id), "old.mp4")
-        val updated     = res.copy(path = ResourcePath("new.mp4"))
-        val event       = ResourceMovedAndModified(res.resourceId, ResourcePath("old.mp4"), ResourcePath("new.mp4"), updated)
+        val dir       = Files.createTempDirectory("amony-bucket-spec")
+        val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
+        val db        = ResourceDatabase(pool)
+        val published = new AtomicReference(List.empty[ResourceEvent])
+        val events    = DatabaseResourceEventStore(BucketId(cfg.id), db, recordingTopic(published))
+        val res       = newResource(BucketId(cfg.id), "old.mp4")
+        val updated   = res.copy(path = ResourcePath("new.mp4"))
+        val event     = ResourceMovedAndModified(res.resourceId, ResourcePath("old.mp4"), ResourcePath("new.mp4"), updated)
 
         val test =
           for
@@ -287,7 +298,6 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
             oldRow shouldBe None
             newRow shouldBe Some(updated)
             published.get() shouldBe List(event)
-            invalidated.get() shouldBe List(res.resourceId)
 
         test.timeout(5.seconds)
       }.unsafeRunSync()

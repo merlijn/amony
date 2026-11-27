@@ -90,16 +90,17 @@ object ResourceModule:
     def bucketFactory(processLimiter: ProcessLimiter): BucketFactory = {
       case localConfig: LocalDirectoryConfig =>
         IO {
+          val store     = LocalDirectoryStore(localConfig)
           val ops       = new FileOperations(
-            localConfig,
+            localConfig.hashingAlgorithm,
             config.parallelFactor,
             thumbFormats,
             thumbResolutions,
             processSettings,
-            processLimiter
+            processLimiter,
+            store
           )
-          val store     = LocalDirectoryStore(localConfig)
-          val events    = DatabaseResourceEventStore(BucketId(localConfig.id), resourceDatabase, eventTopic, store.deleteDerivedFiles)
+          val events    = DatabaseResourceEventStore(BucketId(localConfig.id), resourceDatabase, eventTopic)
           val syncer    = LocalDirectorySyncer(localConfig, config.parallelFactor, resourceDatabase, ops, events)
           val bucket    = ResourceBucketImpl(
             localConfig,

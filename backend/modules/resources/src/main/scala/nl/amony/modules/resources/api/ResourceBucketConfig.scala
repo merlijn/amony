@@ -25,9 +25,6 @@ sealed trait ResourceBucketConfig:
 
   def generatePreviewsOnAdd: Boolean
 
-  /** Directory where files are staged before they become part of the bucket. */
-  def tempPath: Path
-
   private val random = new scala.util.Random()
 
   def generateId(): ResourceId = ResourceId(Base32.encode(random.nextBytes(15)).substring(0, 24))
@@ -67,12 +64,12 @@ case class LocalDirectoryConfig(
   generatePreviewsOnAdd: Boolean          = false
 ) extends ResourceBucketConfig {
 
-  lazy val amonyPath: Path         = path.toAbsolutePath.normalize().resolve(".amony")
-  lazy val bucketIdPath: Path      = amonyPath.resolve("bucketId")
-  lazy val cachePath: Path         = amonyPath.resolve("cache")
-  override lazy val tempPath: Path = amonyPath.resolve("temp")
-  lazy val resourcePath: Path      = path.toAbsolutePath.normalize()
-  lazy val uploadPath: Path        = path.toAbsolutePath.normalize().resolve(relativeUploadPath).normalize()
+  lazy val amonyPath: Path    = path.toAbsolutePath.normalize().resolve(".amony")
+  lazy val bucketIdPath: Path = amonyPath.resolve("bucketId")
+  lazy val cachePath: Path    = amonyPath.resolve("cache")
+  lazy val tempPath: Path     = amonyPath.resolve("temp")
+  lazy val resourcePath: Path = path.toAbsolutePath.normalize()
+  lazy val uploadPath: Path   = path.toAbsolutePath.normalize().resolve(relativeUploadPath).normalize()
 
   private lazy val includes = GlobPatterns.unsafeParse(sync.includePatterns)
   private lazy val excludes = GlobPatterns.unsafeParse(sync.excludePatterns)

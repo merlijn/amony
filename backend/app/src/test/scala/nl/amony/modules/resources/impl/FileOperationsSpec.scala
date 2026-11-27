@@ -36,13 +36,15 @@ class FileOperationsSpec extends AnyWordSpecLike with Matchers:
       relativeUploadPath    = java.nio.file.Path.of("_upload"),
       generatePreviewsOnAdd = false
     )
+    val store  = LocalDirectoryStore(config)
     FileOperations(
-      config,
+      config.hashingAlgorithm,
       1,
       ThumbnailFormats(List(ImageFormat.Webp)),
       ThumbnailResolutions(List(512), 512, 64),
       ProcessSettings(),
-      ProcessLimiter.unlimited
+      ProcessLimiter.unlimited,
+      store
     )
 
   private def resource(path: String): ResourceInfo =

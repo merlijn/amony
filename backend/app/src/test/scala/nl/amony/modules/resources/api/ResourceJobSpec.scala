@@ -24,11 +24,13 @@ class ResourceJobSpec extends AnyWordSpecLike with Matchers:
 
     "round-trip an upload job through its codec" in {
       val job: ResourceJob = UploadResource(
-        bucketId   = BucketId("media"),
-        resourceId = ResourceId("abc123"),
-        userId     = UserId("admin"),
-        fileName   = "video.mp4",
-        stagingId  = StagingId("abc123-upload")
+        bucketId    = BucketId("media"),
+        resourceId  = ResourceId("abc123"),
+        userId      = UserId("admin"),
+        fileName    = "video.mp4",
+        stagingId   = StagingId("abc123-upload"),
+        partialHash = "ph1_test",
+        contentMeta = ContentMeta(contentType = Some("video/mp4"), streamable = Some(true))
       )
       io.circe.parser.decode[ResourceJob](job.asJson.noSpaces) shouldBe Right(job)
     }
