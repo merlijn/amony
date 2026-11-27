@@ -28,7 +28,6 @@ import nl.amony.modules.resources.http.{BucketRoutes, CollectionRoutes, Resource
 import nl.amony.modules.resources.impl.{
   DatabaseResourceEventStore,
   FileOperations,
-  LocalDerivedStore,
   LocalDirectoryStore,
   LocalDirectorySyncer,
   LocalStagingArea,
@@ -92,10 +91,9 @@ object ResourceModule:
     def bucketFactory(processLimiter: ProcessLimiter): BucketFactory = {
       case localConfig: LocalDirectoryConfig =>
         IO {
-          val store        = LocalDirectoryStore(localConfig)
-          val derivedStore = LocalDerivedStore(localConfig.cachePath)
-          val staging      = LocalStagingArea(localConfig.tempPath)
-          val ops          = new FileOperations(
+          val store     = LocalDirectoryStore(localConfig)
+          val staging   = LocalStagingArea(localConfig.tempPath)
+          val ops       = new FileOperations(
             localConfig.hashingAlgorithm,
             config.parallelFactor,
             thumbFormats,
@@ -103,24 +101,22 @@ object ResourceModule:
             processSettings,
             processLimiter,
             store,
-            derivedStore,
             staging
           )
-          val events       = DatabaseResourceEventStore(BucketId(localConfig.id), resourceDatabase, eventTopic)
-          val syncer       = LocalDirectorySyncer(localConfig, config.parallelFactor, resourceDatabase, ops, events)
-          val bucket       = ResourceBucketImpl(
+          val events    = DatabaseResourceEventStore(BucketId(localConfig.id), resourceDatabase, eventTopic)
+          val syncer    = LocalDirectorySyncer(localConfig, config.parallelFactor, resourceDatabase, ops, events)
+          val bucket    = ResourceBucketImpl(
             localConfig,
             config.parallelFactor,
             resourceDatabase,
             eventTopic,
             ops,
             store,
-            derivedStore,
             staging,
             events,
             jobBus
           )
-          val startSync    = syncer.sync()
+          val startSync = syncer.sync()
           (bucket, syncer, startSync)
         }
     }

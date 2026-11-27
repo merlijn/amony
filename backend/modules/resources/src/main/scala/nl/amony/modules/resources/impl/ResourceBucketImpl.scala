@@ -25,7 +25,6 @@ class ResourceBucketImpl(
   topic: MessageTopic[ResourceEvent],
   ops: BucketOperations,
   store: ResourceStore,
-  derivedStore: DerivedStore,
   staging: StagingArea,
   events: ResourceEventStore,
   jobBus: JobBus[ResourceJob],
@@ -42,7 +41,7 @@ class ResourceBucketImpl(
   override def getResourceContent(resourceId: ResourceId): IO[Option[ResourceContent]] =
     (for
       info    <- OptionT(getResourceInfo(resourceId))
-      content <- OptionT(store.content(info.path, info.contentType, Some(ETag.forResource(info))))
+      content <- OptionT(store.content(StoreKey.Resource(info.path), info.contentType, Some(ETag.forResource(info))))
     yield content).value
 
   override def getAllResources: fs2.Stream[IO, ResourceInfo] =
@@ -50,10 +49,10 @@ class ResourceBucketImpl(
 
   override def processEvent(event: ResourceEvent): IO[Unit] = event match
     case ResourceAdded(resource)                     => generatePreviewsIfEnabled(resource)
-    case ResourceModified(resource)                  => derivedStore.deleteForResource(resource.resourceId) >> generatePreviewsIfEnabled(resource)
+    case ResourceModified(resource)                  => store.deleteDerived(resource.resourceId) >> generatePreviewsIfEnabled(resource)
     case ResourceThumbnailUpdated(_, resource)       => generatePreviewsIfEnabled(resource)
-    case ResourceMovedAndModified(_, _, _, resource) => derivedStore.deleteForResource(resource.resourceId) >> generatePreviewsIfEnabled(resource)
-    case ResourceDeleted(resource)                   => deleteFile(resource) >> derivedStore.deleteForResource(resource.resourceId)
+    case ResourceMovedAndModified(_, _, _, resource) => store.deleteDerived(resource.resourceId) >> generatePreviewsIfEnabled(resource)
+    case ResourceDeleted(resource)                   => deleteFile(resource) >> store.deleteDerived(resource.resourceId)
     case _                                           => IO.unit
 
   override def reScanAllMetadata(): IO[Unit] = getAllResources.evalMap { resource =>
@@ -182,7 +181,7 @@ class ResourceBucketImpl(
                                     staging.get(prepared.stagingId),
                                     UploadProcessingError(prepared.stagingId, s"Staged upload '${prepared.stagingId}' is no longer available")
                                   )
-                        stored <- store.put(upload.fileName, staged.path).leftMap(message =>
+                        stored <- store.putUnique(upload.fileName, staged.path).leftMap(message =>
                                     UploadProcessingError(prepared.stagingId, message)
                                   )
                         _      <- EitherT.liftF(staging.delete(prepared.stagingId))
@@ -252,7 +251,7 @@ class ResourceBucketImpl(
       case Some(id) =>
         EitherT.liftF(staging.get(id)).flatMap {
           case Some(staged) =>
-            store.replace(info.path, staged.path)
+            store.put(StoreKey.Resource(info.path), info.contentType, staged.path)
               .leftMap(message => StreamabilityError.FixFailed(info.path, message))
               .semiflatTap(_ => staging.delete(id))
           case None         =>
@@ -296,7 +295,7 @@ class ResourceBucketImpl(
     else IO.unit
 
   private def deleteFile(info: ResourceInfo): IO[Unit] =
-    store.delete(info.path)
+    store.delete(StoreKey.Resource(info.path))
 
   override def deleteResource(resourceId: ResourceId): IO[Unit] =
     OptionT(getResourceInfo(resourceId))

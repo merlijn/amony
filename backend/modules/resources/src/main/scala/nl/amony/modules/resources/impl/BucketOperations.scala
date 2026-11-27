@@ -65,7 +65,6 @@ final class FileOperations(
   processSettings: ProcessSettings,
   processLimiter: ProcessLimiter,
   store: ResourceStore,
-  derivedStore: DerivedStore,
   staging: StagingArea
 )(using meter: Meter[IO], tracer: Tracer[IO]) extends BucketOperations, Logging {
 
@@ -205,7 +204,7 @@ final class FileOperations(
                    }
     yield result
 
-  private def previewETag(info: ResourceInfo, key: DerivedKey): String =
+  private def previewETag(info: ResourceInfo, key: StoreKey.Derived): String =
     ETag.of(info.partialHash, key.name, formats.settingsFingerprint, ResourceOperations.previewRecipeVersion.toString)
 
   override def derivedResource(info: ResourceInfo, operation: ResourceOperation): EitherT[IO, DerivedResourceError, ResourceContent] =
@@ -215,15 +214,15 @@ final class FileOperations(
                    store.openSource(info.path),
                    DerivedResourceError.SourceMissing(info.resourceId, info.path)
                  )
-      key      = DerivedKey.forOperation(info.resourceId, ResourceOperations.contentVersion(info), operation)
+      key      = StoreKey.derived(info.resourceId, ResourceOperations.contentVersion(info), operation)
       eTag     = Some(previewETag(info, key))
       opKey    = (resourceId = info.resourceId, operation = operation)
       content <- EitherT.liftF(
-                   derivedStore.get(key, operation.contentType, eTag).flatMap {
+                   store.content(key, Some(operation.contentType), eTag).flatMap {
                      case Some(existing) => IO.pure(existing)
                      case None           =>
                        inFlight.run(opKey)(createDerived(source, info, key, operation)) >>
-                         derivedStore.get(key, operation.contentType, eTag).flatMap {
+                         store.content(key, Some(operation.contentType), eTag).flatMap {
                            case Some(created) => IO.pure(created)
                            case None          =>
                              IO.raiseError(new IllegalStateException(s"Derived resource '${key.name}' was not found after creation"))
@@ -232,17 +231,18 @@ final class FileOperations(
                  )
     yield content
 
-  private def createDerived(source: MediaSource, info: ResourceInfo, key: DerivedKey, operation: ResourceOperation): IO[Unit] =
+  private def createDerived(source: MediaSource, info: ResourceInfo, key: StoreKey.Derived, operation: ResourceOperation): IO[Unit] =
     IO.fromEither(operation.validate(info).left.map(new Exception(_))) >> (operation match
       case tile: VideoThumbnailTileVtt =>
         val webVtt = renderThumbnailTileManifest(info, tile)
-        derivedStore.putBytes(key, operation.contentType, webVtt.getBytes(StandardCharsets.UTF_8))
+        store.putBytes(key, Some(operation.contentType), webVtt.getBytes(StandardCharsets.UTF_8))
 
       case other =>
         val extensionStart = key.name.lastIndexOf('.')
         val suffix         = if extensionStart >= 0 then key.name.substring(extensionStart) else ""
         staging.tempFile(key.name, suffix).use { tempFile =>
-          run(info, source, tempFile, other) >> derivedStore.put(key, other.contentType, tempFile)
+          run(info, source, tempFile, other) >>
+            store.put(key, Some(other.contentType), tempFile).value.flatMap(e => IO.fromEither(e.left.map(new RuntimeException(_)))).void
         })
 
   private def moveIntoPlace(tempFile: Path, outputFile: Path): IO[Path] =

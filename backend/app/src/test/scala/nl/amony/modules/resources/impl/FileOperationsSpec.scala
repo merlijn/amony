@@ -21,7 +21,7 @@ class FileOperationsSpec extends AnyWordSpecLike with Matchers:
   given Tracer[IO] = Tracer.noop[IO]
 
   private def ops(dir: java.nio.file.Path): FileOperations =
-    val config       = LocalDirectoryConfig(
+    val config  = LocalDirectoryConfig(
       id                    = s"bucket-${UUID.randomUUID()}",
       path                  = dir,
       sync                  = ScanConfig(
@@ -36,9 +36,8 @@ class FileOperationsSpec extends AnyWordSpecLike with Matchers:
       relativeUploadPath    = java.nio.file.Path.of("_upload"),
       generatePreviewsOnAdd = false
     )
-    val store        = LocalDirectoryStore(config)
-    val derivedStore = LocalDerivedStore(config.cachePath)
-    val staging      = LocalStagingArea(config.tempPath)
+    val store   = LocalDirectoryStore(config)
+    val staging = LocalStagingArea(config.tempPath)
     FileOperations(
       config.hashingAlgorithm,
       1,
@@ -47,7 +46,6 @@ class FileOperationsSpec extends AnyWordSpecLike with Matchers:
       ProcessSettings(),
       ProcessLimiter.unlimited,
       store,
-      derivedStore,
       staging
     )
 

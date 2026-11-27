@@ -95,12 +95,11 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
     published: AtomicReference[List[ResourceEvent]],
     ops: BucketOperations = null
   ): ResourceBucketImpl =
-    val topic        = recordingTopic(published)
-    val store        = LocalDirectoryStore(config)
-    val derivedStore = LocalDerivedStore(config.cachePath)
-    val staging      = LocalStagingArea(config.tempPath)
-    val events       = DatabaseResourceEventStore(BucketId(config.id), db, topic)
-    ResourceBucketImpl(config, 2, db, topic, ops, store, derivedStore, staging, events, null)
+    val topic   = recordingTopic(published)
+    val store   = LocalDirectoryStore(config)
+    val staging = LocalStagingArea(config.tempPath)
+    val events  = DatabaseResourceEventStore(BucketId(config.id), db, topic)
+    ResourceBucketImpl(config, 2, db, topic, ops, store, staging, events, null)
 
   private def newResource(bucketId: BucketId, path: String = "video.mp4"): ResourceInfo =
     ResourceInfo(
@@ -248,15 +247,14 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
       val bucketId = BucketId("media")
       val res      = newResource(bucketId)
 
-      val ops          = mock[BucketOperations](RETURNS_DEFAULTS)
-      val store        = mock[ResourceStore](RETURNS_DEFAULTS)
-      val derivedStore = mock[DerivedStore](RETURNS_DEFAULTS)
+      val ops   = mock[BucketOperations](RETURNS_DEFAULTS)
+      val store = mock[ResourceStore](RETURNS_DEFAULTS)
       ops.generatePreviews(res) returns IO.unit
-      store.delete(res.path) returns IO.unit
-      derivedStore.deleteForResource(res.resourceId) returns IO.unit
+      store.delete(StoreKey.Resource(res.path)) returns IO.unit
+      store.deleteDerived(res.resourceId) returns IO.unit
 
       val config = localConfig(s"bucket-${UUID.randomUUID()}", Files.createTempDirectory("amony-bucket-spec"), generatePreviewsOnAdd = true)
-      val bucket = ResourceBucketImpl(config, 1, null, null, ops, store, derivedStore, null, null, null)
+      val bucket = ResourceBucketImpl(config, 1, null, null, ops, store, null, null, null)
 
       val test =
         for
@@ -272,9 +270,8 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
         yield {
           verify(ops, times(4)).generatePreviews(res)
           verifyNoMoreInteractions(ops)
-          verify(derivedStore, times(3)).deleteForResource(res.resourceId)
-          verifyNoMoreInteractions(derivedStore)
-          verify(store, times(1)).delete(res.path)
+          verify(store, times(3)).deleteDerived(res.resourceId)
+          verify(store, times(1)).delete(StoreKey.Resource(res.path))
           verifyNoMoreInteractions(store)
         }
 

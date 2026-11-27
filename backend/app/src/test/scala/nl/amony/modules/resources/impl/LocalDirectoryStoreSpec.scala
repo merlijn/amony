@@ -1,5 +1,6 @@
 package nl.amony.modules.resources.impl
 
+import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.util.UUID
 import scala.concurrent.duration.*
@@ -36,7 +37,7 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       Files.writeString(dir.resolve("video.mp4"), "content")
       val store = LocalDirectoryStore(config(dir))
 
-      store.content(ResourcePath("video.mp4"), Some("video/mp4"), Some("etag-1")).unsafeRunSync() match
+      store.content(StoreKey.Resource(ResourcePath("video.mp4")), Some("video/mp4"), Some("etag-1")).unsafeRunSync() match
         case Some(ResourceContent.Streamed(streamed)) =>
           streamed.eTag shouldBe Some("etag-1")
           streamed.contentType shouldBe "video/mp4"
@@ -48,7 +49,7 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       val dir   = Files.createTempDirectory("amony-store-spec")
       val store = LocalDirectoryStore(config(dir))
 
-      store.content(ResourcePath("missing.mp4"), Some("video/mp4"), None).unsafeRunSync() shouldBe None
+      store.content(StoreKey.Resource(ResourcePath("missing.mp4")), Some("video/mp4"), None).unsafeRunSync() shouldBe None
     }
 
     "open a local media source for an existing resource" in {
@@ -72,21 +73,21 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       store.stat(ResourcePath("missing.mp4")).unsafeRunSync() shouldBe None
     }
 
-    "move a source file into the bucket on put" in {
+    "move a source file into the bucket on putUnique" in {
       val dir    = Files.createTempDirectory("amony-store-spec")
       val cfg    = config(dir)
       val store  = LocalDirectoryStore(cfg)
       val source = Files.createTempFile("amony-staged", ".mp4")
       Files.writeString(source, "content")
 
-      val stored = store.put("video.mp4", source).value.unsafeRunSync()
+      val stored = store.putUnique("video.mp4", source).value.unsafeRunSync()
 
       stored.map(_.path) shouldBe Right(ResourcePath("video.mp4"))
       Files.exists(dir.resolve("video.mp4")) shouldBe true
       Files.exists(source) shouldBe false
     }
 
-    "resolve a unique name when the target already exists on put" in {
+    "resolve a unique name when the target already exists on putUnique" in {
       val dir    = Files.createTempDirectory("amony-store-spec")
       val cfg    = config(dir)
       val store  = LocalDirectoryStore(cfg)
@@ -94,19 +95,19 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       val source = Files.createTempFile("amony-staged", ".mp4")
       Files.writeString(source, "content")
 
-      store.put("video.mp4", source).value.unsafeRunSync().map(_.path) shouldBe Right(ResourcePath("video_1.mp4"))
+      store.putUnique("video.mp4", source).value.unsafeRunSync().map(_.path) shouldBe Right(ResourcePath("video_1.mp4"))
       Files.exists(dir.resolve("video_1.mp4")) shouldBe true
     }
 
-    "return a failure when the source file is gone on put" in {
+    "return a failure when the source file is gone on putUnique" in {
       val store   = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
       val missing = Path.of("/nonexistent/missing-upload")
 
-      store.put("video.mp4", missing).value.unsafeRunSync() shouldBe
+      store.putUnique("video.mp4", missing).value.unsafeRunSync() shouldBe
         Left("Source file 'missing-upload' is no longer available")
     }
 
-    "replace an existing resource atomically" in {
+    "replace an existing resource atomically on put" in {
       val dir    = Files.createTempDirectory("amony-store-spec")
       val cfg    = config(dir)
       val store  = LocalDirectoryStore(cfg)
@@ -114,7 +115,7 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       val source = Files.createTempFile("amony-remux", ".mp4")
       Files.writeString(source, "new-content")
 
-      val stored = store.replace(ResourcePath("video.mp4"), source).value.unsafeRunSync()
+      val stored = store.put(StoreKey.Resource(ResourcePath("video.mp4")), Some("video/mp4"), source).value.unsafeRunSync()
 
       stored.map(_.path) shouldBe Right(ResourcePath("video.mp4"))
       stored.map(_.size) shouldBe Right(11L)
@@ -122,12 +123,61 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       Files.exists(source) shouldBe false
     }
 
+    "store and retrieve a derived file by key" in {
+      val dir    = Files.createTempDirectory("amony-store-spec")
+      val store  = LocalDirectoryStore(config(dir))
+      val source = Files.createTempFile("amony-derived-src", ".webp")
+      Files.writeString(source, "image-bytes")
+      val key    = StoreKey.Derived(ResourceId("res1"), "res1_v1_w512.webp")
+
+      store.put(key, Some("image/webp"), source).value.unsafeRunSync().isRight shouldBe true
+
+      Files.exists(source) shouldBe false
+      store.content(key, Some("image/webp"), Some("etag-1")).unsafeRunSync() match
+        case Some(ResourceContent.Streamed(streamed)) =>
+          streamed.contentType shouldBe "image/webp"
+          streamed.eTag shouldBe Some("etag-1")
+          streamed.stream.through(fs2.text.utf8.decode).compile.string.unsafeRunSync() shouldBe "image-bytes"
+        case other                                    => fail(s"Expected streamed content, got $other")
+    }
+
+    "store and retrieve in-memory derived bytes" in {
+      val dir   = Files.createTempDirectory("amony-store-spec")
+      val store = LocalDirectoryStore(config(dir))
+      val key   = StoreKey.Derived(ResourceId("res1"), "res1_v1.vtt")
+
+      store.putBytes(key, Some("text/vtt"), "WEBVTT\n".getBytes(StandardCharsets.UTF_8)).unsafeRunSync()
+
+      store.content(key, Some("text/vtt"), None).unsafeRunSync() match
+        case Some(ResourceContent.Streamed(streamed)) =>
+          streamed.stream.through(fs2.text.utf8.decode).compile.string.unsafeRunSync() shouldBe "WEBVTT\n"
+        case other                                    => fail(s"Expected streamed content, got $other")
+    }
+
+    "delete only derived files belonging to the given resource" in {
+      val dir   = Files.createTempDirectory("amony-store-spec")
+      val store = LocalDirectoryStore(config(dir))
+      val keep  = StoreKey.Derived(ResourceId("res2"), "res2_v1_w512.webp")
+      val del1  = StoreKey.Derived(ResourceId("res1"), "res1_v1_w512.webp")
+      val del2  = StoreKey.Derived(ResourceId("res1"), "res1-legacy.webp")
+
+      store.putBytes(keep, Some("image/webp"), "keep".getBytes(StandardCharsets.UTF_8)).unsafeRunSync()
+      store.putBytes(del1, Some("image/webp"), "del1".getBytes(StandardCharsets.UTF_8)).unsafeRunSync()
+      store.putBytes(del2, Some("image/webp"), "del2".getBytes(StandardCharsets.UTF_8)).unsafeRunSync()
+
+      store.deleteDerived(ResourceId("res1")).unsafeRunSync()
+
+      store.content(del1, Some("image/webp"), None).unsafeRunSync() shouldBe None
+      store.content(del2, Some("image/webp"), None).unsafeRunSync() shouldBe None
+      store.content(keep, Some("image/webp"), None).unsafeRunSync().isDefined shouldBe true
+    }
+
     "delete a stored resource" in {
       val dir   = Files.createTempDirectory("amony-store-spec")
       val file  = Files.writeString(dir.resolve("video.mp4"), "content")
       val store = LocalDirectoryStore(config(dir))
 
-      store.delete(ResourcePath("video.mp4")).unsafeRunSync()
+      store.delete(StoreKey.Resource(ResourcePath("video.mp4"))).unsafeRunSync()
 
       Files.exists(file) shouldBe false
     }
@@ -135,34 +185,34 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
     "ignore a missing resource on delete" in {
       val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
 
-      store.delete(ResourcePath("missing.mp4")).unsafeRunSync()
+      store.delete(StoreKey.Resource(ResourcePath("missing.mp4"))).unsafeRunSync()
     }
 
-    "reject an absolute file name on put" in {
+    "reject an absolute file name on putUnique" in {
       val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
 
-      store.put("/abs.mp4", Path.of("staged")).value.unsafeRunSync() shouldBe
+      store.putUnique("/abs.mp4", Path.of("staged")).value.unsafeRunSync() shouldBe
         Left("Resource path must be relative: /abs.mp4")
     }
 
-    "reject a bucket-escaping file name on put" in {
+    "reject a bucket-escaping file name on putUnique" in {
       val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
 
-      store.put("../other.mp4", Path.of("staged")).value.unsafeRunSync() shouldBe
+      store.putUnique("../other.mp4", Path.of("staged")).value.unsafeRunSync() shouldBe
         Left("Resource path must not escape the bucket: ../other.mp4")
     }
 
     "return no content for an invalid path" in {
       val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
 
-      store.content(ResourcePath("/abs.mp4"), None, None).unsafeRunSync() shouldBe None
+      store.content(StoreKey.Resource(ResourcePath("/abs.mp4")), None, None).unsafeRunSync() shouldBe None
     }
 
     "refuse to delete an invalid path" in {
       val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
 
       intercept[IllegalArgumentException] {
-        store.delete(ResourcePath("../other.mp4")).unsafeRunSync()
+        store.delete(StoreKey.Resource(ResourcePath("../other.mp4"))).unsafeRunSync()
       }
     }
   }
