@@ -108,7 +108,7 @@ val javaDevOpts = Seq(
 
 val circeVersion  = "0.14.17"
 val http4sVersion = "0.23.39"
-val tapirVersion  = "1.14.1"
+val tapirVersion  = "1.14.2"
 val sttpVersion   = "4.1.3"
 val otel4sVersion = "1.2.0"
 
@@ -181,7 +181,7 @@ val databaseDependencies = Seq(
   "com.github.pureconfig" %% "pureconfig-core"           % "0.17.11",
   "com.github.pureconfig" %% "pureconfig-generic-scala3" % "0.17.11",
   "org.liquibase"          % "liquibase-core"            % "5.0.4",
-  "org.postgresql"         % "postgresql"                % "42.7.14",
+  "org.postgresql"         % "postgresql"                % "42.7.15",
   "org.typelevel"         %% "otel4s-core"               % otel4sVersion,
   "org.typelevel"         %% "otel4s-core-trace"         % otel4sVersion
 )
@@ -206,7 +206,7 @@ val messageBusTestDependencies = Seq(
   "org.scalatest" %% "scalatest"                      % "3.2.20"      % Test,
   "com.dimafeng"  %% "testcontainers-scala-scalatest" % "0.44.1"      % Test,
   "org.liquibase"  % "liquibase-core"                 % "5.0.4"       % Test,
-  "org.postgresql" % "postgresql"                     % "42.7.14"     % Test,
+  "org.postgresql" % "postgresql"                     % "42.7.15"     % Test,
   "org.typelevel" %% "otel4s-core"                    % otel4sVersion % Test,
   "org.typelevel" %% "otel4s-core-trace"              % otel4sVersion % Test
 )
@@ -323,7 +323,7 @@ val testDependencies = Seq(
   "commons-codec"                % "commons-codec"                  % "1.23.0"     % Test,
   "org.scalacheck"              %% "scalacheck"                     % "1.20.0"     % Test,
   "com.softwaremill.sttp.tapir" %% "tapir-sttp-stub4-server"        % tapirVersion % Test,
-  "org.mockito"                 %% "mockito-scala-scalatest"        % "2.2.3"      % Test
+  "org.mockito"                 %% "mockito-scala-scalatest"        % "2.2.4"      % Test
 )
 
 lazy val tapir = project
