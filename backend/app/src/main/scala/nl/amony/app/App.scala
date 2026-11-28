@@ -31,7 +31,7 @@ object App extends ResourceApp.Forever with Logging {
     Option(System.getenv().get("AMONY_CONFIG_FILE")) match
       case Some(fileName) =>
         logger.info(s"Loading configuration overrides from file: $fileName")
-        ConfigFactory.load(ConfigFactory.parseFile(Path.of(fileName).toFile))
+        ConfigFactory.parseFile(Path.of(fileName).toFile).withFallback(ConfigFactory.load()).resolve()
       case None           => ConfigFactory.load()
 
   override def run(args: List[String]): Resource[IO, Unit] = {
