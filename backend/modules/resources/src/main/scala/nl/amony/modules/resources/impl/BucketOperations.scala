@@ -15,7 +15,7 @@ import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 import nl.amony.modules.resources.api.*
-import nl.amony.modules.resources.util.{ETag, SingleFlight}
+import nl.amony.modules.resources.util.{ETag, PartialHash, SingleFlight}
 import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
 import nl.amony.platform.subprocess.ffmpeg.{ContainerFormat, FFMpeg}
 import nl.amony.platform.subprocess.magick.ImageMagick
@@ -62,7 +62,6 @@ enum DerivedResourceError:
     case SourceMissing(resourceId, path) => s"Resource '$resourceId' was found in the database but no file exists: $path"
 
 final class FileOperations(
-  hashingAlgorithm: HashingAlgorithm,
   parallelFactor: Int,
   formats: ThumbnailFormats,
   resolutions: ThumbnailResolutions,
@@ -122,7 +121,7 @@ final class FileOperations(
   override def contentPartialHash(location: ContentLocation): EitherT[IO, ContentUnreadable, String] =
     for
       path <- localPathOf(location)
-      hash <- EitherT(hashingAlgorithm.createHash(path).attempt.map(_.left.map(ContentUnreadable(location, _))))
+      hash <- EitherT(PartialHash.createHash(path).attempt.map(_.left.map(ContentUnreadable(location, _))))
     yield hash
 
   override def isStreamable(location: ContentLocation, contentType: Option[String]): EitherT[IO, ContentUnreadable, Option[Boolean]] =
@@ -196,7 +195,7 @@ final class FileOperations(
                          result     <-
                            if streamable.contains(true) then
                              for
-                               partialHash <- hashingAlgorithm.createHash(out)
+                               partialHash <- PartialHash.createHash(out)
                                putResult   <- store
                                                 .put(StoreKey.Staged(stagingId), info.contentType, Fs2Files[IO].readAll(Fs2Path.fromNioPath(out)))
                                                 .leftMap(message => StreamabilityError.FixFailed(info.path, message))

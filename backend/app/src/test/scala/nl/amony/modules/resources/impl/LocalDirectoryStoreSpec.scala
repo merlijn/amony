@@ -17,11 +17,10 @@ import nl.amony.modules.resources.api.*
 
 class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
 
-  private def config(dir: Path): LocalDirectoryConfig =
-    LocalDirectoryConfig(
-      id                    = s"bucket-${UUID.randomUUID()}",
-      path                  = dir,
-      sync                  = ScanConfig(
+  private def config(dir: Path): LocalDirectoryStorageConfig =
+    LocalDirectoryStorageConfig(
+      path               = dir,
+      sync               = ScanConfig(
         enabled         = false,
         syncOnStartup   = false,
         newFilesOwner   = "admin",
@@ -29,9 +28,7 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
         includePatterns = List("**/*"),
         excludePatterns = Nil
       ),
-      hashingAlgorithm      = PartialHash,
-      relativeUploadPath    = Path.of("_upload"),
-      generatePreviewsOnAdd = false
+      relativeUploadPath = Path.of("_upload")
     )
 
   "LocalDirectoryStore" should {

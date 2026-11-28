@@ -1,8 +1,8 @@
 package nl.amony.modules.resources.api
 
+import java.net.URI
 import java.nio.file.{Files, Path}
-import java.security.MessageDigest
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.*
 import scala.language.adhocExtensions
 
 import cats.effect.IO
@@ -12,38 +12,44 @@ import pureconfig.generic.FieldCoproductHint
 import pureconfig.generic.scala3.HintsAwareConfigReaderDerivation.deriveReader
 
 import nl.amony.modules.auth.api.Role
-import nl.amony.modules.resources.util.{Base32, PartialHash as PartialHashUtil}
+import nl.amony.modules.resources.util.Base32
 import nl.amony.platform.files.GlobPatterns
 
-sealed trait ResourceBucketConfig:
-  def id: String
-
+final case class ResourceBucketConfig(
+  id: String,
   /** When set, only users holding this role (admins always) can see the bucket. */
-  def requiredRole: Option[Role]
-
-  def hashingAlgorithm: HashingAlgorithm
-
-  def generatePreviewsOnAdd: Boolean
+  requiredRole: Option[Role]     = None,
+  generatePreviewsOnAdd: Boolean = false,
+  storage: BucketStorageConfig
+) derives ConfigReader:
 
   private val random = new scala.util.Random()
 
   def generateId(): ResourceId = ResourceId(Base32.encode(random.nextBytes(15)).substring(0, 24))
 
-  /** Validates this configuration on its own and returns it with normalized (absolute) paths. */
-  def validate(): IO[Either[String, ResourceBucketConfig]]
+  /** Validates this configuration on its own and returns it with normalized storage settings. */
+  def validate(): IO[Either[String, ResourceBucketConfig]] =
+    storage.validate().map(_.map(normalized => copy(storage = normalized)))
 
   /** Whether this bucket and the other one cover (part of) the same storage. */
-  def overlaps(other: ResourceBucketConfig): Boolean
+  def overlaps(other: ResourceBucketConfig): Boolean =
+    storage.overlaps(other.storage)
 
   /** Whether an existing bucket with this configuration may be changed into the updated one. */
-  def checkUpdateAllowed(updated: ResourceBucketConfig): Either[String, Unit]
+  def checkUpdateAllowed(updated: ResourceBucketConfig): Either[String, Unit] =
+    storage.checkUpdateAllowed(updated.storage)
 
-object ResourceBucketConfig:
-  given FieldCoproductHint[ResourceBucketConfig] =
-    new FieldCoproductHint[ResourceBucketConfig]("type"):
-      override def fieldValue(name: String) = name.dropRight("Config".length)
+sealed trait BucketStorageConfig:
+  def validate(): IO[Either[String, BucketStorageConfig]]
+  def overlaps(other: BucketStorageConfig): Boolean
+  def checkUpdateAllowed(updated: BucketStorageConfig): Either[String, Unit]
 
-  given ConfigReader[ResourceBucketConfig] = deriveReader
+object BucketStorageConfig:
+  given FieldCoproductHint[BucketStorageConfig] =
+    new FieldCoproductHint[BucketStorageConfig]("type"):
+      override def fieldValue(name: String) = name.dropRight("StorageConfig".length)
+
+  given ConfigReader[BucketStorageConfig] = deriveReader
 
 case class ScanConfig(
   enabled: Boolean,
@@ -54,15 +60,11 @@ case class ScanConfig(
   excludePatterns: List[String]
 ) derives ConfigReader
 
-case class LocalDirectoryConfig(
-  id: String,
-  override val requiredRole: Option[Role] = None,
+case class LocalDirectoryStorageConfig(
   path: Path,
   sync: ScanConfig,
-  hashingAlgorithm: HashingAlgorithm,
-  relativeUploadPath: Path,
-  generatePreviewsOnAdd: Boolean          = false
-) extends ResourceBucketConfig {
+  relativeUploadPath: Path = Path.of("_upload")
+) extends BucketStorageConfig {
 
   lazy val amonyPath: Path    = path.toAbsolutePath.normalize().resolve(".amony")
   lazy val bucketIdPath: Path = amonyPath.resolve("bucketId")
@@ -86,7 +88,7 @@ case class LocalDirectoryConfig(
 
   private def realPath: Path = if Files.exists(resourcePath) then resourcePath.toRealPath() else resourcePath
 
-  override def validate(): IO[Either[String, ResourceBucketConfig]] = IO.blocking {
+  override def validate(): IO[Either[String, BucketStorageConfig]] = IO.blocking {
     val invalidPatterns = (GlobPatterns.parse(sync.includePatterns) >> GlobPatterns.parse(sync.excludePatterns)).left.toOption
 
     if !Files.isDirectory(resourcePath) then Left(s"Path '$resourcePath' does not exist or is not a directory")
@@ -100,32 +102,56 @@ case class LocalDirectoryConfig(
     else Right(copy(path = resourcePath))
   }
 
-  override def overlaps(other: ResourceBucketConfig): Boolean = other match
-    case o: LocalDirectoryConfig => realPath.startsWith(o.realPath) || o.realPath.startsWith(realPath)
+  override def overlaps(other: BucketStorageConfig): Boolean = other match
+    case o: LocalDirectoryStorageConfig => realPath.startsWith(o.realPath) || o.realPath.startsWith(realPath)
+    case _                              => false
 
-  override def checkUpdateAllowed(updated: ResourceBucketConfig): Either[String, Unit] = updated match
-    case u: LocalDirectoryConfig =>
-      Either.cond(u.hashingAlgorithm == hashingAlgorithm, (), "The hashing algorithm of an existing bucket cannot be changed")
+  override def checkUpdateAllowed(updated: BucketStorageConfig): Either[String, Unit] = updated match
+    case _: LocalDirectoryStorageConfig => Right(())
+    case _                              => Left("The storage type of an existing bucket cannot be changed")
 }
 
-sealed trait HashingAlgorithm derives ConfigReader {
-  def name: String
-  def algorithm: String
-  def newDigest(): MessageDigest = MessageDigest.getInstance(algorithm)
-  def createHash(path: Path): IO[String]
-  def encodeHash(bytes: Array[Byte]): String
+case class S3StorageConfig(
+  bucket: String,
+  region: String,
+  endpoint: Option[URI]           = None,
+  prefix: Option[String]          = None,
+  pathStyleAccess: Boolean        = false,
+  presignedUrlTtl: FiniteDuration = 15.minutes
+) extends BucketStorageConfig {
+
+  lazy val normalizedPrefix: Option[String] =
+    prefix.map(_.strip().stripPrefix("/").stripSuffix("/")).filter(_.nonEmpty)
+
+  override def validate(): IO[Either[String, BucketStorageConfig]] = IO.pure {
+    val cleanBucket = bucket.strip()
+    val cleanRegion = region.strip()
+    val badEndpoint = endpoint.filter(u => !Set("http", "https").contains(u.getScheme) || Option(u.getHost).forall(_.isBlank))
+
+    if cleanBucket.isBlank then Left("S3 bucket name is required")
+    else if cleanRegion.isBlank then Left("S3 region is required")
+    else if badEndpoint.isDefined then Left(s"S3 endpoint must be a valid http or https URL: ${badEndpoint.get}")
+    else if presignedUrlTtl < 1.second then Left("Presigned URL TTL must be at least 1 second")
+    else if presignedUrlTtl > 7.days then Left("Presigned URL TTL must be at most 7 days")
+    else Right(copy(bucket = cleanBucket, region = cleanRegion, prefix = normalizedPrefix))
+  }
+
+  override def overlaps(other: BucketStorageConfig): Boolean = other match
+    case o: S3StorageConfig =>
+      bucket.strip() == o.bucket.strip() &&
+      region.strip() == o.region.strip() &&
+      endpoint == o.endpoint &&
+      S3StorageConfig.prefixesOverlap(normalizedPrefix, o.normalizedPrefix)
+    case _                  => false
+
+  override def checkUpdateAllowed(updated: BucketStorageConfig): Either[String, Unit] = updated match
+    case _: S3StorageConfig => Right(())
+    case _                  => Left("The storage type of an existing bucket cannot be changed")
 }
 
-object HashingAlgorithm {
-  val all: List[HashingAlgorithm]                      = List(PartialHash)
-  def fromName(name: String): Option[HashingAlgorithm] = all.find(_.name == name)
-}
-
-case object PartialHash extends HashingAlgorithm {
-  override val name                               = "partial-hash"
-  override val algorithm                          = "SHA-256"
-  override def createHash(path: Path): IO[String] =
-    PartialHashUtil.partialHash(file = path, digestFn = () => newDigest(), encoder = encodeHash)
-
-  override def encodeHash(bytes: Array[Byte]): String = PartialHashUtil.encodeHash(bytes)
-}
+object S3StorageConfig:
+  private def prefixesOverlap(a: Option[String], b: Option[String]): Boolean = (a, b) match
+    case (None, _)            => true
+    case (_, None)            => true
+    case (Some(p1), Some(p2)) =>
+      p1 == p2 || p1.startsWith(s"$p2/") || p2.startsWith(s"$p1/")

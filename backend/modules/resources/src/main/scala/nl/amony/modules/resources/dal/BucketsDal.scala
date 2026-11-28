@@ -1,5 +1,6 @@
 package nl.amony.modules.resources.dal
 
+import java.net.URI
 import java.nio.file.Path
 import java.time.Instant
 import scala.concurrent.duration.DurationLong
@@ -14,7 +15,15 @@ import skunk.codec.all.*
 import skunk.implicits.*
 
 import nl.amony.modules.auth.api.Role
-import nl.amony.modules.resources.api.{BucketError, BucketId, HashingAlgorithm, LocalDirectoryConfig, ResourceBucketConfig, ScanConfig, StoredBucket}
+import nl.amony.modules.resources.api.{
+  BucketError,
+  BucketId,
+  LocalDirectoryStorageConfig,
+  ResourceBucketConfig,
+  S3StorageConfig,
+  ScanConfig,
+  StoredBucket
+}
 
 case class BucketRow(bucket_id: String, bucket_type: String, required_role: Option[String], settings: Json)
 
@@ -31,54 +40,97 @@ case class LocalDirectorySettings(
   path: String,
   relativeUploadPath: String,
   generatePreviewsOnAdd: Boolean,
-  hashingAlgorithm: String,
+  hashingAlgorithm: Option[String] = None,
   sync: ScanSettings
+) derives Codec
+
+case class S3Settings(
+  bucket: String,
+  region: String,
+  endpoint: Option[String]       = None,
+  prefix: Option[String]         = None,
+  pathStyleAccess: Boolean       = false,
+  presignedUrlTtlSeconds: Long   = 900L,
+  generatePreviewsOnAdd: Boolean = false
 ) derives Codec
 
 object BucketRow:
 
   val localDirectoryType = "LocalDirectory"
+  val s3Type             = "S3"
 
   val codec: skunk.Codec[BucketRow] = (varchar(64) *: varchar(32) *: varchar(64).opt *: jsonb).to[BucketRow]
 
-  def fromConfig(config: ResourceBucketConfig): BucketRow = config match
-    case c: LocalDirectoryConfig =>
+  def fromConfig(config: ResourceBucketConfig): BucketRow = config.storage match
+    case local: LocalDirectoryStorageConfig =>
       val settings = LocalDirectorySettings(
-        path                  = c.path.toString,
-        relativeUploadPath    = c.relativeUploadPath.toString,
-        generatePreviewsOnAdd = c.generatePreviewsOnAdd,
-        hashingAlgorithm      = c.hashingAlgorithm.name,
+        path                  = local.path.toString,
+        relativeUploadPath    = local.relativeUploadPath.toString,
+        generatePreviewsOnAdd = config.generatePreviewsOnAdd,
         sync                  = ScanSettings(
-          enabled             = c.sync.enabled,
-          syncOnStartup       = c.sync.syncOnStartup,
-          newFilesOwner       = c.sync.newFilesOwner,
-          pollIntervalSeconds = c.sync.pollInterval.toSeconds,
-          includePatterns     = c.sync.includePatterns,
-          excludePatterns     = c.sync.excludePatterns
+          enabled             = local.sync.enabled,
+          syncOnStartup       = local.sync.syncOnStartup,
+          newFilesOwner       = local.sync.newFilesOwner,
+          pollIntervalSeconds = local.sync.pollInterval.toSeconds,
+          includePatterns     = local.sync.includePatterns,
+          excludePatterns     = local.sync.excludePatterns
         )
       )
-      BucketRow(c.id, localDirectoryType, c.requiredRole.map(_.toString), settings.asJson)
+      BucketRow(config.id, localDirectoryType, config.requiredRole.map(_.toString), settings.asJson)
+
+    case s3: S3StorageConfig =>
+      val settings = S3Settings(
+        bucket                 = s3.bucket,
+        region                 = s3.region,
+        endpoint               = s3.endpoint.map(_.toString),
+        prefix                 = s3.prefix,
+        pathStyleAccess        = s3.pathStyleAccess,
+        presignedUrlTtlSeconds = s3.presignedUrlTtl.toSeconds,
+        generatePreviewsOnAdd  = config.generatePreviewsOnAdd
+      )
+      BucketRow(config.id, s3Type, config.requiredRole.map(_.toString), settings.asJson)
 
   def toConfig(row: BucketRow): Either[String, ResourceBucketConfig] = row.bucket_type match
     case `localDirectoryType` =>
+      row.settings.as[LocalDirectorySettings].left.map(_.getMessage).map { settings =>
+        ResourceBucketConfig(
+          id                    = row.bucket_id,
+          requiredRole          = row.required_role.map(Role(_)),
+          generatePreviewsOnAdd = settings.generatePreviewsOnAdd,
+          storage               = LocalDirectoryStorageConfig(
+            path               = Path.of(settings.path),
+            sync               = ScanConfig(
+              enabled         = settings.sync.enabled,
+              syncOnStartup   = settings.sync.syncOnStartup,
+              newFilesOwner   = settings.sync.newFilesOwner,
+              pollInterval    = settings.sync.pollIntervalSeconds.seconds,
+              includePatterns = settings.sync.includePatterns,
+              excludePatterns = settings.sync.excludePatterns
+            ),
+            relativeUploadPath = Path.of(settings.relativeUploadPath)
+          )
+        )
+      }
+    case `s3Type`             =>
       for
-        settings  <- row.settings.as[LocalDirectorySettings].left.map(_.getMessage)
-        algorithm <- HashingAlgorithm.fromName(settings.hashingAlgorithm).toRight(s"Unknown hashing algorithm: ${settings.hashingAlgorithm}")
-      yield LocalDirectoryConfig(
+        settings <- row.settings.as[S3Settings].left.map(_.getMessage)
+        endpoint <- settings.endpoint match
+                      case None    => Right(None)
+                      case Some(s) =>
+                        try Right(Some(URI.create(s)))
+                        catch case _: IllegalArgumentException => Left(s"Invalid S3 endpoint URI: $s")
+      yield ResourceBucketConfig(
         id                    = row.bucket_id,
         requiredRole          = row.required_role.map(Role(_)),
-        path                  = Path.of(settings.path),
-        sync                  = ScanConfig(
-          enabled         = settings.sync.enabled,
-          syncOnStartup   = settings.sync.syncOnStartup,
-          newFilesOwner   = settings.sync.newFilesOwner,
-          pollInterval    = settings.sync.pollIntervalSeconds.seconds,
-          includePatterns = settings.sync.includePatterns,
-          excludePatterns = settings.sync.excludePatterns
-        ),
-        hashingAlgorithm      = algorithm,
-        relativeUploadPath    = Path.of(settings.relativeUploadPath),
-        generatePreviewsOnAdd = settings.generatePreviewsOnAdd
+        generatePreviewsOnAdd = settings.generatePreviewsOnAdd,
+        storage               = S3StorageConfig(
+          bucket          = settings.bucket,
+          region          = settings.region,
+          endpoint        = endpoint,
+          prefix          = settings.prefix,
+          pathStyleAccess = settings.pathStyleAccess,
+          presignedUrlTtl = settings.presignedUrlTtlSeconds.seconds
+        )
       )
     case other                => Left(s"Unknown bucket type: $other")
 

@@ -12,8 +12,9 @@ import fs2.concurrent.SignallingRef
 import nl.amony.modules.auth.api.UserId
 import nl.amony.modules.resources.api.{
   BucketId,
-  LocalDirectoryConfig,
+  LocalDirectoryStorageConfig,
   ResourceAdded,
+  ResourceBucketConfig,
   ResourceDeleted,
   ResourceDiscovery,
   ResourceEvent,
@@ -26,12 +27,14 @@ import nl.amony.modules.resources.api.{
   VideoProperties
 }
 import nl.amony.modules.resources.dal.ResourceDatabase
+import nl.amony.modules.resources.util.PartialHash
 import nl.amony.platform.files.FileInfo
 import nl.amony.platform.files.sync.*
 
 /** Synchronizes a local directory with the database state. */
 final class LocalDirectorySyncer(
-  config: LocalDirectoryConfig,
+  bucketConfig: ResourceBucketConfig,
+  config: LocalDirectoryStorageConfig,
   parallelFactor: Int,
   db: ResourceDatabase,
   ops: BucketOperations,
@@ -39,7 +42,7 @@ final class LocalDirectorySyncer(
 ) extends ResourceDiscovery:
 
   private val logger             = scribe.Logger("LocalResourceSyncer")
-  private val bucketId: BucketId = BucketId(config.id)
+  private val bucketId: BucketId = BucketId(bucketConfig.id)
 
   private def relativizePath(path: Path): ResourcePath                      = ResourcePath(config.resourcePath.relativize(path).toString)
   private def mapFileEvent(fileEvent: FileEvent): IO[Option[ResourceEvent]] = {
@@ -87,7 +90,7 @@ final class LocalDirectorySyncer(
     ops.contentMeta(ContentLocation.Resource(relativizePath(f.path))).map { contentMeta =>
       ResourceInfo(
         bucketId           = bucketId,
-        resourceId         = config.generateId(),
+        resourceId         = bucketConfig.generateId(),
         userId             = userId,
         path               = relativizePath(f.path),
         partialHash        = f.partialHash,
@@ -179,7 +182,7 @@ final class LocalDirectorySyncer(
             fileStore,
             config.filterDirectory,
             config.filterFiles,
-            config.hashingAlgorithm.createHash,
+            PartialHash.createHash,
             parallelFactor
           )
           .parEvalMap(parallelFactor)(mapFileEvent).unNone
@@ -200,7 +203,7 @@ final class LocalDirectorySyncer(
       config.sync.pollInterval,
       config.filterDirectory,
       config.filterFiles,
-      config.hashingAlgorithm.createHash,
+      PartialHash.createHash,
       parallelFactor
     ).parEvalMap(parallelFactor)(mapFileEvent).unNone
 

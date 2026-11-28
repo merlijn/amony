@@ -12,10 +12,10 @@ import cats.effect.IO
 import fs2.io.file.{Files as Fs2Files, Path as Fs2Path}
 import scribe.Logging
 
-import nl.amony.modules.resources.api.{LocalDirectoryConfig, ResourceContent, ResourceId, ResourcePath, StagingId, StreamedResource}
+import nl.amony.modules.resources.api.{LocalDirectoryStorageConfig, ResourceContent, ResourceId, ResourcePath, StagingId, StreamedResource}
 
 /** [[ResourceStore]] backed by a local directory. */
-final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceStore, Logging:
+final class LocalDirectoryStore(config: LocalDirectoryStorageConfig) extends ResourceStore, Logging:
 
   private def resolveKey(key: StoreKey): Either[String, Path] = key match
     case StoreKey.Resource(path)   => ResourcePath.fromString(path).map(config.resourcePath.resolve(_))

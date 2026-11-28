@@ -42,24 +42,45 @@ case class BucketConfigDto(
 object BucketConfigDto:
 
   val localDirectoryType = "LocalDirectory"
+  val s3Type             = "S3"
 
-  def fromStored(stored: StoredBucket): BucketConfigDto = stored.config match
-    case c: LocalDirectoryConfig =>
+  def fromStored(stored: StoredBucket): BucketConfigDto = stored.config.storage match
+    case local: LocalDirectoryStorageConfig =>
       BucketConfigDto(
-        id                    = c.id,
+        id                    = stored.config.id,
         `type`                = localDirectoryType,
-        requiredRole          = c.requiredRole.map(_.toString),
-        path                  = c.path.toString,
-        relativeUploadPath    = c.relativeUploadPath.toString,
-        generatePreviewsOnAdd = c.generatePreviewsOnAdd,
-        hashingAlgorithm      = Some(c.hashingAlgorithm.name),
+        requiredRole          = stored.config.requiredRole.map(_.toString),
+        path                  = local.path.toString,
+        relativeUploadPath    = local.relativeUploadPath.toString,
+        generatePreviewsOnAdd = stored.config.generatePreviewsOnAdd,
+        hashingAlgorithm      = None,
         sync                  = ScanSettingsDto(
-          enabled             = c.sync.enabled,
-          syncOnStartup       = c.sync.syncOnStartup,
-          newFilesOwner       = c.sync.newFilesOwner,
-          pollIntervalSeconds = c.sync.pollInterval.toSeconds,
-          includePatterns     = c.sync.includePatterns,
-          excludePatterns     = c.sync.excludePatterns
+          enabled             = local.sync.enabled,
+          syncOnStartup       = local.sync.syncOnStartup,
+          newFilesOwner       = local.sync.newFilesOwner,
+          pollIntervalSeconds = local.sync.pollInterval.toSeconds,
+          includePatterns     = local.sync.includePatterns,
+          excludePatterns     = local.sync.excludePatterns
+        ),
+        updatedAt             = Some(stored.updatedAt)
+      )
+    case s3: S3StorageConfig                =>
+      val location                    = s3.normalizedPrefix.fold(s"s3://${s3.bucket}")(p => s"s3://${s3.bucket}/$p")
+      BucketConfigDto(
+        id                    = stored.config.id,
+        `type`                = s3Type,
+        requiredRole          = stored.config.requiredRole.map(_.toString),
+        path                  = location,
+        relativeUploadPath    = "",
+        generatePreviewsOnAdd = stored.config.generatePreviewsOnAdd,
+        hashingAlgorithm      = None,
+        sync                  = ScanSettingsDto(
+          enabled             = false,
+          syncOnStartup       = false,
+          newFilesOwner       = "",
+          pollIntervalSeconds = 0L,
+          includePatterns     = Nil,
+          excludePatterns     = Nil
         ),
         updatedAt             = Some(stored.updatedAt)
       )
@@ -74,24 +95,22 @@ object BucketConfigDto:
         for
           path       <- parsePath("path", dto.path)
           uploadPath <- parsePath("upload path", dto.relativeUploadPath)
-          algorithm  <- dto.hashingAlgorithm match
-                          case None       => Right(PartialHash)
-                          case Some(name) => HashingAlgorithm.fromName(name).toRight(s"Unknown hashing algorithm: $name")
-        yield LocalDirectoryConfig(
+        yield ResourceBucketConfig(
           id                    = dto.id.strip(),
           requiredRole          = dto.requiredRole.map(_.strip()).filter(_.nonEmpty).map(Role(_)),
-          path                  = path,
-          sync                  = ScanConfig(
-            enabled         = dto.sync.enabled,
-            syncOnStartup   = dto.sync.syncOnStartup,
-            newFilesOwner   = dto.sync.newFilesOwner.strip(),
-            pollInterval    = dto.sync.pollIntervalSeconds.seconds,
-            includePatterns = dto.sync.includePatterns.map(_.strip()).filter(_.nonEmpty),
-            excludePatterns = dto.sync.excludePatterns.map(_.strip()).filter(_.nonEmpty)
-          ),
-          hashingAlgorithm      = algorithm,
-          relativeUploadPath    = uploadPath,
-          generatePreviewsOnAdd = dto.generatePreviewsOnAdd
+          generatePreviewsOnAdd = dto.generatePreviewsOnAdd,
+          storage               = LocalDirectoryStorageConfig(
+            path               = path,
+            sync               = ScanConfig(
+              enabled         = dto.sync.enabled,
+              syncOnStartup   = dto.sync.syncOnStartup,
+              newFilesOwner   = dto.sync.newFilesOwner.strip(),
+              pollInterval    = dto.sync.pollIntervalSeconds.seconds,
+              includePatterns = dto.sync.includePatterns.map(_.strip()).filter(_.nonEmpty),
+              excludePatterns = dto.sync.excludePatterns.map(_.strip()).filter(_.nonEmpty)
+            ),
+            relativeUploadPath = uploadPath
+          )
         )
       case other                => Left(s"Unknown bucket type: $other")
 

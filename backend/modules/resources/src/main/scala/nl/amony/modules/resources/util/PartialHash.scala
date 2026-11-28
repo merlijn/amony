@@ -31,6 +31,9 @@ object PartialHash {
   def encodeHash(bytes: Array[Byte]): String =
     Prefix + Base32.encode(java.util.Arrays.copyOf(bytes, HashBytes))
 
+  def createHash(file: Path): IO[String] =
+    partialHash(file = file, digestFn = () => MessageDigest.getInstance("SHA-256"), encoder = encodeHash)
+
   /**
    * Hashes a deterministic sample of the file.
    *

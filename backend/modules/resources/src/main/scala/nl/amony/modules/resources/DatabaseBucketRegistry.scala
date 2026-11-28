@@ -14,7 +14,7 @@ import nl.amony.modules.resources.impl.{BucketConsumerRegistry, ResourceBucketCo
 import nl.amony.platform.messagebus.MessageTopic
 
 /** Creates a bucket from its configuration, together with its discovery process and background (sync) process. */
-type BucketFactory = ResourceBucketConfig => IO[(ResourceBucketConsumer, ResourceDiscovery, IO[Unit])]
+type BucketFactory = ResourceBucketConfig => Resource[IO, (ResourceBucketConsumer, ResourceDiscovery, IO[Unit])]
 
 object DatabaseBucketRegistry extends Logging:
 
@@ -41,8 +41,10 @@ object DatabaseBucketRegistry extends Logging:
     stored: StoredBucket,
     bucket: ResourceBucketConsumer,
     discovery: ResourceDiscovery,
-    fiber: Fiber[IO, Throwable, Unit]
-  )
+    fiber: Fiber[IO, Throwable, Unit],
+    release: IO[Unit]
+  ):
+    def stop: IO[Unit] = fiber.cancel.guarantee(release)
 
   /**
    * Loads the buckets from the database and starts them. When no buckets exist yet, the default bucket is inserted
@@ -56,14 +58,16 @@ object DatabaseBucketRegistry extends Logging:
   ): Resource[IO, BucketRegistry & BucketConsumerRegistry & BucketDiscoveryRegistry] =
     for
       supervisor <- Supervisor[IO]
+      running    <- Resource.make(Ref.of[IO, Map[BucketId, RunningBucket]](Map.empty))(ref =>
+                      ref.getAndSet(Map.empty).flatMap(_.values.toList.traverse_(_.stop))
+                    )
       registry   <- Resource.eval {
                       for
-                        _       <- seedDefaultBucket(defaultBucket, bucketsDal)
-                        running <- Ref.of[IO, Map[BucketId, RunningBucket]](Map.empty)
-                        registry = Impl(bucketsDal, eventTopic, factory, supervisor, running)
-                        stored  <- bucketsDal.getAll()
-                        _       <- stored.traverse_(registry.install)
-                      yield registry
+                        _      <- seedDefaultBucket(defaultBucket, bucketsDal)
+                        reg     = Impl(bucketsDal, eventTopic, factory, supervisor, running)
+                        stored <- bucketsDal.getAll()
+                        _      <- stored.traverse_(reg.install)
+                      yield reg
                     }
     yield registry
 
@@ -89,26 +93,26 @@ object DatabaseBucketRegistry extends Logging:
     private[DatabaseBucketRegistry] def install(stored: StoredBucket): IO[Unit] =
       val bucketId = BucketId(stored.config.id)
       for
-        started                 <- Deferred[IO, Unit]
-        (bucket, discovery, bg) <- factory(stored.config)
-        fiber                   <- supervisor.supervise(
-                                     started.get >> bg.handleErrorWith(e =>
-                                       IO(logger.error(s"Background process of bucket '$bucketId' failed", e))
-                                     )
-                                   )
-        replaced                <- running.modify { buckets =>
-                                     buckets.get(bucketId) match
-                                       case Some(current) if current.stored.updatedAt.isAfter(stored.updatedAt) => (buckets, None)
-                                       case current                                                             =>
-                                         (buckets.updated(bucketId, RunningBucket(stored, bucket, discovery, fiber)), Some(current))
-                                   }
-        _                       <- replaced match
-                                     case None           => fiber.cancel
-                                     case Some(previous) => previous.traverse_(_.fiber.cancel) >> started.complete(()).void
+        started                          <- Deferred[IO, Unit]
+        ((bucket, discovery, bg), close) <- factory(stored.config).allocated
+        fiber                            <- supervisor.supervise(
+                                              started.get >> bg.handleErrorWith(e =>
+                                                IO(logger.error(s"Background process of bucket '$bucketId' failed", e))
+                                              )
+                                            )
+        replaced                         <- running.modify { buckets =>
+                                              buckets.get(bucketId) match
+                                                case Some(current) if current.stored.updatedAt.isAfter(stored.updatedAt) => (buckets, None)
+                                                case current                                                             =>
+                                                  (buckets.updated(bucketId, RunningBucket(stored, bucket, discovery, fiber, close)), Some(current))
+                                            }
+        _                                <- replaced match
+                                              case None           => fiber.cancel.guarantee(close)
+                                              case Some(previous) => previous.traverse_(_.stop) >> started.complete(()).void
       yield ()
 
     private def uninstall(bucketId: BucketId): IO[Unit] =
-      running.modify(buckets => (buckets - bucketId, buckets.get(bucketId))).flatMap(_.traverse_(_.fiber.cancel))
+      running.modify(buckets => (buckets - bucketId, buckets.get(bucketId))).flatMap(_.traverse_(_.stop))
 
     /** Brings the running instance in line with the configuration in the database. */
     private def reload(bucketId: BucketId): IO[Unit] =

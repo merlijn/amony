@@ -57,22 +57,23 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
       poolSize = 1
     )
 
-  private def localConfig(id: String, path: Path, generatePreviewsOnAdd: Boolean = false): LocalDirectoryConfig =
-    LocalDirectoryConfig(
+  private def localConfig(id: String, path: Path, generatePreviewsOnAdd: Boolean = false): ResourceBucketConfig =
+    ResourceBucketConfig(
       id                    = id,
       requiredRole          = Some(Role.Authenticated),
-      path                  = path,
       generatePreviewsOnAdd = generatePreviewsOnAdd,
-      sync                  = ScanConfig(
-        enabled         = false,
-        syncOnStartup   = false,
-        newFilesOwner   = "admin",
-        pollInterval    = 60.seconds,
-        includePatterns = List("**/*.{mp4,jpg}"),
-        excludePatterns = List("**/.*")
-      ),
-      hashingAlgorithm      = PartialHash,
-      relativeUploadPath    = Path.of("_upload")
+      storage               = LocalDirectoryStorageConfig(
+        path               = path,
+        sync               = ScanConfig(
+          enabled         = false,
+          syncOnStartup   = false,
+          newFilesOwner   = "admin",
+          pollInterval    = 60.seconds,
+          includePatterns = List("**/*.{mp4,jpg}"),
+          excludePatterns = List("**/.*")
+        ),
+        relativeUploadPath = Path.of("_upload")
+      )
     )
 
   private def recordingTopic(published: AtomicReference[List[ResourceEvent]]): MessageTopic[ResourceEvent] =
@@ -90,13 +91,13 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
       ): Stream[IO, Unit]                                                        = Stream.empty
 
   private def makeBucket(
-    config: LocalDirectoryConfig,
+    config: ResourceBucketConfig,
     db: ResourceDatabase,
     published: AtomicReference[List[ResourceEvent]],
     ops: BucketOperations = null
   ): ResourceBucketImpl =
     val topic  = recordingTopic(published)
-    val store  = LocalDirectoryStore(config)
+    val store  = LocalDirectoryStore(config.storage.asInstanceOf[LocalDirectoryStorageConfig])
     val events = DatabaseResourceEventStore(BucketId(config.id), db, topic)
     ResourceBucketImpl(config, 2, db, topic, ops, store, events, null)
 
@@ -217,8 +218,9 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
           val bucket    = makeBucket(cfg, db, published)
           val res       = newResource(bucket.id, "video.mp4")
 
-          Files.createDirectories(cfg.cachePath)
-          val derived = Files.writeString(cfg.cachePath.resolve(s"${res.resourceId}_v1_w512.webp"), "thumb")
+          val cachePath = cfg.storage.asInstanceOf[LocalDirectoryStorageConfig].cachePath
+          Files.createDirectories(cachePath)
+          val derived   = Files.writeString(cachePath.resolve(s"${res.resourceId}_v1_w512.webp"), "thumb")
 
           val registry  = mock[BucketConsumerRegistry](RETURNS_DEFAULTS)
           registry.getConsumer(bucket.id) returns IO.pure(Some(bucket))
