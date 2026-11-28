@@ -88,7 +88,7 @@ class ResourceBucketImpl(
 
   override def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, ResourceInfo]] =
     (for
-      job    <- EitherT(prepareAndStageUpload(userId, fileName, source))
+      job    <- prepareAndStageUpload(userId, fileName, source)
       jobId  <- EitherT.liftF(
                   jobBus.submit(job.key, job)
                     .handleErrorWith(error =>
@@ -111,72 +111,80 @@ class ResourceBucketImpl(
 
   private val invalidSequences = List("/", "\\", "..")
 
-  private def decodeFileName(fileName: String): Either[UploadError, String] =
-    try Right(URLDecoder.decode(fileName, StandardCharsets.UTF_8))
-    catch case _: IllegalArgumentException => Left(UploadError.InvalidFileName(s"File name '$fileName' is invalid"))
+  private def validateFileName(fileName: String): Either[UploadError, String] =
+    for
+      decoded <-
+        try Right(URLDecoder.decode(fileName, StandardCharsets.UTF_8))
+        catch case _: IllegalArgumentException => Left(UploadError.InvalidFileName(s"File name '$fileName' is invalid"))
+      _       <- Either.cond(!invalidSequences.exists(decoded.contains), (), UploadError.InvalidFileName(s"File name '$decoded' is invalid"))
+    yield decoded
 
   private def tempUploadFile: Resource[IO, Path] =
     Resource.make(IO.blocking(JFiles.createTempFile("amony-upload-", "")))(path => IO.blocking(JFiles.deleteIfExists(path)).void)
+
+  private def cleanupStaged(targetPath: ResourcePath): IO[Unit] =
+    (store.delete(StoreKey.Resource(targetPath)).attempt >> db.deleteStagedUpload(id, targetPath).attempt).void
+
+  private def normalizeIfNeeded(localFile: Path, decoded: String, meta: ContentMeta): IO[Boolean] =
+    val container = meta.contentType
+      .filter(_ => meta.streamable.contains(false))
+      .flatMap(VideoContainer.fromContentType)
+    container match
+      case None            => IO.pure(false)
+      case Some(container) =>
+        ops.normalizeUpload(localFile, container).value.attempt.flatMap {
+          case Right(Right(()))   => IO.pure(true)
+          case Right(Left(error)) =>
+            IO(logger.warn(s"Failed to remux uploaded file '$decoded': ${error.message}. Storing the original file")).as(false)
+          case Left(error)        =>
+            logger.warn(s"Failed to remux uploaded file '$decoded', storing the original file", error)
+            IO.pure(false)
+        }
+
+  private def stageLocalFile(
+    userId: UserId,
+    validatedFilename: String,
+    resourceId: ResourceId,
+    targetPath: ResourcePath,
+    title: Option[String],
+    localFile: Path,
+    source: fs2.Stream[IO, Byte]
+  ): EitherT[IO, UploadError, UploadResource] =
+    val location                     = ContentLocation.LocalFile(localFile)
+    def storageError(detail: String) = UploadError.StorageError(s"Failed to store upload '$validatedFilename': $detail")
+    for
+      _         <- EitherT.liftF(source.through(Files[IO].writeAll(Fs2Path.fromNioPath(localFile))).compile.drain)
+      size      <- EitherT.liftF(IO.blocking(JFiles.size(localFile)))
+      _         <- EitherT.cond[IO](size > 0, (), storageError("Uploaded file is empty"))
+      meta      <- ops.contentMeta(location).leftMap(e => storageError(e.message))
+      remuxed   <- EitherT.liftF(normalizeIfNeeded(localFile, validatedFilename, meta))
+      hash      <- ops.contentPartialHash(location).leftMap(e => storageError(e.message))
+      finalMeta <- if remuxed then ops.contentMeta(location).leftMap(e => storageError(e.message)) else EitherT.pure[IO, UploadError](meta)
+      _         <- EitherT.liftF(db.insertStagedUpload(id, targetPath))
+      _         <- store.put(StoreKey.Resource(targetPath), finalMeta.contentType, Files[IO].readAll(Fs2Path.fromNioPath(localFile)))
+                     .leftMap(storageError)
+    yield UploadResource(id, resourceId, userId, targetPath, title, hash, finalMeta)
 
   private def prepareAndStageUpload(
     userId: UserId,
     fileName: String,
     source: fs2.Stream[IO, Byte]
-  ): IO[Either[UploadError, UploadResource]] =
-    decodeFileName(fileName) match
-      case Left(error)                                                 => IO.pure(Left(error))
-      case Right(decoded) if invalidSequences.exists(decoded.contains) =>
-        IO.pure(Left(UploadError.InvalidFileName(s"File name '$decoded' is invalid")))
-      case Right(decoded)                                              =>
-        val resourceId = config.generateId()
-        val targetPath = store.pathForUpload(resourceId, decoded)
-        val title      = ResourceBucketImpl.titleFromFileName(decoded)
-        tempUploadFile.use { localFile =>
-          val location = ContentLocation.LocalFile(localFile)
-          val prepare  =
-            for
-              _         <- EitherT.liftF(source.through(Files[IO].writeAll(Fs2Path.fromNioPath(localFile))).compile.drain)
-              size      <- EitherT.liftF(IO.blocking(JFiles.size(localFile)))
-              _         <- EitherT.cond[IO](size > 0, (), UploadError.StorageError(s"Failed to store upload '$decoded': Uploaded file is empty"))
-              meta      <- ops.contentMeta(location).leftMap(error =>
-                             UploadError.StorageError(s"Failed to store upload '$decoded': ${error.message}")
-                           )
-              container  = meta.contentType
-                             .filter(_ => meta.streamable.contains(false))
-                             .flatMap(VideoContainer.fromContentType)
-              remuxed   <- EitherT.right[UploadError](container match
-                             case None            => IO.pure(false)
-                             case Some(container) =>
-                               ops.normalizeUpload(localFile, container).value.attempt.flatMap {
-                                 case Right(Right(()))   => IO.pure(true)
-                                 case Right(Left(error)) =>
-                                   IO(
-                                     logger.warn(s"Failed to remux uploaded file '$decoded': ${error.message}. Storing the original file")
-                                   ).as(false)
+  ): EitherT[IO, UploadError, UploadResource] =
+    for
+      validatedFilename <- EitherT.fromEither[IO](validateFileName(fileName))
+      resourceId         = config.generateId()
+      targetPath         = store.pathForUpload(resourceId, validatedFilename)
+      title              = ResourceBucketImpl.titleFromFileName(validatedFilename)
+      job               <- EitherT(
+                             tempUploadFile.use { localFile =>
+                               stageLocalFile(userId, validatedFilename, resourceId, targetPath, title, localFile, source).value.attempt.flatMap:
+                                 case Right(Right(job))  => IO.pure(Right(job))
+                                 case Right(Left(error)) => cleanupStaged(targetPath).as(Left(error))
                                  case Left(error)        =>
-                                   logger.warn(s"Failed to remux uploaded file '$decoded', storing the original file", error)
-                                   IO.pure(false)
-                               })
-              hash      <- ops.contentPartialHash(location).leftMap(error =>
-                             UploadError.StorageError(s"Failed to store upload '$decoded': ${error.message}")
+                                   cleanupStaged(targetPath).as(Left(UploadError.StorageError(s"Failed to store upload '$validatedFilename': ${error.getMessage}")))
+                             }
                            )
-              finalMeta <- if remuxed then
-                ops.contentMeta(location).leftMap(error =>
-                  UploadError.StorageError(s"Failed to store upload '$decoded': ${error.message}")
-                )
-              else EitherT.pure[IO, UploadError](meta)
-              _         <- EitherT.liftF(db.insertStagedUpload(id, targetPath))
-              _         <- store.put(StoreKey.Resource(targetPath), finalMeta.contentType, Files[IO].readAll(Fs2Path.fromNioPath(localFile)))
-                             .leftMap(message => UploadError.StorageError(s"Failed to store upload '$decoded': $message"))
-            yield UploadResource(id, resourceId, userId, targetPath, title, hash, finalMeta)
-          prepare.value.attempt.flatMap:
-            case Right(Right(job))  => IO.pure(Right(job))
-            case Right(Left(error)) =>
-              (store.delete(StoreKey.Resource(targetPath)).attempt >> db.deleteStagedUpload(id, targetPath).attempt).as(Left(error))
-            case Left(error)        =>
-              (store.delete(StoreKey.Resource(targetPath)).attempt >> db.deleteStagedUpload(id, targetPath).attempt)
-                .as(Left(UploadError.StorageError(s"Failed to store upload '$decoded': ${error.getMessage}")))
-        }
+    yield job
 
   private def commitUpload(upload: UploadResource): IO[Either[String, Unit]] =
     (for
