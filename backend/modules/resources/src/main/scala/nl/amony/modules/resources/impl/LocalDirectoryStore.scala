@@ -2,6 +2,7 @@ package nl.amony.modules.resources.impl
 
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{AtomicMoveNotSupportedException, FileAlreadyExistsException, Files, NoSuchFileException, Path, StandardCopyOption}
+import java.time.Instant
 import java.util.UUID
 import scala.jdk.CollectionConverters.*
 import scala.util.Using
@@ -113,6 +114,19 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
             .foreach(path => Files.deleteIfExists(path))
         }
     }.void.handleErrorWith(e => IO(logger.warn(s"Failed to delete derived files for $resourceId", e)))
+
+  override def deleteStaged(cutoffTime: Instant): IO[Unit] =
+    IO.blocking {
+      if Files.isDirectory(config.tempPath) then
+        Using(Files.list(config.tempPath)) { stream =>
+          stream.iterator().asScala
+            .filter { path =>
+              try Files.isRegularFile(path) && Files.getLastModifiedTime(path).toInstant.isBefore(cutoffTime)
+              catch case _: NoSuchFileException => false
+            }
+            .foreach(path => Files.deleteIfExists(path))
+        }
+    }.void.handleErrorWith(e => IO(logger.warn(s"Failed to delete staged files before $cutoffTime", e)))
 
   private def moveSource(key: StoreKey, source: Path, target: Path, overwrite: Boolean): EitherT[IO, String, StoredResource] =
     EitherT(

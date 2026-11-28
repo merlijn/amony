@@ -2,6 +2,7 @@ package nl.amony.modules.resources.impl
 
 import java.net.URI
 import java.nio.file.Path
+import java.time.Instant
 
 import cats.data.EitherT
 import cats.effect.IO
@@ -87,3 +88,6 @@ trait ResourceStore:
 
   /** Deletes all derived artifacts belonging to a resource. */
   def deleteDerived(resourceId: ResourceId): IO[Unit]
+
+  /** Deletes staged objects last modified before `cutoffTime`. */
+  def deleteStaged(cutoffTime: Instant): IO[Unit]

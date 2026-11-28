@@ -1,7 +1,9 @@
 package nl.amony.modules.resources.impl
 
 import java.nio.charset.StandardCharsets
+import java.nio.file.attribute.FileTime
 import java.nio.file.{Files, Path}
+import java.time.Instant
 import java.util.UUID
 import scala.concurrent.duration.*
 
@@ -181,6 +183,31 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       store.content(del1, Some("image/webp"), None).unsafeRunSync() shouldBe None
       store.content(del2, Some("image/webp"), None).unsafeRunSync() shouldBe None
       store.content(keep, Some("image/webp"), None).unsafeRunSync().isDefined shouldBe true
+    }
+
+    "delete only staged files older than the cutoff time" in {
+      val dir     = Files.createTempDirectory("amony-store-spec")
+      val cfg     = config(dir)
+      val store   = LocalDirectoryStore(cfg)
+      val staleId = StagingId("stale-upload")
+      val freshId = StagingId("fresh-upload")
+      val cutoff  = Instant.now().minusSeconds(60)
+
+      store.put(StoreKey.Staged(staleId), None, Stream.emits("stale".getBytes(StandardCharsets.UTF_8))).value.unsafeRunSync() shouldBe Right(())
+      store.put(StoreKey.Staged(freshId), None, Stream.emits("fresh".getBytes(StandardCharsets.UTF_8))).value.unsafeRunSync() shouldBe Right(())
+      Files.setLastModifiedTime(cfg.tempPath.resolve(staleId), FileTime.from(cutoff.minusSeconds(10)))
+      Files.setLastModifiedTime(cfg.tempPath.resolve(freshId), FileTime.from(cutoff.plusSeconds(10)))
+
+      store.deleteStaged(cutoff).unsafeRunSync()
+
+      store.exists(StoreKey.Staged(staleId)).unsafeRunSync() shouldBe false
+      store.exists(StoreKey.Staged(freshId)).unsafeRunSync() shouldBe true
+    }
+
+    "ignore a missing temp directory on deleteStaged" in {
+      val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
+
+      store.deleteStaged(Instant.now()).unsafeRunSync()
     }
 
     "delete a stored resource" in {
