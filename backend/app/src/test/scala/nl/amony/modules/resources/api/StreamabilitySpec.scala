@@ -5,29 +5,22 @@ import java.nio.file.{Files, Path, StandardCopyOption}
 
 import cats.effect.unsafe.implicits.global
 import com.sun.net.httpserver.HttpServer
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
-class StreamabilitySpec extends AnyWordSpecLike with Matchers {
+class StreamabilitySpec extends AnyWordSpecLike with Matchers with BeforeAndAfterAll {
 
-  private def fixture(name: String): Path = {
-    val stream   = Option(getClass.getResourceAsStream(s"/video/$name")).getOrElse(sys.error(s"Missing test fixture: $name"))
-    val tempFile = Files.createTempFile("streamability-", "-" + name)
-    try Files.copy(stream, tempFile, StandardCopyOption.REPLACE_EXISTING)
-    finally stream.close()
-    tempFile.toFile.deleteOnExit()
-    tempFile
-  }
+  private var server: Option[HttpServer] = None
 
-  private def detect(name: String): Streamability =
-    Streamability.detect(fixture(name)).unsafeRunSync()
-
-  private def detectOverHttp(name: String): Streamability = {
-    val bytes  = Files.readAllBytes(fixture(name))
-    val server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
-    server.createContext(
-      s"/$name",
+  override protected def beforeAll(): Unit = {
+    super.beforeAll()
+    val s = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
+    s.createContext(
+      "/",
       exchange => {
+        val name        = exchange.getRequestURI.getPath.stripPrefix("/")
+        val bytes       = Files.readAllBytes(fixture(name))
         val rangeHeader = Option(exchange.getRequestHeaders.getFirst("Range"))
         rangeHeader match {
           case Some(header) if header.startsWith("bytes=") =>
@@ -48,11 +41,32 @@ class StreamabilitySpec extends AnyWordSpecLike with Matchers {
         }
       }
     )
-    server.start()
-    try {
-      val uri = URI.create(s"http://127.0.0.1:${server.getAddress.getPort}/$name")
-      Streamability.detect(uri).unsafeRunSync()
-    } finally server.stop(0)
+    s.start()
+    server = Some(s)
+  }
+
+  override protected def afterAll(): Unit = {
+    server.foreach(_.stop(0))
+    server = None
+    super.afterAll()
+  }
+
+  private def fixture(name: String): Path = {
+    val stream   = Option(getClass.getResourceAsStream(s"/video/$name")).getOrElse(sys.error(s"Missing test fixture: $name"))
+    val tempFile = Files.createTempFile("streamability-", "-" + name)
+    try Files.copy(stream, tempFile, StandardCopyOption.REPLACE_EXISTING)
+    finally stream.close()
+    tempFile.toFile.deleteOnExit()
+    tempFile
+  }
+
+  private def detect(name: String): Streamability =
+    Streamability.detect(fixture(name)).unsafeRunSync()
+
+  private def detectOverHttp(name: String): Streamability = {
+    val port = server.getOrElse(sys.error("Test HTTP server not started")).getAddress.getPort
+    val uri  = URI.create(s"http://127.0.0.1:$port/$name")
+    Streamability.detect(uri).unsafeRunSync()
   }
 
   "Streamability" when {
