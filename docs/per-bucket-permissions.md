@@ -9,7 +9,7 @@ Two separate mechanisms decide what a user can do with a bucket:
 
 | Mechanism                         | Where                              | Decides                                                  |
 | --------------------------------- | ---------------------------------- | -------------------------------------------------------- |
-| Role permissions                  | `auth.conf` → `access-control`     | _What_ a role may do (view, upload, manage, …), globally |
+| Role permissions                  | `amony.auth.access-control`        | _What_ a role may do (view, upload, manage, …), globally |
 | Optional `required_role` / bucket | `buckets.required_role` (database) | _Whether_ a bucket is visible at all (admins always)     |
 
 Limitations:
@@ -52,8 +52,8 @@ access = {
 }
 ```
 
-- **Not set:** the bucket uses the global `access-control` from `auth.conf`. This is the current behaviour, so the
-  default bucket needs no extra configuration and `auth.conf` keeps its meaning.
+- **Not set:** the bucket uses the global `access-control` from the auth module's `reference.conf`. This is the current
+  behaviour, so the default bucket needs no extra configuration and `amony.auth.access-control` keeps its meaning.
 - **Set:** the bucket's rules _replace_ the global role permissions for that bucket.
   - _Replace_ is preferred over _intersect_. With intersection a bucket can only narrow the global permissions: to allow
     `family` to upload to one bucket, `family` would need upload rights globally and every other bucket would have to
@@ -78,7 +78,7 @@ access = {
 | `required_role` not set  | `access` not set (use global `access-control`)                                        |
 | `required_role = <role>` | `{ <role>: <global permissions of authenticated users> }`, i.e. only `<role>` sees it |
 
-The migration has to read `access-control` from `auth.conf` to fill in the permissions. It can therefore not be a pure
+The migration has to read `access-control` from `amony.auth` to fill in the permissions. It can therefore not be a pure
 SQL migration and should run at application startup (or be written out explicitly with the current defaults).
 
 ### 2.5 Storage and API

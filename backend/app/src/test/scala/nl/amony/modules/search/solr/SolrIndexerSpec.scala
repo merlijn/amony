@@ -60,7 +60,7 @@ class SolrIndexerSpec extends AnyWordSpecLike with Matchers {
         roundtripped.contentType shouldBe resource.contentType
         roundtripped.contentMeta.streamable shouldBe resource.contentMeta.streamable
         roundtripped.contentMeta.toolScan shouldBe None
-        ResourceOperations.contentVersion(roundtripped) shouldBe ResourceOperations.contentVersion(resource)
+        ResourceOperation.contentVersion(roundtripped) shouldBe ResourceOperation.contentVersion(resource)
       }
     }
   }

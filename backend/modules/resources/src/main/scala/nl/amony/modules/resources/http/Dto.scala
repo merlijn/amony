@@ -136,7 +136,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
       Some(ClipDto(
         bucketId       = resource.bucketId,
         resourceId     = resource.resourceId,
-        contentVersion = ResourceOperations.contentVersion(resource),
+        contentVersion = ResourceOperation.contentVersion(resource),
         start          = start,
         end            = end,
         description    = None,
@@ -164,7 +164,7 @@ def toDto(resource: ResourceInfo): ResourceDto = {
     contentType        = resource.contentType.getOrElse("application/octet-stream"),
     contentMeta        = contentMeta,
     thumbnailTimestamp = Some(thumbnailTimestamp),
-    contentVersion     = ResourceOperations.contentVersion(resource),
+    contentVersion     = ResourceOperation.contentVersion(resource),
     clips              = thumbnailClip.toList,
     fullMeta           = fullMeta
   )

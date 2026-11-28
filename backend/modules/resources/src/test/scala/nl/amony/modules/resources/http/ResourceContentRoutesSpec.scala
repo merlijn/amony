@@ -1,0 +1,300 @@
+package nl.amony.modules.resources.http
+
+import scala.concurrent.duration.*
+
+import org.scalatest.wordspec.AnyWordSpecLike
+
+import nl.amony.modules.auth.api.UserId
+import nl.amony.modules.resources.api.*
+
+class ResourceContentRoutesSpec extends AnyWordSpecLike {
+
+  private val resolutions      = ThumbnailResolutions(List(352, 4320), 352, stepDown = 0)
+  private val smallResolutions = ThumbnailResolutions(List(96, 192, 384, 768, 1536), 384, stepDown = 0)
+  private val formats          = ThumbnailFormats(List(ImageFormat.Avif, ImageFormat.Webp, ImageFormat.Jpeg))
+  private val tiles            = ThumbnailTiles(List(250.millis, 500.millis, 1.second, 2.seconds, 5.seconds, 10.seconds), 200)
+
+  private def videoInfo(
+    width: Int,
+    height: Int,
+    durationInMillis: Int                     = 10000,
+    thumbnailTimestamp: Int                   = 1000,
+    pixelAspectRatio: Option[Float]           = None
+  ) = ResourceInfo(
+    bucketId           = BucketId("test"),
+    resourceId         = ResourceId("resource"),
+    userId             = UserId("user"),
+    path               = ResourcePath("video.mp4"),
+    partialHash        = "test-hash",
+    size               = 1L,
+    contentMeta        = ContentMeta.indexed(Some(VideoProperties(width, height, 30f, durationInMillis, pixelAspectRatio = pixelAspectRatio))),
+    thumbnailTimestamp = Some(thumbnailTimestamp)
+  )
+
+  private def imageInfo(width: Int, height: Int) = ResourceInfo(
+    bucketId    = BucketId("test"),
+    resourceId  = ResourceId("resource"),
+    userId      = UserId("user"),
+    path        = ResourcePath("image.jpg"),
+    partialHash = "test-hash",
+    size        = 1L,
+    contentMeta = ContentMeta.indexed(Some(ImageProperties(width, height)))
+  )
+
+  private def thumbOp(
+    ts: Long,
+    dim: String,
+    resKey: String,
+    format: String,
+    info: ResourceInfo,
+    res: ThumbnailResolutions = resolutions
+  ) =
+    ResourceContentRoutes.patterns
+      .thumbnailOperation(ResourceOperation.contentVersion(info), ts, dim, resKey, format, res, formats, info)
+
+  private def clipOp(start: Long, end: Long, dim: String, resKey: String, info: ResourceInfo) =
+    ResourceContentRoutes.patterns
+      .clipOperation(ResourceOperation.contentVersion(info), start, end, dim, resKey, resolutions, info)
+
+  private def tileManifestOp(info: ResourceInfo) =
+    ResourceContentRoutes.patterns
+      .thumbnailTileManifestOperation(ResourceOperation.contentVersion(info), tiles.recipeToken, info, tiles)
+
+  private def tileSpriteOp(index: Int, info: ResourceInfo) =
+    ResourceContentRoutes.patterns
+      .thumbnailTileSpriteOperation(ResourceOperation.contentVersion(info), tiles.recipeToken, index.toString, info, tiles)
+
+  "ResourceContentRoutes" when {
+
+    "building a thumbnail operation" should {
+
+      "cap a width request at the source width instead of upscaling" in {
+        val op = thumbOp(1000, "w", "4320", "webp", videoInfo(1920, 1080))
+        assert(op == Some(VideoThumbnail(width = Some(1920), height = None, timestamp = 1000, format = ImageFormat.Webp)))
+      }
+
+      "cap a height request at the source height instead of upscaling" in {
+        val op = thumbOp(1000, "h", "4320", "webp", videoInfo(1920, 1080))
+        assert(op == Some(VideoThumbnail(width = None, height = Some(1080), timestamp = 1000, format = ImageFormat.Webp)))
+      }
+
+      "round video dimensions down to an even number" in {
+        val op = thumbOp(1000, "w", "4320", "webp", videoInfo(1921, 1081))
+        assert(op == Some(VideoThumbnail(width = Some(1920), height = None, timestamp = 1000, format = ImageFormat.Webp)))
+      }
+
+      "not cap a request smaller than the source" in {
+        val op = thumbOp(1000, "w", "352", "webp", videoInfo(1920, 1080))
+        assert(op == Some(VideoThumbnail(width = Some(352), height = None, timestamp = 1000, format = ImageFormat.Webp)))
+      }
+
+      "pin both dimensions for anamorphic video" in {
+        val op = thumbOp(1000, "w", "352", "webp", videoInfo(853, 480, pixelAspectRatio = Some(32f / 27f)))
+        assert(op == Some(VideoThumbnail(width = Some(352), height = Some(198), timestamp = 1000, format = ImageFormat.Webp)))
+      }
+
+      "serve a lower rung when resolution-step-down is configured" in {
+        val stepped = ThumbnailResolutions(List(352, 4320), 352, stepDown = 1)
+        val op      = thumbOp(1000, "w", "4320", "webp", videoInfo(1920, 1080), stepped)
+        assert(op == Some(VideoThumbnail(width = Some(352), height = None, timestamp = 1000, format = ImageFormat.Webp)))
+      }
+
+      "use the requested image format" in {
+        val op = thumbOp(0, "w", "352", "avif", imageInfo(1600, 1063))
+        assert(op == Some(ImageThumbnail(width = Some(352), height = None, format = ImageFormat.Avif)))
+      }
+
+      "fall back to the most preferred format for an unsupported one" in {
+        val op = thumbOp(0, "w", "352", "bmp", imageInfo(1600, 1063))
+        assert(op == Some(ImageThumbnail(width = Some(352), height = None, format = ImageFormat.Avif)))
+      }
+
+      "cap image thumbnails without rounding to even" in {
+        val op = thumbOp(0, "h", "4320", "webp", imageInfo(1600, 1063))
+        assert(op == Some(ImageThumbnail(width = None, height = Some(1063), format = ImageFormat.Webp)))
+      }
+
+      "reject a video thumbnail when the timestamp does not match" in {
+        val op = thumbOp(999, "w", "352", "webp", videoInfo(1920, 1080))
+        assert(op.isEmpty)
+      }
+
+      "reject a thumbnail when the content version does not match" in {
+        val info = videoInfo(1920, 1080)
+        val op   = ResourceContentRoutes.patterns.thumbnailOperation("staleversion", 1000, "w", "352", "webp", resolutions, formats, info)
+        assert(op.isEmpty)
+      }
+    }
+
+    "building an AVIF thumbnail operation" should {
+
+      "grow the pinned width so the derived side stays >= 64 on a 16:9 source" in {
+        val op = thumbOp(1000, "w", "96", "avif", videoInfo(1920, 1080), smallResolutions)
+        assert(op == Some(VideoThumbnail(width = Some(114), height = None, timestamp = 1000, format = ImageFormat.Avif)))
+      }
+
+      "leave the pinned width alone when the derived side already reaches 64 (3:2 source)" in {
+        val op = thumbOp(1000, "w", "96", "avif", videoInfo(1920, 1280), smallResolutions)
+        assert(op == Some(VideoThumbnail(width = Some(96), height = None, timestamp = 1000, format = ImageFormat.Avif)))
+      }
+
+      "leave a height-pinned AVIF thumbnail alone when the derived width reaches 64" in {
+        val op = thumbOp(1000, "h", "96", "avif", videoInfo(1920, 1080), smallResolutions)
+        assert(op == Some(VideoThumbnail(width = None, height = Some(96), timestamp = 1000, format = ImageFormat.Avif)))
+      }
+
+      "round the grown pinned width up to even when rounding down would break the minimum" in {
+        val op = thumbOp(1000, "w", "96", "avif", videoInfo(1000, 600), smallResolutions)
+        assert(op == Some(VideoThumbnail(width = Some(108), height = None, timestamp = 1000, format = ImageFormat.Avif)))
+      }
+
+      "not grow thumbnails for formats without a minimum side" in {
+        val op = thumbOp(1000, "w", "96", "webp", videoInfo(1920, 1080), smallResolutions)
+        assert(op == Some(VideoThumbnail(width = Some(96), height = None, timestamp = 1000, format = ImageFormat.Webp)))
+      }
+
+      "grow a width-pinned AVIF image thumbnail the same way" in {
+        val op = thumbOp(0, "w", "96", "avif", imageInfo(1600, 900), smallResolutions)
+        assert(op == Some(ImageThumbnail(width = Some(114), height = None, format = ImageFormat.Avif)))
+      }
+    }
+
+    "building a clip operation" should {
+
+      "build a clip for the canonical range and cap it at the source dimensions" in {
+        val op = clipOp(1000, 4000, "w", "4320", videoInfo(1920, 1080))
+        assert(op == Some(VideoFragment(width = Some(1920), height = None, start = 1000, end = 4000)))
+      }
+
+      "cap the clip end at the video length" in {
+        val op = clipOp(1000, 2000, "w", "352", videoInfo(1920, 1080, durationInMillis = 2000))
+        assert(op == Some(VideoFragment(width = Some(352), height = None, start = 1000, end = 2000)))
+      }
+
+      "pin both dimensions for an anamorphic clip" in {
+        val op = clipOp(1000, 4000, "w", "352", videoInfo(853, 480, pixelAspectRatio = Some(32f / 27f)))
+        assert(op == Some(VideoFragment(width = Some(352), height = Some(198), start = 1000, end = 4000)))
+      }
+
+      "reject a clip when the start does not match the canonical range" in {
+        val op = clipOp(999, 4000, "w", "352", videoInfo(1920, 1080))
+        assert(op.isEmpty)
+      }
+
+      "reject a clip when the end does not match the canonical range" in {
+        val op = clipOp(1000, 3999, "w", "352", videoInfo(1920, 1080))
+        assert(op.isEmpty)
+      }
+
+      "reject a clip when the content version does not match" in {
+        val info = videoInfo(1920, 1080)
+        val op   = ResourceContentRoutes.patterns.clipOperation("staleversion", 1000, 4000, "w", "352", resolutions, info)
+        assert(op.isEmpty)
+      }
+    }
+
+    "building a thumbnail tile operation" should {
+
+      "build the manifest operation for a video" in
+        assert(
+          tileManifestOp(videoInfo(1920, 1080)) == Some(
+            VideoThumbnailTileVtt(spritePixels = tiles.spritePixels, intervalInMillis = 250, token = tiles.recipeToken)
+          )
+        )
+
+      "build the first sprite operation" in
+        assert(
+          tileSpriteOp(1, videoInfo(1920, 1080)) == Some(
+            VideoThumbnailTile(spritePixels = tiles.spritePixels, intervalInMillis = 250, index = 1, token = tiles.recipeToken)
+          )
+        )
+
+      "allow a sprite index covered by the video duration" in
+        assert(
+          tileSpriteOp(2, videoInfo(1920, 1080, durationInMillis = 650000)) == Some(
+            VideoThumbnailTile(spritePixels = tiles.spritePixels, intervalInMillis = 5000, index = 2, token = tiles.recipeToken)
+          )
+        )
+
+      "reject a sprite index before the first sprite" in
+        assert(tileSpriteOp(0, videoInfo(1920, 1080)).isEmpty)
+
+      "reject a sprite index beyond the video duration" in
+        assert(tileSpriteOp(3, videoInfo(1920, 1080)).isEmpty)
+
+      "reject a tile when the content version does not match" in {
+        val info = videoInfo(1920, 1080)
+        val op   = ResourceContentRoutes.patterns.thumbnailTileManifestOperation("staleversion", tiles.recipeToken, info, tiles)
+        assert(op.isEmpty)
+      }
+
+      "reject a tile when the recipe token does not match" in {
+        val info = videoInfo(1920, 1080)
+        val op   = ResourceContentRoutes.patterns.thumbnailTileManifestOperation(
+          ResourceOperation.contentVersion(info),
+          "staletoken",
+          info,
+          tiles
+        )
+        assert(op.isEmpty)
+      }
+
+      "reject a sprite when the recipe token does not match" in {
+        val info = videoInfo(1920, 1080)
+        val op   = ResourceContentRoutes.patterns.thumbnailTileSpriteOperation(
+          ResourceOperation.contentVersion(info),
+          "staletoken",
+          "1",
+          info,
+          tiles
+        )
+        assert(op.isEmpty)
+      }
+
+      "reject a tile for a non-video resource" in
+        assert(tileManifestOp(imageInfo(1600, 1063)).isEmpty)
+    }
+
+    "computing a content version" should {
+
+      "be stable for identical resources" in
+        assert(ResourceOperation.contentVersion(videoInfo(1920, 1080)) == ResourceOperation.contentVersion(videoInfo(1920, 1080)))
+
+      "change when content fields change" in {
+        val base = videoInfo(1920, 1080)
+        assert(ResourceOperation.contentVersion(base) != ResourceOperation.contentVersion(base.copy(size = 2L)))
+        assert(ResourceOperation.contentVersion(base) != ResourceOperation.contentVersion(base.copy(timeLastModified = Some(2L))))
+        assert(ResourceOperation.contentVersion(base) != ResourceOperation.contentVersion(base.copy(fileKey = Some("(dev=1,ino=2)"))))
+        assert(ResourceOperation.contentVersion(base) != ResourceOperation.contentVersion(base.copy(partialHash = "other")))
+      }
+
+      "not change on rename" in {
+        val base = videoInfo(1920, 1080)
+        assert(ResourceOperation.contentVersion(base) == ResourceOperation.contentVersion(base.copy(path = ResourcePath("renamed.mp4"))))
+      }
+    }
+
+    "matching public URLs" should {
+
+      "match thumbnail URLs with a version, numeric size and a format extension" in {
+        val thumbnail = ResourceContentRoutes.patterns.PublicThumbnailPattern.findFirstMatchIn("thumb_abc123_2863_w_768.avif")
+        assert(thumbnail.map(m => (m.group(1), m.group(2), m.group(3), m.group(4), m.group(5))) == Some(("abc123", "2863", "w", "768", "avif")))
+
+        val clip = ResourceContentRoutes.patterns.PublicClipPattern.findFirstMatchIn("clip_abc123_2863_5863_h_512.mp4")
+        assert(clip.map(m => (m.group(1), m.group(2), m.group(3), m.group(4), m.group(5))) == Some(("abc123", "2863", "5863", "h", "512")))
+
+        assert(ResourceContentRoutes.patterns.PublicThumbnailPattern.findFirstMatchIn("thumb_abc123_2863_w_s.webp").isEmpty)
+      }
+
+      "match thumbnail tile manifest and sprite URLs" in {
+        val manifest = ResourceContentRoutes.patterns.PublicThumbnailTileManifestPattern.findFirstMatchIn("thumbtile_abc123_def456.vtt")
+        val sprite   = ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123_def456_2.webp")
+
+        assert(manifest.map(m => (m.group(1), m.group(2))) == Some(("abc123", "def456")))
+        assert(sprite.map(m => (m.group(1), m.group(2), m.group(3))) == Some(("abc123", "def456", "2")))
+        assert(ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123.webp").isEmpty)
+        assert(ResourceContentRoutes.patterns.PublicThumbnailTileSpritePattern.findFirstMatchIn("thumbtile_abc123_def456_2.png").isEmpty)
+      }
+    }
+  }
+}

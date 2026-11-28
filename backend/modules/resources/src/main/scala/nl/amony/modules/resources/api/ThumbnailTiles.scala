@@ -45,7 +45,7 @@ final class ThumbnailTiles(
       intervals.mkString(","),
       targetFrames.toString,
       VideoThumbnailTile.manifestVersion.toString,
-      ResourceOperations.previewRecipeVersion.toString
+      ResourceOperation.previewRecipeVersion.toString
     )
     val digest = MessageDigest.getInstance("SHA-1")
     Base32.encode(digest.digest(parts.mkString("\u0000").getBytes(StandardCharsets.UTF_8))).take(recipeTokenLength)

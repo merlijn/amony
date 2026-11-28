@@ -37,7 +37,7 @@ final class LocalDirectorySyncer(
   config: LocalDirectoryStorageConfig,
   parallelFactor: Int,
   db: ResourceDatabase,
-  ops: BucketOperations,
+  ops: ResourceOperations,
   events: ResourceEventStore
 ) extends ResourceDiscovery:
 
