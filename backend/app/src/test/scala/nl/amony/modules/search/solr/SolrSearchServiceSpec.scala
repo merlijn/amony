@@ -24,6 +24,21 @@ class SolrSearchServiceSpec extends AnyWordSpecLike with Matchers {
       }
     }
 
+    "searching by text query" should {
+
+      "match both path and title with an OR when a query is given" in {
+        val query = search.toSolrQuery(Query(n = 1, q = Some("holiday"))).get(CommonParams.Q)
+
+        query shouldBe s"(${SolrSchema.FieldNames.path}:*holiday* OR ${SolrSchema.FieldNames.title}:*holiday*)"
+      }
+
+      "match all documents when no query is given" in {
+        val query = search.toSolrQuery(Query(n = 1, q = None)).get(CommonParams.Q)
+
+        query shouldBe s"${SolrSchema.FieldNames.path}:*"
+      }
+    }
+
     "filtering on thumbnails" should {
 
       "only return videos without a thumbnail timestamp when noThumbnail is set" in {
