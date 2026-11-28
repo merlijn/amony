@@ -50,19 +50,19 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
     res: ThumbnailResolutions = resolutions
   ) =
     ResourceContentRoutes.patterns
-      .thumbnailOperation(ResourceOperations.contentVersion(info), ts, dim, resKey, format, res, formats, info)
+      .thumbnailOperation(ResourceOperation.contentVersion(info), ts, dim, resKey, format, res, formats, info)
 
   private def clipOp(start: Long, end: Long, dim: String, resKey: String, info: ResourceInfo) =
     ResourceContentRoutes.patterns
-      .clipOperation(ResourceOperations.contentVersion(info), start, end, dim, resKey, resolutions, info)
+      .clipOperation(ResourceOperation.contentVersion(info), start, end, dim, resKey, resolutions, info)
 
   private def tileManifestOp(info: ResourceInfo) =
     ResourceContentRoutes.patterns
-      .thumbnailTileManifestOperation(ResourceOperations.contentVersion(info), tiles.recipeToken, info, tiles)
+      .thumbnailTileManifestOperation(ResourceOperation.contentVersion(info), tiles.recipeToken, info, tiles)
 
   private def tileSpriteOp(index: Int, info: ResourceInfo) =
     ResourceContentRoutes.patterns
-      .thumbnailTileSpriteOperation(ResourceOperations.contentVersion(info), tiles.recipeToken, index.toString, info, tiles)
+      .thumbnailTileSpriteOperation(ResourceOperation.contentVersion(info), tiles.recipeToken, index.toString, info, tiles)
 
   "ResourceContentRoutes" when {
 
@@ -231,7 +231,7 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
       "reject a tile when the recipe token does not match" in {
         val info = videoInfo(1920, 1080)
         val op   = ResourceContentRoutes.patterns.thumbnailTileManifestOperation(
-          ResourceOperations.contentVersion(info),
+          ResourceOperation.contentVersion(info),
           "staletoken",
           info,
           tiles
@@ -242,7 +242,7 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
       "reject a sprite when the recipe token does not match" in {
         val info = videoInfo(1920, 1080)
         val op   = ResourceContentRoutes.patterns.thumbnailTileSpriteOperation(
-          ResourceOperations.contentVersion(info),
+          ResourceOperation.contentVersion(info),
           "staletoken",
           "1",
           info,
@@ -258,19 +258,19 @@ class ResourceContentRoutesSpec extends AnyWordSpecLike {
     "computing a content version" should {
 
       "be stable for identical resources" in
-        assert(ResourceOperations.contentVersion(videoInfo(1920, 1080)) == ResourceOperations.contentVersion(videoInfo(1920, 1080)))
+        assert(ResourceOperation.contentVersion(videoInfo(1920, 1080)) == ResourceOperation.contentVersion(videoInfo(1920, 1080)))
 
       "change when content fields change" in {
         val base = videoInfo(1920, 1080)
-        assert(ResourceOperations.contentVersion(base) != ResourceOperations.contentVersion(base.copy(size = 2L)))
-        assert(ResourceOperations.contentVersion(base) != ResourceOperations.contentVersion(base.copy(timeLastModified = Some(2L))))
-        assert(ResourceOperations.contentVersion(base) != ResourceOperations.contentVersion(base.copy(fileKey = Some("(dev=1,ino=2)"))))
-        assert(ResourceOperations.contentVersion(base) != ResourceOperations.contentVersion(base.copy(partialHash = "other")))
+        assert(ResourceOperation.contentVersion(base) != ResourceOperation.contentVersion(base.copy(size = 2L)))
+        assert(ResourceOperation.contentVersion(base) != ResourceOperation.contentVersion(base.copy(timeLastModified = Some(2L))))
+        assert(ResourceOperation.contentVersion(base) != ResourceOperation.contentVersion(base.copy(fileKey = Some("(dev=1,ino=2)"))))
+        assert(ResourceOperation.contentVersion(base) != ResourceOperation.contentVersion(base.copy(partialHash = "other")))
       }
 
       "not change on rename" in {
         val base = videoInfo(1920, 1080)
-        assert(ResourceOperations.contentVersion(base) == ResourceOperations.contentVersion(base.copy(path = ResourcePath("renamed.mp4"))))
+        assert(ResourceOperation.contentVersion(base) == ResourceOperation.contentVersion(base.copy(path = ResourcePath("renamed.mp4"))))
       }
     }
 

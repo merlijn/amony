@@ -89,7 +89,7 @@ class FileOperationsSpec extends AnyWordSpecLike with Matchers:
       )
       val res        = resource("missing.mp4")
       val op         = VideoFragment(Some(512), None, 0L, 1000L)
-      val key        = StoreKey.derived(res.resourceId, ResourceOperations.contentVersion(res), op)
+      val key        = StoreKey.derived(res.resourceId, ResourceOperation.contentVersion(res), op)
       store.putBytes(key, Some(op.contentType), "cached-clip".getBytes).unsafeRunSync()
 
       operations.derivedResource(res, op).value.unsafeRunSync() match

@@ -94,7 +94,7 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
     config: ResourceBucketConfig,
     db: ResourceDatabase,
     published: AtomicReference[List[ResourceEvent]],
-    ops: BucketOperations = null
+    ops: ResourceOperations = null
   ): ResourceBucketImpl =
     val topic  = recordingTopic(published)
     val store  = LocalDirectoryStore(config.storage.asInstanceOf[LocalDirectoryStorageConfig])
@@ -248,7 +248,7 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
       val bucketId = BucketId("media")
       val res      = newResource(bucketId)
 
-      val ops   = mock[BucketOperations](RETURNS_DEFAULTS)
+      val ops   = mock[ResourceOperations](RETURNS_DEFAULTS)
       val store = mock[ResourceStore](RETURNS_DEFAULTS)
       ops.generatePreviews(res) returns IO.unit
       store.delete(StoreKey.Resource(res.path)) returns IO.unit
@@ -312,7 +312,7 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
         val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
         val db        = ResourceDatabase(pool)
         val published = new AtomicReference(List.empty[ResourceEvent])
-        val ops       = mock[BucketOperations](RETURNS_DEFAULTS)
+        val ops       = mock[ResourceOperations](RETURNS_DEFAULTS)
         val meta      = ContentMeta(contentType = Some("text/plain"))
         val unchanged = newResource(BucketId(cfg.id), "same.txt").copy(contentMeta = meta)
         val changed   = newResource(BucketId(cfg.id), "changed.txt").copy(contentMeta = ContentMeta.empty)

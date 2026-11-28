@@ -23,7 +23,7 @@ class ResourceBucketImpl(
   parallelFactor: Int,
   db: ResourceDatabase,
   topic: MessageTopic[ResourceEvent],
-  ops: BucketOperations,
+  ops: ResourceOperations,
   store: ResourceStore,
   events: ResourceEventStore,
   jobBus: JobBus[ResourceJob],
@@ -256,33 +256,29 @@ class ResourceBucketImpl(
       case None                                       => IO.pure(Right(()))
       case Some(RemuxResult(targetPath, partialHash)) =>
         (for
-          info   <- EitherT.fromOptionF(getResourceInfo(resourceId), StreamabilityError.ResourceNotFound(resourceId))
-          stored <- EitherT.fromOptionF(
-                      store.stat(targetPath),
-                      StreamabilityError.FixFailed(targetPath, "resource file is no longer available")
-                    )
-          updated = info.copy(
-                      path             = stored.path,
-                      size             = stored.size,
-                      partialHash      = partialHash,
-                      fileKey          = stored.fileKey,
-                      timeLastModified = Some(stored.timeLastModified),
-                      contentMeta      = info.contentMeta.copy(streamable = Some(true))
-                    )
-          _      <- EitherT.liftF {
-                      db.transact { s =>
-                        given Option[skunk.Session[IO]] = Some(s)
-                        db.upsertResource(updated) >>
-                          IO.whenA(targetPath != info.path)(db.deleteStagedUpload(id, targetPath)) >>
-                          topic.publish(s, ResourceModified(updated))
-                      } >>
-                        IO(logger.info(s"[$id] ${ResourceModified(updated)}")) >>
-                        IO.whenA(targetPath != info.path)(
-                          store.delete(StoreKey.Resource(info.path)).handleErrorWith(e =>
-                            IO(logger.warn(s"Failed to delete previous object '${info.path}' after remux", e))
-                          )
-                        )
-                    }
+          current <- EitherT.fromOptionF(getResourceInfo(resourceId), StreamabilityError.ResourceNotFound(resourceId))
+          stored  <- EitherT.fromOptionF(store.stat(targetPath), StreamabilityError.FixFailed(targetPath, "resource file is no longer available"))
+          updated  = current.copy(
+                       path             = stored.path,
+                       size             = stored.size,
+                       partialHash      = partialHash,
+                       fileKey          = stored.fileKey,
+                       timeLastModified = Some(stored.timeLastModified),
+                       contentMeta      = current.contentMeta.copy(streamable = Some(true))
+                     )
+          _       <- EitherT.liftF {
+                       db.transact { s =>
+                         db.upsertResource(updated)
+                           >> IO.whenA(targetPath != current.path)(db.deleteStagedUpload(id, targetPath))
+                           >> topic.publish(s, ResourceModified(updated))
+                       } >>
+                         IO(logger.info(s"[$id] ${ResourceModified(updated)}")) >>
+                         IO.whenA(targetPath != current.path)(
+                           store.delete(StoreKey.Resource(current.path)).handleErrorWith(e =>
+                             IO(logger.warn(s"Failed to delete previous object '${current.path}' after remux", e))
+                           )
+                         )
+                     }
         yield ()).value
 
   def cleanupStagedUploads(cutoffTime: Instant): IO[Unit] =

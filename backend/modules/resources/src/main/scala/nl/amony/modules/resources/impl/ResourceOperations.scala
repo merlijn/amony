@@ -34,7 +34,7 @@ enum ContentLocation:
 final case class RemuxResult(targetPath: ResourcePath, partialHash: String)
 
 /** Operations on the content of a bucket. */
-trait BucketOperations:
+trait ResourceOperations:
 
   def contentMeta(location: ContentLocation): EitherT[IO, ContentUnreadable, ContentMeta]
 
@@ -68,7 +68,7 @@ final class FileOperations(
   processSettings: ProcessSettings,
   processLimiter: ProcessLimiter,
   store: ResourceStore
-)(using meter: Meter[IO], tracer: Tracer[IO]) extends BucketOperations, Logging {
+)(using meter: Meter[IO], tracer: Tracer[IO]) extends ResourceOperations, Logging {
 
   private given runner: ProcessRunner = new ProcessRunner(processSettings, processLimiter)
   private val tika                    = new Tika()
@@ -215,12 +215,12 @@ final class FileOperations(
     yield result
 
   private def previewETag(info: ResourceInfo, key: StoreKey.Derived): String =
-    ETag.of(info.partialHash, key.name, formats.settingsFingerprint, ResourceOperations.previewRecipeVersion.toString)
+    ETag.of(info.partialHash, key.name, formats.settingsFingerprint, ResourceOperation.previewRecipeVersion.toString)
 
   override def derivedResource(info: ResourceInfo, operation: ResourceOperation): EitherT[IO, DerivedResourceError, ResourceContent] =
     for
       _       <- EitherT.fromEither[IO](ResourcePath.fromString(info.path)).leftMap(reason => DerivedResourceError.InvalidPath(info.resourceId, reason))
-      key      = StoreKey.derived(info.resourceId, ResourceOperations.contentVersion(info), operation)
+      key      = StoreKey.derived(info.resourceId, ResourceOperation.contentVersion(info), operation)
       eTag     = Some(previewETag(info, key))
       opKey    = (resourceId = info.resourceId, operation = operation)
       content <- EitherT(
@@ -328,7 +328,7 @@ final class FileOperations(
 
   private def renderThumbnailTileManifest(info: ResourceInfo, operation: VideoThumbnailTileVtt): String = {
     val video           = videoProperties(info)
-    val contentVersion  = ResourceOperations.contentVersion(info)
+    val contentVersion  = ResourceOperation.contentVersion(info)
     val (width, height) = VideoThumbnailTile.resolutionFor(operation.spritePixels, video.width, video.height)
     val spriteUrl       = (index: Int) => s"/api/resources/${info.bucketId}/${info.resourceId}/thumbtile_${contentVersion}_${operation.token}_$index.webp"
 
@@ -343,7 +343,7 @@ final class FileOperations(
   }
 
   private def previewOperations(info: ResourceInfo): List[ResourceOperation] =
-    ResourceOperations.all(info, resolutions, formats).filter(_.validate(info).isRight)
+    ResourceOperation.all(info, resolutions, formats).filter(_.validate(info).isRight)
 
   private def runPreviewOperation(info: ResourceInfo, operation: ResourceOperation): IO[Unit] =
     derivedResource(info, operation)

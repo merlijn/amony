@@ -4,7 +4,7 @@ import org.scalatest.wordspec.AnyWordSpecLike
 
 import nl.amony.modules.auth.api.UserId
 
-class ResourceOperationsSpec extends AnyWordSpecLike {
+class ResourceOperationSpec extends AnyWordSpecLike {
 
   private val resolutions = ThumbnailResolutions(List(128, 256, 512), 256, stepDown = 0)
   private val formats     = ThumbnailFormats(List(ImageFormat.Webp, ImageFormat.Jpeg))
@@ -41,7 +41,7 @@ class ResourceOperationsSpec extends AnyWordSpecLike {
     "all" should {
 
       "build a thumbnail per format and resolution plus a clip per resolution for videos" in {
-        val operations = ResourceOperations.all(videoInfo(1920, 1080), resolutions, formats)
+        val operations = ResourceOperation.all(videoInfo(1920, 1080), resolutions, formats)
 
         val thumbnails = operations.collect { case t: VideoThumbnail => t }
         val clips      = operations.collect { case f: VideoFragment => f }
@@ -57,7 +57,7 @@ class ResourceOperationsSpec extends AnyWordSpecLike {
       }
 
       "pin both dimensions for anamorphic videos" in {
-        val operations = ResourceOperations.all(videoInfo(853, 480, pixelAspectRatio = Some(32f / 27f)), resolutions, formats)
+        val operations = ResourceOperation.all(videoInfo(853, 480, pixelAspectRatio = Some(32f / 27f)), resolutions, formats)
         val thumbnails = operations.collect { case t: VideoThumbnail => t }
         val clips      = operations.collect { case f: VideoFragment => f }
 
@@ -73,7 +73,7 @@ class ResourceOperationsSpec extends AnyWordSpecLike {
       }
 
       "build only image thumbnails for images" in {
-        val operations = ResourceOperations.all(imageInfo(1600, 900), resolutions, formats)
+        val operations = ResourceOperation.all(imageInfo(1600, 900), resolutions, formats)
 
         assert(operations.size == formats.formats.size * resolutions.sizes.size)
         assert(operations.forall(_.isInstanceOf[ImageThumbnail]))
@@ -89,7 +89,7 @@ class ResourceOperationsSpec extends AnyWordSpecLike {
           partialHash = "test-hash",
           size        = 1L
         )
-        assert(ResourceOperations.all(info, resolutions, formats).isEmpty)
+        assert(ResourceOperation.all(info, resolutions, formats).isEmpty)
       }
     }
   }

@@ -230,7 +230,7 @@ case class ImageThumbnail(width: Option[Int] = None, height: Option[Int] = None,
     yield ()
 }
 
-object ResourceOperations:
+object ResourceOperation:
 
   /**
    * Bump this when the preview generation logic or the ffmpeg/ImageMagick toolchain changes, so that cached previews

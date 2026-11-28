@@ -48,14 +48,14 @@ object ResourceContentRoutes extends Logging {
       val requestedSize       = resolutionKey.toIntOption.getOrElse(resolutions.default)
       val (dimension, pixels) = resolutions.resolve(dimensionToken, requestedSize)
       val format              = formats.resolve(formatName)
-      val source              = ResourceOperations.sourceDimensions(resource)
-      if urlVersion != ResourceOperations.contentVersion(resource) then None
+      val source              = ResourceOperation.sourceDimensions(resource)
+      if urlVersion != ResourceOperation.contentVersion(resource) then None
       else
         resource.basicContentProperties match {
           case Some(video: VideoProperties) =>
             val ts = resource.thumbnailTimestamp.getOrElse(video.durationInMillis / 3).toLong
             if urlTimestamp == ts then
-              val (width, height) = ResourceOperations.scaledDimensions(
+              val (width, height) = ResourceOperation.scaledDimensions(
                 pixels,
                 dimension,
                 source,
@@ -67,7 +67,7 @@ object ResourceContentRoutes extends Logging {
             else None
           case Some(_: ImageProperties)     =>
             val (width, height) =
-              ResourceOperations.scaledDimensions(pixels, dimension, source, even = false, minimumDimension = format.minimumDimension)
+              ResourceOperation.scaledDimensions(pixels, dimension, source, even = false, minimumDimension = format.minimumDimension)
             Some(ImageThumbnail(width = width, height = height, format = format))
           case _                            => None
         }
@@ -83,7 +83,7 @@ object ResourceContentRoutes extends Logging {
       resource: ResourceInfo,
       tiles: ThumbnailTiles
     ): Option[VideoThumbnailTileVtt] =
-      if urlVersion != ResourceOperations.contentVersion(resource) || urlToken != tiles.recipeToken then None
+      if urlVersion != ResourceOperation.contentVersion(resource) || urlToken != tiles.recipeToken then None
       else
         resource.basicContentProperties match {
           case Some(video: VideoProperties) =>
@@ -108,7 +108,7 @@ object ResourceContentRoutes extends Logging {
       resource: ResourceInfo,
       tiles: ThumbnailTiles
     ): Option[VideoThumbnailTile] =
-      if urlVersion != ResourceOperations.contentVersion(resource) || urlToken != tiles.recipeToken then None
+      if urlVersion != ResourceOperation.contentVersion(resource) || urlToken != tiles.recipeToken then None
       else
         resource.basicContentProperties match {
           case Some(video: VideoProperties) =>
@@ -141,14 +141,14 @@ object ResourceContentRoutes extends Logging {
     ): Option[ResourceOperation] = {
       val requestedSize       = resolutionKey.toIntOption.getOrElse(resolutions.default)
       val (dimension, pixels) = resolutions.resolve(dimensionToken, requestedSize)
-      val source              = ResourceOperations.sourceDimensions(resource)
-      if urlVersion != ResourceOperations.contentVersion(resource) then None
+      val source              = ResourceOperation.sourceDimensions(resource)
+      if urlVersion != ResourceOperation.contentVersion(resource) then None
       else
         resource.basicContentProperties match {
           case Some(video: VideoProperties) =>
             val (start, end) = VideoFragment.previewRange(resource.thumbnailTimestamp, video.durationInMillis)
             if urlStart == start && urlEnd == end then
-              val (width, height) = ResourceOperations.scaledDimensions(
+              val (width, height) = ResourceOperation.scaledDimensions(
                 pixels,
                 dimension,
                 source,
