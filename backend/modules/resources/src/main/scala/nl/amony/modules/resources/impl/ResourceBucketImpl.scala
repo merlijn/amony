@@ -27,7 +27,7 @@ class ResourceBucketImpl(
   store: ResourceStore,
   events: ResourceEventStore,
   jobBus: JobBus[ResourceJob],
-  jobTimeout: FiniteDuration = 30.minutes
+  jobTimeout: FiniteDuration = 5.minutes
 ) extends ResourceBucketConsumer,
       Logging {
 
