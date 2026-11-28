@@ -1,5 +1,6 @@
 package nl.amony.modules.resources.http
 
+import java.net.URI
 import java.nio.file.{InvalidPathException, Path}
 import java.time.Instant
 import scala.concurrent.duration.DurationLong
@@ -27,16 +28,32 @@ case class ScanSettingsDto(
   excludePatterns: List[String]
 ) derives Codec, Schema
 
+case class LocalDirectoryStorageDto(
+  path: String,
+  relativeUploadPath: String,
+  sync: ScanSettingsDto
+) derives Codec, Schema
+
+case class S3StorageDto(
+  bucket: String,
+  region: String,
+  endpoint: Option[String]            = None,
+  prefix: Option[String]              = None,
+  pathStyleAccess: Boolean            = false,
+  presignedUrlTtlSeconds: Long        = 900L,
+  accessKeyId: Option[String]         = None,
+  secretAccessKey: Option[String]     = None,
+  hasSecretAccessKey: Option[Boolean] = None
+) derives Codec, Schema
+
 case class BucketConfigDto(
   id: String,
   `type`: String,
   requiredRole: Option[String],
-  path: String,
-  relativeUploadPath: String,
   generatePreviewsOnAdd: Boolean,
-  hashingAlgorithm: Option[String],
-  sync: ScanSettingsDto,
-  updatedAt: Option[Instant]
+  localDirectory: Option[LocalDirectoryStorageDto] = None,
+  s3: Option[S3StorageDto]                         = None,
+  updatedAt: Option[Instant]                       = None
 ) derives Codec, Schema
 
 object BucketConfigDto:
@@ -50,37 +67,41 @@ object BucketConfigDto:
         id                    = stored.config.id,
         `type`                = localDirectoryType,
         requiredRole          = stored.config.requiredRole.map(_.toString),
-        path                  = local.path.toString,
-        relativeUploadPath    = local.relativeUploadPath.toString,
         generatePreviewsOnAdd = stored.config.generatePreviewsOnAdd,
-        hashingAlgorithm      = None,
-        sync                  = ScanSettingsDto(
-          enabled             = local.sync.enabled,
-          syncOnStartup       = local.sync.syncOnStartup,
-          newFilesOwner       = local.sync.newFilesOwner,
-          pollIntervalSeconds = local.sync.pollInterval.toSeconds,
-          includePatterns     = local.sync.includePatterns,
-          excludePatterns     = local.sync.excludePatterns
+        localDirectory        = Some(
+          LocalDirectoryStorageDto(
+            path               = local.path.toString,
+            relativeUploadPath = local.relativeUploadPath.toString,
+            sync               = ScanSettingsDto(
+              enabled             = local.sync.enabled,
+              syncOnStartup       = local.sync.syncOnStartup,
+              newFilesOwner       = local.sync.newFilesOwner,
+              pollIntervalSeconds = local.sync.pollInterval.toSeconds,
+              includePatterns     = local.sync.includePatterns,
+              excludePatterns     = local.sync.excludePatterns
+            )
+          )
         ),
         updatedAt             = Some(stored.updatedAt)
       )
     case s3: S3StorageConfig                =>
-      val location                    = s3.normalizedPrefix.fold(s"s3://${s3.bucket}")(p => s"s3://${s3.bucket}/$p")
       BucketConfigDto(
         id                    = stored.config.id,
         `type`                = s3Type,
         requiredRole          = stored.config.requiredRole.map(_.toString),
-        path                  = location,
-        relativeUploadPath    = "",
         generatePreviewsOnAdd = stored.config.generatePreviewsOnAdd,
-        hashingAlgorithm      = None,
-        sync                  = ScanSettingsDto(
-          enabled             = false,
-          syncOnStartup       = false,
-          newFilesOwner       = "",
-          pollIntervalSeconds = 0L,
-          includePatterns     = Nil,
-          excludePatterns     = Nil
+        s3                    = Some(
+          S3StorageDto(
+            bucket                 = s3.bucket,
+            region                 = s3.region,
+            endpoint               = s3.endpoint.map(_.toString),
+            prefix                 = s3.prefix,
+            pathStyleAccess        = s3.pathStyleAccess,
+            presignedUrlTtlSeconds = s3.presignedUrlTtl.toSeconds,
+            accessKeyId            = s3.accessKeyId,
+            secretAccessKey        = None,
+            hasSecretAccessKey     = Some(s3.secretAccessKey.isDefined)
+          )
         ),
         updatedAt             = Some(stored.updatedAt)
       )
@@ -89,27 +110,55 @@ object BucketConfigDto:
     try Right(Path.of(value.strip()))
     catch case _: InvalidPathException => Left(s"Invalid $field: '$value'")
 
+  private def parseOptionalUri(field: String, value: Option[String]): Either[String, Option[URI]] =
+    value.map(_.strip()).filter(_.nonEmpty) match
+      case None    => Right(None)
+      case Some(s) =>
+        try Right(Some(URI.create(s)))
+        catch case _: IllegalArgumentException => Left(s"Invalid $field: '$s'")
+
   def toConfig(dto: BucketConfigDto): Either[String, ResourceBucketConfig] =
+    val requiredRole = dto.requiredRole.map(_.strip()).filter(_.nonEmpty).map(Role(_))
     dto.`type` match
       case `localDirectoryType` =>
         for
-          path       <- parsePath("path", dto.path)
-          uploadPath <- parsePath("upload path", dto.relativeUploadPath)
+          local      <- dto.localDirectory.toRight("LocalDirectory storage settings are required")
+          path       <- parsePath("path", local.path)
+          uploadPath <- parsePath("upload path", local.relativeUploadPath)
         yield ResourceBucketConfig(
           id                    = dto.id.strip(),
-          requiredRole          = dto.requiredRole.map(_.strip()).filter(_.nonEmpty).map(Role(_)),
+          requiredRole          = requiredRole,
           generatePreviewsOnAdd = dto.generatePreviewsOnAdd,
           storage               = LocalDirectoryStorageConfig(
             path               = path,
             sync               = ScanConfig(
-              enabled         = dto.sync.enabled,
-              syncOnStartup   = dto.sync.syncOnStartup,
-              newFilesOwner   = dto.sync.newFilesOwner.strip(),
-              pollInterval    = dto.sync.pollIntervalSeconds.seconds,
-              includePatterns = dto.sync.includePatterns.map(_.strip()).filter(_.nonEmpty),
-              excludePatterns = dto.sync.excludePatterns.map(_.strip()).filter(_.nonEmpty)
+              enabled         = local.sync.enabled,
+              syncOnStartup   = local.sync.syncOnStartup,
+              newFilesOwner   = local.sync.newFilesOwner.strip(),
+              pollInterval    = local.sync.pollIntervalSeconds.seconds,
+              includePatterns = local.sync.includePatterns.map(_.strip()).filter(_.nonEmpty),
+              excludePatterns = local.sync.excludePatterns.map(_.strip()).filter(_.nonEmpty)
             ),
             relativeUploadPath = uploadPath
+          )
+        )
+      case `s3Type`             =>
+        for
+          s3       <- dto.s3.toRight("S3 storage settings are required")
+          endpoint <- parseOptionalUri("endpoint", s3.endpoint)
+        yield ResourceBucketConfig(
+          id                    = dto.id.strip(),
+          requiredRole          = requiredRole,
+          generatePreviewsOnAdd = dto.generatePreviewsOnAdd,
+          storage               = S3StorageConfig(
+            bucket          = s3.bucket.strip(),
+            region          = s3.region.strip(),
+            endpoint        = endpoint,
+            prefix          = s3.prefix.map(_.strip()).filter(_.nonEmpty),
+            pathStyleAccess = s3.pathStyleAccess,
+            presignedUrlTtl = s3.presignedUrlTtlSeconds.seconds,
+            accessKeyId     = s3.accessKeyId.map(_.strip()).filter(_.nonEmpty),
+            secretAccessKey = s3.secretAccessKey.map(_.strip()).filter(_.nonEmpty)
           )
         )
       case other                => Left(s"Unknown bucket type: $other")
@@ -242,6 +291,13 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
   private def parseDto(dto: BucketConfigDto): EitherT[IO, BucketAdminError, ResourceBucketConfig] =
     EitherT.fromEither[IO](BucketConfigDto.toConfig(dto)).leftMap(BadRequestError("invalid_bucket", _))
 
+  private def preserveS3Secret(updated: ResourceBucketConfig, existing: Option[ResourceBucketConfig]): ResourceBucketConfig =
+    (updated.storage, existing.map(_.storage)) match
+      case (newS3: S3StorageConfig, Some(oldS3: S3StorageConfig))
+          if newS3.accessKeyId.isDefined && newS3.secretAccessKey.isEmpty =>
+        updated.copy(storage = newS3.copy(secretAccessKey = oldS3.secretAccessKey))
+      case _ => updated
+
   def apply(registry: BucketRegistry, discovery: BucketDiscoveryRegistry, resourceIndex: ResourceIndex)(
     using apiSecurity: ApiSecurity
   ): ServerEndpoints[IO] =
@@ -278,9 +334,11 @@ private[resources] object BucketRoutes extends RoutesModule, Logging:
 
       securedServerLogicT(endpoint = updateBucket, requiredPermission = Permission.ManageBuckets) { _ => (bucketId, dto) =>
         for
-          config    <- parseDto(dto)
+          parsed    <- parseDto(dto)
           updatedAt <- requireUpdatedAt(dto)
-          _         <- EitherT.cond[IO](config.id == bucketId, (), BadRequestError("invalid_bucket", "The bucket id cannot be changed"))
+          _         <- EitherT.cond[IO](parsed.id == bucketId, (), BadRequestError("invalid_bucket", "The bucket id cannot be changed"))
+          existing  <- EitherT.liftF(registry.getConfig(bucketId))
+          config     = preserveS3Secret(parsed, existing.map(_.config))
           _         <- EitherT(registry.update(config, updatedAt)).leftMap(toApiError)
           stored    <- requireConfig(bucketId)
         yield BucketConfigDto.fromStored(stored)

@@ -9,7 +9,7 @@ import cats.implicits.*
 import fs2.{Chunk, Stream}
 import org.http4s.Uri
 import scribe.Logging
-import software.amazon.awssdk.auth.credentials.{AwsCredentialsProvider, DefaultCredentialsProvider}
+import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, AwsCredentialsProvider, DefaultCredentialsProvider, StaticCredentialsProvider}
 import software.amazon.awssdk.core.checksums.{RequestChecksumCalculation, ResponseChecksumValidation}
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
@@ -349,20 +349,28 @@ object S3ResourceStore:
   private def cleanETag(raw: String): Option[String] =
     Option(raw).map(_.stripPrefix("\"").stripSuffix("\"")).filter(_.nonEmpty)
 
+  private def resolveCredentials(config: S3StorageConfig, overrideProvider: Option[AwsCredentialsProvider]): AwsCredentialsProvider =
+    overrideProvider.getOrElse {
+      (config.accessKeyId, config.secretAccessKey) match
+        case (Some(keyId), Some(secret)) => StaticCredentialsProvider.create(AwsBasicCredentials.create(keyId, secret))
+        case _                           => DefaultCredentialsProvider.builder().build()
+    }
+
   def resource(
     config: S3StorageConfig,
-    credentialsProvider: AwsCredentialsProvider = DefaultCredentialsProvider.builder().build()
+    credentialsProvider: Option[AwsCredentialsProvider] = None
   ): Resource[IO, S3ResourceStore] =
-    val s3Config = S3Configuration.builder()
+    val credentials = resolveCredentials(config, credentialsProvider)
+    val s3Config    = S3Configuration.builder()
       .pathStyleAccessEnabled(config.pathStyleAccess)
       .chunkedEncodingEnabled(false)
       .build()
-    val region   = Region.of(config.region)
+    val region      = Region.of(config.region)
 
     val clientResource = Resource.fromAutoCloseable(IO.blocking {
       val builder = S3Client.builder()
         .region(region)
-        .credentialsProvider(credentialsProvider)
+        .credentialsProvider(credentials)
         .serviceConfiguration(s3Config)
         .requestChecksumCalculation(RequestChecksumCalculation.WHEN_REQUIRED)
         .responseChecksumValidation(ResponseChecksumValidation.WHEN_REQUIRED)
@@ -373,7 +381,7 @@ object S3ResourceStore:
     val presignerResource = Resource.fromAutoCloseable(IO.blocking {
       val builder = S3Presigner.builder()
         .region(region)
-        .credentialsProvider(credentialsProvider)
+        .credentialsProvider(credentials)
         .serviceConfiguration(s3Config)
       config.endpoint.foreach(builder.endpointOverride)
       builder.build()

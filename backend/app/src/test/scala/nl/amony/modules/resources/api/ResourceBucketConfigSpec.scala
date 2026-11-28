@@ -144,6 +144,8 @@ class ResourceBucketConfigSpec extends AnyWordSpecLike with Matchers {
         error(s3Storage(endpoint = Some(URI.create("ftp://example.com")))) should include("valid http or https URL")
         error(s3Storage(presignedUrlTtl = 0.seconds)) shouldBe "Presigned URL TTL must be at least 1 second"
         error(s3Storage(presignedUrlTtl = 8.days)) shouldBe "Presigned URL TTL must be at most 7 days"
+        error(s3Storage().copy(accessKeyId = Some("key"))) shouldBe "Both access key id and secret access key must be provided together"
+        error(s3Storage().copy(secretAccessKey = Some("secret"))) shouldBe "Both access key id and secret access key must be provided together"
       }
     }
 

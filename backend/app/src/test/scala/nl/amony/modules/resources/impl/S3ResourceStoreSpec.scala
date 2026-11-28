@@ -63,9 +63,11 @@ class S3ResourceStoreSpec extends AnyWordSpecLike with TestContainerForAll with 
         endpoint        = Some(endpointOf(container)),
         prefix          = prefix,
         pathStyleAccess = true,
-        presignedUrlTtl = 5.minutes
+        presignedUrlTtl = 5.minutes,
+        accessKeyId     = Some(accessKey),
+        secretAccessKey = Some(secretKey)
       )
-      S3ResourceStore.resource(config, credentials).use(store => fn(bucket, client, store)).unsafeRunSync()
+      S3ResourceStore.resource(config).use(store => fn(bucket, client, store)).unsafeRunSync()
     finally client.close()
 
   private def fetchBytes(uri: URI): (Int, Option[String], Array[Byte]) =
@@ -251,9 +253,11 @@ class S3ResourceStoreSpec extends AnyWordSpecLike with TestContainerForAll with 
           region          = region,
           endpoint        = Some(endpointOf(container)),
           prefix          = Some("tenant-b"),
-          pathStyleAccess = true
+          pathStyleAccess = true,
+          accessKeyId     = Some(accessKey),
+          secretAccessKey = Some(secretKey)
         )
-        S3ResourceStore.resource(configB, credentials).use { storeB =>
+        S3ResourceStore.resource(configB).use { storeB =>
           val key = StoreKey.Resource(ResourcePath("same.mp4"))
           for
             _       <- storeA.putBytes(key, Some("video/mp4"), "from-a".getBytes(StandardCharsets.UTF_8))

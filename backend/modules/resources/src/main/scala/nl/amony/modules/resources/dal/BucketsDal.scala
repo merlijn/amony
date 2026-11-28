@@ -47,11 +47,13 @@ case class LocalDirectorySettings(
 case class S3Settings(
   bucket: String,
   region: String,
-  endpoint: Option[String]       = None,
-  prefix: Option[String]         = None,
-  pathStyleAccess: Boolean       = false,
-  presignedUrlTtlSeconds: Long   = 900L,
-  generatePreviewsOnAdd: Boolean = false
+  endpoint: Option[String]        = None,
+  prefix: Option[String]          = None,
+  pathStyleAccess: Boolean        = false,
+  presignedUrlTtlSeconds: Long    = 900L,
+  generatePreviewsOnAdd: Boolean  = false,
+  accessKeyId: Option[String]     = None,
+  secretAccessKey: Option[String] = None
 ) derives Codec
 
 object BucketRow:
@@ -86,7 +88,9 @@ object BucketRow:
         prefix                 = s3.prefix,
         pathStyleAccess        = s3.pathStyleAccess,
         presignedUrlTtlSeconds = s3.presignedUrlTtl.toSeconds,
-        generatePreviewsOnAdd  = config.generatePreviewsOnAdd
+        generatePreviewsOnAdd  = config.generatePreviewsOnAdd,
+        accessKeyId            = s3.accessKeyId,
+        secretAccessKey        = s3.secretAccessKey
       )
       BucketRow(config.id, s3Type, config.requiredRole.map(_.toString), settings.asJson)
 
@@ -129,7 +133,9 @@ object BucketRow:
           endpoint        = endpoint,
           prefix          = settings.prefix,
           pathStyleAccess = settings.pathStyleAccess,
-          presignedUrlTtl = settings.presignedUrlTtlSeconds.seconds
+          presignedUrlTtl = settings.presignedUrlTtlSeconds.seconds,
+          accessKeyId     = settings.accessKeyId,
+          secretAccessKey = settings.secretAccessKey
         )
       )
     case other                => Left(s"Unknown bucket type: $other")

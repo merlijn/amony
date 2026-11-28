@@ -117,7 +117,9 @@ case class S3StorageConfig(
   endpoint: Option[URI]           = None,
   prefix: Option[String]          = None,
   pathStyleAccess: Boolean        = false,
-  presignedUrlTtl: FiniteDuration = 15.minutes
+  presignedUrlTtl: FiniteDuration = 15.minutes,
+  accessKeyId: Option[String]     = None,
+  secretAccessKey: Option[String] = None
 ) extends BucketStorageConfig {
 
   lazy val normalizedPrefix: Option[String] =
@@ -126,14 +128,26 @@ case class S3StorageConfig(
   override def validate(): IO[Either[String, BucketStorageConfig]] = IO.pure {
     val cleanBucket = bucket.strip()
     val cleanRegion = region.strip()
+    val cleanKeyId  = accessKeyId.map(_.strip()).filter(_.nonEmpty)
+    val cleanSecret = secretAccessKey.map(_.strip()).filter(_.nonEmpty)
     val badEndpoint = endpoint.filter(u => !Set("http", "https").contains(u.getScheme) || Option(u.getHost).forall(_.isBlank))
 
     if cleanBucket.isBlank then Left("S3 bucket name is required")
     else if cleanRegion.isBlank then Left("S3 region is required")
     else if badEndpoint.isDefined then Left(s"S3 endpoint must be a valid http or https URL: ${badEndpoint.get}")
+    else if cleanKeyId.isDefined != cleanSecret.isDefined then Left("Both access key id and secret access key must be provided together")
     else if presignedUrlTtl < 1.second then Left("Presigned URL TTL must be at least 1 second")
     else if presignedUrlTtl > 7.days then Left("Presigned URL TTL must be at most 7 days")
-    else Right(copy(bucket = cleanBucket, region = cleanRegion, prefix = normalizedPrefix))
+    else
+      Right(
+        copy(
+          bucket          = cleanBucket,
+          region          = cleanRegion,
+          prefix          = normalizedPrefix,
+          accessKeyId     = cleanKeyId,
+          secretAccessKey = cleanSecret
+        )
+      )
   }
 
   override def overlaps(other: BucketStorageConfig): Boolean = other match
