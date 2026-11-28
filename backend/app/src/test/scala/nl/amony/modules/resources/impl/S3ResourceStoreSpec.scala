@@ -17,7 +17,7 @@ import org.scalatest.wordspec.AnyWordSpecLike
 import org.testcontainers.containers.wait.strategy.Wait
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.s3.model.{CreateBucketRequest, CreateMultipartUploadRequest, ListMultipartUploadsRequest}
+import software.amazon.awssdk.services.s3.model.CreateBucketRequest
 import software.amazon.awssdk.services.s3.{S3Client, S3Configuration}
 
 import nl.amony.modules.resources.api.*
@@ -77,6 +77,20 @@ class S3ResourceStoreSpec extends AnyWordSpecLike with TestContainerForAll with 
     (response.statusCode(), ct, response.body())
 
   "S3ResourceStore" should {
+
+    "derive resource-id paths for uploads and fresh paths for replacements" in withContainers { container =>
+      withBucket(container) { (_, _, store) =>
+        val id = ResourceId("abc123xyz")
+        IO {
+          store.pathForUpload(id, "holiday video.mp4") shouldBe ResourcePath("abc123xyz.mp4")
+          store.pathForUpload(id, "README") shouldBe ResourcePath("abc123xyz")
+          val replacement = store.pathForReplacement(ResourcePath("abc123xyz.mp4"), id)
+          replacement shouldNot be(ResourcePath("abc123xyz.mp4"))
+          replacement should startWith("abc123xyz_")
+          replacement should endWith(".mp4")
+        }
+      }
+    }
 
     "store a resource, return a working presigned redirect, and stat it" in withContainers { container =>
       withBucket(container) { (_, _, store) =>
@@ -151,35 +165,6 @@ class S3ResourceStoreSpec extends AnyWordSpecLike with TestContainerForAll with 
       }
     }
 
-    "stage, promote, reject collisions when overwrite = false, and replace when overwrite = true" in withContainers { container =>
-      withBucket(container) { (_, _, store) =>
-        val staging1 = StagingId("upload-1")
-        val staging2 = StagingId("upload-2")
-        val target   = ResourcePath("clip [res1].mp4")
-
-        for
-          _          <- store.put(StoreKey.Staged(staging1), Some("video/mp4"), Stream.emits("v1".getBytes(StandardCharsets.UTF_8))).value
-          promoted   <- store.promote(staging1, target).value
-          _           = promoted.map(_.path) shouldBe Right(target)
-          _           = promoted.map(_.size) shouldBe Right(2L)
-          stagedGone <- store.exists(StoreKey.Staged(staging1))
-          _           = stagedGone shouldBe false
-          _          <- store.put(StoreKey.Staged(staging2), Some("video/mp4"), Stream.emits("v2-longer".getBytes(StandardCharsets.UTF_8))).value
-          collision  <- store.promote(staging2, target, overwrite = false).value
-          _           = collision shouldBe Left(s"Target file '$target' already exists")
-          replaced   <- store.promote(staging2, target, overwrite = true).value
-          _           = replaced.map(_.size) shouldBe Right(9L)
-          missing    <- store.promote(StagingId("missing"), target).value
-          _           = missing shouldBe Left("Staged file 'missing' is no longer available")
-          source     <- store.openSource(target)
-          _           = source match
-                          case Some(MediaSource.RemoteUrl(uri)) =>
-                            new String(fetchBytes(uri)._3, StandardCharsets.UTF_8) shouldBe "v2-longer"
-                          case other                            => fail(s"Expected RemoteUrl, got $other")
-        yield ()
-      }
-    }
-
     "store and delete derived artifacts scoped to a resource id" in withContainers { container =>
       withBucket(container) { (_, _, store) =>
         val keep = StoreKey.Derived(ResourceId("res2"), "res2_v1_w512.webp")
@@ -198,35 +183,6 @@ class S3ResourceStoreSpec extends AnyWordSpecLike with TestContainerForAll with 
           del1Exists shouldBe false
           del2Exists shouldBe false
           keepExists shouldBe true
-      }
-    }
-
-    "delete staged objects and abort incomplete multipart uploads before cutoffTime" in withContainers { container =>
-      withBucket(container) { (bucket, client, store) =>
-        val stagedId = StagingId("stale-upload")
-
-        for
-          _             <- store.putBytes(StoreKey.Staged(stagedId), None, "stale".getBytes(StandardCharsets.UTF_8))
-          _             <- IO.blocking {
-                             client.createMultipartUpload(
-                               CreateMultipartUploadRequest.builder().bucket(bucket).key("staged/abandoned-part").build()
-                             )
-                           }
-          // Cutoff in the past keeps both
-          _             <- store.deleteStaged(Instant.now().minusSeconds(60))
-          keptStaged    <- store.exists(StoreKey.Staged(stagedId))
-          _              = keptStaged shouldBe true
-          // Cutoff in the future removes both completed object and incomplete multipart upload
-          _             <- store.deleteStaged(Instant.now().plusSeconds(60))
-          deletedStaged <- store.exists(StoreKey.Staged(stagedId))
-          _              = deletedStaged shouldBe false
-          remainingMpu  <- IO.blocking {
-                             client.listMultipartUploads(
-                               ListMultipartUploadsRequest.builder().bucket(bucket).prefix("staged/").build()
-                             ).uploads().size()
-                           }
-          _              = remainingMpu shouldBe 0
-        yield ()
       }
     }
 

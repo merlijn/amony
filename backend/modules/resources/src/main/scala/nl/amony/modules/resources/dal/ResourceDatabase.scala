@@ -244,3 +244,19 @@ private[resources] class ResourceDatabase(pool: Resource[IO, Session[IO]]) exten
         _ <- tables.resource_tags.delete(s, bucketId, resourceId)
         _ <- tables.resources.delete(s, bucketId, resourceId)
       yield ()
+
+  def insertStagedUpload(bucketId: BucketId, path: ResourcePath)(using maybeSession: Option[Session[IO]] = None): IO[Unit] =
+    useSession(s => s.prepare(Queries.staged_uploads.insert).flatMap(_.execute((bucketId, path))).void)
+
+  def deleteStagedUpload(bucketId: BucketId, path: ResourcePath)(using maybeSession: Option[Session[IO]] = None): IO[Unit] =
+    useSession(s => s.prepare(Queries.staged_uploads.delete).flatMap(_.execute((bucketId, path))).void)
+
+  def isStagedUpload(bucketId: BucketId, path: ResourcePath)(using maybeSession: Option[Session[IO]] = None): IO[Boolean] =
+    useSession(s => s.prepare(Queries.staged_uploads.exists).flatMap(_.unique((bucketId, path))))
+
+  def listStagedUploadsBefore(bucketId: BucketId, cutoffTime: java.time.Instant)(
+    using maybeSession: Option[Session[IO]] = None
+  ): IO[List[ResourcePath]] =
+    useSession: s =>
+      s.prepare(Queries.staged_uploads.listBefore)
+        .flatMap(_.stream((bucketId, cutoffTime), defaultChunkSize).map(ResourcePath(_)).compile.toList)

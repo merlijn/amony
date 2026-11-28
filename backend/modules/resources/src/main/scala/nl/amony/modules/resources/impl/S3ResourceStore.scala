@@ -1,6 +1,7 @@
 package nl.amony.modules.resources.impl
 
 import java.time.{Duration, Instant}
+import java.util.UUID
 import scala.jdk.CollectionConverters.*
 
 import cats.data.EitherT
@@ -33,13 +34,19 @@ final class S3ResourceStore(
   private val bucketName      = config.bucket
   private val presignDuration = Duration.ofMillis(config.presignedUrlTtl.toMillis)
 
+  override def pathForUpload(resourceId: ResourceId, fileName: String): ResourcePath =
+    ResourcePath(s"$resourceId${extractExtension(fileName)}")
+
+  override def pathForReplacement(currentPath: ResourcePath, resourceId: ResourceId): ResourcePath =
+    val suffix = UUID.randomUUID().toString.take(8)
+    ResourcePath(s"${resourceId}_$suffix${extractExtension(currentPath)}")
+
   private def withPrefix(key: String): String =
     config.normalizedPrefix.fold(key)(prefix => s"$prefix/$key")
 
   private[impl] def resolveKey(key: StoreKey): Either[String, String] = key match
     case StoreKey.Resource(path)            => ResourcePath.fromString(path).map(p => withPrefix(s"resources/$p"))
     case StoreKey.Derived(resourceId, name) => Right(withPrefix(s"derived/$resourceId/$name"))
-    case StoreKey.Staged(id)                => Right(withPrefix(s"staged/$id"))
 
   private def headObject(objectKey: String): IO[Option[HeadObjectResponse]] =
     IO.blocking {
@@ -170,103 +177,6 @@ final class S3ResourceStore(
           client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(objectKey).build())
         }.void
 
-  private def copySingleObject(sourceKey: String, targetKey: String): IO[(Instant, Option[String])] =
-    IO.blocking {
-      val response = client.copyObject(
-        CopyObjectRequest.builder()
-          .sourceBucket(bucketName)
-          .sourceKey(sourceKey)
-          .destinationBucket(bucketName)
-          .destinationKey(targetKey)
-          .metadataDirective(MetadataDirective.COPY)
-          .build()
-      )
-      val result   = response.copyObjectResult()
-      (result.lastModified(), cleanETag(result.eTag()))
-    }
-
-  private def copyMultipartObject(
-    sourceKey: String,
-    targetKey: String,
-    size: Long,
-    contentType: Option[String]
-  ): IO[(Instant, Option[String])] =
-    IO.blocking {
-      val builder = CreateMultipartUploadRequest.builder().bucket(bucketName).key(targetKey)
-      contentType.foreach(builder.contentType)
-      client.createMultipartUpload(builder.build()).uploadId()
-    }.flatMap { uploadId =>
-      val ranges = Iterator.iterate(0L)(_ + MultipartCopyChunkSize).takeWhile(_ < size).zipWithIndex.toList
-      val copy   =
-        ranges.traverse { case (start, idx) =>
-          val partNumber = idx + 1
-          val end        = math.min(start + MultipartCopyChunkSize - 1, size - 1)
-          IO.blocking {
-            val response = client.uploadPartCopy(
-              UploadPartCopyRequest.builder()
-                .sourceBucket(bucketName)
-                .sourceKey(sourceKey)
-                .destinationBucket(bucketName)
-                .destinationKey(targetKey)
-                .uploadId(uploadId)
-                .partNumber(partNumber)
-                .copySourceRange(s"bytes=$start-$end")
-                .build()
-            )
-            CompletedPart.builder().partNumber(partNumber).eTag(response.copyPartResult().eTag()).build()
-          }
-        }.flatMap { completed =>
-          IO.blocking {
-            val response = client.completeMultipartUpload(
-              CompleteMultipartUploadRequest.builder()
-                .bucket(bucketName)
-                .key(targetKey)
-                .uploadId(uploadId)
-                .multipartUpload(CompletedMultipartUpload.builder().parts(completed.asJava).build())
-                .build()
-            )
-            (Instant.now(), cleanETag(response.eTag()))
-          }
-        }
-
-      copy
-        .onError(_ => abortMultipart(targetKey, uploadId))
-        .onCancel(abortMultipart(targetKey, uploadId))
-    }
-
-  override def promote(stagingId: StagingId, target: ResourcePath, overwrite: Boolean = false): EitherT[IO, String, StoredResource] =
-    for
-      targetKey  <- EitherT.fromEither[IO](resolveKey(StoreKey.Resource(target)))
-      stagedKey   = withPrefix(s"staged/$stagingId")
-      stagedHead <- EitherT.fromOptionF(
-                      headObject(stagedKey),
-                      s"Staged file '$stagingId' is no longer available"
-                    )
-      _          <- if overwrite then EitherT.pure[IO, String](())
-      else
-        EitherT(
-          headObject(targetKey).map {
-            case Some(_) => Left(s"Target file '$target' already exists")
-            case None    => Right(())
-          }
-        )
-      copied     <- EitherT {
-                      val size        = stagedHead.contentLength()
-                      val contentType = Option(stagedHead.contentType())
-                      val copyOp      =
-                        if size <= MaxSingleCopyBytes then copySingleObject(stagedKey, targetKey)
-                        else copyMultipartObject(stagedKey, targetKey, size, contentType)
-                      (copyOp <* delete(StoreKey.Staged(stagingId)))
-                        .attempt
-                        .map(_.left.map(error => s"Failed to promote staged file '$stagingId': ${error.getMessage}"))
-                    }
-    yield StoredResource(
-      path             = target,
-      size             = stagedHead.contentLength(),
-      timeLastModified = copied._1.toEpochMilli,
-      fileKey          = copied._2
-    )
-
   override def openSource(path: ResourcePath): IO[Option[MediaSource]] =
     resolveKey(StoreKey.Resource(path)) match
       case Left(_)          => IO.pure(None)
@@ -302,52 +212,37 @@ final class S3ResourceStore(
       }.void
     }
 
-  private def listAndDelete(prefix: String, keep: S3Object => Boolean): IO[Unit] =
+  private def listAndDelete(prefix: String): IO[Unit] =
     def loop(continuationToken: Option[String]): IO[Unit] =
       IO.blocking {
         val builder = ListObjectsV2Request.builder().bucket(bucketName).prefix(prefix)
         continuationToken.foreach(builder.continuationToken)
         client.listObjectsV2(builder.build())
       }.flatMap { response =>
-        val toDelete = response.contents().asScala.filter(keep).map(_.key()).toList
+        val toDelete = response.contents().asScala.map(_.key()).toList
         deleteBatch(toDelete) >>
           (if response.isTruncated then loop(Option(response.nextContinuationToken())) else IO.unit)
       }
     loop(None)
 
   override def deleteDerived(resourceId: ResourceId): IO[Unit] =
-    listAndDelete(withPrefix(s"derived/$resourceId/"), _ => true)
+    listAndDelete(withPrefix(s"derived/$resourceId/"))
       .handleErrorWith(e => IO(logger.warn(s"Failed to delete derived objects for $resourceId", e)))
-
-  private def abortStaleMultipartUploads(prefix: String, cutoffTime: Instant): IO[Unit] =
-    def loop(keyMarker: Option[String], uploadIdMarker: Option[String]): IO[Unit] =
-      IO.blocking {
-        val builder = ListMultipartUploadsRequest.builder().bucket(bucketName).prefix(prefix)
-        keyMarker.foreach(builder.keyMarker)
-        uploadIdMarker.foreach(builder.uploadIdMarker)
-        client.listMultipartUploads(builder.build())
-      }.flatMap { response =>
-        val stale = response.uploads().asScala.filter(_.initiated().isBefore(cutoffTime)).toList
-        stale.traverse_(u => abortMultipart(u.key(), u.uploadId())) >>
-          (if response.isTruncated then loop(Option(response.nextKeyMarker()), Option(response.nextUploadIdMarker())) else IO.unit)
-      }
-    loop(None, None)
-
-  override def deleteStaged(cutoffTime: Instant): IO[Unit] =
-    val stagedPrefix = withPrefix("staged/")
-    (listAndDelete(stagedPrefix, _.lastModified().isBefore(cutoffTime)) >>
-      abortStaleMultipartUploads(stagedPrefix, cutoffTime))
-      .handleErrorWith(e => IO(logger.warn(s"Failed to delete staged objects before $cutoffTime", e)))
 
 object S3ResourceStore:
 
   private[impl] val MultipartPartSize: Int = 8 * 1024 * 1024
-  private val MultipartCopyChunkSize: Long = 512L * 1024 * 1024
-  private val MaxSingleCopyBytes: Long     = 5L * 1024 * 1024 * 1024
   private val MaxDeleteBatchSize: Int      = 1000
 
   private def cleanETag(raw: String): Option[String] =
     Option(raw).map(_.stripPrefix("\"").stripSuffix("\"")).filter(_.nonEmpty)
+
+  private def extractExtension(fileName: String): String =
+    val dotIndex = fileName.lastIndexOf('.')
+    if dotIndex > 0 && dotIndex < fileName.length - 1 then
+      val ext = fileName.substring(dotIndex)
+      if ext.length <= 16 && !ext.contains('/') && !ext.contains('\\') then ext else ""
+    else ""
 
   private def resolveCredentials(config: S3StorageConfig, overrideProvider: Option[AwsCredentialsProvider]): AwsCredentialsProvider =
     overrideProvider.getOrElse {

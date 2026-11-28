@@ -65,12 +65,16 @@ final class LocalDirectorySyncer(
       case FileDeleted(f) => withRequireResource(f.partialHash, f.path)(r => ResourceDeleted(r))
 
       case FileAdded(f) =>
-        (for
-          resource <- EitherT(newResource(f, UserId(config.sync.newFilesOwner)))
-        yield ResourceAdded(resource)).foldF(
-          e => IO(logger.error(s"Skipping unreadable file: ${f.path}", e.cause)).as(None),
-          r => IO.pure(Some(r))
-        )
+        db.isStagedUpload(bucketId, relativizePath(f.path)).flatMap {
+          case true  => IO.pure(None)
+          case false =>
+            (for
+              resource <- EitherT(newResource(f, UserId(config.sync.newFilesOwner)))
+            yield ResourceAdded(resource)).foldF(
+              e => IO(logger.error(s"Skipping unreadable file: ${f.path}", e.cause)).as(None),
+              r => IO.pure(Some(r))
+            )
+        }
 
       case FileMoved(file, oldFilePath) =>
         val newPath = relativizePath(file.path)

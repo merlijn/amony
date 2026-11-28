@@ -1,13 +1,9 @@
 package nl.amony.modules.resources.impl
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.attribute.FileTime
 import java.nio.file.{Files, Path}
-import java.time.Instant
-import java.util.UUID
 import scala.concurrent.duration.*
 
-import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import fs2.Stream
 import org.scalatest.matchers.should.Matchers
@@ -74,66 +70,16 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       store.stat(ResourcePath("missing.mp4")).unsafeRunSync() shouldBe None
     }
 
-    "stage and promote a file into the bucket" in {
-      val dir       = Files.createTempDirectory("amony-store-spec")
-      val store     = LocalDirectoryStore(config(dir))
-      val stagingId = StagingId("resource-upload")
+    "write and atomically replace a resource via put" in {
+      val dir   = Files.createTempDirectory("amony-store-spec")
+      val store = LocalDirectoryStore(config(dir))
+      val key   = StoreKey.Resource(ResourcePath("video.mp4"))
 
-      store.put(
-        StoreKey.Staged(stagingId),
-        Some("video/mp4"),
-        Stream.emits("content".getBytes(StandardCharsets.UTF_8))
-      ).value.unsafeRunSync() shouldBe Right(())
-      store.exists(StoreKey.Staged(stagingId)).unsafeRunSync() shouldBe true
+      store.put(key, Some("video/mp4"), Stream.emits("v1".getBytes(StandardCharsets.UTF_8))).value.unsafeRunSync() shouldBe Right(())
+      Files.readString(dir.resolve("video.mp4")) shouldBe "v1"
 
-      val stored = store.promote(stagingId, ResourcePath("video.mp4")).value.unsafeRunSync()
-
-      stored.map(_.path) shouldBe Right(ResourcePath("video.mp4"))
-      Files.exists(dir.resolve("video.mp4")) shouldBe true
-      store.exists(StoreKey.Staged(stagingId)).unsafeRunSync() shouldBe false
-    }
-
-    "fail when the target already exists on promote with overwrite = false" in {
-      val dir       = Files.createTempDirectory("amony-store-spec")
-      val store     = LocalDirectoryStore(config(dir))
-      Files.writeString(dir.resolve("video.mp4"), "existing")
-      val stagingId = StagingId("resource-upload")
-
-      store.put(
-        StoreKey.Staged(stagingId),
-        Some("video/mp4"),
-        Stream.emits("content".getBytes(StandardCharsets.UTF_8))
-      ).value.unsafeRunSync() shouldBe Right(())
-
-      store.promote(stagingId, ResourcePath("video.mp4")).value.unsafeRunSync() shouldBe
-        Left("Target file 'video.mp4' already exists")
-      Files.readString(dir.resolve("video.mp4")) shouldBe "existing"
-    }
-
-    "return a failure when the staged file is gone on promote" in {
-      val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
-
-      store.promote(StagingId("missing-upload"), ResourcePath("video.mp4")).value.unsafeRunSync() shouldBe
-        Left("Staged file 'missing-upload' is no longer available")
-    }
-
-    "replace an existing resource atomically on promote with overwrite = true" in {
-      val dir       = Files.createTempDirectory("amony-store-spec")
-      val store     = LocalDirectoryStore(config(dir))
-      Files.writeString(dir.resolve("video.mp4"), "old")
-      val stagingId = StagingId("remux-1")
-
-      store.put(
-        StoreKey.Staged(stagingId),
-        Some("video/mp4"),
-        Stream.emits("new-content".getBytes(StandardCharsets.UTF_8))
-      ).value.unsafeRunSync() shouldBe Right(())
-      val stored = store.promote(stagingId, ResourcePath("video.mp4"), overwrite = true).value.unsafeRunSync()
-
-      stored.map(_.path) shouldBe Right(ResourcePath("video.mp4"))
-      stored.map(_.size) shouldBe Right(11L)
-      Files.readString(dir.resolve("video.mp4")) shouldBe "new-content"
-      store.exists(StoreKey.Staged(stagingId)).unsafeRunSync() shouldBe false
+      store.put(key, Some("video/mp4"), Stream.emits("v2-longer".getBytes(StandardCharsets.UTF_8))).value.unsafeRunSync() shouldBe Right(())
+      Files.readString(dir.resolve("video.mp4")) shouldBe "v2-longer"
     }
 
     "store and retrieve a derived file by key" in {
@@ -182,31 +128,6 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       store.content(keep, Some("image/webp"), None).unsafeRunSync().isDefined shouldBe true
     }
 
-    "delete only staged files older than the cutoff time" in {
-      val dir     = Files.createTempDirectory("amony-store-spec")
-      val cfg     = config(dir)
-      val store   = LocalDirectoryStore(cfg)
-      val staleId = StagingId("stale-upload")
-      val freshId = StagingId("fresh-upload")
-      val cutoff  = Instant.now().minusSeconds(60)
-
-      store.put(StoreKey.Staged(staleId), None, Stream.emits("stale".getBytes(StandardCharsets.UTF_8))).value.unsafeRunSync() shouldBe Right(())
-      store.put(StoreKey.Staged(freshId), None, Stream.emits("fresh".getBytes(StandardCharsets.UTF_8))).value.unsafeRunSync() shouldBe Right(())
-      Files.setLastModifiedTime(cfg.tempPath.resolve(staleId), FileTime.from(cutoff.minusSeconds(10)))
-      Files.setLastModifiedTime(cfg.tempPath.resolve(freshId), FileTime.from(cutoff.plusSeconds(10)))
-
-      store.deleteStaged(cutoff).unsafeRunSync()
-
-      store.exists(StoreKey.Staged(staleId)).unsafeRunSync() shouldBe false
-      store.exists(StoreKey.Staged(freshId)).unsafeRunSync() shouldBe true
-    }
-
-    "ignore a missing temp directory on deleteStaged" in {
-      val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
-
-      store.deleteStaged(Instant.now()).unsafeRunSync()
-    }
-
     "delete a stored resource" in {
       val dir   = Files.createTempDirectory("amony-store-spec")
       val file  = Files.writeString(dir.resolve("video.mp4"), "content")
@@ -223,31 +144,40 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       store.delete(StoreKey.Resource(ResourcePath("missing.mp4"))).unsafeRunSync()
     }
 
-    "reject an absolute file name on promote" in {
+    "reject invalid paths on put, content and delete" in {
       val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
 
-      store.promote(StagingId("staged"), ResourcePath("/abs.mp4")).value.unsafeRunSync() shouldBe
+      store.put(StoreKey.Resource(ResourcePath("/abs.mp4")), None, Stream.empty).value.unsafeRunSync() shouldBe
         Left("Resource path must be relative: /abs.mp4")
-    }
-
-    "reject a bucket-escaping file name on promote" in {
-      val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
-
-      store.promote(StagingId("staged"), ResourcePath("../other.mp4")).value.unsafeRunSync() shouldBe
+      store.put(StoreKey.Resource(ResourcePath("../other.mp4")), None, Stream.empty).value.unsafeRunSync() shouldBe
         Left("Resource path must not escape the bucket: ../other.mp4")
-    }
-
-    "return no content for an invalid path" in {
-      val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
-
       store.content(StoreKey.Resource(ResourcePath("/abs.mp4")), None, None).unsafeRunSync() shouldBe None
-    }
-
-    "refuse to delete an invalid path" in {
-      val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
-
       intercept[IllegalArgumentException] {
         store.delete(StoreKey.Resource(ResourcePath("../other.mp4"))).unsafeRunSync()
       }
+    }
+
+    "derive human-friendly unique upload paths and keep paths in place on replacement" in {
+      val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
+      val id    = ResourceId("ABCDEFGHIJKLMNOPQRSTUVWX")
+
+      store.pathForUpload(id, "video.mp4") shouldBe ResourcePath(s"video [$id].mp4")
+      store.pathForUpload(id, "my.holiday.clip.mp4") shouldBe ResourcePath(s"my.holiday.clip [$id].mp4")
+      store.pathForUpload(id, "README") shouldBe ResourcePath(s"README [$id]")
+      store.pathForUpload(id, ".hidden") shouldBe ResourcePath(s".hidden [$id]")
+      store.pathForUpload(id, "trailing.") shouldBe ResourcePath(s"trailing. [$id]")
+
+      val longAscii = ("a" * 300) + ".mp4"
+      val asciiPath = store.pathForUpload(id, longAscii)
+      asciiPath.getBytes("UTF-8").length shouldBe 255
+      asciiPath should endWith(s" [$id].mp4")
+
+      val longEmoji = ("🎉" * 100) + ".mp4"
+      val emojiPath = store.pathForUpload(id, longEmoji)
+      emojiPath.getBytes("UTF-8").length should be <= 255
+      emojiPath should endWith(s" [$id].mp4")
+      emojiPath.codePoints().count() should be > 0L
+
+      store.pathForReplacement(ResourcePath("nested/video.mp4"), id) shouldBe ResourcePath("nested/video.mp4")
     }
   }

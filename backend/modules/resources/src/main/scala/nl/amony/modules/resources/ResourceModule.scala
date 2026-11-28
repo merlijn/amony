@@ -115,7 +115,7 @@ object ResourceModule:
               events,
               jobBus
             )
-            val startSync = syncer.sync()
+            val startSync = syncer.sync().both(bucket.stagedCleanupLoop()).void
             (bucket, syncer, startSync)
           })
 
@@ -140,7 +140,7 @@ object ResourceModule:
               events,
               jobBus
             )
-            (bucket, ResourceDiscovery.noop, IO.unit)
+            (bucket, ResourceDiscovery.noop, bucket.stagedCleanupLoop())
           }
 
     for

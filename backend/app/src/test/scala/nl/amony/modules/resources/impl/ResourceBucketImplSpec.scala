@@ -330,32 +330,44 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
         test.timeout(5.seconds)
       }.unsafeRunSync()
     }
+    "clean up expired staged uploads from storage and database" in withContainers { container =>
+      Database.makePool(dbConfig(container)).use { pool =>
+        val dir       = Files.createTempDirectory("amony-bucket-spec")
+        val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
+        val db        = ResourceDatabase(pool)
+        val published = new AtomicReference(List.empty[ResourceEvent])
+        val bucket    = makeBucket(cfg, db, published)
+        val path      = ResourcePath("orphaned.mp4")
+        val file      = Files.writeString(dir.resolve("orphaned.mp4"), "bytes")
+
+        val test =
+          for
+            _             <- db.insertStagedUpload(bucket.id, path)
+            _             <- bucket.cleanupStagedUploads(java.time.Instant.now().minusSeconds(60))
+            stillStaged   <- db.isStagedUpload(bucket.id, path)
+            _              = stillStaged shouldBe true
+            _              = Files.exists(file) shouldBe true
+            _             <- bucket.cleanupStagedUploads(java.time.Instant.now().plusSeconds(60))
+            cleanedStaged <- db.isStagedUpload(bucket.id, path)
+          yield
+            cleanedStaged shouldBe false
+            Files.exists(file) shouldBe false
+
+        test.timeout(5.seconds)
+      }.unsafeRunSync()
+    }
   }
 
-  "ResourceBucketImpl.uploadTargetPath" should {
-    val id = ResourceId("ABCDEFGHIJKLMNOPQRSTUVWX")
+  "ResourceBucketImpl.titleFromFileName" should {
 
-    "embed the resource id before the extension" in {
-      ResourceBucketImpl.uploadTargetPath("video.mp4", id) shouldBe ResourcePath(s"video [$id].mp4")
-      ResourceBucketImpl.uploadTargetPath("my.holiday.clip.mp4", id) shouldBe ResourcePath(s"my.holiday.clip [$id].mp4")
+    "strip the extension and trim whitespace" in {
+      ResourceBucketImpl.titleFromFileName("holiday video.mp4") shouldBe Some("holiday video")
+      ResourceBucketImpl.titleFromFileName("my.clip.webm") shouldBe Some("my.clip")
+      ResourceBucketImpl.titleFromFileName("README") shouldBe Some("README")
+      ResourceBucketImpl.titleFromFileName("   ") shouldBe None
     }
 
-    "append the resource id when there is no extension or a leading/trailing dot" in {
-      ResourceBucketImpl.uploadTargetPath("README", id) shouldBe ResourcePath(s"README [$id]")
-      ResourceBucketImpl.uploadTargetPath(".hidden", id) shouldBe ResourcePath(s".hidden [$id]")
-      ResourceBucketImpl.uploadTargetPath("trailing.", id) shouldBe ResourcePath(s"trailing. [$id]")
-    }
-
-    "truncate long ASCII and multi-byte UTF-8 file names to stay within 255 bytes" in {
-      val longAscii = ("a" * 300) + ".mp4"
-      val asciiPath = ResourceBucketImpl.uploadTargetPath(longAscii, id)
-      asciiPath.getBytes("UTF-8").length shouldBe 255
-      asciiPath should endWith(s" [$id].mp4")
-
-      val longEmoji = ("🎉" * 100) + ".mp4"
-      val emojiPath = ResourceBucketImpl.uploadTargetPath(longEmoji, id)
-      emojiPath.getBytes("UTF-8").length should be <= 255
-      emojiPath should endWith(s" [$id].mp4")
-      emojiPath.codePoints().count() should be > 0L
+    "cap long titles to 128 characters" in {
+      ResourceBucketImpl.titleFromFileName(("a" * 200) + ".mp4") shouldBe Some("a" * 128)
     }
   }

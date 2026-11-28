@@ -91,7 +91,11 @@ class ResourceBucketImpl(
       job    <- EitherT(prepareAndStageUpload(userId, fileName, source))
       jobId  <- EitherT.liftF(
                   jobBus.submit(job.key, job)
-                    .handleErrorWith(error => store.delete(StoreKey.Staged(job.stagingId)) >> IO.raiseError(error))
+                    .handleErrorWith(error =>
+                      store.delete(StoreKey.Resource(job.path)) >>
+                        db.deleteStagedUpload(id, job.path) >>
+                        IO.raiseError(error)
+                    )
                 )
       status <- EitherT.liftF(jobBus.awaitCompletion(jobId, jobTimeout))
       _      <- EitherT.cond[IO](
@@ -125,7 +129,8 @@ class ResourceBucketImpl(
         IO.pure(Left(UploadError.InvalidFileName(s"File name '$decoded' is invalid")))
       case Right(decoded)                                              =>
         val resourceId = config.generateId()
-        val stagingId  = StagingId(s"$resourceId-upload")
+        val targetPath = store.pathForUpload(resourceId, decoded)
+        val title      = ResourceBucketImpl.titleFromFileName(decoded)
         tempUploadFile.use { localFile =>
           val location = ContentLocation.LocalFile(localFile)
           val prepare  =
@@ -160,24 +165,30 @@ class ResourceBucketImpl(
                   UploadError.StorageError(s"Failed to store upload '$decoded': ${error.message}")
                 )
               else EitherT.pure[IO, UploadError](meta)
-              _         <- store.put(StoreKey.Staged(stagingId), finalMeta.contentType, Files[IO].readAll(Fs2Path.fromNioPath(localFile)))
+              _         <- EitherT.liftF(db.insertStagedUpload(id, targetPath))
+              _         <- store.put(StoreKey.Resource(targetPath), finalMeta.contentType, Files[IO].readAll(Fs2Path.fromNioPath(localFile)))
                              .leftMap(message => UploadError.StorageError(s"Failed to store upload '$decoded': $message"))
-            yield UploadResource(id, resourceId, userId, decoded, stagingId, hash, finalMeta)
+            yield UploadResource(id, resourceId, userId, targetPath, title, hash, finalMeta)
           prepare.value.attempt.flatMap:
-            case Right(result) => IO.pure(result)
-            case Left(error)   =>
-              store.delete(StoreKey.Staged(stagingId)).as(Left(UploadError.StorageError(s"Failed to store upload '$decoded': ${error.getMessage}")))
+            case Right(Right(job))  => IO.pure(Right(job))
+            case Right(Left(error)) =>
+              (store.delete(StoreKey.Resource(targetPath)).attempt >> db.deleteStagedUpload(id, targetPath).attempt).as(Left(error))
+            case Left(error)        =>
+              (store.delete(StoreKey.Resource(targetPath)).attempt >> db.deleteStagedUpload(id, targetPath).attempt)
+                .as(Left(UploadError.StorageError(s"Failed to store upload '$decoded': ${error.getMessage}")))
         }
 
   private def commitUpload(upload: UploadResource): IO[Either[String, Unit]] =
     (for
       existing <- EitherT.liftF(db.getResourceById(upload.bucketId, upload.resourceId))
       _        <- existing match
-                    case Some(_) => EitherT.liftF(store.delete(StoreKey.Staged(upload.stagingId)))
+                    case Some(_) => EitherT.liftF(db.deleteStagedUpload(upload.bucketId, upload.path))
                     case None    =>
                       for
-                        target  = ResourceBucketImpl.uploadTargetPath(upload.fileName, upload.resourceId)
-                        stored <- store.promote(upload.stagingId, target)
+                        stored <- EitherT.fromOptionF(
+                                    store.stat(upload.path),
+                                    s"Uploaded file '${upload.path}' is no longer available"
+                                  )
                         info    = ResourceInfo(
                                     bucketId           = upload.bucketId,
                                     resourceId         = upload.resourceId,
@@ -189,9 +200,17 @@ class ResourceBucketImpl(
                                     contentMeta        = upload.contentMeta,
                                     timeAdded          = Some(Instant.now().toEpochMilli),
                                     timeLastModified   = Some(stored.timeLastModified),
+                                    title              = upload.title,
                                     thumbnailTimestamp = None
                                   )
-                        _      <- EitherT.liftF(events.processEvent(ResourceAdded(info)))
+                        _      <- EitherT.liftF(
+                                    db.transact { s =>
+                                      given Option[skunk.Session[IO]] = Some(s)
+                                      db.insertResource(info) >>
+                                        db.deleteStagedUpload(upload.bucketId, upload.path) >>
+                                        topic.publish(s, ResourceAdded(info))
+                                    } >> IO(logger.info(s"[$id] ${ResourceAdded(info)}"))
+                                  )
                       yield ()
     yield ()).value
 
@@ -206,10 +225,19 @@ class ResourceBucketImpl(
 
   private def processStreamabilityFix(resourceId: ResourceId): IO[Either[StreamabilityError, Option[RemuxResult]]] =
     OptionT(getResourceInfo(resourceId))
-      .semiflatMap((info: ResourceInfo) =>
+      .semiflatMap { (info: ResourceInfo) =>
         if !info.streamable.contains(false) then IO.pure(Right(None): Either[StreamabilityError, Option[RemuxResult]])
-        else ops.remuxForStreaming(info).value
-      )
+        else
+          val targetPath = store.pathForReplacement(info.path, info.resourceId)
+          val stage      = IO.whenA(targetPath != info.path)(db.insertStagedUpload(id, targetPath))
+          val cleanup    = IO.whenA(targetPath != info.path)(
+            store.delete(StoreKey.Resource(targetPath)).attempt >> db.deleteStagedUpload(id, targetPath).attempt.void
+          )
+          stage >> ops.remuxForStreaming(info, targetPath).value.flatTap {
+            case Left(_)  => cleanup
+            case Right(_) => IO.unit
+          }.onError(_ => cleanup)
+      }
       .getOrElse(Left(StreamabilityError.ResourceNotFound(resourceId)))
 
   private def commitStreamabilityFix(
@@ -217,34 +245,54 @@ class ResourceBucketImpl(
     remux: Option[RemuxResult]
   ): IO[Either[StreamabilityError, Unit]] =
     remux match
-      case None                                      => IO.pure(Right(()))
-      case Some(RemuxResult(stagingId, partialHash)) =>
+      case None                                       => IO.pure(Right(()))
+      case Some(RemuxResult(targetPath, partialHash)) =>
         (for
           info   <- EitherT.fromOptionF(getResourceInfo(resourceId), StreamabilityError.ResourceNotFound(resourceId))
-          stored <- replaceOrStatForStreamability(info, stagingId)
+          stored <- EitherT.fromOptionF(
+                      store.stat(targetPath),
+                      StreamabilityError.FixFailed(targetPath, "resource file is no longer available")
+                    )
           updated = info.copy(
+                      path             = stored.path,
                       size             = stored.size,
                       partialHash      = partialHash,
                       fileKey          = stored.fileKey,
                       timeLastModified = Some(stored.timeLastModified),
                       contentMeta      = info.contentMeta.copy(streamable = Some(true))
                     )
-          _      <- EitherT.liftF(events.processEvent(ResourceModified(updated)))
+          _      <- EitherT.liftF {
+                      db.transact { s =>
+                        given Option[skunk.Session[IO]] = Some(s)
+                        db.upsertResource(updated) >>
+                          IO.whenA(targetPath != info.path)(db.deleteStagedUpload(id, targetPath)) >>
+                          topic.publish(s, ResourceModified(updated))
+                      } >>
+                        IO(logger.info(s"[$id] ${ResourceModified(updated)}")) >>
+                        IO.whenA(targetPath != info.path)(
+                          store.delete(StoreKey.Resource(info.path)).handleErrorWith(e =>
+                            IO(logger.warn(s"Failed to delete previous object '${info.path}' after remux", e))
+                          )
+                        )
+                    }
         yield ()).value
 
-  private def replaceOrStatForStreamability(
-    info: ResourceInfo,
-    stagingId: StagingId
-  ): EitherT[IO, StreamabilityError, StoredResource] =
-    EitherT.liftF(store.exists(StoreKey.Staged(stagingId))).flatMap {
-      case true  =>
-        store.promote(stagingId, info.path, overwrite = true).leftMap(message => StreamabilityError.FixFailed(info.path, message))
-      case false =>
-        EitherT.fromOptionF(
-          store.stat(info.path),
-          StreamabilityError.FixFailed(info.path, "resource file is no longer available")
-        )
+  def cleanupStagedUploads(cutoffTime: Instant): IO[Unit] =
+    db.listStagedUploadsBefore(id, cutoffTime).flatMap { paths =>
+      paths.traverse_ { path =>
+        (store.delete(StoreKey.Resource(path)) >> db.deleteStagedUpload(id, path))
+          .handleErrorWith(e => IO(logger.warn(s"Failed to clean up staged upload '$path' in bucket '$id'", e)))
+      }
     }
+
+  def stagedCleanupLoop(interval: FiniteDuration = 1.hour, maxAge: FiniteDuration = 1.hour): IO[Unit] =
+    fs2.Stream.fixedRate[IO](interval)
+      .evalMap(_ =>
+        IO.realTimeInstant
+          .flatMap(now => cleanupStagedUploads(now.minusMillis(maxAge.toMillis)))
+          .handleErrorWith(e => IO(logger.warn(s"Staged upload cleanup failed for bucket '$id'", e)))
+      )
+      .compile.drain
 
   override def reComputePartialHashes(): IO[Unit] = getAllResources.evalMap { resource =>
     ops.contentPartialHash(ContentLocation.Resource(resource.path)).value.flatMap {
@@ -340,50 +388,12 @@ class ResourceBucketImpl(
 
 object ResourceBucketImpl:
 
-  private val maxFileNameBytes = 255
+  private val maxTitleLength = 128
 
-  private def utf8Length(value: String): Int = value.getBytes(StandardCharsets.UTF_8).length
-
-  private def truncateUtf8(value: String, maxBytes: Int): String =
-    if maxBytes <= 0 then ""
-    else if utf8Length(value) <= maxBytes then value
-    else
-      val sb    = new java.lang.StringBuilder
-      var bytes = 0
-      var i     = 0
-      while i < value.length do
-        val cp      = value.codePointAt(i)
-        val cpChars = Character.charCount(cp)
-        val cpBytes =
-          if cp <= 0x7f then 1
-          else if cp <= 0x7ff then 2
-          else if cp <= 0xffff then 3
-          else 4
-        if bytes + cpBytes > maxBytes then i = value.length
-        else
-          sb.appendCodePoint(cp)
-          bytes += cpBytes
-          i += cpChars
-      sb.toString.stripTrailing()
-
-  private[impl] def uploadTargetPath(fileName: String, resourceId: ResourceId): ResourcePath =
-    val dotIndex                = fileName.lastIndexOf('.')
-    val (rawBase, rawExtension) =
-      if dotIndex > 0 && dotIndex < fileName.length - 1 then
-        (fileName.substring(0, dotIndex), fileName.substring(dotIndex))
-      else
-        (fileName, "")
-
-    val idTag       = s"[$resourceId]"
-    val idTagBytes  = utf8Length(idTag)
-    val extBytes    = utf8Length(rawExtension)
-    val (base, ext) =
-      if idTagBytes + 1 + extBytes < maxFileNameBytes then (rawBase, rawExtension)
-      else (fileName, "")
-
-    val maxBaseBytes  = maxFileNameBytes - idTagBytes - 1 - utf8Length(ext)
-    val truncatedBase = truncateUtf8(base, maxBaseBytes)
-    val finalName     =
-      if truncatedBase.isEmpty then s"$idTag$ext"
-      else s"$truncatedBase $idTag$ext"
-    ResourcePath(finalName)
+  private[impl] def titleFromFileName(fileName: String): Option[String] =
+    val dotIndex = fileName.lastIndexOf('.')
+    val base     =
+      if dotIndex > 0 && dotIndex < fileName.length - 1 then fileName.substring(0, dotIndex)
+      else fileName
+    val trimmed  = base.strip()
+    Option.when(trimmed.nonEmpty)(trimmed.take(maxTitleLength))

@@ -1,8 +1,8 @@
 package nl.amony.modules.resources.impl
 
+import java.nio.charset.StandardCharsets
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{AtomicMoveNotSupportedException, FileAlreadyExistsException, Files, NoSuchFileException, Path, StandardCopyOption}
-import java.time.Instant
+import java.nio.file.{AtomicMoveNotSupportedException, Files, Path, StandardCopyOption}
 import java.util.UUID
 import scala.jdk.CollectionConverters.*
 import scala.util.Using
@@ -12,15 +12,20 @@ import cats.effect.IO
 import fs2.io.file.{Files as Fs2Files, Path as Fs2Path}
 import scribe.Logging
 
-import nl.amony.modules.resources.api.{LocalDirectoryStorageConfig, ResourceContent, ResourceId, ResourcePath, StagingId, StreamedResource}
+import nl.amony.modules.resources.api.{LocalDirectoryStorageConfig, ResourceContent, ResourceId, ResourcePath, StreamedResource}
 
 /** [[ResourceStore]] backed by a local directory. */
 final class LocalDirectoryStore(config: LocalDirectoryStorageConfig) extends ResourceStore, Logging:
 
+  override def pathForUpload(resourceId: ResourceId, fileName: String): ResourcePath =
+    LocalDirectoryStore.uploadTargetPath(fileName, resourceId)
+
+  override def pathForReplacement(currentPath: ResourcePath, resourceId: ResourceId): ResourcePath =
+    currentPath
+
   private def resolveKey(key: StoreKey): Either[String, Path] = key match
     case StoreKey.Resource(path)   => ResourcePath.fromString(path).map(config.resourcePath.resolve(_))
     case StoreKey.Derived(_, name) => Right(config.cachePath.resolve(name))
-    case StoreKey.Staged(id)       => Right(config.tempPath.resolve(id))
 
   override def content(key: StoreKey, contentType: Option[String], eTag: Option[String]): IO[Option[ResourceContent]] =
     resolveKey(key) match
@@ -78,12 +83,6 @@ final class LocalDirectoryStore(config: LocalDirectoryStorageConfig) extends Res
       case Left(message)   => IO.raiseError(new IllegalArgumentException(message))
       case Right(resolved) => IO.blocking(Files.deleteIfExists(resolved)).void
 
-  override def promote(stagingId: StagingId, target: ResourcePath, overwrite: Boolean = false): EitherT[IO, String, StoredResource] =
-    for
-      resolved <- EitherT.fromEither[IO](resolveKey(StoreKey.Resource(target)))
-      stored   <- moveSource(StoreKey.Resource(target), config.tempPath.resolve(stagingId), resolved, overwrite)
-    yield stored
-
   override def openSource(path: ResourcePath): IO[Option[MediaSource]] =
     ResourcePath.fromString(path) match
       case Left(_)  => IO.pure(None)
@@ -115,36 +114,6 @@ final class LocalDirectoryStore(config: LocalDirectoryStorageConfig) extends Res
         }
     }.void.handleErrorWith(e => IO(logger.warn(s"Failed to delete derived files for $resourceId", e)))
 
-  override def deleteStaged(cutoffTime: Instant): IO[Unit] =
-    IO.blocking {
-      if Files.isDirectory(config.tempPath) then
-        Using(Files.list(config.tempPath)) { stream =>
-          stream.iterator().asScala
-            .filter { path =>
-              try Files.isRegularFile(path) && Files.getLastModifiedTime(path).toInstant.isBefore(cutoffTime)
-              catch case _: NoSuchFileException => false
-            }
-            .foreach(path => Files.deleteIfExists(path))
-        }
-    }.void.handleErrorWith(e => IO(logger.warn(s"Failed to delete staged files before $cutoffTime", e)))
-
-  private def moveSource(key: StoreKey, source: Path, target: Path, overwrite: Boolean): EitherT[IO, String, StoredResource] =
-    EitherT(
-      IO.blocking {
-        Files.createDirectories(target.getParent)
-        if overwrite then
-          try Files.move(source, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-          catch case _: AtomicMoveNotSupportedException => Files.move(source, target, StandardCopyOption.REPLACE_EXISTING)
-        else Files.move(source, target)
-        readStoredResource(key, target)
-      }.attempt.map {
-        case Right(stored)                       => Right(stored)
-        case Left(_: NoSuchFileException)        => Left(s"Staged file '${source.getFileName}' is no longer available")
-        case Left(_: FileAlreadyExistsException) => Left(s"Target file '${target.getFileName}' already exists")
-        case Left(error)                         => Left(s"Failed to store file '${source.getFileName}': ${error.getMessage}")
-      }
-    )
-
   private def moveIntoPlace(tempFile: Path, outputFile: Path): IO[Unit] =
     IO.blocking(Files.move(tempFile, outputFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING))
       .recoverWith {
@@ -158,10 +127,59 @@ final class LocalDirectoryStore(config: LocalDirectoryStorageConfig) extends Res
     val storedPath             = key match
       case StoreKey.Resource(_)      => ResourcePath(config.resourcePath.relativize(target).toString)
       case StoreKey.Derived(_, name) => ResourcePath(name)
-      case StoreKey.Staged(id)       => ResourcePath(id)
     StoredResource(
       path             = storedPath,
       size             = attributes.size(),
       timeLastModified = attributes.lastModifiedTime().toMillis,
       fileKey          = Option(attributes.fileKey()).map(_.toString)
     )
+
+object LocalDirectoryStore:
+
+  private val maxFileNameBytes = 255
+
+  private def utf8Length(value: String): Int = value.getBytes(StandardCharsets.UTF_8).length
+
+  private def truncateUtf8(value: String, maxBytes: Int): String =
+    if maxBytes <= 0 then ""
+    else if utf8Length(value) <= maxBytes then value
+    else
+      val sb    = new java.lang.StringBuilder
+      var bytes = 0
+      var i     = 0
+      while i < value.length do
+        val cp      = value.codePointAt(i)
+        val cpChars = Character.charCount(cp)
+        val cpBytes =
+          if cp <= 0x7f then 1
+          else if cp <= 0x7ff then 2
+          else if cp <= 0xffff then 3
+          else 4
+        if bytes + cpBytes > maxBytes then i = value.length
+        else
+          sb.appendCodePoint(cp)
+          bytes += cpBytes
+          i += cpChars
+      sb.toString.stripTrailing()
+
+  private[impl] def uploadTargetPath(fileName: String, resourceId: ResourceId): ResourcePath =
+    val dotIndex                = fileName.lastIndexOf('.')
+    val (rawBase, rawExtension) =
+      if dotIndex > 0 && dotIndex < fileName.length - 1 then
+        (fileName.substring(0, dotIndex), fileName.substring(dotIndex))
+      else
+        (fileName, "")
+
+    val idTag       = s"[$resourceId]"
+    val idTagBytes  = utf8Length(idTag)
+    val extBytes    = utf8Length(rawExtension)
+    val (base, ext) =
+      if idTagBytes + 1 + extBytes < maxFileNameBytes then (rawBase, rawExtension)
+      else (fileName, "")
+
+    val maxBaseBytes  = maxFileNameBytes - idTagBytes - 1 - utf8Length(ext)
+    val truncatedBase = truncateUtf8(base, maxBaseBytes)
+    val finalName     =
+      if truncatedBase.isEmpty then s"$idTag$ext"
+      else s"$truncatedBase $idTag$ext"
+    ResourcePath(finalName)

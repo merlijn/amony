@@ -30,8 +30,8 @@ enum ContentLocation:
     case Resource(path)  => path
     case LocalFile(path) => path.getFileName.toString
 
-/** Result of remuxing a resource for progressive streaming: its staged replacement and updated partial hash. */
-final case class RemuxResult(stagingId: StagingId, partialHash: String)
+/** Result of remuxing a resource for progressive streaming: its target path and updated partial hash. */
+final case class RemuxResult(targetPath: ResourcePath, partialHash: String)
 
 /** Operations on the content of a bucket. */
 trait BucketOperations:
@@ -44,7 +44,7 @@ trait BucketOperations:
 
   def normalizeUpload(file: Path, container: VideoContainer): EitherT[IO, StreamabilityError, Unit]
 
-  def remuxForStreaming(info: ResourceInfo): EitherT[IO, StreamabilityError, Option[RemuxResult]]
+  def remuxForStreaming(info: ResourceInfo, targetPath: ResourcePath): EitherT[IO, StreamabilityError, Option[RemuxResult]]
 
   def derivedResource(info: ResourceInfo, operation: ResourceOperation): EitherT[IO, DerivedResourceError, ResourceContent]
 
@@ -177,16 +177,16 @@ final class FileOperations(
       }
     else IO.pure(None)
 
-  override def remuxForStreaming(info: ResourceInfo): EitherT[IO, StreamabilityError, Option[RemuxResult]] =
+  override def remuxForStreaming(info: ResourceInfo, targetPath: ResourcePath): EitherT[IO, StreamabilityError, Option[RemuxResult]] =
     for
       _         <- EitherT.fromEither[IO](ResourcePath.fromString(info.path)).leftMap(message => StreamabilityError.FixFailed(info.path, message))
+      _         <- EitherT.fromEither[IO](ResourcePath.fromString(targetPath)).leftMap(message => StreamabilityError.FixFailed(info.path, message))
       operation <-
         EitherT.fromOption[IO](AddFastStart.forResource(info), StreamabilityError.UnsupportedContainer(info.contentType.getOrElse("unknown")))
       source    <- EitherT.fromOptionF(
                      store.openSource(info.path),
                      StreamabilityError.FixFailed(info.path, "source file is no longer available")
                    )
-      stagingId  = StagingId(s"${info.resourceId}-normalize-${UUID.randomUUID()}.${operation.container.extension}")
       result    <- EitherT {
                      tempFile("amony-remux-", s".${operation.container.extension}").use { temp =>
                        for
@@ -197,9 +197,9 @@ final class FileOperations(
                              for
                                partialHash <- PartialHash.createHash(out)
                                putResult   <- store
-                                                .put(StoreKey.Staged(stagingId), info.contentType, Fs2Files[IO].readAll(Fs2Path.fromNioPath(out)))
+                                                .put(StoreKey.Resource(targetPath), info.contentType, Fs2Files[IO].readAll(Fs2Path.fromNioPath(out)))
                                                 .leftMap(message => StreamabilityError.FixFailed(info.path, message))
-                                                .as(Some(RemuxResult(stagingId, partialHash)))
+                                                .as(Some(RemuxResult(targetPath, partialHash)))
                                                 .value
                              yield putResult
                            else
@@ -210,7 +210,7 @@ final class FileOperations(
                                )): Either[StreamabilityError, Option[RemuxResult]]
                              )
                        yield result
-                     }.onError(_ => store.delete(StoreKey.Staged(stagingId)))
+                     }.onError(_ => IO.whenA(targetPath != info.path)(store.delete(StoreKey.Resource(targetPath))))
                    }
     yield result
 

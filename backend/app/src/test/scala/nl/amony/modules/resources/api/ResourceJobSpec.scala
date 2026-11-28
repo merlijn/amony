@@ -27,8 +27,8 @@ class ResourceJobSpec extends AnyWordSpecLike with Matchers:
         bucketId    = BucketId("media"),
         resourceId  = ResourceId("abc123"),
         userId      = UserId("admin"),
-        fileName    = "video.mp4",
-        stagingId   = StagingId("abc123-upload"),
+        path        = ResourcePath("abc123.mp4"),
+        title       = Some("video"),
         partialHash = "ph1_test",
         contentMeta = ContentMeta(contentType = Some("video/mp4"), streamable = Some(true))
       )

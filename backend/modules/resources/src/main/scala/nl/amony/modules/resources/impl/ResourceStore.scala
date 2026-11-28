@@ -2,7 +2,6 @@ package nl.amony.modules.resources.impl
 
 import java.net.URI
 import java.nio.file.Path
-import java.time.Instant
 
 import cats.data.EitherT
 import cats.effect.IO
@@ -13,12 +12,11 @@ import nl.amony.modules.resources.api.*
 enum StoreKey:
   case Resource(path: ResourcePath)
   case Derived(resourceId: ResourceId, name: String)
-  case Staged(id: StagingId)
 
 object StoreKey:
 
   private def scaleSuffix(width: Option[Int], height: Option[Int]): String =
-    width.map(w => s"w$w").orElse(height.map(h => s"h$h")).getOrElse("orig")
+    width.map(w => s"w$w").orElse(height.map(h => h.toString).map(h => s"h$h")).getOrElse("orig")
 
   def derived(resourceId: ResourceId, contentVersion: String, operation: ResourceOperation): StoreKey.Derived =
     val name = operation match
@@ -54,10 +52,16 @@ final case class StoredResource(
 )
 
 /**
- * Storage backend for the resources, derived artifacts and staged uploads of a bucket. A local file system and object
- * storage are used interchangeably through this interface.
+ * Storage backend for the resources and derived artifacts of a bucket. A local file system and object storage are used
+ * interchangeably through this interface.
  */
 trait ResourceStore:
+
+  /** Derives the storage path for a newly uploaded resource. */
+  def pathForUpload(resourceId: ResourceId, fileName: String): ResourcePath
+
+  /** Derives the storage path for a remuxed replacement of an existing resource. */
+  def pathForReplacement(currentPath: ResourcePath, resourceId: ResourceId): ResourcePath
 
   /** Returns the content of a stored object for serving, or `None` when it does not exist. */
   def content(key: StoreKey, contentType: Option[String], eTag: Option[String]): IO[Option[ResourceContent]]
@@ -74,12 +78,6 @@ trait ResourceStore:
   /** Deletes the object at `key`. */
   def delete(key: StoreKey): IO[Unit]
 
-  /**
-   * Moves a staged object to `target`, returning its metadata. Fails if `target` already exists unless `overwrite` is
-   * `true`, in which case it is replaced atomically.
-   */
-  def promote(stagingId: StagingId, target: ResourcePath, overwrite: Boolean = false): EitherT[IO, String, StoredResource]
-
   /** Returns a readable handle for the compute layer, or `None` when the resource does not exist. */
   def openSource(path: ResourcePath): IO[Option[MediaSource]]
 
@@ -88,6 +86,3 @@ trait ResourceStore:
 
   /** Deletes all derived artifacts belonging to a resource. */
   def deleteDerived(resourceId: ResourceId): IO[Unit]
-
-  /** Deletes staged objects last modified before `cutoffTime`. */
-  def deleteStaged(cutoffTime: Instant): IO[Unit]
