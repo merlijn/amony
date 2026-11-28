@@ -10,6 +10,7 @@ import fs2.{Chunk, Stream}
 import org.http4s.Uri
 import scribe.Logging
 import software.amazon.awssdk.auth.credentials.{AwsCredentialsProvider, DefaultCredentialsProvider}
+import software.amazon.awssdk.core.checksums.{RequestChecksumCalculation, ResponseChecksumValidation}
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.model.*
@@ -352,7 +353,10 @@ object S3ResourceStore:
     config: S3StorageConfig,
     credentialsProvider: AwsCredentialsProvider = DefaultCredentialsProvider.builder().build()
   ): Resource[IO, S3ResourceStore] =
-    val s3Config = S3Configuration.builder().pathStyleAccessEnabled(config.pathStyleAccess).build()
+    val s3Config = S3Configuration.builder()
+      .pathStyleAccessEnabled(config.pathStyleAccess)
+      .chunkedEncodingEnabled(false)
+      .build()
     val region   = Region.of(config.region)
 
     val clientResource = Resource.fromAutoCloseable(IO.blocking {
@@ -360,6 +364,8 @@ object S3ResourceStore:
         .region(region)
         .credentialsProvider(credentialsProvider)
         .serviceConfiguration(s3Config)
+        .requestChecksumCalculation(RequestChecksumCalculation.WHEN_REQUIRED)
+        .responseChecksumValidation(ResponseChecksumValidation.WHEN_REQUIRED)
       config.endpoint.foreach(builder.endpointOverride)
       builder.build()
     })
