@@ -170,7 +170,7 @@ val subprocessDependencies = Seq(
 )
 
 val subprocessTestDependencies = Seq(
-  "org.scalatest"                 %% "scalatest" % "3.2.20"   % Test,
+  "org.scalatest"                 %% "scalatest" % "3.2.20"    % Test,
   "com.softwaremill.sttp.client4" %% "core"      % sttpVersion % Test
 )
 
@@ -262,6 +262,13 @@ val resourcesDependencies = Seq(
   "org.jsoup"                      % "jsoup"                     % "1.24.1",
   "com.softwaremill.sttp.shared"  %% "fs2"                       % "1.6.0",
   "software.amazon.awssdk"         % "s3"                        % "2.31.18"
+)
+
+val resourcesTestDependencies = Seq(
+  "org.scalatest" %% "scalatest"                      % "3.2.20" % Test,
+  "com.dimafeng"  %% "testcontainers-scala-scalatest" % "0.44.1" % Test,
+  "org.mockito"   %% "mockito-scala-scalatest"        % "2.2.3"  % Test,
+  "commons-codec"  % "commons-codec"                  % "1.23.0" % Test
 )
 
 val searchDependencies = Seq(
@@ -387,11 +394,11 @@ lazy val auth = project
 
 lazy val resources = project
   .in(file("modules/resources"))
-  .dependsOn(tapir, files, subprocess, messagebus, auth)
+  .dependsOn(tapir, files, subprocess, messagebus, auth, database % "test->compile")
   .settings(commonSettings)
   .settings(
     name := "resources",
-    libraryDependencies ++= resourcesDependencies
+    libraryDependencies ++= resourcesDependencies ++ resourcesTestDependencies
   )
 
 lazy val search = project

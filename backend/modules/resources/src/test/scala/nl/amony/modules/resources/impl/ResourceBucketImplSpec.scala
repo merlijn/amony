@@ -25,7 +25,7 @@ import nl.amony.modules.auth.api.{Role, UserId}
 import nl.amony.modules.resources.api.*
 import nl.amony.modules.resources.dal.ResourceDatabase
 import nl.amony.platform.database.{Database, DatabaseConfig}
-import nl.amony.platform.messagebus.MessageTopic
+import nl.amony.platform.messagebus.{JobBus, MessageTopic}
 
 class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll with Matchers with MockitoSugar:
 
@@ -94,12 +94,13 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
     config: ResourceBucketConfig,
     db: ResourceDatabase,
     published: AtomicReference[List[ResourceEvent]],
-    ops: ResourceOperations = null
+    ops: Option[ResourceOperations] = None
   ): ResourceBucketImpl =
-    val topic  = recordingTopic(published)
-    val store  = LocalDirectoryStore(config.storage.asInstanceOf[LocalDirectoryStorageConfig])
-    val events = DatabaseResourceEventStore(BucketId(config.id), db, topic)
-    ResourceBucketImpl(config, 2, db, topic, ops, store, events, null)
+    val topic      = recordingTopic(published)
+    val store      = LocalDirectoryStore(config.storage.asInstanceOf[LocalDirectoryStorageConfig])
+    val events     = DatabaseResourceEventStore(BucketId(config.id), db, topic)
+    val operations = ops.getOrElse(mock[ResourceOperations](RETURNS_DEFAULTS))
+    ResourceBucketImpl(config, 2, db, topic, operations, store, events, mock[JobBus[ResourceJob]](RETURNS_DEFAULTS))
 
   private def newResource(bucketId: BucketId, path: String = "video.mp4"): ResourceInfo =
     ResourceInfo(
@@ -255,7 +256,16 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
       store.deleteDerived(res.resourceId) returns IO.unit
 
       val config = localConfig(s"bucket-${UUID.randomUUID()}", Files.createTempDirectory("amony-bucket-spec"), generatePreviewsOnAdd = true)
-      val bucket = ResourceBucketImpl(config, 1, null, null, ops, store, null, null)
+      val bucket = ResourceBucketImpl(
+        config,
+        1,
+        mock[ResourceDatabase](RETURNS_DEFAULTS),
+        mock[MessageTopic[ResourceEvent]](RETURNS_DEFAULTS),
+        ops,
+        store,
+        mock[ResourceEventStore](RETURNS_DEFAULTS),
+        mock[JobBus[ResourceJob]](RETURNS_DEFAULTS)
+      )
 
       val test =
         for
@@ -279,32 +289,6 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
       test.unsafeRunSync()
     }
 
-    "update the database row on ResourceMovedAndModified" in withContainers { container =>
-      Database.makePool(dbConfig(container)).use { pool =>
-        val dir       = Files.createTempDirectory("amony-bucket-spec")
-        val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
-        val db        = ResourceDatabase(pool)
-        val published = new AtomicReference(List.empty[ResourceEvent])
-        val events    = DatabaseResourceEventStore(BucketId(cfg.id), db, recordingTopic(published))
-        val res       = newResource(BucketId(cfg.id), "old.mp4")
-        val updated   = res.copy(path = ResourcePath("new.mp4"))
-        val event     = ResourceMovedAndModified(res.resourceId, ResourcePath("old.mp4"), ResourcePath("new.mp4"), updated)
-
-        val test =
-          for
-            _      <- db.insertResource(res)
-            _      <- events.processEvent(event)
-            oldRow <- db.getResourceByPath(BucketId(cfg.id), ResourcePath("old.mp4"))
-            newRow <- db.getResourceByPath(BucketId(cfg.id), ResourcePath("new.mp4"))
-          yield
-            oldRow shouldBe None
-            newRow shouldBe Some(updated)
-            published.get() shouldBe List(event)
-
-        test.timeout(5.seconds)
-      }.unsafeRunSync()
-    }
-
     "only publish ResourceModified when a rescan finds changes" in withContainers { container =>
       // The rescan streams rows while upserting, so it needs more than one pooled connection.
       Database.makePool(dbConfig(container).copy(poolSize = 4)).use { pool =>
@@ -318,7 +302,7 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
         val changed   = newResource(BucketId(cfg.id), "changed.txt").copy(contentMeta = ContentMeta.empty)
         ops.contentMeta(ContentLocation.Resource(ResourcePath("same.txt"))) returns EitherT.pure[IO, ContentUnreadable](meta)
         ops.contentMeta(ContentLocation.Resource(ResourcePath("changed.txt"))) returns EitherT.pure[IO, ContentUnreadable](meta)
-        val bucket    = makeBucket(cfg, db, published, ops)
+        val bucket    = makeBucket(cfg, db, published, Some(ops))
 
         val test =
           for

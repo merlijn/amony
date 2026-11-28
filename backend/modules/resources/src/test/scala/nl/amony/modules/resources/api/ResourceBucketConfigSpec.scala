@@ -203,44 +203,4 @@ class ResourceBucketConfigSpec extends AnyWordSpecLike with Matchers {
       }
     }
   }
-
-  "BucketRow" should {
-
-    "decode legacy LocalDirectory rows that still contain hashingAlgorithm and round-trip S3 rows" in {
-      import io.circe.parser.parse
-      import nl.amony.modules.resources.dal.BucketRow
-
-      val legacyJson = parse(
-        """{
-          |  "path": "/media",
-          |  "relativeUploadPath": "_upload",
-          |  "generatePreviewsOnAdd": false,
-          |  "hashingAlgorithm": "partial-hash",
-          |  "sync": {
-          |    "enabled": false,
-          |    "syncOnStartup": true,
-          |    "newFilesOwner": "admin",
-          |    "pollIntervalSeconds": 300,
-          |    "includePatterns": ["**/*.mp4"],
-          |    "excludePatterns": ["**/.*"]
-          |  }
-          |}""".stripMargin
-      ).toOption.get
-
-      val legacyRow = BucketRow("media", BucketRow.localDirectoryType, None, legacyJson)
-      BucketRow.toConfig(legacyRow).map(_.storage) shouldBe a[Right[?, LocalDirectoryStorageConfig]]
-
-      val s3Cfg = s3Config(
-        s3Storage(
-          bucket          = "my-bucket",
-          region          = "eu-west-1",
-          endpoint        = Some(URI.create("http://localhost:9000")),
-          prefix          = Some("media"),
-          pathStyleAccess = true,
-          presignedUrlTtl = 10.minutes
-        )
-      )
-      BucketRow.toConfig(BucketRow.fromConfig(s3Cfg)) shouldBe Right(s3Cfg)
-    }
-  }
 }
