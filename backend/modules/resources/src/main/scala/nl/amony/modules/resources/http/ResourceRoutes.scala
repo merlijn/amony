@@ -97,10 +97,10 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
         resource <- EitherT.fromOptionF(bucket.getResourceInfo(resourceId), NotFoundError("not_found", "Resource not found"))
       yield bucket -> resource
 
-    def mapUploadError(uploadError: UploadError): BadRequestError =
+    def mapUploadError(uploadError: UploadError): IO[BadRequestError] =
       uploadError match
-        case UploadError.InvalidFileName(message) => BadRequestError("invalid_file_name", message)
-        case UploadError.StorageError(_)          => BadRequestError("upload_failed", "Failed to store the uploaded resource")
+        case UploadError.InvalidFileName(message) => IO.pure(BadRequestError("invalid_file_name", message))
+        case UploadError.StorageError(message)    => IO.raiseError(new RuntimeException(message))
 
     routes[IO] {
       securedServerLogicT(endpoint = getResourceById, requiredPermission = Permission.ViewResource) { auth => (bucketId, resourceId) =>
@@ -152,7 +152,7 @@ private[resources] object ResourceRoutes extends RoutesModule, Logging:
       securedServerLogicT(endpoint = uploadResource, requiredPermission = Permission.UploadResource) { token => (bucketId, fileName, body) =>
         for
           bucket   <- getVisibleBucket(token, bucketId)
-          resource <- EitherT(bucket.uploadResource(token.userId, fileName, body)).leftMap(mapUploadError)
+          resource <- EitherT(bucket.uploadResource(token.userId, fileName, body)).leftSemiflatMap(mapUploadError)
         yield toDto(resource)
       }
     }
