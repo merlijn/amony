@@ -64,8 +64,8 @@ trait ResourceStore:
   /** Checks whether an object exists at `key`. */
   def exists(key: StoreKey): IO[Boolean]
 
-  /** Writes or atomically replaces the object at `key` with the contents of `source`. */
-  def put(key: StoreKey, contentType: Option[String], source: Path): EitherT[IO, String, StoredResource]
+  /** Writes or atomically replaces the object at `key` with the bytes from `source`. */
+  def put(key: StoreKey, contentType: Option[String], source: fs2.Stream[IO, Byte]): EitherT[IO, String, Unit]
 
   /** Writes or atomically replaces the object at `key` with in-memory bytes. */
   def putBytes(key: StoreKey, contentType: Option[String], bytes: Array[Byte]): IO[Unit]

@@ -8,6 +8,7 @@ import scala.util.Using
 
 import cats.data.EitherT
 import cats.effect.IO
+import fs2.io.file.{Files as Fs2Files, Path as Fs2Path}
 import scribe.Logging
 
 import nl.amony.modules.resources.api.{LocalDirectoryConfig, ResourceContent, ResourceId, ResourcePath, StagingId, StreamedResource}
@@ -30,7 +31,7 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
           else {
             key match
               case StoreKey.Resource(path) =>
-                logger.warn(s"Resource at '$path' was found in the database but no file exists: $resolved")
+                logger.warn(s"Resource at '$path' does not exist at $resolved")
               case _                       => ()
             None
           }
@@ -41,11 +42,21 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
       case Left(_)         => IO.pure(false)
       case Right(resolved) => IO.blocking(Files.exists(resolved))
 
-  override def put(key: StoreKey, contentType: Option[String], source: Path): EitherT[IO, String, StoredResource] =
-    for
-      target <- EitherT.fromEither[IO](resolveKey(key))
-      stored <- moveSource(key, source, target, atomic = true)
-    yield stored
+  override def put(key: StoreKey, contentType: Option[String], source: fs2.Stream[IO, Byte]): EitherT[IO, String, Unit] =
+    EitherT.fromEither[IO](resolveKey(key)).flatMap { target =>
+      val temp  = target.resolveSibling(s".${target.getFileName}.${UUID.randomUUID()}")
+      val write =
+        IO.blocking(Files.createDirectories(target.getParent)) >>
+          source.through(Fs2Files[IO].writeAll(Fs2Path.fromNioPath(temp))).compile.drain >>
+          moveIntoPlace(temp, target)
+      EitherT(
+        write
+          .onError(_ => IO.blocking(Files.deleteIfExists(temp)).void)
+          .onCancel(IO.blocking(Files.deleteIfExists(temp)).void)
+          .attempt
+          .map(_.left.map(error => s"Failed to store file '${target.getFileName}': ${error.getMessage}"))
+      )
+    }
 
   override def putBytes(key: StoreKey, contentType: Option[String], bytes: Array[Byte]): IO[Unit] =
     resolveKey(key) match

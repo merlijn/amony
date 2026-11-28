@@ -5,7 +5,9 @@ import java.nio.file.{Files, Path}
 import java.util.UUID
 import scala.concurrent.duration.*
 
+import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import fs2.Stream
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
@@ -76,11 +78,13 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
     "stage and promote a file into the bucket" in {
       val dir       = Files.createTempDirectory("amony-store-spec")
       val store     = LocalDirectoryStore(config(dir))
-      val source    = Files.createTempFile("amony-staged", ".mp4")
-      Files.writeString(source, "content")
       val stagingId = StagingId("resource-upload")
 
-      store.put(StoreKey.Staged(stagingId), Some("video/mp4"), source).value.unsafeRunSync().isRight shouldBe true
+      store.put(
+        StoreKey.Staged(stagingId),
+        Some("video/mp4"),
+        Stream.emits("content".getBytes(StandardCharsets.UTF_8))
+      ).value.unsafeRunSync() shouldBe Right(())
       store.exists(StoreKey.Staged(stagingId)).unsafeRunSync() shouldBe true
 
       val stored = store.promote(stagingId, "video.mp4").value.unsafeRunSync()
@@ -94,11 +98,13 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       val dir       = Files.createTempDirectory("amony-store-spec")
       val store     = LocalDirectoryStore(config(dir))
       Files.writeString(dir.resolve("video.mp4"), "existing")
-      val source    = Files.createTempFile("amony-staged", ".mp4")
-      Files.writeString(source, "content")
       val stagingId = StagingId("resource-upload")
 
-      store.put(StoreKey.Staged(stagingId), Some("video/mp4"), source).value.unsafeRunSync().isRight shouldBe true
+      store.put(
+        StoreKey.Staged(stagingId),
+        Some("video/mp4"),
+        Stream.emits("content".getBytes(StandardCharsets.UTF_8))
+      ).value.unsafeRunSync() shouldBe Right(())
 
       store.promote(stagingId, "video.mp4").value.unsafeRunSync().map(_.path) shouldBe Right(ResourcePath("video_1.mp4"))
       Files.exists(dir.resolve("video_1.mp4")) shouldBe true
@@ -115,11 +121,13 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       val dir       = Files.createTempDirectory("amony-store-spec")
       val store     = LocalDirectoryStore(config(dir))
       Files.writeString(dir.resolve("video.mp4"), "old")
-      val source    = Files.createTempFile("amony-remux", ".mp4")
-      Files.writeString(source, "new-content")
       val stagingId = StagingId("remux-1")
 
-      store.put(StoreKey.Staged(stagingId), Some("video/mp4"), source).value.unsafeRunSync().isRight shouldBe true
+      store.put(
+        StoreKey.Staged(stagingId),
+        Some("video/mp4"),
+        Stream.emits("new-content".getBytes(StandardCharsets.UTF_8))
+      ).value.unsafeRunSync() shouldBe Right(())
       val stored = store.replace(ResourcePath("video.mp4"), stagingId).value.unsafeRunSync()
 
       stored.map(_.path) shouldBe Right(ResourcePath("video.mp4"))
@@ -129,15 +137,12 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
     }
 
     "store and retrieve a derived file by key" in {
-      val dir    = Files.createTempDirectory("amony-store-spec")
-      val store  = LocalDirectoryStore(config(dir))
-      val source = Files.createTempFile("amony-derived-src", ".webp")
-      Files.writeString(source, "image-bytes")
-      val key    = StoreKey.Derived(ResourceId("res1"), "res1_v1_w512.webp")
+      val dir   = Files.createTempDirectory("amony-store-spec")
+      val store = LocalDirectoryStore(config(dir))
+      val key   = StoreKey.Derived(ResourceId("res1"), "res1_v1_w512.webp")
 
-      store.put(key, Some("image/webp"), source).value.unsafeRunSync().isRight shouldBe true
+      store.put(key, Some("image/webp"), Stream.emits("image-bytes".getBytes(StandardCharsets.UTF_8))).value.unsafeRunSync() shouldBe Right(())
 
-      Files.exists(source) shouldBe false
       store.content(key, Some("image/webp"), Some("etag-1")).unsafeRunSync() match
         case Some(ResourceContent.Streamed(streamed)) =>
           streamed.contentType shouldBe "image/webp"

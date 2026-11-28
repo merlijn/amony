@@ -70,8 +70,8 @@ class ResourceBucketImpl(
     job match
       case FixStreamability(_, resourceId) =>
         (for
-          stagingId <- EitherT(processStreamabilityFix(resourceId)).leftMap(_.message)
-        yield commitStreamabilityFix(resourceId, stagingId).map(_.left.map(_.message))).value
+          remux <- EitherT(processStreamabilityFix(resourceId)).leftMap(_.message)
+        yield commitStreamabilityFix(resourceId, remux).map(_.left.map(_.message))).value
 
       case upload: UploadResource =>
         IO.pure(Right(commitUpload(upload)))
@@ -160,7 +160,7 @@ class ResourceBucketImpl(
                   UploadError.StorageError(s"Failed to store upload '$decoded': ${error.message}")
                 )
               else EitherT.pure[IO, UploadError](meta)
-              _         <- store.put(StoreKey.Staged(stagingId), finalMeta.contentType, localFile)
+              _         <- store.put(StoreKey.Staged(stagingId), finalMeta.contentType, Files[IO].readAll(Fs2Path.fromNioPath(localFile)))
                              .leftMap(message => UploadError.StorageError(s"Failed to store upload '$decoded': $message"))
             yield UploadResource(id, resourceId, userId, decoded, stagingId, hash, finalMeta)
           prepare.value.attempt.flatMap:
@@ -203,58 +203,47 @@ class ResourceBucketImpl(
         Left(ResourceJobError.Rejected("The container format cannot be remuxed for streaming"))
       case Some(_)                                              => Right(())
 
-  private def processStreamabilityFix(resourceId: ResourceId): IO[Either[StreamabilityError, Option[StagingId]]] =
+  private def processStreamabilityFix(resourceId: ResourceId): IO[Either[StreamabilityError, Option[RemuxResult]]] =
     OptionT(getResourceInfo(resourceId))
       .semiflatMap((info: ResourceInfo) =>
-        if !info.streamable.contains(false) then IO.pure(Right(None): Either[StreamabilityError, Option[StagingId]])
+        if !info.streamable.contains(false) then IO.pure(Right(None): Either[StreamabilityError, Option[RemuxResult]])
         else ops.remuxForStreaming(info).value
       )
       .getOrElse(Left(StreamabilityError.ResourceNotFound(resourceId)))
 
   private def commitStreamabilityFix(
     resourceId: ResourceId,
-    stagingId: Option[StagingId]
+    remux: Option[RemuxResult]
   ): IO[Either[StreamabilityError, Unit]] =
-    (for
-      info        <- EitherT.fromOptionF(getResourceInfo(resourceId), StreamabilityError.ResourceNotFound(resourceId))
-      stored      <- replaceOrStatForStreamability(info, stagingId)
-      location     = ContentLocation.Resource(info.path)
-      partialHash <- ops.contentPartialHash(location).leftMap(e => StreamabilityError.FixFailed(info.path, e.message))
-      streamable  <- ops.isStreamable(location, info.contentType).leftMap(e => StreamabilityError.FixFailed(info.path, e.message))
-      updated     <- EitherT.cond[IO](
-                       streamable.contains(true),
-                       info.copy(
-                         size             = stored.size,
-                         partialHash      = partialHash,
-                         fileKey          = stored.fileKey,
-                         timeLastModified = Some(stored.timeLastModified),
-                         contentMeta      = info.contentMeta.copy(streamable = streamable)
-                       ),
-                       StreamabilityError.FixFailed(info.path, "the file is not streamable after the remux")
-                     )
-      _           <- EitherT.liftF(events.processEvent(ResourceModified(updated)))
-    yield ()).value
+    remux match
+      case None                                      => IO.pure(Right(()))
+      case Some(RemuxResult(stagingId, partialHash)) =>
+        (for
+          info   <- EitherT.fromOptionF(getResourceInfo(resourceId), StreamabilityError.ResourceNotFound(resourceId))
+          stored <- replaceOrStatForStreamability(info, stagingId)
+          updated = info.copy(
+                      size             = stored.size,
+                      partialHash      = partialHash,
+                      fileKey          = stored.fileKey,
+                      timeLastModified = Some(stored.timeLastModified),
+                      contentMeta      = info.contentMeta.copy(streamable = Some(true))
+                    )
+          _      <- EitherT.liftF(events.processEvent(ResourceModified(updated)))
+        yield ()).value
 
   private def replaceOrStatForStreamability(
     info: ResourceInfo,
-    stagingId: Option[StagingId]
+    stagingId: StagingId
   ): EitherT[IO, StreamabilityError, StoredResource] =
-    stagingId match
-      case Some(id) =>
-        EitherT.liftF(store.exists(StoreKey.Staged(id))).flatMap {
-          case true  =>
-            store.replace(info.path, id).leftMap(message => StreamabilityError.FixFailed(info.path, message))
-          case false =>
-            EitherT.fromOptionF(
-              store.stat(info.path),
-              StreamabilityError.FixFailed(info.path, "resource file is no longer available")
-            )
-        }
-      case None     =>
+    EitherT.liftF(store.exists(StoreKey.Staged(stagingId))).flatMap {
+      case true  =>
+        store.replace(info.path, stagingId).leftMap(message => StreamabilityError.FixFailed(info.path, message))
+      case false =>
         EitherT.fromOptionF(
           store.stat(info.path),
           StreamabilityError.FixFailed(info.path, "resource file is no longer available")
         )
+    }
 
   override def reComputePartialHashes(): IO[Unit] = getAllResources.evalMap { resource =>
     ops.contentPartialHash(ContentLocation.Resource(resource.path)).value.flatMap {
