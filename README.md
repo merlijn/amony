@@ -9,7 +9,7 @@ untested.
 ![](docs/app-screenshot.png)
 
 A live demo is available at [https://demo.amony.app](https://demo.amony.app). It is running on a single
-[Hetzner](https://www.hetzner.com/) Cost-Optimized server (~$4/month).
+[Hetzner](https://www.hetzner.com/) Cost-Optimized CX23 server.
 
 **Note:** All videos on the demo site are free (public domain) and sourced from
 [Pexels](https://www.pexels.com/license/)
