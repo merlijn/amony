@@ -176,7 +176,8 @@ class ResourceBucketImpl(
                     case Some(_) => EitherT.liftF(store.delete(StoreKey.Staged(upload.stagingId)))
                     case None    =>
                       for
-                        stored <- store.promote(upload.stagingId, upload.fileName)
+                        target  = ResourceBucketImpl.uploadTargetPath(upload.fileName, upload.resourceId)
+                        stored <- store.promote(upload.stagingId, target)
                         info    = ResourceInfo(
                                     bucketId           = upload.bucketId,
                                     resourceId         = upload.resourceId,
@@ -237,7 +238,7 @@ class ResourceBucketImpl(
   ): EitherT[IO, StreamabilityError, StoredResource] =
     EitherT.liftF(store.exists(StoreKey.Staged(stagingId))).flatMap {
       case true  =>
-        store.replace(info.path, stagingId).leftMap(message => StreamabilityError.FixFailed(info.path, message))
+        store.promote(stagingId, info.path, overwrite = true).leftMap(message => StreamabilityError.FixFailed(info.path, message))
       case false =>
         EitherT.fromOptionF(
           store.stat(info.path),
@@ -336,3 +337,53 @@ class ResourceBucketImpl(
       .evalMap(resource => IO(logger.info(s"Inserting resource: ${resource.resourceId}")) >> db.insertResource(resource)).compile.drain
 
 }
+
+object ResourceBucketImpl:
+
+  private val maxFileNameBytes = 255
+
+  private def utf8Length(value: String): Int = value.getBytes(StandardCharsets.UTF_8).length
+
+  private def truncateUtf8(value: String, maxBytes: Int): String =
+    if maxBytes <= 0 then ""
+    else if utf8Length(value) <= maxBytes then value
+    else
+      val sb    = new java.lang.StringBuilder
+      var bytes = 0
+      var i     = 0
+      while i < value.length do
+        val cp      = value.codePointAt(i)
+        val cpChars = Character.charCount(cp)
+        val cpBytes =
+          if cp <= 0x7f then 1
+          else if cp <= 0x7ff then 2
+          else if cp <= 0xffff then 3
+          else 4
+        if bytes + cpBytes > maxBytes then i = value.length
+        else
+          sb.appendCodePoint(cp)
+          bytes += cpBytes
+          i += cpChars
+      sb.toString.stripTrailing()
+
+  private[impl] def uploadTargetPath(fileName: String, resourceId: ResourceId): ResourcePath =
+    val dotIndex                = fileName.lastIndexOf('.')
+    val (rawBase, rawExtension) =
+      if dotIndex > 0 && dotIndex < fileName.length - 1 then
+        (fileName.substring(0, dotIndex), fileName.substring(dotIndex))
+      else
+        (fileName, "")
+
+    val idTag       = s"[$resourceId]"
+    val idTagBytes  = utf8Length(idTag)
+    val extBytes    = utf8Length(rawExtension)
+    val (base, ext) =
+      if idTagBytes + 1 + extBytes < maxFileNameBytes then (rawBase, rawExtension)
+      else (fileName, "")
+
+    val maxBaseBytes  = maxFileNameBytes - idTagBytes - 1 - utf8Length(ext)
+    val truncatedBase = truncateUtf8(base, maxBaseBytes)
+    val finalName     =
+      if truncatedBase.isEmpty then s"$idTag$ext"
+      else s"$truncatedBase $idTag$ext"
+    ResourcePath(finalName)

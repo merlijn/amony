@@ -73,11 +73,11 @@ trait ResourceStore:
   /** Deletes the object at `key`. */
   def delete(key: StoreKey): IO[Unit]
 
-  /** Promotes a staged object to a unique final resource path derived from `fileName`, returning its metadata. */
-  def promote(stagingId: StagingId, fileName: String): EitherT[IO, String, StoredResource]
-
-  /** Atomically replaces an existing resource with a staged object, returning its updated metadata. */
-  def replace(path: ResourcePath, stagingId: StagingId): EitherT[IO, String, StoredResource]
+  /**
+   * Moves a staged object to `target`, returning its metadata. Fails if `target` already exists unless `overwrite` is
+   * `true`, in which case it is replaced atomically.
+   */
+  def promote(stagingId: StagingId, target: ResourcePath, overwrite: Boolean = false): EitherT[IO, String, StoredResource]
 
   /** Returns a readable handle for the compute layer, or `None` when the resource does not exist. */
   def openSource(path: ResourcePath): IO[Option[MediaSource]]

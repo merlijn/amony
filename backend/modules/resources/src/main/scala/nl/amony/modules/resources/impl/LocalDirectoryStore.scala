@@ -1,7 +1,7 @@
 package nl.amony.modules.resources.impl
 
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{AtomicMoveNotSupportedException, Files, NoSuchFileException, Path, StandardCopyOption}
+import java.nio.file.{AtomicMoveNotSupportedException, FileAlreadyExistsException, Files, NoSuchFileException, Path, StandardCopyOption}
 import java.util.UUID
 import scala.jdk.CollectionConverters.*
 import scala.util.Using
@@ -77,18 +77,10 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
       case Left(message)   => IO.raiseError(new IllegalArgumentException(message))
       case Right(resolved) => IO.blocking(Files.deleteIfExists(resolved)).void
 
-  override def promote(stagingId: StagingId, fileName: String): EitherT[IO, String, StoredResource] =
+  override def promote(stagingId: StagingId, target: ResourcePath, overwrite: Boolean = false): EitherT[IO, String, StoredResource] =
     for
-      _         <- EitherT.fromEither[IO](ResourcePath.fromString(fileName))
-      targetOpt <- EitherT.liftF(IO.blocking(resolveTargetPath(config.resourcePath.resolve(fileName), maxAttempts = 100)))
-      target    <- EitherT.fromOption[IO](targetOpt, "Failed to resolve unique file name after 100 attempts")
-      stored    <- moveSource(StoreKey.Resource(ResourcePath(fileName)), config.tempPath.resolve(stagingId), target, atomic = false)
-    yield stored
-
-  override def replace(path: ResourcePath, stagingId: StagingId): EitherT[IO, String, StoredResource] =
-    for
-      target <- EitherT.fromEither[IO](resolveKey(StoreKey.Resource(path)))
-      stored <- moveSource(StoreKey.Resource(path), config.tempPath.resolve(stagingId), target, atomic = true)
+      resolved <- EitherT.fromEither[IO](resolveKey(StoreKey.Resource(target)))
+      stored   <- moveSource(StoreKey.Resource(target), config.tempPath.resolve(stagingId), resolved, overwrite)
     yield stored
 
   override def openSource(path: ResourcePath): IO[Option[MediaSource]] =
@@ -122,19 +114,20 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
         }
     }.void.handleErrorWith(e => IO(logger.warn(s"Failed to delete derived files for $resourceId", e)))
 
-  private def moveSource(key: StoreKey, source: Path, target: Path, atomic: Boolean): EitherT[IO, String, StoredResource] =
+  private def moveSource(key: StoreKey, source: Path, target: Path, overwrite: Boolean): EitherT[IO, String, StoredResource] =
     EitherT(
       IO.blocking {
         Files.createDirectories(target.getParent)
-        if atomic then
+        if overwrite then
           try Files.move(source, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
           catch case _: AtomicMoveNotSupportedException => Files.move(source, target, StandardCopyOption.REPLACE_EXISTING)
         else Files.move(source, target)
         readStoredResource(key, target)
       }.attempt.map {
-        case Right(stored)                => Right(stored)
-        case Left(_: NoSuchFileException) => Left(s"Staged file '${source.getFileName}' is no longer available")
-        case Left(error)                  => Left(s"Failed to store file '${source.getFileName}': ${error.getMessage}")
+        case Right(stored)                       => Right(stored)
+        case Left(_: NoSuchFileException)        => Left(s"Staged file '${source.getFileName}' is no longer available")
+        case Left(_: FileAlreadyExistsException) => Left(s"Target file '${target.getFileName}' already exists")
+        case Left(error)                         => Left(s"Failed to store file '${source.getFileName}': ${error.getMessage}")
       }
     )
 
@@ -158,22 +151,3 @@ final class LocalDirectoryStore(config: LocalDirectoryConfig) extends ResourceSt
       timeLastModified = attributes.lastModifiedTime().toMillis,
       fileKey          = Option(attributes.fileKey()).map(_.toString)
     )
-
-  private def resolveTargetPath(path: Path, maxAttempts: Int): Option[Path] = {
-    var target: Path = path
-    var counter: Int = 1
-
-    while Files.exists(target) && counter < maxAttempts do
-      val fileNameWithoutExt = target.getFileName.toString.lastIndexOf('.') match
-        case -1  => target.getFileName.toString
-        case idx => target.getFileName.toString.substring(0, idx)
-
-      val extension = target.getFileName.toString.lastIndexOf('.') match
-        case -1  => ""
-        case idx => target.getFileName.toString.substring(idx)
-
-      target = path.getParent.resolve(s"${fileNameWithoutExt}_$counter$extension")
-      counter += 1
-
-    Option.unless(Files.exists(target))(target)
-  }

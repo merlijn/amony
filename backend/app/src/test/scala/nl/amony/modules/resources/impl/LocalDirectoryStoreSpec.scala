@@ -87,14 +87,14 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
       ).value.unsafeRunSync() shouldBe Right(())
       store.exists(StoreKey.Staged(stagingId)).unsafeRunSync() shouldBe true
 
-      val stored = store.promote(stagingId, "video.mp4").value.unsafeRunSync()
+      val stored = store.promote(stagingId, ResourcePath("video.mp4")).value.unsafeRunSync()
 
       stored.map(_.path) shouldBe Right(ResourcePath("video.mp4"))
       Files.exists(dir.resolve("video.mp4")) shouldBe true
       store.exists(StoreKey.Staged(stagingId)).unsafeRunSync() shouldBe false
     }
 
-    "resolve a unique name when the target already exists on promote" in {
+    "fail when the target already exists on promote with overwrite = false" in {
       val dir       = Files.createTempDirectory("amony-store-spec")
       val store     = LocalDirectoryStore(config(dir))
       Files.writeString(dir.resolve("video.mp4"), "existing")
@@ -106,18 +106,19 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
         Stream.emits("content".getBytes(StandardCharsets.UTF_8))
       ).value.unsafeRunSync() shouldBe Right(())
 
-      store.promote(stagingId, "video.mp4").value.unsafeRunSync().map(_.path) shouldBe Right(ResourcePath("video_1.mp4"))
-      Files.exists(dir.resolve("video_1.mp4")) shouldBe true
+      store.promote(stagingId, ResourcePath("video.mp4")).value.unsafeRunSync() shouldBe
+        Left("Target file 'video.mp4' already exists")
+      Files.readString(dir.resolve("video.mp4")) shouldBe "existing"
     }
 
     "return a failure when the staged file is gone on promote" in {
       val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
 
-      store.promote(StagingId("missing-upload"), "video.mp4").value.unsafeRunSync() shouldBe
+      store.promote(StagingId("missing-upload"), ResourcePath("video.mp4")).value.unsafeRunSync() shouldBe
         Left("Staged file 'missing-upload' is no longer available")
     }
 
-    "replace an existing resource atomically from a staged file" in {
+    "replace an existing resource atomically on promote with overwrite = true" in {
       val dir       = Files.createTempDirectory("amony-store-spec")
       val store     = LocalDirectoryStore(config(dir))
       Files.writeString(dir.resolve("video.mp4"), "old")
@@ -128,7 +129,7 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
         Some("video/mp4"),
         Stream.emits("new-content".getBytes(StandardCharsets.UTF_8))
       ).value.unsafeRunSync() shouldBe Right(())
-      val stored = store.replace(ResourcePath("video.mp4"), stagingId).value.unsafeRunSync()
+      val stored = store.promote(stagingId, ResourcePath("video.mp4"), overwrite = true).value.unsafeRunSync()
 
       stored.map(_.path) shouldBe Right(ResourcePath("video.mp4"))
       stored.map(_.size) shouldBe Right(11L)
@@ -201,14 +202,14 @@ class LocalDirectoryStoreSpec extends AnyWordSpecLike with Matchers:
     "reject an absolute file name on promote" in {
       val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
 
-      store.promote(StagingId("staged"), "/abs.mp4").value.unsafeRunSync() shouldBe
+      store.promote(StagingId("staged"), ResourcePath("/abs.mp4")).value.unsafeRunSync() shouldBe
         Left("Resource path must be relative: /abs.mp4")
     }
 
     "reject a bucket-escaping file name on promote" in {
       val store = LocalDirectoryStore(config(Files.createTempDirectory("amony-store-spec")))
 
-      store.promote(StagingId("staged"), "../other.mp4").value.unsafeRunSync() shouldBe
+      store.promote(StagingId("staged"), ResourcePath("../other.mp4")).value.unsafeRunSync() shouldBe
         Left("Resource path must not escape the bucket: ../other.mp4")
     }
 

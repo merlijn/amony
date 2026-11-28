@@ -329,3 +329,31 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
       }.unsafeRunSync()
     }
   }
+
+  "ResourceBucketImpl.uploadTargetPath" should {
+    val id = ResourceId("ABCDEFGHIJKLMNOPQRSTUVWX")
+
+    "embed the resource id before the extension" in {
+      ResourceBucketImpl.uploadTargetPath("video.mp4", id) shouldBe ResourcePath(s"video [$id].mp4")
+      ResourceBucketImpl.uploadTargetPath("my.holiday.clip.mp4", id) shouldBe ResourcePath(s"my.holiday.clip [$id].mp4")
+    }
+
+    "append the resource id when there is no extension or a leading/trailing dot" in {
+      ResourceBucketImpl.uploadTargetPath("README", id) shouldBe ResourcePath(s"README [$id]")
+      ResourceBucketImpl.uploadTargetPath(".hidden", id) shouldBe ResourcePath(s".hidden [$id]")
+      ResourceBucketImpl.uploadTargetPath("trailing.", id) shouldBe ResourcePath(s"trailing. [$id]")
+    }
+
+    "truncate long ASCII and multi-byte UTF-8 file names to stay within 255 bytes" in {
+      val longAscii = ("a" * 300) + ".mp4"
+      val asciiPath = ResourceBucketImpl.uploadTargetPath(longAscii, id)
+      asciiPath.getBytes("UTF-8").length shouldBe 255
+      asciiPath should endWith(s" [$id].mp4")
+
+      val longEmoji = ("🎉" * 100) + ".mp4"
+      val emojiPath = ResourceBucketImpl.uploadTargetPath(longEmoji, id)
+      emojiPath.getBytes("UTF-8").length should be <= 255
+      emojiPath should endWith(s" [$id].mp4")
+      emojiPath.codePoints().count() should be > 0L
+    }
+  }
