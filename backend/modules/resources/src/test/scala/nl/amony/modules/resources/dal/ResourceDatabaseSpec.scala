@@ -4,8 +4,8 @@ import java.util.UUID
 import scala.concurrent.duration.*
 import scala.util.Random
 
-import cats.effect.{IO, Resource}
 import cats.effect.unsafe.implicits.global
+import cats.effect.{IO, Resource}
 import cats.implicits.*
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll

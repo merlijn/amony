@@ -438,7 +438,6 @@ lazy val app = project
     jibImageFormat          := JibImageFormat.OCI,
     jibTags                 := envTags.getOrElse(if (isReleaseBuild) List("latest") else List("dev")),
     jibEnvironment          := Map(
-      "JAVA_TOOL_OPTIONS"        -> "-Dconfig.file=/app/resources/application.conf",
       "AMONY_SOLR_PATH"          -> "/app/data/solr",
       "AMONY_DEFAULT_MEDIA_PATH" -> "/media",
       "OTEL_SERVICE_NAME"        -> "amony-app"

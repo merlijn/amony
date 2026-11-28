@@ -30,8 +30,8 @@ object App extends ResourceApp.Forever with Logging {
   private lazy val config: Config =
     Option(System.getenv().get("AMONY_CONFIG_FILE")) match
       case Some(fileName) =>
-        logger.info(s"Loading configuration from file: $fileName")
-        ConfigFactory.parseFile(Path.of(fileName).toFile)
+        logger.info(s"Loading configuration overrides from file: $fileName")
+        ConfigFactory.load(ConfigFactory.parseFile(Path.of(fileName).toFile))
       case None           => ConfigFactory.load()
 
   override def run(args: List[String]): Resource[IO, Unit] = {

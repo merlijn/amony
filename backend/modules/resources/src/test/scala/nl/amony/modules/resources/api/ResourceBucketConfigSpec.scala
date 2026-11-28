@@ -196,8 +196,8 @@ class ResourceBucketConfigSpec extends AnyWordSpecLike with Matchers {
         )
       }
 
-      "parse the bundled resources.conf default-bucket" in {
-        val loaded = ConfigSource.resources("resources.conf").at("default-bucket").load[ResourceBucketConfig]
+      "parse the bundled reference.conf default-bucket" in {
+        val loaded = ConfigSource.fromConfig(ConfigFactory.load()).at("amony.resources.default-bucket").load[ResourceBucketConfig]
         loaded.isRight shouldBe true
         loaded.toOption.get.storage shouldBe a[LocalDirectoryStorageConfig]
       }

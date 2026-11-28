@@ -9,7 +9,8 @@ export type AppConfig = AppConfigDto & { imageFormat: string; videoFormat: strin
 
 /**
  * Last-resort configuration used when the server config cannot be loaded. Mirrors the backend
- * defaults in resources.conf so thumbnail and clip URLs stay valid without any inline fallbacks.
+ * defaults in the resources module's reference.conf so thumbnail and clip URLs stay valid without
+ * any inline fallbacks.
  */
 export const defaultAppConfig: AppConfig = {
   thumbnailSizes: [64, 128, 256, 512, 768, 1024],

@@ -55,7 +55,7 @@ services:
     # Public authorize endpoint (browser-facing); .env overrides the Dex default (Zitadel in the demo).
     environment:
       AMONY_IDP_AUTHORIZE_URL: ${AMONY_IDP_AUTHORIZE_URL:-https://${DOMAIN_SUB_AUTH}.${DOMAIN_TLD}/dex/auth}
-      # Only the public hosts are accepted (replaces the local defaults in application.conf).
+      # Only the public hosts are accepted (replaces the local defaults in reference.conf).
       AMONY_ALLOWED_HOSTS_0: ${DOMAIN_SUB_AMONY}.${DOMAIN_TLD}
 
   auth:
