@@ -3,18 +3,19 @@ package nl.amony.modules.resources.impl
 import java.nio.charset.StandardCharsets
 import java.nio.file.{AtomicMoveNotSupportedException, Files, NoSuchFileException, Path, StandardCopyOption}
 import java.util.UUID
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Using}
 
 import cats.data.EitherT
 import cats.effect.{IO, Resource}
 import cats.implicits.*
+import fs2.io.file.{Files as Fs2Files, Path as Fs2Path}
 import org.apache.tika.Tika
 import org.typelevel.otel4s.metrics.Meter
 import org.typelevel.otel4s.trace.Tracer
 import scribe.Logging
 
 import nl.amony.modules.resources.api.*
-import nl.amony.modules.resources.util.{ETag, SingleFlight}
+import nl.amony.modules.resources.util.{ETag, PartialHash, SingleFlight}
 import nl.amony.platform.subprocess.ffmpeg.tasks.ThumbnailTile
 import nl.amony.platform.subprocess.ffmpeg.{ContainerFormat, FFMpeg}
 import nl.amony.platform.subprocess.magick.ImageMagick
@@ -29,6 +30,9 @@ enum ContentLocation:
     case Resource(path)  => path
     case LocalFile(path) => path.getFileName.toString
 
+/** Result of remuxing a resource for progressive streaming: its target path and updated partial hash. */
+final case class RemuxResult(targetPath: ResourcePath, partialHash: String)
+
 /** Operations on the content of a bucket. */
 trait BucketOperations:
 
@@ -40,7 +44,7 @@ trait BucketOperations:
 
   def normalizeUpload(file: Path, container: VideoContainer): EitherT[IO, StreamabilityError, Unit]
 
-  def remuxForStreaming(info: ResourceInfo): EitherT[IO, StreamabilityError, Option[StagingId]]
+  def remuxForStreaming(info: ResourceInfo, targetPath: ResourcePath): EitherT[IO, StreamabilityError, Option[RemuxResult]]
 
   def derivedResource(info: ResourceInfo, operation: ResourceOperation): EitherT[IO, DerivedResourceError, ResourceContent]
 
@@ -58,7 +62,6 @@ enum DerivedResourceError:
     case SourceMissing(resourceId, path) => s"Resource '$resourceId' was found in the database but no file exists: $path"
 
 final class FileOperations(
-  hashingAlgorithm: HashingAlgorithm,
   parallelFactor: Int,
   formats: ThumbnailFormats,
   resolutions: ThumbnailResolutions,
@@ -77,7 +80,7 @@ final class FileOperations(
   private def tempFile(prefix: String, suffix: String = ""): Resource[IO, Path] =
     Resource.make(IO.blocking(Files.createTempFile(prefix, suffix)))(path => IO.blocking(Files.deleteIfExists(path)).void)
 
-  private def localPathOf(location: ContentLocation): EitherT[IO, ContentUnreadable, Path] = location match
+  private def mediaSourceOf(location: ContentLocation): EitherT[IO, ContentUnreadable, MediaSource] = location match
     case ContentLocation.Resource(path)  =>
       for
         _      <- EitherT.fromEither[IO](
@@ -87,50 +90,57 @@ final class FileOperations(
                     store.openSource(path),
                     ContentUnreadable(location, new NoSuchFileException(path))
                   )
-        local  <- source match
-                    case MediaSource.LocalFile(p) => EitherT.pure[IO, ContentUnreadable](p)
-                    case MediaSource.RemoteUrl(u) =>
-                      EitherT.leftT[IO, Path](
-                        ContentUnreadable(location, new UnsupportedOperationException(s"Remote media source is not supported: $u"))
-                      )
-      yield local
-    case ContentLocation.LocalFile(path) => EitherT.pure[IO, ContentUnreadable](path)
+      yield source
+    case ContentLocation.LocalFile(path) => EitherT.pure[IO, ContentUnreadable](MediaSource.LocalFile(path))
 
-  private def contentTypeFor(location: ContentLocation, path: Path): EitherT[IO, ContentUnreadable, String] =
-    EitherT(IO.blocking(tika.detect(path)).attempt.map(_.left.map(ContentUnreadable(location, _))))
+  private def localPathOf(location: ContentLocation): EitherT[IO, ContentUnreadable, Path] =
+    mediaSourceOf(location).flatMap {
+      case MediaSource.LocalFile(p) => EitherT.pure[IO, ContentUnreadable](p)
+      case MediaSource.RemoteUrl(u) =>
+        EitherT.leftT[IO, Path](
+          ContentUnreadable(location, new UnsupportedOperationException(s"Partial hashing is not supported for remote media sources: $u"))
+        )
+    }
+
+  private def contentTypeFor(location: ContentLocation, source: MediaSource): EitherT[IO, ContentUnreadable, String] =
+    val detect = source match
+      case MediaSource.LocalFile(path) => IO.blocking(tika.detect(path))
+      case MediaSource.RemoteUrl(uri)  =>
+        IO.blocking(Using.resource(uri.toURL.openStream())(stream => tika.detect(stream, location.display)))
+    EitherT(detect.attempt.map(_.left.map(ContentUnreadable(location, _))))
 
   override def contentMeta(location: ContentLocation): EitherT[IO, ContentUnreadable, ContentMeta] =
     for
-      path        <- localPathOf(location)
-      contentType <- contentTypeFor(location, path)
-      scan        <- EitherT.liftF(toolScanForPath(path, contentType))
-      streamable  <- EitherT.liftF(streamableOf(path, Some(contentType)))
+      source      <- mediaSourceOf(location)
+      contentType <- contentTypeFor(location, source)
+      scan        <- EitherT.liftF(toolScanForSource(source, contentType))
+      streamable  <- EitherT.liftF(streamableOf(source, Some(contentType)))
     yield scan.map(ContentMeta.scanned).getOrElse(ContentMeta.empty)
       .copy(contentType = Some(contentType), streamable = streamable)
 
   override def contentPartialHash(location: ContentLocation): EitherT[IO, ContentUnreadable, String] =
     for
       path <- localPathOf(location)
-      hash <- EitherT(hashingAlgorithm.createHash(path).attempt.map(_.left.map(ContentUnreadable(location, _))))
+      hash <- EitherT(PartialHash.createHash(path).attempt.map(_.left.map(ContentUnreadable(location, _))))
     yield hash
 
   override def isStreamable(location: ContentLocation, contentType: Option[String]): EitherT[IO, ContentUnreadable, Option[Boolean]] =
     for
-      path       <- localPathOf(location)
-      streamable <- EitherT.liftF(streamableOf(path, contentType))
+      source     <- mediaSourceOf(location)
+      streamable <- EitherT.liftF(streamableOf(source, contentType))
     yield streamable
 
-  private def toolScanForPath(path: Path, contentType: String): IO[Option[ToolScan]] =
+  private def toolScanForSource(source: MediaSource, contentType: String): IO[Option[ToolScan]] =
     if contentType.startsWith("video/") then
-      FFMpeg.ffprobe(path.toUri, processSettings.ffprobeTimeout).map {
+      FFMpeg.ffprobe(source.toUri, processSettings.ffprobeTimeout).map {
         (ffprobeResult, json) =>
           val version = ffprobeResult.program_version.map(_.version).getOrElse("unknown")
           Some(ToolScan(s"ffprobe/$version", json))
-      }.recover { case e: Throwable => logger.error(s"Failed to get video meta data for $path", e); None }
+      }.recover { case e: Throwable => logger.error(s"Failed to get video meta data for ${source.toUri}", e); None }
     else if contentType.startsWith("image/") then
-      ImageMagick.getImageMeta(path).map:
+      ImageMagick.getImageMeta(source.toUri).map:
         case Failure(e)      =>
-          logger.error(s"Failed to get image meta data for $path", e)
+          logger.error(s"Failed to get image meta data for ${source.toUri}", e)
           None
         case Success(result) =>
           Some(ToolScan("magick/1", result.rawJson))
@@ -158,45 +168,49 @@ final class FileOperations(
     case VideoContainer.Webm     => ContainerFormat.Webm
     case VideoContainer.Matroska => ContainerFormat.Matroska
 
-  private[impl] def streamableOf(path: Path, contentType: Option[String]): IO[Option[Boolean]] =
+  private[impl] def streamableOf(source: MediaSource, contentType: Option[String]): IO[Option[Boolean]] =
     if contentType.exists(_.startsWith("video/")) then
-      Streamability.detect(path).map {
+      Streamability.detect(source.toUri).map {
         case Streamability.Streamable    => Some(true)
         case Streamability.NotStreamable => Some(false)
         case Streamability.Unknown       => None
       }
     else IO.pure(None)
 
-  override def remuxForStreaming(info: ResourceInfo): EitherT[IO, StreamabilityError, Option[StagingId]] =
+  override def remuxForStreaming(info: ResourceInfo, targetPath: ResourcePath): EitherT[IO, StreamabilityError, Option[RemuxResult]] =
     for
       _         <- EitherT.fromEither[IO](ResourcePath.fromString(info.path)).leftMap(message => StreamabilityError.FixFailed(info.path, message))
+      _         <- EitherT.fromEither[IO](ResourcePath.fromString(targetPath)).leftMap(message => StreamabilityError.FixFailed(info.path, message))
       operation <-
         EitherT.fromOption[IO](AddFastStart.forResource(info), StreamabilityError.UnsupportedContainer(info.contentType.getOrElse("unknown")))
       source    <- EitherT.fromOptionF(
                      store.openSource(info.path),
                      StreamabilityError.FixFailed(info.path, "source file is no longer available")
                    )
-      stagingId  = StagingId(s"${info.resourceId}-normalize-${UUID.randomUUID()}.${operation.container.extension}")
       result    <- EitherT {
                      tempFile("amony-remux-", s".${operation.container.extension}").use { temp =>
                        for
                          out        <- addFastStart(source, operation.container, temp)
-                         streamable <- streamableOf(out, info.contentType)
+                         streamable <- streamableOf(MediaSource.LocalFile(out), info.contentType)
                          result     <-
                            if streamable.contains(true) then
-                             store.put(StoreKey.Staged(stagingId), info.contentType, out)
-                               .leftMap(message => StreamabilityError.FixFailed(info.path, message))
-                               .as(Some(stagingId))
-                               .value
+                             for
+                               partialHash <- PartialHash.createHash(out)
+                               putResult   <- store
+                                                .put(StoreKey.Resource(targetPath), info.contentType, Fs2Files[IO].readAll(Fs2Path.fromNioPath(out)))
+                                                .leftMap(message => StreamabilityError.FixFailed(info.path, message))
+                                                .as(Some(RemuxResult(targetPath, partialHash)))
+                                                .value
+                             yield putResult
                            else
                              IO.pure(
                                Left(StreamabilityError.FixFailed(
                                  info.path,
                                  "the remux did not produce a streamable file"
-                               )): Either[StreamabilityError, Option[StagingId]]
+                               )): Either[StreamabilityError, Option[RemuxResult]]
                              )
                        yield result
-                     }.onError(_ => store.delete(StoreKey.Staged(stagingId)))
+                     }.onError(_ => IO.whenA(targetPath != info.path)(store.delete(StoreKey.Resource(targetPath))))
                    }
     yield result
 
@@ -206,23 +220,23 @@ final class FileOperations(
   override def derivedResource(info: ResourceInfo, operation: ResourceOperation): EitherT[IO, DerivedResourceError, ResourceContent] =
     for
       _       <- EitherT.fromEither[IO](ResourcePath.fromString(info.path)).leftMap(reason => DerivedResourceError.InvalidPath(info.resourceId, reason))
-      source  <- EitherT.fromOptionF(
-                   store.openSource(info.path),
-                   DerivedResourceError.SourceMissing(info.resourceId, info.path)
-                 )
       key      = StoreKey.derived(info.resourceId, ResourceOperations.contentVersion(info), operation)
       eTag     = Some(previewETag(info, key))
       opKey    = (resourceId = info.resourceId, operation = operation)
-      content <- EitherT.liftF(
+      content <- EitherT(
                    store.content(key, Some(operation.contentType), eTag).flatMap {
-                     case Some(existing) => IO.pure(existing)
+                     case Some(existing) => IO.pure(Right(existing))
                      case None           =>
-                       inFlight.run(opKey)(createDerived(source, info, key, operation)) >>
-                         store.content(key, Some(operation.contentType), eTag).flatMap {
-                           case Some(created) => IO.pure(created)
-                           case None          =>
-                             IO.raiseError(new IllegalStateException(s"Derived resource '${key.name}' was not found after creation"))
-                         }
+                       store.openSource(info.path).flatMap {
+                         case None         => IO.pure(Left(DerivedResourceError.SourceMissing(info.resourceId, info.path)))
+                         case Some(source) =>
+                           inFlight.run(opKey)(createDerived(source, info, key, operation)) >>
+                             store.content(key, Some(operation.contentType), eTag).flatMap {
+                               case Some(created) => IO.pure(Right(created))
+                               case None          =>
+                                 IO.raiseError(new IllegalStateException(s"Derived resource '${key.name}' was not found after creation"))
+                             }
+                       }
                    }
                  )
     yield content
@@ -238,7 +252,10 @@ final class FileOperations(
         val suffix         = if extensionStart >= 0 then key.name.substring(extensionStart) else ""
         tempFile("amony-derived-", suffix).use { tempFile =>
           run(info, source, tempFile, other) >>
-            store.put(key, Some(other.contentType), tempFile).value.flatMap(e => IO.fromEither(e.left.map(new RuntimeException(_)))).void
+            store
+              .put(key, Some(other.contentType), Fs2Files[IO].readAll(Fs2Path.fromNioPath(tempFile)))
+              .value
+              .flatMap(e => IO.fromEither(e.left.map(new RuntimeException(_))))
         })
 
   private def moveIntoPlace(tempFile: Path, outputFile: Path): IO[Path] =

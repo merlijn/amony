@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.duration.*
 
 import cats.effect.unsafe.implicits.global
-import cats.effect.{IO, Ref}
+import cats.effect.{IO, Ref, Resource}
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
 import fs2.Stream
@@ -42,27 +42,29 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
   given MeterProvider[IO]  = MeterProvider.noop[IO]
   given TracerProvider[IO] = TracerProvider.noop[IO]
 
-  private def bucketConfig(id: String, path: Path): LocalDirectoryConfig =
-    LocalDirectoryConfig(
-      id                 = id,
-      requiredRole       = Some(Role.Authenticated),
-      path               = path,
-      sync               = ScanConfig(
-        enabled         = false,
-        syncOnStartup   = false,
-        newFilesOwner   = "admin",
-        pollInterval    = 60.seconds,
-        includePatterns = List("**/*.{mp4,jpg}"),
-        excludePatterns = List("**/.*")
-      ),
-      hashingAlgorithm   = PartialHash,
-      relativeUploadPath = Path.of("_upload")
+  private def bucketConfig(id: String, path: Path): ResourceBucketConfig =
+    ResourceBucketConfig(
+      id           = id,
+      requiredRole = Some(Role.Authenticated),
+      storage      = LocalDirectoryStorageConfig(
+        path               = path,
+        sync               = ScanConfig(
+          enabled         = false,
+          syncOnStartup   = false,
+          newFilesOwner   = "admin",
+          pollInterval    = 60.seconds,
+          includePatterns = List("**/*.{mp4,jpg}"),
+          excludePatterns = List("**/.*")
+        ),
+        relativeUploadPath = Path.of("_upload")
+      )
     )
 
   private def tempDir(): Path = Files.createTempDirectory("amony-bucket-test")
 
-  private def withExcludes(config: LocalDirectoryConfig, excludes: List[String]): LocalDirectoryConfig =
-    config.copy(sync = config.sync.copy(excludePatterns = excludes))
+  private def withExcludes(config: ResourceBucketConfig, excludes: List[String]): ResourceBucketConfig =
+    val local = config.storage.asInstanceOf[LocalDirectoryStorageConfig]
+    config.copy(storage = local.copy(sync = local.sync.copy(excludePatterns = excludes)))
 
   private def mockBucket(config: ResourceBucketConfig): ResourceBucketConsumer =
     val bucket = mock[ResourceBucketConsumer](RETURNS_DEFAULTS)
@@ -107,7 +109,8 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
           val test =
             Database.makePool(dbConfig).use { pool =>
               val bucketsDal = BucketsDal(pool)
-              val factory    = (config: ResourceBucketConfig) => IO.pure((mockBucket(config), mock[ResourceDiscovery], IO.unit))
+              val factory    = (config: ResourceBucketConfig) =>
+                Resource.pure[IO, (ResourceBucketConsumer, ResourceDiscovery, IO[Unit])]((mockBucket(config), mock[ResourceDiscovery], IO.unit))
 
               for
                 configs <- DatabaseBucketRegistry
@@ -148,7 +151,12 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
                               (started.update(id :: _) >>
                                 active.updateAndGet(m => m.updated(id, m.getOrElse(id, 0) + 1)).flatMap(m => maxSyncs.update(_ max m(id))) >>
                                 IO.never[Unit]).onCancel(active.update(m => m.updated(id, m(id) - 1)))
-                factory   = (config: ResourceBucketConfig) => IO.pure((mockBucket(config), mock[ResourceDiscovery], sync(config.id)))
+                factory   = (config: ResourceBucketConfig) =>
+                              Resource.pure[IO, (ResourceBucketConsumer, ResourceDiscovery, IO[Unit])]((
+                                mockBucket(config),
+                                mock[ResourceDiscovery],
+                                sync(config.id)
+                              ))
                 registry  = DatabaseBucketRegistry.resource(bucketConfig("media", defaultPath), bucketsDal, recordingTopic(published), factory)
                 _        <- registry.use { r =>
                               for
@@ -170,7 +178,10 @@ class DatabaseBucketRegistrySpec extends AnyWordSpecLike with TestContainerForAl
                                 updated     <- r.update(changed, original.updatedAt)
                                 _            = updated shouldBe Right(())
                                 stored      <- bucketsDal.getById(BucketId("other"))
-                                _            = stored.map(_.config) shouldBe Some(changed.copy(path = otherPath))
+                                _            = stored.map(_.config) shouldBe Some(bucketConfig(
+                                                 "other",
+                                                 otherPath
+                                               ).copy(generatePreviewsOnAdd = true, requiredRole = None))
                                 _            = stored.get.updatedAt.isAfter(original.updatedAt) shouldBe true
                                 stale       <- r.update(changed.copy(generatePreviewsOnAdd = false), original.updatedAt)
                                 _            = stale shouldBe Left(BucketError.Modified(BucketId("other")))

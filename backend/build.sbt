@@ -260,7 +260,8 @@ val resourcesDependencies = Seq(
   "com.softwaremill.sttp.client4" %% "cats"                      % sttpVersion,
   "org.apache.tika"                % "tika-core"                 % "4.2.0",
   "org.jsoup"                      % "jsoup"                     % "1.24.1",
-  "com.softwaremill.sttp.shared"  %% "fs2"                       % "1.6.0"
+  "com.softwaremill.sttp.shared"  %% "fs2"                       % "1.6.0",
+  "software.amazon.awssdk"         % "s3"                        % "2.31.18"
 )
 
 val searchDependencies = Seq(

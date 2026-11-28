@@ -2158,10 +2158,7 @@ components:
       required:
       - id
       - type
-      - path
-      - relativeUploadPath
       - generatePreviewsOnAdd
-      - sync
       properties:
         id:
           type: string
@@ -2169,16 +2166,12 @@ components:
           type: string
         requiredRole:
           type: string
-        path:
-          type: string
-        relativeUploadPath:
-          type: string
         generatePreviewsOnAdd:
           type: boolean
-        hashingAlgorithm:
-          type: string
-        sync:
-          $ref: '#/components/schemas/ScanSettingsDto'
+        localDirectory:
+          $ref: '#/components/schemas/LocalDirectoryStorageDto'
+        s3:
+          $ref: '#/components/schemas/S3StorageDto'
         updatedAt:
           type: string
           format: date-time
@@ -2305,6 +2298,20 @@ components:
           type: string
         loginUrl:
           type: string
+    LocalDirectoryStorageDto:
+      title: LocalDirectoryStorageDto
+      type: object
+      required:
+      - path
+      - relativeUploadPath
+      - sync
+      properties:
+        path:
+          type: string
+        relativeUploadPath:
+          type: string
+        sync:
+          $ref: '#/components/schemas/ScanSettingsDto'
     LogoutResponse:
       title: LogoutResponse
       type: object
@@ -2394,6 +2401,34 @@ components:
         codec:
           type: string
         streamable:
+          type: boolean
+    S3StorageDto:
+      title: S3StorageDto
+      type: object
+      required:
+      - bucket
+      - region
+      - pathStyleAccess
+      - presignedUrlTtlSeconds
+      properties:
+        bucket:
+          type: string
+        region:
+          type: string
+        endpoint:
+          type: string
+        prefix:
+          type: string
+        pathStyleAccess:
+          type: boolean
+        presignedUrlTtlSeconds:
+          type: integer
+          format: int64
+        accessKeyId:
+          type: string
+        secretAccessKey:
+          type: string
+        hasSecretAccessKey:
           type: boolean
     ScanSettingsDto:
       title: ScanSettingsDto

@@ -27,7 +27,7 @@ class ResourceBucketImpl(
   store: ResourceStore,
   events: ResourceEventStore,
   jobBus: JobBus[ResourceJob],
-  jobTimeout: FiniteDuration = 30.minutes
+  jobTimeout: FiniteDuration = 5.minutes
 ) extends ResourceBucketConsumer,
       Logging {
 
@@ -70,8 +70,8 @@ class ResourceBucketImpl(
     job match
       case FixStreamability(_, resourceId) =>
         (for
-          stagingId <- EitherT(processStreamabilityFix(resourceId)).leftMap(_.message)
-        yield commitStreamabilityFix(resourceId, stagingId).map(_.left.map(_.message))).value
+          remux <- EitherT(processStreamabilityFix(resourceId)).leftMap(_.message)
+        yield commitStreamabilityFix(resourceId, remux).map(_.left.map(_.message))).value
 
       case upload: UploadResource =>
         IO.pure(Right(commitUpload(upload)))
@@ -88,10 +88,14 @@ class ResourceBucketImpl(
 
   override def uploadResource(userId: UserId, fileName: String, source: fs2.Stream[IO, Byte]): IO[Either[UploadError, ResourceInfo]] =
     (for
-      job    <- EitherT(prepareAndStageUpload(userId, fileName, source))
+      job    <- prepareAndStageUpload(userId, fileName, source)
       jobId  <- EitherT.liftF(
                   jobBus.submit(job.key, job)
-                    .handleErrorWith(error => store.delete(StoreKey.Staged(job.stagingId)) >> IO.raiseError(error))
+                    .handleErrorWith(error =>
+                      store.delete(StoreKey.Resource(job.path)) >>
+                        db.deleteStagedUpload(id, job.path) >>
+                        IO.raiseError(error)
+                    )
                 )
       status <- EitherT.liftF(jobBus.awaitCompletion(jobId, jobTimeout))
       _      <- EitherT.cond[IO](
@@ -107,76 +111,92 @@ class ResourceBucketImpl(
 
   private val invalidSequences = List("/", "\\", "..")
 
-  private def decodeFileName(fileName: String): Either[UploadError, String] =
-    try Right(URLDecoder.decode(fileName, StandardCharsets.UTF_8))
-    catch case _: IllegalArgumentException => Left(UploadError.InvalidFileName(s"File name '$fileName' is invalid"))
+  private def validateFileName(fileName: String): Either[UploadError, String] =
+    for
+      decoded <-
+        try Right(URLDecoder.decode(fileName, StandardCharsets.UTF_8))
+        catch case _: IllegalArgumentException => Left(UploadError.InvalidFileName(s"File name '$fileName' is invalid"))
+      _       <- Either.cond(!invalidSequences.exists(decoded.contains), (), UploadError.InvalidFileName(s"File name '$decoded' is invalid"))
+    yield decoded
 
   private def tempUploadFile: Resource[IO, Path] =
     Resource.make(IO.blocking(JFiles.createTempFile("amony-upload-", "")))(path => IO.blocking(JFiles.deleteIfExists(path)).void)
+
+  private def cleanupStaged(targetPath: ResourcePath): IO[Unit] =
+    (store.delete(StoreKey.Resource(targetPath)).attempt >> db.deleteStagedUpload(id, targetPath).attempt).void
+
+  private def normalizeIfNeeded(localFile: Path, decoded: String, meta: ContentMeta): IO[Boolean] =
+    val container = meta.contentType
+      .filter(_ => meta.streamable.contains(false))
+      .flatMap(VideoContainer.fromContentType)
+    container match
+      case None            => IO.pure(false)
+      case Some(container) =>
+        ops.normalizeUpload(localFile, container).value.attempt.flatMap {
+          case Right(Right(()))   => IO.pure(true)
+          case Right(Left(error)) =>
+            IO(logger.warn(s"Failed to remux uploaded file '$decoded': ${error.message}. Storing the original file")).as(false)
+          case Left(error)        =>
+            logger.warn(s"Failed to remux uploaded file '$decoded', storing the original file", error)
+            IO.pure(false)
+        }
+
+  private def stageLocalFile(
+    userId: UserId,
+    validatedFilename: String,
+    resourceId: ResourceId,
+    targetPath: ResourcePath,
+    title: Option[String],
+    localFile: Path,
+    source: fs2.Stream[IO, Byte]
+  ): EitherT[IO, UploadError, UploadResource] =
+    val location                     = ContentLocation.LocalFile(localFile)
+    def storageError(detail: String) = UploadError.StorageError(s"Failed to store upload '$validatedFilename': $detail")
+    for
+      _         <- EitherT.liftF(source.through(Files[IO].writeAll(Fs2Path.fromNioPath(localFile))).compile.drain)
+      size      <- EitherT.liftF(IO.blocking(JFiles.size(localFile)))
+      _         <- EitherT.cond[IO](size > 0, (), storageError("Uploaded file is empty"))
+      meta      <- ops.contentMeta(location).leftMap(e => storageError(e.message))
+      remuxed   <- EitherT.liftF(normalizeIfNeeded(localFile, validatedFilename, meta))
+      hash      <- ops.contentPartialHash(location).leftMap(e => storageError(e.message))
+      finalMeta <- if remuxed then ops.contentMeta(location).leftMap(e => storageError(e.message)) else EitherT.pure[IO, UploadError](meta)
+      _         <- EitherT.liftF(db.insertStagedUpload(id, targetPath))
+      _         <- store.put(StoreKey.Resource(targetPath), finalMeta.contentType, Files[IO].readAll(Fs2Path.fromNioPath(localFile)))
+                     .leftMap(storageError)
+    yield UploadResource(id, resourceId, userId, targetPath, title, hash, finalMeta)
 
   private def prepareAndStageUpload(
     userId: UserId,
     fileName: String,
     source: fs2.Stream[IO, Byte]
-  ): IO[Either[UploadError, UploadResource]] =
-    decodeFileName(fileName) match
-      case Left(error)                                                 => IO.pure(Left(error))
-      case Right(decoded) if invalidSequences.exists(decoded.contains) =>
-        IO.pure(Left(UploadError.InvalidFileName(s"File name '$decoded' is invalid")))
-      case Right(decoded)                                              =>
-        val resourceId = config.generateId()
-        val stagingId  = StagingId(s"$resourceId-upload")
-        tempUploadFile.use { localFile =>
-          val location = ContentLocation.LocalFile(localFile)
-          val prepare  =
-            for
-              _         <- EitherT.liftF(source.through(Files[IO].writeAll(Fs2Path.fromNioPath(localFile))).compile.drain)
-              size      <- EitherT.liftF(IO.blocking(JFiles.size(localFile)))
-              _         <- EitherT.cond[IO](size > 0, (), UploadError.StorageError(s"Failed to store upload '$decoded': Uploaded file is empty"))
-              meta      <- ops.contentMeta(location).leftMap(error =>
-                             UploadError.StorageError(s"Failed to store upload '$decoded': ${error.message}")
-                           )
-              container  = meta.contentType
-                             .filter(_ => meta.streamable.contains(false))
-                             .flatMap(VideoContainer.fromContentType)
-              remuxed   <- EitherT.right[UploadError](container match
-                             case None            => IO.pure(false)
-                             case Some(container) =>
-                               ops.normalizeUpload(localFile, container).value.attempt.flatMap {
-                                 case Right(Right(()))   => IO.pure(true)
-                                 case Right(Left(error)) =>
-                                   IO(
-                                     logger.warn(s"Failed to remux uploaded file '$decoded': ${error.message}. Storing the original file")
-                                   ).as(false)
+  ): EitherT[IO, UploadError, UploadResource] =
+    for
+      validatedFilename <- EitherT.fromEither[IO](validateFileName(fileName))
+      resourceId         = config.generateId()
+      targetPath         = store.pathForUpload(resourceId, validatedFilename)
+      title              = ResourceBucketImpl.titleFromFileName(validatedFilename)
+      job               <- EitherT(
+                             tempUploadFile.use { localFile =>
+                               stageLocalFile(userId, validatedFilename, resourceId, targetPath, title, localFile, source).value.attempt.flatMap:
+                                 case Right(Right(job))  => IO.pure(Right(job))
+                                 case Right(Left(error)) => cleanupStaged(targetPath).as(Left(error))
                                  case Left(error)        =>
-                                   logger.warn(s"Failed to remux uploaded file '$decoded', storing the original file", error)
-                                   IO.pure(false)
-                               })
-              hash      <- ops.contentPartialHash(location).leftMap(error =>
-                             UploadError.StorageError(s"Failed to store upload '$decoded': ${error.message}")
+                                   cleanupStaged(targetPath).as(Left(UploadError.StorageError(s"Failed to store upload '$validatedFilename': ${error.getMessage}")))
+                             }
                            )
-              finalMeta <- if remuxed then
-                ops.contentMeta(location).leftMap(error =>
-                  UploadError.StorageError(s"Failed to store upload '$decoded': ${error.message}")
-                )
-              else EitherT.pure[IO, UploadError](meta)
-              _         <- store.put(StoreKey.Staged(stagingId), finalMeta.contentType, localFile)
-                             .leftMap(message => UploadError.StorageError(s"Failed to store upload '$decoded': $message"))
-            yield UploadResource(id, resourceId, userId, decoded, stagingId, hash, finalMeta)
-          prepare.value.attempt.flatMap:
-            case Right(result) => IO.pure(result)
-            case Left(error)   =>
-              store.delete(StoreKey.Staged(stagingId)).as(Left(UploadError.StorageError(s"Failed to store upload '$decoded': ${error.getMessage}")))
-        }
+    yield job
 
   private def commitUpload(upload: UploadResource): IO[Either[String, Unit]] =
     (for
       existing <- EitherT.liftF(db.getResourceById(upload.bucketId, upload.resourceId))
       _        <- existing match
-                    case Some(_) => EitherT.liftF(store.delete(StoreKey.Staged(upload.stagingId)))
+                    case Some(_) => EitherT.liftF(db.deleteStagedUpload(upload.bucketId, upload.path))
                     case None    =>
                       for
-                        stored <- store.promote(upload.stagingId, upload.fileName)
+                        stored <- EitherT.fromOptionF(
+                                    store.stat(upload.path),
+                                    s"Uploaded file '${upload.path}' is no longer available"
+                                  )
                         info    = ResourceInfo(
                                     bucketId           = upload.bucketId,
                                     resourceId         = upload.resourceId,
@@ -188,9 +208,17 @@ class ResourceBucketImpl(
                                     contentMeta        = upload.contentMeta,
                                     timeAdded          = Some(Instant.now().toEpochMilli),
                                     timeLastModified   = Some(stored.timeLastModified),
+                                    title              = upload.title,
                                     thumbnailTimestamp = None
                                   )
-                        _      <- EitherT.liftF(events.processEvent(ResourceAdded(info)))
+                        _      <- EitherT.liftF(
+                                    db.transact { s =>
+                                      given Option[skunk.Session[IO]] = Some(s)
+                                      db.insertResource(info) >>
+                                        db.deleteStagedUpload(upload.bucketId, upload.path) >>
+                                        topic.publish(s, ResourceAdded(info))
+                                    } >> IO(logger.info(s"[$id] ${ResourceAdded(info)}"))
+                                  )
                       yield ()
     yield ()).value
 
@@ -203,58 +231,76 @@ class ResourceBucketImpl(
         Left(ResourceJobError.Rejected("The container format cannot be remuxed for streaming"))
       case Some(_)                                              => Right(())
 
-  private def processStreamabilityFix(resourceId: ResourceId): IO[Either[StreamabilityError, Option[StagingId]]] =
+  private def processStreamabilityFix(resourceId: ResourceId): IO[Either[StreamabilityError, Option[RemuxResult]]] =
     OptionT(getResourceInfo(resourceId))
-      .semiflatMap((info: ResourceInfo) =>
-        if !info.streamable.contains(false) then IO.pure(Right(None): Either[StreamabilityError, Option[StagingId]])
-        else ops.remuxForStreaming(info).value
-      )
+      .semiflatMap { (info: ResourceInfo) =>
+        if !info.streamable.contains(false) then IO.pure(Right(None): Either[StreamabilityError, Option[RemuxResult]])
+        else
+          val targetPath = store.pathForReplacement(info.path, info.resourceId)
+          val stage      = IO.whenA(targetPath != info.path)(db.insertStagedUpload(id, targetPath))
+          val cleanup    = IO.whenA(targetPath != info.path)(
+            store.delete(StoreKey.Resource(targetPath)).attempt >> db.deleteStagedUpload(id, targetPath).attempt.void
+          )
+          stage >> ops.remuxForStreaming(info, targetPath).value.flatTap {
+            case Left(_)  => cleanup
+            case Right(_) => IO.unit
+          }.onError(_ => cleanup)
+      }
       .getOrElse(Left(StreamabilityError.ResourceNotFound(resourceId)))
 
   private def commitStreamabilityFix(
     resourceId: ResourceId,
-    stagingId: Option[StagingId]
+    remux: Option[RemuxResult]
   ): IO[Either[StreamabilityError, Unit]] =
-    (for
-      info        <- EitherT.fromOptionF(getResourceInfo(resourceId), StreamabilityError.ResourceNotFound(resourceId))
-      stored      <- replaceOrStatForStreamability(info, stagingId)
-      location     = ContentLocation.Resource(info.path)
-      partialHash <- ops.contentPartialHash(location).leftMap(e => StreamabilityError.FixFailed(info.path, e.message))
-      streamable  <- ops.isStreamable(location, info.contentType).leftMap(e => StreamabilityError.FixFailed(info.path, e.message))
-      updated     <- EitherT.cond[IO](
-                       streamable.contains(true),
-                       info.copy(
-                         size             = stored.size,
-                         partialHash      = partialHash,
-                         fileKey          = stored.fileKey,
-                         timeLastModified = Some(stored.timeLastModified),
-                         contentMeta      = info.contentMeta.copy(streamable = streamable)
-                       ),
-                       StreamabilityError.FixFailed(info.path, "the file is not streamable after the remux")
-                     )
-      _           <- EitherT.liftF(events.processEvent(ResourceModified(updated)))
-    yield ()).value
+    remux match
+      case None                                       => IO.pure(Right(()))
+      case Some(RemuxResult(targetPath, partialHash)) =>
+        (for
+          info   <- EitherT.fromOptionF(getResourceInfo(resourceId), StreamabilityError.ResourceNotFound(resourceId))
+          stored <- EitherT.fromOptionF(
+                      store.stat(targetPath),
+                      StreamabilityError.FixFailed(targetPath, "resource file is no longer available")
+                    )
+          updated = info.copy(
+                      path             = stored.path,
+                      size             = stored.size,
+                      partialHash      = partialHash,
+                      fileKey          = stored.fileKey,
+                      timeLastModified = Some(stored.timeLastModified),
+                      contentMeta      = info.contentMeta.copy(streamable = Some(true))
+                    )
+          _      <- EitherT.liftF {
+                      db.transact { s =>
+                        given Option[skunk.Session[IO]] = Some(s)
+                        db.upsertResource(updated) >>
+                          IO.whenA(targetPath != info.path)(db.deleteStagedUpload(id, targetPath)) >>
+                          topic.publish(s, ResourceModified(updated))
+                      } >>
+                        IO(logger.info(s"[$id] ${ResourceModified(updated)}")) >>
+                        IO.whenA(targetPath != info.path)(
+                          store.delete(StoreKey.Resource(info.path)).handleErrorWith(e =>
+                            IO(logger.warn(s"Failed to delete previous object '${info.path}' after remux", e))
+                          )
+                        )
+                    }
+        yield ()).value
 
-  private def replaceOrStatForStreamability(
-    info: ResourceInfo,
-    stagingId: Option[StagingId]
-  ): EitherT[IO, StreamabilityError, StoredResource] =
-    stagingId match
-      case Some(id) =>
-        EitherT.liftF(store.exists(StoreKey.Staged(id))).flatMap {
-          case true  =>
-            store.replace(info.path, id).leftMap(message => StreamabilityError.FixFailed(info.path, message))
-          case false =>
-            EitherT.fromOptionF(
-              store.stat(info.path),
-              StreamabilityError.FixFailed(info.path, "resource file is no longer available")
-            )
-        }
-      case None     =>
-        EitherT.fromOptionF(
-          store.stat(info.path),
-          StreamabilityError.FixFailed(info.path, "resource file is no longer available")
-        )
+  def cleanupStagedUploads(cutoffTime: Instant): IO[Unit] =
+    db.listStagedUploadsBefore(id, cutoffTime).flatMap { paths =>
+      paths.traverse_ { path =>
+        (store.delete(StoreKey.Resource(path)) >> db.deleteStagedUpload(id, path))
+          .handleErrorWith(e => IO(logger.warn(s"Failed to clean up staged upload '$path' in bucket '$id'", e)))
+      }
+    }
+
+  def stagedCleanupLoop(interval: FiniteDuration = 1.hour, maxAge: FiniteDuration = 1.hour): IO[Unit] =
+    fs2.Stream.fixedRate[IO](interval)
+      .evalMap(_ =>
+        IO.realTimeInstant
+          .flatMap(now => cleanupStagedUploads(now.minusMillis(maxAge.toMillis)))
+          .handleErrorWith(e => IO(logger.warn(s"Staged upload cleanup failed for bucket '$id'", e)))
+      )
+      .compile.drain
 
   override def reComputePartialHashes(): IO[Unit] = getAllResources.evalMap { resource =>
     ops.contentPartialHash(ContentLocation.Resource(resource.path)).value.flatMap {
@@ -347,3 +393,15 @@ class ResourceBucketImpl(
       .evalMap(resource => IO(logger.info(s"Inserting resource: ${resource.resourceId}")) >> db.insertResource(resource)).compile.drain
 
 }
+
+object ResourceBucketImpl:
+
+  private val maxTitleLength = 128
+
+  private[impl] def titleFromFileName(fileName: String): Option[String] =
+    val dotIndex = fileName.lastIndexOf('.')
+    val base     =
+      if dotIndex > 0 && dotIndex < fileName.length - 1 then fileName.substring(0, dotIndex)
+      else fileName
+    val trimmed  = base.strip()
+    Option.when(trimmed.nonEmpty)(trimmed.take(maxTitleLength))

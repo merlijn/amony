@@ -17,13 +17,13 @@ sealed trait ResourceJob derives Codec:
 /** Replaces a non-streamable file with a remux and refreshes the resource metadata. */
 final case class FixStreamability(bucketId: BucketId, resourceId: ResourceId) extends ResourceJob derives Codec
 
-/** Promotes a prepared upload from its staged key to its final path and records it in the database. */
+/** Records a prepared upload that has already been written to `path` in the database. */
 final case class UploadResource(
   bucketId: BucketId,
   resourceId: ResourceId,
   userId: UserId,
-  fileName: String,
-  stagingId: StagingId,
+  path: ResourcePath,
+  title: Option[String],
   partialHash: String,
   contentMeta: ContentMeta
 ) extends ResourceJob derives Codec

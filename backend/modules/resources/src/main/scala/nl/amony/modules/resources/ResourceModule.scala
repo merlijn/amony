@@ -15,10 +15,12 @@ import nl.amony.modules.resources.api.{
   BucketId,
   BucketRegistry,
   CacheScope,
-  LocalDirectoryConfig,
+  LocalDirectoryStorageConfig,
+  ResourceDiscovery,
   ResourceEvent,
   ResourceIndex,
   ResourceJob,
+  S3StorageConfig,
   ThumbnailFormats,
   ThumbnailResolutions,
   ThumbnailTiles
@@ -31,7 +33,8 @@ import nl.amony.modules.resources.impl.{
   LocalDirectoryStore,
   LocalDirectorySyncer,
   ResourceBucketImpl,
-  ResourceProcessor
+  ResourceProcessor,
+  S3ResourceStore
 }
 import nl.amony.platform.messagebus.{JobBus, MessageTopic}
 import nl.amony.platform.subprocess.{ProcessLimiter, ProcessSettings}
@@ -87,35 +90,58 @@ object ResourceModule:
     )
     val resourceDatabase = ResourceDatabase(databasePool)
 
-    def bucketFactory(processLimiter: ProcessLimiter): BucketFactory = {
-      case localConfig: LocalDirectoryConfig =>
-        IO {
-          val store     = LocalDirectoryStore(localConfig)
-          val ops       = new FileOperations(
-            localConfig.hashingAlgorithm,
-            config.parallelFactor,
-            thumbFormats,
-            thumbResolutions,
-            processSettings,
-            processLimiter,
-            store
-          )
-          val events    = DatabaseResourceEventStore(BucketId(localConfig.id), resourceDatabase, eventTopic)
-          val syncer    = LocalDirectorySyncer(localConfig, config.parallelFactor, resourceDatabase, ops, events)
-          val bucket    = ResourceBucketImpl(
-            localConfig,
-            config.parallelFactor,
-            resourceDatabase,
-            eventTopic,
-            ops,
-            store,
-            events,
-            jobBus
-          )
-          val startSync = syncer.sync()
-          (bucket, syncer, startSync)
-        }
-    }
+    def bucketFactory(processLimiter: ProcessLimiter): BucketFactory = bucketConfig =>
+      bucketConfig.storage match
+        case localStorage: LocalDirectoryStorageConfig =>
+          Resource.eval(IO {
+            val store     = LocalDirectoryStore(localStorage)
+            val ops       = new FileOperations(
+              config.parallelFactor,
+              thumbFormats,
+              thumbResolutions,
+              processSettings,
+              processLimiter,
+              store
+            )
+            val events    = DatabaseResourceEventStore(BucketId(bucketConfig.id), resourceDatabase, eventTopic)
+            val syncer    = LocalDirectorySyncer(bucketConfig, localStorage, config.parallelFactor, resourceDatabase, ops, events)
+            val bucket    = ResourceBucketImpl(
+              bucketConfig,
+              config.parallelFactor,
+              resourceDatabase,
+              eventTopic,
+              ops,
+              store,
+              events,
+              jobBus
+            )
+            val startSync = syncer.sync().both(bucket.stagedCleanupLoop()).void
+            (bucket, syncer, startSync)
+          })
+
+        case s3Storage: S3StorageConfig =>
+          S3ResourceStore.resource(s3Storage).map { store =>
+            val ops    = new FileOperations(
+              config.parallelFactor,
+              thumbFormats,
+              thumbResolutions,
+              processSettings,
+              processLimiter,
+              store
+            )
+            val events = DatabaseResourceEventStore(BucketId(bucketConfig.id), resourceDatabase, eventTopic)
+            val bucket = ResourceBucketImpl(
+              bucketConfig,
+              config.parallelFactor,
+              resourceDatabase,
+              eventTopic,
+              ops,
+              store,
+              events,
+              jobBus
+            )
+            (bucket, ResourceDiscovery.noop, bucket.stagedCleanupLoop())
+          }
 
     for
       processLimiter   <- ProcessLimiter.resource(processSettings)

@@ -8,8 +8,6 @@ import cats.effect.unsafe.implicits.global
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-import nl.amony.modules.resources.api.PartialHash as PartialHashAlgorithm
-
 class PartialHashSpec extends AnyWordSpec with Matchers {
 
   private val recipeLength = PartialHash.Recipe.length + 1 + 24
@@ -22,7 +20,7 @@ class PartialHashSpec extends AnyWordSpec with Matchers {
     finally Files.deleteIfExists(path)
 
   private def hashFile(path: Path): String =
-    PartialHashAlgorithm.createHash(path).unsafeRunSync()
+    PartialHash.createHash(path).unsafeRunSync()
 
   private def largeFile(fill: Byte, size: Int = 64 * 1024): Path =
     val path = Files.createTempFile("partial-hash-large", ".bin")

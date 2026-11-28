@@ -12,12 +12,11 @@ import nl.amony.modules.resources.api.*
 enum StoreKey:
   case Resource(path: ResourcePath)
   case Derived(resourceId: ResourceId, name: String)
-  case Staged(id: StagingId)
 
 object StoreKey:
 
   private def scaleSuffix(width: Option[Int], height: Option[Int]): String =
-    width.map(w => s"w$w").orElse(height.map(h => s"h$h")).getOrElse("orig")
+    width.map(w => s"w$w").orElse(height.map(h => h.toString).map(h => s"h$h")).getOrElse("orig")
 
   def derived(resourceId: ResourceId, contentVersion: String, operation: ResourceOperation): StoreKey.Derived =
     val name = operation match
@@ -53,10 +52,16 @@ final case class StoredResource(
 )
 
 /**
- * Storage backend for the resources, derived artifacts and staged uploads of a bucket. A local file system and object
- * storage are used interchangeably through this interface.
+ * Storage backend for the resources and derived artifacts of a bucket. A local file system and object storage are used
+ * interchangeably through this interface.
  */
 trait ResourceStore:
+
+  /** Derives the storage path for a newly uploaded resource. */
+  def pathForUpload(resourceId: ResourceId, fileName: String): ResourcePath
+
+  /** Derives the storage path for a remuxed replacement of an existing resource. */
+  def pathForReplacement(currentPath: ResourcePath, resourceId: ResourceId): ResourcePath
 
   /** Returns the content of a stored object for serving, or `None` when it does not exist. */
   def content(key: StoreKey, contentType: Option[String], eTag: Option[String]): IO[Option[ResourceContent]]
@@ -64,20 +69,14 @@ trait ResourceStore:
   /** Checks whether an object exists at `key`. */
   def exists(key: StoreKey): IO[Boolean]
 
-  /** Writes or atomically replaces the object at `key` with the contents of `source`. */
-  def put(key: StoreKey, contentType: Option[String], source: Path): EitherT[IO, String, StoredResource]
+  /** Writes or atomically replaces the object at `key` with the bytes from `source`. */
+  def put(key: StoreKey, contentType: Option[String], source: fs2.Stream[IO, Byte]): EitherT[IO, String, Unit]
 
   /** Writes or atomically replaces the object at `key` with in-memory bytes. */
   def putBytes(key: StoreKey, contentType: Option[String], bytes: Array[Byte]): IO[Unit]
 
   /** Deletes the object at `key`. */
   def delete(key: StoreKey): IO[Unit]
-
-  /** Promotes a staged object to a unique final resource path derived from `fileName`, returning its metadata. */
-  def promote(stagingId: StagingId, fileName: String): EitherT[IO, String, StoredResource]
-
-  /** Atomically replaces an existing resource with a staged object, returning its updated metadata. */
-  def replace(path: ResourcePath, stagingId: StagingId): EitherT[IO, String, StoredResource]
 
   /** Returns a readable handle for the compute layer, or `None` when the resource does not exist. */
   def openSource(path: ResourcePath): IO[Option[MediaSource]]

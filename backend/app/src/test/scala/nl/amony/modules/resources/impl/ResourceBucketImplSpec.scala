@@ -57,22 +57,23 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
       poolSize = 1
     )
 
-  private def localConfig(id: String, path: Path, generatePreviewsOnAdd: Boolean = false): LocalDirectoryConfig =
-    LocalDirectoryConfig(
+  private def localConfig(id: String, path: Path, generatePreviewsOnAdd: Boolean = false): ResourceBucketConfig =
+    ResourceBucketConfig(
       id                    = id,
       requiredRole          = Some(Role.Authenticated),
-      path                  = path,
       generatePreviewsOnAdd = generatePreviewsOnAdd,
-      sync                  = ScanConfig(
-        enabled         = false,
-        syncOnStartup   = false,
-        newFilesOwner   = "admin",
-        pollInterval    = 60.seconds,
-        includePatterns = List("**/*.{mp4,jpg}"),
-        excludePatterns = List("**/.*")
-      ),
-      hashingAlgorithm      = PartialHash,
-      relativeUploadPath    = Path.of("_upload")
+      storage               = LocalDirectoryStorageConfig(
+        path               = path,
+        sync               = ScanConfig(
+          enabled         = false,
+          syncOnStartup   = false,
+          newFilesOwner   = "admin",
+          pollInterval    = 60.seconds,
+          includePatterns = List("**/*.{mp4,jpg}"),
+          excludePatterns = List("**/.*")
+        ),
+        relativeUploadPath = Path.of("_upload")
+      )
     )
 
   private def recordingTopic(published: AtomicReference[List[ResourceEvent]]): MessageTopic[ResourceEvent] =
@@ -90,13 +91,13 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
       ): Stream[IO, Unit]                                                        = Stream.empty
 
   private def makeBucket(
-    config: LocalDirectoryConfig,
+    config: ResourceBucketConfig,
     db: ResourceDatabase,
     published: AtomicReference[List[ResourceEvent]],
     ops: BucketOperations = null
   ): ResourceBucketImpl =
     val topic  = recordingTopic(published)
-    val store  = LocalDirectoryStore(config)
+    val store  = LocalDirectoryStore(config.storage.asInstanceOf[LocalDirectoryStorageConfig])
     val events = DatabaseResourceEventStore(BucketId(config.id), db, topic)
     ResourceBucketImpl(config, 2, db, topic, ops, store, events, null)
 
@@ -217,8 +218,9 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
           val bucket    = makeBucket(cfg, db, published)
           val res       = newResource(bucket.id, "video.mp4")
 
-          Files.createDirectories(cfg.cachePath)
-          val derived = Files.writeString(cfg.cachePath.resolve(s"${res.resourceId}_v1_w512.webp"), "thumb")
+          val cachePath = cfg.storage.asInstanceOf[LocalDirectoryStorageConfig].cachePath
+          Files.createDirectories(cachePath)
+          val derived   = Files.writeString(cachePath.resolve(s"${res.resourceId}_v1_w512.webp"), "thumb")
 
           val registry  = mock[BucketConsumerRegistry](RETURNS_DEFAULTS)
           registry.getConsumer(bucket.id) returns IO.pure(Some(bucket))
@@ -327,5 +329,45 @@ class ResourceBucketImplSpec extends AnyWordSpecLike with TestContainerForAll wi
 
         test.timeout(5.seconds)
       }.unsafeRunSync()
+    }
+    "clean up expired staged uploads from storage and database" in withContainers { container =>
+      Database.makePool(dbConfig(container)).use { pool =>
+        val dir       = Files.createTempDirectory("amony-bucket-spec")
+        val cfg       = localConfig(s"bucket-${UUID.randomUUID()}", dir)
+        val db        = ResourceDatabase(pool)
+        val published = new AtomicReference(List.empty[ResourceEvent])
+        val bucket    = makeBucket(cfg, db, published)
+        val path      = ResourcePath("orphaned.mp4")
+        val file      = Files.writeString(dir.resolve("orphaned.mp4"), "bytes")
+
+        val test =
+          for
+            _             <- db.insertStagedUpload(bucket.id, path)
+            _             <- bucket.cleanupStagedUploads(java.time.Instant.now().minusSeconds(60))
+            stillStaged   <- db.isStagedUpload(bucket.id, path)
+            _              = stillStaged shouldBe true
+            _              = Files.exists(file) shouldBe true
+            _             <- bucket.cleanupStagedUploads(java.time.Instant.now().plusSeconds(60))
+            cleanedStaged <- db.isStagedUpload(bucket.id, path)
+          yield
+            cleanedStaged shouldBe false
+            Files.exists(file) shouldBe false
+
+        test.timeout(5.seconds)
+      }.unsafeRunSync()
+    }
+  }
+
+  "ResourceBucketImpl.titleFromFileName" should {
+
+    "strip the extension and trim whitespace" in {
+      ResourceBucketImpl.titleFromFileName("holiday video.mp4") shouldBe Some("holiday video")
+      ResourceBucketImpl.titleFromFileName("my.clip.webm") shouldBe Some("my.clip")
+      ResourceBucketImpl.titleFromFileName("README") shouldBe Some("README")
+      ResourceBucketImpl.titleFromFileName("   ") shouldBe None
+    }
+
+    "cap long titles to 128 characters" in {
+      ResourceBucketImpl.titleFromFileName(("a" * 200) + ".mp4") shouldBe Some("a" * 128)
     }
   }

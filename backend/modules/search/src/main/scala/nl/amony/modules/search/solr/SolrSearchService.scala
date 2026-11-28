@@ -109,7 +109,8 @@ private[search] class SolrSearchService(config: SolrConfig, solr: SolrClient) ex
       val q  = ClientUtils.escapeQueryChars(query.q.getOrElse(""))
       val sb = new StringBuilder()
 
-      sb.append(s"${FieldNames.path}:*${if q.trim.isEmpty then "" else s"$q*"}")
+      if q.trim.isEmpty then sb.append(s"${FieldNames.path}:*")
+      else sb.append(s"(${FieldNames.path}:*$q* OR ${FieldNames.title}:*$q*)")
 
       if query.includeTags.nonEmpty then
         val escapedTags = query.includeTags.map(ClientUtils.escapeQueryChars)

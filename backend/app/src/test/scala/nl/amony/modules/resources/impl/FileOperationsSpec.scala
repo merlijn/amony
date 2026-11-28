@@ -21,10 +21,9 @@ class FileOperationsSpec extends AnyWordSpecLike with Matchers:
   given Tracer[IO] = Tracer.noop[IO]
 
   private def ops(dir: java.nio.file.Path): FileOperations =
-    val config = LocalDirectoryConfig(
-      id                    = s"bucket-${UUID.randomUUID()}",
-      path                  = dir,
-      sync                  = ScanConfig(
+    val storage = LocalDirectoryStorageConfig(
+      path               = dir,
+      sync               = ScanConfig(
         enabled         = false,
         syncOnStartup   = false,
         newFilesOwner   = "admin",
@@ -32,13 +31,10 @@ class FileOperationsSpec extends AnyWordSpecLike with Matchers:
         includePatterns = List("**/*"),
         excludePatterns = Nil
       ),
-      hashingAlgorithm      = PartialHash,
-      relativeUploadPath    = java.nio.file.Path.of("_upload"),
-      generatePreviewsOnAdd = false
+      relativeUploadPath = java.nio.file.Path.of("_upload")
     )
-    val store  = LocalDirectoryStore(config)
+    val store   = LocalDirectoryStore(storage)
     FileOperations(
-      config.hashingAlgorithm,
       1,
       ThumbnailFormats(List(ImageFormat.Webp)),
       ThumbnailResolutions(List(512), 512, 64),
@@ -66,6 +62,40 @@ class FileOperationsSpec extends AnyWordSpecLike with Matchers:
         .derivedResource(resource("missing.mp4"), VideoFragment(Some(512), None, 0L, 1000L))
         .value
         .unsafeRunSync() should matchPattern { case Left(DerivedResourceError.SourceMissing(_, _)) => }
+    }
+
+    "return cached derived content without opening the source" in {
+      val dir        = Files.createTempDirectory("amony-ops-spec")
+      val storage    = LocalDirectoryStorageConfig(
+        path               = dir,
+        sync               = ScanConfig(
+          enabled         = false,
+          syncOnStartup   = false,
+          newFilesOwner   = "admin",
+          pollInterval    = 60.seconds,
+          includePatterns = List("**/*"),
+          excludePatterns = Nil
+        ),
+        relativeUploadPath = java.nio.file.Path.of("_upload")
+      )
+      val store      = LocalDirectoryStore(storage)
+      val operations = FileOperations(
+        1,
+        ThumbnailFormats(List(ImageFormat.Webp)),
+        ThumbnailResolutions(List(512), 512, 64),
+        ProcessSettings(),
+        ProcessLimiter.unlimited,
+        store
+      )
+      val res        = resource("missing.mp4")
+      val op         = VideoFragment(Some(512), None, 0L, 1000L)
+      val key        = StoreKey.derived(res.resourceId, ResourceOperations.contentVersion(res), op)
+      store.putBytes(key, Some(op.contentType), "cached-clip".getBytes).unsafeRunSync()
+
+      operations.derivedResource(res, op).value.unsafeRunSync() match
+        case Right(ResourceContent.Streamed(streamed)) =>
+          streamed.stream.through(fs2.text.utf8.decode).compile.string.unsafeRunSync() shouldBe "cached-clip"
+        case other                                     => fail(s"Expected cached streamed content, got $other")
     }
 
     "return an error for an invalid path" in {

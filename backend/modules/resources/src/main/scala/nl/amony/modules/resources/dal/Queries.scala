@@ -259,4 +259,18 @@ private[dal] object Queries extends Logging {
 
     val bucketCount: Query[String, Long] = sql"select count(*) from resources where bucket_id = $varchar".query(int8)
   }
+
+  object staged_uploads {
+    val insert: Command[(String, String)] =
+      sql"INSERT INTO staged_uploads (bucket_id, path) VALUES (${varchar(64)}, $text) ON CONFLICT (bucket_id, path) DO UPDATE SET created_at = now()".command
+
+    val delete: Command[(String, String)] =
+      sql"DELETE FROM staged_uploads WHERE bucket_id = ${varchar(64)} AND path = $text".command
+
+    val exists: Query[(String, String), Boolean] =
+      sql"SELECT EXISTS (SELECT 1 FROM staged_uploads WHERE bucket_id = ${varchar(64)} AND path = $text)".query(bool)
+
+    val listBefore: Query[(String, java.time.Instant), String] =
+      sql"SELECT path FROM staged_uploads WHERE bucket_id = ${varchar(64)} AND created_at < $instantCodec".query(text)
+  }
 }
